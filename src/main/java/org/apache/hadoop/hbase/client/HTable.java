@@ -48,6 +48,9 @@ import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.client.HConnectionManager.HConnectable;
 import org.apache.hadoop.hbase.client.coprocessor.Batch;
+import org.apache.hadoop.hbase.filter.BinaryComparator;
+import org.apache.hadoop.hbase.filter.CompareFilter.CompareOp;
+import org.apache.hadoop.hbase.filter.WritableByteArrayComparable;
 import org.apache.hadoop.hbase.ipc.CoprocessorProtocol;
 import org.apache.hadoop.hbase.ipc.ExecRPCInvoker;
 import org.apache.hadoop.hbase.util.Addressing;
@@ -923,6 +926,22 @@ public class HTable implements HTableInterface {
         }.withRetries();
   }
 
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public boolean checkAndPut(final byte [] row,
+      final byte [] family, final byte [] qualifier, final CompareOp compareOp,
+      final byte [] value, final Put put)
+  throws IOException {
+    return new ServerCallable<Boolean>(connection, tableName, row, operationTimeout) {
+          public Boolean call() throws IOException {
+            return server.checkAndPut(location.getRegionInfo().getRegionName(),
+                row, family, qualifier, compareOp, new BinaryComparator(value),
+                put) ? Boolean.TRUE : Boolean.FALSE;
+          }
+    }.withRetries();
+  }
 
   /**
    * {@inheritDoc}

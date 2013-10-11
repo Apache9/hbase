@@ -30,6 +30,9 @@ import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.client.coprocessor.Batch;
 import org.apache.hadoop.hbase.client.coprocessor.Batch.Callback;
+import org.apache.hadoop.hbase.filter.BinaryComparator;
+import org.apache.hadoop.hbase.filter.CompareFilter.CompareOp;
+import org.apache.hadoop.hbase.filter.WritableByteArrayComparable;
 import org.apache.hadoop.hbase.ipc.CoprocessorProtocol;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.PoolMap;
@@ -404,6 +407,13 @@ public class HTablePool implements Closeable {
     public boolean checkAndPut(byte[] row, byte[] family, byte[] qualifier,
         byte[] value, Put put) throws IOException {
       return table.checkAndPut(row, family, qualifier, value, put);
+    }
+
+    @Override
+    public boolean checkAndPut(byte[] row, byte[] family, byte[] qualifier,
+        CompareOp compareOp, byte[] value, Put put) throws IOException {
+      return table.checkAndPut(row, family, qualifier, compareOp,
+          value, put);
     }
 
     @Override

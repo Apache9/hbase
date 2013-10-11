@@ -53,6 +53,7 @@ import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.RowLock;
 import org.apache.hadoop.hbase.client.Scan;
+import org.apache.hadoop.hbase.filter.CompareFilter.CompareOp;
 import org.apache.hadoop.hbase.io.TimeRange;
 import org.apache.hadoop.hbase.rest.Constants;
 import org.apache.hadoop.hbase.rest.model.CellModel;
@@ -653,6 +654,12 @@ public class RemoteHTable implements HTableInterface {
    */
   public void unlockRow(RowLock rl) throws IOException {
     throw new IOException("unlockRow not implemented");
+  }
+
+  // TODO: add implementation later on
+  public boolean checkAndPut(byte[] row, byte[] family, byte[] qualifier,
+    CompareOp compareOp, byte[] value, Put put) throws IOException {
+      throw new IOException("checkAndPut for non-equal comparison not implemented");
   }
 
   public boolean checkAndPut(byte[] row, byte[] family, byte[] qualifier,

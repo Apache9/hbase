@@ -28,6 +28,8 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.coprocessor.Batch;
+import org.apache.hadoop.hbase.filter.CompareFilter.CompareOp;
+import org.apache.hadoop.hbase.filter.WritableByteArrayComparable;
 import org.apache.hadoop.hbase.ipc.CoprocessorProtocol;
 
 /**
@@ -224,6 +226,24 @@ public interface HTableInterface extends Closeable {
    */
   boolean checkAndPut(byte[] row, byte[] family, byte[] qualifier,
       byte[] value, Put put) throws IOException;
+
+  /**
+   * Atomically checks if a row/family/qualifier value matches the comparison
+   * between the passed value and the original value; considered as match if
+   * both are null; comparison will be done only when neither is null, otherwise
+   * considered as not-match
+   *
+   * @param row to check
+   * @param family column family to check
+   * @param qualifier column qualifier to check
+   * @param compareOp comparison method
+   * @param value the expected value
+   * @param put data to put if check succeeds
+   * @throws IOException e
+   * @return true if the new put was executed, false otherwise
+   */
+  boolean checkAndPut(byte[] row, byte[] family, byte[] qualifier,
+      CompareOp compareOp, byte[] value, Put put) throws IOException;
 
   /**
    * Deletes the specified cells/row.
