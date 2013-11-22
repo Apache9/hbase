@@ -1036,7 +1036,7 @@
     <protobuf.version>2.4.0a</protobuf.version>
     <stax-api.version>1.0.1</stax-api.version>
     <thrift.version>0.8.0</thrift.version>
-    <zookeeper.version>3.4.4-mdh1.0.0-SNAPSHOT</zookeeper.version>
+    <zookeeper.version>3.4.4-mdh1.0.2</zookeeper.version>
     <clover.version>2.6.3</clover.version>
 
     <package.prefix>/usr</package.prefix>
