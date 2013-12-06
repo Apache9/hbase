@@ -65,7 +65,7 @@ public enum ChecksumType {
       // check if hadoop library is available
       try {
         ctor = ChecksumFactory.newConstructor(PURECRC32);
-        LOG.info("Checksum using " + PURECRC32);
+        LOG.info("Checksum can use " + PURECRC32);
       } catch (Exception e) {
         LOG.trace(PURECRC32 + " not available.");
       }
