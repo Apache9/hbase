@@ -78,7 +78,10 @@ public class HFileReaderV2 extends AbstractHFileReader {
   static final int MIN_MINOR_VERSION = 0;
 
   /** Maximum minor version supported by this HFile format */
-  static final int MAX_MINOR_VERSION = 1;
+  static final int MAX_MINOR_VERSION = 2;
+
+  /** Minor versions starting with this number have faked index key */
+  static final int MINOR_VERSION_WITH_FAKED_KEY = 2;
 
   /**
    * Opens a HFile. You must load the index before you can use it by calling
@@ -474,7 +477,9 @@ public class HFileReaderV2 extends AbstractHFileReader {
      *        doing the seek. If this is false, we are assuming we never go
      *        back, otherwise the result is undefined.
      * @return -1 if the key is earlier than the first key of the file,
-     *         0 if we are at the given key, and 1 if we are past the given key
+     *         0 if we are at the given key, 1 if we are past the given key
+     *         -2 if the key is earlier than the first key of the file while
+     *         using a faked index key
      * @throws IOException
      */
     protected int seekTo(byte[] key, int offset, int length, boolean rewind)
@@ -827,7 +832,9 @@ public class HFileReaderV2 extends AbstractHFileReader {
      * @param key the key to find
      * @param seekBefore find the key before the given key in case of exact
      *          match.
-     * @return 0 in case of an exact key match, 1 in case of an inexact match
+     * @return 0 in case of an exact key match, 1 in case of an inexact match,
+     *         -2 in case of an inexact match and furthermore, the input key less
+     *          than the first key of current block(e.g. using a faked index key)
      */
     private int blockSeek(byte[] key, int offset, int length,
         boolean seekBefore) {
@@ -882,12 +889,14 @@ public class HFileReaderV2 extends AbstractHFileReader {
             currMemstoreTSLen = memstoreTSLen;
           }
           return 0; // indicate exact match
-        }
-
-        if (comp < 0) {
+        } else if (comp < 0) {
           if (lastKeyValueSize > 0)
             blockBuffer.position(blockBuffer.position() - lastKeyValueSize);
           readKeyValueLen();
+          if (lastKeyValueSize == -1 && blockBuffer.position() == 0
+              && this.reader.trailer.getMinorVersion() >= MINOR_VERSION_WITH_FAKED_KEY) {
+            return -2;
+          }
           return 1;
         }
 

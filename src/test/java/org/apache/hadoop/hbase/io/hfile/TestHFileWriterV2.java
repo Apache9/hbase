@@ -114,26 +114,15 @@ public class TestHFileWriterV2 {
             .withComparator(KeyValue.KEY_COMPARATOR)
             .create();
 
-    long totalKeyLength = 0;
-    long totalValueLength = 0;
-
     Random rand = new Random(9713312); // Just a fixed seed.
-
-    List<byte[]> keys = new ArrayList<byte[]>();
-    List<byte[]> values = new ArrayList<byte[]>();
-
+    List<KeyValue> keyValues = new ArrayList<KeyValue>(entryCount);
     for (int i = 0; i < entryCount; ++i) {
       byte[] keyBytes = randomOrderedKey(rand, i);
-
       // A random-length random value.
       byte[] valueBytes = randomValue(rand);
-      writer.append(keyBytes, valueBytes);
-
-      totalKeyLength += keyBytes.length;
-      totalValueLength += valueBytes.length;
-
-      keys.add(keyBytes);
-      values.add(valueBytes);
+      KeyValue keyValue = new KeyValue(keyBytes, null, null, valueBytes);
+      writer.append(keyValue);
+      keyValues.add(keyValue);
     }
 
     // Add in an arbitrary order. They will be sorted lexicographically by
@@ -179,12 +168,12 @@ public class TestHFileWriterV2 {
     dataBlockIndexReader.readMultiLevelIndexRoot(
         blockIter.nextBlockWithBlockType(BlockType.ROOT_INDEX),
         trailer.getDataIndexCount());
-    
+
     if (findMidKey) {
       byte[] midkey = dataBlockIndexReader.midkey();
       assertNotNull("Midkey should not be null", midkey);
     }
-    
+
     // Meta index.
     metaBlockIndexReader.readRootIndex(
         blockIter.nextBlockWithBlockType(BlockType.ROOT_INDEX).getByteStream(),
@@ -212,7 +201,6 @@ public class TestHFileWriterV2 {
       while (buf.hasRemaining()) {
         int keyLen = buf.getInt();
         int valueLen = buf.getInt();
-
         byte[] key = new byte[keyLen];
         buf.get(key);
 
@@ -229,9 +217,8 @@ public class TestHFileWriterV2 {
         }
 
         // A brute-force check to see that all keys and values are correct.
-        assertTrue(Bytes.compareTo(key, keys.get(entriesRead)) == 0);
-        assertTrue(Bytes.compareTo(value, values.get(entriesRead)) == 0);
-
+        assertTrue(Bytes.compareTo(key, keyValues.get(entriesRead).getKey()) == 0);
+        assertTrue(Bytes.compareTo(value, keyValues.get(entriesRead).getValue()) == 0);
         ++entriesRead;
       }
       ++blocksRead;

@@ -224,6 +224,8 @@ abstract class BufferedDataBlockEncoder implements DataBlockEncoder {
         if (comp < 0) { // already too large, check previous
           if (previous.isValid()) {
             moveToPrevious();
+          } else {
+            return -2; //using faked index key
           }
           return 1;
         }

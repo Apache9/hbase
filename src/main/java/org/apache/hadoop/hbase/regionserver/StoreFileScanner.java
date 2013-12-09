@@ -219,6 +219,10 @@ public class StoreFileScanner implements KeyValueScanner {
   throws IOException {
     int result = s.seekTo(k.getBuffer(), k.getKeyOffset(), k.getKeyLength());
     if(result < 0) {
+      if (result == -2) {
+        // using faked key
+        return true;
+      }
       // Passed KV is smaller than first KV in file, work from start of file
       return s.seekTo();
     } else if(result > 0) {
@@ -242,11 +246,10 @@ public class StoreFileScanner implements KeyValueScanner {
         return  s.seekTo();
       }
       return true;
-    } else {
-      // passed KV is larger than current KV in file, if there is a next
-      // it is after, if not then this scanner is done.
-      return s.next();
     }
+    // passed KV is larger than current KV in file, if there is a next
+    // it is after, if not then this scanner is done.
+    return s.next();
   }
 
   @Override
