@@ -316,8 +316,10 @@ class WritableRpcEngine implements RpcEngine {
         }
 
         long startTime = System.currentTimeMillis();
+        long startTimeInNs = System.nanoTime();
         Object[] params = call.getParameters();
         Object value = method.invoke(impl, params);
+        int processingTimeInUs = (int) ((System.nanoTime() - startTimeInNs) / 1000);
         int processingTime = (int) (System.currentTimeMillis() - startTime);
         int qTime = (int) (startTime-receivedTime);
         if (TRACELOG.isDebugEnabled()) {
@@ -328,8 +330,8 @@ class WritableRpcEngine implements RpcEngine {
               " contents=" + Objects.describeQuantity(params));
         }
         rpcMetrics.rpcQueueTime.inc(qTime);
-        rpcMetrics.rpcProcessingTime.inc(processingTime);
-        rpcMetrics.inc(call.getMethodName(), processingTime);
+        rpcMetrics.rpcProcessingTime.inc(processingTimeInUs);
+        rpcMetrics.inc(call.getMethodName(), processingTimeInUs);
         if (verbose) log("Return: "+value);
 
         HbaseObjectWritable retVal =
