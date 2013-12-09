@@ -31,12 +31,15 @@ Examples:
 
   hbase> add_peer '1', "server1.cie.com:2181:/hbase"
   hbase> add_peer '2', "zk1,zk2,zk3:2182:/hbase-prod"
+  hbase> add_peer '3', "zk4,zk5,zk6:11000:/hbase-test", "ENABLED"
+  hbase> add_peer '4', "zk7,zk8,zk9:11000:/hbase-proc", "DISABLED"
+
 EOF
       end
 
-      def command(id, cluster_key)
+      def command(id, cluster_key, peer_state = nil)
         format_simple_command do
-          replication_admin.add_peer(id, cluster_key)
+          replication_admin.add_peer(id, cluster_key, peer_state)
         end
       end
     end

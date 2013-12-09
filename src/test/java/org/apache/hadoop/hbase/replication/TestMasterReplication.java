@@ -211,20 +211,28 @@ public class TestMasterReplication {
     LOG.info("testSimplePutDelete");
     utility1.startMiniCluster();
     utility2.startMiniCluster();
+    utility3.startMiniCluster();
 
     ReplicationAdmin admin1 = new ReplicationAdmin(conf1);
     ReplicationAdmin admin2 = new ReplicationAdmin(conf2);
+    ReplicationAdmin admin3 = new ReplicationAdmin(conf3);
 
     new HBaseAdmin(conf1).createTable(table);
     new HBaseAdmin(conf2).createTable(table);
+    new HBaseAdmin(conf3).createTable(table);
     HTable htable1 = new HTable(conf1, tableName);
     htable1.setWriteBufferSize(1024);
     HTable htable2 = new HTable(conf2, tableName);
     htable2.setWriteBufferSize(1024);
+    HTable htable3 = new HTable(conf3, tableName);
+    htable3.setWriteBufferSize(1024);
 
     // set M-M
     admin1.addPeer("1", utility2.getClusterKey());
     admin2.addPeer("1", utility1.getClusterKey());
+
+    // add 'disabled' peer(3) to cluster 1
+    admin1.addPeer("3", utility3.getClusterKey(), "DISABLED");
 
     // add rows to both clusters,
     // make sure they are both replication
@@ -234,15 +242,28 @@ public class TestMasterReplication {
     // make sure "row" did not get replicated back.
     assertEquals("Puts were replicated back ", 2, getCount(htable1, put));
 
+    // make sure "row" did not replicated to 3rd cluster since disabled.
+    assertEquals("no replication to disabled peer", 0, getCount(htable3, put));
+
+    // enable 1st cluster's current 'disabled' peer(3)
+    admin1.enablePeer("3");
+
     // delete "row" and wait
     deleteAndWait(row, htable1, htable2);
 
     // make the 2nd cluster replicated back
     assertEquals("Puts were replicated back ", 2, getCount(htable2, put));
 
+    // make sure the 3rd cluster now can get replication
+    // 1. verify edit after enabling replicated
+    assertEquals("Enabled peer now gets replication", 1, getCount(htable3, delete));
+    // 2. verify edit before enabling(and after add_peer, though disable) replicated too
+    assertEquals("Enabled peer now gets replication", 2, getCount(htable3, put));
+
     deleteAndWait(row1, htable2, htable1);
 
     assertEquals("Deletes were replicated back ", 2, getCount(htable1, delete));
+    utility3.shutdownMiniCluster();
     utility2.shutdownMiniCluster();
     utility1.shutdownMiniCluster();
   }

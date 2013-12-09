@@ -385,6 +385,11 @@ public class ReplicationZookeeper {
    *         multi-slave isn't supported yet.
    */
   public void addPeer(String id, String clusterKey) throws IOException {
+    addPeer(id, clusterKey, null);
+  }
+
+  public void addPeer(String id, String clusterKey, String peerState)
+    throws IOException {
     try {
       if (peerExists(id)) {
         throw new IllegalArgumentException("Cannot add existing peer");
@@ -392,11 +397,13 @@ public class ReplicationZookeeper {
       ZKUtil.createWithParents(this.zookeeper, this.peersZNode);
       ZKUtil.createAndWatch(this.zookeeper, ZKUtil.joinZNode(this.peersZNode, id),
         Bytes.toBytes(clusterKey));
+      String state = (peerState == null) ? PeerState.ENABLED.name() : PeerState
+          .valueOf(peerState).name();
       // There is a race b/w PeerWatcher and ReplicationZookeeper#add method to create the
       // peer-state znode. This happens while adding a peer.
       // The peer state data is set as "ENABLED" by default.
       ZKUtil.createNodeIfNotExistsAndWatch(this.zookeeper, getPeerStateNode(id),
-        Bytes.toBytes(PeerState.ENABLED.name()));
+        Bytes.toBytes(state));
     } catch (KeeperException e) {
       throw new IOException("Unable to add peer", e);
     }

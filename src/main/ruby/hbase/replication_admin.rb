@@ -33,8 +33,8 @@ module Hbase
 
     #----------------------------------------------------------------------------------------------
     # Add a new peer cluster to replicate to
-    def add_peer(id, cluster_key)
-      @replication_admin.addPeer(id, cluster_key)
+    def add_peer(id, cluster_key, peer_state = nil)
+      @replication_admin.addPeer(id, cluster_key, peer_state)
     end
 
     #----------------------------------------------------------------------------------------------

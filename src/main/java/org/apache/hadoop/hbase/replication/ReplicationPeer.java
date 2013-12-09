@@ -78,12 +78,18 @@ public class ReplicationPeer implements Abortable {
    */
   public void startStateTracker(ZooKeeperWatcher zookeeper, String peerStateNode)
       throws KeeperException {
+    // wait 5000ms for client to add peer_state zknode
+    int times = 500;
+    while (ZKUtil.checkExists(zookeeper, peerStateNode) == -1 && times-- > 0) {
+      try {
+        Thread.sleep(10);
+      } catch (InterruptedException e) {}
+    }
+
     if (ZKUtil.checkExists(zookeeper, peerStateNode) == -1) {
-      // There is a race b/w PeerWatcher and ReplicationZookeeper#add method to create the
-      // peer-state znode. This happens while adding a peer.
-      // The peer state data is set as "ENABLED" by default.
-      ZKUtil.createNodeIfNotExistsAndWatch(zookeeper, peerStateNode,
-        Bytes.toBytes(PeerState.ENABLED.name()));
+      LOG.error("wait 5s for client to create" + peerStateNode + " but failed!" +
+          " give up startStateTracker for this peer");
+      return;
     }
     this.peerStateTracker = new PeerStateTracker(peerStateNode, zookeeper,
         this);

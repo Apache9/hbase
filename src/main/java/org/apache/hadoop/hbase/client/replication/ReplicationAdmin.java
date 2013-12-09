@@ -116,6 +116,10 @@ public class ReplicationAdmin implements Closeable {
     this.replicationZk.addPeer(id, clusterKey);
   }
 
+  public void addPeer(String id, String clusterKey, String peerState) throws IOException {
+    this.replicationZk.addPeer(id, clusterKey, peerState);
+  }
+
   /**
    * Removes a peer cluster and stops the replication to it.
    * @param id a short that identifies the cluster
