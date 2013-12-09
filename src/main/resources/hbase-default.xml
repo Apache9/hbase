@@ -992,4 +992,13 @@
         this config.  See the end of HBASE-8389 for more.
     </description>
   </property>
+  <property>
+    <name>hbase.storescanner.parallel.seek.enable</name>
+    <value>false</value>
+    <description>
+      Enables StoreFileScanner parallel-seeking in StoreScanner,
+      a feature which can reduce response latency under special conditions.
+    </description>
+  </property>
+  <property>
 </configuration>

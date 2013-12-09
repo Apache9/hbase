@@ -47,6 +47,8 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -175,6 +177,7 @@ import org.codehaus.jackson.map.ObjectMapper;
 
 import com.google.common.base.Function;
 import com.google.common.collect.Lists;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 
 /**
  * HRegionServer makes a set of HRegions available to clients. It checks in with
@@ -208,6 +211,9 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
   protected final AtomicBoolean haveRootRegion = new AtomicBoolean(false);
   private HFileSystem fs;
   private boolean useHBaseChecksum; // verify hbase checksums?
+  /** Used for StoreFileScanner parallel-seeking*/
+  private boolean parallelSFSeekEnabled;
+  private ThreadPoolExecutor parallelSFSeekExecutor;
   private Path rootDir;
   private final Random rand;
 
@@ -435,6 +441,13 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
     this.abortRequested = false;
     this.stopped = false;
 
+    parallelSFSeekEnabled = conf.getBoolean(
+      StoreScanner.STORESCANNER_PARALLEL_SEEK_ENABLE, false);
+    if (parallelSFSeekEnabled) {
+      parallelSFSeekExecutor = (ThreadPoolExecutor) Executors.newCachedThreadPool(
+        new ThreadFactoryBuilder().setDaemon(true).setNameFormat(
+            "StoreScannerSeek-%d").build());
+    }
     // Server to handle client requests.
     String hostname = conf.get("hbase.regionserver.ipc.address",
       Strings.domainNamePointerToHostName(DNS.getDefaultHost(
@@ -884,6 +897,9 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
     this.hbaseMaster = null;
     this.rpcEngine.close();
     this.leases.close();
+    if (parallelSFSeekEnabled && parallelSFSeekExecutor != null) {
+      parallelSFSeekExecutor.shutdownNow();
+    }
 
     if (!killed) {
       join();
@@ -3926,6 +3942,12 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
     return service;
   }
 
+  /**
+   * @return StoreFileScanner parallel-seeking executor
+   */
+  public ThreadPoolExecutor getParallelSFSeekExecutor() {
+    return parallelSFSeekExecutor;
+  }
   //
   // Main program and support routines
   //

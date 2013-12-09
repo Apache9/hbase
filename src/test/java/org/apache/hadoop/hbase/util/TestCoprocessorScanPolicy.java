@@ -82,7 +82,23 @@ public class TestCoprocessorScanPolicy {
 
   @Test
   public void testBaseCases() throws Exception {
-    byte[] tableName = Bytes.toBytes("baseCases");
+    TEST_UTIL.getMiniHBaseCluster().getConf().setBoolean(
+      StoreScanner.STORESCANNER_PARALLEL_SEEK_ENABLE, false);
+    doTestBaseCases("baseCases");
+  }
+
+  @Test
+  public void testBaseCasesWithParallelSeek() throws Exception {
+    TEST_UTIL.getMiniHBaseCluster().getConf().setBoolean(
+      StoreScanner.STORESCANNER_PARALLEL_SEEK_ENABLE, true);
+    doTestBaseCases("baseCasesParallelSeek");
+  }
+
+  private void doTestBaseCases(String name) throws IOException { 
+    byte[] tableName = Bytes.toBytes(name);
+    if (TEST_UTIL.getHBaseAdmin().tableExists(tableName)) {
+      TEST_UTIL.deleteTable(tableName);
+    }
     HTable t = TEST_UTIL.createTable(tableName, F, 1);
     // set the version override to 2
     Put p = new Put(R);
@@ -128,7 +144,23 @@ public class TestCoprocessorScanPolicy {
 
   @Test
   public void testTTL() throws Exception {
-    byte[] tableName = Bytes.toBytes("testTTL");
+    TEST_UTIL.getMiniHBaseCluster().getConf().setBoolean(
+      StoreScanner.STORESCANNER_PARALLEL_SEEK_ENABLE, false);
+    doTestTtl("testTtl");
+  }
+
+  @Test
+  public void testTtlWithParallelSeek() throws Exception {
+    TEST_UTIL.getMiniHBaseCluster().getConf().setBoolean(
+      StoreScanner.STORESCANNER_PARALLEL_SEEK_ENABLE, true);
+    doTestTtl("testTtlParallelSeek");
+  }
+
+  private void doTestTtl(String name) throws Exception {
+    byte[] tableName = Bytes.toBytes(name);
+    if (TEST_UTIL.getHBaseAdmin().tableExists(tableName)) {
+      TEST_UTIL.deleteTable(tableName);
+    }
     HTableDescriptor desc = new HTableDescriptor(tableName);
     HColumnDescriptor hcd = new HColumnDescriptor(F)
     .setMaxVersions(10)

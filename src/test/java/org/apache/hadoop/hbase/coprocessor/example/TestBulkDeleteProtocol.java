@@ -89,6 +89,7 @@ public class TestBulkDeleteProtocol {
       rows++;
     }
     assertEquals(0, rows);
+    ht.close();
   }
 
   @Test
@@ -112,6 +113,7 @@ public class TestBulkDeleteProtocol {
       rows++;
     }
     assertEquals(0, rows);
+    ht.close();
   }
   
   private long invokeBulkDeleteProtocol(byte[] tableName, final Scan scan, final int rowBatchSize,
@@ -129,6 +131,7 @@ public class TestBulkDeleteProtocol {
     for (BulkDeleteResponse response : result.values()) {
       noOfDeletedRows += response.getRowsDeleted();
     }
+    ht.close();
     return noOfDeletedRows;
   }
 
@@ -159,6 +162,7 @@ public class TestBulkDeleteProtocol {
       rows++;
     }
     assertEquals(90, rows);
+    ht.close();
   }
 
   @Test
@@ -187,6 +191,7 @@ public class TestBulkDeleteProtocol {
       rows++;
     }
     assertEquals(100, rows);
+    ht.close();
   }
   
   @Test
@@ -217,6 +222,7 @@ public class TestBulkDeleteProtocol {
       rows++;
     }
     assertEquals(100, rows);
+    ht.close();
   }
   
   @Test
@@ -264,6 +270,7 @@ public class TestBulkDeleteProtocol {
       rows++;
     }
     assertEquals(100, rows);
+    ht.close();
   }
   
   @Test
@@ -310,6 +317,7 @@ public class TestBulkDeleteProtocol {
       rows++;
     }
     assertEquals(100, rows);
+    ht.close();
   }
   
   @Test
@@ -385,6 +393,7 @@ public class TestBulkDeleteProtocol {
       rows++;
     }
     assertEquals(100, rows);
+    ht.close();
   }
   
   private HTable createTable(byte[] tableName) throws IOException {

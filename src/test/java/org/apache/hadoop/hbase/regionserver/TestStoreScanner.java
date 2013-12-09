@@ -550,14 +550,14 @@ public class TestStoreScanner extends TestCase {
       List<KeyValueScanner> scanners = scanFixture(kvs);
       Scan scan = new Scan();
       scan.setMaxVersions(2);
-      Store.ScanInfo scanInfo = new Store.ScanInfo(Bytes.toBytes("cf"),
+      Store.ScanInfo newScanInfo = new Store.ScanInfo(Bytes.toBytes("cf"),
         0 /* minVersions */,
         2 /* maxVersions */, 500 /* ttl */,
         false /* keepDeletedCells */,
         200, /* timeToPurgeDeletes */
         KeyValue.COMPARATOR);
       StoreScanner scanner =
-        new StoreScanner(scan, scanInfo,
+        new StoreScanner(scan, newScanInfo,
           ScanType.MAJOR_COMPACT, null, scanners,
           HConstants.OLDEST_TIMESTAMP);
       List<KeyValue> results = new ArrayList<KeyValue>();
@@ -571,6 +571,7 @@ public class TestStoreScanner extends TestCase {
       assertEquals(kvs[14], results.get(5));
       assertEquals(kvs[15], results.get(6));
       assertEquals(7, results.size());
+      scanner.close();
     }finally{
     EnvironmentEdgeManagerTestHelper.reset();
     }

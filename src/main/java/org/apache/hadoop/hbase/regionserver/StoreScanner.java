@@ -21,9 +21,15 @@
 package org.apache.hadoop.hbase.regionserver;
 
 import java.io.IOException;
+import java.io.InterruptedIOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.NavigableSet;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -33,6 +39,7 @@ import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.regionserver.Store.ScanInfo;
+import org.apache.hadoop.hbase.regionserver.StoreFileScanner;
 import org.apache.hadoop.hbase.regionserver.metrics.RegionMetricsStorage;
 import org.apache.hadoop.hbase.regionserver.metrics.SchemaMetrics;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -58,6 +65,11 @@ public class StoreScanner extends NonLazyKeyValueScanner
   private final boolean isGet;
   private final boolean explicitColumnQuery;
   private final boolean useRowColBloom;
+  /**
+   * A flag that enables StoreFileScanner parallel-seeking
+   */
+  protected boolean isParallelSeekEnabled = false;
+  protected ExecutorService seekExecutor;
   private final Scan scan;
   private final NavigableSet<byte[]> columns;
   private final long oldestUnexpiredTS;
@@ -65,6 +77,8 @@ public class StoreScanner extends NonLazyKeyValueScanner
 
   /** We don't ever expect to change this, the constant is just for clarity. */
   static final boolean LAZY_SEEK_ENABLED_BY_DEFAULT = true;
+  public static final String STORESCANNER_PARALLEL_SEEK_ENABLE =
+      "hbase.storescanner.parallel.seek.enable";
 
   /** Used during unit testing to ensure that lazy seek does save seek ops */
   private static boolean lazySeekEnabledGlobally =
@@ -91,6 +105,19 @@ public class StoreScanner extends NonLazyKeyValueScanner
     // for multi-row (non-"get") scans because this is not done in
     // StoreFile.passesBloomFilter(Scan, SortedSet<byte[]>).
     useRowColBloom = numCol > 1 || (!isGet && numCol == 1);
+    // The parallel-seeking is on :
+    // 1) the config value is *true*
+    // 2) have more than one store file
+    if (store != null && store.getHRegion() != null
+        && store.getStorefilesCount() > 1) {
+      RegionServerServices rsService = store.getHRegion().getRegionServerServices();
+      if (rsService == null) return;
+      boolean parallelSeekConfFlag = rsService.getConfiguration().getBoolean(
+        STORESCANNER_PARALLEL_SEEK_ENABLE, false);
+      if (!parallelSeekConfFlag || !(rsService instanceof HRegionServer)) return;
+      isParallelSeekEnabled = true;
+      seekExecutor = ((HRegionServer) rsService).getParallelSFSeekExecutor();
+    }
   }
 
   /**
@@ -127,8 +154,12 @@ public class StoreScanner extends NonLazyKeyValueScanner
         scanner.requestSeek(matcher.getStartKey(), false, true);
       }
     } else {
-      for (KeyValueScanner scanner : scanners) {
-        scanner.seek(matcher.getStartKey());
+      if (!isParallelSeekEnabled) {
+        for (KeyValueScanner scanner : scanners) {
+          scanner.seek(matcher.getStartKey());
+        }
+      } else {
+        parallelSeek(scanners, matcher.getStartKey());
       }
     }
 
@@ -161,8 +192,12 @@ public class StoreScanner extends NonLazyKeyValueScanner
     scanners = selectScannersFrom(scanners);
 
     // Seek all scanners to the initial key
-    for(KeyValueScanner scanner : scanners) {
-      scanner.seek(matcher.getStartKey());
+    if (!isParallelSeekEnabled) {
+      for (KeyValueScanner scanner : scanners) {
+        scanner.seek(matcher.getStartKey());
+      }
+    } else {
+      parallelSeek(scanners, matcher.getStartKey());
     }
 
     // Combine all seeked scanners with a heap
@@ -189,8 +224,12 @@ public class StoreScanner extends NonLazyKeyValueScanner
         Long.MAX_VALUE, earliestPutTs, oldestUnexpiredTS);
 
     // Seek all scanners to the initial key
-    for (KeyValueScanner scanner : scanners) {
-      scanner.seek(matcher.getStartKey());
+    if (!isParallelSeekEnabled) {
+      for (KeyValueScanner scanner : scanners) {
+        scanner.seek(matcher.getStartKey());
+      }
+    } else {
+      parallelSeek(scanners, matcher.getStartKey());
     }
     heap = new KeyValueHeap(scanners, scanInfo.getComparator());
   }
@@ -510,8 +549,12 @@ public class StoreScanner extends NonLazyKeyValueScanner
      * could have done it now by storing the scan object from the constructor */
     List<KeyValueScanner> scanners = getScannersNoCompaction();
 
-    for(KeyValueScanner scanner : scanners) {
-      scanner.seek(lastTopKey);
+    if (!isParallelSeekEnabled) {
+      for (KeyValueScanner scanner : scanners) {
+        scanner.seek(lastTopKey);
+      }
+    } else {
+      parallelSeek(scanners, lastTopKey);
     }
 
     // Combine all seeked scanners with a heap
@@ -549,6 +592,58 @@ public class StoreScanner extends NonLazyKeyValueScanner
   @Override
   public long getSequenceID() {
     return 0;
+  }
+
+  /**
+   * Seek storefiles in parallel to optimize IO latency as much as possible
+   * @param scanners the list {@link KeyValueScanner}s to be read from
+   * @param kv the KeyValue on which the operation is being requested
+   * @throws IOException
+   */
+  private void parallelSeek(final List<? extends KeyValueScanner>
+      scanners, final KeyValue kv) throws IOException {
+    if (scanners.isEmpty()) return;
+    int storeFileScannerCount = scanners.size();
+    List<Future<Void>> futures = new ArrayList<Future<Void>>(storeFileScannerCount);
+    for (KeyValueScanner scanner : scanners) {
+      if (scanner instanceof StoreFileScanner) {
+        Callable<Void> task = new ScannerSeekWorker(scanner, kv,
+          MultiVersionConsistencyControl.getThreadReadPoint());
+        futures.add(seekExecutor.submit(task));
+      } else {
+        scanner.seek(kv);
+      }
+    }
+    try {
+      for (Future<Void> future : futures) {
+        future.get();
+      }
+    } catch (InterruptedException ie) {
+      throw new InterruptedIOException(ie.getMessage());
+    } catch (ExecutionException e) {
+      throw new IOException(e.getMessage());
+    } catch (CancellationException ce) {
+      throw new IOException(ce.getMessage());
+    }
+  }
+
+  private static class ScannerSeekWorker implements Callable<Void> {
+    private KeyValueScanner scanner;
+    private KeyValue keyValue;
+    private long readPoint;
+
+    public ScannerSeekWorker(KeyValueScanner scanner, KeyValue keyValue,
+        long readPoint) {
+      this.scanner = scanner;
+      this.keyValue = keyValue;
+      this.readPoint = readPoint;
+    }
+
+    public Void call() throws IOException {
+      MultiVersionConsistencyControl.setThreadReadPoint(readPoint);
+      scanner.seek(keyValue);
+      return null;
+    }
   }
 
   /**
