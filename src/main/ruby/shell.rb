@@ -271,6 +271,7 @@ Shell.load_command_group(
     unassign
     zk_dump
     hlog_roll
+    compact_switch
   ]
 )
 

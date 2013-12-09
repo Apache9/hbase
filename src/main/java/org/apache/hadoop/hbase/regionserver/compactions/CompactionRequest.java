@@ -295,7 +295,7 @@ public class CompactionRequest implements Comparable<CompactionRequest>,
     @Override
     public void run() {
       Preconditions.checkNotNull(server);
-      if (server.isStopped()) {
+      if (server.isStopped() || !server.isEnableCompact()) {
         return;
       }
       try {

@@ -1874,6 +1874,23 @@ public class HBaseAdmin implements Abortable, Closeable {
     return rs.rollHLogWriter();
   }
 
+  /**
+   * Turn the compaction switch in global instance on or off.
+   * @param b If false, disable minor&major compaction in all RS.
+   * @return Previous value
+   * @throws IOException 
+   */
+  public boolean setCompactionEnable(final boolean b) 
+      throws IOException {
+    boolean ret = false;
+    for (ServerName sn: getMaster().getOnlineRS()) {
+      HRegionInterface hri = this.connection.getHRegionConnection(
+        sn.getHostname(), sn.getPort());
+      ret |= hri.setCompactionEnable(b);
+    }
+    return ret;
+  }
+
   public String[] getMasterCoprocessors() {
     try {
       return getClusterStatus().getMasterCoprocessors();

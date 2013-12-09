@@ -25,6 +25,7 @@ import java.util.List;
 import org.apache.hadoop.hbase.ClusterStatus;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
+import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.UnknownRegionException;
 import org.apache.hadoop.hbase.client.coprocessor.Exec;
 import org.apache.hadoop.hbase.client.coprocessor.ExecResult;
@@ -256,6 +257,12 @@ public interface HMasterInterface extends VersionedProtocol {
    * @return Previous balancer value
    */
   public boolean synchronousBalanceSwitch(final boolean b);
+
+  /**
+   * Gets the online region servers.
+   * @return list of online region servers
+   */
+  public List<ServerName> getOnlineRS();
 
   /**
    * Get array of all HTDs.

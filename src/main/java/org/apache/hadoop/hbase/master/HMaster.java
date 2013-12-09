@@ -1926,6 +1926,15 @@ Server {
   }
 
   /**
+   * Gets the online region servers.
+   * @return list of online region servers
+   */
+  @Override
+  public List<ServerName> getOnlineRS() {
+    return getServerManager().getOnlineServersList();
+  }
+
+  /**
    * Get HTD array for given tables
    * @param tableNames
    * @return HTableDescriptor[]

@@ -19,11 +19,15 @@
  */
 package org.apache.hadoop.hbase;
 
+import java.io.DataInput;
+import java.io.DataOutput;
+import java.io.IOException;
 import java.util.Collection;
 import java.util.regex.Pattern;
 
 import org.apache.hadoop.hbase.util.Addressing;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.io.Writable;
 
 /**
  * Instance of an HBase ServerName.
@@ -43,7 +47,7 @@ import org.apache.hadoop.hbase.util.Bytes;
  * 
  * <p>Immutable.
  */
-public class ServerName implements Comparable<ServerName> {
+public class ServerName implements Writable,Comparable<ServerName> {
   /**
    * Version for this class.
    * Its a short rather than a byte so I can for sure distinguish between this
@@ -74,16 +78,23 @@ public class ServerName implements Comparable<ServerName> {
    */
   public static final String UNKNOWN_SERVERNAME = "#unknown#";
 
-  private final String servername;
-  private final String hostname;
-  private final int port;
-  private final long startcode;
+  private String servername = "";
+  private String hostname = "";
+  private int port;
+  private long startcode;
 
   /**
    * Cached versioned bytes of this ServerName instance.
    * @see #getVersionedBytes()
    */
   private byte [] bytes;
+
+  /**
+   * Default constructor for Writable
+   */
+  public ServerName() {
+
+  }
 
   public ServerName(final String hostname, final int port, final long startcode) {
     this.hostname = hostname;
@@ -291,5 +302,21 @@ public class ServerName implements Comparable<ServerName> {
   public static ServerName parseServerName(final String str) {
     return SERVERNAME_PATTERN.matcher(str).matches()? new ServerName(str):
       new ServerName(str, NON_STARTCODE);
+  }
+
+  @Override
+  public void readFields(DataInput in) throws IOException {
+    this.hostname = in.readUTF();
+    this.port = in.readInt();
+    this.startcode = in.readLong();
+    this.servername = in.readUTF();
+  }
+
+  @Override
+  public void write(DataOutput out) throws IOException {
+    out.writeUTF(this.getHostname());
+    out.writeInt(this.getPort());
+    out.writeLong(this.getStartcode());
+    out.writeUTF(getServerName(hostname, port, startcode));
   }
 }

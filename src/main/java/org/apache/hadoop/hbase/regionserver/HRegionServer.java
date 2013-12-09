@@ -211,9 +211,14 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
   protected final AtomicBoolean haveRootRegion = new AtomicBoolean(false);
   private HFileSystem fs;
   private boolean useHBaseChecksum; // verify hbase checksums?
+  
+  /** RS instance flag to indicate whether allows compaction or not*/
+  private volatile boolean enableCompact = true;
+  
   /** Used for StoreFileScanner parallel-seeking*/
   private boolean parallelSFSeekEnabled;
   private ThreadPoolExecutor parallelSFSeekExecutor;
+  
   private Path rootDir;
   private final Random rand;
 
@@ -4149,6 +4154,21 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
       HRegion region = getRegion(regionName);
       HRegionInfo info = region.getRegionInfo();
       return CompactionRequest.getCompactionState(info.getRegionId()).name();
+  }
+
+  /**
+   * Turn the compaction switch in current RS instance on or off.
+   * @param b If false, disable minor&major compaction in this RS.
+   * @return Previous setting status value
+   */
+  public boolean setCompactionEnable(final boolean b) {
+    boolean oldValue = enableCompact;
+    enableCompact = b;
+    return oldValue;
+  }
+
+  public boolean isEnableCompact() {
+    return this.enableCompact;
   }
 
   public long getResponseQueueSize(){

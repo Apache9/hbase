@@ -227,7 +227,7 @@ public class CompactSplitThread implements CompactionRequestor {
   @Override
   public synchronized CompactionRequest requestCompaction(final HRegion r, final Store s,
       final String why, int priority, CompactionRequest request) throws IOException {
-    if (this.server.isStopped()) {
+    if (this.server.isStopped() || !this.server.isEnableCompact()) {
       return null;
     }
     CompactionRequest cr = s.requestCompaction(priority, request);

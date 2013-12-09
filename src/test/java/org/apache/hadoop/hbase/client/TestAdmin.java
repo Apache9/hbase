@@ -1646,9 +1646,22 @@ public class TestAdmin {
     this.admin.split(HConstants.ROOT_TABLE_NAME, metaEntry.getRow());
     Thread.sleep(1000);
     List<HRegion> regions = TEST_UTIL.getMiniHBaseCluster().getRegions(HConstants.ROOT_TABLE_NAME);
+    rootTable.close();
     assertEquals("ROOT region should not be splitted.",1, regions.size());
   }
 
+  @Test
+  public void testDisableCompact() throws Exception {
+    boolean ret = this.admin.setCompactionEnable(false);
+    assertTrue(ret);
+    ret = this.admin.setCompactionEnable(false);
+    assertFalse(ret);
+    ret = this.admin.setCompactionEnable(true);
+    assertFalse(ret);
+    ret = this.admin.setCompactionEnable(true);
+    assertTrue(ret);
+  }
+ 
   @org.junit.Rule
   public org.apache.hadoop.hbase.ResourceCheckerJUnitRule cu =
     new org.apache.hadoop.hbase.ResourceCheckerJUnitRule();

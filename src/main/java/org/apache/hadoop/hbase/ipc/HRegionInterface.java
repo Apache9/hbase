@@ -645,6 +645,13 @@ public interface HRegionInterface extends VersionedProtocol, Stoppable, Abortabl
    */
   public String getCompactionState(final byte[] regionName) throws IOException;
 
+  /**
+   * Turn the compaction switch in current RS instance on or off.
+   * @param b If false, disable minor&major compaction in this RS.
+   * @return Previous setting status value
+   */
+  public boolean setCompactionEnable(final boolean b);
+
   @Override
   public void stop(String why);
 }
