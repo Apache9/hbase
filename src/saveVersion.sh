@@ -18,17 +18,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-unset LANG
-unset LC_CTYPE
+LC_ALL=C
 version=$1
 outputDirectory=$2
 user=`whoami`
 date=`date`
 cwd=`pwd`
-if [ -d .svn ]; then
-  revision=`svn info | sed -n -e 's/Last Changed Rev: \(.*\)/\1/p'`
+# We can't guarantee the working directory has the ".svn" after subversion 1.7
+# Try to run "svn info" firstly.
+if svn info > /dev/null 2>&1; then
+  # We can't use "Last Changed Rev" here as it only indicates the last change of
+  # "hbase" and might omit changes in other projects that hbase depends on.
+
+  revision=`svn info | sed -n -e 's/Revision: \(.*\)/\1/p'`
   url=`svn info | sed -n -e 's/URL: \(.*\)/\1/p'`
-elif [ -d .git ]; then
+elif git status > /dev/null 2>&1; then
   revision=`git log -1 --pretty=format:"%H"`
   hostname=`hostname`
   url="git://${hostname}${cwd}"
