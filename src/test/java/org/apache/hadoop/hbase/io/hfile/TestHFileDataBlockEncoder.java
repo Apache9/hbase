@@ -161,7 +161,7 @@ public class TestHFileDataBlockEncoder {
     keyValues.rewind();
     buf.put(keyValues);
     HFileBlock b = new HFileBlock(BlockType.DATA, size, size, -1, buf,
-        HFileBlock.FILL_HEADER, 0, includesMemstoreTS, 
+        HFileBlock.FILL_HEADER, 0, includesMemstoreTS,
         HFileReaderV2.MAX_MINOR_VERSION, 0, ChecksumType.NULL.getCode(), 0);
     UNKNOWN_TABLE_AND_CF.passSchemaMetricsTo(b);
     return b;

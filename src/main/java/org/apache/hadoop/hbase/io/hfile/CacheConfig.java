@@ -342,11 +342,21 @@ public class CacheConfig {
     long cacheSize = (long)(mu.getMax() * cachePercentage);
     int blockSize = conf.getInt("hbase.offheapcache.minblocksize",
         HFile.DEFAULT_BLOCKSIZE);
+    boolean inMemoryForceMode = conf.getBoolean("hbase.rs.inmemoryforcemode",
+            false);
+    float singleFactor =
+      conf.getFloat("hbase.blockcache.single.percentage", (float) 0.25f);
+    float multiFactor =
+      conf.getFloat("hbase.blockcache.multi.percentage", (float) 0.50f);
+    float memoryFactor =
+      conf.getFloat("hbase.blockcache.memory.percentage", (float) 0.25f);
     long offHeapCacheSize =
       (long) (conf.getFloat("hbase.offheapcache.percentage", (float) 0) *
           DirectMemoryUtils.getDirectMemorySize());
     LOG.info("Allocating LruBlockCache with maximum size " +
-      StringUtils.humanReadableInt(cacheSize));
+      StringUtils.humanReadableInt(cacheSize) + ", inMemoryForceMode = " +
+      inMemoryForceMode + ", singleFactor = " + singleFactor + ", multiFactor = "
+      + multiFactor + ", memoryFactor = " + memoryFactor);
     if (offHeapCacheSize <= 0) {
       globalBlockCache = new LruBlockCache(cacheSize,
           StoreFile.DEFAULT_BLOCKSIZE_SMALL, conf);
