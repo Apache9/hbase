@@ -5410,14 +5410,14 @@ public class HRegion implements HeapSize { // , Writable{
             wrongLength = true;
           }
         }
-        if(!wrongLength){
-          // build the KeyValue now:
-          KeyValue newKv = new KeyValue(row, family,
-            qualifier, EnvironmentEdgeManager.currentTimeMillis(),
-            Bytes.toBytes(result));
-
+        if(!wrongLength && (amount != 0)){
           // now log it:
           if (writeToWAL) {
+            // build the KeyValue now:
+            KeyValue newKv = new KeyValue(row, family,
+                qualifier, EnvironmentEdgeManager.currentTimeMillis(),
+                Bytes.toBytes(result));
+
             long now = EnvironmentEdgeManager.currentTimeMillis();
             WALEdit walEdit = new WALEdit();
             walEdit.add(newKv);
@@ -5441,7 +5441,7 @@ public class HRegion implements HeapSize { // , Writable{
         this.updatesLock.readLock().unlock();
         releaseRowLock(lid);
       }
-      if (writeToWAL) {
+      if (!wrongLength && (amount != 0) && writeToWAL) {
         // sync the transaction log outside the rowlock
         syncOrDefer(txid, Durability.USE_DEFAULT);
       }
