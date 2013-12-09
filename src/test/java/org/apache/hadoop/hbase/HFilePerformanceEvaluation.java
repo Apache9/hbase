@@ -32,7 +32,6 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
 import org.apache.hadoop.hbase.io.hfile.CacheConfig;
-import org.apache.hadoop.hbase.io.hfile.Compression;
 import org.apache.hadoop.hbase.io.hfile.HFile;
 import org.apache.hadoop.hbase.io.hfile.HFileScanner;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -342,10 +341,15 @@ public class HFilePerformanceEvaluation {
     @Override
     void doRow(int i) throws Exception {
       HFileScanner scanner = this.reader.getScanner(false, true);
-      scanner.seekTo(getGaussianRandomRowBytes());
+      byte[] b = getGaussianRandomRowBytes();
+      if (scanner.seekTo(b) != 0) {
+        System.out.println("Nonexistent row: " + new String(b));
+        return;
+      }
       for (int ii = 0; ii < 30; ii++) {
         if (!scanner.next()) {
-          System.out.println("NOTHING FOLLOWS");
+          System.out.println("NOTHING FOLLOWS:" + ii);
+          return;
         }
         scanner.getKey();
         scanner.getValue();
@@ -353,8 +357,7 @@ public class HFilePerformanceEvaluation {
     }
 
     private byte [] getGaussianRandomRowBytes() {
-      int r = (int) randomData.nextGaussian((double)totalRows / 2.0,
-          (double)totalRows / 10.0);
+      int r = (int) randomData.nextGaussian(totalRows / 2.0, totalRows / 10.0);
       return format(r);
     }
   }
