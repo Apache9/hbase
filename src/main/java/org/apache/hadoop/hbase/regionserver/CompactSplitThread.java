@@ -227,10 +227,19 @@ public class CompactSplitThread implements CompactionRequestor {
   @Override
   public synchronized CompactionRequest requestCompaction(final HRegion r, final Store s,
       final String why, int priority, CompactionRequest request) throws IOException {
-    if (this.server.isStopped() || !this.server.isEnableCompact()) {
+    if (this.server.isStopped()) {
       return null;
     }
-    CompactionRequest cr = s.requestCompaction(priority, request);
+    if (!this.server.isEnableCompact()) {
+      LOG.warn("Bypass compaction due to compaction disabled in the global cluster");
+      return null;
+    }
+    if (r != null && !r.getTableDesc().isCompactionEnable()) {
+      LOG.warn("Bypass compaction due to compaction disabled on table");
+      return null;
+    }
+
+		CompactionRequest cr = s.requestCompaction(priority, request);
     if (cr != null) {
       cr.setServer(server);
       if (priority != Store.NO_PRIORITY) {

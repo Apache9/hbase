@@ -100,6 +100,16 @@ public class HTableDescriptor implements WritableComparable<HTableDescriptor> {
     new ImmutableBytesWritable(Bytes.toBytes(READONLY));
 
   /**
+   * <em>INTERNAL</em> Used by rest interface to access this metadata 
+   * attribute which denotes if the table is compaction enabled
+   * 
+   * @see #isCompactionEnable()
+   */
+  public static final String COMPACTION_ENABLE = "COMPACTION_ENABLE";
+  private static final ImmutableBytesWritable COMPACTION_ENABLE_KEY =
+    new ImmutableBytesWritable(Bytes.toBytes(COMPACTION_ENABLE));
+
+  /**
    * <em>INTERNAL</em> Used by HBase Shell interface to access this metadata 
    * attribute which represents the maximum size of the memstore after which 
    * its contents are flushed onto the disk
@@ -156,6 +166,11 @@ public class HTableDescriptor implements WritableComparable<HTableDescriptor> {
    * Constant that denotes whether the table is READONLY by default and is false
    */
   public static final boolean DEFAULT_READONLY = false;
+
+  /**
+   * Constant that denotes whether the table is compaction enabled by default
+   */
+  public static final boolean DEFAULT_COMPACTION_ENABLE = true;
 
   /**
    * Constant that denotes the maximum default size of the memstore after which 
@@ -541,6 +556,25 @@ public class HTableDescriptor implements WritableComparable<HTableDescriptor> {
    */
   public void setReadOnly(final boolean readOnly) {
     setValue(READONLY_KEY, readOnly? TRUE: FALSE);
+  }
+
+  /**
+   * Check if the compaction enable flag of the table is true. If flag is 
+   * false then no minor/major compactions will be done in real.
+   * 
+   * @return true if table compaction enabled
+   */
+  public boolean isCompactionEnable() {
+    return isSomething(COMPACTION_ENABLE_KEY, DEFAULT_COMPACTION_ENABLE);
+  }
+
+  /**
+   * Setting the table compaction enable flag.
+   * 
+   * @param isEnable True if enable compaction.
+   */
+  public void setCompactionEnable(final boolean isEnable) {
+    setValue(COMPACTION_ENABLE_KEY, isEnable? TRUE: FALSE);
   }
 
   /**

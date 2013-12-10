@@ -414,6 +414,7 @@ module Hbase
         if method == "table_att"
           htd.setMaxFileSize(JLong.valueOf(arg[MAX_FILESIZE])) if arg[MAX_FILESIZE]
           htd.setReadOnly(JBoolean.valueOf(arg[READONLY])) if arg[READONLY]
+          htd.setCompactionEnable(JBoolean.valueOf(arg[COMPACTION_ENABLE])) if arg[COMPACTION_ENABLE]
           htd.setMemStoreFlushSize(JLong.valueOf(arg[MEMSTORE_FLUSHSIZE])) if arg[MEMSTORE_FLUSHSIZE]
           htd.setDeferredLogFlush(JBoolean.valueOf(arg[DEFERRED_LOG_FLUSH])) if arg[DEFERRED_LOG_FLUSH]
           # (2) Here, we handle the alternate syntax of ownership setting, where method => 'table_att' is specified.

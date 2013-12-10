@@ -295,7 +295,15 @@ public class CompactionRequest implements Comparable<CompactionRequest>,
     @Override
     public void run() {
       Preconditions.checkNotNull(server);
-      if (server.isStopped() || !server.isEnableCompact()) {
+      if (server.isStopped()) {
+        return;
+      }
+      if (!server.isEnableCompact()) {
+        LOG.warn("Bypass compaction due to compaction disabled in the global cluster");
+        return;
+      }
+      if (r != null && !r.getTableDesc().isCompactionEnable()) {
+        LOG.warn("Bypass compaction due to compaction disabled on table");
         return;
       }
       try {
