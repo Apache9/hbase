@@ -214,6 +214,19 @@ public class SecureRpcEngine implements RpcEngine {
     private Class<?> implementation;
     private Class<?>[] ifaces;
     private boolean verbose;
+    
+    private static final String WARN_RESPONSE_TIME = "hbase.ipc.warn.response.time";
+    private static final String WARN_RESPONSE_SIZE = "hbase.ipc.warn.response.size";
+
+    /** Default value for above params */
+    private static final int DEFAULT_WARN_RESPONSE_TIME = 10000; // milliseconds
+    private static final int DEFAULT_WARN_RESPONSE_SIZE = 100 * 1024 * 1024;
+
+    /** Names for suffixed metrics */
+    private static final String ABOVE_ONE_SEC_METRIC = ".aboveOneSec.";
+    
+    private final int warnResponseTime;
+    private final int warnResponseSize;
 
     private static String classNameBase(String className) {
       String[] names = className.split("\\.", -1);
@@ -246,7 +259,13 @@ public class SecureRpcEngine implements RpcEngine {
       this.ifaces = ifaces;
 
       // create metrics for the advertised interfaces this server implements.
-      this.rpcMetrics.createMetrics(this.ifaces);
+      String [] metricSuffixes = new String [] {ABOVE_ONE_SEC_METRIC};
+      this.rpcMetrics.createMetrics(this.ifaces, false, metricSuffixes);
+      
+      this.warnResponseTime = conf.getInt(WARN_RESPONSE_TIME,
+        DEFAULT_WARN_RESPONSE_TIME);
+      this.warnResponseSize = conf.getInt(WARN_RESPONSE_SIZE,
+        DEFAULT_WARN_RESPONSE_SIZE);
     }
 
     public AuthenticationTokenSecretManager createSecretManager(){
@@ -322,7 +341,35 @@ public class SecureRpcEngine implements RpcEngine {
         rpcMetrics.inc(call.getMethodName(), processingTimeInUs);
         if (verbose) log("Return: "+value);
 
-        return new HbaseObjectWritable(method.getReturnType(), value);
+        HbaseObjectWritable retVal =
+          new HbaseObjectWritable(method.getReturnType(), value);
+        long responseSize = retVal.getWritableSize();
+        // log any RPC responses that are slower than the configured warn
+        // response time or larger than configured warning size
+        boolean tooSlow = (processingTime > warnResponseTime
+            && warnResponseTime > -1);
+        boolean tooLarge = (responseSize > warnResponseSize
+            && warnResponseSize > -1);
+        if (tooSlow || tooLarge) {
+          LOG.warn("Call #" + CurCall.get().id + "; "
+              + (tooLarge ? "TooLarge" : "TooSlow") + "; Served: "
+              + protocol.getSimpleName() + "#" + call.getMethodName()
+              + " queueTime=" + qTime + " processingTime=" + processingTime
+              + " contents=" + Objects.describeQuantity(params));
+          // provides a count of log-reported slow responses
+          if (tooSlow) {
+            rpcMetrics.rpcSlowResponseTime.inc(processingTime);
+          }
+        }
+        if (processingTime > 1000) {
+          // we use a hard-coded one second period so that we can clearly
+          // indicate the time period we're warning about in the name of the 
+          // metric itself
+          rpcMetrics.inc(call.getMethodName() + ABOVE_ONE_SEC_METRIC,
+              processingTime);
+        }
+
+        return retVal;
       } catch (InvocationTargetException e) {
         Throwable target = e.getTargetException();
         if (target instanceof IOException) {
