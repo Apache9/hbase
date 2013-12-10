@@ -512,6 +512,11 @@ public abstract class CoprocessorHost<E extends CoprocessorEnvironment> {
       }
 
       @Override
+      public Result[] parallelGet(List<Get> gets) throws IOException {
+        return table.parallelGet(gets);
+      }
+      
+      @Override
       public <T extends CoprocessorProtocol, R> void coprocessorExec(Class<T> protocol,
           byte[] startKey, byte[] endKey, Batch.Call<T, R> callable,
           Batch.Callback<R> callback) throws IOException, Throwable {

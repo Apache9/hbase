@@ -30,7 +30,10 @@ import java.util.Map;
 import java.util.Collections;
 import java.util.NavigableMap;
 import java.util.TreeMap;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -50,7 +53,6 @@ import org.apache.hadoop.hbase.client.HConnectionManager.HConnectable;
 import org.apache.hadoop.hbase.client.coprocessor.Batch;
 import org.apache.hadoop.hbase.filter.BinaryComparator;
 import org.apache.hadoop.hbase.filter.CompareFilter.CompareOp;
-import org.apache.hadoop.hbase.filter.WritableByteArrayComparable;
 import org.apache.hadoop.hbase.ipc.CoprocessorProtocol;
 import org.apache.hadoop.hbase.ipc.ExecRPCInvoker;
 import org.apache.hadoop.hbase.util.Addressing;
@@ -736,6 +738,30 @@ public class HTable implements HTableInterface {
     }
   }
 
+  @Override
+  public Result[] parallelGet(List<Get> gets) throws IOException {
+    Result[] results = new Result[gets.size()];
+    List<Future<Result>> futures = new ArrayList<Future<Result>>();
+    for (final Get get : gets) {
+      futures.add(pool.submit(new Callable<Result>() {
+        @Override
+        public Result call() throws Exception {
+          return get(get);
+        }
+      }));
+    }
+    for (int i = 0; i < results.length; i++) {
+      try {
+        results[i] = futures.get(i).get();
+      } catch (InterruptedException e) {
+        throw new IOException(e);
+      } catch (ExecutionException e) {
+        throw new IOException(e);
+      }
+    }
+    return results;
+  }
+  
   /**
    * {@inheritDoc}
    */

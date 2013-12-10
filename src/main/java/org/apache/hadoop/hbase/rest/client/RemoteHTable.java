@@ -761,6 +761,11 @@ public class RemoteHTable implements HTableInterface {
   }
 
   @Override
+  public Result[] parallelGet(List<Get> gets) throws IOException {
+    throw new IOException("parallelGet(List<Get>) not supported");
+  }
+  
+  @Override
   public <T extends CoprocessorProtocol> T coprocessorProxy(Class<T> protocol,
       byte[] row) {
     throw new
