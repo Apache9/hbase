@@ -204,6 +204,18 @@ public class RegionServerMetrics implements Updater {
    */
   public final MetricsIntValue compactionQueueSize =
     new MetricsIntValue("compactionQueueSize", registry);
+
+  /**
+   * Size of the large compaction queue.
+   */
+  public final MetricsIntValue largeCompactionQueueSize =
+    new MetricsIntValue("largeCompactionQueueSize", registry);
+
+  /**
+   * Size of the small compaction queue.
+   */
+  public final MetricsIntValue smallCompactionQueueSize =
+    new MetricsIntValue("smallCompactionQueueSize", registry);
   
   /**
    * Size of the flush queue.
@@ -375,6 +387,8 @@ public class RegionServerMetrics implements Updater {
       this.regions.pushMetric(this.metricsRecord);
       this.requests.pushMetric(this.metricsRecord);
       this.compactionQueueSize.pushMetric(this.metricsRecord);
+      this.largeCompactionQueueSize.pushMetric(this.metricsRecord);
+      this.smallCompactionQueueSize.pushMetric(this.metricsRecord);
       this.flushQueueSize.pushMetric(this.metricsRecord);
       this.blockCacheSize.pushMetric(this.metricsRecord);
       this.blockCacheFree.pushMetric(this.metricsRecord);
@@ -547,6 +561,10 @@ public class RegionServerMetrics implements Updater {
         Long.valueOf(this.writeRequestsCount.get()));
     sb = Strings.appendKeyValue(sb, "compactionQueueSize",
       Integer.valueOf(this.compactionQueueSize.get()));
+    sb = Strings.appendKeyValue(sb, "largeCompactionQueueSize",
+      Integer.valueOf(this.largeCompactionQueueSize.get()));
+    sb = Strings.appendKeyValue(sb, "smallCompactionQueueSize",
+      Integer.valueOf(this.smallCompactionQueueSize.get()));
     sb = Strings.appendKeyValue(sb, "flushQueueSize",
       Integer.valueOf(this.flushQueueSize.get()));
     // Duplicate from jvmmetrics because metrics are private there so

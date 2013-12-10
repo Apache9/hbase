@@ -303,6 +303,26 @@ public class CompactSplitThread implements CompactionRequestor {
     return largeCompactions.getQueue().size() + smallCompactions.getQueue().size();
   }
 
+  /**
+   * Returns the current size of the large queue containing regions that are
+   * processed.
+   *
+   * @return The current size of the regions large queue.
+   */
+  public int getLargeCompactionQueueSize() {
+    return largeCompactions.getQueue().size();
+  }
+
+  /**
+   * Returns the current size of the small queue containing regions that are
+   * processed.
+   *
+   * @return The current size of the regions small queue.
+   */
+  public int getSmallCompactionQueueSize() {
+    return smallCompactions.getQueue().size();
+  }
+
   private boolean shouldSplitRegion() {
     return (regionSplitLimit > server.getNumberOfOnlineRegions());
   }

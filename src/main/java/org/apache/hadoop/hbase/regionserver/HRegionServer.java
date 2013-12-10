@@ -1624,6 +1624,10 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
     this.metrics.writeRequestsCount.set(writeRequestsCount);
     this.metrics.compactionQueueSize.set(compactSplitThread
         .getCompactionQueueSize());
+    this.metrics.largeCompactionQueueSize.set(compactSplitThread
+      .getLargeCompactionQueueSize());
+    this.metrics.smallCompactionQueueSize.set(compactSplitThread
+      .getSmallCompactionQueueSize());
     this.metrics.flushQueueSize.set(cacheFlusher
         .getFlushQueueSize());
     this.metrics.updatesBlockedSeconds.update(updatesBlockedMs > 0 ? 
