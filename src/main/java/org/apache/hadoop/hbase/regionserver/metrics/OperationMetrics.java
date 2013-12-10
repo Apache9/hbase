@@ -252,6 +252,8 @@ public class OperationMetrics {
       if (prefix != null && !prefix.isEmpty() && key != null && !key.isEmpty()) {
         String m = prefix + key;
         RegionMetricsStorage.incrTimeVaryingMetric(m, value);
+        // update metric histogram for operations
+        RegionMetricsStorage.incrTimeVaryingMetricHistogram(m, value);
       }
     }
   }

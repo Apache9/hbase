@@ -26,6 +26,8 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
+import org.apache.hadoop.hbase.metrics.histogram.MetricsHistogram;
+import org.apache.hadoop.hbase.metrics.histogram.MetricsTimeVaryingHistogram;
 import org.apache.hadoop.hbase.util.Pair;
 
 /**
@@ -51,6 +53,12 @@ public class RegionMetricsStorage {
    */
   private static final ConcurrentMap<String, Pair<AtomicLong, AtomicInteger>> timeVaryingMetrics =
       new ConcurrentHashMap<String, Pair<AtomicLong, AtomicInteger>>();
+  /**
+   * Used for metrics where we want track a histogram (such as latency) over a
+   * number of operations
+   */
+  private static final ConcurrentMap<String, MetricsTimeVaryingHistogram> timeVaryingHistogramMetrics =
+      new ConcurrentHashMap<String, MetricsTimeVaryingHistogram>();
 
   public static Map<String, AtomicLong> getNumericMetrics() {
     return numericMetrics;
@@ -62,6 +70,10 @@ public class RegionMetricsStorage {
 
   public static Map<String, Pair<AtomicLong, AtomicInteger>> getTimeVaryingMetrics() {
     return timeVaryingMetrics;
+  }
+  
+  public static Map<String, MetricsTimeVaryingHistogram> getTimeVaryingHistogramMetrics() {
+    return timeVaryingHistogramMetrics;
   }
 
   public static void incrNumericMetric(String key, long amount) {
@@ -87,6 +99,18 @@ public class RegionMetricsStorage {
     }
     oldVal.getFirst().addAndGet(amount); // total time
     oldVal.getSecond().incrementAndGet(); // increment ops by 1
+  }
+  
+  public static void incrTimeVaryingMetricHistogram(String key, long amount) {
+    MetricsTimeVaryingHistogram histogram = timeVaryingHistogramMetrics.get(key);
+    if (histogram == null) {
+      MetricsTimeVaryingHistogram newHistogram = new MetricsTimeVaryingHistogram(key, null);
+      histogram = timeVaryingHistogramMetrics.putIfAbsent(key, newHistogram);
+      if (histogram == null) {
+        histogram = newHistogram;
+      }
+    }
+    histogram.update(amount);
   }
 
   public static void setNumericPersistentMetric(String key, long amount) {
@@ -143,5 +167,6 @@ public class RegionMetricsStorage {
        numericPersistentMetrics.remove(keyName);
      }
     }
+    timeVaryingHistogramMetrics.clear();
   }
 }

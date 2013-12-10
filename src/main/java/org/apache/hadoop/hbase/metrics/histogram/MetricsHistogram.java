@@ -48,7 +48,8 @@ public class MetricsHistogram extends MetricsBase {
   public static final String SEVENTY_FIFTH_PERCENTILE_METRIC_NAME = "_75th_percentile";
   public static final String NINETY_FIFTH_PERCENTILE_METRIC_NAME = "_95th_percentile";
   public static final String NINETY_NINETH_PERCENTILE_METRIC_NAME = "_99th_percentile";
-
+  public static final String NINETY_NINE_POINT_NINETH_PERCENTILE_METRIC_NAME = "_999th_percentile";
+  
   /**
    * Constructor to create a new histogram metric
    * @param nam           the name to publish the metric under
@@ -235,5 +236,7 @@ public class MetricsHistogram extends MetricsBase {
         (float) s.get95thPercentile());
     mr.setMetric(getName() + NINETY_NINETH_PERCENTILE_METRIC_NAME,
         (float) s.get99thPercentile());
+    mr.setMetric(getName() + NINETY_NINE_POINT_NINETH_PERCENTILE_METRIC_NAME,
+        (float) s.get999thPercentile());
   }
 }

@@ -153,6 +153,11 @@ public class MetricsMBeanBase extends MetricsDynamicMBeanBase {
         attributes.add(new MBeanAttributeInfo(metricName,
             "java.lang.Float", metric.getDescription(), true, false, false));
         extendedAttributes.put(metricName, metric);
+        
+        metricName = metric.getName() + MetricsHistogram.NINETY_NINE_POINT_NINETH_PERCENTILE_METRIC_NAME;
+        attributes.add(new MBeanAttributeInfo(metricName,
+            "java.lang.Float", metric.getDescription(), true, false, false));
+        extendedAttributes.put(metricName, metric);
       }
       // else, its probably a hadoop metric already registered. Skip it.
     }
@@ -221,6 +226,9 @@ public class MetricsMBeanBase extends MetricsDynamicMBeanBase {
           } else if (name.endsWith(MetricsHistogram.NINETY_NINETH_PERCENTILE_METRIC_NAME)) {
             Snapshot s = hist.getSnapshot();
             return (float) s.get99thPercentile();
+          } else if (name.endsWith(MetricsHistogram.NINETY_NINE_POINT_NINETH_PERCENTILE_METRIC_NAME)) {
+            Snapshot s = hist.getSnapshot();
+            return (float) s.get999thPercentile();
           }
 
         } else {

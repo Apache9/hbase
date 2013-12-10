@@ -20,16 +20,25 @@
 
 package org.apache.hadoop.hbase.ipc;
 
+import java.lang.reflect.Method;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Map.Entry;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.hbase.ipc.VersionedProtocol;
+import org.apache.hadoop.hbase.metrics.histogram.MetricsTimeVaryingHistogram;
 import org.apache.hadoop.metrics.MetricsContext;
 import org.apache.hadoop.metrics.MetricsRecord;
 import org.apache.hadoop.metrics.MetricsUtil;
 import org.apache.hadoop.metrics.Updater;
-import org.apache.hadoop.metrics.util.*;
+import org.apache.hadoop.metrics.util.MetricsBase;
+import org.apache.hadoop.metrics.util.MetricsIntValue;
+import org.apache.hadoop.metrics.util.MetricsRegistry;
+import org.apache.hadoop.metrics.util.MetricsTimeVaryingInt;
+import org.apache.hadoop.metrics.util.MetricsTimeVaryingLong;
+import org.apache.hadoop.metrics.util.MetricsTimeVaryingRate;
 
-import java.lang.reflect.Method;
 
 /**
  *
@@ -46,6 +55,10 @@ import java.lang.reflect.Method;
 public class HBaseRpcMetrics implements Updater {
   public static final String NAME_DELIM = "$";
   private final MetricsRegistry registry = new MetricsRegistry();
+  // HBaseRPCStatistics extends MetricsDynamicMBeanBase, MetricsDynamicMBeanBase won't show hbase metrics type in jmx.
+  // Therefore, we don't register MetricTimeVaryingHistogram into registry. All MetricsTimeVaryingHistogram will be
+  // created in initMethods(), therefore, there won't be concurrent read and write to methodHistograms
+  private final Map<String, MetricsTimeVaryingHistogram> methodHistograms = new HashMap<String, MetricsTimeVaryingHistogram>();
   private final MetricsRecord metricsRecord;
   private static Log LOG = LogFactory.getLog(HBaseRpcMetrics.class);
   private final HBaseRPCStatistics rpcStatistics;
@@ -103,8 +116,14 @@ public class HBaseRpcMetrics implements Updater {
 
   private void initMethods(Class<? extends VersionedProtocol> protocol) {
     for (Method m : protocol.getDeclaredMethods()) {
-      if (get(m.getName()) == null)
+      if (get(m.getName()) == null) {
         create(m.getName());
+        // we report percentile only for methods defined in HReginInterface
+        if (protocol == HRegionInterface.class) {
+          methodHistograms.put(m.getName(), new MetricsTimeVaryingHistogram(m.getName(), null));
+          LOG.info("create MetricTimeVaryingHistogram for methodName=" + m.getName());
+        }
+      }
     }
   }
 
@@ -114,7 +133,7 @@ public class HBaseRpcMetrics implements Updater {
   private MetricsTimeVaryingRate create(String key) {
     return new MetricsTimeVaryingRate(key, this.registry);
   }
-
+  
   public void inc(String name, int amt) {
     MetricsTimeVaryingRate m = get(name);
     if (m == null) {
@@ -123,6 +142,12 @@ public class HBaseRpcMetrics implements Updater {
       return; // ignore methods that dont exist.
     }
     m.inc(amt);
+    
+    // update histogram
+    MetricsTimeVaryingHistogram histogram = methodHistograms.get(name);
+    if (histogram != null) {
+      histogram.update(amt);
+    }
   }
 
   /**
@@ -204,6 +229,12 @@ public class HBaseRpcMetrics implements Updater {
    * Push the metrics to the monitoring subsystem on doUpdate() call.
    */
   public void doUpdates(final MetricsContext context) {
+    for (Entry<String, MetricsTimeVaryingHistogram> entry : methodHistograms.entrySet()) {
+      MetricsTimeVaryingHistogram.registerTimeVaryingHistogramMetric(entry.getKey(),
+        entry.getValue(), this.registry);
+      entry.getValue().pushMetric(metricsRecord);
+    }
+    
     // Both getMetricsList() and pushMetric() are thread-safe
     for (MetricsBase m : registry.getMetricsList()) {
       m.pushMetric(metricsRecord);

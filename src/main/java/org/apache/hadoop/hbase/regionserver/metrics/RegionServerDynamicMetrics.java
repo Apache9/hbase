@@ -29,6 +29,8 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.hbase.metrics.histogram.MetricsHistogram;
+import org.apache.hadoop.hbase.metrics.histogram.MetricsTimeVaryingHistogram;
 import org.apache.hadoop.hbase.regionserver.HRegionServer;
 import org.apache.hadoop.hbase.util.Pair;
 import org.apache.hadoop.metrics.MetricsContext;
@@ -36,9 +38,12 @@ import org.apache.hadoop.metrics.MetricsRecord;
 import org.apache.hadoop.metrics.MetricsUtil;
 import org.apache.hadoop.metrics.Updater;
 import org.apache.hadoop.metrics.util.MetricsBase;
+import org.apache.hadoop.metrics.util.MetricsFloatValue;
 import org.apache.hadoop.metrics.util.MetricsLongValue;
 import org.apache.hadoop.metrics.util.MetricsRegistry;
 import org.apache.hadoop.metrics.util.MetricsTimeVaryingRate;
+
+import com.yammer.metrics.stats.Snapshot;
 
 /**
  *
@@ -185,6 +190,13 @@ public class RegionServerDynamicMetrics implements Updater {
     for (Entry<String, AtomicLong> entry : RegionMetricsStorage.getNumericMetrics().entrySet()) {
       this.setNumericMetric(entry.getKey(), entry.getValue().getAndSet(0));
     }
+    
+    /* get dynamically created time varying histogram metrics and push the metrics */
+    for (Entry<String, MetricsTimeVaryingHistogram> entry :
+      RegionMetricsStorage.getTimeVaryingHistogramMetrics().entrySet()) {
+      MetricsTimeVaryingHistogram.registerTimeVaryingHistogramMetric(entry.getKey(),
+        entry.getValue(), this.registry);
+    }
 
     /* export estimated size of all response queues */
     if (regionServer != null) {
@@ -226,6 +238,12 @@ public class RegionServerDynamicMetrics implements Updater {
       for (String metricName : registry.getKeyList() ) {
         MetricsBase value = registry.get(metricName);
         value.pushMetric(metricsRecord);
+      }
+      
+      // histogram won't be register to registry, we need push them
+      for (Entry<String, MetricsTimeVaryingHistogram> entry :
+        RegionMetricsStorage.getTimeVaryingHistogramMetrics().entrySet()) {
+        entry.getValue().pushMetric(metricsRecord);
       }
     }
     metricsRecord.update();
