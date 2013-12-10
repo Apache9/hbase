@@ -24,9 +24,9 @@ import java.io.IOException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HConstants;
-import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.HConnection;
 import org.apache.hadoop.hbase.client.HConnectionManager;
 import org.apache.hadoop.hbase.client.HConnectionManager.HConnectable;
@@ -42,8 +42,12 @@ import org.apache.hadoop.hbase.mapreduce.TableMapper;
 import org.apache.hadoop.hbase.replication.ReplicationPeer;
 import org.apache.hadoop.hbase.replication.ReplicationZookeeper;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.lib.output.NullOutputFormat;
+import org.apache.hadoop.util.GenericOptionsParser;
+import org.apache.hadoop.util.Tool;
+import org.apache.hadoop.util.ToolRunner;
 import org.apache.zookeeper.KeeperException;
 
 /**
@@ -56,18 +60,25 @@ import org.apache.zookeeper.KeeperException;
  * Two counters are provided, Verifier.Counters.GOODROWS and BADROWS. The reason
  * for a why a row is different is shown in the map's log.
  */
-public class VerifyReplication {
+public class VerifyReplication  extends Configured implements Tool {
 
   private static final Log LOG =
       LogFactory.getLog(VerifyReplication.class);
 
   public final static String NAME = "verifyrep";
-  static long startTime = 0;
-  static long endTime = 0;
-  static String tableName = null;
-  static String families = null;
-  static String peerId = null;
-
+  
+  private long startTime = 0;
+  private long endTime = 0;
+  private String tableName = null;
+  private String families = null;
+  private String peerId = null;
+  private String startRow = null;
+  private String stopRow = null;
+  private int scanRateLimit = -1;
+  
+  public VerifyReplication(Configuration conf) {
+    super(conf);
+  }
   /**
    * Map-only comparator for 2 tables
    */
@@ -78,6 +89,18 @@ public class VerifyReplication {
 
     private ResultScanner replicatedScanner;
 
+    private long st = 0;
+    private int scanRateLimit = -1;
+    private long rowdone = 0;
+    
+    @Override
+    public void setup(Context context) {
+      Configuration conf = context.getConfiguration();
+      st = EnvironmentEdgeManager.currentTimeMillis();
+      scanRateLimit = conf.getInt(TableMapper.SCAN_RATE_LIMIT, -1);
+      LOG.info("The scan rate limit for verify is " + scanRateLimit
+          + " rows per second");
+    }
     /**
      * Map method that compares every scanned row with the equivalent from
      * a distant cluster.
@@ -133,6 +156,10 @@ public class VerifyReplication {
         LOG.warn("Bad row", e);
         context.getCounter(Counters.BADROWS).increment(1);
       }
+      
+      rowdone ++;
+      TableMapReduceUtil.limitScanRate(scanRateLimit, rowdone,
+        EnvironmentEdgeManager.currentTimeMillis() - st);
     }
 
     protected void cleanup(Context context) {
@@ -151,11 +178,12 @@ public class VerifyReplication {
    * @return The newly created job.
    * @throws java.io.IOException When setting up the job fails.
    */
-  public static Job createSubmittableJob(Configuration conf, String[] args)
+  public Job createSubmittableJob(String[] args)
   throws IOException {
     if (!doCommandLine(args)) {
       return null;
     }
+    Configuration conf = this.getConf();
     if (!conf.getBoolean(HConstants.REPLICATION_ENABLE_KEY, false)) {
       throw new IOException("Replication needs to be enabled to verify it.");
     }
@@ -199,6 +227,19 @@ public class VerifyReplication {
         scan.addFamily(Bytes.toBytes(fam));
       }
     }
+
+    if (startRow != null) {
+      scan.setStartRow(Bytes.toBytes(startRow));
+    }
+    
+    if (stopRow != null) {
+      scan.setStopRow(Bytes.toBytes(stopRow));
+    }
+
+    if (scanRateLimit > 0) {
+      job.getConfiguration().setInt(TableMapper.SCAN_RATE_LIMIT, scanRateLimit);
+    }
+    
     TableMapReduceUtil.initTableMapperJob(tableName, scan,
         Verifier.class, null, null, job);
     job.setOutputFormatClass(NullOutputFormat.class);
@@ -206,7 +247,7 @@ public class VerifyReplication {
     return job;
   }
 
-  private static boolean doCommandLine(final String[] args) {
+  private boolean doCommandLine(final String[] args) {
     if (args.length < 2) {
       printUsage(null);
       return false;
@@ -231,12 +272,30 @@ public class VerifyReplication {
           continue;
         }
 
+        final String startRowArgKey = "--startrow=";
+        if (cmd.startsWith(startRowArgKey)) {
+          startRow = cmd.substring(startRowArgKey.length());
+          continue;
+        }
+        
+        final String stopRowArgKey = "--stoprow=";
+        if (cmd.startsWith(stopRowArgKey)) {
+          stopRow = cmd.substring(stopRowArgKey.length());
+          continue;
+        }
+        
         final String familiesArgKey = "--families=";
         if (cmd.startsWith(familiesArgKey)) {
           families = cmd.substring(familiesArgKey.length());
           continue;
         }
-
+        
+        final String scanRateArgKey = "--scanrate=";
+        if (cmd.startsWith(scanRateArgKey)) {
+          scanRateLimit = Integer.parseInt(cmd.substring(scanRateArgKey.length()));
+          continue;
+        }
+        
         if (i == args.length-2) {
           peerId = cmd;
         }
@@ -267,7 +326,10 @@ public class VerifyReplication {
     System.err.println(" starttime    beginning of the time range");
     System.err.println("              without endtime means from starttime to forever");
     System.err.println(" stoptime     end of the time range");
+    System.err.println(" startrow     beginning of row");
+    System.err.println(" stoprow      end of the row");
     System.err.println(" families     comma-separated list of families to copy");
+    System.err.println(" scanrate     the scan rate limit: rows per second for each region.");
     System.err.println();
     System.err.println("Args:");
     System.err.println(" peerid       Id of the peer used for verification, must match the one given for replication");
@@ -287,10 +349,15 @@ public class VerifyReplication {
    * @throws Exception When running the job fails.
    */
   public static void main(String[] args) throws Exception {
-    Configuration conf = HBaseConfiguration.create();
-    Job job = createSubmittableJob(conf, args);
-    if (job != null) {
-      System.exit(job.waitForCompletion(true) ? 0 : 1);
-    }
+    int ret = ToolRunner.run(new VerifyReplication(HBaseConfiguration.create()), args);
+    System.exit(ret);
+  }
+
+  @Override
+  public int run(String[] args) throws Exception {
+    String[] otherArgs = new GenericOptionsParser(getConf(), args).getRemainingArgs();
+    Job job = createSubmittableJob(otherArgs);
+    if (job == null) return 1;
+    return job.waitForCompletion(true) ? 0 : 1;
   }
 }

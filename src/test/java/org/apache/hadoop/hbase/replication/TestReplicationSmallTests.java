@@ -497,7 +497,7 @@ public class TestReplicationSmallTests extends TestReplicationBase {
     testSmallBatch();
 
     String[] args = new String[] {"2", Bytes.toString(tableName)};
-    Job job = VerifyReplication.createSubmittableJob(CONF_WITH_LOCALFS, args);
+    Job job = new VerifyReplication(CONF_WITH_LOCALFS).createSubmittableJob(args);
     if (job == null) {
       fail("Job wasn't created, see the log");
     }
@@ -521,7 +521,7 @@ public class TestReplicationSmallTests extends TestReplicationBase {
     }
     Delete delete = new Delete(put.getRow());
     htable2.delete(delete);
-    job = VerifyReplication.createSubmittableJob(CONF_WITH_LOCALFS, args);
+    job = new VerifyReplication(CONF_WITH_LOCALFS).createSubmittableJob(args);
     if (job == null) {
       fail("Job wasn't created, see the log");
     }

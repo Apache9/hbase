@@ -19,8 +19,6 @@
  */
 package org.apache.hadoop.hbase.mapreduce;
 
-import org.apache.hadoop.classification.InterfaceAudience;
-import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.hbase.HBaseConfiguration;
@@ -54,6 +52,7 @@ public class CopyTable extends Configured implements Tool {
   static String peerAddress = null;
   static String families = null;
   static boolean allCells = false;
+  static int scanRateLimit = -1;
   
   public CopyTable(Configuration conf) {
     super(conf);
@@ -92,6 +91,10 @@ public class CopyTable extends Configured implements Tool {
     
     if (stopRow != null) {
       scan.setStopRow(Bytes.toBytes(stopRow));
+    }
+
+    if (scanRateLimit > 0) {
+      job.getConfiguration().setInt(TableMapper.SCAN_RATE_LIMIT, scanRateLimit);
     }
     
     if(families != null) {
@@ -149,6 +152,7 @@ public class CopyTable extends Configured implements Tool {
     System.err.println("              To copy from cf1 to cf2, give sourceCfName:destCfName. ");
     System.err.println("              To keep the same name, just give \"cfName\"");
     System.err.println(" all.cells    also copy delete markers and deleted cells");
+    System.err.println(" scanrate     the scan rate limit: rows per second for each region.");
     System.err.println();
     System.err.println("Args:");
     System.err.println(" tablename    Name of the table to copy");
@@ -226,6 +230,12 @@ public class CopyTable extends Configured implements Tool {
           continue;
         }
 
+        final String scanRateArgKey = "--scanrate=";
+        if (cmd.startsWith(scanRateArgKey)) {
+          scanRateLimit = Integer.parseInt(cmd.substring(scanRateArgKey.length()));
+          continue;
+        }
+        
         if (cmd.startsWith("--all.cells")) {
           allCells = true;
           continue;
