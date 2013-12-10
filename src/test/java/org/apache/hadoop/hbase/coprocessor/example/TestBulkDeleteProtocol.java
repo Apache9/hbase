@@ -23,7 +23,6 @@ import static org.junit.Assert.assertTrue;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.HColumnDescriptor;
@@ -35,7 +34,7 @@ import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.Scan;
-import org.apache.hadoop.hbase.client.coprocessor.Batch;
+import org.apache.hadoop.hbase.client.coprocessor.EndPointClient;
 import org.apache.hadoop.hbase.coprocessor.CoprocessorHost;
 import org.apache.hadoop.hbase.coprocessor.example.BulkDeleteProtocol.DeleteType;
 import org.apache.hadoop.hbase.filter.CompareFilter.CompareOp;
@@ -79,6 +78,7 @@ public class TestBulkDeleteProtocol {
       puts.add(createPut(rowkey, "v1"));
     }
     ht.put(puts);
+    
     // Deleting all the rows.
     long noOfRowsDeleted = invokeBulkDeleteProtocol(tableName, new Scan(), 500, DeleteType.ROW,
         null);
@@ -120,17 +120,11 @@ public class TestBulkDeleteProtocol {
       final byte deleteType, final Long timeStamp) throws Throwable {
     HTable ht = new HTable(TEST_UTIL.getConfiguration(), tableName);
     long noOfDeletedRows = 0L;
-    Batch.Call<BulkDeleteProtocol, BulkDeleteResponse> callable = 
-        new Batch.Call<BulkDeleteProtocol, BulkDeleteResponse>() {
-      public BulkDeleteResponse call(BulkDeleteProtocol instance) throws IOException {
-        return instance.delete(scan, deleteType, timeStamp, rowBatchSize);
-      }
-    };
-    Map<byte[], BulkDeleteResponse> result = ht.coprocessorExec(BulkDeleteProtocol.class,
-        scan.getStartRow(), scan.getStopRow(), callable);
-    for (BulkDeleteResponse response : result.values()) {
-      noOfDeletedRows += response.getRowsDeleted();
-    }
+    
+    EndPointClient eClient = new EndPointClient();
+    BulkDeleteResponse response = eClient.delete(ht, scan, deleteType, timeStamp, rowBatchSize);
+    noOfDeletedRows = response.getRowsDeleted();
+
     ht.close();
     return noOfDeletedRows;
   }
@@ -361,18 +355,12 @@ public class TestBulkDeleteProtocol {
     
     long noOfDeletedRows = 0L;
     long noOfVersionsDeleted = 0L;
-    Batch.Call<BulkDeleteProtocol, BulkDeleteResponse> callable = 
-        new Batch.Call<BulkDeleteProtocol, BulkDeleteResponse>() {
-      public BulkDeleteResponse call(BulkDeleteProtocol instance) throws IOException {
-        return instance.delete(scan, DeleteType.VERSION, null, 500);
-      }
-    };
-    Map<byte[], BulkDeleteResponse> result = ht.coprocessorExec(BulkDeleteProtocol.class,
-        scan.getStartRow(), scan.getStopRow(), callable);
-    for (BulkDeleteResponse response : result.values()) {
-      noOfDeletedRows += response.getRowsDeleted();
-      noOfVersionsDeleted += response.getVersionsDeleted();
-    }
+
+    EndPointClient client = new EndPointClient();
+    BulkDeleteResponse result = client.delete(ht, scan, DeleteType.VERSION, null, 500);
+    noOfDeletedRows = result.getRowsDeleted();
+    noOfVersionsDeleted = result.getVersionsDeleted();
+    
     assertEquals(100, noOfDeletedRows);
     assertEquals(400, noOfVersionsDeleted);
     
@@ -405,7 +393,7 @@ public class TestBulkDeleteProtocol {
     HTable ht = new HTable(TEST_UTIL.getConfiguration(), tableName);
     return ht;
   }
-
+  
   private Put createPut(byte[] rowkey, String value) throws IOException {
     Put put = new Put(rowkey);
     put.add(FAMILY1, QUALIFIER1, value.getBytes());

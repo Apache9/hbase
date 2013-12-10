@@ -115,6 +115,12 @@ public class BulkDeleteEndpoint extends BaseEndpointCoprocessor implements BulkD
     }
     response.setRowsDeleted(totalRowsDeleted);
     response.setVersionsDeleted(totalVersionsDeleted);
+    
+    LOG.info("BulkDelete from this region is "
+        + ((RegionCoprocessorEnvironment) getEnvironment()).getRegion().getRegionNameAsString()
+        + ": rowsDeleted = " + response.getRowsDeleted() + ", versionsDeleted = "
+        + response.getVersionsDeleted() + ", IOException = " + response.getIoException());
+    
     return response;
   }
 
