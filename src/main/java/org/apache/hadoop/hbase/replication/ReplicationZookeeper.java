@@ -51,9 +51,6 @@ import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.KeeperException.ConnectionLossException;
 import org.apache.zookeeper.KeeperException.SessionExpiredException;
 
-import com.xiaomi.infra.base.nameservice.NameService;
-import com.xiaomi.infra.base.nameservice.NameServiceEntry;
-
 /**
  * This class serves as a helper for all things related to zookeeper in
  * replication.
@@ -341,15 +338,7 @@ public class ReplicationZookeeper {
     // Construct the connection to the new peer
     Configuration otherConf = new Configuration(this.conf);
     try {
-      if (otherClusterKey.startsWith("hbase://")) {
-        NameServiceEntry entry = NameService.resolve(otherClusterKey);
-        if (!entry.compatibleWithScheme("hbase")) {
-          throw new IOException("Unrecognized scheme: " + entry.getScheme());
-        }
-        otherConf = entry.createClusterConf(otherConf);
-      } else {
-        ZKUtil.applyClusterKeyToConf(otherConf, otherClusterKey);
-      }
+      ZKUtil.applyClusterKeyToConf(otherConf, otherClusterKey);
     } catch (IOException e) {
       LOG.error("Can't get peer because:", e);
       return null;
