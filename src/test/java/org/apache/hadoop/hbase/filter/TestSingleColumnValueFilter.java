@@ -50,11 +50,11 @@ public class TestSingleColumnValueFilter extends TestCase {
     Bytes.toBytes("The slow grey fox trips over the lazy dog.");
   private static final String QUICK_SUBSTR = "quick";
   private static final String QUICK_REGEX = ".+quick.+";
-
+  
   Filter basicFilter;
   Filter substrFilter;
   Filter regexFilter;
-
+  
   @Override
   protected void setUp() throws Exception {
     super.setUp();
@@ -80,6 +80,25 @@ public class TestSingleColumnValueFilter extends TestCase {
       new RegexStringComparator(QUICK_REGEX));
   }
 
+  
+  public void testLongComparator() {
+    Filter filter = new SingleColumnValueFilter(COLUMN_FAMILY,
+        COLUMN_QUALIFIER, CompareOp.GREATER, new LongComparator(100L));
+    KeyValue kv = new KeyValue(ROW, COLUMN_FAMILY, COLUMN_QUALIFIER,
+      Bytes.toBytes(1L));
+    assertTrue("less than", filter.filterKeyValue(kv) == Filter.ReturnCode.NEXT_ROW);
+    filter.reset();
+    
+    kv = new KeyValue(ROW, COLUMN_FAMILY, COLUMN_QUALIFIER,
+      Bytes.toBytes(100L));
+    assertTrue("Equals 100", filter.filterKeyValue(kv) == Filter.ReturnCode.NEXT_ROW);
+    filter.reset();
+    
+    kv = new KeyValue(ROW, COLUMN_FAMILY, COLUMN_QUALIFIER,
+      Bytes.toBytes(120L));
+    assertTrue("include 120", filter.filterKeyValue(kv) == Filter.ReturnCode.INCLUDE);
+  }
+  
   private void basicFilterTests(SingleColumnValueFilter filter)
       throws Exception {
     KeyValue kv = new KeyValue(ROW, COLUMN_FAMILY, COLUMN_QUALIFIER, VAL_2);
