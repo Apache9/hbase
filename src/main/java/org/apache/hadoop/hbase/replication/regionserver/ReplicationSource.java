@@ -730,7 +730,7 @@ public class ReplicationSource extends Thread
       }
       try {
         HRegionInterface rrs = getRS();
-        LOG.debug("Replicating " + currentNbEntries);
+        LOG.info("Replicating " + currentNbEntries);
         rrs.replicateLogEntries(Arrays.copyOf(this.entriesArray, currentNbEntries));
         if (this.lastLoggedPosition != this.repLogReader.getPosition()) {
           this.manager.logPositionAndCleanOldLogs(this.currentPath,
@@ -743,7 +743,7 @@ public class ReplicationSource extends Thread
             this.currentNbOperations);
         this.metrics.setAgeOfLastShippedOp(
             this.entriesArray[currentNbEntries-1].getKey().getWriteTime());
-        LOG.debug("Replicated in total: " + this.totalReplicatedEdits);
+        LOG.info("Replicated in total: " + this.totalReplicatedEdits);
         break;
 
       } catch (IOException ioe) {
