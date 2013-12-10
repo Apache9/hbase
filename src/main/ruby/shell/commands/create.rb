@@ -35,6 +35,9 @@ Examples:
   hbase> create 't1', {NAME => 'f1', VERSIONS => 1, TTL => 2592000, BLOCKCACHE => true}
   hbase> create 't1', 'f1', {SPLITS => ['10', '20', '30', '40']}
   hbase> create 't1', 'f1', {SPLITS_FILE => 'splits.txt'}
+  hbase> # create a table which support across-row atomic in a region and the split policy: KeyDelimiterPrefixRegionSplitPolicy 
+  hbase> # can make sure that rows with same prefix will be grouped in a same region.
+  hbase> create 't1', 'f1', {'ACROSS_PREFIX_ROWS_ATOMIC' => true, 'SPLIT_POLICY' => 'org.apache.hadoop.hbase.regionserver.KeyDelimiterPrefixRegionSplitPolicy', 'delimiter_prefix_split_key_policy.delimiter' => '-'}
   hbase> # Optionally pre-split the table into NUMREGIONS, using
   hbase> # SPLITALGO ("HexStringSplit", "UniformSplit" or classname)
   hbase> create 't1', 'f1', {NUMREGIONS => 15, SPLITALGO => 'HexStringSplit'}

@@ -275,8 +275,8 @@ module Hbase
     # If server name is not nil, we presume it is the region's encoded name (HRegionInfo.getEncodedName)
     def close_region(region_name, server)
       if (server == nil || !closeEncodedRegion?(region_name, server))         
-      	@admin.closeRegion(region_name, server)
-      end	
+        @admin.closeRegion(region_name, server)
+      end   
     end
 
     #----------------------------------------------------------------------------------------------
@@ -336,7 +336,7 @@ module Hbase
         else
           puts "All regions updated."
         end
-	      sleep 1
+          sleep 1
       end while status != nil && status.getFirst() != 0
       puts "Done."
     end
