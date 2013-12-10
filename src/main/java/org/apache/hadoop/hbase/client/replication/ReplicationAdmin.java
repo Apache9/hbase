@@ -29,9 +29,14 @@ import java.lang.Integer;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HConstants;
+import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HConnection;
 import org.apache.hadoop.hbase.client.HConnectionManager;
+import org.apache.hadoop.hbase.HTableDescriptor;
+import org.apache.hadoop.hbase.MasterNotRunningException;
 import org.apache.hadoop.hbase.replication.ReplicationZookeeper;
+import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hbase.ZooKeeperConnectionException;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
 import org.apache.zookeeper.KeeperException;
 import org.apache.hadoop.hbase.HTableDescriptor;
@@ -83,6 +88,7 @@ public class ReplicationAdmin implements Closeable {
       
   private final ReplicationZookeeper replicationZk;
   private final HConnection connection;
+  private final HBaseAdmin hbaseAdmin;
 
   /**
    * Constructor that creates a connection to the local ZooKeeper ensemble.
@@ -99,8 +105,13 @@ public class ReplicationAdmin implements Closeable {
     ZooKeeperWatcher zkw = this.connection.getZooKeeperWatcher();
     try {
       this.replicationZk = new ReplicationZookeeper(this.connection, conf, zkw);
+      this.hbaseAdmin = new HBaseAdmin(this.connection);
     } catch (KeeperException e) {
       throw new IOException("Unable setup the ZooKeeper connection", e);
+    } catch (MasterNotRunningException e) {
+      throw new IOException("Unable new HBaseAdmin", e);
+    } catch (ZooKeeperConnectionException e) {
+      throw new IOException("Unable new HBaseAdmin", e);
     }
   }
 
@@ -120,6 +131,11 @@ public class ReplicationAdmin implements Closeable {
     this.replicationZk.addPeer(id, clusterKey, peerState);
   }
 
+  public void addPeer(String id, String clusterKey, String peerState, String tableCFs)
+    throws IOException {
+    checkTableCFs(tableCFs);
+    this.replicationZk.addPeer(id, clusterKey, peerState, tableCFs);
+  }
   /**
    * Removes a peer cluster and stops the replication to it.
    * @param id a short that identifies the cluster
@@ -171,6 +187,64 @@ public class ReplicationAdmin implements Closeable {
       return this.replicationZk.getPeerState(id).name();
     } catch (KeeperException e) {
       throw new IOException("Couldn't get the state of the peer " + id, e);
+    }
+  }
+
+  /**
+   * Get the replicable table-cf config of the specified peer.
+   * @param id a short that identifies the cluster
+   */
+  public String getPeerTableCFs(String id)
+    throws IOException, KeeperException {
+    return this.replicationZk.getTableCFsStr(id);
+  }
+
+  /**
+   * Set the replicable table-cf config of the specified peer
+   * @param id a short that identifies the cluster
+   */
+  public void setPeerTableCFs(String id, String tableCFs)
+    throws IOException {
+    checkTableCFs(tableCFs);
+    this.replicationZk.setTableCFsStr(id, tableCFs);
+  }
+
+  private void checkTableCFs(String tableCFs) throws IOException {
+    String[] tables = tableCFs.split(";");
+    for (String tab : tables) {
+      // 1. split to "table" and "cf1,cf2"
+      //    for each table: "table:cf1,cf2" or "table"
+      String[] pair = tab.split(":");
+      if (pair.length > 2) {
+        throw new IOException("invalid tableCFs format: '" + tab + "'");
+      }
+      // 2. get "table" part
+      String tabName = pair[0].trim();
+
+      if (tabName.isEmpty()) {
+        continue;
+      }
+
+      // 3. check table existence
+      if (!hbaseAdmin.tableExists(tabName)) {
+        throw new IOException("table '" + tabName + "' not exist");
+      }
+
+      HTableDescriptor tabDesc =
+        hbaseAdmin.getTableDescriptor(Bytes.toBytes(tabName));
+
+      // 4. parse "cf1,cf2" part
+      if (pair.length == 2) {
+        String[] cfsList = pair[1].split(",");
+        for (String cf : cfsList) {
+          String cfName = cf.trim();
+          if (!cfName.isEmpty() &&
+              !tabDesc.hasFamily(Bytes.toBytes(cfName))) {
+            throw new IOException("table '" + tabName +
+                "' has no such column family: '" + cfName + "'");
+          }
+        }
+      }
     }
   }
 

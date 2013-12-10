@@ -21,7 +21,9 @@ package org.apache.hadoop.hbase.replication;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.commons.logging.Log;
@@ -48,11 +50,14 @@ public class ReplicationPeer implements Abortable {
   private final String id;
   private List<ServerName> regionServers = new ArrayList<ServerName>(0);
   private final AtomicBoolean peerEnabled = new AtomicBoolean();
+  private Map<String, List<String>> tableCFs =
+    new HashMap<String, List<String>>();
   // Cannot be final since a new object needs to be recreated when session fails
   private ZooKeeperWatcher zkw;
   private final Configuration conf;
 
   private PeerStateTracker peerStateTracker;
+  private TableCFsTracker tableCFsTracker;
 
   /**
    * Constructor that takes all the objects required to communicate with the
@@ -104,6 +109,79 @@ public class ReplicationPeer implements Abortable {
   }
 
   /**
+   * start a table-cfs tracker to listen the (table, cf-list) map change
+   *
+   * @param zookeeper zk watcher for the local cluster
+   * @param tableCFsNode path to zk node which stores table-cfs
+   * @throws KeeperException
+   */
+  public void startTableCFsTracker(ZooKeeperWatcher zookeeper, String tableCFsNode)
+      throws KeeperException {
+    int times = 500;
+    while (ZKUtil.checkExists(zookeeper, tableCFsNode) == -1 && times-- > 0) {
+      try {
+        Thread.sleep(10);
+      } catch (InterruptedException e) {}
+    }
+
+    if (ZKUtil.checkExists(zookeeper, tableCFsNode) == -1) {
+      LOG.error("wait 5s for client to create" + tableCFsNode + " but failed!" +
+          " give up startTableCFsTracker for this peer");
+      return;
+    }
+
+    this.tableCFsTracker = new TableCFsTracker(tableCFsNode, zookeeper,
+        this);
+    this.tableCFsTracker.start();
+    this.readTableCFsZnode();
+  }
+
+  private void readTableCFsZnode() {
+    String currentTableCFs = Bytes.toString(tableCFsTracker.getData(false));
+
+    // 0. all tables are replicable if 'tableCFs' not set or empty
+    if (currentTableCFs == null || currentTableCFs.trim().isEmpty()) {
+      this.tableCFs.clear();
+      return;
+    }
+
+    // 1. parse out (table, cf-list) pairs from currentTableCFs
+    //    format: "table1:cf1,cf2;table2:cfA,cfB"
+    String[] tables = currentTableCFs.split(";");
+    Map<String, List<String>> curMap = new HashMap<String, List<String>>();
+    for (String tab : tables) {
+      // 1.1 split to "table" and "cf1,cf2"
+      //     for each table: "table:cf1,cf2" or "table"
+      String[] pair = tab.split(":");
+      if (pair.length > 2) {
+        LOG.error("ignore invalid tableCFs setting: " + tab);
+        continue;
+      }
+
+      // 1.2 get "table" part
+      String tabName = pair[0].trim();
+
+      // 1.3 parse "cf1,cf2" part to List<cf>
+      List<String> cfs = new ArrayList<String>();
+      if (pair.length == 2) {
+        String[] cfsList = pair[1].split(",");
+        for (String cf : cfsList) {
+          String cfName = cf.trim();
+          if (cfName.length() > 0) {
+            cfs.add(cfName);
+          }
+        }
+      }
+
+      // 1.4 put <table, List<cf>> to map
+      curMap.put(tabName, cfs);
+    }
+
+    // 2. update peer's tableCFs
+    this.tableCFs = curMap;
+  }
+
+  /**
    * Get the cluster key of that peer
    * @return string consisting of zk ensemble addresses, client port
    * and root znode
@@ -118,6 +196,14 @@ public class ReplicationPeer implements Abortable {
    */
   public AtomicBoolean getPeerEnabled() {
     return peerEnabled;
+  }
+
+  /**
+   * Get replicable (table, cf-list) map of this peer
+   * @return the replicable (table, cf-list) map
+   */
+  public Map<String, List<String>> getTableCFs() {
+    return this.tableCFs;
   }
 
   /**
@@ -174,7 +260,7 @@ public class ReplicationPeer implements Abortable {
   public void reloadZkWatcher() throws IOException {
     if (zkw != null) zkw.close();
     zkw = new ZooKeeperWatcher(conf,
-        "connection to cluster: " + id, this);    
+        "connection to cluster: " + id, this);
   }
 
   @Override
@@ -199,6 +285,25 @@ public class ReplicationPeer implements Abortable {
       if (path.equals(node)) {
         super.nodeDataChanged(path);
         readPeerStateZnode();
+      }
+    }
+  }
+
+  /**
+   * Tracker for (table, cf-list) map of this peer
+   */
+  public class TableCFsTracker extends ZooKeeperNodeTracker {
+
+    public TableCFsTracker(String tableCFsZNode, ZooKeeperWatcher watcher,
+        Abortable abortable) {
+      super(watcher, tableCFsZNode, abortable);
+    }
+
+    @Override
+    public synchronized void nodeDataChanged(String path) {
+      if (path.equals(node)) {
+        super.nodeDataChanged(path);
+        readTableCFsZnode();
       }
     }
   }

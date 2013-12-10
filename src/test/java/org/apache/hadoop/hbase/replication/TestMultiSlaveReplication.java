@@ -60,14 +60,24 @@ public class TestMultiSlaveReplication {
   private static final int NB_RETRIES = 10;
 
   private static final byte[] tableName = Bytes.toBytes("test");
+  private static final byte[] tabAName = Bytes.toBytes("TA");
+  private static final byte[] tabBName = Bytes.toBytes("TB");
+  private static final byte[] tabCName = Bytes.toBytes("TC");
   private static final byte[] famName = Bytes.toBytes("f");
+  private static final byte[] f1Name = Bytes.toBytes("f1");
+  private static final byte[] f2Name = Bytes.toBytes("f2");
+  private static final byte[] f3Name = Bytes.toBytes("f3");
   private static final byte[] row = Bytes.toBytes("row");
   private static final byte[] row1 = Bytes.toBytes("row1");
   private static final byte[] row2 = Bytes.toBytes("row2");
   private static final byte[] row3 = Bytes.toBytes("row3");
   private static final byte[] noRepfamName = Bytes.toBytes("norep");
+  private static final byte[] val = Bytes.toBytes("myval");
 
   private static HTableDescriptor table;
+  private static HTableDescriptor tabA;
+  private static HTableDescriptor tabB;
+  private static HTableDescriptor tabC;
 
   @BeforeClass
   public static void setUpBeforeClass() throws Exception {
@@ -89,6 +99,10 @@ public class TestMultiSlaveReplication {
     utility1 = new HBaseTestingUtility(conf1);
     utility1.startMiniZKCluster();
     MiniZooKeeperCluster miniZK = utility1.getZkCluster();
+    // By setting the mini ZK cluster through this method, even though this is
+    // already utility1's mini ZK cluster, we are telling utility1 not to shut
+    // the mini ZK cluster when we shut down the HBase cluster.
+    utility1.setZkCluster(miniZK);
     new ZooKeeperWatcher(conf1, "cluster1", null, true);
 
     conf2 = new Configuration(conf1);
@@ -111,6 +125,39 @@ public class TestMultiSlaveReplication {
     table.addFamily(fam);
     fam = new HColumnDescriptor(noRepfamName);
     table.addFamily(fam);
+
+    tabA = new HTableDescriptor(tabAName);
+    fam = new HColumnDescriptor(f1Name);
+    fam.setScope(HConstants.REPLICATION_SCOPE_GLOBAL);
+    tabA.addFamily(fam);
+    fam = new HColumnDescriptor(f2Name);
+    fam.setScope(HConstants.REPLICATION_SCOPE_GLOBAL);
+    tabA.addFamily(fam);
+    fam = new HColumnDescriptor(f3Name);
+    fam.setScope(HConstants.REPLICATION_SCOPE_GLOBAL);
+    tabA.addFamily(fam);
+
+    tabB = new HTableDescriptor(tabBName);
+    fam = new HColumnDescriptor(f1Name);
+    fam.setScope(HConstants.REPLICATION_SCOPE_GLOBAL);
+    tabB.addFamily(fam);
+    fam = new HColumnDescriptor(f2Name);
+    fam.setScope(HConstants.REPLICATION_SCOPE_GLOBAL);
+    tabB.addFamily(fam);
+    fam = new HColumnDescriptor(f3Name);
+    fam.setScope(HConstants.REPLICATION_SCOPE_GLOBAL);
+    tabB.addFamily(fam);
+
+    tabC = new HTableDescriptor(tabCName);
+    fam = new HColumnDescriptor(f1Name);
+    fam.setScope(HConstants.REPLICATION_SCOPE_GLOBAL);
+    tabC.addFamily(fam);
+    fam = new HColumnDescriptor(f2Name);
+    fam.setScope(HConstants.REPLICATION_SCOPE_GLOBAL);
+    tabC.addFamily(fam);
+    fam = new HColumnDescriptor(f3Name);
+    fam.setScope(HConstants.REPLICATION_SCOPE_GLOBAL);
+    tabC.addFamily(fam);
   }
 
   @Test(timeout=300000)
@@ -182,6 +229,143 @@ public class TestMultiSlaveReplication {
     deleteAndWait(row, htable1, htable2, htable3);
     deleteAndWait(row3, htable1, htable2, htable3);
 
+    admin1.removePeer("1");
+    admin1.removePeer("2");
+
+    utility3.shutdownMiniCluster();
+    utility2.shutdownMiniCluster();
+    utility1.shutdownMiniCluster();
+  }
+
+  @Test(timeout=300000)
+  public void testPerTableCFsMultiSlaveReplication() throws Exception {
+    LOG.info("testPerTableCFsMultiSlaveReplication");
+    MiniHBaseCluster master = utility1.startMiniCluster();
+    utility2.startMiniCluster();
+    utility3.startMiniCluster();
+    ReplicationAdmin admin1 = new ReplicationAdmin(conf1);
+
+    new HBaseAdmin(conf1).createTable(tabA);
+    new HBaseAdmin(conf1).createTable(tabB);
+    new HBaseAdmin(conf1).createTable(tabC);
+    new HBaseAdmin(conf2).createTable(tabA);
+    new HBaseAdmin(conf2).createTable(tabB);
+    new HBaseAdmin(conf2).createTable(tabC);
+    new HBaseAdmin(conf3).createTable(tabA);
+    new HBaseAdmin(conf3).createTable(tabB);
+    new HBaseAdmin(conf3).createTable(tabC);
+
+    HTable htab1A = new HTable(conf1, tabAName);
+    htab1A.setWriteBufferSize(1024);
+    HTable htab2A = new HTable(conf2, tabAName);
+    htab2A.setWriteBufferSize(1024);
+    HTable htab3A = new HTable(conf3, tabAName);
+    htab3A.setWriteBufferSize(1024);
+
+    HTable htab1B = new HTable(conf1, tabBName);
+    htab1B.setWriteBufferSize(1024);
+    HTable htab2B = new HTable(conf2, tabBName);
+    htab2B.setWriteBufferSize(1024);
+    HTable htab3B = new HTable(conf3, tabBName);
+    htab3B.setWriteBufferSize(1024);
+
+    HTable htab1C = new HTable(conf1, tabCName);
+    htab1C.setWriteBufferSize(1024);
+    HTable htab2C = new HTable(conf2, tabCName);
+    htab2C.setWriteBufferSize(1024);
+    HTable htab3C = new HTable(conf3, tabCName);
+    htab3C.setWriteBufferSize(1024);
+
+    // A. add cluster2/cluster3 as peers to cluster1
+    admin1.addPeer("2", utility2.getClusterKey(), "ENABLED", "TC; TB:f1,f3");
+    admin1.addPeer("3", utility3.getClusterKey(), "ENABLED", "TA; TB:f1,f2");
+
+    // A1. tableA can only replicated to cluster3
+    putAndWaitWithFamily(row1, f1Name, val, htab1A, htab3A);
+    checkRowWithFamily(row1, f1Name, 0, htab2A);
+    deleteAndWaitWithFamily(row1, f1Name, htab1A, htab3A);
+
+    putAndWaitWithFamily(row1, f2Name, val, htab1A, htab3A);
+    checkRowWithFamily(row1, f2Name, 0, htab2A);
+    deleteAndWaitWithFamily(row1, f2Name, htab1A, htab3A);
+
+    putAndWaitWithFamily(row1, f3Name, val, htab1A, htab3A);
+    checkRowWithFamily(row1, f3Name, 0, htab2A);
+    deleteAndWaitWithFamily(row1, f3Name, htab1A, htab3A);
+
+    // A2. cf 'f1' of tableB can replicated to both cluster2 and cluster3
+    putAndWaitWithFamily(row1, f1Name, val, htab1B, htab2B, htab3B);
+    deleteAndWaitWithFamily(row1, f1Name, htab1B, htab2B, htab3B);
+
+    //  cf 'f2' of tableB can only replicated to cluster3
+    putAndWaitWithFamily(row1, f2Name, val, htab1B, htab3B);
+    checkRowWithFamily(row1, f2Name, 0, htab2B);
+    deleteAndWaitWithFamily(row1, f2Name, htab1B, htab3B);
+
+    //  cf 'f3' of tableB can only replicated to cluster2
+    putAndWaitWithFamily(row1, f3Name, val, htab1B, htab2B);
+    checkRowWithFamily(row1, f3Name, 0, htab3B);
+    deleteAndWaitWithFamily(row1, f3Name, htab1B, htab2B);
+
+    // A3. tableC can only replicated to cluster2
+    putAndWaitWithFamily(row1, f1Name, val, htab1C, htab2C);
+    checkRowWithFamily(row1, f1Name, 0, htab3C);
+    deleteAndWaitWithFamily(row1, f1Name, htab1C, htab2C);
+
+    putAndWaitWithFamily(row1, f2Name, val, htab1C, htab2C);
+    checkRowWithFamily(row1, f2Name, 0, htab3C);
+    deleteAndWaitWithFamily(row1, f2Name, htab1C, htab2C);
+
+    putAndWaitWithFamily(row1, f3Name, val, htab1C, htab2C);
+    checkRowWithFamily(row1, f3Name, 0, htab3C);
+    deleteAndWaitWithFamily(row1, f3Name, htab1C, htab2C);
+
+
+    // B. change peers' replicable table-cf config
+    admin1.setPeerTableCFs("2", "TA:f1,f2; TC:f2,f3");
+    admin1.setPeerTableCFs("3", "TB; TC:f3");
+
+    // B1. cf 'f1' of tableA can only replicated to cluster2
+    putAndWaitWithFamily(row2, f1Name, val, htab1A, htab2A);
+    checkRowWithFamily(row2, f1Name, 0, htab3A);
+    deleteAndWaitWithFamily(row2, f1Name, htab1A, htab2A);
+    //     cf 'f2' of tableA can only replicated to cluster2
+    putAndWaitWithFamily(row2, f2Name, val, htab1A, htab2A);
+    checkRowWithFamily(row2, f2Name, 0, htab3A);
+    deleteAndWaitWithFamily(row2, f2Name, htab1A, htab2A);
+    //     cf 'f3' of tableA isn't replicable to either cluster2 or cluster3
+    putAndWaitWithFamily(row2, f3Name, val, htab1A);
+    checkRowWithFamily(row2, f3Name, 0, htab2A, htab3A);
+    deleteAndWaitWithFamily(row2, f3Name, htab1A);
+
+    // B2. tableB can only replicated to cluster3
+    putAndWaitWithFamily(row2, f1Name, val, htab1B, htab3B);
+    checkRowWithFamily(row2, f1Name, 0, htab2B);
+    deleteAndWaitWithFamily(row2, f1Name, htab1B, htab3B);
+
+    putAndWaitWithFamily(row2, f2Name, val, htab1B, htab3B);
+    checkRowWithFamily(row2, f2Name, 0, htab2B);
+    deleteAndWaitWithFamily(row2, f2Name, htab1B, htab3B);
+
+    putAndWaitWithFamily(row2, f3Name, val, htab1B, htab3B);
+    checkRowWithFamily(row2, f3Name, 0, htab2B);
+    deleteAndWaitWithFamily(row2, f3Name, htab1B, htab3B);
+
+    // B3. cf 'f1' of tableC non-replicable to either cluster
+    putAndWaitWithFamily(row2, f1Name, val, htab1C);
+    checkRowWithFamily(row2, f1Name, 0, htab2C, htab3C);
+    deleteAndWaitWithFamily(row2, f1Name, htab1C);
+    //     cf 'f2' of tableC can only replicated to cluster2
+    putAndWaitWithFamily(row2, f2Name, val, htab1C, htab2C);
+    checkRowWithFamily(row2, f2Name, 0, htab3C);
+    deleteAndWaitWithFamily(row2, f2Name, htab1C, htab2C);
+    //     cf 'f3' of tableC can replicated to cluster2 and cluster3
+    putAndWaitWithFamily(row2, f3Name, val, htab1C, htab2C, htab3C);
+    deleteAndWaitWithFamily(row2, f3Name, htab1C, htab2C, htab3C);
+
+    admin1.removePeer("2");
+    admin1.removePeer("3");
+
     utility3.shutdownMiniCluster();
     utility2.shutdownMiniCluster();
     utility1.shutdownMiniCluster();
@@ -208,12 +392,51 @@ public class TestMultiSlaveReplication {
       }
     }
   }
-  
+
+  private void checkRowWithFamily(byte[] row, byte[] fam, int count, HTable... tables) throws IOException {
+    Get get = new Get(row);
+    get.addFamily(fam);
+    for (HTable table : tables) {
+      Result res = table.get(get);
+      assertEquals(count, res.size());
+    }
+  }
+
   private void checkRow(byte[] row, int count, HTable... tables) throws IOException {
     Get get = new Get(row);
     for (HTable table : tables) {
       Result res = table.get(get);
       assertEquals(count, res.size());
+    }
+  }
+
+  private void deleteAndWaitWithFamily(byte[] row, byte[] fam,
+      HTable source, HTable... targets)
+  throws Exception {
+    Delete del = new Delete(row);
+    del.deleteFamily(fam);
+    source.delete(del);
+
+    Get get = new Get(row);
+    get.addFamily(fam);
+    for (int i = 0; i < NB_RETRIES; i++) {
+      if (i==NB_RETRIES-1) {
+        fail("Waited too much time for del replication");
+      }
+      boolean removedFromAll = true;
+      for (HTable target : targets) {
+        Result res = target.get(get);
+        if (res.size() >= 1) {
+          LOG.info("Row not deleted");
+          removedFromAll = false;
+          break;
+        }
+      }
+      if (removedFromAll) {
+        break;
+      } else {
+        Thread.sleep(SLEEP_TIME);
+      }
     }
   }
 
@@ -240,6 +463,39 @@ public class TestMultiSlaveReplication {
         break;
       } else {
         Thread.sleep(SLEEP_TIME);        
+      }
+    }
+  }
+
+  private void putAndWaitWithFamily(byte[] row, byte[] fam, byte[] val,
+      HTable source, HTable... targets)
+  throws Exception {
+    Put put = new Put(row);
+    put.add(fam, row, val);
+    source.put(put);
+
+    Get get = new Get(row);
+    get.addFamily(fam);
+    for (int i = 0; i < NB_RETRIES; i++) {
+      if (i==NB_RETRIES-1) {
+        fail("Waited too much time for put replication");
+      }
+      boolean replicatedToAll = true;
+      for (HTable target : targets) {
+        Result res = target.get(get);
+        if (res.size() == 0) {
+          LOG.info("Row not available");
+          replicatedToAll = false;
+          break;
+        } else {
+          assertEquals(res.size(), 1);
+          assertArrayEquals(res.value(), val);
+        }
+      }
+      if (replicatedToAll) {
+        break;
+      } else {
+        Thread.sleep(SLEEP_TIME);
       }
     }
   }

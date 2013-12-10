@@ -30,6 +30,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.NavigableMap;
 import java.util.Random;
 import java.util.Set;
@@ -83,7 +84,7 @@ public class ReplicationSource extends Thread
   private PriorityBlockingQueue<Path> queue;
   // container of entries to replicate
   private HLog.Entry[] entriesArray;
-  private HConnection conn;
+  private HConnection conn = null;
   // Helper class for zookeeper
   private ReplicationZookeeper zkHelper;
   private Configuration conf;
@@ -178,7 +179,6 @@ public class ReplicationSource extends Thread
         new PriorityBlockingQueue<Path>(
             conf.getInt("hbase.regionserver.maxlogs", 32),
             new LogsComparator());
-    this.conn = HConnectionManager.getConnection(conf);
     this.zkHelper = manager.getRepZkWrapper();
     this.ratio = this.conf.getFloat("replication.source.ratio", 0.1f);
     this.currentPeers = new ArrayList<ServerName>();
@@ -479,7 +479,7 @@ public class ReplicationSource extends Thread
       HLogKey logKey = entry.getKey();
       // don't replicate if the log entries originated in the peer
       if (!logKey.getClusterId().equals(peerClusterId)) {
-        removeNonReplicableEdits(edit);
+        removeNonReplicableEdits(entry);
         // Don't replicate catalog entries, if the WALEdit wasn't
         // containing anything to replicate and if we're currently not set to replicate
         if (!(Bytes.equals(logKey.getTablename(), HConstants.ROOT_TABLE_NAME) ||
@@ -663,15 +663,31 @@ public class ReplicationSource extends Thread
    * We only want KVs that are scoped other than local
    * @param edit The KV to check for replication
    */
-  protected void removeNonReplicableEdits(WALEdit edit) {
-    NavigableMap<byte[], Integer> scopes = edit.getScopes();
+  protected void removeNonReplicableEdits(HLog.Entry entry) {
+    HLogKey logKey = entry.getKey();
+    String tabName = Bytes.toString(logKey.getTablename());
+    WALEdit edit = entry.getEdit();
     List<KeyValue> kvs = edit.getKeyValues();
-    for (int i = edit.size()-1; i >= 0; i--) {
-      KeyValue kv = kvs.get(i);
-      // The scope will be null or empty if
-      // there's nothing to replicate in that WALEdit
-      if (scopes == null || !scopes.containsKey(kv.getFamily())) {
-        kvs.remove(i);
+    Map<String, List<String>> tableCFs = this.zkHelper.getTableCFs(peerId);
+
+    // clear kvs(prevent replicating) if logKey's table isn't in this peer's
+    // replicable table list (empty tableCFs means all table are replicable)
+    if (tableCFs != null && !tableCFs.isEmpty() && !tableCFs.containsKey(tabName)) {
+      kvs.clear();
+    } else {
+      NavigableMap<byte[], Integer> scopes = edit.getScopes();
+      List<String> cfs = tableCFs.get(tabName);
+      for (int i = edit.size() - 1; i >= 0; i--) {
+        KeyValue kv = kvs.get(i);
+        // The scope will be null or empty if
+        // there's nothing to replicate in that WALEdit
+        // ignore(remove) kv if its cf isn't in the replicable cf list
+        // (empty cfs means all cfs of this table are replicable)
+        if (scopes == null || !scopes.containsKey(kv.getFamily()) ||
+            (cfs != null && !cfs.isEmpty() &&
+             !cfs.contains(Bytes.toString(kv.getFamily())))) {
+          kvs.remove(i);
+        }
       }
     }
   }
@@ -854,6 +870,10 @@ public class ReplicationSource extends Thread
     }
     ServerName address =
         currentPeers.get(random.nextInt(this.currentPeers.size()));
+    if (this.conn == null) {
+      Configuration peerConf = this.zkHelper.getPeerConf(peerId);
+      this.conn = HConnectionManager.getConnection(peerConf);
+    }
     return this.conn.getHRegionConnection(address.getHostname(), address.getPort());
   }
 

@@ -51,6 +51,9 @@ import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.KeeperException.ConnectionLossException;
 import org.apache.zookeeper.KeeperException.SessionExpiredException;
 
+import com.xiaomi.infra.base.nameservice.NameService;
+import com.xiaomi.infra.base.nameservice.NameServiceEntry;
+
 /**
  * This class serves as a helper for all things related to zookeeper in
  * replication.
@@ -107,6 +110,8 @@ public class ReplicationZookeeper {
   private String replicationStateNodeName;
   // Name of zk node which stores peer state
   private String peerStateNodeName;
+  // Name of zk node which stores peer's table-cfs
+  private String tableCFsNodeName;
   private final Configuration conf;
   // Is this cluster replicating at the moment?
   private AtomicBoolean replicating;
@@ -163,6 +168,8 @@ public class ReplicationZookeeper {
         conf.get("zookeeper.znode.replication.peers", "peers");
     this.peerStateNodeName = conf.get(
         "zookeeper.znode.replication.peers.state", "peer-state");
+    this.tableCFsNodeName = conf.get(
+        "zookeeper.znode.replication.peers.tableCFs", "tableCFs");
     this.replicationStateNodeName =
         conf.get("zookeeper.znode.replication.state", "state");
     String rsZNodeName =
@@ -334,7 +341,15 @@ public class ReplicationZookeeper {
     // Construct the connection to the new peer
     Configuration otherConf = new Configuration(this.conf);
     try {
-      ZKUtil.applyClusterKeyToConf(otherConf, otherClusterKey);
+      if (otherClusterKey.startsWith("hbase://")) {
+        NameServiceEntry entry = NameService.resolve(otherClusterKey);
+        if (!entry.compatibleWithScheme("hbase")) {
+          throw new IOException("Unrecognized scheme: " + entry.getScheme());
+        }
+        otherConf = entry.createClusterConf(otherConf);
+      } else {
+        ZKUtil.applyClusterKeyToConf(otherConf, otherClusterKey);
+      }
     } catch (IOException e) {
       LOG.error("Can't get peer because:", e);
       return null;
@@ -343,6 +358,7 @@ public class ReplicationZookeeper {
     ReplicationPeer peer = new ReplicationPeer(otherConf, peerId,
         otherClusterKey);
     peer.startStateTracker(this.zookeeper, this.getPeerStateNode(peerId));
+    peer.startTableCFsTracker(this.zookeeper, this.getTableCFsNode(peerId));
     return peer;
   }
 
@@ -390,6 +406,12 @@ public class ReplicationZookeeper {
 
   public void addPeer(String id, String clusterKey, String peerState)
     throws IOException {
+    addPeer(id, clusterKey, peerState, null);
+  }
+
+  public void addPeer(String id, String clusterKey, String peerState,
+      String tableCFs)
+    throws IOException {
     try {
       if (peerExists(id)) {
         throw new IllegalArgumentException("Cannot add existing peer");
@@ -397,6 +419,10 @@ public class ReplicationZookeeper {
       ZKUtil.createWithParents(this.zookeeper, this.peersZNode);
       ZKUtil.createAndWatch(this.zookeeper, ZKUtil.joinZNode(this.peersZNode, id),
         Bytes.toBytes(clusterKey));
+
+      String tableCFsStr = (tableCFs == null) ? "" : tableCFs;
+      ZKUtil.createAndWatch(this.zookeeper, getTableCFsNode(id),
+          Bytes.toBytes(tableCFsStr));
       String state = (peerState == null) ? PeerState.ENABLED.name() : PeerState
           .valueOf(peerState).name();
       // There is a race b/w PeerWatcher and ReplicationZookeeper#add method to create the
@@ -488,6 +514,76 @@ public class ReplicationZookeeper {
   private String getPeerStateNode(String id) {
     return ZKUtil.joinZNode(this.peersZNode,
         ZKUtil.joinZNode(id, this.peerStateNodeName));
+  }
+
+  public Configuration getPeerConf(String id) {
+    if (!this.peerClusters.containsKey(id)) {
+      throw new IllegalArgumentException("peer " + id + " is not registered");
+    }
+    return this.peerClusters.get(id).getConfiguration();
+  }
+
+   /**
+   * Set table-cfs string of the peer.
+   * This method write the table-cfs by connecting to ZK.
+   * used by ReplicationAdmin
+   *
+   * @param id peer's identifier
+   * @param newTableCFs peer's new replicable table-cf config
+   * @return table-cfs of the peer
+   */
+  public void setTableCFsStr(String id, String newTableCFs) throws IOException {
+    try {
+      if (!peerExists(id)) {
+        throw new IllegalArgumentException("peer " + id + " is not registered");
+      }
+      String tableCFsZNode = getTableCFsNode(id);
+      if (ZKUtil.checkExists(this.zookeeper, tableCFsZNode) != -1) {
+        ZKUtil.setData(this.zookeeper, tableCFsZNode,
+          Bytes.toBytes(newTableCFs));
+      } else {
+        ZKUtil.createAndWatch(zookeeper, tableCFsZNode,
+            Bytes.toBytes(newTableCFs));
+      }
+      LOG.info("table-cfs of the peer " + id + " set to " + newTableCFs);
+    } catch (KeeperException e) {
+      throw new IOException("Unable to change table-cfs of the peer " + id, e);
+    }
+  }
+
+  /**
+   * Get table-cfs string of the peer.
+   * This method read the table-cfs by connecting to ZK.
+   * used by ReplicationAdmin
+   *
+   * @param id peer's identifier
+   * @return table-cfs of the peer
+   */
+  public String getTableCFsStr(String id) throws KeeperException {
+    byte[] tableCFsBytes = ZKUtil
+        .getData(this.zookeeper, getTableCFsNode(id));
+    return Bytes.toString(tableCFsBytes);
+  }
+
+  /**
+   * Get the replicable (table, cf-list) map of given peer.
+   * used by ReplicationPeer/ReplicationSource
+   *
+   * @param id peer identifier
+   * @return (table, cf-list) map
+   * @throws IllegalArgumentException
+   *           Thrown when the peer doesn't exist
+   */
+  public Map<String, List<String>> getTableCFs(String id) {
+    if (!this.peerClusters.containsKey(id)) {
+      throw new IllegalArgumentException("peer " + id + " is not registered");
+    }
+    return this.peerClusters.get(id).getTableCFs();
+  }
+
+  private String getTableCFsNode(String id) {
+    return ZKUtil.joinZNode(this.peersZNode,
+        ZKUtil.joinZNode(id, this.tableCFsNodeName));
   }
 
   /**
