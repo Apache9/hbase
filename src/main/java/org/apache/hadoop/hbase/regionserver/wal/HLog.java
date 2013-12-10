@@ -70,6 +70,7 @@ import org.apache.hadoop.hbase.util.ClassSize;
 import org.apache.hadoop.hbase.util.FSUtils;
 import org.apache.hadoop.hbase.util.HasThread;
 import org.apache.hadoop.hbase.util.Threads;
+import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.util.StringUtils;
 
@@ -133,6 +134,8 @@ public class HLog implements Syncable {
     Pattern.compile("-?[0-9]+");
   public static final String RECOVERED_LOG_TMPFILE_SUFFIX = ".temp";
   
+  private static final int DEFAULT_SLOW_SYNC_TIME = 100; // in ms
+  
   private final FileSystem fs;
   private final Path dir;
   private final Configuration conf;
@@ -152,6 +155,8 @@ public class HLog implements Syncable {
   private static Class<? extends Writer> logWriterClass;
   private static Class<? extends Reader> logReaderClass;
 
+  private final int slowSyncTime;
+  
   private WALCoprocessorHost coprocessorHost;
 
   static void resetLogReaderClass() {
@@ -163,6 +168,7 @@ public class HLog implements Syncable {
   // rollWriter will be triggered
   private int minTolerableReplication;
   private Method getNumCurrentReplicas; // refers to DFSOutputStream.getNumCurrentReplicas
+  private Method getPipeLine; // refers to DFSOutputStream.getPipeLine
   final static Object [] NO_ARGS = new Object []{};
 
   public interface Reader {
@@ -433,7 +439,9 @@ public class HLog implements Syncable {
     this.enabled = conf.getBoolean("hbase.regionserver.hlog.enabled", true);
     this.closeErrorsTolerated = conf.getInt(
         "hbase.regionserver.logroll.errors.tolerated", 0);
-
+    
+    this.slowSyncTime = conf.getInt("hbase.regionserver.hlog.slowsync",
+      DEFAULT_SLOW_SYNC_TIME);
     LOG.info("HLog configuration: blocksize=" +
       StringUtils.byteDesc(this.blocksize) +
       ", rollsize=" + StringUtils.byteDesc(this.logrollsize) +
@@ -447,6 +455,7 @@ public class HLog implements Syncable {
 
     // handle the reflection necessary to call getNumCurrentReplicas()
     this.getNumCurrentReplicas = getGetNumCurrentReplicas(this.hdfs_out);
+    this.getPipeLine = getGetPipeline(this.hdfs_out);
 
     logSyncer = new LogSyncer(this.optionalFlushInterval);
     // When optionalFlushInterval is set as 0, don't start a thread for deferred log sync.
@@ -490,7 +499,35 @@ public class HLog implements Syncable {
     }
     return m;
   }
-
+  
+  /**
+   * Find the 'getPipeline' on the passed <code>os</code> stream.
+   * @return Method or null.
+   */
+  private Method getGetPipeline(final FSDataOutputStream os) {
+    Method m = null;
+    if (os != null) {
+      Class<? extends OutputStream> wrappedStreamClass = os.getWrappedStream()
+          .getClass();
+      try {
+        m = wrappedStreamClass.getDeclaredMethod("getPipeline",
+          new Class<?>[] {});
+        m.setAccessible(true);
+      } catch (NoSuchMethodException e) {
+        LOG.info("FileSystem's output stream doesn't support"
+            + " getPipeline; not available; fsOut="
+            + wrappedStreamClass.getName());
+      } catch (SecurityException e) {
+        LOG.info(
+          "Doesn't have access to getPipeline on "
+              + "FileSystems's output stream ; fsOut="
+              + wrappedStreamClass.getName(), e);
+        m = null; // could happen on setAccessible()
+      }
+    }
+    return m;
+  }
+  
   public void registerWALActionsListener(final WALActionsListener listener) {
     this.listeners.add(listener);
   }
@@ -1348,8 +1385,16 @@ public class HLog implements Syncable {
         }
       }
       this.syncedTillHere = Math.max(this.syncedTillHere, doneUpto);
+      
+      long sync = System.currentTimeMillis() - now;
+      syncTime.inc(sync);
 
-      syncTime.inc(System.currentTimeMillis() - now);
+      if (sync > this.slowSyncTime) {
+        DatanodeInfo[] pipeline;
+        pipeline = getPipeLine();
+        LOG.warn("Slow sync, cost: " + sync + " ms, pipeline: "
+            + Arrays.toString(pipeline));
+      }
       if (!this.logRollRunning) {
         checkLowReplication();
         try {
@@ -1435,7 +1480,25 @@ public class HLog implements Syncable {
     }
     return 0;
   }
-
+  /**
+   * This method gets the pipeline for the current HLog.
+   * @return
+   */
+  DatanodeInfo[] getPipeLine() {
+    if (this.getPipeLine != null && this.hdfs_out != null) {
+      Object repl;
+      try {
+        repl = this.getPipeLine.invoke(getOutputStream(), NO_ARGS);
+        if (repl instanceof DatanodeInfo[]) {
+          return ((DatanodeInfo[]) repl);
+        }
+      } catch (Exception e) {
+        LOG.info("Get pipeline failed", e);
+      }
+    }
+    return new DatanodeInfo[0];
+  }
+  
   boolean canGetCurReplicas() {
     return this.getNumCurrentReplicas != null;
   }
