@@ -1188,6 +1188,51 @@ public class ZKUtil {
       zkw.interruptedException(ie);
     }
   }
+  
+  /**
+   * Creates the specified node and all parent nodes required for it to exist.
+   *
+   * No watches are set and no errors are thrown if the node already exists, the
+   * difference with createWithParents is this func check if the node exists before
+   * create either than to know the node exists by catch NodeExistsException throwed
+   * by create.
+   *
+   * The nodes created are persistent and open access.
+   *
+   * @param zkw zk reference
+   * @param znode path of node
+   * @throws KeeperException if unexpected zookeeper exception
+   */
+  public static void createWithParentsIfNotExists(ZooKeeperWatcher zkw,
+      String znode) throws KeeperException {
+    try {
+      if (znode == null) {
+        LOG.warn("The znode is null. Not create any node");
+        return;
+      }
+      // waitForZKConnectionIfAuthenticating(zkw);
+      try {
+        if (zkw.getRecoverableZooKeeper().exists(znode, zkw) != null) {
+          LOG.info("Node " + znode + " already exists, no need create!");
+          return;
+        }
+      } catch (InterruptedException e) {
+        zkw.interruptedException(e);
+        LOG.warn("Check if node " + znode + " exists interrupted!");
+        return;
+      }
+      zkw.getRecoverableZooKeeper().create(znode, new byte[0],
+          createACL(zkw, znode), CreateMode.PERSISTENT);
+    } catch (KeeperException.NodeExistsException nee) {
+      return;
+    } catch (KeeperException.NoNodeException nne) {
+      createWithParents(zkw, getParent(znode));
+      createWithParents(zkw, znode);
+    } catch (InterruptedException ie) {
+      LOG.error("Get an InterruptedException", ie);
+      zkw.interruptedException(ie);
+    }
+  }
 
   //
   // Deletes

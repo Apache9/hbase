@@ -41,6 +41,7 @@ import org.apache.hadoop.hbase.mapreduce.TableMapReduceUtil;
 import org.apache.hadoop.hbase.mapreduce.TableMapper;
 import org.apache.hadoop.hbase.replication.ReplicationPeer;
 import org.apache.hadoop.hbase.replication.ReplicationZookeeper;
+import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.mapreduce.Job;
@@ -242,6 +243,24 @@ public class VerifyReplication  extends Configured implements Tool {
     
     TableMapReduceUtil.initTableMapperJob(tableName, scan,
         Verifier.class, null, null, job);
+
+    /**
+     * Obtain the auth token from peer cluster for job before start map.
+     */
+    if (User.isHBaseSecurityEnabled(job.getConfiguration())) {
+      try {
+        HConnection connection = HConnectionManager.getConnection(conf);
+        ReplicationZookeeper zk = new ReplicationZookeeper(connection, conf,
+            connection.getZooKeeperWatcher());
+        ReplicationPeer peer = zk.getPeer(conf.get(NAME + ".peerId"));
+        User.getCurrent().obtainAuthTokenForJob(peer.getConfiguration(), job);
+      } catch (InterruptedException e) {
+        throw new IOException("Got an InterruptedException", e);
+      } catch (KeeperException e) {
+        throw new IOException("Got a ZK exception", e);
+      }
+    }
+
     job.setOutputFormatClass(NullOutputFormat.class);
     job.setNumReduceTasks(0);
     return job;

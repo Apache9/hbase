@@ -36,6 +36,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Abortable;
+import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.Server;
 import org.apache.hadoop.hbase.ServerName;
@@ -175,9 +176,9 @@ public class ReplicationZookeeper {
     this.replicationZNode =
       ZKUtil.joinZNode(this.zookeeper.baseZNode, replicationZNodeName);
     this.peersZNode = ZKUtil.joinZNode(replicationZNode, peersZNodeName);
-    ZKUtil.createWithParents(this.zookeeper, this.peersZNode);
+    ZKUtil.createWithParentsIfNotExists(this.zookeeper, this.peersZNode);
     this.rsZNode = ZKUtil.joinZNode(replicationZNode, rsZNodeName);
-    ZKUtil.createWithParents(this.zookeeper, this.rsZNode);
+    ZKUtil.createWithParentsIfNotExists(this.zookeeper, this.rsZNode);
 
     // Set a tracker on replicationStateNodeNode
     this.statusTracker =
@@ -335,6 +336,7 @@ public class ReplicationZookeeper {
       LOG.debug("Not connecting to " + peerId + " because it's us");
       return null;
     }
+    
     // Construct the connection to the new peer
     Configuration otherConf = new Configuration(this.conf);
     try {
