@@ -70,12 +70,14 @@ public final class HConstants {
 
   /** Cluster is in distributed mode or not */
   public static final String CLUSTER_DISTRIBUTED = "hbase.cluster.distributed";
-
+  
   /** Config for pluggable load balancers */
   public static final String HBASE_MASTER_LOADBALANCER_CLASS = "hbase.master.loadbalancer.class";
   
   /** Config for pluggable hbase cluster manager */
   public static final String HBASE_CLUSTER_MANAGER_CLASS = "hbase.it.clustermanager.class";
+  
+  public static final String HBASE_CLUSTER_COLUMN_COMPRESSION = "hbase.cluster.column.compression";
   
   /** Cluster is standalone or pseudo-distributed */
   public static final boolean CLUSTER_IS_LOCAL = false;
