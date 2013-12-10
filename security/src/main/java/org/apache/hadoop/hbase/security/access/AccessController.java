@@ -20,6 +20,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -183,6 +184,20 @@ public class AccessController extends BaseRegionObserver
 
   private static final Log AUDITLOG =
     LogFactory.getLog("SecurityLogger."+AccessController.class.getName());
+
+  private static final HashSet<String> TRACE_OPERATIONS = new HashSet<String>();
+
+  static {
+    TRACE_OPERATIONS.add("exists");
+    TRACE_OPERATIONS.add("get");
+    TRACE_OPERATIONS.add("put");
+    TRACE_OPERATIONS.add("delete");
+    TRACE_OPERATIONS.add("checkAndPut");
+    TRACE_OPERATIONS.add("checkAndDelete");
+    TRACE_OPERATIONS.add("incrementColumnValue");
+    TRACE_OPERATIONS.add("append");
+    TRACE_OPERATIONS.add("increment");
+  }
 
   /**
    * Version number for AccessControllerProtocol
@@ -354,18 +369,26 @@ public class AccessController extends BaseRegionObserver
 
   private void logResult(AuthResult result) {
     if (AUDITLOG.isTraceEnabled()) {
-      InetAddress remoteAddr = null;
-      RequestContext ctx = RequestContext.get();
-      if (ctx != null) {
-        remoteAddr = ctx.getRemoteAddress();
+      AUDITLOG.trace(formatResultLog(result));
+    } else if (AUDITLOG.isDebugEnabled()) {
+      String request = result.getRequest();
+      if (!TRACE_OPERATIONS.contains(request)) {
+        AUDITLOG.debug(formatResultLog(result));
       }
-      AUDITLOG.trace("Access " + (result.isAllowed() ? "allowed" : "denied") +
-          " for user " + (result.getUser() != null ? result.getUser().getShortName() : "UNKNOWN") +
-          "; reason: " + result.getReason() +
-          "; remote address: " + (remoteAddr != null ? remoteAddr : "") +
-          "; request: " + result.getRequest() +
-          "; context: " + result.toContextString());
     }
+  }
+
+  private String formatResultLog(AuthResult result) {
+    InetAddress remoteAddr = null;
+    RequestContext ctx = RequestContext.get();
+    if (ctx != null) {
+      remoteAddr = ctx.getRemoteAddress();
+    }
+    String message = "Access " + (result.isAllowed() ? "allowed" : "denied")
+      + " for user " + (result.getUser() != null ? result.getUser().getShortName() : "UNKNOWN")
+      + "; reason: " + result.getReason() + "; remote address: " + (remoteAddr != null ? remoteAddr : "")
+      + "; request: " + result.getRequest() + "; context: " + result.toContextString();
+    return message;
   }
 
   /**
