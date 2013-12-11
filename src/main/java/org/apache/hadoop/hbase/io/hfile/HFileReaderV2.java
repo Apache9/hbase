@@ -1081,6 +1081,14 @@ public class HFileReaderV2 extends AbstractHFileReader {
 
     @Override
     protected ByteBuffer getFirstKeyInBlock(HFileBlock curBlock) {
+      short dataBlockEncoderId = curBlock.getDataBlockEncodingId();
+      if (dataBlockEncoder == null ||
+          !DataBlockEncoding.isCorrectEncoder(dataBlockEncoder,
+              dataBlockEncoderId)) {
+        DataBlockEncoder encoder =
+            DataBlockEncoding.getDataBlockEncoderById(dataBlockEncoderId);
+        setDataBlockEncoder(encoder);
+      }
       return dataBlockEncoder.getFirstKeyInBlock(getEncodedBuffer(curBlock));
     }
 
