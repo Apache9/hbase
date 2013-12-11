@@ -2628,16 +2628,34 @@ public class HRegion implements HeapSize { // , Writable{
       List<KeyValue> result = new ArrayList<KeyValue>();
       try {
         result = get(get, false);
-
+        // result.size() must be 0 or 1, except that the default max version
+        // setting logic of Get changed.
+        if (result.size() > 1) {
+          throw new RuntimeException(
+              "Result size of get in checkAndMutate must be 0 or 1, actual size:" + result.size());
+        }
+        
         boolean valueIsNull = comparator.getValue() == null ||
           comparator.getValue().length == 0;
+        boolean rowIsNull = (result.size() == 0 || result.get(0).getValue().length == 0);
         boolean matches = false;
-        if (result.size() == 0 && valueIsNull) {
-          matches = true;
-        } else if (result.size() > 0 && result.get(0).getValue().length == 0 &&
-            valueIsNull) {
-          matches = true;
-        } else if (result.size() == 1 && !valueIsNull) {
+        if (rowIsNull || valueIsNull) {
+          if (compareOp.equals(CompareOp.EQUAL)) {
+            matches = (rowIsNull == valueIsNull);
+          } else if (compareOp.equals(CompareOp.NOT_EQUAL)) {
+            matches = (rowIsNull != valueIsNull);
+          } else if (compareOp.equals(CompareOp.LESS) ||
+              compareOp.equals(CompareOp.LESS_OR_EQUAL) ||
+              compareOp.equals(CompareOp.GREATER) ||
+              compareOp.equals(CompareOp.GREATER_OR_EQUAL)) {
+            LOG.warn("CompareOp : "
+                + compareOp
+                + " is not supportted when cell value or comparator value is null, actual rowIsNull : "
+                + rowIsNull + ", valueIsNull : " + valueIsNull);
+          } else {
+            throw new RuntimeException("Unknown Compare op " + compareOp.name());
+          }
+        } else {
           KeyValue kv = result.get(0);
           int compareResult = comparator.compareTo(kv.getBuffer(),
               kv.getValueOffset(), kv.getValueLength());

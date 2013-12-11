@@ -28,6 +28,8 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import junit.framework.Assert;
+
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
@@ -4698,6 +4700,59 @@ public class TestFromClientSide {
     assertEquals(ok, true);
     ok = table.checkAndPut(ROW, FAMILY, QUALIFIER, CompareOp.EQUAL, value2, put3);
     assertEquals(ok, true);
+    
+    // cell != null and value = null, only CompareOp is NOT_EQUAL turns out "match"
+    for (CompareOp compareOp : CompareOp.values()) {
+      if (compareOp.equals(CompareOp.NOT_EQUAL)) {
+        assertTrue(table.checkAndPut(ROW, FAMILY, QUALIFIER, compareOp, null, put3));
+      } else if (compareOp.equals(CompareOp.NO_OP)) {
+        try {
+          table.checkAndPut(ROW, FAMILY, QUALIFIER, compareOp, null, put3);
+          Assert.fail();
+        } catch (Exception e) {}
+      } else {
+        assertFalse(table.checkAndPut(ROW, FAMILY, QUALIFIER, compareOp, null, put3));
+      }
+    }
+    
+    // cell = null and value = null, only CompareOp is EQUAL turns out "match"
+    byte[] nullRow = Bytes.toBytes("oneNullRow");
+    Put nullRowPutValue1 = new Put(nullRow);
+    nullRowPutValue1.add(FAMILY, QUALIFIER, value1);
+    for (CompareOp compareOp : CompareOp.values()) {
+      if (compareOp.equals(CompareOp.EQUAL)) {
+        assertTrue(table.checkAndPut(nullRow, FAMILY, QUALIFIER, compareOp, null, nullRowPutValue1));
+        // delete nullRow to keep cell = null
+        table.delete(new Delete(nullRow).deleteFamily(FAMILY));
+      } else if (compareOp.equals(CompareOp.NO_OP)) {
+        try {
+          table.checkAndPut(nullRow, FAMILY, QUALIFIER, compareOp, null, nullRowPutValue1);
+          Assert.fail();
+        } catch (Exception e) {}
+      } else {
+        assertFalse(table.checkAndPut(nullRow, FAMILY, QUALIFIER, compareOp, null, nullRowPutValue1));
+      }
+    }
+    
+    // cell = null and value != null, only CompareOp is NOT_EQUAL turns out "match"
+    nullRow = Bytes.toBytes("AnotherNullRow");
+    nullRowPutValue1 = new Put(nullRow);
+    nullRowPutValue1.add(FAMILY, QUALIFIER, value1);
+    for (CompareOp compareOp : CompareOp.values()) {
+      if (compareOp.equals(CompareOp.NOT_EQUAL)) {
+        assertTrue(table.checkAndPut(nullRow, FAMILY, QUALIFIER, compareOp, value1, nullRowPutValue1));
+        // delete nullRow to keep cell = null
+        table.delete(new Delete(nullRow).deleteFamily(FAMILY));
+      } else if (compareOp.equals(CompareOp.NO_OP)) {
+        try {
+          table.checkAndPut(nullRow, FAMILY, QUALIFIER, compareOp, value1, nullRowPutValue1);
+          Assert.fail();
+        } catch (Exception e) {}
+      } else {
+        System.out.println(compareOp);
+        assertFalse(table.checkAndPut(nullRow, FAMILY, QUALIFIER, compareOp, value1, nullRowPutValue1));
+      }
+    }
  }
 
   @Test
