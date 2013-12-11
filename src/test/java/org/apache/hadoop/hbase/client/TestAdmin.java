@@ -283,6 +283,37 @@ public class TestAdmin {
   }
 
   @Test
+  public void testTruncateTable() throws IOException {
+    final byte[] row = Bytes.toBytes("row");
+    final byte[] qualifier = Bytes.toBytes("qualifier");
+    final byte[] value = Bytes.toBytes("value");
+    final byte[] table = Bytes.toBytes("testTruncateTable");
+    HTable ht = TEST_UTIL.createTable(table, HConstants.CATALOG_FAMILY);
+    Put put = new Put(row);
+    put.add(HConstants.CATALOG_FAMILY, qualifier, value);
+    ht.put(put);
+    Get get = new Get(row);
+    get.addColumn(HConstants.CATALOG_FAMILY, qualifier);
+    Result result = ht.get(get);
+    assertFalse(result.isEmpty());
+    
+    this.admin.disableTable(table);
+    this.admin.deleteTable(table, true);
+    ht = TEST_UTIL.createTable(table, HConstants.CATALOG_FAMILY);
+    
+    assertTrue("Table must be enabled after truncated.", TEST_UTIL
+        .getHBaseCluster().getMaster().getAssignmentManager().getZKTable()
+        .isEnabledTable(Bytes.toString(table)));
+
+    // Test that truncated table is empty
+    get = new Get(row);
+    get.addColumn(HConstants.CATALOG_FAMILY, qualifier);
+    result = ht.get(get);
+    assertTrue(result.isEmpty());
+    ht.close();
+  }
+  
+  @Test
   public void testDisableAndEnableTables() throws IOException {
     final byte [] row = Bytes.toBytes("row");
     final byte [] qualifier = Bytes.toBytes("qualifier");

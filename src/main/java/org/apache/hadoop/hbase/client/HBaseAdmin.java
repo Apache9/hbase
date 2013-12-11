@@ -588,12 +588,109 @@ public class HBaseAdmin implements Abortable, Closeable {
    * @throws IOException if a remote or network exception occurs
    */
   public void deleteTable(final byte [] tableName) throws IOException {
+    // TODO: To make old deleteTable api is not broken, codes here are duplicated
+    // with deleteTable with peserverAcl option. We remove them after all clients 
+    // are upgarded.
     isMasterRunning();
     HTableDescriptor.isLegalTableName(tableName);
     HRegionLocation firstMetaServer = getFirstMetaServerForTable(tableName);
     boolean tableExists = true;
     try {
       getMaster().deleteTable(tableName);
+    } catch (RemoteException e) {
+      throw RemoteExceptionHandler.decodeRemoteException(e);
+    }
+    // Wait until all regions deleted
+    HRegionInterface server =
+      connection.getHRegionConnection(firstMetaServer.getHostname(), firstMetaServer.getPort());
+    for (int tries = 0; tries < (this.numRetries * this.retryLongerMultiplier); tries++) {
+      long scannerId = -1L;
+      try {
+
+        Scan scan = MetaReader.getScanForTableName(tableName);
+        scan.addColumn(HConstants.CATALOG_FAMILY,
+            HConstants.REGIONINFO_QUALIFIER);
+        scannerId = server.openScanner(
+          firstMetaServer.getRegionInfo().getRegionName(), scan);
+        // Get a batch at a time.
+        Result values = server.next(scannerId);
+
+        // let us wait until .META. table is updated and
+        // HMaster removes the table from its HTableDescriptors
+        if (values == null) {
+          tableExists = false;
+          HTableDescriptor[] htds = getMaster().getHTableDescriptors();
+          if (htds != null && htds.length > 0) {
+            for (HTableDescriptor htd: htds) {
+              if (Bytes.equals(tableName, htd.getName())) {
+                tableExists = true;
+                break;
+              }
+            }
+          }
+          if (!tableExists) {
+            break;
+          }
+        }
+      } catch (IOException ex) {
+        if(tries == numRetries - 1) {           // no more tries left
+          if (ex instanceof RemoteException) {
+            ex = RemoteExceptionHandler.decodeRemoteException((RemoteException) ex);
+          }
+          throw ex;
+        }
+      } finally {
+        if (scannerId != -1L) {
+          try {
+            server.close(scannerId);
+          } catch (Exception ex) {
+            LOG.warn(ex);
+          }
+        }
+      }
+      try {
+        Thread.sleep(getPauseTime(tries));
+      } catch (InterruptedException e) {
+        // continue
+      }
+    }
+    
+    if (tableExists) {
+      throw new IOException("Retries exhausted, it took too long to wait"+
+        " for the table " + Bytes.toString(tableName) + " to be deleted.");
+    }
+    // Delete cached information to prevent clients from using old locations
+    this.connection.clearRegionCache(tableName);
+    LOG.info("Deleted " + Bytes.toString(tableName));
+  }
+  
+  /**
+   * Deletes a table with a option if preserve acl.
+   * Synchronous operation.
+   *
+   * @param tableName name of table to delete
+   * @throws IOException if a remote or network exception occurs
+   */
+  public void deleteTable(final String tableName, boolean preserveACL)
+      throws IOException {
+    deleteTable(Bytes.toBytes(tableName), preserveACL);
+  }
+  
+  /**
+   * Deletes a table  with a option if preserve acl.
+   * Synchronous operation.
+   *
+   * @param tableName name of table to delete
+   * @throws IOException if a remote or network exception occurs
+   */
+  public void deleteTable(final byte[] tableName, boolean preserveACL)
+      throws IOException {
+    isMasterRunning();
+    HTableDescriptor.isLegalTableName(tableName);
+    HRegionLocation firstMetaServer = getFirstMetaServerForTable(tableName);
+    boolean tableExists = true;
+    try {
+      getMaster().deleteTable(tableName, preserveACL);
     } catch (RemoteException e) {
       throw RemoteExceptionHandler.decodeRemoteException(e);
     }

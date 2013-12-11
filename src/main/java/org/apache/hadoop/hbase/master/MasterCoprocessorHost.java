@@ -125,13 +125,13 @@ public class MasterCoprocessorHost
     }
   }
 
-  void preDeleteTable(byte[] tableName) throws IOException {
+  void preDeleteTable(byte[] tableName, boolean preserveACL) throws IOException {
     ObserverContext<MasterCoprocessorEnvironment> ctx = null;
     for (MasterEnvironment env: coprocessors) {
       if (env.getInstance() instanceof MasterObserver) {
         ctx = ObserverContext.createAndPrepare(env, ctx);
         try {
-          ((MasterObserver)env.getInstance()).preDeleteTable(ctx, tableName);
+          ((MasterObserver)env.getInstance()).preDeleteTable(ctx, tableName, preserveACL);
         } catch (Throwable e) {
           handleCoprocessorThrowable(env, e);
         }
@@ -142,13 +142,13 @@ public class MasterCoprocessorHost
     }
   }
 
-  void postDeleteTable(byte[] tableName) throws IOException {
+  void postDeleteTable(byte[] tableName, boolean preserveACL) throws IOException {
     ObserverContext<MasterCoprocessorEnvironment> ctx = null;
     for (MasterEnvironment env: coprocessors) {
       if (env.getInstance() instanceof MasterObserver) {
         ctx = ObserverContext.createAndPrepare(env, ctx);
         try {
-          ((MasterObserver)env.getInstance()).postDeleteTable(ctx, tableName);
+          ((MasterObserver)env.getInstance()).postDeleteTable(ctx, tableName, preserveACL);
         } catch (Throwable e) {
           handleCoprocessorThrowable(env, e);
         }

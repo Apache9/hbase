@@ -62,7 +62,7 @@ public interface MasterObserver extends Coprocessor {
    * @param tableName the name of the table
    */
   void preDeleteTable(final ObserverContext<MasterCoprocessorEnvironment> ctx,
-      byte[] tableName) throws IOException;
+      byte[] tableName, boolean preserveACL) throws IOException;
 
   /**
    * Called after the deleteTable operation has been requested.
@@ -70,7 +70,7 @@ public interface MasterObserver extends Coprocessor {
    * @param tableName the name of the table
    */
   void postDeleteTable(final ObserverContext<MasterCoprocessorEnvironment> ctx,
-      byte[] tableName) throws IOException;
+      byte[] tableName, boolean preserveACL) throws IOException;
 
   /**
    * Called prior to modifying a table's properties.

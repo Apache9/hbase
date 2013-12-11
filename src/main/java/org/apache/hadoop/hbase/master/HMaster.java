@@ -1358,13 +1358,18 @@ Server {
 
   @Override
   public void deleteTable(final byte [] tableName) throws IOException {
+    deleteTable(tableName, false);
+  }
+  
+  @Override
+  public void deleteTable(final byte [] tableName, boolean preserveACL) throws IOException {
     checkInitialized();
     if (cpHost != null) {
-      cpHost.preDeleteTable(tableName);
+      cpHost.preDeleteTable(tableName, preserveACL);
     }
     this.executorService.submit(new DeleteTableHandler(tableName, this, this));
     if (cpHost != null) {
-      cpHost.postDeleteTable(tableName);
+      cpHost.postDeleteTable(tableName, preserveACL);
     }
   }
 

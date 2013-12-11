@@ -84,6 +84,13 @@ public interface HMasterInterface extends VersionedProtocol {
    * @throws IOException e
    */
   public void deleteTable(final byte [] tableName) throws IOException;
+  
+  /**
+   * Deletes a table
+   * @param tableName table to delete
+   * @throws IOException e
+   */
+  public void deleteTable(final byte [] tableName, boolean preserveACL) throws IOException;
 
   /**
    * Used by the client to get the number of regions that have received the

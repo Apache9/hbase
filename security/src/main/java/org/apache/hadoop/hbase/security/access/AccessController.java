@@ -586,7 +586,7 @@ public class AccessController extends BaseRegionObserver
   @Override
   public void preCreateTable(ObserverContext<MasterCoprocessorEnvironment> c,
       HTableDescriptor desc, HRegionInfo[] regions) throws IOException {
-    requirePermission("createTable", Permission.Action.CREATE);
+    requirePermission("createTable", desc.getName(), null, null, Action.ADMIN, Action.CREATE);
   }
 
   @Override
@@ -603,15 +603,18 @@ public class AccessController extends BaseRegionObserver
   }
 
   @Override
-  public void preDeleteTable(ObserverContext<MasterCoprocessorEnvironment> c, byte[] tableName)
-      throws IOException {
+  public void preDeleteTable(ObserverContext<MasterCoprocessorEnvironment> c, byte[] tableName, 
+      boolean preserveACL) throws IOException {
    requirePermission("deleteTable", tableName, null, null, Action.ADMIN, Action.CREATE);
   }
 
   @Override
   public void postDeleteTable(ObserverContext<MasterCoprocessorEnvironment> c,
-      byte[] tableName) throws IOException {
-    AccessControlLists.removeTablePermissions(c.getEnvironment().getConfiguration(), tableName);
+      byte[] tableName, boolean preserveACL) throws IOException {
+    if (!preserveACL) {
+      AccessControlLists.removeTablePermissions(c.getEnvironment()
+          .getConfiguration(), tableName);
+    }
   }
 
   @Override

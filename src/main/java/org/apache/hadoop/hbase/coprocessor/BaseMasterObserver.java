@@ -44,12 +44,12 @@ public class BaseMasterObserver implements MasterObserver {
 
   @Override
   public void preDeleteTable(ObserverContext<MasterCoprocessorEnvironment> ctx,
-      byte[] tableName) throws IOException {
+      byte[] tableName, boolean preserveACL) throws IOException {
   }
 
   @Override
   public void postDeleteTable(ObserverContext<MasterCoprocessorEnvironment> ctx,
-      byte[] tableName) throws IOException {
+      byte[] tableName, boolean preserveACL) throws IOException {
   }
 
   @Override

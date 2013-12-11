@@ -171,7 +171,7 @@ public class TestMasterObserver {
 
     @Override
     public void preDeleteTable(ObserverContext<MasterCoprocessorEnvironment> env,
-        byte[] tableName) throws IOException {
+        byte[] tableName, boolean preserveACL) throws IOException {
       if (bypass) {
         env.bypass();
       }
@@ -180,7 +180,7 @@ public class TestMasterObserver {
 
     @Override
     public void postDeleteTable(ObserverContext<MasterCoprocessorEnvironment> env,
-        byte[] tableName) throws IOException {
+        byte[] tableName, boolean preserveACL) throws IOException {
       postDeleteTableCalled = true;
     }
 

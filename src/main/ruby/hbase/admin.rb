@@ -158,8 +158,15 @@ module Hbase
     def drop(table_name)
       tableExists(table_name)
       raise ArgumentError, "Table #{table_name} is enabled. Disable it first.'" if enabled?(table_name)
-
+      
       @admin.deleteTable(table_name)
+    end
+    
+    def drop_perserve_acl(table_name, preserveACL)
+      tableExists(table_name)
+      raise ArgumentError, "Table #{table_name} is enabled. Disable it first.'" if enabled?(table_name)
+
+      @admin.deleteTable(table_name, preserveACL)
     end
 
     #----------------------------------------------------------------------------------------------
@@ -320,6 +327,24 @@ module Hbase
       @admin.createTable(table_description)
     end
 
+    #----------------------------------------------------------------------------------------------
+    # Truncates table while maintaing region boundaries (deletes all records by recreating the table)
+    def truncate_preserve(table_name, conf = @conf)
+      h_table = org.apache.hadoop.hbase.client.HTable.new(conf, table_name)
+      splits = h_table.getRegionLocations().keys().map{|i| Bytes.toString(i.getStartKey)}.delete_if{|k| k == ""}.to_java :String
+      splits = org.apache.hadoop.hbase.util.Bytes.toByteArrays(splits)
+      table_description = h_table.getTableDescriptor()
+      yield 'Disabling table...' if block_given?
+      disable(table_name)
+
+      yield 'Dropping table and keep acls...' if block_given?
+      drop_perserve_acl(table_name, true)
+
+      yield 'Creating table with region boundaries...' if block_given?
+      @admin.createTable(table_description, splits)
+    end
+
+    #----------------------------------------------------------------------------------------------
     # Check the status of alter command (number of regions reopened)
     def alter_status(table_name)
       # Table name should be a string

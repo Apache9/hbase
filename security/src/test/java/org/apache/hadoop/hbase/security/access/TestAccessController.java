@@ -38,6 +38,7 @@ import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.hbase.Coprocessor;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.HColumnDescriptor;
+import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HServerAddress;
 import org.apache.hadoop.hbase.HTableDescriptor;
@@ -100,6 +101,8 @@ public class TestAccessController {
   private static User SUPERUSER;
   // user granted with all global permission
   private static User USER_ADMIN;
+  // user with CA permissions
+  private static User USER_A;
   // user with rw permissions
   private static User USER_RW;
   // user with rw permissions on table.
@@ -150,6 +153,7 @@ public class TestAccessController {
     // create a set of test users
     SUPERUSER = User.createUserForTesting(conf, "admin", new String[] { "supergroup" });
     USER_ADMIN = User.createUserForTesting(conf, "admin2", new String[0]);
+    USER_A = User.createUserForTesting(conf, "auser", new String[0]);
     USER_RW = User.createUserForTesting(conf, "rwuser", new String[0]);
     USER_RO = User.createUserForTesting(conf, "rouser", new String[0]);
     USER_RW_ON_TABLE = User.createUserForTesting(conf, "rwuser_1", new String[0]);
@@ -175,9 +179,12 @@ public class TestAccessController {
       AccessControllerProtocol protocol = acl.coprocessorProxy(AccessControllerProtocol.class,
         TEST_TABLE);
 
-     protocol.grant(new UserPermission(Bytes.toBytes(USER_ADMIN.getShortName()),
-        Permission.Action.ADMIN, Permission.Action.CREATE, Permission.Action.READ,
-        Permission.Action.WRITE));
+      protocol.grant(new UserPermission(Bytes.toBytes(USER_ADMIN.getShortName()),
+         Permission.Action.ADMIN, Permission.Action.CREATE, Permission.Action.READ,
+         Permission.Action.WRITE));
+     
+      protocol.grant(new UserPermission(Bytes.toBytes(USER_A.getShortName()), TEST_TABLE,
+         null, Permission.Action.ADMIN));
 
       protocol.grant(new UserPermission(Bytes.toBytes(USER_RW.getShortName()), TEST_TABLE,
         TEST_FAMILY, Permission.Action.READ, Permission.Action.WRITE));
@@ -305,7 +312,7 @@ public class TestAccessController {
     PrivilegedExceptionAction deleteTable = new PrivilegedExceptionAction() {
       public Object run() throws Exception {
         ACCESS_CONTROLLER
-            .preDeleteTable(ObserverContext.createAndPrepare(CP_ENV, null), TEST_TABLE);
+            .preDeleteTable(ObserverContext.createAndPrepare(CP_ENV, null), TEST_TABLE, false);
         return null;
       }
     };
@@ -313,7 +320,87 @@ public class TestAccessController {
     verifyAllowed(deleteTable, SUPERUSER, USER_ADMIN, USER_CREATE, USER_OWNER);
     verifyDenied(deleteTable, USER_RW, USER_RO, USER_NONE);
   }
+  
+  @Test
+  public void testTableTruncate() throws Exception {
+    final byte[] row = Bytes.toBytes("row");
+    final byte[] qualifier = Bytes.toBytes("qualifier");
+    final byte[] value = Bytes.toBytes("value");
+    
+    PrivilegedExceptionAction putAction = new PrivilegedExceptionAction() {
+      public Object run() throws Exception {
+        HTable ht = new HTable(TEST_UTIL.getConfiguration(), TEST_TABLE);
+        Put put = new Put(row);
+        put.add(TEST_FAMILY, qualifier, value);
+        ht.put(put);
+        return null;
+      }
+    };
+    verifyWrite(putAction);
+    
+    // get action
+    PrivilegedExceptionAction getAction = new PrivilegedExceptionAction() {
+      public Object run() throws Exception {
+        Get get = new Get(row);
+        get.addColumn(TEST_FAMILY, qualifier);
+        HTable t = new HTable(conf, TEST_TABLE);
+        Result result = t.get(get);
+        assertFalse(result.isEmpty());
+        return null;
+      }
+    };
+    verifyRead(getAction);
+    
+    // disable table
+    PrivilegedExceptionAction disableTable = new PrivilegedExceptionAction() {
+      public Object run() throws Exception {
+        HBaseAdmin admin = TEST_UTIL.getHBaseAdmin();
+        admin.disableTable(TEST_TABLE);
+        return null;
+      }
+    };
+    verifyAllowed(disableTable, USER_A);
 
+    // delete table and keep acls
+    PrivilegedExceptionAction deleteTable = new PrivilegedExceptionAction() {
+      public Object run() throws Exception {
+        HBaseAdmin admin = TEST_UTIL.getHBaseAdmin();
+        admin.deleteTable(TEST_TABLE, true);
+        return null;
+      }
+    };
+    verifyAllowed(deleteTable, USER_A);
+
+    // create table with no-admin user
+    PrivilegedExceptionAction createTable = new PrivilegedExceptionAction() {
+      public Object run() throws Exception {
+        HBaseAdmin admin = TEST_UTIL.getHBaseAdmin();
+        HTableDescriptor htd = new HTableDescriptor(TEST_TABLE);
+        htd.addFamily(new HColumnDescriptor(TEST_FAMILY));
+        htd.setOwner(USER_OWNER);
+        admin.createTable(htd);
+        return null;
+      }
+    };
+    verifyAllowed(createTable, USER_A);
+    
+    // get action, table is empty after truncate
+    PrivilegedExceptionAction reGetAction = new PrivilegedExceptionAction() {
+      public Object run() throws Exception {
+        Get get = new Get(row);
+        get.addColumn(TEST_FAMILY, qualifier);
+        HTable t = new HTable(conf, TEST_TABLE);
+        Result result = t.get(get);
+        assertTrue(result.isEmpty());
+        return null;
+      }
+    };
+    verifyRead(reGetAction);
+
+    // user can put after table truncate 
+    verifyWrite(putAction);
+  }
+  
   @Test
   public void testAddColumn() throws Exception {
     final HColumnDescriptor hcd = new HColumnDescriptor("fam_new");
