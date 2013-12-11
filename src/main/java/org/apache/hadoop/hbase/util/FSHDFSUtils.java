@@ -88,13 +88,13 @@ public class FSHDFSUtils extends FSUtils{
     // Default is 15 minutes. It's huge, but the idea is that if we have a major issue, HDFS
     // usually needs 10 minutes before marking the nodes as dead. So we're putting ourselves
     // beyond that limit 'to be safe'.
-    long recoveryTimeout = conf.getInt("hbase.lease.recovery.timeout", 900000) + startWaiting;
+    long recoveryTimeout = conf.getLong("hbase.lease.recovery.timeout", 900000) + startWaiting;
     // This setting should be what the cluster dfs heartbeat is set to.
-    long firstPause = conf.getInt("hbase.lease.recovery.first.pause", 3000);
+    long firstPause = conf.getLong("hbase.lease.recovery.first.pause", 3000);
     // This should be set to how long it'll take for us to timeout against primary datanode if it
     // is dead.  We set it to 61 seconds, 1 second than the default READ_TIMEOUT in HDFS, the
     // default value for DFS_CLIENT_SOCKET_TIMEOUT_KEY.
-    long subsequentPause = conf.getInt("hbase.lease.recovery.dfs.timeout", 61 * 1000);
+    long subsequentPause = conf.getLong("hbase.lease.recovery.dfs.timeout", 61 * 1000);
 
     Method isFileClosedMeth = null;
     // whether we need to look for isFileClosed method
@@ -143,9 +143,11 @@ public class FSHDFSUtils extends FSUtils{
 
   boolean checkIfTimedout(final Configuration conf, final long recoveryTimeout,
       final int nbAttempt, final Path p, final long startWaiting) {
+    this.recoverLeaseTime = Math.max(recoverLeaseTime, EnvironmentEdgeManager.currentTimeMillis()
+        - startWaiting);
     if (recoveryTimeout < EnvironmentEdgeManager.currentTimeMillis()) {
       LOG.warn("Cannot recoverLease after trying for " +
-        conf.getInt("hbase.lease.recovery.timeout", 900000) +
+        conf.getLong("hbase.lease.recovery.timeout", 900000) +
         "ms (hbase.lease.recovery.timeout); continuing, but may be DATALOSS!!!; " +
         getLogMessageDetail(nbAttempt, p, startWaiting));
       return true;

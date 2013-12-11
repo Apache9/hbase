@@ -33,6 +33,7 @@ import org.apache.hadoop.hbase.metrics.PersistentMetricsTimeVaryingRate;
 import org.apache.hadoop.hbase.metrics.histogram.MetricsHistogram;
 import com.yammer.metrics.stats.Snapshot;
 import org.apache.hadoop.hbase.regionserver.wal.HLog;
+import org.apache.hadoop.hbase.util.FSUtils;
 import org.apache.hadoop.hbase.util.Pair;
 import org.apache.hadoop.hbase.util.Strings;
 import org.apache.hadoop.metrics.ContextFactory;
@@ -224,6 +225,12 @@ public class RegionServerMetrics implements Updater {
     new MetricsIntValue("flushQueueSize", registry);
 
   /**
+   * time of the fs recover lease
+   */
+  public final MetricsLongValue fsRecoverLeaseTime = 
+      new MetricsLongValue("fsRecoverLeaseTime", registry);
+  
+  /**
    * filesystem sequential read latency distribution
    */
   public final MetricsHistogram fsReadLatencyHistogram = 
@@ -412,6 +419,7 @@ public class RegionServerMetrics implements Updater {
       // }
       // Means you can't pass a numOps of zero or get a ArithmeticException / by zero.
       // HLog metrics
+      this.fsRecoverLeaseTime.set(FSUtils.getMaxRecoverLeaseTime());
       addHLogMetric(HLog.getWriteTime(), this.fsWriteLatency);
       addHLogMetric(HLog.getWriteSize(), this.fsWriteSize);
       addHLogMetric(HLog.getSyncTime(), this.fsSyncLatency);
@@ -444,6 +452,7 @@ public class RegionServerMetrics implements Updater {
             
 
       // push the result
+      this.fsRecoverLeaseTime.pushMetric(this.metricsRecord);
       this.fsPreadLatency.pushMetric(this.metricsRecord);
       this.fsReadLatency.pushMetric(this.metricsRecord);
       this.fsWriteLatency.pushMetric(this.metricsRecord);

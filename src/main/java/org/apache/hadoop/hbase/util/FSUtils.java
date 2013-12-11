@@ -69,6 +69,8 @@ public abstract class FSUtils {
   /** Full access permissions (starting point for a umask) */
   private static final String FULL_RWX_PERMISSIONS = "777";
 
+  protected static long recoverLeaseTime = 0;
+  
   protected FSUtils() {
     super();
   }
@@ -85,7 +87,7 @@ public abstract class FSUtils {
     FSUtils fsUtils = (FSUtils)ReflectionUtils.newInstance(fsUtilsClass, conf);
     return fsUtils;
   }
-
+  
   /**
    * Delete if exists.
    * @param fs filesystem object
@@ -1383,5 +1385,15 @@ public abstract class FSUtils {
         LOG.debug(prefix + file.getPath().getName());
       }
     }
+  }
+
+  /**
+   * Get the maximum recover lease time
+   * @return
+   */
+  public static long getMaxRecoverLeaseTime() {
+    long maxRecoverLeaseTime = recoverLeaseTime;
+    recoverLeaseTime = 0;
+    return maxRecoverLeaseTime;
   }
 }
