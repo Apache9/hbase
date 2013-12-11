@@ -67,6 +67,7 @@ import org.apache.hadoop.hbase.DoNotRetryIOException;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HConstants.OperationStatusCode;
+import org.apache.hadoop.hbase.DroppedSnapshotException;
 import org.apache.hadoop.hbase.HDFSBlocksDistribution;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HServerAddress;
@@ -2467,7 +2468,16 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
       throw new IllegalArgumentException("No region : " + new String(regionName)
       + " available");
     }
-    boolean needsCompaction = region.flushcache();
+    boolean needsCompaction = false;
+    try {
+    	needsCompaction = region.flushcache();
+    } catch (DroppedSnapshotException ex) {
+      abort("Flush memstore failed. Hence aborting RS.", ex);
+      NotServingRegionException nsre = new NotServingRegionException(
+          "Aborting due to flush memstore failed");
+      nsre.initCause(ex);
+      throw nsre;
+    }
     if (needsCompaction) {
       this.compactSplitThread.requestCompaction(region, "Compaction through user triggered flush");
     }
@@ -2483,12 +2493,21 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
        throw new IllegalArgumentException("No region : " + new String(regionName)
        + " available");
      }
-     if (region.getLastFlushTime() < ifOlderThanTS) {
-      boolean needsCompaction = region.flushcache();
-      if (needsCompaction) {
-        this.compactSplitThread
-            .requestCompaction(region, "Compaction through user triggered flush");
-      }
+		 if (region.getLastFlushTime() < ifOlderThanTS) {
+       boolean needsCompaction = false;
+       try {
+         needsCompaction = region.flushcache();
+       } catch (DroppedSnapshotException ex) {
+         abort("Flush memstore failed. Hence aborting RS.", ex);
+         NotServingRegionException nsre = new NotServingRegionException(
+ 		       "Aborting due to flush memstore failed");
+         nsre.initCause(ex);
+         throw nsre;
+       }
+       if (needsCompaction) {
+         this.compactSplitThread
+ 	         .requestCompaction(region, "Compaction through user triggered flush");
+       }
     }
    }
 
@@ -3283,7 +3302,16 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
     checkOpen();
     LOG.info("Flushing " + regionInfo.getRegionNameAsString());
     HRegion region = getRegion(regionInfo.getRegionName());
-    boolean needsCompaction = region.flushcache();
+    boolean needsCompaction = false;
+    try {
+    	needsCompaction = region.flushcache();
+    } catch (DroppedSnapshotException ex) {
+      abort("Flush memstore failed. Hence aborting RS.", ex);
+      NotServingRegionException nsre = new NotServingRegionException(
+          "Aborting due to flush memstore failed");
+      nsre.initCause(ex);
+      throw nsre;
+    }
     if (needsCompaction) {
       this.compactSplitThread.requestCompaction(region, "Compaction through user triggered flush");
     }
@@ -3301,7 +3329,15 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
       throws NotServingRegionException, IOException {
     checkOpen();
     HRegion region = getRegion(regionInfo.getRegionName());
-    region.flushcache();
+    try {
+      region.flushcache();
+    } catch (DroppedSnapshotException ex) {
+      abort("Flush memstore failed. Hence aborting RS.", ex);
+      NotServingRegionException nsre = new NotServingRegionException(
+          "Aborting due to flush memstore failed");
+      nsre.initCause(ex);
+      throw nsre;
+    }
     region.forceSplit(splitPoint);
     compactSplitThread.requestSplit(region, region.checkSplit());
   }

@@ -50,6 +50,7 @@ import org.apache.hadoop.hbase.MediumTests;
 import org.apache.hadoop.hbase.MiniHBaseCluster;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.ZooKeeperConnectionException;
+import org.apache.hadoop.hbase.NotServingRegionException;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.HTable;
@@ -547,7 +548,7 @@ public class TestWALReplay {
   /**
    * Test that we could recover the data correctly after aborting flush. In the
    * test, first we abort flush after writing some data, then writing more data
-   * and flush again, at last verify the data.
+   * and flush again, at last verify the flush result.
    * @throws IOException
    */
   @Test
@@ -618,39 +619,19 @@ public class TestWALReplay {
       Mockito.doReturn(true).when(rsServices).isAborted();
     }
     // writing more data
-    int moreRow = 10;
-    for (int i = writtenRowCount; i < writtenRowCount + moreRow; i++) {
-      Put put = new Put(Bytes.toBytes(tableNameStr + Integer.toString(i)));
-      put.add(families.get(i % families.size()).getName(), Bytes.toBytes("q"),
-          Bytes.toBytes("val"));
-      region.put(put);
-    }
-    writtenRowCount += moreRow;
-    // call flush again
-    throwExceptionWhenFlushing.set(false);
     try {
-      region.flushcache();
-    } catch (IOException t) {
-      LOG.info("Expected exception when flushing region because server is stopped,"
-          + t.getMessage());
+      int moreRow = 10;
+      for (int i = writtenRowCount; i < writtenRowCount + moreRow; i++) {
+        Put put = new Put(Bytes.toBytes(tableNameStr + Integer.toString(i)));
+        put.add(families.get(i % families.size()).getName(), Bytes.toBytes("q"),
+          Bytes.toBytes("val"));
+        region.put(put);
+        fail("No exception thrown.");
+      }
+    } catch (Exception ex) {
+      assertTrue(ex instanceof NotServingRegionException);
+      assertTrue(ex.getMessage().contains("is closing"));
     }
-
-    region.close(true);
-    wal.close();
-
-    // Let us try to split and recover
-    runWALSplit(this.conf);
-    HLog wal2 = createWAL(this.conf);
-    Mockito.doReturn(false).when(rsServices).isAborted();
-    HRegion region2 = new HRegion(basedir, wal2, this.fs, this.conf, hri, htd,
-        rsServices);
-    long seqid2 = region2.initialize();
-    // HRegionServer usually does this. It knows the largest seqid across all
-    // regions.
-    wal2.setSequenceNumber(seqid2);
-
-    scanner = region2.getScanner(new Scan());
-    assertEquals(writtenRowCount, getScannedCount(scanner));
   }
 
   private int getScannedCount(RegionScanner scanner) throws IOException {

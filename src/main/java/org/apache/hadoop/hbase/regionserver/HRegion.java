@@ -1437,7 +1437,7 @@ public class HRegion implements HeapSize { // , Writable{
         dataInMemoryWithoutWAL.set(0);
       }
       synchronized (writestate) {
-        if (!writestate.flushing && writestate.writesEnabled) {
+        if (!writestate.flushing && writestate.writesEnabled && !this.closing.get()) {
           this.writestate.flushing = true;
         } else {
           if (LOG.isDebugEnabled()) {
@@ -1670,6 +1670,8 @@ public class HRegion implements HeapSize { // , Writable{
           Bytes.toStringBinary(getRegionName()));
       dse.initCause(t);
       status.abort("Flush failed: " + StringUtils.stringifyException(t));
+      // we'll abort this server soon, let's set closing flag to avoid potential data lost issue
+      this.closing.set(true);
       throw dse;
     }
 
