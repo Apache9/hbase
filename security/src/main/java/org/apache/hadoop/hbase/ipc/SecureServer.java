@@ -407,7 +407,7 @@ public abstract class SecureServer extends HBaseServer {
           if (count < 0 || rpcHeaderBuffer.remaining() > 0) {
             return count;
           }
-          int version = rpcHeaderBuffer.get(0);
+          byte version = rpcHeaderBuffer.get(0);
           byte[] method = new byte[] {rpcHeaderBuffer.get(1)};
           authMethod = AuthMethod.read(new DataInputStream(
               new ByteArrayInputStream(method)));
