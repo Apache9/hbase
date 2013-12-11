@@ -244,6 +244,10 @@ public class HFile {
     return readTimeNano.getAndSet(0) / 1000000;
   }
 
+  public static final long getReadTimeNs() {
+    return readTimeNano.getAndSet(0);
+  }
+
   // number of positional reads
   public static final int getPreadOps() {
     return preadOps.getAndSet(0);
@@ -251,6 +255,10 @@ public class HFile {
 
   public static final long getPreadTimeMs() {
     return preadTimeNano.getAndSet(0) / 1000000;
+  }
+
+  public static final long getPreadTimeNs() {
+    return preadTimeNano.getAndSet(0);
   }
 
   public static final int getWriteOps() {

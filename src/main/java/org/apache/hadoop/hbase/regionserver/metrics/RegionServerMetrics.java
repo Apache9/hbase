@@ -60,9 +60,12 @@ public class RegionServerMetrics implements Updater {
   @SuppressWarnings({"FieldCanBeLocal"})
   private final Log LOG = LogFactory.getLog(this.getClass());
   private final MetricsRecord metricsRecord;
-  private long lastUpdate = System.currentTimeMillis();
+  private long lastUpdateMs = System.currentTimeMillis();
   private long lastExtUpdate = System.currentTimeMillis();
   private long extendedPeriod = 0;
+  // The histogram metrics are updated every histogramMetricWindow seconds
+  private final long histogramMetricWindowInSecond = 60;
+  private long lastHistUpdateMs = System.currentTimeMillis();
   private static final int MB = 1024*1024;
   private MetricsRegistry registry = new MetricsRegistry();
   private final RegionServerStatistics statistics;
@@ -367,12 +370,12 @@ public class RegionServerMetrics implements Updater {
    */
   public void doUpdates(MetricsContext caller) {
     synchronized (this) {
-      this.lastUpdate = System.currentTimeMillis();
+      this.lastUpdateMs = System.currentTimeMillis();
 
       // has the extended period for long-living stats elapsed?
       if (this.extendedPeriod > 0 &&
-          this.lastUpdate - this.lastExtUpdate >= this.extendedPeriod) {
-        this.lastExtUpdate = this.lastUpdate;
+          this.lastUpdateMs - this.lastExtUpdate >= this.extendedPeriod) {
+        this.lastExtUpdate = this.lastUpdateMs;
         this.compactionTime.resetMinMaxAvg();
         this.compactionSize.resetMinMaxAvg();
         this.flushTime.resetMinMaxAvg();
@@ -427,10 +430,10 @@ public class RegionServerMetrics implements Updater {
       this.slowHLogAppendCount.set(HLog.getSlowAppendCount());
       // HFile metrics, sequential reads
       int ops = HFile.getReadOps(); 
-      if (ops != 0) this.fsReadLatency.inc(ops, HFile.getReadTimeMs());
+      if (ops != 0) this.fsReadLatency.inc(ops, HFile.getReadTimeNs());
       // HFile metrics, positional reads
       ops = HFile.getPreadOps(); 
-      if (ops != 0) this.fsPreadLatency.inc(ops, HFile.getPreadTimeMs());
+      if (ops != 0) this.fsPreadLatency.inc(ops, HFile.getPreadTimeNs());
       this.checksumFailuresCount.set(HFile.getChecksumFailuresCount());
 
       /* NOTE: removed HFile write latency.  2 reasons:
@@ -473,9 +476,22 @@ public class RegionServerMetrics implements Updater {
       this.checksumFailuresCount.pushMetric(this.metricsRecord);
       this.updatesBlockedSeconds.pushMetric(this.metricsRecord);
       this.updatesBlockedSecondsHighWater.pushMetric(this.metricsRecord);
+
+      if (this.histogramMetricWindowInSecond > 0 &&
+          ((this.lastUpdateMs - this.lastHistUpdateMs)/1000 >= this.histogramMetricWindowInSecond)) {
+          this.lastHistUpdateMs = this.lastUpdateMs;
+          this.resetAllHistogramBasedMetrics();
+      }
     }
     this.metricsRecord.update();
   }
+
+  private void resetAllHistogramBasedMetrics() {
+    this.fsPreadLatencyHistogram.clear();
+    this.fsReadLatencyHistogram.clear();
+    this.fsWriteLatencyHistogram.clear();
+  }
+
 
   private void addHLogMetric(HLog.Metric logMetric,
       MetricsTimeVaryingRate hadoopMetric) {

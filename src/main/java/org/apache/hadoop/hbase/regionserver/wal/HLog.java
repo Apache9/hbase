@@ -30,6 +30,7 @@ import java.lang.reflect.Method;
 import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
@@ -39,6 +40,8 @@ import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.UUID;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -73,6 +76,8 @@ import org.apache.hadoop.hbase.util.Threads;
 import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.util.StringUtils;
+
+import com.google.common.collect.Lists;
 
 /**
  * HLog stores all the edits to the HStore.  Its the hbase write-ahead-log
@@ -135,6 +140,9 @@ public class HLog implements Syncable {
   public static final String RECOVERED_LOG_TMPFILE_SUFFIX = ".temp";
   
   private static final int DEFAULT_SLOW_SYNC_TIME = 100; // in ms
+
+  private static final BlockingQueue<Long> fsWriteLatenciesNanos = 
+      new ArrayBlockingQueue<Long>(1024 * 1024 / 8);
   
   private final FileSystem fs;
   private final Path dir;
@@ -155,7 +163,7 @@ public class HLog implements Syncable {
   private static Class<? extends Writer> logWriterClass;
   private static Class<? extends Reader> logReaderClass;
 
-  private final int slowSyncTime;
+  private final int slowSyncMs;
   
   private WALCoprocessorHost coprocessorHost;
 
@@ -440,7 +448,7 @@ public class HLog implements Syncable {
     this.closeErrorsTolerated = conf.getInt(
         "hbase.regionserver.logroll.errors.tolerated", 0);
     
-    this.slowSyncTime = conf.getInt("hbase.regionserver.hlog.slowsync",
+    this.slowSyncMs = conf.getInt("hbase.regionserver.hlog.slowsync",
       DEFAULT_SLOW_SYNC_TIME);
     LOG.info("HLog configuration: blocksize=" +
       StringUtils.byteDesc(this.blocksize) +
@@ -1342,7 +1350,7 @@ public class HLog implements Syncable {
     }
     try {
       long doneUpto;
-      long now = System.currentTimeMillis();
+      long startTimeNs = System.nanoTime();
       // First flush all the pending writes to HDFS. Then 
       // issue the sync to HDFS. If sync is successful, then update
       // syncedTillHere to indicate that transactions till this
@@ -1386,13 +1394,13 @@ public class HLog implements Syncable {
       }
       this.syncedTillHere = Math.max(this.syncedTillHere, doneUpto);
       
-      long sync = System.currentTimeMillis() - now;
-      syncTime.inc(sync);
+      long syncNs = System.nanoTime() - startTimeNs;
+      syncTime.inc(syncNs);
 
-      if (sync > this.slowSyncTime) {
+      if (syncNs/(1000 * 1000L) > this.slowSyncMs) {
         DatanodeInfo[] pipeline;
         pipeline = getPipeLine();
-        LOG.warn("Slow sync, cost: " + sync + " ms, pipeline: "
+        LOG.warn("Slow sync, cost: " + syncNs/(1000 * 1000L) + "ms, Pipiline: "
             + Arrays.toString(pipeline));
       }
       if (!this.logRollRunning) {
@@ -1539,27 +1547,27 @@ public class HLog implements Syncable {
       }
     }
     try {
-      long now = System.currentTimeMillis();
+      long startTimeNs = System.nanoTime();
       // coprocessor hook:
       if (!coprocessorHost.preWALWrite(info, logKey, logEdit)) {
         // write to our buffer for the Hlog file.
         logSyncer.append(new HLog.Entry(logKey, logEdit));
       }
-      long took = System.currentTimeMillis() - now;
+      long tookNs = System.nanoTime() - startTimeNs;
       coprocessorHost.postWALWrite(info, logKey, logEdit);
-      writeTime.inc(took);
+      writeTime.inc(tookNs);
+      offerWriteLatency(tookNs);
       long len = 0;
       for (KeyValue kv : logEdit.getKeyValues()) {
         len += kv.getLength();
       }
       writeSize.inc(len);
-      if (took > 1000) {
-        LOG.warn(String.format(
-          "%s took %d ms appending an edit to hlog; editcount=%d, len~=%s",
-          Thread.currentThread().getName(), took, this.numEntries.get(),
+      if (tookNs / (1000 * 1000L) > 1000) {
+        LOG.warn(String.format("%s took %d ms appending an edit to hlog; editcount=%d, len~=%s",
+          Thread.currentThread().getName(), tookNs / (1000 * 1000L), this.numEntries.get(),
           StringUtils.humanReadableInt(len)));
         slowHLogAppendCount.incrementAndGet();
-        slowHLogAppendTime.inc(took);
+        slowHLogAppendTime.inc(tookNs);
       }
     } catch (IOException e) {
       LOG.fatal("Could not append. Requesting close of hlog", e);
@@ -1969,6 +1977,18 @@ public class HLog implements Syncable {
   /** Provide access to currently deferred sequence num for tests */
   boolean hasDeferredEntries() {
     return lastDeferredTxid > syncedTillHere;
+  }
+
+  public static final Collection<Long> getWriteLatenciesNanos() {
+    final List<Long> latencies = 
+        Lists.newArrayListWithCapacity(fsWriteLatenciesNanos.size());
+    fsWriteLatenciesNanos.drainTo(latencies);
+    return latencies;
+  }
+
+  private static final void offerWriteLatency(long latencyNanos) {
+    // might be silently dropped, if the queue is full
+    fsWriteLatenciesNanos.offer(latencyNanos); 
   }
 
   /**
