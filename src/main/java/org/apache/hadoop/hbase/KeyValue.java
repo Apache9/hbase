@@ -173,6 +173,7 @@ public class KeyValue implements Writable, HeapSize {
     Put((byte)4),
 
     Delete((byte)8),
+    DeleteFamilyVersion((byte)10),
     DeleteColumn((byte)12),
     DeleteFamily((byte)14),
 
@@ -1095,6 +1096,13 @@ public class KeyValue implements Writable, HeapSize {
    */
   public boolean isDeleteFamily() {
     return getType() == Type.DeleteFamily.getCode();
+  }
+
+  /**
+   * @return True if this KV is a delete family type.
+   */
+  public boolean isDeleteFamilyVersion() {
+    return getType() == Type.DeleteFamilyVersion.getCode();
   }
 
   /**

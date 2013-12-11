@@ -1220,7 +1220,7 @@ public class StoreFile extends SchemaConfigured {
 
     private void appendDeleteFamilyBloomFilter(final KeyValue kv)
         throws IOException {
-      if (!kv.isDeleteFamily()) {
+      if (!kv.isDeleteFamily() && !kv.isDeleteFamilyVersion()) {
         return;
       }
 
