@@ -454,6 +454,7 @@ public class ReplicationSource extends Thread
         LOG.debug("Attempt to close connection failed", e);
       }
     }
+    metrics.stopReportMetrics();
     LOG.debug("Source exiting " + peerId);
   }
 
