@@ -28,6 +28,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.DoNotRetryIOException;
 import org.apache.hadoop.hbase.HConstants;
@@ -51,6 +53,7 @@ import org.apache.hadoop.ipc.RemoteException;
  * @param <T> the class that the ServerCallable handles
  */
 public abstract class ServerCallable<T> implements Callable<T> {
+  private static final Log LOG = LogFactory.getLog(ServerCallable.class);
   protected final HConnection connection;
   protected final byte [] tableName;
   protected final byte [] row;
@@ -83,9 +86,23 @@ public abstract class ServerCallable<T> implements Callable<T> {
    * @throws IOException e
    */
   public void connect(final boolean reload) throws IOException {
+    long startTime = System.currentTimeMillis();
+    // locate region will connect zk and has recursive looks up process
     this.location = connection.getRegionLocation(tableName, row, reload);
+    long callTime = System.currentTimeMillis() - startTime;
+    if (callTime - startTime > 100) {
+      LOG.warn("Slow locate region, reload=" + reload + ", tableName=" + Bytes.toString(tableName)
+          + ", time consume=" + callTime);
+    }
+    startTime = System.currentTimeMillis();
+    // get server proxy may need create socket connection to server
     this.server = connection.getHRegionConnection(location.getHostname(),
       location.getPort());
+    callTime = System.currentTimeMillis() - startTime;
+    if (callTime - startTime > 100) {
+      LOG.warn("Slow get server proxy, reload=" + reload + ", tableName=" + Bytes.toString(tableName)
+          + ", time consume=" + callTime);
+    }
   }
 
   /** @return the server name
@@ -203,7 +220,9 @@ public abstract class ServerCallable<T> implements Callable<T> {
         afterCall();
       }
       try {
-        Thread.sleep(expectedSleep);
+        long sleepTime = ConnectionUtils.getPauseTime(pause, tries);
+        LOG.info("Sleep for next retry, tries=" + tries + ", sleepTime=" + sleepTime);
+        Thread.sleep(sleepTime);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         throw new IOException("Giving up after tries=" + tries, e);

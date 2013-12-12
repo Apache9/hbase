@@ -83,30 +83,35 @@ public class SecureRpcEngine implements RpcEngine {
     private User ticket;
     private SecureClient client;
     final private int rpcTimeout;
+    private final int clientWarnIpcResponseTime;
 
     public Invoker(SecureClient client,
         Class<? extends VersionedProtocol> protocol,
-        InetSocketAddress address, User ticket, int rpcTimeout) {
+        InetSocketAddress address, User ticket, 
+        Configuration conf, int rpcTimeout) {
       this.protocol = protocol;
       this.address = address;
       this.ticket = ticket;
       this.client = client;
       this.rpcTimeout = rpcTimeout;
+      this.clientWarnIpcResponseTime = conf.getInt(WritableRpcEngine.CLIENT_WARN_IPC_RESPONSE_TIME,
+        WritableRpcEngine.DEFAULT_CLIENT_WARN_IPC_RESPONSE_TIME);
     }
 
     public Object invoke(Object proxy, Method method, Object[] args)
         throws Throwable {
       final boolean logDebug = LOG.isDebugEnabled();
-      long startTime = 0;
-      if (logDebug) {
-        startTime = System.currentTimeMillis();
-      }
+      long startTime = System.currentTimeMillis();
       HbaseObjectWritable value = (HbaseObjectWritable)
         client.call(new Invocation(method, protocol, args), address,
                     protocol, ticket, rpcTimeout);
+      long callTime = System.currentTimeMillis() - startTime;
       if (logDebug) {
-        long callTime = System.currentTimeMillis() - startTime;
         LOG.debug("Call: " + method.getName() + " " + callTime);
+      }
+      if (callTime > this.clientWarnIpcResponseTime) {
+        LOG.warn("Slow secure ipc call, MethodName=" + method.getName() + ", consume time="
+            + callTime);
       }
       return value.get();
     }
@@ -137,7 +142,7 @@ public class SecureRpcEngine implements RpcEngine {
         (T) Proxy.newProxyInstance(
             protocol.getClassLoader(), new Class[] { protocol },
             new Invoker(this.client, protocol, addr, User.getCurrent(),
-                HBaseRPC.getRpcTimeout(rpcTimeout)));
+                conf, HBaseRPC.getRpcTimeout(rpcTimeout)));
     /*
      * TODO: checking protocol version only needs to be done once when we setup a new
      * SecureClient.Connection.  Doing it every time we retrieve a proxy instance is resulting

@@ -140,6 +140,8 @@ public class HBaseAdmin implements Abortable, Closeable {
       }
 
       try {
+        long sleepTime = getPauseTime(tries);
+        LOG.info("Sleep for next retry to getMaster, sleepTime=" + sleepTime);
         Thread.sleep(getPauseTime(tries));
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();

@@ -501,6 +501,7 @@ public class HBaseClient {
 
       // otherwise back off and retry
       try {
+        LOG.info("Sleep in handleConnectionFailure for next try, sleepTime=" + failureSleep);
         Thread.sleep(failureSleep);
       } catch (InterruptedException ignored) {}
 
@@ -942,6 +943,7 @@ public class HBaseClient {
     // wait until all connections are closed
     while (!connections.isEmpty()) {
       try {
+        LOG.info("Sleep in close, sleepTime=100");
         Thread.sleep(100);
       } catch (InterruptedException ignored) {
       }

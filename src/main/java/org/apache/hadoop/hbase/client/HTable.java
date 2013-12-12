@@ -1325,7 +1325,12 @@ public class HTable implements HTableInterface {
       throws IOException, Throwable {
 
     // get regions covered by the row range
+    long startTime = System.currentTimeMillis();
     List<byte[]> keys = getStartKeysInRange(startKey, endKey);
+    long callTime = System.currentTimeMillis() - startTime;
+    if (callTime > 100) {
+      LOG.warn("Slow get start keys in range, time consume=" + callTime);
+    }
     connection.processExecs(protocol, keys, tableName, pool, callable,
         callback);
   }

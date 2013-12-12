@@ -19,9 +19,12 @@
  */
 package org.apache.hadoop.hbase.client;
 
-import org.apache.hadoop.conf.Configuration;
-
 import java.io.IOException;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.util.Bytes;
 
 /**
  * Factory for creating HTable instances.
@@ -29,10 +32,13 @@ import java.io.IOException;
  * @since 0.21.0
  */
 public class HTableFactory implements HTableInterfaceFactory {
+  private static final Log LOG = LogFactory.getLog(HTableFactory.class);
+  
   @Override
   public HTableInterface createHTableInterface(Configuration config,
       byte[] tableName) {
     try {
+      LOG.info("Create HTable in HTableFactory, tableName=" + Bytes.toString(tableName));
       return new HTable(config, tableName);
     } catch (IOException ioe) {
       throw new RuntimeException(ioe);
@@ -41,6 +47,7 @@ public class HTableFactory implements HTableInterfaceFactory {
 
   @Override
   public void releaseHTableInterface(HTableInterface table) throws IOException {
+    LOG.info("Close HTable in HTableFactory, tableName=" + Bytes.toString(table.getTableName()));
     table.close();
   }
 }

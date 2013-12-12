@@ -1058,9 +1058,13 @@ public class HConnectionManager {
         }
       };
       try {
+        long startTime = System.currentTimeMillis();
         // pre-fetch certain number of regions info at region cache.
         MetaScanner.metaScan(conf, this, visitor, tableName, row,
             this.prefetchRegionLimit, HConstants.META_TABLE_NAME);
+        LOG.info("Prefetch for table=" + Bytes.toString(tableName) + ", row=" + Bytes.toString(row)
+            + ", prefetchRegionLimit=" + this.prefetchRegionLimit + ", time consume="
+            + (System.currentTimeMillis() - startTime));
       } catch (IOException e) {
         LOG.warn("Encountered problems when prefetch META table: ", e);
       }
@@ -1215,7 +1219,11 @@ public class HConnectionManager {
           }
         }
         try{
-          Thread.sleep(ConnectionUtils.getPauseTime(this.pause, tries));
+          long sleepTime = ConnectionUtils.getPauseTime(this.pause, tries);
+          LOG.info("Sleep for next retry, parentTable=" + Bytes.toString(parentTable)
+              + ", tablename=" + Bytes.toString(tableName) + ", useCaching=" + useCache
+              + ", retries=" + retry + ", sleepTime=" + sleepTime);
+          Thread.sleep(sleepTime);
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();
           throw new IOException("Giving up trying to location region in " +
@@ -1472,11 +1480,14 @@ public class HConnectionManager {
               // Only create isa when we need to.
               InetSocketAddress address = isa != null? isa:
                 new InetSocketAddress(hostname, port);
+              long startTime = System.currentTimeMillis();
               // definitely a cache miss. establish an RPC for this RS
               server = HBaseRPC.waitForProxy(this.rpcEngine,
                   serverInterfaceClass, HRegionInterface.VERSION,
                   address, this.conf,
                   this.maxRPCAttempts, this.rpcTimeout, this.rpcTimeout);
+              LOG.info("create proxy for region server:" + address + ", rpcTimeout="
+                  + this.rpcTimeout + ", time consume=" + (System.currentTimeMillis() - startTime));
               this.servers.put(Addressing.createHostAndPortStr(
                   address.getHostName(), address.getPort()), server);
             } catch (RemoteException e) {
@@ -1593,7 +1604,6 @@ public class HConnectionManager {
         final Batch.Call<T,R> callable,
         final Batch.Callback<R> callback)
       throws IOException, Throwable {
-
       Map<byte[],Future<R>> futures =
           new TreeMap<byte[],Future<R>>(Bytes.BYTES_COMPARATOR);
       for (final byte[] r : rows) {
@@ -1666,7 +1676,7 @@ public class HConnectionManager {
         // sleep first, if this is a retry
         if (tries >= 1) {
           long sleepTime = ConnectionUtils.getPauseTime(this.pause, tries);
-          LOG.debug("Retry " +tries+ ", sleep for " +sleepTime+ "ms!");
+          LOG.info("Retry " +tries+ " in process batch, sleepTime=" +sleepTime);
           Thread.sleep(sleepTime);
         }
         // step 1: break up into regionserver-sized chunks and build the data structs

@@ -57,12 +57,17 @@ class WritableRpcEngine implements RpcEngine {
   // DEBUG log level does NOT emit RPC-level logging. 
   private static final Log LOG = LogFactory.getLog("org.apache.hadoop.ipc.RPCEngine");
 
+  // the two constants will be used by WritableRpcEngine, SecureRpcEngine and ExecRPCInvoker
+  protected static final int DEFAULT_CLIENT_WARN_IPC_RESPONSE_TIME = 100; // milliseconds
+  public static final String CLIENT_WARN_IPC_RESPONSE_TIME = "hbase.client.ipc.warn.response.time";
+
   private static class Invoker implements InvocationHandler {
     private Class<? extends VersionedProtocol> protocol;
     private InetSocketAddress address;
     private User ticket;
     private HBaseClient client;
     final private int rpcTimeout;
+    private final int clientWarnIpcResponseTime;
 
     public Invoker(HBaseClient client,
                    Class<? extends VersionedProtocol> protocol,
@@ -73,23 +78,25 @@ class WritableRpcEngine implements RpcEngine {
       this.ticket = ticket;
       this.client = client;
       this.rpcTimeout = rpcTimeout;
+      this.clientWarnIpcResponseTime = conf.getInt(CLIENT_WARN_IPC_RESPONSE_TIME,
+        DEFAULT_CLIENT_WARN_IPC_RESPONSE_TIME);
     }
 
     public Object invoke(Object proxy, Method method, Object[] args)
         throws Throwable {
       final boolean logDebug = LOG.isDebugEnabled();
-      long startTime = 0;
-      if (logDebug) {
-        startTime = System.currentTimeMillis();
-      }
+      long startTime = System.currentTimeMillis();
 
       HbaseObjectWritable value = (HbaseObjectWritable)
         client.call(new Invocation(method, protocol, args), address,
                     protocol, ticket, rpcTimeout);
+      long callTime = System.currentTimeMillis() - startTime;
       if (logDebug) {
         // FIGURE HOW TO TURN THIS OFF!
-        long callTime = System.currentTimeMillis() - startTime;
         LOG.debug("Call: " + method.getName() + " " + callTime);
+      }
+      if (callTime > this.clientWarnIpcResponseTime) {
+        LOG.warn("Slow ipc call, MethodName=" + method.getName() + ", consume time=" + callTime);
       }
       return value.get();
     }

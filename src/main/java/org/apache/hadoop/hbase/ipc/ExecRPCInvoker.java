@@ -47,7 +47,8 @@ public class ExecRPCInvoker implements InvocationHandler {
   private final byte[] table;
   private final byte[] row;
   private byte[] regionName;
-
+  private final int clientWarnIpcResponseTime;
+  
   public ExecRPCInvoker(Configuration conf,
       HConnection connection,
       Class<? extends CoprocessorProtocol> protocol,
@@ -58,6 +59,8 @@ public class ExecRPCInvoker implements InvocationHandler {
     this.protocol = protocol;
     this.table = table;
     this.row = row;
+    this.clientWarnIpcResponseTime = conf.getInt(WritableRpcEngine.CLIENT_WARN_IPC_RESPONSE_TIME,
+      WritableRpcEngine.DEFAULT_CLIENT_WARN_IPC_RESPONSE_TIME);
   }
 
   @Override
@@ -76,10 +79,15 @@ public class ExecRPCInvoker implements InvocationHandler {
                   exec);
             }
           };
+      long startTime = System.currentTimeMillis();
       ExecResult result = callable.withRetries();
+      long callTime = System.currentTimeMillis() - startTime;
       this.regionName = result.getRegionName();
       LOG.debug("Result is region="+ Bytes.toStringBinary(regionName) +
-          ", value="+result.getValue());
+          ", value="+result.getValue() + ", callTime=" + callTime);
+      if (callTime > this.clientWarnIpcResponseTime) {
+        LOG.warn("Slow exeRpc call, MethodName=" + method.getName() + ", consume time=" + callTime);
+      } 
       return result.getValue();
     }
 

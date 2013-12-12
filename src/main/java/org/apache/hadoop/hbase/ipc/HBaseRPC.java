@@ -207,9 +207,12 @@ public class HBaseRPC {
       try {
         return rpcClient.getProxy(protocol, clientVersion, addr, conf, rpcTimeout);
       } catch(SocketTimeoutException te) {  // namenode is busy
-        LOG.info("Problem connecting to server: " + addr);
+        LOG.warn("Problem connecting to server: " + addr + ", reconnectAttempts:"
+            + reconnectAttempts + ", maxAttemps=" + maxAttempts, te);
         ioe = te;
       } catch (IOException ioex) {
+        LOG.warn("Problem connecting to server: " + addr + ", reconnectAttempts:"
+            + reconnectAttempts + ", maxAttemps=" + maxAttempts, ioex);
         // We only handle the ConnectException.
         ConnectException ce = null;
         if (ioex instanceof ConnectException) {
@@ -232,6 +235,7 @@ public class HBaseRPC {
               addr, ce);
         }
       }
+      
       // check if timed out
       if (System.currentTimeMillis() - timeout >= startTime) {
         throw ioe;
@@ -239,6 +243,9 @@ public class HBaseRPC {
 
       // wait for retry
       try {
+        LOG.warn("Wait for next turn to connect server: " + addr
+            + ", reconnectAttempts:" + reconnectAttempts + ", maxAttemps=" + maxAttempts
+            + ", timeout:" + timeout + ", sleepTime=1000");
         Thread.sleep(1000);
       } catch (InterruptedException ie) {
         // IGNORE
