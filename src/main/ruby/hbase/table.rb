@@ -126,6 +126,7 @@ module Hbase
       # Get maxlength parameter if passed
       maxlength = args.delete(MAXLENGTH) if args[MAXLENGTH]
       filter = args.delete(FILTER) if args[FILTER]
+      column_type = Hash.new
 
       unless args.empty?
         columns = args[COLUMN] || args[COLUMNS]
@@ -145,7 +146,9 @@ module Hbase
 
           # Get each column name and add it to the filter
           columns.each do |column|
-            family, qualifier = parse_column_name(column.to_s)
+            family, qualifier, type = parse_column_name_and_type(column.to_s)
+            column_str = "#{String.from_java_bytes(family)}:#{org.apache.hadoop.hbase.util.Bytes::toStringBinary(qualifier)}"
+            column_type[column_str] = type
             if qualifier
               get.addColumn(family, qualifier)
             else
@@ -187,7 +190,8 @@ module Hbase
         qualifier = org.apache.hadoop.hbase.util.Bytes::toStringBinary(kv.getQualifier)
 
         column = "#{family}:#{qualifier}"
-        value = to_string(column, kv, maxlength)
+        columnType = column_type[column]
+        value = to_string(column, kv, maxlength, columnType)
 
         if block_given?
           yield(column, value)
@@ -336,9 +340,25 @@ module Hbase
       return split[0], (split.length > 1) ? split[1] : nil
     end
 
+    # Returns family, qualifier and type(when specify qualifier and type) for a column name
+    def parse_column_name_and_type(column)
+      split = org.apache.hadoop.hbase.KeyValue.parseColumn(column.to_java_bytes)
+      family = split[0]
+      qualifier = nil
+      type = ""
+      if split.length > 1:
+        qualifier_and_type = org.apache.hadoop.hbase.KeyValue.parseColumn(split[1])
+        qualifier = qualifier_and_type[0]
+        if qualifier_and_type.length > 1:
+          type = org.apache.hadoop.hbase.util.Bytes::toStringBinary(qualifier_and_type[1])
+        end
+      end
+      return family, qualifier, type 
+    end
+
     # Make a String of the passed kv
     # Intercept cells whose format we know such as the info:regioninfo in .META.
-    def to_string(column, kv, maxlength = -1)
+    def to_string(column, kv, maxlength = -1, columnType = "")
       if is_meta_table?
         if column == 'info:regioninfo' or column == 'info:splitA' or column == 'info:splitB'
           hri = org.apache.hadoop.hbase.util.Writables.getHRegionInfoOrNull(kv.getValue)
@@ -357,7 +377,15 @@ module Hbase
       if kv.isDelete
         val = "timestamp=#{kv.getTimestamp}, type=#{org.apache.hadoop.hbase.KeyValue::Type::codeToType(kv.getType)}"
       else
-        val = "timestamp=#{kv.getTimestamp}, value=#{org.apache.hadoop.hbase.util.Bytes::toStringBinary(kv.getValue)}"
+        if columnType == "int"
+          val = "timestamp=#{kv.getTimestamp}, value=#{org.apache.hadoop.hbase.util.Bytes::toInt(kv.getValue)}"
+        elsif columnType == "long"
+          val = "timestamp=#{kv.getTimestamp}, value=#{org.apache.hadoop.hbase.util.Bytes::toLong(kv.getValue)}"
+        elsif columnType == "byte"
+          val = "timestamp=#{kv.getTimestamp}, value=#{kv.getValue()[0]}"
+        else
+          val = "timestamp=#{kv.getTimestamp}, value=#{org.apache.hadoop.hbase.util.Bytes::toStringBinary(kv.getValue)}"
+        end
       end
       (maxlength != -1) ? val[0, maxlength] : val
     end
