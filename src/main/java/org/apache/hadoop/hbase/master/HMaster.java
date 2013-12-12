@@ -1135,6 +1135,11 @@ Server {
 
   @Override
   public boolean balance() {
+    return balance(null);
+  }
+  
+  @Override
+  public boolean balance(final byte[] tableName) {
     // if master not initialized, don't run balancer.
     if (!this.initialized) {
       LOG.debug("Master has not been initialized, don't run balancer.");
@@ -1178,9 +1183,18 @@ Server {
         this.assignmentManager.getAssignmentsByTable();
 
       List<RegionPlan> plans = new ArrayList<RegionPlan>();
-      for (Map<ServerName, List<HRegionInfo>> assignments : assignmentsByTable.values()) {
-        List<RegionPlan> partialPlans = this.balancer.balanceCluster(assignments);
-        if (partialPlans != null) plans.addAll(partialPlans);
+      
+      if (tableName != null) {
+        String tableNameString = Bytes.toString(tableName);
+        if (assignmentsByTable.containsKey(tableNameString)) {
+          Map<ServerName, List<HRegionInfo>> serverRegionsMap = assignmentsByTable.get(tableNameString);
+          plans.addAll(this.balancer.balanceCluster(serverRegionsMap));
+        }
+      } else {
+        for (Map<ServerName, List<HRegionInfo>> assignments : assignmentsByTable.values()) {
+          List<RegionPlan> partialPlans = this.balancer.balanceCluster(assignments);
+          if (partialPlans != null) plans.addAll(partialPlans);
+        }
       }
       int rpCount = 0;  // number of RegionPlans balanced so far
       long totalRegPlanExecTime = 0;

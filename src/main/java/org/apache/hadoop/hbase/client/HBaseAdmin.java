@@ -1668,6 +1668,16 @@ public class HBaseAdmin implements Abortable, Closeable {
   throws MasterNotRunningException, ZooKeeperConnectionException {
     return getMaster().balance();
   }
+  
+  /**
+   * Balance region of a table
+   * @param tableName tableName
+   * @return True if balancer ran, false otherwise.
+   */
+  public boolean balancer(final byte[] tableName) throws MasterNotRunningException,
+      ZooKeeperConnectionException {
+    return getMaster().balance(tableName);
+  }
 
   /**
    * Split a table or an individual region.

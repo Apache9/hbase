@@ -251,6 +251,13 @@ public interface HMasterInterface extends VersionedProtocol {
   public boolean balance();
 
   /**
+   * Balance the regions of a table.
+   * @param tableName tableName
+   * @return True if balancer ran, false otherwise.
+   */
+  public boolean balance(final byte[] tableName);
+  
+  /**
    * Turn the load balancer on or off.
    * @param b If true, enable balancer. If false, disable balancer.
    * @return Previous balancer value

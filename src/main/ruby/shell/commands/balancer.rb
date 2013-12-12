@@ -23,16 +23,20 @@ module Shell
     class Balancer < Command
       def help
         return <<-EOF
-Trigger the cluster balancer. Returns true if balancer ran and was able to
-tell the region servers to unassign all the regions to balance  (the re-assignment itself is async). 
-Otherwise false (Will not run if regions in transition).
+Trigger the cluster balancer or the table balancer if table name is sepecified. Returns true if
+balancer ran and was able to tell the region servers to unassign all the regions to balance 
+(the re-assignment itself is async). Otherwise false (Will not run if regions in transition).
+Examples:
+
+  hbase> balancer             # trigger cluster balancer 
+  hbase> balancer 'TABLENAME' # trigger table balancer
 EOF
       end
 
-      def command()
+      def command(table_name = nil)
         format_simple_command do
           formatter.row([
-            admin.balancer()? "true": "false"
+            admin.balancer(table_name)? "true": "false"
           ])
         end
       end

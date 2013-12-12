@@ -99,8 +99,12 @@ module Hbase
     #----------------------------------------------------------------------------------------------
     # Requests a cluster balance
     # Returns true if balancer ran
-    def balancer()
-      @admin.balancer()
+    def balancer(table_name = nil)
+      if table_name == nil
+        @admin.balancer()
+      else
+        @admin.balancer(Bytes.toBytes(table_name))
+      end
     end
 
     #----------------------------------------------------------------------------------------------
