@@ -1755,6 +1755,10 @@ public class HBaseAdmin implements Abortable, Closeable {
 
   private void split(final ServerName sn, final HRegionInfo hri,
       byte[] splitPoint) throws IOException {
+    if (hri.getStartKey() != null && splitPoint != null &&
+      Bytes.compareTo(hri.getStartKey(), splitPoint) == 0) {
+      throw new IOException("should not give a splitkey wich equals to startkey!");
+    }
     HRegionInterface rs =
       this.connection.getHRegionConnection(sn.getHostname(), sn.getPort());
     rs.splitRegion(hri, splitPoint);
