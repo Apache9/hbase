@@ -36,7 +36,7 @@
   <groupId>org.apache.hbase</groupId>
   <artifactId>hbase</artifactId>
   <packaging>jar</packaging>
-  <version>0.94.11-mdh1.0.0-SNAPSHOT</version>
+  <version>0.94.11-mdh1.2-SNAPSHOT</version>
   <name>HBase</name>
   <description>
     HBase is the &amp;lt;a href="http://hadoop.apache.org"&amp;rt;Hadoop&lt;/a&amp;rt; database. Use it when you need
@@ -1036,8 +1036,8 @@
     <protobuf.version>2.4.0a</protobuf.version>
     <stax-api.version>1.0.1</stax-api.version>
     <thrift.version>0.8.0</thrift.version>
-    <zookeeper.version>3.4.4-mdh1.0.2</zookeeper.version>
-    <clover.version>2.6.3</clover.version>
+    <zookeeper-mdh.version>3.4.4-mdh1.0.2</zookeeper-mdh.version>
+    <hadoop-mdh.version>2.0.0-mdh1.0.1</hadoop-mdh.version>
 
     <package.prefix>/usr</package.prefix>
     <package.conf.dir>/etc/hbase</package.conf.dir>
@@ -1196,7 +1196,7 @@
     <dependency>
       <groupId>org.apache.zookeeper</groupId>
       <artifactId>zookeeper</artifactId>
-      <version>${zookeeper.version}</version>
+      <version>${zookeeper-mdh.version}</version>
       <exclusions>
         <exclusion>
           <groupId>jline</groupId>
@@ -1616,16 +1616,16 @@
       </build>
     </profile>
 
-    <!-- profile for building against Hadoop 2.0.0-mdh1.0.0-SNAPSHOT: This is the default. -->
+    <!-- profile for building against Hadoop 2.0.0-mdh* release version: This is the default. -->
     <profile>
-      <id>hadoop-2.0.0-mdh1.0.0-SNAPSHOT</id>
+      <id>hadoop-2.0.0-mdh-release</id>
       <activation>
         <property>
           <name>!hadoop.profile</name>
         </property>
       </activation>
       <properties>
-        <hadoop.version>2.0.0-mdh1.0.0-SNAPSHOT</hadoop.version>
+        <hadoop.version>${hadoop-mdh.version}</hadoop.version>
         <slf4j.version>1.6.1</slf4j.version>
       </properties>
       <dependencies>
@@ -1789,7 +1789,7 @@
         </property>
       </activation>
       <properties>
-        <hadoop.version>2.0.0-mdh1.0.0-SNAPSHOT</hadoop.version>
+        <hadoop.version>${hadoop-mdh.version}</hadoop.version>
       </properties>
       <build>
         <finalName>${project.artifactId}-${project.version}</finalName>
