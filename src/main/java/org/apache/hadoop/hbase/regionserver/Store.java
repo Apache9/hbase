@@ -1960,11 +1960,17 @@ public class Store extends SchemaConfigured implements HeapSize {
     try {
       // First go to the memstore.  Pick up deletes and candidates.
       this.memstore.getRowKeyAtOrBefore(state);
+      if (state.hasCandidate() && Bytes.compareTo(state.getCandidate().getRow(), row) == 0) {
+        return state.getCandidate();
+      }
       // Check if match, if we got a candidate on the asked for 'kv' row.
       // Process each store file. Run through from newest to oldest.
       for (StoreFile sf : Lists.reverse(storefiles)) {
         // Update the candidate keys from the current map file
         rowAtOrBeforeFromStoreFile(sf, state);
+        if (state.hasCandidate() && Bytes.compareTo(state.getCandidate().getRow(), row) == 0) {
+          return state.getCandidate();
+        }
       }
       return state.getCandidate();
     } finally {
