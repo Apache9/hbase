@@ -1174,8 +1174,9 @@ public class AccessController extends BaseRegionObserver
   public void grant(UserPermission perm) throws IOException {
     // verify it's only running at .acl.
     if (aclRegion) {
-      if (LOG.isDebugEnabled()) {
-        LOG.debug("Received request to grant access permission " + perm.toString());
+      if (LOG.isInfoEnabled()) {
+        LOG.info("Received request from user: " + getActiveUser()
+            + " to grant access permission " + perm.toString());
       }
 
       requirePermission("grant", perm.getTable(), perm.getFamily(), perm.getQualifier(), Action.ADMIN);
@@ -1204,8 +1205,9 @@ public class AccessController extends BaseRegionObserver
   public void revoke(UserPermission perm) throws IOException {
     // only allowed to be called on _acl_ region
     if (aclRegion) {
-      if (LOG.isDebugEnabled()) {
-        LOG.debug("Received request to revoke access permission " + perm.toString());
+      if (LOG.isInfoEnabled()) {
+        LOG.info("Received request user: " + getActiveUser()
+            + " to revoke access permission " + perm.toString());
       }
 
       requirePermission("revoke", perm.getTable(), perm.getFamily(),
