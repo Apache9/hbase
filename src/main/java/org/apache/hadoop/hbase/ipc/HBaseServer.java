@@ -77,6 +77,8 @@ import org.cliffc.high_scale_lib.Counter;
 
 import com.google.common.base.Function;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.xiaomi.infra.hbase.trace.MilliTracer;
+import com.xiaomi.infra.hbase.trace.Tracer;
 
 /** An abstract IPC service.  IPC calls take a single {@link Writable} as a
  * parameter, and return a {@link Writable} as their value.  A service runs on
@@ -121,7 +123,7 @@ public abstract class HBaseServer implements RpcServer {
     LogFactory.getLog("org.apache.hadoop.ipc.HBaseServer");
   protected static final Log TRACELOG =
       LogFactory.getLog("org.apache.hadoop.ipc.HBaseServer.trace");
-
+  
   protected static final ThreadLocal<RpcServer> SERVER =
     new ThreadLocal<RpcServer>();
   private volatile boolean started = false;
@@ -159,6 +161,7 @@ public abstract class HBaseServer implements RpcServer {
    */
   protected static final ThreadLocal<Call> CurCall = new ThreadLocal<Call>();
 
+  
   /** Returns the remote side ip address when invoked inside an RPC
    *  Returns null incase of an error.
    *  @return InetAddress
@@ -209,7 +212,11 @@ public abstract class HBaseServer implements RpcServer {
   protected final boolean tcpNoDelay;   // if T then disable Nagle's Algorithm
   protected final boolean tcpKeepAlive; // if T then use keepalives
   protected final long purgeTimeout;    // in milliseconds
-
+  
+  protected final long traceResponseTime;    // in milliseconds
+  private static final String TRACE_RESPONSE_TIME = "hbase.ipc.trace.response.time";
+  protected final long DEFAULT_TRACE_RESPONSE_TIME = 100;    // default trace ipc time is 100ms
+  
   // responseQueuesSizeThrottler is shared among all responseQueues,
   // it bounds memory occupied by responses in all responseQueues
   final SizeBasedThrottler responseQueuesSizeThrottler;
@@ -285,9 +292,15 @@ public abstract class HBaseServer implements RpcServer {
                                                   // set at call completion
     protected long size;                          // size of current call
     protected boolean isError;
-
+    protected Tracer tracer;
+    
     public Call(int id, Writable param, Connection connection,
         Responder responder, long size) {
+      this(id, param,connection, responder,size, new MilliTracer("call#" + id));
+    }
+    
+    public Call(int id, Writable param, Connection connection,
+        Responder responder, long size, Tracer tracer) {
       this.id = id;
       this.param = param;
       this.connection = connection;
@@ -297,6 +310,7 @@ public abstract class HBaseServer implements RpcServer {
       this.responder = responder;
       this.isError = false;
       this.size = size;
+      this.tracer = tracer;
     }
 
     @Override
@@ -423,7 +437,7 @@ public abstract class HBaseServer implements RpcServer {
     public synchronized boolean isDelayed() {
       return this.delayResponse;
     }
-
+    
     @Override
     public synchronized boolean isReturnValueDelayed() {
       return this.delayReturnValue;
@@ -437,6 +451,14 @@ public abstract class HBaseServer implements RpcServer {
             "Aborting call " + this + " after " + afterTime + " ms, since " +
             "caller disconnected");
       }
+    }
+    
+    public int getId() {
+      return this.id;
+    }
+    
+    public Tracer getTracer() {
+      return this.tracer;
     }
 
     public long getSize() {
@@ -1035,6 +1057,7 @@ public abstract class HBaseServer implements RpcServer {
     //
     void doRespond(Call call) throws IOException {
       // set the serve time when the response has to be sent later
+      call.getTracer().addAnnotation("Start respond to client ");
       call.timestamp = System.currentTimeMillis();
 
       boolean doRegister = false;
@@ -1063,6 +1086,10 @@ public abstract class HBaseServer implements RpcServer {
         // decreased here.
         responseQueuesSizeThrottler.decrease(call.response.remaining());
       }      
+      call.getTracer().stop();
+      if (call.getTracer().getAccumulatedMillis() >= traceResponseTime) {
+        TRACELOG.info(call.getTracer());
+      }
     }
 
     private synchronized void incPending() {   // call waiting to be enqueued.
@@ -1322,7 +1349,8 @@ public abstract class HBaseServer implements RpcServer {
         responder.doRespond(readParamsFailedCall);
         return;
       }
-      Call call = new Call(id, param, this, responder, callSize);
+      Tracer tracer = new MilliTracer("handling call: " + id + " call size:" + callSize);
+      Call call = new Call(id, param, this, responder, callSize, tracer);
       callQueueSize.add(callSize);
 
       if (priorityCallQueue != null && getQosLevel(param) > highPriorityLevel) {
@@ -1408,7 +1436,8 @@ public abstract class HBaseServer implements RpcServer {
           String errorClass = null;
           String error = null;
           Writable value = null;
-
+          
+          Tracer tracer = call.getTracer();
           CurCall.set(call);
           try {
             if (!started)
@@ -1419,9 +1448,11 @@ public abstract class HBaseServer implements RpcServer {
               LOG.debug(getName() + ": call #" + call.id + " executing as "
                   + (remoteUser == null ? "NULL principal" : remoteUser.getName()));
             }
-
+            
             RequestContext.set(call.connection.ticket, getRemoteIp(),
-                call.connection.protocol);
+                call.connection.protocol, tracer);
+            tracer.addAnnotation("Remove from queue. Queued time: "
+                + (System.currentTimeMillis() - call.timestamp) + " ms");
             // make the call
             value = call(call.connection.protocol, call.param, call.timestamp, 
                 status);
@@ -1443,6 +1474,7 @@ public abstract class HBaseServer implements RpcServer {
               errorClass == null? Status.SUCCESS: Status.ERROR,
                 errorClass, error);
           }
+          tracer.addAnnotation("Call finished. Start response");
           call.sendResponseIfReady();
           status.markComplete("Sent response");
         } catch (InterruptedException e) {
@@ -1550,6 +1582,9 @@ public abstract class HBaseServer implements RpcServer {
     this.thresholdIdleConnections = conf.getInt("ipc.client.idlethreshold", 4000);
     this.purgeTimeout = conf.getLong("ipc.client.call.purge.timeout",
                                      2 * HConstants.DEFAULT_HBASE_RPC_TIMEOUT);
+    
+    this.traceResponseTime = conf.getLong(TRACE_RESPONSE_TIME, DEFAULT_TRACE_RESPONSE_TIME);
+    
     this.numOfReplicationHandlers = 
       conf.getInt("hbase.regionserver.replication.handler.count", 3);
     if (numOfReplicationHandlers > 0) {
@@ -1566,7 +1601,7 @@ public abstract class HBaseServer implements RpcServer {
     this.warnDelayedCalls = conf.getInt(WARN_DELAYED_CALLS,
                                         DEFAULT_WARN_DELAYED_CALLS);
     this.delayedCalls = new AtomicInteger(0);
-
+    
 
     this.responseQueuesSizeThrottler = new SizeBasedThrottler(
         conf.getLong(RESPONSE_QUEUES_MAX_SIZE, DEFAULT_RESPONSE_QUEUES_MAX_SIZE));

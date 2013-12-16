@@ -130,6 +130,7 @@ import org.apache.hadoop.hbase.ipc.HMasterRegionInterface;
 import org.apache.hadoop.hbase.ipc.HRegionInterface;
 import org.apache.hadoop.hbase.ipc.Invocation;
 import org.apache.hadoop.hbase.ipc.ProtocolSignature;
+import org.apache.hadoop.hbase.ipc.RequestContext;
 import org.apache.hadoop.hbase.ipc.RpcEngine;
 import org.apache.hadoop.hbase.ipc.RpcServer;
 import org.apache.hadoop.hbase.ipc.ServerNotRunningYetException;
@@ -184,6 +185,8 @@ import org.codehaus.jackson.map.ObjectMapper;
 import com.google.common.base.Function;
 import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.xiaomi.infra.hbase.trace.Tracer;
+import com.xiaomi.infra.hbase.trace.TracerUtils;
 
 /**
  * HRegionServer makes a set of HRegions available to clients. It checks in with
@@ -2306,6 +2309,7 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
     if (put.getRow() == null) {
       throw new IllegalArgumentException("update has null row");
     }
+    TracerUtils.addAnnotation("start a single put");
 
     checkOpen();
     this.requestCount.incrementAndGet();
@@ -2327,6 +2331,8 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
     HRegion region = null;
     int i = 0;
 
+    TracerUtils.addAnnotation("start a multi puts, put size:" + puts.size());
+    
     try {
       region = getRegion(regionName);
       if (!region.getRegionInfo().isMetaTable()) {
@@ -3860,6 +3866,9 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
   public <R> MultiResponse multi(MultiAction<R> multi) throws IOException {
     checkOpen();
     MultiResponse response = new MultiResponse();
+    
+    TracerUtils.addAnnotation("start a multi actions, actions size:" + multi.size());
+    
     for (Map.Entry<byte[], List<Action<R>>> e : multi.actions.entrySet()) {
       byte[] regionName = e.getKey();
       List<Action<R>> actionsForRegion = e.getValue();

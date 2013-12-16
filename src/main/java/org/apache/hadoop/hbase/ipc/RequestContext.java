@@ -24,6 +24,8 @@ import org.apache.hadoop.hbase.security.User;
 
 import java.net.InetAddress;
 
+import com.xiaomi.infra.hbase.trace.Tracer;
+
 /**
  * Represents client information (authenticated username, remote address, protocol)
  * for the currently executing request within a RPC server handler thread.  If
@@ -34,7 +36,7 @@ public class RequestContext {
   private static ThreadLocal<RequestContext> instance =
       new ThreadLocal<RequestContext>() {
         protected RequestContext initialValue() {
-          return new RequestContext(null, null, null);
+          return new RequestContext(null, null, null, null);
         }
       };
 
@@ -67,7 +69,14 @@ public class RequestContext {
     }
     return null;
   }
-
+  
+  public static Tracer getRequestTracer() {
+    RequestContext ctx = instance.get();
+    if (ctx != null) {
+      return ctx.getTracer();
+    }
+    return null;
+  }
   /**
    * Indicates whether or not the current thread is within scope of executing
    * an RPC request.
@@ -88,12 +97,13 @@ public class RequestContext {
    */
   public static void set(User user,
       InetAddress remoteAddress,
-      Class<? extends VersionedProtocol> protocol) {
+      Class<? extends VersionedProtocol> protocol, Tracer tracer) {
     RequestContext ctx = instance.get();
     ctx.user = user;
     ctx.remoteAddress = remoteAddress;
     ctx.protocol = protocol;
     ctx.inRequest = true;
+    ctx.tracer = tracer;
   }
 
   /**
@@ -112,18 +122,24 @@ public class RequestContext {
   private Class<? extends VersionedProtocol> protocol;
   // indicates we're within a RPC request invocation
   private boolean inRequest;
+  private Tracer tracer;
 
   private RequestContext(User user, InetAddress remoteAddr,
-      Class<? extends VersionedProtocol> protocol) {
+      Class<? extends VersionedProtocol> protocol, Tracer tracer) {
     this.user = user;
     this.remoteAddress = remoteAddr;
     this.protocol = protocol;
+    this.tracer = tracer;
   }
 
   public User getUser() {
     return user;
   }
 
+  public Tracer getTracer() {
+    return tracer;
+  }
+  
   public InetAddress getRemoteAddress() {
     return remoteAddress;
   }

@@ -144,6 +144,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.google.common.collect.MutableClassToInstanceMap;
+import com.xiaomi.infra.hbase.trace.TracerUtils;
 
 /**
  * HRegion stores data for a certain region of a table.  It stores all columns

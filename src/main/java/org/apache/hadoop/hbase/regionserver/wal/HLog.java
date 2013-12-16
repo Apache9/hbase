@@ -78,6 +78,7 @@ import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.util.StringUtils;
 
 import com.google.common.collect.Lists;
+import com.xiaomi.infra.hbase.trace.TracerUtils;
 
 /**
  * HLog stores all the edits to the HStore.  Its the hbase write-ahead-log
@@ -1179,6 +1180,7 @@ public class HLog implements Syncable {
       if (this.closed) {
         throw new IOException("Cannot append; log is closed");
       }
+      TracerUtils.addAnnotation("Start write wal logs");
       long txid = 0;
       synchronized (this.updateLock) {
         long seqNum = obtainSeqNum();
@@ -1199,6 +1201,7 @@ public class HLog implements Syncable {
           lastDeferredTxid = txid;
         }
       }
+      TracerUtils.addAnnotation("Start sync wal logs");
       // Sync if catalog region, and if not then check if that table supports
       // deferred log flushing
       if (doSync && 
@@ -1207,6 +1210,7 @@ public class HLog implements Syncable {
         // sync txn to file system
         this.sync(txid);
       }
+      TracerUtils.addAnnotation("Finish write wal logs");
       return txid;
     }
 
@@ -1356,6 +1360,9 @@ public class HLog implements Syncable {
     try {
       long doneUpto;
       long startTimeNs = System.nanoTime();
+      long gotFlushLockNs = startTimeNs;
+      long afterHlogFlushNs = startTimeNs;
+      long afterSyncNs = startTimeNs;
       // First flush all the pending writes to HDFS. Then 
       // issue the sync to HDFS. If sync is successful, then update
       // syncedTillHere to indicate that transactions till this
@@ -1363,6 +1370,7 @@ public class HLog implements Syncable {
       IOException ioe = null;
       List<Entry> pending = null;
       synchronized (flushLock) {
+        gotFlushLockNs = System.nanoTime();
         if (txid <= this.syncedTillHere) {
           return;
         }
@@ -1370,6 +1378,7 @@ public class HLog implements Syncable {
         pending = logSyncer.getPendingWrites();
         try {
           logSyncer.hlogFlush(tempWriter, pending);
+          afterHlogFlushNs = System.nanoTime();
         } catch(IOException io) {
           ioe = io;
           LOG.error("syncer encountered error, will retry. txid=" + txid, ioe);
@@ -1390,7 +1399,9 @@ public class HLog implements Syncable {
       }
       try {
         tempWriter.sync();
+        afterSyncNs = System.nanoTime();
       } catch (IOException io) {
+        LOG.info("retry hlog sync one more time:", io);
         synchronized (this.updateLock) {
           // HBASE-4387, HBASE-5623, retry with updateLock held
           tempWriter = this.writer;
@@ -1402,11 +1413,17 @@ public class HLog implements Syncable {
       long syncNs = System.nanoTime() - startTimeNs;
       syncTime.inc(syncNs);
 
-      if (syncNs/(1000 * 1000L) > this.slowSyncMs) {
-        DatanodeInfo[] pipeline;
-        pipeline = getPipeLine();
-        LOG.warn("Slow sync, cost: " + syncNs/(1000 * 1000L) + "ms, Pipiline: "
+      if (syncNs / (1000 * 1000L) > this.slowSyncMs) {
+        DatanodeInfo[] pipeline = getPipeLine();
+        TracerUtils.addAnnotation("Sync cost: " + syncNs / (1000 * 1000L) + "ms, Pipiline: "
             + Arrays.toString(pipeline));
+        TracerUtils.addAnnotation("-->pending size: " + (pending == null ? 0 : pending.size()));
+        TracerUtils.addAnnotation("-->getFlushLock cost: " + (gotFlushLockNs - startTimeNs)
+            / (1000 * 1000L));
+        TracerUtils.addAnnotation("-->write out to hdfs cost: "
+            + (afterHlogFlushNs - gotFlushLockNs) / (1000 * 1000L));
+        TracerUtils.addAnnotation("-->finaly hflush cost: " + (afterSyncNs - afterHlogFlushNs)
+            / (1000 * 1000L));
       }
       if (!this.logRollRunning) {
         checkLowReplication();
