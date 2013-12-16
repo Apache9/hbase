@@ -110,6 +110,8 @@ import org.apache.hadoop.hbase.util.FSTableDescriptors;
 import org.apache.hadoop.hbase.util.HFileArchiveUtil;
 import org.apache.hadoop.hbase.util.HasThread;
 import org.apache.hadoop.hbase.util.InfoServer;
+import org.apache.hadoop.hbase.util.JvmPauseMonitor;
+import org.apache.hadoop.hbase.util.JvmThreadMonitor;
 import org.apache.hadoop.hbase.util.Pair;
 import org.apache.hadoop.hbase.util.Sleeper;
 import org.apache.hadoop.hbase.util.Strings;
@@ -177,6 +179,9 @@ Server {
 
   // RPC server for the HMaster
   private final RpcServer rpcServer;
+
+  private JvmPauseMonitor pauseMonitor;
+  private JvmThreadMonitor jvmThreadMonitor;
 
   /**
    * This servers address.
@@ -337,6 +342,8 @@ Server {
     this.zooKeeper = new ZooKeeperWatcher(conf, MASTER + ":" + isa.getPort(), this, true);
     this.rpcServer.startThreads();
     this.metrics = new MasterMetrics(getServerName().toString());
+    this.pauseMonitor = new JvmPauseMonitor(conf);
+    this.jvmThreadMonitor = new JvmThreadMonitor(conf);
 
     // Health checker thread.
     int sleepTime = this.conf.getInt(HConstants.HEALTH_CHORE_WAKE_FREQ,
@@ -1016,7 +1023,12 @@ Server {
     if (LOG.isDebugEnabled()) {
       LOG.debug("Started service threads");
     }
-
+    if (this.pauseMonitor != null) {
+      pauseMonitor.start();
+    }
+    if (this.jvmThreadMonitor != null) {
+      jvmThreadMonitor.start();
+    }
   }
 
   private void stopServiceThreads() {
@@ -1037,6 +1049,9 @@ Server {
       }
     }
     if (this.executorService != null) this.executorService.shutdown();
+    if (this.pauseMonitor != null) this.pauseMonitor.stop();
+    if (this.jvmThreadMonitor != null) this.jvmThreadMonitor.stop();
+
     if (this.healthCheckChore != null) {
       this.healthCheckChore.interrupt();
     }

@@ -155,6 +155,8 @@ import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.FSTableDescriptors;
 import org.apache.hadoop.hbase.util.FSUtils;
 import org.apache.hadoop.hbase.util.InfoServer;
+import org.apache.hadoop.hbase.util.JvmPauseMonitor;
+import org.apache.hadoop.hbase.util.JvmThreadMonitor;
 import org.apache.hadoop.hbase.util.Pair;
 import org.apache.hadoop.hbase.util.Sleeper;
 import org.apache.hadoop.hbase.util.Strings;
@@ -359,6 +361,9 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
 
   // reference to the Thrift Server.
   volatile private HRegionThriftServer thriftServer;
+
+  private JvmPauseMonitor pauseMonitor;
+  private JvmThreadMonitor jvmThreadMonitor;
 
   /**
    * The server name the Master sees us as.  Its made from the hostname the
@@ -742,6 +747,11 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
       thriftServer.start();
       LOG.info("Started Thrift API from Region Server.");
     }
+
+    pauseMonitor = new JvmPauseMonitor(conf);
+    pauseMonitor.start();
+    jvmThreadMonitor = new JvmThreadMonitor(conf);
+    jvmThreadMonitor.start();
   }
 
   /**
@@ -824,6 +834,8 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
       mxBean = null;
     }
     if (this.thriftServer != null) this.thriftServer.shutdown();
+    if (this.pauseMonitor != null) this.pauseMonitor.stop();
+    if (this.jvmThreadMonitor != null) this.jvmThreadMonitor.stop();
     this.leases.closeAfterLeasesExpire();
     this.rpcServer.stop();
     if (this.splitLogWorker != null) {
