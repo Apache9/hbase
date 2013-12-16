@@ -22,6 +22,7 @@ import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 
 import org.apache.hadoop.hbase.metrics.MetricsRate;
+import org.apache.hadoop.hbase.metrics.MetricsString;
 import org.apache.hadoop.metrics.MetricsContext;
 import org.apache.hadoop.metrics.MetricsRecord;
 import org.apache.hadoop.metrics.MetricsUtil;
@@ -59,6 +60,9 @@ public class ReplicationSourceMetrics implements Updater {
   /** Age of the last operation that was shipped by the source */
   private final MetricsLongValue ageOfLastShippedOp =
       new MetricsLongValue("ageOfLastShippedOp", registry);
+  
+  /** Peer cluster name */
+   private MetricsString peerClusterName = null;
 
   /**
    * Current size of the queue of logs to replicate,
@@ -107,6 +111,17 @@ public class ReplicationSourceMetrics implements Updater {
    */
   public void refreshAgeOfLastShippedOp() {
     setAgeOfLastShippedOp(lastTimestampForAge);
+  }
+  
+  public void setPeerClusterName(String peerClusterZNodeParent) {
+    // peer cluster name will not change in the same replication source
+    if (peerClusterName == null) {
+      if (peerClusterZNodeParent != null) {
+        String[] tokens = peerClusterZNodeParent.split("/");
+        String clusterName = tokens[tokens.length - 1];
+        peerClusterName = new MetricsString("peerClusterName", registry, clusterName);
+      }
+    }
   }
 
   @Override

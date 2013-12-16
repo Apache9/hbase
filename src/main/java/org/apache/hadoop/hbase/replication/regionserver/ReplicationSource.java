@@ -874,6 +874,7 @@ public class ReplicationSource extends Thread
     if (this.conn == null) {
       Configuration peerConf = this.zkHelper.getPeerConf(peerId);
       this.conn = HConnectionManager.getConnection(peerConf);
+      this.metrics.setPeerClusterName(peerConf.get(HConstants.ZOOKEEPER_ZNODE_PARENT));
     }
     return this.conn.getHRegionConnection(address.getHostname(), address.getPort());
   }
