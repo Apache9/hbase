@@ -48,6 +48,11 @@ public class OperationMetrics {
   private static final String APPEND_KEY = "append_";
   private static final String READREQUESTCOUNT_KEY = "readrequestcount";
   private static final String WRITEREQUESTCOUNT_KEY = "writerequestcount";
+  private static final String CHECK_AND_PUT_KEY = "checkAndPut_";
+  private static final String CHECK_AND_DELETE_KEY = "checkAndDelete_";
+  private static final String GET_SCANNER_KEY = "getScanner_";
+  private static final String NEXT_KEY = "next_";
+  private static final String COPROCESSOR_KEY = "coprocessor-";
   
   /** Conf key controlling whether we should expose metrics.*/
   private static final String CONF_KEY =
@@ -200,6 +205,49 @@ public class OperationMetrics {
    */
   public void updatePutMetrics(Set<byte[]> columnFamilies, long value) {
     doUpdateTimeVarying(columnFamilies, PUT_KEY, value);
+  }
+  
+  /**
+   * update metrics associated with a {@link checkAndPut}. Only region metric will be updated
+   * @param value the time
+   */
+  public void updateCheckAndPutMetrics(long value) {
+    doSafeIncTimeVarying(this.regionMetrixPrefix, CHECK_AND_PUT_KEY, value);
+  }
+  
+  /**
+   * update metrics associated with a {@link checkAndDelete}. Only region metric will be updated
+   * @param value the time
+   */
+  public void updateCheckAndDeleteMetrics(long value) {
+    doSafeIncTimeVarying(this.regionMetrixPrefix, CHECK_AND_DELETE_KEY, value);
+  }
+  
+  /**
+   * update metrics associated with a {@link openScanner}
+   * @param columnFamilies columnFamilies contained in the scanner
+   * @param value the time
+   */
+  public void updateGetScannerMetrics(Set<byte[]> columnFamilies, long value) {
+    doUpdateTimeVarying(columnFamilies, GET_SCANNER_KEY, value);
+  }
+  
+  /**
+   * update metrics associated with a {@link next}
+   * @param columnFamilies columnFamilies contained in the scanner
+   * @param value the time
+   */
+  public void updateNextMetrics(Set<byte[]> columnFamilies, long value) {
+    doUpdateTimeVarying(columnFamilies, NEXT_KEY, value);
+  }
+  
+  /**
+   * update metrics associated with coprocessor operation. Only region metric will be updated
+   * @param methodName the method name of coprocessor
+   * @param value the time
+   */
+  public void updateCoprocessorMetrics(String methodName, long value) {
+    doSafeIncTimeVarying(this.regionMetrixPrefix, COPROCESSOR_KEY + methodName + "_", value);
   }
 
   /**

@@ -1817,6 +1817,7 @@ public class HRegion implements HeapSize { // , Writable{
 
   protected RegionScanner getScanner(Scan scan,
       List<KeyValueScanner> additionalScanners) throws IOException {
+    long nowNs = System.nanoTime();
     startRegionOperation();
     try {
       // Verify families are all valid
@@ -1829,6 +1830,8 @@ public class HRegion implements HeapSize { // , Writable{
       return instantiateRegionScanner(scan, additionalScanners);
     } finally {
       closeRegionOperation();
+      this.opMetrics.updateGetScannerMetrics(scan.getFamilyMap().keySet(),
+        (System.nanoTime() - nowNs) / 1000);
     }
   }
 
@@ -1989,6 +1992,7 @@ public class HRegion implements HeapSize { // , Writable{
       }
     }
 
+    long beforeNs = System.nanoTime();
     long now = EnvironmentEdgeManager.currentTimeMillis();
     byte [] byteNow = Bytes.toBytes(now);
     boolean flush = false;
@@ -2022,8 +2026,8 @@ public class HRegion implements HeapSize { // , Writable{
     if (coprocessorHost != null) {
       coprocessorHost.postDelete(delete, walEdit, writeToWAL);
     }
-    final long after = EnvironmentEdgeManager.currentTimeMillis();
-    this.opMetrics.updateDeleteMetrics(familyMap.keySet(), after-now);
+    final long afterNs = System.nanoTime();
+    this.opMetrics.updateDeleteMetrics(familyMap.keySet(), (afterNs - beforeNs) / 1000);
 
     if (flush) {
       // Request a cache flush.  Do it outside update lock.
@@ -2243,7 +2247,7 @@ public class HRegion implements HeapSize { // , Writable{
     Set<byte[]> deletesCfSet = null;
     // variable to note if all Delete items are for the same CF -- metrics related
     boolean deletesCfSetConsistent = true;
-    long startTimeMs = EnvironmentEdgeManager.currentTimeMillis();
+    long startTimeNs = System.nanoTime();
 
     WALEdit walEdit = new WALEdit();
 
@@ -2540,7 +2544,7 @@ public class HRegion implements HeapSize { // , Writable{
       }
 
       // do after lock
-      final long netTimeMs = EnvironmentEdgeManager.currentTimeMillis()- startTimeMs;
+      final long netTimeUs = (System.nanoTime()- startTimeNs) / 1000;
 
       // See if the column families were consistent through the whole thing.
       // if they were then keep them. If they were not then pass a null.
@@ -2551,14 +2555,14 @@ public class HRegion implements HeapSize { // , Writable{
       if (noOfPuts > 0) {
         // There were some Puts in the batch.
         double noOfMutations = noOfPuts + noOfDeletes;
-        timeTakenForPuts = (long) (netTimeMs * (noOfPuts / noOfMutations));
+        timeTakenForPuts = (long) (netTimeUs * (noOfPuts / noOfMutations));
         final Set<byte[]> keptCfs = putsCfSetConsistent ? putsCfSet : null;
         this.opMetrics.updateMultiPutMetrics(keptCfs, timeTakenForPuts);
       }
       if (noOfDeletes > 0) {
         // There were some Deletes in the batch.
         final Set<byte[]> keptCfs = deletesCfSetConsistent ? deletesCfSet : null;
-        this.opMetrics.updateMultiDeleteMetrics(keptCfs, netTimeMs - timeTakenForPuts);
+        this.opMetrics.updateMultiDeleteMetrics(keptCfs, netTimeUs - timeTakenForPuts);
       }
       if (!success) {
         for (int i = firstIndex; i < lastIndexExclusive; i++) {
@@ -2622,6 +2626,7 @@ public class HRegion implements HeapSize { // , Writable{
       throw new DoNotRetryIOException("Action's getRow must match the passed row");
     }
 
+    long nowNs = System.nanoTime();
     startRegionOperation();
     this.writeRequestsCount.increment();
     this.opMetrics.setWriteRequestCountMetrics(this.writeRequestsCount.get());
@@ -2715,6 +2720,12 @@ public class HRegion implements HeapSize { // , Writable{
       }
     } finally {
       closeRegionOperation();
+      long afterNs = System.nanoTime();
+      if (isPut) {
+        this.opMetrics.updateCheckAndPutMetrics((afterNs - nowNs) / 1000);
+      } else {
+        this.opMetrics.updateCheckAndDeleteMetrics((afterNs - nowNs) / 1000);
+      }
     }
   }
 
@@ -2918,6 +2929,7 @@ public class HRegion implements HeapSize { // , Writable{
       }
     }
 
+    long beforeNs = System.nanoTime();
     long now = EnvironmentEdgeManager.currentTimeMillis();
     byte[] byteNow = Bytes.toBytes(now);
     boolean flush = false;
@@ -2951,8 +2963,8 @@ public class HRegion implements HeapSize { // , Writable{
     }
 
     // do after lock
-    final long after = EnvironmentEdgeManager.currentTimeMillis();
-    this.opMetrics.updatePutMetrics(familyMap.keySet(), after - now);
+    final long afterNs = System.nanoTime();
+    this.opMetrics.updatePutMetrics(familyMap.keySet(), (afterNs - beforeNs) / 1000);
 
     if (flush) {
       // Request a cache flush.  Do it outside update lock.
@@ -3797,6 +3809,7 @@ public class HRegion implements HeapSize { // , Writable{
     private boolean filterClosed = false;
     private long readPt;
     private HRegion region;
+	  private Map<byte[], NavigableSet<byte[]>> familyMap = null;
 
     public HRegionInfo getRegionInfo() {
       return regionInfo;
@@ -3816,6 +3829,7 @@ public class HRegion implements HeapSize { // , Writable{
       // If we are doing a get, we want to be [startRow,endRow] normally
       // it is [startRow,endRow) and if startRow=endRow we get nothing.
       this.isScan = scan.isGetScan() ? -1 : 0;
+      this.familyMap = scan.getFamilyMap();
 
       // synchronize on scannerReadPoints so that nobody calculates
       // getSmallestReadPoint, before scannerReadPoints is updated.
@@ -3887,6 +3901,7 @@ public class HRegion implements HeapSize { // , Writable{
             "after we renewed it. Could be caused by a very slow scanner " +
             "or a lengthy garbage collection");
       }
+      final long nowNs = System.nanoTime();
       startRegionOperation();
       readRequestsCount.increment();
       opMetrics.setReadRequestCountMetrics(readRequestsCount.get());
@@ -3898,6 +3913,7 @@ public class HRegion implements HeapSize { // , Writable{
         return nextRaw(outResults, limit, metric);
       } finally {
         closeRegionOperation();
+        opMetrics.updateNextMetrics(familyMap.keySet(), (System.nanoTime() - nowNs) / 1000);
       }
     }
 
@@ -4848,7 +4864,7 @@ public class HRegion implements HeapSize { // , Writable{
    */
   private List<KeyValue> get(Get get, boolean withCoprocessor)
   throws IOException {
-    long now = EnvironmentEdgeManager.currentTimeMillis();
+    long nowNs = System.nanoTime();
 
     List<KeyValue> results = new ArrayList<KeyValue>();
 
@@ -4876,8 +4892,8 @@ public class HRegion implements HeapSize { // , Writable{
     }
 
     // do after lock
-    final long after = EnvironmentEdgeManager.currentTimeMillis();
-    this.opMetrics.updateGetMetrics(get.familySet(), after - now);
+    final long afterNs = System.nanoTime();
+    this.opMetrics.updateGetMetrics(get.familySet(), (afterNs - nowNs) / 1000);
 
     return results;
   }
@@ -5113,7 +5129,7 @@ public class HRegion implements HeapSize { // , Writable{
     WALEdit walEdits = null;
     List<KeyValue> allKVs = new ArrayList<KeyValue>(append.size());
     Map<Store, List<KeyValue>> tempMemstore = new HashMap<Store, List<KeyValue>>();
-    long before = EnvironmentEdgeManager.currentTimeMillis();
+    long beforeNs = System.nanoTime();
     long size = 0;
     long txid = 0;
 
@@ -5234,8 +5250,8 @@ public class HRegion implements HeapSize { // , Writable{
     }
 
 
-    long after = EnvironmentEdgeManager.currentTimeMillis();
-    this.opMetrics.updateAppendMetrics(append.getFamilyMap().keySet(), after - before);
+    long afterNs = System.nanoTime();
+    this.opMetrics.updateAppendMetrics(append.getFamilyMap().keySet(), (afterNs - beforeNs) / 1000);
 
     if (flush) {
       // Request a cache flush. Do it outside update lock.
@@ -5286,7 +5302,7 @@ public class HRegion implements HeapSize { // , Writable{
     WALEdit walEdits = null;
     List<KeyValue> allKVs = new ArrayList<KeyValue>(increment.numColumns());
     Map<Store, List<KeyValue>> tempMemstore = new HashMap<Store, List<KeyValue>>();
-    long before = EnvironmentEdgeManager.currentTimeMillis();
+    long beforeNs = System.nanoTime();
     long size = 0;
     long txid = 0;
 
@@ -5379,8 +5395,8 @@ public class HRegion implements HeapSize { // , Writable{
       }
     } finally {
       closeRegionOperation();
-      long after = EnvironmentEdgeManager.currentTimeMillis();
-      this.opMetrics.updateIncrementMetrics(increment.getFamilyMap().keySet(), after - before);
+      long afterNs = System.nanoTime();
+      this.opMetrics.updateIncrementMetrics(increment.getFamilyMap().keySet(), (afterNs - beforeNs) / 1000);
     }
 
     if (flush) {
@@ -5404,7 +5420,7 @@ public class HRegion implements HeapSize { // , Writable{
       byte [] qualifier, long amount, boolean writeToWAL)
   throws IOException {
     // to be used for metrics
-    long before = EnvironmentEdgeManager.currentTimeMillis();
+    long beforeNs = System.nanoTime();
 
     checkRow(row, "increment");
     boolean flush = false;
@@ -5480,8 +5496,8 @@ public class HRegion implements HeapSize { // , Writable{
     }
 
     // do after lock
-    long after = EnvironmentEdgeManager.currentTimeMillis();
-    this.opMetrics.updateIncrementColumnValueMetrics(family, after - before);
+    long afterNs = System.nanoTime();
+    this.opMetrics.updateIncrementColumnValueMetrics(family, (afterNs - beforeNs) / 1000);
 
     if (flush) {
       // Request a cache flush.  Do it outside update lock.
@@ -5878,6 +5894,16 @@ public class HRegion implements HeapSize { // , Writable{
       throw new NotServingRegionException(regionInfo.getRegionNameAsString() +
           " is closed");
     }
+  }
+  
+  /**
+   * update coproessor metrics
+   * @param methodName
+   * @param columnFamilies
+   * @param value
+   */
+  public void updateCoprocessorMetrics(String methodName, long value) {
+    this.opMetrics.updateCoprocessorMetrics(methodName, value);
   }
 
   /**

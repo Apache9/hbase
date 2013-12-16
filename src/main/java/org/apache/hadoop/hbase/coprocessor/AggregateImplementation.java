@@ -30,7 +30,9 @@ import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.filter.FirstKeyOnlyFilter;
 import org.apache.hadoop.hbase.ipc.ProtocolSignature;
+import org.apache.hadoop.hbase.regionserver.HRegion;
 import org.apache.hadoop.hbase.regionserver.InternalScanner;
+import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.Pair;
 
 /**
@@ -56,8 +58,9 @@ public class AggregateImplementation extends BaseEndpointCoprocessor implements
       throws IOException {
     T temp;
     T max = null;
-    InternalScanner scanner = ((RegionCoprocessorEnvironment) getEnvironment())
-        .getRegion().getScanner(scan);
+    final long nowNs = System.nanoTime();
+    HRegion region = ((RegionCoprocessorEnvironment) getEnvironment()).getRegion();
+    InternalScanner scanner = region.getScanner(scan);
     List<KeyValue> results = new ArrayList<KeyValue>();
     byte[] colFamily = scan.getFamilies()[0];
     byte[] qualifier = scan.getFamilyMap().get(colFamily).pollFirst();
@@ -75,6 +78,8 @@ public class AggregateImplementation extends BaseEndpointCoprocessor implements
     } finally {
       scanner.close();
     }
+    
+    region.updateCoprocessorMetrics("getMax", (System.nanoTime() - nowNs) / 1000);
     log.info("Maximum from this region is "
         + ((RegionCoprocessorEnvironment) getEnvironment()).getRegion()
             .getRegionNameAsString() + ": " + max);
@@ -86,8 +91,9 @@ public class AggregateImplementation extends BaseEndpointCoprocessor implements
       throws IOException {
     T min = null;
     T temp;
-    InternalScanner scanner = ((RegionCoprocessorEnvironment) getEnvironment())
-        .getRegion().getScanner(scan);
+    final long nowNs = System.nanoTime();
+    HRegion region = ((RegionCoprocessorEnvironment) getEnvironment()).getRegion();
+    InternalScanner scanner = region.getScanner(scan);
     List<KeyValue> results = new ArrayList<KeyValue>();
     byte[] colFamily = scan.getFamilies()[0];
     byte[] qualifier = scan.getFamilyMap().get(colFamily).pollFirst();
@@ -104,6 +110,7 @@ public class AggregateImplementation extends BaseEndpointCoprocessor implements
     } finally {
       scanner.close();
     }
+    region.updateCoprocessorMetrics("getMin", (System.nanoTime() - nowNs) / 1000);
     log.info("Minimum from this region is "
         + ((RegionCoprocessorEnvironment) getEnvironment()).getRegion()
             .getRegionNameAsString() + ": " + min);
@@ -116,8 +123,9 @@ public class AggregateImplementation extends BaseEndpointCoprocessor implements
     long sum = 0l;
     S sumVal = null;
     T temp;
-    InternalScanner scanner = ((RegionCoprocessorEnvironment) getEnvironment())
-        .getRegion().getScanner(scan);
+    final long nowNs = System.nanoTime();
+    HRegion region = ((RegionCoprocessorEnvironment) getEnvironment()).getRegion();
+    InternalScanner scanner = region.getScanner(scan);
     byte[] colFamily = scan.getFamilies()[0];
     byte[] qualifier = scan.getFamilyMap().get(colFamily).pollFirst();
     List<KeyValue> results = new ArrayList<KeyValue>();
@@ -135,6 +143,7 @@ public class AggregateImplementation extends BaseEndpointCoprocessor implements
     } finally {
       scanner.close();
     }
+    region.updateCoprocessorMetrics("getSum", (System.nanoTime() - nowNs) / 1000);
     log.debug("Sum from this region is "
         + ((RegionCoprocessorEnvironment) getEnvironment()).getRegion()
             .getRegionNameAsString() + ": " + sum);
@@ -150,8 +159,9 @@ public class AggregateImplementation extends BaseEndpointCoprocessor implements
     byte[] qualifier = scan.getFamilyMap().get(colFamily).pollFirst();
     if (scan.getFilter() == null && qualifier == null)
       scan.setFilter(new FirstKeyOnlyFilter());
-    InternalScanner scanner = ((RegionCoprocessorEnvironment) getEnvironment())
-        .getRegion().getScanner(scan);
+    final long nowNs = System.nanoTime();
+    HRegion region = ((RegionCoprocessorEnvironment) getEnvironment()).getRegion();
+    InternalScanner scanner = region.getScanner(scan);
     try {
       boolean hasMoreRows = false;
       do {
@@ -164,6 +174,7 @@ public class AggregateImplementation extends BaseEndpointCoprocessor implements
     } finally {
       scanner.close();
     }
+    region.updateCoprocessorMetrics("getRowNum", (System.nanoTime() - nowNs) / 1000);
     log.info("Row counter from this region is "
         + ((RegionCoprocessorEnvironment) getEnvironment()).getRegion()
             .getRegionNameAsString() + ": " + counter);
@@ -175,8 +186,9 @@ public class AggregateImplementation extends BaseEndpointCoprocessor implements
       throws IOException {
     S sumVal = null;
     Long rowCountVal = 0l;
-    InternalScanner scanner = ((RegionCoprocessorEnvironment) getEnvironment())
-        .getRegion().getScanner(scan);
+    final long nowNs = System.nanoTime();
+    HRegion region = ((RegionCoprocessorEnvironment) getEnvironment()).getRegion();
+    InternalScanner scanner = region.getScanner(scan);
     byte[] colFamily = scan.getFamilies()[0];
     byte[] qualifier = scan.getFamilyMap().get(colFamily).pollFirst();
     List<KeyValue> results = new ArrayList<KeyValue>();
@@ -195,6 +207,7 @@ public class AggregateImplementation extends BaseEndpointCoprocessor implements
       scanner.close();
     }
     Pair<S, Long> pair = new Pair<S, Long>(sumVal, rowCountVal);
+    region.updateCoprocessorMetrics("getAvg", (System.nanoTime() - nowNs) / 1000);
     return pair;
   }
 
@@ -203,8 +216,9 @@ public class AggregateImplementation extends BaseEndpointCoprocessor implements
       throws IOException {
     S sumVal = null, sumSqVal = null, tempVal = null;
     long rowCountVal = 0l;
-    InternalScanner scanner = ((RegionCoprocessorEnvironment) getEnvironment())
-        .getRegion().getScanner(scan);
+    final long nowNs = System.nanoTime();
+    HRegion region = ((RegionCoprocessorEnvironment) getEnvironment()).getRegion();
+    InternalScanner scanner = region.getScanner(scan);
     byte[] colFamily = scan.getFamilies()[0];
     byte[] qualifier = scan.getFamilyMap().get(colFamily).pollFirst();
     List<KeyValue> results = new ArrayList<KeyValue>();
@@ -230,6 +244,7 @@ public class AggregateImplementation extends BaseEndpointCoprocessor implements
     l.add(sumVal);
     l.add(sumSqVal);
     Pair<List<S>, Long> p = new Pair<List<S>, Long>(l, rowCountVal);
+    region.updateCoprocessorMetrics("getStd", (System.nanoTime() - nowNs) / 1000);
     return p;
   }
 
@@ -237,9 +252,10 @@ public class AggregateImplementation extends BaseEndpointCoprocessor implements
   public <T, S> List<S> getMedian(ColumnInterpreter<T, S> ci, Scan scan)
   throws IOException {
     S sumVal = null, sumWeights = null, tempVal = null, tempWeight = null;
-
-    InternalScanner scanner = ((RegionCoprocessorEnvironment) getEnvironment())
-    .getRegion().getScanner(scan);
+    
+    final long nowNs = System.nanoTime();
+    HRegion region = ((RegionCoprocessorEnvironment) getEnvironment()).getRegion();
+    InternalScanner scanner = region.getScanner(scan);
     byte[] colFamily = scan.getFamilies()[0];
     NavigableSet<byte[]> quals = scan.getFamilyMap().get(colFamily);
     byte[] valQualifier = quals.pollFirst();
@@ -271,6 +287,7 @@ public class AggregateImplementation extends BaseEndpointCoprocessor implements
     List<S> l = new ArrayList<S>();
     l.add(sumVal);
     l.add(sumWeights == null ? ci.castToReturnType(ci.getMinValue()) : sumWeights);
+    region.updateCoprocessorMetrics("getMedian", (System.nanoTime() - nowNs) / 1000);
     return l;
   }
   

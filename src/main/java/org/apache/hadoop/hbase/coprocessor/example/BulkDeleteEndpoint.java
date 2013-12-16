@@ -45,10 +45,12 @@ import org.apache.hadoop.hbase.util.Pair;
 public class BulkDeleteEndpoint extends BaseEndpointCoprocessor implements BulkDeleteProtocol {
   private static final String NO_OF_VERSIONS_TO_DELETE = "noOfVersionsToDelete";
   private static final Log LOG = LogFactory.getLog(BulkDeleteEndpoint.class);
+  private static final String BULK_DELETE_METHOD_NAME_KEY = "bulkDelete";
   
   @Override
   public BulkDeleteResponse delete(Scan scan, byte deleteType, Long timestamp,
       int rowBatchSize) {
+    final long beforeNs = System.nanoTime();
     long totalRowsDeleted = 0L;
     long totalVersionsDeleted = 0L;
     BulkDeleteResponse response = new BulkDeleteResponse();
@@ -115,12 +117,13 @@ public class BulkDeleteEndpoint extends BaseEndpointCoprocessor implements BulkD
     }
     response.setRowsDeleted(totalRowsDeleted);
     response.setVersionsDeleted(totalVersionsDeleted);
-    
-    LOG.info("BulkDelete from this region is "
-        + ((RegionCoprocessorEnvironment) getEnvironment()).getRegion().getRegionNameAsString()
-        + ": rowsDeleted = " + response.getRowsDeleted() + ", versionsDeleted = "
-        + response.getVersionsDeleted() + ", IOException = " + response.getIoException());
-    
+		region.updateCoprocessorMetrics(BULK_DELETE_METHOD_NAME_KEY, (System.nanoTime() - beforeNs) / 1000);
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("BulkDelete from this region is "
+          + ((RegionCoprocessorEnvironment) getEnvironment()).getRegion().getRegionNameAsString()
+          + ": rowsDeleted = " + response.getRowsDeleted() + ", versionsDeleted = "
+          + response.getVersionsDeleted() + ", IOException = " + response.getIoException());
+    }
     return response;
   }
 
