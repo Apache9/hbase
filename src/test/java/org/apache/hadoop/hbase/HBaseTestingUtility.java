@@ -56,6 +56,7 @@ import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
+import org.apache.hadoop.hbase.filter.PrefixFilter;
 import org.apache.hadoop.hbase.fs.HFileSystem;
 import org.apache.hadoop.hbase.io.encoding.DataBlockEncoding;
 import org.apache.hadoop.hbase.io.hfile.ChecksumUtil;
@@ -1892,6 +1893,9 @@ public class HBaseTestingUtility {
         boolean allRegionsAssigned = true;
         Scan scan = new Scan();
         scan.addFamily(HConstants.CATALOG_FAMILY);
+        if (tableName != null) {
+          scan.setFilter(new PrefixFilter(Bytes.toBytes(Bytes.toString(tableName) + ",")));
+        }
         ResultScanner s = meta.getScanner(scan);
         try {
           Result r;
