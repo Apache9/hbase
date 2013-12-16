@@ -244,6 +244,12 @@ public class HLog implements Syncable {
   // of the default Hdfs block size.
   private final long logrollsize;
 
+  // size of current log 
+  private long curLogSize = 0;
+
+  // The total size of hlog
+  private AtomicLong totalLogSize = new AtomicLong(0);
+  
   // This lock prevents starting a log roll during a cache flush.
   // synchronized is insufficient because a cache flush spans two method calls.
   private final Lock cacheFlushLock = new ReentrantLock();
@@ -695,9 +701,16 @@ public class HLog implements Syncable {
           i.postLogRoll(oldPath, newPath);
         }
       }
-      LOG.info((oldFile != null ? "Roll " + FSUtils.getPath(oldFile) + ", entries="
-          + numEntriesSize + ", filesize=" + this.fs.getFileStatus(oldFile).getLen() + ". " : "")
-          + " for " + FSUtils.getPath(newPath));
+			long oldFileLen = 0;
+      if (oldFile != null) {
+        oldFileLen = this.fs.getFileStatus(oldFile).getLen();
+        this.totalLogSize.addAndGet(oldFileLen);
+      }
+      LOG.info((oldFile != null?
+          "Roll " + FSUtils.getPath(oldFile) + ", entries=" +
+          this.numEntries.get() +
+          ", filesize=" + oldFileLen + ". ": "") +
+          " for " + FSUtils.getPath(newPath));
 
       // Can we delete any of the old log files?
       if (this.outputfiles.size() > 0) {
@@ -707,7 +720,10 @@ public class HLog implements Syncable {
           // flushed (and removed from the lastSeqWritten map). Means can
           // remove all but currently open log file.
           for (Map.Entry<Long, Path> e : this.outputfiles.entrySet()) {
-            archiveLogFile(e.getValue(), e.getKey());
+            Path path = e.getValue();
+						long fileLen = this.fs.getFileStatus(path).getLen();
+            archiveLogFile(path, e.getKey());
+            this.totalLogSize.addAndGet(-fileLen);
           }
           this.outputfiles.clear();
         } else {
@@ -1428,7 +1444,8 @@ public class HLog implements Syncable {
       if (!this.logRollRunning) {
         checkLowReplication();
         try {
-          if (tempWriter.getLength() > this.logrollsize) {
+          curLogSize = tempWriter.getLength();
+          if (curLogSize > this.logrollsize) {
             requestLogRoll();
           }
         } catch (IOException x) {
@@ -1611,9 +1628,14 @@ public class HLog implements Syncable {
     return this.logSeqNum.incrementAndGet();
   }
 
-  /** @return the number of log files in use */
-  int getNumLogFiles() {
-    return outputfiles.size();
+  /** @return the number of log files in use, including current one */
+  public int getNumLogFiles() {
+    return outputfiles.size() + 1;
+  }
+  
+  /** @return the total size of log files in use, including current one */
+  public long getNumLogFileSize() {
+    return totalLogSize.get() + curLogSize;
   }
 
   private byte[] getSnapshotName(byte[] encodedRegionName) {

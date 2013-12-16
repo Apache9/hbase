@@ -1672,6 +1672,8 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
 
     this.metrics.stores.set(stores);
     this.metrics.storefiles.set(storefiles);
+    this.metrics.hlogFileCount.set(this.hlog.getNumLogFiles());
+    this.metrics.hlogFileSizeMB.set(this.hlog.getNumLogFileSize() /(1024 * 1024));
     this.metrics.memstoreSizeMB.set((int) (memstoreSize / (1024 * 1024)));
     this.metrics.mbInMemoryWithoutWAL.set((int) (dataInMemoryWithoutWAL / (1024 * 1024)));
     this.metrics.numPutsWithoutWAL.set(numPutsWithoutWAL);
