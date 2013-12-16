@@ -37,6 +37,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.MultithreadedTestUtil;
 import org.apache.hadoop.hbase.MultithreadedTestUtil.TestThread;
 import org.apache.hadoop.hbase.io.HeapSize;
+import org.apache.hadoop.hbase.io.hfile.bucket.BucketCache;
 import org.apache.hadoop.hbase.util.ChecksumType;
 import org.apache.hadoop.hbase.regionserver.metrics.SchemaMetrics;
 
@@ -151,7 +152,11 @@ public class CacheTestUtils {
       try {
         if (toBeTested.getBlock(block.blockName, true, false) != null) {
           toBeTested.cacheBlock(block.blockName, block.block);
-          fail("Cache should not allow re-caching a block");
+          if (!(toBeTested instanceof BucketCache)) {
+            // BucketCache won't throw exception when caching already cached
+            // block
+            fail("Cache should not allow re-caching a block");
+          }
         }
       } catch (RuntimeException re) {
         // expected
@@ -244,6 +249,30 @@ public class CacheTestUtils {
 
   private static class ByteArrayCacheable implements Cacheable {
 
+    static final CacheableDeserializer<Cacheable> blockDeserializer = 
+      new CacheableDeserializer<Cacheable>() {
+      
+      @Override
+      public Cacheable deserialize(ByteBuffer b) throws IOException {
+        int len = b.getInt();
+        Thread.yield();
+        byte buf[] = new byte[len];
+        b.get(buf);
+        return new ByteArrayCacheable(buf);
+      }
+
+      @Override
+      public int getDeserialiserIdentifier() {
+        return deserializerIdentifier;
+      }
+
+      @Override
+      public Cacheable deserialize(ByteBuffer b, boolean reuse)
+          throws IOException {
+        return deserialize(b);
+      }
+    };
+
     final byte[] buf;
 
     public ByteArrayCacheable(byte[] buf) {
@@ -270,17 +299,13 @@ public class CacheTestUtils {
 
     @Override
     public CacheableDeserializer<Cacheable> getDeserializer() {
-      return new CacheableDeserializer<Cacheable>() {
+      return blockDeserializer;
+    }
 
-        @Override
-        public Cacheable deserialize(ByteBuffer b) throws IOException {
-          int len = b.getInt();
-          Thread.yield();
-          byte buf[] = new byte[len];
-          b.get(buf);
-          return new ByteArrayCacheable(buf);
-        }
-      };
+    private static final int deserializerIdentifier;
+    static {
+      deserializerIdentifier = CacheableDeserializerIdManager
+          .registerDeserializer(blockDeserializer);
     }
 
     @Override
