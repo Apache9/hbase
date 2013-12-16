@@ -209,7 +209,7 @@ public class SecureClient extends HBaseClient {
           closeConnection();
           if (shouldAuthenticateOverKrb()) {
             if (currRetries < maxRetries) {
-              LOG.debug("Exception encountered while connecting to " +
+              LOG.info("Exception encountered while connecting to " +
                   "the server : " + ex);
               //try re-login
               if (UserGroupInformation.isLoginKeytabBased()) {
@@ -222,7 +222,9 @@ public class SecureClient extends HBaseClient {
               //we are sleeping with the Connection lock held but since this
               //connection instance is being used for connecting to the server
               //in question, it is okay
-              Thread.sleep((rand.nextInt(reloginMaxBackoff) + 1));
+              long sleepTime = (rand.nextInt(reloginMaxBackoff) + 1);
+              LOG.info("sleep " + sleepTime + " ms for next setupConnection");
+              Thread.sleep(sleepTime);
               return null;
             } else {
               String msg = "Couldn't setup connection for " +
@@ -402,6 +404,13 @@ public class SecureClient extends HBaseClient {
             call.setException(exception);
           }
           // Close the connection
+          markClosed(exception);
+        } else {
+          IOException exception = new IOException("Response from remote server " + remoteId.getAddress()
+              + " has an unknown state:" + state);
+          if (call != null) {
+            call.setException(exception);
+          }
           markClosed(exception);
         }
         calls.remove(id);
