@@ -1215,7 +1215,8 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
         storefileSizeMB, memstoreSizeMB, storefileIndexSizeMB, rootIndexSizeKB,
         totalStaticIndexSizeKB, totalStaticBloomSizeKB,
         (int) r.readRequestsCount.get(), (int) r.writeRequestsCount.get(),
-        totalCompactingKVs, currentCompactedKVs);
+        totalCompactingKVs, currentCompactedKVs, 
+        r.getLastFlushSequenceId());
   }
 
   /**
@@ -1760,7 +1761,7 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
 
     // Create the log splitting worker and start it
     this.splitLogWorker = new SplitLogWorker(this.zooKeeper,
-        this.getConfiguration(), this.getServerName().toString());
+        this.getConfiguration(), this.getServerName().toString(), this);
     splitLogWorker.start();
     
   }
@@ -2029,7 +2030,11 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
   ReplicationSinkService getReplicationSinkService() {
     return replicationSinkHandler;
   }
-
+  
+  public HMasterRegionInterface getHMaster() {
+    return this.hbaseMaster;
+  }
+  
   /**
    * Get the current master from ZooKeeper and open the RPC connection to it.
    *

@@ -83,7 +83,7 @@ implements WritableComparable<HServerLoad> {
    * Encapsulates per-region loading metrics.
    */
   public static class RegionLoad extends VersionedWritable {
-    private static final byte VERSION = 2;
+    private static final byte VERSION = 3;
 
     /** @return the object version number */
     public byte getVersion() {
@@ -129,6 +129,7 @@ implements WritableComparable<HServerLoad> {
      */
     private int totalStaticBloomSizeKB;
 
+    private long lastFlushSeqId = -1;
     /**
      * Constructor, for Writable
      */
@@ -156,7 +157,8 @@ implements WritableComparable<HServerLoad> {
         final int rootIndexSizeKB, final int totalStaticIndexSizeKB,
         final int totalStaticBloomSizeKB,
         final long readRequestsCount, final long writeRequestsCount,
-        final long totalCompactingKVs, final long currentCompactedKVs) {
+        final long totalCompactingKVs, final long currentCompactedKVs,
+        final long lastFlushSeqId) {
       this.name = name;
       this.stores = stores;
       this.storefiles = storefiles;
@@ -171,6 +173,7 @@ implements WritableComparable<HServerLoad> {
       this.writeRequestsCount = writeRequestsCount;
       this.totalCompactingKVs = totalCompactingKVs;
       this.currentCompactedKVs = currentCompactedKVs;
+      this.lastFlushSeqId = lastFlushSeqId;
     }
 
     /**
@@ -271,7 +274,13 @@ implements WritableComparable<HServerLoad> {
     public long getTotalCompactingKVs() {
       return totalCompactingKVs;
     }
-
+    
+    /**
+     * @return the last flush sequence id
+     */
+    public long getLastFlushSeqId() {
+      return this.lastFlushSeqId;
+    }
     /**
      * @return the number of already compacted kvs in current compaction
      */
@@ -382,10 +391,12 @@ implements WritableComparable<HServerLoad> {
     public void readFields(DataInput in) throws IOException {
       int version = in.readByte();
       if (version > VERSION) throw new IOException("Version mismatch; " + version);
+      // version 1
       if (version == 1) { 
         readFields92(in);
         return;
       }
+      // version 2
       int namelen = WritableUtils.readVInt(in);
       this.name = new byte[namelen];
       in.readFully(this.name);
@@ -406,6 +417,10 @@ implements WritableComparable<HServerLoad> {
       // Backward compatibility - there may be coprocessors in the region load, ignore them.
       for (int i = 0; i < coprocessorsSize; i++) {
         in.readUTF();
+      }
+      // for verion 3
+      if (version == VERSION) {
+        this.lastFlushSeqId = WritableUtils.readVLong(in);
       }
     }
 
@@ -429,6 +444,7 @@ implements WritableComparable<HServerLoad> {
       // Backward compatibility - write out 0 as coprocessor count,
       // we don't report region-level coprocessors anymore.
       WritableUtils.writeVInt(out, 0);
+      WritableUtils.writeVLong(out, lastFlushSeqId);
     }
 
     /**

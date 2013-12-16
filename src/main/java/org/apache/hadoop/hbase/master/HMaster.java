@@ -34,7 +34,9 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.SortedMap;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -53,6 +55,7 @@ import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HServerLoad;
+import org.apache.hadoop.hbase.HServerLoad.RegionLoad;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.HealthCheckChore;
 import org.apache.hadoop.hbase.MasterNotRunningException;
@@ -249,6 +252,8 @@ Server {
   // monitor for snapshot of hbase tables
   private SnapshotManager snapshotManager;
 
+  private final SortedMap<byte[], Long> flushedSequenceIdByRegion =
+      new ConcurrentSkipListMap<byte[], Long>(Bytes.BYTES_COMPARATOR);
   /**
    * MX Bean for MasterInfo
    */
@@ -1113,12 +1118,36 @@ Server {
   public void regionServerReport(final byte [] sn, final HServerLoad hsl)
   throws IOException {
     this.serverManager.regionServerReport(ServerName.parseVersionedServerName(sn), hsl);
+    updateLastFlushedSequenceIds(sn, hsl);
     if (hsl != null && this.metrics != null) {
       // Up our metrics.
       this.metrics.incrementRequests(hsl.getTotalNumberOfRequests());
     }
   }
 
+  private void updateLastFlushedSequenceIds(final byte [] sn, final HServerLoad hsl) {
+    for (Map.Entry<byte[], RegionLoad> entry : hsl.getRegionsLoad().entrySet()) {
+      Long existingValue = flushedSequenceIdByRegion.get(entry.getKey());
+      long lastFlsuhSeqId = entry.getValue().getLastFlushSeqId();
+      if (existingValue != null) {
+        if (lastFlsuhSeqId < existingValue) {
+          if (LOG.isDebugEnabled()) {
+            LOG.debug("RegionServer " + Bytes.toString(sn) +
+                " indicates a last flushed sequence id (" + entry.getValue() +
+                ") that is less than the previous last flushed sequence id (" +
+                existingValue + ") for region " +
+                Bytes.toString(entry.getKey()) + " Ignoring.");
+          }
+          // Don't let smaller sequence ids override greater
+          // sequence ids.
+          continue;
+        }
+      }
+      flushedSequenceIdByRegion.put(entry.getKey(), lastFlsuhSeqId);
+    }
+  }
+
+  
   @Override
   public void reportRSFatalError(byte [] sn, String errorText) {
     String msg = "Region server " + Bytes.toString(sn) +
@@ -1976,6 +2005,14 @@ Server {
     }
   }
 
+  @Override
+  public long getLastFlushedSequenceId(byte[] regionName) throws IOException {
+    if (flushedSequenceIdByRegion.containsKey(regionName)) {
+      return flushedSequenceIdByRegion.get(regionName);
+    }
+    return -1;
+  }
+  
   /**
    * Gets the online region servers.
    * @return list of online region servers

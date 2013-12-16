@@ -216,6 +216,7 @@ public class HRegion implements HeapSize { // , Writable{
   private Map<String, Class<? extends CoprocessorProtocol>>
       protocolHandlerNames = Maps.newHashMap();
 
+  private long lastFlushSequenceId = -1;
   /**
    * Temporary subdirectory of the region directory used for compaction output.
    */
@@ -1220,6 +1221,11 @@ public class HRegion implements HeapSize { // , Writable{
   public long getLastFlushTime() {
     return this.lastFlushTime;
   }
+  
+  /** @return the last sequence id the region was flushed */
+  public long getLastFlushSequenceId() {
+    return this.lastFlushSequenceId;
+  }
 
   /** @return info about the last flushes <time, size> */
   public List<Pair<Long,Long>> getRecentFlushInfo() {
@@ -1687,7 +1693,10 @@ public class HRegion implements HeapSize { // , Writable{
         regionInfo.getTableName(), completeSequenceId,
         this.getRegionInfo().isMetaRegion());
     }
-
+    
+    // Update the last flushed sequence id for region
+    lastFlushSequenceId = completeSequenceId;
+    
     // C. Finally notify anyone waiting on memstore to clear:
     // e.g. checkResources().
     synchronized (this) {
@@ -5502,7 +5511,7 @@ public class HRegion implements HeapSize { // , Writable{
       ClassSize.OBJECT +
       ClassSize.ARRAY +
       36 * ClassSize.REFERENCE + 2 * Bytes.SIZEOF_INT +
-      (8 * Bytes.SIZEOF_LONG) +
+      (9 * Bytes.SIZEOF_LONG) +
       Bytes.SIZEOF_BOOLEAN);
 
   public static final long DEEP_OVERHEAD = FIXED_OVERHEAD +

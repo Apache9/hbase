@@ -25,12 +25,14 @@ import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hbase.ipc.HMasterRegionInterface;
 import org.apache.hadoop.hbase.master.SplitLogManager;
 import org.apache.hadoop.hbase.regionserver.wal.HLogSplitter;
 import org.apache.hadoop.hbase.util.CancelableProgressable;
@@ -91,7 +93,8 @@ public class SplitLogWorker extends ZooKeeperListener implements Runnable {
   }
 
   public SplitLogWorker(ZooKeeperWatcher watcher, final Configuration conf,
-      final String serverName) {
+      final String serverName, 
+      final HRegionServer rs) {
     this(watcher, conf, serverName, new TaskExecutor () {
       @Override
       public Status exec(String filename, CancelableProgressable p) {
@@ -110,7 +113,8 @@ public class SplitLogWorker extends ZooKeeperListener implements Runnable {
         try {          
           String relativeLogPath = getRelativeLogPath(filename);
           if (HLogSplitter.splitLogFile(rootdir,
-              fs.getFileStatus(new Path(rootdir, relativeLogPath)), fs, conf, p) == false) {
+              fs.getFileStatus(new Path(rootdir, relativeLogPath)), 
+              fs, conf, p, rs) == false) {
             return Status.PREEMPTED;
           }
         } catch (InterruptedIOException iioe) {

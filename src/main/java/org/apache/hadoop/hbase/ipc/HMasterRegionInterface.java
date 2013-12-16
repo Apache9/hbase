@@ -73,4 +73,16 @@ public interface HMasterRegionInterface extends VersionedProtocol {
    * @param errorMessage informative text to expose in the master logs and UI
    */
   public void reportRSFatalError(byte [] sn, String errorMessage);
+  
+  /**
+   * Get the sequence id of the last MemStore entry flushed to an
+   * HFile for a specified region. Used by the region server to speed up
+   * log splitting
+   *
+   * @param regionName
+   * @return The last HLog sequence id flushed from MemStore to HFile for
+   *         the region
+   * @throws IOException
+   */
+  public long getLastFlushedSequenceId(byte[] regionName) throws IOException;
 }

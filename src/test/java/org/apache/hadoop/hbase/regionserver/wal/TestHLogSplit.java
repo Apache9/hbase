@@ -1055,7 +1055,7 @@ public class TestHLogSplit {
     generateHLogs(1, 10, -1);
     FileStatus logfile = fs.listStatus(hlogDir)[0];
     fs.initialize(fs.getUri(), conf);
-    HLogSplitter.splitLogFile(hbaseDir, logfile, fs, conf, reporter);
+    HLogSplitter.splitLogFile(hbaseDir, logfile, fs, conf, reporter, null);
     HLogSplitter.finishSplitLogFile(hbaseDir, oldLogDir, logfile.getPath()
         .toString(), conf);
 
@@ -1084,7 +1084,7 @@ public class TestHLogSplit {
     LOG.info("Region directory is" + regiondir);
     fs.delete(regiondir, true);
     
-    HLogSplitter.splitLogFile(hbaseDir, logfile, fs, conf, reporter);
+    HLogSplitter.splitLogFile(hbaseDir, logfile, fs, conf, reporter, null);
     HLogSplitter.finishSplitLogFile(hbaseDir, oldLogDir, logfile.getPath()
         .toString(), conf);
     
@@ -1102,7 +1102,7 @@ public class TestHLogSplit {
 
     fs.initialize(fs.getUri(), conf);
 
-    HLogSplitter.splitLogFile(hbaseDir, logfile, fs, conf, reporter);
+    HLogSplitter.splitLogFile(hbaseDir, logfile, fs, conf, reporter, null);
     HLogSplitter.finishSplitLogFile(hbaseDir, oldLogDir, logfile.getPath()
         .toString(), conf);
     Path tdir = HTableDescriptor.getTableDir(hbaseDir, TABLE_NAME);
@@ -1118,7 +1118,7 @@ public class TestHLogSplit {
     FileStatus logfile = fs.listStatus(hlogDir)[0];
     fs.initialize(fs.getUri(), conf);
 
-    HLogSplitter.splitLogFile(hbaseDir, logfile, fs, conf, reporter);
+    HLogSplitter.splitLogFile(hbaseDir, logfile, fs, conf, reporter, null);
     HLogSplitter.finishSplitLogFile(hbaseDir, oldLogDir, logfile.getPath()
         .toString(), conf);
     for (String region : regions) {
@@ -1138,7 +1138,7 @@ public class TestHLogSplit {
         Corruptions.INSERT_GARBAGE_ON_FIRST_LINE, true, fs);
 
     fs.initialize(fs.getUri(), conf);
-    HLogSplitter.splitLogFile(hbaseDir, logfile, fs, conf, reporter);
+    HLogSplitter.splitLogFile(hbaseDir, logfile, fs, conf, reporter, null);
     HLogSplitter.finishSplitLogFile(hbaseDir, oldLogDir, logfile.getPath()
         .toString(), conf);
 

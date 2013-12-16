@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
+import java.net.ConnectException;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -47,9 +48,11 @@ import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.RemoteExceptionHandler;
 import org.apache.hadoop.hbase.io.HeapSize;
+import org.apache.hadoop.hbase.ipc.HMasterRegionInterface;
 import org.apache.hadoop.hbase.monitoring.MonitoredTask;
 import org.apache.hadoop.hbase.monitoring.TaskMonitor;
 import org.apache.hadoop.hbase.regionserver.HRegion;
+import org.apache.hadoop.hbase.regionserver.HRegionServer;
 import org.apache.hadoop.hbase.regionserver.wal.HLog.Entry;
 import org.apache.hadoop.hbase.regionserver.wal.HLog.Reader;
 import org.apache.hadoop.hbase.regionserver.wal.HLog.Writer;
@@ -108,7 +111,7 @@ public class HLogSplitter {
   Object dataAvailable = new Object();
   
   private MonitoredTask status;
-
+  private HRegionServer rs;
 
   /**
    * Create a new HLogSplitter using the given {@link Configuration} and the
@@ -155,6 +158,12 @@ public class HLogSplitter {
 
   public HLogSplitter(Configuration conf, Path rootDir, Path srcDir,
       Path oldLogDir, FileSystem fs) {
+    this(conf, rootDir, srcDir, oldLogDir, fs, null);
+  }
+  
+  public HLogSplitter(Configuration conf, Path rootDir, Path srcDir,
+      Path oldLogDir, FileSystem fs, 
+      HRegionServer rs) {
     this.conf = conf;
     this.rootDir = rootDir;
     this.srcDir = srcDir;
@@ -166,6 +175,7 @@ public class HLogSplitter {
             128*1024*1024));
     outputSink = new OutputSink();
     this.hlogFs = new HLogFileSystem(conf);
+    this.rs = rs;
   }
 
   /**
@@ -374,10 +384,11 @@ public class HLogSplitter {
    * @throws IOException
    */
   static public boolean splitLogFile(Path rootDir, FileStatus logfile,
-      FileSystem fs, Configuration conf, CancelableProgressable reporter)
+      FileSystem fs, Configuration conf, CancelableProgressable reporter, 
+      HRegionServer rs)
       throws IOException {
     HLogSplitter s = new HLogSplitter(conf, rootDir, null, null /* oldLogDir */,
-        fs);
+        fs, rs);
     return s.splitLogFile(logfile, reporter);
   }
 
@@ -428,14 +439,42 @@ public class HLogSplitter {
       status.markComplete("Failed: reporter.progress asked us to terminate");
       return false;
     }
+    
+    Map<byte[], Long> lastFlushedSequenceIds =
+        new TreeMap<byte[], Long>(Bytes.BYTES_COMPARATOR);
+    int editsSkipped = 0;
+    
     // Report progress every so many edits and/or files opened (opening a file
     // takes a bit of time).
     int editsCount = 0;
     int numNewlyOpenedFiles = 0;
     Entry entry;
+    HMasterRegionInterface master = null;
+    if (rs != null ) master = rs.getHMaster();
+
     try {
       while ((entry = getNextLogLine(in,logPath, skipErrors)) != null) {
         byte[] region = entry.getKey().getEncodedRegionName();
+        Long lastFlushedSequenceId = -1l;
+        if (master != null) {
+          lastFlushedSequenceId = lastFlushedSequenceIds.get(region);
+          if (lastFlushedSequenceId == null) {
+            lastFlushedSequenceId = -1l;
+            try {
+              lastFlushedSequenceId = master.getLastFlushedSequenceId(region);
+              lastFlushedSequenceIds.put(region, lastFlushedSequenceId);
+            } catch (IOException e) {
+              LOG.warn("Unable to connect to the master to check " +
+                  "the last flushed sequence id", e);
+              master = null;
+            }
+          }
+        }
+        if (lastFlushedSequenceId >= entry.getKey().getLogSeqNum()) {
+          editsSkipped++;
+          continue;
+        }
+        
         Object o = logWriters.get(region);
         if (o == BAD_WRITER) {
           continue;
@@ -462,7 +501,8 @@ public class HLogSplitter {
             (numNewlyOpenedFiles > numOpenedFilesBeforeReporting)) {
           // Zero out files counter each time we fall in here.
           numNewlyOpenedFiles = 0;
-          String countsStr = "edits=" + editsCount + ", files=" + logWriters.size();
+          String countsStr = "edits=" + editsCount + ", skipped edits="
+              + editsSkipped + ", files=" + logWriters.size();
           status.setStatus("Split " + countsStr);
           long t1 = EnvironmentEdgeManager.currentTimeMillis();
           if ((t1 - last_report_at) > period) {
