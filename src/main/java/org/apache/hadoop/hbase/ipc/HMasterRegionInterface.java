@@ -22,10 +22,10 @@ package org.apache.hadoop.hbase.ipc;
 import java.io.IOException;
 
 import org.apache.hadoop.hbase.HServerLoad;
+import org.apache.hadoop.hbase.RegionStatistics;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.security.KerberosInfo;
 import org.apache.hadoop.io.MapWritable;
-import org.apache.hadoop.hbase.ipc.VersionedProtocol;
 
 /**
  * The Master publishes this Interface for RegionServers to register themselves
@@ -61,9 +61,10 @@ public interface HMasterRegionInterface extends VersionedProtocol {
   /**
    * @param sn {@link ServerName#getVersionedBytes()}
    * @param hsl Server load.
+   * @return table region statistics for the current region server.
    * @throws IOException
    */
-  public void regionServerReport(byte [] sn, HServerLoad hsl)
+  public RegionStatistics regionServerReport(byte [] sn, HServerLoad hsl)
   throws IOException;
   
   /**

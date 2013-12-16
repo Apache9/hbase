@@ -23,9 +23,11 @@ import java.io.IOException;
 
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.hbase.HRegionInfo;
+import org.apache.hadoop.hbase.RegionStatistics;
 import org.apache.hadoop.hbase.catalog.CatalogTracker;
 import org.apache.hadoop.hbase.ipc.RpcServer;
 import org.apache.hadoop.hbase.regionserver.wal.HLog;
+import org.apache.hadoop.hbase.util.Pair;
 import org.apache.zookeeper.KeeperException;
 
 /**
@@ -91,6 +93,11 @@ public interface RegionServerServices extends OnlineRegions {
    *         passed <code>hri</code>.
    */
   public boolean containsKeyInRegionsInTransition(HRegionInfo hri);
+
+  /**
+   * @return region statistics
+   */
+  public RegionStatistics getRegionStats();
 
   /**
    * @return Return the FileSystem object used by the regionserver

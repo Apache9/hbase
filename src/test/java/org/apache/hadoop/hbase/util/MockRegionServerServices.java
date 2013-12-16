@@ -26,6 +26,7 @@ import java.util.concurrent.ConcurrentSkipListMap;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.hbase.HRegionInfo;
+import org.apache.hadoop.hbase.RegionStatistics;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.catalog.CatalogTracker;
 import org.apache.hadoop.hbase.fs.HFileSystem;
@@ -174,5 +175,10 @@ public class MockRegionServerServices implements RegionServerServices {
   public boolean containsKeyInRegionsInTransition(HRegionInfo hri) {
     // TODO Auto-generated method stub
     return false;
+  }
+
+  @Override
+  public RegionStatistics getRegionStats() {
+    return null;
   }
 }

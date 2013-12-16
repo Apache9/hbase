@@ -573,7 +573,7 @@ public class ZKUtil {
     }
     @Override
     public String toString() {
-      return node + " (" + RegionTransitionData.fromBytes(data) + ")";
+      return node;
     }
     public boolean isEmpty() {
       return (data.length == 0);

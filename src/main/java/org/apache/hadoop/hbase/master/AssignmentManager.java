@@ -49,6 +49,7 @@ import org.apache.hadoop.hbase.Chore;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HServerLoad;
+import org.apache.hadoop.hbase.RegionStatistics;
 import org.apache.hadoop.hbase.NotServingRegionException;
 import org.apache.hadoop.hbase.Server;
 import org.apache.hadoop.hbase.ServerName;
@@ -172,6 +173,40 @@ public class AssignmentManager extends ZooKeeperListener {
   private final SortedMap<HRegionInfo, ServerName> regions =
     new TreeMap<HRegionInfo, ServerName>();
 
+  /**
+   * The last update time of {@link #regionCountPerTable} and
+   * {@link #regionCountPerTableRS}.
+   */
+  private long regionStatsUpdateTime = 0L;
+
+  /**
+   * The max period in microseconds to refresh {@link #regionCountPerTable} and
+   * {@link #regionCountPerTableRS}.
+   */
+  private final int regionStatsRefreshPeriod;
+
+  /**
+   * Lock to protect {@link #regionCountPerTable} and {@link #regionCountPerTableRS}.
+   */
+  private final Object regionCountLock = new Object();
+  /**
+   * Count of assigned regions for all tables.
+   */
+  private int regionCount;
+  /**
+   * Count of assigned regions to each region server for all tables.
+   */
+  private Map<ServerName, Integer> regionCountRS;
+  /**
+   * Count of assigned regions for each table.
+   */
+  private Map<String, Integer> regionCountPerTable;
+
+  /**
+   * Count of assigned regions to each region server for each table.
+   */
+  private Map<Pair<String, ServerName>, Integer> regionCountPerTableRS;
+
   private final ExecutorService executorService;
 
   //Thread pool executor service for timeout monitor
@@ -225,6 +260,7 @@ public class AssignmentManager extends ZooKeeperListener {
       this.master.getConfiguration().getInt("hbase.assignment.maximum.attempts", 10);
     this.balancer = balancer;
     this.threadPoolExecutorService = Executors.newCachedThreadPool();
+    this.regionStatsRefreshPeriod = conf.getInt("hbase.master.assignment.regioncountrefresh.period", 3000);
   }
   
   void startTimeOutMonitor() {
@@ -1523,6 +1559,82 @@ public class AssignmentManager extends ZooKeeperListener {
       throw new RuntimeException(e);
     }
     LOG.debug("Bulk assigning done for " + destination.toString());
+  }
+
+  /**
+   * Get region count statistics information. This method is thread-safe.
+   * @param serverName region server name
+   * @return table region count statistics information
+   */
+  public RegionStatistics getHTableRegionStatInfo(ServerName serverName) {
+    long now = System.currentTimeMillis();
+    synchronized (this.regions) {
+      // update the region count with intervals to reduce overhead
+      if ((now - this.regionStatsUpdateTime) >= this.regionStatsRefreshPeriod ||
+          this.regionCountRS == null) {
+        int regionCount = 0;
+        Map<ServerName, Integer> regionCountRS = new HashMap<ServerName, Integer>();
+        Map<String, Integer> regionCountPerTable = new HashMap<String, Integer>();
+        Map<Pair<String, ServerName>, Integer> regionCountPerTableRs =
+          new HashMap<Pair<String, ServerName>, Integer>();
+
+        for (Map.Entry<HRegionInfo, ServerName> entry : this.regions.entrySet()) {
+          // total region count
+          ++regionCount;
+
+          // total region count for each region server
+          ServerName sn = entry.getValue();
+          Integer countRS = regionCountRS.get(sn);
+          countRS = countRS == null ? 0 : countRS;
+          regionCountRS.put(sn, countRS + 1);
+
+          // total region count for each table
+          String tn = Bytes.toString(entry.getKey().getTableName());
+          Integer countPerTable = regionCountPerTable.get(tn);
+          countPerTable = countPerTable == null ? 0 : countPerTable;
+          regionCountPerTable.put(tn, countPerTable + 1);
+
+          // total region count for each (table, region server)
+          Pair<String, ServerName> tableRsPair = new Pair<String, ServerName>(tn, sn);
+          Integer countPerTableRS = regionCountPerTableRs.get(tableRsPair);
+          countPerTableRS = countPerTableRS == null ? 0 : countPerTableRS;
+          regionCountPerTableRs.put(tableRsPair, countPerTableRS + 1);
+        }
+
+        this.regionStatsUpdateTime = now;
+        // ensure that these values are always updated together
+        synchronized (this.regionCountLock) {
+          this.regionCount = regionCount;
+          this.regionCountRS = regionCountRS;
+          this.regionCountPerTable = regionCountPerTable;
+          this.regionCountPerTableRS = regionCountPerTableRs;
+        }
+      }
+    }
+
+    // take a consistent snapshot
+    int regionCount = 0;
+    Map<ServerName, Integer> regionCountRS = null;
+    Map<String, Integer> regionCountPerTable = null;
+    Map<Pair<String, ServerName>, Integer> regionCountPerTableRS = null;
+    synchronized (this.regionCountLock) {
+      regionCount = this.regionCount;
+      regionCountRS = this.regionCountRS;
+      regionCountPerTable = this.regionCountPerTable;
+      regionCountPerTableRS = this.regionCountPerTableRS;
+    }
+    Map<byte[], Pair<Integer, Integer>> regionCountsPerTable =
+        new TreeMap<byte[], Pair<Integer, Integer>>(Bytes.BYTES_COMPARATOR);
+    for (Map.Entry<String, Integer> entry : regionCountPerTable.entrySet()) {
+      String tableName = entry.getKey();
+      Integer count = entry.getValue();
+      Integer countRS = regionCountPerTableRS.get(new Pair<String, ServerName>(tableName,
+          serverName));
+      countRS = countRS == null ? 0 : countRS;
+      regionCountsPerTable.put(Bytes.toBytes(tableName),
+        new Pair<Integer, Integer>(count, countRS));
+    }
+    return new RegionStatistics(regionCount, regionCountRS.get(serverName), regionCountsPerTable);
   }
 
   /**

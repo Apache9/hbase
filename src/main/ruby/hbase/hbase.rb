@@ -23,6 +23,7 @@ include Java
 require 'hbase/admin'
 require 'hbase/table'
 require 'hbase/security'
+require 'hbase/quota'
 
 module Hbase
   class Hbase
@@ -55,6 +56,10 @@ module Hbase
 
     def security_admin(formatter)
       ::Hbase::SecurityAdmin.new(configuration, formatter)
+    end
+
+    def quota_admin(formatter)
+      ::Hbase::QuotaAdmin.new(configuration, formatter)
     end
   end
 end

@@ -60,6 +60,7 @@ import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.HealthCheckChore;
 import org.apache.hadoop.hbase.MasterNotRunningException;
 import org.apache.hadoop.hbase.PleaseHoldException;
+import org.apache.hadoop.hbase.RegionStatistics;
 import org.apache.hadoop.hbase.Server;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.TableDescriptors;
@@ -1115,7 +1116,7 @@ Server {
   }
 
   @Override
-  public void regionServerReport(final byte [] sn, final HServerLoad hsl)
+  public RegionStatistics regionServerReport(final byte [] sn, final HServerLoad hsl)
   throws IOException {
     this.serverManager.regionServerReport(ServerName.parseVersionedServerName(sn), hsl);
     updateLastFlushedSequenceIds(sn, hsl);
@@ -1123,6 +1124,7 @@ Server {
       // Up our metrics.
       this.metrics.incrementRequests(hsl.getTotalNumberOfRequests());
     }
+    return this.assignmentManager.getHTableRegionStatInfo(serverName);
   }
 
   private void updateLastFlushedSequenceIds(final byte [] sn, final HServerLoad hsl) {

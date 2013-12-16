@@ -81,6 +81,7 @@ import org.apache.hadoop.hbase.HealthCheckChore;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.MasterAddressTracker;
 import org.apache.hadoop.hbase.NotServingRegionException;
+import org.apache.hadoop.hbase.RegionStatistics;
 import org.apache.hadoop.hbase.RemoteExceptionHandler;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.Stoppable;
@@ -237,6 +238,9 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
   //false - if close region action in progress
   private final ConcurrentSkipListMap<byte[], Boolean> regionsInTransitionInRS =
       new ConcurrentSkipListMap<byte[], Boolean>(Bytes.BYTES_COMPARATOR);
+
+  // Region number statistics
+  private volatile RegionStatistics regionStats;
 
   /**
    * Map of regions currently being served by this region server. Key is the
@@ -973,7 +977,8 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
     // Why we do this?
     this.requestCount.set(0);
     try {
-      this.hbaseMaster.regionServerReport(this.serverNameFromMasterPOV.getVersionedBytes(), hsl);
+      this.regionStats = this.hbaseMaster.regionServerReport(
+        this.serverNameFromMasterPOV.getVersionedBytes(), hsl);
     } catch (IOException ioe) {
       if (ioe instanceof RemoteException) {
         ioe = ((RemoteException)ioe).unwrapRemoteException();
@@ -3863,6 +3868,10 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
     checkOpen();
     return new HServerInfo(new HServerAddress(this.isa),
       this.startcode, this.rsInfo.getInfoPort());
+  }
+  
+  public RegionStatistics getRegionStats() {
+    return this.regionStats;
   }
 
   @SuppressWarnings("unchecked")

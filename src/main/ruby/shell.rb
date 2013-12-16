@@ -90,6 +90,10 @@ module Shell
     def hbase_security_admin
       @hbase_security_admin ||= hbase.security_admin(formatter)
     end
+	
+    def hbase_quota_admin
+      @hbase_quota_admin ||= hbase.quota_admin(formatter)
+    end
 
     def export_commands(where)
       ::Shell.commands.keys.each do |cmd|
@@ -314,6 +318,16 @@ Shell.load_command_group(
     grant
     revoke
     user_permission
+  ]
+)
+
+Shell.load_command_group(
+  'quota',
+  :full_name => 'QUOTA TOOLS',
+  :comment => "NOTE: Above commands are only applicable if running with the ThroughputController coprocessor",
+  :commands => %w[
+    set_limit
+    get_limit
   ]
 )
 

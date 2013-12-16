@@ -57,6 +57,10 @@ module Shell
         shell.hbase_security_admin
       end
 
+      def quota_admin
+        shell.hbase_quota_admin
+      end
+
       #----------------------------------------------------------------------
 
       def formatter
