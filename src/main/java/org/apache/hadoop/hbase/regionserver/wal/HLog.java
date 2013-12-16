@@ -670,21 +670,23 @@ public class HLog implements Syncable {
       FSDataOutputStream nextHdfsOut = null;
       if (nextWriter instanceof SequenceFileLogWriter) {
         nextHdfsOut = ((SequenceFileLogWriter)nextWriter).getWriterFSDataOutputStream();
+        //perform the costly allocateBlock and sync before we get the lock to roll writers
+        try {
+          nextWriter.sync();
+        } catch (IOException e) {
+          //optimization failed, no need to abort here.
+          LOG.warn("pre-sync failed", e);
+        }
       }
 
+      Path oldFile = null;
+      int numEntriesSize = 0;
       synchronized (updateLock) {
         // Clean up current writer.
-        Path oldFile = cleanupCurrentWriter(currentFilenum);
+        oldFile = cleanupCurrentWriter(currentFilenum);
         this.writer = nextWriter;
         this.hdfs_out = nextHdfsOut;
-
-        LOG.info((oldFile != null?
-            "Roll " + FSUtils.getPath(oldFile) + ", entries=" +
-            this.numEntries.get() +
-            ", filesize=" +
-            this.fs.getFileStatus(oldFile).getLen() + ". ": "") +
-          " for " + FSUtils.getPath(newPath));
-        this.numEntries.set(0);
+        numEntriesSize = this.numEntries.getAndSet(0);
       }
       // Tell our listeners that a new log was created
       if (!this.listeners.isEmpty()) {
@@ -692,6 +694,9 @@ public class HLog implements Syncable {
           i.postLogRoll(oldPath, newPath);
         }
       }
+      LOG.info((oldFile != null ? "Roll " + FSUtils.getPath(oldFile) + ", entries="
+          + numEntriesSize + ", filesize=" + this.fs.getFileStatus(oldFile).getLen() + ". " : "")
+          + " for " + FSUtils.getPath(newPath));
 
       // Can we delete any of the old log files?
       if (this.outputfiles.size() > 0) {
