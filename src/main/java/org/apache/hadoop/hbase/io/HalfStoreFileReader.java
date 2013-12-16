@@ -192,14 +192,17 @@ public class HalfStoreFileReader extends StoreFile.Reader {
       public boolean seekTo() throws IOException {
         if (top) {
           int r = this.delegate.seekTo(splitkey);
-          if (r < 0) {
+          if (r == -2) {
+            return true;//faked key
+          }
+          else if (r < 0) {
             // midkey is < first key in file
             return this.delegate.seekTo();
           }
-          if (r > 0) {
+          else if (r > 0) {
             return this.delegate.next();
           }
-          return true;
+          return true; //r == 0
         }
 
         boolean b = delegate.seekTo();

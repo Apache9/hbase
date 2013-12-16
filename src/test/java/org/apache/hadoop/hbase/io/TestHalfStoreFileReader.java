@@ -88,7 +88,7 @@ public class TestHalfStoreFileReader {
     KeyValue midKV = KeyValue.createKeyValueFromKey(midkey);
     midkey = midKV.getRow();
 
-    //System.out.println("midkey: " + midKV + " or: " + Bytes.toStringBinary(midkey));
+    System.out.println("midkey: " + midKV + " or: " + Bytes.toStringBinary(midkey));
 
     Reference bottom = new Reference(midkey, Reference.Range.bottom);
     doTestOfScanAndReseek(p, fs, bottom, cacheConf);
@@ -114,8 +114,8 @@ public class TestHalfStoreFileReader {
       KeyValue reseekKv =
           getLastOnCol(curr);
       int ret = scanner.reseekTo(reseekKv.getKey());
+      System.out.println(curr + ": " + ret + ", reseekKv: " + reseekKv);
       assertTrue("reseek to returned: " + ret, ret > 0);
-      //System.out.println(curr + ": " + ret);
     } while (scanner.next());
 
     int ret = scanner.reseekTo(getLastOnCol(curr).getKey());
@@ -162,12 +162,13 @@ public class TestHalfStoreFileReader {
       // Ugly code to get the item before the midkey
       KeyValue beforeMidKey = null;
       for (KeyValue item : items) {
-          if (item.equals(midKV)) {
+          if (KeyValue.COMPARATOR.compare(item, midKV) >=0) {
               break;
           }
           beforeMidKey = item;
       }
-
+      System.out.println("midkey: " + midKV + " or: " + Bytes.toStringBinary(midkey));
+      System.out.println("beforeMidKey: " + beforeMidKey);
 
       // Seek on the splitKey, should be in top, not in bottom
       KeyValue foundKeyValue = doTestOfSeekBefore(p, fs, bottom, midKV, cacheConf);
