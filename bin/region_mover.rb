@@ -192,13 +192,13 @@ def move(admin, r, newServer, original)
     java.lang.String.format("%.3f", (Time.now - start)))
 end
 
-# Return the hostname portion of a servername (all up to first ',')
+# Return the hostname:port portion of a servername (all up to first ',')
 def getHostnamePortFromServerName(serverName)
   parts = serverName.split(',')
   return parts[0] + ":" + parts[1]
 end
 
-# Return the hostname:port out of a servername (all up to first ',')
+# Return the hostname out of a servername (all up to first ',')
 def getHostnameFromServerName(serverName)
   return serverName.split(',')[0]
 end
@@ -214,41 +214,41 @@ def getServers(admin)
   return servers
 end
 
-# Remove the servername whose hostname portion matches from the passed
-# array of servers.  Returns as side-effect the servername removed.
-def stripServer(servers, hostname)
+# Remove the servername whose hostname:port portion matches from the passed
+# array of servers.  Returns as side-effect the servername:port removed.
+def stripServer(servers, hostnamePort)
   count = servers.length
   servername = nil
   for server in servers
-    if getHostnameFromServerName(server) == hostname
+    if getHostnamePortFromServerName(server) == hostnamePort
       servername = servers.delete(server)
     end
   end
   # Check server to exclude is actually present
-  raise RuntimeError, "Server %s not online" % hostname unless servers.length < count
+  raise RuntimeError, "Server %s not online" % hostnamePort unless servers.length < count
   return servername
 end
 
-# Returns a new serverlist that excludes the servername whose hostname portion
+# Returns a new serverlist that excludes the servername whose hostname:port portion
 # matches from the passed array of servers.
 def stripExcludes(servers, excludefile)
   excludes = readExcludes(excludefile)
-  servers =  servers.find_all{|server| !excludes.contains(getHostnameFromServerName(server)) }
+  servers =  servers.find_all{|server| !excludes.contains(getHostnamePortFromServerName(server)) }
   # return updated servers list
   return servers
 end
 
 
-# Return servername that matches passed hostname
-def getServerName(servers, hostname)
+# Return servername that matches passed hostname:port
+def getServerName(servers, hostnamePort)
   servername = nil
   for server in servers
-    if getHostnameFromServerName(server) == hostname
+    if getHostnamePortFromServerName(server) == hostnamePort
       servername = server
       break
     end
   end
-  raise ArgumentError, "Server %s not online" % hostname unless servername
+  raise ArgumentError, "Server %s not online" % hostnamePort unless servername
   return servername
 end
 
@@ -322,19 +322,19 @@ def readFile(filename)
   return regions
 end
 
-# Move regions off the passed hostname
-def unloadRegions(options, hostname)
+# Move regions off the passed hostname:port
+def unloadRegions(options, hostnamePort)
   # Get configuration
   config = getConfiguration()
   # Clean up any old files.
-  filename = getFilename(options, hostname)
+  filename = getFilename(options, hostnamePort)
   deleteFile(filename)
   # Get an admin instance
   admin = HBaseAdmin.new(config) 
   servers = getServers(admin)
   # Remove the server we are unloading from from list of servers.
-  # Side-effect is the servername that matches this hostname 
-  servername = stripServer(servers, hostname)
+  # Side-effect is the servername that matches this hostname:port 
+  servername = stripServer(servers, hostnamePort)
 
   # Remove the servers in our exclude list from list of servers.
   servers = stripExcludes(servers, options[:excludesFile])
@@ -367,13 +367,13 @@ def unloadRegions(options, hostname)
   end
 end
 
-# Move regions to the passed hostname
-def loadRegions(options, hostname)
+# Move regions to the passed hostname:port
+def loadRegions(options, hostnamePort)
   # Get configuration
   config = getConfiguration()
   # Get an admin instance
   admin = HBaseAdmin.new(config) 
-  filename = getFilename(options, hostname) 
+  filename = getFilename(options, hostnamePort) 
   regions = readFile(filename)
   return if regions.isEmpty()
   servername = nil
@@ -383,9 +383,9 @@ def loadRegions(options, hostname)
   while Time.now < maxWait
     servers = getServers(admin)
     begin
-      servername = getServerName(servers, hostname)
+      servername = getServerName(servers, hostnamePort)
     rescue ArgumentError => e
-      $LOG.info("hostname=" + hostname.to_s + " is not up yet, waiting");
+      $LOG.info("hostnamePort=" + hostnamePort.to_s + " is not up yet, waiting");
     end
     break if servername
     sleep 0.5
@@ -436,7 +436,6 @@ def readExcludes(filename)
   end
   puts "Excluding hosts as region move targets: ", excludes
   f.close
-  
   return excludes
 end
 
@@ -452,10 +451,10 @@ end
 # Do command-line parsing
 options = {}
 optparse = OptionParser.new do |opts|
-  opts.banner = "Usage: #{NAME}.rb [options] load|unload <hostname>"
+  opts.banner = "Usage: #{NAME}.rb [options] load|unload <hostname:port>"
   opts.separator 'Load or unload regions by moving one at a time'
   options[:file] = nil
-  opts.on('-f', '--filename=FILE', 'File to save regions list into unloading, or read from loading; default /tmp/<hostname>') do |file|
+  opts.on('-f', '--filename=FILE', 'File to save regions list into unloading, or read from loading; default /tmp/<hostname:port>') do |file|
     options[:file] = file
   end
   opts.on('-h', '--help', 'Display usage information') do
@@ -477,8 +476,8 @@ if ARGV.length < 2
   puts optparse
   exit 1
 end
-hostname = ARGV[1]
-if not hostname
+hostnamePort = ARGV[1]
+if not hostnamePort
   opts optparse
   exit 2
 end
@@ -486,9 +485,9 @@ end
 $LOG = configureLogging(options) 
 case ARGV[0]
   when 'load'
-    loadRegions(options, hostname)
+    loadRegions(options, hostnamePort)
   when 'unload'
-    unloadRegions(options, hostname)
+    unloadRegions(options, hostnamePort)
   else
     puts optparse
     exit 3
