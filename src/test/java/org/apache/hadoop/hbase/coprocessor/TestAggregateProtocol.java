@@ -266,6 +266,16 @@ public class TestAggregateProtocol {
         scan);
     assertEquals(0, rowCount);
   }
+  
+  @Test
+  public void testRowCountWithSpeed() throws Throwable {
+    AggregationClient aClient = new AggregationClient(conf);
+    Scan scan = new Scan();
+    int target = 1000;
+    final ColumnInterpreter<Long, Long> ci = new LongColumnInterpreter();
+    long rowCount = aClient.rowCountWithSpeed(TEST_TABLE, ci, scan, target);
+    assertEquals(ROWSIZE, rowCount);
+  }
 
   /**
    * ***************Test cases for Maximum *******************

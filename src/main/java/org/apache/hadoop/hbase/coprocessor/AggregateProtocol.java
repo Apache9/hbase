@@ -83,6 +83,17 @@ public interface AggregateProtocol extends CoprocessorProtocol {
   /**
    * @param ci
    * @param scan
+   * @param speed
+   * @return Row count for the given column family and column qualifier, in
+   * the given row range as defined in the Scan object with speed.
+   * @throws IOException
+   */
+  <T, S> long getRowNumWithSpeed(ColumnInterpreter<T, S> ci, Scan scan, int speed) 
+      throws IOException;
+  
+  /**
+   * @param ci
+   * @param scan
    * @return Row count for the given column family and column qualifier, in
    * the given row range as defined in the Scan object.
    * @throws IOException

@@ -151,9 +151,10 @@ public class AggregateImplementation extends BaseEndpointCoprocessor implements
   }
 
   @Override
-  public <T, S> long getRowNum(ColumnInterpreter<T, S> ci, Scan scan)
+  public <T, S> long getRowNumWithSpeed(ColumnInterpreter<T, S> ci, Scan scan, int speed)
       throws IOException {
     long counter = 0l;
+    long st = System.currentTimeMillis();
     List<KeyValue> results = new ArrayList<KeyValue>();
     byte[] colFamily = scan.getFamilies()[0];
     byte[] qualifier = scan.getFamilyMap().get(colFamily).pollFirst();
@@ -168,6 +169,16 @@ public class AggregateImplementation extends BaseEndpointCoprocessor implements
         hasMoreRows = scanner.next(results);
         if (results.size() > 0) {
           counter++;
+          if(speed > 0){
+            long sleepTime = 1000 * counter / speed - (System.currentTimeMillis() - st);
+            if(sleepTime > 0){
+              try {
+                Thread.sleep(sleepTime);
+              } catch (InterruptedException e) {
+                log.error("error when sleep for next count", e);
+              }
+            }
+          }
         }
         results.clear();
       } while (hasMoreRows);
@@ -179,6 +190,11 @@ public class AggregateImplementation extends BaseEndpointCoprocessor implements
         + ((RegionCoprocessorEnvironment) getEnvironment()).getRegion()
             .getRegionNameAsString() + ": " + counter);
     return counter;
+  }
+  
+  @Override
+  public <T, S> long getRowNum(ColumnInterpreter<T, S> ci, Scan scan) throws IOException {
+    return getRowNumWithSpeed(ci, scan, -1);
   }
 
   @Override

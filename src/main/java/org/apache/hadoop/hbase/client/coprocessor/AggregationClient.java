@@ -27,6 +27,10 @@ import java.util.Map;
 import java.util.NavigableMap;
 import java.util.NavigableSet;
 import java.util.TreeMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.commons.logging.Log;
@@ -42,6 +46,7 @@ import org.apache.hadoop.hbase.coprocessor.AggregateProtocol;
 import org.apache.hadoop.hbase.coprocessor.ColumnInterpreter;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.Pair;
+import org.apache.hadoop.hbase.util.Threads;
 
 /**
  * This client class is for invoking the aggregate functions deployed on the
@@ -191,11 +196,12 @@ public class AggregationClient {
    * @param tableName
    * @param ci
    * @param scan
+   * @param speed
    * @return <R, S>
    * @throws Throwable
    */
-  public <R, S> long rowCount(final byte[] tableName,
-      final ColumnInterpreter<R, S> ci, final Scan scan) throws Throwable {
+  public <R, S> long rowCountWithSpeed(final byte[] tableName,
+      final ColumnInterpreter<R, S> ci, final Scan scan, final int speed) throws Throwable {
     validateParameters(scan);
     class RowNumCallback implements Batch.Callback<Long> {
       private final AtomicLong rowCountL = new AtomicLong(0);
@@ -212,12 +218,18 @@ public class AggregationClient {
     RowNumCallback rowNum = new RowNumCallback();
     HTable table = null;
     try {
-      table = new HTable(conf, tableName);
+      int maxThreads = conf.getInt("hbase.htable.threads.max", Integer.MAX_VALUE);
+      ExecutorService pool = new ThreadPoolExecutor(maxThreads, maxThreads,
+        conf.getLong("hbase.htable.threads.keepalivetime", 60), 
+        TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>(),
+          Threads.newDaemonThreadFactory("hbase-table"));
+      ((ThreadPoolExecutor)pool).allowCoreThreadTimeOut(true);
+      table = new HTable(conf, tableName, pool);
       table.coprocessorExec(AggregateProtocol.class, scan.getStartRow(),
           scan.getStopRow(), new Batch.Call<AggregateProtocol, Long>() {
             @Override
             public Long call(AggregateProtocol instance) throws IOException {
-              return instance.getRowNum(ci, scan);
+              return instance.getRowNumWithSpeed(ci, scan, speed);
             }
           }, rowNum);
     } finally {
@@ -226,6 +238,11 @@ public class AggregationClient {
       }
     }
     return rowNum.getRowNumCount();
+  }
+  
+  public <R, S> long rowCount(final byte[] tableName,
+      final ColumnInterpreter<R, S> ci, final Scan scan) throws Throwable {
+    return rowCountWithSpeed(tableName, ci, scan, -1);
   }
 
   /**
