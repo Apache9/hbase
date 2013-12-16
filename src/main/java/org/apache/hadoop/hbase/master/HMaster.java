@@ -1655,6 +1655,14 @@ Server {
     return masterActiveTime;
   }
 
+  public int getRegionServerInfoPort(final ServerName sn) {
+    int port = this.regionServerTracker.getRegionServerInfoPort(sn);
+    if (port == 0) {
+      return this.conf.getInt(HConstants.REGIONSERVER_INFO_PORT, 60030);
+    }
+    return port;
+  }
+  
   /**
    * @return array of coprocessor SimpleNames.
    */
