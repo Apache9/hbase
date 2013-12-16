@@ -2735,7 +2735,7 @@ public class TestHRegion extends HBaseTestCase {
   }
   
   public void testIncrement_OrderedEncodings() throws IOException {
-    this.region = initHRegion(tableName, getName(), fam1);
+    this.region = initHRegion(tableName, getName(), conf, fam1);
     try {
       byte[] row1 = Bytes.add(Bytes.toBytes("1234"), Bytes.toBytes(0L));
       
