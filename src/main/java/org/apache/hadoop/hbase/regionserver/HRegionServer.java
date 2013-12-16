@@ -1306,6 +1306,7 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
         stop = true;
         LOG.fatal(
           "Run out of memory; HRegionServer will abort itself immediately", e);
+        ReflectionUtils.logThreadInfo(LOG, "thread dump from JvmThreadMonitor", 1000);
       }
     } finally {
       if (stop) {
