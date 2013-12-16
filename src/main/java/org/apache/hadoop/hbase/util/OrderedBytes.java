@@ -291,8 +291,10 @@ public class OrderedBytes {
   private static final byte POS_LARGE = 0x22;
   private static final byte POS_INF = 0x23;
   private static final byte NAN = 0x25;
+  private static final byte FIXED_INT16 = 0x26;
   private static final byte FIXED_INT32 = 0x27;
   private static final byte FIXED_INT64 = 0x28;
+  private static final byte FIXED_INT8 = 0x29;
   private static final byte FIXED_FLOAT32 = 0x30;
   private static final byte FIXED_FLOAT64 = 0x31;
   private static final byte TEXT = 0x33;
@@ -1203,6 +1205,59 @@ public class OrderedBytes {
   }
 
   /**
+   * Encode an {@code int8} value using the fixed-length encoding.
+   * @return the number of bytes written.
+   * @see #encodeInt64(PositionedByteRange, long, Order)
+   * @see #decodeInt8(PositionedByteRange)
+   */
+  public static int encodeInt8(PositionedByteRange dst, byte val, Order ord) {
+    final int offset = dst.getOffset(), start = dst.getPosition();
+    dst.put(FIXED_INT8)
+        .put((byte) (val ^ 0x80));
+    ord.apply(dst.getBytes(), offset + start, 2);
+    return 2;
+  }
+
+  /**
+   * Decode an {@code int8} value.
+   * @see #encodeInt8(PositionedByteRange, byte, Order)
+   */
+  public static byte decodeInt8(PositionedByteRange src) {
+    final byte header = src.get();
+    assert header == FIXED_INT8 || header == DESCENDING.apply(FIXED_INT8);
+    Order ord = header == FIXED_INT8 ? ASCENDING : DESCENDING;
+    return (byte)((ord.apply(src.get()) ^ 0x80) & 0xff);
+  }
+  
+  /**
+   * Encode an {@code int16} value using the fixed-length encoding.
+   * @return the number of bytes written.
+   * @see #encodeInt64(PositionedByteRange, long, Order)
+   * @see #decodeInt16(PositionedByteRange)
+   */
+  public static int encodeInt16(PositionedByteRange dst, short val, Order ord) {
+    final int offset = dst.getOffset(), start = dst.getPosition();
+    dst.put(FIXED_INT16)
+        .put((byte) ((val >> 8) ^ 0x80))
+        .put((byte) val);
+    ord.apply(dst.getBytes(), offset + start, 3);
+    return 3;
+  }
+
+  /**
+   * Decode an {@code int16} value.
+   * @see #encodeInt16(PositionedByteRange, short, Order)
+   */
+  public static short decodeInt16(PositionedByteRange src) {
+    final byte header = src.get();
+    assert header == FIXED_INT16 || header == DESCENDING.apply(FIXED_INT16);
+    Order ord = header == FIXED_INT16 ? ASCENDING : DESCENDING;
+    short val = (short) ((ord.apply(src.get()) ^ 0x80) & 0xff);
+    val = (short) ((val << 8) + (ord.apply(src.get()) & 0xff));
+    return val;
+  }
+
+  /**
    * Encode an {@code int32} value using the fixed-length encoding.
    * @return the number of bytes written.
    * @see #encodeInt64(PositionedByteRange, long, Order)
@@ -1615,6 +1670,12 @@ public class OrderedBytes {
         return 1;
       case NAN:
         return 1;
+      case FIXED_INT8:
+        src.setPosition(src.getPosition() + 1);
+        return src.getPosition() - start;
+      case FIXED_INT16:
+        src.setPosition(src.getPosition() + 2);
+        return src.getPosition() - start;
       case FIXED_INT32:
         src.setPosition(src.getPosition() + 4);
         return src.getPosition() - start;

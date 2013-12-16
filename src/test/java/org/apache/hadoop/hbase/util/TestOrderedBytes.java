@@ -210,7 +210,7 @@ public class TestOrderedBytes {
         assertEquals(
           String.format(
             "Encoded representations do not preserve natural order: <%s>, <%s>, %s",
-            Arrays.toString(sortedVals[i]), Arrays.toString(decoded), ord),
+            sortedVals[i], decoded, ord),
           sortedVals[i].longValue(), decoded);
       }
     }
@@ -358,6 +358,142 @@ public class TestOrderedBytes {
     }
   }
 
+  /**
+   * Test int8 encoding.
+   */
+  @Test
+  public void testInt8() {
+    Byte[] vals =
+      { Byte.MIN_VALUE, Byte.MIN_VALUE / 2, 0, Byte.MAX_VALUE / 2, Byte.MAX_VALUE };
+
+    /*
+     * assert encoded values match decoded values. encode into target buffer
+     * starting at an offset to detect over/underflow conditions.
+     */
+    for (Order ord : new Order[] { Order.ASCENDING, Order.DESCENDING }) {
+      for (int i = 0; i < vals.length; i++) {
+        // allocate a buffer 3-bytes larger than necessary to detect over/underflow
+        byte[] a = new byte[2 + 3];
+        PositionedByteRange buf1 = new SimplePositionedByteRange(a, 1, 2 + 1);
+        buf1.setPosition(1);
+
+        // verify encode
+        assertEquals("Surprising return value.",
+          2, OrderedBytes.encodeInt8(buf1, vals[i], ord));
+        assertEquals("Broken test: serialization did not consume entire buffer.",
+          buf1.getLength(), buf1.getPosition());
+        assertEquals("Surprising serialized length.", 2, buf1.getPosition() - 1);
+        assertEquals("Buffer underflow.", 0, a[0]);
+        assertEquals("Buffer underflow.", 0, a[1]);
+        assertEquals("Buffer overflow.", 0, a[a.length - 1]);
+
+        // verify skip
+        buf1.setPosition(1);
+        assertEquals("Surprising return value.", 2, OrderedBytes.skip(buf1));
+        assertEquals("Did not skip enough bytes.", 2, buf1.getPosition() - 1);
+
+        // verify decode
+        buf1.setPosition(1);
+        assertEquals("Deserialization failed.",
+          vals[i].byteValue(), OrderedBytes.decodeInt8(buf1));
+        assertEquals("Did not consume enough bytes.", 2, buf1.getPosition() - 1);
+      }
+    }
+
+    /*
+     * assert natural sort order is preserved by the codec.
+     */
+    for (Order ord : new Order[] { Order.ASCENDING, Order.DESCENDING }) {
+      byte[][] encoded = new byte[vals.length][2];
+      PositionedByteRange pbr = new SimplePositionedByteRange();
+      for (int i = 0; i < vals.length; i++) {
+        OrderedBytes.encodeInt8(pbr.set(encoded[i]), vals[i], ord);
+      }
+
+      Arrays.sort(encoded, Bytes.BYTES_COMPARATOR);
+      Byte[] sortedVals = Arrays.copyOf(vals, vals.length);
+      if (ord == Order.ASCENDING) Arrays.sort(sortedVals);
+      else Arrays.sort(sortedVals, Collections.reverseOrder());
+
+      for (int i = 0; i < sortedVals.length; i++) {
+        int decoded = OrderedBytes.decodeInt8(pbr.set(encoded[i]));
+        assertEquals(
+          String.format(
+            "Encoded representations do not preserve natural order: <%s>, <%s>, %s",
+            sortedVals[i], decoded, ord),
+            sortedVals[i].byteValue(), decoded);
+      }
+    }
+  }
+  
+  /**
+   * Test int16 encoding.
+   */
+  @Test
+  public void testInt16() {
+    Short[] vals =
+      { Short.MIN_VALUE, Short.MIN_VALUE / 2, 0, Short.MAX_VALUE / 2, Short.MAX_VALUE };
+
+    /*
+     * assert encoded values match decoded values. encode into target buffer
+     * starting at an offset to detect over/underflow conditions.
+     */
+    for (Order ord : new Order[] { Order.ASCENDING, Order.DESCENDING }) {
+      for (int i = 0; i < vals.length; i++) {
+        // allocate a buffer 3-bytes larger than necessary to detect over/underflow
+        byte[] a = new byte[3 + 3];
+        PositionedByteRange buf1 = new SimplePositionedByteRange(a, 1, 3 + 1);
+        buf1.setPosition(1);
+
+        // verify encode
+        assertEquals("Surprising return value.",
+          3, OrderedBytes.encodeInt16(buf1, vals[i], ord));
+        assertEquals("Broken test: serialization did not consume entire buffer.",
+          buf1.getLength(), buf1.getPosition());
+        assertEquals("Surprising serialized length.", 3, buf1.getPosition() - 1);
+        assertEquals("Buffer underflow.", 0, a[0]);
+        assertEquals("Buffer underflow.", 0, a[1]);
+        assertEquals("Buffer overflow.", 0, a[a.length - 1]);
+
+        // verify skip
+        buf1.setPosition(1);
+        assertEquals("Surprising return value.", 3, OrderedBytes.skip(buf1));
+        assertEquals("Did not skip enough bytes.", 3, buf1.getPosition() - 1);
+
+        // verify decode
+        buf1.setPosition(1);
+        assertEquals("Deserialization failed.",
+          vals[i].shortValue(), OrderedBytes.decodeInt16(buf1));
+        assertEquals("Did not consume enough bytes.", 3, buf1.getPosition() - 1);
+      }
+    }
+
+    /*
+     * assert natural sort order is preserved by the codec.
+     */
+    for (Order ord : new Order[] { Order.ASCENDING, Order.DESCENDING }) {
+      byte[][] encoded = new byte[vals.length][3];
+      PositionedByteRange pbr = new SimplePositionedByteRange();
+      for (int i = 0; i < vals.length; i++) {
+        OrderedBytes.encodeInt16(pbr.set(encoded[i]), vals[i], ord);
+      }
+
+      Arrays.sort(encoded, Bytes.BYTES_COMPARATOR);
+      Short[] sortedVals = Arrays.copyOf(vals, vals.length);
+      if (ord == Order.ASCENDING) Arrays.sort(sortedVals);
+      else Arrays.sort(sortedVals, Collections.reverseOrder());
+
+      for (int i = 0; i < sortedVals.length; i++) {
+        int decoded = OrderedBytes.decodeInt16(pbr.set(encoded[i]));
+        assertEquals(
+          String.format(
+            "Encoded representations do not preserve natural order: <%s>, <%s>, %s",
+            sortedVals[i], decoded, ord),
+            sortedVals[i].shortValue(), decoded);
+      }
+    }
+  }
+  
   /**
    * Test int32 encoding.
    */
@@ -924,6 +1060,8 @@ public class TestOrderedBytes {
     BigDecimal posLarge = negLarge.negate();
     double posInf = Double.POSITIVE_INFINITY;
     double nan = Double.NaN;
+    byte int8 = 100;
+    short int16 = 100;
     int int32 = 100;
     long int64 = 100l;
     float float32 = 100.0f;
@@ -989,6 +1127,16 @@ public class TestOrderedBytes {
       buff.setPosition(0);
       assertEquals(o, OrderedBytes.skip(buff));
 
+      buff.setPosition(0);
+      o = OrderedBytes.encodeInt8(buff, int8, ord);
+      buff.setPosition(0);
+      assertEquals(o, OrderedBytes.skip(buff));
+      
+      buff.setPosition(0);
+      o = OrderedBytes.encodeInt16(buff, int16, ord);
+      buff.setPosition(0);
+      assertEquals(o, OrderedBytes.skip(buff));
+      
       buff.setPosition(0);
       o = OrderedBytes.encodeInt32(buff, int32, ord);
       buff.setPosition(0);
