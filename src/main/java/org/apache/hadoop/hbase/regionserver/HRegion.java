@@ -122,6 +122,7 @@ import org.apache.hadoop.hbase.regionserver.wal.HLog;
 import org.apache.hadoop.hbase.regionserver.wal.HLogKey;
 import org.apache.hadoop.hbase.regionserver.wal.WALEdit;
 import org.apache.hadoop.hbase.snapshot.TakeSnapshotUtils;
+import org.apache.hadoop.hbase.types.NumberCodecType;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.CancelableProgressable;
 import org.apache.hadoop.hbase.util.ClassSize;
@@ -5317,7 +5318,7 @@ public class HRegion implements HeapSize { // , Writable{
       try {
         long now = EnvironmentEdgeManager.currentTimeMillis();
         // Process each family
-        for (Map.Entry<byte [], NavigableMap<byte [], Long>> family :
+        for (Map.Entry<byte [], NavigableMap<byte [], Pair<NumberCodecType, Long>>> family :
           increment.getFamilyMap().entrySet()) {
 
           Store store = stores.get(family.getKey());
@@ -5325,7 +5326,8 @@ public class HRegion implements HeapSize { // , Writable{
 
           // Get previous values for all columns in this family
           Get get = new Get(row);
-          for (Map.Entry<byte [], Long> column : family.getValue().entrySet()) {
+          for (Map.Entry<byte [], Pair<NumberCodecType, Long>> column :
+            family.getValue().entrySet()) {
             get.addColumn(family.getKey(), column.getKey());
           }
           get.setTimeRange(tr.getMin(), tr.getMax());
@@ -5334,24 +5336,32 @@ public class HRegion implements HeapSize { // , Writable{
           // Iterate the input columns and update existing values if they were
           // found, otherwise add new column initialized to the increment amount
           int idx = 0;
-          for (Map.Entry<byte [], Long> column : family.getValue().entrySet()) {
-            long amount = column.getValue();
+          for (Map.Entry<byte [], Pair<NumberCodecType, Long>> column :
+            family.getValue().entrySet()) {
+            NumberCodecType codec = column.getValue().getFirst();
+            long amount = column.getValue().getSecond();
             if (idx < results.size() &&
                 results.get(idx).matchingQualifier(column.getKey())) {
               KeyValue kv = results.get(idx);
-              if(kv.getValueLength() == Bytes.SIZEOF_LONG) {
-                amount += Bytes.toLong(kv.getBuffer(), kv.getValueOffset(), Bytes.SIZEOF_LONG);
-              } else {
+              try {
+                amount += codec.decode(kv.getBuffer(),
+                                       kv.getValueOffset(),
+                                       kv.getValueLength()).longValue();
+              } catch (Exception ex) {
                 // throw DoNotRetryIOException instead of IllegalArgumentException
                 throw new DoNotRetryIOException(
-                    "Attempted to increment field that isn't 64 bits wide");
+                    "Attempted to increment field that has incorrect type");
+              } catch (AssertionError ex) {
+                throw new DoNotRetryIOException(
+                    "Attempted to increment field that has incorrect type");
               }
+
               idx++;
             }
 
             // Append new incremented KeyValue to list
             KeyValue newKV = new KeyValue(row, family.getKey(), column.getKey(),
-                now, Bytes.toBytes(amount));
+                now, codec.encode(amount));
             kvs.add(newKV);
 
             // Append update to WAL

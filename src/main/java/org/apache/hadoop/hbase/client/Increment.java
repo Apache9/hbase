@@ -22,14 +22,17 @@ package org.apache.hadoop.hbase.client;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
 import java.util.Set;
 import java.util.TreeMap;
 
 import org.apache.hadoop.hbase.io.TimeRange;
+import org.apache.hadoop.hbase.types.NumberCodecType;
 import org.apache.hadoop.hbase.util.Bytes;
-import org.apache.hadoop.io.Writable;
+import org.apache.hadoop.hbase.util.Pair;
 
 /**
  * Used to perform Increment operations on a single row.
@@ -44,14 +47,16 @@ import org.apache.hadoop.io.Writable;
  * {@link #addColumn(byte[], byte[], long)} method.
  */
 public class Increment implements Row {
+  // bump to 3 when all servers are upgraded
   private static final byte INCREMENT_VERSION = (byte)2;
 
+  private byte version = INCREMENT_VERSION;
   private byte [] row = null;
   private long lockId = -1L;
   private boolean writeToWAL = true;
   private TimeRange tr = new TimeRange();
-  private Map<byte [], NavigableMap<byte [], Long>> familyMap =
-    new TreeMap<byte [], NavigableMap<byte [], Long>>(Bytes.BYTES_COMPARATOR);
+  private Map<byte [], NavigableMap<byte [], Pair<NumberCodecType, Long>>> familyMap =
+    new TreeMap<byte [], NavigableMap<byte [], Pair<NumberCodecType, Long>>>(Bytes.BYTES_COMPARATOR);
 
   /** Constructor for Writable.  DO NOT USE */
   public Increment() {}
@@ -94,17 +99,43 @@ public class Increment implements Row {
    * @return the Increment object
    */
   public Increment addColumn(byte [] family, byte [] qualifier, long amount) {
-    NavigableMap<byte [], Long> set = familyMap.get(family);
-    if(set == null) {
-      set = new TreeMap<byte [], Long>(Bytes.BYTES_COMPARATOR);
+    return addColumn(family, qualifier, amount, null);
+  }
+  
+  /**
+   * Increment the column from the specific family with the specified qualifier
+   * by the specified amount. The value will be decoded and encoded with the
+   * the specified codec type. Note it's the caller's responsibility to guarantee 
+   * that there is no overflow.
+   * <p>
+   * Overrides previous calls to addColumn for this family and qualifier.
+   * @param family family name
+   * @param qualifier column qualifier
+   * @param amount amount to increment by
+   * @param type the data codec type
+   * @return the Increment object
+   */
+  public Increment addColumn(byte[] family, byte[] qualifier, long amount, NumberCodecType type) {
+    /*
+     * The version will be changed to 3 when the customized type encoding feature is used because
+     * the serialization is not compatible with version 2.
+     */
+    if (type != null) {
+      version = INCREMENT_VERSION + 1;
+    } else {
+      type = NumberCodecType.RAW_LONG;
     }
-    set.put(qualifier, amount);
+    NavigableMap<byte [], Pair<NumberCodecType, Long>> set = familyMap.get(family);
+    if(set == null) {
+      set = new TreeMap<byte [], Pair<NumberCodecType, Long>>(Bytes.BYTES_COMPARATOR);
+    }
+    set.put(qualifier, new Pair<NumberCodecType, Long>(type, amount));
     familyMap.put(family, set);
     return this;
   }
 
   /* Accessors */
-
+  
   /**
    * Method for retrieving the increment's row
    * @return row
@@ -200,7 +231,7 @@ public class Increment implements Row {
   public int numColumns() {
     if (!hasFamilies()) return 0;
     int num = 0;
-    for (NavigableMap<byte [], Long> family : familyMap.values()) {
+    for (NavigableMap<byte [], Pair<NumberCodecType, Long>> family : familyMap.values()) {
       num += family.size();
     }
     return num;
@@ -218,7 +249,7 @@ public class Increment implements Row {
    * Method for retrieving the increment's familyMap
    * @return familyMap
    */
-  public Map<byte[],NavigableMap<byte[], Long>> getFamilyMap() {
+  public Map<byte[],NavigableMap<byte[], Pair<NumberCodecType, Long>>> getFamilyMap() {
     return this.familyMap;
   }
 
@@ -236,7 +267,7 @@ public class Increment implements Row {
     }
     sb.append(", families=");
     boolean moreThanOne = false;
-    for(Map.Entry<byte [], NavigableMap<byte[], Long>> entry :
+    for(Map.Entry<byte [], NavigableMap<byte[], Pair<NumberCodecType, Long>>> entry :
       this.familyMap.entrySet()) {
       if(moreThanOne) {
         sb.append("), ");
@@ -252,13 +283,16 @@ public class Increment implements Row {
       } else {
         sb.append("{");
         boolean moreThanOneB = false;
-        for(Map.Entry<byte [], Long> column : entry.getValue().entrySet()) {
+        for(Map.Entry<byte [], Pair<NumberCodecType, Long>> column 
+            : entry.getValue().entrySet()) {
           if(moreThanOneB) {
             sb.append(", ");
           } else {
             moreThanOneB = true;
           }
-          sb.append(Bytes.toStringBinary(column.getKey()) + "+=" + column.getValue());
+          sb.append(Bytes.toStringBinary(column.getKey()));
+          sb.append(":").append(column.getValue().getFirst());
+          sb.append("+=").append(column.getValue().getSecond());
         }
         sb.append("}");
       }
@@ -271,9 +305,10 @@ public class Increment implements Row {
   public void readFields(final DataInput in)
   throws IOException {
     int version = in.readByte();
-    if (version > INCREMENT_VERSION) {
+    if (version > INCREMENT_VERSION + 1) {
       throw new IOException("unsupported version");
     }
+
     this.row = Bytes.readByteArray(in);
     this.tr = new TimeRange();
     tr.readFields(in);
@@ -283,17 +318,32 @@ public class Increment implements Row {
       throw new IOException("At least one column required");
     }
     this.familyMap =
-      new TreeMap<byte [],NavigableMap<byte [], Long>>(Bytes.BYTES_COMPARATOR);
+      new TreeMap<byte [],
+      NavigableMap<byte [], Pair<NumberCodecType, Long>>>(Bytes.BYTES_COMPARATOR);
+    List<Pair<NumberCodecType, Long>> pairs = null;
+    if (version > 1) {
+      pairs = new ArrayList<Pair<NumberCodecType, Long>>();
+    }
     for(int i=0; i<numFamilies; i++) {
       byte [] family = Bytes.readByteArray(in);
       boolean hasColumns = in.readBoolean();
-      NavigableMap<byte [], Long> set = null;
+      NavigableMap<byte [], Pair<NumberCodecType, Long>> set = null;
       if(hasColumns) {
         int numColumns = in.readInt();
-        set = new TreeMap<byte [], Long>(Bytes.BYTES_COMPARATOR);
+        set = new TreeMap<byte [], Pair<NumberCodecType, Long>>(Bytes.BYTES_COMPARATOR);
         for(int j=0; j<numColumns; j++) {
           byte [] qualifier = Bytes.readByteArray(in);
-          set.put(qualifier, in.readLong());
+          NumberCodecType type;
+          if (version > 2) {
+            type = NumberCodecType.fromTypeId(in.readByte());
+          } else {
+            type = NumberCodecType.RAW_LONG;
+          }
+          Pair<NumberCodecType, Long> pair = new Pair<NumberCodecType, Long>(type, in.readLong());
+          set.put(qualifier, pair);
+          if (version > 1) {
+            pairs.add(pair);
+          }
         }
       } else {
         throw new IOException("At least one column required per family");
@@ -307,7 +357,7 @@ public class Increment implements Row {
 
   public void write(final DataOutput out)
   throws IOException {
-    out.writeByte(INCREMENT_VERSION);
+    out.writeByte(version);
     Bytes.writeByteArray(out, this.row);
     tr.write(out);
     out.writeLong(this.lockId);
@@ -315,18 +365,21 @@ public class Increment implements Row {
       throw new IOException("At least one column required");
     }
     out.writeInt(familyMap.size());
-    for(Map.Entry<byte [], NavigableMap<byte [], Long>> entry :
+    for(Map.Entry<byte [], NavigableMap<byte [], Pair<NumberCodecType, Long>>> entry :
       familyMap.entrySet()) {
       Bytes.writeByteArray(out, entry.getKey());
-      NavigableMap<byte [], Long> columnSet = entry.getValue();
+      NavigableMap<byte [], Pair<NumberCodecType, Long>> columnSet = entry.getValue();
       if(columnSet == null) {
         throw new IOException("At least one column required per family");
       } else {
         out.writeBoolean(true);
         out.writeInt(columnSet.size());
-        for(Map.Entry<byte [], Long> qualifier : columnSet.entrySet()) {
+        for(Map.Entry<byte [], Pair<NumberCodecType, Long>> qualifier : columnSet.entrySet()) {
           Bytes.writeByteArray(out, qualifier.getKey());
-          out.writeLong(qualifier.getValue());
+          if (version > INCREMENT_VERSION) {
+            out.writeByte(qualifier.getValue().getFirst().getTypeId());
+          }
+          out.writeLong(qualifier.getValue().getSecond());
         }
       }
     }

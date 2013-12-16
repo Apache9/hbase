@@ -83,6 +83,7 @@ import org.apache.hadoop.hbase.regionserver.metrics.SchemaMetrics;
 import org.apache.hadoop.hbase.regionserver.wal.HLog;
 import org.apache.hadoop.hbase.regionserver.wal.HLogKey;
 import org.apache.hadoop.hbase.regionserver.wal.WALEdit;
+import org.apache.hadoop.hbase.types.NumberCodecType;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManagerTestHelper;
@@ -125,6 +126,7 @@ public class TestHRegion extends HBaseTestCase {
   protected final byte[] qual1 = Bytes.toBytes("qual1");
   protected final byte[] qual2 = Bytes.toBytes("qual2");
   protected final byte[] qual3 = Bytes.toBytes("qual3");
+  protected final byte[] qual4 = Bytes.toBytes("qual4");
   protected final byte[] value1 = Bytes.toBytes("value1");
   protected final byte[] value2 = Bytes.toBytes("value2");
   protected final byte [] row = Bytes.toBytes("rowA");
@@ -2731,6 +2733,53 @@ public class TestHRegion extends HBaseTestCase {
       this.region = null;
     }
   }
+  
+  public void testIncrement_OrderedEncodings() throws IOException {
+    this.region = initHRegion(tableName, getName(), fam1);
+    try {
+      byte[] row1 = Bytes.add(Bytes.toBytes("1234"), Bytes.toBytes(0L));
+      
+      Increment increment = new Increment(row1);
+      increment.addColumn(fam1, qual1, 1, NumberCodecType.ORDERED_INT8_ASC);
+      increment.addColumn(fam1, qual2, 1, NumberCodecType.ORDERED_INT16_ASC);
+      increment.addColumn(fam1, qual3, 1, NumberCodecType.ORDERED_INT32_ASC);
+      increment.addColumn(fam1, qual4, 1, NumberCodecType.ORDERED_INT64_ASC);
+
+      // the initial value should be 0
+      region.increment(increment, null, true);
+      assertICV(row1, fam1, qual1, 1, NumberCodecType.ORDERED_INT8_ASC);
+      assertICV(row1, fam1, qual2, 1, NumberCodecType.ORDERED_INT16_ASC);
+      assertICV(row1, fam1, qual3, 1, NumberCodecType.ORDERED_INT32_ASC);
+      assertICV(row1, fam1, qual4, 1, NumberCodecType.ORDERED_INT64_ASC);
+      
+      increment = new Increment(row1);
+      increment.addColumn(fam1, qual1, 1, NumberCodecType.ORDERED_INT8_ASC);
+      increment.addColumn(fam1, qual2, 1, NumberCodecType.ORDERED_INT16_ASC);
+      increment.addColumn(fam1, qual3, 1, NumberCodecType.ORDERED_INT32_ASC);
+      increment.addColumn(fam1, qual4, 1, NumberCodecType.ORDERED_INT64_ASC);
+
+      // here we should be successful as normal
+      region.increment(increment, null, true);
+      assertICV(row1, fam1, qual1, 2, NumberCodecType.ORDERED_INT8_ASC);
+      assertICV(row1, fam1, qual2, 2, NumberCodecType.ORDERED_INT16_ASC);
+      assertICV(row1, fam1, qual3, 2, NumberCodecType.ORDERED_INT32_ASC);
+      assertICV(row1, fam1, qual4, 2, NumberCodecType.ORDERED_INT64_ASC);
+
+      // failed to increment
+      increment = new Increment(row1);
+      increment.addColumn(fam1, qual1, 1, NumberCodecType.ORDERED_INT16_ASC);
+      try {
+        region.increment(increment, null, true);
+        fail("Expected to fail here");
+      } catch (Exception exception) {
+        // Expected.
+      }
+      assertICV(row1, fam1, qual1, 2, NumberCodecType.ORDERED_INT8_ASC);
+    } finally {
+      HRegion.closeHRegion(this.region);
+      this.region = null;
+    }
+  }
 
   public void testIncrement_WrongInitialSize() throws IOException {
     this.region = initHRegion(tableName, getName(), conf, fam1);
@@ -2791,6 +2840,22 @@ public class TestHRegion extends HBaseTestCase {
 
     KeyValue kv = result.raw()[0];
     int r = Bytes.toInt(kv.getValue());
+    assertEquals(amount, r);
+  }
+  
+  private void assertICV(byte [] row,
+      byte [] familiy,
+      byte[] qualifier,
+      long amount,
+      NumberCodecType codec) throws IOException {
+    // run a get and see?
+    Get get = new Get(row);
+    get.addColumn(familiy, qualifier);
+    Result result = region.get(get, null);
+    assertEquals(1, result.size());
+
+    KeyValue kv = result.raw()[0];
+    long r = codec.decode(kv.getValue()).longValue();
     assertEquals(amount, r);
   }
 
