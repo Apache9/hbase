@@ -210,7 +210,7 @@ public class TestOrderedBytes {
         assertEquals(
           String.format(
             "Encoded representations do not preserve natural order: <%s>, <%s>, %s",
-            sortedVals[i], decoded, ord),
+            Arrays.toString(sortedVals[i]), Arrays.toString(decoded), ord),
           sortedVals[i].longValue(), decoded);
       }
     }
@@ -874,7 +874,7 @@ public class TestOrderedBytes {
         assertArrayEquals(
           String.format(
             "Encoded representations do not preserve natural order: <%s>, <%s>, %s",
-            sortedVals[i], decoded, ord),
+            Arrays.toString(sortedVals[i]), Arrays.toString(decoded), ord),
           sortedVals[i], decoded);
       }
     }
@@ -898,7 +898,8 @@ public class TestOrderedBytes {
   @Test(expected = IllegalArgumentException.class)
   public void testBlobCopyNoZeroBytes() {
     byte[] val = { 0x01, 0x02, 0x00, 0x03 };
-    byte[] ascExpected = { 0x36, 0x01, 0x02, 0x00, 0x03 };
+    // TODO: implementation detail leaked here.
+    byte[] ascExpected = { 0x38, 0x01, 0x02, 0x00, 0x03 };
     PositionedByteRange buf = new SimplePositionedByteRange(val.length + 1);
     OrderedBytes.encodeBlobCopy(buf, val, Order.ASCENDING);
     assertArrayEquals(ascExpected, buf.getBytes());

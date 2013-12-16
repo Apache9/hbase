@@ -278,6 +278,7 @@ public class OrderedBytes {
    * implementations can be inserted into the total ordering enforced here.
    */
   private static final byte NULL = 0x05;
+  // room for 1 expansion type
   private static final byte NEG_INF = 0x07;
   private static final byte NEG_LARGE = 0x08;
   private static final byte NEG_MED_MIN = 0x09;
@@ -817,7 +818,7 @@ public class OrderedBytes {
    * a value in Numeric encoding and is within the valid range of
    * {@link BigDecimal} values. {@link BigDecimal} does not support {@code NaN}
    * or {@code Infinte} values.
-   * @see #decodeNumericAsDouble(byte[], int)
+   * @see #decodeNumericAsDouble(PositionedByteRange)
    */
   private static BigDecimal decodeNumericValue(PositionedByteRange src) {
     final int e;
@@ -1104,7 +1105,10 @@ public class OrderedBytes {
       } else {
         ret.put((byte) (t | ((ord.apply(a[offset + i]) & 0x7f) >>> s)));
       }
-      if (i == end) break;
+      if (i == end) {
+        t = 0;
+        break;
+      }
       t = (byte) ((ord.apply(a[offset + i]) << 8 - s) & 0xff);
       s = s == 1 ? 7 : s - 1;
     }
@@ -1270,14 +1274,14 @@ public class OrderedBytes {
   public static int encodeInt64(PositionedByteRange dst, long val, Order ord) {
     final int offset = dst.getOffset(), start = dst.getPosition();
     dst.put(FIXED_INT64)
-        .put((byte) ((val >> 56) ^ 0x80))
-        .put((byte) (val >> 48))
-        .put((byte) (val >> 40))
-        .put((byte) (val >> 32))
-        .put((byte) (val >> 24))
-        .put((byte) (val >> 16))
-        .put((byte) (val >> 8))
-        .put((byte) val);
+       .put((byte) ((val >> 56) ^ 0x80))
+       .put((byte) (val >> 48))
+       .put((byte) (val >> 40))
+       .put((byte) (val >> 32))
+       .put((byte) (val >> 24))
+       .put((byte) (val >> 16))
+       .put((byte) (val >> 8))
+       .put((byte) val);
     ord.apply(dst.getBytes(), offset + start, 9);
     return 9;
   }
