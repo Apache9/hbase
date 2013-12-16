@@ -162,7 +162,8 @@ public class ZKTable {
 
   /**
    * Sets the specified table as ENABLING in zookeeper atomically
-   * If the table is already in ENABLING state, no operation is performed
+   * If the table is already in ENABLING/ENABLED state, 
+   * no operation is performed
    * @param tableName
    * @return if the operation succeeds or not
    * @throws KeeperException unexpected zookeeper exception
@@ -170,7 +171,7 @@ public class ZKTable {
   public boolean checkAndSetEnablingTable(final String tableName)
     throws KeeperException {
     synchronized (this.cache) {
-      if (isEnablingTable(tableName)) {
+      if (isTableEnablingOrEnabled(tableName)) {
         return false;
       }
       setTableState(tableName, TableState.ENABLING);
@@ -281,6 +282,12 @@ public class ZKTable {
     return isTableState(tableName, TableState.ENABLING);
   }
 
+  public boolean isTableEnablingOrEnabled(final String tableName) {
+    synchronized (this.cache) {
+      return isEnablingTable(tableName) || isEnabledTable(tableName);
+    }
+  }
+  
   public boolean isEnabledTable(String tableName) {
     return isTableState(tableName, TableState.ENABLED);
   }
