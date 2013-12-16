@@ -93,6 +93,7 @@ import org.apache.hadoop.hbase.regionserver.NoSuchColumnFamilyException;
 import org.apache.hadoop.hbase.regionserver.Store;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
+import org.apache.hadoop.hbase.util.IncrementingEnvironmentEdge;
 import org.apache.hadoop.hbase.util.Threads;
 import org.apache.hadoop.io.DataInputBuffer;
 import org.junit.After;
@@ -4836,6 +4837,184 @@ public class TestFromClientSide {
         fail("trying to check and modify different rows should have failed.");
     } catch(Exception e) {}
 
+  }
+
+  @Test
+  public void testCheckAndDelete() throws IOException {
+    EnvironmentEdgeManager.injectEdge(new IncrementingEnvironmentEdge());
+    
+    final byte [] anotherRow = Bytes.toBytes("anotherrow");
+    final byte [] anotherQualifier = Bytes.toBytes("column2");
+    final byte [] value1 = Bytes.toBytes("value1");
+    final byte [] value2 = Bytes.toBytes("value2");
+
+    HTable table = TEST_UTIL.createTable(Bytes.toBytes("testCheckAndDelete" + UUID.randomUUID()),
+      new byte[][] { FAMILY });
+    Put put = new Put(ROW);
+    put.add(FAMILY, QUALIFIER, value1);
+
+    Delete delete1 = new Delete(ROW);
+
+    table.put(put);
+    assertTrue("delete with match",
+      table.checkAndDelete(ROW, FAMILY, QUALIFIER, value1, delete1));
+
+    table.put(put);
+    assertFalse("column value does not match",
+      table.checkAndDelete(ROW, FAMILY, QUALIFIER, value2, delete1));
+
+    table.put(put);
+    assertFalse("column value is not null",
+      table.checkAndDelete(ROW, FAMILY, QUALIFIER, null, delete1));
+
+    table.put(put);
+    assertTrue("column value is null",
+      table.checkAndDelete(ROW, FAMILY, anotherQualifier, null, delete1));
+
+    Delete delete2 = new Delete(anotherRow);
+    try {
+      table.put(put);
+      table.checkAndDelete(ROW, FAMILY, QUALIFIER, null, delete2);
+      fail("trying to check and delete different rows should have failed.");
+    } catch (Exception ex) {
+    }
+    EnvironmentEdgeManager.reset();
+  }
+
+  @Test
+  public void testCheckAndDeleteWithCompareOp() throws IOException {
+    EnvironmentEdgeManager.injectEdge(new IncrementingEnvironmentEdge());
+    final byte [] anotherRow = Bytes.toBytes("anotherrow");
+    final byte [] anotherQualifier = Bytes.toBytes("column2");
+    final byte [] value1 = Bytes.toBytes("aaaa");
+    final byte [] value2 = Bytes.toBytes("bbbb");
+
+    HTable table = TEST_UTIL.createTable(Bytes.toBytes("testCheckAndDelete" + UUID.randomUUID()),
+      new byte[][] { FAMILY });
+    Put put1 = new Put(ROW);
+    put1.add(FAMILY, QUALIFIER, value1);
+    Put put2 = new Put(ROW);
+    put2.add(FAMILY, QUALIFIER, value2);
+
+
+    Delete delete1 = new Delete(ROW);
+
+    // cell = "aaaa", check against "bbbb"
+    table.put(put1);
+    assertTrue(table.checkAndDelete(ROW, FAMILY, QUALIFIER,
+      CompareOp.GREATER, value2, delete1));
+    table.put(put1);
+    assertFalse(table.checkAndDelete(ROW, FAMILY, QUALIFIER,
+      CompareOp.EQUAL, value2, delete1));
+    table.put(put1);
+    assertTrue(table.checkAndDelete(ROW, FAMILY, QUALIFIER,
+      CompareOp.GREATER_OR_EQUAL, value2, delete1));
+    table.put(put1);
+    assertFalse(table.checkAndDelete(ROW, FAMILY, QUALIFIER,
+      CompareOp.LESS, value2, delete1));
+    table.put(put1);
+    assertFalse(table.checkAndDelete(ROW, FAMILY, QUALIFIER,
+      CompareOp.LESS_OR_EQUAL, value2, delete1));
+    table.put(put1);
+    assertTrue(table.checkAndDelete(ROW, FAMILY, QUALIFIER,
+      CompareOp.NOT_EQUAL, value2, delete1));
+    
+    
+    // cell = "bbbb", check against "aaaa"
+    table.put(put2);
+    assertFalse(table.checkAndDelete(ROW, FAMILY, QUALIFIER,
+      CompareOp.GREATER, value1, delete1));
+    table.put(put2);
+    assertFalse(table.checkAndDelete(ROW, FAMILY, QUALIFIER,
+      CompareOp.EQUAL, value1, delete1));
+    table.put(put2);
+    assertFalse(table.checkAndDelete(ROW, FAMILY, QUALIFIER,
+      CompareOp.GREATER_OR_EQUAL, value1, delete1));
+    table.put(put2);
+    assertTrue(table.checkAndDelete(ROW, FAMILY, QUALIFIER,
+      CompareOp.LESS, value1, delete1));
+    table.put(put2);
+    assertTrue(table.checkAndDelete(ROW, FAMILY, QUALIFIER,
+      CompareOp.LESS_OR_EQUAL, value1, delete1));
+    table.put(put2);
+    assertTrue(table.checkAndDelete(ROW, FAMILY, QUALIFIER,
+      CompareOp.NOT_EQUAL, value1, delete1));
+
+    // cell = "bbbb", check against "bbbb"
+    table.put(put2);
+    assertFalse(table.checkAndDelete(ROW, FAMILY, QUALIFIER,
+      CompareOp.GREATER, value2, delete1));
+    table.put(put2);
+    assertTrue(table.checkAndDelete(ROW, FAMILY, QUALIFIER,
+      CompareOp.EQUAL, value2, delete1));
+    table.put(put2);
+    assertTrue(table.checkAndDelete(ROW, FAMILY, QUALIFIER,
+      CompareOp.GREATER_OR_EQUAL, value2, delete1));
+    table.put(put2);
+    assertFalse(table.checkAndDelete(ROW, FAMILY, QUALIFIER,
+      CompareOp.LESS, value2, delete1));
+    table.put(put2);
+    assertTrue(table.checkAndDelete(ROW, FAMILY, QUALIFIER,
+      CompareOp.LESS_OR_EQUAL, value2, delete1));
+    table.put(put2);
+    assertFalse(table.checkAndDelete(ROW, FAMILY, QUALIFIER,
+      CompareOp.NOT_EQUAL, value2, delete1));
+
+    // cell != null and value = null, only CompareOp is NOT_EQUAL turns out "match"
+    for (CompareOp compareOp : CompareOp.values()) {
+      table.put(put2);
+      if (compareOp.equals(CompareOp.NOT_EQUAL)) {
+        assertTrue(table.checkAndDelete(ROW, FAMILY, QUALIFIER, compareOp, null, delete1));
+      } else if (compareOp.equals(CompareOp.NO_OP)) {
+        try {
+          table.checkAndDelete(ROW, FAMILY, QUALIFIER, compareOp, null, delete1);
+          fail();
+        } catch (Exception e) {}
+      } else {
+        assertFalse(table.checkAndDelete(ROW, FAMILY, QUALIFIER, compareOp, null, delete1));
+      }
+    }
+    
+    // cell = null and value = null, only CompareOp is EQUAL turns out "match"
+    for (CompareOp compareOp : CompareOp.values()) {
+      table.put(put2);
+      if (compareOp.equals(CompareOp.EQUAL)) {
+        assertTrue(table.checkAndDelete(ROW, FAMILY, anotherQualifier, compareOp, null, delete1));
+      } else if (compareOp.equals(CompareOp.NO_OP)) {
+        try {
+          table.checkAndDelete(ROW, FAMILY, anotherQualifier, compareOp, null, delete1);
+          fail();
+        } catch (Exception e) {}
+      } else {
+        assertFalse(table.checkAndDelete(ROW, FAMILY, anotherQualifier, compareOp, null, delete1));
+      }
+    }
+    
+    // cell = null and value != null, only CompareOp is NOT_EQUAL turns out "match"
+    for (CompareOp compareOp : CompareOp.values()) {
+      table.put(put2);
+      if (compareOp.equals(CompareOp.NOT_EQUAL)) {
+        assertTrue(table.checkAndDelete(ROW, FAMILY, anotherQualifier,
+          compareOp, value1, delete1));
+      } else if (compareOp.equals(CompareOp.NO_OP)) {
+        try {
+          table.checkAndDelete(ROW, FAMILY, anotherQualifier, compareOp, value1, delete1);
+          fail();
+        } catch (Exception e) {}
+      } else {
+        assertFalse(table.checkAndDelete(ROW, FAMILY, anotherQualifier,
+          compareOp, value1, delete1));
+      }
+    }
+
+    Delete delete2 = new Delete(anotherRow);
+    try {
+      table.put(put1);
+      table.checkAndDelete(ROW, FAMILY, QUALIFIER, CompareOp.EQUAL, null, delete2);
+      fail("trying to check and delete different rows should have failed.");
+    } catch (Exception ex) {
+    }
+    EnvironmentEdgeManager.reset();
   }
 
   /**

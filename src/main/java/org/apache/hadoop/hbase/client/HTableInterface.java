@@ -300,6 +300,22 @@ public interface HTableInterface extends Closeable {
       byte[] value, Delete delete) throws IOException;
 
   /**
+   * Atomically checks if a row/family/qualifier value matches the expected
+   * comparison expression. If it does, it adds the delete.
+   * 
+   * @param row to check
+   * @param family column family to check
+   * @param qualifier column qualifier to check
+   * @param compareOp comparison operator
+   * @param value the expected value
+   * @param delete data to delete if check succeeds
+   * @throws IOException e
+   * @return true if the new delete was executed, false otherwise
+   */
+  boolean checkAndDelete(byte[] row, byte[] family, byte[] qualifier,
+      CompareOp compareOp, byte[] value, Delete delete) throws IOException;
+
+  /**
    * Performs multiple mutations atomically on a single row. Currently
    * {@link Put} and {@link Delete} are supported.
    *

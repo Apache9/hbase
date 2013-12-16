@@ -56,7 +56,6 @@ import org.apache.hadoop.hbase.client.RowMutations;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.client.coprocessor.Batch;
 import org.apache.hadoop.hbase.filter.CompareFilter.CompareOp;
-import org.apache.hadoop.hbase.filter.WritableByteArrayComparable;
 import org.apache.hadoop.hbase.ipc.CoprocessorProtocol;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.CoprocessorClassLoader;
@@ -425,6 +424,11 @@ public abstract class CoprocessorHost<E extends CoprocessorEnvironment> {
       public boolean checkAndDelete(byte[] row, byte[] family, byte[] qualifier,
           byte[] value, Delete delete) throws IOException {
         return table.checkAndDelete(row, family, qualifier, value, delete);
+      }
+
+      public boolean checkAndDelete(byte[] row, byte[] family, byte[] qualifier,
+          CompareOp compareOp, byte[] value, Delete delete) throws IOException {
+        return table.checkAndDelete(row, family, qualifier, compareOp, value, delete);
       }
 
       public long incrementColumnValue(byte[] row, byte[] family,

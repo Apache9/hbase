@@ -438,6 +438,12 @@ public class HTablePool implements Closeable {
     }
 
     @Override
+    public boolean checkAndDelete(byte[] row, byte[] family, byte[] qualifier,
+        CompareOp compareOp, byte[] value, Delete delete) throws IOException {
+      return table.checkAndDelete(row, family, qualifier, compareOp, value, delete);
+    }
+
+    @Override
     public Result increment(Increment increment) throws IOException {
       return table.increment(increment);
     }

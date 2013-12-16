@@ -991,6 +991,22 @@ public class HTable implements HTableInterface {
    * {@inheritDoc}
    */
   @Override
+  public boolean checkAndDelete(final byte[] row,
+      final byte[] family, final byte[] qualifier, final CompareOp compareOp,
+      final byte[] value, final Delete delete) throws IOException {
+    return new ServerCallable<Boolean>(connection, tableName, row, operationTimeout) {
+      public Boolean call() throws IOException {
+        return server.checkAndDelete(location.getRegionInfo().getRegionName(),
+          row, family, qualifier, compareOp, new BinaryComparator(value),
+          delete) ? Boolean.TRUE : Boolean.FALSE;
+      }
+    }.withRetries();
+    }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
   public boolean exists(final Get get) throws IOException {
     return new ServerCallable<Boolean>(connection, tableName, get.getRow(), operationTimeout) {
           public Boolean call() throws IOException {

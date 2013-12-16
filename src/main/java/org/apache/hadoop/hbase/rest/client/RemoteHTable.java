@@ -697,6 +697,12 @@ public class RemoteHTable implements HTableInterface {
     throw new IOException("checkAndPut request timed out");
   }
 
+  // TODO: add implementation later on
+  public boolean checkAndDelete(byte[] row, byte[] family, byte[] qualifier,
+    CompareOp compareOp, byte[] value, Delete delete) throws IOException {
+      throw new IOException("checkAndDelete for non-equal comparison not implemented");
+  }
+
   public boolean checkAndDelete(byte[] row, byte[] family, byte[] qualifier,
       byte[] value, Delete delete) throws IOException {
     Put put = new Put(row);
