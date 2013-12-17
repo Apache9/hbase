@@ -272,6 +272,8 @@ Shell.load_command_group(
     flush
     major_compact
     move
+    move_table
+    move_server
     split
     unassign
     zk_dump

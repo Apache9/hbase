@@ -19,6 +19,8 @@
 #
 
 include Java
+java_import org.apache.hadoop.hbase.client.HConnectionManager
+java_import org.apache.hadoop.hbase.util.Bytes
 java_import org.apache.hadoop.hbase.util.Pair
 java_import org.apache.hadoop.hbase.util.RegionSplitter
 
@@ -36,6 +38,7 @@ module Hbase
       zk = @zk_wrapper.getRecoverableZooKeeper().getZooKeeper()
       @zk_main = org.apache.zookeeper.ZooKeeperMain.new(zk)
       @formatter = formatter
+      @catalog_tracker = org.apache.hadoop.hbase.catalog.CatalogTracker.new(configuration)
     end
 
     #----------------------------------------------------------------------------------------------
@@ -307,6 +310,105 @@ module Hbase
     # Move a region
     def move(encoded_region_name, server = nil)
       @admin.move(encoded_region_name.to_java_bytes, server ? server.to_java_bytes: nil)
+    end
+
+    #----------------------------------------------------------------------------------------------
+    # Return array of servernames where servername is hostname+port+startcode
+    # comma-delimited
+    def getServers()
+      serverInfos = @admin.getClusterStatus().getServerInfo()
+      servers = []
+      for server in serverInfos
+        servers << server.getServerName()
+      end
+      return servers
+    end
+
+    #----------------------------------------------------------------------------------------------
+    # Move regions of a table
+    def move_table(table_name, server = nil)
+      table_regions = org.apache.hadoop.hbase.catalog.MetaReader.getTableRegionsAndLocations(@catalog_tracker, table_name)
+      if table_regions == nil || table_regions.size == 0
+        $stdout.puts "no regions found for table #{table_name}"
+        return
+      end
+
+      # random choose a server to serve all the regions if given server is nil
+      if server == nil
+        region_servers = getServers()
+        server = region_servers[rand(region_servers.size)]
+      end
+
+      region_count = table_regions.size
+      $stdout.puts "start move #{region_count} regions of table : #{table_name} to server : #{server}"
+      index = 0
+      server_bytes = server.to_java_bytes
+      while index < region_count
+        encoded_region_name = table_regions[index].getFirst().getEncodedName
+        # move one region to the server 
+        @admin.move(encoded_region_name.to_java_bytes, server_bytes)
+
+        index += 1
+        # we print a promote every 10 regions
+        if index % 10 == 0:
+          $stdout.puts "finish moving #{index} regions"
+        end
+      end
+      $stdout.puts "finish moving #{region_count} regions"
+      end
+
+    #----------------------------------------------------------------------------------------------
+    # Now get list of regions of a regionserver
+    def getRegions(servername)
+      connection = HConnectionManager::getConnection(@conf)
+      parts = servername.split(',')
+      rs = connection.getHRegionConnection(parts[0], parts[1].to_i)
+      return rs.getOnlineRegions()
+    end
+
+    #----------------------------------------------------------------------------------------------
+    # Move regions of a server to the given server, randomly to other servers
+    def move_server(source_server, target_server = nil)
+      if source_server == target_server
+        puts "source_server is same with the target_server"
+      return
+      end
+
+      other_servers = []
+      if target_server == nil
+        other_servers = getServers()
+        find_source_server = false
+        # remove source_server from other_servers
+        for server in other_servers
+          if server == source_server
+            find_source_server = true
+            other_servers.delete(server)
+            break
+          end
+        end
+        if find_source_server == false
+          puts "can't find source server #{source_server}"
+          return
+        end
+        if other_servers.size == 0
+          puts "can't find valid target region server"
+          return
+        end
+        puts "will move to valid target region servers:", other_servers
+      end
+
+      regions = getRegions(source_server)
+      puts "will move #{regions.size} regions on server #{source_server}"
+      for region in regions:
+        server = target_server
+        # if no target server specified, we choose a server randomly
+        if server == nil
+          server = other_servers[rand(other_servers.size)]
+        end
+        encode_name = region.getEncodedName
+        @admin.move(Bytes.toBytes(encode_name), Bytes.toBytes(server))
+        puts "finished moving region #{encode_name} from #{source_server} to #{server}"
+      end
     end
 
     #----------------------------------------------------------------------------------------------
