@@ -2349,15 +2349,15 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
       }
 
       @SuppressWarnings("unchecked")
-      Pair<Mutation, Integer>[] putsWithLocks = new Pair[puts.size()];
+      Pair<Put, Integer>[] putsWithLocks = new Pair[puts.size()];
 
       for (Put p : puts) {
         Integer lock = getLockFromId(p.getLockId());
-        putsWithLocks[i++] = new Pair<Mutation, Integer>(p, lock);
+        putsWithLocks[i++] = new Pair<Put, Integer>(p, lock);
       }
 
       this.requestCount.addAndGet(puts.size());
-      OperationStatus codes[] = region.batchMutate(putsWithLocks);
+      OperationStatus codes[] = region.put(putsWithLocks);
       for (i = 0; i < codes.length; i++) {
         if (codes[i].getOperationStatusCode() != OperationStatusCode.SUCCESS) {
           return i;

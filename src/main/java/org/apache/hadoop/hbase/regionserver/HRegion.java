@@ -83,6 +83,7 @@ import org.apache.hadoop.hbase.NotServingRegionException;
 import org.apache.hadoop.hbase.RegionTooBusyException;
 import org.apache.hadoop.hbase.UnknownScannerException;
 import org.apache.hadoop.hbase.backup.HFileArchiver;
+import org.apache.hadoop.hbase.client.Action;
 import org.apache.hadoop.hbase.client.Append;
 import org.apache.hadoop.hbase.client.Durability;
 import org.apache.hadoop.hbase.client.RowMutations;
@@ -2134,13 +2135,12 @@ public class HRegion implements HeapSize { // , Writable{
    * @see HRegion#batchMutate(Pair[])
    */
   public OperationStatus[] put(Put[] puts) throws IOException {
-    @SuppressWarnings("unchecked")
-    Pair<Mutation, Integer> putsAndLocks[] = new Pair[puts.length];
-
-    for (int i = 0; i < puts.length; i++) {
-      putsAndLocks[i] = new Pair<Mutation, Integer>(puts[i], null);
+    Pair<Put, Integer>[] putsAndLocks = new Pair[puts.length];
+    for (int i = 0; i < puts.length; ++i) {
+      putsAndLocks[i] = new Pair<Put, Integer>(puts[i], null);
     }
-    return batchMutate(putsAndLocks);
+
+    return put(putsAndLocks);
   }
 
   /**
@@ -2154,9 +2154,30 @@ public class HRegion implements HeapSize { // , Writable{
    */
   @Deprecated
   public OperationStatus[] put(Pair<Put, Integer>[] putsAndLocks) throws IOException {
-    Pair<Mutation, Integer>[] mutationsAndLocks = new Pair[putsAndLocks.length];
-    System.arraycopy(putsAndLocks, 0, mutationsAndLocks, 0, putsAndLocks.length);
-    return batchMutate(mutationsAndLocks);
+    List<Action<Object>> actions = Lists.newArrayListWithCapacity(putsAndLocks.length);
+    for (int i = 0; i < putsAndLocks.length; ++i) {
+      actions.add(new Action<Object>(putsAndLocks[i].getFirst(), i));
+    }
+    Collections.sort(actions);
+
+    Pair<Mutation,Integer>[] mutationsAndLocks =
+      new Pair[putsAndLocks.length];
+
+    for (int i = 0; i < actions.size(); ++i) {
+      Action<Object> a = actions.get(i);
+      Mutation m = (Mutation) a.getAction();
+      Integer lock = putsAndLocks[a.getOriginalIndex()].getSecond();
+      mutationsAndLocks[i] = new Pair<Mutation, Integer>(m, lock);
+    }
+
+    OperationStatus[] sts = batchMutate(mutationsAndLocks);
+
+    OperationStatus[] res = new OperationStatus[sts.length];
+    for (int i = 0; i < sts.length; ++i) {
+      res[actions.get(i).getOriginalIndex()] = sts[i];
+    }
+
+    return res;
   }
 
   /**
@@ -2276,10 +2297,16 @@ public class HRegion implements HeapSize { // , Writable{
       // ----------------------------------
       int numReadyToWrite = 0;
       long now = EnvironmentEdgeManager.currentTimeMillis();
+      byte[] prevRow = null;
       while (lastIndexExclusive < batchOp.operations.length) {
         Pair<Mutation, Integer> nextPair = batchOp.operations[lastIndexExclusive];
         Mutation mutation = nextPair.getFirst();
         Integer providedLockId = nextPair.getSecond();
+
+        int cmp = (prevRow == null) ? -1 : Bytes.compareTo(prevRow, mutation.getRow());
+        assert (cmp <= 0) :
+          "Row " + prevRow + " followed by a smaller Row " + mutation.getRow();
+        prevRow = mutation.getRow();
 
         Map<byte[], List<KeyValue>> familyMap = mutation.getFamilyMap();
         // store the family map reference to allow for mutations
@@ -2317,7 +2344,8 @@ public class HRegion implements HeapSize { // , Writable{
         }
         // If we haven't got any rows in our batch, we should block to
         // get the next one.
-        boolean shouldBlock = numReadyToWrite == 0;
+        boolean shouldBlock = numReadyToWrite == 0 ||
+          htableDescriptor.isAcrossPrefixRowsAtomic();
         boolean failedToAcquire = false;
         Integer acquiredLockId = null;
         HashedBytes currentRow = new HashedBytes(mutation.getRow());

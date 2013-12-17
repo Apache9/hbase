@@ -659,6 +659,213 @@ public class TestHRegion extends HBaseTestCase {
   }
 
   @SuppressWarnings("unchecked")
+  public void testBatchPutWithAcrossRowAtomic() throws Exception {
+    testBatchPutWithOrWithoutAcrossRowAtomic(true);
+  }
+
+  @SuppressWarnings("unchecked")
+  public void testBatchPutWithoutAcrossRowAtomic() throws Exception {
+    testBatchPutWithOrWithoutAcrossRowAtomic(false);
+  }
+
+  @SuppressWarnings("unchecked")
+  private void testBatchPutWithOrWithoutAcrossRowAtomic(boolean with) throws Exception {
+    byte[] b = Bytes.toBytes(getName());
+    byte[] cf = Bytes.toBytes(COLUMN_FAMILY);
+    byte[] qual = Bytes.toBytes("qual");
+    byte[] val = Bytes.toBytes("val");
+    byte[] val2 = Bytes.toBytes("val2");
+    if (with) {
+      this.region = initHRegion(b, true, getName(), cf);
+    } else {
+      this.region = initHRegion(b, getName(), conf, cf);
+    }
+    try {
+      HLog.getSyncTime(); // clear counter from prior tests
+      assertEquals(0, HLog.getSyncTime().count);
+
+      final Put[][] puts = new Put[10][];
+      for (int i = 0; i < 10; i++) {
+        puts[i] = new Put[5];
+      }
+      // puts[0]: 0/1/2/3/3
+      puts[0][0] = new Put(Bytes.toBytes("row_" + 3));
+      puts[0][0].add(cf, qual, val);
+      puts[0][1] = new Put(Bytes.toBytes("row_" + 2));
+      puts[0][1].add(cf, qual, val);
+      puts[0][2] = new Put(Bytes.toBytes("row_" + 0));
+      puts[0][2].add(cf, qual, val);
+      puts[0][3] = new Put(Bytes.toBytes("row_" + 3));
+      puts[0][3].add(cf, qual, val2);
+      puts[0][4] = new Put(Bytes.toBytes("row_" + 1));
+      puts[0][4].add(cf, qual, val);
+
+      // puts[1]: 1/3/4/4/8
+      puts[1][0] = new Put(Bytes.toBytes("row_" + 4));
+      puts[1][0].add(cf, qual, val2);
+      puts[1][1] = new Put(Bytes.toBytes("row_" + 1));
+      puts[1][1].add(cf, qual, val);
+      puts[1][2] = new Put(Bytes.toBytes("row_" + 4));
+      puts[1][2].add(cf, qual, val);
+      puts[1][3] = new Put(Bytes.toBytes("row_" + 8));
+      puts[1][3].add(cf, qual, val);
+      puts[1][4] = new Put(Bytes.toBytes("row_" + 3));
+      puts[1][4].add(cf, qual, val);
+
+      // puts[2]: 0/2/6/6/9
+      puts[2][0] = new Put(Bytes.toBytes("row_" + 6));
+      puts[2][0].add(cf, qual, val);
+      puts[2][1] = new Put(Bytes.toBytes("row_" + 0));
+      puts[2][1].add(cf, qual, val);
+      puts[2][2] = new Put(Bytes.toBytes("row_" + 6));
+      puts[2][2].add(cf, qual, val2);
+      puts[2][3] = new Put(Bytes.toBytes("row_" + 9));
+      puts[2][3].add(cf, qual, val);
+      puts[2][4] = new Put(Bytes.toBytes("row_" + 2));
+      puts[2][4].add(cf, qual, val);
+
+      // puts[3]: 1/3/7/7/9
+      puts[3][0] = new Put(Bytes.toBytes("row_" + 1));
+      puts[3][0].add(cf, qual, val);
+      puts[3][1] = new Put(Bytes.toBytes("row_" + 7));
+      puts[3][1].add(cf, qual, val);
+      puts[3][2] = new Put(Bytes.toBytes("row_" + 7));
+      puts[3][2].add(cf, qual, val2);
+      puts[3][3] = new Put(Bytes.toBytes("row_" + 9));
+      puts[3][3].add(cf, qual, val);
+      puts[3][4] = new Put(Bytes.toBytes("row_" + 3));
+      puts[3][4].add(cf, qual, val);
+
+      // puts[4]: 2/5/5/6/8
+      puts[4][0] = new Put(Bytes.toBytes("row_" + 5));
+      puts[4][0].add(cf, qual, val);
+      puts[4][1] = new Put(Bytes.toBytes("row_" + 2));
+      puts[4][1].add(cf, qual, val);
+      puts[4][2] = new Put(Bytes.toBytes("row_" + 8));
+      puts[4][2].add(cf, qual, val);
+      puts[4][3] = new Put(Bytes.toBytes("row_" + 5));
+      puts[4][3].add(cf, qual, val2);
+      puts[4][4] = new Put(Bytes.toBytes("row_" + 6));
+      puts[4][4].add(cf, qual, val);
+
+      // puts[5]: 0/1/1/7/8
+      puts[5][0] = new Put(Bytes.toBytes("row_" + 7));
+      puts[5][0].add(cf, qual, val);
+      puts[5][1] = new Put(Bytes.toBytes("row_" + 1));
+      puts[5][1].add(cf, qual, val);
+      puts[5][2] = new Put(Bytes.toBytes("row_" + 1));
+      puts[5][2].add(cf, qual, val2);
+      puts[5][3] = new Put(Bytes.toBytes("row_" + 0));
+      puts[5][3].add(cf, qual, val);
+      puts[5][4] = new Put(Bytes.toBytes("row_" + 8));
+      puts[5][4].add(cf, qual, val);
+
+      // puts[6]: 3/6/6/8/9
+      puts[6][0] = new Put(Bytes.toBytes("row_" + 3));
+      puts[6][0].add(cf, qual, val);
+      puts[6][1] = new Put(Bytes.toBytes("row_" + 9));
+      puts[6][1].add(cf, qual, val);
+      puts[6][2] = new Put(Bytes.toBytes("row_" + 6));
+      puts[6][2].add(cf, qual, val2);
+      puts[6][3] = new Put(Bytes.toBytes("row_" + 8));
+      puts[6][3].add(cf, qual, val);
+      puts[6][4] = new Put(Bytes.toBytes("row_" + 6));
+      puts[6][4].add(cf, qual, val);
+
+      // puts[7]: 2/4/5/8/8
+      puts[7][0] = new Put(Bytes.toBytes("row_" + 8));
+      puts[7][0].add(cf, qual, val2);
+      puts[7][1] = new Put(Bytes.toBytes("row_" + 4));
+      puts[7][1].add(cf, qual, val);
+      puts[7][2] = new Put(Bytes.toBytes("row_" + 8));
+      puts[7][2].add(cf, qual, val);
+      puts[7][3] = new Put(Bytes.toBytes("row_" + 2));
+      puts[7][3].add(cf, qual, val);
+      puts[7][4] = new Put(Bytes.toBytes("row_" + 5));
+      puts[7][4].add(cf, qual, val);
+
+      // puts[8]: 1/1/4/7/9
+      puts[8][0] = new Put(Bytes.toBytes("row_" + 9));
+      puts[8][0].add(cf, qual, val);
+      puts[8][1] = new Put(Bytes.toBytes("row_" + 4));
+      puts[8][1].add(cf, qual, val);
+      puts[8][2] = new Put(Bytes.toBytes("row_" + 1));
+      puts[8][2].add(cf, qual, val);
+      puts[8][3] = new Put(Bytes.toBytes("row_" + 1));
+      puts[8][3].add(cf, qual, val2);
+      puts[8][4] = new Put(Bytes.toBytes("row_" + 7));
+      puts[8][4].add(cf, qual, val);
+
+      // puts[9]: 0/5/5/6/8
+      puts[9][0] = new Put(Bytes.toBytes("row_" + 6));
+      puts[9][0].add(cf, qual, val);
+      puts[9][1] = new Put(Bytes.toBytes("row_" + 5));
+      puts[9][1].add(cf, qual, val);
+      puts[9][2] = new Put(Bytes.toBytes("row_" + 8));
+      puts[9][2].add(cf, qual, val);
+      puts[9][3] = new Put(Bytes.toBytes("row_" + 0));
+      puts[9][3].add(cf, qual, val);
+      puts[9][4] = new Put(Bytes.toBytes("row_" + 5));
+      puts[9][4].add(cf, qual, val2);
+
+      MultithreadedTestUtil.TestContext ctx =
+        new MultithreadedTestUtil.TestContext(HBaseConfiguration.create());
+      final AtomicReference<OperationStatus[]>[] retFromThreads =
+        new AtomicReference[10];
+      for (int i = 0; i < 10; i++) {
+        final int idx = i;
+        TestThread putter = new TestThread(ctx) {
+          @Override
+          public void doWork() throws IOException {
+            retFromThreads[idx] = new AtomicReference<OperationStatus[]>();
+            retFromThreads[idx].set(region.put(puts[idx]));
+          }
+        };
+        ctx.addThread(putter);
+      }
+      assertEquals(0, ctx.getDoneThreadCount());
+      long initialReadPoint = region.getMVCC().memstoreReadPoint();
+
+      ctx.startThreads();
+
+      LOG.info("Waiting for put threads to finish");
+      long startWait = System.currentTimeMillis();
+      int totalSync = 0;
+      while (ctx.getDoneThreadCount() < 10) {
+        Thread.sleep(100);
+        if (System.currentTimeMillis() - startWait > 10000) {
+          fail("Timed out waiting for put threads to finish");
+        }
+      }
+      LOG.info("all put threads are done");
+
+      if (with) {
+        // exactly 10 atomic writes occur (1 "mvcc" for each batch put)
+        long readPointAdvanced =
+          region.getMVCC().memstoreReadPoint() - initialReadPoint;
+        assertEquals(10, readPointAdvanced);
+      } else {
+        // >= 10 atomic write occur(more than one "mvcc" for each batch put)
+        long readPointAdvanced =
+          region.getMVCC().memstoreReadPoint() - initialReadPoint;
+        assertTrue(readPointAdvanced >= 10);
+      }
+
+      for (int i = 0; i < 10; i++) {
+        OperationStatus[] codes = retFromThreads[i].get();
+        for (int j = 0; j < 5; j++) {
+          assertEquals(OperationStatusCode.SUCCESS,
+              codes[j].getOperationStatusCode());
+        }
+      }
+    } finally {
+      HRegion.closeHRegion(this.region);
+      this.region = null;
+    }
+  }
+
+
+  @SuppressWarnings("unchecked")
   public void testBatchPut() throws Exception {
     byte[] b = Bytes.toBytes(getName());
     byte[] cf = Bytes.toBytes(COLUMN_FAMILY);
@@ -4310,6 +4517,29 @@ public class TestHRegion extends HBaseTestCase {
     // below.  After adding all data, the first region is 1.3M
     conf.setLong(HConstants.HREGION_MAX_FILESIZE, 1024 * 128);
     return conf;
+  }
+
+  private static HRegion initHRegion (byte [] tableName, boolean acrossRowAtomic,
+    String callingMethod, byte[] ... families)
+  throws IOException {
+    Configuration conf = HBaseConfiguration.create();
+    HTableDescriptor htd = new HTableDescriptor(tableName);
+    for(byte [] family : families) {
+      int blockSize = conf.getInt("test.block.size", 65536);
+      htd.addFamily(new HColumnDescriptor(family).setBlocksize(blockSize));
+    }
+    if (acrossRowAtomic) {
+      htd.setValue(HTableDescriptor.ACROSS_PREFIX_ROWS_ATOMIC, "true");
+    }
+    HRegionInfo info = new HRegionInfo(htd.getName(), null, null, false);
+    Path path = new Path(DIR + callingMethod);
+    FileSystem fs = FileSystem.get(conf);
+    if (fs.exists(path)) {
+      if (!fs.delete(path, true)) {
+        throw new IOException("Failed delete of " + path);
+      }
+    }
+    return HRegion.createHRegion(info, path, conf, htd);
   }
 
   /**
