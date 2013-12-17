@@ -95,4 +95,8 @@ public class BlockCacheKey implements HeapSize, java.io.Serializable {
   public DataBlockEncoding getDataBlockEncoding() {
     return encoding;
   }
+
+  public long getOffset() {
+    return offset;
+  }
 }
