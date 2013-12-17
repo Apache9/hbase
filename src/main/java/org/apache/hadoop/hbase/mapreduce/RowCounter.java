@@ -20,6 +20,8 @@
 package org.apache.hadoop.hbase.mapreduce;
 
 import java.io.IOException;
+import java.util.Set;
+import java.util.TreeSet;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
@@ -27,6 +29,7 @@ import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.filter.FirstKeyOnlyFilter;
+import org.apache.hadoop.hbase.filter.FirstKeyValueMatchingQualifiersFilter;
 import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.mapreduce.Job;
@@ -110,6 +113,7 @@ public class RowCounter {
     job.setJarByClass(RowCounter.class);
     Scan scan = new Scan();
     scan.setCacheBlocks(false);
+    Set<byte []> qualifiers = new TreeSet<byte[]>(Bytes.BYTES_COMPARATOR);
     if (startKey != null && !startKey.equals("")) {
       scan.setStartRow(Bytes.toBytes(startKey));
     }
@@ -123,9 +127,19 @@ public class RowCounter {
         if(fields.length == 1) {
           scan.addFamily(Bytes.toBytes(fields[0]));
         } else {
-          scan.addColumn(Bytes.toBytes(fields[0]), Bytes.toBytes(fields[1]));
+          byte[] qualifier = Bytes.toBytes(fields[1]);
+          qualifiers.add(qualifier);
+          scan.addColumn(Bytes.toBytes(fields[0]), qualifier);
         }
       }
+    }
+    // specified column may or may not be part of first key value for the row.
+    // Hence do not use FirstKeyOnlyFilter if scan has columns, instead use
+    // FirstKeyValueMatchingQualifiersFilter.
+    if (qualifiers.size() == 0) {
+      scan.setFilter(new FirstKeyOnlyFilter());
+    } else {
+      scan.setFilter(new FirstKeyValueMatchingQualifiersFilter(qualifiers));
     }
     job.setOutputFormatClass(NullOutputFormat.class);
     TableMapReduceUtil.initTableMapperJob(tableName, scan,
