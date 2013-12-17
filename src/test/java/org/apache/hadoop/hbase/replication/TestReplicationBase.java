@@ -97,7 +97,6 @@ public class TestReplicationBase {
     // than default
     conf1 = utility1.getConfiguration();  
     zkw1 = new ZooKeeperWatcher(conf1, "cluster1", null, true);
-    admin = new ReplicationAdmin(conf1);
     LOG.info("Setup first Zk");
 
     // Base conf2 on conf1 so it gets the right zk cluster.
@@ -111,14 +110,16 @@ public class TestReplicationBase {
     utility2.setZkCluster(miniZK);
     zkw2 = new ZooKeeperWatcher(conf2, "cluster2", null, true);
 
-    admin.addPeer("2", utility2.getClusterKey());
-    setIsReplication(true);
 
     LOG.info("Setup second Zk");
     CONF_WITH_LOCALFS = HBaseConfiguration.create(conf1);
     utility1.startMiniCluster(2);
     utility2.startMiniCluster(2);
 
+    admin = new ReplicationAdmin(conf1);
+    admin.addPeer("2", utility2.getClusterKey());
+    setIsReplication(true);
+    
     HTableDescriptor table = new HTableDescriptor(tableName);
     HColumnDescriptor fam = new HColumnDescriptor(famName);
     fam.setScope(HConstants.REPLICATION_SCOPE_GLOBAL);

@@ -89,4 +89,47 @@ public class TestReplicationDisableInactivePeer extends TestReplicationBase {
     }
     fail("Waited too much time for put replication");
   }
+  
+  
+  @Test(timeout = 600000)
+  public void testAddDisablePeer() throws Exception {
+    // add a disabled peer
+    admin.removePeer("2");
+    admin.addPeer("2", utility2.getClusterKey(), "DISABLED");
+
+    byte[] rowkey = Bytes.toBytes("add disabled peer");
+    Put put = new Put(rowkey);
+    put.add(famName, row, row);
+    htable1.put(put);
+
+    // wait for the sleep interval of the master cluster to become long
+    Thread.sleep(SLEEP_TIME * NB_RETRIES);
+
+    Get get = new Get(rowkey);
+    for (int i = 0; i < NB_RETRIES; i++) {
+      Result res = htable2.get(get);
+      if (res.size() >= 1) {
+        fail("Replication wasn't disabled");
+      } else {
+        LOG.info("Row not replicated, let's wait a bit more...");
+        Thread.sleep(SLEEP_TIME);
+      }
+    }
+
+    // Test enable replication
+    admin.enablePeer("2");
+    // wait since the sleep interval would be long
+    Thread.sleep(SLEEP_TIME * NB_RETRIES);
+    for (int i = 0; i < NB_RETRIES; i++) {
+      Result res = htable2.get(get);
+      if (res.size() == 0) {
+        LOG.info("Row not available");
+        Thread.sleep(SLEEP_TIME * NB_RETRIES);
+      } else {
+        assertArrayEquals(res.value(), row);
+        return;
+      }
+    }
+    fail("Waited too much time for put replication");
+  }
 }
