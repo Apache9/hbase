@@ -156,7 +156,9 @@ public class ReplicationSourceManager {
   public void logPositionAndCleanOldLogs(Path log, String id, long position, 
       boolean queueRecovered, boolean holdLogInZK) {
     String key = log.getName();
-    LOG.info("Going to report log #" + key + " for position " + position + " in " + log);
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("Going to report log #" + key + " for position " + position + " in " + log);
+    }
     this.zkHelper.writeReplicationStatus(key, id, position);
     if (holdLogInZK) {
      return;
@@ -180,6 +182,9 @@ public class ReplicationSourceManager {
         return;
       }
       SortedSet<String> hlogSet = hlogs.headSet(key);
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("Removing " + hlogSet.size() + " logs in the list: " + hlogSet);
+      }
       for (String hlog : hlogSet) {
         this.zkHelper.removeLogFromList(hlog, id);
       }

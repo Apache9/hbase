@@ -155,7 +155,9 @@ public class ReplicationSink {
       this.metrics.setAgeOfLastAppliedOp(
           entries[entries.length-1].getKey().getWriteTime());
       this.metrics.appliedBatchesRate.inc(1);
-      LOG.info("Total replicated: " + totalReplicated);
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("Total replicated: " + totalReplicated);
+      }
     } catch (IOException ex) {
       LOG.error("Unable to accept edit because:", ex);
       throw ex;

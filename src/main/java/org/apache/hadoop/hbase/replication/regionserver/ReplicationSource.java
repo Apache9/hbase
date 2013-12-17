@@ -315,7 +315,9 @@ public class ReplicationSource extends Thread
     // resetting to 1 to reuse later
     sleepMultiplier = 1;
 
-    LOG.info("Replicating "+clusterId + " -> " + peerClusterId);
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("Replicating "+clusterId + " -> " + peerClusterId);
+    }
 
     // If this is recovered, the queue is already full and the first log
     // normally has a position (unless the RS failed between 2 logs)
@@ -736,7 +738,9 @@ public class ReplicationSource extends Thread
       }
       try {
         HRegionInterface rrs = getRS();
-        LOG.info("Replicating " + currentNbEntries);
+        if (LOG.isDebugEnabled()) {
+          LOG.debug("Replicating " + currentNbEntries);
+        }
         rrs.replicateLogEntries(Arrays.copyOf(this.entriesArray, currentNbEntries));
         if (this.lastLoggedPosition != this.repLogReader.getPosition()) {
           this.manager.logPositionAndCleanOldLogs(this.currentPath,
@@ -749,9 +753,10 @@ public class ReplicationSource extends Thread
             this.currentNbOperations);
         this.metrics.setAgeOfLastShippedOp(
             this.entriesArray[0].getKey().getWriteTime());
-        LOG.info("Replicated in total: " + this.totalReplicatedEdits);
+        if (LOG.isDebugEnabled()) {
+          LOG.debug("Replicated in total: " + this.totalReplicatedEdits);
+        }
         break;
-
       } catch (IOException ioe) {
         // Didn't ship anything, but must still age the last time we did
         this.metrics.refreshAgeOfLastShippedOp();
