@@ -167,7 +167,7 @@ public class TestAggregateProtocol {
    * @throws Throwable
    */
   @Test
-  public void testRowCountAllTable() throws Throwable {
+  public void testRowCountWithCQ() throws Throwable {
     AggregationClient aClient = new AggregationClient(conf);
     Scan scan = new Scan();
     scan.addColumn(TEST_FAMILY, TEST_QUALIFIER);
@@ -224,25 +224,22 @@ public class TestAggregateProtocol {
     assertEquals(0, rowCount);
   }
 
-  /**
-   * This should return a 0
-   */
   @Test
-  public void testRowCountWithNullCF() {
+  public void testRowCountAllTable() throws Throwable {
     AggregationClient aClient = new AggregationClient(conf);
     Scan scan = new Scan();
+    final ColumnInterpreter<Long, Long> ci = new LongColumnInterpreter();
+    long rowCount = aClient.rowCount(TEST_TABLE, ci,
+        scan);
+    assertEquals(ROWSIZE, rowCount);
+    
     scan.setStartRow(ROWS[5]);
     scan.setStopRow(ROWS[15]);
-    final ColumnInterpreter<Long, Long> ci = new LongColumnInterpreter();
-    long rowCount = -1;
-    try {
-      rowCount = aClient.rowCount(TEST_TABLE, ci, scan);
-    } catch (Throwable e) {
-       rowCount = 0;
-    }
-    assertEquals(0, rowCount);
+    rowCount = aClient.rowCount(TEST_TABLE, ci,
+      scan);
+    assertEquals(10, rowCount);
   }
-
+  
   @Test
   public void testRowCountWithNullCQ() throws Throwable {
     AggregationClient aClient = new AggregationClient(conf);

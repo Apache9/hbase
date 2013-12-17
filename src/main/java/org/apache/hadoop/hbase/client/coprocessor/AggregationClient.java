@@ -94,7 +94,7 @@ public class AggregationClient {
    */
   public <R, S> R max(final byte[] tableName, final ColumnInterpreter<R, S> ci,
       final Scan scan) throws Throwable {
-    validateParameters(scan);
+    validateParameters(scan, false);
     class MaxCallBack implements Batch.Callback<R> {
       R max = null;
 
@@ -126,7 +126,11 @@ public class AggregationClient {
     return aMaxCallBack.getMax();
   }
 
-  private void validateParameters(Scan scan) throws IOException {
+  /*
+  * @param scan
+  * @param canFamilyBeAbsent whether column family can be absent in familyMap of scan
+  */
+  private void validateParameters(Scan scan, boolean canFamilyBeAbsent) throws IOException {
     if (scan == null
         || (Bytes.equals(scan.getStartRow(), scan.getStopRow()) && !Bytes
             .equals(scan.getStartRow(), HConstants.EMPTY_START_ROW))
@@ -134,8 +138,10 @@ public class AggregationClient {
         	!Bytes.equals(scan.getStopRow(), HConstants.EMPTY_END_ROW))) {
       throw new IOException(
           "Agg client Exception: Startrow should be smaller than Stoprow");
-    } else if (scan.getFamilyMap().size() != 1) {
-      throw new IOException("There must be only one family.");
+    }else if (!canFamilyBeAbsent) {
+      if (scan.getFamilyMap().size() != 1) {
+        throw new IOException("There must be only one family.");
+      }
     }
   }
 
@@ -151,7 +157,7 @@ public class AggregationClient {
    */
   public <R, S> R min(final byte[] tableName, final ColumnInterpreter<R, S> ci,
       final Scan scan) throws Throwable {
-    validateParameters(scan);
+    validateParameters(scan, false);
     class MinCallBack implements Batch.Callback<R> {
 
       private R min = null;
@@ -202,7 +208,7 @@ public class AggregationClient {
    */
   public <R, S> long rowCountWithSpeed(final byte[] tableName,
       final ColumnInterpreter<R, S> ci, final Scan scan, final int speed) throws Throwable {
-    validateParameters(scan);
+    validateParameters(scan, true);
     class RowNumCallback implements Batch.Callback<Long> {
       private final AtomicLong rowCountL = new AtomicLong(0);
 
@@ -256,7 +262,7 @@ public class AggregationClient {
    */
   public <R, S> S sum(final byte[] tableName, final ColumnInterpreter<R, S> ci,
       final Scan scan) throws Throwable {
-    validateParameters(scan);
+    validateParameters(scan, false);
     class SumCallBack implements Batch.Callback<S> {
       S sumVal = null;
 
@@ -298,7 +304,7 @@ public class AggregationClient {
    */
   private <R, S> Pair<S, Long> getAvgArgs(final byte[] tableName,
       final ColumnInterpreter<R, S> ci, final Scan scan) throws Throwable {
-    validateParameters(scan);
+    validateParameters(scan, false);
     class AvgCallBack implements Batch.Callback<Pair<S, Long>> {
       S sum = null;
       Long rowCount = 0l;
@@ -365,7 +371,7 @@ public class AggregationClient {
    */
   private <R, S> Pair<List<S>, Long> getStdArgs(final byte[] tableName,
       final ColumnInterpreter<R, S> ci, final Scan scan) throws Throwable {
-    validateParameters(scan);
+    validateParameters(scan, false);
     class StdCallback implements Batch.Callback<Pair<List<S>, Long>> {
       long rowCountVal = 0l;
       S sumVal = null, sumSqVal = null;
@@ -445,7 +451,7 @@ public class AggregationClient {
   private <R, S> Pair<NavigableMap<byte[], List<S>>, List<S>>
   getMedianArgs(final byte[] tableName,
       final ColumnInterpreter<R, S> ci, final Scan scan) throws Throwable {
-    validateParameters(scan);
+    validateParameters(scan, false);
     final NavigableMap<byte[], List<S>> map =
       new TreeMap<byte[], List<S>>(Bytes.BYTES_COMPARATOR);
     class StdCallback implements Batch.Callback<List<S>> {

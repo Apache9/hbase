@@ -156,8 +156,12 @@ public class AggregateImplementation extends BaseEndpointCoprocessor implements
     long counter = 0l;
     long st = System.currentTimeMillis();
     List<KeyValue> results = new ArrayList<KeyValue>();
-    byte[] colFamily = scan.getFamilies()[0];
-    byte[] qualifier = scan.getFamilyMap().get(colFamily).pollFirst();
+    byte[][] colFamilies = scan.getFamilies();
+    byte[] colFamily = colFamilies != null ? colFamilies[0] : null;
+    NavigableSet<byte[]> qualifiers = colFamilies != null ? scan.getFamilyMap().get(colFamily) : null;
+    byte[] qualifier = null;
+    if (qualifiers != null && !qualifiers.isEmpty())
+      qualifier = qualifiers.pollFirst();
     if (scan.getFilter() == null && qualifier == null)
       scan.setFilter(new FirstKeyOnlyFilter());
     final long nowNs = System.nanoTime();
