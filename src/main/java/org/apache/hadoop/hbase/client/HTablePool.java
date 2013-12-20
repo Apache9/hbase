@@ -255,7 +255,7 @@ public class HTablePool implements Closeable {
    */
   private void returnTable(HTableInterface table) throws IOException {
     // this is the old putTable method renamed and made private
-    String tableName = Bytes.toString(table.getTableName());
+    String tableName = Bytes.toString(table.getFullTableName());
     if (tables.size(tableName) >= maxSize) {
       // release table instance since we're not reusing it
       this.tables.remove(tableName, table);
@@ -333,7 +333,12 @@ public class HTablePool implements Closeable {
     public byte[] getTableName() {
       return table.getTableName();
     }
-
+    
+    @Override
+    public byte[] getFullTableName() {
+      return table.getFullTableName();
+    }
+    
     @Override
     public Configuration getConfiguration() {
       return table.getConfiguration();

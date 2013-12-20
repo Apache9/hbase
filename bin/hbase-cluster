@@ -1,0 +1,32 @@
+#!/bin/bash
+
+usage() {
+  echo "$0 hbase_cluster [command]"
+  echo "eg: Show all commands for hytst-staging hbase cluster: $0 hytst-staging"
+  echo "eg: Connect localhost hbase cluster using shell: $0 localhost shell"
+  echo "eg: Connect oneboxhost hbase cluster using shell: $0 oneboxhost/ip shell"
+  echo "eg: Conect hytst-staging hbase cluster using shell: $0 hytst-staging shell"
+  echo "see all hbase clusters: http://lg-hadoop-dashboard01.bj:8000/monitor/service/2/"
+  exit
+}
+
+if [ $# = 0 ] ; then
+  usage
+fi
+
+bin=`dirname "$0"`
+hbase_cluster=$1
+
+online_cluster_pattern='^[a-z]{5}-[a-z]+$'
+
+if [[ $hbase_cluster =~ $online_cluster_pattern ]]; then
+   # online secure hbase cluster
+   export HBASE_OPTS="-Dhadoop.cmdline.hbase.cluster=hbase://$hbase_cluster -Dhadoop.property.hadoop.security.authentication=kerberos -Djava.security.krb5.conf=/etc/krb5-hadoop.conf"
+   echo "Connect to secure hbase cluster: $hbase_cluster" 
+else
+   # for onebox hbase cluster
+   export HBASE_OPTS="-Dhadoop.property.hbase.zookeeper.quorum=$hbase_cluster"
+   echo "Connect to no-secure onebox hbase at $hbase_cluster" 
+fi
+
+bash $bin/hbase ${@:2} 

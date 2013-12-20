@@ -19,12 +19,14 @@
  */
 package org.apache.hadoop.hbase;
 
+import java.io.IOException;
 import java.util.Map.Entry;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.util.VersionInfo;
+import org.apache.hadoop.hbase.zookeeper.ZKUtil;
 
 /**
  * Adds HBase configuration files to a Configuration
@@ -99,6 +101,18 @@ public class HBaseConfiguration extends Configuration {
 
     checkDefaultsVersion(conf);
     checkForClusterFreeMemoryLimit(conf);
+ 
+    String clusterName = System.getProperties()
+                               .getProperty("hadoop.cmdline.hbase.cluster");
+    if (clusterName != null) {
+      try {
+        LOG.info("Apply cluster:" + clusterName + "to configuration");
+        ZKUtil.applyClusterKeyToConf(conf, clusterName);
+      } catch (IOException e) {
+        LOG.error("Apply cluster: " + clusterName + " to configuration failed!");
+      }
+    }
+
     return conf;
   }
 

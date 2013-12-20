@@ -38,6 +38,8 @@ import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
+import com.xiaomi.infra.base.nameservice.NameService;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -284,24 +286,43 @@ public class TableMapReduceUtil {
   }
 
   public static void initCredentials(Job job) throws IOException {
-    if (User.isHBaseSecurityEnabled(job.getConfiguration())) {
+    // for input table name service
+    String inputTable = job.getConfiguration().get(TableInputFormat.INPUT_TABLE);
+    if (inputTable!= null && inputTable.startsWith(NameService.HBASE_URI_PREFIX)) {
+      ZKUtil.applyClusterKeyToConf(job.getConfiguration(), inputTable);
+    }
+
+		if (User.isHBaseSecurityEnabled(job.getConfiguration())) {
       try {
-        // init credentials for remote cluster
-        String quorumAddress = job.getConfiguration().get(
-            TableOutputFormat.QUORUM_ADDRESS);
-        if (quorumAddress != null) {
-          String[] parts = ZKUtil.transformClusterKey(quorumAddress);
-          Configuration peerConf = HBaseConfiguration.create(job
-              .getConfiguration());
-          peerConf.set(HConstants.ZOOKEEPER_QUORUM, parts[0]);
-          peerConf.set("hbase.zookeeper.client.port", parts[1]);
-          peerConf.set(HConstants.ZOOKEEPER_ZNODE_PARENT, parts[2]);
-          User.getCurrent().obtainAuthTokenForJob(peerConf, job);
-        }
-        
         User.getCurrent().obtainAuthTokenForJob(job.getConfiguration(), job);
       } catch (InterruptedException ie) {
         LOG.info("Interrupted obtaining user authentication token");
+        Thread.interrupted();
+      }
+    }
+
+    // for output table name service
+    // init credentials for remote cluster
+    Configuration peerConf = HBaseConfiguration.create(job
+      .getConfiguration());
+    
+    String outputTable = job.getConfiguration().get(
+      TableOutputFormat.OUTPUT_TABLE);
+    if (outputTable != null && outputTable.startsWith(NameService.HBASE_URI_PREFIX)) {
+      ZKUtil.applyClusterKeyToConf(peerConf, outputTable);
+    }
+    
+    String quorumAddress = job.getConfiguration().get(
+      TableOutputFormat.QUORUM_ADDRESS);
+    if (quorumAddress != null) {
+      ZKUtil.applyClusterKeyToConf(peerConf, quorumAddress);
+    }
+    
+    if (User.isHBaseSecurityEnabled(peerConf)) {
+      try {
+        User.getCurrent().obtainAuthTokenForJob(peerConf, job);
+      } catch (InterruptedException ie) {
+        LOG.info("Interrupted obtaining remote user authentication token");
         Thread.interrupted();
       }
     }

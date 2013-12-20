@@ -19,6 +19,9 @@
  */
 package org.apache.hadoop.hbase.zookeeper;
 
+import com.xiaomi.infra.base.nameservice.NameService;
+import com.xiaomi.infra.base.nameservice.NameServiceEntry;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -45,6 +48,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.EmptyWatcher;
+import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.executor.RegionTransitionData;
@@ -377,11 +381,21 @@ public class ZKUtil {
    * @throws IOException
    */
   public static void applyClusterKeyToConf(Configuration conf, String key)
-      throws IOException{
-    String[] parts = transformClusterKey(key);
-    conf.set(HConstants.ZOOKEEPER_QUORUM, parts[0]);
-    conf.set(HConstants.ZOOKEEPER_CLIENT_PORT, parts[1]);
-    conf.set(HConstants.ZOOKEEPER_ZNODE_PARENT, parts[2]);
+      throws IOException {
+    if (key.startsWith(NameService.HBASE_URI_PREFIX)) {
+      NameServiceEntry entry = NameService.resolve(key, conf);
+      if (!entry.compatibleWithScheme("hbase")) {
+        throw new IOException("Unrecognized scheme: " + entry.getScheme());
+      }
+      // it just copy configuration and change it, the old configuration do not change
+      Configuration newConf = entry.createClusterConf(null);
+      HBaseConfiguration.merge(conf, newConf);
+    } else {
+      String[] parts = transformClusterKey(key);
+      conf.set(HConstants.ZOOKEEPER_QUORUM, parts[0]);
+      conf.set(HConstants.ZOOKEEPER_CLIENT_PORT, parts[1]);
+      conf.set(HConstants.ZOOKEEPER_ZNODE_PARENT, parts[2]);
+    }
   }
 
   /**
@@ -393,10 +407,18 @@ public class ZKUtil {
    * @throws IOException
    */
   public static String[] transformClusterKey(String key) throws IOException {
+    if (key.startsWith(NameService.HBASE_URI_PREFIX)) {
+      NameServiceEntry entry = NameService.resolve(key);
+      if (!entry.compatibleWithScheme("hbase")) {
+        throw new IOException("Unrecognized scheme: " + entry.getScheme());
+      }
+      Configuration conf = entry.createClusterConf(null);
+      key = getZooKeeperClusterKey(conf);
+    } 
     String[] parts = key.split(":");
     if (parts.length != 3) {
-      throw new IOException("Cluster key invalid, the format should be:" +
-          HConstants.ZOOKEEPER_QUORUM + ":hbase.zookeeper.client.port:"
+      throw new IOException("Cluster key invalid, the format should be:"
+          + HConstants.ZOOKEEPER_QUORUM + ":hbase.zookeeper.client.port:"
           + HConstants.ZOOKEEPER_ZNODE_PARENT);
     }
     return parts;

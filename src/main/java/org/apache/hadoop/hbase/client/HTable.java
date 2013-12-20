@@ -24,6 +24,10 @@ import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
 import java.lang.reflect.Proxy;
+import java.net.InetAddress;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -38,6 +42,7 @@ import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -59,6 +64,9 @@ import org.apache.hadoop.hbase.util.Addressing;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.Pair;
 import org.apache.hadoop.hbase.util.Threads;
+
+import com.xiaomi.infra.base.nameservice.NameService;
+import com.xiaomi.infra.base.nameservice.NameServiceEntry;
 
 /**
  * <p>Used to communicate with a single HBase table.
@@ -105,6 +113,7 @@ public class HTable implements HTableInterface {
   private static final Log LOG = LogFactory.getLog(HTable.class);
   private HConnection connection;
   private final byte [] tableName;
+  private final byte [] fullTableName;
   private volatile Configuration configuration;
   private final ArrayList<Put> writeBuffer = new ArrayList<Put>();
   private long writeBufferSize;
@@ -114,7 +123,7 @@ public class HTable implements HTableInterface {
   protected int scannerCaching;
   private int maxKeyValueSize;
   private ExecutorService pool;  // For Multi
-  private boolean closed;
+  private boolean closed = true;
   private int operationTimeout;
   private final boolean cleanupPoolOnClose; // shutdown the pool in close()
   private final boolean cleanupConnectionOnClose; // close the connection in close()
@@ -127,13 +136,49 @@ public class HTable implements HTableInterface {
    * sharing this <code>conf</code> instance.  Recommended.
    * @param conf Configuration object to use.
    * @param tableName Name of the table.
+   * It could be just the name of the table (the short form), the full uri name
+   * of the table with the hbase cluster information. For example:
+   *   "table1": just the table name
+   *
+   *   "hbase://lgprc-test/table1": "table1" on the hbase cluster "lgprc-test",
+   *   which is located by the name service.
+   *
+   *   "hbase://lgprc-test:9800/table1": the zookeeper cluster is running on
+   *   port 9800 instead of the default port (11000).
+   * 
+   * When it's a full uri name, the cluster must be setup with kerberos
+   * authentication enabled.
+   * When it's a just a short form name, the configuration would be loaded from
+   * configuration files.
+   *
    * @throws IOException if a remote or network exception occurs
    */
   public HTable(Configuration conf, final String tableName)
-  throws IOException {
-    this(conf, Bytes.toBytes(tableName));
+      throws IOException {
+    this(conf, tableName, true);
   }
 
+  /**
+   * The finishSetup should be false when running unit test, then it won't try
+   * to connect to the hbase service.   
+   */
+  public HTable(Configuration conf, final String tableName, boolean finishSetup)
+      throws IOException {
+    NameServiceEntry entry = NameService.resolve(tableName, conf);
+    if (!entry.compatibleWithScheme("hbase")) {
+      throw new IOException("Unrecognized scheme: " + entry.getScheme());
+    }
+    conf = entry.createClusterConf(conf);
+    this.tableName = Bytes.toBytes(entry.getResource());
+    this.fullTableName = Bytes.toBytes(tableName);
+    this.cleanupPoolOnClose = this.cleanupConnectionOnClose = true;
+    this.configuration = conf;
+
+    if (finishSetup) {
+      this.initialize(conf);
+      this.finishSetup();
+    }
+  }
 
   /**
    * Creates an object to access a HBase table.
@@ -146,15 +191,17 @@ public class HTable implements HTableInterface {
    * @throws IOException if a remote or network exception occurs
    */
   public HTable(Configuration conf, final byte [] tableName)
-  throws IOException {
-    this.tableName = tableName;
-    this.cleanupPoolOnClose = this.cleanupConnectionOnClose = true;
+      throws IOException {
+    this(conf, Bytes.toString(tableName));
+  }
+
+  private void initialize(Configuration conf)
+      throws IOException {
     if (conf == null) {
       this.connection = null;
       return;
     }
     this.connection = HConnectionManager.getConnection(conf);
-    this.configuration = conf;
 
     int maxThreads = conf.getInt("hbase.htable.threads.max", Integer.MAX_VALUE);
     if (maxThreads == 0) {
@@ -194,6 +241,7 @@ public class HTable implements HTableInterface {
     this.configuration = conf;
     this.pool = pool;
     this.tableName = tableName;
+    this.fullTableName = tableName;
     this.cleanupPoolOnClose = false;
     this.cleanupConnectionOnClose = true;
 
@@ -217,6 +265,7 @@ public class HTable implements HTableInterface {
       throw new IllegalArgumentException("Connection is null or closed.");
     }
     this.tableName = tableName;
+    this.fullTableName = tableName;
     this.cleanupPoolOnClose = this.cleanupConnectionOnClose = false;
     this.connection = connection;
     this.configuration = connection.getConfiguration();
@@ -356,6 +405,14 @@ public class HTable implements HTableInterface {
   @Override
   public byte [] getTableName() {
     return this.tableName;
+  }
+  
+  /**
+   * Gets the full table name which is the 'tableName' passed from constructor
+   * @return the full table name
+   */
+  public byte[] getFullTableName() {
+    return fullTableName;
   }
 
   /**

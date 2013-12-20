@@ -266,6 +266,13 @@ public class RemoteHTable implements HTableInterface {
   public byte[] getTableName() {
     return name.clone();
   }
+  
+  /**
+   * return 'tableName' directly
+   */
+  public byte[] getFullTableName() {
+    return name.clone();
+  }
 
   public Configuration getConfiguration() {
     return conf;

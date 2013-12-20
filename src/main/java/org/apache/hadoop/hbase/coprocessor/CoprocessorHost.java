@@ -489,6 +489,10 @@ public abstract class CoprocessorHost<E extends CoprocessorEnvironment> {
         throw new RuntimeException(
           "row locking is not allowed within the coprocessor environment");
       }
+      
+      public byte[] getFullTableName() {
+        return table.getFullTableName();
+      }
 
       /**
        * @deprecated {@link RowLock} and associated operations are deprecated.

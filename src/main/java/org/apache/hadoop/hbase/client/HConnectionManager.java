@@ -88,6 +88,9 @@ import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
 import org.apache.hadoop.ipc.RemoteException;
 import org.apache.zookeeper.KeeperException;
 
+import com.xiaomi.infra.base.nameservice.NameService;
+import com.xiaomi.infra.base.nameservice.NameServiceEntry;
+
 /**
  * A non-instantiable class that manages creation of {@link HConnection}s.
  * <p>The simplest way to use this class is by using {@link #createConnection(Configuration)}.
@@ -241,7 +244,22 @@ public class HConnectionManager {
       throws IOException {
     return new HConnectionImplementation(conf, false, pool);
   }
+  
+  public static HConnection createConnection(Configuration conf, String clusterUri)
+      throws IOException {
+    return createConnection(conf, clusterUri, null);
+  }
 
+  public static HConnection createConnection(Configuration conf, String clusterUri,
+      ExecutorService pool) throws IOException {
+    NameServiceEntry entry = NameService.resolve(clusterUri, conf);
+    if (entry.getScheme() == null || !entry.getScheme().equals("hbase")) {
+      throw new IOException("Unrecognized scheme: " + entry.getScheme() + ", scheme must be hbase");
+    }
+    conf = entry.createClusterConf(conf);
+    return createConnection(conf, pool);
+  }
+  
   /**
    * Delete connection information for the instance specified by configuration.
    * If there are no more references to it, this will then close connection to

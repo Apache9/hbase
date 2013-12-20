@@ -35,6 +35,7 @@ import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.util.InfoServer;
 import org.apache.hadoop.hbase.util.Strings;
 import org.apache.hadoop.hbase.util.VersionInfo;
+import org.apache.hadoop.hbase.zookeeper.ZKUtil;
 import org.apache.hadoop.net.DNS;
 
 import java.util.List;
@@ -67,7 +68,7 @@ public class Main implements Constants {
     HelpFormatter formatter = new HelpFormatter();
     formatter.printHelp("bin/hbase rest start", "", options,
       "\nTo run the REST server as a daemon, execute " +
-      "bin/hbase-daemon.sh start|stop rest [--infoport <port>] [-p <port>] [-ro]\n", true);
+      "bin/hbase-daemon.sh start|stop rest [-c cluster] [--infoport <port>] [-p <port>] [-ro]\n", true);
     System.exit(exitCode);
   }
 
@@ -94,6 +95,7 @@ public class Main implements Constants {
 
     Options options = new Options();
     options.addOption("p", "port", true, "Port to bind to [default: 8080]");
+    options.addOption("c", "cluster", true, "cluster to connect to [default: hbase://lgprc-xiaomi]");
     options.addOption("ro", "readonly", false, "Respond only to GET HTTP " +
       "method requests [default: false]");
     options.addOption(null, "infoport", true, "Port for web UI");
@@ -126,6 +128,13 @@ public class Main implements Constants {
       servlet.getConfiguration()
           .setInt("hbase.rest.info.port", Integer.valueOf(val));
       LOG.debug("Web UI port set to " + val);
+    }
+
+    // check if user-defined cluster setting
+    if (commandLine != null && commandLine.hasOption("cluster")) {
+      String cluster = commandLine.getOptionValue("cluster");
+      ZKUtil.applyClusterKeyToConf(conf, cluster);
+      LOG.debug("set cluster to " + cluster);
     }
 
     @SuppressWarnings("unchecked")
