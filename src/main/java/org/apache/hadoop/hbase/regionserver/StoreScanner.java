@@ -87,6 +87,9 @@ public class StoreScanner extends NonLazyKeyValueScanner
   // if heap == null and lastTop != null, you need to reseek given the key below
   private KeyValue lastTop = null;
 
+  // A flag whether use pread for scan
+  private boolean scanUsePread = false;
+
   /** An internal constructor. */
   private StoreScanner(Store store, boolean cacheBlocks, Scan scan,
       final NavigableSet<byte[]> columns, long ttl, int minVersions) {
@@ -105,6 +108,8 @@ public class StoreScanner extends NonLazyKeyValueScanner
     // for multi-row (non-"get") scans because this is not done in
     // StoreFile.passesBloomFilter(Scan, SortedSet<byte[]>).
     useRowColBloom = numCol > 1 || (!isGet && numCol == 1);
+		this.scanUsePread = scan.isSmall();
+
     // The parallel-seeking is on :
     // 1) the config value is *true*
     // 2) have more than one store file
@@ -257,7 +262,8 @@ public class StoreScanner extends NonLazyKeyValueScanner
    */
   private List<KeyValueScanner> getScannersNoCompaction() throws IOException {
     final boolean isCompaction = false;
-    return selectScannersFrom(store.getScanners(cacheBlocks, isGet,
+    boolean usePread = isGet || scanUsePread;
+    return selectScannersFrom(store.getScanners(cacheBlocks, usePread,
         isCompaction, matcher));
   }
 

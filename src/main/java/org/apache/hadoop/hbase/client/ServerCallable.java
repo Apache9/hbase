@@ -33,6 +33,7 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.DoNotRetryIOException;
 import org.apache.hadoop.hbase.HConstants;
+import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HRegionLocation;
 import org.apache.hadoop.hbase.NotServingRegionException;
 import org.apache.hadoop.hbase.ipc.HBaseRPC;
@@ -277,5 +278,15 @@ public abstract class ServerCallable<T> implements Callable<T> {
       throw (DoNotRetryIOException)t;
     }
     return t;
+  }
+
+  /**
+   * @return the HRegionInfo for the current region
+   */
+  public HRegionInfo getHRegionInfo() {
+    if (this.location == null) {
+      return null;
+    }
+    return this.location.getRegionInfo();
   }
 }
