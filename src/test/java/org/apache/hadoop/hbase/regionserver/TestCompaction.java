@@ -675,7 +675,8 @@ public class TestCompaction extends HBaseTestCase {
     // simple stop for the metrics - we ignore any updates in the test
     RegionServerMetrics mockMetrics = Mockito.mock(RegionServerMetrics.class);
     Mockito.when(mockServer.getMetrics()).thenReturn(mockMetrics);
-
+    Mockito.when(mockServer.isEnableCompact()).thenReturn(true);
+    
     // setup a region/store with some files
     Store store = r.getStore(COLUMN_FAMILY);
     createStoreFile(r);
@@ -701,7 +702,8 @@ public class TestCompaction extends HBaseTestCase {
     // simple stop for the metrics - we ignore any updates in the test
     RegionServerMetrics mockMetrics = Mockito.mock(RegionServerMetrics.class);
     Mockito.when(mockServer.getMetrics()).thenReturn(mockMetrics);
-
+    Mockito.when(mockServer.isEnableCompact()).thenReturn(true);
+    
     // setup a region/store with some files
     int numStores = r.getStores().size();
     List<CompactionRequest> requests = new ArrayList<CompactionRequest>(numStores);
