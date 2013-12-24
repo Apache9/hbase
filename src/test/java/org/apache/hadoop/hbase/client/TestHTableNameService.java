@@ -26,6 +26,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.SmallTests;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -36,6 +37,8 @@ import org.junit.experimental.categories.Category;
  */
 @Category(SmallTests.class)
 public class TestHTableNameService {
+  private final static Configuration conf = HBaseConfiguration.create();
+  
   private void securityDisabled(HTable hTable) {
     Assert.assertNull(hTable.getConfiguration().get("hbase.security.authentication"));
     Assert.assertEquals("authentication",
@@ -58,13 +61,17 @@ public class TestHTableNameService {
 
   @BeforeClass
   public static void beforeClass() throws Exception {
-    System.setProperty("hadoop.property.hadoop.security.authentication",
-        "kerberos");
+    conf.set("hadoop.security.authentication", "kerberos");
+  }
+  
+  @AfterClass
+  public static void afterClass() throws Exception {
+    conf.unset("hadoop.security.authentication");
   }
 
+  
   @Test
   public void testShortTableName() throws IOException {
-    Configuration conf = HBaseConfiguration.create();
     HTable hTable = new HTable(conf, "test_table1", false);
 
     Assert.assertArrayEquals(Bytes.toBytes("test_table1"), hTable.getTableName());
@@ -85,7 +92,6 @@ public class TestHTableNameService {
 
   @Test
   public void testFullUri() throws IOException {
-    Configuration conf = HBaseConfiguration.create();
     HTable hTable = new HTable(conf, "hbase://xmdmtst-test/test_table1", false);
 
     Assert.assertArrayEquals(Bytes.toBytes("test_table1"), hTable.getTableName());
@@ -104,7 +110,6 @@ public class TestHTableNameService {
 
   @Test
   public void testFullUriWithPort() throws IOException {
-    Configuration conf = HBaseConfiguration.create();
     HTable hTable = new HTable(conf, "hbase://xmdmtst-test:9800/test_table1", false);
 
     Assert.assertArrayEquals(Bytes.toBytes("test_table1"), hTable.getTableName());
@@ -123,7 +128,6 @@ public class TestHTableNameService {
 
   @Test
   public void testFullUriWithoutTableName() throws IOException {
-    Configuration conf = HBaseConfiguration.create();
     HTable hTable = new HTable(conf, "hbase://xmdmtst-test:9800/", false);
 
     Assert.assertArrayEquals(Bytes.toBytes(""), hTable.getTableName());
@@ -142,7 +146,6 @@ public class TestHTableNameService {
 
   @Test
   public void testFullUriPreDefined() throws IOException {
-    Configuration conf = HBaseConfiguration.create();
     HTable hTable = new HTable(conf, "hbase://hytst-test:9800/test_table1", false);
 
     Assert.assertArrayEquals(Bytes.toBytes("test_table1"), hTable.getTableName());
@@ -162,7 +165,6 @@ public class TestHTableNameService {
 
   @Test
   public void testIllegalUri() throws IOException {
-    Configuration conf = HBaseConfiguration.create();
     try {
       new HTable(conf, "http://test/test", false);
       Assert.fail("Exception was expected!");
