@@ -6,10 +6,13 @@ import java.io.IOException;
 
 import junit.framework.Assert;
 
+import org.apache.hadoop.hbase.SmallTests;
 import org.apache.hadoop.io.DataOutputBuffer;
 import org.apache.hadoop.util.StringUtils;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 
+@Category(SmallTests.class)
 public class TestBulkDeleteResponse {
   public void checkBulkDeleteResponseEq(BulkDeleteResponse expected, BulkDeleteResponse actual) {
     Assert.assertEquals(expected.getRowsDeleted(), actual.getRowsDeleted());

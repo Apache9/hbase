@@ -16,11 +16,14 @@
  */
 package org.apache.hadoop.hbase.filter;
 
+import org.apache.hadoop.hbase.SmallTests;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 
 import junit.framework.Assert;
 
+@Category(SmallTests.class)
 public class TestLongComparator {
   private long values[] = { Long.MIN_VALUE, -10000000000L, -1000000L, 0L, 1000000L, 10000000000L,
       Long.MAX_VALUE };
