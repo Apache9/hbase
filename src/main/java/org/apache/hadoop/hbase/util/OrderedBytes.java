@@ -290,16 +290,21 @@ public class OrderedBytes {
   private static final byte POS_MED_MAX = 0x21;
   private static final byte POS_LARGE = 0x22;
   private static final byte POS_INF = 0x23;
-  private static final byte NAN = 0x25;
-  private static final byte FIXED_INT16 = 0x26;
-  private static final byte FIXED_INT32 = 0x27;
-  private static final byte FIXED_INT64 = 0x28;
+  // room for 2 expansion type
+  private static final byte NAN = 0x26;
+  // room for 2 expansion types
   private static final byte FIXED_INT8 = 0x29;
-  private static final byte FIXED_FLOAT32 = 0x30;
+  private static final byte FIXED_INT16 = 0x2a;
+  private static final byte FIXED_INT32 = 0x2b;
+  private static final byte FIXED_INT64 = 0x2c;
+  // room for 3 expansion types
+	private static final byte FIXED_FLOAT32 = 0x30;
   private static final byte FIXED_FLOAT64 = 0x31;
-  private static final byte TEXT = 0x33;
-  private static final byte BLOB_VAR = 0x35;
-  private static final byte BLOB_COPY = 0x36;
+  // room for 2 expansion type
+  private static final byte TEXT = 0x34;
+  // room for 2 expansion type
+  private static final byte BLOB_VAR = 0x37;
+  private static final byte BLOB_COPY = 0x38;
 
   /*
    * The following constant values are used by encoding implementations
