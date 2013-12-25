@@ -269,7 +269,7 @@ public class SecureClient extends HBaseClient {
         while (true) {
           setupConnection();
           InputStream inStream = NetUtils.getInputStream(socket);
-          OutputStream outStream = NetUtils.getOutputStream(socket);
+          OutputStream outStream = NetUtils.getOutputStream(socket, pingInterval);
           writeRpcHeader(outStream);
           if (useSasl) {
             final InputStream in2 = inStream;
