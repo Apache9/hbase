@@ -300,6 +300,7 @@ public class TestZooKeeper {
     } catch (IOException ex) {
       // OK
     }
+    System.clearProperty("hadoop.property.hadoop.security.authentication");
   }
   
   @Test
