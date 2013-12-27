@@ -1439,6 +1439,11 @@ public class HBaseTestingUtility {
     // we up the VM usable so that processes don't get killed.
     conf.setFloat("yarn.nodemanager.vmem-pmem-ratio", 8.0f);
 
+    // Tests were failing due to MAPREDUCE-4880 / MAPREDUCE-4607 and this avoids the problem by
+    // disabling speculative task execution in tests.
+    conf.setBoolean("mapreduce.map.speculative", false);
+    conf.setBoolean("mapreduce.reduce.speculative", false);
+    
     mrCluster = new MiniMRCluster(0, 0, servers,
       FileSystem.get(conf).getUri().toString(), 1, null, null, null, new JobConf(conf));
 
