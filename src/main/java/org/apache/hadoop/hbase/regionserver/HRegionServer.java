@@ -973,6 +973,10 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
 
   void tryRegionServerReport()
   throws IOException {
+    if (!keepLooping() && hbaseMaster == null) {
+      // the current server is stopping
+      return;
+    }
     HServerLoad hsl = buildServerLoad();
     // Why we do this?
     this.requestCount.set(0);
