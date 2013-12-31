@@ -2290,6 +2290,7 @@ public class HRegion implements HeapSize { // , Writable{
     int lastIndexExclusive = firstIndex;
     boolean success = false;
     int noOfPuts = 0, noOfDeletes = 0;
+    boolean isAtomic = htableDescriptor.isAcrossPrefixRowsAtomic();
     try {
       // ------------------------------------
       // STEP 1. Try to acquire as many locks as we can, and ensure
@@ -2304,8 +2305,11 @@ public class HRegion implements HeapSize { // , Writable{
         Integer providedLockId = nextPair.getSecond();
 
         int cmp = (prevRow == null) ? -1 : Bytes.compareTo(prevRow, mutation.getRow());
-        assert (cmp <= 0) :
-          "Row " + prevRow + " followed by a smaller Row " + mutation.getRow();
+        if (isAtomic) {
+          assert (cmp <= 0) : "Row " + Bytes.toString(prevRow)
+              + " followed by a smaller Row "
+              + Bytes.toString(mutation.getRow());
+        }
         prevRow = mutation.getRow();
 
         Map<byte[], List<KeyValue>> familyMap = mutation.getFamilyMap();
@@ -2344,8 +2348,7 @@ public class HRegion implements HeapSize { // , Writable{
         }
         // If we haven't got any rows in our batch, we should block to
         // get the next one.
-        boolean shouldBlock = numReadyToWrite == 0 ||
-          htableDescriptor.isAcrossPrefixRowsAtomic();
+        boolean shouldBlock = numReadyToWrite == 0 || isAtomic;
         boolean failedToAcquire = false;
         Integer acquiredLockId = null;
         HashedBytes currentRow = new HashedBytes(mutation.getRow());
