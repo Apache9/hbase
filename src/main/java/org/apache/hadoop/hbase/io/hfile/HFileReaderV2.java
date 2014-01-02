@@ -555,8 +555,9 @@ public class HFileReaderV2 extends AbstractHFileReader {
       }
       ByteBuffer firstKey = getFirstKeyInBlock(seekToBlock);
 
+      // due to hfile index optimization, we should change "==" to ">="(see T404)
       if (reader.getComparator().compare(firstKey.array(),
-          firstKey.arrayOffset(), firstKey.limit(), key, offset, length) == 0)
+          firstKey.arrayOffset(), firstKey.limit(), key, offset, length) >= 0)
       {
         long previousBlockOffset = seekToBlock.getPrevBlockOffset();
         // The key we are interested in
