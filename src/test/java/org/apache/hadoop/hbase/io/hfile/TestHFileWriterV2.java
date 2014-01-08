@@ -144,7 +144,7 @@ public class TestHFileWriterV2 {
         FixedFileTrailer.readFromStream(fsdis, fileSize);
 
     assertEquals(2, trailer.getMajorVersion());
-    assertEquals(useChecksums?1:0, trailer.getMinorVersion());
+    assertEquals(useChecksums?2:0, trailer.getMinorVersion());
     assertEquals(entryCount, trailer.getEntryCount());
 
     HFileBlock.FSReader blockReader =

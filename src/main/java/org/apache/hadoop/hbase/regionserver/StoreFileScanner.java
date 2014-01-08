@@ -242,6 +242,10 @@ public class StoreFileScanner implements KeyValueScanner {
     //This function is similar to seekAtOrAfter function
     int result = s.reseekTo(k.getBuffer(), k.getKeyOffset(), k.getKeyLength());
     if (result <= 0) {
+      if (result == -2) {
+        // using faked key
+        return true;
+      }
       // If up to now scanner is not seeked yet, this means passed KV is smaller
       // than first KV in file, and it is the first time we seek on this file.
       // So we also need to work from the start of file.

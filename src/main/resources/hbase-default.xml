@@ -486,7 +486,7 @@
   </property>
   <property>
       <name>hbase.regionserver.checksum.verify</name>
-      <value>false</value>
+      <value>true</value>
       <description>
          Allow hbase to do checksums rather than using hdfs checksums. This is a backwards
          incompatible change.
