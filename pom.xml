@@ -737,6 +737,9 @@
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
         <configuration>
+                <excludes>
+                  <exclude>${surefire.exclude.tests}</exclude>
+                </excludes>
                 <skip>${surefire.skipFirstPart}</skip>
                 <forkMode>${surefire.firstPartForkMode}</forkMode>
                 <parallel>${surefire.firstPartParallel}</parallel>
@@ -1064,6 +1067,7 @@
     <surefire.firstPartThreadCount>1</surefire.firstPartThreadCount>
     <surefire.secondPartThreadCount>2</surefire.secondPartThreadCount>
 
+    <surefire.exclude.tests>none</surefire.exclude.tests>
     <surefire.firstPartGroups>org.apache.hadoop.hbase.SmallTests</surefire.firstPartGroups>
     <surefire.secondPartGroups>org.apache.hadoop.hbase.MediumTests</surefire.secondPartGroups>
     <test.output.tofile>true</test.output.tofile>
@@ -2554,6 +2558,25 @@
       </properties>
     </profile>
 
+    <profile> <!-- Same as runAllTests, but exclude some random failed tests-->
+      <id>runCiTests</id>
+      <activation>
+        <activeByDefault>false</activeByDefault>
+      </activation>
+      <properties>
+        <surefire.exclude.tests>org/apache/hadoop/hbase/mapreduce/*.java</surefire.exclude.tests>
+        <surefire.firstPartForkMode>once</surefire.firstPartForkMode>
+        <surefire.firstPartParallel>none</surefire.firstPartParallel>
+        <surefire.firstPartThreadCount>1</surefire.firstPartThreadCount>
+        <surefire.secondPartThreadCount>4</surefire.secondPartThreadCount>
+
+        <surefire.skipFirstPart>false</surefire.skipFirstPart>
+        <surefire.skipSecondPart>false</surefire.skipSecondPart>
+        <surefire.firstPartGroups>org.apache.hadoop.hbase.SmallTests</surefire.firstPartGroups>
+        <surefire.secondPartGroups>org.apache.hadoop.hbase.MediumTests,org.apache.hadoop.hbase.LargeTests</surefire.secondPartGroups>
+      </properties>
+    </profile>
+		
     <profile> <!-- Use it skip the surefire tests but no the failsafe tests -->
       <id>skipSurefireTests</id>
       <activation>
