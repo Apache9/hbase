@@ -1661,11 +1661,18 @@ public class StoreFile extends SchemaConfigured {
           && Bytes.equals(scan.getStopRow(), HConstants.EMPTY_END_ROW)) {
         return true;
       }
-      KeyValue startKeyValue = KeyValue.createFirstOnRow(scan.getStartRow());
-      KeyValue stopKeyValue = KeyValue.createLastOnRow(scan.getStopRow());
-      boolean nonOverLapping = (getComparator().compare(this.getFirstKey(),
-        stopKeyValue.getKey()) > 0 && !Bytes.equals(scan.getStopRow(), HConstants.EMPTY_END_ROW))
-          || getComparator().compare(this.getLastKey(), startKeyValue.getKey()) < 0;
+      KeyValue smallestScanKeyValue = scan.isReversed() ? KeyValue
+          .createFirstOnRow(scan.getStopRow()) : KeyValue.createFirstOnRow(scan
+          .getStartRow());
+      KeyValue largestScanKeyValue = scan.isReversed() ? KeyValue
+          .createLastOnRow(scan.getStartRow()) : KeyValue.createLastOnRow(scan
+          .getStopRow());
+      boolean nonOverLapping = (getComparator().compare(
+          this.getFirstKey(), largestScanKeyValue.getKey()) > 0 && !Bytes
+          .equals(scan.isReversed() ? scan.getStartRow() : scan.getStopRow(),
+              HConstants.EMPTY_END_ROW))
+          || getComparator().compare(this.getLastKey(),
+              smallestScanKeyValue.getKey()) < 0;
       return !nonOverLapping;
     }
 
@@ -1768,6 +1775,10 @@ public class StoreFile extends SchemaConfigured {
 
     public byte[] getLastKey() {
       return reader.getLastKey();
+    }
+
+    public byte[] getLastRowKey() {
+      return reader.getLastRowKey();
     }
 
     public byte[] midkey() throws IOException {

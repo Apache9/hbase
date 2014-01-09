@@ -2671,7 +2671,15 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
     requestCount.incrementAndGet();
     try {
       HRegion r = getRegion(regionName);
-      r.checkRow(scan.getStartRow(), "Scan");
+      boolean checkRow = true;
+      if (scan.isReversed() && Bytes.equals(r.getEndKey(), scan.getStartRow())) {
+        // In reversed scan, start row of scan is allowed to be equal with
+        // region's end key
+        checkRow = false;
+      }
+      if (checkRow) {
+        r.checkRow(scan.getStartRow(), "Scan");
+      }
       scan.setLoadColumnFamiliesOnDemand(r.isLoadingCfsOnDemandDefault()
           || scan.doLoadColumnFamiliesOnDemand());
       r.prepareScanner(scan);

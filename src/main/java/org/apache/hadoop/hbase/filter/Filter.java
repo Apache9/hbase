@@ -169,4 +169,15 @@ public interface Filter extends Writable {
    * not sure which key to seek to next.
    */
   public KeyValue getNextKeyHint(final KeyValue currentKV);
+
+  /**
+   * alter the reversed scan flag
+   * @param reversed flag
+   */
+  public void setReversed(boolean reversed);
+
+  /**
+   * @return true if it is applied in reversed scan
+   */
+  public boolean isReversed();
 }

@@ -717,6 +717,10 @@ public class MemStore implements HeapSize {
     // the pre-calculated KeyValue to be returned by peek() or next()
     private KeyValue theNext;
 
+    // A flag represents whether could stop skipping KeyValues for MVCC
+    // if have encountered the next row. Only used for reversed scan
+    private boolean stopSkippingKVsIfNextRow = false;
+
     /*
     Some notes...
 
@@ -748,12 +752,17 @@ public class MemStore implements HeapSize {
     private KeyValue getNext(Iterator<KeyValue> it) {
       long readPoint = MultiVersionConsistencyControl.getThreadReadPoint();
 
+      KeyValue startKV = theNext;
       KeyValue v = null;
       try {
         while (it.hasNext()) {
           v = it.next();
           if (v.getMemstoreTS() <= readPoint) {
             return v;
+          }
+          if (stopSkippingKVsIfNextRow && startKV != null
+              && comparator.compareRows(v, startKV) > 0) {
+            return null;
           }
         }
 
@@ -923,6 +932,70 @@ public class MemStore implements HeapSize {
     public boolean shouldUseScanner(Scan scan, SortedSet<byte[]> columns,
         long oldestUnexpiredTS) {
       return shouldSeek(scan, oldestUnexpiredTS);
+    }
+
+    /**
+     * Seek scanner to the given key first. If it returns false(means
+     * peek()==null) or scanner's peek row is bigger than row of given key, seek
+     * the scanner to the previous row of given key
+     */
+    @Override
+    public synchronized boolean backwardSeek(KeyValue key) {
+      seek(key);
+      if (peek() == null || comparator.compareRows(peek(), key) > 0) {
+        return seekToPreviousRow(key);
+      }
+      return true;
+    }
+
+    /**
+     * Separately get the KeyValue before the specified key from kvset and
+     * snapshotset, and use the row of higher one as the previous row of
+     * specified key, then seek to the first KeyValue of previous row
+     */
+    @Override
+    public synchronized boolean seekToPreviousRow(KeyValue key) {
+      KeyValue firstKeyOnRow = KeyValue.createFirstOnRow(key.getRow());
+      SortedSet<KeyValue> kvHead = kvsetAtCreation.headSet(firstKeyOnRow);
+      KeyValue kvsetBeforeRow = kvHead.isEmpty() ? null : kvHead.last();
+      SortedSet<KeyValue> snapshotHead = snapshotAtCreation
+          .headSet(firstKeyOnRow);
+      KeyValue snapshotBeforeRow = snapshotHead.isEmpty() ? null : snapshotHead
+          .last();
+      KeyValue lastKVBeforeRow = getHighest(kvsetBeforeRow, snapshotBeforeRow);
+      if (lastKVBeforeRow == null) {
+        theNext = null;
+        return false;
+      }
+      KeyValue firstKeyOnPreviousRow = KeyValue
+          .createFirstOnRow(lastKVBeforeRow.getRow());
+      this.stopSkippingKVsIfNextRow = true;
+      seek(firstKeyOnPreviousRow);
+      this.stopSkippingKVsIfNextRow = false;
+      if (peek() == null
+          || comparator.compareRows(peek(), firstKeyOnPreviousRow) > 0) {
+        return seekToPreviousRow(lastKVBeforeRow);
+      }
+      return true;
+    }
+
+    @Override
+    public synchronized boolean seekToLastRow() {
+      KeyValue first = kvsetAtCreation.isEmpty() ? null : kvsetAtCreation
+          .last();
+      KeyValue second = snapshotAtCreation.isEmpty() ? null
+          : snapshotAtCreation.last();
+      KeyValue higherKv = getHighest(first, second);
+      if (higherKv == null) {
+        return false;
+      }
+      KeyValue firstKvOnLastRow = KeyValue.createFirstOnRow(higherKv.getRow());
+      if (seek(firstKvOnLastRow)) {
+        return true;
+      } else {
+        return seekToPreviousRow(higherKv);
+      }
+
     }
   }
 

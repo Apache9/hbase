@@ -51,6 +51,7 @@ import java.util.List;
  * <p>TODO: Fix creation of Configuration on serialization and deserialization.
  */
 public class FilterList implements Filter {
+  protected boolean reversed;
   /** set operator */
   public static enum Operator {
     /** !AND */
@@ -159,6 +160,11 @@ public class FilterList implements Filter {
    * @param filter another filter
    */
   public void addFilter(Filter filter) {
+    if (this.isReversed() != filter.isReversed()) {
+      throw new IllegalArgumentException(
+          "Filters in the list must have the same reversed flag, this.reversed="
+              + this.isReversed());
+    }
     this.filters.add(filter);
   }
 
@@ -371,6 +377,18 @@ public class FilterList implements Filter {
       }
     }
     return false;
+  }
+
+  @Override
+  public void setReversed(boolean reversed) {
+    for (Filter filter : filters) {
+      filter.setReversed(reversed);
+    }
+    this.reversed = reversed;
+  }
+
+  public boolean isReversed() {
+    return this.reversed;
   }
 
   @Override

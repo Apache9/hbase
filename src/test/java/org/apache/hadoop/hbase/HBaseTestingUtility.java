@@ -979,6 +979,26 @@ public class HBaseTestingUtility {
   }
 
   /**
+   * Create a table.
+   * @param tableName
+   * @param family
+   * @param splitRows
+   * @return An HTable instance for the created table.
+   * @throws IOException
+   */
+  public HTable createTable(byte[] tableName, byte[] family, byte[][] splitRows)
+      throws IOException {
+    HTableDescriptor desc = new HTableDescriptor(tableName);
+    HColumnDescriptor hcd = new HColumnDescriptor(family);
+    desc.addFamily(hcd);
+    getHBaseAdmin().createTable(desc, splitRows);
+    // HBaseAdmin only waits for regions to appear in hbase:meta we should wait
+    // until they are assigned
+    waitUntilAllRegionsAssigned(tableName);
+    return new HTable(getConfiguration(), tableName);
+  }
+
+  /**
    * Drop an existing table
    * @param tableName existing table
    */

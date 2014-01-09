@@ -84,6 +84,7 @@ public class Scan extends OperationWithAttributes implements Writable {
   private static final String ONDEMAND_ATTR = "_ondemand_";
   private static final String ISOLATION_LEVEL = "_isolationlevel_";
   private static final String SMALL_ATTR = "_small_";
+  private static final String REVERSED_ATTR = "_reversed_";
 
   private static final byte SCAN_VERSION = (byte)2;
   private byte [] startRow = HConstants.EMPTY_START_ROW;
@@ -100,6 +101,7 @@ public class Scan extends OperationWithAttributes implements Writable {
   // scan.setAttribute(Scan.SCAN_ATTRIBUTES_TABLE_NAME, Bytes.toBytes(tableName))
   static public final String SCAN_ATTRIBUTES_TABLE_NAME = "scan.attributes.table.name";
 
+  private transient Boolean reversed;
   /*
    * -1 means no caching
    */
@@ -725,5 +727,29 @@ public class Scan extends OperationWithAttributes implements Writable {
     byte[] attr = getAttribute(ISOLATION_LEVEL);
     return attr == null ? IsolationLevel.READ_COMMITTED :
                           IsolationLevel.fromBytes(attr);
+  }
+
+  /**
+   * Set whether this scan is a reversed one
+   * <p>
+   * This is false by default which means forward(normal) scan.
+   * 
+   * @param reversed if true, scan will be backward order
+   */
+  public void setReversed(boolean reversed) {
+    setAttribute(REVERSED_ATTR, Bytes.toBytes(reversed));
+    this.reversed = reversed;
+  }
+
+  /**
+   * Get whether this scan is a reversed one.
+   * @return true if backward scan, false if forward(default) scan
+   */
+  public boolean isReversed() {
+    if (this.reversed == null) {
+      byte[] attr = getAttribute(REVERSED_ATTR);
+      this.reversed = attr == null ? false : Bytes.toBoolean(attr);
+    }
+    return this.reversed;
   }
 }

@@ -40,9 +40,9 @@ import org.apache.hadoop.hbase.KeyValue.KVComparator;
  * also implements InternalScanner.  WARNING: As is, if you try to use this
  * as an InternalScanner at the Store level, you will get runtime exceptions.
  */
-public class KeyValueHeap extends NonLazyKeyValueScanner
+public class KeyValueHeap extends NonReversedNonLazyKeyValueScanner
     implements KeyValueScanner, InternalScanner {
-  private PriorityQueue<KeyValueScanner> heap = null;
+  protected PriorityQueue<KeyValueScanner> heap = null;
 
   /**
    * The current sub-scanner, i.e. the one that contains the next key/value
@@ -54,9 +54,9 @@ public class KeyValueHeap extends NonLazyKeyValueScanner
    * Bloom filter optimization, which is OK to propagate to StoreScanner. In
    * order to ensure that, always use {@link #pollRealKV()} to update current.
    */
-  private KeyValueScanner current = null;
+  protected KeyValueScanner current = null;
 
-  private KVScannerComparator comparator;
+  protected KVScannerComparator comparator;
 
   /**
    * Constructor.  This KeyValueHeap will handle closing of passed in
@@ -66,7 +66,18 @@ public class KeyValueHeap extends NonLazyKeyValueScanner
    */
   public KeyValueHeap(List<? extends KeyValueScanner> scanners,
       KVComparator comparator) throws IOException {
-    this.comparator = new KVScannerComparator(comparator);
+    this(scanners, new KVScannerComparator(comparator));
+  }
+
+  /**
+   * Constructor.
+   * @param scanners
+   * @param comparator
+   * @throws IOException
+   */
+  KeyValueHeap(List<? extends KeyValueScanner> scanners,
+      KVScannerComparator comparator) throws IOException {
+    this.comparator = comparator;
     if (!scanners.isEmpty()) {
       this.heap = new PriorityQueue<KeyValueScanner>(scanners.size(),
           this.comparator);
@@ -177,8 +188,8 @@ public class KeyValueHeap extends NonLazyKeyValueScanner
     return next(result, -1, metric);
   }
 
-  private static class KVScannerComparator implements Comparator<KeyValueScanner> {
-    private KVComparator kvComparator;
+  protected static class KVScannerComparator implements Comparator<KeyValueScanner> {
+    protected KVComparator kvComparator;
     /**
      * Constructor
      * @param kvComparator
@@ -344,7 +355,7 @@ public class KeyValueHeap extends NonLazyKeyValueScanner
    * this scanner heap if (1) it has done a real seek and (2) its KV is the top
    * among all top KVs (some of which are fake) in the scanner heap.
    */
-  private KeyValueScanner pollRealKV() throws IOException {
+  protected KeyValueScanner pollRealKV() throws IOException {
     KeyValueScanner kvScanner = heap.poll();
     if (kvScanner == null) {
       return null;

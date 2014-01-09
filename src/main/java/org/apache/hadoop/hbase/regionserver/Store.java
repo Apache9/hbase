@@ -2213,7 +2213,9 @@ public class Store extends SchemaConfigured implements HeapSize {
         scanner = getHRegion().getCoprocessorHost().preStoreScannerOpen(this, scan, targetCols);
       }
       if (scanner == null) {
-        scanner = new StoreScanner(this, getScanInfo(), scan, targetCols);
+        scanner = scan.isReversed() ? new ReversedStoreScanner(this,
+            getScanInfo(), scan, targetCols) : new StoreScanner(this,
+            getScanInfo(), scan, targetCols);
       }
       return scanner;
     } finally {

@@ -74,6 +74,8 @@ public class NoOpScanPolicyObserver extends BaseRegionObserver {
   public KeyValueScanner preStoreScannerOpen(final ObserverContext<RegionCoprocessorEnvironment> c,
       Store store, final Scan scan, final NavigableSet<byte[]> targetCols, KeyValueScanner s)
       throws IOException {
-    return new StoreScanner(store, store.getScanInfo(), scan, targetCols);
+    return scan.isReversed() ? new ReversedStoreScanner(store,
+        store.getScanInfo(), scan, targetCols) : new StoreScanner(store,
+        store.getScanInfo(), scan, targetCols);
   }
 }

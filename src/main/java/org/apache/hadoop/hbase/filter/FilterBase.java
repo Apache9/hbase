@@ -33,6 +33,7 @@ import java.util.ArrayList;
  * that is one that never filters anything.
  */
 public abstract class FilterBase implements Filter {
+  protected boolean reversed;
 
   /**
    * Filters that are purely stateless and do nothing in their reset() methods can inherit
@@ -143,6 +144,18 @@ public abstract class FilterBase implements Filter {
     return true;
   }
   
+  /**
+   * alter the reversed scan flag
+   * @param reversed flag
+   */
+  public void setReversed(boolean reversed) {
+    this.reversed = reversed;
+  }
+
+  public boolean isReversed() {
+    return this.reversed;
+  }
+
   /**
    * Check that given column family is essential for filter to check row.
    * This accommodates Filter implementation which didn't have this capability
