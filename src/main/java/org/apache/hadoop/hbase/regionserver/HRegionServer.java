@@ -4109,7 +4109,8 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
 
   @Override
   public boolean removeFromRegionsInTransition(final HRegionInfo hri) {
-    return this.regionsInTransitionInRS.remove(hri.getEncodedNameAsBytes());
+    Boolean res = this.regionsInTransitionInRS.remove(hri.getEncodedNameAsBytes());
+    return res != null && res.booleanValue();
   }
 
   @Override
