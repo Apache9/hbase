@@ -66,7 +66,7 @@ class ReversedStoreScanner extends StoreScanner implements KeyValueScanner {
 
   @Override
   protected void seekScanners(List<? extends KeyValueScanner> scanners,
-      KeyValue seekKey, boolean isLazy) throws IOException {
+      KeyValue seekKey, boolean isLazy, boolean isParallelSeek) throws IOException {
     // Seek all scanners to the start of the Row (or if the exact matching row
     // key does not exist, then to the start of the previous matching Row).
     if (seekKey.matchingRow(HConstants.EMPTY_START_ROW)) {

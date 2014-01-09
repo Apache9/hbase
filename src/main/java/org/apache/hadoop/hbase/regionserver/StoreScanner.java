@@ -562,7 +562,7 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
      * could have done it now by storing the scan object from the constructor */
     List<KeyValueScanner> scanners = getScannersNoCompaction();
 
-    seekScanners(scanners, lastTopKey, false);
+    seekScanners(scanners, lastTopKey, false, isParallelSeekEnabled);
 
     // Combine all seeked scanners with a heap
     resetKVHeap(scanners, store.getComparator());
