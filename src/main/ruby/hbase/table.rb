@@ -236,6 +236,7 @@ module Hbase
         filter = args["FILTER"]
         startrow = args["STARTROW"] || ''
         stoprow = args["STOPROW"]
+        reverse = args["REVERSE"] || false
         timestamp = args["TIMESTAMP"]
         columns = args["COLUMNS"] || args["COLUMN"] || []
         cache_blocks = args["CACHE_BLOCKS"] || true
@@ -272,6 +273,7 @@ module Hbase
         end
 
         scan.setTimeStamp(timestamp) if timestamp
+        scan.setReversed(reverse) if reverse
         scan.setCacheBlocks(cache_blocks)
         scan.setCaching(cache) if cache > 0
         scan.setMaxVersions(versions) if versions > 1
