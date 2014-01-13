@@ -26,11 +26,17 @@ import java.io.DataInputStream;
 import java.io.DataOutput;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.Map;
+import java.util.NavigableSet;
 
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.SmallTests;
+import org.apache.hadoop.hbase.io.TimeRange;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.io.DataInputBuffer;
+import org.apache.hadoop.io.DataOutputBuffer;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -117,7 +123,66 @@ public class TestScan {
     scan.setStopRow(null);
     Assert.assertTrue(Bytes.equals(scan.getStartRow(), HConstants.EMPTY_END_ROW));
   }
+  
+  @Test
+  public void testReverseScanCompatibility() throws IOException {
+    class MockScan extends Scan {
+      private boolean reverse = false;
 
+      @Override
+      public void setReversed(boolean reversed) {
+        this.reverse = reversed;
+      }
+
+      // old reverse scan serialization
+      @Override
+      public void write(final DataOutput out) throws IOException {
+        if (reverse) {
+          out.writeByte((byte) 3);
+        } else {
+          out.writeByte((byte) 2);
+        }
+        Bytes.writeByteArray(out, null);
+        Bytes.writeByteArray(out, null);
+        out.writeInt(1);
+        out.writeInt(-1);
+        out.writeInt(-1);
+        out.writeBoolean(true);
+        if (reverse) {
+          out.writeBoolean(this.reverse);
+        }
+        out.writeBoolean(false);
+        TimeRange tr = new TimeRange();
+        tr.write(out);
+        out.writeInt(0);
+        writeAttributes(out);
+      }
+    }
+
+    MockScan mockScan = new MockScan();
+    Scan scan = getSerializedScan(mockScan);
+    Assert.assertFalse(scan.isReversed());
+    Assert.assertNull(scan.getAttribute("_reversed_"));
+    
+    mockScan.setReversed(true);
+    scan = getSerializedScan(mockScan);
+    Assert.assertTrue(scan.isReversed());
+    Assert.assertTrue(Bytes.toBoolean(scan.getAttribute("_reversed_")));
+  }
+
+  private Scan getSerializedScan(Scan scan) throws IOException {
+    DataOutputBuffer out = new DataOutputBuffer();
+    scan.write(out);
+    out.close();
+
+    DataInputBuffer in = new DataInputBuffer();
+    in.reset(out.getData(), out.getLength());
+    Scan newScan = new Scan();
+    newScan.readFields(in);
+    in.close();
+    return newScan;
+  }
+  
   @org.junit.Rule
   public org.apache.hadoop.hbase.ResourceCheckerJUnitRule cu =
     new org.apache.hadoop.hbase.ResourceCheckerJUnitRule();

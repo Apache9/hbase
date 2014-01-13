@@ -87,6 +87,7 @@ public class Scan extends OperationWithAttributes implements Writable {
   private static final String REVERSED_ATTR = "_reversed_";
 
   private static final byte SCAN_VERSION = (byte)2;
+  private static final byte SCAN_REVERSED_VERSION = (byte)3;
   private byte [] startRow = HConstants.EMPTY_START_ROW;
   private byte [] stopRow  = HConstants.EMPTY_END_ROW;
   private int maxVersions = 1;
@@ -613,7 +614,7 @@ public class Scan extends OperationWithAttributes implements Writable {
   public void readFields(final DataInput in)
   throws IOException {
     int version = in.readByte();
-    if (version > (int)SCAN_VERSION) {
+    if (version > (int)SCAN_REVERSED_VERSION) {
       throw new IOException("version not supported");
     }
     this.startRow = Bytes.readByteArray(in);
@@ -622,6 +623,9 @@ public class Scan extends OperationWithAttributes implements Writable {
     this.batch = in.readInt();
     this.caching = in.readInt();
     this.cacheBlocks = in.readBoolean();
+    if (version >= SCAN_REVERSED_VERSION) {
+        this.reversed = in.readBoolean();
+    }
     if(in.readBoolean()) {
       this.filter = Classes.createWritableForName(
         Bytes.toString(Bytes.readByteArray(in)));
@@ -645,6 +649,9 @@ public class Scan extends OperationWithAttributes implements Writable {
 
     if (version > 1) {
       readAttributes(in);
+    }
+    if (version >= SCAN_REVERSED_VERSION) {
+    	setAttribute(REVERSED_ATTR, Bytes.toBytes(reversed));
     }
   }
 
@@ -729,6 +736,26 @@ public class Scan extends OperationWithAttributes implements Writable {
                           IsolationLevel.fromBytes(attr);
   }
 
+  /**
+   * Set whether this scan is a reversed one.
+   * @param reversed
+   * @deprecated use {@link setReversed()} 
+   */
+  @Deprecated
+  public void setReverse(boolean reversed) {
+    setReversed(reversed);
+  }
+  
+  /**
+   * Get whether this scan is a reversed one.
+   * @param reversed
+   * @deprecated use {@link isReversed()} 
+   */
+  @Deprecated
+  public boolean getReverse() {
+    return isReversed();
+  }
+  
   /**
    * Set whether this scan is a reversed one
    * <p>
