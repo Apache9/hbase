@@ -111,7 +111,7 @@
 %>
 <%= tableHeader %>
 <%
-  String url = "http://" + rl.getHostname() + ":" + master.getRegionServerInfoPort(rl) + "/";
+  String url = "//" + rl.getHostname() + ":" + master.getRegionServerInfoPort(rl) + "/";
 %>
 <tr>
   <td><%= tableName %></td>
@@ -130,7 +130,7 @@
   HRegionInfo meta = HRegionInfo.FIRST_META_REGIONINFO;
   ServerName metaLocation = master.getCatalogTracker().waitForMeta(1);
   for (int i = 0; i < 1; i++) {
-    String url = "http://" + metaLocation.getHostname() + ":" + master.getRegionServerInfoPort(metaLocation) + "/";
+    String url = "//" + metaLocation.getHostname() + ":" + master.getRegionServerInfoPort(metaLocation) + "/";
 %>
 <tr>
   <td><%= meta.getRegionNameAsString() %></td>
@@ -195,7 +195,7 @@
   <td><%= Bytes.toStringBinary(regionInfo.getRegionName())%></td>
   <%
   if (addr != null) {
-      String url = "http://" + addr.getHostname() + ":" + master.getRegionServerInfoPort(addr) + "/";
+      String url = "//" + addr.getHostname() + ":" + master.getRegionServerInfoPort(addr) + "/";
   %>
   <td>
     <a href="<%= url %>"><%= addr.getHostname().toString() + ":" + addr.getPort() %></a>
@@ -218,7 +218,7 @@
 <%
   for (Map.Entry<ServerName, Integer> rdEntry : regDistribution.entrySet()) {
       ServerName addr = rdEntry.getKey();
-      String url = "http://" + addr.getHostname() + ":" + master.getRegionServerInfoPort(addr) + "/";
+      String url = "//" + addr.getHostname() + ":" + master.getRegionServerInfoPort(addr) + "/";
 %>
 <tr>
   <td><a href="<%= url %>"><%= addr.getHostname().toString() + ":" + addr.getPort() %></a></td>

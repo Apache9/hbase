@@ -254,7 +254,7 @@ AssignmentManager assignmentManager = master.getAssignmentManager();
      Arrays.sort(serverNames);
      for (ServerName serverName: serverNames) {
        int infoPort = master.getRegionServerInfoPort(serverName);
-       String url = "http://" + serverName.getHostname() + ":" + infoPort + "/";
+       String url = "//" + serverName.getHostname() + ":" + infoPort + "/";
        HServerLoad hsl = master.getServerManager().getLoad(serverName);
        String loadStr = hsl == null? "-": hsl.toString();
        if (hsl != null) {
