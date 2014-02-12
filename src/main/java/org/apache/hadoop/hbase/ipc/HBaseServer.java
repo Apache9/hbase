@@ -1425,6 +1425,10 @@ public abstract class HBaseServer implements RpcServer {
           status.pause("Waiting for a call");
           Call call = myCallQueue.take(); // pop the queue; maybe blocked here
           updateCallQueueLenMetrics(myCallQueue);
+          if (!call.connection.channel.isOpen()) {
+            LOG.info(Thread.currentThread().getName() + ": skipped: " + call);
+            continue;
+          }
           status.setStatus("Setting up call");
           status.setConnection(call.connection.getHostAddress(), 
               call.connection.getRemotePort());
