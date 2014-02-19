@@ -388,7 +388,7 @@ public class ZKUtil {
         throw new IOException("Unrecognized scheme: " + entry.getScheme());
       }
       // it just copy configuration and change it, the old configuration do not change
-      Configuration newConf = entry.createClusterConf(null);
+      Configuration newConf = entry.createClusterConf(conf);
       HBaseConfiguration.merge(conf, newConf);
     } else {
       String[] parts = transformClusterKey(key);
