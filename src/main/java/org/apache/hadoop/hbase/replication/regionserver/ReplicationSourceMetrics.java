@@ -62,7 +62,10 @@ public class ReplicationSourceMetrics implements Updater {
       new MetricsLongValue("ageOfLastShippedOp", registry);
   
   /** Peer cluster name */
-   private MetricsString peerClusterName = null;
+  private MetricsString peerClusterName = null;
+   
+  /** Size of log entries read by source */
+  public MetricsRate logReadRateInByte = new MetricsRate("logReadRateInByte", registry);
 
   /**
    * Current size of the queue of logs to replicate,
@@ -133,6 +136,7 @@ public class ReplicationSourceMetrics implements Updater {
       this.logEditsFilteredRate.pushMetric(this.metricsRecord);
       this.ageOfLastShippedOp.pushMetric(this.metricsRecord);
       this.sizeOfLogQueue.pushMetric(this.metricsRecord);
+      this.logReadRateInByte.pushMetric(this.metricsRecord);
     }
     this.metricsRecord.update();
   }

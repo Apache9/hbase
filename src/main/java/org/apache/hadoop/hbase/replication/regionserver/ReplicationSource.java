@@ -470,6 +470,7 @@ public class ReplicationSource extends Thread
       throws IOException{
     long seenEntries = 0;
     this.repLogReader.seek();
+    long persitionBeforeRead = this.repLogReader.getPosition();
     HLog.Entry entry =
         this.repLogReader.readNextAndSetPosition(this.entriesArray, this.currentNbEntries);
     while (entry != null) {
@@ -520,6 +521,8 @@ public class ReplicationSource extends Thread
         break;
       }
     }
+    this.metrics.logReadRateInByte
+        .inc((int) (this.repLogReader.getPosition() - persitionBeforeRead));
     LOG.debug("currentNbOperations:" + currentNbOperations +
         " and seenEntries:" + seenEntries +
         " and size: " + this.currentSize);
