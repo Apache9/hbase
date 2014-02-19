@@ -86,6 +86,12 @@ module Hbase
     end
 
     #----------------------------------------------------------------------------------------------
+    # Append a tableCFs config for the specified peer
+    def append_peer_tableCFs(id, tableCFs)
+      @replication_admin.appendPeerTableCFs(id, tableCFs)
+    end
+    
+    #----------------------------------------------------------------------------------------------
     # Restart the replication, in an unknown state
     def start_replication
       @replication_admin.setReplicating(true)

@@ -27,6 +27,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.lang.Integer;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
@@ -77,6 +79,7 @@ import org.apache.hadoop.hbase.HColumnDescriptor;
  */
 public class ReplicationAdmin implements Closeable {
 
+  private final static Log LOG = LogFactory.getLog(ReplicationAdmin.class);
   public static final String TNAME = "tableName";
   public static final String CFNAME = "columnFamlyName";
 
@@ -209,6 +212,19 @@ public class ReplicationAdmin implements Closeable {
     this.replicationZk.setTableCFsStr(id, tableCFs);
   }
 
+  /**
+   * Append the replicable table-cf config of the specified peer
+   * @param id a short that identifies the cluster
+   * @throws KeeperException
+   */
+  public void appendPeerTableCFs(String id, String tableCFs)
+      throws IOException, KeeperException {
+    tableCFs = getPeerTableCFs(id) + ";" + tableCFs;
+    LOG.info("The new table-cf config for peer: " + id + " is: " + tableCFs);
+    checkTableCFs(tableCFs);
+    this.replicationZk.setTableCFsStr(id, tableCFs);
+  }
+  
   private void checkTableCFs(String tableCFs) throws IOException {
     String[] tables = tableCFs.split(";");
     for (String tab : tables) {

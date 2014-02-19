@@ -25,6 +25,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.*;
+import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.replication.regionserver.ReplicationSourceManager;
 import org.junit.BeforeClass;
 import org.junit.AfterClass;
@@ -125,6 +126,38 @@ public class TestReplicationAdmin {
     assertEquals(1, admin.getPeersCount());
   }
 
+
+  @Test
+  public void testAppendPeerTableCFs() throws Exception {
+    assertEquals(0, manager.getSources().size());
+    String table1 = "t1";
+    HBaseAdmin hAdmin = new HBaseAdmin(TEST_UTIL.getConfiguration());
+
+    if (!hAdmin.tableExists(table1)) {
+      HTableDescriptor desc = new HTableDescriptor(table1);
+      desc.addFamily(new HColumnDescriptor("cf"));
+      hAdmin.createTable(desc);
+    }
+    // Add a valid peer
+    admin.addPeer(ID_ONE, KEY_ONE, "ENABLED", table1);
+
+    String tableCFs = admin.getPeerTableCFs(ID_ONE);
+    assertEquals("t1", tableCFs);
+
+    String table2 = "t2";
+    if (!hAdmin.tableExists(table2)) {
+      HTableDescriptor desc = new HTableDescriptor(table2);
+      desc.addFamily(new HColumnDescriptor("cf"));
+      hAdmin.createTable(desc);
+    }
+    // append t2
+    admin.appendPeerTableCFs(ID_ONE, table2);
+    tableCFs = admin.getPeerTableCFs(ID_ONE);
+    
+    assertEquals("t1;t2", tableCFs);
+    admin.removePeer(ID_ONE);
+  }
+  
   @org.junit.Rule
   public org.apache.hadoop.hbase.ResourceCheckerJUnitRule cu =
     new org.apache.hadoop.hbase.ResourceCheckerJUnitRule();
