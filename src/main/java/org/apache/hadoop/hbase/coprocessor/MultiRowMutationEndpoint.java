@@ -18,12 +18,14 @@
 package org.apache.hadoop.hbase.coprocessor;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
 import org.apache.hadoop.hbase.DoNotRetryIOException;
 import org.apache.hadoop.hbase.HRegionInfo;
+import org.apache.hadoop.hbase.client.Condition;
 import org.apache.hadoop.hbase.client.Mutation;
 import org.apache.hadoop.hbase.regionserver.HRegion;
 import org.apache.hadoop.hbase.regionserver.WrongRegionException;
@@ -64,5 +66,63 @@ public class MultiRowMutationEndpoint extends BaseEndpointCoprocessor implements
     }
     // call utility method on region
     env.getRegion().mutateRowsWithLocks(mutations, rowsToLock);
+  }
+
+  @Override
+  public List<Condition> mutateRowsWithConditions(List<Mutation> mutations, List<Condition> conditions)
+      throws IOException {
+    // get the coprocessor environment
+    RegionCoprocessorEnvironment env = (RegionCoprocessorEnvironment) getEnvironment();
+
+    // set of rows to lock, sorted to avoid deadlocks
+    SortedSet<byte[]> rowsToLock = new TreeSet<byte[]>(Bytes.BYTES_COMPARATOR);
+
+    HRegionInfo regionInfo = env.getRegion().getRegionInfo();
+    
+    for (Condition c : conditions) {
+      // check whether rows are in range for this region
+      if (!HRegion.rowIsInRange(regionInfo, c.getRow())) {
+        String msg = "Condition row out of range '"
+            + Bytes.toStringBinary(c.getRow()) + "'";
+        if (rowsToLock.isEmpty()) {
+          // if this is the first row, region might have moved,
+          // allow client to retry
+          throw new WrongRegionException(msg);
+        } else {
+          // rows are split between regions, do not retry
+          throw new DoNotRetryIOException(msg);
+        }
+      }
+      rowsToLock.add(c.getRow());
+    }
+
+    for (Mutation m : mutations) {
+      // check whether rows are in range for this region
+      if (!HRegion.rowIsInRange(regionInfo, m.getRow())) {
+        String msg = "Mutation row out of range '"
+            + Bytes.toStringBinary(m.getRow()) + "'";
+        if (rowsToLock.isEmpty()) {
+          // if this is the first row, region might have moved,
+          // allow client to retry
+          throw new WrongRegionException(msg);
+        } else {
+          // rows are split between regions, do not retry
+          throw new DoNotRetryIOException(msg);
+        }
+      }
+      rowsToLock.add(m.getRow());
+    }
+    
+    boolean success =
+        env.getRegion().mutateRowsWithLocks(mutations, conditions, rowsToLock);
+    List<Condition> results = new ArrayList<Condition>();
+    if (success) return results;
+    // failed, return reasons
+    for (Condition c : conditions) {
+      if (c.failedMatch()) {
+        results.add(c);
+      }
+    }
+    return results;
   }
 }

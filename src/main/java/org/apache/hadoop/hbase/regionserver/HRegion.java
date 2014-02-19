@@ -85,6 +85,7 @@ import org.apache.hadoop.hbase.UnknownScannerException;
 import org.apache.hadoop.hbase.backup.HFileArchiver;
 import org.apache.hadoop.hbase.client.Action;
 import org.apache.hadoop.hbase.client.Append;
+import org.apache.hadoop.hbase.client.Condition;
 import org.apache.hadoop.hbase.client.Durability;
 import org.apache.hadoop.hbase.client.RowMutations;
 import org.apache.hadoop.hbase.client.Delete;
@@ -4974,13 +4975,29 @@ public class HRegion implements HeapSize { // , Writable{
    */
   public void mutateRowsWithLocks(Collection<Mutation> mutations,
       Collection<byte[]> rowsToLock) throws IOException {
+    mutateRowsWithLocks(mutations, new ArrayList<Condition>(), rowsToLock);
+  }
+
+  /**
+   * Perform atomic mutations within the region if all conditions match.
+   * @param mutations The list of mutations to perform.
+   * <code>mutations</code> can contain operations for multiple rows.
+   * Caller has to ensure that all rows are contained in this region.
+   * @param conditions all condition to check
+   * @param rowsToLock Rows to lock
+   * If multiple rows are locked care should be taken that
+   * <code>rowsToLock</code> is sorted in order to avoid deadlocks.
+   * @throws IOException
+   */
+  public boolean mutateRowsWithLocks(Collection<Mutation> mutations,
+      List<Condition> conditions, Collection<byte[]> rowsToLock) throws IOException {
     boolean flush = false;
 
     checkReadOnly();
     checkResources();
 
     startRegionOperation();
-    List<Integer> acquiredLocks = null;
+    Map<byte[], Integer> acquiredLocks = null;
     try {
       // 1. run all pre-hooks before the atomic operation
       // if any pre hook indicates "bypass", bypass the entire operation
@@ -4992,14 +5009,14 @@ public class HRegion implements HeapSize { // , Writable{
           if (m instanceof Put) {
             if (coprocessorHost.prePut((Put) m, walEdit, m.getWriteToWAL())) {
               // by pass everything
-              return;
+              return false;
             }
           } else if (m instanceof Delete) {
             Delete d = (Delete) m;
             prepareDelete(d);
             if (coprocessorHost.preDelete(d, walEdit, d.getWriteToWAL())) {
               // by pass everything
-              return;
+              return false;
             }
           }
         }
@@ -5010,7 +5027,7 @@ public class HRegion implements HeapSize { // , Writable{
       boolean locked = false;
 
       // 2. acquire the row lock(s)
-      acquiredLocks = new ArrayList<Integer>(rowsToLock.size());
+      acquiredLocks = new HashMap<byte[], Integer>(rowsToLock.size());
       for (byte[] row : rowsToLock) {
         // attempt to lock all involved rows, fail if one lock times out
         Integer lid = getLock(null, row, true);
@@ -5018,21 +5035,34 @@ public class HRegion implements HeapSize { // , Writable{
           throw new IOException("Failed to acquire lock on "
               + Bytes.toStringBinary(row));
         }
-        acquiredLocks.add(lid);
+        acquiredLocks.put(row, lid);
       }
 
-      // 3. acquire the region lock
+      
+      // 3. check the conditions
+      for (Condition c : conditions) {
+        byte[] row = c.getRow();
+        Get get = new Get(c.getRow());
+        get.addColumn(c.getFamily(), c.getQualifier());
+        Result result = get(get, acquiredLocks.get(row));
+      
+        if (!c.isMatch(result)) { // no match
+          return false;
+        }
+      }
+      
+      // 4. acquire the region lock
       lock(this.updatesLock.readLock(), acquiredLocks.size());
       locked = true;
 
-      // 4. Get a mvcc write number
+      // 5. Get a mvcc write number
       MultiVersionConsistencyControl.WriteEntry w = mvcc.beginMemstoreInsert();
 
       long now = EnvironmentEdgeManager.currentTimeMillis();
       byte[] byteNow = Bytes.toBytes(now);
       Durability durability = Durability.USE_DEFAULT;
       try {
-        // 5. Check mutations and apply edits to a single WALEdit
+        // 6. Check mutations and apply edits to a single WALEdit
         for (Mutation m : mutations) {
           if (m instanceof Put) {
             Map<byte[], List<KeyValue>> familyMap = m.getFamilyMap();
@@ -5057,41 +5087,41 @@ public class HRegion implements HeapSize { // , Writable{
           }
         }
 
-        // 6. append all edits at once (don't sync)
+        // 7. append all edits at once (don't sync)
         if (walEdit.size() > 0) {
           txid = this.log.appendNoSync(regionInfo,
               this.htableDescriptor.getName(), walEdit,
               HConstants.DEFAULT_CLUSTER_ID, now, this.htableDescriptor);
         }
 
-        // 7. apply to memstore
+        // 8. apply to memstore
         long addedSize = 0;
         for (Mutation m : mutations) {
           addedSize += applyFamilyMapToMemstore(m.getFamilyMap(), w);
         }
         flush = isFlushSize(this.addAndGetGlobalMemstoreSize(addedSize));
 
-        // 8. release region and row lock(s)
+        // 9. release region and row lock(s)
         this.updatesLock.readLock().unlock();
         locked = false;
         if (acquiredLocks != null) {
-          for (Integer lid : acquiredLocks) {
+          for (Integer lid : acquiredLocks.values()) {
             releaseRowLock(lid);
           }
           acquiredLocks = null;
         }
 
-        // 9. sync WAL if required
+        // 10. sync WAL if required
         if (walEdit.size() > 0) {
           syncOrDefer(txid, durability);
         }
         walSyncSuccessful = true;
 
-        // 10. advance mvcc
+        // 11. advance mvcc
         mvcc.completeMemstoreInsert(w);
         w = null;
 
-        // 11. run coprocessor post host hooks
+        // 12. run coprocessor post host hooks
         // after the WAL is sync'ed and all locks are released
         // (similar to doMiniBatchPut)
         if (coprocessorHost != null) {
@@ -5104,7 +5134,7 @@ public class HRegion implements HeapSize { // , Writable{
           }
         }
       } finally {
-        // 12. clean up if needed
+        // 13. clean up if needed
         if (!walSyncSuccessful) {
           int kvsRolledback = 0;
           for (Mutation m : mutations) {
@@ -5127,24 +5157,24 @@ public class HRegion implements HeapSize { // , Writable{
         if (w != null) {
           mvcc.completeMemstoreInsert(w);
         }
-
+        
         if (locked) {
           this.updatesLock.readLock().unlock();
         }
-
-        if (acquiredLocks != null) {
-          for (Integer lid : acquiredLocks) {
-            releaseRowLock(lid);
-          }
-        }
       }
     } finally {
+      if (acquiredLocks != null) {
+        for (Integer lid : acquiredLocks.values()) {
+          releaseRowLock(lid);
+        }
+      }
       if (flush) {
-        // 13. Flush cache if needed. Do it outside update lock.
+        // 14. Flush cache if needed. Do it outside update lock.
         requestFlush();
       }
       closeRegionOperation();
     }
+    return true;
   }
 
   // TODO: There's a lot of boiler plate code identical

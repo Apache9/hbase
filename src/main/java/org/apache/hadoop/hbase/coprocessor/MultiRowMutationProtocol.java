@@ -20,6 +20,7 @@ package org.apache.hadoop.hbase.coprocessor;
 import java.io.IOException;
 import java.util.List;
 
+import org.apache.hadoop.hbase.client.Condition;
 import org.apache.hadoop.hbase.client.Mutation;
 import org.apache.hadoop.hbase.ipc.CoprocessorProtocol;
 import org.apache.hadoop.hbase.regionserver.HRegion;
@@ -47,4 +48,7 @@ import org.apache.hadoop.hbase.regionserver.HRegion;
  */
 public interface MultiRowMutationProtocol extends CoprocessorProtocol {
   public void mutateRows(List<Mutation> mutations) throws IOException;
+  
+  public List<Condition> mutateRowsWithConditions(List<Mutation> mutations,
+    List<Condition> conditions) throws IOException;
 }
