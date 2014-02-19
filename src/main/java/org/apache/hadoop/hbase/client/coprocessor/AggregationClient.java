@@ -235,7 +235,11 @@ public class AggregationClient {
           scan.getStopRow(), new Batch.Call<AggregateProtocol, Long>() {
             @Override
             public Long call(AggregateProtocol instance) throws IOException {
-              return instance.getRowNumWithSpeed(ci, scan, speed);
+              if(speed > 0){
+                return instance.getRowNumWithSpeed(ci, scan, speed);
+              }else{
+                return instance.getRowNum(ci, scan);
+              }
             }
           }, rowNum);
     } finally {

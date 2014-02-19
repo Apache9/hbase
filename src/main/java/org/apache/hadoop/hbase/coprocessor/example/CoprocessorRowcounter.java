@@ -82,9 +82,10 @@ public class CoprocessorRowcounter extends Configured implements Tool {
   public static class LocalFileSink implements Sink{
     @Override
     public void publishResult(String tableName, String date, long rowCount) {
+      String outputFile = conf.get("coprocessor.rowcounter.local.file", "./rowcounter_result");
       BufferedWriter bufferedWriter = null;
       try{
-        bufferedWriter = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(("rowcounter_result"))));
+        bufferedWriter = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(outputFile)));
         bufferedWriter.write(tableName+" "+date+" "+rowCount);
       }catch(IOException e){
         LOG.error("error when write rowcouonter result into file", e);
@@ -167,7 +168,7 @@ public class CoprocessorRowcounter extends Configured implements Tool {
       return printUsage();
     }
     processArgs(args);
-    conf.setLong("hbase.rpc.timeout", 600000);
+    conf.setLong("hbase.rpc.timeout", Integer.MAX_VALUE);
     AggregationClient aggregationClient = new AggregationClient(conf);
     Scan scan = new Scan();
     

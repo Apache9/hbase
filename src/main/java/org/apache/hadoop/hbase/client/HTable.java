@@ -1409,6 +1409,7 @@ public class HTable implements HTableInterface {
     // get regions covered by the row range
     long startTime = System.currentTimeMillis();
     List<byte[]> keys = getStartKeysInRange(startKey, endKey);
+    Collections.shuffle(keys);
     long callTime = System.currentTimeMillis() - startTime;
     if (callTime > 100) {
       LOG.warn("Slow get start keys in range, time consume=" + callTime);
