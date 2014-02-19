@@ -1361,6 +1361,12 @@ public class HRegion implements HeapSize { // , Writable{
     MonitoredTask status = TaskMonitor.get().createStatus(
         "Compacting " + cr.getStore() + " in " + this);
     try {
+      byte[] column = Bytes.toBytes(cr.getStore().getColumnFamilyName());
+      if (cr.getStore() != cr.getHRegion().getStore(column)) {
+        LOG.warn("The store in compaction request is out of date. Maybe region have reinitialized.");
+        return false;
+      }
+      
       if (this.closed.get()) {
         LOG.debug("Skipping compaction on " + this + " because closed");
         return false;
