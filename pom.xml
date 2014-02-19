@@ -1631,6 +1631,7 @@
       <properties>
         <hadoop.version>${hadoop-mdh.version}</hadoop.version>
         <slf4j.version>1.6.1</slf4j.version>
+        <galaxy-coprocessor.version>0.0.1</galaxy-coprocessor.version>
       </properties>
       <dependencies>
         <dependency>
@@ -1654,6 +1655,22 @@
           <artifactId>hadoop-minicluster</artifactId>
           <version>${hadoop.version}</version>
           <scope>compile</scope>
+        </dependency>
+        <!-- deps for customized coprocessers-->
+        <dependency>
+          <groupId>com.xiaomi.infra.galaxy</groupId>
+          <artifactId>galaxy-coprocessor</artifactId>
+          <version>${galaxy-coprocessor.version}</version>
+          <exclusions>
+            <exclusion>
+              <groupId>org.apache.hbase</groupId>
+              <artifactId>hbase</artifactId>
+            </exclusion>
+            <exclusion>
+              <groupId>org.apache.hadoop</groupId>
+              <artifactId>hadoop-client</artifactId>
+            </exclusion>
+          </exclusions>
         </dependency>
       </dependencies>
       <build>
