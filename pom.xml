@@ -1040,7 +1040,7 @@
     <stax-api.version>1.0.1</stax-api.version>
     <thrift.version>0.8.0</thrift.version>
     <zookeeper-mdh.version>3.4.4-mdh1.0.2</zookeeper-mdh.version>
-    <hadoop-mdh.version>2.0.0-mdh1.0.1</hadoop-mdh.version>
+    <hadoop-mdh.version>2.0.0-mdh1.1.0</hadoop-mdh.version>
 
     <package.prefix>/usr</package.prefix>
     <package.conf.dir>/etc/hbase</package.conf.dir>
