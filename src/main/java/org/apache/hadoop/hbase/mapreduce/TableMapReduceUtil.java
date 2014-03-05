@@ -276,12 +276,46 @@ public class TableMapReduceUtil {
 
     for (Scan scan : scans) {
       scanStrings.add(convertScanToString(scan));
+      initCredentials(scan, job);
     }
+
     job.getConfiguration().setStrings(MultiTableInputFormat.SCANS,
       scanStrings.toArray(new String[scanStrings.size()]));
 
     if (addDependencyJars) {
       addDependencyJars(job);
+    }
+
+    initCredentials(job);
+  }
+
+  private static void initCredentials(Scan scan, Job job) throws IOException {
+    byte [] tableNameBytes = scan.getAttribute(Scan.SCAN_ATTRIBUTES_TABLE_NAME);
+    if (tableNameBytes == null) {
+      throw new IOException("A scan object did not have a table name");
+    }
+
+    String tableName= new String(tableNameBytes);
+
+    Configuration clusterConf = HBaseConfiguration.create(job.getConfiguration());
+
+    if (tableName != null && tableName.startsWith(NameService.HBASE_URI_PREFIX)) {
+      ZKUtil.applyClusterKeyToConf(clusterConf, tableName);
+    }
+
+    String quorumAddress = job.getConfiguration().get(
+            TableOutputFormat.QUORUM_ADDRESS);
+    if (quorumAddress != null) {
+      ZKUtil.applyClusterKeyToConf(clusterConf, quorumAddress);
+    }
+
+    if (User.isHBaseSecurityEnabled(clusterConf)) {
+      try {
+        User.getCurrent().obtainAuthTokenForJob(clusterConf, job);
+      } catch (InterruptedException e) {
+        LOG.info("Interrupted obtaining remote user authentication token");
+        Thread.interrupted();
+      }
     }
   }
 
