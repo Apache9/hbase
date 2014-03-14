@@ -1,6 +1,4 @@
-/*
- * Copyright 2011 The Apache Software Foundation
- *
+/**
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -51,116 +49,119 @@ public class CoprocessorRowcounter extends Configured implements Tool {
 
   private static Configuration conf;
   private Sink sink;
-  
+
   private String tableName = null;
   private String startRow = null;
   private String stopRow = null;
   private ArrayList<String> columnFamilies = null;
   private int speed = -1;
 
-  public CoprocessorRowcounter(){
+  public CoprocessorRowcounter() {
     conf = HBaseConfiguration.create();
-    String sinkClassName = conf.get("coprocessor.rowcounter.sink", "org.apache.hadoop.hbase.coprocessor.example.CoprocessorRowcounter$StdOutSink");
+    String sinkClassName = conf.get("coprocessor.rowcounter.sink",
+      "org.apache.hadoop.hbase.coprocessor.example.CoprocessorRowcounter$StdOutSink");
     try {
       sink = (Sink) Class.forName(sinkClassName).newInstance();
     } catch (Exception e) {
-      LOG.error("error when reflect sink class", e);
+      LOG.error("Error when reflect sink class", e);
     }
   }
-  
-  public interface Sink{
+
+  public interface Sink {
     public void publishResult(String tableName, String date, long rowCount);
   }
-  
-  public static class StdOutSink implements Sink{
+
+  public static class StdOutSink implements Sink {
     @Override
     public void publishResult(String tableName, String date, long rowCount) {
-      System.out.println(tableName+" "+date+" "+rowCount);
-    } 
+      System.out.println(tableName + " " + date + " " + rowCount);
+    }
   }
-  
-  public static class LocalFileSink implements Sink{
+
+  public static class LocalFileSink implements Sink {
     @Override
     public void publishResult(String tableName, String date, long rowCount) {
       String outputFile = conf.get("coprocessor.rowcounter.local.file", "./rowcounter_result");
       BufferedWriter bufferedWriter = null;
-      try{
-        bufferedWriter = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(outputFile)));
-        bufferedWriter.write(tableName+" "+date+" "+rowCount);
-      }catch(IOException e){
-        LOG.error("error when write rowcouonter result into file", e);
-      }finally{
+      try {
+        bufferedWriter = new BufferedWriter(
+            new OutputStreamWriter(new FileOutputStream(outputFile)));
+        bufferedWriter.write(tableName + " " + date + " " + rowCount);
+      } catch (IOException e) {
+        LOG.error("Error when write rowcouonter result into file", e);
+      } finally {
         try {
           bufferedWriter.close();
         } catch (IOException e) {
-          LOG.error("error when close file", e);
+          LOG.error("Error when close file", e);
         }
       }
     }
   }
 
   /**
-   * Table name is set in the configuration file, default "table_statistics".
-   * Make sure it has column family named "S".
-   * The row count will saved as qualifier "RowNum". 
+   * Table name is set in the configuration file, default "table_statistics". Make sure it has
+   * column family named "S". The row count will saved as qualifier "RowNum".
    */
-  public static class HBaseSink implements Sink{
+  public static class HBaseSink implements Sink {
     private HTable table = null;
-    
-    public HBaseSink(){
+
+    public HBaseSink() {
       String outputTable = conf.get("coprocessor.rowcounter.table", "coprocessor_rowcount");
       try {
         table = new HTable(conf, outputTable);
       } catch (IOException e) {
-        LOG.error("error when create HTable", e);
+        LOG.error("Error when create HTable", e);
       }
     }
-    
+
     @Override
     public void publishResult(String tableName, String date, long rowCount) {
       final String columnFamily = "S";
       final String columnQualifier = "RowNum";
-      if(table != null){
+      if (table != null) {
         try {
-          Put put = new Put(Bytes.toBytes(tableName+"_"+date));
-          put.add(Bytes.toBytes(columnFamily), Bytes.toBytes(columnQualifier), Bytes.toBytes(String.valueOf(rowCount)));
+          Put put = new Put(Bytes.toBytes(tableName + "_" + date));
+          put.add(Bytes.toBytes(columnFamily), Bytes.toBytes(columnQualifier),
+            Bytes.toBytes(String.valueOf(rowCount)));
           table.put(put);
         } catch (IOException e) {
-          LOG.error("error when create HTable", e);
+          LOG.error("Error when create HTable", e);
         }
-        
+
       }
     }
   }
-  
+
   static int printUsage() {
-    System.err.println("Usage: CoprocessorRowcounter <tablename> " +
-        "[<column1> <column2>...] [--startrow=] [--stoprow=] [--maxthread=] [--speed=]");
+    System.err.println("Usage: CoprocessorRowcounter <tablename> "
+        + "[<column1> <column2>...] [--startrow=] [--stoprow=] [--maxthread=] [--speed=]");
     System.err.println(" startrow     beginning of row");
     System.err.println(" stoprow      end of the row");
     System.err.println(" maxthread    threads for all regions to run concurrently");
     System.err.println(" speed        rows per second for each region");
     return -1;
   }
-  
-  private void processArgs(String[] args){
+
+  private void processArgs(String[] args) {
     tableName = args[0];
     columnFamilies = new ArrayList<String>();
-    for(int i=1; i<args.length; ++i){
-      if(args[i].startsWith("--startrow=")){
+    for (int i = 1; i < args.length; ++i) {
+      if (args[i].startsWith("--startrow=")) {
         startRow = args[i].substring("--startrow=".length());
-      }else if(args[i].startsWith("--stoprow=")){
+      } else if (args[i].startsWith("--stoprow=")) {
         stopRow = args[i].substring("--stoprow=".length());
-      }else if(args[i].startsWith("--maxthread=")){
-        conf.setInt("hbase.htable.threads.max", Integer.parseInt(args[i].substring("--maxthread=".length())));
-      }else if(args[i].startsWith("--speed=")){
+      } else if (args[i].startsWith("--maxthread=")) {
+        conf.setInt("hbase.htable.threads.max",
+          Integer.parseInt(args[i].substring("--maxthread=".length())));
+      } else if (args[i].startsWith("--speed=")) {
         speed = Integer.parseInt(args[i].substring("--speed=".length()));
-      }else{
+      } else {
         columnFamilies.add(args[i]);
       }
     }
   }
-  
+
   @Override
   public int run(String[] args) throws Exception {
     if (args.length < 1) {
@@ -171,31 +172,31 @@ public class CoprocessorRowcounter extends Configured implements Tool {
     conf.setLong("hbase.rpc.timeout", Integer.MAX_VALUE);
     AggregationClient aggregationClient = new AggregationClient(conf);
     Scan scan = new Scan();
-    
-    if(startRow != null){
+
+    if (startRow != null) {
       scan.setStartRow(Bytes.toBytes(startRow));
     }
-    if(stopRow != null){
+    if (stopRow != null) {
       scan.setStopRow(Bytes.toBytes(stopRow));
     }
-    for(int i=0; i<columnFamilies.size(); ++i){
+    for (int i = 0; i < columnFamilies.size(); ++i) {
       scan.addFamily(Bytes.toBytes(columnFamilies.get(i)));
     }
-    
+
     long rowCount = 0;
     try {
       rowCount = aggregationClient.rowCountWithSpeed(Bytes.toBytes(tableName), null, scan, speed);
     } catch (Throwable e) {
-      LOG.error("error when call rowCount in AggregationClient", e);
+      LOG.error("Error when call rowCount in AggregationClient", e);
     }
 
     SimpleDateFormat dateFormater = new SimpleDateFormat("yyyy-MM-dd");
     String date = dateFormater.format(new Date());
     sink.publishResult(tableName, date, rowCount);
-    
+
     return 0;
   }
-  
+
   /**
    * @param args
    * @throws Exception
@@ -204,5 +205,5 @@ public class CoprocessorRowcounter extends Configured implements Tool {
     int errCode = ToolRunner.run(new CoprocessorRowcounter(), args);
     System.exit(errCode);
   }
-  
+
 }
