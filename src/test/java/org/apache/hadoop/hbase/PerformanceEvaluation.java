@@ -43,13 +43,17 @@ import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hbase.client.Condition;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HTable;
+import org.apache.hadoop.hbase.client.Mutation;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
+import org.apache.hadoop.hbase.coprocessor.MultiRowMutationProtocol;
+import org.apache.hadoop.hbase.filter.CompareFilter.CompareOp;
 import org.apache.hadoop.hbase.filter.PageFilter;
 import org.apache.hadoop.hbase.filter.WhileMatchFilter;
 import org.apache.hadoop.hbase.filter.Filter;
@@ -78,6 +82,10 @@ import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 import org.apache.hadoop.mapreduce.lib.reduce.LongSumReducer;
 import org.apache.hadoop.util.LineReader;
+
+import com.yammer.metrics.core.Histogram;
+import com.yammer.metrics.core.MetricsRegistry;
+import com.yammer.metrics.stats.UniformSample;
 
 /**
  * Script used evaluating HBase performance and scalability.  Runs a HBase
@@ -175,6 +183,9 @@ public class PerformanceEvaluation {
         "Run scan test (read every row)");
     addCommandDescriptor(FilteredScanTest.class, "filterScan",
         "Run scan test using a filter to find a specific row based on it's value (make sure to use --rows=20)");
+    addCommandDescriptor(MultiRowMutationWithConditionsTest.class, "MultiRowMutationWithConditions",
+        "Run mutate multi row with conditions test");
+    
   }
 
   protected void addCommandDescriptor(Class<? extends Test> cmdClass,
@@ -746,6 +757,7 @@ public class PerformanceEvaluation {
       return randomSeed.nextLong();
     }
     protected final Random rand = new Random(nextRandomSeed());
+    private final MetricsRegistry metricsRegistry = new MetricsRegistry();
 
     protected final int startRow;
     protected final int perClientRunRows;
@@ -822,12 +834,17 @@ public class PerformanceEvaluation {
     void testTimed() throws IOException {
       int lastRow = this.startRow + this.perClientRunRows;
       // Report on completion of 1/10th of total.
+      Histogram histogram = metricsRegistry.newHistogram(PerformanceEvaluation.class, "testRowTime");
       for (int i = this.startRow; i < lastRow; i++) {
+        long startTime = System.currentTimeMillis();
         testRow(i);
+        histogram.update(System.currentTimeMillis() - startTime);
         if (status != null && i > 0 && (i % getReportingPeriod()) == 0) {
           status.setStatus(generateStatus(this.startRow, i, lastRow));
         }
       }
+      status.setStatus("latency avg: " + 1.0 * histogram.sum() / histogram.count());
+      status.setStatus("latency 99%: " + histogram.getSnapshot().get99thPercentile());
     }
 
     /*
@@ -863,6 +880,43 @@ public class PerformanceEvaluation {
       return period == 0? this.perClientRunRows: period;
     }
 
+  }
+
+  @SuppressWarnings("unused")
+  static class MultiRowMutationWithConditionsTest extends Test  {
+    private int conditionNum;
+    private int mutationNum;
+    
+    MultiRowMutationWithConditionsTest(Configuration conf, TestOptions options, Status status) {
+      super(conf, options, status);
+      this.conditionNum = conf.getInt("PE.multiRowMutationWithConditionsTest.condition.num", 1);
+      this.mutationNum = conf.getInt("PE.multiRowMutationWithConditionsTest.mutation.num", 1);
+      LOG.info("Condition Num: " + conditionNum + " Mutation Num: " + mutationNum);
+    }
+    @Override
+    void testRow(final int i) throws IOException {
+      // conditions
+      List<Condition> conditions = new ArrayList<Condition>();
+      for (int k = 0; k < conditionNum; k++ ) {
+        int key = this.rand.nextInt(Integer.MAX_VALUE) % totalRows;
+        byte[] row = format(key);
+        Condition c = new Condition(row, FAMILY_NAME, QUALIFIER_NAME, CompareOp.NOT_EQUAL, new byte[0]);
+        conditions.add(c);
+      }
+      List<Mutation> mutations = new ArrayList<Mutation>();
+      for (int k = 0; k < mutationNum; k++ ) {
+        int key = this.rand.nextInt(Integer.MAX_VALUE) % totalRows;
+        byte[] row = format(key);
+        Put put = new Put(row);
+        byte[] value = generateValue(this.rand);
+        put.add(FAMILY_NAME, QUALIFIER_NAME, value);
+        mutations.add(put);
+      }
+      MultiRowMutationProtocol p =
+          this.table.coprocessorProxy(MultiRowMutationProtocol.class, mutations
+              .get(0).getRow());
+      p.mutateRowsWithConditions(mutations, conditions);
+    }
   }
 
   @SuppressWarnings("unused")
