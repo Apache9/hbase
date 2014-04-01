@@ -387,6 +387,10 @@ public class ThriftUtilities {
       addAttributes(out,in.getAttributes());
     }
 
+    if (in.isReversed()) {
+      out.setReversed(in.isReversed());
+    }
+
     return out;
   }
 

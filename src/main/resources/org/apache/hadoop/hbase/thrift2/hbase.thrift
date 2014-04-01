@@ -195,7 +195,8 @@ struct TScan {
   6: optional TTimeRange timeRange,
   7: optional binary filterString,
   8: optional i32 batchSize,
-  9: optional map<binary, binary> attributes
+  9: optional map<binary, binary> attributes,
+  10: optional bool reversed
 }
 
 /**
