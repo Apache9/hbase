@@ -217,7 +217,97 @@ public class TestRegionSplitPolicy {
     assertEquals("efgh", Bytes.toString(policy.getSplitPoint()));
   }
 
-  
+  /**
+   * Test KeyRegexPrefixRegionSplitPolicy
+   */
+  @Test
+  public void testKeyRegexPrefixRegionSplitPolicy() throws IOException {
+    String regex = "^[^\\x00]+\\x00[^\\x00]+\\x00";
+    byte[][][] testDataPairs = {
+        {
+          { (byte) 'a', 0x00, (byte) 'b', 0x00, (byte) 'c' },
+          { (byte) 'a', 0x00, (byte) 'b',  0x00 }
+        },
+        {
+          { (byte)'a', 0x00, 0x00, (byte)'b'  },
+          { (byte)'a', 0x00, 0x00, (byte)'b'  }
+        },
+        {
+          { (byte)'a', (byte)'b'  },
+          { (byte)'a', (byte)'b'  }
+        }
+    };
+    
+    for (byte[][] pair : testDataPairs) {
+      byte[] key = pair[0];
+      byte[] expected = pair[1];
+      HTableDescriptor myHtd = new HTableDescriptor();
+      myHtd.setValue(HTableDescriptor.SPLIT_POLICY,
+        KeyRegexPrefixRegionSplitPolicy.class.getName());
+      myHtd.setValue(KeyRegexPrefixRegionSplitPolicy.PREFIX_REGEX_KEY, regex);
+
+      HRegion myMockRegion = Mockito.mock(HRegion.class);
+      Mockito.doReturn(myHtd).when(myMockRegion).getTableDesc();
+      Mockito.doReturn(stores).when(myMockRegion).getStores();
+
+      Store mockStore = Mockito.mock(Store.class);
+      Mockito.doReturn(2000L).when(mockStore).getSize();
+      Mockito.doReturn(true).when(mockStore).canSplit();
+      Mockito.doReturn(key).when(mockStore).getSplitPoint();
+      stores.put(new byte[] { 1 }, mockStore);
+
+      KeyRegexPrefixRegionSplitPolicy policy =
+          (KeyRegexPrefixRegionSplitPolicy) RegionSplitPolicy.create(myMockRegion, conf);
+
+      assertTrue("unexpected split point",
+        Bytes.compareTo(expected, policy.getSplitPoint()) == 0);
+
+      Mockito.doReturn(true).when(myMockRegion).shouldForceSplit();
+      Mockito.doReturn(key).when(myMockRegion).getExplicitSplitPoint();
+
+      policy = (KeyRegexPrefixRegionSplitPolicy) RegionSplitPolicy.create(myMockRegion, conf);
+
+      assertTrue("unexpected split point",
+        Bytes.compareTo(expected, policy.getSplitPoint()) == 0);
+    }
+  }
+
+  @Test
+  public void testDelimitedKeyPrefixRegionSplitPolicy() throws IOException {
+    HTableDescriptor myHtd = new HTableDescriptor();
+    myHtd.setValue(HTableDescriptor.SPLIT_POLICY,
+        DelimitedKeyPrefixRegionSplitPolicy.class.getName());
+    myHtd.setValue(DelimitedKeyPrefixRegionSplitPolicy.DELIMITER_KEY, ",");
+
+    HRegion myMockRegion = Mockito.mock(HRegion.class);
+    Mockito.doReturn(myHtd).when(myMockRegion).getTableDesc();
+    Mockito.doReturn(stores).when(myMockRegion).getStores();
+
+    Store mockStore = Mockito.mock(Store.class);
+    Mockito.doReturn(2000L).when(mockStore).getSize();
+    Mockito.doReturn(true).when(mockStore).canSplit();
+    Mockito.doReturn(Bytes.toBytes("ab,cd")).when(mockStore).getSplitPoint();
+    stores.put(new byte[] { 1 }, mockStore);
+
+    DelimitedKeyPrefixRegionSplitPolicy policy = (DelimitedKeyPrefixRegionSplitPolicy) RegionSplitPolicy
+        .create(myMockRegion, conf);
+
+    assertEquals("ab", Bytes.toString(policy.getSplitPoint()));
+
+    Mockito.doReturn(true).when(myMockRegion).shouldForceSplit();
+    Mockito.doReturn(Bytes.toBytes("efg,h")).when(myMockRegion)
+        .getExplicitSplitPoint();
+
+    policy = (DelimitedKeyPrefixRegionSplitPolicy) RegionSplitPolicy
+        .create(myMockRegion, conf);
+
+    assertEquals("efg", Bytes.toString(policy.getSplitPoint()));
+
+    Mockito.doReturn(Bytes.toBytes("ijk")).when(myMockRegion)
+    .getExplicitSplitPoint();
+    assertEquals("ijk", Bytes.toString(policy.getSplitPoint()));
+  }
+
   @Test
   public void testConstantSizePolicy() throws IOException {
     htd.setMaxFileSize(1024L);
@@ -293,42 +383,6 @@ public class TestRegionSplitPolicy {
 
     assertEquals("store 2 split",
         Bytes.toString(policy.getSplitPoint()));
-  }
-
-  @Test
-  public void testDelimitedKeyPrefixRegionSplitPolicy() throws IOException {
-    HTableDescriptor myHtd = new HTableDescriptor();
-    myHtd.setValue(HTableDescriptor.SPLIT_POLICY,
-        DelimitedKeyPrefixRegionSplitPolicy.class.getName());
-    myHtd.setValue(DelimitedKeyPrefixRegionSplitPolicy.DELIMITER_KEY, ",");
-
-    HRegion myMockRegion = Mockito.mock(HRegion.class);
-    Mockito.doReturn(myHtd).when(myMockRegion).getTableDesc();
-    Mockito.doReturn(stores).when(myMockRegion).getStores();
-
-    Store mockStore = Mockito.mock(Store.class);
-    Mockito.doReturn(2000L).when(mockStore).getSize();
-    Mockito.doReturn(true).when(mockStore).canSplit();
-    Mockito.doReturn(Bytes.toBytes("ab,cd")).when(mockStore).getSplitPoint();
-    stores.put(new byte[] { 1 }, mockStore);
-
-    DelimitedKeyPrefixRegionSplitPolicy policy = (DelimitedKeyPrefixRegionSplitPolicy) RegionSplitPolicy
-        .create(myMockRegion, conf);
-
-    assertEquals("ab", Bytes.toString(policy.getSplitPoint()));
-
-    Mockito.doReturn(true).when(myMockRegion).shouldForceSplit();
-    Mockito.doReturn(Bytes.toBytes("efg,h")).when(myMockRegion)
-        .getExplicitSplitPoint();
-
-    policy = (DelimitedKeyPrefixRegionSplitPolicy) RegionSplitPolicy
-        .create(myMockRegion, conf);
-
-    assertEquals("efg", Bytes.toString(policy.getSplitPoint()));
-
-    Mockito.doReturn(Bytes.toBytes("ijk")).when(myMockRegion)
-    .getExplicitSplitPoint();
-    assertEquals("ijk", Bytes.toString(policy.getSplitPoint()));
   }
 
   @org.junit.Rule
