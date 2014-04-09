@@ -35,6 +35,8 @@ import java.io.IOException;
 import java.lang.reflect.*;
 import java.net.InetSocketAddress;
 
+import com.xiaomi.infra.hbase.trace.TracerUtils;
+
 /**
  * A loadable RPC engine supporting SASL authentication of connections, using
  * GSSAPI for Kerberos authentication or DIGEST-MD5 for authentication via
@@ -111,7 +113,7 @@ public class SecureRpcEngine implements RpcEngine {
       }
       if (callTime > this.clientWarnIpcResponseTime) {
         LOG.warn("Slow secure ipc call, MethodName=" + method.getName() + ", consume time="
-            + callTime);
+            + callTime + " remote address: " + address);
       }
       return value.get();
     }
@@ -330,6 +332,8 @@ public class SecureRpcEngine implements RpcEngine {
         long startTime = System.currentTimeMillis();
         long startTimeInNs = System.nanoTime();
         Object[] params = call.getParameters();
+        TracerUtils.addAnnotation("Start call: " + method.getName()
+            + " params num: " + params.length);
         Object value = method.invoke(impl, params);
         int processingTimeInUs = (int) ((System.nanoTime() - startTimeInNs) / 1000);
         int processingTime = (int) (System.currentTimeMillis() - startTime);

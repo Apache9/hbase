@@ -1349,7 +1349,9 @@ public abstract class HBaseServer implements RpcServer {
         responder.doRespond(readParamsFailedCall);
         return;
       }
-      Tracer tracer = new MilliTracer("handling call: " + id + " call size:" + callSize);
+      Tracer tracer =
+          new MilliTracer("handling call: " + id + " call size:" + callSize
+              + " from " + getHostAddress());
       Call call = new Call(id, param, this, responder, callSize, tracer);
       callQueueSize.add(callSize);
 
