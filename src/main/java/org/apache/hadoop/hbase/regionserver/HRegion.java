@@ -1599,7 +1599,6 @@ public class HRegion implements HeapSize { // , Writable{
     // again so its value will represent the size of the updates received
     // during the flush
     long sequenceId = -1L;
-    long completeSequenceId = -1L;
     MultiVersionConsistencyControl.WriteEntry w = null;
 
     // We have to take a write lock during snapshot, or else a write could
@@ -1611,17 +1610,26 @@ public class HRegion implements HeapSize { // , Writable{
     long flushsize = this.memstoreSize.get();
     status.setStatus("Preparing to flush by snapshotting stores");
     List<StoreFlusher> storeFlushers = new ArrayList<StoreFlusher>(stores.size());
+    long flushSeqId = -1L;
     try {
       // Record the mvcc for all transactions in progress.
       w = mvcc.beginMemstoreInsert();
       mvcc.advanceMemstore(w);
 
-      sequenceId = (wal == null)? myseqid:
-        wal.startCacheFlush(this.regionInfo.getEncodedNameAsBytes());
-      completeSequenceId = this.getCompleteCacheFlushSequenceId(sequenceId);
+      if (wal != null) {
+        Long startSeqId = wal.startCacheFlush(this.regionInfo.getEncodedNameAsBytes());
+        if (startSeqId == null) {
+          status.setStatus("Flush will not be started for [" + this.regionInfo.getEncodedName()
+              + "] - WAL is going away");
+          return false;
+        }
+        flushSeqId = startSeqId.longValue();
+      } else {
+        flushSeqId = myseqid;
+      }
 
       for (Store s : stores.values()) {
-        storeFlushers.add(s.getStoreFlusher(completeSequenceId));
+        storeFlushers.add(s.getStoreFlusher(flushSeqId));
       }
 
       // prepare flush (take a snapshot)
@@ -1698,22 +1706,14 @@ public class HRegion implements HeapSize { // , Writable{
       throw dse;
     }
 
-    // If we get to here, the HStores have been written. If we get an
-    // error in completeCacheFlush it will release the lock it is holding
-
-    // B.  Write a FLUSHCACHE-COMPLETE message to the log.
-    //     This tells future readers that the HStores were emitted correctly,
-    //     and that all updates to the log for this regionName that have lower
-    //     log-sequence-ids can be safely ignored.
+    // If we get to here, the HStores have been written.
     if (wal != null) {
-      wal.completeCacheFlush(this.regionInfo.getEncodedNameAsBytes(),
-        regionInfo.getTableName(), completeSequenceId,
-        this.getRegionInfo().isMetaRegion());
+      wal.completeCacheFlush(this.regionInfo.getEncodedNameAsBytes());
     }
-    
+
     // Update the last flushed sequence id for region
-    lastFlushSequenceId = completeSequenceId;
-    
+    lastFlushSequenceId = flushSeqId;
+
     // C. Finally notify anyone waiting on memstore to clear:
     // e.g. checkResources().
     synchronized (this) {
@@ -1734,18 +1734,6 @@ public class HRegion implements HeapSize { // , Writable{
     this.recentFlushes.add(new Pair<Long,Long>(time/1000, flushsize));
 
     return compactionRequested;
-  }
-
-   /**
-   * Get the sequence number to be associated with this cache flush. Used by
-   * TransactionalRegion to not complete pending transactions.
-   *
-   *
-   * @param currentSequenceId
-   * @return sequence id to complete the cache flush with
-   */
-  protected long getCompleteCacheFlushSequenceId(long currentSequenceId) {
-    return currentSequenceId;
   }
 
   //////////////////////////////////////////////////////////////////////////////

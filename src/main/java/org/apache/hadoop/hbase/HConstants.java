@@ -584,6 +584,11 @@ public final class HConstants {
    */
   public static int DEFAULT_HBASE_RPC_SHORTOPERATION_TIMEOUT = 10000;
 
+  /**
+   * Value indicating the server name was saved with no sequence number.
+   */
+  public static final long NO_SEQNUM = -1;
+
   /*
    * cluster replication constants.
    */

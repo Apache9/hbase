@@ -247,6 +247,11 @@ public class TestLogRolling  {
           + String.format("%1$04d", (start + i))));
       put.add(HConstants.CATALOG_FAMILY, null, value);
       table.put(put);
+      try {
+        Thread.sleep(200);
+      } catch (InterruptedException e) {
+        // continue
+      }
     }
     Put tmpPut = new Put(Bytes.toBytes("tmprow"));
     tmpPut.add(HConstants.CATALOG_FAMILY, null, value);
