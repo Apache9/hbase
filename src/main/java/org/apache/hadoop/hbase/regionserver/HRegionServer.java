@@ -1792,8 +1792,7 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
 
     Threads.setDaemonThreadRunning(this.hlogRoller.getThread(), n + ".logRoller",
         uncaughtExceptionHandler);
-    Threads.setDaemonThreadRunning(this.cacheFlusher.getThread(), n + ".cacheFlusher",
-        uncaughtExceptionHandler);
+    this.cacheFlusher.start(uncaughtExceptionHandler);
     Threads.setDaemonThreadRunning(this.compactionChecker.getThread(), n +
       ".compactionChecker", uncaughtExceptionHandler);
     Threads.setDaemonThreadRunning(this.periodicFlusher.getThread(), n +
@@ -2053,7 +2052,7 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
   protected void join() {
     Threads.shutdown(this.compactionChecker.getThread());
     Threads.shutdown(this.periodicFlusher.getThread());
-    Threads.shutdown(this.cacheFlusher.getThread());
+    this.cacheFlusher.join();
     if (this.healthCheckChore != null) {
       Threads.shutdown(this.healthCheckChore.getThread());
     }

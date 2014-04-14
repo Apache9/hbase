@@ -248,12 +248,16 @@ public class TestLogRolling  {
       put.add(HConstants.CATALOG_FAMILY, null, value);
       table.put(put);
     }
+    Put tmpPut = new Put(Bytes.toBytes("tmprow"));
+    tmpPut.add(HConstants.CATALOG_FAMILY, null, value);
     long startTime = System.currentTimeMillis();
     long remaining = timeout;
     while (remaining > 0) {
       if (log.isLowReplicationRollEnabled() == expect) {
         break;
       } else {
+        // Trigger calling FSHlog#checkLowReplication()
+        table.put(tmpPut);
         try {
           Thread.sleep(200);
         } catch (InterruptedException e) {
