@@ -425,7 +425,7 @@ public class StoreFileScanner implements KeyValueScanner {
             this.stopSkippingKVsIfNextRow = false;
           }
           if (!resultOfSkipKVs
-              || Bytes.compareTo(cur.getBuffer(), cur.getRowOffset(),
+              || reader.getComparator().compare(cur.getBuffer(), cur.getRowOffset(),
                   cur.getRowLength(), firstKeyOfPreviousRow.getBuffer(),
                   firstKeyOfPreviousRow.getRowOffset(),
                   firstKeyOfPreviousRow.getRowLength()) > 0) {
@@ -461,7 +461,7 @@ public class StoreFileScanner implements KeyValueScanner {
   public boolean backwardSeek(KeyValue key) throws IOException {
     seek(key);
     if (cur == null
-        || Bytes.compareTo(cur.getBuffer(), cur.getRowOffset(),
+        || reader.getComparator().compare(cur.getBuffer(), cur.getRowOffset(),
             cur.getRowLength(), key.getBuffer(), key.getRowOffset(),
             key.getRowLength()) > 0) {
       return seekToPreviousRow(key);
