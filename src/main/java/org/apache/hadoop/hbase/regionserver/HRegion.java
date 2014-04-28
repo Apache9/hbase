@@ -377,7 +377,6 @@ public class HRegion implements HeapSize { // , Writable{
   private HTableDescriptor htableDescriptor = null;
   private RegionSplitPolicy splitPolicy;
   private final OperationMetrics opMetrics;
-  private final boolean deferredLogSyncDisabled;
 
   /**
    * Should only be used for testing purposes
@@ -404,7 +403,6 @@ public class HRegion implements HeapSize { // , Writable{
     this.maxBusyWaitDuration = 2 * HConstants.DEFAULT_HBASE_RPC_TIMEOUT;
     this.busyWaitDuration = DEFAULT_BUSY_WAIT_DURATION;
     this.maxBusyWaitMultiplier = 2;
-    this.deferredLogSyncDisabled = false;
   }
 
   
@@ -496,10 +494,7 @@ public class HRegion implements HeapSize { // , Writable{
     this.timestampSlop = conf.getLong(
         "hbase.hregion.keyvalue.timestamp.slop.millisecs",
         HConstants.LATEST_TIMESTAMP);
-    // When hbase.regionserver.optionallogflushinterval <= 0 , deferred log sync is disabled.
-    this.deferredLogSyncDisabled = conf.getLong("hbase.regionserver.optionallogflushinterval",
-        1 * 1000) <= 0;
-    
+
     if (rsServices != null) {
       this.rsAccounting = this.rsServices.getRegionServerAccounting();
       // don't initialize coprocessors if not running within a regionserver
@@ -6070,10 +6065,7 @@ public class HRegion implements HeapSize { // , Writable{
         // nothing do to
         break;
       case ASYNC_WAL:
-        // defer the sync, unless we globally can't
-        if (this.deferredLogSyncDisabled) {
-          this.log.sync(txid);
-        }
+        // defer the sync
         break;
       case SYNC_WAL:
       case FSYNC_WAL:
@@ -6088,7 +6080,7 @@ public class HRegion implements HeapSize { // , Writable{
    * check if current region is deferred sync enabled.
    */
   private boolean isDeferredLogSyncEnabled() {
-    return (this.htableDescriptor.isDeferredLogFlush() && !this.deferredLogSyncDisabled);
+    return this.htableDescriptor.isDeferredLogFlush();
   }
 
   /**
