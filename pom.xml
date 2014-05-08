@@ -1639,7 +1639,7 @@
         <hadoop.version>${hadoop-mdh.version}</hadoop.version>
         <slf4j.version>1.6.1</slf4j.version>
         <galaxy-coprocessor.version>0.0.1</galaxy-coprocessor.version>
-        <percolator-coprocessor.version>0.1.4</percolator-coprocessor.version>
+        <themis-coprocessor.version>0.0.2</themis-coprocessor.version>
       </properties>
       <dependencies>
         <dependency>
@@ -1682,8 +1682,8 @@
         </dependency>
         <dependency>
           <groupId>com.xiaomi.infra</groupId>
-          <artifactId>percolator-coprocessor</artifactId>
-          <version>${percolator-coprocessor.version}</version>
+          <artifactId>themis-coprocessor</artifactId>
+          <version>${themis-coprocessor.version}</version>
         </dependency>
       </dependencies>
       <build>
