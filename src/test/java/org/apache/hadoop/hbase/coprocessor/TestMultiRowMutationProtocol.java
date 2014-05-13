@@ -53,6 +53,7 @@ public class TestMultiRowMutationProtocol {
 
   private static final byte[] TEST_TABLE = Bytes.toBytes("TestTable");
   private static final byte[] TEST_FAMILY = Bytes.toBytes("TestFamily");
+  private static final byte[] INVALID_FAMILY = Bytes.toBytes("InvalidFamily");
   private static final byte[] TEST_QUALIFIER = Bytes.toBytes("TestQualifier");
   private static byte[] ROW = Bytes.toBytes("testRow");
   
@@ -168,7 +169,62 @@ public class TestMultiRowMutationProtocol {
     } catch (IOException e) {
     }
   }
+  
+  @Test
+  public void testInvalidFamiliy() throws IOException {
+    List<Mutation> invalids = new ArrayList<Mutation>();
+    Put put = new Put(ROWS[1]);
+    put.add(INVALID_FAMILY, TEST_QUALIFIER, Bytes.toBytes(2 * 1));
+    invalids.add(put);
+    
+    MultiRowMutationProtocol p =
+        table.coprocessorProxy(MultiRowMutationProtocol.class, ROWS[1]);
+    try {
+      p.mutateRows(invalids);
+      Assert.assertTrue(false);
+    } catch (IOException e) {
+    }
+    
+    List<Mutation> valids = new ArrayList<Mutation>();
+    put = new Put(ROWS[1]);
+    put.add(TEST_FAMILY, TEST_QUALIFIER, Bytes.toBytes(2 * 1));
+    valids.add(put);
+    try {
+      p.mutateRows(valids);
+    } catch (IOException e) {
+      Assert.assertTrue(false);
+    }
+  }
+  
+  @Test
+  public void testInvalidFamiliyInCondition() throws IOException {
+    List<Mutation> mutations = new ArrayList<Mutation>();
+    List<Condition> badConds = new ArrayList<Condition>();
+    List<Condition> conds = new ArrayList<Condition>();
 
+    badConds.add(new Condition(ROWS[1], INVALID_FAMILY, TEST_QUALIFIER, Bytes.toBytes(1)));
+    conds.add(new Condition(ROWS[1], TEST_FAMILY, TEST_QUALIFIER, Bytes.toBytes(1)));
+    Put put = new Put(ROWS[1]);
+    put.add(TEST_FAMILY, TEST_QUALIFIER, Bytes.toBytes(2 * 1));
+    mutations.add(put);
+    
+    MultiRowMutationProtocol p =
+        table.coprocessorProxy(MultiRowMutationProtocol.class, ROWS[1]);
+    try {
+      List<Condition> results = p.mutateRowsWithConditions(mutations, badConds);
+      Assert.assertEquals(0, results.size());
+      Assert.assertTrue(false);
+    } catch (IOException e) {
+    }
+
+    try {
+      List<Condition> results = p.mutateRowsWithConditions(mutations, conds);
+      Assert.assertEquals(0, results.size());
+    } catch (IOException e) {
+      Assert.assertTrue(false);
+    }
+  }
+  
   @Test
   public void testMultiRowMutationsWithConditions() throws IOException {
     List<Mutation> mutations = new ArrayList<Mutation>();

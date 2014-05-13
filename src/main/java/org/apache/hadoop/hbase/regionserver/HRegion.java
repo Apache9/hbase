@@ -5008,6 +5008,21 @@ public class HRegion implements HeapSize { // , Writable{
       long txid = 0;
       boolean walSyncSuccessful = false;
       boolean locked = false;
+      
+      // check column families are valid
+      long now = EnvironmentEdgeManager.currentTimeMillis();
+      for (Condition c : conditions) {
+        checkFamily(c.getFamily());
+      }
+      for (Mutation m : mutations) {
+        if (m instanceof Put) {
+          checkFamilies(m.getFamilyMap().keySet());
+          checkTimestamps(m.getFamilyMap(), now);
+        } else if (m instanceof Delete) {
+          Delete d = (Delete) m;
+          prepareDelete(d);
+        }
+      }
 
       // 2. acquire the row lock(s)
       acquiredLocks = new HashMap<byte[], Integer>(rowsToLock.size());
@@ -5041,7 +5056,6 @@ public class HRegion implements HeapSize { // , Writable{
       // 5. Get a mvcc write number
       MultiVersionConsistencyControl.WriteEntry w = mvcc.beginMemstoreInsert();
 
-      long now = EnvironmentEdgeManager.currentTimeMillis();
       byte[] byteNow = Bytes.toBytes(now);
       Durability durability = Durability.USE_DEFAULT;
       try {
@@ -5049,12 +5063,9 @@ public class HRegion implements HeapSize { // , Writable{
         for (Mutation m : mutations) {
           if (m instanceof Put) {
             Map<byte[], List<KeyValue>> familyMap = m.getFamilyMap();
-            checkFamilies(familyMap.keySet());
-            checkTimestamps(familyMap, now);
             updateKVTimestamps(familyMap.values(), byteNow);
           } else if (m instanceof Delete) {
             Delete d = (Delete) m;
-            prepareDelete(d);
             prepareDeleteTimestamps(d.getFamilyMap(), byteNow);
           } else {
             throw new DoNotRetryIOException(
