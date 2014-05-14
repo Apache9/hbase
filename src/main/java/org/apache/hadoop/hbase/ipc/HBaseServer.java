@@ -56,6 +56,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.apache.commons.lang.Validate;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -187,7 +188,8 @@ public abstract class HBaseServer implements RpcServer {
 
   protected String bindAddress;
   protected int port;                             // port we listen on
-  private int handlerCount;                       // number of handler threads
+  private int readHandlerCount;                       // number of read handler threads
+  private int writeHandlerCount;                       // number of write handler threads
   private int priorityHandlerCount;
   private int readThreads;                        // number of read threads
   protected Class<? extends Writable> paramClass; // class of call parameters
@@ -226,7 +228,8 @@ public abstract class HBaseServer implements RpcServer {
   private static final String RESPONSE_QUEUES_MAX_SIZE = "ipc.server.response.queue.maxsize";
 
   volatile protected boolean running = true;         // true while server runs
-  protected BlockingQueue<Call> callQueue; // queued calls
+  protected BlockingQueue<Call> readCallQueue; // read queued calls
+  protected BlockingQueue<Call> writeCallQueue; // write queued calls
   protected final Counter callQueueSize = new Counter();
   protected BlockingQueue<Call> priorityCallQueue;
   private final Counter activeRpcCount = new Counter();
@@ -240,7 +243,8 @@ public abstract class HBaseServer implements RpcServer {
   private Listener listener = null;
   protected Responder responder = null;
   protected int numConnections = 0;
-  private Handler[] handlers = null;
+  private Handler[] readHandlers = null;
+  private Handler[] writeHandlers = null;
   private Handler[] priorityHandlers = null;
   /** replication related queue; */
   protected BlockingQueue<Call> replicationQueue;
@@ -751,7 +755,7 @@ public abstract class HBaseServer implements RpcServer {
           if (LOG.isDebugEnabled())
             LOG.debug("Server connection from " + c.toString() +
                 "; # active connections: " + numConnections +
-                "; # queued calls: " + callQueue.size());
+                "; # queued calls: " + (readCallQueue.size() + writeCallQueue.size()));
         } finally {
           reader.finishAdd();
         }
@@ -1363,8 +1367,48 @@ public abstract class HBaseServer implements RpcServer {
         replicationQueue.put(call);
         updateCallQueueLenMetrics(replicationQueue);
       } else {
-        callQueue.put(call); // queue the call; maybe blocked here
-        updateCallQueueLenMetrics(callQueue);
+        Invocation invocation = (Invocation)(call.param);
+        String methodName = invocation.getMethodName();
+        if (methodName == null || methodName.length() < 1) {
+          LOG.error("Could not find requested method, the usual "
+              + "cause is a version mismatch between client and server.");
+          final Call readParamsFailedCall = new Call(id, null, this, responder, callSize);
+          ByteArrayOutputStream responseBuffer = new ByteArrayOutputStream();
+          setupResponse(responseBuffer, readParamsFailedCall, Status.FATAL, null,
+            IOException.class.getName(), "IPC server unable to read call method");
+          responder.doRespond(readParamsFailedCall);
+          return;
+        }
+        if (methodName.startsWith("get") || methodName.equals("next")
+            || methodName.equals("openScanner")) {
+          boolean success = readCallQueue.offer(call);
+          if (!success) {
+            // fail fast on queue inserting, no more waiting!
+            LOG.error("Could not insert into readQueue!");
+            final Call failedCall = new Call(id, null, this, responder, callSize);
+            ByteArrayOutputStream responseBuffer = new ByteArrayOutputStream();
+            setupResponse(responseBuffer, failedCall, Status.FATAL, null,
+              IOException.class.getName(), "IPC server readQueue is full");
+            responder.doRespond(failedCall);
+            return;
+          }
+          updateCallQueueLenMetrics(readCallQueue);
+        } else {
+          // FIXME: execCoprocessor, like AggregateImplementation; checkAndPut...
+          // It's hard to tell read/write ops clear seems, just a best effort here
+          boolean success = writeCallQueue.offer(call);
+          if (!success) {
+            // fail fast on queue inserting, no more waiting!
+            LOG.error("Could not insert into writeQueue!");
+            final Call failedCall = new Call(id, null, this, responder, callSize);
+            ByteArrayOutputStream responseBuffer = new ByteArrayOutputStream();
+            setupResponse(responseBuffer, failedCall, Status.FATAL, null,
+              IOException.class.getName(), "IPC server writeQueue is full");
+            responder.doRespond(failedCall);
+            return;
+          }
+          updateCallQueueLenMetrics(writeCallQueue);
+        }
       }
     }
 
@@ -1387,8 +1431,8 @@ public abstract class HBaseServer implements RpcServer {
    * @param queue Which queue to report
    */
   protected void updateCallQueueLenMetrics(BlockingQueue<Call> queue) {
-    if (queue == callQueue) {
-      rpcMetrics.callQueueLen.set(callQueue.size());
+    if (queue == readCallQueue || queue == writeCallQueue) {
+      rpcMetrics.callQueueLen.set(readCallQueue.size() + writeCallQueue.size());
     } else if (queue == priorityCallQueue) {
       rpcMetrics.priorityCallQueueLen.set(priorityCallQueue.size());
     } else if (queue == replicationQueue) {
@@ -1413,6 +1457,10 @@ public abstract class HBaseServer implements RpcServer {
         threadName = "PRI " + threadName;
       } else if (cq == replicationQueue) {
         threadName = "REPL " + threadName;
+      } else if (cq == readCallQueue) {
+        threadName = "READ " + threadName;
+      } else if (cq == writeCallQueue) {
+        threadName = "WRITE " + threadName;
       }
       this.setName(threadName);
       this.status = TaskMonitor.get().createRPCStatus(threadName);
@@ -1557,7 +1605,6 @@ public abstract class HBaseServer implements RpcServer {
     this.conf = conf;
     this.port = port;
     this.paramClass = paramClass;
-    this.handlerCount = handlerCount;
     this.priorityHandlerCount = priorityHandlerCount;
     this.socketSendBufferSize = 0;
 
@@ -1580,12 +1627,19 @@ public abstract class HBaseServer implements RpcServer {
      this.readThreads = conf.getInt(
         "ipc.server.read.threadpool.size",
         10);
-    this.callQueue  = new LinkedBlockingQueue<Call>(maxQueueLength);
+    float readQueueRatio = this.conf.getFloat("ipc.server.read.callqueue.percentage", 0.5f);
+    int readQueueLength = Math.round(readQueueRatio * maxQueueLength);
+    Validate.isTrue(readQueueLength > 0 && readQueueLength < maxQueueLength);
+    LOG.info("IPC maxQueueLength:" + maxQueueLength + ", readQueueLength:" + readQueueLength);
+    this.readCallQueue = new LinkedBlockingQueue<Call>(readQueueLength);
+    this.writeCallQueue = new LinkedBlockingQueue<Call>(maxQueueLength - readQueueLength);
     if (priorityHandlerCount > 0) {
       this.priorityCallQueue = new LinkedBlockingQueue<Call>(maxQueueLength); // TODO hack on size
     } else {
       this.priorityCallQueue = null;
     }
+    this.readHandlerCount = Math.round(readQueueRatio * handlerCount);
+    this.writeHandlerCount = handlerCount - this.readHandlerCount;
     this.highPriorityLevel = highPriorityLevel;
     this.maxIdleTime = 2*conf.getInt("ipc.client.connection.maxidletime", 1000);
     this.maxConnectionsToNuke = conf.getInt("ipc.client.kill.max", 10);
@@ -1639,7 +1693,7 @@ public abstract class HBaseServer implements RpcServer {
    * @param error error message, if the call failed
    * @throws IOException
    */
-  private void setupResponse(ByteArrayOutputStream response,
+  protected void setupResponse(ByteArrayOutputStream response,
                              Call call, Status status,
                              Writable rv, String errorClass, String error)
   throws IOException {
@@ -1710,7 +1764,8 @@ public abstract class HBaseServer implements RpcServer {
   public synchronized void startThreads() {
     responder.start();
     listener.start();
-    handlers = startHandlers(callQueue, handlerCount);
+    readHandlers = startHandlers(readCallQueue, readHandlerCount);
+    writeHandlers = startHandlers(writeCallQueue, writeHandlerCount);
     priorityHandlers = startHandlers(priorityCallQueue, priorityHandlerCount);
     replicationHandlers = startHandlers(replicationQueue, numOfReplicationHandlers);
     }
@@ -1732,7 +1787,8 @@ public abstract class HBaseServer implements RpcServer {
   public synchronized void stop() {
     LOG.info("Stopping server on " + port);
     running = false;
-    stopHandlers(handlers);
+    stopHandlers(readHandlers);
+    stopHandlers(writeHandlers);
     stopHandlers(priorityHandlers);
     stopHandlers(replicationHandlers);
     listener.interrupt();

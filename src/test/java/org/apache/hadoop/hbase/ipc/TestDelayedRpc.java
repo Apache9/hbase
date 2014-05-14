@@ -69,7 +69,7 @@ public class TestDelayedRpc {
 
     rpcServer = HBaseRPC.getServer(new TestRpcImpl(delayReturnValue),
         new Class<?>[]{ TestRpcImpl.class },
-        isa.getHostName(), isa.getPort(), 1, 0, true, conf, 0);
+        isa.getHostName(), isa.getPort(), 2, 0, true, conf, 0);
     RpcEngine rpcEngine = null;
     try {
       rpcServer.start();
@@ -140,7 +140,7 @@ public class TestDelayedRpc {
     InetSocketAddress isa = new InetSocketAddress("localhost", 0);
     rpcServer = HBaseRPC.getServer(new TestRpcImpl(true),
         new Class<?>[]{ TestRpcImpl.class },
-        isa.getHostName(), isa.getPort(), 1, 0, true, conf, 0);
+        isa.getHostName(), isa.getPort(), 2, 0, true, conf, 0);
     RpcEngine rpcEngine = null;
     try {
       rpcServer.start();
@@ -271,7 +271,7 @@ public class TestDelayedRpc {
 
     rpcServer = HBaseRPC.getServer(new FaultyTestRpc(),
         new Class<?>[]{ TestRpcImpl.class },
-        isa.getHostName(), isa.getPort(), 1, 0, true, conf, 0);
+        isa.getHostName(), isa.getPort(), 2, 0, true, conf, 0);
     RpcEngine rpcEngine = null;
     try {
       rpcServer.start();
