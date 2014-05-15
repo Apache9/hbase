@@ -145,15 +145,15 @@ public class TestHTableNameService {
   }
 
   @Test
-  public void testFullUriPreDefined() throws IOException {
-    HTable hTable = new HTable(conf, "hbase://hytst-test:9800/test_table1", false);
+  public void testFullUriWithoutCityName() throws IOException {
+    HTable hTable = new HTable(conf, "hbase://dmtst-test:9800/test_table1", false);
 
     Assert.assertArrayEquals(Bytes.toBytes("test_table1"), hTable.getTableName());
 
     Assert.assertNotNull(hTable.getConfiguration().get("hbase.zookeeper.quorum"));
-    Assert.assertTrue(
-      !"localhost".equals(hTable.getConfiguration().get("hbase.zookeeper.quorum")));
-    Assert.assertEquals("/hbase/hytst-test",
+    Assert.assertFalse(
+      "localhost".equals(hTable.getConfiguration().get("hbase.zookeeper.quorum")));
+    Assert.assertEquals("/hbase/dmtst-test",
       hTable.getConfiguration().get("zookeeper.znode.parent"));
     Assert.assertEquals(9800,
       hTable.getConfiguration().getInt("hbase.zookeeper.property.clientPort", -1));

@@ -24,30 +24,18 @@ public class ZkClusterInfo {
       new TreeMap<String, String>();
 
   static {
-    // A dumb cluster for unit test.
+    // Dumb clusters for unit test.
     PRE_DEFINED_CLUSTERS.put(
       "xmdm-zk-tst.hadoop.srv", "192.168.135.12,192.168.135.34,192.168.135.56");
-    // Shangdi serving.
     PRE_DEFINED_CLUSTERS.put(
-      "bjsd-zk-srv.hadoop.srv", "10.0.4.161,10.0.4.162,10.0.4.163");
-    // Guigu serving.
-    PRE_DEFINED_CLUSTERS.put(
-      "bjgg-zk-srv.hadoop.srv", "10.20.2.65,10.20.2.66,10.20.2.67");
-    // Lugu processing.
-    PRE_DEFINED_CLUSTERS.put(
-      "bjlg-zk-prc.hadoop.srv", "10.2.201.14,10.2.201.18,10.2.201.22");
-    // Shangdi testing.
-    PRE_DEFINED_CLUSTERS.put(
-      "bjsd-zk-tst.hadoop.srv", "10.0.3.98,10.0.3.99,10.0.3.105");
-    // Hongyuan testing.
-    PRE_DEFINED_CLUSTERS.put(
-      "bjhy-zk-tst.hadoop.srv", "10.235.3.55,10.235.3.57,10.235.3.67");
+      "bjdm-zk-tst.hadoop.srv", "10.235.3.55,10.235.3.57,10.235.3.67");
   }
 
   public static enum ClusterType {
     SRV,
     PRC,
     TST,
+    SEC,
   }
 
   private final String clusterName;
