@@ -253,7 +253,7 @@ public class TestHRegionServerBulkLoad {
     String TABLE_NAME = "atomicBulkLoad";
 
     int millisToRun = 30000;
-    int numScanners = 50;
+    int numScanners = 20;
 
     UTIL.startMiniCluster(1);
     try {
