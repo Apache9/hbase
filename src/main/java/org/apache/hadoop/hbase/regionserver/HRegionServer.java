@@ -54,6 +54,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import javax.management.ObjectName;
@@ -232,6 +233,8 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
   
   private Path rootDir;
   private final Random rand;
+
+  private final AtomicLong scannerIdGen = new AtomicLong(0L);
 
   //RegionName vs current action in progress
   //true - if open region action in progress
@@ -2706,8 +2709,7 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
   }
 
   protected long addScanner(RegionScanner s) throws LeaseStillHeldException {
-    long scannerId = -1L;
-    scannerId = rand.nextLong();
+    long scannerId = this.scannerIdGen.incrementAndGet();
     String scannerName = String.valueOf(scannerId);
     scanners.put(scannerName, s);
     this.leases.createLease(scannerName, new ScannerListener(scannerName));
