@@ -295,23 +295,42 @@ public class ReplicationSource extends Thread
     this.metrics.sizeOfLogQueue.set(queue.size());
   }
 
+  private void uninitialize() {
+    if (this.conn != null) {
+      try {
+        this.conn.close();
+      } catch (IOException e) {
+        LOG.debug("Attempt to close connection failed", e);
+      }
+    }
+    metrics.stopReportMetrics();
+    LOG.debug("Source exiting " + peerId);
+  }
+
   @Override
   public void run() {
     connectToPeers();
     // We were stopped while looping to connect to sinks, just abort
     if (!this.isActive()) {
+      uninitialize();
       return;
     }
     int sleepMultiplier = 1;
     // delay this until we are in an asynchronous thread
-    while (this.peerClusterId == null) {
+    while (this.isActive() && this.peerClusterId == null) {
       this.peerClusterId = zkHelper.getPeerUUID(this.peerId);
-      if (this.peerClusterId == null) {
+      if (this.isActive() && this.peerClusterId == null) {
         if (sleepForRetries("Cannot contact the peer's zk ensemble", sleepMultiplier)) {
           sleepMultiplier++;
         }
       }
     }
+    //We were stopped while looping to contact peer's zk ensemble, just abort
+    if (!this.isActive()) {
+      uninitialize();
+      return;
+    }
+
     // resetting to 1 to reuse later
     sleepMultiplier = 1;
 
@@ -445,17 +464,8 @@ public class ReplicationSource extends Thread
       }
       sleepMultiplier = 1;
       shipEdits(currentWALisBeingWrittenTo);
-
     }
-    if (this.conn != null) {
-      try {
-        this.conn.close();
-      } catch (IOException e) {
-        LOG.debug("Attempt to close connection failed", e);
-      }
-    }
-    metrics.stopReportMetrics();
-    LOG.debug("Source exiting " + peerId);
+    uninitialize();
   }
 
   /**
