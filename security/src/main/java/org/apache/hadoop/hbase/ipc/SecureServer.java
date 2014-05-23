@@ -24,7 +24,6 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.io.HbaseObjectWritable;
 import org.apache.hadoop.hbase.io.WritableWithSize;
-import org.apache.hadoop.hbase.ipc.HBaseServer.Call;
 import org.apache.hadoop.hbase.security.HBaseSaslRpcServer;
 import org.apache.hadoop.hbase.security.HBaseSaslRpcServer.AuthMethod;
 import org.apache.hadoop.hbase.security.HBaseSaslRpcServer.SaslDigestCallbackHandler;
@@ -632,7 +631,8 @@ public abstract class SecureServer extends HBaseServer {
         if (methodName == null || methodName.length() < 1) {
           LOG.error("Could not find requested method, the usual "
               + "cause is a version mismatch between client and server.");
-          final Call readParamsFailedCall = new Call(id, null, this, responder, buf.length);
+          final SecureCall readParamsFailedCall = new SecureCall(id, null, this, responder,
+              buf.length);
           ByteArrayOutputStream responseBuffer = new ByteArrayOutputStream();
           setupResponse(responseBuffer, readParamsFailedCall, Status.FATAL, null,
             IOException.class.getName(), "IPC server unable to read call method");
@@ -645,7 +645,7 @@ public abstract class SecureServer extends HBaseServer {
           if (!success) {
             // fail fast on queue inserting, no more waiting!
             LOG.error("Could not insert into readQueue!");
-            final Call failedCall = new Call(id, null, this, responder, buf.length);
+            final SecureCall failedCall = new SecureCall(id, null, this, responder, buf.length);
             ByteArrayOutputStream responseBuffer = new ByteArrayOutputStream();
             setupResponse(responseBuffer, failedCall, Status.FATAL, null,
               IOException.class.getName(), "IPC server readQueue is full");
@@ -660,7 +660,7 @@ public abstract class SecureServer extends HBaseServer {
           if (!success) {
             // fail fast on queue inserting, no more waiting!
             LOG.error("Could not insert into writeQueue!");
-            final Call failedCall = new Call(id, null, this, responder, buf.length);
+            final SecureCall failedCall = new SecureCall(id, null, this, responder, buf.length);
             ByteArrayOutputStream responseBuffer = new ByteArrayOutputStream();
             setupResponse(responseBuffer, failedCall, Status.FATAL, null,
               IOException.class.getName(), "IPC server writeQueue is full");
