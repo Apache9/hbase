@@ -2829,7 +2829,17 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
           : results.toArray(new Result[0]);
     } catch (Throwable t) {
       if (t instanceof NotServingRegionException && scannerName != null) {
-        this.scanners.remove(scannerName);
+        RegionScanner scanner = this.scanners.remove(scannerName);
+        try {
+          if (scanner != null) {
+            scanner.close();
+            // No need to call "this.leases.removeLease(scannerName)" here
+            // since which has been called before "getRegion()"(and re-add in
+            // below finally clause)
+            // This is different from 0.96+ where such temporary lease removal
+            // is after calling "getRegion()"
+          }
+        } catch (IOException e) {}
       }
       throw convertThrowableToIOE(cleanup(t));
     } finally {
