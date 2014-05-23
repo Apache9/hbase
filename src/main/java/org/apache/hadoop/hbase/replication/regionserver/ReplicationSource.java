@@ -140,6 +140,8 @@ public class ReplicationSource extends Thread
   private ReplicationSourceMetrics metrics;
   // Handle on the log reader helper
   private ReplicationHLogReaderManager repLogReader;
+  // throttler
+  private ReplicationThrottler throttler;
 
 
   /**
@@ -170,6 +172,8 @@ public class ReplicationSource extends Thread
     for (int i = 0; i < this.replicationQueueNbCapacity; i++) {
       this.entriesArray[i] = new HLog.Entry();
     }
+    long bandwidth = this.conf.getLong("replication.source.per.peer.node.bandwidth", 0);
+    this.throttler = new ReplicationThrottler((double)bandwidth/10.0);
     this.maxRetriesMultiplier = this.conf.getInt("replication.source.maxretriesmultiplier", 10);
     this.socketTimeoutMultiplier = this.conf.getInt("replication.source.socketTimeoutMultiplier",
         maxRetriesMultiplier * maxRetriesMultiplier);
@@ -677,6 +681,7 @@ public class ReplicationSource extends Thread
       Thread.sleep(this.sleepForRetries * sleepMultiplier);
     } catch (InterruptedException e) {
       LOG.debug("Interrupted while sleeping between retries");
+      Thread.currentThread().interrupt();
     }
     return sleepMultiplier < maxRetriesMultiplier;
   }
@@ -750,6 +755,26 @@ public class ReplicationSource extends Thread
         continue;
       }
       try {
+        if (this.throttler.isEnabled()) {
+          long sleepTicks = this.throttler.getNextSleepInterval(currentSize);
+          if (sleepTicks > 0) {
+            try {
+              if (LOG.isTraceEnabled()) {
+                LOG.trace("To sleep " + sleepTicks + "ms for throttling control");
+              }
+              Thread.sleep(sleepTicks);
+            } catch (InterruptedException e) {
+              LOG.debug("Interrupted while sleeping for throttling control");
+              Thread.currentThread().interrupt();
+              // current thread might be interrupted to terminate
+              // directly go back to while() for confirm this
+              continue;
+            }
+            // reset throttler's cycle start tick when sleep for throttling occurs
+            this.throttler.resetStartTick();
+          }
+        }
+
         HRegionInterface rrs = getRS();
         if (LOG.isDebugEnabled()) {
           LOG.debug("Replicating " + currentNbEntries);
@@ -759,6 +784,9 @@ public class ReplicationSource extends Thread
           this.manager.logPositionAndCleanOldLogs(this.currentPath,
               this.peerClusterZnode, this.repLogReader.getPosition(), queueRecovered, currentWALisBeingWrittenTo);
           this.lastLoggedPosition = this.repLogReader.getPosition();
+        }
+        if (this.throttler.isEnabled()) {
+          this.throttler.addPushSize(currentSize);
         }
         this.totalReplicatedEdits += currentNbEntries;
         this.metrics.shippedBatchesRate.inc(1);
