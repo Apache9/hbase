@@ -30,6 +30,7 @@ import org.apache.commons.cli.ParseException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.LocalHBaseCluster;
 import org.apache.hadoop.hbase.MasterNotRunningException;
@@ -116,6 +117,12 @@ public class HMasterCommandLine extends ServerCommandLine {
       // If 'local', defer to LocalHBaseCluster instance.  Starts master
       // and regionserver both in the one JVM.
       if (LocalHBaseCluster.isLocal(conf)) {
+        FileSystem fs = FileSystem.get(conf);
+        if (fs.getScheme().equals("file")) {
+          fs.setVerifyChecksum(false);
+          fs.setWriteChecksum(false);
+        }
+
         final MiniZooKeeperCluster zooKeeperCluster =
           new MiniZooKeeperCluster();
         File zkDataPath = new File(conf.get(HConstants.ZOOKEEPER_DATA_DIR));
@@ -141,6 +148,7 @@ public class HMasterCommandLine extends ServerCommandLine {
         }
         conf.set(HConstants.ZOOKEEPER_CLIENT_PORT,
                  Integer.toString(clientPort));
+        conf.setInt(HConstants.ZK_SESSION_TIMEOUT, 10 *1000);
         // Need to have the zk cluster shutdown when master is shutdown.
         // Run a subclass that does the zk cluster shutdown on its way out.
         LocalHBaseCluster cluster = new LocalHBaseCluster(conf, 1, 3,

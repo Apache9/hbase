@@ -148,56 +148,21 @@ public class SequenceFileLogWriter implements HLog.Writer {
     if (null == keyClass) {
       keyClass = HLog.getKeyClass(conf);
     }
-
-    // Create a SF.Writer instance.
-    try {
-      // reflection for a version of SequenceFile.createWriter that doesn't
-      // automatically create the parent directory (see HBASE-2312)
-      this.writer = (SequenceFile.Writer) SequenceFile.class
-        .getMethod("createWriter", new Class[] {FileSystem.class,
-            Configuration.class, Path.class, Class.class, Class.class,
-            Integer.TYPE, Short.TYPE, Long.TYPE, Boolean.TYPE,
-            CompressionType.class, CompressionCodec.class, Metadata.class})
-        .invoke(null, new Object[] {fs, conf, path, HLog.getKeyClass(conf),
-            WALEdit.class,
-            Integer.valueOf(fs.getConf().getInt("io.file.buffer.size", 4096)),
-            Short.valueOf((short)
-              conf.getInt("hbase.regionserver.hlog.replication",
-              FSUtils.getDefaultReplication(fs, path))),
-            Long.valueOf(conf.getLong("hbase.regionserver.hlog.blocksize",
-                FSUtils.getDefaultBlockSize(fs, path))),
-            Boolean.valueOf(false) /*createParent*/,
-            SequenceFile.CompressionType.NONE, new DefaultCodec(),
-            createMetadata(conf, compress)
-            });
-    } catch (InvocationTargetException ite) {
-      // function was properly called, but threw it's own exception
-      throw new IOException(ite.getCause());
-    } catch (Exception e) {
-      // ignore all other exceptions. related to reflection failure
-    }
-
-    // if reflection failed, use the old createWriter
-    if (this.writer == null) {
-      LOG.debug("new createWriter -- HADOOP-6840 -- not available");
-      this.writer = SequenceFile.createWriter(fs, conf, path,
-        HLog.getKeyClass(conf), WALEdit.class,
-        fs.getConf().getInt("io.file.buffer.size", 4096),
-        (short) conf.getInt("hbase.regionserver.hlog.replication",
-          FSUtils.getDefaultReplication(fs, path)),
-        conf.getLong("hbase.regionserver.hlog.blocksize",
-          FSUtils.getDefaultBlockSize(fs, path)),
-        SequenceFile.CompressionType.NONE,
-        new DefaultCodec(),
-        null,
-        createMetadata(conf, compress));
-    } else {
-      LOG.debug("using new createWriter -- HADOOP-6840");
-    }
-
+    
+    int bufferSize = Integer.valueOf(fs.getConf().getInt("io.file.buffer.size", 4096));
+    short replication = Short.valueOf((short)conf.getInt("hbase.regionserver.hlog.replication", 
+      FSUtils.getDefaultReplication(fs, path)));
+    long blockSize = Long.valueOf(conf.getLong("hbase.regionserver.hlog.blocksize", 
+      FSUtils.getDefaultBlockSize(fs, path)));
+    // using createNonRecursive, see HBASE-2312
+    this.writer_out = fs.createNonRecursive(path, true, bufferSize, replication, blockSize, null);
+    this.writer =
+        SequenceFile.createWriter(conf, writer_out, HLog.getKeyClass(conf),
+          WALEdit.class, SequenceFile.CompressionType.NONE, new DefaultCodec(),
+          createMetadata(conf, compress));
+    
     // setup the WALEditCodec
     this.codec = WALEditCodec.create(conf, compressionContext);
-    this.writer_out = getSequenceFilePrivateFSDataOutputStreamAccessible();
     this.syncFs = getSyncFs();
     this.hflush = getHFlush();
     String msg = "Path=" + path +
@@ -296,8 +261,11 @@ public class SequenceFileLogWriter implements HLog.Writer {
       } catch (NullPointerException npe) {
         // Can get a NPE coming up from down in DFSClient$DFSOutputStream#close
         LOG.warn(npe);
+      } finally {
+        this.writer_out.close();
       }
       this.writer = null;
+      this.writer_out = null;
     }
   }
 

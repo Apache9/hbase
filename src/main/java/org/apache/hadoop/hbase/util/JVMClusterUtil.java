@@ -27,6 +27,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.master.HMaster;
 import org.apache.hadoop.hbase.regionserver.HRegionServer;
 import org.apache.hadoop.hbase.regionserver.ShutdownHook;
@@ -175,13 +176,16 @@ public class JVMClusterUtil {
     //  having an active master before starting the region threads allows
     //  then to succeed on their connection to master
     long startTime = System.currentTimeMillis();
+    Configuration conf = masters.get(0).getMaster().getConfiguration();
+    int timeout = 2 * conf.getInt(HConstants.ZK_SESSION_TIMEOUT, 
+                                  HConstants.DEFAULT_ZK_SESSION_TIMEOUT);
     while (findActiveMaster(masters) == null) {
       try {
         Thread.sleep(100);
       } catch (InterruptedException ignored) {
       }
-      if (System.currentTimeMillis() > startTime + 30000) {
-        throw new RuntimeException("Master not active after 30 seconds");
+      if (System.currentTimeMillis() > startTime + timeout) {
+        throw new RuntimeException("Master not active after "+ timeout + " seconds");
       }
     }
 
