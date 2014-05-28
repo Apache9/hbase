@@ -40,6 +40,9 @@ import org.apache.hadoop.hbase.fs.HFileSystem;
 import org.apache.hadoop.hbase.io.encoding.DataBlockEncoding;
 import org.apache.hadoop.hbase.io.hfile.bucket.BucketCache;
 import org.apache.hadoop.hbase.io.hfile.Compression.Algorithm;
+import org.apache.hadoop.hbase.ipc.CallerDisconnectedException;
+import org.apache.hadoop.hbase.ipc.HBaseServer;
+import org.apache.hadoop.hbase.ipc.RpcCallContext;
 import org.apache.hadoop.hbase.regionserver.MemStore;
 import org.apache.hadoop.hbase.regionserver.metrics.SchemaConfigured;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -1421,6 +1424,15 @@ public class HFileBlock extends SchemaConfigured implements Cacheable {
         throw new IOException("Attempted to read " + size + " bytes and " +
             hdrSize + " bytes of next header into a " + dest.length +
             "-byte array at offset " + destOffset);
+      }
+      RpcCallContext rpcCall = HBaseServer.getCurrentCall();
+      if (rpcCall != null) {
+        try {
+          rpcCall.throwExceptionIfCallerDisconnected();
+        } catch (CallerDisconnectedException cde) {
+          HFile.LOG.info("", cde);
+          throw cde; 
+        }
       }
 
       if (!pread && streamLock.tryLock()) {

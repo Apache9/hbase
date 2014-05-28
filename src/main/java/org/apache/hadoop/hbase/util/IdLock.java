@@ -19,6 +19,12 @@
  */
 package org.apache.hadoop.hbase.util;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.hbase.ipc.CallerDisconnectedException;
+import org.apache.hadoop.hbase.ipc.HBaseServer;
+import org.apache.hadoop.hbase.ipc.RpcCallContext;
+
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.util.concurrent.ConcurrentHashMap;
@@ -37,6 +43,7 @@ import java.util.concurrent.ConcurrentMap;
  * }</pre>
  */
 public class IdLock {
+  private static final Log LOG = LogFactory.getLog(IdLock.class); 
 
   /** An entry returned to the client as a lock object */
   public static class Entry {
@@ -69,6 +76,7 @@ public class IdLock {
     Entry entry = new Entry(id);
     Entry existing;
     while ((existing = map.putIfAbsent(entry.id, entry)) != null) {
+      RpcCallContext rpcCall = HBaseServer.getCurrentCall();
       synchronized (existing) {
         if (existing.isLocked) {
           ++existing.numWaiters;  // Add ourselves to waiters.
@@ -81,7 +89,15 @@ public class IdLock {
                   "Interrupted waiting to acquire sparse lock");
             }
           }
-
+          if (rpcCall != null) {
+            try {
+              rpcCall.throwExceptionIfCallerDisconnected();
+            } catch (CallerDisconnectedException cde) {
+              LOG.info("", cde);
+              --existing.numWaiters;  // Remove ourselves from waiters.
+              throw cde; 
+            }
+          }
           --existing.numWaiters;  // Remove ourselves from waiters.
           existing.isLocked = true;
           return existing;
