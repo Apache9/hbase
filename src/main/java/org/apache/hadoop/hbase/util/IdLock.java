@@ -84,9 +84,13 @@ public class IdLock {
             try {
               existing.wait();
             } catch (InterruptedException e) {
-              --existing.numWaiters;  // Remove ourselves from waiters.
-              throw new InterruptedIOException(
-                  "Interrupted waiting to acquire sparse lock");
+              --existing.numWaiters; // Remove ourselves from waiters.
+              if (existing.numWaiters > 0) {
+                existing.notify();
+              } else {
+                map.remove(existing.id);
+              }
+              throw new InterruptedIOException("Interrupted waiting to acquire sparse lock");
             }
           }
           if (rpcCall != null) {
@@ -94,8 +98,13 @@ public class IdLock {
               rpcCall.throwExceptionIfCallerDisconnected();
             } catch (CallerDisconnectedException cde) {
               LOG.info("", cde);
-              --existing.numWaiters;  // Remove ourselves from waiters.
-              throw cde; 
+              --existing.numWaiters; // Remove ourselves from waiters.
+              if (existing.numWaiters > 0) {
+                existing.notify();
+              } else {
+                map.remove(existing.id);
+              }
+              throw cde;
             }
           }
           --existing.numWaiters;  // Remove ourselves from waiters.
