@@ -132,7 +132,6 @@ import org.apache.hadoop.hbase.ipc.HMasterRegionInterface;
 import org.apache.hadoop.hbase.ipc.HRegionInterface;
 import org.apache.hadoop.hbase.ipc.Invocation;
 import org.apache.hadoop.hbase.ipc.ProtocolSignature;
-import org.apache.hadoop.hbase.ipc.RequestContext;
 import org.apache.hadoop.hbase.ipc.RpcEngine;
 import org.apache.hadoop.hbase.ipc.RpcServer;
 import org.apache.hadoop.hbase.ipc.ServerNotRunningYetException;
@@ -188,7 +187,6 @@ import org.codehaus.jackson.map.ObjectMapper;
 import com.google.common.base.Function;
 import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import com.xiaomi.infra.hbase.trace.Tracer;
 import com.xiaomi.infra.hbase.trace.TracerUtils;
 
 /**
@@ -2289,6 +2287,7 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
   public Result get(byte[] regionName, Get get) throws IOException {
     checkOpen();
     requestCount.incrementAndGet();
+    TracerUtils.addAnnotation("start a get");
     try {
       HRegion region = getRegion(regionName);
       return region.get(get, getLockFromId(get.getLockId()));
@@ -2413,6 +2412,7 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
       throw new IOException("Invalid arguments to checkAndPut "
           + "regionName is null");
     }
+    TracerUtils.addAnnotation("start a checkAndPut");
     HRegion region = getRegion(regionName);
     Integer lock = getLockFromId(put.getLockId());
     WritableByteArrayComparable comparator = new BinaryComparator(value);
@@ -2455,6 +2455,7 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
       throw new IOException("Invalid arguments to checkAndPut "
           + "regionName is null");
     }
+    TracerUtils.addAnnotation("start a checkAndPut");
     HRegion region = getRegion(regionName);
     Integer lock = getLockFromId(put.getLockId());
     if (region.getCoprocessorHost() != null) {
@@ -2489,7 +2490,7 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
       final byte[] family, final byte[] qualifier, final byte[] value,
       final Delete delete) throws IOException {
     checkOpen();
-
+    TracerUtils.addAnnotation("start a checkAndDelete");
     if (regionName == null) {
       throw new IOException("Invalid arguments to checkAndDelete "
           + "regionName is null");
@@ -2653,6 +2654,7 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
   //
   
   public long openScanner(byte[] regionName, Scan scan) throws IOException {
+    TracerUtils.addAnnotation("start a openScanner");
     RegionScanner s = internalOpenScanner(regionName, scan);
     long scannerId = addScanner(s);
     return scannerId;
@@ -2717,6 +2719,7 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
   }
 
   public Result next(final long scannerId) throws IOException {
+    TracerUtils.addAnnotation("start a next");
     Result[] res = next(scannerId, 1);
     if (res == null || res.length == 0) {
       return null;
@@ -2725,6 +2728,7 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
   }
 
   public Result[] next(final long scannerId, int nbRows) throws IOException {
+    TracerUtils.addAnnotation("start a next");
     String scannerName = String.valueOf(scannerId);
     RegionScanner s = this.scanners.get(scannerName);
     if (s == null) {
@@ -2895,6 +2899,7 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
   @Override
   public Result[] scan(byte[] regionName, Scan scan, int numberOfRows)
       throws IOException {
+    TracerUtils.addAnnotation("start a scan");
     RegionScanner s = internalOpenScanner(regionName, scan);
     try {
       Result[] results = internalNext(s, numberOfRows, null);
@@ -2946,6 +2951,7 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
   public void delete(final byte[] regionName, final Delete delete)
       throws IOException {
     checkOpen();
+    TracerUtils.addAnnotation("start a delete");
     try {
       boolean writeToWAL = delete.getWriteToWAL();
       this.requestCount.incrementAndGet();
@@ -2963,6 +2969,7 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
   public int delete(final byte[] regionName, final List<Delete> deletes)
       throws IOException {
     checkOpen();
+    TracerUtils.addAnnotation("start a delete");
     // Count of Deletes processed.
     int i = 0;
     HRegion region = null;
