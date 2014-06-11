@@ -58,11 +58,11 @@ public class ZooKeeperMainServerArg {
       return null;
     for (int i = 0; i < hosts.size(); i++) {
       if (i > 0)
-        host += "," + hosts.get(i);
+        host += "," + hosts.get(i) + ":" + clientPort;
       else
-        host = hosts.get(i);
+        host = hosts.get(i) + ":" + clientPort;
     }
-    return host != null ? host + ":" + clientPort : null;
+    return host != null ? host : null;
   }
 
   /**
