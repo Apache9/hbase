@@ -40,7 +40,9 @@ import org.apache.hadoop.io.WritableUtils;
  */
 public class HServerLoad extends VersionedWritable
 implements WritableComparable<HServerLoad> {
-  private static final byte VERSION = 2;
+  private static final byte INT_REQUEST_VERSION = 2;
+  private static final byte VERSION = 3;
+
   // Empty load instance.
   public static final HServerLoad EMPTY_HSERVERLOAD = new HServerLoad();
 
@@ -51,7 +53,7 @@ implements WritableComparable<HServerLoad> {
 
   /** Total Number of requests from the start of the region server.
    */
-  private int totalNumberOfRequests = 0;
+  private long totalNumberOfRequests = 0;
   
   /** the amount of used heap, in MB */
   private int usedHeapMB = 0;
@@ -76,7 +78,7 @@ implements WritableComparable<HServerLoad> {
 
   /** @return the object version number */
   public byte getVersion() {
-    return VERSION;
+    return INT_REQUEST_VERSION;
   }
 
   /**
@@ -519,7 +521,7 @@ implements WritableComparable<HServerLoad> {
    * @param maxHeapMB
    * @param coprocessors : coprocessors loaded at the regionserver-level
    */
-  public HServerLoad(final int totalNumberOfRequests,
+  public HServerLoad(final long totalNumberOfRequests,
       final int numberOfRequests, final int usedHeapMB, final int maxHeapMB,
       final Map<byte[], RegionLoad> regionLoad,
       final Set<String> coprocessors) {
@@ -622,7 +624,7 @@ implements WritableComparable<HServerLoad> {
   /**
    * @return the numberOfRequests
    */
-  public int getTotalNumberOfRequests() {
+  public long getTotalNumberOfRequests() {
     return totalNumberOfRequests;
   }
 
@@ -702,7 +704,11 @@ implements WritableComparable<HServerLoad> {
       rl.readFields(in);
       regionLoad.put(rl.getName(), rl);
     }
-    totalNumberOfRequests = in.readInt();
+    if (version == INT_REQUEST_VERSION) {
+      totalNumberOfRequests = in.readInt();
+    } else{
+      totalNumberOfRequests = in.readLong();
+    }
     int coprocessorsSize = in.readInt();
     for(int i = 0; i < coprocessorsSize; i++) {
       coprocessors.add(in.readUTF());
@@ -718,7 +724,7 @@ implements WritableComparable<HServerLoad> {
     out.writeInt(this.regionLoad.size());
     for (RegionLoad rl: regionLoad.values())
       rl.write(out);
-    out.writeInt(totalNumberOfRequests);
+    out.writeLong(totalNumberOfRequests);
     out.writeInt(coprocessors.size());
     for (String coprocessor: coprocessors) {
       out.writeUTF(coprocessor);

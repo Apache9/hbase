@@ -1278,7 +1278,7 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
         storeUncompressedSizeMB,
         storefileSizeMB, memstoreSizeMB, storefileIndexSizeMB, rootIndexSizeKB,
         totalStaticIndexSizeKB, totalStaticBloomSizeKB,
-        (int) r.readRequestsCount.get(), (int) r.writeRequestsCount.get(),
+        r.readRequestsCount.get(), r.writeRequestsCount.get(),
         totalCompactingKVs, currentCompactedKVs, 
         r.getLastFlushSequenceId());
   }

@@ -1121,7 +1121,7 @@ Server {
     updateLastFlushedSequenceIds(sn, hsl);
     if (hsl != null && this.metrics != null) {
       // Up our metrics.
-      this.metrics.incrementRequests(hsl.getTotalNumberOfRequests());
+      this.metrics.incrementRequests(hsl.getNumberOfRequests());
     }
     return this.assignmentManager.getHTableRegionStatInfo(serverName);
   }
