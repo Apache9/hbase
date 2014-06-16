@@ -763,7 +763,7 @@ public class HTableDescriptor implements WritableComparable<HTableDescriptor> {
   public String toString() {
     StringBuilder s = new StringBuilder();
     s.append('\'').append(Bytes.toString(name)).append('\'');
-    s.append(getValues(true));
+    s.append(", ").append(getValues(true));
     for (HColumnDescriptor f : families.values()) {
       s.append(", ").append(f);
     }
@@ -777,7 +777,7 @@ public class HTableDescriptor implements WritableComparable<HTableDescriptor> {
   public String toStringCustomizedValues() {
     StringBuilder s = new StringBuilder();
     s.append('\'').append(Bytes.toString(name)).append('\'');
-    s.append(getValues(false));
+    s.append(", ").append(getValues(false));
     for(HColumnDescriptor hcd : families.values()) {
       s.append(", ").append(hcd.toStringCustomizedValues());
     }
@@ -790,7 +790,7 @@ public class HTableDescriptor implements WritableComparable<HTableDescriptor> {
     // step 1: set partitioning and pruning
     Set<ImmutableBytesWritable> reservedKeys = new TreeSet<ImmutableBytesWritable>();
     Set<ImmutableBytesWritable> configKeys = new TreeSet<ImmutableBytesWritable>();
-    for (ImmutableBytesWritable k : values.keySet()) {
+   for (ImmutableBytesWritable k : values.keySet()) {
       if (k == null || k.get() == null) continue;
       String key = Bytes.toString(k.get());
       // in this section, print out reserved keywords + coprocessor info
@@ -821,7 +821,7 @@ public class HTableDescriptor implements WritableComparable<HTableDescriptor> {
     if (reservedKeys.isEmpty() && configKeys.isEmpty()) return s;
 
     // step 2: printing
-    s.append(", {METHOD => 'table_att'");
+    s.append("{METHOD => 'table_att'");
 
     // print all reserved keys first
     for (ImmutableBytesWritable k : reservedKeys) {

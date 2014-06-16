@@ -414,7 +414,7 @@ module Hbase
     #----------------------------------------------------------------------------------------------
     # Returns table's structure description
     def describe(table_name)
-      @admin.getTableDescriptor(table_name.to_java_bytes).to_s
+      @admin.getTableDescriptor(table_name.to_java_bytes)
     end
 
     #----------------------------------------------------------------------------------------------

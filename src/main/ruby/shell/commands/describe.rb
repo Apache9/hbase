@@ -32,9 +32,14 @@ EOF
         now = Time.now
 
         desc = admin.describe(table)
-
-        formatter.header([ "DESCRIPTION", "ENABLED" ], [ 64 ])
-        formatter.row([ desc, admin.enabled?(table).to_s ], true, [ 64 ])
+        formatter.row([ "TABLE NAME:", desc.getNameAsString], true, [10])
+        formatter.row([ "ENABLED:", admin.enabled?(table).to_s], true, [10])
+        formatter.row([ "TABLE CONFIG:", desc.getValues(true).toString], true, [10])
+        formatter.row([ "COLUMN FAMILIES:", ""], true, [10])
+        columns = "" 
+        for col in desc.getColumnFamilies()
+          formatter.row(["", col.toStringCustomizedValues], true, [1])
+        end
         formatter.footer(now)
       end
     end
