@@ -25,6 +25,7 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.RegionStatistics;
 import org.apache.hadoop.hbase.catalog.CatalogTracker;
+import org.apache.hadoop.hbase.executor.ExecutorService;
 import org.apache.hadoop.hbase.ipc.RpcServer;
 import org.apache.hadoop.hbase.regionserver.wal.HLog;
 import org.apache.hadoop.hbase.util.Pair;
@@ -108,4 +109,9 @@ public interface RegionServerServices extends OnlineRegions {
    * @return The RegionServer's "Leases" service
    */
   public Leases getLeases();
+
+  /**
+   * @return executor service
+   */
+  public ExecutorService getExecutorService();
 }

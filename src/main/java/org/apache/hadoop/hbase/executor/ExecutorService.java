@@ -95,7 +95,9 @@ public class ExecutorService {
     RS_OPEN_META               (22),
     RS_CLOSE_REGION            (23),
     RS_CLOSE_ROOT              (24),
-    RS_CLOSE_META              (25);
+    RS_CLOSE_META              (25),
+    RS_PARALLEL_SEEK           (26),
+    RS_LOG_REPLAY_OPS          (27);
 
     ExecutorType(int value) {}
 
@@ -159,6 +161,9 @@ public class ExecutorService {
 
       case M_RS_CLOSE_META:
         return ExecutorType.RS_CLOSE_META;
+       
+      case RS_LOG_REPLAY:
+        return ExecutorType.RS_LOG_REPLAY_OPS;
 
       default:
         throw new RuntimeException("Unhandled event type " + type);

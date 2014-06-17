@@ -1506,7 +1506,6 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
       throw new RegionServerRunningException("Region server has already " +
         "created directory at " + this.serverNameFromMasterPOV.toString());
     }
-
     // Instantiate replication manager if replication enabled.  Pass it the
     // log directories.
     createNewReplicationInstance(conf, this, this.fs, logdir, oldLogDir);
@@ -1790,7 +1789,9 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
       conf.getInt("hbase.regionserver.executor.closeroot.threads", 1));
     this.service.startExecutorService(ExecutorType.RS_CLOSE_META,
       conf.getInt("hbase.regionserver.executor.closemeta.threads", 1));
-
+    this.service.startExecutorService(ExecutorType.RS_LOG_REPLAY_OPS,
+      conf.getInt("hbase.regionserver.wal.max.splitters", SplitLogWorker.DEFAULT_MAX_SPLITTERS));
+    
     Threads.setDaemonThreadRunning(this.hlogRoller.getThread(), n + ".logRoller",
         uncaughtExceptionHandler);
     this.cacheFlusher.start(uncaughtExceptionHandler);
@@ -4136,6 +4137,7 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
     return this.regionsInTransitionInRS.containsKey(hri.getEncodedNameAsBytes());
   }
 
+  @Override
   public ExecutorService getExecutorService() {
     return service;
   }

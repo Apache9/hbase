@@ -29,6 +29,7 @@ import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.RegionStatistics;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.catalog.CatalogTracker;
+import org.apache.hadoop.hbase.executor.ExecutorService;
 import org.apache.hadoop.hbase.fs.HFileSystem;
 import org.apache.hadoop.hbase.ipc.RpcServer;
 import org.apache.hadoop.hbase.regionserver.CompactionRequestor;
@@ -179,6 +180,12 @@ public class MockRegionServerServices implements RegionServerServices {
 
   @Override
   public RegionStatistics getRegionStats() {
+    return null;
+  }
+
+  @Override
+  public ExecutorService getExecutorService() {
+    // TODO Auto-generated method stub
     return null;
   }
 }

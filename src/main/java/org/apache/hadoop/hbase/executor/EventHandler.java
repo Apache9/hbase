@@ -25,6 +25,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.Server;
+import org.apache.hadoop.hbase.executor.ExecutorService.ExecutorType;
 
 
 /**
@@ -142,8 +143,15 @@ public abstract class EventHandler implements Runnable, Comparable<Runnable> {
     // RegionTransitionData.write() uses eventType.ordinal() that is the enum index
     // and not the value specified in the enum definition. so we can't add stuff in the middle.
     C_M_SNAPSHOT_TABLE        (48),   // Client asking Master to snapshot an offline table
-    C_M_RESTORE_SNAPSHOT      (49);   // Client asking Master to snapshot an offline table
-
+    C_M_RESTORE_SNAPSHOT      (49),   // Client asking Master to snapshot an offline table
+    
+    /**
+     * RS wal recovery work items(either creating recover.edits or directly replay wals) to be
+     * executed on the RS.<br>
+     * RS_LOG_REPLAY
+     */
+    RS_LOG_REPLAY             (81);
+    
     /**
      * Constructor
      */
