@@ -21,23 +21,29 @@ package org.apache.hadoop.hbase.client;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
+import java.util.Map;
+import java.util.NavigableSet;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.TreeSet;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.filter.BinaryComparator;
-import org.apache.hadoop.hbase.filter.WritableByteArrayComparable;
 import org.apache.hadoop.hbase.filter.CompareFilter.CompareOp;
+import org.apache.hadoop.hbase.filter.WritableByteArrayComparable;
 import org.apache.hadoop.hbase.io.HbaseObjectWritable;
 import org.apache.hadoop.hbase.util.Bytes;
-import org.apache.hadoop.io.Writable;
+
+import com.google.common.collect.ImmutableSet;
 
 /**
- * Check Condition
+ * Single column value check
  */
-
-public class Condition implements Writable {
-  private static final Log LOG = LogFactory.getLog(Condition.class);
+public class SingleColumnCheck implements Check {
+  private static final Log LOG = LogFactory.getLog(SingleColumnCheck.class);
   private static final byte VERSION = (byte) 1;
 
   private byte[] row;
@@ -46,66 +52,49 @@ public class Condition implements Writable {
   private CompareOp compareOp;
   private WritableByteArrayComparable comparator;
 
-  // to debug
-  private boolean failedMatch = false;
-  private Result reason = new Result();
-
-  /**
-   * Don't use, just for rpc deserialization
-   */
-  public Condition() {
+  public SingleColumnCheck() {
   }
 
-  public Condition(final byte[] row, final byte[] family, final byte[] qualifier,
+  public SingleColumnCheck(final byte[] row, final byte[] family, final byte[] qualifier,
       final CompareOp compareOp, WritableByteArrayComparable comparator) {
     this.row = row;
     this.family = family;
-    this.qualifier = qualifier;
+    this.qualifier =
+        qualifier == null ? HConstants.EMPTY_BYTE_ARRAY : qualifier;
     this.compareOp = compareOp;
     this.comparator = comparator;
   }
 
-  public Condition(final byte[] row, final byte[] family, final byte[] qualifier, final byte[] value) {
+  public SingleColumnCheck(final byte[] row, final byte[] family, final byte[] qualifier, final byte[] value) {
     this(row, family, qualifier, CompareOp.EQUAL, new BinaryComparator(value));
   }
 
-  public Condition(final byte[] row, final byte[] family, final byte[] qualifier,
+  public SingleColumnCheck(final byte[] row, final byte[] family, final byte[] qualifier,
       final CompareOp compareOp, final byte[] value) {
     this(row, family, qualifier, compareOp, new BinaryComparator(value));
   }
-
+  
+  @Override
   public byte[] getRow() {
     return row;
   }
-
-  public byte[] getFamily() {
-    return family;
+  
+  @Override
+  public Set<byte[]> getFamilies() {
+    return ImmutableSet.of(family);
   }
-
-  public byte[] getQualifier() {
-    return qualifier;
+  
+  @Override
+  public Map<byte[], NavigableSet<byte[]>> getFamilyMap() {
+    Map<byte [], NavigableSet<byte []>> familyMap =
+        new TreeMap<byte [], NavigableSet<byte []>>(Bytes.BYTES_COMPARATOR);
+    familyMap.put(family, new TreeSet<byte []>(Bytes.BYTES_COMPARATOR));
+    familyMap.get(family).add(qualifier);
+    return familyMap;
   }
-
-  public CompareOp getCompareOp() {
-    return compareOp;
-  }
-
-  public WritableByteArrayComparable getComparator() {
-    return comparator;
-  }
-
-  public boolean failedMatch() {
-    return failedMatch;
-  }
-
-  public boolean isMatch(Result result) {
-    // result.size() must be 0 or 1, except that the default max version
-    // setting logic of Get changed.
-    if (result.size() > 1) {
-      throw new RuntimeException(
-          "Result size of get in checkAndMutate must be 0 or 1, actual size:" + result.size());
-    }
-
+  
+  @Override
+  public boolean check(Result result) {
     boolean valueIsNull = comparator.getValue() == null || comparator.getValue().length == 0;
 
     KeyValue kv = result.getColumnLatest(family, qualifier);
@@ -130,10 +119,10 @@ public class Condition implements Writable {
           comparator.compareTo(kv.getBuffer(), kv.getValueOffset(), kv.getValueLength());
       switch (compareOp) {
       case LESS:
-        matches = compareResult < 0;
+        matches = compareResult > 0;
         break;
       case LESS_OR_EQUAL:
-        matches = compareResult <= 0;
+        matches = compareResult >= 0;
         break;
       case EQUAL:
         matches = compareResult == 0;
@@ -142,18 +131,14 @@ public class Condition implements Writable {
         matches = compareResult != 0;
         break;
       case GREATER_OR_EQUAL:
-        matches = compareResult >= 0;
+        matches = compareResult <= 0;
         break;
       case GREATER:
-        matches = compareResult > 0;
+        matches = compareResult < 0;
         break;
       default:
         throw new RuntimeException("Unknown Compare op " + compareOp.name());
       }
-    }
-    if (!matches) {
-      this.failedMatch  = true;
-      this.reason = result;
     }
     return matches;
   }
@@ -166,8 +151,6 @@ public class Condition implements Writable {
     Bytes.writeByteArray(out, this.qualifier);
     out.writeUTF(compareOp.name());
     HbaseObjectWritable.writeObject(out, comparator, WritableByteArrayComparable.class, null);
-    out.writeBoolean(failedMatch);
-    this.reason.write(out);
   }
 
   @Override
@@ -178,23 +161,17 @@ public class Condition implements Writable {
     this.qualifier = Bytes.readByteArray(in);
     this.compareOp = CompareOp.valueOf(in.readUTF());
     this.comparator = (WritableByteArrayComparable) HbaseObjectWritable.readObject(in, null);
-    this.failedMatch = in.readBoolean();
-    this.reason.readFields(in);
   }
   
   @Override
   public String toString() {
     StringBuilder sb = new StringBuilder();
-    sb.append("Condition row:" + Bytes.toString(row));
+    sb.append("Check row:" + Bytes.toString(row));
     sb.append(" familiy:" + Bytes.toString(family));
     sb.append(" qualifier:" + Bytes.toString(qualifier));
     sb.append(" compareOp:" + compareOp);
     sb.append(" comparator:" + comparator);
     sb.append(". ");
-
-    if (failedMatch) {
-      sb.append("Condition failed. Reason row: " + reason);
-    }
     return sb.toString();
   }
 }

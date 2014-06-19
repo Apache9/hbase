@@ -565,5 +565,11 @@ public class HTablePool implements Closeable {
     public void setWriteBufferSize(long writeBufferSize) throws IOException {
       table.setWriteBufferSize(writeBufferSize);
     }
+
+    @Override
+    public boolean checkAndMutate(Check check, Mutation mutate)
+        throws IOException {
+      return table.checkAndMutate(check, mutate);
+    }
   }
 }

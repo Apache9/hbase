@@ -52,16 +52,20 @@ import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Action;
 import org.apache.hadoop.hbase.client.Append;
+import org.apache.hadoop.hbase.client.Check;
+import org.apache.hadoop.hbase.client.CheckList;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Increment;
 import org.apache.hadoop.hbase.client.MultiAction;
 import org.apache.hadoop.hbase.client.MultiResponse;
+import org.apache.hadoop.hbase.client.Mutation;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.Row;
 import org.apache.hadoop.hbase.client.RowMutations;
 import org.apache.hadoop.hbase.client.Scan;
+import org.apache.hadoop.hbase.client.SingleColumnCheck;
 import org.apache.hadoop.hbase.client.coprocessor.Exec;
 import org.apache.hadoop.hbase.filter.BinaryComparator;
 import org.apache.hadoop.hbase.filter.BitComparator;
@@ -230,7 +234,7 @@ public class HbaseObjectWritable implements Writable, WritableWithSize, Configur
 
     addToMap(NavigableSet.class, code++);
     addToMap(ColumnPrefixFilter.class, code++);
-
+       
     // Multi
     addToMap(Row.class, code++);
     addToMap(Action.class, code++);
@@ -259,11 +263,11 @@ public class HbaseObjectWritable implements Writable, WritableWithSize, Configur
     addToMap(HTableDescriptor[].class, code++);
 
     addToMap(Append.class, code++);
-
+    
     addToMap(RowMutations.class, code++);
 
     addToMap(Message.class, code++);
-
+    
     //java.lang.reflect.Array is a placeholder for arrays not defined above
     GENERIC_ARRAY_CODE = code++;
     addToMap(Array.class, GENERIC_ARRAY_CODE);
@@ -272,7 +276,12 @@ public class HbaseObjectWritable implements Writable, WritableWithSize, Configur
 
     // we aren't going to bump the rpc version number.
     // we don't want to cause incompatiblity with older 0.94/0.92 clients.
-    addToMap(HSnapshotDescription.class, code);
+    addToMap(HSnapshotDescription.class, code++);
+
+    addToMap(Mutation.class, code++);
+    addToMap(Check.class, code++);
+    addToMap(SingleColumnCheck.class, code++);
+    addToMap(CheckList.class, code);
 
     // make sure that this is the last statement in this static block
     NEXT_CLASS_CODE = code;

@@ -42,11 +42,13 @@ import org.apache.hadoop.hbase.DoNotRetryIOException;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.Server;
 import org.apache.hadoop.hbase.client.Append;
+import org.apache.hadoop.hbase.client.Check;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.client.Increment;
+import org.apache.hadoop.hbase.client.Mutation;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
@@ -567,6 +569,12 @@ public abstract class CoprocessorHost<E extends CoprocessorEnvironment> {
       @Override
       public void setWriteBufferSize(long writeBufferSize) throws IOException {
         table.setWriteBufferSize(writeBufferSize);
+      }
+
+      @Override
+      public boolean checkAndMutate(Check check, Mutation mutate)
+          throws IOException {
+        return table.checkAndMutate(check, mutate);
       }
     }
 

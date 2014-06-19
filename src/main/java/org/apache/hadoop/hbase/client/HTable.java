@@ -24,14 +24,10 @@ import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
 import java.lang.reflect.Proxy;
-import java.net.InetAddress;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Collections;
 import java.util.NavigableMap;
 import java.util.TreeMap;
 import java.util.concurrent.Callable;
@@ -42,7 +38,6 @@ import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
-import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -1073,6 +1068,19 @@ public class HTable implements HTableInterface {
    * {@inheritDoc}
    */
   @Override
+  public boolean checkAndMutate(final Check check, final Mutation mutate)
+      throws IOException {
+    return new ServerCallable<Boolean>(connection, tableName, mutate.getRow(), operationTimeout) {
+      public Boolean call() throws IOException {
+        return server.checkAndMutate(location.getRegionInfo().getRegionName(), check, mutate);
+      }
+    }.withRetries();
+  }
+  
+  /**
+   * {@inheritDoc}
+   */
+  @Override
   public boolean exists(final Get get) throws IOException {
     return new ServerCallable<Boolean>(connection, tableName, get.getRow(), operationTimeout) {
           public Boolean call() throws IOException {
@@ -1436,5 +1444,4 @@ public class HTable implements HTableInterface {
   public int getOperationTimeout() {
     return operationTimeout;
   }
-
 }

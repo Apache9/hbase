@@ -85,7 +85,9 @@ import org.apache.hadoop.hbase.UnknownScannerException;
 import org.apache.hadoop.hbase.backup.HFileArchiver;
 import org.apache.hadoop.hbase.client.Action;
 import org.apache.hadoop.hbase.client.Append;
+import org.apache.hadoop.hbase.client.Check;
 import org.apache.hadoop.hbase.client.Condition;
+import org.apache.hadoop.hbase.client.SingleColumnCheck;
 import org.apache.hadoop.hbase.client.Durability;
 import org.apache.hadoop.hbase.client.RowMutations;
 import org.apache.hadoop.hbase.client.Delete;
@@ -2633,9 +2635,84 @@ public class HRegion implements HeapSize { // , Writable{
  throws IOException {
    return checkAndMutate(row, family, qualifier, compareOp, comparator, w, null, writeToWAL);
  }
-  
+
   /**
-   *
+   * Atomically mutate if the check successes
+   * @param check check list
+   * @param mutate mutation to write if the check successes
+   * @param lockId
+   * @throws IOException
+   * @return true if the new put was execute, false otherwise
+   */
+  public boolean checkAndMutate(Check check, Mutation mutate, Integer lockId)
+      throws IOException {
+    checkReadOnly();
+    //TODO, add check for value length or maybe even better move this to the
+    //client if this becomes a global setting
+    checkResources();
+    boolean isPut = mutate instanceof Put;
+    if (!isPut && !(mutate instanceof Delete))
+      throw new DoNotRetryIOException("Action must be Put or Delete");
+    
+    if (!Bytes.equals(check.getRow(), mutate.getRow())) {
+      throw new DoNotRetryIOException("Mutation's row must match the check's row");
+    }
+
+    long nowNs = System.nanoTime();
+    startRegionOperation();
+    this.writeRequestsCount.increment();
+    this.opMetrics.setWriteRequestCountMetrics(this.writeRequestsCount.get());
+    try {
+      RowLock lock = mutate.getRowLock();
+      Get get = new Get(check.getRow(), lock);
+      checkFamilies(check.getFamilies());
+      
+      Map<byte [], NavigableSet<byte []>> familyMap  = check.getFamilyMap();
+      for (byte[] family : familyMap.keySet()) {
+         for (byte[] qualifier: familyMap.get(family)) {
+           get.addColumn(family, qualifier);
+         }
+      }
+      // Lock row
+      Integer lid = getLock(lockId, get.getRow(), true);
+      // wait for all previous transactions to complete (with lock held)
+      mvcc.completeMemstoreInsert(mvcc.beginMemstoreInsert());
+      List<KeyValue> result = new ArrayList<KeyValue>();
+      try {
+        result = get(get, false);
+        boolean matches = check.check(new Result(result));
+        //If matches put the new put or delete the new delete
+        if (matches) {
+          // All edits for the given row (across all column families) must
+          // happen atomically.
+          //
+          // Using default cluster id, as this can only happen in the
+          // originating cluster. A slave cluster receives the result as a Put
+          // or Delete
+          if (isPut) {
+            internalPut(((Put) mutate), HConstants.DEFAULT_CLUSTER_ID, true);
+          } else {
+            Delete d = (Delete)mutate;
+            prepareDelete(d);
+            internalDelete(d, HConstants.DEFAULT_CLUSTER_ID, true);
+          }
+          return true;
+        }
+        return false;
+      } finally {
+        if(lockId == null) releaseRowLock(lid);
+      }
+    } finally {
+      closeRegionOperation();
+      long afterNs = System.nanoTime();
+      if (isPut) {
+        this.opMetrics.updateCheckAndPutMetrics((afterNs - nowNs) / 1000);
+      } else {
+        this.opMetrics.updateCheckAndDeleteMetrics((afterNs - nowNs) / 1000);
+      }
+    }
+  }
+  /**
    * @param row
    * @param family
    * @param qualifier
@@ -5043,7 +5120,6 @@ public class HRegion implements HeapSize { // , Writable{
         Get get = new Get(c.getRow());
         get.addColumn(c.getFamily(), c.getQualifier());
         Result result = get(get, acquiredLocks.get(row));
-      
         if (!c.isMatch(result)) { // no match
           return false;
         }

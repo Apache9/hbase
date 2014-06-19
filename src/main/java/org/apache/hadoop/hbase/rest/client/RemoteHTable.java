@@ -42,6 +42,8 @@ import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.KeyValue;
+import org.apache.hadoop.hbase.client.Check;
+import org.apache.hadoop.hbase.client.Mutation;
 import org.apache.hadoop.hbase.client.RowMutations;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Get;
@@ -824,5 +826,11 @@ public class RemoteHTable implements HTableInterface {
   @Override
   public void setWriteBufferSize(long writeBufferSize) throws IOException {
     throw new IOException("setWriteBufferSize not supported");
+  }
+
+  @Override
+  public boolean checkAndMutate(Check check, Mutation mutate)
+      throws IOException {
+    throw new IOException("checkAndMutate not implemented");
   }
 }

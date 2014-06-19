@@ -39,9 +39,12 @@ import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.TableNotDisabledException;
 import org.apache.hadoop.hbase.TableNotFoundException;
 import org.apache.hadoop.hbase.client.Append;
+import org.apache.hadoop.hbase.client.Check;
+import org.apache.hadoop.hbase.client.Condition;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Increment;
+import org.apache.hadoop.hbase.client.Mutation;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.Scan;
@@ -63,6 +66,7 @@ import org.apache.hadoop.hbase.master.MasterServices;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.SnapshotDescription;
 import org.apache.hadoop.hbase.regionserver.HRegion;
 import org.apache.hadoop.hbase.regionserver.InternalScanner;
+import org.apache.hadoop.hbase.regionserver.MiniBatchOperationInProgress;
 import org.apache.hadoop.hbase.regionserver.RegionScanner;
 import org.apache.hadoop.hbase.regionserver.Store;
 import org.apache.hadoop.hbase.regionserver.StoreFile;
@@ -984,6 +988,14 @@ public class AccessController extends BaseRegionObserver
     return result;
   }
 
+  @Override
+  public boolean preCheckAndMutate(final ObserverContext<RegionCoprocessorEnvironment> c,
+      final Check check, final Mutation mutate, final boolean result) throws IOException {
+    requirePermission("checkAndMutate", TablePermission.Action.READ, c.getEnvironment(), check.getFamilyMap());
+    requirePermission("checkAndMutate", TablePermission.Action.WRITE, c.getEnvironment(), mutate.getFamilyMap());
+    return result;
+  }
+  
   @Override
   public long preIncrementColumnValue(final ObserverContext<RegionCoprocessorEnvironment> c,
       final byte [] row, final byte [] family, final byte [] qualifier,

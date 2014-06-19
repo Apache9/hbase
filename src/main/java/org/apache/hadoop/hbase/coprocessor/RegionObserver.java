@@ -24,6 +24,7 @@ import org.apache.hadoop.hbase.Coprocessor;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Append;
+import org.apache.hadoop.hbase.client.Check;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Increment;
@@ -37,6 +38,7 @@ import org.apache.hadoop.hbase.regionserver.HRegion;
 import org.apache.hadoop.hbase.regionserver.InternalScanner;
 import org.apache.hadoop.hbase.regionserver.KeyValueScanner;
 import org.apache.hadoop.hbase.regionserver.MiniBatchOperationInProgress;
+import org.apache.hadoop.hbase.regionserver.OperationStatus;
 import org.apache.hadoop.hbase.regionserver.RegionScanner;
 import org.apache.hadoop.hbase.regionserver.ScanType;
 import org.apache.hadoop.hbase.regionserver.Store;
@@ -45,9 +47,9 @@ import org.apache.hadoop.hbase.regionserver.StoreFileScanner;
 import org.apache.hadoop.hbase.regionserver.compactions.CompactionRequest;
 import org.apache.hadoop.hbase.regionserver.wal.HLogKey;
 import org.apache.hadoop.hbase.regionserver.wal.WALEdit;
+import org.apache.hadoop.hbase.util.Pair;
 
 import com.google.common.collect.ImmutableList;
-import org.apache.hadoop.hbase.util.Pair;
 
 /**
  * Coprocessors implement this interface to observe and mediate client actions
@@ -582,7 +584,6 @@ public interface RegionObserver extends Coprocessor {
       final CompareOp compareOp, final WritableByteArrayComparable comparator,
       final Delete delete, final boolean result)
     throws IOException;
-
   /**
    * Called after checkAndDelete
    * <p>
@@ -603,6 +604,32 @@ public interface RegionObserver extends Coprocessor {
       final byte [] row, final byte [] family, final byte [] qualifier,
       final CompareOp compareOp, final WritableByteArrayComparable comparator,
       final Delete delete, final boolean result)
+    throws IOException;
+
+  /**
+   * Called before checkAndMutate
+   * @param c the environment provided by the region server
+   * @param check check list
+   * @param mutate mutation to put if check succeeds
+   * @param result from the checkAndMutate
+   * @return the possibly transformed return value to return to client
+   * @throws IOException
+   */
+  boolean preCheckAndMutate(final ObserverContext<RegionCoprocessorEnvironment> c,
+      final Check check, final Mutation mutate, final boolean result)
+    throws IOException;
+  
+  /**
+   * Called after checkAndMutate
+   * @param c the environment provided by the region server
+   * @param check check list
+   * @param mutate mutation to put if check succeeds
+   * @param result from the checkAndMutate
+   * @return the possibly transformed return value to return to client
+   * @throws IOException if an error occurred on the coprocessor
+   */
+  boolean postCheckAndMutate(final ObserverContext<RegionCoprocessorEnvironment> c,
+      final Check check, final Mutation mutate, final boolean result)
     throws IOException;
 
   /**

@@ -29,7 +29,6 @@ import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.coprocessor.Batch;
 import org.apache.hadoop.hbase.filter.CompareFilter.CompareOp;
-import org.apache.hadoop.hbase.filter.WritableByteArrayComparable;
 import org.apache.hadoop.hbase.ipc.CoprocessorProtocol;
 
 /**
@@ -269,6 +268,15 @@ public interface HTableInterface extends Closeable {
   boolean checkAndPut(byte[] row, byte[] family, byte[] qualifier,
       CompareOp compareOp, byte[] value, Put put) throws IOException;
 
+  /**
+   * Atomically mutate if the check successes
+   * @param check check list
+   * @param mutate mutation to write if the check successes
+   * @return true if the mutation was executed, false otherwise
+   * @throws IOException
+   */
+  boolean checkAndMutate(Check check, Mutation mutate) throws IOException;
+  
   /**
    * Deletes the specified cells/row.
    *

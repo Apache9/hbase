@@ -43,6 +43,7 @@ import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Append;
+import org.apache.hadoop.hbase.client.Check;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Increment;
@@ -979,7 +980,7 @@ public class RegionCoprocessorHost
     }
     return bypass ? result : null;
   }
-
+  
   /**
    * @param row row to check
    * @param family column family
@@ -1012,6 +1013,64 @@ public class RegionCoprocessorHost
     return result;
   }
 
+  /**
+   * @param check check list
+   * @param mutate mutation to write if the check successes
+   * @return
+   * @throws IOException e
+   */
+  public Boolean preCheckAndMutate(final Check check, final Mutation mutate)
+      throws IOException {
+    boolean bypass = false;
+    boolean result = false;
+    ObserverContext<RegionCoprocessorEnvironment> ctx = null;
+    for (RegionEnvironment env: coprocessors) {
+      if (env.getInstance() instanceof RegionObserver) {
+        ctx = ObserverContext.createAndPrepare(env, ctx);
+        try {
+          result =
+              ((RegionObserver) env.getInstance()).preCheckAndMutate(ctx,
+                check, mutate, result);
+        } catch (Throwable e) {
+          handleCoprocessorThrowable(env, e);
+        }
+        bypass |= ctx.shouldBypass();
+        if (ctx.shouldComplete()) {
+          break;
+        }
+      }
+    }
+    return bypass ? result : null;
+  }
+  
+  /**
+   * @param check check list
+   * @param mutate mutation to write if check successes
+   * @param result result from the checkAndMutate
+   * @return
+   * @throws IOException
+   */
+  public boolean postCheckAndMutate(final Check check,
+      final Mutation mutate, boolean result) throws IOException {
+    ObserverContext<RegionCoprocessorEnvironment> ctx = null;
+    for (RegionEnvironment env: coprocessors) {
+      if (env.getInstance() instanceof RegionObserver) {
+        ctx = ObserverContext.createAndPrepare(env, ctx);
+        try {
+          result =
+              ((RegionObserver) env.getInstance()).postCheckAndMutate(ctx,
+                check, mutate, result);
+        } catch (Throwable e) {
+          handleCoprocessorThrowable(env, e);
+        }
+        if (ctx.shouldComplete()) {
+          break;
+        }
+      }
+    }
+    return result;
+  }
+  
   /**
    * @param row row to check
    * @param family column family

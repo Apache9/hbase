@@ -96,6 +96,7 @@ import org.apache.hadoop.hbase.catalog.MetaReader;
 import org.apache.hadoop.hbase.catalog.RootLocationEditor;
 import org.apache.hadoop.hbase.client.Action;
 import org.apache.hadoop.hbase.client.Append;
+import org.apache.hadoop.hbase.client.Check;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.HConnectionManager;
@@ -2392,7 +2393,38 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
       throw convertThrowableToIOE(cleanup(t));
     }
   }
-
+  
+  /**
+   * Atomically mutate if the check successes
+   * @param regionName
+   * @param check check list
+   * @param mutate mutation to write if the check successes
+   * @throws IOException
+   * @return true if the new put was execute, false otherwise
+   */
+  @Override
+  public boolean checkAndMutate(final byte[] regionName, final Check check,
+      final Mutation mutate) throws IOException {
+    checkOpen();
+    if (regionName == null) {
+      throw new IOException("Invalid arguments to checkAndPut "
+          + "regionName is null");
+    }
+    HRegion region = getRegion(regionName);
+    Integer lock = getLockFromId(mutate.getLockId());
+    if (region.getCoprocessorHost() != null) {
+      Boolean result = region.getCoprocessorHost().preCheckAndMutate(check, mutate);
+      if (result != null) {
+        return result.booleanValue();
+      }
+    }
+    boolean result = region.checkAndMutate(check, mutate, lock);
+    if (region.getCoprocessorHost() != null) {
+      result = region.getCoprocessorHost().postCheckAndMutate(check, mutate, result);
+    }
+    return result;
+  }
+  
   /**
    *
    * @param regionName

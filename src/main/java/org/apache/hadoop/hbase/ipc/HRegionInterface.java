@@ -29,6 +29,8 @@ import org.apache.hadoop.hbase.HServerInfo;
 import org.apache.hadoop.hbase.NotServingRegionException;
 import org.apache.hadoop.hbase.Stoppable;
 import org.apache.hadoop.hbase.client.Append;
+import org.apache.hadoop.hbase.client.Check;
+import org.apache.hadoop.hbase.client.Mutation;
 import org.apache.hadoop.hbase.client.RowMutations;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Get;
@@ -219,13 +221,23 @@ public interface HRegionInterface extends VersionedProtocol, Stoppable, Abortabl
    * @param value the expected value
    * @param put data to put if check succeeds
    * @throws IOException e
-   * @return true if the new put was execute, false otherwise
+   * @return true if the put was execute, false otherwise
    */
   public boolean checkAndPut(final byte[] regionName, final byte [] row,
       final byte [] family, final byte [] qualifier, final byte [] value,
       final Put put)
   throws IOException;
 
+  /**
+   * Atomically mutate if the check successes
+   * @param regionName region name
+   * @param check check list
+   * @param mutate write mutation if check succeeds 
+   * @return true if the mutation was execute, false otherwise
+   * @throws IOException
+   */
+  boolean checkAndMutate(final byte[] regionName, final Check check,
+      final Mutation mutate) throws IOException;
 
   /**
    * Atomically checks if a row/family/qualifier value match the expectedValue.

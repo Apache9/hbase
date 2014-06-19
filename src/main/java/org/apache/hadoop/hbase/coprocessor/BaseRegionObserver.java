@@ -24,6 +24,7 @@ import org.apache.hadoop.hbase.CoprocessorEnvironment;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Append;
+import org.apache.hadoop.hbase.client.Check;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Increment;
@@ -266,6 +267,20 @@ public abstract class BaseRegionObserver implements RegionObserver {
     return result;
   }
 
+  @Override
+  public boolean preCheckAndMutate(final ObserverContext<RegionCoprocessorEnvironment> c,
+      final Check check, final Mutation mutate, final boolean result)
+    throws IOException {
+    return result;
+  }
+  
+  @Override
+  public boolean postCheckAndMutate(final ObserverContext<RegionCoprocessorEnvironment> c,
+      final Check check, final Mutation mutate, final boolean result)
+    throws IOException{
+    return result;
+  }
+  
   @Override
   public Result preAppend(final ObserverContext<RegionCoprocessorEnvironment> e,
       final Append append) throws IOException {
