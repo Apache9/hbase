@@ -167,7 +167,7 @@ module Hbase
     end
 
     define_test "describe should return a description" do
-      assert_not_nil admin.describe(@test_name)
+      assert_not_nil admin.describe(@test_name).to_s
     end
 
     #-------------------------------------------------------------------------------
@@ -258,7 +258,7 @@ module Hbase
 
     define_test "alter should be able to change table options" do
       admin.alter(@test_name, true, METHOD => 'table_att', 'MAX_FILESIZE' => 12345678)
-      assert_match(/12345678/, admin.describe(@test_name))
+      assert_match(/12345678/, admin.describe(@test_name).to_s)
     end
 
     define_test "alter should be able to change coprocessor attributes" do
@@ -271,11 +271,11 @@ module Hbase
       cp_value = "hdfs:///foo.jar|" + class_name + "|12|arg1=1,arg2=2"
 
       # eval() is used to convert a string to regex
-      assert_no_match(eval("/" + class_name + "/"), admin.describe(@test_name))
-      assert_no_match(eval("/" + cp_key + "/"), admin.describe(@test_name))
+      assert_no_match(eval("/" + class_name + "/"), admin.describe(@test_name).to_s)
+      assert_no_match(eval("/" + cp_key + "/"), admin.describe(@test_name).to_s)
       admin.alter(@test_name, true, 'METHOD' => 'table_att', cp_key => cp_value)
-      assert_match(eval("/" + class_name + "/"), admin.describe(@test_name))
-      assert_match(eval("/" + cp_key + "\\$(\\d+)/"), admin.describe(@test_name))
+      assert_match(eval("/" + class_name + "/"), admin.describe(@test_name).to_s)
+      assert_match(eval("/" + cp_key + "\\$(\\d+)/"), admin.describe(@test_name).to_s)
     end
 
     define_test "alter should be able to remove a table attribute" do
@@ -288,16 +288,16 @@ module Hbase
       admin.alter(@test_name, true, 'METHOD' => 'table_att', key2 => 12345678)
 
       # eval() is used to convert a string to regex
-      assert_match(eval("/" + key1 + "\\$(\\d+)/"), admin.describe(@test_name))
-      assert_match(eval("/" + key2 + "/"), admin.describe(@test_name))
+      assert_match(eval("/" + key1 + "\\$(\\d+)/"), admin.describe(@test_name).to_s)
+      assert_match(eval("/" + key2 + "/"), admin.describe(@test_name).to_s)
 
       # get the cp key
-      cp_keys = admin.describe(@test_name).scan(/(coprocessor\$\d+)/i)
+      cp_keys = admin.describe(@test_name).to_s.scan(/(coprocessor\$\d+)/i)
 
       admin.alter(@test_name, true, 'METHOD' => 'table_att_unset', 'NAME' => cp_keys[0][0])
       admin.alter(@test_name, true, 'METHOD' => 'table_att_unset', 'NAME' => key2)
-      assert_no_match(eval("/" + key1 + "\\$(\\d+)/"), admin.describe(@test_name))
-      assert_no_match(eval("/" + key2 + "/"), admin.describe(@test_name))
+      assert_no_match(eval("/" + key1 + "\\$(\\d+)/"), admin.describe(@test_name).to_s)
+      assert_no_match(eval("/" + key2 + "/"), admin.describe(@test_name).to_s)
     end
   end
 end
