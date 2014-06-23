@@ -108,7 +108,7 @@ public class TestAtomicOperation extends HBaseTestCase {
     assertEquals(0, Bytes.compareTo(Bytes.toBytes(v1+v2), result.getValue(fam1, qual1)));
     assertEquals(0, Bytes.compareTo(Bytes.toBytes(v2+v1), result.getValue(fam1, qual2)));
   }
-
+  
   /**
    * Test one increment command.
    */
@@ -128,8 +128,8 @@ public class TestAtomicOperation extends HBaseTestCase {
     assertEquals(value+amount, result);
 
     Store store = region.getStore(fam1);
-    // ICV removes any extra values floating around in there.
-    assertEquals(1, store.memstore.kvset.size());
+    // the default family version is 3, won't delete old versions
+    assertEquals(2, store.memstore.kvset.size());
     assertTrue(store.memstore.snapshot.isEmpty());
 
     assertICV(row, fam1, qual1, value+amount);

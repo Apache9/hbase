@@ -540,7 +540,76 @@ public class TestHRegion extends HBaseTestCase {
     }
     assertTrue(exceptionCaught == true);
   }
-
+  
+  public void testAppend_SetMvcc() throws IOException {
+    this.region = initHRegion(tableName, getName(), conf, fam1);
+    String v1 = "Ultimate Answer to the Ultimate Question of Life,"+
+    " The Universe, and Everything";
+    String v2 = " is... 42.";
+    Put put = new Put(row);
+    put.add(fam1, qual1, Bytes.toBytes(v1));
+    put.add(fam1, qual2, Bytes.toBytes(v2));
+    region.put(put);
+    Append a = new Append(row);
+    a.add(fam1, qual1, Bytes.toBytes(v2));
+    region.append(a, null, true);
+    Result rs = region.get(new Get(row).addFamily(fam1));
+    KeyValue kv1 = rs.getColumnLatest(fam1, qual1);
+    Assert.assertTrue(kv1.getMemstoreTS() > 0);
+    KeyValue kv2 = rs.getColumnLatest(fam1, qual2);
+    Assert.assertTrue(kv1.getMemstoreTS() > kv2.getMemstoreTS());
+  }
+  
+  // the mutation order is : put(oldValue) => getScanner => put(newValue)/append => next,
+  // will check the scan will get oldValue because append set mvcc
+  public void testAppend_ScanOldValue() throws IOException {
+    for (int i = 0; i < 2; ++i) {
+      this.region = initHRegion(tableName, getName(), conf, fam1);
+      if (i == 0) {
+        this.region.getStore(fam1).getFamily().setMaxVersions(1);
+      }
+      String v1 = "Ultimate Answer to the Ultimate Question of Life,"
+          + " The Universe, and Everything";
+      String v2 = " is... 42.";
+      Put put = new Put(row);
+      put.add(fam1, qual1, Bytes.toBytes(v1));
+      put.add(fam1, qual2, Bytes.toBytes(v2));
+      region.put(put);
+      
+      RegionScanner scanner = region.getScanner(new Scan(row, row));
+      region.put(new Put(row).add(fam1, qual2, Bytes.toBytes(v2 + v1)));
+      Append a = new Append(row);
+      a.add(fam1, qual1, Bytes.toBytes(v2));
+      region.append(a, null, true);
+      
+      List<KeyValue> results = new ArrayList<KeyValue>();
+      scanner.next(results);
+      Assert.assertEquals(2, results.size());
+      // check we both get old value
+      Assert.assertEquals(v1, Bytes.toString(results.get(0).getValue()));
+      Assert.assertEquals(v2, Bytes.toString(results.get(1).getValue()));
+      scanner.close();
+    }
+  }
+  
+  public void testAppend_UpdateInPlace_OneFamilyVersion() throws IOException {
+    this.region = initHRegion(tableName, getName(), conf, fam1);
+    this.region.getStore(fam1).getFamily().setMaxVersions(1);
+    String v1 = "Ultimate Answer to the Ultimate Question of Life,"+
+    " The Universe, and Everything";
+    String v2 = " is... 42.";
+    Put put = new Put(row);
+    put.add(fam1, qual1, Bytes.toBytes(v1));
+    region.put(put);
+    Append a = new Append(row);
+    a.add(fam1, qual1, Bytes.toBytes(v2));
+    region.append(a, null, true);
+    Assert.assertEquals(1, region.getStore(fam1).memstore.kvset.size());
+    Assert.assertEquals(v1 + v2,
+      Bytes.toString(region.get(new Get(row).addColumn(fam1, qual1)).list().get(0).getValue()));
+  }
+  
+  
   public void testIncrWithReadOnlyTable() throws Exception {
     byte[] TABLE = Bytes.toBytes("readOnlyTable");
     this.region = initHRegion(TABLE, getName(), conf, true, Bytes.toBytes("somefamily"));
@@ -2628,8 +2697,9 @@ public class TestHRegion extends HBaseTestCase {
     }
   }
 
-  public void testIncrementColumnValue_UpdatingInPlace() throws IOException {
+  public void testIncrementColumnValue_UpdatingInPlaceWhenOneFamilyVersion() throws IOException {
     this.region = initHRegion(tableName, getName(), conf, fam1);
+    this.region.getStore(fam1).getFamily().setMaxVersions(1);
     try {
       long value = 1L;
       long amount = 3L;
@@ -2655,8 +2725,6 @@ public class TestHRegion extends HBaseTestCase {
   }
 
   public void testIncrementColumnValue_BumpSnapshot() throws IOException {
-    ManualEnvironmentEdge mee = new ManualEnvironmentEdge();
-    EnvironmentEdgeManagerTestHelper.injectEdge(mee);
     this.region = initHRegion(tableName, getName(), conf, fam1);
     try {
       long value = 42L;
@@ -2684,11 +2752,7 @@ public class TestHRegion extends HBaseTestCase {
 
       Result r = region.get(get, null);
       assertEquals(2, r.size());
-      KeyValue first = r.raw()[0];
-      KeyValue second = r.raw()[1];
-
-      assertTrue("ICV failed to upgrade timestamp",
-          first.getTimestamp() != second.getTimestamp());
+      Assert.assertTrue(r.raw()[0].getTimestamp() > r.raw()[1].getTimestamp());
     } finally {
       HRegion.closeHRegion(this.region);
       this.region = null;
@@ -2865,8 +2929,9 @@ public class TestHRegion extends HBaseTestCase {
    * happen and the ICV put to effectively disappear.
    * @throws IOException
    */
-  public void testIncrementColumnValue_UpdatingInPlace_TimestampClobber() throws IOException {
+  public void testIncrementColumnValue_UpdatingInPlace_TimestampClobber_OneFamilyVersion() throws IOException {
     this.region = initHRegion(tableName, getName(), conf, fam1);
+    this.region.getStore(fam1).getFamily().setMaxVersions(1);
     try {
       long value = 1L;
       long amount = 3L;
@@ -2885,7 +2950,7 @@ public class TestHRegion extends HBaseTestCase {
       assertEquals(value+amount, result);
 
       Store store = region.getStore(fam1);
-      // ICV should update the existing Put with the same timestamp
+      // ICV should update the existing Put with the same timestamp when maxversion of family is 1
       assertEquals(1, store.memstore.kvset.size());
       assertTrue(store.memstore.snapshot.isEmpty());
 
@@ -2938,6 +3003,63 @@ public class TestHRegion extends HBaseTestCase {
     } finally {
       HRegion.closeHRegion(this.region);
       this.region = null;
+    }
+  }
+  
+  public void testIncrementColumnValue_SetMvcc() throws IOException {
+    this.region = initHRegion(tableName, getName(), conf, fam1);
+    try {
+      byte[] row1 = Bytes.add(Bytes.toBytes("1234"), Bytes.toBytes(0L));
+      long row1Field1 = 0;
+      long row1Field2 = 1;
+      Put put1 = new Put(row1);
+      put1.add(fam1, qual1, Bytes.toBytes(row1Field1));
+      put1.add(fam1, qual2, Bytes.toBytes(row1Field2));
+      region.put(put1);
+      region.incrementColumnValue(row1, fam1, qual1, 1, true);
+      Result rs = region.get(new Get(row1).addFamily(fam1));
+      KeyValue kv1 = rs.getColumnLatest(fam1, qual1);
+      Assert.assertTrue(kv1.getMemstoreTS() > 0);
+      KeyValue kv2 = rs.getColumnLatest(fam1, qual2);
+      Assert.assertTrue(kv1.getMemstoreTS() > kv2.getMemstoreTS());
+    } finally {
+      HRegion.closeHRegion(this.region);
+      this.region = null;
+    }
+  }
+  
+  // the mutation order is : put(oldValue) => getScanner => put(newValue)/IncrementColumnValue => next,
+  // will check the scan will get oldValue because IncrementColumnValue set mvcc
+  public void testIncrementColumnValue_ScanOldValue() throws IOException {
+    for (int i = 0; i < 2; ++i) {
+      this.region = initHRegion(tableName, getName(), conf, fam1);
+      if (i == 0) {
+        this.region.getStore(fam1).getFamily().setMaxVersions(1);
+      }
+      try {
+        byte[] row1 = Bytes.add(Bytes.toBytes("1234"), Bytes.toBytes(0L));
+        long row1Field1 = 0;
+        long row1Field2 = 1;
+        Put put1 = new Put(row1);
+        put1.add(fam1, qual1, Bytes.toBytes(row1Field1));
+        put1.add(fam1, qual2, Bytes.toBytes(row1Field2));
+        region.put(put1);
+        
+        RegionScanner scanner = region.getScanner(new Scan(row1, row1));
+        region.put(new Put(row1).add(fam1, qual2, Bytes.toBytes(row1Field2 + 1)));
+        region.incrementColumnValue(row1, fam1, qual2, 1, true);
+        
+        List<KeyValue> results = new ArrayList<KeyValue>();
+        scanner.next(results);
+        Assert.assertEquals(2, results.size());
+        // check we both get old value
+        Assert.assertEquals(row1Field1, Bytes.toLong(results.get(0).getValue()));
+        Assert.assertEquals(row1Field2, Bytes.toLong(results.get(1).getValue()));
+        scanner.close();
+      } finally {
+        HRegion.closeHRegion(this.region);
+        this.region = null;
+      } 
     }
   }
   
@@ -3020,6 +3142,93 @@ public class TestHRegion extends HBaseTestCase {
       this.region = null;
     }
   }
+  
+  public void testIncrement_SetMvcc() throws IOException {
+    this.region = initHRegion(tableName, getName(), conf, fam1);
+    try {
+      byte[] row1 = Bytes.add(Bytes.toBytes("1234"), Bytes.toBytes(0L));
+      long row1Field1 = 0;
+      int row1Field2 = 1;
+      Put put1 = new Put(row1);
+      put1.add(fam1, qual1, Bytes.toBytes(row1Field1));
+      put1.add(fam1, qual2, Bytes.toBytes(row1Field2));
+      region.put(put1);
+      Increment increment = new Increment(row1);
+      increment.addColumn(fam1, qual1, 1);
+
+      //here we should be successful as normal
+      region.increment(increment, null, true);
+      Result rs = region.get(new Get(row1).addFamily(fam1));
+      KeyValue kv1 = rs.getColumnLatest(fam1, qual1);
+      Assert.assertTrue(kv1.getMemstoreTS() > 0);
+      KeyValue kv2 = rs.getColumnLatest(fam1, qual2);
+      Assert.assertTrue(kv1.getMemstoreTS() > kv2.getMemstoreTS());
+    } finally {
+      HRegion.closeHRegion(this.region);
+      this.region = null;
+    }
+  }
+  
+  // the mutation order is : put(oldValue) => getScanner => put(newValue)/Increment => next,
+  // will check the scan will get oldValue because Increment set mvcc
+  public void testIncrement_ScanOldValue() throws IOException {
+    for (int i = 0; i < 2; ++i) {
+      this.region = initHRegion(tableName, getName(), conf, fam1);
+      if (i == 0) {
+        this.region.getStore(fam1).getFamily().setMaxVersions(1);
+      }
+      try {
+        byte[] row1 = Bytes.add(Bytes.toBytes("1234"), Bytes.toBytes(0L));
+        long row1Field1 = 0;
+        int row1Field2 = 1;
+        Put put1 = new Put(row1);
+        put1.add(fam1, qual1, Bytes.toBytes(row1Field1));
+        put1.add(fam1, qual2, Bytes.toBytes(row1Field2));
+        region.put(put1);
+        
+        RegionScanner scanner = region.getScanner(new Scan(row1, row1));
+        region.put(new Put(row1).add(fam1, qual2, Bytes.toBytes(row1Field2 + 1)));
+        Increment increment = new Increment(row1);
+        increment.addColumn(fam1, qual1, 1);
+        region.increment(increment, null, true);
+        
+        List<KeyValue> results = new ArrayList<KeyValue>();
+        scanner.next(results);
+        Assert.assertEquals(2, results.size());
+        // check we both get old value
+        Assert.assertEquals(row1Field1, Bytes.toInt(results.get(0).getValue()));
+        Assert.assertEquals(row1Field2, Bytes.toInt(results.get(1).getValue()));
+        scanner.close();
+      } finally {
+        HRegion.closeHRegion(this.region);
+        this.region = null;
+      } 
+    }
+  }
+  
+  public void testIncrement_UpdatingInPlace_OneFamilyVersion() throws IOException {
+    this.region = initHRegion(tableName, getName(), conf, fam1);
+    this.region.getStore(fam1).getFamily().setMaxVersions(1);
+
+    try {
+      long value = 3L;
+      long amount = 1L;
+
+      Put put = new Put(row);
+      put.add(fam1, qual1, Bytes.toBytes(value));
+      region.put(put);
+
+      Increment increment = new Increment(row);
+      increment.addColumn(fam1, qual1, amount);
+      region.increment(increment, null, true);
+      Assert.assertEquals(1, this.region.getStore(fam1).memstore.kvset.size());
+      assertICV(row, fam1, qual1, value + amount);
+    } finally {
+      HRegion.closeHRegion(this.region);
+      this.region = null;
+    }
+  }
+  
   private void assertICV(byte [] row,
                          byte [] familiy,
                          byte[] qualifier,
@@ -4555,7 +4764,7 @@ public class TestHRegion extends HBaseTestCase {
     throws IOException{
     return initHRegion(tableName, null, null, callingMethod, conf, false, families);
   }
-
+  
   /**
    * @param tableName
    * @param callingMethod

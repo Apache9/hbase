@@ -864,12 +864,12 @@ public class TestMemStore extends TestCase {
     long oldSize = memstore.size.get();
     
     KeyValue kv1 = KeyValueTestUtil.create("r", "f", "q", 100, "v");
-    this.memstore.upsert(Collections.singletonList(kv1));
+    this.memstore.upsert(Collections.singletonList(kv1), 0);
     long newSize = this.memstore.size.get();
     assert(newSize > oldSize);
     
     KeyValue kv2 = KeyValueTestUtil.create("r", "f", "q", 101, "v");
-    this.memstore.upsert(Collections.singletonList(kv2));
+    this.memstore.upsert(Collections.singletonList(kv2), 0);
     assertEquals(newSize, this.memstore.size.get());
   }
 
@@ -909,7 +909,7 @@ public class TestMemStore extends TestCase {
       List<KeyValue> l = new ArrayList<KeyValue>();
       KeyValue kv1 = KeyValueTestUtil.create("r", "f", "q", 100, "v");
       l.add(kv1);
-      memstore.upsert(l);
+      memstore.upsert(l, 0);
       t = memstore.timeOfOldestEdit();
       assertTrue(t == 1234);
     } finally {

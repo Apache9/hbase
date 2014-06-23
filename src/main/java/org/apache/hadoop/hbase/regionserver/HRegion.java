@@ -119,6 +119,7 @@ import org.apache.hadoop.hbase.ipc.RpcCallContext;
 import org.apache.hadoop.hbase.monitoring.MonitoredTask;
 import org.apache.hadoop.hbase.monitoring.TaskMonitor;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.SnapshotDescription;
+import org.apache.hadoop.hbase.regionserver.MultiVersionConsistencyControl.WriteEntry;
 import org.apache.hadoop.hbase.regionserver.compactions.CompactionRequest;
 import org.apache.hadoop.hbase.regionserver.metrics.OperationMetrics;
 import org.apache.hadoop.hbase.regionserver.metrics.SchemaMetrics;
@@ -5298,9 +5299,12 @@ public class HRegion implements HeapSize { // , Writable{
     startRegionOperation();
     this.writeRequestsCount.increment();
     this.opMetrics.setWriteRequestCountMetrics(this.writeRequestsCount.get());
+    WriteEntry w = null;
     try {
       Integer lid = getLock(lockid, row, true);
       lock(this.updatesLock.readLock());
+      mvcc.completeMemstoreInsert(mvcc.beginMemstoreInsert());
+      w = mvcc.beginMemstoreInsert();
       try {
         long now = EnvironmentEdgeManager.currentTimeMillis();
         // Process each family
@@ -5363,7 +5367,7 @@ public class HRegion implements HeapSize { // , Writable{
             System.arraycopy(kv.getBuffer(), kv.getQualifierOffset(),
                 newKV.getBuffer(), newKV.getQualifierOffset(),
                 kv.getQualifierLength());
-
+            newKV.setMemstoreTS(w.getWriteNumber());
             kvs.add(newKV);
 
             // Append update to WAL
@@ -5392,7 +5396,15 @@ public class HRegion implements HeapSize { // , Writable{
         // Actually write to Memstore now
         for (Map.Entry<Store, List<KeyValue>> entry : tempMemstore.entrySet()) {
           Store store = entry.getKey();
-          size += store.upsert(entry.getValue());
+          // upsert if VERSIONS for this CF == 1
+          if (store.getFamily().getMaxVersions() == 1) {
+            size += store.upsert(entry.getValue(), getSmallestReadPoint());
+          } else {
+            // otherwise keep older versions around
+            for (KeyValue kv : entry.getValue()) {
+              size += store.add(kv);
+            }
+          }
           allKVs.addAll(entry.getValue());
         }
         size = this.addAndGetGlobalMemstoreSize(size);
@@ -5406,6 +5418,9 @@ public class HRegion implements HeapSize { // , Writable{
         syncOrDefer(txid, append.getDurability());
       }
     } finally {
+      if (w != null) {
+        mvcc.completeMemstoreInsert(w);
+      }
       closeRegionOperation();
     }
 
@@ -5471,9 +5486,12 @@ public class HRegion implements HeapSize { // , Writable{
     startRegionOperation();
     this.writeRequestsCount.increment();
     this.opMetrics.setWriteRequestCountMetrics(this.writeRequestsCount.get());
+    WriteEntry w = null;
     try {
       Integer lid = getLock(lockid, row, true);
       lock(this.updatesLock.readLock());
+      mvcc.completeMemstoreInsert(mvcc.beginMemstoreInsert());
+      w = mvcc.beginMemstoreInsert();
       try {
         long now = EnvironmentEdgeManager.currentTimeMillis();
         // Process each family
@@ -5521,6 +5539,7 @@ public class HRegion implements HeapSize { // , Writable{
             // Append new incremented KeyValue to list
             KeyValue newKV = new KeyValue(row, family.getKey(), column.getKey(),
                 now, codec.encode(amount));
+            newKV.setMemstoreTS(w.getWriteNumber());
             kvs.add(newKV);
 
             // Append update to WAL
@@ -5549,7 +5568,15 @@ public class HRegion implements HeapSize { // , Writable{
         //Actually write to Memstore now
         for (Map.Entry<Store, List<KeyValue>> entry : tempMemstore.entrySet()) {
           Store store = entry.getKey();
-          size += store.upsert(entry.getValue());
+          // upsert if VERSIONS for this CF == 1
+          if (store.getFamily().getMaxVersions() == 1) {
+            size += store.upsert(entry.getValue(), getSmallestReadPoint());
+          } else {
+            // otherwise keep older versions around
+            for (KeyValue kv : entry.getValue()) {
+              size += store.add(kv);
+            }
+          }
           allKVs.addAll(entry.getValue());
         }
         size = this.addAndGetGlobalMemstoreSize(size);
@@ -5563,6 +5590,9 @@ public class HRegion implements HeapSize { // , Writable{
         syncOrDefer(txid, Durability.USE_DEFAULT);
       }
     } finally {
+      if (w != null) {
+        mvcc.completeMemstoreInsert(w);
+      }
       closeRegionOperation();
       long afterNs = System.nanoTime();
       this.opMetrics.updateIncrementMetrics(increment.getFamilyMap().keySet(), (afterNs - beforeNs) / 1000);
@@ -5600,9 +5630,12 @@ public class HRegion implements HeapSize { // , Writable{
     startRegionOperation();
     this.writeRequestsCount.increment();
     this.opMetrics.setWriteRequestCountMetrics(this.writeRequestsCount.get());
+    WriteEntry w = null;
     try {
       Integer lid = obtainRowLock(row);
       lock(this.updatesLock.readLock());
+      mvcc.completeMemstoreInsert(mvcc.beginMemstoreInsert());
+      w = mvcc.beginMemstoreInsert();
       try {
         Store store = stores.get(family);
 
@@ -5626,13 +5659,14 @@ public class HRegion implements HeapSize { // , Writable{
           }
         }
         if(!wrongLength && (amount != 0)){
+          // build the KeyValue now:
+          KeyValue newKv = new KeyValue(row, family,
+              qualifier, EnvironmentEdgeManager.currentTimeMillis(),
+              Bytes.toBytes(result));
+          newKv.setMemstoreTS(w.getWriteNumber());
+          
           // now log it:
           if (writeToWAL) {
-            // build the KeyValue now:
-            KeyValue newKv = new KeyValue(row, family,
-                qualifier, EnvironmentEdgeManager.currentTimeMillis(),
-                Bytes.toBytes(result));
-
             long now = EnvironmentEdgeManager.currentTimeMillis();
             WALEdit walEdit = new WALEdit();
             walEdit.add(newKv);
@@ -5644,10 +5678,13 @@ public class HRegion implements HeapSize { // , Writable{
                 this.htableDescriptor);
           }
 
-          // Now request the ICV to the store, this will set the timestamp
-          // appropriately depending on if there is a value in memcache or not.
-          // returns the change in the size of the memstore from operation
-          long size = store.updateColumnValue(row, family, qualifier, result);
+          long size = 0;
+          // upsert if VERSIONS for this CF == 1
+          if (store.getFamily().getMaxVersions() == 1) {
+            size = store.upsert(Lists.newArrayList(newKv), getSmallestReadPoint());
+          } else {
+            size = store.add(newKv);
+          }
 
           size = this.addAndGetGlobalMemstoreSize(size);
           flush = isFlushSize(size);
@@ -5661,6 +5698,9 @@ public class HRegion implements HeapSize { // , Writable{
         syncOrDefer(txid, Durability.USE_DEFAULT);
       }
     } finally {
+      if (w != null) {
+        mvcc.completeMemstoreInsert(w);
+      }
       closeRegionOperation();
     }
 

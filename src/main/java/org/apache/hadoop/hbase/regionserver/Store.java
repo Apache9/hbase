@@ -2359,9 +2359,8 @@ public class Store extends SchemaConfigured implements HeapSize {
    * @throws IOException
    */
   public long updateColumnValue(byte [] row, byte [] f,
-                                byte [] qualifier, long newValue)
-      throws IOException {
-
+      byte [] qualifier, long newValue)
+          throws IOException {
     this.lock.readLock().lock();
     try {
       long now = EnvironmentEdgeManager.currentTimeMillis();
@@ -2389,13 +2388,12 @@ public class Store extends SchemaConfigured implements HeapSize {
    * @param kvs
    * @return memstore size delta
    * @throws IOException
-   */
-  public long upsert(List<KeyValue> kvs)
+   */   
+  public long upsert(List<KeyValue> kvs, long smallestReadPoint)
       throws IOException {
     this.lock.readLock().lock();
     try {
-      // TODO: Make this operation atomic w/ MVCC
-      return this.memstore.upsert(kvs);
+      return this.memstore.upsert(kvs, smallestReadPoint);
     } finally {
       this.lock.readLock().unlock();
     }

@@ -476,10 +476,10 @@ public class MemStore implements HeapSize {
    * @return  Timestamp
    */
   public long updateColumnValue(byte[] row,
-                                byte[] family,
-                                byte[] qualifier,
-                                long newValue,
-                                long now) {
+      byte[] family,
+      byte[] qualifier,
+      long newValue,
+      long now) {
    this.lock.readLock().lock();
     try {
       KeyValue firstKv = KeyValue.createFirstOnRow(
@@ -523,8 +523,7 @@ public class MemStore implements HeapSize {
       // create or update (upsert) a new KeyValue with
       // 'now' and a 0 memstoreTS == immediately visible
       return upsert(Arrays.asList(
-          new KeyValue(row, family, qualifier, now, Bytes.toBytes(newValue)))
-      );
+          new KeyValue(row, family, qualifier, now, Bytes.toBytes(newValue))), 0);
     } finally {
       this.lock.readLock().unlock();
     }
@@ -547,20 +546,19 @@ public class MemStore implements HeapSize {
    * @param kvs
    * @return change in memstore size
    */
-  public long upsert(List<KeyValue> kvs) {
-   this.lock.readLock().lock();
-    try {
-      long size = 0;
-      for (KeyValue kv : kvs) {
-        kv.setMemstoreTS(0);
-        size += upsert(kv);
-      }
-      return size;
-    } finally {
-      this.lock.readLock().unlock();
-    }
-  }
-
+  public long upsert(List<KeyValue> kvs, long readpoint) {
+    this.lock.readLock().lock();
+     try {
+       long size = 0;
+       for (KeyValue kv : kvs) {
+         size += upsert(kv, readpoint);
+       }
+       return size;
+     } finally {
+       this.lock.readLock().unlock();
+     }
+   }
+  
   /**
    * Inserts the specified KeyValue into MemStore and deletes any existing
    * versions of the same row/family/qualifier as the specified KeyValue.
@@ -575,7 +573,7 @@ public class MemStore implements HeapSize {
    * @param kv
    * @return change in size of MemStore
    */
-  private long upsert(KeyValue kv) {
+  private long upsert(KeyValue kv, long readpoint) {
     // Add the KeyValue to the MemStore
     // Use the internalAdd method here since we (a) already have a lock
     // and (b) cannot safely use the MSLAB here without potentially
@@ -592,6 +590,8 @@ public class MemStore implements HeapSize {
         kv.getBuffer(), kv.getQualifierOffset(), kv.getQualifierLength());
     SortedSet<KeyValue> ss = kvset.tailSet(firstKv);
     Iterator<KeyValue> it = ss.iterator();
+    // versions visible to oldest scanner
+    int versionsVisible = 0;
     while ( it.hasNext() ) {
       KeyValue cur = it.next();
 
@@ -606,16 +606,23 @@ public class MemStore implements HeapSize {
 
       // if the qualifier matches and it's a put, remove it
       if (kv.matchingQualifier(cur)) {
+        // only remove Puts that concurrent scanners cannot possibly see
+        if (cur.getType() == KeyValue.Type.Put.getCode() && cur.getMemstoreTS() <= readpoint) {
+          if (versionsVisible > 1) {
+            // if we get here we have seen at least one version visible to the oldest scanner,
+            // which means we can prove that no scanner will see this version
 
-        // to be extra safe we only remove Puts that have a memstoreTS==0
-        if (kv.getType() == KeyValue.Type.Put.getCode() &&
-            kv.getMemstoreTS() == 0) {
-          // false means there was a change, so give us the size.
-          long delta = heapSizeChange(cur, true);
-          addedSize -= delta;
-          this.size.addAndGet(-delta);
-          it.remove();
-          setOldestEditTimeToNow();
+            // false means there was a change, so give us the size.
+
+            // false means there was a change, so give us the size.
+            long delta = heapSizeChange(cur, true);
+            addedSize -= delta;
+            this.size.addAndGet(-delta);
+            it.remove();
+            setOldestEditTimeToNow();
+          } else {
+            versionsVisible++;
+          }
         }
       } else {
         // past the column, done
