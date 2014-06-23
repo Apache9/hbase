@@ -190,8 +190,7 @@ module Hbase
         qualifier = org.apache.hadoop.hbase.util.Bytes::toStringBinary(kv.getQualifier)
 
         column = "#{family}:#{qualifier}"
-        columnType = column_type[column]
-        value = to_string(column, kv, maxlength, columnType)
+        value = to_string(column, kv, maxlength, column_type[column])
 
         if block_given?
           yield(column, value)
@@ -231,6 +230,7 @@ module Hbase
 
       limit = args.delete("LIMIT") || -1
       maxlength = args.delete("MAXLENGTH") || -1
+      column_type = Hash.new
 
       if args.any?
         filter = args["FILTER"]
@@ -258,7 +258,9 @@ module Hbase
         end
 
         columns.each do |c| 
-          family, qualifier = parse_column_name(c.to_s)
+          family, qualifier, type = parse_column_name_and_type(c.to_s)
+          column_str = "#{String.from_java_bytes(family)}:#{org.apache.hadoop.hbase.util.Bytes::toStringBinary(qualifier)}"
+          column_type[column_str] = type
           if qualifier
             scan.addColumn(family, qualifier)
           else
@@ -303,7 +305,7 @@ module Hbase
           qualifier = org.apache.hadoop.hbase.util.Bytes::toStringBinary(kv.getQualifier)
 
           column = "#{family}:#{qualifier}"
-          cell = to_string(column, kv, maxlength)
+          cell = to_string(column, kv, maxlength, column_type[column])
 
           if block_given?
             yield(key, "column=#{column}, #{cell}")
@@ -383,6 +385,8 @@ module Hbase
           val = "timestamp=#{kv.getTimestamp}, value=#{org.apache.hadoop.hbase.util.Bytes::toInt(kv.getValue)}"
         elsif columnType == "long"
           val = "timestamp=#{kv.getTimestamp}, value=#{org.apache.hadoop.hbase.util.Bytes::toLong(kv.getValue)}"
+        elsif columnType == "short"
+          val = "timestamp=#{kv.getTimestamp}, value=#{org.apache.hadoop.hbase.util.Bytes::toShort(kv.getValue)}"
         elsif columnType == "byte"
           val = "timestamp=#{kv.getTimestamp}, value=#{kv.getValue()[0]}"
         else

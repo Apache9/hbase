@@ -37,6 +37,13 @@ a dictionary of column(s), timestamp, timerange and versions. Examples:
   hbase> get 't1', 'r1', 'c1'
   hbase> get 't1', 'r1', 'c1', 'c2'
   hbase> get 't1', 'r1', ['c1', 'c2']
+
+Column can be specified with a type which could be short/int/long/byte. Examples:
+  hbase> get 't1', 'r1', {COLUMN => 'cf:qualifier:short'}
+  hbase> get 't1', 'r1', {COLUMN => 'cf:qualifier:int'}
+  hbase> get 't1', 'r1', {COLUMN => 'cf:qualifier:long'}
+  hbase> get 't1', 'r1', {COLUMN => 'cf:qualifier:byte'}
+
 EOF
       end
 
