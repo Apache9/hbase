@@ -863,13 +863,26 @@ public class TestMemStore extends TestCase {
     memstore = new MemStore(conf, KeyValue.COMPARATOR);
     long oldSize = memstore.size.get();
     
+    List<KeyValue> l = new ArrayList<KeyValue>();
     KeyValue kv1 = KeyValueTestUtil.create("r", "f", "q", 100, "v");
-    this.memstore.upsert(Collections.singletonList(kv1), 0);
+    KeyValue kv2 = KeyValueTestUtil.create("r", "f", "q", 101, "v");
+    KeyValue kv3 = KeyValueTestUtil.create("r", "f", "q", 102, "v");
+    kv1.setMemstoreTS(1);
+    kv2.setMemstoreTS(1);
+    kv3.setMemstoreTS(1);
+    l.add(kv1);
+    l.add(kv2);
+    l.add(kv3);
+
+    this.memstore.upsert(l, 2);// readpoint is 2
     long newSize = this.memstore.size.get();
     assert(newSize > oldSize);
-    
-    KeyValue kv2 = KeyValueTestUtil.create("r", "f", "q", 101, "v");
-    this.memstore.upsert(Collections.singletonList(kv2), 0);
+
+    KeyValue kv4 = KeyValueTestUtil.create("r", "f", "q", 104, "v");
+    kv4.setMemstoreTS(1);
+    l.clear();
+    l.add(kv4);
+    this.memstore.upsert(l, 3);
     assertEquals(newSize, this.memstore.size.get());
   }
 

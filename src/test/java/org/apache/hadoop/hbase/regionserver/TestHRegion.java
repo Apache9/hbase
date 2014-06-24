@@ -604,8 +604,13 @@ public class TestHRegion extends HBaseTestCase {
     Append a = new Append(row);
     a.add(fam1, qual1, Bytes.toBytes(v2));
     region.append(a, null, true);
-    Assert.assertEquals(1, region.getStore(fam1).memstore.kvset.size());
-    Assert.assertEquals(v1 + v2,
+    Assert.assertEquals(2, region.getStore(fam1).memstore.kvset.size());
+    region.append(a, null, true);
+    Assert.assertEquals(3, region.getStore(fam1).memstore.kvset.size());
+    region.append(a, null, true);
+    // update in place and delete old versions
+    Assert.assertEquals(3, region.getStore(fam1).memstore.kvset.size());
+    Assert.assertEquals(v1 + v2 + v2 + v2,
       Bytes.toString(region.get(new Get(row).addColumn(fam1, qual1)).list().get(0).getValue()));
   }
   
@@ -2709,15 +2714,22 @@ public class TestHRegion extends HBaseTestCase {
       region.put(put);
 
       long result = region.incrementColumnValue(row, fam1, qual1, amount, true);
-
       assertEquals(value+amount, result);
-
       Store store = region.getStore(fam1);
-      // ICV removes any extra values floating around in there.
-      assertEquals(1, store.memstore.kvset.size());
+      assertEquals(2, store.memstore.kvset.size());
       assertTrue(store.memstore.snapshot.isEmpty());
 
-      assertICV(row, fam1, qual1, value+amount);
+      result = region.incrementColumnValue(row, fam1, qual1, amount, true);
+      assertEquals(value + 2 * amount, result);
+      store = region.getStore(fam1);
+      assertEquals(3, store.memstore.kvset.size());
+      
+      // update in place, will delete old version
+      result = region.incrementColumnValue(row, fam1, qual1, amount, true);
+      assertEquals(value + 3 * amount, result);
+      store = region.getStore(fam1);
+      assertEquals(3, store.memstore.kvset.size());
+      assertICV(row, fam1, qual1, value + 3 * amount);
     } finally {
       HRegion.closeHRegion(this.region);
       this.region = null;
@@ -2914,64 +2926,6 @@ public class TestHRegion extends HBaseTestCase {
 
       // ensure that this gets to disk.
       assertICV(row, fam1, qual3, amount);
-    } finally {
-      HRegion.closeHRegion(this.region);
-      this.region = null;
-    }
-  }
-
-  /**
-   * Added for HBASE-3235.
-   *
-   * When the initial put and an ICV update were arriving with the same timestamp,
-   * the initial Put KV was being skipped during {@link MemStore#upsert(KeyValue)}
-   * causing the iteration for matching KVs, causing the update-in-place to not
-   * happen and the ICV put to effectively disappear.
-   * @throws IOException
-   */
-  public void testIncrementColumnValue_UpdatingInPlace_TimestampClobber_OneFamilyVersion() throws IOException {
-    this.region = initHRegion(tableName, getName(), conf, fam1);
-    this.region.getStore(fam1).getFamily().setMaxVersions(1);
-    try {
-      long value = 1L;
-      long amount = 3L;
-      long now = EnvironmentEdgeManager.currentTimeMillis();
-      ManualEnvironmentEdge mock = new ManualEnvironmentEdge();
-      mock.setValue(now);
-      EnvironmentEdgeManagerTestHelper.injectEdge(mock);
-
-      // verify we catch an ICV on a put with the same timestamp
-      Put put = new Put(row);
-      put.add(fam1, qual1, now, Bytes.toBytes(value));
-      region.put(put);
-
-      long result = region.incrementColumnValue(row, fam1, qual1, amount, true);
-
-      assertEquals(value+amount, result);
-
-      Store store = region.getStore(fam1);
-      // ICV should update the existing Put with the same timestamp when maxversion of family is 1
-      assertEquals(1, store.memstore.kvset.size());
-      assertTrue(store.memstore.snapshot.isEmpty());
-
-      assertICV(row, fam1, qual1, value+amount);
-
-      // verify we catch an ICV even when the put ts > now
-      put = new Put(row);
-      put.add(fam1, qual2, now+1, Bytes.toBytes(value));
-      region.put(put);
-
-      result = region.incrementColumnValue(row, fam1, qual2, amount, true);
-
-      assertEquals(value+amount, result);
-
-      store = region.getStore(fam1);
-      // ICV should update the existing Put with the same timestamp
-      assertEquals(2, store.memstore.kvset.size());
-      assertTrue(store.memstore.snapshot.isEmpty());
-
-      assertICV(row, fam1, qual2, value+amount);
-      EnvironmentEdgeManagerTestHelper.reset();
     } finally {
       HRegion.closeHRegion(this.region);
       this.region = null;
@@ -3221,8 +3175,13 @@ public class TestHRegion extends HBaseTestCase {
       Increment increment = new Increment(row);
       increment.addColumn(fam1, qual1, amount);
       region.increment(increment, null, true);
-      Assert.assertEquals(1, this.region.getStore(fam1).memstore.kvset.size());
-      assertICV(row, fam1, qual1, value + amount);
+      Assert.assertEquals(2, this.region.getStore(fam1).memstore.kvset.size());
+      region.increment(increment, null, true);
+      Assert.assertEquals(3, this.region.getStore(fam1).memstore.kvset.size());
+      // update in place and delete old version
+      region.increment(increment, null, true);
+      Assert.assertEquals(3, this.region.getStore(fam1).memstore.kvset.size());
+      assertICV(row, fam1, qual1, value + 3 * amount);
     } finally {
       HRegion.closeHRegion(this.region);
       this.region = null;
