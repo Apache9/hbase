@@ -23,11 +23,13 @@ import static org.apache.hadoop.hbase.zookeeper.ZKSplitLog.Counters.*;
 
 import java.io.IOException;
 import java.io.InterruptedIOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Queue;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.commons.lang.mutable.MutableInt;
 import org.apache.commons.logging.Log;
@@ -38,7 +40,6 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.Server;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.executor.ExecutorService;
-import org.apache.hadoop.hbase.ipc.HMasterRegionInterface;
 import org.apache.hadoop.hbase.master.SplitLogManager;
 import org.apache.hadoop.hbase.regionserver.handler.HLogSplitterHandler;
 import org.apache.hadoop.hbase.regionserver.wal.HLogSplitter;
@@ -83,7 +84,7 @@ public class SplitLogWorker extends ZooKeeperListener implements Runnable {
   Thread worker;
   private final Server server;
   private final int report_period;
-  private final String serverName;
+  private final ServerName serverName;
   private final TaskExecutor splitTaskExecutor;
   // thread pool which executes recovery work
   private final ExecutorService executorService;
@@ -104,7 +105,7 @@ public class SplitLogWorker extends ZooKeeperListener implements Runnable {
       RegionServerServices server, TaskExecutor splitTaskExecutor) {
     super(watcher);
     this.server = server;
-    this.serverName = server.getServerName().getServerName();
+    this.serverName = server.getServerName();
     this.splitTaskExecutor = splitTaskExecutor;
     this.report_period = conf.getInt("hbase.splitlog.report.period",                  
            conf.getInt("hbase.splitlog.manager.timeout", ZKSplitLog.DEFAULT_TIMEOUT) / 3);
@@ -222,20 +223,19 @@ public class SplitLogWorker extends ZooKeeperListener implements Runnable {
   private void taskLoop() {
     while (true) {
       int seq_start = taskReadySeq;
-      List<String> paths = getTaskList();
-      if (paths == null) {
+      Queue<String> taskQueue = getTaskQueue();
+      if (taskQueue == null) {
         LOG.warn("Could not get tasks, did someone remove " +
             this.watcher.splitLogZNode + " ... worker thread exiting.");
         return;
       }
-      int offset = (int)(Math.random() * paths.size());
-      int numTasks = paths.size();
-      for (int i = 0; i < numTasks; i++) {
-        int idx = (i + offset) % paths.size();
+      int numTasks = taskQueue.size();  
+      while(!taskQueue.isEmpty()) {
+        String task = taskQueue.poll();
         // don't call ZKSplitLog.getNodeName() because that will lead to
         // double encoding of the path name
         if (this.calculateAvailableSplitters(numTasks) > 0) {
-          grabTask(ZKUtil.joinZNode(watcher.splitLogZNode, paths.get(idx)));
+          grabTask(ZKUtil.joinZNode(watcher.splitLogZNode, task));
         } else {
           LOG.debug("Current region server " + this.serverName + " has "
               + this.tasksInProgress.get()
@@ -293,14 +293,14 @@ public class SplitLogWorker extends ZooKeeperListener implements Runnable {
         return;
       }
 
-      currentVersion = attemptToOwnTask(true, watcher, serverName, path, stat.getVersion());
+      currentVersion = attemptToOwnTask(true, watcher, serverName.getServerName(), path, stat.getVersion());
       if (currentVersion < 0) {
         tot_wkr_failed_to_grab_task_lost_race.incrementAndGet();
         return;
       }
 
       if (ZKSplitLog.isRescanNode(watcher, currentTask)) {
-        HLogSplitterHandler.endTask(watcher, TaskState.TASK_DONE.get(serverName), tot_wkr_task_acquired_rescan,
+        HLogSplitterHandler.endTask(watcher, TaskState.TASK_DONE.get(serverName.getServerName()), tot_wkr_task_acquired_rescan,
           currentTask, currentVersion);
         return;
       }
@@ -419,7 +419,7 @@ public class SplitLogWorker extends ZooKeeperListener implements Runnable {
         if ((t - last_report_at) > reportPeriod) {
           last_report_at = t;
           int latestZKVersion =
-              attemptToOwnTask(false, watcher, serverName, curTask,
+              attemptToOwnTask(false, watcher, serverName.getServerName(), curTask,
                 zkVersion.intValue());
           if (latestZKVersion < 0) {
             LOG.warn("Failed to heartbeat the task" + curTask);
@@ -456,10 +456,10 @@ public class SplitLogWorker extends ZooKeeperListener implements Runnable {
           // UNASSIGNED because by the time this worker sets the data watch
           // the node might have made two transitions - from owned by this
           // worker to unassigned to owned by another worker
-          if (! TaskState.TASK_OWNED.equals(data, serverName) &&
-              ! TaskState.TASK_DONE.equals(data, serverName) &&
-              ! TaskState.TASK_ERR.equals(data, serverName) &&
-              ! TaskState.TASK_RESIGNED.equals(data, serverName)) {
+          if (! TaskState.TASK_OWNED.equals(data, serverName.getServerName()) &&
+              ! TaskState.TASK_DONE.equals(data, serverName.getServerName()) &&
+              ! TaskState.TASK_ERR.equals(data, serverName.getServerName()) &&
+              ! TaskState.TASK_RESIGNED.equals(data, serverName.getServerName())) {
             LOG.info("task " + taskpath + " preempted from " +
                 serverName + ", current task state and owner=" +
                 new String(data));
@@ -506,17 +506,33 @@ public class SplitLogWorker extends ZooKeeperListener implements Runnable {
   }
 
 
-  private List<String> getTaskList() {
-    List<String> childrenPaths = null;
+  private Queue<String> getTaskQueue() {
     long sleepTime = 1000;
     // It will be in loop till it gets the list of children or
     // it will come out if worker thread exited.
     while (!exitWorker) {
       try {
-        childrenPaths = ZKUtil.listChildrenAndWatchForNewChildren(this.watcher,
+        List<String> childrenPaths = ZKUtil.listChildrenAndWatchForNewChildren(this.watcher,
             this.watcher.splitLogZNode);
         if (childrenPaths != null) {
-          return childrenPaths;
+          List<String> localTasks = new ArrayList<String>();
+          List<String> remoteTasks = new ArrayList<String>();
+          for (String task: childrenPaths) {
+            if (ZKSplitLog.isLocalTask(task, serverName.getHostname())) {
+              localTasks.add(task);
+            }else {
+              remoteTasks.add(task);
+            }
+          }
+          // shuffle the tasks
+          Queue<String> queue = new LinkedList<String>();
+          // put local tasks first
+          Collections.shuffle(localTasks);
+          queue.addAll(localTasks);
+          
+          Collections.shuffle(remoteTasks);
+          queue.addAll(remoteTasks);
+          return queue;
         }
       } catch (KeeperException e) {
         LOG.warn("Could not get children of znode "
@@ -531,7 +547,7 @@ public class SplitLogWorker extends ZooKeeperListener implements Runnable {
         Thread.currentThread().interrupt();
       }
     }
-    return childrenPaths;
+    return null;
   }
 
 
@@ -594,7 +610,7 @@ public class SplitLogWorker extends ZooKeeperListener implements Runnable {
       return;
     }
   }
-
+  
   /**
    * Objects implementing this interface actually do the task that has been
    * acquired by a {@link SplitLogWorker}. Since there isn't a water-tight

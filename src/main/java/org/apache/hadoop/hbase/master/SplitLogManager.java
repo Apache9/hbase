@@ -23,6 +23,7 @@ import static org.apache.hadoop.hbase.zookeeper.ZKSplitLog.Counters.*;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -34,6 +35,7 @@ import java.util.concurrent.ConcurrentMap;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.BlockLocation;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -282,7 +284,9 @@ public class SplitLogManager extends ZooKeeperListener {
       // recover-lease is done. totalSize will be under in most cases and the
       // metrics that it drives will also be under-reported.
       totalSize += lf.getLen();
-      if (enqueueSplitTask(lf.getPath().toString(), batch) == false) {
+      BlockLocation[] locations = fs.getFileBlockLocations(lf, 0, lf.getLen());
+      String location = ZKSplitLog.encodeLocation(locations[0].getHosts());
+      if (enqueueSplitTask(lf.getPath().toString(), location, batch) == false) {
         throw new IOException("duplicate log split scheduled for "
             + lf.getPath());
       }
@@ -330,9 +334,9 @@ public class SplitLogManager extends ZooKeeperListener {
    * @param batch the batch this task belongs to
    * @return true if a new entry is created, false if it is already there.
    */
-  boolean enqueueSplitTask(String taskname, TaskBatch batch) {
+  boolean enqueueSplitTask(String taskname, String location, TaskBatch batch) {
     tot_mgr_log_split_start.incrementAndGet();
-    String path = ZKSplitLog.getEncodedNodeName(watcher, taskname);
+    String path = ZKSplitLog.getEncodedNodeName(this.watcher, taskname, location);
     Task oldtask = createTaskIfAbsent(path, batch);
     if (oldtask == null) {
       // publish the task in zk

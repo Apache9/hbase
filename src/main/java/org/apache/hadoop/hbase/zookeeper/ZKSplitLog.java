@@ -24,9 +24,7 @@ import java.io.UnsupportedEncodingException;
 import java.lang.reflect.Field;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.commons.logging.Log;
@@ -61,13 +59,57 @@ public class ZKSplitLog {
       String filename) {
       return ZKUtil.joinZNode(zkw.splitLogZNode, encode(filename));
   }
-
-  public static String getFileName(String node) {
-    String basename = node.substring(node.lastIndexOf('/') + 1);
-    return decode(basename);
+  /**
+   * Gets the full path node name with location for the log file being split.
+   * @param zkw zk reference
+   * @param filename log file name (only the basename)
+   * @param location
+   * @return
+   */
+  public static String getEncodedNodeName(ZooKeeperWatcher zkw,
+      String filename, String location) {
+      return ZKUtil.joinZNode(zkw.splitLogZNode, encode(filename) + "@" + location);
   }
 
+  public static boolean isLocalTask(String task, String localhost) {
+    for (String host: getLogLocation(task)) {
+       if (host.equals(localhost)) {
+         return true;
+       }
+    }
+    return false;
+  }
 
+  public static String getFileName(String node) {
+    int index = node.lastIndexOf('@');
+    String path = node;
+    if (index != -1) {
+      path = node.substring(0, index);
+    }
+    String basename = path.substring(path.lastIndexOf('/') + 1);
+    return decode(basename);
+  }
+  
+  public static String encodeLocation(String[] hosts) {
+    if (hosts == null) {
+      return "";
+    }
+    StringBuilder sb = new StringBuilder();
+    for (int i = 0 ; i < hosts.length;i ++) {
+      if (i > 0) sb.append(",");
+      sb.append(hosts[i]);
+    }
+    return sb.toString();
+  }
+
+  public static String[] getLogLocation(String node) {
+    int index = node.lastIndexOf('@');
+    if (index != -1) {
+      return node.substring(index + 1).split(",");
+    }
+    return new String[0];
+  }
+ 
   public static String encode(String s) {
     try {
       return URLEncoder.encode(s, "UTF-8");
@@ -83,7 +125,7 @@ public class ZKSplitLog {
       throw new RuntimeException("URLDecoder doesn't support UTF-8");
     }
   }
-
+  
   public static String getRescanNode(ZooKeeperWatcher zkw) {
     return ZKUtil.joinZNode(zkw.splitLogZNode, "RESCAN");
   }
@@ -152,6 +194,8 @@ public class ZKSplitLog {
       return new String(state);
     }
   }
+
+
 
   public static Path getSplitLogDir(Path rootdir, String tmpname) {
     return new Path(new Path(rootdir, HConstants.SPLIT_LOGDIR_NAME), tmpname);

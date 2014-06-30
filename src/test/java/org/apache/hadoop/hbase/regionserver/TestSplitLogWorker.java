@@ -280,7 +280,7 @@ public class TestSplitLogWorker {
       stopSplitLogWorker(slw);
     }
   }
-
+  
   @Test
   public void testRescan() throws Exception {
     LOG.info("testRescan");
