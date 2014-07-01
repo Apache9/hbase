@@ -57,7 +57,7 @@ public class ZKSplitLog {
    */
   public static String getEncodedNodeName(ZooKeeperWatcher zkw,
       String filename) {
-      return ZKUtil.joinZNode(zkw.splitLogZNode, encode(filename));
+    return getEncodedNodeName(zkw, filename, null);
   }
   /**
    * Gets the full path node name with location for the log file being split.
@@ -68,7 +68,10 @@ public class ZKSplitLog {
    */
   public static String getEncodedNodeName(ZooKeeperWatcher zkw,
       String filename, String location) {
-      return ZKUtil.joinZNode(zkw.splitLogZNode, encode(filename) + "@" + location);
+    if (location == null || location.length() == 0) {
+      return ZKUtil.joinZNode(zkw.splitLogZNode, encode(filename));
+    }
+    return ZKUtil.joinZNode(zkw.splitLogZNode, encode(filename) + "@" + location);
   }
 
   public static boolean isLocalTask(String task, String localhost) {

@@ -285,7 +285,10 @@ public class SplitLogManager extends ZooKeeperListener {
       // metrics that it drives will also be under-reported.
       totalSize += lf.getLen();
       BlockLocation[] locations = fs.getFileBlockLocations(lf, 0, lf.getLen());
-      String location = ZKSplitLog.encodeLocation(locations[0].getHosts());
+      String location = null;
+      if (locations != null && locations.length == 1) {
+        location = ZKSplitLog.encodeLocation(locations[0].getHosts());
+      }
       if (enqueueSplitTask(lf.getPath().toString(), location, batch) == false) {
         throw new IOException("duplicate log split scheduled for "
             + lf.getPath());
