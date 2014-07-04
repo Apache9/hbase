@@ -16,10 +16,12 @@
 
 package org.apache.hadoop.hbase.coprocessor;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.NavigableSet;
 
 import com.google.common.collect.ImmutableList;
+
 import org.apache.hadoop.hbase.CoprocessorEnvironment;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.KeyValue;
@@ -233,6 +235,16 @@ public abstract class BaseRegionObserver implements RegionObserver {
   @Override
   public void postBatchMutate(final ObserverContext<RegionCoprocessorEnvironment> c,
       final MiniBatchOperationInProgress<Pair<Mutation, Integer>> miniBatchOp) throws IOException {
+  }
+
+  @Override
+  public void preMutateRowsWithLocks(final ObserverContext<RegionCoprocessorEnvironment> c,
+      final Collection<Mutation> mutations) throws IOException {
+  }
+
+  @Override
+  public void postMutateRowsWithLocks(final ObserverContext<RegionCoprocessorEnvironment> c,
+      final Collection<Mutation> mutations) throws IOException {
   }
 
   @Override

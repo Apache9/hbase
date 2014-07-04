@@ -5114,7 +5114,6 @@ public class HRegion implements HeapSize { // , Writable{
         acquiredLocks.put(row, lid);
       }
 
-      
       // 3. check the conditions
       for (Condition c : conditions) {
         byte[] row = c.getRow();
@@ -5125,7 +5124,7 @@ public class HRegion implements HeapSize { // , Writable{
           return false;
         }
       }
-      
+
       // 4. acquire the region lock
       lock(this.updatesLock.readLock(), acquiredLocks.size());
       locked = true;
@@ -5136,7 +5135,7 @@ public class HRegion implements HeapSize { // , Writable{
       byte[] byteNow = Bytes.toBytes(now);
       Durability durability = Durability.USE_DEFAULT;
       try {
-        // 6. Check mutations and apply edits to a single WALEdit
+        // 6. Check mutations, set timestamps
         for (Mutation m : mutations) {
           if (m instanceof Put) {
             Map<byte[], List<KeyValue>> familyMap = m.getFamilyMap();
@@ -5149,6 +5148,17 @@ public class HRegion implements HeapSize { // , Writable{
                 "Action must be Put or Delete. But was: "
                     + m.getClass().getName());
           }
+        }
+
+        // 7. calling the pre CP hook for mutations
+        if (coprocessorHost != null) {
+          if (coprocessorHost.preMutateRowsWithLocks(mutations)) {
+            return true;
+          }
+        }
+
+        // 8. apply edits to a single WALEdit
+        for (Mutation m : mutations) {
           Durability tmpDur = m.getDurability(); 
           if (tmpDur.ordinal() > durability.ordinal()) {
             durability = tmpDur;
@@ -5158,23 +5168,35 @@ public class HRegion implements HeapSize { // , Writable{
           }
         }
 
-        // 7. append all edits at once (don't sync)
+        // 9. append all edits at once (don't sync)
         if (walEdit.size() > 0) {
           txid = this.log.appendNoSync(regionInfo,
               this.htableDescriptor.getName(), walEdit,
               HConstants.DEFAULT_CLUSTER_ID, now, this.htableDescriptor);
         }
 
-        // 8. apply to memstore
+        // 10. apply to memstore
         long addedSize = 0;
         for (Mutation m : mutations) {
           addedSize += applyFamilyMapToMemstore(m.getFamilyMap(), w);
         }
         flush = isFlushSize(this.addAndGetGlobalMemstoreSize(addedSize));
 
-        // 9. release region and row lock(s)
+        // 11. release region lock
         this.updatesLock.readLock().unlock();
         locked = false;
+
+        // 12. sync WAL if required
+        if (walEdit.size() > 0) {
+          syncOrDefer(txid, durability);
+        }
+        walSyncSuccessful = true;
+
+        // 13. advance mvcc
+        mvcc.completeMemstoreInsert(w);
+        w = null;
+
+        // 14. release row lock(s)
         if (acquiredLocks != null) {
           for (Integer lid : acquiredLocks.values()) {
             releaseRowLock(lid);
@@ -5182,20 +5204,11 @@ public class HRegion implements HeapSize { // , Writable{
           acquiredLocks = null;
         }
 
-        // 10. sync WAL if required
-        if (walEdit.size() > 0) {
-          syncOrDefer(txid, durability);
-        }
-        walSyncSuccessful = true;
-
-        // 11. advance mvcc
-        mvcc.completeMemstoreInsert(w);
-        w = null;
-
-        // 12. run coprocessor post host hooks
+        // 15. run coprocessor post host hooks
         // after the WAL is sync'ed and all locks are released
         // (similar to doMiniBatchPut)
         if (coprocessorHost != null) {
+          coprocessorHost.postMutateRowsWithLocks(mutations);
           for (Mutation m : mutations) {
             if (m instanceof Put) {
               coprocessorHost.postPut((Put) m, walEdit, m.getWriteToWAL());
@@ -5205,7 +5218,7 @@ public class HRegion implements HeapSize { // , Writable{
           }
         }
       } finally {
-        // 13. clean up if needed
+        // 16. clean up if needed
         if (!walSyncSuccessful) {
           int kvsRolledback = 0;
           for (Mutation m : mutations) {
@@ -5240,7 +5253,7 @@ public class HRegion implements HeapSize { // , Writable{
         }
       }
       if (flush) {
-        // 14. Flush cache if needed. Do it outside update lock.
+        // 17. Flush cache if needed. Do it outside update lock.
         requestFlush();
       }
       closeRegionOperation();

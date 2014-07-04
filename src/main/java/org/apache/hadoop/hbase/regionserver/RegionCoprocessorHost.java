@@ -22,6 +22,7 @@ package org.apache.hadoop.hbase.regionserver;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableSet;
@@ -933,6 +934,53 @@ public class RegionCoprocessorHost
         ctx = ObserverContext.createAndPrepare(env, ctx);
         try {
           ((RegionObserver) env.getInstance()).postBatchMutate(ctx, miniBatchOp);
+        } catch (Throwable e) {
+          handleCoprocessorThrowable(env, e);
+        }
+        if (ctx.shouldComplete()) {
+          break;
+        }
+      }
+    }
+  }
+
+  /**
+   * @param mutations
+   * @return true if default processing should be bypassed
+   * @throws IOException
+   */
+  public boolean preMutateRowsWithLocks(final Collection<Mutation> mutations)
+      throws IOException {
+    boolean bypass = false;
+    ObserverContext<RegionCoprocessorEnvironment> ctx = null;
+    for (RegionEnvironment env : coprocessors) {
+      if (env.getInstance() instanceof RegionObserver) {
+        ctx = ObserverContext.createAndPrepare(env, ctx);
+        try {
+          ((RegionObserver) env.getInstance()).preMutateRowsWithLocks(ctx, mutations);
+        } catch (Throwable e) {
+          handleCoprocessorThrowable(env, e);
+        }
+        bypass |= ctx.shouldBypass();
+        if (ctx.shouldComplete()) {
+          break;
+        }
+      }
+    }
+    return bypass;
+  }
+
+  /**
+   * @param mutations
+   * @throws IOException
+   */
+  public void postMutateRowsWithLocks(final Collection<Mutation> mutations) throws IOException {
+    ObserverContext<RegionCoprocessorEnvironment> ctx = null;
+    for (RegionEnvironment env : coprocessors) {
+      if (env.getInstance() instanceof RegionObserver) {
+        ctx = ObserverContext.createAndPrepare(env, ctx);
+        try {
+          ((RegionObserver) env.getInstance()).postMutateRowsWithLocks(ctx, mutations);
         } catch (Throwable e) {
           handleCoprocessorThrowable(env, e);
         }

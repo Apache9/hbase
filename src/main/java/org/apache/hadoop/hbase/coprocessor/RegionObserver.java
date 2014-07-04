@@ -17,6 +17,7 @@
 package org.apache.hadoop.hbase.coprocessor;
 
 import java.io.IOException;
+import java.util.Collection;
 import java.util.List;
 import java.util.NavigableSet;
 
@@ -513,7 +514,28 @@ public interface RegionObserver extends Coprocessor {
    */
   void postBatchMutate(final ObserverContext<RegionCoprocessorEnvironment> c,
       final MiniBatchOperationInProgress<Pair<Mutation, Integer>> miniBatchOp) throws IOException;
-  
+
+  /**
+   * This will be called for every rows mutation operation happening at the server. This will be
+   * called after acquiring the locks on the mutating rows and after applying the proper timestamp
+   * for each Mutation at the server. The batch may contain Put/Delete.
+   * @param c the environment provided by the region server
+   * @param mutations batch of Mutations getting applied to region.
+   * @throws IOException if an error occurred on the coprocessor
+   */
+  void preMutateRowsWithLocks(final ObserverContext<RegionCoprocessorEnvironment> c,
+      final Collection<Mutation> mutations) throws IOException;
+
+  /**
+   * This will be called after applying a batch of Mutations on a region. The Mutations are added
+   * to memstore and WAL.
+   * @param c the environment provided by the region server
+   * @param mutations batch of Mutations getting applied to region.
+   * @throws IOException if an error occurred on the coprocessor
+   */
+  void postMutateRowsWithLocks(final ObserverContext<RegionCoprocessorEnvironment> c,
+      final Collection<Mutation> mutations) throws IOException;
+
   /**
    * Called before checkAndPut
    * <p>
