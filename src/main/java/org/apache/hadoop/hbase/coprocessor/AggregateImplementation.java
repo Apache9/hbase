@@ -80,9 +80,11 @@ public class AggregateImplementation extends BaseEndpointCoprocessor implements
     }
     
     region.updateCoprocessorMetrics("getMax", (System.nanoTime() - nowNs) / 1000);
-    log.info("Maximum from this region is "
-        + ((RegionCoprocessorEnvironment) getEnvironment()).getRegion()
-            .getRegionNameAsString() + ": " + max);
+    if (log.isDebugEnabled()) {
+      log.debug("Maximum from this region is "
+          + ((RegionCoprocessorEnvironment) getEnvironment()).getRegion()
+              .getRegionNameAsString() + ": " + max);
+    }
     return max;
   }
 
@@ -111,9 +113,11 @@ public class AggregateImplementation extends BaseEndpointCoprocessor implements
       scanner.close();
     }
     region.updateCoprocessorMetrics("getMin", (System.nanoTime() - nowNs) / 1000);
-    log.info("Minimum from this region is "
-        + ((RegionCoprocessorEnvironment) getEnvironment()).getRegion()
-            .getRegionNameAsString() + ": " + min);
+    if (log.isDebugEnabled()) {
+      log.debug("Minimum from this region is "
+          + ((RegionCoprocessorEnvironment) getEnvironment()).getRegion()
+              .getRegionNameAsString() + ": " + min);
+    }
     return min;
   }
 
@@ -144,9 +148,11 @@ public class AggregateImplementation extends BaseEndpointCoprocessor implements
       scanner.close();
     }
     region.updateCoprocessorMetrics("getSum", (System.nanoTime() - nowNs) / 1000);
-    log.debug("Sum from this region is "
-        + ((RegionCoprocessorEnvironment) getEnvironment()).getRegion()
-            .getRegionNameAsString() + ": " + sum);
+    if (log.isDebugEnabled()) {
+      log.debug("Sum from this region is "
+          + ((RegionCoprocessorEnvironment) getEnvironment()).getRegion()
+              .getRegionNameAsString() + ": " + sum);
+    }
     return sumVal;
   }
 
@@ -190,9 +196,11 @@ public class AggregateImplementation extends BaseEndpointCoprocessor implements
       scanner.close();
     }
     region.updateCoprocessorMetrics("getRowNum", (System.nanoTime() - nowNs) / 1000);
-    log.info("Row counter from this region is "
-        + ((RegionCoprocessorEnvironment) getEnvironment()).getRegion()
-            .getRegionNameAsString() + ": " + counter);
+    if (log.isDebugEnabled()) {
+      log.debug("Row counter from this region is "
+          + ((RegionCoprocessorEnvironment) getEnvironment()).getRegion()
+              .getRegionNameAsString() + ": " + counter);
+    }
     return counter;
   }
   
