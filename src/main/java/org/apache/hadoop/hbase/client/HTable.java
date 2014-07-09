@@ -1156,7 +1156,7 @@ public class HTable implements HTableInterface {
       for (List<KeyValue> list : put.getFamilyMap().values()) {
         for (KeyValue kv : list) {
           if (kv.getLength() > maxKeyValueSize) {
-            throw new IllegalArgumentException("KeyValue size too large");
+            throw new IllegalArgumentException("KeyValue size too large, kv: " + kv);
           }
         }
       }
