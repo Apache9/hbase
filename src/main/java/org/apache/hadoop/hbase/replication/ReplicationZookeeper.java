@@ -409,6 +409,9 @@ public class ReplicationZookeeper {
       if (peerExists(id)) {
         throw new IllegalArgumentException("Cannot add existing peer");
       }
+      // make sure the passed peerState is legal
+      String state = (peerState == null) ? PeerState.ENABLED.name() : PeerState
+          .valueOf(peerState).name();
       ZKUtil.createWithParents(this.zookeeper, this.peersZNode);
       ZKUtil.createAndWatch(this.zookeeper, ZKUtil.joinZNode(this.peersZNode, id),
         Bytes.toBytes(clusterKey));
@@ -416,8 +419,6 @@ public class ReplicationZookeeper {
       String tableCFsStr = (tableCFs == null) ? "" : tableCFs;
       ZKUtil.createAndWatch(this.zookeeper, getTableCFsNode(id),
           Bytes.toBytes(tableCFsStr));
-      String state = (peerState == null) ? PeerState.ENABLED.name() : PeerState
-          .valueOf(peerState).name();
       // There is a race b/w PeerWatcher and ReplicationZookeeper#add method to create the
       // peer-state znode. This happens while adding a peer.
       // The peer state data is set as "ENABLED" by default.
