@@ -96,7 +96,8 @@ class WritableRpcEngine implements RpcEngine {
         LOG.debug("Call: " + method.getName() + " " + callTime);
       }
       if (callTime > this.clientWarnIpcResponseTime) {
-        LOG.warn("Slow ipc call, MethodName=" + method.getName() + ", consume time=" + callTime);
+        LOG.warn("Slow ipc call, MethodName=" + method.getName() + ", consume time=" + callTime
+            + " remote address: " + this.address);
       }
       return value.get();
     }
