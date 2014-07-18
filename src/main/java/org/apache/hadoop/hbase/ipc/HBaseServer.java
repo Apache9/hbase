@@ -1315,6 +1315,17 @@ public abstract class HBaseServer implements RpcServer {
       ticket = header.getUser();
     }
 
+    protected Call createCall(int id, Writable param, Connection connection, Responder responder, long size) {
+
+      return new Call(id, param, connection, responder, size);
+
+    }
+
+    protected Call createCall(int id, Writable param, Connection connection, Responder responder, long size, Tracer tracer) {
+
+      return new Call(id, param, connection, responder, size, tracer);
+    }
+
     protected void processData(byte[] buf) throws  IOException, InterruptedException {
       DataInputStream dis =
         new DataInputStream(new ByteArrayInputStream(buf));
@@ -1328,7 +1339,7 @@ public abstract class HBaseServer implements RpcServer {
       // Enforcing the call queue size, this triggers a retry in the client
       if ((callSize + callQueueSize.get()) > maxQueueSize) {
         final Call callTooBig =
-          new Call(id, null, this, responder, callSize);
+          createCall(id, null, this, responder, callSize);
         ByteArrayOutputStream responseBuffer = new ByteArrayOutputStream();
         setupResponse(responseBuffer, callTooBig, Status.FATAL, null,
             IOException.class.getName(),
@@ -1345,9 +1356,8 @@ public abstract class HBaseServer implements RpcServer {
         LOG.warn("Unable to read call parameters for client " +
                  getHostAddress(), t);
         final Call readParamsFailedCall =
-          new Call(id, null, this, responder, callSize);
-        ByteArrayOutputStream responseBuffer = new ByteArrayOutputStream();
-
+          createCall(id, null, this, responder, callSize);
+        ByteArrayOutputStream responseBuffer = new ByteArrayOutputStream(); 
         setupResponse(responseBuffer, readParamsFailedCall, Status.FATAL, null,
             t.getClass().getName(),
             "IPC server unable to read call parameters: " + t.getMessage());
@@ -1357,7 +1367,7 @@ public abstract class HBaseServer implements RpcServer {
       Tracer tracer =
           new MilliTracer("handling call: " + id + " call size:" + callSize
               + " from " + getHostAddress());
-      Call call = new Call(id, param, this, responder, callSize, tracer);
+      Call call = createCall(id, param, this, responder, callSize, tracer);
       callQueueSize.add(callSize);
 
       if (priorityCallQueue != null && getQosLevel(param) > highPriorityLevel) {
@@ -1372,7 +1382,7 @@ public abstract class HBaseServer implements RpcServer {
         if (methodName == null || methodName.length() < 1) {
           LOG.error("Could not find requested method, the usual "
               + "cause is a version mismatch between client and server.");
-          final Call readParamsFailedCall = new Call(id, null, this, responder, callSize);
+          final Call readParamsFailedCall = createCall(id, null, this, responder, callSize);
           ByteArrayOutputStream responseBuffer = new ByteArrayOutputStream();
           setupResponse(responseBuffer, readParamsFailedCall, Status.FATAL, null,
             IOException.class.getName(), "IPC server unable to read call method");
@@ -1385,7 +1395,7 @@ public abstract class HBaseServer implements RpcServer {
           if (!success) {
             // fail fast on queue inserting, no more waiting!
             LOG.error("Could not insert into readQueue!");
-            final Call failedCall = new Call(id, null, this, responder, callSize);
+            final Call failedCall = createCall(id, null, this, responder, callSize);
             ByteArrayOutputStream responseBuffer = new ByteArrayOutputStream();
             setupResponse(responseBuffer, failedCall, Status.FATAL, null,
               IOException.class.getName(), "IPC server readQueue is full");
@@ -1400,7 +1410,7 @@ public abstract class HBaseServer implements RpcServer {
           if (!success) {
             // fail fast on queue inserting, no more waiting!
             LOG.error("Could not insert into writeQueue!");
-            final Call failedCall = new Call(id, null, this, responder, callSize);
+            final Call failedCall = createCall(id, null, this, responder, callSize);
             ByteArrayOutputStream responseBuffer = new ByteArrayOutputStream();
             setupResponse(responseBuffer, failedCall, Status.FATAL, null,
               IOException.class.getName(), "IPC server writeQueue is full");

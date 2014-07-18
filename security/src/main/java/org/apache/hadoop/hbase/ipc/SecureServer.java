@@ -61,6 +61,7 @@ import java.security.PrivilegedExceptionAction;
 import java.util.*;
 
 import static org.apache.hadoop.fs.CommonConfigurationKeys.HADOOP_SECURITY_AUTHORIZATION;
+import com.xiaomi.infra.hbase.trace.Tracer;
 
 /**
  * An abstract IPC service, supporting SASL authentication of connections,
@@ -102,6 +103,11 @@ public abstract class SecureServer extends HBaseServer {
     public SecureCall(int id, Writable param, Connection connection,
         Responder responder, long size) {
       super(id, param, connection, responder, size);
+    }
+
+    public SecureCall(int id, Writable param, Connection connection,
+        Responder responder, long size, Tracer tracer) {
+      super(id, param, connection, responder, size, tracer);
     }
 
     @Override
@@ -605,72 +611,18 @@ public abstract class SecureServer extends HBaseServer {
       }
     }
 
-    protected void processData(byte[] buf) throws  IOException, InterruptedException {
-      DataInputStream dis =
-        new DataInputStream(new ByteArrayInputStream(buf));
-      int id = dis.readInt();                    // try to read an id
+    protected Call createCall(int id, Writable param, Connection connection, Responder responder, long size) {
 
-      if (LOG.isTraceEnabled()) {
-        LOG.trace(" got #" + id);
-      }
+      return new SecureServer.SecureCall(id, param, connection, responder, size);
 
-      Writable param = ReflectionUtils.newInstance(paramClass, conf);           // read param
-      param.readFields(dis);
-
-      SecureCall call = new SecureCall(id, param, this, responder, buf.length);
-
-      if (priorityCallQueue != null && getQosLevel(param) > highPriorityLevel) {
-        priorityCallQueue.put(call);
-        updateCallQueueLenMetrics(priorityCallQueue);
-      } else if (replicationQueue != null && getQosLevel(param) == HConstants.REPLICATION_QOS) {
-        replicationQueue.put(call);
-        updateCallQueueLenMetrics(replicationQueue);
-      } else {
-        Invocation invocation = (Invocation)(call.param);
-        String methodName = invocation.getMethodName();
-        if (methodName == null || methodName.length() < 1) {
-          LOG.error("Could not find requested method, the usual "
-              + "cause is a version mismatch between client and server.");
-          final SecureCall readParamsFailedCall = new SecureCall(id, null, this, responder,
-              buf.length);
-          ByteArrayOutputStream responseBuffer = new ByteArrayOutputStream();
-          setupResponse(responseBuffer, readParamsFailedCall, Status.FATAL, null,
-            IOException.class.getName(), "IPC server unable to read call method");
-          responder.doRespond(readParamsFailedCall);
-          return;
-        }
-        if (methodName.startsWith("get") || methodName.equals("next")
-            || methodName.equals("openScanner")) {
-          boolean success = readCallQueue.offer(call);
-          if (!success) {
-            // fail fast on queue inserting, no more waiting!
-            LOG.error("Could not insert into readQueue!");
-            final SecureCall failedCall = new SecureCall(id, null, this, responder, buf.length);
-            ByteArrayOutputStream responseBuffer = new ByteArrayOutputStream();
-            setupResponse(responseBuffer, failedCall, Status.FATAL, null,
-              IOException.class.getName(), "IPC server readQueue is full");
-            responder.doRespond(failedCall);
-            return;
-          }
-          updateCallQueueLenMetrics(readCallQueue);
-        } else {
-          // FIXME: execCoprocessor, like AggregateImplementation; checkAndPut...
-          // It's hard to tell read/write ops clear seems, just a best effort here
-          boolean success = writeCallQueue.offer(call);
-          if (!success) {
-            // fail fast on queue inserting, no more waiting!
-            LOG.error("Could not insert into writeQueue!");
-            final SecureCall failedCall = new SecureCall(id, null, this, responder, buf.length);
-            ByteArrayOutputStream responseBuffer = new ByteArrayOutputStream();
-            setupResponse(responseBuffer, failedCall, Status.FATAL, null,
-              IOException.class.getName(), "IPC server writeQueue is full");
-            responder.doRespond(failedCall);
-            return;
-          }
-          updateCallQueueLenMetrics(writeCallQueue);
-        }
-      }
     }
+
+    protected Call createCall(int id, Writable param, Connection connection, Responder responder, long size, Tracer tracer) {
+
+      return new SecureServer.SecureCall(id, param, connection, responder, size, tracer);
+
+    }
+
 
     private boolean authorizeConnection() throws IOException {
       try {
