@@ -71,6 +71,8 @@ public class SecureClient extends HBaseClient {
 
   private static final Log LOG =
     LogFactory.getLog("org.apache.hadoop.ipc.SecureClient");
+  
+  private final int slowReloginMs;
 
   public static final String IPC_CLIENT_FALLBACK_TO_SIMPLE_AUTH_ALLOWED_KEY =
       "hbase.ipc.client.fallback-to-simple-auth-allowed";
@@ -213,7 +215,18 @@ public class SecureClient extends HBaseClient {
                   "the server : " + ex);
               //try re-login
               if (UserGroupInformation.isLoginKeytabBased()) {
-                UserGroupInformation.getLoginUser().reloginFromKeytab();
+
+                long startTime = System.currentTimeMillis();
+                try{
+                  UserGroupInformation.getLoginUser().reloginFromKeytab();
+                }
+                finally{
+                  long callTime = System.currentTimeMillis() - startTime;
+                  if(callTime > SecureClient.this.slowReloginMs)
+                  {
+                    LOG.warn("Slow reloginFromKeyTab, consume time="+callTime); 
+                  }
+                }
               } else {
                 UserGroupInformation.getLoginUser().reloginFromTicketCache();
               }
@@ -490,6 +503,7 @@ public class SecureClient extends HBaseClient {
   public SecureClient(Class<? extends Writable> valueClass, Configuration conf,
       SocketFactory factory) {
     super(valueClass, conf, factory);
+    this.slowReloginMs = conf.getInt("hbase.security.kerberos.slowrelogin", 100);
     this.fallbackAllowed =
       conf.getBoolean(IPC_CLIENT_FALLBACK_TO_SIMPLE_AUTH_ALLOWED_KEY,
         IPC_CLIENT_FALLBACK_TO_SIMPLE_AUTH_ALLOWED_DEFAULT);
