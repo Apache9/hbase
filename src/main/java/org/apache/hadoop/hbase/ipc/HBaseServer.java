@@ -97,7 +97,7 @@ public abstract class HBaseServer implements RpcServer {
    */
   public static final ByteBuffer HEADER = ByteBuffer.wrap("hrpc".getBytes());
   public static final byte CURRENT_VERSION = 3;
-
+  public static long SLOW_IO_LOG_THRESHOLD_MS;
   /**
    * How many calls/handler are allowed in the queue.
    */
@@ -1682,6 +1682,7 @@ public abstract class HBaseServer implements RpcServer {
 
     // Create the responder here
     responder = new Responder();
+    SLOW_IO_LOG_THRESHOLD_MS = conf.getLong("hbase.slow.io.log.threshold.ms", 300);
   }
 
   /**
