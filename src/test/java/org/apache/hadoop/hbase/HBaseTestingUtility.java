@@ -201,6 +201,10 @@ public class HBaseTestingUtility {
     // a hbase checksum verification failure will cause unit tests to fail
     ChecksumUtil.generateExceptionForChecksumFailureForTest(true);
     setHDFSClientRetryProperty();
+
+    // hadoop-2.0.5+'s HDFS-4305 by default enforces a min block size of 1024*1024.  Many unit
+    // tests that use the hlog use smaller blocks.  Setting this config to 0 to have tests pass
+    conf.setInt("dfs.namenode.fs-limits.min-block-size", 0);
   }
 
   private void setHDFSClientRetryProperty() {
