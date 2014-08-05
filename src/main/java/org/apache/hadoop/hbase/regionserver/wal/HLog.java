@@ -24,7 +24,6 @@ import java.io.DataOutput;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.io.UnsupportedEncodingException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.URLEncoder;
@@ -45,10 +44,8 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -75,10 +72,8 @@ import org.apache.hadoop.hbase.ipc.RpcCallContext;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.ClassSize;
 import org.apache.hadoop.hbase.util.DrainBarrier;
-import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.FSUtils;
 import org.apache.hadoop.hbase.util.HasThread;
-import org.apache.hadoop.hbase.util.Threads;
 import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.util.StringUtils;
@@ -1439,7 +1434,6 @@ public class HLog implements Syncable {
           }
 
           // 2. do 'sync' to HDFS to provide durability
-          long now = EnvironmentEdgeManager.currentTimeMillis();
           try {
             if (writer == null) {
               // the only possible case where writer == null is as below:
@@ -1466,12 +1460,16 @@ public class HLog implements Syncable {
             } else {
               this.isSyncing = true;
               long startTimeNs = System.nanoTime();
-
               writer.sync();
-
               long syncNs = System.nanoTime() - startTimeNs;
               syncTime.inc(syncNs);
+              int syncMs = (int) (syncNs / (1000 * 1000L));
               this.isSyncing = false;
+              if (syncMs > slowSyncMs) {
+                DatanodeInfo[] pipeline = getPipeLine();
+                TracerUtils.addAnnotation("Sync cost: " + syncMs + "ms, Pipeline: "
+                    + Arrays.toString(pipeline));
+              }
             }
           } catch (IOException e) {
             LOG.fatal("Error while AsyncSyncer sync, request close of hlog ", e);
