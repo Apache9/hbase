@@ -1475,6 +1475,7 @@ public class HBaseTestingUtility {
     if (jobConf == null) {
       jobConf = mrCluster.createJobConf();
     }
+    HBaseConfiguration.merge(this.conf, jobConf);
     jobConf.set("mapred.local.dir",
       conf.get("mapred.local.dir")); //Hadoop MiniMR overwrites this while it should not
 
