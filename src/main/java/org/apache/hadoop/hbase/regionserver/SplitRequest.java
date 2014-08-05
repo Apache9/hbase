@@ -88,8 +88,7 @@ class SplitRequest implements Runnable {
           String msg = "Failed rollback of failed split of " +
             parent.getRegionNameAsString() + " -- aborting server";
           // If failed rollback, kill this server to avoid having a hole in table.
-          LOG.info(msg, ee);
-          this.server.abort(msg);
+          this.server.abort(msg, ee);
         }
         return;
       }

@@ -704,7 +704,7 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
     try {
       this.snapshotManager = new RegionServerSnapshotManager(this);
     } catch (KeeperException e) {
-      this.abort("Failed to reach zk cluster when creating snapshot handler.");
+      this.abort("Failed to reach zk cluster when creating snapshot handler.", e);
     }
   }
 
