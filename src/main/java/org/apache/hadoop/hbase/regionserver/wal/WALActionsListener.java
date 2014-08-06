@@ -62,8 +62,9 @@ public interface WALActionsListener {
 
   /**
    * A request was made that the WAL be rolled.
+   * @param forceRoll the flag indicates whether a force log roll or not
    */
-  public void logRollRequested();
+  public void logRollRequested(boolean forceRoll);
 
   /**
    * The WAL is about to close.

@@ -169,12 +169,19 @@ public class HLog implements Syncable {
   private static Class<? extends Writer> logWriterClass;
   private static Class<? extends Reader> logReaderClass;
 
-  private final int slowSyncMs;
-  
+  private final int slowSyncLogMs;
+  private final AtomicInteger slowSyncRequestRollCounter = new AtomicInteger(0);
+  private final int slowSyncRequestRollCountThreshold;
+  private final int slowSyncRequestRollMsThreshold;
   private WALCoprocessorHost coprocessorHost;
 
   static void resetLogReaderClass() {
     HLog.logReaderClass = null;
+  }
+
+  // used by testing only
+  static void resetLogWriterClass() {
+    HLog.logWriterClass = null;
   }
 
   private FSDataOutputStream hdfs_out; // FSDataOutputStream associated with the current SequenceFile.writer
@@ -476,7 +483,7 @@ public class HLog implements Syncable {
     this.closeErrorsTolerated = conf.getInt(
         "hbase.regionserver.logroll.errors.tolerated", 0);
     
-    this.slowSyncMs = conf.getInt("hbase.regionserver.hlog.slowsync",
+    this.slowSyncLogMs = conf.getInt("hbase.regionserver.hlog.slowsync",
       DEFAULT_SLOW_SYNC_TIME);
     LOG.info("HLog configuration: blocksize=" +
       StringUtils.byteDesc(this.blocksize) +
@@ -506,7 +513,10 @@ public class HLog implements Syncable {
 
     asyncNotifier = new AsyncNotifier(n + "-WAL.AsyncNotifier");
     asyncNotifier.start();
-
+    slowSyncRequestRollCountThreshold = conf.getInt(
+      "hbase.regionserver.hlog.slowsync.request.roll.count.threshold", 10);
+    slowSyncRequestRollMsThreshold = conf.getInt(
+      "hbase.regionserver.hlog.slowsync.request.roll.ms.threshold", 1000);
     coprocessorHost = new WALCoprocessorHost(this, conf);
   }
 
@@ -704,6 +714,7 @@ public class HLog implements Syncable {
           this.writer = nextWriter;
           this.hdfs_out = nextHdfsOut;
           numEntriesSize = this.numEntries.getAndSet(0);
+          slowSyncRequestRollCounter.set(0); // reset this counter after a rolling done
         }
         // Tell our listeners that a new log was created
         if (!this.listeners.isEmpty()) {
@@ -1351,7 +1362,7 @@ public class HLog implements Syncable {
             }
           } catch(IOException e) {
             LOG.error("Error while AsyncWriter write, request close of hlog ", e);
-            requestLogRoll();
+            requestLogRoll(true);
 
             asyncIOE = e;
             failedTxid.set(this.txidToWrite);
@@ -1465,15 +1476,22 @@ public class HLog implements Syncable {
               syncTime.inc(syncNs);
               int syncMs = (int) (syncNs / (1000 * 1000L));
               this.isSyncing = false;
-              if (syncMs > slowSyncMs) {
+              if (syncMs > slowSyncLogMs) {
                 DatanodeInfo[] pipeline = getPipeLine();
                 TracerUtils.addAnnotation("Sync cost: " + syncMs + "ms, Pipeline: "
                     + Arrays.toString(pipeline));
               }
+              if (syncMs > slowSyncRequestRollMsThreshold) {
+                long newCount = slowSyncRequestRollCounter.incrementAndGet();
+                if (newCount >= slowSyncRequestRollCountThreshold) {
+                  requestLogRoll(false);
+                  // slowSyncRequestRollCounter.set(0);
+                }
+              }
             }
           } catch (IOException e) {
             LOG.fatal("Error while AsyncSyncer sync, request close of hlog ", e);
-            requestLogRoll();
+            requestLogRoll(true);
 
             asyncIOE = e;
             failedTxid.set(this.txidToSync);
@@ -1497,7 +1515,7 @@ public class HLog implements Syncable {
             }
             try {
               if (logRollNeeded || writer != null && writer.getLength() > logrollsize) {
-                requestLogRoll();
+                requestLogRoll(true);
               }
             } catch (IOException e) {
               LOG.warn("writer.getLength() failed,this failure won't block here");
@@ -1713,10 +1731,10 @@ public class HLog implements Syncable {
     syncer(txid);
   }
 
-  private void requestLogRoll() {
+  private void requestLogRoll(boolean forceRoll) {
     if (!this.listeners.isEmpty()) {
       for (WALActionsListener i: this.listeners) {
-        i.logRollRequested();
+        i.logRollRequested(forceRoll);
       }
     }
   }
@@ -1757,7 +1775,7 @@ public class HLog implements Syncable {
       }
     } catch (IOException e) {
       LOG.fatal("Could not append. Requesting close of hlog", e);
-      requestLogRoll();
+      requestLogRoll(true);
       throw e;
     }
   }

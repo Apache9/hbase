@@ -443,7 +443,7 @@ public class TestLogRolling  {
       @Override
       public void postLogArchive(Path oldFile, Path newFile) {}
       @Override
-      public void logRollRequested() {}
+      public void logRollRequested(boolean forceRoll) {}
       @Override
       public void logCloseRequested() {}
       @Override

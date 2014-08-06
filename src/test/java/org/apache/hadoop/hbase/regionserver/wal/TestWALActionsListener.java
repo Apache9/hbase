@@ -148,7 +148,7 @@ public class TestWALActionsListener {
     }
 
     @Override
-    public void logRollRequested() {
+    public void logRollRequested(boolean forceRoll) {
       // Not interested
     }
 

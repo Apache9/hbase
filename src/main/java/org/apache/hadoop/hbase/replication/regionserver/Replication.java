@@ -220,7 +220,7 @@ public class Replication implements WALActionsListener,
   }
 
   @Override
-  public void logRollRequested() {
+  public void logRollRequested(boolean forceRoll) {
     // Not interested
   }
 
