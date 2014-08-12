@@ -417,30 +417,20 @@ public class ReplicationSource extends Thread
         LOG.warn(peerClusterZnode + " Got: ", ioe);
         gotIOE = true;
         if (ioe.getCause() instanceof EOFException) {
-
-          boolean considerDumping = false;
           if (this.queueRecovered) {
             try {
               FileStatus stat = this.fs.getFileStatus(this.currentPath);
               if (stat.getLen() == 0) {
                 LOG.warn(peerClusterZnode + " Got EOF and the file was empty");
               }
-              considerDumping = true;
             } catch (IOException e) {
               LOG.warn(peerClusterZnode + " Got while getting file size: ", e);
             }
-          } else if (currentNbEntries != 0) {
-            LOG.warn(peerClusterZnode + " Got EOF while reading, " +
-                "looks like this file is broken? " + currentPath);
-            considerDumping = true;
-            currentNbEntries = 0;
           }
-
-          if (considerDumping &&
-              sleepMultiplier == this.maxRetriesMultiplier &&
-              processEndOfFile()) {
-            continue;
-          }
+          LOG.warn(peerClusterZnode + " Got EOF while reading, "
+              + "looks like this file is broken? " + currentPath);
+          // Important: When failed to read edits from the hlog , the replication will be blocked here  
+          // and wait the operations from cluster admin
         }
       } finally {
         try {
@@ -635,7 +625,6 @@ public class ReplicationSource extends Thread
                 archivedLogLocation);
             // Open the log at the new location
             this.openReader(sleepMultiplier);
-
           }
           // TODO What happens the log is missing in both places?
         }
@@ -649,15 +638,13 @@ public class ReplicationSource extends Thread
         // which throws a NPE if we open a file before any data node has the most recent block
         // Just sleep and retry.  Will require re-reading compressed HLogs for compressionContext.
         LOG.warn("Got NPE opening reader, will retry.");
-      } else if (sleepMultiplier == this.maxRetriesMultiplier) {
-        // TODO Need a better way to determine if a file is really gone but
-        // TODO without scanning all logs dir  
-        LOG.warn("Waited too long for this file, considering dumping");
-        return !processEndOfFile();
-      }
+      } 
+      // Important: When failed to open the hlog ,  replication will be blocked here, 
+      // and wait for the operations from cluster admin
+      return false;
     }
     return true;
-  }
+  } 
 
   /*
    * Checks whether the current log file is empty, and it is not a recovered queue. This is to
