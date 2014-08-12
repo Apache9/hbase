@@ -21,6 +21,7 @@ package org.apache.hadoop.hbase.ipc;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.ipc.HBaseClient.FailedServerException;
 import org.apache.hadoop.hbase.security.HBaseSaslRpcClient;
 import org.apache.hadoop.hbase.security.HBaseSaslRpcServer.AuthMethod;
 import org.apache.hadoop.hbase.security.KerberosInfo;
@@ -41,6 +42,7 @@ import org.apache.hadoop.util.ReflectionUtils;
 
 import javax.net.SocketFactory;
 import javax.security.sasl.SaslException;
+
 import java.io.*;
 import java.net.*;
 import java.security.PrivilegedExceptionAction;
@@ -272,6 +274,18 @@ public class SecureClient extends HBaseClient {
         return;
       }
 
+      if (failedServers.isFailedServer(remoteId.getAddress())) {
+        if (LOG.isDebugEnabled()) {
+          LOG.debug("Not trying to connect to " + remoteId.getAddress() +
+              " this server is in the failed servers list");
+        }
+        IOException e = new FailedServerException(
+            "This server is in the failed servers list: " + remoteId.getAddress());
+        markClosed(e);
+        close();
+        throw e;
+      }
+      
       try {
         if (LOG.isDebugEnabled()) {
           LOG.debug("Connecting to "+server);
@@ -340,9 +354,10 @@ public class SecureClient extends HBaseClient {
           return;
         }
       } catch (IOException e) {
+        failedServers.addToFailedServers(remoteId.address);
         markClosed(e);
         close();
-
+        LOG.info("setupIOstreams failed. remote: " + remoteId.address, e);
         throw e;
       }
     }
