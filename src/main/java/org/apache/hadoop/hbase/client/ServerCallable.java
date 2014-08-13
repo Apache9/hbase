@@ -221,9 +221,8 @@ public abstract class ServerCallable<T> implements Callable<T> {
         afterCall();
       }
       try {
-        long sleepTime = ConnectionUtils.getPauseTime(pause, tries);
-        LOG.info("Sleep for next retry, tries=" + tries + ", sleepTime=" + sleepTime);
-        Thread.sleep(sleepTime);
+        LOG.info("Sleep for next retry, tries=" + tries + ", sleepTime=" + expectedSleep);
+        Thread.sleep(expectedSleep);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         throw new IOException("Giving up after tries=" + tries, e);
