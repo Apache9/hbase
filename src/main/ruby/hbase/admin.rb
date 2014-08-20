@@ -226,6 +226,7 @@ module Hbase
               File.foreach(arg[SPLITS_FILE]) do |line|
                 arg[SPLITS].push(line.strip())
               end
+              htd.setValue(SPLITS_FILE, arg[SPLITS_FILE])
             end
 
             splits = Java::byte[][arg[SPLITS].size].new
