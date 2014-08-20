@@ -42,7 +42,7 @@ public class InstrumentedSequenceFileLogWriter extends SequenceFileLogWriter {
   }
 
   @Override
-  public void sync() throws IOException {
+  public void sync(boolean force) throws IOException {
     if (slowSync) {
       try {
         Thread.sleep(1010);
@@ -50,6 +50,6 @@ public class InstrumentedSequenceFileLogWriter extends SequenceFileLogWriter {
         throw new IOException(e);
       }
     }
-    super.sync();
+    super.sync(force);
   }
 }

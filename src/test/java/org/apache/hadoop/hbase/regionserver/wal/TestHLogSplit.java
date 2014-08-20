@@ -962,7 +962,7 @@ public class TestHLogSplit {
           fs.mkdirs(new Path(new Path(hbaseDir, region), region));
           appendEntry(lastLogWriter, TABLE_NAME, region.getBytes(),
                   ("r" + editsCount).getBytes(), FAMILY, QUALIFIER, VALUE, 0);
-          lastLogWriter.sync();
+          lastLogWriter.sync(false);
           editsCount.incrementAndGet();
           try {
             Thread.sleep(1);
@@ -1347,7 +1347,7 @@ public class TestHLogSplit {
     LOG.info(Thread.currentThread().getName() + " append");
     writer.append(createTestEntry(table, region, row, family, qualifier, value, seq));
     LOG.info(Thread.currentThread().getName() + " sync");
-    writer.sync();
+    writer.sync(false);
     return seq;
   }
 

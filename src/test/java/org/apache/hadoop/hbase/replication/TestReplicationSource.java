@@ -86,7 +86,7 @@ public class TestReplicationSource {
       edit.add(kv);
       HLogKey key = new HLogKey(b, b, 0, 0, HConstants.DEFAULT_CLUSTER_ID);
       writer.append(new HLog.Entry(key, edit));
-      writer.sync();
+      writer.sync(false);
     }
     writer.close();
 

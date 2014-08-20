@@ -75,6 +75,7 @@ public class SequenceFileLogWriter implements HLog.Writer {
 
   private Method syncFs = null;
   private Method hflush = null;
+  private Method hsync = null;
   private WALEditCodec codec;
 
   /**
@@ -165,11 +166,13 @@ public class SequenceFileLogWriter implements HLog.Writer {
     this.codec = WALEditCodec.create(conf, compressionContext);
     this.syncFs = getSyncFs();
     this.hflush = getHFlush();
+    this.hsync = getHSync();
     String msg = "Path=" + path +
       ", syncFs=" + (this.syncFs != null) +
       ", hflush=" + (this.hflush != null) +
+      ", hsync=" + (this.hsync != null) +
       ", compression=" + compress;
-    if (this.syncFs != null || this.hflush != null) {
+    if (this.syncFs != null || this.hflush != null || this.hsync != null) {
       LOG.debug(msg);
     } else {
       LOG.warn("No sync support! " + msg);
@@ -209,6 +212,24 @@ public class SequenceFileLogWriter implements HLog.Writer {
       m = c.getMethod("hflush", new Class<?> []{});
     } catch (SecurityException e) {
       throw new IOException("Failed test for hflush", e);
+    } catch (NoSuchMethodException e) {
+      // Ignore
+    }
+    return m;
+  }
+
+  /**
+   * See if hsync is available.
+   * @return The hsync method or null if not available.
+   * @throws IOException
+   */
+  private Method getHSync() throws IOException {
+    Method m = null;
+    try {
+      Class<? extends OutputStream> c = getWriterFSDataOutputStream().getClass();
+      m = c.getMethod("hsync", new Class<?>[] {});
+    } catch (SecurityException e) {
+      throw new IOException("Failed test for hsync", e);
     } catch (NoSuchMethodException e) {
       // Ignore
     }
@@ -269,11 +290,20 @@ public class SequenceFileLogWriter implements HLog.Writer {
     }
   }
 
+  /**
+   * @param force Whether or not to flush the data to the disk device
+   */
   @Override
-  public void sync() throws IOException {
-    if (this.syncFs != null) {
+  public void sync(boolean force) throws IOException {
+    if (force) {
       try {
-       this.syncFs.invoke(this.writer, HLog.NO_ARGS);
+        this.hsync.invoke(getWriterFSDataOutputStream(), HLog.NO_ARGS);
+      } catch (Exception e) {
+        throw new IOException("Reflection", e);
+      }
+    } else if (this.syncFs != null) {
+      try {
+        this.syncFs.invoke(this.writer, HLog.NO_ARGS);
       } catch (Exception e) {
         throw new IOException("Reflection", e);
       }

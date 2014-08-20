@@ -173,6 +173,7 @@ public class HLog implements Syncable {
   private final AtomicInteger slowSyncRequestRollCounter = new AtomicInteger(0);
   private final int slowSyncRequestRollCountThreshold;
   private final int slowSyncRequestRollMsThreshold;
+  private final int syncLogMode;
   private WALCoprocessorHost coprocessorHost;
 
   static void resetLogReaderClass() {
@@ -208,7 +209,7 @@ public class HLog implements Syncable {
   public interface Writer {
     void init(FileSystem fs, Path path, Configuration c) throws IOException;
     void close() throws IOException;
-    void sync() throws IOException;
+    void sync(boolean force) throws IOException;
     void append(Entry entry) throws IOException;
     long getLength() throws IOException;
   }
@@ -517,6 +518,7 @@ public class HLog implements Syncable {
       "hbase.regionserver.hlog.slowsync.request.roll.count.threshold", 10);
     slowSyncRequestRollMsThreshold = conf.getInt(
       "hbase.regionserver.hlog.slowsync.request.roll.ms.threshold", 1000);
+    syncLogMode = conf.getInt("hbase.regionserver.hlog.sync.mode", 0);
     coprocessorHost = new WALCoprocessorHost(this, conf);
   }
 
@@ -699,7 +701,7 @@ public class HLog implements Syncable {
           nextHdfsOut = ((SequenceFileLogWriter)nextWriter).getWriterFSDataOutputStream();
           //perform the costly allocateBlock and sync before we get the lock to roll writers
           try {
-            nextWriter.sync();
+            nextWriter.sync(syncLogMode == SyncLogMode.HSYNC_ALWAYS.ordinal());
           } catch (IOException e) {
             //optimization failed, no need to abort here.
             LOG.warn("pre-sync failed", e);
@@ -1471,7 +1473,7 @@ public class HLog implements Syncable {
             } else {
               this.isSyncing = true;
               long startTimeNs = System.nanoTime();
-              writer.sync();
+              writer.sync(syncLogMode == SyncLogMode.HSYNC_ALWAYS.ordinal());
               long syncNs = System.nanoTime() - startTimeNs;
               syncTime.inc(syncNs);
               int syncMs = (int) (syncNs / (1000 * 1000L));
@@ -2141,6 +2143,16 @@ public class HLog implements Syncable {
   private static final void offerWriteLatency(long latencyNanos) {
     // might be silently dropped, if the queue is full
     fsWriteLatenciesNanos.offer(latencyNanos); 
+  }
+
+  //A flag controls the balance between performance and data safety
+  public enum SyncLogMode {
+    //default value. lose data up to 30s once all dns crash or power outage
+    HFLUSH_ALWAYS,
+    //it will ensure every sucessful wal syncing goes into disk
+    HSYNC_ALWAYS,
+    //call hflush() in most of time, and call hsync() per second (not finished yet)
+    HSYNC_PER_SECOND;
   }
 
   /**
