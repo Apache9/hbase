@@ -124,6 +124,7 @@ import org.apache.hadoop.hbase.io.hfile.BlockCache;
 import org.apache.hadoop.hbase.io.hfile.BlockCacheColumnFamilySummary;
 import org.apache.hadoop.hbase.io.hfile.CacheConfig;
 import org.apache.hadoop.hbase.io.hfile.CacheStats;
+import org.apache.hadoop.hbase.ipc.CallerDisconnectedException;
 import org.apache.hadoop.hbase.ipc.CoprocessorProtocol;
 import org.apache.hadoop.hbase.ipc.HBaseRPC;
 import org.apache.hadoop.hbase.ipc.HBaseRPCErrorHandler;
@@ -4022,6 +4023,10 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
                 "Get, Delete, Put, Exec, Increment, or Append.");
           }
         } catch (IOException ex) {
+          if ((ex instanceof CallerDisconnectedException)
+              || (ex.getCause() instanceof CallerDisconnectedException)) {
+            throw ex;
+          }
           response.add(regionName, originalIndex, ex);
         }
       }
