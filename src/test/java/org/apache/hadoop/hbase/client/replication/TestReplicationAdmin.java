@@ -156,6 +156,15 @@ public class TestReplicationAdmin {
     
     assertEquals("t1;t2", tableCFs);
     admin.removePeer(ID_ONE);
+
+    // Add a valid peer without tables
+    admin.addPeer(ID_ONE, KEY_ONE, "ENABLED");
+    // append t2
+    admin.appendPeerTableCFs(ID_ONE, table2);
+    tableCFs = admin.getPeerTableCFs(ID_ONE);
+
+    assertEquals("t2", tableCFs);
+    admin.removePeer(ID_ONE);
   }
   
   @org.junit.Rule

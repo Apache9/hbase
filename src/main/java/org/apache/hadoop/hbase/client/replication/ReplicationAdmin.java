@@ -219,7 +219,10 @@ public class ReplicationAdmin implements Closeable {
    */
   public void appendPeerTableCFs(String id, String tableCFs)
       throws IOException, KeeperException {
-    tableCFs = getPeerTableCFs(id) + ";" + tableCFs;
+    String prevTableCFs = getPeerTableCFs(id);
+    if (prevTableCFs != null && !prevTableCFs.isEmpty()) {
+      tableCFs = getPeerTableCFs(id) + ";" + tableCFs;
+    }
     LOG.info("The new table-cf config for peer: " + id + " is: " + tableCFs);
     checkTableCFs(tableCFs);
     this.replicationZk.setTableCFsStr(id, tableCFs);
