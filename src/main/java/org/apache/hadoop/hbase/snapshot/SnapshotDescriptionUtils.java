@@ -30,6 +30,7 @@ import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.SnapshotDescription;
+import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.FSUtils;
@@ -356,5 +357,19 @@ public class SnapshotDescriptionUtils {
     }
     return "{ ss=" + ssd.getName() + " table=" + ssd.getTable()
         + " type=" + ssd.getType() + " }";
+  }
+  
+  /**
+   * Check if the user is this table snapshot's owner
+   * @param snapshot the table snapshot description
+   * @param user the user
+   * @return
+   */
+  public static boolean isSnapshotOwner(final SnapshotDescription snapshot, final User user) {
+    if (user == null) return false;
+    if (!snapshot.hasOwner()) return false;
+    
+    if (snapshot.getOwner().equals(user.getName())) return true;
+    return false;
   }
 }

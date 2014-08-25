@@ -44,6 +44,7 @@ import org.apache.hadoop.hbase.Stoppable;
 import org.apache.hadoop.hbase.catalog.MetaReader;
 import org.apache.hadoop.hbase.errorhandling.ForeignException;
 import org.apache.hadoop.hbase.executor.ExecutorService;
+import org.apache.hadoop.hbase.ipc.RequestContext;
 import org.apache.hadoop.hbase.master.AssignmentManager;
 import org.apache.hadoop.hbase.master.MasterCoprocessorHost;
 import org.apache.hadoop.hbase.master.MasterFileSystem;
@@ -58,6 +59,7 @@ import org.apache.hadoop.hbase.procedure.ProcedureCoordinatorRpcs;
 import org.apache.hadoop.hbase.procedure.ZKProcedureCoordinatorRpcs;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.SnapshotDescription;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.SnapshotDescription.Type;
+import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.snapshot.HBaseSnapshotException;
 import org.apache.hadoop.hbase.snapshot.RestoreSnapshotException;
 import org.apache.hadoop.hbase.snapshot.RestoreSnapshotHelper;
@@ -275,6 +277,11 @@ public class SnapshotManager implements Stoppable {
    * @throws IOException For filesystem IOExceptions
    */
   public void deleteSnapshot(SnapshotDescription snapshot) throws SnapshotDoesNotExistException, IOException {
+    String snapshotName = snapshot.getName();
+    FileSystem fs = master.getMasterFileSystem().getFileSystem();
+    Path snapshotDir = SnapshotDescriptionUtils.getCompletedSnapshotDir(snapshotName, rootDir);
+    // get all snapshot info from file system
+    snapshot = SnapshotDescriptionUtils.readSnapshotInfo(fs, snapshotDir);
 
     // call coproc pre hook
     MasterCoprocessorHost cpHost = master.getCoprocessorHost();
@@ -287,14 +294,12 @@ public class SnapshotManager implements Stoppable {
       throw new SnapshotDoesNotExistException(snapshot);
     }
 
-    String snapshotName = snapshot.getName();
     LOG.debug("Deleting snapshot: " + snapshotName);
     // first create the snapshot description and check to see if it exists
-    MasterFileSystem fs = master.getMasterFileSystem();
-    Path snapshotDir = SnapshotDescriptionUtils.getCompletedSnapshotDir(snapshotName, rootDir);
+
 
     // delete the existing snapshot
-    if (!fs.getFileSystem().delete(snapshotDir, true)) {
+    if (!fs.delete(snapshotDir, true)) {
       throw new HBaseSnapshotException("Failed to delete snapshot directory: " + snapshotDir);
     }
 
@@ -529,16 +534,21 @@ public class SnapshotManager implements Stoppable {
       throw new SnapshotCreationException("Table '" + snapshot.getTable()
           + "' doesn't exist, can't take snapshot.", snapshot);
     }
-
-    // set the snapshot version, now that we are ready to take it
-    snapshot = snapshot.toBuilder().setVersion(SnapshotDescriptionUtils.SNAPSHOT_LAYOUT_VERSION)
-        .build();
-
+    
     // call pre coproc hook
     MasterCoprocessorHost cpHost = master.getCoprocessorHost();
     if (cpHost != null) {
       cpHost.preSnapshot(snapshot, desc);
     }
+
+    SnapshotDescription.Builder builder = snapshot.toBuilder();
+    User user = RequestContext.getRequestUser();
+    if (User.isHBaseSecurityEnabled(master.getConfiguration()) && user != null) {
+      builder.setOwner(user.getName());
+    }
+    // set the snapshot version, now that we are ready to take it
+    snapshot = builder.setVersion(SnapshotDescriptionUtils.SNAPSHOT_LAYOUT_VERSION)
+        .build();
 
     // if the table is enabled, then have the RS run actually the snapshot work
     AssignmentManager assignmentMgr = master.getAssignmentManager();
@@ -663,9 +673,9 @@ public class SnapshotManager implements Stoppable {
       throw new SnapshotDoesNotExistException(reqSnapshot);
     }
 
-    // read snapshot information
-    SnapshotDescription fsSnapshot = SnapshotDescriptionUtils.readSnapshotInfo(fs, snapshotDir);
     HTableDescriptor snapshotTableDesc = FSTableDescriptors.getTableDescriptor(fs, snapshotDir);
+    // read snapshot information
+    SnapshotDescription snapshot = SnapshotDescriptionUtils.readSnapshotInfo(fs, snapshotDir);
     String tableName = reqSnapshot.getTable();
 
     // stop tracking "abandoned" handlers
@@ -673,32 +683,32 @@ public class SnapshotManager implements Stoppable {
 
     // Execute the restore/clone operation
     if (MetaReader.tableExists(master.getCatalogTracker(), tableName)) {
-      if (master.getAssignmentManager().getZKTable().isEnabledTable(fsSnapshot.getTable())) {
+      if (master.getAssignmentManager().getZKTable().isEnabledTable(tableName)) {
         throw new UnsupportedOperationException("Table '" +
-          fsSnapshot.getTable() + "' must be disabled in order to perform a restore operation.");
+            tableName + "' must be disabled in order to perform a restore operation.");
       }
 
       // call coproc pre hook
       if (cpHost != null) {
-        cpHost.preRestoreSnapshot(reqSnapshot, snapshotTableDesc);
+        cpHost.preRestoreSnapshot(snapshot, snapshotTableDesc);
       }
-      restoreSnapshot(fsSnapshot, snapshotTableDesc);
-      LOG.info("Restore snapshot=" + fsSnapshot.getName() + " as table=" + tableName);
+      restoreSnapshot(snapshot, snapshotTableDesc);
+      LOG.info("Restore snapshot=" + snapshot.getName() + " as table=" + tableName);
 
       if (cpHost != null) {
-        cpHost.postRestoreSnapshot(reqSnapshot, snapshotTableDesc);
+        cpHost.postRestoreSnapshot(snapshot, snapshotTableDesc);
       }
     } else {
       HTableDescriptor htd = RestoreSnapshotHelper.cloneTableSchema(snapshotTableDesc,
                                                          Bytes.toBytes(tableName));
       if (cpHost != null) {
-        cpHost.preCloneSnapshot(reqSnapshot, htd);
+        cpHost.preCloneSnapshot(snapshot, htd);
       }
-      cloneSnapshot(fsSnapshot, htd);
-      LOG.info("Clone snapshot=" + fsSnapshot.getName() + " as table=" + tableName);
+      cloneSnapshot(snapshot, htd);
+      LOG.info("Clone snapshot=" + snapshot.getName() + " as table=" + tableName);
 
       if (cpHost != null) {
-        cpHost.postCloneSnapshot(reqSnapshot, htd);
+        cpHost.postCloneSnapshot(snapshot, htd);
       }
     }
   }

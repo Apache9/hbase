@@ -74,6 +74,7 @@ import org.apache.hadoop.hbase.regionserver.wal.WALEdit;
 import org.apache.hadoop.hbase.security.AccessDeniedException;
 import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.security.access.Permission.Action;
+import org.apache.hadoop.hbase.snapshot.SnapshotDescriptionUtils;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
 import org.apache.hadoop.hbase.util.Pair;
@@ -768,7 +769,7 @@ public class AccessController extends BaseRegionObserver
   public void preSnapshot(final ObserverContext<MasterCoprocessorEnvironment> ctx,
       final SnapshotDescription snapshot, final HTableDescriptor hTableDescriptor)
       throws IOException {
-    requirePermission("snapshot", Permission.Action.ADMIN);
+    requirePermission("snapshot", hTableDescriptor.getName(), null, null, Permission.Action.ADMIN);
   }
 
   @Override
@@ -794,7 +795,11 @@ public class AccessController extends BaseRegionObserver
   public void preRestoreSnapshot(final ObserverContext<MasterCoprocessorEnvironment> ctx,
       final SnapshotDescription snapshot, final HTableDescriptor hTableDescriptor)
       throws IOException {
-    requirePermission("restoreSnapshot", Permission.Action.ADMIN);
+    if (SnapshotDescriptionUtils.isSnapshotOwner(snapshot, getActiveUser())) {
+      requirePermission("restoreSnapshot", hTableDescriptor.getName(), null, null, Permission.Action.ADMIN);
+    } else {
+      requirePermission("restoreSnapshot", Permission.Action.ADMIN);
+    }
   }
 
   @Override
@@ -806,6 +811,9 @@ public class AccessController extends BaseRegionObserver
   @Override
   public void preDeleteSnapshot(final ObserverContext<MasterCoprocessorEnvironment> ctx,
       final SnapshotDescription snapshot) throws IOException {
+    if (SnapshotDescriptionUtils.isSnapshotOwner(snapshot, getActiveUser())) {
+      return;
+    }
     requirePermission("deleteSnapshot", Permission.Action.ADMIN);
   }
 
