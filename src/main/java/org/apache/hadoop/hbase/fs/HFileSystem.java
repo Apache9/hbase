@@ -30,7 +30,7 @@ import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.LocalFileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.hbase.util.Methods;
+import org.apache.hadoop.hbase.conf.ConfigurationObserver;
 import org.apache.hadoop.util.ReflectionUtils;
 import org.apache.hadoop.util.Progressable;
 
@@ -41,9 +41,9 @@ import org.apache.hadoop.util.Progressable;
  * In future, if we want to make hlogs be in a different filesystem,
  * this is the place to make it happen.
  */
-public class HFileSystem extends FilterFileSystem {
+public class HFileSystem extends FilterFileSystem implements ConfigurationObserver {
 
-  private final FileSystem noChecksumFs;   // read hfile data from storage
+  private FileSystem noChecksumFs;   // read hfile data from storage
   private final boolean useHBaseChecksum;
 
   /**
@@ -192,5 +192,29 @@ public class HFileSystem extends FilterFileSystem {
       Progressable progress) throws IOException {
     return fs.createNonRecursive(f, overwrite, bufferSize, replication,
                                  blockSize, progress);
+  }
+
+  @Override
+  public void notifyOnChange(Configuration newConf) {
+    // See HFileSystem constructor above
+    if (useHBaseChecksum && !(fs instanceof LocalFileSystem)) {
+      // Dynamic change short circuit reads
+      if (!newConf.get("dfs.client.read.shortcircuit").equals(
+          noChecksumFs.getConf().get("dfs.client.read.shortcircuit"))) {
+        try {
+          Configuration conf = new Configuration(newConf);
+          conf.setBoolean("dfs.client.read.shortcircuit.skip.checksum", true);
+          FileSystem newNoChecksumFs = newInstanceFileSystem(conf);
+          newNoChecksumFs.setVerifyChecksum(false);
+          LOG.info("Changing the value of dfs.client.read.shortcircuit "
+              + " from "
+              + noChecksumFs.getConf().get("dfs.client.read.shortcircuit")
+              + " to " + newConf.get("dfs.client.read.shortcircuit"));
+          this.noChecksumFs = newNoChecksumFs;
+        } catch (IOException e) {
+          LOG.error("Can't get the file system from the conf.", e);
+        }
+      }
+    }
   }
 }

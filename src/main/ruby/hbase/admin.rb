@@ -84,6 +84,12 @@ module Hbase
     end
 
     #----------------------------------------------------------------------------------------------
+    # Updata all nodes' configuration in the cluster  
+    def update_config()
+      @admin.updateConfiguration()
+    end
+    
+    #----------------------------------------------------------------------------------------------
     # Requests a regionserver's HLog roll
     def hlog_roll(server_name)
       @admin.rollHLogWriter(server_name)

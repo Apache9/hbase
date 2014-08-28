@@ -27,6 +27,7 @@ import java.lang.reflect.UndeclaredThrowableException;
 import java.net.SocketTimeoutException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -2470,5 +2471,42 @@ public class HBaseAdmin implements Abortable, Closeable {
    */
   public void deleteSnapshot(final String snapshotName) throws IOException {
     deleteSnapshot(Bytes.toBytes(snapshotName));
+  }
+   /**
+   * Update configuration for master and all region servers
+   * 
+   * @throws IOException
+   *           if a remote or network exception occurs
+   */
+  public void updateConfiguration() throws IOException {
+    // Ask master update configuration
+    updateMasterConfiguration();
+    for (ServerName serverInfo : getMaster().getOnlineRS()) {
+      updateRegionServerConfiguration(serverInfo);
+    }
+  }
+
+  /**
+   * Update configuration for master
+   * 
+   * @throws IOException
+   *           if a remote or network exception occurs
+   */
+  public void updateMasterConfiguration() throws IOException {
+    getMaster().updateConfiguration();
+  }
+
+  /**
+   * Update configuration for region server at this address
+   * 
+   * @param serverName
+   * @throws IOException
+   *           if a remote or network exception occurs
+   */
+  public void updateRegionServerConfiguration(ServerName sn)
+      throws IOException {
+    HRegionInterface hri = this.connection.getHRegionConnection(
+      sn.getHostname(), sn.getPort());
+    hri.updateConfiguration();
   }
 }

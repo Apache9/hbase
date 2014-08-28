@@ -76,6 +76,7 @@ import org.apache.hadoop.hbase.client.MetaScanner.MetaScannerVisitorBase;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.coprocessor.Exec;
 import org.apache.hadoop.hbase.client.coprocessor.ExecResult;
+import org.apache.hadoop.hbase.conf.ConfigurationManager;
 import org.apache.hadoop.hbase.coprocessor.CoprocessorHost;
 import org.apache.hadoop.hbase.executor.ExecutorService;
 import org.apache.hadoop.hbase.executor.ExecutorService.ExecutorType;
@@ -279,6 +280,7 @@ Server {
   /** The following is used in master recovery scenario to re-register listeners */
   private List<ZooKeeperListener> registeredZKListenersBeforeRecovery;
 
+  private ConfigurationManager configurationManager = new ConfigurationManager();
   /**
    * Initializes the HMaster. The steps are as follows:
    * <p>
@@ -571,6 +573,8 @@ Server {
 
     status.setStatus("Initializing Master file system");
     this.masterActiveTime = System.currentTimeMillis();
+    
+    updateConfiguration();
     // TODO: Do this using Dependency Injection, using PicoContainer, Guice or Spring.
     this.fileSystemManager = new MasterFileSystem(this, this, metrics, masterRecovery);
 
@@ -585,7 +589,6 @@ Server {
       this.executorService = new ExecutorService(getServerName().toString());
       this.serverManager = new ServerManager(this, this);
     }
-
 
     status.setStatus("Initializing ZK system trackers");
     initializeZKBasedSystemTrackers();
@@ -2373,5 +2376,13 @@ Server {
       names[i++] = iter.next().getNameAsString();
     }
     return names;
+  }
+
+  @Override
+  public void updateConfiguration() {
+    LOG.info("Reloading the configuration from disk.");
+    conf.reloadConfiguration();
+    // Notify all the observers that the configuration has changed.
+    configurationManager.notifyAllObservers(conf);
   }
 }

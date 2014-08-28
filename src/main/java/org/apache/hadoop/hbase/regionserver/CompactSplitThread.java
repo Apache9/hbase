@@ -36,6 +36,7 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HTableDescriptor;
+import org.apache.hadoop.hbase.conf.ConfigurationObserver;
 import org.apache.hadoop.hbase.regionserver.compactions.CompactionRequest;
 
 import com.google.common.base.Preconditions;
@@ -43,7 +44,7 @@ import com.google.common.base.Preconditions;
 /**
  * Compact region on request and then run split if appropriate
  */
-public class CompactSplitThread implements CompactionRequestor {
+public class CompactSplitThread implements CompactionRequestor, ConfigurationObserver{
   static final Log LOG = LogFactory.getLog(CompactSplitThread.class);
 
   private final HRegionServer server;
@@ -332,5 +333,53 @@ public class CompactSplitThread implements CompactionRequestor {
    */
   public int getRegionSplitLimit() {
     return this.regionSplitLimit;
+  }
+
+  @Override
+  public void notifyOnChange(Configuration newConf) {
+    // Check if number of large / small compaction threads has changed, and then
+    // adjust the core pool size of the thread pools, by using the
+    // setCorePoolSize() method. According to the javadocs, it is safe to
+    // change the core pool size on-the-fly. We need to reset the maximum
+    // pool size, as well.
+    int largeThreads = Math.max(1,
+        newConf.getInt("hbase.regionserver.thread.compaction.large", 1));
+    if (this.largeCompactions.getCorePoolSize() != largeThreads) {
+      LOG.info("Changing the value of hbase.regionserver.thread.compaction.large "
+          + " from "
+          + this.largeCompactions.getCorePoolSize()
+          + " to "
+          + largeThreads);
+      this.largeCompactions.setMaximumPoolSize(largeThreads);
+      this.largeCompactions.setCorePoolSize(largeThreads);
+    }
+
+    int smallThreads = newConf.getInt(
+        "hbase.regionserver.thread.compaction.small", 1);
+    if (this.smallCompactions.getCorePoolSize() != smallThreads) {
+      LOG.info("Changing the value of hbase.regionserver.thread.compaction.small "
+          + " from "
+          + this.smallCompactions.getCorePoolSize()
+          + " to "
+          + smallThreads);
+      this.smallCompactions.setMaximumPoolSize(smallThreads);
+      this.smallCompactions.setCorePoolSize(smallThreads);
+    }
+  }
+
+  /**
+   * Helper method for tests to check if the number of small compaction threads
+   * change on-the-fly.
+   */
+  protected int getSmallCompactionThreadNum() {
+    return this.smallCompactions.getCorePoolSize();
+  }
+
+  /**
+   * Helper method for tests to check if the number of large compaction threads
+   * change on-the-fly.
+   */
+  protected int getLargeCompactionThreadNum() {
+    return this.largeCompactions.getCorePoolSize();
   }
 }

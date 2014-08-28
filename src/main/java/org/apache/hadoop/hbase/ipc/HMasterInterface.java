@@ -346,4 +346,9 @@ public interface HMasterInterface extends VersionedProtocol {
    * @throws IOException if an error occurred while getting the list of tables
    */
   public String[] getTableNames() throws IOException;
+
+  /**
+   * Reload the configuration from disk.
+   */
+  public void updateConfiguration();
 }

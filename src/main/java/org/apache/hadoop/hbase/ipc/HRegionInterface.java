@@ -679,4 +679,9 @@ public interface HRegionInterface extends VersionedProtocol, Stoppable, Abortabl
    */
   public Result[] scan(byte[] regionName, Scan scan, int numberOfRows)
       throws IOException;
+  
+  /**
+   * Reload the configuration from disk.
+   */
+  public void updateConfiguration();
 }

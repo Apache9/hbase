@@ -112,6 +112,7 @@ import org.apache.hadoop.hbase.client.RowMutations;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.client.coprocessor.Exec;
 import org.apache.hadoop.hbase.client.coprocessor.ExecResult;
+import org.apache.hadoop.hbase.conf.ConfigurationManager;
 import org.apache.hadoop.hbase.coprocessor.CoprocessorHost;
 import org.apache.hadoop.hbase.executor.EventHandler.EventType;
 import org.apache.hadoop.hbase.executor.ExecutorService;
@@ -421,6 +422,10 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
 
   /** The health check chore. */
   private HealthCheckChore healthCheckChore;
+
+  // This object lets classes register themselves to get notified on
+  // Configuration changes.
+  public static final ConfigurationManager configurationManager = new ConfigurationManager();
 
   /**
    * Starts a HRegionServer at the default location
@@ -738,6 +743,8 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
 
     // Compaction thread
     this.compactSplitThread = new CompactSplitThread(this);
+    // Registering the compactSplitThread object with the ConfigurationManager.
+    configurationManager.registerObserver(this.compactSplitThread);
 
     // Background thread to check for compactions; needed if region
     // has not gotten updates in a while. Make it run at a lesser frequency.
@@ -1154,6 +1161,9 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
       this.conf.set("fs.defaultFS", this.conf.get("hbase.rootdir"));
       // Get fs instance used by this RS
       this.fs = new HFileSystem(this.conf, this.useHBaseChecksum);
+      // Registering the fs object with the ConfigurationManager.
+      configurationManager.registerObserver(this.fs);
+
       this.rootDir = new Path(this.conf.get(HConstants.HBASE_DIR));
       this.tableDescriptors = new FSTableDescriptors(this.fs, this.rootDir, true);
       this.hlog = setupWALAndReplication();
@@ -4420,5 +4430,13 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
    */
   public CompactSplitThread getCompactSplitThread() {
     return this.compactSplitThread;
+  }
+
+  @Override
+  public void updateConfiguration() {
+    LOG.info("Reloading the configuration from disk.");
+    conf.reloadConfiguration();
+    // Notify all the observers that the configuration has changed.
+    configurationManager.notifyAllObservers(conf);
   }
 }

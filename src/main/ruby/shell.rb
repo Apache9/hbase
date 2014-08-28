@@ -279,6 +279,7 @@ Shell.load_command_group(
     zk_dump
     hlog_roll
     compact_switch
+    update_config
   ]
 )
 
