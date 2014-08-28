@@ -103,8 +103,14 @@ public class TableSplit implements InputSplit, Comparable<TableSplit> {
 
   @Override
   public String toString() {
-    return m_regionLocation + ":" +
-      Bytes.toStringBinary(m_startRow) + "," + Bytes.toStringBinary(m_endRow);
+    StringBuilder buf = new StringBuilder();
+    buf.append("HBase table input {");
+    buf.append("table name: ").append(Bytes.toString(m_tableName));
+    buf.append(", start row: ").append(Bytes.toStringBinary(m_startRow));
+    buf.append(", stop row: ").append(Bytes.toStringBinary(m_endRow));
+    buf.append(", region location: ").append(m_regionLocation);
+    buf.append("}");
+    return buf.toString();
   }
 
   public int compareTo(TableSplit o) {
