@@ -56,28 +56,14 @@ public class CompactSelection {
   private double compactRatio;
   // compaction ratio off-peak
   private double compactRatioOffPeak;
-  // offpeak start time
-  private int offPeakStartHour = -1;
-  // off peak end time
-  private int offPeakEndHour = -1;
+  private final OffPeakHours offPeakHours;
 
   public CompactSelection(Configuration conf, List<StoreFile> filesToCompact) {
     this.filesToCompact = filesToCompact;
     this.conf = conf;
     this.compactRatio = conf.getFloat("hbase.hstore.compaction.ratio", 1.2F);
     this.compactRatioOffPeak = conf.getFloat("hbase.hstore.compaction.ratio.offpeak", 5.0F);
-
-    // Peak time is from [offPeakStartHour, offPeakEndHour). Valid numbers are [0, 23]
-    this.offPeakStartHour = conf.getInt("hbase.offpeak.start.hour", -1);
-    this.offPeakEndHour = conf.getInt("hbase.offpeak.end.hour", -1);
-    if (!isValidHour(this.offPeakStartHour) || !isValidHour(this.offPeakEndHour)) {
-      if (!(this.offPeakStartHour == -1 && this.offPeakEndHour == -1)) {
-        LOG.warn("Invalid start/end hour for peak hour : start = " +
-            this.offPeakStartHour + " end = " + this.offPeakEndHour +
-            ". Valid numbers are [0-23]");
-      }
-      this.offPeakStartHour = this.offPeakEndHour = -1;
-    }
+    this.offPeakHours = OffPeakHours.getInstance(conf);
   }
 
   /**
@@ -134,7 +120,7 @@ public class CompactSelection {
   public double getCompactSelectionRatio() {
     double r = this.compactRatio;
     synchronized(compactionCountLock) {
-      if (isOffPeakHour() && numOutstandingOffPeakCompactions == 0) {
+      if (offPeakHours.isOffPeakHour() && numOutstandingOffPeakCompactions == 0) {
         r = this.compactRatioOffPeak;
         numOutstandingOffPeakCompactions++;
         isOffPeakCompaction = true;
@@ -188,18 +174,6 @@ public class CompactSelection {
     return this.isOffPeakCompaction;
   }
 
-  private boolean isOffPeakHour() {
-    int currentHour = (new GregorianCalendar()).get(Calendar.HOUR_OF_DAY);
-    // If offpeak time checking is disabled just return false.
-    if (this.offPeakStartHour == this.offPeakEndHour) {
-      return false;
-    }
-    if (this.offPeakStartHour < this.offPeakEndHour) {
-      return (currentHour >= this.offPeakStartHour && currentHour < this.offPeakEndHour);
-    }
-    return (currentHour >= this.offPeakStartHour || currentHour < this.offPeakEndHour);
-  }
-
   public CompactSelection subList(int start, int end) {
     throw new UnsupportedOperationException();
   }
@@ -211,9 +185,5 @@ public class CompactSelection {
 
   public void clearSubList(int start, int end) {
     filesToCompact.subList(start, end).clear();
-  }
-
-  private boolean isValidHour(int hour) {
-    return (hour >= 0 && hour <= 23);
   }
 }
