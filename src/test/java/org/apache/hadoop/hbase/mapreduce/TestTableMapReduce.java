@@ -263,6 +263,7 @@ public class TestTableMapReduce {
   /**
    * Test that we add tmpjars correctly including the ZK jar.
    */
+  @Test
   public void testAddDependencyJars() throws Exception {
     Job job = new Job();
     TableMapReduceUtil.addDependencyJars(job);
@@ -270,13 +271,21 @@ public class TestTableMapReduce {
 
     System.err.println("tmpjars: " + tmpjars);
     assertTrue(tmpjars.contains("zookeeper"));
-    assertFalse(tmpjars.contains("guava"));
 
     System.err.println("appending guava jar");
     TableMapReduceUtil.addDependencyJars(job.getConfiguration(), 
         com.google.common.base.Function.class);
     tmpjars = job.getConfiguration().get("tmpjars");
     assertTrue(tmpjars.contains("guava"));
+    
+    try {
+      TableMapReduceUtil.addDependencyJars(job.getConfiguration(), String.class);
+      assertTrue(false);
+    } catch (NullPointerException e) {
+      assertTrue(false);
+    } catch (IOException e) {
+      assertTrue(true);
+    }
   }
 
   @org.junit.Rule
