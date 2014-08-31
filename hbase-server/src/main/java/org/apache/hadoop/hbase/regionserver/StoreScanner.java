@@ -610,16 +610,27 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
   }
 
   private String dumpCell(Cell cell) {
+    if (cell == null) {
+      return null;
+    }
     return new StringBuilder("Cell: uid=")
         .append(Bytes.toLong(cell.getRowArray(), cell.getRowOffset()))
         .append(" version=")
         .append(
             Long.MAX_VALUE
-                - Bytes.toLong(cell.getRowArray(), cell.getRowOffset() + Longs.BYTES))
+                - Bytes.toLong(cell.getRowArray(), cell.getRowOffset()
+                    + Longs.BYTES))
         .append(
-            Bytes.toString(cell.getQualifierArray(), cell.getQualifierOffset(),
-                cell.getQualifierLength())).toString();
+            " f="
+                + Bytes.toString(cell.getFamilyArray(),
+                    cell.getFamilyOffset(), cell.getFamilyLength()))
+        .append(" q=")
+        .append(
+            Bytes.toString(cell.getQualifierArray(),
+                cell.getQualifierOffset(), cell.getQualifierLength()))
+        .toString();
   }
+
   /**
    * @return true if top of heap has changed (and KeyValueHeap has to try the
    *         next KV)

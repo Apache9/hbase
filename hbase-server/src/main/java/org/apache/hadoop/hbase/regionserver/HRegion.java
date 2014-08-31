@@ -3971,10 +3971,10 @@ public class HRegion implements HeapSize { // , Writable{
                   - Bytes.toLong(cell.getRowArray(), cell.getRowOffset()
                       + Longs.BYTES))
           .append(
-              "f="
+              " f="
                   + Bytes.toString(cell.getFamilyArray(),
                       cell.getFamilyOffset(), cell.getFamilyLength()))
-          .append("q=")
+          .append(" q=")
           .append(
               Bytes.toString(cell.getQualifierArray(),
                   cell.getQualifierOffset(), cell.getQualifierLength()))
@@ -4067,7 +4067,7 @@ public class HRegion implements HeapSize { // , Writable{
             if (savedScan.getFamilyMap().containsKey(Bytes.toBytes("SMS"))) {
               LOG.debug("=======" + Bytes.toLong(savedScan.getStartRow()) + ": "
                   + String.format("%08x", System.identityHashCode(this))
-                  + " populate next kv " + dumpCell(current) + ",  results " + dumpResults(results));
+                  + " populate next kv " + dumpCell(nextKv) + ",  results " + dumpResults(results));
             }
           }
           // Ok, we are good, let's try to get some results from the main heap.
