@@ -3971,6 +3971,11 @@ public class HRegion implements HeapSize { // , Writable{
                   - Bytes.toLong(cell.getRowArray(), cell.getRowOffset()
                       + Longs.BYTES))
           .append(
+              "f="
+                  + Bytes.toString(cell.getFamilyArray(),
+                      cell.getFamilyOffset(), cell.getFamilyLength()))
+          .append("q=")
+          .append(
               Bytes.toString(cell.getQualifierArray(),
                   cell.getQualifierOffset(), cell.getQualifierLength()))
           .toString();
