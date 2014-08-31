@@ -30,6 +30,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
@@ -147,6 +148,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.io.Closeables;
+import com.google.common.primitives.Longs;
 import com.google.protobuf.Descriptors;
 import com.google.protobuf.Message;
 import com.google.protobuf.RpcCallback;
@@ -3756,6 +3758,7 @@ public class HRegion implements HeapSize { // , Writable{
     private long readPt;
     private long maxResultSize;
     protected HRegion region;
+    private Scan savedScan;
 
     @Override
     public HRegionInfo getRegionInfo() {
@@ -3764,7 +3767,7 @@ public class HRegion implements HeapSize { // , Writable{
 
     RegionScannerImpl(Scan scan, List<KeyValueScanner> additionalScanners, HRegion region)
         throws IOException {
-
+      this.savedScan = scan;
       this.region = region;
       this.maxResultSize = scan.getMaxResultSize();
       if (scan.hasFilter()) {
@@ -3956,6 +3959,36 @@ public class HRegion implements HeapSize { // , Writable{
       return this.filter != null && this.filter.filterAllRemaining();
     }
 
+    private String dumpCell(Cell cell) {
+      if (cell == null) {
+        return null;
+      }
+      return new StringBuilder("Cell: uid=")
+          .append(Bytes.toLong(cell.getRowArray(), cell.getRowOffset()))
+          .append(" version=")
+          .append(
+              Long.MAX_VALUE
+                  - Bytes.toLong(cell.getRowArray(), cell.getRowOffset()
+                      + Longs.BYTES))
+          .append(
+              Bytes.toString(cell.getQualifierArray(),
+                  cell.getQualifierOffset(), cell.getQualifierLength()))
+          .toString();
+    }
+    
+    private String dumpResults(List<Cell> results) {
+      if (results.isEmpty()) {
+        return "[]";
+      }
+      StringBuilder sb = new StringBuilder("[");
+      Iterator<Cell> iter = results.iterator();
+      sb.append(dumpCell(iter.next()));
+      while (iter.hasNext()) {
+        sb.append(", ").append(iter.next());
+      }
+      return sb.toString();
+    }
+
     private boolean nextInternal(List<Cell> results, int limit)
     throws IOException {
       if (!results.isEmpty()) {
@@ -3984,7 +4017,15 @@ public class HRegion implements HeapSize { // , Writable{
 
         // Let's see what we have in the storeHeap.
         KeyValue current = this.storeHeap.peek();
-
+        
+        if ("Snapshot"
+            .equals(getRegionInfo().getTable().getQualifierAsString())) {
+          if (savedScan.getFamilyMap().containsKey(Bytes.toBytes("SMS"))) {
+            LOG.debug("=======" + Bytes.toLong(savedScan.getStartRow()) + ": "
+                + String.format("%08x", System.identityHashCode(this))
+                + " get first kv " + dumpCell(current));
+          }
+        }
         byte[] currentRow = null;
         int offset = 0;
         short length = 0;
@@ -4016,6 +4057,14 @@ public class HRegion implements HeapSize { // , Writable{
 
           KeyValue nextKv = populateResult(results, this.storeHeap, limit, currentRow, offset,
               length);
+          if ("Snapshot"
+              .equals(getRegionInfo().getTable().getQualifierAsString())) {
+            if (savedScan.getFamilyMap().containsKey(Bytes.toBytes("SMS"))) {
+              LOG.debug("=======" + Bytes.toLong(savedScan.getStartRow()) + ": "
+                  + String.format("%08x", System.identityHashCode(this))
+                  + " populate next kv " + dumpCell(current) + ",  results " + dumpResults(results));
+            }
+          }
           // Ok, we are good, let's try to get some results from the main heap.
           if (nextKv == KV_LIMIT) {
             if (this.filter != null && filter.hasFilterRow()) {

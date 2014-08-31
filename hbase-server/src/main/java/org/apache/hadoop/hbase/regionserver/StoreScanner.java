@@ -44,6 +44,8 @@ import org.apache.hadoop.hbase.regionserver.handler.ParallelSeekHandler;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 
+import com.google.common.primitives.Longs;
+
 /**
  * Scanner scans both the memstore and the Store. Coalesce KeyValue stream
  * into List<KeyValue> for a single row.
@@ -585,6 +587,15 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
 
     // this could be null.
     this.lastTop = this.peek();
+    if ("Snapshot".equals(store.getTableName().getQualifierAsString())) {
+      String familyName = store.getColumnFamilyName();
+      if ("COMMON".equals(familyName) || "SMS".equals(familyName)) {
+        LOG.debug("=======" + Bytes.toLong(scan.getStartRow()) + ": "
+            + familyName + "-"
+            + String.format("%08x", System.identityHashCode(this))
+            + " updateReaders, lastTop=" + dumpCell(this.lastTop));
+      }
+    }
 
     //DebugPrint.println("SS updateReaders, topKey = " + lastTop);
 
@@ -598,6 +609,17 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
     }
   }
 
+  private String dumpCell(Cell cell) {
+    return new StringBuilder("Cell: uid=")
+        .append(Bytes.toLong(cell.getRowArray(), cell.getRowOffset()))
+        .append(" version=")
+        .append(
+            Long.MAX_VALUE
+                - Bytes.toLong(cell.getRowArray(), cell.getRowOffset() + Longs.BYTES))
+        .append(
+            Bytes.toString(cell.getQualifierArray(), cell.getQualifierOffset(),
+                cell.getQualifierLength())).toString();
+  }
   /**
    * @return true if top of heap has changed (and KeyValueHeap has to try the
    *         next KV)
@@ -605,6 +627,16 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
    */
   protected boolean checkReseek() throws IOException {
     if (this.heap == null && this.lastTop != null) {
+      if ("Snapshot".equals(store.getTableName().getQualifierAsString())) {
+        String familyName = store.getColumnFamilyName();
+        if ("COMMON".equals(familyName) || "SMS".equals(familyName)) {
+          LOG.debug("=======" + Bytes.toLong(scan.getStartRow()) + ": "
+              + familyName + "-"
+              + String.format("%08x", System.identityHashCode(this))
+              + " checkReseek, lastTop=" + dumpCell(this.lastTop));
+        }
+      }
+
       resetScannerStack(this.lastTop);
       if (this.heap.peek() == null
           || store.getComparator().compareRows(this.lastTop, this.heap.peek()) != 0) {
