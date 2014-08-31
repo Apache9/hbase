@@ -3984,7 +3984,7 @@ public class HRegion implements HeapSize { // , Writable{
       Iterator<Cell> iter = results.iterator();
       sb.append(dumpCell(iter.next()));
       while (iter.hasNext()) {
-        sb.append(", ").append(iter.next());
+        sb.append(", ").append(dumpCell(iter.next()));
       }
       return sb.toString();
     }
