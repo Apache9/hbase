@@ -933,13 +933,17 @@ public class HStore implements Store {
       this.storeEngine.getStoreFileManager().insertNewFiles(sfs);
       this.memstore.clearSnapshot(set);
       Collection<StoreFile> collection = this.storeEngine.getStoreFileManager().getStorefiles();
-      StringBuilder sb = new StringBuilder("wudi:updateStorefiles [");
-      for (StoreFile file : collection)
-      {
-          sb.append(file.toStringDetailed()).append(",");
+      if ("Snapshot".equals(getTableName().getQualifierAsString())) {
+        String familyName = getColumnFamilyName();
+        if ("SMS".equals(familyName) || "COMMON".equals(familyName)) {
+          StringBuilder sb = new StringBuilder("=======updateStorefiles [");
+          for (StoreFile file: collection) {
+            sb.append(file.toStringDetailed()).append(",");
+          }
+          sb.append("]");
+          LOG.debug(sb.toString());
+        }
       }
-      sb.append("]");
-      
     } finally {
       // We need the lock, as long as we are updating the storeFiles
       // or changing the memstore. Let us release it before calling
@@ -991,13 +995,18 @@ public class HStore implements Store {
       storeFilesToScan =
           this.storeEngine.getStoreFileManager().getFilesForScanOrGet(isGet, startRow, stopRow);
       memStoreScanners = this.memstore.getScanners(readPt);
-      StringBuilder sb = new StringBuilder("wudi: getScanners [ ");
-      for (StoreFile storeFile : storeFilesToScan)
-      {
-          sb.append(storeFile.toStringDetailed()).append(",");
+      if ("Snapshot".equals(getTableName().getQualifierAsString())) {
+        String familyName = getColumnFamilyName();
+        if ("SMS".equals(familyName) || "COMMON".equals(familyName)) {
+          StringBuilder sb = new StringBuilder("=======getScanners [ ");
+          for (StoreFile storeFile: storeFilesToScan) {
+            sb.append(storeFile.toStringDetailed()).append(",");
+          }
+          sb.append(memStoreScanners.get(0).toString()).append(" readPt: ").append(readPt)
+              .append(" ]");
+          LOG.debug(sb.toString());
+        }
       }
-      sb.append(memStoreScanners.get(0).toString()).append(" readPt: ").append(readPt).append(" ]");
-      LOG.debug(sb.toString());
     } finally {
       this.lock.readLock().unlock();
     }

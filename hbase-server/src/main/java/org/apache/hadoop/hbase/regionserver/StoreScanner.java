@@ -292,13 +292,17 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
     boolean usePread = isGet || scanUsePread;
     List<KeyValueScanner> list = selectScannersFrom(store.getScanners(cacheBlocks, isGet, usePread,
         isCompaction, matcher, scan.getStartRow(), scan.getStopRow(), this.readPt));
-    StringBuilder sb = new StringBuilder();
-    sb.append("wudi:getScannersNoCompaction[");
-    for (KeyValueScanner kvScanner : list)
-    {
-        sb.append(kvScanner.toString()).append(",");
+    if ("Snapshot".equals(store.getTableName().getQualifierAsString())) {
+      String familyName = store.getColumnFamilyName();
+      if ("SMS".equals(familyName) || "COMMON".equals(familyName)) {
+        StringBuilder sb = new StringBuilder("=======filterScanners [ ");
+        for (KeyValueScanner kvScanner: list) {
+          sb.append(kvScanner.toString()).append(",");
+        }
+        sb.append("]");
+        LOG.debug(sb.toString());
+      }
     }
-    sb.append("]");
     return list;
   }
 
