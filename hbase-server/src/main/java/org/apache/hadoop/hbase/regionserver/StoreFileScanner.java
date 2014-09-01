@@ -137,15 +137,6 @@ public class StoreFileScanner implements KeyValueScanner {
     }
 
     public KeyValue peek() {
-
-        if (Bytes.toString(cur.getFamilyArray(), cur.getFamilyOffset(),
-                cur.getFamilyLength()).equals("COMMON")) {
-            LOG.debug("COMMON: uid:"
-                    + Bytes.toLong(cur.getRowArray(), cur.getRowOffset())
-                    + "version:"
-                    + Bytes.toLong(cur.getRowArray(), cur.getRowOffset()
-                            + Longs.BYTES) + " sf:" + this.cur.toString());
-        }
         return cur;
     }
 

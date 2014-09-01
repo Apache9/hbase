@@ -290,8 +290,16 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
   protected List<KeyValueScanner> getScannersNoCompaction() throws IOException {
     final boolean isCompaction = false;
     boolean usePread = isGet || scanUsePread;
-    return selectScannersFrom(store.getScanners(cacheBlocks, isGet, usePread,
+    List<KeyValueScanner> list = selectScannersFrom(store.getScanners(cacheBlocks, isGet, usePread,
         isCompaction, matcher, scan.getStartRow(), scan.getStopRow(), this.readPt));
+    StringBuilder sb = new StringBuilder();
+    sb.append("wudi:getScannersNoCompaction[");
+    for (KeyValueScanner kvScanner : list)
+    {
+        sb.append(kvScanner.toString()).append(",");
+    }
+    sb.append("]");
+    return list;
   }
 
   /**
