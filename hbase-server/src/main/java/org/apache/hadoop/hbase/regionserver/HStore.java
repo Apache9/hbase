@@ -19,7 +19,6 @@
 package org.apache.hadoop.hbase.regionserver;
 
 import java.io.IOException;
-import java.io.FileNotFoundException;
 import java.io.InterruptedIOException;
 import java.net.InetSocketAddress;
 import java.security.Key;
@@ -932,18 +931,6 @@ public class HStore implements Store {
     try {
       this.storeEngine.getStoreFileManager().insertNewFiles(sfs);
       this.memstore.clearSnapshot(set);
-      Collection<StoreFile> collection = this.storeEngine.getStoreFileManager().getStorefiles();
-      if ("Snapshot".equals(getTableName().getQualifierAsString())) {
-        String familyName = getColumnFamilyName();
-        if ("SMS".equals(familyName) || "COMMON".equals(familyName)) {
-          StringBuilder sb = new StringBuilder("=======updateStorefiles [");
-          for (StoreFile file: collection) {
-            sb.append(file.toStringDetailed()).append(",");
-          }
-          sb.append("]");
-          LOG.debug(sb.toString());
-        }
-      }
     } finally {
       // We need the lock, as long as we are updating the storeFiles
       // or changing the memstore. Let us release it before calling
@@ -995,18 +982,6 @@ public class HStore implements Store {
       storeFilesToScan =
           this.storeEngine.getStoreFileManager().getFilesForScanOrGet(isGet, startRow, stopRow);
       memStoreScanners = this.memstore.getScanners(readPt);
-      if ("Snapshot".equals(getTableName().getQualifierAsString())) {
-        String familyName = getColumnFamilyName();
-        if ("SMS".equals(familyName) || "COMMON".equals(familyName)) {
-          StringBuilder sb = new StringBuilder("=======getScanners [ ");
-          for (StoreFile storeFile: storeFilesToScan) {
-            sb.append(storeFile.toStringDetailed()).append(",");
-          }
-          sb.append(memStoreScanners.get(0).toString()).append(" readPt: ").append(readPt)
-              .append(" ]");
-          LOG.debug(sb.toString());
-        }
-      }
     } finally {
       this.lock.readLock().unlock();
     }
