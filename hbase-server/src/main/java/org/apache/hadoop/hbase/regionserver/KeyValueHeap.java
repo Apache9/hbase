@@ -28,6 +28,8 @@ import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.KeyValue.KVComparator;
+import org.apache.hadoop.hbase.util.Bytes;
+import org.mortbay.log.Log;
 
 /**
  * Implements a heap merge across any number of KeyValueScanners.

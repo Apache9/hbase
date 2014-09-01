@@ -87,7 +87,7 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
   private KeyValue prevKV = null;
 
   /** We don't ever expect to change this, the constant is just for clarity. */
-  static final boolean LAZY_SEEK_ENABLED_BY_DEFAULT = true;
+  static final boolean LAZY_SEEK_ENABLED_BY_DEFAULT = false;
   public static final String STORESCANNER_PARALLEL_SEEK_ENABLE =
       "hbase.storescanner.parallel.seek.enable";
 
@@ -628,6 +628,7 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
         .append(
             Bytes.toString(cell.getQualifierArray(),
                 cell.getQualifierOffset(), cell.getQualifierLength()))
+                .append(cell.getTimestamp())
         .toString();
   }
 
