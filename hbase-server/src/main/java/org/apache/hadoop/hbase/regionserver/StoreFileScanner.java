@@ -29,6 +29,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.classification.InterfaceAudience;
+import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Scan;
@@ -72,6 +73,10 @@ public class StoreFileScanner implements KeyValueScanner {
     private ScanQueryMatcher matcher;
 
     private long readPt;
+    
+    private String tableName;
+    
+    private String familyName;
 
     /**
      * Implements a {@link KeyValueScanner} on top of the specified
@@ -89,6 +94,14 @@ public class StoreFileScanner implements KeyValueScanner {
         this.hasMVCCInfo = hasMVCC;
     }
 
+    public void setFamilyName(String familyName)
+    {
+        this.familyName = familyName;
+    }
+    public void setTableName(String tableName)
+    {
+        this.tableName = tableName;
+    }
     /**
      * Return an array of scanners corresponding to the given set of store
      * files.
@@ -135,8 +148,35 @@ public class StoreFileScanner implements KeyValueScanner {
     public String toString() {
         return "StoreFileScanner[" + hfs.toString() + ", cur=" + cur + "]";
     }
-
+private String dumpCell(Cell cell)
+{
+    if (cell == null) {
+        return null;
+      }
+      return new StringBuilder("Cell: uid=")
+          .append(Bytes.toLong(cell.getRowArray(), cell.getRowOffset()))
+          .append(" version=")
+          .append(
+              Long.MAX_VALUE - Bytes.toLong(cell.getRowArray(), cell.getRowOffset() + Longs.BYTES))
+          .append(
+              " f="
+                  + Bytes.toString(cell.getFamilyArray(), cell.getFamilyOffset(),
+                      cell.getFamilyLength()))
+          .append(" q=")
+          .append(
+              Bytes.toString(cell.getQualifierArray(), cell.getQualifierOffset(),
+                  cell.getQualifierLength())).append(" ts=").append(cell.getTimestamp()).toString();
+}
     public KeyValue peek() {
+        if (cur != null && this.tableName != null && this.familyName != null)
+        {
+            if ("Snapshot".equals(this.tableName)) {
+                if ("COMMON".equals(familyName) || "SMS".equals(familyName)) {
+                  LOG.debug("=======" + this.toString() + ": "
+                      + dumpCell(cur) );
+                }
+              }   
+        }
         return cur;
     }
 

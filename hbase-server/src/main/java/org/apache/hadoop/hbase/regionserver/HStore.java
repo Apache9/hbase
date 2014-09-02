@@ -994,6 +994,11 @@ public class HStore implements Store {
     List<StoreFileScanner> sfScanners = StoreFileScanner
       .getScannersForStoreFiles(storeFilesToScan, cacheBlocks, usePread, isCompaction, matcher,
         readPt);
+    for (StoreFileScanner sfs : sfScanners)
+    {
+        sfs.setFamilyName(this.getFamily().getNameAsString());
+        sfs.setTableName(this.getTableName().getQualifierAsString());
+    }
     List<KeyValueScanner> scanners =
       new ArrayList<KeyValueScanner>(sfScanners.size()+1);
     scanners.addAll(sfScanners);
