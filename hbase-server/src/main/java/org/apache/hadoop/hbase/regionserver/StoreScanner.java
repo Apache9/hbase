@@ -505,6 +505,7 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner implements K
             if (qcode == ScanQueryMatcher.MatchCode.SEEK_NEXT_ROW) {
               sb.append(" heaptop= ").append(heap.getHeap().peek());
             }
+            LOG.debug(sb.toString());
           }
         }
         switch (qcode) {
