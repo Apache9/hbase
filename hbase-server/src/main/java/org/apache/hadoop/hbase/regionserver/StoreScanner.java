@@ -47,8 +47,8 @@ import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import com.google.common.primitives.Longs;
 
 /**
- * Scanner scans both the memstore and the Store. Coalesce KeyValue stream
- * into List<KeyValue> for a single row.
+ * Scanner scans both the memstore and the Store. Coalesce KeyValue stream into
+ * List<KeyValue> for a single row.
  */
 @InterfaceAudience.Private
 public class StoreScanner extends NonReversedNonLazyKeyValueScanner implements KeyValueScanner,
@@ -314,8 +314,8 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner implements K
   protected List<KeyValueScanner> getScannersNoCompaction() throws IOException {
     final boolean isCompaction = false;
     boolean usePread = isGet || scanUsePread;
-    return selectScannersFrom(store.getScanners(cacheBlocks, isGet, usePread,
-        isCompaction, matcher, scan.getStartRow(), scan.getStopRow(), this.readPt));
+    return selectScannersFrom(store.getScanners(cacheBlocks, isGet, usePread, isCompaction,
+        matcher, scan.getStartRow(), scan.getStopRow(), this.readPt));
   }
 
   /**
@@ -496,10 +496,15 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner implements K
         ScanQueryMatcher.MatchCode qcode = matcher.match(kv);
         if ("Snapshot".equals(store.getTableName().getQualifierAsString())) {
           String familyName = store.getColumnFamilyName();
-          if (("COMMON".equals(familyName) || "SMS".equals(familyName)) && scan.getStartRow().length >= 8) {
-            LOG.debug("=======" + Bytes.toLong(scan.getStartRow()) + ": " + familyName + "-"
-                + String.format("%08x", System.identityHashCode(this)) + " next, kv="
-                + dumpCell(kv) + " qcode=" + qcode);
+          if (("COMMON".equals(familyName) || "SMS".equals(familyName))
+              && scan.getStartRow().length >= 8) {
+            StringBuilder sb = new StringBuilder("=======")
+                .append(Bytes.toLong(scan.getStartRow())).append(": ").append(familyName)
+                .append("-").append(String.format("%08x", System.identityHashCode(this)))
+                .append(" next, kv=").append(dumpCell(kv)).append(" qcode=").append(qcode);
+            if (qcode == ScanQueryMatcher.MatchCode.SEEK_NEXT_ROW) {
+              sb.append(" heaptop= ").append(heap.getHeap().peek());
+            }
           }
         }
         switch (qcode) {
@@ -629,7 +634,8 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner implements K
       this.lastTop = this.peek();
       if ("Snapshot".equals(store.getTableName().getQualifierAsString())) {
         String familyName = store.getColumnFamilyName();
-        if (("COMMON".equals(familyName) || "SMS".equals(familyName)) && scan.getStartRow().length >= 8) {
+        if (("COMMON".equals(familyName) || "SMS".equals(familyName))
+            && scan.getStartRow().length >= 8) {
           LOG.debug("=======" + Bytes.toLong(scan.getStartRow()) + ": " + familyName + "-"
               + String.format("%08x", System.identityHashCode(this)) + " updateReaders, lastTop="
               + dumpCell(this.lastTop));
@@ -677,7 +683,8 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner implements K
     if (this.heap == null && this.lastTop != null) {
       if ("Snapshot".equals(store.getTableName().getQualifierAsString())) {
         String familyName = store.getColumnFamilyName();
-        if (("COMMON".equals(familyName) || "SMS".equals(familyName)) && scan.getStartRow().length >= 8) {
+        if (("COMMON".equals(familyName) || "SMS".equals(familyName))
+            && scan.getStartRow().length >= 8) {
           LOG.debug("=======" + Bytes.toLong(scan.getStartRow()) + ": " + familyName + "-"
               + String.format("%08x", System.identityHashCode(this)) + " checkReseek, lastTop="
               + dumpCell(this.lastTop));

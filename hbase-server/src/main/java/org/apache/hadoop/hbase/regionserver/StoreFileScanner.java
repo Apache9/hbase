@@ -236,6 +236,13 @@ public class StoreFileScanner implements KeyValueScanner {
 
         try {
             try {
+              if (this.tableName != null && this.familyName != null) {
+                if (!isCompaction && "Snapshot".equals(this.tableName)
+                    && ("COMMON".equals(familyName) || "SMS".equals(familyName))) {
+                  LOG.debug("=======" + String.format("%08x", System.identityHashCode(this)) + " "
+                      + hfs.toString() + " try reseek: " + key);
+                }
+              }
                 if (!reseekAtOrAfter(hfs, key)) {
                     close();
                     return false;
