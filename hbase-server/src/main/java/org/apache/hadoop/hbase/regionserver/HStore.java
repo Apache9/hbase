@@ -998,6 +998,7 @@ public class HStore implements Store {
     {
         sfs.setFamilyName(this.getFamily().getNameAsString());
         sfs.setTableName(this.getTableName().getQualifierAsString());
+        sfs.setCompaction(isCompaction);
     }
     List<KeyValueScanner> scanners =
       new ArrayList<KeyValueScanner>(sfScanners.size()+1);

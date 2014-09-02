@@ -77,6 +77,8 @@ public class StoreFileScanner implements KeyValueScanner {
     private String tableName;
     
     private String familyName;
+    
+    private boolean isCompaction;
 
     /**
      * Implements a {@link KeyValueScanner} on top of the specified
@@ -94,14 +96,18 @@ public class StoreFileScanner implements KeyValueScanner {
         this.hasMVCCInfo = hasMVCC;
     }
 
-    public void setFamilyName(String familyName)
-    {
-        this.familyName = familyName;
-    }
-    public void setTableName(String tableName)
-    {
-        this.tableName = tableName;
-    }
+  public void setFamilyName(String familyName) {
+    this.familyName = familyName;
+  }
+
+  public void setTableName(String tableName) {
+    this.tableName = tableName;
+  }
+
+  public void setCompaction(boolean isCompaction) {
+    this.isCompaction = isCompaction;
+  }
+
     /**
      * Return an array of scanners corresponding to the given set of store
      * files.
@@ -148,54 +154,52 @@ public class StoreFileScanner implements KeyValueScanner {
     public String toString() {
         return "StoreFileScanner[" + hfs.toString() + ", cur=" + cur + "]";
     }
-private String dumpCell(Cell cell)
-{
+
+  private String dumpCell(Cell cell) {
     if (cell == null) {
-        return null;
+      return null;
+    }
+    return new StringBuilder("Cell: uid=")
+        .append(Bytes.toLong(cell.getRowArray(), cell.getRowOffset()))
+        .append(" version=")
+        .append(
+            Long.MAX_VALUE - Bytes.toLong(cell.getRowArray(), cell.getRowOffset() + Longs.BYTES))
+        .append(
+            " f="
+                + Bytes.toString(cell.getFamilyArray(), cell.getFamilyOffset(),
+                    cell.getFamilyLength()))
+        .append(" q=")
+        .append(
+            Bytes.toString(cell.getQualifierArray(), cell.getQualifierOffset(),
+                cell.getQualifierLength())).append(" ts=").append(cell.getTimestamp()).toString();
+  }
+
+  public KeyValue peek() {
+    return cur;
+  }
+
+  public KeyValue next() throws IOException {
+    KeyValue retKey = cur;
+    try {
+      // only seek if we aren't at the end. cur == null implies 'end'.
+      if (cur != null) {
+        hfs.next();
+        cur = hfs.getKeyValue();
+        if (cur != null && this.tableName != null && this.familyName != null) {
+          if (!isCompaction && "Snapshot".equals(this.tableName)
+              && ("COMMON".equals(familyName) || "SMS".equals(familyName))) {
+            LOG.debug("=======" + String.format("%08x", System.identityHashCode(this)) + " "
+                + hfs.toString() + " next: " + dumpCell(cur));
+          }
+        }
+        if (hasMVCCInfo)
+          skipKVsNewerThanReadpoint();
       }
-      return new StringBuilder("Cell: uid=")
-          .append(Bytes.toLong(cell.getRowArray(), cell.getRowOffset()))
-          .append(" version=")
-          .append(
-              Long.MAX_VALUE - Bytes.toLong(cell.getRowArray(), cell.getRowOffset() + Longs.BYTES))
-          .append(
-              " f="
-                  + Bytes.toString(cell.getFamilyArray(), cell.getFamilyOffset(),
-                      cell.getFamilyLength()))
-          .append(" q=")
-          .append(
-              Bytes.toString(cell.getQualifierArray(), cell.getQualifierOffset(),
-                  cell.getQualifierLength())).append(" ts=").append(cell.getTimestamp()).toString();
-}
-    public KeyValue peek() {
-        if (cur != null && this.tableName != null && this.familyName != null)
-        {
-            if ("Snapshot".equals(this.tableName)) {
-                if ("COMMON".equals(familyName) || "SMS".equals(familyName)) {
-                  LOG.debug("=======" + this.toString() + ": "
-                      + dumpCell(cur) );
-                }
-              }   
-        }
-        return cur;
+    } catch (IOException e) {
+      throw new IOException("Could not iterate " + this, e);
     }
-
-    public KeyValue next() throws IOException {
-        KeyValue retKey = cur;
-
-        try {
-            // only seek if we aren't at the end. cur == null implies 'end'.
-            if (cur != null) {
-                hfs.next();
-                cur = hfs.getKeyValue();
-                if (hasMVCCInfo)
-                    skipKVsNewerThanReadpoint();
-            }
-        } catch (IOException e) {
-            throw new IOException("Could not iterate " + this, e);
-        }
-        return retKey;
-    }
+    return retKey;
+  }
 
     public boolean seek(KeyValue key) throws IOException {
         if (seekCount != null)
@@ -209,7 +213,13 @@ private String dumpCell(Cell cell)
                 }
 
                 cur = hfs.getKeyValue();
-
+                if (cur != null && this.tableName != null && this.familyName != null) {
+                  if (!isCompaction && "Snapshot".equals(this.tableName)
+                      && ("COMMON".equals(familyName) || "SMS".equals(familyName))) {
+                    LOG.debug("=======" + String.format("%08x", System.identityHashCode(this)) + " "
+                        + hfs.toString() + " seek: " + dumpCell(cur));
+                  }
+                }
                 return !hasMVCCInfo ? true : skipKVsNewerThanReadpoint();
             } finally {
                 realSeekDone = true;
@@ -231,7 +241,13 @@ private String dumpCell(Cell cell)
                     return false;
                 }
                 cur = hfs.getKeyValue();
-
+                if (cur != null && this.tableName != null && this.familyName != null) {
+                  if (!isCompaction && "Snapshot".equals(this.tableName)
+                      && ("COMMON".equals(familyName) || "SMS".equals(familyName))) {
+                    LOG.debug("=======" + String.format("%08x", System.identityHashCode(this)) + " "
+                        + hfs.toString() + " reseek: " + dumpCell(cur));
+                  }
+                }
                 return !hasMVCCInfo ? true : skipKVsNewerThanReadpoint();
             } finally {
                 realSeekDone = true;
@@ -249,6 +265,13 @@ private String dumpCell(Cell cell)
         while (enforceMVCC && cur != null && (cur.getMvccVersion() > readPt)) {
             hfs.next();
             cur = hfs.getKeyValue();
+            if (cur != null && this.tableName != null && this.familyName != null) {
+              if (!isCompaction && "Snapshot".equals(this.tableName)
+                  && ("COMMON".equals(familyName) || "SMS".equals(familyName))) {
+                LOG.debug("=======" + String.format("%08x", System.identityHashCode(this)) + " "
+                    + hfs.toString() + " skip: " + dumpCell(cur));
+              }
+            }
             if (this.stopSkippingKVsIfNextRow
                     && getComparator().compareRows(cur.getBuffer(),
                             cur.getRowOffset(), cur.getRowLength(),
