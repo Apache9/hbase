@@ -280,7 +280,6 @@ Server {
   /** The following is used in master recovery scenario to re-register listeners */
   private List<ZooKeeperListener> registeredZKListenersBeforeRecovery;
 
-  private ConfigurationManager configurationManager = new ConfigurationManager();
   /**
    * Initializes the HMaster. The steps are as follows:
    * <p>
@@ -2383,6 +2382,6 @@ Server {
     LOG.info("Reloading the configuration from disk.");
     conf.reloadConfiguration();
     // Notify all the observers that the configuration has changed.
-    configurationManager.notifyAllObservers(conf);
+    ConfigurationManager.getInstance().notifyAllObservers(conf);
   }
 }

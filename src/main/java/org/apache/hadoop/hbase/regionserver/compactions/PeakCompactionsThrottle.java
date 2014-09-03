@@ -19,26 +19,30 @@ package org.apache.hadoop.hbase.regionserver.compactions;
 
 import java.io.IOException;
 import java.io.InterruptedIOException;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.conf.ConfigurationManager;
+import org.apache.hadoop.hbase.conf.ConfigurationObserver;
+import org.apache.hadoop.hbase.regionserver.HRegionServer;
 import org.apache.hadoop.util.StringUtils;
 
 /**
  * Limit peak hour compaction speed , slow down when it is too fast. 
  */
 @InterfaceAudience.Private
-public class PeakCompactionsThrottle {
+public class PeakCompactionsThrottle implements ConfigurationObserver{
   private static final Log LOG = LogFactory.getLog(PeakCompactionsThrottle.class);
   public static final String PEAK_COMPACTION_SPEED_ALLOWED = "hbase.regionserver.compaction.peak.maxspeed";
   public static final String PEAK_COMPACTION_SPEED_CHECK_INTERVAL = "hbase.regionserver.compaction.speed.check.interval";
 
   OffPeakHours offPeakHours;
 
-  private final long maxSpeedInPeak;
-  private final long checkInterval;
+  private AtomicLong maxSpeedInPeak = new AtomicLong(0);
+  private AtomicLong checkInterval = new AtomicLong(0);
   private int numberOfThrottles = 0;
   private int timeOfThrottles = 0;
   private long start;
@@ -47,8 +51,8 @@ public class PeakCompactionsThrottle {
 
   public PeakCompactionsThrottle(Configuration conf) {
     offPeakHours = OffPeakHours.getInstance(conf);
-    maxSpeedInPeak = conf.getLong(PEAK_COMPACTION_SPEED_ALLOWED, 100 * 1024 * 1024 /* 100 MB/s */);
-    checkInterval = conf.getLong(PEAK_COMPACTION_SPEED_CHECK_INTERVAL, 10 * 1024 * 1024 * 1024 /* 10 GB */);
+    maxSpeedInPeak.set(conf.getLong(PEAK_COMPACTION_SPEED_ALLOWED, 100 * 1024 * 1024 /* 100 MB/s */));
+    checkInterval.set(conf.getLong(PEAK_COMPACTION_SPEED_CHECK_INTERVAL, 10 * 1024 * 1024 * 1024 /* 10 GB */));
   }
 
   /**
@@ -56,6 +60,7 @@ public class PeakCompactionsThrottle {
    */
   public void startCompaction() {
     start = System.currentTimeMillis();
+    ConfigurationManager.getInstance().registerObserver(this);
   }
 
   /**
@@ -64,9 +69,10 @@ public class PeakCompactionsThrottle {
   public void finishCompaction(String region, String family) {
     if (numberOfThrottles > 0) {
       LOG.info("Region '" + region + "' family '" + family + "' 's maxSpeedInPeak is "
-          + StringUtils.humanReadableInt(maxSpeedInPeak) + "/s compaction throttle: sleep number  "
+          + StringUtils.humanReadableInt(maxSpeedInPeak.get()) + "/s compaction throttle: sleep number  "
           + numberOfThrottles + " sleep time " + timeOfThrottles + "ms");
     }
+    ConfigurationManager.getInstance().deregisterObserver(this);
   }
 
   /**
@@ -82,7 +88,7 @@ public class PeakCompactionsThrottle {
    */
   public void throttle(long numOfBytes) throws IOException {
     bytesWritten += numOfBytes;
-    if (bytesWritten >= checkInterval) {
+    if (bytesWritten >= checkInterval.get()) {
       checkAndSlowFastCompact(bytesWritten);
       bytesWritten = 0;
     }
@@ -93,11 +99,11 @@ public class PeakCompactionsThrottle {
       // off peak hour, just return.
       return;
     }
-    if (maxSpeedInPeak <= 0) {
+    if (maxSpeedInPeak.get() <= 0) {
       return;
     }
     end = System.currentTimeMillis();
-    long minTimeAllowed = numOfBytes * 1000 / maxSpeedInPeak; // ms
+    long minTimeAllowed = numOfBytes * 1000 / maxSpeedInPeak.get(); // ms
     long elapsed = end - start;
     if (elapsed < minTimeAllowed) {
       // too fast
@@ -120,5 +126,11 @@ public class PeakCompactionsThrottle {
    */
   public int getNumberOfThrottles() {
     return numberOfThrottles;
+  }
+
+  @Override
+  public void notifyOnChange(Configuration conf) {
+    maxSpeedInPeak.set(conf.getLong(PEAK_COMPACTION_SPEED_ALLOWED, 100 * 1024 * 1024 /* 100 MB/s */));
+    checkInterval.set(conf.getLong(PEAK_COMPACTION_SPEED_CHECK_INTERVAL, 10 * 1024 * 1024 * 1024 /* 10 GB */));
   }
 }

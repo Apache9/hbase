@@ -67,7 +67,7 @@ public class TestConfigurationManager extends TestCase {
    */
   public void testCheckIfObserversNotified() {
     Configuration conf = new Configuration();
-    ConfigurationManager cm = new ConfigurationManager();
+    ConfigurationManager cm = ConfigurationManager.getInstance();
     DummyConfigurationObserver d1 = new DummyConfigurationObserver(cm);
 
     // Check if we get notified.
@@ -102,7 +102,7 @@ public class TestConfigurationManager extends TestCase {
    */
   public void testDeregisterOnOutOfScope() {
     Configuration conf = new Configuration();
-    ConfigurationManager cm = new ConfigurationManager();
+    ConfigurationManager cm = ConfigurationManager.getInstance();
 
     boolean outOfScopeObserversDeregistered = false;
 

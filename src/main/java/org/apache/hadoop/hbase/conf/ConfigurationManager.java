@@ -55,11 +55,7 @@ import org.apache.hadoop.conf.Configuration;
  * 2. Register the appropriate instance of the class with the
  *    {@link ConfigurationManager} instance, using the
  *    {@link ConfigurationManager#registerObserver(ConfigurationObserver)}
- *    method. For the RS side of things, the ConfigurationManager is a static
- *    member of the {@link org.apache.hadoop.hbase.regionserver.HRegionServer}
- *    class. Be careful not to do this in the constructor, as you might cause
- *    the 'this' reference to escape. Use a factory method, or an initialize()
- *    method which is called after the construction of the object.
+ *    method.
  *
  * 3. Deregister the instance using the
  *    {@link ConfigurationManager#deregisterObserver(ConfigurationObserver)}
@@ -72,6 +68,7 @@ import org.apache.hadoop.conf.Configuration;
 @InterfaceAudience.Private
 public class ConfigurationManager {
   public static final Log LOG = LogFactory.getLog(ConfigurationManager.class);
+  private static ConfigurationManager manager = new ConfigurationManager();
 
   // The set of Configuration Observers. These classes would like to get
   // notified when the configuration is reloaded from disk. This is a set
@@ -80,6 +77,14 @@ public class ConfigurationManager {
   private Set<ConfigurationObserver> configurationObservers =
     Collections.newSetFromMap(new WeakHashMap<ConfigurationObserver,
                                               Boolean>());
+
+  private ConfigurationManager() {
+    // private ctor
+  }
+
+  public static ConfigurationManager getInstance() {
+    return manager;
+  }
 
   /**
    * Register an observer class

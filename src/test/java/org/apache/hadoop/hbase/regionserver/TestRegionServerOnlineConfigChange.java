@@ -28,6 +28,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.MediumTests;
 import org.apache.hadoop.hbase.client.HTable;
+import org.apache.hadoop.hbase.conf.ConfigurationManager;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.experimental.categories.Category;
 
@@ -79,7 +80,7 @@ public class TestRegionServerOnlineConfigChange extends TestCase {
             newNumSmallThreads);
     conf.setInt("hbase.regionserver.thread.compaction.large",
             newNumLargeThreads);
-    HRegionServer.configurationManager.notifyAllObservers(conf);
+    ConfigurationManager.getInstance().notifyAllObservers(conf);
 
     assertEquals(newNumSmallThreads,
                   rs1.compactSplitThread.getSmallCompactionThreadNum());
