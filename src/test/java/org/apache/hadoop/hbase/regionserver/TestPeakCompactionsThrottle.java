@@ -17,63 +17,53 @@
  */
 package org.apache.hadoop.hbase.regionserver;
 
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+
+import java.io.IOException;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.SmallTests;
-import org.apache.hadoop.hbase.regionserver.compactions.OffPeakHours;
+import org.apache.hadoop.hbase.regionserver.compactions.PeakCompactionsThrottle;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
 @Category(SmallTests.class)
-public class TestOffPeakHours {
+public class TestPeakCompactionsThrottle {
   private static HBaseTestingUtility testUtil;
+  private Configuration conf;
 
   @BeforeClass
   public static void setUpClass() {
     testUtil = new HBaseTestingUtility();
   }
 
-  private int hourOfDay;
-  private int hourPlusOne;
-  private int hourMinusOne;
-  private int hourMinusTwo;
-  private Configuration conf;
-
   @Before
   public void setUp() {
-    hourOfDay = 15;
-    hourPlusOne = ((hourOfDay+1)%24);
-    hourMinusOne = ((hourOfDay-1+24)%24);
-    hourMinusTwo = ((hourOfDay-2+24)%24);
     conf = testUtil.getConfiguration();
   }
 
   @Test
-  public void testWithoutSettings() {
-    Configuration config = testUtil.getConfiguration();
-    OffPeakHours target = OffPeakHours.getInstance(config);
-    assertFalse(target.isOffPeakHour(hourOfDay));
-    assertTrue(target == OffPeakHours.DISABLED);
-  }
-
-  @Test
-  public void testSetPeakHourToTargetTime() {
-    conf.setLong("hbase.offpeak.start.hour", hourMinusOne);
-    conf.setLong("hbase.offpeak.end.hour", hourPlusOne);
-    OffPeakHours target = OffPeakHours.getInstance(conf);
-    assertTrue(target.isOffPeakHour(hourOfDay));
-  }
-
-  @Test
-  public void testSetPeakHourOutsideCurrentSelection() {
-    conf.setLong("hbase.offpeak.start.hour", hourMinusTwo);
-    conf.setLong("hbase.offpeak.end.hour", hourMinusOne);
-    OffPeakHours target = OffPeakHours.getInstance(conf);
-    assertFalse(target.isOffPeakHour(hourOfDay));
+  public void testSetPeakHour() throws IOException {
+    conf.setInt("hbase.offpeak.start.hour", -1);
+    conf.setInt("hbase.offpeak.end.hour", -1);
+    conf.setLong("hbase.regionserver.compaction.peak.maxspeed", 50 * 1024 * 1024L);
+    conf.setLong("hbase.regionserver.compaction.speed.check.interval", 50 * 1024 * 1024L);
+    PeakCompactionsThrottle peakCompactionsThrottle = new PeakCompactionsThrottle(conf);
+    peakCompactionsThrottle.startCompaction();
+    long numOfBytes = 60 * 1024 * 1024;
+    peakCompactionsThrottle.throttle(numOfBytes);
+    peakCompactionsThrottle.finishCompaction("region", "family");
+    assertTrue(peakCompactionsThrottle.getNumberOfThrottles() == 1);
+    conf.setInt("hbase.offpeak.start.hour", 0);
+    conf.setInt("hbase.offpeak.end.hour", 23);
+    peakCompactionsThrottle = new PeakCompactionsThrottle(conf);
+    peakCompactionsThrottle.startCompaction();
+    numOfBytes = 60 * 1024 * 1024;
+    peakCompactionsThrottle.throttle(numOfBytes);
+    peakCompactionsThrottle.finishCompaction("region", "family");
+    assertTrue(peakCompactionsThrottle.getNumberOfThrottles() == 0);
   }
 }

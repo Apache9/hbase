@@ -36,6 +36,7 @@ import org.apache.hadoop.hbase.io.hfile.Compression;
 import org.apache.hadoop.hbase.io.hfile.HFileWriterV2;
 import org.apache.hadoop.hbase.regionserver.compactions.CompactionProgress;
 import org.apache.hadoop.hbase.regionserver.compactions.CompactionRequest;
+import org.apache.hadoop.hbase.regionserver.compactions.PeakCompactionsThrottle;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.util.StringUtils;
 
@@ -47,9 +48,11 @@ import org.apache.hadoop.util.StringUtils;
 class Compactor extends Configured {
   private static final Log LOG = LogFactory.getLog(Compactor.class);
   private CompactionProgress progress;
+  private Configuration config;
 
   Compactor(final Configuration c) {
     super(c);
+    config = c;
   }
 
   /**
@@ -92,6 +95,7 @@ class Compactor extends Configured {
     final Store store = request.getStore();
     final boolean majorCompaction = request.isMajor();
     final List<StoreFile> filesToCompact = request.getFiles();
+    PeakCompactionsThrottle peakCompactionsThrottle = new PeakCompactionsThrottle(config);
 
     for (StoreFile file : filesToCompact) {
       StoreFile.Reader r = file.getReader();
@@ -189,6 +193,7 @@ class Compactor extends Configured {
         List<KeyValue> kvs = new ArrayList<KeyValue>();
         // Limit to "hbase.hstore.compaction.kv.max" (default 10) to avoid OOME
         boolean hasMore;
+        peakCompactionsThrottle.startCompaction();
         do {
           hasMore = scanner.next(kvs, compactionKVMax);
           // Create the writer even if no kv(Empty store file is also ok),
@@ -216,10 +221,13 @@ class Compactor extends Configured {
                   isInterrupted(store, writer);
                 }
               }
+              peakCompactionsThrottle.throttle(kv.getLength());
             }
           }
           kvs.clear();
         } while (hasMore);
+        peakCompactionsThrottle.finishCompaction(store.getHRegion().getRegionNameAsString(), store
+            .getFamily().getNameAsString());
       } finally {
         if (scanner != null) {
           scanner.close();
