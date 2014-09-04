@@ -4025,7 +4025,7 @@ public class HRegion implements HeapSize { // , Writable{
         
         if ("Snapshot"
             .equals(getRegionInfo().getTable().getQualifierAsString())) {
-          if (savedScan.getFamilyMap().containsKey(Bytes.toBytes("SMS"))) {
+          if (savedScan.getFamilyMap().containsKey(Bytes.toBytes("APP"))) {
             LOG.debug("=======" + Bytes.toLong(savedScan.getStartRow()) + ": "
                 + String.format("%08x", System.identityHashCode(this))
                 + " get first kv " + dumpCell(current));
@@ -4064,7 +4064,7 @@ public class HRegion implements HeapSize { // , Writable{
               length);
           if ("Snapshot"
               .equals(getRegionInfo().getTable().getQualifierAsString())) {
-            if (savedScan.getFamilyMap().containsKey(Bytes.toBytes("SMS"))) {
+            if (savedScan.getFamilyMap().containsKey(Bytes.toBytes("APP"))) {
               LOG.debug("=======" + Bytes.toLong(savedScan.getStartRow()) + ": "
                   + String.format("%08x", System.identityHashCode(this))
                   + " populate next kv " + dumpCell(nextKv) + ",  results " + dumpResults(results));

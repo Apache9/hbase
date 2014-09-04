@@ -187,7 +187,7 @@ public class StoreFileScanner implements KeyValueScanner {
         cur = hfs.getKeyValue();
         if (cur != null && this.tableName != null && this.familyName != null) {
           if (!isCompaction && "Snapshot".equals(this.tableName)
-              && ("COMMON".equals(familyName) || "SMS".equals(familyName))) {
+              && ("COMMON".equals(familyName) || "APP".equals(familyName))) {
             LOG.debug("=======" + String.format("%08x", System.identityHashCode(this)) + " "
                 + hfs.toString() + " next: " + dumpCell(cur));
           }
@@ -215,7 +215,7 @@ public class StoreFileScanner implements KeyValueScanner {
                 cur = hfs.getKeyValue();
                 if (cur != null && this.tableName != null && this.familyName != null) {
                   if (!isCompaction && "Snapshot".equals(this.tableName)
-                      && ("COMMON".equals(familyName) || "SMS".equals(familyName))) {
+                      && ("COMMON".equals(familyName) || "APP".equals(familyName))) {
                     LOG.debug("=======" + String.format("%08x", System.identityHashCode(this)) + " "
                         + hfs.toString() + " seek: " + dumpCell(cur));
                   }
@@ -238,7 +238,7 @@ public class StoreFileScanner implements KeyValueScanner {
             try {
               if (this.tableName != null && this.familyName != null) {
                 if (!isCompaction && "Snapshot".equals(this.tableName)
-                    && ("COMMON".equals(familyName) || "SMS".equals(familyName))) {
+                    && ("COMMON".equals(familyName) || "APP".equals(familyName))) {
                   LOG.debug("=======" + String.format("%08x", System.identityHashCode(this)) + " "
                       + hfs.toString() + " try reseek: " + key);
                 }
@@ -250,7 +250,7 @@ public class StoreFileScanner implements KeyValueScanner {
                 cur = hfs.getKeyValue();
                 if (cur != null && this.tableName != null && this.familyName != null) {
                   if (!isCompaction && "Snapshot".equals(this.tableName)
-                      && ("COMMON".equals(familyName) || "SMS".equals(familyName))) {
+                      && ("COMMON".equals(familyName) || "APP".equals(familyName))) {
                     LOG.debug("=======" + String.format("%08x", System.identityHashCode(this)) + " "
                         + hfs.toString() + " reseek: " + dumpCell(cur));
                   }
@@ -274,7 +274,7 @@ public class StoreFileScanner implements KeyValueScanner {
             cur = hfs.getKeyValue();
             if (cur != null && this.tableName != null && this.familyName != null) {
               if (!isCompaction && "Snapshot".equals(this.tableName)
-                  && ("COMMON".equals(familyName) || "SMS".equals(familyName))) {
+                  && ("COMMON".equals(familyName) || "APP".equals(familyName))) {
                 LOG.debug("=======" + String.format("%08x", System.identityHashCode(this)) + " "
                     + hfs.toString() + " skip: " + dumpCell(cur));
               }
