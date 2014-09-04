@@ -382,4 +382,11 @@ public class CompactSplitThread implements CompactionRequestor, ConfigurationObs
   protected int getLargeCompactionThreadNum() {
     return this.largeCompactions.getCorePoolSize();
   }
+
+  /**
+   * @return the current running small/large compaction threads number 
+   */
+  public int getCurrentCompactionThreadNum() {
+    return this.smallCompactions.getActiveCount() + this.largeCompactions.getActiveCount();
+  }
 }

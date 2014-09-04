@@ -95,7 +95,8 @@ class Compactor extends Configured {
     final Store store = request.getStore();
     final boolean majorCompaction = request.isMajor();
     final List<StoreFile> filesToCompact = request.getFiles();
-    PeakCompactionsThrottle peakCompactionsThrottle = new PeakCompactionsThrottle(config);
+    PeakCompactionsThrottle peakCompactionsThrottle = new PeakCompactionsThrottle(config, store
+        .getHRegion().getRegionServerServices());
 
     for (StoreFile file : filesToCompact) {
       StoreFile.Reader r = file.getReader();

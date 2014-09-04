@@ -28,6 +28,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.conf.ConfigurationManager;
 import org.apache.hadoop.hbase.conf.ConfigurationObserver;
 import org.apache.hadoop.hbase.regionserver.HRegionServer;
+import org.apache.hadoop.hbase.regionserver.RegionServerServices;
 import org.apache.hadoop.util.StringUtils;
 
 /**
@@ -39,8 +40,8 @@ public class PeakCompactionsThrottle implements ConfigurationObserver{
   public static final String PEAK_COMPACTION_SPEED_ALLOWED = "hbase.regionserver.compaction.peak.maxspeed";
   public static final String PEAK_COMPACTION_SPEED_CHECK_INTERVAL = "hbase.regionserver.compaction.speed.check.interval";
 
-  OffPeakHours offPeakHours;
-
+  private OffPeakHours offPeakHours;
+  private RegionServerServices rsServices;
   private AtomicLong maxSpeedInPeak = new AtomicLong(0);
   private AtomicLong checkInterval = new AtomicLong(0);
   private int numberOfThrottles = 0;
@@ -49,10 +50,11 @@ public class PeakCompactionsThrottle implements ConfigurationObserver{
   private long end;
   private long bytesWritten = 0;
 
-  public PeakCompactionsThrottle(Configuration conf) {
+  public PeakCompactionsThrottle(Configuration conf, RegionServerServices service) {
     offPeakHours = OffPeakHours.getInstance(conf);
     maxSpeedInPeak.set(conf.getLong(PEAK_COMPACTION_SPEED_ALLOWED, 100 * 1024 * 1024 /* 100 MB/s */));
     checkInterval.set(conf.getLong(PEAK_COMPACTION_SPEED_CHECK_INTERVAL, 10 * 1024 * 1024 * 1024 /* 10 GB */));
+    rsServices = service;
   }
 
   /**
@@ -103,7 +105,9 @@ public class PeakCompactionsThrottle implements ConfigurationObserver{
       return;
     }
     end = System.currentTimeMillis();
-    long minTimeAllowed = numOfBytes * 1000 / maxSpeedInPeak.get(); // ms
+    int currentThreadNum = (rsServices == null ? 1 : rsServices.getCurrentCompactionThreadNum());
+    currentThreadNum = Math.max(1, currentThreadNum);
+    long minTimeAllowed = (numOfBytes * 1000 * currentThreadNum) / maxSpeedInPeak.get(); // ms
     long elapsed = end - start;
     if (elapsed < minTimeAllowed) {
       // too fast

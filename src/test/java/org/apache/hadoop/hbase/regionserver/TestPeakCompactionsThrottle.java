@@ -51,7 +51,7 @@ public class TestPeakCompactionsThrottle {
     conf.setInt("hbase.offpeak.end.hour", -1);
     conf.setLong("hbase.regionserver.compaction.peak.maxspeed", 50 * 1024 * 1024L);
     conf.setLong("hbase.regionserver.compaction.speed.check.interval", 50 * 1024 * 1024L);
-    PeakCompactionsThrottle peakCompactionsThrottle = new PeakCompactionsThrottle(conf);
+    PeakCompactionsThrottle peakCompactionsThrottle = new PeakCompactionsThrottle(conf, null);
     peakCompactionsThrottle.startCompaction();
     long numOfBytes = 60 * 1024 * 1024;
     peakCompactionsThrottle.throttle(numOfBytes);
@@ -59,7 +59,7 @@ public class TestPeakCompactionsThrottle {
     assertTrue(peakCompactionsThrottle.getNumberOfThrottles() == 1);
     conf.setInt("hbase.offpeak.start.hour", 0);
     conf.setInt("hbase.offpeak.end.hour", 23);
-    peakCompactionsThrottle = new PeakCompactionsThrottle(conf);
+    peakCompactionsThrottle = new PeakCompactionsThrottle(conf, null);
     peakCompactionsThrottle.startCompaction();
     numOfBytes = 60 * 1024 * 1024;
     peakCompactionsThrottle.throttle(numOfBytes);

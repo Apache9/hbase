@@ -53,6 +53,11 @@ public interface RegionServerServices extends OnlineRegions {
   public CompactionRequestor getCompactionRequester();
 
   /**
+   * @return the current running small/large compaction thread number
+   */
+  public int getCurrentCompactionThreadNum();
+
+  /**
    * @return Implementation of {@link FlushRequester} or null.
    */
   public FlushRequester getFlushRequester();

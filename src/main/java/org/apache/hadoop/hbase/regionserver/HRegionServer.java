@@ -4435,4 +4435,12 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
     // Notify all the observers that the configuration has changed.
     ConfigurationManager.getInstance().notifyAllObservers(conf);
   }
+
+  @Override
+  public int getCurrentCompactionThreadNum() {
+    if (this.compactSplitThread != null) {
+      return compactSplitThread.getCurrentCompactionThreadNum();
+    }
+    return 0;
+  }
 }

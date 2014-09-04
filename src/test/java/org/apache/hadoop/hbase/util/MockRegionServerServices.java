@@ -188,4 +188,10 @@ public class MockRegionServerServices implements RegionServerServices {
     // TODO Auto-generated method stub
     return null;
   }
+
+  @Override
+  public int getCurrentCompactionThreadNum() {
+    // TODO Auto-generated method stub
+    return 0;
+  }
 }
