@@ -65,6 +65,7 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hbase.CallSequenceOutOfOrderException;
 import org.apache.hadoop.hbase.Chore;
 import org.apache.hadoop.hbase.ClockOutOfSyncException;
 import org.apache.hadoop.hbase.DoNotRetryIOException;
@@ -339,8 +340,8 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
   // flag set after we're done setting up server threads (used for testing)
   protected volatile boolean isOnline;
 
-  final Map<String, RegionScanner> scanners =
-    new ConcurrentHashMap<String, RegionScanner>();
+  final Map<String, RegionScannerHolder> scanners =
+    new ConcurrentHashMap<String, RegionScannerHolder>();
 
   // zookeeper connection and watcher
   private ZooKeeperWatcher zooKeeper;
@@ -604,8 +605,8 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
           return HConstants.NORMAL_QOS;
         }
         String scannerIdString = Long.toString(scannerId);
-        RegionScanner scanner = scanners.get(scannerIdString);
-        if (scanner != null && scanner.getRegionInfo().isMetaTable()) {
+        RegionScannerHolder holder = scanners.get(scannerIdString);
+        if (holder != null && holder.getScanner().getRegionInfo().isMetaRegion()) {
           // LOG.debug("High priority scanner request: " + scannerId);
           return HConstants.HIGH_QOS;
         }
@@ -1102,9 +1103,9 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
   private void closeAllScanners() {
     // Close any outstanding scanners. Means they'll get an UnknownScanner
     // exception next time they come in.
-    for (Map.Entry<String, RegionScanner> e : this.scanners.entrySet()) {
+    for (Map.Entry<String, RegionScannerHolder> e : this.scanners.entrySet()) {
       try {
-        e.getValue().close();
+        e.getValue().getScanner().close();
       } catch (IOException ioe) {
         LOG.warn("Closing scanner " + e.getKey(), ioe);
       }
@@ -2753,7 +2754,7 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
   protected long addScanner(RegionScanner s) throws LeaseStillHeldException {
     long scannerId = this.scannerIdGen.incrementAndGet();
     String scannerName = String.valueOf(scannerId);
-    scanners.put(scannerName, s);
+    scanners.put(scannerName, new RegionScannerHolder(s));
     this.leases.createLease(scannerName, new ScannerListener(scannerName));
     return scannerId;
   }
@@ -2768,14 +2769,25 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
   }
 
   public Result[] next(final long scannerId, int nbRows) throws IOException {
+    return next(scannerId, nbRows, -1);
+  }
+
+  public Result[] next(final long scannerId, int nbRows, long callSeq) throws IOException {
     TracerUtils.addAnnotation("start a next");
     String scannerName = String.valueOf(scannerId);
-    RegionScanner s = this.scanners.get(scannerName);
-    if (s == null) {
-      LOG.info("Client tried to access missing scanner " + scannerName);
-      throw new UnknownScannerException("Name: " + scannerName);
+    RegionScannerHolder holder = this.scanners.get(scannerName);
+    if (holder == null) throw new UnknownScannerException("Name: " + scannerName);
+    // if callSeq does not match throw Exception straight away. This needs to be performed even
+    // before checking of Lease.
+    // Old next() APIs which do not take callSeq will pass it as -1 and for that no
+    // need to match the callSeq from client and the one in server.
+    if (callSeq != -1 && callSeq != holder.getCallSeq()) {
+      throw new CallSequenceOutOfOrderException("Expected seq: " + holder.getCallSeq()
+          + " But the seq got from client: " + callSeq);
     }
-    return internalNext(s, nbRows, scannerName);
+    // Increment the callSeq value which is the next expected from client.
+    holder.incrCallSeq();
+    return internalNext(holder.getScanner(), nbRows, scannerName);
   }
 
   private Result[] internalNext(final RegionScanner s, int nbRows,
@@ -2873,10 +2885,10 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
           : results.toArray(new Result[0]);
     } catch (Throwable t) {
       if (t instanceof NotServingRegionException && scannerName != null) {
-        RegionScanner scanner = this.scanners.remove(scannerName);
         try {
-          if (scanner != null) {
-            scanner.close();
+          RegionScannerHolder holder = this.scanners.remove(scannerName);
+          if (holder != null) {
+            holder.getScanner().close();
             // No need to call "this.leases.removeLease(scannerName)" here
             // since which has been called before "getRegion()"(and re-add in
             // below finally clause)
@@ -2897,8 +2909,9 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
 
   public void close(final long scannerId) throws IOException {
     String scannerName = String.valueOf(scannerId);
-    RegionScanner s = scanners.get(scannerName);
-    internalCloseScanner(s, scannerName);
+    RegionScannerHolder holder = this.scanners.get(scannerName);
+    if (holder == null) throw new UnknownScannerException("Name: " + scannerName);
+    internalCloseScanner(holder.getScanner(), scannerName);
   }
 
   private void internalCloseScanner(final RegionScanner s, String scannerName)
@@ -2906,7 +2919,6 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
     try {
       checkOpen();
       requestCount.incrementAndGet();
-
       HRegion region = null;
       if (s != null) {
         // call coprocessor.
@@ -2919,7 +2931,10 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
       }
       RegionScanner toCloseScanner = s;
       if (scannerName != null) {
-        toCloseScanner = scanners.remove(scannerName);
+        RegionScannerHolder holder = scanners.remove(scannerName);
+        if (holder!= null) {
+          toCloseScanner = holder.getScanner();
+        }
       }
       if (toCloseScanner != null) {
         toCloseScanner.close();
@@ -2961,8 +2976,9 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
     }
 
     public void leaseExpired() {
-      RegionScanner s = scanners.remove(this.scannerName);
-      if (s != null) {
+      RegionScannerHolder holder = scanners.remove(this.scannerName);
+      if (holder != null) {
+        RegionScanner s = holder.getScanner();
         LOG.info("Scanner " + this.scannerName + " lease expired on region "
             + s.getRegionInfo().getRegionNameAsString());
         try {
