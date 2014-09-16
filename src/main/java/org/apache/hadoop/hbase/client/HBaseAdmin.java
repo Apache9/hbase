@@ -1455,6 +1455,22 @@ public class HBaseAdmin implements Abortable, Closeable {
   }
 
   /**
+   * Compact all regions on the regionserver
+   * @param regionserver the regionserver name
+   * @param major if it's major comapaction
+   * @throws IOException
+   * @throws InterruptedException
+   */
+  public void compactRegionServer(final String regionserver, boolean major)
+  throws IOException, InterruptedException {
+    ServerName sn = ServerName.parseServerName(regionserver);
+    HRegionInterface rs = this.connection.getHRegionConnection(sn.getHostname(), sn.getPort());
+    for (HRegionInfo region : rs.getOnlineRegions()) {
+      rs.compactRegion(region, major);
+    }
+  }
+
+  /**
    * Major compact a table or an individual region.
    * Asynchronous operation.
    *
