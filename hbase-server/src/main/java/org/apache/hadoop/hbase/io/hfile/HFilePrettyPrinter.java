@@ -21,16 +21,15 @@ package org.apache.hadoop.hbase.io.hfile;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataInput;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.SortedMap;
-
-import com.yammer.metrics.core.*;
-import com.yammer.metrics.reporting.ConsoleReporter;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -45,10 +44,10 @@ import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.KeyValue;
+import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.Tag;
 import org.apache.hadoop.hbase.io.hfile.HFile.FileInfo;
 import org.apache.hadoop.hbase.regionserver.TimeRangeTracker;
@@ -58,6 +57,13 @@ import org.apache.hadoop.hbase.util.ByteBloomFilter;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.FSUtils;
 import org.apache.hadoop.hbase.util.Writables;
+
+import com.yammer.metrics.core.Histogram;
+import com.yammer.metrics.core.Metric;
+import com.yammer.metrics.core.MetricName;
+import com.yammer.metrics.core.MetricPredicate;
+import com.yammer.metrics.core.MetricsRegistry;
+import com.yammer.metrics.reporting.ConsoleReporter;
 
 /**
  * Implements pretty-printing functionality for {@link HFile}s.
@@ -230,7 +236,14 @@ public class HFilePrettyPrinter {
         shouldScanKeysValues = 
           (scanner.seekTo(KeyValue.createFirstOnRow(this.row).getKey()) != -1);
       } else {
-        shouldScanKeysValues = scanner.seekTo();
+       // shouldScanKeysValues = scanner.seekTo();
+          ByteArrayOutputStream bos = new ByteArrayOutputStream(16);
+        DataOutputStream dos = new DataOutputStream(bos);
+        dos.writeLong(48766023L);
+            
+        
+        shouldScanKeysValues = scanner.seekTo(KeyValue.createFirstOnRow(bos.toByteArray())
+            .getKey()) != -1;
       }
       if (shouldScanKeysValues)
         scanKeysValues(file, fileStats, scanner, row);
@@ -273,7 +286,19 @@ public class HFilePrettyPrinter {
       }
       // dump key value
       if (printKey) {
-        System.out.print("K: " + kv);
+        long uid = Bytes.toLong(kv.getRowArray(), kv.getRowOffset());
+        if (uid == 48766023L) {
+          System.out.println("hehe");
+        }
+        long version = Long.MAX_VALUE - Bytes.toLong(kv.getRowArray(), kv.getRowOffset() + 8);
+        System.out.println("K: "
+            + uid
+            + "-"
+            + version
+            + ", "
+            + Bytes.toString(kv.getQualifierArray(), kv.getQualifierOffset(),
+                kv.getQualifierLength()) + ", " + new Date(kv.getTimestamp()));
+   //     System.out.print("K: " + kv);
         if (printValue) {
           System.out.print(" V: " + Bytes.toStringBinary(kv.getValue()));
           int i = 0;

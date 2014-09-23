@@ -18,9 +18,13 @@
 
 package org.apache.hadoop.hbase.codec.prefixtree.decode;
 
+import java.util.Arrays;
+
+import org.apache.commons.lang.ArrayUtils;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellUtil;
+import org.apache.hadoop.hbase.KeyValueUtil;
 import org.apache.hadoop.hbase.codec.prefixtree.PrefixTreeBlockMeta;
 import org.apache.hadoop.hbase.codec.prefixtree.scanner.CellScannerPosition;
 import org.apache.hadoop.hbase.codec.prefixtree.scanner.CellSearcher;
@@ -64,7 +68,6 @@ public class PrefixTreeArraySearcher extends PrefixTreeArrayReversibleScanner im
   public CellScannerPosition positionAtOrBefore(Cell key) {
     reInitFirstNode();
     int fanIndex = -1;
-
     while(true){
       //detect row mismatch.  break loop if mismatch
       int currentNodeDepth = rowLength;
@@ -93,7 +96,7 @@ public class PrefixTreeArraySearcher extends PrefixTreeArrayReversibleScanner im
       byte searchForByte = CellUtil.getRowByte(key, currentNodeDepth);
       fanIndex = currentRowNode.whichFanNode(searchForByte);
       if(fanIndex < 0){//no matching row.  return early
-        int insertionPoint = -fanIndex;
+        int insertionPoint = -fanIndex - 1;
         return fixRowFanMissReverse(insertionPoint);
       }
       //found a match, so dig deeper into the tree
@@ -109,8 +112,10 @@ public class PrefixTreeArraySearcher extends PrefixTreeArrayReversibleScanner im
   public CellScannerPosition positionAtOrAfter(Cell key) {
     reInitFirstNode();
     int fanIndex = -1;
-
+    System.out.println(Arrays.toString(KeyValueUtil.copyToNewByteArray(key)));
+    System.out.println(key.getRowLength());
     while(true){
+        System.out.println(Arrays.toString(Arrays.copyOf(rowBuffer,  rowLength)));
       //detect row mismatch.  break loop if mismatch
       int currentNodeDepth = rowLength;
       int rowTokenComparison = compareToCurrentToken(key);
@@ -142,7 +147,8 @@ public class PrefixTreeArraySearcher extends PrefixTreeArrayReversibleScanner im
       byte searchForByte = CellUtil.getRowByte(key, currentNodeDepth);
       fanIndex = currentRowNode.whichFanNode(searchForByte);
       if(fanIndex < 0){//no matching row.  return early
-        int insertionPoint = -fanIndex;
+          System.out.println("last matching:" + Arrays.toString(Arrays.copyOf(rowBuffer,  rowLength)));
+        int insertionPoint = -fanIndex - 1;
         return fixRowFanMissForward(insertionPoint);
       }
       //found a match, so dig deeper into the tree

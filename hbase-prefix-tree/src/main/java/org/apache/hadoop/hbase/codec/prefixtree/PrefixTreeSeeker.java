@@ -19,6 +19,7 @@
 package org.apache.hadoop.hbase.codec.prefixtree;
 
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.Cell;
@@ -198,6 +199,7 @@ public class PrefixTreeSeeker implements EncodedSeeker {
     //should probably switch this to use the seekForwardToOrBefore method
     CellScannerPosition position = ptSearcher.seekForwardToOrAfter(kv);
 
+    System.out.println("After seek: " + Arrays.toString(KeyValueUtil.copyToNewKeyValue(ptSearcher).getKey()));
     if(CellScannerPosition.AT == position){
       if (seekBefore) {
         ptSearcher.previous();
@@ -210,6 +212,7 @@ public class PrefixTreeSeeker implements EncodedSeeker {
     if(CellScannerPosition.AFTER == position){
       if(!ptSearcher.isBeforeFirst()){
         ptSearcher.previous();
+        System.out.println("After seek and prev: " + Arrays.toString(KeyValueUtil.copyToNewKeyValue(ptSearcher).getKey()));
         ptSearcher.setMovedToPreviousAsPartOfSeek(true);
       }
       return 1;

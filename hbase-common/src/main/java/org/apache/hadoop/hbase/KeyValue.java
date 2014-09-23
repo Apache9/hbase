@@ -1160,6 +1160,7 @@ public class KeyValue implements Cell, HeapSize, Cloneable {
   public static String keyToString(final byte [] b, final int o, final int l) {
     if (b == null) return "";
     int rowlength = Bytes.toShort(b, o);
+   // String row = Bytes.toLong(b, o + Bytes.SIZEOF_SHORT)+ "";
     String row = Bytes.toStringBinary(b, o + Bytes.SIZEOF_SHORT, rowlength);
     int columnoffset = o + Bytes.SIZEOF_SHORT + 1 + rowlength;
     int familylength = b[columnoffset - 1];

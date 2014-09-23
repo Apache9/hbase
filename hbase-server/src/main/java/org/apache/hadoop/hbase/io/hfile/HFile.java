@@ -19,6 +19,7 @@
 package org.apache.hadoop.hbase.io.hfile;
 
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.Closeable;
 import java.io.DataInput;
 import java.io.DataInputStream;
@@ -28,6 +29,7 @@ import java.io.SequenceInputStream;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
@@ -49,11 +51,14 @@ import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.LocalFileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.PathFilter;
+import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.KeyValue.KVComparator;
+import org.apache.hadoop.hbase.codec.prefixtree.PrefixTreeSeeker;
 import org.apache.hadoop.hbase.fs.HFileSystem;
 import org.apache.hadoop.hbase.io.FSDataInputStreamWrapper;
 import org.apache.hadoop.hbase.io.compress.Compression;
@@ -72,13 +77,12 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 
 /**
- * File format for hbase.
- * A file of sorted key/value pairs. Both keys and values are byte arrays.
+ * File format for hbase. A file of sorted key/value pairs. Both keys and values
+ * are byte arrays.
  * <p>
- * The memory footprint of a HFile includes the following (below is taken from the
- * <a
- * href=https://issues.apache.org/jira/browse/HADOOP-3315>TFile</a> documentation
- * but applies also to HFile):
+ * The memory footprint of a HFile includes the following (below is taken from
+ * the <a href=https://issues.apache.org/jira/browse/HADOOP-3315>TFile</a>
+ * documentation but applies also to HFile):
  * <ul>
  * <li>Some constant overhead of reading or writing a compressed block.
  * <ul>
@@ -115,690 +119,790 @@ import com.google.common.collect.Lists;
  * compression ratio over "lzo" but requires 4x CPU to compress and 2x CPU to
  * decompress, comparing to "lzo".
  * </ul>
- *
  * For more on the background behind HFile, see <a
  * href=https://issues.apache.org/jira/browse/HBASE-61>HBASE-61</a>.
  * <p>
  * File is made of data blocks followed by meta data blocks (if any), a fileinfo
  * block, data block index, meta data block index, and a fixed size trailer
  * which records the offsets at which file changes content type.
- * <pre>&lt;data blocks>&lt;meta blocks>&lt;fileinfo>&lt;data index>&lt;meta index>&lt;trailer></pre>
- * Each block has a bit of magic at its start.  Block are comprised of
- * key/values.  In data blocks, they are both byte arrays.  Metadata blocks are
- * a String key and a byte array value.  An empty file looks like this:
- * <pre>&lt;fileinfo>&lt;trailer></pre>.  That is, there are not data nor meta
- * blocks present.
+ * 
+ * <pre>
+ * &lt;data blocks>&lt;meta blocks>&lt;fileinfo>&lt;data index>&lt;meta index>&lt;trailer>
+ * </pre>
+ * 
+ * Each block has a bit of magic at its start. Block are comprised of
+ * key/values. In data blocks, they are both byte arrays. Metadata blocks are a
+ * String key and a byte array value. An empty file looks like this:
+ * 
+ * <pre>
+ * &lt;fileinfo>&lt;trailer>
+ * </pre>
+ * 
+ * . That is, there are not data nor meta blocks present.
  * <p>
- * TODO: Do scanners need to be able to take a start and end row?
- * TODO: Should BlockIndex know the name of its file?  Should it have a Path
- * that points at its file say for the case where an index lives apart from
- * an HFile instance?
+ * TODO: Do scanners need to be able to take a start and end row? TODO: Should
+ * BlockIndex know the name of its file? Should it have a Path that points at
+ * its file say for the case where an index lives apart from an HFile instance?
  */
 @InterfaceAudience.Private
 public class HFile {
-  static final Log LOG = LogFactory.getLog(HFile.class);
-
-  /**
-   * Maximum length of key in HFile.
-   */
-  public final static int MAXIMUM_KEY_LENGTH = Integer.MAX_VALUE;
-
-  /**
-   * Default compression: none.
-   */
-  public final static Compression.Algorithm DEFAULT_COMPRESSION_ALGORITHM =
-    Compression.Algorithm.NONE;
-
-  /** Minimum supported HFile format version */
-  public static final int MIN_FORMAT_VERSION = 2;
-
-  /** Maximum supported HFile format version
-   */
-  public static final int MAX_FORMAT_VERSION = 3;
-
-  /**
-   * Minimum HFile format version with support for persisting cell tags
-   */
-  public static final int MIN_FORMAT_VERSION_WITH_TAGS = 3;
-
-  /** Default compression name: none. */
-  public final static String DEFAULT_COMPRESSION =
-    DEFAULT_COMPRESSION_ALGORITHM.getName();
-
-  /** Meta data block name for bloom filter bits. */
-  public static final String BLOOM_FILTER_DATA_KEY = "BLOOM_FILTER_DATA";
-
-  /**
-   * We assume that HFile path ends with
-   * ROOT_DIR/TABLE_NAME/REGION_NAME/CF_NAME/HFILE, so it has at least this
-   * many levels of nesting. This is needed for identifying table and CF name
-   * from an HFile path.
-   */
-  public final static int MIN_NUM_HFILE_PATH_LEVELS = 5;
-
-  /**
-   * The number of bytes per checksum.
-   */
-  public static final int DEFAULT_BYTES_PER_CHECKSUM = 16 * 1024;
-  public static final ChecksumType DEFAULT_CHECKSUM_TYPE = ChecksumType.CRC32;
-
-  // For measuring number of checksum failures
-  static final AtomicLong checksumFailures = new AtomicLong();
-
-  // for test purpose
-  public static final AtomicLong dataBlockReadCnt = new AtomicLong(0);
-
-  /**
-   * Number of checksum verification failures. It also
-   * clears the counter.
-   */
-  public static final long getChecksumFailuresCount() {
-    return checksumFailures.getAndSet(0);
-  }
-
-  /** API required to write an {@link HFile} */
-  public interface Writer extends Closeable {
-
-    /** Add an element to the file info map. */
-    void appendFileInfo(byte[] key, byte[] value) throws IOException;
-
-    void append(KeyValue kv) throws IOException;
-
-    void append(byte[] key, byte[] value) throws IOException;
-
-    void append (byte[] key, byte[] value, byte[] tag) throws IOException;
-
-    /** @return the path to this {@link HFile} */
-    Path getPath();
+    static final Log LOG = LogFactory.getLog(HFile.class);
 
     /**
-     * Adds an inline block writer such as a multi-level block index writer or
-     * a compound Bloom filter writer.
+     * Maximum length of key in HFile.
      */
-    void addInlineBlockWriter(InlineBlockWriter bloomWriter);
-
-    // The below three methods take Writables.  We'd like to undo Writables but undoing the below would be pretty
-    // painful.  Could take a byte [] or a Message but we want to be backward compatible around hfiles so would need
-    // to map between Message and Writable or byte [] and current Writable serialization.  This would be a bit of work
-    // to little gain.  Thats my thinking at moment.  St.Ack 20121129
-
-    void appendMetaBlock(String bloomFilterMetaKey, Writable metaWriter);
+    public final static int MAXIMUM_KEY_LENGTH = Integer.MAX_VALUE;
 
     /**
-     * Store general Bloom filter in the file. This does not deal with Bloom filter
-     * internals but is necessary, since Bloom filters are stored differently
-     * in HFile version 1 and version 2.
+     * Default compression: none.
      */
-    void addGeneralBloomFilter(BloomFilterWriter bfw);
+    public final static Compression.Algorithm DEFAULT_COMPRESSION_ALGORITHM = Compression.Algorithm.NONE;
+
+    /** Minimum supported HFile format version */
+    public static final int MIN_FORMAT_VERSION = 2;
 
     /**
-     * Store delete family Bloom filter in the file, which is only supported in
-     * HFile V2.
+     * Maximum supported HFile format version
      */
-    void addDeleteFamilyBloomFilter(BloomFilterWriter bfw) throws IOException;
+    public static final int MAX_FORMAT_VERSION = 3;
 
     /**
-     * Return the file context for the HFile this writer belongs to
+     * Minimum HFile format version with support for persisting cell tags
      */
-    HFileContext getFileContext();
-  }
+    public static final int MIN_FORMAT_VERSION_WITH_TAGS = 3;
 
-  /**
-   * This variety of ways to construct writers is used throughout the code, and
-   * we want to be able to swap writer implementations.
-   */
-  public static abstract class WriterFactory {
-    protected final Configuration conf;
-    protected final CacheConfig cacheConf;
-    protected FileSystem fs;
-    protected Path path;
-    protected FSDataOutputStream ostream;
-    protected KVComparator comparator = KeyValue.COMPARATOR;
-    protected InetSocketAddress[] favoredNodes;
-    private HFileContext fileContext;
+    /** Default compression name: none. */
+    public final static String DEFAULT_COMPRESSION = DEFAULT_COMPRESSION_ALGORITHM.getName();
 
-    WriterFactory(Configuration conf, CacheConfig cacheConf) {
-      this.conf = conf;
-      this.cacheConf = cacheConf;
-    }
+    /** Meta data block name for bloom filter bits. */
+    public static final String BLOOM_FILTER_DATA_KEY = "BLOOM_FILTER_DATA";
 
-    public WriterFactory withPath(FileSystem fs, Path path) {
-      Preconditions.checkNotNull(fs);
-      Preconditions.checkNotNull(path);
-      this.fs = fs;
-      this.path = path;
-      return this;
-    }
-
-    public WriterFactory withOutputStream(FSDataOutputStream ostream) {
-      Preconditions.checkNotNull(ostream);
-      this.ostream = ostream;
-      return this;
-    }
-
-    public WriterFactory withComparator(KVComparator comparator) {
-      Preconditions.checkNotNull(comparator);
-      this.comparator = comparator;
-      return this;
-    }
-
-    public WriterFactory withFavoredNodes(InetSocketAddress[] favoredNodes) {
-      // Deliberately not checking for null here.
-      this.favoredNodes = favoredNodes;
-      return this;
-    }
-
-    public WriterFactory withFileContext(HFileContext fileContext) {
-      this.fileContext = fileContext;
-      return this;
-    }
-
-    public Writer create() throws IOException {
-      if ((path != null ? 1 : 0) + (ostream != null ? 1 : 0) != 1) {
-        throw new AssertionError("Please specify exactly one of " +
-            "filesystem/path or path");
-      }
-      if (path != null) {
-        ostream = AbstractHFileWriter.createOutputStream(conf, fs, path, favoredNodes);
-      }
-      return createWriter(fs, path, ostream,
-                   comparator, fileContext);
-    }
-
-    protected abstract Writer createWriter(FileSystem fs, Path path, FSDataOutputStream ostream,
-        KVComparator comparator, HFileContext fileContext) throws IOException;
-  }
-
-  /** The configuration key for HFile version to use for new files */
-  public static final String FORMAT_VERSION_KEY = "hfile.format.version";
-
-  public static int getFormatVersion(Configuration conf) {
-    int version = conf.getInt(FORMAT_VERSION_KEY, MAX_FORMAT_VERSION);
-    checkFormatVersion(version);
-    return version;
-  }
-
-  /**
-   * Returns the factory to be used to create {@link HFile} writers.
-   * Disables block cache access for all writers created through the
-   * returned factory.
-   */
-  public static final WriterFactory getWriterFactoryNoCache(Configuration
-       conf) {
-    Configuration tempConf = new Configuration(conf);
-    tempConf.setFloat(HConstants.HFILE_BLOCK_CACHE_SIZE_KEY, 0.0f);
-    return HFile.getWriterFactory(conf, new CacheConfig(tempConf));
-  }
-
-  /**
-   * Returns the factory to be used to create {@link HFile} writers
-   */
-  public static final WriterFactory getWriterFactory(Configuration conf,
-      CacheConfig cacheConf) {
-    int version = getFormatVersion(conf);
-    switch (version) {
-    case 2:
-      return new HFileWriterV2.WriterFactoryV2(conf, cacheConf);
-    case 3:
-      return new HFileWriterV3.WriterFactoryV3(conf, cacheConf);
-    default:
-      throw new IllegalArgumentException("Cannot create writer for HFile " +
-          "format version " + version);
-    }
-  }
-
-  /** An abstraction used by the block index */
-  public interface CachingBlockReader {
-    HFileBlock readBlock(long offset, long onDiskBlockSize,
-        boolean cacheBlock, final boolean pread, final boolean isCompaction,
-        final boolean updateCacheMetrics, BlockType expectedBlockType)
-        throws IOException;
-  }
-
-  /** An interface used by clients to open and iterate an {@link HFile}. */
-  public interface Reader extends Closeable, CachingBlockReader {
     /**
-     * Returns this reader's "name". Usually the last component of the path.
-     * Needs to be constant as the file is being moved to support caching on
-     * write.
+     * We assume that HFile path ends with
+     * ROOT_DIR/TABLE_NAME/REGION_NAME/CF_NAME/HFILE, so it has at least this
+     * many levels of nesting. This is needed for identifying table and CF name
+     * from an HFile path.
      */
-    String getName();
-
-    KVComparator getComparator();
-
-    HFileScanner getScanner(boolean cacheBlocks,
-       final boolean pread, final boolean isCompaction);
-
-    ByteBuffer getMetaBlock(String metaBlockName,
-       boolean cacheBlock) throws IOException;
-
-    Map<byte[], byte[]> loadFileInfo() throws IOException;
-
-    byte[] getLastKey();
-
-    byte[] midkey() throws IOException;
-
-    long length();
-
-    long getEntries();
-
-    byte[] getFirstKey();
-
-    long indexSize();
-
-    byte[] getFirstRowKey();
-
-    byte[] getLastRowKey();
-
-    FixedFileTrailer getTrailer();
-
-    HFileBlockIndex.BlockIndexReader getDataBlockIndexReader();
-
-    HFileScanner getScanner(boolean cacheBlocks, boolean pread);
-
-    Compression.Algorithm getCompressionAlgorithm();
+    public final static int MIN_NUM_HFILE_PATH_LEVELS = 5;
 
     /**
-     * Retrieves general Bloom filter metadata as appropriate for each
-     * {@link HFile} version.
-     * Knows nothing about how that metadata is structured.
+     * The number of bytes per checksum.
      */
-    DataInput getGeneralBloomFilterMetadata() throws IOException;
+    public static final int DEFAULT_BYTES_PER_CHECKSUM = 16 * 1024;
+
+    public static final ChecksumType DEFAULT_CHECKSUM_TYPE = ChecksumType.CRC32;
+
+    // For measuring number of checksum failures
+    static final AtomicLong checksumFailures = new AtomicLong();
+
+    // for test purpose
+    public static final AtomicLong dataBlockReadCnt = new AtomicLong(0);
 
     /**
-     * Retrieves delete family Bloom filter metadata as appropriate for each
-     * {@link HFile}  version.
-     * Knows nothing about how that metadata is structured.
+     * Number of checksum verification failures. It also clears the counter.
      */
-    DataInput getDeleteBloomFilterMetadata() throws IOException;
+    public static final long getChecksumFailuresCount() {
+        return checksumFailures.getAndSet(0);
+    }
 
-    Path getPath();
+    /** API required to write an {@link HFile} */
+    public interface Writer extends Closeable {
 
-    /** Close method with optional evictOnClose */
-    void close(boolean evictOnClose) throws IOException;
+        /** Add an element to the file info map. */
+        void appendFileInfo(byte[] key, byte[] value) throws IOException;
 
-    DataBlockEncoding getDataBlockEncoding();
+        void append(KeyValue kv) throws IOException;
 
-    boolean hasMVCCInfo();
+        void append(byte[] key, byte[] value) throws IOException;
+
+        void append(byte[] key, byte[] value, byte[] tag) throws IOException;
+
+        /** @return the path to this {@link HFile} */
+        Path getPath();
+
+        /**
+         * Adds an inline block writer such as a multi-level block index writer
+         * or a compound Bloom filter writer.
+         */
+        void addInlineBlockWriter(InlineBlockWriter bloomWriter);
+
+        // The below three methods take Writables. We'd like to undo Writables
+        // but undoing the below would be pretty
+        // painful. Could take a byte [] or a Message but we want to be backward
+        // compatible around hfiles so would need
+        // to map between Message and Writable or byte [] and current Writable
+        // serialization. This would be a bit of work
+        // to little gain. Thats my thinking at moment. St.Ack 20121129
+
+        void appendMetaBlock(String bloomFilterMetaKey, Writable metaWriter);
+
+        /**
+         * Store general Bloom filter in the file. This does not deal with Bloom
+         * filter internals but is necessary, since Bloom filters are stored
+         * differently in HFile version 1 and version 2.
+         */
+        void addGeneralBloomFilter(BloomFilterWriter bfw);
+
+        /**
+         * Store delete family Bloom filter in the file, which is only supported
+         * in HFile V2.
+         */
+        void addDeleteFamilyBloomFilter(BloomFilterWriter bfw) throws IOException;
+
+        /**
+         * Return the file context for the HFile this writer belongs to
+         */
+        HFileContext getFileContext();
+    }
 
     /**
-     * Return the file context of the HFile this reader belongs to
+     * This variety of ways to construct writers is used throughout the code,
+     * and we want to be able to swap writer implementations.
      */
-    HFileContext getFileContext();
-  }
+    public static abstract class WriterFactory {
+        protected final Configuration conf;
 
-  /**
-   * Method returns the reader given the specified arguments.
-   * TODO This is a bad abstraction.  See HBASE-6635.
-   *
-   * @param path hfile's path
-   * @param fsdis stream of path's file
-   * @param size max size of the trailer.
-   * @param cacheConf Cache configuation values, cannot be null.
-   * @param hfs
-   * @return an appropriate instance of HFileReader
-   * @throws IOException If file is invalid, will throw CorruptHFileException flavored IOException
-   */
-  private static Reader pickReaderVersion(Path path, FSDataInputStreamWrapper fsdis,
-      long size, CacheConfig cacheConf, HFileSystem hfs, Configuration conf) throws IOException {
-    FixedFileTrailer trailer = null;
-    try {
-      boolean isHBaseChecksum = fsdis.shouldUseHBaseChecksum();
-      assert !isHBaseChecksum; // Initially we must read with FS checksum.
-      trailer = FixedFileTrailer.readFromStream(fsdis.getStream(isHBaseChecksum), size);
-      switch (trailer.getMajorVersion()) {
-      case 2:
-        return new HFileReaderV2(path, trailer, fsdis, size, cacheConf, hfs, conf);
-      case 3 :
-        return new HFileReaderV3(path, trailer, fsdis, size, cacheConf, hfs, conf);
-      default:
-        throw new IllegalArgumentException("Invalid HFile version " + trailer.getMajorVersion());
-      }
-    } catch (Throwable t) {
-      try {
-        fsdis.close();
-      } catch (Throwable t2) {
-        LOG.warn("Error closing fsdis FSDataInputStreamWrapper", t2);
-      }
-      throw new CorruptHFileException("Problem reading HFile Trailer from file " + path, t);
+        protected final CacheConfig cacheConf;
+
+        protected FileSystem fs;
+
+        protected Path path;
+
+        protected FSDataOutputStream ostream;
+
+        protected KVComparator comparator = KeyValue.COMPARATOR;
+
+        protected InetSocketAddress[] favoredNodes;
+
+        private HFileContext fileContext;
+
+        WriterFactory(Configuration conf, CacheConfig cacheConf) {
+            this.conf = conf;
+            this.cacheConf = cacheConf;
+        }
+
+        public WriterFactory withPath(FileSystem fs, Path path) {
+            Preconditions.checkNotNull(fs);
+            Preconditions.checkNotNull(path);
+            this.fs = fs;
+            this.path = path;
+            return this;
+        }
+
+        public WriterFactory withOutputStream(FSDataOutputStream ostream) {
+            Preconditions.checkNotNull(ostream);
+            this.ostream = ostream;
+            return this;
+        }
+
+        public WriterFactory withComparator(KVComparator comparator) {
+            Preconditions.checkNotNull(comparator);
+            this.comparator = comparator;
+            return this;
+        }
+
+        public WriterFactory withFavoredNodes(InetSocketAddress[] favoredNodes) {
+            // Deliberately not checking for null here.
+            this.favoredNodes = favoredNodes;
+            return this;
+        }
+
+        public WriterFactory withFileContext(HFileContext fileContext) {
+            this.fileContext = fileContext;
+            return this;
+        }
+
+        public Writer create() throws IOException {
+            if ((path != null ? 1 : 0) + (ostream != null ? 1 : 0) != 1) {
+                throw new AssertionError("Please specify exactly one of "
+                        + "filesystem/path or path");
+            }
+            if (path != null) {
+                ostream = AbstractHFileWriter.createOutputStream(conf, fs, path, favoredNodes);
+            }
+            return createWriter(fs, path, ostream, comparator, fileContext);
+        }
+
+        protected abstract Writer createWriter(FileSystem fs, Path path,
+                FSDataOutputStream ostream, KVComparator comparator, HFileContext fileContext)
+                throws IOException;
     }
-  }
 
-  /**
-   * @param fs A file system
-   * @param path Path to HFile
-   * @param fsdis a stream of path's file
-   * @param size max size of the trailer.
-   * @param cacheConf Cache configuration for hfile's contents
-   * @param conf Configuration
-   * @return A version specific Hfile Reader
-   * @throws IOException If file is invalid, will throw CorruptHFileException flavored IOException
-   */
-  public static Reader createReader(FileSystem fs, Path path,
-      FSDataInputStreamWrapper fsdis, long size, CacheConfig cacheConf, Configuration conf)
-      throws IOException {
-    HFileSystem hfs = null;
+    /** The configuration key for HFile version to use for new files */
+    public static final String FORMAT_VERSION_KEY = "hfile.format.version";
 
-    // If the fs is not an instance of HFileSystem, then create an
-    // instance of HFileSystem that wraps over the specified fs.
-    // In this case, we will not be able to avoid checksumming inside
-    // the filesystem.
-    if (!(fs instanceof HFileSystem)) {
-      hfs = new HFileSystem(fs);
-    } else {
-      hfs = (HFileSystem)fs;
-    }
-    return pickReaderVersion(path, fsdis, size, cacheConf, hfs, conf);
-  }
-
-  /**
-   *
-   * @param fs filesystem
-   * @param path Path to file to read
-   * @param cacheConf This must not be null.  @see {@link org.apache.hadoop.hbase.io.hfile.CacheConfig#CacheConfig(Configuration)}
-   * @return an active Reader instance
-   * @throws IOException Will throw a CorruptHFileException (DoNotRetryIOException subtype) if hfile is corrupt/invalid.
-   */
-  public static Reader createReader(
-      FileSystem fs, Path path, CacheConfig cacheConf, Configuration conf) throws IOException {
-    Preconditions.checkNotNull(cacheConf, "Cannot create Reader with null CacheConf");
-    FSDataInputStreamWrapper stream = new FSDataInputStreamWrapper(fs, path);
-    return pickReaderVersion(path, stream, fs.getFileStatus(path).getLen(),
-      cacheConf, stream.getHfs(), conf);
-  }
-
-  /**
-   * This factory method is used only by unit tests
-   */
-  static Reader createReaderFromStream(Path path,
-      FSDataInputStream fsdis, long size, CacheConfig cacheConf, Configuration conf)
-      throws IOException {
-    FSDataInputStreamWrapper wrapper = new FSDataInputStreamWrapper(fsdis);
-    return pickReaderVersion(path, wrapper, size, cacheConf, null, conf);
-  }
-
-  /**
-   * Metadata for this file. Conjured by the writer. Read in by the reader.
-   */
-  public static class FileInfo implements SortedMap<byte[], byte[]> {
-    static final String RESERVED_PREFIX = "hfile.";
-    static final byte[] RESERVED_PREFIX_BYTES = Bytes.toBytes(RESERVED_PREFIX);
-    static final byte [] LASTKEY = Bytes.toBytes(RESERVED_PREFIX + "LASTKEY");
-    static final byte [] AVG_KEY_LEN = Bytes.toBytes(RESERVED_PREFIX + "AVG_KEY_LEN");
-    static final byte [] AVG_VALUE_LEN = Bytes.toBytes(RESERVED_PREFIX + "AVG_VALUE_LEN");
-    static final byte [] COMPARATOR = Bytes.toBytes(RESERVED_PREFIX + "COMPARATOR");
-    static final byte [] TAGS_COMPRESSED = Bytes.toBytes(RESERVED_PREFIX + "TAGS_COMPRESSED");
-    public static final byte [] MAX_TAGS_LEN = Bytes.toBytes(RESERVED_PREFIX + "MAX_TAGS_LEN");
-    private final SortedMap<byte [], byte []> map = new TreeMap<byte [], byte []>(Bytes.BYTES_COMPARATOR);
-
-    public FileInfo() {
-      super();
+    public static int getFormatVersion(Configuration conf) {
+        int version = conf.getInt(FORMAT_VERSION_KEY, MAX_FORMAT_VERSION);
+        checkFormatVersion(version);
+        return version;
     }
 
     /**
-     * Append the given key/value pair to the file info, optionally checking the
-     * key prefix.
-     *
-     * @param k key to add
-     * @param v value to add
-     * @param checkPrefix whether to check that the provided key does not start
-     *          with the reserved prefix
-     * @return this file info object
-     * @throws IOException if the key or value is invalid
+     * Returns the factory to be used to create {@link HFile} writers. Disables
+     * block cache access for all writers created through the returned factory.
      */
-    public FileInfo append(final byte[] k, final byte[] v,
-        final boolean checkPrefix) throws IOException {
-      if (k == null || v == null) {
-        throw new NullPointerException("Key nor value may be null");
-      }
-      if (checkPrefix && isReservedFileInfoKey(k)) {
-        throw new IOException("Keys with a " + FileInfo.RESERVED_PREFIX
-            + " are reserved");
-      }
-      put(k, v);
-      return this;
-    }
-
-    public void clear() {
-      this.map.clear();
-    }
-
-    public Comparator<? super byte[]> comparator() {
-      return map.comparator();
-    }
-
-    public boolean containsKey(Object key) {
-      return map.containsKey(key);
-    }
-
-    public boolean containsValue(Object value) {
-      return map.containsValue(value);
-    }
-
-    public Set<java.util.Map.Entry<byte[], byte[]>> entrySet() {
-      return map.entrySet();
-    }
-
-    public boolean equals(Object o) {
-      return map.equals(o);
-    }
-
-    public byte[] firstKey() {
-      return map.firstKey();
-    }
-
-    public byte[] get(Object key) {
-      return map.get(key);
-    }
-
-    public int hashCode() {
-      return map.hashCode();
-    }
-
-    public SortedMap<byte[], byte[]> headMap(byte[] toKey) {
-      return this.map.headMap(toKey);
-    }
-
-    public boolean isEmpty() {
-      return map.isEmpty();
-    }
-
-    public Set<byte[]> keySet() {
-      return map.keySet();
-    }
-
-    public byte[] lastKey() {
-      return map.lastKey();
-    }
-
-    public byte[] put(byte[] key, byte[] value) {
-      return this.map.put(key, value);
-    }
-
-    public void putAll(Map<? extends byte[], ? extends byte[]> m) {
-      this.map.putAll(m);
-    }
-
-    public byte[] remove(Object key) {
-      return this.map.remove(key);
-    }
-
-    public int size() {
-      return map.size();
-    }
-
-    public SortedMap<byte[], byte[]> subMap(byte[] fromKey, byte[] toKey) {
-      return this.map.subMap(fromKey, toKey);
-    }
-
-    public SortedMap<byte[], byte[]> tailMap(byte[] fromKey) {
-      return this.map.tailMap(fromKey);
-    }
-
-    public Collection<byte[]> values() {
-      return map.values();
+    public static final WriterFactory getWriterFactoryNoCache(Configuration conf) {
+        Configuration tempConf = new Configuration(conf);
+        tempConf.setFloat(HConstants.HFILE_BLOCK_CACHE_SIZE_KEY, 0.0f);
+        return HFile.getWriterFactory(conf, new CacheConfig(tempConf));
     }
 
     /**
-     * Write out this instance on the passed in <code>out</code> stream.
-     * We write it as a protobuf.
-     * @param out
+     * Returns the factory to be used to create {@link HFile} writers
+     */
+    public static final WriterFactory getWriterFactory(Configuration conf, CacheConfig cacheConf) {
+        int version = getFormatVersion(conf);
+        switch (version) {
+            case 2:
+                return new HFileWriterV2.WriterFactoryV2(conf, cacheConf);
+            case 3:
+                return new HFileWriterV3.WriterFactoryV3(conf, cacheConf);
+            default:
+                throw new IllegalArgumentException("Cannot create writer for HFile "
+                        + "format version " + version);
+        }
+    }
+
+    /** An abstraction used by the block index */
+    public interface CachingBlockReader {
+        HFileBlock readBlock(long offset, long onDiskBlockSize, boolean cacheBlock,
+                final boolean pread, final boolean isCompaction, final boolean updateCacheMetrics,
+                BlockType expectedBlockType) throws IOException;
+    }
+
+    /** An interface used by clients to open and iterate an {@link HFile}. */
+    public interface Reader extends Closeable, CachingBlockReader {
+        /**
+         * Returns this reader's "name". Usually the last component of the path.
+         * Needs to be constant as the file is being moved to support caching on
+         * write.
+         */
+        String getName();
+
+        KVComparator getComparator();
+
+        HFileScanner getScanner(boolean cacheBlocks, final boolean pread, final boolean isCompaction);
+
+        ByteBuffer getMetaBlock(String metaBlockName, boolean cacheBlock) throws IOException;
+
+        Map<byte[], byte[]> loadFileInfo() throws IOException;
+
+        byte[] getLastKey();
+
+        byte[] midkey() throws IOException;
+
+        long length();
+
+        long getEntries();
+
+        byte[] getFirstKey();
+
+        long indexSize();
+
+        byte[] getFirstRowKey();
+
+        byte[] getLastRowKey();
+
+        FixedFileTrailer getTrailer();
+
+        HFileBlockIndex.BlockIndexReader getDataBlockIndexReader();
+
+        HFileScanner getScanner(boolean cacheBlocks, boolean pread);
+
+        Compression.Algorithm getCompressionAlgorithm();
+
+        /**
+         * Retrieves general Bloom filter metadata as appropriate for each
+         * {@link HFile} version. Knows nothing about how that metadata is
+         * structured.
+         */
+        DataInput getGeneralBloomFilterMetadata() throws IOException;
+
+        /**
+         * Retrieves delete family Bloom filter metadata as appropriate for each
+         * {@link HFile} version. Knows nothing about how that metadata is
+         * structured.
+         */
+        DataInput getDeleteBloomFilterMetadata() throws IOException;
+
+        Path getPath();
+
+        /** Close method with optional evictOnClose */
+        void close(boolean evictOnClose) throws IOException;
+
+        DataBlockEncoding getDataBlockEncoding();
+
+        boolean hasMVCCInfo();
+
+        /**
+         * Return the file context of the HFile this reader belongs to
+         */
+        HFileContext getFileContext();
+    }
+
+    /**
+     * Method returns the reader given the specified arguments. TODO This is a
+     * bad abstraction. See HBASE-6635.
+     * 
+     * @param path
+     *            hfile's path
+     * @param fsdis
+     *            stream of path's file
+     * @param size
+     *            max size of the trailer.
+     * @param cacheConf
+     *            Cache configuation values, cannot be null.
+     * @param hfs
+     * @return an appropriate instance of HFileReader
      * @throws IOException
-     * @see #read(DataInputStream)
+     *             If file is invalid, will throw CorruptHFileException flavored
+     *             IOException
      */
-    void write(final DataOutputStream out) throws IOException {
-      HFileProtos.FileInfoProto.Builder builder = HFileProtos.FileInfoProto.newBuilder();
-      for (Map.Entry<byte [], byte[]> e: this.map.entrySet()) {
-        HBaseProtos.BytesBytesPair.Builder bbpBuilder = HBaseProtos.BytesBytesPair.newBuilder();
-        bbpBuilder.setFirst(ByteStringer.wrap(e.getKey()));
-        bbpBuilder.setSecond(ByteStringer.wrap(e.getValue()));
-        builder.addMapEntry(bbpBuilder.build());
-      }
-      out.write(ProtobufUtil.PB_MAGIC);
-      builder.build().writeDelimitedTo(out);
+    private static Reader pickReaderVersion(Path path, FSDataInputStreamWrapper fsdis, long size,
+            CacheConfig cacheConf, HFileSystem hfs, Configuration conf) throws IOException {
+        FixedFileTrailer trailer = null;
+        try {
+            boolean isHBaseChecksum = fsdis.shouldUseHBaseChecksum();
+            assert !isHBaseChecksum; // Initially we must read with FS checksum.
+            trailer = FixedFileTrailer.readFromStream(fsdis.getStream(isHBaseChecksum), size);
+            switch (trailer.getMajorVersion()) {
+                case 2:
+                    return new HFileReaderV2(path, trailer, fsdis, size, cacheConf, hfs, conf);
+                case 3:
+                    return new HFileReaderV3(path, trailer, fsdis, size, cacheConf, hfs, conf);
+                default:
+                    throw new IllegalArgumentException("Invalid HFile version "
+                            + trailer.getMajorVersion());
+            }
+        } catch (Throwable t) {
+            try {
+                fsdis.close();
+            } catch (Throwable t2) {
+                LOG.warn("Error closing fsdis FSDataInputStreamWrapper", t2);
+            }
+            throw new CorruptHFileException("Problem reading HFile Trailer from file " + path, t);
+        }
     }
 
     /**
-     * Populate this instance with what we find on the passed in <code>in</code> stream.
-     * Can deserialize protobuf of old Writables format.
-     * @param in
+     * @param fs
+     *            A file system
+     * @param path
+     *            Path to HFile
+     * @param fsdis
+     *            a stream of path's file
+     * @param size
+     *            max size of the trailer.
+     * @param cacheConf
+     *            Cache configuration for hfile's contents
+     * @param conf
+     *            Configuration
+     * @return A version specific Hfile Reader
      * @throws IOException
-     * @see #write(DataOutputStream)
+     *             If file is invalid, will throw CorruptHFileException flavored
+     *             IOException
      */
-    void read(final DataInputStream in) throws IOException {
-      // This code is tested over in TestHFileReaderV1 where we read an old hfile w/ this new code.
-      int pblen = ProtobufUtil.lengthOfPBMagic();
-      byte [] pbuf = new byte[pblen];
-      if (in.markSupported()) in.mark(pblen);
-      int read = in.read(pbuf);
-      if (read != pblen) throw new IOException("read=" + read + ", wanted=" + pblen);
-      if (ProtobufUtil.isPBMagicPrefix(pbuf)) {
-        parsePB(HFileProtos.FileInfoProto.parseDelimitedFrom(in));
-      } else {
-        if (in.markSupported()) {
-          in.reset();
-          parseWritable(in);
+    public static Reader createReader(FileSystem fs, Path path, FSDataInputStreamWrapper fsdis,
+            long size, CacheConfig cacheConf, Configuration conf) throws IOException {
+        HFileSystem hfs = null;
+
+        // If the fs is not an instance of HFileSystem, then create an
+        // instance of HFileSystem that wraps over the specified fs.
+        // In this case, we will not be able to avoid checksumming inside
+        // the filesystem.
+        if (!(fs instanceof HFileSystem)) {
+            hfs = new HFileSystem(fs);
         } else {
-          // We cannot use BufferedInputStream, it consumes more than we read from the underlying IS
-          ByteArrayInputStream bais = new ByteArrayInputStream(pbuf);
-          SequenceInputStream sis = new SequenceInputStream(bais, in); // Concatenate input streams
-          // TODO: Am I leaking anything here wrapping the passed in stream?  We are not calling close on the wrapped
-          // streams but they should be let go after we leave this context?  I see that we keep a reference to the
-          // passed in inputstream but since we no longer have a reference to this after we leave, we should be ok.
-          parseWritable(new DataInputStream(sis));
+            hfs = (HFileSystem) fs;
         }
-      }
-    }
-
-    /** Now parse the old Writable format.  It was a list of Map entries.  Each map entry was a key and a value of
-     * a byte [].  The old map format had a byte before each entry that held a code which was short for the key or
-     * value type.  We know it was a byte [] so in below we just read and dump it.
-     * @throws IOException
-     */
-    void parseWritable(final DataInputStream in) throws IOException {
-      // First clear the map.  Otherwise we will just accumulate entries every time this method is called.
-      this.map.clear();
-      // Read the number of entries in the map
-      int entries = in.readInt();
-      // Then read each key/value pair
-      for (int i = 0; i < entries; i++) {
-        byte [] key = Bytes.readByteArray(in);
-        // We used to read a byte that encoded the class type.  Read and ignore it because it is always byte [] in hfile
-        in.readByte();
-        byte [] value = Bytes.readByteArray(in);
-        this.map.put(key, value);
-      }
+        return pickReaderVersion(path, fsdis, size, cacheConf, hfs, conf);
     }
 
     /**
-     * Fill our map with content of the pb we read off disk
-     * @param fip protobuf message to read
+     * @param fs
+     *            filesystem
+     * @param path
+     *            Path to file to read
+     * @param cacheConf
+     *            This must not be null. @see
+     *            {@link org.apache.hadoop.hbase.io.hfile.CacheConfig#CacheConfig(Configuration)}
+     * @return an active Reader instance
+     * @throws IOException
+     *             Will throw a CorruptHFileException (DoNotRetryIOException
+     *             subtype) if hfile is corrupt/invalid.
      */
-    void parsePB(final HFileProtos.FileInfoProto fip) {
-      this.map.clear();
-      for (BytesBytesPair pair: fip.getMapEntryList()) {
-        this.map.put(pair.getFirst().toByteArray(), pair.getSecond().toByteArray());
-      }
+    public static Reader createReader(FileSystem fs, Path path, CacheConfig cacheConf,
+            Configuration conf) throws IOException {
+        Preconditions.checkNotNull(cacheConf, "Cannot create Reader with null CacheConf");
+        FSDataInputStreamWrapper stream = new FSDataInputStreamWrapper(fs, path);
+        return pickReaderVersion(path, stream, fs.getFileStatus(path).getLen(), cacheConf,
+                stream.getHfs(), conf);
     }
-  }
 
-  /** Return true if the given file info key is reserved for internal use. */
-  public static boolean isReservedFileInfoKey(byte[] key) {
-    return Bytes.startsWith(key, FileInfo.RESERVED_PREFIX_BYTES);
-  }
+    /**
+     * This factory method is used only by unit tests
+     */
+    static Reader createReaderFromStream(Path path, FSDataInputStream fsdis, long size,
+            CacheConfig cacheConf, Configuration conf) throws IOException {
+        FSDataInputStreamWrapper wrapper = new FSDataInputStreamWrapper(fsdis);
+        return pickReaderVersion(path, wrapper, size, cacheConf, null, conf);
+    }
 
-  /**
-   * Get names of supported compression algorithms. The names are acceptable by
-   * HFile.Writer.
-   *
-   * @return Array of strings, each represents a supported compression
-   *         algorithm. Currently, the following compression algorithms are
-   *         supported.
-   *         <ul>
-   *         <li>"none" - No compression.
-   *         <li>"gz" - GZIP compression.
-   *         </ul>
-   */
-  public static String[] getSupportedCompressionAlgorithms() {
-    return Compression.getSupportedAlgorithms();
-  }
+    /**
+     * Metadata for this file. Conjured by the writer. Read in by the reader.
+     */
+    public static class FileInfo implements SortedMap<byte[], byte[]> {
+        static final String RESERVED_PREFIX = "hfile.";
 
-  // Utility methods.
-  /*
-   * @param l Long to convert to an int.
-   * @return <code>l</code> cast as an int.
-   */
-  static int longToInt(final long l) {
-    // Expecting the size() of a block not exceeding 4GB. Assuming the
-    // size() will wrap to negative integer if it exceeds 2GB (From tfile).
-    return (int)(l & 0x00000000ffffffffL);
-  }
+        static final byte[] RESERVED_PREFIX_BYTES = Bytes.toBytes(RESERVED_PREFIX);
 
-  /**
-   * Returns all files belonging to the given region directory. Could return an
-   * empty list.
-   *
-   * @param fs  The file system reference.
-   * @param regionDir  The region directory to scan.
-   * @return The list of files found.
-   * @throws IOException When scanning the files fails.
-   */
-  static List<Path> getStoreFiles(FileSystem fs, Path regionDir)
-      throws IOException {
-    List<Path> res = new ArrayList<Path>();
-    PathFilter dirFilter = new FSUtils.DirFilter(fs);
-    FileStatus[] familyDirs = fs.listStatus(regionDir, dirFilter);
-    for(FileStatus dir : familyDirs) {
-      FileStatus[] files = fs.listStatus(dir.getPath());
-      for (FileStatus file : files) {
-        if (!file.isDir()) {
-          res.add(file.getPath());
+        static final byte[] LASTKEY = Bytes.toBytes(RESERVED_PREFIX + "LASTKEY");
+
+        static final byte[] AVG_KEY_LEN = Bytes.toBytes(RESERVED_PREFIX + "AVG_KEY_LEN");
+
+        static final byte[] AVG_VALUE_LEN = Bytes.toBytes(RESERVED_PREFIX + "AVG_VALUE_LEN");
+
+        static final byte[] COMPARATOR = Bytes.toBytes(RESERVED_PREFIX + "COMPARATOR");
+
+        static final byte[] TAGS_COMPRESSED = Bytes.toBytes(RESERVED_PREFIX + "TAGS_COMPRESSED");
+
+        public static final byte[] MAX_TAGS_LEN = Bytes.toBytes(RESERVED_PREFIX + "MAX_TAGS_LEN");
+
+        private final SortedMap<byte[], byte[]> map = new TreeMap<byte[], byte[]>(
+                Bytes.BYTES_COMPARATOR);
+
+        public FileInfo() {
+            super();
         }
-      }
-    }
-    return res;
-  }
 
-  public static void main(String[] args) throws IOException {
-    HFilePrettyPrinter prettyPrinter = new HFilePrettyPrinter();
-    System.exit(prettyPrinter.run(args));
-  }
+        /**
+         * Append the given key/value pair to the file info, optionally checking
+         * the key prefix.
+         * 
+         * @param k
+         *            key to add
+         * @param v
+         *            value to add
+         * @param checkPrefix
+         *            whether to check that the provided key does not start with
+         *            the reserved prefix
+         * @return this file info object
+         * @throws IOException
+         *             if the key or value is invalid
+         */
+        public FileInfo append(final byte[] k, final byte[] v, final boolean checkPrefix)
+                throws IOException {
+            if (k == null || v == null) {
+                throw new NullPointerException("Key nor value may be null");
+            }
+            if (checkPrefix && isReservedFileInfoKey(k)) {
+                throw new IOException("Keys with a " + FileInfo.RESERVED_PREFIX + " are reserved");
+            }
+            put(k, v);
+            return this;
+        }
 
-  /**
-   * Checks the given {@link HFile} format version, and throws an exception if
-   * invalid. Note that if the version number comes from an input file and has
-   * not been verified, the caller needs to re-throw an {@link IOException} to
-   * indicate that this is not a software error, but corrupted input.
-   *
-   * @param version an HFile version
-   * @throws IllegalArgumentException if the version is invalid
-   */
-  public static void checkFormatVersion(int version)
-      throws IllegalArgumentException {
-    if (version < MIN_FORMAT_VERSION || version > MAX_FORMAT_VERSION) {
-      throw new IllegalArgumentException("Invalid HFile version: " + version
-          + " (expected to be " + "between " + MIN_FORMAT_VERSION + " and "
-          + MAX_FORMAT_VERSION + ")");
+        public void clear() {
+            this.map.clear();
+        }
+
+        public Comparator<? super byte[]> comparator() {
+            return map.comparator();
+        }
+
+        public boolean containsKey(Object key) {
+            return map.containsKey(key);
+        }
+
+        public boolean containsValue(Object value) {
+            return map.containsValue(value);
+        }
+
+        public Set<java.util.Map.Entry<byte[], byte[]>> entrySet() {
+            return map.entrySet();
+        }
+
+        public boolean equals(Object o) {
+            return map.equals(o);
+        }
+
+        public byte[] firstKey() {
+            return map.firstKey();
+        }
+
+        public byte[] get(Object key) {
+            return map.get(key);
+        }
+
+        public int hashCode() {
+            return map.hashCode();
+        }
+
+        public SortedMap<byte[], byte[]> headMap(byte[] toKey) {
+            return this.map.headMap(toKey);
+        }
+
+        public boolean isEmpty() {
+            return map.isEmpty();
+        }
+
+        public Set<byte[]> keySet() {
+            return map.keySet();
+        }
+
+        public byte[] lastKey() {
+            return map.lastKey();
+        }
+
+        public byte[] put(byte[] key, byte[] value) {
+            return this.map.put(key, value);
+        }
+
+        public void putAll(Map<? extends byte[], ? extends byte[]> m) {
+            this.map.putAll(m);
+        }
+
+        public byte[] remove(Object key) {
+            return this.map.remove(key);
+        }
+
+        public int size() {
+            return map.size();
+        }
+
+        public SortedMap<byte[], byte[]> subMap(byte[] fromKey, byte[] toKey) {
+            return this.map.subMap(fromKey, toKey);
+        }
+
+        public SortedMap<byte[], byte[]> tailMap(byte[] fromKey) {
+            return this.map.tailMap(fromKey);
+        }
+
+        public Collection<byte[]> values() {
+            return map.values();
+        }
+
+        /**
+         * Write out this instance on the passed in <code>out</code> stream. We
+         * write it as a protobuf.
+         * 
+         * @param out
+         * @throws IOException
+         * @see #read(DataInputStream)
+         */
+        void write(final DataOutputStream out) throws IOException {
+            HFileProtos.FileInfoProto.Builder builder = HFileProtos.FileInfoProto.newBuilder();
+            for (Map.Entry<byte[], byte[]> e: this.map.entrySet()) {
+                HBaseProtos.BytesBytesPair.Builder bbpBuilder = HBaseProtos.BytesBytesPair
+                        .newBuilder();
+                bbpBuilder.setFirst(ByteStringer.wrap(e.getKey()));
+                bbpBuilder.setSecond(ByteStringer.wrap(e.getValue()));
+                builder.addMapEntry(bbpBuilder.build());
+            }
+            out.write(ProtobufUtil.PB_MAGIC);
+            builder.build().writeDelimitedTo(out);
+        }
+
+        /**
+         * Populate this instance with what we find on the passed in
+         * <code>in</code> stream. Can deserialize protobuf of old Writables
+         * format.
+         * 
+         * @param in
+         * @throws IOException
+         * @see #write(DataOutputStream)
+         */
+        void read(final DataInputStream in) throws IOException {
+            // This code is tested over in TestHFileReaderV1 where we read an
+            // old hfile w/ this new code.
+            int pblen = ProtobufUtil.lengthOfPBMagic();
+            byte[] pbuf = new byte[pblen];
+            if (in.markSupported())
+                in.mark(pblen);
+            int read = in.read(pbuf);
+            if (read != pblen)
+                throw new IOException("read=" + read + ", wanted=" + pblen);
+            if (ProtobufUtil.isPBMagicPrefix(pbuf)) {
+                parsePB(HFileProtos.FileInfoProto.parseDelimitedFrom(in));
+            } else {
+                if (in.markSupported()) {
+                    in.reset();
+                    parseWritable(in);
+                } else {
+                    // We cannot use BufferedInputStream, it consumes more than
+                    // we read from the underlying IS
+                    ByteArrayInputStream bais = new ByteArrayInputStream(pbuf);
+                    SequenceInputStream sis = new SequenceInputStream(bais, in); // Concatenate
+                                                                                 // input
+                                                                                 // streams
+                    // TODO: Am I leaking anything here wrapping the passed in
+                    // stream? We are not calling close on the wrapped
+                    // streams but they should be let go after we leave this
+                    // context? I see that we keep a reference to the
+                    // passed in inputstream but since we no longer have a
+                    // reference to this after we leave, we should be ok.
+                    parseWritable(new DataInputStream(sis));
+                }
+            }
+        }
+
+        /**
+         * Now parse the old Writable format. It was a list of Map entries. Each
+         * map entry was a key and a value of a byte []. The old map format had
+         * a byte before each entry that held a code which was short for the key
+         * or value type. We know it was a byte [] so in below we just read and
+         * dump it.
+         * 
+         * @throws IOException
+         */
+        void parseWritable(final DataInputStream in) throws IOException {
+            // First clear the map. Otherwise we will just accumulate entries
+            // every time this method is called.
+            this.map.clear();
+            // Read the number of entries in the map
+            int entries = in.readInt();
+            // Then read each key/value pair
+            for (int i = 0; i < entries; i++) {
+                byte[] key = Bytes.readByteArray(in);
+                // We used to read a byte that encoded the class type. Read and
+                // ignore it because it is always byte [] in hfile
+                in.readByte();
+                byte[] value = Bytes.readByteArray(in);
+                this.map.put(key, value);
+            }
+        }
+
+        /**
+         * Fill our map with content of the pb we read off disk
+         * 
+         * @param fip
+         *            protobuf message to read
+         */
+        void parsePB(final HFileProtos.FileInfoProto fip) {
+            this.map.clear();
+            for (BytesBytesPair pair: fip.getMapEntryList()) {
+                this.map.put(pair.getFirst().toByteArray(), pair.getSecond().toByteArray());
+            }
+        }
     }
-  }
+
+    /** Return true if the given file info key is reserved for internal use. */
+    public static boolean isReservedFileInfoKey(byte[] key) {
+        return Bytes.startsWith(key, FileInfo.RESERVED_PREFIX_BYTES);
+    }
+
+    /**
+     * Get names of supported compression algorithms. The names are acceptable
+     * by HFile.Writer.
+     * 
+     * @return Array of strings, each represents a supported compression
+     *         algorithm. Currently, the following compression algorithms are
+     *         supported.
+     *         <ul>
+     *         <li>"none" - No compression.
+     *         <li>"gz" - GZIP compression.
+     *         </ul>
+     */
+    public static String[] getSupportedCompressionAlgorithms() {
+        return Compression.getSupportedAlgorithms();
+    }
+
+    // Utility methods.
+    /*
+     * @param l Long to convert to an int.
+     * @return <code>l</code> cast as an int.
+     */
+    static int longToInt(final long l) {
+        // Expecting the size() of a block not exceeding 4GB. Assuming the
+        // size() will wrap to negative integer if it exceeds 2GB (From tfile).
+        return (int) (l & 0x00000000ffffffffL);
+    }
+
+    /**
+     * Returns all files belonging to the given region directory. Could return
+     * an empty list.
+     * 
+     * @param fs
+     *            The file system reference.
+     * @param regionDir
+     *            The region directory to scan.
+     * @return The list of files found.
+     * @throws IOException
+     *             When scanning the files fails.
+     */
+    static List<Path> getStoreFiles(FileSystem fs, Path regionDir) throws IOException {
+        List<Path> res = new ArrayList<Path>();
+        PathFilter dirFilter = new FSUtils.DirFilter(fs);
+        FileStatus[] familyDirs = fs.listStatus(regionDir, dirFilter);
+        for (FileStatus dir: familyDirs) {
+            FileStatus[] files = fs.listStatus(dir.getPath());
+            for (FileStatus file: files) {
+                if (!file.isDir()) {
+                    res.add(file.getPath());
+                }
+            }
+        }
+        return res;
+    }
+
+    private static ByteBuffer getEncodedBuffer(HFileBlock newBlock) {
+        ByteBuffer origBlock = newBlock.getBufferReadOnly();
+        ByteBuffer encodedBlock = ByteBuffer.wrap(origBlock.array(),
+                origBlock.arrayOffset() + newBlock.headerSize() + DataBlockEncoding.ID_SIZE,
+                newBlock.getUncompressedSizeWithoutHeader() - DataBlockEncoding.ID_SIZE).slice();
+        return encodedBlock;
+    }
+
+    public static void main(String[] args) throws IOException {
+        Configuration conf = HBaseConfiguration.create();
+        HFile.Reader reader = HFile.createReader(FileSystem.get(conf), new Path(
+                "/home/zhangduo/s/APP/7af5966b150542ff9d4182ebcdac6141"), new CacheConfig(conf),
+                conf);
+        HFileContext ctx = reader.getFileContext();
+        ByteArrayOutputStream bos = new ByteArrayOutputStream(16);
+        DataOutputStream dos = new DataOutputStream(bos);
+        dos.writeLong(48766023L);
+        dos.writeLong(0L);
+        byte[] key = KeyValue.createFirstOnRow(bos.toByteArray()).getKey();
+        //System.out.println(Arrays.toString(key));
+        HFileBlock block = reader.getDataBlockIndexReader().seekToDataBlock(key, 0, key.length,
+                null, false, false, false);
+        PrefixTreeSeeker seeker = new PrefixTreeSeeker(ctx.isIncludesMvcc());
+        seeker.setCurrentBuffer(getEncodedBuffer(block));
+        seeker.seekToKeyInBlock(key, 0, key.length, false);
+        seeker.next();
+        KeyValue kv = seeker.getKeyValue();
+        long uid = Bytes.toLong(kv.getRowArray(), kv.getRowOffset());
+        long version = Long.MAX_VALUE - Bytes.toLong(kv.getRowArray(), kv.getRowOffset() + 8);
+        System.out.println(uid
+                + "-"
+                + version
+                + ": "
+                + Bytes.toString(kv.getQualifierArray(), kv.getQualifierOffset(),
+                        kv.getQualifierLength()));
+        // args = new String[] {
+        // "-f", "/home/zhangduo/s/APP/7af5966b150542ff9d4182ebcdac6141", "-e"
+        // };
+        // HFilePrettyPrinter prettyPrinter = new HFilePrettyPrinter();
+        // System.exit(prettyPrinter.run(args));
+    }
+
+    /**
+     * Checks the given {@link HFile} format version, and throws an exception if
+     * invalid. Note that if the version number comes from an input file and has
+     * not been verified, the caller needs to re-throw an {@link IOException} to
+     * indicate that this is not a software error, but corrupted input.
+     * 
+     * @param version
+     *            an HFile version
+     * @throws IllegalArgumentException
+     *             if the version is invalid
+     */
+    public static void checkFormatVersion(int version) throws IllegalArgumentException {
+        if (version < MIN_FORMAT_VERSION || version > MAX_FORMAT_VERSION) {
+            throw new IllegalArgumentException("Invalid HFile version: " + version
+                    + " (expected to be " + "between " + MIN_FORMAT_VERSION + " and "
+                    + MAX_FORMAT_VERSION + ")");
+        }
+    }
 }
