@@ -156,6 +156,7 @@ import org.apache.hadoop.hbase.regionserver.metrics.SchemaMetrics.StoreMetricTyp
 import org.apache.hadoop.hbase.regionserver.snapshot.RegionServerSnapshotManager;
 import org.apache.hadoop.hbase.regionserver.wal.FailedLogCloseException;
 import org.apache.hadoop.hbase.regionserver.wal.HLog;
+import org.apache.hadoop.hbase.regionserver.wal.HLogCompactor;
 import org.apache.hadoop.hbase.regionserver.wal.WALActionsListener;
 import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -313,12 +314,17 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
   public CompactSplitThread compactSplitThread;
 
   // Cache flushing
-  MemStoreFlusher cacheFlusher;
+  public MemStoreFlusher cacheFlusher;
 
   /*
    * Check for compactions requests.
    */
   Chore compactionChecker;
+
+  /**
+   * hlog compactor
+   */
+  Chore hlogCompactor;
 
   /*
    * Check for flushes
@@ -1804,8 +1810,13 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
     Threads.setDaemonThreadRunning(this.hlogRoller.getThread(), n + ".logRoller",
         uncaughtExceptionHandler);
     this.cacheFlusher.start(uncaughtExceptionHandler);
+
+    this.hlogCompactor = new HLogCompactor(this, this.threadWakeFrequency);
+
     Threads.setDaemonThreadRunning(this.compactionChecker.getThread(), n +
       ".compactionChecker", uncaughtExceptionHandler);
+    Threads.setDaemonThreadRunning(this.hlogCompactor.getThread(), n +
+      ".hlogCompactor", uncaughtExceptionHandler);
     Threads.setDaemonThreadRunning(this.periodicFlusher.getThread(), n +
         ".periodicFlusher", uncaughtExceptionHandler);
     if (this.healthCheckChore != null) {
@@ -1884,8 +1895,9 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
     // Verify that all threads are alive
     if (!(leases.isAlive()
         && cacheFlusher.isAlive() && hlogRoller.isAlive()
-        && this.compactionChecker.isAlive())
-        && this.periodicFlusher.isAlive()) {
+        && this.compactionChecker.isAlive()
+        && this.hlogCompactor.isAlive()
+        && this.periodicFlusher.isAlive())) {
       stop("One or more threads are no longer alive -- stop");
       return false;
     }
@@ -2064,6 +2076,9 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
     Threads.shutdown(this.compactionChecker.getThread());
     Threads.shutdown(this.periodicFlusher.getThread());
     this.cacheFlusher.join();
+    if (hlogCompactor != null) {
+      Threads.shutdown(this.hlogCompactor.getThread());
+    }
     if (this.healthCheckChore != null) {
       Threads.shutdown(this.healthCheckChore.getThread());
     }
@@ -3755,6 +3770,17 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
   /** @return reference to FlushRequester */
   public FlushRequester getFlushRequester() {
     return this.cacheFlusher;
+  }
+
+  /** @return the number of regions flushing memstore */
+  public int getFlushingRegionNum() {
+    int flushing = 0;
+    for (HRegion r: this.onlineRegions.values()) {
+      if (r.isFlushing()) {
+        flushing++;
+      }
+    }
+    return flushing;
   }
 
   /**

@@ -34,6 +34,7 @@ import java.util.concurrent.Delayed;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.apache.commons.logging.Log;
@@ -60,7 +61,7 @@ import com.google.common.base.Preconditions;
  *
  * @see FlushRequester
  */
-class MemStoreFlusher implements FlushRequester {
+public class MemStoreFlusher implements FlushRequester {
   static final Log LOG = LogFactory.getLog(MemStoreFlusher.class);
   // These two data members go together.  Any entry in the one must have
   // a corresponding entry in the other.
@@ -115,6 +116,7 @@ class MemStoreFlusher implements FlushRequester {
     this.blockingWaitTime = conf.getInt("hbase.hstore.blockingWaitTime",
       90000);
     this.handlerCount = conf.getInt("hbase.hstore.flusher.count", 1);
+
     LOG.info("globalMemStoreLimit=" +
       StringUtils.humanReadableInt(this.globalMemStoreLimit) +
       ", globalMemStoreLimitLowMark=" +

@@ -305,6 +305,14 @@ public class CompactSplitThread implements CompactionRequestor, ConfigurationObs
   }
 
   /**
+   * Returns the number of running compactions
+   * @return The number of running compactions.
+   */
+  public int getRunningCompactionSize() {
+    return largeCompactions.getActiveCount() + smallCompactions.getActiveCount();
+  }
+
+  /**
    * Returns the current size of the large queue containing regions that are
    * processed.
    *

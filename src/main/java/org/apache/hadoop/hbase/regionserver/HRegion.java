@@ -900,6 +900,10 @@ public class HRegion implements HeapSize { // , Writable{
     return this.closed.get();
   }
 
+  public boolean isFlushing() {
+    return this.writestate.flushing;
+  }
+
   /**
    * @return True if closing process has started.
    */

@@ -48,6 +48,7 @@ import org.apache.hadoop.hbase.master.SplitLogManager.TaskFinisher.Status;
 import org.apache.hadoop.hbase.monitoring.MonitoredTask;
 import org.apache.hadoop.hbase.monitoring.TaskMonitor;
 import org.apache.hadoop.hbase.regionserver.SplitLogWorker;
+import org.apache.hadoop.hbase.regionserver.wal.HLog;
 import org.apache.hadoop.hbase.regionserver.wal.HLogSplitter;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.FSUtils;
@@ -278,6 +279,11 @@ public class SplitLogManager extends ZooKeeperListener {
     long totalSize = 0;
     TaskBatch batch = new TaskBatch();
     for (FileStatus lf : logfiles) {
+      if (lf.isDirectory() && lf.getPath().getName().equals(HLog.HLOG_TEMP_DIR)) {
+        LOG.info("Delete tmp log dir: " + lf.getPath());
+        FSUtils.delete(fs, lf.getPath(), true);
+        continue;
+      }
       // TODO If the log file is still being written to - which is most likely
       // the case for the last log file - then its length will show up here
       // as zero. The size of such a file can only be retrieved after

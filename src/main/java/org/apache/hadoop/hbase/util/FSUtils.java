@@ -107,7 +107,7 @@ public abstract class FSUtils {
    * @return Path
    * @throws IOException e
    */
-  public Path checkdir(final FileSystem fs, final Path dir) throws IOException {
+  public static Path checkdir(final FileSystem fs, final Path dir) throws IOException {
     if (!fs.exists(dir)) {
       HBaseFileSystem.makeDirOnFileSystem(fs, dir);
     }

@@ -46,6 +46,7 @@ import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -131,7 +132,12 @@ public class HLog implements Syncable {
   /** The META region's HLog filename extension */
   public static final String META_HLOG_FILE_EXTN = ".meta";
   public static final String SEPARATE_HLOG_FOR_META = "hbase.regionserver.separate.hlog.for.meta";
-
+  
+  /**
+   * Temporary subdirectory of the region directory used for compaction output.
+   */
+  public static final String HLOG_TEMP_DIR = ".tmp";
+  
   /*
    * Name of directory that holds recovered edits written by the wal log
    * splitting code, one per region
@@ -222,8 +228,10 @@ public class HLog implements Syncable {
   /*
    * Map of all log files but the current one.
    */
-  final SortedMap<Long, Path> outputfiles = Collections
-      .synchronizedSortedMap(new TreeMap<Long, Path>());
+  final SortedMap<Long, Path> outputfiles = Collections.
+      synchronizedSortedMap(new TreeMap<Long, Path>());
+
+  private Lock outputfilesLock = new ReentrantLock();
 
   /**
    * This lock synchronizes all operations on oldestUnflushedSeqNums and oldestFlushingSeqNums, with
@@ -241,14 +249,14 @@ public class HLog implements Syncable {
   private final ReentrantLock rollWriterLock = new ReentrantLock(true);
 
   /**
-   * Map of encoded region names to their most oldest sequence/edit id in their
+   * Map of encoded region names to their oldest sequence/edit id in their
    * memstore.
    */
   private final ConcurrentSkipListMap<byte [], Long> oldestUnflushedSeqNums =
     new ConcurrentSkipListMap<byte [], Long>(Bytes.BYTES_COMPARATOR);
 
   /**
-   * Map of encoded region names to their most oldest sequence/edit id in their memstore;
+   * Map of encoded region names to their oldest sequence/edit id in their memstore;
    * contains the regions that are currently flushing. That way we can store two numbers for
    * flushing and non-flushing (oldestUnflushedSeqNums) memstore for the same region.
    */
@@ -668,6 +676,7 @@ public class HLog implements Syncable {
       if (!force && this.writer != null && this.numEntries.get() <= 0) {
         return null;
       }
+    	this.outputfilesLock.lock();
       byte [][] regionsToFlush = null;
       try {
         this.logRollRunning = true;
@@ -741,6 +750,7 @@ public class HLog implements Syncable {
         }
       } finally {
         this.logRollRunning = false;
+        this.outputfilesLock.unlock();
         closeBarrier.endOp();
       }
       return regionsToFlush;
@@ -960,7 +970,7 @@ public class HLog implements Syncable {
     LOG.info("moving old hlog file " + FSUtils.getPath(p) +
       " whose highest sequenceid is " + seqno + " to " +
       FSUtils.getPath(newPath));
-
+    
     // Tell our listeners that a log is going to be archived.
     if (!this.listeners.isEmpty()) {
       for (WALActionsListener i : this.listeners) {
@@ -983,7 +993,13 @@ public class HLog implements Syncable {
    * using the current HLog file-number
    * @return Path
    */
-  protected Path computeFilename() {
+  public synchronized Path computeFilename() {
+    long tmp = System.currentTimeMillis();
+    if (tmp <= this.filenum) {
+      this.filenum = this.filenum + 1;
+    } else {
+      this.filenum = tmp;
+    }
     return computeFilename(this.filenum);
   }
 
@@ -1800,10 +1816,20 @@ public class HLog implements Syncable {
     return outputfiles.size() + 1;
   }
   
+  public long getLogRollSize() {
+    return this.logrollsize;
+  }
+
   /** @return the total size of log files in use, including current one */
   public long getNumLogFileSize() {
     return totalLogSize.get() + curLogSize;
   }
+  
+  /** @return the total size of log files in use, excluding current one */
+  public long getOutputLogFileSize() {
+    return totalLogSize.get();
+  }
+
   /**
    * WAL keeps track of the sequence numbers that were not yet flushed from memstores
    * in order to be able to do cleanup. This method tells WAL that some region is about
@@ -2153,6 +2179,83 @@ public class HLog implements Syncable {
     HSYNC_ALWAYS,
     //call hflush() in most of time, and call hsync() per second (not finished yet)
     HSYNC_PER_SECOND;
+  }
+
+  /**
+   * Get the hlog files to compact
+   * @return
+   */
+  public SortedMap<Long, Path> getCompactHLogFiles() {
+    SortedMap<Long, Path> filesToCompact = new TreeMap<Long, Path>();
+    this.outputfilesLock.lock();
+    try {
+      filesToCompact.putAll(outputfiles);
+    } finally {
+      this.outputfilesLock.unlock();
+    }
+    return filesToCompact;
+  }
+
+  /**
+   * Complete the hlog compaction
+   * @param newLogs
+   * @throws IOException
+   */
+  public void completeHLogCompaction(Map<Long, Path> oldlogs,
+      Map<Long, Path> newLogs) throws IOException {
+    long totalOldSize = 0;
+    for (Path log : oldlogs.values()) {
+      if (fs.exists(log)) {
+        try{
+          totalOldSize += fs.getFileStatus(log).getLen();
+        } catch (FileNotFoundException e) {
+        }
+      }
+    }
+
+    long totalNewSize = 0;
+    for (Path log : newLogs.values()) {
+      totalNewSize += fs.getFileStatus(log).getLen();
+    }
+
+    if (totalOldSize < totalNewSize) {
+      throw new IOException(
+          "Total size of old hlogs to be deleted is less than total size of all new hlogs: "
+              + totalOldSize + " < " + totalNewSize
+              + ". Abort this hlog compaction.");
+    }
+
+    //  move all new hlogs from tmp dir to region server's log dir
+    for (Path log : newLogs.values()) {
+      Path dstPath = new Path(this.dir, log.getName());
+      HBaseFileSystem.renameDirForFileSystem(this.fs, log, dstPath);
+    }
+
+    Map<Long, Path> filesToArchive = new HashMap<Long, Path>();
+    try {
+      outputfilesLock.lock();
+      // some old logs maybe have been removed
+      for (Long seq : oldlogs.keySet()) {
+        if (outputfiles.containsKey(seq)) {
+          filesToArchive.put(seq, outputfiles.remove(seq));
+        }
+      }
+      this.outputfiles.putAll(newLogs);
+      newLogs.clear();
+    } finally {
+      outputfilesLock.unlock();
+    }
+
+    long removeHLogSize = 0;
+    for (Long seq : filesToArchive.keySet()) {
+      Path log = filesToArchive.get(seq);
+      removeHLogSize += fs.getFileStatus(log).getLen();
+      archiveLogFile(log, seq);
+    }
+    totalLogSize.addAndGet(totalNewSize - totalOldSize);
+    LOG.info("Compact old hlogs with total size: " + removeHLogSize
+        + "to new hlogs with size: " + totalNewSize
+        + ". Current total hlog size: " + totalLogSize);
   }
 
   /**
