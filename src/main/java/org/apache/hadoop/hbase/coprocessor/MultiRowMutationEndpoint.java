@@ -71,6 +71,36 @@ public class MultiRowMutationEndpoint extends BaseEndpointCoprocessor implements
   @Override
   public List<Condition> mutateRowsWithConditions(List<Mutation> mutations, List<Condition> conditions)
       throws IOException {
+    boolean success = mutateRowsWithConditionsInternal(mutations, conditions);
+    List<Condition> results = new ArrayList<Condition>();
+    if (success) return results;
+    // failed, return reasons
+    for (Condition c : conditions) {
+      if (c.failedMatch()) {
+        results.add(c);
+      }
+    }
+    return results;
+  }
+
+  @Override
+  public List<Integer> batchMutatesWithConditions(List<Mutation> mutations, List<Condition> conditions)
+      throws IOException {
+    boolean success = mutateRowsWithConditionsInternal(mutations, conditions);
+    List<Integer> results = new ArrayList<Integer>();
+    if (success) return results;
+    // failed, return index of failed condition(s)
+    for (int i = 0; i < conditions.size(); ++i) {
+      Condition c = conditions.get(i);
+      if (c.failedMatch()) {
+        results.add(i);
+      }
+    }
+    return results;
+  }
+
+  private boolean mutateRowsWithConditionsInternal(List<Mutation> mutations,
+      List<Condition> conditions) throws IOException {
     // get the coprocessor environment
     RegionCoprocessorEnvironment env = (RegionCoprocessorEnvironment) getEnvironment();
 
@@ -112,17 +142,7 @@ public class MultiRowMutationEndpoint extends BaseEndpointCoprocessor implements
       }
       rowsToLock.add(m.getRow());
     }
-    
-    boolean success =
-        env.getRegion().mutateRowsWithLocks(mutations, conditions, rowsToLock);
-    List<Condition> results = new ArrayList<Condition>();
-    if (success) return results;
-    // failed, return reasons
-    for (Condition c : conditions) {
-      if (c.failedMatch()) {
-        results.add(c);
-      }
-    }
-    return results;
+
+    return env.getRegion().mutateRowsWithLocks(mutations, conditions, rowsToLock);
   }
 }

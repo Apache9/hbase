@@ -48,7 +48,10 @@ import org.apache.hadoop.hbase.regionserver.HRegion;
  */
 public interface MultiRowMutationProtocol extends CoprocessorProtocol {
   public void mutateRows(List<Mutation> mutations) throws IOException;
-  
+
   public List<Condition> mutateRowsWithConditions(List<Mutation> mutations,
+    List<Condition> conditions) throws IOException;
+
+  public List<Integer> batchMutatesWithConditions(List<Mutation> mutations,
     List<Condition> conditions) throws IOException;
 }

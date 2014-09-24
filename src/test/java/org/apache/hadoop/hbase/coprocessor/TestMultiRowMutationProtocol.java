@@ -262,6 +262,42 @@ public class TestMultiRowMutationProtocol {
   }
   
   @Test
+  public void testBatchMutationsWithConditions() throws IOException {
+    List<Mutation> mutations = new ArrayList<Mutation>();
+    List<Condition> conditions = new ArrayList<Condition>();
+    
+    conditions.add(new Condition(ROWS[1], TEST_FAMILY, TEST_QUALIFIER, Bytes.toBytes(1)));
+    Put put = new Put(ROWS[1]);
+    put.add(TEST_FAMILY, TEST_QUALIFIER, Bytes.toBytes(2 * 1));
+    mutations.add(put);
+    
+    conditions.add(new Condition(ROWS[3], TEST_FAMILY, TEST_QUALIFIER, Bytes.toBytes(3)));
+    Delete del = new Delete(ROWS[3]);
+    del.deleteColumns(TEST_FAMILY, TEST_QUALIFIER);
+    mutations.add(del);
+    
+    MultiRowMutationProtocol p =
+        table.coprocessorProxy(MultiRowMutationProtocol.class, mutations.get(0).getRow());
+    try {
+      List<Integer> results = p.batchMutatesWithConditions(mutations, conditions);
+      Assert.assertEquals(0, results.size());
+    } catch (IOException e) {
+      Assert.assertTrue(false);
+    }
+    
+    Get get = new Get(ROWS[1]);
+    get.addColumn(TEST_FAMILY, TEST_QUALIFIER);
+    Result result = table.get(get);
+    Assert.assertEquals(2, Bytes.toInt(result.getValue(TEST_FAMILY, TEST_QUALIFIER)));
+    
+    
+    get = new Get(ROWS[3]);
+    get.addColumn(TEST_FAMILY, TEST_QUALIFIER);
+    result = table.get(get);
+    Assert.assertNull(result.getValue(TEST_FAMILY, TEST_QUALIFIER));
+  }
+  
+  @Test
   public void testMultiRowMutationsWithConditionsAcrossRegions() throws IOException {
     List<Mutation> mutations = new ArrayList<Mutation>();
     List<Condition> conditions = new ArrayList<Condition>();
@@ -307,6 +343,43 @@ public class TestMultiRowMutationProtocol {
 
     try {
       List<Condition> results = p.mutateRowsWithConditions(mutations, conditions);
+      Assert.assertEquals(1, results.size());
+    } catch (IOException e) {
+      Assert.assertTrue(false);
+    }
+    
+    Get get = new Get(ROWS[1]);
+    get.addColumn(TEST_FAMILY, TEST_QUALIFIER);
+    Result result = table.get(get);
+    Assert.assertEquals(1, Bytes.toInt(result.getValue(TEST_FAMILY, TEST_QUALIFIER)));
+    
+    
+    get = new Get(ROWS[3]);
+    get.addColumn(TEST_FAMILY, TEST_QUALIFIER);
+    result = table.get(get);
+    Assert.assertEquals(3, Bytes.toInt(result.getValue(TEST_FAMILY, TEST_QUALIFIER)));
+  }
+  
+  @Test
+  public void testBatchMutationsWithConditionsFailed() throws IOException {
+    List<Mutation> mutations = new ArrayList<Mutation>();
+    List<Condition> conditions = new ArrayList<Condition>();
+    
+    conditions.add(new Condition(ROWS[1], TEST_FAMILY, TEST_QUALIFIER, Bytes.toBytes(1)));
+    Put put = new Put(ROWS[1]);
+    put.add(TEST_FAMILY, TEST_QUALIFIER, Bytes.toBytes(2 * 1));
+    mutations.add(put);
+    
+    conditions.add(new Condition(ROWS[3], TEST_FAMILY, TEST_QUALIFIER, Bytes.toBytes(4)));
+    Delete del = new Delete(ROWS[3]);
+    del.deleteColumns(TEST_FAMILY, TEST_QUALIFIER);
+    mutations.add(del);
+    
+    MultiRowMutationProtocol p =
+        table.coprocessorProxy(MultiRowMutationProtocol.class, mutations.get(0).getRow());
+
+    try {
+      List<Integer> results = p.batchMutatesWithConditions(mutations, conditions);
       Assert.assertEquals(1, results.size());
     } catch (IOException e) {
       Assert.assertTrue(false);
