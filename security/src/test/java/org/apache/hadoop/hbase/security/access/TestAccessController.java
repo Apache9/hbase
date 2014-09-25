@@ -67,6 +67,7 @@ import org.apache.hadoop.hbase.io.hfile.CacheConfig;
 import org.apache.hadoop.hbase.io.hfile.HFile;
 import org.apache.hadoop.hbase.mapreduce.LoadIncrementalHFiles;
 import org.apache.hadoop.hbase.master.MasterCoprocessorHost;
+import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.SnapshotDescription;
 import org.apache.hadoop.hbase.regionserver.HRegion;
 import org.apache.hadoop.hbase.regionserver.HRegionServer;
 import org.apache.hadoop.hbase.regionserver.RegionCoprocessorHost;
@@ -1833,10 +1834,16 @@ public class TestAccessController {
 
   @Test
   public void testSnapshot() throws Exception {
+    HBaseAdmin admin = TEST_UTIL.getHBaseAdmin();
+    final HTableDescriptor htd = admin.getTableDescriptor(TEST_TABLE);
+    SnapshotDescription.Builder builder = SnapshotDescription.newBuilder();
+    builder.setName(Bytes.toString(TEST_TABLE) + "-snapshot");
+    builder.setTable(Bytes.toString(TEST_TABLE));
+    final SnapshotDescription snapshot = builder.build();
     PrivilegedExceptionAction snapshotAction = new PrivilegedExceptionAction() {
       public Object run() throws Exception {
         ACCESS_CONTROLLER.preSnapshot(ObserverContext.createAndPrepare(CP_ENV, null),
-          null, null);
+          snapshot, htd);
         return null;
       }
     };
@@ -1844,7 +1851,7 @@ public class TestAccessController {
     PrivilegedExceptionAction deleteAction = new PrivilegedExceptionAction() {
       public Object run() throws Exception {
         ACCESS_CONTROLLER.preDeleteSnapshot(ObserverContext.createAndPrepare(CP_ENV, null),
-          null);
+          snapshot);
         return null;
       }
     };
@@ -1852,7 +1859,7 @@ public class TestAccessController {
     PrivilegedExceptionAction restoreAction = new PrivilegedExceptionAction() {
       public Object run() throws Exception {
         ACCESS_CONTROLLER.preRestoreSnapshot(ObserverContext.createAndPrepare(CP_ENV, null),
-          null, null);
+          snapshot, htd);
         return null;
       }
     };
@@ -1860,13 +1867,13 @@ public class TestAccessController {
     PrivilegedExceptionAction cloneAction = new PrivilegedExceptionAction() {
       public Object run() throws Exception {
         ACCESS_CONTROLLER.preCloneSnapshot(ObserverContext.createAndPrepare(CP_ENV, null),
-          null, null);
+          snapshot, htd);
         return null;
       }
     };
 
-    verifyAllowed(snapshotAction, SUPERUSER, USER_ADMIN);
-    verifyDenied(snapshotAction, USER_CREATE, USER_RW, USER_RO, USER_NONE, USER_OWNER);
+    verifyAllowed(snapshotAction, SUPERUSER, USER_ADMIN, USER_OWNER);
+    verifyDenied(snapshotAction, USER_CREATE, USER_RW, USER_RO, USER_NONE);
 
     verifyAllowed(cloneAction, SUPERUSER, USER_ADMIN);
     verifyDenied(deleteAction, USER_CREATE, USER_RW, USER_RO, USER_NONE, USER_OWNER);
