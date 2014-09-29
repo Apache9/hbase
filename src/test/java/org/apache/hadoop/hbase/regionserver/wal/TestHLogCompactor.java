@@ -177,9 +177,9 @@ public class TestHLogCompactor {
     
     SortedMap<Long, Path> fakeLogs = new TreeMap<Long, Path>();
     
-    fakeLogs.put(mockHlog.getSequenceNumber(), mockHlog.computeFilename());
-    fakeLogs.put(mockHlog.getSequenceNumber(), mockHlog.computeFilename());
-    fakeLogs.put(mockHlog.getSequenceNumber(), mockHlog.computeFilename());
+    fakeLogs.put(mockHlog.getSequenceNumber(), mockHlog.computeNewFilename());
+    fakeLogs.put(mockHlog.getSequenceNumber(), mockHlog.computeNewFilename());
+    fakeLogs.put(mockHlog.getSequenceNumber(), mockHlog.computeNewFilename());
     
     when(mockHlog.getCompactHLogFiles()).thenReturn(fakeLogs);
 

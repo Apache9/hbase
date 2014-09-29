@@ -693,8 +693,7 @@ public class HLog implements Syncable {
           //computeFilename  will take care of meta hlog filename
           oldPath = computeFilename(currentFilenum);
         }
-        this.filenum = System.currentTimeMillis();
-        Path newPath = computeFilename();
+        Path newPath = computeNewFilename();
         // Tell our listeners that a new log is about to be created
         if (!this.listeners.isEmpty()) {
           for (WALActionsListener i : this.listeners) {
@@ -989,17 +988,25 @@ public class HLog implements Syncable {
   }
 
   /**
-   * This is a convenience method that computes a new filename with a given
-   * using the current HLog file-number
+   * This is a convenience method that computes a new filename with a larger file-number
    * @return Path
    */
-  public synchronized Path computeFilename() {
+  public synchronized Path computeNewFilename() {
     long tmp = System.currentTimeMillis();
     if (tmp <= this.filenum) {
       this.filenum = this.filenum + 1;
     } else {
       this.filenum = tmp;
     }
+    return computeFilename(this.filenum);
+  }
+
+  /**
+   * This is a convenience method that computes a new filename with a given
+   * using the current HLog file-number
+   * @return Path
+   */
+  public synchronized Path computeFilename() {
     return computeFilename(this.filenum);
   }
 

@@ -132,7 +132,7 @@ public class HLogCompactor extends Chore {
           }
 
           if (writer == null) {
-            logPath = new Path(this.tmpDir, hlog.computeFilename().getName());
+            logPath = new Path(this.tmpDir, hlog.computeNewFilename().getName());
             writer = HLog.createWriter(fs, logPath, conf);
           }
           writer.append(entry);
