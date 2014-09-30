@@ -2594,7 +2594,7 @@
         <activeByDefault>false</activeByDefault>
       </activation>
       <properties>
-        <surefire.exclude.tests>org/apache/hadoop/hbase/mapreduce/*.java</surefire.exclude.tests>
+        <surefire.exclude.tests>org/apache/hadoop/hbase/mapreduce/*.java, org/apache/hadoop/hbase/replication/TestReplication*.java</surefire.exclude.tests>
         <surefire.firstPartForkMode>once</surefire.firstPartForkMode>
         <surefire.firstPartParallel>none</surefire.firstPartParallel>
         <surefire.firstPartThreadCount>1</surefire.firstPartThreadCount>
