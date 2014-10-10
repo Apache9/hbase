@@ -1639,7 +1639,7 @@
         <hadoop.version>${hadoop-mdh.version}</hadoop.version>
         <slf4j.version>1.6.1</slf4j.version>
         <galaxy-sds.version>1.2-SNAPSHOT</galaxy-sds.version>
-        <themis-coprocessor.version>0.0.2</themis-coprocessor.version>
+        <themis-coprocessor.version>1.0-SNAPSHOT</themis-coprocessor.version>
       </properties>
       <dependencies>
         <dependency>
