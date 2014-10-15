@@ -790,7 +790,7 @@ public class TestMemStore extends TestCase {
     for (int newValue = 0; newValue < 1000; newValue++) {
       for (int row = newValue; row < newValue + 1000; row++) {
         byte[] rowBytes = Bytes.toBytes(row);
-        size += memstore.updateColumnValue(rowBytes, FAMILY, qualifier, newValue, ++ts);
+        size += memstore.updateColumnValue(rowBytes, FAMILY, qualifier, newValue, ++ts, -1L);
       }
     }
     System.out.println("Wrote " + ts + " vals");
@@ -912,7 +912,7 @@ public class TestMemStore extends TestCase {
 
       Store s = stores.entrySet().iterator().next().getValue();
       edge.setCurrentTimeMillis(1234);
-      s.add(KeyValueTestUtil.create("r", "f", "q", 100, "v"));
+      s.add(KeyValueTestUtil.create("r", "f", "q", 100, "v"), -1L);
       edge.setCurrentTimeMillis(1234 + 100);
       assertTrue(region.shouldFlush() == false);
       edge.setCurrentTimeMillis(1234 + 10000);

@@ -213,6 +213,9 @@ public class HTableDescriptor implements WritableComparable<HTableDescriptor> {
    * the contents are flushed to the store files
    */
   public static final long DEFAULT_MEMSTORE_FLUSH_SIZE = 1024*1024*128L;
+  
+  public static final long DEFAULT_MEMSTORE_COLUMNFAMILY_FLUSH_SIZE =
+      1024*1024*16L;
 
   private final static Map<String, String> DEFAULT_VALUES
     = new HashMap<String, String>();

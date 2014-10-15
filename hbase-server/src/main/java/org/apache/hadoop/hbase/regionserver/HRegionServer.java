@@ -3984,7 +3984,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
       LOG.info("Flushing " + region.getRegionNameAsString());
       boolean shouldFlush = true;
       if (request.hasIfOlderThanTs()) {
-        shouldFlush = region.getLastFlushTime() < request.getIfOlderThanTs();
+        shouldFlush = region.getMinFlushTimeForAllStores() < request.getIfOlderThanTs();
       }
       FlushRegionResponse.Builder builder = FlushRegionResponse.newBuilder();
       if (shouldFlush) {
@@ -3995,7 +3995,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
         }
         builder.setFlushed(result);
       }
-      builder.setLastFlushTime(region.getLastFlushTime());
+      builder.setLastFlushTime(region.getMinFlushTimeForAllStores());
       return builder.build();
     } catch (DroppedSnapshotException ex) {
       // Cache flush can fail in a few places. If it fails in a critical

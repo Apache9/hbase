@@ -114,17 +114,19 @@ public interface Store extends HeapSize, StoreConfigInformation {
    * across all of them.
    * @param cells
    * @param readpoint readpoint below which we can safely remove duplicate KVs
+   * @param seqNum The LSN associated with the key.
    * @return memstore size delta
    * @throws IOException
    */
-  long upsert(Iterable<Cell> cells, long readpoint) throws IOException;
+  long upsert(Iterable<Cell> cells, long readpoint, long seqNum) throws IOException;
 
   /**
    * Adds a value to the memstore
    * @param kv
+   * @param seqNum The LSN associated with the key.
    * @return memstore size delta
    */
-  long add(KeyValue kv);
+  long add(KeyValue kv, long seqNum);
 
   /**
    * When was the last edit done in the memstore
@@ -152,6 +154,12 @@ public interface Store extends HeapSize, StoreConfigInformation {
    */
   KeyValue getRowKeyAtOrBefore(final byte[] row) throws IOException;
 
+  /**
+   * A helper function to get the smallest LSN in the mestore.
+   * @return
+   */
+  public long getSmallestSeqNumberInMemstore();
+  
   FileSystem getFileSystem();
 
   /*

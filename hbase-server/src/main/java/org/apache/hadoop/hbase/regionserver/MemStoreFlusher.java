@@ -208,7 +208,7 @@ class MemStoreFlusher implements FlushRequester {
       Preconditions.checkState(regionToFlush.memstoreSize.get() > 0);
 
       LOG.info("Flush of region " + regionToFlush + " due to global heap pressure");
-      flushedOne = flushRegion(regionToFlush, true);
+      flushedOne = flushRegion(regionToFlush, true, false);
       if (!flushedOne) {
         LOG.info("Excluding unflushable region " + regionToFlush +
           " - trying to find a different region to flush.");
@@ -322,11 +322,15 @@ class MemStoreFlusher implements FlushRequester {
   }
 
   public void requestFlush(HRegion r) {
+    requestFlush(r, false);
+  }
+
+  public void requestFlush(HRegion r, boolean selectiveFlushRequest) {
     synchronized (regionsInQueue) {
       if (!regionsInQueue.containsKey(r)) {
         // This entry has no delay so it will be added at the top of the flush
         // queue.  It'll come out near immediately.
-        FlushRegionEntry fqe = new FlushRegionEntry(r);
+        FlushRegionEntry fqe = new FlushRegionEntry(r, selectiveFlushRequest);
         this.regionsInQueue.put(r, fqe);
         this.flushQueue.add(fqe);
       }
@@ -337,7 +341,7 @@ class MemStoreFlusher implements FlushRequester {
     synchronized (regionsInQueue) {
       if (!regionsInQueue.containsKey(r)) {
         // This entry has some delay
-        FlushRegionEntry fqe = new FlushRegionEntry(r);
+        FlushRegionEntry fqe = new FlushRegionEntry(r, false);
         fqe.requeue(delay);
         this.regionsInQueue.put(r, fqe);
         this.flushQueue.add(fqe);
@@ -432,7 +436,7 @@ class MemStoreFlusher implements FlushRequester {
         return true;
       }
     }
-    return flushRegion(region, false);
+    return flushRegion(region, false, fqe.isSelectiveFlushRequest());
   }
 
   /*
@@ -442,12 +446,14 @@ class MemStoreFlusher implements FlushRequester {
    * needs to be removed from the flush queue. If false, when we were called
    * from the main flusher run loop and we got the entry to flush by calling
    * poll on the flush queue (which removed it).
-   *
+   * @param selectiveFlushRequest Do we want to selectively flush only the
+   *  column families that dominate the memstore size?
    * @return true if the region was successfully flushed, false otherwise. If
    * false, there will be accompanying log messages explaining why the log was
    * not flushed.
    */
-  private boolean flushRegion(final HRegion region, final boolean emergencyFlush) {
+  private boolean flushRegion(final HRegion region, final boolean emergencyFlush,
+      boolean selectiveFlushRequest) {
     synchronized (this.regionsInQueue) {
       FlushRegionEntry fqe = this.regionsInQueue.remove(region);
       if (fqe != null && emergencyFlush) {
@@ -458,7 +464,7 @@ class MemStoreFlusher implements FlushRequester {
     }
     lock.readLock().lock();
     try {
-      boolean shouldCompact = region.flushcache().isCompactionNeeded();
+      boolean shouldCompact = region.flushcache(selectiveFlushRequest).isCompactionNeeded();
       // We just want to check the size
       boolean shouldSplit = region.checkSplit() != null;
       if (shouldSplit) {
@@ -612,13 +618,30 @@ class MemStoreFlusher implements FlushRequester {
     private final long createTime;
     private long whenToExpire;
     private int requeueCount = 0;
+    private boolean selectiveFlushRequest;
 
-    FlushRegionEntry(final HRegion r) {
+    /**
+     * @param r The region to flush
+     * @param selectiveFlushRequest Do we want to flush only the column
+     *                              families that dominate the memstore size,
+     *                              i.e., do a selective flush? If we are
+     *                              doing log rolling, then we should not do a
+     *                              selective flush.
+     */
+    FlushRegionEntry(final HRegion r, boolean selectiveFlushRequest) {
       this.region = r;
       this.createTime = System.currentTimeMillis();
       this.whenToExpire = this.createTime;
+      this.selectiveFlushRequest = selectiveFlushRequest;
     }
-
+    
+    /**
+     * @return Is this a request for a selective flush?
+     */
+    public boolean isSelectiveFlushRequest() {
+      return selectiveFlushRequest;
+    }
+    
     /**
      * @param maximumWait
      * @return True if we have been delayed > <code>maximumWait</code> milliseconds.

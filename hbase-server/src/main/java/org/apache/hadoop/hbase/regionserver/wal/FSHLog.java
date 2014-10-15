@@ -36,7 +36,6 @@ import java.util.TreeMap;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
@@ -993,20 +992,21 @@ class FSHLog implements HLog, Syncable {
    * @throws IOException
    */
   @SuppressWarnings("deprecation")
-  private long append(HRegionInfo info, TableName tableName, WALEdit edits, List<UUID> clusterIds,
+  private TxidAndSeqNum append(HRegionInfo info, TableName tableName, WALEdit edits, List<UUID> clusterIds,
       final long now, HTableDescriptor htd, boolean doSync, boolean isInMemstore, 
       AtomicLong sequenceId, long nonceGroup, long nonce) throws IOException {
-      if (edits.isEmpty()) return this.unflushedEntries.get();
+      if (edits.isEmpty()) return new TxidAndSeqNum(this.unflushedEntries.get(), sequenceId.get());
       if (this.closed) {
         throw new IOException("Cannot append; log is closed");
       }
       TraceScope traceScope = Trace.startSpan("FSHlog.append");
       try {
         long txid = 0;
+        long seqNum;
         synchronized (this.updateLock) {
           // get the sequence number from the passed Long. In normal flow, it is coming from the
           // region.
-          long seqNum = sequenceId.incrementAndGet();
+          seqNum = sequenceId.incrementAndGet();
           // The 'lastSeqWritten' map holds the sequence number of the oldest
           // write for each region (i.e. the first edit added to the particular
           // memstore). . When the cache is flushed, the entry for the
@@ -1041,14 +1041,14 @@ class FSHLog implements HLog, Syncable {
           // sync txn to file system
           this.sync(txid);
         }
-        return txid;
+        return new TxidAndSeqNum(txid, seqNum);
       } finally {
         traceScope.close();
       }
     }
 
   @Override
-  public long appendNoSync(HRegionInfo info, TableName tableName, WALEdit edits,
+  public TxidAndSeqNum appendNoSync(HRegionInfo info, TableName tableName, WALEdit edits,
       List<UUID> clusterIds, final long now, HTableDescriptor htd, AtomicLong sequenceId,
       boolean isInMemstore, long nonceGroup, long nonce) throws IOException {
     return append(info, tableName, edits, clusterIds,
@@ -1536,19 +1536,42 @@ class FSHLog implements HLog, Syncable {
   }
   
   @Override
-  public boolean startCacheFlush(final byte[] encodedRegionName) {
+  public Long startCacheFlush(final byte[] encodedRegionName,
+      long oldestSeqIdInStoresToFlush,
+      long oldestSeqIdInStoresNotToFlush, AtomicLong sequenceId) {
+    long flushSeqId;
     Long oldRegionSeqNum = null;
     if (!closeBarrier.beginOp()) {
       LOG.info("Flush will not be started for " + Bytes.toString(encodedRegionName) +
         " - because the server is closing.");
-      return false;
+      return null;
     }
     synchronized (oldestSeqNumsLock) {
-      oldRegionSeqNum = this.oldestUnflushedSeqNums.remove(encodedRegionName);
-      if (oldRegionSeqNum != null) {
-        Long oldValue = this.oldestFlushingSeqNums.put(encodedRegionName, oldRegionSeqNum);
-        assert oldValue == null : "Flushing map not cleaned up for "
-          + Bytes.toString(encodedRegionName);
+      if (oldestSeqIdInStoresNotToFlush == Long.MAX_VALUE) {
+        oldRegionSeqNum = this.oldestUnflushedSeqNums.remove(encodedRegionName);
+        if (oldRegionSeqNum != null) {
+          Long oldValue = this.oldestFlushingSeqNums.put(encodedRegionName, oldRegionSeqNum);
+          assert oldValue == null: "Flushing map not cleaned up for "
+              + Bytes.toString(encodedRegionName);
+        }
+        flushSeqId = sequenceId.incrementAndGet();
+      } else {
+        // Amongst the Stores not being flushed, what is the smallest sequence
+        // number? Put that in this map.
+        oldRegionSeqNum =  this.oldestUnflushedSeqNums.replace(encodedRegionName,
+            oldestSeqIdInStoresNotToFlush);
+
+        // Amongst the Stores being flushed, what is the smallest sequence
+        // number? Put that in this map.
+        this.oldestFlushingSeqNums.put(encodedRegionName, oldestSeqIdInStoresToFlush);
+
+        // During Log Replay, we can safely discard any edits that have
+        // the sequence number less than the smallest sequence id amongst the
+        // stores that we are not flushing. This might re-apply some edits
+        // which belonged to stores which are going to be flushed, but we
+        // expect these operations to be idempotent anyways, and this is
+        // simpler.
+        flushSeqId = oldestSeqIdInStoresNotToFlush - 1;
       }
     }
     if (oldRegionSeqNum == null) {
@@ -1560,12 +1583,11 @@ class FSHLog implements HLog, Syncable {
       LOG.warn("Couldn't find oldest seqNum for the region we are about to flush: ["
         + Bytes.toString(encodedRegionName) + "]");
     }
-    return true;
+    return flushSeqId;
   }
 
   @Override
-  public void completeCacheFlush(final byte [] encodedRegionName)
-  {
+  public void completeCacheFlush(final byte [] encodedRegionName) {
     synchronized (oldestSeqNumsLock) {
       this.oldestFlushingSeqNums.remove(encodedRegionName);
     }

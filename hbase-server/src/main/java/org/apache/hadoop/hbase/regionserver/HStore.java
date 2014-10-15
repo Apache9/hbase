@@ -567,10 +567,10 @@ public class HStore implements Store {
   }
 
   @Override
-  public long add(final KeyValue kv) {
+  public long add(final KeyValue kv, long seqNum) {
     lock.readLock().lock();
     try {
-      return this.memstore.add(kv);
+      return this.memstore.add(kv, seqNum);
     } finally {
       lock.readLock().unlock();
     }
@@ -587,10 +587,10 @@ public class HStore implements Store {
    * @param kv
    * @return memstore size delta
    */
-  protected long delete(final KeyValue kv) {
+  protected long delete(final KeyValue kv, long seqNum) {
     lock.readLock().lock();
     try {
-      return this.memstore.delete(kv);
+      return this.memstore.delete(kv, seqNum);
     } finally {
       lock.readLock().unlock();
     }
@@ -1888,9 +1888,19 @@ public class HStore implements Store {
 
   @Override
   public long getMemStoreSize() {
-    return this.memstore.heapSize();
+    // Use memstore.keySize() instead of heapSize() since heapSize() gives the
+    // size of the keys + size of the map.
+    return this.memstore.keySize();
   }
 
+  /**
+   * A helper function to get the smallest LSN in the mestore.
+   * @return
+   */
+  public long getSmallestSeqNumberInMemstore() {
+    return this.memstore.getSmallestSeqNumber();
+  }
+  
   @Override
   public int getCompactPriority() {
     int priority = this.storeEngine.getStoreFileManager().getStoreCompactionPriority();
@@ -1939,11 +1949,12 @@ public class HStore implements Store {
    * @param f family to update
    * @param qualifier qualifier to update
    * @param newValue the new value to set into memstore
+   * @param seqNum The LSN associated with the edit.
    * @return memstore size delta
    * @throws IOException
    */
   public long updateColumnValue(byte [] row, byte [] f,
-                                byte [] qualifier, long newValue)
+                                byte [] qualifier, long newValue, long seqNum)
       throws IOException {
 
     this.lock.readLock().lock();
@@ -1954,7 +1965,8 @@ public class HStore implements Store {
           f,
           qualifier,
           newValue,
-          now);
+          now,
+          seqNum);
 
     } finally {
       this.lock.readLock().unlock();
@@ -1962,10 +1974,10 @@ public class HStore implements Store {
   }
 
   @Override
-  public long upsert(Iterable<Cell> cells, long readpoint) throws IOException {
+  public long upsert(Iterable<Cell> cells, long readpoint, long seqNum) throws IOException {
     this.lock.readLock().lock();
     try {
-      return this.memstore.upsert(cells, readpoint);
+      return this.memstore.upsert(cells, readpoint, seqNum);
     } finally {
       this.lock.readLock().unlock();
     }

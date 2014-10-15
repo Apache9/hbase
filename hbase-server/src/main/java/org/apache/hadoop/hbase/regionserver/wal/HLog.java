@@ -34,6 +34,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.TableName;
@@ -287,6 +288,18 @@ public interface HLog {
    */
   void postSync();
 
+  final class TxidAndSeqNum {
+    public final long txid;
+    
+    public final long seqNum;
+
+    public TxidAndSeqNum(long txid, long seqNum) {
+      this.txid = txid;
+      this.seqNum = seqNum;
+    }
+  }
+  
+  static final TxidAndSeqNum DUMMY_TXID_AND_SEQ_NUM = new TxidAndSeqNum(0L, HConstants.NO_SEQNUM);
   /**
    * Append a set of edits to the log. Log edits are keyed by (encoded) regionName, rowname, and
    * log-sequence-id. The HLog is not flushed after this transaction is written to the log.
@@ -300,7 +313,7 @@ public interface HLog {
    * @return txid of this transaction
    * @throws IOException
    */
-  long appendNoSync(HRegionInfo info, TableName tableName, WALEdit edits,
+  TxidAndSeqNum appendNoSync(HRegionInfo info, TableName tableName, WALEdit edits,
       List<UUID> clusterIds, final long now, HTableDescriptor htd, AtomicLong sequenceId,
       boolean isInMemstore, long nonceGroup, long nonce) throws IOException;
 
@@ -319,15 +332,27 @@ public interface HLog {
    * to flush memstore.
    *
    * We stash the oldest seqNum for the region, and let the the next edit inserted in this
-   * region be recorded in {@link #append(HRegionInfo, TableName, WALEdit, long, HTableDescriptor,
-   * AtomicLong)} as new oldest seqnum.
-   * In case of flush being aborted, we put the stashed value back; in case of flush succeeding,
-   * the seqNum of that first edit after start becomes the valid oldest seqNum for this region.
+   * region be recorded in {@link #append(HRegionInfo, TableName, WALEdit, long, HTableDescriptor)}
+   * as new oldest seqnum. In case of flush being aborted, we put the stashed value back;
+   * in case of flush succeeding, the seqNum of that first edit after start becomes the
+   * valid oldest seqNum for this region.
    *
-   * @return true if the flush can proceed, false in case wal is closing (ususally, when server is
-   * closing) and flush couldn't be started.
+   * In case the per-CF flush is enabled, we cannot simply clear the
+   * firstSeqWritten entry for the region to be flushed. There might be certain
+   * CFs whose memstores won't be flushed. Therefore, we need the first LSNs for
+   * the stores that will be flushed, and first LSNs for the stores that won't
+   * be flushed.
+   *
+   * @param regionName
+   * @param oldestSeqIdInStoresToFlush
+   * @param oldestSeqIdInStoresNotToFlush
+   * @param sequenceId of the region.
+   * @return current seqNum, to pass on to flushers (who will put it into the metadata of
+   *         the resulting file as an upper-bound seqNum for that file), or NULL if flush
+   *         should not be started.
    */
-  boolean startCacheFlush(final byte[] encodedRegionName);
+  Long startCacheFlush(final byte[] encodedRegionName, long oldestSeqIdInStoresToFlush,
+      long oldestSeqIdInStoresNotToFlush, AtomicLong sequenceId);
 
   /**
    * Complete the cache flush.

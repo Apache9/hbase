@@ -269,7 +269,7 @@ public class HLogUtil {
     long now = EnvironmentEdgeManager.currentTimeMillis();
     TableName tn = TableName.valueOf(c.getTableName().toByteArray());
     long txid = log.appendNoSync(info, tn, e, new ArrayList<UUID>(), now, htd, sequenceId,
-        false, HConstants.NO_NONCE, HConstants.NO_NONCE);
+        false, HConstants.NO_NONCE, HConstants.NO_NONCE).txid;
     log.sync(txid);
 
     if (LOG.isTraceEnabled()) {

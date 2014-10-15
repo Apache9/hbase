@@ -82,6 +82,9 @@ public class MemStore implements HeapSize {
   // Snapshot of memstore.  Made for flusher.
   volatile KeyValueSkipListSet snapshot;
 
+  // Smallest LSN amongst all the edits in the Memstore
+  volatile AtomicLong smallestSeqNumber = new AtomicLong();
+
   final KeyValue.KVComparator comparator;
 
   // Used to track own heapSize
@@ -126,6 +129,7 @@ public class MemStore implements HeapSize {
       this.allocator = null;
       this.chunkPool = null;
     }
+    this.smallestSeqNumber.set(Long.MAX_VALUE);
   }
 
   void dump() {
@@ -135,6 +139,31 @@ public class MemStore implements HeapSize {
     for (KeyValue kv: this.snapshot) {
       LOG.info(kv);
     }
+  }
+
+  /**
+   * Get the smallest LSN
+   * @return
+   */
+  long getSmallestSeqNumber() {
+    return smallestSeqNumber.get();
+  }
+
+  /**
+   * Update the smallest LSN
+   * @param seqNum
+   */
+  void updateSmallestSeqNumber(long seqNum) {
+    if (seqNum < 0) {
+      return;
+    }
+
+    // Do a Compare-and-Set instead of synchronized here.
+    long smallestSeqNumberVal;
+    do {
+      smallestSeqNumberVal = smallestSeqNumber.get();
+    } while (!smallestSeqNumber.compareAndSet(smallestSeqNumberVal,
+             Math.min(smallestSeqNumberVal, seqNum)));
   }
 
   /**
@@ -163,6 +192,8 @@ public class MemStore implements HeapSize {
           this.allocator = new MemStoreLAB(conf, chunkPool);
         }
         timeOfOldestEdit = Long.MAX_VALUE;
+        // Reset the smallest sequence number
+        this.smallestSeqNumber.set(Long.MAX_VALUE);
       }
     }
   }
@@ -221,13 +252,25 @@ public class MemStore implements HeapSize {
   }
 
   /**
-   * Write an update
+   * Write an update. <p>
+   * This method should only be used by tests, since it does not specify the
+   * LSN for the edit. 
    * @param kv
-   * @return approximate size of the passed key and value.
+   * @return
    */
   long add(final KeyValue kv) {
+    return add(kv, -1L);
+  }
+
+  /**
+   * Write an update
+   * @param kv
+   * @param seqNum
+   * @return approximate size of the passed key and value.
+   */
+  long add(final KeyValue kv, long seqNum) {
     KeyValue toAdd = maybeCloneWithAllocator(kv);
-    return internalAdd(toAdd);
+    return internalAdd(toAdd, seqNum);
   }
 
   long timeOfOldestEdit() {
@@ -258,10 +301,11 @@ public class MemStore implements HeapSize {
    *
    * Callers should ensure they already have the read lock taken
    */
-  private long internalAdd(final KeyValue toAdd) {
+  private long internalAdd(final KeyValue toAdd, long seqNum) {
     long s = heapSizeChange(toAdd, addToKVSet(toAdd));
     timeRangeTracker.includeTimestamp(toAdd);
     this.size.addAndGet(s);
+    updateSmallestSeqNumber(seqNum);
     return s;
   }
 
@@ -314,16 +358,27 @@ public class MemStore implements HeapSize {
   }
 
   /**
-   * Write a delete
+   * Should only be used in tests, since it does not provide a seqNum.
    * @param delete
-   * @return approximate size of the passed key and value.
+   * @return
    */
   long delete(final KeyValue delete) {
+    return delete(delete, -1);
+  }
+
+  /**
+   * Write a delete
+   * @param delete
+   * @param seqNum
+   * @return approximate size of the passed key and value.
+   */
+  long delete(final KeyValue delete, long seqNum) {
     long s = 0;
     KeyValue toAdd = maybeCloneWithAllocator(delete);
     s += heapSizeChange(toAdd, addToKVSet(toAdd));
     timeRangeTracker.includeTimestamp(toAdd);
     this.size.addAndGet(s);
+    updateSmallestSeqNumber(seqNum);
     return s;
   }
 
@@ -466,13 +521,15 @@ public class MemStore implements HeapSize {
    * @param qualifier
    * @param newValue
    * @param now
+   * @param seqNum The LSN for the edit
    * @return  Timestamp
    */
   long updateColumnValue(byte[] row,
                                 byte[] family,
                                 byte[] qualifier,
                                 long newValue,
-                                long now) {
+                                long now,
+                                long seqNum) {
     KeyValue firstKv = KeyValue.createFirstOnRow(
         row, family, qualifier);
     // Is there a KeyValue in 'snapshot' with the same TS? If so, upgrade the timestamp a bit.
@@ -512,7 +569,11 @@ public class MemStore implements HeapSize {
     // 'now' and a 0 memstoreTS == immediately visible
     List<Cell> cells = new ArrayList<Cell>(1);
     cells.add(new KeyValue(row, family, qualifier, now, Bytes.toBytes(newValue)));
-    return upsert(cells, 1L);
+    return upsert(cells, 1L, seqNum);
+  }
+  
+  long upsert(Iterable<Cell> cells, long readpoint) {
+    return upsert(cells, readpoint, -1L);
   }
 
   /**
@@ -533,10 +594,10 @@ public class MemStore implements HeapSize {
    * @param readpoint readpoint below which we can safely remove duplicate KVs 
    * @return change in memstore size
    */
-  public long upsert(Iterable<Cell> cells, long readpoint) {
+  public long upsert(Iterable<Cell> cells, long readpoint, long seqNum) {
     long size = 0;
     for (Cell cell : cells) {
-      size += upsert(cell, readpoint);
+      size += upsert(cell, readpoint, seqNum);
     }
     return size;
   }
@@ -555,7 +616,7 @@ public class MemStore implements HeapSize {
    * @param cell
    * @return change in size of MemStore
    */
-  private long upsert(Cell cell, long readpoint) {
+  private long upsert(Cell cell, long readpoint, long seqNum) {
     // Add the KeyValue to the MemStore
     // Use the internalAdd method here since we (a) already have a lock
     // and (b) cannot safely use the MSLAB here without potentially
@@ -563,7 +624,7 @@ public class MemStore implements HeapSize {
     // test that triggers the pathological case if we don't avoid MSLAB
     // here.
     KeyValue kv = KeyValueUtil.ensureKeyValue(cell);
-    long addedSize = internalAdd(kv);
+    long addedSize = internalAdd(kv, seqNum);
 
     // Get the KeyValues for the row/family/qualifier regardless of timestamp.
     // For this case we want to clean up any other puts
@@ -1001,7 +1062,7 @@ public class MemStore implements HeapSize {
   }
 
   public final static long FIXED_OVERHEAD = ClassSize.align(
-      ClassSize.OBJECT + (10 * ClassSize.REFERENCE) + (2 * Bytes.SIZEOF_LONG));
+      ClassSize.OBJECT + (11 * ClassSize.REFERENCE) + (2 * Bytes.SIZEOF_LONG));
 
   public final static long DEEP_OVERHEAD = ClassSize.align(FIXED_OVERHEAD +
       ClassSize.ATOMIC_LONG + (2 * ClassSize.TIMERANGE_TRACKER) +

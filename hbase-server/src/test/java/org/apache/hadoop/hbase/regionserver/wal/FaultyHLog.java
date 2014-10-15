@@ -57,7 +57,7 @@ public class FaultyHLog extends FSHLog {
     super.sync(txid);
   }
   @Override
-  public long appendNoSync(HRegionInfo info, TableName tableName, WALEdit edits,
+  public TxidAndSeqNum appendNoSync(HRegionInfo info, TableName tableName, WALEdit edits,
       List<UUID> clusterIds, final long now, HTableDescriptor htd, AtomicLong sequenceId,
       boolean isInMemstore, long nonceGroup, long nonce) throws IOException {
     if (this.ft == FailureType.APPENDNOSYNC) {

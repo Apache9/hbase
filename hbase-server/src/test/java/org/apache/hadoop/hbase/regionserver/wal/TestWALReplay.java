@@ -526,8 +526,8 @@ public class TestWALReplay {
         final AtomicInteger countOfRestoredEdits = new AtomicInteger(0);
         HRegion region3 = new HRegion(basedir, wal3, newFS, newConf, hri, htd, null) {
           @Override
-          protected boolean restoreEdit(Store s, KeyValue kv) {
-            boolean b = super.restoreEdit(s, kv);
+          protected boolean restoreEdit(Store s, KeyValue kv, long seqNum) {
+            boolean b = super.restoreEdit(s, kv, seqNum);
             countOfRestoredEdits.incrementAndGet();
             return b;
           }
@@ -776,7 +776,7 @@ public class TestWALReplay {
     }
 
     // Add a cache flush, shouldn't have any effect
-    wal.startCacheFlush(regionName);
+    wal.startCacheFlush(regionName, Long.MAX_VALUE, Long.MAX_VALUE, sequenceId);
     wal.completeCacheFlush(regionName);
 
     // Add an edit to another family, should be skipped.
@@ -931,9 +931,9 @@ public class TestWALReplay {
     private HRegion r;
 
     @Override
-    public void requestFlush(HRegion region) {
+    public void requestFlush(HRegion region, boolean selectiveFlushRequest) {
       try {
-        r.flushcache();
+        r.flushcache(selectiveFlushRequest);
       } catch (IOException e) {
         throw new RuntimeException("Exception flushing", e);
       }
