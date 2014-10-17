@@ -803,5 +803,12 @@ module Hbase
     def list_snapshot
       @admin.listSnapshots
     end
+
+    #----------------------------------------------------------------------------------------------
+    # Returns a list of task 
+    def show_tasks(conditions)
+      @admin.showTasks(conditions)
+    end
+
   end
 end

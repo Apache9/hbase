@@ -28,8 +28,10 @@ import java.net.SocketTimeoutException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
@@ -63,6 +65,7 @@ import org.apache.hadoop.hbase.ipc.CoprocessorProtocol;
 import org.apache.hadoop.hbase.ipc.HMasterInterface;
 import org.apache.hadoop.hbase.ipc.HRegionInterface;
 import org.apache.hadoop.hbase.ipc.MasterExecRPCInvoker;
+import org.apache.hadoop.hbase.monitoring.MonitoredTask;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.SnapshotDescription;
 import org.apache.hadoop.hbase.regionserver.compactions.CompactionRequest.CompactionState;
 import org.apache.hadoop.hbase.regionserver.wal.FailedLogCloseException;
@@ -2525,4 +2528,48 @@ public class HBaseAdmin implements Abortable, Closeable {
       sn.getHostname(), sn.getPort());
     hri.updateConfiguration();
   }
+
+  /**
+   * Show the task status of the region server
+   * @param conditions If null then show all the regions servers' tasks
+   * @return All the region servers' task status 
+   * @throws IOException
+   */
+  public Map<ServerName, List<MonitoredTask>> showTasks(String conditions)
+      throws IOException {
+
+    String filter = null;
+    String[] regionServers = null;
+
+    if(org.apache.commons.lang.StringUtils.isNotBlank(conditions)) {
+      String fields[] = conditions.split(":");
+      filter = fields[0];
+      if(fields.length > 1) {
+        if(!fields[1].equals("")) {
+          regionServers = fields[1].split(",");
+        }
+      }
+    }
+
+    Map<ServerName, List<MonitoredTask>> serverTasks = new HashMap<ServerName, List<MonitoredTask>>();
+
+    for (ServerName sn: getMaster().getOnlineRS()) {
+      if(regionServers == null) {
+        HRegionInterface hri = this.connection.getHRegionConnection(sn.getHostname(), sn.getPort());
+        List<MonitoredTask> tasks = hri.showTasks(filter);
+        serverTasks.put(sn, tasks);
+
+      } else {
+        for(String regionServer:regionServers) {
+          if(sn.getHostname().startsWith(regionServer)) {
+            HRegionInterface hri = this.connection.getHRegionConnection(sn.getHostname(), sn.getPort());
+            List<MonitoredTask> tasks = hri.showTasks(filter);
+            serverTasks.put(sn, tasks);
+          }
+        }
+      }
+    }
+    return serverTasks;
+  }
+
 }

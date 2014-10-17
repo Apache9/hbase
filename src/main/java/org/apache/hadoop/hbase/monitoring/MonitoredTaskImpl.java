@@ -19,8 +19,12 @@
  */
 package org.apache.hadoop.hbase.monitoring;
 
+import org.apache.hadoop.hbase.regionserver.MultiVersionConsistencyControl;
+import org.apache.hadoop.io.WritableUtils;
 import org.codehaus.jackson.map.ObjectMapper;
 
+import java.io.DataInput;
+import java.io.DataOutput;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
@@ -72,6 +76,7 @@ class MonitoredTaskImpl implements MonitoredTask {
   
   @Override
   public State getState() {
+    state.name();
     return state;
   }
   
@@ -176,4 +181,21 @@ class MonitoredTaskImpl implements MonitoredTask {
     return sb.toString();
   }
 
+  @Override public void write(DataOutput out) throws IOException {
+    WritableUtils.writeString(out, getDescription());
+    WritableUtils.writeString(out, getStatus());
+    WritableUtils.writeEnum(out, getState());
+    out.writeLong(startTime);
+    out.writeLong(statusTime);
+    out.writeLong(stateTime);
+  }
+
+  @Override public void readFields(DataInput in) throws IOException {
+    this.setDescription(WritableUtils.readString(in));
+    this.setStatus(WritableUtils.readString(in));
+    this.setState(WritableUtils.readEnum(in,State.class));
+    this.startTime = in.readLong();
+    this.statusTime = in.readLong();
+    this.stateTime = in.readLong();
+  }
 }

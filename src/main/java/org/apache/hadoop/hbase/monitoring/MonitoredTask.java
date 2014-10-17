@@ -19,10 +19,12 @@
  */
 package org.apache.hadoop.hbase.monitoring;
 
+import org.apache.hadoop.io.Writable;
+
 import java.io.IOException;
 import java.util.Map;
 
-public interface MonitoredTask extends Cloneable {
+public interface MonitoredTask extends Cloneable, Writable{
   enum State {
     RUNNING,
     WAITING,

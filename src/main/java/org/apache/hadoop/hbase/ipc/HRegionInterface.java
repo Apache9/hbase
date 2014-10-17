@@ -45,6 +45,7 @@ import org.apache.hadoop.hbase.client.coprocessor.ExecResult;
 import org.apache.hadoop.hbase.filter.CompareFilter.CompareOp;
 import org.apache.hadoop.hbase.filter.WritableByteArrayComparable;
 import org.apache.hadoop.hbase.io.hfile.BlockCacheColumnFamilySummary;
+import org.apache.hadoop.hbase.monitoring.MonitoredTask;
 import org.apache.hadoop.hbase.regionserver.RegionOpeningState;
 import org.apache.hadoop.hbase.regionserver.compactions.CompactionRequest.CompactionState;
 import org.apache.hadoop.hbase.regionserver.wal.FailedLogCloseException;
@@ -696,4 +697,12 @@ public interface HRegionInterface extends VersionedProtocol, Stoppable, Abortabl
    * Reload the configuration from disk.
    */
   public void updateConfiguration();
+
+  /**
+   * Show region server status
+   * @param filter The prefix of the task's description
+   * @return The status of tasks
+   */
+  public List<MonitoredTask> showTasks(String filter);
+
 }

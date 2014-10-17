@@ -33,21 +33,8 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.net.BindException;
 import java.net.InetSocketAddress;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Random;
-import java.util.Set;
-import java.util.SortedMap;
-import java.util.TreeMap;
-import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.Executors;
@@ -139,6 +126,8 @@ import org.apache.hadoop.hbase.ipc.ProtocolSignature;
 import org.apache.hadoop.hbase.ipc.RpcEngine;
 import org.apache.hadoop.hbase.ipc.RpcServer;
 import org.apache.hadoop.hbase.ipc.ServerNotRunningYetException;
+import org.apache.hadoop.hbase.monitoring.MonitoredTask;
+import org.apache.hadoop.hbase.monitoring.TaskMonitor;
 import org.apache.hadoop.hbase.regionserver.Leases.LeaseStillHeldException;
 import org.apache.hadoop.hbase.regionserver.compactions.CompactionProgress;
 import org.apache.hadoop.hbase.regionserver.compactions.CompactionRequest;
@@ -4495,4 +4484,20 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
     }
     return 0;
   }
+
+  @Override
+  public List<MonitoredTask> showTasks(String filter) {
+    List<MonitoredTask> tasks = TaskMonitor.get().getTasks();
+    Iterator<MonitoredTask> iter = tasks.iterator();
+
+    while (iter.hasNext()) {
+      MonitoredTask t = iter.next();
+      if(org.apache.commons.lang.StringUtils.isNotBlank(filter) && !t.getDescription().startsWith(filter)) {
+        iter.remove();
+      }
+    }
+    Collections.reverse(tasks);
+    return tasks;
+  }
+
 }

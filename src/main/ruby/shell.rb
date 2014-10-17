@@ -281,6 +281,7 @@ Shell.load_command_group(
     compact_switch
     compact_rs
     update_config
+    show_tasks
   ]
 )
 
