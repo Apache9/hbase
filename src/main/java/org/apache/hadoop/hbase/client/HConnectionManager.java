@@ -91,6 +91,8 @@ import org.apache.zookeeper.KeeperException;
 
 import com.xiaomi.infra.base.nameservice.NameService;
 import com.xiaomi.infra.base.nameservice.NameServiceEntry;
+import com.xiaomi.infra.hbase.salted.KeySalter;
+import com.xiaomi.infra.hbase.salted.SaltedHTable;
 
 /**
  * A non-instantiable class that manages creation of {@link HConnection}s.
@@ -686,7 +688,12 @@ public class HConnectionManager {
       if (managed) {
         throw new IOException("The connection has to be unmanaged.");
       }
-      return new HTable(tableName, this, pool);
+      KeySalter salter = SaltedHTable.getKeySalter(this, tableName);
+      if (salter == null) {
+        return new HTable(tableName, this, pool);
+      } else {
+        return new SaltedHTable(new HTable(tableName, this, pool), salter);
+      }
     }
 
     private ExecutorService getBatchPool() {

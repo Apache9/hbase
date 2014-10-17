@@ -82,6 +82,9 @@ import org.apache.hadoop.hbase.util.Pair;
 import org.apache.hadoop.ipc.RemoteException;
 import org.apache.hadoop.util.StringUtils;
 
+import com.xiaomi.infra.hbase.salted.KeySalter;
+import com.xiaomi.infra.hbase.salted.SaltedHTable;
+
 /**
  * Provides an interface to manage HBase database table metadata + general
  * administrative functions.  Use HBaseAdmin to create, drop, list, enable and
@@ -454,6 +457,14 @@ public class HBaseAdmin implements Abortable, Closeable {
   public void createTable(final HTableDescriptor desc, byte [][] splitKeys)
   throws IOException {
     HTableDescriptor.isLegalTableName(desc.getName());
+    
+    // use slots to pre-split table if splitKeys is not set and the table is salted
+    // there is no change to set splitKeys in coprocessor of server-side so that we reset here
+    if (splitKeys == null && desc.isSalted()) {
+      KeySalter salter = SaltedHTable.createKeySalter(desc.getKeySalter(), desc.getSlotsCount());
+      splitKeys = salter.getAllSalts();
+    }
+    
     try {
       createTableAsync(desc, splitKeys);
     } catch (SocketTimeoutException ste) {
@@ -1791,12 +1802,29 @@ public class HBaseAdmin implements Abortable, Closeable {
   public void modifyTable(final byte [] tableName, HTableDescriptor htd)
   throws IOException {
     try {
+      // check KeySalter not modified
+      checkSaltedAttributeUnModified(tableName, htd);
       getMaster().modifyTable(tableName, htd);
     } catch (RemoteException re) {
       // Convert RE exceptions in here; client shouldn't have to deal with them,
       // at least w/ the type of exceptions that come out of this method:
       // TableNotFoundException, etc.
       throw RemoteExceptionHandler.decodeRemoteException(re);
+    }
+  }
+  
+  protected void checkSaltedAttributeUnModified(byte[] tableName, HTableDescriptor modifiedHtd)
+      throws IOException {
+    HTableDescriptor htd = this.getTableDescriptor(tableName);
+    boolean saltedAttributeUnModified = true;
+    if (htd.getKeySalter() == null || modifiedHtd.getKeySalter() == null) {
+      saltedAttributeUnModified = (htd.getKeySalter() == modifiedHtd.getKeySalter());
+    } else {
+      saltedAttributeUnModified = htd.getKeySalter().equals(modifiedHtd.getKeySalter());
+    }
+    if (!saltedAttributeUnModified) {
+      throw new IOException("can not modify the KeySalter attribute of table : "
+          + Bytes.toString(tableName));
     }
   }
 

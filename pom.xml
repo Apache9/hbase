@@ -1876,7 +1876,6 @@
       </build>
     </profile>
 
-
     <!--
       profile for building against Hadoop 1.1. Activate using:
        mvn -Dhadoop.profile=1.1

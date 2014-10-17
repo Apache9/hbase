@@ -176,6 +176,10 @@ public class HTableDescriptor implements WritableComparable<HTableDescriptor> {
    */
   public static final boolean DEFAULT_COMPACTION_ENABLE = true;
 
+  // salted
+  public static final String KEY_SALTER = "KEY_SALTER";
+  public static final String SLOTS_COUNT = "SLOTS_COUNT";
+  
   /**
    * Constant that denotes the maximum default size of the memstore after which 
    * the contents are flushed to the store files
@@ -1287,5 +1291,27 @@ public class HTableDescriptor implements WritableComparable<HTableDescriptor> {
     // .META. and -ROOT- should return system user as owner, not null (see
     // MasterFileSystem.java:bootstrap()).
     return null;
+  }
+  
+  public void setSalted(String keySalter, int slotsCount) {
+    setValue(KEY_SALTER, keySalter);
+    setValue(SLOTS_COUNT, String.valueOf(slotsCount));
+  }
+  
+  public void setSalted(String keySalter) {
+    setValue(KEY_SALTER, keySalter);
+  }
+  
+  public boolean isSalted() {
+    return getKeySalter() != null;
+  }
+  
+  public String getKeySalter() {
+    return getValue(KEY_SALTER);
+  }
+  
+  public Integer getSlotsCount() {
+    String slotsCountStr = getValue(SLOTS_COUNT);
+    return slotsCountStr == null ? null : Integer.parseInt(slotsCountStr);
   }
 }
