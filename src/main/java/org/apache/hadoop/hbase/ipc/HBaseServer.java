@@ -1380,6 +1380,7 @@ public abstract class HBaseServer implements RpcServer {
         Invocation invocation = (Invocation)(call.param);
         String methodName = invocation.getMethodName();
         if (methodName == null || methodName.length() < 1) {
+          callQueueSize.add(-callSize);
           LOG.error("Could not find requested method, the usual "
               + "cause is a version mismatch between client and server.");
           final Call readParamsFailedCall = createCall(id, null, this, responder, callSize);
@@ -1394,6 +1395,7 @@ public abstract class HBaseServer implements RpcServer {
           boolean success = readCallQueue.offer(call);
           if (!success) {
             // fail fast on queue inserting, no more waiting!
+            callQueueSize.add(-callSize);
             LOG.error("Could not insert into readQueue!");
             final Call failedCall = createCall(id, null, this, responder, callSize);
             ByteArrayOutputStream responseBuffer = new ByteArrayOutputStream();
@@ -1409,6 +1411,7 @@ public abstract class HBaseServer implements RpcServer {
           boolean success = writeCallQueue.offer(call);
           if (!success) {
             // fail fast on queue inserting, no more waiting!
+            callQueueSize.add(-callSize);
             LOG.error("Could not insert into writeQueue!");
             final Call failedCall = createCall(id, null, this, responder, callSize);
             ByteArrayOutputStream responseBuffer = new ByteArrayOutputStream();
