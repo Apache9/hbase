@@ -153,7 +153,11 @@ public class TestSaltedHTable {
   }
   
   protected HTableDescriptor getUnSaltedHTableDescriptor() {
-    HTableDescriptor desc = new HTableDescriptor(TEST_TABLE);
+    return getUnSaltedHTableDescriptor(TEST_TABLE);
+  }
+  
+  protected HTableDescriptor getUnSaltedHTableDescriptor(byte[] tableName) {
+    HTableDescriptor desc = new HTableDescriptor(tableName);
     HColumnDescriptor column = new HColumnDescriptor(TEST_FAMILY);
     desc.addFamily(column);
     return desc;
@@ -254,6 +258,22 @@ public class TestSaltedHTable {
     } catch (IOException e) {
       Assert
           .assertTrue(e.getMessage().indexOf("can not modify the KeySalter attribute of table") >= 0);
+    }
+  }
+  
+  @Test
+  public void testGetNonSaltedHTableFromHConnection() throws IOException {
+    byte[] testTable = Bytes.toBytes("unsalted_test_table");
+    HTableDescriptor desc = getUnSaltedHTableDescriptor(testTable);
+    admin.createTable(desc);
+    for (int i = 0; i < 10; ++i) {
+      HTableInterface table = connection.getTable(testTable);
+      Assert.assertTrue(table instanceof HTable);
+      table.close();
+      
+      table = connection.getTable(TEST_TABLE);
+      Assert.assertTrue(table instanceof SaltedHTable);
+      table.close();
     }
   }
   

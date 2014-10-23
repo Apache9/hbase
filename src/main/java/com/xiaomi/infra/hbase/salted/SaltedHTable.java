@@ -49,7 +49,6 @@ import org.apache.hadoop.hbase.client.coprocessor.Batch.Callback;
 import org.apache.hadoop.hbase.filter.CompareFilter;
 import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
 import org.apache.hadoop.hbase.ipc.CoprocessorProtocol;
-import org.apache.hadoop.hbase.util.Bytes;
 import org.jboss.netty.util.internal.ConcurrentHashMap;
 
 /**
@@ -696,12 +695,32 @@ public class SaltedHTable implements HTableInterface{
     }
   }
 
+  public static class NotKeySalter implements KeySalter {
+    @Override
+    public int getSaltLength() {
+      throw new RuntimeException("not implemented");
+    }
+    @Override
+    public byte[][] getAllSalts() {
+      throw new RuntimeException("not implemented");
+    }
+    @Override
+    public byte[] salt(byte[] rowKey) {
+      throw new RuntimeException("not implemented");
+    }
+    @Override
+    public byte[] unSalt(byte[] row) {
+      throw new RuntimeException("not implemented");
+    }
+  }
+  
   // TODO : how to update the cache when recreated a table with salted attribute modified.
   //        Currently, we must restart the client to know the salted attribute change.
   public static KeySalter getKeySalter(HConnection connection, byte[] tableName) throws IOException {
     ImmutableBytesWritable tableNameAsKey = new ImmutableBytesWritable(tableName);
     if (saltedTables.containsKey(tableNameAsKey)) {
-      return saltedTables.get(tableNameAsKey);
+      KeySalter salter = saltedTables.get(tableNameAsKey);
+      return salter instanceof NotKeySalter ? null : salter;
     } else {
       HTableDescriptor desc = connection.getHTableDescriptor(tableName);
       if (desc.isSalted()) {
@@ -709,7 +728,7 @@ public class SaltedHTable implements HTableInterface{
         saltedTables.put(tableNameAsKey, salter);
         return salter;
       } else {
-        saltedTables.put(tableNameAsKey, null);
+        saltedTables.put(tableNameAsKey, new NotKeySalter());
         return null;
       }
     }

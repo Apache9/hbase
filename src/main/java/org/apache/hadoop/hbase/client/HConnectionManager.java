@@ -93,6 +93,7 @@ import com.xiaomi.infra.base.nameservice.NameService;
 import com.xiaomi.infra.base.nameservice.NameServiceEntry;
 import com.xiaomi.infra.hbase.salted.KeySalter;
 import com.xiaomi.infra.hbase.salted.SaltedHTable;
+import com.xiaomi.infra.hbase.salted.SaltedHTable.NotKeySalter;
 
 /**
  * A non-instantiable class that manages creation of {@link HConnection}s.
