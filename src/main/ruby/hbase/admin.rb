@@ -437,24 +437,8 @@ module Hbase
     end
 
     #----------------------------------------------------------------------------------------------
-    # Truncates table (deletes all records by recreating the table)
-    def truncate(table_name, conf = @conf)
-      h_table = org.apache.hadoop.hbase.client.HTable.new(conf, table_name)
-      table_description = h_table.getTableDescriptor()
-      raise ArgumentError, "Table #{table_name} is not enabled. Enable it first.'" unless enabled?(table_name)
-      yield 'Disabling table...' if block_given?
-      @admin.disableTable(table_name)
-
-      yield 'Dropping table...' if block_given?
-      @admin.deleteTable(table_name)
-
-      yield 'Creating table...' if block_given?
-      @admin.createTable(table_description)
-    end
-
-    #----------------------------------------------------------------------------------------------
     # Truncates table while maintaing region boundaries (deletes all records by recreating the table)
-    def truncate_preserve(table_name, conf = @conf)
+    def truncate(table_name, conf = @conf)
       h_table = org.apache.hadoop.hbase.client.HTable.new(conf, table_name)
       splits = h_table.getRegionLocations().keys().map{|i| Bytes.toString(i.getStartKey)}.delete_if{|k| k == ""}.to_java :String
       splits = org.apache.hadoop.hbase.util.Bytes.toByteArrays(splits)

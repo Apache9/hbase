@@ -255,7 +255,6 @@ Shell.load_command_group(
     put
     scan
     truncate
-    truncate_preserve
   ]
 )
 

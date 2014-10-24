@@ -23,7 +23,7 @@ module Shell
     class Truncate < Command
       def help
         return <<-EOF
-  Disables, drops and recreates the specified table.
+  Disables, drops and recreates the specified table while still maintaing the previous region boundaries and ACLs.
 EOF
       end
 
