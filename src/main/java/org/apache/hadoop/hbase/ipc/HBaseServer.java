@@ -1485,9 +1485,11 @@ public abstract class HBaseServer implements RpcServer {
       status.setStatus("starting");
       SERVER.set(HBaseServer.this);
       while (running) {
+        long callSize = 0;
         try {
           status.pause("Waiting for a call");
           Call call = myCallQueue.take(); // pop the queue; maybe blocked here
+          callSize = call.getSize();
           updateCallQueueLenMetrics(myCallQueue);
           if (!call.connection.channel.isOpen()) {
             LOG.info(Thread.currentThread().getName() + ": skipped: " + call);
@@ -1537,7 +1539,6 @@ public abstract class HBaseServer implements RpcServer {
             rpcMetrics.activeRpcCount.set((int) activeRpcCount.get());
           }
           CurCall.set(null);
-          callQueueSize.add(call.getSize() * -1);
           // Set the response for undelayed calls and delayed calls with
           // undelayed responses.
           if (!call.isDelayed() || !call.isReturnValueDelayed()) {
@@ -1571,6 +1572,8 @@ public abstract class HBaseServer implements RpcServer {
         } catch (Exception e) {
           LOG.warn(getName() + " caught: " +
                    StringUtils.stringifyException(e));
+        } finally {
+          callQueueSize.add(-callSize);
         }
       }
       LOG.info(getName() + ": exiting");
