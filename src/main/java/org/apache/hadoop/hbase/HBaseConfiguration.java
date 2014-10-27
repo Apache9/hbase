@@ -106,10 +106,10 @@ public class HBaseConfiguration extends Configuration {
                                .getProperty("hadoop.cmdline.hbase.cluster");
     if (clusterName != null) {
       try {
-        LOG.info("Apply cluster:" + clusterName + "to configuration");
+        LOG.info("Try to apply cluster:" + clusterName + "to configuration");
         ZKUtil.applyClusterKeyToConf(conf, clusterName);
       } catch (IOException e) {
-        LOG.error("Apply cluster: " + clusterName + " to configuration failed!");
+        LOG.error("Apply cluster: " + clusterName + " to configuration failed!", e);
       }
     }
 

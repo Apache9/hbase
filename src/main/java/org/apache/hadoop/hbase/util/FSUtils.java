@@ -246,7 +246,7 @@ public abstract class FSUtils {
         org.apache.hadoop.hdfs.protocol.FSConstants.SafeModeAction.SAFEMODE_GET, true);
     } catch (Exception e) {
       if (e instanceof IOException) throw (IOException) e;
-      
+      LOG.info("Check DFS safe mode failed.", e);
       // Check whether dfs is on safemode.
       inSafeMode = dfs.setSafeMode(
         org.apache.hadoop.hdfs.protocol.FSConstants.SafeModeAction.SAFEMODE_GET);      
