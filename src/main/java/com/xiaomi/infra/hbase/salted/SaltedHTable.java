@@ -92,7 +92,7 @@ public class SaltedHTable implements HTableInterface{
    */
   public ResultScanner getScanner(Scan scan, byte[][] salts) throws IOException {
     return new SaltedScanner(scan, salts, false);
- }
+  }
 
  /**
    * Allow to scan on specified salts.
@@ -104,7 +104,13 @@ public class SaltedHTable implements HTableInterface{
    */
   public ResultScanner getScanner(Scan scan, byte[][] salts, boolean keepSalt) throws IOException {
     return new SaltedScanner(scan, salts, keepSalt);
- }
+  }
+
+  public ResultScanner getScanner(Scan scan, byte[][] salts, boolean keepSalt, boolean merge)
+      throws IOException {
+    return new SaltedScanner(scan, salts, keepSalt, merge);
+  }
+  
 
   /**
    * {@inheritDoc}
@@ -487,14 +493,21 @@ public class SaltedHTable implements HTableInterface{
    */
   private class SaltedScanner implements ResultScanner {
 
-    private MergeSortScanner scanner;
+    private BaseSaltedScanner scanner;
     private boolean keepSalt;
 
     public SaltedScanner (Scan scan, byte[][] salts, boolean keepSalt) throws IOException {
+      this(scan, salts, keepSalt, true);
+    }
+    
+    public SaltedScanner (Scan scan, byte[][] salts, boolean keepSalt, boolean merge) throws IOException {
       Scan[] scans = salt(scan, salts);
       this.keepSalt = keepSalt;
-      this.scanner = new MergeSortScanner(scans, table,
-          salter.getSaltLength());
+      if (merge) {
+        this.scanner = new MergeSortScanner(scans, table, salter.getSaltLength());
+      } else {
+        this.scanner = new OrderSaltedScanner(scans, table);
+      }
     }
 
     /**
@@ -679,6 +692,10 @@ public class SaltedHTable implements HTableInterface{
       byte[] startKey, byte[] endKey, Call<T, R> callable, Callback<R> callback)
       throws IOException, Throwable {
     throw new UnsupportedOperationException("not implemented");
+  }
+  
+  protected KeySalter getKeySalter() {
+    return this.salter;
   }
   
   public static KeySalter createKeySalter(String keySalterClsName, Integer slotsCount)

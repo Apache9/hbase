@@ -40,7 +40,7 @@ import org.apache.hadoop.hbase.util.Bytes;
  * We can use this MergeSortScanner.
  *
  */
-public class MergeSortScanner implements ResultScanner {
+public class MergeSortScanner extends BaseSaltedScanner {
 
   private List<ScannerIterator> iters;
   private MergeSortIterator<Result> iter;
@@ -69,20 +69,6 @@ public class MergeSortScanner implements ResultScanner {
     } catch (Throwable t) {
       throw new IOException(t);
     }
-  }
-
-  @Override
-  public Result[] next(int nbRows) throws IOException {
-    ArrayList<Result> resultSets = new ArrayList<Result>(nbRows);
-    for(int i = 0; i < nbRows; i++) {
-      Result next = next();
-      if (next != null) {
-        resultSets.add(next);
-      } else {
-        break;
-      }
-    }
-    return resultSets.toArray(new Result[resultSets.size()]);
   }
 
   @Override

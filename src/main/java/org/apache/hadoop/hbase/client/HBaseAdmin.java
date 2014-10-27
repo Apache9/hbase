@@ -462,7 +462,13 @@ public class HBaseAdmin implements Abortable, Closeable {
     // there is no change to set splitKeys in coprocessor of server-side so that we reset here
     if (splitKeys == null && desc.isSalted()) {
       KeySalter salter = SaltedHTable.createKeySalter(desc.getKeySalter(), desc.getSlotsCount());
-      splitKeys = salter.getAllSalts();
+      if (salter.getAllSalts().length > 1) {
+        splitKeys = new byte[salter.getAllSalts().length - 1][];
+        // there won't be rowkey smaller than the first slot after salted
+        for (int i = 0; i < splitKeys.length; ++i) {
+          splitKeys[i] = salter.getAllSalts()[i + 1];
+        }
+      }
     }
     
     try {

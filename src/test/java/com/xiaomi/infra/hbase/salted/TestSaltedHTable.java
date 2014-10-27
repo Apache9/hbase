@@ -18,6 +18,11 @@
  */
 package com.xiaomi.infra.hbase.salted;
 
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -48,11 +53,6 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.assertArrayEquals;
 
 @Category(MediumTests.class)
 public class TestSaltedHTable {
@@ -104,6 +104,7 @@ public class TestSaltedHTable {
   @Before
   public void before() throws Exception {
     admin = new HBaseAdmin(TEST_UTIL.getConfiguration());
+
     saltedHTable = createSaltedTable();
     Assert.assertTrue(saltedHTable instanceof SaltedHTable);
     saltedHTable.setAutoFlush(false);
@@ -188,11 +189,11 @@ public class TestSaltedHTable {
     
     // pre-split by salted-slots
     HTable table = toHTable(createSaltedTable());
-    byte[][] startKeys = table.getStartKeys();
+    byte[][] stopKeys = table.getEndKeys();
     byte[][] slots = new OneBytePrefixKeySalter().getAllSalts();
-    Assert.assertEquals(slots.length, startKeys.length - 1);
-    for (int i = 0; i < slots.length; ++i) {
-      Assert.assertArrayEquals(slots[i], startKeys[i + 1]);
+    Assert.assertEquals(slots.length, stopKeys.length);
+    for (int i = 0; i < slots.length - 1; ++i) {
+      Assert.assertArrayEquals(slots[i + 1], stopKeys[i]);
     }
     table.close();
     
@@ -202,10 +203,10 @@ public class TestSaltedHTable {
     table = toHTable(createSaltedTable(slotCount));
     slots = new OneBytePrefixKeySalter(slotCount).getAllSalts();
     Assert.assertEquals(slotCount, slots.length);
-    startKeys = table.getStartKeys();
-    Assert.assertEquals(slots.length, startKeys.length - 1);
-    for (int i = 0; i < slots.length; ++i) {
-      Assert.assertArrayEquals(slots[i], startKeys[i + 1]);
+    stopKeys = table.getEndKeys();
+    Assert.assertEquals(slots.length, stopKeys.length);
+    for (int i = 0; i < slots.length - 1; ++i) {
+      Assert.assertArrayEquals(slots[i + 1], stopKeys[i]);
     }
     table.close();
     
@@ -215,9 +216,9 @@ public class TestSaltedHTable {
     HTableDescriptor desc = getSaltedHTableDescriptor(null);
     admin.createTable(desc, new byte[][]{splitKey});
     table = toHTable(connection.getTable(TEST_TABLE));
-    startKeys = table.getStartKeys();
-    Assert.assertEquals(1, startKeys.length - 1);
-    Assert.assertArrayEquals(splitKey, startKeys[1]);
+    stopKeys = table.getEndKeys();
+    Assert.assertEquals(2, stopKeys.length);
+    Assert.assertArrayEquals(splitKey, stopKeys[0]);
     table.close();
   }
   
@@ -304,7 +305,27 @@ public class TestSaltedHTable {
     Assert.assertArrayEquals(ROW_A, results.get(0).getRow());
     Assert.assertArrayEquals(ROW_B, results.get(1).getRow());
     Assert.assertArrayEquals(ROW_C, results.get(2).getRow());
+    scanner.close();
 
+    // test order scan
+    scanner = ((SaltedHTable)saltedHTable).getScanner(scan, null, false, false);
+    results.clear();
+    count = 0;
+    while(null != (result = scanner.next()) ) {
+      results.add(result);
+      count++;
+    }
+    Assert.assertEquals(3, count);
+    List<byte[]> saltedRowkeys = new ArrayList<byte[]>();
+    KeySalter salter = ((SaltedHTable)saltedHTable).getKeySalter();
+    for (int i = 0; i < results.size(); ++i) {
+      saltedRowkeys.add(salter.salt(results.get(i).getRow()));
+    }
+    // check order
+    Assert.assertTrue(Bytes.compareTo(saltedRowkeys.get(0), saltedRowkeys.get(1)) < 0);
+    Assert.assertTrue(Bytes.compareTo(saltedRowkeys.get(1), saltedRowkeys.get(2)) < 0);
+    scanner.close();
+    
     count = 0;
     List<Delete> deletes = new ArrayList<Delete>();
     deletes.add( new Delete(ROW_A) );
@@ -322,6 +343,7 @@ public class TestSaltedHTable {
       count++;
     }
     assertEquals(count, 0);
+    scanner.close();
   }
 
   @Test
