@@ -196,7 +196,7 @@ public class RegionServerMetrics implements Updater {
    */
   public final MetricsIntValue hdfsBlocksLocalityIndex =
     new MetricsIntValue("hdfsBlocksLocalityIndex", registry);
-  
+
   /**
    * Sum of all the memstore sizes in this regionserver in MB
    */

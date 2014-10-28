@@ -85,7 +85,7 @@ implements WritableComparable<HServerLoad> {
    * Encapsulates per-region loading metrics.
    */
   public static class RegionLoad extends VersionedWritable {
-    private static final byte VERSION = 3;
+    private static final byte VERSION = 4;
 
     /** @return the object version number */
     public byte getVersion() {
@@ -132,6 +132,9 @@ implements WritableComparable<HServerLoad> {
     private int totalStaticBloomSizeKB;
 
     private long lastFlushSeqId = -1;
+
+    /** Region data locality */
+    private float locality = 0.0f;
     /**
      * Constructor, for Writable
      */
@@ -160,7 +163,7 @@ implements WritableComparable<HServerLoad> {
         final int totalStaticBloomSizeKB,
         final long readRequestsCount, final long writeRequestsCount,
         final long totalCompactingKVs, final long currentCompactedKVs,
-        final long lastFlushSeqId) {
+        final long lastFlushSeqId, final float locality) {
       this.name = name;
       this.stores = stores;
       this.storefiles = storefiles;
@@ -176,6 +179,7 @@ implements WritableComparable<HServerLoad> {
       this.totalCompactingKVs = totalCompactingKVs;
       this.currentCompactedKVs = currentCompactedKVs;
       this.lastFlushSeqId = lastFlushSeqId;
+      this.locality = locality;
     }
 
     /**
@@ -358,6 +362,14 @@ implements WritableComparable<HServerLoad> {
     }
 
     /**
+     * Get region data locality
+     * @return
+     */
+    public float getLocality() {
+      return locality;
+    }
+
+    /**
      * HBASE-5256 and HBASE-5283 introduced incompatible serialization changes
      * This method reads the fields in 0.92 serialization format, ex-version field
      * @param in
@@ -421,8 +433,11 @@ implements WritableComparable<HServerLoad> {
         in.readUTF();
       }
       // for verion 3
-      if (version == VERSION) {
+      if (version >= 3) {
         this.lastFlushSeqId = WritableUtils.readVLong(in);
+      }
+      if (version == 4) {
+        this.locality = in.readFloat();
       }
     }
 
@@ -447,6 +462,7 @@ implements WritableComparable<HServerLoad> {
       // we don't report region-level coprocessors anymore.
       WritableUtils.writeVInt(out, 0);
       WritableUtils.writeVLong(out, lastFlushSeqId);
+      out.writeFloat(locality);
     }
 
     /**

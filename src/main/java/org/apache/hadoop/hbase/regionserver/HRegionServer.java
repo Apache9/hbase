@@ -1288,13 +1288,14 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
           (int) (store.getTotalStaticBloomSize() / 1024);
       }
     }
+    float locality = r.getHDFSBlocksDistribution().getBlockLocalityIndex(this.isa.getHostName());
     return new HServerLoad.RegionLoad(name, stores, storefiles,
         storeUncompressedSizeMB,
         storefileSizeMB, memstoreSizeMB, storefileIndexSizeMB, rootIndexSizeKB,
         totalStaticIndexSizeKB, totalStaticBloomSizeKB,
         r.readRequestsCount.get(), r.writeRequestsCount.get(),
         totalCompactingKVs, currentCompactedKVs, 
-        r.getLastFlushSequenceId());
+        r.getLastFlushSequenceId(), locality);
   }
 
   /**
