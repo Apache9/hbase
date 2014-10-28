@@ -2215,8 +2215,6 @@ public class HRegion implements HeapSize { // , Writable{
 
       try {
         if (!initialized) {
-          this.writeRequestsCount.increment();
-          this.opMetrics.setWriteRequestCountMetrics(this.writeRequestsCount.get());
           doPreMutationHook(batchOp);
           initialized = true;
         }
@@ -2229,6 +2227,8 @@ public class HRegion implements HeapSize { // , Writable{
         requestFlush();
       }
     }
+    this.writeRequestsCount.add(mutationsAndLocks.length);
+    this.opMetrics.setWriteRequestCountMetrics(this.writeRequestsCount.get());
     return batchOp.retCodeDetails;
   }
 
