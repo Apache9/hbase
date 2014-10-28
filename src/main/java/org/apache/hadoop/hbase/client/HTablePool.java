@@ -329,6 +329,10 @@ public class HTablePool implements Closeable {
       this.table = table;
     }
 
+    public HTableInterface getRawTable() {
+      return this.table;
+    }
+    
     @Override
     public byte[] getTableName() {
       return table.getTableName();

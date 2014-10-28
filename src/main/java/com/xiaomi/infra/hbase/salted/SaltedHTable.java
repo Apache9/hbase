@@ -713,7 +713,7 @@ public class SaltedHTable implements HTableInterface{
     throw new UnsupportedOperationException("not implemented");
   }
   
-  protected KeySalter getKeySalter() {
+  public KeySalter getKeySalter() {
     return this.salter;
   }
   
