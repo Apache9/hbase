@@ -94,7 +94,7 @@ extends InputFormat<ImmutableBytesWritable, Result> {
     new HashMap<InetAddress, String>();
   
   /** The NameServer address */
-  private String nameServer = null;
+  protected String nameServer = null;
   
   /**
    * Builds a TableRecordReader. If no TableRecordReader was provided, uses
@@ -213,7 +213,7 @@ extends InputFormat<ImmutableBytesWritable, Result> {
     return splits;
   }
   
-  private String reverseDNS(InetAddress ipAddress) throws NamingException {
+  protected String reverseDNS(InetAddress ipAddress) throws NamingException {
     String hostName = this.reverseDNSCacheMap.get(ipAddress);
     if (hostName == null) {
       hostName = Strings.domainNamePointerToHostName(DNS.reverseDns(ipAddress, this.nameServer));

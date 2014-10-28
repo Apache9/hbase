@@ -24,6 +24,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.client.HTable;
+import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
@@ -54,7 +55,7 @@ public class TableRecordReaderImpl {
   private ResultScanner scanner = null;
   private Scan scan = null;
   private Scan currentScan = null;
-  private HTable htable = null;
+  private HTableInterface htable = null;
   private byte[] lastSuccessfulRow = null;
   private ImmutableBytesWritable key = null;
   private Result value = null;
@@ -110,7 +111,7 @@ public class TableRecordReaderImpl {
    *
    * @param htable  The {@link HTable} to scan.
    */
-  public void setHTable(HTable htable) {
+  public void setHTable(HTableInterface htable) {
     Configuration conf = htable.getConfiguration();
     logScannerActivity = conf.getBoolean(
       ScannerCallable.LOG_SCANNER_ACTIVITY, false);

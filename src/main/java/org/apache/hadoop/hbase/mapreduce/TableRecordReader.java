@@ -22,6 +22,7 @@ package org.apache.hadoop.hbase.mapreduce;
 import java.io.IOException;
 
 import org.apache.hadoop.hbase.client.HTable;
+import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
@@ -54,7 +55,7 @@ extends RecordReader<ImmutableBytesWritable, Result> {
    *
    * @param htable  The {@link HTable} to scan.
    */
-  public void setHTable(HTable htable) {
+  public void setHTable(HTableInterface htable) {
     this.recordReaderImpl.setHTable(htable);
   }
 

@@ -47,10 +47,12 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HConstants;
+import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
 import org.apache.hadoop.hbase.mapreduce.hadoopbackport.JarFinder;
+import org.apache.hadoop.hbase.mapreduce.salted.SaltedTableInputFormat;
 import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.util.Base64;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -174,6 +176,24 @@ public class TableMapReduceUtil {
               outputValueClass, job, addDependencyJars, inputFormatClass);
   }
   
+  protected static Class<? extends TableInputFormat> getTableInputFormatCls(Configuration conf,
+      byte[] tableName) throws IOException {
+    HTable table = null;
+    try {
+      table = new HTable(conf, tableName);
+      HTableDescriptor desc = table.getTableDescriptor();
+      if (desc.isSalted()) {
+        return SaltedTableInputFormat.class;
+      } else {
+        return TableInputFormat.class;
+      }
+    } finally {
+      if (table != null) {
+        table.close();
+      }
+    }
+  }
+  
   /**
    * Use this before submitting a TableMap job. It will appropriately set up
    * the job.
@@ -195,8 +215,8 @@ public class TableMapReduceUtil {
       Class<? extends Writable> outputValueClass, Job job,
       boolean addDependencyJars)
   throws IOException {
-      initTableMapperJob(Bytes.toString(table), scan, mapper, outputKeyClass,
-              outputValueClass, job, addDependencyJars, TableInputFormat.class);
+    initTableMapperJob(Bytes.toString(table), scan, mapper, outputKeyClass, outputValueClass, job,
+      addDependencyJars, getTableInputFormatCls(job.getConfiguration(), table));
   }
   
   /**
@@ -220,8 +240,8 @@ public class TableMapReduceUtil {
       Class<? extends Writable> outputValueClass, Job job,
       boolean addDependencyJars)
   throws IOException {
-      initTableMapperJob(table, scan, mapper, outputKeyClass,
-              outputValueClass, job, addDependencyJars, TableInputFormat.class);
+    initTableMapperJob(table, scan, mapper, outputKeyClass, outputValueClass, job,
+      addDependencyJars, getTableInputFormatCls(job.getConfiguration(), Bytes.toBytes(table)));
   }
   
   /**
