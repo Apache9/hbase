@@ -1263,16 +1263,16 @@ public class HLog implements Syncable {
           lastDeferredTxid = txid;
         }
       }
-      TracerUtils.addAnnotation("Start sync wal logs");
       // Sync if catalog region, and if not then check if that table supports
       // deferred log flushing
       if (doSync && 
           (info.isMetaRegion() ||
           !htd.isDeferredLogFlush())) {
+        TracerUtils.addAnnotation("Start sync wal logs");
         // sync txn to file system
         this.sync(txid);
+        TracerUtils.addAnnotation("Finish write wal logs");
       }
-      TracerUtils.addAnnotation("Finish write wal logs");
       return txid;
     }
 
@@ -1503,7 +1503,7 @@ public class HLog implements Syncable {
               this.isSyncing = false;
               if (syncMs > slowSyncLogMs) {
                 DatanodeInfo[] pipeline = getPipeLine();
-                TracerUtils.addAnnotation("Sync cost: " + syncMs + "ms, Pipeline: "
+                LOG.info("Slow sync cost: " + syncMs + "ms, Pipeline: "
                     + Arrays.toString(pipeline));
               }
               if (syncMs > slowSyncRequestRollMsThreshold) {

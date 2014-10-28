@@ -1825,6 +1825,7 @@ public class HRegion implements HeapSize { // , Writable{
       List<KeyValueScanner> additionalScanners) throws IOException {
     long nowNs = System.nanoTime();
     startRegionOperation();
+    TracerUtils.addAnnotation("Region: " + regionInfo.getRegionNameAsString());
     try {
       // Verify families are all valid
       prepareScanner(scan);
@@ -2003,6 +2004,7 @@ public class HRegion implements HeapSize { // , Writable{
         return;
       }
     }
+    TracerUtils.addAnnotation("Region: " + regionInfo.getRegionNameAsString());
 
     long beforeNs = System.nanoTime();
     long now = EnvironmentEdgeManager.currentTimeMillis();
@@ -2281,6 +2283,7 @@ public class HRegion implements HeapSize { // , Writable{
     // variable to note if all Delete items are for the same CF -- metrics related
     boolean deletesCfSetConsistent = true;
     long startTimeNs = System.nanoTime();
+    TracerUtils.addAnnotation("Region: " + regionInfo.getRegionNameAsString());
 
     WALEdit walEdit = new WALEdit();
 
@@ -2662,7 +2665,7 @@ public class HRegion implements HeapSize { // , Writable{
     if (!Bytes.equals(check.getRow(), mutate.getRow())) {
       throw new DoNotRetryIOException("Mutation's row must match the check's row");
     }
-
+    TracerUtils.addAnnotation("Region: " + regionInfo.getRegionNameAsString());
     long nowNs = System.nanoTime();
     startRegionOperation();
     this.writeRequestsCount.increment();
@@ -2737,6 +2740,7 @@ public class HRegion implements HeapSize { // , Writable{
     //TODO, add check for value length or maybe even better move this to the
     //client if this becomes a global setting
     checkResources();
+    TracerUtils.addAnnotation("Region: " + regionInfo.getRegionNameAsString());
     boolean isPut = w instanceof Put;
     if (!isPut && !(w instanceof Delete))
       throw new DoNotRetryIOException("Action must be Put or Delete");
@@ -3047,6 +3051,7 @@ public class HRegion implements HeapSize { // , Writable{
         return;
       }
     }
+    TracerUtils.addAnnotation("Region: " + regionInfo.getRegionNameAsString());
 
     long beforeNs = System.nanoTime();
     long now = EnvironmentEdgeManager.currentTimeMillis();
@@ -4134,6 +4139,7 @@ public class HRegion implements HeapSize { // , Writable{
       if (!results.isEmpty()) {
         throw new IllegalArgumentException("First parameter should be an empty list");
       }
+      TracerUtils.addAnnotation("Region: " + regionInfo.getRegionNameAsString());
       RpcCallContext rpcCall = HBaseServer.getCurrentCall();
       // The loop here is used only when at some point during the next we determine
       // that due to effects of filters or otherwise, we have an empty row in the result.
@@ -6195,6 +6201,7 @@ public class HRegion implements HeapSize { // , Writable{
    * @throws IOException If anything goes wrong with DFS
    */
   private void syncOrDefer(long txid, Durability durability) throws IOException {
+    TracerUtils.addAnnotation("Start sync wal logs");
     if (this.getRegionInfo().isMetaRegion()) {
       this.log.sync(txid);
     } else {
@@ -6218,6 +6225,7 @@ public class HRegion implements HeapSize { // , Writable{
         break;
       }
     }
+    TracerUtils.addAnnotation("Finish write wal logs");
   }
 
   /**
