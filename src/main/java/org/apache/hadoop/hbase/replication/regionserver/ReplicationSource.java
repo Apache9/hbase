@@ -45,7 +45,9 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HConstants;
+import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.Stoppable;
@@ -142,7 +144,9 @@ public class ReplicationSource extends Thread
   private ReplicationHLogReaderManager repLogReader;
   // throttler
   private ReplicationThrottler throttler;
-
+  private HConnection sharedHtableCon = null;
+  // Indicates if the non-replicable edits need to be removed (for galaxy-sds)
+  private boolean tableNotFoundEditsRemove;
 
   /**
    * Instantiation method used by region servers
@@ -164,6 +168,11 @@ public class ReplicationSource extends Thread
       throws IOException {
     this.stopper = stopper;
     this.conf = conf;
+    this.tableNotFoundEditsRemove = this.conf
+        .getBoolean("replication.source.remove.tablenotfound.edits", false);
+    if (this.tableNotFoundEditsRemove) {
+      this.sharedHtableCon = HConnectionManager.createConnection(this.conf);
+    }
     this.replicationQueueSizeCapacity =
         this.conf.getLong("replication.source.size.capacity", 1024*1024*64);
     this.replicationQueueNbCapacity =
@@ -638,13 +647,13 @@ public class ReplicationSource extends Thread
         // which throws a NPE if we open a file before any data node has the most recent block
         // Just sleep and retry.  Will require re-reading compressed HLogs for compressionContext.
         LOG.warn("Got NPE opening reader, will retry.");
-      } 
+      }
       // Important: When failed to open the hlog ,  replication will be blocked here, 
       // and wait for the operations from cluster admin
       return false;
     }
     return true;
-  } 
+  }
 
   /*
    * Checks whether the current log file is empty, and it is not a recovered queue. This is to
@@ -723,9 +732,57 @@ public class ReplicationSource extends Thread
     return distinctRowKeys;
   }
 
+  private void removeNonreplicableEditKVs(HLog.Entry entry, List<String> nonReplicateTableCFs) {
+    WALEdit edit = entry.getEdit();
+    List<KeyValue> kvs = edit.getKeyValues();
+    for (int i = edit.size() - 1; i >= 0; i--) {
+      KeyValue kv = kvs.get(i);
+      if (nonReplicateTableCFs.contains(Bytes.toString(kv.getFamily()))) {
+        kvs.remove(i);
+      }
+    }
+  }
+
+  private void clearEditKVs(HLog.Entry entry) {
+    WALEdit edit = entry.getEdit();
+    List<KeyValue> kvs = edit.getKeyValues();
+    kvs.clear();
+  }
+
+  private void removeTableNotFoundEdits(HLog.Entry[] entriesArray, int arrayLength) {
+    for (int i = 0; i < arrayLength; i++) {
+      HLog.Entry entry = entriesArray[i];
+      byte[] table = entry.getKey().getTablename();
+      try {
+        HTableDescriptor hTableDescriptor = this.sharedHtableCon.getHTableDescriptor(table);
+        if (hTableDescriptor != null) {
+          List<String> nonReplicateTableCFs = new ArrayList<String>();
+          HColumnDescriptor[] hColumnDescriptors = hTableDescriptor.getColumnFamilies();
+          for (HColumnDescriptor hColumnDescriptor : hColumnDescriptors) {
+            if (hColumnDescriptor.getScope() == 0) {
+              nonReplicateTableCFs.add(hColumnDescriptor.getNameAsString());
+              LOG.debug("table + " + Bytes.toString(table) + " CF "
+                  + hColumnDescriptor.getName() + " has no REPLICATION SCOPE");
+            }
+          }
+          if (nonReplicateTableCFs != null && !nonReplicateTableCFs.isEmpty()) {
+            removeNonreplicableEditKVs(entry, nonReplicateTableCFs);
+            LOG.debug("remove no replicable KVs of entry " + i);
+          }
+        }
+      } catch (IOException ioe) {
+        if (ioe instanceof TableNotFoundException) {
+          clearEditKVs(entry);
+          LOG.debug(
+              "table " + Bytes.toString(table) + " doesn't exist, clean all KVs of entry " + i);
+        }
+      }
+    }
+  }
+
   /**
    * Do the shipping logic
-   * @param currentWALisBeingWrittenTo was the current WAL being (seemingly) 
+   * @param currentWALisBeingWrittenTo was the current WAL being (seemingly)
    * written to when this method was called
    */
   protected void shipEdits(boolean currentWALisBeingWrittenTo) {
@@ -795,6 +852,9 @@ public class ReplicationSource extends Thread
             if (sleepForRetries("A table is missing in the peer cluster. "
                 + "Replication cannot proceed without losing data.", sleepMultiplier)) {
               sleepMultiplier++;
+            }
+            if (this.tableNotFoundEditsRemove) {
+              removeTableNotFoundEdits(this.entriesArray, currentNbEntries);
             }
           }
         } else {
