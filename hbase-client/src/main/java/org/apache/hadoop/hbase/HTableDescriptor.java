@@ -142,6 +142,12 @@ public class HTableDescriptor implements WritableComparable<HTableDescriptor> {
   public static final String MEMSTORE_FLUSHSIZE = "MEMSTORE_FLUSHSIZE";
   private static final ImmutableBytesWritable MEMSTORE_FLUSHSIZE_KEY =
     new ImmutableBytesWritable(Bytes.toBytes(MEMSTORE_FLUSHSIZE));
+  
+  public static final String MEMSTORE_COLUMNFAMILY_FLUSHSIZE_LOWER_BOUND =
+      "MEMSTORE_COLUMN_FAMILY_FLUSHSIZE_LOWER_BOUND";
+
+  private static final ImmutableBytesWritable MEMSTORE_COLUMNFAMILY_FLUSHSIZE_LOWER_BOUND_KEY =
+      new ImmutableBytesWritable( Bytes.toBytes(MEMSTORE_COLUMNFAMILY_FLUSHSIZE_LOWER_BOUND));
 
   /**
    * <em>INTERNAL</em> Used by rest interface to access this metadata
@@ -220,6 +226,8 @@ public class HTableDescriptor implements WritableComparable<HTableDescriptor> {
    * the contents are flushed to the store files
    */
   public static final long DEFAULT_MEMSTORE_FLUSH_SIZE = 1024*1024*128L;
+
+  public static final long DEFAULT_MEMSTORE_COLUMNFAMILY_FLUSH_SIZE_LOWER_BOUND = 1024 * 1024 * 16L;
 
   public static final int DEFAULT_REGION_REPLICATION = 1;
 
@@ -777,6 +785,21 @@ public class HTableDescriptor implements WritableComparable<HTableDescriptor> {
     return this;
   }
 
+  public long getMemStoreColumnFamilyFlushSize() {
+    byte [] value = getValue(MEMSTORE_COLUMNFAMILY_FLUSHSIZE_LOWER_BOUND_KEY);
+    if (value != null) {
+      return Long.parseLong(Bytes.toString(value));
+    }
+    return -1;
+  }
+
+  public HTableDescriptor setMemStoreColumnFamilyFlushSize(
+      long memstoreColumnFamilyFlushSize) {
+    setValue(MEMSTORE_COLUMNFAMILY_FLUSHSIZE_LOWER_BOUND_KEY,
+        Long.toString(memstoreColumnFamilyFlushSize));
+    return this;
+  }
+
   /**
    * Adds a column family.
    * @param family HColumnDescriptor of family to add.
@@ -1042,7 +1065,7 @@ public class HTableDescriptor implements WritableComparable<HTableDescriptor> {
    * This compares the content of the two descriptors and not the reference.
    *
    * @return 0 if the contents of the descriptors are exactly matching,
-   * 		 1 if there is a mismatch in the contents
+   *                     1 if there is a mismatch in the contents
    */
   @Override
   public int compareTo(final HTableDescriptor other) {

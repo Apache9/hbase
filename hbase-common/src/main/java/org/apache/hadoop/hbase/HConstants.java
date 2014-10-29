@@ -339,6 +339,21 @@ public final class HConstants {
   public static final String HREGION_MEMSTORE_FLUSH_SIZE =
       "hbase.hregion.memstore.flush.size";
 
+  /** Conf key for enabling Per Column Family flushing of memstores */
+  public static final String HREGION_MEMSTORE_PER_COLUMN_FAMILY_FLUSH =
+      "hbase.hregion.memstore.percolumnfamilyflush.enabled";
+
+  /** Default value for the Per Column Family flush knob */
+  public static final Boolean DEFAULT_HREGION_MEMSTORE_PER_COLUMN_FAMILY_FLUSH =
+      true;
+
+  /**
+   * If Per Column Family flushing is enabled, this is the minimum size
+   * at which a column family's memstore is flushed.
+   */
+  public static final String HREGION_MEMSTORE_COLUMNFAMILY_FLUSH_SIZE_LOWER_BOUND =
+      "hbase.hregion.memstore.percolumnfamilyflush.flush.size.lower.bound";
+
   public static final String HREGION_EDITS_REPLAY_SKIP_ERRORS =
       "hbase.hregion.edits.replay.skip.errors";
 

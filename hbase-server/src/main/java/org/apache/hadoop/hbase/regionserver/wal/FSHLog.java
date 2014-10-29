@@ -293,9 +293,9 @@ class FSHLog implements HLog, Syncable {
   /**
    * This lock ties all operations on oldestFlushingRegionSequenceIds and
    * oldestFlushedRegionSequenceIds Maps with the exception of append's putIfAbsent call into
-   * oldestUnflushedSeqNums. We use these Maps to find out the low bound regions sequence id, or
-   * to find regions  with old sequence ids to force flush; we are interested in old stuff not the
-   * new additions (TODO: IS THIS SAFE?  CHECK!).
+   * oldestUnflushedRegionSequenceIds. We use these Maps to find out the low bound regions
+   * sequence id, or to find regions  with old sequence ids to force flush; we are interested in
+   * old stuff not the new additions (TODO: IS THIS SAFE?  CHECK!).
    */
   private final Object regionSequenceIdLock = new Object();
 
@@ -714,13 +714,14 @@ class FSHLog implements HLog, Syncable {
    * @throws IOException
    */
   private void cleanOldLogs() throws IOException {
-    Map<byte[], Long> oldestFlushingSeqNumsLocal = null;
-    Map<byte[], Long> oldestUnflushedSeqNumsLocal = null;
+    Map<byte[], Long> lowestFlushingRegionSequenceIdsLocal = null;
+    Map<byte[], Long> oldestUnflushedRegionSequenceIdsLocal = null;
     List<Path> logsToArchive = new ArrayList<Path>();
     // make a local copy so as to avoid locking when we iterate over these maps.
     synchronized (regionSequenceIdLock) {
-      oldestFlushingSeqNumsLocal = new HashMap<byte[], Long>(this.lowestFlushingRegionSequenceIds);
-      oldestUnflushedSeqNumsLocal =
+      lowestFlushingRegionSequenceIdsLocal = 
+          new HashMap<byte[], Long>(this.lowestFlushingRegionSequenceIds);
+      oldestUnflushedRegionSequenceIdsLocal =
         new HashMap<byte[], Long>(this.oldestUnflushedRegionSequenceIds);
     }
     for (Map.Entry<Path, Map<byte[], Long>> e : byWalRegionSequenceIds.entrySet()) {
@@ -728,8 +729,8 @@ class FSHLog implements HLog, Syncable {
       Path log = e.getKey();
       Map<byte[], Long> sequenceNums = e.getValue();
       // iterate over the map for this log file, and tell whether it should be archive or not.
-      if (areAllRegionsFlushed(sequenceNums, oldestFlushingSeqNumsLocal,
-          oldestUnflushedSeqNumsLocal)) {
+      if (areAllRegionsFlushed(sequenceNums, lowestFlushingRegionSequenceIdsLocal,
+          oldestUnflushedRegionSequenceIdsLocal)) {
         logsToArchive.add(log);
         LOG.debug("WAL file ready for archiving " + log);
       }
@@ -1578,20 +1579,47 @@ class FSHLog implements HLog, Syncable {
   }
   
   @Override
-  public boolean startCacheFlush(final byte[] encodedRegionName) {
+  public long startCacheFlush(final byte[] encodedRegionName, long oldestSeqIdInStoresToFlush,
+      long oldestSeqIdInStoresNotToFlush, AtomicLong sequenceId) throws IOException {
+    long flushSeqId;
     Long oldRegionSeqNum = null;
     if (!closeBarrier.beginOp()) {
       LOG.info("Flush will not be started for " + Bytes.toString(encodedRegionName) +
         " - because the server is closing.");
-      return false;
+      return NO_SEQUENCE_ID;
     }
     synchronized (regionSequenceIdLock) {
-      oldRegionSeqNum = this.oldestUnflushedRegionSequenceIds.remove(encodedRegionName);
-      if (oldRegionSeqNum != null) {
-        Long oldValue =
-          this.lowestFlushingRegionSequenceIds.put(encodedRegionName, oldRegionSeqNum);
-        assert oldValue ==
-          null : "Flushing map not cleaned up for " + Bytes.toString(encodedRegionName);
+      if (oldestSeqIdInStoresNotToFlush == Long.MAX_VALUE) {
+        oldRegionSeqNum = this.oldestUnflushedRegionSequenceIds.remove(encodedRegionName);
+        if (oldRegionSeqNum != null) {
+          Long oldValue = this.lowestFlushingRegionSequenceIds.put(encodedRegionName,
+              oldRegionSeqNum);
+          assert oldValue == null: "Flushing map not cleaned up for "
+              + Bytes.toString(encodedRegionName);
+        }
+        // Get a sequence id that we can use to denote the flush. It will be one beyond the last
+        // edit that made it into the hfile (the below does not add an edit, it just asks the
+        // WAL system to return next sequence edit).
+        HLogKey key = new HLogKey(encodedRegionName, null);
+        appendNoSync(null, null, key, WALEdit.EMPTY_WALEDIT, sequenceId, false, null);
+        flushSeqId = key.getSequenceId();
+      } else {
+        // Amongst the Stores not being flushed, what is the smallest sequence
+        // number? Put that in this map.
+        oldRegionSeqNum =  this.oldestUnflushedRegionSequenceIds.replace(encodedRegionName,
+            oldestSeqIdInStoresNotToFlush);
+
+        // Amongst the Stores being flushed, what is the smallest sequence
+        // number? Put that in this map.
+        this.lowestFlushingRegionSequenceIds.put(encodedRegionName, oldestSeqIdInStoresToFlush);
+
+        // During Log Replay, we can safely discard any edits that have
+        // the sequence number less than the smallest sequence id amongst the
+        // stores that we are not flushing. This might re-apply some edits
+        // which belonged to stores which are going to be flushed, but we
+        // expect these operations to be idempotent anyways, and this is
+        // simpler.
+        flushSeqId = oldestSeqIdInStoresNotToFlush;
       }
     }
     if (oldRegionSeqNum == null) {
@@ -1603,7 +1631,7 @@ class FSHLog implements HLog, Syncable {
       LOG.warn("Couldn't find oldest seqNum for the region we are about to flush: ["
         + Bytes.toString(encodedRegionName) + "]");
     }
-    return true;
+    return flushSeqId;
   }
 
   @Override

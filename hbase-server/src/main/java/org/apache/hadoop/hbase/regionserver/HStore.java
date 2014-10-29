@@ -91,7 +91,6 @@ import org.apache.hadoop.hbase.util.ReflectionUtils;
 import org.apache.hadoop.util.StringUtils;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableCollection;
 import com.google.common.collect.ImmutableList;
@@ -924,7 +923,7 @@ public class HStore implements Store {
     if (LOG.isInfoEnabled()) {
       LOG.info("Added " + sf + ", entries=" + r.getEntries() +
         ", sequenceid=" + logCacheFlushId +
-        ", filesize=" + StringUtils.humanReadableInt(r.length()));
+        ", filesize=" + StringUtils.byteDesc(r.length()));
     }
     return sf;
   }
@@ -1147,7 +1146,7 @@ public class HStore implements Store {
     LOG.info("Starting compaction of " + filesToCompact.size() + " file(s) in "
         + this + " of " + this.getRegionInfo().getRegionNameAsString()
         + " into tmpdir=" + fs.getTempDir() + ", totalSize="
-        + StringUtils.humanReadableInt(cr.getSize()));
+        + StringUtils.byteDesc(cr.getSize()));
 
     long compactionStartTime = EnvironmentEdgeManager.currentTime();
     List<StoreFile> sfs = null;
@@ -1264,12 +1263,12 @@ public class HStore implements Store {
       for (StoreFile sf: sfs) {
         message.append(sf.getPath().getName());
         message.append("(size=");
-        message.append(StringUtils.humanReadableInt(sf.getReader().length()));
+        message.append(StringUtils.byteDesc(sf.getReader().length()));
         message.append("), ");
       }
     }
     message.append("total size for store is ")
-      .append(StringUtils.humanReadableInt(storeSize))
+      .append(StringUtils.byteDesc(storeSize))
       .append(". This selection was in queue for ")
       .append(StringUtils.formatTimeDiff(compactionStartTime, cr.getSelectionTime()))
       .append(", and took ").append(StringUtils.formatTimeDiff(now, compactionStartTime))
@@ -1329,7 +1328,7 @@ public class HStore implements Store {
       }
     }
 
-    this.replaceStoreFiles(inputStoreFiles, Collections.EMPTY_LIST);
+    this.replaceStoreFiles(inputStoreFiles, Collections.<StoreFile>emptyList());
     this.completeCompaction(inputStoreFiles);
   }
 
@@ -1540,7 +1539,7 @@ public class HStore implements Store {
     completeCompaction(delSfs);
     LOG.info("Completed removal of " + delSfs.size() + " unnecessary (expired) file(s) in "
         + this + " of " + this.getRegionInfo().getRegionNameAsString()
-        + "; total size for store is " + StringUtils.humanReadableInt(storeSize));
+        + "; total size for store is " + StringUtils.byteDesc(storeSize));
   }
 
   @Override

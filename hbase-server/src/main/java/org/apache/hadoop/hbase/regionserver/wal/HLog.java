@@ -404,10 +404,11 @@ public interface HLog {
    * In case of flush being aborted, we put the stashed value back; in case of flush succeeding,
    * the seqNum of that first edit after start becomes the valid oldest seqNum for this region.
    *
-   * @return true if the flush can proceed, false in case wal is closing (ususally, when server is
-   * closing) and flush couldn't be started.
+   * @return the flushSeqId of the flush if the can proceed, {@link #NO_SEQUENCE_ID} in case wal 
+   * is closing (usually, when server is closing) and flush couldn't be started.
    */
-  boolean startCacheFlush(final byte[] encodedRegionName);
+  long startCacheFlush(final byte[] encodedRegionName, long oldestSeqIdInStoresToFlush,
+      long oldestSeqIdInStoresNotToFlush, AtomicLong sequenceId) throws IOException;
 
   /**
    * Complete the cache flush.

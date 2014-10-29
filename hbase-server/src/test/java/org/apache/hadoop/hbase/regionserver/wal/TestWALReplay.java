@@ -26,6 +26,7 @@ import static org.mockito.Mockito.when;
 import java.io.IOException;
 import java.security.PrivilegedExceptionAction;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -780,7 +781,7 @@ public class TestWALReplay {
     }
 
     // Add a cache flush, shouldn't have any effect
-    wal.startCacheFlush(regionName);
+    wal.startCacheFlush(regionName, Long.MAX_VALUE, Long.MAX_VALUE, sequenceId);
     wal.completeCacheFlush(regionName);
 
     // Add an edit to another family, should be skipped.
@@ -822,10 +823,10 @@ public class TestWALReplay {
               new HRegion(basedir, newWal, newFS, newConf, hri, htd, null) {
             @Override
             protected FlushResult internalFlushcache(
-                final HLog wal, final long myseqid, MonitoredTask status)
+                final HLog wal, final long myseqid, Collection<Store> storesToFlush, MonitoredTask status)
             throws IOException {
               LOG.info("InternalFlushCache Invoked");
-              FlushResult fs = super.internalFlushcache(wal, myseqid,
+              FlushResult fs = super.internalFlushcache(wal, myseqid, storesToFlush,
                   Mockito.mock(MonitoredTask.class));
               flushcount.incrementAndGet();
               return fs;
@@ -937,7 +938,7 @@ public class TestWALReplay {
     private HRegion r;
 
     @Override
-    public void requestFlush(HRegion region) {
+    public void requestFlush(HRegion region, boolean selectiveFlushRequest) {
       try {
         r.flushcache();
       } catch (IOException e) {
@@ -946,7 +947,7 @@ public class TestWALReplay {
     }
 
     @Override
-    public void requestDelayedFlush(HRegion region, long when) {
+    public void requestDelayedFlush(HRegion region, long when, boolean selectiveFlushRequest) {
       // TODO Auto-generated method stub
 
     }

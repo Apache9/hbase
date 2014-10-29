@@ -609,7 +609,7 @@ public class TestHLog  {
       htd.addFamily(new HColumnDescriptor("column"));
 
       log.append(info, tableName, cols, System.currentTimeMillis(), htd, sequenceId);
-      log.startCacheFlush(info.getEncodedNameAsBytes());
+      log.startCacheFlush(info.getEncodedNameAsBytes(), Long.MAX_VALUE, Long.MAX_VALUE, sequenceId);
       log.completeCacheFlush(info.getEncodedNameAsBytes());
       log.close();
       Path filename = ((FSHLog) log).computeFilename();
@@ -667,7 +667,7 @@ public class TestHLog  {
       HTableDescriptor htd = new HTableDescriptor();
       htd.addFamily(new HColumnDescriptor("column"));
       log.append(hri, tableName, cols, System.currentTimeMillis(), htd, sequenceId);
-      log.startCacheFlush(hri.getEncodedNameAsBytes());
+      log.startCacheFlush(hri.getEncodedNameAsBytes(), Long.MAX_VALUE, Long.MAX_VALUE, sequenceId);
       log.completeCacheFlush(hri.getEncodedNameAsBytes());
       log.close();
       Path filename = ((FSHLog) log).computeFilename();
@@ -776,7 +776,7 @@ public class TestHLog  {
       // Flush the first region, we expect to see the first two files getting
       // archived. We need to append something or writer won't be rolled.
       addEdits(log, hri2, tableName2, 1, sequenceId);
-      log.startCacheFlush(hri.getEncodedNameAsBytes());
+      log.startCacheFlush(hri.getEncodedNameAsBytes(), Long.MAX_VALUE, Long.MAX_VALUE, sequenceId);
       log.completeCacheFlush(hri.getEncodedNameAsBytes());
       log.rollWriter();
       assertEquals(2, ((FSHLog) log).getNumRolledLogFiles());
@@ -785,7 +785,7 @@ public class TestHLog  {
       // since the oldest was completely flushed and the two others only contain
       // flush information
       addEdits(log, hri2, tableName2, 1, sequenceId);
-      log.startCacheFlush(hri2.getEncodedNameAsBytes());
+      log.startCacheFlush(hri2.getEncodedNameAsBytes(), Long.MAX_VALUE, Long.MAX_VALUE, sequenceId);
       log.completeCacheFlush(hri2.getEncodedNameAsBytes());
       log.rollWriter();
       assertEquals(0, ((FSHLog) log).getNumRolledLogFiles());
@@ -1118,7 +1118,7 @@ public class TestHLog  {
       assertEquals(2, ((FSHLog) hlog).getNumRolledLogFiles());
       // add a waledit to table1, and flush the region.
       addEdits(hlog, hri1, table1, 3, sequenceId1);
-      flushRegion(hlog, hri1.getEncodedNameAsBytes());
+      flushRegion(hlog, hri1.getEncodedNameAsBytes(), sequenceId1);
       // roll log; all old logs should be archived.
       hlog.rollWriter();
       assertEquals(0, ((FSHLog) hlog).getNumRolledLogFiles());
@@ -1132,7 +1132,7 @@ public class TestHLog  {
       assertEquals(2, ((FSHLog) hlog).getNumRolledLogFiles());
       // add edits for table2, and flush hri1.
       addEdits(hlog, hri2, table2, 2, sequenceId2);
-      flushRegion(hlog, hri1.getEncodedNameAsBytes());
+      flushRegion(hlog, hri1.getEncodedNameAsBytes(), sequenceId1);
       // the log : region-sequenceId map is
       // log1: region2 (unflushed)
       // log2: region1 (flushed)
@@ -1142,7 +1142,7 @@ public class TestHLog  {
       assertEquals(2, ((FSHLog) hlog).getNumRolledLogFiles());
       // flush region2, and all logs should be archived.
       addEdits(hlog, hri2, table2, 2, sequenceId2);
-      flushRegion(hlog, hri2.getEncodedNameAsBytes());
+      flushRegion(hlog, hri2.getEncodedNameAsBytes(), sequenceId2);
       hlog.rollWriter();
       assertEquals(0, ((FSHLog) hlog).getNumRolledLogFiles());
     } finally {
@@ -1195,12 +1195,12 @@ public class TestHLog  {
       assertEquals(hri1.getEncodedNameAsBytes(), regionsToFlush[0]);
       // flush region 1, and roll the wal file. Only last wal which has entries for region1 should
       // remain.
-      flushRegion(hlog, hri1.getEncodedNameAsBytes());
+      flushRegion(hlog, hri1.getEncodedNameAsBytes(), sequenceId1);
       hlog.rollWriter();
       // only one wal should remain now (that is for the second region).
       assertEquals(1, ((FSHLog) hlog).getNumRolledLogFiles());
       // flush the second region
-      flushRegion(hlog, hri2.getEncodedNameAsBytes());
+      flushRegion(hlog, hri2.getEncodedNameAsBytes(), sequenceId2);
       hlog.rollWriter(true);
       // no wal should remain now.
       assertEquals(0, ((FSHLog) hlog).getNumRolledLogFiles());
@@ -1217,14 +1217,15 @@ public class TestHLog  {
       regionsToFlush = ((FSHLog) hlog).findRegionsToForceFlush();
       assertEquals(2, regionsToFlush.length);
       // flush both regions
-      flushRegion(hlog, hri1.getEncodedNameAsBytes());
-      flushRegion(hlog, hri2.getEncodedNameAsBytes());
+      flushRegion(hlog, hri1.getEncodedNameAsBytes(), sequenceId1);
+      flushRegion(hlog, hri2.getEncodedNameAsBytes(), sequenceId2);
       hlog.rollWriter(true);
       assertEquals(0, ((FSHLog) hlog).getNumRolledLogFiles());
       // Add an edit to region1, and roll the wal.
       addEdits(hlog, hri1, t1, 2, sequenceId1);
       // tests partial flush: roll on a partial flush, and ensure that wal is not archived.
-      hlog.startCacheFlush(hri1.getEncodedNameAsBytes());
+      hlog.startCacheFlush(hri1.getEncodedNameAsBytes(), Long.MAX_VALUE, Long.MAX_VALUE,
+          sequenceId1);
       hlog.rollWriter();
       hlog.completeCacheFlush(hri1.getEncodedNameAsBytes());
       assertEquals(1, ((FSHLog) hlog).getNumRolledLogFiles());
@@ -1284,9 +1285,11 @@ public class TestHLog  {
    * helper method to simulate region flush for a WAL.
    * @param hlog
    * @param regionEncodedName
+   * @throws IOException 
    */
-  private void flushRegion(HLog hlog, byte[] regionEncodedName) {
-    hlog.startCacheFlush(regionEncodedName);
+  private void flushRegion(HLog hlog, byte[] regionEncodedName,
+      AtomicLong sequenceId) throws IOException {
+    hlog.startCacheFlush(regionEncodedName, Long.MAX_VALUE, Long.MAX_VALUE, sequenceId);
     hlog.completeCacheFlush(regionEncodedName);
   }
 
