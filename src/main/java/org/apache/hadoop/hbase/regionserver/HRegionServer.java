@@ -227,7 +227,7 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
   private final Random rand;
 
   private final AtomicLong scannerIdGen = new AtomicLong(0L);
-
+  private final int scannerLeaseTimeoutPeriod;
   //RegionName vs current action in progress
   //true - if open region action in progress
   //false - if close region action in progress
@@ -459,6 +459,10 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
     this.rpcTimeout = conf.getInt(
       HConstants.HBASE_RPC_SHORTOPERATION_TIMEOUT_KEY,
       HConstants.DEFAULT_HBASE_RPC_SHORTOPERATION_TIMEOUT);
+
+    scannerLeaseTimeoutPeriod = (int) conf.getLong(
+        HConstants.HBASE_REGIONSERVER_LEASE_PERIOD_KEY,
+        HConstants.DEFAULT_HBASE_REGIONSERVER_LEASE_PERIOD);
 
     this.abortRequested = false;
     this.stopped = false;
@@ -764,10 +768,7 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
       healthCheckChore = new HealthCheckChore(sleepTime, this, getConfiguration());
     }
 
-    this.leases = new Leases((int) conf.getLong(
-        HConstants.HBASE_REGIONSERVER_LEASE_PERIOD_KEY,
-        HConstants.DEFAULT_HBASE_REGIONSERVER_LEASE_PERIOD),
-        this.threadWakeFrequency);
+    this.leases = new Leases(this.threadWakeFrequency);
 
     // Create the thread for the ThriftServer.
     if (conf.getBoolean("hbase.regionserver.export.thrift", false)) {
@@ -2770,7 +2771,8 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
     long scannerId = this.scannerIdGen.incrementAndGet();
     String scannerName = String.valueOf(scannerId);
     scanners.put(scannerName, new RegionScannerHolder(s));
-    this.leases.createLease(scannerName, new ScannerListener(scannerName));
+    this.leases.createLease(scannerName, this.scannerLeaseTimeoutPeriod,
+        new ScannerListener(scannerName));
     return scannerId;
   }
 
@@ -3106,7 +3108,8 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
     lockId = rand.nextLong();
     String lockName = String.valueOf(lockId);
     rowlocks.put(lockName, r);
-    this.leases.createLease(lockName, new RowLockListener(lockName, region));
+    this.leases.createLease(lockName, this.scannerLeaseTimeoutPeriod,
+        new RowLockListener(lockName, region));
     return lockId;
   }
 

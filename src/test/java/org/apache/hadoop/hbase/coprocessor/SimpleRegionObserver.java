@@ -109,7 +109,7 @@ public class SimpleRegionObserver extends BaseRegionObserver {
     // from external packages
     RegionCoprocessorEnvironment re = (RegionCoprocessorEnvironment)e;
     Leases leases = re.getRegionServerServices().getLeases();
-    leases.createLease("x", null);
+    leases.createLease("x", 60000, null);
     leases.cancelLease("x");
   }
 
