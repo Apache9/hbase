@@ -255,13 +255,6 @@ module Hbase
             num_regions = arg[NUMREGIONS]
             split_algo = RegionSplitter.newSplitAlgoInstance(@conf, arg[SPLITALGO])
             splits = split_algo.split(JInteger.valueOf(num_regions))
-          elsif (arg.has_key?(SLOTS_COUNT))
-            # salted table
-            if (arg.has_key?(KEY_SALTER))
-              htd.setSalted(arg[KEY_SALTER], JInteger.valueOf(arg[SLOTS_COUNT]))
-            elsif
-              htd.setSlotsCount(JInteger.valueOf(arg[SLOTS_COUNT]))
-            end
           elsif (method = arg.delete(METHOD))
             # (2) table_att modification
             raise(ArgumentError, "table_att is currently the only supported method") unless method == 'table_att'

@@ -1301,16 +1301,20 @@ public class HTableDescriptor implements WritableComparable<HTableDescriptor> {
   }
   
   public void setSlotsCount(int slotsCount) {
-    setValue(KEY_SALTER, NBytePrefixKeySalter.class.getName());
     setValue(SLOTS_COUNT, String.valueOf(slotsCount));
   }
   
   public boolean isSalted() {
-    return getKeySalter() != null;
+    // slotsCount must be set, while keySalter has default value
+    return getSlotsCount() != null;
   }
   
   public String getKeySalter() {
-    return getValue(KEY_SALTER);
+    String cls = getValue(KEY_SALTER);
+    if (cls == null) {
+      return getSlotsCount() == null ? null : NBytePrefixKeySalter.class.getName();
+    }
+    return cls;
   }
   
   public Integer getSlotsCount() {
