@@ -49,7 +49,12 @@ public abstract class NBytePrefixKeySalter implements KeySalter{
   public byte[] salt(byte[] key) {
     return concat(hash(key), key);
   }
-
+  
+  @Override
+  public byte[] getSalt(byte[] key) {
+    return hash(key);
+  }
+  
   protected abstract byte[] hash(byte[] key);
 
   private byte[] concat(byte[] prefix, byte[] row) {

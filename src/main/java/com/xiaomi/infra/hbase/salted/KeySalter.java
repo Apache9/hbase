@@ -38,6 +38,12 @@ public interface KeySalter {
    * @return
    */
   public byte [][] getAllSalts();
+  
+  // return the next salt of parameter 'salt', or null if 'salt' is the last one
+  public byte[] nextSalt(byte[] salt);
+  
+  // return the last salt of parameter 'salt', or null if 'salt' is the first one
+  public byte[] lastSalt(byte[] salt);
 
   /**
    * Salt a rowkey
@@ -45,6 +51,8 @@ public interface KeySalter {
    * @return
    */
   byte[] salt(byte[] rowKey);
+  
+  byte[] getSalt(byte[] rowKey);
 
   /**
    * revert the salted row key to original row key

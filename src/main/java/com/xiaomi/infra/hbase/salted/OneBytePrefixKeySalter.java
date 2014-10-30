@@ -19,6 +19,7 @@
 package com.xiaomi.infra.hbase.salted;
 
 import java.util.Arrays;
+import java.util.TreeSet;
 
 import org.apache.hadoop.hbase.util.Bytes;
 
@@ -28,6 +29,8 @@ import org.apache.hadoop.hbase.util.Bytes;
  *
  */
 public class OneBytePrefixKeySalter extends NBytePrefixKeySalter {
+  private final byte[][] allSalts;
+  private final TreeSet<byte[]> saltsTree = new TreeSet<byte[]>(Bytes.BYTES_COMPARATOR);
   private final static int ONE_BYTE = 1;
   private int slots;
 
@@ -38,6 +41,10 @@ public class OneBytePrefixKeySalter extends NBytePrefixKeySalter {
   public OneBytePrefixKeySalter(int limit) {
     super(ONE_BYTE);
     this.slots = limit;
+    this.allSalts = computeAllSalts();
+    for (int i = 0; i < allSalts.length; ++i) {
+      saltsTree.add(allSalts[i]);
+    }
   }
 
   protected byte[] hash(byte[] key) {
@@ -55,14 +62,27 @@ public class OneBytePrefixKeySalter extends NBytePrefixKeySalter {
     return result;
   }
 
-  @Override
-  public byte[][] getAllSalts() {
-
+  private byte[][] computeAllSalts() {
     byte[][] salts = new byte[slots][];
     for (int i = 0; i < salts.length; i++) {
       salts[i] = new byte[]{(byte)i};
     }
     Arrays.sort(salts, Bytes.BYTES_RAWCOMPARATOR);
-    return salts;
+    return salts;    
+  }
+  
+  @Override
+  public byte[][] getAllSalts() {
+    return allSalts;
+  }
+  
+  @Override
+  public byte[] nextSalt(byte[] salt) {
+    return saltsTree.higher(salt);
+  }
+
+  @Override
+  public byte[] lastSalt(byte[] salt) {
+    return saltsTree.lower(salt);
   }
 }

@@ -77,7 +77,8 @@ public class TestSaltedHTable {
   private static final byte[] bytes6 = Bytes.toBytes(6);
   private static final byte[] bytes7 = Bytes.toBytes(7);
 
-  private HTableInterface saltedHTable;
+  private SaltedHTable saltedHTable;
+  private static final int defaultSlotsCount = 10;
   private HBaseAdmin admin;
   private List<Put> puts = new ArrayList<Put>();
 
@@ -105,8 +106,7 @@ public class TestSaltedHTable {
   public void before() throws Exception {
     admin = new HBaseAdmin(TEST_UTIL.getConfiguration());
 
-    saltedHTable = createSaltedTable();
-    Assert.assertTrue(saltedHTable instanceof SaltedHTable);
+    saltedHTable = createSaltedTable(defaultSlotsCount);
     saltedHTable.setAutoFlush(false);
 
     Put puta = new Put(ROW_A);
@@ -139,13 +139,13 @@ public class TestSaltedHTable {
     }
   }
 
-  protected HTableInterface createSaltedTable() throws IOException {
+  protected SaltedHTable createSaltedTable() throws IOException {
     return createSaltedTable(null);
   }
   
-  protected HTableInterface createSaltedTable(Integer slotCounts) throws IOException {
+  protected SaltedHTable createSaltedTable(Integer slotCounts) throws IOException {
     admin.createTable(getSaltedHTableDescriptor(slotCounts));
-    return connection.getTable(TEST_TABLE);
+    return (SaltedHTable)connection.getTable(TEST_TABLE);
   }
   
   protected HTableInterface createUnSaltedTable() throws IOException {
@@ -308,7 +308,7 @@ public class TestSaltedHTable {
     scanner.close();
 
     // test order scan
-    scanner = ((SaltedHTable)saltedHTable).getScanner(scan, null, false, false);
+    scanner = saltedHTable.getScanner(scan, null, false, false);
     results.clear();
     count = 0;
     while(null != (result = scanner.next()) ) {
@@ -317,7 +317,7 @@ public class TestSaltedHTable {
     }
     Assert.assertEquals(3, count);
     List<byte[]> saltedRowkeys = new ArrayList<byte[]>();
-    KeySalter salter = ((SaltedHTable)saltedHTable).getKeySalter();
+    KeySalter salter = saltedHTable.getKeySalter();
     for (int i = 0; i < results.size(); ++i) {
       saltedRowkeys.add(salter.salt(results.get(i).getRow()));
     }
@@ -344,6 +344,35 @@ public class TestSaltedHTable {
     }
     assertEquals(count, 0);
     scanner.close();
+  }
+  
+  @Test
+  public void TestScanWithSalts()  throws Exception {
+    byte[][] rows = new byte[][]{ROW_A, ROW_B, ROW_C};
+    KeySalter salter = saltedHTable.getKeySalter();
+    byte[][] salts = new byte[][] { salter.getSalt(ROW_A), salter.getSalt(ROW_B),
+        salter.getSalt(ROW_C) };
+    for (int i = 0; i < rows.length; ++i) {
+      byte[] salt = salts[i];
+      Scan scan = new Scan();
+      ResultScanner scanner = saltedHTable.getScanner(scan, new byte[][]{salt});
+      Result result = scanner.next();
+      Assert.assertNull(scanner.next());
+      scanner.close();
+      Assert.assertArrayEquals(rows[i], result.getRow());
+    }
+    
+    ResultScanner scanner = saltedHTable
+        .getScanner(new Scan(), new byte[][] { salts[0], salts[2] });
+    List<Result> results = new ArrayList<Result>();
+    Result result = null;
+    while ((result = scanner.next()) != null) {
+      results.add(result);
+    }
+    scanner.close();
+    Assert.assertEquals(2, results.size());
+    Assert.assertArrayEquals(ROW_A, results.get(0).getRow());
+    Assert.assertArrayEquals(ROW_C, results.get(1).getRow());
   }
 
   @Test

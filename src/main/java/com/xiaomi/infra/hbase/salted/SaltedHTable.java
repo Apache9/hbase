@@ -593,8 +593,8 @@ public class SaltedHTable implements HTableInterface{
       scanner.close();
     }
 
+    // TODO: add flag to indicate the user passed salts is successive?
     private Scan[] salt(Scan scan, byte[][] salts) throws IOException {
-
       byte[][] splits = null;
       if (null != salts) {
         splits = salts;
@@ -610,8 +610,9 @@ public class SaltedHTable implements HTableInterface{
         scans[i] = new Scan(scan);
         scans[i].setStartRow(concat(splits[i], start));
         if (end.length == 0) {
-          scans[i].setStopRow( (i == splits.length - 1) ?
-              HConstants.EMPTY_END_ROW : splits[i + 1]);
+          // the salts passed by users might not be successive
+          byte[] nextSalt = salter.nextSalt(splits[i]);
+          scans[i].setStopRow(nextSalt == null ? HConstants.EMPTY_BYTE_ARRAY : nextSalt);
         }
         else {
           scans[i].setStopRow(concat(splits[i], end));
@@ -746,6 +747,18 @@ public class SaltedHTable implements HTableInterface{
     }
     @Override
     public byte[] unSalt(byte[] row) {
+      throw new RuntimeException("not implemented");
+    }
+    @Override
+    public byte[] nextSalt(byte[] salt) {
+      throw new RuntimeException("not implemented");
+    }
+    @Override
+    public byte[] lastSalt(byte[] salt) {
+      throw new RuntimeException("not implemented");
+    }
+    @Override
+    public byte[] getSalt(byte[] rowKey) {
       throw new RuntimeException("not implemented");
     }
   }
