@@ -613,8 +613,7 @@ public class SaltedHTable implements HTableInterface{
           // the salts passed by users might not be successive
           byte[] nextSalt = salter.nextSalt(splits[i]);
           scans[i].setStopRow(nextSalt == null ? HConstants.EMPTY_BYTE_ARRAY : nextSalt);
-        }
-        else {
+        } else {
           scans[i].setStopRow(concat(splits[i], end));
         }
       }

@@ -18,19 +18,42 @@
  */
 package com.xiaomi.infra.hbase.salted;
 
-/**
- * This will prepend N byte before the rowkey
- *
- */
-public abstract class NBytePrefixKeySalter implements KeySalter{
-  protected int prefixLength;
+import java.util.Arrays;
+import java.util.TreeSet;
 
-  /**
-   *
-   * @param prefixLength, how many salts is allowed.
-   */
-  public NBytePrefixKeySalter(int prefixLength) {
-    this.prefixLength = prefixLength;
+import org.apache.hadoop.hbase.util.Bytes;
+
+// This will prepend at most 3 bytes before the rowkey
+public class NBytePrefixKeySalter implements KeySalter {
+  private final static int MAX_SLOTS_COUNT = 16777216; // 256 * 256 * 256 is big enough
+  protected int prefixLength;
+  protected final TreeSet<byte[]> saltsTree = new TreeSet<byte[]>(Bytes.BYTES_COMPARATOR);
+  protected byte[][] allSalts;
+  protected int slots;
+  
+  public NBytePrefixKeySalter(int slotsCount) {
+    if (slotsCount > MAX_SLOTS_COUNT || slotsCount <= 0) {
+      throw new RuntimeException(
+          "slots count illegal, slots count must be positive and maximum slots count of OneBytePrefixKeySalter is "
+              + MAX_SLOTS_COUNT + ", current slots count:" + slotsCount);
+    }
+    
+    this.prefixLength = getPrefixLength(slotsCount);
+    this.slots = slotsCount;
+    this.allSalts = computeAllSalts();
+    for (int i = 0; i < allSalts.length; ++i) {
+      saltsTree.add(allSalts[i]);
+    }        
+  }
+  
+  protected static int getPrefixLength(int slotsCount) {
+    if (slotsCount <= 256) {
+      return 1;
+    } else if (slotsCount <= 65536) {
+      return 2;
+    } else {
+      return 3;
+    }
   }
 
   @Override
@@ -47,15 +70,21 @@ public abstract class NBytePrefixKeySalter implements KeySalter{
 
   @Override
   public byte[] salt(byte[] key) {
-    return concat(hash(key), key);
+    return concat(getSalt(key), key);
   }
   
   @Override
   public byte[] getSalt(byte[] key) {
-    return hash(key);
+    int hash = 1;
+    if (key == null || key.length == 0) {
+      return hashValueToSalt(0, prefixLength);
+    }
+    for (int i = 0; i < key.length; i++) {
+      hash = 31 * hash + (int)(key[i]);
+    }
+    hash = hash & 0x7fffffff;
+    return hashValueToSalt(hash % slots, prefixLength);
   }
-  
-  protected abstract byte[] hash(byte[] key);
 
   private byte[] concat(byte[] prefix, byte[] row) {
     if (null == prefix || prefix.length == 0) {
@@ -65,12 +94,41 @@ public abstract class NBytePrefixKeySalter implements KeySalter{
       return prefix;
     }
     byte[] newRow = new byte[row.length + prefix.length];
-    if (row.length != 0) {
-      System.arraycopy(row, 0, newRow, prefix.length, row.length);
-    }
-    if (prefix.length != 0) {
-      System.arraycopy(prefix, 0, newRow, 0, prefix.length);
-    }
+    System.arraycopy(row, 0, newRow, prefix.length, row.length);
+    System.arraycopy(prefix, 0, newRow, 0, prefix.length);
     return newRow;
+  }
+  
+  protected byte[][] computeAllSalts() {
+    byte[][] salts = new byte[slots][];
+    for (int i = 0; i < salts.length; i++) {
+      salts[i] = hashValueToSalt(i, prefixLength);
+    }
+    Arrays.sort(salts, Bytes.BYTES_RAWCOMPARATOR);
+    return salts;    
+  }
+  
+  protected static byte[] hashValueToSalt(int slotIndex, int prefixLength) {
+    byte[] salt = new byte[prefixLength];
+    for (int i = 0; i < salt.length; ++i) {
+      salt[i] = (byte)(slotIndex % 256);
+      slotIndex /= 256;
+    }
+    return salt;
+  }
+  
+  @Override
+  public byte[][] getAllSalts() {
+    return allSalts;
+  }
+  
+  @Override
+  public byte[] nextSalt(byte[] salt) {
+    return saltsTree.higher(salt);
+  }
+
+  @Override
+  public byte[] lastSalt(byte[] salt) {
+    return saltsTree.lower(salt);
   }
 }
