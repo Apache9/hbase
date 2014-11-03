@@ -213,6 +213,7 @@ public abstract class ZooKeeperNodeTracker extends ZooKeeperListener {
           .abort(
               "Exception while checking if basenode exists.",
               e);
+      return false;
     }
     return true;
   }

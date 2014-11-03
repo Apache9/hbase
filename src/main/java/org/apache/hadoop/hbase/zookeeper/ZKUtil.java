@@ -123,7 +123,7 @@ public class ZKUtil {
     }
     int timeout = conf.getInt(HConstants.ZK_SESSION_TIMEOUT,
         HConstants.DEFAULT_ZK_SESSION_TIMEOUT);
-    LOG.debug(descriptor + " opening connection to ZooKeeper with ensemble (" +
+    LOG.info(descriptor + " opening connection to ZooKeeper with ensemble (" +
         ensemble + ")");
     int retry = conf.getInt("zookeeper.recovery.retry", 3);
     int retryIntervalMillis =

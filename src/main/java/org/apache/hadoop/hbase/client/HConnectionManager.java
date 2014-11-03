@@ -1009,8 +1009,8 @@ public class HConnectionManager {
         throw new IllegalArgumentException(
             "table name cannot be null or zero length");
       }
-      ensureZookeeperTrackers();
       if (Bytes.equals(tableName, HConstants.ROOT_TABLE_NAME)) {
+        ensureZookeeperTrackers();
         try {
           ServerName servername = this.rootRegionTracker.waitRootRegionLocation(this.rpcTimeout);
           LOG.debug("Looked up root region location, connection=" + this +
@@ -1491,7 +1491,6 @@ public class HConnectionManager {
       } else {
         rsName = Addressing.createHostAndPortStr(hostname, port);
       }
-      ensureZookeeperTrackers();
       // See if we already have a connection (common case)
       server = this.servers.get(rsName);
       if (server == null) {
@@ -1503,6 +1502,7 @@ public class HConnectionManager {
           server = this.servers.get(rsName);
           if (server == null) {
             try {
+              ensureZookeeperTrackers();
               // Only create isa when we need to.
               InetSocketAddress address = isa != null? isa:
                 new InetSocketAddress(hostname, port);
