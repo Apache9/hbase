@@ -60,6 +60,7 @@ import org.apache.hadoop.hbase.regionserver.wal.HLogKey;
 import org.apache.hadoop.hbase.regionserver.wal.WALEdit;
 import org.apache.hadoop.hbase.replication.ReplicationZookeeper;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hbase.util.FSUtils;
 import org.apache.hadoop.hbase.util.Threads;
 import org.apache.hadoop.ipc.RemoteException;
 import org.apache.zookeeper.KeeperException;
@@ -484,8 +485,22 @@ public class ReplicationSource extends Thread
     long seenEntries = 0;
     this.repLogReader.seek();
     long persitionBeforeRead = this.repLogReader.getPosition();
-    HLog.Entry entry =
-        this.repLogReader.readNextAndSetPosition(this.entriesArray, this.currentNbEntries);
+
+    HLog.Entry entry = null;
+    try {
+      entry = this.repLogReader.readNextAndSetPosition(this.entriesArray, this.currentNbEntries);
+    } catch(EOFException e) {
+      if(!currentWALisBeingWrittenTo) {
+        FSUtils.getInstance(this.fs, this.conf).recoverFileLease(this.fs, this.currentPath, this.conf);
+        FileStatus stat = this.fs.getFileStatus(this.currentPath);
+
+        if( this.repLogReader.getReaderPosition() >= 0 && this.repLogReader.getReaderPosition() == stat.getLen()) {
+          return processEndOfFile();
+        }
+      }
+      throw e;
+    }
+
     while (entry != null) {
       WALEdit edit = entry.getEdit();
       this.metrics.logEditsReadRate.inc(1);

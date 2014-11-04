@@ -19,12 +19,11 @@
  */
 package org.apache.hadoop.hbase.replication;
 
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FSDataInputStream;
+import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.HBaseConfiguration;
@@ -34,11 +33,20 @@ import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.MediumTests;
 import org.apache.hadoop.hbase.regionserver.wal.HLog;
 import org.apache.hadoop.hbase.regionserver.wal.HLogKey;
+import org.apache.hadoop.hbase.regionserver.wal.SequenceFileLogWriter;
 import org.apache.hadoop.hbase.regionserver.wal.WALEdit;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hbase.util.FSUtils;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+
+import java.io.EOFException;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.fail;
 
 @Category(MediumTests.class)
 public class TestReplicationSource {
@@ -105,6 +113,47 @@ public class TestReplicationSource {
 
     assertNull(entry);
 
+  }
+
+  @Test
+  public void testRecoverLeaseFromNotClosedLog() throws Exception {
+
+    Path logPath = new Path(logDir, "log");
+    if (!FS.exists(logDir)) FS.mkdirs(logDir);
+
+    HLog.Writer writer = HLog.createWriter(FS, logPath, conf);
+    for(int i = 0; i < 5; i++) {
+      byte[] b = Bytes.toBytes(Integer.toString(i));
+      KeyValue kv = new KeyValue(b,b,b);
+      WALEdit edit = new WALEdit();
+      edit.add(kv);
+      HLogKey key = new HLogKey(b, b, 0, 0, HConstants.DEFAULT_CLUSTER_ID);
+      HLog.Entry entry = new HLog.Entry(key, edit);
+      writer.append(entry);
+    }
+    SequenceFileLogWriter sequenceFileLogWriter = (SequenceFileLogWriter) writer;
+    sequenceFileLogWriter.getWriterFSDataOutputStream().writeInt(10);
+    sequenceFileLogWriter.getWriterFSDataOutputStream().hsync();
+
+    long fileLen = FS.getFileStatus(logPath).getLen();
+    assertEquals(fileLen, 0);
+
+    HLog.Reader reader = HLog.getReader(FS, logPath, conf);
+    for(int i = 0; i< 5; ++i) {
+      HLog.Entry entry = reader.next();
+      assertNotNull(entry);
+    }
+
+    try {
+      HLog.Entry entry = new HLog.Entry();
+      reader.next(entry);
+      fail("not catch EOFException");
+    }catch (EOFException eofException) {
+    }
+
+    FSUtils.getInstance(FS, conf).recoverFileLease(FS, logPath, conf);
+    fileLen = FS.getFileStatus(logPath).getLen();
+    assertEquals(reader.getPosition(), fileLen);
   }
 
   @org.junit.Rule

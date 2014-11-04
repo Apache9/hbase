@@ -146,4 +146,14 @@ public class ReplicationHLogReaderManager {
     }
   }
 
+  /**
+   * Return the read position
+   */
+  public long getReaderPosition() throws IOException {
+    if(this.reader == null) {
+      return -1;
+    }
+    return this.reader.getPosition();
+  }
+
 }
