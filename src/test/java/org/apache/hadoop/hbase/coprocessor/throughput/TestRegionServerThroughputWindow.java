@@ -44,12 +44,12 @@ public class TestRegionServerThroughputWindow {
 
   @Test
   public void testGenerateTableStatStr() throws Exception {
-    ConcurrentHashMap<byte[], AtomicLong> a = new ConcurrentHashMap<byte[], AtomicLong>();
-    a.put(Bytes.toBytes("a"), new AtomicLong(3L));
-    a.put(Bytes.toBytes("b"), new AtomicLong(2L));
-    a.put(Bytes.toBytes("c"), new AtomicLong(4L));
-    a.put(Bytes.toBytes("d"), new AtomicLong(0L));
-    a.put(Bytes.toBytes("e"), new AtomicLong(10L));
+    ConcurrentHashMap<String, AtomicLong> a = new ConcurrentHashMap<String, AtomicLong>();
+    a.put("a", new AtomicLong(3L));
+    a.put("b", new AtomicLong(2L));
+    a.put("c", new AtomicLong(4L));
+    a.put("d", new AtomicLong(0L));
+    a.put("e", new AtomicLong(10L));
     Assert.assertEquals(window.generateTableStatStr(a), "e:10;c:4;a:3;b:2;d:0;");
   }
 

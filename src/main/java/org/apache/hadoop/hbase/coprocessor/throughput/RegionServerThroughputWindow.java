@@ -44,8 +44,8 @@ import org.apache.hadoop.hbase.util.Bytes;
   private final long maxReadNum;
   private final long maxWriteNum;
 
-  private ConcurrentHashMap<byte[], AtomicLong> tableReadMap = new ConcurrentHashMap<byte[], AtomicLong>();
-  private ConcurrentHashMap<byte[], AtomicLong> tableWriteMap = new ConcurrentHashMap<byte[], AtomicLong>();
+  private ConcurrentHashMap<String, AtomicLong> tableReadMap = new ConcurrentHashMap<String, AtomicLong>();
+  private ConcurrentHashMap<String, AtomicLong> tableWriteMap = new ConcurrentHashMap<String, AtomicLong>();
 
 
   private AtomicLong numRead = new AtomicLong(0);
@@ -112,11 +112,11 @@ import org.apache.hadoop.hbase.util.Bytes;
      check(tableName, requestType, 1);
    }
 
-   public static String generateTableStatStr(ConcurrentHashMap statMap) {
-     ArrayList<Map.Entry<byte[], AtomicLong>> ret =  new ArrayList<Map.Entry<byte[], AtomicLong>>();
+   public static String generateTableStatStr(ConcurrentHashMap<String, AtomicLong> statMap) {
+     ArrayList<Map.Entry<String, AtomicLong>> ret =  new ArrayList<Map.Entry<String, AtomicLong>>();
      ret.addAll(statMap.entrySet());
-     Collections.sort(ret, new Comparator<Map.Entry<byte[], AtomicLong>>() {
-      @Override public int compare(Map.Entry<byte[], AtomicLong> o1, Map.Entry<byte[], AtomicLong> o2) {
+     Collections.sort(ret, new Comparator<Map.Entry<String, AtomicLong>>() {
+      @Override public int compare(Map.Entry<String, AtomicLong> o1, Map.Entry<String, AtomicLong> o2) {
         if(o1.getValue().get() == o2.getValue().get())
           return 0;
         else  if(o1.getValue().get() > o2.getValue().get())
@@ -127,9 +127,9 @@ import org.apache.hadoop.hbase.util.Bytes;
     });
 
     StringBuffer sb = new StringBuffer();
-    for(Map.Entry<byte[], AtomicLong> entry : ret)
+    for(Map.Entry<String, AtomicLong> entry : ret)
     {
-      sb.append(Bytes.toString(entry.getKey()));
+      sb.append(entry.getKey());
       sb.append(":");
       sb.append(entry.getValue().get());
       sb.append(";");
@@ -145,7 +145,7 @@ import org.apache.hadoop.hbase.util.Bytes;
     }
 
     long currentRead = numRead.get();
-    if (currentRead > maxReadNum) {
+    if (currentRead >= maxReadNum) {
       String tableStatMsg = generateTableStatStr(tableReadMap);
       if(LOG.isInfoEnabled()) {
         LOG.info("currentRead:" +currentRead + " maxReadNum:" + maxReadNum + " Read exceed:" + tableStatMsg);
@@ -184,10 +184,10 @@ import org.apache.hadoop.hbase.util.Bytes;
 
   private void checkAfterRead(byte[] tableName, int n) throws  ThroughputExceededException {
     long currentRead = numRead.addAndGet(n);
-    AtomicLong tableReadNum = tableReadMap.get(tableName);
+    AtomicLong tableReadNum = tableReadMap.get(Bytes.toString(tableName));
     if (tableReadNum == null) {
-      tableReadNum = new AtomicLong(0);
-      tableReadNum = tableReadMap.putIfAbsent(tableName, tableReadNum);
+      tableReadNum = new AtomicLong(n);
+      tableReadNum = tableReadMap.putIfAbsent(Bytes.toString(tableName), tableReadNum);
       if (tableReadNum != null) {
         tableReadNum.addAndGet(n);
       }
@@ -206,11 +206,10 @@ import org.apache.hadoop.hbase.util.Bytes;
       throw new ThroughputExceededException("The request will be rejected due to exceeding maxWriteQps, currentWrite=" + currentWrite
           + " maxWriteNum="+maxWriteNum +" timestamp=" + System.currentTimeMillis());
     }
-
-    AtomicLong tableWriteNum = tableWriteMap.get(tableName);
+    AtomicLong tableWriteNum = tableWriteMap.get(Bytes.toString(tableName));
     if (tableWriteNum == null) {
-      tableWriteNum = new AtomicLong(0);
-      tableWriteNum = tableWriteMap.putIfAbsent(tableName, tableWriteNum);
+      tableWriteNum = new AtomicLong(n);
+      tableWriteNum = tableWriteMap.putIfAbsent(Bytes.toString(tableName), tableWriteNum);
       if (tableWriteNum != null) {
         tableWriteNum.addAndGet(n);
       }
