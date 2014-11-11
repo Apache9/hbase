@@ -54,7 +54,7 @@ public class SaltedTableInputFormat extends TableInputFormat {
     // user passed slots
     byte[] slotsValue = scan.getAttribute(SaltedHTable.SLOTS_IN_SCAN); 
     if (slotsValue == null) {
-      slots = SaltedHTable.getKeySalter(table.getConnection(), table.getTableName()).getAllSalts();
+      slots = SaltedHTable.getKeySalter(table).getAllSalts();
     } else {
       SlotsWritable slotsWritable = new SlotsWritable();
       Writables.getWritable(slotsValue, slotsWritable);

@@ -689,11 +689,13 @@ public class HConnectionManager {
       if (managed) {
         throw new IOException("The connection has to be unmanaged.");
       }
-      KeySalter salter = SaltedHTable.getKeySalter(this, tableName);
+      
+      HTableInterface table = new HTable(tableName, this, pool);
+      KeySalter salter = SaltedHTable.getKeySalter(table);
       if (salter == null) {
-        return new HTable(tableName, this, pool);
+        return table;
       } else {
-        return new SaltedHTable(new HTable(tableName, this, pool), salter);
+        return new SaltedHTable(table, salter);
       }
     }
 

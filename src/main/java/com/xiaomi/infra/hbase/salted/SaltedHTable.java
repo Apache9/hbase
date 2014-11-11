@@ -36,8 +36,6 @@ import org.apache.hadoop.hbase.client.Append;
 import org.apache.hadoop.hbase.client.Check;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Get;
-import org.apache.hadoop.hbase.client.HConnection;
-import org.apache.hadoop.hbase.client.HConnectionManager;
 import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.client.Increment;
 import org.apache.hadoop.hbase.client.Mutation;
@@ -70,8 +68,7 @@ public class SaltedHTable implements HTableInterface{
   private HTableInterface table;
 
   public SaltedHTable(HTableInterface table) throws IOException {
-    this(table, getKeySalter(HConnectionManager.getConnection(table.getConfiguration()),
-      table.getTableName()));
+    this(table, getKeySalter(table));
   }
   
   public SaltedHTable(HTableInterface table, KeySalter salter) {
@@ -764,13 +761,15 @@ public class SaltedHTable implements HTableInterface{
   
   // TODO : how to update the cache when recreated a table with salted attribute modified.
   //        Currently, we must restart the client to know the salted attribute change.
-  public static KeySalter getKeySalter(HConnection connection, byte[] tableName) throws IOException {
-    ImmutableBytesWritable tableNameAsKey = new ImmutableBytesWritable(tableName);
+  public static KeySalter getKeySalter(HTableInterface hTable) throws IOException {
+    // tables with the same name in different clusters may have different slats attributes, we
+    // use the full table name as key to cache table descriptor
+    ImmutableBytesWritable tableNameAsKey = new ImmutableBytesWritable(hTable.getFullTableName());
     if (saltedTables.containsKey(tableNameAsKey)) {
       KeySalter salter = saltedTables.get(tableNameAsKey);
       return salter instanceof NotKeySalter ? null : salter;
     } else {
-      HTableDescriptor desc = connection.getHTableDescriptor(tableName);
+      HTableDescriptor desc = hTable.getTableDescriptor();
       if (desc.isSalted()) {
         KeySalter salter = createKeySalter(desc.getKeySalter(), desc.getSlotsCount());
         saltedTables.put(tableNameAsKey, salter);
