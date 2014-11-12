@@ -624,6 +624,9 @@ public final class HConstants {
 
   public static final float HFILE_BLOCK_CACHE_SIZE_DEFAULT = 0.25f;
 
+  // used when want to test the read performance of pure persistent storage
+  public static final String CACHE_META_BLOCK_ONLY_KEY = "cache.meta.block.only";
+  
   /*
     * Minimum percentage of free heap necessary for a successful cluster startup.
     */

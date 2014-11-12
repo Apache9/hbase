@@ -43,8 +43,10 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.io.HeapSize;
 import org.apache.hadoop.hbase.io.encoding.DataBlockEncoding;
+import org.apache.hadoop.hbase.io.hfile.BlockType.BlockCategory;
 import org.apache.hadoop.hbase.io.hfile.CachedBlock.BlockPriority;
 import org.apache.hadoop.hbase.io.hfile.bucket.BucketCache;
 import org.apache.hadoop.hbase.regionserver.metrics.SchemaMetrics;
@@ -195,6 +197,8 @@ public class LruBlockCache implements BlockCache, HeapSize {
   /** Where to send victims (blocks evicted from the cache) */
   private BucketCache victimHandler = null;
 
+  private boolean cacheMetaBlockOnly;
+  
   /**
    * Default constructor.  Specify maximum size and expected average block
    * size (approximation is fine).
@@ -207,6 +211,8 @@ public class LruBlockCache implements BlockCache, HeapSize {
    */
   public LruBlockCache(long maxSize, long blockSize, Configuration conf) {
     this(maxSize, blockSize, true, conf);
+    // only this constructor will be used in non-test code
+    this.cacheMetaBlockOnly = conf.getBoolean(HConstants.CACHE_META_BLOCK_ONLY_KEY, false);
   }
 
   /**
@@ -301,6 +307,10 @@ public class LruBlockCache implements BlockCache, HeapSize {
    */
   @Override
   public void cacheBlock(BlockCacheKey cacheKey, Cacheable buf, boolean inMemory) {
+    if (cacheMetaBlockOnly && buf.getBlockType().getCategory() == BlockCategory.DATA) {
+      return;
+    }
+    
     CachedBlock cb = map.get(cacheKey);
     if(cb != null) {
       // compare the contents, if they are not equal, we are in big trouble
