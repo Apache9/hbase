@@ -66,7 +66,7 @@ public class ScannerCallable extends ServerCallable<Result[]> {
   // indicate if it is a remote server call
   protected boolean isRegionServerRemote = true;
   private long callSeq = 0;
-  private boolean useCallSeq = true;
+  private static boolean useCallSeq = true;
 
   /**
    * @param connection which connection
