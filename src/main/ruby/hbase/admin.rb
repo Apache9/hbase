@@ -202,6 +202,18 @@ module Hbase
     end
 
     #----------------------------------------------------------------------------------------------
+    # Creates a Galaxy SDS table
+    def galaxy_create(schema_file)
+      # Fail if schema file does not exist
+      raise(ArgumentError, "Schema file does not exist") unless File.exist?(schema_file)
+
+      schemaJson = org.apache.commons.io.IOUtils.toString(java.io.FileReader.new(schema_file));
+      tableSchema = com.xiaomi.infra.galaxy.sds.core.schema.TableSchema.fromJson(schemaJson);
+      htd = tableSchema.toHTableDescriptor();
+      @admin.createTable(htd);
+    end
+
+    #----------------------------------------------------------------------------------------------
     # Creates a table
     def create(table_name, *args)
       # Fail if table name is not a string
@@ -466,6 +478,32 @@ module Hbase
           sleep 1
       end while status != nil && status.getFirst() != 0
       puts "Done."
+    end
+
+    #----------------------------------------------------------------------------------------------
+    # Change Galaxy SDS table schema
+    def galaxy_alter(table_name, schema_file, wait = true)
+      # Table name should be a string
+      raise(ArgumentError, "Table name must be of type String") unless table_name.kind_of?(String)
+
+      # Table should exist
+      raise(ArgumentError, "Can't find a table: #{table_name}") unless exists?(table_name)
+
+      # Fail if schema file does not exist
+      raise(ArgumentError, "Schema file does not exist") unless File.exist?(schema_file)
+
+      schemaJson = org.apache.commons.io.IOUtils.toString(java.io.FileReader.new(schema_file));
+      tableSchema = com.xiaomi.infra.galaxy.sds.core.schema.TableSchema.fromJson(schemaJson);
+      htd = tableSchema.toHTableDescriptor();
+
+      # Table name should not be altered
+      raise(ArgumentError, "Table name could not be altered") unless table_name.eql?(htd.getNameAsString())
+
+      @admin.modifyTable(table_name.to_java_bytes, htd)
+      if wait == true
+        puts "Updating table with the new schema..."
+        alter_status(table_name)
+      end
     end
 
     #----------------------------------------------------------------------------------------------
