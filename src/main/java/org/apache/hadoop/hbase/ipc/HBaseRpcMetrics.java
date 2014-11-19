@@ -115,6 +115,8 @@ public class HBaseRpcMetrics implements Updater {
       new MetricsIntValue("replicationCallQueueLen", registry);
   public final MetricsIntValue activeRpcCount =
       new MetricsIntValue("activeRpcCount", registry);
+  public final MetricsTimeVaryingInt callFailures =
+      new MetricsTimeVaryingInt("callFailures", registry);
 
   private void initMethods(Class<? extends VersionedProtocol> protocol) {
     for (Method m : protocol.getDeclaredMethods()) {
