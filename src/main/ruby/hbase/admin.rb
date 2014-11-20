@@ -207,9 +207,9 @@ module Hbase
       # Fail if schema file does not exist
       raise(ArgumentError, "Schema file does not exist") unless File.exist?(schema_file)
 
-      schemaJson = org.apache.commons.io.IOUtils.toString(java.io.FileReader.new(schema_file));
-      tableSchema = com.xiaomi.infra.galaxy.sds.core.schema.TableSchema.fromJson(schemaJson);
-      htd = tableSchema.toHTableDescriptor();
+      schema_json = org.apache.commons.io.IOUtils.toString(java.io.FileReader.new(schema_file));
+      table_schema = com.xiaomi.infra.galaxy.sds.core.schema.TableSchema.fromJson(schema_json);
+      htd = table_schema.toHTableDescriptor();
       @admin.createTable(htd);
     end
 
@@ -436,6 +436,37 @@ module Hbase
     end
 
     #----------------------------------------------------------------------------------------------
+    # Returns Galaxy SDS table's structure description
+    def galaxy_describe(table_name, schema_file)
+      # Table name should be a string
+      raise(ArgumentError, "Table name must be of type String") unless table_name.kind_of?(String)
+
+      # Table should exist
+      raise(ArgumentError, "Can't find a table: #{table_name}") unless exists?(table_name)
+
+      # Fail if schema file path does not exist
+      if schema_file != nil
+        raise(ArgumentError, "Schema file path does not exist") unless File.exist?(File.dirname(schema_file))
+      end
+
+      htd = @admin.getTableDescriptor(table_name.to_java_bytes)
+      table_schema = com.xiaomi.infra.galaxy.sds.core.schema.TableSchema.fromHTableDescriptor(htd)
+      json_string = table_schema.toJson(true)
+      if schema_file != nil
+        begin
+          file_handle = File.new(schema_file, "w")
+          file_handle.puts json_string
+        rescue
+          raise "Failed to write #{schema_file}"
+        ensure
+          file_handle.close
+        end
+      else
+        puts "table #{table_name} schema is:", json_string
+      end
+    end
+
+    #----------------------------------------------------------------------------------------------
     # Returns table's structure description
     def describe(table_name)
       @admin.getTableDescriptor(table_name.to_java_bytes)
@@ -492,9 +523,9 @@ module Hbase
       # Fail if schema file does not exist
       raise(ArgumentError, "Schema file does not exist") unless File.exist?(schema_file)
 
-      schemaJson = org.apache.commons.io.IOUtils.toString(java.io.FileReader.new(schema_file));
-      tableSchema = com.xiaomi.infra.galaxy.sds.core.schema.TableSchema.fromJson(schemaJson);
-      htd = tableSchema.toHTableDescriptor();
+      schema_json = org.apache.commons.io.IOUtils.toString(java.io.FileReader.new(schema_file));
+      table_schema = com.xiaomi.infra.galaxy.sds.core.schema.TableSchema.fromJson(schema_json);
+      htd = table_schema.toHTableDescriptor();
 
       # Table name should not be altered
       raise(ArgumentError, "Table name could not be altered") unless table_name.eql?(htd.getNameAsString())

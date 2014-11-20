@@ -237,11 +237,12 @@ Shell.load_command_group(
     exists
     list
     show_filters
+    alter_status
+    alter_async
     galaxy_create
     galaxy_alter
     galaxy_alter_async
-    alter_status
-    alter_async
+    galaxy_describe
   ]
 )
 
