@@ -191,7 +191,7 @@ public abstract class ServerCallable<T> implements Callable<T> {
           if (hrl != null) {
             getConnection().clearCaches(hrl.getHostnamePort());
           }
-        } else if (t instanceof NotServingRegionException && numRetries == 1) {
+        } else if (t instanceof NotServingRegionException) {
           // Purge cache entries for this specific region from META cache
           // since we don't call connect(true) when number of retries is 1.
           getConnection().deleteCachedRegionLocation(location);
@@ -262,8 +262,7 @@ public abstract class ServerCallable<T> implements Callable<T> {
    * @return Calculate how long a single call took
    */
   private long singleCallDuration(final long expectedSleep) {
-    return (EnvironmentEdgeManager.currentTimeMillis() - this.globalStartTime)
-      + MIN_RPC_TIMEOUT + expectedSleep;
+    return (EnvironmentEdgeManager.currentTimeMillis() - this.globalStartTime) + expectedSleep;
   }
 
   private static Throwable translateException(Throwable t) throws IOException {
