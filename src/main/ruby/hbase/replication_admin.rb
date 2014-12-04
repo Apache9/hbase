@@ -33,8 +33,8 @@ module Hbase
 
     #----------------------------------------------------------------------------------------------
     # Add a new peer cluster to replicate to
-    def add_peer(id, cluster_key, peer_state = nil, peer_tableCFs = nil)
-      @replication_admin.addPeer(id, cluster_key, peer_state, peer_tableCFs)
+    def add_peer(id, cluster_key, peer_state = nil, peer_tableCFs = nil, peer_bandwith = nil)
+      @replication_admin.addPeer(id, cluster_key, peer_state, peer_tableCFs, peer_bandwith)
     end
 
     #----------------------------------------------------------------------------------------------
@@ -80,9 +80,20 @@ module Hbase
     end
 
     #----------------------------------------------------------------------------------------------
+    # Show the current bandwidth config for the specified peer
+    def show_peer_bandwidth(id)
+      @replication_admin.getPeerBandwidth(id)
+    end
+
+    #----------------------------------------------------------------------------------------------
     # Set new tableCFs config for the specified peer
     def set_peer_tableCFs(id, tableCFs)
       @replication_admin.setPeerTableCFs(id, tableCFs)
+    end
+
+    # Set new bandwidth config for the specified peer
+    def set_peer_bandwidth(id, bandwidth)
+      @replication_admin.setPeerBandwidth(id, bandwidth)
     end
 
     #----------------------------------------------------------------------------------------------

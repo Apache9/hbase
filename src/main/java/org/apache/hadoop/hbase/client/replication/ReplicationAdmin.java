@@ -136,9 +136,15 @@ public class ReplicationAdmin implements Closeable {
 
   public void addPeer(String id, String clusterKey, String peerState, String tableCFs)
     throws IOException {
-    checkTableCFs(tableCFs);
-    this.replicationZk.addPeer(id, clusterKey, peerState, tableCFs);
+    addPeer(id, clusterKey, peerState, tableCFs, 0l);
   }
+  
+  public void addPeer(String id, String clusterKey, String peerState, String tableCFs,
+      Long bandwidth) throws IOException {
+    checkTableCFs(tableCFs);
+    this.replicationZk.addPeer(id, clusterKey, peerState, tableCFs, bandwidth);    
+  }
+  
   /**
    * Removes a peer cluster and stops the replication to it.
    * @param id a short that identifies the cluster
@@ -202,6 +208,11 @@ public class ReplicationAdmin implements Closeable {
     return this.replicationZk.getTableCFsStr(id);
   }
 
+  public long getPeerBandwidth(String id)
+      throws IOException, KeeperException {
+      return this.replicationZk.getPeerBandwidthFromZK(id);
+    }
+  
   /**
    * Set the replicable table-cf config of the specified peer
    * @param id a short that identifies the cluster
@@ -210,6 +221,10 @@ public class ReplicationAdmin implements Closeable {
     throws IOException {
     checkTableCFs(tableCFs);
     this.replicationZk.setTableCFsStr(id, tableCFs);
+  }
+  
+  public void setPeerBandwidth(String id, Long bandwidth) throws IOException {
+    this.replicationZk.setPeerBandwidth(id, bandwidth);
   }
 
   /**

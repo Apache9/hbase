@@ -25,6 +25,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -52,13 +53,15 @@ public class ReplicationPeer implements Abortable {
   private final AtomicBoolean peerEnabled = new AtomicBoolean();
   private Map<String, List<String>> tableCFs =
     new HashMap<String, List<String>>();
+  private AtomicLong bandwidth = new AtomicLong();
   // Cannot be final since a new object needs to be recreated when session fails
   private ZooKeeperWatcher zkw;
   private final Configuration conf;
 
   private PeerStateTracker peerStateTracker;
   private TableCFsTracker tableCFsTracker;
-
+  private BandwidthTracker bandwidthTracker;
+  
   /**
    * Constructor that takes all the objects required to communicate with the
    * specified peer, except for the region server addresses.
@@ -73,7 +76,7 @@ public class ReplicationPeer implements Abortable {
     this.id = id;
     this.reloadZkWatcher();
   }
-
+  
   /**
    * start a state tracker to check whether this peer is enabled or not
    *
@@ -107,6 +110,11 @@ public class ReplicationPeer implements Abortable {
     this.peerEnabled.set(PeerState.ENABLED.equals(PeerState
         .valueOf(currentState)));
   }
+  
+  private void readBandwidthZnode() {
+    String currentBandwidth = Bytes.toString(bandwidthTracker.getData(false));
+    this.bandwidth.set(Long.parseLong(currentBandwidth));
+  }
 
   /**
    * start a table-cfs tracker to listen the (table, cf-list) map change
@@ -136,6 +144,27 @@ public class ReplicationPeer implements Abortable {
     this.readTableCFsZnode();
   }
 
+  // TODO : reuse the common code among startStateTracker/startTableCFsTracker/startBandwidthTracker
+  public void startBandwidthTracker(ZooKeeperWatcher zookeeper, String bandwidthNode)
+      throws KeeperException {
+    int times = 500;
+    while (ZKUtil.checkExists(zookeeper, bandwidthNode) == -1 && times-- > 0) {
+      try {
+        Thread.sleep(10);
+      } catch (InterruptedException e) {}
+    }
+
+    if (ZKUtil.checkExists(zookeeper, bandwidthNode) == -1) {
+      LOG.error("wait 5s for client to create" + bandwidthNode + " but failed!" +
+          " give up startBandwidthTracker for this peer");
+      return;
+    }
+
+    this.bandwidthTracker = new BandwidthTracker(bandwidthNode, zookeeper, this);
+    this.bandwidthTracker.start();
+    this.readBandwidthZnode();
+  }
+  
   private void readTableCFsZnode() {
     String currentTableCFs = Bytes.toString(tableCFsTracker.getData(false));
 
@@ -204,6 +233,10 @@ public class ReplicationPeer implements Abortable {
    */
   public Map<String, List<String>> getTableCFs() {
     return this.tableCFs;
+  }
+  
+  public long getBandwidth() {
+    return this.bandwidth.get();
   }
 
   /**
@@ -304,6 +337,22 @@ public class ReplicationPeer implements Abortable {
       if (path.equals(node)) {
         super.nodeDataChanged(path);
         readTableCFsZnode();
+      }
+    }
+  }
+  
+  public class BandwidthTracker extends ZooKeeperNodeTracker {
+
+    public BandwidthTracker(String bandwidthZNode, ZooKeeperWatcher watcher,
+        Abortable abortable) {
+      super(watcher, bandwidthZNode, abortable);
+    }
+
+    @Override
+    public synchronized void nodeDataChanged(String path) {
+      if (path.equals(node)) {
+        super.nodeDataChanged(path);
+        readBandwidthZnode();
       }
     }
   }

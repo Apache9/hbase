@@ -111,6 +111,8 @@ public class ReplicationZookeeper {
   private String peerStateNodeName;
   // Name of zk node which stores peer's table-cfs
   private String tableCFsNodeName;
+  // Name of zk node which stores peer's bandwidth
+  private String bandwidthNodeName;
   private final Configuration conf;
   // Is this cluster replicating at the moment?
   private AtomicBoolean replicating;
@@ -169,6 +171,7 @@ public class ReplicationZookeeper {
         "zookeeper.znode.replication.peers.state", "peer-state");
     this.tableCFsNodeName = conf.get(
         "zookeeper.znode.replication.peers.tableCFs", "tableCFs");
+    this.bandwidthNodeName = conf.get("zookeeper.znode.replication.peers.bandwidth", "bandwidth");
     this.replicationStateNodeName =
         conf.get("zookeeper.znode.replication.state", "state");
     String rsZNodeName =
@@ -352,6 +355,7 @@ public class ReplicationZookeeper {
         otherClusterKey);
     peer.startStateTracker(this.zookeeper, this.getPeerStateNode(peerId));
     peer.startTableCFsTracker(this.zookeeper, this.getTableCFsNode(peerId));
+    peer.startBandwidthTracker(this.zookeeper, this.getBandwidthNode(peerId));
     return peer;
   }
 
@@ -405,10 +409,19 @@ public class ReplicationZookeeper {
   public void addPeer(String id, String clusterKey, String peerState,
       String tableCFs)
     throws IOException {
+    addPeer(id, clusterKey, peerState, tableCFs, 0l);
+  }
+  
+  public void addPeer(String id, String clusterKey, String peerState,
+      String tableCFs, Long bandwidth)
+    throws IOException {
     try {
       if (peerExists(id)) {
         throw new IllegalArgumentException("Cannot add existing peer");
       }
+      
+      bandwidth = checkAndGetPeerBandwidth(bandwidth);
+      
       // make sure the passed peerState is legal
       String state = (peerState == null) ? PeerState.ENABLED.name() : PeerState
           .valueOf(peerState).name();
@@ -419,6 +432,9 @@ public class ReplicationZookeeper {
       String tableCFsStr = (tableCFs == null) ? "" : tableCFs;
       ZKUtil.createAndWatch(this.zookeeper, getTableCFsNode(id),
           Bytes.toBytes(tableCFsStr));
+      
+      ZKUtil.createAndWatch(this.zookeeper, getBandwidthNode(id),
+        Bytes.toBytes(String.valueOf(bandwidth)));
       // There is a race b/w PeerWatcher and ReplicationZookeeper#add method to create the
       // peer-state znode. This happens while adding a peer.
       // The peer state data is set as "ENABLED" by default.
@@ -426,7 +442,7 @@ public class ReplicationZookeeper {
         Bytes.toBytes(state));
     } catch (KeeperException e) {
       throw new IOException("Unable to add peer", e);
-    }
+    }    
   }
 
   private boolean peerExists(String id) throws KeeperException {
@@ -504,6 +520,13 @@ public class ReplicationZookeeper {
     }
     return this.peerClusters.get(id).getPeerEnabled().get();
   }
+  
+  public long getPeerBandwidth(String id) {
+    if (!this.peerClusters.containsKey(id)) {
+      throw new IllegalArgumentException("peer " + id + " is not registered");
+    }
+    return this.peerClusters.get(id).getBandwidth();
+  }
 
   private String getPeerStateNode(String id) {
     return ZKUtil.joinZNode(this.peersZNode,
@@ -544,6 +567,34 @@ public class ReplicationZookeeper {
       throw new IOException("Unable to change table-cfs of the peer " + id, e);
     }
   }
+  
+  public void setPeerBandwidth(String id, Long bandwidth) throws IOException {
+    try {
+      if (!peerExists(id)) {
+        throw new IllegalArgumentException("peer " + id + " is not registered");
+      }
+      bandwidth = checkAndGetPeerBandwidth(bandwidth);
+      
+      String bandwidthNode = getBandwidthNode(id);
+      
+      // compatible with old peers without bandwidth zk nodes
+      if (ZKUtil.checkExists(this.zookeeper, bandwidthNode) != -1) {
+        ZKUtil.setData(this.zookeeper, bandwidthNode, Bytes.toBytes(String.valueOf(bandwidth)));
+      } else {
+        ZKUtil.createAndWatch(zookeeper, bandwidthNode, Bytes.toBytes(String.valueOf(bandwidth)));
+      }
+    } catch (KeeperException e) {
+      throw new IOException("Unable to change bandwidth of the peer " + id, e);
+    }
+  }
+  
+  private Long checkAndGetPeerBandwidth(Long bandwidth) {
+    bandwidth = bandwidth == null ? 0 : bandwidth;
+    if (bandwidth < 0) {
+      throw new IllegalArgumentException("bandwidth should not be negative");
+    }
+    return bandwidth;
+  }
 
   /**
    * Get table-cfs string of the peer.
@@ -559,6 +610,12 @@ public class ReplicationZookeeper {
     return Bytes.toString(tableCFsBytes);
   }
 
+  public long getPeerBandwidthFromZK(String id) throws KeeperException {
+    byte[] bandwidthBytes = ZKUtil
+        .getData(this.zookeeper, getBandwidthNode(id));
+    return bandwidthBytes != null ? Long.parseLong(Bytes.toString(bandwidthBytes)) : 0;
+  }
+  
   /**
    * Get the replicable (table, cf-list) map of given peer.
    * used by ReplicationPeer/ReplicationSource
@@ -578,6 +635,11 @@ public class ReplicationZookeeper {
   private String getTableCFsNode(String id) {
     return ZKUtil.joinZNode(this.peersZNode,
         ZKUtil.joinZNode(id, this.tableCFsNodeName));
+  }
+  
+  private String getBandwidthNode(String id) {
+    return ZKUtil.joinZNode(this.peersZNode,
+      ZKUtil.joinZNode(id, this.bandwidthNodeName));
   }
 
   /**

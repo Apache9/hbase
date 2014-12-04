@@ -145,6 +145,8 @@ public class ReplicationSource extends Thread
   private ReplicationHLogReaderManager repLogReader;
   // throttler
   private ReplicationThrottler throttler;
+  private long defaultBandwidth;
+  private long currentBandwidth;
   private HConnection sharedHtableCon = null;
   // Indicates if the non-replicable edits need to be removed (for galaxy-sds)
   private boolean tableNotFoundEditsRemove;
@@ -182,8 +184,6 @@ public class ReplicationSource extends Thread
     for (int i = 0; i < this.replicationQueueNbCapacity; i++) {
       this.entriesArray[i] = new HLog.Entry();
     }
-    long bandwidth = this.conf.getLong("replication.source.per.peer.node.bandwidth", 0);
-    this.throttler = new ReplicationThrottler((double)bandwidth/10.0);
     this.maxRetriesMultiplier = this.conf.getInt("replication.source.maxretriesmultiplier", 10);
     this.socketTimeoutMultiplier = this.conf.getInt("replication.source.socketTimeoutMultiplier",
         maxRetriesMultiplier * maxRetriesMultiplier);
@@ -210,6 +210,15 @@ public class ReplicationSource extends Thread
 
     // Finally look if this is a recovered queue
     this.checkIfQueueRecovered(peerClusterZnode);
+
+    // TODO : add replication throttler metrics
+    defaultBandwidth = this.conf.getLong("replication.source.per.peer.node.bandwidth", 0);
+    currentBandwidth = getCurrentBandwidth(this.zkHelper.getPeerBandwidth(peerId), defaultBandwidth);
+    this.throttler = new ReplicationThrottler((double)currentBandwidth / 10.0);
+    LOG.info("peerClusterZnode=" + peerClusterZnode + ", ReplicationSource : " + peerId
+        + " inited, replicationQueueSizeCapacity=" + replicationQueueSizeCapacity
+        + ", replicationQueueNbCapacity=" + replicationQueueNbCapacity + ", curerntBandwidth="
+        + this.currentBandwidth);
   }
 
   // The passed znode will be either the id of the peer cluster or
@@ -795,6 +804,23 @@ public class ReplicationSource extends Thread
     }
   }
 
+  private long getCurrentBandwidth(long peerBandwidth, long defaultBandwidth) {
+    return peerBandwidth != 0 ? peerBandwidth : defaultBandwidth;
+  }
+  
+  private void checkBandwidthChangeAndResetThrottler() {
+    long peerBandwidth = zkHelper.getPeerBandwidth(peerId);
+    if (peerBandwidth != currentBandwidth) {
+      // user can set peer bandwidth to 0 to use default bandwidth
+      if (peerBandwidth != 0 || currentBandwidth != defaultBandwidth) {
+        currentBandwidth = getCurrentBandwidth(peerBandwidth, defaultBandwidth);
+        this.throttler = new ReplicationThrottler((double)currentBandwidth / 10.0);
+        LOG.info("ReplicationSource : " + peerId
+            + " bandwidth throttling changed, currentBandWidth=" + currentBandwidth);
+      }
+    }
+  }
+  
   /**
    * Do the shipping logic
    * @param currentWALisBeingWrittenTo was the current WAL being (seemingly)
@@ -814,6 +840,7 @@ public class ReplicationSource extends Thread
         continue;
       }
       try {
+        checkBandwidthChangeAndResetThrottler();
         if (this.throttler.isEnabled()) {
           long sleepTicks = this.throttler.getNextSleepInterval(currentSize);
           if (sleepTicks > 0) {
