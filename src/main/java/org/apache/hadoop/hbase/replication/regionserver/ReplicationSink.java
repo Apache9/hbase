@@ -36,6 +36,8 @@ import org.apache.hadoop.hbase.regionserver.wal.WALEdit;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.Stoppable;
 
+import com.xiaomi.infra.hbase.salted.SaltedHTable;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -213,7 +215,13 @@ public class ReplicationSink {
     try {
       table = this.sharedHtableCon.getTable(tableName);
       for (List<Row> rows : allRows) {
-        table.batch(rows);
+        // for salted table, the hash prefix has been added to rowkey in source cluster, should put
+        // directly in replication
+        if (table instanceof SaltedHTable) {
+          ((SaltedHTable)table).getRawTable().batch(rows);
+        } else {
+          table.batch(rows);
+        }
         this.metrics.appliedOpsRate.inc(rows.size());
       }
     } catch (InterruptedException ix) {

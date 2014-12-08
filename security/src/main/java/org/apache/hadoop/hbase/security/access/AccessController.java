@@ -619,6 +619,7 @@ public class AccessController extends BaseRegionObserver
     if (!preserveACL) {
       AccessControlLists.removeTablePermissions(c.getEnvironment()
           .getConfiguration(), tableName);
+      this.authManager.getZKPermissionWatcher().deleteTableACLNode(tableName);
     }
   }
 
