@@ -29,8 +29,11 @@ import java.util.List;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.HColumnDescriptor;
+import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.MediumTests;
 import org.apache.hadoop.hbase.client.Delete;
@@ -44,8 +47,11 @@ import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
+import org.apache.hadoop.hbase.client.replication.ReplicationAdmin;
 import org.apache.hadoop.hbase.filter.CompareFilter.CompareOp;
+import org.apache.hadoop.hbase.replication.ReplicationZookeeper.PeerState;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hbase.util.Threads;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -57,7 +63,7 @@ import org.junit.experimental.categories.Category;
 @Category(MediumTests.class)
 public class TestSaltedHTable {
   final Log LOG = LogFactory.getLog(getClass());
-  private final static HBaseTestingUtility TEST_UTIL = new HBaseTestingUtility();
+  private static HBaseTestingUtility TEST_UTIL;
   private static HConnection connection;
   
   private static final byte[] TEST_TABLE = Bytes.toBytes("test");
@@ -87,6 +93,9 @@ public class TestSaltedHTable {
    */
   @BeforeClass
   public static void setUpBeforeClass() throws Exception {
+    Configuration conf = HBaseConfiguration.create();
+    conf.setBoolean(HConstants.REPLICATION_ENABLE_KEY, true);
+    TEST_UTIL = new HBaseTestingUtility(conf);
     TEST_UTIL.startMiniCluster();
     connection = HConnectionManager.createConnection(TEST_UTIL.getConfiguration());
   }
@@ -419,6 +428,54 @@ public class TestSaltedHTable {
     Result result = saltedHTable.get(get);
     byte[] actualValue = result.getValue(TEST_FAMILY, qualifierCol1);
     assertArrayEquals(expectedValue, actualValue);
+  }
+
+  @Test
+  public void testReplication() throws Exception {
+    Configuration conf1 = HBaseConfiguration.create();
+    conf1.set(HConstants.ZOOKEEPER_ZNODE_PARENT, "/1");
+    conf1.setBoolean(HConstants.REPLICATION_ENABLE_KEY, true);
+
+    HBaseTestingUtility utility1 = new HBaseTestingUtility(conf1);
+    utility1.startMiniZKCluster();
+    utility1.startMiniCluster(2);
+    
+    TEST_UTIL.deleteTable(TEST_TABLE);
+    HTableDescriptor tableDesc = getSaltedHTableDescriptor(10);
+    tableDesc.getFamily(TEST_FAMILY).setScope(1);
+    admin.createTable(tableDesc);
+    
+    HBaseAdmin admin1 = new HBaseAdmin(utility1.getConfiguration());
+    admin1.createTable(tableDesc);
+    ReplicationAdmin repAdmin = new ReplicationAdmin(TEST_UTIL.getConfiguration());
+    repAdmin.addPeer("10", utility1.getClusterKey(), PeerState.ENABLED.toString(), Bytes.toString(TEST_TABLE));
+    
+    // write data to source cluster
+    HTableInterface table = connection.getTable(TEST_TABLE);
+    HConnection connection1 = HConnectionManager.createConnection(utility1.getConfiguration());
+    HTableInterface table1 = connection1.getTable(TEST_TABLE);
+    
+    Put put = new Put(ROW_A).add(TEST_FAMILY, qualifierCol1, bytes1);
+    table.put(put);
+    Threads.sleep(10000); // wait to replicate to peer cluster
+    Get get = new Get(ROW_A);
+    Result result = table1.get(get);
+    Assert.assertTrue(!result.isEmpty());    
+    
+    // delete data from source cluster
+    Delete delete = new Delete(ROW_A).deleteColumns(TEST_FAMILY, qualifierCol1);
+    table.delete(delete);
+    Threads.sleep(10000); // wait to replicate to peer cluster
+    get = new Get(ROW_A);
+    result = table1.get(get);
+    Assert.assertTrue(result.isEmpty());    
+    
+    table.close();
+    table1.close();
+    admin1.close();
+    connection1.close();
+    utility1.shutdownMiniCluster();    
+    repAdmin.close();
   }
 }
 
