@@ -42,11 +42,14 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.filter.ParseFilter;
+import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.thrift.CallQueue;
 import org.apache.hadoop.hbase.thrift.CallQueue.Call;
 import org.apache.hadoop.hbase.thrift.ThriftMetrics;
 import org.apache.hadoop.hbase.thrift2.generated.THBaseService;
 import org.apache.hadoop.hbase.util.InfoServer;
+import org.apache.hadoop.hbase.util.Strings;
+import org.apache.hadoop.net.DNS;
 import org.apache.hadoop.util.GenericOptionsParser;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
@@ -297,6 +300,15 @@ public class ThriftServer {
         log.error("Could not parse the value provided for the infoport option", e);
         printUsage();
         System.exit(1);
+      }
+
+      // login the server principal (if using secure Hadoop)
+      if (User.isSecurityEnabled() && User.isHBaseSecurityEnabled(conf)) {
+        String machineName = Strings.domainNamePointerToHostName(
+          DNS.getDefaultHost(conf.get("hbase.thrift.dns.interface", "default"),
+            conf.get("hbase.thrift.dns.nameserver", "default")));
+        User.login(conf, "hbase.thrift.keytab.file",
+            "hbase.thrift.kerberos.principal", machineName);
       }
 
       // Put up info server.
