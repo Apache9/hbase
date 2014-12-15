@@ -20,20 +20,20 @@
 
 module Shell
   module Commands
-    class GalaxyAlterAsync < Command
+    class GalaxyCreateSlave < Command
       def help
         return <<-EOF
-Alter Galaxy SDS table schema, doesn't wait for its finish.
-Pass table name and a new schema file path with json format.
+Create a new Galaxy SDS table and set slave flag; pass a schema file path with
+json format.
 
 Example:
-  hbase> galaxy_alter_async 't1', 't1.json'
+  hbase> galaxy_create_slave 't1.json'
 EOF
       end
 
-      def command(table, schema_file)
+      def command(schema_file)
         format_simple_command do
-          admin.galaxy_alter(table, schema_file, false, false)
+          admin.galaxy_create(schema_file, true)
         end
       end
     end

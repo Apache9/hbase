@@ -33,7 +33,7 @@ EOF
 
       def command(table, schema_file)
         format_simple_command do
-          admin.galaxy_alter(table, schema_file, true)
+          admin.galaxy_alter(table, schema_file, true, false)
         end
       end
     end

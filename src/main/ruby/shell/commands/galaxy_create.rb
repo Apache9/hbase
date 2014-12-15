@@ -32,7 +32,7 @@ EOF
 
       def command(schema_file)
         format_simple_command do
-          admin.galaxy_create(schema_file)
+          admin.galaxy_create(schema_file, false)
         end
       end
     end
