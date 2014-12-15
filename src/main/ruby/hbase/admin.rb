@@ -203,12 +203,13 @@ module Hbase
 
     #----------------------------------------------------------------------------------------------
     # Creates a Galaxy SDS table
-    def galaxy_create(schema_file)
+    def galaxy_create(schema_file, slave = false)
       # Fail if schema file does not exist
       raise(ArgumentError, "Schema file does not exist") unless File.exist?(schema_file)
 
       schema_json = org.apache.commons.io.IOUtils.toString(java.io.FileReader.new(schema_file));
       table_schema = com.xiaomi.infra.galaxy.sds.core.schema.TableSchema.fromJson(schema_json);
+      table_schema.setIsSlave(slave);
       htd = table_schema.toHTableDescriptor();
       @admin.createTable(htd);
     end
@@ -513,7 +514,7 @@ module Hbase
 
     #----------------------------------------------------------------------------------------------
     # Change Galaxy SDS table schema
-    def galaxy_alter(table_name, schema_file, wait = true)
+    def galaxy_alter(table_name, schema_file, wait = true, slave = false)
       # Table name should be a string
       raise(ArgumentError, "Table name must be of type String") unless table_name.kind_of?(String)
 
@@ -525,6 +526,7 @@ module Hbase
 
       schema_json = org.apache.commons.io.IOUtils.toString(java.io.FileReader.new(schema_file));
       table_schema = com.xiaomi.infra.galaxy.sds.core.schema.TableSchema.fromJson(schema_json);
+      table_schema.setIsSlave(slave);
       htd = table_schema.toHTableDescriptor();
 
       # Table name should not be altered

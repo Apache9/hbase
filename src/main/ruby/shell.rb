@@ -240,8 +240,11 @@ Shell.load_command_group(
     alter_status
     alter_async
     galaxy_create
+    galaxy_create_slave
     galaxy_alter
+    galaxy_alter_slave
     galaxy_alter_async
+    galaxy_alter_async_slave
     galaxy_describe
   ]
 )
