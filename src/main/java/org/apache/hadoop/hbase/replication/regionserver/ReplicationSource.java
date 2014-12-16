@@ -112,6 +112,9 @@ public class ReplicationSource extends Thread
   private HLog.Reader reader;
   // Last position in the log that we sent to ZooKeeper
   private long lastLoggedPosition = -1;
+  // number edits whose postions we have not sent to ZooKeeper
+  private long unLoggedPositionEdits = 0;
+
   // Path of the current log
   private volatile Path currentPath;
   private FileSystem fs;
@@ -430,6 +433,13 @@ public class ReplicationSource extends Thread
       currentSize = 0;
       try {
         if (readAllEntriesToReplicateOrNextFile(currentWALisBeingWrittenTo)) {
+          // at the end of the log
+          if (this.isActive() && this.lastLoggedPosition != this.repLogReader.getPosition()) {
+            this.manager.logPositionAndCleanOldLogs(oldPath, this.peerClusterZnode,
+              this.repLogReader.getPosition(), queueRecovered, currentWALisBeingWrittenTo);
+            this.lastLoggedPosition = 0;
+            this.unLoggedPositionEdits = 0;
+          }
           continue;
         }
       } catch (IOException ioe) {
@@ -465,10 +475,11 @@ public class ReplicationSource extends Thread
       // wait a bit and retry.
       // But if we need to stop, don't bother sleeping
       if (this.isActive() && (gotIOE || currentNbEntries == 0)) {
-        if (this.lastLoggedPosition != this.repLogReader.getPosition()) {
+        if ((this.repLogReader.getPosition() - this.lastLoggedPosition) >= this.replicationQueueSizeCapacity) {
           this.manager.logPositionAndCleanOldLogs(this.currentPath,
               this.peerClusterZnode, this.repLogReader.getPosition(), queueRecovered, currentWALisBeingWrittenTo);
           this.lastLoggedPosition = this.repLogReader.getPosition();
+          this.unLoggedPositionEdits = 0;
         }
         if (sleepForRetries("Nothing to replicate", sleepMultiplier)) {
           sleepMultiplier++;
@@ -479,6 +490,19 @@ public class ReplicationSource extends Thread
       shipEdits(currentWALisBeingWrittenTo);
     }
     uninitialize();
+  }
+
+  /**
+   * Check if log position is needed to avoid too many write operations to zookeeper
+   */
+  private boolean shouldLogPosition(long logPostion) {
+    if ((logPostion - this.lastLoggedPosition) >= this.replicationQueueSizeCapacity) {
+      return true;
+    }
+    if (unLoggedPositionEdits >= this.replicationQueueNbCapacity) {
+      return true;
+    }
+    return false;
   }
 
   /**
@@ -866,10 +890,12 @@ public class ReplicationSource extends Thread
           LOG.debug("Replicating " + currentNbEntries);
         }
         rrs.replicateLogEntries(Arrays.copyOf(this.entriesArray, currentNbEntries));
-        if (this.lastLoggedPosition != this.repLogReader.getPosition()) {
+        this.unLoggedPositionEdits += currentNbEntries;
+        if (shouldLogPosition(this.repLogReader.getPosition())) {
           this.manager.logPositionAndCleanOldLogs(this.currentPath,
               this.peerClusterZnode, this.repLogReader.getPosition(), queueRecovered, currentWALisBeingWrittenTo);
           this.lastLoggedPosition = this.repLogReader.getPosition();
+          this.unLoggedPositionEdits = 0;
         }
         if (this.throttler.isEnabled()) {
           this.throttler.addPushSize(currentSize);

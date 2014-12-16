@@ -416,6 +416,9 @@ public class ReplicationZookeeper {
       String tableCFs, Long bandwidth)
     throws IOException {
     try {
+      if (id.indexOf("-") >= 0) {
+        throw new IllegalArgumentException("peerId should not contain '-', but is: " + id);
+      }
       if (peerExists(id)) {
         throw new IllegalArgumentException("Cannot add existing peer");
       }
