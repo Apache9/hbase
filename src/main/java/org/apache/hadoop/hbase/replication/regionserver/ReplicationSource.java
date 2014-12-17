@@ -910,7 +910,9 @@ public class ReplicationSource extends Thread
           LOG.debug("Replicated in total: " + this.totalReplicatedEdits);
         }
         break;
-      } catch (IOException ioe) {
+      } catch (Exception ioe) {
+        // also retry when NPE in HBaseClient(https://phabricator.d.xiaomi.net/T2630) so that
+        // retain the context to help to fix bug
         // Didn't ship anything, but must still age the last time we did
         this.metrics.refreshAgeOfLastShippedOp();
         if (ioe instanceof RemoteException) {

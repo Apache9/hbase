@@ -287,6 +287,7 @@ public class HBaseClient {
         remoteId.getAddress().toString() +
         ((ticket==null)?" from an unknown user": (" from " + ticket.getName())));
       this.setDaemon(true);
+      LOG.info("create connection, name=" + this.getName() + ", connection hash code:" + this.hashCode());
     }
 
     /** Update lastActivity with the current time. */
@@ -621,10 +622,22 @@ public class HBaseClient {
         int dataLength = d.getLength();
         // fill in the placeholder
         Bytes.putInt(data, 0, dataLength - 4);
-        //noinspection SynchronizeOnNonFinalField
-        synchronized (this.out) { // FindBugs IS2_INCONSISTENT_SYNC
-          out.write(data, 0, dataLength);
-          out.flush();
+        try {
+          // noinspection SynchronizeOnNonFinalField
+          synchronized (this.out) { // FindBugs IS2_INCONSISTENT_SYNC
+            out.write(data, 0, dataLength);
+            out.flush();
+          }
+        } catch (NullPointerException e) {
+          // add debug info for NPE, see:https://phabricator.d.xiaomi.net/T2630; will delete the
+          // code after bug fixed
+          LOG.error(
+            "NEP in sendParam, connection hash code:" + this.hashCode() + ", name="
+                + this.getName() + ", this.in=" + this.in + ", this.out=" + this.out
+                + ", this.socket=" + this.socket + ", isFailServer="
+                + failedServers.isFailedServer(remoteId.getAddress()) + ", shouldCloseConnection="
+                + this.shouldCloseConnection.get(), e);
+          throw e;
         }
       } catch(IOException e) {
         markClosed(e);
@@ -742,8 +755,7 @@ public class HBaseClient {
         // cleanup calls
         cleanupCalls();
       }
-      if (LOG.isDebugEnabled())
-        LOG.debug(getName() + ": closed");
+      LOG.info(getName() + ": closed, connection hash code:" + this.hashCode());
     }
 
     /* Cleanup all calls and mark them as done */
