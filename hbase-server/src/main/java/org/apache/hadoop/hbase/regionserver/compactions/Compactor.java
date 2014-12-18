@@ -60,6 +60,8 @@ public abstract class Compactor {
   private int compactionKVMax;
   protected Compression.Algorithm compactionCompression;
 
+  private CompactionsThrottle peakCompactionsThrottle;
+
   //TODO: depending on Store is not good but, realistically, all compactors currently do.
   Compactor(final Configuration conf, final Store store) {
     this.conf = conf;
@@ -68,6 +70,7 @@ public abstract class Compactor {
       this.conf.getInt(HConstants.COMPACTION_KV_MAX, HConstants.COMPACTION_KV_MAX_DEFAULT);
     this.compactionCompression = (this.store.getFamily() == null) ?
         Compression.Algorithm.NONE : this.store.getFamily().getCompactionCompression();
+    this.peakCompactionsThrottle = new CompactionsThrottle(conf);
   }
 
   /**
@@ -219,6 +222,7 @@ public abstract class Compactor {
     }
     long now = 0;
     boolean hasMore;
+    peakCompactionsThrottle.startCompaction();
     do {
       hasMore = scanner.next(kvs, compactionKVMax);
       if (LOG.isDebugEnabled()) {
@@ -249,6 +253,7 @@ public abstract class Compactor {
             }
           }
         }
+        peakCompactionsThrottle.throttle(len);
       }
       // Log the progress of long running compactions every minute if
       // logging at DEBUG level
@@ -262,6 +267,8 @@ public abstract class Compactor {
       }
       kvs.clear();
     } while (hasMore);
+    peakCompactionsThrottle.finishCompaction(this.store.getRegionInfo().getRegionNameAsString(),
+      this.store.getFamily().getNameAsString());
     progress.complete();
     return true;
   }

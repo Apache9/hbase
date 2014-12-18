@@ -19,21 +19,21 @@ package org.apache.hadoop.hbase.regionserver.compactions;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.hbase.classification.InterfaceAudience;
+import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
 
 @InterfaceAudience.Private
-public abstract class OffPeakHours {
-  private static final Log LOG = LogFactory.getLog(OffPeakHours.class);
+public abstract class TimeOfDayTracker {
+  private static final Log LOG = LogFactory.getLog(TimeOfDayTracker.class);
 
-  public static final OffPeakHours DISABLED = new OffPeakHours() {
-    @Override public boolean isOffPeakHour() { return false; }
-    @Override public boolean isOffPeakHour(int targetHour) { return false; }
+  public static final TimeOfDayTracker DISABLED = new TimeOfDayTracker() {
+    @Override public boolean isHourInInterval() { return false; }
+    @Override public boolean isHourInInterval(int targetHour) { return false; }
   };
 
-  public static OffPeakHours getInstance(Configuration conf) {
-    int startHour = conf.getInt("hbase.offpeak.start.hour", -1);
-    int endHour = conf.getInt("hbase.offpeak.end.hour", -1);
+  public static TimeOfDayTracker getInstance(Configuration conf) {
+    int startHour = conf.getInt(CompactionConfiguration.HBASE_HSTORE_OFFPEAK_START_HOUR, -1);
+    int endHour = conf.getInt(CompactionConfiguration.HBASE_HSTORE_OFFPEAK_END_HOUR, -1);
     return getInstance(startHour, endHour);
   }
 
@@ -41,17 +41,15 @@ public abstract class OffPeakHours {
    * @param startHour inclusive
    * @param endHour exclusive
    */
-  public static OffPeakHours getInstance(int startHour, int endHour) {
+  public static TimeOfDayTracker getInstance(int startHour, int endHour) {
     if (startHour == -1 && endHour == -1) {
       return DISABLED;
     }
 
     if (! isValidHour(startHour) || ! isValidHour(endHour)) {
-      if (LOG.isWarnEnabled()) {
-        LOG.warn("Ignoring invalid start/end hour for peak hour : start = " +
-            startHour + " end = " + endHour +
-            ". Valid numbers are [0-23]");
-      }
+      LOG.warn("Ignoring invalid start/end hour for peak hour : start = " +
+          startHour + " end = " + endHour +
+          ". Valid numbers are [0-23]");
       return DISABLED;
     }
 
@@ -59,7 +57,7 @@ public abstract class OffPeakHours {
       return DISABLED;
     }
 
-    return new OffPeakHoursImpl(startHour, endHour);
+    return new TimeOfDayTrackerImpl(startHour, endHour);
   }
 
   private static boolean isValidHour(int hour) {
@@ -67,16 +65,16 @@ public abstract class OffPeakHours {
   }
 
   /**
-   * @return whether {@code targetHour} is off-peak hour
+   * @return whether the hour is within tracked interval
    */
-  public abstract boolean isOffPeakHour(int targetHour);
+  public abstract boolean isHourInInterval(int targetHour);
 
   /**
-   * @return whether it is off-peak hour
+   * @return whether the hour is within tracked interval
    */
-  public abstract boolean isOffPeakHour();
+  public abstract boolean isHourInInterval();
 
-  private static class OffPeakHoursImpl extends OffPeakHours {
+  private static class TimeOfDayTrackerImpl extends TimeOfDayTracker {
     final int startHour;
     final int endHour;
 
@@ -84,18 +82,18 @@ public abstract class OffPeakHours {
      * @param startHour inclusive
      * @param endHour exclusive
      */
-    OffPeakHoursImpl(int startHour, int endHour) {
+    TimeOfDayTrackerImpl(int startHour, int endHour) {
       this.startHour = startHour;
       this.endHour = endHour;
     }
 
     @Override
-    public boolean isOffPeakHour() {
-      return isOffPeakHour(CurrentHourProvider.getCurrentHour());
+    public boolean isHourInInterval() {
+      return isHourInInterval(CurrentHourProvider.getCurrentHour());
     }
 
     @Override
-    public boolean isOffPeakHour(int targetHour) {
+    public boolean isHourInInterval(int targetHour) {
       if (startHour <= endHour) {
         return startHour <= targetHour && targetHour < endHour;
       }

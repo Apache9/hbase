@@ -19,7 +19,6 @@
 package org.apache.hadoop.hbase.regionserver;
 
 import java.io.IOException;
-import java.io.FileNotFoundException;
 import java.io.InterruptedIOException;
 import java.net.InetSocketAddress;
 import java.security.Key;
@@ -45,7 +44,6 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -60,6 +58,7 @@ import org.apache.hadoop.hbase.RemoteExceptionHandler;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.Tag;
 import org.apache.hadoop.hbase.TagType;
+import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.io.compress.Compression;
 import org.apache.hadoop.hbase.io.crypto.Cipher;
@@ -79,7 +78,7 @@ import org.apache.hadoop.hbase.regionserver.compactions.CompactionContext;
 import org.apache.hadoop.hbase.regionserver.compactions.CompactionProgress;
 import org.apache.hadoop.hbase.regionserver.compactions.CompactionRequest;
 import org.apache.hadoop.hbase.regionserver.compactions.DefaultCompactor;
-import org.apache.hadoop.hbase.regionserver.compactions.OffPeakHours;
+import org.apache.hadoop.hbase.regionserver.compactions.TimeOfDayTracker;
 import org.apache.hadoop.hbase.regionserver.wal.HLogUtil;
 import org.apache.hadoop.hbase.security.EncryptionUtil;
 import org.apache.hadoop.hbase.security.User;
@@ -176,7 +175,7 @@ public class HStore implements Store {
   final StoreEngine<?, ?, ?, ?> storeEngine;
 
   private static final AtomicBoolean offPeakCompactionTracker = new AtomicBoolean();
-  private final OffPeakHours offPeakHours;
+  private final TimeOfDayTracker offPeakHours;
 
   private static final int DEFAULT_FLUSH_RETRIES_NUMBER = 10;
   private int flushRetriesNumber;
@@ -237,7 +236,7 @@ public class HStore implements Store {
     // to clone it?
     scanInfo = new ScanInfo(family, ttl, timeToPurgeDeletes, this.comparator);
     this.memstore = new MemStore(conf, this.comparator);
-    this.offPeakHours = OffPeakHours.getInstance(conf);
+    this.offPeakHours = TimeOfDayTracker.getInstance(conf);
 
     // Setting up cache configuration for this family
     this.cacheConf = new CacheConfig(conf, family);
@@ -870,7 +869,7 @@ public class HStore implements Store {
     if (LOG.isInfoEnabled()) {
       LOG.info("Added " + sf + ", entries=" + r.getEntries() +
         ", sequenceid=" + logCacheFlushId +
-        ", filesize=" + StringUtils.humanReadableInt(r.length()));
+        ", filesize=" + StringUtils.byteDesc(r.length()));
     }
     return sf;
   }
@@ -1215,12 +1214,12 @@ public class HStore implements Store {
       for (StoreFile sf: sfs) {
         message.append(sf.getPath().getName());
         message.append("(size=");
-        message.append(StringUtils.humanReadableInt(sf.getReader().length()));
+        message.append(StringUtils.byteDesc(sf.getReader().length()));
         message.append("), ");
       }
     }
     message.append("total size for store is ")
-      .append(StringUtils.humanReadableInt(storeSize))
+      .append(StringUtils.byteDesc(storeSize))
       .append(". This selection was in queue for ")
       .append(StringUtils.formatTimeDiff(compactionStartTime, cr.getSelectionTime()))
       .append(", and took ").append(StringUtils.formatTimeDiff(now, compactionStartTime))
@@ -1280,7 +1279,7 @@ public class HStore implements Store {
       }
     }
 
-    this.replaceStoreFiles(inputStoreFiles, Collections.EMPTY_LIST);
+    this.replaceStoreFiles(inputStoreFiles, Collections.<StoreFile>emptyList());
     this.completeCompaction(inputStoreFiles);
   }
 
@@ -1398,7 +1397,7 @@ public class HStore implements Store {
         // Normal case - coprocessor is not overriding file selection.
         if (!compaction.hasSelection()) {
           boolean isUserCompaction = priority == Store.PRIORITY_USER;
-          boolean mayUseOffPeak = offPeakHours.isOffPeakHour() &&
+          boolean mayUseOffPeak = offPeakHours.isHourInInterval() &&
               offPeakCompactionTracker.compareAndSet(false, true);
           try {
             compaction.select(this.filesCompacting, isUserCompaction,
@@ -1498,7 +1497,7 @@ public class HStore implements Store {
     completeCompaction(delSfs);
     LOG.info("Completed removal of " + delSfs.size() + " unnecessary (expired) file(s) in "
         + this + " of " + this.getRegionInfo().getRegionNameAsString()
-        + "; total size for store is " + StringUtils.humanReadableInt(storeSize));
+        + "; total size for store is " + StringUtils.byteDesc(storeSize));
   }
 
   @Override

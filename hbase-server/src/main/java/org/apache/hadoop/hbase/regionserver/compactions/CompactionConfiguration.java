@@ -51,6 +51,16 @@ public class CompactionConfiguration {
   public static final String MIN_KEY = CONFIG_PREFIX + "min";
   public static final String MAX_KEY = CONFIG_PREFIX + "max";
 
+  public static final String HBASE_HSTORE_OFFPEAK_END_HOUR = "hbase.offpeak.end.hour";
+  public static final String HBASE_HSTORE_OFFPEAK_START_HOUR = "hbase.offpeak.start.hour";
+
+  public static final String HBASE_HSTORE_PEAK_COMPACTION_SPEED_ALLOWED =
+      "hbase.regionserver.compaction.peak.maxspeed";
+  public static final String HBASE_HSTORE_OFFPEAK_COMPACTION_SPEED_ALLOWED =
+      "hbase.regionserver.compaction.offpeak.maxspeed";
+  public static final String HBASE_HSTORE_COMPACTION_SPEED_CHECK_INTERVAL =
+      "hbase.regionserver.compaction.speed.check.interval";
+
   Configuration conf;
   StoreConfigInformation storeConfigInfo;
 
