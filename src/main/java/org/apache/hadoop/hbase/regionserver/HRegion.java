@@ -5136,7 +5136,7 @@ public class HRegion implements HeapSize { // , Writable{
       }
 
       // 4. acquire the region lock
-      lock(this.updatesLock.readLock(), acquiredLocks.size());
+      lock(this.updatesLock.readLock(), acquiredLocks.size() == 0 ? 1 : acquiredLocks.size());
       locked = true;
 
       // 5. Get a mvcc write number
