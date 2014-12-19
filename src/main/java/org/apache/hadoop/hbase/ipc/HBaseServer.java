@@ -265,6 +265,11 @@ public abstract class HBaseServer implements RpcServer {
   public static void bind(ServerSocket socket, InetSocketAddress address,
                           int backlog) throws IOException {
     try {
+      socket.setReuseAddress(true);
+    } catch (SocketException e) {
+      LOG.warn("socket is closed or insufficient permissions to setReuseAddress?", e);
+    }
+    try {
       socket.bind(address, backlog);
     } catch (BindException e) {
       BindException bindException =
