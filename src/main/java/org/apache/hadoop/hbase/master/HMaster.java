@@ -235,8 +235,8 @@ Server {
 
   private LoadBalancer balancer;
   private Thread balancerChore;
-  // If 'true', the balancer is 'on'.  If 'false', the balancer will not run.
-  private volatile boolean balanceSwitch = true;
+
+  private ClusterSwitchTracker clusterSwitches;
 
   private CatalogJanitor catalogJanitorChore;
   private LogCleaner logCleaner;
@@ -536,7 +536,7 @@ Server {
         ", sessionid=0x" +
         Long.toHexString(this.zooKeeper.getRecoverableZooKeeper().getSessionId()) +
         ", cluster-up flag was=" + wasUp);
-
+    this.clusterSwitches = new ClusterSwitchTracker(this.zooKeeper);
     // create the snapshot manager
     this.snapshotManager = new SnapshotManager(this, this.metrics);
   }
@@ -1203,7 +1203,7 @@ Server {
       return false;
     }
     // If balance not true, don't run balancer.
-    if (!this.balanceSwitch) return false;
+    if (!this.clusterSwitches.getBalanceSwitch()) return false;
     // Do this call outside of synchronized block.
     int maximumBalanceTime = getBalancerCutoffTime();
     long cutoffTime = System.currentTimeMillis() + maximumBalanceTime;
@@ -1295,7 +1295,7 @@ Server {
    * @return old balancer switch
    */
   public boolean switchBalancer(final boolean b, BalanceSwitchMode mode) {
-    boolean oldValue = this.balanceSwitch;
+    boolean oldValue = this.clusterSwitches.getBalanceSwitch();
     boolean newValue = b;
     try {
       if (this.cpHost != null) {
@@ -1303,11 +1303,12 @@ Server {
       }
       if (mode == BalanceSwitchMode.SYNC) {
         synchronized (this.balancer) {
-          this.balanceSwitch = newValue;
+          this.clusterSwitches.setBalanceSwitch(newValue);
         }
       } else {
-        this.balanceSwitch = newValue;
+        this.clusterSwitches.setBalanceSwitch(newValue);
       }
+      clusterSwitches.persistClusterSwitch();
       LOG.info("BalanceSwitch=" + newValue);
       if (this.cpHost != null) {
         this.cpHost.postBalanceSwitch(oldValue, newValue);
