@@ -1235,7 +1235,9 @@ Server {
           return false;
         }
       }
-
+      
+      this.balancer.setClusterStatus(getClusterStatus());
+      
       Map<String, Map<ServerName, List<HRegionInfo>>> assignmentsByTable =
         this.assignmentManager.getAssignmentsByTable();
 
