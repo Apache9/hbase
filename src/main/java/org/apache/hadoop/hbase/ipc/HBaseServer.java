@@ -389,7 +389,7 @@ public abstract class HBaseServer implements RpcServer {
           result.write(out);
         } else {
           WritableUtils.writeString(out, errorClass);
-          WritableUtils.writeString(out, error);
+          WritableUtils.writeString(out, error + "@" + bindAddress + port);
         }
       } catch (IOException e) {
         LOG.warn("Error sending response to call: ", e);
