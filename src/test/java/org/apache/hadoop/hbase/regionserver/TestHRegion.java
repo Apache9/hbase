@@ -3615,6 +3615,99 @@ public class TestHRegion extends HBaseTestCase {
     }
   }
 
+  public void testSplitRegionWithReverseScan() throws IOException {
+    byte [] tableName = Bytes.toBytes("testSplitRegionWithReverseScan");
+    byte [] qualifier = Bytes.toBytes("qualifier");
+    Configuration hc = initSplit();
+    int numRows = 3;
+    byte [][] families = {fam1};
+
+    //Setting up region
+    String method = this.getName();
+    this.region = initHRegion(tableName, method, hc, families);
+
+    //Put data in region
+    int startRow = 100;
+    putData(startRow, numRows, qualifier, families);
+    int splitRow = startRow + numRows;
+    putData(splitRow, numRows, qualifier, families);
+    int endRow = splitRow + numRows;
+    region.flushcache();
+
+    HRegion [] regions = null;
+    try {
+      regions = splitRegion(region, Bytes.toBytes("" + splitRow));
+      //Opening the regions returned.
+      for (int i = 0; i < regions.length; i++) {
+        regions[i] = openClosedRegion(regions[i]);
+      }
+      //Verifying that the region has been split
+      assertEquals(2, regions.length);
+
+      //Verifying that all data is still there and that data is in the right
+      //place
+      verifyData(regions[0], startRow, numRows, qualifier, families);
+      verifyData(regions[1], splitRow, numRows, qualifier, families);
+
+      //fire the reverse scan1:  top range, and larger than the last row
+      Scan scan = new Scan(Bytes.toBytes("108"));
+      scan.setReversed(true);
+      InternalScanner scanner = regions[1].getScanner(scan);
+      List<KeyValue> currRow = new ArrayList<KeyValue>();
+      boolean more = false;
+      int verify = 105;
+      do {
+        more = scanner.next(currRow);
+        assertEquals(Bytes.toString(currRow.get(0).getRow()), verify + "");
+        verify--;
+        currRow.clear();
+      } while(more);
+      assertEquals(verify, 102);
+      scanner.close();
+      //fire the reverse scan2:  top range, and equals to the last row
+      scan = new Scan(Bytes.toBytes("105"));
+      scan.setReversed(true);
+      scanner = regions[1].getScanner(scan);
+      verify = 105;
+      do {
+        more = scanner.next(currRow);
+        assertEquals(Bytes.toString(currRow.get(0).getRow()), verify + "");
+        verify--;
+        currRow.clear();
+      } while(more);
+      assertEquals(verify, 102);
+      scanner.close();
+      //fire the reverse scan3:  bottom range, and larger than the last row
+      scan = new Scan(Bytes.toBytes("103"));
+      scan.setReversed(true);
+      scanner = regions[0].getScanner(scan);
+      verify = 102;
+      do {
+        more = scanner.next(currRow);
+        assertEquals(Bytes.toString(currRow.get(0).getRow()), verify + "");
+        verify--;
+        currRow.clear();
+      } while(more);
+      assertEquals(verify, 99);
+      scanner.close();
+      //fire the reverse scan4:  bottom range, and equals to the last row
+      scan = new Scan(Bytes.toBytes("102"));
+      scan.setReversed(true);
+      scanner = regions[0].getScanner(scan);
+      verify = 102;
+      do {
+        more = scanner.next(currRow);
+        assertEquals(Bytes.toString(currRow.get(0).getRow()), verify + "");
+        verify--;
+        currRow.clear();
+      } while(more);
+      assertEquals(verify, 99);
+      scanner.close();
+    } finally {
+      HRegion.closeHRegion(this.region);
+      this.region = null;
+    }
+  }
 
   /**
    * Flushes the cache in a thread while scanning. The tests verify that the

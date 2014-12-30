@@ -175,18 +175,25 @@ public class HalfStoreFileReader extends StoreFile.Reader {
           byte[] fk = getFirstKey();
           // This will be null when the file is empty in which we can not seekBefore to any key
           if (fk == null) return false;
-          if (getComparator().compare(key, offset, length, fk, 0,
-              fk.length) <= 0) {
+          if (getComparator().compare(key, offset, length, fk, 0, fk.length) <= 0) {
             return false;
           }
         } else {
           // The equals sign isn't strictly necessary just here to be consistent with seekTo
           if (getComparator().compare(key, offset, length, splitkey, 0,
               splitkey.length) >= 0) {
-            return this.delegate.seekBefore(splitkey, 0, splitkey.length);
+            boolean ret = this.delegate.seekBefore(splitkey, 0, splitkey.length);
+            if (ret) {
+              atEnd = false;
+            }
+            return ret;
           }
         }
-        return this.delegate.seekBefore(key, offset, length);
+        boolean ret = this.delegate.seekBefore(key, offset, length);
+        if (ret) {
+          atEnd = false;
+        }
+        return ret;
       }
 
       public boolean seekTo() throws IOException {
