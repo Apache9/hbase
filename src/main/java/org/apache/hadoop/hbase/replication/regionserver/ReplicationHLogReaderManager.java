@@ -68,7 +68,6 @@ public class ReplicationHLogReaderManager {
       this.closeReader();
       this.reader = HLog.getReader(this.fs, path, this.conf);
       this.lastPath = path;
-      this.position = 0;
     } else {
       try {
         this.reader.reset();
@@ -139,6 +138,7 @@ public class ReplicationHLogReaderManager {
    * Tell the helper to reset internal state
    */
   public void finishCurrentFile() {
+    this.position = 0;
     try {
       this.closeReader();
     } catch (IOException e) {
