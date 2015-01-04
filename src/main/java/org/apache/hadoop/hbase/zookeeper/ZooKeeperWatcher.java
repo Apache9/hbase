@@ -54,6 +54,7 @@ import org.apache.zookeeper.data.ACL;
 public class ZooKeeperWatcher implements Watcher, Abortable {
   private static final Log LOG = LogFactory.getLog(ZooKeeperWatcher.class);
 
+  private String descriptor;
   // Identifier for this watcher (for logging only).  It is made of the prefix
   // passed on construction and the zookeeper sessionid.
   private String identifier;
@@ -103,6 +104,8 @@ public class ZooKeeperWatcher implements Watcher, Abortable {
   public String clusterIdZNode;
   // znode used for log splitting work assignment
   public String splitLogZNode;
+  // znode used for the status of cluster switches
+  public String clusterSwitchZNode;
 
   // Certain ZooKeeper nodes need to be world-readable
   public static final ArrayList<ACL> CREATOR_ALL_AND_WORLD_READABLE =
@@ -145,9 +148,10 @@ public class ZooKeeperWatcher implements Watcher, Abortable {
       this.constructorCaller = e;
     }
     this.quorum = ZKConfig.getZKQuorumServersString(conf);
+    this.descriptor = descriptor;
     // Identifier will get the sessionid appended later below down when we
     // handle the syncconnect event.
-    this.identifier = descriptor;
+    this.identifier =  this.descriptor + "-0x0";
     this.abortable = abortable;
     setNodeNames(conf);
     this.recoverableZooKeeper = ZKUtil.connect(conf, quorum, this, descriptor);
@@ -224,6 +228,8 @@ public class ZooKeeperWatcher implements Watcher, Abortable {
         conf.get("zookeeper.znode.clusterId", "hbaseid"));
     splitLogZNode = ZKUtil.joinZNode(baseZNode,
         conf.get("zookeeper.znode.splitlog", HConstants.SPLIT_LOGDIR_NAME));
+    clusterSwitchZNode = ZKUtil.joinZNode(baseZNode,
+      conf.get("zookeeper.znode.clusterSwitchZNode", "cluster-switch"));
   }
 
   /**
@@ -366,7 +372,7 @@ public class ZooKeeperWatcher implements Watcher, Abortable {
             this.constructorCaller);
           throw new NullPointerException("ZK is null");
         }
-        this.identifier = this.identifier + "-0x" +
+        this.identifier = this.descriptor + "-0x" +
           Long.toHexString(this.recoverableZooKeeper.getSessionId());
         // Update our identifier.  Otherwise ignore.
         LOG.debug(this.identifier + " connected");

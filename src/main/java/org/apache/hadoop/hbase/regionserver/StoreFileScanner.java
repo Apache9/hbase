@@ -406,6 +406,13 @@ public class StoreFileScanner implements KeyValueScanner {
           close();
           return false;
         }
+        if (hfs.getKeyValue() == null) {
+          // we should have fixed the NPE, but still it'd better leave a guard here
+          LOG.warn("StoreFileScanner.seekToPreviousRow cur==null, hfs:" + hfs + ",seeKey:"
+              + seekKey);
+          close();
+          return false;
+        }
         KeyValue firstKeyOfPreviousRow = KeyValue.createFirstOnRow(hfs
             .getKeyValue().getRow());
 

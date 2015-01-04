@@ -155,7 +155,7 @@ public abstract class SecureServer extends HBaseServer {
           result.write(out);
         } else {
           WritableUtils.writeString(out, errorClass);
-          WritableUtils.writeString(out, error);
+          WritableUtils.writeString(out, error + "@" + bindAddress + port);
         }
         if (((SecureConnection)connection).useWrap) {
           wrapWithSasl(buf);

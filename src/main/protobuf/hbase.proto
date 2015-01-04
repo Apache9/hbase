@@ -38,3 +38,8 @@ message SnapshotDescription {
   optional int32 version = 5;
   optional string owner = 6;
 }
+
+message ClusterSwitch {
+  optional bool balance =  1;
+  optional bool majorCompaction = 2;
+}

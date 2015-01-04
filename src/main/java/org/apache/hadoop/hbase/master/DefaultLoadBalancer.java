@@ -72,10 +72,10 @@ public class DefaultLoadBalancer implements LoadBalancer {
   private static final Log LOG = LogFactory.getLog(LoadBalancer.class);
   private static final Random RANDOM = new Random(System.currentTimeMillis());
   // slop for regions
-  private float slop;
-  private Configuration config;
-  private ClusterStatus status;
-  private MasterServices services;
+  protected float slop;
+  protected Configuration config;
+  protected ClusterStatus status;
+  protected MasterServices services;
 
   public void setClusterStatus(ClusterStatus st) {
     this.status = st;
