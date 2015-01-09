@@ -216,7 +216,14 @@ public class ReplicationSource extends Thread
 
     // TODO : add replication throttler metrics
     defaultBandwidth = this.conf.getLong("replication.source.per.peer.node.bandwidth", 0);
-    currentBandwidth = getCurrentBandwidth(this.zkHelper.getPeerBandwidth(peerId), defaultBandwidth);
+    try {
+      // the peer might be removed, must catch this exception; otherwise, NodeFailoverWorker in
+      // ReplicationSourceManager might fail to construct recovered ReplicationSource.
+      long peerBandwidth = this.zkHelper.getPeerBandwidth(peerId);
+      currentBandwidth = getCurrentBandwidth(peerBandwidth, defaultBandwidth);
+    } catch (IllegalArgumentException e) {
+      currentBandwidth = defaultBandwidth;
+    }
     this.throttler = new ReplicationThrottler((double)currentBandwidth / 10.0);
     LOG.info("peerClusterZnode=" + peerClusterZnode + ", ReplicationSource : " + peerId
         + " inited, replicationQueueSizeCapacity=" + replicationQueueSizeCapacity
