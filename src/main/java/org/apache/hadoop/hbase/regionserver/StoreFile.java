@@ -299,6 +299,15 @@ public class StoreFile extends SchemaConfigured {
     SchemaMetrics.configureGlobally(conf);
   }
 
+  public StoreFile(final StoreFile other) {
+    this.fs = other.fs;
+    this.path = other.path;
+    this.dataBlockEncoder = other.dataBlockEncoder;
+    this.cacheConf = other.cacheConf;
+    this.cfBloomType = other.cfBloomType;
+    this.modificationTimeStamp = other.modificationTimeStamp;
+  }
+
   /**
    * @return Path or null if this StoreFile was made with a Stream.
    */
