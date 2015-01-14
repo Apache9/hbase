@@ -465,6 +465,7 @@ public class HFileWriterV2 extends AbstractHFileWriter {
     finishClose(trailer);
 
     fsBlockWriter.releaseCompressor();
+    fsBlockWriter.closeCompressionStream();
   }
 
   @Override

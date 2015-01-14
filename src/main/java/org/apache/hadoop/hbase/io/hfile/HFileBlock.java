@@ -1158,6 +1158,17 @@ public class HFileBlock extends SchemaConfigured implements Cacheable {
     }
 
     /**
+     * Close the compression stream.
+     * Needs to be called before the writer is discarded.
+     */
+    public void closeCompressionStream() throws IOException{
+      if(this.compressionStream != null) {
+        this.compressionStream.close();
+        this.compressionStream = null;
+      }
+    }
+
+    /**
      * Returns the on-disk size of the data portion of the block. This is the
      * compressed size if compression is enabled. Can only be called in the
      * "block ready" state. Header is not compressed, and its size is not
