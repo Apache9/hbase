@@ -325,7 +325,7 @@ public abstract class HBaseServer implements RpcServer {
 
     @Override
     public String toString() {
-      return param.toString() + " from " + connection.toString();
+      return param + " from " + connection;
     }
 
     protected synchronized void setResponse(Object value, Status status,
