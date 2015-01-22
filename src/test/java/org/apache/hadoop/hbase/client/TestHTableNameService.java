@@ -150,10 +150,102 @@ public class TestHTableNameService {
 
     Assert.assertArrayEquals(Bytes.toBytes("test_table1"), hTable.getTableName());
 
-    Assert.assertNotNull(hTable.getConfiguration().get("hbase.zookeeper.quorum"));
-    Assert.assertFalse(
-      "localhost".equals(hTable.getConfiguration().get("hbase.zookeeper.quorum")));
+    Assert.assertEquals("10.235.3.55,10.235.3.57,10.235.3.67",
+      hTable.getConfiguration().get("hbase.zookeeper.quorum"));
     Assert.assertEquals("/hbase/dmtst-test",
+      hTable.getConfiguration().get("zookeeper.znode.parent"));
+    Assert.assertEquals(9800,
+      hTable.getConfiguration().getInt("hbase.zookeeper.property.clientPort", -1));
+
+    securityEnabled(hTable);
+
+    hTable.close();
+  }
+
+  @Test
+  public void testFullUriWithIndexName() throws IOException {
+    HTable hTable = new HTable(conf, "hbase://xmdm001tst-test:9800/", false);
+
+    Assert.assertArrayEquals(Bytes.toBytes(""), hTable.getTableName());
+
+    Assert.assertEquals("192.168.135.12,192.168.135.34,192.168.135.58",
+      hTable.getConfiguration().get("hbase.zookeeper.quorum"));
+    Assert.assertEquals("/hbase/xmdm001tst-test",
+      hTable.getConfiguration().get("zookeeper.znode.parent"));
+    Assert.assertEquals(9800,
+      hTable.getConfiguration().getInt("hbase.zookeeper.property.clientPort", -1));
+
+    securityEnabled(hTable);
+
+    hTable.close();
+
+    hTable = new HTable(conf, "hbase://dm001tst-test:9800/", false);
+
+    Assert.assertArrayEquals(Bytes.toBytes(""), hTable.getTableName());
+
+    Assert.assertEquals("10.235.3.55,10.235.3.57,10.235.3.69",
+      hTable.getConfiguration().get("hbase.zookeeper.quorum"));
+    Assert.assertEquals("/hbase/dm001tst-test",
+      hTable.getConfiguration().get("zookeeper.znode.parent"));
+    Assert.assertEquals(9800,
+      hTable.getConfiguration().getInt("hbase.zookeeper.property.clientPort", -1));
+
+    securityEnabled(hTable);
+
+    hTable.close();
+
+    hTable = new HTable(conf, "hbase://xmd1tst-test:9800/", false);
+
+    Assert.assertArrayEquals(Bytes.toBytes(""), hTable.getTableName());
+
+    Assert.assertEquals("192.168.135.12,192.168.135.34,192.168.135.59",
+      hTable.getConfiguration().get("hbase.zookeeper.quorum"));
+    Assert.assertEquals("/hbase/xmd1tst-test",
+      hTable.getConfiguration().get("zookeeper.znode.parent"));
+    Assert.assertEquals(9800,
+      hTable.getConfiguration().getInt("hbase.zookeeper.property.clientPort", -1));
+
+    securityEnabled(hTable);
+
+    hTable.close();
+
+    hTable = new HTable(conf, "hbase://xmd001tst-test:9800/", false);
+
+    Assert.assertArrayEquals(Bytes.toBytes(""), hTable.getTableName());
+
+    Assert.assertEquals("192.168.135.12,192.168.135.34,192.168.135.60",
+      hTable.getConfiguration().get("hbase.zookeeper.quorum"));
+    Assert.assertEquals("/hbase/xmd001tst-test",
+      hTable.getConfiguration().get("zookeeper.znode.parent"));
+    Assert.assertEquals(9800,
+      hTable.getConfiguration().getInt("hbase.zookeeper.property.clientPort", -1));
+
+    securityEnabled(hTable);
+
+    hTable.close();
+
+    hTable = new HTable(conf, "hbase://d1tst-test:9800/", false);
+
+    Assert.assertArrayEquals(Bytes.toBytes(""), hTable.getTableName());
+
+    Assert.assertEquals("10.235.3.55,10.235.3.57,10.235.3.70",
+      hTable.getConfiguration().get("hbase.zookeeper.quorum"));
+    Assert.assertEquals("/hbase/d1tst-test",
+      hTable.getConfiguration().get("zookeeper.znode.parent"));
+    Assert.assertEquals(9800,
+      hTable.getConfiguration().getInt("hbase.zookeeper.property.clientPort", -1));
+
+    securityEnabled(hTable);
+
+    hTable.close();
+
+    hTable = new HTable(conf, "hbase://d001tst-test:9800/", false);
+
+    Assert.assertArrayEquals(Bytes.toBytes(""), hTable.getTableName());
+
+    Assert.assertEquals("10.235.3.55,10.235.3.57,10.235.3.71",
+      hTable.getConfiguration().get("hbase.zookeeper.quorum"));
+    Assert.assertEquals("/hbase/d001tst-test",
       hTable.getConfiguration().get("zookeeper.znode.parent"));
     Assert.assertEquals(9800,
       hTable.getConfiguration().getInt("hbase.zookeeper.property.clientPort", -1));
