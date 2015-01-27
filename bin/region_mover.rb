@@ -91,8 +91,7 @@ end
 # Returns true if passed region is still on 'original' when we look at .META.
 def isSameServer(admin, r, original)
   server = getServerNameForRegion(admin, r)
-  return false unless server
-  return true unless original
+  return false unless server and original
   return server == original
 end
 
@@ -106,6 +105,7 @@ end
 # Get servername that is up in .META.; this is hostname + port + startcode comma-delimited.
 # Can return nil
 def getServerNameForRegion(admin, r)
+  return nil unless admin.isTableEnabled(r.getTableName)
   if r.isRootRegion()
     # Hack
     tracker = org.apache.hadoop.hbase.zookeeper.RootRegionTracker.new(admin.getConnection().getZooKeeperWatcher(), RubyAbortable.new())
@@ -128,6 +128,7 @@ def getServerNameForRegion(admin, r)
   g.addColumn(HConstants::CATALOG_FAMILY, HConstants::SERVER_QUALIFIER)
   g.addColumn(HConstants::CATALOG_FAMILY, HConstants::STARTCODE_QUALIFIER)
   result = table.get(g)
+  return nil unless result
   server = result.getValue(HConstants::CATALOG_FAMILY, HConstants::SERVER_QUALIFIER)
   startcode = result.getValue(HConstants::CATALOG_FAMILY, HConstants::STARTCODE_QUALIFIER)
   return nil unless server
@@ -141,8 +142,15 @@ def isSuccessfulScan(admin, r)
   scan.setBatch(1)
   scan.setCaching(1)
   scan.setFilter(FirstKeyOnlyFilter.new()) 
-  table = getTable(admin.getConfiguration(), r.getTableName()) 
-  scanner = table.getScanner(scan)
+  begin
+    table = getTable(admin.getConfiguration(), r.getTableName())
+    scanner = table.getScanner(scan)
+  rescue org.apache.hadoop.hbase.TableNotFoundException,
+      org.apache.hadoop.hbase.TableNotEnabledException => e
+    $LOG.warn("Region " + r.getEncodedName() + " belongs to recently " +
+      "deleted/disabled table. Skipping... " + e.message)
+    return
+  end
   begin
     results = scanner.next() 
     # We might scan into next region, this might be an empty table.
@@ -173,7 +181,8 @@ def move(admin, r, newServer, original)
     count = count + 1
     begin
       admin.move(Bytes.toBytes(r.getEncodedName()), Bytes.toBytes(newServer))
-    rescue java.lang.reflect.UndeclaredThrowableException => e
+    rescue java.lang.reflect.UndeclaredThrowableException,
+        org.apache.hadoop.hbase.UnknownRegionException => e
       $LOG.info("Exception moving "  + r.getEncodedName() +
         "; split/moved? Continuing: " + e)
       return
@@ -344,6 +353,8 @@ def unloadRegions(options, hostnamePort)
   movedRegions = java.util.ArrayList.new()
   while true
     rs = getRegions(config, servername)
+    # Remove those already tried to move
+    rs.removeAll(movedRegions)
     break if rs.length == 0
     $LOG.info("Moving " + rs.length.to_s + " region(s) from " + servername +
       " on " + servers.length.to_s + " servers using " + options[:maxthreads].to_s + " threads.")
