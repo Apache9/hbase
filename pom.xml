@@ -36,7 +36,7 @@
   <groupId>org.apache.hbase</groupId>
   <artifactId>hbase</artifactId>
   <packaging>jar</packaging>
-  <version>0.94.11-mdh1.2.30</version>
+  <version>0.94.11-mdh1.2.31</version>
   <name>HBase</name>
   <description>
     HBase is the &amp;lt;a href="http://hadoop.apache.org"&amp;rt;Hadoop&lt;/a&amp;rt; database. Use it when you need
@@ -1638,7 +1638,7 @@
       <properties>
         <hadoop.version>${hadoop-mdh.version}</hadoop.version>
         <slf4j.version>1.6.1</slf4j.version>
-        <galaxy-sds.version>1.2.6</galaxy-sds.version>
+        <galaxy-sds.version>1.2.8</galaxy-sds.version>
         <themis-coprocessor.version>1.0-SNAPSHOT</themis-coprocessor.version>
       </properties>
       <dependencies>
