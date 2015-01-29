@@ -71,7 +71,7 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
    */
   protected boolean isParallelSeekEnabled = false;
   protected ExecutorService seekExecutor;
-  private final Scan scan;
+  protected final Scan scan;
   private final NavigableSet<byte[]> columns;
   private final long oldestUnexpiredTS;
   private final int minVersions;
@@ -421,7 +421,9 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
           case INCLUDE_AND_SEEK_NEXT_COL:
 
             Filter f = matcher.getFilter();
-            outResult.add(f == null ? kv : f.transform(kv));
+            KeyValue resultKv = f == null ? kv : f.transform(kv);
+            checkScanOrder(outResult, resultKv, comparator);
+            outResult.add(resultKv);
             count++;
 
             if (qcode == ScanQueryMatcher.MatchCode.INCLUDE_AND_SEEK_NEXT_ROW) {
@@ -596,6 +598,11 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
     assert prevKV == null || comparator == null
         || comparator.compare(prevKV, kv) <= 0 : "Key " + prevKV
         + " followed by a " + "smaller key " + kv + " in cf " + store;
+  }
+
+  protected void checkScanOrder(List<KeyValue> resultList, KeyValue kv,
+      KeyValue.KVComparator comparator) throws IOException {
+    //nop inside StoreScanner class
   }
 
   protected synchronized boolean seekToNextRow(KeyValue kv) throws IOException {

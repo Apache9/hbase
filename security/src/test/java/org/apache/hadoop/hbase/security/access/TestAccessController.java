@@ -2010,7 +2010,7 @@ public class TestAccessController {
     verifyDenied(listTablesAction, USER_CREATE, USER_RW, USER_RO, USER_NONE, TABLE_ADMIN);
 
     verifyAllowed(getTableDescAction, SUPERUSER, USER_ADMIN, USER_CREATE, TABLE_ADMIN);
-    verifyDenied(getTableDescAction, USER_RW, USER_RO, USER_NONE);
+    verifyAllowed(getTableDescAction, USER_RW, USER_RO, USER_NONE);
   }
 
   @Test

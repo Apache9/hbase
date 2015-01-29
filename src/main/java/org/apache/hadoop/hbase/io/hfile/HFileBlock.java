@@ -256,14 +256,14 @@ public class HFileBlock extends SchemaConfigured implements Cacheable {
     this.uncompressedSizeWithoutHeader = uncompressedSizeWithoutHeader;
     this.prevBlockOffset = prevBlockOffset;
     this.buf = buf;
-    if (fillHeader)
-      overwriteHeader();
     this.offset = offset;
     this.includesMemstoreTS = includesMemstoreTS;
     this.minorVersion = minorVersion;
     this.bytesPerChecksum = bytesPerChecksum;
     this.checksumType = checksumType;
     this.onDiskDataSizeWithHeader = onDiskDataSizeWithHeader;
+    if (fillHeader)
+      overwriteHeader();
   }
 
   /**
@@ -354,6 +354,11 @@ public class HFileBlock extends SchemaConfigured implements Cacheable {
     buf.putInt(onDiskSizeWithoutHeader);
     buf.putInt(uncompressedSizeWithoutHeader);
     buf.putLong(prevBlockOffset);
+    if (minorVersion >= MINOR_VERSION_WITH_CHECKSUM) {
+      buf.put(checksumType);
+      buf.putInt(bytesPerChecksum);
+      buf.putInt(onDiskDataSizeWithHeader);
+    }
   }
 
   /**
@@ -481,12 +486,18 @@ public class HFileBlock extends SchemaConfigured implements Cacheable {
   public String toString() {
     return "blockType="
         + blockType
+        + ", minorVersion ="
+        + this.minorVersion
         + ", onDiskSizeWithoutHeader="
         + onDiskSizeWithoutHeader
         + ", uncompressedSizeWithoutHeader="
         + uncompressedSizeWithoutHeader
         + ", prevBlockOffset="
         + prevBlockOffset
+        + ", totalChecksumBytes="
+        + totalChecksumBytes()
+        + ", bytesPerChecksum = "
+        + bytesPerChecksum
         + ", dataBeginsWith="
         + Bytes.toStringBinary(buf.array(), buf.arrayOffset() + headerSize(),
             Math.min(32, buf.limit() - buf.arrayOffset() - headerSize()))
@@ -1251,10 +1262,10 @@ public class HFileBlock extends SchemaConfigured implements Cacheable {
     public HFileBlock getBlockForCaching() {
       return new HFileBlock(blockType, getOnDiskSizeWithoutHeader(),
           getUncompressedSizeWithoutHeader(), prevOffset,
-          getUncompressedBufferWithHeader(), DONT_FILL_HEADER, startOffset,
+          getUncompressedBufferWithHeader(), FILL_HEADER, startOffset,
           includesMemstoreTS, this.minorVersion,
           0, ChecksumType.NULL.getCode(),  // no checksums in cached data
-          onDiskBytesWithHeader.length + onDiskChecksum.length);
+          onDiskBytesWithHeader.length);
     }
   }
 

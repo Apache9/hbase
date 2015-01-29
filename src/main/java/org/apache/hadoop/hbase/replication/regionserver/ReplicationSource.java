@@ -112,6 +112,9 @@ public class ReplicationSource extends Thread
   private HLog.Reader reader;
   // Last position in the log that we sent to ZooKeeper
   private long lastLoggedPosition = -1;
+  // number edits whose postions we have not sent to ZooKeeper
+  private long unLoggedPositionEdits = 0;
+
   // Path of the current log
   private volatile Path currentPath;
   private FileSystem fs;
@@ -213,7 +216,14 @@ public class ReplicationSource extends Thread
 
     // TODO : add replication throttler metrics
     defaultBandwidth = this.conf.getLong("replication.source.per.peer.node.bandwidth", 0);
-    currentBandwidth = getCurrentBandwidth(this.zkHelper.getPeerBandwidth(peerId), defaultBandwidth);
+    try {
+      // the peer might be removed, must catch this exception; otherwise, NodeFailoverWorker in
+      // ReplicationSourceManager might fail to construct recovered ReplicationSource.
+      long peerBandwidth = this.zkHelper.getPeerBandwidth(peerId);
+      currentBandwidth = getCurrentBandwidth(peerBandwidth, defaultBandwidth);
+    } catch (IllegalArgumentException e) {
+      currentBandwidth = defaultBandwidth;
+    }
     this.throttler = new ReplicationThrottler((double)currentBandwidth / 10.0);
     LOG.info("peerClusterZnode=" + peerClusterZnode + ", ReplicationSource : " + peerId
         + " inited, replicationQueueSizeCapacity=" + replicationQueueSizeCapacity
@@ -394,8 +404,6 @@ public class ReplicationSource extends Thread
           sleepMultiplier++;
         }
         continue;
-      } else if (oldPath != null && !oldPath.getName().equals(getCurrentPath().getName())) {
-        this.manager.cleanOldLogs(getCurrentPath().getName(), this.peerId, this.queueRecovered);
       }
       boolean currentWALisBeingWrittenTo = false;
       //For WAL files we own (rather than recovered), take a snapshot of whether the
@@ -465,10 +473,11 @@ public class ReplicationSource extends Thread
       // wait a bit and retry.
       // But if we need to stop, don't bother sleeping
       if (this.isActive() && (gotIOE || currentNbEntries == 0)) {
-        if (this.lastLoggedPosition != this.repLogReader.getPosition()) {
+        if (shouldLogPosition(this.repLogReader.getPosition())) {
           this.manager.logPositionAndCleanOldLogs(this.currentPath,
               this.peerClusterZnode, this.repLogReader.getPosition(), queueRecovered, currentWALisBeingWrittenTo);
           this.lastLoggedPosition = this.repLogReader.getPosition();
+          this.unLoggedPositionEdits = 0;
         }
         if (sleepForRetries("Nothing to replicate", sleepMultiplier)) {
           sleepMultiplier++;
@@ -479,6 +488,19 @@ public class ReplicationSource extends Thread
       shipEdits(currentWALisBeingWrittenTo);
     }
     uninitialize();
+  }
+
+  /**
+   * Check if log position is needed to avoid too many write operations to zookeeper
+   */
+  private boolean shouldLogPosition(long logPostion) {
+    if ((logPostion - this.lastLoggedPosition) >= this.replicationQueueSizeCapacity) {
+      return true;
+    }
+    if (unLoggedPositionEdits >= this.replicationQueueNbCapacity) {
+      return true;
+    }
+    return false;
   }
 
   /**
@@ -595,6 +617,11 @@ public class ReplicationSource extends Thread
       if (this.currentPath == null) {
         this.currentPath = queue.poll(this.sleepForRetries, TimeUnit.MILLISECONDS);
         this.metrics.sizeOfLogQueue.set(queue.size());
+        if (this.currentPath != null) {
+          this.manager.cleanOldLogs(this.currentPath.getName(),
+              this.peerId,
+              this.queueRecovered);
+        }
       }
     } catch (InterruptedException e) {
       LOG.warn("Interrupted while reading edits", e);
@@ -866,10 +893,12 @@ public class ReplicationSource extends Thread
           LOG.debug("Replicating " + currentNbEntries);
         }
         rrs.replicateLogEntries(Arrays.copyOf(this.entriesArray, currentNbEntries));
-        if (this.lastLoggedPosition != this.repLogReader.getPosition()) {
+        this.unLoggedPositionEdits += currentNbEntries;
+        if (shouldLogPosition(this.repLogReader.getPosition())) {
           this.manager.logPositionAndCleanOldLogs(this.currentPath,
               this.peerClusterZnode, this.repLogReader.getPosition(), queueRecovered, currentWALisBeingWrittenTo);
           this.lastLoggedPosition = this.repLogReader.getPosition();
+          this.unLoggedPositionEdits = 0;
         }
         if (this.throttler.isEnabled()) {
           this.throttler.addPushSize(currentSize);
@@ -956,6 +985,13 @@ public class ReplicationSource extends Thread
    */
   protected boolean processEndOfFile() {
     if (this.queue.size() != 0) {
+      // at the end of the log
+      if (this.lastLoggedPosition != this.repLogReader.getPosition()) {
+        this.manager.logPositionAndCleanOldLogs(currentPath, this.peerClusterZnode,
+          this.repLogReader.getPosition(), queueRecovered, false);
+        this.lastLoggedPosition = 0;
+        this.unLoggedPositionEdits = 0;
+      }
       this.currentPath = null;
       this.repLogReader.finishCurrentFile();
       this.reader = null;

@@ -28,6 +28,8 @@ package org.apache.hadoop.hbase.regionserver.wal;
 interface Dictionary {
   static final byte NOT_IN_DICTIONARY = -1;
 
+  public void init(int initialSize);
+
   /**
    * Gets an entry from the dictionary.
    * 

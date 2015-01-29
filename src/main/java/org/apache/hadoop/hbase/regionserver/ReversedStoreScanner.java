@@ -27,6 +27,7 @@ import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.KeyValue.KVComparator;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.regionserver.Store.ScanInfo;
+import org.apache.hadoop.hbase.util.Bytes;
 
 /**
  * ReversedStoreScanner extends from StoreScanner, and is used to support
@@ -105,6 +106,24 @@ class ReversedStoreScanner extends StoreScanner implements KeyValueScanner {
         || (comparator.matchingRows(kv, prevKV) && comparator.compare(kv,
             prevKV) > 0) : "Key " + prevKV + " followed by a "
         + "error order key " + kv + " in cf " + store + " in reversed scan";
+  }
+
+  @Override
+  protected void checkScanOrder(List<KeyValue> resultList, KeyValue kv,
+      KeyValue.KVComparator comparator) throws IOException {
+    if (comparator == null) {
+      return;
+    }
+    if (resultList.isEmpty()) {
+      byte[] startKey = this.scan.getStartRow();
+      if (!Bytes.equals(startKey, HConstants.EMPTY_BYTE_ARRAY)) {
+        if (comparator.compareRows(kv, startKey) > 0) {
+          throw new IOException("kv row: " + Bytes.toString(kv.getRow()) + " > startRow: "
+              + Bytes.toString(startKey) + " in cf " + store
+              + " in reversed scan, current scanner: " + heap.current);
+        }
+      }
+    }
   }
 
   @Override

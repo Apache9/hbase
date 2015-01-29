@@ -161,7 +161,13 @@ public class RegionServerMetrics implements Updater {
    */
   public final MetricsLongValue hlogFileSizeMB = 
       new MetricsLongValue("hlogFileSizeMB", registry);
-  
+
+  /**
+   * HLog compression ratio.
+   */
+  public final MetricsIntValue hlogCompressionRatio =
+      new MetricsIntValue("hlogCompressionRatio", registry);
+
   /**
    * Count of read requests
    */
@@ -399,6 +405,7 @@ public class RegionServerMetrics implements Updater {
       this.storefiles.pushMetric(this.metricsRecord);
       this.hlogFileCount.pushMetric(this.metricsRecord);
       this.hlogFileSizeMB.pushMetric(this.metricsRecord);
+      this.hlogCompressionRatio.pushMetric(this.metricsRecord);
       this.storefileIndexSizeMB.pushMetric(this.metricsRecord);
       this.rootIndexSizeKB.pushMetric(this.metricsRecord);
       this.totalStaticIndexSizeKB.pushMetric(this.metricsRecord);
@@ -582,6 +589,8 @@ public class RegionServerMetrics implements Updater {
       Integer.valueOf(this.hlogFileCount.get()));
     sb = Strings.appendKeyValue(sb, this.hlogFileSizeMB.getName(),
       Long.valueOf(this.hlogFileSizeMB.get()));
+    sb = Strings.appendKeyValue(sb, this.hlogCompressionRatio.getName(),
+      Integer.valueOf(this.hlogCompressionRatio.get()) + "%");
     sb = Strings.appendKeyValue(sb, "numberOfStorefiles",
       Integer.valueOf(this.storefiles.get()));
     sb = Strings.appendKeyValue(sb, this.storefileIndexSizeMB.getName(),

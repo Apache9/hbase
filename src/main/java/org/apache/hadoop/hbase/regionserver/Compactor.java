@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -150,16 +151,26 @@ class Compactor extends Configured {
       (store.getFamily().getCompactionCompression() != Compression.Algorithm.NONE) ?
       store.getFamily().getCompactionCompression(): compression;
 
-    // For each file, obtain a scanner:
-    List<StoreFileScanner> scanners = StoreFileScanner
-      .getScannersForStoreFiles(filesToCompact, false, false, true);
-
     // Make the instantiation lazy in case compaction produces no product; i.e.
     // where all source cells are expired or deleted.
     StoreFile.Writer writer = null;
     // Find the smallest read point across all the Scanners.
     long smallestReadPoint = store.getHRegion().getSmallestReadPoint();
     MultiVersionConsistencyControl.setThreadReadPoint(smallestReadPoint);
+    List<StoreFileScanner> scanners;
+    Collection<StoreFile> readersToClose;
+    if (this.config.getBoolean("hbase.regionserver.compaction.private.readers", false)) {
+      // clone all StoreFiles, so we'll do the compaction on a independent copy of StoreFiles,
+      // HFileFiles, and their readers
+      readersToClose = new ArrayList<StoreFile>(request.getFiles().size());
+      for (StoreFile f : request.getFiles()) {
+        readersToClose.add(new StoreFile(f));
+      }
+      scanners = createFileScanners(readersToClose);
+    } else {
+      readersToClose = Collections.emptyList();
+      scanners = createFileScanners(request.getFiles());
+    }
     try {
       InternalScanner scanner = null;
       try {
@@ -235,9 +246,19 @@ class Compactor extends Configured {
         }
       }
     } finally {
-      if (writer != null) {
-        writer.appendMetadata(maxId, majorCompaction);
-        writer.close();
+      try {
+        if (writer != null) {
+          writer.appendMetadata(maxId, majorCompaction);
+          writer.close();
+        }
+      } finally {
+        for (StoreFile f : readersToClose) {
+          try {
+            f.closeReader(true);
+          } catch (IOException ioe) {
+            LOG.warn("close the cloned reader failed", ioe);
+          }
+        }
       }
     }
     return writer;
@@ -255,5 +276,15 @@ class Compactor extends Configured {
 
   CompactionProgress getProgress() {
     return this.progress;
+  }
+
+  /**
+   * Creates file scanners for compaction.
+   * @param filesToCompact Files.
+   * @return Scanners.
+   */
+  protected List<StoreFileScanner> createFileScanners(
+      final Collection<StoreFile> filesToCompact) throws IOException {
+    return StoreFileScanner.getScannersForStoreFiles(filesToCompact, false, false, true);
   }
 }

@@ -165,9 +165,9 @@ public class Compressor {
    * @param data the array to write.
    * @param out the DataOutput to write into
    * @param dict the dictionary to use for compression
+   * @return the estimated being written bytes
    */
-  static void writeCompressed(byte[] data, int offset, int length,
-      DataOutput out, Dictionary dict)
+  static int writeCompressed(byte[] data, int offset, int length, DataOutput out, Dictionary dict)
       throws IOException {
     short dictIdx = Dictionary.NOT_IN_DICTIONARY;
     if (dict != null) {
@@ -178,9 +178,10 @@ public class Compressor {
       out.writeByte(Dictionary.NOT_IN_DICTIONARY);
       WritableUtils.writeVInt(out, length);
       out.write(data, offset, length);
-    } else {
-      out.writeShort(dictIdx);
+      return 1 + 1 + length;
     }
+    out.writeShort(dictIdx);
+    return 2;
   }
 
   static short toShort(byte hi, byte lo) {

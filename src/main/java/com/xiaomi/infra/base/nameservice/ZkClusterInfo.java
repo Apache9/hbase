@@ -28,7 +28,19 @@ public class ZkClusterInfo {
     PRE_DEFINED_CLUSTERS.put(
       "xmdm-zk-tst.hadoop.srv", "192.168.135.12,192.168.135.34,192.168.135.56");
     PRE_DEFINED_CLUSTERS.put(
+      "xmdm001-zk-tst.hadoop.srv", "192.168.135.12,192.168.135.34,192.168.135.58");
+    PRE_DEFINED_CLUSTERS.put(
+      "xmd1-zk-tst.hadoop.srv", "192.168.135.12,192.168.135.34,192.168.135.59");
+    PRE_DEFINED_CLUSTERS.put(
+      "xmd001-zk-tst.hadoop.srv", "192.168.135.12,192.168.135.34,192.168.135.60");
+    PRE_DEFINED_CLUSTERS.put(
       "bjdm-zk-tst.hadoop.srv", "10.235.3.55,10.235.3.57,10.235.3.67");
+    PRE_DEFINED_CLUSTERS.put(
+      "bjdm001-zk-tst.hadoop.srv", "10.235.3.55,10.235.3.57,10.235.3.69");
+    PRE_DEFINED_CLUSTERS.put(
+      "bjd1-zk-tst.hadoop.srv", "10.235.3.55,10.235.3.57,10.235.3.70");
+    PRE_DEFINED_CLUSTERS.put(
+      "bjd001-zk-tst.hadoop.srv", "10.235.3.55,10.235.3.57,10.235.3.71");
   }
 
   public static enum ClusterType {
@@ -38,9 +50,13 @@ public class ZkClusterInfo {
     SEC,
   }
 
+  public static final int REGION_NAME_LEN = 2;
+  public static final int IDC_NAME_LEN = 2;
+  public static final int CLUSTER_TYPE_LEN = 3;
+
   private final String clusterName;
-  private final String cityName;
-  private final String idcName;
+  private final String regionName;
+  private final String idcAndIndexName;
   private final ClusterType clusterType;
   private final int port;
   
@@ -53,25 +69,32 @@ public class ZkClusterInfo {
       throws IOException {
     this.clusterName = clusterName;
     int length = clusterName.length();
-    String clusterTypeName;
-    if (length == 5) {
-      cityName = "bj";
-      idcName = clusterName.substring(0, 2);
-      clusterTypeName = clusterName.substring(2, 5);
-    } else if (length == 7) {
-      cityName = clusterName.substring(0, 2);
-      idcName = clusterName.substring(2, 4);
-      clusterTypeName = clusterName.substring(4, 7);
-    } else {
+    if (length < IDC_NAME_LEN + CLUSTER_TYPE_LEN) {
       throw new IOException("Illegal zookeeper cluster name: " + clusterName);
     }
 
+    String clusterTypeName = clusterName.substring(length - CLUSTER_TYPE_LEN, length);
     try {
       clusterType = ClusterType.valueOf(clusterTypeName.toUpperCase());
     } catch (IllegalArgumentException e) {
       throw new IOException("Illegal zookeeper cluster type: " + clusterTypeName);
     }
     
+    int index = length - CLUSTER_TYPE_LEN - 1;
+    while (index >= 0 && Character.isDigit(clusterName.charAt(index)))
+      --index;
+    ++index;
+
+    if (index <= IDC_NAME_LEN) {
+      regionName = "bj";
+      idcAndIndexName = clusterName.substring(0, length - CLUSTER_TYPE_LEN);
+    } else if (index <= REGION_NAME_LEN + IDC_NAME_LEN) {
+      regionName = clusterName.substring(0, REGION_NAME_LEN);
+      idcAndIndexName = clusterName.substring(REGION_NAME_LEN, length - CLUSTER_TYPE_LEN);
+    } else {
+      throw new IOException("Illegal zookeeper cluster name: " + clusterName);
+    }
+
     this.port = (port == -1) ? 11000 : port;
   }
 
@@ -84,7 +107,7 @@ public class ZkClusterInfo {
   }
 
   public String toDnsName() {
-    return cityName + idcName + "-zk-" + clusterType.toString().toLowerCase() + ".hadoop.srv";      
+    return regionName + idcAndIndexName + "-zk-" + clusterType.toString().toLowerCase() + ".hadoop.srv";
   }
   
   /**

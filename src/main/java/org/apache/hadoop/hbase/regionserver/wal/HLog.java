@@ -310,6 +310,7 @@ public class HLog implements Syncable {
    * Keep the number of logs tidy.
    */
   private final int maxLogs;
+  private static boolean isWALCompressionEnabled;
 
   // List of pending writes to the HLog. There corresponds to transactions
   // that have not yet returned to the client. We keep them cached here
@@ -388,6 +389,15 @@ public class HLog implements Syncable {
   
   public static Metric getSlowAppendTime() {
     return slowHLogAppendTime.get();
+  }
+
+  public static double getHLogCompressionRatio() {
+    if (isWALCompressionEnabled) {
+      long compressedSize = HLogKey.compressedSize + KeyValueCompression.compressedSize;
+      long uncompressedSize = HLogKey.uncompressedSize + KeyValueCompression.uncompressedSize;
+      return uncompressedSize == 0 ? 1 : (double) compressedSize / (double) uncompressedSize;
+    }
+    return 1;
   }
 
   /**
@@ -483,6 +493,7 @@ public class HLog implements Syncable {
     }
     this.forMeta = forMeta;
     this.maxLogs = conf.getInt("hbase.regionserver.maxlogs", 32);
+    this.isWALCompressionEnabled = conf.getBoolean(HConstants.ENABLE_WAL_COMPRESSION, false);
     this.minTolerableReplication = conf.getInt(
         "hbase.regionserver.hlog.tolerable.lowreplication",
         FSUtils.getDefaultReplication(this.fs, this.dir));

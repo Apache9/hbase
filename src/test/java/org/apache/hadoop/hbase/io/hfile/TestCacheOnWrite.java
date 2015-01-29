@@ -59,6 +59,7 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
+import org.apache.hadoop.hbase.io.hfile.bucket.BucketCache;
 
 /**
  * Tests {@link HFile} cache-on-write functionality for the following block
@@ -129,7 +130,6 @@ public class TestCacheOnWrite {
         conf.setBoolean(cowType.confKey, cowType == this);
       }
     }
-
   }
 
   private static final DataBlockEncoding ENCODING_ALGO =
@@ -157,25 +157,46 @@ public class TestCacheOnWrite {
   }
 
   public TestCacheOnWrite(CacheOnWriteType cowType,
-      Compression.Algorithm compress, BlockEncoderTestType encoderType) {
+      Compression.Algorithm compress, BlockEncoderTestType encoderType, BlockCache blockCache) {
     this.cowType = cowType;
     this.compress = compress;
     this.encoderType = encoderType;
     this.encoder = encoderType.getEncoder();
+    this.blockCache = blockCache;
     testDescription = "[cacheOnWrite=" + cowType + ", compress=" + compress + 
         ", encoderType=" + encoderType + "]";
     System.out.println(testDescription);
   }
 
+  private static List<BlockCache> getBlockCaches() throws IOException {
+    Configuration conf = TEST_UTIL.getConfiguration();
+    List<BlockCache> blockcaches = new ArrayList<BlockCache>();
+    // default
+    blockcaches.add(new CacheConfig(conf).getBlockCache());
+
+    // LRU
+    BlockCache lru =
+        new LruBlockCache(128 * 1024 * 1024, 64 * 1024, TEST_UTIL.getConfiguration());
+    blockcaches.add(lru);
+
+    // bucket cache
+    FileSystem.get(conf).mkdirs(TEST_UTIL.getDataTestDir());
+    BlockCache bucketcache =
+        new BucketCache("file:" + TEST_UTIL.getDataTestDir() + "/bucket.data",
+            128 * 1024 * 1024, 5, 64 * 10, null, BucketCache.DEFAULT_ERROR_TOLERATION_DURATION);
+    blockcaches.add(bucketcache);
+    return blockcaches;
+  }
+
   @Parameters
-  public static Collection<Object[]> getParameters() {
+  public static Collection<Object[]> getParameters() throws IOException {
     List<Object[]> cowTypes = new ArrayList<Object[]>();
-    for (CacheOnWriteType cowType : CacheOnWriteType.values()) {
-      for (Compression.Algorithm compress :
-           HBaseTestingUtility.COMPRESSION_ALGORITHMS) {
-        for (BlockEncoderTestType encoderType :
-             BlockEncoderTestType.values()) {
-          cowTypes.add(new Object[] { cowType, compress, encoderType });
+    for (BlockCache blockache: getBlockCaches()) {
+      for (CacheOnWriteType cowType : CacheOnWriteType.values()) {
+        for (Compression.Algorithm compress : HBaseTestingUtility.COMPRESSION_ALGORITHMS) {
+          for (BlockEncoderTestType encoderType : BlockEncoderTestType.values()) {
+            cowTypes.add(new Object[] { cowType, compress, encoderType, blockache });
+          }
         }
       }
     }
@@ -189,16 +210,12 @@ public class TestCacheOnWrite {
     conf.setInt(HFileBlockIndex.MAX_CHUNK_SIZE_KEY, INDEX_BLOCK_SIZE);
     conf.setInt(BloomFilterFactory.IO_STOREFILE_BLOOM_BLOCK_SIZE,
         BLOOM_BLOCK_SIZE);
-    conf.setBoolean(CacheConfig.CACHE_BLOCKS_ON_WRITE_KEY,
-        cowType.shouldBeCached(BlockType.DATA));
-    conf.setBoolean(CacheConfig.CACHE_INDEX_BLOCKS_ON_WRITE_KEY,
-        cowType.shouldBeCached(BlockType.LEAF_INDEX));
-    conf.setBoolean(CacheConfig.CACHE_BLOOM_BLOCKS_ON_WRITE_KEY,
-        cowType.shouldBeCached(BlockType.BLOOM_CHUNK));
     cowType.modifyConf(conf);
     fs = HFileSystem.get(conf);
-    cacheConf = new CacheConfig(conf);
-    blockCache = cacheConf.getBlockCache();
+    cacheConf =
+        new CacheConfig(blockCache, true, true, cowType.shouldBeCached(BlockType.DATA),
+            cowType.shouldBeCached(BlockType.LEAF_INDEX),
+            cowType.shouldBeCached(BlockType.BLOOM_CHUNK), false, false);
   }
 
   @After
@@ -266,6 +283,10 @@ public class TestCacheOnWrite {
         + "=1379, LEAF_INDEX=154, BLOOM_CHUNK=9, INTERMEDIATE_INDEX=18}",
         countByType);
 
+    // iterate all the keyvalue from hfile
+    while (scanner.next()) {
+      KeyValue kv = scanner.getKeyValue();
+    }
     reader.close();
   }
 
