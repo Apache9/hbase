@@ -44,55 +44,10 @@ import org.apache.commons.logging.LogFactory
 # Name of this script
 NAME = "region_mover"
 
-# Get root table reference
-def getRootTable(config)
-  # Keep meta reference in ruby global
-  if not $ROOT
-    $ROOT = HTable.new(config, HConstants::ROOT_TABLE_NAME)
-  end
-  return $ROOT
-end
-
-# Get meta table reference
-def getMetaTable(config)
-  # Keep meta reference in ruby global
-  if not $META
-    $META = HTable.new(config, HConstants::META_TABLE_NAME)
-  end
-  return $META
-end
-
-# Get table instance.
-# Maintains cache of table instances.
-def getTable(config, name)
-  # Keep dictionary of tables in ruby global
-  if not $TABLES
-    $TABLES = {}
-  end
-  key = Bytes.toString(name)
-  if not $TABLES[key]
-    $TABLES[key] = HTable.new(config, name)
-  end
-  return $TABLES[key]
-end
-
-def closeTables()
-  if not $TABLES
-    return
-  end
-
-  $LOG.info("Close all tables")
-  $TABLES.each do |name, table|
-    $TABLES.delete(name)
-    table.close()
-  end
-end
-
 # Returns true if passed region is still on 'original' when we look at .META.
 def isSameServer(admin, r, original)
   server = getServerNameForRegion(admin, r)
-  return false unless server
-  return true unless original
+  return false unless server and original
   return server == original
 end
 
@@ -106,6 +61,7 @@ end
 # Get servername that is up in .META.; this is hostname + port + startcode comma-delimited.
 # Can return nil
 def getServerNameForRegion(admin, r)
+  return nil unless admin.isTableEnabled(r.getTableName)
   if r.isRootRegion()
     # Hack
     tracker = org.apache.hadoop.hbase.zookeeper.RootRegionTracker.new(admin.getConnection().getZooKeeperWatcher(), RubyAbortable.new())
@@ -118,20 +74,24 @@ def getServerNameForRegion(admin, r)
     tracker.stop()
     return rootServer
   end
-  table = nil
   if r.isMetaRegion()
-    table = getRootTable(admin.getConfiguration()) 
+    table = HTable.new(admin.getConfiguration(), HConstants::ROOT_TABLE_NAME)
   else
-    table = getMetaTable(admin.getConfiguration())
+    table = HTable.new(admin.getConfiguration(), HConstants::META_TABLE_NAME)
   end
-  g = Get.new(r.getRegionName())
-  g.addColumn(HConstants::CATALOG_FAMILY, HConstants::SERVER_QUALIFIER)
-  g.addColumn(HConstants::CATALOG_FAMILY, HConstants::STARTCODE_QUALIFIER)
-  result = table.get(g)
-  server = result.getValue(HConstants::CATALOG_FAMILY, HConstants::SERVER_QUALIFIER)
-  startcode = result.getValue(HConstants::CATALOG_FAMILY, HConstants::STARTCODE_QUALIFIER)
-  return nil unless server
-  return java.lang.String.new(Bytes.toString(server)).replaceFirst(":", ",")  + "," + Bytes.toLong(startcode).to_s
+  begin
+    g = Get.new(r.getRegionName())
+    g.addColumn(HConstants::CATALOG_FAMILY, HConstants::SERVER_QUALIFIER)
+    g.addColumn(HConstants::CATALOG_FAMILY, HConstants::STARTCODE_QUALIFIER)
+    result = table.get(g)
+    return nil unless result
+    server = result.getValue(HConstants::CATALOG_FAMILY, HConstants::SERVER_QUALIFIER)
+    startcode = result.getValue(HConstants::CATALOG_FAMILY, HConstants::STARTCODE_QUALIFIER)
+    return nil unless server
+    return java.lang.String.new(Bytes.toString(server)).replaceFirst(":", ",")  + "," + Bytes.toLong(startcode).to_s
+  ensure
+    table.close()
+  end
 end
 
 # Trys to scan a row from passed region
@@ -141,17 +101,22 @@ def isSuccessfulScan(admin, r)
   scan.setBatch(1)
   scan.setCaching(1)
   scan.setFilter(FirstKeyOnlyFilter.new()) 
-  table = getTable(admin.getConfiguration(), r.getTableName()) 
-  scanner = table.getScanner(scan)
+  begin
+    table = HTable.new(admin.getConfiguration(), r.getTableName())
+    scanner = table.getScanner(scan)
+  rescue org.apache.hadoop.hbase.TableNotFoundException,
+      org.apache.hadoop.hbase.TableNotEnabledException => e
+    $LOG.warn("Region " + r.getEncodedName() + " belongs to recently " +
+      "deleted/disabled table. Skipping... " + e.message)
+    return
+  end
   begin
     results = scanner.next() 
     # We might scan into next region, this might be an empty table.
     # But if no exception, presume scanning is working.
   ensure
     scanner.close()
-    # Do not close the htable. It is cached in $TABLES and 
-    # may be reused in moving another region of same table. 
-    # table.close()
+    table.close() unless table.nil?
   end
 end
 
@@ -173,7 +138,8 @@ def move(admin, r, newServer, original)
     count = count + 1
     begin
       admin.move(Bytes.toBytes(r.getEncodedName()), Bytes.toBytes(newServer))
-    rescue java.lang.reflect.UndeclaredThrowableException => e
+    rescue java.lang.reflect.UndeclaredThrowableException,
+        org.apache.hadoop.hbase.UnknownRegionException => e
       $LOG.info("Exception moving "  + r.getEncodedName() +
         "; split/moved? Continuing: " + e)
       return
@@ -344,6 +310,8 @@ def unloadRegions(options, hostnamePort)
   movedRegions = java.util.ArrayList.new()
   while true
     rs = getRegions(config, servername)
+    # Remove those already tried to move
+    rs.removeAll(movedRegions)
     break if rs.length == 0
     $LOG.info("Moving " + rs.length.to_s + " region(s) from " + servername +
       " on " + servers.length.to_s + " servers using " + options[:maxthreads].to_s + " threads.")
@@ -509,5 +477,3 @@ case ARGV[0]
     puts optparse
     exit 3
 end
-
-closeTables()

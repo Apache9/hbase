@@ -31,6 +31,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hbase.util.FSUtils;
 import org.apache.hadoop.io.SequenceFile;
 
 public class SequenceFileLogReader implements HLog.Reader {
@@ -184,7 +185,8 @@ public class SequenceFileLogReader implements HLog.Reader {
     if (compression) {
       try {
         if (compressionContext == null) {
-          compressionContext = new CompressionContext(LRUDictionary.class);
+          compressionContext = new CompressionContext(LRUDictionary.class,
+              FSUtils.isRecoveredEdits(path));
         } else {
           compressionContext.clear();
         }

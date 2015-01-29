@@ -1393,23 +1393,11 @@ public class AccessController extends BaseRegionObserver
     }
     // Otherwise, if the requestor has ADMIN or CREATE privs for all listed tables, the
     // request can be granted.
-    else {
-      MasterServices masterServices = ctx.getEnvironment().getMasterServices();
-      for (String tableName: tableNamesList) {
-        // Do not deny if the table does not exist
-        byte[] nameAsBytes = Bytes.toBytes(tableName);
-        try {
-          masterServices.checkTableModifiable(nameAsBytes);
-        } catch (TableNotFoundException ex) {
-          // Skip checks for a table that does not exist
-          continue;
-        } catch (TableNotDisabledException ex) {
-          // We don't care about this
-        }
-        requirePermission("getTableDescriptors", nameAsBytes, null, null,
-          Permission.Action.ADMIN, Permission.Action.CREATE);
-      }
-    }
+    
+    // After salted is stored in HTableDescriptor, any operation Read/Write will need to
+    // get table descriptor to judge whether it is a salted table. We don't do any acl
+    // check to getTableDescriptor to keep compatible with old grants.
+    // TODO: grant to users having any permission on any family
   }
 
   @Override

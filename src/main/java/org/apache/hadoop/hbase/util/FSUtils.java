@@ -52,6 +52,7 @@ import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.RemoteExceptionHandler;
 import org.apache.hadoop.hbase.master.HMaster;
 import org.apache.hadoop.hbase.regionserver.HRegion;
+import org.apache.hadoop.hbase.regionserver.wal.HLog;
 import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hdfs.DistributedFileSystem;
 import org.apache.hadoop.io.SequenceFile;
@@ -1062,6 +1063,15 @@ public abstract class FSUtils {
 
   public static Path getTablePath(Path rootdir, final String tableName) {
     return new Path(rootdir, tableName);
+  }
+
+  /**
+   * Checks if the given path is the one with 'recovered.edits' dir.
+   * @param path
+   * @return
+   */
+  public static boolean isRecoveredEdits(Path path) {
+    return path.toString().contains(HLog.RECOVERED_EDITS_DIR);
   }
 
   /**

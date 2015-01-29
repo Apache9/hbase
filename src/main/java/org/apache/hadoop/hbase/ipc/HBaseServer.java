@@ -55,6 +55,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.commons.lang.Validate;
 import org.apache.commons.logging.Log;
@@ -216,7 +217,14 @@ public abstract class HBaseServer implements RpcServer {
   protected final long purgeTimeout;    // in milliseconds
   
   protected final long traceResponseTime;    // in milliseconds
+  // Once reach this upper limit, the remaining log requests in the same second will be NOP
+  // by default, it's Integer.MAX, means no tracelog rate limit.
+  protected final int maxTraceLogCountPerSeccond;
+  protected final AtomicLong lastTick = new AtomicLong(0); // in seconds
+  protected final Counter traceLogCounter = new Counter(); // trace log request counter in lastTick;
+  
   private static final String TRACE_RESPONSE_TIME = "hbase.ipc.trace.response.time";
+  private static final String TRACE_LOG_REQUEST_COUNT_MAX = "hbase.ipc.trace.log.request.count.max";
   protected final long DEFAULT_TRACE_RESPONSE_TIME = 100;    // default trace ipc time is 100ms
   
   // responseQueuesSizeThrottler is shared among all responseQueues,
@@ -1098,7 +1106,24 @@ public abstract class HBaseServer implements RpcServer {
       }      
       call.getTracer().stop();
       if (call.getTracer().getAccumulatedMillis() >= traceResponseTime) {
-        TRACELOG.info(call.getTracer());
+        if (maxTraceLogCountPerSeccond == Integer.MAX_VALUE) {
+          // no rate limit
+          TRACELOG.info(call.getTracer());
+        } else {
+          long currTick = System.currentTimeMillis() / 1000;
+          if (lastTick.getAndSet(currTick) != currTick) {
+            traceLogCounter.set(1);
+            TRACELOG.info(call.getTracer());
+          } else {
+            if (traceLogCounter.intValue() < maxTraceLogCountPerSeccond) {
+              TRACELOG.info(call.getTracer());
+              traceLogCounter.increment();
+            } else {
+              //once reach the rate limit in current second, we do not need to
+              //update counter or do log.info() any more.
+            }
+          }
+        }
       }
     }
 
@@ -1402,6 +1427,7 @@ public abstract class HBaseServer implements RpcServer {
             // fail fast on queue inserting, no more waiting!
             callQueueSize.add(-callSize);
             LOG.error("Could not insert into readQueue!");
+            ReflectionUtils.logThreadInfo(LOG, "thread dump when call queue is full", 10000);
             final Call failedCall = createCall(id, null, this, responder, callSize);
             ByteArrayOutputStream responseBuffer = new ByteArrayOutputStream();
             setupResponse(responseBuffer, failedCall, Status.FATAL, null,
@@ -1418,6 +1444,7 @@ public abstract class HBaseServer implements RpcServer {
             // fail fast on queue inserting, no more waiting!
             callQueueSize.add(-callSize);
             LOG.error("Could not insert into writeQueue!");
+            ReflectionUtils.logThreadInfo(LOG, "thread dump when call queue is full", 10000);
             final Call failedCall = createCall(id, null, this, responder, callSize);
             ByteArrayOutputStream responseBuffer = new ByteArrayOutputStream();
             setupResponse(responseBuffer, failedCall, Status.FATAL, null,
@@ -1670,7 +1697,7 @@ public abstract class HBaseServer implements RpcServer {
                                      2 * HConstants.DEFAULT_HBASE_RPC_TIMEOUT);
     
     this.traceResponseTime = conf.getLong(TRACE_RESPONSE_TIME, DEFAULT_TRACE_RESPONSE_TIME);
-    
+    this.maxTraceLogCountPerSeccond = conf.getInt(TRACE_LOG_REQUEST_COUNT_MAX, Integer.MAX_VALUE);
     this.numOfReplicationHandlers = 
       conf.getInt("hbase.regionserver.replication.handler.count", 3);
     if (numOfReplicationHandlers > 0) {

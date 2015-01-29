@@ -33,7 +33,12 @@ import com.google.common.base.Preconditions;
  * If you want to get silly, even at 1kb entries, it maxes out at 160 megabytes.
  */
 public class LRUDictionary implements Dictionary {
-  private final BidirectionalLRUMap backingStore = new BidirectionalLRUMap();
+  BidirectionalLRUMap backingStore;
+
+  @Override
+  public void init(int initialSize) {
+    backingStore = new BidirectionalLRUMap(initialSize);
+  }
 
   @Override
   public byte[] getEntry(short idx) {
@@ -67,7 +72,6 @@ public class LRUDictionary implements Dictionary {
    * This is not thread safe. Don't use in multi-threaded applications.
    */
   static class BidirectionalLRUMap {
-    static final int MAX_SIZE = Short.MAX_VALUE;
     private int currSize = 0;
 
     // Head and tail of the LRU list.
@@ -75,10 +79,13 @@ public class LRUDictionary implements Dictionary {
     private Node tail;
 
     private HashMap<Node, Short> nodeToIndex = new HashMap<Node, Short>();
-    private Node[] indexToNode = new Node[MAX_SIZE];
+    private Node[] indexToNode;
+    private int initSize = 0;
 
-    public BidirectionalLRUMap() {
-      for (int i = 0; i < MAX_SIZE; i++) {
+    public BidirectionalLRUMap(int initialSize) {
+      initSize = initialSize;
+      indexToNode = new Node[initialSize];
+      for (int i = 0; i < initialSize; i++) {
         indexToNode[i] = new Node();
       }
     }
@@ -89,7 +96,7 @@ public class LRUDictionary implements Dictionary {
       byte[] stored = new byte[length];
       Bytes.putBytes(stored, 0, array, offset, length);
 
-      if (currSize < MAX_SIZE) {
+      if (currSize < initSize) {
         // There is space to add without evicting.
         indexToNode[currSize].setContents(stored, 0, stored.length);
         setHead(indexToNode[currSize]);
@@ -172,7 +179,7 @@ public class LRUDictionary implements Dictionary {
         n.container = null;
       }
 
-      for (int i = 0; i < MAX_SIZE; i++) {
+      for (int i = 0; i < initSize; i++) {
         indexToNode[i].next = null;
         indexToNode[i].prev = null;
       }

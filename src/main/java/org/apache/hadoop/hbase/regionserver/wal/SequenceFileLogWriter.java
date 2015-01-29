@@ -137,7 +137,8 @@ public class SequenceFileLogWriter implements HLog.Writer {
     if (compress) {
       try {
         if (this.compressionContext == null) {
-          this.compressionContext = new CompressionContext(LRUDictionary.class);
+          this.compressionContext = new CompressionContext(LRUDictionary.class,
+              FSUtils.isRecoveredEdits(path));
         } else {
           this.compressionContext.clear();
         }
