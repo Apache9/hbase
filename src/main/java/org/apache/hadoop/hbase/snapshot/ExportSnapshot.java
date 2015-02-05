@@ -25,6 +25,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -50,6 +51,7 @@ import org.apache.hadoop.hbase.regionserver.StoreFile;
 import org.apache.hadoop.hbase.snapshot.ExportSnapshotException;
 import org.apache.hadoop.hbase.snapshot.SnapshotDescriptionUtils;
 import org.apache.hadoop.hbase.snapshot.SnapshotReferenceUtil;
+import org.apache.hadoop.hbase.throughput.ThroughputLimiter;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.FSUtils;
@@ -63,6 +65,7 @@ import org.apache.hadoop.mapreduce.lib.input.SequenceFileInputFormat;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.NullOutputFormat;
+import org.apache.hadoop.mapreduce.security.TokenCache;
 import org.apache.hadoop.util.StringUtils;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
@@ -86,6 +89,7 @@ public final class ExportSnapshot extends Configured implements Tool {
   private static final String CONF_OUTPUT_ROOT = "snapshot.export.output.root";
   private static final String CONF_INPUT_ROOT = "snapshot.export.input.root";
   private static final String CONF_STAGING_ROOT = "snapshot.export.staging.root";
+  private static final String CONF_BANDWIDTH_MB = "snapshot.export.map.bandwidth.mb";
 
   private static final String INPUT_FOLDER_PREFIX = "export-files.";
 
@@ -261,7 +265,10 @@ public final class ExportSnapshot extends Configured implements Tool {
         int reportBytes = 0;
         int bytesRead;
 
+        int bandwidthMB = context.getConfiguration().getInt(CONF_BANDWIDTH_MB, 10); // default 10MB
+        ThroughputLimiter limiter = new ThroughputLimiter(bandwidthMB * 1024 * 1024);
         while ((bytesRead = in.read(buffer)) > 0) {
+          limiter.tryAcquire(bytesRead, 60, TimeUnit.SECONDS);
           out.write(buffer, 0, bytesRead);
           totalBytesWritten += bytesRead;
           reportBytes += bytesRead;
@@ -549,6 +556,9 @@ public final class ExportSnapshot extends Configured implements Tool {
       LOG.debug("Add Input Path=" + path);
       SequenceFileInputFormat.addInputPath(job, path);
     }
+    // Acquire the delegation Tokens
+    TokenCache.obtainTokensForNamenodes(job.getCredentials(),
+      new Path[] { inputRoot, outputRoot }, conf);
 
     return job.waitForCompletion(true);
   }
