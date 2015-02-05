@@ -147,7 +147,7 @@ def compareZkNodesAndHLogs():
       else:
         if length == 134 and zkPosition == 0:
           notCount += 1
-          f.write("Warn_NotCount %s %s %s\n" % (logName, zkPosition, length))
+          f.write("OK_NotCount %s %s %s\n" % (logName, zkPosition, length))
         else:
           zkLessThanHLog += 1
           bytesLeft += length - zkPosition
@@ -157,7 +157,7 @@ def compareZkNodesAndHLogs():
   print "Error_ZKBiggerThanHLog", zkBiggerThanHLog
   print "Warn_HLogNotExist", hlogNotExist
   print "Warn_ZKLessThanHLog", zkLessThanHLog
-  print "Warn_NotCount", notCount
+  print "OK_NotCount", notCount
   print "OK_ZKEqualsHLog", zkEqualsHLog
   print "Result_NotReplicated", bytesLeft, "bytes"
   if bytesLeft == 0:
