@@ -497,12 +497,9 @@ public class LruBlockCache implements BlockCache, HeapSize {
       if(bytesToFree <= 0) return;
 
       // Instantiate priority buckets
-      BlockBucket bucketSingle = new BlockBucket(bytesToFree, blockSize,
-          singleSize());
-      BlockBucket bucketMulti = new BlockBucket(bytesToFree, blockSize,
-          multiSize());
-      BlockBucket bucketMemory = new BlockBucket(bytesToFree, blockSize,
-          memorySize());
+      BlockBucket bucketSingle = new BlockBucket(bytesToFree, blockSize, singleSize());
+      BlockBucket bucketMulti = new BlockBucket(bytesToFree, blockSize, multiSize());
+      BlockBucket bucketMemory = new BlockBucket(bytesToFree, blockSize, memorySize());
 
       // Scan entire map putting into appropriate buckets
       for(CachedBlock cachedBlock : map.values()) {
@@ -722,7 +719,7 @@ public class LruBlockCache implements BlockCache, HeapSize {
       while (this.go) {
         synchronized(this) {
           try {
-            this.wait();
+            this.wait(1000 * 10/*Don't wait for ever*/);
           } catch(InterruptedException e) {}
         }
         LruBlockCache cache = this.cache.get();
@@ -731,9 +728,11 @@ public class LruBlockCache implements BlockCache, HeapSize {
       }
     }
 
+    @edu.umd.cs.findbugs.annotations.SuppressWarnings(value="NN_NAKED_NOTIFY",
+        justification="This is what we want")
     public void evict() {
       synchronized(this) {
-        this.notify(); // FindBugs NN_NAKED_NOTIFY
+        this.notify();
       }
     }
 
