@@ -166,15 +166,16 @@ def compareZkNodesAndHLogs():
   return False
   
 
-def run(deployCmd, zkQuorums, clusterName, peerId):
+def run(deployCmd, zkQuorums, clusterName, peerId, doLogRoll):
   hdfsCmd="%s shell hdfs %s" % (deployCmd, clusterName)
   hbaseCmd="%s shell hbase %s shell" % (deployCmd, clusterName)
   zkClient = initZkClient(zkQuorums)
 
-  ret = logRoll(zkClient, hbaseCmd, clusterName)
-  if not ret:
-    print "Error logRoll failed!"
-    return False
+  if doLogRoll:
+    ret = logRoll(zkClient, hbaseCmd, clusterName)
+    if not ret:
+      print "Error logRoll failed!"
+      return False
 
   ret = listZkNodes(zkClient, clusterName, peerId)
   if not ret:
@@ -199,6 +200,7 @@ if __name__ == "__main__":
   parser.add_option("-p", "--peer_id", dest="peer_id",  help="peer id")
   parser.add_option("-d", "--deploy_cmd", dest="deploy_cmd",  help="deploy cmd")
   parser.add_option("-t", "--retries", dest="retries",  help="retries number")
+  parser.add_option("-r", "--log_roll", action="store_true", dest="log_roll", default=False, help="whether do log_roll")
 
   (options, args) = parser.parse_args() 
   if options.zk_quorums is None:
@@ -215,7 +217,7 @@ if __name__ == "__main__":
 
   i = 0
   while i < int(options.retries):
-    ret = run(options.deploy_cmd, options.zk_quorums, options.cluster, options.peer_id)
+    ret = run(options.deploy_cmd, options.zk_quorums, options.cluster, options.peer_id, options.log_roll)
     if ret:
       break
     i += 1

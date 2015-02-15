@@ -7,6 +7,9 @@ pip install kazoo
 
 2. 执行命令例如: 
 ./check.py --zk_quorums 10.2.201.163:11000,10.2.201.164:11000,10.2.201.165:11000 --cluster lgtst-xiaomi --peer_id 11 --deploy_cmd /home/chengqiming/minos/client/deploy --retries 10
+如果需要做log roll，则需要加上参数--log_roll：
+./check.py --zk_quorums 10.2.201.163:11000,10.2.201.164:11000,10.2.201.165:11000 --cluster lgtst-xiaomi --peer_id 11 --deploy_cmd /home/chengqiming/minos/client/deploy --retries 10 --log_roll
+
 
 3. 运行的流程与中间结果说明 
 (1) list出所有的region server，生成hlog_roll.txt, 执行hlog_roll;
