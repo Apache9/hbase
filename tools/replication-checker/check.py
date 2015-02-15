@@ -213,7 +213,7 @@ if __name__ == "__main__":
     parser.error("deploy_cmd is null")
 
   i = 0
-  while i < options.retries:
+  while i < int(options.retries):
     ret = run(options.deploy_cmd, options.zk_quorums, options.cluster, options.peer_id)
     if ret:
       break
