@@ -72,6 +72,7 @@ def listHdfsLogs(hdfsCmd, clusterName):
   if status != 0:
     return False
   f.write(output)
+  f.write("\n")
 
   cmd = '''%s dfs -ls  /hbase/%s/.oldlogs >> hdfs_logs.txt''' % (hdfsCmd, clusterName)
   status, output = commands.getstatusoutput(cmd)
