@@ -22,31 +22,37 @@ import static org.apache.hadoop.hbase.security.HBaseKerberosUtils.getKeytabFileF
 import static org.apache.hadoop.hbase.security.HBaseKerberosUtils.getPrincipalForTesting;
 import static org.apache.hadoop.hbase.security.HBaseKerberosUtils.getSecuredConfiguration;
 import static org.apache.hadoop.hbase.security.HBaseKerberosUtils.isKerberosPropertySetted;
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assume.assumeTrue;
 
+import java.io.File;
+import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Properties;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.CommonConfigurationKeys;
+import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.ServerName;
-import org.apache.hadoop.hbase.ipc.RpcClientFactory;
-import org.apache.hadoop.hbase.testclassification.SecurityTests;
-import org.apache.hadoop.hbase.testclassification.SmallTests;
 import org.apache.hadoop.hbase.ipc.FifoRpcScheduler;
 import org.apache.hadoop.hbase.ipc.RpcClient;
+import org.apache.hadoop.hbase.ipc.RpcClientFactory;
 import org.apache.hadoop.hbase.ipc.RpcServer;
 import org.apache.hadoop.hbase.ipc.RpcServerInterface;
 import org.apache.hadoop.hbase.ipc.TestDelayedRpc.TestDelayedImplementation;
 import org.apache.hadoop.hbase.ipc.TestDelayedRpc.TestThread;
 import org.apache.hadoop.hbase.ipc.protobuf.generated.TestDelayedRpcProtos;
+import org.apache.hadoop.hbase.testclassification.SecurityTests;
+import org.apache.hadoop.hbase.testclassification.SmallTests;
+import org.apache.hadoop.minikdc.MiniKdc;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.security.UserGroupInformation.AuthenticationMethod;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.mockito.Mockito;
@@ -55,12 +61,45 @@ import com.google.common.collect.Lists;
 import com.google.protobuf.BlockingRpcChannel;
 import com.google.protobuf.BlockingService;
 
-@Category({SecurityTests.class, SmallTests.class})
+@Category({ SecurityTests.class, SmallTests.class })
 public class TestSecureRPC {
-  public static RpcServerInterface rpcServer;
+
+  private static final HBaseTestingUtility TEST_UTIL = new HBaseTestingUtility();
+
+  private static MiniKdc KDC;
+
+  private static RpcServerInterface rpcServer;
+
+  private static String PRINCIPAL = "hbase";
+
+  private static File KEYTAB_FILE;
+
+  @BeforeClass
+  public static void setUp() throws Exception {
+    Properties conf = MiniKdc.createConf();
+    conf.put(MiniKdc.ORG_NAME, "HBASE");
+    conf.put(MiniKdc.DEBUG, true);
+    KDC = new MiniKdc(conf, new File(TEST_UTIL.getDataTestDir("kdc").toUri().getPath()));
+    KDC.start();
+    KEYTAB_FILE = new File(TEST_UTIL.getDataTestDir("keytab").toUri().getPath());
+    PRINCIPAL = "hbase@" + KDC.getRealm();
+    KDC.createPrincipal("krbtgt/" + KDC.getRealm() + "@" + KDC.getRealm(), "123456");
+    KDC.createPrincipal(KEYTAB_FILE, PRINCIPAL);
+    HBaseKerberosUtils.setKeytabFileForTesting(KEYTAB_FILE.getAbsolutePath());
+    HBaseKerberosUtils.setPrincipalForTesting(PRINCIPAL);
+  }
+
+  @AfterClass
+  public static void tearDown() throws IOException {
+    if (KDC != null) {
+      KDC.stop();
+    }
+    TEST_UTIL.cleanupTestDir();
+  }
+
   /**
    * To run this test, we must specify the following system properties:
-   *<p>
+   * <p>
    * <b> hbase.regionserver.kerberos.principal </b>
    * <p>
    * <b> hbase.regionserver.keytab.file </b>
@@ -87,7 +126,7 @@ public class TestSecureRPC {
 
     SecurityInfo securityInfoMock = Mockito.mock(SecurityInfo.class);
     Mockito.when(securityInfoMock.getServerPrincipal())
-      .thenReturn(HBaseKerberosUtils.KRB_PRINCIPAL);
+        .thenReturn(HBaseKerberosUtils.KRB_PRINCIPAL);
     SecurityInfo.addInfo("TestDelayedService", securityInfoMock);
 
     boolean delayReturnValue = false;
@@ -96,19 +135,21 @@ public class TestSecureRPC {
     BlockingService service =
         TestDelayedRpcProtos.TestDelayedService.newReflectiveBlockingService(instance);
 
-    rpcServer = new RpcServer(null, "testSecuredDelayedRpc",
-        Lists.newArrayList(new RpcServer.BlockingServiceAndInterface(service, null)),
-          isa, conf, new FifoRpcScheduler(conf, 1));
+    rpcServer =
+        new RpcServer(null, "testSecuredDelayedRpc",
+            Lists.newArrayList(new RpcServer.BlockingServiceAndInterface(service, null)), isa,
+            conf, new FifoRpcScheduler(conf, 1));
     rpcServer.start();
-    RpcClient rpcClient = RpcClientFactory
-        .createClient(conf, HConstants.DEFAULT_CLUSTER_ID.toString());
+    RpcClient rpcClient =
+        RpcClientFactory.createClient(conf, HConstants.DEFAULT_CLUSTER_ID.toString());
     try {
-      BlockingRpcChannel channel = rpcClient.createBlockingRpcChannel(
-          ServerName.valueOf(rpcServer.getListenerAddress().getHostName(),
-              rpcServer.getListenerAddress().getPort(), System.currentTimeMillis()),
-          User.getCurrent(), 1000);
+      BlockingRpcChannel channel =
+          rpcClient.createBlockingRpcChannel(
+            ServerName.valueOf(rpcServer.getListenerAddress().getHostName(), rpcServer
+                .getListenerAddress().getPort(), System.currentTimeMillis()), User.getCurrent(),
+            1000);
       TestDelayedRpcProtos.TestDelayedService.BlockingInterface stub =
-        TestDelayedRpcProtos.TestDelayedService.newBlockingStub(channel);
+          TestDelayedRpcProtos.TestDelayedService.newBlockingStub(channel);
       List<Integer> results = new ArrayList<Integer>();
       TestThread th1 = new TestThread(stub, true, results);
       th1.start();
