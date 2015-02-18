@@ -104,7 +104,7 @@ public class HttpServerFunctionalTest extends Assert {
     File testWebappDir = new File(webapps +
         File.separatorChar + TEST);
     try {
-    if (!testWebappDir.exists()) {
+    if (!testWebappDir.exists() && !testWebappDir.mkdirs()) {
       fail("Test webapp dir " + testWebappDir.getCanonicalPath() + " missing");
     }
     }
