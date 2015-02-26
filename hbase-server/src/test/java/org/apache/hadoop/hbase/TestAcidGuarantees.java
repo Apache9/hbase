@@ -29,10 +29,8 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.MultithreadedTestUtil.RepeatingTestThread;
 import org.apache.hadoop.hbase.MultithreadedTestUtil.TestContext;
 import org.apache.hadoop.hbase.client.Connection;
-import org.apache.hadoop.hbase.client.ConnectionFactory;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
-import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
@@ -45,7 +43,6 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.util.StringUtils;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
-import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
@@ -110,12 +107,11 @@ public class TestAcidGuarantees implements Tool {
     Table table;
     AtomicLong numWritten = new AtomicLong();
 
-    public AtomicityWriter(TestContext ctx, byte targetRows[][],
-                           byte targetFamilies[][]) throws IOException {
+    public AtomicityWriter(TestContext ctx, Connection connection, byte targetRows[][],
+        byte targetFamilies[][]) throws IOException {
       super(ctx);
       this.targetRows = targetRows;
       this.targetFamilies = targetFamilies;
-      Connection connection = ConnectionFactory.createConnection(ctx.getConf());
       table = connection.getTable(TABLE_NAME);
     }
     public void doAnAction() throws Exception {
@@ -127,7 +123,7 @@ public class TestAcidGuarantees implements Tool {
       for (byte[] family : targetFamilies) {
         for (int i = 0; i < NUM_COLS_TO_CHECK; i++) {
           byte qualifier[] = Bytes.toBytes("col" + i);
-          p.add(family, qualifier, data);
+          p.addColumn(family, qualifier, data);
         }
       }
       table.put(p);
@@ -146,12 +142,11 @@ public class TestAcidGuarantees implements Tool {
     int numVerified = 0;
     AtomicLong numRead = new AtomicLong();
 
-    public AtomicGetReader(TestContext ctx, byte targetRow[],
-                           byte targetFamilies[][]) throws IOException {
+    public AtomicGetReader(TestContext ctx, Connection connection, byte targetRow[],
+        byte targetFamilies[][]) throws IOException {
       super(ctx);
       this.targetRow = targetRow;
       this.targetFamilies = targetFamilies;
-      Connection connection = ConnectionFactory.createConnection(ctx.getConf());
       table = connection.getTable(TABLE_NAME);
     }
 
@@ -205,11 +200,10 @@ public class TestAcidGuarantees implements Tool {
     AtomicLong numScans = new AtomicLong();
     AtomicLong numRowsScanned = new AtomicLong();
 
-    public AtomicScanReader(TestContext ctx,
-                           byte targetFamilies[][]) throws IOException {
+    public AtomicScanReader(TestContext ctx, Connection connection, byte targetFamilies[][])
+        throws IOException {
       super(ctx);
       this.targetFamilies = targetFamilies;
-      Connection connection = ConnectionFactory.createConnection(ctx.getConf());
       table = connection.getTable(TABLE_NAME);
     }
 
@@ -277,8 +271,7 @@ public class TestAcidGuarantees implements Tool {
 
     List<AtomicityWriter> writers = Lists.newArrayList();
     for (int i = 0; i < numWriters; i++) {
-      AtomicityWriter writer = new AtomicityWriter(
-          ctx, rows, FAMILIES);
+      AtomicityWriter writer = new AtomicityWriter(ctx, util.getConnection(), rows, FAMILIES);
       writers.add(writer);
       ctx.addThread(writer);
     }
@@ -305,15 +298,15 @@ public class TestAcidGuarantees implements Tool {
 
     List<AtomicGetReader> getters = Lists.newArrayList();
     for (int i = 0; i < numGetters; i++) {
-      AtomicGetReader getter = new AtomicGetReader(
-          ctx, rows[i % numUniqueRows], FAMILIES);
+      AtomicGetReader getter =
+          new AtomicGetReader(ctx, util.getConnection(), rows[i % numUniqueRows], FAMILIES);
       getters.add(getter);
       ctx.addThread(getter);
     }
 
     List<AtomicScanReader> scanners = Lists.newArrayList();
     for (int i = 0; i < numScanners; i++) {
-      AtomicScanReader scanner = new AtomicScanReader(ctx, FAMILIES);
+      AtomicScanReader scanner = new AtomicScanReader(ctx, util.getConnection(), FAMILIES);
       scanners.add(scanner);
       ctx.addThread(scanner);
     }
