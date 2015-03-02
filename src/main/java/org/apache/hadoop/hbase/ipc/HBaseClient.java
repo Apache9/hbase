@@ -45,6 +45,7 @@ import javax.net.SocketFactory;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.DoNotRetryIOException;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -153,7 +154,7 @@ public class HBaseClient {
 
   }
 
-  public static class FailedServerException extends IOException {
+  public static class FailedServerException extends DoNotRetryIOException {
     public FailedServerException(String s) {
       super(s);
     }
@@ -1018,6 +1019,13 @@ public class HBaseClient {
           call.error.fillInStackTrace();
           throw call.error;
         }
+        
+        // do not wrap DoNotRetryIOException; otherwise outer loop may
+        // also retry
+        if (call.error instanceof DoNotRetryIOException) {
+          throw call.error;
+        }
+        
         // local exception
         throw wrapException(addr, call.error);
       }

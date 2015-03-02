@@ -1776,6 +1776,11 @@ public class HConnectionManager {
               }
             }
           } catch (ExecutionException e) {
+            // may contain DoNotRetryIOException, need to set and do not retry
+            // when check result
+            for (Action<R> action : actionsByServer.get(loc).allActions()) {
+              results[action.getOriginalIndex()] = e.getCause();
+            }
             LOG.warn("Failed all from " + loc, e);
           }
         }
@@ -2061,5 +2066,5 @@ public class HConnectionManager {
     int retries = hcRetries * serversideMultiplier;
     c.setInt(HConstants.HBASE_CLIENT_RETRIES_NUMBER, retries);
     log.debug("Set serverside HConnection retries=" + retries);
-  }
+  }  
 }
