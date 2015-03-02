@@ -222,10 +222,13 @@ public abstract class HBaseServer implements RpcServer {
   protected final int maxTraceLogCountPerSeccond;
   protected final AtomicLong lastTick = new AtomicLong(0); // in seconds
   protected final Counter traceLogCounter = new Counter(); // trace log request counter in lastTick;
+  protected final int traceLogListMaxSize;
   
   private static final String TRACE_RESPONSE_TIME = "hbase.ipc.trace.response.time";
   private static final String TRACE_LOG_REQUEST_COUNT_MAX = "hbase.ipc.trace.log.request.count.max";
   protected final long DEFAULT_TRACE_RESPONSE_TIME = 100;    // default trace ipc time is 100ms
+  private static final String TRACE_LOG_LIST_MAX_SIZE = "hbase.ipc.trace.log.list.max.size";
+  protected final int DEFAULT_TRACE_LOG_LIST_MAX_SIZE = 10000;
   
   // responseQueuesSizeThrottler is shared among all responseQueues,
   // it bounds memory occupied by responses in all responseQueues
@@ -314,7 +317,8 @@ public abstract class HBaseServer implements RpcServer {
     
     public Call(int id, Writable param, Connection connection,
         Responder responder, long size) {
-      this(id, param,connection, responder,size, new MilliTracer("call#" + id));
+      this(id, param, connection, responder, size, new MilliTracer("call#" + id,
+          traceLogListMaxSize));
     }
     
     public Call(int id, Writable param, Connection connection,
@@ -1394,9 +1398,8 @@ public abstract class HBaseServer implements RpcServer {
         responder.doRespond(readParamsFailedCall);
         return;
       }
-      Tracer tracer =
-          new MilliTracer("handling call: " + id + " call size:" + callSize
-              + " from " + getHostAddress());
+      Tracer tracer = new MilliTracer("handling call: " + id + " call size:" + callSize + " from "
+          + getHostAddress(), traceLogListMaxSize);
       Call call = createCall(id, param, this, responder, callSize, tracer);
       callQueueSize.add(callSize);
 
@@ -1698,6 +1701,8 @@ public abstract class HBaseServer implements RpcServer {
     
     this.traceResponseTime = conf.getLong(TRACE_RESPONSE_TIME, DEFAULT_TRACE_RESPONSE_TIME);
     this.maxTraceLogCountPerSeccond = conf.getInt(TRACE_LOG_REQUEST_COUNT_MAX, Integer.MAX_VALUE);
+    this.traceLogListMaxSize = conf
+        .getInt(TRACE_LOG_LIST_MAX_SIZE, DEFAULT_TRACE_LOG_LIST_MAX_SIZE);
     this.numOfReplicationHandlers = 
       conf.getInt("hbase.regionserver.replication.handler.count", 3);
     if (numOfReplicationHandlers > 0) {

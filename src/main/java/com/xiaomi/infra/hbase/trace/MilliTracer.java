@@ -10,12 +10,15 @@ public class MilliTracer implements Tracer {
   private String description;
   private long start;
   private long stop;
+  private int maxEntriesLimit;
+  private boolean reachedEntriesLimit;
   private List<Pair<Long, String>> records;
 
-  public MilliTracer(final String description) {
+  public MilliTracer(final String description, final int maxEntriesLimit) {
     this.description = description;
     this.start = currentTimeMillis();
     this.stop = -1;
+    this.maxEntriesLimit = maxEntriesLimit;
     this.records = new LinkedList<Pair<Long, String>>();
     this.records.add(new Pair<Long, String>(start, "Start trace: "
         + description));
@@ -23,8 +26,15 @@ public class MilliTracer implements Tracer {
 
   @Override
   public void addAnnotation(String msg) {
+    if (reachedEntriesLimit) {
+      // discard the following msgs to avoid the potential OOM issue.
+      return;
+    }
     long time = currentTimeMillis();
     this.records.add(new Pair<Long, String>(time, msg));
+    if (this.records.size() >= maxEntriesLimit) {
+      reachedEntriesLimit = true;
+    }
   }
 
   @Override
@@ -32,8 +42,8 @@ public class MilliTracer implements Tracer {
     if (start == 0) throw new IllegalStateException("Trace for " + description
         + " has not been started");
     stop = currentTimeMillis();
-    this.records
-        .add(new Pair<Long, String>(stop, "Stop trace: " + description));
+    this.records.add(new Pair<Long, String>(stop, "Stop trace: " + description
+        + (reachedEntriesLimit ? ", DISCARDED MSG DUE TO REACH LIMIT:" + maxEntriesLimit : "")));
   }
 
   private long currentTimeMillis() {
