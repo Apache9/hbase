@@ -628,6 +628,7 @@ public abstract class HBaseServer implements RpcServer {
      */
     private void cleanupConnections(boolean force) {
       if (force || numConnections > thresholdIdleConnections) {
+        LOG.info("Cleaning up connections: force=" + force + ", numConnections=" + numConnections);
         long currentTime = System.currentTimeMillis();
         if (!force && (currentTime - lastCleanupRunTime) < cleanupInterval) {
           return;
@@ -654,8 +655,7 @@ public abstract class HBaseServer implements RpcServer {
             } catch (Exception e) {return;}
           }
           if (c.timedOut(currentTime)) {
-            if (LOG.isDebugEnabled())
-              LOG.debug(getName() + ": disconnecting client " + c.getHostAddress());
+            LOG.info(getName() + ": disconnecting(cleanupConnections) client " + c.getHostAddress());
             closeConnection(c);
             numNuked++;
             end--;
@@ -726,7 +726,9 @@ public abstract class HBaseServer implements RpcServer {
 
         // clean up all connections
         while (!connectionList.isEmpty()) {
-          closeConnection(connectionList.remove(0));
+          Connection c = connectionList.remove(0);
+          LOG.info(getName() + ": disconnecting(run) client " + c.getHostAddress());
+          closeConnection(c);
         }
       }
     }
@@ -735,10 +737,8 @@ public abstract class HBaseServer implements RpcServer {
       if (key != null) {
         Connection c = (Connection)key.attachment();
         if (c != null) {
-          if (LOG.isDebugEnabled()) {
-            LOG.debug(getName() + ": disconnecting client " + c.getHostAddress() +
-                (e != null ? " on error " + e.getMessage() : ""));
-          }
+          LOG.info(getName() + ": disconnecting(closeCurrentConnection) client " + c.getHostAddress() +
+            (e != null ? " on error " + e.getMessage() : ""));
           closeConnection(c);
           key.attach(null);
         }
@@ -797,10 +797,9 @@ public abstract class HBaseServer implements RpcServer {
         count = -1; //so that the (count < 0) block is executed
       }
       if (count < 0) {
-        if (LOG.isDebugEnabled())
-          LOG.debug(getName() + ": disconnecting client " +
-                    c.getHostAddress() + ". Number of active connections: "+
-                    numConnections);
+        LOG.info(getName() + ": disconnecting(doRead) client " +
+                  c.getHostAddress() + ". Number of active connections: "+
+                  numConnections + ", count: " + count);
         closeConnection(c);
         // c = null;
       }
@@ -969,6 +968,8 @@ public abstract class HBaseServer implements RpcServer {
         while (iter.hasNext()) {
           Call nextCall = iter.next();
           if (now > nextCall.timestamp + purgeTimeout) {
+            LOG.info(getName() + ": disconnecting(doPurge) client " +
+                     nextCall.connection.getHostAddress() + ", timestamp: " + nextCall.timestamp);
             closeConnection(nextCall.connection);
             break;
           }
@@ -1047,6 +1048,8 @@ public abstract class HBaseServer implements RpcServer {
         if (error && call != null) {
           LOG.warn(getName()+", call " + call + ": output error");
           done = true;               // error. no more data for this channel.
+          LOG.info(getName() + ": disconnecting(processResponse) client " +
+                   call.connection.getHostAddress());
           closeConnection(call.connection);
         }
       }
