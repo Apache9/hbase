@@ -513,6 +513,7 @@ public abstract class HBaseServer implements RpcServer {
     private long cleanupInterval = 10000; //the minimum interval between
                                           //two cleanup runs
     private int backlogLength = conf.getInt("ipc.server.listen.queue.size", 128);
+    private boolean logDisconnect = conf.getBoolean("ipc.server.logdisconnect", false);
 
     private ExecutorService readPool;
 
@@ -655,7 +656,10 @@ public abstract class HBaseServer implements RpcServer {
             } catch (Exception e) {return;}
           }
           if (c.timedOut(currentTime)) {
-            LOG.info(getName() + ": disconnecting(cleanupConnections) client " + c.getHostAddress());
+            if (logDisconnect || LOG.isDebugEnabled()) {
+              LOG.info(getName() + ": disconnecting(cleanupConnections) client " +
+                  c.getHostAddress());
+            }
             closeConnection(c);
             numNuked++;
             end--;
@@ -727,7 +731,9 @@ public abstract class HBaseServer implements RpcServer {
         // clean up all connections
         while (!connectionList.isEmpty()) {
           Connection c = connectionList.remove(0);
-          LOG.info(getName() + ": disconnecting(run) client " + c.getHostAddress());
+          if (logDisconnect || LOG.isDebugEnabled()) {
+            LOG.info(getName() + ": disconnecting(run) client " + c.getHostAddress());
+          }
           closeConnection(c);
         }
       }
@@ -737,8 +743,10 @@ public abstract class HBaseServer implements RpcServer {
       if (key != null) {
         Connection c = (Connection)key.attachment();
         if (c != null) {
-          LOG.info(getName() + ": disconnecting(closeCurrentConnection) client " + c.getHostAddress() +
-            (e != null ? " on error " + e.getMessage() : ""));
+          if (logDisconnect || LOG.isDebugEnabled()) {
+            LOG.info(getName() + ": disconnecting(closeCurrentConnection) client " +
+                c.getHostAddress() + (e != null ? " on error " + e.getMessage() : ""));
+          }
           closeConnection(c);
           key.attach(null);
         }
@@ -797,9 +805,10 @@ public abstract class HBaseServer implements RpcServer {
         count = -1; //so that the (count < 0) block is executed
       }
       if (count < 0) {
-        LOG.info(getName() + ": disconnecting(doRead) client " +
-                  c.getHostAddress() + ". Number of active connections: "+
-                  numConnections + ", count: " + count);
+        if (logDisconnect || LOG.isDebugEnabled()) {
+          LOG.info(getName() + ": disconnecting(doRead) client " + c.getHostAddress() +
+              ". Number of active connections: " + numConnections + ", count: " + count);
+        }
         closeConnection(c);
         // c = null;
       }
@@ -835,6 +844,7 @@ public abstract class HBaseServer implements RpcServer {
   protected class Responder extends Thread {
     private final Selector writeSelector;
     private int pending;         // connections waiting to register
+    private boolean logDisconnect = conf.getBoolean("ipc.server.logdisconnect", false);
 
     Responder() throws IOException {
       this.setName("IPC Server Responder");
@@ -968,8 +978,11 @@ public abstract class HBaseServer implements RpcServer {
         while (iter.hasNext()) {
           Call nextCall = iter.next();
           if (now > nextCall.timestamp + purgeTimeout) {
-            LOG.info(getName() + ": disconnecting(doPurge) client " +
-                     nextCall.connection.getHostAddress() + ", timestamp: " + nextCall.timestamp);
+            if (logDisconnect || LOG.isDebugEnabled()) {
+              LOG.info(getName() + ": disconnecting(doPurge) client " +
+                  nextCall.connection.getHostAddress() + ", timestamp: "
+                  + nextCall.timestamp);
+            }
             closeConnection(nextCall.connection);
             break;
           }
@@ -1048,8 +1061,10 @@ public abstract class HBaseServer implements RpcServer {
         if (error && call != null) {
           LOG.warn(getName()+", call " + call + ": output error");
           done = true;               // error. no more data for this channel.
-          LOG.info(getName() + ": disconnecting(processResponse) client " +
-                   call.connection.getHostAddress());
+          if (logDisconnect || LOG.isDebugEnabled()) {
+            LOG.info(getName() + ": disconnecting(processResponse) client " +
+                call.connection.getHostAddress());
+          }
           closeConnection(call.connection);
         }
       }
