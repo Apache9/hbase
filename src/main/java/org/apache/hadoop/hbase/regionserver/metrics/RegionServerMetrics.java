@@ -643,6 +643,10 @@ public class RegionServerMetrics implements Updater {
         Long.valueOf(this.blockCacheHitRatio.get())+"%");
     sb = Strings.appendKeyValue(sb, this.blockCacheHitCachingRatio.getName(),
         Long.valueOf(this.blockCacheHitCachingRatio.get())+"%");
+    sb = Strings.appendKeyValue(sb, this.blockCacheHitRatioPastNPeriods.getName(),
+      Long.valueOf(this.blockCacheHitRatioPastNPeriods.get())+"%");
+    sb = Strings.appendKeyValue(sb, this.blockCacheHitCachingRatioPastNPeriods.getName(),
+        Long.valueOf(this.blockCacheHitCachingRatioPastNPeriods.get())+"%");
     sb = Strings.appendKeyValue(sb, this.hdfsBlocksLocalityIndex.getName(),
         Long.valueOf(this.hdfsBlocksLocalityIndex.get()));
     sb = Strings.appendKeyValue(sb, "slowHLogAppendCount",

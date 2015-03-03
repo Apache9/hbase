@@ -29,6 +29,7 @@ import org.apache.hadoop.hbase.security.TokenInfo;
 import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.security.token.AuthenticationTokenIdentifier;
 import org.apache.hadoop.hbase.security.token.AuthenticationTokenSelector;
+import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.PoolMap;
 import org.apache.hadoop.io.*;
 import org.apache.hadoop.ipc.RemoteException;
@@ -437,8 +438,26 @@ public class SecureClient extends HBaseClient {
           // Close the connection
           markClosed(exception);
         } else {
+          boolean debugStateError = conf.getBoolean("hbase.security.debugstateerror", false);
+          String debugInfo = null;
+          if (debugStateError) {
+            StringBuilder buff = new StringBuilder();
+            buff.append(", debug info: id=").append(id);
+            byte[] remaining = new byte[1024]; // at most peek 1k
+            try {
+              int size = in.read(remaining);
+              if (size > 0) {
+                buff.append(", remaining bytes=[")
+                    .append(Bytes.toStringBinary(remaining, 0, size))
+                    .append("]");
+              }
+            } catch (IOException ioe) {
+              buff.append(", input error: ").append(ioe.getMessage());
+            }
+            debugInfo = buff.toString();
+          }
           IOException exception = new IOException("Response from remote server " + remoteId.getAddress()
-              + " has an unknown state:" + state);
+              + " has an unknown state:" + state + (debugInfo == null ? "" : debugInfo));
           if (call != null) {
             call.setException(exception);
           }

@@ -337,6 +337,11 @@ public class ReplicationZookeeper {
     String znode = ZKUtil.joinZNode(this.peersZNode, peerId);
     byte [] data = ZKUtil.getData(this.zookeeper, znode);
     String otherClusterKey = Bytes.toString(data);
+    
+    if (otherClusterKey == null) {
+      throw new IOException("can not get cluster key for peerId " + peerId);
+    }
+    
     if (this.ourClusterKey.equals(otherClusterKey)) {
       LOG.debug("Not connecting to " + peerId + " because it's us");
       return null;
