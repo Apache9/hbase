@@ -222,10 +222,13 @@ public abstract class HBaseServer implements RpcServer {
   protected final int maxTraceLogCountPerSeccond;
   protected final AtomicLong lastTick = new AtomicLong(0); // in seconds
   protected final Counter traceLogCounter = new Counter(); // trace log request counter in lastTick;
+  protected final int traceLogListMaxSize;
   
   private static final String TRACE_RESPONSE_TIME = "hbase.ipc.trace.response.time";
   private static final String TRACE_LOG_REQUEST_COUNT_MAX = "hbase.ipc.trace.log.request.count.max";
   protected final long DEFAULT_TRACE_RESPONSE_TIME = 100;    // default trace ipc time is 100ms
+  private static final String TRACE_LOG_LIST_MAX_SIZE = "hbase.ipc.trace.log.list.max.size";
+  protected final int DEFAULT_TRACE_LOG_LIST_MAX_SIZE = 10000;
   
   // responseQueuesSizeThrottler is shared among all responseQueues,
   // it bounds memory occupied by responses in all responseQueues
@@ -314,7 +317,8 @@ public abstract class HBaseServer implements RpcServer {
     
     public Call(int id, Writable param, Connection connection,
         Responder responder, long size) {
-      this(id, param,connection, responder,size, new MilliTracer("call#" + id));
+      this(id, param, connection, responder, size, new MilliTracer("call#" + id,
+          traceLogListMaxSize));
     }
     
     public Call(int id, Writable param, Connection connection,
@@ -624,6 +628,7 @@ public abstract class HBaseServer implements RpcServer {
      */
     private void cleanupConnections(boolean force) {
       if (force || numConnections > thresholdIdleConnections) {
+        LOG.info("Cleaning up connections: force=" + force + ", numConnections=" + numConnections);
         long currentTime = System.currentTimeMillis();
         if (!force && (currentTime - lastCleanupRunTime) < cleanupInterval) {
           return;
@@ -650,8 +655,7 @@ public abstract class HBaseServer implements RpcServer {
             } catch (Exception e) {return;}
           }
           if (c.timedOut(currentTime)) {
-            if (LOG.isDebugEnabled())
-              LOG.debug(getName() + ": disconnecting client " + c.getHostAddress());
+            LOG.info(getName() + ": disconnecting(cleanupConnections) client " + c.getHostAddress());
             closeConnection(c);
             numNuked++;
             end--;
@@ -722,7 +726,9 @@ public abstract class HBaseServer implements RpcServer {
 
         // clean up all connections
         while (!connectionList.isEmpty()) {
-          closeConnection(connectionList.remove(0));
+          Connection c = connectionList.remove(0);
+          LOG.info(getName() + ": disconnecting(run) client " + c.getHostAddress());
+          closeConnection(c);
         }
       }
     }
@@ -731,10 +737,8 @@ public abstract class HBaseServer implements RpcServer {
       if (key != null) {
         Connection c = (Connection)key.attachment();
         if (c != null) {
-          if (LOG.isDebugEnabled()) {
-            LOG.debug(getName() + ": disconnecting client " + c.getHostAddress() +
-                (e != null ? " on error " + e.getMessage() : ""));
-          }
+          LOG.info(getName() + ": disconnecting(closeCurrentConnection) client " + c.getHostAddress() +
+            (e != null ? " on error " + e.getMessage() : ""));
           closeConnection(c);
           key.attach(null);
         }
@@ -793,10 +797,9 @@ public abstract class HBaseServer implements RpcServer {
         count = -1; //so that the (count < 0) block is executed
       }
       if (count < 0) {
-        if (LOG.isDebugEnabled())
-          LOG.debug(getName() + ": disconnecting client " +
-                    c.getHostAddress() + ". Number of active connections: "+
-                    numConnections);
+        LOG.info(getName() + ": disconnecting(doRead) client " +
+                  c.getHostAddress() + ". Number of active connections: "+
+                  numConnections + ", count: " + count);
         closeConnection(c);
         // c = null;
       }
@@ -965,6 +968,8 @@ public abstract class HBaseServer implements RpcServer {
         while (iter.hasNext()) {
           Call nextCall = iter.next();
           if (now > nextCall.timestamp + purgeTimeout) {
+            LOG.info(getName() + ": disconnecting(doPurge) client " +
+                     nextCall.connection.getHostAddress() + ", timestamp: " + nextCall.timestamp);
             closeConnection(nextCall.connection);
             break;
           }
@@ -1043,6 +1048,8 @@ public abstract class HBaseServer implements RpcServer {
         if (error && call != null) {
           LOG.warn(getName()+", call " + call + ": output error");
           done = true;               // error. no more data for this channel.
+          LOG.info(getName() + ": disconnecting(processResponse) client " +
+                   call.connection.getHostAddress());
           closeConnection(call.connection);
         }
       }
@@ -1394,9 +1401,8 @@ public abstract class HBaseServer implements RpcServer {
         responder.doRespond(readParamsFailedCall);
         return;
       }
-      Tracer tracer =
-          new MilliTracer("handling call: " + id + " call size:" + callSize
-              + " from " + getHostAddress());
+      Tracer tracer = new MilliTracer("handling call: " + id + " call size:" + callSize + " from "
+          + getHostAddress(), traceLogListMaxSize);
       Call call = createCall(id, param, this, responder, callSize, tracer);
       callQueueSize.add(callSize);
 
@@ -1698,6 +1704,8 @@ public abstract class HBaseServer implements RpcServer {
     
     this.traceResponseTime = conf.getLong(TRACE_RESPONSE_TIME, DEFAULT_TRACE_RESPONSE_TIME);
     this.maxTraceLogCountPerSeccond = conf.getInt(TRACE_LOG_REQUEST_COUNT_MAX, Integer.MAX_VALUE);
+    this.traceLogListMaxSize = conf
+        .getInt(TRACE_LOG_LIST_MAX_SIZE, DEFAULT_TRACE_LOG_LIST_MAX_SIZE);
     this.numOfReplicationHandlers = 
       conf.getInt("hbase.regionserver.replication.handler.count", 3);
     if (numOfReplicationHandlers > 0) {
