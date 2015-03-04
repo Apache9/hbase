@@ -148,4 +148,9 @@ public interface HFileScanner {
    * Otherwise returns false.
    */
   boolean isSeeked();
+
+  /**
+   * @return the next key in the index (the key to seek to the next block)
+   */
+  byte[] getNextIndexedKey();
 }
