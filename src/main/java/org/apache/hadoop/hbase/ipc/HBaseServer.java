@@ -885,7 +885,7 @@ public abstract class HBaseServer implements RpcServer {
                   doAsyncWrite(key);
               }
             } catch (IOException e) {
-              LOG.info(getName() + ": doAsyncWrite threw exception " + e);
+              LOG.info(getName() + ": doAsyncWrite threw exception ", e);
             }
           }
           long now = System.currentTimeMillis();
