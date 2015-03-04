@@ -215,7 +215,7 @@ public class SecureClient extends HBaseClient {
           if (shouldAuthenticateOverKrb()) {
             if (currRetries < maxRetries) {
               LOG.info("Exception encountered while connecting to " +
-                  "the server : " + ex);
+                  "the server : ", ex);
               //try re-login
               if (UserGroupInformation.isLoginKeytabBased()) {
 
@@ -251,7 +251,7 @@ public class SecureClient extends HBaseClient {
             }
           } else {
             LOG.warn("Exception encountered while connecting to " +
-                "the server : " + ex);
+                "the server : ", ex);
           }
           if (ex instanceof RemoteException) {
             throw (RemoteException)ex;
