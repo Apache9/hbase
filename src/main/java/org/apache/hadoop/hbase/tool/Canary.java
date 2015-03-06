@@ -19,29 +19,42 @@
 
 package org.apache.hadoop.hbase.tool;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-
-import org.apache.hadoop.util.Tool;
-import org.apache.hadoop.util.ToolRunner;
-
 import org.apache.hadoop.conf.Configuration;
-
+import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HTableDescriptor;
-import org.apache.hadoop.hbase.HColumnDescriptor;
-import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.TableNotFoundException;
-
 import org.apache.hadoop.hbase.client.Get;
-import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
+import org.apache.hadoop.hbase.client.HConnection;
+import org.apache.hadoop.hbase.client.HConnectionManager;
+import org.apache.hadoop.hbase.client.HTableInterface;
+import org.apache.hadoop.hbase.filter.FirstKeyOnlyFilter;
+import org.apache.hadoop.hbase.security.User;
+import org.apache.hadoop.hbase.util.Strings;
+import org.apache.hadoop.net.DNS;
+import org.apache.hadoop.util.ReflectionUtils;
+import org.apache.hadoop.util.Tool;
+import org.apache.hadoop.util.ToolRunner;
 
 /**
  * HBase Canary Tool, that that can be used to do
  * "canary monitoring" of a running HBase cluster.
  *
- * Foreach region tries to get one row per column family
+ * For each region tries to get one row per column family
  * and outputs some information about failure or latency.
  */
 public final class Canary implements Tool {
@@ -73,6 +86,59 @@ public final class Canary implements Tool {
     }
   }
 
+  /**
+   * Contact a region server and get all information from it
+   */
+  static class RegionTask implements Callable<Void> {
+    private Configuration conf;
+    private HConnection connection;
+    private HTableDescriptor tableDesc;
+    private HRegionInfo region;
+    private Sink sink;
+
+    RegionTask(Configuration conf, HConnection connection, HTableDescriptor tableDesc,
+        HRegionInfo region, Sink sink) {
+      this.conf = conf;
+      this.connection = connection;
+      this.tableDesc = tableDesc;
+      this.region = region;
+      this.sink = sink;
+    }
+
+    @Override
+    public Void call() {
+      /*
+       * For each column family of the region tries to get one row
+       * and outputs the latency, or the failure.
+       */
+      HTableInterface table;
+      try {
+        table = this.connection.getTable(tableDesc.getName());
+        for (HColumnDescriptor column : tableDesc.getColumnFamilies()) {
+          Get get = new Get(region.getStartKey());
+          get.setFilter(new FirstKeyOnlyFilter());
+          get.addFamily(column.getName());
+          get.setCacheBlocks(false);
+          try {
+            long startTime = System.currentTimeMillis();
+            table.exists(get);
+            long time = System.currentTimeMillis() - startTime;
+
+            sink.publishReadTiming(region, column, time);
+          } catch (Exception e) {
+            sink.publishReadFailure(region, column);
+          }
+        }
+        table.close();
+      } catch (IOException e) {
+        sink.publishReadFailure(region);
+      }
+      return null;
+    }
+  }
+
+  private static final int MAX_THREADS_NUM = 16; // #threads to contact regions
+
   private static final long DEFAULT_INTERVAL = 6000;
 
   private static final Log LOG = LogFactory.getLog(Canary.class);
@@ -80,13 +146,12 @@ public final class Canary implements Tool {
   private Configuration conf = null;
   private HBaseAdmin admin = null;
   private long interval = 0;
+  private ExecutorService executor; // threads to retrieve data from regionservers
   private Sink sink = null;
+  private HConnection connection = null;
 
-  public Canary() {
-    this(new StdOutSink());
-  }
-
-  public Canary(Sink sink) {
+  public Canary(ExecutorService executor, Sink sink) {
+    this.executor = executor;
     this.sink = sink;
   }
 
@@ -149,26 +214,45 @@ public final class Canary implements Tool {
 
     // initialize HBase conf and admin
     if (conf == null) conf = HBaseConfiguration.create();
-    admin = new HBaseAdmin(conf);
+    connection = HConnectionManager.createConnection(this.conf);
+    String hostname =
+        conf.get(
+          "hbase.canary.ipc.address",
+          Strings.domainNamePointerToHostName(DNS.getDefaultHost(
+            conf.get("hbase.regionserver.dns.interface", "default"),
+            conf.get("hbase.regionserver.dns.nameserver", "default"))));
+
+    // initialize server principal (if using secure Hadoop)
+    User.login(conf, "hbase.canary.keytab.file", "hbase.canary.kerberos.principal", hostname);
+
+    admin = new HBaseAdmin(connection);
 
     // lets the canary monitor the cluster
     do {
+      long startTime = System.currentTimeMillis();
       if (admin.isAborted()) {
         LOG.error("HBaseAdmin aborted");
         return(1);
       }
-
-      if (tables_index >= 0) {
-        for (int i = tables_index; i < args.length; i++) {
-          sniff(args[i]);
+      try {
+        if (tables_index >= 0) {
+          for (int i = tables_index; i < args.length; i++) {
+            sniff(args[i]);
+          }
+        } else {
+          sniff();
         }
-      } else {
-        sniff();
+      } catch (Exception e) {
+        LOG.error("Sniff tables failed.", e);
       }
-
-      Thread.sleep(interval);
+      long  finishTime = System.currentTimeMillis();
+      if (finishTime < startTime + interval) {
+        Thread.sleep(startTime + interval - finishTime);
+      }
     } while (interval > 0);
 
+    admin.close();
+    connection.close();
     return(0);
   }
 
@@ -185,8 +269,18 @@ public final class Canary implements Tool {
    * canary entry point to monitor all the tables.
    */
   private void sniff() throws Exception {
+    List<Future<Void>> taskFutures = new LinkedList<Future<Void>>();
     for (HTableDescriptor table : admin.listTables()) {
-      sniff(table);
+      if (admin.isTableEnabled(table.getName())) {
+        taskFutures.addAll(sniff(table));
+      }
+    }
+    for (Future<Void> future : taskFutures) {
+      try {
+        future.get();
+      } catch (ExecutionException e) {
+        LOG.error("Sniff region failed!", e);
+      }
     }
   }
 
@@ -194,10 +288,18 @@ public final class Canary implements Tool {
    * canary entry point to monitor specified table.
    */
   private void sniff(String tableName) throws Exception {
+    List<Future<Void>> taskFutures = new LinkedList<Future<Void>>();
     if (admin.isTableAvailable(tableName)) {
-      sniff(admin.getTableDescriptor(tableName.getBytes()));
+      taskFutures.addAll(sniff(admin.getTableDescriptor(tableName.getBytes())));
     } else {
       LOG.warn(String.format("Table %s is not available", tableName));
+    }
+    for (Future<Void> future : taskFutures) {
+      try {
+        future.get();
+      } catch (ExecutionException e) {
+        LOG.error("Sniff region failed!", e);
+      }
     }
   }
 
@@ -205,49 +307,43 @@ public final class Canary implements Tool {
    * Loops over regions that owns this table,
    * and output some information abouts the state.
    */
-  private void sniff(HTableDescriptor tableDesc) throws Exception {
-    HTable table = null;
-
+  private List<Future<Void>> sniff(HTableDescriptor tableDesc) throws Exception {
+    HTableInterface table = null;
     try {
-      table = new HTable(admin.getConfiguration(), tableDesc.getName());
+      table = this.connection.getTable(tableDesc.getName());
     } catch (TableNotFoundException e) {
-      return;
+      return new ArrayList<Future<Void>>();
     }
-
+    List<RegionTask> tasks = new ArrayList<RegionTask>();
     for (HRegionInfo region : admin.getTableRegions(tableDesc.getName())) {
-      try {
-        sniffRegion(region, table);
-      } catch (Exception e) {
-        sink.publishReadFailure(region);
-      }
+       tasks.add(new RegionTask(conf, connection, tableDesc, region, sink));
     }
+    table.close();
+    return this.executor.invokeAll(tasks);
   }
 
-  /*
-   * For each column family of the region tries to get one row
-   * and outputs the latency, or the failure.
-   */
-  private void sniffRegion(HRegionInfo region, HTable table) throws Exception {
-    HTableDescriptor tableDesc = table.getTableDescriptor();
-    for (HColumnDescriptor column : tableDesc.getColumnFamilies()) {
-      Get get = new Get(region.getStartKey());
-      get.addFamily(column.getName());
+  public static void main(String[] args) {
+    Configuration conf = HBaseConfiguration.create();
 
-      try {
-        long startTime = System.currentTimeMillis();
-        table.get(get);
-        long time = System.currentTimeMillis() - startTime;
+    conf.setInt("hbase.rpc.timeout", 200);
+    conf.setInt("hbase.client.pause", 100);
+    conf.setInt("hbase.client.operation.timeout", 500);
+    conf.setInt("hbase.client.retries.number", 2);
 
-        sink.publishReadTiming(region, column, time);
-      } catch (Exception e) {
-        sink.publishReadFailure(region, column);
-      }
+    int numThreads = conf.getInt("hbase.canary.threads.num", MAX_THREADS_NUM);
+    ExecutorService executor = new ScheduledThreadPoolExecutor(numThreads);
+
+    Class<? extends Sink> sinkClass =
+        (Class<? extends Sink>) conf.getClass("hbase.canary.sink.class", StdOutSink.class);
+    Sink sink = ReflectionUtils.newInstance(sinkClass, conf);
+
+    int exitCode = 0;
+    try {
+      exitCode = ToolRunner.run(conf, new Canary(executor, sink), args);
+    } catch (Exception e) {
+      LOG.error("Canry tool exited with exception. ", e);
     }
-  }
-
-  public static void main(String[] args) throws Exception {
-    int exitCode = ToolRunner.run(new Canary(), args);
+    executor.shutdown();
     System.exit(exitCode);
   }
 }
-
