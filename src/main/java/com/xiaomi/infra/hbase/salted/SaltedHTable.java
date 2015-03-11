@@ -61,6 +61,7 @@ import org.apache.hadoop.io.Writable;
  */
 public class SaltedHTable implements HTableInterface{
   public static final String SLOTS_IN_SCAN = "__salted_slots_in_scan__";
+  public static final String KEEP_SALT_IN_SCAN = "__salted_keep_salt_in_scan__";
   private static Map<ImmutableBytesWritable, KeySalter> saltedTables =
       new ConcurrentHashMap<ImmutableBytesWritable, KeySalter>();
   
@@ -90,12 +91,14 @@ public class SaltedHTable implements HTableInterface{
   @Override
   public ResultScanner getScanner(Scan scan) throws IOException {
     byte[] slotsValue = scan.getAttribute(SLOTS_IN_SCAN);
+    byte[] keepSaltBytes = scan.getAttribute(KEEP_SALT_IN_SCAN);
+    boolean keepSalt = keepSaltBytes == null ? false : Bytes.toBoolean(keepSaltBytes);
     if (slotsValue == null) {
-      return getScanner(scan, null);
+      return getScanner(scan, null, keepSalt);
     } else {
       SlotsWritable slotsWritable = new SlotsWritable();
       Writables.getWritable(slotsValue, slotsWritable);
-      return getScanner(scan, slotsWritable.getSlots());
+      return getScanner(scan, slotsWritable.getSlots(), keepSalt);
     }
   }
 
