@@ -658,6 +658,7 @@ public abstract class SecureServer extends HBaseServer {
       disposeSasl();
       data = null;
       dataLengthBuffer = null;
+      closed = true;
       if (!channel.isOpen())
         return;
       try {socket.shutdownOutput();} catch(Exception ignored) {} // FindBugs DE_MIGHT_IGNORE

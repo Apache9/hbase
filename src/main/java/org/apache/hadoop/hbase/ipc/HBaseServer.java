@@ -1108,13 +1108,15 @@ public abstract class HBaseServer implements RpcServer {
         throw new InterruptedIOException(ie.getMessage());
       }
       synchronized (call.connection.responseQueue) {
-        closed = call.connection.closed;
+        closed = (call.connection.closed || !call.connection.channel.isOpen());
         if (!closed) {
           call.connection.responseQueue.addLast(call);
-
           if (call.connection.responseQueue.size() == 1) {
             doRegister = !processResponse(call.connection.responseQueue, false);
           }
+        } else {
+          // this should be safe even the connection "closed" flag is true
+          closeConnection(call.connection);
         }
       }
       if (doRegister) {
