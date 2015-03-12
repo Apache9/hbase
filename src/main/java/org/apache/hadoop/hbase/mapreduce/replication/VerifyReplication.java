@@ -35,6 +35,7 @@ import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
+import org.apache.hadoop.hbase.filter.PageFilter;
 import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
 import org.apache.hadoop.hbase.mapreduce.TableInputFormat;
 import org.apache.hadoop.hbase.mapreduce.TableMapReduceUtil;
@@ -77,6 +78,7 @@ public class VerifyReplication  extends Configured implements Tool {
   private String startRow = null;
   private String stopRow = null;
   private int scanRateLimit = -1;
+  private long verifyRows = Long.MAX_VALUE;
   
   public VerifyReplication(Configuration conf) {
     super(conf);
@@ -124,6 +126,7 @@ public class VerifyReplication  extends Configured implements Tool {
         long startTime = conf.getLong(NAME + ".startTime", 0);
         long endTime = conf.getLong(NAME + ".endTime", 0);
         String families = conf.get(NAME + ".families", null);
+        long verifyRows = conf.getLong(NAME + ".verifyrows", Long.MAX_VALUE);
         if(families != null) {
           String[] fams = families.split(",");
           for(String fam : fams) {
@@ -133,6 +136,9 @@ public class VerifyReplication  extends Configured implements Tool {
         if (startTime != 0) {
           scan.setTimeRange(startTime,
               endTime == 0 ? HConstants.LATEST_TIMESTAMP : endTime);
+        }
+        if (verifyRows != Long.MAX_VALUE) {
+          scan.setFilter(new PageFilter(verifyRows));
         }
 
         final TableSplit tableSplit = (TableSplit)(context.getInputSplit());
@@ -255,6 +261,7 @@ public class VerifyReplication  extends Configured implements Tool {
     conf.set(NAME+".tableName", tableName);
     conf.setLong(NAME+".startTime", startTime);
     conf.setLong(NAME+".endTime", endTime);
+    conf.setLong(NAME+".verifyrows", verifyRows);
     if (families != null) {
       conf.set(NAME+".families", families);
     }
@@ -281,10 +288,14 @@ public class VerifyReplication  extends Configured implements Tool {
       scan.setStopRow(Bytes.toBytes(stopRow));
     }
 
+    if (verifyRows != Long.MAX_VALUE) {
+      scan.setFilter(new PageFilter(verifyRows));
+    }
+
     if (scanRateLimit > 0) {
       job.getConfiguration().setInt(TableMapper.SCAN_RATE_LIMIT, scanRateLimit);
     }
-    
+        
     TableMapReduceUtil.initTableMapperJob(tableName, scan,
         Verifier.class, null, null, job);
 
@@ -359,6 +370,12 @@ public class VerifyReplication  extends Configured implements Tool {
           continue;
         }
         
+        final String verifyRowKey = "--verifyrows";
+        if (cmd.startsWith(verifyRowKey)) {
+          verifyRows = Long.parseLong(cmd.substring(verifyRowKey.length()));
+          continue;
+        }
+        
         if (i == args.length-2) {
           peerId = cmd;
         }
@@ -393,6 +410,7 @@ public class VerifyReplication  extends Configured implements Tool {
     System.err.println(" stoprow      end of the row");
     System.err.println(" families     comma-separated list of families to copy");
     System.err.println(" scanrate     the scan rate limit: rows per second for each region.");
+    System.err.println(" verifyrows   number of rows each region in source table to verify.");
     System.err.println();
     System.err.println("Args:");
     System.err.println(" peerid       Id of the peer used for verification, must match the one given for replication");
