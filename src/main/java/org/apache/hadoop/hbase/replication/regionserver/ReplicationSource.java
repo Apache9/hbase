@@ -711,6 +711,7 @@ public class ReplicationSource extends Thread
             return false;
           } else {
             // EOF happen not at the tail of the recover queue, this should not happen!!!
+            this.metrics.replicationFatalError.inc();
             LOG.fatal("EOF not at the tail of recover queue:" + this.peerClusterZnode
                 + ", file path:" + this.currentPath
                 + ", should not happen, will wait for human intervention", ioe);
