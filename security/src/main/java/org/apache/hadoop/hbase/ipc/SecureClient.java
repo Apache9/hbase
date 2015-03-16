@@ -21,6 +21,7 @@ package org.apache.hadoop.hbase.ipc;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.DoNotRetryIOException;
 import org.apache.hadoop.hbase.ipc.HBaseClient.FailedServerException;
 import org.apache.hadoop.hbase.security.HBaseSaslRpcClient;
 import org.apache.hadoop.hbase.security.HBaseSaslRpcServer.AuthMethod;
@@ -280,8 +281,14 @@ public class SecureClient extends HBaseClient {
           LOG.debug("Not trying to connect to " + remoteId.getAddress() +
               " this server is in the failed servers list");
         }
-        IOException e = new FailedServerException(
-            "This server is in the failed servers list: " + remoteId.getAddress());
+        IOException e = null;
+        if (clientFailFast) {
+          e = new DoNotRetryIOException("Fast Fail! This server is in the failed servers list: "
+              + remoteId.getAddress());
+        } else {
+          e = new FailedServerException("This server is in the failed servers list: "
+              + remoteId.getAddress());
+        }
         markClosed(e);
         close();
         throw e;
