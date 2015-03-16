@@ -222,8 +222,7 @@ public final class ExportSnapshot extends Configured implements Tool {
 
         context.getCounter(Counter.BYTES_EXPECTED).increment(inputStat.getLen());
 
-        // Ensure that the output folder is there and copy the file
-        outputFs.mkdirs(outputPath.getParent());
+        createOutputPath(outputPath.getParent());
         FSDataOutputStream out = outputFs.create(outputPath, true);
         try {
           if (!copyData(context, inputPath, in, outputPath, out, inputStat.getLen()))
@@ -236,6 +235,23 @@ public final class ExportSnapshot extends Configured implements Tool {
         return preserveAttributes(outputPath, inputStat);
       } finally {
         in.close();
+      }
+    }
+
+    /**
+     * Ensure that the output folder is there and copy the file
+     */
+    private void createOutputPath(final Path path) throws IOException {
+      if (filesUser == null && filesGroup == null) {
+        outputFs.mkdirs(path);
+      } else {
+        Path parent = path.getParent();
+        if (!outputFs.exists(parent) && !parent.isRoot()) {
+          createOutputPath(parent);
+        }
+        outputFs.mkdirs(path);
+        // override the owner when non-null user/group is specified
+        outputFs.setOwner(path, filesUser, filesGroup);
       }
     }
 
@@ -548,6 +564,21 @@ public final class ExportSnapshot extends Configured implements Tool {
   }
 
   /**
+   * Set path owner.
+   */
+  private static void setOwner(final FileSystem fs, final Path path, final String user,
+      final String group, final boolean recursive) throws IOException {
+    if (user != null || group != null) {
+      if (recursive && fs.isDirectory(path)) {
+        for (FileStatus child : fs.listStatus(path)) {
+          setOwner(fs, child.getPath(), user, group, recursive);
+        }
+      }
+      fs.setOwner(path, user, group);
+    }
+  }
+
+  /**
    * Run Map-Reduce Job to perform the files copy.
    */
   private boolean runCopyJob(final Path inputRoot, final Path outputRoot,
@@ -673,6 +704,9 @@ public final class ExportSnapshot extends Configured implements Tool {
     // will remove them because they are unreferenced.
     try {
       FileUtil.copy(inputFs, snapshotDir, outputFs, snapshotTmpDir, false, false, conf);
+      if (filesUser != null || filesGroup != null) {
+        setOwner(outputFs, snapshotTmpDir, filesUser, filesGroup, true);
+      }
     } catch (IOException e) {
       System.err.println("Failed to copy the snapshot directory: from=" + snapshotDir +
         " to=" + snapshotTmpDir);
