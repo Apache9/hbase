@@ -581,7 +581,7 @@ public final class ExportSnapshot extends Configured implements Tool {
   /**
    * Run Map-Reduce Job to perform the files copy.
    */
-  private boolean runCopyJob(final Path inputRoot, final Path outputRoot,
+  private boolean runCopyJob(final String snapshotName, final Path inputRoot, final Path outputRoot,
       final List<Pair<Path, Long>> snapshotFiles, final boolean verifyChecksum,
       final String filesUser, final String filesGroup, final int filesMode,
       final int mappers) throws IOException, InterruptedException, ClassNotFoundException {
@@ -601,7 +601,7 @@ public final class ExportSnapshot extends Configured implements Tool {
     conf.setBoolean("mapred.reduce.tasks.speculative.execution", false);
 
     Job job = new Job(conf);
-    job.setJobName("ExportSnapshot");
+    job.setJobName("ExportSnapshot-" + snapshotName);
     job.setJarByClass(ExportSnapshot.class);
     job.setMapperClass(ExportMapper.class);
     job.setInputFormatClass(SequenceFileInputFormat.class);
@@ -721,7 +721,7 @@ public final class ExportSnapshot extends Configured implements Tool {
       if (files.size() == 0) {
         LOG.warn("There are 0 store file to be copied. There may be no data in the table.");
       } else {
-        if (!runCopyJob(inputRoot, outputRoot, files, verifyChecksum,
+        if (!runCopyJob(snapshotName, inputRoot, outputRoot, files, verifyChecksum,
             filesUser, filesGroup, filesMode, mappers)) {
           throw new ExportSnapshotException("Snapshot export failed!");
         }
