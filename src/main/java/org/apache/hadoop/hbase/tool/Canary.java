@@ -60,8 +60,8 @@ import org.apache.hadoop.util.ToolRunner;
 public final class Canary implements Tool {
   // Sink interface used by the canary to outputs information
   public interface Sink {
-    public void publishReadFailure(HRegionInfo region);
-    public void publishReadFailure(HRegionInfo region, HColumnDescriptor column);
+    public void publishReadFailure(HRegionInfo region, Exception e);
+    public void publishReadFailure(HRegionInfo region, HColumnDescriptor column, Exception e);
     public void publishReadTiming(HRegionInfo region, HColumnDescriptor column, long msTime);
   }
 
@@ -69,14 +69,14 @@ public final class Canary implements Tool {
   // file or standard output timings or failures.
   public static class StdOutSink implements Sink {
     @Override
-    public void publishReadFailure(HRegionInfo region) {
-      LOG.error(String.format("read from region %s failed", region.getRegionNameAsString()));
+    public void publishReadFailure(HRegionInfo region, Exception e) {
+      LOG.error(String.format("read from region %s failed", region.getRegionNameAsString()), e);
     }
 
     @Override
-    public void publishReadFailure(HRegionInfo region, HColumnDescriptor column) {
+    public void publishReadFailure(HRegionInfo region, HColumnDescriptor column, Exception e) {
       LOG.error(String.format("read from region %s column family %s failed",
-                region.getRegionNameAsString(), column.getNameAsString()));
+                region.getRegionNameAsString(), column.getNameAsString()), e);
     }
 
     @Override
@@ -126,12 +126,12 @@ public final class Canary implements Tool {
 
             sink.publishReadTiming(region, column, time);
           } catch (Exception e) {
-            sink.publishReadFailure(region, column);
+            sink.publishReadFailure(region, column, e);
           }
         }
         table.close();
       } catch (IOException e) {
-        sink.publishReadFailure(region);
+        sink.publishReadFailure(region, e);
       }
       return null;
     }
@@ -325,10 +325,12 @@ public final class Canary implements Tool {
   public static void main(String[] args) {
     Configuration conf = HBaseConfiguration.create();
 
-    conf.setInt("hbase.rpc.timeout", 200);
-    conf.setInt("hbase.client.pause", 100);
-    conf.setInt("hbase.client.operation.timeout", 500);
-    conf.setInt("hbase.client.retries.number", 2);
+    conf.setInt("hbase.rpc.timeout", conf.getInt("hbase.canary.rpc.timeout", 200));
+    conf.setInt("hbase.client.pause", conf.getInt("hbase.canary.client.pause", 100));
+    conf.setInt("hbase.client.operation.timeout",
+      conf.getInt("hbase.canary.client.operation.timeout", 500));
+    conf.setInt("hbase.client.retries.retries",
+      conf.getInt("hbase.canary.client.retries.retries", 2));
 
     int numThreads = conf.getInt("hbase.canary.threads.num", MAX_THREADS_NUM);
     ExecutorService executor = new ScheduledThreadPoolExecutor(numThreads);

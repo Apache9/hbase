@@ -57,18 +57,18 @@ public class FalconSink implements Sink, Configurable {
   }
 
   @Override
-  public void publishReadFailure(HRegionInfo region) {
+  public void publishReadFailure(HRegionInfo region, Exception e) {
     failCounter.incrementAndGet();
     totalCounter.incrementAndGet();
-    LOG.error(String.format("read from region %s failed", region.getRegionNameAsString()));
+    LOG.error(String.format("read from region %s failed", region.getRegionNameAsString()), e);
   }
 
   @Override
-  public void publishReadFailure(HRegionInfo region, HColumnDescriptor column) {
+  public void publishReadFailure(HRegionInfo region, HColumnDescriptor column, Exception e) {
     failCounter.incrementAndGet();
     totalCounter.incrementAndGet();
     LOG.error(String.format("read from region %s column family %s failed",
-      region.getRegionNameAsString(), column.getNameAsString()));
+      region.getRegionNameAsString(), column.getNameAsString()), e);
   }
 
   @Override
