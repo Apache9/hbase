@@ -201,55 +201,55 @@ public class SnapshotFileCache implements Stoppable {
     // time, then someone updates the directory, causing us to not scan the directory again.
     // However, snapshot directories are only created once, so this isn't an issue.
 
-    // 1. update the modified time
-    this.lastModifiedTime = status.getModificationTime();
-
-    // 2.clear the cache
-    this.cache.clear();
+    Set<String> tmpCache = new HashSet<String>();
     Map<String, SnapshotDirectoryInfo> known = new HashMap<String, SnapshotDirectoryInfo>();
 
-    // 3. check each of the snapshot directories
+    // 1. check each of the snapshot directories
     FileStatus[] snapshots = FSUtils.listStatus(fs, snapshotDir);
     if (snapshots == null) {
-      // remove all the remembered snapshots because we don't have any left
       if (LOG.isDebugEnabled() && this.snapshots.size() > 0) {
         LOG.debug("No snapshots on-disk, cache empty");
       }
-      this.snapshots.clear();
-      return;
-    }
-
-    // 3.1 iterate through the on-disk snapshots
-    for (FileStatus snapshot : snapshots) {
-      String name = snapshot.getPath().getName();
-      // its the tmp dir
-      if (name.equals(SnapshotDescriptionUtils.SNAPSHOT_TMP_DIR_NAME)) {
-        // only add those files to the cache, but not to the known snapshots
-        FileStatus[] running = FSUtils.listStatus(fs, snapshot.getPath());
-        if (running == null) continue;
-        for (FileStatus run : running) {
-          this.cache.addAll(fileInspector.filesUnderSnapshot(run.getPath()));
+    } else {
+      // 1.1 iterate through the on-disk snapshots
+      for (FileStatus snapshot : snapshots) {
+        String name = snapshot.getPath().getName();
+        // its the tmp dir
+        if (name.equals(SnapshotDescriptionUtils.SNAPSHOT_TMP_DIR_NAME)) {
+          // only add those files to the cache, but not to the known snapshots
+          FileStatus[] running = FSUtils.listStatus(fs, snapshot.getPath());
+          if (running == null) continue;
+          for (FileStatus run : running) {
+            tmpCache.addAll(fileInspector.filesUnderSnapshot(run.getPath()));
+          }
+        } else {
+          SnapshotDirectoryInfo files = this.snapshots.remove(name);
+          // 1.1.1 if we don't know about the snapshot or its been modified, we need to update the files
+          // the latter could occur where I create a snapshot, then delete it, and then make a new
+          // snapshot with the same name. We will need to update the cache the information from that new
+          // snapshot, even though it has the same name as the files referenced have probably changed.
+          if (files == null || files.hasBeenModified(snapshot.getModificationTime())) {
+            // get all files for the snapshot and create a new info
+            Collection<String> storedFiles = fileInspector.filesUnderSnapshot(snapshot.getPath());
+            files = new SnapshotDirectoryInfo(snapshot.getModificationTime(), storedFiles);
+          }
+          // 1.2 add all the files to cache
+          tmpCache.addAll(files.getFiles());
+          known.put(name, files);
         }
-      } else {
-        SnapshotDirectoryInfo files = this.snapshots.remove(name);
-        // 3.1.1 if we don't know about the snapshot or its been modified, we need to update the files
-        // the latter could occur where I create a snapshot, then delete it, and then make a new
-        // snapshot with the same name. We will need to update the cache the information from that new
-        // snapshot, even though it has the same name as the files referenced have probably changed.
-        if (files == null || files.hasBeenModified(snapshot.getModificationTime())) {
-          // get all files for the snapshot and create a new info
-          Collection<String> storedFiles = fileInspector.filesUnderSnapshot(snapshot.getPath());
-          files = new SnapshotDirectoryInfo(snapshot.getModificationTime(), storedFiles);
-        }
-        // 3.2 add all the files to cache
-        this.cache.addAll(files.getFiles());
-        known.put(name, files);
       }
     }
 
-    // 4. set the snapshots we are tracking
+    // 2.update the cache
+    this.cache.clear();
+    this.cache.addAll(tmpCache);
+
+    // 3. set the snapshots we are tracking
     this.snapshots.clear();
     this.snapshots.putAll(known);
+
+    // 4. update the modified time
+    this.lastModifiedTime = status.getModificationTime();
   }
 
   /**

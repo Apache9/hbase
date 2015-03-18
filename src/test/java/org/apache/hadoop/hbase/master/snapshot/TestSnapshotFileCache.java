@@ -19,6 +19,7 @@ package org.apache.hadoop.hbase.master.snapshot;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.io.IOException;
 import java.util.Collection;
@@ -41,6 +42,7 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.mockito.Mockito;
 
 /**
  * Test that we correctly reload the cache, filter directories, etc.
@@ -217,6 +219,37 @@ public class TestSnapshotFileCache {
 
     FSUtils.logFileSystemState(fs, rootDir, LOG);
     assertTrue("Cache didn't find new file:" + file3, cache.contains(file3.getName()));
+  }
+
+  @Test
+  public void testExceptionDuringRefresh() throws IOException {
+    // Fix HBASE-13249, mock filesystem exception
+    FileSystem mockFs = Mockito.spy(fs);
+    // don't refresh the cache unless we tell it to
+    long period = Long.MAX_VALUE;
+    Path snapshotDir = SnapshotDescriptionUtils.getSnapshotsDir(rootDir);
+    SnapshotFileCache cache = new SnapshotFileCache(mockFs, rootDir, period, 10000000,
+        "test-exception-during-refresh", new SnapshotFiles());
+
+    // create a file in a 'completed' snapshot
+    Path snapshot = new Path(snapshotDir, "snapshot");
+    Path region = new Path(snapshot, "7e91021");
+    Path family = new Path(region, "fam");
+    Path file1 = new Path(family, "file1");
+    fs.create(file1);
+
+    FSUtils.logFileSystemState(fs, rootDir, LOG);
+
+    // Simulate HDFS runtime error when listing snapshots
+    Mockito.when(mockFs.listStatus(snapshotDir)).thenThrow(new IOException("Mocked IOException"));
+    try {
+      cache.contains(file1.getName());
+      fail("Unreachable code");
+    } catch (IOException ioe) {
+      // expected
+    }
+    Mockito.reset(mockFs);
+    assertTrue("Cache didn't find:" + file1, cache.contains(file1.getName()));
   }
 
   class SnapshotFiles implements SnapshotFileCache.SnapshotFileInspector {
