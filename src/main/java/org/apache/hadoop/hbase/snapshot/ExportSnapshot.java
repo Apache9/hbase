@@ -56,6 +56,7 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.FSUtils;
 import org.apache.hadoop.hbase.util.Pair;
+import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.io.SequenceFile;
 import org.apache.hadoop.io.Text;
@@ -90,11 +91,34 @@ public final class ExportSnapshot extends Configured implements Tool {
   private static final String CONF_INPUT_ROOT = "snapshot.export.input.root";
   private static final String CONF_STAGING_ROOT = "snapshot.export.staging.root";
   private static final String CONF_BANDWIDTH_MB = "snapshot.export.map.bandwidth.mb";
+  private static final String CONF_OUTPUT_NN_USER =
+      "snapshot.export.output.dfs.namenode.kerberos.principal";
+  private static final String CONF_OUTPUT_SNN_USER =
+      "snapshot.export.output.dfs.secondary.namenode.kerberos.principal";
+  private static final String CONF_OUTPUT_DN_USER =
+      "snapshot.export.output.dfs.datanode.kerberos.principal";
 
   private static final String INPUT_FOLDER_PREFIX = "export-files.";
 
   // Export Map-Reduce Counters, to keep track of the progress
   public enum Counter { MISSING_FILES, COPY_FAILED, BYTES_EXPECTED, BYTES_COPIED };
+
+  private static Configuration createOutputFsConf(Configuration inputFsConf) {
+    Configuration conf = new Configuration(inputFsConf);
+    String namenodeUser = conf.get(CONF_OUTPUT_NN_USER);
+    if (namenodeUser != null) {
+      conf.set(DFSConfigKeys.DFS_NAMENODE_USER_NAME_KEY, namenodeUser);
+    }
+    String secondaryNamenodeUser = conf.get(CONF_OUTPUT_SNN_USER);
+    if (secondaryNamenodeUser != null) {
+      conf.set(DFSConfigKeys.DFS_SECONDARY_NAMENODE_USER_NAME_KEY, secondaryNamenodeUser);
+    }
+    String datanodeUser = conf.get(CONF_OUTPUT_DN_USER);
+    if (datanodeUser != null) {
+      conf.set(DFSConfigKeys.DFS_DATANODE_USER_NAME_KEY, datanodeUser);
+    }
+    return conf;
+  }
 
   private static class ExportMapper extends Mapper<Text, NullWritable, NullWritable, NullWritable> {
     final static int REPORT_SIZE = 1 * 1024 * 1024;
@@ -134,7 +158,7 @@ public final class ExportSnapshot extends Configured implements Tool {
       }
 
       try {
-        outputFs = FileSystem.get(outputRoot.toUri(), conf);
+        outputFs = FileSystem.get(outputRoot.toUri(), createOutputFsConf(conf));
       } catch (IOException e) {
         throw new RuntimeException("Could not get the output FileSystem with root="+ outputRoot, e);
       }
@@ -198,8 +222,7 @@ public final class ExportSnapshot extends Configured implements Tool {
 
         context.getCounter(Counter.BYTES_EXPECTED).increment(inputStat.getLen());
 
-        // Ensure that the output folder is there and copy the file
-        outputFs.mkdirs(outputPath.getParent());
+        createOutputPath(outputPath.getParent());
         FSDataOutputStream out = outputFs.create(outputPath, true);
         try {
           if (!copyData(context, inputPath, in, outputPath, out, inputStat.getLen()))
@@ -212,6 +235,23 @@ public final class ExportSnapshot extends Configured implements Tool {
         return preserveAttributes(outputPath, inputStat);
       } finally {
         in.close();
+      }
+    }
+
+    /**
+     * Ensure that the output folder is there and copy the file
+     */
+    private void createOutputPath(final Path path) throws IOException {
+      if (filesUser == null && filesGroup == null) {
+        outputFs.mkdirs(path);
+      } else {
+        Path parent = path.getParent();
+        if (!outputFs.exists(parent) && !parent.isRoot()) {
+          createOutputPath(parent);
+        }
+        outputFs.mkdirs(path);
+        // override the owner when non-null user/group is specified
+        outputFs.setOwner(path, filesUser, filesGroup);
       }
     }
 
@@ -524,9 +564,24 @@ public final class ExportSnapshot extends Configured implements Tool {
   }
 
   /**
+   * Set path owner.
+   */
+  private static void setOwner(final FileSystem fs, final Path path, final String user,
+      final String group, final boolean recursive) throws IOException {
+    if (user != null || group != null) {
+      if (recursive && fs.isDirectory(path)) {
+        for (FileStatus child : fs.listStatus(path)) {
+          setOwner(fs, child.getPath(), user, group, recursive);
+        }
+      }
+      fs.setOwner(path, user, group);
+    }
+  }
+
+  /**
    * Run Map-Reduce Job to perform the files copy.
    */
-  private boolean runCopyJob(final Path inputRoot, final Path outputRoot,
+  private boolean runCopyJob(final String snapshotName, final Path inputRoot, final Path outputRoot,
       final List<Pair<Path, Long>> snapshotFiles, final boolean verifyChecksum,
       final String filesUser, final String filesGroup, final int filesMode,
       final int mappers) throws IOException, InterruptedException, ClassNotFoundException {
@@ -546,7 +601,7 @@ public final class ExportSnapshot extends Configured implements Tool {
     conf.setBoolean("mapred.reduce.tasks.speculative.execution", false);
 
     Job job = new Job(conf);
-    job.setJobName("ExportSnapshot");
+    job.setJobName("ExportSnapshot-" + snapshotName);
     job.setJarByClass(ExportSnapshot.class);
     job.setMapperClass(ExportMapper.class);
     job.setInputFormatClass(SequenceFileInputFormat.class);
@@ -620,7 +675,7 @@ public final class ExportSnapshot extends Configured implements Tool {
     Configuration conf = getConf();
     Path inputRoot = FSUtils.getRootDir(conf);
     FileSystem inputFs = FileSystem.get(conf);
-    FileSystem outputFs = FileSystem.get(outputRoot.toUri(), conf);
+    FileSystem outputFs = FileSystem.get(outputRoot.toUri(), createOutputFsConf(conf));
 
     Path snapshotDir = SnapshotDescriptionUtils.getCompletedSnapshotDir(snapshotName, inputRoot);
     Path snapshotTmpDir = SnapshotDescriptionUtils.getWorkingSnapshotDir(snapshotName, outputRoot);
@@ -649,6 +704,9 @@ public final class ExportSnapshot extends Configured implements Tool {
     // will remove them because they are unreferenced.
     try {
       FileUtil.copy(inputFs, snapshotDir, outputFs, snapshotTmpDir, false, false, conf);
+      if (filesUser != null || filesGroup != null) {
+        setOwner(outputFs, snapshotTmpDir, filesUser, filesGroup, true);
+      }
     } catch (IOException e) {
       System.err.println("Failed to copy the snapshot directory: from=" + snapshotDir +
         " to=" + snapshotTmpDir);
@@ -663,7 +721,7 @@ public final class ExportSnapshot extends Configured implements Tool {
       if (files.size() == 0) {
         LOG.warn("There are 0 store file to be copied. There may be no data in the table.");
       } else {
-        if (!runCopyJob(inputRoot, outputRoot, files, verifyChecksum,
+        if (!runCopyJob(snapshotName, inputRoot, outputRoot, files, verifyChecksum,
             filesUser, filesGroup, filesMode, mappers)) {
           throw new ExportSnapshotException("Snapshot export failed!");
         }

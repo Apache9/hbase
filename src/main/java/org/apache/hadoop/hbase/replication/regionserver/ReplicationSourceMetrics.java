@@ -61,6 +61,9 @@ public class ReplicationSourceMetrics implements Updater {
   private final MetricsLongValue ageOfLastShippedOp =
       new MetricsLongValue("ageOfLastShippedOp", registry);
   
+  public final MetricsRate replicationFatalError = 
+      new MetricsRate("replicationFatalError", registry);
+  
   /** Peer cluster name */
   private MetricsString peerClusterName = null;
    
@@ -137,6 +140,7 @@ public class ReplicationSourceMetrics implements Updater {
       this.ageOfLastShippedOp.pushMetric(this.metricsRecord);
       this.sizeOfLogQueue.pushMetric(this.metricsRecord);
       this.logReadRateInByte.pushMetric(this.metricsRecord);
+      this.replicationFatalError.pushMetric(this.metricsRecord);
     }
     this.metricsRecord.update();
   }

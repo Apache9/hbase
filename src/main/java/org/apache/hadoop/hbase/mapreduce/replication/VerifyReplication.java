@@ -27,6 +27,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HConstants;
+import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.HConnection;
 import org.apache.hadoop.hbase.client.HConnectionManager;
 import org.apache.hadoop.hbase.client.HConnectionManager.HConnectable;
@@ -35,6 +36,7 @@ import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
+import org.apache.hadoop.hbase.filter.PageFilter;
 import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
 import org.apache.hadoop.hbase.mapreduce.TableInputFormat;
 import org.apache.hadoop.hbase.mapreduce.TableMapReduceUtil;
@@ -45,6 +47,7 @@ import org.apache.hadoop.hbase.replication.ReplicationZookeeper;
 import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
+import org.apache.hadoop.hbase.util.Threads;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.lib.output.NullOutputFormat;
 import org.apache.hadoop.util.GenericOptionsParser;
@@ -77,7 +80,9 @@ public class VerifyReplication  extends Configured implements Tool {
   private String startRow = null;
   private String stopRow = null;
   private int scanRateLimit = -1;
-  
+  private long verifyRows = Long.MAX_VALUE;
+  private int sleepToReCompare = 0;
+      
   public VerifyReplication(Configuration conf) {
     super(conf);
   }
@@ -96,14 +101,18 @@ public class VerifyReplication  extends Configured implements Tool {
     private long st = 0;
     private int scanRateLimit = -1;
     private long rowdone = 0;
-    
+    private HTable sourceTable;
+    private HTable peerTable;
+    private int sleepToReCompare;
+
     @Override
     public void setup(Context context) {
       Configuration conf = context.getConfiguration();
       st = EnvironmentEdgeManager.currentTimeMillis();
       scanRateLimit = conf.getInt(TableMapper.SCAN_RATE_LIMIT, -1);
+      sleepToReCompare = conf.getInt(NAME +".sleepToReCompare", 0);
       LOG.info("The scan rate limit for verify is " + scanRateLimit
-          + " rows per second");
+          + " rows per second, sleepToReCompare=" + sleepToReCompare);
     }
     /**
      * Map method that compares every scanned row with the equivalent from
@@ -124,6 +133,7 @@ public class VerifyReplication  extends Configured implements Tool {
         long startTime = conf.getLong(NAME + ".startTime", 0);
         long endTime = conf.getLong(NAME + ".endTime", 0);
         String families = conf.get(NAME + ".families", null);
+        long verifyRows = conf.getLong(NAME + ".verifyrows", Long.MAX_VALUE);
         if(families != null) {
           String[] fams = families.split(",");
           for(String fam : fams) {
@@ -134,7 +144,12 @@ public class VerifyReplication  extends Configured implements Tool {
           scan.setTimeRange(startTime,
               endTime == 0 ? HConstants.LATEST_TIMESTAMP : endTime);
         }
-
+        if (verifyRows != Long.MAX_VALUE) {
+          scan.setFilter(new PageFilter(verifyRows));
+        }
+        
+        sourceTable = new HTable(conf, conf.get(NAME+".tableName"));
+        
         final TableSplit tableSplit = (TableSplit)(context.getInputSplit());
         HConnectionManager.execute(new HConnectable<Void>(conf) {
           @Override
@@ -143,11 +158,11 @@ public class VerifyReplication  extends Configured implements Tool {
               ReplicationZookeeper zk = new ReplicationZookeeper(conn, conf,
                   conn.getZooKeeperWatcher());
               ReplicationPeer peer = zk.getPeer(conf.get(NAME+".peerId"));
-              HTable replicatedTable = new HTable(peer.getConfiguration(),
+              peerTable = new HTable(peer.getConfiguration(),
                   conf.get(NAME+".tableName"));
               scan.setStartRow(value.getRow());
               scan.setStopRow(tableSplit.getEndRow());
-              replicatedScanner = replicatedTable.getScanner(scan);
+              replicatedScanner = peerTable.getScanner(scan);
             } catch (KeeperException e) {
               throw new IOException("Got a ZK exception", e);
             }
@@ -191,10 +206,23 @@ public class VerifyReplication  extends Configured implements Tool {
         EnvironmentEdgeManager.currentTimeMillis() - st);
     }
 
-    private void logFailRowAndIncreaseCounter(Context context, Counters counter, Result row) {
+    private void logFailRowAndIncreaseCounter(Context context, Counters counter, Result row)
+        throws IOException {
+      if (sleepToReCompare > 0) {
+        Threads.sleep(sleepToReCompare);
+        Result sourceResult = sourceTable.get(new Get(row.getRow()));
+        Result peerResult = peerTable.get(new Get(row.getRow()));
+        try {
+          // online replication is eventually consistency, need recompare
+          Result.compareResults(sourceResult, peerResult);
+          return;
+        } catch (Exception e) {
+          LOG.error("recompare fail!", e);
+        }
+      }
       context.getCounter(counter).increment(1);
       context.getCounter(Counters.BADROWS).increment(1);
-      LOG.error(counter.toString() + ", rowkey=" + Bytes.toString(row.getRow()));
+      LOG.error(counter.toString() + ", rowkey=" + Bytes.toStringBinary(row.getRow()));
     }
 
     protected void cleanup(Context context) {
@@ -210,6 +238,22 @@ public class VerifyReplication  extends Configured implements Tool {
         } finally {
           replicatedScanner.close();
           replicatedScanner = null;
+        }
+      }
+      
+      if (peerTable != null) {
+        try {
+          peerTable.close();
+        } catch (IOException e) {
+          LOG.error("close peer HTable fail", e);
+        }
+      }
+
+      if (sourceTable != null) {
+        try {
+          sourceTable.close();
+        } catch (IOException e) {
+          LOG.error("close source HTable fail", e);
         }
       }
     }
@@ -255,6 +299,9 @@ public class VerifyReplication  extends Configured implements Tool {
     conf.set(NAME+".tableName", tableName);
     conf.setLong(NAME+".startTime", startTime);
     conf.setLong(NAME+".endTime", endTime);
+    conf.setLong(NAME+".verifyrows", verifyRows);
+    conf.setInt(NAME +".sleepToReCompare", sleepToReCompare);
+    
     if (families != null) {
       conf.set(NAME+".families", families);
     }
@@ -281,10 +328,14 @@ public class VerifyReplication  extends Configured implements Tool {
       scan.setStopRow(Bytes.toBytes(stopRow));
     }
 
+    if (verifyRows != Long.MAX_VALUE) {
+      scan.setFilter(new PageFilter(verifyRows));
+    }
+
     if (scanRateLimit > 0) {
       job.getConfiguration().setInt(TableMapper.SCAN_RATE_LIMIT, scanRateLimit);
     }
-    
+        
     TableMapReduceUtil.initTableMapperJob(tableName, scan,
         Verifier.class, null, null, job);
 
@@ -359,6 +410,18 @@ public class VerifyReplication  extends Configured implements Tool {
           continue;
         }
         
+        final String verifyRowKey = "--verifyrows";
+        if (cmd.startsWith(verifyRowKey)) {
+          verifyRows = Long.parseLong(cmd.substring(verifyRowKey.length()));
+          continue;
+        }
+        
+        final String sleepToReCompareKey = "--recomparesleep=";
+        if (cmd.startsWith(sleepToReCompareKey)) {
+          sleepToReCompare = Integer.parseInt(cmd.substring(sleepToReCompareKey.length()));
+          continue;
+        }
+
         if (i == args.length-2) {
           peerId = cmd;
         }
@@ -393,6 +456,8 @@ public class VerifyReplication  extends Configured implements Tool {
     System.err.println(" stoprow      end of the row");
     System.err.println(" families     comma-separated list of families to copy");
     System.err.println(" scanrate     the scan rate limit: rows per second for each region.");
+    System.err.println(" verifyrows   number of rows each region in source table to verify.");
+    System.err.println(" recomparesleep   milliseconds to sleep before recompare row.");
     System.err.println();
     System.err.println("Args:");
     System.err.println(" peerid       Id of the peer used for verification, must match the one given for replication");
