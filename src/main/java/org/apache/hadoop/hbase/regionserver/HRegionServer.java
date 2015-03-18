@@ -2791,7 +2791,7 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
   }
 
   public Result[] next(final long scannerId, int nbRows, long callSeq) throws IOException {
-    TracerUtils.addAnnotation("start a next");
+    TracerUtils.addAnnotation("start a next(" + scannerId + "," + nbRows + "," + callSeq + ")");
     String scannerName = String.valueOf(scannerId);
     RegionScannerHolder holder = this.scanners.get(scannerName);
     if (holder == null) throw new UnknownScannerException("Name: " + scannerName);
