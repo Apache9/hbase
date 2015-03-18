@@ -30,6 +30,8 @@ import org.apache.hadoop.util.GenericOptionsParser;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 
+import com.xiaomi.infra.hbase.salted.SaltedHTable;
+
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
@@ -92,10 +94,13 @@ public class CopyTable extends Configured implements Tool {
     if (stopRow != null) {
       scan.setStopRow(Bytes.toBytes(stopRow));
     }
-
+    
     if (scanRateLimit > 0) {
       job.getConfiguration().setInt(TableMapper.SCAN_RATE_LIMIT, scanRateLimit);
     }
+    
+    // keep salt prefix if the source table is salted table
+    scan.setAttribute(SaltedHTable.KEEP_SALT_IN_SCAN, Bytes.toBytes(true));
     
     if(families != null) {
       String[] fams = families.split(",");
@@ -240,7 +245,7 @@ public class CopyTable extends Configured implements Tool {
           allCells = true;
           continue;
         }
-
+        
         if (i == args.length-1) {
           tableName = cmd;
         } else {

@@ -101,7 +101,9 @@ public class HBaseClient {
 
   public final static String FAILED_SERVER_EXPIRY_KEY = "hbase.ipc.client.failed.servers.expiry";
   public final static int FAILED_SERVER_EXPIRY_DEFAULT = 2000;
-
+  public final static String CLIENT_FAIL_FAST_FOR_FAILED_SERVER = "hbase.client.fail.fast.for.failed.server";
+  protected final boolean clientFailFast;
+  
   /**
    * A class to manage a list of servers that failed recently.
    */
@@ -154,7 +156,7 @@ public class HBaseClient {
 
   }
 
-  public static class FailedServerException extends DoNotRetryIOException {
+  public static class FailedServerException extends IOException {
     public FailedServerException(String s) {
       super(s);
     }
@@ -424,8 +426,14 @@ public class HBaseClient {
           LOG.debug("Not trying to connect to " + remoteId.getAddress() +
               " this server is in the failed servers list");
         }
-        IOException e = new FailedServerException(
-            "This server is in the failed servers list: " + remoteId.getAddress());
+        IOException e = null;
+        if (clientFailFast) {
+          e = new DoNotRetryIOException("Fast Fail! This server is in the failed servers list: "
+              + remoteId.getAddress());
+        } else {
+          e = new FailedServerException("This server is in the failed servers list: "
+              + remoteId.getAddress());
+        }
         markClosed(e);
         close();
         throw e;
@@ -876,6 +884,7 @@ public class HBaseClient {
     this.tcpNoDelay = conf.getBoolean("hbase.ipc.client.tcpnodelay", false);
     this.tcpKeepAlive = conf.getBoolean("hbase.ipc.client.tcpkeepalive", true);
     this.pingInterval = getPingInterval(conf);
+    this.clientFailFast = conf.getBoolean(CLIENT_FAIL_FAST_FOR_FAILED_SERVER, false);
     if (LOG.isDebugEnabled()) {
       LOG.debug("The ping interval is" + this.pingInterval + "ms.");
     }
