@@ -22,6 +22,7 @@ package org.apache.hadoop.hbase.master;
 import java.io.IOException;
 import java.lang.Thread.UncaughtExceptionHandler;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.hadoop.hbase.Server;
 
@@ -102,7 +103,13 @@ public abstract class BulkAssigner {
       populatePool(pool);
       // How long to wait on empty regions-in-transition.  If we timeout, the
       // RIT monitor should do fixup.
-      if (sync) result = waitUntilDone(getTimeoutOnRIT());
+      if (sync) {
+        long startTime = System.currentTimeMillis();
+        long timeout = getTimeoutOnRIT();
+        pool.awaitTermination(timeout, TimeUnit.MICROSECONDS);
+        timeout = timeout - (System.currentTimeMillis() - startTime);
+        result = waitUntilDone(timeout);
+      }
     } finally {
       // We're done with the pool.  It'll exit when its done all in queue.
       pool.shutdown();
