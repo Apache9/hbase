@@ -635,6 +635,11 @@ public class HFileReaderV2 extends AbstractHFileReader {
       if (this.reader.shouldIncludeMemstoreTS()) {
         ret.setMemstoreTS(currMemstoreTS);
       }
+      // no "conf" be passed into this, so let's compare with a magic number...
+      if (ret.heapSize() > 1048576) {
+        LOG.info("HUGE KV > 1MB! keyLen:" + ret.getKeyLength() + ",key:"
+            + Bytes.toStringBinary(ret.getKey()));
+      }
       return ret;
     }
 

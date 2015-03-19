@@ -73,6 +73,7 @@ import org.apache.hadoop.hbase.ipc.RpcCallContext;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.ClassSize;
 import org.apache.hadoop.hbase.util.DrainBarrier;
+import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.FSUtils;
 import org.apache.hadoop.hbase.util.HasThread;
 import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
@@ -334,6 +335,8 @@ public class HLog implements Syncable {
    */
   private static final Pattern pattern = 
       Pattern.compile(".*\\.\\d*("+HLog.META_HLOG_FILE_EXTN+")*");
+
+  private Map<Writer, Long> unclosedWriters = new HashMap<Writer, Long>();
 
   public static class Metric {
     public long min = Long.MAX_VALUE;
@@ -753,6 +756,8 @@ public class HLog implements Syncable {
             this.numEntries.get() +
             ", filesize=" + oldFileLen + ". ": "") +
             " for " + FSUtils.getPath(newPath));
+
+        cleanupUnclosedWriters();
         // Can we delete any of the old log files?
         if (getNumLogFiles() > 0) {
           cleanOldLogs();
@@ -766,6 +771,32 @@ public class HLog implements Syncable {
       return regionsToFlush;
     } finally {
       rollWriterLock.unlock();
+    }
+  }
+
+  private void cleanupUnclosedWriters() {
+    if (unclosedWriters.size() == 0) {
+      return;
+    }
+    LOG.warn("There are " + unclosedWriters.size() + " unclosed writers");
+    List<Writer> writers = new LinkedList<Writer>();
+    for (Map.Entry<Writer, Long> entry : this.unclosedWriters.entrySet()) {
+      Writer writer = entry.getKey();
+      long lastAttempt = entry.getValue().longValue();
+      // retry every 10 min
+      if (EnvironmentEdgeManager.currentTimeMillis() - lastAttempt > 1000 * 60 * 10) {
+        writers.add(writer);
+      }
+    }
+    LOG.warn("Try to cleanup " + writers.size() + " unclosed writers");
+    for (Writer writer : writers) {
+      try {
+        writer.close();
+        unclosedWriters.remove(writer);
+      } catch (IOException e) {
+        LOG.error("Cleanup unclosed writer failed.", e);
+        unclosedWriters.put(writer, EnvironmentEdgeManager.currentTimeMillis());
+      }
     }
   }
 
@@ -935,7 +966,6 @@ public class HLog implements Syncable {
   Path cleanupCurrentWriter(final long currentfilenum) throws IOException {
     Path oldFile = null;
     if (this.writer != null) {
-      // Close the current writer, get a new one.
       try {
         // Wait till all current transactions are written to the hlog.
         // No new transactions can occur because we have the updatelock.
@@ -946,13 +976,18 @@ public class HLog implements Syncable {
                    " synced till here " + this.syncedTillHere.get());
           sync();
         }
+      } catch (IOException e) {
+        LOG.error("Sync before closing current writer failed!", e);
+      }
+      // Close the current writer, get a new one.
+      try {
         this.writer.close();
-        this.writer = null;
         closeErrorCount.set(0);
       } catch (IOException e) {
         LOG.error("Failed close of HLog writer", e);
         int errors = closeErrorCount.incrementAndGet();
         if (errors <= closeErrorsTolerated && !hasDeferredEntries()) {
+          unclosedWriters.put(this.writer, EnvironmentEdgeManager.currentTimeMillis());
           LOG.warn("Riding over HLog close failure! error count="+errors);
         } else {
           if (hasDeferredEntries()) {
@@ -967,6 +1002,7 @@ public class HLog implements Syncable {
           throw flce;
         }
       }
+      this.writer = null;
       if (currentfilenum >= 0) {
         oldFile = computeFilename(currentfilenum);
         this.outputfiles.put(Long.valueOf(this.logSeqNum.get()), oldFile);

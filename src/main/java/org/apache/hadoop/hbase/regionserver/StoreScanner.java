@@ -75,6 +75,9 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
   private final NavigableSet<byte[]> columns;
   private final long oldestUnexpiredTS;
   private final int minVersions;
+  private int hugeKvWarningSizeInByte;
+  private long hugeRowWarningSizeInByte;
+  private long currentInResultRowSizeInByte;
 
   /** We don't ever expect to change this, the constant is just for clarity. */
   static final boolean LAZY_SEEK_ENABLED_BY_DEFAULT = true;
@@ -110,19 +113,30 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
     // StoreFile.passesBloomFilter(Scan, SortedSet<byte[]>).
     useRowColBloom = numCol > 1 || (!isGet && numCol == 1);
 		this.scanUsePread = scan.isSmall();
+		hugeKvWarningSizeInByte = HConstants.HUGE_KV_SIZE_IN_BYTE_WARN_VALUE; // for testing
 
     // The parallel-seeking is on :
     // 1) the config value is *true*
     // 2) have more than one store file
-    if (store != null && store.getHRegion() != null
-        && store.getStorefilesCount() > 1) {
+    if (store != null && store.getHRegion() != null) {
       RegionServerServices rsService = store.getHRegion().getRegionServerServices();
       if (rsService == null) return;
-      boolean parallelSeekConfFlag = rsService.getConfiguration().getBoolean(
-        STORESCANNER_PARALLEL_SEEK_ENABLE, false);
-      if (!parallelSeekConfFlag || !(rsService instanceof HRegionServer)) return;
-      isParallelSeekEnabled = true;
-      seekExecutor = ((HRegionServer) rsService).getParallelSFSeekExecutor();
+      hugeKvWarningSizeInByte = rsService.getConfiguration().getInt(
+        HConstants.HUGE_KV_SIZE_IN_BYTE_WARN_NAME, HConstants.HUGE_KV_SIZE_IN_BYTE_WARN_VALUE);
+      hugeRowWarningSizeInByte = rsService.getConfiguration().getLong(
+        HConstants.HUGE_ROW_SIZE_IN_BYTE_WARN_NAME, HConstants.HUGE_ROW_SIZE_IN_BYTE_WARN_VALUE);
+      long maxResultSize = rsService.getConfiguration().getLong(
+        HConstants.HBASE_CLIENT_SCANNER_MAX_RESULT_SIZE_KEY,
+        HConstants.DEFAULT_HBASE_CLIENT_SCANNER_MAX_RESULT_SIZE);
+      hugeRowWarningSizeInByte = hugeRowWarningSizeInByte <= maxResultSize ? hugeRowWarningSizeInByte
+          : maxResultSize;
+      if (store.getStorefilesCount() > 1) {
+        boolean parallelSeekConfFlag = rsService.getConfiguration().getBoolean(
+          STORESCANNER_PARALLEL_SEEK_ENABLE, false);
+        if (!parallelSeekConfFlag || !(rsService instanceof HRegionServer)) return;
+        isParallelSeekEnabled = true;
+        seekExecutor = ((HRegionServer) rsService).getParallelSFSeekExecutor();
+      }
     }
   }
 
@@ -399,6 +413,7 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
     short length = peeked.getRowLength();
     if (limit < 0 || matcher.row == null || !Bytes.equals(row, offset, length, matcher.row, matcher.rowOffset, matcher.rowLength)) {
       matcher.setRow(row, offset, length);
+      currentInResultRowSizeInByte = 0;
     }
 
     KeyValue kv;
@@ -423,6 +438,7 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
             Filter f = matcher.getFilter();
             KeyValue resultKv = f == null ? kv : f.transform(kv);
             checkScanOrder(outResult, resultKv, comparator);
+            checkKvSize(resultKv);
             outResult.add(resultKv);
             count++;
 
@@ -582,6 +598,7 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
     if ((matcher.row == null) || !Bytes.equals(row, offset, length, matcher.row, matcher.rowOffset, matcher.rowLength)) {
       matcher.reset();
       matcher.setRow(row, offset, length);
+      currentInResultRowSizeInByte = 0;
     }
   }
 
@@ -603,6 +620,20 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
   protected void checkScanOrder(List<KeyValue> resultList, KeyValue kv,
       KeyValue.KVComparator comparator) throws IOException {
     //nop inside StoreScanner class
+  }
+
+  // Only be used while adding the kv into result currently
+  protected void checkKvSize(KeyValue kv) {
+    long size = kv.heapSize();
+    if (kv.heapSize() > hugeKvWarningSizeInByte) {
+      LOG.warn("adding a HUGE KV into result list, kv size:" + size + ", key:"
+          + Bytes.toStringBinary(kv.getKey()));
+    }
+    currentInResultRowSizeInByte += size;
+    if (currentInResultRowSizeInByte > hugeRowWarningSizeInByte) {
+      LOG.warn("adding a HUGE ROW's kv into result list, added row size:"
+          + currentInResultRowSizeInByte + ", key:" + Bytes.toStringBinary(kv.getKey()));
+    }
   }
 
   protected synchronized boolean seekToNextRow(KeyValue kv) throws IOException {
