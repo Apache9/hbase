@@ -58,6 +58,8 @@ public class TestTableDeleteFamilyHandler {
   public static void beforeAllTests() throws Exception {
 
     TEST_UTIL.getConfiguration().setBoolean("dfs.support.append", true);
+    TEST_UTIL.getConfiguration().setBoolean("hbase.online.schema.update.enable", true);
+
     TEST_UTIL.startMiniCluster(2);
 
     // Create a table of three families. This will assign a region.
@@ -88,7 +90,7 @@ public class TestTableDeleteFamilyHandler {
 
   @Test
   public void deleteColumnFamilyWithMultipleRegions() throws Exception {
-
+    HTable t = new HTable(TEST_UTIL.getConfiguration(), TABLENAME);
     HBaseAdmin admin = TEST_UTIL.getHBaseAdmin();
     HTableDescriptor beforehtd = admin.getTableDescriptor(Bytes
         .toBytes(TABLENAME));
@@ -127,10 +129,12 @@ public class TestTableDeleteFamilyHandler {
       }
     }
 
-    // TEST - Disable and delete the column family
-    admin.disableTable(TABLENAME);
+    int threads = TEST_UTIL.getMiniHBaseCluster().getLiveRegionServerThreads().size();
+    TEST_UTIL.loadTable(t, FAMILIES);
+    // TEST - delete the column family
     admin.deleteColumn(TABLENAME, "cf2");
 
+    assertEquals(threads,  TEST_UTIL.getMiniHBaseCluster().getLiveRegionServerThreads().size());
     // 5 - Check if only 2 column families exist in the descriptor
     HTableDescriptor afterhtd = admin.getTableDescriptor(Bytes
         .toBytes(TABLENAME));
@@ -151,6 +155,7 @@ public class TestTableDeleteFamilyHandler {
         }
       }
     }
+    t.close();
   }
 
   @org.junit.Rule
