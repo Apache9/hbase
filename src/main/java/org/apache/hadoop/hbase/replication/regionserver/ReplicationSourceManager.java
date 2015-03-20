@@ -211,12 +211,18 @@ public class ReplicationSourceManager {
           + " other RSs: " + otherRegionServers);
     }
     // Look if there's anything to process after a restart
+    List<String> deadservers = new ArrayList<String>();
     for (String rs : currentReplicators) {
       synchronized (otherRegionServers) {
         if (!this.otherRegionServers.contains(rs)) {
-          transferQueues(rs);
+          deadservers.add(rs);
         }
       }
+    }
+    // shuffle the deadservers to avoid the conflicts of transferring replication queue
+    Collections.shuffle(deadservers);
+    for (String deadserver : deadservers) {
+      transferQueues(deadserver);
     }
   }
 
