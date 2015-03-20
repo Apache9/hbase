@@ -86,6 +86,8 @@ import org.apache.hadoop.hbase.ipc.HBaseServer;
 import org.apache.hadoop.hbase.ipc.HMasterInterface;
 import org.apache.hadoop.hbase.ipc.HMasterRegionInterface;
 import org.apache.hadoop.hbase.ipc.ProtocolSignature;
+import org.apache.hadoop.hbase.ipc.RSReportRequest;
+import org.apache.hadoop.hbase.ipc.RSReportResponse;
 import org.apache.hadoop.hbase.ipc.RpcServer;
 import org.apache.hadoop.hbase.master.cleaner.HFileCleaner;
 import org.apache.hadoop.hbase.master.cleaner.LogCleaner;
@@ -105,6 +107,7 @@ import org.apache.hadoop.hbase.monitoring.MemoryBoundedLogMessageBuffer;
 import org.apache.hadoop.hbase.monitoring.MonitoredTask;
 import org.apache.hadoop.hbase.monitoring.TaskMonitor;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.SnapshotDescription;
+import org.apache.hadoop.hbase.regionserver.CompactionQuota;
 import org.apache.hadoop.hbase.regionserver.wal.HLog;
 import org.apache.hadoop.hbase.replication.regionserver.Replication;
 import org.apache.hadoop.hbase.security.User;
@@ -280,6 +283,7 @@ Server {
   /** The following is used in master recovery scenario to re-register listeners */
   private List<ZooKeeperListener> registeredZKListenersBeforeRecovery;
 
+  private CompactionCoordinator compactionCoordinator = null;
   /**
    * Initializes the HMaster. The steps are as follows:
    * <p>
@@ -597,8 +601,9 @@ Server {
     if (!masterRecovery) {
       this.executorService = new ExecutorService(getServerName().toString());
       this.serverManager = new ServerManager(this, this);
+      this.compactionCoordinator = new CompactionCoordinator(conf, serverManager);
     }
-
+    
     status.setStatus("Initializing ZK system trackers");
     initializeZKBasedSystemTrackers();
 
@@ -1129,13 +1134,14 @@ Server {
   @Override
   public RegionStatistics regionServerReport(final byte [] sn, final HServerLoad hsl)
   throws IOException {
-    this.serverManager.regionServerReport(ServerName.parseVersionedServerName(sn), hsl);
+    ServerName regionSever = ServerName.parseVersionedServerName(sn);
+    this.serverManager.regionServerReport(regionSever, hsl);
     updateLastFlushedSequenceIds(sn, hsl);
     if (hsl != null && this.metrics != null) {
       // Up our metrics.
       this.metrics.incrementRequests(hsl.getNumberOfRequests());
     }
-    return this.assignmentManager.getHTableRegionStatInfo(serverName);
+    return this.assignmentManager.getHTableRegionStatInfo(regionSever);
   }
 
   private void updateLastFlushedSequenceIds(final byte [] sn, final HServerLoad hsl) {
@@ -2396,5 +2402,28 @@ Server {
     conf.reloadConfiguration();
     // Notify all the observers that the configuration has changed.
     ConfigurationManager.getInstance().notifyAllObservers(conf);
+  }
+ 
+  @Override
+  public RSReportResponse
+      regionServerReport(byte[] sn, RSReportRequest request) throws IOException {
+    HServerLoad hsl = request.getServerLoad();
+    ServerName regionSever = ServerName.parseVersionedServerName(sn);
+    this.serverManager.regionServerReport(regionSever, hsl);
+    updateLastFlushedSequenceIds(sn, hsl);
+    if (hsl != null && this.metrics != null) {
+      // Up our metrics.
+      this.metrics.incrementRequests(hsl.getNumberOfRequests());
+    }
+    RegionStatistics regionStatistics = this.assignmentManager.getHTableRegionStatInfo(regionSever);
+    CompactionQuota quota =
+        this.compactionCoordinator.requestCompactionQuota(regionSever,
+          request.getCompactionQuotaRequest());
+    return new RSReportResponse(regionStatistics, quota);
+  }
+
+  @Override
+  public CompactionCoordinator getCompactionCoordinator() {
+    return compactionCoordinator;
   }
 }

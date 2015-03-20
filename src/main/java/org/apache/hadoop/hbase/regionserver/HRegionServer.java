@@ -123,6 +123,8 @@ import org.apache.hadoop.hbase.ipc.HMasterRegionInterface;
 import org.apache.hadoop.hbase.ipc.HRegionInterface;
 import org.apache.hadoop.hbase.ipc.Invocation;
 import org.apache.hadoop.hbase.ipc.ProtocolSignature;
+import org.apache.hadoop.hbase.ipc.RSReportRequest;
+import org.apache.hadoop.hbase.ipc.RSReportResponse;
 import org.apache.hadoop.hbase.ipc.RpcEngine;
 import org.apache.hadoop.hbase.ipc.RpcServer;
 import org.apache.hadoop.hbase.ipc.ServerNotRunningYetException;
@@ -991,11 +993,17 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
       return;
     }
     HServerLoad hsl = buildServerLoad();
+    CompactionQuota compactQuotaRequest =
+        this.compactSplitThread.buildCompactionQuotaRequest();
+    
     // Why we do this?
     this.requestCount.set(0);
     try {
-      this.regionStats = this.hbaseMaster.regionServerReport(
-        this.serverNameFromMasterPOV.getVersionedBytes(), hsl);
+      RSReportResponse response =
+          this.hbaseMaster.regionServerReport(this.serverNameFromMasterPOV.getVersionedBytes(),
+            new RSReportRequest(hsl, compactQuotaRequest));
+      this.regionStats = response.getRegionStatistics();
+      this.compactSplitThread.processCompactionQuota(response.getCompactionQuota());
     } catch (IOException ioe) {
       if (ioe instanceof RemoteException) {
         ioe = ((RemoteException)ioe).unwrapRemoteException();
@@ -1004,6 +1012,10 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
         // This will be caught and handled as a fatal error in run()
         throw ioe;
       }
+      // if rs couldn't connect to the master, assign 1 small and 1 large compact quota to itself.
+      CompactionQuota response = new CompactionQuota(compactQuotaRequest);
+      response.setGrantQuota(compactQuotaRequest.getRequestQuota());
+      this.compactSplitThread.processCompactionQuota(response);
       // Couldn't connect to the master, get location from zk and reconnect
       // Method blocks until new master is found or we are stopped
       getMaster();

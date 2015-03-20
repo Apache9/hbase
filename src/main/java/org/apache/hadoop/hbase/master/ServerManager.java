@@ -321,7 +321,7 @@ public class ServerManager {
   }
 
   /** @return the count of active regionservers */
-  int countOfRegionServers() {
+  public int countOfRegionServers() {
     // Presumes onlineServers is a concurrent map
     return this.onlineServers.size();
   }
@@ -404,6 +404,8 @@ public class ServerManager {
     synchronized (onlineServers) {
       onlineServers.notifyAll();
     }
+    this.services.getCompactionCoordinator().expireServer(serverName);
+
     this.serverConnections.remove(serverName);
     // If cluster is going down, yes, servers are going to be expiring; don't
     // process as a dead server

@@ -206,6 +206,12 @@ public final class HConstants {
   /** Parameter name for how often we should try to write a version file, before failing */
   public static final int DEFAULT_VERSION_FILE_WRITE_ATTEMPTS = 3;
 
+  /** Parameter name for the maximum number of files allowed in a compaction */
+  public static final String MAX_COMPACTION_FILE_NUM = "hbase.hstore.compaction.max";
+  
+  /** The default value for the maximum number of files allowed in a compaction */
+  public static final int DEFAULT_MAX_COMPACTION_FILE_NUM = 10;
+  
   /** Parameter name for how often a region should should perform a major compaction */
   public static final String MAJOR_COMPACTION_PERIOD = "hbase.hregion.majorcompaction";
 
