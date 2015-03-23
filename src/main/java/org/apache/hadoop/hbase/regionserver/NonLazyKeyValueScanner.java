@@ -66,4 +66,9 @@ public abstract class NonLazyKeyValueScanner implements KeyValueScanner {
     // Not a file by default.
     return false;
   }
+
+  @Override
+  public byte[] getNextIndexedKey() {
+    return null;
+  }
 }
