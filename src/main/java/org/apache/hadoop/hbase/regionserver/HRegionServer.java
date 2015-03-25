@@ -170,6 +170,7 @@ import org.apache.hadoop.hbase.zookeeper.ZKAssign;
 import org.apache.hadoop.hbase.zookeeper.ZKUtil;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperNodeTracker;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
+import org.apache.hadoop.hdfs.DFSHedgedReadMetrics;
 import org.apache.hadoop.io.MapWritable;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.ipc.RemoteException;
@@ -1744,6 +1745,17 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
     final long updatesBlockedMsHigherWater = cacheFlusher.getUpdatesBlockedMsHighWater().get();
     this.metrics.updatesBlockedSecondsHighWater.update(updatesBlockedMsHigherWater > 0 ? 
         updatesBlockedMsHigherWater/1000: 0);
+    DFSHedgedReadMetrics hedgedReadMetrics;
+    try {
+      hedgedReadMetrics = FSUtils.getDFSHedgedReadMetrics(conf);
+      if (hedgedReadMetrics != null) {
+        this.metrics.hedgedReads.set(hedgedReadMetrics.getHedgedReadOps());
+        this.metrics.hedgedReadWins.set(hedgedReadMetrics.getHedgedReadWins());
+        this.metrics.hedgedReadsInCurThread.set(hedgedReadMetrics.getHedgedReadOpsInCurThread());
+      }
+    } catch (IOException e1) {
+      LOG.info("get hedgedRead metric error", e1);
+    }
 
     BlockCache blockCache = cacheConfig.getBlockCache();
     if (blockCache != null) {
