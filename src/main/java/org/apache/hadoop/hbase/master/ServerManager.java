@@ -256,7 +256,7 @@ public class ServerManager {
       // dead servers. So, this server must be dead.
       String message = "Server " + what + " rejected; currently processing " +
           serverName + " as dead server";
-      LOG.debug(message);
+      LOG.warn(message);
       throw new YouAreDeadException(message);
     }
 

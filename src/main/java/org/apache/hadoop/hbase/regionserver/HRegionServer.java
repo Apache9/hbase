@@ -1006,6 +1006,7 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
       this.regionStats = response.getRegionStatistics();
       this.compactSplitThread.processCompactionQuota(response.getCompactionQuota());
     } catch (IOException ioe) {
+      LOG.warn("Try to report to hmaster failed", ioe);
       if (ioe instanceof RemoteException) {
         ioe = ((RemoteException)ioe).unwrapRemoteException();
       }

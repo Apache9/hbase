@@ -1634,7 +1634,11 @@ public class AssignmentManager extends ZooKeeperListener {
       regionCountsPerTable.put(Bytes.toBytes(tableName),
         new Pair<Integer, Integer>(count, countRS));
     }
-    return new RegionStatistics(regionCount, regionCountRS.get(serverName), regionCountsPerTable);
+    int currentRegionCountRS = 0;
+    if (regionCountRS.containsKey(serverName)) {
+      currentRegionCountRS = regionCountRS.get(serverName);
+    }
+    return new RegionStatistics(regionCount, currentRegionCountRS, regionCountsPerTable);
   }
 
   /**
