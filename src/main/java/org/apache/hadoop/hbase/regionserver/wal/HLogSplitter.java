@@ -424,6 +424,7 @@ public class HLogSplitter {
     LOG.info("Splitting hlog: " + logPath + ", length=" + logLength);
     status.setStatus("Opening log file");
     Reader in = null;
+    long startTS = EnvironmentEdgeManager.currentTimeMillis();
     try {
       in = getReader(fs, logfile, conf, skipErrors);
     } catch (CorruptedLogFileException e) {
@@ -436,6 +437,8 @@ public class HLogSplitter {
       LOG.warn("Nothing to split in log file " + logPath);
       return true;
     }
+    long openCost = EnvironmentEdgeManager.currentTimeMillis() - startTS;
+    LOG.info("Open log file: " + logfile.getPath().getName() + " cost: " + openCost + " ms");
     this.setDistributedLogSplittingHelper(new DistributedLogSplittingHelper(reporter));
     if (!reportProgressIfIsDistributedLogSplitting()) {
       return false;
