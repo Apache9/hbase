@@ -91,6 +91,14 @@ public class CompactionCoordinator implements Configurable {
     updateUsedQuota(last, null);
   }
 
+  public int getRunningCompactionNum() {
+    return usedQuota;
+  }
+
+  public int getCompactionNumLimit() {
+    return totalQuota;
+  }
+
   /**
    * simple policy, just grant quota if there is left
    * @param request

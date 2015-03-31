@@ -349,7 +349,7 @@ public class CompactSplitThread implements CompactionRequestor, ConfigurationObs
   }
 
   public void processCompactionQuota(CompactionQuota quota) {
-    if (quota.getRequestQuota() >= 0 && quota.getGrantQuota() == 0) {
+    if (quota.getRequestQuota() > 0 && quota.getGrantQuota() == 0) {
       LOG.warn("No quota for compaction.");
     }
     int totalQuota = quota.getGrantQuota();
