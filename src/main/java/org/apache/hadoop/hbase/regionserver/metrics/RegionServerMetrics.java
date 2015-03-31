@@ -366,6 +366,15 @@ public class RegionServerMetrics implements Updater {
   public final MetricsHistogram updatesBlockedSecondsHighWater = new MetricsHistogram(
       "updatesBlockedSecondsHighWater",registry);
 
+  /**
+   * compact enable
+   */
+  public final MetricsIntValue compactionEnable = new MetricsIntValue("compactEnable", registry);
+
+  public void setCompactionEnable(boolean compactionEnable) {
+    this.compactionEnable.set(compactionEnable ? 1 : 0);
+  }
+
   public RegionServerMetrics() {
     MetricsContext context = MetricsUtil.getContext("hbase");
     metricsRecord = MetricsUtil.createRecord(context, "regionserver");
@@ -521,6 +530,8 @@ public class RegionServerMetrics implements Updater {
           this.lastHistUpdateMs = this.lastUpdateMs;
           this.resetAllHistogramBasedMetrics();
       }
+      
+      this.compactionEnable.pushMetric(this.metricsRecord);
     }
     this.metricsRecord.update();
   }

@@ -30,6 +30,7 @@ import org.apache.hadoop.metrics.MetricsRecord;
 import org.apache.hadoop.metrics.MetricsUtil;
 import org.apache.hadoop.metrics.Updater;
 import org.apache.hadoop.metrics.jvm.JvmMetrics;
+import org.apache.hadoop.metrics.util.MetricsIntValue;
 import org.apache.hadoop.metrics.util.MetricsLongValue;
 import org.apache.hadoop.metrics.util.MetricsRegistry;
 
@@ -76,6 +77,9 @@ public class MasterMetrics implements Updater {
   /** Time it takes to finish cloneSnapshotTime() */
   final PersistentMetricsTimeVaryingRate snapshotCloneTime =
     new PersistentMetricsTimeVaryingRate("snapshotCloneTime", registry);
+  
+  /** Balancer switch **/
+  final MetricsIntValue balanceSwitch = new MetricsIntValue("balanceSwitch", registry);
 
   public MasterMetrics(final String name) {
     MetricsContext context = MetricsUtil.getContext("hbase");
@@ -128,6 +132,7 @@ public class MasterMetrics implements Updater {
       this.cluster_requests.pushMetric(metricsRecord);
       this.splitTime.pushMetric(metricsRecord);
       this.splitSize.pushMetric(metricsRecord);
+      this.balanceSwitch.pushMetric(metricsRecord);
     }
     this.metricsRecord.update();
   }
@@ -182,5 +187,9 @@ public class MasterMetrics implements Updater {
    */
   public void addSnapshotClone(long time) {
     snapshotCloneTime.inc(time);
+  }
+  
+  public void setBalanceSwitch(boolean balance) {
+    balanceSwitch.set(balance ? 1 : 0);
   }
 }

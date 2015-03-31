@@ -542,6 +542,7 @@ Server {
         Long.toHexString(this.zooKeeper.getRecoverableZooKeeper().getSessionId()) +
         ", cluster-up flag was=" + wasUp);
     this.clusterSwitches = new ClusterSwitchTracker(this.zooKeeper);
+    this.metrics.setBalanceSwitch(this.clusterSwitches.getBalanceSwitch());
     // create the snapshot manager
     this.snapshotManager = new SnapshotManager(this, this.metrics);
   }
@@ -1346,6 +1347,7 @@ Server {
         this.clusterSwitches.setBalanceSwitch(newValue);
       }
       clusterSwitches.persistClusterSwitch();
+      this.metrics.setBalanceSwitch(newValue);
       LOG.info("BalanceSwitch=" + newValue);
       if (this.cpHost != null) {
         this.cpHost.postBalanceSwitch(oldValue, newValue);
@@ -1355,7 +1357,7 @@ Server {
     }
     return oldValue;
   }
-
+  
   @Override
   public boolean synchronousBalanceSwitch(final boolean b) {
     return switchBalancer(b, BalanceSwitchMode.SYNC);

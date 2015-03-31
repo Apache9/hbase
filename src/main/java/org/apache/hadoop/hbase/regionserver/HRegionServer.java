@@ -1186,6 +1186,7 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
       this.hlog = setupWALAndReplication();
       // Init in here rather than in constructor after thread name has been set
       this.metrics = new RegionServerMetrics();
+      this.metrics.setCompactionEnable(enableCompact);
       this.dynamicMetrics = RegionServerDynamicMetrics.newInstance(this);
       this.rsHost = new RegionServerCoprocessorHost(this, this.conf);
       startServiceThreads();
@@ -4473,6 +4474,7 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
   public boolean setCompactionEnable(final boolean b) {
     boolean oldValue = enableCompact;
     enableCompact = b;
+    this.metrics.setCompactionEnable(enableCompact);
     return oldValue;
   }
 
