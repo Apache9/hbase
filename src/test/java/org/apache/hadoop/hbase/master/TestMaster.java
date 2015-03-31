@@ -27,13 +27,17 @@ import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.executor.EventHandler;
 import org.apache.hadoop.hbase.executor.EventHandler.EventHandlerListener;
 import org.apache.hadoop.hbase.executor.EventHandler.EventType;
+import org.apache.hadoop.hbase.regionserver.HRegionServer;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.Pair;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -129,6 +133,61 @@ public class TestMaster {
     } finally {
       m.initialized = true;
     }
+  }
+
+  @Test
+  public void testBalancerThrottling() throws Exception {
+    MiniHBaseCluster cluster = TEST_UTIL.getHBaseCluster();
+    final HMaster m = cluster.getMaster();
+    byte[] startKey = new byte[] {0x00};
+    byte[] stopKey = new byte[] {0x7f};
+    int rsCount = TEST_UTIL.getMiniHBaseCluster().getRegionServerThreads().size();
+    HTable ht = TEST_UTIL.createTable(TABLENAME, new byte[][]{FAMILYNAME}, 1,
+        startKey, stopKey, 5 * rsCount);
+    // test limit on max regions in transition
+    unbalance(m, ht, startKey, stopKey);
+    m.getConfiguration().setInt("hbase.balancer.max.balancing.regions", 1);
+    final AtomicInteger maxCount = new AtomicInteger(0);
+    final AtomicBoolean stop = new AtomicBoolean(false);
+    Runnable checker = new Runnable() {
+      @Override public void run() {
+        while (!stop.get()) {
+          maxCount.set(Math.max(maxCount.get(), m.assignmentManager.getRegionsInTransitionCount()));
+          try {
+            Thread.sleep(10);
+          } catch (InterruptedException e) {
+            e.printStackTrace();
+          }
+        }
+      }
+    };
+    Thread thread = new Thread(checker);
+    thread.start();
+    m.balance();
+    stop.set(true);
+    thread.interrupt();
+    thread.join();
+    assertTrue("max regions in transition: " + maxCount.get(), maxCount.get() <= 1);
+    // test min region moving interval
+    unbalance(m, ht, startKey, stopKey);
+    m.getConfiguration().unset("hbase.balancer.max.balancing.regions");
+    m.getConfiguration().setInt("hbase.balancer.min.balancing.interval", 1000);
+    int regionsToBalance = m.getBalancer().balanceCluster(
+            m.assignmentManager.getAssignmentsByTable().get(Bytes.toString(TABLENAME))).size();
+    long startTime = System.currentTimeMillis();
+    m.balance();
+    long elapsed = System.currentTimeMillis() - startTime;
+    assertTrue("balance time: " + elapsed, elapsed >= 1000 * (regionsToBalance - 1));
+  }
+
+  private void unbalance(HMaster master, HTable ht, byte[] start, byte[] stop) throws Exception {
+    while(master.assignmentManager.getRegionsInTransitionCount() > 0) {Thread.sleep(100);}
+    HRegionServer biasedServer = TEST_UTIL.getMiniHBaseCluster().getRegionServer(0);
+    for (HRegionLocation hrl : ht.getRegionsInRange(start, stop)) {
+      master.move(hrl.getRegionInfo().getEncodedNameAsBytes(),
+          Bytes.toBytes(biasedServer.getServerName().getServerName()));
+    }
+    while(master.assignmentManager.getRegionsInTransitionCount() > 0) {Thread.sleep(100);}
   }
 
   static class RegionSplitListener implements EventHandlerListener {

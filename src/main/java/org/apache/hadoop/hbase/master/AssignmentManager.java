@@ -3085,6 +3085,15 @@ public class AssignmentManager extends ZooKeeperListener {
   }
 
   /**
+   * @return number of the regions currently in transition.
+   */
+  public int getRegionsInTransitionCount() {
+    synchronized (this.regionsInTransition) {
+      return this.regionsInTransition.size();
+    }
+  }
+
+  /**
    * @param hri Region to check.
    * @return Returns null if passed region is not in transition else the current
    * RegionState

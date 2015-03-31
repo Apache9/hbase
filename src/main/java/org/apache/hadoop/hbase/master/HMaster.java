@@ -42,6 +42,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.Lock;
 
 import javax.management.ObjectName;
 
@@ -1196,6 +1197,11 @@ Server {
     return balancerCutoffTime;
   }
 
+  // only for test
+  protected LoadBalancer getBalancer() {
+    return this.balancer;
+  }
+
   @Override
   public boolean balance() {
     return balance(null);
@@ -1213,6 +1219,12 @@ Server {
     // Do this call outside of synchronized block.
     int maximumBalanceTime = getBalancerCutoffTime();
     long cutoffTime = System.currentTimeMillis() + maximumBalanceTime;
+    // max number of regions in transition when balancing
+    int maxRegionsInTransition =
+        getConfiguration().getInt("hbase.balancer.max.balancing.regions", -1);
+    // min sleep time in milliseconds before start next balance action
+    int minBalanceIntervalMs =
+        getConfiguration().getInt("hbase.balancer.min.balancing.interval", -1);
     boolean balancerRan;
     synchronized (this.balancer) {
       // Only allow one balance run at at time.
@@ -1271,12 +1283,29 @@ Server {
           this.assignmentManager.balance(plan);
           totalRegPlanExecTime += System.currentTimeMillis()-balStartTime;
           rpCount++;
-          if (rpCount < plans.size() &&
-              // if performing next balance exceeds cutoff time, exit the loop
-              (System.currentTimeMillis() + (totalRegPlanExecTime / rpCount)) > cutoffTime) {
-            LOG.debug("No more balancing till next balance run; maximumBalanceTime=" +
-              maximumBalanceTime);
-            break;
+          if (rpCount < plans.size()) {
+            long currentTime = System.currentTimeMillis();
+            long nextBalMinStartTime =
+                minBalanceIntervalMs > 0 ? currentTime + minBalanceIntervalMs : currentTime;
+            boolean interrupted = false;
+            while ((currentTime < nextBalMinStartTime || maxRegionsInTransition > 0 &&
+                this.assignmentManager.getRegionsInTransitionCount() >= maxRegionsInTransition) &&
+                currentTime + (totalRegPlanExecTime / rpCount) <= cutoffTime) {
+              try {
+                // sleep if the number of regions in transition exceeds the limit
+                Thread.sleep(1000);
+              } catch (InterruptedException ie) {
+                interrupted = true;
+              }
+              currentTime = System.currentTimeMillis();
+            }
+            if (interrupted) Thread.currentThread().interrupt();
+            // if performing next balance exceeds cutoff time, exit the loop
+            if (currentTime + (totalRegPlanExecTime / rpCount) > cutoffTime) {
+              LOG.debug("No more balancing till next balance run; maximumBalanceTime=" +
+                  maximumBalanceTime);
+              break;
+            }
           }
         }
       }
