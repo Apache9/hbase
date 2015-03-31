@@ -440,7 +440,7 @@ implements WritableComparable<HServerLoad> {
       if (version >= 3) {
         this.lastFlushSeqId = WritableUtils.readVLong(in);
       }
-      if (version == 4) {
+      if (version >= 4) {
         this.locality = in.readFloat();
       }
       if (version == 5) {
