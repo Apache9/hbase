@@ -702,20 +702,15 @@ public class ReplicationSource extends Thread
         if (isCurrentLogEmpty()) {
           return true;
         } else if (queueRecovered) {
-          if (this.queue.size() == 0) {
-            // EOF happen at the tail of the recover queue, might be generated when its
-            // region server restart, log a warn and could skip the file
-            LOG.warn("EOF at the tail of recover queue:" + this.peerClusterZnode + ", file path:"
-                + this.currentPath, ioe);
-            processEndOfFile();
-            return false;
-          } else {
-            // EOF happen not at the tail of the recover queue, this should not happen!!!
+          boolean atTail = this.queue.size() == 0;
+          if (!atTail) {
+            // will count fatal error if EOF not at the tail of recover queue
             this.metrics.replicationFatalError.inc();
-            LOG.fatal("EOF not at the tail of recover queue:" + this.peerClusterZnode
-                + ", file path:" + this.currentPath
-                + ", should not happen, will wait for human intervention", ioe);
           }
+          LOG.warn("EOF in recover queue:" + this.peerClusterZnode + ", atTail=" + atTail
+              + ", file path:" + this.currentPath, ioe);
+          processEndOfFile();
+          return false;
         }
       }
       LOG.warn(peerClusterZnode + " Got: ", ioe);
