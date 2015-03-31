@@ -94,7 +94,7 @@ public class TestHServerLoad {
     byte[] bytes = regionLoadV2Bytes();
     HServerLoad.RegionLoad deserialized = (HServerLoad.RegionLoad) Writables
         .getWritable(bytes, new HServerLoad.RegionLoad());
-    assertEquals(4, deserialized.getVersion());
+    assertEquals(5, deserialized.getVersion());
     assertEquals(-1, deserialized.getLastFlushSeqId());
   }
 }

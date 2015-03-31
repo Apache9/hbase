@@ -470,6 +470,7 @@ implements WritableComparable<HServerLoad> {
       WritableUtils.writeVInt(out, 0);
       WritableUtils.writeVLong(out, lastFlushSeqId);
       out.writeFloat(locality);
+      WritableUtils.writeVLong(out, getRequestsCount);
     }
 
     /**
