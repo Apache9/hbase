@@ -19,6 +19,8 @@ package org.apache.hadoop.hbase.client.replication;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import junit.framework.Assert;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -126,6 +128,64 @@ public class TestReplicationAdmin {
     assertEquals(1, admin.getPeersCount());
   }
 
+  @Test
+  public void testRemovePeerTableCFs() throws Exception {
+    assertEquals(0, manager.getSources().size());
+    String table1 = "t1";
+    HBaseAdmin hAdmin = new HBaseAdmin(TEST_UTIL.getConfiguration());
+
+    if (!hAdmin.tableExists(table1)) {
+      HTableDescriptor desc = new HTableDescriptor(table1);
+      desc.addFamily(new HColumnDescriptor("cf"));
+      hAdmin.createTable(desc);
+    }
+    // Add a valid peer without tables
+    admin.addPeer(ID_ONE, KEY_ONE, "ENABLED");
+    Assert.assertTrue(admin.getPeerTableCFs(ID_ONE).isEmpty());
+    // remove from empty tableCFs
+    admin.removePeerTableCFs(ID_ONE, "t1");
+    Assert.assertTrue(admin.getPeerTableCFs(ID_ONE).isEmpty());
+    
+    admin.removePeer(ID_ONE);
+    // Add a valid peer
+    admin.addPeer(ID_ONE, KEY_ONE, "ENABLED", "t1");
+    Assert.assertEquals("t1", admin.getPeerTableCFs(ID_ONE));
+    // tableCFs not contained
+    admin.removePeerTableCFs(ID_ONE, "t2");
+    Assert.assertEquals("t1", admin.getPeerTableCFs(ID_ONE));
+    // empty tableCFs after removed
+    admin.removePeerTableCFs(ID_ONE, "t1");
+    Assert.assertEquals("t1", admin.getPeerTableCFs(ID_ONE));
+
+    String table2 = "t2";
+    if (!hAdmin.tableExists(table2)) {
+      HTableDescriptor desc = new HTableDescriptor(table2);
+      desc.addFamily(new HColumnDescriptor("cf"));
+      hAdmin.createTable(desc);
+    }
+    admin.appendPeerTableCFs(ID_ONE, table2);
+    Assert.assertEquals("t1;t2", admin.getPeerTableCFs(ID_ONE));
+    
+    String table3 = "t3";
+    if (!hAdmin.tableExists(table3)) {
+      HTableDescriptor desc = new HTableDescriptor(table3);
+      desc.addFamily(new HColumnDescriptor("cf"));
+      hAdmin.createTable(desc);
+    }
+    admin.appendPeerTableCFs(ID_ONE, table3);
+    Assert.assertEquals("t1;t2;t3", admin.getPeerTableCFs(ID_ONE));
+    
+    admin.removePeerTableCFs(ID_ONE, "t2");
+    Assert.assertEquals("t1;;t3", admin.getPeerTableCFs(ID_ONE));
+    
+    admin.appendPeerTableCFs(ID_ONE, "t1");
+    Assert.assertEquals("t1;;t3;t1", admin.getPeerTableCFs(ID_ONE));
+    admin.removePeerTableCFs(ID_ONE, "t1");
+    Assert.assertEquals(";;t3;", admin.getPeerTableCFs(ID_ONE));
+    
+    hAdmin.close();
+  }
+  
 
   @Test
   public void testAppendPeerTableCFs() throws Exception {

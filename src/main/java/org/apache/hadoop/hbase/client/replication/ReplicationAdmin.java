@@ -228,6 +228,48 @@ public class ReplicationAdmin implements Closeable {
   }
 
   /**
+   * Remote the replicable table-cf config of the specified peer
+   * @param id a short that identifies the cluster
+   * @throws KeeperException
+  */
+  public void removePeerTableCFs(String id, String tableCFs)
+      throws IOException, KeeperException {
+    if (tableCFs == null || tableCFs.isEmpty()) {
+      return;
+    }
+    
+    String prevTableCFs = getPeerTableCFs(id);
+    if (prevTableCFs != null && !prevTableCFs.isEmpty()) {
+      if (prevTableCFs.contains(tableCFs)) {
+        tableCFs = prevTableCFs.replace(tableCFs, "");
+        // the empty tableCFs means all tables with REPLICATION_SCOPE = 1 will be replicated
+        if (isTableCFsEmpty(tableCFs)) {
+          LOG.warn("tableCFs will become empty after " + tableCFs
+              + " removed, please use 'removePeer' instead!");
+          return;
+        }
+        LOG.info("The new table-cf config for peer: " + id + " is: " + tableCFs);
+        checkTableCFs(tableCFs);
+        this.replicationZk.setTableCFsStr(id, tableCFs);
+      } else {
+        LOG.warn(tableCFs + " not contained in the tableCFs of peerId " + id);
+      }
+    } else {
+      LOG.warn("no previous TableCFs, could not remove " + tableCFs);
+    }
+  }
+  
+  private boolean isTableCFsEmpty(String tableCFs) throws IOException {
+    String[] tables = tableCFs.split(";");
+    for (String tab : tables) {
+      if (!tab.trim().isEmpty()) {
+        return false;
+      }
+    }
+    return true;
+  }
+  
+  /**
    * Append the replicable table-cf config of the specified peer
    * @param id a short that identifies the cluster
    * @throws KeeperException
