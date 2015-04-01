@@ -250,6 +250,13 @@ implements WritableComparable<HServerLoad> {
     }
 
     /**
+     * @return the number of get requests made to region
+     */
+    public long getGetRequestsCount() {
+      return getRequestsCount;
+    }
+    
+    /**
      * @return the number of read requests made to region
      */
     public long getWriteRequestsCount() {
