@@ -39,7 +39,9 @@ import org.codehaus.jettison.json.JSONObject;
 
 public class FalconSink implements Sink, Configurable {
   private static final Log LOG = LogFactory.getLog(FalconSink.class);
-  private static final String URI = "http://127.0.0.1:1988/v1/push";
+  private static final String DEFAULT_FALCON_URI = "http://127.0.0.1:1988/v1/push";
+  private static final String DEFAULT_COLLECTOR_URI = "http://10.105.5.111:8000/canary/push_metric/";
+
   private static final int PERIOD = 60; // s
 
   private Configuration conf;
@@ -74,8 +76,10 @@ public class FalconSink implements Sink, Configurable {
   @Override
   public void publishReadTiming(HRegionInfo region, HColumnDescriptor column, long msTime) {
     totalCounter.incrementAndGet();
-    LOG.info(String.format("read from region %s column family %s in %dms",
-      region.getRegionNameAsString(), column.getNameAsString(), msTime));
+    if (msTime > 500) {
+      LOG.info(String.format("read from region %s column family %s in %dms",
+        region.getRegionNameAsString(), column.getNameAsString(), msTime));
+    }
   }
 
   private double calc() {
@@ -89,8 +93,39 @@ public class FalconSink implements Sink, Configurable {
   private void pushMetrics() {
     String clusterName = conf.get("hbase.cluster.name", "unknown");
     double avail = calc();
-    LOG.info("Try to push metrics to falcon. Cluster: " + clusterName + " availability is " + avail);
-    PostMethod post = new PostMethod(URI);
+    LOG.info("Try to push metrics to falcon and collector. Cluster: " + clusterName
+        + " availability is " + avail);
+    pushToCollector(clusterName, avail);
+    pushToFalcon(clusterName, avail);
+  }
+
+  public void pushToCollector(String clusterName, double avail) {
+    String uri = conf.get("hbase.canary.sink.collector.uri", DEFAULT_COLLECTOR_URI);
+    PostMethod post = new PostMethod(uri);
+    JSONArray data = new JSONArray();
+    try {
+      JSONObject metric = new JSONObject();
+      metric.put("service", "hbase");
+      metric.put("cluster", clusterName);
+      metric.put("name", "cluster-availability");
+      metric.put("timestamp", System.currentTimeMillis() / 1000);
+      metric.put("value", avail);
+      metric.put("unit", "%");
+      data.put(metric);
+    } catch (JSONException e) {
+      LOG.error("Create json error.", e);
+    }
+    post.setRequestBody(data.toString());
+    try {
+      client.executeMethod(post);
+    } catch (IOException e) {
+      LOG.info("Push metrics to collector failed", e);
+    }
+  }
+
+  private void pushToFalcon(String clusterName, double avail) {
+    String uri = conf.get("hbase.canary.sink.falcon.uri", DEFAULT_FALCON_URI);
+    PostMethod post = new PostMethod(uri);
     JSONArray data = new JSONArray();
     try {
       JSONObject metric = new JSONObject();
