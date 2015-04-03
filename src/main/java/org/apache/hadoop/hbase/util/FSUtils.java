@@ -45,6 +45,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.PathFilter;
 import org.apache.hadoop.fs.permission.FsAction;
 import org.apache.hadoop.fs.permission.FsPermission;
+import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HBaseFileSystem;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HConstants;
@@ -1449,6 +1450,26 @@ public abstract class FSUtils {
       LOG.warn("Failed invoking method " + name + " on dfsclient; no hedged read metrics: " +
           e.getMessage());
       return null;
+    }
+  }
+
+  public static void main(String[] args) {
+    if (args.length != 2) {
+      System.out.println("FSHDFSUtils -recoverlease file");
+      return;
+    }
+    String method = args[0];
+    Path path = new Path(args[1]);
+    Configuration conf = HBaseConfiguration.create();
+    if (method.equals("-recoverlease")) {
+      try {
+        FileSystem fs = FileSystem.get(conf);
+        FSUtils.getInstance(fs, conf).recoverFileLease(fs, path, conf);
+      } catch (IOException e) {
+        LOG.error("Recover lease failed", e);
+      }
+    } else {
+      LOG.info("Unkonwn method: " + method);
     }
   }
 }
