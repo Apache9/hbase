@@ -98,6 +98,8 @@ public class TestSplitTransactionOnCluster {
     // We don't want to wait 3min for the master to figure it out
     TESTING_UTIL.getConfiguration().setInt(
         "hbase.master.assignment.timeoutmonitor.timeout", 4000);
+    TESTING_UTIL.getConfiguration().setBoolean(
+        "hbase.regionserver.compaction.private.readers", true);
     TESTING_UTIL.startMiniCluster(NB_SERVERS);
   }
 
