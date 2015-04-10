@@ -50,7 +50,7 @@ public class CompactionCoordinator implements Configurable {
       final ServerManager manager) {
     this.conf = conf;
     this.manager = manager;
-    this.compactionRatio = conf.getFloat(HBASE_CLUSTER_COMPACTION_RATIO, 0.6f);
+    this.compactionRatio = conf.getFloat(HBASE_CLUSTER_COMPACTION_RATIO, 2.0f);
     this.quotas = new ConcurrentHashMap<ServerName, CompactionQuota>();
     this.totalQuota = (int)(this.manager.countOfRegionServers() * compactionRatio);
     this.usedQuota = 0;
