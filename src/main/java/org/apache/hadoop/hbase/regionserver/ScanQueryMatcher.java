@@ -128,6 +128,9 @@ public class ScanQueryMatcher {
 
   private final boolean isReversed;
 
+  //whether ignore ttl setting or not, used by canary currently
+  private final boolean ignoreTtl;
+
   /**
    * Construct a QueryMatcher for a scan
    * @param scan
@@ -160,7 +163,7 @@ public class ScanQueryMatcher {
     this.retainDeletesInOutput = scanType == ScanType.MINOR_COMPACT || scan.isRaw();
     // seePastDeleteMarker: user initiated scans
     this.seePastDeleteMarkers = scanInfo.getKeepDeletedCells() && isUserScan;
-
+    this.ignoreTtl = scan.isIgnoreTtl();
     int maxVersions =
         scan.isRaw() ? scan.getMaxVersions() : Math.min(scan.getMaxVersions(),
           scanInfo.getMaxVersions());
@@ -172,7 +175,7 @@ public class ScanQueryMatcher {
 
       // use a specialized scan for wildcard column tracker.
       this.columns = new ScanWildcardColumnTracker(
-          scanInfo.getMinVersions(), maxVersions, oldestUnexpiredTS);
+          scanInfo.getMinVersions(), maxVersions, oldestUnexpiredTS, ignoreTtl);
     } else {
       // whether there is null column in the explicit column query
       hasNullColumn = (columns.first().length == 0);

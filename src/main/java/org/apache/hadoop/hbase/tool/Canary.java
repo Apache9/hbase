@@ -126,6 +126,7 @@ public final class Canary implements Tool {
           scan.setCaching(1);
           scan.setFilter(new FirstKeyOnlyFilter());
           scan.setCacheBlocks(false);
+          scan.setIgnoreTtl(true);
           ResultScanner scanner = table.getScanner(scan);
           try {
             Result r = scanner.next();
