@@ -30,16 +30,15 @@
 -->
   <modelVersion>4.0.0</modelVersion>
   <parent>
-    <groupId>org.apache</groupId>
-    <artifactId>apache</artifactId>
-    <version>12</version>
-    <relativePath/>
-    <!-- no parent resolution -->
+    <groupId>com.xiaomi.infra</groupId>
+    <artifactId>mdh-root</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+    <relativePath>../mdh-root</relativePath>
   </parent>
   <groupId>org.apache.hbase</groupId>
   <artifactId>hbase</artifactId>
   <packaging>pom</packaging>
-  <version>0.98.11</version>
+  <version>0.98.11-mdh2.0-SNAPSHOT</version>
   <name>HBase</name>
   <description>
     Apache HBase is the Hadoop database. Use it when you need
@@ -1002,7 +1001,7 @@
     <jasper.version>5.5.23</jasper.version>
     <jaxb-api.version>2.2.2</jaxb-api.version>
     <jetty.version>6.1.26</jetty.version>
-    <jetty.jspapi.version>6.1.14</jetty.jspapi.version>
+    <!--<jetty.jspapi.version>6.1.14</jetty.jspapi.version>-->
     <jersey.version>1.8</jersey.version>
     <jruby.version>1.6.8</jruby.version>
     <junit.version>4.11</junit.version>
@@ -1013,7 +1012,8 @@
     <protobuf.version>2.5.0</protobuf.version>
     <thrift.path>thrift</thrift.path>
     <thrift.version>0.9.0</thrift.version>
-    <zookeeper.version>3.4.6</zookeeper.version>
+    <zookeeper-mdh.version>3.4.4-mdh1.1.1</zookeeper-mdh.version>
+    <hadoop-mdh.version>2.4.0-mdh2.0.5</hadoop-mdh.version>
     <slf4j.version>1.6.4</slf4j.version>
     <hadoop-snappy.version>0.0.1-SNAPSHOT</hadoop-snappy.version>
     <clover.version>2.6.3</clover.version>
@@ -1225,6 +1225,16 @@
         <artifactId>log4j</artifactId>
         <version>${log4j.version}</version>
       </dependency>
+      <dependency>
+        <groupId>com.xiaomi.infra</groupId>
+        <artifactId>scribe-log4j</artifactId>
+        <version>${scribe-log4j.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.xiaomi.infra</groupId>
+        <artifactId>ext-log4j</artifactId>
+        <version>${ext-log4j.version}</version>
+      </dependency>
       <!--This is not used by hbase directly.  Used by thrift,
           yammer and zk.-->
       <dependency>
@@ -1290,7 +1300,7 @@
       <dependency>
         <groupId>org.apache.zookeeper</groupId>
         <artifactId>zookeeper</artifactId>
-        <version>${zookeeper.version}</version>
+        <version>${zookeeper-mdh.version}</version>
         <exclusions>
           <exclusion>
             <groupId>jline</groupId>
@@ -1366,6 +1376,7 @@
         <artifactId>jetty-sslengine</artifactId>
         <version>${jetty.version}</version>
       </dependency>
+      <!--
       <dependency>
         <groupId>org.mortbay.jetty</groupId>
         <artifactId>jsp-2.1</artifactId>
@@ -1391,6 +1402,7 @@
         <artifactId>servlet-api-2.5</artifactId>
         <version>${jetty.jspapi.version}</version>
       </dependency>
+      -->
       <!-- While jackson is also a dependency of jersey it
            can bring in jars from different, incompatible versions. We force
            the same version with these dependencies -->
@@ -1426,6 +1438,7 @@
         <version>${jasper.version}</version>
         <scope>runtime</scope>
         <exclusions>
+          <!--
           <exclusion>
             <groupId>javax.servlet</groupId>
             <artifactId>jsp-api</artifactId>
@@ -1434,6 +1447,7 @@
             <groupId>javax.servlet</groupId>
             <artifactId>servlet-api</artifactId>
           </exclusion>
+          -->
           <exclusion>
             <groupId>ant</groupId>
             <artifactId>ant</artifactId>
@@ -1445,12 +1459,14 @@
         <artifactId>jasper-runtime</artifactId>
         <version>${jasper.version}</version>
         <scope>runtime</scope>
+        <!--
         <exclusions>
           <exclusion>
             <groupId>javax.servlet</groupId>
             <artifactId>servlet-api</artifactId>
           </exclusion>
         </exclusions>
+        -->
       </dependency>
       <dependency>
         <groupId>org.jamon</groupId>
@@ -1708,8 +1724,9 @@
       <id>hadoop-2.0</id>
       <activation>
         <property>
-            <!--Below formatting for dev-support/generate-hadoopX-poms.sh-->
-            <!--h2--><name>!hadoop.profile</name>
+          <!--Below formatting for dev-support/generate-hadoopX-poms.sh-->
+          <name>hadoop.profile</name>
+          <value>2.0</value>
         </property>
       </activation>
       <modules>
@@ -1861,6 +1878,134 @@
         </dependency>
       </dependencies>
     </profile>
+
+    <!-- profile for building against Hadoop 2.0.0-mdh* release version: This is the default. -->
+    <profile>
+      <id>hadoop-2.0.0-mdh-release</id>
+      <activation>
+        <property>
+            <name>!hadoop.profile</name>
+        </property>
+      </activation>
+      <modules>
+        <module>hbase-hadoop2-compat</module>
+      </modules>
+      <properties>
+        <hadoop.version>${hadoop-mdh.version}</hadoop.version>
+        <compat.module>hbase-hadoop2-compat</compat.module>
+        <assembly.file>src/main/assembly/hadoop-two-compat.xml</assembly.file>
+      </properties>
+      <dependencyManagement>
+        <dependencies>
+          <dependency>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-mapreduce-client-core</artifactId>
+            <version>${hadoop.version}</version>
+          </dependency>
+          <dependency>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-mapreduce-client-jobclient</artifactId>
+            <version>${hadoop.version}</version>
+          </dependency>
+          <dependency>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-mapreduce-client-jobclient</artifactId>
+            <version>${hadoop.version}</version>
+            <type>test-jar</type>
+          </dependency>
+          <dependency>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-hdfs</artifactId>
+              <exclusions>
+                <exclusion>
+                  <groupId>javax.servlet.jsp</groupId>
+                  <artifactId>jsp-api</artifactId>
+                </exclusion>
+                <exclusion>
+                  <groupId>javax.servlet</groupId>
+                  <artifactId>servlet-api</artifactId>
+                </exclusion>
+                <exclusion>
+                  <groupId>stax</groupId>
+                  <artifactId>stax-api</artifactId>
+                </exclusion>
+              </exclusions>
+            <version>${hadoop.version}</version>
+          </dependency>
+          <dependency>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-hdfs</artifactId>
+            <version>${hadoop.version}</version>
+            <type>test-jar</type>
+              <exclusions>
+                <exclusion>
+                  <groupId>javax.servlet.jsp</groupId>
+                  <artifactId>jsp-api</artifactId>
+                </exclusion>
+                <exclusion>
+                  <groupId>javax.servlet</groupId>
+                  <artifactId>servlet-api</artifactId>
+                </exclusion>
+                <exclusion>
+                  <groupId>stax</groupId>
+                  <artifactId>stax-api</artifactId>
+                </exclusion>
+              </exclusions>
+          </dependency>
+          <dependency>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-auth</artifactId>
+            <version>${hadoop.version}</version>
+          </dependency>
+          <dependency>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-common</artifactId>
+            <version>${hadoop.version}</version>
+            <exclusions>
+              <exclusion>
+                <groupId>javax.servlet.jsp</groupId>
+                <artifactId>jsp-api</artifactId>
+              </exclusion>
+              <exclusion>
+                <groupId>javax.servlet</groupId>
+                <artifactId>servlet-api</artifactId>
+              </exclusion>
+              <exclusion>
+                <groupId>stax</groupId>
+                <artifactId>stax-api</artifactId>
+              </exclusion>
+            </exclusions>
+          </dependency>
+          <dependency>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-client</artifactId>
+            <version>${hadoop.version}</version>
+          </dependency>
+          <!-- This was marked as test dep in earlier pom, but was scoped compile.
+            Where do we actually need it? -->
+          <dependency>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-minicluster</artifactId>
+            <version>${hadoop.version}</version>
+            <exclusions>
+              <exclusion>
+                <groupId>javax.servlet.jsp</groupId>
+                <artifactId>jsp-api</artifactId>
+              </exclusion>
+              <exclusion>
+                <groupId>javax.servlet</groupId>
+                <artifactId>servlet-api</artifactId>
+              </exclusion>
+              <exclusion>
+                <groupId>stax</groupId>
+                <artifactId>stax-api</artifactId>
+              </exclusion>
+            </exclusions>
+          </dependency>
+        </dependencies>
+      </dependencyManagement>
+    </profile>
+
     <!-- profiles for the tests
          See as well the properties of the project for the values
          when no profile is active.     -->

@@ -23,7 +23,7 @@
   <parent>
     <artifactId>hbase</artifactId>
     <groupId>org.apache.hbase</groupId>
-    <version>0.98.11</version>
+    <version>0.98.11-mdh2.0-SNAPSHOT</version>
     <relativePath>..</relativePath>
   </parent>
 
@@ -67,7 +67,7 @@
                 <mkdir dir="${project.build.directory}/nativelib"/>
                 <exec executable="tar" dir="${project.build.directory}/nativelib" failonerror="false">
                   <arg value="xf"/>
-                  <arg value="hadoop-snappy-nativelibs.tar"/>
+                  <arg value="hadoop-common-nativelibs.tar"/>
                 </exec>
               </target>
             </configuration>
@@ -227,6 +227,44 @@
   </dependencies>
 
   <profiles>
+    <profile>
+      <id>native</id>
+      <activation>
+        <property>
+          <name>!native</name>
+        </property>
+      </activation>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-dependency-plugin</artifactId>
+            <executions>
+              <execution>
+                <id>get-hadoop-common-native</id>
+                <phase>generate-resources</phase>
+                <goals>
+                  <goal>copy</goal>
+                </goals>
+                <configuration>
+                  <artifactItems>
+                    <artifactItem>
+                      <groupId>org.apache.hadoop</groupId>
+                      <artifactId>hadoop-common</artifactId>
+                      <classifier>${build.platform}</classifier>
+                      <type>tar</type>
+                      <overWrite>false</overWrite>
+                      <outputDirectory>${project.build.directory}/nativelib</outputDirectory>
+                      <destFileName>hadoop-common-nativelibs.tar</destFileName>
+                    </artifactItem>
+                  </artifactItems>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
     <!-- Skip the tests in this module -->
     <profile>
       <id>skipCommonTests</id>

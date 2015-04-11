@@ -23,7 +23,7 @@
   <parent>
     <artifactId>hbase</artifactId>
     <groupId>org.apache.hbase</groupId>
-    <version>0.98.11</version>
+    <version>0.98.11-mdh2.0-SNAPSHOT</version>
     <relativePath>..</relativePath>
   </parent>
   <artifactId>hbase-assembly</artifactId>
@@ -41,7 +41,7 @@
           <!--Else will use hbase-assembly as final name.-->
           <finalName>hbase-${project.version}</finalName>
           <skipAssembly>false</skipAssembly>
-          <appendAssemblyId>true</appendAssemblyId>
+          <appendAssemblyId>false</appendAssemblyId>
           <!--We do not want assembly attached; run on command-line explicitly
                if you want to do an assembly-->
           <attach>false</attach>
@@ -50,6 +50,14 @@
             <descriptor>${assembly.file}</descriptor>
           </descriptors>
         </configuration>
+         <executions>
+          <execution>
+            <phase>package</phase>
+            <goals>
+              <goal>single</goal>
+            </goals>
+          </execution>
+        </executions>
       </plugin>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
