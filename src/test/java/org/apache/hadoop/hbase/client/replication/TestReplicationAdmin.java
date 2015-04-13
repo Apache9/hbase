@@ -183,6 +183,7 @@ public class TestReplicationAdmin {
     admin.removePeerTableCFs(ID_ONE, "t1");
     Assert.assertEquals(";;t3;", admin.getPeerTableCFs(ID_ONE));
     
+    admin.removePeer(ID_ONE);
     hAdmin.close();
   }
   

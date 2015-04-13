@@ -142,7 +142,9 @@ public class TestMaster {
     byte[] startKey = new byte[] {0x00};
     byte[] stopKey = new byte[] {0x7f};
     int rsCount = TEST_UTIL.getMiniHBaseCluster().getRegionServerThreads().size();
-    HTable ht = TEST_UTIL.createTable(TABLENAME, new byte[][]{FAMILYNAME}, 1,
+    // avoid using the same table created by other test cases
+    byte[] testTableName = Bytes.toBytes(Bytes.toString(TABLENAME) + "_balance_throttling_test");
+    HTable ht = TEST_UTIL.createTable(testTableName, new byte[][]{FAMILYNAME}, 1,
         startKey, stopKey, 5 * rsCount);
     // test limit on max regions in transition
     unbalance(m, ht, startKey, stopKey);
@@ -173,7 +175,7 @@ public class TestMaster {
     m.getConfiguration().unset("hbase.balancer.max.balancing.regions");
     m.getConfiguration().setInt("hbase.balancer.min.balancing.interval", 1000);
     int regionsToBalance = m.getBalancer().balanceCluster(
-            m.assignmentManager.getAssignmentsByTable().get(Bytes.toString(TABLENAME))).size();
+            m.assignmentManager.getAssignmentsByTable().get(Bytes.toString(testTableName))).size();
     long startTime = System.currentTimeMillis();
     m.balance();
     long elapsed = System.currentTimeMillis() - startTime;

@@ -16,7 +16,7 @@ public class ProgressEstimator {
 
   public ProgressEstimator(byte[] startRow, byte[] endRow) {
     commonPrefixLength = getCommonPrefixLength(startRow, endRow);
-    if (startRow != null) {
+    if (startRow != null && startRow.length != 0) {
       startValue = computeValue(startRow, commonPrefixLength);
     }
     endValue = computeValue(endRow, commonPrefixLength);
