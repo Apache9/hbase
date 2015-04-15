@@ -97,10 +97,10 @@ end
 # Trys to scan a row from passed region
 # Throws exception if can't
 def isSuccessfulScan(admin, r)
-  scan = Scan.new(r.getStartKey()) 
+  scan = Scan.new(r.getStartKey(), r.getStartKey())
   scan.setBatch(1)
   scan.setCaching(1)
-  scan.setFilter(FirstKeyOnlyFilter.new()) 
+  scan.setFilter(FilterList.new(FirstKeyOnlyFilter.new(),InclusiveStopFilter().new(r.getStartKey())))
   begin
     table = HTable.new(admin.getConfiguration(), r.getTableName())
     scanner = table.getScanner(scan)
