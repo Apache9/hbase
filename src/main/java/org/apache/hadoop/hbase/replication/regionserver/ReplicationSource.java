@@ -157,6 +157,7 @@ public class ReplicationSource extends Thread
   private HConnection sharedHtableCon = null;
   // Indicates if the non-replicable edits need to be removed (for galaxy-sds)
   private boolean tableNotFoundEditsRemove;
+  private int ioeSleepBeforeRetry = 0;
 
   /**
    * Instantiation method used by region servers
@@ -210,6 +211,7 @@ public class ReplicationSource extends Thread
     this.manager = manager;
     this.sleepForRetries =
         this.conf.getLong("replication.source.sleepforretries", 1000);
+    this.ioeSleepBeforeRetry = this.conf.getInt("replication.source.ioe.sleepbeforeretry", 0);
     this.fs = fs;
     this.metrics = new ReplicationSourceMetrics(peerClusterZnode);
     this.repLogReader = new ReplicationHLogReaderManager(this.fs, this.conf);
@@ -723,6 +725,15 @@ public class ReplicationSource extends Thread
       }
       // Important: When failed to open the hlog ,  replication will be blocked here, 
       // and wait for the operations from cluster admin
+      this.metrics.replicationIoeError.inc();
+      // Throttle the failure logs
+      try {
+        if (ioeSleepBeforeRetry > 0) {
+          TimeUnit.MILLISECONDS.sleep(ioeSleepBeforeRetry);
+        }
+      } catch (Exception e) {
+        // Ignore
+      }
       return false;
     }
     return true;
