@@ -1,6 +1,6 @@
 {
-  "project_id" : "HBaseOnGithub",
-  "conduit_uri" : "https://reviews.facebook.net/",
-  "copyright_holder" : "Apache Software Foundation",
-  "max_line_length" : 100
+  "project_id" : "HBase",
+  "conduit_uri" : "https://phabricator.d.xiaomi.net/",
+  "base" : "git:merge-base(origin/0.98.11-mdh2.0), arc:prompt",
+  "arc.land.onto.default": "0.98.11-mdh2.0"
 }
