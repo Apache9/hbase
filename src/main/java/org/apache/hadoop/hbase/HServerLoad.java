@@ -85,7 +85,7 @@ implements WritableComparable<HServerLoad> {
    * Encapsulates per-region loading metrics.
    */
   public static class RegionLoad extends VersionedWritable {
-    private static final byte VERSION = 4;
+    private static final byte VERSION = 5;
 
     /** @return the object version number */
     public byte getVersion() {
@@ -110,6 +110,8 @@ implements WritableComparable<HServerLoad> {
      * in MB. The same as {@link #rootIndexSizeKB} but in MB.
      */
     private int storefileIndexSizeMB;
+    /** the current total get request made to region */
+    private long getRequestsCount;
     /** the current total read requests made to region */
     private long readRequestsCount;
     /** the current total write requests made to region */
@@ -150,6 +152,7 @@ implements WritableComparable<HServerLoad> {
      * @param storefileSizeMB
      * @param memstoreSizeMB
      * @param storefileIndexSizeMB
+     * @param getRequestsCount
      * @param readRequestsCount
      * @param writeRequestsCount
      * @param totalCompactingKVs
@@ -161,7 +164,7 @@ implements WritableComparable<HServerLoad> {
         final int memstoreSizeMB, final int storefileIndexSizeMB,
         final int rootIndexSizeKB, final int totalStaticIndexSizeKB,
         final int totalStaticBloomSizeKB,
-        final long readRequestsCount, final long writeRequestsCount,
+        final long getRequestsCount, final long readRequestsCount, final long writeRequestsCount,
         final long totalCompactingKVs, final long currentCompactedKVs,
         final long lastFlushSeqId, final float locality) {
       this.name = name;
@@ -174,6 +177,7 @@ implements WritableComparable<HServerLoad> {
       this.rootIndexSizeKB = rootIndexSizeKB;
       this.totalStaticIndexSizeKB = totalStaticIndexSizeKB;
       this.totalStaticBloomSizeKB = totalStaticBloomSizeKB;
+      this.getRequestsCount = getRequestsCount;
       this.readRequestsCount = readRequestsCount;
       this.writeRequestsCount = writeRequestsCount;
       this.totalCompactingKVs = totalCompactingKVs;
@@ -245,6 +249,13 @@ implements WritableComparable<HServerLoad> {
       return readRequestsCount;
     }
 
+    /**
+     * @return the number of get requests made to region
+     */
+    public long getGetRequestsCount() {
+      return getRequestsCount;
+    }
+    
     /**
      * @return the number of read requests made to region
      */
@@ -436,8 +447,11 @@ implements WritableComparable<HServerLoad> {
       if (version >= 3) {
         this.lastFlushSeqId = WritableUtils.readVLong(in);
       }
-      if (version == 4) {
+      if (version >= 4) {
         this.locality = in.readFloat();
+      }
+      if (version == 5) {
+        this.getRequestsCount = WritableUtils.readVLong(in);
       }
     }
 
@@ -463,6 +477,7 @@ implements WritableComparable<HServerLoad> {
       WritableUtils.writeVInt(out, 0);
       WritableUtils.writeVLong(out, lastFlushSeqId);
       out.writeFloat(locality);
+      WritableUtils.writeVLong(out, getRequestsCount);
     }
 
     /**

@@ -43,6 +43,7 @@ public class ScanWildcardColumnTracker implements ColumnTracker {
   private byte latestTypeOfCurrentColumn;
 
   private long oldestStamp;
+  private boolean ignoreTtl;
 
   /**
    * Return maxVersions of every row.
@@ -53,9 +54,15 @@ public class ScanWildcardColumnTracker implements ColumnTracker {
    */
   public ScanWildcardColumnTracker(int minVersion, int maxVersion,
       long oldestUnexpiredTS) {
+    this(minVersion, maxVersion, oldestUnexpiredTS, false);
+  }
+
+  public ScanWildcardColumnTracker(int minVersion, int maxVersion,
+      long oldestUnexpiredTS, boolean ignoreTtl) {
     this.maxVersions = maxVersion;
     this.minVersions = minVersion;
     this.oldestStamp = oldestUnexpiredTS;
+    this.ignoreTtl = ignoreTtl;
   }
 
   /**
@@ -161,6 +168,9 @@ public class ScanWildcardColumnTracker implements ColumnTracker {
   }
 
   private boolean isExpired(long timestamp) {
+    if (ignoreTtl) {
+      return false;
+    }
     return timestamp < oldestStamp;
   }
 

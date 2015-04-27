@@ -62,7 +62,6 @@ import org.mockito.Mockito;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
-
 /**
  * Test compactions
  */
@@ -687,6 +686,9 @@ public class TestCompaction extends HBaseTestCase {
     CountDownLatch latch = new CountDownLatch(1);
     TrackableCompactionRequest request = new TrackableCompactionRequest(r, store, latch);
     thread.requestCompaction(r, store, "test custom comapction", Store.PRIORITY_USER, request);
+    CompactionQuota quota = thread.buildCompactionQuotaRequest();
+    quota.setGrantQuota(quota.getRequestQuota());
+    thread.processCompactionQuota(quota);
     // wait for the latch to complete.
     latch.await();
 
@@ -719,7 +721,9 @@ public class TestCompaction extends HBaseTestCase {
 
     thread.requestCompaction(r, "test mulitple custom comapctions", Store.PRIORITY_USER,
       Collections.unmodifiableList(requests));
-
+    CompactionQuota quota = thread.buildCompactionQuotaRequest();
+    quota.setGrantQuota(numStores * 10);
+    thread.processCompactionQuota(quota);
     // wait for the latch to complete.
     latch.await();
 

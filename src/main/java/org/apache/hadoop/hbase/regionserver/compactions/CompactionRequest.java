@@ -68,7 +68,6 @@ public class CompactionRequest implements Comparable<CompactionRequest>,
       majorCompactions = new ConcurrentHashMap<Long, AtomicInteger>();
     private static final ConcurrentHashMap<Long, AtomicInteger>
       minorCompactions = new ConcurrentHashMap<Long, AtomicInteger>();
-
   /**
    * Create a simple compaction request just for testing - this lets you specify everything you
    * would need in the general case of testing compactions from an external perspective (e.g.
@@ -332,7 +331,7 @@ public class CompactionRequest implements Comparable<CompactionRequest>,
         server.checkFileSystem();
       } finally {
         s.finishRequest(this);
-      LOG.debug("CompactSplitThread status: " + server.getCompactSplitThread());
+        LOG.debug("CompactSplitThread status: " + server.getCompactSplitThread());
       }
     }
 

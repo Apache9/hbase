@@ -19,11 +19,14 @@
  */
 package org.apache.hadoop.hbase.regionserver;
 
+import java.io.DataInput;
+import java.io.DataOutput;
 import java.io.IOException;
 import java.util.concurrent.Executors;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Queue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.RejectedExecutionException;
@@ -34,10 +37,9 @@ import java.util.concurrent.TimeUnit;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.HConstants;
-import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.conf.ConfigurationObserver;
 import org.apache.hadoop.hbase.regionserver.compactions.CompactionRequest;
+import org.apache.hadoop.io.VersionedWritable;
 
 import com.google.common.base.Preconditions;
 
@@ -50,10 +52,14 @@ public class CompactSplitThread implements CompactionRequestor, ConfigurationObs
   private final HRegionServer server;
   private final Configuration conf;
 
+  private final int smallThreads;
+  private final int largeThreads;
   private final ThreadPoolExecutor largeCompactions;
   private final ThreadPoolExecutor smallCompactions;
   private final ThreadPoolExecutor splits;
-
+  private Queue<CompactionRequest> smallCompactionsQueue;
+  private Queue<CompactionRequest> largeCompactionsQueue;
+  
   /**
    * Splitting should not take place if the total number of regions exceed this.
    * This is not a hard limit to the number of regions but it is a guideline to
@@ -68,10 +74,9 @@ public class CompactSplitThread implements CompactionRequestor, ConfigurationObs
     this.conf = server.getConfiguration();
     this.regionSplitLimit = conf.getInt("hbase.regionserver.regionSplitLimit",
         Integer.MAX_VALUE);
-
-    int largeThreads = Math.max(1, conf.getInt(
+    largeThreads = Math.max(1, conf.getInt(
         "hbase.regionserver.thread.compaction.large", 1));
-    int smallThreads = conf.getInt(
+    smallThreads = conf.getInt(
         "hbase.regionserver.thread.compaction.small", 1);
 
     int splitThreads = conf.getInt("hbase.regionserver.thread.split", 1);
@@ -115,6 +120,8 @@ public class CompactSplitThread implements CompactionRequestor, ConfigurationObs
             return t;
           }
       });
+    this.smallCompactionsQueue = new PriorityBlockingQueue<CompactionRequest>();
+    this.largeCompactionsQueue = new PriorityBlockingQueue<CompactionRequest>();
   }
 
   @Override
@@ -246,11 +253,13 @@ public class CompactSplitThread implements CompactionRequestor, ConfigurationObs
       if (priority != Store.NO_PRIORITY) {
         cr.setPriority(priority);
       }
-      ThreadPoolExecutor pool = s.throttleCompaction(cr.getSize())
-          ? largeCompactions : smallCompactions;
-      pool.execute(cr);
+      Queue<CompactionRequest> queue =
+          s.throttleCompaction(cr.getSize()) ? largeCompactionsQueue
+              : smallCompactionsQueue;
+      queue.add(cr);
+      
       if (LOG.isDebugEnabled()) {
-        String type = (pool == smallCompactions) ? "Small " : "Large ";
+        String type = (queue == smallCompactionsQueue) ? "Small " : "Large ";
         LOG.debug(type + "Compaction requested: " + cr
             + (why != null && !why.isEmpty() ? "; Because: " + why : "")
             + "; " + this);
@@ -301,7 +310,7 @@ public class CompactSplitThread implements CompactionRequestor, ConfigurationObs
    * @return The current size of the regions queue.
    */
   public int getCompactionQueueSize() {
-    return largeCompactions.getQueue().size() + smallCompactions.getQueue().size();
+    return smallCompactionsQueue.size() + largeCompactionsQueue.size();
   }
 
   /**
@@ -319,7 +328,7 @@ public class CompactSplitThread implements CompactionRequestor, ConfigurationObs
    * @return The current size of the regions large queue.
    */
   public int getLargeCompactionQueueSize() {
-    return largeCompactions.getQueue().size();
+    return largeCompactionsQueue.size();
   }
 
   /**
@@ -329,7 +338,44 @@ public class CompactSplitThread implements CompactionRequestor, ConfigurationObs
    * @return The current size of the regions small queue.
    */
   public int getSmallCompactionQueueSize() {
-    return smallCompactions.getQueue().size();
+    return smallCompactionsQueue.size();
+  }
+  
+  public CompactionQuota buildCompactionQuotaRequest() {
+    int usingQuota = getRunningCompactionSize();
+    int requestedQuota = smallThreads + largeThreads - getRunningCompactionSize();
+    requestedQuota = Math.min(requestedQuota, getCompactionQueueSize());
+    return new CompactionQuota(usingQuota, requestedQuota, 0);
+  }
+
+  public void processCompactionQuota(CompactionQuota quota) {
+    if (quota.getRequestQuota() > 0 && quota.getGrantQuota() == 0) {
+      LOG.warn("No quota for compaction.");
+    }
+    int totalQuota = quota.getGrantQuota();
+    while (totalQuota > 0) {
+      CompactionRequest cr = smallCompactionsQueue.poll();
+      if (cr == null) {
+        break;
+      }
+      smallCompactions.execute(cr);
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("Start running compaction: " + cr);
+      }
+      totalQuota--;
+    }
+    // Limit the large compaction number
+    while (totalQuota > 0) {
+      CompactionRequest cr = largeCompactionsQueue.poll();
+      if (cr == null) {
+        break;
+      }
+      largeCompactions.execute(cr);
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("Start running compaction: " + cr);
+      }
+      totalQuota--;
+    }
   }
 
   private boolean shouldSplitRegion() {
@@ -396,5 +442,66 @@ public class CompactSplitThread implements CompactionRequestor, ConfigurationObs
    */
   public int getCurrentCompactionThreadNum() {
     return this.smallCompactions.getActiveCount() + this.largeCompactions.getActiveCount();
+  }
+ 
+  public static class CompactionQuotaRequest extends VersionedWritable{
+    private static final byte VERSION = 0;
+
+    private int runningSmallCompactionNum;
+    private int runningLargeCompactionNum;
+    private int requestedSmallCompactionNum;
+    private int requestedLargeCompactionNum;
+    
+    // for writable
+    public CompactionQuotaRequest() {
+    }
+
+    public CompactionQuotaRequest(int runningSmallCompactionNum,
+        int runningLargeCompactionNum, int requestedSmallCompactionNum,
+        int requestedLargeCompactionNum) {
+      this.runningSmallCompactionNum = runningSmallCompactionNum;
+      this.runningLargeCompactionNum = runningLargeCompactionNum;
+      this.requestedSmallCompactionNum = requestedSmallCompactionNum;
+      this.requestedLargeCompactionNum = requestedLargeCompactionNum;
+    }
+
+    public int getRunningSmallCompactionNum() {
+      return runningSmallCompactionNum;
+    }
+
+    public int getRunningLargeCompactionNum() {
+      return runningLargeCompactionNum;
+    }
+
+    public int getRequestedSmallCompactionNum() {
+      return requestedSmallCompactionNum;
+    }
+
+    public int getRequestedLargeCompactionNum() {
+      return requestedLargeCompactionNum;
+    }
+
+    @Override
+    public byte getVersion() {
+      return VERSION;
+    }
+
+    @Override
+    public void readFields(DataInput in) throws IOException {
+      super.readFields(in);
+      this.runningSmallCompactionNum = in.readInt();
+      this.runningLargeCompactionNum = in.readInt();
+      this.requestedSmallCompactionNum = in.readInt();
+      this.requestedLargeCompactionNum = in.readInt();
+    }
+
+    @Override
+    public void write(DataOutput out) throws IOException {
+      super.write(out);
+      out.writeInt(runningSmallCompactionNum);
+      out.writeInt(runningLargeCompactionNum);
+      out.writeInt(requestedSmallCompactionNum);
+      out.writeInt(requestedLargeCompactionNum);
+    }
   }
 }

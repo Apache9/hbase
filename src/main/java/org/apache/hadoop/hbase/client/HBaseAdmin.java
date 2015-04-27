@@ -79,6 +79,7 @@ import org.apache.hadoop.hbase.util.Addressing;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.Pair;
+import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
 import org.apache.hadoop.ipc.RemoteException;
 import org.apache.hadoop.util.StringUtils;
 
@@ -110,6 +111,7 @@ public class HBaseAdmin implements Abortable, Closeable {
   private static volatile boolean synchronousBalanceSwitchSupported = true;
   private final boolean cleanupConnectionOnClose; // close the connection in close()
 
+  private volatile ZooKeeperWatcher zooKeeper;
   /**
    * Constructor
    *
@@ -126,6 +128,11 @@ public class HBaseAdmin implements Abortable, Closeable {
     this.retryLongerMultiplier = this.conf.getInt(
         "hbase.client.retries.longer.multiplier", 10);
     this.cleanupConnectionOnClose = true;
+    try {
+      this.zooKeeper = new ZooKeeperWatcher(conf, "hbase-admin", this);
+    } catch (IOException e) {
+      throw new ZooKeeperConnectionException("Create zk client failed", e);
+    }
 
     int tries = 0;
     while ( true ){
@@ -195,7 +202,7 @@ public class HBaseAdmin implements Abortable, Closeable {
   throws ZooKeeperConnectionException, IOException {
     CatalogTracker ct = null;
     try {
-      ct = new CatalogTracker(this.conf);
+      ct = new CatalogTracker(this.zooKeeper, this.conf, null);
       ct.start();
     } catch (InterruptedException e) {
       // Let it out as an IOE for now until we redo all so tolerate IEs
@@ -2009,6 +2016,9 @@ public class HBaseAdmin implements Abortable, Closeable {
   public void close() throws IOException {
     if (cleanupConnectionOnClose && this.connection != null) {
       this.connection.close();
+    }
+    if (this.zooKeeper != null) {
+      this.zooKeeper.close();
     }
   }
 

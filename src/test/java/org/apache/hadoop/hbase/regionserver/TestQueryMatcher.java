@@ -136,26 +136,6 @@ public class TestQueryMatcher extends HBaseTestCase {
     _testMatch_ExplicitColumns(scan, expected);
   }
 
-  public void testMatch_ExplicitColumnsWithLookAhead()
-  throws IOException {
-    //Moving up from the Tracker by using Gets and List<KeyValue> instead
-    //of just byte []
-
-    //Expected result
-    List<MatchCode> expected = new ArrayList<ScanQueryMatcher.MatchCode>();
-    expected.add(ScanQueryMatcher.MatchCode.SKIP);
-    expected.add(ScanQueryMatcher.MatchCode.INCLUDE_AND_SEEK_NEXT_COL);
-    expected.add(ScanQueryMatcher.MatchCode.SKIP);
-    expected.add(ScanQueryMatcher.MatchCode.INCLUDE_AND_SEEK_NEXT_COL);
-    expected.add(ScanQueryMatcher.MatchCode.INCLUDE_AND_SEEK_NEXT_ROW);
-    expected.add(ScanQueryMatcher.MatchCode.DONE);
-
-    Scan s = new Scan(scan);
-    s.setAttribute(Scan.HINT_LOOKAHEAD, Bytes.toBytes(2));
-    _testMatch_ExplicitColumns(s, expected);
-  }
-
-
   public void testMatch_Wildcard()
   throws IOException {
     //Moving up from the Tracker by using Gets and List<KeyValue> instead
@@ -307,6 +287,58 @@ public class TestQueryMatcher extends HBaseTestCase {
       }
       assertEquals(expected[i], actual.get(i));
     }
+  }
+
+  /**
+   * Verify that {@link ScanQueryMatcher} keeps expired KeyValue
+   * instances w/ ignorettl setting from client side.
+   *
+   * @throws IOException
+   */
+  public void testMatch_IgnoreTtlWildcard()
+  throws IOException {
+    scan.setIgnoreTtl(true);
+    long testTTL = 1000;
+    MatchCode [] expected = new MatchCode[] {
+        ScanQueryMatcher.MatchCode.INCLUDE,
+        ScanQueryMatcher.MatchCode.INCLUDE,
+        ScanQueryMatcher.MatchCode.INCLUDE,
+        ScanQueryMatcher.MatchCode.INCLUDE,
+        ScanQueryMatcher.MatchCode.INCLUDE,
+        ScanQueryMatcher.MatchCode.DONE
+    };
+
+    long now = EnvironmentEdgeManager.currentTimeMillis();
+    ScanQueryMatcher qm = new ScanQueryMatcher(scan, new Store.ScanInfo(fam2,
+        0, 1, testTTL, false, 0, rowComparator), null,
+        now - testTTL);
+
+    KeyValue [] kvs = new KeyValue[] {
+        new KeyValue(row1, fam2, col1, now-100, data),
+        new KeyValue(row1, fam2, col2, now-50, data),
+        new KeyValue(row1, fam2, col3, now-5000, data),
+        new KeyValue(row1, fam2, col4, now-500, data),
+        new KeyValue(row1, fam2, col5, now-10000, data),
+        new KeyValue(row2, fam1, col1, now-10, data)
+    };
+    KeyValue k = kvs[0];
+    qm.setRow(k.getBuffer(), k.getRowOffset(), k.getRowLength());
+
+    List<ScanQueryMatcher.MatchCode> actual =
+        new ArrayList<ScanQueryMatcher.MatchCode>(kvs.length);
+    for (KeyValue kv : kvs) {
+      actual.add( qm.match(kv) );
+    }
+
+    assertEquals(expected.length, actual.size());
+    for (int i=0; i<expected.length; i++) {
+      if(PRINT){
+        System.out.println("expected "+expected[i]+
+            ", actual " +actual.get(i));
+      }
+      assertEquals(expected[i], actual.get(i));
+    }
+    scan.setIgnoreTtl(false);
   }
 
   @org.junit.Rule

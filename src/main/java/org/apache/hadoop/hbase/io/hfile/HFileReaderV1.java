@@ -668,6 +668,12 @@ public class HFileReaderV1 extends AbstractHFileReader {
       }
     }
 
+    @Override
+    public byte[] getNextIndexedKey() {
+      // TODO Auto-generated method stub
+      return null;
+    }
+
   }
 
   @Override

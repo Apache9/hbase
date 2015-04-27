@@ -63,10 +63,21 @@ public interface HMasterRegionInterface extends VersionedProtocol {
    * @param hsl Server load.
    * @return table region statistics for the current region server.
    * @throws IOException
+   * @deprecated use regionServerReport(byte [] sn, RSReportRequest request)
    */
   public RegionStatistics regionServerReport(byte [] sn, HServerLoad hsl)
   throws IOException;
   
+  /**
+   * 
+   * @param sn {@link ServerName#getVersionedBytes()}
+   * @param request {@link RSReportRequest}
+   * @return {@link RSReportResponse}
+   * @throws IOException
+   */
+  public RSReportResponse regionServerReport(byte [] sn, RSReportRequest request)
+  throws IOException;
+
   /**
    * Called by a region server to report a fatal error that is causing
    * it to abort.

@@ -154,7 +154,7 @@ public class JvmThreadMonitor {
 
         if (printDump) {
           ReflectionUtils
-              .logThreadInfo(LOG, "thread dump from JvmThreadMonitor", SLEEP_INTERVAL_MS);
+              .logThreadInfo(LOG, "thread dump from JvmThreadMonitor", SLEEP_INTERVAL_MS/1000);
         }
       }
     }

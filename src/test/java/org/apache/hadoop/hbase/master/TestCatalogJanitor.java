@@ -313,6 +313,11 @@ public class TestCatalogJanitor {
     public boolean shouldSplitMetaSeparately() {
       return false;
     }
+
+    @Override
+    public CompactionCoordinator getCompactionCoordinator() {
+      return null;
+    }
   }
 
   @Test

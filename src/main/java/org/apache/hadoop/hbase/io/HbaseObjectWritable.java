@@ -90,6 +90,9 @@ import org.apache.hadoop.hbase.filter.SkipFilter;
 import org.apache.hadoop.hbase.filter.ValueFilter;
 import org.apache.hadoop.hbase.filter.WhileMatchFilter;
 import org.apache.hadoop.hbase.filter.WritableByteArrayComparable;
+import org.apache.hadoop.hbase.ipc.RSReportRequest;
+import org.apache.hadoop.hbase.ipc.RSReportResponse;
+import org.apache.hadoop.hbase.regionserver.CompactionQuota;
 import org.apache.hadoop.hbase.regionserver.HRegion;
 import org.apache.hadoop.hbase.regionserver.RegionOpeningState;
 import org.apache.hadoop.hbase.regionserver.wal.HLog;
@@ -281,8 +284,11 @@ public class HbaseObjectWritable implements Writable, WritableWithSize, Configur
     addToMap(Mutation.class, code++);
     addToMap(Check.class, code++);
     addToMap(SingleColumnCheck.class, code++);
-    addToMap(CheckList.class, code);
-
+    addToMap(CheckList.class, code++);
+    
+    addToMap(RSReportRequest.class, code++);
+    addToMap(RSReportResponse.class, code++);
+    addToMap(CompactionQuota.class, code);
     // make sure that this is the last statement in this static block
     NEXT_CLASS_CODE = code;
   }

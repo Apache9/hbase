@@ -97,6 +97,12 @@ module Hbase
     end
 
     #----------------------------------------------------------------------------------------------
+    # Remove a tableCFs config for the specified peer
+    def remove_peer_tableCFs(id, tableCFs)
+      @replication_admin.removePeerTableCFs(id, tableCFs)
+    end
+
+    #----------------------------------------------------------------------------------------------
     # Append a tableCFs config for the specified peer
     def append_peer_tableCFs(id, tableCFs)
       @replication_admin.appendPeerTableCFs(id, tableCFs)

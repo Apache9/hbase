@@ -64,6 +64,8 @@ public class ReplicationSourceMetrics implements Updater {
   public final MetricsRate replicationFatalError = 
       new MetricsRate("replicationFatalError", registry);
   
+  public final MetricsRate replicationIoeError = new MetricsRate("replicationIoeError", registry);
+
   /** Peer cluster name */
   private MetricsString peerClusterName = null;
    
@@ -141,6 +143,7 @@ public class ReplicationSourceMetrics implements Updater {
       this.sizeOfLogQueue.pushMetric(this.metricsRecord);
       this.logReadRateInByte.pushMetric(this.metricsRecord);
       this.replicationFatalError.pushMetric(this.metricsRecord);
+      this.replicationIoeError.pushMetric(this.metricsRecord);
     }
     this.metricsRecord.update();
   }

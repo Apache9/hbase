@@ -241,6 +241,7 @@ public class HRegion implements HeapSize { // , Writable{
   final AtomicLong numPutsWithoutWAL = new AtomicLong(0);
   final AtomicLong dataInMemoryWithoutWAL = new AtomicLong(0);
 
+  final Counter getRequestsCount = new Counter();
   final Counter readRequestsCount = new Counter();
   final Counter writeRequestsCount = new Counter();
   final Counter updatesBlockedMs = new Counter();
@@ -5013,6 +5014,7 @@ public class HRegion implements HeapSize { // , Writable{
     try {
       scanner = getScanner(scan);
       scanner.next(results, SchemaMetrics.METRIC_GETSIZE);
+      getRequestsCount.increment();
     } finally {
       if (scanner != null)
         scanner.close();
@@ -5760,7 +5762,7 @@ public class HRegion implements HeapSize { // , Writable{
       ClassSize.OBJECT +
       ClassSize.ARRAY +
       36 * ClassSize.REFERENCE + 2 * Bytes.SIZEOF_INT +
-      (9 * Bytes.SIZEOF_LONG) +
+      (10 * Bytes.SIZEOF_LONG) +
       Bytes.SIZEOF_BOOLEAN);
 
   public static final long DEEP_OVERHEAD = FIXED_OVERHEAD +

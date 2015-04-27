@@ -304,6 +304,9 @@ public class StoreFile extends SchemaConfigured {
     this.path = other.path;
     this.dataBlockEncoder = other.dataBlockEncoder;
     this.cacheConf = other.cacheConf;
+    this.link = other.link;
+    this.reference = other.reference;
+    this.referencePath = other.referencePath;
     this.cfBloomType = other.cfBloomType;
     this.modificationTimeStamp = other.modificationTimeStamp;
   }

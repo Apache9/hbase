@@ -35,15 +35,12 @@ import org.junit.experimental.categories.Category;
 @Category(MediumTests.class)
 @SuppressWarnings("deprecation")
 public class TestHRegionBusyWait extends TestHRegion {
-  public TestHRegionBusyWait() {
-    conf.set("hbase.busy.wait.duration", "1000");
-  }
-
   /**
    * Test RegionTooBusyException thrown when region is busy
    */
   @Test (timeout=2000)
   public void testRegionTooBusy() throws IOException {
+    conf.set("hbase.busy.wait.duration", "1000");
     String method = "testRegionTooBusy";
     byte[] tableName = Bytes.toBytes(method);
     byte[] family = Bytes.toBytes("family");

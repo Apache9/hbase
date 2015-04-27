@@ -213,9 +213,9 @@ public class TestVerifyReplication {
     if (!job.waitForCompletion(true)) {
       fail("Job failed, see the log");
     }
-    assertEquals(2, job.getCounters().
+    assertEquals(3, job.getCounters().
             findCounter(VerifyReplication.Verifier.Counters.GOODROWS).getValue());
-        assertEquals(2, job.getCounters().
+        assertEquals(1, job.getCounters().
             findCounter(VerifyReplication.Verifier.Counters.BADROWS).getValue());
   }
   

@@ -83,7 +83,7 @@ public class Scan extends OperationWithAttributes implements Writable {
   private static final String RAW_ATTR = "_raw_";
   private static final String ONDEMAND_ATTR = "_ondemand_";
   private static final String ISOLATION_LEVEL = "_isolationlevel_";
-
+  private static final String IGNORETTL_ATTR = "_ignorettl_";
   /** Scan Hints */
   private static final String SMALL_ATTR = "_small_";
   /**
@@ -100,7 +100,10 @@ public class Scan extends OperationWithAttributes implements Writable {
    * s.setAttribute(Scan.HINT_LOOKAHEAD, Bytes.toBytes(2));
    * }</pre>
    * Default is 0 (always reseek).
+   * @deprecated without replacement
+   *             This is now a no-op, SEEKs and SKIPs are optimizated automatically.
    */
+  @Deprecated
   public static final String HINT_LOOKAHEAD = "_look_ahead_";
   private static final String REVERSED_ATTR = "_reversed_";
 
@@ -796,5 +799,25 @@ public class Scan extends OperationWithAttributes implements Writable {
       this.reversed = attr == null ? false : Bytes.toBoolean(attr);
     }
     return this.reversed;
+  }
+
+  /**
+   * Enable/disable "ignorettl" mode for this scan.
+   * If "ignorettl" is enabled the scan will return all
+   * KVs that even the timestamp reached the ttl limit
+   * This is mostly useful for scan on column families
+   * that have lots of out-date kvs and prefer to not "timeout":)
+   * @param ignoreTtl True/False to enable/disable "ignorettl" mode.
+   */
+  public void setIgnoreTtl(boolean ignoreTtl) {
+    setAttribute(IGNORETTL_ATTR, Bytes.toBytes(ignoreTtl));
+  }
+
+  /**
+   * @return True if this Scan is in "ignorettl" mode.
+   */
+  public boolean isIgnoreTtl() {
+    byte[] attr = getAttribute(IGNORETTL_ATTR);
+    return attr == null ? false : Bytes.toBoolean(attr);
   }
 }

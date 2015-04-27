@@ -47,7 +47,10 @@ module Hbase
     end
 
     def admin
-      @hbase.admin(@formatter)
+      if @hbase_admin != nil
+        return @hbase_admin
+      end
+      @hbase_admin=@hbase.admin(@formatter)
     end
 
     def create_test_table(name)
