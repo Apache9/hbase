@@ -2569,6 +2569,24 @@
       </properties>
     </profile>
 
+    <profile> <!-- same with runDevTests, but exclude some random failed tests -->
+      <id>runDevCiTests</id>
+      <activation>
+        <activeByDefault>false</activeByDefault>
+      </activation>
+      <properties>
+        <surefire.exclude.tests>org/apache/hadoop/hbase/mapreduce/*.java, org/apache/hadoop/hbase/replication/TestReplication*.java</surefire.exclude.tests>
+        <surefire.firstPartForkMode>once</surefire.firstPartForkMode>
+        <surefire.firstPartParallel>none</surefire.firstPartParallel>
+        <surefire.firstPartThreadCount>1</surefire.firstPartThreadCount>
+
+        <surefire.skipFirstPart>false</surefire.skipFirstPart>
+        <surefire.skipSecondPart>false</surefire.skipSecondPart>
+        <surefire.firstPartGroups>org.apache.hadoop.hbase.SmallTests</surefire.firstPartGroups>
+        <surefire.secondPartGroups>org.apache.hadoop.hbase.MediumTests</surefire.secondPartGroups>
+      </properties>
+    </profile>
+
     <profile> <!-- Use it to launch all tests -->
       <id>runAllTests</id>
       <activation>
