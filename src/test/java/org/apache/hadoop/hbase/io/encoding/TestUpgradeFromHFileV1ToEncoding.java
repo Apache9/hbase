@@ -89,8 +89,7 @@ public class TestUpgradeFromHFileV1ToEncoding {
     hcd.setDataBlockEncoding(DataBlockEncoding.PREFIX);
     admin.disableTable(TABLE);
     admin.modifyColumn(TABLE, hcd);
-    admin.enableTable(TABLE);
-    admin.close();
+    admin.enableTable(TABLE); 
     for (int i = 0; i < NUM_HFILE_V2_BATCHES; ++i) {
       TestChangingEncoding.writeTestDataBatch(conf, TABLE, numBatches++);
     }
@@ -104,6 +103,7 @@ public class TestUpgradeFromHFileV1ToEncoding {
 
     LOG.debug("Verify all the data again");
     verifyBatches(numBatches);
+    admin.close();
   }
 
   private void verifyBatches(int numBatches) throws Exception {

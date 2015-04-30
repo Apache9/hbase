@@ -147,4 +147,14 @@ public class MXBeanImpl implements MXBean {
   public boolean getIsActiveMaster() {
     return master.isActiveMaster();
   }
+
+  @Override
+  public int getRunningCompactionNum() {
+    return master.getCompactionCoordinator().getRunningCompactionNum();
+  }
+
+  @Override
+  public int getCompactionNumLimit() {
+    return master.getCompactionCoordinator().getCompactionNumLimit();
+  }
 }

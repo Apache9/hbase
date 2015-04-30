@@ -113,4 +113,15 @@ public interface MXBean {
    */
   public RegionsInTransitionInfo[] getRegionsInTransition();
 
+  /**
+   * Get running compaction number in the cluster
+   * @return running compaction number
+   */
+  public int getRunningCompactionNum();
+
+  /**
+   * Get compaction number limit in the cluster
+   * @return compaction number limit
+   */
+  public int getCompactionNumLimit();
 }

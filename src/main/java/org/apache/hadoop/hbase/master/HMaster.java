@@ -42,6 +42,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.Lock;
 
 import javax.management.ObjectName;
 
@@ -86,6 +87,8 @@ import org.apache.hadoop.hbase.ipc.HBaseServer;
 import org.apache.hadoop.hbase.ipc.HMasterInterface;
 import org.apache.hadoop.hbase.ipc.HMasterRegionInterface;
 import org.apache.hadoop.hbase.ipc.ProtocolSignature;
+import org.apache.hadoop.hbase.ipc.RSReportRequest;
+import org.apache.hadoop.hbase.ipc.RSReportResponse;
 import org.apache.hadoop.hbase.ipc.RpcServer;
 import org.apache.hadoop.hbase.master.cleaner.HFileCleaner;
 import org.apache.hadoop.hbase.master.cleaner.LogCleaner;
@@ -105,6 +108,7 @@ import org.apache.hadoop.hbase.monitoring.MemoryBoundedLogMessageBuffer;
 import org.apache.hadoop.hbase.monitoring.MonitoredTask;
 import org.apache.hadoop.hbase.monitoring.TaskMonitor;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.SnapshotDescription;
+import org.apache.hadoop.hbase.regionserver.CompactionQuota;
 import org.apache.hadoop.hbase.regionserver.wal.HLog;
 import org.apache.hadoop.hbase.replication.regionserver.Replication;
 import org.apache.hadoop.hbase.security.User;
@@ -280,6 +284,7 @@ Server {
   /** The following is used in master recovery scenario to re-register listeners */
   private List<ZooKeeperListener> registeredZKListenersBeforeRecovery;
 
+  private CompactionCoordinator compactionCoordinator = null;
   /**
    * Initializes the HMaster. The steps are as follows:
    * <p>
@@ -537,6 +542,7 @@ Server {
         Long.toHexString(this.zooKeeper.getRecoverableZooKeeper().getSessionId()) +
         ", cluster-up flag was=" + wasUp);
     this.clusterSwitches = new ClusterSwitchTracker(this.zooKeeper);
+    this.metrics.setBalanceSwitch(this.clusterSwitches.getBalanceSwitch());
     // create the snapshot manager
     this.snapshotManager = new SnapshotManager(this, this.metrics);
   }
@@ -597,8 +603,9 @@ Server {
     if (!masterRecovery) {
       this.executorService = new ExecutorService(getServerName().toString());
       this.serverManager = new ServerManager(this, this);
+      this.compactionCoordinator = new CompactionCoordinator(conf, serverManager);
     }
-
+    
     status.setStatus("Initializing ZK system trackers");
     initializeZKBasedSystemTrackers();
 
@@ -1008,7 +1015,7 @@ Server {
    this.executorService.startExecutorService(ExecutorType.MASTER_SERVER_OPERATIONS,
       conf.getInt("hbase.master.executor.serverops.threads", 3));
    this.executorService.startExecutorService(ExecutorType.MASTER_META_SERVER_OPERATIONS,
-      conf.getInt("hbase.master.executor.serverops.threads", 5));
+      conf.getInt("hbase.master.executor.meta.serverops.threads", 5));
 
    // We depend on there being only one instance of this executor running
    // at a time.  To do concurrency, would need fencing of enable/disable of
@@ -1129,13 +1136,14 @@ Server {
   @Override
   public RegionStatistics regionServerReport(final byte [] sn, final HServerLoad hsl)
   throws IOException {
-    this.serverManager.regionServerReport(ServerName.parseVersionedServerName(sn), hsl);
+    ServerName regionSever = ServerName.parseVersionedServerName(sn);
+    this.serverManager.regionServerReport(regionSever, hsl);
     updateLastFlushedSequenceIds(sn, hsl);
     if (hsl != null && this.metrics != null) {
       // Up our metrics.
       this.metrics.incrementRequests(hsl.getNumberOfRequests());
     }
-    return this.assignmentManager.getHTableRegionStatInfo(serverName);
+    return this.assignmentManager.getHTableRegionStatInfo(regionSever);
   }
 
   private void updateLastFlushedSequenceIds(final byte [] sn, final HServerLoad hsl) {
@@ -1190,6 +1198,11 @@ Server {
     return balancerCutoffTime;
   }
 
+  // only for test
+  protected LoadBalancer getBalancer() {
+    return this.balancer;
+  }
+
   @Override
   public boolean balance() {
     return balance(null);
@@ -1207,6 +1220,12 @@ Server {
     // Do this call outside of synchronized block.
     int maximumBalanceTime = getBalancerCutoffTime();
     long cutoffTime = System.currentTimeMillis() + maximumBalanceTime;
+    // max number of regions in transition when balancing
+    int maxRegionsInTransition =
+        getConfiguration().getInt("hbase.balancer.max.balancing.regions", -1);
+    // min sleep time in milliseconds before start next balance action
+    int minBalanceIntervalMs =
+        getConfiguration().getInt("hbase.balancer.min.balancing.interval", -1);
     boolean balancerRan;
     synchronized (this.balancer) {
       // Only allow one balance run at at time.
@@ -1265,12 +1284,29 @@ Server {
           this.assignmentManager.balance(plan);
           totalRegPlanExecTime += System.currentTimeMillis()-balStartTime;
           rpCount++;
-          if (rpCount < plans.size() &&
-              // if performing next balance exceeds cutoff time, exit the loop
-              (System.currentTimeMillis() + (totalRegPlanExecTime / rpCount)) > cutoffTime) {
-            LOG.debug("No more balancing till next balance run; maximumBalanceTime=" +
-              maximumBalanceTime);
-            break;
+          if (rpCount < plans.size()) {
+            long currentTime = System.currentTimeMillis();
+            long nextBalMinStartTime =
+                minBalanceIntervalMs > 0 ? currentTime + minBalanceIntervalMs : currentTime;
+            boolean interrupted = false;
+            while ((currentTime < nextBalMinStartTime || maxRegionsInTransition > 0 &&
+                this.assignmentManager.getRegionsInTransitionCount() >= maxRegionsInTransition) &&
+                currentTime + (totalRegPlanExecTime / rpCount) <= cutoffTime) {
+              try {
+                // sleep if the number of regions in transition exceeds the limit
+                Thread.sleep(1000);
+              } catch (InterruptedException ie) {
+                interrupted = true;
+              }
+              currentTime = System.currentTimeMillis();
+            }
+            if (interrupted) Thread.currentThread().interrupt();
+            // if performing next balance exceeds cutoff time, exit the loop
+            if (currentTime + (totalRegPlanExecTime / rpCount) > cutoffTime) {
+              LOG.debug("No more balancing till next balance run; maximumBalanceTime=" +
+                  maximumBalanceTime);
+              break;
+            }
           }
         }
       }
@@ -1311,6 +1347,7 @@ Server {
         this.clusterSwitches.setBalanceSwitch(newValue);
       }
       clusterSwitches.persistClusterSwitch();
+      this.metrics.setBalanceSwitch(newValue);
       LOG.info("BalanceSwitch=" + newValue);
       if (this.cpHost != null) {
         this.cpHost.postBalanceSwitch(oldValue, newValue);
@@ -1320,7 +1357,7 @@ Server {
     }
     return oldValue;
   }
-
+  
   @Override
   public boolean synchronousBalanceSwitch(final boolean b) {
     return switchBalancer(b, BalanceSwitchMode.SYNC);
@@ -2396,5 +2433,28 @@ Server {
     conf.reloadConfiguration();
     // Notify all the observers that the configuration has changed.
     ConfigurationManager.getInstance().notifyAllObservers(conf);
+  }
+ 
+  @Override
+  public RSReportResponse
+      regionServerReport(byte[] sn, RSReportRequest request) throws IOException {
+    HServerLoad hsl = request.getServerLoad();
+    ServerName regionSever = ServerName.parseVersionedServerName(sn);
+    this.serverManager.regionServerReport(regionSever, hsl);
+    updateLastFlushedSequenceIds(sn, hsl);
+    if (hsl != null && this.metrics != null) {
+      // Up our metrics.
+      this.metrics.incrementRequests(hsl.getNumberOfRequests());
+    }
+    RegionStatistics regionStatistics = this.assignmentManager.getHTableRegionStatInfo(regionSever);
+    CompactionQuota quota =
+        this.compactionCoordinator.requestCompactionQuota(regionSever,
+          request.getCompactionQuotaRequest());
+    return new RSReportResponse(regionStatistics, quota);
+  }
+
+  @Override
+  public CompactionCoordinator getCompactionCoordinator() {
+    return compactionCoordinator;
   }
 }

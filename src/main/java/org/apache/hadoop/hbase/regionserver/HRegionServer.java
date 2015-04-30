@@ -123,6 +123,8 @@ import org.apache.hadoop.hbase.ipc.HMasterRegionInterface;
 import org.apache.hadoop.hbase.ipc.HRegionInterface;
 import org.apache.hadoop.hbase.ipc.Invocation;
 import org.apache.hadoop.hbase.ipc.ProtocolSignature;
+import org.apache.hadoop.hbase.ipc.RSReportRequest;
+import org.apache.hadoop.hbase.ipc.RSReportResponse;
 import org.apache.hadoop.hbase.ipc.RpcEngine;
 import org.apache.hadoop.hbase.ipc.RpcServer;
 import org.apache.hadoop.hbase.ipc.ServerNotRunningYetException;
@@ -168,6 +170,7 @@ import org.apache.hadoop.hbase.zookeeper.ZKAssign;
 import org.apache.hadoop.hbase.zookeeper.ZKUtil;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperNodeTracker;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
+import org.apache.hadoop.hdfs.DFSHedgedReadMetrics;
 import org.apache.hadoop.io.MapWritable;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.ipc.RemoteException;
@@ -991,12 +994,19 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
       return;
     }
     HServerLoad hsl = buildServerLoad();
+    CompactionQuota compactQuotaRequest =
+        this.compactSplitThread.buildCompactionQuotaRequest();
+    
     // Why we do this?
     this.requestCount.set(0);
     try {
-      this.regionStats = this.hbaseMaster.regionServerReport(
-        this.serverNameFromMasterPOV.getVersionedBytes(), hsl);
+      RSReportResponse response =
+          this.hbaseMaster.regionServerReport(this.serverNameFromMasterPOV.getVersionedBytes(),
+            new RSReportRequest(hsl, compactQuotaRequest));
+      this.regionStats = response.getRegionStatistics();
+      this.compactSplitThread.processCompactionQuota(response.getCompactionQuota());
     } catch (IOException ioe) {
+      LOG.warn("Try to report to hmaster failed", ioe);
       if (ioe instanceof RemoteException) {
         ioe = ((RemoteException)ioe).unwrapRemoteException();
       }
@@ -1004,6 +1014,10 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
         // This will be caught and handled as a fatal error in run()
         throw ioe;
       }
+      // if rs couldn't connect to the master, assign 1 small and 1 large compact quota to itself.
+      CompactionQuota response = new CompactionQuota(compactQuotaRequest);
+      response.setGrantQuota(compactQuotaRequest.getRequestQuota());
+      this.compactSplitThread.processCompactionQuota(response);
       // Couldn't connect to the master, get location from zk and reconnect
       // Method blocks until new master is found or we are stopped
       getMaster();
@@ -1172,6 +1186,7 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
       this.hlog = setupWALAndReplication();
       // Init in here rather than in constructor after thread name has been set
       this.metrics = new RegionServerMetrics();
+      this.metrics.setCompactionEnable(enableCompact);
       this.dynamicMetrics = RegionServerDynamicMetrics.newInstance(this);
       this.rsHost = new RegionServerCoprocessorHost(this, this.conf);
       startServiceThreads();
@@ -1294,7 +1309,7 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
         storeUncompressedSizeMB,
         storefileSizeMB, memstoreSizeMB, storefileIndexSizeMB, rootIndexSizeKB,
         totalStaticIndexSizeKB, totalStaticBloomSizeKB,
-        r.readRequestsCount.get(), r.writeRequestsCount.get(),
+        r.getRequestsCount.get(), r.readRequestsCount.get(), r.writeRequestsCount.get(),
         totalCompactingKVs, currentCompactedKVs, 
         r.getLastFlushSequenceId(), locality);
   }
@@ -1386,7 +1401,7 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
         stop = true;
         LOG.fatal(
           "Run out of memory; HRegionServer will abort itself immediately", e);
-        ReflectionUtils.logThreadInfo(LOG, "thread dump from JvmThreadMonitor", 1000);
+        ReflectionUtils.logThreadInfo(LOG, "thread dump from JvmThreadMonitor", 60);
       }
     } finally {
       if (stop) {
@@ -1732,6 +1747,17 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
     final long updatesBlockedMsHigherWater = cacheFlusher.getUpdatesBlockedMsHighWater().get();
     this.metrics.updatesBlockedSecondsHighWater.update(updatesBlockedMsHigherWater > 0 ? 
         updatesBlockedMsHigherWater/1000: 0);
+    DFSHedgedReadMetrics hedgedReadMetrics;
+    try {
+      hedgedReadMetrics = FSUtils.getDFSHedgedReadMetrics(conf);
+      if (hedgedReadMetrics != null) {
+        this.metrics.hedgedReads.set(hedgedReadMetrics.getHedgedReadOps());
+        this.metrics.hedgedReadWins.set(hedgedReadMetrics.getHedgedReadWins());
+        this.metrics.hedgedReadsInCurThread.set(hedgedReadMetrics.getHedgedReadOpsInCurThread());
+      }
+    } catch (IOException e1) {
+      LOG.info("get hedgedRead metric error", e1);
+    }
 
     BlockCache blockCache = cacheConfig.getBlockCache();
     if (blockCache != null) {
@@ -4448,6 +4474,7 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
   public boolean setCompactionEnable(final boolean b) {
     boolean oldValue = enableCompact;
     enableCompact = b;
+    this.metrics.setCompactionEnable(enableCompact);
     return oldValue;
   }
 

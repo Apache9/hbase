@@ -53,6 +53,11 @@ public interface MasterServices extends Server {
   public ExecutorService getExecutorService();
 
   /**
+   * @return Master's instance of the {@link CompactionCoordinator}
+   */
+  public CompactionCoordinator getCompactionCoordinator();
+  
+  /**
    * Check table is modifiable; i.e. exists and is offline.
    * @param tableName Name of table to check.
    * @throws TableNotDisabledException

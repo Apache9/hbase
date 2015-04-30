@@ -66,6 +66,8 @@ public class TableRecordReaderImpl {
   private int rowcount;
   private boolean logScannerActivity = false;
   private int logPerRowCount = 100;
+  private ProgressEstimator progressEstimator;
+  private ImmutableBytesWritable currentKey;
 
   /**
    * Restart from survivable exceptions by creating a new scanner.
@@ -140,6 +142,7 @@ public class TableRecordReaderImpl {
       this.context = context;
       getCounter = retrieveGetCounterWithStringsParams(context);
     }
+    progressEstimator = new ProgressEstimator(scan.getStartRow(), scan.getStopRow());
     restart(scan.getStartRow());
   }
 
@@ -221,6 +224,7 @@ public class TableRecordReaderImpl {
       if (value != null && value.size() > 0) {
         key.set(value.getRow());
         lastSuccessfulRow = key.get();
+        currentKey = key;
         return true;
       }
 
@@ -285,8 +289,7 @@ public class TableRecordReaderImpl {
    * @return A number between 0.0 and 1.0, the fraction of the data read.
    */
   public float getProgress() {
-    // Depends on the total number of tuples
-    return 0;
+    return progressEstimator.getProgress(currentKey);
   }
 
 }

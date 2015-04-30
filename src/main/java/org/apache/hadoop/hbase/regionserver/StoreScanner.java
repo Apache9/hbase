@@ -39,6 +39,7 @@ import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.KeyValue.KVComparator;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.filter.Filter;
+import org.apache.hadoop.hbase.regionserver.ScanQueryMatcher.MatchCode;
 import org.apache.hadoop.hbase.regionserver.Store.ScanInfo;
 import org.apache.hadoop.hbase.regionserver.StoreFileScanner;
 import org.apache.hadoop.hbase.regionserver.metrics.RegionMetricsStorage;
@@ -120,7 +121,7 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
     // 2) have more than one store file
     if (store != null && store.getHRegion() != null) {
       RegionServerServices rsService = store.getHRegion().getRegionServerServices();
-      if (rsService == null) return;
+      if (rsService == null || rsService.getConfiguration() == null) return;
       hugeKvWarningSizeInByte = rsService.getConfiguration().getInt(
         HConstants.HUGE_KV_SIZE_IN_BYTE_WARN_NAME, HConstants.HUGE_KV_SIZE_IN_BYTE_WARN_VALUE);
       hugeRowWarningSizeInByte = rsService.getConfiguration().getLong(
@@ -430,6 +431,7 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
         checkScanOrder(prevKV, kv, comparator);
         prevKV = kv;
         ScanQueryMatcher.MatchCode qcode = matcher.match(kv);
+        qcode = optimize(qcode, kv);
         switch(qcode) {
           case INCLUDE:
           case INCLUDE_AND_SEEK_NEXT_ROW:
@@ -512,6 +514,39 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
     // No more keys
     close();
     return false;
+  }
+
+  /*
+   * See if we should actually SEEK or rather just SKIP to the next kv.
+   * (See HBASE-13109)
+   */
+  private ScanQueryMatcher.MatchCode optimize(ScanQueryMatcher.MatchCode qcode, KeyValue kv) {
+    byte[] nextIndexedKey = getNextIndexedKey();
+    if (nextIndexedKey == null || nextIndexedKey == HConstants.NO_NEXT_INDEXED_KEY ||
+        store == null) {
+      return qcode;
+    }
+    switch(qcode) {
+    case INCLUDE_AND_SEEK_NEXT_COL:
+    case SEEK_NEXT_COL:
+    {
+      if (matcher.compareKeyForNextColumn(nextIndexedKey, kv) >= 0) {
+        return qcode == MatchCode.SEEK_NEXT_COL ? MatchCode.SKIP : MatchCode.INCLUDE;
+      }
+      break;
+    }
+    case INCLUDE_AND_SEEK_NEXT_ROW:
+    case SEEK_NEXT_ROW:
+    {
+      if (matcher.compareKeyForNextRow(nextIndexedKey, kv) >= 0) {
+        return qcode == MatchCode.SEEK_NEXT_ROW ? MatchCode.SKIP : MatchCode.INCLUDE;
+      }
+      break;
+    }
+    default:
+      break;
+    }
+    return qcode;
   }
 
   @Override
@@ -737,6 +772,11 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
 
   static void enableLazySeekGlobally(boolean enable) {
     lazySeekEnabledGlobally = enable;
+  }
+
+  @Override
+  public byte[] getNextIndexedKey() {
+    return this.heap.getNextIndexedKey();
   }
 }
 

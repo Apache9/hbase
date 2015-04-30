@@ -31,6 +31,7 @@ import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.client.ScannerCallable;
 import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
+import org.apache.hadoop.hbase.mapreduce.ProgressEstimator;
 import org.apache.hadoop.hbase.mapreduce.TableInputFormat;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.Writables;
@@ -55,6 +56,8 @@ public class TableRecordReaderImpl {
   private int rowcount;
   private boolean logScannerActivity = false;
   private int logPerRowCount = 100;
+  private ProgressEstimator progressEstimator;
+  private ImmutableBytesWritable currentKey;
 
   /**
    * Restart from survivable exceptions by creating a new scanner.
@@ -64,6 +67,7 @@ public class TableRecordReaderImpl {
    */
   public void restart(byte[] firstRow) throws IOException {
     Scan currentScan;
+    progressEstimator = new ProgressEstimator(startRow, endRow);
     if ((endRow != null) && (endRow.length > 0)) {
       if (trrRowFilter != null) {
         Scan scan = new Scan(firstRow, endRow);
@@ -179,8 +183,7 @@ public class TableRecordReaderImpl {
   }
 
   public float getProgress() {
-    // Depends on the total number of tuples and getPos
-    return 0;
+    return progressEstimator.getProgress(currentKey);
   }
 
   /**
@@ -226,6 +229,7 @@ public class TableRecordReaderImpl {
 
       if (result != null && result.size() > 0) {
         key.set(result.getRow());
+        currentKey = key;
         lastSuccessfulRow = key.get();
         value.copyFrom(result);
         return true;

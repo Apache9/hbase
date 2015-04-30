@@ -1634,7 +1634,11 @@ public class AssignmentManager extends ZooKeeperListener {
       regionCountsPerTable.put(Bytes.toBytes(tableName),
         new Pair<Integer, Integer>(count, countRS));
     }
-    return new RegionStatistics(regionCount, regionCountRS.get(serverName), regionCountsPerTable);
+    int currentRegionCountRS = 0;
+    if (regionCountRS.containsKey(serverName)) {
+      currentRegionCountRS = regionCountRS.get(serverName);
+    }
+    return new RegionStatistics(regionCount, currentRegionCountRS, regionCountsPerTable);
   }
 
   /**
@@ -3077,6 +3081,15 @@ public class AssignmentManager extends ZooKeeperListener {
   public boolean isRegionsInTransition() {
     synchronized (this.regionsInTransition) {
       return !this.regionsInTransition.isEmpty();
+    }
+  }
+
+  /**
+   * @return number of the regions currently in transition.
+   */
+  public int getRegionsInTransitionCount() {
+    synchronized (this.regionsInTransition) {
+      return this.regionsInTransition.size();
     }
   }
 

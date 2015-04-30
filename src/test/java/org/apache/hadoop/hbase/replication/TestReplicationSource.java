@@ -133,9 +133,10 @@ public class TestReplicationSource {
     }
     SequenceFileLogWriter sequenceFileLogWriter = (SequenceFileLogWriter) writer;
     sequenceFileLogWriter.getWriterFSDataOutputStream().writeInt(10);
-    sequenceFileLogWriter.getWriterFSDataOutputStream().hsync();
 
     long fileLen = FS.getFileStatus(logPath).getLen();
+    assertEquals(fileLen, 0);
+    sequenceFileLogWriter.getWriterFSDataOutputStream().hflush();
     assertEquals(fileLen, 0);
 
     HLog.Reader reader = HLog.getReader(FS, logPath, conf);

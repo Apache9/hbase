@@ -97,10 +97,10 @@ end
 # Trys to scan a row from passed region
 # Throws exception if can't
 def isSuccessfulScan(admin, r)
-  scan = Scan.new(r.getStartKey()) 
+  scan = Scan.new(r.getStartKey(), r.getStartKey())
   scan.setBatch(1)
   scan.setCaching(1)
-  scan.setFilter(FirstKeyOnlyFilter.new()) 
+  scan.setFilter(FirstKeyOnlyFilter.new())
   begin
     table = HTable.new(admin.getConfiguration(), r.getTableName())
     scanner = table.getScanner(scan)
@@ -197,6 +197,25 @@ def stripServer(servers, hostnamePort)
   return servername
 end
 
+# Remove the servernames whose hostname portion matches from the passed
+# array of servers.  Returns as side-effect the servername removed.
+def stripServers(servers, hostname)
+  count = servers.length
+  servernames = java.util.ArrayList.new()
+  for server in servers
+    if getHostnameFromServerName(server) == hostname
+      servernames.add(server)
+    end
+  end
+
+  for server in servernames
+    servers.delete(server)
+  end
+  # Check server to exclude is actually present
+  raise RuntimeError, "Server %s not online" % hostname unless servers.length < count
+  return servernames
+end
+
 # Returns a new serverlist that excludes the servername whose hostname:port portion
 # matches from the passed array of servers.
 def stripExcludes(servers, excludefile)
@@ -218,6 +237,18 @@ def getServerName(servers, hostnamePort)
   end
   raise ArgumentError, "Server %s not online" % hostnamePort unless servername
   return servername
+end
+
+# Return servername that matches passed hostname
+def getServerNames(servers, hostname)
+  servernames = java.util.ArrayList.new()
+  for server in servers
+    if getHostnameFromServerName(server) == hostname
+      servernames.add(server)
+    end
+  end
+  raise ArgumentError, "Server %s not online" % hostname unless servernames.size() > 0
+  return servernames
 end
 
 # Create a logger and disable the DEBUG-level annoying client logging
@@ -290,23 +321,48 @@ def readFile(filename)
   return regions
 end
 
-# Move regions off the passed hostname:port
-def unloadRegions(options, hostnamePort)
+# Move regions off the passed address(hostname/hostname:port)
+def unloadRegions(options, address)
   # Get configuration
   config = getConfiguration()
-  # Clean up any old files.
-  filename = getFilename(options, hostnamePort)
-  deleteFile(filename)
   # Get an admin instance
   admin = HBaseAdmin.new(config) 
   servers = getServers(admin)
-  # Remove the server we are unloading from from list of servers.
-  # Side-effect is the servername that matches this hostname:port 
-  servername = stripServer(servers, hostnamePort)
-
   # Remove the servers in our exclude list from list of servers.
   servers = stripExcludes(servers, options[:excludesFile])
-  puts "Valid region move targets: ", servers
+
+  if isHostnamePortAddress(address)
+    # Remove the server we are unloading from from list of servers.
+    # Side-effect is the servername that matches this hostname:port 
+    servername = stripServer(servers, address)
+    puts "unloadRegion for hostAndPort: ", address
+    puts "Valid region move targets: ", servers
+    unloadRegionsForRs(options, servers, servername)
+  else
+    servernames = stripServers(servers, address)
+    puts "unloadRegion for host: ", address
+    puts "servernames: ", servernames 
+    puts "Valid region move targets: ", servers
+    for servername in servernames:
+      unloadRegionsForRs(options, servers, servername) 
+    end
+  end
+end
+
+def isHostnamePortAddress(address)
+  return address.split(":").length > 1
+end
+
+# Move regions off the passed hostname:port
+def unloadRegionsForRs(options, servers, servername)
+  # Get configuration
+  config = getConfiguration()
+  # Clean up any old files.
+  filename = getFilename(options, getHostnamePortFromServerName(servername))
+  deleteFile(filename)
+  # Get an admin instance
+  admin = HBaseAdmin.new(config) 
+
   movedRegions = java.util.ArrayList.new()
   while true
     rs = getRegions(config, servername)
@@ -342,29 +398,50 @@ def unloadRegions(options, hostnamePort)
   end
 end
 
-# Move regions to the passed hostname:port
-def loadRegions(options, hostnamePort)
+def loadRegions(options, address)
+  servernames = java.util.ArrayList.new()
   # Get configuration
   config = getConfiguration()
   # Get an admin instance
   admin = HBaseAdmin.new(config) 
-  filename = getFilename(options, hostnamePort) 
-  regions = readFile(filename)
-  return if regions.isEmpty()
-  servername = nil
   # Wait till server is up
   maxWaitInSeconds = admin.getConfiguration.getInt("hbase.serverstart.wait.max", 180)
   maxWait = Time.now + maxWaitInSeconds
+  isHostnamePort = isHostnamePortAddress(address)
+  if !isHostnamePort
+    # Wait all rs in the host registered
+    sleep 20
+  end
   while Time.now < maxWait
     servers = getServers(admin)
     begin
-      servername = getServerName(servers, hostnamePort)
+      if isHostnamePort
+        servernames.add(getServerName(servers, address))
+      else
+        servernames = getServerNames(servers, address)
+      end
     rescue ArgumentError => e
-      $LOG.info("hostnamePort=" + hostnamePort.to_s + " is not up yet, waiting");
+      $LOG.info("address=" + address.to_s + " is not up yet, waiting");
     end
-    break if servername
+    break if servernames
     sleep 0.5
   end
+
+  puts "load regions for servernames:", servernames
+  for servername in servernames
+    loadRegionsForRs(options, servername)
+  end
+end
+
+# Move regions to the passed servername 
+def loadRegionsForRs(options, servername)
+  # Get configuration
+  config = getConfiguration()
+  # Get an admin instance
+  admin = HBaseAdmin.new(config) 
+  filename = getFilename(options, getHostnamePortFromServerName(servername)) 
+  regions = readFile(filename)
+  return if regions.isEmpty()
   $LOG.info("Moving " + regions.size().to_s + " regions to " + servername)
   # sleep 20s to make sure the rs finished initialization.
   sleep 20

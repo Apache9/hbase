@@ -300,7 +300,24 @@ public class RegionServerMetrics implements Updater {
   public final MetricsTimeVaryingRate fsSyncLatency =
     new MetricsTimeVaryingRate("fsSyncLatency", registry);
 
-  
+  /**
+   * The number of times we started a hedged read
+   */
+  public final MetricsLongValue hedgedReads =
+      new MetricsLongValue("hedgedReads", registry);
+
+  /**
+   * The number of times we started a hedged read and a hedged read won
+   */
+  public final MetricsLongValue hedgedReadWins =
+      new MetricsLongValue("hedgedReadWins", registry);
+
+  /**
+   * The number of times we started a hedged read w/ no extra idle thread available
+   */
+  public final MetricsLongValue hedgedReadsInCurThread =
+      new MetricsLongValue("hedgedReadsInCurThread", registry);
+
   /**
    * time each scheduled compaction takes
    */
@@ -348,6 +365,15 @@ public class RegionServerMetrics implements Updater {
    */
   public final MetricsHistogram updatesBlockedSecondsHighWater = new MetricsHistogram(
       "updatesBlockedSecondsHighWater",registry);
+
+  /**
+   * compact enable
+   */
+  public final MetricsIntValue compactionEnable = new MetricsIntValue("compactEnable", registry);
+
+  public void setCompactionEnable(boolean compactionEnable) {
+    this.compactionEnable.set(compactionEnable ? 1 : 0);
+  }
 
   public RegionServerMetrics() {
     MetricsContext context = MetricsUtil.getContext("hbase");
@@ -473,7 +499,6 @@ public class RegionServerMetrics implements Updater {
       for(Long latency : HFile.getWriteLatenciesNanos()) {
         this.fsWriteLatencyHistogram.update(latency);
       }
-            
 
       // push the result
       this.fsRecoverLeaseTime.pushMetric(this.metricsRecord);
@@ -481,7 +506,9 @@ public class RegionServerMetrics implements Updater {
       this.fsReadLatency.pushMetric(this.metricsRecord);
       this.fsWriteLatency.pushMetric(this.metricsRecord);
       this.fsWriteSize.pushMetric(this.metricsRecord);
-      
+      this.hedgedReads.pushMetric(this.metricsRecord);
+      this.hedgedReadWins.pushMetric(this.metricsRecord);
+      this.hedgedReadsInCurThread.pushMetric(this.metricsRecord);
       this.fsReadLatencyHistogram.pushMetric(this.metricsRecord);
       this.fsWriteLatencyHistogram.pushMetric(this.metricsRecord);
       this.fsPreadLatencyHistogram.pushMetric(this.metricsRecord);
@@ -503,6 +530,8 @@ public class RegionServerMetrics implements Updater {
           this.lastHistUpdateMs = this.lastUpdateMs;
           this.resetAllHistogramBasedMetrics();
       }
+      
+      this.compactionEnable.pushMetric(this.metricsRecord);
     }
     this.metricsRecord.update();
   }
@@ -654,7 +683,12 @@ public class RegionServerMetrics implements Updater {
     sb = appendHistogram(sb, this.fsReadLatencyHistogram);
     sb = appendHistogram(sb, this.fsPreadLatencyHistogram);
     sb = appendHistogram(sb, this.fsWriteLatencyHistogram);
-
+    sb = Strings.appendKeyValue(sb, "hedgedReads",
+      Long.valueOf(this.hedgedReads.get()));
+    sb = Strings.appendKeyValue(sb, "hedgedReadWins",
+      Long.valueOf(this.hedgedReadWins.get()));
+    sb = Strings.appendKeyValue(sb, "hedgedReadsInCurThread",
+      Long.valueOf(this.hedgedReadsInCurThread.get()));
     return sb.toString();
   }
   

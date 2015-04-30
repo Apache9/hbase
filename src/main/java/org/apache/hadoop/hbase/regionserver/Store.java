@@ -242,7 +242,8 @@ public class Store extends SchemaConfigured implements HeapSize {
     this.blockingStoreFileCount =
       conf.getInt("hbase.hstore.blockingStoreFiles", 7);
 
-    this.maxFilesToCompact = conf.getInt("hbase.hstore.compaction.max", 10);
+    this.maxFilesToCompact = conf.getInt(HConstants.MAX_COMPACTION_FILE_NUM, 
+      HConstants.DEFAULT_MAX_COMPACTION_FILE_NUM);
     this.minCompactSize = conf.getLong("hbase.hstore.compaction.min.size",
       this.region.memstoreFlushSize);
     this.maxCompactSize

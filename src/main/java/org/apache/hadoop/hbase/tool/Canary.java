@@ -42,6 +42,9 @@ import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HConnection;
 import org.apache.hadoop.hbase.client.HConnectionManager;
 import org.apache.hadoop.hbase.client.HTableInterface;
+import org.apache.hadoop.hbase.client.Result;
+import org.apache.hadoop.hbase.client.ResultScanner;
+import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.filter.FirstKeyOnlyFilter;
 import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.util.Strings;
@@ -114,8 +117,27 @@ public final class Canary implements Tool {
       HTableInterface table;
       try {
         table = this.connection.getTable(tableDesc.getName());
+        byte[] rowToCheck = region.getStartKey();
+        if (rowToCheck.length == 0) {
+          // Get the 1st raw row for the 1st region to avoid the unbounded scan which may lead
+          // to RPC timeout and false alarm when there are too many delete markers
+          Scan scan = new Scan(region.getStartKey(), region.getEndKey());
+          scan.setRaw(true);
+          scan.setCaching(1);
+          scan.setFilter(new FirstKeyOnlyFilter());
+          scan.setCacheBlocks(false);
+          scan.setIgnoreTtl(true);
+          ResultScanner scanner = table.getScanner(scan);
+          try {
+            Result r = scanner.next();
+            if (r != null) rowToCheck = r.getRow();
+          } finally {
+            scanner.close();
+          }
+        }
+
         for (HColumnDescriptor column : tableDesc.getColumnFamilies()) {
-          Get get = new Get(region.getStartKey());
+          Get get = new Get(rowToCheck);
           get.setFilter(new FirstKeyOnlyFilter());
           get.addFamily(column.getName());
           get.setCacheBlocks(false);
