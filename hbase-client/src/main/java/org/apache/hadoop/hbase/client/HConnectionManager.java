@@ -180,6 +180,9 @@ import com.google.protobuf.BlockingRpcChannel;
 import com.google.protobuf.RpcController;
 import com.google.protobuf.ServiceException;
 
+import com.xiaomi.infra.base.nameservice.NameService;
+import com.xiaomi.infra.base.nameservice.NameServiceEntry;
+
 /**
  * A non-instantiable class that manages creation of {@link HConnection}s.
  * <p>The simplest way to use this class is by using {@link #createConnection(Configuration)}.
@@ -325,7 +328,22 @@ public class HConnectionManager {
       return connection;
     }
   }
+  
+  public static HConnection createConnection(Configuration conf, String clusterUri)
+      throws IOException {
+    return createConnection(conf, clusterUri, null);
+  }
 
+  public static HConnection createConnection(Configuration conf, String clusterUri,
+      ExecutorService pool) throws IOException {
+    NameServiceEntry entry = NameService.resolve(clusterUri, conf);
+    if (entry.getScheme() == null || !entry.getScheme().equals("hbase")) {
+      throw new IOException("Unrecognized scheme: " + entry.getScheme() + ", scheme must be hbase");
+    }
+    conf = entry.createClusterConf(conf);
+    return createConnection(conf, pool);
+  }
+  
   /**
    * Create a new HConnection instance using the passed <code>conf</code> instance.
    * <p>Note: This bypasses the usual HConnection life cycle management done by

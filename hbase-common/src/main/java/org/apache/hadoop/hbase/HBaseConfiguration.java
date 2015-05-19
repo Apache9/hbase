@@ -17,6 +17,7 @@
  */
 package org.apache.hadoop.hbase;
 
+import com.xiaomi.infra.base.nameservice.NameService;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -28,6 +29,7 @@ import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.util.VersionInfo;
+// import org.apache.hadoop.hbase.zookeeper.ZKUtil;
 
 /**
  * Adds HBase configuration files to a Configuration
@@ -104,6 +106,22 @@ public class HBaseConfiguration extends Configuration {
 
     checkDefaultsVersion(conf);
     checkForClusterFreeMemoryLimit(conf);
+ 
+    String clusterKey = System.getProperties()
+                               .getProperty("hadoop.cmdline.hbase.cluster");
+    if (clusterKey != null) {
+      try {
+        LOG.info("Apply cluster:" + clusterKey + "to configuration");
+        if (clusterKey.startsWith(NameService.HBASE_URI_PREFIX)) {
+          merge(conf, NameService.createConfigurationByClusterKey(clusterKey, conf));
+        } else {
+          throw new IOException("Unrecognized Cluster Key: " + clusterKey);
+        }
+      } catch (IOException e) {
+        LOG.error("Apply cluster: " + clusterKey + " to configuration failed!");
+      }
+    }
+
     return conf;
   }
 

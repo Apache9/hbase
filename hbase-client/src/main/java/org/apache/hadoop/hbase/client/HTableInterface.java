@@ -61,6 +61,14 @@ public interface HTableInterface extends Closeable {
   TableName getName();
 
   /**
+   * Gets the full name of this table. The result could be 'tableName' directly, or NameService uri
+   * 'hbase://clusterName/tableName', which depends on the specific implementation of inherited class.
+   * 
+   * @return the full table name
+   */
+  byte[] getFullTableName();
+  
+  /**
    * Returns the {@link Configuration} object used by this instance.
    * <p>
    * The reference returned is not a copy, so any change made to it will

@@ -34,6 +34,8 @@ import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
+import com.xiaomi.infra.base.nameservice.NameService;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
@@ -406,6 +408,12 @@ public class TableMapReduceUtil {
   }
 
   public static void initCredentials(Job job) throws IOException {
+    // for input table name service
+    String inputTable = job.getConfiguration().get(TableInputFormat.INPUT_TABLE);
+    if (inputTable!= null && inputTable.startsWith(NameService.HBASE_URI_PREFIX)) {
+      ZKUtil.applyClusterKeyToConf(job.getConfiguration(), inputTable);
+    }
+
     UserProvider userProvider = UserProvider.instantiate(job.getConfiguration());
     if (userProvider.isHadoopSecurityEnabled()) {
       // propagate delegation related props from launcher job to MR job
@@ -420,9 +428,23 @@ public class TableMapReduceUtil {
         // init credentials for remote cluster
         String quorumAddress = job.getConfiguration().get(TableOutputFormat.QUORUM_ADDRESS);
         User user = userProvider.getCurrent();
+        Configuration peerConf = HBaseConfiguration.create(job.getConfiguration());
+
+        boolean needAddTokenForOutputTable = false;
+        String outputTable = job.getConfiguration().get(
+            TableOutputFormat.OUTPUT_TABLE);
+        // for output table name service
+        if (outputTable != null && outputTable.startsWith(NameService.HBASE_URI_PREFIX)) {
+          needAddTokenForOutputTable = true;
+          ZKUtil.applyClusterKeyToConf(peerConf, outputTable);
+        }
+
         if (quorumAddress != null) {
-          Configuration peerConf = HBaseConfiguration.create(job.getConfiguration());
+          needAddTokenForOutputTable = true;
           ZKUtil.applyClusterKeyToConf(peerConf, quorumAddress);
+        }
+
+        if (needAddTokenForOutputTable) {
           HConnection peerConn = HConnectionManager.createConnection(peerConf);
           try {
             TokenUtil.addTokenForJob(peerConn, user, job);

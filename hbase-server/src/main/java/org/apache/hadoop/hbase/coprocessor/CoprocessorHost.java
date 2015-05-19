@@ -491,6 +491,10 @@ public abstract class CoprocessorHost<E extends CoprocessorEnvironment> {
           byte[] value, Put put) throws IOException {
         return table.checkAndPut(row, family, qualifier, value, put);
       }
+      
+      public byte[] getFullTableName() {
+        return table.getFullTableName();
+      }
 
       public boolean checkAndDelete(byte[] row, byte[] family, byte[] qualifier,
           byte[] value, Delete delete) throws IOException {

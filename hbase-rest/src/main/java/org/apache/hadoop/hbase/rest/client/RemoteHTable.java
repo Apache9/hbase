@@ -279,6 +279,13 @@ public class RemoteHTable implements HTableInterface {
     }
     throw new IOException("schema request timed out");
   }
+  
+  /**
+   * return 'tableName' directly
+   */
+  public byte[] getFullTableName() {
+    return name.clone();
+  }
 
   public void close() throws IOException {
     client.shutdown();
