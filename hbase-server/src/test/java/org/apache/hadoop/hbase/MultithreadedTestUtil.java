@@ -56,6 +56,10 @@ public abstract class MultithreadedTestUtil {
       testThreads.add(t);
     }
 
+    public int getDoneThreadCount() {
+      return threadDoneCount;
+    }
+
     public void startThreads() {
       for (TestThread t : testThreads) {
         t.start();

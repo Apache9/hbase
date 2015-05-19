@@ -19,6 +19,7 @@ package org.apache.hadoop.hbase;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -205,5 +206,22 @@ public class TestHTableDescriptor {
     assertEquals(value, desc.getConfigurationValue(key));
     desc.removeConfiguration(key);
     assertEquals(null, desc.getConfigurationValue(key));
+  }
+
+  /**
+   * Test that we set acros prefix row atomic
+   */
+  @Test
+  public void testAcrossPrefixRowsAtomic() {
+    HTableDescriptor desc = new HTableDescriptor("table");
+
+    assertFalse(desc.isAcrossPrefixRowsAtomic());
+    assertNull(desc.getRegionSplitPolicyClassName());
+    
+    desc.setValue(HTableDescriptor.ACROSS_PREFIX_ROWS_ATOMIC,"true");
+    
+    assertTrue(desc.isAcrossPrefixRowsAtomic());
+    assertEquals("org.apache.hadoop.hbase.regionserver.KeyDelimiterPrefixRegionSplitPolicy", 
+      desc.getRegionSplitPolicyClassName());
   }
 }
