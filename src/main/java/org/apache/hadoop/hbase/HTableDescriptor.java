@@ -107,6 +107,16 @@ public class HTableDescriptor implements WritableComparable<HTableDescriptor> {
 
   /**
    * <em>INTERNAL</em> Used by rest interface to access this metadata 
+   * attribute which denotes if the table is Replication SLAVE
+   *
+   * @see #isReplicationSlave()
+   */
+  public static final String REPLICATION_SLAVE = "REPLICATION_SLAVE";
+  private static final ImmutableBytesWritable REPLICATION_SLAVE_KEY =
+    new ImmutableBytesWritable(Bytes.toBytes(REPLICATION_SLAVE));
+
+  /**
+   * <em>INTERNAL</em> Used by rest interface to access this metadata
    * attribute which denotes if the table is compaction enabled
    * 
    * @see #isCompactionEnable()
@@ -172,6 +182,11 @@ public class HTableDescriptor implements WritableComparable<HTableDescriptor> {
    * Constant that denotes whether the table is READONLY by default and is false
    */
   public static final boolean DEFAULT_READONLY = false;
+
+  /**
+   * Constant that denotes whether the table is replication slave by default and is false
+   */
+  public static final boolean DEFAULT_REPLICATION_SLAVE = false;
 
   /**
    * Constant that denotes whether the table is compaction enabled by default
@@ -557,6 +572,16 @@ public class HTableDescriptor implements WritableComparable<HTableDescriptor> {
   }
 
   /**
+   * Check if the replication slave flag of the table is set. If the replication slave flag is set
+   * then write operations from clients will be rejected.
+   *
+   * @return true if he table is replication slave
+   */
+  public boolean isSlave() {
+    return isSomething(REPLICATION_SLAVE_KEY, DEFAULT_REPLICATION_SLAVE);
+  }
+
+  /**
    * Setting the table as read only sets all the columns in the table as read
    * only. By default all tables are modifiable, but if the readOnly flag is 
    * set to true then the contents of the table can only be read but not modified.
@@ -566,6 +591,18 @@ public class HTableDescriptor implements WritableComparable<HTableDescriptor> {
    */
   public void setReadOnly(final boolean readOnly) {
     setValue(READONLY_KEY, readOnly? TRUE: FALSE);
+  }
+
+  /**
+   * Setting the table as replication slave.
+   * By default all tables are not slave, but if the slave flag is
+   * set to true then write operations from clients will be rejected.
+   *
+   * @param salve True if write operations from clients should be rejected.
+   * only.
+   */
+  public void setSlave(final boolean slave) {
+    setValue(REPLICATION_SLAVE_KEY, slave? TRUE: FALSE);
   }
 
   /**

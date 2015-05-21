@@ -2804,7 +2804,6 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
   }
 
   public Result next(final long scannerId) throws IOException {
-    TracerUtils.addAnnotation("start a next");
     Result[] res = next(scannerId, 1);
     if (res == null || res.length == 0) {
       return null;
@@ -2887,7 +2886,7 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
               : results.toArray(new Result[0]);
         }
       }
-
+      TracerUtils.addAnnotation("Region: " + region.getRegionNameAsString());
       MultiVersionConsistencyControl.setThreadReadPoint(s.getMvccReadPoint());
       region.startRegionOperation();
       try {
