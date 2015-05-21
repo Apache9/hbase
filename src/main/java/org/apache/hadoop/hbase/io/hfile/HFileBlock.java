@@ -1449,7 +1449,6 @@ public class HFileBlock extends SchemaConfigured implements Cacheable {
 
       if (!pread && streamLock.tryLock()) {
         // Seek + read. Better for scanning.
-        TracerUtils.addAnnotation("start seek and read");
         try {
           long begin = System.currentTimeMillis();
           istream.seek(fileOffset);
@@ -1471,7 +1470,7 @@ public class HFileBlock extends SchemaConfigured implements Cacheable {
             return -1;
           long end = System.currentTimeMillis();
           if (end - begin > HBaseServer.SLOW_IO_LOG_THRESHOLD_MS) {
-            HFile.LOG.info("readAtOffset read cost:" + (end - begin) + "ms, seek cost:"
+            TracerUtils.addAnnotation("readAtOffset read cost:" + (end - begin) + "ms, seek cost:"
                 + (middle - begin) + "ms");
           }
         } finally {
@@ -1479,7 +1478,6 @@ public class HFileBlock extends SchemaConfigured implements Cacheable {
         }
       } else {
         // Positional read. Better for random reads; or when the streamLock is already locked.
-        TracerUtils.addAnnotation("start pread");
         int extraSize = peekIntoNextBlock ? hdrSize : 0;
         long begin = System.currentTimeMillis();
         int ret = istream.read(fileOffset, dest, destOffset, size + extraSize);
@@ -1489,7 +1487,7 @@ public class HFileBlock extends SchemaConfigured implements Cacheable {
         }
         long end = System.currentTimeMillis();
         if (end - begin > HBaseServer.SLOW_IO_LOG_THRESHOLD_MS) {
-          HFile.LOG.info("readAtOffset pread cost:" + (end - begin) + "ms");
+          TracerUtils.addAnnotation("readAtOffset pread cost:" + (end - begin) + "ms");
         }
         if (ret == size || ret < size + extraSize) {
           // Could not read the next block's header, or did not try.

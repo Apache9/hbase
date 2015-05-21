@@ -4142,7 +4142,6 @@ public class HRegion implements HeapSize { // , Writable{
       if (!results.isEmpty()) {
         throw new IllegalArgumentException("First parameter should be an empty list");
       }
-      TracerUtils.addAnnotation("Region: " + regionInfo.getRegionNameAsString());
       RpcCallContext rpcCall = HBaseServer.getCurrentCall();
       // The loop here is used only when at some point during the next we determine
       // that due to effects of filters or otherwise, we have an empty row in the result.
