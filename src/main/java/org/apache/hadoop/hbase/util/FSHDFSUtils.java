@@ -50,7 +50,10 @@ public class FSHDFSUtils extends FSUtils{
       return;
     }
     // lease recovery not needed for local file system case.
-    if (!(fs instanceof DistributedFileSystem)) return;
+    if (!(fs instanceof DistributedFileSystem)) {
+      LOG.warn("fs is not DistributedFileSystem: " + fs.getClass().getName());
+      return;
+    }
     recoverDFSFileLease((DistributedFileSystem)fs, p, conf);
   }
 
