@@ -19,8 +19,6 @@
  */
 package org.apache.hadoop.hbase.regionserver;
 
-import java.io.DataInput;
-import java.io.DataOutput;
 import java.io.IOException;
 import java.util.concurrent.Executors;
 import java.util.ArrayList;
@@ -39,7 +37,6 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.conf.ConfigurationObserver;
 import org.apache.hadoop.hbase.regionserver.compactions.CompactionRequest;
-import org.apache.hadoop.io.VersionedWritable;
 
 import com.google.common.base.Preconditions;
 
@@ -442,66 +439,5 @@ public class CompactSplitThread implements CompactionRequestor, ConfigurationObs
    */
   public int getCurrentCompactionThreadNum() {
     return this.smallCompactions.getActiveCount() + this.largeCompactions.getActiveCount();
-  }
- 
-  public static class CompactionQuotaRequest extends VersionedWritable{
-    private static final byte VERSION = 0;
-
-    private int runningSmallCompactionNum;
-    private int runningLargeCompactionNum;
-    private int requestedSmallCompactionNum;
-    private int requestedLargeCompactionNum;
-    
-    // for writable
-    public CompactionQuotaRequest() {
-    }
-
-    public CompactionQuotaRequest(int runningSmallCompactionNum,
-        int runningLargeCompactionNum, int requestedSmallCompactionNum,
-        int requestedLargeCompactionNum) {
-      this.runningSmallCompactionNum = runningSmallCompactionNum;
-      this.runningLargeCompactionNum = runningLargeCompactionNum;
-      this.requestedSmallCompactionNum = requestedSmallCompactionNum;
-      this.requestedLargeCompactionNum = requestedLargeCompactionNum;
-    }
-
-    public int getRunningSmallCompactionNum() {
-      return runningSmallCompactionNum;
-    }
-
-    public int getRunningLargeCompactionNum() {
-      return runningLargeCompactionNum;
-    }
-
-    public int getRequestedSmallCompactionNum() {
-      return requestedSmallCompactionNum;
-    }
-
-    public int getRequestedLargeCompactionNum() {
-      return requestedLargeCompactionNum;
-    }
-
-    @Override
-    public byte getVersion() {
-      return VERSION;
-    }
-
-    @Override
-    public void readFields(DataInput in) throws IOException {
-      super.readFields(in);
-      this.runningSmallCompactionNum = in.readInt();
-      this.runningLargeCompactionNum = in.readInt();
-      this.requestedSmallCompactionNum = in.readInt();
-      this.requestedLargeCompactionNum = in.readInt();
-    }
-
-    @Override
-    public void write(DataOutput out) throws IOException {
-      super.write(out);
-      out.writeInt(runningSmallCompactionNum);
-      out.writeInt(runningLargeCompactionNum);
-      out.writeInt(requestedSmallCompactionNum);
-      out.writeInt(requestedLargeCompactionNum);
-    }
   }
 }
