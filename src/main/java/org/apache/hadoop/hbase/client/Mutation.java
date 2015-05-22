@@ -228,7 +228,7 @@ public abstract class Mutation extends OperationWithAttributes implements Row {
   }
 
   /**
-   * Set the replication custer id.
+   * Set the replication cluster id.
    * @param clusterId
    */
   public void setClusterId(UUID clusterId) {
@@ -278,6 +278,10 @@ public abstract class Mutation extends OperationWithAttributes implements Row {
       }
     }
     return clusterIds;
+  }
+
+  public boolean isReplication() {
+    return getAttribute(CONSUMED_CLUSTER_IDS) != null;
   }
 
   /**

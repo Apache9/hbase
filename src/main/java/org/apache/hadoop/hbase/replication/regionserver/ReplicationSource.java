@@ -54,6 +54,7 @@ import org.apache.hadoop.hbase.Stoppable;
 import org.apache.hadoop.hbase.TableNotFoundException;
 import org.apache.hadoop.hbase.client.HConnection;
 import org.apache.hadoop.hbase.client.HConnectionManager;
+import org.apache.hadoop.hbase.fs.HFileSystem;
 import org.apache.hadoop.hbase.ipc.HRegionInterface;
 import org.apache.hadoop.hbase.regionserver.wal.HLog;
 import org.apache.hadoop.hbase.regionserver.wal.HLogKey;
@@ -513,6 +514,16 @@ public class ReplicationSource extends Thread
     return false;
   }
 
+  public static void recoverFileLease(FileSystem fs, Path filePath, Configuration conf) throws IOException{
+    LOG.info("recoverFileLease fs: " + fs.getClass().getName() + " path: "+filePath.toString());
+    if(fs instanceof HFileSystem) {
+      HFileSystem hFileSystem = (HFileSystem) fs;
+      FileSystem backingFs = hFileSystem.getBackingFs();
+      LOG.info("recoverFileLease fs: " + fs.getClass().getName() + " backingFs: " + backingFs.getClass().getName() + " path: "+filePath.toString());
+      FSUtils.getInstance(backingFs, conf).recoverFileLease(backingFs, filePath, conf);
+    }
+  }
+
   /**
    * Read all the entries from the current log files and retain those
    * that need to be replicated. Else, process the end of the current file.
@@ -532,9 +543,9 @@ public class ReplicationSource extends Thread
       entry = this.repLogReader.readNextAndSetPosition(this.entriesArray, this.currentNbEntries);
     } catch(EOFException e) {
       if(!currentWALisBeingWrittenTo) {
-        FSUtils.getInstance(this.fs, this.conf).recoverFileLease(this.fs, this.currentPath, this.conf);
+        recoverFileLease(this.fs, this.currentPath, this.conf);
         FileStatus stat = this.fs.getFileStatus(this.currentPath);
-
+        LOG.info("readerPosition: " + this.repLogReader.getReaderPosition() + " len: " + stat.getLen() );
         if( this.repLogReader.getReaderPosition() >= 0 && this.repLogReader.getReaderPosition() == stat.getLen()) {
           return processEndOfFile();
         }

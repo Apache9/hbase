@@ -87,7 +87,6 @@ import org.apache.hadoop.hbase.client.Action;
 import org.apache.hadoop.hbase.client.Append;
 import org.apache.hadoop.hbase.client.Check;
 import org.apache.hadoop.hbase.client.Condition;
-import org.apache.hadoop.hbase.client.SingleColumnCheck;
 import org.apache.hadoop.hbase.client.Durability;
 import org.apache.hadoop.hbase.client.RowMutations;
 import org.apache.hadoop.hbase.client.Delete;
@@ -1897,7 +1896,7 @@ public class HRegion implements HeapSize { // , Writable{
    */
   public void delete(Delete delete, Integer lockid, boolean writeToWAL)
   throws IOException {
-    checkReadOnly();
+    checkReadOnly(delete.isReplication());
     checkResources();
     Integer lid = null;
     startRegionOperation();
@@ -2089,7 +2088,7 @@ public class HRegion implements HeapSize { // , Writable{
    */
   public void put(Put put, Integer lockid, boolean writeToWAL)
   throws IOException {
-    checkReadOnly();
+    checkReadOnly(put.isReplication());
 
     // Do a rough check that we have resources to accept a write.  The check is
     // 'rough' in that between the resource check and the call to obtain a
@@ -2206,11 +2205,11 @@ public class HRegion implements HeapSize { // , Writable{
       Pair<Mutation, Integer>[] mutationsAndLocks) throws IOException {
     BatchOperationInProgress<Pair<Mutation, Integer>> batchOp =
       new BatchOperationInProgress<Pair<Mutation,Integer>>(mutationsAndLocks);
-
+    boolean isReplication = mutationsAndLocks[0].getFirst().isReplication();
     boolean initialized = false;
 
     while (!batchOp.isDone()) {
-      checkReadOnly();
+      checkReadOnly(isReplication);
       checkResources();
 
       long newSize;
@@ -2655,7 +2654,7 @@ public class HRegion implements HeapSize { // , Writable{
    */
   public boolean checkAndMutate(Check check, Mutation mutate, Integer lockId)
       throws IOException {
-    checkReadOnly();
+    checkReadOnly(mutate.isReplication());
     //TODO, add check for value length or maybe even better move this to the
     //client if this becomes a global setting
     checkResources();
@@ -2737,7 +2736,7 @@ public class HRegion implements HeapSize { // , Writable{
       CompareOp compareOp, WritableByteArrayComparable comparator, Writable w,
       Integer lockId, boolean writeToWAL)
   throws IOException{
-    checkReadOnly();
+    checkReadOnly(false);
     //TODO, add check for value length or maybe even better move this to the
     //client if this becomes a global setting
     checkResources();
@@ -3008,9 +3007,12 @@ public class HRegion implements HeapSize { // , Writable{
   /**
    * @throws IOException Throws exception if region is in read-only mode.
    */
-  protected void checkReadOnly() throws IOException {
+  protected void checkReadOnly(boolean isReplication) throws IOException {
     if (this.writestate.isReadOnly()) {
-      throw new IOException("region is read only");
+      throw new DoNotRetryIOException("region is read only");
+    }
+    if (htableDescriptor.isSlave() && (!isReplication)) {
+      throw new DoNotRetryIOException("region of slave table can not be written from client");
     }
   }
 
@@ -4140,7 +4142,6 @@ public class HRegion implements HeapSize { // , Writable{
       if (!results.isEmpty()) {
         throw new IllegalArgumentException("First parameter should be an empty list");
       }
-      TracerUtils.addAnnotation("Region: " + regionInfo.getRegionNameAsString());
       RpcCallContext rpcCall = HBaseServer.getCurrentCall();
       // The loop here is used only when at some point during the next we determine
       // that due to effects of filters or otherwise, we have an empty row in the result.
@@ -5066,7 +5067,8 @@ public class HRegion implements HeapSize { // , Writable{
       List<Condition> conditions, Collection<byte[]> rowsToLock) throws IOException {
     boolean flush = false;
 
-    checkReadOnly();
+    boolean isReplication = mutations.iterator().next().isReplication();
+    checkReadOnly(isReplication);
     checkResources();
 
     startRegionOperation();
@@ -5319,7 +5321,7 @@ public class HRegion implements HeapSize { // , Writable{
     long size = 0;
     long txid = 0;
 
-    checkReadOnly();
+    checkReadOnly(false);
     // Lock row
     startRegionOperation();
     this.writeRequestsCount.increment();
@@ -5506,7 +5508,7 @@ public class HRegion implements HeapSize { // , Writable{
     long size = 0;
     long txid = 0;
 
-    checkReadOnly();
+    checkReadOnly(false);
     // Lock row
     startRegionOperation();
     this.writeRequestsCount.increment();

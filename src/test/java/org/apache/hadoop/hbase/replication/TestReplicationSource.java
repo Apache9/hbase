@@ -31,10 +31,12 @@ import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.MediumTests;
+import org.apache.hadoop.hbase.fs.HFileSystem;
 import org.apache.hadoop.hbase.regionserver.wal.HLog;
 import org.apache.hadoop.hbase.regionserver.wal.HLogKey;
 import org.apache.hadoop.hbase.regionserver.wal.SequenceFileLogWriter;
 import org.apache.hadoop.hbase.regionserver.wal.WALEdit;
+import org.apache.hadoop.hbase.replication.regionserver.ReplicationSource;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.FSUtils;
 import org.junit.BeforeClass;
@@ -43,10 +45,7 @@ import org.junit.experimental.categories.Category;
 
 import java.io.EOFException;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.*;
 
 @Category(MediumTests.class)
 public class TestReplicationSource {
@@ -65,14 +64,7 @@ public class TestReplicationSource {
    */
   @BeforeClass
   public static void setUpBeforeClass() throws Exception {
-    TEST_UTIL.startMiniDFSCluster(1);
-    FS = TEST_UTIL.getDFSCluster().getFileSystem();
-    oldLogDir = new Path(FS.getHomeDirectory(),
-        HConstants.HREGION_OLDLOGDIR_NAME);
-    if (FS.exists(oldLogDir)) FS.delete(oldLogDir, true);
-    logDir = new Path(FS.getHomeDirectory(),
-        HConstants.HREGION_LOGDIR_NAME);
-    if (FS.exists(logDir)) FS.delete(logDir, true);
+    TEST_UTIL.startMiniCluster(1, 3);
   }
 
   /**
@@ -83,6 +75,14 @@ public class TestReplicationSource {
    */
   @Test
   public void testLogMoving() throws Exception{
+    FS = TEST_UTIL.getDFSCluster().getFileSystem();
+    oldLogDir = new Path(FS.getHomeDirectory(),
+        HConstants.HREGION_OLDLOGDIR_NAME);
+    if (FS.exists(oldLogDir)) FS.delete(oldLogDir, true);
+    logDir = new Path(FS.getHomeDirectory(),
+        HConstants.HREGION_LOGDIR_NAME);
+    if (FS.exists(logDir)) FS.delete(logDir, true);
+
     Path logPath = new Path(logDir, "log");
     if (!FS.exists(logDir)) FS.mkdirs(logDir);
     if (!FS.exists(oldLogDir)) FS.mkdirs(oldLogDir);
@@ -117,9 +117,17 @@ public class TestReplicationSource {
 
   @Test
   public void testRecoverLeaseFromNotClosedLog() throws Exception {
+    Configuration conf = TEST_UTIL.getMiniHBaseCluster().getConfiguration();
+    HFileSystem FS = new HFileSystem(conf, false);
+    assertEquals(FS.getBackingFs().getClass().getName(),
+        "org.apache.hadoop.hdfs.DistributedFileSystem");
+
+    Path logDir = new Path(TEST_UTIL.getDFSCluster().getFileSystem().getHomeDirectory(),
+        HConstants.HREGION_LOGDIR_NAME);
 
     Path logPath = new Path(logDir, "log");
-    if (!FS.exists(logDir)) FS.mkdirs(logDir);
+    if (!FS.exists(logDir))
+      FS.mkdirs(logDir);
 
     HLog.Writer writer = HLog.createWriter(FS, logPath, conf);
     for(int i = 0; i < 5; i++) {
@@ -132,29 +140,31 @@ public class TestReplicationSource {
       writer.append(entry);
     }
     SequenceFileLogWriter sequenceFileLogWriter = (SequenceFileLogWriter) writer;
-    sequenceFileLogWriter.getWriterFSDataOutputStream().writeInt(10);
-
-    long fileLen = FS.getFileStatus(logPath).getLen();
-    assertEquals(fileLen, 0);
     sequenceFileLogWriter.getWriterFSDataOutputStream().hflush();
-    assertEquals(fileLen, 0);
+    long fileLen0 = FS.getFileStatus(logPath).getLen();
+    assertTrue(fileLen0 > 0);
 
-    HLog.Reader reader = HLog.getReader(FS, logPath, conf);
+    sequenceFileLogWriter.getWriterFSDataOutputStream().writeInt(10);
+    sequenceFileLogWriter.getWriterFSDataOutputStream().hflush();
+    long fileLen1 = FS.getFileStatus(logPath).getLen();
+    assertEquals(fileLen0, fileLen1);
+
+    HLog.Reader reader = HLog.getReader(FS.getBackingFs(), logPath, conf);
     for(int i = 0; i< 5; ++i) {
       HLog.Entry entry = reader.next();
       assertNotNull(entry);
     }
 
     try {
-      HLog.Entry entry = new HLog.Entry();
-      reader.next(entry);
+      HLog.Entry entry = reader.next();
       fail("not catch EOFException");
     }catch (EOFException eofException) {
     }
 
-    FSUtils.getInstance(FS, conf).recoverFileLease(FS, logPath, conf);
-    fileLen = FS.getFileStatus(logPath).getLen();
-    assertEquals(reader.getPosition(), fileLen);
+    ReplicationSource.recoverFileLease(FS, logPath, conf);
+    long fileLen = FS.getFileStatus(logPath).getLen();
+    assertTrue(fileLen > fileLen0);
+    assertEquals(fileLen, reader.getPosition());
   }
 
   @org.junit.Rule

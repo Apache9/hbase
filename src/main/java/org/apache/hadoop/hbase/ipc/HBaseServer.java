@@ -1726,7 +1726,7 @@ public abstract class HBaseServer implements RpcServer {
     this.numOfReplicationHandlers = 
       conf.getInt("hbase.regionserver.replication.handler.count", 3);
     if (numOfReplicationHandlers > 0) {
-      this.replicationQueue = new LinkedBlockingQueue<Call>(maxQueueSize);
+      this.replicationQueue = new LinkedBlockingQueue<Call>(maxQueueLength);
     }
     // Start the listener here and let it bind to the port
     listener = new Listener();
