@@ -1039,7 +1039,7 @@
     <protobuf.version>2.5.0-xiaomi</protobuf.version>
     <stax-api.version>1.0.1</stax-api.version>
     <thrift.version>0.8.0</thrift.version>
-    <hadoop-mdh.version>2.4.0-mdh2.2.0</hadoop-mdh.version>
+    <hadoop-mdh.version>2.4.0-mdh2.2.2</hadoop-mdh.version>
     <zookeeper-mdh.version>3.4.5-mdh1.2.0</zookeeper-mdh.version>
     <findbugs-annotations>1.3.9-1</findbugs-annotations>
 
