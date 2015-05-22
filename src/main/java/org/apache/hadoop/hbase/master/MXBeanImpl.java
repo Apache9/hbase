@@ -150,11 +150,11 @@ public class MXBeanImpl implements MXBean {
 
   @Override
   public int getRunningCompactionNum() {
-    return master.getCompactionCoordinator().getRunningCompactionNum();
+    return master.getCompactionCoordinator().getUsedQuota();
   }
 
   @Override
   public int getCompactionNumLimit() {
-    return master.getCompactionCoordinator().getCompactionNumLimit();
+    return master.getCompactionCoordinator().getTotalQuota();
   }
 }

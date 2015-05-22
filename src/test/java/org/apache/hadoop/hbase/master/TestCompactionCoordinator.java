@@ -48,11 +48,13 @@ public class TestCompactionCoordinator {
     CompactionQuota request = new CompactionQuota(0, 11, 0);
     CompactionQuota response = coordinator.requestCompactionQuota(rs1, request);
     Assert.assertEquals(11, response.getGrantQuota());
+    Assert.assertEquals(11, coordinator.getUsedQuota());
     
     ServerName rs2 = new ServerName("localhost", 124, 124L);
     request = new CompactionQuota(0, 10, 0);
     response = coordinator.requestCompactionQuota(rs2, request);
     Assert.assertEquals(9, response.getGrantQuota());
+    Assert.assertEquals(20, coordinator.getUsedQuota());
   }
 
   @Test
@@ -73,5 +75,33 @@ public class TestCompactionCoordinator {
     request = new CompactionQuota(10, 10, 0);
     response = coordinator.requestCompactionQuota(rs1, request);
     Assert.assertEquals(0, response.getGrantQuota());
+  }
+
+  @Test
+  public void testUsedQuota() {
+    Configuration conf = HBaseConfiguration.create();
+    conf.setFloat(CompactionCoordinator.HBASE_CLUSTER_COMPACTION_RATIO, 10.0f);
+
+    ServerManager manager = Mockito.mock(ServerManager.class);
+    Mockito.when(manager.countOfRegionServers()).thenReturn(2);
+    CompactionCoordinator coordinator =
+        new CompactionCoordinator(conf, manager);
+    Assert.assertEquals(20, coordinator.getTotalQuota());
+
+    ServerName rs = new ServerName("localhost", 123, 123L);
+    CompactionQuota request = new CompactionQuota(0, 11, 0);
+    CompactionQuota response = coordinator.requestCompactionQuota(rs, request);
+    Assert.assertEquals(11, response.getGrantQuota());
+    Assert.assertEquals(11, coordinator.getUsedQuota());
+
+    request = new CompactionQuota(9, 0, 0);
+    response = coordinator.requestCompactionQuota(rs, request);
+    Assert.assertEquals(0, response.getGrantQuota());
+    Assert.assertEquals(9, coordinator.getUsedQuota());
+
+    request = new CompactionQuota(0, 0, 0);
+    response = coordinator.requestCompactionQuota(rs, request);
+    Assert.assertEquals(0, response.getGrantQuota());
+    Assert.assertEquals(0, coordinator.getUsedQuota());
   }
 }

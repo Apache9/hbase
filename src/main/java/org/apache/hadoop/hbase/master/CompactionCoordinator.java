@@ -34,7 +34,8 @@ import org.apache.hadoop.hbase.regionserver.CompactionQuota;
 public class CompactionCoordinator implements Configurable {
   private static final Log LOG = LogFactory.getLog(CompactionCoordinator.class);
 
-  public static final String HBASE_CLUSTER_COMPACTION_RATIO = "hbase.cluster.compaction.ratio";
+  public static final String HBASE_CLUSTER_COMPACTION_RATIO =
+      "hbase.cluster.compaction.ratio";
 
   private Configuration conf;
   private ServerManager manager;
@@ -42,7 +43,7 @@ public class CompactionCoordinator implements Configurable {
   private float compactionRatio;
 
   private Map<ServerName, CompactionQuota> quotas;
-  
+
   private int usedQuota;
   private int totalQuota;
 
@@ -52,32 +53,25 @@ public class CompactionCoordinator implements Configurable {
     this.manager = manager;
     this.compactionRatio = conf.getFloat(HBASE_CLUSTER_COMPACTION_RATIO, 2.0f);
     this.quotas = new ConcurrentHashMap<ServerName, CompactionQuota>();
-    this.totalQuota = (int)(this.manager.countOfRegionServers() * compactionRatio);
+    this.totalQuota =
+        (int) (this.manager.countOfRegionServers() * compactionRatio);
     this.usedQuota = 0;
   }
 
   public synchronized CompactionQuota requestCompactionQuota(
       final ServerName serverName, final CompactionQuota request) {
     CompactionQuota last = quotas.remove(serverName);
-    if (last == null && request.getUsingQuota() == 0 && request.getRequestQuota() == 0) {
-      return request;
-    }
+
     updateUsedQuota(last, request);
-
-    // no quota requested
-    if (request.getRequestQuota() == 0) {
-      return request;
-    }
-
     CompactionQuota response = grantQuota(request);
     updateUsedQuota(request, response);
-    
-    if (response.getUsingQuota() > 0 || response.getGrantQuota() > 0) {
-      quotas.put(serverName, response);
-    }
+
+    quotas.put(serverName, response);
     if (LOG.isDebugEnabled()) {
-      LOG.debug("Regionserver: " + serverName + " get compaction quota: " + response
-          + ". Cluster total compaction quota: (" + totalQuota + "), + . Used quota: (" + usedQuota);
+      LOG.debug("Regionserver: " + serverName + ", last quota : " + last
+          + ", request quota: " + request + ", got quota: " + response
+          + ". Cluster total compaction quota: " + totalQuota
+          + ", used quota: " + usedQuota);
     }
     return response;
   }
@@ -91,21 +85,13 @@ public class CompactionCoordinator implements Configurable {
     updateUsedQuota(last, null);
   }
 
-  public int getRunningCompactionNum() {
-    return usedQuota;
-  }
-
-  public int getCompactionNumLimit() {
-    return totalQuota;
-  }
-
   /**
    * simple policy, just grant quota if there is left
    * @param request
    */
   private CompactionQuota grantQuota(final CompactionQuota request) {
     CompactionQuota response = new CompactionQuota(request);
-    totalQuota = (int)(this.manager.countOfRegionServers() * compactionRatio);
+    totalQuota = (int) (this.manager.countOfRegionServers() * compactionRatio);
     int left = Math.max(0, totalQuota - usedQuota);
     response.setGrantQuota(Math.min(left, request.getRequestQuota()));
     return response;
@@ -114,7 +100,8 @@ public class CompactionCoordinator implements Configurable {
   /**
    * update the used quota
    */
-  private synchronized void updateUsedQuota(CompactionQuota last, CompactionQuota current) {
+  private synchronized void updateUsedQuota(CompactionQuota last,
+      CompactionQuota current) {
     if (last != null) {
       usedQuota -= last.getUsingQuota() + last.getGrantQuota();
     }
@@ -132,11 +119,11 @@ public class CompactionCoordinator implements Configurable {
   public Configuration getConf() {
     return conf;
   }
-  
+
   public int getTotalQuota() {
     return totalQuota;
   }
-  
+
   public int getUsedQuota() {
     return usedQuota;
   }
