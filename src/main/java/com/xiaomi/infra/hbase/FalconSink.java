@@ -97,7 +97,7 @@ public class FalconSink implements Sink, Configurable {
     double avail = calc();
     LOG.info("Try to push metrics to falcon and collector. Cluster: " + clusterName
         + " availability is " + avail + ", failedCounter=" + lastFailedCounter + ", totalCounter="
-        + totalCounter);
+        + lastTotalCounter);
     pushToCollector(clusterName, avail);
     pushToFalcon(clusterName, avail);
   }
