@@ -2495,6 +2495,16 @@ public final class RegionServerStatusProtos {
 
   public interface RegionServerReportResponseOrBuilder
       extends com.google.protobuf.MessageOrBuilder {
+
+    // optional uint32 server_num = 1;
+    /**
+     * <code>optional uint32 server_num = 1;</code>
+     */
+    boolean hasServerNum();
+    /**
+     * <code>optional uint32 server_num = 1;</code>
+     */
+    int getServerNum();
   }
   /**
    * Protobuf type {@code RegionServerReportResponse}
@@ -2529,6 +2539,7 @@ public final class RegionServerStatusProtos {
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
       initFields();
+      int mutable_bitField0_ = 0;
       com.google.protobuf.UnknownFieldSet.Builder unknownFields =
           com.google.protobuf.UnknownFieldSet.newBuilder();
       try {
@@ -2544,6 +2555,11 @@ public final class RegionServerStatusProtos {
                                      extensionRegistry, tag)) {
                 done = true;
               }
+              break;
+            }
+            case 8: {
+              bitField0_ |= 0x00000001;
+              serverNum_ = input.readUInt32();
               break;
             }
           }
@@ -2585,7 +2601,25 @@ public final class RegionServerStatusProtos {
       return PARSER;
     }
 
+    private int bitField0_;
+    // optional uint32 server_num = 1;
+    public static final int SERVER_NUM_FIELD_NUMBER = 1;
+    private int serverNum_;
+    /**
+     * <code>optional uint32 server_num = 1;</code>
+     */
+    public boolean hasServerNum() {
+      return ((bitField0_ & 0x00000001) == 0x00000001);
+    }
+    /**
+     * <code>optional uint32 server_num = 1;</code>
+     */
+    public int getServerNum() {
+      return serverNum_;
+    }
+
     private void initFields() {
+      serverNum_ = 0;
     }
     private byte memoizedIsInitialized = -1;
     public final boolean isInitialized() {
@@ -2599,6 +2633,9 @@ public final class RegionServerStatusProtos {
     public void writeTo(com.google.protobuf.CodedOutputStream output)
                         throws java.io.IOException {
       getSerializedSize();
+      if (((bitField0_ & 0x00000001) == 0x00000001)) {
+        output.writeUInt32(1, serverNum_);
+      }
       getUnknownFields().writeTo(output);
     }
 
@@ -2608,6 +2645,10 @@ public final class RegionServerStatusProtos {
       if (size != -1) return size;
 
       size = 0;
+      if (((bitField0_ & 0x00000001) == 0x00000001)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeUInt32Size(1, serverNum_);
+      }
       size += getUnknownFields().getSerializedSize();
       memoizedSerializedSize = size;
       return size;
@@ -2631,6 +2672,11 @@ public final class RegionServerStatusProtos {
       org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.RegionServerReportResponse other = (org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.RegionServerReportResponse) obj;
 
       boolean result = true;
+      result = result && (hasServerNum() == other.hasServerNum());
+      if (hasServerNum()) {
+        result = result && (getServerNum()
+            == other.getServerNum());
+      }
       result = result &&
           getUnknownFields().equals(other.getUnknownFields());
       return result;
@@ -2644,6 +2690,10 @@ public final class RegionServerStatusProtos {
       }
       int hash = 41;
       hash = (19 * hash) + getDescriptorForType().hashCode();
+      if (hasServerNum()) {
+        hash = (37 * hash) + SERVER_NUM_FIELD_NUMBER;
+        hash = (53 * hash) + getServerNum();
+      }
       hash = (29 * hash) + getUnknownFields().hashCode();
       memoizedHashCode = hash;
       return hash;
@@ -2753,6 +2803,8 @@ public final class RegionServerStatusProtos {
 
       public Builder clear() {
         super.clear();
+        serverNum_ = 0;
+        bitField0_ = (bitField0_ & ~0x00000001);
         return this;
       }
 
@@ -2779,6 +2831,13 @@ public final class RegionServerStatusProtos {
 
       public org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.RegionServerReportResponse buildPartial() {
         org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.RegionServerReportResponse result = new org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.RegionServerReportResponse(this);
+        int from_bitField0_ = bitField0_;
+        int to_bitField0_ = 0;
+        if (((from_bitField0_ & 0x00000001) == 0x00000001)) {
+          to_bitField0_ |= 0x00000001;
+        }
+        result.serverNum_ = serverNum_;
+        result.bitField0_ = to_bitField0_;
         onBuilt();
         return result;
       }
@@ -2794,6 +2853,9 @@ public final class RegionServerStatusProtos {
 
       public Builder mergeFrom(org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.RegionServerReportResponse other) {
         if (other == org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.RegionServerReportResponse.getDefaultInstance()) return this;
+        if (other.hasServerNum()) {
+          setServerNum(other.getServerNum());
+        }
         this.mergeUnknownFields(other.getUnknownFields());
         return this;
       }
@@ -2817,6 +2879,40 @@ public final class RegionServerStatusProtos {
             mergeFrom(parsedMessage);
           }
         }
+        return this;
+      }
+      private int bitField0_;
+
+      // optional uint32 server_num = 1;
+      private int serverNum_ ;
+      /**
+       * <code>optional uint32 server_num = 1;</code>
+       */
+      public boolean hasServerNum() {
+        return ((bitField0_ & 0x00000001) == 0x00000001);
+      }
+      /**
+       * <code>optional uint32 server_num = 1;</code>
+       */
+      public int getServerNum() {
+        return serverNum_;
+      }
+      /**
+       * <code>optional uint32 server_num = 1;</code>
+       */
+      public Builder setServerNum(int value) {
+        bitField0_ |= 0x00000001;
+        serverNum_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>optional uint32 server_num = 1;</code>
+       */
+      public Builder clearServerNum() {
+        bitField0_ = (bitField0_ & ~0x00000001);
+        serverNum_ = 0;
+        onChanged();
         return this;
       }
 
@@ -8405,41 +8501,41 @@ public final class RegionServerStatusProtos {
       "\"C\n\033RegionServerStartupResponse\022$\n\013map_e" +
       "ntries\030\001 \003(\0132\017.NameStringPair\"S\n\031RegionS" +
       "erverReportRequest\022\033\n\006server\030\001 \002(\0132\013.Ser" +
-      "verName\022\031\n\004load\030\002 \001(\0132\013.ServerLoad\"\034\n\032Re" +
-      "gionServerReportResponse\"O\n\031ReportRSFata" +
-      "lErrorRequest\022\033\n\006server\030\001 \002(\0132\013.ServerNa",
-      "me\022\025\n\rerror_message\030\002 \002(\t\"\034\n\032ReportRSFat" +
-      "alErrorResponse\"6\n\037GetLastFlushedSequenc" +
-      "eIdRequest\022\023\n\013region_name\030\001 \002(\014\"D\n GetLa" +
-      "stFlushedSequenceIdResponse\022 \n\030last_flus" +
-      "hed_sequence_id\030\001 \002(\004\"\322\002\n\025RegionStateTra" +
-      "nsition\022>\n\017transition_code\030\001 \002(\0162%.Regio" +
-      "nStateTransition.TransitionCode\022 \n\013regio" +
-      "n_info\030\002 \003(\0132\013.RegionInfo\022\024\n\014open_seq_nu" +
-      "m\030\003 \001(\004\"\300\001\n\016TransitionCode\022\n\n\006OPENED\020\000\022\017" +
-      "\n\013FAILED_OPEN\020\001\022\n\n\006CLOSED\020\002\022\022\n\016READY_TO_",
-      "SPLIT\020\003\022\022\n\016READY_TO_MERGE\020\004\022\016\n\nSPLIT_PON" +
-      "R\020\005\022\016\n\nMERGE_PONR\020\006\022\t\n\005SPLIT\020\007\022\n\n\006MERGED" +
-      "\020\010\022\022\n\016SPLIT_REVERTED\020\t\022\022\n\016MERGE_REVERTED" +
-      "\020\n\"m\n\"ReportRegionStateTransitionRequest" +
-      "\022\033\n\006server\030\001 \002(\0132\013.ServerName\022*\n\ntransit" +
-      "ion\030\002 \003(\0132\026.RegionStateTransition\"<\n#Rep" +
-      "ortRegionStateTransitionResponse\022\025\n\rerro" +
-      "r_message\030\001 \001(\t2\326\003\n\031RegionServerStatusSe" +
-      "rvice\022P\n\023RegionServerStartup\022\033.RegionSer" +
-      "verStartupRequest\032\034.RegionServerStartupR",
-      "esponse\022M\n\022RegionServerReport\022\032.RegionSe" +
-      "rverReportRequest\032\033.RegionServerReportRe" +
-      "sponse\022M\n\022ReportRSFatalError\022\032.ReportRSF" +
-      "atalErrorRequest\032\033.ReportRSFatalErrorRes" +
-      "ponse\022_\n\030GetLastFlushedSequenceId\022 .GetL" +
-      "astFlushedSequenceIdRequest\032!.GetLastFlu" +
-      "shedSequenceIdResponse\022h\n\033ReportRegionSt" +
-      "ateTransition\022#.ReportRegionStateTransit" +
-      "ionRequest\032$.ReportRegionStateTransition" +
-      "ResponseBN\n*org.apache.hadoop.hbase.prot",
-      "obuf.generatedB\030RegionServerStatusProtos" +
-      "H\001\210\001\001\240\001\001"
+      "verName\022\031\n\004load\030\002 \001(\0132\013.ServerLoad\"0\n\032Re" +
+      "gionServerReportResponse\022\022\n\nserver_num\030\001" +
+      " \001(\r\"O\n\031ReportRSFatalErrorRequest\022\033\n\006ser",
+      "ver\030\001 \002(\0132\013.ServerName\022\025\n\rerror_message\030" +
+      "\002 \002(\t\"\034\n\032ReportRSFatalErrorResponse\"6\n\037G" +
+      "etLastFlushedSequenceIdRequest\022\023\n\013region" +
+      "_name\030\001 \002(\014\"D\n GetLastFlushedSequenceIdR" +
+      "esponse\022 \n\030last_flushed_sequence_id\030\001 \002(" +
+      "\004\"\322\002\n\025RegionStateTransition\022>\n\017transitio" +
+      "n_code\030\001 \002(\0162%.RegionStateTransition.Tra" +
+      "nsitionCode\022 \n\013region_info\030\002 \003(\0132\013.Regio" +
+      "nInfo\022\024\n\014open_seq_num\030\003 \001(\004\"\300\001\n\016Transiti" +
+      "onCode\022\n\n\006OPENED\020\000\022\017\n\013FAILED_OPEN\020\001\022\n\n\006C",
+      "LOSED\020\002\022\022\n\016READY_TO_SPLIT\020\003\022\022\n\016READY_TO_" +
+      "MERGE\020\004\022\016\n\nSPLIT_PONR\020\005\022\016\n\nMERGE_PONR\020\006\022" +
+      "\t\n\005SPLIT\020\007\022\n\n\006MERGED\020\010\022\022\n\016SPLIT_REVERTED" +
+      "\020\t\022\022\n\016MERGE_REVERTED\020\n\"m\n\"ReportRegionSt" +
+      "ateTransitionRequest\022\033\n\006server\030\001 \002(\0132\013.S" +
+      "erverName\022*\n\ntransition\030\002 \003(\0132\026.RegionSt" +
+      "ateTransition\"<\n#ReportRegionStateTransi" +
+      "tionResponse\022\025\n\rerror_message\030\001 \001(\t2\326\003\n\031" +
+      "RegionServerStatusService\022P\n\023RegionServe" +
+      "rStartup\022\033.RegionServerStartupRequest\032\034.",
+      "RegionServerStartupResponse\022M\n\022RegionSer" +
+      "verReport\022\032.RegionServerReportRequest\032\033." +
+      "RegionServerReportResponse\022M\n\022ReportRSFa" +
+      "talError\022\032.ReportRSFatalErrorRequest\032\033.R" +
+      "eportRSFatalErrorResponse\022_\n\030GetLastFlus" +
+      "hedSequenceId\022 .GetLastFlushedSequenceId" +
+      "Request\032!.GetLastFlushedSequenceIdRespon" +
+      "se\022h\n\033ReportRegionStateTransition\022#.Repo" +
+      "rtRegionStateTransitionRequest\032$.ReportR" +
+      "egionStateTransitionResponseBN\n*org.apac",
+      "he.hadoop.hbase.protobuf.generatedB\030Regi" +
+      "onServerStatusProtosH\001\210\001\001\240\001\001"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
       new com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner() {
@@ -8469,7 +8565,7 @@ public final class RegionServerStatusProtos {
           internal_static_RegionServerReportResponse_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_RegionServerReportResponse_descriptor,
-              new java.lang.String[] { });
+              new java.lang.String[] { "ServerNum", });
           internal_static_ReportRSFatalErrorRequest_descriptor =
             getDescriptor().getMessageTypes().get(4);
           internal_static_ReportRSFatalErrorRequest_fieldAccessorTable = new

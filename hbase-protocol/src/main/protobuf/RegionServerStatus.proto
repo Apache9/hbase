@@ -55,6 +55,7 @@ message RegionServerReportRequest {
 }
 
 message RegionServerReportResponse {
+  optional uint32 server_num = 1;
 }
 
 message ReportRSFatalErrorRequest {

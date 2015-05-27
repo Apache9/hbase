@@ -63,6 +63,7 @@ import org.apache.hadoop.hbase.protobuf.generated.AdminProtos;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.MutateRequest;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.MutateResponse;
+import org.apache.hadoop.hbase.quotas.MasterQuotaManager;
 import org.apache.hadoop.hbase.regionserver.HStore;
 import org.apache.hadoop.hbase.testclassification.SmallTests;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -210,6 +211,11 @@ public class TestCatalogJanitor {
 
     @Override
     public MasterCoprocessorHost getCoprocessorHost() {
+      return null;
+    }
+
+    @Override
+    public MasterQuotaManager getMasterQuotaManager() {
       return null;
     }
 

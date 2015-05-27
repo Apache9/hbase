@@ -66,6 +66,10 @@ module Shell
         @shell.hbase_visibility_labels_admin
       end
 
+      def quotas_admin
+        @shell.hbase_quotas_admin
+      end
+
       #----------------------------------------------------------------------
 
       def formatter
@@ -91,7 +95,7 @@ module Shell
         yield
       rescue => e
         raise e unless e.respond_to?(:cause) && e.cause != nil
-        
+
         # Get the special java exception which will be handled
         cause = e.cause
         if cause.kind_of?(org.apache.hadoop.hbase.TableNotFoundException) then
@@ -130,7 +134,7 @@ module Shell
           end
         end
 
-        # Throw the other exception which hasn't been handled above       
+        # Throw the other exception which hasn't been handled above
         raise e
       end
     end
