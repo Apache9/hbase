@@ -36,6 +36,11 @@ import org.apache.hadoop.util.StringUtils;
 
 /**
  * Utility methods for reading, parsing, and building zookeeper configuration.
+ *
+ * The order and priority for reading the config are as follows:
+ * (1). zoo.cfg if ""hbase.config.read.zookeeper.config" is true
+ * (2). Property with "hbase.zookeeper.property." prefix from HBase XML
+ * (3). other zookeeper related properties in HBASE XML
  */
 public class ZKConfig {
   private static final Log LOG = LogFactory.getLog(ZKConfig.class);
@@ -54,21 +59,65 @@ public class ZKConfig {
    * @return Properties holding mappings representing ZooKeeper zoo.cfg file.
    */
   public static Properties makeZKProps(Configuration conf) {
-    // First check if there is a zoo.cfg in the CLASSPATH. If so, simply read
-    // it and grab its configuration properties.
-    ClassLoader cl = HQuorumPeer.class.getClassLoader();
-    final InputStream inputStream =
-      cl.getResourceAsStream(HConstants.ZOOKEEPER_CONFIG_NAME);
-    if (inputStream != null) {
-      try {
-        return parseZooCfg(conf, inputStream);
-      } catch (IOException e) {
-        LOG.warn("Cannot read " + HConstants.ZOOKEEPER_CONFIG_NAME +
-                 ", loading from XML files", e);
+    Properties zkProperties = makeZKPropsFromZooCfg(conf);
+
+    if (zkProperties == null) {
+      // Otherwise, use the configuration options from HBase's XML files.
+      zkProperties = makeZKPropsFromHbaseConfig(conf);
+    }
+    return zkProperties;
+  }
+
+  /**
+   * Parses the corresponding config options from the zoo.cfg file
+   * and make a Properties object holding the Zookeeper config.
+   *
+   * @param conf Configuration to read from.
+   * @return Properties holding mappings representing the ZooKeeper config file or null if
+   * the HBASE_CONFIG_READ_ZOOKEEPER_CONFIG is false or the file does not exist.
+   */
+  private static Properties makeZKPropsFromZooCfg(Configuration conf) {
+    if (conf.getBoolean(HConstants.HBASE_CONFIG_READ_ZOOKEEPER_CONFIG, false)) {
+      LOG.warn(
+          "Parsing ZooKeeper's " + HConstants.ZOOKEEPER_CONFIG_NAME +
+              " file for ZK properties " +
+              "has been deprecated. Please instead place all ZK related HBase " +
+              "configuration under the hbase-site.xml, using prefixes " +
+              "of the form '" + HConstants.ZK_CFG_PROPERTY_PREFIX + "', and " +
+              "set property '" + HConstants.HBASE_CONFIG_READ_ZOOKEEPER_CONFIG +
+              "' to false");
+      // First check if there is a zoo.cfg in the CLASSPATH. If so, simply read
+      // it and grab its configuration properties.
+      ClassLoader cl = HQuorumPeer.class.getClassLoader();
+      final InputStream inputStream =
+          cl.getResourceAsStream(HConstants.ZOOKEEPER_CONFIG_NAME);
+      if (inputStream != null) {
+        try {
+          return parseZooCfg(conf, inputStream);
+        } catch (IOException e) {
+          LOG.warn("Cannot read " + HConstants.ZOOKEEPER_CONFIG_NAME +
+              ", loading from XML files", e);
+        }
+      }
+    } else {
+      if (LOG.isTraceEnabled()) {
+        LOG.trace("Skipped reading ZK properties file '" + HConstants.ZOOKEEPER_CONFIG_NAME +
+            "' since '" + HConstants.HBASE_CONFIG_READ_ZOOKEEPER_CONFIG + "' was not set to true");
       }
     }
 
-    // Otherwise, use the configuration options from HBase's XML files.
+    return null;
+  }
+
+  /**
+   * Make a Properties object holding ZooKeeper config.
+   * Parses the corresponding config options from the HBase XML configs
+   * and generates the appropriate ZooKeeper properties.
+   *
+   * @param conf Configuration to read from.
+   * @return Properties holding mappings representing ZooKeeper config file.
+   */
+  private static Properties makeZKPropsFromHbaseConfig(Configuration conf) {
     Properties zkProperties = new Properties();
 
     // Directly map all of the hbase.zookeeper.property.KEY properties.
@@ -97,10 +146,17 @@ public class ZKConfig {
 
     final String[] serverHosts = conf.getStrings(HConstants.ZOOKEEPER_QUORUM,
                                                  HConstants.LOCALHOST);
+    String serverHost;
+    String address;
+    String key;
     for (int i = 0; i < serverHosts.length; ++i) {
-      String serverHost = serverHosts[i];
-      String address = serverHost + ":" + peerPort + ":" + leaderPort;
-      String key = "server." + i;
+      if (serverHosts[i].contains(":")) {
+        serverHost = serverHosts[i].substring(0, serverHosts[i].indexOf(':'));
+      } else {
+        serverHost = serverHosts[i];
+      }
+      address = serverHost + ":" + peerPort + ":" + leaderPort;
+      key = "server." + i;
       zkProperties.put(key, address);
     }
 
@@ -180,7 +236,7 @@ public class ZKConfig {
    * @param properties
    * @return Quorum servers String
    */
-  public static String getZKQuorumServersString(Properties properties) {
+  private static String getZKQuorumServersString(Properties properties) {
     String clientPort = null;
     List<String> servers = new ArrayList<String>();
 
@@ -237,11 +293,58 @@ public class ZKConfig {
   }
 
   /**
+   * Return the ZK Quorum servers string given the specified configuration
+   *
+   * @param conf
+   * @return Quorum servers String
+   */
+  private static String getZKQuorumServersStringFromHbaseConfig(Configuration conf) {
+    String defaultClientPort = Integer.toString(
+        conf.getInt(HConstants.ZOOKEEPER_CLIENT_PORT, HConstants.DEFAULT_ZOOKEPER_CLIENT_PORT));
+
+    // Build the ZK quorum server string with "server:clientport" list, separated by ','
+    final String[] serverHosts =
+        conf.getStrings(HConstants.ZOOKEEPER_QUORUM, HConstants.LOCALHOST);
+    return buildQuorumServerString(serverHosts, defaultClientPort);
+  }
+
+  /**
+   * Build the ZK quorum server string with "server:clientport" list, separated by ','
+   *
+   * @param serverHosts a list of servers for ZK quorum
+   * @param clientPort the default client port
+   * @return the string for a list of "server:port" separated by ","
+   */
+  public static String buildQuorumServerString(String[] serverHosts, String clientPort) {
+    StringBuilder quorumStringBuilder = new StringBuilder();
+    String serverHost;
+    for (int i = 0; i < serverHosts.length; ++i) {
+      if (serverHosts[i].contains(":")) {
+        serverHost = serverHosts[i]; // just use the port specified from the input
+      } else {
+        serverHost = serverHosts[i] + ":" + clientPort;
+      }
+      if (i > 0) {
+        quorumStringBuilder.append(',');
+      }
+      quorumStringBuilder.append(serverHost);
+    }
+    return quorumStringBuilder.toString();
+  }
+
+  /**
    * Return the ZK Quorum servers string given the specified configuration.
    * @param conf
    * @return Quorum servers
    */
   public static String getZKQuorumServersString(Configuration conf) {
-    return getZKQuorumServersString(makeZKProps(conf));
+    // First try zoo.cfg; if not applicable, then try config XML.
+    Properties zkProperties = makeZKPropsFromZooCfg(conf);
+
+    if (zkProperties != null) {
+      return getZKQuorumServersString(zkProperties);
+    }
+
+    return getZKQuorumServersStringFromHbaseConfig(conf);
   }
 }
