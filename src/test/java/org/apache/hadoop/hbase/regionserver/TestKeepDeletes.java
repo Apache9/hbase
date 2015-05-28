@@ -218,7 +218,7 @@ public class TestKeepDeletes extends HBaseTestCase {
     s.setTimeRange(0L, ts+1);
     InternalScanner scanner = region.getScanner(s);
     List<KeyValue> kvs = new ArrayList<KeyValue>();
-    while(scanner.next(kvs));
+    while(scanner.next(kvs).hasNext());
     assertTrue(kvs.isEmpty());
 
     // flushing and minor compaction keep delete markers
@@ -777,7 +777,7 @@ public class TestKeepDeletes extends HBaseTestCase {
     int res = 0;
     boolean hasMore;
     do {
-      hasMore = scan.next(kvs);
+      hasMore = scan.next(kvs).hasNext();
       for (KeyValue kv : kvs) {
         if(kv.isDelete()) res++;
       }

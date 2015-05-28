@@ -372,7 +372,7 @@ class HMerge {
         List<KeyValue> results = new ArrayList<KeyValue>();
         boolean hasMore;
         do {
-          hasMore = rootScanner.next(results);
+          hasMore = rootScanner.next(results).hasNext();
           for(KeyValue kv: results) {
             HRegionInfo info = Writables.getHRegionInfoOrNull(kv.getValue());
             if (info != null) {

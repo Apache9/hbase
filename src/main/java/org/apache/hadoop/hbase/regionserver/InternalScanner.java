@@ -43,40 +43,44 @@ public interface InternalScanner extends Closeable {
   /**
    * Grab the next row's worth of values.
    * @param results return output array
-   * @return true if more rows exist after this one, false if scanner is done
+   * @return scanner status
    * @throws IOException e
    */
-  public boolean next(List<KeyValue> results) throws IOException;
+  public ScannerStatus next(List<KeyValue> results) throws IOException;
   
   /**
    * Grab the next row's worth of values.
    * @param results return output array
    * @param metric the metric name
-   * @return true if more rows exist after this one, false if scanner is done
+   * @return scanner status
    * @throws IOException e
    */
-  public boolean next(List<KeyValue> results, String metric) throws IOException;
+  public ScannerStatus next(List<KeyValue> results, String metric) throws IOException;
 
   /**
    * Grab the next row's worth of values with a limit on the number of values
    * to return.
    * @param result return output array
-   * @param limit limit on row count to get
-   * @return true if more rows exist after this one, false if scanner is done
+   * @param limit limit on kv count to get
+   * @param rawLimit limit on raw kv count to get, this is a soft limit
+   * @return scanner status
    * @throws IOException e
    */
-  public boolean next(List<KeyValue> result, int limit) throws IOException;
+  public ScannerStatus next(List<KeyValue> result, final int limit, final int rawLimit)
+      throws IOException;
   
   /**
    * Grab the next row's worth of values with a limit on the number of values
    * to return.
    * @param result return output array
-   * @param limit limit on row count to get
+   * @param limit limit on kv count to get
+   * @param rawLimit limit on raw kv count to get, this is a soft limit
    * @param metric the metric name
-   * @return true if more rows exist after this one, false if scanner is done
+   * @return scanner status
    * @throws IOException e
    */
-  public boolean next(List<KeyValue> result, int limit, String metric) throws IOException;
+  public ScannerStatus next(List<KeyValue> result, final int limit, final int rawLimit, String metric)
+      throws IOException;
 
   /**
    * Closes the scanner and releases any resources it has allocated

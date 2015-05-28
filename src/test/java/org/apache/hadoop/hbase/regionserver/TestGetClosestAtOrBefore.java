@@ -34,7 +34,6 @@ import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.Writables;
-import org.apache.hadoop.hdfs.MiniDFSCluster;
 import org.junit.experimental.categories.Category;
 
 /**
@@ -85,7 +84,7 @@ public class TestGetClosestAtOrBefore extends HBaseTestCase {
     InternalScanner s = mr.getScanner(new Scan());
     try {
       List<KeyValue> keys = new ArrayList<KeyValue>();
-      while(s.next(keys)) {
+      while(s.next(keys).hasNext()) {
         LOG.info(keys);
         keys.clear();
       }
@@ -108,7 +107,7 @@ public class TestGetClosestAtOrBefore extends HBaseTestCase {
     s = mr.getScanner(scan);
     try {
       List<KeyValue> keys = new ArrayList<KeyValue>();
-      while (s.next(keys)) {
+      while (s.next(keys).hasNext()) {
         mr.delete(new Delete(keys.get(0).getRow()), null, false);
         keys.clear();
       }

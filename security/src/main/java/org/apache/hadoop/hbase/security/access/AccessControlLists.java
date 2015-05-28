@@ -326,7 +326,7 @@ public class AccessControlLists {
       while (true) {
         List<KeyValue> row = new ArrayList<KeyValue>();
 
-        boolean hasNext = iScanner.next(row);
+        boolean hasNext = iScanner.next(row).hasNext();
         ListMultimap<String,TablePermission> perms = ArrayListMultimap.create();
         byte[] table = null;
         for (KeyValue kv : row) {

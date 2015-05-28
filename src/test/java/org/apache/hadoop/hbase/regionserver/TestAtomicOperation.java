@@ -392,7 +392,7 @@ public class TestAtomicOperation extends HBaseTestCase {
               Scan s = new Scan(row);
               RegionScanner rs = region.getScanner(s);
               List<KeyValue> r = new ArrayList<KeyValue>();
-              while(rs.next(r));
+              while(rs.next(r).hasNext());
               rs.close();
               if (r.size() != 1) {
                 LOG.debug(r);

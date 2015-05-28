@@ -412,7 +412,7 @@ public class HFileReadWriteTest {
 
       ArrayList<KeyValue> kvs = new ArrayList<KeyValue>();
 
-      while (scanner.next(kvs) || kvs.size() != 0) {
+      while (scanner.next(kvs).hasNext() || kvs.size() != 0) {
         numKV.addAndGet(kvs.size());
         for (KeyValue kv : kvs) {
           totalBytes.addAndGet(kv.getLength());

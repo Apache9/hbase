@@ -137,7 +137,7 @@ public class TestScannerSelectionUsingTTL {
     final int expectedKVsPerRow = numFreshFiles * NUM_COLS_PER_ROW;
     int numReturnedRows = 0;
     LOG.info("Scanning the entire table");
-    while (scanner.next(results) || results.size() > 0) {
+    while (scanner.next(results).hasNext() || results.size() > 0) {
       assertEquals(expectedKVsPerRow, results.size());
       ++numReturnedRows;
       results.clear();

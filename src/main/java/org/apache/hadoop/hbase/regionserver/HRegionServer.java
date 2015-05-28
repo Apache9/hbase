@@ -2891,11 +2891,16 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
       region.startRegionOperation();
       try {
         int i = 0;
+        int rawLimit = s.getRawLimit();
+        int rawCount = 0;
         synchronized(s) {
           for (; i < nbRows
-              && currentScanResultSize < maxScannerResultSize; i++) {
+              && currentScanResultSize < maxScannerResultSize
+              && (rawLimit < 0 || rawCount < rawLimit); i++) {
             // Collect values to be returned here
-            boolean moreRows = s.nextRaw(values, SchemaMetrics.METRIC_NEXTSIZE);
+            ScannerStatus status =
+                s.nextRaw(values, rawLimit - rawCount, SchemaMetrics.METRIC_NEXTSIZE);
+            rawCount += status.getRawValueScanned();
             if (!values.isEmpty()) {
               if (maxScannerResultSize < Long.MAX_VALUE){
                 for (KeyValue kv : values) {
@@ -2903,8 +2908,16 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
                 }
               }
               results.add(new Result(values));
+            } else if (status.hasNext() && rawLimit > 0 && rawCount >= rawLimit) {
+              // when there is no visible key values scanned out yet but the raw limit is reached,
+              // we fill a fake result which contains the next position and pass it to the client
+              // to avoid RPC timeout.
+              KeyValue next = status.next();
+              if (next != null) {
+                results.add(Result.fakeResult(next));
+              }
             }
-            if (!moreRows) {
+            if (!status.hasNext()) {
               break;
             }
             values.clear();

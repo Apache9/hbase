@@ -140,7 +140,7 @@ public class TestDependentColumnFilter extends TestCase {
     int i = 0;
     int cells = 0;
     for (boolean done = true; done; i++) {
-      done = scanner.next(results);
+      done = scanner.next(results).hasNext();
       Arrays.sort(results.toArray(new KeyValue[results.size()]),
           KeyValue.COMPARATOR);
       LOG.info("counter=" + i + ", " + results);
