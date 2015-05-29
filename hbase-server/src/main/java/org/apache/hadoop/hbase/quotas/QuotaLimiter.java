@@ -68,6 +68,12 @@ public interface QuotaLimiter {
 
   /** @return the number of bytes available to write to avoid exceeding the quota */
   long getWriteAvailable();
+  
+  /** @return the number of requests available to read to avoid exceeding the quota */
+  long getReadReqsAvailable();
+
+  /** @return the number of requests available to write to avoid exceeding the quota */
+  long getWriteReqsAvailable();
 
   /**
    * Add the average size of the specified operation type.

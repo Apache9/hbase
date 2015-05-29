@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.ConcurrentHashMap;
@@ -37,8 +38,12 @@ import org.apache.hadoop.hbase.Stoppable;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Get;
+import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.TimeUnit;
+import org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.Throttle;
+import org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota;
 import org.apache.hadoop.hbase.regionserver.RegionServerServices;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
+import org.apache.hadoop.hbase.util.Pair;
 import org.apache.hadoop.hbase.util.Threads;
 import org.apache.hadoop.security.UserGroupInformation;
 
@@ -63,6 +68,11 @@ public class QuotaCache implements Stoppable {
   public static final String REFRESH_CONF_KEY = "hbase.quota.refresh.period";
   private static final int REFRESH_DEFAULT_PERIOD = 5 * 60000; // 5min
   private static final int EVICT_PERIOD_FACTOR = 5; // N * REFRESH_DEFAULT_PERIOD
+  static final String REGION_SERVER_READ_LIMIT_KEY = "hbase.regionserver.read.limit";
+  static final int DEFAULT_REGION_SERVER_READ_LIMIT = 3000;
+  static final String REGION_SERVER_WRITE_LIMIT_KEY = "hbase.regionserver.write.limit";
+  static final int DEFAULT_REGION_SERVER_WRITE_LIMIT = 10000;
+  
 
   // for testing purpose only, enforce the cache to be always refreshed
   static boolean TEST_FORCE_REFRESH = false;
@@ -73,6 +83,7 @@ public class QuotaCache implements Stoppable {
       new ConcurrentHashMap<TableName, QuotaState>();
   private final ConcurrentHashMap<String, UserQuotaState> userQuotaCache =
       new ConcurrentHashMap<String, UserQuotaState>();
+  private final QuotaLimiter rsQuotaLimiter;
   private final RegionServerServices rsServices;
 
   private QuotaRefresherChore refreshChore;
@@ -80,13 +91,33 @@ public class QuotaCache implements Stoppable {
 
   public QuotaCache(final RegionServerServices rsServices) {
     this.rsServices = rsServices;
+    Configuration conf = getConfiguration();
+    rsQuotaLimiter = createRegionServerQuotaLimiter(conf);
+  }
+  
+  public static QuotaLimiter createRegionServerQuotaLimiter(Configuration conf) {
+	Throttle.Builder throttle = Throttle.newBuilder();
+	TimedQuota.Builder readQuota = TimedQuota.newBuilder();
+	readQuota.setSoftLimit(conf.getInt(REGION_SERVER_READ_LIMIT_KEY, DEFAULT_REGION_SERVER_READ_LIMIT));
+	readQuota.setTimeUnit(TimeUnit.SECONDS);
+	TimedQuota.Builder writeQuota = TimedQuota.newBuilder();
+	writeQuota.setSoftLimit(conf.getInt(REGION_SERVER_WRITE_LIMIT_KEY, DEFAULT_REGION_SERVER_WRITE_LIMIT));
+	writeQuota.setTimeUnit(TimeUnit.SECONDS);
+	throttle.setReadNum(readQuota);
+	throttle.setWriteNum(writeQuota);
+	return QuotaLimiterFactory.fromThrottle(throttle.build());
+  }
+
+  private void updateRegionServerQuotaLimiter() {
+    Configuration conf = getConfiguration();
+    QuotaLimiterFactory.update(rsQuotaLimiter, createRegionServerQuotaLimiter(conf));
   }
 
   public void start() throws IOException {
     stopped = false;
 
     // TODO: This will be replaced once we have the notification bus ready.
-    Configuration conf = rsServices.getConfiguration();
+    Configuration conf = getConfiguration();
     int period = conf.getInt(REFRESH_CONF_KEY, REFRESH_DEFAULT_PERIOD);
     refreshChore = new QuotaRefresherChore(period, this);
     Threads.setDaemonThreadRunning(refreshChore.getThread());
@@ -171,6 +202,10 @@ public class QuotaCache implements Stoppable {
     return quotaInfo;
   }
 
+  public QuotaLimiter getRegionServerLimiter() {
+    return rsQuotaLimiter;
+  }
+
   private Configuration getConfiguration() {
     return rsServices.getConfiguration();
   }
@@ -225,6 +260,7 @@ public class QuotaCache implements Stoppable {
       fetchNamespaceQuotaState();
       fetchTableQuotaState();
       fetchUserQuotaState();
+      updateRegionServerQuotaLimiter();
       lastUpdate = EnvironmentEdgeManager.currentTimeMillis();
     }
 
@@ -320,7 +356,7 @@ public class QuotaCache implements Stoppable {
       }
     }
   }
-
+    
   static interface Fetcher<Key, Value> {
     Get makeGet(Map.Entry<Key, Value> entry);
     Map<Key, Value> fetchEntries(List<Get> gets) throws IOException;

@@ -101,6 +101,9 @@ public class TimeBasedLimiter implements QuotaLimiter {
       setFromTimedQuota(limiter.readSizeLimiter, throttle.getReadSize());
       isBypass = false;
     }
+    
+    LOG.info("from throttle : " + limiter);
+    
     return isBypass ? NoopQuotaLimiter.get() : limiter;
   }
 
@@ -188,6 +191,16 @@ public class TimeBasedLimiter implements QuotaLimiter {
   @Override
   public long getReadAvailable() {
     return readSizeLimiter.getAvailable();
+  }
+  
+  @Override
+  public long getWriteReqsAvailable() {
+    return writeReqsLimiter.getAvailable();
+  }
+
+  @Override
+  public long getReadReqsAvailable() {
+    return readReqsLimiter.getAvailable();
   }
 
   @Override
