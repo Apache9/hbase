@@ -46,10 +46,11 @@ import org.apache.hadoop.hbase.client.Durability;
 import org.apache.hadoop.hbase.client.HConnection;
 import org.apache.hadoop.hbase.client.HConnectionManager;
 import org.apache.hadoop.hbase.client.HTable;
-import org.apache.hadoop.hbase.client.HTablePool;
+import org.apache.hadoop.hbase.client.Mutation;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
+import org.apache.hadoop.hbase.client.Row;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.regionserver.DeleteTracker;
 import org.apache.hadoop.hbase.regionserver.ScanDeleteTracker;
@@ -85,6 +86,7 @@ public final class ReplicationVerifier implements Tool {
     LOG.info("Start replication verification");
     String logTableName = conf.get("hbase.replication.verification.logtable", "replication-errors");
     long alertTime =  conf.getInt("hbase.replication.verification.alerttime", 6 * 3600 * 1000);
+    boolean repair =  conf.getBoolean("hbase.replication.verification.repair", false);
     int workers =  conf.getInt("hbase.replication.verification.workers", 10);
     int rate =  conf.getInt("hbase.replication.verification.rate", 1000);
     int round = -1;
@@ -126,6 +128,8 @@ public final class ReplicationVerifier implements Tool {
             System.err.println("-alerttime needs a numeric value argument.");
             printUsageAndExit();
           }
+        } else if (cmd.equals("-repair")) {
+          repair = true;
         } else if (cmd.equals("-workers")) {
           i++;
 
@@ -162,6 +166,11 @@ public final class ReplicationVerifier implements Tool {
     BlockingQueue<Runnable> taskQueue = new ArrayBlockingQueue<Runnable>(1000);
     ExecutorService executorService =
         new ThreadPoolExecutor(1, workers, 30, TimeUnit.SECONDS, taskQueue);
+    BlockingQueue<Row> logTableMutations = new ArrayBlockingQueue<Row>(10000);
+    ReplicationLogTableUpdateTask logTableUpdateTask =
+        new ReplicationLogTableUpdateTask(logTable, logTableMutations);
+    Thread logTableUpdator = new Thread(logTableUpdateTask, "logTableUpdator");
+    logTableUpdator.start();
     int i = 0;
     while (true) {
       long checked = 0;
@@ -176,8 +185,8 @@ public final class ReplicationVerifier implements Tool {
         ++checked;
         while (true) {
           try {
-            executorService.submit(
-                new ReplicationCheckingTask(current, alertTime, falseAlarms, alerts, logTable));
+            executorService.submit(new ReplicationCheckingTask(current, alertTime, repair,
+                falseAlarms, alerts, logTableMutations));
             break;
           } catch (RejectedExecutionException e) {
             Thread.sleep(100);
@@ -199,25 +208,67 @@ public final class ReplicationVerifier implements Tool {
         break;
       }
     }
+    logTableUpdateTask.stop();
     executorService.shutdown();
 
     return 0;
   }
   
+  private class ReplicationLogTableUpdateTask implements Runnable {
+    private BlockingQueue<Row> mutations;
+    private HTable logTable;
+    private volatile boolean stopping = false;
+
+    private ReplicationLogTableUpdateTask(HTable logTable, BlockingQueue<Row> mutations) {
+      this.logTable = logTable;
+      this.mutations = mutations;
+    }
+    
+    public void stop() {
+      this.stopping = true;
+    }
+
+    @Override public void run() {
+      while (!stopping) {
+        while (true) {
+          List<Row> m = new ArrayList<Row>();
+          mutations.drainTo(m, 1000);
+          if (!m.isEmpty()) {
+            try {
+              logTable.batch(m);
+            } catch (Exception e) {
+              // just discard it
+              LOG.error("Failed to write to log table", e);
+            }
+          } else {
+            try {
+              Thread.sleep(1000);
+            } catch (InterruptedException e) {
+              // ignore
+            }
+            break;
+          }
+        }
+      }
+    }
+  }
+  
   private class ReplicationCheckingTask implements Runnable {
     private Result record;
     private long alertTime;
+    private boolean repair;
     private AtomicLong falseAlarms;
     private AtomicLong alerts;
-    private HTable logTable;
+    private BlockingQueue<Row> logTableMutations;
 
-    private ReplicationCheckingTask(Result record, long alertTime,
-        AtomicLong falseAlarms, AtomicLong alerts, HTable logTable) {
+    private ReplicationCheckingTask(Result record, long alertTime, boolean repair,
+        AtomicLong falseAlarms, AtomicLong alerts, BlockingQueue<Row> logTableMutations) {
       this.record = record;
       this.alertTime = alertTime;
+      this.repair = repair;
       this.falseAlarms = falseAlarms;
       this.alerts = alerts;
-      this.logTable = logTable;
+      this.logTableMutations = logTableMutations;
     }
 
     @Override public void run() {
@@ -232,8 +283,8 @@ public final class ReplicationVerifier implements Tool {
       String tableName = new String(tableNameBytes);
       byte[] row = new byte[buff.getShort()];
       buff.get(row);
-      Result masterRawResult = masterRawGet(tableName, row);
-      Result slaveRawResult = slaveRawGet(peerId, tableName, row);
+      Result masterRawResult = rawGet(masterHTable(tableName), row);
+      Result slaveRawResult = rawGet(slaveHTable(peerId, tableName), row);
 
       Result masterResult = visibleResult(masterRawResult == null ? null : masterRawResult.list());
       Result slaveResult = visibleResult(slaveRawResult == null ? null : slaveRawResult.list());
@@ -269,12 +320,16 @@ public final class ReplicationVerifier implements Tool {
           falseAlarms.incrementAndGet();
           Delete delete = new Delete(record.getRow());
           delete.setDurability(Durability.SKIP_WAL);
-          logTable.delete(delete);
+          logTableMutations.put(delete);
           break;
         case MASTER_SIDE_MISSING:
         case TWO_SIDE_MISSING:
           alert = true;
         case SLAVE_SIDE_MISSING:
+          if (repair) {
+            put(masterHTable(tableName), slaveRawResult);
+            put(slaveHTable(peerId, tableName), masterRawResult);
+          }
           Put put = new Put(record.getRow());
           put.setDurability(Durability.SKIP_WAL);
           // A:t is used to record the check counter
@@ -288,7 +343,7 @@ public final class ReplicationVerifier implements Tool {
             alerts.incrementAndGet();
             put.add("B".getBytes(), "e".getBytes(), compareResult.name().getBytes());
           }
-          logTable.put(put);
+          logTableMutations.put(put);
         }
       } catch (Exception e) {
         LOG.warn("Runtime error when verify record: " + record, e);
@@ -307,16 +362,16 @@ public final class ReplicationVerifier implements Tool {
     }
   };
 
-  private Result masterRawGet(String tableName, byte[] row) throws IOException {
+  private HTable masterHTable(String tableName) throws IOException {
     HTable sourceTable = sourceTables.get().get(tableName);
     if (sourceTable == null) {
       sourceTable = new HTable(conf, tableName);
       sourceTables.get().put(tableName, sourceTable);
     }
-    return rawGet(sourceTable, row);
+    return sourceTable;
   }
 
-  private Result slaveRawGet(final String peerId, final String tableName, final byte[] row)
+  private HTable slaveHTable(final String peerId, final String tableName)
       throws IOException {
     final String key = peerId + tableName;
     HTable peerTable = peerTables.get().get(key);
@@ -338,7 +393,7 @@ public final class ReplicationVerifier implements Tool {
       });
       peerTable = peerTables.get().get(key);
     }
-    return rawGet(peerTable, row);
+    return peerTable;
   }
   
   private Result rawGet(HTable table, byte[] row) throws IOException {
@@ -353,6 +408,16 @@ public final class ReplicationVerifier implements Tool {
       return scanner.next();
     } finally {
       scanner.close();
+    }
+  }
+
+  private void put(HTable table, Result result) throws IOException {
+    if (result != null && !result.isEmpty()) {
+      Put put = new Put(result.getRow());
+      for (KeyValue kv : result.raw()) {
+        put.add(kv);
+      }
+      table.put(put);
     }
   }
 
@@ -419,6 +484,7 @@ public final class ReplicationVerifier implements Tool {
     System.err.println("   -workers <N>   Number of worker threads.");
     System.err.println("   -rate <N>      Max scan rate.");
     System.err.println("   -alerttime <N> Min time to trigger an alert.");
+    System.err.println("   -repair        Repair mismatched rows.");
     System.exit(1);
   }
 
