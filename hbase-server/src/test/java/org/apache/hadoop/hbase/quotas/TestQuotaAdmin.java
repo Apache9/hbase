@@ -73,6 +73,51 @@ public class TestQuotaAdmin {
   public static void tearDownAfterClass() throws Exception {
     TEST_UTIL.shutdownMiniCluster();
   }
+  
+  @Test
+  public void testThrottleType() throws Exception {
+    HBaseAdmin admin = TEST_UTIL.getHBaseAdmin();
+    String userName = User.getCurrent().getShortName();
+
+    admin.setQuota(QuotaSettingsFactory
+      .throttleUser(userName, ThrottleType.READ_NUMBER, 6, TimeUnit.MINUTES));
+    admin.setQuota(QuotaSettingsFactory.bypassGlobals(userName, true));
+
+    QuotaRetriever scanner = QuotaRetriever.open(TEST_UTIL.getConfiguration());
+    try {
+      int countThrottle = 0;
+      int countGlobalBypass = 0;
+      for (QuotaSettings settings: scanner) {
+        LOG.debug(settings);
+        switch (settings.getQuotaType()) {
+          case THROTTLE:
+            ThrottleSettings throttle = (ThrottleSettings)settings;
+            assertEquals(userName, throttle.getUserName());
+            assertEquals(null, throttle.getTableName());
+            assertEquals(null, throttle.getNamespace());
+            assertEquals(ThrottleType.READ_NUMBER, throttle.getThrottleType());
+            assertEquals(6, throttle.getSoftLimit());
+            assertEquals(TimeUnit.MINUTES, throttle.getTimeUnit());
+            countThrottle++;
+            break;
+          case GLOBAL_BYPASS:
+            countGlobalBypass++;
+            break;
+          default:
+            fail("unexpected settings type: " + settings.getQuotaType());
+        }
+      }
+      assertEquals(1, countThrottle);
+      assertEquals(1, countGlobalBypass);
+    } finally {
+      scanner.close();
+    }
+
+    admin.setQuota(QuotaSettingsFactory.unthrottleUser(userName));
+    assertNumResults(1, null);
+    admin.setQuota(QuotaSettingsFactory.bypassGlobals(userName, false));
+    assertNumResults(0, null);
+  }
 
   @Test
   public void testSimpleScan() throws Exception {

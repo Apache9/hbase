@@ -26,7 +26,7 @@ Set a quota for a user, table, or namespace.
 Syntax : set_quota TYPE => <type>, <args>
 
 TYPE => THROTTLE
-The request limit can be expressed using the form 100req/sec, 100req/min
+The request(read/write) limit can be expressed using the form 100req/sec, 100req/min
 and the size limit can be expressed using the form 100k/sec, 100M/min
 with (B, K, M, G, T, P) as valid size unit and (sec, min, hour, day) as valid time unit.
 Currently the throttle limit is per machine - a limit of 100req/min
@@ -35,12 +35,22 @@ means that each machine can execute 100req/min.
 For example:
 
     hbase> set_quota TYPE => THROTTLE, USER => 'u1', LIMIT => '10req/sec'
+    hbase> set_quota TYPE => THROTTLE, THROTTLE_TYPE => READ, USER => 'u1', LIMIT => '10req/sec'
     hbase> set_quota TYPE => THROTTLE, USER => 'u1', LIMIT => '10M/sec'
+    hbase> set_quota TYPE => THROTTLE, THROTTLE_TYPE => WRITE, USER => 'u1', LIMIT => '10M/sec'
+    
     hbase> set_quota TYPE => THROTTLE, USER => 'u1', TABLE => 't2', LIMIT => '5K/min'
+    hbase> set_quota TYPE => THROTTLE, THROTTLE_TYPE => READ, USER => 'u1', TABLE => 't2', LIMIT => '5K/min'
     hbase> set_quota TYPE => THROTTLE, USER => 'u1', NAMESPACE => 'ns2', LIMIT => NONE
+    hbase> set_quota TYPE => THROTTLE, THROTTLE_TYPE => WRITE, USER => 'u1', NAMESPACE => 'ns2', LIMIT => NONE
+    
     hbase> set_quota TYPE => THROTTLE, NAMESPACE => 'ns1', LIMIT => '10req/sec'
+    hbase> set_quota TYPE => THROTTLE, THROTTLE_TYPE => READ, NAMESPACE => 'ns1', LIMIT => '10req/sec'
     hbase> set_quota TYPE => THROTTLE, TABLE => 't1', LIMIT => '10M/sec'
+    hbase> set_quota TYPE => THROTTLE, THROTTLE_TYPE => WRITE, TABLE => 't1', LIMIT => '10M/sec'
     hbase> set_quota TYPE => THROTTLE, USER => 'u1', LIMIT => NONE
+    hbase> set_quota TYPE => THROTTLE, THROTTLE_TYPE => WRITE, USER => 'u1', LIMIT => NONE
+    
     hbase> set_quota USER => 'u1', GLOBAL_BYPASS => true
 EOF
       end

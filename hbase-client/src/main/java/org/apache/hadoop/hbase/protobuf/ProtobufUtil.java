@@ -2859,6 +2859,10 @@ public final class ProtobufUtil {
     switch (proto) {
       case REQUEST_NUMBER: return ThrottleType.REQUEST_NUMBER;
       case REQUEST_SIZE:   return ThrottleType.REQUEST_SIZE;
+      case WRITE_NUMBER:   return ThrottleType.WRITE_NUMBER;
+      case WRITE_SIZE:     return ThrottleType.WRITE_SIZE;
+      case READ_NUMBER:    return ThrottleType.READ_NUMBER;
+      case READ_SIZE:      return ThrottleType.READ_SIZE;   
     }
     throw new RuntimeException("Invalid ThrottleType " + proto);
   }
@@ -2872,7 +2876,11 @@ public final class ProtobufUtil {
   public static QuotaProtos.ThrottleType toProtoThrottleType(final ThrottleType type) {
     switch (type) {
       case REQUEST_NUMBER: return QuotaProtos.ThrottleType.REQUEST_NUMBER;
-      case REQUEST_SIZE:   return QuotaProtos.ThrottleType.REQUEST_SIZE;
+      case REQUEST_SIZE:   return QuotaProtos.ThrottleType.REQUEST_SIZE;      
+      case WRITE_NUMBER:   return QuotaProtos.ThrottleType.WRITE_NUMBER;
+      case WRITE_SIZE:     return QuotaProtos.ThrottleType.WRITE_SIZE;
+      case READ_NUMBER:    return QuotaProtos.ThrottleType.READ_NUMBER;
+      case READ_SIZE:      return QuotaProtos.ThrottleType.READ_SIZE;      
     }
     throw new RuntimeException("Invalid ThrottleType " + type);
   }
