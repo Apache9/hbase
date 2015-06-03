@@ -148,7 +148,7 @@ public class TestColumnSeeking {
         }
         InternalScanner scanner = region.getScanner(scan);
         List<KeyValue> results = new ArrayList<KeyValue>();
-        while (scanner.next(results))
+        while (scanner.next(results).hasNext())
           ;
         assertEquals(kvSet.size(), results.size());
         assertTrue(results.containsAll(kvSet));
@@ -261,7 +261,7 @@ public class TestColumnSeeking {
       }
       InternalScanner scanner = region.getScanner(scan);
       List<KeyValue> results = new ArrayList<KeyValue>();
-      while (scanner.next(results))
+      while (scanner.next(results).hasNext())
         ;
       assertEquals(kvSet.size(), results.size());
       assertTrue(results.containsAll(kvSet));

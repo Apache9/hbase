@@ -116,7 +116,7 @@ public class ThroughputQuotaTable {
       iScanner = region.getScanner(scan);
       while (true) {
         List<KeyValue> kvs = new ArrayList<KeyValue>();
-        boolean hasNext = iScanner.next(kvs);
+        boolean hasNext = iScanner.next(kvs).hasNext();
 
         if (!kvs.isEmpty()) {
           ThroughputQuota quota = parseThroughputQuota(kvs);

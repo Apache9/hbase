@@ -125,7 +125,7 @@ public class TestScannerSelectionUsingKeyRange {
     SchemaMetrics.validateMetricChanges(metricsBefore);
     InternalScanner scanner = region.getScanner(scan);
     List<KeyValue> results = new ArrayList<KeyValue>();
-    while (scanner.next(results)) {
+    while (scanner.next(results).hasNext()) {
     }
     scanner.close();
     assertEquals(0, results.size());

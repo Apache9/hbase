@@ -332,7 +332,7 @@ public class TestSplitTransaction {
       List<KeyValue> kvs = new ArrayList<KeyValue>();
       boolean hasNext = true;
       while (hasNext) {
-        hasNext = scanner.next(kvs);
+        hasNext = scanner.next(kvs).hasNext();
         if (!kvs.isEmpty()) rowcount++;
       }
     } finally {

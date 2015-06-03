@@ -404,7 +404,7 @@ public class TestFilter extends HBaseTestCase {
     InternalScanner scanner = this.region.getScanner(s);
     int scannerCounter = 0;
     while (true) {
-      boolean isMoreResults = scanner.next(new ArrayList<KeyValue>());
+      boolean isMoreResults = scanner.next(new ArrayList<KeyValue>()).hasNext();
       scannerCounter++;
 
       if (scannerCounter >= pageSize) {
@@ -435,7 +435,7 @@ public class TestFilter extends HBaseTestCase {
     InternalScanner scanner = this.region.getScanner(s);
     while (true) {
       ArrayList<KeyValue> values = new ArrayList<KeyValue>();
-      boolean isMoreResults = scanner.next(values);
+      boolean isMoreResults = scanner.next(values).hasNext();
       if (!isMoreResults || !Bytes.toString(values.get(0).getRow()).startsWith(prefix)) {
         Assert.assertTrue("The WhileMatchFilter should now filter all remaining", filter.filterAllRemaining());
       }
@@ -464,7 +464,7 @@ public class TestFilter extends HBaseTestCase {
     InternalScanner scanner = this.region.getScanner(s);
     while (true) {
       ArrayList<KeyValue> values = new ArrayList<KeyValue>();
-      boolean isMoreResults = scanner.next(values);
+      boolean isMoreResults = scanner.next(values).hasNext();
       Assert.assertTrue("The WhileMatchFilter should now filter all remaining", filter.filterAllRemaining());
       if (!isMoreResults) {
         break;
@@ -1248,7 +1248,7 @@ public class TestFilter extends HBaseTestCase {
     List<KeyValue> results = new ArrayList<KeyValue>();
     int i = 5;
     for (boolean done = true; done; i++) {
-      done = scanner.next(results);
+      done = scanner.next(results).hasNext();
       Assert.assertTrue(Bytes.equals(results.get(0).getRow(), Bytes.toBytes("row" + i)));
       Assert.assertEquals(Bytes.toInt(results.get(0).getValue()), i%2);
       results.clear();
@@ -1271,7 +1271,7 @@ public class TestFilter extends HBaseTestCase {
       Assert.assertEquals(Bytes.toInt(results.get(0).getValue()), i%2);
       results.clear();
     }
-    Assert.assertFalse(scanner.next(results));
+    Assert.assertFalse(scanner.next(results).hasNext());
     // 3. let's begin to verify nested filter list
     // 3.1 add rowFilter, then add subFilterList
     FilterList filterList = new FilterList(FilterList.Operator.MUST_PASS_ONE);
@@ -1293,7 +1293,7 @@ public class TestFilter extends HBaseTestCase {
       Assert.assertEquals(Bytes.toInt(results.get(0).getValue()), i%2);
       results.clear();
     }
-    Assert.assertFalse(scanner.next(results));
+    Assert.assertFalse(scanner.next(results).hasNext());
     // 3.2 MAGIC here! add subFilterList first, then add rowFilter
     filterList = new FilterList(FilterList.Operator.MUST_PASS_ONE);
     filterList.addFilter(subFilterList);
@@ -1314,7 +1314,7 @@ public class TestFilter extends HBaseTestCase {
       Assert.assertEquals(Bytes.toInt(results.get(0).getValue()), i%2);
       results.clear();
     }
-    Assert.assertFalse(scanner.next(results));
+    Assert.assertFalse(scanner.next(results).hasNext());
     HLog hlog = testRegion.getLog();
     testRegion.close();
     hlog.closeAndDelete();
@@ -1445,7 +1445,7 @@ public class TestFilter extends HBaseTestCase {
     List<KeyValue> results = new ArrayList<KeyValue>();
     int i = 0;
     for (boolean done = true; done; i++) {
-      done = scanner.next(results);
+      done = scanner.next(results).hasNext();
       Arrays.sort(results.toArray(new KeyValue[results.size()]),
           KeyValue.COMPARATOR);
       LOG.info("counter=" + i + ", " + results);
@@ -1467,7 +1467,7 @@ public class TestFilter extends HBaseTestCase {
     List<KeyValue> results = new ArrayList<KeyValue>();
     int i = 0;
     for (boolean done = true; done; i++) {
-      done = scanner.next(results);
+      done = scanner.next(results).hasNext();
       Arrays.sort(results.toArray(new KeyValue[results.size()]),
           KeyValue.COMPARATOR);
       LOG.info("counter=" + i + ", " + results);
@@ -1489,7 +1489,7 @@ public class TestFilter extends HBaseTestCase {
     int row = 0;
     int idx = 0;
     for (boolean done = true; done; row++) {
-      done = scanner.next(results);
+      done = scanner.next(results).hasNext();
       Arrays.sort(results.toArray(new KeyValue[results.size()]),
           KeyValue.COMPARATOR);
       if(results.isEmpty()) break;
@@ -1524,7 +1524,7 @@ public class TestFilter extends HBaseTestCase {
     int row = 0;
     int idx = 0;
     for (boolean more = true; more; row++) {
-      more = scanner.next(results);
+      more = scanner.next(results).hasNext();
       Arrays.sort(results.toArray(new KeyValue[results.size()]),
           KeyValue.COMPARATOR);
       if(results.isEmpty()) break;
@@ -1824,7 +1824,7 @@ public class TestFilter extends HBaseTestCase {
     InternalScanner scanner = this.region.getScanner(s);
     int scannerCounter = 0;
     while (true) {
-      boolean isMoreResults = scanner.next(new ArrayList<KeyValue>());
+      boolean isMoreResults = scanner.next(new ArrayList<KeyValue>()).hasNext();
       scannerCounter++;
 
       if (scannerCounter >= pageSize) {
@@ -1853,7 +1853,7 @@ public class TestFilter extends HBaseTestCase {
     InternalScanner scanner = this.region.getScanner(s);
     while (true) {
       ArrayList<KeyValue> values = new ArrayList<KeyValue>();
-      boolean isMoreResults = scanner.next(values);
+      boolean isMoreResults = scanner.next(values).hasNext();
       if (!isMoreResults
           || !Bytes.toString(values.get(0).getRow()).startsWith(prefix)) {
         Assert.assertTrue(

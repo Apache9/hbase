@@ -251,6 +251,14 @@ public class ClientScanner extends AbstractClientScanner {
       scanMetricsPublished = true;
     }
 
+    /**
+     * Get the next result.
+     * @return The next result. A fake result will be returned when the raw limit is set and
+     * reached but no valid result is found yet. The row key part of the fake result records the
+     * next position of the scanner(usually a invisible row). Null value means the scanner reaches
+     * the end.
+     * @throws IOException
+     */
     public Result next() throws IOException {
       // If the scanner is closed and there's nothing left in the cache, next is a no-op.
       if (cache.size() == 0 && this.closed) {
@@ -367,7 +375,12 @@ public class ClientScanner extends AbstractClientScanner {
       for(int i = 0; i < nbRows; i++) {
         Result next = next();
         if (next != null) {
-          resultSets.add(next);
+          // skip the fake row filled when raw limit is hit
+          if (!next.isFake()) {
+            resultSets.add(next);
+          } else {
+            i--;
+          }
         } else {
           break;
         }

@@ -881,7 +881,7 @@ public class Store extends SchemaConfigured implements HeapSize {
           List<KeyValue> kvs = new ArrayList<KeyValue>();
           boolean hasMore;
           do {
-            hasMore = scanner.next(kvs, compactionKVMax);
+            hasMore = scanner.next(kvs, compactionKVMax, -1).hasNext();
             if (!kvs.isEmpty()) {
               for (KeyValue kv : kvs) {
                 // If we know that this KV is going to be included always, then let us

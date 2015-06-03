@@ -44,6 +44,7 @@ import org.apache.hadoop.hbase.mapreduce.LoadIncrementalHFiles;
 import org.apache.hadoop.hbase.regionserver.HRegion;
 import org.apache.hadoop.hbase.regionserver.InternalScanner;
 import org.apache.hadoop.hbase.regionserver.RegionCoprocessorHost;
+import org.apache.hadoop.hbase.regionserver.ScannerStatus;
 import org.apache.hadoop.hbase.regionserver.Store;
 import org.apache.hadoop.hbase.regionserver.StoreFile;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -302,29 +303,29 @@ public class TestRegionObserverInterface {
         Store store, final InternalScanner scanner) {
       return new InternalScanner() {
         @Override
-        public boolean next(List<KeyValue> results) throws IOException {
-          return next(results, -1);
+        public ScannerStatus next(List<KeyValue> results) throws IOException {
+          return next(results, -1, -1);
         }
 
         @Override
-        public boolean next(List<KeyValue> results, String metric)
+        public ScannerStatus next(List<KeyValue> results, String metric)
             throws IOException {
-          return next(results, -1, metric);
+          return next(results, -1, -1, metric);
         }
 
         @Override
-        public boolean next(List<KeyValue> results, int limit)
-            throws IOException{
-          return next(results, limit, null);
+        public ScannerStatus next(List<KeyValue> results, int limit, int rawLimit)
+            throws IOException {
+          return next(results, limit, rawLimit, null);
         }
 
         @Override
-        public boolean next(List<KeyValue> results, int limit, String metric)
+        public ScannerStatus next(List<KeyValue> results, int limit, int rawLimit, String metric)
             throws IOException {
           List<KeyValue> internalResults = new ArrayList<KeyValue>();
-          boolean hasMore;
+          ScannerStatus scanStatus;
           do {
-            hasMore = scanner.next(internalResults, limit, metric);
+            scanStatus = scanner.next(internalResults, limit, rawLimit, metric);
             if (!internalResults.isEmpty()) {
               long row = Bytes.toLong(internalResults.get(0).getRow());
               if (row % 2 == 0) {
@@ -334,12 +335,12 @@ public class TestRegionObserverInterface {
               // clear and continue
               internalResults.clear();
             }
-          } while (hasMore);
+          } while (scanStatus.hasNext());
 
           if (!internalResults.isEmpty()) {
             results.addAll(internalResults);
           }
-          return hasMore;
+          return scanStatus;
         }
 
         @Override

@@ -92,9 +92,12 @@ public class FalconSink implements Sink, Configurable {
 
   private void pushMetrics() {
     String clusterName = conf.get("hbase.cluster.name", "unknown");
+    long lastFailedCounter = failCounter.get();
+    long lastTotalCounter = totalCounter.get();
     double avail = calc();
     LOG.info("Try to push metrics to falcon and collector. Cluster: " + clusterName
-        + " availability is " + avail);
+        + " availability is " + avail + ", failedCounter=" + lastFailedCounter + ", totalCounter="
+        + lastTotalCounter);
     pushToCollector(clusterName, avail);
     pushToFalcon(clusterName, avail);
   }

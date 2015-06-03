@@ -50,7 +50,7 @@ implements ColumnAggregationProtocol {
       boolean done = false;
       do {
         curVals.clear();
-        done = scanner.next(curVals);
+        done = scanner.next(curVals).hasNext();
         KeyValue kv = curVals.get(0);
         sumResult += Bytes.toInt(kv.getBuffer(), kv.getValueOffset());
       } while (done);

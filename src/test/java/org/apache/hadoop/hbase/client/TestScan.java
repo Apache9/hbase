@@ -170,6 +170,17 @@ public class TestScan {
     Assert.assertTrue(Bytes.toBoolean(scan.getAttribute("_reversed_")));
   }
 
+  @Test
+  public void testRawLimit() throws IOException {
+    Scan scan = new Scan();
+    Assert.assertEquals(-1, scan.getRawLimit());
+    scan = getSerializedScan(scan);
+    Assert.assertEquals(-1, scan.getRawLimit());
+    scan.setRawLimit(100);
+    scan = getSerializedScan(scan);
+    Assert.assertEquals(100, scan.getRawLimit());
+  }
+
   private Scan getSerializedScan(Scan scan) throws IOException {
     DataOutputBuffer out = new DataOutputBuffer();
     scan.write(out);

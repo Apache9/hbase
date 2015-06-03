@@ -132,7 +132,7 @@ public class TestCompaction extends HBaseTestCase {
     InternalScanner s = r.getScanner(new Scan());
     do {
       List<KeyValue> results = new ArrayList<KeyValue>();
-      boolean result = s.next(results);
+      boolean result = s.next(results).hasNext();
       r.delete(new Delete(results.get(0).getRow()), null, false);
       if (!result) break;
     } while(true);
@@ -145,7 +145,7 @@ public class TestCompaction extends HBaseTestCase {
     int counter = 0;
     do {
       List<KeyValue> results = new ArrayList<KeyValue>();
-      boolean result = s.next(results);
+      boolean result = s.next(results).hasNext();
       if (!result) break;
       counter++;
     } while(true);
@@ -747,7 +747,7 @@ public class TestCompaction extends HBaseTestCase {
     InternalScanner s = r.getScanner(scan);
     do {
       List<KeyValue> results = new ArrayList<KeyValue>();
-      boolean result = s.next(results);
+      boolean result = s.next(results).hasNext();
       assertTrue(!results.isEmpty());
       r.delete(new Delete(results.get(0).getRow()), true);
       if (!result)
@@ -764,7 +764,7 @@ public class TestCompaction extends HBaseTestCase {
     int counter = 0;
     do {
       List<KeyValue> results = new ArrayList<KeyValue>();
-      boolean result = s.next(results);
+      boolean result = s.next(results).hasNext();
       if (!result)
         break;
       counter++;

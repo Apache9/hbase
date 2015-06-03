@@ -106,6 +106,11 @@ public final class HConstants {
   /** by default every master is a possible primary master unless the conf explicitly overrides it */
   public static final boolean DEFAULT_MASTER_TYPE_BACKUP = false;
 
+  public static final String HBASE_CONFIG_READ_ZOOKEEPER_CONFIG =
+      "hbase.config.read.zookeeper.config";
+  public static final boolean DEFAULT_HBASE_CONFIG_READ_ZOOKEEPER_CONFIG =
+      false;
+
   /** Name of ZooKeeper quorum configuration parameter. */
   public static final String ZOOKEEPER_QUORUM = "hbase.zookeeper.quorum";
 

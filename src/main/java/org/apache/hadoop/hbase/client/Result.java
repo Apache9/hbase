@@ -109,6 +109,32 @@ public class Result implements Writable, WritableWithSize {
   }
 
   /**
+   * Create a fake result based on the next value. This will be passed to the client side to
+   * notify the client that the raw limit is reached but no valid row is found yet, then avoiding
+   * the unnecessary RPC timeout.
+   * @param next the next key value, usually invisible(i.e. deleted or filtered out)
+   * @return new result instance
+   */
+  public static Result fakeResult(KeyValue next) {
+    KeyValue[] nextKvs = {
+        KeyValue.createFirstOnRow(next.getRow(), next.getTimestamp())
+    };
+    return new Result(nextKvs);
+  }
+
+  /**
+   * Whether this is a fake result set when raw limit is reached, it's used to notify the client
+   * that the scanner is still in progress but no valid data yet to avoid RPC timeout.
+   * @return true if this is fake result
+   */
+  public boolean isFake() {
+    if (this.kvs != null && this.kvs.length == 1) {
+      return kvs[0].isInternal();
+    }
+    return false;
+  }
+
+  /**
    * Method for retrieving the row key that corresponds to
    * the row from which this Result was created.
    * @return row
