@@ -122,7 +122,6 @@ import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.ProcedureDescripti
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.RegionServerInfo;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.RegionSpecifier.RegionSpecifierType;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.SnapshotDescription;
-import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.ProcedureDescription;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.AddColumnRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.AddColumnResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.AssignRegionRequest;
@@ -205,10 +204,8 @@ import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.TruncateTableRequ
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.TruncateTableResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.UnassignRegionRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.UnassignRegionResponse;
-import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ExecProcedureRequest;
-import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ExecProcedureResponse;
-import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsProcedureDoneRequest;
-import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsProcedureDoneResponse;
+import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetQuotaRequest;
+import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetQuotaResponse;
 import org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.GetLastFlushedSequenceIdRequest;
 import org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.GetLastFlushedSequenceIdResponse;
 import org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.RegionServerReportRequest;
@@ -220,7 +217,9 @@ import org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.Repor
 import org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.ReportRSFatalErrorResponse;
 import org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.ReportRegionStateTransitionRequest;
 import org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.ReportRegionStateTransitionResponse;
+import org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.TableRegionCount;
 import org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.SplitLogTask.RecoveryMode;
+import org.apache.hadoop.hbase.quotas.MasterQuotaManager;
 import org.apache.hadoop.hbase.regionserver.RegionCoprocessorHost;
 import org.apache.hadoop.hbase.regionserver.RegionSplitPolicy;
 import org.apache.hadoop.hbase.replication.regionserver.Replication;
@@ -459,6 +458,8 @@ MasterServices, Server {
   private SnapshotManager snapshotManager;
   // monitor for distributed procedures
   private MasterProcedureManagerHost mpmHost;
+
+  private MasterQuotaManager quotaManager;
 
   /** The health check chore. */
   private HealthCheckChore healthCheckChore;
@@ -1014,6 +1015,9 @@ MasterServices, Server {
     status.setStatus("Starting namespace manager");
     initNamespace();
 
+    status.setStatus("Starting quota manager");
+    initQuotaManager();
+
     if (this.cpHost != null) {
       try {
         this.cpHost.preMasterInitialization();
@@ -1165,6 +1169,11 @@ MasterServices, Server {
     //create namespace manager
     tableNamespaceManager = new TableNamespaceManager(this);
     tableNamespaceManager.start();
+  }
+
+  void initQuotaManager() throws IOException {
+    quotaManager = new MasterQuotaManager(this);
+    quotaManager.start();
   }
 
   private void splitMetaLogBeforeAssignment(ServerName currentMetaServer) throws IOException {
@@ -1342,6 +1351,7 @@ MasterServices, Server {
     // Clean up and close up shop
     if (this.logCleaner!= null) this.logCleaner.interrupt();
     if (this.hfileCleaner != null) this.hfileCleaner.interrupt();
+    if (this.quotaManager != null) this.quotaManager.stop();
 
     if (this.infoServer != null) {
       LOG.info("Stopping infoServer");
@@ -1463,11 +1473,24 @@ MasterServices, Server {
         this.metricsMaster.incrementRequests(sl.getTotalNumberOfRequests()
           - (oldLoad != null ? oldLoad.getTotalNumberOfRequests() : 0));
       }
+      RegionServerReportResponse.Builder rsrr = RegionServerReportResponse.newBuilder()
+          .setServerNum(this.serverManager.getOnlineServers().size());
+      Collection<HTableDescriptor> descriptors = this.tableDescriptors.getAll().values();
+      for (HTableDescriptor descriptor : descriptors) {
+        if (descriptor.getTableName().isSystemTable()) {
+          continue;
+        }
+        int regionNum = this.assignmentManager.getRegionStates()
+            .getRegionByStateOfTable(descriptor.getTableName()).get(RegionState.State.OPEN).size();
+        TableRegionCount.Builder count = TableRegionCount.newBuilder()
+            .setTableName(ProtobufUtil.toProtoTableName(descriptor.getTableName()))
+            .setRegionNum(regionNum);
+        rsrr.addRegionCounts(count);
+      } 
+      return rsrr.build(); 
     } catch (IOException ioe) {
       throw new ServiceException(ioe);
     }
-
-    return RegionServerReportResponse.newBuilder().build();
   }
 
   @Override
@@ -2544,6 +2567,11 @@ MasterServices, Server {
   }
 
   @Override
+  public MasterQuotaManager getMasterQuotaManager() {
+    return quotaManager;
+  }
+
+  @Override
   public ServerName getServerName() {
     return this.serverName;
   }
@@ -3497,6 +3525,17 @@ MasterServices, Server {
       throw new ServiceException(e);
     }
     return TruncateTableResponse.newBuilder().build();
+  }
+
+  @Override
+  public SetQuotaResponse setQuota(RpcController c, SetQuotaRequest req)
+      throws ServiceException {
+    try {
+      checkInitialized();
+      return getMasterQuotaManager().setQuota(req);
+    } catch (Exception e) {
+      throw new ServiceException(e);
+    }
   }
 
 }

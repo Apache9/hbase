@@ -62,6 +62,12 @@ module HBaseConstants
   VISIBILITY="VISIBILITY"
   AUTHORIZATIONS = "AUTHORIZATIONS"
   SKIP_FLUSH = 'SKIP_FLUSH'
+  USER = 'USER'
+  TABLE = 'TABLE'
+  NAMESPACE = 'NAMESPACE'
+  TYPE = 'TYPE'
+  NONE = 'NONE'
+  VALUE = 'VALUE'
 
   # Load constants from hbase java API
   def self.promote_constants(constants)
@@ -81,6 +87,9 @@ end
 require 'hbase/hbase'
 require 'hbase/admin'
 require 'hbase/table'
+require 'hbase/quotas'
 require 'hbase/replication_admin'
 require 'hbase/security'
 require 'hbase/visibility_labels'
+
+include HBaseQuotasConstants

@@ -82,4 +82,6 @@ public interface RpcServerInterface {
    */
   @VisibleForTesting
   void refreshAuthManager(PolicyProvider pp);
+
+  RpcScheduler getScheduler();
 }

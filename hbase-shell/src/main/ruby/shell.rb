@@ -100,6 +100,10 @@ module Shell
       @hbase_visibility_labels_admin ||= hbase.visibility_labels_admin(formatter)
     end
 
+    def hbase_quotas_admin
+      @hbase_quotas_admin ||= hbase.quotas_admin(formatter)
+    end
+
     def export_commands(where)
       ::Shell.commands.keys.each do |cmd|
         # here where is the IRB namespace
@@ -351,6 +355,15 @@ Shell.load_command_group(
     delete_snapshot
     delete_all_snapshot
     list_snapshots
+  ]
+)
+
+Shell.load_command_group(
+  'quotas',
+  :full_name => 'CLUSTER QUOTAS TOOLS',
+  :commands => %w[
+    set_quota
+    list_quotas
   ]
 )
 

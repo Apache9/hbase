@@ -154,6 +154,8 @@ import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetBalancerRunnin
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetBalancerRunningResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SnapshotRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SnapshotResponse;
+import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetQuotaRequest;
+import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetQuotaResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ShutdownRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ShutdownResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.StopMasterRequest;
@@ -2221,6 +2223,13 @@ public class HConnectionManager {
         public TruncateTableResponse truncateTable(RpcController controller,
             TruncateTableRequest request) throws ServiceException {
           return stub.truncateTable(controller, request);
+        }
+        
+        @Override
+        public SetQuotaResponse setQuota(
+            RpcController controller, SetQuotaRequest request)
+            throws ServiceException {
+          return stub.setQuota(controller, request);
         }
       };
     }

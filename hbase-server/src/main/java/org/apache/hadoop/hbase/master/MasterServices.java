@@ -32,6 +32,7 @@ import org.apache.hadoop.hbase.TableDescriptors;
 import org.apache.hadoop.hbase.TableNotDisabledException;
 import org.apache.hadoop.hbase.TableNotFoundException;
 import org.apache.hadoop.hbase.executor.ExecutorService;
+import org.apache.hadoop.hbase.quotas.MasterQuotaManager;
 
 import com.google.protobuf.Service;
 
@@ -69,6 +70,11 @@ public interface MasterServices extends Server {
    * @return Master's instance of {@link MasterCoprocessorHost}
    */
   MasterCoprocessorHost getCoprocessorHost();
+
+   /**
+   * @return Master's instance of {@link MasterQuotaManager}
+   */
+   MasterQuotaManager getMasterQuotaManager();
 
   /**
    * Check table is modifiable; i.e. exists and is offline.
