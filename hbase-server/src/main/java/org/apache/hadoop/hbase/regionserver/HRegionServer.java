@@ -204,6 +204,7 @@ import org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.Regio
 import org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.ReportRSFatalErrorRequest;
 import org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.ReportRegionStateTransitionRequest;
 import org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.ReportRegionStateTransitionResponse;
+import org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.TableRegionCount;
 import org.apache.hadoop.hbase.protobuf.generated.WALProtos.CompactionDescriptor;
 import org.apache.hadoop.hbase.quotas.OperationQuota;
 import org.apache.hadoop.hbase.quotas.RegionServerQuotaManager;
@@ -400,6 +401,8 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
   protected final int numRegionsToReport;
 
   private int regionServerNum = 1;
+  
+  private Map<TableName, Integer> tableRegionsNumMap = new HashMap<TableName, Integer>();
 
   // Stub to do region server status calls against the master.
   private volatile RegionServerStatusService.BlockingInterface rssStub;
@@ -1139,9 +1142,15 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
       request.setServer(ProtobufUtil.toServerName(sn));
       request.setLoad(sl);
       RegionServerReportResponse result = rss.regionServerReport(null, request.build());
-      if (result != null && result.hasServerNum()) {
-        this.regionServerNum = result.getServerNum();
-        getRegionServerQuotaManager().updateRegionServerNum(this.regionServerNum);
+      if (result != null) {
+        if (result.hasServerNum()) {
+          this.regionServerNum = result.getServerNum();
+          getRegionServerQuotaManager().updateRegionServerNum(this.regionServerNum);
+        }
+        for (TableRegionCount entry : result.getRegionCountsList()) {
+          tableRegionsNumMap.put(ProtobufUtil.toTableName(entry.getTableName()),
+            entry.getRegionNum());
+        }
       }
     } catch (ServiceException se) {
       IOException ioe = ProtobufUtil.getRemoteException(se);
@@ -5199,6 +5208,17 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
 
   private RegionServerQuotaManager getQuotaManager() {
     return getRegionServerQuotaManager();
+  }
+  
+  public int getTableRegionsNum(TableName tableName) {
+    if (tableRegionsNumMap.containsKey(tableName)) {
+      return tableRegionsNumMap.get(tableName);
+    }
+    return 0;
+  }
+
+  public int getRegionServerNum() {
+    return regionServerNum;
   }
 
 }

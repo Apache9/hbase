@@ -122,7 +122,6 @@ import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.ProcedureDescripti
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.RegionServerInfo;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.RegionSpecifier.RegionSpecifierType;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.SnapshotDescription;
-import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.ProcedureDescription;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.AddColumnRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.AddColumnResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.AssignRegionRequest;
@@ -205,10 +204,6 @@ import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.TruncateTableRequ
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.TruncateTableResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.UnassignRegionRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.UnassignRegionResponse;
-import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ExecProcedureRequest;
-import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ExecProcedureResponse;
-import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsProcedureDoneRequest;
-import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsProcedureDoneResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetQuotaRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetQuotaResponse;
 import org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.GetLastFlushedSequenceIdRequest;
@@ -222,6 +217,7 @@ import org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.Repor
 import org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.ReportRSFatalErrorResponse;
 import org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.ReportRegionStateTransitionRequest;
 import org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.ReportRegionStateTransitionResponse;
+import org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.TableRegionCount;
 import org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.SplitLogTask.RecoveryMode;
 import org.apache.hadoop.hbase.quotas.MasterQuotaManager;
 import org.apache.hadoop.hbase.regionserver.RegionCoprocessorHost;
@@ -1478,7 +1474,19 @@ MasterServices, Server {
           - (oldLoad != null ? oldLoad.getTotalNumberOfRequests() : 0));
       }
       RegionServerReportResponse.Builder rsrr = RegionServerReportResponse.newBuilder()
-        .setServerNum(this.serverManager.getOnlineServers().size());
+          .setServerNum(this.serverManager.getOnlineServers().size());
+      Collection<HTableDescriptor> descriptors = this.tableDescriptors.getAll().values();
+      for (HTableDescriptor descriptor : descriptors) {
+        if (descriptor.getTableName().isSystemTable()) {
+          continue;
+        }
+        int regionNum = this.assignmentManager.getRegionStates()
+            .getRegionByStateOfTable(descriptor.getTableName()).get(RegionState.State.OPEN).size();
+        TableRegionCount.Builder count = TableRegionCount.newBuilder()
+            .setTableName(ProtobufUtil.toProtoTableName(descriptor.getTableName()))
+            .setRegionNum(regionNum);
+        rsrr.addRegionCounts(count);
+      } 
       return rsrr.build(); 
     } catch (IOException ioe) {
       throw new ServiceException(ioe);
