@@ -102,8 +102,6 @@ public class TimeBasedLimiter implements QuotaLimiter {
       isBypass = false;
     }
     
-    LOG.info("from throttle : " + limiter);
-    
     return isBypass ? NoopQuotaLimiter.get() : limiter;
   }
 
@@ -148,6 +146,21 @@ public class TimeBasedLimiter implements QuotaLimiter {
       }
     }
   }
+  
+  @Override
+  public void checkQuotaByRequestUnit(long writeNum, long readNum) throws ThrottlingException {
+    if (writeNum > 0) {
+      if (!writeReqsLimiter.canExecute(writeNum)) {
+        ThrottlingException.throwNumWriteRequestsExceeded(writeReqsLimiter.waitInterval());
+      }
+    }
+
+    if (readNum > 0) {
+      if (!readReqsLimiter.canExecute(readNum)) {
+        ThrottlingException.throwNumReadRequestsExceeded(readReqsLimiter.waitInterval());
+      }
+    }
+  }
 
   @Override
   public void grabQuota(long writeSize, long readSize) {
@@ -163,6 +176,17 @@ public class TimeBasedLimiter implements QuotaLimiter {
     if (readSize > 0) {
       readReqsLimiter.consume(1);
       readSizeLimiter.consume(readSize);
+    }
+  }
+  
+  @Override
+  public void grabQuotaByRequestUnit(long writeNum, long readNum) {
+    if (writeNum > 0) {
+      writeReqsLimiter.consume(writeNum);
+    }
+
+    if (readNum > 0) {
+      readReqsLimiter.consume(readNum);
     }
   }
 

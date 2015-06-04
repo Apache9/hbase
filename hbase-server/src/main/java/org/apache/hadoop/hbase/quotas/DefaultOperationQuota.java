@@ -143,4 +143,14 @@ public class DefaultOperationQuota implements OperationQuota {
     }
     return 0;
   }
+  
+  @Override
+  public String toString() {
+    StringBuilder builder = new StringBuilder();
+    builder.append("DefaultOperationQuota\n");
+    for (QuotaLimiter limiter : limiters) {
+      builder.append(limiter + "\n");
+    }
+    return builder.toString();
+  }
 }

@@ -39,12 +39,23 @@ class NoopQuotaLimiter implements QuotaLimiter {
       throws ThrottlingException {
     // no-op
   }
+  
+  @Override
+  public void checkQuotaByRequestUnit(long writeNum, long readNum)
+      throws ThrottlingException {
+    // no-op
+  }
 
   @Override
   public void grabQuota(long writeSize, long readSize) {
     // no-op
   }
 
+  @Override
+  public void grabQuotaByRequestUnit(long writeNum, long readNum) {
+    // no-op
+  }
+  
   @Override
   public void consumeWrite(final long size) {
     // no-op

@@ -58,6 +58,9 @@ public class QuotaUtil extends QuotaTableUtil {
 
   public static final String QUOTA_CONF_KEY = "hbase.quota.enabled";
   private static final boolean QUOTA_ENABLED_DEFAULT = false;
+  
+  private static final int READ_CAPACITY_UNIT = 4096;
+  private static final int WRITE_CAPACITY_UNIT = 1024;
 
   /** Table descriptor for Quota internal table */
   public static final HTableDescriptor QUOTA_TABLE_DESC =
@@ -315,5 +318,17 @@ public class QuotaUtil extends QuotaTableUtil {
       }
     }
     return size;
+  }
+  
+  public static int calculateRequestUnitNum(final Result result) {
+    return (int) Math.ceil(calculateResultSize(result) / READ_CAPACITY_UNIT);
+  }
+
+  public static int calculateRequestUnitNum(final List<Result> results) {
+    return (int) Math.ceil(calculateResultSize(results) / READ_CAPACITY_UNIT);
+  }
+
+  public static int calculateRequestUnitNum(final Mutation mutation) {
+    return (int) Math.ceil(calculateMutationSize(mutation) / WRITE_CAPACITY_UNIT);
   }
 }

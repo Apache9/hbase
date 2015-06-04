@@ -27,6 +27,8 @@ import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.client.Mutation;
+import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.ipc.RpcScheduler;
 import org.apache.hadoop.hbase.ipc.RequestContext;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos;
@@ -108,15 +110,18 @@ public class RegionServerQuotaManager {
     if (isQuotaEnabled() && !table.isSystemTable()) {
       UserQuotaState userQuotaState = quotaCache.getUserQuotaState(ugi);
       QuotaLimiter userLimiter = userQuotaState.getTableLimiter(table);
+      QuotaLimiter rsLimiter = quotaCache.getRegionServerLimiter();
       boolean useNoop = userLimiter.isBypass();
       if (userQuotaState.hasBypassGlobals()) {
         if (LOG.isTraceEnabled()) {
           LOG.trace("get quota for ugi=" + ugi + " table=" + table + " userLimiter=" + userLimiter);
         }
         if (!useNoop) {
-          return new DefaultOperationQuota(userLimiter);
+          //return new DefaultOperationQuota(userLimiter);
+          return new AllowExceedOperationQuota(userLimiter, rsLimiter);
         }
       } else {
+        
         QuotaLimiter nsLimiter = quotaCache.getNamespaceLimiter(table.getNamespaceAsString());
         QuotaLimiter tableLimiter = quotaCache.getTableLimiter(table);
         useNoop &= tableLimiter.isBypass() && nsLimiter.isBypass();
@@ -125,46 +130,87 @@ public class RegionServerQuotaManager {
                     userLimiter + " tableLimiter=" + tableLimiter + " nsLimiter=" + nsLimiter);
         }
         if (!useNoop) {
-          return new DefaultOperationQuota(userLimiter, tableLimiter, nsLimiter);
+          //return new DefaultOperationQuota(userLimiter, tableLimiter, nsLimiter);
+          return new AllowExceedOperationQuota(userLimiter, rsLimiter);
         }
       }
     }
     return NoopOperationQuota.get();
   }
+  
+  private UserGroupInformation getUserGroupInformation(final HRegion region) throws IOException {
+    UserGroupInformation ugi;
+    if (RequestContext.isInRequestContext()) {
+      ugi = RequestContext.getRequestUser().getUGI();
+    } else {
+      ugi = User.getCurrent().getUGI();
+    }
+    return ugi;
+  }
 
   /**
-   * Check the quota for the current (rpc-context) user.
-   * Returns the OperationQuota used to get the available quota and
-   * to report the data/usage of the operation.
+   * Check the quota for the current (rpc-context) user. return OperationQuota
    * @param region the region where the operation will be performed
    * @param type the operation type
-   * @return the OperationQuota
-   * @throws ThrottlingException if the operation cannot be executed due to quota exceeded.
+   * @throws IOException
+   * @throws ThrottlingException
    */
-  public OperationQuota checkQuota(final HRegion region,
-      final OperationQuota.OperationType type) throws IOException, ThrottlingException {
+  public OperationQuota checkQuota(final HRegion region, final OperationQuota.OperationType type)
+      throws IOException, ThrottlingException {
     switch (type) {
-      case SCAN:   return checkQuota(region, 0, 0, 1);
-      case GET:    return checkQuota(region, 0, 1, 0);
-      case MUTATE: return checkQuota(region, 1, 0, 0);
+    case SCAN:
+      return checkQuota(region, 0, 0, 1);
+    case GET:
+      return checkQuota(region, 0, 1, 0);
+    case MUTATE:
+      return checkQuota(region, 1, 0, 0);
     }
     throw new RuntimeException("Invalid operation type: " + type);
   }
 
+  public OperationQuota checkQuota(final UserGroupInformation ugi, final TableName table,
+      final OperationQuota.OperationType type) throws IOException, ThrottlingException {
+    switch (type) {
+    case SCAN:
+      return checkQuota(ugi, table, 0, 0, 1);
+    case GET:
+      return checkQuota(ugi, table, 0, 1, 0);
+    case MUTATE:
+      return checkQuota(ugi, table, 1, 0, 0);
+    }
+    throw new RuntimeException("Invalid operation type: " + type);
+  }
+  
   /**
-   * Check the quota for the current (rpc-context) user.
-   * Returns the OperationQuota used to get the available quota and
-   * to report the data/usage of the operation.
-   * @param region the region where the operation will be performed
-   * @param actions the "multi" actions to perform
-   * @return the OperationQuota
-   * @throws ThrottlingException if the operation cannot be executed due to quota exceeded.
+   * check quota by Mutation. It will check quota by mutation size.
+   * @param region
+   * @param mutation
+   * @throws IOException
    */
-  public OperationQuota checkQuota(final HRegion region,
-      final List<ClientProtos.Action> actions) throws IOException, ThrottlingException {
+  public OperationQuota checkQuota(final HRegion region, final Mutation mutation) throws IOException,
+      ThrottlingException {
+    int numWrites = QuotaUtil.calculateRequestUnitNum(mutation);
+    return checkQuota(region, numWrites, 0, 0);
+  }
+
+  public OperationQuota checkQuota(final UserGroupInformation ugi, final TableName table,
+      final Mutation mutation) throws IOException, ThrottlingException {
+    int numWrites = QuotaUtil.calculateRequestUnitNum(mutation);
+    return checkQuota(ugi, table, numWrites, 0, 0);
+  }
+
+  /**
+   * Check the quota for the current (rpc-context) user. return OperationQuota
+   * @param region the region where the operation will be performed
+   * @param type the operation type
+   * @throws IOException
+   * @throws ThrottlingException
+   */
+  public OperationQuota checkQuota(final HRegion region, final List<ClientProtos.Action> actions)
+      throws IOException, ThrottlingException {
     int numWrites = 0;
     int numReads = 0;
-    for (final ClientProtos.Action action: actions) {
+    for (final ClientProtos.Action action : actions) {
       if (action.hasMutation()) {
         numWrites++;
       } else if (action.hasGet()) {
@@ -173,11 +219,24 @@ public class RegionServerQuotaManager {
     }
     return checkQuota(region, numWrites, numReads, 0);
   }
+  
+  public OperationQuota checkQuota(final UserGroupInformation ugi, final TableName table,
+      final List<ClientProtos.Action> actions) throws IOException, ThrottlingException {
+    int numWrites = 0;
+    int numReads = 0;
+    for (final ClientProtos.Action action : actions) {
+      if (action.hasMutation()) {
+        numWrites++;
+      } else if (action.hasGet()) {
+        numReads++;
+      }
+    }
+    return checkQuota(ugi, table, numWrites, numReads, 0);
+  }
 
   /**
-   * Check the quota for the current (rpc-context) user.
-   * Returns the OperationQuota used to get the available quota and
-   * to report the data/usage of the operation.
+   * Check the quota for the current (rpc-context) user. Returns the OperationQuota used to get the
+   * available quota and to report the data/usage of the operation.
    * @param region the region where the operation will be performed
    * @param numWrites number of writes to perform
    * @param numReads number of short-reads to perform
@@ -185,27 +244,97 @@ public class RegionServerQuotaManager {
    * @return the OperationQuota
    * @throws ThrottlingException if the operation cannot be executed due to quota exceeded.
    */
-  private OperationQuota checkQuota(final HRegion region,
-      final int numWrites, final int numReads, final int numScans)
-      throws IOException, ThrottlingException {
-    UserGroupInformation ugi;
-    if (RequestContext.isInRequestContext()) {
-      ugi = RequestContext.getRequestUser().getUGI();
-    } else {
-      ugi = User.getCurrent().getUGI();
-    }
+  private OperationQuota checkQuota(final HRegion region, final int numWrites, final int numReads,
+      final int numScans) throws IOException, ThrottlingException {
+    UserGroupInformation ugi = getUserGroupInformation(region);
     TableName table = region.getTableDesc().getTableName();
+    return checkQuota(ugi, table, numWrites, numReads, numScans);
+  }
 
+  private OperationQuota checkQuota(final UserGroupInformation ugi, final TableName table,
+      final int numWrites, final int numReads, final int numScans) throws IOException,
+      ThrottlingException {
     OperationQuota quota = getQuota(ugi, table);
     try {
       quota.checkQuota(numWrites, numReads, numScans);
     } catch (ThrottlingException e) {
-      LOG.debug("Throttling exception for user=" + ugi.getUserName() +
-                " table=" + table + " numWrites=" + numWrites +
-                " numReads=" + numReads + " numScans=" + numScans +
-                ": " + e.getMessage());
+      LOG.debug("Throttling exception for user=" + ugi.getUserName() + " table=" + table
+          + " numWrites=" + numWrites + " numReads=" + numReads + " numScans=" + numScans + ": "
+          + e.getMessage());
       throw e;
     }
     return quota;
   }
+  
+  /**
+   * Grab quota after the Get. It will not check quota, just grab by result.
+   * @param region
+   * @param result
+   * @throws IOException
+   */
+  public void grabQuota(final HRegion region, final Result result) throws IOException {
+    UserGroupInformation ugi = getUserGroupInformation(region);
+    TableName table = region.getTableDesc().getTableName();
+    grabQuota(ugi, table, result);
+  }
+
+  public void grabQuota(final UserGroupInformation ugi, final TableName table, final Result result) throws IOException {
+    OperationQuota quota = getQuota(ugi, table);
+    if (quota instanceof AllowExceedOperationQuota) {
+      ((AllowExceedOperationQuota) quota)
+          .grabQuota(0, QuotaUtil.calculateRequestUnitNum(result) - 1, 0);
+    } else {
+      quota.addGetResult(result);
+      quota.close();
+    }
+  }
+
+  /**
+   * Grab quota after the Scan. It will not check quota, just grab by results.
+   * @param region
+   * @param results
+   * @throws IOException
+   */
+  public void grabQuota(final HRegion region, final List<Result> results)
+      throws IOException {
+    UserGroupInformation ugi = getUserGroupInformation(region);
+    TableName table = region.getTableDesc().getTableName();
+    grabQuota(ugi, table, results);
+  }
+  
+  public void grabQuota(final UserGroupInformation ugi, final TableName table, final List<Result> results)
+      throws IOException {
+    OperationQuota quota = getQuota(ugi, table);
+    if (quota instanceof AllowExceedOperationQuota) {
+      ((AllowExceedOperationQuota) quota).grabQuota(0, 0,
+        QuotaUtil.calculateRequestUnitNum(results) - 1);
+    } else {
+      quota.addScanResult(results);
+      quota.close();
+    }
+  }
+
+  /**
+   * Grab quota after the Mutation. It will not check quota, just grab by mutation.
+   * @param region
+   * @param mutation
+   * @throws IOException
+   */
+  public void grabQuota(final HRegion region, final Mutation mutation) throws IOException {
+    UserGroupInformation ugi = getUserGroupInformation(region);
+    TableName table = region.getTableDesc().getTableName();
+    grabQuota(ugi, table, mutation);
+  }
+  
+  public void grabQuota(final UserGroupInformation ugi, final TableName table, final Mutation mutation) throws IOException {
+    OperationQuota quota = getQuota(ugi, table);
+    if (quota instanceof AllowExceedOperationQuota) {
+      ((AllowExceedOperationQuota) quota).grabQuota(QuotaUtil.calculateRequestUnitNum(mutation) - 1, 0,
+        0);
+    } else {
+      quota.addMutation(mutation);
+      quota.close();
+    }
+  }
+  
 }
