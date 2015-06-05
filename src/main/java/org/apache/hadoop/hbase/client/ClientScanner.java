@@ -275,6 +275,7 @@ public class ClientScanner extends AbstractClientScanner {
         // this when we reset scanner because it split under us.
         boolean skipFirst = false;
         boolean retryAfterOutOfOrderException  = true;
+        boolean fakeResultReturned = false;
         do {
           try {
             if (skipFirst) {
@@ -345,10 +346,15 @@ public class ClientScanner extends AbstractClientScanner {
               }
               countdown--;
               this.lastResult = rs;
+              if (rs.isFake()) {
+                // End of 1 next RPC
+                fakeResultReturned = true;
+              }
             }
           }
           // Values == null means server-side filter has determined we must STOP
-        } while (remainingResultSize > 0 && countdown > 0 && nextScanner(countdown, values == null));
+        } while (!fakeResultReturned && remainingResultSize > 0 && countdown > 0 &&
+            nextScanner(countdown, values == null));
       }
 
       if (cache.size() > 0) {

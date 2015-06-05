@@ -2908,12 +2908,14 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
                 }
               }
               results.add(new Result(values));
-            } else if (status.hasNext() && rawLimit > 0 && rawCount >= rawLimit) {
+            }
+            if (status.hasNext() && rawLimit > 0 && rawCount >= rawLimit) {
               // when there is no visible key values scanned out yet but the raw limit is reached,
               // we fill a fake result which contains the next position and pass it to the client
               // to avoid RPC timeout.
               KeyValue next = status.next();
               if (next != null) {
+                // append a fake row which is larger than the next peeked row
                 results.add(Result.fakeResult(next));
               }
             }
