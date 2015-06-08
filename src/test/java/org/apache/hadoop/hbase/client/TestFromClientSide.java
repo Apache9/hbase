@@ -6062,7 +6062,8 @@ public class TestFromClientSide {
     assertFalse(result.isFake());
     assertEquals(2, result.size());
     result = scanner.next();
-    assertFalse(result.isFake());
+    assertTrue(result.isFake());
+    result = scanner.next();
     assertEquals(2, result.size());
     result = scanner.next();
     assertNull(result);

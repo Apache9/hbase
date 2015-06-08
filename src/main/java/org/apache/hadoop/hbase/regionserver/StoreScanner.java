@@ -431,7 +431,6 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
     int rawCount = 0;
     try {
       LOOP: while((kv = this.heap.peek()) != null) {
-        ++rawCount;
         checkScanOrder(prevKV, kv, comparator);
         prevKV = kv;
         ScanQueryMatcher.MatchCode qcode = matcher.match(kv);
@@ -460,6 +459,7 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
               seekAsDirection(matcher.getKeyForNextColumn(kv));
             } else {
               this.heap.next();
+              ++rawCount;
             }
 
             cumulativeMetric += kv.getLength();
@@ -477,6 +477,7 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
             return ScannerStatus.done(rawCount);
 
           case SEEK_NEXT_ROW:
+            ++rawCount;
             // This is just a relatively simple end of scan fix, to short-cut end
             // us if there is an endKey in the scan.
             if (!matcher.moreRowsMayExistAfter(kv)) {
@@ -490,11 +491,13 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
             break;
 
           case SEEK_NEXT_COL:
+            ++rawCount;
             seekAsDirection(matcher.getKeyForNextColumn(kv));
             break;
 
           case SKIP:
             this.heap.next();
+            ++rawCount;
             break;
 
           case SEEK_NEXT_USING_HINT:
@@ -503,6 +506,7 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
               seekAsDirection(nextKV);
             } else {
               heap.next();
+              ++rawCount;
             }
             break;
 
