@@ -400,10 +400,6 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
 
   protected final int numRegionsToReport;
 
-  private int regionServerNum = 1;
-  
-  private Map<TableName, Integer> tableRegionsNumMap = new HashMap<TableName, Integer>();
-
   // Stub to do region server status calls against the master.
   private volatile RegionServerStatusService.BlockingInterface rssStub;
   // RPC client. Used to make the stub above that does region server status checking.
@@ -557,6 +553,9 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
   private final ServerNonceManager nonceManager;
 
   private UserProvider userProvider;
+  
+  // When rs report to master, master response back some contents 
+  private RegionServerReportResponse reportResponse;
 
   /**
    * Starts a HRegionServer at the default location
@@ -1141,17 +1140,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
         this.serverNameFromMasterPOV.getVersionedBytes());
       request.setServer(ProtobufUtil.toServerName(sn));
       request.setLoad(sl);
-      RegionServerReportResponse result = rss.regionServerReport(null, request.build());
-      if (result != null) {
-        if (result.hasServerNum()) {
-          this.regionServerNum = result.getServerNum();
-          getRegionServerQuotaManager().updateRegionServerNum(this.regionServerNum);
-        }
-        for (TableRegionCount entry : result.getRegionCountsList()) {
-          tableRegionsNumMap.put(ProtobufUtil.toTableName(entry.getTableName()),
-            entry.getRegionNum());
-        }
-      }
+      reportResponse = rss.regionServerReport(null, request.build());
     } catch (ServiceException se) {
       IOException ioe = ProtobufUtil.getRemoteException(se);
       if (ioe instanceof YouAreDeadException) {
@@ -5210,15 +5199,8 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     return getRegionServerQuotaManager();
   }
   
-  public int getTableRegionsNum(TableName tableName) {
-    if (tableRegionsNumMap.containsKey(tableName)) {
-      return tableRegionsNumMap.get(tableName);
-    }
-    return 0;
+  @Override
+  public RegionServerReportResponse getRegionServerReportResponse() {
+    return reportResponse;
   }
-
-  public int getRegionServerNum() {
-    return regionServerNum;
-  }
-
 }

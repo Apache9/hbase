@@ -90,6 +90,12 @@ public interface QuotaLimiter {
   long getWriteAvailable();
   
   /** @return the number of requests available to read to avoid exceeding the quota */
+  long getReqsAvailable();
+  
+  /** @return the number of requests available to read to avoid exceeding the quota */
+  long getReqsSizeAvailable();
+  
+  /** @return the number of requests available to read to avoid exceeding the quota */
   long getReadReqsAvailable();
 
   /** @return the number of requests available to write to avoid exceeding the quota */

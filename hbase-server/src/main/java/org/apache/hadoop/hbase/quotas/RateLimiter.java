@@ -23,6 +23,7 @@ import java.util.concurrent.TimeUnit;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
+import org.mortbay.log.Log;
 
 import com.google.common.annotations.VisibleForTesting;
 
@@ -121,6 +122,10 @@ public abstract class RateLimiter {
       this.avail += (other.limit - this.limit);
     }
     this.limit = other.limit;
+    // make sure avail is not bigger than the limit
+    if (this.avail > this.limit) {
+      this.avail = this.limit;
+    }
   }
 
   public synchronized boolean isBypass() {
