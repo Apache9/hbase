@@ -99,6 +99,11 @@ public class HTableDescriptor implements WritableComparable<HTableDescriptor> {
 
   public static final String SPLIT_POLICY = "SPLIT_POLICY";
 
+  public static final String ACROSS_PREFIX_ROWS_ATOMIC = "ACROSS_PREFIX_ROWS_ATOMIC";
+  
+  public static final String DEFAULT_SPLIT_POLICY_FOR_ACROSS_PREFIX_ROWS_ATOMIC = 
+    "org.apache.hadoop.hbase.regionserver.KeyDelimiterPrefixRegionSplitPolicy";
+
   /**
    * <em>INTERNAL</em> Used by HBase Shell interface to access this metadata
    * attribute which denotes the maximum size of the store file after which
@@ -704,8 +709,22 @@ public class HTableDescriptor implements WritableComparable<HTableDescriptor> {
    * @return the class name of the region split policy for this table.
    * If this returns null, the default split policy is used.
    */
-   public String getRegionSplitPolicyClassName() {
-    return getValue(SPLIT_POLICY);
+  public String getRegionSplitPolicyClassName() {
+    String splitPolicy = getValue(SPLIT_POLICY);
+    if (splitPolicy == null && isAcrossPrefixRowsAtomic()) {
+      splitPolicy = DEFAULT_SPLIT_POLICY_FOR_ACROSS_PREFIX_ROWS_ATOMIC;
+    }
+    return splitPolicy;
+  }
+  
+  /**
+   * Is this table support the atomic of different rows of same prefix in a region  
+   * @return
+   */
+  public boolean isAcrossPrefixRowsAtomic() {
+    String value = getValue(ACROSS_PREFIX_ROWS_ATOMIC);
+    if (value == null) return false;
+    return Boolean.parseBoolean(value);
   }
 
   /**

@@ -90,6 +90,7 @@ import org.apache.hadoop.hbase.TagType;
 import org.apache.hadoop.hbase.UnknownScannerException;
 import org.apache.hadoop.hbase.backup.HFileArchiver;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
+import org.apache.hadoop.hbase.client.Action;
 import org.apache.hadoop.hbase.client.Append;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Durability;
@@ -2249,7 +2250,28 @@ public class HRegion implements HeapSize { // , Writable{
     //  * batchMutate with single mutation - put/delete, separate or from checkAndMutate.
     //  * coprocessor calls (see ex. BulkDeleteEndpoint).
     // So nonces are not really ever used by HBase. They could be by coprocs, and checkAnd...
-    return batchMutate(new MutationBatch(mutations, nonceGroup, nonce));
+    if (mutations.length <= 1 || !htableDescriptor.isAcrossPrefixRowsAtomic()) {
+      return batchMutate(new MutationBatch(mutations, nonceGroup, nonce));
+    }
+    
+    // sort mutations by rowkey to avoid dead lock when getting row locks
+    List<Action<Object>> actions = Lists.newArrayListWithCapacity(mutations.length);
+    for (int i = 0; i < mutations.length; ++i) {
+      actions.add(new Action<Object>(mutations[i], i));
+    }
+    Collections.sort(actions);
+    
+    Mutation[] mutationsSorted = new Mutation[mutations.length];
+    for (int i = 0; i < actions.size(); ++i) {
+      mutationsSorted[i] = (Mutation)actions.get(i).getAction();
+    }
+    OperationStatus[] sts = batchMutate(new MutationBatch(mutationsSorted, nonceGroup, nonce));
+    OperationStatus[] res = new OperationStatus[mutations.length];
+    
+    for (int i = 0; i < sts.length; ++i) {
+      res[actions.get(i).getOriginalIndex()] = sts[i];
+    }
+    return res;
   }
 
   public OperationStatus[] batchMutate(Mutation[] mutations) throws IOException {
@@ -2374,6 +2396,7 @@ public class HRegion implements HeapSize { // , Writable{
     int lastIndexExclusive = firstIndex;
     boolean success = false;
     int noOfPuts = 0, noOfDeletes = 0;
+    boolean isAtomic = htableDescriptor.isAcrossPrefixRowsAtomic();
     try {
       // ------------------------------------
       // STEP 1. Try to acquire as many locks as we can, and ensure
@@ -2381,10 +2404,18 @@ public class HRegion implements HeapSize { // , Writable{
       // ----------------------------------
       int numReadyToWrite = 0;
       long now = EnvironmentEdgeManager.currentTimeMillis();
+      byte[] prevRow = null;
       while (lastIndexExclusive < batchOp.operations.length) {
         Mutation mutation = batchOp.getMutation(lastIndexExclusive);
         boolean isPutMutation = mutation instanceof Put;
 
+        if (!isInReplay && isAtomic) {
+          int cmp = (prevRow == null) ? -1 : Bytes.compareTo(prevRow, mutation.getRow());
+          assert (cmp <= 0) :
+            "Row " + prevRow + " followed by a smaller Row " + mutation.getRow();
+        }
+        prevRow = mutation.getRow();
+        
         Map<byte[], List<Cell>> familyMap = mutation.getFamilyCellMap();
         // store the family map reference to allow for mutations
         familyMaps[lastIndexExclusive] = familyMap;
@@ -2424,7 +2455,7 @@ public class HRegion implements HeapSize { // , Writable{
 
         // If we haven't got any rows in our batch, we should block to
         // get the next one.
-        boolean shouldBlock = numReadyToWrite == 0;
+        boolean shouldBlock = numReadyToWrite == 0 || (!isInReplay && isAtomic);
         RowLock rowLock = null;
         try {
           rowLock = getRowLockInternal(mutation.getRow(), shouldBlock);
