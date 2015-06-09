@@ -262,9 +262,13 @@ public class RegionServerQuotaManager {
     try {
       quota.checkQuota(numWrites, numReads, numScans);
     } catch (ThrottlingException e) {
-      LOG.debug("Throttling exception for user=" + ugi.getUserName() + " table=" + table
-          + " numWrites=" + numWrites + " numReads=" + numReads + " numScans=" + numScans + ": "
-          + e.getMessage());
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("Throttling exception for user=" + ugi.getUserName() + " table=" + table
+            + " numWrites=" + numWrites + " numReads=" + numReads + " numScans=" + numScans + ": "
+            + e.getMessage());
+        LOG.debug("Quota snapshot for user=" + ugi.getUserName() + " table=" + table + " : "
+            + quota);
+      }
       throw e;
     }
     return quota;

@@ -108,9 +108,9 @@ public class AllowExceedOperationQuota implements OperationQuota {
   @Override
   public String toString() {
     StringBuilder builder = new StringBuilder();
-    builder.append("AllowExceedOperationQuota");
-    builder.append("\nuserLimiter\n" + userLimiter);
-    builder.append("\nregionServerLimiter\n" + regionServerLimiter);
+    builder.append("AllowExceedOperationQuota [");
+    builder.append(" " + userLimiter);
+    builder.append(" " + regionServerLimiter + " ]");
     return builder.toString();
   }
 }

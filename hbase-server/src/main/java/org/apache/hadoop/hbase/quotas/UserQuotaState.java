@@ -65,12 +65,14 @@ public class UserQuotaState extends QuotaState {
     } else {
       if (globalLimiter != NoopQuotaLimiter.get()) {
         builder.append(" global-limiter");
+        builder.append(" " + globalLimiter);
       }
 
       if (tableLimiters != null && !tableLimiters.isEmpty()) {
         builder.append(" [");
         for (TableName table: tableLimiters.keySet()) {
           builder.append(" " + table);
+          builder.append(" " + tableLimiters.get(table));
         }
         builder.append(" ]");
       }
@@ -79,6 +81,7 @@ public class UserQuotaState extends QuotaState {
         builder.append(" [");
         for (String ns: namespaceLimiters.keySet()) {
           builder.append(" " + ns);
+          builder.append(" " + namespaceLimiters.get(ns));
         }
         builder.append(" ]");
       }

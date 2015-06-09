@@ -369,6 +369,11 @@ public class QuotaCache implements Stoppable {
       fetchTableQuotaState();
       fetchUserQuotaState();
       lastUpdate = EnvironmentEdgeManager.currentTimeMillis();
+      LOG.info("QuotaCache refreshed");
+      LOG.info("RegionServer Limiter is " + rsQuotaLimiter);
+      for (Map.Entry<String, UserQuotaState> entry : userQuotaCache.entrySet()) {
+        LOG.info("For user " + entry.getKey() + " " + entry.getValue());
+      }
     }
 
     private void fetchNamespaceQuotaState() {

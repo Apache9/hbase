@@ -147,10 +147,11 @@ public class DefaultOperationQuota implements OperationQuota {
   @Override
   public String toString() {
     StringBuilder builder = new StringBuilder();
-    builder.append("DefaultOperationQuota\n");
+    builder.append("DefaultOperationQuota [");
     for (QuotaLimiter limiter : limiters) {
-      builder.append(limiter + "\n");
+      builder.append(" " + limiter);
     }
+    builder.append(" ]");
     return builder.toString();
   }
 }
