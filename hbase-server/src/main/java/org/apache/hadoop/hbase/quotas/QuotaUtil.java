@@ -61,8 +61,8 @@ public class QuotaUtil extends QuotaTableUtil {
   public static final String QUOTA_CONF_KEY = "hbase.quota.enabled";
   private static final boolean QUOTA_ENABLED_DEFAULT = false;
   
-  private static final int READ_CAPACITY_UNIT = 4096;
-  private static final int WRITE_CAPACITY_UNIT = 1024;
+  public static final int READ_CAPACITY_UNIT = 4096;
+  public static final int WRITE_CAPACITY_UNIT = 1024;
 
   /** Table descriptor for Quota internal table */
   public static final HTableDescriptor QUOTA_TABLE_DESC =
