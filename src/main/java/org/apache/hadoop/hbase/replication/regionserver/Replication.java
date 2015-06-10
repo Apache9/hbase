@@ -20,6 +20,10 @@
 package org.apache.hadoop.hbase.replication.regionserver;
 
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
 import java.util.NavigableMap;
 import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -37,6 +41,7 @@ import org.apache.hadoop.hbase.regionserver.wal.HLog;
 import org.apache.hadoop.hbase.regionserver.wal.HLogKey;
 import org.apache.hadoop.hbase.regionserver.wal.WALEdit;
 import org.apache.hadoop.hbase.regionserver.wal.WALActionsListener;
+import org.apache.hadoop.hbase.replication.ReplicationLoad;
 import org.apache.hadoop.hbase.replication.ReplicationZookeeper;
 import org.apache.hadoop.hbase.replication.master.ReplicationLogCleaner;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -227,5 +232,24 @@ public class Replication implements WALActionsListener,
   @Override
   public void logCloseRequested() {
     // not interested
+  }
+
+  @Override
+  public List<ReplicationLoad> getReplicatonLoad() {
+    Map<String, ReplicationLoad> replications =
+        new HashMap<String, ReplicationLoad>();
+    for (ReplicationSourceInterface source : this.replicationManager
+        .getSources()) {
+      String peerId = source.getPeerClusterId();
+      int sizeOfLogQueue = source.getSizeOfLogQueue();
+      ReplicationLoad load = replications.get(peerId);
+      if (load == null) {
+        load = new ReplicationLoad(peerId, sizeOfLogQueue);
+        replications.put(peerId, load);
+      } else {
+        load.setSizeOfLogQueue(load.getSizeOfLogQueue() + sizeOfLogQueue);
+      }
+    }
+    return new LinkedList(replications.values());
   }
 }

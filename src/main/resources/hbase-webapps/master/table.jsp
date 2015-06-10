@@ -42,7 +42,7 @@
   HBaseAdmin hbadmin = new HBaseAdmin(conf);
   String tableName = request.getParameter("name");
   HTable table = new HTable(conf, tableName);
-  String tableHeader = "<h2>Table Regions</h2><table><tr><th>Name</th><th>Region Server</th><th>Start Key</th><th>End Key</th><th>Locality</th><th>Requests</th></tr>";
+  String tableHeader = "<h2>Table Regions</h2><table><tr><th>Name</th><th>Region Server</th><th>Start Key</th><th>End Key</th><th>Locality</th><th>Requests</th><th>Read QPS</th><th>Write QPS</th></tr>";
   ServerName rl = master.getCatalogTracker().getRootLocation();
   boolean showFragmentation = conf.getBoolean("hbase.master.ui.fragmentation.enabled", false);
   boolean readOnly = conf.getBoolean("hbase.master.ui.readonly", false);
@@ -120,6 +120,8 @@
   <td></td>
   <td></td>
   <td>-</td>
+  <td>-</td>
+  <td>-</td>
 </tr>
 </table>
 <%
@@ -137,6 +139,8 @@
   <td><%= meta.getRegionNameAsString() %></td>
     <td><a href="<%= url %>"><%= metaLocation.getHostname().toString() + ":" + metaLocation.getPort() %></a></td>
     <td><%= Bytes.toString(meta.getStartKey()) %></td><td><%= Bytes.toString(meta.getEndKey()) %></td>
+    <td>-</td>
+    <td>-</td>
     <td>-</td>
     <td>-</td>
 </tr>
@@ -179,6 +183,8 @@
     ServerName addr = hriEntry.getValue();
     long req = 0;
     float locality = 0.0f;
+    long readQPS = 0;
+    long writeQPS = 0;
     String urlRegionServer = null;
 
     if (addr != null) {
@@ -186,8 +192,11 @@
       if (sl != null) {
         Map<byte[], RegionLoad> map = sl.getRegionsLoad();
         if (map.containsKey(regionInfo.getRegionName())) {
-          req = map.get(regionInfo.getRegionName()).getRequestsCount();
-          locality = map.get(regionInfo.getRegionName()).getLocality();
+          RegionLoad load = map.get(regionInfo.getRegionName());
+          req = load.getRequestsCount();
+          locality = load.getLocality();
+          readQPS = load.getReadRequestsPerSecond();
+          writeQPS = load.getWriteRequestsPerSecond();
         }
         Integer i = regDistribution.get(addr);
         if (null == i) i = new Integer(0);
@@ -215,6 +224,8 @@
   <td><%= Bytes.toStringBinary(regionInfo.getEndKey())%></td>
   <td><%= locality%></td>
   <td><%= req%></td>
+  <td><%= readQPS%></td>
+  <td><%= writeQPS%></td>
 </tr>
 <% } %>
 </table>

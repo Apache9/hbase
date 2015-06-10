@@ -22,13 +22,16 @@ package org.apache.hadoop.hbase;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
+import org.apache.hadoop.hbase.replication.ReplicationLoad;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.Strings;
 import org.apache.hadoop.io.VersionedWritable;
@@ -41,7 +44,7 @@ import org.apache.hadoop.io.WritableUtils;
 public class HServerLoad extends VersionedWritable
 implements WritableComparable<HServerLoad> {
   private static final byte INT_REQUEST_VERSION = 2;
-  private static final byte VERSION = 3;
+  private static final byte VERSION = 4;
 
   // Empty load instance.
   public static final HServerLoad EMPTY_HSERVERLOAD = new HServerLoad();
@@ -76,6 +79,14 @@ implements WritableComparable<HServerLoad> {
   private Map<byte[], RegionLoad> regionLoad =
     new TreeMap<byte[], RegionLoad>(Bytes.BYTES_COMPARATOR);
 
+  /** the current read requests per second made to regionserver */
+  private long readRequestsPerSecond;
+
+  /** the current write requests per second made to regionserver */
+  private long writeRequestsPerSecond;
+
+  private List<ReplicationLoad> replicationLoads;
+
   /** @return the object version number */
   public byte getVersion() {
     return INT_REQUEST_VERSION;
@@ -85,7 +96,7 @@ implements WritableComparable<HServerLoad> {
    * Encapsulates per-region loading metrics.
    */
   public static class RegionLoad extends VersionedWritable {
-    private static final byte VERSION = 5;
+    private static final byte VERSION = 6;
 
     /** @return the object version number */
     public byte getVersion() {
@@ -137,6 +148,12 @@ implements WritableComparable<HServerLoad> {
 
     /** Region data locality */
     private float locality = 0.0f;
+
+    /** the current read requests per second made to region */
+    private long readRequestsPerSecond;
+
+    /** the current write requests per second made to region */
+    private long writeRequestsPerSecond;
     /**
      * Constructor, for Writable
      */
@@ -166,7 +183,9 @@ implements WritableComparable<HServerLoad> {
         final int totalStaticBloomSizeKB,
         final long getRequestsCount, final long readRequestsCount, final long writeRequestsCount,
         final long totalCompactingKVs, final long currentCompactedKVs,
-        final long lastFlushSeqId, final float locality) {
+        final long lastFlushSeqId, final float locality,
+        final long readRequestsPerSecond,
+        final long writeRequestsPerSecond) {
       this.name = name;
       this.stores = stores;
       this.storefiles = storefiles;
@@ -184,6 +203,8 @@ implements WritableComparable<HServerLoad> {
       this.currentCompactedKVs = currentCompactedKVs;
       this.lastFlushSeqId = lastFlushSeqId;
       this.locality = locality;
+      this.readRequestsPerSecond = readRequestsPerSecond;
+      this.writeRequestsPerSecond = writeRequestsPerSecond;
     }
 
     /**
@@ -219,6 +240,14 @@ implements WritableComparable<HServerLoad> {
      */
     public int getStorefileSizeMB() {
       return storefileSizeMB;
+    }
+
+
+    /**
+     * @return the total size of the uncompressed storefiles, in MB
+     */
+    public int getStoreUncompressedSizeMB() {
+      return storeUncompressedSizeMB;
     }
 
     /**
@@ -263,6 +292,21 @@ implements WritableComparable<HServerLoad> {
       return writeRequestsCount;
     }
     
+    /**
+     * @return the number of requests per second made to region
+     */
+    public long getRequestsPerSecond() {
+      return readRequestsPerSecond + writeRequestsPerSecond;
+    }
+
+    public long getReadRequestsPerSecond() {
+      return readRequestsPerSecond;
+    }
+
+    public long getWriteRequestsPerSecond() {
+      return writeRequestsPerSecond;
+    }
+
     /**
      * @return The current total size of root-level indexes for the region, in KB.
      */
@@ -450,8 +494,12 @@ implements WritableComparable<HServerLoad> {
       if (version >= 4) {
         this.locality = in.readFloat();
       }
-      if (version == 5) {
+      if (version >= 5) {
         this.getRequestsCount = WritableUtils.readVLong(in);
+      }
+      if (version >= 6) {
+        this.readRequestsPerSecond = WritableUtils.readVLong(in);
+        this.writeRequestsCount = WritableUtils.readVLong(in);
       }
     }
 
@@ -478,6 +526,8 @@ implements WritableComparable<HServerLoad> {
       WritableUtils.writeVLong(out, lastFlushSeqId);
       out.writeFloat(locality);
       WritableUtils.writeVLong(out, getRequestsCount);
+      WritableUtils.writeVLong(out, readRequestsPerSecond);
+      WritableUtils.writeVLong(out, writeRequestsPerSecond);
     }
 
     /**
@@ -523,6 +573,12 @@ implements WritableComparable<HServerLoad> {
       }
       sb = Strings.appendKeyValue(sb, "compactionProgressPct",
           compactionProgressPct);
+      sb = Strings.appendKeyValue(sb, "dataLocality",
+        this.locality);
+      sb = Strings.appendKeyValue(sb, "readRequestsPerSecond",
+        this.readRequestsPerSecond);
+      sb = Strings.appendKeyValue(sb, "writeRequestsPerSecond",
+        this.writeRequestsPerSecond);
       return sb.toString();
     }
   }
@@ -555,13 +611,17 @@ implements WritableComparable<HServerLoad> {
   public HServerLoad(final long totalNumberOfRequests,
       final int numberOfRequests, final int usedHeapMB, final int maxHeapMB,
       final Map<byte[], RegionLoad> regionLoad,
-      final Set<String> coprocessors) {
+      final Set<String> coprocessors, final long readRequestsPerSecond,
+      final long writeRequestsPerSecond, final List<ReplicationLoad> replicationLoads) {
     this.numberOfRequests = numberOfRequests;
     this.usedHeapMB = usedHeapMB;
     this.maxHeapMB = maxHeapMB;
     this.regionLoad = regionLoad;
     this.totalNumberOfRequests = totalNumberOfRequests;
     this.coprocessors = coprocessors;
+    this.readRequestsPerSecond = readRequestsPerSecond;
+    this.writeRequestsPerSecond = writeRequestsPerSecond;
+    this.replicationLoads = replicationLoads;
   }
 
   /**
@@ -570,7 +630,8 @@ implements WritableComparable<HServerLoad> {
    */
   public HServerLoad(final HServerLoad hsl) {
     this(hsl.totalNumberOfRequests, hsl.numberOfRequests, hsl.usedHeapMB,
-        hsl.maxHeapMB, hsl.getRegionsLoad(), hsl.coprocessors);
+        hsl.maxHeapMB, hsl.getRegionsLoad(), hsl.coprocessors,
+        hsl.readRequestsPerSecond, hsl.writeRequestsPerSecond, hsl.replicationLoads);
     for (Map.Entry<byte[], RegionLoad> e : hsl.regionLoad.entrySet()) {
       this.regionLoad.put(e.getKey(), e.getValue());
     }
@@ -611,6 +672,10 @@ implements WritableComparable<HServerLoad> {
     StringBuilder sb = new StringBuilder();
     sb = Strings.appendKeyValue(sb, "requestsPerSecond",
       Integer.valueOf(numberOfRequests/msgInterval));
+    sb = Strings.appendKeyValue(sb, "readPerSecond",
+      Long.valueOf(readRequestsPerSecond));
+    sb = Strings.appendKeyValue(sb, "writePerSecond",
+      Long.valueOf(writeRequestsPerSecond));
     sb = Strings.appendKeyValue(sb, "numberOfOnlineRegions",
       Integer.valueOf(numberOfRegions));
     sb = Strings.appendKeyValue(sb, "usedHeapMB",
@@ -657,6 +722,24 @@ implements WritableComparable<HServerLoad> {
    */
   public long getTotalNumberOfRequests() {
     return totalNumberOfRequests;
+  }
+
+  /**
+   * get the current read requests per second made to regionserver
+   */
+  public long getReadRequestsPerSecond() {
+    return readRequestsPerSecond;
+  }
+
+  /**
+   * get the current write requests per second made to regionserver
+   */
+  public long getWriteRequestsPerSecond() {
+    return writeRequestsPerSecond;
+  }
+
+  public List<ReplicationLoad> getReplicationLoads() {
+    return replicationLoads;
   }
 
   /**
@@ -741,8 +824,19 @@ implements WritableComparable<HServerLoad> {
       totalNumberOfRequests = in.readLong();
     }
     int coprocessorsSize = in.readInt();
-    for(int i = 0; i < coprocessorsSize; i++) {
+    for (int i = 0; i < coprocessorsSize; i++) {
       coprocessors.add(in.readUTF());
+    }
+    if (version == VERSION) {
+      this.readRequestsPerSecond = in.readLong();
+      this.writeRequestsPerSecond = in.readLong();
+      int numberofLoads = in.readInt();
+      replicationLoads = new ArrayList<ReplicationLoad>(numberofLoads);
+      for (int i = 0; i < numberofLoads; i++) {
+        ReplicationLoad load = new ReplicationLoad();
+        load.readFields(in);
+        replicationLoads.add(load);
+      }
     }
   }
 
@@ -759,6 +853,12 @@ implements WritableComparable<HServerLoad> {
     out.writeInt(coprocessors.size());
     for (String coprocessor: coprocessors) {
       out.writeUTF(coprocessor);
+    }
+    out.writeLong(readRequestsPerSecond);
+    out.writeLong(writeRequestsPerSecond);
+    out.writeInt(this.replicationLoads.size());
+    for (ReplicationLoad load: replicationLoads) {
+      load.write(out);
     }
   }
 
