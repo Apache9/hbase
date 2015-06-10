@@ -171,6 +171,10 @@ public class HTableDescriptor implements WritableComparable<HTableDescriptor> {
   private static final ImmutableBytesWritable IS_META_KEY =
     new ImmutableBytesWritable(Bytes.toBytes(IS_META));
 
+  // salted
+  public static final String KEY_SALTER = "KEY_SALTER";
+  public static final String SLOTS_COUNT = "SLOTS_COUNT";
+  
   /**
    * <em>INTERNAL</em> Used by HBase Shell interface to access this metadata
    * attribute which denotes if the deferred log flush option is enabled.
@@ -1568,6 +1572,28 @@ public class HTableDescriptor implements WritableComparable<HTableDescriptor> {
       "org.apache.hadoop.hbase.coprocessor.MultiRowMutationEndpoint",
       null, Coprocessor.PRIORITY_SYSTEM, null);
     return metaDescriptor;
+  }
+  
+  public void setSalted(String keySalter, int slotsCount) {
+    setValue(KEY_SALTER, keySalter);
+    setValue(SLOTS_COUNT, String.valueOf(slotsCount));
+  }
+  
+  public void setSalted(String keySalter) {
+    setValue(KEY_SALTER, keySalter);
+  }
+  
+  public boolean isSalted() {
+    return getKeySalter() != null;
+  }
+  
+  public String getKeySalter() {
+    return getValue(KEY_SALTER);
+  }
+  
+  public Integer getSlotsCount() {
+    String slotsCountStr = getValue(SLOTS_COUNT);
+    return slotsCountStr == null ? null : Integer.parseInt(slotsCountStr);
   }
 
 }

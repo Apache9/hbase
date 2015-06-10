@@ -184,6 +184,9 @@ import com.google.protobuf.ServiceException;
 
 import com.xiaomi.infra.base.nameservice.NameService;
 import com.xiaomi.infra.base.nameservice.NameServiceEntry;
+import com.xiaomi.infra.hbase.salted.KeySalter;
+import com.xiaomi.infra.hbase.salted.SaltedHTable;
+import com.xiaomi.infra.hbase.salted.SaltedHTable.NotKeySalter;
 
 /**
  * A non-instantiable class that manages creation of {@link HConnection}s.
@@ -829,8 +832,14 @@ public class HConnectionManager {
       if (managed) {
         throw new IOException("The connection has to be unmanaged.");
       }
-      return new HTable(tableName, this, tableConfig, rpcCallerFactory, rpcControllerFactory,
-        pool);
+      
+      HTableInterface table = new HTable(tableName, this, pool);
+      KeySalter salter = SaltedHTable.getKeySalter(table);
+      if (salter == null) {
+        return table;
+      } else {
+        return new SaltedHTable(table, salter);
+      }
     }
 
     private ExecutorService getBatchPool() {

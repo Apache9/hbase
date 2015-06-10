@@ -18,6 +18,8 @@
  */
 package org.apache.hadoop.hbase.replication.regionserver;
 
+import com.xiaomi.infra.hbase.salted.SaltedHTable;
+
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.util.ArrayList;
@@ -234,7 +236,13 @@ public class ReplicationSink {
     try {
       table = this.sharedHtableCon.getTable(tableName);
       for (List<Row> rows : allRows) {
-        table.batch(rows);
+        // for salted table, the hash prefix has been added to rowkey in source cluster, should put
+        // directly in replication
+        if (table instanceof SaltedHTable) {
+          ((SaltedHTable)table).getRawTable().batch(rows);
+        } else {
+          table.batch(rows);
+        }
       }
     } catch (InterruptedException ix) {
       throw (InterruptedIOException)new InterruptedIOException().initCause(ix);

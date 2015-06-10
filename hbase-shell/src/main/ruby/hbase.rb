@@ -55,6 +55,8 @@ module HBaseConstants
   FILTER = 'FILTER'
   SPLITS = 'SPLITS'
   SPLITS_FILE = 'SPLITS_FILE'
+  KEY_SALTER = org.apache.hadoop.hbase.HTableDescriptor::KEY_SALTER
+  SLOTS_COUNT = org.apache.hadoop.hbase.HTableDescriptor::SLOTS_COUNT
   SPLITALGO = 'SPLITALGO'
   NUMREGIONS = 'NUMREGIONS'
   CONFIGURATION = org.apache.hadoop.hbase.HConstants::CONFIGURATION

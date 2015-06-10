@@ -154,6 +154,9 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.ServiceException;
 
+import com.xiaomi.infra.hbase.salted.KeySalter;
+import com.xiaomi.infra.hbase.salted.SaltedHTable;
+
 /**
  * Provides an interface to manage HBase database table metadata + general
  * administrative functions.  Use HBaseAdmin to create, drop, list, enable and
@@ -523,6 +526,20 @@ public class HBaseAdmin implements Abortable, Closeable {
    */
   public void createTable(final HTableDescriptor desc, byte [][] splitKeys)
   throws IOException {
+    
+    // use slots to pre-split table if splitKeys is not set and the table is salted
+    // there is no change to set splitKeys in coprocessor of server-side so that we reset here
+    if (splitKeys == null && desc.isSalted()) {
+      KeySalter salter = SaltedHTable.createKeySalter(desc.getKeySalter(), desc.getSlotsCount());
+      if (salter.getAllSalts().length > 1) {
+        splitKeys = new byte[salter.getAllSalts().length - 1][];
+        // there won't be rowkey smaller than the first slot after salted
+        for (int i = 0; i < splitKeys.length; ++i) {
+          splitKeys[i] = salter.getAllSalts()[i + 1];
+        }
+      }
+    }
+    
     try {
       createTableAsync(desc, splitKeys);
     } catch (SocketTimeoutException ste) {
@@ -2041,6 +2058,9 @@ public class HBaseAdmin implements Abortable, Closeable {
         "' doesn't match with the HTD one: " + htd.getTableName());
     }
 
+    // check KeySalter not modified
+    checkSaltedAttributeUnModified(tableName, htd);
+
     executeCallable(new MasterCallable<Void>(getConnection()) {
       @Override
       public Void call() throws ServiceException {
@@ -2049,6 +2069,21 @@ public class HBaseAdmin implements Abortable, Closeable {
         return null;
       }
     });
+  }
+  
+  protected void checkSaltedAttributeUnModified(TableName tableName, HTableDescriptor modifiedHtd)
+      throws IOException {
+    HTableDescriptor htd = this.getTableDescriptor(tableName);
+    boolean saltedAttributeUnModified = true;
+    if (htd.getKeySalter() == null || modifiedHtd.getKeySalter() == null) {
+      saltedAttributeUnModified = (htd.getKeySalter() == modifiedHtd.getKeySalter());
+    } else {
+      saltedAttributeUnModified = htd.getKeySalter().equals(modifiedHtd.getKeySalter());
+    }
+    if (!saltedAttributeUnModified) {
+      throw new IOException("can not modify the KeySalter attribute of table : "
+          + tableName);
+    }
   }
 
   public void modifyTable(final byte[] tableName, final HTableDescriptor htd)
