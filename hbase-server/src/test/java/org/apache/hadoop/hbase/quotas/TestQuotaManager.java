@@ -6,16 +6,18 @@ import static org.junit.Assert.fail;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.HConstants;
+import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.TableName;
-import org.apache.hadoop.hbase.client.Action;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HTable;
@@ -23,13 +25,9 @@ import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.quotas.OperationQuota.OperationType;
 import org.apache.hadoop.hbase.regionserver.HRegion;
-import org.apache.hadoop.hbase.regionserver.HRegion.Operation;
 import org.apache.hadoop.hbase.security.User;
-import org.apache.hadoop.hbase.testclassification.MediumTests;
+import org.apache.hadoop.hbase.testclassification.SmallTests;
 import org.apache.hadoop.hbase.util.Bytes;
-import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
-import org.apache.hadoop.hbase.util.EnvironmentEdgeManagerTestHelper;
-import org.apache.hadoop.hbase.util.ManualEnvironmentEdge;
 import org.apache.hadoop.hbase.util.JVMClusterUtil.RegionServerThread;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.junit.After;
@@ -40,7 +38,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
-@Category({ MediumTests.class })
+@Category({ SmallTests.class })
 public class TestQuotaManager {
   final Log LOG = LogFactory.getLog(getClass());
 
@@ -50,12 +48,12 @@ public class TestQuotaManager {
 
   public static final byte[] ROW = Bytes.toBytes("row");
   private final static byte[] FAMILY = Bytes.toBytes("cf");
-  private final static byte[] QUALIFIER = Bytes.toBytes("q");
 
-  private final static TableName[] TABLE_NAMES = new TableName[] { TableName.valueOf("TestQuota0"),
-      TableName.valueOf("TestQuota1") };
+  private final static TableName TABLE_NAME = TableName.valueOf("TestQuota0");
 
-  private static HTable[] tables;
+  private static HTable table;
+
+  private static final int regionServerNum = 1;
 
   @BeforeClass
   public static void setUpBeforeClass() throws Exception {
@@ -70,25 +68,17 @@ public class TestQuotaManager {
     TEST_UTIL.getConfiguration().setInt(QuotaCache.REGION_SERVER_WRITE_LIMIT_KEY, 10);
     TEST_UTIL.getConfiguration().setClass(RateLimiter.QUOTA_RATE_LIMITER_CONF_KEY,
       FixedIntervalRateLimiter.class, RateLimiter.class);
-    TEST_UTIL.startMiniCluster(1);
+    TEST_UTIL.startMiniCluster(regionServerNum);
     TEST_UTIL.waitTableAvailable(QuotaTableUtil.QUOTA_TABLE_NAME.getName());
     QuotaCache.TEST_FORCE_REFRESH = true;
 
-    tables = new HTable[TABLE_NAMES.length];
-    for (int i = 0; i < TABLE_NAMES.length; ++i) {
-      tables[i] = TEST_UTIL.createTable(TABLE_NAMES[i], FAMILY);
-    }
+    table = TEST_UTIL.createTable(TABLE_NAME, new byte[][] { FAMILY });
   }
 
   @AfterClass
   public static void tearDownAfterClass() throws Exception {
-    for (int i = 0; i < tables.length; ++i) {
-      if (tables[i] != null) {
-        tables[i].close();
-        TEST_UTIL.deleteTable(TABLE_NAMES[i]);
-      }
-    }
-
+    table.close();
+    TEST_UTIL.deleteTable(TABLE_NAME);
     TEST_UTIL.shutdownMiniCluster();
   }
 
@@ -108,20 +98,8 @@ public class TestQuotaManager {
     HBaseAdmin admin = TEST_UTIL.getHBaseAdmin();
     String userName = User.getCurrent().getShortName();
 
-    admin.setQuota(QuotaSettingsFactory.throttleUser(userName, TABLE_NAMES[0],
+    admin.setQuota(QuotaSettingsFactory.throttleUser(userName, TABLE_NAME,
       ThrottleType.READ_NUMBER, 5, TimeUnit.SECONDS));
-    admin.setQuota(QuotaSettingsFactory.throttleUser(userName, TABLE_NAMES[1],
-      ThrottleType.READ_NUMBER, 5, TimeUnit.SECONDS));
-
-    Put put = new Put(ROW);
-    put.add(FAMILY, QUALIFIER, Bytes.toBytes("test-value"));
-    for (int i = 0; i < TABLE_NAMES.length; ++i) {
-      tables[i].put(put);
-    }
-
-    RegionServerQuotaManager quotaManager = TEST_UTIL.getMiniHBaseCluster().getRegionServer(0)
-        .getRegionServerQuotaManager();
-    quotaManager.getQuotaCache().triggerCacheRefresh();
   }
 
   @Test
@@ -129,9 +107,9 @@ public class TestQuotaManager {
     final RegionServerQuotaManager quotaManager = TEST_UTIL.getMiniHBaseCluster()
         .getRegionServer(0).getRegionServerQuotaManager();
     final HRegion region = TEST_UTIL.getMiniHBaseCluster().getRegionServer(0)
-        .getOnlineRegions(TABLE_NAMES[0]).get(0);
+        .getOnlineRegions(TABLE_NAME).get(0);
     // update cache need one get first
-    quotaManager.getQuotaCache().getUserLimiter(User.getCurrent().getUGI(), tables[0].getName());
+    quotaManager.getQuotaCache().getUserLimiter(User.getCurrent().getUGI(), table.getName());
     Thread.sleep(1000);
     quotaManager.getQuotaCache().triggerCacheRefresh();
     Thread.sleep(1000);
@@ -157,32 +135,20 @@ public class TestQuotaManager {
         .getRegionServer(0).getRegionServerQuotaManager();
     final UserGroupInformation ugi = User.getCurrent().getUGI();
     // update cache need one get first
-    quotaManager.getQuotaCache().getUserLimiter(ugi, tables[0].getName());
-    quotaManager.getQuotaCache().getUserLimiter(ugi, tables[1].getName());
+    quotaManager.getQuotaCache().getUserLimiter(ugi, table.getName());
     Thread.sleep(1000);
     quotaManager.getQuotaCache().triggerCacheRefresh();
     Thread.sleep(1000);
-    Result result0 = tables[0].get(new Get(ROW));
-    Result result1 = tables[1].get(new Get(ROW));
 
-    // the above get consume 1 quota, so table0 and table1 have 4 quota
-    for (int i = 0; i < 4; i++) {
-      quotaManager.checkQuota(ugi, tables[0].getName(), OperationType.GET);
-      quotaManager.grabQuota(ugi, tables[0].getName(), result0);
-      quotaManager.checkQuota(ugi, tables[1].getName(), OperationType.GET);
-      quotaManager.grabQuota(ugi, tables[1].getName(), result1);
+    // allow exceed to 10
+    for (int i = 0; i < 10; i++) {
+      quotaManager.checkQuota(ugi, table.getName(), OperationType.GET);
+      quotaManager.grabQuota(ugi, table.getName(), Result.create(new ArrayList<Cell>()));
     }
     runWithExpectedException(new Callable<Void>() {
       @Override
       public Void call() throws Exception {
-        quotaManager.checkQuota(ugi, tables[0].getName(), OperationType.GET);
-        return null;
-      }
-    }, ThrottlingException.class);
-    runWithExpectedException(new Callable<Void>() {
-      @Override
-      public Void call() throws Exception {
-        quotaManager.checkQuota(ugi, tables[1].getName(), OperationType.GET);
+        quotaManager.checkQuota(ugi, table.getName(), OperationType.GET);
         return null;
       }
     }, ThrottlingException.class);
@@ -193,9 +159,9 @@ public class TestQuotaManager {
     RegionServerQuotaManager quotaManager = TEST_UTIL.getMiniHBaseCluster().getRegionServer(0)
         .getRegionServerQuotaManager();
     UserGroupInformation ugi = User.getCurrent().getUGI();
-    OperationQuota quota = quotaManager.getQuota(ugi, tables[0].getName());
+    OperationQuota quota = quotaManager.getQuota(ugi, table.getName());
     Thread.sleep(1000);
-    quota = quotaManager.getQuota(ugi, tables[0].getName());
+    quota = quotaManager.getQuota(ugi, table.getName());
     assertTrue(quota.getClass().getName().equals(AllowExceedOperationQuota.class.getName()));
   }
 
@@ -208,4 +174,5 @@ public class TestQuotaManager {
     }
     fail("Should have thrown exception " + exceptionClass);
   }
+
 }

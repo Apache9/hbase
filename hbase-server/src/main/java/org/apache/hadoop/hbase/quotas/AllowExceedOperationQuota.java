@@ -74,12 +74,14 @@ public class AllowExceedOperationQuota implements OperationQuota {
 
   @Override
   public long getReadAvailable() {
-    return Long.MAX_VALUE;
+    return Math.max(regionServerLimiter.getReadReqsAvailable(), userLimiter.getReadReqsAvailable())
+        * QuotaUtil.READ_CAPACITY_UNIT;
   }
 
   @Override
   public long getWriteAvailable() {
-    return Long.MAX_VALUE;
+    return Math.max(regionServerLimiter.getWriteReqsAvailable(), userLimiter.getWriteReqsAvailable())
+        * QuotaUtil.WRITE_CAPACITY_UNIT;
   }
 
   @Override
@@ -102,13 +104,13 @@ public class AllowExceedOperationQuota implements OperationQuota {
   private long estimateConsume(final OperationType type, int numReqs, long avgSize) {
     return 0;
   }
-  
+
   @Override
   public String toString() {
     StringBuilder builder = new StringBuilder();
-    builder.append("AllowExceedOperationQuota");
-    builder.append("\nuserLimiter\n" + userLimiter);
-    builder.append("\nregionServerLimiter\n" + regionServerLimiter);
+    builder.append("AllowExceedOperationQuota [");
+    builder.append(" " + userLimiter);
+    builder.append(" " + regionServerLimiter + " ]");
     return builder.toString();
   }
 }

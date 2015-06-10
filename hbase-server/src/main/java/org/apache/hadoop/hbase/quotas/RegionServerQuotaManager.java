@@ -19,7 +19,9 @@
 package org.apache.hadoop.hbase.quotas;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -51,20 +53,16 @@ import com.google.common.annotations.VisibleForTesting;
 @InterfaceStability.Evolving
 public class RegionServerQuotaManager {
   private static final Log LOG = LogFactory.getLog(RegionServerQuotaManager.class);
-
+  
+  // there are many unit test not allow exceed (for the DefaultOperationQuota), so need this conf
+  public static final String ALLOW_EXCEED_CONF_KEY = "hbase.quota.allow.exceed";
+  
   private final RegionServerServices rsServices;
 
   private QuotaCache quotaCache = null;
 
-  private int regionServerNum;
-
   public RegionServerQuotaManager(final RegionServerServices rsServices) {
-    this(rsServices, 1);
-  }
-  
-  public RegionServerQuotaManager(final RegionServerServices rsServices, final int regionServerNum) {
     this.rsServices = rsServices;
-    this.regionServerNum = regionServerNum;
   }
 
   public void start(final RpcScheduler rpcScheduler) throws IOException {
@@ -95,10 +93,10 @@ public class RegionServerQuotaManager {
     return quotaCache;
   }
 
-  public void updateRegionServerNum(final int regionServerNum) {
-    this.regionServerNum = regionServerNum;
+  private Configuration getConfiguration() {
+    return rsServices.getConfiguration();
   }
-
+  
   /**
    * Returns the quota for an operation.
    *
@@ -107,6 +105,7 @@ public class RegionServerQuotaManager {
    * @return the OperationQuota
    */
   public OperationQuota getQuota(final UserGroupInformation ugi, final TableName table) {
+    boolean allowExceed = getConfiguration().getBoolean(ALLOW_EXCEED_CONF_KEY, true);
     if (isQuotaEnabled() && !table.isSystemTable()) {
       UserQuotaState userQuotaState = quotaCache.getUserQuotaState(ugi);
       QuotaLimiter userLimiter = userQuotaState.getTableLimiter(table);
@@ -117,11 +116,13 @@ public class RegionServerQuotaManager {
           LOG.trace("get quota for ugi=" + ugi + " table=" + table + " userLimiter=" + userLimiter);
         }
         if (!useNoop) {
-          //return new DefaultOperationQuota(userLimiter);
-          return new AllowExceedOperationQuota(userLimiter, rsLimiter);
+          if (allowExceed) {
+            return new AllowExceedOperationQuota(userLimiter, rsLimiter);
+          } else {
+            return new DefaultOperationQuota(userLimiter);
+          }       
         }
-      } else {
-        
+      } else {      
         QuotaLimiter nsLimiter = quotaCache.getNamespaceLimiter(table.getNamespaceAsString());
         QuotaLimiter tableLimiter = quotaCache.getTableLimiter(table);
         useNoop &= tableLimiter.isBypass() && nsLimiter.isBypass();
@@ -130,8 +131,11 @@ public class RegionServerQuotaManager {
                     userLimiter + " tableLimiter=" + tableLimiter + " nsLimiter=" + nsLimiter);
         }
         if (!useNoop) {
-          //return new DefaultOperationQuota(userLimiter, tableLimiter, nsLimiter);
-          return new AllowExceedOperationQuota(userLimiter, rsLimiter);
+          if (allowExceed) {
+            return new AllowExceedOperationQuota(userLimiter, rsLimiter);
+          } else {
+            return new DefaultOperationQuota(userLimiter, tableLimiter, nsLimiter);
+          }
         }
       }
     }
@@ -258,9 +262,13 @@ public class RegionServerQuotaManager {
     try {
       quota.checkQuota(numWrites, numReads, numScans);
     } catch (ThrottlingException e) {
-      LOG.debug("Throttling exception for user=" + ugi.getUserName() + " table=" + table
-          + " numWrites=" + numWrites + " numReads=" + numReads + " numScans=" + numScans + ": "
-          + e.getMessage());
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("Throttling exception for user=" + ugi.getUserName() + " table=" + table
+            + " numWrites=" + numWrites + " numReads=" + numReads + " numScans=" + numScans + ": "
+            + e.getMessage());
+        LOG.debug("Quota snapshot for user=" + ugi.getUserName() + " table=" + table + " : "
+            + quota);
+      }
       throw e;
     }
     return quota;
@@ -336,5 +344,4 @@ public class RegionServerQuotaManager {
       quota.close();
     }
   }
-  
 }

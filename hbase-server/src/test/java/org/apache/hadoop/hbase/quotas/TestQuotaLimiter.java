@@ -40,6 +40,11 @@ public class TestQuotaLimiter {
   public void testCheckQuotaByRequestUnit() {
     Throttle throttle = buildThrottle(10, TimeUnit.MINUTES, 10, TimeUnit.MINUTES);
     quotaLimiter = QuotaLimiterFactory.fromThrottle(throttle);
+    try {
+      quotaLimiter.checkQuotaByRequestUnit(10, 10);
+    } catch (ThrottlingException e) {
+      fail("quota avail is more than the need, should not thrown exception");
+    }
     quotaLimiter.grabQuotaByRequestUnit(10, 10);
     runWithExpectedException(new Callable<Void>() {
       @Override
