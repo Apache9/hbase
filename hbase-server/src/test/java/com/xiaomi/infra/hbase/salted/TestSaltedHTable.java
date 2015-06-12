@@ -150,7 +150,7 @@ public class TestSaltedHTable {
   }
 
   protected SaltedHTable createSaltedTable() throws IOException {
-    return createSaltedTable(null);
+    return createSaltedTable(defaultSlotsCount);
   }
   
   protected SaltedHTable createSaltedTable(Integer slotCounts) throws IOException {
@@ -176,11 +176,7 @@ public class TestSaltedHTable {
   
   protected HTableDescriptor getSaltedHTableDescriptor(Integer slotCounts) {
     HTableDescriptor desc = getUnSaltedHTableDescriptor();
-    if (slotCounts != null) {
-      desc.setSalted(OneBytePrefixKeySalter.class.getName(), slotCounts);
-    } else {
-      desc.setSalted(OneBytePrefixKeySalter.class.getName());
-    }
+    desc.setSlotsCount(slotCounts);
     return desc;
   }
   
@@ -196,24 +192,12 @@ public class TestSaltedHTable {
   @Test
   public void testCreateSaltedTable() throws IOException {
     TEST_UTIL.deleteTable(TEST_TABLE);
-    
-    // pre-split by salted-slots
-    HTable table = toHTable(createSaltedTable());
-    byte[][] stopKeys = table.getEndKeys();
-    byte[][] slots = new OneBytePrefixKeySalter().getAllSalts();
-    Assert.assertEquals(slots.length, stopKeys.length);
-    for (int i = 0; i < slots.length - 1; ++i) {
-      Assert.assertArrayEquals(slots[i + 1], stopKeys[i]);
-    }
-    table.close();
-    
     // set slots count
-    TEST_UTIL.deleteTable(TEST_TABLE);
     int slotCount = 10;
-    table = toHTable(createSaltedTable(slotCount));
-    slots = new OneBytePrefixKeySalter(slotCount).getAllSalts();
+    HTable table = toHTable(createSaltedTable(slotCount));
+    byte[][] slots = new NBytePrefixKeySalter(slotCount).getAllSalts();
     Assert.assertEquals(slotCount, slots.length);
-    stopKeys = table.getEndKeys();
+    byte[][] stopKeys = table.getEndKeys();
     Assert.assertEquals(slots.length, stopKeys.length);
     for (int i = 0; i < slots.length - 1; ++i) {
       Assert.assertArrayEquals(slots[i + 1], stopKeys[i]);
@@ -223,7 +207,7 @@ public class TestSaltedHTable {
     // won't pre-split by salted-slots if splitKeys are set
     TEST_UTIL.deleteTable(TEST_TABLE);
     byte[] splitKey = Bytes.toBytes("aa");
-    HTableDescriptor desc = getSaltedHTableDescriptor(null);
+    HTableDescriptor desc = getSaltedHTableDescriptor(defaultSlotsCount);
     admin.createTable(desc, new byte[][]{splitKey});
     table = toHTable(connection.getTable(TEST_TABLE));
     stopKeys = table.getEndKeys();
@@ -239,7 +223,7 @@ public class TestSaltedHTable {
     HTableDescriptor desc = admin.getTableDescriptor(TEST_TABLE);
 
     // unset KeySalter
-    desc.setSalted(null);
+    desc.setSalted(null, 1);
     try {
       admin.modifyTable(TEST_TABLE, desc);
       Assert.fail();
@@ -249,7 +233,7 @@ public class TestSaltedHTable {
     }
     
     // use another Salter class
-    desc.setSalted("abc");
+    desc.setSalted("abc", 1);
     try {
       admin.modifyTable(TEST_TABLE, desc);
       Assert.fail();
@@ -262,7 +246,7 @@ public class TestSaltedHTable {
     TEST_UTIL.deleteTable(TEST_TABLE);
     createUnSaltedTable();
     desc = admin.getTableDescriptor(TEST_TABLE);
-    desc.setSalted(OneBytePrefixKeySalter.class.getName());
+    desc.setSalted(NBytePrefixKeySalter.class.getName(), 1);
     try {
       admin.modifyTable(TEST_TABLE, desc);
       Assert.fail();
@@ -362,11 +346,12 @@ public class TestSaltedHTable {
     KeySalter salter = saltedHTable.getKeySalter();
     byte[][] salts = new byte[][] { salter.getSalt(ROW_A), salter.getSalt(ROW_B),
         salter.getSalt(ROW_C) };
-    for (int i = 0; i < rows.length; ++i) {
+    for (int i = 0; i < 1; ++i) {
       byte[] salt = salts[i];
       Scan scan = new Scan();
       ResultScanner scanner = saltedHTable.getScanner(scan, new byte[][]{salt});
       Result result = scanner.next();
+      Assert.assertNotNull(result);
       Assert.assertNull(scanner.next());
       scanner.close();
       Assert.assertArrayEquals(rows[i], result.getRow());
