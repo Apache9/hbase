@@ -263,12 +263,12 @@ module Hbase
           num_regions = arg.delete(NUMREGIONS)
           split_algo = RegionSplitter.newSplitAlgoInstance(@conf, arg.delete(SPLITALGO))
           splits = split_algo.split(JInteger.valueOf(num_regions))
-        elsif (arg.has_key?(KEY_SALTER))
+        elsif (arg.has_key?(SLOTS_COUNT))
           # salted table
-          if (arg.has_key?(SLOTS_COUNT))
+          if (arg.has_key?(KEY_SALTER))
             htd.setSalted(arg[KEY_SALTER], JInteger.valueOf(arg[SLOTS_COUNT]))
           elsif
-            htd.setSalted(arg[KEY_SALTER])
+            htd.setSlotsCount(JInteger.valueOf(arg[SLOTS_COUNT]))
           end
         end
         

@@ -58,6 +58,8 @@ import org.apache.hadoop.io.WritableComparable;
 import com.google.protobuf.HBaseZeroCopyByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
 
+import com.xiaomi.infra.hbase.salted.NBytePrefixKeySalter;
+
 /**
  * HTableDescriptor contains the details about an HBase table  such as the descriptors of
  * all the column families, is the table a catalog table, <code> -ROOT- </code> or
@@ -1579,8 +1581,9 @@ public class HTableDescriptor implements WritableComparable<HTableDescriptor> {
     setValue(SLOTS_COUNT, String.valueOf(slotsCount));
   }
   
-  public void setSalted(String keySalter) {
-    setValue(KEY_SALTER, keySalter);
+  public void setSlotsCount(int slotsCount) {
+    setValue(KEY_SALTER, NBytePrefixKeySalter.class.getName());
+    setValue(SLOTS_COUNT, String.valueOf(slotsCount));
   }
   
   public boolean isSalted() {
