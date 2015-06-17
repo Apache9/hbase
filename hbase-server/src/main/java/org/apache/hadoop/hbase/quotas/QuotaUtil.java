@@ -412,14 +412,22 @@ public class QuotaUtil extends QuotaTableUtil {
   }
   
   public static int calculateRequestUnitNum(final Result result) {
-    return (int) Math.ceil(calculateResultSize(result) / READ_CAPACITY_UNIT);
+    return (int) calculateReadCapacityUnitNum(calculateResultSize(result));
   }
 
   public static int calculateRequestUnitNum(final List<Result> results) {
-    return (int) Math.ceil(calculateResultSize(results) / READ_CAPACITY_UNIT);
+    return (int) calculateReadCapacityUnitNum(calculateResultSize(results));
   }
 
   public static int calculateRequestUnitNum(final Mutation mutation) {
-    return (int) Math.ceil(calculateMutationSize(mutation) / WRITE_CAPACITY_UNIT);
+    return (int) calculateWriteCapacityUnitNum(calculateMutationSize(mutation));
+  }
+
+  public static long calculateReadCapacityUnitNum(final long size) {
+    return (long) Math.ceil(size * 1.0 / READ_CAPACITY_UNIT);
+  }
+
+  public static long calculateWriteCapacityUnitNum(final long size) {
+    return (long) Math.ceil(size * 1.0 / WRITE_CAPACITY_UNIT);
   }
 }

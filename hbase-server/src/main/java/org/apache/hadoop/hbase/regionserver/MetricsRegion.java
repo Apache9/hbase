@@ -19,6 +19,7 @@
 package org.apache.hadoop.hbase.regionserver;
 
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
+import org.apache.hadoop.hbase.quotas.QuotaUtil;
 import org.apache.hadoop.hbase.CompatibilitySingletonFactory;
 
 
@@ -56,6 +57,7 @@ public class MetricsRegion {
 
   public void updateScanNext(final long scanSize) {
     source.updateScan(scanSize);
+    this.updateRead(QuotaUtil.calculateReadCapacityUnitNum(scanSize));
   }
 
   public void updateAppend() {
@@ -64,6 +66,14 @@ public class MetricsRegion {
 
   public void updateIncrement() {
     source.updateIncrement();
+  }
+
+  public void updateRead(final long readCapacityUnitCount) {
+    source.updateRead(readCapacityUnitCount);
+  }
+
+  public void updateWrite(final long writeCapacityUnitCount) {
+    source.updateWrite(writeCapacityUnitCount);
   }
 
   MetricsRegionSource getSource() {
