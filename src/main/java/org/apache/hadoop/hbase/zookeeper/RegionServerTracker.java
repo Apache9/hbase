@@ -138,9 +138,11 @@ public class RegionServerTracker extends ZooKeeperListener {
   }
 
   public int getRegionServerInfoPort(final ServerName sn) {
-    return regionServers.get(sn).getInfoPort();
+    RegionServerInfo rsInfo = regionServers.get(sn);
+    if (rsInfo == null) return 0;
+    return rsInfo.getInfoPort();
   }
-  
+
   /**
    * Gets the online servers.
    * @return list of online servers

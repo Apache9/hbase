@@ -42,7 +42,6 @@ public class TestOffPeakHours {
   private int hourPlusOne;
   private int hourMinusOne;
   private int hourMinusTwo;
-  private Configuration conf;
 
   @Before
   public void setUp() {
@@ -50,7 +49,6 @@ public class TestOffPeakHours {
     hourPlusOne = ((hourOfDay+1)%24);
     hourMinusOne = ((hourOfDay-1+24)%24);
     hourMinusTwo = ((hourOfDay-2+24)%24);
-    conf = testUtil.getConfiguration();
   }
 
   @Test
@@ -63,6 +61,7 @@ public class TestOffPeakHours {
 
   @Test
   public void testSetPeakHourToTargetTime() {
+    Configuration conf = new Configuration(testUtil.getConfiguration());
     conf.setLong("hbase.offpeak.start.hour", hourMinusOne);
     conf.setLong("hbase.offpeak.end.hour", hourPlusOne);
     OffPeakHours target = OffPeakHours.getInstance(conf);
@@ -71,6 +70,7 @@ public class TestOffPeakHours {
 
   @Test
   public void testSetPeakHourOutsideCurrentSelection() {
+    Configuration conf = new Configuration(testUtil.getConfiguration());
     conf.setLong("hbase.offpeak.start.hour", hourMinusTwo);
     conf.setLong("hbase.offpeak.end.hour", hourMinusOne);
     OffPeakHours target = OffPeakHours.getInstance(conf);

@@ -22,8 +22,10 @@ package org.apache.hadoop.hbase.regionserver;
 
 import java.io.IOException;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.PriorityQueue;
+import java.util.Set;
 
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.KeyValue.KVComparator;
@@ -57,6 +59,8 @@ public class KeyValueHeap extends NonReversedNonLazyKeyValueScanner
   protected KeyValueScanner current = null;
 
   protected KVScannerComparator comparator;
+
+  protected Set<KeyValueScanner> scannersForDelayedClose = new HashSet<KeyValueScanner>();
 
   /**
    * Constructor.  This KeyValueHeap will handle closing of passed in
@@ -240,6 +244,10 @@ public class KeyValueHeap extends NonReversedNonLazyKeyValueScanner
   }
 
   public void close() {
+    for (KeyValueScanner scanner : this.scannersForDelayedClose) {
+      scanner.close();
+    }
+    this.scannersForDelayedClose.clear();
     if (this.current != null) {
       this.current.close();
     }
@@ -370,7 +378,13 @@ public class KeyValueHeap extends NonReversedNonLazyKeyValueScanner
 
     while (kvScanner != null && !kvScanner.realSeekDone()) {
       if (kvScanner.peek() != null) {
-        kvScanner.enforceSeek();
+        try {
+          kvScanner.enforceSeek();
+        } catch (IOException ioe) {
+          // Add to delayed close set in case of leak from close
+          this.scannersForDelayedClose.add(kvScanner);
+          throw ioe;
+        }
         KeyValue curKV = kvScanner.peek();
         if (curKV != null) {
           KeyValueScanner nextEarliestScanner = heap.peek();

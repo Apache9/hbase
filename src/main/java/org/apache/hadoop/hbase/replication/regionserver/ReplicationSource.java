@@ -1172,4 +1172,9 @@ public class ReplicationSource extends Thread
       return Long.parseLong(parts[parts.length-1]);
     }
   }
+
+  @Override
+  public int getSizeOfLogQueue() {
+    return queue.size();
+  }
 }

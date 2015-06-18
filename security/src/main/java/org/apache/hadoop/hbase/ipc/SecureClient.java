@@ -436,9 +436,10 @@ public class SecureClient extends HBaseClient {
             call.setValue(value);
           }
         } else if (state == Status.ERROR.state) {
+          String className = WritableUtils.readString(in);
+          String msg = WritableUtils.readString(in);
           if (call != null) {
-            call.setException(new RemoteException(WritableUtils.readString(in), WritableUtils
-                .readString(in)));
+            call.setException(new RemoteException(className, msg));
           }
         } else if (state == Status.FATAL.state) {
           RemoteException exception = new RemoteException(WritableUtils.readString(in),

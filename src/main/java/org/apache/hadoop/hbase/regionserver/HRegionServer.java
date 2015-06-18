@@ -65,6 +65,7 @@ import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HServerAddress;
 import org.apache.hadoop.hbase.HServerInfo;
 import org.apache.hadoop.hbase.HServerLoad;
+import org.apache.hadoop.hbase.HServerLoad.RegionLoad;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.HealthCheckChore;
 import org.apache.hadoop.hbase.KeyValue;
@@ -149,6 +150,7 @@ import org.apache.hadoop.hbase.regionserver.wal.FailedLogCloseException;
 import org.apache.hadoop.hbase.regionserver.wal.HLog;
 import org.apache.hadoop.hbase.regionserver.wal.HLogCompactor;
 import org.apache.hadoop.hbase.regionserver.wal.WALActionsListener;
+import org.apache.hadoop.hbase.replication.ReplicationLoad;
 import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.CompressionTest;
@@ -1028,15 +1030,25 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
     Collection<HRegion> regions = getOnlineRegionsLocalContext();
     TreeMap<byte [], HServerLoad.RegionLoad> regionLoads =
       new TreeMap<byte [], HServerLoad.RegionLoad>(Bytes.BYTES_COMPARATOR);
+    long readRequestsPerSecond = 0;
+    long writeRequestsPerSecond = 0;
     for (HRegion region: regions) {
-      regionLoads.put(region.getRegionName(), createRegionLoad(region));
+      RegionLoad load = createRegionLoad(region);
+      regionLoads.put(region.getRegionName(), load);
+      readRequestsPerSecond += load.getReadRequestsPerSecond();
+      writeRequestsPerSecond += load.getWriteRequestsPerSecond();
+    }
+    List<ReplicationLoad> replicationLoads = new LinkedList<ReplicationLoad>();
+    if (this.replicationSourceHandler != null) {
+      replicationLoads = replicationSourceHandler.getReplicatonLoad();
     }
     MemoryUsage memory =
       ManagementFactory.getMemoryMXBean().getHeapMemoryUsage();
     return new HServerLoad(requestCount.get(),(int)metrics.getRequests(),
       (int)(memory.getUsed() / 1024 / 1024),
       (int) (memory.getMax() / 1024 / 1024), regionLoads,
-      this.hlog.getCoprocessorHost().getCoprocessors());
+      this.hlog.getCoprocessorHost().getCoprocessors(),
+      readRequestsPerSecond, writeRequestsPerSecond, replicationLoads);
   }
 
   String getOnlineRegionsAsPrintableString() {
@@ -1311,7 +1323,8 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
         totalStaticIndexSizeKB, totalStaticBloomSizeKB,
         r.getRequestsCount.get(), r.readRequestsCount.get(), r.writeRequestsCount.get(),
         totalCompactingKVs, currentCompactedKVs, 
-        r.getLastFlushSequenceId(), locality);
+        r.getLastFlushSequenceId(), locality,
+        r.getReadRequestsPerSecond(), r.getWriteRequestsPerSecond());
   }
 
   /**
@@ -2926,8 +2939,7 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
           }
         }
         requestCount.addAndGet(i);
-        region.readRequestsCount.add(i);
-        region.setOpMetricsReadRequestCount(region.readRequestsCount.get());
+        region.updateReadMetrics();
       } finally {
         region.closeRegionOperation();
       }

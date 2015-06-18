@@ -115,6 +115,7 @@ import org.apache.hadoop.hbase.ipc.CoprocessorProtocol;
 import org.apache.hadoop.hbase.ipc.HBaseRPC;
 import org.apache.hadoop.hbase.ipc.HBaseServer;
 import org.apache.hadoop.hbase.ipc.RpcCallContext;
+import org.apache.hadoop.hbase.metrics.MetricsRate;
 import org.apache.hadoop.hbase.monitoring.MonitoredTask;
 import org.apache.hadoop.hbase.monitoring.TaskMonitor;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.SnapshotDescription;
@@ -139,6 +140,7 @@ import org.apache.hadoop.hbase.util.Threads;
 import org.apache.hadoop.hbase.util.Writables;
 import org.apache.hadoop.io.MultipleIOException;
 import org.apache.hadoop.io.Writable;
+import org.apache.hadoop.metrics.util.MetricsRegistry;
 import org.apache.hadoop.util.StringUtils;
 import org.cliffc.high_scale_lib.Counter;
 
@@ -244,6 +246,11 @@ public class HRegion implements HeapSize { // , Writable{
   final Counter readRequestsCount = new Counter();
   final Counter writeRequestsCount = new Counter();
   final Counter updatesBlockedMs = new Counter();
+  final MetricsRegistry registry = new MetricsRegistry();
+  final MetricsRate readRequestsPerSecond = new MetricsRate(
+      "readRequestsPerSecond", registry);
+  final MetricsRate writeRequestsPerSecond = new MetricsRate(
+      "writeRequestsPerSecond", registry);
 
   /**
    * The directory for the table this region is part of.
@@ -890,9 +897,21 @@ public class HRegion implements HeapSize { // , Writable{
     return this.readRequestsCount.get();
   }
 
+  /** @return readRequestsPerSecond for this region */
+  public long getReadRequestsPerSecond() {
+    this.readRequestsPerSecond.intervalHeartBeat();
+    return (long) this.readRequestsPerSecond.getPreviousIntervalValue();
+  }
+
   /** @return writeRequestsCount for this region */
   public long getWriteRequestsCount() {
     return this.writeRequestsCount.get();
+  }
+
+  /** @return writeRequestsPerSecond for this region */
+  public long getWriteRequestsPerSecond() {
+    this.writeRequestsPerSecond.intervalHeartBeat();
+    return (long) this.writeRequestsPerSecond.getPreviousIntervalValue();
   }
 
   /** @return true if region is closed */
@@ -1777,8 +1796,7 @@ public class HRegion implements HeapSize { // , Writable{
     // closest key is across all column families, since the data may be sparse
     checkRow(row, "getClosestRowBefore");
     startRegionOperation();
-    this.readRequestsCount.increment();
-    this.opMetrics.setReadRequestCountMetrics(this.readRequestsCount.get());   
+    updateReadMetrics();
     try {
       Store store = getStore(family);
       // get the closest key. (HStore.getRowKeyAtOrBefore can return null)
@@ -1900,8 +1918,7 @@ public class HRegion implements HeapSize { // , Writable{
     checkResources();
     Integer lid = null;
     startRegionOperation();
-    this.writeRequestsCount.increment();
-    this.opMetrics.setWriteRequestCountMetrics(this.writeRequestsCount.get());
+    updateWriteMetrics(1);
     try {
       byte [] row = delete.getRow();
       // If we did not pass an existing row lock, obtain a new one
@@ -2096,8 +2113,7 @@ public class HRegion implements HeapSize { // , Writable{
     // will be extremely rare; we'll deal with it when it happens.
     checkResources();
     startRegionOperation();
-    this.writeRequestsCount.increment();
-    this.opMetrics.setWriteRequestCountMetrics(this.writeRequestsCount.get());
+    updateWriteMetrics(1);
     try {
       // We obtain a per-row lock, so other clients will block while one client
       // performs an update. The read lock is released by the client calling
@@ -2229,8 +2245,7 @@ public class HRegion implements HeapSize { // , Writable{
         requestFlush();
       }
     }
-    this.writeRequestsCount.add(mutationsAndLocks.length);
-    this.opMetrics.setWriteRequestCountMetrics(this.writeRequestsCount.get());
+    updateWriteMetrics(mutationsAndLocks.length);
     return batchOp.retCodeDetails;
   }
 
@@ -2668,8 +2683,7 @@ public class HRegion implements HeapSize { // , Writable{
     TracerUtils.addAnnotation("Region: " + regionInfo.getRegionNameAsString());
     long nowNs = System.nanoTime();
     startRegionOperation();
-    this.writeRequestsCount.increment();
-    this.opMetrics.setWriteRequestCountMetrics(this.writeRequestsCount.get());
+    updateWriteMetrics(1);
     try {
       RowLock lock = mutate.getRowLock();
       Get get = new Get(check.getRow(), lock);
@@ -2751,8 +2765,7 @@ public class HRegion implements HeapSize { // , Writable{
 
     long nowNs = System.nanoTime();
     startRegionOperation();
-    this.writeRequestsCount.increment();
-    this.opMetrics.setWriteRequestCountMetrics(this.writeRequestsCount.get());
+    updateWriteMetrics(1);
     try {
       RowLock lock = isPut ? ((Put)w).getRowLock() : ((Delete)w).getRowLock();
       Get get = new Get(row, lock);
@@ -3619,8 +3632,7 @@ public class HRegion implements HeapSize { // , Writable{
    */
   public Integer obtainRowLock(final byte [] row) throws IOException {
     startRegionOperation();
-    this.writeRequestsCount.increment();
-    this.opMetrics.setWriteRequestCountMetrics( this.writeRequestsCount.get());
+    updateWriteMetrics(1);
     try {
       return internalObtainRowLock(new HashedBytes(row), true);
     } finally {
@@ -3805,8 +3817,7 @@ public class HRegion implements HeapSize { // , Writable{
     // we need writeLock for multi-family bulk load
     startBulkRegionOperation(hasMultipleColumnFamilies(familyPaths));
     try {
-      this.writeRequestsCount.increment();
-      this.opMetrics.setWriteRequestCountMetrics( this.writeRequestsCount.get());
+      updateWriteMetrics(1);
 
       // There possibly was a split that happend between when the split keys
       // were gathered and before the HReiogn's write lock was taken.  We need
@@ -4041,8 +4052,7 @@ public class HRegion implements HeapSize { // , Writable{
       }
       final long nowNs = System.nanoTime();
       startRegionOperation();
-      readRequestsCount.increment();
-      opMetrics.setReadRequestCountMetrics(readRequestsCount.get());
+      updateReadMetrics();
       try {
 
         // This could be a new thread from the last time we called next().
@@ -4198,7 +4208,7 @@ public class HRegion implements HeapSize { // , Writable{
             status = nextRow(currentRow, offset, length);
             rawCount += status.getRawValueScanned();
             if (!status.hasNext() || rawLimit > 0 && rawCount >= rawLimit) {
-              return new ScannerStatus(status.hasNext(), status.next(), rawCount);
+              return new ScannerStatus(status.hasNext(), filterStopRow(status.next()), rawCount);
             }
             continue;
           }
@@ -4213,9 +4223,9 @@ public class HRegion implements HeapSize { // , Writable{
               throw new IncompatibleFilterException(
                 "Filter whose hasFilterRow() returns true is incompatible with scan with limit!");
             }
-            return ScannerStatus.continued(nextKv, rawCount); // We hit the limit.
+            return ScannerStatus.continued(filterStopRow(nextKv), rawCount); // We hit the limit.
           } else if (rawLimit > 0 && rawCount >= rawLimit) {
-            return ScannerStatus.continued(nextKv, rawCount); // We hit the limit.
+            return ScannerStatus.continued(filterStopRow(nextKv), rawCount); // We hit the limit.
           }
           stopRow = nextKv == null
               || isStopRow(nextKv.getBuffer(), nextKv.getRowOffset(), nextKv.getRowLength());
@@ -4232,7 +4242,7 @@ public class HRegion implements HeapSize { // , Writable{
             results.clear();
             status = nextRow(currentRow, offset, length);
             if (!status.hasNext() || rawLimit > 0 && rawCount >= rawLimit) {
-              return new ScannerStatus(status.hasNext(), status.next(), rawCount);
+              return new ScannerStatus(status.hasNext(), filterStopRow(status.next()), rawCount);
             }
 
             // This row was totally filtered out, if this is NOT the last row,
@@ -4269,7 +4279,7 @@ public class HRegion implements HeapSize { // , Writable{
         // We may have just called populateFromJoinedMap and hit the limits. If that is
         // the case, we need to call it again on the next next() invocation.
         if (joinedContinuationRow != null) {
-          return ScannerStatus.continued(status.next(), rawCount);
+          return ScannerStatus.continued(filterStopRow(status.next()), rawCount);
         }
 
         // Finally, we are done with both joinedHeap and storeHeap.
@@ -4279,13 +4289,13 @@ public class HRegion implements HeapSize { // , Writable{
           status = nextRow(currentRow, offset, length);
           rawCount += status.getRawValueScanned();
           if (!status.hasNext() || rawLimit > 0 && rawCount >= rawLimit) {
-            return new ScannerStatus(status.hasNext(), status.next(), rawCount);
+            return new ScannerStatus(status.hasNext(), filterStopRow(status.next()), rawCount);
           }
           if (!stopRow) continue;
         }
 
         // We are done. Return the result.
-        return new ScannerStatus(!stopRow, status.next(), rawCount);
+        return new ScannerStatus(!stopRow, filterStopRow(status.next()), rawCount);
       }
     }
 
@@ -4313,6 +4323,16 @@ public class HRegion implements HeapSize { // , Writable{
             ScannerStatus.continued(next, rawCount) : ScannerStatus.done(rawCount);
       }
       return ScannerStatus.continued(next, rawCount);
+    }
+
+    protected KeyValue filterStopRow(KeyValue keyValue) {
+      if (keyValue != null) {
+        byte[] row = keyValue.getBuffer();
+        int offset = keyValue.getRowOffset();
+        short length = keyValue.getRowLength();
+        return isStopRow(row, offset, length) ? null : keyValue;
+      }
+      return null;
     }
 
     protected boolean isStopRow(byte[] currentRow, int offset, short length) {
@@ -5350,8 +5370,7 @@ public class HRegion implements HeapSize { // , Writable{
     checkReadOnly(false);
     // Lock row
     startRegionOperation();
-    this.writeRequestsCount.increment();
-    this.opMetrics.setWriteRequestCountMetrics(this.writeRequestsCount.get());
+    updateWriteMetrics(1);
     WriteEntry w = null;
     try {
       Integer lid = getLock(lockid, row, true);
@@ -5537,8 +5556,7 @@ public class HRegion implements HeapSize { // , Writable{
     checkReadOnly(false);
     // Lock row
     startRegionOperation();
-    this.writeRequestsCount.increment();
-    this.opMetrics.setWriteRequestCountMetrics(this.writeRequestsCount.get());
+    updateWriteMetrics(1);
     WriteEntry w = null;
     try {
       Integer lid = getLock(lockid, row, true);
@@ -5681,8 +5699,7 @@ public class HRegion implements HeapSize { // , Writable{
     // Lock row
     long result = amount;
     startRegionOperation();
-    this.writeRequestsCount.increment();
-    this.opMetrics.setWriteRequestCountMetrics(this.writeRequestsCount.get());
+    updateWriteMetrics(1);
     WriteEntry w = null;
     try {
       Integer lid = obtainRowLock(row);
@@ -5789,7 +5806,7 @@ public class HRegion implements HeapSize { // , Writable{
   public static final long FIXED_OVERHEAD = ClassSize.align(
       ClassSize.OBJECT +
       ClassSize.ARRAY +
-      36 * ClassSize.REFERENCE + 2 * Bytes.SIZEOF_INT +
+      39 * ClassSize.REFERENCE + 2 * Bytes.SIZEOF_INT +
       (10 * Bytes.SIZEOF_LONG) +
       Bytes.SIZEOF_BOOLEAN);
 
@@ -6156,6 +6173,28 @@ public class HRegion implements HeapSize { // , Writable{
       throw new NotServingRegionException(regionInfo.getRegionNameAsString() +
           " is closed");
     }
+  }
+  /**
+   * Update the read operation metrics
+   */
+  public void updateReadMetrics() {
+    this.readRequestsCount.increment();
+    this.opMetrics.setReadRequestCountMetrics(this.readRequestsCount.get());
+    this.readRequestsPerSecond.inc();
+  }
+
+  /**
+   * Update the write operation metrics
+   */
+  public void updateWriteMetrics(int num) {
+    if (num == 1) {
+      this.writeRequestsCount.increment();
+      this.writeRequestsPerSecond.inc();
+    } else {
+      this.writeRequestsCount.add(num);
+      this.writeRequestsPerSecond.inc(num);
+    }
+    this.opMetrics.setWriteRequestCountMetrics(this.writeRequestsCount.get());
   }
   
   /**
