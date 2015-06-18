@@ -126,6 +126,7 @@ import org.apache.hadoop.hbase.protobuf.generated.ClientProtos;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.CoprocessorServiceCall;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.SnapshotDescription;
 import org.apache.hadoop.hbase.protobuf.generated.WALProtos.CompactionDescriptor;
+import org.apache.hadoop.hbase.quotas.QuotaUtil;
 import org.apache.hadoop.hbase.regionserver.MultiVersionConsistencyControl.WriteEntry;
 import org.apache.hadoop.hbase.regionserver.compactions.CompactionContext;
 import org.apache.hadoop.hbase.regionserver.compactions.CompactionThroughputController;
@@ -2136,6 +2137,7 @@ public class HRegion implements HeapSize { // , Writable{
       // All edits for the given row (across all column families) must happen atomically.
       doBatchMutate(put);
     } finally {
+      metricsRegion.updateWrite(QuotaUtil.calculateRequestUnitNum(put));
       closeRegionOperation(Operation.PUT);
     }
   }
@@ -2848,6 +2850,7 @@ public class HRegion implements HeapSize { // , Writable{
         rowLock.release();
       }
     } finally {
+      metricsRegion.updateWrite(QuotaUtil.calculateRequestUnitNum(w));
       closeRegionOperation();
     }
   }

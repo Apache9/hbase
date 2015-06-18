@@ -49,6 +49,8 @@ public class MetricsRegionSourceImpl implements MetricsRegionSource {
   private String regionIncrementKey;
   private String regionAppendKey;
   private String regionScanNextKey;
+  private String regionReadKey;
+  private String regionWriteKey;
   private MutableCounterLong regionPut;
   private MutableCounterLong regionDelete;
 
@@ -57,6 +59,9 @@ public class MetricsRegionSourceImpl implements MetricsRegionSource {
 
   private MutableHistogram regionGet;
   private MutableHistogram regionScanNext;
+
+  private MutableHistogram regionRead;
+  private MutableHistogram regionWrite;
 
   public MetricsRegionSourceImpl(MetricsRegionWrapper regionWrapper,
                                  MetricsRegionAggregateSourceImpl aggregate) {
@@ -93,6 +98,12 @@ public class MetricsRegionSourceImpl implements MetricsRegionSource {
 
     regionScanNextKey = regionNamePrefix + MetricsRegionServerSource.SCAN_NEXT_KEY;
     regionScanNext = registry.newHistogram(regionScanNextKey);
+
+    regionReadKey = regionNamePrefix + MetricsRegionServerSource.READ_KEY;
+    regionRead = registry.newHistogram(regionReadKey);
+
+    regionWriteKey = regionNamePrefix + MetricsRegionServerSource.WRITE_KEY;
+    regionWrite = registry.newHistogram(regionWriteKey);
   }
 
   @Override
@@ -110,6 +121,9 @@ public class MetricsRegionSourceImpl implements MetricsRegionSource {
 
     registry.removeMetric(regionGetKey);
     registry.removeMetric(regionScanNextKey);
+
+    registry.removeMetric(regionReadKey);
+    registry.removeMetric(regionWriteKey);
 
     JmxCacheBuster.clearJmxCache();
   }
@@ -142,6 +156,16 @@ public class MetricsRegionSourceImpl implements MetricsRegionSource {
   @Override
   public void updateAppend() {
     regionAppend.incr();
+  }
+
+  @Override
+  public void updateRead(long readCapacityUnitCount) {
+    regionRead.add(readCapacityUnitCount);
+  }
+
+  @Override
+  public void updateWrite(long writeCapacityUnitCount) {
+    regionWrite.add(writeCapacityUnitCount);
   }
 
   @Override

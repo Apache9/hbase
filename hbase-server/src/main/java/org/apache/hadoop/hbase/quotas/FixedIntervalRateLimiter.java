@@ -13,6 +13,7 @@ package org.apache.hadoop.hbase.quotas;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.classification.InterfaceStability;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
+
 import com.google.common.annotations.VisibleForTesting;
 
 /**
@@ -24,13 +25,17 @@ public class FixedIntervalRateLimiter extends RateLimiter {
   private long nextRefillTime = -1L;
 
   @Override
-  public long refill(long limit, long available) {
+  public long refill(long limit) {
     final long now = EnvironmentEdgeManager.currentTimeMillis();
-    if (now < nextRefillTime) {
-      return 0;
+    if (nextRefillTime == -1) {
+      // Till now no resource has been consumed.
+      nextRefillTime = EnvironmentEdgeManager.currentTimeMillis();
+      return limit;
     }
-    nextRefillTime = now + super.getTimeUnitInMillis();
-    return limit;
+
+    long delta = (now - nextRefillTime) / super.getTimeUnitInMillis();
+    this.nextRefillTime += delta * super.getTimeUnitInMillis();
+    return delta * limit;
   }
 
   @Override
@@ -38,9 +43,8 @@ public class FixedIntervalRateLimiter extends RateLimiter {
     if (nextRefillTime == -1) {
       return 0;
     }
-    final long now = EnvironmentEdgeManager.currentTimeMillis();
-    final long refillTime = nextRefillTime;
-    return refillTime - now;
+    long timeUnitInMillis = super.getTimeUnitInMillis();
+    return (long) Math.ceil((amount - available) * 1.0 / limit) * timeUnitInMillis;
   }
 
   // This method is for strictly testing purpose only

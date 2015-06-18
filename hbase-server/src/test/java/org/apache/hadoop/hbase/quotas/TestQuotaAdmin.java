@@ -79,8 +79,10 @@ public class TestQuotaAdmin {
     HBaseAdmin admin = TEST_UTIL.getHBaseAdmin();
     String userName = User.getCurrent().getShortName();
 
-    admin.setQuota(QuotaSettingsFactory
-      .throttleUser(userName, ThrottleType.READ_NUMBER, 6, TimeUnit.MINUTES));
+    admin.setQuota(QuotaSettingsFactory.throttleUser(userName, ThrottleType.READ_NUMBER, 6,
+      TimeUnit.MINUTES));
+    admin.setQuota(QuotaSettingsFactory.throttleUser(userName, ThrottleType.WRITE_NUMBER, 12,
+      TimeUnit.MINUTES));
     admin.setQuota(QuotaSettingsFactory.bypassGlobals(userName, true));
 
     QuotaRetriever scanner = QuotaRetriever.open(TEST_UTIL.getConfiguration());
@@ -92,11 +94,16 @@ public class TestQuotaAdmin {
         switch (settings.getQuotaType()) {
           case THROTTLE:
             ThrottleSettings throttle = (ThrottleSettings)settings;
+            if (throttle.getSoftLimit() == 6) {
+              assertEquals(ThrottleType.READ_NUMBER, throttle.getThrottleType());
+            } else if (throttle.getSoftLimit() == 12) {
+              assertEquals(ThrottleType.WRITE_NUMBER, throttle.getThrottleType());
+            } else {
+              fail("should not come here, because don't set quota with this limit");
+            }
             assertEquals(userName, throttle.getUserName());
             assertEquals(null, throttle.getTableName());
             assertEquals(null, throttle.getNamespace());
-            assertEquals(ThrottleType.READ_NUMBER, throttle.getThrottleType());
-            assertEquals(6, throttle.getSoftLimit());
             assertEquals(TimeUnit.MINUTES, throttle.getTimeUnit());
             countThrottle++;
             break;
@@ -107,7 +114,7 @@ public class TestQuotaAdmin {
             fail("unexpected settings type: " + settings.getQuotaType());
         }
       }
-      assertEquals(1, countThrottle);
+      assertEquals(2, countThrottle);
       assertEquals(1, countGlobalBypass);
     } finally {
       scanner.close();
