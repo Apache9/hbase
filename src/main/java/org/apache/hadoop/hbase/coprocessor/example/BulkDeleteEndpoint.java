@@ -71,7 +71,7 @@ public class BulkDeleteEndpoint extends BaseEndpointCoprocessor implements BulkD
         List<List<KeyValue>> deleteRows = new ArrayList<List<KeyValue>>(rowBatchSize);
         for (int i = 0; i < rowBatchSize; i++) {
           List<KeyValue> results = new ArrayList<KeyValue>();
-          hasMore = scanner.next(results);
+          hasMore = scanner.next(results).hasNext();
           if (results.size() > 0) {
             deleteRows.add(results);
           }

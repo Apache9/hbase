@@ -1444,7 +1444,8 @@ public abstract class HBaseServer implements RpcServer {
           return;
         }
         if (methodName.startsWith("get") || methodName.equals("next")
-            || methodName.equals("openScanner") || methodName.equals("exists")) {
+            || methodName.equals("openScanner") || methodName.equals("exists")
+            || methodName.equals("close")) {
           boolean success = readCallQueue.offer(call);
           if (!success) {
             // fail fast on queue inserting, no more waiting!

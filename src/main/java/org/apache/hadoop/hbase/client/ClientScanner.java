@@ -251,6 +251,14 @@ public class ClientScanner extends AbstractClientScanner {
       scanMetricsPublished = true;
     }
 
+    /**
+     * Get the next result.
+     * @return The next result. A fake result will be returned when the raw limit is set and
+     * reached but no valid result is found yet. The row key part of the fake result records the
+     * next position of the scanner(usually a invisible row). Null value means the scanner reaches
+     * the end.
+     * @throws IOException
+     */
     public Result next() throws IOException {
       // If the scanner is closed and there's nothing left in the cache, next is a no-op.
       if (cache.size() == 0 && this.closed) {
@@ -267,6 +275,7 @@ public class ClientScanner extends AbstractClientScanner {
         // this when we reset scanner because it split under us.
         boolean skipFirst = false;
         boolean retryAfterOutOfOrderException  = true;
+        boolean fakeResultReturned = false;
         do {
           try {
             if (skipFirst) {
@@ -337,10 +346,15 @@ public class ClientScanner extends AbstractClientScanner {
               }
               countdown--;
               this.lastResult = rs;
+              if (rs.isFake()) {
+                // End of 1 next RPC
+                fakeResultReturned = true;
+              }
             }
           }
           // Values == null means server-side filter has determined we must STOP
-        } while (remainingResultSize > 0 && countdown > 0 && nextScanner(countdown, values == null));
+        } while (!fakeResultReturned && remainingResultSize > 0 && countdown > 0 &&
+            nextScanner(countdown, values == null));
       }
 
       if (cache.size() > 0) {
@@ -367,7 +381,12 @@ public class ClientScanner extends AbstractClientScanner {
       for(int i = 0; i < nbRows; i++) {
         Result next = next();
         if (next != null) {
-          resultSets.add(next);
+          // skip the fake row filled when raw limit is hit
+          if (!next.isFake()) {
+            resultSets.add(next);
+          } else {
+            i--;
+          }
         } else {
           break;
         }

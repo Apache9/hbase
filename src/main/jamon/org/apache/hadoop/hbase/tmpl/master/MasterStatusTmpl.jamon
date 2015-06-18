@@ -245,6 +245,8 @@ AssignmentManager assignmentManager = master.getAssignmentManager();
 <%java>
      int totalRegions = 0;
      int totalRequests = 0; 
+     int totalReadPerSecond = 0;
+     int totalWritePerSecond = 0;
 </%java>
 
 <table>
@@ -260,6 +262,8 @@ AssignmentManager assignmentManager = master.getAssignmentManager();
        if (hsl != null) {
          totalRegions += hsl.getNumberOfRegions();
          totalRequests += hsl.getNumberOfRequests();
+         totalReadPerSecond += hsl.getReadRequestsPerSecond();
+         totalWritePerSecond += hsl.getWriteRequestsPerSecond();
        }
        long startcode = serverName.getStartcode();
 </%java>
@@ -267,7 +271,8 @@ AssignmentManager assignmentManager = master.getAssignmentManager();
 <%java>
     }
 </%java>
-<tr><th>Total: </th><td>servers: <% servers.size() %></td><td></td><td>requestsPerSecond=<% totalRequests %>, numberOfOnlineRegions=<% totalRegions %></td></tr>
+<tr><th>Total: </th><td>servers: <% servers.size() %></td><td></td>
+<td>requestsPerSecond=<% totalRequests %>, readPerSecond=<% totalReadPerSecond %>, writePerSecond=<% totalWritePerSecond %>, numberOfOnlineRegions=<% totalRegions %></td></tr>
 </table>
 
 <p>Load is requests per second and count of regions loaded</p>

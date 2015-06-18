@@ -19,7 +19,11 @@ package org.apache.hadoop.hbase.master;
 
 import java.util.Map;
 
+import org.apache.hadoop.hbase.ClusterLoad;
 import org.apache.hadoop.hbase.HServerLoad;
+import org.apache.hadoop.hbase.TableLoad;
+import org.apache.hadoop.hbase.replication.ReplicationLoad;
+import org.apache.hadoop.hbase.replication.regionserver.Replication;
 
 /**
  * This is the JMX management interface for Hbase master information
@@ -124,4 +128,22 @@ public interface MXBean {
    * @return compaction number limit
    */
   public int getCompactionNumLimit();
+
+  /**
+   * Get the current cluster load
+   * @return ClusterLoad
+   */
+  public ClusterLoad getClusterLoad();
+
+  /**
+   * Get the current table load
+   * @return all table loads
+   */
+  public Map<String, TableLoad> getTableLoads();
+
+  /**
+   * Get the current replication load
+   * @return all table loads
+   */
+  public Map<String, ReplicationLoad> getReplicationLoads();
 }

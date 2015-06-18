@@ -98,7 +98,7 @@ public class TestMemStore extends TestCase {
     StoreScanner s = new StoreScanner(scan, scanInfo, scanType, null, memstorescanners);
     int count = 0;
     try {
-      while (s.next(result)) {
+      while (s.next(result).hasNext()) {
         LOG.info(result);
         count++;
         // Row count is same as column count.
@@ -119,7 +119,7 @@ public class TestMemStore extends TestCase {
     s = new StoreScanner(scan, scanInfo, scanType, null, memstorescanners);
     count = 0;
     try {
-      while (s.next(result)) {
+      while (s.next(result).hasNext()) {
         LOG.info(result);
         // Assert the stuff is coming out in right order.
         assertTrue(Bytes.compareTo(Bytes.toBytes(count), result.get(0).getRow()) == 0);
@@ -146,7 +146,7 @@ public class TestMemStore extends TestCase {
     count = 0;
     int snapshotIndex = 5;
     try {
-      while (s.next(result)) {
+      while (s.next(result).hasNext()) {
         LOG.info(result);
         // Assert the stuff is coming out in right order.
         assertTrue(Bytes.compareTo(Bytes.toBytes(count), result.get(0).getRow()) == 0);
@@ -563,7 +563,7 @@ public class TestMemStore extends TestCase {
           Bytes.toBytes(startRowId)), scanInfo, scanType, null,
           memstore.getScanners());
       List<KeyValue> results = new ArrayList<KeyValue>();
-      for (int i = 0; scanner.next(results); i++) {
+      for (int i = 0; scanner.next(results).hasNext(); i++) {
         int rowId = startRowId + i;
         assertTrue("Row name",
           KeyValue.COMPARATOR.compareRows(results.get(0),

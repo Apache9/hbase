@@ -75,6 +75,8 @@ import org.apache.zookeeper.proto.CreateRequest;
 import org.apache.zookeeper.proto.DeleteRequest;
 import org.apache.zookeeper.proto.SetDataRequest;
 
+import com.google.common.annotations.VisibleForTesting;
+
 /**
  * Internal HBase utility class for ZooKeeper.
  *
@@ -91,6 +93,25 @@ public class ZKUtil {
   private static final char ZNODE_PATH_SEPARATOR = '/';
   private static int zkDumpConnectionTimeOut;
 
+  // The Quorum for the ZK cluster can have one the following format (see examples below):
+  // (1). s1,s2,s3 (no client port in the list, the client port could be obtained from clientPort)
+  // (2). s1:p1,s2:p2,s3:p3 (with client port, which could be same or different for each server,
+  //      in this case, the clientPort would be ignored)
+  // (3). s1:p1,s2,s3:p3 (mix of (1) and (2) - if port is not specified in a server, it would use
+  //      the clientPort; otherwise, it would use the specified port)
+  @VisibleForTesting
+  public static class ZKClusterKey {
+    public String quorumString;
+    public int clientPort;
+    public String znodeParent;
+
+    ZKClusterKey(String quorumString, int clientPort, String znodeParent) {
+      this.quorumString = quorumString;
+      this.clientPort = clientPort;
+      this.znodeParent = znodeParent;
+    }
+  }
+
   /**
    * Creates a new connection to ZooKeeper, pulling settings and ensemble config
    * from the specified configuration object using methods from {@link ZKConfig}.
@@ -104,8 +125,7 @@ public class ZKUtil {
    */
   public static RecoverableZooKeeper connect(Configuration conf, Watcher watcher)
   throws IOException {
-    Properties properties = ZKConfig.makeZKProps(conf);
-    String ensemble = ZKConfig.getZKQuorumServersString(properties);
+    String ensemble = ZKConfig.getZKQuorumServersString(conf);
     return connect(conf, ensemble, watcher);
   }
 
@@ -391,10 +411,10 @@ public class ZKUtil {
       Configuration newConf = entry.createClusterConf(conf);
       HBaseConfiguration.merge(conf, newConf);
     } else {
-      String[] parts = transformClusterKey(key);
-      conf.set(HConstants.ZOOKEEPER_QUORUM, parts[0]);
-      conf.set(HConstants.ZOOKEEPER_CLIENT_PORT, parts[1]);
-      conf.set(HConstants.ZOOKEEPER_ZNODE_PARENT, parts[2]);
+      ZKClusterKey zkClusterKey = transformClusterKey(key);
+      conf.set(HConstants.ZOOKEEPER_QUORUM, zkClusterKey.quorumString);
+      conf.setInt(HConstants.ZOOKEEPER_CLIENT_PORT, zkClusterKey.clientPort);
+      conf.set(HConstants.ZOOKEEPER_ZNODE_PARENT, zkClusterKey.znodeParent);
     }
   }
 
@@ -406,7 +426,7 @@ public class ZKUtil {
    * @return the three configuration in the described order
    * @throws IOException
    */
-  public static String[] transformClusterKey(String key) throws IOException {
+  public static ZKClusterKey transformClusterKey(String key) throws IOException {
     if (key.startsWith(NameService.HBASE_URI_PREFIX)) {
       NameServiceEntry entry = NameService.resolve(key);
       if (!entry.compatibleWithScheme("hbase")) {
@@ -414,14 +434,54 @@ public class ZKUtil {
       }
       Configuration conf = entry.createClusterConf(null);
       key = getZooKeeperClusterKey(conf);
-    } 
-    String[] parts = key.split(":");
-    if (parts.length != 3) {
-      throw new IOException("Cluster key invalid, the format should be:"
-          + HConstants.ZOOKEEPER_QUORUM + ":hbase.zookeeper.client.port:"
-          + HConstants.ZOOKEEPER_ZNODE_PARENT);
     }
-    return parts;
+
+    String[] parts = key.split(":");
+
+    if (parts.length == 3) {
+      return new ZKClusterKey(parts [0], Integer.parseInt(parts [1]), parts [2]);
+    }
+
+    if (parts.length > 3) {
+      // The quorum could contain client port in server:clientport format, try to transform more.
+      String zNodeParent = parts [parts.length - 1];
+      String clientPort = parts [parts.length - 2];
+
+      // The first part length is the total length minus the lengths of other parts and minus 2 ":"
+      int endQuorumIndex = key.length() - zNodeParent.length() - clientPort.length() - 2;
+      String quorumStringInput = key.substring(0, endQuorumIndex);
+      String[] serverHosts = quorumStringInput.split(",");
+
+      // The common case is that every server has its own client port specified - this means
+      // that (total parts - the ZNodeParent part - the ClientPort part) is equal to
+      // (the number of "," + 1) - "+ 1" because the last server has no ",".
+      if ((parts.length - 2) == (serverHosts.length + 1)) {
+        return new ZKClusterKey(quorumStringInput, Integer.parseInt(clientPort), zNodeParent);
+      }
+
+      // For the uncommon case that some servers has no port specified, we need to build the
+      // server:clientport list using default client port for servers without specified port.
+      return new ZKClusterKey(
+          ZKConfig.buildQuorumServerString(serverHosts, clientPort),
+          Integer.parseInt(clientPort),
+          zNodeParent);
+    }
+
+    throw new IOException("Cluster key passed " + key + " is invalid, the format should be:" +
+        HConstants.ZOOKEEPER_QUORUM + ":" + HConstants.ZOOKEEPER_CLIENT_PORT + ":"
+        + HConstants.ZOOKEEPER_ZNODE_PARENT);
+  }
+
+  /**
+   * Standardize the ZK quorum string: make it a "server:clientport" list, separated by ','
+   * @param quorumStringInput a string contains a list of servers for ZK quorum
+   * @param clientPort the default client port
+   * @return the string for a list of "server:port" separated by ","
+   */
+  @VisibleForTesting
+  public static String standardizeQuorumServerString(String quorumStringInput, String clientPort) {
+    String[] serverHosts = quorumStringInput.split(",");
+    return ZKConfig.buildQuorumServerString(serverHosts, clientPort);
   }
 
   //

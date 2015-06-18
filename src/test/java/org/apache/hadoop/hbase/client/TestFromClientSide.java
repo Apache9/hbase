@@ -6026,6 +6026,88 @@ public class TestFromClientSide {
     table.close();
   }
 
+  @Test
+  public void testScanWithRawLimit() throws Exception {
+    byte[] TABLE = Bytes.toBytes("testScanWithRawLimit");
+    byte[][] ROWS = makeNAscii(ROW, 4);
+    byte[][] QUALIFIERS = makeNAscii(QUALIFIER, 2);
+    byte[][] VALUES = makeNAscii(VALUE, 4);
+    long ts = 1;
+    HTable table = TEST_UTIL.createTable(TABLE, FAMILY);
+
+    Delete delete = new Delete(ROWS[0]);
+    delete.deleteFamily(FAMILY, ts);
+    table.delete(delete);
+    delete = new Delete(ROWS[1]);
+    delete.deleteFamily(FAMILY, ts);
+    table.delete(delete);
+    Put put = new Put(ROWS[2]);
+    put.add(FAMILY, QUALIFIERS[0], VALUES[2]);
+    put.add(FAMILY, QUALIFIERS[1], VALUES[2]);
+    table.put(put);
+    put = new Put(ROWS[3]);
+    put.add(FAMILY, QUALIFIERS[0], VALUES[3]);
+    put.add(FAMILY, QUALIFIERS[1], VALUES[3]);
+    table.put(put);
+
+    // test delete row
+    Scan scan = new Scan(ROWS[0]);
+    scan.setRawLimit(1);
+    ResultScanner scanner = table.getScanner(scan);
+    Result result = scanner.next();
+    assertTrue(result.isFake());
+    result = scanner.next();
+    assertTrue(result.isFake());
+    result = scanner.next();
+    assertFalse(result.isFake());
+    assertEquals(2, result.size());
+    result = scanner.next();
+    assertTrue(result.isFake());
+    result = scanner.next();
+    assertEquals(2, result.size());
+    result = scanner.next();
+    assertNull(result);
+    scanner.close();
+
+    // test row filter
+    scan = new Scan(ROWS[0]);
+    scan.setFilter(new RowFilter(CompareOp.GREATER, new BinaryComparator(ROWS[2])));
+    scan.setRawLimit(1);
+    scanner = table.getScanner(scan);
+    result = scanner.next();
+    assertTrue(result.isFake());
+    result = scanner.next();
+    assertTrue(result.isFake());
+    result = scanner.next();
+    assertTrue(result.isFake()); // filtered
+    result = scanner.next();
+    assertFalse(result.isFake());
+    assertEquals(2, result.size());
+    result = scanner.next();
+    assertNull(result);
+    scanner.close();
+
+    // test value filter
+    scan = new Scan(ROWS[0]);
+    scan.setFilter(new SingleColumnValueFilter(FAMILY, QUALIFIERS[0], CompareOp.GREATER, VALUES[2]));
+    scan.setRawLimit(1);
+    scanner = table.getScanner(scan);
+    result = scanner.next();
+    assertTrue(result.isFake());
+    result = scanner.next();
+    assertTrue(result.isFake());
+    result = scanner.next();
+    assertTrue(result.isFake()); // filtered
+    result = scanner.next();
+    assertFalse(result.isFake());
+    assertEquals(2, result.size());
+    result = scanner.next();
+    assertNull(result);
+    scanner.close();
+
+    table.close();
+  }
+
   @org.junit.Rule
   public org.apache.hadoop.hbase.ResourceCheckerJUnitRule cu =
     new org.apache.hadoop.hbase.ResourceCheckerJUnitRule();

@@ -20,6 +20,7 @@
 package org.apache.hadoop.hbase.mapreduce.replication;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -27,6 +28,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HConstants;
+import org.apache.hadoop.hbase.client.Durability;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.HConnection;
 import org.apache.hadoop.hbase.client.HConnectionManager;
@@ -81,6 +83,8 @@ public class VerifyReplication  extends Configured implements Tool {
   private String stopRow = null;
   private int scanRateLimit = -1;
   private long verifyRows = Long.MAX_VALUE;
+  private int maxErrorLog = 1000;
+  private String logTable = null;
   private int sleepToReCompare = 0;
       
   public VerifyReplication(Configuration conf) {
@@ -101,8 +105,13 @@ public class VerifyReplication  extends Configured implements Tool {
     private long st = 0;
     private int scanRateLimit = -1;
     private long rowdone = 0;
+    private String peerId;
+    private String tableName;
     private HTable sourceTable;
     private HTable peerTable;
+    private HTable logTable;
+    private int maxErrorLog;
+    private int errors = 0;
     private int sleepToReCompare;
 
     @Override
@@ -147,8 +156,15 @@ public class VerifyReplication  extends Configured implements Tool {
         if (verifyRows != Long.MAX_VALUE) {
           scan.setFilter(new PageFilter(verifyRows));
         }
-        
-        sourceTable = new HTable(conf, conf.get(NAME+".tableName"));
+
+        peerId = conf.get(NAME + ".peerId");
+        tableName = conf.get(NAME + ".tableName");
+        sourceTable = new HTable(conf, tableName);
+        maxErrorLog = conf.getInt(NAME + ".maxErrorLog", 0);
+        String logTableName = conf.get(NAME + ".logTable");
+        if (logTableName != null) {
+          logTable = new HTable(conf, logTableName);
+        }
         
         final TableSplit tableSplit = (TableSplit)(context.getInputSplit());
         HConnectionManager.execute(new HConnectable<Void>(conf) {
@@ -223,6 +239,30 @@ public class VerifyReplication  extends Configured implements Tool {
       context.getCounter(counter).increment(1);
       context.getCounter(Counters.BADROWS).increment(1);
       LOG.error(counter.toString() + ", rowkey=" + Bytes.toStringBinary(row.getRow()));
+      recordError(row.getRow(), counter);
+    }
+
+    private void recordError(byte[] row, Counters type) throws IOException {
+      if (logTable != null && errors < maxErrorLog) {
+        byte[] peerIdBytes = peerId.getBytes();
+        byte[] tableNameBytes = tableName.getBytes();
+        // rowkey format: [salt][peerId-length][peerId][table-name-length][table-name][row-len][row]
+        int bufflen = 1 + 2 + peerIdBytes.length + 2 + tableNameBytes.length + 2 + row.length;
+        ByteBuffer buff = ByteBuffer.allocate(bufflen);
+        buff.put((byte) (Bytes.hashCode(row) % 256)); // append salt
+        buff.putShort((short) peerIdBytes.length);
+        buff.put(peerIdBytes);
+        buff.putShort((short) tableNameBytes.length);
+        buff.put(tableNameBytes);
+        buff.putShort((short) row.length);
+        buff.put(row);
+        Put put = new Put(buff.array());
+        put.add("A".getBytes(), "e".getBytes(), type.name().getBytes());
+        put.setDurability(Durability.SKIP_WAL);
+        // TODO throttling speed instead of count
+        logTable.put(put);
+        ++errors;
+      }
     }
 
     protected void cleanup(Context context) {
@@ -301,6 +341,10 @@ public class VerifyReplication  extends Configured implements Tool {
     conf.setLong(NAME+".endTime", endTime);
     conf.setLong(NAME+".verifyrows", verifyRows);
     conf.setInt(NAME +".sleepToReCompare", sleepToReCompare);
+    if (logTable != null) {
+      conf.set(NAME + ".logTable", logTable);
+    }
+    conf.setInt(NAME+".maxErrorLog", maxErrorLog);
     
     if (families != null) {
       conf.set(NAME+".families", families);
@@ -410,7 +454,7 @@ public class VerifyReplication  extends Configured implements Tool {
           continue;
         }
         
-        final String verifyRowKey = "--verifyrows";
+        final String verifyRowKey = "--verifyrows=";
         if (cmd.startsWith(verifyRowKey)) {
           verifyRows = Long.parseLong(cmd.substring(verifyRowKey.length()));
           continue;
@@ -419,6 +463,18 @@ public class VerifyReplication  extends Configured implements Tool {
         final String sleepToReCompareKey = "--recomparesleep=";
         if (cmd.startsWith(sleepToReCompareKey)) {
           sleepToReCompare = Integer.parseInt(cmd.substring(sleepToReCompareKey.length()));
+          continue;
+        }
+
+        final String logTableKey = "--logtable=";
+        if (cmd.startsWith(logTableKey)) {
+          logTable = cmd.substring(logTableKey.length());
+          continue;
+        }
+
+        final String maxErrorLogKey = "--maxerrorlog=";
+        if (cmd.startsWith(maxErrorLogKey)) {
+          maxErrorLog = Integer.parseInt(cmd.substring(maxErrorLogKey.length()));
           continue;
         }
 
@@ -458,6 +514,8 @@ public class VerifyReplication  extends Configured implements Tool {
     System.err.println(" scanrate     the scan rate limit: rows per second for each region.");
     System.err.println(" verifyrows   number of rows each region in source table to verify.");
     System.err.println(" recomparesleep   milliseconds to sleep before recompare row.");
+    System.err.println(" logtable     table to log the errors/differences (with column family C).");
+    System.err.println(" maxerrorlog  max number of errors to log for each region.");
     System.err.println();
     System.err.println("Args:");
     System.err.println(" peerid       Id of the peer used for verification, must match the one given for replication");

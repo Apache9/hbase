@@ -2242,9 +2242,10 @@ public class AssignmentManager extends ZooKeeperListener {
     LOG.debug("Starting unassignment of region " +
       region.getRegionNameAsString() + " (offlining)");
 
+    ServerName serverName = null;
     synchronized (this.regions) {
       // Check if this region is currently assigned
-      if (!regions.containsKey(region)) {
+      if (!regions.containsKey(region) || (serverName = regions.get(region)) == null) {
         LOG.debug("Attempted to unassign region " +
           region.getRegionNameAsString() + " but it is not " +
           "currently assigned anywhere");
@@ -2261,7 +2262,7 @@ public class AssignmentManager extends ZooKeeperListener {
          // Create the znode in CLOSING state
         try {
           versionOfClosingNode = ZKAssign.createNodeClosing(
-            master.getZooKeeper(), region, master.getServerName());
+            master.getZooKeeper(), region, serverName);
           if (versionOfClosingNode == -1) {
             LOG.debug("Attempting to unassign region " +
                 region.getRegionNameAsString() + " but ZK closing node "

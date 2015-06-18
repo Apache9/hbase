@@ -68,7 +68,7 @@ public class AggregateImplementation extends BaseEndpointCoprocessor implements
     try {
       boolean hasMoreRows = false;
       do {
-        hasMoreRows = scanner.next(results);
+        hasMoreRows = scanner.next(results).hasNext();
         for (KeyValue kv : results) {
           temp = ci.getValue(colFamily, qualifier, kv);
           max = (max == null || (temp != null && ci.compare(temp, max) > 0)) ? temp : max;
@@ -102,7 +102,7 @@ public class AggregateImplementation extends BaseEndpointCoprocessor implements
     try {
       boolean hasMoreRows = false;
       do {
-        hasMoreRows = scanner.next(results);
+        hasMoreRows = scanner.next(results).hasNext();
         for (KeyValue kv : results) {
           temp = ci.getValue(colFamily, qualifier, kv);
           min = (min == null || (temp != null && ci.compare(temp, min) < 0)) ? temp : min;
@@ -136,7 +136,7 @@ public class AggregateImplementation extends BaseEndpointCoprocessor implements
     try {
       boolean hasMoreRows = false;
       do {
-        hasMoreRows = scanner.next(results);
+        hasMoreRows = scanner.next(results).hasNext();
         for (KeyValue kv : results) {
           temp = ci.getValue(colFamily, qualifier, kv);
           if (temp != null)
@@ -176,7 +176,7 @@ public class AggregateImplementation extends BaseEndpointCoprocessor implements
     try {
       boolean hasMoreRows = false;
       do {
-        hasMoreRows = scanner.next(results);
+        hasMoreRows = scanner.next(results).hasNext();
         if (results.size() > 0) {
           counter++;
           if(speed > 0){
@@ -224,7 +224,7 @@ public class AggregateImplementation extends BaseEndpointCoprocessor implements
     try {
       do {
         results.clear();
-        hasMoreRows = scanner.next(results);
+        hasMoreRows = scanner.next(results).hasNext();
         for (KeyValue kv : results) {
           sumVal = ci.add(sumVal, ci.castToReturnType(ci.getValue(colFamily,
               qualifier, kv)));
@@ -255,7 +255,7 @@ public class AggregateImplementation extends BaseEndpointCoprocessor implements
     try {
       do {
         tempVal = null;
-        hasMoreRows = scanner.next(results);
+        hasMoreRows = scanner.next(results).hasNext();
         for (KeyValue kv : results) {
           tempVal = ci.add(tempVal, ci.castToReturnType(ci.getValue(colFamily,
               qualifier, kv)));
@@ -296,7 +296,7 @@ public class AggregateImplementation extends BaseEndpointCoprocessor implements
       do {
         tempVal = null;
         tempWeight = null;
-        hasMoreRows = scanner.next(results);
+        hasMoreRows = scanner.next(results).hasNext();
         for (KeyValue kv : results) {
           tempVal = ci.add(tempVal, ci.castToReturnType(ci.getValue(colFamily,
               valQualifier, kv)));

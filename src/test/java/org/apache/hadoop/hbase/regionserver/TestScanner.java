@@ -121,7 +121,7 @@ public class TestScanner extends HBaseTestCase {
 
       InternalScanner s = r.getScanner(scan);
       int count = 0;
-      while (s.next(results)) {
+      while (s.next(results).hasNext()) {
         count++;
       }
       s.close();
@@ -134,7 +134,7 @@ public class TestScanner extends HBaseTestCase {
       count = 0;
       KeyValue kv = null;
       results = new ArrayList<KeyValue>();
-      for (boolean first = true; s.next(results);) {
+      for (boolean first = true; s.next(results).hasNext();) {
         kv = results.get(0);
         if (first) {
           assertTrue(Bytes.BYTES_COMPARATOR.compare(startrow, kv.getRow()) == 0);
@@ -158,7 +158,7 @@ public class TestScanner extends HBaseTestCase {
     InternalScanner s = r.getScanner(scan);
     boolean hasMore = true;
     while (hasMore) {
-      hasMore = s.next(results);
+      hasMore = s.next(results).hasNext();
       for (KeyValue kv : results) {
         assertEquals((byte)'a', kv.getRow()[0]);
         assertEquals((byte)'b', kv.getRow()[1]);
@@ -174,7 +174,7 @@ public class TestScanner extends HBaseTestCase {
     InternalScanner s = r.getScanner(scan);
     boolean hasMore = true;
     while (hasMore) {
-      hasMore = s.next(results);
+      hasMore = s.next(results).hasNext();
       for (KeyValue kv : results) {
         assertTrue(Bytes.compareTo(kv.getRow(), stopRow) <= 0);
       }
@@ -378,7 +378,7 @@ public class TestScanner extends HBaseTestCase {
           scan.addColumn(COLS[0],  EXPLICIT_COLS[ii]);
         }
         scanner = r.getScanner(scan);
-        while (scanner.next(results)) {
+        while (scanner.next(results).hasNext()) {
           assertTrue(hasColumn(results, HConstants.CATALOG_FAMILY,
               HConstants.REGIONINFO_QUALIFIER));
           byte [] val = getColumn(results, HConstants.CATALOG_FAMILY,

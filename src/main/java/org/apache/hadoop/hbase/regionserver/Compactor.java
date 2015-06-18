@@ -207,7 +207,7 @@ class Compactor extends Configured {
         boolean hasMore;
         peakCompactionsThrottle.startCompaction();
         do {
-          hasMore = scanner.next(kvs, compactionKVMax);
+          hasMore = scanner.next(kvs, compactionKVMax, -1).hasNext();
           // Create the writer even if no kv(Empty store file is also ok),
           // because we need record the max seq id for the store file, see
           // HBASE-6059

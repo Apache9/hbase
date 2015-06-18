@@ -19,9 +19,10 @@
  */
 package org.apache.hadoop.hbase.regionserver;
 
-import java.io.IOException;
+import java.util.List;
 
 import org.apache.hadoop.hbase.regionserver.wal.WALActionsListener;
+import org.apache.hadoop.hbase.replication.ReplicationLoad;
 
 /**
  * A source for a replication stream has to expose this service.
@@ -35,4 +36,10 @@ public interface ReplicationSourceService extends ReplicationService {
    * observe log rolls and log archival events.
    */
   public WALActionsListener getWALActionsListener();
+
+  /**
+   * Get the replication load for all peers
+   * @return
+   */
+  public List<ReplicationLoad> getReplicatonLoad();
 }

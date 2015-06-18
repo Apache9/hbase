@@ -93,4 +93,5 @@ public interface ReplicationSourceInterface {
    */
   public String getPeerClusterId();
 
+  public int getSizeOfLogQueue();
 }

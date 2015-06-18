@@ -215,7 +215,7 @@ public class MetaUtils {
       List<KeyValue> results = new ArrayList<KeyValue>();
       boolean hasNext = true;
       do {
-        hasNext = s.next(results);
+        hasNext = s.next(results).hasNext();
         HRegionInfo info = null;
         for (KeyValue kv: results) {
           info = Writables.getHRegionInfoOrNull(kv.getValue());

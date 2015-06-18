@@ -599,7 +599,7 @@ public abstract class HBaseTestCase extends TestCase {
 
     public boolean next(List<KeyValue> results)
     throws IOException {
-      return scanner.next(results);
+      return scanner.next(results).hasNext();
     }
 
     public void close() throws IOException {

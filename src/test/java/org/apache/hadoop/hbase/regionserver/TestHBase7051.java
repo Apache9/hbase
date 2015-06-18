@@ -104,7 +104,7 @@ public class TestHBase7051 {
     Scan s = new Scan();
     RegionScanner scanner = region.getScanner(s);
     List<KeyValue> results = new ArrayList<KeyValue>();
-    scanner.next(results, 2);
+    scanner.next(results, 2, -1);
     for (KeyValue keyValue : results) {
       assertEquals("50",Bytes.toString(keyValue.getValue()));
     }

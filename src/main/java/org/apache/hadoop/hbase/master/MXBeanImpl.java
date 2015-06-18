@@ -19,13 +19,22 @@ package org.apache.hadoop.hbase.master;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 
+import org.apache.hadoop.hbase.ClusterLoad;
+import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HServerLoad;
+import org.apache.hadoop.hbase.HServerLoad.RegionLoad;
 import org.apache.hadoop.hbase.ServerName;
+import org.apache.hadoop.hbase.TableLoad;
 import org.apache.hadoop.hbase.master.AssignmentManager.RegionState;
+import org.apache.hadoop.hbase.replication.ReplicationLoad;
+import org.apache.hadoop.hbase.replication.regionserver.ReplicationSourceInterface;
 
 /**
  * Impl for exposing HMaster Information through JMX
@@ -156,5 +165,67 @@ public class MXBeanImpl implements MXBean {
   @Override
   public int getCompactionNumLimit() {
     return master.getCompactionCoordinator().getTotalQuota();
+  }
+
+  @Override
+  public ClusterLoad getClusterLoad() {
+    Set<String> tableSet = new HashSet<String>();
+    int regionServerNum = 0;
+    int regionNum = 0;
+    long readRequestPerSecond = 0;
+    long writeRequestPerSecond = 0;
+    for (final Entry<ServerName, HServerLoad> entry : master.getServerManager()
+        .getOnlineServers().entrySet()) {
+      regionServerNum++;
+      readRequestPerSecond += entry.getValue().getReadRequestsPerSecond();
+      writeRequestPerSecond += entry.getValue().getWriteRequestsPerSecond();
+      for (final Entry<byte[], RegionLoad> regionEntry : entry.getValue()
+          .getRegionsLoad().entrySet()) {
+        String table =
+            new String(HRegionInfo.getTableName(regionEntry.getKey()));
+        regionNum++;
+        tableSet.add(table);
+      }
+    }
+    return new ClusterLoad(tableSet.size(), regionServerNum, regionNum,
+        readRequestPerSecond, writeRequestPerSecond);
+  }
+
+  @Override
+  public Map<String, TableLoad> getTableLoads() {
+    Map<String, TableLoad> data = new HashMap<String, TableLoad>();
+    for (final Entry<ServerName, HServerLoad> entry : master.getServerManager()
+        .getOnlineServers().entrySet()) {
+      for (final Entry<byte[], RegionLoad> regionEntry : entry.getValue()
+          .getRegionsLoad().entrySet()) {
+        String table =
+            new String(HRegionInfo.getTableName(regionEntry.getKey()));
+        TableLoad load = data.get(table);
+        if (load == null) {
+          load = new TableLoad(table);
+          data.put(table, load);
+        }
+        load.updateTableLoad(regionEntry.getValue());
+      }
+    }
+    return data;
+  }
+
+  @Override
+  public Map<String, ReplicationLoad> getReplicationLoads() {
+    Map<String, ReplicationLoad> replications =
+        new HashMap<String, ReplicationLoad>();
+    for (final Entry<ServerName, HServerLoad> entry : master.getServerManager()
+        .getOnlineServers().entrySet()) {
+      for (ReplicationLoad load : entry.getValue().getReplicationLoads()) {
+        ReplicationLoad tmp = replications.get(load.getPeerId());
+        if (tmp == null) {
+          replications.put(load.getPeerId(), load);
+        } else {
+          tmp.setSizeOfLogQueue(tmp.getSizeOfLogQueue() + load.getSizeOfLogQueue());
+        }
+      }
+    }
+    return replications;
   }
 }

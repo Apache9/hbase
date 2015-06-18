@@ -35,6 +35,11 @@ public interface RegionScanner extends InternalScanner {
   public HRegionInfo getRegionInfo();
 
   /**
+   * @return The limit of raw values to scan.
+   */
+  public int getRawLimit();
+
+  /**
    * @return True if a filter indicates that this scanner will return no
    *         further rows.
    */
@@ -62,13 +67,15 @@ public interface RegionScanner extends InternalScanner {
    * to return.
    * This is a special internal method to be called from coprocessor hooks to avoid expensive setup.
    * Caller must set the thread's readpoint, start and close a region operation, an synchronize on the scanner object.
-   * See {@link #nextRaw(List, int, String)}
+   * See {@link #nextRaw(List, int, int, String)}
    * @param result return output array
+   * @param rawLimit limit on raw kv count to get, this is a soft limit
    * @param metric the metric name
-   * @return true if more rows exist after this one, false if scanner is done
+   * @return scanner status
    * @throws IOException e
    */
-  public boolean nextRaw(List<KeyValue> result, String metric) throws IOException;
+  public ScannerStatus nextRaw(List<KeyValue> result, final int rawLimit, String metric)
+      throws IOException;
 
   /**
    * Grab the next row's worth of values with a limit on the number of values
@@ -93,9 +100,11 @@ public interface RegionScanner extends InternalScanner {
    * </pre></code>
    * @param result return output array
    * @param limit limit on row count to get
+   * @param rawLimit limit on raw kv count to get, this is a soft limit
    * @param metric the metric name
-   * @return true if more rows exist after this one, false if scanner is done
+   * @return scanner status
    * @throws IOException e
    */
-  public boolean nextRaw(List<KeyValue> result, int limit, String metric) throws IOException;
+  public ScannerStatus nextRaw(List<KeyValue> result, final int limit, final int rawLimit,
+      String metric) throws IOException;
 }

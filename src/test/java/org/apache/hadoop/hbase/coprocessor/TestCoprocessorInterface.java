@@ -39,6 +39,7 @@ import org.apache.hadoop.hbase.regionserver.InternalScanner;
 import org.apache.hadoop.hbase.regionserver.RegionCoprocessorHost;
 import org.apache.hadoop.hbase.regionserver.HRegion;
 import org.apache.hadoop.hbase.regionserver.RegionScanner;
+import org.apache.hadoop.hbase.regionserver.ScannerStatus;
 import org.apache.hadoop.hbase.regionserver.SplitTransaction;
 import org.apache.hadoop.hbase.regionserver.Store;
 import org.apache.hadoop.hbase.regionserver.StoreFile;
@@ -62,38 +63,42 @@ public class TestCoprocessorInterface extends HBaseTestCase {
       this.delegate = delegate;
     }
 
+    @Override public int getRawLimit() {
+      return delegate.getRawLimit();
+    }
+
     @Override
-    public boolean next(List<KeyValue> results) throws IOException {
+    public ScannerStatus next(List<KeyValue> results) throws IOException {
       return delegate.next(results);
     }
 
     @Override
-    public boolean next(List<KeyValue> results, String metric)
+    public ScannerStatus next(List<KeyValue> results, String metric)
         throws IOException {
       return delegate.next(results, metric);
     }
 
     @Override
-    public boolean next(List<KeyValue> result, int limit) throws IOException {
-      return delegate.next(result, limit);
+    public ScannerStatus next(List<KeyValue> result, int limit, int rawLimit) throws IOException {
+      return delegate.next(result, limit, rawLimit);
     }
 
     @Override
-    public boolean next(List<KeyValue> result, int limit, String metric)
+    public ScannerStatus next(List<KeyValue> result, int limit, int rawLimit, String metric)
         throws IOException {
-      return delegate.next(result, limit, metric);
+      return delegate.next(result, limit, rawLimit, metric);
     }
 
     @Override
-    public boolean nextRaw(List<KeyValue> result, int limit, String metric) 
+    public ScannerStatus nextRaw(List<KeyValue> result, int limit, int rawLimit, String metric)
         throws IOException {
-      return delegate.nextRaw(result, limit, metric);
+      return delegate.nextRaw(result, limit, rawLimit, metric);
     }
 
     @Override
-    public boolean nextRaw(List<KeyValue> result, String metric) 
+    public ScannerStatus nextRaw(List<KeyValue> result, int rawLimit, String metric)
         throws IOException {
-      return delegate.nextRaw(result, metric);
+      return delegate.nextRaw(result, rawLimit, metric);
     }
 
     @Override

@@ -84,7 +84,7 @@ public class TestBlocksScanned extends HBaseTestCase {
 
     InternalScanner s = r.getScanner(scan);
     List<KeyValue> results = new ArrayList<KeyValue>();
-    while (s.next(results));
+    while (s.next(results).hasNext());
     s.close();
 
     int expectResultSize = 'z' - 'a';
