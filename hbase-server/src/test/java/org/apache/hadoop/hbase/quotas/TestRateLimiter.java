@@ -102,17 +102,17 @@ public class TestRateLimiter {
     // Verify that we have to wait at least 1.1sec to have 1 resource available
     assertTrue(limiter.canExecute());
     limiter.consume(20);
-    // To consume 1 resource wait for 100ms
-    assertEquals(100, limiter.waitInterval(1));
-    // To consume 10 resource wait for 1000ms
-    assertEquals(1000, limiter.waitInterval(10));
+    // To consume 1 resource wait for 1100ms
+    assertEquals(1100, limiter.waitInterval(1));
+    // To consume 10 resource wait for 2000ms
+    assertEquals(2000, limiter.waitInterval(10));
 
-    limiter.setNextRefillTime(limiter.getNextRefillTime() - 900);
-    // Verify that after 1sec the 1 resource is available
+    limiter.setNextRefillTime(limiter.getNextRefillTime() - 1100);
+    // Verify that after 1.1sec the 1 resource is available
     assertTrue(limiter.canExecute(1));
-    limiter.setNextRefillTime(limiter.getNextRefillTime() - 100);
+    limiter.setNextRefillTime(limiter.getNextRefillTime() - 2000);
     // Verify that after 1sec the 10 resource is available
-    assertTrue(limiter.canExecute());
+    assertTrue(limiter.canExecute(10));
     assertEquals(0, limiter.waitInterval());
   }
 
@@ -125,13 +125,13 @@ public class TestRateLimiter {
     // Verify that we have to wait at least 1.1sec to have 1 resource available
     assertTrue(limiter.canExecute());
     limiter.consume(20);
-    // To consume 1 resource also wait for 1000ms
-    assertEquals(1000, limiter.waitInterval(1));
-    // To consume 10 resource wait for 100ms
-    assertEquals(1000, limiter.waitInterval(10));
+    // To consume 1 resource also wait for 2000ms
+    assertEquals(2000, limiter.waitInterval(1));
+    // To consume 10 resource wait for 2000ms
+    assertEquals(2000, limiter.waitInterval(10));
 
-    limiter.setNextRefillTime(limiter.getNextRefillTime() - 900);
-    // Verify that after 1sec also no resource should be available
+    limiter.setNextRefillTime(limiter.getNextRefillTime() - 1900);
+    // Verify that after 1.9sec also no resource should be available
     assertFalse(limiter.canExecute(1));
     limiter.setNextRefillTime(limiter.getNextRefillTime() - 100);
 
@@ -212,7 +212,7 @@ public class TestRateLimiter {
     // refill the avail to limit
     limiter.set(100, TimeUnit.SECONDS);
     limiter.setNextRefillTime(EnvironmentEdgeManager.currentTimeMillis());
-    assertEquals(100, testCanExecuteByRate(limiter, 200));
+    assertEquals(100, testCanExecuteByRate(limiter, 199));
   }
 
   public int testCanExecuteByRate(RateLimiter limiter, int rate) {
@@ -250,11 +250,13 @@ public class TestRateLimiter {
     limiter.setNextRefillTime(limiter.getNextRefillTime() - 1000);
     assertEquals(60, limiter.refill(limiter.getLimit()));
 
-    // after more than 1 sec, refill should return at max 60
+    // after more than 1 sec
     limiter.setNextRefillTime(limiter.getNextRefillTime() - 3000);
-    assertEquals(60, limiter.refill(limiter.getLimit()));
+    assertEquals(180, limiter.refill(limiter.getLimit()));
+    limiter.setNextRefillTime(limiter.getNextRefillTime() - 3500);
+    assertEquals(210, limiter.refill(limiter.getLimit()));
     limiter.setNextRefillTime(limiter.getNextRefillTime() - 5000);
-    assertEquals(60, limiter.refill(limiter.getLimit()));
+    assertEquals(300, limiter.refill(limiter.getLimit()));
   }
 
   @Test
@@ -268,21 +270,23 @@ public class TestRateLimiter {
     limiter.consume(30);
 
     // after 0.2 sec, refill should return 0
-    limiter.setNextRefillTime(limiter.getNextRefillTime() - 200);
+    limiter.setNextRefillTime(EnvironmentEdgeManager.currentTimeMillis() - 200);
     assertEquals(0, limiter.refill(limiter.getLimit()));
 
     // after 0.5 sec, refill should return 0
-    limiter.setNextRefillTime(limiter.getNextRefillTime() - 500);
+    limiter.setNextRefillTime(EnvironmentEdgeManager.currentTimeMillis() - 500);
     assertEquals(0, limiter.refill(limiter.getLimit()));
 
     // after 1 sec, refill should return 60
-    limiter.setNextRefillTime(limiter.getNextRefillTime() - 1000);
+    limiter.setNextRefillTime(EnvironmentEdgeManager.currentTimeMillis() - 1000);
     assertEquals(60, limiter.refill(limiter.getLimit()));
 
-    // after more than 1 sec, refill should return at max 60
-    limiter.setNextRefillTime(limiter.getNextRefillTime() - 3000);
-    assertEquals(60, limiter.refill(limiter.getLimit()));
-    limiter.setNextRefillTime(limiter.getNextRefillTime() - 5000);
-    assertEquals(60, limiter.refill(limiter.getLimit()));
+    // after more than 1 sec
+    limiter.setNextRefillTime(EnvironmentEdgeManager.currentTimeMillis() - 3000);
+    assertEquals(180, limiter.refill(limiter.getLimit()));
+    limiter.setNextRefillTime(EnvironmentEdgeManager.currentTimeMillis() - 3500);
+    assertEquals(180, limiter.refill(limiter.getLimit()));
+    limiter.setNextRefillTime(EnvironmentEdgeManager.currentTimeMillis() - 5000);
+    assertEquals(300, limiter.refill(limiter.getLimit()));
   }
 }

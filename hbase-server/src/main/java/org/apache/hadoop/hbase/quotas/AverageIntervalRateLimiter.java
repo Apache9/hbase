@@ -37,7 +37,7 @@ public class AverageIntervalRateLimiter extends RateLimiter {
     long delta = (limit * (now - nextRefillTime)) / super.getTimeUnitInMillis();
     if (delta > 0) {
       this.nextRefillTime = now;
-      return Math.min(limit, delta);
+      return delta;
     }
     return 0;
   }

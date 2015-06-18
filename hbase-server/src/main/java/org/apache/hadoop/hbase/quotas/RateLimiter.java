@@ -158,6 +158,9 @@ public abstract class RateLimiter {
    * @return true if there are enough available resources, otherwise false
    */
   public synchronized boolean canExecute(final long amount) {
+    if (isBypass()) {
+      return true;
+    }
     long refillAmount = refill(limit);
     if (refillAmount == 0 && avail < amount) {
       return false;
@@ -187,9 +190,6 @@ public abstract class RateLimiter {
    */
   public synchronized void consume(final long amount) {
     this.avail -= amount;
-    if (this.avail < 0) {
-      this.avail = 0;
-    }
   }
 
   /**
