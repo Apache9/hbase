@@ -61,6 +61,8 @@ public class RegionServerQuotaManager {
 
   private QuotaCache quotaCache = null;
 
+  private boolean isSimulated = false;
+
   public RegionServerQuotaManager(final RegionServerServices rsServices) {
     this.rsServices = rsServices;
   }
@@ -81,11 +83,27 @@ public class RegionServerQuotaManager {
   public void stop() {
     if (isQuotaEnabled()) {
       quotaCache.stop("shutdown");
+      quotaCache = null;
     }
+  }
+  
+  public boolean isStopped() {
+    if (isQuotaEnabled()) {
+      return quotaCache.isStopped();
+    }
+    return true;
   }
 
   public boolean isQuotaEnabled() {
     return quotaCache != null;
+  }
+
+  public boolean isThrottleSimulated() {
+    return isSimulated;
+  }
+
+  public void setThrottleSimulated(boolean isSimulated) {
+    this.isSimulated = isSimulated;
   }
 
   @VisibleForTesting
@@ -269,7 +287,9 @@ public class RegionServerQuotaManager {
         LOG.debug("Quota snapshot for user=" + ugi.getUserName() + " table=" + table + " : "
             + quota);
       }
-      throw e;
+      if (!isThrottleSimulated()) {
+        throw e;
+      }
     }
     return quota;
   }

@@ -163,6 +163,8 @@ import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.StopServerRequest;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.StopServerResponse;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.UpdateFavoredNodesRequest;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.UpdateFavoredNodesResponse;
+import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.SwitchThrottleRequest;
+import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.SwitchThrottleResponse;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.WALEntry;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.BulkLoadHFileRequest;
@@ -5156,6 +5158,25 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     }
     respBuilder.setResponse(openInfoList.size());
     return respBuilder.build();
+  }
+  
+  @Override
+  public SwitchThrottleResponse switchThrottle(RpcController controller,
+      SwitchThrottleRequest request) throws ServiceException {
+    if (request.hasStartThrottle() && request.getStartThrottle()) {
+      if (rsQuotaManager.isStopped()) {
+        try {
+          rsQuotaManager.start(getRpcServer().getScheduler());
+        } catch (IOException ie) {
+          throw new ServiceException(ie);
+        }
+      }
+    } else if (request.hasSimulateThrottle() && request.getSimulateThrottle()) {
+      rsQuotaManager.setThrottleSimulated(true);
+    } else if (request.hasStopThrottle() && request.getStopThrottle()) {
+      rsQuotaManager.stop();
+    }
+    return SwitchThrottleResponse.newBuilder().build();
   }
 
   /**

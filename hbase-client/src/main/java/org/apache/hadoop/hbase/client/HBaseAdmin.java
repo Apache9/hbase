@@ -82,6 +82,7 @@ import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionInfoRespo
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.RollWALWriterRequest;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.RollWALWriterResponse;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.StopServerRequest;
+import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.SwitchThrottleRequest;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.ClientService;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.ScanRequest;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.ScanResponse;
@@ -153,7 +154,6 @@ import org.apache.zookeeper.KeeperException;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.ServiceException;
-
 import com.xiaomi.infra.hbase.salted.KeySalter;
 import com.xiaomi.infra.hbase.salted.SaltedHTable;
 
@@ -3537,6 +3537,33 @@ public class HBaseAdmin implements Abortable, Closeable {
         return null;
       }
     });
+  }
+  
+  public void switchThrottle(final boolean isStart, final boolean isSimulate, final boolean isStop)
+      throws IOException {
+    List<ServerName> servers = new ArrayList<ServerName>();
+    servers.addAll(getClusterStatus().getServers());
+    for (ServerName sn : servers) {
+      switchThrottle(sn, isStart, isSimulate, isStop);
+    }
+  }
+
+  private void switchThrottle(final ServerName sn, final boolean isStart, final boolean isSimulate,
+      final boolean isStop) throws IOException {
+    AdminService.BlockingInterface admin = this.connection.getAdmin(sn);
+    SwitchThrottleRequest.Builder request = SwitchThrottleRequest.newBuilder();
+    if (isStart) {
+      request.setStartThrottle(isStart);
+    } else if (isSimulate) {
+      request.setSimulateThrottle(isSimulate);
+    } else if (isStop) {
+      request.setStopThrottle(isStop);
+    }
+    try {
+      admin.switchThrottle(null, request.build());
+    } catch (ServiceException se) {
+      throw ProtobufUtil.getRemoteException(se);
+    }
   }
 
 }

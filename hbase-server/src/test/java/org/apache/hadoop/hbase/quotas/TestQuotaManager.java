@@ -1,9 +1,5 @@
 package org.apache.hadoop.hbase.quotas;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -37,6 +33,10 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 @Category({ SmallTests.class })
 public class TestQuotaManager {
@@ -163,6 +163,33 @@ public class TestQuotaManager {
     Thread.sleep(1000);
     quota = quotaManager.getQuota(ugi, table.getName());
     assertTrue(quota.getClass().getName().equals(AllowExceedOperationQuota.class.getName()));
+  }
+
+  @Test
+  public void testSimulateThrottle() throws Exception {
+    RegionServerQuotaManager quotaManager = TEST_UTIL.getMiniHBaseCluster().getRegionServer(0)
+        .getRegionServerQuotaManager();
+    HRegion region = TEST_UTIL.getMiniHBaseCluster().getRegionServer(0)
+        .getOnlineRegions(TABLE_NAME).get(0);
+    // update cache need one get first
+    quotaManager.getQuotaCache().getUserLimiter(User.getCurrent().getUGI(), table.getName());
+    Thread.sleep(1000);
+    quotaManager.getQuotaCache().triggerCacheRefresh();
+    Thread.sleep(1000);
+
+    quotaManager.setThrottleSimulated(true);
+    assertTrue(quotaManager.isThrottleSimulated());
+
+    try {
+      for (int i = 0; i < 100; i++) {
+        quotaManager.checkQuota(region, OperationType.GET);
+      }
+    } catch (ThrottlingException e) {
+      fail("Should have not throw exception, because QuotaManager is simulating throttle");
+    }
+
+    quotaManager.setThrottleSimulated(false);
+    assertFalse(quotaManager.isThrottleSimulated());
   }
 
   private static <V, E> void runWithExpectedException(Callable<V> callable, Class<E> exceptionClass) {

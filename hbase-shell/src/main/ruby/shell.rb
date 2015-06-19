@@ -364,6 +364,9 @@ Shell.load_command_group(
   :commands => %w[
     set_quota
     list_quotas
+    start_throttle
+    simulate_throttle
+    stop_throttle
   ]
 )
 

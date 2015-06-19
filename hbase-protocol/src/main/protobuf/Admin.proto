@@ -228,6 +228,15 @@ message GetServerInfoResponse {
   required ServerInfo server_info = 1;
 }
 
+message SwitchThrottleRequest {
+  optional bool start_throttle = 1;
+  optional bool simulate_throttle = 2;
+  optional bool stop_throttle = 3;	
+}
+
+message SwitchThrottleResponse {
+}
+
 service AdminService {
   rpc GetRegionInfo(GetRegionInfoRequest)
     returns(GetRegionInfoResponse);
@@ -273,4 +282,7 @@ service AdminService {
 
   rpc UpdateFavoredNodes(UpdateFavoredNodesRequest)
     returns(UpdateFavoredNodesResponse);
+
+  rpc SwitchThrottle(SwitchThrottleRequest)
+    returns(SwitchThrottleResponse); 
 }
