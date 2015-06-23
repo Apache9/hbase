@@ -18,6 +18,10 @@
 
 package org.apache.hadoop.hbase.regionserver;
 
+import java.util.List;
+
+import org.apache.hadoop.hbase.replication.ReplicationLoad;
+
 /**
  * This is the JMX management interface for HBase Region Server information
  */
@@ -40,4 +44,10 @@ public interface MXBean {
    * @return Comma-separated list of Zookeeper Quorum servers
    */
   public String getZookeeperQuorum();
+
+  /**
+   * Get replication load
+   * @return
+   */
+  public List<ReplicationLoad> getReplicationLoads();
 }

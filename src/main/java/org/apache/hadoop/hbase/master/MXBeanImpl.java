@@ -192,7 +192,7 @@ public class MXBeanImpl implements MXBean {
   }
 
   @Override
-  public Map<String, TableLoad> getTableLoads() {
+  public List<TableLoad> getTableLoads() {
     Map<String, TableLoad> data = new HashMap<String, TableLoad>();
     for (final Entry<ServerName, HServerLoad> entry : master.getServerManager()
         .getOnlineServers().entrySet()) {
@@ -208,11 +208,11 @@ public class MXBeanImpl implements MXBean {
         load.updateTableLoad(regionEntry.getValue());
       }
     }
-    return data;
+    return new LinkedList<TableLoad>(data.values());
   }
 
   @Override
-  public Map<String, ReplicationLoad> getReplicationLoads() {
+  public List<ReplicationLoad> getReplicationLoads() {
     Map<String, ReplicationLoad> replications =
         new HashMap<String, ReplicationLoad>();
     for (final Entry<ServerName, HServerLoad> entry : master.getServerManager()
@@ -222,10 +222,11 @@ public class MXBeanImpl implements MXBean {
         if (tmp == null) {
           replications.put(load.getPeerId(), load);
         } else {
-          tmp.setSizeOfLogQueue(tmp.getSizeOfLogQueue() + load.getSizeOfLogQueue());
+          tmp.setSizeOfLogQueue(tmp.getSizeOfLogQueue()
+              + load.getSizeOfLogQueue());
         }
       }
     }
-    return replications;
+    return new LinkedList<ReplicationLoad>(replications.values());
   }
 }

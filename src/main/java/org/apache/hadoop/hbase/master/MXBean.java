@@ -17,6 +17,7 @@
  */
 package org.apache.hadoop.hbase.master;
 
+import java.util.List;
 import java.util.Map;
 
 import org.apache.hadoop.hbase.ClusterLoad;
@@ -136,14 +137,14 @@ public interface MXBean {
   public ClusterLoad getClusterLoad();
 
   /**
-   * Get the current table load
+   * Get the current table loads
    * @return all table loads
    */
-  public Map<String, TableLoad> getTableLoads();
+  public List<TableLoad> getTableLoads();
 
   /**
-   * Get the current replication load
+   * Get the current replication loads
    * @return all table loads
    */
-  public Map<String, ReplicationLoad> getReplicationLoads();
+  public List<ReplicationLoad> getReplicationLoads();
 }

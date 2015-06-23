@@ -17,6 +17,11 @@
  */
 package org.apache.hadoop.hbase.regionserver;
 
+import java.util.LinkedList;
+import java.util.List;
+
+import org.apache.hadoop.hbase.replication.ReplicationLoad;
+
 /**
  * Impl for exposing Region Server Information through JMX
  */
@@ -51,4 +56,14 @@ public class MXBeanImpl implements MXBean {
     return regionServer.getServerName().getServerName();
   }
 
+  @Override
+  public List<ReplicationLoad> getReplicationLoads() {
+    ReplicationSourceService replication =
+        regionServer.getReplicationSourceService();
+    if (replication == null) {
+      return new LinkedList<ReplicationLoad>();
+    } else {
+      return replication.getReplicatonLoad();
+    }
+  }
 }

@@ -236,20 +236,6 @@ public class Replication implements WALActionsListener,
 
   @Override
   public List<ReplicationLoad> getReplicatonLoad() {
-    Map<String, ReplicationLoad> replications =
-        new HashMap<String, ReplicationLoad>();
-    for (ReplicationSourceInterface source : this.replicationManager
-        .getSources()) {
-      String peerId = source.getPeerClusterId();
-      int sizeOfLogQueue = source.getSizeOfLogQueue();
-      ReplicationLoad load = replications.get(peerId);
-      if (load == null) {
-        load = new ReplicationLoad(peerId, sizeOfLogQueue);
-        replications.put(peerId, load);
-      } else {
-        load.setSizeOfLogQueue(load.getSizeOfLogQueue() + sizeOfLogQueue);
-      }
-    }
-    return new LinkedList(replications.values());
+    return this.replicationManager.getReplicatonLoad();
   }
 }
