@@ -80,7 +80,7 @@ public class ReplicationLogCleaner extends BaseLogCleanerDelegate implements Abo
     // Let's see it's still there
     // This solution makes every miss very expensive to process since we
     // almost completely refresh the cache each time
-    return !refreshHLogsAndSearch(log);
+    return !refreshHLogsAndSearchWithRetry(log);
   }
 
   /**
@@ -90,7 +90,30 @@ public class ReplicationLogCleaner extends BaseLogCleanerDelegate implements Abo
    *                    that's in zookeeper.
    * @return false until a specified log is found.
    */
-  private boolean refreshHLogsAndSearch(String searchedLog) {
+  private boolean refreshHLogsAndSearchWithRetry(String searchedLog) {
+    boolean found = false;
+    while (true) {
+      try {
+        int v0 = zkHelper.getRsZNodeVersion();
+        if(refreshHLogsAndSearch(searchedLog)) {
+          found = true;
+          break;
+        }
+        int v1 = zkHelper.getRsZNodeVersion();
+        if (v1 == v0) {
+          LOG.debug("Didn't find this log in ZK, deleting: " + searchedLog);
+          break;
+        }
+        LOG.info("Retry zk scan since there was concurrent replication failover, version "
+            + v0 + " => " + v1);
+      } catch (KeeperException e) {
+        LOG.error("Zk exception when search hlogs, retry", e);
+      }
+    }
+    return found;
+  }
+
+  private boolean refreshHLogsAndSearch(String searchedLog) throws KeeperException {
     this.hlogs.clear();
     final boolean lookForLog = searchedLog != null;
     List<String> rss = zkHelper.getListOfReplicators();
@@ -139,7 +162,7 @@ public class ReplicationLogCleaner extends BaseLogCleanerDelegate implements Abo
     } catch (IOException e) {
       LOG.error("Error while configuring " + this.getClass().getName(), e);
     }
-    refreshHLogsAndSearch(null);
+    refreshHLogsAndSearchWithRetry(null);
   }
 
 

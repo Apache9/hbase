@@ -201,7 +201,12 @@ public class ReplicationSourceManager {
     for (String id : this.zkHelper.getPeerClusters().keySet()) {
       addSource(id);
     }
-    List<String> currentReplicators = this.zkHelper.getListOfReplicators();
+    List<String> currentReplicators = null;
+    try {
+      currentReplicators = this.zkHelper.getListOfReplicators();
+    } catch (KeeperException e) {
+      throw new IOException(e);
+    }
     if (currentReplicators == null || currentReplicators.size() == 0) {
       return;
     }
