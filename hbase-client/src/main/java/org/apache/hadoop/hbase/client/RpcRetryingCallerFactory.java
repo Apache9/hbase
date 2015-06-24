@@ -33,6 +33,7 @@ public class RpcRetryingCallerFactory {
   protected final Configuration conf;
   private final long pause;
   private final int retries;
+  private final int throttleRetries;
   private final int startLogErrorsCnt;
   private final boolean enableBackPressure;
   private ServerStatisticTracker stats;
@@ -48,6 +49,8 @@ public class RpcRetryingCallerFactory {
         HConstants.DEFAULT_HBASE_CLIENT_PAUSE);
     retries = conf.getInt(HConstants.HBASE_CLIENT_RETRIES_NUMBER,
         HConstants.DEFAULT_HBASE_CLIENT_RETRIES_NUMBER);
+    throttleRetries = conf.getInt(HConstants.HBASE_CLIENT_THROTTLE_RETRIES_NUMBER,
+      HConstants.DEFAULT_HBASE_CLIENT_THROTTLE_RETRIES_NUMBER);
     startLogErrorsCnt = conf.getInt(AsyncProcess.START_LOG_ERRORS_AFTER_COUNT_KEY,
         AsyncProcess.DEFAULT_START_LOG_ERRORS_AFTER_COUNT);
     enableBackPressure = conf.getBoolean(HConstants.ENABLE_CLIENT_BACKPRESSURE,
@@ -69,7 +72,7 @@ public class RpcRetryingCallerFactory {
       caller = new StatsTrackingRpcRetryingCaller<T>(pause, retries, startLogErrorsCnt,
         this.stats);
     } else {
-      caller = new RpcRetryingCaller<T>(pause, retries, startLogErrorsCnt);
+      caller = new RpcRetryingCaller<T>(pause, retries, throttleRetries, startLogErrorsCnt);
     }
     return caller;
   }

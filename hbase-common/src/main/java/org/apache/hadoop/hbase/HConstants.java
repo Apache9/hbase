@@ -647,6 +647,16 @@ public final class HConstants {
   public static final int DEFAULT_HBASE_CLIENT_RETRIES_NUMBER = 31;
 
   /**
+   * Parameter name for maximum retries when request was throttled.
+   */
+  public static final String HBASE_CLIENT_THROTTLE_RETRIES_NUMBER = "hbase.client.throttle.retries.number";
+
+  /**
+   * Default value of {@link #HBASE_CLIENT_THROTTLE_RETRIES_NUMBER}.
+   */
+  public static final int DEFAULT_HBASE_CLIENT_THROTTLE_RETRIES_NUMBER = 1;
+
+  /**
    * Parameter name for client region location prefetch toggle.
    */
   public static String HBASE_CLIENT_PREFETCH = "hbase.client.prefetch";
