@@ -20,6 +20,7 @@ package org.apache.hadoop.hbase.quotas;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -38,9 +39,13 @@ import org.apache.hadoop.hbase.Stoppable;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Get;
+import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.TimeUnit;
 import org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.Throttle;
 import org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota;
+import org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.RegionServerReportResponse;
+import org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.TableRegionCount;
+import org.apache.hadoop.hbase.regionserver.HRegion;
 import org.apache.hadoop.hbase.regionserver.RegionServerServices;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.Pair;
@@ -85,7 +90,7 @@ public class QuotaCache implements Stoppable {
       new ConcurrentHashMap<String, UserQuotaState>();
   private final QuotaLimiter rsQuotaLimiter;
   private final RegionServerServices rsServices;
-
+  private Map<TableName, Double> localQuotaFactors = new ConcurrentHashMap<TableName, Double>();
   private QuotaRefresherChore refreshChore;
   private boolean stopped = true;
 
@@ -95,24 +100,124 @@ public class QuotaCache implements Stoppable {
     rsQuotaLimiter = createRegionServerQuotaLimiter(conf);
   }
   
+  /**
+   * Returns the QuotaLimiter of regionserver
+   * @param conf
+   * @return
+   */
   public static QuotaLimiter createRegionServerQuotaLimiter(Configuration conf) {
-	Throttle.Builder throttle = Throttle.newBuilder();
-	TimedQuota.Builder readQuota = TimedQuota.newBuilder();
-	readQuota.setSoftLimit(conf.getInt(REGION_SERVER_READ_LIMIT_KEY, DEFAULT_REGION_SERVER_READ_LIMIT));
-	readQuota.setTimeUnit(TimeUnit.SECONDS);
-	TimedQuota.Builder writeQuota = TimedQuota.newBuilder();
-	writeQuota.setSoftLimit(conf.getInt(REGION_SERVER_WRITE_LIMIT_KEY, DEFAULT_REGION_SERVER_WRITE_LIMIT));
-	writeQuota.setTimeUnit(TimeUnit.SECONDS);
-	throttle.setReadNum(readQuota);
-	throttle.setWriteNum(writeQuota);
-	return QuotaLimiterFactory.fromThrottle(throttle.build());
+    Throttle.Builder throttle = Throttle.newBuilder();
+    TimedQuota.Builder readQuota = TimedQuota.newBuilder();
+    readQuota.setSoftLimit(conf.getInt(REGION_SERVER_READ_LIMIT_KEY,
+      DEFAULT_REGION_SERVER_READ_LIMIT));
+    readQuota.setTimeUnit(TimeUnit.SECONDS);
+    TimedQuota.Builder writeQuota = TimedQuota.newBuilder();
+    writeQuota.setSoftLimit(conf.getInt(REGION_SERVER_WRITE_LIMIT_KEY,
+      DEFAULT_REGION_SERVER_WRITE_LIMIT));
+    writeQuota.setTimeUnit(TimeUnit.SECONDS);
+    throttle.setReadNum(readQuota);
+    throttle.setWriteNum(writeQuota);
+    return QuotaLimiterFactory.fromThrottle(throttle.build());
   }
 
+  /**
+   * when fetch quota period, need update regionserver quotalimiter, too.
+   */
   private void updateRegionServerQuotaLimiter() {
-    Configuration conf = getConfiguration();
-    QuotaLimiterFactory.update(rsQuotaLimiter, createRegionServerQuotaLimiter(conf));
+    /** TODO: admin can set regionserver quota by shell
+     */
   }
+  
+  /**
+   * Throttling in cluster is implemented by throttling in regionserver.
+   * localTableFactors means how many user-table quota can be allocated in this regionserver.
+   * when fetch quota, need update local quota factors first.
+   * @param regionServerNum
+   * @param tableRegionsNumMap
+   */
+  private void updateLocalQuotaFactors() {
+    RegionServerReportResponse.Builder rsrr = RegionServerReportResponse.newBuilder(this.rsServices
+        .getRegionServerReportResponse());
+    RegionServerReportResponse response = rsrr.build();
 
+    int regionServerNum = response.getServerNum();
+    // don't update when no regionserver
+    if (regionServerNum == 0) {
+      return;
+    }
+
+    for (TableRegionCount entry : response.getRegionCountsList()) {
+      TableName tableName = ProtobufUtil.toTableName(entry.getTableName());
+      
+      /** TODO: Case need to handle.
+       *  When create new table after this update, it will have no local factor  
+       *  so the local quota is equal to the cluster quota
+       */
+      // if table not on this regionserver, no local factor for this table
+      if (!tableQuotaCache.containsKey(tableName)) {
+        localQuotaFactors.remove(tableName);
+        continue;
+      }
+
+      // if table has no regions, no local factor for this table
+      int tableRegionsNum = entry.getRegionNum();
+      if (tableRegionsNum == 0) {
+        localQuotaFactors.remove(tableName);
+        continue;
+      }
+
+      int localRegionsNum = 0;
+      try {
+        List<HRegion> localRegions = this.rsServices.getOnlineRegions(tableName);
+        if (localRegions != null) {
+          localRegionsNum = localRegions.size();
+        }
+      } catch (IOException e) {
+        LOG.info("get online regions of " + tableName + "failed");
+      }
+      
+      double localFactor = computeLocalFactor(regionServerNum, tableRegionsNum, localRegionsNum);
+      localQuotaFactors.put(tableName, localFactor);
+    }
+  }
+  
+  protected static double computeLocalFactor(int regionServerNum, int tableRegionsNum, int localRegionsNum) {
+    /** TODO: Case need to modify better.
+     *  the default factor is 1.0, then move a new region to this rs
+     *  but the table will get all cluster quota
+     */
+    // Case default : allocate all cluster quota for this table
+    double localFactor = 1.0;
+    if (tableRegionsNum == 0 || regionServerNum == 0) {
+      return localFactor;
+    }
+    // Case 1 : table's regions num is smaller than the rs number
+    if (tableRegionsNum < regionServerNum) {
+      // Case 1.1 : we can average distribute quota by the number of table regions
+      if (localRegionsNum >= 1) {
+        localFactor = 1.0 / tableRegionsNum;
+      }
+      // else Case 1.2 is the default case, when table's local regions num is 0, factor is 1.0
+    } else {
+      // Case 2 : table's regions number is more or equal to the rs number
+      // Case 2.1 : we can average distribute quota by the number of regionserver
+      if (tableRegionsNum % regionServerNum == 0) {
+        localFactor = 1.0 / regionServerNum;
+      } else {
+        // Case 2.2 : we cann't average distribute quota
+        double averageRegionsNum = tableRegionsNum * 1.0 / regionServerNum;
+        if (localRegionsNum >= averageRegionsNum) {
+          // Case 2.2.1 : distribute more quota than the average
+          localFactor = Math.ceil(averageRegionsNum) / tableRegionsNum;
+        } else {
+          // Case 2.2.2 : distribute fewer quota than the average
+          localFactor = Math.floor(averageRegionsNum) / tableRegionsNum;
+        }
+      }
+    }
+    return localFactor;
+  }
+  
   public void start() throws IOException {
     stopped = false;
 
@@ -149,7 +254,10 @@ public class QuotaCache implements Stoppable {
 
   /**
    * Returns the QuotaState associated to the specified user.
-   *
+   * TODO: Case need to handle. 
+   * When get UserQuotaState, need get first, then the ugi will be put to the userQuotaCache
+   * In the next update, fetch will make get by the keys of userQuotaCache, then get user quota
+   * so the first request cann't be throttle
    * @param ugi the user
    * @return the quota info associated to specified user
    */
@@ -256,12 +364,19 @@ public class QuotaCache implements Stoppable {
           QuotaCache.this.namespaceQuotaCache.putIfAbsent(ns, new QuotaState());
         }
       }
-
+      
+      // first update, then fetch
+      updateRegionServerQuotaLimiter();
+      updateLocalQuotaFactors();
       fetchNamespaceQuotaState();
       fetchTableQuotaState();
       fetchUserQuotaState();
-      updateRegionServerQuotaLimiter();
       lastUpdate = EnvironmentEdgeManager.currentTimeMillis();
+      LOG.info("QuotaCache refreshed");
+      LOG.info("RegionServer Limiter is " + rsQuotaLimiter);
+      for (Map.Entry<String, UserQuotaState> entry : userQuotaCache.entrySet()) {
+        LOG.info("For user " + entry.getKey() + " " + entry.getValue());
+      }
     }
 
     private void fetchNamespaceQuotaState() {
@@ -306,7 +421,7 @@ public class QuotaCache implements Stoppable {
         @Override
         public Map<String, UserQuotaState> fetchEntries(final List<Get> gets)
             throws IOException {
-          return QuotaUtil.fetchUserQuotas(QuotaCache.this.getConfiguration(), gets);
+          return QuotaUtil.fetchUserQuotas(QuotaCache.this.getConfiguration(), gets, localQuotaFactors);
         }
       });
     }
@@ -334,6 +449,7 @@ public class QuotaCache implements Stoppable {
         if (LOG.isTraceEnabled()) {
           LOG.trace("evict " + type + " key=" + key);
         }
+        // long time no query for this user/table/ns, remove it's quota
         quotasMap.remove(key);
       }
 

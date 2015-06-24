@@ -1,8 +1,5 @@
 package org.apache.hadoop.hbase.quotas;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
-
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
@@ -14,6 +11,8 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 /**
  * Verify the behaviour of the Operation Quota.
@@ -40,7 +39,11 @@ public class TestOperationQuota {
     QuotaLimiter userLimiter = QuotaLimiterFactory.fromThrottle(buildThrottle(10, TimeUnit.MINUTES, 10, TimeUnit.MINUTES));
     QuotaLimiter rsLimiter = QuotaLimiterFactory.fromThrottle(buildThrottle(10, TimeUnit.MINUTES, 10, TimeUnit.MINUTES));
     operationQuota = new AllowExceedOperationQuota(userLimiter, rsLimiter);
-    operationQuota.grabQuota(10, 10, 0);
+    try {
+      operationQuota.checkQuota(10, 10, 0);
+    } catch (ThrottlingException te) {
+      fail("quota avail is more than the need, should not thrown exception");
+    }
     // user and rs both have no avail quota.
     runWithExpectedException(new Callable<Void>() {
       @Override
@@ -56,7 +59,11 @@ public class TestOperationQuota {
     QuotaLimiter userLimiter = QuotaLimiterFactory.fromThrottle(buildThrottle(10, TimeUnit.MINUTES, 10, TimeUnit.MINUTES));
     QuotaLimiter rsLimiter = QuotaLimiterFactory.fromThrottle(buildThrottle(20, TimeUnit.MINUTES, 20, TimeUnit.MINUTES));
     operationQuota = new AllowExceedOperationQuota(userLimiter, rsLimiter);
-    operationQuota.grabQuota(10, 10, 0);
+    try {
+      operationQuota.checkQuota(10, 10, 0);
+    } catch (ThrottlingException te) {
+      fail("quota avail is more than the need, should not thrown exception");
+    }
     assertEquals(0, userLimiter.getReadReqsAvailable());
     assertEquals(0, userLimiter.getWriteReqsAvailable());
     assertEquals(10, rsLimiter.getReadReqsAvailable());

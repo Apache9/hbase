@@ -163,6 +163,8 @@ import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.StopServerRequest;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.StopServerResponse;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.UpdateFavoredNodesRequest;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.UpdateFavoredNodesResponse;
+import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.SwitchThrottleRequest;
+import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.SwitchThrottleResponse;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.WALEntry;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.BulkLoadHFileRequest;
@@ -400,10 +402,6 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
 
   protected final int numRegionsToReport;
 
-  private int regionServerNum = 1;
-  
-  private Map<TableName, Integer> tableRegionsNumMap = new HashMap<TableName, Integer>();
-
   // Stub to do region server status calls against the master.
   private volatile RegionServerStatusService.BlockingInterface rssStub;
   // RPC client. Used to make the stub above that does region server status checking.
@@ -557,6 +555,9 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
   private final ServerNonceManager nonceManager;
 
   private UserProvider userProvider;
+  
+  // When rs report to master, master response back some contents 
+  private RegionServerReportResponse reportResponse;
 
   /**
    * Starts a HRegionServer at the default location
@@ -1141,17 +1142,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
         this.serverNameFromMasterPOV.getVersionedBytes());
       request.setServer(ProtobufUtil.toServerName(sn));
       request.setLoad(sl);
-      RegionServerReportResponse result = rss.regionServerReport(null, request.build());
-      if (result != null) {
-        if (result.hasServerNum()) {
-          this.regionServerNum = result.getServerNum();
-          getRegionServerQuotaManager().updateRegionServerNum(this.regionServerNum);
-        }
-        for (TableRegionCount entry : result.getRegionCountsList()) {
-          tableRegionsNumMap.put(ProtobufUtil.toTableName(entry.getTableName()),
-            entry.getRegionNum());
-        }
-      }
+      reportResponse = rss.regionServerReport(null, request.build());
     } catch (ServiceException se) {
       IOException ioe = ProtobufUtil.getRemoteException(se);
       if (ioe instanceof YouAreDeadException) {
@@ -2992,13 +2983,12 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
   public GetResponse get(final RpcController controller,
       final GetRequest request) throws ServiceException {
     long before = EnvironmentEdgeManager.currentTimeMillis();
-    OperationQuota quota = null;
     try {
       checkOpen();
       requestCount.increment();
       HRegion region = getRegion(request.getRegion());
 
-      quota = getQuotaManager().checkQuota(region, OperationQuota.OperationType.GET);
+      rsQuotaManager.checkQuota(region, OperationQuota.OperationType.GET);
 
       GetResponse.Builder builder = GetResponse.newBuilder();
       ClientProtos.Get get = request.getGet();
@@ -3038,16 +3028,13 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
         builder.setResult(pbr);
       }
       if (r != null) {
-        quota.addGetResult(r);
+        rsQuotaManager.grabQuota(region, r);
       }
       return builder.build();
     } catch (IOException ie) {
       throw new ServiceException(ie);
     } finally {
       metricsRegionServer.updateGet(EnvironmentEdgeManager.currentTimeMillis() - before);
-      if (quota != null) {
-        quota.close();
-      }
     }
   }
 
@@ -3066,7 +3053,6 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     // It is also the conduit via which we pass back data.
     PayloadCarryingRpcController controller = (PayloadCarryingRpcController)rpcc;
     CellScanner cellScanner = controller != null? controller.cellScanner(): null;
-    OperationQuota quota = null;
     // Clear scanner so we are not holding on to reference across call.
     if (controller != null) controller.setCellScanner(null);
     try {
@@ -3085,20 +3071,18 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
       MutationType type = mutation.getMutateType();
       long mutationSize = 0;
 
-      quota = getQuotaManager().checkQuota(region, OperationQuota.OperationType.MUTATE);
-
       switch (type) {
       case APPEND:
         // TODO: this doesn't actually check anything.
-        r = append(region, quota, mutation, cellScanner, nonceGroup);
+        r = append(region, mutation, cellScanner, nonceGroup);
         break;
       case INCREMENT:
         // TODO: this doesn't actually check anything.
-        r = increment(region, quota, mutation, cellScanner, nonceGroup);
+        r = increment(region, mutation, cellScanner, nonceGroup);
         break;
       case PUT:
         Put put = ProtobufUtil.toPut(mutation, cellScanner);
-        quota.addMutation(put);
+        rsQuotaManager.checkQuota(region, put);
         if (request.hasCondition()) {
           Condition condition = request.getCondition();
           byte[] row = condition.getRow().toByteArray();
@@ -3127,7 +3111,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
         break;
       case DELETE:
         Delete delete = ProtobufUtil.toDelete(mutation, cellScanner);
-        quota.addMutation(delete);
+        rsQuotaManager.checkQuota(region, delete);
         if (request.hasCondition()) {
           Condition condition = request.getCondition();
           byte[] row = condition.getRow().toByteArray();
@@ -3166,10 +3150,6 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     } catch (IOException ie) {
       checkFileSystem();
       throw new ServiceException(ie);
-    } finally {
-      if (quota != null) {
-        quota.close();
-      }
     }
   }
 
@@ -3291,7 +3271,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
         ttl = this.scannerLeaseTimeoutPeriod;
       }
 
-      quota = getQuotaManager().checkQuota(region, OperationQuota.OperationType.SCAN);
+      quota = rsQuotaManager.checkQuota(region, OperationQuota.OperationType.SCAN);
       long maxQuotaResultSize = Math.min(maxScannerResultSize, quota.getReadAvailable());
 
       if (rows > 0) {
@@ -3387,7 +3367,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
             }
           }
 
-          quota.addScanResult(results);
+          rsQuotaManager.grabQuota(region, results);
 
           // If the scanner's filter - if any - is done with the scan
           // and wants to tell the client to stop the scan. This is done by passing
@@ -3448,10 +3428,6 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
         }
       }
       throw new ServiceException(ie);
-    } finally {
-      if (quota != null) {
-        quota.close();
-      }
     }
   }
 
@@ -3636,12 +3612,15 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
 
     for (RegionAction regionAction : request.getRegionActionList()) {
       this.requestCount.add(regionAction.getActionCount());
-      OperationQuota quota;
+      OperationQuota quota = null;
       HRegion region;
       regionActionResultBuilder.clear();
       try {
         region = getRegion(regionAction.getRegion());
-        quota = getQuotaManager().checkQuota(region, regionAction.getActionList());
+        /**
+         * TODO : need more accurate throttle by action size
+         */
+        quota = rsQuotaManager.checkQuota(region, regionAction.getActionList());
       } catch (IOException e) {
         regionActionResultBuilder.setException(ResponseConverter.buildException(e));
         responseBuilder.addRegionActionResult(regionActionResultBuilder.build());
@@ -3682,7 +3661,6 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
             regionActionResultBuilder, cellsToReturn, nonceGroup);
       }
       responseBuilder.addRegionActionResult(regionActionResultBuilder.build());
-      quota.close();
     }
     // Load the controller with the Cells to return.
     if (cellsToReturn != null && !cellsToReturn.isEmpty() && controller != null) {
@@ -4483,6 +4461,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
       final MutationProto m, final CellScanner cellScanner, long nonceGroup) throws IOException {
     long before = EnvironmentEdgeManager.currentTimeMillis();
     Append append = ProtobufUtil.toAppend(m, cellScanner);
+    rsQuotaManager.checkQuota(region, append);
     Result r = null;
     if (region.getCoprocessorHost() != null) {
       r = region.getCoprocessorHost().preAppend(append);
@@ -4518,7 +4497,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
       final MutationProto m, final CellScanner cellScanner, long nonceGroup) throws IOException {
     long before = EnvironmentEdgeManager.currentTimeMillis();
     Append append = ProtobufUtil.toAppend(m, cellScanner);
-    quota.addMutation(append);
+    rsQuotaManager.grabQuota(region, append);
     Result r = null;
     if (region.getCoprocessorHost() != null) {
       r = region.getCoprocessorHost().preAppend(append);
@@ -4552,6 +4531,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
       final CellScanner cells, long nonceGroup) throws IOException {
     long before = EnvironmentEdgeManager.currentTimeMillis();
     Increment increment = ProtobufUtil.toIncrement(mutation, cells);
+    rsQuotaManager.checkQuota(region, increment);
     Result r = null;
     if (region.getCoprocessorHost() != null) {
       r = region.getCoprocessorHost().preIncrement(increment);
@@ -4585,7 +4565,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
       final CellScanner cells, long nonceGroup) throws IOException {
     long before = EnvironmentEdgeManager.currentTimeMillis();
     Increment increment = ProtobufUtil.toIncrement(mutation, cells);
-    quota.addMutation(increment);
+    rsQuotaManager.grabQuota(region, increment);
     Result r = null;
     if (region.getCoprocessorHost() != null) {
       r = region.getCoprocessorHost().preIncrement(increment);
@@ -4746,7 +4726,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
           batchContainsDelete = true;
         }
         mArray[i++] = mutation;
-        quota.addMutation(mutation);
+        rsQuotaManager.grabQuota(region, mutation);
       }
 
       if (!region.getRegionInfo().isMetaTable()) {
@@ -5179,6 +5159,25 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     respBuilder.setResponse(openInfoList.size());
     return respBuilder.build();
   }
+  
+  @Override
+  public SwitchThrottleResponse switchThrottle(RpcController controller,
+      SwitchThrottleRequest request) throws ServiceException {
+    if (request.hasStartThrottle() && request.getStartThrottle()) {
+      if (rsQuotaManager.isStopped()) {
+        try {
+          rsQuotaManager.start(getRpcServer().getScheduler());
+        } catch (IOException ie) {
+          throw new ServiceException(ie);
+        }
+      }
+    } else if (request.hasSimulateThrottle() && request.getSimulateThrottle()) {
+      rsQuotaManager.setThrottleSimulated(true);
+    } else if (request.hasStopThrottle() && request.getStopThrottle()) {
+      rsQuotaManager.stop();
+    }
+    return SwitchThrottleResponse.newBuilder().build();
+  }
 
   /**
    * @return The cache config instance used by the regionserver.
@@ -5210,15 +5209,8 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     return getRegionServerQuotaManager();
   }
   
-  public int getTableRegionsNum(TableName tableName) {
-    if (tableRegionsNumMap.containsKey(tableName)) {
-      return tableRegionsNumMap.get(tableName);
-    }
-    return 0;
+  @Override
+  public RegionServerReportResponse getRegionServerReportResponse() {
+    return reportResponse;
   }
-
-  public int getRegionServerNum() {
-    return regionServerNum;
-  }
-
 }

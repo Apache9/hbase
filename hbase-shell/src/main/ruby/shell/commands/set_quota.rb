@@ -26,9 +26,11 @@ Set a quota for a user, table, or namespace.
 Syntax : set_quota TYPE => <type>, <args>
 
 TYPE => THROTTLE
-The request(read/write) limit can be expressed using the form 100req/sec, 100req/min
-and the size limit can be expressed using the form 100k/sec, 100M/min
-with (B, K, M, G, T, P) as valid size unit and (sec, min, hour, day) as valid time unit.
+User can either set quota on read, write or on both the requests together(i.e., read+write)
+The read, write, or read+write(default throttle type) request limit can be expressed using
+the form 100req/sec, 100req/min and the read, write, read+write(default throttle type) limit
+can be expressed using the form 100k/sec, 100M/min with (B, K, M, G, T, P) as valid size unit
+and (sec, min, hour, day) as valid time unit.
 Currently the throttle limit is per machine - a limit of 100req/min
 means that each machine can execute 100req/min.
 

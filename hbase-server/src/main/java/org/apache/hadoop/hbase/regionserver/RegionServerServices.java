@@ -27,6 +27,7 @@ import org.apache.hadoop.hbase.executor.ExecutorService;
 import org.apache.hadoop.hbase.ipc.PriorityFunction;
 import org.apache.hadoop.hbase.ipc.RpcServerInterface;
 import org.apache.hadoop.hbase.master.TableLockManager;
+import org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.RegionServerReportResponse;
 import org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.RegionStateTransition.TransitionCode;
 import org.apache.hadoop.hbase.regionserver.wal.HLog;
 import org.apache.hadoop.hbase.quotas.RegionServerQuotaManager;
@@ -168,4 +169,9 @@ public interface RegionServerServices
    * @see org.apache.hadoop.hbase.regionserver.Store#getCompactionPressure()
    */
   double getCompactionPressure();
+  
+  /**
+   * @return the report response by master return 
+   */
+  RegionServerReportResponse getRegionServerReportResponse();
 }

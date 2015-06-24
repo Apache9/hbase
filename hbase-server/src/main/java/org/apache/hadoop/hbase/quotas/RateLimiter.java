@@ -23,6 +23,7 @@ import java.util.concurrent.TimeUnit;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
+import org.mortbay.log.Log;
 
 import com.google.common.annotations.VisibleForTesting;
 
@@ -58,9 +59,9 @@ public abstract class RateLimiter {
   /**
    * Refill the available units w.r.t the elapsed time.
    * @param limit Maximum available resource units that can be refilled to.
-   * @param available Currently available resource units
+   * @return how many resources units may be refill?
    */
-  abstract long refill(long limit, long available);
+  abstract long refill(long limit);
 
   /**
    * Time in milliseconds to wait for before requesting to consume 'amount' resource.
@@ -121,6 +122,10 @@ public abstract class RateLimiter {
       this.avail += (other.limit - this.limit);
     }
     this.limit = other.limit;
+    // make sure avail is not bigger than the limit
+    if (this.avail > this.limit) {
+      this.avail = this.limit;
+    }
   }
 
   public synchronized boolean isBypass() {
@@ -153,7 +158,10 @@ public abstract class RateLimiter {
    * @return true if there are enough available resources, otherwise false
    */
   public synchronized boolean canExecute(final long amount) {
-    long refillAmount = refill(limit, avail);
+    if (isBypass()) {
+      return true;
+    }
+    long refillAmount = refill(limit);
     if (refillAmount == 0 && avail < amount) {
       return false;
     }
@@ -182,9 +190,6 @@ public abstract class RateLimiter {
    */
   public synchronized void consume(final long amount) {
     this.avail -= amount;
-    if (this.avail < 0) {
-      this.avail = 0;
-    }
   }
 
   /**

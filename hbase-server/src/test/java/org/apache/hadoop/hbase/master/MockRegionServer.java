@@ -29,6 +29,7 @@ import java.util.TreeMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 
 import com.google.protobuf.Message;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.hbase.CellScannable;
@@ -73,6 +74,8 @@ import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.SplitRegionRequest
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.SplitRegionResponse;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.StopServerRequest;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.StopServerResponse;
+import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.SwitchThrottleRequest;
+import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.SwitchThrottleResponse;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.UpdateFavoredNodesRequest;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.UpdateFavoredNodesResponse;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos;
@@ -88,6 +91,7 @@ import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.MutateResponse;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.ScanRequest;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.ScanResponse;
 import org.apache.hadoop.hbase.protobuf.generated.RPCProtos;
+import org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.RegionServerReportResponse;
 import org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.RegionStateTransition.TransitionCode;
 import org.apache.hadoop.hbase.quotas.RegionServerQuotaManager;
 import org.apache.hadoop.hbase.regionserver.CompactionRequestor;
@@ -611,5 +615,16 @@ ClientProtos.ClientService.BlockingInterface, RegionServerServices {
   @Override
   public double getCompactionPressure() {
     return 0;
+  }
+  
+  @Override
+  public RegionServerReportResponse getRegionServerReportResponse() {
+    return null;
+  }
+  
+  @Override
+  public SwitchThrottleResponse switchThrottle(RpcController controller,
+      SwitchThrottleRequest request) throws ServiceException {
+    return null;
   }
 }

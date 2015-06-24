@@ -227,6 +227,8 @@ public interface MetricsRegionServerSource extends BaseSource {
   String APPEND_KEY = "append";
   String REPLAY_KEY = "replay";
   String SCAN_NEXT_KEY = "scanNext";
+  String READ_KEY = "readCapacityUnit";
+  String WRITE_KEY = "writeCapacityUnit";
   String SLOW_MUTATE_KEY = "slowPutCount";
   String SLOW_GET_KEY = "slowGetCount";
   String SLOW_DELETE_KEY = "slowDeleteCount";

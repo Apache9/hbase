@@ -75,6 +75,18 @@ public interface MetricsRegionSource extends Comparable<MetricsRegionSource> {
   void updateAppend();
 
   /**
+   * Update counts of read capacity unit.
+   * @param how many capacity units of read size for get and scan
+   */
+  void updateRead(long readCapacityUnitCount);
+
+  /**
+   * Update counts of write capacity unit.
+   * @param how many capacity unit of write size for put
+   */
+  void updateWrite(long writeCapacityUnitCount);
+
+  /**
    * Get the aggregate source to which this reports.
    */
   MetricsRegionAggregateSource getAggregateSource();

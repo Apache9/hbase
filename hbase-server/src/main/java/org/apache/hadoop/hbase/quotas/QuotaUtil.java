@@ -19,7 +19,6 @@
 package org.apache.hadoop.hbase.quotas;
 
 import java.io.IOException;
-
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -43,6 +42,9 @@ import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.Quotas;
+import org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.Throttle;
+import org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.ThrottleOrBuilder;
+import org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota;
 import org.apache.hadoop.hbase.regionserver.BloomType;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
@@ -59,8 +61,8 @@ public class QuotaUtil extends QuotaTableUtil {
   public static final String QUOTA_CONF_KEY = "hbase.quota.enabled";
   private static final boolean QUOTA_ENABLED_DEFAULT = false;
   
-  private static final int READ_CAPACITY_UNIT = 4096;
-  private static final int WRITE_CAPACITY_UNIT = 1024;
+  public static final int READ_CAPACITY_UNIT = 4096;
+  public static final int WRITE_CAPACITY_UNIT = 1024;
 
   /** Table descriptor for Quota internal table */
   public static final HTableDescriptor QUOTA_TABLE_DESC =
@@ -167,7 +169,96 @@ public class QuotaUtil extends QuotaTableUtil {
     }
     doDelete(conf, delete);
   }
+  
+  
+  // update cluster limit to region server limit
+  public static Quotas updateByLocalFactor(Quotas quotas, double factor) {
+    Quotas.Builder newQuotas = Quotas.newBuilder(quotas);
+    if (newQuotas.hasThrottle()) {
+      Throttle.Builder throttle = Throttle.newBuilder(newQuotas.getThrottle());
+      if (throttle.hasReqNum()) {
+        TimedQuota.Builder timedQuota = TimedQuota.newBuilder(throttle.getReqNum());
+        timedQuota.setSoftLimit((long) (timedQuota.getSoftLimit() * factor));
+        throttle.setReqNum(timedQuota.build());
+      }
+      if (throttle.hasReqSize()) {
+        TimedQuota.Builder timedQuota = TimedQuota.newBuilder(throttle.getReqSize());
+        timedQuota.setSoftLimit((long) (timedQuota.getSoftLimit() * factor));
+        throttle.setReqSize(timedQuota.build());
+      }
+      if (throttle.hasReadNum()) {
+        TimedQuota.Builder timedQuota = TimedQuota.newBuilder(throttle.getReadNum());
+        timedQuota.setSoftLimit((long) (timedQuota.getSoftLimit() * factor));
+        throttle.setReadNum(timedQuota.build());
+      }
+      if (throttle.hasReadSize()) {
+        TimedQuota.Builder timedQuota = TimedQuota.newBuilder(throttle.getReadSize());
+        timedQuota.setSoftLimit((long) (timedQuota.getSoftLimit() * factor));
+        throttle.setReadSize(timedQuota.build());
+      }
+      if (throttle.hasWriteNum()) {
+        TimedQuota.Builder timedQuota = TimedQuota.newBuilder(throttle.getWriteNum());
+        timedQuota.setSoftLimit((long) (timedQuota.getSoftLimit() * factor));
+        throttle.setWriteNum(timedQuota.build());
+      }
+      if (throttle.hasWriteSize()) {
+        TimedQuota.Builder timedQuota = TimedQuota.newBuilder(throttle.getWriteSize());
+        timedQuota.setSoftLimit((long) (timedQuota.getSoftLimit() * factor));
+        throttle.setWriteSize(timedQuota.build());
+      }
+      newQuotas.setThrottle(throttle.build());
+    }
+    return newQuotas.build();
+  }
 
+  public static Map<String, UserQuotaState> fetchUserQuotas(final Configuration conf,
+      final List<Get> gets, final Map<TableName, Double> localTableFactors) throws IOException {
+    long nowTs = EnvironmentEdgeManager.currentTimeMillis();
+    Result[] results = doGet(conf, gets);
+
+    Map<String, UserQuotaState> userQuotas = new HashMap<String, UserQuotaState>(results.length);
+    for (int i = 0; i < results.length; ++i) {
+      byte[] key = gets.get(i).getRow();
+      assert isUserRowKey(key);
+      String user = getUserFromRowKey(key);
+
+      final UserQuotaState quotaInfo = new UserQuotaState(nowTs);
+      userQuotas.put(user, quotaInfo);
+
+      if (results[i].isEmpty()) continue;
+      assert Bytes.equals(key, results[i].getRow());
+
+      try {
+        parseUserResult(user, results[i], new UserQuotasVisitor() {
+          @Override
+          public void visitUserQuotas(String userName, String namespace, Quotas quotas) {
+            quotaInfo.setQuotas(namespace, quotas);
+          }
+
+          @Override
+          public void visitUserQuotas(String userName, TableName table, Quotas quotas) {
+            // update factors first, then fetch quota, but need update by local factor
+            // if no local factor, table will get all quota
+            Double factor = localTableFactors.get(table);
+            if (factor != null) {
+              quotas = updateByLocalFactor(quotas, factor);
+            }
+            quotaInfo.setQuotas(table, quotas);
+          }
+
+          @Override
+          public void visitUserQuotas(String userName, Quotas quotas) {
+            quotaInfo.setQuotas(quotas);
+          }
+        });
+      } catch (IOException e) {
+        LOG.error("Unable to parse user '" + user + "' quotas", e);
+        userQuotas.remove(user);
+      }
+    }
+    return userQuotas;
+  }
+  
   public static Map<String, UserQuotaState> fetchUserQuotas(final Configuration conf,
       final List<Get> gets) throws IOException {
     long nowTs = EnvironmentEdgeManager.currentTimeMillis();
@@ -321,14 +412,22 @@ public class QuotaUtil extends QuotaTableUtil {
   }
   
   public static int calculateRequestUnitNum(final Result result) {
-    return (int) Math.ceil(calculateResultSize(result) / READ_CAPACITY_UNIT);
+    return (int) calculateReadCapacityUnitNum(calculateResultSize(result));
   }
 
   public static int calculateRequestUnitNum(final List<Result> results) {
-    return (int) Math.ceil(calculateResultSize(results) / READ_CAPACITY_UNIT);
+    return (int) calculateReadCapacityUnitNum(calculateResultSize(results));
   }
 
   public static int calculateRequestUnitNum(final Mutation mutation) {
-    return (int) Math.ceil(calculateMutationSize(mutation) / WRITE_CAPACITY_UNIT);
+    return (int) calculateWriteCapacityUnitNum(calculateMutationSize(mutation));
+  }
+
+  public static long calculateReadCapacityUnitNum(final long size) {
+    return (long) Math.ceil(size * 1.0 / READ_CAPACITY_UNIT);
+  }
+
+  public static long calculateWriteCapacityUnitNum(final long size) {
+    return (long) Math.ceil(size * 1.0 / WRITE_CAPACITY_UNIT);
   }
 }

@@ -226,6 +226,16 @@ public class TimeBasedLimiter implements QuotaLimiter {
   public long getReadReqsAvailable() {
     return readReqsLimiter.getAvailable();
   }
+  
+  @Override
+  public long getReqsAvailable() {
+    return reqsLimiter.getAvailable();
+  }
+  
+  @Override
+  public long getReqsSizeAvailable() {
+    return reqSizeLimiter.getAvailable();
+  }
 
   @Override
   public void addOperationSize(OperationType type, long size) {
