@@ -2137,7 +2137,9 @@ public class HRegion implements HeapSize { // , Writable{
       // All edits for the given row (across all column families) must happen atomically.
       doBatchMutate(put);
     } finally {
-      metricsRegion.updateWrite(QuotaUtil.calculateRequestUnitNum(put));
+      if (this.metricsRegion != null) {
+        this.metricsRegion.updateWrite(QuotaUtil.calculateRequestUnitNum(put));
+      }
       closeRegionOperation(Operation.PUT);
     }
   }
@@ -2850,7 +2852,9 @@ public class HRegion implements HeapSize { // , Writable{
         rowLock.release();
       }
     } finally {
-      metricsRegion.updateWrite(QuotaUtil.calculateRequestUnitNum(w));
+      if (this.metricsRegion != null) {
+        this.metricsRegion.updateWrite(QuotaUtil.calculateRequestUnitNum(w));
+      }
       closeRegionOperation();
     }
   }
