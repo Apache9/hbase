@@ -53,7 +53,7 @@ public class AllowExceedOperationQuota implements OperationQuota {
       regionServerLimiter.checkQuotaByRequestUnit(writeNeed, readNeed);
       regionServerLimiter.grabQuotaByRequestUnit(writeNeed, readNeed);
     } catch (ThrottlingException e) {
-      if (userQuotaExceed) {
+      if (userQuotaExceed || userLimiter.isBypass()) {
         throw e;
       }
       regionServerLimiter.grabQuotaByRequestUnit(writeNeed, readNeed);

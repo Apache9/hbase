@@ -55,6 +55,9 @@ public class TestQuotaManager {
 
   private static final int regionServerNum = 1;
 
+  private HBaseAdmin admin;
+  private String userName;
+
   @BeforeClass
   public static void setUpBeforeClass() throws Exception {
     TEST_UTIL.getConfiguration().setBoolean(QuotaUtil.QUOTA_CONF_KEY, true);
@@ -95,8 +98,8 @@ public class TestQuotaManager {
 
   @Before
   public void setupQuota() throws IOException {
-    HBaseAdmin admin = TEST_UTIL.getHBaseAdmin();
-    String userName = User.getCurrent().getShortName();
+    admin = TEST_UTIL.getHBaseAdmin();
+    userName = User.getCurrent().getShortName();
 
     admin.setQuota(QuotaSettingsFactory.throttleUser(userName, TABLE_NAME,
       ThrottleType.READ_NUMBER, 5, TimeUnit.SECONDS));
@@ -126,7 +129,34 @@ public class TestQuotaManager {
         return null;
       }
     }, ThrottlingException.class);
+  }
 
+  @Test
+  public void testUserNotSetQuota() throws IOException, InterruptedException {
+    // remove user quota
+    admin.setQuota(QuotaSettingsFactory.unthrottleUser(userName));
+    final RegionServerQuotaManager quotaManager = TEST_UTIL.getMiniHBaseCluster()
+        .getRegionServer(0).getRegionServerQuotaManager();
+    final HRegion region = TEST_UTIL.getMiniHBaseCluster().getRegionServer(0)
+        .getOnlineRegions(TABLE_NAME).get(0);
+    // update cache need one get first
+    quotaManager.getQuotaCache().getUserLimiter(User.getCurrent().getUGI(), table.getName());
+    Thread.sleep(1000);
+    quotaManager.getQuotaCache().triggerCacheRefresh();
+    Thread.sleep(1000);
+
+    // will throttle by rs quota, allow exceed to 10
+    for (int i = 0; i < 10; i++) {
+      quotaManager.checkQuota(region, OperationType.GET);
+    }
+
+    runWithExpectedException(new Callable<Void>() {
+      @Override
+      public Void call() throws Exception {
+        quotaManager.checkQuota(region, OperationType.GET);
+        return null;
+      }
+    }, ThrottlingException.class);
   }
 
   @Test

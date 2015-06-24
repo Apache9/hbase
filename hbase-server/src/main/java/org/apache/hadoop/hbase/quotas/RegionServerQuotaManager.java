@@ -129,6 +129,7 @@ public class RegionServerQuotaManager {
       QuotaLimiter userLimiter = userQuotaState.getTableLimiter(table);
       QuotaLimiter rsLimiter = quotaCache.getRegionServerLimiter();
       boolean useNoop = userLimiter.isBypass();
+      useNoop &= rsLimiter.isBypass();
       if (userQuotaState.hasBypassGlobals()) {
         if (LOG.isTraceEnabled()) {
           LOG.trace("get quota for ugi=" + ugi + " table=" + table + " userLimiter=" + userLimiter);
@@ -140,7 +141,7 @@ public class RegionServerQuotaManager {
             return new DefaultOperationQuota(userLimiter);
           }       
         }
-      } else {      
+      } else {
         QuotaLimiter nsLimiter = quotaCache.getNamespaceLimiter(table.getNamespaceAsString());
         QuotaLimiter tableLimiter = quotaCache.getTableLimiter(table);
         useNoop &= tableLimiter.isBypass() && nsLimiter.isBypass();

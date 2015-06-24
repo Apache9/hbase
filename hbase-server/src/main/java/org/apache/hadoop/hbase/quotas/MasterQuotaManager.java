@@ -452,7 +452,7 @@ public class MasterQuotaManager {
 
     if (req.getThrottle().getType() == ThrottleType.READ_NUMBER) {
       long readReqLimit = computeReqLimitByLocalFactor(tableName, req, localFactor);
-      if ((readReqLimit <= 0) || ((readReqLimit + totalExistedReadLimit) > regionServerReadLimit)) {
+      if ((readReqLimit > 0) && ((readReqLimit + totalExistedReadLimit) > regionServerReadLimit)) {
         throw new QuotaExceededException("Failed to set read quota for table=" + tableName
             + ", because quota is exceed the region server read limit");
       }
@@ -460,7 +460,7 @@ public class MasterQuotaManager {
 
     if (req.getThrottle().getType() == ThrottleType.WRITE_NUMBER) {
       long writeReqLimit = computeReqLimitByLocalFactor(tableName, req, localFactor);
-      if ((writeReqLimit <= 0) || ((writeReqLimit + totalExistedWriteLimit) > regionServerWriteLimit)) {
+      if ((writeReqLimit > 0) && ((writeReqLimit + totalExistedWriteLimit) > regionServerWriteLimit)) {
         throw new QuotaExceededException("Failed to set write quota for table=" + tableName
             + ", because quota is exceed the region server read limit");
       }
