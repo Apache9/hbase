@@ -93,6 +93,11 @@ public class ReplicationZookeeper {
   public static enum PeerState {
     ENABLED, DISABLED
   };
+  
+  // Values of znode which stores protocol of a peer
+  public static enum PeerProtocol {
+    NATIVE, THRIFT
+  }
 
   // Our handle on zookeeper
   private final ZooKeeperWatcher zookeeper;
@@ -110,6 +115,8 @@ public class ReplicationZookeeper {
   private String replicationStateNodeName;
   // Name of zk node which stores peer state
   private String peerStateNodeName;
+  // Name of zk node which stores peer protocol
+  private String peerProtocolNodeName;
   // Name of zk node which stores peer's table-cfs
   private String tableCFsNodeName;
   // Name of zk node which stores peer's bandwidth
@@ -170,6 +177,8 @@ public class ReplicationZookeeper {
         conf.get("zookeeper.znode.replication.peers", "peers");
     this.peerStateNodeName = conf.get(
         "zookeeper.znode.replication.peers.state", "peer-state");
+    this.peerProtocolNodeName = conf.get(
+        "zookeeper.znode.replication.peers.protocol", "peer-protocol");
     this.tableCFsNodeName = conf.get(
         "zookeeper.znode.replication.peers.tableCFs", "tableCFs");
     this.bandwidthNodeName = conf.get("zookeeper.znode.replication.peers.bandwidth", "bandwidth");
@@ -419,7 +428,12 @@ public class ReplicationZookeeper {
   }
   
   public void addPeer(String id, String clusterKey, String peerState,
-      String tableCFs, Long bandwidth)
+      String tableCFs, Long bandwidth) throws IOException {
+    addPeer(id, clusterKey, peerState, tableCFs, bandwidth, PeerProtocol.NATIVE);
+  }
+  
+  public void addPeer(String id, String clusterKey, String peerState,
+      String tableCFs, Long bandwidth, PeerProtocol protocol)
     throws IOException {
     try {
       if (id.indexOf("-") >= 0) {
@@ -437,6 +451,8 @@ public class ReplicationZookeeper {
       ZKUtil.createWithParents(this.zookeeper, this.peersZNode);
       ZKUtil.createAndWatch(this.zookeeper, ZKUtil.joinZNode(this.peersZNode, id),
         Bytes.toBytes(clusterKey));
+      ZKUtil.createNodeIfNotExistsAndWatch(this.zookeeper, getPeerProtocolNode(id),
+        Bytes.toBytes(protocol.name()));
 
       String tableCFsStr = (tableCFs == null) ? "" : tableCFs;
       ZKUtil.createAndWatch(this.zookeeper, getTableCFsNode(id),
@@ -454,6 +470,23 @@ public class ReplicationZookeeper {
     }    
   }
 
+  /**
+   * Get the transport protocol of the peer. This method checks the state by connecting to ZK.
+   * @param id peer's identifier
+   * @return current protocol of the peer
+   */
+  public PeerProtocol getPeerProtocol(String id) throws KeeperException {
+    byte[] peerProtocolBytes = ZKUtil.getData(this.zookeeper, getPeerProtocolNode(id));
+    if (peerProtocolBytes == null) {
+      return PeerProtocol.NATIVE;
+    }
+    return PeerProtocol.valueOf(Bytes.toString(peerProtocolBytes));
+  }
+
+  private String getPeerProtocolNode(String id) {
+    return ZKUtil.joinZNode(this.peersZNode, ZKUtil.joinZNode(id, this.peerProtocolNodeName));
+  }
+    
   private boolean peerExists(String id) throws KeeperException {
     return ZKUtil.checkExists(this.zookeeper,
           ZKUtil.joinZNode(this.peersZNode, id)) >= 0;

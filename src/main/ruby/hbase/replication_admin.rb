@@ -33,8 +33,8 @@ module Hbase
 
     #----------------------------------------------------------------------------------------------
     # Add a new peer cluster to replicate to
-    def add_peer(id, cluster_key, peer_state = nil, peer_tableCFs = nil, peer_bandwith = nil)
-      @replication_admin.addPeer(id, cluster_key, peer_state, peer_tableCFs, peer_bandwith)
+    def add_peer(id, cluster_key, peer_state = nil, peer_tableCFs = nil, peer_bandwith = nil, protocol = 'NATIVE')
+      @replication_admin.addPeer(id, cluster_key, peer_state, peer_tableCFs, peer_bandwith, protocol)
     end
 
     #----------------------------------------------------------------------------------------------
@@ -66,6 +66,13 @@ module Hbase
     def enable_peer(id)
       @replication_admin.enablePeer(id)
     end
+
+    # Get peer cluster protocol
+    def get_peer_protocol(id)
+      @replication_admin.getPeerProtocol(id)
+    end
+
+    #----------------------------------------------------------------------------------------------
 
     #----------------------------------------------------------------------------------------------
     # Stop the replication stream to the specified peer

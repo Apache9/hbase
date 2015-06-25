@@ -15,54 +15,83 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.hadoop.hbase.replication;
-
-import java.util.HashMap;
-import java.util.List;
+package org.apache.hadoop.hbase.replication.thrift;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.hbase.HColumnDescriptor;
-import org.apache.hadoop.hbase.HConstants;
-import org.apache.hadoop.hbase.HTableDescriptor;
-import org.apache.hadoop.hbase.KeyValue;
-import org.apache.hadoop.hbase.LargeTests;
+import org.apache.hadoop.hbase.*;
 import org.apache.hadoop.hbase.client.*;
 import org.apache.hadoop.hbase.client.replication.ReplicationAdmin;
-import org.apache.hadoop.hbase.mapreduce.replication.VerifyReplication;
-import org.apache.hadoop.hbase.replication.ReplicationZookeeper.PeerProtocol;
-import org.apache.hadoop.hbase.replication.ReplicationZookeeper.PeerState;
+import org.apache.hadoop.hbase.replication.TestReplicationSmallTests;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.JVMClusterUtil;
-import org.apache.hadoop.mapreduce.Job;
+import org.junit.AfterClass;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
-import static org.junit.Assert.assertTrue;
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.List;
 
-@Category(LargeTests.class)
-public class TestReplicationSmallTests extends TestReplicationBase {
+import static org.apache.hadoop.hbase.replication.thrift.ReplicationTestUtils.*;
+import static org.junit.Assert.*;
+
+@Category(MediumTests.class)
+public class TestThriftReplicationSmallTests extends TestThriftReplicationBase {
 
   private static final Log LOG = LogFactory.getLog(TestReplicationSmallTests.class);
 
-  /**
-   * @throws java.lang.Exception
-   */
+  protected static final int NB_ROWS_IN_BATCH = 100;
+  protected static final int NB_ROWS_IN_BIG_BATCH = NB_ROWS_IN_BATCH * 10;
+  protected static final int NB_RETRIES_FOR_BIG_BATCH = 30;
+  
+  private final static HBaseTestingUtility clusterA = new HBaseTestingUtility();
+  private final static HBaseTestingUtility clusterB = new HBaseTestingUtility();
+  private static HTable tableA;
+  private static HTable tableB;
+  protected static final byte[] row = Bytes.toBytes("row");
+
+  @BeforeClass
+  public static void setUpClass() throws Exception {
+    int clusterAServerPort = HBaseTestingUtility.randomFreePort();
+    int clusterBServerPort = HBaseTestingUtility.randomFreePort();
+
+    setupConfiguration(clusterA, clusterAServerPort);
+    setupConfiguration(clusterB, clusterBServerPort);
+
+    addPeerThriftPort(clusterA, "1", clusterBServerPort);
+    addPeerThriftPort(clusterB, "1", clusterAServerPort);
+
+    HTableDescriptor table = createTestTableWithVersion(100);
+    table.addFamily(new HColumnDescriptor("NO_REP_FAMILY"));
+
+    clusterA.startMiniCluster();
+    clusterB.startMiniCluster();
+
+    createTableOnCluster(clusterA, table);
+    createTableOnCluster(clusterB, table);
+
+    tableA = getTestTable(clusterA, table);
+    tableB = getTestTable(clusterB, table);
+
+    addReplicationPeer("1", clusterA, clusterB);
+    addReplicationPeer("1", clusterB, clusterA);
+  }
+
   @Before
   public void setUp() throws Exception {
-    htable1.setAutoFlush(true);
+    tableA.setAutoFlush(true);
+    tableB.setAutoFlush(true);
     // Starting and stopping replication can make us miss new logs,
     // rolling like this makes sure the most recent one gets added to the queue
     for ( JVMClusterUtil.RegionServerThread r :
-        utility1.getHBaseCluster().getRegionServerThreads()) {
+        clusterA.getHBaseCluster().getRegionServerThreads()) {
       r.getRegionServer().getWAL().rollWriter();
     }
-    utility1.truncateTable(tableName);
+    clusterA.truncateTable(tableA.getTableName());
     // truncating the table will send one Delete per row to the slave cluster
     // in an async fashion, which is why we cannot just call truncateTable on
     // utility2 since late writes could make it to the slave in some way.
@@ -74,7 +103,7 @@ public class TestReplicationSmallTests extends TestReplicationBase {
       if (i==NB_RETRIES-1) {
         fail("Waited too much time for truncate");
       }
-      ResultScanner scanner = htable2.getScanner(scan);
+      ResultScanner scanner = tableB.getScanner(scan);
       Result[] res = scanner.next(NB_ROWS_IN_BIG_BATCH);
       scanner.close();
       if (res.length != 0) {
@@ -90,6 +119,12 @@ public class TestReplicationSmallTests extends TestReplicationBase {
     }
   }
 
+  @AfterClass
+  public static void tearDown() throws Exception {
+    clusterA.shutdownMiniCluster();
+    clusterB.shutdownMiniCluster();
+  }
+
   /**
    * Verify that version and column delete marker types are replicated
    * correctly.
@@ -101,21 +136,20 @@ public class TestReplicationSmallTests extends TestReplicationBase {
     final byte[] v1 = Bytes.toBytes("v1");
     final byte[] v2 = Bytes.toBytes("v2");
     final byte[] v3 = Bytes.toBytes("v3");
-    htable1 = new HTable(conf1, tableName);
 
     long t = EnvironmentEdgeManager.currentTimeMillis();
     // create three versions for "row"
     Put put = new Put(row);
-    put.add(famName, row, t, v1);
-    htable1.put(put);
+    put.add(ReplicationTestUtils.DEFAULT_FAMILY, row, t, v1);
+    tableA.put(put);
 
     put = new Put(row);
-    put.add(famName, row, t+1, v2);
-    htable1.put(put);
+    put.add(ReplicationTestUtils.DEFAULT_FAMILY, row, t+1, v2);
+    tableA.put(put);
 
     put = new Put(row);
-    put.add(famName, row, t+2, v3);
-    htable1.put(put);
+    put.add(ReplicationTestUtils.DEFAULT_FAMILY, row, t+2, v3);
+    tableA.put(put);
 
     Get get = new Get(row);
     get.setMaxVersions();
@@ -123,7 +157,7 @@ public class TestReplicationSmallTests extends TestReplicationBase {
       if (i==NB_RETRIES-1) {
         fail("Waited too much time for put replication");
       }
-      Result res = htable2.get(get);
+      Result res = tableB.get(get);
       if (res.size() < 3) {
         LOG.info("Rows not available");
         Thread.sleep(SLEEP_TIME);
@@ -136,8 +170,8 @@ public class TestReplicationSmallTests extends TestReplicationBase {
     }
     // place a version delete marker (delete last version)
     Delete d = new Delete(row);
-    d.deleteColumn(famName, row, t);
-    htable1.delete(d);
+    d.deleteColumn(ReplicationTestUtils.DEFAULT_FAMILY, row, t);
+    tableA.delete(d);
 
     get = new Get(row);
     get.setMaxVersions();
@@ -145,7 +179,7 @@ public class TestReplicationSmallTests extends TestReplicationBase {
       if (i==NB_RETRIES-1) {
         fail("Waited too much time for put replication");
       }
-      Result res = htable2.get(get);
+      Result res = tableB.get(get);
       if (res.size() > 2) {
         LOG.info("Version not deleted");
         Thread.sleep(SLEEP_TIME);
@@ -158,8 +192,8 @@ public class TestReplicationSmallTests extends TestReplicationBase {
 
     // place a column delete marker
     d = new Delete(row);
-    d.deleteColumns(famName, row, t+2);
-    htable1.delete(d);
+    d.deleteColumns(DEFAULT_FAMILY, row, t+2);
+    tableA.delete(d);
 
     // now *both* of the remaining version should be deleted
     // at the replica
@@ -168,7 +202,7 @@ public class TestReplicationSmallTests extends TestReplicationBase {
       if (i==NB_RETRIES-1) {
         fail("Waited too much time for del replication");
       }
-      Result res = htable2.get(get);
+      Result res = tableB.get(get);
       if (res.size() >= 1) {
         LOG.info("Rows not deleted");
         Thread.sleep(SLEEP_TIME);
@@ -186,17 +220,16 @@ public class TestReplicationSmallTests extends TestReplicationBase {
   public void testSimplePutDelete() throws Exception {
     LOG.info("testSimplePutDelete");
     Put put = new Put(row);
-    put.add(famName, row, row);
+    put.add(DEFAULT_FAMILY, row, row);
 
-    htable1 = new HTable(conf1, tableName);
-    htable1.put(put);
+    tableA.put(put);
 
     Get get = new Get(row);
     for (int i = 0; i < NB_RETRIES; i++) {
       if (i==NB_RETRIES-1) {
         fail("Waited too much time for put replication");
       }
-      Result res = htable2.get(get);
+      Result res = tableB.get(get);
       if (res.size() == 0) {
         LOG.info("Row not available");
         Thread.sleep(SLEEP_TIME);
@@ -207,14 +240,14 @@ public class TestReplicationSmallTests extends TestReplicationBase {
     }
 
     Delete del = new Delete(row);
-    htable1.delete(del);
+    tableA.delete(del);
 
     get = new Get(row);
     for (int i = 0; i < NB_RETRIES; i++) {
       if (i==NB_RETRIES-1) {
         fail("Waited too much time for del replication");
       }
-      Result res = htable2.get(get);
+      Result res = tableB.get(get);
       if (res.size() >= 1) {
         LOG.info("Row not deleted");
         Thread.sleep(SLEEP_TIME);
@@ -233,17 +266,17 @@ public class TestReplicationSmallTests extends TestReplicationBase {
     LOG.info("testSmallBatch");
     Put put;
     // normal Batch tests
-    htable1.setAutoFlush(false);
+    tableA.setAutoFlush(false);
     for (int i = 0; i < NB_ROWS_IN_BATCH; i++) {
       put = new Put(Bytes.toBytes(i));
-      put.add(famName, row, row);
-      htable1.put(put);
+      put.add(DEFAULT_FAMILY, row, row);
+      tableA.put(put);
     }
-    htable1.flushCommits();
+    tableA.flushCommits();
 
     Scan scan = new Scan();
 
-    ResultScanner scanner1 = htable1.getScanner(scan);
+    ResultScanner scanner1 = tableA.getScanner(scan);
     Result[] res1 = scanner1.next(NB_ROWS_IN_BATCH);
     scanner1.close();
     assertEquals(NB_ROWS_IN_BATCH, res1.length);
@@ -252,7 +285,7 @@ public class TestReplicationSmallTests extends TestReplicationBase {
       if (i==NB_RETRIES-1) {
         fail("Waited too much time for normal batch replication");
       }
-      ResultScanner scanner = htable2.getScanner(scan);
+      ResultScanner scanner = tableB.getScanner(scan);
       Result[] res = scanner.next(NB_ROWS_IN_BATCH);
       scanner.close();
       if (res.length != NB_ROWS_IN_BATCH) {
@@ -273,19 +306,19 @@ public class TestReplicationSmallTests extends TestReplicationBase {
   public void testStartStop() throws Exception {
 
     // Test stopping replication
-    setIsReplication(false);
+    changeReplicationState(clusterA, false);
 
     Put put = new Put(Bytes.toBytes("stop start"));
-    put.add(famName, row, row);
-    htable1.put(put);
+    put.add(DEFAULT_FAMILY, row, row);
+    tableA.put(put);
 
     Get get = new Get(Bytes.toBytes("stop start"));
     for (int i = 0; i < NB_RETRIES; i++) {
-      if (i==NB_RETRIES-1) {
+      if (i == NB_RETRIES - 1) {
         break;
       }
-      Result res = htable2.get(get);
-      if(res.size() >= 1) {
+      Result res = tableB.get(get);
+      if (res.size() >= 1) {
         fail("Replication wasn't stopped");
 
       } else {
@@ -295,16 +328,16 @@ public class TestReplicationSmallTests extends TestReplicationBase {
     }
 
     // Test restart replication
-    setIsReplication(true);
+    changeReplicationState(clusterA, true);
 
-    htable1.put(put);
+    tableA.put(put);
 
     for (int i = 0; i < NB_RETRIES; i++) {
-      if (i==NB_RETRIES-1) {
+      if (i == NB_RETRIES - 1) {
         fail("Waited too much time for put replication");
       }
-      Result res = htable2.get(get);
-      if(res.size() == 0) {
+      Result res = tableB.get(get);
+      if (res.size() == 0) {
         LOG.info("Row not available");
         Thread.sleep(SLEEP_TIME);
       } else {
@@ -314,15 +347,15 @@ public class TestReplicationSmallTests extends TestReplicationBase {
     }
 
     put = new Put(Bytes.toBytes("do not rep"));
-    put.add(noRepfamName, row, row);
-    htable1.put(put);
+    put.add("NO_REP_FAMILY".getBytes(), row, row);
+    tableA.put(put);
 
     get = new Get(Bytes.toBytes("do not rep"));
     for (int i = 0; i < NB_RETRIES; i++) {
-      if (i == NB_RETRIES-1) {
+      if (i == NB_RETRIES - 1) {
         break;
       }
-      Result res = htable2.get(get);
+      Result res = tableB.get(get);
       if (res.size() >= 1) {
         fail("Not supposed to be replicated");
       } else {
@@ -332,6 +365,7 @@ public class TestReplicationSmallTests extends TestReplicationBase {
     }
 
   }
+
 
   /**
    * Test disable/enable replication, trying to insert, make sure nothing's
@@ -343,16 +377,17 @@ public class TestReplicationSmallTests extends TestReplicationBase {
   public void testDisableEnable() throws Exception {
 
     // Test disabling replication
-    admin.disablePeer("2");
+    ReplicationAdmin clusterAAdmin = getReplicationAdmin(clusterA);
+    clusterAAdmin.disablePeer("1");
 
     byte[] rowkey = Bytes.toBytes("disable enable");
     Put put = new Put(rowkey);
-    put.add(famName, row, row);
-    htable1.put(put);
+    put.add(DEFAULT_FAMILY, row, row);
+    tableA.put(put);
 
     Get get = new Get(rowkey);
     for (int i = 0; i < NB_RETRIES; i++) {
-      Result res = htable2.get(get);
+      Result res = tableB.get(get);
       if (res.size() >= 1) {
         fail("Replication wasn't disabled");
       } else {
@@ -362,10 +397,10 @@ public class TestReplicationSmallTests extends TestReplicationBase {
     }
 
     // Test enable replication
-    admin.enablePeer("2");
+    clusterAAdmin.enablePeer("1");
 
     for (int i = 0; i < NB_RETRIES; i++) {
-      Result res = htable2.get(get);
+      Result res = tableB.get(get);
       if (res.size() == 0) {
         LOG.info("Row not available");
         Thread.sleep(SLEEP_TIME);
@@ -386,19 +421,20 @@ public class TestReplicationSmallTests extends TestReplicationBase {
   @Test(timeout=300000)
   public void testAddAndRemoveClusters() throws Exception {
     LOG.info("testAddAndRemoveClusters");
-    admin.removePeer("2");
-    Thread.sleep(SLEEP_TIME);
+    ReplicationAdmin clusterAAdmin = getReplicationAdmin(clusterA);
+    clusterAAdmin.removePeer("1");
+    Thread.sleep(SLEEP_TIME * 3);
     byte[] rowKey = Bytes.toBytes("Won't be replicated");
     Put put = new Put(rowKey);
-    put.add(famName, row, row);
-    htable1.put(put);
+    put.add(DEFAULT_FAMILY, row, row);
+    tableA.put(put);
 
     Get get = new Get(rowKey);
     for (int i = 0; i < NB_RETRIES; i++) {
       if (i == NB_RETRIES-1) {
         break;
       }
-      Result res = htable2.get(get);
+      Result res = tableB.get(get);
       if (res.size() >= 1) {
         fail("Not supposed to be replicated");
       } else {
@@ -407,21 +443,20 @@ public class TestReplicationSmallTests extends TestReplicationBase {
       }
     }
 
-    admin.addPeer("2", utility2.getClusterKey(), PeerState.ENABLED.toString(), "", null,
-      PeerProtocol.NATIVE.toString());
-    Thread.sleep(SLEEP_TIME);
+    ReplicationTestUtils.addReplicationPeer("1", clusterA, clusterB);
+    Thread.sleep(SLEEP_TIME*3);
     rowKey = Bytes.toBytes("do rep");
     put = new Put(rowKey);
-    put.add(famName, row, row);
+    put.add(DEFAULT_FAMILY, row, row);
     LOG.info("Adding new row");
-    htable1.put(put);
+    tableA.put(put);
 
     get = new Get(rowKey);
-    for (int i = 0; i < NB_RETRIES; i++) {
+    for (int i = 0; i < NB_RETRIES/2; i++) {
       if (i==NB_RETRIES-1) {
         fail("Waited too much time for put replication");
       }
-      Result res = htable2.get(get);
+      Result res = tableB.get(get);
       if (res.size() == 0) {
         LOG.info("Row not available");
         Thread.sleep(SLEEP_TIME*i);
@@ -440,18 +475,18 @@ public class TestReplicationSmallTests extends TestReplicationBase {
    */
   @Test(timeout=300000)
   public void loadTesting() throws Exception {
-    htable1.setWriteBufferSize(1024);
-    htable1.setAutoFlush(false);
+    tableA.setWriteBufferSize(1024);
+    tableA.setAutoFlush(false);
     for (int i = 0; i < NB_ROWS_IN_BIG_BATCH; i++) {
       Put put = new Put(Bytes.toBytes(i));
-      put.add(famName, row, row);
-      htable1.put(put);
+      put.add(DEFAULT_FAMILY, row, row);
+      tableA.put(put);
     }
-    htable1.flushCommits();
+    tableA.flushCommits();
 
     Scan scan = new Scan();
 
-    ResultScanner scanner = htable1.getScanner(scan);
+    ResultScanner scanner = tableA.getScanner(scan);
     Result[] res = scanner.next(NB_ROWS_IN_BIG_BATCH);
     scanner.close();
 
@@ -461,7 +496,7 @@ public class TestReplicationSmallTests extends TestReplicationBase {
 
     for (int i = 0; i < NB_RETRIES_FOR_BIG_BATCH; i++) {
 
-      scanner = htable2.getScanner(scan);
+      scanner = tableB.getScanner(scan);
       res = scanner.next(NB_ROWS_IN_BIG_BATCH);
       scanner.close();
       if (res.length != NB_ROWS_IN_BIG_BATCH) {
@@ -488,107 +523,72 @@ public class TestReplicationSmallTests extends TestReplicationBase {
   }
 
   /**
-   * Do a small loading into a table, make sure the data is really the same,
-   * then run the VerifyReplication job to check the results. Do a second
-   * comparison where all the cells are different.
+   * Test for HBASE-8663
+   * Create two new Tables with colfamilies enabled for replication then run
+   * ReplicationAdmin.listReplicated(). Finally verify the table:colfamilies. Note:
+   * TestReplicationAdmin is a better place for this testing but it would need mocks.
    * @throws Exception
    */
-  @Test(timeout=300000)
-  public void testVerifyRepJob() throws Exception {
-    // Populate the tables, at the same time it guarantees that the tables are
-    // identical since it does the check
-    testSmallBatch();
+  @Test(timeout = 300000)
+  public void testVerifyListReplicatedTable() throws Exception {
+    LOG.info("testVerifyListReplicatedTable");
 
-    String[] args = new String[] {"2", Bytes.toString(tableName)};
-    Job job = new VerifyReplication(CONF_WITH_LOCALFS).createSubmittableJob(args);
-    if (job == null) {
-      fail("Job wasn't created, see the log");
-    }
-    if (!job.waitForCompletion(true)) {
-      fail("Job failed, see the log");
-    }
-    assertEquals(NB_ROWS_IN_BATCH, job.getCounters().
-        findCounter(VerifyReplication.Verifier.Counters.GOODROWS).getValue());
-    assertEquals(0, job.getCounters().
-        findCounter(VerifyReplication.Verifier.Counters.BADROWS).getValue());
+    final String tName = "VerifyListReplicated_";
+    final String colFam = "cf1";
+    final int numOfTables = 3;
 
-    Scan scan = new Scan();
-    ResultScanner rs = htable2.getScanner(scan);
-    Put put = null;
-    for (Result result : rs) {
-      put = new Put(result.getRow());
-      KeyValue firstVal = result.raw()[0];
-      put.add(firstVal.getFamily(),
-          firstVal.getQualifier(), Bytes.toBytes("diff data"));
-      htable2.put(put);
+    HBaseAdmin hadmin = clusterA.getHBaseAdmin();
+
+    // Create Tables
+    for (int i = 0; i < numOfTables; i++) {
+      HTableDescriptor ht = new HTableDescriptor(tName + i);
+      HColumnDescriptor cfd = new HColumnDescriptor(colFam);
+      cfd.setScope(HConstants.REPLICATION_SCOPE_GLOBAL);
+      ht.addFamily(cfd);
+      hadmin.createTable(ht);
     }
-    Delete delete = new Delete(put.getRow());
-    htable2.delete(delete);
-    job = new VerifyReplication(CONF_WITH_LOCALFS).createSubmittableJob(args);
-    if (job == null) {
-      fail("Job wasn't created, see the log");
+
+    // verify the result
+    List<HashMap<String, String>> replicationColFams = getReplicationAdmin(clusterA).listReplicated();
+    int[] match = new int[numOfTables]; // array of 3 with init value of zero
+
+    for (int i = 0; i < replicationColFams.size(); i++) {
+      HashMap<String, String> replicationEntry = replicationColFams.get(i);
+      String tn = replicationEntry.get(ReplicationAdmin.TNAME);
+      if ((tn.startsWith(tName)) && replicationEntry.get(ReplicationAdmin.CFNAME).equals(colFam)) {
+        int m = Integer.parseInt(tn.substring(tn.length() - 1)); // get the last digit
+        match[m]++; // should only increase once
+      }
     }
-    if (!job.waitForCompletion(true)) {
-      fail("Job failed, see the log");
+
+    // check the matching result
+    for (int i = 0; i < match.length; i++) {
+      assertTrue("listReplicated() does not match table " + i, (match[i] == 1));
     }
-    assertEquals(0, job.getCounters().
-        findCounter(VerifyReplication.Verifier.Counters.GOODROWS).getValue());
-    assertEquals(NB_ROWS_IN_BATCH, job.getCounters().
-        findCounter(VerifyReplication.Verifier.Counters.BADROWS).getValue());
+
+    // drop tables
+    for (int i = 0; i < numOfTables; i++) {
+      String ht = tName + i;
+      hadmin.disableTable(ht);
+      hadmin.deleteTable(ht);
+    }
+
+    hadmin.close();
   }
 
-    
-    /**
-     * Test for HBASE-8663
-     * Create two new Tables with colfamilies enabled for replication then run
-     * ReplicationAdmin.listReplicated(). Finally verify the table:colfamilies. Note:
-     * TestReplicationAdmin is a better place for this testing but it would need mocks.
-     * @throws Exception
-     */
-    @Test(timeout = 300000)
-    public void testVerifyListReplicatedTable() throws Exception {
-      LOG.info("testVerifyListReplicatedTable");
-   
-      final String tName = "VerifyListReplicated_";
-      final String colFam = "cf1";
-      final int numOfTables = 3;
-  
-      HBaseAdmin hadmin = new HBaseAdmin(conf1);
-  
-      // Create Tables
-      for (int i = 0; i < numOfTables; i++) {
-        HTableDescriptor ht = new HTableDescriptor(tName + i);
-        HColumnDescriptor cfd = new HColumnDescriptor(colFam);
-        cfd.setScope(HConstants.REPLICATION_SCOPE_GLOBAL);
-        ht.addFamily(cfd);
-        hadmin.createTable(ht);
-      }
-  
-      // verify the result
-      List<HashMap<String, String>> replicationColFams = admin.listReplicated();
-      int[] match = new int[numOfTables]; // array of 3 with init value of zero
-  
-      for (int i = 0; i < replicationColFams.size(); i++) {
-        HashMap<String, String> replicationEntry = replicationColFams.get(i);
-        String tn = replicationEntry.get(ReplicationAdmin.TNAME);
-        if ((tn.startsWith(tName)) && replicationEntry.get(ReplicationAdmin.CFNAME).equals(colFam)) {
-          int m = Integer.parseInt(tn.substring(tn.length() - 1)); // get the last digit
-          match[m]++; // should only increase once
-        }
-      }
-  
-      // check the matching result
-      for (int i = 0; i < match.length; i++) {
-        assertTrue("listReplicated() does not match table " + i, (match[i] == 1));
-      }
-  
-      // drop tables
-      for (int i = 0; i < numOfTables; i++) {
-        String ht = tName + i;
-        hadmin.disableTable(ht);
-        hadmin.deleteTable(ht);
-      }
-  
-      hadmin.close();
-    }  
+  private void changeReplicationState(HBaseTestingUtility cluster, boolean newState)
+      throws IOException, InterruptedException {
+    new ReplicationAdmin(cluster.getConfiguration()).setReplicating(newState);
+    Thread.sleep(SLEEP_TIME*3);
+  }
+
+  private ReplicationAdmin getReplicationAdmin(HBaseTestingUtility cluster) throws IOException {
+    return new ReplicationAdmin(cluster.getConfiguration());
+  }
+
+  @org.junit.Rule
+  public org.apache.hadoop.hbase.ResourceCheckerJUnitRule cu =
+      new org.apache.hadoop.hbase.ResourceCheckerJUnitRule();
+
+
 }

@@ -27,6 +27,7 @@ Add a peer cluster to replicate to, the id must be a short and
 the cluster key is composed like this:
 hbase.zookeeper.quorum:hbase.zookeeper.property.clientPort:zookeeper.znode.parent
 This gives a full path for HBase to connect to another cluster.
+You can optionally pass a parameter for the replication protocol {NATIVE, THRIFT} default: NATIVE
 Examples:
 
   hbase> add_peer '1', "server1.cie.com:2181:/hbase"
@@ -35,13 +36,14 @@ Examples:
   hbase> add_peer '4', "zk7,zk8,zk9:11000:/hbase-proc", "DISABLED"
   hbase> add_peer '3', "zk4,zk5,zk6:11000:/hbase-test", "ENABLED", "tab1;tab2:cf1;tab3:cf2,cf3"
   hbase> add_peer '5', "zk4,zk5,zk6:11000:/hbase-test", "ENABLED", "tab1;tab2:cf1;tab3:cf2,cf3", 1048576
+  hbase> add_peer '5', "zk4,zk5,zk6:11000:/hbase-test", "ENABLED", "tab1;tab2:cf1;tab3:cf2,cf3", 0, "THRIFT"
 
 EOF
       end
 
-      def command(id, cluster_key, peer_state = nil, peer_tableCFs = nil, peer_bandwith = nil)
+      def command(id, cluster_key, peer_state = nil, peer_tableCFs = nil, peer_bandwith = nil, protocol = 'NATIVE')
         format_simple_command do
-          replication_admin.add_peer(id, cluster_key, peer_state, peer_tableCFs, peer_bandwith)
+          replication_admin.add_peer(id, cluster_key, peer_state, peer_tableCFs, peer_bandwith, protocol)
         end
       end
     end

@@ -45,6 +45,8 @@ import org.apache.hadoop.hbase.coprocessor.ObserverContext;
 import org.apache.hadoop.hbase.coprocessor.RegionCoprocessorEnvironment;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.regionserver.wal.WALEdit;
+import org.apache.hadoop.hbase.replication.ReplicationZookeeper.PeerProtocol;
+import org.apache.hadoop.hbase.replication.ReplicationZookeeper.PeerState;
 import org.apache.hadoop.hbase.zookeeper.MiniZooKeeperCluster;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
 import org.junit.After;
@@ -294,8 +296,8 @@ public class TestMasterReplication {
     try {
       replicationAdmin = new ReplicationAdmin(
           configurations[masterClusterNumber]);
-      replicationAdmin.addPeer(id,
-          utilities[slaveClusterNumber].getClusterKey());
+      replicationAdmin.addPeer(id, utilities[slaveClusterNumber].getClusterKey(),
+        PeerState.ENABLED.toString(), "", null, PeerProtocol.NATIVE.toString());
     } finally {
       close(replicationAdmin);
     }

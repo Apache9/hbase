@@ -29,6 +29,8 @@ import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.replication.ReplicationAdmin;
+import org.apache.hadoop.hbase.replication.ReplicationZookeeper.PeerProtocol;
+import org.apache.hadoop.hbase.replication.ReplicationZookeeper.PeerState;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.zookeeper.MiniZooKeeperCluster;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
@@ -117,7 +119,8 @@ public class TestReplicationBase {
     utility2.startMiniCluster(2);
 
     admin = new ReplicationAdmin(conf1);
-    admin.addPeer("2", utility2.getClusterKey());
+    admin.addPeer("2", utility2.getClusterKey(), PeerState.ENABLED.toString(), "", null,
+      PeerProtocol.NATIVE.toString());
     setIsReplication(true);
     
     HTableDescriptor table = new HTableDescriptor(tableName);

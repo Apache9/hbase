@@ -60,6 +60,8 @@ import org.apache.hadoop.hbase.regionserver.wal.HLog;
 import org.apache.hadoop.hbase.regionserver.wal.HLogKey;
 import org.apache.hadoop.hbase.regionserver.wal.WALEdit;
 import org.apache.hadoop.hbase.replication.ReplicationZookeeper;
+import org.apache.hadoop.hbase.replication.thrift.ThriftClient;
+import org.apache.hadoop.hbase.replication.thrift.ThriftUtilities;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.FSUtils;
 import org.apache.hadoop.hbase.util.Threads;
@@ -159,6 +161,8 @@ public class ReplicationSource extends Thread
   // Indicates if the non-replicable edits need to be removed (for galaxy-sds)
   private boolean tableNotFoundEditsRemove;
   private int ioeSleepBeforeRetry = 0;
+  // thrift client
+  private ThriftClient thriftClient;
 
   /**
    * Instantiation method used by region servers
@@ -224,6 +228,17 @@ public class ReplicationSource extends Thread
 
     // Finally look if this is a recovered queue
     this.checkIfQueueRecovered(peerClusterZnode);
+
+    try {
+      if (zkHelper.getPeerProtocol(peerClusterZnode)
+          .equals(ReplicationZookeeper.PeerProtocol.THRIFT)) {
+        thriftClient = new ThriftClient(conf, peerId);
+        LOG.info("Starting new replication peer " + peerId + " with Thrift protocol over port: " +
+            "" + ThriftUtilities.getDestinationPeerPort(conf, peerId));
+      }
+    } catch (KeeperException ke) {
+      throw new IOException("Could not read cluster id", ke);
+    }
 
     // TODO : add replication throttler metrics
     defaultBandwidth = this.conf.getLong("replication.source.per.peer.node.bandwidth", 0);
@@ -362,7 +377,7 @@ public class ReplicationSource extends Thread
     int sleepMultiplier = 1;
     // delay this until we are in an asynchronous thread
     while (this.isActive() && this.peerClusterId == null) {
-      this.peerClusterId = zkHelper.getPeerUUID(this.peerId);
+      this.peerClusterId = getPeerClusterUUID();
       if (this.isActive() && this.peerClusterId == null) {
         if (sleepForRetries("Cannot contact the peer's zk ensemble", sleepMultiplier)) {
           sleepMultiplier++;
@@ -932,11 +947,10 @@ public class ReplicationSource extends Thread
           }
         }
 
-        HRegionInterface rrs = getRS();
         if (LOG.isDebugEnabled()) {
           LOG.debug("Replicating " + currentNbEntries);
         }
-        rrs.replicateLogEntries(Arrays.copyOf(this.entriesArray, currentNbEntries));
+        shipIt(chooseSink(), Arrays.copyOf(this.entriesArray, currentNbEntries));
         this.unLoggedPositionEdits += currentNbEntries;
         if (shouldLogPosition(this.repLogReader.getPosition())) {
           this.manager.logPositionAndCleanOldLogs(this.currentPath,
@@ -1087,12 +1101,21 @@ public class ReplicationSource extends Thread
    * @return
    * @throws IOException
    */
-  private HRegionInterface getRS() throws IOException {
+  private ServerName chooseSink() throws IOException {
     if (this.currentPeers.size() == 0) {
       throw new IOException(this.peerClusterZnode + " has 0 region servers");
     }
     ServerName address =
         currentPeers.get(random.nextInt(this.currentPeers.size()));
+    return address;
+  }
+  
+  /**
+   * Get a new region server at random from this peer
+   * @return
+   * @throws IOException
+   */
+  private HRegionInterface getRS(ServerName address) throws IOException {
     if (this.conn == null) {
       Configuration peerConf = this.zkHelper.getPeerConf(peerId);
       this.conn = HConnectionManager.getConnection(peerConf);
@@ -1111,9 +1134,7 @@ public class ReplicationSource extends Thread
     Thread pingThread = new Thread() {
       public void run() {
         try {
-          HRegionInterface rrs = getRS();
-          // Dummy call which should fail
-          rrs.getHServerInfo();
+          pingRS(chooseSink());
           latch.countDown();
         } catch (IOException ex) {
           if (ex instanceof RemoteException) {
@@ -1177,4 +1198,33 @@ public class ReplicationSource extends Thread
   public int getSizeOfLogQueue() {
     return queue.size();
   }
+
+  private void shipIt(ServerName address, HLog.Entry[] entries) throws IOException {
+    if(thriftClient != null) {
+      thriftClient.shipEdits(address, entries);
+    } else {
+      HRegionInterface rrs = getRS(address);
+      rrs.replicateLogEntries(entries);
+    }
+  }
+
+  protected void pingRS(ServerName address) throws IOException {
+    if(thriftClient != null) {
+      thriftClient.ping(address);
+    } else {
+      HRegionInterface rrs = getRS(address);
+      rrs.getHServerInfo();
+    }
+  }
+
+  private UUID getPeerClusterUUID() {
+    if (thriftClient == null) {
+      return zkHelper.getPeerUUID(this.peerId);
+    } else {
+      return thriftClient.getPeerClusterUUID(
+          currentPeers.get(random.nextInt(this.currentPeers.size()))
+      );
+    }
+  }
+
 }

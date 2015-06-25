@@ -28,6 +28,7 @@ import org.apache.hadoop.hbase.MediumTests;
 import org.apache.hadoop.hbase.Server;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.catalog.CatalogTracker;
+import org.apache.hadoop.hbase.replication.ReplicationZookeeper.PeerState;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
 import org.apache.zookeeper.KeeperException;
 import org.junit.AfterClass;
@@ -73,6 +74,13 @@ public class TestReplicationZookeeper {
     repZk.addPeer("1", slaveClusterKey);
     // HBASE-5586 used to get an NPE
     assertEquals(0, repZk.getSlavesAddresses("1").size());
+  }
+
+  @Test
+  public void testDifferentProtocols() throws Exception {
+    repZk.addPeer("2", slaveClusterKey, PeerState.ENABLED.toString(), "", null,
+      ReplicationZookeeper.PeerProtocol.THRIFT);
+    assertEquals(ReplicationZookeeper.PeerProtocol.THRIFT, repZk.getPeerProtocol("2"));
   }
 
   static class DummyServer implements Server {
