@@ -31,6 +31,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.Mutation;
 import org.apache.hadoop.hbase.client.Result;
+import org.apache.hadoop.hbase.client.RowMutations;
 import org.apache.hadoop.hbase.ipc.RpcScheduler;
 import org.apache.hadoop.hbase.ipc.RequestContext;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos;
@@ -363,6 +364,20 @@ public class RegionServerQuotaManager {
     } else {
       quota.addMutation(mutation);
       quota.close();
+    }
+  }
+
+  /**
+   * Grab quota after the RowMutations. It will not check quota, just grab by mutation.
+   * @param region
+   * @param mutation
+   * @throws IOException
+   */
+  public void grabQuota(final HRegion region, final RowMutations rowMutations) throws IOException {
+    UserGroupInformation ugi = getUserGroupInformation(region);
+    TableName table = region.getTableDesc().getTableName();
+    for (Mutation mutation : rowMutations.getMutations()) {
+      grabQuota(ugi, table, mutation);
     }
   }
 }

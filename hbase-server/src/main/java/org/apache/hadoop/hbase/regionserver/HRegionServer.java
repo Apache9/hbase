@@ -2314,6 +2314,8 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
   @Override
   public void addToOnlineRegions(HRegion region) {
     this.onlineRegions.put(region.getRegionInfo().getEncodedName(), region);
+    LOG.info("onlineRegions add region : " + region.getRegionInfo().getEncodedName() + "for table "
+        + region.getRegionInfo().getTable());
   }
 
   /**
@@ -2803,7 +2805,8 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
   @Override
   public boolean removeFromOnlineRegions(final HRegion r, ServerName destination) {
     HRegion toReturn = this.onlineRegions.remove(r.getRegionInfo().getEncodedName());
-
+    LOG.info("onlineRegions remove region : " + r.getRegionInfo().getEncodedName() + "for table "
+        + r.getRegionInfo().getTable());
     if (destination != null) {
       HLog wal = getWAL();
       long closeSeqNum = wal.getEarliestMemstoreSeqNum(r.getRegionInfo().getEncodedNameAsBytes());
@@ -4872,6 +4875,9 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
           throw new DoNotRetryIOException("Atomic put and/or delete only, not " + type.name());
       }
     }
+    if (rm != null) {
+      rsQuotaManager.grabQuota(region, rm);
+    }
     region.mutateRow(rm);
     return region.getRegionStats();
   }
@@ -4915,6 +4921,9 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
       default:
         throw new DoNotRetryIOException("Atomic put and/or delete only, not " + type.name());
       }
+    }
+    if (rm != null) {
+      rsQuotaManager.grabQuota(region, rm);
     }
     return region.checkAndRowMutate(row, family, qualifier, compareOp, comparator, rm, Boolean.TRUE);
   }

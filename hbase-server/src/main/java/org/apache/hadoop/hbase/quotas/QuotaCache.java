@@ -175,8 +175,10 @@ public class QuotaCache implements Stoppable {
       } catch (IOException e) {
         LOG.info("get online regions of " + tableName + "failed");
       }
-      
+
       double localFactor = computeLocalFactor(regionServerNum, tableRegionsNum, localRegionsNum);
+      LOG.info("For Table : " + tableName + ", because regionServerNum=" + regionServerNum + ", tableRegionsNum=" +
+          tableRegionsNum + ", localRegionsNum=" + localRegionsNum + ", compute localFactor=" + localFactor);
       localQuotaFactors.put(tableName, localFactor);
     }
   }
