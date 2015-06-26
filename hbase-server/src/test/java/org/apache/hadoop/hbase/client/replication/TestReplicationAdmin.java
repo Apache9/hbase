@@ -25,6 +25,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.*;
+import org.apache.hadoop.hbase.replication.ReplicationPeer;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -122,6 +123,14 @@ public class TestReplicationAdmin {
       // OK!
     }
     admin.removePeer(ID_ONE);
+  }
+
+  @Test
+  public void testSettingThePeerProtocol() throws Exception {
+    admin.addPeer(ID_ONE, KEY_ONE, " ", ReplicationPeer.PeerProtocol.THRIFT.name());
+    assertEquals(1, admin.getPeersCount());
+    assertTrue(admin.getPeerState(ID_ONE));
+    assertEquals(ReplicationPeer.PeerProtocol.THRIFT, admin.getPeerConfig(ID_ONE).getProtocol());
   }
 
   @Test

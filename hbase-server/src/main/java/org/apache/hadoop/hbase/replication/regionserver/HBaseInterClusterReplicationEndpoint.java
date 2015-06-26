@@ -68,7 +68,7 @@ public class HBaseInterClusterReplicationEndpoint extends HBaseReplicationEndpoi
   //Metrics for this source
   private MetricsSource metrics;
   // Handles connecting to peer region servers
-  private ReplicationSinkManager replicationSinkMgr;
+  protected ReplicationSinkManager replicationSinkMgr;
   private boolean peersSelected = false;
 
   @Override
@@ -153,13 +153,11 @@ public class HBaseInterClusterReplicationEndpoint extends HBaseReplicationEndpoi
       SinkPeer sinkPeer = null;
       try {
         sinkPeer = replicationSinkMgr.getReplicationSink();
-        BlockingInterface rrs = sinkPeer.getRegionServer();
         if (LOG.isTraceEnabled()) {
           LOG.trace("Replicating " + entries.size() +
               " entries of total size " + replicateContext.getSize());
         }
-        ReplicationProtbufUtil.replicateWALEntry(rrs,
-            entries.toArray(new HLog.Entry[entries.size()]));
+        replicateWALEntry(entries, sinkPeer);
 
         // update metrics
         this.metrics.setAgeOfLastShippedOp(entries.get(entries.size()-1).getKey().getWriteTime());
@@ -203,6 +201,12 @@ public class HBaseInterClusterReplicationEndpoint extends HBaseReplicationEndpoi
       }
     }
     return false; // in case we exited before replicating
+  }
+
+  protected void replicateWALEntry(List<HLog.Entry> entries,
+      SinkPeer sinkPeer) throws IOException {
+    ReplicationProtbufUtil.replicateWALEntry(sinkPeer.getRegionServer(),
+        entries.toArray(new HLog.Entry[entries.size()]));
   }
 
   protected boolean isPeerEnabled() {

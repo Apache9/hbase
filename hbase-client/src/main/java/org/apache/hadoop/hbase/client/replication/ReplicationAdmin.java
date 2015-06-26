@@ -48,6 +48,7 @@ import org.apache.hadoop.hbase.replication.ReplicationPeer;
 import org.apache.hadoop.hbase.replication.ReplicationPeerConfig;
 import org.apache.hadoop.hbase.replication.ReplicationPeerZKImpl;
 import org.apache.hadoop.hbase.replication.ReplicationPeers;
+import org.apache.hadoop.hbase.replication.ReplicationPeer;
 import org.apache.hadoop.hbase.replication.ReplicationQueuesClient;
 import org.apache.hadoop.hbase.util.Pair;
 import org.apache.hadoop.hbase.zookeeper.ZKUtil;
@@ -182,6 +183,16 @@ public class ReplicationAdmin implements Closeable {
     throws ReplicationException {
     this.replicationPeers.addPeer(id,
       new ReplicationPeerConfig().setClusterKey(clusterKey), tableCFs);
+  }
+
+  @Deprecated
+  public void addPeer(String id, String clusterKey, String tableCFs, String protocol)
+      throws ReplicationException {
+    ReplicationPeerConfig config = new ReplicationPeerConfig().setClusterKey(clusterKey);
+    if (StringUtils.isNotBlank(protocol)) {
+      config = config.setProtocol(ReplicationPeer.PeerProtocol.valueOf(protocol));
+    }
+    this.replicationPeers.addPeer(id, config, tableCFs);
   }
 
   /**

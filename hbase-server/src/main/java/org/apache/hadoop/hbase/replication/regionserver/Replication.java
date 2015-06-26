@@ -206,10 +206,16 @@ public class Replication implements WALActionsListener,
     if (this.replication) {
       try {
         this.replicationManager.init();
+        this.replicationSink = new ReplicationSink(
+            this.conf,
+            this.server,
+            ZKClusterId.getUUIDForCluster(this.server.getZooKeeper()).toString()
+        );
+      } catch (KeeperException e) {
+        throw new IOException(e);
       } catch (ReplicationException e) {
         throw new IOException(e);
       }
-      this.replicationSink = new ReplicationSink(this.conf, this.server);
       this.scheduleThreadPool.scheduleAtFixedRate(
         new ReplicationStatisticsThread(this.replicationSink, this.replicationManager),
         statsThreadPeriod, statsThreadPeriod, TimeUnit.SECONDS);

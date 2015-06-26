@@ -5024,6 +5024,16 @@ public final class ZooKeeperProtos {
      */
     org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.NameStringPairOrBuilder getConfigurationOrBuilder(
         int index);
+
+    // optional .ReplicationPeer.Protocol peerProtocol = 5 [default = NATIVE];
+    /**
+     * <code>optional .ReplicationPeer.Protocol peerProtocol = 5 [default = NATIVE];</code>
+     */
+    boolean hasPeerProtocol();
+    /**
+     * <code>optional .ReplicationPeer.Protocol peerProtocol = 5 [default = NATIVE];</code>
+     */
+    org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.ReplicationPeer.Protocol getPeerProtocol();
   }
   /**
    * Protobuf type {@code ReplicationPeer}
@@ -5107,6 +5117,17 @@ public final class ZooKeeperProtos {
               configuration_.add(input.readMessage(org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.NameStringPair.PARSER, extensionRegistry));
               break;
             }
+            case 40: {
+              int rawValue = input.readEnum();
+              org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.ReplicationPeer.Protocol value = org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.ReplicationPeer.Protocol.valueOf(rawValue);
+              if (value == null) {
+                unknownFields.mergeVarintField(5, rawValue);
+              } else {
+                bitField0_ |= 0x00000004;
+                peerProtocol_ = value;
+              }
+              break;
+            }
           }
         }
       } catch (com.google.protobuf.InvalidProtocolBufferException e) {
@@ -5150,6 +5171,88 @@ public final class ZooKeeperProtos {
     @java.lang.Override
     public com.google.protobuf.Parser<ReplicationPeer> getParserForType() {
       return PARSER;
+    }
+
+    /**
+     * Protobuf enum {@code ReplicationPeer.Protocol}
+     */
+    public enum Protocol
+        implements com.google.protobuf.ProtocolMessageEnum {
+      /**
+       * <code>NATIVE = 0;</code>
+       */
+      NATIVE(0, 0),
+      /**
+       * <code>THRIFT = 1;</code>
+       */
+      THRIFT(1, 1),
+      ;
+
+      /**
+       * <code>NATIVE = 0;</code>
+       */
+      public static final int NATIVE_VALUE = 0;
+      /**
+       * <code>THRIFT = 1;</code>
+       */
+      public static final int THRIFT_VALUE = 1;
+
+
+      public final int getNumber() { return value; }
+
+      public static Protocol valueOf(int value) {
+        switch (value) {
+          case 0: return NATIVE;
+          case 1: return THRIFT;
+          default: return null;
+        }
+      }
+
+      public static com.google.protobuf.Internal.EnumLiteMap<Protocol>
+          internalGetValueMap() {
+        return internalValueMap;
+      }
+      private static com.google.protobuf.Internal.EnumLiteMap<Protocol>
+          internalValueMap =
+            new com.google.protobuf.Internal.EnumLiteMap<Protocol>() {
+              public Protocol findValueByNumber(int number) {
+                return Protocol.valueOf(number);
+              }
+            };
+
+      public final com.google.protobuf.Descriptors.EnumValueDescriptor
+          getValueDescriptor() {
+        return getDescriptor().getValues().get(index);
+      }
+      public final com.google.protobuf.Descriptors.EnumDescriptor
+          getDescriptorForType() {
+        return getDescriptor();
+      }
+      public static final com.google.protobuf.Descriptors.EnumDescriptor
+          getDescriptor() {
+        return org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.ReplicationPeer.getDescriptor().getEnumTypes().get(0);
+      }
+
+      private static final Protocol[] VALUES = values();
+
+      public static Protocol valueOf(
+          com.google.protobuf.Descriptors.EnumValueDescriptor desc) {
+        if (desc.getType() != getDescriptor()) {
+          throw new java.lang.IllegalArgumentException(
+            "EnumValueDescriptor is not for this type.");
+        }
+        return VALUES[desc.getIndex()];
+      }
+
+      private final int index;
+      private final int value;
+
+      private Protocol(int index, int value) {
+        this.index = index;
+        this.value = value;
+      }
+
+      // @@protoc_insertion_point(enum_scope:ReplicationPeer.Protocol)
     }
 
     private int bitField0_;
@@ -5326,11 +5429,28 @@ public final class ZooKeeperProtos {
       return configuration_.get(index);
     }
 
+    // optional .ReplicationPeer.Protocol peerProtocol = 5 [default = NATIVE];
+    public static final int PEERPROTOCOL_FIELD_NUMBER = 5;
+    private org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.ReplicationPeer.Protocol peerProtocol_;
+    /**
+     * <code>optional .ReplicationPeer.Protocol peerProtocol = 5 [default = NATIVE];</code>
+     */
+    public boolean hasPeerProtocol() {
+      return ((bitField0_ & 0x00000004) == 0x00000004);
+    }
+    /**
+     * <code>optional .ReplicationPeer.Protocol peerProtocol = 5 [default = NATIVE];</code>
+     */
+    public org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.ReplicationPeer.Protocol getPeerProtocol() {
+      return peerProtocol_;
+    }
+
     private void initFields() {
       clusterkey_ = "";
       replicationEndpointImpl_ = "";
       data_ = java.util.Collections.emptyList();
       configuration_ = java.util.Collections.emptyList();
+      peerProtocol_ = org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.ReplicationPeer.Protocol.NATIVE;
     }
     private byte memoizedIsInitialized = -1;
     public final boolean isInitialized() {
@@ -5372,6 +5492,9 @@ public final class ZooKeeperProtos {
       for (int i = 0; i < configuration_.size(); i++) {
         output.writeMessage(4, configuration_.get(i));
       }
+      if (((bitField0_ & 0x00000004) == 0x00000004)) {
+        output.writeEnum(5, peerProtocol_.getNumber());
+      }
       getUnknownFields().writeTo(output);
     }
 
@@ -5396,6 +5519,10 @@ public final class ZooKeeperProtos {
       for (int i = 0; i < configuration_.size(); i++) {
         size += com.google.protobuf.CodedOutputStream
           .computeMessageSize(4, configuration_.get(i));
+      }
+      if (((bitField0_ & 0x00000004) == 0x00000004)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeEnumSize(5, peerProtocol_.getNumber());
       }
       size += getUnknownFields().getSerializedSize();
       memoizedSerializedSize = size;
@@ -5434,6 +5561,11 @@ public final class ZooKeeperProtos {
           .equals(other.getDataList());
       result = result && getConfigurationList()
           .equals(other.getConfigurationList());
+      result = result && (hasPeerProtocol() == other.hasPeerProtocol());
+      if (hasPeerProtocol()) {
+        result = result &&
+            (getPeerProtocol() == other.getPeerProtocol());
+      }
       result = result &&
           getUnknownFields().equals(other.getUnknownFields());
       return result;
@@ -5462,6 +5594,10 @@ public final class ZooKeeperProtos {
       if (getConfigurationCount() > 0) {
         hash = (37 * hash) + CONFIGURATION_FIELD_NUMBER;
         hash = (53 * hash) + getConfigurationList().hashCode();
+      }
+      if (hasPeerProtocol()) {
+        hash = (37 * hash) + PEERPROTOCOL_FIELD_NUMBER;
+        hash = (53 * hash) + hashEnum(getPeerProtocol());
       }
       hash = (29 * hash) + getUnknownFields().hashCode();
       memoizedHashCode = hash;
@@ -5595,6 +5731,8 @@ public final class ZooKeeperProtos {
         } else {
           configurationBuilder_.clear();
         }
+        peerProtocol_ = org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.ReplicationPeer.Protocol.NATIVE;
+        bitField0_ = (bitField0_ & ~0x00000010);
         return this;
       }
 
@@ -5649,6 +5787,10 @@ public final class ZooKeeperProtos {
         } else {
           result.configuration_ = configurationBuilder_.build();
         }
+        if (((from_bitField0_ & 0x00000010) == 0x00000010)) {
+          to_bitField0_ |= 0x00000004;
+        }
+        result.peerProtocol_ = peerProtocol_;
         result.bitField0_ = to_bitField0_;
         onBuilt();
         return result;
@@ -5726,6 +5868,9 @@ public final class ZooKeeperProtos {
               configurationBuilder_.addAllMessages(other.configuration_);
             }
           }
+        }
+        if (other.hasPeerProtocol()) {
+          setPeerProtocol(other.getPeerProtocol());
         }
         this.mergeUnknownFields(other.getUnknownFields());
         return this;
@@ -6426,6 +6571,42 @@ public final class ZooKeeperProtos {
           configuration_ = null;
         }
         return configurationBuilder_;
+      }
+
+      // optional .ReplicationPeer.Protocol peerProtocol = 5 [default = NATIVE];
+      private org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.ReplicationPeer.Protocol peerProtocol_ = org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.ReplicationPeer.Protocol.NATIVE;
+      /**
+       * <code>optional .ReplicationPeer.Protocol peerProtocol = 5 [default = NATIVE];</code>
+       */
+      public boolean hasPeerProtocol() {
+        return ((bitField0_ & 0x00000010) == 0x00000010);
+      }
+      /**
+       * <code>optional .ReplicationPeer.Protocol peerProtocol = 5 [default = NATIVE];</code>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.ReplicationPeer.Protocol getPeerProtocol() {
+        return peerProtocol_;
+      }
+      /**
+       * <code>optional .ReplicationPeer.Protocol peerProtocol = 5 [default = NATIVE];</code>
+       */
+      public Builder setPeerProtocol(org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.ReplicationPeer.Protocol value) {
+        if (value == null) {
+          throw new NullPointerException();
+        }
+        bitField0_ |= 0x00000010;
+        peerProtocol_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>optional .ReplicationPeer.Protocol peerProtocol = 5 [default = NATIVE];</code>
+       */
+      public Builder clearPeerProtocol() {
+        bitField0_ = (bitField0_ & ~0x00000010);
+        peerProtocol_ = org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.ReplicationPeer.Protocol.NATIVE;
+        onChanged();
+        return this;
       }
 
       // @@protoc_insertion_point(builder_scope:ReplicationPeer)
@@ -10656,25 +10837,27 @@ public final class ZooKeeperProtos {
       "G\020\001\022\016\n\nLOG_REPLAY\020\002\"n\n\005Table\022$\n\005state\030\001 " +
       "\002(\0162\014.Table.State:\007ENABLED\"?\n\005State\022\013\n\007E" +
       "NABLED\020\000\022\014\n\010DISABLED\020\001\022\r\n\tDISABLING\020\002\022\014\n" +
-      "\010ENABLING\020\003\"\215\001\n\017ReplicationPeer\022\022\n\nclust",
+      "\010ENABLING\020\003\"\352\001\n\017ReplicationPeer\022\022\n\nclust",
       "erkey\030\001 \002(\t\022\037\n\027replicationEndpointImpl\030\002" +
       " \001(\t\022\035\n\004data\030\003 \003(\0132\017.BytesBytesPair\022&\n\rc" +
-      "onfiguration\030\004 \003(\0132\017.NameStringPair\"^\n\020R" +
-      "eplicationState\022&\n\005state\030\001 \002(\0162\027.Replica" +
-      "tionState.State\"\"\n\005State\022\013\n\007ENABLED\020\000\022\014\n" +
-      "\010DISABLED\020\001\"+\n\027ReplicationHLogPosition\022\020" +
-      "\n\010position\030\001 \002(\003\"%\n\017ReplicationLock\022\022\n\nl" +
-      "ock_owner\030\001 \002(\t\"\230\001\n\tTableLock\022\036\n\ntable_n" +
-      "ame\030\001 \001(\0132\n.TableName\022\037\n\nlock_owner\030\002 \001(" +
-      "\0132\013.ServerName\022\021\n\tthread_id\030\003 \001(\003\022\021\n\tis_",
-      "shared\030\004 \001(\010\022\017\n\007purpose\030\005 \001(\t\022\023\n\013create_" +
-      "time\030\006 \001(\003\";\n\017StoreSequenceId\022\023\n\013family_" +
-      "name\030\001 \002(\014\022\023\n\013sequence_id\030\002 \002(\004\"g\n\026Regio" +
-      "nStoreSequenceIds\022 \n\030last_flushed_sequen" +
-      "ce_id\030\001 \002(\004\022+\n\021store_sequence_id\030\002 \003(\0132\020" +
-      ".StoreSequenceIdBE\n*org.apache.hadoop.hb" +
-      "ase.protobuf.generatedB\017ZooKeeperProtosH" +
-      "\001\210\001\001\240\001\001"
+      "onfiguration\030\004 \003(\0132\017.NameStringPair\0227\n\014p" +
+      "eerProtocol\030\005 \001(\0162\031.ReplicationPeer.Prot" +
+      "ocol:\006NATIVE\"\"\n\010Protocol\022\n\n\006NATIVE\020\000\022\n\n\006" +
+      "THRIFT\020\001\"^\n\020ReplicationState\022&\n\005state\030\001 " +
+      "\002(\0162\027.ReplicationState.State\"\"\n\005State\022\013\n" +
+      "\007ENABLED\020\000\022\014\n\010DISABLED\020\001\"+\n\027ReplicationH" +
+      "LogPosition\022\020\n\010position\030\001 \002(\003\"%\n\017Replica" +
+      "tionLock\022\022\n\nlock_owner\030\001 \002(\t\"\230\001\n\tTableLo",
+      "ck\022\036\n\ntable_name\030\001 \001(\0132\n.TableName\022\037\n\nlo" +
+      "ck_owner\030\002 \001(\0132\013.ServerName\022\021\n\tthread_id" +
+      "\030\003 \001(\003\022\021\n\tis_shared\030\004 \001(\010\022\017\n\007purpose\030\005 \001" +
+      "(\t\022\023\n\013create_time\030\006 \001(\003\";\n\017StoreSequence" +
+      "Id\022\023\n\013family_name\030\001 \002(\014\022\023\n\013sequence_id\030\002" +
+      " \002(\004\"g\n\026RegionStoreSequenceIds\022 \n\030last_f" +
+      "lushed_sequence_id\030\001 \002(\004\022+\n\021store_sequen" +
+      "ce_id\030\002 \003(\0132\020.StoreSequenceIdBE\n*org.apa" +
+      "che.hadoop.hbase.protobuf.generatedB\017Zoo" +
+      "KeeperProtosH\001\210\001\001\240\001\001"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
       new com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner() {
@@ -10722,7 +10905,7 @@ public final class ZooKeeperProtos {
           internal_static_ReplicationPeer_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_ReplicationPeer_descriptor,
-              new java.lang.String[] { "Clusterkey", "ReplicationEndpointImpl", "Data", "Configuration", });
+              new java.lang.String[] { "Clusterkey", "ReplicationEndpointImpl", "Data", "Configuration", "PeerProtocol", });
           internal_static_ReplicationState_descriptor =
             getDescriptor().getMessageTypes().get(7);
           internal_static_ReplicationState_fieldAccessorTable = new

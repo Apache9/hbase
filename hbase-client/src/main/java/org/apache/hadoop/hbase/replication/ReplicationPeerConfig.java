@@ -35,6 +35,7 @@ public class ReplicationPeerConfig {
 
   private String clusterKey;
   private String replicationEndpointImpl;
+  private ReplicationPeer.PeerProtocol protocol = ReplicationPeer.PeerProtocol.NATIVE;
   private final Map<byte[], byte[]> peerData;
   private final Map<String, String> configuration;
 
@@ -62,6 +63,16 @@ public class ReplicationPeerConfig {
     return this;
   }
 
+  /**
+   * Sets the ReplicationRPCProtocol for this peer.
+   * @param protocol [NATIVE, THRIFT]
+   */
+  public ReplicationPeerConfig setProtocol(ReplicationPeer.PeerProtocol protocol) {
+    this.protocol = protocol;
+    setReplicationEndpointImpl(protocol.getReplicationEndpointImpl());
+    return this;
+  }
+
   public String getClusterKey() {
     return clusterKey;
   }
@@ -78,10 +89,15 @@ public class ReplicationPeerConfig {
     return configuration;
   }
 
+  public ReplicationPeer.PeerProtocol getProtocol() {
+    return protocol;
+  }
+
   @Override
   public String toString() {
     StringBuilder builder = new StringBuilder("clusterKey=").append(clusterKey).append(",");
-    builder.append("replicationEndpointImpl=").append(replicationEndpointImpl);
+    builder.append("replicationEndpointImpl=").append(replicationEndpointImpl).append(",");
+    builder.append("rpcProtocol=").append(protocol.name());
     return builder.toString();
   }
 }
