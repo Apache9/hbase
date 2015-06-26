@@ -312,7 +312,7 @@ public class TestReplicationSourceManager {
   public void testFailoverDeadServerVersionUpdate() throws Exception {
     LOG.debug("testFailoverDeadServerVersionUpdate");
     conf.setBoolean(HConstants.ZOOKEEPER_USEMULTI, true);
-    final Server server = new DummyServer("hostname0.example.org");
+    final Server server = new DummyServer("versionupdate0.example.org");
     AtomicBoolean replicating = new AtomicBoolean(true);
     ReplicationZookeeper rz = new ReplicationZookeeper(server, replicating);
     // populate some znodes in the peer znode
@@ -324,11 +324,11 @@ public class TestReplicationSourceManager {
     }
     int v0 = rz.getRsZNodeVersion();
     // create DummyServer for failover
-    Server s1 = new DummyServer("dummyserver1.example.org");
+    Server s1 = new DummyServer("versionupdate1.example.org");
     ReplicationZookeeper rz1 = new ReplicationZookeeper(s1, new AtomicBoolean(true));
     rz1.copyQueuesFromRSUsingMulti(server.getServerName().getServerName());
     int v1 = rz.getRsZNodeVersion();
-    assertEquals(v1, v0 + 1);
+    assertEquals(v0 + 1, v1);
 
     // close out the resources.
     server.abort("", null);
