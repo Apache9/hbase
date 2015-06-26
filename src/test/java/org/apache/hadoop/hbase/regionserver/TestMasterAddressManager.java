@@ -20,6 +20,7 @@
 package org.apache.hadoop.hbase.regionserver;
 
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.concurrent.Semaphore;
@@ -27,6 +28,7 @@ import java.util.concurrent.Semaphore;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.*;
+import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.zookeeper.ZKUtil;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperListener;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
@@ -87,6 +89,38 @@ public class TestMasterAddressManager {
     ServerName pulledAddress = addressManager.getMasterAddress();
     assertTrue(pulledAddress.equals(sn));
 
+    ZKUtil.deleteNode(zk, zk.masterAddressZNode);
+    zk.close();
+  }
+
+  @Test
+  public void testIllegalMasterAddressInZK() throws Exception {
+    ZooKeeperWatcher zk = new ZooKeeperWatcher(TEST_UTIL.getConfiguration(),
+        "testIllegalMasterAddressInZK", null);
+    ZKUtil.createAndFailSilent(zk, zk.baseZNode);
+
+    // Should not have a master yet
+    MasterAddressTracker addressManager = new MasterAddressTracker(zk, null);
+    addressManager.start();
+    zk.registerListener(addressManager);
+
+    // Use a listener to capture when the node is actually created
+    NodeCreationListener listener = new NodeCreationListener(zk, zk.masterAddressZNode);
+    zk.registerListener(listener);
+
+    // Create the master node with illegal data
+    LOG.info("Creating master node");
+    ZKUtil.createEphemeralNodeAndWatch(zk, zk.masterAddressZNode, Bytes.toBytes(1234));
+
+    // Wait for the node to be created
+    LOG.info("Waiting for master address manager to be notified");
+    listener.waitForCreation();
+    LOG.info("Master node created");
+    assertTrue(addressManager.hasMaster());
+    assertNull(addressManager.getMasterAddress());
+
+    ZKUtil.deleteNode(zk, zk.masterAddressZNode);
+    zk.close();
   }
 
   public static class NodeCreationListener extends ZooKeeperListener {
