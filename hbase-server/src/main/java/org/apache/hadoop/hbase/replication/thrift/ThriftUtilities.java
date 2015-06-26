@@ -46,7 +46,7 @@ public class ThriftUtilities {
   }
 
   public static AuthMethod getAuthType(Configuration conf) {
-    return AuthMethod.valueOf(conf.get(User.HBASE_SECURITY_CONF_KEY, "SIMPLE"));
+    return AuthMethod.valueOf(conf.get(User.HBASE_SECURITY_CONF_KEY, "SIMPLE").toUpperCase());
   }
 
   public static int getThriftServerPort(Configuration conf) {
