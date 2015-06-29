@@ -4031,6 +4031,28 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
     }
   }
 
+  @Override
+  public Result incrementAndMutate(byte[] regionName, Increment increment, RowMutations mutations)
+      throws IOException {
+    checkOpen();
+    if (regionName == null) {
+      throw new IOException("Invalid arguments to increment " +
+      "regionName is null");
+    }
+    requestCount.incrementAndGet();
+    try {
+      HRegion region = getRegion(regionName);
+      Integer lock = getLockFromId(increment.getLockId());
+      Increment incVal = increment;
+      Result resVal;
+      resVal = region.increment(incVal, lock, mutations, increment.getWriteToWAL());
+      return resVal;
+    } catch (IOException e) {
+      checkFileSystem();
+      throw e;
+    }
+  }
+  
   /** {@inheritDoc} */
   public long incrementColumnValue(byte[] regionName, byte[] row,
       byte[] family, byte[] qualifier, long amount, boolean writeToWAL)
