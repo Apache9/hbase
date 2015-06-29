@@ -16,34 +16,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.hadoop.hbase.replication.regionserver;
+package org.apache.hadoop.hbase.replication.thrift;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
-
-import org.apache.hadoop.hbase.util.ByteStringer;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.Cell;
-import org.apache.hadoop.hbase.CellUtil;
-import org.apache.hadoop.hbase.HBaseTestingUtility;
-import org.apache.hadoop.hbase.HConstants;
-import org.apache.hadoop.hbase.KeyValue;
+import org.apache.hadoop.hbase.*;
+import org.apache.hadoop.hbase.client.*;
+import org.apache.hadoop.hbase.protobuf.generated.AdminProtos;
+import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos;
+import org.apache.hadoop.hbase.protobuf.generated.WALProtos;
+import org.apache.hadoop.hbase.replication.regionserver.ReplicationSink;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
-import org.apache.hadoop.hbase.Stoppable;
-import org.apache.hadoop.hbase.client.Get;
-import org.apache.hadoop.hbase.client.HTable;
-import org.apache.hadoop.hbase.client.Result;
-import org.apache.hadoop.hbase.client.ResultScanner;
-import org.apache.hadoop.hbase.client.Scan;
-import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.WALEntry;
-import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.UUID;
-import org.apache.hadoop.hbase.protobuf.generated.WALProtos.WALKey;
+import org.apache.hadoop.hbase.util.ByteStringer;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -51,25 +36,31 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 @Category(MediumTests.class)
-public class TestReplicationSink {
-  private static final Log LOG = LogFactory.getLog(TestReplicationSink.class);
+public class TestThriftReplicationSink extends TestThriftReplicationBase {
+
+  private static final Log LOG = LogFactory.getLog(TestThriftReplicationSink.class);
   private static final int BATCH_SIZE = 10;
 
-  private final static HBaseTestingUtility TEST_UTIL =
-      new HBaseTestingUtility();
+  private final static HBaseTestingUtility TEST_UTIL = new HBaseTestingUtility();
 
   private static ReplicationSink SINK;
 
-  private static final byte[] TABLE_NAME1 =
-      Bytes.toBytes("table1");
-  private static final byte[] TABLE_NAME2 =
-      Bytes.toBytes("table2");
+  private static final byte[] TABLE_NAME1 = Bytes.toBytes("table1");
+  private static final byte[] TABLE_NAME2 = Bytes.toBytes("table2");
 
   private static final byte[] FAM_NAME1 = Bytes.toBytes("info1");
   private static final byte[] FAM_NAME2 = Bytes.toBytes("info2");
 
   private static HTable table1;
+  private static HTable table2;
   private static Stoppable STOPPABLE = new Stoppable() {
     final AtomicBoolean stop = new AtomicBoolean(false);
 
@@ -83,26 +74,23 @@ public class TestReplicationSink {
       LOG.info("STOPPING BECAUSE: " + why);
       this.stop.set(true);
     }
-    
+
   };
 
-  private static HTable table2;
 
-   /**
+  /**
    * @throws java.lang.Exception
    */
   @BeforeClass
   public static void setUpBeforeClass() throws Exception {
     TEST_UTIL.getConfiguration().setBoolean("dfs.support.append", true);
-    TEST_UTIL.getConfiguration().setBoolean(HConstants.REPLICATION_ENABLE_KEY,
-        HConstants.REPLICATION_ENABLE_DEFAULT);
-    TEST_UTIL.startMiniCluster(3);
-    SINK =
-        new ReplicationSink(
-            new Configuration(TEST_UTIL.getConfiguration()),
-            STOPPABLE,
-            java.util.UUID.randomUUID().toString()
-        );
+    TEST_UTIL.getConfiguration().setBoolean(HConstants.REPLICATION_ENABLE_KEY, true);
+    ReplicationTestUtils.setupConfiguration(TEST_UTIL, HBaseTestingUtility.randomFreePort());
+    TEST_UTIL.startMiniCluster(1);
+
+    Configuration sinkConfiguration = new Configuration(TEST_UTIL.getConfiguration());
+    sinkConfiguration.setInt("hbase.replication.thrift.server.port", HBaseTestingUtility.randomFreePort());
+    SINK = new ReplicationSink(sinkConfiguration, STOPPABLE, UUID.randomUUID().toString());
     table1 = TEST_UTIL.createTable(TABLE_NAME1, FAM_NAME1);
     table2 = TEST_UTIL.createTable(TABLE_NAME2, FAM_NAME2);
   }
@@ -131,7 +119,7 @@ public class TestReplicationSink {
    */
   @Test
   public void testBatchSink() throws Exception {
-    List<WALEntry> entries = new ArrayList<WALEntry>(BATCH_SIZE);
+    List<AdminProtos.WALEntry> entries = new ArrayList<AdminProtos.WALEntry>(BATCH_SIZE);
     List<Cell> cells = new ArrayList<Cell>();
     for(int i = 0; i < BATCH_SIZE; i++) {
       entries.add(createEntry(TABLE_NAME1, i, KeyValue.Type.Put, cells));
@@ -148,14 +136,14 @@ public class TestReplicationSink {
    */
   @Test
   public void testMixedPutDelete() throws Exception {
-    List<WALEntry> entries = new ArrayList<WALEntry>(BATCH_SIZE/2);
+    List<AdminProtos.WALEntry> entries = new ArrayList<AdminProtos.WALEntry>(BATCH_SIZE/2);
     List<Cell> cells = new ArrayList<Cell>();
     for(int i = 0; i < BATCH_SIZE/2; i++) {
       entries.add(createEntry(TABLE_NAME1, i, KeyValue.Type.Put, cells));
     }
     SINK.replicateEntries(entries, CellUtil.createCellScanner(cells));
 
-    entries = new ArrayList<WALEntry>(BATCH_SIZE);
+    entries = new ArrayList<AdminProtos.WALEntry>(BATCH_SIZE);
     cells = new ArrayList<Cell>();
     for(int i = 0; i < BATCH_SIZE; i++) {
       entries.add(createEntry(TABLE_NAME1, i,
@@ -174,11 +162,11 @@ public class TestReplicationSink {
    */
   @Test
   public void testMixedPutTables() throws Exception {
-    List<WALEntry> entries = new ArrayList<WALEntry>(BATCH_SIZE/2);
+    List<AdminProtos.WALEntry> entries = new ArrayList<AdminProtos.WALEntry>(BATCH_SIZE/2);
     List<Cell> cells = new ArrayList<Cell>();
     for(int i = 0; i < BATCH_SIZE; i++) {
       entries.add(createEntry( i % 2 == 0 ? TABLE_NAME2 : TABLE_NAME1,
-              i, KeyValue.Type.Put, cells));
+          i, KeyValue.Type.Put, cells));
     }
 
     SINK.replicateEntries(entries, CellUtil.createCellScanner(cells.iterator()));
@@ -195,13 +183,13 @@ public class TestReplicationSink {
    */
   @Test
   public void testMixedDeletes() throws Exception {
-    List<WALEntry> entries = new ArrayList<WALEntry>(3);
+    List<AdminProtos.WALEntry> entries = new ArrayList<AdminProtos.WALEntry>(3);
     List<Cell> cells = new ArrayList<Cell>();
     for(int i = 0; i < 3; i++) {
       entries.add(createEntry(TABLE_NAME1, i, KeyValue.Type.Put, cells));
     }
     SINK.replicateEntries(entries, CellUtil.createCellScanner(cells.iterator()));
-    entries = new ArrayList<WALEntry>(3);
+    entries = new ArrayList<AdminProtos.WALEntry>(3);
     cells = new ArrayList<Cell>();
     entries.add(createEntry(TABLE_NAME1, 0, KeyValue.Type.DeleteColumn, cells));
     entries.add(createEntry(TABLE_NAME1, 1, KeyValue.Type.DeleteFamily, cells));
@@ -221,7 +209,7 @@ public class TestReplicationSink {
    */
   @Test
   public void testApplyDeleteBeforePut() throws Exception {
-    List<WALEntry> entries = new ArrayList<WALEntry>(5);
+    List<AdminProtos.WALEntry> entries = new ArrayList<AdminProtos.WALEntry>(5);
     List<Cell> cells = new ArrayList<Cell>();
     for(int i = 0; i < 2; i++) {
       entries.add(createEntry(TABLE_NAME1, i, KeyValue.Type.Put, cells));
@@ -236,7 +224,7 @@ public class TestReplicationSink {
     assertEquals(0, res.size());
   }
 
-  private WALEntry createEntry(byte [] table, int row,  KeyValue.Type type, List<Cell> cells) {
+  private AdminProtos.WALEntry createEntry(byte [] table, int row,  KeyValue.Type type, List<Cell> cells) {
     byte[] fam = Bytes.equals(table, TABLE_NAME1) ? FAM_NAME1 : FAM_NAME2;
     byte[] rowBytes = Bytes.toBytes(row);
     // Just make sure we don't get the same ts for two consecutive rows with
@@ -252,16 +240,16 @@ public class TestReplicationSink {
       kv = new KeyValue(rowBytes, fam, fam, now,
           KeyValue.Type.Put, Bytes.toBytes(row));
     } else if (type.getCode() == KeyValue.Type.DeleteColumn.getCode()) {
-        kv = new KeyValue(rowBytes, fam, fam,
-            now, KeyValue.Type.DeleteColumn);
+      kv = new KeyValue(rowBytes, fam, fam,
+          now, KeyValue.Type.DeleteColumn);
     } else if (type.getCode() == KeyValue.Type.DeleteFamily.getCode()) {
-        kv = new KeyValue(rowBytes, fam, null,
-            now, KeyValue.Type.DeleteFamily);
+      kv = new KeyValue(rowBytes, fam, null,
+          now, KeyValue.Type.DeleteFamily);
     }
-    WALEntry.Builder builder = WALEntry.newBuilder();
+    AdminProtos.WALEntry.Builder builder = AdminProtos.WALEntry.newBuilder();
     builder.setAssociatedCellCount(1);
-    WALKey.Builder keyBuilder = WALKey.newBuilder();
-    UUID.Builder uuidBuilder = UUID.newBuilder();
+    WALProtos.WALKey.Builder keyBuilder = WALProtos.WALKey.newBuilder();
+    HBaseProtos.UUID.Builder uuidBuilder = HBaseProtos.UUID.newBuilder();
     uuidBuilder.setLeastSigBits(HConstants.DEFAULT_CLUSTER_ID.getLeastSignificantBits());
     uuidBuilder.setMostSigBits(HConstants.DEFAULT_CLUSTER_ID.getMostSignificantBits());
     keyBuilder.setClusterId(uuidBuilder.build());
@@ -274,5 +262,4 @@ public class TestReplicationSink {
 
     return builder.build();
   }
-
 }

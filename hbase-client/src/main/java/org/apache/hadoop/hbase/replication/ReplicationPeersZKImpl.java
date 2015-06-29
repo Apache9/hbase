@@ -508,6 +508,7 @@ public class ReplicationPeersZKImpl extends ReplicationStateZKBase implements Re
     for (NameStringPair pair : peer.getConfigurationList()) {
       peerConfig.getConfiguration().put(pair.getName(), pair.getValue());
     }
+    peerConfig.setProtocol(ReplicationPeer.PeerProtocol.fromProtobuf(peer.getPeerProtocol()));
     return peerConfig;
   }
 
@@ -533,7 +534,7 @@ public class ReplicationPeersZKImpl extends ReplicationStateZKBase implements Re
         .setValue(entry.getValue())
         .build());
     }
-
+    builder.setPeerProtocol(peerConfig.getProtocol().getProtocol());
     return builder.build();
   }
 

@@ -35,16 +35,9 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.hbase.*;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.Cell;
-import org.apache.hadoop.hbase.CellScanner;
-import org.apache.hadoop.hbase.CellUtil;
-import org.apache.hadoop.hbase.TableName;
-import org.apache.hadoop.hbase.HBaseConfiguration;
-import org.apache.hadoop.hbase.HConstants;
-import org.apache.hadoop.hbase.KeyValueUtil;
-import org.apache.hadoop.hbase.Stoppable;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.HConnection;
 import org.apache.hadoop.hbase.client.HConnectionManager;
@@ -52,8 +45,18 @@ import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.client.Mutation;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Row;
+import org.apache.hadoop.hbase.protobuf.ReplicationProtbufUtil;
+import org.apache.hadoop.hbase.protobuf.generated.AdminProtos;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.WALEntry;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos;
+import org.apache.hadoop.hbase.regionserver.wal.HLog;
+import org.apache.hadoop.hbase.replication.thrift.ThriftAdaptors;
+import org.apache.hadoop.hbase.replication.thrift.ThriftServer;
+import org.apache.hadoop.hbase.replication.thrift.generated.TBatchEdit;
+import org.apache.hadoop.hbase.replication.thrift.generated.THBaseService;
+import org.apache.hadoop.hbase.replication.thrift.generated.TIOError;
+import org.apache.hadoop.hbase.util.Pair;
+import org.apache.thrift.TException;
 
 /**
  * This class is responsible for replicating the edits coming
@@ -70,13 +73,17 @@ import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos;
  * TODO make this class more like ReplicationSource wrt log handling
  */
 @InterfaceAudience.Private
-public class ReplicationSink {
+public class ReplicationSink implements THBaseService.Iface {
 
   private static final Log LOG = LogFactory.getLog(ReplicationSink.class);
+  public static String CONF_KEY_REPLICATION_THRIFT = "hbase.replication.sink.enable.thrift";
+
   private final Configuration conf;
   private final HConnection sharedHtableCon;
   private final MetricsSink metrics;
   private final AtomicLong totalReplicatedEdits = new AtomicLong();
+  private final String clusterId;
+  private ThriftServer thriftServer;
 
   /**
    * Create a sink for replication
@@ -85,8 +92,9 @@ public class ReplicationSink {
    * @param stopper             boolean to tell this thread to stop
    * @throws IOException thrown when HDFS goes bad or bad file name
    */
-  public ReplicationSink(Configuration conf, Stoppable stopper)
+  public ReplicationSink(Configuration conf, Stoppable stopper, String clusterId)
       throws IOException {
+    this.clusterId = clusterId;
     this.conf = HBaseConfiguration.create(conf);
     decorateConf();
     this.metrics = new MetricsSink();
@@ -97,7 +105,7 @@ public class ReplicationSink {
    * decorate the Configuration object to make replication more receptive to delays:
    * lessen the timeout and numTries.
    */
-  private void decorateConf() {
+  private void decorateConf() throws IOException {
     this.conf.setInt(HConstants.HBASE_CLIENT_RETRIES_NUMBER,
         this.conf.getInt("replication.sink.client.retries.number", 4));
     this.conf.setInt(HConstants.HBASE_CLIENT_OPERATION_TIMEOUT,
@@ -105,6 +113,11 @@ public class ReplicationSink {
     String replicationCodec = this.conf.get(HConstants.REPLICATION_CODEC_CONF_KEY);
     if (StringUtils.isNotEmpty(replicationCodec)) {
       this.conf.set(HConstants.RPC_CODEC_CONF_KEY, replicationCodec);
+    }
+    if(conf.getBoolean(CONF_KEY_REPLICATION_THRIFT, false)) {
+      LOG.info("Starting up thrift server for replication");
+      thriftServer = new ThriftServer(conf, this);
+      thriftServer.start();
     }
    }
 
@@ -215,6 +228,9 @@ public class ReplicationSink {
    */
   public void stopReplicationSinkServices() {
     try {
+      if (thriftServer != null) {
+        thriftServer.shutdown();
+      }
       this.sharedHtableCon.close();
     } catch (IOException e) {
       LOG.warn("IOException while closing the connection", e); // ignoring as we are closing.
@@ -270,5 +286,26 @@ public class ReplicationSink {
    */
   public MetricsSink getSinkMetrics() {
     return this.metrics;
+  }
+
+  @Override public void replicate(TBatchEdit edits) throws TIOError, TException {
+    try {
+      List<HLog.Entry> logEntries = ThriftAdaptors.REPLICATION_BATCH_ADAPTOR.fromThrift(edits);
+      Pair<AdminProtos.ReplicateWALEntryRequest, CellScanner> p =
+          ReplicationProtbufUtil.buildReplicateWALEntryRequest(
+              logEntries.toArray(new HLog.Entry[logEntries.size()])
+          );
+      replicateEntries(p.getFirst().getEntryList(), p.getSecond());
+    } catch (IOException e) {
+      throw new TException("Failed to replicate", e);
+    }
+  }
+
+  @Override public void ping() throws TException {
+    LOG.trace("PING CALLED");
+  }
+
+  @Override public String getClusterUUID() throws TException {
+    return clusterId;
   }
 }

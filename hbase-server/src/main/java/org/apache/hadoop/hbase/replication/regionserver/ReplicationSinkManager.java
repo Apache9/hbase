@@ -166,7 +166,7 @@ public class ReplicationSinkManager {
       this.regionServer = regionServer;
     }
 
-    ServerName getServerName() {
+    public ServerName getServerName() {
       return serverName;
     }
 
