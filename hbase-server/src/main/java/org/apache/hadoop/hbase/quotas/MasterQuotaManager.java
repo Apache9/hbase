@@ -79,6 +79,8 @@ public class MasterQuotaManager {
   private int regionServerNum;
   public static final String REGION_SERVER_OVERCONSUMPTION_FACTOR = "hbase.regionserver.overconsumption.factor";
   public static final float DEFAULT_REGION_SERVER_OVERCONSUMPTION_FACTOR = 0.7f;
+  private int regionServerReadLimit;
+  private int regionServerWriteLimit;
 
   public MasterQuotaManager(final MasterServices masterServices) {
     this.masterServices = masterServices;
@@ -109,6 +111,15 @@ public class MasterQuotaManager {
     } catch (IOException e) {
       LOG.info("fail to update total existed limit");
     }
+
+    regionServerReadLimit = getConfiguration().getInt(QuotaCache.REGION_SERVER_READ_LIMIT_KEY,
+      QuotaCache.DEFAULT_REGION_SERVER_READ_LIMIT);
+    regionServerReadLimit *= getConfiguration().getFloat(REGION_SERVER_OVERCONSUMPTION_FACTOR,
+      DEFAULT_REGION_SERVER_OVERCONSUMPTION_FACTOR);
+    regionServerWriteLimit = getConfiguration().getInt(
+      QuotaCache.REGION_SERVER_WRITE_LIMIT_KEY, QuotaCache.DEFAULT_REGION_SERVER_WRITE_LIMIT);
+    regionServerWriteLimit *= getConfiguration().getFloat(REGION_SERVER_OVERCONSUMPTION_FACTOR,
+      DEFAULT_REGION_SERVER_OVERCONSUMPTION_FACTOR);
 
     enabled = true;
   }
@@ -194,6 +205,7 @@ public class MasterQuotaManager {
 
   public void setUserQuota(final String userName, final TableName table,
       final SetQuotaRequest req) throws IOException, InterruptedException {
+    checkQuotaSupport();
     checkRegionServerQuota(table, req);
     setQuota(req, new SetQuotaOperations() {
       @Override
@@ -430,68 +442,68 @@ public class MasterQuotaManager {
   }
 
   /*
-   * check if set quota exceed regionserver limit * overconsumption factor ?
+   * Analysis the SetQuotaRequest and check if set quota exceed regionserver limit?
    */
-  private void checkRegionServerQuota(TableName tableName, final SetQuotaRequest req)
+  public void checkRegionServerQuota(TableName tableName, final SetQuotaRequest req)
       throws IOException {
-    int regionServerReadLimit = getConfiguration().getInt(QuotaCache.REGION_SERVER_READ_LIMIT_KEY,
-      QuotaCache.DEFAULT_REGION_SERVER_READ_LIMIT);
-    regionServerReadLimit *= getConfiguration().getFloat(REGION_SERVER_OVERCONSUMPTION_FACTOR,
-      DEFAULT_REGION_SERVER_OVERCONSUMPTION_FACTOR);
-    int regionServerWriteLimit = getConfiguration().getInt(
-      QuotaCache.REGION_SERVER_WRITE_LIMIT_KEY, QuotaCache.DEFAULT_REGION_SERVER_WRITE_LIMIT);
-    regionServerWriteLimit *= getConfiguration().getFloat(REGION_SERVER_OVERCONSUMPTION_FACTOR,
-      DEFAULT_REGION_SERVER_OVERCONSUMPTION_FACTOR);
-
     int tableRegionsNum = this.masterServices.getAssignmentManager().getRegionStates()
         .getRegionByStateOfTable(tableName).get(RegionState.State.OPEN).size();
 
-    // check by the worst case, so localRegionsNum=tableRegionsNum
-    double localFactor = QuotaCache.computeLocalFactor(regionServerNum,
-      tableRegionsNum, tableRegionsNum);
-
-    if (req.getThrottle().getType() == ThrottleType.READ_NUMBER) {
-      long readReqLimit = computeReqLimitByLocalFactor(tableName, req, localFactor);
-      if ((readReqLimit > 0) && ((readReqLimit + totalExistedReadLimit) > regionServerReadLimit)) {
-        throw new QuotaExceededException("Failed to set read quota for table=" + tableName
-            + ", because quota is exceed the region server read limit");
+    long reqLimit = 0;
+    ThrottleType throttleType = ThrottleType.REQUEST_NUMBER;
+    if (req.hasThrottle()) {
+      throttleType = req.getThrottle().getType();
+      if (req.getThrottle().hasTimedQuota()) {
+        TimedQuota quota = req.getThrottle().getTimedQuota();
+        // just check the quota which timeunit is seconds
+        if (quota.hasSoftLimit() && quota.hasTimeUnit() && quota.getTimeUnit() == TimeUnit.SECONDS) {
+          reqLimit = quota.getSoftLimit();
+        }
       }
     }
 
-    if (req.getThrottle().getType() == ThrottleType.WRITE_NUMBER) {
-      long writeReqLimit = computeReqLimitByLocalFactor(tableName, req, localFactor);
-      if ((writeReqLimit > 0) && ((writeReqLimit + totalExistedWriteLimit) > regionServerWriteLimit)) {
-        throw new QuotaExceededException("Failed to set write quota for table=" + tableName
-            + ", because quota is exceed the region server read limit");
-      }
+    checkRegionServerQuota(tableName, tableRegionsNum, reqLimit, throttleType);
+  }
+
+  /*
+   * check if set quota exceed regionserver limit?
+   */
+  public void checkRegionServerQuota(final TableName tableName, final int tableRegionsNum,
+      final long reqLimit, final ThrottleType throttleType) throws IOException {
+    regionServerNum = this.masterServices.getServerManager().getOnlineServersList().size();
+    // check by the worst case, so localRegionsNum=tableRegionsNum
+    double localFactor = QuotaCache.computeLocalFactor(regionServerNum, tableRegionsNum,
+      tableRegionsNum);
+
+    // Use to handle add, update, delete quota
+    long reqLimitGap = 0;
+    switch (throttleType) {
+    case READ_NUMBER:
+      reqLimitGap = reqLimit - getTableExistedReadLimit(tableName);
+      checkRegionServerQuota((long) (reqLimitGap * localFactor), totalExistedReadLimit,
+        regionServerReadLimit);
+      break;
+    case WRITE_NUMBER:
+      reqLimitGap = reqLimit - getTableExistedWriteLimit(tableName);
+      checkRegionServerQuota((long) (reqLimitGap * localFactor), totalExistedWriteLimit,
+        regionServerWriteLimit);
+      break;
+    default:
+      break;
     }
   }
 
   /*
-   * Compute req limit in reginserver. Need to handle add quota or update quota, so compute the
-   * reqLimitGap between existed limit
+   * check set quota exceed regionserver limit?
    */
-  public long computeReqLimitByLocalFactor(TableName tableName, final SetQuotaRequest req,
-      double localFactor) {
-    long reqLimit = 0;
-    if (req.hasThrottle() && req.getThrottle().hasTimedQuota()) {
-      TimedQuota quota = req.getThrottle().getTimedQuota();
-      // just check the quota which timeunit is seconds
-      if (quota.hasSoftLimit() && quota.hasTimeUnit() && quota.getTimeUnit() == TimeUnit.SECONDS) {
-        reqLimit = quota.getSoftLimit();
-      }
+  public void checkRegionServerQuota(final long reqLimit, final long totalExistedLimit,
+      final long regionServerLimit) throws IOException {
+    if ((reqLimit > 0) && ((reqLimit + totalExistedLimit) > regionServerLimit)) {
+      LOG.info("Failed to set quota, reqLimit=" + reqLimit + ", totalExistedLimit="
+          + totalExistedLimit + ", regionServerLimit=" + regionServerLimit);
+      throw new QuotaExceededException("Failed to set quota"
+          + ", because it will exceed the region server limit " + regionServerLimit);
     }
-
-    long reqLimitGap = 0;
-
-    if (req.getThrottle().getType() == ThrottleType.READ_NUMBER) {
-      reqLimitGap = reqLimit - getTableExistedReadLimit(tableName);
-    }
-    if (req.getThrottle().getType() == ThrottleType.WRITE_NUMBER) {
-      reqLimitGap = reqLimit - getTableExistedWriteLimit(tableName);
-    }
-
-    return (long) (reqLimitGap * localFactor);
   }
 
   private void computeTotalExistedLimit() throws IOException {
@@ -547,15 +559,19 @@ public class MasterQuotaManager {
     QuotaFilter filter = new QuotaFilter().setUserFilter(user).setTableFilter(
       table.getNameAsString());
     QuotaRetriever scanner = QuotaRetriever.open(this.getConfiguration(), filter);
-    for (QuotaSettings settings : scanner) {
-      if (settings.getQuotaType() == QuotaType.THROTTLE) {
-        throttle = (ThrottleSettings) settings;
-        if (throttle.getThrottleType() == ProtobufUtil.toThrottleType(throttleType)) {
-          break;
+    try {
+      for (QuotaSettings settings : scanner) {
+        if (settings.getQuotaType() == QuotaType.THROTTLE) {
+          throttle = (ThrottleSettings) settings;
+          if (throttle.getThrottleType() == ProtobufUtil.toThrottleType(throttleType)) {
+            break;
+          }
         }
       }
+    } finally {
+      LOG.info("Get throttle settings for user " + user + ", table " + table + ", " + throttle);
+      scanner.close();
     }
-    scanner.close();
     return throttle;
   }
 

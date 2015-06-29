@@ -177,8 +177,7 @@ public class QuotaCache implements Stoppable {
       }
 
       double localFactor = computeLocalFactor(regionServerNum, tableRegionsNum, localRegionsNum);
-      LOG.info("For Table : " + tableName + ", because regionServerNum=" + regionServerNum + ", tableRegionsNum=" +
-          tableRegionsNum + ", localRegionsNum=" + localRegionsNum + ", compute localFactor=" + localFactor);
+      LOG.info("For Table : " + tableName + ", localFactor=" + localFactor);
       localQuotaFactors.put(tableName, localFactor);
     }
   }
@@ -217,6 +216,8 @@ public class QuotaCache implements Stoppable {
         }
       }
     }
+    LOG.info("regionServerNum=" + regionServerNum + ", tableRegionsNum=" + tableRegionsNum
+        + ", localRegionsNum=" + localRegionsNum + ", compute localFactor=" + localFactor);
     return localFactor;
   }
   

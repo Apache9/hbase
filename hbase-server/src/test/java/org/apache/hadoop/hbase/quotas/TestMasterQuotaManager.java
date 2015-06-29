@@ -34,6 +34,7 @@ import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.RetriesExhaustedWithDetailsException;
+import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetQuotaRequest;
 import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
@@ -124,22 +125,83 @@ public class TestMasterQuotaManager {
   }
 
   @Test
-  public void testComputeReqLimitByLocalFactor() throws Exception {
-    QuotaSettings quota = QuotaSettingsFactory.throttleUser(userName, TABLE_NAMES[0], ThrottleType.READ_NUMBER, 1000,
-      TimeUnit.SECONDS);
-    SetQuotaRequest req = QuotaSettings.buildSetQuotaRequestProto(quota);
-    // existed quota is 0, return (1000 - 0) * 0.2
-    assertEquals(200, quotaManager.computeReqLimitByLocalFactor(TABLE_NAMES[0], req, 0.2));
-    
-    admin.setQuota(quota);
-    // existed quota is 1000, return (1000 - 1000) * 0.2
-    assertEquals(0, quotaManager.computeReqLimitByLocalFactor(TABLE_NAMES[0], req, 0.2));
-    
-    quota  = QuotaSettingsFactory.throttleUser(userName, TABLE_NAMES[0], ThrottleType.READ_NUMBER, 500,
-      TimeUnit.SECONDS);
-    req = QuotaSettings.buildSetQuotaRequestProto(quota);
-    // existed quota is 1000, return (500 - 1000) * 0.2
-    assertEquals(-100, quotaManager.computeReqLimitByLocalFactor(TABLE_NAMES[0], req, 0.2)); 
+  public void testCheckRegionServerLimit() throws Exception {
+    try {
+      quotaManager.checkRegionServerQuota(1000, 2000, 2999);
+    } catch (Exception e) {
+      assertEquals(QuotaExceededException.class, e.getClass());
+    }
+
+    try {
+      quotaManager.checkRegionServerQuota(1200, 9000, 10000);
+    } catch (Exception e) {
+      assertEquals(QuotaExceededException.class, e.getClass());
+    }
+
+    try {
+      quotaManager.checkRegionServerQuota(0, 2000, 3000);
+    } catch (Exception e) {
+      fail("Should not throw exception " + e);
+    }
+
+    try {
+      // if user not update quota to bigger, not throw exception even totalExistedLimit > rsLimit
+      quotaManager.checkRegionServerQuota(0, 2000, 1800);
+    } catch (Exception e) {
+      fail("Should not throw exception " + e);
+    }
+
+    try {
+      // if user update quota to be smaller, not throw exception even totalExistedLimit > rsLimit
+      quotaManager.checkRegionServerQuota(-500, 2000, 1000);
+    } catch (Exception e) {
+      fail("Should not throw exception " + e);
+    }
+  }
+
+  @Test
+  public void testCheckRegionServerQuotaWithTable() throws Exception {
+    admin.setQuota(QuotaSettingsFactory.throttleUser(userName, TABLE_NAMES[0], ThrottleType.READ_NUMBER, 2000,
+      TimeUnit.SECONDS));
+    admin.setQuota(QuotaSettingsFactory.throttleUser(userName, TABLE_NAMES[1], ThrottleType.READ_NUMBER, 5000,
+      TimeUnit.SECONDS));
+    assertEquals(1500, quotaManager.getTotalExistedReadLimit());
+
+    try {
+      quotaManager.checkRegionServerQuota(TABLE_NAMES[1], 5, 8000,
+        ProtobufUtil.toProtoThrottleType(ThrottleType.READ_NUMBER));
+      admin.setQuota(QuotaSettingsFactory.throttleUser(userName, TABLE_NAMES[1],
+        ThrottleType.READ_NUMBER, 8000, TimeUnit.SECONDS));
+    } catch (Exception e) {
+      fail("Should not throw exception " + e);
+    }
+    assertEquals(2100, quotaManager.getTotalExistedReadLimit());
+
+    try {
+      quotaManager.checkRegionServerQuota(TABLE_NAMES[0], 4, 3000,
+        ProtobufUtil.toProtoThrottleType(ThrottleType.READ_NUMBER));
+    } catch (Exception e) {
+      assertEquals(QuotaExceededException.class, e.getClass());
+    }
+    assertEquals(2100, quotaManager.getTotalExistedReadLimit());
+
+    try {
+      quotaManager.checkRegionServerQuota(TABLE_NAMES[2], 8, 4000,
+        ProtobufUtil.toProtoThrottleType(ThrottleType.READ_NUMBER));
+    } catch (Exception e) {
+      assertEquals(QuotaExceededException.class, e.getClass());
+    }
+    assertEquals(2100, quotaManager.getTotalExistedReadLimit());
+
+    try {
+      quotaManager.checkRegionServerQuota(TABLE_NAMES[1], 5, 5000,
+        ProtobufUtil.toProtoThrottleType(ThrottleType.READ_NUMBER));
+      admin.setQuota(QuotaSettingsFactory.throttleUser(userName, TABLE_NAMES[1],
+        ThrottleType.READ_NUMBER, 5000, TimeUnit.SECONDS));
+    } catch (Exception e) {
+      fail("Should not throw exception " + e);
+    }
+    assertEquals(1500, quotaManager.getTotalExistedReadLimit());
   }
 
   @Test
