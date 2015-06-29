@@ -21,6 +21,8 @@ package org.apache.hadoop.hbase.tool;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -34,19 +36,26 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HColumnDescriptor;
+import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HTableDescriptor;
+import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.TableNotFoundException;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HConnection;
 import org.apache.hadoop.hbase.client.HConnectionManager;
+import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.HTableInterface;
+import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.filter.FirstKeyOnlyFilter;
 import org.apache.hadoop.hbase.security.User;
+import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
+import org.apache.hadoop.hbase.util.RegionSplitter;
 import org.apache.hadoop.hbase.util.Strings;
 import org.apache.hadoop.net.DNS;
 import org.apache.hadoop.util.ReflectionUtils;
@@ -66,6 +75,10 @@ public final class Canary implements Tool {
     public void publishReadFailure(HRegionInfo region, Exception e);
     public void publishReadFailure(HRegionInfo region, HColumnDescriptor column, Exception e);
     public void publishReadTiming(HRegionInfo region, HColumnDescriptor column, long msTime);
+
+    public void publishWriteFailure(HRegionInfo region, Exception e);
+    public void publishWriteFailure(HRegionInfo region, HColumnDescriptor column, Exception e);
+    public void publishWriteTiming(HRegionInfo region, HColumnDescriptor column, long msTime);
   }
 
   // Simple implementation of canary sink that allows to plot on
@@ -86,6 +99,22 @@ public final class Canary implements Tool {
     public void publishReadTiming(HRegionInfo region, HColumnDescriptor column, long msTime) {
       LOG.info(String.format("read from region %s column family %s in %dms",
                region.getRegionNameAsString(), column.getNameAsString(), msTime));
+    }
+
+    @Override
+    public void publishWriteFailure(HRegionInfo region, Exception e) {
+      LOG.error(String.format("write to region %s failed", region.getRegionNameAsString()), e);
+    }
+    @Override
+    public void publishWriteFailure(HRegionInfo region, HColumnDescriptor column, Exception e) {
+      LOG.error(String.format("write to region %s column family %s failed",
+        region.getRegionNameAsString(), column.getNameAsString()), e);
+    }
+
+    @Override
+    public void publishWriteTiming(HRegionInfo region, HColumnDescriptor column, long msTime) {
+      LOG.info(String.format("write to region %s column family %s in %dms",
+        region.getRegionNameAsString(), column.getNameAsString(), msTime));
     }
   }
 
@@ -108,8 +137,11 @@ public final class Canary implements Tool {
       this.sink = sink;
     }
 
-    @Override
-    public Void call() {
+    /**
+     * check read for normal user tables
+     * @return
+     */
+    private Void read() {
       /*
        * For each column family of the region tries to get one row
        * and outputs the latency, or the failure.
@@ -157,7 +189,49 @@ public final class Canary implements Tool {
       }
       return null;
     }
+
+    /**
+     * Check writes for the canary table
+     * @return
+     */
+    private Void write() {
+      HTableInterface table;
+      try {
+        table = this.connection.getTable(tableDesc.getName());
+        byte[] rowToCheck = region.getStartKey();
+        for (HColumnDescriptor column : tableDesc.getColumnFamilies()) {
+          Put put = new Put(rowToCheck);
+          put.add(column.getName(), HConstants.EMPTY_BYTE_ARRAY,
+            HConstants.EMPTY_BYTE_ARRAY);
+          try {
+            long startTime = System.currentTimeMillis();
+            table.put(put);
+            long time = System.currentTimeMillis() - startTime;
+            sink.publishWriteTiming(region, column, time);
+          } catch (Exception e) {
+            sink.publishWriteFailure(region, column, e);
+          }
+        }
+        table.close();
+      } catch (IOException e) {
+        sink.publishWriteFailure(region, e);
+      }
+      return null;
+    }
+
+    @Override
+    public Void call() {
+     if (tableDesc.getNameAsString().equals(CANARY_TABLE_NAME)) {
+       return write();
+     } else {
+       return read();
+     }
+    }
   }
+
+  private static final String CANARY_TABLE_NAME = "_canary_";
+  private static final String CANARY_TABLE_FAMILY_NAME = "Test";
+  private static int DEFAULT_REGIONS_PER_SERVER = 2;
 
   private static final int MAX_THREADS_NUM = 16; // #threads to contact regions
 
@@ -248,14 +322,17 @@ public final class Canary implements Tool {
     User.login(conf, "hbase.canary.keytab.file", "hbase.canary.kerberos.principal", hostname);
 
     admin = new HBaseAdmin(connection);
-
+    checkCanaryDistribution();
     // lets the canary monitor the cluster
+    long lastCheckTime = EnvironmentEdgeManager.currentTimeMillis();
+
     do {
       long startTime = System.currentTimeMillis();
       if (admin.isAborted()) {
         LOG.error("HBaseAdmin aborted");
         return(1);
       }
+      // check read
       try {
         if (tables_index >= 0) {
           for (int i = tables_index; i < args.length; i++) {
@@ -267,6 +344,14 @@ public final class Canary implements Tool {
       } catch (Exception e) {
         LOG.error("Sniff tables failed.", e);
       }
+
+      // check write
+      // check canary distribution for 10m
+      if (lastCheckTime - EnvironmentEdgeManager.currentTimeMillis() > 10 * 60 * 1000) {
+        checkCanaryDistribution();
+        lastCheckTime = EnvironmentEdgeManager.currentTimeMillis();
+      }
+      sniff(CANARY_TABLE_NAME);
       long  finishTime = System.currentTimeMillis();
       if (finishTime < startTime + interval) {
         Thread.sleep(startTime + interval - finishTime);
@@ -342,6 +427,56 @@ public final class Canary implements Tool {
     }
     table.close();
     return this.executor.invokeAll(tasks);
+  }
+
+
+  private void checkCanaryDistribution() throws IOException {
+    if (!admin.tableExists(CANARY_TABLE_NAME)) {
+      int numberOfServers = admin.getClusterStatus().getServers().size();
+      if (numberOfServers == 0) {
+        throw new IllegalStateException("No live regionservers");
+      }
+      createCanaryTable(numberOfServers);
+    }
+
+    if (!admin.isTableEnabled(CANARY_TABLE_NAME)) {
+      admin.enableTable(CANARY_TABLE_NAME);
+    }
+
+    int numberOfServers = admin.getClusterStatus().getServers().size();
+    HTable table = new HTable(getConf(), CANARY_TABLE_NAME);
+    Collection<ServerName> regionsevers = table.getRegionLocations().values();
+    int numberOfRegions = regionsevers.size();
+    if (numberOfServers < numberOfRegions * DEFAULT_REGIONS_PER_SERVER * 0.7
+        || numberOfServers > numberOfRegions * DEFAULT_REGIONS_PER_SERVER * 1.5) {
+      admin.disableTable(CANARY_TABLE_NAME);
+      admin.deleteTable(CANARY_TABLE_NAME);
+      createCanaryTable(numberOfServers);
+    }
+    int numberOfCoveredServers = new HashSet<ServerName>(regionsevers).size();
+    if (numberOfCoveredServers < numberOfServers) {
+      admin.balancer(Bytes.toBytes(CANARY_TABLE_NAME));
+    }
+    table.close();
+  }
+
+  private void createCanaryTable(int numberOfServers) throws IOException {
+    int totalNumberOfRegions = numberOfServers * DEFAULT_REGIONS_PER_SERVER;
+    LOG.info("Number of live regionservers: " + numberOfServers + ", "
+        + "pre-splitting the canary table into " + totalNumberOfRegions
+        + " regions " + "(default regions per server: "
+        + DEFAULT_REGIONS_PER_SERVER + ")");
+
+    HTableDescriptor desc = new HTableDescriptor(CANARY_TABLE_NAME);
+    HColumnDescriptor family = new HColumnDescriptor(CANARY_TABLE_FAMILY_NAME);
+    family.setMaxVersions(1);
+    // 1day
+    family.setTimeToLive(24 * 60 * 60 *1000);
+
+    desc.addFamily(family);
+    byte[][] splits =
+        new RegionSplitter.HexStringSplit().split(totalNumberOfRegions);
+    admin.createTable(desc, splits);
   }
 
   public static void main(String[] args) {

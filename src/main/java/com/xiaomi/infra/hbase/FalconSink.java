@@ -37,6 +37,9 @@ import org.codehaus.jettison.json.JSONArray;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 
+import com.xiaomi.infra.base.nameservice.ClusterInfo;
+import com.xiaomi.infra.base.nameservice.ZkClusterInfo.ClusterType;
+
 public class FalconSink implements Sink, Configurable {
   private static final Log LOG = LogFactory.getLog(FalconSink.class);
   private static final String DEFAULT_FALCON_URI = "http://127.0.0.1:1988/v1/push";
@@ -46,8 +49,10 @@ public class FalconSink implements Sink, Configurable {
 
   private Configuration conf;
   private HttpClient client = new HttpClient();
-  private AtomicLong failCounter = new AtomicLong(0);
-  private AtomicLong totalCounter = new AtomicLong(0);
+  private AtomicLong failedReadCounter = new AtomicLong(0);
+  private AtomicLong totalReadCounter = new AtomicLong(0);
+  private AtomicLong failedWriteCounter = new AtomicLong(0);
+  private AtomicLong totalWriteCounter = new AtomicLong(0);
 
   private FalconSink() {
     new Timer(true).schedule(new TimerTask() {
@@ -60,29 +65,55 @@ public class FalconSink implements Sink, Configurable {
 
   @Override
   public void publishReadFailure(HRegionInfo region, Exception e) {
-    failCounter.incrementAndGet();
-    totalCounter.incrementAndGet();
+    failedReadCounter.incrementAndGet();
+    totalReadCounter.incrementAndGet();
     LOG.error(String.format("read from region %s failed", region.getRegionNameAsString()), e);
   }
 
   @Override
   public void publishReadFailure(HRegionInfo region, HColumnDescriptor column, Exception e) {
-    failCounter.incrementAndGet();
-    totalCounter.incrementAndGet();
+    failedReadCounter.incrementAndGet();
+    totalReadCounter.incrementAndGet();
     LOG.error(String.format("read from region %s column family %s failed",
       region.getRegionNameAsString(), column.getNameAsString()), e);
   }
 
   @Override
   public void publishReadTiming(HRegionInfo region, HColumnDescriptor column, long msTime) {
-    totalCounter.incrementAndGet();
+    totalReadCounter.incrementAndGet();
     if (msTime > 500) {
       LOG.info(String.format("read from region %s column family %s in %dms",
         region.getRegionNameAsString(), column.getNameAsString(), msTime));
     }
   }
 
-  private double calc() {
+  @Override
+  public void publishWriteFailure(HRegionInfo region, Exception e) {
+    failedWriteCounter.incrementAndGet();
+    totalWriteCounter.incrementAndGet();
+    LOG.error(String.format("write to region %s failed", region.getRegionNameAsString()), e);
+  }
+
+  @Override
+  public void publishWriteFailure(HRegionInfo region, HColumnDescriptor column,
+      Exception e) {
+    failedWriteCounter.incrementAndGet();
+    totalWriteCounter.incrementAndGet();
+    LOG.error(String.format("write to region %s column family %s failed",
+      region.getRegionNameAsString(), column.getNameAsString()), e);
+  }
+
+  @Override
+  public void publishWriteTiming(HRegionInfo region, HColumnDescriptor column,
+      long msTime) {
+    totalWriteCounter.incrementAndGet();
+    if (msTime > 500) {
+      LOG.info(String.format("write to region %s column family %s in %dms",
+        region.getRegionNameAsString(), column.getNameAsString(), msTime));
+    }
+  }
+
+  private double calc(AtomicLong failCounter, AtomicLong totalCounter) {
     if (totalCounter.get() == 0) return 100.0;
     double avail = 1.0 - 1.0 * failCounter.get() / totalCounter.get();
     failCounter.set(0);
@@ -92,29 +123,35 @@ public class FalconSink implements Sink, Configurable {
 
   private void pushMetrics() {
     String clusterName = conf.get("hbase.cluster.name", "unknown");
-    long lastFailedCounter = failCounter.get();
-    long lastTotalCounter = totalCounter.get();
-    double avail = calc();
-    LOG.info("Try to push metrics to falcon and collector. Cluster: " + clusterName
-        + " availability is " + avail + ", failedCounter=" + lastFailedCounter + ", totalCounter="
-        + lastTotalCounter);
-    pushToCollector(clusterName, avail);
-    pushToFalcon(clusterName, avail);
+    double readAvail = calc(failedReadCounter, totalReadCounter);
+    double writeAvail = calc(failedWriteCounter, totalWriteCounter);
+    double avail = (readAvail + writeAvail) /2;
+    LOG.info("Try to push metrics to falcon and collector. Cluster: "
+        + clusterName + " availability is " + avail + ", read availability is "
+        + readAvail + ", write availability is " + writeAvail);
+    pushToCollector(clusterName, avail, readAvail, writeAvail);
+    pushToFalcon(clusterName, avail, readAvail, writeAvail);
   }
 
-  public void pushToCollector(String clusterName, double avail) {
+  private JSONObject buildCanaryMetric(String clusterName, String key, double value) throws JSONException {
+    JSONObject metric = new JSONObject();
+    metric.put("service", "hbase");
+    metric.put("cluster", clusterName);
+    metric.put("name", key);
+    metric.put("timestamp", System.currentTimeMillis() / 1000);
+    metric.put("value", value);
+    metric.put("unit", "%");
+    return metric;
+  }
+
+  public void pushToCollector(String clusterName, double avail, double readAvail, double writeAvail) {
     String uri = conf.get("hbase.canary.sink.collector.uri", DEFAULT_COLLECTOR_URI);
     PostMethod post = new PostMethod(uri);
     JSONArray data = new JSONArray();
     try {
-      JSONObject metric = new JSONObject();
-      metric.put("service", "hbase");
-      metric.put("cluster", clusterName);
-      metric.put("name", "cluster-availability");
-      metric.put("timestamp", System.currentTimeMillis() / 1000);
-      metric.put("value", avail);
-      metric.put("unit", "%");
-      data.put(metric);
+      data.put(buildCanaryMetric(clusterName, "cluster-availability", avail));
+      data.put(buildCanaryMetric(clusterName, "cluster-read-availability", readAvail));
+      data.put(buildCanaryMetric(clusterName, "cluster-write-availability", writeAvail));
     } catch (JSONException e) {
       LOG.error("Create json error.", e);
     }
@@ -126,21 +163,28 @@ public class FalconSink implements Sink, Configurable {
     }
   }
 
-  private void pushToFalcon(String clusterName, double avail) {
+  private JSONObject buildFalconMetric(String clusterName, String key, double value) throws Exception {
+    JSONObject metric = new JSONObject();
+    metric.put("endpoint", "hbase-canary");
+    metric.put("metric", key);
+    metric.put("timestamp", System.currentTimeMillis() / 1000);
+    metric.put("value", value);
+    metric.put("step", PERIOD);
+    metric.put("counterType", "GAUGE");
+    ClusterType type = new ClusterInfo(clusterName).getZkClusterInfo().getClusterType();
+    metric.put("tags", "srv=hbase,type=" + type.toString().toLowerCase() + ",cluster=" + clusterName);
+    return metric;
+  }
+
+  private void pushToFalcon(String clusterName, double avail, double readAvail, double writeAvail) {
     String uri = conf.get("hbase.canary.sink.falcon.uri", DEFAULT_FALCON_URI);
     PostMethod post = new PostMethod(uri);
     JSONArray data = new JSONArray();
     try {
-      JSONObject metric = new JSONObject();
-      metric.put("endpoint", "hbase-canary");
-      metric.put("metric", "cluster-availability");
-      metric.put("timestamp", System.currentTimeMillis() / 1000);
-      metric.put("value", avail);
-      metric.put("step", PERIOD);
-      metric.put("counterType", "GAUGE");
-      metric.put("tags", "srv=hbase-" + clusterName);
-      data.put(metric);
-    } catch (JSONException e) {
+      data.put(buildFalconMetric(clusterName, "cluster-availability", avail));
+      data.put(buildFalconMetric(clusterName, "cluster-read-availability", readAvail));
+      data.put(buildFalconMetric(clusterName, "cluster-write-availability", writeAvail));
+    } catch (Exception e) {
       LOG.error("Create json error.", e);
     }
     post.setRequestBody(data.toString());
