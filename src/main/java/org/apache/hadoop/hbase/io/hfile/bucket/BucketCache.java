@@ -683,15 +683,19 @@ public class BucketCache implements BlockCache, HeapSize {
       try {
         while (cacheEnabled && writerEnabled) {
           try {
-            // Blocks
-            entries = getRAMQueueEntries(inputQueue, entries);
-            synchronized (cacheWaitSignals[threadNO]) {
-              cacheWaitSignals[threadNO].notifyAll();
+            try {
+              // Blocks
+              entries = getRAMQueueEntries(inputQueue, entries);
+              synchronized (cacheWaitSignals[threadNO]) {
+                cacheWaitSignals[threadNO].notifyAll();
+              }
+            } catch (InterruptedException ie) {
+              if (!cacheEnabled) break;
             }
-          } catch (InterruptedException ie) {
-            if (!cacheEnabled) break;
+            doDrain(entries);
+          } catch (Exception ioe) {
+            LOG.error("WriterThread encountered error", ioe);
           }
-          doDrain(entries);
         }
       } catch (Throwable t) {
         LOG.warn("Failed doing drain", t);
