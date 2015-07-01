@@ -322,9 +322,8 @@ public final class Canary implements Tool {
     User.login(conf, "hbase.canary.keytab.file", "hbase.canary.kerberos.principal", hostname);
 
     admin = new HBaseAdmin(connection);
-    checkCanaryDistribution();
     // lets the canary monitor the cluster
-    long lastCheckTime = EnvironmentEdgeManager.currentTimeMillis();
+    long lastCheckTime = -1;
 
     do {
       long startTime = System.currentTimeMillis();
@@ -346,8 +345,8 @@ public final class Canary implements Tool {
       }
 
       // check write
-      // check canary distribution for 10m
-      if (lastCheckTime - EnvironmentEdgeManager.currentTimeMillis() > 10 * 60 * 1000) {
+      // check canary distribution for 10 minutes
+      if (EnvironmentEdgeManager.currentTimeMillis() -lastCheckTime > 10 * 60 * 1000) {
         checkCanaryDistribution();
         lastCheckTime = EnvironmentEdgeManager.currentTimeMillis();
       }
