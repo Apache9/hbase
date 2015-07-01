@@ -19,7 +19,8 @@
  */
 package org.apache.hadoop.hbase;
 
-import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperNodeTracker;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
 
@@ -37,6 +38,7 @@ import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
  * You can get the current master via {@link #getMasterAddress()}
  */
 public class MasterAddressTracker extends ZooKeeperNodeTracker {
+  private static final Log LOG = LogFactory.getLog(ZooKeeperNodeTracker.class);
   /**
    * Construct a master address listener with the specified
    * <code>zookeeper</code> reference.
@@ -58,7 +60,12 @@ public class MasterAddressTracker extends ZooKeeperNodeTracker {
    * @return Server name or null if timed out.
    */
   public ServerName getMasterAddress() {
-    return bytesToServerName(super.getData(false));
+    try {
+      return bytesToServerName(super.getData(false));
+    } catch(RuntimeException e) {
+      LOG.error("Illegal master address data in zookeeper", e);
+    }
+    return null;
   }
 
   /**

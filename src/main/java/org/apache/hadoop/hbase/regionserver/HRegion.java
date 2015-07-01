@@ -5541,6 +5541,46 @@ public class HRegion implements HeapSize { // , Writable{
   public Result increment(Increment increment, Integer lockid,
       boolean writeToWAL)
   throws IOException {
+    return increment(increment, lockid, null, writeToWAL);
+  }
+
+  private void checkFamilyAndTimestampForMutations(RowMutations mutations, long now) throws IOException {
+    for (Mutation mutation : mutations.getMutations()) {
+      if (mutation instanceof Put) {
+        checkFamilies(mutation.getFamilyMap().keySet());
+        checkTimestamps(mutation.getFamilyMap(), now);
+      } else {
+        prepareDelete((Delete) mutation);
+      }
+    }
+  }
+  
+  private void applyLatestTimestampToMutations(RowMutations mutations, byte[] byteNow)
+      throws IOException {
+    for (Mutation mutation : mutations.getMutations()) {
+      if (mutation instanceof Put) {
+        updateKVTimestamps(mutation.getFamilyMap().values(), byteNow);
+      } else {
+        prepareDeleteTimestamps(mutation.getFamilyMap(), byteNow);
+      }
+    }
+  }
+
+  private void addMutationsToWALEdit(RowMutations mutations, WALEdit walEdit) throws IOException {
+    for (Mutation mutation : mutations.getMutations()) {
+      addFamilyMapToWALEdit(mutation.getFamilyMap(), walEdit);
+    }
+  }
+  
+  private void applyMutationsToMemstore(RowMutations mutations,
+      MultiVersionConsistencyControl.WriteEntry w) throws IOException {
+    for (Mutation mutation : mutations.getMutations()) {
+      applyFamilyMapToMemstore(mutation.getFamilyMap(), w);
+    }
+  }
+  
+  public Result increment(Increment increment, Integer lockid,
+      RowMutations mutations, boolean writeToWAL) throws IOException {
     // TODO: Use MVCC to make this set of increments atomic to reads
     byte [] row = increment.getRow();
     checkRow(row, "increment");
@@ -5565,6 +5605,12 @@ public class HRegion implements HeapSize { // , Writable{
       w = mvcc.beginMemstoreInsert();
       try {
         long now = EnvironmentEdgeManager.currentTimeMillis();
+        
+        if (mutations != null) {
+          checkFamilyAndTimestampForMutations(mutations, now);
+          applyLatestTimestampToMutations(mutations, Bytes.toBytes(now));
+        }
+        
         // Process each family
         for (Map.Entry<byte [], NavigableMap<byte [], Pair<NumberCodecType, Long>>> family :
           increment.getFamilyMap().entrySet()) {
@@ -5625,6 +5671,12 @@ public class HRegion implements HeapSize { // , Writable{
           //store the kvs to the temporary memstore before writing HLog
           tempMemstore.put(store, kvs);
         }
+        
+        // add row mutations to walEdits if neccessary
+        if (mutations != null) {
+          // TODO : make sure memstoreTs is not used in HLog?
+          addMutationsToWALEdit(mutations, walEdits);
+        }
 
         // Actually write to WAL now
         if (writeToWAL) {
@@ -5650,6 +5702,12 @@ public class HRegion implements HeapSize { // , Writable{
           }
           allKVs.addAll(entry.getValue());
         }
+        
+        // apply row mutations to memstore if necessary
+        if (mutations != null) {
+          applyMutationsToMemstore(mutations, w);
+        }
+        
         size = this.addAndGetGlobalMemstoreSize(size);
         flush = isFlushSize(size);
       } finally {

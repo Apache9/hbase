@@ -52,6 +52,7 @@ import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.KeeperException.AuthFailedException;
 import org.apache.zookeeper.KeeperException.ConnectionLossException;
 import org.apache.zookeeper.KeeperException.SessionExpiredException;
+import org.apache.zookeeper.data.Stat;
 
 /**
  * This class serves as a helper for all things related to zookeeper in
@@ -730,6 +731,22 @@ public class ReplicationZookeeper {
   }
 
   /**
+   * Get version of rs znode, the version will be increased during replication failover when using
+   * multi. This can be served as optimistic locking
+   * @return node version
+   */
+  public int getRsZNodeVersion() throws KeeperException {
+    try {
+      Stat stat = new Stat();
+      ZKUtil.getDataNoWatch(this.zookeeper, rsZNode, stat);
+      return stat.getVersion();
+    } catch (KeeperException e) {
+      this.abortable.abort("Get rs znode version", e);
+      throw e;
+    }
+  }
+
+  /**
    * Get a list of all the other region servers in this cluster
    * and set a watch
    * @return a list of server nanes
@@ -750,14 +767,13 @@ public class ReplicationZookeeper {
    * or simply from a previous run
    * @return a list of server names
    */
-  public List<String> getListOfReplicators() {
-    List<String> result = null;
+  public List<String> getListOfReplicators() throws KeeperException {
     try {
-      result = ZKUtil.listChildrenNoWatch(this.zookeeper, rsZNode);
+      return ZKUtil.listChildrenNoWatch(this.zookeeper, rsZNode);
     } catch (KeeperException e) {
       this.abortable.abort("Get list of replicators", e);
+      throw e;
     }
-    return result;
   }
 
   /**
@@ -765,15 +781,14 @@ public class ReplicationZookeeper {
    * @param rs server names of the rs
    * @return a list of peer cluster
    */
-  public List<String> getListPeersForRS(String rs) {
+  public List<String> getListPeersForRS(String rs) throws KeeperException {
     String znode = ZKUtil.joinZNode(rsZNode, rs);
-    List<String> result = null;
     try {
-      result = ZKUtil.listChildrenNoWatch(this.zookeeper, znode);
+      return ZKUtil.listChildrenNoWatch(this.zookeeper, znode);
     } catch (KeeperException e) {
       this.abortable.abort("Get list of peers for rs", e);
+      throw e;
     }
-    return result;
   }
 
   /**
@@ -782,16 +797,15 @@ public class ReplicationZookeeper {
    * @param id peer cluster
    * @return a list of hlogs
    */
-  public List<String> getListHLogsForPeerForRS(String rs, String id) {
+  public List<String> getListHLogsForPeerForRS(String rs, String id) throws KeeperException {
     String znode = ZKUtil.joinZNode(rsZNode, rs);
     znode = ZKUtil.joinZNode(znode, id);
-    List<String> result = null;
     try {
-      result = ZKUtil.listChildrenNoWatch(this.zookeeper, znode);
+      return ZKUtil.listChildrenNoWatch(this.zookeeper, znode);
     } catch (KeeperException e) {
       this.abortable.abort("Get list of hlogs for peer", e);
+      throw e;
     }
-    return result;
   }
 
   /**
@@ -838,6 +852,9 @@ public class ReplicationZookeeper {
     List<String> peerIdsToProcess = null;
     List<ZKUtilOp> listOfOps = new ArrayList<ZKUtil.ZKUtilOp>();
     try {
+      // touch the rs znode to bump the version, to notify the reader
+      ZKUtilOp touchOp = ZKUtilOp.setData(rsZNode, HConstants.EMPTY_BYTE_ARRAY);
+      listOfOps.add(touchOp);
       peerIdsToProcess = ZKUtil.listChildrenNoWatch(this.zookeeper, deadRSZnodePath);
       if (peerIdsToProcess == null) return queues; // node already processed
       for (String peerId : peerIdsToProcess) {
@@ -879,6 +896,7 @@ public class ReplicationZookeeper {
       LOG.warn("Got exception in copyQueuesFromRSUsingMulti: ", e);
       queues.clear();
     }
+
     return queues;
   }
 

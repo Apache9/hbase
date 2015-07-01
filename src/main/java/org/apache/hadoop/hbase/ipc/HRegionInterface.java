@@ -306,6 +306,19 @@ public interface HRegionInterface extends VersionedProtocol, Stoppable, Abortabl
   public Result increment(byte[] regionName, Increment increment)
   throws IOException;
 
+  /**
+   * Increment one or more columns and apply mutations of the same row atomically
+   * @param regionName region name
+   * @param increment object that specifies the columns and amounts to be used
+   *                  for the increment operations
+   * @param rowMutation mutations of the same row of increment, mutations must not
+   *                    belongs to columns of increment
+   * @return values of columns after the increment
+   * @throws IOException
+   */
+  public Result incrementAndMutate(byte[] regionName, Increment increment, RowMutations mutations)
+      throws IOException;
+  
   //
   // remote scanner interface
   //

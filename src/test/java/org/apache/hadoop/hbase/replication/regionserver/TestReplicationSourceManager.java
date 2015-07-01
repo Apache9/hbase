@@ -20,6 +20,7 @@
 package org.apache.hadoop.hbase.replication.regionserver;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.net.URLEncoder;
@@ -34,6 +35,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.HBaseConfiguration;
@@ -53,9 +55,11 @@ import org.apache.hadoop.hbase.regionserver.wal.WALActionsListener;
 import org.apache.hadoop.hbase.regionserver.wal.WALEdit;
 import org.apache.hadoop.hbase.replication.ReplicationSourceDummy;
 import org.apache.hadoop.hbase.replication.ReplicationZookeeper;
+import org.apache.hadoop.hbase.replication.master.ReplicationLogCleaner;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.zookeeper.ZKUtil;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
+import org.apache.zookeeper.KeeperException;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -301,6 +305,32 @@ public class TestReplicationSourceManager {
     assertTrue(result.contains(s1.getServerName().getServerName()));
     assertTrue(result.contains(s2.getServerName().getServerName()));
 
+    server.abort("", null);
+  }
+
+  @Test
+  public void testFailoverDeadServerVersionUpdate() throws Exception {
+    LOG.debug("testFailoverDeadServerVersionUpdate");
+    conf.setBoolean(HConstants.ZOOKEEPER_USEMULTI, true);
+    final Server server = new DummyServer("versionupdate0.example.org");
+    AtomicBoolean replicating = new AtomicBoolean(true);
+    ReplicationZookeeper rz = new ReplicationZookeeper(server, replicating);
+    // populate some znodes in the peer znode
+    List<String> files = new ArrayList<String>();
+    files.add("log1");
+    files.add("log2");
+    for (String file : files) {
+      rz.addLogToList(file, "1");
+    }
+    int v0 = rz.getRsZNodeVersion();
+    // create DummyServer for failover
+    Server s1 = new DummyServer("versionupdate1.example.org");
+    ReplicationZookeeper rz1 = new ReplicationZookeeper(s1, new AtomicBoolean(true));
+    rz1.copyQueuesFromRSUsingMulti(server.getServerName().getServerName());
+    int v1 = rz.getRsZNodeVersion();
+    assertEquals(v0 + 1, v1);
+
+    // close out the resources.
     server.abort("", null);
   }
 
