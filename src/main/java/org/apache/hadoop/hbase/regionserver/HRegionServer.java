@@ -1644,8 +1644,8 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
     int stores = 0;
     int storefiles = 0;
     long memstoreSize = 0;
-    int readRequestsCount = 0;
-    int writeRequestsCount = 0;
+    long readRequestsCount = 0;
+    long writeRequestsCount = 0;
     long storefileIndexSize = 0;
     HDFSBlocksDistribution hdfsBlocksDistribution =
       new HDFSBlocksDistribution();
@@ -1865,10 +1865,8 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
           uncaughtExceptionHandler);
     }
 
-    // Leases is not a Thread. Internally it runs a daemon thread. If it gets
-    // an unhandled exception, it will just exit.
-    this.leases.setName(n + ".leaseChecker");
-    this.leases.start();
+    Threads.setDaemonThreadRunning(leases.getThread(), n + ".leaseChecker",
+      uncaughtExceptionHandler);
 
     if (this.replicationSourceHandler == this.replicationSinkHandler &&
         this.replicationSourceHandler != null) {
@@ -4031,6 +4029,28 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
     }
   }
 
+  @Override
+  public Result incrementAndMutate(byte[] regionName, Increment increment, RowMutations mutations)
+      throws IOException {
+    checkOpen();
+    if (regionName == null) {
+      throw new IOException("Invalid arguments to increment " +
+      "regionName is null");
+    }
+    requestCount.incrementAndGet();
+    try {
+      HRegion region = getRegion(regionName);
+      Integer lock = getLockFromId(increment.getLockId());
+      Increment incVal = increment;
+      Result resVal;
+      resVal = region.increment(incVal, lock, mutations, increment.getWriteToWAL());
+      return resVal;
+    } catch (IOException e) {
+      checkFileSystem();
+      throw e;
+    }
+  }
+  
   /** {@inheritDoc} */
   public long incrementColumnValue(byte[] regionName, byte[] row,
       byte[] family, byte[] qualifier, long amount, boolean writeToWAL)

@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.NavigableMap;
 import java.util.TreeMap;
 import java.util.concurrent.Callable;
@@ -55,6 +56,7 @@ import org.apache.hadoop.hbase.filter.BinaryComparator;
 import org.apache.hadoop.hbase.filter.CompareFilter.CompareOp;
 import org.apache.hadoop.hbase.ipc.CoprocessorProtocol;
 import org.apache.hadoop.hbase.ipc.ExecRPCInvoker;
+import org.apache.hadoop.hbase.types.NumberCodecType;
 import org.apache.hadoop.hbase.util.Addressing;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.Pair;
@@ -957,6 +959,57 @@ public class HTable implements HTableInterface {
           public Result call() throws IOException {
             return server.increment(
                 location.getRegionInfo().getRegionName(), increment);
+          }
+        }.withRetries();
+  }
+  
+  /**
+   * {@inheritDoc}}
+   */
+  public Result incrementAndMutate(final Increment increment, final RowMutations rowMutation)
+      throws IOException {
+    if (!increment.hasFamilies()) {
+      throw new IOException(
+          "Invalid arguments to increment, no columns specified");
+    }
+    
+    // check row is same
+    if (!Bytes.equals(increment.getRow(), rowMutation.getRow())) {
+      throw new IOException("row not match, row of increment:"
+          + Bytes.toStringBinary(increment.getRow()) + ", row of rowMutation:"
+          + Bytes.toStringBinary(rowMutation.getRow()));
+    }
+    
+    // check no overlap between increment and rowMutation, so that rowMutation won't mutate
+    // columns of increment
+    for (Mutation mutation : rowMutation.getMutations()) {
+      if (mutation instanceof Delete) {
+        Delete delete = (Delete)mutation;
+        if (delete.getFamilyMap().isEmpty()) {
+          throw new IOException("must not delete entire row in rowMutation: " + delete);
+        }
+      }
+      for (Entry<byte[], List<KeyValue>> familyMap : mutation.getFamilyMap().entrySet()) {
+        NavigableMap<byte[], Pair<NumberCodecType, Long>> incrementColumns = increment
+            .getFamilyMap().get(familyMap.getKey());
+        if (incrementColumns != null) {
+          for (KeyValue kv : familyMap.getValue()) {
+            if (kv.isDeleteFamily() || kv.isDeleteFamilyVersion()) {
+              throw new IOException("must not delete family in increment, increment: " + increment
+                  + ", mutation: " + mutation);
+            } else if (incrementColumns.containsKey(kv.getQualifier())) {
+              throw new IOException("must not mutate column in increment, increment: " + increment
+                  + ", mutation: " + mutation);
+            }
+          }
+        }
+      }
+    }
+    
+    return new ServerCallable<Result>(connection, tableName, increment.getRow(), operationTimeout) {
+          public Result call() throws IOException {
+            return server.incrementAndMutate(
+                location.getRegionInfo().getRegionName(), increment, rowMutation);
           }
         }.withRetries();
   }

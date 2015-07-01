@@ -63,6 +63,7 @@ import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Increment;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
+import org.apache.hadoop.hbase.client.RowMutations;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.filter.BinaryComparator;
 import org.apache.hadoop.hbase.filter.ColumnCountGetFilter;
@@ -3182,6 +3183,65 @@ public class TestHRegion extends HBaseTestCase {
       region.increment(increment, null, true);
       Assert.assertEquals(3, this.region.getStore(fam1).memstore.kvset.size());
       assertICV(row, fam1, qual1, value + 3 * amount);
+    } finally {
+      HRegion.closeHRegion(this.region);
+      this.region = null;
+    }
+  }
+  
+  @Test
+  public void testIncrement_WithRowMutation() throws IOException {
+    byte[] mutationFamily = Bytes.toBytes("columnFamily_mutation");
+    this.region = initHRegion(tableName, getName(), conf, fam1, mutationFamily);
+    this.region.getStore(fam1).getFamily().setMaxVersions(1);
+    
+    byte[] putQualifier = Bytes.toBytes("qual_put");
+    byte[] deleteQualifier = Bytes.toBytes("qual_delete");
+    
+    try {
+      long value = 3L;
+      long amount = 1L;
+
+      // initialize increment column and write will-delete column
+      Increment increment = new Increment(row);
+      increment.addColumn(fam1, qual1, value);
+      region.increment(increment, null, true);
+      Put put = new Put(row);
+      put.add(mutationFamily, deleteQualifier, Bytes.toBytes(value));
+      region.put(put);
+      
+      // build increment and row mutations
+      increment = new Increment(row);
+      increment.addColumn(fam1, qual1, amount);
+      RowMutations rowMutations = new RowMutations(row);
+      put = new Put(row);
+      put.add(mutationFamily, putQualifier, Bytes.toBytes(value));
+      rowMutations.add(put);
+      Delete delete = new Delete(row).deleteColumns(mutationFamily, deleteQualifier);
+      rowMutations.add(delete);
+      
+      // apply increment and row mutations
+      region.increment(increment, null, rowMutations, true);
+      // check value of increment column
+      assertICV(row, fam1, qual1, value + amount);
+      // check put column
+      Result result = region.get(new Get(row).addColumn(mutationFamily, putQualifier));
+      Assert.assertEquals(1, result.size());
+      Assert.assertEquals(value, Bytes.toLong(result.getValue(mutationFamily, putQualifier)));
+      // check delete column
+      result = region.get(new Get(row).addColumn(mutationFamily, deleteQualifier));
+      Assert.assertTrue(result.isEmpty());
+      
+      // test increment and delete family
+      rowMutations = new RowMutations(row);
+      delete = new Delete(row).deleteFamily(mutationFamily);
+      rowMutations.add(delete);
+      region.increment(increment, null, rowMutations, true);
+      // check increment column
+      assertICV(row, fam1, qual1, value + 2 * amount);
+      // check delete column
+      result = region.get(new Get(row).addFamily(mutationFamily));
+      Assert.assertTrue(result.isEmpty());
     } finally {
       HRegion.closeHRegion(this.region);
       this.region = null;

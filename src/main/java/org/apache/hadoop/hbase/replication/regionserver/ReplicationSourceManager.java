@@ -24,12 +24,14 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.SortedMap;
 import java.util.SortedSet;
 import java.util.TreeSet;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -43,6 +45,7 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.Stoppable;
+import org.apache.hadoop.hbase.replication.ReplicationLoad;
 import org.apache.hadoop.hbase.replication.ReplicationZookeeper;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperListener;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
@@ -112,12 +115,12 @@ public class ReplicationSourceManager {
                                   final AtomicBoolean replicating,
                                   final Path logDir,
                                   final Path oldLogDir) {
-    this.sources = new ArrayList<ReplicationSourceInterface>();
+    this.sources = new CopyOnWriteArrayList<ReplicationSourceInterface>();
     this.replicating = replicating;
     this.zkHelper = zkHelper;
     this.stopper = stopper;
     this.hlogsById = new HashMap<String, SortedSet<String>>();
-    this.oldsources = new ArrayList<ReplicationSourceInterface>();
+    this.oldsources = new CopyOnWriteArrayList<ReplicationSourceInterface>();
     this.conf = conf;
     this.fs = fs;
     this.logDir = logDir;
@@ -201,7 +204,12 @@ public class ReplicationSourceManager {
     for (String id : this.zkHelper.getPeerClusters().keySet()) {
       addSource(id);
     }
-    List<String> currentReplicators = this.zkHelper.getListOfReplicators();
+    List<String> currentReplicators = null;
+    try {
+      currentReplicators = this.zkHelper.getListOfReplicators();
+    } catch (KeeperException e) {
+      throw new IOException(e);
+    }
     if (currentReplicators == null || currentReplicators.size() == 0) {
       return;
     }
@@ -674,5 +682,37 @@ public class ReplicationSourceManager {
    */
   public FileSystem getFs() {
     return this.fs;
+  }
+
+  /**
+   * Get the replication load summary
+   * @return
+   */
+  public List<ReplicationLoad> getReplicatonLoad() {
+    Map<String, ReplicationLoad> replications =
+        new HashMap<String, ReplicationLoad>();
+    for (ReplicationSourceInterface source : this.sources) {
+      String peerId = source.getPeerClusterId();
+      int sizeOfLogQueue = source.getSizeOfLogQueue();
+      ReplicationLoad load = replications.get(peerId);
+      if (load == null) {
+        load = new ReplicationLoad(peerId, sizeOfLogQueue);
+        replications.put(peerId, load);
+      } else {
+        load.setSizeOfLogQueue(load.getSizeOfLogQueue() + sizeOfLogQueue);
+      }
+    }
+    for (ReplicationSourceInterface source : this.oldsources) {
+      String peerId = source.getPeerClusterId();
+      int sizeOfLogQueue = source.getSizeOfLogQueue();
+      ReplicationLoad load = replications.get(peerId);
+      if (load == null) {
+        load = new ReplicationLoad(peerId, sizeOfLogQueue);
+        replications.put(peerId, load);
+      } else {
+        load.setSizeOfLogQueue(load.getSizeOfLogQueue() + sizeOfLogQueue);
+      }
+    }
+    return new LinkedList(replications.values());
   }
 }

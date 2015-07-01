@@ -833,4 +833,11 @@ public class RemoteHTable implements HTableInterface {
       throws IOException {
     throw new IOException("checkAndMutate not implemented");
   }
+
+  @Override
+  public Result incrementAndMutate(Increment increment, RowMutations rowMutation)
+      throws IOException {
+    // TODO Auto-generated method stub
+    return null;
+  }
 }

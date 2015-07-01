@@ -575,5 +575,12 @@ public class HTablePool implements Closeable {
         throws IOException {
       return table.checkAndMutate(check, mutate);
     }
+
+    @Override
+    public Result incrementAndMutate(Increment increment, RowMutations rowMutation)
+        throws IOException {
+      // TODO Auto-generated method stub
+      return null;
+    }
   }
 }

@@ -4566,6 +4566,81 @@ public class TestFromClientSide {
       assertIncrementKey(kvs[i], ROWS[0], FAMILY, QUALIFIERS[i], 2*(i+1));
     }
   }
+  
+  @Test
+  public void testIncrementWithMutations() throws Exception {
+    LOG.info("Starting testIncrementWithMutations");
+    final byte [] TABLENAME = Bytes.toBytes("testIncrementWithMutations");
+    HTable ht = TEST_UTIL.createTable(TABLENAME, FAMILY);
+
+    byte[] incrementQualifier = Bytes.toBytes("incrementQualifier");
+    byte[] putQualifier = Bytes.toBytes("putQualifier");
+    byte[] deleteQualifier = Bytes.toBytes("deleteQualifier");
+    
+    byte[] value = Bytes.toBytes("value");
+
+    // write delete column
+    Put put = new Put(ROW).add(FAMILY, deleteQualifier, value);
+    ht.put(put);
+    
+    // build increment and row mutations
+    Increment inc = new Increment(ROW);
+    inc.addColumn(FAMILY, incrementQualifier, 1);
+    RowMutations mutations = new RowMutations(ROW);
+    put = new Put(ROW).add(FAMILY, putQualifier, value);
+    mutations.add(put);
+    Delete delete = new Delete(ROW).deleteColumns(FAMILY, deleteQualifier);
+    mutations.add(delete);
+    
+    ht.incrementAndMutate(inc, mutations);
+
+    Result result = ht.get(new Get(ROW));
+    Assert.assertEquals(2, result.size());
+    Assert.assertEquals(1, Bytes.toLong(result.getValue(FAMILY, incrementQualifier)));
+    Assert.assertTrue(Bytes.equals(value, result.getValue(FAMILY, putQualifier)));
+    
+    // test exception cases
+    // 1. rowkeys from increment and row mutations are different
+    byte[] anotherRow = Bytes.add(Bytes.toBytes("another_"), ROW);
+    mutations = new RowMutations(anotherRow);
+    put = new Put(anotherRow).add(FAMILY, putQualifier, value);
+    mutations.add(put);
+    asssertIncrementAndMutate(ht, inc, mutations, "row not match");
+    
+    // 2. increment and delete the entire row
+    mutations = new RowMutations(ROW);
+    delete = new Delete(ROW);
+    mutations.add(delete);
+    asssertIncrementAndMutate(ht, inc, mutations, "must not delete entire row in rowMutation");
+    
+    // 3. increment and delete family of increment
+    mutations = new RowMutations(ROW);
+    delete = new Delete(ROW).deleteFamily(FAMILY);
+    mutations.add(delete);
+    asssertIncrementAndMutate(ht, inc, mutations, "must not delete family in increment");
+    
+    // 4. put the column of increment
+    mutations = new RowMutations(ROW);
+    put = new Put(ROW).add(FAMILY, incrementQualifier, value);
+    mutations.add(put);
+    asssertIncrementAndMutate(ht, inc, mutations, "must not mutate column in increment");
+    
+    // 5. delete the column of increment
+    mutations = new RowMutations(ROW);
+    delete = new Delete(ROW).deleteColumns(FAMILY, incrementQualifier);
+    mutations.add(delete);
+    asssertIncrementAndMutate(ht, inc, mutations, "must not mutate column in increment");
+  }
+  
+  private void asssertIncrementAndMutate(HTable ht, Increment inc, RowMutations mutations,
+      String expectMsg) throws IOException {
+    try {
+      ht.incrementAndMutate(inc, mutations);
+      fail();
+    } catch (IOException e) {
+      Assert.assertTrue(e.getMessage().indexOf(expectMsg) >= 0);
+    }
+  }
 
   /**
    * This test demonstrates how we use ThreadPoolExecutor.
