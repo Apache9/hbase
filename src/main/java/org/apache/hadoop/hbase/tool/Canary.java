@@ -446,8 +446,9 @@ public final class Canary implements Tool {
     HTable table = new HTable(getConf(), CANARY_TABLE_NAME);
     Collection<ServerName> regionsevers = table.getRegionLocations().values();
     int numberOfRegions = regionsevers.size();
-    if (numberOfServers < numberOfRegions * DEFAULT_REGIONS_PER_SERVER * 0.7
-        || numberOfServers > numberOfRegions * DEFAULT_REGIONS_PER_SERVER * 1.5) {
+    double rate = 1.0 * numberOfRegions / numberOfServers;
+    if ((rate < DEFAULT_REGIONS_PER_SERVER * 0.7) || (rate > DEFAULT_REGIONS_PER_SERVER * 1.5)) {
+      LOG.info("Current canary region num: " + numberOfRegions + " server num: " + numberOfServers);
       admin.disableTable(CANARY_TABLE_NAME);
       admin.deleteTable(CANARY_TABLE_NAME);
       createCanaryTable(numberOfServers);

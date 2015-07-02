@@ -84,8 +84,7 @@ implements WritableComparable<HServerLoad> {
   /** the current write requests per second made to regionserver */
   private long writeRequestsPerSecond;
 
-  private List<ReplicationLoad> replicationLoads;
-
+  private List<ReplicationLoad> replicationLoads = new ArrayList<ReplicationLoad>();
   /** @return the object version number */
   public byte getVersion() {
     return INT_REQUEST_VERSION;
@@ -830,7 +829,6 @@ implements WritableComparable<HServerLoad> {
       this.readRequestsPerSecond = in.readLong();
       this.writeRequestsPerSecond = in.readLong();
       int numberofLoads = in.readInt();
-      replicationLoads = new ArrayList<ReplicationLoad>(numberofLoads);
       for (int i = 0; i < numberofLoads; i++) {
         ReplicationLoad load = new ReplicationLoad();
         load.readFields(in);
