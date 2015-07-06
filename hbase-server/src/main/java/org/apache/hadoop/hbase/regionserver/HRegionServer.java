@@ -163,6 +163,8 @@ import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.StopServerRequest;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.StopServerResponse;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.UpdateFavoredNodesRequest;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.UpdateFavoredNodesResponse;
+import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.SwitchThrottleRequest;
+import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.SwitchThrottleResponse;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.WALEntry;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.BulkLoadHFileRequest;
@@ -2312,6 +2314,8 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
   @Override
   public void addToOnlineRegions(HRegion region) {
     this.onlineRegions.put(region.getRegionInfo().getEncodedName(), region);
+    LOG.info("onlineRegions add region : " + region.getRegionInfo().getEncodedName() + "for table "
+        + region.getRegionInfo().getTable());
   }
 
   /**
@@ -2801,7 +2805,8 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
   @Override
   public boolean removeFromOnlineRegions(final HRegion r, ServerName destination) {
     HRegion toReturn = this.onlineRegions.remove(r.getRegionInfo().getEncodedName());
-
+    LOG.info("onlineRegions remove region : " + r.getRegionInfo().getEncodedName() + "for table "
+        + r.getRegionInfo().getTable());
     if (destination != null) {
       HLog wal = getWAL();
       long closeSeqNum = wal.getEarliestMemstoreSeqNum(r.getRegionInfo().getEncodedNameAsBytes());
@@ -4870,6 +4875,9 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
           throw new DoNotRetryIOException("Atomic put and/or delete only, not " + type.name());
       }
     }
+    if (rm != null) {
+      rsQuotaManager.grabQuota(region, rm);
+    }
     region.mutateRow(rm);
     return region.getRegionStats();
   }
@@ -4913,6 +4921,9 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
       default:
         throw new DoNotRetryIOException("Atomic put and/or delete only, not " + type.name());
       }
+    }
+    if (rm != null) {
+      rsQuotaManager.grabQuota(region, rm);
     }
     return region.checkAndRowMutate(row, family, qualifier, compareOp, comparator, rm, Boolean.TRUE);
   }
@@ -5156,6 +5167,25 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     }
     respBuilder.setResponse(openInfoList.size());
     return respBuilder.build();
+  }
+  
+  @Override
+  public SwitchThrottleResponse switchThrottle(RpcController controller,
+      SwitchThrottleRequest request) throws ServiceException {
+    if (request.hasStartThrottle() && request.getStartThrottle()) {
+      if (rsQuotaManager.isStopped()) {
+        try {
+          rsQuotaManager.start(getRpcServer().getScheduler());
+        } catch (IOException ie) {
+          throw new ServiceException(ie);
+        }
+      }
+    } else if (request.hasSimulateThrottle() && request.getSimulateThrottle()) {
+      rsQuotaManager.setThrottleSimulated(true);
+    } else if (request.hasStopThrottle() && request.getStopThrottle()) {
+      rsQuotaManager.stop();
+    }
+    return SwitchThrottleResponse.newBuilder().build();
   }
 
   /**

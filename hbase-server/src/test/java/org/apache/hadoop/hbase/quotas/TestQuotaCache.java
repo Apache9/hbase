@@ -69,6 +69,7 @@ public class TestQuotaCache {
     for (int i = 0; i < TABLE_NAMES.length; ++i) {
       tables[i] = TEST_UTIL.createTable(TABLE_NAMES[i], new byte[][] { FAMILY }, 3,
         Bytes.toBytes("aaaaa"), Bytes.toBytes("zzzzz"), tableRegionsNumMap.get(TABLE_NAMES[i]));
+      TEST_UTIL.waitTableAvailable(TABLE_NAMES[i].getName());
     }
   }
 
@@ -82,34 +83,6 @@ public class TestQuotaCache {
     }
 
     TEST_UTIL.shutdownMiniCluster();
-  }
-
-  @After
-  public void tearDown() throws Exception {
-    for (RegionServerThread rst : TEST_UTIL.getMiniHBaseCluster().getRegionServerThreads()) {
-      RegionServerQuotaManager quotaManager = rst.getRegionServer().getRegionServerQuotaManager();
-      QuotaCache quotaCache = quotaManager.getQuotaCache();
-      quotaCache.getNamespaceQuotaCache().clear();
-      quotaCache.getTableQuotaCache().clear();
-      quotaCache.getUserQuotaCache().clear();
-    }
-  }
-
-  @Before
-  public void setupQuota() throws IOException {
-    HBaseAdmin admin = TEST_UTIL.getHBaseAdmin();
-    String userName = User.getCurrent().getShortName();
-
-    admin.setQuota(QuotaSettingsFactory.throttleUser(userName, TABLE_NAMES[1],
-      ThrottleType.READ_NUMBER, 5, TimeUnit.SECONDS));
-
-    Put put = new Put(ROW);
-    put.add(FAMILY, QUALIFIER, Bytes.toBytes("test-value"));
-    for (int i = 0; i < TABLE_NAMES.length; ++i) {
-      tables[i].put(put);
-      admin.setQuota(QuotaSettingsFactory.throttleUser(userName, TABLE_NAMES[i],
-        ThrottleType.REQUEST_NUMBER, 1000, TimeUnit.SECONDS));
-    }
   }
 
   @Test
@@ -127,11 +100,12 @@ public class TestQuotaCache {
   }
 
   @Test
-  public void testgetRegionSeverLimiter() {
+  public void testGetRegionSeverLimiter() {
     RegionServerQuotaManager quotaManager = TEST_UTIL.getMiniHBaseCluster().getRegionServer(0)
         .getRegionServerQuotaManager();
     QuotaCache quotaCache = quotaManager.getQuotaCache();
     QuotaLimiter rsQuotaLimiter = quotaCache.getRegionServerLimiter();
+    LOG.info(rsQuotaLimiter);
     assertEquals(QuotaCache.DEFAULT_REGION_SERVER_READ_LIMIT, rsQuotaLimiter.getReadReqsAvailable());
     assertEquals(QuotaCache.DEFAULT_REGION_SERVER_WRITE_LIMIT,
       rsQuotaLimiter.getWriteReqsAvailable());
@@ -140,6 +114,13 @@ public class TestQuotaCache {
   @Test
   public void testUpdateLocalQuotaFactors() throws Exception {
     assertEquals(5, TEST_UTIL.getMiniHBaseCluster().getRegionServerThreads().size());
+
+    HBaseAdmin admin = TEST_UTIL.getHBaseAdmin();
+    String userName = User.getCurrent().getShortName();
+    for (int i = 0; i < TABLE_NAMES.length; ++i) {
+      admin.setQuota(QuotaSettingsFactory.throttleUser(userName, TABLE_NAMES[i],
+        ThrottleType.REQUEST_NUMBER, 1000, TimeUnit.SECONDS));
+    }
 
     for (RegionServerThread rst : TEST_UTIL.getMiniHBaseCluster().getRegionServerThreads()) {
       RegionServerQuotaManager quotaManager = rst.getRegionServer().getRegionServerQuotaManager();
@@ -150,9 +131,8 @@ public class TestQuotaCache {
         }
         // for update, need get first
         quotaCache.getUserLimiter(User.getCurrent().getUGI(), TABLE_NAMES[i]);
-        Thread.sleep(1000);
         quotaCache.triggerCacheRefresh();
-        Thread.sleep(1000);
+        Thread.sleep(250);
         QuotaLimiter quotaLimiter = quotaCache.getUserLimiter(User.getCurrent().getUGI(),
           TABLE_NAMES[i]);
         LOG.info(quotaLimiter);
@@ -177,6 +157,8 @@ public class TestQuotaCache {
         }
       }
     }
+
+    admin.setQuota(QuotaSettingsFactory.unthrottleUser(userName));
   }
 
   @Test

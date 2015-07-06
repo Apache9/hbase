@@ -31,6 +31,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.Mutation;
 import org.apache.hadoop.hbase.client.Result;
+import org.apache.hadoop.hbase.client.RowMutations;
 import org.apache.hadoop.hbase.ipc.RpcScheduler;
 import org.apache.hadoop.hbase.ipc.RequestContext;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos;
@@ -61,6 +62,8 @@ public class RegionServerQuotaManager {
 
   private QuotaCache quotaCache = null;
 
+  private boolean isSimulated = false;
+
   public RegionServerQuotaManager(final RegionServerServices rsServices) {
     this.rsServices = rsServices;
   }
@@ -81,11 +84,27 @@ public class RegionServerQuotaManager {
   public void stop() {
     if (isQuotaEnabled()) {
       quotaCache.stop("shutdown");
+      quotaCache = null;
     }
+  }
+  
+  public boolean isStopped() {
+    if (isQuotaEnabled()) {
+      return quotaCache.isStopped();
+    }
+    return true;
   }
 
   public boolean isQuotaEnabled() {
     return quotaCache != null;
+  }
+
+  public boolean isThrottleSimulated() {
+    return isSimulated;
+  }
+
+  public void setThrottleSimulated(boolean isSimulated) {
+    this.isSimulated = isSimulated;
   }
 
   @VisibleForTesting
@@ -111,6 +130,7 @@ public class RegionServerQuotaManager {
       QuotaLimiter userLimiter = userQuotaState.getTableLimiter(table);
       QuotaLimiter rsLimiter = quotaCache.getRegionServerLimiter();
       boolean useNoop = userLimiter.isBypass();
+      useNoop &= rsLimiter.isBypass();
       if (userQuotaState.hasBypassGlobals()) {
         if (LOG.isTraceEnabled()) {
           LOG.trace("get quota for ugi=" + ugi + " table=" + table + " userLimiter=" + userLimiter);
@@ -122,7 +142,7 @@ public class RegionServerQuotaManager {
             return new DefaultOperationQuota(userLimiter);
           }       
         }
-      } else {      
+      } else {
         QuotaLimiter nsLimiter = quotaCache.getNamespaceLimiter(table.getNamespaceAsString());
         QuotaLimiter tableLimiter = quotaCache.getTableLimiter(table);
         useNoop &= tableLimiter.isBypass() && nsLimiter.isBypass();
@@ -269,7 +289,9 @@ public class RegionServerQuotaManager {
         LOG.debug("Quota snapshot for user=" + ugi.getUserName() + " table=" + table + " : "
             + quota);
       }
-      throw e;
+      if (!isThrottleSimulated()) {
+        throw e;
+      }
     }
     return quota;
   }
@@ -342,6 +364,20 @@ public class RegionServerQuotaManager {
     } else {
       quota.addMutation(mutation);
       quota.close();
+    }
+  }
+
+  /**
+   * Grab quota after the RowMutations. It will not check quota, just grab by mutation.
+   * @param region
+   * @param mutation
+   * @throws IOException
+   */
+  public void grabQuota(final HRegion region, final RowMutations rowMutations) throws IOException {
+    UserGroupInformation ugi = getUserGroupInformation(region);
+    TableName table = region.getTableDesc().getTableName();
+    for (Mutation mutation : rowMutations.getMutations()) {
+      grabQuota(ugi, table, mutation);
     }
   }
 }

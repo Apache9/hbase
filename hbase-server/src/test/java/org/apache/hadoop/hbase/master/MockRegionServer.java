@@ -74,6 +74,8 @@ import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.SplitRegionRequest
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.SplitRegionResponse;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.StopServerRequest;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.StopServerResponse;
+import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.SwitchThrottleRequest;
+import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.SwitchThrottleResponse;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.UpdateFavoredNodesRequest;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.UpdateFavoredNodesResponse;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos;
@@ -617,6 +619,12 @@ ClientProtos.ClientService.BlockingInterface, RegionServerServices {
   
   @Override
   public RegionServerReportResponse getRegionServerReportResponse() {
+    return null;
+  }
+  
+  @Override
+  public SwitchThrottleResponse switchThrottle(RpcController controller,
+      SwitchThrottleRequest request) throws ServiceException {
     return null;
   }
 }

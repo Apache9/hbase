@@ -32,6 +32,7 @@ import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.DoNotRetryIOException;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.ipc.RpcClient;
+import org.apache.hadoop.hbase.quotas.ThrottlingException;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.ExceptionUtil;
 import org.apache.hadoop.ipc.RemoteException;
@@ -63,11 +64,17 @@ public class RpcRetryingCaller<T> {
 
   private final long pause;
   private final int retries;
+  private final int throttleRetries;
 
   public RpcRetryingCaller(long pause, int retries, int startLogErrorsCnt) {
+    this(pause, retries, HConstants.DEFAULT_HBASE_CLIENT_THROTTLE_RETRIES_NUMBER, startLogErrorsCnt);
+  }
+
+  public RpcRetryingCaller(long pause, int retries, int throttleRetries, int startLogErrorsCnt) {
     this.pause = pause;
     this.retries = retries;
     this.startLogErrorsCnt = startLogErrorsCnt;
+    this.throttleRetries = throttleRetries;
   }
 
   private void beforeCall() {
@@ -127,6 +134,9 @@ public class RpcRetryingCaller<T> {
                 EnvironmentEdgeManager.currentTimeMillis(), toString());
         exceptions.add(qt);
         ExceptionUtil.rethrowIfInterrupt(t);
+        if (t instanceof ThrottlingException && tries >= throttleRetries - 1) {
+          throw new RetriesExhaustedException(tries, exceptions);
+        }
         if (tries >= retries - 1) {
           throw new RetriesExhaustedException(tries, exceptions);
         }
@@ -216,6 +226,9 @@ public class RpcRetryingCaller<T> {
     if (t instanceof ServiceException) {
       ServiceException se = (ServiceException)t;
       Throwable cause = se.getCause();
+      if (cause != null && cause instanceof ThrottlingException) {
+        return cause;
+      }
       if (cause != null && cause instanceof DoNotRetryIOException) {
         throw (DoNotRetryIOException)cause;
       }

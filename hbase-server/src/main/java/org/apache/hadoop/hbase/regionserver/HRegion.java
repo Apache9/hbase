@@ -2137,7 +2137,6 @@ public class HRegion implements HeapSize { // , Writable{
       // All edits for the given row (across all column families) must happen atomically.
       doBatchMutate(put);
     } finally {
-      metricsRegion.updateWrite(QuotaUtil.calculateRequestUnitNum(put));
       closeRegionOperation(Operation.PUT);
     }
   }
@@ -2398,6 +2397,7 @@ public class HRegion implements HeapSize { // , Writable{
     int lastIndexExclusive = firstIndex;
     boolean success = false;
     int noOfPuts = 0, noOfDeletes = 0;
+    long numOfWriteCapacityUnit = 0;
     boolean isAtomic = htableDescriptor.isAcrossPrefixRowsAtomic();
     try {
       // ------------------------------------
@@ -2524,6 +2524,7 @@ public class HRegion implements HeapSize { // , Writable{
           }
           noOfDeletes++;
         }
+        numOfWriteCapacityUnit += QuotaUtil.calculateRequestUnitNum(mutation);
         rewriteCellTags(familyMaps[i], mutation);
       }
 
@@ -2713,6 +2714,11 @@ public class HRegion implements HeapSize { // , Writable{
           this.metricsRegion.updateDelete();
         }
       }
+      if (numOfWriteCapacityUnit > 0) {
+        if (this.metricsRegion != null) {
+          this.metricsRegion.updateWrite(numOfWriteCapacityUnit);
+        }
+      }
       if (!success) {
         for (int i = firstIndex; i < lastIndexExclusive; i++) {
           if (batchOp.retCodeDetails[i].getOperationStatusCode() == OperationStatusCode.NOT_RUN) {
@@ -2800,6 +2806,7 @@ public class HRegion implements HeapSize { // , Writable{
           }
         }
         List<Cell> result = get(get, false);
+        this.rsServices.getRegionServerQuotaManager().grabQuota(this, Result.create(result));
 
         boolean valueIsNull = comparator.getValue() == null ||
           comparator.getValue().length == 0;
@@ -2850,7 +2857,6 @@ public class HRegion implements HeapSize { // , Writable{
         rowLock.release();
       }
     } finally {
-      metricsRegion.updateWrite(QuotaUtil.calculateRequestUnitNum(w));
       closeRegionOperation();
     }
   }
@@ -2885,6 +2891,7 @@ public class HRegion implements HeapSize { // , Writable{
       mvcc.completeMemstoreInsert(mvcc.beginMemstoreInsert());
       try {
         List<Cell> result = get(get, false);
+        this.rsServices.getRegionServerQuotaManager().grabQuota(this, Result.create(result));
 
         boolean valueIsNull = comparator.getValue() == null ||
             comparator.getValue().length == 0;
@@ -5561,6 +5568,7 @@ public class HRegion implements HeapSize { // , Writable{
 
     if (this.metricsRegion != null) {
       this.metricsRegion.updateAppend();
+      this.metricsRegion.updateWrite(QuotaUtil.calculateRequestUnitNum(append));
     }
 
     if (flush) {
@@ -5781,6 +5789,7 @@ public class HRegion implements HeapSize { // , Writable{
       closeRegionOperation(Operation.INCREMENT);
       if (this.metricsRegion != null) {
         this.metricsRegion.updateIncrement();
+        this.metricsRegion.updateWrite(QuotaUtil.calculateRequestUnitNum(increment));
       }
     }
 

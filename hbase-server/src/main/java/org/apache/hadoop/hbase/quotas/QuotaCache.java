@@ -175,8 +175,9 @@ public class QuotaCache implements Stoppable {
       } catch (IOException e) {
         LOG.info("get online regions of " + tableName + "failed");
       }
-      
+
       double localFactor = computeLocalFactor(regionServerNum, tableRegionsNum, localRegionsNum);
+      LOG.info("For Table : " + tableName + ", localFactor=" + localFactor);
       localQuotaFactors.put(tableName, localFactor);
     }
   }
@@ -186,8 +187,11 @@ public class QuotaCache implements Stoppable {
      *  the default factor is 1.0, then move a new region to this rs
      *  but the table will get all cluster quota
      */
-    // Case default : allocate no quota for this table
+    // Case default : allocate all cluster quota for this table
     double localFactor = 1.0;
+    if (tableRegionsNum == 0 || regionServerNum == 0) {
+      return localFactor;
+    }
     // Case 1 : table's regions num is smaller than the rs number
     if (tableRegionsNum < regionServerNum) {
       // Case 1.1 : we can average distribute quota by the number of table regions
@@ -212,6 +216,8 @@ public class QuotaCache implements Stoppable {
         }
       }
     }
+    LOG.info("regionServerNum=" + regionServerNum + ", tableRegionsNum=" + tableRegionsNum
+        + ", localRegionsNum=" + localRegionsNum + ", compute localFactor=" + localFactor);
     return localFactor;
   }
   

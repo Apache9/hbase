@@ -98,7 +98,11 @@ public class TestReplicationSink {
         HConstants.REPLICATION_ENABLE_DEFAULT);
     TEST_UTIL.startMiniCluster(3);
     SINK =
-      new ReplicationSink(new Configuration(TEST_UTIL.getConfiguration()), STOPPABLE);
+        new ReplicationSink(
+            new Configuration(TEST_UTIL.getConfiguration()),
+            STOPPABLE,
+            java.util.UUID.randomUUID().toString()
+        );
     table1 = TEST_UTIL.createTable(TABLE_NAME1, FAM_NAME1);
     table2 = TEST_UTIL.createTable(TABLE_NAME2, FAM_NAME2);
   }

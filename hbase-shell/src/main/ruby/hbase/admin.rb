@@ -949,5 +949,23 @@ module Hbase
       @admin.deleteNamespace(namespace_name)
     end
 
+    #----------------------------------------------------------------------------------------------
+    # start throttle by quota
+    def start_throttle()
+      @admin.switchThrottle(true, false, false)
+    end
+
+    #----------------------------------------------------------------------------------------------
+    # simulate throttle by quota
+    def simulate_throttle()
+      @admin.switchThrottle(false, true, false)
+    end
+
+    #----------------------------------------------------------------------------------------------
+    # stop throttle by quota
+    def stop_throttle()
+      @admin.switchThrottle(false, false, true)
+    end
+
   end
 end

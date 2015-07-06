@@ -37,7 +37,9 @@ import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.coprocessor.BaseMasterObserver;
 import org.apache.hadoop.hbase.coprocessor.MasterCoprocessorEnvironment;
 import org.apache.hadoop.hbase.coprocessor.ObserverContext;
+import org.apache.hadoop.hbase.ipc.RequestContext;
 import org.apache.hadoop.hbase.master.MasterServices;
+import org.apache.hadoop.hbase.master.RegionState;
 import org.apache.hadoop.hbase.master.handler.CreateTableHandler;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetQuotaRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetQuotaResponse;
@@ -49,6 +51,10 @@ import org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.ThrottleType;
 import org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.QuotaScope;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.TimeUnit;
 import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
+import org.apache.hadoop.hbase.security.User;
+import org.apache.hadoop.security.UserGroupInformation;
+
+import com.google.common.annotations.VisibleForTesting;
 
 /**
  * Master Quota Manager.
@@ -68,6 +74,13 @@ public class MasterQuotaManager {
   private NamedLock<TableName> tableLocks;
   private NamedLock<String> userLocks;
   private boolean enabled = false;
+  private long totalExistedReadLimit = 0;
+  private long totalExistedWriteLimit = 0;
+  private int regionServerNum;
+  public static final String REGION_SERVER_OVERCONSUMPTION_FACTOR = "hbase.regionserver.overconsumption.factor";
+  public static final float DEFAULT_REGION_SERVER_OVERCONSUMPTION_FACTOR = 0.7f;
+  private int regionServerReadLimit;
+  private int regionServerWriteLimit;
 
   public MasterQuotaManager(final MasterServices masterServices) {
     this.masterServices = masterServices;
@@ -92,6 +105,21 @@ public class MasterQuotaManager {
     namespaceLocks = new NamedLock<String>();
     tableLocks = new NamedLock<TableName>();
     userLocks = new NamedLock<String>();
+
+    try {
+      computeTotalExistedLimit();
+    } catch (IOException e) {
+      LOG.info("fail to update total existed limit");
+    }
+
+    regionServerReadLimit = getConfiguration().getInt(QuotaCache.REGION_SERVER_READ_LIMIT_KEY,
+      QuotaCache.DEFAULT_REGION_SERVER_READ_LIMIT);
+    regionServerReadLimit *= getConfiguration().getFloat(REGION_SERVER_OVERCONSUMPTION_FACTOR,
+      DEFAULT_REGION_SERVER_OVERCONSUMPTION_FACTOR);
+    regionServerWriteLimit = getConfiguration().getInt(
+      QuotaCache.REGION_SERVER_WRITE_LIMIT_KEY, QuotaCache.DEFAULT_REGION_SERVER_WRITE_LIMIT);
+    regionServerWriteLimit *= getConfiguration().getFloat(REGION_SERVER_OVERCONSUMPTION_FACTOR,
+      DEFAULT_REGION_SERVER_OVERCONSUMPTION_FACTOR);
 
     enabled = true;
   }
@@ -177,6 +205,8 @@ public class MasterQuotaManager {
 
   public void setUserQuota(final String userName, final TableName table,
       final SetQuotaRequest req) throws IOException, InterruptedException {
+    checkQuotaSupport();
+    checkRegionServerQuota(table, req);
     setQuota(req, new SetQuotaOperations() {
       @Override
       public Quotas fetch() throws IOException {
@@ -304,6 +334,13 @@ public class MasterQuotaManager {
       quotaOps.update(quotas);
     }
     quotaOps.postApply(quotas);
+
+    // Because set quota may be delete quota, so update total existed limit after set quota
+    try {
+      computeTotalExistedLimit();
+    } catch (IOException e) {
+      LOG.info("fail to update total existed limit");
+    }
   }
 
   private static interface SetQuotaOperations {
@@ -404,6 +441,140 @@ public class MasterQuotaManager {
     }
   }
 
+  /*
+   * Analysis the SetQuotaRequest and check if set quota exceed regionserver limit?
+   */
+  public void checkRegionServerQuota(TableName tableName, final SetQuotaRequest req)
+      throws IOException {
+    int tableRegionsNum = this.masterServices.getAssignmentManager().getRegionStates()
+        .getRegionByStateOfTable(tableName).get(RegionState.State.OPEN).size();
+
+    long reqLimit = 0;
+    ThrottleType throttleType = ThrottleType.REQUEST_NUMBER;
+    if (req.hasThrottle()) {
+      throttleType = req.getThrottle().getType();
+      if (req.getThrottle().hasTimedQuota()) {
+        TimedQuota quota = req.getThrottle().getTimedQuota();
+        // just check the quota which timeunit is seconds
+        if (quota.hasSoftLimit() && quota.hasTimeUnit() && quota.getTimeUnit() == TimeUnit.SECONDS) {
+          reqLimit = quota.getSoftLimit();
+        }
+      }
+    }
+
+    checkRegionServerQuota(tableName, tableRegionsNum, reqLimit, throttleType);
+  }
+
+  /*
+   * check if set quota exceed regionserver limit?
+   */
+  public void checkRegionServerQuota(final TableName tableName, final int tableRegionsNum,
+      final long reqLimit, final ThrottleType throttleType) throws IOException {
+    regionServerNum = this.masterServices.getServerManager().getOnlineServersList().size();
+    // check by the worst case, so localRegionsNum=tableRegionsNum
+    double localFactor = QuotaCache.computeLocalFactor(regionServerNum, tableRegionsNum,
+      tableRegionsNum);
+
+    // Use to handle add, update, delete quota
+    long reqLimitGap = 0;
+    switch (throttleType) {
+    case READ_NUMBER:
+      reqLimitGap = reqLimit - getTableExistedReadLimit(tableName);
+      checkRegionServerQuota((long) (reqLimitGap * localFactor), totalExistedReadLimit,
+        regionServerReadLimit);
+      break;
+    case WRITE_NUMBER:
+      reqLimitGap = reqLimit - getTableExistedWriteLimit(tableName);
+      checkRegionServerQuota((long) (reqLimitGap * localFactor), totalExistedWriteLimit,
+        regionServerWriteLimit);
+      break;
+    default:
+      break;
+    }
+  }
+
+  /*
+   * check set quota exceed regionserver limit?
+   */
+  public void checkRegionServerQuota(final long reqLimit, final long totalExistedLimit,
+      final long regionServerLimit) throws IOException {
+    if ((reqLimit > 0) && ((reqLimit + totalExistedLimit) > regionServerLimit)) {
+      LOG.info("Failed to set quota, reqLimit=" + reqLimit + ", totalExistedLimit="
+          + totalExistedLimit + ", regionServerLimit=" + regionServerLimit);
+      throw new QuotaExceededException("Failed to set quota"
+          + ", because it will exceed the region server limit " + regionServerLimit);
+    }
+  }
+
+  private void computeTotalExistedLimit() throws IOException {
+    LOG.info("Start to compute total existed limit...");
+    long totalReadLimit = 0;
+    long totalWriteLimit = 0;
+    regionServerNum = this.masterServices.getServerManager().getOnlineServersList().size();
+
+    QuotaRetriever scanner = QuotaRetriever.open(this.getConfiguration());
+    for (QuotaSettings settings : scanner) {
+      switch (settings.getQuotaType()) {
+      case THROTTLE:
+        ThrottleSettings throttle = (ThrottleSettings) settings;
+        // just compute the (user,table) quota, which timeunit is seconds
+        if (throttle.getUserName() != null && throttle.getTableName() != null
+            && throttle.getTimeUnit() == ProtobufUtil.toTimeUnit(TimeUnit.SECONDS)) {
+          TableName tableName = throttle.getTableName();
+          int tableRegionsNum = this.masterServices.getAssignmentManager().getRegionStates()
+              .getRegionByStateOfTable(tableName).get(RegionState.State.OPEN).size();
+          long maxLocalThrottleLimit = (long) (throttle.getSoftLimit() * QuotaCache
+              .computeLocalFactor(regionServerNum, tableRegionsNum, tableRegionsNum));
+          if (throttle.getThrottleType() == ProtobufUtil.toThrottleType(ThrottleType.READ_NUMBER)) {
+            totalReadLimit += maxLocalThrottleLimit;
+          } else if (throttle.getThrottleType() == ProtobufUtil
+              .toThrottleType(ThrottleType.WRITE_NUMBER)) {
+            totalWriteLimit += maxLocalThrottleLimit;
+          }
+        }
+        break;
+      case GLOBAL_BYPASS:
+        break;
+      default:
+        break;
+      }
+    }
+    scanner.close();
+
+    totalExistedReadLimit = totalReadLimit;
+    totalExistedWriteLimit = totalWriteLimit;
+    LOG.info("After compute total existed limit for RegionServer, totalExistedReadlimit="
+        + totalExistedReadLimit + ", totalExistedWriteLimit=" + totalExistedWriteLimit);
+  }
+
+  private ThrottleSettings getTableThrottlingSettings(TableName table, ThrottleType throttleType)
+      throws IOException {
+    String user = "";
+    if (RequestContext.isInRequestContext()) {
+      user = RequestContext.getRequestUser().getName();
+    } else {
+      user = User.getCurrent().getName();
+    }
+    ThrottleSettings throttle = null;
+    QuotaFilter filter = new QuotaFilter().setUserFilter(user).setTableFilter(
+      table.getNameAsString());
+    QuotaRetriever scanner = QuotaRetriever.open(this.getConfiguration(), filter);
+    try {
+      for (QuotaSettings settings : scanner) {
+        if (settings.getQuotaType() == QuotaType.THROTTLE) {
+          throttle = (ThrottleSettings) settings;
+          if (throttle.getThrottleType() == ProtobufUtil.toThrottleType(throttleType)) {
+            break;
+          }
+        }
+      }
+    } finally {
+      LOG.info("Get throttle settings for user " + user + ", table " + table + ", " + throttle);
+      scanner.close();
+    }
+    return throttle;
+  }
+
   private void createQuotaTable() throws IOException {
     HRegionInfo newRegions[] = new HRegionInfo[] {
       new HRegionInfo(QuotaUtil.QUOTA_TABLE_NAME)
@@ -417,6 +588,41 @@ public class MasterQuotaManager {
         newRegions,
         masterServices)
           .prepare());
+  }
+
+  // This method is for strictly testing purpose only
+  @VisibleForTesting
+  public long getTotalExistedReadLimit() {
+    return totalExistedReadLimit;
+  }
+
+  @VisibleForTesting
+  public long getTotalExistedWriteLimit() {
+    return totalExistedWriteLimit;
+  }
+
+  @VisibleForTesting
+  public long getTableExistedReadLimit(TableName table) {
+    try {
+      ThrottleSettings throttle = getTableThrottlingSettings(table, ThrottleType.READ_NUMBER);
+      if (throttle != null) {
+        return throttle.getSoftLimit();
+      }
+    } catch (IOException e) {
+    }
+    return 0;
+  }
+
+  @VisibleForTesting
+  public long getTableExistedWriteLimit(TableName table) {
+    try {
+      ThrottleSettings throttle = getTableThrottlingSettings(table, ThrottleType.WRITE_NUMBER);
+      if (throttle != null) {
+        return throttle.getSoftLimit();
+      }
+    } catch (IOException e) {
+    }
+    return 0;
   }
 
   private class NamedLock<T> {
