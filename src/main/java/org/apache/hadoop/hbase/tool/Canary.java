@@ -22,9 +22,12 @@ package org.apache.hadoop.hbase.tool;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -245,10 +248,12 @@ public final class Canary implements Tool {
   private ExecutorService executor; // threads to retrieve data from regionservers
   private Sink sink = null;
   private HConnection connection = null;
+  private List<RegionTask> tasks;
 
   public Canary(ExecutorService executor, Sink sink) {
     this.executor = executor;
     this.sink = sink;
+    this.tasks = new LinkedList<RegionTask>();
   }
 
   @Override
@@ -307,6 +312,12 @@ public final class Canary implements Tool {
         tables_index = i;
       }
     }
+    List<String> tables = new LinkedList<String>();
+    if (tables_index >= 0) {
+      for (int i = tables_index; i < args.length; i++) {
+        tables.add(args[i]);
+      }
+    }
 
     // initialize HBase conf and admin
     if (conf == null) conf = HBaseConfiguration.create();
@@ -327,30 +338,29 @@ public final class Canary implements Tool {
 
     do {
       long startTime = System.currentTimeMillis();
-      if (admin.isAborted()) {
-        LOG.error("HBaseAdmin aborted");
-        return(1);
-      }
-      // check read
-      try {
-        if (tables_index >= 0) {
-          for (int i = tables_index; i < args.length; i++) {
-            sniff(args[i]);
-          }
-        } else {
-          sniff();
-        }
-      } catch (Exception e) {
-        LOG.error("Sniff tables failed.", e);
-      }
 
-      // check write
+      try {
+        tasks = getSniffTasks(tables);
+      } catch (Exception e) {
+        LOG.error("Update sniff tasks failed. Using previous sniffing tasks", e);
+      }
       // check canary distribution for 10 minutes
       if (EnvironmentEdgeManager.currentTimeMillis() -lastCheckTime > 10 * 60 * 1000) {
-        checkCanaryDistribution();
+        try {
+          checkCanaryDistribution();
+        } catch (Exception e) {
+          LOG.error("Check canary distribution failed.", e);
+        }
         lastCheckTime = EnvironmentEdgeManager.currentTimeMillis();
       }
-      sniff(CANARY_TABLE_NAME);
+      List<Future<Void>> taskFutures = this.executor.invokeAll(tasks);
+      for (Future<Void> future : taskFutures) {
+        try {
+          future.get();
+        } catch (ExecutionException e) {
+          LOG.error("Sniff region failed!", e);
+        }
+      }
       long  finishTime = System.currentTimeMillis();
       if (finishTime < startTime + interval) {
         Thread.sleep(startTime + interval - finishTime);
@@ -360,6 +370,23 @@ public final class Canary implements Tool {
     admin.close();
     connection.close();
     return(0);
+  }
+
+  /**
+   * Update sniff tasks
+   * @param tables
+   */
+  private List<RegionTask> getSniffTasks(List<String> tables) throws Exception {
+    List<RegionTask> tmpTasks = new LinkedList<RegionTask>();
+    if (tables.size() > 0) {
+      for (String table : tables) {
+        tmpTasks.addAll(sniff(table));
+      }
+    } else {
+      tmpTasks = sniff();
+    }
+    Collections.shuffle(tmpTasks);
+    return tmpTasks;
   }
 
   private void printUsageAndExit() {
@@ -374,58 +401,46 @@ public final class Canary implements Tool {
   /*
    * canary entry point to monitor all the tables.
    */
-  private void sniff() throws Exception {
-    List<Future<Void>> taskFutures = new LinkedList<Future<Void>>();
+  private List<RegionTask> sniff() throws Exception {
+    List<RegionTask> tasks = new LinkedList<RegionTask>();
     for (HTableDescriptor table : admin.listTables()) {
       if (admin.isTableEnabled(table.getName())) {
-        taskFutures.addAll(sniff(table));
+        tasks.addAll(sniff(table));
       }
     }
-    for (Future<Void> future : taskFutures) {
-      try {
-        future.get();
-      } catch (ExecutionException e) {
-        LOG.error("Sniff region failed!", e);
-      }
-    }
+    return tasks;
   }
 
   /*
    * canary entry point to monitor specified table.
    */
-  private void sniff(String tableName) throws Exception {
-    List<Future<Void>> taskFutures = new LinkedList<Future<Void>>();
+  private List<RegionTask> sniff(String tableName) throws Exception {
+    List<RegionTask> tasks = new LinkedList<RegionTask>();
     if (admin.isTableAvailable(tableName)) {
-      taskFutures.addAll(sniff(admin.getTableDescriptor(tableName.getBytes())));
+      tasks.addAll(sniff(admin.getTableDescriptor(tableName.getBytes())));
     } else {
       LOG.warn(String.format("Table %s is not available", tableName));
     }
-    for (Future<Void> future : taskFutures) {
-      try {
-        future.get();
-      } catch (ExecutionException e) {
-        LOG.error("Sniff region failed!", e);
-      }
-    }
+    return tasks;
   }
 
   /*
    * Loops over regions that owns this table,
    * and output some information abouts the state.
    */
-  private List<Future<Void>> sniff(HTableDescriptor tableDesc) throws Exception {
+  private List<RegionTask> sniff(HTableDescriptor tableDesc) throws Exception {
     HTableInterface table = null;
     try {
       table = this.connection.getTable(tableDesc.getName());
     } catch (TableNotFoundException e) {
-      return new ArrayList<Future<Void>>();
+      return new ArrayList<RegionTask>();
     }
     List<RegionTask> tasks = new ArrayList<RegionTask>();
     for (HRegionInfo region : admin.getTableRegions(tableDesc.getName())) {
        tasks.add(new RegionTask(conf, connection, tableDesc, region, sink));
     }
     table.close();
-    return this.executor.invokeAll(tasks);
+    return tasks;
   }
 
 
@@ -486,8 +501,8 @@ public final class Canary implements Tool {
     conf.setInt("hbase.client.pause", conf.getInt("hbase.canary.client.pause", 100));
     conf.setInt("hbase.client.operation.timeout",
       conf.getInt("hbase.canary.client.operation.timeout", 500));
-    conf.setInt("hbase.client.retries.retries",
-      conf.getInt("hbase.canary.client.retries.retries", 2));
+    conf.setInt("hbase.client.retries.number",
+      conf.getInt("hbase.canary.client.retries.number", 2));
 
     int numThreads = conf.getInt("hbase.canary.threads.num", MAX_THREADS_NUM);
     ExecutorService executor = new ScheduledThreadPoolExecutor(numThreads);
