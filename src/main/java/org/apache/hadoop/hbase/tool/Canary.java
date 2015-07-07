@@ -23,11 +23,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -44,7 +42,6 @@ import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.TableNotFoundException;
-import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HConnection;
 import org.apache.hadoop.hbase.client.HConnectionManager;
@@ -125,7 +122,6 @@ public final class Canary implements Tool {
    * Contact a region server and get all information from it
    */
   static class RegionTask implements Callable<Void> {
-    private Configuration conf;
     private HConnection connection;
     private HTableDescriptor tableDesc;
     private HRegionInfo region;
@@ -133,7 +129,6 @@ public final class Canary implements Tool {
 
     RegionTask(Configuration conf, HConnection connection, HTableDescriptor tableDesc,
         HRegionInfo region, Sink sink) {
-      this.conf = conf;
       this.connection = connection;
       this.tableDesc = tableDesc;
       this.region = region;
@@ -152,38 +147,26 @@ public final class Canary implements Tool {
       HTableInterface table;
       try {
         table = this.connection.getTable(tableDesc.getName());
-        byte[] rowToCheck = region.getStartKey();
-        if (rowToCheck.length == 0) {
-          // Get the 1st raw row for the 1st region to avoid the unbounded scan which may lead
-          // to RPC timeout and false alarm when there are too many delete markers
-          Scan scan = new Scan(region.getStartKey(), region.getEndKey());
+        byte[] rowToCheck = Bytes.randomKey(region.getStartKey(), region.getEndKey());
+        for (HColumnDescriptor column : tableDesc.getColumnFamilies()) {
+          Scan scan = new Scan(rowToCheck, rowToCheck);
           scan.setRaw(true);
           scan.setCaching(1);
           scan.setFilter(new FirstKeyOnlyFilter());
+          scan.addFamily(column.getName());
           scan.setCacheBlocks(false);
           scan.setIgnoreTtl(true);
+          scan.setSmall(true);
           ResultScanner scanner = table.getScanner(scan);
           try {
-            Result r = scanner.next();
-            if (r != null) rowToCheck = r.getRow();
-          } finally {
-            scanner.close();
-          }
-        }
-
-        for (HColumnDescriptor column : tableDesc.getColumnFamilies()) {
-          Get get = new Get(rowToCheck);
-          get.setFilter(new FirstKeyOnlyFilter());
-          get.addFamily(column.getName());
-          get.setCacheBlocks(false);
-          try {
             long startTime = System.currentTimeMillis();
-            table.exists(get);
+            Result r = scanner.next();
             long time = System.currentTimeMillis() - startTime;
-
             sink.publishReadTiming(region, column, time);
           } catch (Exception e) {
             sink.publishReadFailure(region, column, e);
+          } finally {
+            scanner.close();
           }
         }
         table.close();
