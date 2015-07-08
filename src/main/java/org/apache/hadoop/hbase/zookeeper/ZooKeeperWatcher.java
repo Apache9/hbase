@@ -25,7 +25,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.CountDownLatch;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -383,8 +382,14 @@ public class ZooKeeperWatcher implements Watcher, Abortable {
         LOG.debug(prefix("Received Disconnected from ZooKeeper, ignoring"));
         break;
 
+      case AuthFailed:
+        String msg = prefix(this.identifier + " received auth failed from " +
+          "ZooKeeper, aborting");
+        if (this.abortable != null) this.abortable.abort(msg,
+          new KeeperException.AuthFailedException());
+        break;
       case Expired:
-        String msg = prefix(this.identifier + " received expired from " +
+        msg = prefix(this.identifier + " received expired from " +
           "ZooKeeper, aborting");
         // TODO: One thought is to add call to ZooKeeperListener so say,
         // ZooKeeperNodeTracker can zero out its data values.
