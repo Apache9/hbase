@@ -91,7 +91,7 @@ public class TestOperationQuota {
     } catch (ThrottlingException te) {
       fail("quota avail is more than the need, should not thrown exception");
     }
-    // user and rs both have no avail quota.
+    // rs have no avail quota, userLimiter is NoopQuotaLimiter
     runWithExpectedException(new Callable<Void>() {
       @Override
       public Void call() throws Exception {
@@ -99,6 +99,22 @@ public class TestOperationQuota {
         return null;
       }
     }, ThrottlingException.class);
+  }
+
+  @Test
+  public void testGetAvailable() {
+    QuotaLimiter userLimiter = QuotaLimiterFactory.fromThrottle(Throttle.newBuilder().build());
+    QuotaLimiter rsLimiter = QuotaLimiterFactory.fromThrottle(buildThrottle(3000, TimeUnit.SECONDS,
+      10000, TimeUnit.SECONDS));
+    operationQuota = new AllowExceedOperationQuota(userLimiter, rsLimiter);
+    assertEquals(3000 * QuotaUtil.READ_CAPACITY_UNIT, operationQuota.getReadAvailable());
+    assertEquals(10000 * QuotaUtil.WRITE_CAPACITY_UNIT, operationQuota.getWriteAvailable());
+
+    userLimiter = QuotaLimiterFactory.fromThrottle(buildThrottle(500, TimeUnit.SECONDS,
+      1000, TimeUnit.SECONDS));
+    operationQuota = new AllowExceedOperationQuota(userLimiter, rsLimiter);
+    assertEquals(3000 * QuotaUtil.READ_CAPACITY_UNIT, operationQuota.getReadAvailable());
+    assertEquals(10000 * QuotaUtil.WRITE_CAPACITY_UNIT, operationQuota.getWriteAvailable());
   }
 
   private Throttle buildThrottle(int readLimit, TimeUnit readUnit, int writeLimit,

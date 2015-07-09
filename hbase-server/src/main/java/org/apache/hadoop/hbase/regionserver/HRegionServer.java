@@ -3327,8 +3327,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
           if (!done) {
             long maxResultSize = Math.min(scanner.getMaxResultSize(), maxQuotaResultSize);
             if (maxResultSize <= 0) {
-              //maxResultSize = maxScannerResultSize;
-              maxResultSize = maxQuotaResultSize;
+              maxResultSize = maxScannerResultSize;
             }
             List<Cell> values = new ArrayList<Cell>();
             region.startRegionOperation(Operation.SCAN);
