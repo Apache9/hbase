@@ -154,16 +154,17 @@ public class ReplicationSourceManager {
    * replication status in zookeeper. It will also delete older entries.
    * @param id id of the peer cluster
    * @param position current location in the log
+   * @param writeTime write time of the current log entry
    * @param queueRecovered indicates if this queue comes from another region server
    * @param holdLogInZK if true then the log is retained in ZK
    */
-  public void logPositionAndCleanOldLogs(Path log, String id, long position, 
+  public void logPositionAndCleanOldLogs(Path log, String id, long position, long writeTime,
       boolean queueRecovered, boolean holdLogInZK) {
     String key = log.getName();
     if (LOG.isDebugEnabled()) {
       LOG.debug("Going to report log #" + key + " for position " + position + " in " + log);
     }
-    this.zkHelper.writeReplicationStatus(key, id, position);
+    this.zkHelper.writeReplicationStatus(key, id, position, writeTime);
     if (holdLogInZK) {
      return;
     }
