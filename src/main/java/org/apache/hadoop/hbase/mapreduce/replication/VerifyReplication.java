@@ -28,6 +28,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HConstants;
+import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Durability;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.HConnection;
@@ -83,8 +84,10 @@ public class VerifyReplication  extends Configured implements Tool {
   private String stopRow = null;
   private int scanRateLimit = -1;
   private long verifyRows = Long.MAX_VALUE;
-  private int maxErrorLog = 1000;
+  private long maxErrorLog = Long.MAX_VALUE;
   private String logTable = null;
+  private boolean skipWal = false;
+  private boolean repair = false;
   private int sleepToReCompare = 0;
       
   public VerifyReplication(Configuration conf) {
@@ -110,7 +113,9 @@ public class VerifyReplication  extends Configured implements Tool {
     private HTable sourceTable;
     private HTable peerTable;
     private HTable logTable;
-    private int maxErrorLog;
+    private boolean skipWal;
+    private boolean repair;
+    private long maxErrorLog;
     private int errors = 0;
     private int sleepToReCompare;
 
@@ -160,31 +165,19 @@ public class VerifyReplication  extends Configured implements Tool {
         peerId = conf.get(NAME + ".peerId");
         tableName = conf.get(NAME + ".tableName");
         sourceTable = new HTable(conf, tableName);
-        maxErrorLog = conf.getInt(NAME + ".maxErrorLog", 0);
+        maxErrorLog = conf.getLong(NAME + ".maxErrorLog", Long.MAX_VALUE);
         String logTableName = conf.get(NAME + ".logTable");
         if (logTableName != null) {
           logTable = new HTable(conf, logTableName);
         }
-        
+        skipWal = conf.getBoolean(NAME + ".skipWal", false);
+        repair = conf.getBoolean(NAME + ".repair", false);
+
         final TableSplit tableSplit = (TableSplit)(context.getInputSplit());
-        HConnectionManager.execute(new HConnectable<Void>(conf) {
-          @Override
-          public Void connect(HConnection conn) throws IOException {
-            try {
-              ReplicationZookeeper zk = new ReplicationZookeeper(conn, conf,
-                  conn.getZooKeeperWatcher());
-              ReplicationPeer peer = zk.getPeer(conf.get(NAME+".peerId"));
-              peerTable = new HTable(peer.getConfiguration(),
-                  conf.get(NAME+".tableName"));
-              scan.setStartRow(value.getRow());
-              scan.setStopRow(tableSplit.getEndRow());
-              replicatedScanner = peerTable.getScanner(scan);
-            } catch (KeeperException e) {
-              throw new IOException("Got a ZK exception", e);
-            }
-            return null;
-          }
-        });
+        peerTable = peerHTable(conf, peerId, tableName);
+        scan.setStartRow(value.getRow());
+        scan.setStopRow(tableSplit.getEndRow());
+        replicatedScanner = peerTable.getScanner(scan);
         currentCompareRowInPeerTable = replicatedScanner.next();
       }
       
@@ -192,6 +185,11 @@ public class VerifyReplication  extends Configured implements Tool {
         if (currentCompareRowInPeerTable == null) {
           // reach the region end of peer table, row only in source table
           logFailRowAndIncreaseCounter(context, Counters.ONLY_IN_SOURCE_TABLE_ROWS, value);
+          if (repair) {
+            // we must repair both side, since the peer side may contains a delete marker
+            put(sourceTable, rawGet(peerTable, value.getRow()));
+            put(peerTable, rawGet(sourceTable, value.getRow()));
+          }
           break;
         }
         int rowCmpRet = Bytes.compareTo(value.getRow(), currentCompareRowInPeerTable.getRow());
@@ -202,17 +200,29 @@ public class VerifyReplication  extends Configured implements Tool {
             context.getCounter(Counters.GOODROWS).increment(1);
           } catch (Exception e) {
             logFailRowAndIncreaseCounter(context, Counters.CONTENT_DIFFERENT_ROWS, value);
+            if (repair) {
+              put(sourceTable, rawGet(peerTable, value.getRow()));
+              put(peerTable, rawGet(sourceTable, value.getRow()));
+            }
           }
           currentCompareRowInPeerTable = replicatedScanner.next();
           break;
         } else if (rowCmpRet < 0) {
           // row only exists in source table
           logFailRowAndIncreaseCounter(context, Counters.ONLY_IN_SOURCE_TABLE_ROWS, value);
+          if (repair) {
+            put(sourceTable, rawGet(peerTable, value.getRow()));
+            put(peerTable, rawGet(sourceTable, value.getRow()));
+          }
           break;
         } else {
           // row only exists in peer table
           logFailRowAndIncreaseCounter(context, Counters.ONLY_IN_PEER_TABLE_ROWS,
             currentCompareRowInPeerTable);
+          if (repair) {
+            put(sourceTable, rawGet(peerTable, currentCompareRowInPeerTable.getRow()));
+            put(peerTable, rawGet(sourceTable, currentCompareRowInPeerTable.getRow()));
+          }
           currentCompareRowInPeerTable = replicatedScanner.next();
         }
       }
@@ -258,8 +268,9 @@ public class VerifyReplication  extends Configured implements Tool {
         buff.put(row);
         Put put = new Put(buff.array());
         put.add("A".getBytes(), "e".getBytes(), type.name().getBytes());
-        put.setDurability(Durability.SKIP_WAL);
-        // TODO throttling speed instead of count
+        if (skipWal) {
+          put.setDurability(Durability.SKIP_WAL);
+        }
         logTable.put(put);
         ++errors;
       }
@@ -268,9 +279,16 @@ public class VerifyReplication  extends Configured implements Tool {
     protected void cleanup(Context context) {
       if (replicatedScanner != null) {
         try {
-          while (currentCompareRowInPeerTable != null) {
+          long verifyRows = context.getConfiguration().getLong(NAME + ".verifyrows", Long.MAX_VALUE);
+          // page filter may return more rows since the region border may not be aligned
+          // with the source table
+          while (currentCompareRowInPeerTable != null && rowdone++ < verifyRows) {
             logFailRowAndIncreaseCounter(context, Counters.ONLY_IN_PEER_TABLE_ROWS,
               currentCompareRowInPeerTable);
+            if (repair) {
+              put(sourceTable, rawGet(peerTable, currentCompareRowInPeerTable.getRow()));
+              put(peerTable, rawGet(sourceTable, currentCompareRowInPeerTable.getRow()));
+            }
             currentCompareRowInPeerTable = replicatedScanner.next();
           }
         } catch (Exception e) {
@@ -296,6 +314,53 @@ public class VerifyReplication  extends Configured implements Tool {
           LOG.error("close source HTable fail", e);
         }
       }
+    }
+  }
+
+  public static HTable peerHTable(final Configuration conf, final String peerId,
+      final String tableName) throws IOException {
+    final HTable htable[] = new HTable[1];
+    HConnectionManager.execute(new HConnectionManager.HConnectable<Void>(conf) {
+      @Override
+      public Void connect(HConnection conn) throws IOException {
+        try {
+          ReplicationZookeeper zk = new ReplicationZookeeper(conn, conf,
+              conn.getZooKeeperWatcher());
+          ReplicationPeer peer = zk.getPeer(peerId);
+          HTable peerTable = new HTable(peer.getConfiguration(), tableName);
+          htable[0] = peerTable;
+        } catch (KeeperException e) {
+          throw new IOException("Got a ZK exception", e);
+        }
+        return null;
+      }
+    });
+    return htable[0];
+  }
+
+  public static Result rawGet(HTable table, byte[] row) throws IOException {
+    Scan scan = new Scan();
+    scan.setRaw(true);
+    scan.setStartRow(row);
+    scan.setStopRow(row);
+    scan.setCaching(1);
+    scan.setCacheBlocks(false);
+    scan.setMaxVersions(Integer.MAX_VALUE);
+    ResultScanner scanner = table.getScanner(scan);
+    try {
+      return scanner.next();
+    } finally {
+      scanner.close();
+    }
+  }
+
+  public static void put(HTable table, Result result) throws IOException {
+    if (result != null && !result.isEmpty()) {
+      Put put = new Put(result.getRow());
+      for (KeyValue kv : result.raw()) {
+        put.add(kv);
+      }
+      table.put(put);
     }
   }
 
@@ -344,7 +409,9 @@ public class VerifyReplication  extends Configured implements Tool {
     if (logTable != null) {
       conf.set(NAME + ".logTable", logTable);
     }
-    conf.setInt(NAME+".maxErrorLog", maxErrorLog);
+    conf.setBoolean(NAME + ".skipWal", skipWal);
+    conf.setLong(NAME + ".maxErrorLog", maxErrorLog);
+    conf.setBoolean(NAME + ".repair", repair);
     
     if (families != null) {
       conf.set(NAME+".families", families);
@@ -472,9 +539,21 @@ public class VerifyReplication  extends Configured implements Tool {
           continue;
         }
 
+        final String skipWalKey = "--skipwal";
+        if (cmd.equals(skipWalKey)) {
+          skipWal = true;
+          continue;
+        }
+
         final String maxErrorLogKey = "--maxerrorlog=";
         if (cmd.startsWith(maxErrorLogKey)) {
-          maxErrorLog = Integer.parseInt(cmd.substring(maxErrorLogKey.length()));
+          maxErrorLog = Long.parseLong(cmd.substring(maxErrorLogKey.length()));
+          continue;
+        }
+
+        final String repairKey = "--repair";
+        if (cmd.equals(repairKey)) {
+          repair = true;
           continue;
         }
 
@@ -515,7 +594,9 @@ public class VerifyReplication  extends Configured implements Tool {
     System.err.println(" verifyrows   number of rows each region in source table to verify.");
     System.err.println(" recomparesleep   milliseconds to sleep before recompare row.");
     System.err.println(" logtable     table to log the errors/differences (with column family C).");
+    System.err.println(" skipwal      skip writing WAL of log table.");
     System.err.println(" maxerrorlog  max number of errors to log for each region.");
+    System.err.println(" repair       repair the data by copy rows.");
     System.err.println();
     System.err.println("Args:");
     System.err.println(" peerid       Id of the peer used for verification, must match the one given for replication");

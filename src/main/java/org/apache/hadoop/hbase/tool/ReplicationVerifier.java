@@ -26,8 +26,6 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.TreeSet;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
@@ -43,25 +41,18 @@ import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Durability;
-import org.apache.hadoop.hbase.client.HConnection;
-import org.apache.hadoop.hbase.client.HConnectionManager;
+import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.HTable;
-import org.apache.hadoop.hbase.client.Mutation;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Row;
 import org.apache.hadoop.hbase.client.Scan;
-import org.apache.hadoop.hbase.regionserver.DeleteTracker;
-import org.apache.hadoop.hbase.regionserver.ScanDeleteTracker;
-import org.apache.hadoop.hbase.replication.ReplicationPeer;
-import org.apache.hadoop.hbase.replication.ReplicationZookeeper;
+import org.apache.hadoop.hbase.mapreduce.replication.VerifyReplication;
 import org.apache.hadoop.hbase.throughput.ThroughputLimiter;
-import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
-import org.apache.zookeeper.KeeperException;
 
 /**
  * HBase Replication verification tool, which monitoring the difference
@@ -69,9 +60,6 @@ import org.apache.zookeeper.KeeperException;
  */
 public final class ReplicationVerifier implements Tool {
   private static final Log LOG = LogFactory.getLog(ReplicationVerifier.class);
-  private static enum CompareResult {
-    OK, SLAVE_SIDE_MISSING, MASTER_SIDE_MISSING, TWO_SIDE_MISSING
-  }
   private Configuration conf;
 
   @Override public void setConf(Configuration conf) {
@@ -85,12 +73,12 @@ public final class ReplicationVerifier implements Tool {
   @Override public int run(String[] args) throws Exception {
     LOG.info("Start replication verification");
     String logTableName = conf.get("hbase.replication.verification.logtable", "replication-errors");
-    long alertTime =  conf.getInt("hbase.replication.verification.alerttime", 6 * 3600 * 1000);
-    boolean repair =  conf.getBoolean("hbase.replication.verification.repair", false);
-    int workers =  conf.getInt("hbase.replication.verification.workers", 10);
-    int rate =  conf.getInt("hbase.replication.verification.rate", 1000);
+    long alertTime = conf.getInt("hbase.replication.verification.alerttime", 6 * 3600 * 1000);
+    boolean repair = conf.getBoolean("hbase.replication.verification.repair", false);
+    int workers = conf.getInt("hbase.replication.verification.workers", 10);
+    int rate = conf.getInt("hbase.replication.verification.rate", 1000);
     int round = -1;
-    final HTable logTable = new HTable(conf, logTableName);
+    boolean clearFalseAlarm = false;
 
     // Process command line args
     for (int i = 0; i < args.length; i++) {
@@ -100,6 +88,15 @@ public final class ReplicationVerifier implements Tool {
         if (cmd.equals("-help")) {
           // user asked for help, print the help and quit.
           printUsageAndExit();
+        } else if (cmd.equals("-logtable")) {
+          i++;
+
+          if (i == args.length) {
+            System.err.println("-logtable needs a sting value argument.");
+            printUsageAndExit();
+          }
+
+          logTableName = args[i];
         } else if (cmd.equals("-round")) {
           i++;
 
@@ -130,6 +127,8 @@ public final class ReplicationVerifier implements Tool {
           }
         } else if (cmd.equals("-repair")) {
           repair = true;
+        } else if (cmd.equals("-clear")) {
+          clearFalseAlarm = true;
         } else if (cmd.equals("-workers")) {
           i++;
 
@@ -162,6 +161,7 @@ public final class ReplicationVerifier implements Tool {
       }
     }
 
+    HTable logTable = new HTable(conf, logTableName);
     ThroughputLimiter rateLimiter = new ThroughputLimiter(rate);
     BlockingQueue<Runnable> taskQueue = new ArrayBlockingQueue<Runnable>(1000);
     ExecutorService executorService =
@@ -186,7 +186,7 @@ public final class ReplicationVerifier implements Tool {
         while (true) {
           try {
             executorService.submit(new ReplicationCheckingTask(current, alertTime, repair,
-                falseAlarms, alerts, logTableMutations));
+                clearFalseAlarm, falseAlarms, alerts, logTableMutations));
             break;
           } catch (RejectedExecutionException e) {
             Thread.sleep(100);
@@ -197,7 +197,7 @@ public final class ReplicationVerifier implements Tool {
         current = scanner.next();
       }
 
-      while(taskQueue.size() > 0) {
+      while (taskQueue.size() > 0) {
         Thread.sleep(1000);
       }
       LOG.info(String.format("Verification finished, checked: %d, alerts: %d, false alarms: %d",
@@ -208,12 +208,13 @@ public final class ReplicationVerifier implements Tool {
         break;
       }
     }
-    logTableUpdateTask.stop();
     executorService.shutdown();
+    executorService.awaitTermination(1, TimeUnit.MINUTES);
+    logTableUpdateTask.stop();
 
     return 0;
   }
-  
+
   private class ReplicationLogTableUpdateTask implements Runnable {
     private BlockingQueue<Row> mutations;
     private HTable logTable;
@@ -223,49 +224,52 @@ public final class ReplicationVerifier implements Tool {
       this.logTable = logTable;
       this.mutations = mutations;
     }
-    
+
     public void stop() {
       this.stopping = true;
     }
 
     @Override public void run() {
-      while (!stopping) {
-        while (true) {
-          List<Row> m = new ArrayList<Row>();
-          mutations.drainTo(m, 1000);
-          if (!m.isEmpty()) {
-            try {
-              logTable.batch(m);
-            } catch (Exception e) {
-              // just discard it
-              LOG.error("Failed to write to log table", e);
-            }
-          } else {
-            try {
-              Thread.sleep(1000);
-            } catch (InterruptedException e) {
-              // ignore
-            }
+      while (true) {
+        List<Row> m = new ArrayList<Row>();
+        mutations.drainTo(m, 1000);
+        if (!m.isEmpty()) {
+          try {
+            logTable.batch(m);
+          } catch (Exception e) {
+            // just discard it
+            LOG.error("Failed to write to log table", e);
+          }
+        } else {
+          if (stopping) {
             break;
+          }
+          try {
+            Thread.sleep(1000);
+          } catch (InterruptedException e) {
+            // ignore
           }
         }
       }
     }
   }
-  
+
   private class ReplicationCheckingTask implements Runnable {
     private Result record;
     private long alertTime;
     private boolean repair;
+    private boolean clearFalseAlarms;
     private AtomicLong falseAlarms;
     private AtomicLong alerts;
     private BlockingQueue<Row> logTableMutations;
 
     private ReplicationCheckingTask(Result record, long alertTime, boolean repair,
-        AtomicLong falseAlarms, AtomicLong alerts, BlockingQueue<Row> logTableMutations) {
+        boolean clearFalseAlarm, AtomicLong falseAlarms, AtomicLong alerts,
+        BlockingQueue<Row> logTableMutations) {
       this.record = record;
       this.alertTime = alertTime;
       this.repair = repair;
+      this.clearFalseAlarms = clearFalseAlarm;
       this.falseAlarms = falseAlarms;
       this.alerts = alerts;
       this.logTableMutations = logTableMutations;
@@ -273,39 +277,35 @@ public final class ReplicationVerifier implements Tool {
 
     @Override public void run() {
       try {
-      ByteBuffer buff = ByteBuffer.wrap(record.getRow());
-      buff.get(); // discard salt byte
-      byte[] peerIdBytes = new byte[buff.getShort()];
-      buff.get(peerIdBytes);
-      String peerId = new String(peerIdBytes);
-      byte[] tableNameBytes = new byte[buff.getShort()];
-      buff.get(tableNameBytes);
-      String tableName = new String(tableNameBytes);
-      byte[] row = new byte[buff.getShort()];
-      buff.get(row);
-      Result masterRawResult = rawGet(masterHTable(tableName), row);
-      Result slaveRawResult = rawGet(slaveHTable(peerId, tableName), row);
+        ByteBuffer buff = ByteBuffer.wrap(record.getRow());
+        buff.get(); // discard salt byte
+        byte[] peerIdBytes = new byte[buff.getShort()];
+        buff.get(peerIdBytes);
+        String peerId = new String(peerIdBytes);
+        byte[] tableNameBytes = new byte[buff.getShort()];
+        buff.get(tableNameBytes);
+        String tableName = new String(tableNameBytes);
+        byte[] row = new byte[buff.getShort()];
+        buff.get(row);
 
-      Result masterResult = visibleResult(masterRawResult == null ? null : masterRawResult.list());
-      Result slaveResult = visibleResult(slaveRawResult == null ? null : slaveRawResult.list());
+        final Get get = new Get(row);
+        Result sourceResult = sourceHTable(tableName).get(get);
+        Result peerResult = peerHTable(peerId, tableName).get(get);
 
-        CompareResult compareResult;
-        try {
-          Result.compareResults(masterResult, slaveResult);
-          compareResult = CompareResult.OK;
-        } catch (Exception e0) {
-          Result mergedResult = mergeResults(masterRawResult, slaveRawResult);
+        VerifyReplication.Verifier.Counters compareResult;
+        if (sourceResult == null && peerResult != null) {
+          compareResult = VerifyReplication.Verifier.Counters.ONLY_IN_PEER_TABLE_ROWS;
+        } else if (sourceResult != null && peerResult == null) {
+          compareResult = VerifyReplication.Verifier.Counters.ONLY_IN_SOURCE_TABLE_ROWS;
+        } else if (sourceResult != null && peerResult != null) {
           try {
-            Result.compareResults(masterResult, mergedResult);
-            compareResult = CompareResult.SLAVE_SIDE_MISSING;
-          } catch (Exception e1) {
-            try {
-              Result.compareResults(slaveResult, mergedResult);
-              compareResult = CompareResult.MASTER_SIDE_MISSING;
-            } catch (Exception e3) {
-              compareResult = CompareResult.TWO_SIDE_MISSING;
-            }
+            Result.compareResults(sourceResult, peerResult);
+            compareResult = VerifyReplication.Verifier.Counters.GOODROWS;
+          } catch (Exception e) {
+            compareResult = VerifyReplication.Verifier.Counters.CONTENT_DIFFERENT_ROWS;
           }
+        } else {
+          compareResult = VerifyReplication.Verifier.Counters.GOODROWS;
         }
         // The time of the first check
         KeyValue kvt = record.getColumnLatest("A".getBytes(), "t".getBytes());
@@ -316,19 +316,23 @@ public final class ReplicationVerifier implements Tool {
         boolean alert = kvt != null &&
             EnvironmentEdgeManager.currentTimeMillis() - kvt.getTimestamp() > alertTime;
         switch (compareResult) {
-        case OK:
+        case GOODROWS:
           falseAlarms.incrementAndGet();
-          Delete delete = new Delete(record.getRow());
-          delete.setDurability(Durability.SKIP_WAL);
-          logTableMutations.put(delete);
+          if (clearFalseAlarms) {
+            Delete delete = new Delete(record.getRow());
+            delete.setDurability(Durability.SKIP_WAL);
+            logTableMutations.put(delete);
+          }
           break;
-        case MASTER_SIDE_MISSING:
-        case TWO_SIDE_MISSING:
+        case ONLY_IN_PEER_TABLE_ROWS:
+        case CONTENT_DIFFERENT_ROWS:
           alert = true;
-        case SLAVE_SIDE_MISSING:
+        case ONLY_IN_SOURCE_TABLE_ROWS:
           if (repair) {
-            put(masterHTable(tableName), slaveRawResult);
-            put(slaveHTable(peerId, tableName), masterRawResult);
+            Result sourceRawResult = VerifyReplication.rawGet(sourceHTable(tableName), row);
+            Result peerRawResult = VerifyReplication.rawGet(peerHTable(peerId, tableName), row);
+            VerifyReplication.put(sourceHTable(tableName), peerRawResult);
+            VerifyReplication.put(peerHTable(peerId, tableName), sourceRawResult);
           }
           Put put = new Put(record.getRow());
           put.setDurability(Durability.SKIP_WAL);
@@ -350,7 +354,7 @@ public final class ReplicationVerifier implements Tool {
       }
     }
   }
-  
+
   private ThreadLocal<Map<String, HTable>> sourceTables = new ThreadLocal<Map<String, HTable>>() {
     @Override protected Map<String, HTable> initialValue() {
       return new HashMap<String, HTable>();
@@ -362,7 +366,7 @@ public final class ReplicationVerifier implements Tool {
     }
   };
 
-  private HTable masterHTable(String tableName) throws IOException {
+  private HTable sourceHTable(String tableName) throws IOException {
     HTable sourceTable = sourceTables.get().get(tableName);
     if (sourceTable == null) {
       sourceTable = new HTable(conf, tableName);
@@ -371,120 +375,28 @@ public final class ReplicationVerifier implements Tool {
     return sourceTable;
   }
 
-  private HTable slaveHTable(final String peerId, final String tableName)
+  private HTable peerHTable(final String peerId, final String tableName)
       throws IOException {
     final String key = peerId + tableName;
     HTable peerTable = peerTables.get().get(key);
     if (peerTable == null) {
-      HConnectionManager.execute(new HConnectionManager.HConnectable<Void>(conf) {
-        @Override
-        public Void connect(HConnection conn) throws IOException {
-          try {
-            ReplicationZookeeper zk = new ReplicationZookeeper(conn, conf,
-                conn.getZooKeeperWatcher());
-            ReplicationPeer peer = zk.getPeer(peerId);
-            HTable peerTable = new HTable(peer.getConfiguration(), tableName);
-            peerTables.get().put(key, peerTable);
-          } catch (KeeperException e) {
-            throw new IOException("Got a ZK exception", e);
-          }
-          return null;
-        }
-      });
-      peerTable = peerTables.get().get(key);
+      peerTable = VerifyReplication.peerHTable(conf, peerId, tableName);
+      peerTables.get().put(key, peerTable);
     }
     return peerTable;
-  }
-  
-  private Result rawGet(HTable table, byte[] row) throws IOException {
-    Scan scan = new Scan();
-    scan.setRaw(true);
-    scan.setStartRow(row);
-    scan.setStopRow(row);
-    scan.setCaching(1);
-    scan.setCacheBlocks(false);
-    ResultScanner scanner = table.getScanner(scan);
-    try {
-      return scanner.next();
-    } finally {
-      scanner.close();
-    }
-  }
-
-  private void put(HTable table, Result result) throws IOException {
-    if (result != null && !result.isEmpty()) {
-      Put put = new Put(result.getRow());
-      for (KeyValue kv : result.raw()) {
-        put.add(kv);
-      }
-      table.put(put);
-    }
-  }
-
-  // merge key values from multiple results and get the final visible result
-  private Result mergeResults(Result ... rawResults) {
-    Set<KeyValue> kvSet = new TreeSet<KeyValue>(KeyValue.COMPARATOR);
-    for (Result result : rawResults) {
-      if (result != null) {
-        kvSet.addAll(result.list());
-      }
-    }
-    return visibleResult(kvSet);
-  }
-
-  // Get the visible result
-  private Result visibleResult(Iterable<KeyValue> sortedKeyValues) {
-    List<KeyValue> kvs = new ArrayList<KeyValue>();
-    if (sortedKeyValues != null) {
-      byte[] currentFamily = null;
-      byte[] qualifier = null;
-      ScanDeleteTracker familyDeleteTracker = null;
-      for (KeyValue kv : sortedKeyValues) {
-        if (currentFamily == null || !Bytes.equals(currentFamily, kv.getFamily())) {
-          // switch to next family and clean previous delete tracker
-          currentFamily = kv.getFamily();
-          familyDeleteTracker = null;
-        }
-        switch (KeyValue.Type.codeToType(kv.getType())) {
-        case DeleteFamily:
-        case DeleteColumn:
-        case DeleteFamilyVersion:
-        case Delete:
-          if (familyDeleteTracker == null) {
-            familyDeleteTracker = new ScanDeleteTracker();
-          }
-          familyDeleteTracker.add(kv.getBuffer(), kv.getQualifierOffset(),
-              kv.getQualifierLength(), kv.getTimestamp(), kv.getType());
-          break;
-        case Put:
-          boolean visible = true;
-          if (familyDeleteTracker != null) {
-            DeleteTracker.DeleteResult dr = familyDeleteTracker.isDeleted(kv.getBuffer(),
-                kv.getQualifierOffset(), kv.getQualifierLength(), kv.getTimestamp());
-            visible = dr == DeleteTracker.DeleteResult.NOT_DELETED;
-          }
-          if (visible) {
-            // keep the most recent version only
-            if (qualifier == null || !Bytes.equals(qualifier, kv.getQualifier())) {
-              qualifier = kv.getQualifier();
-              kvs.add(kv);
-            }
-          }
-        }
-      }
-    }
-    return new Result(kvs);
   }
 
   private void printUsageAndExit() {
     System.err.printf("Usage: bin/hbase %s [opts]\n", getClass().getName());
     System.err.println(" where [opts] are:");
     System.err.println("   -help          Show this help and exit.");
+    System.err.println("   -logtable <S>  Error log table to read from.");
     System.err.println("   -round <N>     Number of round to check.");
     System.err.println("   -workers <N>   Number of worker threads.");
     System.err.println("   -rate <N>      Max scan rate.");
     System.err.println("   -alerttime <N> Min time to trigger an alert.");
     System.err.println("   -repair        Repair mismatched rows.");
+    System.err.println("   -clear         Clear false alarms.");
     System.exit(1);
   }
 
