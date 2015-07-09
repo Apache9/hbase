@@ -67,9 +67,6 @@ import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.ServerName;
-import org.apache.hadoop.hbase.ipc.CallerDisconnectedException;
-import org.apache.hadoop.hbase.ipc.HBaseServer;
-import org.apache.hadoop.hbase.ipc.RpcCallContext;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.ClassSize;
 import org.apache.hadoop.hbase.util.DrainBarrier;
@@ -1666,19 +1663,10 @@ public class HLog implements Syncable {
 
   // sync all transactions upto the specified txid
   private void syncer(long txid) throws IOException {
-    RpcCallContext rpcCall = HBaseServer.getCurrentCall();
     synchronized (this.syncedTillHere) {
       while (this.syncedTillHere.get() < txid) {
         try {
           this.syncedTillHere.wait();
-          if (rpcCall != null) {
-            try {
-              rpcCall.throwExceptionIfCallerDisconnected();
-            } catch (CallerDisconnectedException cde) {
-              LOG.info("", cde);
-              throw cde; 
-            }
-          }
         } catch (InterruptedException e) {
           LOG.debug("interrupted while waiting for notification from AsyncNotifier");
         }
