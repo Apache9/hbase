@@ -68,6 +68,7 @@ import org.apache.hadoop.hbase.TableDescriptors;
 import org.apache.hadoop.hbase.TableNotDisabledException;
 import org.apache.hadoop.hbase.TableNotFoundException;
 import org.apache.hadoop.hbase.UnknownRegionException;
+import org.apache.hadoop.hbase.YouAreDeadException;
 import org.apache.hadoop.hbase.catalog.CatalogTracker;
 import org.apache.hadoop.hbase.catalog.MetaReader;
 import org.apache.hadoop.hbase.client.HConnectionManager;
@@ -1137,6 +1138,12 @@ Server {
   public RegionStatistics regionServerReport(final byte [] sn, final HServerLoad hsl)
   throws IOException {
     ServerName regionSever = ServerName.parseVersionedServerName(sn);
+    if (!regionServerTracker.checkIfAlive(regionSever)) {
+      String message =
+          "Server report rejected; No ephemeral node on zookeeper for regionserver: " + regionSever;
+      LOG.warn(message);
+      throw new YouAreDeadException(message);
+    }
     this.serverManager.regionServerReport(regionSever, hsl);
     updateLastFlushedSequenceIds(sn, hsl);
     if (hsl != null && this.metrics != null) {

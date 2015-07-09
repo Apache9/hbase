@@ -154,7 +154,7 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
     this(store, scan.getCacheBlocks(), scan, columns, scanInfo.getTtl(),
         scanInfo.getMinVersions());
     initializeMetricNames();
-    if (columns != null && scan.isRaw()) {
+    if (columns != null && columns.size() > 0 && scan.isRaw()) {
       throw new DoNotRetryIOException(
           "Cannot specify any column for a raw scan");
     }

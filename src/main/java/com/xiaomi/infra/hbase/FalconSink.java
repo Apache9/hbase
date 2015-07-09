@@ -122,6 +122,9 @@ public class FalconSink implements Sink, Configurable {
   }
 
   private void pushMetrics() {
+    if (totalReadCounter.get() == 0L && totalWriteCounter.get() == 0L) {
+      return;
+    }
     String clusterName = conf.get("hbase.cluster.name", "unknown");
     double readAvail = calc(failedReadCounter, totalReadCounter);
     double writeAvail = calc(failedWriteCounter, totalWriteCounter);

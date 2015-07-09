@@ -43,9 +43,11 @@ import org.apache.hadoop.hbase.client.HConnection;
 import org.apache.hadoop.hbase.client.HConnectionManager;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.HTableInterface;
+import org.apache.hadoop.hbase.client.Increment;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
+import org.apache.hadoop.hbase.client.Row;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.client.replication.ReplicationAdmin;
 import org.apache.hadoop.hbase.filter.CompareFilter.CompareOp;
@@ -74,6 +76,8 @@ public class TestSaltedHTable {
   private static final byte[] ROW_C = Bytes.toBytes("ccc");
 
   private static final byte[] qualifierCol1 = Bytes.toBytes("col1");
+  private static final byte[] incrementQual = Bytes.toBytes("inc");
+  private static final byte[] deleteQual = Bytes.toBytes("deleteQal");
 
   private static final byte[] bytes1 = Bytes.toBytes(1);
   private static final byte[] bytes2 = Bytes.toBytes(2);
@@ -429,6 +433,44 @@ public class TestSaltedHTable {
     byte[] actualValue = result.getValue(TEST_FAMILY, qualifierCol1);
     assertArrayEquals(expectedValue, actualValue);
   }
+    
+  @Test
+  public void TestIncrement() throws IOException {  
+    Increment increment = new Increment(ROW_A);
+    increment.addColumn(TEST_FAMILY, incrementQual, 0);
+    Result result = saltedHTable.increment(increment);
+    Assert.assertArrayEquals(ROW_A, result.getRow());
+    Assert.assertEquals(0, Bytes.toLong(result.getValue(TEST_FAMILY, incrementQual)));
+    increment.addColumn(TEST_FAMILY, incrementQual, 10);
+    result = saltedHTable.increment(increment);
+    Assert.assertArrayEquals(ROW_A, result.getRow());
+    Assert.assertEquals(10, Bytes.toLong(result.getValue(TEST_FAMILY, incrementQual)));
+  }
+  
+  @Test
+  public void TestBatch() throws Exception {
+    Result result = saltedHTable.get(new Get(ROW_A));
+    byte[] origBytes = result.getValue(TEST_FAMILY, incrementQual);
+    long incrValue = origBytes == null ? 0 : Bytes.toLong(origBytes);
+    byte[] testValue = Bytes.toBytes("testValue");
+    Put put = new Put(ROW_A).add(TEST_FAMILY, deleteQual, testValue);
+    saltedHTable.put(put);
+    
+    // do batch
+    List actions = new ArrayList();
+    put = new Put(ROW_A).add(TEST_FAMILY, qualifierCol1, testValue);
+    Delete delete = new Delete(ROW_A).deleteColumns(TEST_FAMILY, deleteQual);
+    Increment increment = new Increment(ROW_A).addColumn(TEST_FAMILY, incrementQual, 10);
+    actions.add(put);
+    actions.add(delete);
+    actions.add(increment);
+    Object[] results = saltedHTable.batch(actions);
+    result = saltedHTable.get(new Get(ROW_A));
+    Assert.assertArrayEquals(testValue, result.getValue(TEST_FAMILY, qualifierCol1));
+    Assert.assertNull(result.getValue(TEST_FAMILY, deleteQual));
+    Assert.assertEquals(incrValue + 10, Bytes.toLong(result.getValue(TEST_FAMILY, incrementQual)));
+  }
+  
 
   @Test
   public void testReplication() throws Exception {

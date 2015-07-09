@@ -351,48 +351,7 @@ public class ReplicationSource extends Thread
     LOG.debug("Source exiting " + peerId);
   }
 
-  @Override
-  public void run() {
-    connectToPeers();
-    // We were stopped while looping to connect to sinks, just abort
-    if (!this.isActive()) {
-      uninitialize();
-      return;
-    }
-    int sleepMultiplier = 1;
-    // delay this until we are in an asynchronous thread
-    while (this.isActive() && this.peerClusterId == null) {
-      this.peerClusterId = zkHelper.getPeerUUID(this.peerId);
-      if (this.isActive() && this.peerClusterId == null) {
-        if (sleepForRetries("Cannot contact the peer's zk ensemble", sleepMultiplier)) {
-          sleepMultiplier++;
-        }
-      }
-    }
-    //We were stopped while looping to contact peer's zk ensemble, just abort
-    if (!this.isActive()) {
-      uninitialize();
-      return;
-    }
-
-    // resetting to 1 to reuse later
-    sleepMultiplier = 1;
-
-    if (LOG.isDebugEnabled()) {
-      LOG.debug("Replicating "+clusterId + " -> " + peerClusterId);
-    }
-
-    // If this is recovered, the queue is already full and the first log
-    // normally has a position (unless the RS failed between 2 logs)
-    if (this.queueRecovered) {
-      try {
-        this.repLogReader.setPosition(this.zkHelper.getHLogRepPosition(
-            this.peerClusterZnode, this.queue.peek().getName()));
-      } catch (KeeperException e) {
-        this.terminate("Couldn't get the position of this recovered queue " +
-            peerClusterZnode, e);
-      }
-    }
+  private void runLoop(int sleepMultiplier) {
     // Loop until we close down
     while (isActive()) {
       // Sleep until replication is enabled again
@@ -497,6 +456,58 @@ public class ReplicationSource extends Thread
       }
       sleepMultiplier = 1;
       shipEdits(currentWALisBeingWrittenTo);
+    }
+  }
+
+  @Override
+  public void run() {
+    connectToPeers();
+    // We were stopped while looping to connect to sinks, just abort
+    if (!this.isActive()) {
+      uninitialize();
+      return;
+    }
+    int sleepMultiplier = 1;
+    // delay this until we are in an asynchronous thread
+    while (this.isActive() && this.peerClusterId == null) {
+      this.peerClusterId = zkHelper.getPeerUUID(this.peerId);
+      if (this.isActive() && this.peerClusterId == null) {
+        if (sleepForRetries("Cannot contact the peer's zk ensemble", sleepMultiplier)) {
+          sleepMultiplier++;
+        }
+      }
+    }
+    //We were stopped while looping to contact peer's zk ensemble, just abort
+    if (!this.isActive()) {
+      uninitialize();
+      return;
+    }
+
+    // resetting to 1 to reuse later
+    sleepMultiplier = 1;
+
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("Replicating "+clusterId + " -> " + peerClusterId);
+    }
+
+    // If this is recovered, the queue is already full and the first log
+    // normally has a position (unless the RS failed between 2 logs)
+    if (this.queueRecovered) {
+      try {
+        this.repLogReader.setPosition(this.zkHelper.getHLogRepPosition(
+            this.peerClusterZnode, this.queue.peek().getName()));
+      } catch (KeeperException e) {
+        this.terminate("Couldn't get the position of this recovered queue " +
+            peerClusterZnode, e);
+      }
+    }
+
+    try {
+      runLoop(sleepMultiplier);
+    } catch (Throwable e){
+      if (this.isActive()) {
+        LOG.fatal("Replication source exited unexpectedly", e);
+      }
     }
     uninitialize();
   }
@@ -957,7 +968,8 @@ public class ReplicationSource extends Thread
           LOG.debug("Replicated in total: " + this.totalReplicatedEdits);
         }
         break;
-      } catch (Exception ioe) {
+      } catch (Throwable ioe) {
+        LOG.warn("Replicate edites to peer cluster failed.", ioe);
         // also retry when NPE in HBaseClient(https://phabricator.d.xiaomi.net/T2630) so that
         // retain the context to help to fix bug
         // Didn't ship anything, but must still age the last time we did
@@ -1006,6 +1018,8 @@ public class ReplicationSource extends Thread
           } while (this.isActive() && down );
         } catch (InterruptedException e) {
           LOG.debug("Interrupted while trying to contact the peer cluster");
+        } catch (Throwable e) {
+          LOG.error("Failed to contact the peer cluster", e);
         }
       }
     }
