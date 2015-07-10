@@ -37,6 +37,7 @@ import org.apache.hadoop.hbase.exceptions.DeserializationException;
 import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.BytesBytesPair;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.NameStringPair;
+import org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.ReplicationState;
 import org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos;
 import org.apache.hadoop.hbase.replication.ReplicationPeer.PeerState;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -124,8 +125,9 @@ public class ReplicationPeersZKImpl extends ReplicationStateZKBase implements Re
       // There is a race (if hbase.zookeeper.useMulti is false)
       // b/w PeerWatcher and ReplicationZookeeper#add method to create the
       // peer-state znode. This happens while adding a peer
-      // The peer state data is set as "ENABLED" by default.
-      ZKUtilOp op2 = ZKUtilOp.createAndFailSilent(getPeerStateNode(id), ENABLED_ZNODE_BYTES);
+      byte[] stateBytes = peerConfig.getState().equals(ReplicationState.State.ENABLED) ? ENABLED_ZNODE_BYTES
+          : DISABLED_ZNODE_BYTES;
+      ZKUtilOp op2 = ZKUtilOp.createAndFailSilent(getPeerStateNode(id), stateBytes);
       String tableCFsStr = (tableCFs == null) ? "" : tableCFs;
       ZKUtilOp op3 = ZKUtilOp.createAndFailSilent(getTableCFsNode(id), Bytes.toBytes(tableCFsStr));
       listOfOps.add(op1);
