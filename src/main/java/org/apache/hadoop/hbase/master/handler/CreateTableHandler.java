@@ -42,6 +42,7 @@ import org.apache.hadoop.hbase.catalog.MetaEditor;
 import org.apache.hadoop.hbase.catalog.MetaReader;
 import org.apache.hadoop.hbase.executor.EventHandler;
 import org.apache.hadoop.hbase.master.AssignmentManager;
+import org.apache.hadoop.hbase.master.HMaster;
 import org.apache.hadoop.hbase.master.MasterFileSystem;
 import org.apache.hadoop.hbase.master.ServerManager;
 import org.apache.hadoop.hbase.util.FSTableDescriptors;
@@ -202,7 +203,7 @@ public class CreateTableHandler extends EventHandler {
       throw new IOException("Unable to move table from temp=" + tempTableDir +
         " to hbase root=" + tableDir);
     }
-    
+
     if (regionInfos != null && regionInfos.size() > 0) {
       // 4. Add regions to META
       addRegionsToMeta(this.catalogTracker, regionInfos);
@@ -228,6 +229,9 @@ public class CreateTableHandler extends EventHandler {
       throw new IOException("Unable to ensure that " + tableName + " will be" +
         " enabled because of a ZooKeeper issue", e);
     }
+
+    // 7. Update the tabledescriptor cache.
+    ((HMaster) this.server).getTableDescriptors().get(tableName);
   }
 
   /**

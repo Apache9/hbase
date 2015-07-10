@@ -250,6 +250,8 @@ Server {
   private MasterCoprocessorHost cpHost;
   private final ServerName serverName;
 
+  private final boolean preLoadTableDescriptors;
+
   private TableDescriptors tableDescriptors;
 
   // Time stamps for when a hmaster was started and when it became active
@@ -367,6 +369,10 @@ Server {
     this.metrics = new MasterMetrics(getServerName().toString());
     this.pauseMonitor = new JvmPauseMonitor(conf);
     this.jvmThreadMonitor = new JvmThreadMonitor(conf);
+
+    // preload table descriptor at startup
+    this.preLoadTableDescriptors = conf.getBoolean("hbase.master.preload.tabledescriptors", true);
+
 
     // Health checker thread.
     int sleepTime = this.conf.getInt(HConstants.HEALTH_CHORE_WAKE_FREQ,
@@ -597,6 +603,15 @@ Server {
     this.tableDescriptors =
       new FSTableDescriptors(this.fileSystemManager.getFileSystem(),
       this.fileSystemManager.getRootDir());
+
+    // enable table descriptors cache
+    this.tableDescriptors.setCacheOn();
+
+    // warm-up HTDs cache on master initialization
+    if (preLoadTableDescriptors) {
+      status.setStatus("Pre-loading table descriptors");
+      this.tableDescriptors.getAll();
+    }
 
     // publish cluster ID
     status.setStatus("Publishing Cluster ID in ZooKeeper");
@@ -1722,7 +1737,7 @@ Server {
     }
     return port;
   }
-  
+
   /**
    * @return array of coprocessor SimpleNames.
    */
@@ -2099,7 +2114,7 @@ Server {
       throws IOException {
     List<HTableDescriptor> descriptors =
       new ArrayList<HTableDescriptor>(tableNames.size());
-    
+
     boolean bypass = false;
     if (this.cpHost != null) {
       bypass = this.cpHost.preGetTableDescriptors(tableNames, descriptors);

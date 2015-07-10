@@ -65,4 +65,14 @@ public interface TableDescriptors {
    */
   public HTableDescriptor remove(final String tablename)
   throws IOException;
+  
+  /**
+   * Enables the tabledescriptor cache
+   */
+  void setCacheOn() throws IOException;
+
+  /**
+   * Disables the tabledescriptor cache
+   */
+  void setCacheOff() throws IOException;
 }
