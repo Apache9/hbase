@@ -65,6 +65,29 @@ public interface MXBean {
   public double getAverageLoad();
 
   /**
+   * Get Online Region Count
+   * @return Online Region Count
+   */
+  public int getOnlineRegionCount();
+
+  /**
+   * Get Rit Count
+   * @return Rit Count
+   */
+  public int getRitCount();
+
+  /**
+   * Get Rit Count over Threshold
+   * @return Rit Count over Threshold
+   */
+  public int getRitCountOverThreshold();
+  /**
+   * Get Rit Oldest Age 
+   * @return Rit Oldest Age
+   */
+  public long getRitOldestAge();
+  
+  /**
    * Get the Cluster ID
    * @return Cluster ID
    */

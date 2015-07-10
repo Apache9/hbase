@@ -2227,6 +2227,22 @@ Server {
     return this.assignmentManager.getAverageLoad();
   }
 
+  public int getOnlineRegionCount() {
+    return this.assignmentManager.getOnlineRegionCount();
+  }
+
+  public int getRitCount() {
+    return this.assignmentManager.getRegionsInTransitionCount();
+  } 
+
+  public int getRitCountOverThreshold() {
+    return this.assignmentManager.getRitCountOverThreshold();
+  }
+
+  public long getRitOldestAge() {
+    return this.assignmentManager.getRitOldestAge();
+  }
+
   /**
    * Special method, only used by hbck.
    */
