@@ -69,7 +69,9 @@ public class ReplicationPeerConfig {
    */
   public ReplicationPeerConfig setProtocol(ReplicationPeer.PeerProtocol protocol) {
     this.protocol = protocol;
-    setReplicationEndpointImpl(protocol.getReplicationEndpointImpl());
+    if (protocol.getReplicationEndpointImpl() != null) {
+      setReplicationEndpointImpl(protocol.getReplicationEndpointImpl());
+    }
     return this;
   }
 
