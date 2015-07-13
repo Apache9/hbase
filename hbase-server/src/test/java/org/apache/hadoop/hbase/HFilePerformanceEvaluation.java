@@ -474,10 +474,13 @@ public class HFilePerformanceEvaluation {
     void doRow(int i) throws Exception {
       HFileScanner scanner = this.reader.getScanner(false, true);
       byte[] gaussianRandomRowBytes = getGaussianRandomRowBytes();
-      scanner.seekTo(gaussianRandomRowBytes);
+      if (scanner.seekTo(gaussianRandomRowBytes) != 0) {
+        System.out.println("Nonexistent row: " + new String(gaussianRandomRowBytes));
+        return;
+      }
       for (int ii = 0; ii < 30; ii++) {
         if (!scanner.next()) {
-          LOG.info("NOTHING FOLLOWS");
+          LOG.info("NOTHING FOLLOWS:" + ii);
           return;
         }
         scanner.getKey();
