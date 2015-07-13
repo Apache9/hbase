@@ -462,8 +462,18 @@ public class CacheConfig {
           throw new RuntimeException(ioex);
         }
       }
+      boolean inMemoryForceMode = conf.getBoolean("hbase.rs.inmemoryforcemode",
+          false);
+      float singleFactor =
+        conf.getFloat("hbase.blockcache.single.percentage", (float) 0.25f);
+      float multiFactor =
+        conf.getFloat("hbase.blockcache.multi.percentage", (float) 0.50f);
+      float memoryFactor =
+        conf.getFloat("hbase.blockcache.memory.percentage", (float) 0.25f);
       LOG.info("Allocating LruBlockCache with maximum size " +
-        StringUtils.humanReadableInt(lruCacheSize));
+          StringUtils.humanReadableInt(lruCacheSize) + ", inMemoryForceMode = " +
+          inMemoryForceMode + ", singleFactor = " + singleFactor + ", multiFactor = "
+          + multiFactor + ", memoryFactor = " + memoryFactor);
       LruBlockCache lruCache = new LruBlockCache(lruCacheSize, blockSize, true, conf);
       lruCache.setVictimCache(bucketCache);
       if (bucketCache != null && combinedWithLru) {
