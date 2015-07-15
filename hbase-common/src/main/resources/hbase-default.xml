@@ -1078,8 +1078,10 @@ possible configurations would overwhelm and obscure the important.
   </property>
   <property>
     <name>hbase.lease.recovery.timeout</name>
-    <value>900000</value>
-    <description>How long we wait on dfs lease recovery in total before giving up.</description>
+    <value>315360000000</value>
+    <description>How long we wait on dfs lease recovery in total before giving up.
+                 @xiaomi, set it to 10 yeasrs(10 * 365 * 24 * 60 * 60 * 1000) to make sure hbase 
+                 never lose data.</description>
   </property>
   <property>
     <name>hbase.lease.recovery.dfs.timeout</name>

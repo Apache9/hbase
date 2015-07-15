@@ -33,6 +33,7 @@ import org.apache.hadoop.hbase.io.hfile.BlockCache;
 import org.apache.hadoop.hbase.io.hfile.CacheConfig;
 import org.apache.hadoop.hbase.io.hfile.CacheStats;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
+import org.apache.hadoop.hbase.util.FSUtils;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
 import org.apache.hadoop.metrics2.MetricsExecutor;
 
@@ -396,6 +397,11 @@ class MetricsRegionServerWrapperImpl
   @Override
   public long getMajorCompactedCellsSize() {
     return majorCompactedCellsSize;
+  }
+  
+  @Override
+  public long getFsRecoverLeaseTime() {
+    return FSUtils.getMaxRecoverLeaseTime();
   }
 
   /**

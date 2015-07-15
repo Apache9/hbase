@@ -94,7 +94,8 @@ public abstract class FSUtils {
   public static final String FULL_RWX_PERMISSIONS = "777";
   private static final String THREAD_POOLSIZE = "hbase.client.localityCheck.threadPoolSize";
   private static final int DEFAULT_THREAD_POOLSIZE = 2;
-
+  protected static long recoverLeaseTime = 0;
+  
   /** Set to true on Windows platforms */
   public static final boolean WINDOWS = System.getProperty("os.name").startsWith("Windows");
 
@@ -1936,5 +1937,15 @@ public abstract class FSUtils {
     // But short circuit buffer size is normally not set.  Put in place the hbase wanted size.
     int hbaseSize = conf.getInt("hbase." + dfsKey, defaultSize);
     conf.setIfUnset(dfsKey, Integer.toString(hbaseSize));
+  }
+  
+  /**
+   * Get the maximum recover lease time
+   * @return
+   */
+  public static long getMaxRecoverLeaseTime() {
+    long maxRecoverLeaseTime = recoverLeaseTime;
+    recoverLeaseTime = 0;
+    return maxRecoverLeaseTime;
   }
 }
