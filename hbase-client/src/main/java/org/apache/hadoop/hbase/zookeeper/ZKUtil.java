@@ -963,18 +963,27 @@ public class ZKUtil {
       return false;
     }
 
+    // xiaomi use jaas file to config secure zk access
+    if (System.getProperty("java.security.auth.login.config") != null)
+      return true;
+
     // Master & RSs uses hbase.zookeeper.client.*
     return("kerberos".equalsIgnoreCase(conf.get("hbase.security.authentication")) &&
          conf.get("hbase.zookeeper.client.keytab.file") != null);
   }
 
-  private static ArrayList<ACL> createACL(ZooKeeperWatcher zkw, String node) {
+  public static ArrayList<ACL> createACL(ZooKeeperWatcher zkw, String node) {
     if (!node.startsWith(zkw.baseZNode)) {
       return Ids.OPEN_ACL_UNSAFE;
     }
     if (isSecureZooKeeper(zkw.getConfiguration())) {
-      String superUser = zkw.getConfiguration().get("hbase.superuser");
       ArrayList<ACL> acls = new ArrayList<ACL>();
+      acls.addAll(ZooKeeperWatcher.CREATOR_ALL_AND_WORLD_READABLE);
+      String superUser = zkw.getConfiguration().get("hbase.superuser", "hbase_admin");
+      acls.add(new ACL(Perms.ALL, new Id("sasl", superUser)));
+      return acls;
+      
+      /*
       // add permission to hbase supper user
       if (superUser != null) {
         acls.add(new ACL(Perms.ALL, new Id("auth", superUser)));
@@ -995,6 +1004,7 @@ public class ZKUtil {
         acls.addAll(Ids.CREATOR_ALL_ACL);
       }
       return acls;
+      */
     } else {
       return Ids.OPEN_ACL_UNSAFE;
     }
