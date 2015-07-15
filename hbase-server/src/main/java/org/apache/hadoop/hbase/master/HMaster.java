@@ -2595,7 +2595,19 @@ MasterServices, Server {
     return rsFatals;
   }
 
+  boolean allowShutdown() {
+    // The cluster is allowed to shutdown only if hbase.master.allow.shutdown
+    // is true, note that the default value of hbase.allow shutdown is true,
+    // which means the cluster is allowed to shutdown by default.
+    return this.conf.getBoolean("hbase.master.allow.shutdown", true);
+  }
+  
   public void shutdown() {
+    if (!allowShutdown()) {
+      LOG.error("Shutdown is not allowed");
+      return;
+    }
+    
     if (spanReceiverHost != null) {
       spanReceiverHost.closeReceivers();
     }
@@ -2630,6 +2642,11 @@ MasterServices, Server {
   }
 
   public void stopMaster() {
+    if (!allowShutdown()) {
+      LOG.error("Stop master is not allowed");
+      return;
+    }
+    
     if (cpHost != null) {
       try {
         cpHost.preStopMaster();
