@@ -80,6 +80,8 @@ public class HTableDescriptor implements WritableComparable<HTableDescriptor> {
   
   public static final String DEFAULT_SPLIT_POLICY_FOR_ACROSS_PREFIX_ROWS_ATOMIC = 
     "org.apache.hadoop.hbase.regionserver.KeyDelimiterPrefixRegionSplitPolicy";
+  
+  public static final String IGNORE_SPLITS_WHEN_CREATING = "IGNORE_SPLITS_WHEN_CREATING";
   /**
    * <em>INTERNAL</em> Used by HBase Shell interface to access this metadata 
    * attribute which denotes the maximum size of the store file after which 

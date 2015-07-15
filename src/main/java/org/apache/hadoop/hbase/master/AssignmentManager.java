@@ -186,6 +186,11 @@ public class AssignmentManager extends ZooKeeperListener {
   private final int regionStatsRefreshPeriod;
 
   /**
+   * The threshold of region transition time
+   */
+  private final long transitionTimeThreshold;
+
+  /**
    * Lock to protect {@link #regionCountPerTable} and {@link #regionCountPerTableRS}.
    */
   private final Object regionCountLock = new Object();
@@ -261,6 +266,7 @@ public class AssignmentManager extends ZooKeeperListener {
     this.balancer = balancer;
     this.threadPoolExecutorService = Executors.newCachedThreadPool();
     this.regionStatsRefreshPeriod = conf.getInt("hbase.master.assignment.regioncountrefresh.period", 3000);
+    this.transitionTimeThreshold = conf.getLong("hbase.master.transition.time.threshold", 10000);
   }
   
   void startTimeOutMonitor() {
@@ -286,6 +292,45 @@ public class AssignmentManager extends ZooKeeperListener {
       }
     }
     return (double)totalLoad / (double)numServers;
+  }
+
+  int getOnlineRegionCount() {
+    int n = 0;
+    //synchronized is used to get the newest regions size
+    synchronized (this.regions) {
+      n =  regions.size();
+    }
+    return n;
+  }
+
+  int getRitCountOverThreshold() {
+    int n = 0;
+    long now = System.currentTimeMillis();
+    synchronized (this.regionsInTransition) {
+      for(String regionName : this.regionsInTransition.keySet()) {
+        long life = now - this.regionsInTransition.get(regionName).getStamp();
+        if(life > transitionTimeThreshold) {
+          ++n;
+        }
+      }
+    }
+    return n;
+  }
+
+  long getRitOldestAge() {
+    long oldest = Long.MAX_VALUE;
+    synchronized (this.regionsInTransition) {
+      for(String regionName : this.regionsInTransition.keySet()) {
+        long timestamp = this.regionsInTransition.get(regionName).getStamp();
+        if(timestamp < oldest) {
+          oldest = timestamp;
+        }
+      }
+    }
+    if(oldest == Long.MAX_VALUE) {
+      return 0;
+    }
+    return System.currentTimeMillis() - oldest;
   }
 
   /**

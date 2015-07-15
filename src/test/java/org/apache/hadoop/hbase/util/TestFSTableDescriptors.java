@@ -57,12 +57,13 @@ public class TestFSTableDescriptors {
     Path testdir = UTIL.getDataTestDir("testCreate");
     HTableDescriptor htd = new HTableDescriptor("testCreate");
     FileSystem fs = FileSystem.get(UTIL.getConfiguration());
-    assertTrue(FSTableDescriptors.createTableDescriptor(fs, testdir, htd));
-    assertFalse(FSTableDescriptors.createTableDescriptor(fs, testdir, htd));
+    FSTableDescriptors fstd = new FSTableDescriptors(fs, testdir);
+    assertTrue(fstd.createTableDescriptor(fs, testdir, htd));
+    assertFalse(fstd.createTableDescriptor(fs, testdir, htd));
     FileStatus [] statuses = fs.listStatus(testdir);
     assertTrue("statuses.length="+statuses.length, statuses.length == 1);
     for (int i = 0; i < 10; i++) {
-      FSTableDescriptors.updateHTableDescriptor(fs, testdir, htd);
+      fstd.updateHTableDescriptor(fs, testdir, htd);
     }
     statuses = fs.listStatus(testdir);
     assertTrue(statuses.length == 1);
@@ -76,17 +77,18 @@ public class TestFSTableDescriptors {
     Path testdir = UTIL.getDataTestDir("testSequenceidAdvancesOnTableInfo");
     HTableDescriptor htd = new HTableDescriptor("testSequenceidAdvancesOnTableInfo");
     FileSystem fs = FileSystem.get(UTIL.getConfiguration());
-    Path p0 = FSTableDescriptors.updateHTableDescriptor(fs, testdir, htd);
-    int i0 = FSTableDescriptors.getTableInfoSequenceid(p0);
-    Path p1 = FSTableDescriptors.updateHTableDescriptor(fs, testdir, htd);
+    FSTableDescriptors fstd = new FSTableDescriptors(fs, testdir);
+    Path p0 = fstd.updateHTableDescriptor(fs, testdir, htd);
+    int i0 = fstd.getTableInfoSequenceid(p0);
+    Path p1 = fstd.updateHTableDescriptor(fs, testdir, htd);
     // Assert we cleaned up the old file.
     assertTrue(!fs.exists(p0));
-    int i1 = FSTableDescriptors.getTableInfoSequenceid(p1);
+    int i1 = fstd.getTableInfoSequenceid(p1);
     assertTrue(i1 == i0 + 1);
-    Path p2 = FSTableDescriptors.updateHTableDescriptor(fs, testdir, htd);
+    Path p2 = fstd.updateHTableDescriptor(fs, testdir, htd);
     // Assert we cleaned up the old file.
     assertTrue(!fs.exists(p1));
-    int i2 = FSTableDescriptors.getTableInfoSequenceid(p2);
+    int i2 = fstd.getTableInfoSequenceid(p2);
     assertTrue(i2 == i1 + 1);
   }
 
@@ -183,7 +185,7 @@ public class TestFSTableDescriptors {
     for (int i = 0; i < count; i++) {
       HTableDescriptor htd = new HTableDescriptor(name + i);
       htd.addFamily(new HColumnDescriptor("" + i));
-      FSTableDescriptors.updateHTableDescriptor(fs, rootdir, htd);
+      htds.updateHTableDescriptor(fs, rootdir, htd);
     }
     // Wait a while so mod time we write is for sure different.
     Thread.sleep(100);

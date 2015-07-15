@@ -263,6 +263,14 @@ public class TestCatalogJanitor {
         @Override
         public void add(HTableDescriptor htd) throws IOException {
         }
+
+        @Override
+        public void setCacheOn() throws IOException {
+        }
+
+        @Override
+        public void setCacheOff() throws IOException {
+        }
       };
     }
 

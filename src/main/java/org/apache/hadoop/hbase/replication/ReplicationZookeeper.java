@@ -42,6 +42,7 @@ import org.apache.hadoop.hbase.Server;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.replication.regionserver.Replication;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hbase.util.Pair;
 import org.apache.hadoop.hbase.zookeeper.ClusterId;
 import org.apache.hadoop.hbase.zookeeper.ZKUtil;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperListener;
@@ -715,16 +716,17 @@ public class ReplicationZookeeper {
    * @param filename filename name of the hlog's znode
    * @param clusterId clusterId name of the cluster's znode
    * @param position the position in the file
+   * @param writeTime the write time of the current log entry
    * @throws IOException
    */
   public void writeReplicationStatus(String filename, String clusterId,
-      long position) {
+      long position, long writeTime) {
     try {
       String znode = ZKUtil.joinZNode(this.rsServerNameZnode, clusterId);
       znode = ZKUtil.joinZNode(znode, filename);
       // Why serialize String of Long and note Long as bytes?
       ZKUtil.setData(this.zookeeper, znode,
-        Bytes.toBytes(Long.toString(position)));
+        Bytes.toBytes(Long.toString(position) + "," + Long.toString(writeTime)));
     } catch (KeeperException e) {
       this.abortable.abort("Writing replication status", e);
     }
@@ -774,6 +776,21 @@ public class ReplicationZookeeper {
       this.abortable.abort("Get list of replicators", e);
       throw e;
     }
+  }
+
+  /**
+   * Get the list of replicating RS ZNodes, this may not equals to
+   * <code>getRegisteredRegionServers</code>
+   * @return a list of znodes in replication rs path
+   */
+  public List<String> getReplicatingRSZNodeList() {
+    List<String> result = null;
+    try {
+      result = ZKUtil.listChildrenAndWatchThem(this.zookeeper, rsZNode);
+    } catch (KeeperException e) {
+      this.abortable.abort("Get list of replicating region servers", e);
+    }
+    return result;
   }
 
   /**
@@ -1023,15 +1040,28 @@ public class ReplicationZookeeper {
    * Get the position of the specified hlog in the specified peer znode
    * @param peerId znode of the peer cluster
    * @param hlog name of the hlog
-   * @return the position in that hlog
+   * @return the position in that hlog and the write time of the last entry
    * @throws KeeperException 
    */
-  public long getHLogRepPosition(String peerId, String hlog)
+  public Pair<Long, Long> getHLogRepPosition(String peerId, String hlog)
+      throws KeeperException {
+    return getHLogRepPosition(rsServerNameZnode, peerId, hlog);
+  }
+
+  public String getRsZNode(String rsServerName) {
+    return ZKUtil.joinZNode(this.rsZNode, rsServerName);
+  }
+
+  public Pair<Long, Long> getHLogRepPosition(String rsServerNameZnode, String peerId, String hlog)
   throws KeeperException {
     String clusterZnode = ZKUtil.joinZNode(rsServerNameZnode, peerId);
     String znode = ZKUtil.joinZNode(clusterZnode, hlog);
     String data = Bytes.toString(ZKUtil.getData(this.zookeeper, znode));
-    return data == null || data.length() == 0 ? 0 : Long.parseLong(data);
+    if (data == null || data.length() == 0) {
+      return new Pair<Long, Long>(0L, 0L);
+    }
+    String[] s = data.split(",");
+    return new Pair<Long, Long>(Long.parseLong(s[0]), s.length < 2 ? 0L : Long.parseLong(s[1]));
   }
 
   /**
