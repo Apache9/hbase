@@ -288,6 +288,9 @@ Server {
   private List<ZooKeeperListener> registeredZKListenersBeforeRecovery;
 
   private CompactionCoordinator compactionCoordinator = null;
+  
+  private boolean ignoreSplitsWhenCreatingTable = false;
+  
   /**
    * Initializes the HMaster. The steps are as follows:
    * <p>
@@ -383,6 +386,8 @@ Server {
 
     this.shouldSplitMetaSeparately = conf.getBoolean(HLog.SEPARATE_HLOG_FOR_META, false);
     waitingOnLogSplitting = this.conf.getBoolean("hbase.master.wait.for.log.splitting", false);
+    this.ignoreSplitsWhenCreatingTable = conf.getBoolean(
+      HConstants.IGNORE_SPLITS_WHEN_CREATE_TABLE, false);
   }
 
   /**
@@ -1447,6 +1452,19 @@ Server {
     if (!isMasterRunning()) {
       throw new MasterNotRunningException();
     }
+
+    if (ignoreSplitsWhenCreatingTable) {
+      boolean isSalted = hTableDescriptor.isSalted();
+      if (isSalted) {
+        hTableDescriptor.setSlotsCount(1);
+      }
+      splitKeys = null;
+      hTableDescriptor.setValue(Bytes.toBytes(HTableDescriptor.IGNORE_SPLITS_WHEN_CREATING),
+        Bytes.toBytes("true"));
+      LOG.info("ignore splits for table " + hTableDescriptor.getNameAsString() + ", isSalted="
+          + isSalted);
+    }
+    
 
     HRegionInfo [] newRegions = getHRegionInfos(hTableDescriptor, splitKeys);
     checkInitialized();

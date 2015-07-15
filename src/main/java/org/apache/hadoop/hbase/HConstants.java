@@ -761,6 +761,8 @@ public final class HConstants {
   public static final String HUGE_ROW_SIZE_IN_BYTE_WARN_NAME = "hbase.huge.row.size.in.byte";
   public static final int HUGE_ROW_SIZE_IN_BYTE_WARN_VALUE = 134217728; //128M
 
+  public static final String IGNORE_SPLITS_WHEN_CREATE_TABLE = "hbase.ignore.splits.when.create.table";
+  
   private HConstants() {
     // Can't be instantiated with this ctor.
   }

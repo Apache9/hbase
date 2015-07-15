@@ -109,7 +109,7 @@ public class HBaseAdmin implements Abortable, Closeable {
 
   private static volatile boolean synchronousBalanceSwitchSupported = true;
   private final boolean cleanupConnectionOnClose; // close the connection in close()
-
+  
   /**
    * Constructor
    *
@@ -126,7 +126,7 @@ public class HBaseAdmin implements Abortable, Closeable {
     this.retryLongerMultiplier = this.conf.getInt(
         "hbase.client.retries.longer.multiplier", 10);
     this.cleanupConnectionOnClose = true;
-
+    
     int tries = 0;
     while ( true ){
       try {
@@ -180,7 +180,7 @@ public class HBaseAdmin implements Abortable, Closeable {
     this.numRetries = this.conf.getInt("hbase.client.retries.number", 10);
     this.retryLongerMultiplier = this.conf.getInt(
         "hbase.client.retries.longer.multiplier", 10);
-
+    
     this.connection.getMaster();
   }
 
@@ -463,6 +463,7 @@ public class HBaseAdmin implements Abortable, Closeable {
     if (desc.getSlotsCount() == null && desc.getKeySalter() != null) {
       throw new IOException("must specify SLOTS_COUNT when KEY_SALTER is set");
     }
+
     if (splitKeys == null && desc.isSalted()) {
       KeySalter salter = SaltedHTable.createKeySalter(desc.getKeySalter(), desc.getSlotsCount());
       if (salter.getAllSalts().length > 1) {
@@ -516,6 +517,17 @@ public class HBaseAdmin implements Abortable, Closeable {
           }
         };
         MetaScanner.metaScan(conf, connection, visitor, desc.getName());
+
+        // if the server side enable IGNORE_SPLITS_WHEN_CREATE_TABLE option, 
+        if (actualRegCount.get() > 0) {
+          HTableDescriptor htdFromMaster = getTableDescriptor(desc.getName());
+          if (htdFromMaster.getValue(HTableDescriptor.IGNORE_SPLITS_WHEN_CREATING) != null
+              && Boolean.parseBoolean(htdFromMaster
+                  .getValue(HTableDescriptor.IGNORE_SPLITS_WHEN_CREATING))) {
+            numRegs = 1;
+          }
+        }
+        
         if (actualRegCount.get() != numRegs) {
           if (tries == this.numRetries * this.retryLongerMultiplier - 1) {
             throw new RegionOfflineException("Only " + actualRegCount.get() +
