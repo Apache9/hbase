@@ -46,6 +46,7 @@ import org.apache.hadoop.hbase.replication.ReplicationPeerConfig;
 import org.apache.hadoop.hbase.replication.ReplicationPeerZKImpl;
 import org.apache.hadoop.hbase.replication.ReplicationPeers;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.Pair;
 import org.apache.hadoop.hbase.zookeeper.ZKUtil;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
@@ -76,6 +77,9 @@ public class VerifyReplication extends Configured implements Tool {
   static String tableName = null;
   static String families = null;
   static String peerId = null;
+  static String startRow = null;
+  static String stopRow = null;
+  static int scanRateLimit = -1;
 
   /**
    * Map-only comparator for 2 tables
@@ -88,7 +92,19 @@ public class VerifyReplication extends Configured implements Tool {
 
     private ResultScanner replicatedScanner;
     private Result currentCompareRowInPeerTable;
-
+    private long st = 0;
+    private int scanRateLimit = -1;
+    private long rowdone = 0;
+    
+    @Override
+    public void setup(Context context) {
+      Configuration conf = context.getConfiguration();
+      st = EnvironmentEdgeManager.currentTimeMillis();
+      scanRateLimit = conf.getInt(TableMapper.SCAN_RATE_LIMIT, -1);
+      LOG.info("The scan rate limit for verify is " + scanRateLimit
+          + " rows per second");
+    }
+    
     /**
      * Map method that compares every scanned row with the equivalent from
      * a distant cluster.
@@ -164,6 +180,9 @@ public class VerifyReplication extends Configured implements Tool {
           currentCompareRowInPeerTable = replicatedScanner.next();
         }
       }
+      rowdone ++;
+      TableMapReduceUtil.limitScanRate(scanRateLimit, rowdone,
+        EnvironmentEdgeManager.currentTimeMillis() - st);
     }
     
     private void logFailRowAndIncreaseCounter(Context context, Counters counter, Result row) {
@@ -266,6 +285,18 @@ public class VerifyReplication extends Configured implements Tool {
         scan.addFamily(Bytes.toBytes(fam));
       }
     }
+    if (startRow != null) {
+      scan.setStartRow(Bytes.toBytes(startRow));
+    }
+    
+    if (stopRow != null) {
+      scan.setStopRow(Bytes.toBytes(stopRow));
+    }
+
+    if (scanRateLimit > 0) {
+      job.getConfiguration().setInt(TableMapper.SCAN_RATE_LIMIT, scanRateLimit);
+    }
+    
     TableMapReduceUtil.initTableMapperJob(tableName, scan,
         Verifier.class, null, null, job);
 
@@ -301,6 +332,18 @@ public class VerifyReplication extends Configured implements Tool {
           endTime = Long.parseLong(cmd.substring(endTimeArgKey.length()));
           continue;
         }
+        
+        final String startRowArgKey = "--startrow=";
+        if (cmd.startsWith(startRowArgKey)) {
+          startRow = cmd.substring(startRowArgKey.length());
+          continue;
+        }
+        
+        final String stopRowArgKey = "--stoprow=";
+        if (cmd.startsWith(stopRowArgKey)) {
+          stopRow = cmd.substring(stopRowArgKey.length());
+          continue;
+        }
 
         final String versionsArgKey = "--versions=";
         if (cmd.startsWith(versionsArgKey)) {
@@ -314,6 +357,12 @@ public class VerifyReplication extends Configured implements Tool {
           continue;
         }
 
+        final String scanRateArgKey = "--scanrate=";
+        if (cmd.startsWith(scanRateArgKey)) {
+          scanRateLimit = Integer.parseInt(cmd.substring(scanRateArgKey.length()));
+          continue;
+        }
+        
         if (i == args.length-2) {
           peerId = cmd;
         }
@@ -344,8 +393,11 @@ public class VerifyReplication extends Configured implements Tool {
     System.err.println(" starttime    beginning of the time range");
     System.err.println("              without endtime means from starttime to forever");
     System.err.println(" endtime      end of the time range");
+    System.err.println(" startrow     beginning of row");
+    System.err.println(" stoprow      end of the row");
     System.err.println(" versions     number of cell versions to verify");
     System.err.println(" families     comma-separated list of families to copy");
+    System.err.println(" scanrate     the scan rate limit: rows per second for each region.");
     System.err.println();
     System.err.println("Args:");
     System.err.println(" peerid       Id of the peer used for verification, must match the one given for replication");

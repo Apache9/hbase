@@ -63,6 +63,7 @@ public class CopyTable extends Configured implements Tool {
   String peerAddress = null;
   String families = null;
   boolean allCells = false;
+  static int scanRateLimit = -1;
   
   boolean bulkload = false;
   Path bulkloadDir = null;
@@ -279,6 +280,10 @@ public class CopyTable extends Configured implements Tool {
       scan.setStopRow(Bytes.toBytes(stopRow));
     }
     
+    if (scanRateLimit > 0) {
+      job.getConfiguration().setInt(TableMapper.SCAN_RATE_LIMIT, scanRateLimit);
+    }
+    
     if(families != null) {
       String[] fams = families.split(",");
       Map<String,String> cfRenameMap = new HashMap<String,String>();
@@ -364,6 +369,7 @@ public class CopyTable extends Configured implements Tool {
     System.err.println("              To copy from cf1 to cf2, give sourceCfName:destCfName. ");
     System.err.println("              To keep the same name, just give \"cfName\"");
     System.err.println(" all.cells    also copy delete markers and deleted cells");
+    System.err.println(" scanrate     the scan rate limit: rows per second for each region.");
     System.err.println(" bulkload     Write input into HFiles and bulk load to the destination "
         + "table");
     System.err.println();
@@ -440,6 +446,12 @@ public class CopyTable extends Configured implements Tool {
         final String familiesArgKey = "--families=";
         if (cmd.startsWith(familiesArgKey)) {
           families = cmd.substring(familiesArgKey.length());
+          continue;
+        }
+        
+        final String scanRateArgKey = "--scanrate=";
+        if (cmd.startsWith(scanRateArgKey)) {
+          scanRateLimit = Integer.parseInt(cmd.substring(scanRateArgKey.length()));
           continue;
         }
 
