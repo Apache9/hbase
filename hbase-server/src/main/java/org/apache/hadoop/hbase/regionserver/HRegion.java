@@ -1594,7 +1594,7 @@ public class HRegion implements HeapSize { // , Writable{
         dataInMemoryWithoutWAL.set(0);
       }
       synchronized (writestate) {
-        if (!writestate.flushing && writestate.writesEnabled) {
+        if (!writestate.flushing && writestate.writesEnabled && !this.closing.get()) {
           this.writestate.flushing = true;
         } else {
           if (LOG.isDebugEnabled()) {
