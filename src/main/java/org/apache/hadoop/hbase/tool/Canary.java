@@ -62,6 +62,8 @@ import org.apache.hadoop.util.ReflectionUtils;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 
+import com.xiaomi.infra.hbase.salted.SaltedHTable;
+
 /**
  * HBase Canary Tool, that that can be used to do
  * "canary monitoring" of a running HBase cluster.
@@ -147,6 +149,9 @@ public final class Canary implements Tool {
       HTableInterface table;
       try {
         table = this.connection.getTable(tableDesc.getName());
+        if (table instanceof SaltedHTable) {
+          table = ((SaltedHTable) table).getRawTable();
+        }
         byte[] rowToCheck = Bytes.randomKey(region.getStartKey(), region.getEndKey());
         for (HColumnDescriptor column : tableDesc.getColumnFamilies()) {
           Scan scan = new Scan(rowToCheck, rowToCheck);
@@ -184,6 +189,9 @@ public final class Canary implements Tool {
       HTableInterface table;
       try {
         table = this.connection.getTable(tableDesc.getName());
+        if (table instanceof SaltedHTable) {
+          table = ((SaltedHTable) table).getRawTable();
+        }
         byte[] rowToCheck = region.getStartKey();
         for (HColumnDescriptor column : tableDesc.getColumnFamilies()) {
           Put put = new Put(rowToCheck);

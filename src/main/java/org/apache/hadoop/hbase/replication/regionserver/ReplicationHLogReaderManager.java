@@ -41,6 +41,7 @@ public class ReplicationHLogReaderManager {
   private final FileSystem fs;
   private final Configuration conf;
   private long position = 0;
+  private long currentWriteTime = 0;
   private HLog.Reader reader;
   private Path lastPath;
 
@@ -97,6 +98,7 @@ public class ReplicationHLogReaderManager {
     if (entry != null) {
       entry.getKey().setCompressionContext(null);
       entry.getEdit().setCodec(nonCompressingCodec);
+      this.currentWriteTime = entry.getKey().getWriteTime();
     }
     return entry;
   }
@@ -108,7 +110,16 @@ public class ReplicationHLogReaderManager {
   public void seek() throws IOException {
     if (this.position != 0) {
       this.reader.seek(this.position);
+      this.currentWriteTime = 0;
     }
+  }
+
+  /**
+   * Get the write time of the current log entry
+   * @return current write time
+   */
+  public long getCurrentWriteTime() {
+    return this.currentWriteTime;
   }
 
   /**

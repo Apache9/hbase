@@ -250,6 +250,8 @@ Server {
   private MasterCoprocessorHost cpHost;
   private final ServerName serverName;
 
+  private final boolean preLoadTableDescriptors;
+
   private TableDescriptors tableDescriptors;
 
   // Time stamps for when a hmaster was started and when it became active
@@ -286,6 +288,9 @@ Server {
   private List<ZooKeeperListener> registeredZKListenersBeforeRecovery;
 
   private CompactionCoordinator compactionCoordinator = null;
+  
+  private boolean ignoreSplitsWhenCreatingTable = false;
+  
   /**
    * Initializes the HMaster. The steps are as follows:
    * <p>
@@ -368,6 +373,10 @@ Server {
     this.pauseMonitor = new JvmPauseMonitor(conf);
     this.jvmThreadMonitor = new JvmThreadMonitor(conf);
 
+    // preload table descriptor at startup
+    this.preLoadTableDescriptors = conf.getBoolean("hbase.master.preload.tabledescriptors", true);
+
+
     // Health checker thread.
     int sleepTime = this.conf.getInt(HConstants.HEALTH_CHORE_WAKE_FREQ,
       HConstants.DEFAULT_THREAD_WAKE_FREQUENCY);
@@ -377,6 +386,8 @@ Server {
 
     this.shouldSplitMetaSeparately = conf.getBoolean(HLog.SEPARATE_HLOG_FOR_META, false);
     waitingOnLogSplitting = this.conf.getBoolean("hbase.master.wait.for.log.splitting", false);
+    this.ignoreSplitsWhenCreatingTable = conf.getBoolean(
+      HConstants.IGNORE_SPLITS_WHEN_CREATE_TABLE, false);
   }
 
   /**
@@ -597,6 +608,15 @@ Server {
     this.tableDescriptors =
       new FSTableDescriptors(this.fileSystemManager.getFileSystem(),
       this.fileSystemManager.getRootDir());
+
+    // enable table descriptors cache
+    this.tableDescriptors.setCacheOn();
+
+    // warm-up HTDs cache on master initialization
+    if (preLoadTableDescriptors) {
+      status.setStatus("Pre-loading table descriptors");
+      this.tableDescriptors.getAll();
+    }
 
     // publish cluster ID
     status.setStatus("Publishing Cluster ID in ZooKeeper");
@@ -1433,6 +1453,19 @@ Server {
       throw new MasterNotRunningException();
     }
 
+    if (ignoreSplitsWhenCreatingTable) {
+      boolean isSalted = hTableDescriptor.isSalted();
+      if (isSalted) {
+        hTableDescriptor.setSlotsCount(1);
+      }
+      splitKeys = null;
+      hTableDescriptor.setValue(Bytes.toBytes(HTableDescriptor.IGNORE_SPLITS_WHEN_CREATING),
+        Bytes.toBytes("true"));
+      LOG.info("ignore splits for table " + hTableDescriptor.getNameAsString() + ", isSalted="
+          + isSalted);
+    }
+    
+
     HRegionInfo [] newRegions = getHRegionInfos(hTableDescriptor, splitKeys);
     checkInitialized();
     if (cpHost != null) {
@@ -1722,7 +1755,7 @@ Server {
     }
     return port;
   }
-  
+
   /**
    * @return array of coprocessor SimpleNames.
    */
@@ -2099,7 +2132,7 @@ Server {
       throws IOException {
     List<HTableDescriptor> descriptors =
       new ArrayList<HTableDescriptor>(tableNames.size());
-    
+
     boolean bypass = false;
     if (this.cpHost != null) {
       bypass = this.cpHost.preGetTableDescriptors(tableNames, descriptors);
@@ -2225,6 +2258,22 @@ Server {
    */
   public double getAverageLoad() {
     return this.assignmentManager.getAverageLoad();
+  }
+
+  public int getOnlineRegionCount() {
+    return this.assignmentManager.getOnlineRegionCount();
+  }
+
+  public int getRitCount() {
+    return this.assignmentManager.getRegionsInTransitionCount();
+  } 
+
+  public int getRitCountOverThreshold() {
+    return this.assignmentManager.getRitCountOverThreshold();
+  }
+
+  public long getRitOldestAge() {
+    return this.assignmentManager.getRitOldestAge();
   }
 
   /**

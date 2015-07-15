@@ -62,6 +62,7 @@ import org.apache.hadoop.hbase.regionserver.wal.WALEdit;
 import org.apache.hadoop.hbase.replication.ReplicationZookeeper;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.FSUtils;
+import org.apache.hadoop.hbase.util.Pair;
 import org.apache.hadoop.hbase.util.Threads;
 import org.apache.hadoop.ipc.RemoteException;
 import org.apache.zookeeper.KeeperException;
@@ -113,10 +114,14 @@ public class ReplicationSource extends Thread
   private long logPositionSizeLimit;
   // Max number of entries whose position in WAL have not been persistent
   private int logPositionNbLimit;
+  // Max interval during which the position in WAL have not been persistent
+  private long maxLogPositionInterval;
   // Our reader for the current log
   private HLog.Reader reader;
-  // Last position in the log that we sent to ZooKeeper
+  // Last position in the log that we set to ZooKeeper
   private long lastLoggedPosition = -1;
+  // Last time we set to ZooKeeper
+  private long lastLoggingTime = -1;
   // number edits whose postions we have not sent to ZooKeeper
   private long unLoggedPositionEdits = 0;
 
@@ -190,9 +195,11 @@ public class ReplicationSource extends Thread
     this.replicationQueueNbCapacity =
         this.conf.getInt("replication.source.nb.capacity", 25000);
     this.logPositionSizeLimit =
-        this.conf.getLong("replication.log.position.size.limit", 1024*1024*64);
+        this.conf.getLong("replication.log.position.size.limit", 1024 * 1024 * 64);
     this.logPositionNbLimit =
         this.conf.getInt("replication.log.position.nb.limit", 25000);
+    this.maxLogPositionInterval =
+        this.conf.getInt("replication.log.position.maxinterval", 10000);
     this.entriesArray = new HLog.Entry[this.replicationQueueNbCapacity];
     for (int i = 0; i < this.replicationQueueNbCapacity; i++) {
       this.entriesArray[i] = new HLog.Entry();
@@ -445,7 +452,8 @@ public class ReplicationSource extends Thread
       if (this.isActive() && (gotIOE || currentNbEntries == 0)) {
         if (shouldLogPosition(this.repLogReader.getPosition())) {
           this.manager.logPositionAndCleanOldLogs(this.currentPath,
-              this.peerClusterZnode, this.repLogReader.getPosition(), queueRecovered, currentWALisBeingWrittenTo);
+              this.peerClusterZnode, this.repLogReader.getPosition(),
+              this.repLogReader.getCurrentWriteTime(), queueRecovered, currentWALisBeingWrittenTo);
           this.lastLoggedPosition = this.repLogReader.getPosition();
           this.unLoggedPositionEdits = 0;
         }
@@ -494,8 +502,9 @@ public class ReplicationSource extends Thread
     // normally has a position (unless the RS failed between 2 logs)
     if (this.queueRecovered) {
       try {
-        this.repLogReader.setPosition(this.zkHelper.getHLogRepPosition(
-            this.peerClusterZnode, this.queue.peek().getName()));
+        Pair<Long, Long> pos = this.zkHelper.getHLogRepPosition(
+            this.peerClusterZnode, this.queue.peek().getName());
+        this.repLogReader.setPosition(pos.getFirst());
       } catch (KeeperException e) {
         this.terminate("Couldn't get the position of this recovered queue " +
             peerClusterZnode, e);
@@ -520,6 +529,9 @@ public class ReplicationSource extends Thread
       return true;
     }
     if (unLoggedPositionEdits >= this.logPositionNbLimit) {
+      return true;
+    }
+    if (System.currentTimeMillis() - this.lastLoggingTime > maxLogPositionInterval) {
       return true;
     }
     return false;
@@ -790,7 +802,7 @@ public class ReplicationSource extends Thread
 
   /**
    * We only want KVs that are scoped other than local
-   * @param edit The KV to check for replication
+   * @param entry The KV to check for replication
    */
   protected void removeNonReplicableEdits(HLog.Entry entry) {
     HLogKey logKey = entry.getKey();
@@ -951,9 +963,11 @@ public class ReplicationSource extends Thread
         this.unLoggedPositionEdits += currentNbEntries;
         if (shouldLogPosition(this.repLogReader.getPosition())) {
           this.manager.logPositionAndCleanOldLogs(this.currentPath,
-              this.peerClusterZnode, this.repLogReader.getPosition(), queueRecovered, currentWALisBeingWrittenTo);
+              this.peerClusterZnode, this.repLogReader.getPosition(),
+              this.repLogReader.getCurrentWriteTime(), queueRecovered, currentWALisBeingWrittenTo);
           this.lastLoggedPosition = this.repLogReader.getPosition();
           this.unLoggedPositionEdits = 0;
+          this.lastLoggingTime = System.currentTimeMillis();
         }
         if (this.throttler.isEnabled()) {
           this.throttler.addPushSize(currentSize);
@@ -1046,7 +1060,8 @@ public class ReplicationSource extends Thread
       // at the end of the log
       if (this.lastLoggedPosition != this.repLogReader.getPosition()) {
         this.manager.logPositionAndCleanOldLogs(currentPath, this.peerClusterZnode,
-          this.repLogReader.getPosition(), queueRecovered, false);
+          this.repLogReader.getPosition(), this.repLogReader.getCurrentWriteTime(),
+          queueRecovered, false);
         this.lastLoggedPosition = 0;
         this.unLoggedPositionEdits = 0;
       }

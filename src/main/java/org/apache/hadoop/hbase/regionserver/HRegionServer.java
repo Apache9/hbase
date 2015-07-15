@@ -1194,7 +1194,7 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
       ConfigurationManager.getInstance().registerObserver(this.fs);
 
       this.rootDir = new Path(this.conf.get(HConstants.HBASE_DIR));
-      this.tableDescriptors = new FSTableDescriptors(this.fs, this.rootDir, true);
+      this.tableDescriptors = new FSTableDescriptors(this.fs, this.rootDir, true, false);
       this.hlog = setupWALAndReplication();
       // Init in here rather than in constructor after thread name has been set
       this.metrics = new RegionServerMetrics();

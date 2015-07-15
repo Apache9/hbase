@@ -61,6 +61,26 @@ public class MXBeanImpl implements MXBean {
   }
 
   @Override
+  public int getOnlineRegionCount() {
+    return master.getOnlineRegionCount();
+  }
+
+  @Override
+  public int getRitCount() {
+    return master.getRitCount();
+  }
+
+  @Override
+  public int getRitCountOverThreshold() {
+    return master.getRitCountOverThreshold();
+  }
+
+  @Override
+  public long getRitOldestAge() {
+    return master.getRitOldestAge();
+  }
+
+  @Override
   public String getClusterId() {
     return master.getClusterId();
   }

@@ -358,7 +358,7 @@ public class ReplicationAdmin implements Closeable {
    * Get the ZK-support tool created and used by this object for replication.
    * @return the ZK-support tool
    */
-  ReplicationZookeeper getReplicationZk() {
+  public ReplicationZookeeper getReplicationZk() {
     return replicationZk;
   }
 
