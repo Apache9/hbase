@@ -40,6 +40,7 @@ import org.apache.hadoop.hbase.util.Writables
 import org.apache.hadoop.conf.Configuration
 import org.apache.commons.logging.Log
 import org.apache.commons.logging.LogFactory
+import java.io.EOFException;
 
 # Name of this script
 NAME = "region_mover"
@@ -286,23 +287,12 @@ def deleteFile(filename)
   f.delete() if f.exists()
 end
 
-# Write HRegionInfo to file
-# Need to serialize in case non-printable characters.
-# Format is count of regionnames followed by serialized regionnames.
-def writeFile(filename, regions)
+def getWriteFileDataStream(filename)
   fos = java.io.FileOutputStream.new(filename)
   dos = java.io.DataOutputStream.new(fos)
-  # Write out a count of region names
-  dos.writeInt(regions.size())
-  # Write actual region names.
-  for r in regions
-    bytes = Writables.getBytes(r)
-    Bytes.writeByteArray(dos, bytes)
-  end
-  dos.close()
+  return dos
 end
 
-# See writeFile above.
 # Returns array of HRegionInfos
 def readFile(filename)
   f = java.io.File.new(filename)
@@ -310,12 +300,13 @@ def readFile(filename)
   fis = java.io.FileInputStream.new(f)
   dis = java.io.DataInputStream.new(fis)
   # Read count of regions
-  count = dis.readInt()
-  regions = java.util.ArrayList.new(count)
-  index = 0
-  while index < count
-    regions.add(Writables.getHRegionInfo(Bytes.readByteArray(dis)))
-    index = index + 1
+  regions = java.util.ArrayList.new()
+  while true 
+    begin
+      regions.add(Writables.getHRegionInfo(Bytes.readByteArray(dis)))
+    rescue EOFException => ioe
+      break
+    end
   end
   dis.close()
   return regions
@@ -363,6 +354,7 @@ def unloadRegionsForRs(options, servers, servername)
   # Get an admin instance
   admin = HBaseAdmin.new(config) 
 
+  dos = nil 
   movedRegions = java.util.ArrayList.new()
   while true
     rs = getRegions(config, servername)
@@ -383,6 +375,13 @@ def unloadRegionsForRs(options, servers, servername)
         # Now move it.
         move(admin, _rs[_counter], servers[_server_index], servername)
         movedRegions.add(_rs[_counter])
+
+        # write to file immediately
+        if dos == nil
+          dos = getWriteFileDataStream(filename)
+        end
+        Bytes.writeByteArray(dos, Writables.getBytes(_rs[_counter]))
+        dos.flush
       end 
       counter += 1
       server_index = (server_index + 1) % servers.length
@@ -391,10 +390,10 @@ def unloadRegionsForRs(options, servers, servername)
     pool.stop
     $LOG.info("Pool completed")
   end
-  if movedRegions.size() > 0 
-    # Write out file of regions moved
-    writeFile(filename, movedRegions)
-    $LOG.info("Wrote list of moved regions to " + filename)
+
+  if dos != nil
+    dos.close()
+    $LOG.info("Finish wrote list of moved regions to " + filename)
   end
 end
 
