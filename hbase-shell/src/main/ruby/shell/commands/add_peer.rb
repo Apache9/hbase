@@ -30,15 +30,17 @@ Examples:
 
   hbase> add_peer '1', "server1.cie.com:2181:/hbase"
   hbase> add_peer '2', "zk1,zk2,zk3:2182:/hbase-prod"
-  hbase> add_peer '3', "zk4,zk5,zk6:11000:/hbase-test", "tab1; tab2:cf1; tab3:cf2,cf3"
-  hbase> add_peer '4', "zk4,zk5,zk6:11000:/hbase-test", " ", "THRIFT"
-  hbase> add_peer '5', "zk4,zk5,zk6:11000:/hbase-test", "tab1; tab2:cf1; tab3:cf2,cf3", "THRIFT"
+  hbase> add_peer '3', "zk4,zk5,zk6:11000:/hbase-test", "ENABLED"
+  hbase> add_peer '4', "zk7,zk8,zk9:11000:/hbase-proc", "DISABLED"
+  hbase> add_peer '5', "zk4,zk5,zk6:11000:/hbase-test", "ENABLED", "tab1; tab2:cf1; tab3:cf2,cf3"
+  hbase> add_peer '6', "zk4,zk5,zk6:11000:/hbase-test", "ENABLED", " ", "THRIFT"
+  hbase> add_peer '7', "zk4,zk5,zk6:11000:/hbase-test", "tab1; tab2:cf1; tab3:cf2,cf3", "THRIFT"
 EOF
       end
 
-      def command(id, cluster_key, peer_tableCFs = nil, protocol = nil)
+      def command(id, cluster_key, peer_state = nil, peer_tableCFs = nil, protocol = nil)
         format_simple_command do
-          replication_admin.add_peer(id, cluster_key, peer_tableCFs, protocol)
+          replication_admin.add_peer(id, cluster_key, peer_state, peer_tableCFs, protocol)
         end
       end
     end

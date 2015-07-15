@@ -43,6 +43,13 @@ t to table 't1', the corresponding commands would be:
  hbase> t.count INTERVAL => 100000
  hbase> t.count CACHE => 1000
  hbase> t.count INTERVAL => 10, CACHE => 1000
+
+For experts, there is an additional option -- CACHE_BLOCKS -- which
+switches block caching for the scanner on (true) or off (false). By
+default it is disabled. It's very useful when the user wants to
+pre-fill block cache for a table by the 'count' command. Examples:
+
+ hbase> count 't1', INTERVAL => 100000, CACHE => 10000, CACHE_BLOCKS => true
 EOF
       end
 
@@ -57,13 +64,14 @@ EOF
         # Merge params with defaults
         params = {
           'INTERVAL' => 1000,
-          'CACHE' => 10
+          'CACHE' => 10,
+          'CACHE_BLOCKS' => false
         }.merge(params)
 
         # Call the counter method
         now = Time.now
         formatter.header
-        count = table._count_internal(params['INTERVAL'].to_i, params['CACHE'].to_i) do |cnt, row|
+        count = table._count_internal(params['INTERVAL'].to_i, params['CACHE'].to_i, params['CACHE_BLOCKS']) do |cnt, row|
           formatter.row([ "Current count: #{cnt}, row: #{row}" ])
         end
         formatter.footer(now, count)

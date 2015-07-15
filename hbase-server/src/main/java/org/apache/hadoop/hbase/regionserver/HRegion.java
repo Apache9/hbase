@@ -2806,7 +2806,9 @@ public class HRegion implements HeapSize { // , Writable{
           }
         }
         List<Cell> result = get(get, false);
-        this.rsServices.getRegionServerQuotaManager().grabQuota(this, Result.create(result));
+        if (this.rsServices != null) {
+          this.rsServices.getRegionServerQuotaManager().grabQuota(this, Result.create(result));
+        }
 
         boolean valueIsNull = comparator.getValue() == null ||
           comparator.getValue().length == 0;
@@ -2891,7 +2893,9 @@ public class HRegion implements HeapSize { // , Writable{
       mvcc.completeMemstoreInsert(mvcc.beginMemstoreInsert());
       try {
         List<Cell> result = get(get, false);
-        this.rsServices.getRegionServerQuotaManager().grabQuota(this, Result.create(result));
+        if (this.rsServices != null) {
+          this.rsServices.getRegionServerQuotaManager().grabQuota(this, Result.create(result));
+        }
 
         boolean valueIsNull = comparator.getValue() == null ||
             comparator.getValue().length == 0;

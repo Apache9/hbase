@@ -87,6 +87,16 @@ public interface MetricsRegionSource extends Comparable<MetricsRegionSource> {
   void updateWrite(long writeCapacityUnitCount);
 
   /**
+   * update the count of throttled read request
+   */
+  void updateThrottledRead(long readNum);
+
+  /**
+   * update the count of throttled write request
+   */
+  void updateThrottledWrite(long writeNum);
+
+  /**
    * Get the aggregate source to which this reports.
    */
   MetricsRegionAggregateSource getAggregateSource();

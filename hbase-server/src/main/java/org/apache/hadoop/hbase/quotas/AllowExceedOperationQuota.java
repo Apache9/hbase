@@ -74,14 +74,28 @@ public class AllowExceedOperationQuota implements OperationQuota {
 
   @Override
   public long getReadAvailable() {
-    return Math.max(regionServerLimiter.getReadReqsAvailable(), userLimiter.getReadReqsAvailable())
-        * QuotaUtil.READ_CAPACITY_UNIT;
+    long readReqsAvailable = 0;
+    if (userLimiter.isBypass()) {
+      readReqsAvailable = regionServerLimiter.getReadReqsAvailable();
+    } else {
+      // Beacuse allow user oversume, so return the max avail in rs limiter or user limiter
+      readReqsAvailable = Math.max(regionServerLimiter.getReadReqsAvailable(),
+        userLimiter.getReadReqsAvailable());
+    }
+    return readReqsAvailable * QuotaUtil.READ_CAPACITY_UNIT;
   }
 
   @Override
   public long getWriteAvailable() {
-    return Math.max(regionServerLimiter.getWriteReqsAvailable(), userLimiter.getWriteReqsAvailable())
-        * QuotaUtil.WRITE_CAPACITY_UNIT;
+    long writeReqsAvailable = 0;
+    if (userLimiter.isBypass()) {
+      writeReqsAvailable = regionServerLimiter.getWriteReqsAvailable();
+    } else {
+      // Beacuse allow user oversume, so return the max avail in rs limiter or user limiter
+      writeReqsAvailable = Math.max(regionServerLimiter.getWriteReqsAvailable(),
+        userLimiter.getWriteReqsAvailable());
+    }
+    return writeReqsAvailable * QuotaUtil.WRITE_CAPACITY_UNIT;
   }
 
   @Override

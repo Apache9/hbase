@@ -48,8 +48,7 @@ public interface ReplicationPeer {
    */
   @InterfaceAudience.LimitedPrivate(HBaseInterfaceAudience.REPLICATION)
   enum PeerProtocol {
-    NATIVE(ZooKeeperProtos.ReplicationPeer.Protocol.NATIVE,
-        "org.apache.hadoop.hbase.replication.regionserver.HBaseInterClusterReplicationEndpoint"),
+    NATIVE(ZooKeeperProtos.ReplicationPeer.Protocol.NATIVE, null),
     THRIFT(ZooKeeperProtos.ReplicationPeer.Protocol.THRIFT,
         "org.apache.hadoop.hbase.replication.thrift.ThriftHBaseReplicationEndpoint");
 

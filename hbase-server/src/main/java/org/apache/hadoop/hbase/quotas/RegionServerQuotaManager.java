@@ -272,7 +272,24 @@ public class RegionServerQuotaManager {
       final int numScans) throws IOException, ThrottlingException {
     UserGroupInformation ugi = getUserGroupInformation(region);
     TableName table = region.getTableDesc().getTableName();
-    return checkQuota(ugi, table, numWrites, numReads, numScans);
+    OperationQuota quota = getQuota(ugi, table);
+    try {
+      quota.checkQuota(numWrites, numReads, numScans);
+    } catch (ThrottlingException e) {
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("Throttling exception for user=" + ugi.getUserName() + " table=" + table
+            + " numWrites=" + numWrites + " numReads=" + numReads + " numScans=" + numScans + ": "
+            + e.getMessage());
+        LOG.debug("Quota snapshot for user=" + ugi.getUserName() + " table=" + table + " : "
+            + quota);
+      }
+      region.getMetrics().updateThrottledRead(numReads + numScans);
+      region.getMetrics().updateThrottledWrite(numWrites);
+      if (!isThrottleSimulated()) {
+        throw e;
+      }
+    }
+    return quota;
   }
 
   private OperationQuota checkQuota(final UserGroupInformation ugi, final TableName table,
@@ -295,7 +312,7 @@ public class RegionServerQuotaManager {
     }
     return quota;
   }
-  
+
   /**
    * Grab quota after the Get. It will not check quota, just grab by result.
    * @param region

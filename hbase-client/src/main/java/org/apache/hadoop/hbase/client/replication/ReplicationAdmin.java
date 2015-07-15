@@ -42,6 +42,7 @@ import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HConnection;
 import org.apache.hadoop.hbase.client.HConnectionManager;
 import org.apache.hadoop.hbase.client.HTable;
+import org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.ReplicationState;
 import org.apache.hadoop.hbase.replication.ReplicationException;
 import org.apache.hadoop.hbase.replication.ReplicationFactory;
 import org.apache.hadoop.hbase.replication.ReplicationPeer;
@@ -181,16 +182,24 @@ public class ReplicationAdmin implements Closeable {
   @Deprecated
   public void addPeer(String id, String clusterKey, String tableCFs)
     throws ReplicationException {
-    this.replicationPeers.addPeer(id,
-      new ReplicationPeerConfig().setClusterKey(clusterKey), tableCFs);
+    addPeer(id, clusterKey, tableCFs, null);
+  }
+  
+  @Deprecated
+  public void addPeer(String id, String clusterKey, String tableCFs, String protocol)
+    throws ReplicationException {
+    addPeer(id, clusterKey, tableCFs, protocol, null);
   }
 
   @Deprecated
-  public void addPeer(String id, String clusterKey, String tableCFs, String protocol)
+  public void addPeer(String id, String clusterKey, String tableCFs, String protocol, String state)
       throws ReplicationException {
     ReplicationPeerConfig config = new ReplicationPeerConfig().setClusterKey(clusterKey);
     if (StringUtils.isNotBlank(protocol)) {
       config = config.setProtocol(ReplicationPeer.PeerProtocol.valueOf(protocol));
+    }
+    if (StringUtils.isNotBlank(state)) {
+      config.setState(ReplicationState.State.valueOf(state));
     }
     this.replicationPeers.addPeer(id, config, tableCFs);
   }

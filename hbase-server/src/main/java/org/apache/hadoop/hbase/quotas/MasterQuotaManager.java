@@ -551,9 +551,9 @@ public class MasterQuotaManager {
       throws IOException {
     String user = "";
     if (RequestContext.isInRequestContext()) {
-      user = RequestContext.getRequestUser().getName();
+      user = RequestContext.getRequestUser().getShortName();
     } else {
-      user = User.getCurrent().getName();
+      user = User.getCurrent().getShortName();
     }
     ThrottleSettings throttle = null;
     QuotaFilter filter = new QuotaFilter().setUserFilter(user).setTableFilter(

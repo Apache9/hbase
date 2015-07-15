@@ -24,6 +24,7 @@ import java.util.TreeMap;
 
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.classification.InterfaceStability;
+import org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.ReplicationState;
 import org.apache.hadoop.hbase.util.Bytes;
 
 /**
@@ -36,6 +37,7 @@ public class ReplicationPeerConfig {
   private String clusterKey;
   private String replicationEndpointImpl;
   private ReplicationPeer.PeerProtocol protocol = ReplicationPeer.PeerProtocol.NATIVE;
+  private ReplicationState.State state = ReplicationState.State.ENABLED;
   private final Map<byte[], byte[]> peerData;
   private final Map<String, String> configuration;
 
@@ -69,7 +71,14 @@ public class ReplicationPeerConfig {
    */
   public ReplicationPeerConfig setProtocol(ReplicationPeer.PeerProtocol protocol) {
     this.protocol = protocol;
-    setReplicationEndpointImpl(protocol.getReplicationEndpointImpl());
+    if (protocol.getReplicationEndpointImpl() != null) {
+      setReplicationEndpointImpl(protocol.getReplicationEndpointImpl());
+    }
+    return this;
+  }
+  
+  public ReplicationPeerConfig setState(ReplicationState.State state) {
+    this.state = state;
     return this;
   }
 
@@ -92,11 +101,16 @@ public class ReplicationPeerConfig {
   public ReplicationPeer.PeerProtocol getProtocol() {
     return protocol;
   }
+  
+  public ReplicationState.State getState() {
+    return state;
+  }
 
   @Override
   public String toString() {
     StringBuilder builder = new StringBuilder("clusterKey=").append(clusterKey).append(",");
     builder.append("replicationEndpointImpl=").append(replicationEndpointImpl).append(",");
+    builder.append("state=").append(state).append(",");
     builder.append("rpcProtocol=").append(protocol.name());
     return builder.toString();
   }

@@ -250,10 +250,10 @@ EOF
 
     #----------------------------------------------------------------------------------------------
     # Count rows in a table
-    def _count_internal(interval = 1000, caching_rows = 10)
+    def _count_internal(interval = 1000, caching_rows = 10, cache_blocks = false)
       # We can safely set scanner caching with the first key only filter
       scan = org.apache.hadoop.hbase.client.Scan.new
-      scan.cache_blocks = false
+      scan.cache_blocks = cache_blocks
       scan.caching = caching_rows
       scan.setFilter(org.apache.hadoop.hbase.filter.FirstKeyOnlyFilter.new)
 
