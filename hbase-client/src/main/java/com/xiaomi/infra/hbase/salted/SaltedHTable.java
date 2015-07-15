@@ -311,6 +311,11 @@ public class SaltedHTable implements HTableInterface{
     }
     return result;
   }
+  
+  @Override
+  public Result[] parallelGet(List<Get> gets) throws IOException {
+    throw new UnsupportedOperationException("Please use getRawTable to get underlying table");
+  }
 
   /**
    * {@inheritDoc}

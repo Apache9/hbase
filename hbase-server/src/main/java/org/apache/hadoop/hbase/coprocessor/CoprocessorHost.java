@@ -598,6 +598,11 @@ public abstract class CoprocessorHost<E extends CoprocessorEnvironment> {
       public Result[] get(List<Get> gets) throws IOException {
         return table.get(gets);
       }
+      
+      @Override
+      public Result[] parallelGet(List<Get> gets) throws IOException {
+        return table.parallelGet(gets);
+      }
 
       @Override
       public CoprocessorRpcChannel coprocessorService(byte[] row) {

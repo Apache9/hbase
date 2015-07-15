@@ -6120,6 +6120,39 @@ public class TestFromClientSide {
 
     table.close();
   }
+  
+  private Put createPut(String row) {
+    Put put = new Put( Bytes.toBytes(row));
+    put.add(FAMILY, QUALIFIER, VALUE);
+    return put;
+  }
+  
+  @Test
+  public void testParallelGet() throws Exception {
+    byte[] TABLE = Bytes.toBytes("testBucketPut");
+    HTable ht = TEST_UTIL.createTable(TABLE, FAMILY);
+    ht.setAutoFlush(false);
+
+    List<Put> puts = new ArrayList<Put>();
+    for (int i = 0; i < 10; i++) {
+      puts.add(createPut("row" + Integer.toString(i)));
+    }
+    HTableUtil.bucketRsPut(ht, puts);
+    
+    List<Get> gets = new ArrayList<Get>();
+    for (int i = 0; i < 10; i++) {
+      gets.add(new Get(Bytes.toBytes("row" + Integer.toString(i))));
+    }
+    
+    Result[] results = ht.parallelGet(gets);
+
+    assertEquals(results.length, puts.size());
+    for (int i = 0; i < 10 ; i++){
+      assertEquals(Bytes.toString(results[i].getRow()), "row" + Integer.toString(i));
+    }
+
+    ht.close();
+  }
 
   private void reverseScanTest(HTable table, boolean small) throws IOException {
     // scan backward
