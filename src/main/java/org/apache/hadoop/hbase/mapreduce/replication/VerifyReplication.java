@@ -83,6 +83,7 @@ public class VerifyReplication  extends Configured implements Tool {
   private String startRow = null;
   private String stopRow = null;
   private int scanRateLimit = -1;
+  private int versions = 1;
   private long verifyRows = Long.MAX_VALUE;
   private long maxErrorLog = Long.MAX_VALUE;
   private String logTable = null;
@@ -160,6 +161,10 @@ public class VerifyReplication  extends Configured implements Tool {
         }
         if (verifyRows != Long.MAX_VALUE) {
           scan.setFilter(new PageFilter(verifyRows));
+        }
+        int versions = conf.getInt(NAME + ".versions", 1);
+        if (versions != 1) {
+          scan.setMaxVersions(versions);
         }
 
         peerId = conf.get(NAME + ".peerId");
@@ -406,6 +411,7 @@ public class VerifyReplication  extends Configured implements Tool {
     conf.setLong(NAME+".endTime", endTime);
     conf.setLong(NAME+".verifyrows", verifyRows);
     conf.setInt(NAME +".sleepToReCompare", sleepToReCompare);
+    conf.setInt(NAME + ".versions", versions);
     if (logTable != null) {
       conf.set(NAME + ".logTable", logTable);
     }
@@ -514,6 +520,12 @@ public class VerifyReplication  extends Configured implements Tool {
           families = cmd.substring(familiesArgKey.length());
           continue;
         }
+
+        final String versionsArgKey = "--versions=";
+        if (cmd.startsWith(versionsArgKey)) {
+          versions = Integer.parseInt(cmd.substring(versionsArgKey.length()));
+          continue;
+        }
         
         final String scanRateArgKey = "--scanrate=";
         if (cmd.startsWith(scanRateArgKey)) {
@@ -591,6 +603,7 @@ public class VerifyReplication  extends Configured implements Tool {
     System.err.println(" stoprow      end of the row");
     System.err.println(" families     comma-separated list of families to copy");
     System.err.println(" scanrate     the scan rate limit: rows per second for each region.");
+    System.err.println(" versions     number of cell versions to verify.");
     System.err.println(" verifyrows   number of rows each region in source table to verify.");
     System.err.println(" recomparesleep   milliseconds to sleep before recompare row.");
     System.err.println(" logtable     table to log the errors/differences (with column family C).");
