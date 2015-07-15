@@ -76,6 +76,14 @@ public class MetricsRegion {
     source.updateWrite(writeCapacityUnitCount);
   }
 
+  public void updateThrottledRead(final long readNum) {
+    source.updateThrottledRead(readNum);
+  }
+
+  public void updateThrottledWrite(final long writeNum) {
+    source.updateThrottledWrite(writeNum);
+  }
+
   MetricsRegionSource getSource() {
     return source;
   }

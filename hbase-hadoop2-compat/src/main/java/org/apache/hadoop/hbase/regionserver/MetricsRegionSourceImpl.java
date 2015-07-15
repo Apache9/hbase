@@ -51,6 +51,8 @@ public class MetricsRegionSourceImpl implements MetricsRegionSource {
   private String regionScanNextKey;
   private String regionReadKey;
   private String regionWriteKey;
+  private String regionThrottledReadKey;
+  private String regionThrottledWriteKey;
   private MutableCounterLong regionPut;
   private MutableCounterLong regionDelete;
 
@@ -62,6 +64,9 @@ public class MetricsRegionSourceImpl implements MetricsRegionSource {
 
   private MutableHistogram regionRead;
   private MutableHistogram regionWrite;
+
+  private MutableCounterLong regionThrottledRead;
+  private MutableCounterLong regionThrottledWrite;
 
   public MetricsRegionSourceImpl(MetricsRegionWrapper regionWrapper,
                                  MetricsRegionAggregateSourceImpl aggregate) {
@@ -104,6 +109,12 @@ public class MetricsRegionSourceImpl implements MetricsRegionSource {
 
     regionWriteKey = regionNamePrefix + MetricsRegionServerSource.WRITE_KEY;
     regionWrite = registry.newHistogram(regionWriteKey);
+
+    regionThrottledReadKey = regionNamePrefix + MetricsRegionServerSource.THROTTLE_READ_KEY;
+    regionThrottledRead = registry.getLongCounter(regionThrottledReadKey, 0l);
+
+    regionThrottledWriteKey = regionNamePrefix + MetricsRegionServerSource.THROTTLE_WRITE_KEY;
+    regionThrottledWrite = registry.getLongCounter(regionThrottledWriteKey, 0l);
   }
 
   @Override
@@ -124,6 +135,9 @@ public class MetricsRegionSourceImpl implements MetricsRegionSource {
 
     registry.removeMetric(regionReadKey);
     registry.removeMetric(regionWriteKey);
+
+    registry.removeMetric(regionThrottledReadKey);
+    registry.removeMetric(regionThrottledWriteKey);
 
     JmxCacheBuster.clearJmxCache();
   }
@@ -166,6 +180,16 @@ public class MetricsRegionSourceImpl implements MetricsRegionSource {
   @Override
   public void updateWrite(long writeCapacityUnitCount) {
     regionWrite.add(writeCapacityUnitCount);
+  }
+
+  @Override
+  public void updateThrottledRead(long readNum) {
+    regionThrottledRead.incr(readNum);
+  }
+
+  @Override
+  public void updateThrottledWrite(long writeNum) {
+    regionThrottledWrite.incr(writeNum);
   }
 
   @Override
