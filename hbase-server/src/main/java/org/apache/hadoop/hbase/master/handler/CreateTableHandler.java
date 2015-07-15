@@ -30,6 +30,8 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.HColumnDescriptor;
+import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.NotAllMetaRegionsOnlineException;
@@ -223,6 +225,21 @@ public class CreateTableHandler extends EventHandler {
    */
   private void handleCreateTable(TableName tableName)
       throws IOException, KeeperException {
+    // set default cluster column compression
+    for (HColumnDescriptor desc : this.hTableDescriptor.getColumnFamilies()) {
+      if (desc.getValue(HColumnDescriptor.COMPRESSION) == null) {
+        String compression = conf
+            .get(HConstants.HBASE_CLUSTER_COLUMN_COMPRESSION);
+        if (compression != null) {
+          desc.setValue(HColumnDescriptor.COMPRESSION, compression);
+          LOG.info("User donot set the compression for column fammily:"
+              + desc.getNameAsString() + ". Automaticly set it to "
+              + compression
+              + " according to cluster conf: hbase.cluster.column.compression");
+        }
+      }
+    }
+
     Path tempdir = fileSystemManager.getTempDir();
     FileSystem fs = fileSystemManager.getFileSystem();
 
