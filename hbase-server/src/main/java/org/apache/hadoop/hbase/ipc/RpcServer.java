@@ -1445,7 +1445,7 @@ public class RpcServer implements RpcServerInterface {
           if (count < 0 || versionAndAuthBytes.remaining() > 0) {
             return count;
           }
-          int version = versionAndAuthBytes.get(0);
+          byte version = versionAndAuthBytes.get(0);
           byte authbyte = versionAndAuthBytes.get(1);
           this.authMethod = AuthMethod.valueOf(authbyte);
           if (version != CURRENT_VERSION) {
