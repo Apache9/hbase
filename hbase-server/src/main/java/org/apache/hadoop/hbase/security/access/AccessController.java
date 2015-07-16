@@ -2020,8 +2020,9 @@ public class AccessController extends BaseMasterAndRegionObserver
         if (!initialized) {
           throw new CoprocessorException("AccessController not yet initialized");
         }
-        if (LOG.isDebugEnabled()) {
-          LOG.debug("Received request to grant access permission " + perm.toString());
+        if (LOG.isInfoEnabled()) {
+          LOG.info("Received request from user: " + getActiveUser()
+              + " to grant access permission " + perm.toString());
         }
 
         switch(request.getUserPermission().getPermission().getType()) {
@@ -2071,8 +2072,9 @@ public class AccessController extends BaseMasterAndRegionObserver
         if (!initialized) {
           throw new CoprocessorException("AccessController not yet initialized");
         }
-        if (LOG.isDebugEnabled()) {
-          LOG.debug("Received request to revoke access permission " + perm.toString());
+        if (LOG.isInfoEnabled()) {
+          LOG.info("Received request from user: " + getActiveUser()
+              + " to revoke access permission " + perm.toString());
         }
 
         switch(request.getUserPermission().getPermission().getType()) {
