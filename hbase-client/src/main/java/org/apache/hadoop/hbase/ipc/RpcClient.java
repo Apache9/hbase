@@ -143,7 +143,8 @@ public class RpcClient {
   final static int DEFAULT_PING_INTERVAL = 60000;  // 1 min
   final static int DEFAULT_SOCKET_TIMEOUT = 20000; // 20 seconds
   final static int PING_CALL_ID = -1;
-
+  private final int clientWarnIpcResponseTime;
+  
   public final static String FAILED_SERVER_EXPIRY_KEY = "hbase.ipc.client.failed.servers.expiry";
   public final static int FAILED_SERVER_EXPIRY_DEFAULT = 2000;
 
@@ -151,6 +152,9 @@ public class RpcClient {
       "hbase.ipc.client.fallback-to-simple-auth-allowed";
   public static final boolean IPC_CLIENT_FALLBACK_TO_SIMPLE_AUTH_ALLOWED_DEFAULT = false;
 
+  public static final int DEFAULT_CLIENT_WARN_IPC_RESPONSE_TIME = 100; // milliseconds
+  public static final String CLIENT_WARN_IPC_RESPONSE_TIME = "hbase.client.ipc.warn.response.time";
+ 
   // thread-specific RPC timeout, which may override that of what was passed in.
   // This is used to change dynamically the timeout (for read only) when retrying: if
   //  the time allowed for the operation is less than the usual socket timeout, then
@@ -654,6 +658,7 @@ public class RpcClient {
 
       // otherwise back off and retry
       try {
+        LOG.info("Sleep in handleConnectionFailure for next try, sleepTime=" + failureSleep);
         Thread.sleep(failureSleep);
       } catch (InterruptedException ie) {
         ExceptionUtil.rethrowIfInterrupt(ie);
@@ -1278,6 +1283,8 @@ public class RpcClient {
         IPC_CLIENT_FALLBACK_TO_SIMPLE_AUTH_ALLOWED_DEFAULT);
     this.localAddr = localAddr;
     this.userProvider = UserProvider.instantiate(conf);
+    this.clientWarnIpcResponseTime = conf.getInt(CLIENT_WARN_IPC_RESPONSE_TIME,
+      DEFAULT_CLIENT_WARN_IPC_RESPONSE_TIME);
     // login the server principal (if using secure Hadoop)
     if (LOG.isDebugEnabled()) {
       LOG.debug("Codec=" + this.codec + ", compressor=" + this.compressor +
@@ -1286,6 +1293,7 @@ public class RpcClient {
         ", maxIdleTime=" + this.maxIdleTime +
         ", maxRetries=" + this.maxRetries +
         ", fallbackAllowed=" + this.fallbackAllowed +
+        ", clientWarnIpcResponseTime=" + this.clientWarnIpcResponseTime +
         ", ping interval=" + this.pingInterval + "ms" +
         ", bind address=" + (this.localAddr != null ? this.localAddr : "null"));
     }
@@ -1404,6 +1412,7 @@ public class RpcClient {
     // wait until all connections are closed
     while (!connections.isEmpty()) {
       try {
+        LOG.info("Sleep in stop, sleepTime=100");
         Thread.sleep(100);
       } catch (InterruptedException ignored) {
       }
@@ -1667,11 +1676,14 @@ public class RpcClient {
         throw new ServiceException("Client dropping data on the floor!");
       }
 
+      long callTime = System.currentTimeMillis() - startTime;
       if (LOG.isTraceEnabled()) {
-        long callTime = System.currentTimeMillis() - startTime;
         if (LOG.isTraceEnabled()) {
           LOG.trace("Call: " + md.getName() + ", callTime: " + callTime + "ms");
         }
+      }
+      if (callTime > this.clientWarnIpcResponseTime) {
+        LOG.warn("Slow ipc call, MethodName=" + md.getName() + ", consume time=" + callTime);
       }
       return val.getFirst();
     } catch (Throwable e) {
