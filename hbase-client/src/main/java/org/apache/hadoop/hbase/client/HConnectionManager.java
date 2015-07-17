@@ -1234,8 +1234,12 @@ public class HConnectionManager {
       };
       try {
         // pre-fetch certain number of regions info at region cache.
+        long startTime = System.currentTimeMillis();
         MetaScanner.metaScan(conf, this, visitor, tableName, row,
             this.prefetchRegionLimit, TableName.META_TABLE_NAME);
+        LOG.info("Prefetch for table=" + tableName + ", row=" + Bytes.toString(row)
+          + ", prefetchRegionLimit=" + this.prefetchRegionLimit + ", time consume="
+          + (System.currentTimeMillis() - startTime));
       } catch (IOException e) {
         if (ExceptionUtil.isInterrupt(e)) {
           Thread.currentThread().interrupt();
@@ -1392,7 +1396,11 @@ public class HConnectionManager {
           }
         }
         try{
-          Thread.sleep(ConnectionUtils.getPauseTime(this.pause, tries));
+          long sleepTime = ConnectionUtils.getPauseTime(this.pause, tries);
+          LOG.info("Sleep for next retry, parentTable=" + parentTable
+              + ", tablename=" + tableName + ", useCaching=" + useCache
+              + ", retries=" + retry + ", sleepTime=" + sleepTime);
+          Thread.sleep(sleepTime);
         } catch (InterruptedException e) {
           throw new InterruptedIOException("Giving up trying to location region in " +
             "meta: thread is interrupted.");
@@ -1807,9 +1815,12 @@ public class HConnectionManager {
       synchronized (this.connectionLock.get(key)) {
         stub = (ClientService.BlockingInterface)this.stubs.get(key);
         if (stub == null) {
+          long startTime = System.currentTimeMillis();
           BlockingRpcChannel channel = this.rpcClient.createBlockingRpcChannel(sn,
             user, this.rpcTimeout);
           stub = ClientService.newBlockingStub(channel);
+          LOG.info("create stub region server:" + sn + ", rpcTimeout=" + this.rpcTimeout
+              + ", time consume=" + (System.currentTimeMillis() - startTime));
           // In old days, after getting stub/proxy, we'd make a call.  We are not doing that here.
           // Just fail on first actual call rather than in here on setup.
           this.stubs.put(key, stub);

@@ -22,6 +22,7 @@ import org.apache.hadoop.hbase.metrics.BaseSourceImpl;
 import org.apache.hadoop.metrics2.MetricHistogram;
 import org.apache.hadoop.metrics2.MetricsBuilder;
 import org.apache.hadoop.metrics2.MetricsRecordBuilder;
+import org.apache.hadoop.metrics2.lib.Interns;
 import org.apache.hadoop.metrics2.lib.MetricMutableCounterLong;
 
 /**
@@ -212,6 +213,7 @@ public class MetricsRegionServerSourceImpl
           .addGauge(SMALL_COMPACTION_QUEUE_LENGTH,
               COMPACTION_QUEUE_LENGTH_DESC,
               rsWrap.getSmallCompactionQueueSize())
+          .addGauge(FS_RECOVER_LEASE_TIME, FS_RECOVER_LEASE_TIME_DESC, rsWrap.getFsRecoverLeaseTime())
           .addGauge(FLUSH_QUEUE_LENGTH, FLUSH_QUEUE_LENGTH_DESC, rsWrap.getFlushQueueSize())
           .addGauge(BLOCK_CACHE_FREE_SIZE, BLOCK_CACHE_FREE_DESC, rsWrap.getBlockCacheFreeSize())
           .addGauge(BLOCK_CACHE_COUNT, BLOCK_CACHE_COUNT_DESC, rsWrap.getBlockCacheCount())

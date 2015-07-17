@@ -907,6 +907,33 @@ public class HTable implements HTableInterface {
       throw (InterruptedIOException)new InterruptedIOException().initCause(e);
     }
   }
+  
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public Result[] parallelGet(List<Get> gets) throws IOException {
+    Result[] results = new Result[gets.size()];
+    List<Future<Result>> futures = new ArrayList<Future<Result>>();
+    for (final Get get : gets) {
+      futures.add(pool.submit(new Callable<Result>() {
+        @Override
+        public Result call() throws Exception {
+          return get(get);
+        }
+      }));
+    }
+    for (int i = 0; i < results.length; i++) {
+      try {
+        results[i] = futures.get(i).get();
+      } catch (InterruptedException e) {
+        throw new IOException(e);
+      } catch (ExecutionException e) {
+        throw new IOException(e);
+      }
+    }
+    return results;
+  }
 
   /**
    * {@inheritDoc}

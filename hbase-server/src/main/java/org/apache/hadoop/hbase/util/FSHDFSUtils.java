@@ -232,9 +232,11 @@ public class FSHDFSUtils extends FSUtils {
 
   boolean checkIfTimedout(final Configuration conf, final long recoveryTimeout,
       final int nbAttempt, final Path p, final long startWaiting) {
+    recoverLeaseTime = Math.max(recoverLeaseTime, EnvironmentEdgeManager.currentTimeMillis()
+        - startWaiting);
     if (recoveryTimeout < EnvironmentEdgeManager.currentTimeMillis()) {
       LOG.warn("Cannot recoverLease after trying for " +
-        conf.getInt("hbase.lease.recovery.timeout", 900000) +
+        conf.getLong("hbase.lease.recovery.timeout", 900000) +
         "ms (hbase.lease.recovery.timeout); continuing, but may be DATALOSS!!!; " +
         getLogMessageDetail(nbAttempt, p, startWaiting));
       return true;

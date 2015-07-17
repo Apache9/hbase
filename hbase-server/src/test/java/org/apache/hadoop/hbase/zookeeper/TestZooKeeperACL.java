@@ -268,8 +268,10 @@ public class TestZooKeeperACL {
    */
   @Test
   public void testIsZooKeeperSecure() throws Exception {
+    String configPath = System.getProperty("java.security.auth.login.config");
+    System.clearProperty("java.security.auth.login.config");
     boolean testJaasConfig = ZKUtil.isSecureZooKeeper(new Configuration(TEST_UTIL.getConfiguration()));
-    assertEquals(testJaasConfig, secureZKAvailable);
+    assertEquals(testJaasConfig, false);
     // Define Jaas configuration without ZooKeeper Jaas config
     File saslConfFile = File.createTempFile("tmp", "fakeJaas.conf");
     FileWriter fwriter = new FileWriter(saslConfFile);
@@ -280,8 +282,9 @@ public class TestZooKeeperACL {
         saslConfFile.getAbsolutePath());
 
     testJaasConfig = ZKUtil.isSecureZooKeeper(new Configuration(TEST_UTIL.getConfiguration()));
-    assertEquals(testJaasConfig, false);
+    assertEquals(testJaasConfig, true);
     saslConfFile.delete();
+    System.setProperty("java.security.auth.login.config", configPath);
   }
 }
 

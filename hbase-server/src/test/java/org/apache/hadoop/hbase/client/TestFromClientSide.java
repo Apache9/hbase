@@ -98,6 +98,7 @@ import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
 import org.junit.After;
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
@@ -4935,6 +4936,138 @@ public class TestFromClientSide {
     assertNull(error.get());
   }
 
+  private RowMutations constructRowMutations(Put put) throws IOException {
+    RowMutations mutation = new RowMutations(put.getRow());
+    mutation.add(put);
+    return mutation;
+  }
+  
+  @Test
+  public void testCheckAndMutateWithCompareOp() throws IOException {
+    final byte[] value1 = Bytes.toBytes("aaaa");
+    final byte[] value2 = Bytes.toBytes("bbbb");
+    final byte[] value3 = Bytes.toBytes("cccc");
+    final byte[] value4 = Bytes.toBytes("dddd");
+
+    HTable table = TEST_UTIL.createTable(
+      Bytes.toBytes("testCheckAndPutWithCompareOp" + UUID.randomUUID()), new byte[][] { FAMILY });
+
+    Put put2 = new Put(ROW);
+    put2.add(FAMILY, QUALIFIER, value2);
+
+    Put put3 = new Put(ROW);
+    put3.add(FAMILY, QUALIFIER, value3);
+
+    // row doesn't exist, so using "null" to check for existence should be considered "match".
+    boolean ok = table.checkAndPut(ROW, FAMILY, QUALIFIER, null, put2);
+    assertEquals(ok, true);
+
+    // cell = "bbbb", using "aaaa" to compare only LESS/LESS_OR_EQUAL/NOT_EQUAL
+    // turns out "match"
+    ok = table.checkAndMutate(ROW, FAMILY, QUALIFIER, CompareOp.GREATER, value1, constructRowMutations(put2));
+    assertEquals(ok, false);
+    ok = table.checkAndMutate(ROW, FAMILY, QUALIFIER, CompareOp.EQUAL, value1, constructRowMutations(put2));
+    assertEquals(ok, false);
+    ok = table.checkAndMutate(ROW, FAMILY, QUALIFIER, CompareOp.GREATER_OR_EQUAL, value1, constructRowMutations(put2));
+    assertEquals(ok, false);
+    ok = table.checkAndMutate(ROW, FAMILY, QUALIFIER, CompareOp.LESS, value1, constructRowMutations(put2));
+    assertEquals(ok, true);
+    ok = table.checkAndMutate(ROW, FAMILY, QUALIFIER, CompareOp.LESS_OR_EQUAL, value1, constructRowMutations(put2));
+    assertEquals(ok, true);
+    ok = table.checkAndMutate(ROW, FAMILY, QUALIFIER, CompareOp.NOT_EQUAL, value1, constructRowMutations(put3));
+    assertEquals(ok, true);
+
+    // cell = "cccc", using "dddd" to compare only LARGER/LARGER_OR_EQUAL/NOT_EQUAL
+    // turns out "match"
+    ok = table.checkAndMutate(ROW, FAMILY, QUALIFIER, CompareOp.LESS, value4, constructRowMutations(put3));
+    assertEquals(ok, false);
+    ok = table.checkAndMutate(ROW, FAMILY, QUALIFIER, CompareOp.LESS_OR_EQUAL, value4, constructRowMutations(put3));
+    assertEquals(ok, false);
+    ok = table.checkAndMutate(ROW, FAMILY, QUALIFIER, CompareOp.EQUAL, value4, constructRowMutations(put3));
+    assertEquals(ok, false);
+    ok = table.checkAndMutate(ROW, FAMILY, QUALIFIER, CompareOp.GREATER, value4, constructRowMutations(put3));
+    assertEquals(ok, true);
+    ok = table.checkAndMutate(ROW, FAMILY, QUALIFIER, CompareOp.GREATER_OR_EQUAL, value4, constructRowMutations(put3));
+    assertEquals(ok, true);
+    ok = table.checkAndMutate(ROW, FAMILY, QUALIFIER, CompareOp.NOT_EQUAL, value4, constructRowMutations(put2));
+    assertEquals(ok, true);
+
+    // cell = "bbbb", using "bbbb" to compare only GREATER_OR_EQUAL/LESS_OR_EQUAL/EQUAL
+    // turns out "match"
+    ok = table.checkAndMutate(ROW, FAMILY, QUALIFIER, CompareOp.GREATER, value2, constructRowMutations(put2));
+    assertEquals(ok, false);
+    ok = table.checkAndMutate(ROW, FAMILY, QUALIFIER, CompareOp.NOT_EQUAL, value2, constructRowMutations(put2));
+    assertEquals(ok, false);
+    ok = table.checkAndMutate(ROW, FAMILY, QUALIFIER, CompareOp.LESS, value2, constructRowMutations(put2));
+    assertEquals(ok, false);
+    ok = table.checkAndMutate(ROW, FAMILY, QUALIFIER, CompareOp.GREATER_OR_EQUAL, value2, constructRowMutations(put2));
+    assertEquals(ok, true);
+    ok = table.checkAndMutate(ROW, FAMILY, QUALIFIER, CompareOp.LESS_OR_EQUAL, value2, constructRowMutations(put2));
+    assertEquals(ok, true);
+    ok = table.checkAndMutate(ROW, FAMILY, QUALIFIER, CompareOp.EQUAL, value2, constructRowMutations(put3));
+    assertEquals(ok, true);
+
+    // cell != null and value = null, only CompareOp is NOT_EQUAL turns out "match"
+    for (CompareOp compareOp : CompareOp.values()) {
+      if (compareOp.equals(CompareOp.NOT_EQUAL)) {
+        assertTrue(table.checkAndMutate(ROW, FAMILY, QUALIFIER, compareOp, null, constructRowMutations(put3)));
+      } else if (compareOp.equals(CompareOp.NO_OP)) {
+        try {
+          table.checkAndMutate(ROW, FAMILY, QUALIFIER, compareOp, null, constructRowMutations(put3));
+          Assert.fail();
+        } catch (Exception e) {
+        }
+      } else {
+        assertFalse(table.checkAndMutate(ROW, FAMILY, QUALIFIER, compareOp, null, constructRowMutations(put3)));
+      }
+    }
+
+    // cell = null and value = null, only CompareOp is EQUAL turns out "match"
+    byte[] nullRow = Bytes.toBytes("oneNullRow");
+    Put nullRowPutValue1 = new Put(nullRow);
+    nullRowPutValue1.add(FAMILY, QUALIFIER, value1);
+    for (CompareOp compareOp : CompareOp.values()) {
+      if (compareOp.equals(CompareOp.EQUAL)) {
+        assertTrue(table.checkAndMutate(nullRow, FAMILY, QUALIFIER, compareOp, null, constructRowMutations(nullRowPutValue1)));
+        // delete nullRow to keep cell = null
+        table.delete(new Delete(nullRow).deleteFamily(FAMILY));
+      } else if (compareOp.equals(CompareOp.NO_OP)) {
+        try {
+          table.checkAndMutate(nullRow, FAMILY, QUALIFIER, compareOp, null, constructRowMutations(nullRowPutValue1));
+          Assert.fail();
+        } catch (Exception e) {
+        }
+      } else {
+        assertFalse(table
+            .checkAndMutate(nullRow, FAMILY, QUALIFIER, compareOp, null, constructRowMutations(nullRowPutValue1)));
+      }
+    }
+
+    // cell = null and value != null, only CompareOp is NOT_EQUAL turns out "match"
+    nullRow = Bytes.toBytes("AnotherNullRow");
+    nullRowPutValue1 = new Put(nullRow);
+    nullRowPutValue1.add(FAMILY, QUALIFIER, value1);
+    for (CompareOp compareOp : CompareOp.values()) {
+      if (compareOp.equals(CompareOp.NOT_EQUAL)) {
+        assertTrue(table.checkAndMutate(nullRow, FAMILY, QUALIFIER, compareOp, value1,
+          constructRowMutations(nullRowPutValue1)));
+        // delete nullRow to keep cell = null
+        table.delete(new Delete(nullRow).deleteFamily(FAMILY));
+      } else if (compareOp.equals(CompareOp.NO_OP)) {
+        try {
+          table.checkAndMutate(nullRow, FAMILY, QUALIFIER, compareOp, value1,
+            constructRowMutations(nullRowPutValue1));
+          Assert.fail();
+        } catch (Exception e) {
+        }
+      } else {
+        System.out.println(compareOp);
+        assertFalse(table.checkAndMutate(nullRow, FAMILY, QUALIFIER, compareOp, value1,
+          constructRowMutations(nullRowPutValue1)));
+      }
+    }
+  }
+  
   @Test
   public void testCheckAndPut() throws IOException {
     final byte [] anotherrow = Bytes.toBytes("anotherrow");
@@ -6119,6 +6252,39 @@ public class TestFromClientSide {
     reverseScanTest(table, true);
 
     table.close();
+  }
+  
+  private Put createPut(String row) {
+    Put put = new Put( Bytes.toBytes(row));
+    put.add(FAMILY, QUALIFIER, VALUE);
+    return put;
+  }
+  
+  @Test
+  public void testParallelGet() throws Exception {
+    byte[] TABLE = Bytes.toBytes("testBucketPut");
+    HTable ht = TEST_UTIL.createTable(TABLE, FAMILY);
+    ht.setAutoFlush(false);
+
+    List<Put> puts = new ArrayList<Put>();
+    for (int i = 0; i < 10; i++) {
+      puts.add(createPut("row" + Integer.toString(i)));
+    }
+    HTableUtil.bucketRsPut(ht, puts);
+    
+    List<Get> gets = new ArrayList<Get>();
+    for (int i = 0; i < 10; i++) {
+      gets.add(new Get(Bytes.toBytes("row" + Integer.toString(i))));
+    }
+    
+    Result[] results = ht.parallelGet(gets);
+
+    assertEquals(results.length, puts.size());
+    for (int i = 0; i < 10 ; i++){
+      assertEquals(Bytes.toString(results[i].getRow()), "row" + Integer.toString(i));
+    }
+
+    ht.close();
   }
 
   private void reverseScanTest(HTable table, boolean small) throws IOException {

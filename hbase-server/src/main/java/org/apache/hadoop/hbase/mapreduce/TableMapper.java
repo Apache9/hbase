@@ -36,5 +36,5 @@ import org.apache.hadoop.mapreduce.Mapper;
 @InterfaceStability.Stable
 public abstract class TableMapper<KEYOUT, VALUEOUT>
 extends Mapper<ImmutableBytesWritable, Result, KEYOUT, VALUEOUT> {
-
+  public final static String SCAN_RATE_LIMIT = "hbase.mapreduce.mapper.scan.rate.limit";
 }

@@ -942,4 +942,23 @@ public class TableMapReduceUtil {
 
     return ret;
   }
+  
+  /**
+   * Control the scan rate
+   * @param scanRateLimit the scan rate limit
+   * @param rowdone  number of rows have been done
+   * @param timeUsed the time costed
+   */
+  public static void limitScanRate(int scanRateLimit, long rowdone, long timeUsed) {
+    if (scanRateLimit > 0) {
+      long sleepTimeInMs = 1000 * rowdone / scanRateLimit - timeUsed;
+      if (sleepTimeInMs > 0) {
+        try {
+          Thread.sleep(sleepTimeInMs);
+        } catch (InterruptedException e) {
+          // do nothing.
+        }
+      }
+    }
+  }
 }

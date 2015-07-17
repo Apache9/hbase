@@ -106,11 +106,7 @@ public class MasterQuotaManager {
     tableLocks = new NamedLock<TableName>();
     userLocks = new NamedLock<String>();
 
-    try {
-      computeTotalExistedLimit();
-    } catch (IOException e) {
-      LOG.info("fail to update total existed limit");
-    }
+    computeTotalExistedLimit();
 
     regionServerReadLimit = getConfiguration().getInt(QuotaCache.REGION_SERVER_READ_LIMIT_KEY,
       QuotaCache.DEFAULT_REGION_SERVER_READ_LIMIT);
@@ -510,37 +506,40 @@ public class MasterQuotaManager {
     LOG.info("Start to compute total existed limit...");
     long totalReadLimit = 0;
     long totalWriteLimit = 0;
-    regionServerNum = this.masterServices.getServerManager().getOnlineServersList().size();
+    try {
+      regionServerNum = this.masterServices.getServerManager().getOnlineServersList().size();
 
-    QuotaRetriever scanner = QuotaRetriever.open(this.getConfiguration());
-    for (QuotaSettings settings : scanner) {
-      switch (settings.getQuotaType()) {
-      case THROTTLE:
-        ThrottleSettings throttle = (ThrottleSettings) settings;
-        // just compute the (user,table) quota, which timeunit is seconds
-        if (throttle.getUserName() != null && throttle.getTableName() != null
-            && throttle.getTimeUnit() == ProtobufUtil.toTimeUnit(TimeUnit.SECONDS)) {
-          TableName tableName = throttle.getTableName();
-          int tableRegionsNum = this.masterServices.getAssignmentManager().getRegionStates()
-              .getRegionByStateOfTable(tableName).get(RegionState.State.OPEN).size();
-          long maxLocalThrottleLimit = (long) (throttle.getSoftLimit() * QuotaCache
-              .computeLocalFactor(regionServerNum, tableRegionsNum, tableRegionsNum));
-          if (throttle.getThrottleType() == ProtobufUtil.toThrottleType(ThrottleType.READ_NUMBER)) {
-            totalReadLimit += maxLocalThrottleLimit;
-          } else if (throttle.getThrottleType() == ProtobufUtil
-              .toThrottleType(ThrottleType.WRITE_NUMBER)) {
-            totalWriteLimit += maxLocalThrottleLimit;
+      QuotaRetriever scanner = QuotaRetriever.open(this.getConfiguration());
+      for (QuotaSettings settings : scanner) {
+        switch (settings.getQuotaType()) {
+        case THROTTLE:
+          ThrottleSettings throttle = (ThrottleSettings) settings;
+          // just compute the (user,table) quota, which timeunit is seconds
+          if (throttle.getUserName() != null && throttle.getTableName() != null
+              && throttle.getTimeUnit() == ProtobufUtil.toTimeUnit(TimeUnit.SECONDS)) {
+            TableName tableName = throttle.getTableName();
+            int tableRegionsNum = this.masterServices.getAssignmentManager().getRegionStates()
+                .getRegionByStateOfTable(tableName).get(RegionState.State.OPEN).size();
+            long maxLocalThrottleLimit = (long) (throttle.getSoftLimit() * QuotaCache
+                .computeLocalFactor(regionServerNum, tableRegionsNum, tableRegionsNum));
+            if (throttle.getThrottleType() == ProtobufUtil.toThrottleType(ThrottleType.READ_NUMBER)) {
+              totalReadLimit += maxLocalThrottleLimit;
+            } else if (throttle.getThrottleType() == ProtobufUtil
+                .toThrottleType(ThrottleType.WRITE_NUMBER)) {
+              totalWriteLimit += maxLocalThrottleLimit;
+            }
           }
+          break;
+        case GLOBAL_BYPASS:
+          break;
+        default:
+          break;
         }
-        break;
-      case GLOBAL_BYPASS:
-        break;
-      default:
-        break;
       }
+      scanner.close();
+    } catch (Throwable t) {
+      LOG.error("fail to update total existed limit", t);
     }
-    scanner.close();
-
     totalExistedReadLimit = totalReadLimit;
     totalExistedWriteLimit = totalWriteLimit;
     LOG.info("After compute total existed limit for RegionServer, totalExistedReadlimit="

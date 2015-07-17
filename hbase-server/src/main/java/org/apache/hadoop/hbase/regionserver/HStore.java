@@ -1664,6 +1664,10 @@ public class HStore implements Store {
     try {
       // First go to the memstore.  Pick up deletes and candidates.
       this.memstore.getRowKeyAtOrBefore(state);
+      if (state.hasCandidate() && state.getCandidate().matchingRow(row)) {
+        return state.getCandidate();
+      }
+      
       // Check if match, if we got a candidate on the asked for 'kv' row.
       // Process each relevant store file. Run through from newest to oldest.
       Iterator<StoreFile> sfIterator = this.storeEngine.getStoreFileManager()

@@ -334,6 +334,11 @@ public class RemoteHTable implements HTableInterface {
 
     return getResults(spec);
   }
+  
+  @Override
+  public Result[] parallelGet(List<Get> gets) throws IOException {
+    throw new IOException("parallelGet(List<Get>) not supported");
+  }
 
   private Result[] getResults(String spec) throws IOException {
     for (int i = 0; i < maxRetries; i++) {

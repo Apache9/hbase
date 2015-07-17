@@ -50,6 +50,7 @@ import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.zookeeper.ZKClusterId;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
 import org.apache.hadoop.mapreduce.Job;
@@ -127,7 +128,10 @@ public class Import {
     private List<UUID> clusterIds;
     private Filter filter;
     private Durability durability;
-
+    private long st = System.currentTimeMillis();
+    private int scanRateLimit = -1;
+    private long rowdone = 0;
+    
     /**
      * @param row  The current table row key.
      * @param value  The columns.
@@ -143,6 +147,9 @@ public class Import {
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
+      rowdone ++;
+      TableMapReduceUtil.limitScanRate(scanRateLimit, rowdone,
+        EnvironmentEdgeManager.currentTimeMillis() - st);
     }
 
     private void writeResult(ImmutableBytesWritable key, Result result, Context context)
@@ -219,6 +226,9 @@ public class Import {
       Configuration conf = context.getConfiguration();
       cfRenameMap = createCfRenameMap(conf);
       filter = instantiateFilter(conf);
+      st = EnvironmentEdgeManager.currentTimeMillis();
+      scanRateLimit = conf.getInt(TableMapper.SCAN_RATE_LIMIT, -1);
+      LOG.info("The scan rate limit is " + scanRateLimit + " rows per second");
       String durabilityStr = conf.get(WAL_DURABILITY);
       if(durabilityStr != null){
         durability = Durability.valueOf(durabilityStr.toUpperCase());

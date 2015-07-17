@@ -195,6 +195,22 @@ public interface HTableInterface extends Closeable {
   Result[] get(List<Get> gets) throws IOException;
 
   /**
+   * Extracts certain cells from the given rows, in parallel.
+   *
+   * @param gets The objects that specify what data to fetch and from which rows.
+   *
+   * @return The data coming from the specified rows, if it exists.  If the row
+   *         specified doesn't exist, the {@link Result} instance returned won't
+   *         contain any {@link KeyValue}, as indicated by {@link Result#isEmpty()}.
+   *         If there are any failures even after retries, there will be a null in
+   *         the results array for those Gets, AND an exception will be thrown.
+   * @throws IOException if a remote or network exception occurs.
+   *
+   * @since 0.90.0
+   */
+  public Result[] parallelGet(List<Get> gets) throws IOException;
+  
+  /**
    * Return the row that matches <i>row</i> exactly,
    * or the one that immediately precedes it.
    *

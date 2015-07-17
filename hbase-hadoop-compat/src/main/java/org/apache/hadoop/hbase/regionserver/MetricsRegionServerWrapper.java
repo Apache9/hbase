@@ -256,4 +256,9 @@ public interface MetricsRegionServerWrapper {
    * @return Count of requests blocked because the memstore size is larger than blockingMemStoreSize
    */
   public long getBlockedRequestsCount();
+  
+  /**
+   * @return Get max recover lease time
+   */
+  public long getFsRecoverLeaseTime();
 }

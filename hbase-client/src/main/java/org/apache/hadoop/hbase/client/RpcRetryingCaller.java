@@ -156,6 +156,8 @@ public class RpcRetryingCaller<T> {
         afterCall();
       }
       try {
+        LOG.info("Sleep for next retry, tries=" + tries + ", retries=" + retries + ", sleepTime="
+            + expectedSleep);
         Thread.sleep(expectedSleep);
       } catch (InterruptedException e) {
         throw new InterruptedIOException("Interrupted after " + tries + " tries  on " + retries);

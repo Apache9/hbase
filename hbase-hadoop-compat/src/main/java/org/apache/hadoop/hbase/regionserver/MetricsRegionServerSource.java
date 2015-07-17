@@ -200,6 +200,8 @@ public interface MetricsRegionServerSource extends BaseSource {
   String BLOCK_CACHE_MISS_COUNT = "blockCacheMissCount";
   String BLOCK_COUNT_MISS_COUNT_DESC =
       "Number of requests for a block that missed the block cache.";
+  String FS_RECOVER_LEASE_TIME = "fsRecoverLeaseTime";
+  String FS_RECOVER_LEASE_TIME_DESC = "Fs max recover lease time";
   String BLOCK_CACHE_EVICTION_COUNT = "blockCacheEvictionCount";
   String BLOCK_CACHE_EVICTION_COUNT_DESC =
       "Count of the number of blocks evicted from the block cache.";

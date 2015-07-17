@@ -410,6 +410,11 @@ public class HTablePool implements Closeable {
     }
 
     @Override
+    public Result[] parallelGet(List<Get> gets) throws IOException {
+      return table.parallelGet(gets);
+    }
+    
+    @Override
     @SuppressWarnings("deprecation")
     public Result getRowOrBefore(byte[] row, byte[] family) throws IOException {
       checkState();

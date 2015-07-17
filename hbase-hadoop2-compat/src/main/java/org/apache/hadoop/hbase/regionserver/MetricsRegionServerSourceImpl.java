@@ -230,6 +230,8 @@ public class MetricsRegionServerSourceImpl
               rsWrap.getBlockCacheMissCount())
           .addCounter(Interns.info(BLOCK_CACHE_EVICTION_COUNT, BLOCK_CACHE_EVICTION_COUNT_DESC),
               rsWrap.getBlockCacheEvictedCount())
+          .addGauge(Interns.info(FS_RECOVER_LEASE_TIME, FS_RECOVER_LEASE_TIME_DESC),
+              rsWrap.getFsRecoverLeaseTime())
           .addGauge(Interns.info(BLOCK_CACHE_HIT_PERCENT, BLOCK_CACHE_HIT_PERCENT_DESC),
               rsWrap.getBlockCacheHitPercent())
           .addGauge(Interns.info(BLOCK_CACHE_EXPRESS_HIT_PERCENT,
