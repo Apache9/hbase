@@ -244,6 +244,7 @@ module Hbase
         versions = args["VERSIONS"] || 1
         timerange = args[TIMERANGE]
         raw = args["RAW"] || false
+        debug = args["DEBUG"] || false
 
         # Normalize column names
         columns = [columns] if columns.class == String
@@ -281,6 +282,7 @@ module Hbase
         scan.setMaxVersions(versions) if versions > 1
         scan.setTimeRange(timerange[0], timerange[1]) if timerange
         scan.setRaw(raw)
+        scan.setDebug(debug) if debug
       else
         scan = org.apache.hadoop.hbase.client.Scan.new
       end

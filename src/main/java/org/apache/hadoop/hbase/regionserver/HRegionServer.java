@@ -2751,7 +2751,7 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
   public long openScanner(byte[] regionName, Scan scan) throws IOException {
     TracerUtils.addAnnotation("start a openScanner");
     RegionScanner s = internalOpenScanner(regionName, scan);
-    long scannerId = addScanner(s);
+    long scannerId = addScanner(scan, s);
     return scannerId;
   }
 
@@ -2805,10 +2805,10 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
     }
   }
 
-  protected long addScanner(RegionScanner s) throws LeaseStillHeldException {
+  protected long addScanner(Scan scan, RegionScanner s) throws LeaseStillHeldException {
     long scannerId = this.scannerIdGen.incrementAndGet();
     String scannerName = String.valueOf(scannerId);
-    scanners.put(scannerName, new RegionScannerHolder(s));
+    scanners.put(scannerName, new RegionScannerHolder(scan, s));
     this.leases.createLease(scannerName, this.scannerLeaseTimeoutPeriod,
         new ScannerListener(scannerName));
     return scannerId;
@@ -2827,9 +2827,12 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
   }
 
   public Result[] next(final long scannerId, int nbRows, long callSeq) throws IOException {
-    TracerUtils.addAnnotation("start a next(" + scannerId + "," + nbRows + "," + callSeq + ")");
     String scannerName = String.valueOf(scannerId);
     RegionScannerHolder holder = this.scanners.get(scannerName);
+
+    TracerUtils.addAnnotation("start a next(" + scannerId + "," + nbRows + "," + callSeq
+        + ") for scan: " + holder.getScan());
+
     if (holder == null) throw new UnknownScannerException("Name: " + scannerName);
     // if callSeq does not match throw Exception straight away. This needs to be performed even
     // before checking of Lease.

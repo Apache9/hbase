@@ -107,6 +107,7 @@ public class Scan extends OperationWithAttributes implements Writable {
   public static final String HINT_LOOKAHEAD = "_look_ahead_";
   private static final String REVERSED_ATTR = "_reversed_";
   private static final String RAWLIMIT_ATTR = "_rawlimit_";
+  private static final String DEBUG_ATTR = "_debug_";
 
   private static final byte SCAN_VERSION = (byte)2;
   private static final byte SCAN_REVERSED_VERSION = (byte)3;
@@ -125,6 +126,8 @@ public class Scan extends OperationWithAttributes implements Writable {
   static public final String SCAN_ATTRIBUTES_TABLE_NAME = "scan.attributes.table.name";
 
   private transient Boolean reversed;
+  private transient Boolean debug;
+
   /*
    * -1 means no caching
    */
@@ -788,6 +791,26 @@ public class Scan extends OperationWithAttributes implements Writable {
     setReversed(reversed);
   }
   
+  /**
+   * Set whether this scan is a debug one.
+   * @param debug
+   */
+  public void setDebug(boolean debug) {
+    this.debug = debug;
+    setAttribute(DEBUG_ATTR, Bytes.toBytes(debug));
+  }
+
+  /**
+   * @return True if this Scan is in "debug" mode.
+   */
+  public boolean isDebug() {
+    if (this.debug == null) {
+      byte[] attr = getAttribute(DEBUG_ATTR);
+      this.debug = attr == null ? false : Bytes.toBoolean(attr);
+    }
+    return this.debug;
+  }
+
   /**
    * Get whether this scan is a reversed one.
    * @param reversed
