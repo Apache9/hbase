@@ -59,7 +59,7 @@ import static org.junit.Assert.fail;
 public class TestThrottleAdmin {
   final Log LOG = LogFactory.getLog(getClass());
 
-  private final static int REFRESH_TIME = 5 * 3600;
+  private final static int REFRESH_TIME = 5 * 60000;
 
   private final static HBaseTestingUtility TEST_UTIL = new HBaseTestingUtility();
 
@@ -75,6 +75,8 @@ public class TestThrottleAdmin {
   private static ManualEnvironmentEdge envEdge;
   
   private static HBaseAdmin admin;
+
+  private RegionServerQuotaManager quotaManager;
 
   @BeforeClass
   public static void setUpBeforeClass() throws Exception {
@@ -95,8 +97,14 @@ public class TestThrottleAdmin {
     envEdge = new ManualEnvironmentEdge();
     envEdge.setValue(EnvironmentEdgeManager.currentTimeMillis());
     EnvironmentEdgeManagerTestHelper.injectEdge(envEdge);
-    
+
     admin = TEST_UTIL.getHBaseAdmin();
+
+    String userName = User.getCurrent().getShortName();
+    admin.setQuota(QuotaSettingsFactory.throttleUser(userName, TABLE_NAME,
+      ThrottleType.READ_NUMBER, 10, TimeUnit.MINUTES));
+    admin.setQuota(QuotaSettingsFactory.throttleUser(userName, TABLE_NAME,
+      ThrottleType.WRITE_NUMBER, 10, TimeUnit.MINUTES));
   }
 
   @AfterClass
@@ -105,67 +113,83 @@ public class TestThrottleAdmin {
     TEST_UTIL.deleteTable(TABLE_NAME);
     TEST_UTIL.shutdownMiniCluster();
   }
-  
+
   @Before
   public void setupQuota() throws Exception {
-    String userName = User.getCurrent().getShortName();
-    admin.setQuota(QuotaSettingsFactory.throttleUser(userName, TABLE_NAME,
-      ThrottleType.READ_NUMBER, 10, TimeUnit.MINUTES));
-    admin.setQuota(QuotaSettingsFactory.throttleUser(userName, TABLE_NAME,
-      ThrottleType.WRITE_NUMBER, 10, TimeUnit.MINUTES));
+    quotaManager = TEST_UTIL.getMiniHBaseCluster()
+        .getRegionServer(0).getRegionServerQuotaManager();
+    // start throttle before all unit tests
+    admin.switchThrottle(true, false, false);
     triggerUserCacheRefresh(false, TABLE_NAME);
+  }
+
+  @After
+  public void refillQuota() {
+    waitMinuteQuota();
+  }
+
+  @Test
+  public void testStartThrottle() throws Exception {
+    checkIfStart();
   }
 
   @Test
   public void testSimulateThrottle() throws Exception {
-    RegionServerQuotaManager quotaManager = TEST_UTIL.getMiniHBaseCluster()
-        .getRegionServer(0).getRegionServerQuotaManager();
-    assertTrue(quotaManager.isQuotaEnabled());
-    assertFalse(quotaManager.isStopped());
-    assertFalse(quotaManager.isThrottleSimulated());
-
-    assertEquals(10, doPuts(100, table));
-    assertEquals(10, doGets(100, table));
-    
+    checkIfStart();
     // simulate throttle
     admin.switchThrottle(false, true, false);
-    
-    assertFalse(quotaManager.isStopped());
-    assertTrue(quotaManager.isThrottleSimulated());
-    
-    assertEquals(100, doPuts(100, table));
-    assertEquals(100, doGets(100, table));
-    
-    quotaManager.setThrottleSimulated(false);
+    checkIfSimulate();
+  }
+
+  @Test
+  public void testStopThrottle() throws Exception {
+    checkIfStart();
+    // stop throttle
+    admin.switchThrottle(false, false, true);
+    checkIfStop();
   }
   
   @Test
-  public void testStartAndStopThrottle() throws Exception {
-    RegionServerQuotaManager quotaManager = TEST_UTIL.getMiniHBaseCluster()
-        .getRegionServer(0).getRegionServerQuotaManager();
+  public void testSimulateAndStopThrottle() throws Exception {
+    checkIfStart();
+    // simulate throttle
+    admin.switchThrottle(false, true, false);
+    checkIfSimulate();
+    // stop throttle
+    admin.switchThrottle(false, false, true);
+    checkIfStop();
+    // simulate throttle
+    admin.switchThrottle(false, true, false);
+    checkIfSimulate();
+  }
+
+  private void checkIfStart() throws Exception {
     assertTrue(quotaManager.isQuotaEnabled());
-    assertFalse(quotaManager.isStopped());
     assertFalse(quotaManager.isThrottleSimulated());
+    assertFalse(quotaManager.isStopped());
 
     assertEquals(10, doPuts(100, table));
     assertEquals(10, doGets(100, table));
-    
-    // stop throttle
-    admin.switchThrottle(false, false, true);
-    
-    assertTrue(quotaManager.isStopped());
-    assertFalse(quotaManager.isThrottleSimulated());
-    
+  }
+
+  private void checkIfSimulate() throws Exception {
+    assertTrue(quotaManager.isQuotaEnabled());
+    assertTrue(quotaManager.isThrottleSimulated());
+    assertFalse(quotaManager.isStopped());
+
     assertEquals(100, doPuts(100, table));
     assertEquals(100, doGets(100, table));
-    
-    // start throttle
-    admin.switchThrottle(true, false, false);
-    assertTrue(quotaManager.isQuotaEnabled());
-    assertFalse(quotaManager.isStopped());
-    assertFalse(quotaManager.isThrottleSimulated());
   }
-  
+
+  private void checkIfStop() throws Exception {
+    assertFalse(quotaManager.isQuotaEnabled());
+    assertFalse(quotaManager.isThrottleSimulated());
+    assertTrue(quotaManager.isStopped());
+
+    assertEquals(100, doPuts(100, table));
+    assertEquals(100, doGets(100, table));
+  }
+
   private int doPuts(int maxOps, final HTable... tables) throws Exception {
     int count = 0;
     try {
@@ -260,6 +284,7 @@ public class TestThrottleAdmin {
   }
 
   private void waitMinuteQuota() {
-    envEdge.incValue(70000);
+    // because simulate may consume 100 quota, so wait 10 minutes to refill
+    envEdge.incValue(10 * 60000);
   }
 }

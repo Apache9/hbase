@@ -5174,21 +5174,27 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
   public SwitchThrottleResponse switchThrottle(RpcController controller,
       SwitchThrottleRequest request) throws ServiceException {
     if (request.hasStartThrottle() && request.getStartThrottle()) {
-      if (rsQuotaManager.isStopped()) {
-        try {
-          rsQuotaManager.start(getRpcServer().getScheduler());
-        } catch (IOException ie) {
-          throw new ServiceException(ie);
-        }
-      }
+      startQuotaManager();
+      rsQuotaManager.setThrottleSimulated(false);
     } else if (request.hasSimulateThrottle() && request.getSimulateThrottle()) {
+      startQuotaManager();
       rsQuotaManager.setThrottleSimulated(true);
     } else if (request.hasStopThrottle() && request.getStopThrottle()) {
       rsQuotaManager.stop();
+      rsQuotaManager.setThrottleSimulated(false);
     }
     return SwitchThrottleResponse.newBuilder().build();
   }
 
+  private void startQuotaManager() throws ServiceException {
+    if (rsQuotaManager.isStopped()) {
+      try {
+        rsQuotaManager.start(getRpcServer().getScheduler());
+      } catch (Throwable t) {
+        throw new ServiceException(t);
+      }
+    }
+  }
   /**
    * @return The cache config instance used by the regionserver.
    */
