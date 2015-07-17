@@ -926,7 +926,9 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
         rspmHost.start();
 
         // Start the Quota Manager
-        rsQuotaManager.start(getRpcServer().getScheduler());
+        if (rsQuotaManager != null) {
+          rsQuotaManager.start(getRpcServer().getScheduler());
+        }
       }
 
       // We registered with the Master.  Go into run mode.

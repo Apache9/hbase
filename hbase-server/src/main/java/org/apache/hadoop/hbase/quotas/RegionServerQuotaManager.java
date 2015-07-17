@@ -39,7 +39,7 @@ import org.apache.hadoop.hbase.regionserver.HRegion;
 import org.apache.hadoop.hbase.regionserver.RegionServerServices;
 import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.security.UserGroupInformation;
-
+import org.cliffc.high_scale_lib.Counter;
 import com.google.common.annotations.VisibleForTesting;
 
 /**
@@ -64,6 +64,8 @@ public class RegionServerQuotaManager {
 
   private boolean isSimulated = false;
 
+  private Counter grabQuotaFailedCount = new Counter();
+
   public RegionServerQuotaManager(final RegionServerServices rsServices) {
     this.rsServices = rsServices;
   }
@@ -77,8 +79,15 @@ public class RegionServerQuotaManager {
     LOG.info("Initializing quota support");
 
     // Initialize quota cache
-    quotaCache = new QuotaCache(rsServices);
-    quotaCache.start();
+    try {
+      quotaCache = new QuotaCache(rsServices);
+      quotaCache.start();
+    } catch (Throwable t) {
+      LOG.error("failed to start quotaCache", t);
+      quotaCache = null;
+    }
+
+    this.grabQuotaFailedCount.set(0);
   }
 
   public void stop() {
@@ -140,7 +149,7 @@ public class RegionServerQuotaManager {
             return new AllowExceedOperationQuota(userLimiter, rsLimiter);
           } else {
             return new DefaultOperationQuota(userLimiter);
-          }       
+          }
         }
       } else {
         QuotaLimiter nsLimiter = quotaCache.getNamespaceLimiter(table.getNamespaceAsString());
@@ -272,8 +281,9 @@ public class RegionServerQuotaManager {
       final int numScans) throws IOException, ThrottlingException {
     UserGroupInformation ugi = getUserGroupInformation(region);
     TableName table = region.getTableDesc().getTableName();
-    OperationQuota quota = getQuota(ugi, table);
+    OperationQuota quota = null;
     try {
+      quota = getQuota(ugi, table);
       quota.checkQuota(numWrites, numReads, numScans);
     } catch (ThrottlingException e) {
       if (LOG.isDebugEnabled()) {
@@ -288,6 +298,8 @@ public class RegionServerQuotaManager {
       if (!isThrottleSimulated()) {
         throw e;
       }
+    } catch (Throwable t) {
+      throw new IOException("Unexcepted exception when check quota", t);
     }
     return quota;
   }
@@ -295,8 +307,9 @@ public class RegionServerQuotaManager {
   private OperationQuota checkQuota(final UserGroupInformation ugi, final TableName table,
       final int numWrites, final int numReads, final int numScans) throws IOException,
       ThrottlingException {
-    OperationQuota quota = getQuota(ugi, table);
+    OperationQuota quota = null;
     try {
+      quota = getQuota(ugi, table);
       quota.checkQuota(numWrites, numReads, numScans);
     } catch (ThrottlingException e) {
       if (LOG.isDebugEnabled()) {
@@ -309,6 +322,8 @@ public class RegionServerQuotaManager {
       if (!isThrottleSimulated()) {
         throw e;
       }
+    } catch (Throwable t) {
+      throw new IOException("Unexcepted exception when check quota", t);
     }
     return quota;
   }
@@ -319,13 +334,21 @@ public class RegionServerQuotaManager {
    * @param result
    * @throws IOException
    */
-  public void grabQuota(final HRegion region, final Result result) throws IOException {
-    UserGroupInformation ugi = getUserGroupInformation(region);
-    TableName table = region.getTableDesc().getTableName();
-    grabQuota(ugi, table, result);
+  public void grabQuota(final HRegion region, final Result result) {
+    UserGroupInformation ugi = null;
+    TableName table = null;
+    try {
+      ugi = getUserGroupInformation(region);
+      table = region.getTableDesc().getTableName();
+      grabQuota(ugi, table, result);
+    } catch (Throwable t) {
+      this.grabQuotaFailedCount.increment();
+      LOG.fatal("Unexpected exception when grab quota after Get, user=" + ugi + ", table=" + table,
+        t);
+    }
   }
 
-  public void grabQuota(final UserGroupInformation ugi, final TableName table, final Result result) throws IOException {
+  public void grabQuota(final UserGroupInformation ugi, final TableName table, final Result result) {
     OperationQuota quota = getQuota(ugi, table);
     if (quota instanceof AllowExceedOperationQuota) {
       ((AllowExceedOperationQuota) quota)
@@ -342,15 +365,21 @@ public class RegionServerQuotaManager {
    * @param results
    * @throws IOException
    */
-  public void grabQuota(final HRegion region, final List<Result> results)
-      throws IOException {
-    UserGroupInformation ugi = getUserGroupInformation(region);
-    TableName table = region.getTableDesc().getTableName();
-    grabQuota(ugi, table, results);
+  public void grabQuota(final HRegion region, final List<Result> results) {
+    UserGroupInformation ugi = null;
+    TableName table = null;
+    try {
+      ugi = getUserGroupInformation(region);
+      table = region.getTableDesc().getTableName();
+      grabQuota(ugi, table, results);
+    } catch (Throwable t) {
+      this.grabQuotaFailedCount.increment();
+      LOG.fatal("Unexpected exception when grab quota after Scan, user=" + ugi + ", table=" + table,
+        t);
+    }
   }
   
-  public void grabQuota(final UserGroupInformation ugi, final TableName table, final List<Result> results)
-      throws IOException {
+  public void grabQuota(final UserGroupInformation ugi, final TableName table, final List<Result> results) {
     OperationQuota quota = getQuota(ugi, table);
     if (quota instanceof AllowExceedOperationQuota) {
       ((AllowExceedOperationQuota) quota).grabQuota(0, 0,
@@ -367,13 +396,21 @@ public class RegionServerQuotaManager {
    * @param mutation
    * @throws IOException
    */
-  public void grabQuota(final HRegion region, final Mutation mutation) throws IOException {
-    UserGroupInformation ugi = getUserGroupInformation(region);
-    TableName table = region.getTableDesc().getTableName();
-    grabQuota(ugi, table, mutation);
+  public void grabQuota(final HRegion region, final Mutation mutation) {
+    UserGroupInformation ugi = null;
+    TableName table = null;
+    try {
+      ugi = getUserGroupInformation(region);
+      table = region.getTableDesc().getTableName();
+      grabQuota(ugi, table, mutation);
+    } catch (Throwable t) {
+      this.grabQuotaFailedCount.increment();
+      LOG.fatal("Unexpected exception when grab quota after Mutation, user=" + ugi + ", table=" + table,
+        t);
+    }
   }
   
-  public void grabQuota(final UserGroupInformation ugi, final TableName table, final Mutation mutation) throws IOException {
+  public void grabQuota(final UserGroupInformation ugi, final TableName table, final Mutation mutation) {
     OperationQuota quota = getQuota(ugi, table);
     if (quota instanceof AllowExceedOperationQuota) {
       ((AllowExceedOperationQuota) quota).grabQuota(QuotaUtil.calculateRequestUnitNum(mutation) - 1, 0,
@@ -391,10 +428,22 @@ public class RegionServerQuotaManager {
    * @throws IOException
    */
   public void grabQuota(final HRegion region, final RowMutations rowMutations) throws IOException {
-    UserGroupInformation ugi = getUserGroupInformation(region);
-    TableName table = region.getTableDesc().getTableName();
-    for (Mutation mutation : rowMutations.getMutations()) {
-      grabQuota(ugi, table, mutation);
+    UserGroupInformation ugi = null;
+    TableName table = null;
+    try {
+      ugi = getUserGroupInformation(region);
+      table = region.getTableDesc().getTableName();
+      for (Mutation mutation : rowMutations.getMutations()) {
+        grabQuota(ugi, table, mutation);
+      }
+    } catch (Throwable t) {
+      this.grabQuotaFailedCount.increment();
+      LOG.fatal("Unexpected exception when grab quota after RowMutations, user=" + ugi + ", table=" + table,
+        t);
     }
+  }
+
+  public long getGrabQuotaFailedCount() {
+    return this.grabQuotaFailedCount.get();
   }
 }
