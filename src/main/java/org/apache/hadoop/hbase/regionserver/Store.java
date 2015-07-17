@@ -71,6 +71,7 @@ import org.apache.hadoop.hbase.monitoring.MonitoredTask;
 import org.apache.hadoop.hbase.regionserver.compactions.CompactSelection;
 import org.apache.hadoop.hbase.regionserver.compactions.CompactionProgress;
 import org.apache.hadoop.hbase.regionserver.compactions.CompactionRequest;
+import org.apache.hadoop.hbase.regionserver.compactions.OffPeakHours;
 import org.apache.hadoop.hbase.regionserver.metrics.SchemaConfigured;
 import org.apache.hadoop.hbase.regionserver.metrics.SchemaMetrics;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -1308,6 +1309,16 @@ public class Store extends SchemaConfigured implements HeapSize {
     if (filesToCompact == null || filesToCompact.isEmpty() || mcTime == 0) {
       return result;
     }
+
+    // restrict the major compaction in off peek only
+    if (conf.getBoolean(HConstants.MAJOR_COMPACTION_OFFPEAK, false)
+        && (!OffPeakHours.getInstance(conf).isOffPeakHour())) {
+      LOG.info("Skip to check a periodical major compaction. "
+          + "The major compaction is restricted to be performed in an off-peak by config: "
+          + HConstants.MAJOR_COMPACTION_OFFPEAK);
+      return false;
+    }
+
     // TODO: Use better method for determining stamp of last major (HBASE-2990)
     long lowTimestamp = getLowestTimestamp(filesToCompact);
     long now = System.currentTimeMillis();
