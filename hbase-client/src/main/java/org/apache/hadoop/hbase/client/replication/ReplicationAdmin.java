@@ -314,6 +314,18 @@ public class ReplicationAdmin implements Closeable {
   }
 
   /**
+   * Append the replicable table-cf config of the specified peer
+   * @param id a short that identifies the cluster
+   * @throws KeeperException
+   */
+  public void appendPeerTableCFs(String id, String tableCFs)
+      throws ReplicationException {
+    tableCFs = getPeerTableCFs(id) + ";" + tableCFs;
+    LOG.info("The new table-cf config for peer: " + id + " is: " + tableCFs);
+    this.replicationPeers.setPeerTableCFsConfig(id, tableCFs);
+  }
+
+  /**
    * Set the replicable table-cf config of the specified peer
    * @param id a short name that identifies the cluster
    * @param tableCfs the table and column-family list which will be replicated for this peer.
@@ -325,7 +337,7 @@ public class ReplicationAdmin implements Closeable {
       throws ReplicationException {
     this.replicationPeers.setPeerTableCFsConfig(id, getTableCfsStr(tableCfs));
   }
-
+  
   /**
    * Get the state of the specified peer cluster
    * @param id String format of the Short name that identifies the peer,

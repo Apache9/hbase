@@ -25,6 +25,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.*;
+import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.replication.ReplicationPeer;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.junit.BeforeClass;
@@ -164,5 +165,21 @@ public class TestReplicationAdmin {
     assertEquals("tab1;tab2:cf1;tab3:cf1,cf3", ReplicationAdmin.getTableCfsStr(tabCFsMap));
   }
 
-}
+  @Test
+  public void testAppendPeerTableCFs() throws Exception {
+    String table1 = "t1";
+    // Add a valid peer
+    admin.addPeer(ID_ONE, KEY_ONE, table1);
 
+    String tableCFs = admin.getPeerTableCFs(ID_ONE);
+    assertEquals("t1", tableCFs);
+
+    String table2 = "t2";
+    // append t2
+    admin.appendPeerTableCFs(ID_ONE, table2);
+    tableCFs = admin.getPeerTableCFs(ID_ONE);
+    
+    assertEquals("t1;t2", tableCFs);
+    admin.removePeer(ID_ONE);
+  }
+}
