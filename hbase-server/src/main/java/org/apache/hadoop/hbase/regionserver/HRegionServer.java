@@ -236,6 +236,7 @@ import org.apache.hadoop.hbase.util.FSTableDescriptors;
 import org.apache.hadoop.hbase.util.FSUtils;
 import org.apache.hadoop.hbase.util.InfoServer;
 import org.apache.hadoop.hbase.util.JvmPauseMonitor;
+import org.apache.hadoop.hbase.util.JvmThreadMonitor;
 import org.apache.hadoop.hbase.util.Pair;
 import org.apache.hadoop.hbase.util.Sleeper;
 import org.apache.hadoop.hbase.util.Strings;
@@ -419,7 +420,8 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
   // into web context.
   InfoServer infoServer;
   private JvmPauseMonitor pauseMonitor;
-
+  private JvmThreadMonitor jvmThreadMonitor;
+  
   /** region server process name */
   public static final String REGIONSERVER = "regionserver";
 
@@ -887,6 +889,8 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
         this.isa.getAddress(), 0));
     this.pauseMonitor = new JvmPauseMonitor(conf);
     pauseMonitor.start();
+    jvmThreadMonitor = new JvmThreadMonitor(conf);
+    jvmThreadMonitor.start();
   }
 
   /**
@@ -1079,6 +1083,9 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     }
     if (this.pauseMonitor != null) {
       this.pauseMonitor.stop();
+    }
+    if (this.jvmThreadMonitor != null) {
+      this.jvmThreadMonitor.stop();
     }
 
     if (!killed) {

@@ -237,6 +237,7 @@ import org.apache.hadoop.hbase.util.HFileArchiveUtil;
 import org.apache.hadoop.hbase.util.HasThread;
 import org.apache.hadoop.hbase.util.InfoServer;
 import org.apache.hadoop.hbase.util.JvmPauseMonitor;
+import org.apache.hadoop.hbase.util.JvmThreadMonitor;
 import org.apache.hadoop.hbase.util.Pair;
 import org.apache.hadoop.hbase.util.Sleeper;
 import org.apache.hadoop.hbase.util.Strings;
@@ -364,6 +365,8 @@ MasterServices, Server {
   // RPC server for the HMaster
   private final RpcServerInterface rpcServer;
   private JvmPauseMonitor pauseMonitor;
+  private JvmThreadMonitor jvmThreadMonitor;
+  
   // Set after we've called HBaseServer#openServer and ready to receive RPCs.
   // Set back to false after we stop rpcServer.  Used by tests.
   private volatile boolean rpcServerOpen = false;
@@ -549,6 +552,8 @@ MasterServices, Server {
     this.rpcServer.startThreads();
     this.pauseMonitor = new JvmPauseMonitor(conf);
     this.pauseMonitor.start();
+    this.jvmThreadMonitor = new JvmThreadMonitor(conf);
+    this.jvmThreadMonitor.start();
 
     // metrics interval: using the same property as region server.
     this.msgInterval = conf.getInt("hbase.regionserver.msginterval", 3 * 1000);
@@ -1367,6 +1372,9 @@ MasterServices, Server {
     }
     if (this.pauseMonitor != null) {
       this.pauseMonitor.stop();
+    }
+    if (this.jvmThreadMonitor != null) {
+      this.jvmThreadMonitor.stop();
     }
   }
 
