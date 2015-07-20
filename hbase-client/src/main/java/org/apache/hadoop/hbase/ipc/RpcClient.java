@@ -1654,10 +1654,7 @@ public class RpcClient {
       Message param, Message returnType, final User ticket, final InetSocketAddress isa,
       final int rpcTimeout)
   throws ServiceException {
-    long startTime = 0;
-    if (LOG.isTraceEnabled()) {
-      startTime = System.currentTimeMillis();
-    }
+    long startTime = System.currentTimeMillis();
     PayloadCarryingRpcController pcrc = (PayloadCarryingRpcController)controller;
     CellScanner cells = null;
     if (pcrc != null) {
