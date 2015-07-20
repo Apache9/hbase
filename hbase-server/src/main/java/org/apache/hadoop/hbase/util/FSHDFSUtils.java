@@ -175,7 +175,7 @@ public class FSHDFSUtils extends FSUtils {
     // Default is 15 minutes. It's huge, but the idea is that if we have a major issue, HDFS
     // usually needs 10 minutes before marking the nodes as dead. So we're putting ourselves
     // beyond that limit 'to be safe'.
-    long recoveryTimeout = conf.getInt("hbase.lease.recovery.timeout", 900000) + startWaiting;
+    long recoveryTimeout = conf.getLong("hbase.lease.recovery.timeout", 900000) + startWaiting;
     // This setting should be a little bit above what the cluster dfs heartbeat is set to.
     long firstPause = conf.getInt("hbase.lease.recovery.first.pause", 4000);
     // This should be set to how long it'll take for us to timeout against primary datanode if it
