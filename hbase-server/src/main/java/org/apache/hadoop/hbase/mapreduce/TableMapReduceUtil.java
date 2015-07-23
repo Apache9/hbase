@@ -394,6 +394,7 @@ public class TableMapReduceUtil {
 
     for (Scan scan : scans) {
       scanStrings.add(convertScanToString(scan));
+      initCredentials(scan, job);
     }
     job.getConfiguration().setStrings(MultiTableInputFormat.SCANS,
       scanStrings.toArray(new String[scanStrings.size()]));
@@ -406,7 +407,41 @@ public class TableMapReduceUtil {
       initCredentials(job);
     }
   }
+  
+  private static void initCredentials(Scan scan, Job job) throws IOException {
+    byte [] tableNameBytes = scan.getAttribute(Scan.SCAN_ATTRIBUTES_TABLE_NAME);
+    if (tableNameBytes == null) {
+      throw new IOException("A scan object did not have a table name");
+    }
 
+    String tableName= new String(tableNameBytes);
+
+    Configuration clusterConf = HBaseConfiguration.create(job.getConfiguration());
+
+    if (tableName != null && tableName.startsWith(NameService.HBASE_URI_PREFIX)) {
+      ZKUtil.applyClusterKeyToConf(clusterConf, tableName);
+    }
+
+    String quorumAddress = job.getConfiguration().get(
+            TableOutputFormat.QUORUM_ADDRESS);
+    if (quorumAddress != null) {
+      ZKUtil.applyClusterKeyToConf(clusterConf, quorumAddress);
+    }
+
+    if (User.isHBaseSecurityEnabled(clusterConf)) {
+      HConnection conn = HConnectionManager.createConnection(clusterConf);
+      try {
+        TokenUtil.addTokenForJob(conn, UserProvider.instantiate(job.getConfiguration())
+            .getCurrent(), job);
+      } catch (InterruptedException e) {
+        LOG.info("Interrupted obtaining remote user authentication token");
+        Thread.interrupted();
+      } finally {
+        conn.close();
+      }
+    }
+  }
+  
   public static void initCredentials(Job job) throws IOException {
     // for input table name service
     String inputTable = job.getConfiguration().get(TableInputFormat.INPUT_TABLE);
