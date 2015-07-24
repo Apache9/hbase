@@ -580,7 +580,7 @@ public class HTablePool implements Closeable {
     public Result incrementAndMutate(Increment increment, RowMutations rowMutation)
         throws IOException {
       // TODO Auto-generated method stub
-      return null;
+      return table.incrementAndMutate(increment, rowMutation);
     }
   }
 }
