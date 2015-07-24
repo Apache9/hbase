@@ -453,10 +453,9 @@ public class AccessController extends BaseRegionObserver
     if (authManager.authorize(user, perm)) {
       logResult(AuthResult.allow(request, "Global check allowed", user, perm, null));
     } else {
-      logResult(AuthResult.deny(request, "Global check failed", user, perm, null));
-      throw new AccessDeniedException("Insufficient permissions for user '" +
-          (user != null ? user.getShortName() : "null") +"' (global, action=" +
-          perm.toString() + ")");
+      AuthResult result = AuthResult.deny(request, "Global check failed", user, perm, null);
+      logResult(result);
+      throw new AccessDeniedException("Insufficient permissions " + result.toContextString());
     }
   }
 
@@ -505,11 +504,7 @@ public class AccessController extends BaseRegionObserver
           sb.append(Bytes.toString(familyName));
         }
       }
-      throw new AccessDeniedException("Insufficient permissions (table=" +
-        env.getRegion().getTableDesc().getNameAsString()+
-        ((families != null && families.size() > 0) ? ", family: " +
-        sb.toString() : "") + ", action=" +
-        perm.toString() + ")");
+      throw new AccessDeniedException("Insufficient permissions " + result.toContextString());
     }
   }
 
@@ -687,8 +682,10 @@ public class AccessController extends BaseRegionObserver
   public void preDisableTable(ObserverContext<MasterCoprocessorEnvironment> c, byte[] tableName)
       throws IOException {
     if (Bytes.equals(tableName, AccessControlLists.ACL_GLOBAL_NAME)) {
+      User user = getActiveUser();
       throw new AccessDeniedException("Not allowed to disable "
-          + AccessControlLists.ACL_TABLE_NAME_STR + " table.");
+          + AccessControlLists.ACL_TABLE_NAME_STR + " table." + " user="
+          + (user != null ? user.getShortName() : "null"));
     }
     requirePermission("disableTable", tableName, null, null, Action.ADMIN, Action.CREATE);
   }
@@ -923,8 +920,7 @@ public class AccessController extends BaseRegionObserver
             TablePermission.Action.READ, authResult.table));
       } else {
         logResult(authResult);
-        throw new AccessDeniedException("Insufficient permissions (table=" +
-          e.getRegion().getTableDesc().getNameAsString() + ", action=READ)");
+        throw new AccessDeniedException("Insufficient permissions " + authResult.toContextString());
       }
     } else {
       // log auth success
@@ -1062,9 +1058,7 @@ public class AccessController extends BaseRegionObserver
       } else {
         // no table/family level perms and no qualifier level perms, reject
         logResult(authResult);
-        throw new AccessDeniedException("Insufficient permissions for user '"+
-            (user != null ? user.getShortName() : "null")+"' "+
-            "for scanner open on table " + Bytes.toString(getTableName(e)));
+        throw new AccessDeniedException("Insufficient permissions " + authResult.toContextString());
       }
     } else {
       // log success
@@ -1165,8 +1159,7 @@ public class AccessController extends BaseRegionObserver
     AuthResult authResult = hasSomeAccess(e, "prepareBulkLoad", Action.WRITE);
     logResult(authResult);
     if (!authResult.isAllowed()) {
-      throw new AccessDeniedException("Insufficient permissions (table=" +
-        e.getRegion().getTableDesc().getNameAsString() + ", action=WRITE)");
+      throw new AccessDeniedException("Insufficient permissions " + authResult.toContextString());
     }
   }
 
@@ -1181,8 +1174,7 @@ public class AccessController extends BaseRegionObserver
     AuthResult authResult = hasSomeAccess(e, "cleanupBulkLoad", Action.WRITE);
     logResult(authResult);
     if (!authResult.isAllowed()) {
-      throw new AccessDeniedException("Insufficient permissions (table=" +
-        e.getRegion().getTableDesc().getNameAsString() + ", action=WRITE)");
+      throw new AccessDeniedException("Insufficient permissions " + authResult.toContextString());
     }
   }
 
@@ -1365,7 +1357,7 @@ public class AccessController extends BaseRegionObserver
 
     User activeUser = getActiveUser();
     if (!(superusers.contains(activeUser.getShortName()))) {
-      throw new AccessDeniedException("User '" + (user != null ? user.getShortName() : "null")
+      throw new AccessDeniedException("User '" + (user != null ? activeUser.getShortName() : "null")
           + "is not system or super user.");
     }
   }
