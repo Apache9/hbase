@@ -1806,7 +1806,7 @@ public class HRegion implements HeapSize { // , Writable{
     // closest key is across all column families, since the data may be sparse
     checkRow(row, "getClosestRowBefore");
     startRegionOperation();
-    updateReadMetrics();
+    updateReadMetrics(1);
     try {
       Store store = getStore(family);
       // get the closest key. (HStore.getRowKeyAtOrBefore can return null)
@@ -4062,7 +4062,7 @@ public class HRegion implements HeapSize { // , Writable{
       }
       final long nowNs = System.nanoTime();
       startRegionOperation();
-      updateReadMetrics();
+      updateReadMetrics(1);
       try {
 
         // This could be a new thread from the last time we called next().
@@ -6245,10 +6245,15 @@ public class HRegion implements HeapSize { // , Writable{
   /**
    * Update the read operation metrics
    */
-  public void updateReadMetrics() {
-    this.readRequestsCount.increment();
+  public void updateReadMetrics(int num) {
+    if (num == 1) {
+      this.readRequestsCount.increment();
+      this.readRequestsPerSecond.inc();
+    } else {
+      this.readRequestsCount.add(num);
+      this.readRequestsPerSecond.inc(num);
+    }
     this.opMetrics.setReadRequestCountMetrics(this.readRequestsCount.get());
-    this.readRequestsPerSecond.inc();
   }
 
   /**

@@ -2940,7 +2940,7 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
           }
         }
         requestCount.addAndGet(i);
-        region.updateReadMetrics();
+        region.updateReadMetrics(i);
       } finally {
         region.closeRegionOperation();
       }
