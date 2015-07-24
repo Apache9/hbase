@@ -2923,7 +2923,14 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
               }
               results.add(new Result(values));
             }
-            if (status.hasNext() && rawLimit > 0 && rawCount >= rawLimit) {
+            boolean limitReached = false;
+            if (rawLimit > 0 && rawCount >= rawLimit) {
+              limitReached = true;
+            }
+            if (maxScannerResultSize < Long.MAX_VALUE && currentScanResultSize > maxScannerResultSize) {
+              limitReached = true;
+            }
+            if (status.hasNext() && limitReached) {
               // when there is no visible key values scanned out yet but the raw limit is reached,
               // we fill a fake result which contains the next position and pass it to the client
               // to avoid RPC timeout.
