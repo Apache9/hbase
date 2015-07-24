@@ -1680,7 +1680,8 @@ public class RpcClient {
         }
       }
       if (callTime > this.clientWarnIpcResponseTime) {
-        LOG.warn("Slow ipc call, MethodName=" + md.getName() + ", consume time=" + callTime);
+        LOG.warn("Slow ipc call, MethodName=" + md.getName() + ", consume time=" + callTime
+            + ", remote address:" + isa);
       }
       return val.getFirst();
     } catch (Throwable e) {
