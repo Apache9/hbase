@@ -121,6 +121,7 @@ import org.apache.hadoop.hbase.monitoring.TaskMonitor;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.SnapshotDescription;
 import org.apache.hadoop.hbase.regionserver.MultiVersionConsistencyControl.WriteEntry;
 import org.apache.hadoop.hbase.regionserver.compactions.CompactionRequest;
+import org.apache.hadoop.hbase.regionserver.compactions.OffPeakHours;
 import org.apache.hadoop.hbase.regionserver.metrics.OperationMetrics;
 import org.apache.hadoop.hbase.regionserver.metrics.SchemaMetrics;
 import org.apache.hadoop.hbase.regionserver.wal.HLog;
@@ -1377,6 +1378,15 @@ public class HRegion implements HeapSize { // , Writable{
       LOG.debug("Skipping compaction on " + this + " because closing/closed");
       return false;
     }
+
+    if (cr.isMajor() && conf.getBoolean(HConstants.MAJOR_COMPACTION_OFFPEAK, false)
+        && (!OffPeakHours.getInstance(conf).isOffPeakHour())) {
+      LOG.info("Skipping a major compaction on " + this
+          + ". The major compaction is restricted to be performed in an off-peak by config: "
+          + HConstants.MAJOR_COMPACTION_OFFPEAK);
+      return false;
+    }
+
     Preconditions.checkArgument(cr.getHRegion().equals(this));
     // block waiting for the lock for compaction
     lock.readLock().lock();
@@ -1796,7 +1806,7 @@ public class HRegion implements HeapSize { // , Writable{
     // closest key is across all column families, since the data may be sparse
     checkRow(row, "getClosestRowBefore");
     startRegionOperation();
-    updateReadMetrics();
+    updateReadMetrics(1);
     try {
       Store store = getStore(family);
       // get the closest key. (HStore.getRowKeyAtOrBefore can return null)
@@ -4052,7 +4062,7 @@ public class HRegion implements HeapSize { // , Writable{
       }
       final long nowNs = System.nanoTime();
       startRegionOperation();
-      updateReadMetrics();
+      updateReadMetrics(1);
       try {
 
         // This could be a new thread from the last time we called next().
@@ -6235,10 +6245,15 @@ public class HRegion implements HeapSize { // , Writable{
   /**
    * Update the read operation metrics
    */
-  public void updateReadMetrics() {
-    this.readRequestsCount.increment();
+  public void updateReadMetrics(int num) {
+    if (num == 1) {
+      this.readRequestsCount.increment();
+      this.readRequestsPerSecond.inc();
+    } else {
+      this.readRequestsCount.add(num);
+      this.readRequestsPerSecond.inc(num);
+    }
     this.opMetrics.setReadRequestCountMetrics(this.readRequestsCount.get());
-    this.readRequestsPerSecond.inc();
   }
 
   /**

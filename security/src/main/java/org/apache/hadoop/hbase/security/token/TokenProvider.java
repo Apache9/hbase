@@ -85,7 +85,8 @@ public class TokenProvider extends BaseEndpointCoprocessor
       LOG.warn("Token generation denied for user="+currentUser.getName()
           +", authMethod="+ugi.getAuthenticationMethod());
       throw new AccessDeniedException(
-          "Token generation only allowed for Kerberos authenticated clients");
+          "Token generation only allowed for Kerberos authenticated clients. User="
+              + currentUser.getName() + ", authMethod=" + ugi.getAuthenticationMethod());
     }
 
     return secretManager.generateToken(currentUser.getName());

@@ -58,7 +58,6 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
   protected KeyValueHeap heap;
   private boolean cacheBlocks;
 
-
   private String metricNamePrefix;
   // Used to indicate that the scanner has closed (see HBASE-1107)
   // Doesnt need to be volatile because it's always accessed via synchronized methods
@@ -408,7 +407,9 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
       close();
       return ScannerStatus.DONE_WITH_NO_STATS;
     }
-
+    if (scan.isDebug()) {
+      LOG.info("Debug scan: peeked kv: " + peeked);
+    }
     // only call setRow if the row changes; avoids confusing the query matcher
     // if scanning intra-row
     byte[] row = peeked.getBuffer();
@@ -435,6 +436,9 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
         prevKV = kv;
         ScanQueryMatcher.MatchCode qcode = matcher.match(kv);
         qcode = optimize(qcode, kv);
+        if (scan.isDebug()) {
+          LOG.info("Debug scan: current kv: " + kv + " match code: " + qcode);
+        }
         switch(qcode) {
           case INCLUDE:
           case INCLUDE_AND_SEEK_NEXT_ROW:

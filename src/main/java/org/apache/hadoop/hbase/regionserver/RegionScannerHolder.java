@@ -19,15 +19,23 @@
 
 package org.apache.hadoop.hbase.regionserver;
 
+import org.apache.hadoop.hbase.client.Scan;
+
 /**
  * Holder class which holds the RegionScanner and callSequence together.
  */
 public class RegionScannerHolder {
+  private Scan scan;
   private RegionScanner s;
   private long callSeq = 0L;
 
-  public RegionScannerHolder(RegionScanner s) {
+  public RegionScannerHolder(Scan scan, RegionScanner s) {
+    this.scan = scan;
     this.s = s;
+  }
+
+  public Scan getScan() {
+    return scan;
   }
 
   public RegionScanner getScanner() {

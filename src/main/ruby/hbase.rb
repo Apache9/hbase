@@ -45,6 +45,7 @@ module HBaseConstants
   STARTROW = "STARTROW"
   ENDROW = STOPROW
   REVERSE = "REVERSE"
+  DEBUG = "DEBUG"
   RAW = "RAW"
   LIMIT = "LIMIT"
   METHOD = "METHOD"

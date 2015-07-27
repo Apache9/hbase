@@ -340,16 +340,21 @@ public class ClientScanner extends AbstractClientScanner {
           lastNext = currentTime;
           if (values != null && values.length > 0) {
             for (Result rs : values) {
+              if (rs.isFake()) {
+                // End of 1 next RPC
+                fakeResultReturned = true;
+                // return the fake result to users when raw limit is set
+                if (scan.getRawLimit() > 0) {
+                  cache.add(rs);
+                }
+                break;
+              }
               cache.add(rs);
               for (KeyValue kv : rs.raw()) {
                   remainingResultSize -= kv.heapSize();
               }
               countdown--;
               this.lastResult = rs;
-              if (rs.isFake()) {
-                // End of 1 next RPC
-                fakeResultReturned = true;
-              }
             }
           }
           // Values == null means server-side filter has determined we must STOP

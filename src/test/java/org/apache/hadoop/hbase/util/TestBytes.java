@@ -402,6 +402,16 @@ public class TestBytes extends TestCase {
       random = Bytes.randomKey(start, end);
       assertTrue(Bytes.compareTo(start, random) <= 0);
       assertTrue(Bytes.compareTo(random, end) < 0);
+
+      byte [][] splitKeys = Bytes.split(Bytes.toBytes(0), Bytes.toBytes(0xffffffff), 256 - 3);
+      for (int k = 0; k + 1 < splitKeys.length; k ++) {
+        start = splitKeys[k];
+        end = splitKeys[k + 1];
+        assertTrue(Bytes.compareTo(start, end) < 0);
+        random = Bytes.randomKey(start, end);
+        assertTrue(Bytes.compareTo(start, random) <= 0);
+        assertTrue(Bytes.compareTo(random, end) < 0);
+      }
     }
   }
 

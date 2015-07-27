@@ -128,6 +128,9 @@ public class Result implements Writable, WritableWithSize {
    * @return true if this is fake result
    */
   public boolean isFake() {
+    if(this.kvs == null) {
+      readFields();
+    }
     if (this.kvs != null && this.kvs.length == 1) {
       return kvs[0].isInternal();
     }

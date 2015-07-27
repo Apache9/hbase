@@ -128,6 +128,7 @@ public class TestFromClientSide {
     Configuration conf = TEST_UTIL.getConfiguration();
     conf.setStrings(CoprocessorHost.REGION_COPROCESSOR_CONF_KEY,
         MultiRowMutationEndpoint.class.getName());
+    conf.setLong(HConstants.HBASE_CLIENT_SCANNER_MAX_RESULT_SIZE_KEY, 10 * 1024 * 1024);
     // We need more than one region server in this test
     TEST_UTIL.startMiniCluster(SLAVES);
   }
@@ -5596,6 +5597,76 @@ public class TestFromClientSide {
   }
 
   @Test
+  public void testMaxScanResultSize() throws Exception {
+    byte[] TABLE = Bytes.toBytes("testMaxScanResultSize");
+    Configuration conf = TEST_UTIL.getConfiguration();
+    TEST_UTIL.createTable(TABLE, FAMILY);
+
+    long expectedMaxResultSize =
+        TEST_UTIL.getConfiguration().getLong(HConstants.HBASE_CLIENT_SCANNER_MAX_RESULT_SIZE_KEY,
+            HConstants.DEFAULT_HBASE_CLIENT_SCANNER_MAX_RESULT_SIZE);
+
+    // unset max result size in client
+    conf.setLong(HConstants.HBASE_CLIENT_SCANNER_MAX_RESULT_SIZE_KEY,
+      HConstants.DEFAULT_HBASE_CLIENT_SCANNER_MAX_RESULT_SIZE);
+    HTable ht =  new HTable(conf, TABLE);
+    int numRows = 5;
+    byte[][] ROWS = makeNAscii(ROW, numRows);
+
+    int numQualifiers = 10;
+    byte[][] QUALIFIERS = makeNAscii(QUALIFIER, numQualifiers);
+
+    // Specify the cell size such that a single row will be larger than the default
+    // value of maxResultSize. This means that Scan RPCs should return at most a single
+    // result back to the client.
+    int cellSize = (int) (expectedMaxResultSize / (numQualifiers - 1));
+    byte[] cellValue = Bytes.createMaxByteArray(cellSize);
+
+    Put put;
+    List<Put> puts = new ArrayList<Put>();
+    for (byte[] ROW1 : ROWS) {
+      put = new Put(ROW1);
+      for (byte[] QUALIFIER1 : QUALIFIERS) {
+        KeyValue kv = new KeyValue(ROW1, FAMILY, QUALIFIER1, cellValue);
+        put.add(kv);
+      }
+      puts.add(put);
+    }
+    ht.put(puts);
+
+    Scan scan = new Scan();
+    scan.setCaching(2);
+    ResultScanner scanner = ht.getScanner(scan);
+    int counter = 0;
+    while (true) {
+      Result result = scanner.next();
+      if (result== null) {
+        break;
+      } else {
+        counter++;
+        assertFalse(result.isFake());
+      }
+    }
+    assertEquals(numRows, counter);
+
+    scan = new Scan();
+    scan.setCaching(2);
+    scan.setSmall(true);
+    scanner = ht.getScanner(scan);
+    counter = 0;
+    while (true) {
+      Result result = scanner.next();
+      if (result== null) {
+        break;
+      } else {
+        counter++;
+        assertFalse(result.isFake());
+      }
+    }
+    assertEquals(numRows, counter);
+  }
+
+  @Test
   public void testSmallScan() throws Exception {
     // Test Initialization.
     byte[] TABLE = Bytes.toBytes("testSmallScan");
@@ -5629,7 +5700,6 @@ public class TestFromClientSide {
       count++;
     }
     assertEquals(insertNum, count);
-
   }
 
   @Test

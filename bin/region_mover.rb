@@ -24,6 +24,7 @@
 # Does not work for case of multiple regionservers all running on the
 # one node.
 require 'optparse'
+require "thread"
 require File.join(File.dirname(__FILE__), 'thread-pool')
 include Java
 import org.apache.hadoop.hbase.HConstants
@@ -355,6 +356,7 @@ def unloadRegionsForRs(options, servers, servername)
   admin = HBaseAdmin.new(config) 
 
   dos = nil 
+  mutex=Mutex.new
   movedRegions = java.util.ArrayList.new()
   while true
     rs = getRegions(config, servername)
@@ -377,11 +379,13 @@ def unloadRegionsForRs(options, servers, servername)
         movedRegions.add(_rs[_counter])
 
         # write to file immediately
-        if dos == nil
-          dos = getWriteFileDataStream(filename)
-        end
-        Bytes.writeByteArray(dos, Writables.getBytes(_rs[_counter]))
-        dos.flush
+        mutex.lock
+          if dos == nil
+            dos = getWriteFileDataStream(filename)
+          end
+          Bytes.writeByteArray(dos, Writables.getBytes(_rs[_counter]))
+          dos.flush
+        mutex.unlock
       end 
       counter += 1
       server_index = (server_index + 1) % servers.length
