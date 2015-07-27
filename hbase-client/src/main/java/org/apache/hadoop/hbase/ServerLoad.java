@@ -32,6 +32,7 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.Strings;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -150,6 +151,14 @@ public class ServerLoad {
     return writeRequestsCount;
   }
 
+  public long getReadRequestsPerSecond() {
+    return serverLoad.getReadRequestsPerSecond();
+  }
+
+  public long getWriteRequestsPerSecond() {
+    return serverLoad.getWriteRequestsPerSecond();
+  }
+
   public int getRootIndexSizeKB() {
     return rootIndexSizeKB;
   }
@@ -228,7 +237,7 @@ public class ServerLoad {
       RegionLoad regionLoad = new RegionLoad(rl);
       regionLoads.put(regionLoad.getName(), regionLoad);
     }
-    return regionLoads;
+    return Collections.unmodifiableMap(regionLoads);
   }
 
   /**

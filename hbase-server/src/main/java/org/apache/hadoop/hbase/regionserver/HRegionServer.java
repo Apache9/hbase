@@ -1193,9 +1193,16 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     }
     RegionLoad.Builder regionLoadBldr = RegionLoad.newBuilder();
     RegionSpecifier.Builder regionSpecifier = RegionSpecifier.newBuilder();
+    long readRequestsPerSecond = 0;
+    long writeRequestsPerSecond = 0;
     for (HRegion region : regions) {
-      serverLoad.addRegionLoads(createRegionLoad(region, regionLoadBldr, regionSpecifier));
+      RegionLoad load = createRegionLoad(region, regionLoadBldr, regionSpecifier);
+      serverLoad.addRegionLoads(load);
+      readRequestsPerSecond += load.getReadRequestsPerSecond();
+      writeRequestsPerSecond += load.getWriteRequestsPerSecond();
     }
+    serverLoad.setReadRequestsPerSecond(readRequestsPerSecond);
+    serverLoad.setWriteRequestsPerSecond(writeRequestsPerSecond);
     serverLoad.setReportStartTime(reportStartTime);
     serverLoad.setReportEndTime(reportEndTime);
     if (this.infoServer != null) {
@@ -1486,6 +1493,8 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
       .setTotalStaticBloomSizeKB(totalStaticBloomSizeKB)
       .setReadRequestsCount(r.readRequestsCount.get())
       .setWriteRequestsCount(r.writeRequestsCount.get())
+      .setReadRequestsPerSecond(r.getReadRequestsPerSecond())
+      .setWriteRequestsPerSecond(r.getWriteRequestsPerSecond())
       .setTotalCompactingKVs(totalCompactingKVs)
       .setCurrentCompactedKVs(currentCompactedKVs)
       .setCompleteSequenceId(r.completeSequenceId)
@@ -3367,7 +3376,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
                   values.clear();
                 }
               }
-              region.readRequestsCount.add(i);
+              region.updateReadMetrics(i);
               region.getMetrics().updateScanNext(totalKvSize);
             } finally {
               region.closeRegionOperation();

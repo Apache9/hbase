@@ -108,6 +108,19 @@ public class RegionLoad {
   public long getWriteRequestsCount() {
     return regionLoadPB.getWriteRequestsCount();
   }
+  /**
+   * @return read requests per second made to region
+   */
+  public long getReadRequestsPerSecond() {
+    return regionLoadPB.getReadRequestsPerSecond();
+  }
+
+  /**
+   * @return write requests per second made to region
+   */
+  public long getWriteRequestsPerSecond() {
+    return regionLoadPB.getWriteRequestsPerSecond();
+  }
 
   /**
    * @return The current total size of root-level indexes for the region, in KB.

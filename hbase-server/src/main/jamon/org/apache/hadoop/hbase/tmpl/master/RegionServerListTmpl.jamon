@@ -166,19 +166,29 @@ for (ServerName serverName: serverNames) {
 <table class="table table-striped">
 <tr>
     <th>ServerName</th>
-    <th>Request Per Second</th>
+    <th>Read Request Per Second</th>
+    <th>Write Request Per Second</th>
     <th>Read Request Count</th>
     <th>Write Request Count</th>
 </tr>
 <%java>
+int totalReadPerSecond = 0;
+int totalWritePerSecond = 0;
+int totalReadRequestsCount = 0;
+int totalWriteRequestsCount = 0;
 for (ServerName serverName: serverNames) {
 
 ServerLoad sl = master.getServerManager().getLoad(serverName);
 if (sl != null) {
+  totalReadPerSecond += sl.getReadRequestsPerSecond();
+  totalWritePerSecond += sl.getWriteRequestsPerSecond();
+  totalReadRequestsCount += sl.getReadRequestsCount();
+  totalWriteRequestsCount += sl.getWriteRequestsCount();
 </%java>
 <tr>
 <td><& serverNameLink; serverName=serverName; serverLoad = sl; &></td>
-<td><% String.format("%.0f", sl.getRequestsPerSecond()) %></td>
+<td><% sl.getReadRequestsPerSecond() %></td>
+<td><% sl.getWriteRequestsPerSecond() %></td>
 <td><% sl.getReadRequestsCount() %></td>
 <td><% sl.getWriteRequestsCount() %></td>
 </tr>
@@ -190,6 +200,12 @@ if (sl != null) {
         }
 }
 </%java>
+<tr><td>Total:<% servers.size() %></td>
+<td><% totalReadPerSecond %></td>
+<td><% totalWritePerSecond %></td>
+<td><% totalReadRequestsCount %></td>
+<td><% totalWriteRequestsCount %></td>
+</tr>
 </table>
 </%def>
 

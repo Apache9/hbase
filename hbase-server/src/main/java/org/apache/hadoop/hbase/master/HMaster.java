@@ -53,6 +53,7 @@ import org.apache.hadoop.hbase.Abortable;
 import org.apache.hadoop.hbase.Chore;
 import org.apache.hadoop.hbase.ClusterId;
 import org.apache.hadoop.hbase.ClusterStatus;
+import org.apache.hadoop.hbase.CompatibilitySingletonFactory;
 import org.apache.hadoop.hbase.DoNotRetryIOException;
 import org.apache.hadoop.hbase.HBaseIOException;
 import org.apache.hadoop.hbase.HColumnDescriptor;
@@ -108,6 +109,7 @@ import org.apache.hadoop.hbase.master.handler.TableDeleteFamilyHandler;
 import org.apache.hadoop.hbase.master.handler.TableModifyFamilyHandler;
 import org.apache.hadoop.hbase.master.handler.TruncateTableHandler;
 import org.apache.hadoop.hbase.master.snapshot.SnapshotManager;
+import org.apache.hadoop.hbase.metrics.MBeanSource;
 import org.apache.hadoop.hbase.monitoring.MemoryBoundedLogMessageBuffer;
 import org.apache.hadoop.hbase.monitoring.MonitoredTask;
 import org.apache.hadoop.hbase.monitoring.TaskMonitor;
@@ -1015,6 +1017,7 @@ MasterServices, Server {
       this.balancerChore = getAndStartBalancerChore(this);
       this.catalogJanitorChore = new CatalogJanitor(this, this);
       startCatalogJanitorChore();
+      registerMBean();
     }
 
     status.setStatus("Starting namespace manager");
@@ -3082,6 +3085,16 @@ MasterServices, Server {
   public static void main(String [] args) {
     VersionInfo.logVersion();
     new HMasterCommandLine(HMaster.class).doMain(args);
+  }
+  
+  /**
+   * Register bean with platform management server
+   */
+  void registerMBean() {
+    MXBeanImpl mxBeanInfo = MXBeanImpl.init(this);
+    mxBean = CompatibilitySingletonFactory.getInstance(MBeanSource.class).register("hbase",
+      "Master,sub=Master", mxBeanInfo);
+    LOG.info("Registered HMaster MXBean");
   }
 
   public HFileCleaner getHFileCleaner() {

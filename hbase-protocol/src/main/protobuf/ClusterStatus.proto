@@ -113,6 +113,12 @@ message RegionLoad {
 
   /** The current data locality for region in the regionserver */
   optional float data_locality = 16;
+  
+  /** read requests per second made to region */
+  optional uint64 read_requests_per_second = 17;
+
+  /** write requests per second made to region */
+  optional uint64 write_requests_per_second = 18;
 }
 
 /* Server-level protobufs */
@@ -181,6 +187,12 @@ message ServerLoad {
    * The replicationLoadSink for the replication Sink status of this region server.
    */
   optional ReplicationLoadSink replLoadSink = 11;
+  
+  /** read requests per second made to region */
+  optional uint64 read_requests_per_second = 12;
+
+  /** write requests per second made to region */
+  optional uint64 write_requests_per_second = 13;
 }
 
 message LiveServerInfo {
