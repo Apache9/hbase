@@ -1116,6 +1116,7 @@ public class HConnectionManager {
         }
       }
 
+      Throwable lastCause = null;
       int localNumRetries = retry ? numRetries : 1;
       // build the key of the meta region we should be looking for.
       // the extra 9's on the end are necessary to allow "exact" matches
@@ -1125,7 +1126,7 @@ public class HConnectionManager {
       for (int tries = 0; true; tries++) {
         if (tries >= localNumRetries) {
           throw new NoServerForRegionException("Unable to find region for "
-            + Bytes.toStringBinary(row) + " after " + numRetries + " tries.");
+            + Bytes.toStringBinary(row) + " after " + numRetries + " tries.", lastCause);
         }
 
         HRegionLocation metaLocation = null;
@@ -1228,6 +1229,7 @@ public class HConnectionManager {
           if (e instanceof RemoteException) {
             e = RemoteExceptionHandler.decodeRemoteException((RemoteException) e);
           }
+          lastCause = e;
           if (tries < numRetries - 1) {
             if (LOG.isDebugEnabled()) {
               LOG.debug("locateRegionInMeta parentTable=" +

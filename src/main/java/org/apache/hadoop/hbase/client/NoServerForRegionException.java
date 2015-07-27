@@ -39,4 +39,8 @@ public class NoServerForRegionException extends RegionException {
   public NoServerForRegionException(String s) {
     super(s);
   }
+
+  public NoServerForRegionException(String message, Throwable cause) {
+    super(message, cause);
+  }
 }
