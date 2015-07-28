@@ -32,6 +32,7 @@ import org.apache.hadoop.hbase.ServerLoad;
 import org.apache.hadoop.hbase.RegionLoad;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.TableLoad;
+import org.apache.hadoop.hbase.replication.ReplicationLoadSource;
 
 /**
  * Impl for exposing HMaster Information through JMX
@@ -196,5 +197,22 @@ public class MXBeanImpl implements MXBean {
       }
     }
     return new LinkedList<TableLoad>(data.values());
+  }
+
+  @Override
+  public List<ReplicationLoadSource> getReplicationLoads() {
+    Map<String, ReplicationLoadSource> replications = new HashMap<String, ReplicationLoadSource>();
+    for (final Entry<ServerName, ServerLoad> entry : master.getServerManager().getOnlineServers()
+        .entrySet()) {
+      for (ReplicationLoadSource load : entry.getValue().getReplicationLoadSourceList()) {
+        ReplicationLoadSource tmp = replications.get(load.getPeerID());
+        if (tmp == null) {
+          replications.put(load.getPeerID(), load);
+        } else {
+          tmp.setSizeOfLogQueue(tmp.getSizeOfLogQueue() + load.getSizeOfLogQueue());
+        }
+      }
+    }
+    return new LinkedList<ReplicationLoadSource>(replications.values());
   }
 }

@@ -23,6 +23,7 @@ import java.util.Map;
 import org.apache.hadoop.hbase.ClusterLoad;
 import org.apache.hadoop.hbase.ServerLoad;
 import org.apache.hadoop.hbase.TableLoad;
+import org.apache.hadoop.hbase.replication.ReplicationLoadSource;
 import org.apache.hadoop.hbase.replication.regionserver.Replication;
 
 /**
@@ -128,4 +129,9 @@ public interface MXBean {
    * @return all table loads
    */
   public List<TableLoad> getTableLoads();
+
+  /**
+   * Get the replication loads
+   */
+  public List<ReplicationLoadSource> getReplicationLoads();
 }
