@@ -2207,6 +2207,78 @@ public final class ClusterStatusProtos {
      * </pre>
      */
     long getWriteRequestsPerSecond();
+
+    // optional uint64 read_requests_count_by_capacity_unit = 19;
+    /**
+     * <code>optional uint64 read_requests_count_by_capacity_unit = 19;</code>
+     *
+     * <pre>
+     ** the current total read capacity unit count made to region 
+     * </pre>
+     */
+    boolean hasReadRequestsCountByCapacityUnit();
+    /**
+     * <code>optional uint64 read_requests_count_by_capacity_unit = 19;</code>
+     *
+     * <pre>
+     ** the current total read capacity unit count made to region 
+     * </pre>
+     */
+    long getReadRequestsCountByCapacityUnit();
+
+    // optional uint64 write_requests_count_by_capacity_unit = 20;
+    /**
+     * <code>optional uint64 write_requests_count_by_capacity_unit = 20;</code>
+     *
+     * <pre>
+     ** the current total write capacity unit count made to region 
+     * </pre>
+     */
+    boolean hasWriteRequestsCountByCapacityUnit();
+    /**
+     * <code>optional uint64 write_requests_count_by_capacity_unit = 20;</code>
+     *
+     * <pre>
+     ** the current total write capacity unit count made to region 
+     * </pre>
+     */
+    long getWriteRequestsCountByCapacityUnit();
+
+    // optional uint64 throttled_read_requests_count = 21;
+    /**
+     * <code>optional uint64 throttled_read_requests_count = 21;</code>
+     *
+     * <pre>
+     ** throttled read requests made to region 
+     * </pre>
+     */
+    boolean hasThrottledReadRequestsCount();
+    /**
+     * <code>optional uint64 throttled_read_requests_count = 21;</code>
+     *
+     * <pre>
+     ** throttled read requests made to region 
+     * </pre>
+     */
+    long getThrottledReadRequestsCount();
+
+    // optional uint64 throttled_write_requests_count = 22;
+    /**
+     * <code>optional uint64 throttled_write_requests_count = 22;</code>
+     *
+     * <pre>
+     ** throttled write requests made to region 
+     * </pre>
+     */
+    boolean hasThrottledWriteRequestsCount();
+    /**
+     * <code>optional uint64 throttled_write_requests_count = 22;</code>
+     *
+     * <pre>
+     ** throttled write requests made to region 
+     * </pre>
+     */
+    long getThrottledWriteRequestsCount();
   }
   /**
    * Protobuf type {@code RegionLoad}
@@ -2355,6 +2427,26 @@ public final class ClusterStatusProtos {
             case 144: {
               bitField0_ |= 0x00020000;
               writeRequestsPerSecond_ = input.readUInt64();
+              break;
+            }
+            case 152: {
+              bitField0_ |= 0x00040000;
+              readRequestsCountByCapacityUnit_ = input.readUInt64();
+              break;
+            }
+            case 160: {
+              bitField0_ |= 0x00080000;
+              writeRequestsCountByCapacityUnit_ = input.readUInt64();
+              break;
+            }
+            case 168: {
+              bitField0_ |= 0x00100000;
+              throttledReadRequestsCount_ = input.readUInt64();
+              break;
+            }
+            case 176: {
+              bitField0_ |= 0x00200000;
+              throttledWriteRequestsCount_ = input.readUInt64();
               break;
             }
           }
@@ -2847,6 +2939,102 @@ public final class ClusterStatusProtos {
       return writeRequestsPerSecond_;
     }
 
+    // optional uint64 read_requests_count_by_capacity_unit = 19;
+    public static final int READ_REQUESTS_COUNT_BY_CAPACITY_UNIT_FIELD_NUMBER = 19;
+    private long readRequestsCountByCapacityUnit_;
+    /**
+     * <code>optional uint64 read_requests_count_by_capacity_unit = 19;</code>
+     *
+     * <pre>
+     ** the current total read capacity unit count made to region 
+     * </pre>
+     */
+    public boolean hasReadRequestsCountByCapacityUnit() {
+      return ((bitField0_ & 0x00040000) == 0x00040000);
+    }
+    /**
+     * <code>optional uint64 read_requests_count_by_capacity_unit = 19;</code>
+     *
+     * <pre>
+     ** the current total read capacity unit count made to region 
+     * </pre>
+     */
+    public long getReadRequestsCountByCapacityUnit() {
+      return readRequestsCountByCapacityUnit_;
+    }
+
+    // optional uint64 write_requests_count_by_capacity_unit = 20;
+    public static final int WRITE_REQUESTS_COUNT_BY_CAPACITY_UNIT_FIELD_NUMBER = 20;
+    private long writeRequestsCountByCapacityUnit_;
+    /**
+     * <code>optional uint64 write_requests_count_by_capacity_unit = 20;</code>
+     *
+     * <pre>
+     ** the current total write capacity unit count made to region 
+     * </pre>
+     */
+    public boolean hasWriteRequestsCountByCapacityUnit() {
+      return ((bitField0_ & 0x00080000) == 0x00080000);
+    }
+    /**
+     * <code>optional uint64 write_requests_count_by_capacity_unit = 20;</code>
+     *
+     * <pre>
+     ** the current total write capacity unit count made to region 
+     * </pre>
+     */
+    public long getWriteRequestsCountByCapacityUnit() {
+      return writeRequestsCountByCapacityUnit_;
+    }
+
+    // optional uint64 throttled_read_requests_count = 21;
+    public static final int THROTTLED_READ_REQUESTS_COUNT_FIELD_NUMBER = 21;
+    private long throttledReadRequestsCount_;
+    /**
+     * <code>optional uint64 throttled_read_requests_count = 21;</code>
+     *
+     * <pre>
+     ** throttled read requests made to region 
+     * </pre>
+     */
+    public boolean hasThrottledReadRequestsCount() {
+      return ((bitField0_ & 0x00100000) == 0x00100000);
+    }
+    /**
+     * <code>optional uint64 throttled_read_requests_count = 21;</code>
+     *
+     * <pre>
+     ** throttled read requests made to region 
+     * </pre>
+     */
+    public long getThrottledReadRequestsCount() {
+      return throttledReadRequestsCount_;
+    }
+
+    // optional uint64 throttled_write_requests_count = 22;
+    public static final int THROTTLED_WRITE_REQUESTS_COUNT_FIELD_NUMBER = 22;
+    private long throttledWriteRequestsCount_;
+    /**
+     * <code>optional uint64 throttled_write_requests_count = 22;</code>
+     *
+     * <pre>
+     ** throttled write requests made to region 
+     * </pre>
+     */
+    public boolean hasThrottledWriteRequestsCount() {
+      return ((bitField0_ & 0x00200000) == 0x00200000);
+    }
+    /**
+     * <code>optional uint64 throttled_write_requests_count = 22;</code>
+     *
+     * <pre>
+     ** throttled write requests made to region 
+     * </pre>
+     */
+    public long getThrottledWriteRequestsCount() {
+      return throttledWriteRequestsCount_;
+    }
+
     private void initFields() {
       regionSpecifier_ = org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.RegionSpecifier.getDefaultInstance();
       stores_ = 0;
@@ -2866,6 +3054,10 @@ public final class ClusterStatusProtos {
       dataLocality_ = 0F;
       readRequestsPerSecond_ = 0L;
       writeRequestsPerSecond_ = 0L;
+      readRequestsCountByCapacityUnit_ = 0L;
+      writeRequestsCountByCapacityUnit_ = 0L;
+      throttledReadRequestsCount_ = 0L;
+      throttledWriteRequestsCount_ = 0L;
     }
     private byte memoizedIsInitialized = -1;
     public final boolean isInitialized() {
@@ -2940,6 +3132,18 @@ public final class ClusterStatusProtos {
       }
       if (((bitField0_ & 0x00020000) == 0x00020000)) {
         output.writeUInt64(18, writeRequestsPerSecond_);
+      }
+      if (((bitField0_ & 0x00040000) == 0x00040000)) {
+        output.writeUInt64(19, readRequestsCountByCapacityUnit_);
+      }
+      if (((bitField0_ & 0x00080000) == 0x00080000)) {
+        output.writeUInt64(20, writeRequestsCountByCapacityUnit_);
+      }
+      if (((bitField0_ & 0x00100000) == 0x00100000)) {
+        output.writeUInt64(21, throttledReadRequestsCount_);
+      }
+      if (((bitField0_ & 0x00200000) == 0x00200000)) {
+        output.writeUInt64(22, throttledWriteRequestsCount_);
       }
       getUnknownFields().writeTo(output);
     }
@@ -3021,6 +3225,22 @@ public final class ClusterStatusProtos {
       if (((bitField0_ & 0x00020000) == 0x00020000)) {
         size += com.google.protobuf.CodedOutputStream
           .computeUInt64Size(18, writeRequestsPerSecond_);
+      }
+      if (((bitField0_ & 0x00040000) == 0x00040000)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeUInt64Size(19, readRequestsCountByCapacityUnit_);
+      }
+      if (((bitField0_ & 0x00080000) == 0x00080000)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeUInt64Size(20, writeRequestsCountByCapacityUnit_);
+      }
+      if (((bitField0_ & 0x00100000) == 0x00100000)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeUInt64Size(21, throttledReadRequestsCount_);
+      }
+      if (((bitField0_ & 0x00200000) == 0x00200000)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeUInt64Size(22, throttledWriteRequestsCount_);
       }
       size += getUnknownFields().getSerializedSize();
       memoizedSerializedSize = size;
@@ -3134,6 +3354,26 @@ public final class ClusterStatusProtos {
         result = result && (getWriteRequestsPerSecond()
             == other.getWriteRequestsPerSecond());
       }
+      result = result && (hasReadRequestsCountByCapacityUnit() == other.hasReadRequestsCountByCapacityUnit());
+      if (hasReadRequestsCountByCapacityUnit()) {
+        result = result && (getReadRequestsCountByCapacityUnit()
+            == other.getReadRequestsCountByCapacityUnit());
+      }
+      result = result && (hasWriteRequestsCountByCapacityUnit() == other.hasWriteRequestsCountByCapacityUnit());
+      if (hasWriteRequestsCountByCapacityUnit()) {
+        result = result && (getWriteRequestsCountByCapacityUnit()
+            == other.getWriteRequestsCountByCapacityUnit());
+      }
+      result = result && (hasThrottledReadRequestsCount() == other.hasThrottledReadRequestsCount());
+      if (hasThrottledReadRequestsCount()) {
+        result = result && (getThrottledReadRequestsCount()
+            == other.getThrottledReadRequestsCount());
+      }
+      result = result && (hasThrottledWriteRequestsCount() == other.hasThrottledWriteRequestsCount());
+      if (hasThrottledWriteRequestsCount()) {
+        result = result && (getThrottledWriteRequestsCount()
+            == other.getThrottledWriteRequestsCount());
+      }
       result = result &&
           getUnknownFields().equals(other.getUnknownFields());
       return result;
@@ -3219,6 +3459,22 @@ public final class ClusterStatusProtos {
       if (hasWriteRequestsPerSecond()) {
         hash = (37 * hash) + WRITE_REQUESTS_PER_SECOND_FIELD_NUMBER;
         hash = (53 * hash) + hashLong(getWriteRequestsPerSecond());
+      }
+      if (hasReadRequestsCountByCapacityUnit()) {
+        hash = (37 * hash) + READ_REQUESTS_COUNT_BY_CAPACITY_UNIT_FIELD_NUMBER;
+        hash = (53 * hash) + hashLong(getReadRequestsCountByCapacityUnit());
+      }
+      if (hasWriteRequestsCountByCapacityUnit()) {
+        hash = (37 * hash) + WRITE_REQUESTS_COUNT_BY_CAPACITY_UNIT_FIELD_NUMBER;
+        hash = (53 * hash) + hashLong(getWriteRequestsCountByCapacityUnit());
+      }
+      if (hasThrottledReadRequestsCount()) {
+        hash = (37 * hash) + THROTTLED_READ_REQUESTS_COUNT_FIELD_NUMBER;
+        hash = (53 * hash) + hashLong(getThrottledReadRequestsCount());
+      }
+      if (hasThrottledWriteRequestsCount()) {
+        hash = (37 * hash) + THROTTLED_WRITE_REQUESTS_COUNT_FIELD_NUMBER;
+        hash = (53 * hash) + hashLong(getThrottledWriteRequestsCount());
       }
       hash = (29 * hash) + getUnknownFields().hashCode();
       memoizedHashCode = hash;
@@ -3370,6 +3626,14 @@ public final class ClusterStatusProtos {
         bitField0_ = (bitField0_ & ~0x00010000);
         writeRequestsPerSecond_ = 0L;
         bitField0_ = (bitField0_ & ~0x00020000);
+        readRequestsCountByCapacityUnit_ = 0L;
+        bitField0_ = (bitField0_ & ~0x00040000);
+        writeRequestsCountByCapacityUnit_ = 0L;
+        bitField0_ = (bitField0_ & ~0x00080000);
+        throttledReadRequestsCount_ = 0L;
+        bitField0_ = (bitField0_ & ~0x00100000);
+        throttledWriteRequestsCount_ = 0L;
+        bitField0_ = (bitField0_ & ~0x00200000);
         return this;
       }
 
@@ -3474,6 +3738,22 @@ public final class ClusterStatusProtos {
           to_bitField0_ |= 0x00020000;
         }
         result.writeRequestsPerSecond_ = writeRequestsPerSecond_;
+        if (((from_bitField0_ & 0x00040000) == 0x00040000)) {
+          to_bitField0_ |= 0x00040000;
+        }
+        result.readRequestsCountByCapacityUnit_ = readRequestsCountByCapacityUnit_;
+        if (((from_bitField0_ & 0x00080000) == 0x00080000)) {
+          to_bitField0_ |= 0x00080000;
+        }
+        result.writeRequestsCountByCapacityUnit_ = writeRequestsCountByCapacityUnit_;
+        if (((from_bitField0_ & 0x00100000) == 0x00100000)) {
+          to_bitField0_ |= 0x00100000;
+        }
+        result.throttledReadRequestsCount_ = throttledReadRequestsCount_;
+        if (((from_bitField0_ & 0x00200000) == 0x00200000)) {
+          to_bitField0_ |= 0x00200000;
+        }
+        result.throttledWriteRequestsCount_ = throttledWriteRequestsCount_;
         result.bitField0_ = to_bitField0_;
         onBuilt();
         return result;
@@ -3543,6 +3823,18 @@ public final class ClusterStatusProtos {
         }
         if (other.hasWriteRequestsPerSecond()) {
           setWriteRequestsPerSecond(other.getWriteRequestsPerSecond());
+        }
+        if (other.hasReadRequestsCountByCapacityUnit()) {
+          setReadRequestsCountByCapacityUnit(other.getReadRequestsCountByCapacityUnit());
+        }
+        if (other.hasWriteRequestsCountByCapacityUnit()) {
+          setWriteRequestsCountByCapacityUnit(other.getWriteRequestsCountByCapacityUnit());
+        }
+        if (other.hasThrottledReadRequestsCount()) {
+          setThrottledReadRequestsCount(other.getThrottledReadRequestsCount());
+        }
+        if (other.hasThrottledWriteRequestsCount()) {
+          setThrottledWriteRequestsCount(other.getThrottledWriteRequestsCount());
         }
         this.mergeUnknownFields(other.getUnknownFields());
         return this;
@@ -4577,6 +4869,202 @@ public final class ClusterStatusProtos {
       public Builder clearWriteRequestsPerSecond() {
         bitField0_ = (bitField0_ & ~0x00020000);
         writeRequestsPerSecond_ = 0L;
+        onChanged();
+        return this;
+      }
+
+      // optional uint64 read_requests_count_by_capacity_unit = 19;
+      private long readRequestsCountByCapacityUnit_ ;
+      /**
+       * <code>optional uint64 read_requests_count_by_capacity_unit = 19;</code>
+       *
+       * <pre>
+       ** the current total read capacity unit count made to region 
+       * </pre>
+       */
+      public boolean hasReadRequestsCountByCapacityUnit() {
+        return ((bitField0_ & 0x00040000) == 0x00040000);
+      }
+      /**
+       * <code>optional uint64 read_requests_count_by_capacity_unit = 19;</code>
+       *
+       * <pre>
+       ** the current total read capacity unit count made to region 
+       * </pre>
+       */
+      public long getReadRequestsCountByCapacityUnit() {
+        return readRequestsCountByCapacityUnit_;
+      }
+      /**
+       * <code>optional uint64 read_requests_count_by_capacity_unit = 19;</code>
+       *
+       * <pre>
+       ** the current total read capacity unit count made to region 
+       * </pre>
+       */
+      public Builder setReadRequestsCountByCapacityUnit(long value) {
+        bitField0_ |= 0x00040000;
+        readRequestsCountByCapacityUnit_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>optional uint64 read_requests_count_by_capacity_unit = 19;</code>
+       *
+       * <pre>
+       ** the current total read capacity unit count made to region 
+       * </pre>
+       */
+      public Builder clearReadRequestsCountByCapacityUnit() {
+        bitField0_ = (bitField0_ & ~0x00040000);
+        readRequestsCountByCapacityUnit_ = 0L;
+        onChanged();
+        return this;
+      }
+
+      // optional uint64 write_requests_count_by_capacity_unit = 20;
+      private long writeRequestsCountByCapacityUnit_ ;
+      /**
+       * <code>optional uint64 write_requests_count_by_capacity_unit = 20;</code>
+       *
+       * <pre>
+       ** the current total write capacity unit count made to region 
+       * </pre>
+       */
+      public boolean hasWriteRequestsCountByCapacityUnit() {
+        return ((bitField0_ & 0x00080000) == 0x00080000);
+      }
+      /**
+       * <code>optional uint64 write_requests_count_by_capacity_unit = 20;</code>
+       *
+       * <pre>
+       ** the current total write capacity unit count made to region 
+       * </pre>
+       */
+      public long getWriteRequestsCountByCapacityUnit() {
+        return writeRequestsCountByCapacityUnit_;
+      }
+      /**
+       * <code>optional uint64 write_requests_count_by_capacity_unit = 20;</code>
+       *
+       * <pre>
+       ** the current total write capacity unit count made to region 
+       * </pre>
+       */
+      public Builder setWriteRequestsCountByCapacityUnit(long value) {
+        bitField0_ |= 0x00080000;
+        writeRequestsCountByCapacityUnit_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>optional uint64 write_requests_count_by_capacity_unit = 20;</code>
+       *
+       * <pre>
+       ** the current total write capacity unit count made to region 
+       * </pre>
+       */
+      public Builder clearWriteRequestsCountByCapacityUnit() {
+        bitField0_ = (bitField0_ & ~0x00080000);
+        writeRequestsCountByCapacityUnit_ = 0L;
+        onChanged();
+        return this;
+      }
+
+      // optional uint64 throttled_read_requests_count = 21;
+      private long throttledReadRequestsCount_ ;
+      /**
+       * <code>optional uint64 throttled_read_requests_count = 21;</code>
+       *
+       * <pre>
+       ** throttled read requests made to region 
+       * </pre>
+       */
+      public boolean hasThrottledReadRequestsCount() {
+        return ((bitField0_ & 0x00100000) == 0x00100000);
+      }
+      /**
+       * <code>optional uint64 throttled_read_requests_count = 21;</code>
+       *
+       * <pre>
+       ** throttled read requests made to region 
+       * </pre>
+       */
+      public long getThrottledReadRequestsCount() {
+        return throttledReadRequestsCount_;
+      }
+      /**
+       * <code>optional uint64 throttled_read_requests_count = 21;</code>
+       *
+       * <pre>
+       ** throttled read requests made to region 
+       * </pre>
+       */
+      public Builder setThrottledReadRequestsCount(long value) {
+        bitField0_ |= 0x00100000;
+        throttledReadRequestsCount_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>optional uint64 throttled_read_requests_count = 21;</code>
+       *
+       * <pre>
+       ** throttled read requests made to region 
+       * </pre>
+       */
+      public Builder clearThrottledReadRequestsCount() {
+        bitField0_ = (bitField0_ & ~0x00100000);
+        throttledReadRequestsCount_ = 0L;
+        onChanged();
+        return this;
+      }
+
+      // optional uint64 throttled_write_requests_count = 22;
+      private long throttledWriteRequestsCount_ ;
+      /**
+       * <code>optional uint64 throttled_write_requests_count = 22;</code>
+       *
+       * <pre>
+       ** throttled write requests made to region 
+       * </pre>
+       */
+      public boolean hasThrottledWriteRequestsCount() {
+        return ((bitField0_ & 0x00200000) == 0x00200000);
+      }
+      /**
+       * <code>optional uint64 throttled_write_requests_count = 22;</code>
+       *
+       * <pre>
+       ** throttled write requests made to region 
+       * </pre>
+       */
+      public long getThrottledWriteRequestsCount() {
+        return throttledWriteRequestsCount_;
+      }
+      /**
+       * <code>optional uint64 throttled_write_requests_count = 22;</code>
+       *
+       * <pre>
+       ** throttled write requests made to region 
+       * </pre>
+       */
+      public Builder setThrottledWriteRequestsCount(long value) {
+        bitField0_ |= 0x00200000;
+        throttledWriteRequestsCount_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>optional uint64 throttled_write_requests_count = 22;</code>
+       *
+       * <pre>
+       ** throttled write requests made to region 
+       * </pre>
+       */
+      public Builder clearThrottledWriteRequestsCount() {
+        bitField0_ = (bitField0_ & ~0x00200000);
+        throttledWriteRequestsCount_ = 0L;
         onChanged();
         return this;
       }
@@ -13227,7 +13715,7 @@ public final class ClusterStatusProtos {
       "PLITTING_NEW\020\r\022\017\n\013MERGING_NEW\020\016\"X\n\022Regio",
       "nInTransition\022\036\n\004spec\030\001 \002(\0132\020.RegionSpec" +
       "ifier\022\"\n\014region_state\030\002 \002(\0132\014.RegionStat" +
-      "e\"\254\004\n\nRegionLoad\022*\n\020region_specifier\030\001 \002" +
+      "e\"\330\005\n\nRegionLoad\022*\n\020region_specifier\030\001 \002" +
       "(\0132\020.RegionSpecifier\022\016\n\006stores\030\002 \001(\r\022\022\n\n" +
       "storefiles\030\003 \001(\r\022\"\n\032store_uncompressed_s" +
       "ize_MB\030\004 \001(\r\022\031\n\021storefile_size_MB\030\005 \001(\r\022" +
@@ -13241,36 +13729,40 @@ public final class ClusterStatusProtos {
       "\n\024complete_sequence_id\030\017 \001(\004\022\025\n\rdata_loc" +
       "ality\030\020 \001(\002\022 \n\030read_requests_per_second\030" +
       "\021 \001(\004\022!\n\031write_requests_per_second\030\022 \001(\004" +
-      "\"T\n\023ReplicationLoadSink\022\032\n\022ageOfLastAppl" +
-      "iedOp\030\001 \002(\004\022!\n\031timeStampsOfLastAppliedOp" +
-      "\030\002 \002(\004\"\225\001\n\025ReplicationLoadSource\022\016\n\006peer" +
-      "ID\030\001 \002(\t\022\032\n\022ageOfLastShippedOp\030\002 \002(\004\022\026\n\016",
-      "sizeOfLogQueue\030\003 \002(\r\022 \n\030timeStampOfLastS" +
-      "hippedOp\030\004 \002(\004\022\026\n\016replicationLag\030\005 \002(\004\"\253" +
-      "\003\n\nServerLoad\022\032\n\022number_of_requests\030\001 \001(" +
-      "\r\022 \n\030total_number_of_requests\030\002 \001(\r\022\024\n\014u" +
-      "sed_heap_MB\030\003 \001(\r\022\023\n\013max_heap_MB\030\004 \001(\r\022!" +
-      "\n\014region_loads\030\005 \003(\0132\013.RegionLoad\022\"\n\014cop" +
-      "rocessors\030\006 \003(\0132\014.Coprocessor\022\031\n\021report_" +
-      "start_time\030\007 \001(\004\022\027\n\017report_end_time\030\010 \001(" +
-      "\004\022\030\n\020info_server_port\030\t \001(\r\022.\n\016replLoadS" +
-      "ource\030\n \003(\0132\026.ReplicationLoadSource\022*\n\014r",
-      "eplLoadSink\030\013 \001(\0132\024.ReplicationLoadSink\022" +
-      " \n\030read_requests_per_second\030\014 \001(\004\022!\n\031wri" +
-      "te_requests_per_second\030\r \001(\004\"O\n\016LiveServ" +
-      "erInfo\022\033\n\006server\030\001 \002(\0132\013.ServerName\022 \n\013s" +
-      "erver_load\030\002 \002(\0132\013.ServerLoad\"\340\002\n\rCluste" +
-      "rStatus\022/\n\rhbase_version\030\001 \001(\0132\030.HBaseVe" +
-      "rsionFileContent\022%\n\014live_servers\030\002 \003(\0132\017" +
-      ".LiveServerInfo\022!\n\014dead_servers\030\003 \003(\0132\013." +
-      "ServerName\0222\n\025regions_in_transition\030\004 \003(" +
-      "\0132\023.RegionInTransition\022\036\n\ncluster_id\030\005 \001",
-      "(\0132\n.ClusterId\022)\n\023master_coprocessors\030\006 " +
-      "\003(\0132\014.Coprocessor\022\033\n\006master\030\007 \001(\0132\013.Serv" +
-      "erName\022#\n\016backup_masters\030\010 \003(\0132\013.ServerN" +
-      "ame\022\023\n\013balancer_on\030\t \001(\010BF\n*org.apache.h" +
-      "adoop.hbase.protobuf.generatedB\023ClusterS" +
-      "tatusProtosH\001\240\001\001"
+      "\022,\n$read_requests_count_by_capacity_unit" +
+      "\030\023 \001(\004\022-\n%write_requests_count_by_capaci" +
+      "ty_unit\030\024 \001(\004\022%\n\035throttled_read_requests" +
+      "_count\030\025 \001(\004\022&\n\036throttled_write_requests",
+      "_count\030\026 \001(\004\"T\n\023ReplicationLoadSink\022\032\n\022a" +
+      "geOfLastAppliedOp\030\001 \002(\004\022!\n\031timeStampsOfL" +
+      "astAppliedOp\030\002 \002(\004\"\225\001\n\025ReplicationLoadSo" +
+      "urce\022\016\n\006peerID\030\001 \002(\t\022\032\n\022ageOfLastShipped" +
+      "Op\030\002 \002(\004\022\026\n\016sizeOfLogQueue\030\003 \002(\r\022 \n\030time" +
+      "StampOfLastShippedOp\030\004 \002(\004\022\026\n\016replicatio" +
+      "nLag\030\005 \002(\004\"\253\003\n\nServerLoad\022\032\n\022number_of_r" +
+      "equests\030\001 \001(\r\022 \n\030total_number_of_request" +
+      "s\030\002 \001(\r\022\024\n\014used_heap_MB\030\003 \001(\r\022\023\n\013max_hea" +
+      "p_MB\030\004 \001(\r\022!\n\014region_loads\030\005 \003(\0132\013.Regio",
+      "nLoad\022\"\n\014coprocessors\030\006 \003(\0132\014.Coprocesso" +
+      "r\022\031\n\021report_start_time\030\007 \001(\004\022\027\n\017report_e" +
+      "nd_time\030\010 \001(\004\022\030\n\020info_server_port\030\t \001(\r\022" +
+      ".\n\016replLoadSource\030\n \003(\0132\026.ReplicationLoa" +
+      "dSource\022*\n\014replLoadSink\030\013 \001(\0132\024.Replicat" +
+      "ionLoadSink\022 \n\030read_requests_per_second\030" +
+      "\014 \001(\004\022!\n\031write_requests_per_second\030\r \001(\004" +
+      "\"O\n\016LiveServerInfo\022\033\n\006server\030\001 \002(\0132\013.Ser" +
+      "verName\022 \n\013server_load\030\002 \002(\0132\013.ServerLoa" +
+      "d\"\340\002\n\rClusterStatus\022/\n\rhbase_version\030\001 \001",
+      "(\0132\030.HBaseVersionFileContent\022%\n\014live_ser" +
+      "vers\030\002 \003(\0132\017.LiveServerInfo\022!\n\014dead_serv" +
+      "ers\030\003 \003(\0132\013.ServerName\0222\n\025regions_in_tra" +
+      "nsition\030\004 \003(\0132\023.RegionInTransition\022\036\n\ncl" +
+      "uster_id\030\005 \001(\0132\n.ClusterId\022)\n\023master_cop" +
+      "rocessors\030\006 \003(\0132\014.Coprocessor\022\033\n\006master\030" +
+      "\007 \001(\0132\013.ServerName\022#\n\016backup_masters\030\010 \003" +
+      "(\0132\013.ServerName\022\023\n\013balancer_on\030\t \001(\010BF\n*" +
+      "org.apache.hadoop.hbase.protobuf.generat" +
+      "edB\023ClusterStatusProtosH\001\240\001\001"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
       new com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner() {
@@ -13294,7 +13786,7 @@ public final class ClusterStatusProtos {
           internal_static_RegionLoad_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_RegionLoad_descriptor,
-              new java.lang.String[] { "RegionSpecifier", "Stores", "Storefiles", "StoreUncompressedSizeMB", "StorefileSizeMB", "MemstoreSizeMB", "StorefileIndexSizeMB", "ReadRequestsCount", "WriteRequestsCount", "TotalCompactingKVs", "CurrentCompactedKVs", "RootIndexSizeKB", "TotalStaticIndexSizeKB", "TotalStaticBloomSizeKB", "CompleteSequenceId", "DataLocality", "ReadRequestsPerSecond", "WriteRequestsPerSecond", });
+              new java.lang.String[] { "RegionSpecifier", "Stores", "Storefiles", "StoreUncompressedSizeMB", "StorefileSizeMB", "MemstoreSizeMB", "StorefileIndexSizeMB", "ReadRequestsCount", "WriteRequestsCount", "TotalCompactingKVs", "CurrentCompactedKVs", "RootIndexSizeKB", "TotalStaticIndexSizeKB", "TotalStaticBloomSizeKB", "CompleteSequenceId", "DataLocality", "ReadRequestsPerSecond", "WriteRequestsPerSecond", "ReadRequestsCountByCapacityUnit", "WriteRequestsCountByCapacityUnit", "ThrottledReadRequestsCount", "ThrottledWriteRequestsCount", });
           internal_static_ReplicationLoadSink_descriptor =
             getDescriptor().getMessageTypes().get(3);
           internal_static_ReplicationLoadSink_fieldAccessorTable = new
