@@ -220,6 +220,9 @@ public final class HConstants {
   /** Parameter name for how often a region should should perform a major compaction */
   public static final String MAJOR_COMPACTION_PERIOD = "hbase.hregion.majorcompaction";
 
+  /** Parameter name to restrict the major compaction in off peak*/
+  public static final String MAJOR_COMPACTION_OFFPEAK = "hbase.hregion.majorcompaction.offpeak";
+
   /** Parameter name for the maximum batch of KVs to be used in flushes and compactions */
   public static final String COMPACTION_KV_MAX = "hbase.hstore.compaction.kv.max";
 

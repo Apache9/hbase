@@ -1767,15 +1767,15 @@ public class Bytes {
       if (i < start.length && (!moreThanLeft)) from = start[i] & 0xff;
       int to = 255;
       if (i < prev.length && (!lessThanRight)) to = prev[i] & 0xff;
-
       key[i] = (byte) (from + rand.nextInt(to - from + 1));
-      if (i < start.length && key[i] > start[i]) {
+      if (i < start.length && (key[i] & 0xff) > (start[i] & 0xff)) {
         moreThanLeft = true;
       }
-      if (i < prev.length && key[i] < prev[i]) {
+      if (i < prev.length && (key[i] & 0xff) < (prev[i] & 0xff)) {
         lessThanRight = true;
       }
     }
+    if (!lessThanRight) return prev;
     return key;
   }
 }
