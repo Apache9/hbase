@@ -26,6 +26,7 @@ import org.apache.hadoop.hbase.CompatibilitySingletonFactory;
 import org.apache.hadoop.hbase.master.MetricsMasterSource;
 import org.apache.hadoop.hbase.master.MetricsMasterSourceFactory;
 import org.apache.hadoop.hbase.master.MetricsMasterWrapper;
+import org.apache.hadoop.hbase.metrics.HBaseInfo;
 
 /**
  * This class is for maintaining the various master statistics
@@ -42,6 +43,7 @@ public class MetricsMaster {
 
   public MetricsMaster(MetricsMasterWrapper masterWrapper) {
     masterSource = CompatibilitySingletonFactory.getInstance(MetricsMasterSourceFactory.class).create(masterWrapper);
+    HBaseInfo.init();
   }
 
   // for unit-test usage
