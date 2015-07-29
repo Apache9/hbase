@@ -90,6 +90,7 @@ import org.apache.hadoop.hbase.ipc.HMasterRegionInterface;
 import org.apache.hadoop.hbase.ipc.ProtocolSignature;
 import org.apache.hadoop.hbase.ipc.RSReportRequest;
 import org.apache.hadoop.hbase.ipc.RSReportResponse;
+import org.apache.hadoop.hbase.ipc.RequestContext;
 import org.apache.hadoop.hbase.ipc.RpcServer;
 import org.apache.hadoop.hbase.master.cleaner.HFileCleaner;
 import org.apache.hadoop.hbase.master.cleaner.LogCleaner;
@@ -966,7 +967,16 @@ Server {
     throw new IOException("Unknown protocol: " + protocol);
   }
 
-  public long getProtocolVersion(String protocol, long clientVersion) {
+  @Override
+  public long getProtocolVersion(String protocol, long clientVersion) throws IOException {
+    return getProtocolVersion(protocol, clientVersion, "unkown");
+  }
+
+  public long getProtocolVersion(String protocol, long clientVersion, String versionReport)
+      throws IOException {
+    LOG.info("User " + RequestContext.getRequestUserName() + " from client :"
+        + RequestContext.get().getRemoteAddress() + " connect to server with version: "
+        + versionReport);
     if (HMasterInterface.class.getName().equals(protocol)) {
       return HMasterInterface.VERSION;
     } else if (HMasterRegionInterface.class.getName().equals(protocol)) {

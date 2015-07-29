@@ -483,6 +483,15 @@ public class ThroughputController extends BaseRegionObserver implements
    */
   @Override
   public long getProtocolVersion(String protocol, long clientVersion) throws IOException {
+    return getProtocolVersion(protocol, clientVersion, "unkown");
+  }
+
+  @Override
+  public long getProtocolVersion(String protocol, long clientVersion, String versionReport)
+      throws IOException {
+    LOG.info("User " + RequestContext.getRequestUserName() + " from client :"
+        + RequestContext.get().getRemoteAddress() + " connect to server with version: "
+        + versionReport);
     return PROTOCOL_VERSION;
   }
 

@@ -120,12 +120,14 @@ import org.apache.hadoop.hbase.ipc.HBaseRPC;
 import org.apache.hadoop.hbase.ipc.HBaseRPCErrorHandler;
 import org.apache.hadoop.hbase.ipc.HBaseRpcMetrics;
 import org.apache.hadoop.hbase.ipc.HBaseServer;
+import org.apache.hadoop.hbase.ipc.HMasterInterface;
 import org.apache.hadoop.hbase.ipc.HMasterRegionInterface;
 import org.apache.hadoop.hbase.ipc.HRegionInterface;
 import org.apache.hadoop.hbase.ipc.Invocation;
 import org.apache.hadoop.hbase.ipc.ProtocolSignature;
 import org.apache.hadoop.hbase.ipc.RSReportRequest;
 import org.apache.hadoop.hbase.ipc.RSReportResponse;
+import org.apache.hadoop.hbase.ipc.RequestContext;
 import org.apache.hadoop.hbase.ipc.RpcEngine;
 import org.apache.hadoop.hbase.ipc.RpcServer;
 import org.apache.hadoop.hbase.ipc.ServerNotRunningYetException;
@@ -3914,9 +3916,20 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
   }
 
   @Override
-  @QosPriority(priority=HConstants.HIGH_QOS)
+  @QosPriority(priority = HConstants.HIGH_QOS)
   public long getProtocolVersion(final String protocol, final long clientVersion)
-  throws IOException {
+      throws IOException {
+    return getProtocolVersion(protocol, clientVersion, "unkown");
+  }
+
+  @Override
+  @QosPriority(priority = HConstants.HIGH_QOS)
+  public long getProtocolVersion(String protocol, long clientVersion, String versionReport)
+      throws IOException {
+    LOG.info("User " + RequestContext.getRequestUserName() + " from client :"
+        + RequestContext.get().getRemoteAddress() + " connect to server with version: "
+        + versionReport);
+
     if (protocol.equals(HRegionInterface.class.getName())) {
       return HRegionInterface.VERSION;
     }

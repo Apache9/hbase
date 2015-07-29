@@ -150,8 +150,8 @@ public class SecureRpcEngine implements RpcEngine {
      * SecureClient.Connection.  Doing it every time we retrieve a proxy instance is resulting
      * in unnecessary RPC traffic.
      */
-    long serverVersion = proxy.getProtocolVersion(protocol.getName(),
-                                                  clientVersion);
+    long serverVersion =
+        HBaseRPC.getProtocolVersion((VersionedProtocol) proxy, protocol.getName(), clientVersion);
     if (serverVersion != clientVersion) {
       throw new HBaseRPC.VersionMismatch(protocol.getName(), clientVersion,
                                 serverVersion);
