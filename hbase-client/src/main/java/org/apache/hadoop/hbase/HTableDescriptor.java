@@ -839,7 +839,7 @@ public class HTableDescriptor implements WritableComparable<HTableDescriptor> {
   public String toString() {
     StringBuilder s = new StringBuilder();
     s.append('\'').append(Bytes.toString(name.getName())).append('\'');
-    s.append(getValues(true));
+    s.append(", ").append(getValues(true));
     for (HColumnDescriptor f : families.values()) {
       s.append(", ").append(f);
     }
@@ -853,7 +853,7 @@ public class HTableDescriptor implements WritableComparable<HTableDescriptor> {
   public String toStringCustomizedValues() {
     StringBuilder s = new StringBuilder();
     s.append('\'').append(Bytes.toString(name.getName())).append('\'');
-    s.append(getValues(false));
+    s.append(", ").append(getValues(false));
     for(HColumnDescriptor hcd : families.values()) {
       s.append(", ").append(hcd.toStringCustomizedValues());
     }
@@ -898,7 +898,7 @@ public class HTableDescriptor implements WritableComparable<HTableDescriptor> {
     boolean hasAttributes = !reservedKeys.isEmpty() || !userKeys.isEmpty();
     if (!hasAttributes && configuration.isEmpty()) return s;
 
-    s.append(", {");
+    s.append("{");
     // step 2: printing attributes
     if (hasAttributes) {
       s.append("TABLE_ATTRIBUTES => {");

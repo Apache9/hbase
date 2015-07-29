@@ -37,8 +37,9 @@ EOF
 
         column_families = admin.get_column_families(table)
 
-        formatter.header(["Table " + table.to_s + " is " + if admin.enabled?(table) then "ENABLED" else "DISABLED" end])
-        formatter.row([table.to_s + admin.get_table_attributes(table)], true)
+        formatter.row([ "TABLE NAME:", table.to_s], true, [10])
+        formatter.row([ "ENABLED:", admin.enabled?(table).to_s], true, [10])
+        formatter.row([ "TABLE CONFIG:", admin.get_table_attributes(table)], true, [10])
         formatter.header(["COLUMN FAMILIES DESCRIPTION"])
         column_families.each do |column_family|
           formatter.row([ column_family.to_s ], true)
