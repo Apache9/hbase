@@ -18,6 +18,7 @@
 
 package org.apache.hadoop.hbase.ipc;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
@@ -114,7 +115,7 @@ public class RWQueueRpcExecutor extends RpcExecutor {
   }
 
   @Override
-  public void dispatch(final CallRunner callTask) throws InterruptedException {
+  public void dispatch(final CallRunner callTask) throws IOException, InterruptedException {
     RpcServer.Call call = callTask.getCall();
     int queueIndex;
     if (isWriteRequest(call.getHeader(), call.param)) {
@@ -122,7 +123,10 @@ public class RWQueueRpcExecutor extends RpcExecutor {
     } else {
       queueIndex = numWriteQueues + readBalancer.getNextQueue();
     }
-    queues.get(queueIndex).put(callTask);
+    if (!queues.get(queueIndex).offer(callTask)) {
+      callTask.doRespond(null, new IOException(), "IPC server unable to "
+          + ((queueIndex < numWriteQueues) ? "write" : "read") + " call method");
+    }
   }
 
   private boolean isWriteRequest(final RequestHeader header, final Message param) {

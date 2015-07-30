@@ -368,7 +368,7 @@ public class RpcServer implements RpcServerInterface {
         if (t != null) {
           ExceptionResponse.Builder exceptionBuilder = ExceptionResponse.newBuilder();
           exceptionBuilder.setExceptionClassName(t.getClass().getName());
-          exceptionBuilder.setStackTrace(errorMsg);
+          exceptionBuilder.setStackTrace(errorMsg + "@" + isa);
           exceptionBuilder.setDoNotRetry(t instanceof DoNotRetryIOException);
           if (t instanceof RegionMovedException) {
             // Special casing for this exception.  This is only one carrying a payload.

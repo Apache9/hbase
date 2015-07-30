@@ -16,6 +16,7 @@ package org.apache.hadoop.hbase.ipc;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import java.io.IOException;
 import java.nio.channels.ClosedChannelException;
 
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
@@ -122,16 +123,7 @@ public class CallRunner {
         RequestContext.clear();
       }
       RpcServer.CurCall.set(null);
-      // Set the response for undelayed calls and delayed calls with
-      // undelayed responses.
-      if (!call.isDelayed() || !call.isReturnValueDelayed()) {
-        Message param = resultPair != null ? resultPair.getFirst() : null;
-        CellScanner cells = resultPair != null ? resultPair.getSecond() : null;
-        call.setResponse(param, cells, errorThrowable, error);
-      }
-      call.sendResponseIfReady();
-      this.status.markComplete("Sent response");
-      this.status.pause("Waiting for a call");
+      doRespond(resultPair, errorThrowable, error);
     } catch (OutOfMemoryError e) {
       if (this.rpcServer.getErrorHandler() != null) {
         if (this.rpcServer.getErrorHandler().checkOOME(e)) {
@@ -155,6 +147,20 @@ public class CallRunner {
       this.rpcServer.addCallSize(call.getSize() * -1);
       cleanup();
     }
+  }
+  
+  protected void doRespond(Pair<Message, CellScanner> resultPair, Throwable errorThrowable,
+      String error) throws IOException {
+    // Set the response for undelayed calls and delayed calls with
+    // undelayed responses.
+    if (!call.isDelayed() || !call.isReturnValueDelayed()) {
+      Message param = resultPair != null ? resultPair.getFirst() : null;
+      CellScanner cells = resultPair != null ? resultPair.getSecond() : null;
+      call.setResponse(param, cells, errorThrowable, error);
+    }
+    call.sendResponseIfReady();
+    this.status.markComplete("Sent response");
+    this.status.pause("Waiting for a call");
   }
 
   MonitoredRPCHandler getStatus() {
