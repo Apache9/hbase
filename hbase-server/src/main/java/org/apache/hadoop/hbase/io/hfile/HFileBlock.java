@@ -41,6 +41,9 @@ import org.apache.hadoop.hbase.io.encoding.HFileBlockDefaultDecodingContext;
 import org.apache.hadoop.hbase.io.encoding.HFileBlockDefaultEncodingContext;
 import org.apache.hadoop.hbase.io.encoding.HFileBlockEncodingContext;
 import org.apache.hadoop.hbase.io.hfile.bucket.BucketCache;
+import org.apache.hadoop.hbase.ipc.CallerDisconnectedException;
+import org.apache.hadoop.hbase.ipc.RpcCallContext;
+import org.apache.hadoop.hbase.ipc.RpcServer;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.ChecksumType;
 import org.apache.hadoop.hbase.util.ClassSize;
@@ -1295,7 +1298,17 @@ public class HFileBlock implements Cacheable {
             hdrSize + " bytes of next header into a " + dest.length +
             "-byte array at offset " + destOffset);
       }
-
+      
+      RpcCallContext rpcCall = RpcServer.getCurrentCall();
+      if (rpcCall != null) {
+        try {
+          rpcCall.throwExceptionIfCallerDisconnected();
+        } catch (CallerDisconnectedException cde) {
+          HFile.LOG.info("", cde);
+          throw cde; 
+        }
+      }
+      
       if (!pread && streamLock.tryLock()) {
         // Seek + read. Better for scanning.
         try {

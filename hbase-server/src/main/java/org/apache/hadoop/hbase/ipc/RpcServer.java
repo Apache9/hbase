@@ -488,6 +488,15 @@ public class RpcServer implements RpcServerInterface {
         return -1L;
       }
     }
+    
+    @Override
+    public void throwExceptionIfCallerDisconnected() throws CallerDisconnectedException {
+      long afterTime = disconnectSince();
+      if (afterTime >= 0) {
+        throw new CallerDisconnectedException("Aborting call " + this + " after " + afterTime
+            + " ms, since " + "caller disconnected");
+      }
+    }
 
     public long getSize() {
       return this.size;

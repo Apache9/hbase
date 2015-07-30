@@ -26,6 +26,13 @@ public interface RpcCallContext extends Delayable {
    *  since the disconnection otherwise
    */
   long disconnectSince();
+  
+  /**
+   * Throw an exception if the caller who made this IPC call has disconnected.
+   * If called from outside the context of IPC, this does nothing.
+   * @throws CallerDisconnectedException
+   */
+  void throwExceptionIfCallerDisconnected() throws CallerDisconnectedException;
 
   /**
    * If the client connected and specified a codec to use, then we will use this codec making

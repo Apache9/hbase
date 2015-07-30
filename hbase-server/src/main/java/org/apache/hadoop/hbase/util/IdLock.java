@@ -23,7 +23,12 @@ import java.io.InterruptedIOException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
+import org.apache.hadoop.hbase.ipc.CallerDisconnectedException;
+import org.apache.hadoop.hbase.ipc.RpcCallContext;
+import org.apache.hadoop.hbase.ipc.RpcServer;
 
 /**
  * Allows multiple concurrent clients to lock on a numeric id with a minimal
@@ -39,7 +44,8 @@ import org.apache.hadoop.hbase.classification.InterfaceAudience;
  */
 @InterfaceAudience.Private
 public class IdLock {
-
+  private static final Log LOG = LogFactory.getLog(IdLock.class); 
+  
   /** An entry returned to the client as a lock object */
   public static class Entry {
     private final long id;
@@ -71,6 +77,7 @@ public class IdLock {
     Entry entry = new Entry(id);
     Entry existing;
     while ((existing = map.putIfAbsent(entry.id, entry)) != null) {
+      RpcCallContext rpcCall = RpcServer.getCurrentCall();
       synchronized (existing) {
         if (existing.isLocked) {
           ++existing.numWaiters;  // Add ourselves to waiters.
@@ -81,6 +88,16 @@ public class IdLock {
               --existing.numWaiters;  // Remove ourselves from waiters.
               throw new InterruptedIOException(
                   "Interrupted waiting to acquire sparse lock");
+            }
+          }
+          
+          if (rpcCall != null) {
+            try {
+              rpcCall.throwExceptionIfCallerDisconnected();
+            } catch (CallerDisconnectedException cde) {
+              LOG.info("", cde);
+              --existing.numWaiters;  // Remove ourselves from waiters.
+              throw cde; 
             }
           }
 
