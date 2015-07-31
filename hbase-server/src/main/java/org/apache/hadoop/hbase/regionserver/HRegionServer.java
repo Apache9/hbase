@@ -115,6 +115,7 @@ import org.apache.hadoop.hbase.filter.CompareFilter.CompareOp;
 import org.apache.hadoop.hbase.fs.HFileSystem;
 import org.apache.hadoop.hbase.io.hfile.CacheConfig;
 import org.apache.hadoop.hbase.io.hfile.HFile;
+import org.apache.hadoop.hbase.ipc.CallerDisconnectedException;
 import org.apache.hadoop.hbase.ipc.HBaseRPCErrorHandler;
 import org.apache.hadoop.hbase.ipc.PayloadCarryingRpcController;
 import org.apache.hadoop.hbase.ipc.PriorityFunction;
@@ -3673,6 +3674,10 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
             processed = Boolean.TRUE;
           }
         } catch (IOException e) {
+          if ((e instanceof CallerDisconnectedException)
+              || (e.getCause() instanceof CallerDisconnectedException)) {
+            throw new ServiceException(e);
+          }
           // As it's atomic, we may expect it's a global failure.
           regionActionResultBuilder.setException(ResponseConverter.buildException(e));
         }
@@ -3704,7 +3709,8 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
    */
   private List<CellScannable> doNonAtomicRegionMutation(final HRegion region,
       final OperationQuota quota, final RegionAction actions, final CellScanner cellScanner,
-      final RegionActionResult.Builder builder, List<CellScannable> cellsToReturn, long nonceGroup) {
+      final RegionActionResult.Builder builder, List<CellScannable> cellsToReturn, long nonceGroup)
+      throws ServiceException {
     // Gather up CONTIGUOUS Puts and Deletes in this mutations List.  Idea is that rather than do
     // one at a time, we instead pass them in batch.  Be aware that the corresponding
     // ResultOrException instance that matches each Put or Delete is then added down in the
@@ -3778,6 +3784,10 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
         // case the corresponding ResultOrException instance for the Put or Delete will be added
         // down in the doBatchOp method call rather than up here.
       } catch (IOException ie) {
+        if ((ie instanceof CallerDisconnectedException)
+            || (ie.getCause() instanceof CallerDisconnectedException)) {
+          throw new ServiceException(ie);
+        }
         resultOrExceptionBuilder = ResultOrException.newBuilder().
           setException(ResponseConverter.buildException(ie));
       }
