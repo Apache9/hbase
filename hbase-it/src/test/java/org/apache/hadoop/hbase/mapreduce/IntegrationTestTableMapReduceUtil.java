@@ -21,6 +21,8 @@ package org.apache.hadoop.hbase.mapreduce;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assume.assumeTrue;
 
+import java.io.IOException;
+
 import org.apache.hadoop.conf.Configurable;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
@@ -79,6 +81,15 @@ public class IntegrationTestTableMapReduceUtil implements Configurable, Tool {
     assertTrue(tmpjars.contains("protobuf"));
     assertTrue(tmpjars.contains("guava"));
     assertTrue(tmpjars.contains("htrace"));
+    
+    try {
+      TableMapReduceUtil.addDependencyJars(job.getConfiguration(), String.class);
+      assertTrue(false);
+    } catch (NullPointerException e) {
+      assertTrue(false);
+    } catch (IOException e) {
+      assertTrue(true);
+    }
   }
 
   @Override

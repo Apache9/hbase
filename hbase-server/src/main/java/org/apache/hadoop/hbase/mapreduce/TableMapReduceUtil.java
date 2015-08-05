@@ -869,7 +869,9 @@ public class TableMapReduceUtil {
     String jar = findContainingJar(my_class, packagedClasses);
     if (null == jar || jar.isEmpty()) {
       jar = getJar(my_class);
-      updateMap(jar, packagedClasses);
+      if (jar != null) {
+        updateMap(jar, packagedClasses);
+      }
     }
 
     if (null == jar || jar.isEmpty()) {
@@ -918,7 +920,7 @@ public class TableMapReduceUtil {
     ClassLoader loader = my_class.getClassLoader();
 
     String class_file = my_class.getName().replaceAll("\\.", "/") + ".class";
-
+    if (loader == null) return null;
     if (loader != null) {
       // first search the classpath
       for (Enumeration<URL> itr = loader.getResources(class_file); itr.hasMoreElements();) {
