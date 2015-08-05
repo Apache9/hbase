@@ -278,7 +278,8 @@ public class HRegion implements HeapSize { // , Writable{
   //Number of requests
   final Counter readRequestsCount = new Counter();
   final Counter writeRequestsCount = new Counter();
-  
+  final Counter getRequestsCount = new Counter();
+
   // read qps and write qps
   final MetricsRegistry registry = new MetricsRegistry();
   final MetricsRate readRequestsPerSecond = new MetricsRate("readRequestsPerSecond", registry);
@@ -5112,6 +5113,7 @@ public class HRegion implements HeapSize { // , Writable{
     try {
       scanner = getScanner(scan);
       scanner.next(results);
+      this.getRequestsCount.increment();
     } finally {
       if (scanner != null)
         scanner.close();

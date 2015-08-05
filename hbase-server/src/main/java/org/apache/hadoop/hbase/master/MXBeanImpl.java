@@ -205,9 +205,9 @@ public class MXBeanImpl implements MXBean {
     for (final Entry<ServerName, ServerLoad> entry : master.getServerManager().getOnlineServers()
         .entrySet()) {
       for (ReplicationLoadSource load : entry.getValue().getReplicationLoadSourceList()) {
-        ReplicationLoadSource tmp = replications.get(load.getPeerId());
+        ReplicationLoadSource tmp = replications.get(load.getPeerID());
         if (tmp == null) {
-          replications.put(load.getPeerId(), load);
+          replications.put(load.getPeerID(), load);
         } else {
           tmp.setSizeOfLogQueue(tmp.getSizeOfLogQueue() + load.getSizeOfLogQueue());
         }

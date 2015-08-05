@@ -1499,7 +1499,8 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
       .setTotalCompactingKVs(totalCompactingKVs)
       .setCurrentCompactedKVs(currentCompactedKVs)
       .setCompleteSequenceId(r.completeSequenceId)
-      .setDataLocality(dataLocality);
+      .setDataLocality(dataLocality)
+      .setGetRequestsCount(r.getRequestsCount.get());
 
     return regionLoadBldr.build();
   }

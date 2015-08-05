@@ -17,22 +17,22 @@ import org.apache.hadoop.hbase.classification.InterfaceAudience;
  */
 @InterfaceAudience.Private
 public class ReplicationLoadSource {
-  private String peerId;
+  private String peerID;
   private long ageOfLastShippedOp;
   private int sizeOfLogQueue;
   private long timeStampOfLastShippedOp;
   private long replicationLag;
 
   public ReplicationLoadSource(String id, long age, int size, long timeStamp, long lag) {
-    this.peerId = id;
+    this.peerID = id;
     this.ageOfLastShippedOp = age;
     this.sizeOfLogQueue = size;
     this.timeStampOfLastShippedOp = timeStamp;
     this.replicationLag = lag;
   }
 
-  public String getPeerId() {
-    return this.peerId;
+  public String getPeerID() {
+    return this.peerID;
   }
 
   public long getAgeOfLastShippedOp() {
