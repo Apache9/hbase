@@ -3092,7 +3092,7 @@ MasterServices, Server {
    */
   void registerMBean() {
     MXBeanImpl mxBeanInfo = MXBeanImpl.init(this);
-    mxBean = CompatibilitySingletonFactory.getInstance(MBeanSource.class).register("hbase",
+    mxBean = CompatibilitySingletonFactory.getInstance(MBeanSource.class).register("Master",
       "Master", mxBeanInfo);
     LOG.info("Registered HMaster MXBean");
   }

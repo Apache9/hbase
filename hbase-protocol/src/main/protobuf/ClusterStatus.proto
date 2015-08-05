@@ -131,6 +131,9 @@ message RegionLoad {
 
   /** throttled write requests made to region */
   optional uint64 throttled_write_requests_count = 22;
+
+  /** the current total get requests made to region */
+  optional uint64 get_requests_count = 23;
 }
 
 /* Server-level protobufs */

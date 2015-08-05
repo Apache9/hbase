@@ -124,6 +124,20 @@ public class RegionLoad {
   }
 
   /**
+   * @return the number of get requests made to region
+   */
+  public long getGetRequestsCount() {
+    return regionLoadPB.getGetRequestsCount();
+  }
+
+  /**
+   * @return the number of requests per second made to region
+   */
+  public long getRequestsPerSecond() {
+    return getReadRequestsPerSecond() + getWriteRequestsPerSecond();
+  }
+
+  /**
    * @return the number of read capacity unit made to region
    */
   public long getReadRequestsCountByCapacityUnit() {
