@@ -115,6 +115,7 @@ import org.apache.hadoop.hbase.filter.CompareFilter.CompareOp;
 import org.apache.hadoop.hbase.fs.HFileSystem;
 import org.apache.hadoop.hbase.io.hfile.CacheConfig;
 import org.apache.hadoop.hbase.io.hfile.HFile;
+import org.apache.hadoop.hbase.ipc.CallerDisconnectedException;
 import org.apache.hadoop.hbase.ipc.HBaseRPCErrorHandler;
 import org.apache.hadoop.hbase.ipc.PayloadCarryingRpcController;
 import org.apache.hadoop.hbase.ipc.PriorityFunction;
@@ -236,6 +237,7 @@ import org.apache.hadoop.hbase.util.FSTableDescriptors;
 import org.apache.hadoop.hbase.util.FSUtils;
 import org.apache.hadoop.hbase.util.InfoServer;
 import org.apache.hadoop.hbase.util.JvmPauseMonitor;
+import org.apache.hadoop.hbase.util.JvmThreadMonitor;
 import org.apache.hadoop.hbase.util.Pair;
 import org.apache.hadoop.hbase.util.Sleeper;
 import org.apache.hadoop.hbase.util.Strings;
@@ -419,7 +421,8 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
   // into web context.
   InfoServer infoServer;
   private JvmPauseMonitor pauseMonitor;
-
+  private JvmThreadMonitor jvmThreadMonitor;
+  
   /** region server process name */
   public static final String REGIONSERVER = "regionserver";
 
@@ -887,6 +890,8 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
         this.isa.getAddress(), 0));
     this.pauseMonitor = new JvmPauseMonitor(conf);
     pauseMonitor.start();
+    jvmThreadMonitor = new JvmThreadMonitor(conf);
+    jvmThreadMonitor.start();
   }
 
   /**
@@ -1080,6 +1085,9 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     if (this.pauseMonitor != null) {
       this.pauseMonitor.stop();
     }
+    if (this.jvmThreadMonitor != null) {
+      this.jvmThreadMonitor.stop();
+    }
 
     if (!killed) {
       join();
@@ -1186,9 +1194,16 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     }
     RegionLoad.Builder regionLoadBldr = RegionLoad.newBuilder();
     RegionSpecifier.Builder regionSpecifier = RegionSpecifier.newBuilder();
+    long readRequestsPerSecond = 0;
+    long writeRequestsPerSecond = 0;
     for (HRegion region : regions) {
-      serverLoad.addRegionLoads(createRegionLoad(region, regionLoadBldr, regionSpecifier));
+      RegionLoad load = createRegionLoad(region, regionLoadBldr, regionSpecifier);
+      serverLoad.addRegionLoads(load);
+      readRequestsPerSecond += load.getReadRequestsPerSecond();
+      writeRequestsPerSecond += load.getWriteRequestsPerSecond();
     }
+    serverLoad.setReadRequestsPerSecond(readRequestsPerSecond);
+    serverLoad.setWriteRequestsPerSecond(writeRequestsPerSecond);
     serverLoad.setReportStartTime(reportStartTime);
     serverLoad.setReportEndTime(reportEndTime);
     if (this.infoServer != null) {
@@ -1479,10 +1494,13 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
       .setTotalStaticBloomSizeKB(totalStaticBloomSizeKB)
       .setReadRequestsCount(r.readRequestsCount.get())
       .setWriteRequestsCount(r.writeRequestsCount.get())
+      .setReadRequestsPerSecond(r.getReadRequestsPerSecond())
+      .setWriteRequestsPerSecond(r.getWriteRequestsPerSecond())
       .setTotalCompactingKVs(totalCompactingKVs)
       .setCurrentCompactedKVs(currentCompactedKVs)
       .setCompleteSequenceId(r.completeSequenceId)
-      .setDataLocality(dataLocality);
+      .setDataLocality(dataLocality)
+      .setGetRequestsCount(r.getRequestsCount.get());
 
     return regionLoadBldr.build();
   }
@@ -2934,6 +2952,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
         stop = true;
         LOG.fatal(
           "Run out of memory; HRegionServer will abort itself immediately", e);
+        ReflectionUtils.logThreadInfo(LOG, "thread dump from JvmThreadMonitor", 1000);
       }
     } finally {
       if (stop) {
@@ -3359,7 +3378,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
                   values.clear();
                 }
               }
-              region.readRequestsCount.add(i);
+              region.updateReadMetrics(i);
               region.getMetrics().updateScanNext(totalKvSize);
             } finally {
               region.closeRegionOperation();
@@ -3656,6 +3675,10 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
             processed = Boolean.TRUE;
           }
         } catch (IOException e) {
+          if ((e instanceof CallerDisconnectedException)
+              || (e.getCause() instanceof CallerDisconnectedException)) {
+            throw new ServiceException(e);
+          }
           // As it's atomic, we may expect it's a global failure.
           regionActionResultBuilder.setException(ResponseConverter.buildException(e));
         }
@@ -3687,7 +3710,8 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
    */
   private List<CellScannable> doNonAtomicRegionMutation(final HRegion region,
       final OperationQuota quota, final RegionAction actions, final CellScanner cellScanner,
-      final RegionActionResult.Builder builder, List<CellScannable> cellsToReturn, long nonceGroup) {
+      final RegionActionResult.Builder builder, List<CellScannable> cellsToReturn, long nonceGroup)
+      throws ServiceException {
     // Gather up CONTIGUOUS Puts and Deletes in this mutations List.  Idea is that rather than do
     // one at a time, we instead pass them in batch.  Be aware that the corresponding
     // ResultOrException instance that matches each Put or Delete is then added down in the
@@ -3761,6 +3785,10 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
         // case the corresponding ResultOrException instance for the Put or Delete will be added
         // down in the doBatchOp method call rather than up here.
       } catch (IOException ie) {
+        if ((ie instanceof CallerDisconnectedException)
+            || (ie.getCause() instanceof CallerDisconnectedException)) {
+          throw new ServiceException(ie);
+        }
         resultOrExceptionBuilder = ResultOrException.newBuilder().
           setException(ResponseConverter.buildException(ie));
       }

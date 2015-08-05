@@ -1,4 +1,5 @@
 #
+# Copyright 2010 The Apache Software Foundation
 #
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
@@ -19,32 +20,22 @@
 
 module Shell
   module Commands
-    class Describe < Command
+    class AppendPeerTableCFs< Command
       def help
         return <<-EOF
-Describe the named table. For example:
-  hbase> describe 't1'
-  hbase> describe 'ns1:t1'
+Append a replicable table-cf config for the specified peer
+Examples:
 
-Alternatively, you can use the abbreviated 'desc' for the same thing.
-  hbase> desc 't1'
-  hbase> desc 'ns1:t1'
+  # append a table / table-cf to be replicable for a peer
+  hbase> append_peer_tableCFs '2', "table4:cfA,cfB"
+
 EOF
       end
 
-      def command(table)
-        now = Time.now
-
-        column_families = admin.get_column_families(table)
-
-        formatter.row([ "TABLE NAME:", table.to_s], true, [10])
-        formatter.row([ "ENABLED:", admin.enabled?(table).to_s], true, [10])
-        formatter.row([ "TABLE CONFIG:", admin.get_table_attributes(table)], true, [10])
-        formatter.header(["COLUMN FAMILIES DESCRIPTION"])
-        column_families.each do |column_family|
-          formatter.row([ column_family.to_s ], true)
+      def command(id, table_cfs)
+        format_simple_command do
+          replication_admin.append_peer_tableCFs(id, table_cfs)
         end
-        formatter.footer(now)
       end
     end
   end

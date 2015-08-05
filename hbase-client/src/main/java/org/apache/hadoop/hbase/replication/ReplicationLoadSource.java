@@ -39,8 +39,12 @@ public class ReplicationLoadSource {
     return this.ageOfLastShippedOp;
   }
 
-  public long getSizeOfLogQueue() {
+  public int getSizeOfLogQueue() {
     return this.sizeOfLogQueue;
+  }
+
+  public void setSizeOfLogQueue(int sizeOfLogQueue) {
+    this.sizeOfLogQueue = sizeOfLogQueue;
   }
 
   public long getTimeStampOfLastShippedOp() {

@@ -89,6 +89,12 @@ module Hbase
     end
 
     #----------------------------------------------------------------------------------------------
+    # Append a tableCFs config for the specified peer
+    def append_peer_tableCFs(id, tableCFs)
+      @replication_admin.appendPeerTableCFs(id, tableCFs)
+    end
+
+    #----------------------------------------------------------------------------------------------
     # Enables a table's replication switch
     def enable_tablerep(table_name)
       tableName = TableName.valueOf(table_name)

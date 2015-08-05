@@ -113,6 +113,27 @@ message RegionLoad {
 
   /** The current data locality for region in the regionserver */
   optional float data_locality = 16;
+  
+  /** read requests per second made to region */
+  optional uint64 read_requests_per_second = 17;
+
+  /** write requests per second made to region */
+  optional uint64 write_requests_per_second = 18;
+
+  /** the current total read capacity unit count made to region */
+  optional uint64 read_requests_count_by_capacity_unit = 19;
+
+  /** the current total write capacity unit count made to region */
+  optional uint64 write_requests_count_by_capacity_unit = 20;
+
+  /** throttled read requests made to region */
+  optional uint64 throttled_read_requests_count = 21;
+
+  /** throttled write requests made to region */
+  optional uint64 throttled_write_requests_count = 22;
+
+  /** the current total get requests made to region */
+  optional uint64 get_requests_count = 23;
 }
 
 /* Server-level protobufs */
@@ -181,6 +202,12 @@ message ServerLoad {
    * The replicationLoadSink for the replication Sink status of this region server.
    */
   optional ReplicationLoadSink replLoadSink = 11;
+  
+  /** read requests per second made to region */
+  optional uint64 read_requests_per_second = 12;
+
+  /** write requests per second made to region */
+  optional uint64 write_requests_per_second = 13;
 }
 
 message LiveServerInfo {

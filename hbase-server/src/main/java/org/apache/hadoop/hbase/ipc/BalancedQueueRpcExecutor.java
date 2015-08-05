@@ -17,6 +17,7 @@
  */
 package org.apache.hadoop.hbase.ipc;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
@@ -67,9 +68,11 @@ public class BalancedQueueRpcExecutor extends RpcExecutor {
   }
 
   @Override
-  public void dispatch(final CallRunner callTask) throws InterruptedException {
+  public void dispatch(final CallRunner callTask) throws IOException, InterruptedException {
     int queueIndex = balancer.getNextQueue();
-    queues.get(queueIndex).put(callTask);
+    if (!queues.get(queueIndex).offer(callTask)) {
+      callTask.doRespond(null, new IOException(), "IPC server unable to call method");
+    }
   }
 
   @Override

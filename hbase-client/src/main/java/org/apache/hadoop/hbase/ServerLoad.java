@@ -32,6 +32,7 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.Strings;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -56,6 +57,10 @@ public class ServerLoad {
   private int totalStaticBloomSizeKB = 0;
   private long totalCompactingKVs = 0;
   private long currentCompactedKVs = 0;
+  private long readRequestsCountByCapacityUnit = 0;
+  private long writeRequestsCountByCapacityUnit = 0;
+  private long throttledReadRequestsCount = 0;
+  private long throttledWriteRequestsCount = 0;
 
   public ServerLoad(ClusterStatusProtos.ServerLoad serverLoad) {
     this.serverLoad = serverLoad;
@@ -73,6 +78,10 @@ public class ServerLoad {
       totalStaticBloomSizeKB += rl.getTotalStaticBloomSizeKB();
       totalCompactingKVs += rl.getTotalCompactingKVs();
       currentCompactedKVs += rl.getCurrentCompactedKVs();
+      readRequestsCountByCapacityUnit += rl.getReadRequestsCountByCapacityUnit();
+      writeRequestsCountByCapacityUnit += rl.getWriteRequestsCountByCapacityUnit();
+      throttledReadRequestsCount += rl.getThrottledReadRequestsCount();
+      throttledWriteRequestsCount += rl.getThrottledWriteRequestsCount();
     }
 
   }
@@ -148,6 +157,30 @@ public class ServerLoad {
 
   public long getWriteRequestsCount() {
     return writeRequestsCount;
+  }
+
+  public long getReadRequestsPerSecond() {
+    return serverLoad.getReadRequestsPerSecond();
+  }
+
+  public long getWriteRequestsPerSecond() {
+    return serverLoad.getWriteRequestsPerSecond();
+  }
+
+  public long getReadRequestsCountByCapacityUnit() {
+    return readRequestsCountByCapacityUnit;
+  }
+
+  public long getWriteRequestsCountByCapacityUnit() {
+    return writeRequestsCountByCapacityUnit;
+  }
+
+  public long getThrottledReadRequestsCount() {
+    return throttledReadRequestsCount;
+  }
+
+  public long getThrottledWriteRequestsCount() {
+    return throttledWriteRequestsCount;
   }
 
   public int getRootIndexSizeKB() {
@@ -228,7 +261,7 @@ public class ServerLoad {
       RegionLoad regionLoad = new RegionLoad(rl);
       regionLoads.put(regionLoad.getName(), regionLoad);
     }
-    return regionLoads;
+    return Collections.unmodifiableMap(regionLoads);
   }
 
   /**
@@ -299,6 +332,12 @@ public class ServerLoad {
           Integer.valueOf(this.storefileIndexSizeMB));
     sb = Strings.appendKeyValue(sb, "readRequestsCount", Long.valueOf(this.readRequestsCount));
     sb = Strings.appendKeyValue(sb, "writeRequestsCount", Long.valueOf(this.writeRequestsCount));
+    sb = Strings.appendKeyValue(sb, "readRequestsPerSecond", Long.valueOf(this.getReadRequestsPerSecond()));
+    sb = Strings.appendKeyValue(sb, "writeRequestsPerSecond", Long.valueOf(this.getWriteRequestsPerSecond()));
+    sb = Strings.appendKeyValue(sb, "readRequestsCountByCapacityUnit", Long.valueOf(this.readRequestsCountByCapacityUnit));
+    sb = Strings.appendKeyValue(sb, "writeRequestsCountByCapacityUnit", Long.valueOf(this.writeRequestsCountByCapacityUnit));
+    sb = Strings.appendKeyValue(sb, "throttledReadRequestsCount", Long.valueOf(this.throttledReadRequestsCount));
+    sb = Strings.appendKeyValue(sb, "throttledWriteRequestsCount", Long.valueOf(this.throttledWriteRequestsCount));
     sb = Strings.appendKeyValue(sb, "rootIndexSizeKB", Integer.valueOf(this.rootIndexSizeKB));
     sb =
         Strings.appendKeyValue(sb, "totalStaticIndexSizeKB",

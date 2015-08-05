@@ -87,6 +87,7 @@ public class Scan extends Query {
   private static final Log LOG = LogFactory.getLog(Scan.class);
 
   private static final String RAW_ATTR = "_raw_";
+  private static final String IGNORETTL_ATTR = "_ignorettl_";
 
   /**
    * EXPERT ONLY.
@@ -768,5 +769,25 @@ public class Scan extends Query {
    */
   public boolean isSmall() {
     return small;
+  }
+
+  /**
+   * Enable/disable "ignorettl" mode for this scan.
+   * If "ignorettl" is enabled the scan will return all
+   * KVs that even the timestamp reached the ttl limit
+   * This is mostly useful for scan on column families
+   * that have lots of out-date kvs and prefer to not "timeout":)
+   * @param ignoreTtl True/False to enable/disable "ignorettl" mode.
+   */
+  public void setIgnoreTtl(boolean ignoreTtl) {
+    setAttribute(IGNORETTL_ATTR, Bytes.toBytes(ignoreTtl));
+  }
+
+  /**
+   * @return True if this Scan is in "ignorettl" mode.
+   */
+  public boolean isIgnoreTtl() {
+    byte[] attr = getAttribute(IGNORETTL_ATTR);
+    return attr == null ? false : Bytes.toBoolean(attr);
   }
 }

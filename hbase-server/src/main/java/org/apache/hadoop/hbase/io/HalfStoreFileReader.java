@@ -222,9 +222,13 @@ public class HalfStoreFileReader extends StoreFile.Reader {
         }
         // Check key.
         ByteBuffer k = this.delegate.getKey();
-        return this.delegate.getReader().getComparator().
+        boolean ret = this.delegate.getReader().getComparator().
           compareFlatKey(k.array(), k.arrayOffset(), k.limit(),
             splitkey, 0, splitkey.length) < 0;
+        if (ret) {
+          atEnd = false;
+        }
+        return ret;
       }
 
       public int seekTo(byte[] key) throws IOException {
@@ -246,10 +250,15 @@ public class HalfStoreFileReader extends StoreFile.Reader {
             if (!res) {
               throw new IOException("Seeking for a key in bottom of file, but key exists in top of file, failed on seekBefore(midkey)");
             }
+            atEnd = false;
             return 1;
           }
         }
-        return delegate.seekTo(key, offset, length);
+        int ret = delegate.seekTo(key, offset, length);
+        if (!top && ret >=0) {
+          atEnd = false;
+        }
+        return ret;
       }
 
       @Override
@@ -269,7 +278,7 @@ public class HalfStoreFileReader extends StoreFile.Reader {
           }
         } else {
           if (getComparator().compareFlatKey(key, offset, length, splitkey, 0,
-              splitkey.length) >= 0) {
+              splitkey.length) >= 0 && atEnd == false) {
             // we would place the scanner in the second half.
             // it might be an error to return false here ever...
             boolean res = delegate.seekBefore(splitkey, 0, splitkey.length);

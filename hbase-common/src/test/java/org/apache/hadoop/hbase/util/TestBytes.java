@@ -29,6 +29,7 @@ import java.util.Random;
 
 import junit.framework.TestCase;
 
+import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.testclassification.SmallTests;
 import org.junit.Assert;
 import org.junit.experimental.categories.Category;
@@ -472,6 +473,95 @@ public class TestBytes extends TestCase {
     }
     for (byte i = 0; i < 100; i++) {
       Assert.assertEquals(i, b[i]);
+    }
+  }
+
+  public void testPrevRowkey() throws IOException {
+    assertNull(Bytes.prevRowkey(null, 3));
+    assertNull(Bytes.prevRowkey(new byte[] {}, 3));
+
+    byte[] rowkey = new byte[] { 0 };
+    byte[] prevRowkey = Bytes.prevRowkey(rowkey, 10);
+    Assert.assertArrayEquals(new byte[] {}, prevRowkey);
+
+    rowkey = new byte[] { (byte) 0x01 };
+    prevRowkey = Bytes.prevRowkey(rowkey, 3);
+    Assert.assertArrayEquals(
+      new byte[] { (byte) 0x00, (byte) 0xff, (byte) 0xff }, prevRowkey);
+    Assert.assertTrue(Bytes.compareTo(rowkey, prevRowkey) > 0);
+
+    rowkey = new byte[] { (byte) 0x01, (byte) 0x01, (byte) 0x00 };
+    prevRowkey = Bytes.prevRowkey(rowkey, 3);
+    Assert.assertArrayEquals(new byte[] { (byte) 0x01, (byte) 0x01 },
+      prevRowkey);
+    Assert.assertTrue(Bytes.compareTo(rowkey, prevRowkey) > 0);
+
+    rowkey = new byte[] { (byte) 0x01, (byte) 0x01, (byte) 0x01 };
+    prevRowkey = Bytes.prevRowkey(rowkey, 3);
+    Assert.assertArrayEquals(
+      new byte[] { (byte) 0x01, (byte) 0x01, (byte) 0x00 }, prevRowkey);
+    Assert.assertTrue(Bytes.compareTo(rowkey, prevRowkey) > 0);
+
+    rowkey = new byte[] { (byte) 0x01, (byte) 0x01, (byte) 0x01 };
+    prevRowkey = Bytes.prevRowkey(rowkey, 5);
+    Assert.assertArrayEquals(new byte[] { (byte) 0x01, (byte) 0x01,
+        (byte) 0x00, (byte) 0xff, (byte) 0xff }, prevRowkey);
+    Assert.assertTrue(Bytes.compareTo(rowkey, prevRowkey) > 0);
+
+    rowkey =
+        new byte[] { (byte) 0x01, (byte) 0x01, (byte) 0x01, (byte) 0x01,
+            (byte) 0x01 };
+    try {
+      prevRowkey = Bytes.prevRowkey(rowkey, 3);
+      Assert.assertTrue(false);
+    } catch (IOException e) {
+    }
+  }
+
+  public void testRandomKey() throws IOException {
+    for (int i = 0; i < 1000; i++) {
+      byte[] start = HConstants.EMPTY_BYTE_ARRAY;
+      byte[] end = Bytes.toBytes("ab");
+      byte[] random = Bytes.randomKey(start, end);
+      assertTrue(Bytes.compareTo(start, random) <= 0);
+      assertTrue(Bytes.compareTo(random, end) < 0);
+
+      start = Bytes.toBytes("ab");
+      end = HConstants.EMPTY_BYTE_ARRAY;
+      random = Bytes.randomKey(start, end);
+      assertTrue(Bytes.compareTo(start, random) <= 0);
+
+      start = HConstants.EMPTY_BYTE_ARRAY;
+      end = HConstants.EMPTY_BYTE_ARRAY;
+      random = Bytes.randomKey(start, end);
+
+      start = Bytes.toBytes("ab");
+      end = Bytes.toBytes("abcd");
+      random = Bytes.randomKey(start, end);
+      assertTrue(Bytes.compareTo(start, random) <= 0);
+      assertTrue(Bytes.compareTo(random, end) < 0);
+
+      start = Bytes.toBytes("abcde");
+      end = Bytes.toBytes("b");
+      random = Bytes.randomKey(start, end);
+      assertTrue(Bytes.compareTo(start, random) <= 0);
+      assertTrue(Bytes.compareTo(random, end) < 0);
+
+      start = Bytes.toBytes("aa");
+      end = Bytes.toBytes("ab");
+      random = Bytes.randomKey(start, end);
+      assertTrue(Bytes.compareTo(start, random) <= 0);
+      assertTrue(Bytes.compareTo(random, end) < 0);
+
+      byte [][] splitKeys = Bytes.split(Bytes.toBytes(0), Bytes.toBytes(0xffffffff), 256 - 3);
+      for (int k = 0; k + 1 < splitKeys.length; k ++) {
+        start = splitKeys[k];
+        end = splitKeys[k + 1];
+        assertTrue(Bytes.compareTo(start, end) < 0);
+        random = Bytes.randomKey(start, end);
+        assertTrue(Bytes.compareTo(start, random) <= 0);
+        assertTrue(Bytes.compareTo(random, end) < 0);
+      }
     }
   }
 }

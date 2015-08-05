@@ -19,6 +19,7 @@ package org.apache.hadoop.hbase.regionserver;
 
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.classification.InterfaceStability;
+import org.apache.hadoop.hbase.metrics.HBaseInfo;
 import org.apache.hadoop.hbase.CompatibilitySingletonFactory;
 
 /**
@@ -38,7 +39,7 @@ public class MetricsRegionServer {
     this(regionServerWrapper,
         CompatibilitySingletonFactory.getInstance(MetricsRegionServerSourceFactory.class)
             .createServer(regionServerWrapper));
-
+    HBaseInfo.init();
   }
 
   MetricsRegionServer(MetricsRegionServerWrapper regionServerWrapper,

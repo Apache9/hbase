@@ -368,7 +368,7 @@ public class RpcServer implements RpcServerInterface {
         if (t != null) {
           ExceptionResponse.Builder exceptionBuilder = ExceptionResponse.newBuilder();
           exceptionBuilder.setExceptionClassName(t.getClass().getName());
-          exceptionBuilder.setStackTrace(errorMsg);
+          exceptionBuilder.setStackTrace(errorMsg + "@" + isa);
           exceptionBuilder.setDoNotRetry(t instanceof DoNotRetryIOException);
           if (t instanceof RegionMovedException) {
             // Special casing for this exception.  This is only one carrying a payload.
@@ -486,6 +486,15 @@ public class RpcServer implements RpcServerInterface {
         return System.currentTimeMillis() - timestamp;
       } else {
         return -1L;
+      }
+    }
+    
+    @Override
+    public void throwExceptionIfCallerDisconnected() throws CallerDisconnectedException {
+      long afterTime = disconnectSince();
+      if (afterTime >= 0) {
+        throw new CallerDisconnectedException("Aborting call " + this + " after " + afterTime
+            + " ms, since " + "caller disconnected");
       }
     }
 

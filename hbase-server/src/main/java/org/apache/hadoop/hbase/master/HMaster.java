@@ -53,6 +53,7 @@ import org.apache.hadoop.hbase.Abortable;
 import org.apache.hadoop.hbase.Chore;
 import org.apache.hadoop.hbase.ClusterId;
 import org.apache.hadoop.hbase.ClusterStatus;
+import org.apache.hadoop.hbase.CompatibilitySingletonFactory;
 import org.apache.hadoop.hbase.DoNotRetryIOException;
 import org.apache.hadoop.hbase.HBaseIOException;
 import org.apache.hadoop.hbase.HColumnDescriptor;
@@ -108,6 +109,7 @@ import org.apache.hadoop.hbase.master.handler.TableDeleteFamilyHandler;
 import org.apache.hadoop.hbase.master.handler.TableModifyFamilyHandler;
 import org.apache.hadoop.hbase.master.handler.TruncateTableHandler;
 import org.apache.hadoop.hbase.master.snapshot.SnapshotManager;
+import org.apache.hadoop.hbase.metrics.MBeanSource;
 import org.apache.hadoop.hbase.monitoring.MemoryBoundedLogMessageBuffer;
 import org.apache.hadoop.hbase.monitoring.MonitoredTask;
 import org.apache.hadoop.hbase.monitoring.TaskMonitor;
@@ -237,6 +239,7 @@ import org.apache.hadoop.hbase.util.HFileArchiveUtil;
 import org.apache.hadoop.hbase.util.HasThread;
 import org.apache.hadoop.hbase.util.InfoServer;
 import org.apache.hadoop.hbase.util.JvmPauseMonitor;
+import org.apache.hadoop.hbase.util.JvmThreadMonitor;
 import org.apache.hadoop.hbase.util.Pair;
 import org.apache.hadoop.hbase.util.Sleeper;
 import org.apache.hadoop.hbase.util.Strings;
@@ -364,6 +367,8 @@ MasterServices, Server {
   // RPC server for the HMaster
   private final RpcServerInterface rpcServer;
   private JvmPauseMonitor pauseMonitor;
+  private JvmThreadMonitor jvmThreadMonitor;
+  
   // Set after we've called HBaseServer#openServer and ready to receive RPCs.
   // Set back to false after we stop rpcServer.  Used by tests.
   private volatile boolean rpcServerOpen = false;
@@ -549,6 +554,8 @@ MasterServices, Server {
     this.rpcServer.startThreads();
     this.pauseMonitor = new JvmPauseMonitor(conf);
     this.pauseMonitor.start();
+    this.jvmThreadMonitor = new JvmThreadMonitor(conf);
+    this.jvmThreadMonitor.start();
 
     // metrics interval: using the same property as region server.
     this.msgInterval = conf.getInt("hbase.regionserver.msginterval", 3 * 1000);
@@ -1010,6 +1017,7 @@ MasterServices, Server {
       this.balancerChore = getAndStartBalancerChore(this);
       this.catalogJanitorChore = new CatalogJanitor(this, this);
       startCatalogJanitorChore();
+      registerMBean();
     }
 
     status.setStatus("Starting namespace manager");
@@ -1368,6 +1376,9 @@ MasterServices, Server {
     if (this.pauseMonitor != null) {
       this.pauseMonitor.stop();
     }
+    if (this.jvmThreadMonitor != null) {
+      this.jvmThreadMonitor.stop();
+    }
   }
 
   private static Thread getAndStartClusterStatusChore(HMaster master) {
@@ -1557,6 +1568,11 @@ MasterServices, Server {
     return balancerCutoffTime;
   }
 
+  //only for test
+  protected LoadBalancer getBalancer() {
+    return this.balancer;
+  }
+  
   public boolean balance() throws HBaseIOException {
     // if master not initialized, don't run balancer.
     if (!this.initialized) {
@@ -1607,6 +1623,12 @@ MasterServices, Server {
         if (partialPlans != null) plans.addAll(partialPlans);
       }
       long cutoffTime = System.currentTimeMillis() + maximumBalanceTime;
+      // max number of regions in transition when balancing
+      int maxRegionsInTransition =
+          getConfiguration().getInt("hbase.balancer.max.balancing.regions", -1);
+      // min sleep time in milliseconds before start next balance action
+      int minBalanceIntervalMs =
+          getConfiguration().getInt("hbase.balancer.min.balancing.interval", -1);
       int rpCount = 0;  // number of RegionPlans balanced so far
       long totalRegPlanExecTime = 0;
       balancerRan = plans != null;
@@ -1618,13 +1640,30 @@ MasterServices, Server {
           this.assignmentManager.balance(plan);
           totalRegPlanExecTime += System.currentTimeMillis()-balStartTime;
           rpCount++;
-          if (rpCount < plans.size() &&
-              // if performing next balance exceeds cutoff time, exit the loop
-              (System.currentTimeMillis() + (totalRegPlanExecTime / rpCount)) > cutoffTime) {
-            //TODO: After balance, there should not be a cutoff time (keeping it as a security net for now)
-            LOG.debug("No more balancing till next balance run; maximumBalanceTime=" +
-              maximumBalanceTime);
-            break;
+          if (rpCount < plans.size()) {
+            long currentTime = System.currentTimeMillis();
+            long nextBalMinStartTime =
+                minBalanceIntervalMs > 0 ? currentTime + minBalanceIntervalMs : currentTime;
+            boolean interrupted = false;
+            while ((currentTime < nextBalMinStartTime || maxRegionsInTransition > 0
+                && this.assignmentManager.getRegionStates().getRegionsInTransitionCount() >= maxRegionsInTransition)
+                && currentTime + (totalRegPlanExecTime / rpCount) <= cutoffTime) {
+              try {
+                // sleep if the number of regions in transition exceeds the limit
+                Thread.sleep(1000);
+              } catch (InterruptedException ie) {
+                interrupted = true;
+              }
+              currentTime = System.currentTimeMillis();
+            }
+            if (interrupted) Thread.currentThread().interrupt();
+            // if performing next balance exceeds cutoff time, exit the loop
+            if (System.currentTimeMillis() + (totalRegPlanExecTime / rpCount) > cutoffTime) {
+              //TODO: After balance, there should not be a cutoff time (keeping it as a security net for now)
+              LOG.debug("No more balancing till next balance run; maximumBalanceTime=" +
+                maximumBalanceTime);
+              break;
+            }            
           }
         }
       }
@@ -3074,6 +3113,16 @@ MasterServices, Server {
   public static void main(String [] args) {
     VersionInfo.logVersion();
     new HMasterCommandLine(HMaster.class).doMain(args);
+  }
+  
+  /**
+   * Register bean with platform management server
+   */
+  void registerMBean() {
+    MXBeanImpl mxBeanInfo = MXBeanImpl.init(this);
+    mxBean = CompatibilitySingletonFactory.getInstance(MBeanSource.class).register("Master",
+      "Master", mxBeanInfo);
+    LOG.info("Registered HMaster MXBean");
   }
 
   public HFileCleaner getHFileCleaner() {

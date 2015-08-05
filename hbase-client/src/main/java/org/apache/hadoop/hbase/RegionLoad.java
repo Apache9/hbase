@@ -110,6 +110,62 @@ public class RegionLoad {
   }
 
   /**
+   * @return read requests per second made to region
+   */
+  public long getReadRequestsPerSecond() {
+    return regionLoadPB.getReadRequestsPerSecond();
+  }
+
+  /**
+   * @return write requests per second made to region
+   */
+  public long getWriteRequestsPerSecond() {
+    return regionLoadPB.getWriteRequestsPerSecond();
+  }
+
+  /**
+   * @return the number of get requests made to region
+   */
+  public long getGetRequestsCount() {
+    return regionLoadPB.getGetRequestsCount();
+  }
+
+  /**
+   * @return the number of requests per second made to region
+   */
+  public long getRequestsPerSecond() {
+    return getReadRequestsPerSecond() + getWriteRequestsPerSecond();
+  }
+
+  /**
+   * @return the number of read capacity unit made to region
+   */
+  public long getReadRequestsCountByCapacityUnit() {
+    return regionLoadPB.getReadRequestsCountByCapacityUnit();
+  }
+
+  /**
+   * @return the number of write capacity unit made to region
+   */
+  public long getWriteRequestsCountByCapacityUnit() {
+    return regionLoadPB.getWriteRequestsCountByCapacityUnit();
+  }
+
+  /**
+   * @return the number of throttled read requests made to region
+   */
+  public long getThrottledReadRequestsCount() {
+    return regionLoadPB.getThrottledReadRequestsCount();
+  }
+
+  /**
+   * @return the number of throttled write requests made to region
+   */
+  public long getThrottledWriteRequestsCount() {
+    return regionLoadPB.getThrottledWriteRequestsCount();
+  }
+
+  /**
    * @return The current total size of root-level indexes for the region, in KB.
    */
   public int getRootIndexSizeKB() {
@@ -195,6 +251,18 @@ public class RegionLoad {
         this.getReadRequestsCount());
     sb = Strings.appendKeyValue(sb, "writeRequestsCount",
         this.getWriteRequestsCount());
+    sb = Strings.appendKeyValue(sb, "readRequestsPerSecond",
+        this.getReadRequestsPerSecond());
+    sb = Strings.appendKeyValue(sb, "writeRequestsPerSecond",
+        this.getWriteRequestsPerSecond());
+    sb = Strings.appendKeyValue(sb, "readRequestsCountByCapacityUnit",
+        this.getReadRequestsCountByCapacityUnit());
+    sb = Strings.appendKeyValue(sb, "writeRequestsCountByCapacityUnit",
+        this.getWriteRequestsCountByCapacityUnit());
+    sb = Strings.appendKeyValue(sb, "throttledReadRequestsCount",
+        this.getThrottledReadRequestsCount());
+    sb = Strings.appendKeyValue(sb, "throttledWriteRequestsCount",
+        this.getThrottledWriteRequestsCount());
     sb = Strings.appendKeyValue(sb, "rootIndexSizeKB",
         this.getRootIndexSizeKB());
     sb = Strings.appendKeyValue(sb, "totalStaticIndexSizeKB",

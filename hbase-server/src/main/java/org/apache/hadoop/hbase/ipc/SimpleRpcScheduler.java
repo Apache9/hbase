@@ -17,6 +17,8 @@
  */
 package org.apache.hadoop.hbase.ipc;
 
+import java.io.IOException;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -123,7 +125,7 @@ public class SimpleRpcScheduler extends RpcScheduler {
   }
 
   @Override
-  public void dispatch(CallRunner callTask) throws InterruptedException {
+  public void dispatch(CallRunner callTask) throws IOException, InterruptedException {
     RpcServer.Call call = callTask.getCall();
     int level = priority.getPriority(call.getHeader(), call.param);
     if (priorityExecutor != null && level > highPriorityLevel) {

@@ -42,6 +42,20 @@
           <dependencySet/>
         </dependencySets>
       </binaries>
+      <!-- Include all the sources in the top directory -->
+      <sources>
+        <fileSets>
+          <fileSet>
+            <excludes>
+              <exclude>target/</exclude>
+              <exclude>test/</exclude>
+              <exclude>.classpath</exclude>
+              <exclude>.project</exclude>
+              <exclude>.settings/</exclude>
+            </excludes>
+          </fileSet>
+        </fileSets>
+      </sources>
     </moduleSet>
   </moduleSets>
 </assembly>

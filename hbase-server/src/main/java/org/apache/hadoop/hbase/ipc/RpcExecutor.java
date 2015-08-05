@@ -18,6 +18,7 @@
 
 package org.apache.hadoop.hbase.ipc;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -85,7 +86,7 @@ public abstract class RpcExecutor {
   public abstract int getQueueLength();
 
   /** Add the request to the executor queue */
-  public abstract void dispatch(final CallRunner callTask) throws InterruptedException;
+  public abstract void dispatch(final CallRunner callTask) throws IOException, InterruptedException;
 
   /** Returns the list of request queues */
   protected abstract List<BlockingQueue<CallRunner>> getQueues();

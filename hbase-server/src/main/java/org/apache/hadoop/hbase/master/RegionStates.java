@@ -179,6 +179,13 @@ public class RegionStates {
   public synchronized boolean isRegionsInTransition() {
     return !regionsInTransition.isEmpty();
   }
+  
+  /**
+   * @return Get size of regions in transition
+   */
+  public synchronized int getRegionsInTransitionCount() {
+    return regionsInTransition.size();
+  }
 
   /**
    * @return True if specified region assigned, and not in transition.

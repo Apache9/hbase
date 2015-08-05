@@ -2293,7 +2293,7 @@ public class HBaseTestingUtility extends HBaseCommonTestingUtility {
     if (jobConf == null) {
       jobConf = mrCluster.createJobConf();
     }
-
+    HBaseConfiguration.merge(this.conf, jobConf);
     jobConf.set("mapred.local.dir",
       conf.get("mapred.local.dir")); //Hadoop MiniMR overwrites this while it should not
     LOG.info("Mini mapreduce cluster started");
