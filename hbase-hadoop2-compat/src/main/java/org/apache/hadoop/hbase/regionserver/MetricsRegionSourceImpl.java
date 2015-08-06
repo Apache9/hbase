@@ -193,6 +193,16 @@ public class MetricsRegionSourceImpl implements MetricsRegionSource {
   }
 
   @Override
+  public long getThrottledRead() {
+    return regionThrottledRead.value();
+  }
+
+  @Override
+  public long getThrottledWrite() {
+    return regionThrottledWrite.value();
+  }
+
+  @Override
   public MetricsRegionAggregateSource getAggregateSource() {
     return agg;
   }

@@ -1500,7 +1500,11 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
       .setCurrentCompactedKVs(currentCompactedKVs)
       .setCompleteSequenceId(r.completeSequenceId)
       .setDataLocality(dataLocality)
-      .setGetRequestsCount(r.getRequestsCount.get());
+      .setGetRequestsCount(r.getRequestsCount.get())
+      .setReadRequestsByCapacityUnitPerSecond(r.getReadRequestsByCapacityUnitPerSecond())
+      .setWriteRequestsByCapacityUnitPerSecond(r.getWriteRequestsByCapacityUnitPerSecond())
+      .setThrottledReadRequestsCount(r.getThrottleadReadCount())
+      .setThrottledWriteRequestsCount(r.getThrottledWriteCount());
 
     return regionLoadBldr.build();
   }
@@ -3380,6 +3384,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
               }
               region.updateReadMetrics(i);
               region.getMetrics().updateScanNext(totalKvSize);
+              region.updateReadCapacityUnitMetrics(totalKvSize);
             } finally {
               region.closeRegionOperation();
             }

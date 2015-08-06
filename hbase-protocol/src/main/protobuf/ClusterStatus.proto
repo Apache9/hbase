@@ -120,11 +120,11 @@ message RegionLoad {
   /** write requests per second made to region */
   optional uint64 write_requests_per_second = 18;
 
-  /** the current total read capacity unit count made to region */
-  optional uint64 read_requests_count_by_capacity_unit = 19;
+  /** the current read capacity unit count per second made to region */
+  optional uint64 read_requests_by_capacity_unit_per_second = 19;
 
-  /** the current total write capacity unit count made to region */
-  optional uint64 write_requests_count_by_capacity_unit = 20;
+  /** the current write capacity unit count per second made to region */
+  optional uint64 write_requests_by_capacity_unit_per_second = 20;
 
   /** throttled read requests made to region */
   optional uint64 throttled_read_requests_count = 21;

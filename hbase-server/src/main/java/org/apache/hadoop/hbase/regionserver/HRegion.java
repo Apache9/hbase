@@ -284,6 +284,10 @@ public class HRegion implements HeapSize { // , Writable{
   final MetricsRegistry registry = new MetricsRegistry();
   final MetricsRate readRequestsPerSecond = new MetricsRate("readRequestsPerSecond", registry);
   final MetricsRate writeRequestsPerSecond = new MetricsRate("writeRequestsPerSecond", registry);
+  final MetricsRate readRequestsByCapacityUnitPerSecond = new MetricsRate(
+      "readRequestsByCapacityUnitPerSecond", registry);
+  final MetricsRate writeRequestsByCapacityUnitPerSecond = new MetricsRate(
+      "writeRequestsByCapacityUnitPerSecond", registry);
 
   // Number of requests blocked by memstore size.
   private final Counter blockedRequestsCount = new Counter();
@@ -990,6 +994,32 @@ public class HRegion implements HeapSize { // , Writable{
   long getWriteRequestsPerSecond() {
     this.writeRequestsPerSecond.intervalHeartBeat();
     return (long) this.writeRequestsPerSecond.getPreviousIntervalValue();
+  }
+
+  /** @return read requests by capacity unit per second for this region */
+  long getReadRequestsByCapacityUnitPerSecond() {
+    this.readRequestsByCapacityUnitPerSecond.intervalHeartBeat();
+    return (long) this.readRequestsByCapacityUnitPerSecond.getPreviousIntervalValue();
+  }
+
+  /** @return write requests by capacity unit per second for this region */
+  long getWriteRequestsByCapacityUnitPerSecond() {
+    this.writeRequestsByCapacityUnitPerSecond.intervalHeartBeat();
+    return (long) this.writeRequestsByCapacityUnitPerSecond.getPreviousIntervalValue();
+  }
+
+  long getThrottleadReadCount() {
+    if (this.metricsRegion != null) {
+      return this.metricsRegion.getSource().getThrottledRead();
+    }
+    return 0;
+  }
+
+  long getThrottledWriteCount() {
+    if (this.metricsRegion != null) {
+      return this.metricsRegion.getSource().getThrottledWrite();
+    }
+    return 0;
   }
 
   public MetricsRegion getMetrics() {
@@ -2737,6 +2767,7 @@ public class HRegion implements HeapSize { // , Writable{
       if (numOfWriteCapacityUnit > 0) {
         if (this.metricsRegion != null) {
           this.metricsRegion.updateWrite(numOfWriteCapacityUnit);
+          this.writeRequestsByCapacityUnitPerSecond.inc((int) numOfWriteCapacityUnit);
         }
       }
       if (!success) {
@@ -4140,6 +4171,8 @@ public class HRegion implements HeapSize { // , Writable{
             totalSize += kv.getLength();
           }
           region.metricsRegion.updateScanNext(totalSize);
+          region.readRequestsByCapacityUnitPerSecond.inc((int) QuotaUtil
+              .calculateReadCapacityUnitNum(totalSize));
         }
         return returnResult;
       } finally {
@@ -5634,6 +5667,7 @@ public class HRegion implements HeapSize { // , Writable{
     if (this.metricsRegion != null) {
       this.metricsRegion.updateAppend();
       this.metricsRegion.updateWrite(QuotaUtil.calculateRequestUnitNum(append));
+      this.writeRequestsByCapacityUnitPerSecond.inc(QuotaUtil.calculateRequestUnitNum(append));
     }
 
     if (flush) {
@@ -5855,6 +5889,7 @@ public class HRegion implements HeapSize { // , Writable{
       if (this.metricsRegion != null) {
         this.metricsRegion.updateIncrement();
         this.metricsRegion.updateWrite(QuotaUtil.calculateRequestUnitNum(increment));
+        this.writeRequestsByCapacityUnitPerSecond.inc(QuotaUtil.calculateRequestUnitNum(increment));
       }
     }
 
@@ -6312,6 +6347,11 @@ public class HRegion implements HeapSize { // , Writable{
     }
   }
   
+  public void updateReadCapacityUnitMetrics(long scanSize) {
+    int readCapacityUnitNum = (int) QuotaUtil.calculateReadCapacityUnitNum(scanSize);
+    this.readRequestsByCapacityUnitPerSecond.inc(readCapacityUnitNum);
+  }
+
   /**
    * Closes the lock. This needs to be called in the finally block corresponding
    * to the try block of #startRegionOperation
