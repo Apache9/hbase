@@ -76,9 +76,9 @@ public class TableLoad {
   private long writeRequestsPerSecond;
 
   /** the current total read capacity unit made to all regions of the table  */
-  private long readRequestsCountByCapacityUnit;
+  private long readRequestsByCapacityUnitPerSecond;
   /** the current total write capacity unit made to all regions of the table  */
-  private long writeRequestsCountByCapacityUnit;
+  private long writeRequestsByCapacityUnitPerSecond;
 
   /** the total throttled read request count made to all regions of the table  */
   private long throttledReadRequestsCount;
@@ -104,10 +104,14 @@ public class TableLoad {
     this.locality = 0;
     this.readRequestsPerSecond = 0;
     this.writeRequestsPerSecond = 0;
-    this.readRequestsCountByCapacityUnit = 0;
-    this.writeRequestsCountByCapacityUnit = 0;
+    this.readRequestsByCapacityUnitPerSecond = 0;
+    this.writeRequestsByCapacityUnitPerSecond = 0;
     this.throttledReadRequestsCount = 0;
     this.throttledWriteRequestsCount = 0;
+  }
+
+  public TableLoad(TableName table) {
+    this(table.getNameAsString());
   }
 
   public void updateTableLoad(final RegionLoad regionLoad) {
@@ -137,8 +141,8 @@ public class TableLoad {
     this.currentCompactedKVs += regionLoad.getCurrentCompactedKVs();
     this.readRequestsPerSecond += regionLoad.getReadRequestsPerSecond();
     this.writeRequestsPerSecond += regionLoad.getWriteRequestsPerSecond();
-    this.readRequestsCountByCapacityUnit += regionLoad.getReadRequestsCountByCapacityUnit();
-    this.writeRequestsCountByCapacityUnit += regionLoad.getWriteRequestsCountByCapacityUnit();
+    this.readRequestsByCapacityUnitPerSecond += regionLoad.getReadRequestsByCapacityUnitPerSecond();
+    this.writeRequestsByCapacityUnitPerSecond += regionLoad.getWriteRequestsByCapacityUnitPerSecond();
     this.throttledReadRequestsCount += regionLoad.getThrottledReadRequestsCount();
     this.throttledWriteRequestsCount += regionLoad.getThrottledWriteRequestsCount();
   }
@@ -216,18 +220,18 @@ public class TableLoad {
   }
 
   public long getReadRequestsCountByCapacityUnit() {
-    return readRequestsCountByCapacityUnit;
+    return readRequestsByCapacityUnitPerSecond;
   }
 
   public long getWriteRequestsCountByCapacityUnit() {
-    return writeRequestsCountByCapacityUnit;
+    return writeRequestsByCapacityUnitPerSecond;
   }
 
   public long getThrottledReadRequestsCount() {
     return throttledReadRequestsCount;
   }
 
-  public long getthrottledWriteRequestsCount() {
+  public long getThrottledWriteRequestsCount() {
     return throttledWriteRequestsCount;
   }
 
@@ -278,10 +282,10 @@ public class TableLoad {
       this.readRequestsPerSecond);
     sb = Strings.appendKeyValue(sb, "writeRequestsPerSecond",
       this.writeRequestsPerSecond);
-    sb = Strings.appendKeyValue(sb, "readRequestsCountByCapacityUnit",
-      this.readRequestsCountByCapacityUnit);
-    sb = Strings.appendKeyValue(sb, "writeRequestsCountByCapacityUnit",
-      this.writeRequestsCountByCapacityUnit);
+    sb = Strings.appendKeyValue(sb, "readRequestsByCapacityUnitPerSecond",
+      this.readRequestsByCapacityUnitPerSecond);
+    sb = Strings.appendKeyValue(sb, "writeRequestsByCapacityUnitPerSecond",
+      this.writeRequestsByCapacityUnitPerSecond);
     sb = Strings.appendKeyValue(sb, "throttledReadRequestsCount",
       this.throttledReadRequestsCount);
     sb = Strings.appendKeyValue(sb, "throttledWriteRequestsCount",

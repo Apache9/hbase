@@ -286,11 +286,12 @@ public class RegionServerQuotaManager {
       quota = getQuota(ugi, table);
       quota.checkQuota(numWrites, numReads, numScans);
     } catch (ThrottlingException e) {
-      if (LOG.isDebugEnabled()) {
-        LOG.debug("Throttling exception for user=" + ugi.getUserName() + " table=" + table
+      // avoid log too much exception when overload
+      if (quota.canLogThrottlingException()) {
+        LOG.error("Throttling exception for user=" + ugi.getUserName() + " table=" + table
             + " numWrites=" + numWrites + " numReads=" + numReads + " numScans=" + numScans + ": "
             + e.getMessage());
-        LOG.debug("Quota snapshot for user=" + ugi.getUserName() + " table=" + table + " : "
+        LOG.info("Quota snapshot for user=" + ugi.getUserName() + " table=" + table + " : "
             + quota);
       }
       region.getMetrics().updateThrottledRead(numReads + numScans);
@@ -312,11 +313,12 @@ public class RegionServerQuotaManager {
       quota = getQuota(ugi, table);
       quota.checkQuota(numWrites, numReads, numScans);
     } catch (ThrottlingException e) {
-      if (LOG.isDebugEnabled()) {
-        LOG.debug("Throttling exception for user=" + ugi.getUserName() + " table=" + table
+      // avoid log too much exception when overload
+      if (quota.canLogThrottlingException()) {
+        LOG.error("Throttling exception for user=" + ugi.getUserName() + " table=" + table
             + " numWrites=" + numWrites + " numReads=" + numReads + " numScans=" + numScans + ": "
             + e.getMessage());
-        LOG.debug("Quota snapshot for user=" + ugi.getUserName() + " table=" + table + " : "
+        LOG.info("Quota snapshot for user=" + ugi.getUserName() + " table=" + table + " : "
             + quota);
       }
       if (!isThrottleSimulated()) {

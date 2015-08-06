@@ -127,4 +127,10 @@ public interface OperationQuota {
 
   /** @return the average data size of the specified operation */
   long getAvgOperationSize(OperationType type);
+
+  /**
+   * avoid log too much exception when overload
+   * @return true if it need to log throttling exception
+   **/
+  boolean canLogThrottlingException();
 }

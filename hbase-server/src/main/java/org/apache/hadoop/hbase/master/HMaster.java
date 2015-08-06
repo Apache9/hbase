@@ -31,10 +31,13 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.Map.Entry;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
@@ -65,10 +68,12 @@ import org.apache.hadoop.hbase.MasterNotRunningException;
 import org.apache.hadoop.hbase.NamespaceDescriptor;
 import org.apache.hadoop.hbase.NamespaceNotFoundException;
 import org.apache.hadoop.hbase.PleaseHoldException;
+import org.apache.hadoop.hbase.RegionLoad;
 import org.apache.hadoop.hbase.Server;
 import org.apache.hadoop.hbase.ServerLoad;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.TableDescriptors;
+import org.apache.hadoop.hbase.TableLoad;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.TableNotDisabledException;
 import org.apache.hadoop.hbase.TableNotFoundException;
@@ -3604,4 +3609,24 @@ MasterServices, Server {
     }
   }
 
+  public Map<TableName, TableLoad> getTableLoads() {
+    Map<TableName, TableLoad> tableLoads = new HashMap<TableName, TableLoad>();
+    for (final Entry<ServerName, ServerLoad> entry : this.getServerManager()
+        .getOnlineServers().entrySet()) {
+      for (final Entry<byte[], RegionLoad> regionEntry : entry.getValue()
+          .getRegionsLoad().entrySet()) {
+        TableName table = HRegionInfo.getTable(regionEntry.getKey());
+        if (table.isSystemTable()) {
+          continue;
+        }
+        TableLoad load = tableLoads.get(table);
+        if (load == null) {
+          load = new TableLoad(table);
+          tableLoads.put(table, load);
+        }
+        load.updateTableLoad(regionEntry.getValue());
+      }
+    }
+    return tableLoads;
+  }
 }

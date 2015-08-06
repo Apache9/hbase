@@ -118,4 +118,9 @@ class NoopQuotaLimiter implements QuotaLimiter {
   public static QuotaLimiter get() {
     return instance;
   }
+
+  @Override
+  public boolean canLogThrottlingException() {
+    return false;
+  }
 }

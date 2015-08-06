@@ -220,29 +220,29 @@ if (sl != null) {
 <table class="table table-striped">
 <tr>
     <th>ServerName</th>
-    <th>Read Capacity Units Count</th>
-    <th>Write Capacity Units Count</th>
+    <th>Read Capacity Units Per Second</th>
+    <th>Write Capacity Units Per Second</th>
     <th>Throttled Read Count</th>
     <th>Throttled Write Count</th>
 </tr>
 <%java>
-int totalReadRequestsCountByCapacityUnit = 0;
-int totalWriteRequestsCountByCapacityUnit = 0;
+int totalReadRequestsByCapacityUnitPerSecond = 0;
+int totalWriteRequestsByCapacityUnitPerSecond = 0;
 int totalThrottledReadRequestsCount = 0;
 int totalThrottledWriteRequestsCount = 0;
 for (ServerName serverName: serverNames) {
 
 ServerLoad sl = master.getServerManager().getLoad(serverName);
 if (sl != null) {
-  totalReadRequestsCountByCapacityUnit += sl.getReadRequestsCountByCapacityUnit();
-  totalWriteRequestsCountByCapacityUnit += sl.getWriteRequestsCountByCapacityUnit();
+  totalReadRequestsByCapacityUnitPerSecond += sl.getReadRequestsByCapacityUnitPerSecond();
+  totalWriteRequestsByCapacityUnitPerSecond += sl.getWriteRequestsByCapacityUnitPerSecond();
   totalThrottledReadRequestsCount += sl.getThrottledReadRequestsCount();
   totalThrottledWriteRequestsCount += sl.getThrottledWriteRequestsCount();
 </%java>
 <tr>
 <td><& serverNameLink; serverName=serverName; serverLoad = sl; &></td>
-<td><% sl.getReadRequestsCountByCapacityUnit() %></td>
-<td><% sl.getWriteRequestsCountByCapacityUnit() %></td>
+<td><% sl.getReadRequestsByCapacityUnitPerSecond() %></td>
+<td><% sl.getWriteRequestsByCapacityUnitPerSecond() %></td>
 <td><% sl.getThrottledReadRequestsCount() %></td>
 <td><% sl.getThrottledWriteRequestsCount() %></td>
 </tr>
@@ -255,8 +255,8 @@ if (sl != null) {
 }
 </%java>
 <tr><td>Total:<% servers.size() %></td>
-<td><% totalReadRequestsCountByCapacityUnit %></td>
-<td><% totalWriteRequestsCountByCapacityUnit %></td>
+<td><% totalReadRequestsByCapacityUnitPerSecond %></td>
+<td><% totalWriteRequestsByCapacityUnitPerSecond %></td>
 <td><% totalThrottledReadRequestsCount %></td>
 <td><% totalThrottledWriteRequestsCount %></td>
 </tr>

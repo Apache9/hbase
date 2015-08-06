@@ -57,8 +57,8 @@ public class ServerLoad {
   private int totalStaticBloomSizeKB = 0;
   private long totalCompactingKVs = 0;
   private long currentCompactedKVs = 0;
-  private long readRequestsCountByCapacityUnit = 0;
-  private long writeRequestsCountByCapacityUnit = 0;
+  private long readRequestsByCapacityUnitPerSecond = 0;
+  private long writeRequestsByCapacityUnitPerSecond = 0;
   private long throttledReadRequestsCount = 0;
   private long throttledWriteRequestsCount = 0;
 
@@ -78,8 +78,8 @@ public class ServerLoad {
       totalStaticBloomSizeKB += rl.getTotalStaticBloomSizeKB();
       totalCompactingKVs += rl.getTotalCompactingKVs();
       currentCompactedKVs += rl.getCurrentCompactedKVs();
-      readRequestsCountByCapacityUnit += rl.getReadRequestsCountByCapacityUnit();
-      writeRequestsCountByCapacityUnit += rl.getWriteRequestsCountByCapacityUnit();
+      readRequestsByCapacityUnitPerSecond += rl.getReadRequestsByCapacityUnitPerSecond();
+      writeRequestsByCapacityUnitPerSecond += rl.getWriteRequestsByCapacityUnitPerSecond();
       throttledReadRequestsCount += rl.getThrottledReadRequestsCount();
       throttledWriteRequestsCount += rl.getThrottledWriteRequestsCount();
     }
@@ -167,12 +167,12 @@ public class ServerLoad {
     return serverLoad.getWriteRequestsPerSecond();
   }
 
-  public long getReadRequestsCountByCapacityUnit() {
-    return readRequestsCountByCapacityUnit;
+  public long getReadRequestsByCapacityUnitPerSecond() {
+    return readRequestsByCapacityUnitPerSecond;
   }
 
-  public long getWriteRequestsCountByCapacityUnit() {
-    return writeRequestsCountByCapacityUnit;
+  public long getWriteRequestsByCapacityUnitPerSecond() {
+    return writeRequestsByCapacityUnitPerSecond;
   }
 
   public long getThrottledReadRequestsCount() {
@@ -334,8 +334,8 @@ public class ServerLoad {
     sb = Strings.appendKeyValue(sb, "writeRequestsCount", Long.valueOf(this.writeRequestsCount));
     sb = Strings.appendKeyValue(sb, "readRequestsPerSecond", Long.valueOf(this.getReadRequestsPerSecond()));
     sb = Strings.appendKeyValue(sb, "writeRequestsPerSecond", Long.valueOf(this.getWriteRequestsPerSecond()));
-    sb = Strings.appendKeyValue(sb, "readRequestsCountByCapacityUnit", Long.valueOf(this.readRequestsCountByCapacityUnit));
-    sb = Strings.appendKeyValue(sb, "writeRequestsCountByCapacityUnit", Long.valueOf(this.writeRequestsCountByCapacityUnit));
+    sb = Strings.appendKeyValue(sb, "readRequestsByCapacityUnitPerSecond", Long.valueOf(this.readRequestsByCapacityUnitPerSecond));
+    sb = Strings.appendKeyValue(sb, "writeRequestsByCapacityUnitPerSecond", Long.valueOf(this.writeRequestsByCapacityUnitPerSecond));
     sb = Strings.appendKeyValue(sb, "throttledReadRequestsCount", Long.valueOf(this.throttledReadRequestsCount));
     sb = Strings.appendKeyValue(sb, "throttledWriteRequestsCount", Long.valueOf(this.throttledWriteRequestsCount));
     sb = Strings.appendKeyValue(sb, "rootIndexSizeKB", Integer.valueOf(this.rootIndexSizeKB));

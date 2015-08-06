@@ -42,6 +42,8 @@ org.apache.hadoop.hbase.HConstants;
 org.apache.hadoop.hbase.NamespaceDescriptor;
 org.apache.hadoop.hbase.ServerLoad;
 org.apache.hadoop.hbase.ServerName;
+org.apache.hadoop.hbase.TableLoad;
+org.apache.hadoop.hbase.TableName;
 org.apache.hadoop.hbase.client.HBaseAdmin;
 org.apache.hadoop.hbase.client.HConnectionManager;
 org.apache.hadoop.hbase.HRegionInfo;
@@ -185,6 +187,9 @@ AssignmentManager assignmentManager = master.getAssignmentManager();
                     <li class="">
                         <a href="#tab_userSnapshots" data-toggle="tab">Snapshots</a>
                     </li>
+                    <li class="">
+                        <a href="#tab_userThrottling" data-toggle="tab">Throttling</a>
+                    </li>
                 </ul>
                 <div class="tab-content" style="padding-bottom: 9px; border-bottom: 1px solid #ddd;">
                     <div class="tab-pane active" id="tab_userTables">
@@ -199,6 +204,9 @@ AssignmentManager assignmentManager = master.getAssignmentManager();
                     </div>
                     <div class="tab-pane" id="tab_userSnapshots">
                         <& userSnapshots &>
+                    </div>
+                    <div class="tab-pane" id="tab_userThrottling">
+                        <& userThrottling &>
                     </div>
                 </div>
             </div>
@@ -422,6 +430,42 @@ AssignmentManager assignmentManager = master.getAssignmentManager();
     </tr>
     </%for>
     <p><% snapshots.size() %> snapshot(s) in set.</p>
+</table>
+</%if>
+</%def>
+
+<%def userThrottling>
+<%java>
+   Map<TableName, TableLoad> tableLoads = master.getTableLoads();
+</%java>
+<%if (tableLoads != null && tableLoads.size() > 0)%>
+<table class="table table-striped">
+    <tr>
+        <th>Namespace</th>
+        <th>Table Name</th>
+        <th>Read Capacity Units Per Second</th>
+        <th>Read Capacity Units Per Second</th>
+        <th>Throttled Read Count</th>
+        <th>Throttled Write Count</th>
+    </tr>
+    <%for Map.Entry<TableName, TableLoad> entry : tableLoads.entrySet() %>
+    <%java>
+      TableName table = entry.getKey();
+      TableLoad load = entry.getValue();
+      long readCapacityUnitPerSecond = load.getReadRequestsCountByCapacityUnit();
+      long writeCapacityUnitPerSecond = load.getWriteRequestsCountByCapacityUnit();
+      long throttledReadCount = load.getThrottledReadRequestsCount();
+      long throttledWriteCount = load.getThrottledWriteRequestsCount();
+    </%java>
+    <tr>
+        <td><% table.getNamespaceAsString() %></td>
+        <td><a href=table.jsp?name=<% table.getNameAsString() %>><% table.getQualifierAsString() %></a> </td>
+        <td><% readCapacityUnitPerSecond %></td>
+        <td><% writeCapacityUnitPerSecond %></td>
+        <td><% throttledReadCount %></td>
+        <td><% throttledWriteCount %></td>
+    </tr>
+    </%for>
 </table>
 </%if>
 </%def>

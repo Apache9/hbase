@@ -126,6 +126,8 @@ public class QuotaCache implements Stoppable {
   private void updateRegionServerQuotaLimiter() {
     /** TODO: admin can set regionserver quota by shell
      */
+    Configuration conf = getConfiguration();
+    QuotaLimiterFactory.update(rsQuotaLimiter, this.createRegionServerQuotaLimiter(conf));
   }
   
   /**
