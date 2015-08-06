@@ -140,15 +140,15 @@ public class RegionLoad {
   /**
    * @return the number of read capacity unit made to region
    */
-  public long getReadRequestsCountByCapacityUnit() {
-    return regionLoadPB.getReadRequestsCountByCapacityUnit();
+  public long getReadRequestsByCapacityUnitPerSecond() {
+    return regionLoadPB.getReadRequestsByCapacityUnitPerSecond();
   }
 
   /**
    * @return the number of write capacity unit made to region
    */
-  public long getWriteRequestsCountByCapacityUnit() {
-    return regionLoadPB.getWriteRequestsCountByCapacityUnit();
+  public long getWriteRequestsByCapacityUnitPerSecond() {
+    return regionLoadPB.getWriteRequestsByCapacityUnitPerSecond();
   }
 
   /**
@@ -255,10 +255,10 @@ public class RegionLoad {
         this.getReadRequestsPerSecond());
     sb = Strings.appendKeyValue(sb, "writeRequestsPerSecond",
         this.getWriteRequestsPerSecond());
-    sb = Strings.appendKeyValue(sb, "readRequestsCountByCapacityUnit",
-        this.getReadRequestsCountByCapacityUnit());
-    sb = Strings.appendKeyValue(sb, "writeRequestsCountByCapacityUnit",
-        this.getWriteRequestsCountByCapacityUnit());
+    sb = Strings.appendKeyValue(sb, "readRequestsByCapacityUnitPerSecond",
+        this.getReadRequestsByCapacityUnitPerSecond());
+    sb = Strings.appendKeyValue(sb, "writeRequestsByCapacityUnitPerSecond",
+        this.getWriteRequestsByCapacityUnitPerSecond());
     sb = Strings.appendKeyValue(sb, "throttledReadRequestsCount",
         this.getThrottledReadRequestsCount());
     sb = Strings.appendKeyValue(sb, "throttledWriteRequestsCount",

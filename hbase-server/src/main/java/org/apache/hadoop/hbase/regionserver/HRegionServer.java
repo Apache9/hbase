@@ -1500,7 +1500,11 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
       .setCurrentCompactedKVs(currentCompactedKVs)
       .setCompleteSequenceId(r.completeSequenceId)
       .setDataLocality(dataLocality)
-      .setGetRequestsCount(r.getRequestsCount.get());
+      .setGetRequestsCount(r.getRequestsCount.get())
+      .setReadRequestsByCapacityUnitPerSecond(r.getReadRequestsByCapacityUnitPerSecond())
+      .setWriteRequestsByCapacityUnitPerSecond(r.getWriteRequestsByCapacityUnitPerSecond())
+      .setThrottledReadRequestsCount(r.getThrottleadReadCount())
+      .setThrottledWriteRequestsCount(r.getThrottledWriteCount());
 
     return regionLoadBldr.build();
   }
@@ -3011,8 +3015,9 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
       checkOpen();
       requestCount.increment();
       HRegion region = getRegion(request.getRegion());
-
-      rsQuotaManager.checkQuota(region, OperationQuota.OperationType.GET);
+      if (isQuotaEnabled()) {
+        rsQuotaManager.checkQuota(region, OperationQuota.OperationType.GET);
+      }
 
       GetResponse.Builder builder = GetResponse.newBuilder();
       ClientProtos.Get get = request.getGet();
@@ -3051,7 +3056,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
         ClientProtos.Result pbr = ProtobufUtil.toResult(r);
         builder.setResult(pbr);
       }
-      if (r != null) {
+      if (r != null && isQuotaEnabled()) {
         rsQuotaManager.grabQuota(region, r);
       }
       return builder.build();
@@ -3106,7 +3111,9 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
         break;
       case PUT:
         Put put = ProtobufUtil.toPut(mutation, cellScanner);
-        rsQuotaManager.checkQuota(region, put);
+        if (isQuotaEnabled()) {
+          rsQuotaManager.checkQuota(region, put);
+        }
         if (request.hasCondition()) {
           Condition condition = request.getCondition();
           byte[] row = condition.getRow().toByteArray();
@@ -3135,7 +3142,9 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
         break;
       case DELETE:
         Delete delete = ProtobufUtil.toDelete(mutation, cellScanner);
-        rsQuotaManager.checkQuota(region, delete);
+        if (isQuotaEnabled()) {
+          rsQuotaManager.checkQuota(region, delete);
+        }
         if (request.hasCondition()) {
           Condition condition = request.getCondition();
           byte[] row = condition.getRow().toByteArray();
@@ -3295,8 +3304,11 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
         ttl = this.scannerLeaseTimeoutPeriod;
       }
 
-      quota = rsQuotaManager.checkQuota(region, OperationQuota.OperationType.SCAN);
-      long maxQuotaResultSize = Math.min(maxScannerResultSize, quota.getReadAvailable());
+      long maxQuotaResultSize = maxScannerResultSize;
+      if (isQuotaEnabled()) {
+        quota = rsQuotaManager.checkQuota(region, OperationQuota.OperationType.SCAN);
+        maxQuotaResultSize = Math.min(maxScannerResultSize, quota.getReadAvailable());
+      }
 
       if (rows > 0) {
         // if nextCallSeq does not match throw Exception straight away. This needs to be
@@ -3380,6 +3392,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
               }
               region.updateReadMetrics(i);
               region.getMetrics().updateScanNext(totalKvSize);
+              region.updateReadCapacityUnitMetrics(totalKvSize);
             } finally {
               region.closeRegionOperation();
             }
@@ -3390,7 +3403,9 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
             }
           }
 
-          rsQuotaManager.grabQuota(region, results);
+          if (isQuotaEnabled()) {
+            rsQuotaManager.grabQuota(region, results);
+          }
 
           // If the scanner's filter - if any - is done with the scan
           // and wants to tell the client to stop the scan. This is done by passing
@@ -3643,7 +3658,9 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
         /**
          * TODO : need more accurate throttle by action size
          */
-        quota = rsQuotaManager.checkQuota(region, regionAction.getActionList());
+        if (isQuotaEnabled()) {
+          quota = rsQuotaManager.checkQuota(region, regionAction.getActionList());
+        }
       } catch (IOException e) {
         regionActionResultBuilder.setException(ResponseConverter.buildException(e));
         responseBuilder.addRegionActionResult(regionActionResultBuilder.build());
@@ -4493,7 +4510,9 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
       final MutationProto m, final CellScanner cellScanner, long nonceGroup) throws IOException {
     long before = EnvironmentEdgeManager.currentTimeMillis();
     Append append = ProtobufUtil.toAppend(m, cellScanner);
-    rsQuotaManager.checkQuota(region, append);
+    if (isQuotaEnabled()) {
+      rsQuotaManager.checkQuota(region, append);
+    }
     Result r = null;
     if (region.getCoprocessorHost() != null) {
       r = region.getCoprocessorHost().preAppend(append);
@@ -4529,7 +4548,9 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
       final MutationProto m, final CellScanner cellScanner, long nonceGroup) throws IOException {
     long before = EnvironmentEdgeManager.currentTimeMillis();
     Append append = ProtobufUtil.toAppend(m, cellScanner);
-    rsQuotaManager.grabQuota(region, append);
+    if (isQuotaEnabled()) {
+      rsQuotaManager.grabQuota(region, append);
+    }
     Result r = null;
     if (region.getCoprocessorHost() != null) {
       r = region.getCoprocessorHost().preAppend(append);
@@ -4563,7 +4584,9 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
       final CellScanner cells, long nonceGroup) throws IOException {
     long before = EnvironmentEdgeManager.currentTimeMillis();
     Increment increment = ProtobufUtil.toIncrement(mutation, cells);
-    rsQuotaManager.checkQuota(region, increment);
+    if (isQuotaEnabled()) {
+      rsQuotaManager.checkQuota(region, increment);
+    }
     Result r = null;
     if (region.getCoprocessorHost() != null) {
       r = region.getCoprocessorHost().preIncrement(increment);
@@ -4597,7 +4620,9 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
       final CellScanner cells, long nonceGroup) throws IOException {
     long before = EnvironmentEdgeManager.currentTimeMillis();
     Increment increment = ProtobufUtil.toIncrement(mutation, cells);
-    rsQuotaManager.grabQuota(region, increment);
+    if (isQuotaEnabled()) {
+      rsQuotaManager.grabQuota(region, increment);
+    }
     Result r = null;
     if (region.getCoprocessorHost() != null) {
       r = region.getCoprocessorHost().preIncrement(increment);
@@ -4758,7 +4783,9 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
           batchContainsDelete = true;
         }
         mArray[i++] = mutation;
-        rsQuotaManager.grabQuota(region, mutation);
+        if (isQuotaEnabled()) {
+          rsQuotaManager.grabQuota(region, mutation);
+        }
       }
 
       if (!region.getRegionInfo().isMetaTable()) {
@@ -4904,7 +4931,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
           throw new DoNotRetryIOException("Atomic put and/or delete only, not " + type.name());
       }
     }
-    if (rm != null) {
+    if (rm != null && isQuotaEnabled()) {
       rsQuotaManager.grabQuota(region, rm);
     }
     region.mutateRow(rm);
@@ -4951,7 +4978,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
         throw new DoNotRetryIOException("Atomic put and/or delete only, not " + type.name());
       }
     }
-    if (rm != null) {
+    if (rm != null && isQuotaEnabled()) {
       rsQuotaManager.grabQuota(region, rm);
     }
     return region.checkAndRowMutate(row, family, qualifier, compareOp, comparator, rm, Boolean.TRUE);
@@ -5256,5 +5283,9 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
   @Override
   public RegionServerReportResponse getRegionServerReportResponse() {
     return reportResponse;
+  }
+
+  private boolean isQuotaEnabled() {
+    return (this.rsQuotaManager != null) && (this.rsQuotaManager.isQuotaEnabled());
   }
 }

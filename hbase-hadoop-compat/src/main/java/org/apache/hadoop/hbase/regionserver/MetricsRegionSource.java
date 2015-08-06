@@ -96,6 +96,10 @@ public interface MetricsRegionSource extends Comparable<MetricsRegionSource> {
    */
   void updateThrottledWrite(long writeNum);
 
+  long getThrottledRead();
+
+  long getThrottledWrite();
+
   /**
    * Get the aggregate source to which this reports.
    */

@@ -28,6 +28,7 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.DoNotRetryIOException;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.Mutation;
 import org.apache.hadoop.hbase.client.Result;
@@ -40,6 +41,7 @@ import org.apache.hadoop.hbase.regionserver.RegionServerServices;
 import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.cliffc.high_scale_lib.Counter;
+
 import com.google.common.annotations.VisibleForTesting;
 
 /**
@@ -279,6 +281,7 @@ public class RegionServerQuotaManager {
    */
   private OperationQuota checkQuota(final HRegion region, final int numWrites, final int numReads,
       final int numScans) throws IOException, ThrottlingException {
+    checkQuotaSupport();
     UserGroupInformation ugi = getUserGroupInformation(region);
     TableName table = region.getTableDesc().getTableName();
     OperationQuota quota = null;
@@ -286,11 +289,12 @@ public class RegionServerQuotaManager {
       quota = getQuota(ugi, table);
       quota.checkQuota(numWrites, numReads, numScans);
     } catch (ThrottlingException e) {
-      if (LOG.isDebugEnabled()) {
-        LOG.debug("Throttling exception for user=" + ugi.getUserName() + " table=" + table
+      // avoid log too much exception when overload
+      if (quota.canLogThrottlingException()) {
+        LOG.error("Throttling exception for user=" + ugi.getUserName() + " table=" + table
             + " numWrites=" + numWrites + " numReads=" + numReads + " numScans=" + numScans + ": "
             + e.getMessage());
-        LOG.debug("Quota snapshot for user=" + ugi.getUserName() + " table=" + table + " : "
+        LOG.info("Quota snapshot for user=" + ugi.getUserName() + " table=" + table + " : "
             + quota);
       }
       region.getMetrics().updateThrottledRead(numReads + numScans);
@@ -307,16 +311,18 @@ public class RegionServerQuotaManager {
   private OperationQuota checkQuota(final UserGroupInformation ugi, final TableName table,
       final int numWrites, final int numReads, final int numScans) throws IOException,
       ThrottlingException {
+    checkQuotaSupport();
     OperationQuota quota = null;
     try {
       quota = getQuota(ugi, table);
       quota.checkQuota(numWrites, numReads, numScans);
     } catch (ThrottlingException e) {
-      if (LOG.isDebugEnabled()) {
-        LOG.debug("Throttling exception for user=" + ugi.getUserName() + " table=" + table
+      // avoid log too much exception when overload
+      if (quota.canLogThrottlingException()) {
+        LOG.error("Throttling exception for user=" + ugi.getUserName() + " table=" + table
             + " numWrites=" + numWrites + " numReads=" + numReads + " numScans=" + numScans + ": "
             + e.getMessage());
-        LOG.debug("Quota snapshot for user=" + ugi.getUserName() + " table=" + table + " : "
+        LOG.info("Quota snapshot for user=" + ugi.getUserName() + " table=" + table + " : "
             + quota);
       }
       if (!isThrottleSimulated()) {
@@ -445,5 +451,12 @@ public class RegionServerQuotaManager {
 
   public long getGrabQuotaFailedCount() {
     return this.grabQuotaFailedCount.get();
+  }
+
+  private void checkQuotaSupport() throws IOException {
+    if (!isQuotaEnabled()) {
+      throw new DoNotRetryIOException(
+        new UnsupportedOperationException("quota support disabled"));
+    }
   }
 }

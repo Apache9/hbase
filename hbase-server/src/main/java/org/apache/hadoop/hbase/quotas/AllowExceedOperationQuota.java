@@ -120,6 +120,12 @@ public class AllowExceedOperationQuota implements OperationQuota {
   }
 
   @Override
+  public boolean canLogThrottlingException() {
+    return this.regionServerLimiter.canLogThrottlingException()
+        || this.userLimiter.canLogThrottlingException();
+  }
+
+  @Override
   public String toString() {
     StringBuilder builder = new StringBuilder();
     builder.append("AllowExceedOperationQuota [");

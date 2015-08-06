@@ -143,6 +143,15 @@ public class DefaultOperationQuota implements OperationQuota {
     }
     return 0;
   }
+
+  @Override
+  public boolean canLogThrottlingException() {
+    boolean ifLog = false;
+    for (final QuotaLimiter limiter: limiters) {
+      ifLog |= limiter.canLogThrottlingException();
+    }
+    return ifLog;
+  }
   
   @Override
   public String toString() {
