@@ -48,6 +48,8 @@ public class TimeBasedLimiter implements QuotaLimiter {
   private RateLimiter readReqsLimiter = null;
   private RateLimiter readSizeLimiter = null;
   private AvgOperationSize avgOpSize = new AvgOperationSize();
+  private int DEFAULT_MAX_LOG_THROTTLING_COUNT = 5;
+  private int logThrottlingCount = DEFAULT_MAX_LOG_THROTTLING_COUNT;
 
   private TimeBasedLimiter() {
     if (FixedIntervalRateLimiter.class.getName().equals(
@@ -112,6 +114,7 @@ public class TimeBasedLimiter implements QuotaLimiter {
     writeSizeLimiter.update(other.writeSizeLimiter);
     readReqsLimiter.update(other.readReqsLimiter);
     readSizeLimiter.update(other.readSizeLimiter);
+    this.updateLogThrottlingCount();
   }
 
   private static void setFromTimedQuota(final RateLimiter limiter, final TimedQuota timedQuota) {
@@ -245,6 +248,26 @@ public class TimeBasedLimiter implements QuotaLimiter {
   @Override
   public long getAvgOperationSize(OperationType type) {
     return avgOpSize.getAvgOperationSize(type);
+  }
+
+  /**
+   * avoid log too much exception when overload.
+   * limiter can log at most DEFAULT_MAX_LOG_THROTTLING_COUNT exception.
+   */
+  @Override
+  public boolean canLogThrottlingException() {
+    if (this.logThrottlingCount > 0) {
+      this.logThrottlingCount -= 1;
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * logThrottlingCount will refresh when QuotaCache refresh every limiter
+   */
+  public void updateLogThrottlingCount() {
+    this.logThrottlingCount = DEFAULT_MAX_LOG_THROTTLING_COUNT;
   }
 
   @Override

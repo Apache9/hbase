@@ -11,6 +11,8 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
@@ -115,6 +117,23 @@ public class TestOperationQuota {
     operationQuota = new AllowExceedOperationQuota(userLimiter, rsLimiter);
     assertEquals(3000 * QuotaUtil.READ_CAPACITY_UNIT, operationQuota.getReadAvailable());
     assertEquals(10000 * QuotaUtil.WRITE_CAPACITY_UNIT, operationQuota.getWriteAvailable());
+  }
+
+  @Test
+  public void testCanLogThrottlingException() {
+    QuotaLimiter userLimiter = QuotaLimiterFactory.fromThrottle(Throttle.newBuilder().build());
+    QuotaLimiter rsLimiter = QuotaLimiterFactory.fromThrottle(buildThrottle(10, TimeUnit.MINUTES, 10, TimeUnit.MINUTES));
+    operationQuota = new AllowExceedOperationQuota(userLimiter, rsLimiter);
+    // 5 is equals to DEFAULT_MAX_LOG_THROTTLING_COUNT
+    for (int i = 0; i < 5; i++) {
+      assertTrue(operationQuota.canLogThrottlingException());
+    }
+    assertFalse(operationQuota.canLogThrottlingException());
+    QuotaLimiterFactory.update(rsLimiter, rsLimiter);
+    for (int i = 0; i < 5; i++) {
+      assertTrue(operationQuota.canLogThrottlingException());
+    }
+    assertFalse(operationQuota.canLogThrottlingException());
   }
 
   private Throttle buildThrottle(int readLimit, TimeUnit readUnit, int writeLimit,

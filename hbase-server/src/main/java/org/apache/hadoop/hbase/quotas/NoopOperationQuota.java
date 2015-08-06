@@ -83,4 +83,9 @@ class NoopOperationQuota implements OperationQuota {
   public long getAvgOperationSize(OperationType type) {
     return -1;
   }
+
+  @Override
+  public boolean canLogThrottlingException() {
+    return false;
+  }
 }
