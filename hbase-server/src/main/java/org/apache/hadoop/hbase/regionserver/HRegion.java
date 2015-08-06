@@ -128,6 +128,7 @@ import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.CoprocessorServic
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.SnapshotDescription;
 import org.apache.hadoop.hbase.protobuf.generated.WALProtos.CompactionDescriptor;
 import org.apache.hadoop.hbase.quotas.QuotaUtil;
+import org.apache.hadoop.hbase.quotas.RegionServerQuotaManager;
 import org.apache.hadoop.hbase.regionserver.MultiVersionConsistencyControl.WriteEntry;
 import org.apache.hadoop.hbase.regionserver.compactions.CompactionContext;
 import org.apache.hadoop.hbase.regionserver.compactions.CompactionThroughputController;
@@ -2865,7 +2866,7 @@ public class HRegion implements HeapSize { // , Writable{
               "Result size of get in checkAndMutate must be 0 or 1, actual size:" + result.size());
         }
         
-        if (this.rsServices != null) {
+        if (isQuotaEnabled()) {
           this.rsServices.getRegionServerQuotaManager().grabQuota(this, Result.create(result));
         }
 
@@ -2972,7 +2973,7 @@ public class HRegion implements HeapSize { // , Writable{
               "Result size of get in checkAndMutate must be 0 or 1, actual size:" + result.size());
         }
         
-        if (this.rsServices != null) {
+        if (isQuotaEnabled()) {
           this.rsServices.getRegionServerQuotaManager().grabQuota(this, Result.create(result));
         }
 
@@ -6686,5 +6687,13 @@ public class HRegion implements HeapSize { // , Writable{
    */
   public void updatesUnlock() throws InterruptedIOException {
     updatesLock.readLock().unlock();
+  }
+
+  private boolean isQuotaEnabled() {
+    if (this.rsServices == null) {
+      return false;
+    }
+    RegionServerQuotaManager rsQuotaManager = this.rsServices.getRegionServerQuotaManager();
+    return (rsQuotaManager != null) && (rsQuotaManager.isQuotaEnabled());
   }
 }
