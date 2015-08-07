@@ -23,8 +23,11 @@ import java.io.InterruptedIOException;
 import java.net.ConnectException;
 import java.net.SocketTimeoutException;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.commons.lang.math.RandomUtils;
@@ -224,27 +227,20 @@ public class SplitLogWorker extends ZooKeeperListener implements Runnable {
   private void taskLoop() {
     while (!exitWorker) {
       int seq_start = taskReadySeq;
-      List<String> paths = getTaskList();
-      if (paths == null) {
+      Queue<String> taskQueue = getTaskQueue();
+      if (taskQueue == null) {
         LOG.warn("Could not get tasks, did someone remove " +
             this.watcher.splitLogZNode + " ... worker thread exiting.");
         return;
       }
-      // pick meta wal firstly
-      int offset = (int) (Math.random() * paths.size());
-      for(int i = 0; i < paths.size(); i ++){
-        if(HLogUtil.isMetaFile(paths.get(i))) {
-          offset = i;
-          break;
-        }
-      }
-      int numTasks = paths.size();
-      for (int i = 0; i < numTasks; i++) {
-        int idx = (i + offset) % paths.size();
+      
+      int numTasks = taskQueue.size();
+      while(!taskQueue.isEmpty()) {
+        String task = taskQueue.poll();
         // don't call ZKSplitLog.getNodeName() because that will lead to
         // double encoding of the path name
         if (this.calculateAvailableSplitters(numTasks) > 0) {
-          grabTask(ZKUtil.joinZNode(watcher.splitLogZNode, paths.get(idx)));
+          grabTask(ZKUtil.joinZNode(watcher.splitLogZNode, task));
         } else {
           LOG.debug("Current region server " + this.serverName + " has "
               + this.tasksInProgress.get() + " tasks in progress and can't take more.");
@@ -557,17 +553,41 @@ public class SplitLogWorker extends ZooKeeperListener implements Runnable {
   }
 
 
-  private List<String> getTaskList() {
-    List<String> childrenPaths = null;
+  private Queue<String> getTaskQueue() {
     long sleepTime = 1000;
     // It will be in loop till it gets the list of children or
     // it will come out if worker thread exited.
     while (!exitWorker) {
       try {
-        childrenPaths = ZKUtil.listChildrenAndWatchForNewChildren(this.watcher,
+        List<String> childrenPaths = ZKUtil.listChildrenAndWatchForNewChildren(this.watcher,
             this.watcher.splitLogZNode);
         if (childrenPaths != null) {
-          return childrenPaths;
+          List<String> metaTasks = new ArrayList<String>();
+          List<String> localTasks = new ArrayList<String>();
+          List<String> remoteTasks = new ArrayList<String>();
+          for (String task: childrenPaths) {
+            if (HLogUtil.isMetaFile(task)) {
+              metaTasks.add(task);
+            } else if (ZKSplitLog.isLocalTask(task, serverName.getHostname())) {
+              localTasks.add(task);
+            }else {
+              remoteTasks.add(task);
+            }
+          }
+          // shuffle the tasks
+          Queue<String> queue = new LinkedList<String>();
+          
+          // put meta tasks first
+          Collections.shuffle(metaTasks);
+          queue.addAll(metaTasks);
+          
+          // then put local tasks
+          Collections.shuffle(localTasks);
+          queue.addAll(localTasks);
+          
+          Collections.shuffle(remoteTasks);
+          queue.addAll(remoteTasks);
+          return queue;
         }
       } catch (KeeperException e) {
         LOG.warn("Could not get children of znode "
@@ -582,7 +602,7 @@ public class SplitLogWorker extends ZooKeeperListener implements Runnable {
         Thread.currentThread().interrupt();
       }
     }
-    return childrenPaths;
+    return null;
   }
 
   @Override
