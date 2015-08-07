@@ -970,7 +970,7 @@ public class TestDistributedLogSplitting {
     // slm.splitLogDistributed(logDir);
     FileStatus[] logfiles = fs.listStatus(logDir);
     TaskBatch batch = new TaskBatch();
-    slm.enqueueSplitTask(logfiles[0].getPath().toString(), batch);
+    slm.enqueueSplitTask(logfiles[0].getPath().toString(), "", batch);
     //waitForCounter but for one of the 2 counters
     long curt = System.currentTimeMillis();
     long waitTime = 80000;
