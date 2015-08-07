@@ -29,6 +29,8 @@ public class InstrumentedSequenceFileLogWriter extends ProtobufLogWriter {
   }
 
   public static boolean activateFailure = false;
+  public static boolean slowSync = false;
+  
   @Override
     public void append(HLog.Entry entry) throws IOException {
       super.append(entry);
@@ -37,4 +39,16 @@ public class InstrumentedSequenceFileLogWriter extends ProtobufLogWriter {
         throw(new IOException("This exception is instrumented and should only be thrown for testing"));
       }
     }
+  
+  @Override
+  public void sync() throws IOException {
+    if (slowSync) {
+      try {
+        Thread.sleep(1010);
+      } catch (InterruptedException e) {
+        throw new IOException(e);
+      }
+    }
+    super.sync();
+  }
 }

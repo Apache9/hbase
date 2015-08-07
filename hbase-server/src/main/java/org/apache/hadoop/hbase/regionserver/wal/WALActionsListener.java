@@ -64,9 +64,9 @@ public interface WALActionsListener {
 
   /**
    * A request was made that the WAL be rolled.
-   * @param tooFewReplicas roll requested because of too few replicas if true
+   * @param forceRoll the flag indicates whether a force log roll or not
    */
-  void logRollRequested(boolean tooFewReplicas);
+  void logRollRequested(boolean forceRoll);
 
   /**
    * The WAL is about to close.

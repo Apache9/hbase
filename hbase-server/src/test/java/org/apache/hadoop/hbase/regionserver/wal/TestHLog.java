@@ -27,6 +27,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.commons.logging.Log;
@@ -88,7 +89,7 @@ public class TestHLog  {
     for (FileStatus dir : entries) {
       fs.delete(dir.getPath(), true);
     }
-
+    InstrumentedSequenceFileLogWriter.slowSync = false;
   }
 
   @After
@@ -752,6 +753,34 @@ public class TestHLog  {
     }
   }
 
+  @Test
+  public void testSlowRoll() throws IOException {
+    Configuration configuration = new Configuration(conf);
+    HLogFactory.resetLogWriterClass();
+    configuration.setClass("hbase.regionserver.hlog.writer.impl",
+      InstrumentedSequenceFileLogWriter.class, HLog.Writer.class);
+    InstrumentedSequenceFileLogWriter.slowSync = true;
+    int syncs = configuration.getInt(
+      "hbase.regionserver.hlog.slowsync.request.roll.count.threshold", 10) + 2;
+    DumbWALActionsListener listener = new DumbWALActionsListener();
+    HLog log = HLogFactory.createHLog(fs, hbaseDir, getName(), configuration);
+    log.registerWALActionsListener(listener);
+    TableName table = TableName.valueOf("testSlowRoll");
+    HRegionInfo info = new HRegionInfo(table, HConstants.EMPTY_START_ROW,
+        HConstants.EMPTY_END_ROW);
+    
+    final AtomicLong sequenceId = new AtomicLong(1);
+    try {
+      for (int i = 0; i < syncs; i++) {
+        addEdits(log, info, table, 1, sequenceId);
+        log.sync();
+      }
+      assertEquals("Should request 3 rolls", 3, listener.logRollRequestedCounter.get());
+    } finally {
+      log.closeAndDelete();
+    }
+  }
+  
   private void addEdits(HLog log, HRegionInfo hri, TableName tableName,
                         int times, AtomicLong sequenceId) throws IOException {
     HTableDescriptor htd = new HTableDescriptor();
@@ -1188,7 +1217,8 @@ public class TestHLog  {
 
   static class DumbWALActionsListener implements WALActionsListener {
     int increments = 0;
-
+    AtomicInteger logRollRequestedCounter = new AtomicInteger(0);
+    
     @Override
     public void visitLogEntryBeforeWrite(HRegionInfo info, HLogKey logKey,
                                          WALEdit logEdit) {
@@ -1222,9 +1252,8 @@ public class TestHLog  {
     }
 
     @Override
-    public void logRollRequested(boolean tooFewReplicas) {
-      // TODO Auto-generated method stub
-
+    public void logRollRequested(boolean forceRoll) {
+      logRollRequestedCounter.incrementAndGet();
     }
 
     @Override

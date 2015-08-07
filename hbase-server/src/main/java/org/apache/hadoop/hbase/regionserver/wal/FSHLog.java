@@ -140,8 +140,11 @@ class FSHLog implements HLog, Syncable {
   private int minTolerableReplication;
   private Method getNumCurrentReplicas; // refers to DFSOutputStream.getNumCurrentReplicas
   private final Method getPipeLine; // refers to DFSOutputStream.getPipeLine
-  private final int slowSyncNs;
-
+  private final int slowSyncMs;
+  private final AtomicInteger slowSyncRequestRollCounter = new AtomicInteger(0);
+  private final int slowSyncRequestRollCountThreshold;
+  private final int slowSyncRequestRollMsThreshold;
+  
   final static Object [] NO_ARGS = new Object []{};
 
   /** The barrier used to ensure that close() waits for all log rolls and flushes to finish. */
@@ -422,9 +425,7 @@ class FSHLog implements HLog, Syncable {
     // rollWriter sets this.hdfs_out if it can.
     rollWriter();
 
-    this.slowSyncNs =
-        1000000 * conf.getInt("hbase.regionserver.hlog.slowsync.ms",
-          DEFAULT_SLOW_SYNC_TIME_MS);
+    this.slowSyncMs = conf.getInt("hbase.regionserver.hlog.slowsync.ms", DEFAULT_SLOW_SYNC_TIME_MS);
     // handle the reflection necessary to call getNumCurrentReplicas()
     this.getNumCurrentReplicas = getGetNumCurrentReplicas(this.hdfs_out);
     this.getPipeLine = getGetPipeline(this.hdfs_out);
@@ -445,6 +446,10 @@ class FSHLog implements HLog, Syncable {
     asyncNotifier = new AsyncNotifier(n + "-WAL.AsyncNotifier");
     asyncNotifier.start();
 
+    slowSyncRequestRollCountThreshold = conf.getInt(
+      "hbase.regionserver.hlog.slowsync.request.roll.count.threshold", 10);
+    slowSyncRequestRollMsThreshold = conf.getInt(
+      "hbase.regionserver.hlog.slowsync.request.roll.ms.threshold", 1000);
     coprocessorHost = new WALCoprocessorHost(this, conf);
 
     this.metrics = new MetricsWAL();
@@ -576,6 +581,7 @@ class FSHLog implements HLog, Syncable {
           this.writer = nextWriter;
           this.hdfs_out = nextHdfsOut;
           this.numEntries.set(0);
+          slowSyncRequestRollCounter.set(0); // reset this counter after a rolling done
           if (oldFile != null) {
             this.hlogSequenceNums.put(oldFile, this.latestSequenceNums);
             this.latestSequenceNums = new HashMap<byte[], Long>();
@@ -1138,7 +1144,7 @@ class FSHLog implements HLog, Syncable {
             }
           } catch(IOException e) {
             LOG.error("Error while AsyncWriter write, request close of hlog ", e);
-            requestLogRoll();
+            requestLogRoll(true);
 
             asyncIOE = e;
             failedTxid.set(this.txidToWrite);
@@ -1253,7 +1259,7 @@ class FSHLog implements HLog, Syncable {
             postSync();
           } catch (IOException e) {
             LOG.fatal("Error while AsyncSyncer sync, request close of hlog ", e);
-            requestLogRoll();
+            requestLogRoll(true);
 
             asyncIOE = e;
             failedTxid.set(this.txidToSync);
@@ -1262,13 +1268,20 @@ class FSHLog implements HLog, Syncable {
           }
           final long took = EnvironmentEdgeManager.currentTimeMillis() - now;
           metrics.finishSync(took);
-          if (took > (slowSyncNs/1000000)) {
+          if (took > slowSyncMs) {
             String msg =
                 new StringBuilder().append("Slow sync cost: ")
                     .append(took).append(" ms, current pipeline: ")
                     .append(Arrays.toString(getPipeLine())).toString();
             Trace.addTimelineAnnotation(msg);
             LOG.info(msg);
+          }
+          if (took > slowSyncRequestRollMsThreshold) {
+            long newCount = slowSyncRequestRollCounter.incrementAndGet();
+            if (newCount >= slowSyncRequestRollCountThreshold) {
+              requestLogRoll(false);
+              // slowSyncRequestRollCounter.set(0);
+            }
           }
 
           // 3. wake up AsyncNotifier to notify(wake-up) all pending 'put'
@@ -1286,7 +1299,7 @@ class FSHLog implements HLog, Syncable {
             }            
             try {
               if (lowReplication || writer != null && writer.getLength() > logrollsize) {
-                requestLogRoll(lowReplication);
+                requestLogRoll(true);
               }
             } catch (IOException e) {
               LOG.warn("writer.getLength() failed,this failure won't block here");
@@ -1486,14 +1499,10 @@ class FSHLog implements HLog, Syncable {
     syncer(txid);
   }
 
-  private void requestLogRoll() {
-    requestLogRoll(false);
-  }
-
-  private void requestLogRoll(boolean tooFewReplicas) {
+  private void requestLogRoll(boolean forceRoll) {
     if (!this.listeners.isEmpty()) {
       for (WALActionsListener i: this.listeners) {
-        i.logRollRequested(tooFewReplicas);
+        i.logRollRequested(forceRoll);
       }
     }
   }
@@ -1530,7 +1539,7 @@ class FSHLog implements HLog, Syncable {
       this.metrics.finishAppend(took, len);
     } catch (IOException e) {
       LOG.fatal("Could not append. Requesting close of hlog", e);
-      requestLogRoll();
+      requestLogRoll(true);
       throw e;
     }
   }

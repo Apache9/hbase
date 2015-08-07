@@ -331,8 +331,8 @@ public class TestLogRolling  {
 
     log.registerWALActionsListener(new WALActionsListener() {
       @Override
-      public void logRollRequested(boolean lowReplication) {
-        if (lowReplication) {
+      public void logRollRequested(boolean forceRoll) {
+        if (forceRoll) {
           lowReplicationHookCalled.lazySet(true);
         }
       }
@@ -481,7 +481,7 @@ public class TestLogRolling  {
       @Override
       public void postLogArchive(Path oldFile, Path newFile) {}
       @Override
-      public void logRollRequested(boolean tooFewReplicas) {}
+      public void logRollRequested(boolean forceRoll) {}
       @Override
       public void logCloseRequested() {}
       @Override

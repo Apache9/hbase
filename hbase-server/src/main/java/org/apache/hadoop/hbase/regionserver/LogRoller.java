@@ -18,6 +18,7 @@
  */
 package org.apache.hadoop.hbase.regionserver;
 
+import org.apache.commons.lang.math.RandomUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
@@ -32,6 +33,7 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.HasThread;
 
 import java.io.IOException;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -45,24 +47,33 @@ import java.util.concurrent.locks.ReentrantLock;
 @InterfaceAudience.Private
 class LogRoller extends HasThread implements WALActionsListener {
   static final Log LOG = LogFactory.getLog(LogRoller.class);
+  public static final String LOG_ROLL_REQUEST_PERIOD_KEY =
+      "hbase.regionserver.logroll.request.period.ms";
+  public static final long LOG_ROLL_REQUEST_PERIOD_DEFAULT = TimeUnit.SECONDS.toMillis(60);
   private final ReentrantLock rollLock = new ReentrantLock();
   private final AtomicBoolean rollLog = new AtomicBoolean(false);
   private final Server server;
   protected final RegionServerServices services;
-  private volatile long lastrolltime = System.currentTimeMillis();
+  private volatile long lastRolltime = System.currentTimeMillis();
+  private volatile long lastRollRequestTime = System.currentTimeMillis();
   // Period to roll log.
-  private final long rollperiod;
+  private final long rollPeriod;
   private final int threadWakeFrequency;
+  private final long timeBetweenRequest;
 
   /** @param server */
   public LogRoller(final Server server, final RegionServerServices services) {
     super();
     this.server = server;
     this.services = services;
-    this.rollperiod = this.server.getConfiguration().
-      getLong("hbase.regionserver.logroll.period", 3600000);
+    long basicRollPeriod = this.server.getConfiguration().getLong(
+      "hbase.regionserver.logroll.period", 3600000);
+    this.rollPeriod = (long) (0.9 * basicRollPeriod + RandomUtils.nextDouble() * 0.2
+        * basicRollPeriod);
     this.threadWakeFrequency = this.server.getConfiguration().
       getInt(HConstants.THREAD_WAKE_FREQUENCY, 10 * 1000);
+    this.timeBetweenRequest = this.server.getConfiguration().getLong(LOG_ROLL_REQUEST_PERIOD_KEY,
+      LOG_ROLL_REQUEST_PERIOD_DEFAULT);
   }
 
   @Override
@@ -71,7 +82,7 @@ class LogRoller extends HasThread implements WALActionsListener {
       long now = System.currentTimeMillis();
       boolean periodic = false;
       if (!rollLog.get()) {
-        periodic = (now - this.lastrolltime) > this.rollperiod;
+        periodic = (now - this.lastRolltime) > this.rollPeriod;
         if (!periodic) {
           synchronized (rollLog) {
             try {
@@ -84,14 +95,14 @@ class LogRoller extends HasThread implements WALActionsListener {
         }
         // Time for periodic roll
         if (LOG.isDebugEnabled()) {
-          LOG.debug("Hlog roll period " + this.rollperiod + "ms elapsed");
+          LOG.debug("Hlog roll period " + this.rollPeriod + "ms elapsed");
         }
       } else if (LOG.isDebugEnabled()) {
         LOG.debug("HLog roll requested");
       }
       rollLock.lock(); // FindBugs UL_UNRELEASED_LOCK_EXCEPTION_PATH
       try {
-        this.lastrolltime = now;
+        this.lastRolltime = now;
         // Force the roll if the logroll.period is elapsed or if a roll was requested.
         // The returned value is an array of actual region names.
         byte [][] regionsToFlush = getWAL().rollWriter(periodic || rollLog.get());
@@ -141,10 +152,15 @@ class LogRoller extends HasThread implements WALActionsListener {
     }
   }
 
-  public void logRollRequested(boolean lowReplicas) {
+  @Override
+  public void logRollRequested(boolean forceRoll) {
+    long currentTime = System.currentTimeMillis();
     synchronized (rollLog) {
-      rollLog.set(true);
-      rollLog.notifyAll();
+      if (forceRoll || (currentTime - lastRollRequestTime > timeBetweenRequest)) {
+        lastRollRequestTime = currentTime;
+        rollLog.set(true);
+        rollLog.notifyAll();
+      }
     }
   }
 
