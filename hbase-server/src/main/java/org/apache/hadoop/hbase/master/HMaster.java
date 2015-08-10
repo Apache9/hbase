@@ -502,6 +502,16 @@ MasterServices, Server {
     String hostname = Strings.domainNamePointerToHostName(DNS.getDefaultHost(
       conf.get("hbase.master.dns.interface", "default"),
       conf.get("hbase.master.dns.nameserver", "default")));
+    boolean mode =
+        conf.getBoolean(HConstants.CLUSTER_DISTRIBUTED, HConstants.DEFAULT_CLUSTER_DISTRIBUTED);
+    if (mode == HConstants.CLUSTER_IS_DISTRIBUTED && hostname.equals(HConstants.LOCALHOST)) {
+      String msg =
+          "The hostname of regionserver cannot be set to localhost "
+              + "in a fully-distributed setup because it won't be reachable. "
+              + "See \"Getting Started\" for more information.";
+      LOG.fatal(msg);
+      throw new IOException(msg);
+    }
     int port = conf.getInt(HConstants.MASTER_PORT, HConstants.DEFAULT_MASTER_PORT);
     // Test that the hostname is reachable
     InetSocketAddress initialIsa = new InetSocketAddress(hostname, port);
