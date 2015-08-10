@@ -422,7 +422,7 @@ public class VerifyReplication  extends Configured implements Tool {
     if (families != null) {
       conf.set(NAME+".families", families);
     }
-    Job job = new Job(conf, NAME + "_" + tableName);
+    Job job = new Job(conf, NAME + "_" + tableName + "_" + peerId);
     job.setJarByClass(VerifyReplication.class);
 
     Scan scan = new Scan();
