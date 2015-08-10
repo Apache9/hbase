@@ -1884,7 +1884,7 @@ public class AssignmentManager extends ZooKeeperListener {
         return; // Should get reassigned later when RIT times out.
       }
       try {
-        LOG.debug("Assigning region " + state.getRegion().getRegionNameAsString() +
+        LOG.info("Assigning region " + state.getRegion().getRegionNameAsString() +
           " to " + plan.getDestination().toString());
         long currentOfflineTimeStamp = state.getStamp();
         RegionOpeningState regionOpenState = serverManager.sendRegionOpen(plan.getDestination(),
