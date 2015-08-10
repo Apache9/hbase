@@ -241,6 +241,7 @@ public abstract class ZooKeeperNodeTracker extends ZooKeeperListener {
               "Exception while checking if basenode ("+watcher.baseZNode+
                 ") exists in ZooKeeper.",
               e);
+      return false;
     }
     return true;
   }
