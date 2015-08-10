@@ -144,9 +144,13 @@ public class CallRunner {
           + ": caught: " + StringUtils.stringifyException(e));
     } finally {
       // regardless if succesful or not we need to reset the callQueueSize
-      this.rpcServer.addCallSize(call.getSize() * -1);
+      resetCallQueueSize();
       cleanup();
     }
+  }
+  
+  protected void resetCallQueueSize() {
+    this.rpcServer.addCallSize(call.getSize() * -1);
   }
   
   protected void doRespond(Pair<Message, CellScanner> resultPair, Throwable errorThrowable,

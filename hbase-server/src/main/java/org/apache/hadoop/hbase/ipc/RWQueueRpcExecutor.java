@@ -124,6 +124,7 @@ public class RWQueueRpcExecutor extends RpcExecutor {
       queueIndex = numWriteQueues + readBalancer.getNextQueue();
     }
     if (!queues.get(queueIndex).offer(callTask)) {
+      callTask.resetCallQueueSize();
       callTask.doRespond(null, new IOException(), "IPC server unable to "
           + ((queueIndex < numWriteQueues) ? "write" : "read") + " call method");
     }
