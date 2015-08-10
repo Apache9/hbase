@@ -81,6 +81,8 @@ public final class Canary implements Tool {
     public void publishWriteFailure(HRegionInfo region, Exception e);
     public void publishWriteFailure(HRegionInfo region, HColumnDescriptor column, Exception e);
     public void publishWriteTiming(HRegionInfo region, HColumnDescriptor column, long msTime);
+
+    public void reportSummary();
   }
 
   // Simple implementation of canary sink that allows to plot on
@@ -117,6 +119,10 @@ public final class Canary implements Tool {
     public void publishWriteTiming(HRegionInfo region, HColumnDescriptor column, long msTime) {
       LOG.info(String.format("write to region %s column family %s in %dms",
         region.getRegionNameAsString(), column.getNameAsString(), msTime));
+    }
+
+    @Override
+    public void reportSummary() {
     }
   }
 
@@ -352,6 +358,7 @@ public final class Canary implements Tool {
           LOG.error("Sniff region failed!", e);
         }
       }
+      sink.reportSummary();
       long  finishTime = System.currentTimeMillis();
       if (finishTime < startTime + interval) {
         Thread.sleep(startTime + interval - finishTime);
