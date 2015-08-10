@@ -31,6 +31,7 @@ import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.SnapshotDescription;
+import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.snapshot.SnapshotManifestV1;
 import org.apache.hadoop.hbase.snapshot.SnapshotManifestV2;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
@@ -330,4 +331,17 @@ public class SnapshotDescriptionUtils {
     }
   }
 
+  /**
+   * Check if the user is this table snapshot's owner
+   * @param snapshot the table snapshot description
+   * @param user the user
+   * @return
+   */
+  public static boolean isSnapshotOwner(final SnapshotDescription snapshot, final User user) {
+    if (user == null) return false;
+    if (!snapshot.hasOwner()) return false;
+    
+    if (snapshot.getOwner().equals(user.getName())) return true;
+    return false;
+  }
 }

@@ -100,6 +100,7 @@ import org.apache.hadoop.hbase.security.AccessDeniedException;
 import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.security.UserProvider;
 import org.apache.hadoop.hbase.security.access.Permission.Action;
+import org.apache.hadoop.hbase.snapshot.SnapshotDescriptionUtils;
 import org.apache.hadoop.hbase.util.ByteRange;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
@@ -1180,7 +1181,7 @@ public class AccessController extends BaseMasterAndRegionObserver
   public void preSnapshot(final ObserverContext<MasterCoprocessorEnvironment> ctx,
       final SnapshotDescription snapshot, final HTableDescriptor hTableDescriptor)
       throws IOException {
-    requirePermission("snapshot", Action.ADMIN);
+    requirePermission("snapshot", hTableDescriptor.getTableName(), null, null, Action.ADMIN);
   }
 
   @Override
@@ -1194,12 +1195,20 @@ public class AccessController extends BaseMasterAndRegionObserver
   public void preRestoreSnapshot(final ObserverContext<MasterCoprocessorEnvironment> ctx,
       final SnapshotDescription snapshot, final HTableDescriptor hTableDescriptor)
       throws IOException {
-    requirePermission("restore", Action.ADMIN);
+    if (SnapshotDescriptionUtils.isSnapshotOwner(snapshot, getActiveUser())) {
+      requirePermission("restoreSnapshot", hTableDescriptor.getTableName(), null, null,
+        Permission.Action.ADMIN);
+    } else {
+      requirePermission("restore", Action.ADMIN);
+    }
   }
 
   @Override
   public void preDeleteSnapshot(final ObserverContext<MasterCoprocessorEnvironment> ctx,
       final SnapshotDescription snapshot) throws IOException {
+    if (SnapshotDescriptionUtils.isSnapshotOwner(snapshot, getActiveUser())) {
+      return;
+    }
     requirePermission("deleteSnapshot", Action.ADMIN);
   }
 
