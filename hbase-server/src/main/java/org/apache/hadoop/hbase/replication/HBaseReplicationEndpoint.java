@@ -145,6 +145,11 @@ public abstract class HBaseReplicationEndpoint extends BaseReplicationEndpoint
    */
   protected static List<ServerName> fetchSlavesAddresses(ZooKeeperWatcher zkw)
       throws KeeperException {
+    return listChildrenAndGetAsServerNames(zkw, zkw.rsZNode);
+  }
+    
+  public static List<ServerName> listChildrenAndGetAsServerNames(ZooKeeperWatcher zkw, String znode)
+      throws KeeperException {
     List<String> children = ZKUtil.listChildrenAndWatchForNewChildren(zkw, zkw.rsZNode);
     if (children == null) {
       return Collections.emptyList();
