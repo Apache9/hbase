@@ -52,6 +52,8 @@ public interface HFileScanner {
    * If there is no key k[i+1] greater than or equal to the input key, then the
    * scanner will position itself at the end of the file and next() will return
    * false when it is called.
+   * -2, similiar with return "1", further more, let the scanner left in the start key of a
+   * block, means:block index faked key <= the target key < the first *real* key in that block
    * @throws IOException
    */
   int seekTo(byte[] key) throws IOException;
@@ -74,6 +76,8 @@ public interface HFileScanner {
    * @return -1, if key < k[0], no position;
    * 0, such that k[i] = key and scanner is left in position i; and
    * 1, such that k[i] < key, and scanner is left in position i.
+   * -2, similiar with return "1", further more, let the scanner left in the start key of a
+   * block, means:block index faked key <= the target key < the first *real* key in that block
    * @throws IOException
    */
   int reseekTo(byte[] key) throws IOException;

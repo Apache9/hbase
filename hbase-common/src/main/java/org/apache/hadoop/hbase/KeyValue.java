@@ -2109,6 +2109,16 @@ public class KeyValue implements Cell, HeapSize, Cloneable {
     }
 
     /**
+     * @param left
+     * @param row - row key (arbitrary byte array)
+     * @return RawComparator
+     */
+    public int compareRows(final KeyValue left, final byte [] row) {
+      return compareRows(left.getBuffer(),
+          left.getRowOffset(), left.getRowLength(), row, 0, row.length);
+    }
+    
+    /**
      * Get the b[],o,l for left and right rowkey portions and compare.
      * @param left
      * @param loffset

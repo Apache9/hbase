@@ -503,6 +503,7 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
           // add to results only if we have skipped #storeOffset kvs
           // also update metric accordingly
           if (this.countPerRow > storeOffset) {
+            checkScanOrder(outResult, kv, comparator);
             outResult.add(kv);
             count++;
           }
@@ -677,6 +678,11 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
     assert prevKV == null || comparator == null
         || comparator.compare(prevKV, kv) <= 0 : "Key " + prevKV
         + " followed by a " + "smaller key " + kv + " in cf " + store;
+  }
+  
+  protected void checkScanOrder(List<Cell> resultList, KeyValue kv,
+      KeyValue.KVComparator comparator) throws IOException {
+    //nop inside StoreScanner class
   }
 
   protected boolean seekToNextRow(KeyValue kv) throws IOException {

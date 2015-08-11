@@ -23,10 +23,12 @@ import java.util.List;
 import java.util.NavigableSet;
 
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
+import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.KeyValue.KVComparator;
 import org.apache.hadoop.hbase.client.Scan;
+import org.apache.hadoop.hbase.util.Bytes;
 
 /**
  * ReversedStoreScanner extends from StoreScanner, and is used to support
@@ -108,6 +110,24 @@ class ReversedStoreScanner extends StoreScanner implements KeyValueScanner {
         + " in reversed scan";
   }
 
+  @Override
+  protected void checkScanOrder(List<Cell> resultList, KeyValue kv,
+      KeyValue.KVComparator comparator) throws IOException {
+    if (comparator == null) {
+      return;
+    }
+    if (resultList.isEmpty()) {
+      byte[] startKey = this.scan.getStartRow();
+      if (!Bytes.equals(startKey, HConstants.EMPTY_BYTE_ARRAY)) {
+        if (comparator.compareRows(kv, startKey) > 0) {
+          throw new IOException("kv row: " + Bytes.toString(kv.getRow()) + " > startRow: "
+              + Bytes.toString(startKey) + " in cf " + store
+              + " in reversed scan, current scanner: " + heap.current);
+        }
+      }
+    }
+  }
+  
   @Override
   public boolean reseek(KeyValue kv) throws IOException {
     throw new IllegalStateException(
