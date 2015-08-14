@@ -804,7 +804,7 @@ public class RpcClient {
           if (shouldAuthenticateOverKrb()) {
             if (currRetries < maxRetries) {
               LOG.debug("Exception encountered while connecting to " +
-                  "the server : " + ex);
+                  "the server : ", ex);
               //try re-login
               if (UserGroupInformation.isLoginKeytabBased()) {
                 UserGroupInformation.getLoginUser().reloginFromKeytab();
@@ -827,7 +827,7 @@ public class RpcClient {
             }
           } else {
             LOG.warn("Exception encountered while connecting to " +
-                "the server : " + ex);
+                "the server : ", ex);
           }
           if (ex instanceof RemoteException) {
             throw (RemoteException)ex;
