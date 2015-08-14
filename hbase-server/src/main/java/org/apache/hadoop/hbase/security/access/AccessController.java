@@ -1181,7 +1181,12 @@ public class AccessController extends BaseMasterAndRegionObserver
   public void preSnapshot(final ObserverContext<MasterCoprocessorEnvironment> ctx,
       final SnapshotDescription snapshot, final HTableDescriptor hTableDescriptor)
       throws IOException {
-    requirePermission("snapshot", hTableDescriptor.getTableName(), null, null, Action.ADMIN);
+    if (hTableDescriptor == null) {
+      // for test
+      requirePermission("snapshot", Action.ADMIN);
+    } else {
+      requirePermission("snapshot", hTableDescriptor.getTableName(), null, null, Action.ADMIN);
+    }
   }
 
   @Override
@@ -1195,7 +1200,7 @@ public class AccessController extends BaseMasterAndRegionObserver
   public void preRestoreSnapshot(final ObserverContext<MasterCoprocessorEnvironment> ctx,
       final SnapshotDescription snapshot, final HTableDescriptor hTableDescriptor)
       throws IOException {
-    if (SnapshotDescriptionUtils.isSnapshotOwner(snapshot, getActiveUser())) {
+    if (snapshot != null && SnapshotDescriptionUtils.isSnapshotOwner(snapshot, getActiveUser())) {
       requirePermission("restoreSnapshot", hTableDescriptor.getTableName(), null, null,
         Permission.Action.ADMIN);
     } else {
@@ -1206,7 +1211,7 @@ public class AccessController extends BaseMasterAndRegionObserver
   @Override
   public void preDeleteSnapshot(final ObserverContext<MasterCoprocessorEnvironment> ctx,
       final SnapshotDescription snapshot) throws IOException {
-    if (SnapshotDescriptionUtils.isSnapshotOwner(snapshot, getActiveUser())) {
+    if (snapshot != null && SnapshotDescriptionUtils.isSnapshotOwner(snapshot, getActiveUser())) {
       return;
     }
     requirePermission("deleteSnapshot", Action.ADMIN);
@@ -2297,15 +2302,19 @@ public class AccessController extends BaseMasterAndRegionObserver
     // Otherwise, if the requestor has ADMIN or CREATE privs for all listed tables, the
     // request can be granted.
     else {
-      MasterServices masterServices = ctx.getEnvironment().getMasterServices();
-      for (TableName tableName: tableNamesList) {
-        // Skip checks for a table that does not exist
-        if (masterServices.getTableDescriptors().get(tableName) == null) {
-          continue;
-        }
-        requirePermission("getTableDescriptors", tableName, null, null,
-          Action.ADMIN, Action.CREATE);
-      }
+      // After salted is stored in HTableDescriptor, any operation Read/Write will need to
+      // get table descriptor to judge whether it is a salted table. We don't do any acl
+      // check to getTableDescriptor to keep compatible with old grants.
+      // TODO: grant to users having any permission on any family
+//      MasterServices masterServices = ctx.getEnvironment().getMasterServices();
+//      for (TableName tableName: tableNamesList) {
+//        // Skip checks for a table that does not exist
+//        if (masterServices.getTableDescriptors().get(tableName) == null) {
+//          continue;
+//        }
+//        requirePermission("getTableDescriptors", tableName, null, null,
+//          Action.ADMIN, Action.CREATE);
+//      }
     }
   }
 
