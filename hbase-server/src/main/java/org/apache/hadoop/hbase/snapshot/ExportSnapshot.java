@@ -62,6 +62,7 @@ import org.apache.hadoop.hbase.protobuf.generated.SnapshotProtos.SnapshotRegionM
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.FSUtils;
 import org.apache.hadoop.hbase.util.Pair;
+import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.io.BytesWritable;
 import org.apache.hadoop.io.IOUtils;
 import org.apache.hadoop.io.NullWritable;
@@ -107,6 +108,12 @@ public class ExportSnapshot extends Configured implements Tool {
   private static final String CONF_BUFFER_SIZE = "snapshot.export.buffer.size";
   private static final String CONF_MAP_GROUP = "snapshot.export.default.map.group";
   protected static final String CONF_SKIP_TMP = "snapshot.export.skip.tmp";
+  private static final String CONF_OUTPUT_NN_USER =
+      "snapshot.export.output.dfs.namenode.kerberos.principal";
+  private static final String CONF_OUTPUT_SNN_USER =
+      "snapshot.export.output.dfs.secondary.namenode.kerberos.principal";
+  private static final String CONF_OUTPUT_DN_USER =
+      "snapshot.export.output.dfs.datanode.kerberos.principal";
 
   static final String CONF_TEST_FAILURE = "test.snapshot.export.failure";
   static final String CONF_TEST_RETRY = "test.snapshot.export.failure.retry";
@@ -119,6 +126,23 @@ public class ExportSnapshot extends Configured implements Tool {
     BYTES_EXPECTED, BYTES_SKIPPED, BYTES_COPIED
   }
 
+  private static Configuration createOutputFsConf(Configuration inputFsConf) {
+    Configuration conf = new Configuration(inputFsConf);
+    String namenodeUser = conf.get(CONF_OUTPUT_NN_USER);
+    if (namenodeUser != null) {
+      conf.set(DFSConfigKeys.DFS_NAMENODE_USER_NAME_KEY, namenodeUser);
+    }
+    String secondaryNamenodeUser = conf.get(CONF_OUTPUT_SNN_USER);
+    if (secondaryNamenodeUser != null) {
+      conf.set(DFSConfigKeys.DFS_SECONDARY_NAMENODE_USER_NAME_KEY, secondaryNamenodeUser);
+    }
+    String datanodeUser = conf.get(CONF_OUTPUT_DN_USER);
+    if (datanodeUser != null) {
+      conf.set(DFSConfigKeys.DFS_DATANODE_USER_NAME_KEY, datanodeUser);
+    }
+    return conf;
+  }
+  
   private static class ExportMapper extends Mapper<BytesWritable, NullWritable,
                                                    NullWritable, NullWritable> {
     final static int REPORT_SIZE = 1 * 1024 * 1024;
@@ -166,7 +190,7 @@ public class ExportSnapshot extends Configured implements Tool {
 
       try {
         conf.setBoolean("fs." + outputRoot.toUri().getScheme() + ".impl.disable.cache", true);
-        outputFs = FileSystem.get(outputRoot.toUri(), conf);
+        outputFs = FileSystem.get(outputRoot.toUri(), createOutputFsConf(conf));
       } catch (IOException e) {
         throw new IOException("Could not get the output FileSystem with root="+ outputRoot, e);
       }
@@ -876,7 +900,7 @@ public class ExportSnapshot extends Configured implements Tool {
     FileSystem inputFs = FileSystem.get(inputRoot.toUri(), conf);
     LOG.debug("inputFs=" + inputFs.getUri().toString() + " inputRoot=" + inputRoot);
     conf.setBoolean("fs." + outputRoot.toUri().getScheme() + ".impl.disable.cache", true);
-    FileSystem outputFs = FileSystem.get(outputRoot.toUri(), conf);
+    FileSystem outputFs = FileSystem.get(outputRoot.toUri(), createOutputFsConf(conf));
     LOG.debug("outputFs=" + outputFs.getUri().toString() + " outputRoot=" + outputRoot.toString());
 
     boolean skipTmp = conf.getBoolean(CONF_SKIP_TMP, false);
