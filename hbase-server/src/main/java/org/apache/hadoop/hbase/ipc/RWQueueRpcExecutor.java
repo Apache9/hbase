@@ -125,8 +125,12 @@ public class RWQueueRpcExecutor extends RpcExecutor {
     }
     if (!queues.get(queueIndex).offer(callTask)) {
       callTask.resetCallQueueSize();
-      callTask.doRespond(null, new IOException(), "IPC server unable to "
-          + ((queueIndex < numWriteQueues) ? "write" : "read") + " call method");
+      String queueType = queueIndex < numWriteQueues ? "write" : "read";
+      LOG.error("Could not insert into " + queueType + "Queue!");
+      org.apache.hadoop.util.ReflectionUtils.logThreadInfo(LOG,
+        "thread dump when call queue is full", 10000);
+      callTask.doRespond(null, new IOException(), "IPC server unable to " + queueType
+          + " call method");
     }
   }
 
