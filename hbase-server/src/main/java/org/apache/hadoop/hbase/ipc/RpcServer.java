@@ -1097,9 +1097,15 @@ public class RpcServer implements RpcServerInterface {
 
       boolean doRegister = false;
       synchronized (call.connection.responseQueue) {
-        call.connection.responseQueue.addLast(call);
-        if (call.connection.responseQueue.size() == 1) {
-          doRegister = !processResponse(call.connection.responseQueue, false);
+        boolean closed = (call.connection.closed || !call.connection.channel.isOpen());
+        if (!closed) {
+          call.connection.responseQueue.addLast(call);
+          if (call.connection.responseQueue.size() == 1) {
+            doRegister = !processResponse(call.connection.responseQueue, false);
+          }
+        } else {
+          // this should be safe even the connection "closed" flag is true
+          closeConnection(call.connection);
         }
       }
       if (doRegister) {
@@ -1139,6 +1145,7 @@ public class RpcServer implements RpcServerInterface {
     private boolean connectionPreambleRead = false;
     // If the connection header has been read or not.
     private boolean connectionHeaderRead = false;
+    protected volatile boolean closed = false;    // indicates if connection was closed
     protected SocketChannel channel;
     private ByteBuffer data;
     private ByteBuffer dataLengthBuffer;
@@ -1792,6 +1799,7 @@ public class RpcServer implements RpcServerInterface {
       disposeSasl();
       data = null;
       this.dataLengthBuffer = null;
+      closed = true;
       if (!channel.isOpen())
         return;
       try {socket.shutdownOutput();} catch(Exception ignored) {} // FindBugs DE_MIGHT_IGNORE
