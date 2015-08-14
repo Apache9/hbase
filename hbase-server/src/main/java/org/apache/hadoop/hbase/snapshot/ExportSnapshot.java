@@ -304,7 +304,7 @@ public class ExportSnapshot extends Configured implements Tool {
         context.getCounter(Counter.BYTES_EXPECTED).increment(inputStat.getLen());
 
         // Ensure that the output folder is there and copy the file
-        outputFs.mkdirs(outputPath.getParent());
+        createOutputPath(outputPath.getParent());
         FSDataOutputStream out = outputFs.create(outputPath, true);
         try {
           copyData(context, inputStat.getPath(), in, outputPath, out, inputStat.getLen());
@@ -321,6 +321,23 @@ public class ExportSnapshot extends Configured implements Tool {
       }
     }
 
+    /**
+     * Ensure that the output folder is there and copy the file
+     */
+    private void createOutputPath(final Path path) throws IOException {
+      if (filesUser == null && filesGroup == null) {
+        outputFs.mkdirs(path);
+      } else {
+        Path parent = path.getParent();
+        if (!outputFs.exists(parent) && !parent.isRoot()) {
+          createOutputPath(parent);
+        }
+        outputFs.mkdirs(path);
+        // override the owner when non-null user/group is specified
+        outputFs.setOwner(path, filesUser, filesGroup);
+      }
+    }
+    
     /**
      * Try to Preserve the files attribute selected by the user copying them from the source file
      * This is only required when you are exporting as a different user than "hbase" or on a system
