@@ -985,6 +985,10 @@ public final class HConstants {
       "hbase.node.health.failure.threshold";
   public static final int DEFAULT_HEALTH_FAILURE_THRESHOLD = 3;
 
+  public static final String HUGE_KV_SIZE_IN_BYTE_WARN_NAME = "hbase.huge.keyvalue.size.in.byte";
+  public static final int HUGE_KV_SIZE_IN_BYTE_WARN_VALUE = 1048576; //1M
+  public static final String HUGE_ROW_SIZE_IN_BYTE_WARN_NAME = "hbase.huge.row.size.in.byte";
+  public static final int HUGE_ROW_SIZE_IN_BYTE_WARN_VALUE = 134217728; //128M
 
   /**
    * Setting to activate, or not, the publication of the status by the master. Default

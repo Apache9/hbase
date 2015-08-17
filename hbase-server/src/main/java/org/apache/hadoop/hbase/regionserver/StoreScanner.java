@@ -78,7 +78,10 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
   protected final long oldestUnexpiredTS;
   protected final long now;
   protected final int minVersions;
-
+  private int hugeKvWarningSizeInByte;
+  private long hugeRowWarningSizeInByte;
+  private long currentInResultRowSizeInByte;
+  
   /**
    * The number of KVs seen by the scanner. Includes explicitly skipped KVs, but not
    * KVs skipped via seeking to next row/column. TODO: estimate them?
@@ -139,17 +142,28 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
     // for multi-row (non-"get") scans because this is not done in
     // StoreFile.passesBloomFilter(Scan, SortedSet<byte[]>).
     useRowColBloom = numCol > 1 || (!isGet && numCol == 1);
-
+    hugeKvWarningSizeInByte = HConstants.HUGE_KV_SIZE_IN_BYTE_WARN_VALUE; // for testing
+    
     // The parallel-seeking is on :
     // 1) the config value is *true*
     // 2) store has more than one store file
-    if (store != null && ((HStore)store).getHRegion() != null
-        && store.getStorefilesCount() > 1) {
+    if (store != null && ((HStore)store).getHRegion() != null) {
       RegionServerServices rsService = ((HStore)store).getHRegion().getRegionServerServices();
-      if (rsService == null || !rsService.getConfiguration().getBoolean(
-            STORESCANNER_PARALLEL_SEEK_ENABLE, false)) return;
-      isParallelSeekEnabled = true;
-      executor = rsService.getExecutorService();
+      if (rsService == null) return;
+      hugeKvWarningSizeInByte = rsService.getConfiguration().getInt(
+        HConstants.HUGE_KV_SIZE_IN_BYTE_WARN_NAME, HConstants.HUGE_KV_SIZE_IN_BYTE_WARN_VALUE);
+      hugeRowWarningSizeInByte = rsService.getConfiguration().getLong(
+        HConstants.HUGE_ROW_SIZE_IN_BYTE_WARN_NAME, HConstants.HUGE_ROW_SIZE_IN_BYTE_WARN_VALUE);
+      long maxResultSize = rsService.getConfiguration().getLong(
+        HConstants.HBASE_CLIENT_SCANNER_MAX_RESULT_SIZE_KEY,
+        HConstants.DEFAULT_HBASE_CLIENT_SCANNER_MAX_RESULT_SIZE);
+      hugeRowWarningSizeInByte = hugeRowWarningSizeInByte <= maxResultSize ? hugeRowWarningSizeInByte
+          : maxResultSize;
+      if (store.getStorefilesCount() > 1) {
+        if (!rsService.getConfiguration().getBoolean(STORESCANNER_PARALLEL_SEEK_ENABLE, false)) return;
+        isParallelSeekEnabled = true;
+        executor = rsService.getExecutorService();
+      }
     }
   }
 
@@ -463,6 +477,7 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
         matcher.rowOffset, matcher.rowLength)) {
       this.countPerRow = 0;
       matcher.setRow(row, offset, length);
+      currentInResultRowSizeInByte = 0;
     }
 
     KeyValue kv;
@@ -504,6 +519,7 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
           // also update metric accordingly
           if (this.countPerRow > storeOffset) {
             checkScanOrder(outResult, kv, comparator);
+            checkKvSize(kv);
             outResult.add(kv);
             count++;
           }
@@ -662,6 +678,7 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
       this.countPerRow = 0;
       matcher.reset();
       matcher.setRow(row, offset, length);
+      currentInResultRowSizeInByte = 0;
     }
   }
 
@@ -685,6 +702,20 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
     //nop inside StoreScanner class
   }
 
+  // Only be used while adding the kv into result currently
+  protected void checkKvSize(KeyValue kv) {
+    long size = kv.heapSize();
+    if (kv.heapSize() > hugeKvWarningSizeInByte) {
+      LOG.warn("adding a HUGE KV into result list, kv size:" + size + ", key:"
+          + Bytes.toStringBinary(kv.getKey()));
+    }
+    currentInResultRowSizeInByte += size;
+    if (currentInResultRowSizeInByte > hugeRowWarningSizeInByte) {
+      LOG.warn("adding a HUGE ROW's kv into result list, added row size:"
+          + currentInResultRowSizeInByte + ", key:" + Bytes.toStringBinary(kv.getKey()));
+    }
+  }
+  
   protected boolean seekToNextRow(KeyValue kv) throws IOException {
     return reseek(matcher.getKeyForNextRow(kv));
   }
