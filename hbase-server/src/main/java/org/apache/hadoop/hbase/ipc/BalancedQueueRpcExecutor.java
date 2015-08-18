@@ -77,7 +77,7 @@ public class BalancedQueueRpcExecutor extends RpcExecutor {
       callTask.resetCallQueueSize();
       LOG.error("Could not insert into Queue!");
       org.apache.hadoop.util.ReflectionUtils.logThreadInfo(LOG,
-        "thread dump when call queue is full", 10000);
+        "thread dump when call queue is full", 60);
       callTask.doRespond(null, new IOException(), "IPC server unable to call method");
     }
   }
