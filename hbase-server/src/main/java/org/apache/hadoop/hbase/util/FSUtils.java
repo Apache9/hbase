@@ -56,6 +56,7 @@ import org.apache.hadoop.fs.PathFilter;
 import org.apache.hadoop.fs.permission.FsAction;
 import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.hbase.ClusterId;
+import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HDFSBlocksDistribution;
@@ -1947,5 +1948,25 @@ public abstract class FSUtils {
     long maxRecoverLeaseTime = recoverLeaseTime;
     recoverLeaseTime = 0;
     return maxRecoverLeaseTime;
+  }
+  
+  public static void main(String[] args) {
+    if (args.length != 2) {
+      System.out.println("FSHDFSUtils -recoverlease file");
+      return;
+    }
+    String method = args[0];
+    Path path = new Path(args[1]);
+    Configuration conf = HBaseConfiguration.create();
+    if (method.equals("-recoverlease")) {
+      try {
+        FileSystem fs = FileSystem.get(conf);
+        FSUtils.getInstance(fs, conf).recoverFileLease(fs, path, conf, null);
+      } catch (IOException e) {
+        LOG.error("Recover lease failed", e);
+      }
+    } else {
+      LOG.info("Unkonwn method: " + method);
+    }
   }
 }
