@@ -278,6 +278,7 @@ public class HLogSplitter {
         return false;
       }
       Reader in = null;
+      long startTS = EnvironmentEdgeManager.currentTimeMillis();
       try {
         in = getReader(fs, logfile, conf, skipErrors, reporter);
       } catch (CorruptedLogFileException e) {
@@ -289,6 +290,8 @@ public class HLogSplitter {
         LOG.warn("Nothing to split in log file " + logPath);
         return true;
       }
+      long openCost = EnvironmentEdgeManager.currentTimeMillis() - startTS;
+      LOG.info("Open log file: " + logfile.getPath().getName() + " cost: " + openCost + " ms");
       if(watcher != null) {
         try {
           disablingOrDisabledTables = ZKTable.getDisabledOrDisablingTables(watcher);

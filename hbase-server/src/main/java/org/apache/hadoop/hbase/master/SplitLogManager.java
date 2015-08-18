@@ -670,7 +670,7 @@ public class SplitLogManager extends ZooKeeperListener {
         if (task.status == IN_PROGRESS) {
           if (status == SUCCESS) {
             SplitLogCounters.tot_mgr_log_split_success.incrementAndGet();
-            LOG.info("Done splitting " + path);
+            LOG.info("Done splitting " + path + " cost: " + task.getRunningTime() + " ms");
           } else {
             SplitLogCounters.tot_mgr_log_split_err.incrementAndGet();
             LOG.warn("Error splitting " + path);
@@ -1384,7 +1384,8 @@ public class SplitLogManager extends ZooKeeperListener {
     volatile int incarnation;
     final AtomicInteger unforcedResubmits = new AtomicInteger();
     volatile boolean resubmitThresholdReached;
-
+    long startTS;
+    
     @Override
     public String toString() {
       return ("last_update = " + last_update +
@@ -1401,6 +1402,7 @@ public class SplitLogManager extends ZooKeeperListener {
       last_version = -1;
       status = IN_PROGRESS;
       setUnassigned();
+      startTS = EnvironmentEdgeManager.currentTimeMillis();
     }
 
     public boolean isOrphan() {
@@ -1424,6 +1426,10 @@ public class SplitLogManager extends ZooKeeperListener {
     public void setUnassigned() {
       cur_worker_name = null;
       last_update = -1;
+    }
+    
+    public long getRunningTime() {
+      return EnvironmentEdgeManager.currentTimeMillis() - startTS;
     }
   }
 
