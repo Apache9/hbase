@@ -47,7 +47,13 @@ module Hbase
     #----------------------------------------------------------------------------------------------
     # Requests a table or region flush
     def flush(table_or_region_name)
-      @admin.flush(table_or_region_name)
+      if table_or_region_name == nil
+        @admin.getTableNames().each do |table|
+          @admin.flush(table)
+        end
+      else
+        @admin.flush(table_or_region_name)
+      end
     end
 
     #----------------------------------------------------------------------------------------------
