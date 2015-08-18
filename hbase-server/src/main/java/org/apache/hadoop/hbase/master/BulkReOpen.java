@@ -84,8 +84,43 @@ public class BulkReOpen extends BulkAssigner {
   */
   @Override
   protected boolean waitUntilDone(long timeout) {
+    long startTime = System.currentTimeMillis();
+    for (Map.Entry<ServerName, List<HRegionInfo>> e : rsToRegions.entrySet()) {
+      final List<HRegionInfo> hris = e.getValue();
+      for (HRegionInfo hri : hris) {
+        long remaining = timeout - (System.currentTimeMillis() - startTime);
+        if (!waitUntilRegionOnline(hri, remaining)) {
+          return false;
+        }
+      }
+    }
     return true;
   }
+  
+  /**
+   * Wait the region to be opened
+   * @param hri the region
+   * @param timeout the timeout
+   * @return true if region is opened, and false if timeout
+   * @throws InterruptedException
+   */
+  private boolean waitUntilRegionOnline(final HRegionInfo hri, long timeout) {
+    long startTime = System.currentTimeMillis();
+    long remaining = timeout;
+    while (!server.isStopped() && remaining > 0) {
+      if (assignmentManager.getRegionStates().isRegionInTransition(hri)) {
+        LOG.info("region is not in transition " + hri);
+        return true;
+      }
+      remaining = timeout - (System.currentTimeMillis() - startTime);
+      try {
+        Thread.sleep(1000);
+      } catch (InterruptedException e) {
+      }
+    }
+    return false;
+  }
+
 
   /**
    * Configuration knobs "hbase.bulk.reopen.threadpool.size" number of regions
