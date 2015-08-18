@@ -1164,6 +1164,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
       request.setLoad(sl);
       reportResponse = rss.regionServerReport(null, request.build());
     } catch (ServiceException se) {
+      LOG.warn("Try to report to hmaster failed", se);
       IOException ioe = ProtobufUtil.getRemoteException(se);
       if (ioe instanceof YouAreDeadException) {
         // This will be caught and handled as a fatal error in run()
