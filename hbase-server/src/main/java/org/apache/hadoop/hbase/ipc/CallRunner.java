@@ -28,6 +28,7 @@ import org.apache.hadoop.hbase.security.UserProvider;
 import org.apache.hadoop.hbase.util.Pair;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.util.StringUtils;
+import org.cloudera.htrace.Sampler;
 import org.cloudera.htrace.Trace;
 import org.cloudera.htrace.TraceScope;
 
@@ -101,6 +102,8 @@ public class CallRunner {
         }
         if (call.tinfo != null) {
           traceScope = Trace.startSpan(call.toTraceString(), call.tinfo);
+        } else {
+          traceScope = Trace.startSpan(call.toTraceString(), Sampler.ALWAYS);
         }
         RequestContext.set(userProvider.create(call.connection.user), RpcServer.getRemoteIp(),
           call.connection.service);

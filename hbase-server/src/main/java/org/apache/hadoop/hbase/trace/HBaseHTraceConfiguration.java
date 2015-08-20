@@ -45,4 +45,9 @@ public class HBaseHTraceConfiguration extends HTraceConfiguration {
   public boolean getBoolean(String key, boolean defaultValue) {
     return conf.getBoolean(KEY_PREFIX + key, defaultValue);
   }
+  
+  @Override
+  public int getInt(String key, int defaultValue) {
+    return conf.getInt(KEY_PREFIX + key, defaultValue);
+  }
 }
