@@ -157,6 +157,7 @@ public class RpcServer implements RpcServerInterface {
 
   public static final byte CURRENT_VERSION = 0;
 
+  public static long SLOW_IO_LOG_THRESHOLD_MS;
   /**
    * How many calls/handler are allowed in the queue.
    */
@@ -1919,6 +1920,7 @@ public class RpcServer implements RpcServerInterface {
     }
     this.scheduler = scheduler;
     this.scheduler.init(new RpcSchedulerContext(this));
+    SLOW_IO_LOG_THRESHOLD_MS = conf.getLong("hbase.slow.io.log.threshold.ms", 300);
   }
 
   /**

@@ -49,6 +49,8 @@ import org.apache.hadoop.hbase.util.ChecksumType;
 import org.apache.hadoop.hbase.util.ClassSize;
 import org.apache.hadoop.hbase.util.CompoundBloomFilter;
 import org.apache.hadoop.io.IOUtils;
+import org.cloudera.htrace.Trace;
+import org.cloudera.htrace.TraceScope;
 
 import com.google.common.base.Preconditions;
 
@@ -1310,10 +1312,13 @@ public class HFileBlock implements Cacheable {
       }
       
       if (!pread && streamLock.tryLock()) {
+        TraceScope traceScope = Trace.startSpan("HFileBlock.seekAndRead");
         // Seek + read. Better for scanning.
         try {
+          long begin = System.currentTimeMillis();
           istream.seek(fileOffset);
-
+          long middle = System.currentTimeMillis();
+          
           long realOffset = istream.getPos();
           if (realOffset != fileOffset) {
             throw new IOException("Tried to seek to " + fileOffset + " to "
@@ -1329,21 +1334,39 @@ public class HFileBlock implements Cacheable {
           // Try to read the next block header.
           if (!readWithExtra(istream, dest, destOffset, size, hdrSize))
             return -1;
+          
+          long end = System.currentTimeMillis();
+          if (end - begin > RpcServer.SLOW_IO_LOG_THRESHOLD_MS) {
+            HFile.LOG.info("readAtOffset read cost:" + (end - begin) + "ms, seek cost:"
+                + (middle - begin) + "ms");
+          }
         } finally {
           streamLock.unlock();
+          traceScope.close();
         }
       } else {
-        // Positional read. Better for random reads; or when the streamLock is already locked.
-        int extraSize = peekIntoNextBlock ? hdrSize : 0;
-        int ret = istream.read(fileOffset, dest, destOffset, size + extraSize);
-        if (ret < size) {
-          throw new IOException("Positional read of " + size + " bytes " +
-              "failed at offset " + fileOffset + " (returned " + ret + ")");
-        }
-
-        if (ret == size || ret < size + extraSize) {
-          // Could not read the next block's header, or did not try.
-          return -1;
+        TraceScope traceScope = Trace.startSpan("HFileBlock.pread");
+        try {
+          // Positional read. Better for random reads; or when the streamLock is already locked.
+          int extraSize = peekIntoNextBlock ? hdrSize : 0;
+          long begin = System.currentTimeMillis();
+          int ret = istream.read(fileOffset, dest, destOffset, size + extraSize);
+          if (ret < size) {
+            throw new IOException("Positional read of " + size + " bytes " +
+                "failed at offset " + fileOffset + " (returned " + ret + ")");
+          }
+          
+          long end = System.currentTimeMillis();
+          if (end - begin > RpcServer.SLOW_IO_LOG_THRESHOLD_MS) {
+            HFile.LOG.info("readAtOffset pread cost:" + (end - begin) + "ms");
+          }
+          
+          if (ret == size || ret < size + extraSize) {
+            // Could not read the next block's header, or did not try.
+            return -1;
+          }
+        } finally {
+          traceScope.close();
         }
       }
 
