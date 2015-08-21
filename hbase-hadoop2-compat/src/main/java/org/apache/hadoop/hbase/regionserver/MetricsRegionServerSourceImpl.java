@@ -43,6 +43,11 @@ public class MetricsRegionServerSourceImpl
   private final MetricHistogram appendHisto;
   private final MetricHistogram replayHisto;
 
+  // FS read/write histogram
+  private final MetricHistogram fsRead;
+  private final MetricHistogram fsPread;
+  private final MetricHistogram fsWrite;
+  
   private final MutableCounterLong slowPut;
   private final MutableCounterLong slowDelete;
   private final MutableCounterLong slowGet;
@@ -88,6 +93,13 @@ public class MetricsRegionServerSourceImpl
 
     splitRequest = getMetricsRegistry().newCounter(SPLIT_REQUEST_KEY, SPLIT_REQUEST_DESC, 0l);
     splitSuccess = getMetricsRegistry().newCounter(SPLIT_SUCCESS_KEY, SPLIT_SUCCESS_DESC, 0l);
+  
+    fsRead = getMetricsRegistry().newHistogram(FS_READ_KEY);
+    fsPread = getMetricsRegistry().newHistogram(FS_PREAD_KEY);
+    fsWrite = getMetricsRegistry().newHistogram(FS_WRITE_KEY);
+    if (rsWrap != null) {
+      rsWrap.initialFSMetrics(fsRead, fsPread, fsWrite);
+    }
   }
 
   @Override

@@ -274,4 +274,8 @@ public interface MetricsRegionServerSource extends BaseSource {
   String SPLIT_SUCCESS_KEY = "splitSuccessCounnt";
   String SPLIT_SUCCESS_DESC = "Number of successfully executed splits";
   String FLUSH_KEY = "flushTime";
+  
+  String FS_READ_KEY = "fsReadLatencyHistogram";
+  String FS_PREAD_KEY = "fsPreadLatencyHistogram";
+  String FS_WRITE_KEY = "fsWriteLatencyHistogram";
 }

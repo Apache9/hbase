@@ -36,6 +36,7 @@ import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.KeyValue.KVComparator;
 import org.apache.hadoop.hbase.io.hfile.HFile.Writer;
 import org.apache.hadoop.hbase.io.hfile.HFileBlock.BlockWritable;
+import org.apache.hadoop.hbase.regionserver.MetricsRegionServerWrapperImpl;
 import org.apache.hadoop.hbase.util.BloomFilterWriter;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.io.Writable;
@@ -149,6 +150,8 @@ public class HFileWriterV2 extends AbstractHFileWriter {
     if (!fsBlockWriter.isWriting() || fsBlockWriter.blockSizeWritten() == 0)
       return;
 
+    long startTimeNs = System.nanoTime();
+
     // Update the first data block offset for scanning.
     if (firstDataBlockOffset == -1) {
       firstDataBlockOffset = outputStream.getPos();
@@ -161,6 +164,9 @@ public class HFileWriterV2 extends AbstractHFileWriter {
     byte[] indexKey = comparator.calcIndexKey(lastKeyOfPreviousBlock, firstKeyInBlock);
     dataBlockIndexWriter.addEntry(indexKey, lastDataBlockOffset, onDiskSize);
     totalUncompressedBytes += fsBlockWriter.getUncompressedSizeWithHeader();
+    
+    MetricsRegionServerWrapperImpl.updateFSWriteLatency(System.nanoTime() - startTimeNs);
+    
     if (cacheConf.shouldCacheDataOnWrite()) {
       doCacheOnWrite(lastDataBlockOffset);
     }

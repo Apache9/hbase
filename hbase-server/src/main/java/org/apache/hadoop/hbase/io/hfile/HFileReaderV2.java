@@ -37,6 +37,10 @@ import org.apache.hadoop.hbase.io.encoding.DataBlockEncoder;
 import org.apache.hadoop.hbase.io.encoding.DataBlockEncoding;
 import org.apache.hadoop.hbase.io.encoding.HFileBlockDecodingContext;
 import org.apache.hadoop.hbase.io.hfile.HFile.FileInfo;
+import org.apache.hadoop.hbase.regionserver.MetricsRegionServerSourceImpl;
+import org.apache.hadoop.hbase.regionserver.MetricsRegionServerWrapper;
+import org.apache.hadoop.hbase.regionserver.MetricsRegionServerWrapperImpl;
+import org.apache.hadoop.hbase.regionserver.MetricsRegionWrapperImpl;
 import org.apache.hadoop.hbase.util.ByteBufferUtils;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.IdLock;
@@ -268,7 +272,8 @@ public class HFileReaderV2 extends AbstractHFileReader {
     if (block == -1)
       return null;
     long blockSize = metaBlockIndexReader.getRootBlockDataSize(block);
-
+    long startTimeNs = System.nanoTime();
+    
     // Per meta key from any given file, synchronize reads for said block. This
     // is OK to do for meta blocks because the meta block index is always
     // single-level.
@@ -293,6 +298,9 @@ public class HFileReaderV2 extends AbstractHFileReader {
 
       HFileBlock metaBlock = fsBlockReader.readBlockData(metaBlockOffset,
           blockSize, -1, true).unpack(hfileContext, fsBlockReader);
+      
+      final long delta = System.nanoTime() - startTimeNs;
+      MetricsRegionServerWrapperImpl.updateFSReadLatency(delta, true);
 
       // Cache the block
       if (cacheBlock) {
@@ -391,12 +399,16 @@ public class HFileReaderV2 extends AbstractHFileReader {
           traceScope.getSpan().addTimelineAnnotation("blockCacheMiss");
         }
         // Load block from filesystem.
+        long startTimeNs = System.nanoTime();
         HFileBlock hfileBlock = fsBlockReader.readBlockData(dataBlockOffset, onDiskBlockSize, -1,
             pread);
         validateBlockType(hfileBlock, expectedBlockType);
         HFileBlock unpacked = hfileBlock.unpack(hfileContext, fsBlockReader);
         BlockType.BlockCategory category = hfileBlock.getBlockType().getCategory();
-
+        
+        final long delta = System.nanoTime() - startTimeNs;
+        MetricsRegionServerWrapperImpl.updateFSReadLatency(delta, pread);
+        
         // Cache the block if necessary
         if (cacheBlock && cacheConf.shouldCacheBlockOnRead(category)) {
           cacheConf.getBlockCache().cacheBlock(cacheKey,
