@@ -111,6 +111,7 @@ public class CallRunner {
         resultPair = this.rpcServer.call(call.service, call.md, call.param, call.cellScanner,
           call.timestamp, this.status);
       } catch (Throwable e) {
+        this.rpcServer.getMetrics().failedCalls();
         RpcServer.LOG.debug(Thread.currentThread().getName() + ": " + call.toShortString(), e);
         errorThrowable = e;
         error = StringUtils.stringifyException(e);

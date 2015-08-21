@@ -38,6 +38,7 @@ public class MetricsHBaseServerSourceImpl extends BaseSourceImpl
   private final MutableCounterLong authenticationFailures;
   private final MutableCounterLong sentBytes;
   private final MutableCounterLong receivedBytes;
+  private final MutableCounterLong failedCalls;
   private MutableHistogram queueCallTime;
   private MutableHistogram processCallTime;
 
@@ -62,6 +63,8 @@ public class MetricsHBaseServerSourceImpl extends BaseSourceImpl
         SENT_BYTES_DESC, 0l);
     this.receivedBytes = this.getMetricsRegistry().newCounter(RECEIVED_BYTES_NAME,
         RECEIVED_BYTES_DESC, 0l);
+    this.failedCalls = this.getMetricsRegistry().newCounter(FAILED_CALLS_NAME, FAILED_CALLS_DESC,
+      0l);
     this.queueCallTime = this.getMetricsRegistry().newHistogram(QUEUE_CALL_TIME_NAME,
         QUEUE_CALL_TIME_DESC);
     this.processCallTime = this.getMetricsRegistry().newHistogram(PROCESS_CALL_TIME_NAME,
@@ -97,7 +100,12 @@ public class MetricsHBaseServerSourceImpl extends BaseSourceImpl
   public void receivedBytes(int count) {
     this.receivedBytes.incr(count);
   }
-
+  
+  @Override
+  public void failedCalls() {
+    this.failedCalls.incr();
+  }
+  
   @Override
   public void dequeuedCall(int qTime) {
     queueCallTime.add(qTime);
