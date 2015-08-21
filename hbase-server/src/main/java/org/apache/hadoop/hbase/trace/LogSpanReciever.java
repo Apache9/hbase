@@ -1,9 +1,11 @@
 package org.apache.hadoop.hbase.trace;
 
 import java.io.IOException;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.cliffc.high_scale_lib.Counter;
 import org.cloudera.htrace.HTraceConfiguration;
 import org.cloudera.htrace.Span;
 import org.cloudera.htrace.SpanReceiver;
@@ -19,6 +21,13 @@ public class LogSpanReciever implements SpanReceiver {
   public static final int DEFAULT_TRACE_SPAN_WARN_TIME = 50;
   private long warnTime;
   
+  // Once reach this upper limit, the remaining log requests in the same second will be NOP
+  // by default, it's Integer.MAX, means no tracelog rate limit.
+  protected int maxTraceLogCountPerSeccond;
+  protected final AtomicLong lastTick = new AtomicLong(0); // in seconds
+  protected final Counter traceLogCounter = new Counter(); // trace log request counter in lastTick;
+  private static final String TRACE_LOG_REQUEST_COUNT_MAX = "hbase.ipc.trace.log.request.count.max";
+  
   @Override
   public void close() throws IOException {
     // TODO Auto-generated method stub
@@ -28,27 +37,50 @@ public class LogSpanReciever implements SpanReceiver {
   @Override
   public void configure(HTraceConfiguration conf) {
     warnTime = conf.getInt(TRACE_SPAN_WARN_TIME, DEFAULT_TRACE_SPAN_WARN_TIME);
-    LOG.info("configure LogSpanReciever, warnTIme=" + warnTime + " (ms)");
+    maxTraceLogCountPerSeccond = conf.getInt(TRACE_LOG_REQUEST_COUNT_MAX, Integer.MAX_VALUE);
+    LOG.info("configure LogSpanReciever, warnTIme=" + warnTime
+        + " (ms), maxTraceLogCountPerSeccond=" + maxTraceLogCountPerSeccond);
   }
 
+  protected String toLogString(Span span, long duration) {
+    StringBuffer buf = new StringBuffer();
+    buf.append("description=").append(span.getDescription()).append(", consume(ms)=")
+        .append(duration).append("\n");
+    buf.append("---> ").append("spanId=").append(span.getSpanId()).append(", parentId=")
+        .append(span.getParentId()).append(", traceId=").append(span.getTraceId())
+        .append(", start=").append(span.getStartTimeMillis()).append("\n");
+    if (span.getKVAnnotations() != null && span.getKVAnnotations().size() > 0) {
+      buf.append("---> ").append("kvAnnotations=").append(span.getKVAnnotations()).append("\n");
+    }
+    if (span.getTimelineAnnotations() != null && span.getTimelineAnnotations().size() > 0) {
+      buf.append("---> ").append("timelineAnnotations=").append(span.getTimelineAnnotations())
+          .append("\n");
+    }
+    return span.toString();
+  }
+  
   @Override
   public void receiveSpan(Span span) {
     long duration = span.getAccumulatedMillis();
     if (duration >= warnTime) {
-      StringBuffer buf = new StringBuffer();
-      buf.append("description=").append(span.getDescription()).append(", consume(ms)=")
-          .append(duration).append("\n");
-      buf.append("---> ").append("spanId=").append(span.getSpanId()).append(", parentId=")
-          .append(span.getParentId()).append(", traceId=").append(span.getTraceId())
-          .append(", start=").append(span.getStartTimeMillis()).append("\n");
-      if (span.getKVAnnotations() != null && span.getKVAnnotations().size() > 0) {
-        buf.append("---> ").append("kvAnnotations=").append(span.getKVAnnotations()).append("\n");
+      if (maxTraceLogCountPerSeccond == Integer.MAX_VALUE) {
+        // no rate limit
+        TRACELOG.info(toLogString(span, duration));
+      } else {
+        long currTick = System.currentTimeMillis() / 1000;
+        if (lastTick.getAndSet(currTick) != currTick) {
+          traceLogCounter.set(1);
+          TRACELOG.info(toLogString(span, duration));
+        } else {
+          if (traceLogCounter.intValue() < maxTraceLogCountPerSeccond) {
+            TRACELOG.info(toLogString(span, duration));
+            traceLogCounter.increment();
+          } else {
+            //once reach the rate limit in current second, we do not need to
+            //update counter or do log.info() any more.
+          }
+        }
       }
-      if (span.getTimelineAnnotations() != null && span.getTimelineAnnotations().size() > 0) {
-        buf.append("---> ").append("timelineAnnotations=").append(span.getTimelineAnnotations())
-            .append("\n");
-      }
-      TRACELOG.info(buf.toString());
     }
   }
 }
