@@ -17,6 +17,7 @@
  */
 package org.apache.hadoop.hbase.regionserver;
 
+import java.io.IOException;
 import java.util.Collection;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -35,6 +36,7 @@ import org.apache.hadoop.hbase.io.hfile.CacheStats;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.FSUtils;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
+import org.apache.hadoop.hdfs.DFSHedgedReadMetrics;
 import org.apache.hadoop.metrics2.MetricHistogram;
 import org.apache.hadoop.metrics2.MetricsExecutor;
 
@@ -75,7 +77,10 @@ public class MetricsRegionServerWrapperImpl
   private volatile long compactedCellsSize = 0;
   private volatile long majorCompactedCellsSize = 0;
   private volatile long blockedRequestsCount = 0L;
-
+  private volatile long hedgedReads = 0L;
+  private volatile long hedgedReadWins = 0L;
+  private volatile long hedgedReadsInCurThread = 0L;
+  
   // histogram metrics for fs read/write
   private static boolean initializeFSMetrics = false;
   private static MetricHistogram fsRead = null;
@@ -536,6 +541,20 @@ public class MetricsRegionServerWrapperImpl
       compactedCellsSize = tempCompactedCellsSize;
       majorCompactedCellsSize = tempMajorCompactedCellsSize;
       blockedRequestsCount = tempBlockedRequestsCount;
+      
+      DFSHedgedReadMetrics hedgedReadMetrics;
+      if (regionServer != null) {
+        try {
+          hedgedReadMetrics = FSUtils.getDFSHedgedReadMetrics(regionServer.getConfiguration());
+          if (hedgedReadMetrics != null) {
+            hedgedReads = hedgedReadMetrics.getHedgedReadOps();
+            hedgedReadWins = hedgedReadMetrics.getHedgedReadWins();
+            hedgedReadsInCurThread = hedgedReadMetrics.getHedgedReadOpsInCurThread();
+          }
+        } catch (IOException e1) {
+          LOG.info("get hedgedRead metric error", e1);
+        }
+      }
     }
   }
 
@@ -573,5 +592,20 @@ public class MetricsRegionServerWrapperImpl
     if (initializeFSMetrics) {
       fsWrite.add(latency);
     }
+  }
+
+  @Override
+  public long getHedgedReads() {
+    return hedgedReads;
+  }
+
+  @Override
+  public long getHedgedReadWins() {
+    return hedgedReadWins;
+  }
+
+  @Override
+  public long getHedgedReadsInCurThread() {
+    return hedgedReadsInCurThread;
   }
 }

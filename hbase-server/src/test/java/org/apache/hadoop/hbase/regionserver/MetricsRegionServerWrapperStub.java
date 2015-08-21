@@ -262,4 +262,19 @@ public class MetricsRegionServerWrapperStub implements MetricsRegionServerWrappe
   public void initialFSMetrics(MetricHistogram fsRead, MetricHistogram fsPread,
       MetricHistogram fsWrite) {
   }
+
+  @Override
+  public long getHedgedReads() {
+    return 0;
+  }
+
+  @Override
+  public long getHedgedReadWins() {
+    return 0;
+  }
+
+  @Override
+  public long getHedgedReadsInCurThread() {
+    return 0;
+  }
 }

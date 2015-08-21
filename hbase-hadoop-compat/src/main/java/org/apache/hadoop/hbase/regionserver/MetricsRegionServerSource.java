@@ -278,4 +278,8 @@ public interface MetricsRegionServerSource extends BaseSource {
   String FS_READ_KEY = "fsReadLatencyHistogram";
   String FS_PREAD_KEY = "fsPreadLatencyHistogram";
   String FS_WRITE_KEY = "fsWriteLatencyHistogram";
+  
+  String HEDGED_READS_KEY = "hedgedReads";
+  String HEDGED_READ_WINS_KEY = "hedgedReadWins";
+  String HEDGED_READ_IN_CURRENT_THREAD_KEY = "hedgedReadsInCurThread";
 }

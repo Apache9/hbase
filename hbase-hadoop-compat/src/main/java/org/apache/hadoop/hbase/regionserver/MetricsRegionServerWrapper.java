@@ -267,4 +267,11 @@ public interface MetricsRegionServerWrapper {
   // initialize FileSystem read/write metrics
   public void initialFSMetrics(MetricHistogram fsRead, MetricHistogram fsPread,
       MetricHistogram fsWrite);
+  
+  // hedged read metrics
+  public long getHedgedReads();
+  
+  public long getHedgedReadWins();
+  
+  public long getHedgedReadsInCurThread();
 }
