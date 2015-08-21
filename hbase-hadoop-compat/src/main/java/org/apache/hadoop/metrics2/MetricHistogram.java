@@ -33,6 +33,7 @@ public interface MetricHistogram {
   String SEVENTY_FIFTH_PERCENTILE_METRIC_NAME = "_75th_percentile";
   String NINETY_FIFTH_PERCENTILE_METRIC_NAME = "_95th_percentile";
   String NINETY_NINETH_PERCENTILE_METRIC_NAME = "_99th_percentile";
+  String NINETY_NINETH_POINT_NINETH_PERCENTILE_METRIC_NAME = "_999th_percentile";
 
   /**
    * Add a single value to a histogram's stream of values.
