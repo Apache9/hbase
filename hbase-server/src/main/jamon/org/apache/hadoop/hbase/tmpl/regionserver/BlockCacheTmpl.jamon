@@ -233,6 +233,16 @@ org.apache.hadoop.util.StringUtils;
         <td><% String.format("%,.2f", cacheConfig.getBlockCache().getStats().getHitRatio() * 100) %><% "%" %></td>
         <td>Hit Count divided by total requests count</td>
     </tr>
+    <tr>
+        <td>Hit Ratio PastNPeriods</td>
+        <td><% String.format("%,.2f", cacheConfig.getBlockCache().getStats().getHitRatioPastNPeriods() * 100) %><% "%" %></td>
+        <td>Hit Count divided by total requests count in past N periods</td>
+    </tr>
+    <tr>
+        <td>Hit Caching Ratio PastNPeriods</td>
+        <td><% String.format("%,.2f", cacheConfig.getBlockCache().getStats().getHitCachingRatioPastNPeriods() * 100) %><% "%" %></td>
+        <td>Hit Caching Count divided by total caching requests count in past N periods</td>
+    </tr>
 </table>
 <p>If Block Cache is made up of more than one cache -- i.e. a L1 and a L2 -- then the above
 are combined counts. Request count is sum of hits and misses.</p>
