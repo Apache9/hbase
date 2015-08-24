@@ -102,7 +102,7 @@ public class CallRunner {
         }
         if (call.tinfo != null) {
           traceScope = Trace.startSpan(call.toTraceString(), call.tinfo);
-        } else {
+        } else if (RpcServer.ALWAYS_TRACE_IN_SERVER_SIDE) {
           traceScope = Trace.startSpan(call.toTraceString(), Sampler.ALWAYS);
         }
         RequestContext.set(userProvider.create(call.connection.user), RpcServer.getRemoteIp(),
