@@ -108,7 +108,7 @@ public class BulkReOpen extends BulkAssigner {
     long startTime = System.currentTimeMillis();
     long remaining = timeout;
     while (!server.isStopped() && remaining > 0) {
-      if (assignmentManager.getRegionStates().isRegionInTransition(hri)) {
+      if (!assignmentManager.getRegionStates().isRegionInTransition(hri)) {
         LOG.info("region is not in transition " + hri);
         return true;
       }
