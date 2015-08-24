@@ -79,8 +79,8 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
   protected final long oldestUnexpiredTS;
   protected final long now;
   protected final int minVersions;
-  private int hugeKvWarningSizeInByte;
-  private long hugeRowWarningSizeInByte;
+  private int hugeKvWarningSizeInByte = HConstants.HUGE_KV_SIZE_IN_BYTE_WARN_VALUE;
+  private long hugeRowWarningSizeInByte = HConstants.HUGE_ROW_SIZE_IN_BYTE_WARN_VALUE;
   private long currentInResultRowSizeInByte;
   
   /**
@@ -151,15 +151,17 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
     if (store != null && ((HStore)store).getHRegion() != null) {
       RegionServerServices rsService = ((HStore)store).getHRegion().getRegionServerServices();
       if (rsService == null) return;
-      hugeKvWarningSizeInByte = rsService.getConfiguration().getInt(
-        HConstants.HUGE_KV_SIZE_IN_BYTE_WARN_NAME, HConstants.HUGE_KV_SIZE_IN_BYTE_WARN_VALUE);
-      hugeRowWarningSizeInByte = rsService.getConfiguration().getLong(
-        HConstants.HUGE_ROW_SIZE_IN_BYTE_WARN_NAME, HConstants.HUGE_ROW_SIZE_IN_BYTE_WARN_VALUE);
-      long maxResultSize = rsService.getConfiguration().getLong(
-        HConstants.HBASE_CLIENT_SCANNER_MAX_RESULT_SIZE_KEY,
-        HConstants.DEFAULT_HBASE_CLIENT_SCANNER_MAX_RESULT_SIZE);
-      hugeRowWarningSizeInByte = hugeRowWarningSizeInByte <= maxResultSize ? hugeRowWarningSizeInByte
-          : maxResultSize;
+      if (rsService.getConfiguration() != null) {
+        hugeKvWarningSizeInByte = rsService.getConfiguration().getInt(
+          HConstants.HUGE_KV_SIZE_IN_BYTE_WARN_NAME, HConstants.HUGE_KV_SIZE_IN_BYTE_WARN_VALUE);
+        hugeRowWarningSizeInByte = rsService.getConfiguration().getLong(
+          HConstants.HUGE_ROW_SIZE_IN_BYTE_WARN_NAME, HConstants.HUGE_ROW_SIZE_IN_BYTE_WARN_VALUE);
+        long maxResultSize = rsService.getConfiguration().getLong(
+          HConstants.HBASE_CLIENT_SCANNER_MAX_RESULT_SIZE_KEY,
+          HConstants.DEFAULT_HBASE_CLIENT_SCANNER_MAX_RESULT_SIZE);
+        hugeRowWarningSizeInByte = hugeRowWarningSizeInByte <= maxResultSize ? hugeRowWarningSizeInByte
+            : maxResultSize;
+      }
       if (store.getStorefilesCount() > 1) {
         if (!rsService.getConfiguration().getBoolean(STORESCANNER_PARALLEL_SEEK_ENABLE, false)) return;
         isParallelSeekEnabled = true;
