@@ -20831,6 +20831,874 @@ public final class AdminProtos {
     // @@protoc_insertion_point(class_scope:SwitchThrottleResponse)
   }
 
+  public interface CompactionEnableRequestOrBuilder
+      extends com.google.protobuf.MessageOrBuilder {
+
+    // optional bool enable = 1;
+    /**
+     * <code>optional bool enable = 1;</code>
+     */
+    boolean hasEnable();
+    /**
+     * <code>optional bool enable = 1;</code>
+     */
+    boolean getEnable();
+  }
+  /**
+   * Protobuf type {@code CompactionEnableRequest}
+   */
+  public static final class CompactionEnableRequest extends
+      com.google.protobuf.GeneratedMessage
+      implements CompactionEnableRequestOrBuilder {
+    // Use CompactionEnableRequest.newBuilder() to construct.
+    private CompactionEnableRequest(com.google.protobuf.GeneratedMessage.Builder<?> builder) {
+      super(builder);
+      this.unknownFields = builder.getUnknownFields();
+    }
+    private CompactionEnableRequest(boolean noInit) { this.unknownFields = com.google.protobuf.UnknownFieldSet.getDefaultInstance(); }
+
+    private static final CompactionEnableRequest defaultInstance;
+    public static CompactionEnableRequest getDefaultInstance() {
+      return defaultInstance;
+    }
+
+    public CompactionEnableRequest getDefaultInstanceForType() {
+      return defaultInstance;
+    }
+
+    private final com.google.protobuf.UnknownFieldSet unknownFields;
+    @java.lang.Override
+    public final com.google.protobuf.UnknownFieldSet
+        getUnknownFields() {
+      return this.unknownFields;
+    }
+    private CompactionEnableRequest(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      initFields();
+      int mutable_bitField0_ = 0;
+      com.google.protobuf.UnknownFieldSet.Builder unknownFields =
+          com.google.protobuf.UnknownFieldSet.newBuilder();
+      try {
+        boolean done = false;
+        while (!done) {
+          int tag = input.readTag();
+          switch (tag) {
+            case 0:
+              done = true;
+              break;
+            default: {
+              if (!parseUnknownField(input, unknownFields,
+                                     extensionRegistry, tag)) {
+                done = true;
+              }
+              break;
+            }
+            case 8: {
+              bitField0_ |= 0x00000001;
+              enable_ = input.readBool();
+              break;
+            }
+          }
+        }
+      } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+        throw e.setUnfinishedMessage(this);
+      } catch (java.io.IOException e) {
+        throw new com.google.protobuf.InvalidProtocolBufferException(
+            e.getMessage()).setUnfinishedMessage(this);
+      } finally {
+        this.unknownFields = unknownFields.build();
+        makeExtensionsImmutable();
+      }
+    }
+    public static final com.google.protobuf.Descriptors.Descriptor
+        getDescriptor() {
+      return org.apache.hadoop.hbase.protobuf.generated.AdminProtos.internal_static_CompactionEnableRequest_descriptor;
+    }
+
+    protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+        internalGetFieldAccessorTable() {
+      return org.apache.hadoop.hbase.protobuf.generated.AdminProtos.internal_static_CompactionEnableRequest_fieldAccessorTable
+          .ensureFieldAccessorsInitialized(
+              org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableRequest.class, org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableRequest.Builder.class);
+    }
+
+    public static com.google.protobuf.Parser<CompactionEnableRequest> PARSER =
+        new com.google.protobuf.AbstractParser<CompactionEnableRequest>() {
+      public CompactionEnableRequest parsePartialFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws com.google.protobuf.InvalidProtocolBufferException {
+        return new CompactionEnableRequest(input, extensionRegistry);
+      }
+    };
+
+    @java.lang.Override
+    public com.google.protobuf.Parser<CompactionEnableRequest> getParserForType() {
+      return PARSER;
+    }
+
+    private int bitField0_;
+    // optional bool enable = 1;
+    public static final int ENABLE_FIELD_NUMBER = 1;
+    private boolean enable_;
+    /**
+     * <code>optional bool enable = 1;</code>
+     */
+    public boolean hasEnable() {
+      return ((bitField0_ & 0x00000001) == 0x00000001);
+    }
+    /**
+     * <code>optional bool enable = 1;</code>
+     */
+    public boolean getEnable() {
+      return enable_;
+    }
+
+    private void initFields() {
+      enable_ = false;
+    }
+    private byte memoizedIsInitialized = -1;
+    public final boolean isInitialized() {
+      byte isInitialized = memoizedIsInitialized;
+      if (isInitialized != -1) return isInitialized == 1;
+
+      memoizedIsInitialized = 1;
+      return true;
+    }
+
+    public void writeTo(com.google.protobuf.CodedOutputStream output)
+                        throws java.io.IOException {
+      getSerializedSize();
+      if (((bitField0_ & 0x00000001) == 0x00000001)) {
+        output.writeBool(1, enable_);
+      }
+      getUnknownFields().writeTo(output);
+    }
+
+    private int memoizedSerializedSize = -1;
+    public int getSerializedSize() {
+      int size = memoizedSerializedSize;
+      if (size != -1) return size;
+
+      size = 0;
+      if (((bitField0_ & 0x00000001) == 0x00000001)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeBoolSize(1, enable_);
+      }
+      size += getUnknownFields().getSerializedSize();
+      memoizedSerializedSize = size;
+      return size;
+    }
+
+    private static final long serialVersionUID = 0L;
+    @java.lang.Override
+    protected java.lang.Object writeReplace()
+        throws java.io.ObjectStreamException {
+      return super.writeReplace();
+    }
+
+    @java.lang.Override
+    public boolean equals(final java.lang.Object obj) {
+      if (obj == this) {
+       return true;
+      }
+      if (!(obj instanceof org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableRequest)) {
+        return super.equals(obj);
+      }
+      org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableRequest other = (org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableRequest) obj;
+
+      boolean result = true;
+      result = result && (hasEnable() == other.hasEnable());
+      if (hasEnable()) {
+        result = result && (getEnable()
+            == other.getEnable());
+      }
+      result = result &&
+          getUnknownFields().equals(other.getUnknownFields());
+      return result;
+    }
+
+    private int memoizedHashCode = 0;
+    @java.lang.Override
+    public int hashCode() {
+      if (memoizedHashCode != 0) {
+        return memoizedHashCode;
+      }
+      int hash = 41;
+      hash = (19 * hash) + getDescriptorForType().hashCode();
+      if (hasEnable()) {
+        hash = (37 * hash) + ENABLE_FIELD_NUMBER;
+        hash = (53 * hash) + hashBoolean(getEnable());
+      }
+      hash = (29 * hash) + getUnknownFields().hashCode();
+      memoizedHashCode = hash;
+      return hash;
+    }
+
+    public static org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableRequest parseFrom(
+        com.google.protobuf.ByteString data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableRequest parseFrom(
+        com.google.protobuf.ByteString data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableRequest parseFrom(byte[] data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableRequest parseFrom(
+        byte[] data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableRequest parseFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableRequest parseFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableRequest parseDelimitedFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return PARSER.parseDelimitedFrom(input);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableRequest parseDelimitedFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseDelimitedFrom(input, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableRequest parseFrom(
+        com.google.protobuf.CodedInputStream input)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableRequest parseFrom(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input, extensionRegistry);
+    }
+
+    public static Builder newBuilder() { return Builder.create(); }
+    public Builder newBuilderForType() { return newBuilder(); }
+    public static Builder newBuilder(org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableRequest prototype) {
+      return newBuilder().mergeFrom(prototype);
+    }
+    public Builder toBuilder() { return newBuilder(this); }
+
+    @java.lang.Override
+    protected Builder newBuilderForType(
+        com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+      Builder builder = new Builder(parent);
+      return builder;
+    }
+    /**
+     * Protobuf type {@code CompactionEnableRequest}
+     */
+    public static final class Builder extends
+        com.google.protobuf.GeneratedMessage.Builder<Builder>
+       implements org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableRequestOrBuilder {
+      public static final com.google.protobuf.Descriptors.Descriptor
+          getDescriptor() {
+        return org.apache.hadoop.hbase.protobuf.generated.AdminProtos.internal_static_CompactionEnableRequest_descriptor;
+      }
+
+      protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+          internalGetFieldAccessorTable() {
+        return org.apache.hadoop.hbase.protobuf.generated.AdminProtos.internal_static_CompactionEnableRequest_fieldAccessorTable
+            .ensureFieldAccessorsInitialized(
+                org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableRequest.class, org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableRequest.Builder.class);
+      }
+
+      // Construct using org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableRequest.newBuilder()
+      private Builder() {
+        maybeForceBuilderInitialization();
+      }
+
+      private Builder(
+          com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+        super(parent);
+        maybeForceBuilderInitialization();
+      }
+      private void maybeForceBuilderInitialization() {
+        if (com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders) {
+        }
+      }
+      private static Builder create() {
+        return new Builder();
+      }
+
+      public Builder clear() {
+        super.clear();
+        enable_ = false;
+        bitField0_ = (bitField0_ & ~0x00000001);
+        return this;
+      }
+
+      public Builder clone() {
+        return create().mergeFrom(buildPartial());
+      }
+
+      public com.google.protobuf.Descriptors.Descriptor
+          getDescriptorForType() {
+        return org.apache.hadoop.hbase.protobuf.generated.AdminProtos.internal_static_CompactionEnableRequest_descriptor;
+      }
+
+      public org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableRequest getDefaultInstanceForType() {
+        return org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableRequest.getDefaultInstance();
+      }
+
+      public org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableRequest build() {
+        org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableRequest result = buildPartial();
+        if (!result.isInitialized()) {
+          throw newUninitializedMessageException(result);
+        }
+        return result;
+      }
+
+      public org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableRequest buildPartial() {
+        org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableRequest result = new org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableRequest(this);
+        int from_bitField0_ = bitField0_;
+        int to_bitField0_ = 0;
+        if (((from_bitField0_ & 0x00000001) == 0x00000001)) {
+          to_bitField0_ |= 0x00000001;
+        }
+        result.enable_ = enable_;
+        result.bitField0_ = to_bitField0_;
+        onBuilt();
+        return result;
+      }
+
+      public Builder mergeFrom(com.google.protobuf.Message other) {
+        if (other instanceof org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableRequest) {
+          return mergeFrom((org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableRequest)other);
+        } else {
+          super.mergeFrom(other);
+          return this;
+        }
+      }
+
+      public Builder mergeFrom(org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableRequest other) {
+        if (other == org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableRequest.getDefaultInstance()) return this;
+        if (other.hasEnable()) {
+          setEnable(other.getEnable());
+        }
+        this.mergeUnknownFields(other.getUnknownFields());
+        return this;
+      }
+
+      public final boolean isInitialized() {
+        return true;
+      }
+
+      public Builder mergeFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws java.io.IOException {
+        org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableRequest parsedMessage = null;
+        try {
+          parsedMessage = PARSER.parsePartialFrom(input, extensionRegistry);
+        } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+          parsedMessage = (org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableRequest) e.getUnfinishedMessage();
+          throw e;
+        } finally {
+          if (parsedMessage != null) {
+            mergeFrom(parsedMessage);
+          }
+        }
+        return this;
+      }
+      private int bitField0_;
+
+      // optional bool enable = 1;
+      private boolean enable_ ;
+      /**
+       * <code>optional bool enable = 1;</code>
+       */
+      public boolean hasEnable() {
+        return ((bitField0_ & 0x00000001) == 0x00000001);
+      }
+      /**
+       * <code>optional bool enable = 1;</code>
+       */
+      public boolean getEnable() {
+        return enable_;
+      }
+      /**
+       * <code>optional bool enable = 1;</code>
+       */
+      public Builder setEnable(boolean value) {
+        bitField0_ |= 0x00000001;
+        enable_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>optional bool enable = 1;</code>
+       */
+      public Builder clearEnable() {
+        bitField0_ = (bitField0_ & ~0x00000001);
+        enable_ = false;
+        onChanged();
+        return this;
+      }
+
+      // @@protoc_insertion_point(builder_scope:CompactionEnableRequest)
+    }
+
+    static {
+      defaultInstance = new CompactionEnableRequest(true);
+      defaultInstance.initFields();
+    }
+
+    // @@protoc_insertion_point(class_scope:CompactionEnableRequest)
+  }
+
+  public interface CompactionEnableResponseOrBuilder
+      extends com.google.protobuf.MessageOrBuilder {
+
+    // optional bool enable = 1;
+    /**
+     * <code>optional bool enable = 1;</code>
+     */
+    boolean hasEnable();
+    /**
+     * <code>optional bool enable = 1;</code>
+     */
+    boolean getEnable();
+  }
+  /**
+   * Protobuf type {@code CompactionEnableResponse}
+   */
+  public static final class CompactionEnableResponse extends
+      com.google.protobuf.GeneratedMessage
+      implements CompactionEnableResponseOrBuilder {
+    // Use CompactionEnableResponse.newBuilder() to construct.
+    private CompactionEnableResponse(com.google.protobuf.GeneratedMessage.Builder<?> builder) {
+      super(builder);
+      this.unknownFields = builder.getUnknownFields();
+    }
+    private CompactionEnableResponse(boolean noInit) { this.unknownFields = com.google.protobuf.UnknownFieldSet.getDefaultInstance(); }
+
+    private static final CompactionEnableResponse defaultInstance;
+    public static CompactionEnableResponse getDefaultInstance() {
+      return defaultInstance;
+    }
+
+    public CompactionEnableResponse getDefaultInstanceForType() {
+      return defaultInstance;
+    }
+
+    private final com.google.protobuf.UnknownFieldSet unknownFields;
+    @java.lang.Override
+    public final com.google.protobuf.UnknownFieldSet
+        getUnknownFields() {
+      return this.unknownFields;
+    }
+    private CompactionEnableResponse(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      initFields();
+      int mutable_bitField0_ = 0;
+      com.google.protobuf.UnknownFieldSet.Builder unknownFields =
+          com.google.protobuf.UnknownFieldSet.newBuilder();
+      try {
+        boolean done = false;
+        while (!done) {
+          int tag = input.readTag();
+          switch (tag) {
+            case 0:
+              done = true;
+              break;
+            default: {
+              if (!parseUnknownField(input, unknownFields,
+                                     extensionRegistry, tag)) {
+                done = true;
+              }
+              break;
+            }
+            case 8: {
+              bitField0_ |= 0x00000001;
+              enable_ = input.readBool();
+              break;
+            }
+          }
+        }
+      } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+        throw e.setUnfinishedMessage(this);
+      } catch (java.io.IOException e) {
+        throw new com.google.protobuf.InvalidProtocolBufferException(
+            e.getMessage()).setUnfinishedMessage(this);
+      } finally {
+        this.unknownFields = unknownFields.build();
+        makeExtensionsImmutable();
+      }
+    }
+    public static final com.google.protobuf.Descriptors.Descriptor
+        getDescriptor() {
+      return org.apache.hadoop.hbase.protobuf.generated.AdminProtos.internal_static_CompactionEnableResponse_descriptor;
+    }
+
+    protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+        internalGetFieldAccessorTable() {
+      return org.apache.hadoop.hbase.protobuf.generated.AdminProtos.internal_static_CompactionEnableResponse_fieldAccessorTable
+          .ensureFieldAccessorsInitialized(
+              org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableResponse.class, org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableResponse.Builder.class);
+    }
+
+    public static com.google.protobuf.Parser<CompactionEnableResponse> PARSER =
+        new com.google.protobuf.AbstractParser<CompactionEnableResponse>() {
+      public CompactionEnableResponse parsePartialFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws com.google.protobuf.InvalidProtocolBufferException {
+        return new CompactionEnableResponse(input, extensionRegistry);
+      }
+    };
+
+    @java.lang.Override
+    public com.google.protobuf.Parser<CompactionEnableResponse> getParserForType() {
+      return PARSER;
+    }
+
+    private int bitField0_;
+    // optional bool enable = 1;
+    public static final int ENABLE_FIELD_NUMBER = 1;
+    private boolean enable_;
+    /**
+     * <code>optional bool enable = 1;</code>
+     */
+    public boolean hasEnable() {
+      return ((bitField0_ & 0x00000001) == 0x00000001);
+    }
+    /**
+     * <code>optional bool enable = 1;</code>
+     */
+    public boolean getEnable() {
+      return enable_;
+    }
+
+    private void initFields() {
+      enable_ = false;
+    }
+    private byte memoizedIsInitialized = -1;
+    public final boolean isInitialized() {
+      byte isInitialized = memoizedIsInitialized;
+      if (isInitialized != -1) return isInitialized == 1;
+
+      memoizedIsInitialized = 1;
+      return true;
+    }
+
+    public void writeTo(com.google.protobuf.CodedOutputStream output)
+                        throws java.io.IOException {
+      getSerializedSize();
+      if (((bitField0_ & 0x00000001) == 0x00000001)) {
+        output.writeBool(1, enable_);
+      }
+      getUnknownFields().writeTo(output);
+    }
+
+    private int memoizedSerializedSize = -1;
+    public int getSerializedSize() {
+      int size = memoizedSerializedSize;
+      if (size != -1) return size;
+
+      size = 0;
+      if (((bitField0_ & 0x00000001) == 0x00000001)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeBoolSize(1, enable_);
+      }
+      size += getUnknownFields().getSerializedSize();
+      memoizedSerializedSize = size;
+      return size;
+    }
+
+    private static final long serialVersionUID = 0L;
+    @java.lang.Override
+    protected java.lang.Object writeReplace()
+        throws java.io.ObjectStreamException {
+      return super.writeReplace();
+    }
+
+    @java.lang.Override
+    public boolean equals(final java.lang.Object obj) {
+      if (obj == this) {
+       return true;
+      }
+      if (!(obj instanceof org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableResponse)) {
+        return super.equals(obj);
+      }
+      org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableResponse other = (org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableResponse) obj;
+
+      boolean result = true;
+      result = result && (hasEnable() == other.hasEnable());
+      if (hasEnable()) {
+        result = result && (getEnable()
+            == other.getEnable());
+      }
+      result = result &&
+          getUnknownFields().equals(other.getUnknownFields());
+      return result;
+    }
+
+    private int memoizedHashCode = 0;
+    @java.lang.Override
+    public int hashCode() {
+      if (memoizedHashCode != 0) {
+        return memoizedHashCode;
+      }
+      int hash = 41;
+      hash = (19 * hash) + getDescriptorForType().hashCode();
+      if (hasEnable()) {
+        hash = (37 * hash) + ENABLE_FIELD_NUMBER;
+        hash = (53 * hash) + hashBoolean(getEnable());
+      }
+      hash = (29 * hash) + getUnknownFields().hashCode();
+      memoizedHashCode = hash;
+      return hash;
+    }
+
+    public static org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableResponse parseFrom(
+        com.google.protobuf.ByteString data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableResponse parseFrom(
+        com.google.protobuf.ByteString data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableResponse parseFrom(byte[] data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableResponse parseFrom(
+        byte[] data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableResponse parseFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableResponse parseFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableResponse parseDelimitedFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return PARSER.parseDelimitedFrom(input);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableResponse parseDelimitedFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseDelimitedFrom(input, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableResponse parseFrom(
+        com.google.protobuf.CodedInputStream input)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableResponse parseFrom(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input, extensionRegistry);
+    }
+
+    public static Builder newBuilder() { return Builder.create(); }
+    public Builder newBuilderForType() { return newBuilder(); }
+    public static Builder newBuilder(org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableResponse prototype) {
+      return newBuilder().mergeFrom(prototype);
+    }
+    public Builder toBuilder() { return newBuilder(this); }
+
+    @java.lang.Override
+    protected Builder newBuilderForType(
+        com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+      Builder builder = new Builder(parent);
+      return builder;
+    }
+    /**
+     * Protobuf type {@code CompactionEnableResponse}
+     */
+    public static final class Builder extends
+        com.google.protobuf.GeneratedMessage.Builder<Builder>
+       implements org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableResponseOrBuilder {
+      public static final com.google.protobuf.Descriptors.Descriptor
+          getDescriptor() {
+        return org.apache.hadoop.hbase.protobuf.generated.AdminProtos.internal_static_CompactionEnableResponse_descriptor;
+      }
+
+      protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+          internalGetFieldAccessorTable() {
+        return org.apache.hadoop.hbase.protobuf.generated.AdminProtos.internal_static_CompactionEnableResponse_fieldAccessorTable
+            .ensureFieldAccessorsInitialized(
+                org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableResponse.class, org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableResponse.Builder.class);
+      }
+
+      // Construct using org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableResponse.newBuilder()
+      private Builder() {
+        maybeForceBuilderInitialization();
+      }
+
+      private Builder(
+          com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+        super(parent);
+        maybeForceBuilderInitialization();
+      }
+      private void maybeForceBuilderInitialization() {
+        if (com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders) {
+        }
+      }
+      private static Builder create() {
+        return new Builder();
+      }
+
+      public Builder clear() {
+        super.clear();
+        enable_ = false;
+        bitField0_ = (bitField0_ & ~0x00000001);
+        return this;
+      }
+
+      public Builder clone() {
+        return create().mergeFrom(buildPartial());
+      }
+
+      public com.google.protobuf.Descriptors.Descriptor
+          getDescriptorForType() {
+        return org.apache.hadoop.hbase.protobuf.generated.AdminProtos.internal_static_CompactionEnableResponse_descriptor;
+      }
+
+      public org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableResponse getDefaultInstanceForType() {
+        return org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableResponse.getDefaultInstance();
+      }
+
+      public org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableResponse build() {
+        org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableResponse result = buildPartial();
+        if (!result.isInitialized()) {
+          throw newUninitializedMessageException(result);
+        }
+        return result;
+      }
+
+      public org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableResponse buildPartial() {
+        org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableResponse result = new org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableResponse(this);
+        int from_bitField0_ = bitField0_;
+        int to_bitField0_ = 0;
+        if (((from_bitField0_ & 0x00000001) == 0x00000001)) {
+          to_bitField0_ |= 0x00000001;
+        }
+        result.enable_ = enable_;
+        result.bitField0_ = to_bitField0_;
+        onBuilt();
+        return result;
+      }
+
+      public Builder mergeFrom(com.google.protobuf.Message other) {
+        if (other instanceof org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableResponse) {
+          return mergeFrom((org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableResponse)other);
+        } else {
+          super.mergeFrom(other);
+          return this;
+        }
+      }
+
+      public Builder mergeFrom(org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableResponse other) {
+        if (other == org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableResponse.getDefaultInstance()) return this;
+        if (other.hasEnable()) {
+          setEnable(other.getEnable());
+        }
+        this.mergeUnknownFields(other.getUnknownFields());
+        return this;
+      }
+
+      public final boolean isInitialized() {
+        return true;
+      }
+
+      public Builder mergeFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws java.io.IOException {
+        org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableResponse parsedMessage = null;
+        try {
+          parsedMessage = PARSER.parsePartialFrom(input, extensionRegistry);
+        } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+          parsedMessage = (org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableResponse) e.getUnfinishedMessage();
+          throw e;
+        } finally {
+          if (parsedMessage != null) {
+            mergeFrom(parsedMessage);
+          }
+        }
+        return this;
+      }
+      private int bitField0_;
+
+      // optional bool enable = 1;
+      private boolean enable_ ;
+      /**
+       * <code>optional bool enable = 1;</code>
+       */
+      public boolean hasEnable() {
+        return ((bitField0_ & 0x00000001) == 0x00000001);
+      }
+      /**
+       * <code>optional bool enable = 1;</code>
+       */
+      public boolean getEnable() {
+        return enable_;
+      }
+      /**
+       * <code>optional bool enable = 1;</code>
+       */
+      public Builder setEnable(boolean value) {
+        bitField0_ |= 0x00000001;
+        enable_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>optional bool enable = 1;</code>
+       */
+      public Builder clearEnable() {
+        bitField0_ = (bitField0_ & ~0x00000001);
+        enable_ = false;
+        onChanged();
+        return this;
+      }
+
+      // @@protoc_insertion_point(builder_scope:CompactionEnableResponse)
+    }
+
+    static {
+      defaultInstance = new CompactionEnableResponse(true);
+      defaultInstance.initFields();
+    }
+
+    // @@protoc_insertion_point(class_scope:CompactionEnableResponse)
+  }
+
   /**
    * Protobuf service {@code AdminService}
    */
@@ -20967,6 +21835,14 @@ public final class AdminProtos {
           org.apache.hadoop.hbase.protobuf.generated.AdminProtos.SwitchThrottleRequest request,
           com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.AdminProtos.SwitchThrottleResponse> done);
 
+      /**
+       * <code>rpc SwitchCompaction(.CompactionEnableRequest) returns (.CompactionEnableResponse);</code>
+       */
+      public abstract void switchCompaction(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableRequest request,
+          com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableResponse> done);
+
     }
 
     public static com.google.protobuf.Service newReflectiveService(
@@ -21100,6 +21976,14 @@ public final class AdminProtos {
           impl.switchThrottle(controller, request, done);
         }
 
+        @java.lang.Override
+        public  void switchCompaction(
+            com.google.protobuf.RpcController controller,
+            org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableRequest request,
+            com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableResponse> done) {
+          impl.switchCompaction(controller, request, done);
+        }
+
       };
     }
 
@@ -21154,6 +22038,8 @@ public final class AdminProtos {
               return impl.updateFavoredNodes(controller, (org.apache.hadoop.hbase.protobuf.generated.AdminProtos.UpdateFavoredNodesRequest)request);
             case 15:
               return impl.switchThrottle(controller, (org.apache.hadoop.hbase.protobuf.generated.AdminProtos.SwitchThrottleRequest)request);
+            case 16:
+              return impl.switchCompaction(controller, (org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableRequest)request);
             default:
               throw new java.lang.AssertionError("Can't get here.");
           }
@@ -21200,6 +22086,8 @@ public final class AdminProtos {
               return org.apache.hadoop.hbase.protobuf.generated.AdminProtos.UpdateFavoredNodesRequest.getDefaultInstance();
             case 15:
               return org.apache.hadoop.hbase.protobuf.generated.AdminProtos.SwitchThrottleRequest.getDefaultInstance();
+            case 16:
+              return org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableRequest.getDefaultInstance();
             default:
               throw new java.lang.AssertionError("Can't get here.");
           }
@@ -21246,6 +22134,8 @@ public final class AdminProtos {
               return org.apache.hadoop.hbase.protobuf.generated.AdminProtos.UpdateFavoredNodesResponse.getDefaultInstance();
             case 15:
               return org.apache.hadoop.hbase.protobuf.generated.AdminProtos.SwitchThrottleResponse.getDefaultInstance();
+            case 16:
+              return org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableResponse.getDefaultInstance();
             default:
               throw new java.lang.AssertionError("Can't get here.");
           }
@@ -21382,6 +22272,14 @@ public final class AdminProtos {
         org.apache.hadoop.hbase.protobuf.generated.AdminProtos.SwitchThrottleRequest request,
         com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.AdminProtos.SwitchThrottleResponse> done);
 
+    /**
+     * <code>rpc SwitchCompaction(.CompactionEnableRequest) returns (.CompactionEnableResponse);</code>
+     */
+    public abstract void switchCompaction(
+        com.google.protobuf.RpcController controller,
+        org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableRequest request,
+        com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableResponse> done);
+
     public static final
         com.google.protobuf.Descriptors.ServiceDescriptor
         getDescriptor() {
@@ -21484,6 +22382,11 @@ public final class AdminProtos {
             com.google.protobuf.RpcUtil.<org.apache.hadoop.hbase.protobuf.generated.AdminProtos.SwitchThrottleResponse>specializeCallback(
               done));
           return;
+        case 16:
+          this.switchCompaction(controller, (org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableRequest)request,
+            com.google.protobuf.RpcUtil.<org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableResponse>specializeCallback(
+              done));
+          return;
         default:
           throw new java.lang.AssertionError("Can't get here.");
       }
@@ -21530,6 +22433,8 @@ public final class AdminProtos {
           return org.apache.hadoop.hbase.protobuf.generated.AdminProtos.UpdateFavoredNodesRequest.getDefaultInstance();
         case 15:
           return org.apache.hadoop.hbase.protobuf.generated.AdminProtos.SwitchThrottleRequest.getDefaultInstance();
+        case 16:
+          return org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableRequest.getDefaultInstance();
         default:
           throw new java.lang.AssertionError("Can't get here.");
       }
@@ -21576,6 +22481,8 @@ public final class AdminProtos {
           return org.apache.hadoop.hbase.protobuf.generated.AdminProtos.UpdateFavoredNodesResponse.getDefaultInstance();
         case 15:
           return org.apache.hadoop.hbase.protobuf.generated.AdminProtos.SwitchThrottleResponse.getDefaultInstance();
+        case 16:
+          return org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableResponse.getDefaultInstance();
         default:
           throw new java.lang.AssertionError("Can't get here.");
       }
@@ -21836,6 +22743,21 @@ public final class AdminProtos {
             org.apache.hadoop.hbase.protobuf.generated.AdminProtos.SwitchThrottleResponse.class,
             org.apache.hadoop.hbase.protobuf.generated.AdminProtos.SwitchThrottleResponse.getDefaultInstance()));
       }
+
+      public  void switchCompaction(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableRequest request,
+          com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableResponse> done) {
+        channel.callMethod(
+          getDescriptor().getMethods().get(16),
+          controller,
+          request,
+          org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableResponse.getDefaultInstance(),
+          com.google.protobuf.RpcUtil.generalizeCallback(
+            done,
+            org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableResponse.class,
+            org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableResponse.getDefaultInstance()));
+      }
     }
 
     public static BlockingInterface newBlockingStub(
@@ -21922,6 +22844,11 @@ public final class AdminProtos {
       public org.apache.hadoop.hbase.protobuf.generated.AdminProtos.SwitchThrottleResponse switchThrottle(
           com.google.protobuf.RpcController controller,
           org.apache.hadoop.hbase.protobuf.generated.AdminProtos.SwitchThrottleRequest request)
+          throws com.google.protobuf.ServiceException;
+
+      public org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableResponse switchCompaction(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableRequest request)
           throws com.google.protobuf.ServiceException;
     }
 
@@ -22123,6 +23050,18 @@ public final class AdminProtos {
           org.apache.hadoop.hbase.protobuf.generated.AdminProtos.SwitchThrottleResponse.getDefaultInstance());
       }
 
+
+      public org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableResponse switchCompaction(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableRequest request)
+          throws com.google.protobuf.ServiceException {
+        return (org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableResponse) channel.callBlockingMethod(
+          getDescriptor().getMethods().get(16),
+          controller,
+          request,
+          org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableResponse.getDefaultInstance());
+      }
+
     }
 
     // @@protoc_insertion_point(class_scope:AdminService)
@@ -22298,6 +23237,16 @@ public final class AdminProtos {
   private static
     com.google.protobuf.GeneratedMessage.FieldAccessorTable
       internal_static_SwitchThrottleResponse_fieldAccessorTable;
+  private static com.google.protobuf.Descriptors.Descriptor
+    internal_static_CompactionEnableRequest_descriptor;
+  private static
+    com.google.protobuf.GeneratedMessage.FieldAccessorTable
+      internal_static_CompactionEnableRequest_fieldAccessorTable;
+  private static com.google.protobuf.Descriptors.Descriptor
+    internal_static_CompactionEnableResponse_descriptor;
+  private static
+    com.google.protobuf.GeneratedMessage.FieldAccessorTable
+      internal_static_CompactionEnableResponse_fieldAccessorTable;
 
   public static com.google.protobuf.Descriptors.FileDescriptor
       getDescriptor() {
@@ -22369,34 +23318,38 @@ public final class AdminProtos {
       "\n\013server_info\030\001 \002(\0132\013.ServerInfo\"a\n\025Swit",
       "chThrottleRequest\022\026\n\016start_throttle\030\001 \001(" +
       "\010\022\031\n\021simulate_throttle\030\002 \001(\010\022\025\n\rstop_thr" +
-      "ottle\030\003 \001(\010\"\030\n\026SwitchThrottleResponse2\211\010" +
-      "\n\014AdminService\022>\n\rGetRegionInfo\022\025.GetReg" +
-      "ionInfoRequest\032\026.GetRegionInfoResponse\022;" +
-      "\n\014GetStoreFile\022\024.GetStoreFileRequest\032\025.G" +
-      "etStoreFileResponse\022D\n\017GetOnlineRegion\022\027" +
-      ".GetOnlineRegionRequest\032\030.GetOnlineRegio" +
-      "nResponse\0225\n\nOpenRegion\022\022.OpenRegionRequ" +
-      "est\032\023.OpenRegionResponse\0228\n\013CloseRegion\022",
-      "\023.CloseRegionRequest\032\024.CloseRegionRespon" +
-      "se\0228\n\013FlushRegion\022\023.FlushRegionRequest\032\024" +
-      ".FlushRegionResponse\0228\n\013SplitRegion\022\023.Sp" +
-      "litRegionRequest\032\024.SplitRegionResponse\022>" +
-      "\n\rCompactRegion\022\025.CompactRegionRequest\032\026" +
-      ".CompactRegionResponse\022;\n\014MergeRegions\022\024" +
-      ".MergeRegionsRequest\032\025.MergeRegionsRespo" +
-      "nse\022J\n\021ReplicateWALEntry\022\031.ReplicateWALE" +
-      "ntryRequest\032\032.ReplicateWALEntryResponse\022" +
-      "?\n\006Replay\022\031.ReplicateWALEntryRequest\032\032.R",
-      "eplicateWALEntryResponse\022>\n\rRollWALWrite" +
-      "r\022\025.RollWALWriterRequest\032\026.RollWALWriter" +
-      "Response\022>\n\rGetServerInfo\022\025.GetServerInf" +
-      "oRequest\032\026.GetServerInfoResponse\0225\n\nStop" +
-      "Server\022\022.StopServerRequest\032\023.StopServerR" +
-      "esponse\022M\n\022UpdateFavoredNodes\022\032.UpdateFa" +
-      "voredNodesRequest\032\033.UpdateFavoredNodesRe" +
-      "sponse\022A\n\016SwitchThrottle\022\026.SwitchThrottl" +
-      "eRequest\032\027.SwitchThrottleResponseBA\n*org" +
-      ".apache.hadoop.hbase.protobuf.generatedB",
+      "ottle\030\003 \001(\010\"\030\n\026SwitchThrottleResponse\")\n" +
+      "\027CompactionEnableRequest\022\016\n\006enable\030\001 \001(\010" +
+      "\"*\n\030CompactionEnableResponse\022\016\n\006enable\030\001" +
+      " \001(\0102\322\010\n\014AdminService\022>\n\rGetRegionInfo\022\025" +
+      ".GetRegionInfoRequest\032\026.GetRegionInfoRes" +
+      "ponse\022;\n\014GetStoreFile\022\024.GetStoreFileRequ" +
+      "est\032\025.GetStoreFileResponse\022D\n\017GetOnlineR" +
+      "egion\022\027.GetOnlineRegionRequest\032\030.GetOnli",
+      "neRegionResponse\0225\n\nOpenRegion\022\022.OpenReg" +
+      "ionRequest\032\023.OpenRegionResponse\0228\n\013Close" +
+      "Region\022\023.CloseRegionRequest\032\024.CloseRegio" +
+      "nResponse\0228\n\013FlushRegion\022\023.FlushRegionRe" +
+      "quest\032\024.FlushRegionResponse\0228\n\013SplitRegi" +
+      "on\022\023.SplitRegionRequest\032\024.SplitRegionRes" +
+      "ponse\022>\n\rCompactRegion\022\025.CompactRegionRe" +
+      "quest\032\026.CompactRegionResponse\022;\n\014MergeRe" +
+      "gions\022\024.MergeRegionsRequest\032\025.MergeRegio" +
+      "nsResponse\022J\n\021ReplicateWALEntry\022\031.Replic",
+      "ateWALEntryRequest\032\032.ReplicateWALEntryRe" +
+      "sponse\022?\n\006Replay\022\031.ReplicateWALEntryRequ" +
+      "est\032\032.ReplicateWALEntryResponse\022>\n\rRollW" +
+      "ALWriter\022\025.RollWALWriterRequest\032\026.RollWA" +
+      "LWriterResponse\022>\n\rGetServerInfo\022\025.GetSe" +
+      "rverInfoRequest\032\026.GetServerInfoResponse\022" +
+      "5\n\nStopServer\022\022.StopServerRequest\032\023.Stop" +
+      "ServerResponse\022M\n\022UpdateFavoredNodes\022\032.U" +
+      "pdateFavoredNodesRequest\032\033.UpdateFavored" +
+      "NodesResponse\022A\n\016SwitchThrottle\022\026.Switch",
+      "ThrottleRequest\032\027.SwitchThrottleResponse" +
+      "\022G\n\020SwitchCompaction\022\030.CompactionEnableR" +
+      "equest\032\031.CompactionEnableResponseBA\n*org" +
+      ".apache.hadoop.hbase.protobuf.generatedB" +
       "\013AdminProtosH\001\210\001\001\240\001\001"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
@@ -22608,6 +23561,18 @@ public final class AdminProtos {
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_SwitchThrottleResponse_descriptor,
               new java.lang.String[] { });
+          internal_static_CompactionEnableRequest_descriptor =
+            getDescriptor().getMessageTypes().get(32);
+          internal_static_CompactionEnableRequest_fieldAccessorTable = new
+            com.google.protobuf.GeneratedMessage.FieldAccessorTable(
+              internal_static_CompactionEnableRequest_descriptor,
+              new java.lang.String[] { "Enable", });
+          internal_static_CompactionEnableResponse_descriptor =
+            getDescriptor().getMessageTypes().get(33);
+          internal_static_CompactionEnableResponse_fieldAccessorTable = new
+            com.google.protobuf.GeneratedMessage.FieldAccessorTable(
+              internal_static_CompactionEnableResponse_descriptor,
+              new java.lang.String[] { "Enable", });
           return null;
         }
       };

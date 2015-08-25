@@ -46,6 +46,7 @@ org.apache.hadoop.hbase.zookeeper.MasterAddressTracker;
   ServerName serverName = ProtobufUtil.toServerName(serverInfo.getServerName());
   List<HRegionInfo> onlineRegions = ProtobufUtil.getOnlineRegions(regionServer);
   int masterInfoPort = regionServer.getConfiguration().getInt("hbase.master.info.port", 60010);
+  boolean compactionEnable = regionServer.isEnableCompact();
   MasterAddressTracker masterAddressTracker = regionServer.getMasterAddressTracker();
   ServerName masterServerName = masterAddressTracker == null ? null
     : masterAddressTracker.getMasterAddress();
@@ -171,6 +172,11 @@ org.apache.hadoop.hbase.zookeeper.MasterAddressTracker;
                 </%if>
             </td>
             <td>Address of HBase Master</td>
+        </tr>
+        <tr>
+            <td>Compaction Enable</td>
+            <td><% compactionEnable %></td>
+            <td>RegionServer Compaction Enable Switch</td>
         </tr>
     </table>
     </section>

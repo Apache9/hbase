@@ -1165,4 +1165,16 @@ public class TestAdmin1 {
     this.admin.disableTable(tableName);
     this.admin.deleteTable(tableName);
   }
+  
+  @Test
+  public void testDisableCompact() throws Exception {
+    boolean ret = this.admin.setCompactionEnable(false);
+    assertTrue(ret);
+    ret = this.admin.setCompactionEnable(false);
+    assertFalse(ret);
+    ret = this.admin.setCompactionEnable(true);
+    assertFalse(ret);
+    ret = this.admin.setCompactionEnable(true);
+    assertTrue(ret);
+  }
 }

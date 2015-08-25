@@ -25,6 +25,7 @@ import java.io.InterruptedIOException;
 import java.net.SocketTimeoutException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -75,6 +76,8 @@ import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.AdminService;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CloseRegionRequest;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CloseRegionResponse;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactRegionRequest;
+import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableRequest;
+import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableResponse;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.FlushRegionRequest;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionInfoRequest;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionInfoResponse;
@@ -1861,6 +1864,30 @@ public class HBaseAdmin implements Abortable, Closeable {
     } finally {
       stub.close();
     }
+  }
+  
+  /**
+   * Turn the compaction switch in global instance on or off.
+   * @param b If false, disable minor&major compaction in all RS.
+   * @return Previous value
+   * @throws IOException 
+   */
+  public boolean setCompactionEnable(final boolean b) 
+      throws IOException {
+    boolean ret = false;
+    Collection<ServerName> servers = getClusterStatus().getServers();
+    for (ServerName sn : servers) {
+      AdminService.BlockingInterface admin = this.connection.getAdmin(sn);
+      CompactionEnableRequest.Builder builder = CompactionEnableRequest.newBuilder();
+      builder.setEnable(b);
+      try {
+        CompactionEnableResponse response = admin.switchCompaction(null, builder.build());
+        ret |= response.getEnable();
+      } catch (ServiceException se) {
+        throw ProtobufUtil.getRemoteException(se);
+      }
+    }
+    return ret;
   }
 
   /**

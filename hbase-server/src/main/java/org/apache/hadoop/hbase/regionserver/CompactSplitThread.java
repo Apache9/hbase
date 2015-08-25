@@ -314,7 +314,8 @@ public class CompactSplitThread implements CompactionRequestor {
       final String why, int priority, CompactionRequest request, boolean selectNow)
           throws IOException {
     if (this.server.isStopped()
-        || (r.getTableDesc() != null && !r.getTableDesc().isCompactionEnabled())) {
+        || (r.getTableDesc() != null && !r.getTableDesc().isCompactionEnabled())
+        || !this.server.isEnableCompact()) {
       return null;
     }
 
@@ -452,7 +453,8 @@ public class CompactSplitThread implements CompactionRequestor {
     public void run() {
       Preconditions.checkNotNull(server);
       if (server.isStopped()
-          || (region.getTableDesc() != null && !region.getTableDesc().isCompactionEnabled())) {
+          || (region.getTableDesc() != null && !region.getTableDesc().isCompactionEnabled())
+          || !server.isEnableCompact()) {
         return;
       }
       // Common case - system compaction without a file selection. Select now.

@@ -84,6 +84,14 @@ module Hbase
     end
 
     #----------------------------------------------------------------------------------------------
+    # Enable/disable compaction in the global cluster 
+    # Returns previous compaction switch setting.
+    def compact_switch(enableDisable)
+      @admin.setCompactionEnable(
+        java.lang.Boolean::valueOf(enableDisable))
+    end
+
+    #----------------------------------------------------------------------------------------------
     # Requests a regionserver's WAL roll
     def hlog_roll(server_name)
       @admin.rollWALWriter(ServerName.valueOf(server_name))

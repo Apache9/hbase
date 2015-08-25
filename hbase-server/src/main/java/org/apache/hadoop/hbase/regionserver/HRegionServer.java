@@ -138,6 +138,8 @@ import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CloseRegionRequest
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CloseRegionResponse;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactRegionRequest;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactRegionResponse;
+import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableRequest;
+import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableResponse;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.FlushRegionRequest;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.FlushRegionResponse;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetOnlineRegionRequest;
@@ -562,6 +564,9 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
   // When rs report to master, master response back some contents 
   private RegionServerReportResponse reportResponse;
 
+  /** RS instance flag to indicate whether allows compaction or not*/
+  private volatile boolean enableCompact = true;
+  
   /**
    * Starts a HRegionServer at the default location
    *
@@ -5251,7 +5256,20 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     }
     return SwitchThrottleResponse.newBuilder().build();
   }
+  
+  @Override
+  public CompactionEnableResponse switchCompaction(RpcController controller,
+      CompactionEnableRequest request) throws ServiceException {
+    CompactionEnableResponse.Builder builder = CompactionEnableResponse.newBuilder();
+    builder.setEnable(this.enableCompact);
+    this.enableCompact = request.getEnable();
+    return builder.build();
+  }
 
+  public boolean isEnableCompact() {
+    return this.enableCompact;
+  }
+  
   private void startQuotaManager() throws ServiceException {
     if (rsQuotaManager.isStopped()) {
       try {
