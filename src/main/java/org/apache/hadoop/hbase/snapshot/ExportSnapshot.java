@@ -317,7 +317,7 @@ public final class ExportSnapshot extends Configured implements Tool {
             context.getCounter(Counter.BYTES_COPIED).increment(reportBytes);
             context.setStatus(String.format(statusMessage,
                               StringUtils.humanReadableInt(totalBytesWritten),
-                              totalBytesWritten/(float)inputFileSize) +
+                              (totalBytesWritten/(float)inputFileSize) * 100.0) +
                               " from " + inputPath + " to " + outputPath);
             reportBytes = 0;
           }
@@ -326,7 +326,7 @@ public final class ExportSnapshot extends Configured implements Tool {
         context.getCounter(Counter.BYTES_COPIED).increment(reportBytes);
         context.setStatus(String.format(statusMessage,
                           StringUtils.humanReadableInt(totalBytesWritten),
-                          totalBytesWritten/(float)inputFileSize) +
+                          (totalBytesWritten/(float)inputFileSize) * 100.0) +
                           " from " + inputPath + " to " + outputPath);
 
         // Verify that the written size match
