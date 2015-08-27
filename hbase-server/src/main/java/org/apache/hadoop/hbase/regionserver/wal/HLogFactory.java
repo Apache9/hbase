@@ -70,7 +70,7 @@ public class HLogFactory {
      */
     private static Class<? extends Reader> logReaderClass;
 
-    static void resetLogReaderClass() {
+    public static void resetLogReaderClass() {
       logReaderClass = null;
     }
 
@@ -169,7 +169,7 @@ public class HLogFactory {
      */
     private static Class<? extends Writer> logWriterClass;
 
-    static void resetLogWriterClass() {
+    public static void resetLogWriterClass() {
       logWriterClass = null;
     }
 

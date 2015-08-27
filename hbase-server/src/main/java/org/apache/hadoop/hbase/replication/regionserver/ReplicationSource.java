@@ -32,6 +32,7 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
+import org.apache.hadoop.hbase.fs.HFileSystem;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
@@ -50,6 +51,7 @@ import org.apache.hadoop.hbase.replication.ReplicationQueueInfo;
 import org.apache.hadoop.hbase.replication.ReplicationQueues;
 import org.apache.hadoop.hbase.replication.SystemTableWALEntryFilter;
 import org.apache.hadoop.hbase.replication.WALEntryFilter;
+import org.apache.hadoop.hbase.util.FSUtils;
 import org.apache.hadoop.hbase.util.Threads;
 import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.ListenableFuture;
@@ -430,6 +432,17 @@ public class ReplicationSource extends Thread
     return false;
   }
   
+  public static void recoverFileLease(FileSystem fs, Path filePath, Configuration conf) throws IOException {
+    LOG.info("recoverFileLease fs: " + fs.getClass().getName() + " path: "+filePath.toString());
+    if(fs instanceof HFileSystem) {
+      HFileSystem hFileSystem = (HFileSystem) fs;
+      FileSystem backingFs = hFileSystem.getBackingFs();
+      LOG.info("recoverFileLease fs: " + fs.getClass().getName() + " backingFs: "
+          + backingFs.getClass().getName() + " path: " + filePath.toString());
+      FSUtils.getInstance(backingFs, conf).recoverFileLease(backingFs, filePath, conf, null);
+    }
+  }
+  
   /**
    * Read all the entries from the current log files and retain those
    * that need to be replicated. Else, process the end of the current file.
@@ -448,8 +461,24 @@ public class ReplicationSource extends Thread
     }
     this.repLogReader.seek();
     long positionBeforeRead = this.repLogReader.getPosition();
-    HLog.Entry entry =
-        this.repLogReader.readNextAndSetPosition();
+    HLog.Entry entry = null;
+    
+    try {
+      entry = this.repLogReader.readNextAndSetPosition();
+    } catch (EOFException e) {
+      if (!currentWALisBeingWrittenTo) {
+        recoverFileLease(this.fs, this.currentPath, this.conf);
+        FileStatus stat = this.fs.getFileStatus(this.currentPath);
+        LOG.info("readerPosition: " + this.repLogReader.getReaderPosition() + " len: "
+            + stat.getLen());
+        if (this.repLogReader.getReaderPosition() >= 0
+            && this.repLogReader.getReaderPosition() == stat.getLen()) {
+          return processEndOfFile();
+        }
+      }
+      throw e;
+    }
+    
     while (entry != null) {
       this.metrics.incrLogEditsRead();
       seenEntries++;
