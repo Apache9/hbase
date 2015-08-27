@@ -272,10 +272,22 @@ public class Delete extends Mutation implements Comparable<Row> {
    * This is an expensive call in that on the server-side, it first does a
    * get to find the latest versions timestamp.  Then it adds a delete using
    * the fetched cells timestamp.
+   * Warning: besides the efficency consideration, we may read out data that
+   * has been deleted after use deleteColumn(family, qualifier). For example, if we have put
+   * two versions of the same column:
+   * Put_1: row='row1', columnFamily='cf', column='c', value='value1'
+   * Put_2: row='row1', columnFamily='cf', column='c', value='value2'
+   * Assume that Put_2 is later to submit to region server and we set the version=1 for 'cf'.
+   * Therefore, value='value1' should be deleted and could not be read out at this time.
+   * Then, if we invoke deleteColumn('cf', 'c'), it's true that value='value2' will be deleted
+   * because it is newest version; however, we can read out value='value1' again after deleteColumn
+   * invoking and before memCache flush and major compact in region server.
+   * For the details of this bug, see 5.8.2.2 of http://hbase.apache.org/book.html#versions.
    * @param family family name
    * @param qualifier column qualifier
    * @return this for invocation chaining
    */
+  @Deprecated
   public Delete deleteColumn(byte [] family, byte [] qualifier) {
     this.deleteColumn(family, qualifier, this.ts);
     return this;
