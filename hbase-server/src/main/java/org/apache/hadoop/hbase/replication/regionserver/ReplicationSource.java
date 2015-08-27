@@ -91,6 +91,10 @@ public class ReplicationSource extends Thread
   private long replicationQueueSizeCapacity;
   // Max number of entries in entriesArray
   private int replicationQueueNbCapacity;
+  // Max size in bytes of entries whose position in WAL have not been persistent
+  private long logPositionSizeLimit;
+  // Max number of entries whose position in WAL have not been persistent
+  private int logPositionNbLimit;
   // Our reader for the current log
   private HLog.Reader reader;
   // Last position in the log that we sent to ZooKeeper
@@ -160,6 +164,10 @@ public class ReplicationSource extends Thread
         this.conf.getLong("replication.source.size.capacity", 1024*1024*64);
     this.replicationQueueNbCapacity =
         this.conf.getInt("replication.source.nb.capacity", 25000);
+    this.logPositionSizeLimit =
+        this.conf.getLong("replication.log.position.size.limit", 1024*1024*64);
+    this.logPositionNbLimit =
+        this.conf.getInt("replication.log.position.nb.limit", 25000);
     this.maxRetriesMultiplier = this.conf.getInt("replication.source.maxretriesmultiplier", 10);
     this.queue =
         new PriorityBlockingQueue<Path>(
@@ -413,10 +421,10 @@ public class ReplicationSource extends Thread
    * Check if log position is needed to avoid too many write operations to zookeeper
    */
   private boolean shouldLogPosition(long logPostion) {
-    if ((logPostion - this.lastLoggedPosition) >= this.replicationQueueSizeCapacity) {
+    if ((logPostion - this.lastLoggedPosition) >= this.logPositionSizeLimit) {
       return true;
     }
-    if (unLoggedPositionEdits >= this.replicationQueueNbCapacity) {
+    if (unLoggedPositionEdits >= this.logPositionNbLimit) {
       return true;
     }
     return false;
