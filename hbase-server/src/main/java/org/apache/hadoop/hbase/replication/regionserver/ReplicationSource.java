@@ -634,7 +634,18 @@ public class ReplicationSource extends Thread
         }
       }
     } catch (IOException ioe) {
-      if (ioe instanceof EOFException && isCurrentLogEmpty()) return true;
+      if (ioe instanceof EOFException) {
+        if (isCurrentLogEmpty()) {
+          return true;
+        } else {
+          boolean atTail = this.queue.size() == 0;
+          LOG.warn("EOF in recover queue:" + this.peerClusterZnode + ", atTail=" + atTail
+              + ", file path:" + this.currentPath, ioe);
+          processEndOfFile();
+          return false;
+        }
+      }
+      
       LOG.warn(this.peerClusterZnode + " Got: ", ioe);
       this.reader = null;
       if (ioe.getCause() instanceof NullPointerException) {
