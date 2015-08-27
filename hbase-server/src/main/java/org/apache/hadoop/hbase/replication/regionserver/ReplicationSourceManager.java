@@ -420,7 +420,7 @@ public class ReplicationSourceManager implements ReplicationListener {
       throw new IOException(e);
     }
 
-    MetricsSource metrics = new MetricsSource(peerId);
+    MetricsSource metrics = new MetricsSource(peerId, peerConfig.getClusterKey());
     // init replication source
     src.init(conf, fs, manager, replicationQueues, replicationPeers, server, peerId,
       clusterId, replicationEndpoint, metrics);

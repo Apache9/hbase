@@ -29,8 +29,8 @@ public class MetricsReplicationSourceFactoryImpl implements MetricsReplicationSo
     return new MetricsReplicationSinkSourceImpl(SourceHolder.INSTANCE.source);
   }
 
-  @Override public MetricsReplicationSourceSource getSource(String id) {
-    return new MetricsReplicationSourceSourceImpl(SourceHolder.INSTANCE.source, id);
+  @Override public MetricsReplicationSourceSource getSource(String id, String clusterKey) {
+    return new MetricsReplicationSourceSourceImpl(SourceHolder.INSTANCE.source, id, clusterKey);
   }
 
   @Override public MetricsReplicationSourceSource getGlobalSource() {

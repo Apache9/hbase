@@ -43,10 +43,12 @@ public class MetricsReplicationSourceSourceImpl implements MetricsReplicationSou
   private final MutableCounterLong shippedKBsCounter;
   private final MutableCounterLong logReadInBytesCounter;
 
-  public MetricsReplicationSourceSourceImpl(MetricsReplicationSourceImpl rms, String id) {
+  public MetricsReplicationSourceSourceImpl(MetricsReplicationSourceImpl rms, String id,
+      String clusterKey) {
     this.rms = rms;
     this.id = id;
-
+    rms.addPeer(id, clusterKey);
+    
     ageOfLastShippedOpKey = "source." + id + ".ageOfLastShippedOp";
     ageOfLastShippedOpGauge = rms.getMetricsRegistry().getLongGauge(ageOfLastShippedOpKey, 0L);
 
@@ -113,6 +115,7 @@ public class MetricsReplicationSourceSourceImpl implements MetricsReplicationSou
   }
 
   @Override public void clear() {
+    rms.removePeer(id);
     rms.removeMetric(ageOfLastShippedOpKey);
 
     rms.removeMetric(sizeOfLogQueueKey);
