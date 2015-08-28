@@ -31,6 +31,8 @@ public interface MetricsReplicationSourceSource {
   public static final String SOURCE_LOG_READ_IN_EDITS = "source.logEditsRead";
 
   public static final String SOURCE_LOG_EDITS_FILTERED = "source.logEditsFiltered";
+  
+  public static final String SOURCE_OPEN_READER_IOE = "source.openReaderIOE";
 
   void setLastShippedAge(long age);
   void setSizeOfLogQueue(int size);
@@ -42,6 +44,7 @@ public interface MetricsReplicationSourceSource {
   void incrShippedKBs(long size);
   void incrLogReadInBytes(long size);
   void incrLogReadInEdits(long size);
+  void incrOpenReaderIOE();
   void clear();
   long getLastShippedAge();
 }

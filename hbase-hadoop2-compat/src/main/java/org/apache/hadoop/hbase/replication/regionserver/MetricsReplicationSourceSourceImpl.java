@@ -33,6 +33,7 @@ public class MetricsReplicationSourceSourceImpl implements MetricsReplicationSou
   private final String shippedOpsKey;
   private final String shippedKBsKey;
   private final String logReadInBytesKey;
+  private final String openReaderIOEKey;
 
   private final MutableGaugeLong ageOfLastShippedOpGauge;
   private final MutableGaugeLong sizeOfLogQueueGauge;
@@ -42,7 +43,8 @@ public class MetricsReplicationSourceSourceImpl implements MetricsReplicationSou
   private final MutableCounterLong shippedOpsCounter;
   private final MutableCounterLong shippedKBsCounter;
   private final MutableCounterLong logReadInBytesCounter;
-
+  private final MutableCounterLong openReaderIOECounter;
+  
   public MetricsReplicationSourceSourceImpl(MetricsReplicationSourceImpl rms, String id,
       String clusterKey) {
     this.rms = rms;
@@ -72,6 +74,9 @@ public class MetricsReplicationSourceSourceImpl implements MetricsReplicationSou
 
     logEditsFilteredKey = "source." + id + ".logEditsFiltered";
     logEditsFilteredCounter = rms.getMetricsRegistry().getLongCounter(logEditsFilteredKey, 0L);
+    
+    openReaderIOEKey = "source." + id + ".openReaderIOE";
+    openReaderIOECounter = rms.getMetricsRegistry().getLongCounter(openReaderIOEKey, 0L);
   }
 
   @Override public void setLastShippedAge(long age) {
@@ -114,6 +119,10 @@ public class MetricsReplicationSourceSourceImpl implements MetricsReplicationSou
     logReadInBytesCounter.incr(size);
   }
 
+  @Override public void incrOpenReaderIOE() {
+    openReaderIOECounter.incr();
+  }
+  
   @Override public void clear() {
     rms.removePeer(id);
     rms.removeMetric(ageOfLastShippedOpKey);
@@ -128,6 +137,8 @@ public class MetricsReplicationSourceSourceImpl implements MetricsReplicationSou
     rms.removeMetric(logReadInEditsKey);
 
     rms.removeMetric(logEditsFilteredKey);
+    
+    rms.removeMetric(openReaderIOEKey);
   }
 
   @Override

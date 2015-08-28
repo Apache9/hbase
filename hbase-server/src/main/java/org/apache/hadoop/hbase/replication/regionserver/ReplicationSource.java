@@ -138,7 +138,8 @@ public class ReplicationSource extends Thread
   private ReplicationEndpoint.ReplicateContext replicateContext;
   // throttler
   private ReplicationThrottler throttler;
-
+  private int ioeSleepBeforeRetry = 0;
+  
   /**
    * Instantiation method used by region servers
    *
@@ -182,6 +183,7 @@ public class ReplicationSource extends Thread
     this.manager = manager;
     this.sleepForRetries =
         this.conf.getLong("replication.source.sleepforretries", 1000);
+    this.ioeSleepBeforeRetry = this.conf.getInt("replication.source.ioe.sleepbeforeretry", 0);
     this.fs = fs;
     this.metrics = metrics;
     this.repLogReader = new ReplicationHLogReaderManager(this.fs, this.conf);
@@ -653,6 +655,17 @@ public class ReplicationSource extends Thread
         // which throws a NPE if we open a file before any data node has the most recent block
         // Just sleep and retry. Will require re-reading compressed HLogs for compressionContext.
         LOG.warn("Got NPE opening reader, will retry.");
+      }
+      
+      
+      this.metrics.incrOpenReaderIOE();
+      // Throttle the failure logs
+      try {
+        if (ioeSleepBeforeRetry > 0) {
+          TimeUnit.MILLISECONDS.sleep(ioeSleepBeforeRetry);
+        }
+      } catch (Exception e) {
+        // Ignore
       }
     }
     return true;

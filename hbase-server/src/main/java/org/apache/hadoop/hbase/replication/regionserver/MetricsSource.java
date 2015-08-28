@@ -136,6 +136,11 @@ public class MetricsSource {
     incrLogEditsFiltered(1);
   }
 
+  public void incrOpenReaderIOE() {
+    singleSourceSource.incrOpenReaderIOE();
+    globalSourceSource.incrOpenReaderIOE();
+  }
+  
   /**
    * Convience method to apply changes to metrics do to shipping a batch of logs.
    *
