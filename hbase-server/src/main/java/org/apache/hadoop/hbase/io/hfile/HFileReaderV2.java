@@ -623,9 +623,8 @@ public class HFileReaderV2 extends AbstractHFileReader {
         // It is important that we compute and pass onDiskSize to the block
         // reader so that it does not have to read the header separately to
         // figure out the size.
-        seekToBlock = reader.readBlock(previousBlockOffset,
-            seekToBlock.getOffset() - previousBlockOffset, cacheBlocks,
-            pread, isCompaction, true, BlockType.DATA);
+        seekToBlock = reader.readBlock(previousBlockOffset, -1, cacheBlocks, pread, isCompaction,
+          true, BlockType.DATA);
         // TODO shortcut: seek forward in this block to the last key of the
         // block.
       }
