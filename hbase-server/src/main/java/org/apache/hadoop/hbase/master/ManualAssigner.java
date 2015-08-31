@@ -76,6 +76,10 @@ public class ManualAssigner {
   }
 
   public void assign(final String table) throws IOException {
+    if (admin.isTableDisabled(table)) {
+      LOG.info("Skip diabled table: " + table);
+      return;
+    }
     LOG.info("Assign region of " + table + " manually, according data locality");
 
     List<HRegionInfo> regions = admin.getTableRegions(Bytes.toBytes(table));
