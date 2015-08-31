@@ -78,30 +78,34 @@ public class RegionServerTracker extends ZooKeeperListener {
   }
 
   private void add(final List<String> servers) throws IOException {
+    NavigableMap<ServerName, RegionServerInfo> tmps =
+        new TreeMap<ServerName, RegionServerInfo>();
+    for (String n: servers) {
+      ServerName sn = ServerName.parseServerName(ZKUtil.getNodeName(n));
+      if (tmps.get(sn) == null) {
+        RegionServerInfo.Builder rsInfoBuilder = RegionServerInfo.newBuilder();
+        try {
+          String nodePath = ZKUtil.joinZNode(watcher.rsZNode, n);
+          byte[] data = ZKUtil.getData(watcher, nodePath);
+          if (data != null && data.length > 0 && ProtobufUtil.isPBMagicPrefix(data)) {
+            int magicLen = ProtobufUtil.lengthOfPBMagic();
+            rsInfoBuilder.mergeFrom(data, magicLen, data.length - magicLen);
+          }
+          if (LOG.isDebugEnabled()) {
+            LOG.debug("Added tracking of RS " + nodePath);
+          }
+        } catch (KeeperException e) {
+          LOG.warn("Get Rs info port from ephemeral node", e);
+        } catch (IOException e) {
+          LOG.warn("Illegal data from ephemeral node", e);
+        }
+        tmps.put(sn, rsInfoBuilder.build());
+      }
+    }
+
     synchronized(this.regionServers) {
       this.regionServers.clear();
-      for (String n: servers) {
-        ServerName sn = ServerName.parseServerName(ZKUtil.getNodeName(n));
-        if (regionServers.get(sn) == null) {
-          RegionServerInfo.Builder rsInfoBuilder = RegionServerInfo.newBuilder();
-          try {
-            String nodePath = ZKUtil.joinZNode(watcher.rsZNode, n);
-            byte[] data = ZKUtil.getData(watcher, nodePath);
-            if (data != null && data.length > 0 && ProtobufUtil.isPBMagicPrefix(data)) {
-              int magicLen = ProtobufUtil.lengthOfPBMagic();
-              rsInfoBuilder.mergeFrom(data, magicLen, data.length - magicLen);
-            }
-            if (LOG.isDebugEnabled()) {
-              LOG.debug("Added tracking of RS " + nodePath);
-            }
-          } catch (KeeperException e) {
-            LOG.warn("Get Rs info port from ephemeral node", e);
-          } catch (IOException e) {
-            LOG.warn("Illegal data from ephemeral node", e);
-          }
-          this.regionServers.put(sn, rsInfoBuilder.build());
-        }
-      }
+      this.regionServers.putAll(tmps);
     }
   }
 
@@ -163,6 +167,8 @@ public class RegionServerTracker extends ZooKeeperListener {
    * @return
    */
   public boolean checkIfAlive(final ServerName sn) {
-    return regionServers.containsKey(sn);
+    synchronized(this.regionServers) {
+      return regionServers.containsKey(sn);
+    }
   }
 }
