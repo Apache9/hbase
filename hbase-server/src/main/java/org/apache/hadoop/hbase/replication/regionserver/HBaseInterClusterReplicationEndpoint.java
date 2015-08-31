@@ -164,6 +164,7 @@ public class HBaseInterClusterReplicationEndpoint extends HBaseReplicationEndpoi
         return true;
 
       } catch (IOException ioe) {
+        LOG.warn("Replicate edites to peer cluster failed.", ioe);
         // Didn't ship anything, but must still age the last time we did
         this.metrics.refreshAgeOfLastShippedOp();
         if (ioe instanceof RemoteException) {
