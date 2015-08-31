@@ -575,6 +575,17 @@ public class HBaseAdmin implements Abortable, Closeable {
           }
         };
         MetaScanner.metaScan(conf, connection, visitor, desc.getTableName());
+        
+        // if the server side enable IGNORE_SPLITS_WHEN_CREATE_TABLE option, 
+        if (actualRegCount.get() > 0) {
+          HTableDescriptor htdFromMaster = getTableDescriptor(desc.getName());
+          if (htdFromMaster.getValue(HTableDescriptor.IGNORE_SPLITS_WHEN_CREATING) != null
+              && Boolean.parseBoolean(htdFromMaster
+                  .getValue(HTableDescriptor.IGNORE_SPLITS_WHEN_CREATING))) {
+            numRegs = 1;
+          }
+        }
+        
         if (actualRegCount.get() < numRegs) {
           if (tries == this.numRetries * this.retryLongerMultiplier - 1) {
             throw new RegionOfflineException("Only " + actualRegCount.get() +

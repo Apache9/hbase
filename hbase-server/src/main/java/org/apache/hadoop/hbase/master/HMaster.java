@@ -481,6 +481,8 @@ MasterServices, Server {
   /** The following is used in master recovery scenario to re-register listeners */
   private List<ZooKeeperListener> registeredZKListenersBeforeRecovery;
 
+  private boolean ignoreSplitsWhenCreatingTable = false;
+  
   /**
    * Initializes the HMaster. The steps are as follows:
    * <p>
@@ -612,6 +614,8 @@ MasterServices, Server {
         Threads.setDaemonThreadRunning(clusterStatusPublisherChore.getThread());
       }
     }
+    this.ignoreSplitsWhenCreatingTable = conf.getBoolean(
+      HConstants.IGNORE_SPLITS_WHEN_CREATE_TABLE, false);
   }
 
   /**
@@ -1929,6 +1933,18 @@ MasterServices, Server {
       throw new MasterNotRunningException();
     }
 
+    if (ignoreSplitsWhenCreatingTable) {
+      boolean isSalted = hTableDescriptor.isSalted();
+      if (isSalted) {
+        hTableDescriptor.setSlotsCount(1);
+      }
+      splitKeys = null;
+      hTableDescriptor.setValue(Bytes.toBytes(HTableDescriptor.IGNORE_SPLITS_WHEN_CREATING),
+        Bytes.toBytes("true"));
+      LOG.info("ignore splits for table " + hTableDescriptor.getNameAsString() + ", isSalted="
+          + isSalted);
+    }
+    
     String namespace = hTableDescriptor.getTableName().getNamespaceAsString();
     getNamespaceDescriptor(namespace); // ensure namespace exists
 

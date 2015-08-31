@@ -371,6 +371,44 @@ public class TestAdmin1 {
             TableName.valueOf("testCreateTable")));
   }
 
+  @Test
+  public void testCreateTableIgnoreSplits() throws Exception {
+    // restart the cluster and set ingore split option
+    tearDown();
+    tearDownAfterClass();
+    TEST_UTIL.getConfiguration().setBoolean(HConstants.IGNORE_SPLITS_WHEN_CREATE_TABLE, true);
+    setUpBeforeClass();
+    setUp();
+    
+    HTableDescriptor desc = new HTableDescriptor(Bytes.toBytes("testCreateTable_IgnoreSplits"));
+    HColumnDescriptor column = new HColumnDescriptor(Bytes.toBytes("C"));
+    desc.addFamily(column);
+    // test normal table ignore splits
+    byte[][] splits = new byte[][]{Bytes.toBytes("aa"), Bytes.toBytes("bb")};
+    admin.createTable(desc, splits);
+    HTable table = new HTable(admin.getConfiguration(), desc.getName());
+    assertEquals(1, table.getRegionLocations().size());
+    table.close();
+    
+    // test salted table ingore splits
+    desc = new HTableDescriptor(Bytes.toBytes("testCreateSaltedTable_IgnoreSplits"));
+    column = new HColumnDescriptor(Bytes.toBytes("C"));
+    desc.addFamily(column);
+    desc.setSlotsCount(256);
+    admin.createTable(desc, null);
+    table = new HTable(admin.getConfiguration(), desc.getName());
+    assertEquals(1, table.getRegionLocations().size());
+    assertEquals(1, table.getTableDescriptor().getSlotsCount().intValue());
+    table.close();
+    
+    TEST_UTIL.getConfiguration().setBoolean(HConstants.IGNORE_SPLITS_WHEN_CREATE_TABLE, false);
+    // restart cluster with default options
+    tearDown();
+    tearDownAfterClass();
+    setUpBeforeClass();
+    setUp();
+  }
+  
   @Test (timeout=300000)
   public void testTruncateTable() throws IOException {
     testTruncateTable(TableName.valueOf("testTruncateTable"), false);
