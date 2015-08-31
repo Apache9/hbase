@@ -88,7 +88,8 @@ public class Scan extends Query {
 
   private static final String RAW_ATTR = "_raw_";
   private static final String IGNORETTL_ATTR = "_ignorettl_";
-
+  private static final String DEBUG_ATTR = "_debug_";
+  
   /**
    * EXPERT ONLY.
    * An integer (not long) indicating to the scanner logic how many times we attempt to retrieve the
@@ -135,6 +136,7 @@ public class Scan extends Query {
   private long maxResultSize = -1;
   private boolean cacheBlocks = true;
   private boolean reversed = false;
+  private transient Boolean debug;
   private TimeRange tr = new TimeRange();
   private Map<byte [], NavigableSet<byte []>> familyMap =
     new TreeMap<byte [], NavigableSet<byte []>>(Bytes.BYTES_COMPARATOR);
@@ -598,6 +600,26 @@ public class Scan extends Query {
    */
   public boolean isReversed() {
     return reversed;
+  }
+  
+  /**
+   * Set whether this scan is a debug one.
+   * @param debug
+   */
+  public void setDebug(boolean debug) {
+    this.debug = debug;
+    setAttribute(DEBUG_ATTR, Bytes.toBytes(debug));
+  }
+
+  /**
+   * @return True if this Scan is in "debug" mode.
+   */
+  public boolean isDebug() {
+    if (this.debug == null) {
+      byte[] attr = getAttribute(DEBUG_ATTR);
+      this.debug = attr == null ? false : Bytes.toBoolean(attr);
+    }
+    return this.debug;
   }
 
   /**

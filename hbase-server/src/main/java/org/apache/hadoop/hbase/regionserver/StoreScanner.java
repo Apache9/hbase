@@ -470,7 +470,10 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
       close();
       return false;
     }
-
+    if (scan.isDebug()) {
+      LOG.info("Debug scan: peeked kv: " + peeked);
+    }
+    
     // only call setRow if the row changes; avoids confusing the query matcher
     // if scanning intra-row
     byte[] row = peeked.getBuffer();
@@ -497,6 +500,9 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
 
       ScanQueryMatcher.MatchCode qcode = matcher.match(kv);
       qcode = optimize(qcode, kv);
+      if (scan.isDebug()) {
+        LOG.info("Debug scan: current kv: " + kv + " match code: " + qcode);
+      }
       switch(qcode) {
         case INCLUDE:
         case INCLUDE_AND_SEEK_NEXT_ROW:
