@@ -130,7 +130,6 @@ import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.MoveRegionRequest
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RestoreSnapshotRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RestoreSnapshotResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetBalancerRunningRequest;
-import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetQuotaRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ShutdownRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SnapshotRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SnapshotResponse;
@@ -150,7 +149,6 @@ import org.apache.hadoop.hbase.util.Addressing;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.Pair;
-import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
 import org.apache.hadoop.ipc.RemoteException;
 import org.apache.hadoop.util.StringUtils;
 import org.apache.zookeeper.KeeperException;
@@ -189,7 +187,6 @@ public class HBaseAdmin implements Abortable, Closeable {
   private boolean aborted;
   private boolean cleanupConnectionOnClose = false; // close the connection in close()
   private boolean closed = false;
-  private volatile ZooKeeperWatcher zooKeeper;
   private RpcRetryingCallerFactory rpcCallerFactory;
 
   /**
@@ -204,11 +201,6 @@ public class HBaseAdmin implements Abortable, Closeable {
     // does not throw exceptions anymore.
     this(HConnectionManager.getConnection(new Configuration(c)));
     this.cleanupConnectionOnClose = true;
-    try {
-      this.zooKeeper = new ZooKeeperWatcher(conf, "hbase-admin", this);
-    } catch (IOException e) {
-      throw new ZooKeeperConnectionException("Create zk client failed", e);
-    }
   }
 
  /**
@@ -247,7 +239,7 @@ public class HBaseAdmin implements Abortable, Closeable {
     boolean succeeded = false;
     CatalogTracker ct = null;
     try {
-      ct = new CatalogTracker(this.zooKeeper, this.conf, null);
+      ct = new CatalogTracker(this.conf);
       startCatalogTracker(ct);
       succeeded = true;
     } catch (InterruptedException e) {
