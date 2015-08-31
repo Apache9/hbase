@@ -133,6 +133,7 @@ import org.apache.hadoop.hbase.regionserver.MultiVersionConsistencyControl.Write
 import org.apache.hadoop.hbase.regionserver.compactions.CompactionContext;
 import org.apache.hadoop.hbase.regionserver.compactions.CompactionThroughputController;
 import org.apache.hadoop.hbase.regionserver.compactions.NoLimitCompactionThroughputController;
+import org.apache.hadoop.hbase.regionserver.compactions.OffPeakHours;
 import org.apache.hadoop.hbase.regionserver.wal.HLog;
 import org.apache.hadoop.hbase.regionserver.wal.HLogFactory;
 import org.apache.hadoop.hbase.regionserver.wal.HLogKey;
@@ -1528,6 +1529,16 @@ public class HRegion implements HeapSize { // , Writable{
       store.cancelRequestedCompaction(compaction);
       return false;
     }
+    
+    if (compaction.getRequest().isMajor()
+        && conf.getBoolean(HConstants.MAJOR_COMPACTION_OFFPEAK, false)
+        && (!OffPeakHours.getInstance(conf).isOffPeakHour())) {
+      LOG.info("Skipping a major compaction on " + this
+          + ". The major compaction is restricted to be performed in an off-peak by config: "
+          + HConstants.MAJOR_COMPACTION_OFFPEAK);
+      return false;
+    }
+    
     MonitoredTask status = null;
     boolean requestNeedsCancellation = true;
     // block waiting for the lock for compaction
