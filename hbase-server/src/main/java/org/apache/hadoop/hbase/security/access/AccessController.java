@@ -512,11 +512,7 @@ public class AccessController extends BaseMasterAndRegionObserver
     logResult(result);
 
     if (!result.isAllowed()) {
-      throw new AccessDeniedException("Insufficient permissions (table=" +
-        env.getRegion().getTableDesc().getTableName()+
-        ((families != null && families.size() > 0) ? ", family: " +
-        result.toFamilyString() : "") + ", action=" +
-        perm.toString() + ")");
+      throw new AccessDeniedException("Insufficient permissions " + result.toContextString());
     }
   }
 
@@ -535,10 +531,9 @@ public class AccessController extends BaseMasterAndRegionObserver
         authManager.authorize(user, tableName.getNamespaceAsString(), perm))) {
       logResult(AuthResult.allow(request, "Global check allowed", user, perm, tableName, familyMap));
     } else {
-      logResult(AuthResult.deny(request, "Global check failed", user, perm, tableName, familyMap));
-      throw new AccessDeniedException("Insufficient permissions for user '" +
-          (user != null ? user.getShortName() : "null") +"' (global, action=" +
-          perm.toString() + ")");
+      AuthResult result = AuthResult.deny(request, "Global check failed", user, perm, tableName, familyMap);
+      logResult(result);
+      throw new AccessDeniedException("Insufficient permissions " + result.toContextString());
     }
   }
 
@@ -1110,8 +1105,10 @@ public class AccessController extends BaseMasterAndRegionObserver
   public void preDisableTable(ObserverContext<MasterCoprocessorEnvironment> c, TableName tableName)
       throws IOException {
     if (Bytes.equals(tableName.getName(), AccessControlLists.ACL_GLOBAL_NAME)) {
+      User user = getActiveUser();
       throw new AccessDeniedException("Not allowed to disable "
-          + AccessControlLists.ACL_TABLE_NAME + " table.");
+          + AccessControlLists.ACL_TABLE_NAME + " table." + " user="
+              + (user != null ? user.getShortName() : "null"));
     }
     requirePermission("disableTable", tableName, null, null, Action.ADMIN, Action.CREATE);
   }
@@ -1444,8 +1441,7 @@ public class AccessController extends BaseMasterAndRegionObserver
 
     logResult(authResult);
     if (!authResult.isAllowed()) {
-      throw new AccessDeniedException("Insufficient permissions (table=" + table +
-        ", action=READ)");
+      throw new AccessDeniedException("Insufficient permissions " + authResult.toContextString());
     }
   }
 
@@ -2267,8 +2263,9 @@ public class AccessController extends BaseMasterAndRegionObserver
     }
     User activeUser = getActiveUser();
     if (!(superusers.contains(activeUser.getShortName()))) {
-      throw new AccessDeniedException("User '" + (user != null ? user.getShortName() : "null") +
-        "is not system or super user.");
+      throw new AccessDeniedException("User '"
+          + (activeUser != null ? activeUser.getShortName() : "null")
+          + "is not system or super user.");
     }
   }
 
