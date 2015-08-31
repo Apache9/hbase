@@ -1775,10 +1775,8 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
             uncaughtExceptionHandler);
     }
 
-    // Leases is not a Thread. Internally it runs a daemon thread. If it gets
-    // an unhandled exception, it will just exit.
-    this.leases.setName(n + ".leaseChecker");
-    this.leases.start();
+    Threads.setDaemonThreadRunning(leases.getThread(), n + ".leaseChecker",
+      uncaughtExceptionHandler);
 
     if (this.replicationSourceHandler == this.replicationSinkHandler &&
         this.replicationSourceHandler != null) {
