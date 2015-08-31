@@ -1013,7 +1013,7 @@
     <thrift.path>thrift</thrift.path>
     <thrift.version>0.9.0</thrift.version>
     <zookeeper-mdh.version>3.4.5-mdh1.2.0</zookeeper-mdh.version>
-    <hadoop-mdh.version>2.4.0-mdh2.0.5</hadoop-mdh.version>
+    <hadoop-mdh.version>2.4.0-mdh2.2.2</hadoop-mdh.version>
     <slf4j.version>1.6.4</slf4j.version>
     <hadoop-snappy.version>0.0.1-SNAPSHOT</hadoop-snappy.version>
     <clover.version>2.6.3</clover.version>
