@@ -156,4 +156,13 @@ public class RegionServerTracker extends ZooKeeperListener {
       return new ArrayList<ServerName>(this.regionServers.keySet());
     }
   }
+  
+  /**
+   * Check if the regionserver has the ephemeral node on zookeeper
+   * @param sn
+   * @return
+   */
+  public boolean checkIfAlive(final ServerName sn) {
+    return regionServers.containsKey(sn);
+  }
 }

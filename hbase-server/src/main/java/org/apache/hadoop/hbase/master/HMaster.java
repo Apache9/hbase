@@ -78,6 +78,7 @@ import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.TableNotDisabledException;
 import org.apache.hadoop.hbase.TableNotFoundException;
 import org.apache.hadoop.hbase.UnknownRegionException;
+import org.apache.hadoop.hbase.YouAreDeadException;
 import org.apache.hadoop.hbase.catalog.CatalogTracker;
 import org.apache.hadoop.hbase.catalog.MetaReader;
 import org.apache.hadoop.hbase.client.HConnectionManager;
@@ -1492,6 +1493,13 @@ MasterServices, Server {
     try {
       ClusterStatusProtos.ServerLoad sl = request.getLoad();
       ServerName serverName = ProtobufUtil.toServerName(request.getServer());
+      if (!regionServerTracker.checkIfAlive(serverName)) {
+        String message = "Server report rejected; No ephemeral node on zookeeper for regionserver: "
+            + serverName;
+        LOG.warn(message);
+        throw new YouAreDeadException(message);
+      }
+      
       ServerLoad oldLoad = serverManager.getLoad(serverName);
       this.serverManager.regionServerReport(serverName, new ServerLoad(sl));
       if (sl != null && this.metricsMaster != null) {
