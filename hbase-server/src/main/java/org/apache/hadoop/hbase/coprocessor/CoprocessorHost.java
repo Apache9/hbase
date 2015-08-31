@@ -864,6 +864,8 @@ public abstract class CoprocessorHost<E extends CoprocessorEnvironment> {
     if (env.getConfiguration().getBoolean(ABORT_ON_ERROR_KEY, DEFAULT_ABORT_ON_ERROR)) {
       // server is configured to abort.
       abortServer(env, e);
+      throw new DoNotRetryIOException("Coprocessor: '" + env.toString() +
+        "' threw: '" + e + "' and server abort", e);
     } else {
       LOG.error("Removing coprocessor '" + env.toString() + "' from " +
           "environment because it threw:  " + e,e);
