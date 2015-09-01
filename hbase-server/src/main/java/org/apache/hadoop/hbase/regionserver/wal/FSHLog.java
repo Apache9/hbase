@@ -286,6 +286,8 @@ class FSHLog implements HLog, Syncable {
   private NavigableMap<Path, Map<byte[], Long>> hlogSequenceNums =
     new ConcurrentSkipListMap<Path, Map<byte[], Long>>(LOG_NAME_COMPARATOR);
 
+  private Map<Writer, Long> unclosedWriters = new HashMap<Writer, Long>();
+  
   public static double getHLogCompressionRatio() {
     if (isWALCompressionEnabled) {
       long compressedSize = HLogKey.compressedSize + KeyValueCompression.compressedSize;
@@ -617,6 +619,7 @@ class FSHLog implements HLog, Syncable {
           }
         }
 
+        cleanupUnclosedWriters();
         // Can we delete any of the old log files?
         if (getNumRolledLogFiles() > 0) {
           cleanOldLogs();
@@ -768,6 +771,32 @@ class FSHLog implements HLog, Syncable {
     return regions;
   }
 
+  private void cleanupUnclosedWriters() {
+    if (unclosedWriters.size() == 0) {
+      return;
+    }
+    LOG.warn("There are " + unclosedWriters.size() + " unclosed writers");
+    List<Writer> writers = new LinkedList<Writer>();
+    for (Map.Entry<Writer, Long> entry : this.unclosedWriters.entrySet()) {
+      Writer writer = entry.getKey();
+      long lastAttempt = entry.getValue().longValue();
+      // retry every 10 min
+      if (EnvironmentEdgeManager.currentTimeMillis() - lastAttempt > 1000 * 60 * 10) {
+        writers.add(writer);
+      }
+    }
+    LOG.warn("Try to cleanup " + writers.size() + " unclosed writers");
+    for (Writer writer : writers) {
+      try {
+        writer.close();
+        unclosedWriters.remove(writer);
+      } catch (IOException e) {
+        LOG.error("Cleanup unclosed writer failed.", e);
+        unclosedWriters.put(writer, EnvironmentEdgeManager.currentTimeMillis());
+      }
+    }
+  }
+  
   /*
    * Cleans up current writer closing.
    * Presumes we're operating inside an updateLock scope.
@@ -788,13 +817,19 @@ class FSHLog implements HLog, Syncable {
                    " synced till here " + this.syncedTillHere.get());
           sync();
         }
+      } catch (IOException e) {
+        LOG.error("Sync before closing current writer failed!", e);
+      }
+      
+      // Close the current writer, get a new one.
+      try {
         this.writer.close();
-        this.writer = null;
         closeErrorCount.set(0);
       } catch (IOException e) {
         LOG.error("Failed close of HLog writer", e);
         int errors = closeErrorCount.incrementAndGet();
         if (errors <= closeErrorsTolerated && !hasUnSyncedEntries()) {
+          unclosedWriters.put(this.writer, EnvironmentEdgeManager.currentTimeMillis());
           LOG.warn("Riding over HLog close failure! error count="+errors);
         } else {
           if (hasUnSyncedEntries()) {
@@ -809,6 +844,7 @@ class FSHLog implements HLog, Syncable {
           throw flce;
         }
       }
+      this.writer = null;
       if (currentfilenum >= 0) {
         oldFile = computeFilename(currentfilenum);
       }
