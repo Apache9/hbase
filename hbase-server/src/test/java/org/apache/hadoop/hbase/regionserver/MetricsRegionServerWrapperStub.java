@@ -277,4 +277,9 @@ public class MetricsRegionServerWrapperStub implements MetricsRegionServerWrappe
   public long getHedgedReadsInCurThread() {
     return 0;
   }
+
+  @Override
+  public double getHLogCompressionRatio() {
+    return 0;
+  }
 }

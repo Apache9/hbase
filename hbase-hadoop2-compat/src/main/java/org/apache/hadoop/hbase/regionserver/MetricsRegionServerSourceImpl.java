@@ -269,6 +269,7 @@ public class MetricsRegionServerSourceImpl
           .addGauge(Interns.info(HEDGED_READS_KEY, ""), rsWrap.getHedgedReads())
           .addGauge(Interns.info(HEDGED_READ_WINS_KEY, ""), rsWrap.getHedgedReadWins())
           .addGauge(Interns.info(HEDGED_READ_IN_CURRENT_THREAD_KEY, ""), rsWrap.getHedgedReadsInCurThread())
+          .addGauge(Interns.info(HLOG_COMPRESSION_RATIO_KEY, ""), (int)(rsWrap.getHLogCompressionRatio() * 100))
                     
           .tag(Interns.info(ZOOKEEPER_QUORUM_NAME, ZOOKEEPER_QUORUM_DESC),
               rsWrap.getZookeeperQuorum())

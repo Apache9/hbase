@@ -274,4 +274,6 @@ public interface MetricsRegionServerWrapper {
   public long getHedgedReadWins();
   
   public long getHedgedReadsInCurThread();
+  
+  public double getHLogCompressionRatio();
 }

@@ -230,6 +230,8 @@ class FSHLog implements HLog, Syncable {
    */
   private final int maxLogs;
 
+  private static boolean isWALCompressionEnabled;
+  
   // List of pending writes to the HLog. There corresponds to transactions
   // that have not yet returned to the client. We keep them cached here
   // instead of writing them to HDFS piecemeal. The goal is to increase
@@ -284,6 +286,15 @@ class FSHLog implements HLog, Syncable {
   private NavigableMap<Path, Map<byte[], Long>> hlogSequenceNums =
     new ConcurrentSkipListMap<Path, Map<byte[], Long>>(LOG_NAME_COMPARATOR);
 
+  public static double getHLogCompressionRatio() {
+    if (isWALCompressionEnabled) {
+      long compressedSize = HLogKey.compressedSize + KeyValueCompression.compressedSize;
+      long uncompressedSize = HLogKey.uncompressedSize + KeyValueCompression.uncompressedSize;
+      return uncompressedSize == 0 ? 1 : (double) compressedSize / (double) uncompressedSize;
+    }
+    return 1;
+  }
+  
   /**
    * Constructor.
    *
@@ -391,6 +402,7 @@ class FSHLog implements HLog, Syncable {
     this.logrollsize = (long)(this.blocksize * multi);
 
     this.maxLogs = conf.getInt("hbase.regionserver.maxlogs", 32);
+    isWALCompressionEnabled = conf.getBoolean(HConstants.ENABLE_WAL_COMPRESSION, false);
     this.minTolerableReplication = conf.getInt(
         "hbase.regionserver.hlog.tolerable.lowreplication",
         FSUtils.getDefaultReplication(fs, this.dir));

@@ -39,6 +39,10 @@ import org.apache.hadoop.io.WritableUtils;
 @Deprecated
 @InterfaceAudience.Private
 class KeyValueCompression {
+  // we only need a raw compression ratio, so adding a *volatile* here is not a must.
+  protected static long uncompressedSize = 0;
+  protected static long compressedSize = 0;
+  
   /**
    * Uncompresses a KeyValue from a DataInput and returns it.
    * 
@@ -112,16 +116,16 @@ class KeyValueCompression {
 
     // now we write the row key, as the row key is likely to be repeated
     // We save space only if we attempt to compress elements with duplicates
-    Compressor.writeCompressed(keyVal.getBuffer(), keyVal.getRowOffset(),
+    int size1 = Compressor.writeCompressed(keyVal.getBuffer(), keyVal.getRowOffset(),
         keyVal.getRowLength(), out, writeContext.rowDict);
 
   
     // now family, if it exists. if it doesn't, we write a 0 length array.
-    Compressor.writeCompressed(keyVal.getBuffer(), keyVal.getFamilyOffset(),
+    int size2 = Compressor.writeCompressed(keyVal.getBuffer(), keyVal.getFamilyOffset(),
         keyVal.getFamilyLength(), out, writeContext.familyDict);
 
     // qualifier next
-    Compressor.writeCompressed(keyVal.getBuffer(), keyVal.getQualifierOffset(),
+    int size3 = Compressor.writeCompressed(keyVal.getBuffer(), keyVal.getQualifierOffset(),
         keyVal.getQualifierLength(), out,
         writeContext.qualifierDict);
 
@@ -129,5 +133,8 @@ class KeyValueCompression {
     int pos = keyVal.getTimestampOffset();
     int remainingLength = keyVal.getLength() + offset - (pos);
     out.write(backingArray, pos, remainingLength);
+    uncompressedSize += (keyVal.getRowLength() + keyVal.getFamilyLength()
+        + keyVal.getQualifierLength() + remainingLength);
+    compressedSize += (size1 + size2 + size3 + remainingLength);
   }
 }

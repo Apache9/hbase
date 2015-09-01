@@ -33,6 +33,7 @@ import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.io.hfile.BlockCache;
 import org.apache.hadoop.hbase.io.hfile.CacheConfig;
 import org.apache.hadoop.hbase.io.hfile.CacheStats;
+import org.apache.hadoop.hbase.regionserver.wal.HLogUtil;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.FSUtils;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
@@ -607,5 +608,10 @@ public class MetricsRegionServerWrapperImpl
   @Override
   public long getHedgedReadsInCurThread() {
     return hedgedReadsInCurThread;
+  }
+
+  @Override
+  public double getHLogCompressionRatio() {
+    return HLogUtil.getHLogCompressionRatio();
   }
 }

@@ -282,4 +282,5 @@ public interface MetricsRegionServerSource extends BaseSource {
   String HEDGED_READS_KEY = "hedgedReads";
   String HEDGED_READ_WINS_KEY = "hedgedReadWins";
   String HEDGED_READ_IN_CURRENT_THREAD_KEY = "hedgedReadsInCurThread";
+  String HLOG_COMPRESSION_RATIO_KEY = "hlogCompressionRatio";
 }
