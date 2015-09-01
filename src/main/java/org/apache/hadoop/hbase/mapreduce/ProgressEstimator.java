@@ -48,6 +48,9 @@ public class ProgressEstimator {
     }
 
     long currentValue = computeValue(key.get(), key.getOffset(), key.getLength(), commonPrefixLength);
+    if (key.get() == null || key.get().length == 0) {
+      currentValue = 0;
+    }
     Preconditions.checkArgument(currentValue >= startValue && currentValue <= endValue);
     return (float)(currentValue - startValue) / (endValue - startValue);
   }
