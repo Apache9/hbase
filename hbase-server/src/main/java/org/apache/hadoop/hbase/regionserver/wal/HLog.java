@@ -102,7 +102,7 @@ public interface HLog {
 
     void close() throws IOException;
 
-    void sync() throws IOException;
+    void sync(boolean force) throws IOException;
 
     void append(Entry entry) throws IOException;
 

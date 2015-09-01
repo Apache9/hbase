@@ -144,7 +144,7 @@ class FSHLog implements HLog, Syncable {
   private final AtomicInteger slowSyncRequestRollCounter = new AtomicInteger(0);
   private final int slowSyncRequestRollCountThreshold;
   private final int slowSyncRequestRollMsThreshold;
-  
+  private final int syncLogMode;
   final static Object [] NO_ARGS = new Object []{};
 
   /** The barrier used to ensure that close() waits for all log rolls and flushes to finish. */
@@ -450,6 +450,7 @@ class FSHLog implements HLog, Syncable {
       "hbase.regionserver.hlog.slowsync.request.roll.count.threshold", 10);
     slowSyncRequestRollMsThreshold = conf.getInt(
       "hbase.regionserver.hlog.slowsync.request.roll.ms.threshold", 1000);
+    syncLogMode = conf.getInt("hbase.regionserver.hlog.sync.mode", 0);
     coprocessorHost = new WALCoprocessorHost(this, conf);
 
     this.metrics = new MetricsWAL();
@@ -565,7 +566,7 @@ class FSHLog implements HLog, Syncable {
           nextHdfsOut = ((ProtobufLogWriter)nextWriter).getStream();
           // perform the costly sync before we get the lock to roll writers.
           try {
-            nextWriter.sync();
+            nextWriter.sync(syncLogMode == SyncLogMode.HSYNC_ALWAYS.ordinal());
           } catch (IOException e) {
             // optimization failed, no need to abort here.
             LOG.warn("pre-sync failed", e);
@@ -1253,7 +1254,7 @@ class FSHLog implements HLog, Syncable {
               failedTxid.set(this.txidToSync);
             } else {
               this.isSyncing = true;            
-              writer.sync();
+              writer.sync(syncLogMode == SyncLogMode.HSYNC_ALWAYS.ordinal());
               this.isSyncing = false;
             }
             postSync();
@@ -1693,6 +1694,16 @@ class FSHLog implements HLog, Syncable {
     return result == null ? HConstants.NO_SEQNUM : result.longValue();
   }
 
+  //A flag controls the balance between performance and data safety
+  public enum SyncLogMode {
+    //default value. lose data up to 30s once all dns crash or power outage
+    HFLUSH_ALWAYS,
+    //it will ensure every sucessful wal syncing goes into disk
+    HSYNC_ALWAYS,
+    //call hflush() in most of time, and call hsync() per second (not finished yet)
+    HSYNC_PER_SECOND;
+  }
+  
   /**
    * Pass one or more log file names and it will either dump out a text version
    * on <code>stdout</code> or split the specified log files.

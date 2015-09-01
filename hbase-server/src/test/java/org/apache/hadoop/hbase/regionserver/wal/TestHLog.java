@@ -831,7 +831,7 @@ public class TestHLog  {
         }
         sflw.append(new HLog.Entry(key, edit));
       }
-      sflw.sync();
+      sflw.sync(false);
       sflw.close();
 
       // Now read the log using standard means.
@@ -916,7 +916,7 @@ public class TestHLog  {
         }
         writer.append(new HLog.Entry(key, edit));
       }
-      writer.sync();
+      writer.sync(false);
       if (withTrailer) writer.close();
 
       // Now read the log using standard means.

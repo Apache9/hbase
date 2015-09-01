@@ -20,18 +20,20 @@
 package org.apache.hadoop.hbase.regionserver.wal;
 
 import java.io.IOException;
+import java.io.OutputStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.TreeMap;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.HBaseInterfaceAudience;
+import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.protobuf.generated.WALProtos.WALTrailer;
 import org.apache.hadoop.hbase.util.FSUtils;
 import org.apache.hadoop.io.SequenceFile;
@@ -58,7 +60,11 @@ public class SequenceFileLogWriter extends WriterBase {
   private static final Text WAL_VERSION_KEY = new Text("version");
   private static final Text WAL_COMPRESSION_TYPE_KEY = new Text("compression.type");
   private static final Text DICTIONARY_COMPRESSION_TYPE = new Text("dictionary");
-
+  
+  private Method syncFs = null;
+  private Method hflush = null;
+  private Method hsync = null;
+  
   /**
    * Default constructor.
    */
@@ -134,7 +140,16 @@ public class SequenceFileLogWriter extends WriterBase {
     }
     
     this.writer_out = getSequenceFilePrivateFSDataOutputStreamAccessible();
-    if (LOG.isTraceEnabled()) LOG.trace("Path=" + path + ", compression=" + compress);
+    this.syncFs = getSyncFs();
+    this.hflush = getHFlush();
+    this.hsync = getHSync();
+    String msg = "Path=" + path + ", syncFs=" + (this.syncFs != null) + ", hflush="
+        + (this.hflush != null) + ", hsync=" + (this.hsync != null) + ", compression=" + compress;
+    if (this.syncFs != null || this.hflush != null || this.hsync != null) {
+      LOG.debug(msg);
+    } else {
+      LOG.warn("No sync support! " + msg);
+    }
   }
 
   // Get at the private FSDataOutputStream inside in SequenceFile so we can
@@ -186,16 +201,32 @@ public class SequenceFileLogWriter extends WriterBase {
     }
   }
 
+  /**
+   * @param force Whether or not to flush the data to the disk device
+   */
   @Override
-  public void sync() throws IOException {
-    try {
-      this.writer.syncFs();
-    } catch (NullPointerException npe) {
-      // Concurrent close...
-      throw new IOException(npe);
+  public void sync(boolean force) throws IOException {
+    if (force) {
+      try {
+        this.hsync.invoke(getWriterFSDataOutputStream(), FSHLog.NO_ARGS);
+      } catch (Exception e) {
+        throw new IOException("Reflection", e);
+      }
+    } else if (this.syncFs != null) {
+      try {
+        this.syncFs.invoke(this.writer, FSHLog.NO_ARGS);
+      } catch (Exception e) {
+        throw new IOException("Reflection", e);
+      }
+    } else if (this.hflush != null) {
+      try {
+        this.hflush.invoke(getWriterFSDataOutputStream(), FSHLog.NO_ARGS);
+      } catch (Exception e) {
+        throw new IOException("Reflection", e);
+      }
     }
   }
-
+  
   @Override
   public long getLength() throws IOException {
     try {
@@ -219,5 +250,62 @@ public class SequenceFileLogWriter extends WriterBase {
    */
   @Override
   public void setWALTrailer(WALTrailer walTrailer) {
+  }
+  
+  /**
+   * Now do dirty work to see if syncFs is available on the backing this.writer.
+   * It will be available in branch-0.20-append and in CDH3.
+   * @return The syncFs method or null if not available.
+   * @throws IOException
+   */
+  private Method getSyncFs()
+  throws IOException {
+    Method m = null;
+    try {
+      // function pointer to writer.syncFs() method; present when sync is hdfs-200.
+      m = this.writer.getClass().getMethod("syncFs", new Class<?> []{});
+    } catch (SecurityException e) {
+      throw new IOException("Failed test for syncfs", e);
+    } catch (NoSuchMethodException e) {
+      // Not available
+    }
+    return m;
+  }
+
+  /**
+   * See if hflush (0.21 and 0.22 hadoop) is available.
+   * @return The hflush method or null if not available.
+   * @throws IOException
+   */
+  private Method getHFlush()
+  throws IOException {
+    Method m = null;
+    try {
+      Class<? extends OutputStream> c = getWriterFSDataOutputStream().getClass();
+      m = c.getMethod("hflush", new Class<?> []{});
+    } catch (SecurityException e) {
+      throw new IOException("Failed test for hflush", e);
+    } catch (NoSuchMethodException e) {
+      // Ignore
+    }
+    return m;
+  }
+
+  /**
+   * See if hsync is available.
+   * @return The hsync method or null if not available.
+   * @throws IOException
+   */
+  private Method getHSync() throws IOException {
+    Method m = null;
+    try {
+      Class<? extends OutputStream> c = getWriterFSDataOutputStream().getClass();
+      m = c.getMethod("hsync", new Class<?>[] {});
+    } catch (SecurityException e) {
+      throw new IOException("Failed test for hsync", e);
+    } catch (NoSuchMethodException e) {
+      // Ignore
+    }
+    return m;
   }
 }

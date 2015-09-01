@@ -41,7 +41,7 @@ public class InstrumentedSequenceFileLogWriter extends ProtobufLogWriter {
     }
   
   @Override
-  public void sync() throws IOException {
+  public void sync(boolean force) throws IOException {
     if (slowSync) {
       try {
         Thread.sleep(1010);
@@ -49,6 +49,6 @@ public class InstrumentedSequenceFileLogWriter extends ProtobufLogWriter {
         throw new IOException(e);
       }
     }
-    super.sync();
+    super.sync(force);
   }
 }
