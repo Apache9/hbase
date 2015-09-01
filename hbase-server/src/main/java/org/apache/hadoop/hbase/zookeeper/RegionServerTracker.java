@@ -22,19 +22,16 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.NavigableMap;
-import java.util.NavigableSet;
 import java.util.TreeMap;
-import java.util.TreeSet;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.Abortable;
 import org.apache.hadoop.hbase.ServerName;
+import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.master.ServerManager;
 import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.RegionServerInfo;
-import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.zookeeper.KeeperException;
 
 /**
@@ -170,5 +167,15 @@ public class RegionServerTracker extends ZooKeeperListener {
     synchronized(this.regionServers) {
       return regionServers.containsKey(sn);
     }
+  }
+  
+  // for test
+  public static void setRegionServers(RegionServerTracker tracker, ServerName[] servers)
+      throws IOException {
+    List<String> names = new ArrayList<String>();
+    for (ServerName sn : servers) {
+      names.add(sn.getServerName());
+    }
+    tracker.add(names);
   }
 }

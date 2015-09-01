@@ -51,6 +51,7 @@ import org.apache.hadoop.hbase.regionserver.RegionOpeningState;
 import org.apache.hadoop.hbase.util.FSUtils;
 import org.apache.hadoop.hbase.util.Threads;
 import org.apache.hadoop.hbase.zookeeper.MetaRegionTracker;
+import org.apache.hadoop.hbase.zookeeper.RegionServerTracker;
 import org.apache.hadoop.hbase.zookeeper.ZKUtil;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
@@ -221,6 +222,7 @@ public class TestMasterNoCluster {
     try {
       // Wait till master is up ready for RPCs.
       while (!master.isRpcServerOpen()) Threads.sleep(10);
+      RegionServerTracker.setRegionServers(master.regionServerTracker, sns);
       // Fake master that there are regionservers out there.  Report in.
       for (int i = 0; i < sns.length; i++) {
         RegionServerReportRequest.Builder request = RegionServerReportRequest.newBuilder();;
