@@ -36,6 +36,9 @@ import com.google.common.collect.Sets;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileStatus;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.client.replication.ReplicationAdmin;
 import org.apache.hadoop.hbase.replication.ReplicationZookeeper;
@@ -61,6 +64,7 @@ public final class ReplicationStatus implements Tool {
   @Override public int run(String[] args) throws Exception {
     int tail = 1;
     Collection<String> targetPeerIds = null;
+    boolean checkLength = false;
 
     // Process command line args
     for (int i = 0; i < args.length; i++) {
@@ -100,6 +104,10 @@ public final class ReplicationStatus implements Tool {
             System.err.println("-peerid needs a string list argument.");
             printUsageAndExit();
           }
+        } else if (cmd.equals("-checklength")) {
+          checkLength = true;
+        } else {
+          printUsageAndExit();
         }
       }
     }
@@ -117,6 +125,7 @@ public final class ReplicationStatus implements Tool {
     Set<String> repRs = new HashSet<String>(replicationZookeeper.getReplicatingRSZNodeList());
     Set<String> diff1 = Sets.difference(activeRs, repRs);
     Set<String> diff2 = Sets.difference(repRs, activeRs);
+    System.out.println("=========================== warnings summary ===========================");
     if (!diff1.isEmpty()) {
       System.out.format("WARNING: Some regionservers are not replicating: %s\n", diff1);
     }
@@ -124,8 +133,10 @@ public final class ReplicationStatus implements Tool {
       System.out.format("WARNING: Some legacy regionservers still in replication: %s\n", diff2);
     }
 
+    FileSystem fs = FileSystem.get(conf);
     Map<String, Map<String, RegionServerReplicationStatus>> replicationStatus =
         new HashMap<String, Map<String, RegionServerReplicationStatus>>();
+    boolean fileLencheckPassed = true;
     for (String rs : repRs) {
       List<String> peerIds = replicationZookeeper.getListPeersForRS(rs);
       for (String peerId : peerIds) {
@@ -147,12 +158,29 @@ public final class ReplicationStatus implements Tool {
                 rsRepStatus = new RegionServerReplicationStatus(rs);
                 rsMap.put(rs, rsRepStatus);
               }
-              rsRepStatus.addHLogStatus(
-                  new HLogReplicationStatus(peerId, hlog, p.getFirst(), p.getSecond()));
+              if (checkLength) {
+                String clusterName = conf.get("hbase.cluster.name");
+                // example: /hbase/lgsrv-micloud/.logs/lg-hadoop-srv-st461.bj,12620,1441588425583
+                // /lg-hadoop-srv-st461.bj%2C12620%2C1441588425583.1441588432481
+                String path = String.format("/hbase/%s/.logs/%s/%s", clusterName, rs, hlog);
+                FileStatus status = fs.getFileStatus(new Path(path));
+                rsRepStatus.addHLogStatus(new HLogReplicationStatus(peerId, hlog, status.getLen(),
+                    p.getFirst(), p.getSecond()));
+                if (status.getLen() != p.getFirst()) {
+                  fileLencheckPassed = false;
+                }
+              } else {
+                rsRepStatus.addHLogStatus(
+                    new HLogReplicationStatus(peerId, hlog, -1, p.getFirst(), p.getSecond()));
+              }
             }
           }
         }
       }
+    }
+    if (!fileLencheckPassed) {
+      System.out.println("WARNING: file length differs from zk position," +
+          "make sure write is disabled and hlog_roll is done");
     }
 
     Map<String, SortedSet<RegionServerReplicationStatus>> repStatusByPeer =
@@ -223,12 +251,15 @@ public final class ReplicationStatus implements Tool {
   private class HLogReplicationStatus implements Comparable<HLogReplicationStatus> {
     private final String hlog;
     private final long position;
+    private final long length;
     private final long writeTime;
     private final long rollTime;
 
-    private HLogReplicationStatus(String peerId, String hlog, long position, long writeTime) {
+    private HLogReplicationStatus(String peerId, String hlog, long length, long position,
+        long writeTime) {
       this.hlog = peerId + "/" + hlog;
       this.position = position;
+      this.length = length;
       this.writeTime = writeTime;
       // hlog file name format: {host}%2C{port}%2C{start time}.{13 digit roll time}
       int pos = hlog.length() - 13;
@@ -248,15 +279,19 @@ public final class ReplicationStatus implements Tool {
       if (ret == 0) {
         ret = this.hlog.compareTo(that.hlog);
         if (ret == 0) {
-          ret = this.position - that.position;
+          if (this.length == -1 || that.length == -1) {
+            ret = this.position - that.position;
+          } else {
+            ret = (this.position - this.length) - (that.position - that.length);
+          }
         }
       }
       return ret == 0 ? 0 : (ret < 0 ? -1 : 1);
     }
 
     @Override public String toString() {
-      return String.format("%s: %s, %s, %14d",
-          hlog, fmtTimestamp(writeTime), fmtTimestamp(rollTime), position);
+      return String.format("%s: %s, %s, %14d(len:%d, diff:%d)",
+          hlog, fmtTimestamp(writeTime), fmtTimestamp(rollTime), position, length, length - position);
     }
   }
 
