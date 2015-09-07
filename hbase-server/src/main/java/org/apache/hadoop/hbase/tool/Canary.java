@@ -199,7 +199,7 @@ public final class Canary implements Tool {
         if (table instanceof SaltedHTable) {
           table = ((SaltedHTable) table).getRawTable();
         }
-        byte[] rowToCheck = region.getStartKey();
+        byte[] rowToCheck = Bytes.randomKey(region.getStartKey(), region.getEndKey());
         for (HColumnDescriptor column : tableDesc.getColumnFamilies()) {
           Put put = new Put(rowToCheck);
           put.add(column.getName(), HConstants.EMPTY_BYTE_ARRAY,

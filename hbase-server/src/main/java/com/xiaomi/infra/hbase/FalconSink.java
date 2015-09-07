@@ -49,7 +49,8 @@ public class FalconSink implements Sink, Configurable {
   private AtomicLong totalReadCounter = new AtomicLong(0);
   private AtomicLong failedWriteCounter = new AtomicLong(0);
   private AtomicLong totalWriteCounter = new AtomicLong(0);
-
+  private boolean ignoreFushToNet;
+  
   private FalconSink() {
   }
 
@@ -116,14 +117,22 @@ public class FalconSink implements Sink, Configurable {
       return;
     }
     String clusterName = conf.get("hbase.cluster.name", "unknown");
+    long failedReadCount = failedReadCounter.get();
+    long totalReadCount = totalReadCounter.get();
+    long failedWriteCount = failedWriteCounter.get();
+    long totalWriteCount = totalWriteCounter.get();
     double readAvail = calc(failedReadCounter, totalReadCounter);
     double writeAvail = calc(failedWriteCounter, totalWriteCounter);
     double avail = (readAvail + writeAvail) /2;
-    LOG.info("Try to push metrics to falcon and collector. Cluster: "
-        + clusterName + " availability is " + avail + ", read availability is "
-        + readAvail + ", write availability is " + writeAvail);
-    pushToCollector(clusterName, avail, readAvail, writeAvail);
-    pushToFalcon(clusterName, avail, readAvail, writeAvail);
+    LOG.info("Try to push metrics to falcon and collector. Cluster: " + clusterName
+        + " availability is " + avail + ", read availability is " + readAvail
+        + ", write availability is " + writeAvail + ", failedReadCount: " + failedReadCount
+        + ", totalReadCount: " + totalReadCount + ", failedWriteCount: " + failedWriteCount
+        + ", totalWriteCount: " + totalWriteCount);
+    if (!ignoreFushToNet) {
+      pushToCollector(clusterName, avail, readAvail, writeAvail);
+      pushToFalcon(clusterName, avail, readAvail, writeAvail);
+    }
   }
 
   private JSONObject buildCanaryMetric(String clusterName, String key, double value) throws JSONException {
@@ -196,6 +205,8 @@ public class FalconSink implements Sink, Configurable {
   @Override
   public void setConf(Configuration conf) {
     this.conf = conf;
+    this.ignoreFushToNet = conf.getBoolean("hbase.canary.sink.falcon.ignore.push.to.net", false);
+    LOG.info("falcon sink ignore push to net : " + this.ignoreFushToNet);
   }
 
   @Override
