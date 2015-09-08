@@ -175,7 +175,12 @@ public final class Canary implements Tool {
             long time = System.currentTimeMillis() - startTime;
             sink.publishReadTiming(region, column, time);
           } catch (Exception e) {
-            sink.publishReadFailure(region, column, e);
+            // ignore secondary index related exception from sds coprocessor
+            if (e.getMessage().contains("Fatal error related to secondary index")) {
+              LOG.warn("encounter secondary index related error when read, skip"); 
+            } else {
+              sink.publishReadFailure(region, column, e);
+            }
           } finally {
             scanner.close();
           }
