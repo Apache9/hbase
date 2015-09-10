@@ -157,9 +157,10 @@ import org.apache.hadoop.hbase.util.Threads;
 import org.apache.hadoop.io.MultipleIOException;
 import org.apache.hadoop.metrics.util.MetricsRegistry;
 import org.apache.hadoop.util.StringUtils;
+import org.apache.htrace.Trace;
+import org.apache.htrace.TraceScope;
+
 import org.cliffc.high_scale_lib.Counter;
-import org.cloudera.htrace.Trace;
-import org.cloudera.htrace.TraceScope;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;

@@ -5,10 +5,11 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.htrace.HTraceConfiguration;
+import org.apache.htrace.Span;
+import org.apache.htrace.SpanReceiver;
+
 import org.cliffc.high_scale_lib.Counter;
-import org.cloudera.htrace.HTraceConfiguration;
-import org.cloudera.htrace.Span;
-import org.cloudera.htrace.SpanReceiver;
 
 public class LogSpanReciever implements SpanReceiver {
   private static final Log LOG = LogFactory.getLog(LogSpanReciever.class);
@@ -28,18 +29,16 @@ public class LogSpanReciever implements SpanReceiver {
   protected final Counter traceLogCounter = new Counter(); // trace log request counter in lastTick;
   private static final String TRACE_LOG_REQUEST_COUNT_MAX = "hbase.ipc.trace.log.request.count.max";
   
-  @Override
-  public void close() throws IOException {
-    // TODO Auto-generated method stub
-    
-  }
-
-  @Override
-  public void configure(HTraceConfiguration conf) {
+  public LogSpanReciever(HTraceConfiguration conf) {
     warnTime = conf.getInt(TRACE_SPAN_WARN_TIME, DEFAULT_TRACE_SPAN_WARN_TIME);
     maxTraceLogCountPerSeccond = conf.getInt(TRACE_LOG_REQUEST_COUNT_MAX, Integer.MAX_VALUE);
     LOG.info("configure LogSpanReciever, warnTIme=" + warnTime
         + " (ms), maxTraceLogCountPerSeccond=" + maxTraceLogCountPerSeccond);
+  }
+
+  @Override
+  public void close() throws IOException {
+    // TODO Auto-generated method stub
   }
 
   protected String toLogString(Span span, long duration) {
