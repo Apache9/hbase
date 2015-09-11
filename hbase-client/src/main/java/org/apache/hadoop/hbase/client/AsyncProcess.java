@@ -52,7 +52,7 @@ import org.apache.hadoop.hbase.ipc.RpcControllerFactory;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.Pair;
-import org.cloudera.htrace.Trace;
+import org.apache.htrace.Trace;
 
 import com.google.common.base.Preconditions;
 

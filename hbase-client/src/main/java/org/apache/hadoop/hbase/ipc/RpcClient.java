@@ -92,8 +92,8 @@ import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.security.token.Token;
 import org.apache.hadoop.security.token.TokenIdentifier;
 import org.apache.hadoop.security.token.TokenSelector;
-import org.cloudera.htrace.Span;
-import org.cloudera.htrace.Trace;
+import org.apache.htrace.Span;
+import org.apache.htrace.Trace;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.protobuf.BlockingRpcChannel;

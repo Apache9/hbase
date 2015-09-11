@@ -111,8 +111,8 @@ import org.apache.hadoop.security.token.SecretManager;
 import org.apache.hadoop.security.token.SecretManager.InvalidToken;
 import org.apache.hadoop.security.token.TokenIdentifier;
 import org.apache.hadoop.util.StringUtils;
+import org.apache.htrace.TraceInfo;
 import org.cliffc.high_scale_lib.Counter;
-import org.cloudera.htrace.TraceInfo;
 import org.codehaus.jackson.map.ObjectMapper;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;

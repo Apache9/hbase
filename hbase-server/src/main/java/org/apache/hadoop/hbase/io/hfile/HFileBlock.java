@@ -49,8 +49,8 @@ import org.apache.hadoop.hbase.util.ChecksumType;
 import org.apache.hadoop.hbase.util.ClassSize;
 import org.apache.hadoop.hbase.util.CompoundBloomFilter;
 import org.apache.hadoop.io.IOUtils;
-import org.cloudera.htrace.Trace;
-import org.cloudera.htrace.TraceScope;
+import org.apache.htrace.Trace;
+import org.apache.htrace.TraceScope;
 
 import com.google.common.base.Preconditions;
 
