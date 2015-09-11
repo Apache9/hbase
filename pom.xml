@@ -1640,7 +1640,7 @@
         <slf4j.version>1.6.1</slf4j.version>
         <galaxy-sds.version>1.2.18</galaxy-sds.version>
         <rrd-on-hbase.version>0.0.2-SNAPSHOT</rrd-on-hbase.version>
-        <themis-coprocessor.version>1.0-SNAPSHOT</themis-coprocessor.version>
+        <themis-coprocessor.version>1.0.0</themis-coprocessor.version>
       </properties>
       <dependencies>
         <dependency>
