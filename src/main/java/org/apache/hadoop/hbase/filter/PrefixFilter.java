@@ -35,8 +35,10 @@ import com.google.common.base.Preconditions;
  * Pass results that have same row prefix.
  */
 public class PrefixFilter extends FilterBase {
+  public static final int MAX_SKIPPED_COMPARE_ROW_NUM = 100;
   protected byte [] prefix = null;
   protected boolean passedPrefix = false;
+  protected int skippedCompareRows = 0;
 
   public PrefixFilter(final byte [] prefix) {
     this.prefix = prefix;
@@ -53,8 +55,12 @@ public class PrefixFilter extends FilterBase {
   public boolean filterRowKey(byte[] buffer, int offset, int length) {
     if (buffer == null || this.prefix == null)
       return true;
-    if (length < prefix.length)
+    if (length < prefix.length && skippedCompareRows < MAX_SKIPPED_COMPARE_ROW_NUM) {
+      ++skippedCompareRows;
       return true;
+    }
+    skippedCompareRows = 0;
+
     // if they are equal, return false => pass row
     // else return true, filter row
     // if we are passed the prefix, set flag
