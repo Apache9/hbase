@@ -31,6 +31,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -47,6 +48,9 @@ import org.apache.hadoop.hbase.client.HConnection;
 import org.apache.hadoop.hbase.client.HConnectionManager;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.HTableInterface;
+import org.apache.hadoop.hbase.client.MetaScanner;
+import org.apache.hadoop.hbase.client.MetaScanner.MetaScannerVisitor;
+import org.apache.hadoop.hbase.client.MetaScanner.MetaScannerVisitorBase;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
@@ -406,8 +410,9 @@ public final class Canary implements Tool {
    */
   private List<RegionTask> sniff() throws Exception {
     List<RegionTask> tasks = new LinkedList<RegionTask>();
+    // admin.listTables invoke connection.listTables directly, won't create zkw
     for (HTableDescriptor table : admin.listTables()) {
-      if (admin.isTableEnabled(table.getName())) {
+      if (isTableEnabled(table.getName())) {
         tasks.addAll(sniff(table));
       }
     }
@@ -419,7 +424,9 @@ public final class Canary implements Tool {
    */
   private List<RegionTask> sniff(String tableName) throws Exception {
     List<RegionTask> tasks = new LinkedList<RegionTask>();
+    // admin.isTableAvailable invoke connection.isTableAvailable directly, won't create zkw
     if (admin.isTableAvailable(tableName)) {
+      // admin.getTableDescriptor invoke connection.getTableDescriptor dirctly, won't create zkw
       tasks.addAll(sniff(admin.getTableDescriptor(tableName.getBytes())));
     } else {
       LOG.warn(String.format("Table %s is not available", tableName));
@@ -439,16 +446,37 @@ public final class Canary implements Tool {
       return new ArrayList<RegionTask>();
     }
     List<RegionTask> tasks = new ArrayList<RegionTask>();
-    for (HRegionInfo region : admin.getTableRegions(tableDesc.getName())) {
+    // MetaScanner.allTableRegions will scan meta table directly without create new catalog tracker
+    for (HRegionInfo region : MetaScanner.allTableRegions(conf, connection, tableDesc.getName(), false).keySet()) {
        tasks.add(new RegionTask(conf, connection, tableDesc, region, sink));
     }
     table.close();
     return tasks;
   }
 
+  // return true if table region exist for in meta table; the logic is the same as
+  // HBaseAdmin.tableExists, but won't create new zkw
+  protected boolean isTableExists(final byte[] tableName) throws IOException {
+    final AtomicBoolean exist = new AtomicBoolean(false);
+    MetaScannerVisitor visitor = new MetaScannerVisitorBase() {
+      @Override
+      public boolean processRow(Result row) throws IOException {
+        exist.set(true);
+        // break the meta scan once region hit
+        return false;
+      }
+    };
+    MetaScanner.metaScan(conf, connection, visitor, tableName);
+    return exist.get();
+  }
+  
+  // won't create new zkw
+  protected boolean isTableEnabled(byte[] table) throws IOException {
+    return isTableExists(table) && connection.isTableEnabled(table);
+  }
 
   private void checkCanaryDistribution() throws IOException {
-    if (!admin.tableExists(CANARY_TABLE_NAME)) {
+    if (isTableExists(Bytes.toBytes(CANARY_TABLE_NAME))) {
       int numberOfServers = admin.getClusterStatus().getServers().size();
       if (numberOfServers == 0) {
         throw new IllegalStateException("No live regionservers");
@@ -456,7 +484,7 @@ public final class Canary implements Tool {
       createCanaryTable(numberOfServers);
     }
 
-    if (!admin.isTableEnabled(CANARY_TABLE_NAME)) {
+    if (isTableEnabled(Bytes.toBytes(CANARY_TABLE_NAME))) {
       admin.enableTable(CANARY_TABLE_NAME);
     }
 
