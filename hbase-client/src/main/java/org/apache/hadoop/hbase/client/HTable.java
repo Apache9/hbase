@@ -78,12 +78,12 @@ import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.CompareType;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.Pair;
 import org.apache.hadoop.hbase.util.Threads;
+import org.apache.htrace.Trace;
 
 import com.google.protobuf.Descriptors;
 import com.google.protobuf.Message;
 import com.google.protobuf.Service;
 import com.google.protobuf.ServiceException;
-
 import com.xiaomi.infra.base.nameservice.NameService;
 import com.xiaomi.infra.base.nameservice.NameServiceEntry;
 
@@ -807,6 +807,9 @@ public class HTable implements HTableInterface {
      RegionServerCallable<Result> callable = new RegionServerCallable<Result>(this.connection,
          tableName, row) {
        public Result call() throws IOException {
+            if (Trace.isTracing()) {
+              Trace.addTimelineAnnotation("getRowOrBefore to " + location);
+            }
             return ProtobufUtil.getRowOrBefore(getStub(), getLocation().getRegionInfo()
                 .getRegionName(), row, family, rpcControllerFactory.newController());
           }
@@ -876,6 +879,9 @@ public class HTable implements HTableInterface {
     RegionServerCallable<Result> callable =
         new RegionServerCallable<Result>(this.connection, getName(), get.getRow()) {
           public Result call() throws IOException {
+            if (Trace.isTracing()) {
+              Trace.addTimelineAnnotation("Get to " + location);
+            }
             return ProtobufUtil.get(getStub(), getLocation().getRegionInfo().getRegionName(), get,
               controller);
           }
@@ -991,6 +997,9 @@ public class HTable implements HTableInterface {
         tableName, delete.getRow()) {
       public Boolean call() throws IOException {
         try {
+          if (Trace.isTracing()) {
+            Trace.addTimelineAnnotation("Delete to " + location);
+          }
           MutateRequest request = RequestConverter.buildMutateRequest(
             getLocation().getRegionInfo().getRegionName(), delete);
               PayloadCarryingRpcController controller = rpcControllerFactory.newController();
@@ -1134,6 +1143,9 @@ public class HTable implements HTableInterface {
         new RegionServerCallable<Void>(connection, getName(), rm.getRow()) {
       public Void call() throws IOException {
         try {
+          if (Trace.isTracing()) {
+            Trace.addTimelineAnnotation("MutateRow to " + location);
+          }
           RegionAction.Builder regionMutationBuilder = RequestConverter.buildRegionAction(
             getLocation().getRegionInfo().getRegionName(), rm);
           regionMutationBuilder.setAtomic(true);
@@ -1175,6 +1187,9 @@ public class HTable implements HTableInterface {
       new RegionServerCallable<Result>(this.connection, getName(), append.getRow()) {
         public Result call() throws IOException {
           try {
+            if (Trace.isTracing()) {
+              Trace.addTimelineAnnotation("Append to " + location);
+            }
             MutateRequest request = RequestConverter.buildMutateRequest(
               getLocation().getRegionInfo().getRegionName(), append, nonceGroup, nonce);
             PayloadCarryingRpcController rpcController = rpcControllerFactory.newController();
@@ -1205,6 +1220,9 @@ public class HTable implements HTableInterface {
         getName(), increment.getRow()) {
       public Result call() throws IOException {
         try {
+          if (Trace.isTracing()) {
+            Trace.addTimelineAnnotation("Increment to " + location);
+          }
           MutateRequest request = RequestConverter.buildMutateRequest(
             getLocation().getRegionInfo().getRegionName(), increment, nonceGroup, nonce);
           PayloadCarryingRpcController rpcController = rpcControllerFactory.newController();
@@ -1267,6 +1285,9 @@ public class HTable implements HTableInterface {
       new RegionServerCallable<Long>(connection, getName(), row) {
         public Long call() throws IOException {
           try {
+            if (Trace.isTracing()) {
+              Trace.addTimelineAnnotation("IncrementColumnValue to " + location);
+            }
             MutateRequest request = RequestConverter.buildIncrementRequest(
               getLocation().getRegionInfo().getRegionName(), row, family,
               qualifier, amount, durability, nonceGroup, nonce);
@@ -1296,6 +1317,9 @@ public class HTable implements HTableInterface {
       new RegionServerCallable<Boolean>(connection, getName(), row) {
         public Boolean call() throws IOException {
           try {
+            if (Trace.isTracing()) {
+              Trace.addTimelineAnnotation("CheckAndPut to " + location);
+            }
             MutateRequest request = RequestConverter.buildMutateRequest(
               getLocation().getRegionInfo().getRegionName(), row, family, qualifier,
                 new BinaryComparator(value), CompareType.EQUAL, put);
@@ -1324,6 +1348,9 @@ public class HTable implements HTableInterface {
       new RegionServerCallable<Boolean>(connection, getName(), row) {
         public Boolean call() throws IOException {
           try {
+            if (Trace.isTracing()) {
+              Trace.addTimelineAnnotation("CheckAndDelete to " + location);
+            }
             MutateRequest request = RequestConverter.buildMutateRequest(
               getLocation().getRegionInfo().getRegionName(), row, family, qualifier,
                 new BinaryComparator(value), CompareType.EQUAL, delete);
@@ -1353,6 +1380,9 @@ public class HTable implements HTableInterface {
             PayloadCarryingRpcController controller = rpcControllerFactory.newController();
             controller.setPriority(tableName);
             try {
+              if (Trace.isTracing()) {
+                Trace.addTimelineAnnotation("CheckAndMutate to " + location);
+              }
               CompareType compareType = CompareType.valueOf(compareOp.name());
               MultiRequest request = RequestConverter.buildMutateRequest(
                   getLocation().getRegionInfo().getRegionName(), row, family, qualifier,

@@ -46,6 +46,7 @@ import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.ScanResponse;
 import org.apache.hadoop.hbase.regionserver.RegionServerStoppedException;
 import org.apache.hadoop.ipc.RemoteException;
 import org.apache.hadoop.net.DNS;
+import org.apache.htrace.Trace;
 
 import com.google.protobuf.RpcController;
 import com.google.protobuf.ServiceException;
@@ -126,7 +127,6 @@ public class ScannerCallable extends RegionServerCallable<Result[]> {
       checkIfRegionServerIsRemote();
       instantiated = true;
     }
-
     // check how often we retry.
     // HConnectionManager will call instantiateServer with reload==true
     // if and only if for retries.
@@ -186,10 +186,14 @@ public class ScannerCallable extends RegionServerCallable<Result[]> {
             // Results are returned via controller
             CellScanner cellScanner = controller.cellScanner();
             rrs = ResponseConverter.getResults(cellScanner, response);
+
+            int rows = rrs == null ? 0 : rrs.length;
+            if (Trace.isTracing()) {
+              Trace.addTimelineAnnotation(" fetch " + rows + " rows");
+            }
             if (logScannerActivity) {
               long now = System.currentTimeMillis();
               if (now - timestamp > logCutOffLatency) {
-                int rows = rrs == null ? 0 : rrs.length;
                 LOG.info("Took " + (now-timestamp) + "ms to fetch "
                   + rows + " rows from scanner=" + scannerId);
               }
@@ -289,6 +293,9 @@ public class ScannerCallable extends RegionServerCallable<Result[]> {
         RequestConverter.buildScanRequest(this.scannerId, 0, true);
       try {
         getStub().scan(null, request);
+        if (Trace.isTracing()) {
+          Trace.addTimelineAnnotation("Close scanner");
+        }
       } catch (ServiceException se) {
         throw ProtobufUtil.getRemoteException(se);
       }
@@ -307,6 +314,9 @@ public class ScannerCallable extends RegionServerCallable<Result[]> {
     try {
       ScanResponse response = getStub().scan(null, request);
       long id = response.getScannerId();
+      if (Trace.isTracing()) {
+        Trace.addTimelineAnnotation("Open scanner to " + getLocation().toString());
+      }
       if (logScannerActivity) {
         LOG.info("Open scanner=" + id + " for scan=" + scan.toString()
           + " on region " + getLocation().toString());

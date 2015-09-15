@@ -37,6 +37,7 @@ import org.apache.hadoop.hbase.protobuf.ResponseConverter;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.ScanRequest;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.ScanResponse;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.htrace.Trace;
 
 import com.google.protobuf.ServiceException;
 
@@ -176,6 +177,9 @@ public class ClientSmallScanner extends ClientScanner {
         try {
           controller.setPriority(getTableName());
           response = getStub().scan(controller, request);
+          if (Trace.isTracing()) {
+            Trace.addTimelineAnnotation("Small scan to " + location);
+          }
           return ResponseConverter.getResults(controller.cellScanner(),
               response);
         } catch (ServiceException se) {

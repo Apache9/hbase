@@ -63,6 +63,8 @@ import org.apache.hadoop.hbase.util.FSUtils;
 import org.apache.hadoop.hbase.util.HasThread;
 import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
 import org.apache.hadoop.util.StringUtils;
+import org.apache.htrace.Sampler;
+import org.apache.htrace.Span;
 import org.apache.htrace.Trace;
 import org.apache.htrace.TraceScope;
 
@@ -1065,7 +1067,8 @@ class FSHLog implements HLog, Syncable {
       if (this.closed) {
         throw new IOException("Cannot append; log is closed");
       }
-      TraceScope traceScope = Trace.startSpan("FSHlog.append");
+    TraceScope traceScope =
+        Trace.startSpan("FSHlog.append" + (doSync ? "WithSync" : "WithoutSync"));
       try {
         long txid = 0;
         synchronized (this.updateLock) {
@@ -1162,6 +1165,15 @@ class FSHLog implements HLog, Syncable {
       }
     }
 
+    private Sampler getSampler(List<Entry> pendWrites) {
+      for (Entry e : pendWrites) {
+        if (e.getSpan() != null) {
+          return Sampler.ALWAYS;
+        }
+      }
+      return Sampler.NEVER;
+    }
+
     public void run() {
       try {
         while (!this.isInterrupted()) {
@@ -1185,11 +1197,22 @@ class FSHLog implements HLog, Syncable {
             pendWrites = pendingWrites;
             pendingWrites = new LinkedList<Entry>();
           }
-
+          TraceScope traceScope = Trace.startSpan("FSHlog.writeAndSync", getSampler(pendWrites));
           // 3. write all buffered writes to HDFS(append, without sync)
           try {
+            List<Long> parentSpans = new ArrayList<Long>(pendWrites.size());
+            List<Long> parentTraceIds = new ArrayList<Long>(pendWrites.size());
             for (Entry e : pendWrites) {
               writer.append(e);
+              if (Trace.isTracing() && e.getSpan() != null) {
+                parentSpans.add(e.getSpan().getSpanId());
+                parentTraceIds.add(e.getSpan().getTraceId());
+              }
+            }
+            if (Trace.isTracing() && parentSpans.size() > 0) {
+              Trace.addKVAnnotation("Parent spans".getBytes(), parentSpans.toString().getBytes());
+              Trace.addKVAnnotation("Parent traceIds".getBytes(), parentTraceIds.toString()
+                  .getBytes());
             }
           } catch(IOException e) {
             LOG.error("Error while AsyncWriter write, request close of hlog ", e);
@@ -1205,13 +1228,13 @@ class FSHLog implements HLog, Syncable {
           for (int i = 0; i < asyncSyncers.length; ++i) {
             if (!asyncSyncers[i].isSyncing()) {
               hasIdleSyncer = true;
-              asyncSyncers[i].setWrittenTxid(this.lastWrittenTxid);
+              asyncSyncers[i].setWrittenTxid(this.lastWrittenTxid, traceScope.detach());
               break;
             }
           }
           if (!hasIdleSyncer) {
             int idx = (int)(this.lastWrittenTxid % asyncSyncers.length);
-            asyncSyncers[idx].setWrittenTxid(this.lastWrittenTxid);
+            asyncSyncers[idx].setWrittenTxid(this.lastWrittenTxid, traceScope.detach());
           }
         }
       } catch (InterruptedException e) {
@@ -1233,6 +1256,7 @@ class FSHLog implements HLog, Syncable {
     private long lastSyncedTxid = 0;
     private volatile boolean isSyncing = false;
     private Object syncLock = new Object();
+    private Span span;
 
     public AsyncSyncer(String name) {
       super(name);
@@ -1244,12 +1268,13 @@ class FSHLog implements HLog, Syncable {
 
     // wake up (called by AsyncWriter thread) AsyncSyncer thread
     // to sync(flush) writes written by AsyncWriter in HDFS
-    public void setWrittenTxid(long txid) {
+    public void setWrittenTxid(long txid, Span span) {
       synchronized (this.syncLock) {
         if (txid <= this.writtenTxid)
           return;
 
         this.writtenTxid = txid;
+        this.span = span;
         this.syncLock.notify();
       }
     }
@@ -1275,6 +1300,8 @@ class FSHLog implements HLog, Syncable {
             continue;
           }
 
+          TraceScope traceScope = Trace.continueSpan(span);
+          span = null;
           // 2. do 'sync' to HDFS to provide durability
           long now = EnvironmentEdgeManager.currentTimeMillis();
           try {
@@ -1301,7 +1328,7 @@ class FSHLog implements HLog, Syncable {
               asyncIOE = new IOException("has unsynced writes but writer is null!");
               failedTxid.set(this.txidToSync);
             } else {
-              this.isSyncing = true;            
+              this.isSyncing = true;
               writer.sync(syncLogMode == SyncLogMode.HSYNC_ALWAYS.ordinal());
               this.isSyncing = false;
             }
@@ -1314,7 +1341,10 @@ class FSHLog implements HLog, Syncable {
             failedTxid.set(this.txidToSync);
 
             this.isSyncing = false;
+          } finally {
+            traceScope.close();
           }
+
           final long took = EnvironmentEdgeManager.currentTimeMillis() - now;
           metrics.finishSync(took);
           if (took > slowSyncMs) {
@@ -1577,7 +1607,7 @@ class FSHLog implements HLog, Syncable {
           logKey.setScopes(null);
         }
         // write to our buffer for the Hlog file.
-        this.pendingWrites.add(new HLog.Entry(logKey, logEdit));
+        this.pendingWrites.add(new HLog.Entry(logKey, logEdit, Trace.currentSpan()));
       }
       long took = EnvironmentEdgeManager.currentTimeMillis() - now;
       coprocessorHost.postWALWrite(info, logKey, logEdit);
