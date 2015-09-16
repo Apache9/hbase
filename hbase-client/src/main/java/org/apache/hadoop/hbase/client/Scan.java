@@ -109,6 +109,7 @@ public class Scan extends Query {
    */
   @Deprecated
   public static final String HINT_LOOKAHEAD = "_look_ahead_";
+  private static final String RAWLIMIT_ATTR = "_rawlimit_";
 
   private byte [] startRow = HConstants.EMPTY_START_ROW;
   private byte [] stopRow  = HConstants.EMPTY_END_ROW;
@@ -408,6 +409,17 @@ public class Scan extends Query {
   }
 
   /**
+   * Set the limit of raw values to scan for each call to next(). This is a soft limit, and the
+   * number of actual scanned values can exceeds this limit to include a full row (so the exceeded
+   * amount is bounded to the max number of values in a single row). This limit can be used to
+   * control the total time of each RPC call to avoid unexpected timeout.
+   * @param rawLimit the maximum number of raw values to scan
+   */
+  public void setRawLimit(int rawLimit) {
+    setAttribute(RAWLIMIT_ATTR, Bytes.toBytes(rawLimit));
+  }
+
+  /**
    * Set the number of rows for caching that will be passed to scanners.
    * If not set, the default setting from {@link HTable#getScannerCaching()} will apply.
    * Higher caching values will enable faster scanners but will use more memory.
@@ -528,6 +540,14 @@ public class Scan extends Query {
    */
   public int getRowOffsetPerColumnFamily() {
     return this.storeOffset;
+  }
+
+  /**
+   * @return get the limit of raw values to scan for each call to next()
+   */
+  public int getRawLimit() {
+    byte[] attr = getAttribute(RAWLIMIT_ATTR);
+    return attr == null ? -1 : Bytes.toInt(attr);
   }
 
   /**
@@ -700,6 +720,7 @@ public class Scan extends Query {
     map.put("stopRow", Bytes.toStringBinary(this.stopRow));
     map.put("maxVersions", this.maxVersions);
     map.put("batch", this.batch);
+    map.put("rawLimit", getRawLimit());
     map.put("caching", this.caching);
     map.put("maxResultSize", this.maxResultSize);
     map.put("cacheBlocks", this.cacheBlocks);

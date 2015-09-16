@@ -733,7 +733,7 @@ public class AccessController extends BaseMasterAndRegionObserver
       do {
         cells.clear();
         // scan with limit as 1 to hold down memory use on wide rows
-        more = scanner.next(cells, 1);
+        more = scanner.next(cells, 1, -1).hasNext();
         for (Cell cell: cells) {
           if (LOG.isTraceEnabled()) {
             LOG.trace("Found cell " + cell);

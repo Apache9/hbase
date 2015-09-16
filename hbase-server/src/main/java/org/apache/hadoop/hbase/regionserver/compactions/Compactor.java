@@ -226,7 +226,7 @@ public abstract class Compactor {
     throughputController.start(compactionName);
     try {
       do {
-        hasMore = scanner.next(kvs, compactionKVMax);
+        hasMore = scanner.next(kvs, compactionKVMax, -1).hasNext();
         if (LOG.isDebugEnabled()) {
           now = EnvironmentEdgeManager.currentTimeMillis();
         }

@@ -66,7 +66,12 @@ public abstract class AbstractClientScanner implements ResultScanner {
     for(int i = 0; i < nbRows; i++) {
       Result next = next();
       if (next != null) {
-        resultSets.add(next);
+        // skip the fake row filled when raw limit is hit
+        if (!next.isFake()) {
+          resultSets.add(next);
+        } else {
+          i--;
+        }
       } else {
         break;
       }

@@ -137,7 +137,7 @@ public class TestInvocationRecordFilter {
     List<Cell> actualValues = new ArrayList<Cell>();
     List<Cell> temp = new ArrayList<Cell>();
     InternalScanner scanner = this.region.getScanner(scan);
-    while (scanner.next(temp)) {
+    while (scanner.next(temp).hasNext()) {
       actualValues.addAll(temp);
       temp.clear();
     }

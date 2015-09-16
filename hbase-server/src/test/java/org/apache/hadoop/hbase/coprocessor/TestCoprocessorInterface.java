@@ -57,6 +57,7 @@ import org.apache.hadoop.hbase.regionserver.InternalScanner;
 import org.apache.hadoop.hbase.regionserver.RegionCoprocessorHost;
 import org.apache.hadoop.hbase.regionserver.RegionScanner;
 import org.apache.hadoop.hbase.regionserver.ScanType;
+import org.apache.hadoop.hbase.regionserver.ScannerStatus;
 import org.apache.hadoop.hbase.regionserver.SplitTransaction;
 import org.apache.hadoop.hbase.regionserver.Store;
 import org.apache.hadoop.hbase.regionserver.StoreFile;
@@ -83,26 +84,30 @@ public class TestCoprocessorInterface {
       this.delegate = delegate;
     }
 
+    @Override public int getRawLimit() {
+      return delegate.getRawLimit();
+    }
+
     @Override
-    public boolean next(List<Cell> results) throws IOException {
+    public ScannerStatus next(List<Cell> results) throws IOException {
       return delegate.next(results);
     }
 
     @Override
-    public boolean next(List<Cell> result, int limit) throws IOException {
-      return delegate.next(result, limit);
+    public ScannerStatus next(List<Cell> result, int limit, int rawLimit) throws IOException {
+      return delegate.next(result, limit, rawLimit);
     }
 
     @Override
-    public boolean nextRaw(List<Cell> result) 
+    public ScannerStatus nextRaw(List<Cell> result) 
         throws IOException {
       return delegate.nextRaw(result);
     }
 
     @Override
-    public boolean nextRaw(List<Cell> result, int limit)
+    public ScannerStatus nextRaw(List<Cell> result, int limit, int rawLimit)
         throws IOException {
-      return delegate.nextRaw(result, limit);
+      return delegate.nextRaw(result, limit, rawLimit);
     }
 
     @Override

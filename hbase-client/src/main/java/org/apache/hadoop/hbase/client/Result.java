@@ -148,6 +148,33 @@ public class Result implements CellScannable, CellScanner {
     return new Result(cells, null);
   }
 
+  /**
+   * Create a fake result based on the next value. This will be passed to the client side to
+   * notify the client that the raw limit is reached but no valid row is found yet, then avoiding
+   * the unnecessary RPC timeout.
+   * @param next the next key value, usually invisible(i.e. deleted or filtered out)
+   * @return new result instance
+   */
+  public static Result fakeResult(Cell next) {
+    KeyValue[] nextKvs = {
+        KeyValue.createFirstOnRow(next.getRow(), next.getTimestamp())
+    };
+    return new Result(nextKvs);
+  }
+
+  /**
+   * Whether this is a fake result set when raw limit is reached, it's used to notify the client
+   * that the scanner is still in progress but no valid data yet to avoid RPC timeout.
+   * @return true if this is fake result
+   */
+  public boolean isFake() {
+    if (this.cells != null && this.cells.length == 1) {
+      byte type = cells[0].getTypeByte();
+      return type == KeyValue.Type.Minimum.getCode() || type == KeyValue.Type.Maximum.getCode();
+    }
+    return false;
+  }
+
   /** Private ctor. Use {@link #create(Cell[])}. */
   private Result(Cell[] cells, Boolean exists) {
     this.cells = cells;

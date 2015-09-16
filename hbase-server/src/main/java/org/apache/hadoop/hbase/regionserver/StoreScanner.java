@@ -451,24 +451,24 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
    * @return true if there are more rows, false if scanner is done
    */
   @Override
-  public boolean next(List<Cell> outResult, int limit) throws IOException {
+  public ScannerStatus next(List<Cell> outResult, int limit, int rawLimit) throws IOException {
     lock.lock();
     try {
     if (checkReseek()) {
-      return true;
+      return ScannerStatus.CONTINUED_WITH_NO_STATS;
     }
 
     // if the heap was left null, then the scanners had previously run out anyways, close and
     // return.
     if (this.heap == null) {
       close();
-      return false;
+      return ScannerStatus.DONE_WITH_NO_STATS;
     }
 
     KeyValue peeked = this.heap.peek();
     if (peeked == null) {
       close();
-      return false;
+      return ScannerStatus.DONE_WITH_NO_STATS;
     }
     if (scan.isDebug()) {
       LOG.info("Debug scan: peeked kv: " + peeked);
@@ -493,8 +493,11 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
         store != null ? store.getComparator() : null;
 
     int count = 0;
+    int rawCount = 0;
     LOOP: while((kv = this.heap.peek()) != null) {
-      if (prevKV != kv) ++kvsScanned; // Do object compare - we set prevKV from the same heap.
+      if (prevKV != kv) {
+        ++kvsScanned; // Do object compare - we set prevKV from the same heap.
+      }
       checkScanOrder(prevKV, kv, comparator);
       prevKV = kv;
 
@@ -519,7 +522,7 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
               this.countPerRow > (storeLimit + storeOffset)) {
             // do what SEEK_NEXT_ROW does.
             if (!matcher.moreRowsMayExistAfter(kv)) {
-              return false;
+              return ScannerStatus.done(rawCount);
             }
             seekToNextRow(kv);
             break LOOP;
@@ -536,13 +539,17 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
 
           if (qcode == ScanQueryMatcher.MatchCode.INCLUDE_AND_SEEK_NEXT_ROW) {
             if (!matcher.moreRowsMayExistAfter(kv)) {
-              return false;
+              return ScannerStatus.done(rawCount);
             }
             seekToNextRow(kv);
+            if (rawLimit > 0 && rawCount >= rawLimit) {
+              return ScannerStatus.continued(this.heap.peek(), rawCount);
+            }
           } else if (qcode == ScanQueryMatcher.MatchCode.INCLUDE_AND_SEEK_NEXT_COL) {
             seekAsDirection(matcher.getKeyForNextColumn(kv));
           } else {
             this.heap.next();
+            ++rawCount;
           }
 
           if (limit > 0 && (count == limit)) {
@@ -551,28 +558,34 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
           continue;
 
         case DONE:
-          return true;
+          return ScannerStatus.continued(this.heap.peek(), rawCount);
 
         case DONE_SCAN:
           close();
-          return false;
+          return ScannerStatus.done(rawCount);
 
         case SEEK_NEXT_ROW:
+          ++rawCount;
           // This is just a relatively simple end of scan fix, to short-cut end
           // us if there is an endKey in the scan.
           if (!matcher.moreRowsMayExistAfter(kv)) {
-            return false;
+            return ScannerStatus.done(rawCount);
           }
 
           seekToNextRow(kv);
+          if (rawLimit > 0 && rawCount >= rawLimit) {
+            return ScannerStatus.continued(this.heap.peek(), rawCount);
+          }
           break;
 
         case SEEK_NEXT_COL:
+          ++rawCount;
           seekAsDirection(matcher.getKeyForNextColumn(kv));
           break;
 
         case SKIP:
           this.heap.next();
+          ++rawCount;
           break;
 
         case SEEK_NEXT_USING_HINT:
@@ -582,6 +595,7 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
             seekAsDirection(nextKV);
           } else {
             heap.next();
+            ++rawCount;
           }
           break;
 
@@ -591,12 +605,12 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
     }
 
     if (count > 0) {
-      return true;
+      return ScannerStatus.continued(this.heap.peek(), rawCount);
     }
 
     // No more keys
     close();
-    return false;
+    return ScannerStatus.done(rawCount);
     } finally {
       lock.unlock();
     }
@@ -635,8 +649,8 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
   }
 
   @Override
-  public boolean next(List<Cell> outResult) throws IOException {
-    return next(outResult, -1);
+  public ScannerStatus next(List<Cell> outResult) throws IOException {
+    return next(outResult, -1, -1);
   }
 
   // Implementation of ChangedReadersObserver

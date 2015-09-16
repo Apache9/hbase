@@ -96,7 +96,7 @@ public class TestColumnPrefixFilter {
 
         InternalScanner scanner = region.getScanner(scan);
         List<Cell> results = new ArrayList<Cell>();
-        while(scanner.next(results));
+        while(scanner.next(results).hasNext());
         assertEquals(prefixMap.get(s).size(), results.size());
       }
     } finally {
@@ -161,7 +161,7 @@ public class TestColumnPrefixFilter {
 
         InternalScanner scanner = region.getScanner(scan);
         List<Cell> results = new ArrayList<Cell>();
-        while(scanner.next(results));
+        while(scanner.next(results).hasNext());
         assertEquals(prefixMap.get(s).size(), results.size());
       }
     } finally {

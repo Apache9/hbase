@@ -3380,15 +3380,19 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
             region.startRegionOperation(Operation.SCAN);
             try {
               int i = 0;
+              int rawLimit = scanner.getRawLimit();
+              int rawCount = 0;
               synchronized(scanner) {
-                while (i < rows) {
+                while (i < rows && (rawLimit < 0 || rawCount < rawLimit)) {
                   // Stop collecting results if maxScannerResultSize is set and we have exceeded it
                   if ((maxScannerResultSize < Long.MAX_VALUE) &&
                       (currentScanResultSize >= maxResultSize)) {
                     break;
                   }
                   // Collect values to be returned here
-                  boolean moreRows = scanner.nextRaw(values);
+                  ScannerStatus status =
+                      scanner.nextRaw(values, -1, rawLimit - rawCount);
+                  rawCount += status.getRawValueScanned();
                   if (!values.isEmpty()) {
                     for (Cell cell : values) {
                       KeyValue kv = KeyValueUtil.ensureKeyValue(cell);
@@ -3398,7 +3402,24 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
                     results.add(Result.create(values));
                     i++;
                   }
-                  if (!moreRows) {
+                  boolean limitReached = false;
+                  if (rawLimit > 0 && rawCount >= rawLimit) {
+                    limitReached = true;
+                  }
+                  if (maxScannerResultSize < Long.MAX_VALUE && currentScanResultSize > maxScannerResultSize) {
+                    limitReached = true;
+                  }
+                  if (status.hasNext() && limitReached) {
+                    // when there is no visible key values scanned out yet but the raw limit is reached,
+                    // we fill a fake result which contains the next position and pass it to the client
+                    // to avoid RPC timeout.
+                    KeyValue next = status.next();
+                    if (next != null) {
+                      // append a fake row which is larger than the next peeked row
+                      results.add(Result.fakeResult(next));
+                    }
+                  }
+                  if (!status.hasNext()) {
                     break;
                   }
                   values.clear();

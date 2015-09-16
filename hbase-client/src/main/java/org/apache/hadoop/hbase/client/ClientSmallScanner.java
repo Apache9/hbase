@@ -53,9 +53,6 @@ import com.google.protobuf.ServiceException;
 public class ClientSmallScanner extends ClientScanner {
   private final Log LOG = LogFactory.getLog(this.getClass());
   private RegionServerCallable<Result[]> smallScanCallable = null;
-  // When fetching results from server, skip the first result if it has the same
-  // row with this one
-  private byte[] skipRowOfFirstResult = null;
 
   /**
    * Create a new ClientSmallScanner for the specified table. An HConnection
@@ -127,7 +124,6 @@ public class ClientSmallScanner extends ClientScanner {
     // Where to start the next getter
     byte[] localStartKey;
     int cacheNum = nbRows;
-    skipRowOfFirstResult = null;
     // if we're at end of table, close and return false to stop iterating
     if (this.currentRegion != null && currentRegionDone) {
       byte[] endKey = this.currentRegion.getEndKey();
@@ -144,8 +140,7 @@ public class ClientSmallScanner extends ClientScanner {
         LOG.debug("Finished with region " + this.currentRegion);
       }
     } else if (this.lastResult != null) {
-      localStartKey = this.lastResult.getRow();
-      skipRowOfFirstResult = this.lastResult.getRow();
+      localStartKey =  Bytes.add(lastResult.getRow(), new byte[1]);
       cacheNum++;
     } else {
       localStartKey = this.scan.getStartRow();
@@ -157,7 +152,7 @@ public class ClientSmallScanner extends ClientScanner {
     }
     smallScanCallable = getSmallScanCallable(
         scan, getConnection(), getTable(), localStartKey, cacheNum, rpcControllerFactory);
-    if (this.scanMetrics != null && skipRowOfFirstResult == null) {
+    if (this.scanMetrics != null) {
       this.scanMetrics.countOfRegions.incrementAndGet();
     }
     return true;
@@ -202,8 +197,9 @@ public class ClientSmallScanner extends ClientScanner {
       long remainingResultSize = maxScannerResultSize;
       int countdown = this.caching;
       boolean currentRegionDone = false;
+      boolean fakeResultReturned = false;
       // Values == null means server-side filter has determined we must STOP
-      while (remainingResultSize > 0 && countdown > 0
+      while (!fakeResultReturned && remainingResultSize > 0 && countdown > 0
           && nextScanner(countdown, values == null, currentRegionDone)) {
         // Server returns a null values if scanning is to stop. Else,
         // returns an empty array if scanning is to go on and we've just
@@ -219,10 +215,14 @@ public class ClientSmallScanner extends ClientScanner {
         if (values != null && values.length > 0) {
           for (int i = 0; i < values.length; i++) {
             Result rs = values[i];
-            if (i == 0 && this.skipRowOfFirstResult != null
-                && Bytes.equals(skipRowOfFirstResult, rs.getRow())) {
-              // Skip the first result
-              continue;
+            if (rs.isFake()) {
+              // End of 1 next RPC
+              fakeResultReturned = true;
+              // return the fake result to users when raw limit is set
+              if (scan.getRawLimit() > 0) {
+                cache.add(rs);
+              }
+              break;
             }
             cache.add(rs);
             for (Cell kv : rs.rawCells()) {
@@ -232,7 +232,9 @@ public class ClientSmallScanner extends ClientScanner {
             this.lastResult = rs;
           }
         }
-        currentRegionDone = countdown > 0;
+        if (!fakeResultReturned) {
+          currentRegionDone = countdown > 0;
+        }
       }
     }
 

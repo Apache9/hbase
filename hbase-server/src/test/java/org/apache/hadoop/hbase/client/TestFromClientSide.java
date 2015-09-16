@@ -135,6 +135,7 @@ public class TestFromClientSide {
     conf.setStrings(CoprocessorHost.REGION_COPROCESSOR_CONF_KEY,
         MultiRowMutationEndpoint.class.getName());
     conf.setBoolean("hbase.table.sanity.checks", true); // enable for below tests
+    conf.setLong(HConstants.HBASE_CLIENT_SCANNER_MAX_RESULT_SIZE_KEY, 10 * 1024 * 1024);
     // We need more than one region server in this test
     TEST_UTIL.startMiniCluster(SLAVES);
   }
@@ -3274,6 +3275,7 @@ public class TestFromClientSide {
       byte [] family, byte [] qualifier, long [] stamps, byte [][] values,
       int start, int end)
   throws IOException {
+    assertNotNull(result);
     assertTrue("Expected row [" + Bytes.toString(row) + "] " +
         "Got row [" + Bytes.toString(result.getRow()) +"]",
         equals(row, result.getRow()));
@@ -5706,6 +5708,76 @@ public class TestFromClientSide {
   }
 
   @Test
+  public void testMaxScanResultSize() throws Exception {
+    byte[] TABLE = Bytes.toBytes("testMaxScanResultSize");
+    Configuration conf = TEST_UTIL.getConfiguration();
+    TEST_UTIL.createTable(TABLE, FAMILY);
+
+    long expectedMaxResultSize =
+        TEST_UTIL.getConfiguration().getLong(HConstants.HBASE_CLIENT_SCANNER_MAX_RESULT_SIZE_KEY,
+            HConstants.DEFAULT_HBASE_CLIENT_SCANNER_MAX_RESULT_SIZE);
+
+    // unset max result size in client
+    conf.setLong(HConstants.HBASE_CLIENT_SCANNER_MAX_RESULT_SIZE_KEY,
+        HConstants.DEFAULT_HBASE_CLIENT_SCANNER_MAX_RESULT_SIZE);
+    HTable ht =  new HTable(conf, TABLE);
+    int numRows = 5;
+    byte[][] ROWS = makeNAscii(ROW, numRows);
+
+    int numQualifiers = 10;
+    byte[][] QUALIFIERS = makeNAscii(QUALIFIER, numQualifiers);
+
+    // Specify the cell size such that a single row will be larger than the default
+    // value of maxResultSize. This means that Scan RPCs should return at most a single
+    // result back to the client.
+    int cellSize = (int) (expectedMaxResultSize / (numQualifiers - 1));
+    byte[] cellValue = Bytes.createMaxByteArray(cellSize);
+
+    Put put;
+    List<Put> puts = new ArrayList<Put>();
+    for (byte[] ROW1 : ROWS) {
+      put = new Put(ROW1);
+      for (byte[] QUALIFIER1 : QUALIFIERS) {
+        KeyValue kv = new KeyValue(ROW1, FAMILY, QUALIFIER1, cellValue);
+        put.add(kv);
+      }
+      puts.add(put);
+    }
+    ht.put(puts);
+
+    Scan scan = new Scan();
+    scan.setCaching(2);
+    ResultScanner scanner = ht.getScanner(scan);
+    int counter = 0;
+    while (true) {
+      Result result = scanner.next();
+      if (result== null) {
+        break;
+      } else {
+        counter++;
+        assertFalse(result.isFake());
+      }
+    }
+    assertEquals(numRows, counter);
+
+    scan = new Scan();
+    scan.setCaching(2);
+    scan.setSmall(true);
+    scanner = ht.getScanner(scan);
+    counter = 0;
+    while (true) {
+      Result result = scanner.next();
+      if (result== null) {
+        break;
+      } else {
+        counter++;
+        assertFalse(result.isFake());
+      }
+    }
+    assertEquals(numRows, counter);
+  }
+
+  @Test
   public void testSmallScan() throws Exception {
     // Test Initialization.
     byte[] TABLE = Bytes.toBytes("testSmallScan");
@@ -6285,6 +6357,88 @@ public class TestFromClientSide {
     }
 
     ht.close();
+  }
+
+  @Test
+  public void testScanWithRawLimit() throws Exception {
+    byte[] TABLE = Bytes.toBytes("testScanWithRawLimit");
+    byte[][] ROWS = makeNAscii(ROW, 4);
+    byte[][] QUALIFIERS = makeNAscii(QUALIFIER, 2);
+    byte[][] VALUES = makeNAscii(VALUE, 4);
+    long ts = 1;
+    HTable table = TEST_UTIL.createTable(TABLE, FAMILY);
+
+    Delete delete = new Delete(ROWS[0]);
+    delete.deleteFamily(FAMILY, ts);
+    table.delete(delete);
+    delete = new Delete(ROWS[1]);
+    delete.deleteFamily(FAMILY, ts);
+    table.delete(delete);
+    Put put = new Put(ROWS[2]);
+    put.add(FAMILY, QUALIFIERS[0], VALUES[2]);
+    put.add(FAMILY, QUALIFIERS[1], VALUES[2]);
+    table.put(put);
+    put = new Put(ROWS[3]);
+    put.add(FAMILY, QUALIFIERS[0], VALUES[3]);
+    put.add(FAMILY, QUALIFIERS[1], VALUES[3]);
+    table.put(put);
+
+    // test delete row
+    Scan scan = new Scan(ROWS[0]);
+    scan.setRawLimit(1);
+    ResultScanner scanner = table.getScanner(scan);
+    Result result = scanner.next();
+    assertTrue(result.isFake());
+    result = scanner.next();
+    assertTrue(result.isFake());
+    result = scanner.next();
+    assertFalse(result.isFake());
+    assertEquals(2, result.size());
+    result = scanner.next();
+    assertTrue(result.isFake());
+    result = scanner.next();
+    assertEquals(2, result.size());
+    result = scanner.next();
+    assertNull(result);
+    scanner.close();
+
+    // test row filter
+    scan = new Scan(ROWS[0]);
+    scan.setFilter(new RowFilter(CompareOp.GREATER, new BinaryComparator(ROWS[2])));
+    scan.setRawLimit(1);
+    scanner = table.getScanner(scan);
+    result = scanner.next();
+    assertTrue(result.isFake());
+    result = scanner.next();
+    assertTrue(result.isFake());
+    result = scanner.next();
+    assertTrue(result.isFake()); // filtered
+    result = scanner.next();
+    assertFalse(result.isFake());
+    assertEquals(2, result.size());
+    result = scanner.next();
+    assertNull(result);
+    scanner.close();
+
+    // test value filter
+    scan = new Scan(ROWS[0]);
+    scan.setFilter(new SingleColumnValueFilter(FAMILY, QUALIFIERS[0], CompareOp.GREATER, VALUES[2]));
+    scan.setRawLimit(1);
+    scanner = table.getScanner(scan);
+    result = scanner.next();
+    assertTrue(result.isFake());
+    result = scanner.next();
+    assertTrue(result.isFake());
+    result = scanner.next();
+    assertTrue(result.isFake()); // filtered
+    result = scanner.next();
+    assertFalse(result.isFake());
+    assertEquals(2, result.size());
+    result = scanner.next();
+    assertNull(result);
+    scanner.close();
+
+    table.close();
   }
 
   private void reverseScanTest(HTable table, boolean small) throws IOException {

@@ -42,6 +42,7 @@ import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.KeyValue;
+import org.apache.hadoop.hbase.regionserver.ScannerStatus;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.apache.hadoop.hbase.MiniHBaseCluster;
 import org.apache.hadoop.hbase.ServerName;
@@ -434,17 +435,17 @@ public class TestRegionObserverInterface {
         Store store, final InternalScanner scanner, final ScanType scanType) {
       return new InternalScanner() {
         @Override
-        public boolean next(List<Cell> results) throws IOException {
-          return next(results, -1);
+        public ScannerStatus next(List<Cell> results) throws IOException {
+          return next(results, -1, -1);
         }
 
         @Override
-        public boolean next(List<Cell> results, int limit)
+        public ScannerStatus next(List<Cell> results, int limit, int rawLimit)
             throws IOException{
           List<Cell> internalResults = new ArrayList<Cell>();
-          boolean hasMore;
+          ScannerStatus status;
           do {
-            hasMore = scanner.next(internalResults, limit);
+            status = scanner.next(internalResults, limit, rawLimit);
             if (!internalResults.isEmpty()) {
               long row = Bytes.toLong(CellUtil.cloneValue(internalResults.get(0)));
               if (row % 2 == 0) {
@@ -454,12 +455,12 @@ public class TestRegionObserverInterface {
               // clear and continue
               internalResults.clear();
             }
-          } while (hasMore);
+          } while (status.hasNext());
 
           if (!internalResults.isEmpty()) {
             results.addAll(internalResults);
           }
-          return hasMore;
+          return status;
         }
 
         @Override

@@ -562,7 +562,7 @@ public abstract class HBaseTestCase extends TestCase {
     @Override
     public boolean next(List<Cell> results)
     throws IOException {
-      return scanner.next(results);
+      return scanner.next(results).hasNext();
     }
 
     @Override

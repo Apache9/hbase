@@ -151,7 +151,7 @@ public class TestColumnSeeking {
         }
         InternalScanner scanner = region.getScanner(scan);
         List<Cell> results = new ArrayList<Cell>();
-        while (scanner.next(results))
+        while (scanner.next(results).hasNext())
           ;
         assertEquals(kvSet.size(), results.size());
         assertTrue(KeyValueTestUtil.containsIgnoreMvccVersion(results, kvSet));
@@ -263,7 +263,7 @@ public class TestColumnSeeking {
       }
       InternalScanner scanner = region.getScanner(scan);
       List<Cell> results = new ArrayList<Cell>();
-      while (scanner.next(results))
+      while (scanner.next(results).hasNext())
         ;
       assertEquals(kvSet.size(), results.size());
       assertTrue(KeyValueTestUtil.containsIgnoreMvccVersion(results, kvSet));
