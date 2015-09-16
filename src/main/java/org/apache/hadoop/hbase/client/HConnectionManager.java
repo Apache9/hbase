@@ -934,7 +934,7 @@ public class HConnectionManager {
           return true;
         }
       };
-      MetaScanner.metaScan(conf, this, visitor, null);
+      MetaScanner.metaScan(conf, this, visitor, tableName);
       return available.get() && (regionCount.get() > 0);
     }
 
