@@ -116,12 +116,15 @@ public class FalconSink implements Sink, Configurable {
       return;
     }
     String clusterName = conf.get("hbase.cluster.name", "unknown");
+    String sniffCountStr = "failedReadCount=" + failedReadCounter.get() + ", totalReadCount="
+            + totalReadCounter.get() + ", failedWriteCounter=" + failedWriteCounter.get()
+            + ", totalWriterCount=" + totalWriteCounter.get();
     double readAvail = calc(failedReadCounter, totalReadCounter);
     double writeAvail = calc(failedWriteCounter, totalWriteCounter);
     double avail = (readAvail + writeAvail) /2;
     LOG.info("Try to push metrics to falcon and collector. Cluster: "
         + clusterName + " availability is " + avail + ", read availability is "
-        + readAvail + ", write availability is " + writeAvail);
+        + readAvail + ", write availability is " + writeAvail + ", " + sniffCountStr);
     pushToCollector(clusterName, avail, readAvail, writeAvail);
     pushToFalcon(clusterName, avail, readAvail, writeAvail);
   }
