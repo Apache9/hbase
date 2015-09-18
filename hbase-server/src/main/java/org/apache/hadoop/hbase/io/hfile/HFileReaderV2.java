@@ -683,6 +683,7 @@ public class HFileReaderV2 extends AbstractHFileReader {
    */
   protected static class ScannerV2 extends AbstractScannerV2 {
     private HFileReaderV2 reader;
+    private boolean retryReadBlock = false;
 
     public ScannerV2(HFileReaderV2 r, boolean cacheBlocks,
         final boolean pread, final boolean isCompaction) {
@@ -756,6 +757,11 @@ public class HFileReaderV2 extends AbstractHFileReader {
     public boolean next() throws IOException {
       assertSeeked();
 
+      if (retryReadBlock && blockBuffer.remaining() <= 0) {
+        if (!rollDataBlock()) {
+          return false;
+        }
+      }
       try {
         blockBuffer.position(getNextCellStartPosition());
       } catch (IllegalArgumentException e) {
@@ -768,27 +774,37 @@ public class HFileReaderV2 extends AbstractHFileReader {
       }
 
       if (blockBuffer.remaining() <= 0) {
-        long lastDataBlockOffset =
-            reader.getTrailer().getLastDataBlockOffset();
-
-        if (block.getOffset() >= lastDataBlockOffset) {
-          setNonSeekedState();
-          return false;
-        }
-
-        // read the next block
-        HFileBlock nextBlock = readNextDataBlock();
-        if (nextBlock == null) {
-          setNonSeekedState();
-          return false;
-        }
-
-        updateCurrBlock(nextBlock);
-        return true;
+        return rollDataBlock();
       }
 
       // We are still in the same block.
       readKeyValueLen();
+      return true;
+    }
+
+    private boolean rollDataBlock() throws IOException {
+      long lastDataBlockOffset = reader.getTrailer().getLastDataBlockOffset();
+
+      if (block.getOffset() >= lastDataBlockOffset) {
+        setNonSeekedState();
+        return false;
+      }
+
+      // read the next block
+      HFileBlock nextBlock = null;
+      try {
+        nextBlock = readNextDataBlock();
+      } catch (IOException ioe) {
+        retryReadBlock = true;
+        throw ioe;
+      }
+      retryReadBlock = false;
+      if (nextBlock == null) {
+        setNonSeekedState();
+        return false;
+      }
+
+      updateCurrBlock(nextBlock);
       return true;
     }
 
