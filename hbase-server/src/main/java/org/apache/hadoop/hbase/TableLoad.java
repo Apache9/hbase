@@ -119,15 +119,15 @@ public class TableLoad {
     this.stores += regionLoad.getStores();
     this.storefiles += regionLoad.getStorefiles();
 
-    int totalDataSize =
-        storeUncompressedSizeMB + regionLoad.getStorefileSizeMB();
+    int totalDataSize = storefileSizeMB + regionLoad.getStorefileSizeMB();
     if (totalDataSize == 0) {
       this.locality = 1.0f;
     } else {
-      this.locality =
-          (storeUncompressedSizeMB * locality + regionLoad.getStorefileSizeMB() + regionLoad
-              .getDataLocality()) / (totalDataSize);
+      this.locality = (storefileSizeMB * locality + regionLoad.getStorefileSizeMB()
+          * regionLoad.getLocality())
+          / (totalDataSize);
     }
+
     this.storeUncompressedSizeMB += regionLoad.getStoreUncompressedSizeMB();
     this.storefileSizeMB += regionLoad.getStorefileSizeMB();
     this.memstoreSizeMB += regionLoad.getMemStoreSizeMB();
