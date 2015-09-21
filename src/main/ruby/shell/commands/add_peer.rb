@@ -35,6 +35,7 @@ Examples:
   hbase> add_peer '4', "zk7,zk8,zk9:11000:/hbase-proc", "DISABLED"
   hbase> add_peer '3', "zk4,zk5,zk6:11000:/hbase-test", "ENABLED", "tab1;tab2:cf1;tab3:cf2,cf3"
   hbase> add_peer '5', "zk4,zk5,zk6:11000:/hbase-test", "ENABLED", "tab1;tab2:cf1;tab3:cf2,cf3", 1048576
+  hbase> add_peer '6', "hbase://hbase-prc", "ENABLED", "tab1;tab2:cf1;tab3:cf2,cf3", 102400
 
 EOF
       end
