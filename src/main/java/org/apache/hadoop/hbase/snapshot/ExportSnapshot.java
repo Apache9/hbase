@@ -629,6 +629,7 @@ public final class ExportSnapshot extends Configured implements Tool {
     String filesGroup = null;
     String filesUser = null;
     Path outputRoot = null;
+    Path inputRoot = null;
     int filesMode = 0;
     int mappers = getConf().getInt("mapreduce.job.maps", 1);
 
@@ -640,6 +641,8 @@ public final class ExportSnapshot extends Configured implements Tool {
           snapshotName = args[++i];
         } else if (cmd.equals("-copy-to")) {
           outputRoot = new Path(args[++i]);
+        } else if (cmd.equals("-copy-from")) {
+          inputRoot = new Path(args[++i]);
         } else if (cmd.equals("-no-checksum-verify")) {
           verifyChecksum = false;
         } else if (cmd.equals("-mappers")) {
@@ -673,8 +676,10 @@ public final class ExportSnapshot extends Configured implements Tool {
     }
 
     Configuration conf = getConf();
-    Path inputRoot = FSUtils.getRootDir(conf);
-    FileSystem inputFs = FileSystem.get(conf);
+    if (inputRoot == null) {
+      inputRoot = FSUtils.getRootDir(conf);
+    }
+    FileSystem inputFs = FileSystem.get(inputRoot.toUri(), conf);
     FileSystem outputFs = FileSystem.get(outputRoot.toUri(), createOutputFsConf(conf));
 
     Path snapshotDir = SnapshotDescriptionUtils.getCompletedSnapshotDir(snapshotName, inputRoot);
@@ -751,6 +756,7 @@ public final class ExportSnapshot extends Configured implements Tool {
     System.err.println("  -h|-help                Show this help and exit.");
     System.err.println("  -snapshot NAME          Snapshot to restore.");
     System.err.println("  -copy-to NAME           Remote destination hdfs://");
+    System.err.println("  -copy-from NAME         Snapshot hdfs source hdfs://");
     System.err.println("  -no-checksum-verify     Do not verify checksum.");
     System.err.println("  -chuser USERNAME        Change the owner of the files to the specified one.");
     System.err.println("  -chgroup GROUP          Change the group of the files to the specified one.");
