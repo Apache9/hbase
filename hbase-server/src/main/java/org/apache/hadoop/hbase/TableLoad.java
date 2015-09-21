@@ -124,7 +124,7 @@ public class TableLoad {
       this.locality = 1.0f;
     } else {
       this.locality = (storefileSizeMB * locality + regionLoad.getStorefileSizeMB()
-          * regionLoad.getLocality())
+          * regionLoad.getDataLocality())
           / (totalDataSize);
     }
 
