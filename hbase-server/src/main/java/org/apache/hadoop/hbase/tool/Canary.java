@@ -382,6 +382,10 @@ public final class Canary implements Tool {
     }
 
     // initialize HBase conf and admin
+    System.setProperty("hadoop.property.hadoop.client.keytab.file",
+      conf.get("hbase.canary.keytab.file"));
+    System.setProperty("hadoop.property.hadoop.client.kerberos.principal",
+      conf.get("hbase.canary.kerberos.principal"));
     if (conf == null) conf = HBaseConfiguration.create();
     connection = HConnectionManager.createConnection(this.conf);
     String hostname =
