@@ -382,10 +382,6 @@ public final class Canary implements Tool {
     }
 
     // initialize HBase conf and admin
-    System.setProperty("hadoop.property.hadoop.client.keytab.file",
-      conf.get("hbase.canary.keytab.file"));
-    System.setProperty("hadoop.property.hadoop.client.kerberos.principal",
-      conf.get("hbase.canary.kerberos.principal"));
     if (conf == null) conf = HBaseConfiguration.create();
     connection = HConnectionManager.createConnection(this.conf);
     String hostname =
@@ -396,7 +392,7 @@ public final class Canary implements Tool {
             conf.get("hbase.regionserver.dns.nameserver", "default"))));
 
     // initialize server principal (if using secure Hadoop)
-    User.login(conf, "hbase.canary.keytab.file", "hbase.canary.kerberos.principal", hostname);
+    // User.login(conf, "hbase.canary.keytab.file", "hbase.canary.kerberos.principal", hostname);
 
     admin = new HBaseAdmin(connection);
     // lets the canary monitor the cluster
@@ -622,7 +618,16 @@ public final class Canary implements Tool {
   }
 
   public static void main(String[] args) {
+    // TODO : In test, there are security-related errors if these properties are set.
+    //        As a temporary solution, set the properties before starting. Need to
+    //        find out the root cause in future.
     Configuration conf = HBaseConfiguration.create();
+    System.setProperty("hadoop.property.hadoop.security.authentication", "kerberos");
+    System.setProperty("hadoop.property.hadoop.client.keytab.file",
+      conf.get("hbase.canary.keytab.file"));
+    System.setProperty("hadoop.property.hadoop.client.kerberos.principal",
+      conf.get("hbase.canary.kerberos.principal"));
+    conf = HBaseConfiguration.create();
 
     conf.setInt("hbase.rpc.timeout", conf.getInt("hbase.canary.rpc.timeout", 200));
     conf.setInt("hbase.client.pause", conf.getInt("hbase.canary.client.pause", 100));
