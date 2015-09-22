@@ -45,6 +45,8 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.NavigableSet;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Condition;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.Cell;
@@ -67,6 +69,7 @@ import org.apache.hadoop.hbase.client.Durability;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Increment;
 import org.apache.hadoop.hbase.client.Mutation;
+import org.apache.hadoop.hbase.client.Operation;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.Scan;
@@ -105,7 +108,10 @@ import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.CoprocessorServic
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.CoprocessorServiceResponse;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.GetRequest;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.GetResponse;
+import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.MultiRequest;
+import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.MutateRequest;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.MutationProto;
+import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.RegionAction;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.MutationProto.ColumnValue;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.MutationProto.ColumnValue.QualifierValue;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.MutationProto.DeleteType;
@@ -2974,4 +2980,94 @@ public final class ProtobufUtil {
     return rlsList;
   }
 
+  public static Map<String, Object> getOperationDetail(Message message,
+      CellScanner cellScanner) throws IOException {
+    Map<String, Object> detail = new HashMap<String, Object>();
+    if (message instanceof GetRequest) {
+      GetRequest getRequest = (GetRequest)message;
+      detail.put("region", Bytes.toStringBinary(getRequest.getRegion().getValue().toByteArray()));
+      detail.put("Get", toGet(getRequest.getGet()).toMap());
+    } else if (message instanceof ScanRequest) {
+      ScanRequest scanRequest = (ScanRequest)message;
+      detail.put("region", Bytes.toStringBinary(scanRequest.getRegion().getValue().toByteArray()));
+      detail.put("Scan", toScan(((ScanRequest) message).getScan()).toMap());
+    } else if (message instanceof MutateRequest) {
+      MutateRequest mutationReq = (MutateRequest)message;
+      detail.put("region", Bytes.toStringBinary(mutationReq.getRegion().getValue().toByteArray()));
+      if (mutationReq.hasCondition()) {
+        // not include row in condition detail, the row will be included in mutation detail
+        detail.put("Condition", getConditionDetail(mutationReq.getCondition(), false));
+      }
+      MutationProto mutation = mutationReq.getMutation();
+      switch (mutation.getMutateType()) {
+      case APPEND:
+        detail.put("Append", toAppend(mutationReq.getMutation(), cellScanner).toMap());
+        break;
+      case INCREMENT:
+        detail.put("Increment", toIncrement(mutationReq.getMutation(), cellScanner).toMap());
+        break;
+      case PUT:
+        detail.put("Put", toPut(mutationReq.getMutation(), cellScanner).toMap());
+        break;
+      case DELETE:
+        detail.put("Delete", toDelete(mutationReq.getMutation(), cellScanner).toMap());
+        break;
+      default: break;
+      }
+    } else if (message instanceof MultiRequest) {
+      detail.put("MultiAction", getMultiRequestDetail((MultiRequest)message));
+    }
+    return detail;
+  }
+  
+  protected static Map<String, Object> getConditionDetail(ClientProtos.Condition condition,
+      boolean includeRow) {
+    Map<String, Object> detail = new HashMap<String, Object>();
+    if (includeRow) {
+      detail.put("row", Bytes.toStringBinary(condition.getRow().toByteArray()));
+    }
+    detail.put("family", Bytes.toString(condition.getFamily().toByteArray()));
+    detail.put("qualifier", Bytes.toStringBinary(condition.getQualifier().toByteArray()));
+    return detail;
+  }
+  
+  protected static Map<String, Object> getMultiRequestDetail(MultiRequest request) {
+    Map<String, Object> detail = new HashMap<String, Object>();
+    if (request.hasCondition()) {
+      detail.put("Condition", getConditionDetail(request.getCondition(), true));
+    }
+    
+    int get = 0, exec = 0, put = 0, delete = 0, append = 0, increment = 0;
+    for (RegionAction regionAction : request.getRegionActionList()) {
+      for (ClientProtos.Action action: regionAction.getActionList()) {
+        if (action.hasGet()) {
+          ++get;
+        } else if (action.hasServiceCall()) {
+          ++exec;
+        } else if (action.hasMutation()) {
+          switch (action.getMutation().getMutateType()) {
+          case APPEND:
+            ++append;break;
+          case INCREMENT:
+            ++increment;break;
+          case PUT:
+            ++put;break;
+          case DELETE:
+            ++delete;break;
+          default: break;
+          }
+        }
+      }
+    }
+    
+    // quantity detail for MultiRequest
+    detail.put("regions", request.getRegionActionCount());
+    if (get > 0) detail.put("Get", get);
+    if (exec > 0) detail.put("Exec", exec);
+    if (put > 0) detail.put("Put", put);
+    if (delete > 0) detail.put("Delete", delete);
+    if (append > 0) detail.put("Append", append);
+    if (increment > 0) detail.put("Increment", increment);
+    return detail;
+  }
 }
