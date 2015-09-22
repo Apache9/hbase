@@ -17,6 +17,7 @@
  */
 package org.apache.hadoop.hbase.client.replication;
 
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import junit.framework.Assert;
@@ -28,6 +29,7 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.*;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
+import org.apache.hadoop.hbase.replication.ReplicationZookeeper;
 import org.apache.hadoop.hbase.replication.regionserver.ReplicationSourceManager;
 import org.junit.BeforeClass;
 import org.junit.AfterClass;
@@ -228,6 +230,53 @@ public class TestReplicationAdmin {
     admin.removePeer(ID_ONE);
   }
   
+  private void removeExistPeerIds() throws Exception {
+    Set<String> peerIds = admin.listPeers().keySet();
+    for (String peerId : peerIds) {
+      admin.removePeer(peerId);
+    }
+    assertEquals(0, admin.getPeersCount());
+  }
+  
+  @Test
+  public void testAddRemovePeerWithProtocol() throws Exception {
+    assertEquals(0, manager.getSources().size());
+    removeExistPeerIds();
+    // Add a valid peer
+    admin.addPeer(ID_ONE, KEY_ONE, null, "", null,
+      ReplicationZookeeper.PeerProtocol.THRIFT.name());
+    // try adding the same (fails)
+    try {
+      admin.addPeer(ID_ONE, KEY_ONE);
+      fail();
+    } catch (IllegalArgumentException iae) {
+      // OK!
+    }
+    assertEquals(1, admin.getPeersCount());
+    assertEquals(ReplicationZookeeper.PeerProtocol.THRIFT.name(), admin.getPeerProtocol(ID_ONE));
+    // Try to remove an inexisting peer
+    try {
+      admin.removePeer(ID_SECOND);
+      fail();
+    } catch (IllegalArgumentException iae) {
+      // OK!
+    }
+    assertEquals(1, admin.getPeersCount());
+    // Add a second since multi-slave is supported
+    try {
+      admin.addPeer(ID_SECOND, KEY_SECOND);
+    } catch (IllegalStateException iae) {
+      fail();
+      // OK!
+    }
+    assertEquals(2, admin.getPeersCount());
+    assertEquals(ReplicationZookeeper.PeerProtocol.NATIVE.name(), admin.getPeerProtocol(ID_SECOND));
+    // Remove the first peer we added
+    admin.removePeer(ID_ONE);
+    assertEquals(1, admin.getPeersCount());
+    admin.removePeer(ID_SECOND);
+  }
+
   @org.junit.Rule
   public org.apache.hadoop.hbase.ResourceCheckerJUnitRule cu =
     new org.apache.hadoop.hbase.ResourceCheckerJUnitRule();

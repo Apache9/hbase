@@ -145,6 +145,26 @@ public class ReplicationAdmin implements Closeable {
     this.replicationZk.addPeer(id, clusterKey, peerState, tableCFs, bandwidth);    
   }
   
+  public void addPeer(String id, String clusterKey, String peerState, String tableCFs,
+      Long bandwidth, String protocol) throws IOException {
+    checkTableCFs(tableCFs);
+    this.replicationZk.addPeer(id, clusterKey, peerState, tableCFs, bandwidth,
+      ReplicationZookeeper.PeerProtocol.valueOf(protocol));
+  }
+  
+  /**
+   * Get the protocol for the peer
+   * @param id peer's identifier
+   * @return current protocol of the peer
+   */
+  public String getPeerProtocol(String id) throws IOException {
+    try {
+      return this.replicationZk.getPeerProtocol(id).name();
+    } catch (KeeperException e) {
+      throw new IOException("Couldn't get the protocol of the peer " + id, e);
+    }
+  }
+  
   /**
    * Removes a peer cluster and stops the replication to it.
    * @param id a short that identifies the cluster
