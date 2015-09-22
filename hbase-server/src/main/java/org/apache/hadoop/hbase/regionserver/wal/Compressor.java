@@ -175,7 +175,7 @@ public class Compressor {
    * @param dict the dictionary to use for compression
    */
   @Deprecated
-  static void writeCompressed(byte[] data, int offset, int length,
+  static int writeCompressed(byte[] data, int offset, int length,
       DataOutput out, Dictionary dict)
       throws IOException {
     short dictIdx = Dictionary.NOT_IN_DICTIONARY;
@@ -187,8 +187,10 @@ public class Compressor {
       out.writeByte(Dictionary.NOT_IN_DICTIONARY);
       WritableUtils.writeVInt(out, length);
       out.write(data, offset, length);
+      return 1 + 1 + length;
     } else {
       out.writeShort(dictIdx);
+      return 2;
     }
   }
 

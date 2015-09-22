@@ -45,8 +45,8 @@ import org.apache.zookeeper.data.ACL;
 import org.apache.zookeeper.data.Stat;
 import org.apache.zookeeper.proto.CreateRequest;
 import org.apache.zookeeper.proto.SetDataRequest;
-import org.cloudera.htrace.Trace;
-import org.cloudera.htrace.TraceScope;
+import org.apache.htrace.Trace;
+import org.apache.htrace.TraceScope;
 
 /**
  * A zookeeper that can handle 'recoverable' errors.

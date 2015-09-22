@@ -63,11 +63,11 @@ public class MetricsSource {
    *
    * @param id Name of the source this class is monitoring
    */
-  public MetricsSource(String id) {
+  public MetricsSource(String id, String clusterKey) {
     this.id = id;
     singleSourceSource =
       CompatibilitySingletonFactory.getInstance(MetricsReplicationSourceFactory.class)
-        .getSource(id);
+        .getSource(id, clusterKey);
     globalSourceSource =
       CompatibilitySingletonFactory.getInstance(MetricsReplicationSourceFactory.class)
         .getGlobalSource();
@@ -136,6 +136,11 @@ public class MetricsSource {
     incrLogEditsFiltered(1);
   }
 
+  public void incrOpenReaderIOE() {
+    singleSourceSource.incrOpenReaderIOE();
+    globalSourceSource.incrOpenReaderIOE();
+  }
+  
   /**
    * Convience method to apply changes to metrics do to shipping a batch of logs.
    *

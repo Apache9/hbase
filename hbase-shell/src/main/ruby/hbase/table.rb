@@ -414,6 +414,7 @@ EOF
         versions = args["VERSIONS"] || 1
         timerange = args[TIMERANGE]
         raw = args["RAW"] || false
+        debug = args["DEBUG"] || false
         attributes = args[ATTRIBUTES]
         authorizations = args[AUTHORIZATIONS]
         # Normalize column names
@@ -450,6 +451,7 @@ EOF
         scan.setMaxVersions(versions) if versions > 1
         scan.setTimeRange(timerange[0], timerange[1]) if timerange
         scan.setRaw(raw)
+        scan.setDebug(debug) if debug
         set_attributes(scan, attributes) if attributes
         set_authorizations(scan, authorizations) if authorizations
       else

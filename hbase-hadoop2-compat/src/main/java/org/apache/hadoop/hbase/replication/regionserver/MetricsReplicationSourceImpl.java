@@ -18,8 +18,15 @@
 
 package org.apache.hadoop.hbase.replication.regionserver;
 
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
+
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.metrics.BaseSourceImpl;
+import org.apache.hadoop.metrics2.MetricsCollector;
+import org.apache.hadoop.metrics2.MetricsRecordBuilder;
+import org.apache.hadoop.metrics2.lib.Interns;
 
 /**
  * Hadoop2 implementation of MetricsReplicationSource. This provides access to metrics gauges and
@@ -30,7 +37,7 @@ import org.apache.hadoop.hbase.metrics.BaseSourceImpl;
 @InterfaceAudience.Private
 public class MetricsReplicationSourceImpl extends BaseSourceImpl implements
     MetricsReplicationSource {
-
+  private Map<String, String> peerIdToClusterKey = new ConcurrentHashMap<String, String>();
 
   public MetricsReplicationSourceImpl() {
     this(METRICS_NAME, METRICS_DESCRIPTION, METRICS_CONTEXT, METRICS_JMX_CONTEXT);
@@ -41,5 +48,22 @@ public class MetricsReplicationSourceImpl extends BaseSourceImpl implements
                                String metricsContext,
                                String metricsJmxContext) {
     super(metricsName, metricsDescription, metricsContext, metricsJmxContext);
+  }
+  
+  protected void addPeer(String peerId, String clusterKey) {
+    peerIdToClusterKey.put(peerId, clusterKey);
+  }
+  
+  protected void removePeer(String peerId) {
+    peerIdToClusterKey.remove(peerId);
+  }
+  
+  @Override
+  public void getMetrics(MetricsCollector metricsCollector, boolean all) {
+    MetricsRecordBuilder mrb = metricsCollector.addRecord(metricsName);
+    for (Entry<String, String> entry : peerIdToClusterKey.entrySet()) {
+      mrb.tag(Interns.info("source." + entry.getKey() + ".clusterKey", ""), entry.getValue());
+    }
+    metricsRegistry.snapshot(mrb, all);
   }
 }

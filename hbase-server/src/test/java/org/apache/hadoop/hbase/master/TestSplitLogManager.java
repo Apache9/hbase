@@ -185,7 +185,7 @@ public class TestSplitLogManager {
     zkw.registerListener(listener);
     ZKUtil.watchAndCheckExists(zkw, tasknode);
 
-    slm.enqueueSplitTask(name, batch);
+    slm.enqueueSplitTask(name, "", batch);
     assertEquals(1, batch.installed);
     assertTrue(slm.findOrCreateOrphanTask(tasknode).batch == batch);
     assertEquals(1L, tot_mgr_node_create_queued.get());

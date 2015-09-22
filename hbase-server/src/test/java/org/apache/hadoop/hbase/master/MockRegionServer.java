@@ -52,6 +52,8 @@ import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CloseRegionRequest
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CloseRegionResponse;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactRegionRequest;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactRegionResponse;
+import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableRequest;
+import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableResponse;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.FlushRegionRequest;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.FlushRegionResponse;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetOnlineRegionRequest;
@@ -625,6 +627,12 @@ ClientProtos.ClientService.BlockingInterface, RegionServerServices {
   @Override
   public SwitchThrottleResponse switchThrottle(RpcController controller,
       SwitchThrottleRequest request) throws ServiceException {
+    return null;
+  }
+
+  @Override
+  public CompactionEnableResponse switchCompaction(RpcController controller,
+      CompactionEnableRequest request) throws ServiceException {
     return null;
   }
 }

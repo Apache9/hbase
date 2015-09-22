@@ -23,6 +23,8 @@ import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Abortable;
 import org.apache.hadoop.hbase.HBaseInterfaceAudience;
@@ -37,7 +39,8 @@ import org.apache.hadoop.hbase.util.ReflectionUtils;
 @InterfaceAudience.LimitedPrivate({ HBaseInterfaceAudience.COPROC, HBaseInterfaceAudience.PHOENIX })
 @InterfaceStability.Evolving
 public class BalancedQueueRpcExecutor extends RpcExecutor {
-
+  private static final Log LOG = LogFactory.getLog(BalancedQueueRpcExecutor.class);
+  
   protected final List<BlockingQueue<CallRunner>> queues;
   private final QueueBalancer balancer;
 
@@ -71,6 +74,10 @@ public class BalancedQueueRpcExecutor extends RpcExecutor {
   public void dispatch(final CallRunner callTask) throws IOException, InterruptedException {
     int queueIndex = balancer.getNextQueue();
     if (!queues.get(queueIndex).offer(callTask)) {
+      callTask.resetCallQueueSize();
+      LOG.error("Could not insert into Queue!");
+      org.apache.hadoop.util.ReflectionUtils.logThreadInfo(LOG,
+        "thread dump when call queue is full", 60);
       callTask.doRespond(null, new IOException(), "IPC server unable to call method");
     }
   }

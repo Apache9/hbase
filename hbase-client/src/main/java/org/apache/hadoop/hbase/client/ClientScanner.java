@@ -340,6 +340,7 @@ public class ClientScanner extends AbstractClientScanner {
         // this when we reset scanner because it split under us.
         boolean skipFirst = false;
         boolean retryAfterOutOfOrderException  = true;
+        boolean fakeResultReturned = false;
         do {
           try {
             if (skipFirst) {
@@ -427,6 +428,15 @@ public class ClientScanner extends AbstractClientScanner {
           lastNext = currentTime;
           if (values != null && values.length > 0) {
             for (Result rs : values) {
+              if (rs.isFake()) {
+                // End of 1 next RPC
+                fakeResultReturned = true;
+                // return the fake result to users when raw limit is set
+                if (scan.getRawLimit() > 0) {
+                  cache.add(rs);
+                }
+                break;
+              }
               cache.add(rs);
               for (Cell kv : rs.rawCells()) {
                 // TODO make method in Cell or CellUtil
@@ -437,7 +447,8 @@ public class ClientScanner extends AbstractClientScanner {
             }
           }
           // Values == null means server-side filter has determined we must STOP
-        } while (remainingResultSize > 0 && countdown > 0 && nextScanner(countdown, values == null));
+        } while (!fakeResultReturned && remainingResultSize > 0 && countdown > 0 &&
+            nextScanner(countdown, values == null));
       }
 
       if (cache.size() > 0) {

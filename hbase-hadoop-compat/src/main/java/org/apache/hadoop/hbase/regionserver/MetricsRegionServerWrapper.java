@@ -18,6 +18,8 @@
 
 package org.apache.hadoop.hbase.regionserver;
 
+import org.apache.hadoop.metrics2.MetricHistogram;
+
 /**
  * This is the interface that will expose RegionServer information to hadoop1/hadoop2
  * implementations of the MetricsRegionServerSource.
@@ -261,4 +263,17 @@ public interface MetricsRegionServerWrapper {
    * @return Get max recover lease time
    */
   public long getFsRecoverLeaseTime();
+  
+  // initialize FileSystem read/write metrics
+  public void initialFSMetrics(MetricHistogram fsRead, MetricHistogram fsPread,
+      MetricHistogram fsWrite);
+  
+  // hedged read metrics
+  public long getHedgedReads();
+  
+  public long getHedgedReadWins();
+  
+  public long getHedgedReadsInCurThread();
+  
+  public double getHLogCompressionRatio();
 }

@@ -80,7 +80,7 @@ public class RowCountEndpoint extends ExampleProtos.RowCountService
       byte[] lastRow = null;
       long count = 0;
       do {
-        hasMore = scanner.next(results);
+        hasMore = scanner.next(results).hasNext();
         for (Cell kv : results) {
           byte[] currentRow = CellUtil.cloneRow(kv);
           if (lastRow == null || !Bytes.equals(lastRow, currentRow)) {
@@ -119,7 +119,7 @@ public class RowCountEndpoint extends ExampleProtos.RowCountService
       boolean hasMore = false;
       long count = 0;
       do {
-        hasMore = scanner.next(results);
+        hasMore = scanner.next(results).hasNext();
         for (Cell kv : results) {
           count++;
         }

@@ -54,6 +54,10 @@ public class MetricsHBaseServer {
   void receivedBytes(int count) {
     source.receivedBytes(count);
   }
+  
+  void failedCalls() {
+    source.failedCalls();
+  }
 
   void dequeuedCall(int qTime) {
     source.dequeuedCall(qTime);

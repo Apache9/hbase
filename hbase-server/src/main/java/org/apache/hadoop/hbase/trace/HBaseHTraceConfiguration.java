@@ -19,7 +19,7 @@
 package org.apache.hadoop.hbase.trace;
 
 import org.apache.hadoop.conf.Configuration;
-import org.cloudera.htrace.HTraceConfiguration;
+import org.apache.htrace.HTraceConfiguration;
 
 public class HBaseHTraceConfiguration extends HTraceConfiguration {
 
@@ -44,5 +44,10 @@ public class HBaseHTraceConfiguration extends HTraceConfiguration {
   @Override
   public boolean getBoolean(String key, boolean defaultValue) {
     return conf.getBoolean(KEY_PREFIX + key, defaultValue);
+  }
+  
+  @Override
+  public int getInt(String key, int defaultValue) {
+    return conf.getInt(KEY_PREFIX + key, defaultValue);
   }
 }

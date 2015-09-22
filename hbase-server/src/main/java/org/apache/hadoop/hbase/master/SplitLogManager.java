@@ -41,6 +41,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.BlockLocation;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -334,8 +335,13 @@ public class SplitLogManager extends ZooKeeperListener {
       // recover-lease is done. totalSize will be under in most cases and the
       // metrics that it drives will also be under-reported.
       totalSize += lf.getLen();
+      BlockLocation[] locations = fs.getFileBlockLocations(lf, 0, lf.getLen());
+      String location = null;
+      if (locations != null && locations.length == 1) {
+        location = ZKSplitLog.encodeLocation(locations[0].getHosts());
+      }
       String pathToLog = FSUtils.removeRootPath(lf.getPath(), conf);
-      if (!enqueueSplitTask(pathToLog, batch)) {
+      if (!enqueueSplitTask(pathToLog, location, batch)) {
         throw new IOException("duplicate log split scheduled for " + lf.getPath());
       }
     }
@@ -390,11 +396,11 @@ public class SplitLogManager extends ZooKeeperListener {
    * @param batch the batch this task belongs to
    * @return true if a new entry is created, false if it is already there.
    */
-  boolean enqueueSplitTask(String taskname, TaskBatch batch) {
+  boolean enqueueSplitTask(String taskname, String location, TaskBatch batch) {
     SplitLogCounters.tot_mgr_log_split_start.incrementAndGet();
     // This is a znode path under the splitlog dir with the rest of the path made up of an
     // url encoding of the passed in log to split.
-    String path = ZKSplitLog.getEncodedNodeName(watcher, taskname);
+    String path = ZKSplitLog.getEncodedNodeName(this.watcher, taskname, location);
     lastTaskCreateTime = EnvironmentEdgeManager.currentTimeMillis();
     Task oldtask = createTaskIfAbsent(path, batch);
     if (oldtask == null) {
@@ -664,7 +670,7 @@ public class SplitLogManager extends ZooKeeperListener {
         if (task.status == IN_PROGRESS) {
           if (status == SUCCESS) {
             SplitLogCounters.tot_mgr_log_split_success.incrementAndGet();
-            LOG.info("Done splitting " + path);
+            LOG.info("Done splitting " + path + " cost: " + task.getRunningTime() + " ms");
           } else {
             SplitLogCounters.tot_mgr_log_split_err.incrementAndGet();
             LOG.warn("Error splitting " + path);
@@ -1378,7 +1384,8 @@ public class SplitLogManager extends ZooKeeperListener {
     volatile int incarnation;
     final AtomicInteger unforcedResubmits = new AtomicInteger();
     volatile boolean resubmitThresholdReached;
-
+    long startTS;
+    
     @Override
     public String toString() {
       return ("last_update = " + last_update +
@@ -1395,6 +1402,7 @@ public class SplitLogManager extends ZooKeeperListener {
       last_version = -1;
       status = IN_PROGRESS;
       setUnassigned();
+      startTS = EnvironmentEdgeManager.currentTimeMillis();
     }
 
     public boolean isOrphan() {
@@ -1418,6 +1426,10 @@ public class SplitLogManager extends ZooKeeperListener {
     public void setUnassigned() {
       cur_worker_name = null;
       last_update = -1;
+    }
+    
+    public long getRunningTime() {
+      return EnvironmentEdgeManager.currentTimeMillis() - startTS;
     }
   }
 

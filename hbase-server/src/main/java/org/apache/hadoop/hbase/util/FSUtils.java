@@ -56,6 +56,7 @@ import org.apache.hadoop.fs.PathFilter;
 import org.apache.hadoop.fs.permission.FsAction;
 import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.hbase.ClusterId;
+import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HDFSBlocksDistribution;
@@ -71,6 +72,8 @@ import org.apache.hadoop.hbase.security.AccessDeniedException;
 import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.protobuf.generated.FSProtos;
 import org.apache.hadoop.hbase.regionserver.HRegion;
+import org.apache.hadoop.hdfs.DFSClient;
+import org.apache.hadoop.hdfs.DFSHedgedReadMetrics;
 import org.apache.hadoop.hdfs.DistributedFileSystem;
 import org.apache.hadoop.hdfs.protocol.FSConstants;
 import org.apache.hadoop.io.IOUtils;
@@ -1947,5 +1950,68 @@ public abstract class FSUtils {
     long maxRecoverLeaseTime = recoverLeaseTime;
     recoverLeaseTime = 0;
     return maxRecoverLeaseTime;
+  }
+  
+  public static void main(String[] args) {
+    if (args.length != 2) {
+      System.out.println("FSHDFSUtils -recoverlease file");
+      return;
+    }
+    String method = args[0];
+    Path path = new Path(args[1]);
+    Configuration conf = HBaseConfiguration.create();
+    if (method.equals("-recoverlease")) {
+      try {
+        FileSystem fs = FileSystem.get(conf);
+        FSUtils.getInstance(fs, conf).recoverFileLease(fs, path, conf, null);
+      } catch (IOException e) {
+        LOG.error("Recover lease failed", e);
+      }
+    } else {
+      LOG.info("Unkonwn method: " + method);
+    }
+  }
+  
+  /**
+   * @param c
+   * @return The DFSClient DFSHedgedReadMetrics instance or null if can't be found or not on hdfs.
+   * @throws IOException
+   */
+  public static DFSHedgedReadMetrics getDFSHedgedReadMetrics(final Configuration c)
+      throws IOException {
+    if (!isHDFS(c)) return null;
+    // getHedgedReadMetrics is package private. Get the DFSClient instance that is internal
+    // to the DFS FS instance and make the method getHedgedReadMetrics accessible, then invoke it
+    // to get the singleton instance of DFSHedgedReadMetrics shared by DFSClients.
+    final String name = "getHedgedReadMetrics";
+    DFSClient dfsclient = ((DistributedFileSystem)FileSystem.get(c)).getClient();
+    Method m;
+    try {
+      m = dfsclient.getClass().getDeclaredMethod(name);
+    } catch (NoSuchMethodException e) {
+      LOG.warn("Failed find method " + name + " in dfsclient; no hedged read metrics: " +
+          e.getMessage());
+      return null;
+    } catch (SecurityException e) {
+      LOG.warn("Failed find method " + name + " in dfsclient; no hedged read metrics: " +
+          e.getMessage());
+      return null;
+    }
+    m.setAccessible(true);
+    try {
+      return (DFSHedgedReadMetrics)m.invoke(dfsclient);
+    } catch (IllegalAccessException e) {
+      LOG.warn("Failed invoking method " + name + " on dfsclient; no hedged read metrics: " +
+          e.getMessage());
+      return null;
+    } catch (IllegalArgumentException e) {
+      LOG.warn("Failed invoking method " + name + " on dfsclient; no hedged read metrics: " +
+          e.getMessage());
+      return null;
+    } catch (InvocationTargetException e) {
+      LOG.warn("Failed invoking method " + name + " on dfsclient; no hedged read metrics: " +
+          e.getMessage());
+      return null;
+    }
   }
 }

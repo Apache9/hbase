@@ -77,6 +77,8 @@ import org.apache.hadoop.hbase.exceptions.RegionMovedException;
 import org.apache.hadoop.hbase.io.ByteBufferOutputStream;
 import org.apache.hadoop.hbase.monitoring.MonitoredRPCHandler;
 import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
+import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.CoprocessorServiceCall;
+import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.CoprocessorServiceRequest;
 import org.apache.hadoop.hbase.protobuf.generated.RPCProtos.CellBlockMeta;
 import org.apache.hadoop.hbase.protobuf.generated.RPCProtos.ConnectionHeader;
 import org.apache.hadoop.hbase.protobuf.generated.RPCProtos.ExceptionResponse;
@@ -111,8 +113,8 @@ import org.apache.hadoop.security.token.SecretManager;
 import org.apache.hadoop.security.token.SecretManager.InvalidToken;
 import org.apache.hadoop.security.token.TokenIdentifier;
 import org.apache.hadoop.util.StringUtils;
+import org.apache.htrace.TraceInfo;
 import org.cliffc.high_scale_lib.Counter;
-import org.cloudera.htrace.TraceInfo;
 import org.codehaus.jackson.map.ObjectMapper;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
@@ -156,6 +158,10 @@ public class RpcServer implements RpcServerInterface {
   private boolean isSecurityEnabled;
 
   public static final byte CURRENT_VERSION = 0;
+
+  public static long SLOW_IO_LOG_THRESHOLD_MS;
+  public static boolean ALWAYS_TRACE_IN_SERVER_SIDE; // always trace in server side
+  public static final String ALWAYS_TRACE_IN_SERVER_SIDE_KEY = "hbase.always.trace.in.server.side";
 
   /**
    * How many calls/handler are allowed in the queue.
@@ -1097,9 +1103,15 @@ public class RpcServer implements RpcServerInterface {
 
       boolean doRegister = false;
       synchronized (call.connection.responseQueue) {
-        call.connection.responseQueue.addLast(call);
-        if (call.connection.responseQueue.size() == 1) {
-          doRegister = !processResponse(call.connection.responseQueue, false);
+        boolean closed = (call.connection.closed || !call.connection.channel.isOpen());
+        if (!closed) {
+          call.connection.responseQueue.addLast(call);
+          if (call.connection.responseQueue.size() == 1) {
+            doRegister = !processResponse(call.connection.responseQueue, false);
+          }
+        } else {
+          // this should be safe even the connection "closed" flag is true
+          closeConnection(call.connection);
         }
       }
       if (doRegister) {
@@ -1139,6 +1151,7 @@ public class RpcServer implements RpcServerInterface {
     private boolean connectionPreambleRead = false;
     // If the connection header has been read or not.
     private boolean connectionHeaderRead = false;
+    protected volatile boolean closed = false;    // indicates if connection was closed
     protected SocketChannel channel;
     private ByteBuffer data;
     private ByteBuffer dataLengthBuffer;
@@ -1792,6 +1805,7 @@ public class RpcServer implements RpcServerInterface {
       disposeSasl();
       data = null;
       this.dataLengthBuffer = null;
+      closed = true;
       if (!channel.isOpen())
         return;
       try {socket.shutdownOutput();} catch(Exception ignored) {} // FindBugs DE_MIGHT_IGNORE
@@ -1911,6 +1925,8 @@ public class RpcServer implements RpcServerInterface {
     }
     this.scheduler = scheduler;
     this.scheduler.init(new RpcSchedulerContext(this));
+    SLOW_IO_LOG_THRESHOLD_MS = conf.getLong("hbase.slow.io.log.threshold.ms", 300);
+    ALWAYS_TRACE_IN_SERVER_SIDE = conf.getBoolean(ALWAYS_TRACE_IN_SERVER_SIDE_KEY, false);
   }
 
   /**
@@ -2058,15 +2074,8 @@ public class RpcServer implements RpcServerInterface {
       boolean tooSlow = (processingTime > warnResponseTime && warnResponseTime > -1);
       boolean tooLarge = (responseSize > warnResponseSize && warnResponseSize > -1);
       if (tooSlow || tooLarge) {
-        // when tagging, we let TooLarge trump TooSmall to keep output simple
-        // note that large responses will often also be slow.
-        StringBuilder buffer = new StringBuilder(256);
-        buffer.append(md.getName());
-        buffer.append("(");
-        buffer.append(param.getClass().getName());
-        buffer.append(")");
-        logResponse(new Object[]{param},
-            md.getName(), buffer.toString(), (tooLarge ? "TooLarge" : "TooSlow"),
+        logResponse(ProtobufUtil.getOperationDetail(param, cellScanner),
+            md.getName(), getCallString(md, param), (tooLarge ? "TooLarge" : "TooSlow"),
             status.getClient(), startTime, processingTime, qTime,
             responseSize);
       }
@@ -2084,10 +2093,36 @@ public class RpcServer implements RpcServerInterface {
     }
   }
 
+  String getCallString(MethodDescriptor md, Message param) {
+    StringBuilder buffer = new StringBuilder(256);
+    if (param instanceof CoprocessorServiceRequest) {
+      // we need extrace info from param for coprocessor call
+      CoprocessorServiceRequest request = (CoprocessorServiceRequest)param;
+      buffer.append(request.getCall().getServiceName());
+      buffer.append("#");
+      buffer.append(request.getCall().getMethodName());
+      
+      // only add region and row info for RegionCoprocessor exec
+      if (request.getRegion().getValue().toByteArray().length != 0) {
+        buffer.append("(region: ");
+        buffer.append(Bytes.toStringBinary(request.getRegion().getValue().toByteArray()));
+        buffer.append(", row:");
+        buffer.append(Bytes.toStringBinary(request.getCall().getRow().toByteArray()));
+        buffer.append(")");
+      }
+    } else {
+      buffer.append(md.getName());
+      buffer.append("(");
+      buffer.append(param.getClass().getName());
+      buffer.append(")");
+    }
+    return buffer.toString();
+  }
+  
   /**
    * Logs an RPC response to the LOG file, producing valid JSON objects for
    * client Operations.
-   * @param params The parameters received in the call.
+   * @param operationDetail operation detail for the call.
    * @param methodName The name of the method invoked
    * @param call The string representation of the call
    * @param tag  The tag that will be used to indicate this event in the log.
@@ -2098,7 +2133,7 @@ public class RpcServer implements RpcServerInterface {
    *                        prior to being initiated, in ms.
    * @param responseSize    The size in bytes of the response buffer.
    */
-  void logResponse(Object[] params, String methodName, String call, String tag,
+  void logResponse(Map<String, Object> operationDetail, String methodName, String call, String tag,
       String clientAddress, long startTime, int processingTime, int qTime,
       long responseSize)
           throws IOException {
@@ -2111,26 +2146,9 @@ public class RpcServer implements RpcServerInterface {
     responseInfo.put("client", clientAddress);
     responseInfo.put("class", serverInstance == null? "": serverInstance.getClass().getSimpleName());
     responseInfo.put("method", methodName);
-    if (params.length == 2 && serverInstance instanceof HRegionServer &&
-        params[0] instanceof byte[] &&
-        params[1] instanceof Operation) {
-      // if the slow process is a query, we want to log its table as well
-      // as its own fingerprint
-      TableName tableName = TableName.valueOf(
-          HRegionInfo.parseRegionName((byte[]) params[0])[0]);
-      responseInfo.put("table", tableName.getNameAsString());
-      // annotate the response map with operation details
-      responseInfo.putAll(((Operation) params[1]).toMap());
-      // report to the log file
-      LOG.warn("(operation" + tag + "): " +
-               MAPPER.writeValueAsString(responseInfo));
-    } else if (params.length == 1 && serverInstance instanceof HRegionServer &&
-        params[0] instanceof Operation) {
-      // annotate the response map with operation details
-      responseInfo.putAll(((Operation) params[0]).toMap());
-      // report to the log file
-      LOG.warn("(operation" + tag + "): " +
-               MAPPER.writeValueAsString(responseInfo));
+    if (operationDetail.size() != 0) {
+      responseInfo.putAll(operationDetail);
+      LOG.warn("(operation" + tag + "): " + MAPPER.writeValueAsString(responseInfo));
     } else {
       // can't get JSON details, so just report call.toString() along with
       // a more generic tag.
@@ -2394,6 +2412,11 @@ public class RpcServer implements RpcServerInterface {
    */
   public static void bind(ServerSocket socket, InetSocketAddress address,
                           int backlog) throws IOException {
+    try {
+      socket.setReuseAddress(true);
+    } catch (SocketException e) {
+      LOG.warn("socket is closed or insufficient permissions to setReuseAddress?", e);
+    }
     try {
       socket.bind(address, backlog);
     } catch (BindException e) {

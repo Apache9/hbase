@@ -33,9 +33,9 @@ import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.util.AbstractHBaseTool;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.util.ToolRunner;
-import org.cloudera.htrace.Sampler;
-import org.cloudera.htrace.Trace;
-import org.cloudera.htrace.TraceScope;
+import org.apache.htrace.Sampler;
+import org.apache.htrace.Trace;
+import org.apache.htrace.TraceScope;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 

@@ -279,7 +279,8 @@ public class TestCompaction {
     Mockito.when(mockServer.getConfiguration()).thenReturn(r.getBaseConf());
     CompactSplitThread thread = new CompactSplitThread(mockServer);
     Mockito.when(mockServer.getCompactSplitThread()).thenReturn(thread);
-
+    Mockito.when(mockServer.isEnableCompact()).thenReturn(true);
+    
     // setup a region/store with some files
     Store store = r.getStore(COLUMN_FAMILY);
     createStoreFile(r);
@@ -308,7 +309,8 @@ public class TestCompaction {
     Mockito.when(mockServer.getConfiguration()).thenReturn(r.getBaseConf());
     CompactSplitThread thread = new CompactSplitThread(mockServer);
     Mockito.when(mockServer.getCompactSplitThread()).thenReturn(thread);
-
+    Mockito.when(mockServer.isEnableCompact()).thenReturn(true);
+    
     // setup a region/store with some files
     int numStores = r.getStores().size();
     List<Pair<CompactionRequest, Store>> requests =
@@ -488,6 +490,7 @@ public class TestCompaction {
     final Configuration conf = HBaseConfiguration.create();
     HRegionServer mockServer = mock(HRegionServer.class);
     when(mockServer.isStopped()).thenReturn(false);
+    when(mockServer.isEnableCompact()).thenReturn(true);
     when(mockServer.getConfiguration()).thenReturn(conf);
     CompactSplitThread cst = new CompactSplitThread(mockServer);
     when(mockServer.getCompactSplitThread()).thenReturn(cst);

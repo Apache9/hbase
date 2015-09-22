@@ -22,19 +22,16 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.NavigableMap;
-import java.util.NavigableSet;
 import java.util.TreeMap;
-import java.util.TreeSet;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.Abortable;
 import org.apache.hadoop.hbase.ServerName;
+import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.master.ServerManager;
 import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.RegionServerInfo;
-import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.zookeeper.KeeperException;
 
 /**
@@ -78,30 +75,34 @@ public class RegionServerTracker extends ZooKeeperListener {
   }
 
   private void add(final List<String> servers) throws IOException {
+    NavigableMap<ServerName, RegionServerInfo> tmps =
+        new TreeMap<ServerName, RegionServerInfo>();
+    for (String n: servers) {
+      ServerName sn = ServerName.parseServerName(ZKUtil.getNodeName(n));
+      if (tmps.get(sn) == null) {
+        RegionServerInfo.Builder rsInfoBuilder = RegionServerInfo.newBuilder();
+        try {
+          String nodePath = ZKUtil.joinZNode(watcher.rsZNode, n);
+          byte[] data = ZKUtil.getData(watcher, nodePath);
+          if (data != null && data.length > 0 && ProtobufUtil.isPBMagicPrefix(data)) {
+            int magicLen = ProtobufUtil.lengthOfPBMagic();
+            rsInfoBuilder.mergeFrom(data, magicLen, data.length - magicLen);
+          }
+          if (LOG.isDebugEnabled()) {
+            LOG.debug("Added tracking of RS " + nodePath);
+          }
+        } catch (KeeperException e) {
+          LOG.warn("Get Rs info port from ephemeral node", e);
+        } catch (IOException e) {
+          LOG.warn("Illegal data from ephemeral node", e);
+        }
+        tmps.put(sn, rsInfoBuilder.build());
+      }
+    }
+
     synchronized(this.regionServers) {
       this.regionServers.clear();
-      for (String n: servers) {
-        ServerName sn = ServerName.parseServerName(ZKUtil.getNodeName(n));
-        if (regionServers.get(sn) == null) {
-          RegionServerInfo.Builder rsInfoBuilder = RegionServerInfo.newBuilder();
-          try {
-            String nodePath = ZKUtil.joinZNode(watcher.rsZNode, n);
-            byte[] data = ZKUtil.getData(watcher, nodePath);
-            if (data != null && data.length > 0 && ProtobufUtil.isPBMagicPrefix(data)) {
-              int magicLen = ProtobufUtil.lengthOfPBMagic();
-              rsInfoBuilder.mergeFrom(data, magicLen, data.length - magicLen);
-            }
-            if (LOG.isDebugEnabled()) {
-              LOG.debug("Added tracking of RS " + nodePath);
-            }
-          } catch (KeeperException e) {
-            LOG.warn("Get Rs info port from ephemeral node", e);
-          } catch (IOException e) {
-            LOG.warn("Illegal data from ephemeral node", e);
-          }
-          this.regionServers.put(sn, rsInfoBuilder.build());
-        }
-      }
+      this.regionServers.putAll(tmps);
     }
   }
 
@@ -155,5 +156,26 @@ public class RegionServerTracker extends ZooKeeperListener {
     synchronized (this.regionServers) {
       return new ArrayList<ServerName>(this.regionServers.keySet());
     }
+  }
+  
+  /**
+   * Check if the regionserver has the ephemeral node on zookeeper
+   * @param sn
+   * @return
+   */
+  public boolean checkIfAlive(final ServerName sn) {
+    synchronized(this.regionServers) {
+      return regionServers.containsKey(sn);
+    }
+  }
+  
+  // for test
+  public static void setRegionServers(RegionServerTracker tracker, ServerName[] servers)
+      throws IOException {
+    List<String> names = new ArrayList<String>();
+    for (ServerName sn : servers) {
+      names.add(sn.getServerName());
+    }
+    tracker.add(names);
   }
 }

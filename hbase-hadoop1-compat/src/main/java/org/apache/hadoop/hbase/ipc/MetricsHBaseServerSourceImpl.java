@@ -122,4 +122,8 @@ public class MetricsHBaseServerSourceImpl extends BaseSourceImpl
 
     metricsRegistry.snapshot(mrb, all);
   }
+
+  @Override
+  public void failedCalls() {
+  }
 }

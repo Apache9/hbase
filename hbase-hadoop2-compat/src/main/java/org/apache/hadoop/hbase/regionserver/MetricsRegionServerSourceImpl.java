@@ -43,6 +43,11 @@ public class MetricsRegionServerSourceImpl
   private final MetricHistogram appendHisto;
   private final MetricHistogram replayHisto;
 
+  // FS read/write histogram
+  private final MetricHistogram fsRead;
+  private final MetricHistogram fsPread;
+  private final MetricHistogram fsWrite;
+  
   private final MutableCounterLong slowPut;
   private final MutableCounterLong slowDelete;
   private final MutableCounterLong slowGet;
@@ -88,6 +93,13 @@ public class MetricsRegionServerSourceImpl
 
     splitRequest = getMetricsRegistry().newCounter(SPLIT_REQUEST_KEY, SPLIT_REQUEST_DESC, 0l);
     splitSuccess = getMetricsRegistry().newCounter(SPLIT_SUCCESS_KEY, SPLIT_SUCCESS_DESC, 0l);
+  
+    fsRead = getMetricsRegistry().newHistogram(FS_READ_KEY);
+    fsPread = getMetricsRegistry().newHistogram(FS_PREAD_KEY);
+    fsWrite = getMetricsRegistry().newHistogram(FS_WRITE_KEY);
+    if (rsWrap != null) {
+      rsWrap.initialFSMetrics(fsRead, fsPread, fsWrite);
+    }
   }
 
   @Override
@@ -253,7 +265,12 @@ public class MetricsRegionServerSourceImpl
 
           .addCounter(Interns.info(BLOCKED_REQUESTS_COUNT, BLOCKED_REQUESTS_COUNT_DESC),
             rsWrap.getBlockedRequestsCount())
-
+            
+          .addGauge(Interns.info(HEDGED_READS_KEY, ""), rsWrap.getHedgedReads())
+          .addGauge(Interns.info(HEDGED_READ_WINS_KEY, ""), rsWrap.getHedgedReadWins())
+          .addGauge(Interns.info(HEDGED_READ_IN_CURRENT_THREAD_KEY, ""), rsWrap.getHedgedReadsInCurThread())
+          .addGauge(Interns.info(HLOG_COMPRESSION_RATIO_KEY, ""), (int)(rsWrap.getHLogCompressionRatio() * 100))
+                    
           .tag(Interns.info(ZOOKEEPER_QUORUM_NAME, ZOOKEEPER_QUORUM_DESC),
               rsWrap.getZookeeperQuorum())
           .tag(Interns.info(SERVER_NAME_NAME, SERVER_NAME_DESC), rsWrap.getServerName())

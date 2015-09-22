@@ -40,6 +40,11 @@ public interface RegionScanner extends InternalScanner {
   HRegionInfo getRegionInfo();
 
   /**
+   * @return The limit of raw values to scan.
+   */
+  public int getRawLimit();
+
+  /**
    * @return True if a filter indicates that this scanner will return no further rows.
    * @throws IOException in case of I/O failure on a filter.
    */
@@ -73,12 +78,12 @@ public interface RegionScanner extends InternalScanner {
    * This is a special internal method to be called from coprocessor hooks to avoid expensive setup.
    * Caller must set the thread's readpoint, start and close a region operation, an synchronize on the scanner object.
    * Caller should maintain and update metrics.
-   * See {@link #nextRaw(List, int)}
+   * See {@link #nextRaw(List, int, int)}
    * @param result return output array
    * @return true if more rows exist after this one, false if scanner is done
    * @throws IOException e
    */
-  boolean nextRaw(List<Cell> result) throws IOException;
+  ScannerStatus nextRaw(List<Cell> result) throws IOException;
 
   /**
    * Grab the next row's worth of values with a limit on the number of values
@@ -106,5 +111,5 @@ public interface RegionScanner extends InternalScanner {
    * @return true if more rows exist after this one, false if scanner is done
    * @throws IOException e
    */
-  boolean nextRaw(List<Cell> result, int limit) throws IOException;
+  ScannerStatus nextRaw(List<Cell> result, int limit, int rawLimit) throws IOException;
 }

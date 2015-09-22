@@ -37,12 +37,16 @@ import org.apache.hadoop.hbase.io.encoding.DataBlockEncoder;
 import org.apache.hadoop.hbase.io.encoding.DataBlockEncoding;
 import org.apache.hadoop.hbase.io.encoding.HFileBlockDecodingContext;
 import org.apache.hadoop.hbase.io.hfile.HFile.FileInfo;
+import org.apache.hadoop.hbase.regionserver.MetricsRegionServerSourceImpl;
+import org.apache.hadoop.hbase.regionserver.MetricsRegionServerWrapper;
+import org.apache.hadoop.hbase.regionserver.MetricsRegionServerWrapperImpl;
+import org.apache.hadoop.hbase.regionserver.MetricsRegionWrapperImpl;
 import org.apache.hadoop.hbase.util.ByteBufferUtils;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.IdLock;
 import org.apache.hadoop.io.WritableUtils;
-import org.cloudera.htrace.Trace;
-import org.cloudera.htrace.TraceScope;
+import org.apache.htrace.Trace;
+import org.apache.htrace.TraceScope;
 
 import com.google.common.annotations.VisibleForTesting;
 
@@ -269,7 +273,8 @@ public class HFileReaderV2 extends AbstractHFileReader {
     if (block == -1)
       return null;
     long blockSize = metaBlockIndexReader.getRootBlockDataSize(block);
-
+    long startTimeNs = System.nanoTime();
+    
     // Per meta key from any given file, synchronize reads for said block. This
     // is OK to do for meta blocks because the meta block index is always
     // single-level.
@@ -294,6 +299,9 @@ public class HFileReaderV2 extends AbstractHFileReader {
 
       HFileBlock metaBlock = fsBlockReader.readBlockData(metaBlockOffset,
           blockSize, -1, true).unpack(hfileContext, fsBlockReader);
+      
+      final long delta = System.nanoTime() - startTimeNs;
+      MetricsRegionServerWrapperImpl.updateFSReadLatency(delta, true);
 
       // Cache the block
       if (cacheBlock) {
@@ -392,12 +400,16 @@ public class HFileReaderV2 extends AbstractHFileReader {
           traceScope.getSpan().addTimelineAnnotation("blockCacheMiss");
         }
         // Load block from filesystem.
+        long startTimeNs = System.nanoTime();
         HFileBlock hfileBlock = fsBlockReader.readBlockData(dataBlockOffset, onDiskBlockSize, -1,
             pread);
         validateBlockType(hfileBlock, expectedBlockType);
         HFileBlock unpacked = hfileBlock.unpack(hfileContext, fsBlockReader);
         BlockType.BlockCategory category = hfileBlock.getBlockType().getCategory();
-
+        
+        final long delta = System.nanoTime() - startTimeNs;
+        MetricsRegionServerWrapperImpl.updateFSReadLatency(delta, pread);
+        
         // Cache the block if necessary
         if (cacheBlock && cacheConf.shouldCacheBlockOnRead(category)) {
           cacheConf.getBlockCache().cacheBlock(cacheKey,
@@ -499,6 +511,10 @@ public class HFileReaderV2 extends AbstractHFileReader {
       extends AbstractHFileReader.Scanner {
     protected HFileBlock block;
 
+    @Override
+    public byte[] getNextIndexedKey() {
+      return nextIndexedKey;
+    }
     /**
      * The next indexed key is to keep track of the indexed key of the next data block.
      * If the nextIndexedKey is HConstants.NO_NEXT_INDEXED_KEY, it means that the
@@ -608,9 +624,8 @@ public class HFileReaderV2 extends AbstractHFileReader {
         // It is important that we compute and pass onDiskSize to the block
         // reader so that it does not have to read the header separately to
         // figure out the size.
-        seekToBlock = reader.readBlock(previousBlockOffset,
-            seekToBlock.getOffset() - previousBlockOffset, cacheBlocks,
-            pread, isCompaction, true, BlockType.DATA);
+        seekToBlock = reader.readBlock(previousBlockOffset, -1, cacheBlocks, pread, isCompaction,
+          true, BlockType.DATA);
         // TODO shortcut: seek forward in this block to the last key of the
         // block.
       }
@@ -669,6 +684,7 @@ public class HFileReaderV2 extends AbstractHFileReader {
    */
   protected static class ScannerV2 extends AbstractScannerV2 {
     private HFileReaderV2 reader;
+    private boolean retryReadBlock = false;
 
     public ScannerV2(HFileReaderV2 r, boolean cacheBlocks,
         final boolean pread, final boolean isCompaction) {
@@ -685,6 +701,11 @@ public class HFileReaderV2 extends AbstractHFileReader {
           + blockBuffer.position(), getCellBufSize());
       if (this.reader.shouldIncludeMemstoreTS()) {
         ret.setMvccVersion(currMemstoreTS);
+      }
+      // no "conf" be passed into this, so let's compare with a magic number...
+      if (ret.heapSize() > HConstants.HUGE_KV_SIZE_IN_BYTE_WARN_VALUE) {
+        LOG.info("HUGE KV > 1MB! keyLen:" + ret.getKeyLength() + ",key:"
+            + Bytes.toStringBinary(ret.getKey()));
       }
       return ret;
     }
@@ -737,6 +758,11 @@ public class HFileReaderV2 extends AbstractHFileReader {
     public boolean next() throws IOException {
       assertSeeked();
 
+      if (retryReadBlock && blockBuffer.remaining() <= 0) {
+        if (!rollDataBlock()) {
+          return false;
+        }
+      }
       try {
         blockBuffer.position(getNextCellStartPosition());
       } catch (IllegalArgumentException e) {
@@ -749,27 +775,37 @@ public class HFileReaderV2 extends AbstractHFileReader {
       }
 
       if (blockBuffer.remaining() <= 0) {
-        long lastDataBlockOffset =
-            reader.getTrailer().getLastDataBlockOffset();
-
-        if (block.getOffset() >= lastDataBlockOffset) {
-          setNonSeekedState();
-          return false;
-        }
-
-        // read the next block
-        HFileBlock nextBlock = readNextDataBlock();
-        if (nextBlock == null) {
-          setNonSeekedState();
-          return false;
-        }
-
-        updateCurrBlock(nextBlock);
-        return true;
+        return rollDataBlock();
       }
 
       // We are still in the same block.
       readKeyValueLen();
+      return true;
+    }
+
+    private boolean rollDataBlock() throws IOException {
+      long lastDataBlockOffset = reader.getTrailer().getLastDataBlockOffset();
+
+      if (block.getOffset() >= lastDataBlockOffset) {
+        setNonSeekedState();
+        return false;
+      }
+
+      // read the next block
+      HFileBlock nextBlock = null;
+      try {
+        nextBlock = readNextDataBlock();
+      } catch (IOException ioe) {
+        retryReadBlock = true;
+        throw ioe;
+      }
+      retryReadBlock = false;
+      if (nextBlock == null) {
+        setNonSeekedState();
+        return false;
+      }
+
+      updateCurrBlock(nextBlock);
       return true;
     }
 

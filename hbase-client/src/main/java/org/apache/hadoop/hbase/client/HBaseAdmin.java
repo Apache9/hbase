@@ -25,6 +25,7 @@ import java.io.InterruptedIOException;
 import java.net.SocketTimeoutException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -75,6 +76,8 @@ import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.AdminService;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CloseRegionRequest;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CloseRegionResponse;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactRegionRequest;
+import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableRequest;
+import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableResponse;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.FlushRegionRequest;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionInfoRequest;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionInfoResponse;
@@ -127,7 +130,6 @@ import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.MoveRegionRequest
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RestoreSnapshotRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RestoreSnapshotResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetBalancerRunningRequest;
-import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetQuotaRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ShutdownRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SnapshotRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SnapshotResponse;
@@ -185,7 +187,6 @@ public class HBaseAdmin implements Abortable, Closeable {
   private boolean aborted;
   private boolean cleanupConnectionOnClose = false; // close the connection in close()
   private boolean closed = false;
-
   private RpcRetryingCallerFactory rpcCallerFactory;
 
   /**
@@ -574,6 +575,17 @@ public class HBaseAdmin implements Abortable, Closeable {
           }
         };
         MetaScanner.metaScan(conf, connection, visitor, desc.getTableName());
+        
+        // if the server side enable IGNORE_SPLITS_WHEN_CREATE_TABLE option, 
+        if (actualRegCount.get() > 0) {
+          HTableDescriptor htdFromMaster = getTableDescriptor(desc.getName());
+          if (htdFromMaster.getValue(HTableDescriptor.IGNORE_SPLITS_WHEN_CREATING) != null
+              && Boolean.parseBoolean(htdFromMaster
+                  .getValue(HTableDescriptor.IGNORE_SPLITS_WHEN_CREATING))) {
+            numRegs = 1;
+          }
+        }
+        
         if (actualRegCount.get() < numRegs) {
           if (tries == this.numRetries * this.retryLongerMultiplier - 1) {
             throw new RegionOfflineException("Only " + actualRegCount.get() +
@@ -1855,6 +1867,30 @@ public class HBaseAdmin implements Abortable, Closeable {
     } finally {
       stub.close();
     }
+  }
+  
+  /**
+   * Turn the compaction switch in global instance on or off.
+   * @param b If false, disable minor&major compaction in all RS.
+   * @return Previous value
+   * @throws IOException 
+   */
+  public boolean setCompactionEnable(final boolean b) 
+      throws IOException {
+    boolean ret = false;
+    Collection<ServerName> servers = getClusterStatus().getServers();
+    for (ServerName sn : servers) {
+      AdminService.BlockingInterface admin = this.connection.getAdmin(sn);
+      CompactionEnableRequest.Builder builder = CompactionEnableRequest.newBuilder();
+      builder.setEnable(b);
+      try {
+        CompactionEnableResponse response = admin.switchCompaction(null, builder.build());
+        ret |= response.getEnable();
+      } catch (ServiceException se) {
+        throw ProtobufUtil.getRemoteException(se);
+      }
+    }
+    return ret;
   }
 
   /**

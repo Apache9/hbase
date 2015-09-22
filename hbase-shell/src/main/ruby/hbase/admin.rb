@@ -20,10 +20,11 @@
 include Java
 java_import java.util.Arrays
 java_import org.apache.hadoop.hbase.TableName
+java_import org.apache.hadoop.hbase.client.HConnectionManager
+java_import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos::SnapshotDescription
+java_import org.apache.hadoop.hbase.util.Bytes
 java_import org.apache.hadoop.hbase.util.Pair
 java_import org.apache.hadoop.hbase.util.RegionSplitter
-java_import org.apache.hadoop.hbase.util.Bytes
-java_import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos::SnapshotDescription
 
 # Wrapper for org.apache.hadoop.hbase.client.HBaseAdmin
 
@@ -47,7 +48,13 @@ module Hbase
     #----------------------------------------------------------------------------------------------
     # Requests a table or region flush
     def flush(table_or_region_name)
-      @admin.flush(table_or_region_name)
+      if table_or_region_name == nil
+        @admin.getTableNames().each do |table|
+          @admin.flush(table)
+        end
+      else
+        @admin.flush(table_or_region_name)
+      end
     end
 
     #----------------------------------------------------------------------------------------------
@@ -63,7 +70,7 @@ module Hbase
 
     # Requests to compact all regions on the regionserver
     def compact_regionserver(servername, major = false)
-      @admin.compactRegionServer(ServerName.valueOf(servername), major)
+      @admin.compactRegionServer(org.apache.hadoop.hbase.ServerName.valueOf(servername), major)
     end
 
     #----------------------------------------------------------------------------------------------
@@ -78,9 +85,17 @@ module Hbase
     end
 
     #----------------------------------------------------------------------------------------------
+    # Enable/disable compaction in the global cluster 
+    # Returns previous compaction switch setting.
+    def compact_switch(enableDisable)
+      @admin.setCompactionEnable(
+        java.lang.Boolean::valueOf(enableDisable))
+    end
+
+    #----------------------------------------------------------------------------------------------
     # Requests a regionserver's WAL roll
     def hlog_roll(server_name)
-      @admin.rollWALWriter(ServerName.valueOf(server_name))
+      @admin.rollHLogWriter(server_name)
     end
 
     #----------------------------------------------------------------------------------------------
@@ -343,6 +358,96 @@ module Hbase
     # Merge two regions
     def merge_region(encoded_region_a_name, encoded_region_b_name, force)
       @admin.mergeRegions(encoded_region_a_name.to_java_bytes, encoded_region_b_name.to_java_bytes, java.lang.Boolean::valueOf(force))
+    end
+
+    #----------------------------------------------------------------------------------------------
+    # Return array of servernames where servername is hostname+port+startcode
+    # comma-delimited
+    def getServers()
+      serverInfos = @admin.getClusterStatus().getServerInfo()
+      servers = []
+      for server in serverInfos
+        servers << server.getServerName()
+      end
+      return servers
+    end
+
+    #----------------------------------------------------------------------------------------------
+    # Move regions of a table
+    def move_table(table_name, server = nil)
+      table_regions = @admin.getTableRegions(TableName.valueOf(table_name))
+      if table_regions == nil || table_regions.size == 0
+        $stdout.puts "no regions found for table #{table_name}"
+        return
+      end
+
+      # random choose a server to serve all the regions if given server is nil
+      if server == nil
+        region_servers = getServers()
+        server = region_servers[rand(region_servers.size)]
+      end
+
+      region_count = table_regions.size
+      $stdout.puts "start move #{region_count} regions of table : #{table_name} to server : #{server}"
+      index = 0
+      server_bytes = server.to_java_bytes
+      while index < region_count
+        encoded_region_name = table_regions[index].getEncodedName
+        # move one region to the server 
+        @admin.move(encoded_region_name.to_java_bytes, server_bytes)
+
+        index += 1
+        # we print a promote every 10 regions
+        if index % 10 == 0:
+          $stdout.puts "finish moving #{index} regions"
+        end
+      end
+      $stdout.puts "finish moving #{region_count} regions"
+      end
+
+    #----------------------------------------------------------------------------------------------
+    # Move regions of a server to the given server, randomly to other servers
+    def move_server(source_server, target_server = nil)
+      if source_server == target_server
+        puts "source_server is same with the target_server"
+      return
+      end
+
+      other_servers = []
+      if target_server == nil
+        other_servers = getServers()
+        find_source_server = false
+        # remove source_server from other_servers
+        for server in other_servers
+          if server == source_server
+            find_source_server = true
+            other_servers.delete(server)
+            break
+          end
+        end
+        if find_source_server == false
+          puts "can't find source server #{source_server}"
+          return
+        end
+        if other_servers.size == 0
+          puts "can't find valid target region server"
+          return
+        end
+        puts "will move to valid target region servers:", other_servers
+      end
+
+      regions = @admin.getOnlineRegions(org.apache.hadoop.hbase.ServerName.valueOf(source_server))
+      puts "will move #{regions.size} regions on server #{source_server}"
+      for region in regions:
+        server = target_server
+        # if no target server specified, we choose a server randomly
+        if server == nil
+          server = other_servers[rand(other_servers.size)]
+        end
+        encode_name = region.getEncodedName
+        @admin.move(Bytes.toBytes(encode_name), Bytes.toBytes(server))
+        puts "finished moving region #{encode_name} from #{source_server} to #{server}"
+      end
     end
 
     #----------------------------------------------------------------------------------------------

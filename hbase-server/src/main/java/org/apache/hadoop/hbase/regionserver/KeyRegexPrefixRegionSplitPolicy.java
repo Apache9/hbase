@@ -16,7 +16,7 @@ import org.apache.commons.logging.LogFactory;
  * This ensures that a region is not split "inside" a prefix of a row key. I.e. rows can be
  * co-located in a region by their prefix.
  */
-public class KeyRegexPrefixRegionSplitPolicy extends IncreasingToUpperBoundRegionSplitPolicy {
+public class KeyRegexPrefixRegionSplitPolicy extends ConstantSizeRegionSplitPolicy {
   private static final Log LOG = LogFactory.getLog(KeyPrefixRegionSplitPolicy.class);
   public static String PREFIX_REGEX_KEY = "prefix_split_key_policy.prefix_regex";
 

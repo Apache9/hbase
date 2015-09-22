@@ -314,7 +314,8 @@ public class CompactSplitThread implements CompactionRequestor {
       final String why, int priority, CompactionRequest request, boolean selectNow)
           throws IOException {
     if (this.server.isStopped()
-        || (r.getTableDesc() != null && !r.getTableDesc().isCompactionEnabled())) {
+        || (r.getTableDesc() != null && !r.getTableDesc().isCompactionEnabled())
+        || !this.server.isEnableCompact()) {
       return null;
     }
 
@@ -326,8 +327,7 @@ public class CompactSplitThread implements CompactionRequestor {
 
     // We assume that most compactions are small. So, put system compactions into small
     // pool; we will do selection there, and move to large pool if necessary.
-    long size = selectNow ? compaction.getRequest().getSize() : 0;
-    ThreadPoolExecutor pool = (!selectNow && s.throttleCompaction(size))
+    ThreadPoolExecutor pool = (selectNow && s.throttleCompaction(compaction.getRequest().getSize()))
       ? largeCompactions : smallCompactions;
     pool.execute(new CompactionRunner(s, r, compaction, pool));
     if (LOG.isDebugEnabled()) {
@@ -453,7 +453,8 @@ public class CompactSplitThread implements CompactionRequestor {
     public void run() {
       Preconditions.checkNotNull(server);
       if (server.isStopped()
-          || (region.getTableDesc() != null && !region.getTableDesc().isCompactionEnabled())) {
+          || (region.getTableDesc() != null && !region.getTableDesc().isCompactionEnabled())
+          || !server.isEnableCompact()) {
         return;
       }
       // Common case - system compaction without a file selection. Select now.

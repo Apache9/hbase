@@ -32,6 +32,7 @@ import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.CoprocessorServiceResponse;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.htrace.Trace;
 
 import com.google.protobuf.Descriptors;
 import com.google.protobuf.Message;
@@ -90,6 +91,9 @@ public class RegionCoprocessorRpcChannel extends CoprocessorRpcChannel{
         new RegionServerCallable<CoprocessorServiceResponse>(connection, table, row) {
           public CoprocessorServiceResponse call() throws Exception {
             byte[] regionName = getLocation().getRegionInfo().getRegionName();
+            if (Trace.isTracing()) {
+              Trace.addTimelineAnnotation("Call coprocessor to " + location);
+            }
             return ProtobufUtil.execService(getStub(), call, regionName, controller);
           }
         };

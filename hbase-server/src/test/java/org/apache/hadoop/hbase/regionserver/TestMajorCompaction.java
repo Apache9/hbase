@@ -130,7 +130,7 @@ public class TestMajorCompaction {
     InternalScanner s = r.getScanner(new Scan());
     do {
       List<Cell> results = new ArrayList<Cell>();
-      boolean result = s.next(results);
+      boolean result = s.next(results).hasNext();
       r.delete(new Delete(CellUtil.cloneRow(results.get(0))));
       if (!result) break;
     } while(true);
@@ -143,7 +143,7 @@ public class TestMajorCompaction {
     int counter = 0;
     do {
       List<Cell> results = new ArrayList<Cell>();
-      boolean result = s.next(results);
+      boolean result = s.next(results).hasNext();
       if (!result) break;
       counter++;
     } while(true);
@@ -457,7 +457,7 @@ public class TestMajorCompaction {
     InternalScanner s = r.getScanner(scan);
     do {
       List<Cell> results = new ArrayList<Cell>();
-      boolean result = s.next(results);
+      boolean result = s.next(results).hasNext();
       assertTrue(!results.isEmpty());
       r.delete(new Delete(results.get(0).getRow()));
       if (!result) break;
@@ -473,7 +473,7 @@ public class TestMajorCompaction {
     int counter = 0;
     do {
       List<Cell> results = new ArrayList<Cell>();
-      boolean result = s.next(results);
+      boolean result = s.next(results).hasNext();
       if (!result) break;
       counter++;
     } while (true);

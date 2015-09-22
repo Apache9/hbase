@@ -136,7 +136,7 @@ public class BulkDeleteEndpoint extends BulkDeleteService implements Coprocessor
         List<List<Cell>> deleteRows = new ArrayList<List<Cell>>(rowBatchSize);
         for (int i = 0; i < rowBatchSize; i++) {
           List<Cell> results = new ArrayList<Cell>();
-          hasMore = scanner.next(results);
+          hasMore = scanner.next(results).hasNext();
           if (results.size() > 0) {
             deleteRows.add(results);
           }

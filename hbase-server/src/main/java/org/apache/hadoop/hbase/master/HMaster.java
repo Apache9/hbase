@@ -78,6 +78,7 @@ import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.TableNotDisabledException;
 import org.apache.hadoop.hbase.TableNotFoundException;
 import org.apache.hadoop.hbase.UnknownRegionException;
+import org.apache.hadoop.hbase.YouAreDeadException;
 import org.apache.hadoop.hbase.catalog.CatalogTracker;
 import org.apache.hadoop.hbase.catalog.MetaReader;
 import org.apache.hadoop.hbase.client.HConnectionManager;
@@ -480,6 +481,8 @@ MasterServices, Server {
   /** The following is used in master recovery scenario to re-register listeners */
   private List<ZooKeeperListener> registeredZKListenersBeforeRecovery;
 
+  private boolean ignoreSplitsWhenCreatingTable = false;
+  
   /**
    * Initializes the HMaster. The steps are as follows:
    * <p>
@@ -502,6 +505,16 @@ MasterServices, Server {
     String hostname = Strings.domainNamePointerToHostName(DNS.getDefaultHost(
       conf.get("hbase.master.dns.interface", "default"),
       conf.get("hbase.master.dns.nameserver", "default")));
+    boolean mode =
+        conf.getBoolean(HConstants.CLUSTER_DISTRIBUTED, HConstants.DEFAULT_CLUSTER_DISTRIBUTED);
+    if (mode == HConstants.CLUSTER_IS_DISTRIBUTED && hostname.equals(HConstants.LOCALHOST)) {
+      String msg =
+          "The hostname of regionserver cannot be set to localhost "
+              + "in a fully-distributed setup because it won't be reachable. "
+              + "See \"Getting Started\" for more information.";
+      LOG.fatal(msg);
+      throw new IOException(msg);
+    }
     int port = conf.getInt(HConstants.MASTER_PORT, HConstants.DEFAULT_MASTER_PORT);
     // Test that the hostname is reachable
     InetSocketAddress initialIsa = new InetSocketAddress(hostname, port);
@@ -601,6 +614,8 @@ MasterServices, Server {
         Threads.setDaemonThreadRunning(clusterStatusPublisherChore.getThread());
       }
     }
+    this.ignoreSplitsWhenCreatingTable = conf.getBoolean(
+      HConstants.IGNORE_SPLITS_WHEN_CREATE_TABLE, false);
   }
 
   /**
@@ -1308,7 +1323,7 @@ MasterServices, Server {
    this.executorService.startExecutorService(ExecutorType.MASTER_SERVER_OPERATIONS,
       conf.getInt("hbase.master.executor.serverops.threads", 5));
    this.executorService.startExecutorService(ExecutorType.MASTER_META_SERVER_OPERATIONS,
-      conf.getInt("hbase.master.executor.serverops.threads", 5));
+      conf.getInt("hbase.master.executor.meta.serverops.threads", 5));
    this.executorService.startExecutorService(ExecutorType.M_LOG_REPLAY_OPS,
       conf.getInt("hbase.master.executor.logreplayops.threads", 10));
 
@@ -1482,6 +1497,13 @@ MasterServices, Server {
     try {
       ClusterStatusProtos.ServerLoad sl = request.getLoad();
       ServerName serverName = ProtobufUtil.toServerName(request.getServer());
+      if (!regionServerTracker.checkIfAlive(serverName)) {
+        String message = "Server report rejected; No ephemeral node on zookeeper for regionserver: "
+            + serverName;
+        LOG.warn(message);
+        throw new YouAreDeadException(message);
+      }
+      
       ServerLoad oldLoad = serverManager.getLoad(serverName);
       this.serverManager.regionServerReport(serverName, new ServerLoad(sl));
       if (sl != null && this.metricsMaster != null) {
@@ -1911,6 +1933,18 @@ MasterServices, Server {
       throw new MasterNotRunningException();
     }
 
+    if (ignoreSplitsWhenCreatingTable) {
+      boolean isSalted = hTableDescriptor.isSalted();
+      if (isSalted) {
+        hTableDescriptor.setSlotsCount(1);
+      }
+      splitKeys = null;
+      hTableDescriptor.setValue(Bytes.toBytes(HTableDescriptor.IGNORE_SPLITS_WHEN_CREATING),
+        Bytes.toBytes("true"));
+      LOG.info("ignore splits for table " + hTableDescriptor.getNameAsString() + ", isSalted="
+          + isSalted);
+    }
+    
     String namespace = hTableDescriptor.getTableName().getNamespaceAsString();
     getNamespaceDescriptor(namespace); // ensure namespace exists
 

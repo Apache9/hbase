@@ -276,4 +276,8 @@ public class HLogUtil {
       LOG.trace("Appended compaction marker " + TextFormat.shortDebugString(c));
     }
   }
+  
+  public static double getHLogCompressionRatio() {
+    return FSHLog.getHLogCompressionRatio();
+  }
 }

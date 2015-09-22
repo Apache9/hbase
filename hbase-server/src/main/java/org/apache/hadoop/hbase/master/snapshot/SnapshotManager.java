@@ -46,6 +46,7 @@ import org.apache.hadoop.hbase.Stoppable;
 import org.apache.hadoop.hbase.catalog.MetaReader;
 import org.apache.hadoop.hbase.errorhandling.ForeignException;
 import org.apache.hadoop.hbase.executor.ExecutorService;
+import org.apache.hadoop.hbase.ipc.RequestContext;
 import org.apache.hadoop.hbase.master.AssignmentManager;
 import org.apache.hadoop.hbase.master.MasterCoprocessorHost;
 import org.apache.hadoop.hbase.master.MasterFileSystem;
@@ -63,6 +64,7 @@ import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.NameStringPair;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.ProcedureDescription;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.SnapshotDescription;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.SnapshotDescription.Type;
+import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.snapshot.ClientSnapshotDescriptionUtils;
 import org.apache.hadoop.hbase.snapshot.HBaseSnapshotException;
 import org.apache.hadoop.hbase.snapshot.RestoreSnapshotException;
@@ -267,7 +269,12 @@ public class SnapshotManager extends MasterProcedureManager implements Stoppable
    * @throws IOException For filesystem IOExceptions
    */
   public void deleteSnapshot(SnapshotDescription snapshot) throws SnapshotDoesNotExistException, IOException {
-
+    String snapshotName = snapshot.getName();
+    FileSystem fs = master.getMasterFileSystem().getFileSystem();
+    Path snapshotDir = SnapshotDescriptionUtils.getCompletedSnapshotDir(snapshotName, rootDir);
+    // get all snapshot info from file system
+    snapshot = SnapshotDescriptionUtils.readSnapshotInfo(fs, snapshotDir);
+    
     // call coproc pre hook
     MasterCoprocessorHost cpHost = master.getCoprocessorHost();
     if (cpHost != null) {
@@ -279,14 +286,11 @@ public class SnapshotManager extends MasterProcedureManager implements Stoppable
       throw new SnapshotDoesNotExistException(snapshot);
     }
 
-    String snapshotName = snapshot.getName();
     LOG.debug("Deleting snapshot: " + snapshotName);
     // first create the snapshot description and check to see if it exists
-    MasterFileSystem fs = master.getMasterFileSystem();
-    Path snapshotDir = SnapshotDescriptionUtils.getCompletedSnapshotDir(snapshotName, rootDir);
 
     // delete the existing snapshot
-    if (!fs.getFileSystem().delete(snapshotDir, true)) {
+    if (!fs.delete(snapshotDir, true)) {
       throw new HBaseSnapshotException("Failed to delete snapshot directory: " + snapshotDir);
     }
 
@@ -551,12 +555,16 @@ public class SnapshotManager extends MasterProcedureManager implements Stoppable
           + "' doesn't exist, can't take snapshot.", snapshot);
     }
 
+    SnapshotDescription.Builder builder = snapshot.toBuilder();
+    User user = RequestContext.getRequestUser();
+    if (User.isHBaseSecurityEnabled(master.getConfiguration()) && user != null) {
+      builder.setOwner(user.getName());
+    }
     // if not specified, set the snapshot format
     if (!snapshot.hasVersion()) {
-      snapshot = snapshot.toBuilder()
-          .setVersion(snapshotLayoutVersion)
-          .build();
+      builder.setVersion(snapshotLayoutVersion);
     }
+    snapshot = builder.build();
 
     // call pre coproc hook
     MasterCoprocessorHost cpHost = master.getCoprocessorHost();
@@ -713,24 +721,24 @@ public class SnapshotManager extends MasterProcedureManager implements Stoppable
 
       // call coproc pre hook
       if (cpHost != null) {
-        cpHost.preRestoreSnapshot(reqSnapshot, snapshotTableDesc);
+        cpHost.preRestoreSnapshot(fsSnapshot, snapshotTableDesc);
       }
       restoreSnapshot(fsSnapshot, snapshotTableDesc);
       LOG.info("Restore snapshot=" + fsSnapshot.getName() + " as table=" + tableName);
 
       if (cpHost != null) {
-        cpHost.postRestoreSnapshot(reqSnapshot, snapshotTableDesc);
+        cpHost.postRestoreSnapshot(fsSnapshot, snapshotTableDesc);
       }
     } else {
       HTableDescriptor htd = RestoreSnapshotHelper.cloneTableSchema(snapshotTableDesc, tableName);
       if (cpHost != null) {
-        cpHost.preCloneSnapshot(reqSnapshot, htd);
+        cpHost.preCloneSnapshot(fsSnapshot, htd);
       }
       cloneSnapshot(fsSnapshot, htd);
       LOG.info("Clone snapshot=" + fsSnapshot.getName() + " as table=" + tableName);
 
       if (cpHost != null) {
-        cpHost.postCloneSnapshot(reqSnapshot, htd);
+        cpHost.postCloneSnapshot(fsSnapshot, htd);
       }
     }
   }

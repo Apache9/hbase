@@ -27,14 +27,13 @@ import java.util.Random;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HConstants;
+import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.regionserver.HRegionServer;
 import org.apache.hadoop.hbase.regionserver.StoreConfigInformation;
 import org.apache.hadoop.hbase.regionserver.StoreFile;
 import org.apache.hadoop.hbase.regionserver.StoreUtils;
-import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 
 import com.google.common.base.Preconditions;
 import com.google.common.base.Predicate;
@@ -283,6 +282,15 @@ public class RatioBasedCompactionPolicy extends CompactionPolicy {
     if (filesToCompact == null || filesToCompact.isEmpty() || mcTime == 0) {
       return result;
     }
+    
+    if (comConf.conf.getBoolean(HConstants.MAJOR_COMPACTION_OFFPEAK, false)
+        && (!OffPeakHours.getInstance(comConf.conf).isOffPeakHour())) {
+      LOG.info("Skipping a major compaction on " + this
+          + ". The major compaction is restricted to be performed in an off-peak by config: "
+          + HConstants.MAJOR_COMPACTION_OFFPEAK);
+      return false;
+    }
+    
     // TODO: Use better method for determining stamp of last major (HBASE-2990)
     long lowTimestamp = StoreUtils.getLowestTimestamp(filesToCompact);
     long now = System.currentTimeMillis();
@@ -300,7 +308,7 @@ public class RatioBasedCompactionPolicy extends CompactionPolicy {
             (cfTtl == HConstants.FOREVER || oldest < cfTtl)) {
           float blockLocalityIndex = sf.getHDFSBlockDistribution()
               .getBlockLocalityIndex(HRegionServer.getHostname(comConf.conf));
-          if (blockLocalityIndex > comConf.getMinLocalityToForceCompact()) {
+          if (blockLocalityIndex < comConf.getMinLocalityToForceCompact()) {
             if (LOG.isDebugEnabled()) {
               LOG.debug("Major compaction triggered on only store " + this +
                   "; to make hdfs blocks local, current blockLocalityIndex is " +

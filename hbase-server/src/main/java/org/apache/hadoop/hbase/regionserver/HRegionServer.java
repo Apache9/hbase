@@ -138,6 +138,8 @@ import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CloseRegionRequest
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CloseRegionResponse;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactRegionRequest;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactRegionResponse;
+import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableRequest;
+import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.CompactionEnableResponse;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.FlushRegionRequest;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.FlushRegionResponse;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetOnlineRegionRequest;
@@ -562,6 +564,9 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
   // When rs report to master, master response back some contents 
   private RegionServerReportResponse reportResponse;
 
+  /** RS instance flag to indicate whether allows compaction or not*/
+  private volatile boolean enableCompact = true;
+  
   /**
    * Starts a HRegionServer at the default location
    *
@@ -611,6 +616,16 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
 
     // Server to handle client requests.
     String hostname = getHostname(conf);
+    boolean mode =
+        conf.getBoolean(HConstants.CLUSTER_DISTRIBUTED, HConstants.DEFAULT_CLUSTER_DISTRIBUTED);
+    if (mode == HConstants.CLUSTER_IS_DISTRIBUTED && hostname.equals(HConstants.LOCALHOST)) {
+      String msg =
+          "The hostname of regionserver cannot be set to localhost "
+              + "in a fully-distributed setup because it won't be reachable. "
+              + "See \"Getting Started\" for more information.";
+      LOG.fatal(msg);
+      throw new IOException(msg);
+    }
     int port = conf.getInt(HConstants.REGIONSERVER_PORT,
       HConstants.DEFAULT_REGIONSERVER_PORT);
     // Creation of a HSA will force a resolve.
@@ -1154,6 +1169,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
       request.setLoad(sl);
       reportResponse = rss.regionServerReport(null, request.build());
     } catch (ServiceException se) {
+      LOG.warn("Try to report to hmaster failed", se);
       IOException ioe = ProtobufUtil.getRemoteException(se);
       if (ioe instanceof YouAreDeadException) {
         // This will be caught and handled as a fatal error in run()
@@ -1759,10 +1775,8 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
             uncaughtExceptionHandler);
     }
 
-    // Leases is not a Thread. Internally it runs a daemon thread. If it gets
-    // an unhandled exception, it will just exit.
-    this.leases.setName(n + ".leaseChecker");
-    this.leases.start();
+    Threads.setDaemonThreadRunning(leases.getThread(), n + ".leaseChecker",
+      uncaughtExceptionHandler);
 
     if (this.replicationSourceHandler == this.replicationSinkHandler &&
         this.replicationSourceHandler != null) {
@@ -2956,7 +2970,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
         stop = true;
         LOG.fatal(
           "Run out of memory; HRegionServer will abort itself immediately", e);
-        ReflectionUtils.logThreadInfo(LOG, "thread dump from JvmThreadMonitor", 1000);
+        ReflectionUtils.logThreadInfo(LOG, "thread dump from JvmThreadMonitor", 60);
       }
     } finally {
       if (stop) {
@@ -3366,15 +3380,19 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
             region.startRegionOperation(Operation.SCAN);
             try {
               int i = 0;
+              int rawLimit = scanner.getRawLimit();
+              int rawCount = 0;
               synchronized(scanner) {
-                while (i < rows) {
+                while (i < rows && (rawLimit < 0 || rawCount < rawLimit)) {
                   // Stop collecting results if maxScannerResultSize is set and we have exceeded it
                   if ((maxScannerResultSize < Long.MAX_VALUE) &&
                       (currentScanResultSize >= maxResultSize)) {
                     break;
                   }
                   // Collect values to be returned here
-                  boolean moreRows = scanner.nextRaw(values);
+                  ScannerStatus status =
+                      scanner.nextRaw(values, -1, rawLimit - rawCount);
+                  rawCount += status.getRawValueScanned();
                   if (!values.isEmpty()) {
                     for (Cell cell : values) {
                       KeyValue kv = KeyValueUtil.ensureKeyValue(cell);
@@ -3384,7 +3402,24 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
                     results.add(Result.create(values));
                     i++;
                   }
-                  if (!moreRows) {
+                  boolean limitReached = false;
+                  if (rawLimit > 0 && rawCount >= rawLimit) {
+                    limitReached = true;
+                  }
+                  if (maxScannerResultSize < Long.MAX_VALUE && currentScanResultSize > maxScannerResultSize) {
+                    limitReached = true;
+                  }
+                  if (status.hasNext() && limitReached) {
+                    // when there is no visible key values scanned out yet but the raw limit is reached,
+                    // we fill a fake result which contains the next position and pass it to the client
+                    // to avoid RPC timeout.
+                    KeyValue next = status.next();
+                    if (next != null) {
+                      // append a fake row which is larger than the next peeked row
+                      results.add(Result.fakeResult(next));
+                    }
+                  }
+                  if (!status.hasNext()) {
                     break;
                   }
                   values.clear();
@@ -5240,7 +5275,20 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     }
     return SwitchThrottleResponse.newBuilder().build();
   }
+  
+  @Override
+  public CompactionEnableResponse switchCompaction(RpcController controller,
+      CompactionEnableRequest request) throws ServiceException {
+    CompactionEnableResponse.Builder builder = CompactionEnableResponse.newBuilder();
+    builder.setEnable(this.enableCompact);
+    this.enableCompact = request.getEnable();
+    return builder.build();
+  }
 
+  public boolean isEnableCompact() {
+    return this.enableCompact;
+  }
+  
   private void startQuotaManager() throws ServiceException {
     if (rsQuotaManager.isStopped()) {
       try {

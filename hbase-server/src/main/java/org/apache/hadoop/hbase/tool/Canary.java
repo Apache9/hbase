@@ -26,11 +26,14 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -48,12 +51,14 @@ import org.apache.hadoop.hbase.client.HConnection;
 import org.apache.hadoop.hbase.client.HConnectionManager;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.HTableInterface;
+import org.apache.hadoop.hbase.client.MetaScanner;
+import org.apache.hadoop.hbase.client.MetaScanner.MetaScannerVisitor;
+import org.apache.hadoop.hbase.client.MetaScanner.MetaScannerVisitorBase;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.filter.FirstKeyOnlyFilter;
-import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.RegionSplitter;
@@ -82,6 +87,8 @@ public final class Canary implements Tool {
     public void publishWriteFailure(HRegionInfo region, Exception e);
     public void publishWriteFailure(HRegionInfo region, HColumnDescriptor column, Exception e);
     public void publishWriteTiming(HRegionInfo region, HColumnDescriptor column, long msTime);
+
+    public void reportSummary();
   }
 
   // Simple implementation of canary sink that allows to plot on
@@ -119,6 +126,10 @@ public final class Canary implements Tool {
       LOG.info(String.format("write to region %s column family %s in %dms",
         region.getRegionNameAsString(), column.getNameAsString(), msTime));
     }
+
+    @Override
+    public void reportSummary() {
+    }
   }
 
   /**
@@ -129,13 +140,15 @@ public final class Canary implements Tool {
     private HTableDescriptor tableDesc;
     private HRegionInfo region;
     private Sink sink;
+    private Canary canary;
 
     RegionTask(Configuration conf, HConnection connection, HTableDescriptor tableDesc,
-        HRegionInfo region, Sink sink) {
+        HRegionInfo region, Sink sink, Canary canary) {
       this.connection = connection;
       this.tableDesc = tableDesc;
       this.region = region;
       this.sink = sink;
+      this.canary = canary;
     }
 
     /**
@@ -170,16 +183,52 @@ public final class Canary implements Tool {
             long time = System.currentTimeMillis() - startTime;
             sink.publishReadTiming(region, column, time);
           } catch (Exception e) {
-            sink.publishReadFailure(region, column, e);
+            handleReadException(e, column);
           } finally {
             scanner.close();
           }
         }
         table.close();
       } catch (IOException e) {
-        sink.publishReadFailure(region, e);
+        handleReadException(e, null);
       }
       return null;
+    }
+    
+    // check whether the table is enabled by the exception message. The exception
+    // is RetriesExhaustedException, we need to judge from the its message
+    private boolean shouldCheckTable(String message) {
+      // table deleted or disabled. galaxy(sds/emq) will run bvt all the time, and will
+      // create/delete table in bvt, this will make the region unavailable. 
+      return message.contains("TableNotFoundException") || message.contains("is disabled");
+    }
+    
+    private void handleReadException(Exception e, HColumnDescriptor column) {
+      try {
+        if (shouldCheckTable(e.getMessage())) {
+          // ignore the failure if the table not enabled
+          if (connection.isTableEnabled(tableDesc.getName())) {
+            clearCacheAndPublishReadFailure(column, e);
+          } else {
+            LOG.warn("read failure from disabled or deleted table, region="
+                + region.getEncodedName() + ", table=" + tableDesc.getNameAsString());
+          }
+        } else {
+          clearCacheAndPublishReadFailure(column, e);
+        }
+      } catch (IOException ex) {
+        LOG.warn("check table enabled failed in read task, will report read failure", e);
+        clearCacheAndPublishReadFailure(column, e);
+      }
+    }
+    
+    private void clearCacheAndPublishReadFailure(HColumnDescriptor column, Exception e) {
+      canary.clearCachedTasks(tableDesc.getNameAsString());
+      if (column == null) {
+        sink.publishReadFailure(region, e);
+      } else {
+        sink.publishReadFailure(region, column, e);
+      }
     }
 
     /**
@@ -193,7 +242,7 @@ public final class Canary implements Tool {
         if (table instanceof SaltedHTable) {
           table = ((SaltedHTable) table).getRawTable();
         }
-        byte[] rowToCheck = region.getStartKey();
+        byte[] rowToCheck = Bytes.randomKey(region.getStartKey(), region.getEndKey());
         for (HColumnDescriptor column : tableDesc.getColumnFamilies()) {
           Put put = new Put(rowToCheck);
           put.add(column.getName(), HConstants.EMPTY_BYTE_ARRAY,
@@ -241,11 +290,13 @@ public final class Canary implements Tool {
   private Sink sink = null;
   private HConnection connection = null;
   private List<RegionTask> tasks;
+  private Map<String, List<RegionTask>> cachedTasks;
 
   public Canary(ExecutorService executor, Sink sink) {
     this.executor = executor;
     this.sink = sink;
     this.tasks = new LinkedList<RegionTask>();
+    this.cachedTasks = new ConcurrentHashMap<String, List<RegionTask>>();
   }
   
   public Canary(Configuration conf) throws Exception {
@@ -339,7 +390,7 @@ public final class Canary implements Tool {
             conf.get("hbase.regionserver.dns.nameserver", "default"))));
 
     // initialize server principal (if using secure Hadoop)
-    User.login(conf, "hbase.canary.keytab.file", "hbase.canary.kerberos.principal", hostname);
+    // User.login(conf, "hbase.canary.keytab.file", "hbase.canary.kerberos.principal", hostname);
 
     admin = new HBaseAdmin(connection);
     // lets the canary monitor the cluster
@@ -353,8 +404,9 @@ public final class Canary implements Tool {
       } catch (Exception e) {
         LOG.error("Update sniff tasks failed. Using previous sniffing tasks", e);
       }
-      // check canary distribution for 10 minutes
+      // clear cached tasks and check canary distribution for 10 minutes
       if (EnvironmentEdgeManager.currentTimeMillis() -lastCheckTime > 10 * 60 * 1000) {
+        clearCachedTasks();
         try {
           checkCanaryDistribution();
         } catch (Exception e) {
@@ -370,7 +422,10 @@ public final class Canary implements Tool {
           LOG.error("Sniff region failed!", e);
         }
       }
+      sink.reportSummary();
       long  finishTime = System.currentTimeMillis();
+      LOG.info("finish one turn sniff, consume(ms)=" + (finishTime - startTime) + ", interval(ms)="
+          + interval + ", taskCount=" + tasks.size());
       if (finishTime < startTime + interval) {
         Thread.sleep(startTime + interval - finishTime);
       }
@@ -412,8 +467,9 @@ public final class Canary implements Tool {
    */
   private List<RegionTask> sniff() throws Exception {
     List<RegionTask> tasks = new LinkedList<RegionTask>();
+    // admin.listTables invoke connection.listTables directly, won't create zkw
     for (HTableDescriptor table : admin.listTables()) {
-      if (admin.isTableEnabled(table.getName())) {
+      if (isTableEnabled(table.getName())) {
         tasks.addAll(sniff(table));
       }
     }
@@ -425,7 +481,9 @@ public final class Canary implements Tool {
    */
   private List<RegionTask> sniff(String tableName) throws Exception {
     List<RegionTask> tasks = new LinkedList<RegionTask>();
+    // admin.isTableAvailable invoke connection.isTableAvailable directly, won't create zkw
     if (admin.isTableAvailable(tableName)) {
+      // admin.getTableDescriptor invoke connection.getTableDescriptor dirctly, won't create zkw
       tasks.addAll(sniff(admin.getTableDescriptor(tableName.getBytes())));
     } else {
       LOG.warn(String.format("Table %s is not available", tableName));
@@ -433,22 +491,39 @@ public final class Canary implements Tool {
     return tasks;
   }
 
+  protected void clearCachedTasks(String tableName) {
+    cachedTasks.remove(tableName);
+  }
+  
+  protected void clearCachedTasks() {
+    cachedTasks.clear();
+  }
+  
   /*
    * Loops over regions that owns this table,
    * and output some information abouts the state.
    */
   private List<RegionTask> sniff(HTableDescriptor tableDesc) throws Exception {
+    List<RegionTask> tasks = cachedTasks.get(tableDesc.getNameAsString());
+    if (tasks != null) {
+      return tasks;
+    }
+    
     HTableInterface table = null;
     try {
       table = this.connection.getTable(tableDesc.getName());
     } catch (TableNotFoundException e) {
       return new ArrayList<RegionTask>();
     }
-    List<RegionTask> tasks = new ArrayList<RegionTask>();
-    for (HRegionInfo region : admin.getTableRegions(tableDesc.getName())) {
-       tasks.add(new RegionTask(conf, connection, tableDesc, region, sink));
+    tasks = new ArrayList<RegionTask>();
+    // MetaScanner.allTableRegions will scan meta table directly without create new catalog tracker
+    for (HRegionInfo region : MetaScanner.allTableRegions(conf, connection,
+      tableDesc.getTableName(), false).keySet()) {
+       tasks.add(new RegionTask(conf, connection, tableDesc, region, sink, this));
     }
     table.close();
+    cachedTasks.put(tableDesc.getNameAsString(), tasks);
+    LOG.info("get task from meta table, table=" + tableDesc.getNameAsString() + ", taskCount=" + tasks.size());
     return tasks;
   }
   
@@ -468,8 +543,29 @@ public final class Canary implements Tool {
   }
 
 
+  // return true if table region exist for in meta table; the logic is the same as
+  // HBaseAdmin.tableExists, but won't create new zkw
+  protected boolean isTableExists(final byte[] tableName) throws IOException {
+    final AtomicBoolean exist = new AtomicBoolean(false);
+    MetaScannerVisitor visitor = new MetaScannerVisitorBase() {
+      @Override
+      public boolean processRow(Result row) throws IOException {
+        exist.set(true);
+        // break the meta scan once region hit
+        return false;
+      }
+    };
+    MetaScanner.metaScan(conf, connection, visitor, TableName.valueOf(tableName));
+    return exist.get();
+  }
+  
+  // won't create new zkw
+  protected boolean isTableEnabled(byte[] table) throws IOException {
+    return isTableExists(table) && connection.isTableEnabled(table);
+  }
+
   private void checkCanaryDistribution() throws IOException {
-    if (!admin.tableExists(CANARY_TABLE_NAME)) {
+    if (isTableExists(Bytes.toBytes(CANARY_TABLE_NAME))) {
       int numberOfServers = admin.getClusterStatus().getServers().size();
       if (numberOfServers == 0) {
         throw new IllegalStateException("No live regionservers");
@@ -477,7 +573,7 @@ public final class Canary implements Tool {
       createCanaryTable(numberOfServers);
     }
 
-    if (!admin.isTableEnabled(CANARY_TABLE_NAME)) {
+    if (isTableEnabled(Bytes.toBytes(CANARY_TABLE_NAME))) {
       admin.enableTable(CANARY_TABLE_NAME);
     }
 
@@ -520,7 +616,16 @@ public final class Canary implements Tool {
   }
 
   public static void main(String[] args) {
+    // TODO : In test, there are security-related errors if these properties are set.
+    //        As a temporary solution, set the properties before starting. Need to
+    //        find out the root cause in future.
     Configuration conf = HBaseConfiguration.create();
+    System.setProperty("hadoop.property.hadoop.security.authentication", "kerberos");
+    System.setProperty("hadoop.property.hadoop.client.keytab.file",
+      conf.get("hbase.canary.keytab.file"));
+    System.setProperty("hadoop.property.hadoop.client.kerberos.principal",
+      conf.get("hbase.canary.kerberos.principal"));
+    conf = HBaseConfiguration.create();
 
     conf.setInt("hbase.rpc.timeout", conf.getInt("hbase.canary.rpc.timeout", 200));
     conf.setInt("hbase.client.pause", conf.getInt("hbase.canary.client.pause", 100));

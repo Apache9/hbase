@@ -19,8 +19,11 @@
 package org.apache.hadoop.hbase.master.handler;
 
 import java.io.IOException;
+import java.util.LinkedList;
 import java.util.List;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.HRegionInfo;
@@ -38,9 +41,10 @@ import org.apache.hadoop.hbase.util.Bytes;
  */
 @InterfaceAudience.Private
 public class TableDeleteFamilyHandler extends TableEventHandler {
-
+  private static final Log LOG = LogFactory.getLog(TableDeleteFamilyHandler.class);
   private byte [] familyName;
-
+  private List<HRegionInfo> relatedRegions;
+  
   public TableDeleteFamilyHandler(TableName tableName, byte [] familyName,
       Server server, final MasterServices masterServices) throws IOException {
     super(EventType.C_M_DELETE_FAMILY, tableName, server, masterServices);
@@ -63,14 +67,26 @@ public class TableDeleteFamilyHandler extends TableEventHandler {
     }
     // Update table descriptor
     this.masterServices.getMasterFileSystem().deleteColumn(tableName, familyName);
-    // Remove the column family from the file system
-    MasterFileSystem mfs = this.masterServices.getMasterFileSystem();
-    for (HRegionInfo hri : hris) {
-      // Delete the family directory in FS for all the regions one by one
-      mfs.deleteFamilyFromFS(hri, familyName);
-    }
+    this.relatedRegions = new LinkedList<HRegionInfo>(hris);
+    
     if (cpHost != null) {
       cpHost.postDeleteColumnHandler(this.tableName, this.familyName);
+    }
+  }
+  
+  @Override
+  protected void completed(final Throwable exception) {
+    if (exception != null) return;
+    MasterFileSystem mfs = this.masterServices.getMasterFileSystem();
+    // Remove the column family from the file system
+    for (HRegionInfo hri : relatedRegions) {
+      // Delete the family directory in FS for all the regions one by one
+      try {
+        mfs.deleteFamilyFromFS(hri, familyName);
+      } catch (IOException e) {
+        LOG.error("Failed to delete family + " + Bytes.toString(familyName) + " of region: " + hri
+            + " from FS.", e);
+      }
     }
   }
 

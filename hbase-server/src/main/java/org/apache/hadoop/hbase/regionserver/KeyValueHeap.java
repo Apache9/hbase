@@ -109,12 +109,14 @@ public class KeyValueHeap extends NonReversedNonLazyKeyValueScanner
     KeyValue kvNext = this.current.peek();
     if (kvNext == null) {
       this.current.close();
+      this.current = null;
       this.current = pollRealKV();
     } else {
       KeyValueScanner topScanner = this.heap.peek();
       // no need to add current back to the heap if it is the only scanner left
       if (topScanner != null && this.comparator.compare(kvNext, topScanner.peek()) >= 0) {
         this.heap.add(this.current);
+        this.current = null;
         this.current = pollRealKV();
       }
     }
@@ -132,12 +134,12 @@ public class KeyValueHeap extends NonReversedNonLazyKeyValueScanner
    * @param limit
    * @return true if there are more keys, false if all scanners are done
    */
-  public boolean next(List<Cell> result, int limit) throws IOException {
+  public ScannerStatus next(List<Cell> result, int limit, int rawLimit) throws IOException {
     if (this.current == null) {
-      return false;
+      return ScannerStatus.DONE_WITH_NO_STATS;
     }
     InternalScanner currentAsInternal = (InternalScanner)this.current;
-    boolean mayContainMoreRows = currentAsInternal.next(result, limit);
+    ScannerStatus status = currentAsInternal.next(result, limit, rawLimit);
     KeyValue pee = this.current.peek();
     /*
      * By definition, any InternalScanner must return false only when it has no
@@ -146,13 +148,15 @@ public class KeyValueHeap extends NonReversedNonLazyKeyValueScanner
      * more efficient to close scanners which are not needed than keep them in
      * the heap. This is also required for certain optimizations.
      */
-    if (pee == null || !mayContainMoreRows) {
+    if (pee == null || !status.hasNext()) {
       this.current.close();
     } else {
       this.heap.add(this.current);
     }
+    this.current = null;
     this.current = pollRealKV();
-    return (this.current != null);
+    return this.current == null ? ScannerStatus.done(status.getRawValueScanned()) :
+        ScannerStatus.continued(this.current.peek(), status.getRawValueScanned());
   }
 
   /**
@@ -165,8 +169,8 @@ public class KeyValueHeap extends NonReversedNonLazyKeyValueScanner
    * @param result
    * @return true if there are more keys, false if all scanners are done
    */
-  public boolean next(List<Cell> result) throws IOException {
-    return next(result, -1);
+  public ScannerStatus next(List<Cell> result) throws IOException {
+    return next(result, -1, -1);
   }
 
   protected static class KVScannerComparator implements Comparator<KeyValueScanner> {
@@ -344,7 +348,12 @@ public class KeyValueHeap extends NonReversedNonLazyKeyValueScanner
 
     while (kvScanner != null && !kvScanner.realSeekDone()) {
       if (kvScanner.peek() != null) {
-        kvScanner.enforceSeek();
+        try {
+          kvScanner.enforceSeek();
+        } catch (IOException ioe) {
+          kvScanner.close();
+          throw ioe;
+        }
         KeyValue curKV = kvScanner.peek();
         if (curKV != null) {
           KeyValueScanner nextEarliestScanner = heap.peek();
@@ -395,5 +404,11 @@ public class KeyValueHeap extends NonReversedNonLazyKeyValueScanner
 
   KeyValueScanner getCurrentForTesting() {
     return current;
+  }
+
+  @Override
+  public byte[] getNextIndexedKey() {
+    // here we return the next index key from the top scanner
+    return current == null ? null : current.getNextIndexedKey();
   }
 }

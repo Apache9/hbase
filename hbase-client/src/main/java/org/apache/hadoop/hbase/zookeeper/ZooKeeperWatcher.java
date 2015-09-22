@@ -414,7 +414,12 @@ public class ZooKeeperWatcher implements Watcher, Abortable, Closeable {
 
       case ConnectedReadOnly:
       case SaslAuthenticated:
+        break;
       case AuthFailed:
+        msg = prefix(this.identifier + " received auth failed from " +
+            "ZooKeeper, aborting");
+        if (this.abortable != null) this.abortable.abort(msg,
+          new KeeperException.AuthFailedException());
         break;
 
       default:

@@ -28,8 +28,9 @@ import org.apache.hadoop.hbase.security.UserProvider;
 import org.apache.hadoop.hbase.util.Pair;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.util.StringUtils;
-import org.cloudera.htrace.Trace;
-import org.cloudera.htrace.TraceScope;
+import org.apache.htrace.Sampler;
+import org.apache.htrace.Trace;
+import org.apache.htrace.TraceScope;
 
 import com.google.protobuf.Message;
 
@@ -101,6 +102,8 @@ public class CallRunner {
         }
         if (call.tinfo != null) {
           traceScope = Trace.startSpan(call.toTraceString(), call.tinfo);
+        } else if (RpcServer.ALWAYS_TRACE_IN_SERVER_SIDE) {
+          traceScope = Trace.startSpan(call.toTraceString(), Sampler.ALWAYS);
         }
         RequestContext.set(userProvider.create(call.connection.user), RpcServer.getRemoteIp(),
           call.connection.service);
@@ -108,6 +111,7 @@ public class CallRunner {
         resultPair = this.rpcServer.call(call.service, call.md, call.param, call.cellScanner,
           call.timestamp, this.status);
       } catch (Throwable e) {
+        this.rpcServer.getMetrics().failedCalls();
         RpcServer.LOG.debug(Thread.currentThread().getName() + ": " + call.toShortString(), e);
         errorThrowable = e;
         error = StringUtils.stringifyException(e);
@@ -144,9 +148,13 @@ public class CallRunner {
           + ": caught: " + StringUtils.stringifyException(e));
     } finally {
       // regardless if succesful or not we need to reset the callQueueSize
-      this.rpcServer.addCallSize(call.getSize() * -1);
+      resetCallQueueSize();
       cleanup();
     }
+  }
+  
+  protected void resetCallQueueSize() {
+    this.rpcServer.addCallSize(call.getSize() * -1);
   }
   
   protected void doRespond(Pair<Message, CellScanner> resultPair, Throwable errorThrowable,

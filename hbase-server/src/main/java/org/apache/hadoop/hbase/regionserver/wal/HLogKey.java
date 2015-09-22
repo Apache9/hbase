@@ -108,7 +108,10 @@ public class HLogKey implements WritableComparable<HLogKey> {
 
 
   private static final Version VERSION = Version.COMPRESSED;
-
+  // we only need a raw compression ratio, so adding a *volatile* here is not a must.
+  protected static long uncompressedSize = 0;
+  protected static long compressedSize = 0;
+  
   //  The encoded region name.
   private byte [] encodedRegionName;
   private TableName tablename;
@@ -354,11 +357,13 @@ public class HLogKey implements WritableComparable<HLogKey> {
       Bytes.writeByteArray(out, this.encodedRegionName);
       Bytes.writeByteArray(out, this.tablename.getName());
     } else {
-      Compressor.writeCompressed(this.encodedRegionName, 0,
+      int size1 = Compressor.writeCompressed(this.encodedRegionName, 0,
           this.encodedRegionName.length, out,
           compressionContext.regionDict);
-      Compressor.writeCompressed(this.tablename.getName(), 0, this.tablename.getName().length, out,
+      int size2 = Compressor.writeCompressed(this.tablename.getName(), 0, this.tablename.getName().length, out,
           compressionContext.tableDict);
+      uncompressedSize += (1 + this.encodedRegionName.length + this.tablename.getName().length);
+      compressedSize += (1 + size1 + size2);
     }
     out.writeLong(this.logSeqNum);
     out.writeLong(this.writeTime);
@@ -370,8 +375,16 @@ public class HLogKey implements WritableComparable<HLogKey> {
       UUID clusterId = iterator.next();
       out.writeLong(clusterId.getMostSignificantBits());
       out.writeLong(clusterId.getLeastSignificantBits());
+      if (compressionContext != null) {
+        uncompressedSize += (4 * Long.SIZE / Byte.SIZE + 1);
+        compressedSize += (4 * Long.SIZE / Byte.SIZE + 1);
+      }
     } else {
       out.writeBoolean(false);
+      if (compressionContext != null) {
+        uncompressedSize += (2 * Long.SIZE / Byte.SIZE + 1);
+        compressedSize += (2 * Long.SIZE / Byte.SIZE + 1);
+      }
     }
   }
 

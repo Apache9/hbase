@@ -256,6 +256,9 @@ public final class HConstants {
   /** Parameter name for how often a region should should perform a major compaction */
   public static final String MAJOR_COMPACTION_PERIOD = "hbase.hregion.majorcompaction";
 
+  /** Parameter name to restrict the major compaction in off peak*/
+  public static final String MAJOR_COMPACTION_OFFPEAK = "hbase.hregion.majorcompaction.offpeak";
+  
   /** Parameter name for the maximum batch of KVs to be used in flushes and compactions */
   public static final String COMPACTION_KV_MAX = "hbase.hstore.compaction.kv.max";
   public static final int COMPACTION_KV_MAX_DEFAULT = 10;
@@ -985,6 +988,10 @@ public final class HConstants {
       "hbase.node.health.failure.threshold";
   public static final int DEFAULT_HEALTH_FAILURE_THRESHOLD = 3;
 
+  public static final String HUGE_KV_SIZE_IN_BYTE_WARN_NAME = "hbase.huge.keyvalue.size.in.byte";
+  public static final int HUGE_KV_SIZE_IN_BYTE_WARN_VALUE = 1048576; //1M
+  public static final String HUGE_ROW_SIZE_IN_BYTE_WARN_NAME = "hbase.huge.row.size.in.byte";
+  public static final int HUGE_ROW_SIZE_IN_BYTE_WARN_VALUE = 134217728; //128M
 
   /**
    * Setting to activate, or not, the publication of the status by the master. Default
@@ -1078,6 +1085,8 @@ public final class HConstants {
       "hbase.heap.occupancy.high_water_mark";
   public static final float DEFAULT_HEAP_OCCUPANCY_HIGH_WATERMARK = 0.98f;
 
+  public static final String IGNORE_SPLITS_WHEN_CREATE_TABLE = "hbase.ignore.splits.when.create.table";
+  
   private HConstants() {
     // Can't be instantiated with this ctor.
   }

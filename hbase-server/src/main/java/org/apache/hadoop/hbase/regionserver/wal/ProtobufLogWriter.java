@@ -160,10 +160,14 @@ public class ProtobufLogWriter extends WriterBase {
   }
 
   @Override
-  public void sync() throws IOException {
+  public void sync(boolean force) throws IOException {
     try {
-      this.output.flush();
-      this.output.sync();
+      this.output.flush(); // DFSOutputStream.flush() do nothing
+      if (force) {
+        this.output.hsync();
+      } else {
+        this.output.hflush();
+      }
     } catch (NullPointerException npe) {
       // Concurrent close...
       throw new IOException(npe);

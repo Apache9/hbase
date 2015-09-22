@@ -125,7 +125,7 @@ abstract class StoreFlusher {
     boolean hasMore;
     long flushed = 0;
     do {
-      hasMore = scanner.next(kvs, compactionKVMax);
+      hasMore = scanner.next(kvs, compactionKVMax, -1).hasNext();
       if (!kvs.isEmpty()) {
         for (Cell c : kvs) {
           // If we know that this KV is going to be included always, then let us

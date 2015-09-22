@@ -46,6 +46,7 @@ import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.AdminService;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.ReplicateWALEntryResponse;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.Pair;
+import org.apache.htrace.Trace;
 
 import com.google.protobuf.ServiceException;
 
@@ -211,6 +212,9 @@ public class WALEditsReplaySink {
       Pair<AdminProtos.ReplicateWALEntryRequest, CellScanner> p =
           ReplicationProtbufUtil.buildReplicateWALEntryRequest(entriesArray);
       try {
+        if (Trace.isTracing()) {
+          Trace.addTimelineAnnotation("Reply edites to " + location);
+        }
         PayloadCarryingRpcController controller = new PayloadCarryingRpcController(p.getSecond());
         remoteSvr.replay(controller, p.getFirst());
       } catch (ServiceException se) {

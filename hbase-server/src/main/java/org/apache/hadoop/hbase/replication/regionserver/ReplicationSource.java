@@ -32,6 +32,7 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
+import org.apache.hadoop.hbase.fs.HFileSystem;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
@@ -50,6 +51,7 @@ import org.apache.hadoop.hbase.replication.ReplicationQueueInfo;
 import org.apache.hadoop.hbase.replication.ReplicationQueues;
 import org.apache.hadoop.hbase.replication.SystemTableWALEntryFilter;
 import org.apache.hadoop.hbase.replication.WALEntryFilter;
+import org.apache.hadoop.hbase.util.FSUtils;
 import org.apache.hadoop.hbase.util.Threads;
 import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.ListenableFuture;
@@ -91,10 +93,16 @@ public class ReplicationSource extends Thread
   private long replicationQueueSizeCapacity;
   // Max number of entries in entriesArray
   private int replicationQueueNbCapacity;
+  // Max size in bytes of entries whose position in WAL have not been persistent
+  private long logPositionSizeLimit;
+  // Max number of entries whose position in WAL have not been persistent
+  private int logPositionNbLimit;
   // Our reader for the current log
   private HLog.Reader reader;
   // Last position in the log that we sent to ZooKeeper
   private long lastLoggedPosition = -1;
+  private long unLoggedPositionEdits = 0;
+
   // Path of the current log
   private volatile Path currentPath;
   private FileSystem fs;
@@ -130,7 +138,8 @@ public class ReplicationSource extends Thread
   private ReplicationEndpoint.ReplicateContext replicateContext;
   // throttler
   private ReplicationThrottler throttler;
-
+  private int ioeSleepBeforeRetry = 0;
+  
   /**
    * Instantiation method used by region servers
    *
@@ -158,6 +167,10 @@ public class ReplicationSource extends Thread
         this.conf.getLong("replication.source.size.capacity", 1024*1024*64);
     this.replicationQueueNbCapacity =
         this.conf.getInt("replication.source.nb.capacity", 25000);
+    this.logPositionSizeLimit =
+        this.conf.getLong("replication.log.position.size.limit", 1024*1024*64);
+    this.logPositionNbLimit =
+        this.conf.getInt("replication.log.position.nb.limit", 25000);
     this.maxRetriesMultiplier = this.conf.getInt("replication.source.maxretriesmultiplier", 10);
     this.queue =
         new PriorityBlockingQueue<Path>(
@@ -170,6 +183,7 @@ public class ReplicationSource extends Thread
     this.manager = manager;
     this.sleepForRetries =
         this.conf.getLong("replication.source.sleepforretries", 1000);
+    this.ioeSleepBeforeRetry = this.conf.getInt("replication.source.ioe.sleepbeforeretry", 0);
     this.fs = fs;
     this.metrics = metrics;
     this.repLogReader = new ReplicationHLogReaderManager(this.fs, this.conf);
@@ -286,126 +300,157 @@ public class ReplicationSource extends Thread
             this.peerClusterZnode, e);
       }
     }
-    // Loop until we close down
-    while (isActive()) {
-      // Sleep until replication is enabled again
-      if (!isPeerEnabled()) {
-        if (sleepForRetries("Replication is disabled", sleepMultiplier)) {
-          sleepMultiplier++;
-        }
-        continue;
-      }
-      Path oldPath = getCurrentPath(); //note that in the current scenario,
-                                       //oldPath will be null when a log roll
-                                       //happens.
-      // Get a new path
-      boolean hasCurrentPath = getNextPath();
-      if (getCurrentPath() != null && oldPath == null) {
-        sleepMultiplier = 1; //reset the sleepMultiplier on a path change
-      }
-      if (!hasCurrentPath) {
-        if (sleepForRetries("No log to process", sleepMultiplier)) {
-          sleepMultiplier++;
-        }
-        continue;
-      }
-      boolean currentWALisBeingWrittenTo = false;
-      //For WAL files we own (rather than recovered), take a snapshot of whether the
-      //current WAL file (this.currentPath) is in use (for writing) NOW!
-      //Since the new WAL paths are enqueued only after the prev WAL file
-      //is 'closed', presence of an element in the queue means that
-      //the previous WAL file was closed, else the file is in use (currentPath)
-      //We take the snapshot now so that we are protected against races
-      //where a new file gets enqueued while the current file is being processed
-      //(and where we just finished reading the current file).
-      if (!this.replicationQueueInfo.isQueueRecovered() && queue.size() == 0) {
-        currentWALisBeingWrittenTo = true;
-      }
-      // Open a reader on it
-      if (!openReader(sleepMultiplier)) {
-        // Reset the sleep multiplier, else it'd be reused for the next file
-        sleepMultiplier = 1;
-        continue;
-      }
-
-      // If we got a null reader but didn't continue, then sleep and continue
-      if (this.reader == null) {
-        if (sleepForRetries("Unable to open a reader", sleepMultiplier)) {
-          sleepMultiplier++;
-        }
-        continue;
-      }
-
-      boolean gotIOE = false;
-      currentNbOperations = 0;
-      List<HLog.Entry> entries = new ArrayList<HLog.Entry>(1);
-      currentSize = 0;
-      try {
-        if (readAllEntriesToReplicateOrNextFile(currentWALisBeingWrittenTo, entries)) {
+    
+    try {
+      // Loop until we close down
+      while (isActive()) {
+        // Sleep until replication is enabled again
+        if (!isPeerEnabled()) {
+          if (sleepForRetries("Replication is disabled", sleepMultiplier)) {
+            sleepMultiplier++;
+          }
           continue;
         }
-      } catch (IOException ioe) {
-        LOG.warn(this.peerClusterZnode + " Got: ", ioe);
-        gotIOE = true;
-        if (ioe.getCause() instanceof EOFException) {
-
-          boolean considerDumping = false;
-          if (this.replicationQueueInfo.isQueueRecovered()) {
-            try {
-              FileStatus stat = this.fs.getFileStatus(this.currentPath);
-              if (stat.getLen() == 0) {
-                LOG.warn(this.peerClusterZnode + " Got EOF and the file was empty");
-              }
-              considerDumping = true;
-            } catch (IOException e) {
-              LOG.warn(this.peerClusterZnode + " Got while getting file size: ", e);
-            }
+        Path oldPath = getCurrentPath(); // note that in the current scenario,
+                                         // oldPath will be null when a log roll
+                                         // happens.
+        // Get a new path
+        boolean hasCurrentPath = getNextPath();
+        if (getCurrentPath() != null && oldPath == null) {
+          sleepMultiplier = 1; // reset the sleepMultiplier on a path change
+        }
+        if (!hasCurrentPath) {
+          if (sleepForRetries("No log to process", sleepMultiplier)) {
+            sleepMultiplier++;
           }
+          continue;
+        }
+        boolean currentWALisBeingWrittenTo = false;
+        // For WAL files we own (rather than recovered), take a snapshot of whether the
+        // current WAL file (this.currentPath) is in use (for writing) NOW!
+        // Since the new WAL paths are enqueued only after the prev WAL file
+        // is 'closed', presence of an element in the queue means that
+        // the previous WAL file was closed, else the file is in use (currentPath)
+        // We take the snapshot now so that we are protected against races
+        // where a new file gets enqueued while the current file is being processed
+        // (and where we just finished reading the current file).
+        if (!this.replicationQueueInfo.isQueueRecovered() && queue.size() == 0) {
+          currentWALisBeingWrittenTo = true;
+        }
+        // Open a reader on it
+        if (!openReader(sleepMultiplier)) {
+          // Reset the sleep multiplier, else it'd be reused for the next file
+          sleepMultiplier = 1;
+          continue;
+        }
 
-          if (considerDumping &&
-              sleepMultiplier == this.maxRetriesMultiplier &&
-              processEndOfFile()) {
+        // If we got a null reader but didn't continue, then sleep and continue
+        if (this.reader == null) {
+          if (sleepForRetries("Unable to open a reader", sleepMultiplier)) {
+            sleepMultiplier++;
+          }
+          continue;
+        }
+
+        boolean gotIOE = false;
+        currentNbOperations = 0;
+        List<HLog.Entry> entries = new ArrayList<HLog.Entry>(1);
+        currentSize = 0;
+        try {
+          if (readAllEntriesToReplicateOrNextFile(currentWALisBeingWrittenTo, entries)) {
             continue;
           }
-        }
-      } finally {
-        try {
-          this.reader = null;
-          this.repLogReader.closeReader();
-        } catch (IOException e) {
+        } catch (IOException ioe) {
+          LOG.warn(this.peerClusterZnode + " Got: ", ioe);
           gotIOE = true;
-          LOG.warn("Unable to finalize the tailing of a file", e);
-        }
-      }
+          if (ioe.getCause() instanceof EOFException) {
 
-      // If we didn't get anything to replicate, or if we hit a IOE,
-      // wait a bit and retry.
-      // But if we need to stop, don't bother sleeping
-      if (this.isActive() && (gotIOE || entries.isEmpty())) {
-        if (this.lastLoggedPosition != this.repLogReader.getPosition()) {
-          this.manager.logPositionAndCleanOldLogs(this.currentPath,
-              this.peerClusterZnode, this.repLogReader.getPosition(),
-              this.replicationQueueInfo.isQueueRecovered(), currentWALisBeingWrittenTo);
-          this.lastLoggedPosition = this.repLogReader.getPosition();
+            boolean considerDumping = false;
+            if (this.replicationQueueInfo.isQueueRecovered()) {
+              try {
+                FileStatus stat = this.fs.getFileStatus(this.currentPath);
+                if (stat.getLen() == 0) {
+                  LOG.warn(this.peerClusterZnode + " Got EOF and the file was empty");
+                }
+                considerDumping = true;
+              } catch (IOException e) {
+                LOG.warn(this.peerClusterZnode + " Got while getting file size: ", e);
+              }
+            }
+
+            if (considerDumping && sleepMultiplier == this.maxRetriesMultiplier
+                && processEndOfFile()) {
+              continue;
+            }
+          }
+        } finally {
+          try {
+            this.reader = null;
+            this.repLogReader.closeReader();
+          } catch (IOException e) {
+            gotIOE = true;
+            LOG.warn("Unable to finalize the tailing of a file", e);
+          }
         }
-        // Reset the sleep multiplier if nothing has actually gone wrong
-        if (!gotIOE) {
-          sleepMultiplier = 1;
-          // if there was nothing to ship and it's not an error
-          // set "ageOfLastShippedOp" to <now> to indicate that we're current
-          this.metrics.setAgeOfLastShippedOp(System.currentTimeMillis());
+
+        // If we didn't get anything to replicate, or if we hit a IOE,
+        // wait a bit and retry.
+        // But if we need to stop, don't bother sleeping
+        if (this.isActive() && (gotIOE || entries.isEmpty())) {
+          if (shouldLogPosition(this.repLogReader.getPosition())) {
+            this.manager.logPositionAndCleanOldLogs(this.currentPath, this.peerClusterZnode,
+              this.repLogReader.getPosition(), this.replicationQueueInfo.isQueueRecovered(),
+              currentWALisBeingWrittenTo);
+            this.lastLoggedPosition = this.repLogReader.getPosition();
+            this.unLoggedPositionEdits = 0;
+          }
+          // Reset the sleep multiplier if nothing has actually gone wrong
+          if (!gotIOE) {
+            sleepMultiplier = 1;
+            // if there was nothing to ship and it's not an error
+            // set "ageOfLastShippedOp" to <now> to indicate that we're current
+            this.metrics.setAgeOfLastShippedOp(System.currentTimeMillis());
+          }
+          if (sleepForRetries("Nothing to replicate", sleepMultiplier)) {
+            sleepMultiplier++;
+          }
+          continue;
         }
-        if (sleepForRetries("Nothing to replicate", sleepMultiplier)) {
-          sleepMultiplier++;
-        }
-        continue;
+        sleepMultiplier = 1;
+        shipEdits(currentWALisBeingWrittenTo, entries);
       }
-      sleepMultiplier = 1;
-      shipEdits(currentWALisBeingWrittenTo, entries);
+    } catch (Throwable e) {
+      if (this.isActive()) {
+        LOG.fatal("Replication source exited unexpectedly", e);
+      }
     }
     uninitialize();
   }
 
+  /**
+   * Check if log position is needed to avoid too many write operations to zookeeper
+   */
+  private boolean shouldLogPosition(long logPostion) {
+    if ((logPostion - this.lastLoggedPosition) >= this.logPositionSizeLimit) {
+      return true;
+    }
+    if (unLoggedPositionEdits >= this.logPositionNbLimit) {
+      return true;
+    }
+    return false;
+  }
+  
+  public static void recoverFileLease(FileSystem fs, Path filePath, Configuration conf) throws IOException {
+    LOG.info("recoverFileLease fs: " + fs.getClass().getName() + " path: "+filePath.toString());
+    if(fs instanceof HFileSystem) {
+      HFileSystem hFileSystem = (HFileSystem) fs;
+      FileSystem backingFs = hFileSystem.getBackingFs();
+      LOG.info("recoverFileLease fs: " + fs.getClass().getName() + " backingFs: "
+          + backingFs.getClass().getName() + " path: " + filePath.toString());
+      FSUtils.getInstance(backingFs, conf).recoverFileLease(backingFs, filePath, conf, null);
+    }
+  }
+  
   /**
    * Read all the entries from the current log files and retain those
    * that need to be replicated. Else, process the end of the current file.
@@ -424,8 +469,24 @@ public class ReplicationSource extends Thread
     }
     this.repLogReader.seek();
     long positionBeforeRead = this.repLogReader.getPosition();
-    HLog.Entry entry =
-        this.repLogReader.readNextAndSetPosition();
+    HLog.Entry entry = null;
+    
+    try {
+      entry = this.repLogReader.readNextAndSetPosition();
+    } catch (EOFException e) {
+      if (!currentWALisBeingWrittenTo) {
+        recoverFileLease(this.fs, this.currentPath, this.conf);
+        FileStatus stat = this.fs.getFileStatus(this.currentPath);
+        LOG.info("readerPosition: " + this.repLogReader.getReaderPosition() + " len: "
+            + stat.getLen());
+        if (this.repLogReader.getReaderPosition() >= 0
+            && this.repLogReader.getReaderPosition() == stat.getLen()) {
+          return processEndOfFile();
+        }
+      }
+      throw e;
+    }
+    
     while (entry != null) {
       this.metrics.incrLogEditsRead();
       seenEntries++;
@@ -581,7 +642,18 @@ public class ReplicationSource extends Thread
         }
       }
     } catch (IOException ioe) {
-      if (ioe instanceof EOFException && isCurrentLogEmpty()) return true;
+      if (ioe instanceof EOFException) {
+        if (isCurrentLogEmpty()) {
+          return true;
+        } else {
+          boolean atTail = this.queue.size() == 0;
+          LOG.warn("EOF in recover queue:" + this.peerClusterZnode + ", atTail=" + atTail
+              + ", file path:" + this.currentPath, ioe);
+          processEndOfFile();
+          return false;
+        }
+      }
+      
       LOG.warn(this.peerClusterZnode + " Got: ", ioe);
       this.reader = null;
       if (ioe.getCause() instanceof NullPointerException) {
@@ -589,11 +661,17 @@ public class ReplicationSource extends Thread
         // which throws a NPE if we open a file before any data node has the most recent block
         // Just sleep and retry. Will require re-reading compressed HLogs for compressionContext.
         LOG.warn("Got NPE opening reader, will retry.");
-      } else if (sleepMultiplier == this.maxRetriesMultiplier) {
-        // TODO Need a better way to determine if a file is really gone but
-        // TODO without scanning all logs dir
-        LOG.warn("Waited too long for this file, considering dumping");
-        return !processEndOfFile();
+      }
+      
+      
+      this.metrics.incrOpenReaderIOE();
+      // Throttle the failure logs
+      try {
+        if (ioeSleepBeforeRetry > 0) {
+          TimeUnit.MILLISECONDS.sleep(ioeSleepBeforeRetry);
+        }
+      } catch (Exception e) {
+        // Ignore
       }
     }
     return true;
@@ -688,11 +766,13 @@ public class ReplicationSource extends Thread
           continue;
         }
 
-        if (this.lastLoggedPosition != this.repLogReader.getPosition()) {
+        this.unLoggedPositionEdits += entries.size();
+        if (shouldLogPosition(this.repLogReader.getPosition())) {
           this.manager.logPositionAndCleanOldLogs(this.currentPath,
               this.peerClusterZnode, this.repLogReader.getPosition(),
               this.replicationQueueInfo.isQueueRecovered(), currentWALisBeingWrittenTo);
           this.lastLoggedPosition = this.repLogReader.getPosition();
+          this.unLoggedPositionEdits = 0;
         }
         if (this.throttler.isEnabled()) {
           this.throttler.addPushSize(currentSize);
@@ -733,6 +813,14 @@ public class ReplicationSource extends Thread
    */
   protected boolean processEndOfFile() {
     if (this.queue.size() != 0) {
+      // at the end of the log
+      if (this.lastLoggedPosition != this.repLogReader.getPosition()) {
+        this.manager.logPositionAndCleanOldLogs(currentPath, this.peerClusterZnode,
+          this.repLogReader.getPosition(), this.replicationQueueInfo.isQueueRecovered(), false);
+        this.lastLoggedPosition = 0;
+        this.unLoggedPositionEdits = 0;
+      }
+      
       if (LOG.isTraceEnabled()) {
         String filesize = "N/A";
         try {

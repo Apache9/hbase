@@ -40,6 +40,7 @@ import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.protobuf.generated.WALProtos.WALTrailer;
 import org.apache.hadoop.io.Writable;
+import org.apache.htrace.Span;
 
 import com.google.common.annotations.VisibleForTesting;
 
@@ -102,7 +103,7 @@ public interface HLog {
 
     void close() throws IOException;
 
-    void sync() throws IOException;
+    void sync(boolean force) throws IOException;
 
     void append(Entry entry) throws IOException;
 
@@ -124,10 +125,10 @@ public interface HLog {
   class Entry implements Writable {
     private WALEdit edit;
     private HLogKey key;
+    private Span span;
 
     public Entry() {
-      edit = new WALEdit();
-      key = new HLogKey();
+      this(new HLogKey(), new WALEdit());
     }
 
     /**
@@ -137,9 +138,21 @@ public interface HLog {
      * @param key log's key
      */
     public Entry(HLogKey key, WALEdit edit) {
+      this(key, edit, null);
+    }
+
+    /**
+     * Constructor for both params
+     *
+     * @param edit log's edit
+     * @param key log's key
+     * @param span log's trace span
+     */
+    public Entry(HLogKey key, WALEdit edit, Span span) {
       super();
       this.key = key;
       this.edit = edit;
+      this.span = span;
     }
 
     /**
@@ -158,6 +171,15 @@ public interface HLog {
      */
     public HLogKey getKey() {
       return key;
+    }
+
+    /**
+     * Get the span
+     *
+     * @return span
+     */
+    public Span getSpan() {
+      return span;
     }
 
     /**

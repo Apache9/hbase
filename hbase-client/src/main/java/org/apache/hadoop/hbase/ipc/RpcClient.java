@@ -92,8 +92,8 @@ import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.security.token.Token;
 import org.apache.hadoop.security.token.TokenIdentifier;
 import org.apache.hadoop.security.token.TokenSelector;
-import org.cloudera.htrace.Span;
-import org.cloudera.htrace.Trace;
+import org.apache.htrace.Span;
+import org.apache.htrace.Trace;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.protobuf.BlockingRpcChannel;
@@ -804,7 +804,7 @@ public class RpcClient {
           if (shouldAuthenticateOverKrb()) {
             if (currRetries < maxRetries) {
               LOG.debug("Exception encountered while connecting to " +
-                  "the server : " + ex);
+                  "the server : ", ex);
               //try re-login
               if (UserGroupInformation.isLoginKeytabBased()) {
                 UserGroupInformation.getLoginUser().reloginFromKeytab();
@@ -827,7 +827,7 @@ public class RpcClient {
             }
           } else {
             LOG.warn("Exception encountered while connecting to " +
-                "the server : " + ex);
+                "the server : ", ex);
           }
           if (ex instanceof RemoteException) {
             throw (RemoteException)ex;

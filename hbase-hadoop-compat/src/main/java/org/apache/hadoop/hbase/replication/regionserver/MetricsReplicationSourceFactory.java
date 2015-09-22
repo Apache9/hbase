@@ -19,6 +19,6 @@ package org.apache.hadoop.hbase.replication.regionserver;
 
 public interface MetricsReplicationSourceFactory {
   public MetricsReplicationSinkSource getSink();
-  public MetricsReplicationSourceSource getSource(String id);
+  public MetricsReplicationSourceSource getSource(String id, String clusterKey);
   public MetricsReplicationSourceSource getGlobalSource();
 }

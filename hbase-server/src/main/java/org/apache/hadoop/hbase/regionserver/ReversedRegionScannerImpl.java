@@ -63,7 +63,7 @@ class ReversedRegionScannerImpl extends RegionScannerImpl {
   }
 
   @Override
-  protected boolean nextRow(byte[] currentRow, int offset, short length)
+  protected ScannerStatus nextRow(byte[] currentRow, int offset, short length)
       throws IOException {
     assert super.joinedContinuationRow == null : "Trying to go to next row during joinedHeap read.";
     byte row[] = new byte[length];
@@ -73,9 +73,11 @@ class ReversedRegionScannerImpl extends RegionScannerImpl {
     // Calling the hook in CP which allows it to do a fast forward
     if (this.region.getCoprocessorHost() != null) {
       return this.region.getCoprocessorHost().postScannerFilterRow(this,
-          currentRow, offset, length);
+          currentRow, offset, length) ?
+          ScannerStatus.CONTINUED_WITH_NO_STATS :
+          ScannerStatus.DONE_WITH_NO_STATS;
     }
-    return true;
+    return ScannerStatus.CONTINUED_WITH_NO_STATS;
   }
 
 }

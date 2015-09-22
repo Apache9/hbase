@@ -367,6 +367,16 @@ public class SaltedHTable implements HTableInterface{
     newAppend.getFamilyCellMap().putAll(newMap);
     return newAppend;
   }
+  
+  private Increment salt(Increment increment) {
+    if (null == increment) {
+      return null;
+    }
+    byte[] newRow = salter.salt(increment.getRow());
+    Increment newIncrement = new Increment(newRow);
+    newIncrement.setFamilyMap(increment.getFamilyMap());
+    return newIncrement;
+  }
 
   /**
    * {@inheritDoc}
@@ -454,7 +464,8 @@ public class SaltedHTable implements HTableInterface{
    */
   @Override
   public Result increment(Increment increment) throws IOException {
-    throw new UnsupportedOperationException("Please use getRawTable to get underlying table");
+    Result result = table.increment(salt(increment));
+    return unSalt(result);
   }
 
   /**
@@ -463,7 +474,31 @@ public class SaltedHTable implements HTableInterface{
   @Override
   public void batch(List<? extends Row> actions, Object[] results)
       throws IOException, InterruptedException {
-    throw new UnsupportedOperationException("Please use getRawTable to get underlying table");
+    List saltedActions = new ArrayList();
+    for (int i = 0; i < actions.size(); ++i) {
+      Object action = actions.get(i);
+      if (action instanceof Put) {
+        saltedActions.add(salt((Put)action));
+      } else if (action instanceof Delete) {
+        saltedActions.add(salt((Delete)action));
+      } else if (action instanceof Get) {
+        saltedActions.add(salt((Get)action));
+      } else if (action instanceof Increment) {
+        saltedActions.add(salt((Increment)action));
+      } else if (action instanceof Append) {
+        saltedActions.add(salt((Append)action));
+      } else {
+        throw new IOException("Row in batch must be Put/Get/Delete/Increment/Append for salted table");
+      }
+    }
+    
+    table.batch(saltedActions, results);
+    for (int i = 0; i < results.length; ++i) {
+      Object result = results[i];
+      if (result != null && result instanceof Result) {
+        results[i] = unSalt((Result)result);
+      }
+    }    
   }
 
   /**
@@ -472,7 +507,9 @@ public class SaltedHTable implements HTableInterface{
   @Override
   public Object[] batch(List<? extends Row> actions) throws IOException,
       InterruptedException {
-    throw new UnsupportedOperationException("Please use getRawTable to get underlying table");
+    Object[] results = new Object[actions.size()];
+    batch(actions, results);
+    return results;
   }
 
   /**
@@ -546,7 +583,12 @@ public class SaltedHTable implements HTableInterface{
       for(int i = 0; i < nbRows; i++) {
         Result next = next();
         if (next != null) {
-          resultSets.add(next);
+          // skip the fake row filled when raw limit is hit
+          if (!next.isFake()) {
+            resultSets.add(next);
+          } else {
+            i--;
+          }
         } else {
           break;
         }

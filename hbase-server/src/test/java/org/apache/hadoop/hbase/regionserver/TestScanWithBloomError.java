@@ -162,7 +162,7 @@ public class TestScanWithBloomError {
 
     { // Limit the scope of results.
       List<Cell> results = new ArrayList<Cell>();
-      while (scanner.next(results) || results.size() > 0) {
+      while (scanner.next(results).hasNext() || results.size() > 0) {
         allResults.addAll(results);
         results.clear();
       }

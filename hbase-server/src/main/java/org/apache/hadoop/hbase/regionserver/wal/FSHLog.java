@@ -63,8 +63,10 @@ import org.apache.hadoop.hbase.util.FSUtils;
 import org.apache.hadoop.hbase.util.HasThread;
 import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
 import org.apache.hadoop.util.StringUtils;
-import org.cloudera.htrace.Trace;
-import org.cloudera.htrace.TraceScope;
+import org.apache.htrace.Sampler;
+import org.apache.htrace.Span;
+import org.apache.htrace.Trace;
+import org.apache.htrace.TraceScope;
 
 import com.google.common.annotations.VisibleForTesting;
 
@@ -140,8 +142,11 @@ class FSHLog implements HLog, Syncable {
   private int minTolerableReplication;
   private Method getNumCurrentReplicas; // refers to DFSOutputStream.getNumCurrentReplicas
   private final Method getPipeLine; // refers to DFSOutputStream.getPipeLine
-  private final int slowSyncNs;
-
+  private final int slowSyncMs;
+  private final AtomicInteger slowSyncRequestRollCounter = new AtomicInteger(0);
+  private final int slowSyncRequestRollCountThreshold;
+  private final int slowSyncRequestRollMsThreshold;
+  private final int syncLogMode;
   final static Object [] NO_ARGS = new Object []{};
 
   /** The barrier used to ensure that close() waits for all log rolls and flushes to finish. */
@@ -227,6 +232,8 @@ class FSHLog implements HLog, Syncable {
    */
   private final int maxLogs;
 
+  private static boolean isWALCompressionEnabled;
+  
   // List of pending writes to the HLog. There corresponds to transactions
   // that have not yet returned to the client. We keep them cached here
   // instead of writing them to HDFS piecemeal. The goal is to increase
@@ -281,6 +288,17 @@ class FSHLog implements HLog, Syncable {
   private NavigableMap<Path, Map<byte[], Long>> hlogSequenceNums =
     new ConcurrentSkipListMap<Path, Map<byte[], Long>>(LOG_NAME_COMPARATOR);
 
+  private Map<Writer, Long> unclosedWriters = new HashMap<Writer, Long>();
+  
+  public static double getHLogCompressionRatio() {
+    if (isWALCompressionEnabled) {
+      long compressedSize = HLogKey.compressedSize + KeyValueCompression.compressedSize;
+      long uncompressedSize = HLogKey.uncompressedSize + KeyValueCompression.uncompressedSize;
+      return uncompressedSize == 0 ? 1 : (double) compressedSize / (double) uncompressedSize;
+    }
+    return 1;
+  }
+  
   /**
    * Constructor.
    *
@@ -388,6 +406,7 @@ class FSHLog implements HLog, Syncable {
     this.logrollsize = (long)(this.blocksize * multi);
 
     this.maxLogs = conf.getInt("hbase.regionserver.maxlogs", 32);
+    isWALCompressionEnabled = conf.getBoolean(HConstants.ENABLE_WAL_COMPRESSION, false);
     this.minTolerableReplication = conf.getInt(
         "hbase.regionserver.hlog.tolerable.lowreplication",
         FSUtils.getDefaultReplication(fs, this.dir));
@@ -422,9 +441,7 @@ class FSHLog implements HLog, Syncable {
     // rollWriter sets this.hdfs_out if it can.
     rollWriter();
 
-    this.slowSyncNs =
-        1000000 * conf.getInt("hbase.regionserver.hlog.slowsync.ms",
-          DEFAULT_SLOW_SYNC_TIME_MS);
+    this.slowSyncMs = conf.getInt("hbase.regionserver.hlog.slowsync.ms", DEFAULT_SLOW_SYNC_TIME_MS);
     // handle the reflection necessary to call getNumCurrentReplicas()
     this.getNumCurrentReplicas = getGetNumCurrentReplicas(this.hdfs_out);
     this.getPipeLine = getGetPipeline(this.hdfs_out);
@@ -445,6 +462,11 @@ class FSHLog implements HLog, Syncable {
     asyncNotifier = new AsyncNotifier(n + "-WAL.AsyncNotifier");
     asyncNotifier.start();
 
+    slowSyncRequestRollCountThreshold = conf.getInt(
+      "hbase.regionserver.hlog.slowsync.request.roll.count.threshold", 10);
+    slowSyncRequestRollMsThreshold = conf.getInt(
+      "hbase.regionserver.hlog.slowsync.request.roll.ms.threshold", 1000);
+    syncLogMode = conf.getInt("hbase.regionserver.hlog.sync.mode", 0);
     coprocessorHost = new WALCoprocessorHost(this, conf);
 
     this.metrics = new MetricsWAL();
@@ -560,7 +582,7 @@ class FSHLog implements HLog, Syncable {
           nextHdfsOut = ((ProtobufLogWriter)nextWriter).getStream();
           // perform the costly sync before we get the lock to roll writers.
           try {
-            nextWriter.sync();
+            nextWriter.sync(syncLogMode == SyncLogMode.HSYNC_ALWAYS.ordinal());
           } catch (IOException e) {
             // optimization failed, no need to abort here.
             LOG.warn("pre-sync failed", e);
@@ -576,6 +598,7 @@ class FSHLog implements HLog, Syncable {
           this.writer = nextWriter;
           this.hdfs_out = nextHdfsOut;
           this.numEntries.set(0);
+          slowSyncRequestRollCounter.set(0); // reset this counter after a rolling done
           if (oldFile != null) {
             this.hlogSequenceNums.put(oldFile, this.latestSequenceNums);
             this.latestSequenceNums = new HashMap<byte[], Long>();
@@ -598,6 +621,7 @@ class FSHLog implements HLog, Syncable {
           }
         }
 
+        cleanupUnclosedWriters();
         // Can we delete any of the old log files?
         if (getNumRolledLogFiles() > 0) {
           cleanOldLogs();
@@ -749,6 +773,32 @@ class FSHLog implements HLog, Syncable {
     return regions;
   }
 
+  private void cleanupUnclosedWriters() {
+    if (unclosedWriters.size() == 0) {
+      return;
+    }
+    LOG.warn("There are " + unclosedWriters.size() + " unclosed writers");
+    List<Writer> writers = new LinkedList<Writer>();
+    for (Map.Entry<Writer, Long> entry : this.unclosedWriters.entrySet()) {
+      Writer writer = entry.getKey();
+      long lastAttempt = entry.getValue().longValue();
+      // retry every 10 min
+      if (EnvironmentEdgeManager.currentTimeMillis() - lastAttempt > 1000 * 60 * 10) {
+        writers.add(writer);
+      }
+    }
+    LOG.warn("Try to cleanup " + writers.size() + " unclosed writers");
+    for (Writer writer : writers) {
+      try {
+        writer.close();
+        unclosedWriters.remove(writer);
+      } catch (IOException e) {
+        LOG.error("Cleanup unclosed writer failed.", e);
+        unclosedWriters.put(writer, EnvironmentEdgeManager.currentTimeMillis());
+      }
+    }
+  }
+  
   /*
    * Cleans up current writer closing.
    * Presumes we're operating inside an updateLock scope.
@@ -769,13 +819,19 @@ class FSHLog implements HLog, Syncable {
                    " synced till here " + this.syncedTillHere.get());
           sync();
         }
+      } catch (IOException e) {
+        LOG.error("Sync before closing current writer failed!", e);
+      }
+      
+      // Close the current writer, get a new one.
+      try {
         this.writer.close();
-        this.writer = null;
         closeErrorCount.set(0);
       } catch (IOException e) {
         LOG.error("Failed close of HLog writer", e);
         int errors = closeErrorCount.incrementAndGet();
         if (errors <= closeErrorsTolerated && !hasUnSyncedEntries()) {
+          unclosedWriters.put(this.writer, EnvironmentEdgeManager.currentTimeMillis());
           LOG.warn("Riding over HLog close failure! error count="+errors);
         } else {
           if (hasUnSyncedEntries()) {
@@ -790,6 +846,7 @@ class FSHLog implements HLog, Syncable {
           throw flce;
         }
       }
+      this.writer = null;
       if (currentfilenum >= 0) {
         oldFile = computeFilename(currentfilenum);
       }
@@ -1010,7 +1067,8 @@ class FSHLog implements HLog, Syncable {
       if (this.closed) {
         throw new IOException("Cannot append; log is closed");
       }
-      TraceScope traceScope = Trace.startSpan("FSHlog.append");
+    TraceScope traceScope =
+        Trace.startSpan("FSHlog.append" + (doSync ? "WithSync" : "WithoutSync"));
       try {
         long txid = 0;
         synchronized (this.updateLock) {
@@ -1107,6 +1165,15 @@ class FSHLog implements HLog, Syncable {
       }
     }
 
+    private Sampler getSampler(List<Entry> pendWrites) {
+      for (Entry e : pendWrites) {
+        if (e.getSpan() != null) {
+          return Sampler.ALWAYS;
+        }
+      }
+      return Sampler.NEVER;
+    }
+
     public void run() {
       try {
         while (!this.isInterrupted()) {
@@ -1130,15 +1197,26 @@ class FSHLog implements HLog, Syncable {
             pendWrites = pendingWrites;
             pendingWrites = new LinkedList<Entry>();
           }
-
+          TraceScope traceScope = Trace.startSpan("FSHlog.writeAndSync", getSampler(pendWrites));
           // 3. write all buffered writes to HDFS(append, without sync)
           try {
+            List<Long> parentSpans = new ArrayList<Long>(pendWrites.size());
+            List<Long> parentTraceIds = new ArrayList<Long>(pendWrites.size());
             for (Entry e : pendWrites) {
               writer.append(e);
+              if (Trace.isTracing() && e.getSpan() != null) {
+                parentSpans.add(e.getSpan().getSpanId());
+                parentTraceIds.add(e.getSpan().getTraceId());
+              }
+            }
+            if (Trace.isTracing() && parentSpans.size() > 0) {
+              Trace.addKVAnnotation("Parent spans".getBytes(), parentSpans.toString().getBytes());
+              Trace.addKVAnnotation("Parent traceIds".getBytes(), parentTraceIds.toString()
+                  .getBytes());
             }
           } catch(IOException e) {
             LOG.error("Error while AsyncWriter write, request close of hlog ", e);
-            requestLogRoll();
+            requestLogRoll(true);
 
             asyncIOE = e;
             failedTxid.set(this.txidToWrite);
@@ -1150,13 +1228,13 @@ class FSHLog implements HLog, Syncable {
           for (int i = 0; i < asyncSyncers.length; ++i) {
             if (!asyncSyncers[i].isSyncing()) {
               hasIdleSyncer = true;
-              asyncSyncers[i].setWrittenTxid(this.lastWrittenTxid);
+              asyncSyncers[i].setWrittenTxid(this.lastWrittenTxid, traceScope.detach());
               break;
             }
           }
           if (!hasIdleSyncer) {
             int idx = (int)(this.lastWrittenTxid % asyncSyncers.length);
-            asyncSyncers[idx].setWrittenTxid(this.lastWrittenTxid);
+            asyncSyncers[idx].setWrittenTxid(this.lastWrittenTxid, traceScope.detach());
           }
         }
       } catch (InterruptedException e) {
@@ -1178,6 +1256,7 @@ class FSHLog implements HLog, Syncable {
     private long lastSyncedTxid = 0;
     private volatile boolean isSyncing = false;
     private Object syncLock = new Object();
+    private Span span;
 
     public AsyncSyncer(String name) {
       super(name);
@@ -1189,12 +1268,13 @@ class FSHLog implements HLog, Syncable {
 
     // wake up (called by AsyncWriter thread) AsyncSyncer thread
     // to sync(flush) writes written by AsyncWriter in HDFS
-    public void setWrittenTxid(long txid) {
+    public void setWrittenTxid(long txid, Span span) {
       synchronized (this.syncLock) {
         if (txid <= this.writtenTxid)
           return;
 
         this.writtenTxid = txid;
+        this.span = span;
         this.syncLock.notify();
       }
     }
@@ -1220,6 +1300,8 @@ class FSHLog implements HLog, Syncable {
             continue;
           }
 
+          TraceScope traceScope = Trace.continueSpan(span);
+          span = null;
           // 2. do 'sync' to HDFS to provide durability
           long now = EnvironmentEdgeManager.currentTimeMillis();
           try {
@@ -1246,29 +1328,39 @@ class FSHLog implements HLog, Syncable {
               asyncIOE = new IOException("has unsynced writes but writer is null!");
               failedTxid.set(this.txidToSync);
             } else {
-              this.isSyncing = true;            
-              writer.sync();
+              this.isSyncing = true;
+              writer.sync(syncLogMode == SyncLogMode.HSYNC_ALWAYS.ordinal());
               this.isSyncing = false;
             }
             postSync();
           } catch (IOException e) {
             LOG.fatal("Error while AsyncSyncer sync, request close of hlog ", e);
-            requestLogRoll();
+            requestLogRoll(true);
 
             asyncIOE = e;
             failedTxid.set(this.txidToSync);
 
             this.isSyncing = false;
+          } finally {
+            traceScope.close();
           }
+
           final long took = EnvironmentEdgeManager.currentTimeMillis() - now;
           metrics.finishSync(took);
-          if (took > (slowSyncNs/1000000)) {
+          if (took > slowSyncMs) {
             String msg =
                 new StringBuilder().append("Slow sync cost: ")
                     .append(took).append(" ms, current pipeline: ")
                     .append(Arrays.toString(getPipeLine())).toString();
             Trace.addTimelineAnnotation(msg);
             LOG.info(msg);
+          }
+          if (took > slowSyncRequestRollMsThreshold) {
+            long newCount = slowSyncRequestRollCounter.incrementAndGet();
+            if (newCount >= slowSyncRequestRollCountThreshold) {
+              requestLogRoll(false);
+              // slowSyncRequestRollCounter.set(0);
+            }
           }
 
           // 3. wake up AsyncNotifier to notify(wake-up) all pending 'put'
@@ -1286,7 +1378,7 @@ class FSHLog implements HLog, Syncable {
             }            
             try {
               if (lowReplication || writer != null && writer.getLength() > logrollsize) {
-                requestLogRoll(lowReplication);
+                requestLogRoll(true);
               }
             } catch (IOException e) {
               LOG.warn("writer.getLength() failed,this failure won't block here");
@@ -1486,14 +1578,10 @@ class FSHLog implements HLog, Syncable {
     syncer(txid);
   }
 
-  private void requestLogRoll() {
-    requestLogRoll(false);
-  }
-
-  private void requestLogRoll(boolean tooFewReplicas) {
+  private void requestLogRoll(boolean forceRoll) {
     if (!this.listeners.isEmpty()) {
       for (WALActionsListener i: this.listeners) {
-        i.logRollRequested(tooFewReplicas);
+        i.logRollRequested(forceRoll);
       }
     }
   }
@@ -1519,7 +1607,7 @@ class FSHLog implements HLog, Syncable {
           logKey.setScopes(null);
         }
         // write to our buffer for the Hlog file.
-        this.pendingWrites.add(new HLog.Entry(logKey, logEdit));
+        this.pendingWrites.add(new HLog.Entry(logKey, logEdit, Trace.currentSpan()));
       }
       long took = EnvironmentEdgeManager.currentTimeMillis() - now;
       coprocessorHost.postWALWrite(info, logKey, logEdit);
@@ -1530,7 +1618,7 @@ class FSHLog implements HLog, Syncable {
       this.metrics.finishAppend(took, len);
     } catch (IOException e) {
       LOG.fatal("Could not append. Requesting close of hlog", e);
-      requestLogRoll();
+      requestLogRoll(true);
       throw e;
     }
   }
@@ -1684,6 +1772,16 @@ class FSHLog implements HLog, Syncable {
     return result == null ? HConstants.NO_SEQNUM : result.longValue();
   }
 
+  //A flag controls the balance between performance and data safety
+  public enum SyncLogMode {
+    //default value. lose data up to 30s once all dns crash or power outage
+    HFLUSH_ALWAYS,
+    //it will ensure every sucessful wal syncing goes into disk
+    HSYNC_ALWAYS,
+    //call hflush() in most of time, and call hsync() per second (not finished yet)
+    HSYNC_PER_SECOND;
+  }
+  
   /**
    * Pass one or more log file names and it will either dump out a text version
    * on <code>stdout</code> or split the specified log files.

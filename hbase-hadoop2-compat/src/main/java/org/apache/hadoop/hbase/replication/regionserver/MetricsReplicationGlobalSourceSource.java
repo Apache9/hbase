@@ -31,6 +31,7 @@ public class MetricsReplicationGlobalSourceSource implements MetricsReplicationS
   private final MutableCounterLong shippedOpsCounter;
   private final MutableCounterLong shippedKBsCounter;
   private final MutableCounterLong logReadInBytesCounter;
+  private final MutableCounterLong openReaderIOECounter;
 
   public MetricsReplicationGlobalSourceSource(MetricsReplicationSourceImpl rms) {
 
@@ -49,6 +50,8 @@ public class MetricsReplicationGlobalSourceSource implements MetricsReplicationS
     logReadInEditsCounter = rms.getMetricsRegistry().getLongCounter(SOURCE_LOG_READ_IN_EDITS, 0L);
 
     logEditsFilteredCounter = rms.getMetricsRegistry().getLongCounter(SOURCE_LOG_EDITS_FILTERED, 0L);
+    
+    openReaderIOECounter = rms.getMetricsRegistry().getLongCounter(SOURCE_OPEN_READER_IOE, 0L);
   }
 
   @Override public void setLastShippedAge(long age) {
@@ -89,6 +92,10 @@ public class MetricsReplicationGlobalSourceSource implements MetricsReplicationS
 
   @Override public void incrLogReadInBytes(long size) {
     logReadInBytesCounter.incr(size);
+  }
+  
+  @Override public void incrOpenReaderIOE() {
+    openReaderIOECounter.incr();
   }
 
   @Override public void clear() {

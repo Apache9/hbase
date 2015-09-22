@@ -52,6 +52,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.filter.ParseFilter;
 import org.apache.hadoop.hbase.security.SecurityUtil;
+import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.security.UserProvider;
 import org.apache.hadoop.hbase.thrift.CallQueue;
 import org.apache.hadoop.hbase.thrift.CallQueue.Call;
@@ -426,6 +427,15 @@ public class ThriftServer {
       System.exit(1);
     }
 
+    // login the server principal (if using secure Hadoop)
+    if (User.isSecurityEnabled() && User.isHBaseSecurityEnabled(conf)) {
+      String machineName = Strings.domainNamePointerToHostName(
+        DNS.getDefaultHost(conf.get("hbase.thrift.dns.interface", "default"),
+          conf.get("hbase.thrift.dns.nameserver", "default")));
+      User.login(conf, "hbase.thrift.keytab.file",
+          "hbase.thrift.kerberos.principal", machineName);
+    }
+    
     // Put up info server.
     int port = conf.getInt("hbase.thrift.info.port", 9095);
     if (port >= 0) {

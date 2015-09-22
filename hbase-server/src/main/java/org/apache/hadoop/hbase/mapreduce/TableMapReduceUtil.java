@@ -758,7 +758,7 @@ public class TableMapReduceUtil {
       org.jboss.netty.channel.ChannelFactory.class,
       com.google.protobuf.Message.class,
       com.google.common.collect.Lists.class,
-      org.cloudera.htrace.Trace.class,
+      org.apache.htrace.Trace.class,
       org.cliffc.high_scale_lib.Counter.class); // needed for mapred over snapshots
   }
 

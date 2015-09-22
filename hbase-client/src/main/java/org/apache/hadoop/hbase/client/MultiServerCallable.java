@@ -39,6 +39,7 @@ import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.MultiRequest;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.MutationProto;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.RegionAction;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos;
+import org.apache.htrace.Trace;
 
 import com.google.protobuf.ServiceException;
 
@@ -110,6 +111,9 @@ class MultiServerCallable<R> extends RegionServerCallable<MultiResponse> {
     ClientProtos.MultiResponse responseProto;
     ClientProtos.MultiRequest requestProto = multiRequestBuilder.build();
     try {
+      if (Trace.isTracing()) {
+        Trace.addTimelineAnnotation("MultiServerCall to " + location);
+      }
       responseProto = getStub().multi(controller, requestProto);
     } catch (ServiceException e) {
       throw ProtobufUtil.getRemoteException(e);

@@ -17,6 +17,7 @@
  */
 package org.apache.hadoop.hbase.regionserver;
 
+import java.io.IOException;
 import java.util.Collection;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -32,16 +33,19 @@ import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.io.hfile.BlockCache;
 import org.apache.hadoop.hbase.io.hfile.CacheConfig;
 import org.apache.hadoop.hbase.io.hfile.CacheStats;
+import org.apache.hadoop.hbase.regionserver.wal.HLogUtil;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.FSUtils;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
+import org.apache.hadoop.hdfs.DFSHedgedReadMetrics;
+import org.apache.hadoop.metrics2.MetricHistogram;
 import org.apache.hadoop.metrics2.MetricsExecutor;
 
 /**
  * Impl for exposing HRegionServer Information through Hadoop's metrics 2 system.
  */
 @InterfaceAudience.Private
-class MetricsRegionServerWrapperImpl
+public class MetricsRegionServerWrapperImpl
     implements MetricsRegionServerWrapper {
 
   public static final Log LOG = LogFactory.getLog(MetricsRegionServerWrapperImpl.class);
@@ -74,7 +78,16 @@ class MetricsRegionServerWrapperImpl
   private volatile long compactedCellsSize = 0;
   private volatile long majorCompactedCellsSize = 0;
   private volatile long blockedRequestsCount = 0L;
-
+  private volatile long hedgedReads = 0L;
+  private volatile long hedgedReadWins = 0L;
+  private volatile long hedgedReadsInCurThread = 0L;
+  
+  // histogram metrics for fs read/write
+  private static boolean initializeFSMetrics = false;
+  private static MetricHistogram fsRead = null;
+  private static MetricHistogram fsPread = null;
+  private static MetricHistogram fsWrite = null;
+  
   private CacheStats cacheStats;
   private ScheduledExecutorService executor;
   private Runnable runnable;
@@ -529,11 +542,76 @@ class MetricsRegionServerWrapperImpl
       compactedCellsSize = tempCompactedCellsSize;
       majorCompactedCellsSize = tempMajorCompactedCellsSize;
       blockedRequestsCount = tempBlockedRequestsCount;
+      
+      DFSHedgedReadMetrics hedgedReadMetrics;
+      if (regionServer != null) {
+        try {
+          hedgedReadMetrics = FSUtils.getDFSHedgedReadMetrics(regionServer.getConfiguration());
+          if (hedgedReadMetrics != null) {
+            hedgedReads = hedgedReadMetrics.getHedgedReadOps();
+            hedgedReadWins = hedgedReadMetrics.getHedgedReadWins();
+            hedgedReadsInCurThread = hedgedReadMetrics.getHedgedReadOpsInCurThread();
+          }
+        } catch (IOException e1) {
+          LOG.info("get hedgedRead metric error", e1);
+        }
+      }
     }
   }
 
   @Override
   public long getBlockedRequestsCount() {
     return blockedRequestsCount;
+  }
+  
+  @Override
+  public void initialFSMetrics(MetricHistogram fsRead, MetricHistogram fsPread,
+      MetricHistogram fsWrite) {
+    if (!initializeFSMetrics) {
+      synchronized (MetricsRegionServerWrapperImpl.class) {
+        if (!initializeFSMetrics) {
+          MetricsRegionServerWrapperImpl.fsRead = fsRead;
+          MetricsRegionServerWrapperImpl.fsPread = fsPread;
+          MetricsRegionServerWrapperImpl.fsWrite = fsWrite;
+          initializeFSMetrics = true;
+        }
+      }
+    }
+  }
+  
+  public static void updateFSReadLatency(long latency, boolean pread) {
+    if (initializeFSMetrics) {
+      if (pread) {
+        fsPread.add(latency);
+      } else {
+        fsRead.add(latency);
+      }
+    }
+  }
+  
+  public static void updateFSWriteLatency(long latency) {
+    if (initializeFSMetrics) {
+      fsWrite.add(latency);
+    }
+  }
+
+  @Override
+  public long getHedgedReads() {
+    return hedgedReads;
+  }
+
+  @Override
+  public long getHedgedReadWins() {
+    return hedgedReadWins;
+  }
+
+  @Override
+  public long getHedgedReadsInCurThread() {
+    return hedgedReadsInCurThread;
+  }
+
+  @Override
+  public double getHLogCompressionRatio() {
+    return HLogUtil.getHLogCompressionRatio();
   }
 }

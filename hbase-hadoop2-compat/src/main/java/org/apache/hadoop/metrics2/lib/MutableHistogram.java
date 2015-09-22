@@ -130,6 +130,8 @@ public class MutableHistogram extends MutableMetric implements MetricHistogram {
           s.get95thPercentile());
       metricsRecordBuilder.addGauge(Interns.info(name + NINETY_NINETH_PERCENTILE_METRIC_NAME, desc),
           s.get99thPercentile());
+      metricsRecordBuilder.addGauge(Interns.info(name + NINETY_NINETH_POINT_NINETH_PERCENTILE_METRIC_NAME, desc),
+        s.get999thPercentile());
     }
   }
 }

@@ -33,6 +33,7 @@ public class MetricsReplicationSourceSourceImpl implements MetricsReplicationSou
   private final String shippedOpsKey;
   private final String shippedKBsKey;
   private final String logReadInBytesKey;
+  private final String openReaderIOEKey;
 
   private final MutableGaugeLong ageOfLastShippedOpGauge;
   private final MutableGaugeLong sizeOfLogQueueGauge;
@@ -42,11 +43,14 @@ public class MetricsReplicationSourceSourceImpl implements MetricsReplicationSou
   private final MutableCounterLong shippedOpsCounter;
   private final MutableCounterLong shippedKBsCounter;
   private final MutableCounterLong logReadInBytesCounter;
-
-  public MetricsReplicationSourceSourceImpl(MetricsReplicationSourceImpl rms, String id) {
+  private final MutableCounterLong openReaderIOECounter;
+  
+  public MetricsReplicationSourceSourceImpl(MetricsReplicationSourceImpl rms, String id,
+      String clusterKey) {
     this.rms = rms;
     this.id = id;
-
+    rms.addPeer(id, clusterKey);
+    
     ageOfLastShippedOpKey = "source." + id + ".ageOfLastShippedOp";
     ageOfLastShippedOpGauge = rms.getMetricsRegistry().getLongGauge(ageOfLastShippedOpKey, 0L);
 
@@ -70,6 +74,9 @@ public class MetricsReplicationSourceSourceImpl implements MetricsReplicationSou
 
     logEditsFilteredKey = "source." + id + ".logEditsFiltered";
     logEditsFilteredCounter = rms.getMetricsRegistry().getLongCounter(logEditsFilteredKey, 0L);
+    
+    openReaderIOEKey = "source." + id + ".openReaderIOE";
+    openReaderIOECounter = rms.getMetricsRegistry().getLongCounter(openReaderIOEKey, 0L);
   }
 
   @Override public void setLastShippedAge(long age) {
@@ -112,7 +119,12 @@ public class MetricsReplicationSourceSourceImpl implements MetricsReplicationSou
     logReadInBytesCounter.incr(size);
   }
 
+  @Override public void incrOpenReaderIOE() {
+    openReaderIOECounter.incr();
+  }
+  
   @Override public void clear() {
+    rms.removePeer(id);
     rms.removeMetric(ageOfLastShippedOpKey);
 
     rms.removeMetric(sizeOfLogQueueKey);
@@ -125,6 +137,8 @@ public class MetricsReplicationSourceSourceImpl implements MetricsReplicationSou
     rms.removeMetric(logReadInEditsKey);
 
     rms.removeMetric(logEditsFilteredKey);
+    
+    rms.removeMetric(openReaderIOEKey);
   }
 
   @Override

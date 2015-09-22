@@ -55,6 +55,8 @@ public interface MetricsHBaseServerSource extends BaseSource {
   String NUM_OPEN_CONNECTIONS_DESC = "Number of open connections.";
   String NUM_ACTIVE_HANDLER_NAME = "numActiveHandler";
   String NUM_ACTIVE_HANDLER_DESC = "Number of active rpc handlers.";
+  String FAILED_CALLS_NAME = "failedCalls";
+  String FAILED_CALLS_DESC = "Number of failed rpc calls.";
 
   void authorizationSuccess();
 
@@ -71,4 +73,6 @@ public interface MetricsHBaseServerSource extends BaseSource {
   void dequeuedCall(int qTime);
 
   void processedCall(int processingTime);
+  
+  void failedCalls();
 }

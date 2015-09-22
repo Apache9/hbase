@@ -314,6 +314,8 @@ Shell.load_command_group(
     flush
     major_compact
     move
+    move_table
+    move_server
     split
     merge_region
     unassign
@@ -324,6 +326,7 @@ Shell.load_command_group(
     catalogjanitor_enabled
     compact_rs
     trace
+    compact_switch
   ]
 )
 

@@ -18,6 +18,8 @@
 
 package org.apache.hadoop.hbase.regionserver;
 
+import org.apache.hadoop.metrics2.MetricHistogram;
+
 public class MetricsRegionServerWrapperStub implements MetricsRegionServerWrapper {
 
   @Override
@@ -253,6 +255,31 @@ public class MetricsRegionServerWrapperStub implements MetricsRegionServerWrappe
   
   @Override
   public long getFsRecoverLeaseTime() {
+    return 0;
+  }
+
+  @Override
+  public void initialFSMetrics(MetricHistogram fsRead, MetricHistogram fsPread,
+      MetricHistogram fsWrite) {
+  }
+
+  @Override
+  public long getHedgedReads() {
+    return 0;
+  }
+
+  @Override
+  public long getHedgedReadWins() {
+    return 0;
+  }
+
+  @Override
+  public long getHedgedReadsInCurThread() {
+    return 0;
+  }
+
+  @Override
+  public double getHLogCompressionRatio() {
     return 0;
   }
 }

@@ -122,7 +122,8 @@ public class TokenProvider implements AuthenticationProtos.AuthenticationService
         LOG.warn("Token generation denied for user="+currentUser.getName()
             +", authMethod="+ugi.getAuthenticationMethod());
         throw new AccessDeniedException(
-            "Token generation only allowed for Kerberos authenticated clients");
+            "Token generation only allowed for Kerberos authenticated clients. User="
+                + currentUser.getName() + ", authMethod=" + ugi.getAuthenticationMethod());
       }
 
       Token<AuthenticationTokenIdentifier> token =
