@@ -3392,9 +3392,14 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
                     break;
                   }
                   // Collect values to be returned here
-                  ScannerStatus status =
-                      scanner.nextRaw(values, -1, rawLimit - rawCount);
-                  rawCount += status.getRawValueScanned();
+                  ScannerStatus status;
+                  if (rawLimit <= 0) {
+                    status = scanner.nextRaw(values);
+                  } else {
+                    // set batch to -1 to fetch a full row
+                    status = scanner.nextRaw(values, -1, rawLimit - rawCount);
+                    rawCount += status.getRawValueScanned();
+                  }
                   if (!values.isEmpty()) {
                     for (Cell cell : values) {
                       KeyValue kv = KeyValueUtil.ensureKeyValue(cell);
