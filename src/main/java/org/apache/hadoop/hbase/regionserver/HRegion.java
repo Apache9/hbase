@@ -4121,7 +4121,7 @@ public class HRegion implements HeapSize { // , Writable{
       ScannerStatus status = populateResult(results, this.joinedHeap, limit,
           joinedContinuationRow.getBuffer(), joinedContinuationRow.getRowOffset(),
           joinedContinuationRow.getRowLength(), metric);
-      if (results.size() < limit) {
+      if (limit <= 0 || results.size() < limit) {
         // We are done with this row, reset the continuation.
         joinedContinuationRow = null;
       }
