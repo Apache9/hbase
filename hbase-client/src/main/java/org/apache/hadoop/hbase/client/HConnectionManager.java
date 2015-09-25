@@ -1241,6 +1241,7 @@ public class HConnectionManager {
           + ", prefetchRegionLimit=" + this.prefetchRegionLimit + ", time consume="
           + (System.currentTimeMillis() - startTime));
       } catch (IOException e) {
+        LOG.warn("Encountered problems when prefetch META table: ", e);
         if (ExceptionUtil.isInterrupt(e)) {
           Thread.currentThread().interrupt();
         }
