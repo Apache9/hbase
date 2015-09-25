@@ -228,7 +228,7 @@ public class TestStripeCompactor {
 
     @Override
     public ScannerStatus next(List<Cell> results) throws IOException {
-      if (kvs.isEmpty()) return ScannerStatus.CONTINUED_WITH_NO_STATS;
+      if (kvs.isEmpty()) return ScannerStatus.DONE_WITH_NO_STATS;
       results.add(kvs.remove(0));
       return kvs.isEmpty() ? ScannerStatus.DONE_WITH_NO_STATS : ScannerStatus.CONTINUED_WITH_NO_STATS;
     }
