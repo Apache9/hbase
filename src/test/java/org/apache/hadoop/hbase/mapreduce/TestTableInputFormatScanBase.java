@@ -56,12 +56,12 @@ import org.junit.BeforeClass;
 public abstract class TestTableInputFormatScanBase {
 
   static final Log LOG = LogFactory.getLog(TestTableInputFormatScanBase.class);
-  static final HBaseTestingUtility TEST_UTIL = new HBaseTestingUtility();
+  public static final HBaseTestingUtility TEST_UTIL = new HBaseTestingUtility();
 
-  static final byte[] TABLE_NAME = Bytes.toBytes("scantest");
-  static final byte[] INPUT_FAMILY = Bytes.toBytes("contents");
-  static final String KEY_STARTROW = "startRow";
-  static final String KEY_LASTROW = "stpRow";
+  public static final byte[] TABLE_NAME = Bytes.toBytes("scantest");
+  public static final byte[] INPUT_FAMILY = Bytes.toBytes("contents");
+  public static final String KEY_STARTROW = "startRow";
+  public static final String KEY_LASTROW = "stpRow";
 
   private static HTable table = null;
 
@@ -192,7 +192,7 @@ public abstract class TestTableInputFormatScanBase {
     job.setReducerClass(ScanReducer.class);
     job.setMapOutputKeyClass(ImmutableBytesWritable.class);
     job.setMapOutputValueClass(ImmutableBytesWritable.class);
-    job.setInputFormatClass(TableInputFormat.class);
+    job.setInputFormatClass(TableMapReduceUtil.getTableInputFormatCls(c, TABLE_NAME));
     job.setNumReduceTasks(1);
     FileOutputFormat.setOutputPath(job, new Path(job.getJobName()));
     TableMapReduceUtil.addDependencyJars(job);
@@ -236,4 +236,3 @@ public abstract class TestTableInputFormatScanBase {
   }
 
 }
-
