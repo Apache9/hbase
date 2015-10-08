@@ -131,6 +131,7 @@ import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.CreateTableReques
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.GetTableDescriptorsResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.MasterService;
 import org.apache.hadoop.hbase.protobuf.generated.QuotaProtos;
+import org.apache.hadoop.hbase.protobuf.generated.RPCProtos;
 import org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.RegionServerReportRequest;
 import org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.RegionServerStartupRequest;
 import org.apache.hadoop.hbase.protobuf.generated.WALProtos.CompactionDescriptor;
@@ -151,6 +152,7 @@ import org.apache.hadoop.hbase.util.DynamicClassLoader;
 import org.apache.hadoop.hbase.util.ExceptionUtil;
 import org.apache.hadoop.hbase.util.Methods;
 import org.apache.hadoop.hbase.util.Pair;
+import org.apache.hadoop.hbase.util.VersionInfo;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.ipc.RemoteException;
 import org.apache.hadoop.security.token.Token;
@@ -3069,5 +3071,21 @@ public final class ProtobufUtil {
     if (append > 0) detail.put("Append", append);
     if (increment > 0) detail.put("Increment", increment);
     return detail;
+  }
+
+  /**
+   * Get a protocol buffer VersionInfo
+   *
+   * @return the converted protocol buffer VersionInfo
+   */
+  public static RPCProtos.VersionInfo getVersionInfo() {
+    RPCProtos.VersionInfo.Builder builder = RPCProtos.VersionInfo.newBuilder();
+    builder.setVersion(VersionInfo.getVersion());
+    builder.setUrl(VersionInfo.getUrl());
+    builder.setRevision(VersionInfo.getRevision());
+    builder.setUser(VersionInfo.getUser());
+    builder.setDate(VersionInfo.getDate());
+    builder.setSrcChecksum(VersionInfo.getSrcChecksum());
+    return builder.build();
   }
 }
