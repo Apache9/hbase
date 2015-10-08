@@ -684,6 +684,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     // Put up the webui. Webui may come up on port other than configured if
     // that port is occupied. Adjust serverInfo if this is the case.
     this.rsInfo.setInfoPort(putUpWebUI());
+    this.rsInfo.setVersionInfo(ProtobufUtil.getVersionInfo());
   }
 
   public static String getHostname(Configuration conf) throws UnknownHostException {
