@@ -4373,6 +4373,7 @@ public class HRegion implements HeapSize { // , Writable{
           if ((isEmptyRow || ret == FilterWrapper.FilterRowRetCode.EXCLUDE) || filterRow()) {
             results.clear();
             status = nextRow(currentRow, offset, length);
+            rawCount += status.getRawValueScanned();
             if (!status.hasNext() || rawLimit > 0 && rawCount >= rawLimit) {
               return new ScannerStatus(status.hasNext(), status.next(), rawCount);
             }
