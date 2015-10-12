@@ -456,11 +456,13 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
                 return ScannerStatus.done(rawCount);
               }
               seekToNextRow(kv);
+              ++rawCount;
               if (rawLimit > 0 && rawCount >= rawLimit) {
                 return ScannerStatus.continued(this.heap.peek(), rawCount);
               }
             } else if (qcode == ScanQueryMatcher.MatchCode.INCLUDE_AND_SEEK_NEXT_COL) {
               seekAsDirection(matcher.getKeyForNextColumn(kv));
+              ++rawCount;
             } else {
               this.heap.next();
               ++rawCount;
@@ -481,7 +483,6 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
             return ScannerStatus.done(rawCount);
 
           case SEEK_NEXT_ROW:
-            ++rawCount;
             // This is just a relatively simple end of scan fix, to short-cut end
             // us if there is an endKey in the scan.
             if (!matcher.moreRowsMayExistAfter(kv)) {
@@ -489,14 +490,15 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
             }
 
             seekToNextRow(kv);
+            ++rawCount;
             if (rawLimit > 0 && rawCount >= rawLimit) {
               return ScannerStatus.continued(this.heap.peek(), rawCount);
             }
             break;
 
           case SEEK_NEXT_COL:
-            ++rawCount;
             seekAsDirection(matcher.getKeyForNextColumn(kv));
+            ++rawCount;
             break;
 
           case SKIP:
@@ -508,6 +510,7 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
             KeyValue nextKV = matcher.getNextKeyHint(kv);
             if (nextKV != null) {
               seekAsDirection(nextKV);
+              ++rawCount;
             } else {
               heap.next();
               ++rawCount;

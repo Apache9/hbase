@@ -6214,6 +6214,26 @@ public class TestFromClientSide {
     assertNull(result);
     scanner.close();
 
+    // test raw count with seeks
+    scan = new Scan(ROWS[0]);
+    scan.addColumn(FAMILY, QUALIFIERS[0]); // set qualifier
+    scan.setRawLimit(1);
+    scanner = table.getScanner(scan);
+    result = scanner.next();
+    assertTrue(result.isFake());
+    result = scanner.next();
+    assertTrue(result.isFake());
+    result = scanner.next();
+    assertFalse(result.isFake());
+    assertEquals(1, result.size());
+    result = scanner.next();
+    assertTrue(result.isFake());
+    result = scanner.next();
+    assertEquals(1, result.size());
+    result = scanner.next();
+    assertNull(result);
+    scanner.close();
+
     // test row filter
     scan = new Scan(ROWS[0]);
     scan.setFilter(new RowFilter(CompareOp.GREATER, new BinaryComparator(ROWS[2])));
