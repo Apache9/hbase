@@ -86,6 +86,7 @@ message ConnectionHeader {
   // Compressor we will use if cell block is compressed.  Server will throw exception if not supported.
   // Class must implement hadoop's CompressionCodec Interface.  Can't compress if no codec.
   optional string cell_block_compressor_class = 4;
+  optional VersionInfo version_info = 5;
 }
 
 // Optional Cell block Message.  Included in client RequestHeader

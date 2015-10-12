@@ -304,6 +304,7 @@ public final class Canary implements Tool {
     this.admin = new HBaseAdmin(conf);
     this.connection = HConnectionManager.createConnection(conf);
     this.sink = new StdOutSink();
+    this.cachedTasks = new ConcurrentHashMap<String, List<RegionTask>>();
   }
   
   public void close() throws Exception {

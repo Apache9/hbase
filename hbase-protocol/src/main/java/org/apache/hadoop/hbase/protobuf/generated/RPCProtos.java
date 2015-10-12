@@ -789,6 +789,20 @@ public final class RPCProtos {
      */
     com.google.protobuf.ByteString
         getCellBlockCompressorClassBytes();
+
+    // optional .VersionInfo version_info = 5;
+    /**
+     * <code>optional .VersionInfo version_info = 5;</code>
+     */
+    boolean hasVersionInfo();
+    /**
+     * <code>optional .VersionInfo version_info = 5;</code>
+     */
+    org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.VersionInfo getVersionInfo();
+    /**
+     * <code>optional .VersionInfo version_info = 5;</code>
+     */
+    org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.VersionInfoOrBuilder getVersionInfoOrBuilder();
   }
   /**
    * Protobuf type {@code ConnectionHeader}
@@ -871,6 +885,19 @@ public final class RPCProtos {
             case 34: {
               bitField0_ |= 0x00000008;
               cellBlockCompressorClass_ = input.readBytes();
+              break;
+            }
+            case 42: {
+              org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.VersionInfo.Builder subBuilder = null;
+              if (((bitField0_ & 0x00000010) == 0x00000010)) {
+                subBuilder = versionInfo_.toBuilder();
+              }
+              versionInfo_ = input.readMessage(org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.VersionInfo.PARSER, extensionRegistry);
+              if (subBuilder != null) {
+                subBuilder.mergeFrom(versionInfo_);
+                versionInfo_ = subBuilder.buildPartial();
+              }
+              bitField0_ |= 0x00000010;
               break;
             }
           }
@@ -1094,11 +1121,34 @@ public final class RPCProtos {
       }
     }
 
+    // optional .VersionInfo version_info = 5;
+    public static final int VERSION_INFO_FIELD_NUMBER = 5;
+    private org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.VersionInfo versionInfo_;
+    /**
+     * <code>optional .VersionInfo version_info = 5;</code>
+     */
+    public boolean hasVersionInfo() {
+      return ((bitField0_ & 0x00000010) == 0x00000010);
+    }
+    /**
+     * <code>optional .VersionInfo version_info = 5;</code>
+     */
+    public org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.VersionInfo getVersionInfo() {
+      return versionInfo_;
+    }
+    /**
+     * <code>optional .VersionInfo version_info = 5;</code>
+     */
+    public org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.VersionInfoOrBuilder getVersionInfoOrBuilder() {
+      return versionInfo_;
+    }
+
     private void initFields() {
       userInfo_ = org.apache.hadoop.hbase.protobuf.generated.RPCProtos.UserInformation.getDefaultInstance();
       serviceName_ = "";
       cellBlockCodecClass_ = "";
       cellBlockCompressorClass_ = "";
+      versionInfo_ = org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.VersionInfo.getDefaultInstance();
     }
     private byte memoizedIsInitialized = -1;
     public final boolean isInitialized() {
@@ -1107,6 +1157,12 @@ public final class RPCProtos {
 
       if (hasUserInfo()) {
         if (!getUserInfo().isInitialized()) {
+          memoizedIsInitialized = 0;
+          return false;
+        }
+      }
+      if (hasVersionInfo()) {
+        if (!getVersionInfo().isInitialized()) {
           memoizedIsInitialized = 0;
           return false;
         }
@@ -1129,6 +1185,9 @@ public final class RPCProtos {
       }
       if (((bitField0_ & 0x00000008) == 0x00000008)) {
         output.writeBytes(4, getCellBlockCompressorClassBytes());
+      }
+      if (((bitField0_ & 0x00000010) == 0x00000010)) {
+        output.writeMessage(5, versionInfo_);
       }
       getUnknownFields().writeTo(output);
     }
@@ -1154,6 +1213,10 @@ public final class RPCProtos {
       if (((bitField0_ & 0x00000008) == 0x00000008)) {
         size += com.google.protobuf.CodedOutputStream
           .computeBytesSize(4, getCellBlockCompressorClassBytes());
+      }
+      if (((bitField0_ & 0x00000010) == 0x00000010)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeMessageSize(5, versionInfo_);
       }
       size += getUnknownFields().getSerializedSize();
       memoizedSerializedSize = size;
@@ -1198,6 +1261,11 @@ public final class RPCProtos {
         result = result && getCellBlockCompressorClass()
             .equals(other.getCellBlockCompressorClass());
       }
+      result = result && (hasVersionInfo() == other.hasVersionInfo());
+      if (hasVersionInfo()) {
+        result = result && getVersionInfo()
+            .equals(other.getVersionInfo());
+      }
       result = result &&
           getUnknownFields().equals(other.getUnknownFields());
       return result;
@@ -1226,6 +1294,10 @@ public final class RPCProtos {
       if (hasCellBlockCompressorClass()) {
         hash = (37 * hash) + CELL_BLOCK_COMPRESSOR_CLASS_FIELD_NUMBER;
         hash = (53 * hash) + getCellBlockCompressorClass().hashCode();
+      }
+      if (hasVersionInfo()) {
+        hash = (37 * hash) + VERSION_INFO_FIELD_NUMBER;
+        hash = (53 * hash) + getVersionInfo().hashCode();
       }
       hash = (29 * hash) + getUnknownFields().hashCode();
       memoizedHashCode = hash;
@@ -1333,6 +1405,7 @@ public final class RPCProtos {
       private void maybeForceBuilderInitialization() {
         if (com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders) {
           getUserInfoFieldBuilder();
+          getVersionInfoFieldBuilder();
         }
       }
       private static Builder create() {
@@ -1353,6 +1426,12 @@ public final class RPCProtos {
         bitField0_ = (bitField0_ & ~0x00000004);
         cellBlockCompressorClass_ = "";
         bitField0_ = (bitField0_ & ~0x00000008);
+        if (versionInfoBuilder_ == null) {
+          versionInfo_ = org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.VersionInfo.getDefaultInstance();
+        } else {
+          versionInfoBuilder_.clear();
+        }
+        bitField0_ = (bitField0_ & ~0x00000010);
         return this;
       }
 
@@ -1401,6 +1480,14 @@ public final class RPCProtos {
           to_bitField0_ |= 0x00000008;
         }
         result.cellBlockCompressorClass_ = cellBlockCompressorClass_;
+        if (((from_bitField0_ & 0x00000010) == 0x00000010)) {
+          to_bitField0_ |= 0x00000010;
+        }
+        if (versionInfoBuilder_ == null) {
+          result.versionInfo_ = versionInfo_;
+        } else {
+          result.versionInfo_ = versionInfoBuilder_.build();
+        }
         result.bitField0_ = to_bitField0_;
         onBuilt();
         return result;
@@ -1435,6 +1522,9 @@ public final class RPCProtos {
           cellBlockCompressorClass_ = other.cellBlockCompressorClass_;
           onChanged();
         }
+        if (other.hasVersionInfo()) {
+          mergeVersionInfo(other.getVersionInfo());
+        }
         this.mergeUnknownFields(other.getUnknownFields());
         return this;
       }
@@ -1442,6 +1532,12 @@ public final class RPCProtos {
       public final boolean isInitialized() {
         if (hasUserInfo()) {
           if (!getUserInfo().isInitialized()) {
+            
+            return false;
+          }
+        }
+        if (hasVersionInfo()) {
+          if (!getVersionInfo().isInitialized()) {
             
             return false;
           }
@@ -1865,6 +1961,123 @@ public final class RPCProtos {
         cellBlockCompressorClass_ = value;
         onChanged();
         return this;
+      }
+
+      // optional .VersionInfo version_info = 5;
+      private org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.VersionInfo versionInfo_ = org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.VersionInfo.getDefaultInstance();
+      private com.google.protobuf.SingleFieldBuilder<
+          org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.VersionInfo, org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.VersionInfo.Builder, org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.VersionInfoOrBuilder> versionInfoBuilder_;
+      /**
+       * <code>optional .VersionInfo version_info = 5;</code>
+       */
+      public boolean hasVersionInfo() {
+        return ((bitField0_ & 0x00000010) == 0x00000010);
+      }
+      /**
+       * <code>optional .VersionInfo version_info = 5;</code>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.VersionInfo getVersionInfo() {
+        if (versionInfoBuilder_ == null) {
+          return versionInfo_;
+        } else {
+          return versionInfoBuilder_.getMessage();
+        }
+      }
+      /**
+       * <code>optional .VersionInfo version_info = 5;</code>
+       */
+      public Builder setVersionInfo(org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.VersionInfo value) {
+        if (versionInfoBuilder_ == null) {
+          if (value == null) {
+            throw new NullPointerException();
+          }
+          versionInfo_ = value;
+          onChanged();
+        } else {
+          versionInfoBuilder_.setMessage(value);
+        }
+        bitField0_ |= 0x00000010;
+        return this;
+      }
+      /**
+       * <code>optional .VersionInfo version_info = 5;</code>
+       */
+      public Builder setVersionInfo(
+          org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.VersionInfo.Builder builderForValue) {
+        if (versionInfoBuilder_ == null) {
+          versionInfo_ = builderForValue.build();
+          onChanged();
+        } else {
+          versionInfoBuilder_.setMessage(builderForValue.build());
+        }
+        bitField0_ |= 0x00000010;
+        return this;
+      }
+      /**
+       * <code>optional .VersionInfo version_info = 5;</code>
+       */
+      public Builder mergeVersionInfo(org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.VersionInfo value) {
+        if (versionInfoBuilder_ == null) {
+          if (((bitField0_ & 0x00000010) == 0x00000010) &&
+              versionInfo_ != org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.VersionInfo.getDefaultInstance()) {
+            versionInfo_ =
+              org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.VersionInfo.newBuilder(versionInfo_).mergeFrom(value).buildPartial();
+          } else {
+            versionInfo_ = value;
+          }
+          onChanged();
+        } else {
+          versionInfoBuilder_.mergeFrom(value);
+        }
+        bitField0_ |= 0x00000010;
+        return this;
+      }
+      /**
+       * <code>optional .VersionInfo version_info = 5;</code>
+       */
+      public Builder clearVersionInfo() {
+        if (versionInfoBuilder_ == null) {
+          versionInfo_ = org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.VersionInfo.getDefaultInstance();
+          onChanged();
+        } else {
+          versionInfoBuilder_.clear();
+        }
+        bitField0_ = (bitField0_ & ~0x00000010);
+        return this;
+      }
+      /**
+       * <code>optional .VersionInfo version_info = 5;</code>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.VersionInfo.Builder getVersionInfoBuilder() {
+        bitField0_ |= 0x00000010;
+        onChanged();
+        return getVersionInfoFieldBuilder().getBuilder();
+      }
+      /**
+       * <code>optional .VersionInfo version_info = 5;</code>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.VersionInfoOrBuilder getVersionInfoOrBuilder() {
+        if (versionInfoBuilder_ != null) {
+          return versionInfoBuilder_.getMessageOrBuilder();
+        } else {
+          return versionInfo_;
+        }
+      }
+      /**
+       * <code>optional .VersionInfo version_info = 5;</code>
+       */
+      private com.google.protobuf.SingleFieldBuilder<
+          org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.VersionInfo, org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.VersionInfo.Builder, org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.VersionInfoOrBuilder> 
+          getVersionInfoFieldBuilder() {
+        if (versionInfoBuilder_ == null) {
+          versionInfoBuilder_ = new com.google.protobuf.SingleFieldBuilder<
+              org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.VersionInfo, org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.VersionInfo.Builder, org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.VersionInfoOrBuilder>(
+                  versionInfo_,
+                  getParentForChildren(),
+                  isClean());
+          versionInfo_ = null;
+        }
+        return versionInfoBuilder_;
       }
 
       // @@protoc_insertion_point(builder_scope:ConnectionHeader)
@@ -5919,23 +6132,24 @@ public final class RPCProtos {
     java.lang.String[] descriptorData = {
       "\n\tRPC.proto\032\rTracing.proto\032\013HBase.proto\"" +
       "<\n\017UserInformation\022\026\n\016effective_user\030\001 \002" +
-      "(\t\022\021\n\treal_user\030\002 \001(\t\"\222\001\n\020ConnectionHead" +
+      "(\t\022\021\n\treal_user\030\002 \001(\t\"\266\001\n\020ConnectionHead" +
       "er\022#\n\tuser_info\030\001 \001(\0132\020.UserInformation\022" +
       "\024\n\014service_name\030\002 \001(\t\022\036\n\026cell_block_code" +
       "c_class\030\003 \001(\t\022#\n\033cell_block_compressor_c" +
-      "lass\030\004 \001(\t\"\037\n\rCellBlockMeta\022\016\n\006length\030\001 " +
-      "\001(\r\"|\n\021ExceptionResponse\022\034\n\024exception_cl" +
-      "ass_name\030\001 \001(\t\022\023\n\013stack_trace\030\002 \001(\t\022\020\n\010h" +
-      "ostname\030\003 \001(\t\022\014\n\004port\030\004 \001(\005\022\024\n\014do_not_re",
-      "try\030\005 \001(\010\"\246\001\n\rRequestHeader\022\017\n\007call_id\030\001" +
-      " \001(\r\022\035\n\ntrace_info\030\002 \001(\0132\t.RPCTInfo\022\023\n\013m" +
-      "ethod_name\030\003 \001(\t\022\025\n\rrequest_param\030\004 \001(\010\022" +
-      "\'\n\017cell_block_meta\030\005 \001(\0132\016.CellBlockMeta" +
-      "\022\020\n\010priority\030\006 \001(\r\"q\n\016ResponseHeader\022\017\n\007" +
-      "call_id\030\001 \001(\r\022%\n\texception\030\002 \001(\0132\022.Excep" +
-      "tionResponse\022\'\n\017cell_block_meta\030\003 \001(\0132\016." +
-      "CellBlockMetaB<\n*org.apache.hadoop.hbase" +
-      ".protobuf.generatedB\tRPCProtosH\001\240\001\001"
+      "lass\030\004 \001(\t\022\"\n\014version_info\030\005 \001(\0132\014.Versi" +
+      "onInfo\"\037\n\rCellBlockMeta\022\016\n\006length\030\001 \001(\r\"" +
+      "|\n\021ExceptionResponse\022\034\n\024exception_class_" +
+      "name\030\001 \001(\t\022\023\n\013stack_trace\030\002 \001(\t\022\020\n\010hostn",
+      "ame\030\003 \001(\t\022\014\n\004port\030\004 \001(\005\022\024\n\014do_not_retry\030" +
+      "\005 \001(\010\"\246\001\n\rRequestHeader\022\017\n\007call_id\030\001 \001(\r" +
+      "\022\035\n\ntrace_info\030\002 \001(\0132\t.RPCTInfo\022\023\n\013metho" +
+      "d_name\030\003 \001(\t\022\025\n\rrequest_param\030\004 \001(\010\022\'\n\017c" +
+      "ell_block_meta\030\005 \001(\0132\016.CellBlockMeta\022\020\n\010" +
+      "priority\030\006 \001(\r\"q\n\016ResponseHeader\022\017\n\007call" +
+      "_id\030\001 \001(\r\022%\n\texception\030\002 \001(\0132\022.Exception" +
+      "Response\022\'\n\017cell_block_meta\030\003 \001(\0132\016.Cell" +
+      "BlockMetaB<\n*org.apache.hadoop.hbase.pro" +
+      "tobuf.generatedB\tRPCProtosH\001\240\001\001"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
       new com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner() {
@@ -5953,7 +6167,7 @@ public final class RPCProtos {
           internal_static_ConnectionHeader_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_ConnectionHeader_descriptor,
-              new java.lang.String[] { "UserInfo", "ServiceName", "CellBlockCodecClass", "CellBlockCompressorClass", });
+              new java.lang.String[] { "UserInfo", "ServiceName", "CellBlockCodecClass", "CellBlockCompressorClass", "VersionInfo", });
           internal_static_CellBlockMeta_descriptor =
             getDescriptor().getMessageTypes().get(2);
           internal_static_CellBlockMeta_fieldAccessorTable = new

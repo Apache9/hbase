@@ -39,6 +39,7 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.mortbay.log.Log;
 
 import com.google.common.collect.Multimap;
 
@@ -88,10 +89,16 @@ public class TestHTraceHooks {
     TraceTree traceTree = new TraceTree(spans);
     Collection<Span> roots = traceTree.getSpansByParent().find(Span.ROOT_SPAN_ID);
 
-    assertEquals(1, roots.size());
-    Span createTableRoot = roots.iterator().next();
-
-    assertEquals("creating table", createTableRoot.getDescription());
+    // async hlog may add new root span, meta table mutation will write to wal
+    assertTrue(roots.size() >= 1);
+    Span createTableRoot = null;
+    for (Span span : roots) {
+      if (span.getDescription().equals("creating table")) {
+        createTableRoot = span;
+        break;
+      }
+    }
+    assertNotNull(createTableRoot);
 
     int createTableCount = 0;
 
@@ -119,7 +126,7 @@ public class TestHTraceHooks {
     traceTree = new TraceTree(spans);
     roots = traceTree.getSpansByParent().find(Span.ROOT_SPAN_ID);
 
-    assertEquals(2, roots.size());
+    assertTrue(roots.size() >= 2);
     Span putRoot = null;
     for (Span root : roots) {
       if (root.getDescription().equals("doing put")) {

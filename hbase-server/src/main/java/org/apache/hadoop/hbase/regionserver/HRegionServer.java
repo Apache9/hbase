@@ -684,6 +684,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     // Put up the webui. Webui may come up on port other than configured if
     // that port is occupied. Adjust serverInfo if this is the case.
     this.rsInfo.setInfoPort(putUpWebUI());
+    this.rsInfo.setVersionInfo(ProtobufUtil.getVersionInfo());
   }
 
   public static String getHostname(Configuration conf) throws UnknownHostException {
@@ -2121,13 +2122,14 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
 
   /**
    * Get the current master from ZooKeeper and open the RPC connection to it.
-   *
+   * To get a fresh connection, the current rssStub must be null.
    * Method will block until a master is available. You can break from this
    * block by requesting the server stop.
    *
    * @return master + port, or null if server has been stopped
    */
-  private synchronized ServerName
+  @VisibleForTesting
+  protected synchronized ServerName
   createRegionServerStatusStub() {
     if (rssStub != null) {
       return masterAddressTracker.getMasterAddress();
@@ -2222,6 +2224,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
         LOG.debug("Master is not running yet");
       } else {
         LOG.warn("error telling master we are up", se);
+        rssStub = null;
       }
     }
     return result;
@@ -3390,9 +3393,14 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
                     break;
                   }
                   // Collect values to be returned here
-                  ScannerStatus status =
-                      scanner.nextRaw(values, -1, rawLimit - rawCount);
-                  rawCount += status.getRawValueScanned();
+                  ScannerStatus status;
+                  if (rawLimit <= 0) {
+                    status = scanner.nextRaw(values);
+                  } else {
+                    // set batch to -1 to fetch a full row
+                    status = scanner.nextRaw(values, -1, rawLimit - rawCount);
+                    rawCount += status.getRawValueScanned();
+                  }
                   if (!values.isEmpty()) {
                     for (Cell cell : values) {
                       KeyValue kv = KeyValueUtil.ensureKeyValue(cell);
