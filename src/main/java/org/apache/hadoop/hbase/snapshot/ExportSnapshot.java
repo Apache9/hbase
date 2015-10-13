@@ -682,9 +682,25 @@ public final class ExportSnapshot extends Configured implements Tool {
     FileSystem inputFs = FileSystem.get(inputRoot.toUri(), conf);
     FileSystem outputFs = FileSystem.get(outputRoot.toUri(), createOutputFsConf(conf));
 
+    if (filesUser == null || filesUser.length() == 0) {
+      filesUser = outputFs.getFileStatus(outputRoot).getOwner();
+    }
+
+    if (filesGroup == null || filesGroup.length() == 0) {
+      filesGroup = outputFs.getFileStatus(outputRoot).getGroup();
+    }
+
     Path snapshotDir = SnapshotDescriptionUtils.getCompletedSnapshotDir(snapshotName, inputRoot);
     Path snapshotTmpDir = SnapshotDescriptionUtils.getWorkingSnapshotDir(snapshotName, outputRoot);
     Path outputSnapshotDir = SnapshotDescriptionUtils.getCompletedSnapshotDir(snapshotName, outputRoot);
+
+    Path needSetOwnerDir = SnapshotDescriptionUtils.getSnapshotRootDir(outputRoot);
+    if (outputFs.exists(needSetOwnerDir)) {
+      needSetOwnerDir = SnapshotDescriptionUtils.getWorkingSnapshotDir(outputRoot);
+      if (outputFs.exists(needSetOwnerDir)) {
+        needSetOwnerDir = snapshotTmpDir;
+      }
+    }
 
     // Check if the snapshot already exists
     if (outputFs.exists(outputSnapshotDir)) {
@@ -709,14 +725,15 @@ public final class ExportSnapshot extends Configured implements Tool {
     // will remove them because they are unreferenced.
     try {
       FileUtil.copy(inputFs, snapshotDir, outputFs, snapshotTmpDir, false, false, conf);
-      if (filesUser != null || filesGroup != null) {
-        setOwner(outputFs, snapshotTmpDir, filesUser, filesGroup, true);
-      }
     } catch (IOException e) {
       System.err.println("Failed to copy the snapshot directory: from=" + snapshotDir +
         " to=" + snapshotTmpDir);
       e.printStackTrace(System.err);
       return 1;
+    } finally {
+      if (filesUser != null || filesGroup != null) {
+        setOwner(outputFs, needSetOwnerDir, filesUser, filesGroup, true);
+      }
     }
 
     // Step 2 - Start MR Job to copy files
