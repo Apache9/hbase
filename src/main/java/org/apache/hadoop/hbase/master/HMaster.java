@@ -76,6 +76,7 @@ import org.apache.hadoop.hbase.client.MetaScanner;
 import org.apache.hadoop.hbase.client.MetaScanner.MetaScannerVisitor;
 import org.apache.hadoop.hbase.client.MetaScanner.MetaScannerVisitorBase;
 import org.apache.hadoop.hbase.client.Result;
+import org.apache.hadoop.hbase.client.UnmodifyableHTableDescriptor;
 import org.apache.hadoop.hbase.client.coprocessor.Exec;
 import org.apache.hadoop.hbase.client.coprocessor.ExecResult;
 import org.apache.hadoop.hbase.conf.ConfigurationManager;
@@ -1460,7 +1461,9 @@ Server {
       throw new MasterNotRunningException();
     }
 
-    if (ignoreSplitsWhenCreatingTable) {
+    // truncate table will pass UnmodifyableHTableDescriptor to server-side
+    if (!(hTableDescriptor instanceof UnmodifyableHTableDescriptor)
+        && ignoreSplitsWhenCreatingTable) {
       boolean isSalted = hTableDescriptor.isSalted();
       if (isSalted) {
         hTableDescriptor.setSlotsCount(1);

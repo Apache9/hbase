@@ -407,6 +407,22 @@ public class TestAdmin {
     Assert.assertEquals(1, table.getTableDescriptor().getSlotsCount().intValue());
     table.close();
     
+    // test UnmodifyableHTableDescriptor
+    desc = new HTableDescriptor(Bytes.toBytes("testCreateUnmodifyTable_IgnoreSplits"));
+    column = new HColumnDescriptor(Bytes.toBytes("C"));
+    desc.addFamily(column);
+    // test normal table ignore splits
+    splits = new byte[][]{Bytes.toBytes("aa"), Bytes.toBytes("bb")};
+    admin.createTable(desc, splits);
+    table = new HTable(admin.getConfiguration(), desc.getName());
+    desc = table.getTableDescriptor();
+    Assert.assertTrue((desc instanceof UnmodifyableHTableDescriptor));
+    admin.disableTable(desc.getName());
+    admin.deleteTable(desc.getName());
+    // make sure the UnmodifyableHTableDescriptor will succeed
+    admin.createTable(desc);
+    table.close();
+    
     TEST_UTIL.getConfiguration().setBoolean(HConstants.IGNORE_SPLITS_WHEN_CREATE_TABLE, false);
     // restart cluster with default options
     tearDown();
