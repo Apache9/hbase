@@ -665,6 +665,9 @@ public class StochasticLoadBalancer extends DefaultLoadBalancer {
     }
     
     protected String serverStats(ServerName[] servers, double[] stats) {
+      if (servers == null || stats == null) {
+        return "";
+      }
       StringBuilder builder = new StringBuilder();
       builder.append(this.getClass().getSimpleName());
       builder.append(" :\n");
