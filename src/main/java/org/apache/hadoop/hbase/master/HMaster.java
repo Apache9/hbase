@@ -1120,7 +1120,11 @@ Server {
     Chore chore = new Chore(name, balancerPeriod, master) {
       @Override
       protected void chore() {
-        master.balance();
+        try {
+          master.balance();
+        } catch(IOException ioe) {
+          LOG.error("Error while invoking master balance", ioe);
+        }
       }
     };
     return Threads.setDaemonThreadRunning(chore.getThread());
@@ -1241,12 +1245,12 @@ Server {
   }
 
   @Override
-  public boolean balance() {
+  public boolean balance() throws IOException {
     return balance(null);
   }
   
   @Override
-  public boolean balance(final byte[] tableName) {
+  public boolean balance(final byte[] tableName) throws IOException {
     // if master not initialized, don't run balancer.
     if (!this.initialized) {
       LOG.debug("Master has not been initialized, don't run balancer.");
@@ -1281,15 +1285,7 @@ Server {
       }
 
       if (this.cpHost != null) {
-        try {
-          if (this.cpHost.preBalance()) {
-            LOG.debug("Coprocessor bypassing balancer request");
-            return false;
-          }
-        } catch (IOException ioe) {
-          LOG.error("Error invoking master coprocessor preBalance()", ioe);
-          return false;
-        }
+        this.cpHost.preBalance();
       }
       
       this.balancer.setClusterStatus(getClusterStatus());
@@ -1369,7 +1365,7 @@ Server {
    * @param mode BalanceSwitchMode
    * @return old balancer switch
    */
-  public boolean switchBalancer(final boolean b, BalanceSwitchMode mode) {
+  public boolean switchBalancer(final boolean b, BalanceSwitchMode mode) throws IOException {
     boolean oldValue = this.clusterSwitches.getBalanceSwitch();
     boolean newValue = b;
     try {
@@ -1391,17 +1387,18 @@ Server {
       }
     } catch (IOException ioe) {
       LOG.warn("Error flipping balance switch", ioe);
+      throw ioe;
     }
     return oldValue;
   }
   
   @Override
-  public boolean synchronousBalanceSwitch(final boolean b) {
+  public boolean synchronousBalanceSwitch(final boolean b) throws IOException {
     return switchBalancer(b, BalanceSwitchMode.SYNC);
   }
 
   @Override
-  public boolean balanceSwitch(final boolean b) {
+  public boolean balanceSwitch(final boolean b) throws IOException {
     return switchBalancer(b, BalanceSwitchMode.ASYNC);
   }
 
