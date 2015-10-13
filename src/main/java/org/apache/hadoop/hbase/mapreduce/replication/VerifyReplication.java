@@ -593,12 +593,12 @@ public class VerifyReplication  extends Configured implements Tool {
       System.err.println("ERROR: " + errorMsg);
     }
     System.err.println("Usage: verifyrep [--starttime=X]" +
-        " [--stoptime=Y] [--families=A] <peerid> <tablename>");
+        " [--endtime=Y] [--families=A] <peerid> <tablename>");
     System.err.println();
     System.err.println("Options:");
     System.err.println(" starttime    beginning of the time range");
     System.err.println("              without endtime means from starttime to forever");
-    System.err.println(" stoptime     end of the time range");
+    System.err.println(" endtime      end of the time range");
     System.err.println(" startrow     beginning of row");
     System.err.println(" stoprow      end of the row");
     System.err.println(" families     comma-separated list of families to copy");
@@ -619,7 +619,7 @@ public class VerifyReplication  extends Configured implements Tool {
     System.err.println(" To verify the data replicated from TestTable for a 1 hour window with peer #5 ");
     System.err.println(" $ bin/hbase " +
         "org.apache.hadoop.hbase.mapreduce.replication.VerifyReplication" +
-        " --starttime=1265875194289 --stoptime=1265878794289 5 TestTable ");
+        " --starttime=1265875194289 --endtime=1265878794289 5 TestTable ");
   }
 
   /**
