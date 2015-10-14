@@ -682,14 +682,6 @@ public final class ExportSnapshot extends Configured implements Tool {
     FileSystem inputFs = FileSystem.get(inputRoot.toUri(), conf);
     FileSystem outputFs = FileSystem.get(outputRoot.toUri(), createOutputFsConf(conf));
 
-    if (filesUser == null || filesUser.length() == 0) {
-      filesUser = outputFs.getFileStatus(outputRoot).getOwner();
-    }
-
-    if (filesGroup == null || filesGroup.length() == 0) {
-      filesGroup = outputFs.getFileStatus(outputRoot).getGroup();
-    }
-
     Path snapshotDir = SnapshotDescriptionUtils.getCompletedSnapshotDir(snapshotName, inputRoot);
     Path snapshotTmpDir = SnapshotDescriptionUtils.getWorkingSnapshotDir(snapshotName, outputRoot);
     Path outputSnapshotDir = SnapshotDescriptionUtils.getCompletedSnapshotDir(snapshotName, outputRoot);
@@ -731,6 +723,13 @@ public final class ExportSnapshot extends Configured implements Tool {
       e.printStackTrace(System.err);
       return 1;
     } finally {
+      if (filesUser == null || filesUser.length() == 0) {
+        filesUser = outputFs.getFileStatus(outputRoot).getOwner();
+      }
+      if (filesGroup == null || filesGroup.length() == 0) {
+        filesGroup = outputFs.getFileStatus(outputRoot).getGroup();
+      }
+
       if (filesUser != null || filesGroup != null) {
         setOwner(outputFs, needSetOwnerDir, filesUser, filesGroup, true);
       }
