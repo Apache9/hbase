@@ -50,6 +50,8 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.HBaseFileSystem;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HConstants;
+import org.apache.hadoop.hbase.HDFSBlocksDistribution;
+import org.apache.hadoop.hbase.HDFSBlocksDistribution.HostAndWeight;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.KeyValue.KVComparator;
@@ -2503,6 +2505,15 @@ public class Store extends SchemaConfigured implements HeapSize {
   
   public boolean hasTooManyStoreFiles() {
     return getStorefilesCount() > this.blockingFileCount;
+  }
+
+  public HDFSBlocksDistribution getHDFSBlocksDistribution() {
+    HDFSBlocksDistribution hdfsBlocksDistribution = new HDFSBlocksDistribution();
+    for (StoreFile sf : this.getStorefiles()) {
+      HDFSBlocksDistribution storeFileBlocksDistribution = sf.getHDFSBlockDistribution();
+      hdfsBlocksDistribution.add(storeFileBlocksDistribution);
+    }
+    return hdfsBlocksDistribution;
   }
 
   /**

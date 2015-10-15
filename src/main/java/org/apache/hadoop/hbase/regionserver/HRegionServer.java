@@ -322,6 +322,11 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
    */
   Chore hlogCompactor;
 
+  /**
+   * region compactor
+   */
+  Chore regionCompactor;
+
   /*
    * Check for flushes
    */
@@ -1856,6 +1861,12 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
 
     this.hlogCompactor = new HLogCompactor(this, this.threadWakeFrequency);
 
+    int compactorPeriod = conf.getInt(RegionCompactor.REGION_ATUO_COMPACT_PERIOD,
+      RegionCompactor.DEFAULT_REGION_ATUO_COMPACT_PERIOD);
+    this.regionCompactor = new RegionCompactor(this, compactorPeriod);
+
+    Threads.setDaemonThreadRunning(this.regionCompactor.getThread(), n +
+      ".regionCompactor", uncaughtExceptionHandler);
     Threads.setDaemonThreadRunning(this.compactionChecker.getThread(), n +
       ".compactionChecker", uncaughtExceptionHandler);
     Threads.setDaemonThreadRunning(this.hlogCompactor.getThread(), n +
@@ -1938,7 +1949,8 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
         && cacheFlusher.isAlive() && hlogRoller.isAlive()
         && this.compactionChecker.isAlive()
         && this.hlogCompactor.isAlive()
-        && this.periodicFlusher.isAlive())) {
+        && this.periodicFlusher.isAlive()
+        && this.regionCompactor.isAlive())) {
       stop("One or more threads are no longer alive -- stop");
       return false;
     }
@@ -2119,6 +2131,9 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
     this.cacheFlusher.join();
     if (hlogCompactor != null) {
       Threads.shutdown(this.hlogCompactor.getThread());
+    }
+    if (regionCompactor != null) {
+      Threads.shutdown(this.regionCompactor.getThread());
     }
     if (this.healthCheckChore != null) {
       Threads.shutdown(this.healthCheckChore.getThread());
