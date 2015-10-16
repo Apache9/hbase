@@ -34,7 +34,7 @@ import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import com.google.common.annotations.VisibleForTesting;
 
 public class RegionCompactor extends Chore {
-  private final static Log LOG = LogFactory.getLog(HLogCompactor.class);
+  private final static Log LOG = LogFactory.getLog(RegionCompactor.class);
 
   public final static String REGION_ATUO_COMPACT_ENABLE = "hbase.region.auto.compact.enable";
 
