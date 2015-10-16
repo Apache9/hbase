@@ -18,15 +18,6 @@
  */
 package org.apache.hadoop.hbase.client;
 
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -58,7 +49,6 @@ import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HRegionLocation;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.KeyValue;
-import org.apache.hadoop.hbase.testclassification.LargeTests;
 import org.apache.hadoop.hbase.MiniHBaseCluster;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.TableName;
@@ -68,7 +58,6 @@ import org.apache.hadoop.hbase.client.metrics.ScanMetrics;
 import org.apache.hadoop.hbase.coprocessor.CoprocessorHost;
 import org.apache.hadoop.hbase.coprocessor.MultiRowMutationEndpoint;
 import org.apache.hadoop.hbase.filter.BinaryComparator;
-import org.apache.hadoop.hbase.filter.CompareFilter;
 import org.apache.hadoop.hbase.filter.CompareFilter.CompareOp;
 import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.filter.FilterList;
@@ -87,12 +76,13 @@ import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.MutationProto;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.MutationProto.MutationType;
-import org.apache.hadoop.hbase.protobuf.generated.MultiRowMutationProtos.MutateRowsRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MultiRowMutationProtos.MultiRowMutationService;
+import org.apache.hadoop.hbase.protobuf.generated.MultiRowMutationProtos.MutateRowsRequest;
 import org.apache.hadoop.hbase.regionserver.HRegion;
 import org.apache.hadoop.hbase.regionserver.HRegionServer;
 import org.apache.hadoop.hbase.regionserver.NoSuchColumnFamilyException;
 import org.apache.hadoop.hbase.regionserver.Store;
+import org.apache.hadoop.hbase.testclassification.LargeTests;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
@@ -105,14 +95,23 @@ import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
 /**
- * Run tests that use the HBase clients; {@link HTable} and {@link HTablePool}.
+ * Run tests that use the HBase clients; {@link org.apache.hadoop.hbase.client.HTable} and {@link org.apache.hadoop.hbase.client.HTablePool}.
  * Sets up the HBase mini cluster once at start and runs through all client tests.
  * Each creates a table named for the method and does its stuff against that.
  */
 @Category(LargeTests.class)
 @SuppressWarnings ("deprecation")
-public class TestFromClientSide {
+public class TestFromClientSideWithRawLimit {
   final Log LOG = LogFactory.getLog(getClass());
   protected static HBaseTestingUtility TEST_UTIL = new HBaseTestingUtility();
   private static byte [] ROW = Bytes.toBytes("testRow");
@@ -120,10 +119,10 @@ public class TestFromClientSide {
   private static byte [] QUALIFIER = Bytes.toBytes("testQualifier");
   private static byte [] VALUE = Bytes.toBytes("testValue");
   protected static int SLAVES = 3;
-  protected int rawLimit = -1;
+  protected int rawLimit = 2; // TODO fix T5157 and refactor
 
   /**
-   * @throws java.lang.Exception
+   * @throws Exception
    */
   @BeforeClass
   public static void setUpBeforeClass() throws Exception {
@@ -142,7 +141,7 @@ public class TestFromClientSide {
   }
 
   /**
-   * @throws java.lang.Exception
+   * @throws Exception
    */
   @AfterClass
   public static void tearDownAfterClass() throws Exception {
@@ -150,7 +149,7 @@ public class TestFromClientSide {
   }
 
   /**
-   * @throws java.lang.Exception
+   * @throws Exception
    */
   @Before
   public void setUp() throws Exception {
@@ -158,7 +157,7 @@ public class TestFromClientSide {
   }
 
   /**
-   * @throws java.lang.Exception
+   * @throws Exception
    */
   @After
   public void tearDown() throws Exception {
@@ -307,8 +306,8 @@ public class TestFromClientSide {
      z0.close();
 
      // Then a ZooKeeperKeepAliveConnection
-     HConnectionManager.HConnectionImplementation connection1 =
-       (HConnectionManager.HConnectionImplementation)
+     HConnectionImplementation connection1 =
+       (HConnectionImplementation)
          HConnectionManager.getConnection(newConfig);
 
      ZooKeeperKeepAliveConnection z1 = connection1.getKeepAliveZooKeeperWatcher();
@@ -329,8 +328,8 @@ public class TestFromClientSide {
 
      Configuration newConfig2 = new Configuration(TEST_UTIL.getConfiguration());
      newConfig2.set(HConstants.HBASE_CLIENT_INSTANCE_ID, "6789");
-     HConnectionManager.HConnectionImplementation connection2 =
-       (HConnectionManager.HConnectionImplementation)
+     HConnectionImplementation connection2 =
+       (HConnectionImplementation)
          HConnectionManager.getConnection(newConfig2);
 
      assertTrue("connections should be different ", connection1 != connection2);
@@ -341,7 +340,7 @@ public class TestFromClientSide {
          " on different connections", z1 != z3);
 
      // Bypass the private access
-     Method m = HConnectionManager.HConnectionImplementation.class.
+     Method m = HConnectionImplementation.class.
        getDeclaredMethod("closeZooKeeperWatcher");
      m.setAccessible(true);
      m.invoke(connection2);
@@ -614,7 +613,7 @@ public class TestFromClientSide {
    * Test filters when multiple regions.  It does counts.  Needs eye-balling of
    * logs to ensure that we're not scanning more regions that we're supposed to.
    * Related to the TestFilterAcrossRegions over in the o.a.h.h.filter package.
-   * @throws IOException
+   * @throws java.io.IOException
    * @throws InterruptedException
    */
   @Test
@@ -658,15 +657,15 @@ public class TestFromClientSide {
 
     key = new byte [] {'a', 'a', 'a'};
     int countBBB = countRows(t,
-      createScanWithRowFilter(key, null, CompareFilter.CompareOp.EQUAL));
+      createScanWithRowFilter(key, null, CompareOp.EQUAL));
     assertEquals(1, countBBB);
 
     int countGreater = countRows(t, createScanWithRowFilter(endKey, null,
-      CompareFilter.CompareOp.GREATER_OR_EQUAL));
+      CompareOp.GREATER_OR_EQUAL));
     // Because started at start of table.
     assertEquals(0, countGreater);
     countGreater = countRows(t, createScanWithRowFilter(endKey, endKey,
-      CompareFilter.CompareOp.GREATER_OR_EQUAL));
+      CompareOp.GREATER_OR_EQUAL));
     assertEquals(rowCount - endKeyCount, countGreater);
   }
 
@@ -675,7 +674,7 @@ public class TestFromClientSide {
    * @return Scan with RowFilter that does LESS than passed key.
    */
   private Scan createScanWithRowFilter(final byte [] key) {
-    return createScanWithRowFilter(key, null, CompareFilter.CompareOp.LESS);
+    return createScanWithRowFilter(key, null, CompareOp.LESS);
   }
 
   /*
@@ -685,7 +684,7 @@ public class TestFromClientSide {
    * @return Scan with RowFilter that does CompareOp op on passed key.
    */
   private Scan createScanWithRowFilter(final byte [] key,
-      final byte [] startRow, CompareFilter.CompareOp op) {
+      final byte [] startRow, CompareOp op) {
     // Make sure key is of some substance... non-null and > than first key.
     assertTrue(key != null && key.length > 0 &&
       Bytes.BYTES_COMPARATOR.compare(key, new byte [] {'a', 'a', 'a'}) >= 0);
@@ -4088,7 +4087,7 @@ public class TestFromClientSide {
 
   /**
    * test for HBASE-737
-   * @throws IOException
+   * @throws java.io.IOException
    */
   @Test
   public void testHBase737 () throws IOException {
@@ -4213,7 +4212,7 @@ public class TestFromClientSide {
    *
    * @param tableName - table to create
    * @return the created HTable object
-   * @throws IOException
+   * @throws java.io.IOException
    */
   HTable createUnmangedHConnectionHTable(final byte [] tableName) throws IOException {
     TEST_UTIL.createTable(tableName, HConstants.CATALOG_FAMILY);
@@ -4225,7 +4224,7 @@ public class TestFromClientSide {
    * simple test that just executes parts of the client
    * API that accept a pre-created HConnection instance
    *
-   * @throws IOException
+   * @throws java.io.IOException
    */
   @Test
   public void testUnmanagedHConnection() throws IOException {
@@ -5453,7 +5452,7 @@ public class TestFromClientSide {
     scan.setStartRow(Bytes.toBytes(1));
     scan.setStopRow(Bytes.toBytes(3));
     scan.addColumn(FAMILY, FAMILY);
-    scan.setFilter(new RowFilter(CompareFilter.CompareOp.NOT_EQUAL, new BinaryComparator(Bytes.toBytes(1))));
+    scan.setFilter(new RowFilter(CompareOp.NOT_EQUAL, new BinaryComparator(Bytes.toBytes(1))));
 
     ResultScanner scanner = getScanner(foo, scan, rawLimit);
     Result[] bar = scanner.next(100);
