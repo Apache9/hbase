@@ -19,17 +19,6 @@
  */
 package org.apache.hadoop.hbase.client;
 
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-
-import junit.framework.Assert;
-
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
@@ -51,6 +40,7 @@ import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicReference;
 
+import junit.framework.Assert;
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -73,7 +63,6 @@ import org.apache.hadoop.hbase.coprocessor.CoprocessorHost;
 import org.apache.hadoop.hbase.coprocessor.MultiRowMutationEndpoint;
 import org.apache.hadoop.hbase.coprocessor.MultiRowMutationProtocol;
 import org.apache.hadoop.hbase.filter.BinaryComparator;
-import org.apache.hadoop.hbase.filter.CompareFilter;
 import org.apache.hadoop.hbase.filter.CompareFilter.CompareOp;
 import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.filter.FilterList;
@@ -103,14 +92,23 @@ import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
 /**
- * Run tests that use the HBase clients; {@link HTable} and {@link HTablePool}.
+ * Run tests that use the HBase clients; {@link org.apache.hadoop.hbase.client.HTable} and {@link org.apache.hadoop.hbase.client.HTablePool}.
  * Sets up the HBase mini cluster once at start and runs through all client tests.
  * Each creates a table named for the method and does its stuff against that.
  */
 @Category(LargeTests.class)
 @SuppressWarnings ("deprecation")
-public abstract class TestFromClientSide {
+public abstract class TestFromClientSideWithRawLimit {
   final Log LOG = LogFactory.getLog(getClass());
   protected static HBaseTestingUtility TEST_UTIL = new HBaseTestingUtility();
   private static byte [] ROW = Bytes.toBytes("testRow");
@@ -118,10 +116,10 @@ public abstract class TestFromClientSide {
   private static byte [] QUALIFIER = Bytes.toBytes("testQualifier");
   private static byte [] VALUE = Bytes.toBytes("testValue");
   protected static int SLAVES = 3;
-  protected int rawLimit = -1;
+  protected int rawLimit = 2; // TODO fix T5157 and refactor
 
   /**
-   * @throws java.lang.Exception
+   * @throws Exception
    */
   @BeforeClass
   public static void setUpBeforeClass() throws Exception {
@@ -134,7 +132,7 @@ public abstract class TestFromClientSide {
   }
 
   /**
-   * @throws java.lang.Exception
+   * @throws Exception
    */
   @AfterClass
   public static void tearDownAfterClass() throws Exception {
@@ -142,7 +140,7 @@ public abstract class TestFromClientSide {
   }
 
   /**
-   * @throws java.lang.Exception
+   * @throws Exception
    */
   @Before
   public void setUp() throws Exception {
@@ -150,7 +148,7 @@ public abstract class TestFromClientSide {
   }
 
   /**
-   * @throws java.lang.Exception
+   * @throws Exception
    */
   @After
   public void tearDown() throws Exception {
@@ -356,7 +354,7 @@ public abstract class TestFromClientSide {
      }
 
      // delete the temp file
-     File f = new java.io.File(tempFileName);
+     File f = new File(tempFileName);
      f.delete();
      LOG.info("Finishing testRegionCacheDeSerialization");
    }
@@ -587,7 +585,7 @@ public abstract class TestFromClientSide {
    * Test filters when multiple regions.  It does counts.  Needs eye-balling of
    * logs to ensure that we're not scanning more regions that we're supposed to.
    * Related to the TestFilterAcrossRegions over in the o.a.h.h.filter package.
-   * @throws IOException
+   * @throws java.io.IOException
    * @throws InterruptedException
    */
   @Test
@@ -631,15 +629,15 @@ public abstract class TestFromClientSide {
 
     key = new byte [] {'a', 'a', 'a'};
     int countBBB = countRows(t,
-      createScanWithRowFilter(key, null, CompareFilter.CompareOp.EQUAL));
+      createScanWithRowFilter(key, null, CompareOp.EQUAL));
     assertEquals(1, countBBB);
 
     int countGreater = countRows(t, createScanWithRowFilter(endKey, null,
-      CompareFilter.CompareOp.GREATER_OR_EQUAL));
+      CompareOp.GREATER_OR_EQUAL));
     // Because started at start of table.
     assertEquals(0, countGreater);
     countGreater = countRows(t, createScanWithRowFilter(endKey, endKey,
-      CompareFilter.CompareOp.GREATER_OR_EQUAL));
+      CompareOp.GREATER_OR_EQUAL));
     assertEquals(rowCount - endKeyCount, countGreater);
   }
 
@@ -648,7 +646,7 @@ public abstract class TestFromClientSide {
    * @return Scan with RowFilter that does LESS than passed key.
    */
   private Scan createScanWithRowFilter(final byte [] key) {
-    return createScanWithRowFilter(key, null, CompareFilter.CompareOp.LESS);
+    return createScanWithRowFilter(key, null, CompareOp.LESS);
   }
 
   /*
@@ -658,7 +656,7 @@ public abstract class TestFromClientSide {
    * @return Scan with RowFilter that does CompareOp op on passed key.
    */
   private Scan createScanWithRowFilter(final byte [] key,
-      final byte [] startRow, CompareFilter.CompareOp op) {
+      final byte [] startRow, CompareOp op) {
     // Make sure key is of some substance... non-null and > than first key.
     assertTrue(key != null && key.length > 0 &&
       Bytes.BYTES_COMPARATOR.compare(key, new byte [] {'a', 'a', 'a'}) >= 0);
@@ -3997,7 +3995,7 @@ public abstract class TestFromClientSide {
 
   /**
    * test for HBASE-737
-   * @throws IOException
+   * @throws java.io.IOException
    */
   @Test
   public void testHBase737 () throws IOException {
@@ -4124,7 +4122,7 @@ public abstract class TestFromClientSide {
    *
    * @param tableName - table to create
    * @return the created HTable object
-   * @throws IOException
+   * @throws java.io.IOException
    */
   HTable createUnmangedHConnectionHTable(final byte [] tableName) throws IOException {
     TEST_UTIL.createTable(tableName, HConstants.CATALOG_FAMILY);
@@ -4136,7 +4134,7 @@ public abstract class TestFromClientSide {
    * simple test that just executes parts of the client
    * API that accept a pre-created HConnction instance
    *
-   * @throws IOException
+   * @throws java.io.IOException
    */
   @Test
   public void testUnmanagedHConnection() throws IOException {
@@ -4649,7 +4647,7 @@ public abstract class TestFromClientSide {
    * region servers. To do this, instead of doing real requests, we use a
    * SynchronousQueue where each put must wait for a take (and vice versa)
    * so that way we have full control of the number of active threads.
-   * @throws IOException
+   * @throws java.io.IOException
    * @throws InterruptedException
    */
   @Test
@@ -5514,7 +5512,7 @@ public abstract class TestFromClientSide {
     scan.setStartRow(Bytes.toBytes(1));
     scan.setStopRow(Bytes.toBytes(3));
     scan.addColumn(FAMILY, FAMILY);
-    scan.setFilter(new RowFilter(CompareFilter.CompareOp.NOT_EQUAL, new BinaryComparator(Bytes.toBytes(1))));
+    scan.setFilter(new RowFilter(CompareOp.NOT_EQUAL, new BinaryComparator(Bytes.toBytes(1))));
 
     ResultScanner scanner = getScanner(foo, scan, rawLimit);
     Result[] bar = scanner.next(100);

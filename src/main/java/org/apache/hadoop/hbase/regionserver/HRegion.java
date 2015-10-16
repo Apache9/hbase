@@ -4234,8 +4234,6 @@ public class HRegion implements HeapSize { // , Writable{
                 "Filter whose hasFilterRow() returns true is incompatible with scan with limit!");
             }
             return ScannerStatus.continued(filterStopRow(nextKv), rawCount); // We hit the limit.
-          } else if (rawLimit > 0 && rawCount >= rawLimit) {
-            return ScannerStatus.continued(filterStopRow(nextKv), rawCount); // We hit the limit.
           }
           stopRow = nextKv == null
               || isStopRow(nextKv.getBuffer(), nextKv.getRowOffset(), nextKv.getRowLength());

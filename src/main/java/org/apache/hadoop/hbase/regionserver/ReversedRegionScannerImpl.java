@@ -70,10 +70,10 @@ class ReversedRegionScannerImpl extends RegionScannerImpl {
     // Calling the hook in CP which allows it to do a fast forward
     if (this.region.getCoprocessorHost() != null) {
       return this.region.getCoprocessorHost().postScannerFilterRow(this, currentRow) ?
-          ScannerStatus.CONTINUED_WITH_NO_STATS :
-          ScannerStatus.DONE_WITH_NO_STATS;
+          ScannerStatus.continued(this.storeHeap.peek(), 1) :
+          ScannerStatus.done(1);
     }
-    return ScannerStatus.CONTINUED_WITH_NO_STATS;
+    return ScannerStatus.continued(this.storeHeap.peek(), 1);
   }
 
 }
