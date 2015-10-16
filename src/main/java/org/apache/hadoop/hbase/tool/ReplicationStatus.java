@@ -63,6 +63,8 @@ public final class ReplicationStatus implements Tool {
 
   @Override public int run(String[] args) throws Exception {
     int tail = 1;
+    boolean showLegacy = false;
+    boolean skipRecovered = false;
     Collection<String> targetPeerIds = null;
     boolean checkLength = false;
 
@@ -104,6 +106,10 @@ public final class ReplicationStatus implements Tool {
             System.err.println("-peerid needs a string list argument.");
             printUsageAndExit();
           }
+        } else if (cmd.equals("-showlegacy")) {
+          showLegacy = true;
+        } else if (cmd.equals("-skiprecovered")) {
+          skipRecovered = true;
         } else if (cmd.equals("-checklength")) {
           checkLength = true;
         } else {
@@ -138,10 +144,17 @@ public final class ReplicationStatus implements Tool {
         new HashMap<String, Map<String, RegionServerReplicationStatus>>();
     boolean fileLencheckPassed = true;
     for (String rs : repRs) {
+      if (!showLegacy && !activeRs.contains(rs)) {
+        continue;
+      }
       List<String> peerIds = replicationZookeeper.getListPeersForRS(rs);
       for (String peerId : peerIds) {
         // extract the real peerId
-        String realPeerId = peerId.split("-")[0];
+        String[] parts = peerId.split("-");
+        if (parts.length > 1 && skipRecovered) {
+          continue;
+        }
+        String realPeerId = parts[0];
         if (targetPeerIds.contains(realPeerId)) {
           Map<String, RegionServerReplicationStatus> rsMap = replicationStatus.get(realPeerId);
           if (rsMap == null) {
