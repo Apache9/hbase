@@ -20,6 +20,7 @@
 package org.apache.hadoop.hbase.regionserver;
 
 import java.io.IOException;
+import java.text.SimpleDateFormat;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -101,7 +102,8 @@ public class RegionCompactor extends Chore {
       return;
     }
 
-    LOG.info("Start region compact by locality, lastAutoCompactTime is " + lastAutoCompactTime);
+    LOG.info("Start region compact by locality, lastAutoCompactTime is "
+        + new SimpleDateFormat("yyyy/MM/dd HH:mm:ss").format(lastAutoCompactTime));
     int totalCompactRequestCount = 0;
     String why = "locality-triggered " + (major ? "major " : "") + "compaction";
 

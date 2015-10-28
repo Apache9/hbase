@@ -906,6 +906,12 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
     if (this.healthCheckChore != null) {
       this.healthCheckChore.interrupt();
     }
+    if (this.regionCompactor != null) {
+      this.regionCompactor.interrupt();
+    }
+    if (this.hlogCompactor != null) {
+      this.hlogCompactor.interrupt();
+    }
 
     // Stop the snapshot handler, forcefully killing all running tasks
     try {
