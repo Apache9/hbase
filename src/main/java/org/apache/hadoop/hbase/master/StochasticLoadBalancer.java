@@ -37,6 +37,7 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.hbase.ClusterStatus;
+import org.apache.hadoop.hbase.HDFSBlocksDistribution;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HServerLoad;
 import org.apache.hadoop.hbase.HServerLoad.RegionLoad;
@@ -47,6 +48,8 @@ import org.apache.hadoop.hbase.master.StochasticLoadBalancer.Cluster.Action.Type
 import org.apache.hadoop.hbase.regionserver.HRegion;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
+
+import com.google.common.annotations.VisibleForTesting;
 
 // back StochasticLoadBalancer in trunk to 0.94
 public class StochasticLoadBalancer extends DefaultLoadBalancer {
@@ -65,6 +68,8 @@ public class StochasticLoadBalancer extends DefaultLoadBalancer {
   private static final Random RANDOM = new Random(System.currentTimeMillis());
   private static final Log LOG = LogFactory.getLog(StochasticLoadBalancer.class);
 
+  private final RegionLocationFinder regionFinder = new RegionLocationFinder();
+  
   Map<String, Deque<RegionLoad>> loads = new HashMap<String, Deque<RegionLoad>>();
 
   private int maxSteps = 1000000;
@@ -81,6 +86,7 @@ public class StochasticLoadBalancer extends DefaultLoadBalancer {
   @Override
   public synchronized void setConf(Configuration conf) {
     super.setConf(conf);
+    regionFinder.setConf(conf);
 
     maxSteps = conf.getInt(MAX_STEPS_KEY, maxSteps);
 
@@ -126,6 +132,7 @@ public class StochasticLoadBalancer extends DefaultLoadBalancer {
     for(CostFromRegionLoadFunction cost : regionLoadFunctions) {
       cost.setClusterStatus(st);
     }
+    regionFinder.setClusterStatus(st);
   }
 
   @Override
@@ -133,6 +140,7 @@ public class StochasticLoadBalancer extends DefaultLoadBalancer {
     super.setMasterServices(masterServices);
     this.localityCost.setServices(masterServices);
     this.localityCandidateGenerator.setServices(masterServices);
+    this.regionFinder.setServices(masterServices);
   }
 
   protected boolean needsBalance(Cluster c) {
@@ -170,12 +178,21 @@ public class StochasticLoadBalancer extends DefaultLoadBalancer {
   public synchronized List<RegionPlan> balanceCluster(Map<ServerName,
     List<HRegionInfo>> clusterState) {
 
+    // On clusters with lots of HFileLinks or lots of reference files,
+    // instantiating the storefile infos can be quite expensive.
+    // Allow turning this feature off if the locality cost is not going to
+    // be used in any computations.
+    RegionLocationFinder finder = null;
+    if (this.localityCost != null && this.localityCost.getMultiplier() > 0) { 
+      finder = this.regionFinder;
+    }
+
     //The clusterState that is given to this method contains the state
     //of all the regions in the table(s) (that's true today)
     // Keep track of servers to iterate through them.
     Cluster cluster = null;
     try {
-      cluster = new Cluster(getConf(), this.services, clusterState, loads);
+      cluster = new Cluster(getConf(), this.services, clusterState, loads, finder);
     } catch (IOException e) {
       LOG.error("construct cluster state fail", e);
       return new ArrayList<RegionPlan>();
@@ -522,53 +539,50 @@ public class StochasticLoadBalancer extends DefaultLoadBalancer {
     LocalityBasedCandidateGenerator(MasterServices masterServices) {
       this.masterServices = masterServices;
     }
-
     @Override
     Cluster.Action generate(Cluster cluster) {
       if (this.masterServices == null) {
-        return Cluster.NullAction;
+        int thisServer = pickRandomServer(cluster);
+        // Pick the other server
+        int otherServer = pickOtherRandomServer(cluster, thisServer);
+        return pickRandomRegions(cluster, thisServer, otherServer);
       }
-      // Pick a random region server
-      int thisServer = pickRandomServer(cluster);
 
-      // Pick a random region on this server
-      int thisRegion = pickRandomRegion(cluster, thisServer, 0.0f);
+      cluster.calculateRegionServerLocalities();
+      // Pick server with lowest locality
+      int thisServer = pickLowestLocalityServer(cluster);
+      int thisRegion;
+      if (thisServer == -1) {
+        LOG.warn("Could not pick lowest locality region server");
+        return Cluster.NullAction;
+      } else {
+      // Pick lowest locality region on this server
+        thisRegion = pickLowestLocalityRegionOnServer(cluster, thisServer);
+      }
 
       if (thisRegion == -1) {
         return Cluster.NullAction;
       }
 
-      // Pick the server with the highest locality
-      int otherServer = pickHighestLocalityServer(cluster, thisServer, thisRegion);
+      // Pick the least loaded server with good locality for the region
+      int otherServer = cluster.getLeastLoadedTopServerForRegion(thisRegion);
 
       if (otherServer == -1) {
         return Cluster.NullAction;
       }
 
-      // pick an region on the other server to potentially swap
-      int otherRegion = this.pickRandomRegion(cluster, otherServer, 0.5f);
+      // Let the candidate region be moved to its highest locality server.
+      int otherRegion = -1;
 
       return getAction(thisServer, thisRegion, otherServer, otherRegion);
     }
 
-    private int pickHighestLocalityServer(Cluster cluster, int thisServer, int thisRegion) {
-      int[] regionLocations = cluster.regionLocations[thisRegion];
+    private int pickLowestLocalityServer(Cluster cluster) {
+      return cluster.getLowestLocalityRegionServer();
+    }
 
-      if (regionLocations == null || regionLocations.length <= 1) {
-        return pickOtherRandomServer(cluster, thisServer);
-      }
-
-      for (int loc : regionLocations) {
-        if (loc == cluster.serverIndexToHostIndex[thisServer]) {
-          return -1;
-        }
-        if (loc >= 0) { // find the first suitable host
-          return cluster.hostServerSelector[loc].select();
-        }
-      }
-
-      // no location found
-      return pickOtherRandomServer(cluster, thisServer);
+    private int pickLowestLocalityRegionOnServer(Cluster cluster, int server) {
+      return cluster.getLowestLocalityRegionOnServer(server);
     }
 
     void setServices(MasterServices services) {
@@ -736,12 +750,12 @@ public class StochasticLoadBalancer extends DefaultLoadBalancer {
         return 1000000;   // return a number much greater than any of the other cost
       }
 
-      return scale(0, cluster.numRegions, moveCost);
+      return scale(0, Math.min(maxMoves, cluster.numRegions), moveCost);
     }
     
     @Override
     String costDetail() {
-      return this.getClass().getSimpleName() + " : " + cluster.numMovedRegions + " moves";
+      return this.getClass().getSimpleName() + " : " + cluster.numMovedRegions + " moves\n";
     }
   }
 
@@ -996,7 +1010,7 @@ public class StochasticLoadBalancer extends DefaultLoadBalancer {
 
       for (int i = 0; i < cluster.regionLocations.length; i++) {
         max += 1;
-        int hostIndex = cluster.serverIndexToHostIndex[cluster.regionIndexToServerIndex[i]];
+        int serverIndex = cluster.regionIndexToServerIndex[i];
         int[] regionLocations = cluster.regionLocations[i];
 
         // If we can't find where the data is getTopBlock returns null.
@@ -1007,7 +1021,7 @@ public class StochasticLoadBalancer extends DefaultLoadBalancer {
 
         int index = -1;
         for (int j = 0; j < regionLocations.length; j++) {
-          if (regionLocations[j] >= 0 && regionLocations[j] == hostIndex) {
+          if (regionLocations[j] >= 0 && regionLocations[j] == serverIndex) {
             index = j;
             break;
           }
@@ -1018,11 +1032,31 @@ public class StochasticLoadBalancer extends DefaultLoadBalancer {
             cost += 1;
           }
         } else {
-          cost += (double) index / (double) regionLocations.length;
+          cost += (1 - cluster.getLocalityOfRegion(i, index));
         }
       }
       return scale(0, max, cost);
-    }    
+    }
+    
+    @Override
+    String costDetail() {
+      StringBuilder builder = new StringBuilder();
+      builder.append(this.getClass().getSimpleName());
+      builder.append(" :\n");
+      for (int i = 0; i < cluster.regionLocations.length; ++i) {
+        builder.append(cluster.regions[i].getRegionNameAsString());
+        builder.append(" : ");
+        if (cluster.regionLocations[i] == null) {
+          continue;
+        }
+        for (int j = 0; j < cluster.regionLocations[i].length; ++j) {
+          builder.append(cluster.servers[cluster.regionLocations[i][j]]);
+          builder.append("\t");
+        }
+        builder.append("\n");
+      }
+      return builder.toString();
+    }
   }
   
   protected static class RoundRobinSelector<R> {
@@ -1053,22 +1087,26 @@ public class StochasticLoadBalancer extends DefaultLoadBalancer {
     Deque<RegionLoad>[] regionLoads;
     ArrayList<String> tables;
     MasterServices services;
+    private RegionLocationFinder regionFinder;
     
     int[]   serverIndexToHostIndex;      //serverIndex -> host index
     int[][] regionsPerServer;            //serverIndex -> region list
     int[]   regionIndexToServerIndex;    //regionIndex -> serverIndex
     int[]   initialRegionIndexToServerIndex;    //regionIndex -> serverIndex (initial cluster state)
-    Integer[] serverIndicesSortedByRegionCount;
     int[][] regionLocations; //regionIndex -> list of serverIndex sorted by locality
     int[][] numRegionsPerServerPerTable; //serverIndex -> tableIndex -> # regions
     int[]   numMaxRegionsPerTable;       //tableIndex -> max number of regions in a single RS
     int[]   regionIndexToTableIndex;     //regionIndex -> tableIndex
+    
+    Integer[] serverIndicesSortedByRegionCount;
+    Integer[] serverIndicesSortedByLocality;
     
     Map<String, Integer> serversToIndex;
     Map<String, Integer> hostsToIndex;
     Map<String, Integer> tablesToIndex;
     Map<HRegionInfo, Integer> regionsToIndex;
     RoundRobinSelector<Integer>[] hostServerSelector;
+    float[] localityPerServer;
 
     int numServers;
     int numHosts;
@@ -1081,9 +1119,9 @@ public class StochasticLoadBalancer extends DefaultLoadBalancer {
     Map<ServerName, List<HRegionInfo>> clusterState;
 
     protected Cluster(Configuration conf, MasterServices masterService,
-        Map<ServerName, List<HRegionInfo>> clusterState, Map<String, Deque<RegionLoad>> loads)
-        throws IOException {
-      this(conf, masterService, null, clusterState, loads);
+        Map<ServerName, List<HRegionInfo>> clusterState, Map<String, Deque<RegionLoad>> loads,
+        RegionLocationFinder regionFinder) throws IOException {
+      this(conf, masterService, null, clusterState, loads, regionFinder);
     }
 
     @SuppressWarnings("unchecked")
@@ -1091,7 +1129,8 @@ public class StochasticLoadBalancer extends DefaultLoadBalancer {
         MasterServices masterService,
         Collection<HRegionInfo> unassignedRegions,
         Map<ServerName, List<HRegionInfo>> clusterState,
-        Map<String, Deque<RegionLoad>> loads) throws IOException {
+        Map<String, Deque<RegionLoad>> loads,
+        RegionLocationFinder regionFinder) throws IOException {
       super(conf);
       this.services = masterService;
       if (unassignedRegions == null) {
@@ -1103,6 +1142,7 @@ public class StochasticLoadBalancer extends DefaultLoadBalancer {
       tablesToIndex = new HashMap<String, Integer>();
       
       this.clusterState = clusterState;
+      this.regionFinder = regionFinder;
 
       // Use servername and port as there can be dead servers in this list. We want everything with
       // a matching hostname and port to have the same index.
@@ -1118,6 +1158,10 @@ public class StochasticLoadBalancer extends DefaultLoadBalancer {
       hostServerSelector = new RoundRobinSelector[numHosts];
       for (int i = 0; i < numHosts; ++i) {
         hostServerSelector[i] = new RoundRobinSelector<Integer>();
+      }
+      hosts = new String[numHosts];
+      for (Entry<String, Integer> entry : hostsToIndex.entrySet()) {
+        hosts[entry.getValue()] = entry.getKey();
       }
 
       // Count how many regions there are.
@@ -1138,6 +1182,8 @@ public class StochasticLoadBalancer extends DefaultLoadBalancer {
       serverIndicesSortedByRegionCount = new Integer[numServers];
       serverIndexToHostIndex = new int[numServers];
       regionsPerServer = new int[numServers][];
+      serverIndicesSortedByLocality = new Integer[numServers];
+      localityPerServer = new float[numServers];
 
       for (Entry<ServerName, List<HRegionInfo>> entry : clusterState.entrySet()) {
         int serverIndex = serversToIndex.get(entry.getKey().getHostAndPort());
@@ -1157,6 +1203,8 @@ public class StochasticLoadBalancer extends DefaultLoadBalancer {
           regionsPerServer[serverIndex] = new int[entry.getValue().size()];
         }
         serverIndicesSortedByRegionCount[serverIndex] = serverIndex;
+        serverIndicesSortedByLocality[serverIndex] = serverIndex;
+        
       }
 
       tables = new ArrayList<String>();
@@ -1166,7 +1214,7 @@ public class StochasticLoadBalancer extends DefaultLoadBalancer {
         regionPerServerIndex = 0;
 
         for (HRegionInfo region : entry.getValue()) {
-          registerRegion(region, regionIndex, serverIndex, loads);
+          registerRegion(region, regionIndex, serverIndex, loads, regionFinder);
 
           regionsPerServer[serverIndex][regionPerServerIndex++] = regionIndex;
           regionIndex++;
@@ -1177,7 +1225,7 @@ public class StochasticLoadBalancer extends DefaultLoadBalancer {
         hostServerSelector[hostIndex].add(serverIndex);
       }
       for (HRegionInfo region : unassignedRegions) {
-        registerRegion(region, regionIndex, -1, loads);
+        registerRegion(region, regionIndex, -1, loads, regionFinder);
         regionIndex++;
       }
       
@@ -1208,7 +1256,7 @@ public class StochasticLoadBalancer extends DefaultLoadBalancer {
 
     /** Helper for Cluster constructor to handle a region */
     private void registerRegion(HRegionInfo region, int regionIndex, int serverIndex,
-        Map<String, Deque<RegionLoad>> loads) throws IOException {
+        Map<String, Deque<RegionLoad>> loads, RegionLocationFinder regionFinder) throws IOException {
       String tableName = region.getTableNameAsString();
       if (!tablesToIndex.containsKey(tableName)) {
         tables.add(tableName);
@@ -1234,28 +1282,15 @@ public class StochasticLoadBalancer extends DefaultLoadBalancer {
       }
       
       // compute region locality
-      List<String> loc = getTopHosts(getConf(), region.getTableName(), region.getEncodedName());
-      regionLocations[regionIndex] = new int[loc.size()];
-      for (int i = 0; i < loc.size(); i++) {
-        regionLocations[regionIndex][i] = loc.get(i) == null ? -1
-            : (hostsToIndex.get(loc.get(i)) == null ? -1 : hostsToIndex.get(loc.get(i)));
+      if (regionFinder != null) {
+        List<ServerName> loc = regionFinder.getTopBlockLocations(region);
+        regionLocations[regionIndex] = new int[loc.size()];
+        for (int i = 0; i < loc.size(); i++) {
+          regionLocations[regionIndex][i] = loc.get(i) == null ? -1
+              : (serversToIndex.get(loc.get(i).getHostAndPort()) == null ? -1
+                  : serversToIndex.get(loc.get(i).getHostAndPort()));
+        }
       }
-    }
-    
-    protected HTableDescriptor getTableDescriptor(byte[] tableName) throws IOException {
-      if (this.services != null && this.services.getTableDescriptors() != null) {
-        return this.services.getTableDescriptors().get(tableName);
-      }
-      return null;
-    }
-    
-    protected List<String> getTopHosts(Configuration conf, byte[] tableName, String regionEncodeName)
-        throws IOException {
-      HTableDescriptor desc = getTableDescriptor(tableName);
-      if (desc == null) {
-        return new ArrayList<String>();
-      }
-      return HRegion.computeHDFSBlocksDistribution(conf, desc, regionEncodeName).getTopHosts();
     }
 
     /** An action to move or swap a region */
@@ -1419,6 +1454,139 @@ public class StochasticLoadBalancer extends DefaultLoadBalancer {
         return Integer.valueOf(getNumRegions(integer)).compareTo(getNumRegions(integer2));
       }
     };
+    
+    void sortServersByLocality() {
+      Arrays.sort(serverIndicesSortedByLocality, localityComparator);
+    }
+
+    float getLocality(int server) {
+      return localityPerServer[server];
+    }
+
+    private Comparator<Integer> localityComparator = new Comparator<Integer>() {
+      @Override
+      public int compare(Integer integer, Integer integer2) {
+        float locality1 = getLocality(integer);
+        float locality2 = getLocality(integer2);
+        if (locality1 < locality2) {
+          return -1;
+        } else if (locality1 > locality2) {
+          return 1;
+        } else {
+          return 0;
+        }
+      }
+    };
+
+    int getLowestLocalityRegionServer() {
+      if (regionFinder == null) {
+        return -1;
+      } else {
+        sortServersByLocality();
+        // We want to find server with non zero regions having lowest locality.
+        int i = 0;
+        int lowestLocalityServerIndex = serverIndicesSortedByLocality[i];
+        while (localityPerServer[lowestLocalityServerIndex] == 0
+            && (regionsPerServer[lowestLocalityServerIndex].length == 0)) {
+          i++;
+          lowestLocalityServerIndex = serverIndicesSortedByLocality[i];
+        }
+        LOG.debug("Lowest locality region server with non zero regions is "
+            + servers[lowestLocalityServerIndex].getHostname() + " with locality "
+            + localityPerServer[lowestLocalityServerIndex]);
+        return lowestLocalityServerIndex;
+      }
+    }
+
+    int getLowestLocalityRegionOnServer(int serverIndex) {
+      if (regionFinder != null) {
+        float lowestLocality = 1.0f;
+        int lowestLocalityRegionIndex = 0;
+        if (regionsPerServer[serverIndex].length == 0) {
+          // No regions on that region server
+          return -1;
+        }
+        for (int j = 0; j < regionsPerServer[serverIndex].length; j++) {
+          int regionIndex = regionsPerServer[serverIndex][j];
+          HDFSBlocksDistribution distribution = regionFinder
+              .getBlockDistribution(regions[regionIndex]);
+          float locality = distribution.getBlockLocalityIndex(servers[serverIndex].getHostname());
+          if (locality < lowestLocality) {
+            lowestLocality = locality;
+            lowestLocalityRegionIndex = j;
+          }
+        }
+        LOG.debug(" Lowest locality region index is " + lowestLocalityRegionIndex
+            + " and its region server contains " + regionsPerServer[serverIndex].length
+            + " regions");
+        return regionsPerServer[serverIndex][lowestLocalityRegionIndex];
+      } else {
+        return -1;
+      }
+    }
+
+    float getLocalityOfRegion(int region, int server) {
+      if (regionFinder != null) {
+        HDFSBlocksDistribution distribution = regionFinder.getBlockDistribution(regions[region]);
+        return distribution.getBlockLocalityIndex(servers[server].getHostname());
+      } else {
+        return 0f;
+      }
+    }
+
+    int getLeastLoadedTopServerForRegion(int region) {
+      if (regionFinder != null) {
+        List<ServerName> topLocalServers = regionFinder.getTopBlockLocations(regions[region]);
+        int leastLoadedServerIndex = -1;
+        int load = Integer.MAX_VALUE;
+        for (ServerName sn : topLocalServers) {
+          if (!serversToIndex.containsKey(sn.getHostAndPort())) {
+            continue;
+          }
+          int index = serversToIndex.get(sn.getHostAndPort());
+          if (regionsPerServer[index] == null) {
+            continue;
+          }
+          int tempLoad = regionsPerServer[index].length;
+          if (tempLoad <= load) {
+            leastLoadedServerIndex = index;
+            load = tempLoad;
+          }
+        }
+        return leastLoadedServerIndex;
+      } else {
+        return -1;
+      }
+    }
+
+    void calculateRegionServerLocalities() {
+      if (regionFinder == null) {
+        LOG.warn("Region location finder found null, skipping locality calculations.");
+        return;
+      }
+      for (int i = 0; i < regionsPerServer.length; i++) {
+        HDFSBlocksDistribution distribution = new HDFSBlocksDistribution();
+        if (regionsPerServer[i].length > 0) {
+          for (int j = 0; j < regionsPerServer[i].length; j++) {
+            int regionIndex = regionsPerServer[i][j];
+            distribution.add(regionFinder.getBlockDistribution(regions[regionIndex]));
+          }
+        } else {
+          LOG.debug("Server " + servers[i].getHostname() + " had 0 regions.");
+        }
+        localityPerServer[i] = distribution.getBlockLocalityIndex(servers[i].getHostname());
+      }
+    }
+
+    @VisibleForTesting
+    protected void setNumRegions(int numRegions) {
+      this.numRegions = numRegions;
+    }
+
+    @VisibleForTesting
+    protected void setNumMovedRegions(int numMovedRegions) {
+      this.numMovedRegions = numMovedRegions;
+    }
 
     @edu.umd.cs.findbugs.annotations.SuppressWarnings(value="SBSC_USE_STRINGBUFFER_CONCATENATION",
         justification="Not important but should be fixed")

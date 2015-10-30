@@ -20,11 +20,17 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.ClusterStatus;
 import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.HBaseTestingUtility;
+import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HServerLoad;
+import org.apache.hadoop.hbase.MiniHBaseCluster;
 import org.apache.hadoop.hbase.HServerLoad.RegionLoad;
 import org.apache.hadoop.hbase.MediumTests;
 import org.apache.hadoop.hbase.ServerName;
+import org.apache.hadoop.hbase.client.HTable;
+import org.apache.hadoop.hbase.regionserver.HRegion;
+import org.apache.hadoop.hbase.regionserver.HRegionServer;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -36,12 +42,22 @@ public class TestStochasticLoadBalancer extends BalancerTestBase {
   private static StochasticLoadBalancer loadBalancer;
   private static final Log LOG = LogFactory.getLog(TestStochasticLoadBalancer.class);
   private static Configuration conf;
+  
+  private final static HBaseTestingUtility TEST_UTIL = new HBaseTestingUtility();
+  private static MiniHBaseCluster cluster;
+  
+  private final static byte[] tableName = Bytes.toBytes("testTable");
+  private final static byte[] FAMILY = Bytes.toBytes("cf");
+  private final static byte[] QUALIFIER = Bytes.toBytes("q");
+  private static HTable table;
+  private final static int ServerNum = 5;
 
   @BeforeClass
   public static void beforeAllTests() throws Exception {
     conf = HBaseConfiguration.create();
     conf.setFloat("hbase.master.balancer.stochastic.maxMovePercent", 0.75f);
     conf.setFloat("hbase.regions.slop", 0.0f);
+    conf.setFloat("hbase.master.balancer.stochastic.localityCost", 0);
     loadBalancer = new StochasticLoadBalancer();
     loadBalancer.setConf(conf);
   }
@@ -185,9 +201,47 @@ public class TestStochasticLoadBalancer extends BalancerTestBase {
 
   protected StochasticLoadBalancer.Cluster mockCluster(int[] mockCluster) {
     try {
-    return new StochasticLoadBalancer.Cluster(conf, null, mockClusterServers(mockCluster, -1), null);
+      return new StochasticLoadBalancer.Cluster(conf, null, mockClusterServers(mockCluster, -1),
+          null, null);
     } catch (IOException e) {
       throw new RuntimeException("create StochasticLoadBalancer.Cluster fail", e);
+    }
+  }
+
+  @Test
+  public void testMoveCost() throws Exception {
+    Configuration conf = HBaseConfiguration.create();
+    StochasticLoadBalancer.CostFunction
+        costFunction = new StochasticLoadBalancer.MoveCostFunction(conf);
+    for (int[] mockCluster : clusterStateMocks) {
+      StochasticLoadBalancer.Cluster cluster = mockCluster(mockCluster);
+      costFunction.init(cluster);
+      double cost = costFunction.cost();
+      assertEquals(0.0f, cost, 0.001);
+
+      // cluster region number is smaller than maxMoves=600
+      cluster.setNumRegions(200);
+      cluster.setNumMovedRegions(10);
+      cost = costFunction.cost();
+      assertEquals(0.05f, cost, 0.001);
+      cluster.setNumMovedRegions(100);
+      cost = costFunction.cost();
+      assertEquals(0.5f, cost, 0.001);
+      cluster.setNumMovedRegions(200);
+      cost = costFunction.cost();
+      assertEquals(1.0f, cost, 0.001);
+
+      // cluster region number is bigger than maxMoves=2500
+      cluster.setNumRegions(10000);
+      cluster.setNumMovedRegions(250);
+      cost = costFunction.cost();
+      assertEquals(0.1f, cost, 0.001);
+      cluster.setNumMovedRegions(1250);
+      cost = costFunction.cost();
+      assertEquals(0.5f, cost, 0.001);
+      cluster.setNumMovedRegions(2500);
+      cost = costFunction.cost();
+      assertEquals(1.0f, cost, 0.01);
     }
   }
 
@@ -289,6 +343,47 @@ public class TestStochasticLoadBalancer extends BalancerTestBase {
     assertNull(plans);
   }
 
+  @Test
+  public void testWithHBaseMiniCluster() throws Exception {
+    TEST_UTIL.getConfiguration().set(HConstants.HBASE_MASTER_LOADBALANCER_CLASS,
+      "org.apache.hadoop.hbase.master.StochasticLoadBalancer");
+    TEST_UTIL.getConfiguration().setBoolean("hbase.master.loadbalance.bytable", false);
+    cluster = TEST_UTIL.startMiniCluster(1, ServerNum, new String[]{"localhost"});
+    table = TEST_UTIL.createTable(tableName, FAMILY);
+    TEST_UTIL.waitTableAvailable(tableName, 1000);
+    TEST_UTIL.createMultiRegions(table, FAMILY);
+    TEST_UTIL.loadTable(table, FAMILY);
+
+    for (int i = 0; i < ServerNum; i++) {
+      HRegionServer server = cluster.getRegionServer(i);
+      for (HRegionInfo region : server.getOnlineRegions()) {
+        server.flushRegion(region);
+      }
+    }
+
+    for (int i = 1; i < ServerNum; i++) {
+      HRegionServer server = cluster.getRegionServer(i);
+      for (HRegion region : server.getOnlineRegions(tableName)) {
+        TEST_UTIL.getHBaseAdmin().move(region.getRegionInfo().getEncodedNameAsBytes(),
+          cluster.getRegionServer(0).getServerName().getServerName().getBytes());
+      }
+    }
+    // wait move region, so cluster will need balance
+    Thread.sleep(10000);
+
+    LoadBalancer loadBalancer = cluster.getMaster().getBalancer();
+    assertTrue(loadBalancer instanceof StochasticLoadBalancer);
+    Map<String, Map<ServerName, List<HRegionInfo>>> assignmentsByTable =
+        cluster.getMaster().getAssignmentManager().getAssignmentsByTable();
+    for (Map<ServerName, List<HRegionInfo>> assignments : assignmentsByTable.values()) {
+      testWithCluster(loadBalancer, assignments, true);
+    }
+
+    table.close();
+    TEST_UTIL.deleteTable(tableName);
+    TEST_UTIL.shutdownMiniCluster();
+  }
+
   @Test (timeout = 60000)
   public void testSmallCluster() {
     int numNodes = 10;
@@ -383,6 +478,31 @@ public class TestStochasticLoadBalancer extends BalancerTestBase {
 
       // Print out the cluster loads to make debugging easier.
       LOG.info("Mock Balance : " + printMock(balancedCluster));
+
+      if (assertFullyBalanced) {
+        assertClusterAsBalanced(balancedCluster);
+        List<RegionPlan> secondPlans =  loadBalancer.balanceCluster(serverMap);
+        assertNull(secondPlans);
+      }
+    }
+  }
+
+  protected void testWithCluster(LoadBalancer loadBalancer, Map<ServerName, List<HRegionInfo>> serverMap,
+      boolean assertFullyBalanced) {
+    List<ServerAndLoad> list = convertToList(serverMap);
+    LOG.info("Cluster : " + printMock(list) + " " + printStats(list));
+
+    // Run the balancer.
+    List<RegionPlan> plans = loadBalancer.balanceCluster(serverMap);
+    assertNotNull(plans);
+
+    // Check to see that this actually got to a stable place.
+    if (assertFullyBalanced) {
+      // Apply the plan to the mock cluster.
+      List<ServerAndLoad> balancedCluster = reconcile(list, plans, serverMap);
+
+      // Print out the cluster loads to make debugging easier.
+      LOG.info("Balance : " + printMock(balancedCluster));
 
       if (assertFullyBalanced) {
         assertClusterAsBalanced(balancedCluster);
