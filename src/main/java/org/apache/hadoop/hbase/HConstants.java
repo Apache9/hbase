@@ -766,6 +766,9 @@ public final class HConstants {
 
   public static final String IGNORE_SPLITS_WHEN_CREATE_TABLE = "hbase.ignore.splits.when.create.table";
   
+  public static final String MULTI_REQUEST_MAX_ACTION_COUNT = "multi.requst.max.action.count";
+  public static final int DEFAULT_MULTI_REQUEST_MAX_ACTION_COUNT = 500;
+  
   private HConstants() {
     // Can't be instantiated with this ctor.
   }
