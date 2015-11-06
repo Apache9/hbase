@@ -732,11 +732,13 @@ public class StochasticLoadBalancer extends DefaultLoadBalancer {
     private static final String MOVE_COST_KEY = "hbase.master.balancer.stochastic.moveCost";
     private static final String MAX_MOVES_PERCENT_KEY =
         "hbase.master.balancer.stochastic.maxMovePercent";
+    private static final String MAX_MOVES_KEY = "hbase.master.balancer.stochastic.maxMoves";
     private static final float DEFAULT_MOVE_COST = 100;
     private static final int DEFAULT_MAX_MOVES = 600;
     private static final float DEFAULT_MAX_MOVE_PERCENT = 0.25f;
 
     private final float maxMovesPercent;
+    private int maxMoves;
 
     MoveCostFunction(Configuration conf) {
       super(conf);
@@ -746,13 +748,13 @@ public class StochasticLoadBalancer extends DefaultLoadBalancer {
       this.setMultiplier(conf.getFloat(MOVE_COST_KEY, DEFAULT_MOVE_COST));
       // What percent of the number of regions a single run of the balancer can move.
       maxMovesPercent = conf.getFloat(MAX_MOVES_PERCENT_KEY, DEFAULT_MAX_MOVE_PERCENT);
+      maxMoves = conf.getInt(MAX_MOVES_KEY, DEFAULT_MAX_MOVES);
     }
 
     @Override
     double cost() {
       // Try and size the max number of Moves, but always be prepared to move some.
-      int maxMoves = Math.max((int) (cluster.numRegions * maxMovesPercent),
-          DEFAULT_MAX_MOVES);
+      maxMoves = Math.max((int) (cluster.numRegions * maxMovesPercent), maxMoves);
 
       double moveCost = cluster.numMovedRegions;
       
