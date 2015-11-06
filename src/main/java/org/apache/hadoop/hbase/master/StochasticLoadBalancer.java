@@ -64,6 +64,8 @@ public class StochasticLoadBalancer extends DefaultLoadBalancer {
       "hbase.master.balancer.stochastic.maxRunningTime";
   protected static final String KEEP_REGION_LOADS =
       "hbase.master.balancer.stochastic.numRegionLoadsToRemember";
+  protected static final String MIN_COST_NEED_BALANCE_KEY =
+      "hbase.master.balancer.stochastic.minCostNeedBalance";
 
   private static final Random RANDOM = new Random(System.currentTimeMillis());
   private static final Log LOG = LogFactory.getLog(StochasticLoadBalancer.class);
@@ -76,6 +78,7 @@ public class StochasticLoadBalancer extends DefaultLoadBalancer {
   private int stepsPerRegion = 800;
   private long maxRunningTime = 30 * 1000 * 1; // 30 seconds.
   private int numRegionLoadsToRemember = 15;
+  private float minCostNeedBalance = 0.05f;
 
   private CandidateGenerator[] candidateGenerators;
   private CostFromRegionLoadFunction[] regionLoadFunctions;
@@ -95,9 +98,11 @@ public class StochasticLoadBalancer extends DefaultLoadBalancer {
 
     numRegionLoadsToRemember = conf.getInt(KEEP_REGION_LOADS, numRegionLoadsToRemember);
 
+    minCostNeedBalance = conf.getFloat(MIN_COST_NEED_BALANCE_KEY, minCostNeedBalance);
+
     LOG.info("loading config, maxSteps=" + maxSteps + ", stepsPerRegion=" + stepsPerRegion
         + ", maxRunningTime=" + maxRunningTime + ", numRegionLoadsToRemember="
-        + numRegionLoadsToRemember);
+        + numRegionLoadsToRemember + ", minCostNeedBalance=" + minCostNeedBalance);
 
     if (localityCandidateGenerator == null) {
       localityCandidateGenerator = new LocalityBasedCandidateGenerator(services);
@@ -152,22 +157,32 @@ public class StochasticLoadBalancer extends DefaultLoadBalancer {
       }
       return false;
     }
-    
-    // Check if we even need to do any load balancing
-    // HBASE-3681 check sloppiness first
-    float average = cs.getLoadAverage(); // for logging
-    int floor = (int) Math.floor(average * (1 - slop));
-    int ceiling = (int) Math.ceil(average * (1 + slop));
-    if (!(cs.getMaxLoad() > ceiling || cs.getMinLoad() < floor)) {
-      NavigableMap<ServerAndLoad, List<HRegionInfo>> serversByLoad = cs.getServersByLoad();
-      // If nothing to balance, then don't say anything unless trace-level logging.
-      LOG.info("Skipping load balancing because balanced cluster; " + "servers="
-          + cs.getNumServers() + " regions=" + cs.getNumRegions() + " average=" + average
-          + " mostloaded=" + serversByLoad.lastKey().getLoad() + " leastloaded="
-          + serversByLoad.firstKey().getLoad() + ", slop=" + slop);
+
+    double averageMultiplier = 0.0;
+    int costFunctionNum = 0;
+    for (CostFunction costFunction : costFunctions) {
+      if (costFunction.getMultiplier() > 0) {
+        costFunctionNum += 1;
+        averageMultiplier += costFunction.getMultiplier();
+      }
+    }
+
+    if (costFunctionNum > 0) {
+      averageMultiplier /= costFunctionNum;
+      for (CostFunction costFunction : costFunctions) {
+        if ((costFunction.getMultiplier() * costFunction.cost()) 
+            > (averageMultiplier * minCostNeedBalance)) {
+          return true;
+        }
+      }
+      LOG.info("Skipping load balancing because any cost function's product of cost and multiplier "
+          + "is less than the product of averageMultiplier=" + averageMultiplier + 
+          " and minCostNeedBalance=" + minCostNeedBalance);
+      return false;
+    } else {
+      LOG.info("Skipping load balancing because the multiplier of any cost function is 0");
       return false;
     }
-    return true;
   }
   
   /**
@@ -197,17 +212,14 @@ public class StochasticLoadBalancer extends DefaultLoadBalancer {
       LOG.error("construct cluster state fail", e);
       return new ArrayList<RegionPlan>();
     }
-    
-    // should not decide balance only from region count skew
-    /*
-    if (!needsBalance(cluster)) {
-      return null;
-    }
-    */
 
     long startTime = EnvironmentEdgeManager.currentTimeMillis();
 
     initCosts(cluster);
+
+    if (!needsBalance(cluster)) {
+      return null;
+    }
 
     double currentCost = computeCost(cluster, Double.MAX_VALUE);
     LOG.info("start StochasticLoadBalancer.balaner, initCost=" + currentCost + ", functionCost="
