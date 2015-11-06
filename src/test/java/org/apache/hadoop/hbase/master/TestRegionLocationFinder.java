@@ -60,7 +60,7 @@ public class TestRegionLocationFinder {
 
   @BeforeClass
   public static void setUpBeforeClass() throws Exception {
-    cluster = TEST_UTIL.startMiniCluster(1, ServerNum, new String[]{"localhost"});
+    cluster = TEST_UTIL.startMiniCluster(1, ServerNum);
     table = TEST_UTIL.createTable(tableName, FAMILY);
     TEST_UTIL.waitTableAvailable(tableName, 1000);
     TEST_UTIL.createMultiRegions(table, FAMILY);
@@ -113,27 +113,19 @@ public class TestRegionLocationFinder {
   }
 
   @Test
-  public void testScheduleFullRefresh() throws Exception {
-    long lastFullRefresh = finder.getLastFullRefresh();
-    // small than CACHE_TIME / 2, it will not refresh
-    envEdge.incValue(RegionLocationFinder.CACHE_TIME / 4);
-    finder.setClusterStatus(cluster.getClusterStatus());
-    assertEquals(lastFullRefresh, finder.getLastFullRefresh());
-
-    // it will refresh when more than CACHE_TIME / 2
-    envEdge.incValue(RegionLocationFinder.CACHE_TIME / 2);
-    finder.setClusterStatus(cluster.getClusterStatus());
-    assertEquals(lastFullRefresh + 3 * RegionLocationFinder.CACHE_TIME / 4,
-      finder.getLastFullRefresh());
-  }
-
-  @Test
   public void testMapHostNameToServerName() throws Exception {
     List<String> topHosts = new ArrayList<String>();
-    topHosts.add("localhost");
+    for (int i = 0; i < ServerNum; i++) {
+      HRegionServer server = cluster.getRegionServer(i);
+      String serverHost = server.getServerName().getHostname();
+      if (!topHosts.contains(serverHost)) {
+        topHosts.add(serverHost);
+      }
+    }
+    // mini cluster, all rs in one host
+    assertEquals(1, topHosts.size());
     List<ServerName> servers = finder.mapHostNameToServerName(topHosts);
     assertEquals(ServerNum, servers.size());
-    // mini cluster, all regionserver in localhost
     for (int i = 0; i < ServerNum; i++) {
       ServerName server = cluster.getRegionServer(i).getServerName();
       assertTrue(servers.contains(server));
@@ -150,7 +142,11 @@ public class TestRegionLocationFinder {
         if (region.getHDFSBlocksDistribution().getUniqueBlocksTotalWeight() == 0) {
           continue;
         }
-        // all regionserver in localhost, so region locality is 1.0 in any of thems
+        List<String> topHosts = region.getHDFSBlocksDistribution().getTopHosts();
+        // rs and datanode may have different host in local machine test
+        if (!topHosts.contains(server.getServerName().getHostname())) {
+          continue;
+        }
         assertEquals(ServerNum, servers.size());
         for (int j = 0; j < ServerNum; j++) {
           ServerName serverName = cluster.getRegionServer(j).getServerName();

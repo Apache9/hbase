@@ -246,6 +246,9 @@ public class RegionLocationFinder {
     }
 
     for (String host : hosts) {
+      if (!hostToServerName.containsKey(host)) {
+        continue;
+      }
       for (ServerName sn : hostToServerName.get(host)) {
         // it is possible that HDFS is up ( thus host is valid ),
         // but RS is down ( thus sn is null )
