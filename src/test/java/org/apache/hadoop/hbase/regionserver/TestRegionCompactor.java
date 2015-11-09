@@ -165,8 +165,9 @@ public class TestRegionCompactor {
     server.getConfiguration().setInt("hbase.offpeak.end.hour", 24);
     RegionCompactor compactor = new RegionCompactor(server, 60000);
     long lastCompactTime = compactor.getLastAutoCompactTime();
-    // in ut, hdfs host is 127.0.0.1, hbase server is localhost
-    compactor.setServerHostName("127.0.0.1");
+    // in local ut, dn host is 127.0.0.1, rs host is localhost
+    compactor.setServerHostName(TEST_UTIL.getDFSCluster().getDataNodes().get(0).getDatanodeId()
+        .getHostName());
     // make sure compact interval is big enough
     envEdge.incValue(36 * 3600 * 1000);
     compactor.chore();
@@ -176,7 +177,8 @@ public class TestRegionCompactor {
     
     server.getConfiguration().setFloat(RegionCompactor.REGION_COMPACT_LOCALITY_THRESHOLD, 1.0f);
     compactor = new RegionCompactor(server, 60000);
-    compactor.setServerHostName("127.0.0.1");
+    compactor.setServerHostName(TEST_UTIL.getDFSCluster().getDataNodes().get(0).getDatanodeId()
+        .getHostName());
     lastCompactTime = compactor.getLastAutoCompactTime();
     // make sure compact interval is big enough
     envEdge.incValue(36 * 3600 * 1000);
