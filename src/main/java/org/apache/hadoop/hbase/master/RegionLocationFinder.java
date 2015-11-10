@@ -61,7 +61,9 @@ import java.util.concurrent.TimeUnit;
  */
 public class RegionLocationFinder {
   private static final Log LOG = LogFactory.getLog(RegionLocationFinder.class);
-  public static final long CACHE_TIME = 240 * 60 * 1000;
+  public static final String REGION_LOCATION_CACHE_TIME_KEY = 
+      "hbase.master.balancer.regionLocationCacheTime";
+  private long cacheTime = 240 * 60 * 1000;
   private Configuration conf;
   private volatile ClusterStatus status;
   private MasterServices services;
@@ -91,7 +93,6 @@ public class RegionLocationFinder {
   private LoadingCache<HRegionInfo, HDFSBlocksDistribution> cache = null;
 
   RegionLocationFinder() {
-    this.cache = createCache();
     executor = MoreExecutors.listeningDecorator(
         Executors.newScheduledThreadPool(
             5,
@@ -108,7 +109,7 @@ public class RegionLocationFinder {
    */
   private LoadingCache<HRegionInfo, HDFSBlocksDistribution> createCache() {
     return CacheBuilder.newBuilder()
-        .expireAfterWrite(CACHE_TIME, TimeUnit.MILLISECONDS)
+        .expireAfterWrite(cacheTime, TimeUnit.MILLISECONDS)
         .build(loader);
   }
 
@@ -118,6 +119,8 @@ public class RegionLocationFinder {
 
   public void setConf(Configuration conf) {
     this.conf = conf;
+    cacheTime = conf.getLong(REGION_LOCATION_CACHE_TIME_KEY, cacheTime);
+    this.cache = createCache();
   }
 
   public void setServices(MasterServices services) {
@@ -127,7 +130,7 @@ public class RegionLocationFinder {
   public void setClusterStatus(ClusterStatus status) {
     long currentTime = EnvironmentEdgeManager.currentTimeMillis();
     this.status = status;
-    if (currentTime > lastFullRefresh + (CACHE_TIME / 2)) {
+    if (currentTime > lastFullRefresh + (cacheTime / 2)) {
       // Only count the refresh if it includes user tables ( eg more than meta and namespace ).
       lastFullRefresh = scheduleFullRefresh()?currentTime:lastFullRefresh;
     }
