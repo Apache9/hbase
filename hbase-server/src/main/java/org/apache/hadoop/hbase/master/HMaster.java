@@ -86,6 +86,7 @@ import org.apache.hadoop.hbase.client.MetaScanner;
 import org.apache.hadoop.hbase.client.MetaScanner.MetaScannerVisitor;
 import org.apache.hadoop.hbase.client.MetaScanner.MetaScannerVisitorBase;
 import org.apache.hadoop.hbase.client.Result;
+import org.apache.hadoop.hbase.client.UnmodifyableHTableDescriptor;
 import org.apache.hadoop.hbase.coprocessor.CoprocessorHost;
 import org.apache.hadoop.hbase.exceptions.DeserializationException;
 import org.apache.hadoop.hbase.exceptions.MergeRegionException;
@@ -1933,7 +1934,8 @@ MasterServices, Server {
       throw new MasterNotRunningException();
     }
 
-    if (ignoreSplitsWhenCreatingTable) {
+    if (!(hTableDescriptor instanceof UnmodifyableHTableDescriptor)
+        && ignoreSplitsWhenCreatingTable) {
       boolean isSalted = hTableDescriptor.isSalted();
       if (isSalted) {
         hTableDescriptor.setSlotsCount(1);
