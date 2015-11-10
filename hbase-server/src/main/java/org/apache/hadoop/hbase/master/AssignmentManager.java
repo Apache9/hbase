@@ -2982,6 +2982,13 @@ public class AssignmentManager extends ZooKeeperListener {
     if (nodes != null && !nodes.isEmpty()) {
       for (String encodedRegionName : nodes) {
         processRegionInTransition(encodedRegionName, null);
+        // processRegionInTransition may fail to read meta table and abort HMaster
+        // should skip try rest regions if the HMaster aborted
+        if (this.server.isStopped() || this.server.isAborted()) {
+          throw new IOException("master : " + this.server.getServerName()
+              + " not running, isStopped:" + this.server.isStopped() + ", isAborted:"
+              + this.server.isAborted());
+        }
       }
     } else if (!useZKForAssignment) {
        processRegionInTransitionZkLess();
