@@ -43,7 +43,7 @@ import org.apache.hadoop.io.WritableUtils;
 public class HServerLoad extends VersionedWritable
 implements WritableComparable<HServerLoad> {
   private static final byte INT_REQUEST_VERSION = 2;
-  private static final byte VERSION = 4;
+  private static final byte VERSION = 5;
 
   // Empty load instance.
   public static final HServerLoad EMPTY_HSERVERLOAD = new HServerLoad();
@@ -83,6 +83,9 @@ implements WritableComparable<HServerLoad> {
 
   /** the current write requests per second made to regionserver */
   private long writeRequestsPerSecond;
+  
+  /** the current raw keyvalue count per second made to regionserver */
+  private long readRawCountPerSecond;
 
   private List<ReplicationLoad> replicationLoads = new ArrayList<ReplicationLoad>();
   /** @return the object version number */
@@ -94,7 +97,7 @@ implements WritableComparable<HServerLoad> {
    * Encapsulates per-region loading metrics.
    */
   public static class RegionLoad extends VersionedWritable {
-    private static final byte VERSION = 6;
+    private static final byte VERSION = 7;
 
     /** @return the object version number */
     public byte getVersion() {
@@ -152,6 +155,9 @@ implements WritableComparable<HServerLoad> {
 
     /** the current write requests per second made to region */
     private long writeRequestsPerSecond;
+    
+    /** the current raw keyvalue count per second made to region */
+    private long readRawCountPerSecond;
     /**
      * Constructor, for Writable
      */
@@ -183,7 +189,8 @@ implements WritableComparable<HServerLoad> {
         final long totalCompactingKVs, final long currentCompactedKVs,
         final long lastFlushSeqId, final float locality,
         final long readRequestsPerSecond,
-        final long writeRequestsPerSecond) {
+        final long writeRequestsPerSecond,
+        final long readRawCountPerSecond) {
       this.name = name;
       this.stores = stores;
       this.storefiles = storefiles;
@@ -203,6 +210,7 @@ implements WritableComparable<HServerLoad> {
       this.locality = locality;
       this.readRequestsPerSecond = readRequestsPerSecond;
       this.writeRequestsPerSecond = writeRequestsPerSecond;
+      this.readRawCountPerSecond = readRawCountPerSecond;
     }
 
     /**
@@ -305,6 +313,10 @@ implements WritableComparable<HServerLoad> {
       return writeRequestsPerSecond;
     }
 
+    public long getReadRawCountPerSecond() {
+      return readRawCountPerSecond;
+    }
+    
     /**
      * @return The current total size of root-level indexes for the region, in KB.
      */
@@ -499,6 +511,9 @@ implements WritableComparable<HServerLoad> {
         this.readRequestsPerSecond = WritableUtils.readVLong(in);
         this.writeRequestsPerSecond = WritableUtils.readVLong(in);
       }
+      if (version >= 7) {
+        this.readRawCountPerSecond = WritableUtils.readVLong(in);
+      }
     }
 
     public void write(DataOutput out) throws IOException {
@@ -526,6 +541,7 @@ implements WritableComparable<HServerLoad> {
       WritableUtils.writeVLong(out, getRequestsCount);
       WritableUtils.writeVLong(out, readRequestsPerSecond);
       WritableUtils.writeVLong(out, writeRequestsPerSecond);
+      WritableUtils.writeVLong(out, readRawCountPerSecond);
     }
 
     /**
@@ -575,6 +591,8 @@ implements WritableComparable<HServerLoad> {
         this.locality);
       sb = Strings.appendKeyValue(sb, "readRequestsPerSecond",
         this.readRequestsPerSecond);
+      sb = Strings.appendKeyValue(sb, "readRawCountPerSecond",
+        this.readRawCountPerSecond);
       sb = Strings.appendKeyValue(sb, "writeRequestsPerSecond",
         this.writeRequestsPerSecond);
       return sb.toString();
@@ -610,7 +628,8 @@ implements WritableComparable<HServerLoad> {
       final int numberOfRequests, final int usedHeapMB, final int maxHeapMB,
       final Map<byte[], RegionLoad> regionLoad,
       final Set<String> coprocessors, final long readRequestsPerSecond,
-      final long writeRequestsPerSecond, final List<ReplicationLoad> replicationLoads) {
+      final long writeRequestsPerSecond, final List<ReplicationLoad> replicationLoads,
+      final long readRawCountPerSecond) {
     this.numberOfRequests = numberOfRequests;
     this.usedHeapMB = usedHeapMB;
     this.maxHeapMB = maxHeapMB;
@@ -620,6 +639,7 @@ implements WritableComparable<HServerLoad> {
     this.readRequestsPerSecond = readRequestsPerSecond;
     this.writeRequestsPerSecond = writeRequestsPerSecond;
     this.replicationLoads = replicationLoads;
+    this.readRawCountPerSecond = readRawCountPerSecond;
   }
 
   /**
@@ -627,9 +647,9 @@ implements WritableComparable<HServerLoad> {
    * @param hsl the template HServerLoad
    */
   public HServerLoad(final HServerLoad hsl) {
-    this(hsl.totalNumberOfRequests, hsl.numberOfRequests, hsl.usedHeapMB,
-        hsl.maxHeapMB, hsl.getRegionsLoad(), hsl.coprocessors,
-        hsl.readRequestsPerSecond, hsl.writeRequestsPerSecond, hsl.replicationLoads);
+    this(hsl.totalNumberOfRequests, hsl.numberOfRequests, hsl.usedHeapMB, hsl.maxHeapMB, hsl
+        .getRegionsLoad(), hsl.coprocessors, hsl.readRequestsPerSecond, hsl.writeRequestsPerSecond,
+        hsl.replicationLoads, hsl.readRawCountPerSecond);
     for (Map.Entry<byte[], RegionLoad> e : hsl.regionLoad.entrySet()) {
       this.regionLoad.put(e.getKey(), e.getValue());
     }
@@ -672,6 +692,8 @@ implements WritableComparable<HServerLoad> {
       Integer.valueOf(numberOfRequests/msgInterval));
     sb = Strings.appendKeyValue(sb, "readPerSecond",
       Long.valueOf(readRequestsPerSecond));
+    sb = Strings.appendKeyValue(sb, "readRawCountPerSecond",
+      Long.valueOf(readRawCountPerSecond));
     sb = Strings.appendKeyValue(sb, "writePerSecond",
       Long.valueOf(writeRequestsPerSecond));
     sb = Strings.appendKeyValue(sb, "numberOfOnlineRegions",
@@ -734,6 +756,10 @@ implements WritableComparable<HServerLoad> {
    */
   public long getWriteRequestsPerSecond() {
     return writeRequestsPerSecond;
+  }
+  
+  public long getReadRawCountPerSecond() {
+    return readRawCountPerSecond;
   }
 
   public List<ReplicationLoad> getReplicationLoads() {
@@ -825,7 +851,7 @@ implements WritableComparable<HServerLoad> {
     for (int i = 0; i < coprocessorsSize; i++) {
       coprocessors.add(in.readUTF());
     }
-    if (version == VERSION) {
+    if (version >= 4) {
       this.readRequestsPerSecond = in.readLong();
       this.writeRequestsPerSecond = in.readLong();
       int numberofLoads = in.readInt();
@@ -834,6 +860,9 @@ implements WritableComparable<HServerLoad> {
         load.readFields(in);
         replicationLoads.add(load);
       }
+    }
+    if (version >= 5) {
+      this.readRawCountPerSecond = in.readLong();
     }
   }
 
@@ -857,6 +886,7 @@ implements WritableComparable<HServerLoad> {
     for (ReplicationLoad load: replicationLoads) {
       load.write(out);
     }
+    out.writeLong(readRawCountPerSecond);
   }
 
   // Comparable

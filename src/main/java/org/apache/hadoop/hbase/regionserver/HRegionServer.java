@@ -294,7 +294,8 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
   
   /** region server configuration name */
   public static final String REGIONSERVER_CONF = "regionserver_conf";
-
+  
+  private final int warnReadRawCount;
   /*
    * Space is reserved in HRS constructor and then released when aborting to
    * recover from an OOME. See HBASE-706. TODO: Make this percentage of the heap
@@ -458,7 +459,9 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
     this.threadWakeFrequency = conf.getInt(HConstants.THREAD_WAKE_FREQUENCY,
       10 * 1000);
     this.msgInterval = conf.getInt("hbase.regionserver.msginterval", 3 * 1000);
-
+    this.warnReadRawCount = conf.getInt(HConstants.WARN_READ_RAW_COUNT_ONE_ROW,
+      HConstants.DEFAULT_WARN_READ_RAW_COUNT_ONE_ROW);
+    
     this.sleeper = new Sleeper(this.msgInterval, this);
 
     this.maxScannerResultSize = conf.getLong(
@@ -1045,10 +1048,12 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
       new TreeMap<byte [], HServerLoad.RegionLoad>(Bytes.BYTES_COMPARATOR);
     long readRequestsPerSecond = 0;
     long writeRequestsPerSecond = 0;
+    long readRawCountPerSecond = 0;
     for (HRegion region: regions) {
       RegionLoad load = createRegionLoad(region);
       regionLoads.put(region.getRegionName(), load);
       readRequestsPerSecond += load.getReadRequestsPerSecond();
+      readRawCountPerSecond += load.getReadRawCountPerSecond();
       writeRequestsPerSecond += load.getWriteRequestsPerSecond();
     }
     List<ReplicationLoad> replicationLoads = new LinkedList<ReplicationLoad>();
@@ -1057,11 +1062,10 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
     }
     MemoryUsage memory =
       ManagementFactory.getMemoryMXBean().getHeapMemoryUsage();
-    return new HServerLoad(requestCount.get(),(int)metrics.getRequests(),
-      (int)(memory.getUsed() / 1024 / 1024),
-      (int) (memory.getMax() / 1024 / 1024), regionLoads,
-      this.hlog.getCoprocessorHost().getCoprocessors(),
-      readRequestsPerSecond, writeRequestsPerSecond, replicationLoads);
+    return new HServerLoad(requestCount.get(), (int) metrics.getRequests(),
+        (int) (memory.getUsed() / 1024 / 1024), (int) (memory.getMax() / 1024 / 1024), regionLoads,
+        this.hlog.getCoprocessorHost().getCoprocessors(), readRequestsPerSecond,
+        writeRequestsPerSecond, replicationLoads, readRawCountPerSecond);
   }
 
   String getOnlineRegionsAsPrintableString() {
@@ -1337,7 +1341,8 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
         r.getRequestsCount.get(), r.readRequestsCount.get(), r.writeRequestsCount.get(),
         totalCompactingKVs, currentCompactedKVs, 
         r.getLastFlushSequenceId(), locality,
-        r.getReadRequestsPerSecond(), r.getWriteRequestsPerSecond());
+        r.getReadRequestsPerSecond(), r.getWriteRequestsPerSecond(),
+        r.getReadRawCountPerSecond());
   }
 
   /**
@@ -2938,14 +2943,22 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
             ScannerStatus status =
                 s.nextRaw(values, rawLimit - rawCount, SchemaMetrics.METRIC_NEXTSIZE);
             rawCount += status.getRawValueScanned();
+            
             if (!values.isEmpty()) {
               if (maxScannerResultSize < Long.MAX_VALUE){
                 for (KeyValue kv : values) {
                   currentScanResultSize += kv.heapSize();
                 }
               }
-              results.add(new Result(values));
+              
+              Result result = new Result(values);
+              if (status.getRawValueScanned() >= warnReadRawCount) {
+                LOG.warn("Big raw count for region:" + region.getRegionNameAsString() + ", row="
+                    + Bytes.toStringBinary(result.getRow()));
+              }
+              results.add(result);
             }
+            
             boolean limitReached = false;
             if (rawLimit > 0 && rawCount >= rawLimit) {
               limitReached = true;
@@ -2970,7 +2983,7 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
           }
         }
         requestCount.addAndGet(i);
-        region.updateReadMetrics(i);
+        region.updateReadMetrics(i, rawCount);
       } finally {
         region.closeRegionOperation();
       }

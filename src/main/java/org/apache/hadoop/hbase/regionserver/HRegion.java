@@ -253,7 +253,8 @@ public class HRegion implements HeapSize { // , Writable{
       "readRequestsPerSecond", registry);
   final MetricsRate writeRequestsPerSecond = new MetricsRate(
       "writeRequestsPerSecond", registry);
-
+  final MetricsRate readRawCountPerSecond = new MetricsRate("readRawCountPerSecond", registry);
+  private int warnReadRawCount = HConstants.DEFAULT_WARN_READ_RAW_COUNT_ONE_ROW;
   /**
    * The directory for the table this region is part of.
    * This directory contains the directory for this region.
@@ -496,6 +497,8 @@ public class HRegion implements HeapSize { // , Writable{
     }
     this.maxBusyWaitDuration = conf.getLong("ipc.client.call.purge.timeout",
       2 * HConstants.DEFAULT_HBASE_RPC_TIMEOUT);
+    this.warnReadRawCount = conf.getInt(HConstants.WARN_READ_RAW_COUNT_ONE_ROW,
+      HConstants.DEFAULT_WARN_READ_RAW_COUNT_ONE_ROW);
 
     /*
      * timestamp.slop provides a server-side constraint on the timestamp. This
@@ -905,6 +908,12 @@ public class HRegion implements HeapSize { // , Writable{
     return (long) this.readRequestsPerSecond.getPreviousIntervalValue();
   }
 
+  /** @return readRawCountPerSecond for this region */
+  public long getReadRawCountPerSecond() {
+    this.readRawCountPerSecond.intervalHeartBeat();
+    return (long) this.readRawCountPerSecond.getPreviousIntervalValue();
+  }
+  
   /** @return writeRequestsCount for this region */
   public long getWriteRequestsCount() {
     return this.writeRequestsCount.get();
@@ -1807,7 +1816,7 @@ public class HRegion implements HeapSize { // , Writable{
     // closest key is across all column families, since the data may be sparse
     checkRow(row, "getClosestRowBefore");
     startRegionOperation();
-    updateReadMetrics(1);
+    updateReadMetrics(1, 1);
     try {
       Store store = getStore(family);
       // get the closest key. (HStore.getRowKeyAtOrBefore can return null)
@@ -4064,14 +4073,21 @@ public class HRegion implements HeapSize { // , Writable{
       }
       final long nowNs = System.nanoTime();
       startRegionOperation();
-      updateReadMetrics(1);
+      ScannerStatus status = null;
       try {
 
         // This could be a new thread from the last time we called next().
         MultiVersionConsistencyControl.setThreadReadPoint(this.readPt);
 
-        return nextRaw(outResults, limit, rawLimit, metric);
+        status = nextRaw(outResults, limit, rawLimit, metric);
+        return status;
       } finally {
+        int rawCount = status == null ? 1 : status.getRawValueScanned();
+        if (!outResults.isEmpty() && rawCount >= warnReadRawCount) {
+          LOG.warn("Big raw count for region:" + region.getRegionNameAsString() + ", row="
+              + Bytes.toStringBinary(outResults.get(0).getRow()));
+        }
+        updateReadMetrics(1, rawCount);
         closeRegionOperation();
         opMetrics.updateNextMetrics(familyMap.keySet(), (System.nanoTime() - nowNs) / 1000);
       }
@@ -5891,7 +5907,7 @@ public class HRegion implements HeapSize { // , Writable{
       ClassSize.OBJECT +
       ClassSize.ARRAY +
       39 * ClassSize.REFERENCE + 2 * Bytes.SIZEOF_INT +
-      (10 * Bytes.SIZEOF_LONG) +
+      (11 * Bytes.SIZEOF_LONG) +
       Bytes.SIZEOF_BOOLEAN);
 
   public static final long DEEP_OVERHEAD = FIXED_OVERHEAD +
@@ -6258,10 +6274,11 @@ public class HRegion implements HeapSize { // , Writable{
           " is closed");
     }
   }
+
   /**
-   * Update the read operation metrics
+   * Update the write operation metrics
    */
-  public void updateReadMetrics(int num) {
+  public void updateReadMetrics(int num, int rawCount) {
     if (num == 1) {
       this.readRequestsCount.increment();
       this.readRequestsPerSecond.inc();
@@ -6269,9 +6286,10 @@ public class HRegion implements HeapSize { // , Writable{
       this.readRequestsCount.add(num);
       this.readRequestsPerSecond.inc(num);
     }
+    this.readRawCountPerSecond.inc(rawCount);
     this.opMetrics.setReadRequestCountMetrics(this.readRequestsCount.get());
   }
-
+  
   /**
    * Update the write operation metrics
    */

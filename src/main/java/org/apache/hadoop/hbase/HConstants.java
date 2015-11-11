@@ -766,6 +766,10 @@ public final class HConstants {
 
   public static final String IGNORE_SPLITS_WHEN_CREATE_TABLE = "hbase.ignore.splits.when.create.table";
   
+  public static final String WARN_READ_RAW_COUNT_ONE_ROW = "hbase.warn.read.raw.count.one.row";
+  // assume average kv size is 1k, will log a warn message if the raw size of the row exceed 10M.
+  public static final int DEFAULT_WARN_READ_RAW_COUNT_ONE_ROW = 10000;
+  
   private HConstants() {
     // Can't be instantiated with this ctor.
   }
