@@ -27,6 +27,7 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.JVMClusterUtil;
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -52,6 +53,10 @@ public class TestThriftReplicationSmallTests extends TestThriftReplicationBase {
   private final static HBaseTestingUtility clusterB = new HBaseTestingUtility();
   private static HTable tableA;
   private static HTable tableB;
+  private static String sourceTableName = "test_table_name_transfer_src";
+  private static HTable sourceTable;
+  private static String destTableName = "test_table_name_transfer_dst";
+  private static HTable destTable;
   protected static final byte[] row = Bytes.toBytes("row");
 
   @BeforeClass
@@ -60,6 +65,8 @@ public class TestThriftReplicationSmallTests extends TestThriftReplicationBase {
     int clusterBServerPort = HBaseTestingUtility.randomFreePort();
 
     setupConfiguration(clusterA, clusterAServerPort);
+    clusterA.getConfiguration().set(ThriftClient.HBASE_REPLICATION_THRIFT_TABLE_NAME_MAP,
+      sourceTableName + "=>" + destTableName);
     setupConfiguration(clusterB, clusterBServerPort);
 
     addPeerThriftPort(clusterA, "1", clusterBServerPort);
@@ -76,6 +83,14 @@ public class TestThriftReplicationSmallTests extends TestThriftReplicationBase {
 
     tableA = getTestTable(clusterA, table);
     tableB = getTestTable(clusterB, table);
+    
+    table = createTestTableWithVersion(100, sourceTableName);
+    createTableOnCluster(clusterA, table);
+    sourceTable = getTestTable(clusterA, table);
+    
+    table = createTestTableWithVersion(100, destTableName);
+    createTableOnCluster(clusterB, table);
+    destTable = getTestTable(clusterB, table);
 
     addReplicationPeer("1", clusterA, clusterB);
     addReplicationPeer("1", clusterB, clusterA);
@@ -257,6 +272,24 @@ public class TestThriftReplicationSmallTests extends TestThriftReplicationBase {
     }
   }
 
+  /**
+   * Add rows, check whether the table name will be transferred as configured
+   */
+  @Test(timeout=300000)
+  public void testTableNameTransfer() throws Exception {
+    LOG.info("testTableNameTransfer");
+    Put put = new Put(row);
+    put.add(DEFAULT_FAMILY, row, row);
+    sourceTable.put(put);
+    sourceTable.flushCommits();
+
+    // sleep long enough
+    Thread.sleep(1000);
+    Get get = new Get(row);
+    Result result = destTable.get(get);
+    Assert.assertArrayEquals(row, result.getValue(DEFAULT_FAMILY, row));
+  }
+  
   /**
    * Try a small batch upload using the write buffer, check it's replicated
    * @throws Exception
