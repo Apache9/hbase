@@ -2374,7 +2374,7 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
   public Result get(byte[] regionName, Get get) throws IOException {
     checkOpen();
     requestCount.incrementAndGet();
-    TracerUtils.addAnnotation("start a get");
+    TracerUtils.addAnnotation("start a get: " + get); // TODO use lazy toString
     try {
       HRegion region = getRegion(regionName);
       return region.get(get, getLockFromId(get.getLockId()));
