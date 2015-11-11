@@ -644,7 +644,8 @@ public class HFileReaderV2 extends AbstractHFileReader {
       // no "conf" be passed into this, so let's compare with a magic number...
       if (ret.heapSize() > 1048576) {
         LOG.info("HUGE KV > 1MB! keyLen:" + ret.getKeyLength() + ",key:"
-            + Bytes.toStringBinary(ret.getKey()));
+            + Bytes.toStringBinary(ret.getKey()) + ", table:" + reader.getTableName()
+            + ", cf:" + reader.getColumnFamilyName() + ", path:" + reader.getPath());
       }
       return ret;
     }
