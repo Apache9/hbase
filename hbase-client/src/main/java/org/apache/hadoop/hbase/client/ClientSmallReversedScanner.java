@@ -45,7 +45,6 @@ import java.io.IOException;
 public class ClientSmallReversedScanner extends ReversedClientScanner {
   private static final Log LOG = LogFactory.getLog(ClientSmallReversedScanner.class);
   private RegionServerCallable<Result[]> smallScanCallable = null;
-  private byte[] skipRowOfFirstResult = null;
 
   /**
    * Create a new ReversibleClientScanner for the specified table Note that the
@@ -77,7 +76,6 @@ public class ClientSmallReversedScanner extends ReversedClientScanner {
     // Where to start the next getter
     byte[] localStartKey;
     int cacheNum = nbRows;
-    skipRowOfFirstResult = null;
     // if we're at end of table, close and return false to stop iterating
     if (this.currentRegion != null && currentRegionDone) {
       byte[] startKey = this.currentRegion.getStartKey();
@@ -96,8 +94,7 @@ public class ClientSmallReversedScanner extends ReversedClientScanner {
         LOG.debug("Finished with region " + this.currentRegion);
       }
     } else if (this.lastResult != null) {
-      localStartKey = this.lastResult.getRow();
-      skipRowOfFirstResult = this.lastResult.getRow();
+      localStartKey =  createClosestRowBefore(lastResult.getRow());
       cacheNum++;
     } else {
       localStartKey = this.scan.getStartRow();
@@ -107,11 +104,10 @@ public class ClientSmallReversedScanner extends ReversedClientScanner {
       LOG.trace("Advancing internal small scanner to startKey at '"
           + Bytes.toStringBinary(localStartKey) + "'");
     }
-
     smallScanCallable = ClientSmallScanner.getSmallScanCallable(
         scan, getConnection(), getTable(), localStartKey, cacheNum, this.rpcControllerFactory);
 
-    if (this.scanMetrics != null && skipRowOfFirstResult == null) {
+    if (this.scanMetrics != null) {
       this.scanMetrics.countOfRegions.incrementAndGet();
     }
     return true;
@@ -129,8 +125,9 @@ public class ClientSmallReversedScanner extends ReversedClientScanner {
       long remainingResultSize = maxScannerResultSize;
       int countdown = this.caching;
       boolean currentRegionDone = false;
+      boolean fakeResultReturned = false;
       // Values == null means server-side filter has determined we must STOP
-      while (remainingResultSize > 0 && countdown > 0
+      while (!fakeResultReturned && remainingResultSize > 0 && countdown > 0
           && nextScanner(countdown, values == null, currentRegionDone)) {
         // Server returns a null values if scanning is to stop. Else,
         // returns an empty array if scanning is to go on and we've just
@@ -146,10 +143,14 @@ public class ClientSmallReversedScanner extends ReversedClientScanner {
         if (values != null && values.length > 0) {
           for (int i = 0; i < values.length; i++) {
             Result rs = values[i];
-            if (i == 0 && this.skipRowOfFirstResult != null
-                && Bytes.equals(skipRowOfFirstResult, rs.getRow())) {
-              // Skip the first result
-              continue;
+            if (rs.isFake()) {
+              // End of 1 next RPC
+              fakeResultReturned = true;
+              // return the fake result to users when raw limit is set
+              if (scan.getRawLimit() > 0) {
+                cache.add(rs);
+              }
+              break;
             }
             cache.add(rs);
             for (Cell kv : rs.rawCells()) {
@@ -159,7 +160,9 @@ public class ClientSmallReversedScanner extends ReversedClientScanner {
             this.lastResult = rs;
           }
         }
-        currentRegionDone = countdown > 0;
+        if (!fakeResultReturned) {
+          currentRegionDone = countdown > 0;
+        }
       }
     }
 

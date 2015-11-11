@@ -444,6 +444,11 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
    */
   Chore periodicFlusher;
 
+  /*
+   * region compactor by locality
+   */
+  Chore regionCompactor;
+
   // HLog and HLog roller. log is protected rather than private to avoid
   // eclipse warning when accessed by inner classes
   protected volatile HLog hlog;
@@ -888,6 +893,10 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
       healthCheckChore = new HealthCheckChore(sleepTime, this, getConfiguration());
     }
 
+    int compactorPeriod = conf.getInt(RegionCompactor.REGION_ATUO_COMPACT_PERIOD,
+      RegionCompactor.DEFAULT_REGION_ATUO_COMPACT_PERIOD);
+    this.regionCompactor = new RegionCompactor(this, compactorPeriod);
+
     this.leases = new Leases(this.threadWakeFrequency);
 
     // Create the thread to clean the moved regions list
@@ -1038,6 +1047,9 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     }
     if (this.nonceManagerChore != null) {
       this.nonceManagerChore.interrupt();
+    }
+    if (this.regionCompactor != null) {
+      this.regionCompactor.interrupt();
     }
 
     // Stop the quota manager
@@ -1775,6 +1787,10 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
       Threads.setDaemonThreadRunning(this.nonceManagerChore.getThread(), n + ".nonceCleaner",
             uncaughtExceptionHandler);
     }
+    if (this.regionCompactor != null) {
+      Threads.setDaemonThreadRunning(this.regionCompactor.getThread(), n +
+        ".regionCompactor", uncaughtExceptionHandler);
+    }
 
     Threads.setDaemonThreadRunning(leases.getThread(), n + ".leaseChecker",
       uncaughtExceptionHandler);
@@ -1857,7 +1873,8 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     if (!(leases.isAlive()
         && cacheFlusher.isAlive() && hlogRoller.isAlive()
         && this.compactionChecker.isAlive()
-        && this.periodicFlusher.isAlive())) {
+        && this.periodicFlusher.isAlive()
+        && this.regionCompactor.isAlive())) {
       stop("One or more threads are no longer alive -- stop");
       return false;
     }
@@ -2041,6 +2058,9 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     }
     if (this.compactionChecker != null) {
       Threads.shutdown(this.compactionChecker.getThread());
+    }
+    if (regionCompactor != null) {
+      Threads.shutdown(this.regionCompactor.getThread());
     }
     if (this.periodicFlusher != null) {
       Threads.shutdown(this.periodicFlusher.getThread());

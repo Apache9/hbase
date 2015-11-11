@@ -52,6 +52,7 @@ import org.apache.hadoop.hbase.CellUtil;
 import org.apache.hadoop.hbase.CompoundConfiguration;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HConstants;
+import org.apache.hadoop.hbase.HDFSBlocksDistribution;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.RemoteExceptionHandler;
@@ -2191,5 +2192,15 @@ public class HStore implements Store {
   @Override
   public double getCompactionPressure() {
     return storeEngine.getStoreFileManager().getCompactionPressure();
+  }
+  
+  @Override
+  public HDFSBlocksDistribution getHDFSBlocksDistribution() {
+    HDFSBlocksDistribution hdfsBlocksDistribution = new HDFSBlocksDistribution();
+    for (StoreFile sf : this.getStorefiles()) {
+      HDFSBlocksDistribution storeFileBlocksDistribution = sf.getHDFSBlockDistribution();
+      hdfsBlocksDistribution.add(storeFileBlocksDistribution);
+    }
+    return hdfsBlocksDistribution;
   }
 }

@@ -26,6 +26,7 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.HColumnDescriptor;
+import org.apache.hadoop.hbase.HDFSBlocksDistribution;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.TableName;
@@ -426,4 +427,11 @@ public interface Store extends HeapSize, StoreConfigInformation {
    * linear formula.
    */
   double getCompactionPressure();
+  
+  /**
+   * This function will return the HDFS blocks distribution based on the data
+   * captured when HFile is created
+   * @return The HDFS blocks distribution for the region.
+   */
+  public HDFSBlocksDistribution getHDFSBlocksDistribution();
 }
