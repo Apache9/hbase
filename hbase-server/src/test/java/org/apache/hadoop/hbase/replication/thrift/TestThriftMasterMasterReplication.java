@@ -22,6 +22,7 @@ import com.google.common.collect.Iterables;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.KeyValue;
+import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
@@ -32,6 +33,7 @@ import org.junit.experimental.categories.Category;
 
 import static org.apache.hadoop.hbase.replication.thrift.ReplicationTestUtils.*;
 import static org.junit.Assert.assertEquals;
+import org.junit.Assert;
 
 
 
@@ -43,6 +45,10 @@ public class TestThriftMasterMasterReplication extends TestThriftReplicationBase
 
   private static HTable tableA;
   private static HTable tableB;
+  private static String sourceTableName = "test_table_name_transfer_src";
+  private static HTable sourceTable;
+  private static String destTableName = "test_table_name_transfer_dst";
+  private static HTable destTable;
 
   @BeforeClass
   public static void setUpClazz() throws Exception {
@@ -51,6 +57,8 @@ public class TestThriftMasterMasterReplication extends TestThriftReplicationBase
     int clusterBServerPort = HBaseTestingUtility.randomFreePort();
 
     setupConfiguration(clusterA, clusterAServerPort);
+    clusterA.getConfiguration().set(ThriftClient.HBASE_REPLICATION_THRIFT_TABLE_NAME_MAP,
+      sourceTableName + "=>" + destTableName);
     setupConfiguration(clusterB, clusterBServerPort);
 
     addPeerThriftPort(clusterA, "1", clusterBServerPort);
@@ -66,6 +74,14 @@ public class TestThriftMasterMasterReplication extends TestThriftReplicationBase
 
     tableA = getTestTable(clusterA, table);
     tableB = getTestTable(clusterB, table);
+    
+    table = createTestTable(sourceTableName);
+    createTableOnCluster(clusterA, table);
+    sourceTable = getTestTable(clusterA, table);
+    
+    table = createTestTable(destTableName);
+    createTableOnCluster(clusterB, table);
+    destTable = getTestTable(clusterB, table);
 
     addReplicationPeer("1", clusterA, clusterB);
     addReplicationPeer("1", clusterB, clusterA);
@@ -100,5 +116,23 @@ public class TestThriftMasterMasterReplication extends TestThriftReplicationBase
     Put overwritePut = new Put(Bytes.toBytes(rowKey));
     overwritePut.add(DEFAULT_FAMILY, DEFAULT_QUALIFIER, newTimestamp, Bytes.toBytes(value));
     putAndWait(overwritePut, value, true, tableB, tableA);
+  }
+
+  /**
+   * Add rows, check whether the table name will be transferred as configured
+   */
+  @Test
+  public void testTableNameTransfer() throws Exception {
+    byte[] row = Bytes.toBytes("row");
+    Put put = new Put(row);
+    put.add(DEFAULT_FAMILY, row, row);
+    sourceTable.put(put);
+    sourceTable.flushCommits();
+
+    // sleep long enough
+    Thread.sleep(1000);
+    Get get = new Get(row);
+    Result result = destTable.get(get);
+    Assert.assertArrayEquals(row, result.getValue(DEFAULT_FAMILY, row));
   }
 }

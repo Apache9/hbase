@@ -67,7 +67,11 @@ public class ReplicationTestUtils {
   }
 
   public static HTableDescriptor createTestTable() throws Exception {
-    HTableDescriptor table = new HTableDescriptor("test_table");
+    return createTestTable(null);
+  }
+
+  public static HTableDescriptor createTestTable(String tableName) throws Exception {
+    HTableDescriptor table = new HTableDescriptor(tableName == null ? "test_table" : tableName);
     HColumnDescriptor fam = new HColumnDescriptor(DEFAULT_FAMILY);
     fam.setScope(HConstants.REPLICATION_SCOPE_GLOBAL);
     fam.setMaxVersions(1);

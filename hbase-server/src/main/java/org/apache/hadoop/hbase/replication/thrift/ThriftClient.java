@@ -24,8 +24,13 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.regionserver.wal.HLog;
+import org.apache.hadoop.hbase.replication.thrift.generated.TBatchEdit;
+import org.apache.hadoop.hbase.replication.thrift.generated.TEdit;
+import org.apache.hadoop.hbase.replication.thrift.generated.THBaseService;
+import org.apache.hadoop.hbase.replication.thrift.generated.TIOError;
 import org.apache.hadoop.hbase.replication.thrift.generated.THBaseService;
 import org.apache.hadoop.hbase.security.User;
+import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.security.SaslRpcServer;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.thrift.TException;
@@ -44,6 +49,14 @@ import java.util.concurrent.ConcurrentSkipListMap;
 
 public class ThriftClient {
   private static final Log LOG = LogFactory.getLog(ThriftClient.class);
+  // 0.98 support namespace to manager tables of the same business. We may need to
+  // change the tablename when migrate from 0.94 to 0.98. For example, the tablename
+  // may be businessName_tablename, it could be transfered to businessName:tablename.
+  // This option allow us to define the table name mapping for replication. The format
+  // of the value should be 'sourceTable1=>destTable1,sourceTable2=>destTable2'
+  public static final String HBASE_REPLICATION_THRIFT_TABLE_NAME_MAP = "hbase.replication.thrift.tablename.map";
+  private static Object tableNameMapLock = new Object();
+  protected static Map<String, String> tableNameMap = null;
   private Configuration conf;
   private final String peerId;
   private boolean isSecure;
@@ -55,6 +68,29 @@ public class ThriftClient {
     this.conf = conf;
     this.peerId = peerId;
     this.isSecure = User.isHBaseSecurityEnabled(conf);
+    loadTableNameMap(conf.get(HBASE_REPLICATION_THRIFT_TABLE_NAME_MAP));
+  }
+
+  protected static void loadTableNameMap(String mappingString) throws IOException {
+    if (mappingString == null) {
+      return;
+    }
+    if (tableNameMap == null) {
+      synchronized(tableNameMapLock) {
+        if (tableNameMap == null) {
+          tableNameMap = new HashMap<String, String>();
+          //The format of the value should be 'sourceTable1=>destTable1,sourceTable2=>destTable2'
+          String[] mappingItems = mappingString.split(",");
+          for (String mappingItem : mappingItems) {
+            String[] names = mappingItem.split("=>");
+            if (names.length != 2) {
+              throw new IOException("table name mapping string is error formatted, mappingString=" + mappingItem);
+            }
+            tableNameMap.put(names[0], names[1]);
+          }
+        }
+      }
+    }
   }
 
   private THBaseService.Client createClient(String host, int port) throws IOException,
@@ -135,6 +171,20 @@ public class ThriftClient {
 
   }
 
+  public static void transferTableNames(TBatchEdit batchEdit, Map<String, String> tableNameMap) {
+    if (batchEdit.isSetEdits()) {
+      for (TEdit edit : batchEdit.getEdits()) {
+        if (edit.isSetHLogKey() && edit.getHLogKey().isSetTableName()) {
+          String sourceTable = Bytes.toString(edit.getHLogKey().getTableName());
+          String destTable = tableNameMap.get(sourceTable);
+          if (destTable != null) {
+            edit.getHLogKey().setTableName(Bytes.toBytes(destTable));
+          }
+        }
+      }
+    }
+  }
+  
   public void shipEdits(ServerName serverName, List<HLog.Entry> entries) throws IOException {
     THBaseService.Client client;
     String host = serverName.getHostname();
@@ -145,7 +195,11 @@ public class ThriftClient {
       throw new IOException("Failed to create replication client", e);
     }
     try {
-      client.replicate(ThriftAdaptors.REPLICATION_BATCH_ADAPTOR.toThrift(entries));
+      TBatchEdit batchEdit = ThriftAdaptors.REPLICATION_BATCH_ADAPTOR.toThrift(entries);
+      if (tableNameMap != null) {
+        transferTableNames(batchEdit, tableNameMap);
+      }
+      client.replicate(batchEdit);
     } catch (TTransportException e) {
       removeClient(host, port);
       try {
