@@ -171,6 +171,7 @@ public abstract class ServerCallable<T> implements Callable<T> {
       HConstants.DEFAULT_HBASE_CLIENT_RETRIES_NUMBER);
     List<RetriesExhaustedException.ThrowableWithExtraContext> exceptions =
       new ArrayList<RetriesExhaustedException.ThrowableWithExtraContext>();
+    List<String> hostnamePort = new ArrayList<String>();
     globalStartTime = EnvironmentEdgeManager.currentTimeMillis();
     long expectedSleep = 0;
 
@@ -200,8 +201,9 @@ public abstract class ServerCallable<T> implements Callable<T> {
           new RetriesExhaustedException.ThrowableWithExtraContext(t,
             EnvironmentEdgeManager.currentTimeMillis(), toString());
         exceptions.add(qt);
+        hostnamePort.add(this.location.getHostnamePort());
         if (tries == numRetries - 1) {
-          throw new RetriesExhaustedException(tries, exceptions);
+          throw new RetriesExhaustedException(tries, exceptions, hostnamePort);
         }
         // If the server is dead, we need to wait a little before retrying, to give
         //  a chance to the regions to be

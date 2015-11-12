@@ -17,7 +17,9 @@ package org.apache.hadoop.hbase.client;
 
 import java.io.IOException;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Exception thrown by HTable methods when an attempt to do something (like
@@ -25,7 +27,8 @@ import java.util.List;
  */
 public class RetriesExhaustedException extends IOException {
   private static final long serialVersionUID = 1876775844L;
-
+  protected List<String> hostnameAndPort;
+  
   public RetriesExhaustedException(final String msg) {
     super(msg);
   }
@@ -76,6 +79,12 @@ public class RetriesExhaustedException extends IOException {
       final List<ThrowableWithExtraContext> exceptions) {
     super(getMessage(numTries, exceptions));
   }
+  
+  public RetriesExhaustedException(final int numTries,
+      final List<ThrowableWithExtraContext> exceptions, final List<String> hostnamePort) {
+    super(getMessage(numTries, exceptions));
+    this.hostnameAndPort = hostnamePort;
+  }
 
   private static String getMessage(String callableVitals, int numTries,
       List<Throwable> exceptions) {
@@ -101,5 +110,14 @@ public class RetriesExhaustedException extends IOException {
       buffer.append("\n");
     }
     return buffer.toString();
+  }
+  
+  public Set<String> getUniqHostnamePort() {
+    if (hostnameAndPort == null) {
+      return null;
+    }
+    Set<String> uniqAddr = new HashSet<String>();
+    uniqAddr.addAll(hostnameAndPort);
+    return uniqAddr;
   }
 }
