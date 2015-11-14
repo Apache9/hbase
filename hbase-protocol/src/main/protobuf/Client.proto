@@ -52,6 +52,14 @@ message Column {
 }
 
 /**
+ * Consistency defines the expected consistency level for an operation.
+ */
+enum Consistency {
+  STRONG   = 0;
+  TIMELINE = 1;
+}
+
+/**
  * The protocol buffer version of Get.
  * Unless existence_only is specified, return all the requested data
  * for the row that matches exactly, or the one that immediately
@@ -75,6 +83,9 @@ message Get {
   // If the row to get doesn't exist, return the
   // closest row before.
   optional bool closest_row_before = 11 [default = false];
+
+  optional Consistency consistency = 12 [default = STRONG];
+  repeated ColumnFamilyTimeRange cf_time_range = 13;
 }
 
 message Result {
@@ -244,6 +255,7 @@ message Scan {
   optional bool reversed = 15 [default = false];
   optional uint32 caching = 17;
   optional bool allow_partial_results = 18;
+  repeated ColumnFamilyTimeRange cf_time_range = 19;
 }
 
 /**

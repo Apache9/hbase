@@ -934,8 +934,7 @@ public class MemStore implements HeapSize {
     }
 
     @Override
-    public boolean shouldUseScanner(Scan scan, SortedSet<byte[]> columns,
-        long oldestUnexpiredTS) {
+    public boolean shouldUseScanner(Scan scan, Store store, long oldestUnexpiredTS) {
       return shouldSeek(scan, oldestUnexpiredTS);
     }
 
