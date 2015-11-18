@@ -56,7 +56,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -3959,7 +3958,6 @@ public class HRegion implements HeapSize { // , Writable{
     private long readPt;
     protected HRegion region;
 	  private Map<byte[], NavigableSet<byte[]>> familyMap = null;
-    private AtomicReference<Thread> scanningThread = new AtomicReference<Thread>(null);
 
     public HRegionInfo getRegionInfo() {
       return regionInfo;
@@ -4170,148 +4168,143 @@ public class HRegion implements HeapSize { // , Writable{
       if (!results.isEmpty()) {
         throw new IllegalArgumentException("First parameter should be an empty list");
       }
-      this.scanningThread.compareAndSet(null, Thread.currentThread());
-      try {
-        RpcCallContext rpcCall = HBaseServer.getCurrentCall();
-        // The loop here is used only when at some point during the next we determine
-        // that due to effects of filters or otherwise, we have an empty row in the result.
-        // Then we loop and try again. Otherwise, we must get out on the first iteration via return,
-        // "true" if there's more data to read, "false" if there isn't (storeHeap is at a stop row,
-        // and joinedHeap has no more data to read for the last row (if set, joinedContinuationRow).
-        int rawCount = 0;
-        while (true) {
-          if (rpcCall != null) {
-            // If a user specifies a too-restrictive or too-slow scanner, the
-            // client might time out and disconnect while the server side
-            // is still processing the request. We should abort aggressively
-            // in that case.
-            rpcCall.throwExceptionIfCallerDisconnected();
-          }
+      RpcCallContext rpcCall = HBaseServer.getCurrentCall();
+      // The loop here is used only when at some point during the next we determine
+      // that due to effects of filters or otherwise, we have an empty row in the result.
+      // Then we loop and try again. Otherwise, we must get out on the first iteration via return,
+      // "true" if there's more data to read, "false" if there isn't (storeHeap is at a stop row,
+      // and joinedHeap has no more data to read for the last row (if set, joinedContinuationRow).
+      int rawCount = 0;
+      while (true) {
+        if (rpcCall != null) {
+          // If a user specifies a too-restrictive or too-slow scanner, the
+          // client might time out and disconnect while the server side
+          // is still processing the request. We should abort aggressively
+          // in that case.
+          rpcCall.throwExceptionIfCallerDisconnected();
+        }
 
-          // Let's see what we have in the storeHeap.
-          KeyValue current = this.storeHeap.peek();
+        // Let's see what we have in the storeHeap.
+        KeyValue current = this.storeHeap.peek();
 
-          byte[] currentRow = null;
-          int offset = 0;
-          short length = 0;
-          if (current != null) {
-            currentRow = current.getBuffer();
-            offset = current.getRowOffset();
-            length = current.getRowLength();
-          }
-          boolean stopRow = isStopRow(currentRow, offset, length);
-          ScannerStatus status = null;
-          // Check if we were getting data from the joinedHeap abd hit the limit.
-          // If not, then it's main path - getting results from storeHeap.
-          if (joinedContinuationRow == null) {
-            // First, check if we are at a stop row. If so, there are no more results.
-            if (stopRow) {
-              if (filter != null && filter.hasFilterRow()) {
-                filter.filterRow(results);
-              }
-              if (filter != null && filter.filterRow()) {
-                results.clear();
-              }
-              return ScannerStatus.done(rawCount);
-            }
-
-            // Check if rowkey filter wants to exclude this row. If so, loop to next.
-            // Techically, if we hit limits before on this row, we don't need this call.
-            if (filterRowKey(currentRow, offset, length)) {
-              results.clear();
-              status = nextRow(currentRow, offset, length);
-              rawCount += status.getRawValueScanned();
-              if (!status.hasNext() || rawLimit > 0 && rawCount >= rawLimit) {
-                return new ScannerStatus(status.hasNext(), filterStopRow(status.next()), rawCount);
-              }
-              continue;
-            }
-
-            // Ok, we are good, let's try to get some results from the main heap.
-            status = populateResult(results, this.storeHeap, limit, currentRow,
-                offset, length, metric);
-            rawCount += status.getRawValueScanned();
-            KeyValue nextKv = status.next();
-            if (limit > 0 && results.size() >= limit) {
-              if (this.filter != null && filter.hasFilterRow()) {
-                throw new IncompatibleFilterException(
-                    "Filter whose hasFilterRow() returns true is incompatible with scan with limit!");
-              }
-              return ScannerStatus.continued(filterStopRow(nextKv), rawCount); // We hit the limit.
-            }
-            stopRow = nextKv == null
-                || isStopRow(nextKv.getBuffer(), nextKv.getRowOffset(), nextKv.getRowLength());
-            // save that the row was empty before filters applied to it.
-            final boolean isEmptyRow = results.isEmpty();
-
-            // We have the part of the row necessary for filtering (all of it, usually).
-            // First filter with the filterRow(List).            
+        byte[] currentRow = null;
+        int offset = 0;
+        short length = 0;
+        if (current != null) {
+          currentRow = current.getBuffer();
+          offset = current.getRowOffset();
+          length = current.getRowLength();
+        }
+        boolean stopRow = isStopRow(currentRow, offset, length);
+        ScannerStatus status = null;
+        // Check if we were getting data from the joinedHeap abd hit the limit.
+        // If not, then it's main path - getting results from storeHeap.
+        if (joinedContinuationRow == null) {
+          // First, check if we are at a stop row. If so, there are no more results.
+          if (stopRow) {
             if (filter != null && filter.hasFilterRow()) {
               filter.filterRow(results);
             }
-
-            if (isEmptyRow || filterRow()) {
+            if (filter != null && filter.filterRow()) {
               results.clear();
-              status = nextRow(currentRow, offset, length);
-              rawCount += status.getRawValueScanned();
-              if (!status.hasNext() || rawLimit > 0 && rawCount >= rawLimit) {
-                return new ScannerStatus(status.hasNext(), filterStopRow(status.next()), rawCount);
-              }
-
-              // This row was totally filtered out, if this is NOT the last row,
-              // we should continue on. Otherwise, nothing else to do.
-              if (!stopRow) continue;
-              return ScannerStatus.done(rawCount);
             }
-
-            // Ok, we are done with storeHeap for this row.
-            // Now we may need to fetch additional, non-essential data into row.
-            // These values are not needed for filter to work, so we postpone their
-            // fetch to (possibly) reduce amount of data loads from disk.
-            if (this.joinedHeap != null) {
-              KeyValue nextJoinedKv = joinedHeap.peek();
-              // If joinedHeap is pointing to some other row, try to seek to a correct one.
-              boolean mayHaveData =
-                  (nextJoinedKv != null && nextJoinedKv.matchingRow(currentRow, offset, length))
-                      || (this.joinedHeap.requestSeek(
-                      KeyValue.createFirstOnRow(currentRow, offset, length), true, true)
-                      && joinedHeap.peek() != null
-                      && joinedHeap.peek().matchingRow(currentRow, offset, length));
-              if (mayHaveData) {
-                joinedContinuationRow = current;
-                status = populateFromJoinedHeap(results, limit, metric);
-                rawCount += status.getRawValueScanned();
-              }
-            }
-          } else {
-            // Populating from the joined map was stopped by limits, populate some more.
-            status = populateFromJoinedHeap(results, limit, metric);
-            rawCount += status.getRawValueScanned();
+            return ScannerStatus.done(rawCount);
           }
 
-          // We may have just called populateFromJoinedMap and hit the limits. If that is
-          // the case, we need to call it again on the next next() invocation.
-          if (joinedContinuationRow != null) {
-            return ScannerStatus.continued(filterStopRow(status.next()), rawCount);
-          }
-
-          // Finally, we are done with both joinedHeap and storeHeap.
-          // Double check to prevent empty rows from appearing in result. It could be
-          // the case when SingleValueExcludeFilter is used.
-          if (results.isEmpty()) {
+          // Check if rowkey filter wants to exclude this row. If so, loop to next.
+          // Techically, if we hit limits before on this row, we don't need this call.
+          if (filterRowKey(currentRow, offset, length)) {
+            results.clear();
             status = nextRow(currentRow, offset, length);
             rawCount += status.getRawValueScanned();
             if (!status.hasNext() || rawLimit > 0 && rawCount >= rawLimit) {
               return new ScannerStatus(status.hasNext(), filterStopRow(status.next()), rawCount);
             }
-            if (!stopRow) continue;
+            continue;
           }
 
-          // We are done. Return the result.
-          return new ScannerStatus(!stopRow, filterStopRow(status.next()), rawCount);
+          // Ok, we are good, let's try to get some results from the main heap.
+          status = populateResult(results, this.storeHeap, limit, currentRow,
+              offset, length, metric);
+          rawCount += status.getRawValueScanned();
+          KeyValue nextKv = status.next();
+          if (limit > 0 && results.size() >= limit) {
+            if (this.filter != null && filter.hasFilterRow()) {
+              throw new IncompatibleFilterException(
+                "Filter whose hasFilterRow() returns true is incompatible with scan with limit!");
+            }
+            return ScannerStatus.continued(filterStopRow(nextKv), rawCount); // We hit the limit.
+          }
+          stopRow = nextKv == null
+              || isStopRow(nextKv.getBuffer(), nextKv.getRowOffset(), nextKv.getRowLength());
+          // save that the row was empty before filters applied to it.
+          final boolean isEmptyRow = results.isEmpty();
+
+          // We have the part of the row necessary for filtering (all of it, usually).
+          // First filter with the filterRow(List).            
+          if (filter != null && filter.hasFilterRow()) {
+            filter.filterRow(results);
+          }
+
+          if (isEmptyRow || filterRow()) {
+            results.clear();
+            status = nextRow(currentRow, offset, length);
+            rawCount += status.getRawValueScanned();
+            if (!status.hasNext() || rawLimit > 0 && rawCount >= rawLimit) {
+              return new ScannerStatus(status.hasNext(), filterStopRow(status.next()), rawCount);
+            }
+
+            // This row was totally filtered out, if this is NOT the last row,
+            // we should continue on. Otherwise, nothing else to do.
+            if (!stopRow) continue;
+            return ScannerStatus.done(rawCount);
+          }
+
+          // Ok, we are done with storeHeap for this row.
+          // Now we may need to fetch additional, non-essential data into row.
+          // These values are not needed for filter to work, so we postpone their
+          // fetch to (possibly) reduce amount of data loads from disk.
+          if (this.joinedHeap != null) {
+            KeyValue nextJoinedKv = joinedHeap.peek();
+            // If joinedHeap is pointing to some other row, try to seek to a correct one.
+            boolean mayHaveData =
+              (nextJoinedKv != null && nextJoinedKv.matchingRow(currentRow, offset, length))
+                || (this.joinedHeap.requestSeek(
+                    KeyValue.createFirstOnRow(currentRow, offset, length), true, true)
+                  && joinedHeap.peek() != null
+                  && joinedHeap.peek().matchingRow(currentRow, offset, length));
+            if (mayHaveData) {
+              joinedContinuationRow = current;
+              status = populateFromJoinedHeap(results, limit, metric);
+              rawCount += status.getRawValueScanned();
+            }
+          }
+        } else {
+          // Populating from the joined map was stopped by limits, populate some more.
+          status = populateFromJoinedHeap(results, limit, metric);
+          rawCount += status.getRawValueScanned();
         }
-      } finally {
-        this.scanningThread.compareAndSet(Thread.currentThread(), null);
+
+        // We may have just called populateFromJoinedMap and hit the limits. If that is
+        // the case, we need to call it again on the next next() invocation.
+        if (joinedContinuationRow != null) {
+          return ScannerStatus.continued(filterStopRow(status.next()), rawCount);
+        }
+
+        // Finally, we are done with both joinedHeap and storeHeap.
+        // Double check to prevent empty rows from appearing in result. It could be
+        // the case when SingleValueExcludeFilter is used.
+        if (results.isEmpty()) {
+          status = nextRow(currentRow, offset, length);
+          rawCount += status.getRawValueScanned();
+          if (!status.hasNext() || rawLimit > 0 && rawCount >= rawLimit) {
+            return new ScannerStatus(status.hasNext(), filterStopRow(status.next()), rawCount);
+          }
+          if (!stopRow) continue;
+        }
+
+        // We are done. Return the result.
+        return new ScannerStatus(!stopRow, filterStopRow(status.next()), rawCount);
       }
     }
 
@@ -4359,28 +4352,18 @@ public class HRegion implements HeapSize { // , Writable{
     }
 
     @Override
-    public void close() {
-      Thread scanningThread = this.scanningThread.get();
-      if (scanningThread != null) {
-        // The scanning thread may get stuck, which should be terminated as early since the
-        // client already abandoned this scanner. This also avoid this thread to get stuck on
-        // the lock. There is a chance that we interrupt another new call, but it's rare and
-        // does not affect the correctness
-        scanningThread.interrupt();
+    public synchronized void close() {
+      if (storeHeap != null) {
+        storeHeap.close();
+        storeHeap = null;
       }
-      synchronized (this) {
-        if (storeHeap != null) {
-          storeHeap.close();
-          storeHeap = null;
-        }
-        if (joinedHeap != null) {
-          joinedHeap.close();
-          joinedHeap = null;
-        }
-        // no need to sychronize here.
-        scannerReadPoints.remove(this);
-        this.filterClosed = true;
+      if (joinedHeap != null) {
+        joinedHeap.close();
+        joinedHeap = null;
       }
+      // no need to sychronize here.
+      scannerReadPoints.remove(this);
+      this.filterClosed = true;
     }
 
     KeyValueHeap getStoreHeapForTesting() {
