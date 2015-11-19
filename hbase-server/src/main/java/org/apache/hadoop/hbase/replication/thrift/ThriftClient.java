@@ -189,6 +189,12 @@ public class ThriftClient {
     THBaseService.Client client;
     String host = serverName.getHostname();
     int port = ThriftUtilities.getDestinationPeerPort(conf, peerId);
+    if (port < 0) {
+      // If user not specify the port for thrift server in peer cluster,
+      // the default port is serverName.port + 2, see minos hbase common config.
+      port = serverName.getPort() + 2;
+    }
+
     try {
       client = getClient(host, port);
     } catch (TTransportException e) {
