@@ -160,7 +160,8 @@ public class ThriftClient {
       client = getClientFromServerName(serverName);
       client.ping();
     } catch (TException e) {
-      removeClient(serverName.getHostname(), ThriftUtilities.getDestinationPeerPort(conf, peerId));
+      removeClient(serverName.getHostname(),
+        ThriftUtilities.getDestinationPeerPort(conf, peerId, serverName.getPort()));
       try {
         client.getOutputProtocol().getTransport().close();
       } catch(Exception e2) {
@@ -188,12 +189,7 @@ public class ThriftClient {
   public void shipEdits(ServerName serverName, List<HLog.Entry> entries) throws IOException {
     THBaseService.Client client;
     String host = serverName.getHostname();
-    int port = ThriftUtilities.getDestinationPeerPort(conf, peerId);
-    if (port < 0) {
-      // If user not specify the port for thrift server in peer cluster,
-      // the default port is serverName.port + 2, see minos hbase common config.
-      port = serverName.getPort() + 2;
-    }
+    int port = ThriftUtilities.getDestinationPeerPort(conf, peerId, serverName.getPort());
 
     try {
       client = getClient(host, port);
@@ -222,7 +218,7 @@ public class ThriftClient {
   public UUID getPeerClusterUUID(ServerName serverName) {
     THBaseService.Client client;
     String host = serverName.getHostname();
-    int port = ThriftUtilities.getDestinationPeerPort(conf, peerId);
+    int port = ThriftUtilities.getDestinationPeerPort(conf, peerId, serverName.getPort());
     try {
       client = getClient(host, port);
       return UUID.fromString(client.getClusterUUID());
@@ -236,7 +232,7 @@ public class ThriftClient {
   private THBaseService.Client getClientFromServerName(ServerName serverName) throws IOException {
     THBaseService.Client client;
     String host = serverName.getHostname();
-    int port = ThriftUtilities.getDestinationPeerPort(conf, peerId);
+    int port = ThriftUtilities.getDestinationPeerPort(conf, peerId, serverName.getPort());
     try {
       client = getClient(host, port);
     } catch (TTransportException e) {
