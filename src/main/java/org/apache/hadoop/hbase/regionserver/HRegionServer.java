@@ -33,8 +33,22 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.net.BindException;
 import java.net.InetSocketAddress;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Random;
+import java.util.Set;
+import java.util.SortedMap;
+import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.Executors;
@@ -56,10 +70,10 @@ import org.apache.hadoop.hbase.CallSequenceOutOfOrderException;
 import org.apache.hadoop.hbase.Chore;
 import org.apache.hadoop.hbase.ClockOutOfSyncException;
 import org.apache.hadoop.hbase.DoNotRetryIOException;
+import org.apache.hadoop.hbase.DroppedSnapshotException;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HConstants.OperationStatusCode;
-import org.apache.hadoop.hbase.DroppedSnapshotException;
 import org.apache.hadoop.hbase.HDFSBlocksDistribution;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HServerAddress;
@@ -120,7 +134,6 @@ import org.apache.hadoop.hbase.ipc.HBaseRPC;
 import org.apache.hadoop.hbase.ipc.HBaseRPCErrorHandler;
 import org.apache.hadoop.hbase.ipc.HBaseRpcMetrics;
 import org.apache.hadoop.hbase.ipc.HBaseServer;
-import org.apache.hadoop.hbase.ipc.HMasterInterface;
 import org.apache.hadoop.hbase.ipc.HMasterRegionInterface;
 import org.apache.hadoop.hbase.ipc.HRegionInterface;
 import org.apache.hadoop.hbase.ipc.Invocation;
@@ -163,6 +176,7 @@ import org.apache.hadoop.hbase.util.InfoServer;
 import org.apache.hadoop.hbase.util.JvmPauseMonitor;
 import org.apache.hadoop.hbase.util.JvmThreadMonitor;
 import org.apache.hadoop.hbase.util.Pair;
+import org.apache.hadoop.hbase.util.QueueCounter;
 import org.apache.hadoop.hbase.util.Sleeper;
 import org.apache.hadoop.hbase.util.Strings;
 import org.apache.hadoop.hbase.util.Threads;
@@ -331,6 +345,11 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
    * Check for flushes
    */
   Chore periodicFlusher;
+
+  /*
+   * Queue full detection
+   */
+  Chore queueFullDetector;
 
   // HLog and HLog roller. log is protected rather than private to avoid
   // eclipse warning when accessed by inner classes
@@ -772,6 +791,10 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
       this.threadWakeFrequency * multiplier, this);
 
     this.periodicFlusher = new PeriodicMemstoreFlusher(this.threadWakeFrequency, this);
+    
+    if (conf.getBoolean("hbase.regionserver.queuefull.detector.enable", false)) {
+      this.queueFullDetector = new QueueFullDetector(this, conf);
+    }
 
     // Health checker thread.
     int sleepTime = this.conf.getInt(HConstants.HEALTH_CHORE_WAKE_FREQ,
@@ -903,6 +926,9 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
     if (this.metaHLogRoller != null) this.metaHLogRoller.interruptIfNecessary();
     if (this.compactionChecker != null)
       this.compactionChecker.interrupt();
+    if (this.queueFullDetector != null) {
+      this.queueFullDetector.interrupt();
+    }
     if (this.healthCheckChore != null) {
       this.healthCheckChore.interrupt();
     }
@@ -1537,6 +1563,111 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
     }
   }
 
+  class QueueFullDetector extends Chore {
+    final HRegionServer server;
+    private int densePeriod;
+    private int denseCheckNum;
+    private int sampleThreshold;
+    private int rejectThreshold;
+
+    public QueueFullDetector(HRegionServer server, Configuration conf) {
+      super("QueueFullDetector", conf.getInt("hbase.regionserver.queuefull.detector.sparseperiod",
+        5000), server);
+      this.server = server;
+      this.densePeriod = conf.getInt("hbase.regionserver.queuefull.detector.denseperiod", 1000);
+      this.denseCheckNum = conf.getInt("hbase.regionserver.queuefull.detector.densechecknum", 100);
+      this.sampleThreshold = conf.getInt("hbase.regionserver.queuefull.detector.samplethreshold",
+        95);
+      if (sampleThreshold < 10 || sampleThreshold >= 100) {
+        LOG.warn("Sample threshold of queue full detector should be in range (10, 100), but the configured value is "
+            + sampleThreshold + ", will use 95 instead");
+        sampleThreshold = 95;
+      }
+      this.rejectThreshold = conf.getInt("hbase.regionserver.queuefull.detector.rejectthreshold",
+        95);
+      if (rejectThreshold < 10 || rejectThreshold >= 100) {
+        LOG.warn("Reject threshold of queue full detector should be in range (10, 100), but the configured value is "
+            + rejectThreshold + ", will use 95 instead");
+        rejectThreshold = 95;
+      }
+      QueueCounter queueCounter = server.server.getQueueCounter();
+
+      LOG.info("QueueFullDetector is started");
+    }
+
+    @Override
+    protected void chore() {
+      QueueCounter queueCounter = server.server.getQueueCounter();
+      boolean readQueueFull = queueCounter.getReadQueueFull();
+      boolean writeQueueFull = queueCounter.getWriteQueueFull();
+      if (readQueueFull || writeQueueFull) {
+        // Found "queue full" events, start dense detecting
+        LOG.warn("Detected queue full events,  start dense checking");
+        int readFullNum = 0, writeFullNum = 0;
+        int maxNotHit = Math.max((int) (denseCheckNum * (100 - sampleThreshold) / 100.0), 1);
+        long beforeCheckReadCount = queueCounter.getIncomeReadCount();
+        long beforeCheckWriteCount = queueCounter.getIncomeWriteCount();
+        long beforeCheckRejectedRead = queueCounter.getRejectedReadCount();
+        long beforeCheckRejectedWrite = queueCounter.getRejectedWriteCount();
+        // To detect queue full events in a higher frequency
+        for (int i = 0; i < denseCheckNum; i++) {
+          try {
+            Thread.sleep(densePeriod);
+          } catch (InterruptedException e) {
+              // Check if we should stop after the try-catch block
+            }
+          if (isStopping() || isStopped()){
+            break;
+          }
+          if (queueCounter.getReadQueueFull()) {
+            readFullNum++;
+          }
+          if (queueCounter.getWriteQueueFull()) {
+            writeFullNum++;
+          }
+          int readNotHit = i + 1 - readFullNum;
+          int writeNotHit = i + 1 - writeFullNum;
+          if (readNotHit > maxNotHit && writeNotHit > maxNotHit) {
+            return;
+          }
+        }
+
+        long afterCheckReadCount = queueCounter.getIncomeReadCount();
+        long afterCheckWriteCount = queueCounter.getIncomeWriteCount();
+        long afterCheckRejectedRead = queueCounter.getRejectedReadCount();
+        long afterCheckRejectedWrite = queueCounter.getRejectedWriteCount();
+        // If the following conditions are detected, we should exit gracefully:
+        // a. the percentage of  readFullNum or writeFullNum has reached the configured threshold
+        // b.  the region server is not idle (i.e. there are new incoming rpc)
+        // c. the percentage of rejected new incoming request in this period (due to queue full) has reached the configured threshold
+        if ((readFullNum * 100 > sampleThreshold * denseCheckNum)
+            || (writeFullNum * 100 > sampleThreshold * denseCheckNum)) {
+          // Percentage of readFullNum or writeFullNum has reached the configured threshold
+          long newRead = afterCheckReadCount - beforeCheckReadCount;
+          long newWrite = afterCheckWriteCount - beforeCheckWriteCount;
+          long newRejectedRead = afterCheckRejectedRead - beforeCheckRejectedRead;
+          long newRejectedWrite = afterCheckRejectedWrite - beforeCheckRejectedWrite;
+          boolean shouldExit = false;
+          StringBuilder sb = new StringBuilder();
+          sb.append("Number of new incoming read requests is ").append(newRead)
+              .append(" write request is ").append(newWrite).append(" rejected read is ")
+              .append(newRejectedRead).append(" rejected write is ").append(newRejectedWrite);
+          LOG.warn(sb.toString());
+
+          if (newRead > 0 && (newRejectedRead * 100 > rejectThreshold * newRead)) {
+            shouldExit = true;
+          }
+          if (newWrite > 0 && (newRejectedWrite * 100 > rejectThreshold * newWrite)) {
+            shouldExit = true;
+          }
+          if (shouldExit) {
+            abort("Detected queue full and canot come back to normal state in a long duration");
+          }
+        }
+      }
+    }
+  }
+
   /**
    * Report the status of the server. A server is online once all the startup is
    * completed (setting up filesystem, starting service threads, etc.). This
@@ -1879,6 +2010,10 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
       ".hlogCompactor", uncaughtExceptionHandler);
     Threads.setDaemonThreadRunning(this.periodicFlusher.getThread(), n +
         ".periodicFlusher", uncaughtExceptionHandler);
+    if (this.queueFullDetector != null) {
+      Threads.setDaemonThreadRunning(this.queueFullDetector.getThread(), n + ".queueFullDetector",
+        uncaughtExceptionHandler);
+    }
     if (this.healthCheckChore != null) {
       Threads.setDaemonThreadRunning(this.healthCheckChore.getThread(), n + ".healthChecker",
           uncaughtExceptionHandler);
@@ -1959,6 +2094,9 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
         && this.regionCompactor.isAlive())) {
       stop("One or more threads are no longer alive -- stop");
       return false;
+    }
+    if (queueFullDetector != null && !queueFullDetector.isAlive()) {
+      stop("Queue full detector thread is no longer alive - stop");
     }
     if (metaHLogRoller != null && !metaHLogRoller.isAlive()) {
       stop("Meta HLog roller thread is no longer alive -- stop");
@@ -2134,6 +2272,9 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
   protected void join() {
     Threads.shutdown(this.compactionChecker.getThread());
     Threads.shutdown(this.periodicFlusher.getThread());
+    if (queueFullDetector != null) {
+      Threads.shutdown(queueFullDetector.getThread());
+    }
     this.cacheFlusher.join();
     if (hlogCompactor != null) {
       Threads.shutdown(this.hlogCompactor.getThread());
