@@ -3956,6 +3956,7 @@ public class HRegion implements HeapSize { // , Writable{
     protected int isScan;
     private boolean filterClosed = false;
     private long readPt;
+    private long maxResultSize;
     protected HRegion region;
 	  private Map<byte[], NavigableSet<byte[]>> familyMap = null;
 
@@ -3967,6 +3968,7 @@ public class HRegion implements HeapSize { // , Writable{
         throws IOException {
       // DebugPrint.println("HRegionScanner.<init>");
       this.region = region;
+      this.maxResultSize = scan.getMaxResultSize();
       this.filter = scan.getFilter();
       this.batch = scan.getBatch();
       this.rawLimit = scan.getRawLimit();
@@ -4027,6 +4029,11 @@ public class HRegion implements HeapSize { // , Writable{
       if (!joinedScanners.isEmpty()) {
         this.joinedHeap = new KeyValueHeap(joinedScanners, region.comparator);
       }
+    }
+
+    @Override
+    public long getMaxResultSize() {
+      return maxResultSize;
     }
 
     @Override public int getRawLimit() {

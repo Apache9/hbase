@@ -6172,6 +6172,56 @@ public abstract class TestFromClientSide {
   }
 
   @Test
+  public void testScanWithMaxResultSize() throws Exception {
+    byte[] TABLE = Bytes.toBytes("testScanWithMaxResultSize");
+    byte[][] ROWS = makeNAscii(ROW, 2);
+    byte[][] QUALIFIERS = makeNAscii(QUALIFIER, 2);
+    byte[][] VALUES = makeNAscii(VALUE, 2);
+    HTable table = TEST_UTIL.createTable(TABLE, FAMILY);
+    Put put = new Put(ROWS[0]);
+    put.add(FAMILY, QUALIFIERS[0], VALUES[0]);
+    put.add(FAMILY, QUALIFIERS[1], VALUES[1]);
+    table.put(put);
+    put = new Put(ROWS[1]);
+    put.add(FAMILY, QUALIFIERS[0], VALUES[0]);
+    put.add(FAMILY, QUALIFIERS[1], VALUES[1]);
+    table.put(put);
+    
+    Scan scan = new Scan();
+    scan.setCaching(1000);
+    ClientScanner scanner = (ClientScanner)table.getScanner(scan);
+    Result result = scanner.next();
+    Assert.assertNotNull(result);
+    // will cache row if maxResultSize is not set
+    Assert.assertEquals(1, scanner.cache.size());
+    scanner.close();
+
+    scan = new Scan();
+    scan.setCaching(1000);
+    scan.setMaxResultSize(1);
+    // test normal scanner, small scanner, reversed scanner respectively
+    Scan[] scans = new Scan[3];
+    for (int i = 0; i < scans.length; ++i) {
+      scans[i] = new Scan(scan);
+    }
+    scans[1].setSmall(true);
+    scans[2].setReversed(true);
+    
+    for (Scan testScan : scans) {
+      scanner = (ClientScanner)table.getScanner(testScan);
+      result = scanner.next();
+      Assert.assertNotNull(result);
+      // will not cache if maxResultSize is set
+      Assert.assertEquals(0, scanner.cache.size());
+      Assert.assertNotNull(scanner.next());
+      Assert.assertNull(scanner.next());
+      scanner.close();
+    }
+    
+    table.close();
+  }
+  
+  @Test
   public void testScanWithRawLimit() throws Exception {
     byte[] TABLE = Bytes.toBytes("testScanWithRawLimit");
     byte[][] ROWS = makeNAscii(ROW, 4);

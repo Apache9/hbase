@@ -3045,6 +3045,13 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
       long currentScanResultSize = 0;
       List<KeyValue> values = new ArrayList<KeyValue>();
 
+      long maxResultSize;
+      if (s.getMaxResultSize() > 0) {
+        maxResultSize = s.getMaxResultSize();
+      } else {
+        maxResultSize = maxScannerResultSize;
+      }
+      
       // Call coprocessor. Get region info from scanner.
       HRegion region = getRegion(s.getRegionInfo().getRegionName());
       if (region != null && region.getCoprocessorHost() != null) {
@@ -3052,7 +3059,7 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
             results, nbRows);
         if (!results.isEmpty()) {
           for (Result r : results) {
-            if (maxScannerResultSize < Long.MAX_VALUE){
+            if (maxResultSize < Long.MAX_VALUE){
               for (KeyValue kv : r.raw()) {
                 currentScanResultSize += kv.heapSize();
               }
@@ -3072,15 +3079,14 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
         int rawLimit = s.getRawLimit();
         int rawCount = 0;
         synchronized(s) {
-          for (; i < nbRows
-              && currentScanResultSize < maxScannerResultSize
+          for (; i < nbRows && currentScanResultSize < maxResultSize
               && (rawLimit < 0 || rawCount < rawLimit); i++) {
             // Collect values to be returned here
             ScannerStatus status =
                 s.nextRaw(values, rawLimit - rawCount, SchemaMetrics.METRIC_NEXTSIZE);
             rawCount += status.getRawValueScanned();
             if (!values.isEmpty()) {
-              if (maxScannerResultSize < Long.MAX_VALUE){
+              if (maxResultSize < Long.MAX_VALUE){
                 for (KeyValue kv : values) {
                   currentScanResultSize += kv.heapSize();
                 }
@@ -3091,7 +3097,7 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
             if (rawLimit > 0 && rawCount >= rawLimit) {
               limitReached = true;
             }
-            if (maxScannerResultSize < Long.MAX_VALUE && currentScanResultSize > maxScannerResultSize) {
+            if (maxResultSize < Long.MAX_VALUE && currentScanResultSize > maxResultSize) {
               limitReached = true;
             }
             if (status.hasNext() && limitReached) {
