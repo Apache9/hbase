@@ -59,11 +59,16 @@ public class ThriftUtilities {
    * not need to set this field, simply provide the hbase.replication.thrift.server.port
    * value and keep them the same across clusters.
    */
-  public static int getDestinationPeerPort(Configuration conf, String peerId) {
+  public static int getDestinationPeerPort(Configuration conf, String peerId, int serverPort) {
     int port = conf.getInt("hbase.replication.thrift.peer." + peerId + ".port", -1);
     // if there is no custom peer port set use the default server port.
     if (port == -1) {
       port = getThriftServerPort(conf);
+      if (port < 0) {
+        // If user not specify the port for thrift server in peer cluster,
+        // the default port is serverName.port + 2, see minos hbase common config.
+        port = serverPort + 2;
+      }
     }
     return port;
   }

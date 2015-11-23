@@ -85,7 +85,9 @@ public class SimpleRpcScheduler extends RpcScheduler {
       conf.getFloat("ipc.server.callqueue.handler.factor", 0));
     int numCallQueues = Math.max(1, (int)Math.round(handlerCount * callQueuesHandlersFactor));
 
-    LOG.info("Using default user call queue, count=" + numCallQueues);
+    LOG.info("Using default user call queue, handlerCount=" + handlerCount + ", callqReadShare="
+        + callqReadShare + ", numCallQueues=" + numCallQueues + ", callQueuesHandlersFactor="
+        + callQueuesHandlersFactor + ", maxQueueLength=" + maxQueueLength);
 
     if (numCallQueues > 1 && callqReadShare > 0) {
       // multiple read/write queues

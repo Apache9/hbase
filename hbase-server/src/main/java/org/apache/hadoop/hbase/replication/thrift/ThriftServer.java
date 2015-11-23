@@ -22,6 +22,7 @@ package org.apache.hadoop.hbase.replication.thrift;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.replication.thrift.generated.THBaseService;
 import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.security.SaslRpcServer;
@@ -108,6 +109,10 @@ public class ThriftServer extends Thread {
 
   public void init() throws TTransportException, IOException {
     int listenPort = ThriftUtilities.getThriftServerPort(conf);
+    if (listenPort < 0) {
+      // the default listen port is hbase.regionserver.port + 2
+      listenPort = conf.getInt(HConstants.REGIONSERVER_PORT, HConstants.DEFAULT_REGIONSERVER_PORT) + 2;
+    }
 
     ThriftMetrics metrics = new ThriftMetrics(conf);
 
