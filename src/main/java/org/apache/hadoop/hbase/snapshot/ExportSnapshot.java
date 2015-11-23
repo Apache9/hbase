@@ -18,7 +18,6 @@
 
 package org.apache.hadoop.hbase.snapshot;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -29,7 +28,6 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
@@ -48,12 +46,9 @@ import org.apache.hadoop.hbase.io.HFileLink;
 import org.apache.hadoop.hbase.io.HLogLink;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.SnapshotDescription;
 import org.apache.hadoop.hbase.regionserver.StoreFile;
-import org.apache.hadoop.hbase.snapshot.ExportSnapshotException;
-import org.apache.hadoop.hbase.snapshot.SnapshotDescriptionUtils;
-import org.apache.hadoop.hbase.snapshot.SnapshotReferenceUtil;
 import org.apache.hadoop.hbase.throughput.ThroughputLimiter;
-import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
+import org.apache.hadoop.hbase.util.FSTableDescriptors;
 import org.apache.hadoop.hbase.util.FSUtils;
 import org.apache.hadoop.hbase.util.Pair;
 import org.apache.hadoop.hdfs.DFSConfigKeys;
@@ -63,8 +58,6 @@ import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.lib.input.SequenceFileInputFormat;
-import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
-import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.NullOutputFormat;
 import org.apache.hadoop.mapreduce.security.TokenCache;
 import org.apache.hadoop.util.StringUtils;
@@ -97,6 +90,10 @@ public final class ExportSnapshot extends Configured implements Tool {
       "snapshot.export.output.dfs.secondary.namenode.kerberos.principal";
   private static final String CONF_OUTPUT_DN_USER =
       "snapshot.export.output.dfs.datanode.kerberos.principal";
+  private static final String CONF_EXPORT_TO_98 = "snapshot.export.to.hbase98";
+  // in 0.98, the HFile will be copied to archive/data and assume the namespace is 'default'
+  private static final String HBASE98_HFILE_ARCHIVE_DIRECTORY = "archive/data/default";
+  private static final String HBASE98_TABLEDESC_DIR_NAME = ".tabledesc";
 
   private static final String INPUT_FOLDER_PREFIX = "export-files.";
 
@@ -136,7 +133,8 @@ public final class ExportSnapshot extends Configured implements Tool {
     private FileSystem inputFs;
     private Path inputArchive;
     private Path inputRoot;
-
+    private boolean exportTo98;
+    
     @Override
     public void setup(Context context) {
       Configuration conf = context.getConfiguration();
@@ -147,9 +145,11 @@ public final class ExportSnapshot extends Configured implements Tool {
       filesMode = (short)conf.getInt(CONF_FILES_MODE, 0);
       outputRoot = new Path(conf.get(CONF_OUTPUT_ROOT));
       inputRoot = new Path(conf.get(CONF_INPUT_ROOT));
+      exportTo98 = conf.getBoolean(CONF_EXPORT_TO_98, false);
 
       inputArchive = new Path(inputRoot, HConstants.HFILE_ARCHIVE_DIRECTORY);
-      outputArchive = new Path(outputRoot, HConstants.HFILE_ARCHIVE_DIRECTORY);
+      outputArchive = new Path(outputRoot, exportTo98 ? HBASE98_HFILE_ARCHIVE_DIRECTORY
+          : HConstants.HFILE_ARCHIVE_DIRECTORY);
 
       try {
         inputFs = FileSystem.get(inputRoot.toUri(), conf);
@@ -581,10 +581,11 @@ public final class ExportSnapshot extends Configured implements Tool {
   /**
    * Run Map-Reduce Job to perform the files copy.
    */
-  private boolean runCopyJob(final String snapshotName, final Path inputRoot, final Path outputRoot,
-      final List<Pair<Path, Long>> snapshotFiles, final boolean verifyChecksum,
-      final String filesUser, final String filesGroup, final int filesMode,
-      final int mappers) throws IOException, InterruptedException, ClassNotFoundException {
+  private boolean runCopyJob(final String snapshotName, final Path inputRoot,
+      final Path outputRoot, final List<Pair<Path, Long>> snapshotFiles,
+      final boolean verifyChecksum, final String filesUser, final String filesGroup,
+      final int filesMode, final int mappers, final boolean exportTo98) throws IOException,
+      InterruptedException, ClassNotFoundException {
     Configuration conf = getConf();
     if (filesGroup != null) conf.set(CONF_FILES_GROUP, filesGroup);
     if (filesUser != null) conf.set(CONF_FILES_USER, filesUser);
@@ -600,6 +601,8 @@ public final class ExportSnapshot extends Configured implements Tool {
     conf.setBoolean("mapred.map.tasks.speculative.execution", false);
     conf.setBoolean("mapred.reduce.tasks.speculative.execution", false);
 
+    conf.setBoolean(CONF_EXPORT_TO_98, exportTo98);
+    
     Job job = new Job(conf);
     job.setJobName("ExportSnapshot-" + snapshotName);
     job.setJarByClass(ExportSnapshot.class);
@@ -632,6 +635,7 @@ public final class ExportSnapshot extends Configured implements Tool {
     Path inputRoot = null;
     int filesMode = 0;
     int mappers = getConf().getInt("mapreduce.job.maps", 1);
+    boolean exportTo98 = false;
 
     // Process command line args
     for (int i = 0; i < args.length; i++) {
@@ -653,6 +657,8 @@ public final class ExportSnapshot extends Configured implements Tool {
           filesGroup = args[++i];
         } else if (cmd.equals("-chmod")) {
           filesMode = Integer.parseInt(args[++i], 8);
+        } else if (cmd.equals("-export-to-hbase98")) {
+          exportTo98 = true;
         } else if (cmd.equals("-h") || cmd.equals("--help")) {
           printUsageAndExit();
         } else {
@@ -717,6 +723,14 @@ public final class ExportSnapshot extends Configured implements Tool {
     // will remove them because they are unreferenced.
     try {
       FileUtil.copy(inputFs, snapshotDir, outputFs, snapshotTmpDir, false, false, conf);
+
+      if (exportTo98) {
+        moveTableInfoForHBase98(outputFs, snapshotTmpDir, filesUser, filesGroup);
+      }
+
+      if (filesUser != null || filesGroup != null) {
+        setOwner(outputFs, snapshotTmpDir, filesUser, filesGroup, true);
+      }
     } catch (IOException e) {
       System.err.println("Failed to copy the snapshot directory: from=" + snapshotDir +
         " to=" + snapshotTmpDir);
@@ -734,7 +748,7 @@ public final class ExportSnapshot extends Configured implements Tool {
         setOwner(outputFs, needSetOwnerDir, filesUser, filesGroup, true);
       }
     }
-
+    
     // Step 2 - Start MR Job to copy files
     // The snapshot references must be copied before the files otherwise the files gets removed
     // by the HFileArchiver, since they have no references.
@@ -743,7 +757,7 @@ public final class ExportSnapshot extends Configured implements Tool {
         LOG.warn("There are 0 store file to be copied. There may be no data in the table.");
       } else {
         if (!runCopyJob(snapshotName, inputRoot, outputRoot, files, verifyChecksum,
-            filesUser, filesGroup, filesMode, mappers)) {
+            filesUser, filesGroup, filesMode, mappers, exportTo98)) {
           throw new ExportSnapshotException("Snapshot export failed!");
         }
       }
@@ -764,6 +778,21 @@ public final class ExportSnapshot extends Configured implements Tool {
       return 1;
     }
   }
+  
+  private void moveTableInfoForHBase98(FileSystem outputFs, Path snapshotTmpDir, String filesUser,
+      String filesGroup) throws IOException {
+    Path tableDescDirFor98 = new Path(snapshotTmpDir, HBASE98_TABLEDESC_DIR_NAME);
+    LOG.info("move tableinfo for hbase98, mkdir:" + tableDescDirFor98);
+    outputFs.mkdirs(tableDescDirFor98);
+    FileStatus[] files = outputFs.listStatus(snapshotTmpDir);
+    for (FileStatus file : files) {
+      if (file.getPath().getName().startsWith(FSTableDescriptors.TABLEINFO_NAME)) {
+        Path newPath = new Path(tableDescDirFor98, file.getPath().getName());
+        outputFs.rename(file.getPath(), newPath);
+        LOG.info("move tableinfo for hbase98, rename : " + file.getPath() + ", to : " + newPath);
+      }
+    }
+  }
 
   // ExportSnapshot
   private void printUsageAndExit() {
@@ -774,6 +803,7 @@ public final class ExportSnapshot extends Configured implements Tool {
     System.err.println("  -copy-to NAME           Remote destination hdfs://");
     System.err.println("  -copy-from NAME         Snapshot hdfs source hdfs://");
     System.err.println("  -no-checksum-verify     Do not verify checksum.");
+    System.err.println("  -export-to-hbase98      Export to hbase 0.98 cluster.");
     System.err.println("  -chuser USERNAME        Change the owner of the files to the specified one.");
     System.err.println("  -chgroup GROUP          Change the group of the files to the specified one.");
     System.err.println("  -chmod MODE             Change the permission of the files to the specified one.");
