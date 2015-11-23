@@ -162,7 +162,8 @@ public class ThriftClient {
       client = getClientFromServerName(serverName);
       client.ping();
     } catch (TException e) {
-      removeClient(serverName.getHostname(), ThriftUtilities.getDestinationPeerPort(conf, peerId));
+      removeClient(serverName.getHostname(),
+        ThriftUtilities.getDestinationPeerPort(conf, peerId, serverName.getPort()));
       try {
         client.getOutputProtocol().getTransport().close();
       } catch(Exception e2) {
@@ -190,7 +191,8 @@ public class ThriftClient {
   public void shipEdits(ServerName serverName, HLog.Entry[] entries) throws IOException {
     THBaseService.Client client;
     String host = serverName.getHostname();
-    int port = ThriftUtilities.getDestinationPeerPort(conf, peerId);
+    int port = ThriftUtilities.getDestinationPeerPort(conf, peerId, serverName.getPort());
+    
     try {
       client = getClient(host, port);
     } catch (TTransportException e) {
@@ -220,7 +222,7 @@ public class ThriftClient {
   public UUID getPeerClusterUUID(ServerName serverName) {
     THBaseService.Client client;
     String host = serverName.getHostname();
-    int port = ThriftUtilities.getDestinationPeerPort(conf, peerId);
+    int port = ThriftUtilities.getDestinationPeerPort(conf, peerId, serverName.getPort());
     try {
       client = getClient(host, port);
       return UUID.fromString(client.getClusterUUID());
@@ -233,7 +235,7 @@ public class ThriftClient {
   private THBaseService.Client getClientFromServerName(ServerName serverName) throws IOException {
     THBaseService.Client client;
     String host = serverName.getHostname();
-    int port = ThriftUtilities.getDestinationPeerPort(conf, peerId);
+    int port = ThriftUtilities.getDestinationPeerPort(conf, peerId, serverName.getPort());
     try {
       client = getClient(host, port);
     } catch (TTransportException e) {

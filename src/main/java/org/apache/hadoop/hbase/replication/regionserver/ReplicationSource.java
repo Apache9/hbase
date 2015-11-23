@@ -240,8 +240,7 @@ public class ReplicationSource extends Thread
       if (zkHelper.getPeerProtocol(peerClusterZnode)
           .equals(ReplicationZookeeper.PeerProtocol.THRIFT)) {
         thriftClient = new ThriftClient(conf, peerId);
-        LOG.info("Starting new replication peer " + peerId + " with Thrift protocol over port: " +
-            "" + ThriftUtilities.getDestinationPeerPort(conf, peerId));
+        LOG.info("Starting new replication peer " + peerId + " with Thrift protocol over port");
       }
     } catch (KeeperException ke) {
       throw new IOException("Could not read cluster id", ke);
