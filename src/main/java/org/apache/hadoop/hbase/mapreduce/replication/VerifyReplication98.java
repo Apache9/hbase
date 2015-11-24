@@ -22,8 +22,10 @@ package org.apache.hadoop.hbase.mapreduce.replication;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Random;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -43,6 +45,8 @@ import org.apache.hadoop.hbase.mapreduce.TableInputFormat;
 import org.apache.hadoop.hbase.mapreduce.TableMapReduceUtil;
 import org.apache.hadoop.hbase.mapreduce.TableMapper;
 import org.apache.hadoop.hbase.mapreduce.TableSplit;
+import org.apache.hadoop.hbase.replication.thrift.ThriftClient;
+import org.apache.hadoop.hbase.thrift2.ThriftServer;
 import org.apache.hadoop.hbase.thrift2.generated.TColumn;
 import org.apache.hadoop.hbase.thrift2.generated.TColumnValue;
 import org.apache.hadoop.hbase.thrift2.generated.TGet;
@@ -138,7 +142,16 @@ public class VerifyReplication98 extends Configured implements Tool {
     
     protected static Pair<String, Integer> parseThriftServerAddress(String address) {
       String[] items = address.split(":");
-      return new Pair<String, Integer>(items[0], Integer.parseInt(items[1]));
+      String[] serverNames = items[0].split(",");
+      Random rd = new Random(System.currentTimeMillis());
+      String serverName = serverNames[rd.nextInt(serverNames.length)];
+      String port = ThriftServer.DEFAULT_LISTEN_PORT;
+      if (items.length > 1) {
+        port = items[1];
+      }
+      LOG.info("totally " + serverNames.length + " thrift servers, selected " + serverName + ":"
+          + port);
+      return new Pair<String, Integer>(serverName, Integer.parseInt(port));
     }
     
     private Result nextPeerTableResult() throws IOException {
@@ -238,11 +251,26 @@ public class VerifyReplication98 extends Configured implements Tool {
         thriftClient = new THBaseService.Client(new TBinaryProtocol(socket));
         scan.setStartRow(value.getRow());
         scan.setStopRow(tableSplit.getEndRow());
-        peerTableNameBuffer = ByteBuffer.wrap(Bytes.toBytes(conf.get(NAME+".tableName")));
+        String peerTableName = conf.get(NAME+".tableName");
+        
+        // table name transfer
+        String mappingStr = conf.get(ThriftClient.HBASE_REPLICATION_THRIFT_TABLE_NAME_MAP);
+        if (mappingStr != null) {
+          HashMap<String, String> mappingMap = new HashMap<String, String>();
+          ThriftClient.loadTableName(mappingStr, mappingMap);
+          if (mappingMap.containsKey(peerTableName)) {
+            peerTableName = mappingMap.get(peerTableName);
+          }
+        }
+        LOG.info("Will verify to peerTable: " + peerTableName);
+        
+        peerTableNameBuffer = ByteBuffer.wrap(Bytes.toBytes(peerTableName));
+        
         try {
           replicatedScannerId = thriftClient.openScanner(peerTableNameBuffer, scan);
         } catch (Exception e) {
-          throw new IOException("create peer scanner fail", e);
+          throw new IOException("create peer scanner fail, peerTableName=" + peerTableName
+              + ", thriftServer=" + hostAndPort.getFirst() + ":" + hostAndPort.getSecond(), e);
         }
         currentCompareRowInPeerTable = nextPeerTableResult();
       }
@@ -550,7 +578,7 @@ public class VerifyReplication98 extends Configured implements Tool {
     System.err.println("Examples:");
     System.err.println(" To verify the data replicated from TestTable for a 1 hour window with peer #5 ");
     System.err.println(" $ bin/hbase " +
-        "org.apache.hadoop.hbase.mapreduce.replication.VerifyReplication" +
+        "org.apache.hadoop.hbase.mapreduce.replication.VerifyReplication98" +
         " --starttime=1265875194289 --stoptime=1265878794289 127.0.0.1:15000 TestTable ");
   }
 

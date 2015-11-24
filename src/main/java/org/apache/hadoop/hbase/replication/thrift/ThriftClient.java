@@ -81,17 +81,23 @@ public class ThriftClient {
       synchronized(tableNameMapLock) {
         if (tableNameMap == null) {
           tableNameMap = new HashMap<String, String>();
-          //The format of the value should be 'sourceTable1=>destTable1,sourceTable2=>destTable2'
-          String[] mappingItems = mappingString.split(",");
-          for (String mappingItem : mappingItems) {
-            String[] names = mappingItem.split("=>");
-            if (names.length != 2) {
-              throw new IOException("table name mapping string is error formatted, mappingString=" + mappingItem);
-            }
-            tableNameMap.put(names[0], names[1]);
-          }
+          loadTableName(mappingString, tableNameMap);
         }
       }
+    }
+  }
+  
+  public static void loadTableName(String mappingString, Map<String, String> tableNameMap)
+      throws IOException {
+    // The format of the value should be 'sourceTable1=>destTable1,sourceTable2=>destTable2'
+    String[] mappingItems = mappingString.split(",");
+    for (String mappingItem : mappingItems) {
+      String[] names = mappingItem.split("=>");
+      if (names.length != 2) {
+        throw new IOException("table name mapping string is error formatted, mappingString="
+            + mappingItem);
+      }
+      tableNameMap.put(names[0], names[1]);
     }
   }
 
