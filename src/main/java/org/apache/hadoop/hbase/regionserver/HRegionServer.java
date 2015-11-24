@@ -326,6 +326,8 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
   // Cache flushing
   public MemStoreFlusher cacheFlusher;
 
+  private AccessCounter accessCounter;
+
   /*
    * Check for compactions requests.
    */
@@ -937,6 +939,9 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
     }
     if (this.hlogCompactor != null) {
       this.hlogCompactor.interrupt();
+    }
+    if (this.accessCounter != null) {
+      this.accessCounter.interrupt();
     }
 
     // Stop the snapshot handler, forcefully killing all running tasks
@@ -2002,6 +2007,12 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
       RegionCompactor.DEFAULT_REGION_ATUO_COMPACT_PERIOD);
     this.regionCompactor = new RegionCompactor(this, compactorPeriod);
 
+    int flushCounterPeriod = conf.getInt(AccessCounter.FLUSH_ACCESS_COUNTER_PERIOD,
+      AccessCounter.DEFAULT_FLUSH_ACCESS_COUNTER_PERIOD_MS);
+    this.accessCounter = new AccessCounter(this, flushCounterPeriod);
+
+    Threads.setDaemonThreadRunning(this.accessCounter.getThread(), n +
+      ".accessCounter", uncaughtExceptionHandler);
     Threads.setDaemonThreadRunning(this.regionCompactor.getThread(), n +
       ".regionCompactor", uncaughtExceptionHandler);
     Threads.setDaemonThreadRunning(this.compactionChecker.getThread(), n +
@@ -2281,6 +2292,9 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
     }
     if (regionCompactor != null) {
       Threads.shutdown(this.regionCompactor.getThread());
+    }
+    if (accessCounter != null) {
+      Threads.shutdown(this.accessCounter.getThread());
     }
     if (this.healthCheckChore != null) {
       Threads.shutdown(this.healthCheckChore.getThread());
@@ -4769,4 +4783,8 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
     return tasks;
   }
 
+  @Override
+  public AccessCounter getAccessCounter() {
+    return this.accessCounter;
+  }
 }

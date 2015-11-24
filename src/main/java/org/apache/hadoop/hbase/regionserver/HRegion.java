@@ -127,6 +127,7 @@ import org.apache.hadoop.hbase.regionserver.metrics.SchemaMetrics;
 import org.apache.hadoop.hbase.regionserver.wal.HLog;
 import org.apache.hadoop.hbase.regionserver.wal.HLogKey;
 import org.apache.hadoop.hbase.regionserver.wal.WALEdit;
+import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.snapshot.TakeSnapshotUtils;
 import org.apache.hadoop.hbase.types.NumberCodecType;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -6276,6 +6277,18 @@ public class HRegion implements HeapSize { // , Writable{
     this.opMetrics.setWriteRequestCountMetrics(this.writeRequestsCount.get());
   }
   
+  public void updateReadCount(User user, byte[] table, byte[] family, byte[] qualifier) {
+    if (this.rsServices != null && this.rsServices.getAccessCounter() != null) {
+      this.rsServices.getAccessCounter().incrementReadCount(user, table, family, qualifier);
+    }
+  }
+
+  public void updateWriteCount(User user, byte[] table, byte[] family, byte[] qualifier) {
+    if (this.rsServices != null && this.rsServices.getAccessCounter() != null) {
+      this.rsServices.getAccessCounter().incrementWriteCount(user, table, family, qualifier);
+    }
+  }
+
   /**
    * update coproessor metrics
    * @param methodName

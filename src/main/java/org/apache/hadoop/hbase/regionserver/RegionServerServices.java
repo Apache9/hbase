@@ -119,4 +119,9 @@ public interface RegionServerServices extends OnlineRegions {
    * @return executor service
    */
   public ExecutorService getExecutorService();
+  
+  /**
+   * @return access counter
+   */
+  public AccessCounter getAccessCounter();
 }
