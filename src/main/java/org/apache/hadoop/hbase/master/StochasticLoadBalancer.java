@@ -560,9 +560,7 @@ public class StochasticLoadBalancer extends DefaultLoadBalancer {
         return pickRandomRegions(cluster, thisServer, otherServer);
       }
 
-      cluster.calculateRegionServerLocalities();
-      // Pick server with lowest locality
-      int thisServer = pickLowestLocalityServer(cluster);
+      int thisServer = pickRandomServer(cluster);
       int thisRegion;
       if (thisServer == -1) {
         LOG.warn("Could not pick lowest locality region server");
@@ -577,7 +575,7 @@ public class StochasticLoadBalancer extends DefaultLoadBalancer {
       }
 
       // Pick the least loaded server with good locality for the region
-      int otherServer = cluster.getLeastLoadedTopServerForRegion(thisRegion);
+      int otherServer = cluster.getLeastLoadedTopServerForRegion(thisRegion, thisServer);
 
       if (otherServer == -1) {
         return Cluster.NullAction;
@@ -1515,7 +1513,7 @@ public class StochasticLoadBalancer extends DefaultLoadBalancer {
     int getLowestLocalityRegionOnServer(int serverIndex) {
       if (regionFinder != null) {
         float lowestLocality = 1.0f;
-        int lowestLocalityRegionIndex = 0;
+        int lowestLocalityRegionIndex = -1;
         if (regionsPerServer[serverIndex].length == 0) {
           // No regions on that region server
           return -1;
@@ -1524,15 +1522,23 @@ public class StochasticLoadBalancer extends DefaultLoadBalancer {
           int regionIndex = regionsPerServer[serverIndex][j];
           HDFSBlocksDistribution distribution = regionFinder
               .getBlockDistribution(regions[regionIndex]);
+          // skip empty region
+          if (distribution.getUniqueBlocksTotalWeight() == 0) {
+            continue;
+          }
           float locality = distribution.getBlockLocalityIndex(servers[serverIndex].getHostname());
           if (locality < lowestLocality) {
             lowestLocality = locality;
             lowestLocalityRegionIndex = j;
           }
         }
-        LOG.debug(" Lowest locality region index is " + lowestLocalityRegionIndex
-            + " and its region server contains " + regionsPerServer[serverIndex].length
-            + " regions");
+        if (lowestLocalityRegionIndex == -1) {
+          return -1;
+        }
+        LOG.debug("Lowest locality region is "
+            + regions[regionsPerServer[serverIndex][lowestLocalityRegionIndex]].getRegionNameAsString() + " with locality "
+            + lowestLocality + " and its region server contains "
+            + regionsPerServer[serverIndex].length + " regions");
         return regionsPerServer[serverIndex][lowestLocalityRegionIndex];
       } else {
         return -1;
@@ -1548,9 +1554,13 @@ public class StochasticLoadBalancer extends DefaultLoadBalancer {
       }
     }
 
-    int getLeastLoadedTopServerForRegion(int region) {
+    /*
+     * Pick the least loaded server with better locality for this region
+     */
+    int getLeastLoadedTopServerForRegion(int region, int currentServer) {
       if (regionFinder != null) {
-        List<ServerName> topLocalServers = regionFinder.getTopBlockLocations(regions[region]);
+        List<ServerName> topLocalServers = regionFinder.getTopBlockLocations(regions[region],
+          servers[currentServer].getHostname());
         int leastLoadedServerIndex = -1;
         int load = Integer.MAX_VALUE;
         for (ServerName sn : topLocalServers) {
@@ -1566,6 +1576,10 @@ public class StochasticLoadBalancer extends DefaultLoadBalancer {
             leastLoadedServerIndex = index;
             load = tempLoad;
           }
+        }
+        if (leastLoadedServerIndex != -1) {
+          LOG.debug("Pick the least loaded server " + servers[leastLoadedServerIndex].getHostname()
+              + " with good locality for region " + regions[region]);
         }
         return leastLoadedServerIndex;
       } else {
