@@ -86,6 +86,6 @@ class NoopOperationQuota implements OperationQuota {
 
   @Override
   public boolean canLogThrottlingException() {
-    return false;
+    return true;
   }
 }

@@ -48,8 +48,9 @@ public class TimeBasedLimiter implements QuotaLimiter {
   private RateLimiter readReqsLimiter = null;
   private RateLimiter readSizeLimiter = null;
   private AvgOperationSize avgOpSize = new AvgOperationSize();
-  private int DEFAULT_MAX_LOG_THROTTLING_COUNT = 5;
-  private int logThrottlingCount = DEFAULT_MAX_LOG_THROTTLING_COUNT;
+  public static final String MAX_LOG_THROTTLING_COUNT_KEY = "hbase.throttling.log.max.count";
+  private int maxLogThrottlingCount = conf.getInt(MAX_LOG_THROTTLING_COUNT_KEY, 5);
+  private int logThrottlingCount = maxLogThrottlingCount;
 
   private TimeBasedLimiter() {
     if (FixedIntervalRateLimiter.class.getName().equals(
@@ -256,6 +257,11 @@ public class TimeBasedLimiter implements QuotaLimiter {
    */
   @Override
   public boolean canLogThrottlingException() {
+    // config as -1, means print all throttling exception log
+    // config as 0, means never log about throttling exception
+    if (maxLogThrottlingCount == -1) {
+      return true;
+    }
     if (this.logThrottlingCount > 0) {
       this.logThrottlingCount -= 1;
       return true;
@@ -267,7 +273,7 @@ public class TimeBasedLimiter implements QuotaLimiter {
    * logThrottlingCount will refresh when QuotaCache refresh every limiter
    */
   public void updateLogThrottlingCount() {
-    this.logThrottlingCount = DEFAULT_MAX_LOG_THROTTLING_COUNT;
+    this.logThrottlingCount = maxLogThrottlingCount;
   }
 
   @Override
