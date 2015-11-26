@@ -16,6 +16,7 @@ import static org.junit.Assert.assertTrue;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
+import org.apache.hadoop.hbase.MediumTests;
 import org.apache.hadoop.hbase.MiniHBaseCluster;
 import org.apache.hadoop.hbase.ipc.HBaseServer;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
@@ -24,8 +25,9 @@ import org.apache.hadoop.hbase.util.QueueCounter;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 
-
+@Category(MediumTests.class)
 public class TestQueueFullDetector /* extends HBaseTestCase */{
   private final static HBaseTestingUtility TEST_UTIL = new HBaseTestingUtility();
   private static ManualEnvironmentEdge envEdge;

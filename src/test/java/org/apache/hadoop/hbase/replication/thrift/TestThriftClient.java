@@ -4,11 +4,14 @@ import java.io.IOException;
 
 import junit.framework.Assert;
 
+import org.apache.hadoop.hbase.SmallTests;
 import org.apache.hadoop.hbase.replication.thrift.generated.TBatchEdit;
 import org.apache.hadoop.hbase.replication.thrift.generated.TEdit;
 import org.apache.hadoop.hbase.replication.thrift.generated.THLogKey;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 
+@Category(SmallTests.class)
 public class TestThriftClient {
   
   @Test
