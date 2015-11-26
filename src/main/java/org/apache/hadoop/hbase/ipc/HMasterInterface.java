@@ -248,21 +248,21 @@ public interface HMasterInterface extends VersionedProtocol {
    * unassign all the regions to balance (the re-assignment itself is async),
    * false otherwise.
    */
-  public boolean balance();
+  public boolean balance() throws IOException;
 
   /**
    * Balance the regions of a table.
    * @param tableName tableName
    * @return True if balancer ran, false otherwise.
    */
-  public boolean balance(final byte[] tableName);
+  public boolean balance(final byte[] tableName) throws IOException;
   
   /**
    * Turn the load balancer on or off.
    * @param b If true, enable balancer. If false, disable balancer.
    * @return Previous balancer value
    */
-  public boolean balanceSwitch(final boolean b);
+  public boolean balanceSwitch(final boolean b) throws IOException;
 
   /**
    * Turn the load balancer on or off.
@@ -270,7 +270,7 @@ public interface HMasterInterface extends VersionedProtocol {
    * @param b If true, enable balancer. If false, disable balancer.
    * @return Previous balancer value
    */
-  public boolean synchronousBalanceSwitch(final boolean b);
+  public boolean synchronousBalanceSwitch(final boolean b) throws IOException;
 
   /**
    * Gets the online region servers.

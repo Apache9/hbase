@@ -113,7 +113,8 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
     useRowColBloom = numCol > 1 || (!isGet && numCol == 1);
 		this.scanUsePread = scan.isSmall();
 		hugeKvWarningSizeInByte = HConstants.HUGE_KV_SIZE_IN_BYTE_WARN_VALUE; // for testing
-
+		hugeRowWarningSizeInByte = HConstants.HUGE_ROW_SIZE_IN_BYTE_WARN_VALUE; // for testing
+		
     // The parallel-seeking is on :
     // 1) the config value is *true*
     // 2) have more than one store file
@@ -456,11 +457,13 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
                 return ScannerStatus.done(rawCount);
               }
               seekToNextRow(kv);
+              ++rawCount;
               if (rawLimit > 0 && rawCount >= rawLimit) {
                 return ScannerStatus.continued(this.heap.peek(), rawCount);
               }
             } else if (qcode == ScanQueryMatcher.MatchCode.INCLUDE_AND_SEEK_NEXT_COL) {
               seekAsDirection(matcher.getKeyForNextColumn(kv));
+              ++rawCount;
             } else {
               this.heap.next();
               ++rawCount;
@@ -481,7 +484,6 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
             return ScannerStatus.done(rawCount);
 
           case SEEK_NEXT_ROW:
-            ++rawCount;
             // This is just a relatively simple end of scan fix, to short-cut end
             // us if there is an endKey in the scan.
             if (!matcher.moreRowsMayExistAfter(kv)) {
@@ -489,14 +491,15 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
             }
 
             seekToNextRow(kv);
+            ++rawCount;
             if (rawLimit > 0 && rawCount >= rawLimit) {
               return ScannerStatus.continued(this.heap.peek(), rawCount);
             }
             break;
 
           case SEEK_NEXT_COL:
-            ++rawCount;
             seekAsDirection(matcher.getKeyForNextColumn(kv));
+            ++rawCount;
             break;
 
           case SKIP:
@@ -508,6 +511,7 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
             KeyValue nextKV = matcher.getNextKeyHint(kv);
             if (nextKV != null) {
               seekAsDirection(nextKV);
+              ++rawCount;
             } else {
               heap.next();
               ++rawCount;
@@ -680,12 +684,14 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
     long size = kv.heapSize();
     if (kv.heapSize() > hugeKvWarningSizeInByte) {
       LOG.warn("adding a HUGE KV into result list, kv size:" + size + ", key:"
-          + Bytes.toStringBinary(kv.getKey()));
+          + Bytes.toStringBinary(kv.getKey()) + ", from table "
+          + store.getHRegionInfo().getTableNameAsString());
     }
     currentInResultRowSizeInByte += size;
     if (currentInResultRowSizeInByte > hugeRowWarningSizeInByte) {
       LOG.warn("adding a HUGE ROW's kv into result list, added row size:"
-          + currentInResultRowSizeInByte + ", key:" + Bytes.toStringBinary(kv.getKey()));
+          + currentInResultRowSizeInByte + ", key:" + Bytes.toStringBinary(kv.getKey())
+          + ", from table " + store.getHRegionInfo().getTableNameAsString());
     }
   }
 

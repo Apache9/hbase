@@ -32,6 +32,7 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.CoprocessorEnvironment;
 import org.apache.hadoop.hbase.HColumnDescriptor;
+import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.KeyValue;
@@ -60,6 +61,7 @@ import org.apache.hadoop.hbase.filter.CompareFilter;
 import org.apache.hadoop.hbase.filter.FilterList;
 import org.apache.hadoop.hbase.filter.WritableByteArrayComparable;
 import org.apache.hadoop.hbase.ipc.HBaseRPC;
+import org.apache.hadoop.hbase.ipc.HRegionInterface;
 import org.apache.hadoop.hbase.ipc.ProtocolSignature;
 import org.apache.hadoop.hbase.ipc.RequestContext;
 import org.apache.hadoop.hbase.master.MasterServices;
@@ -1297,6 +1299,15 @@ public class AccessController extends BaseRegionObserver
 
   @Override
   public long getProtocolVersion(String protocol, long clientVersion) throws IOException {
+    return getProtocolVersion(protocol, clientVersion, "unkown");
+  }
+
+  @Override
+  public long getProtocolVersion(String protocol, long clientVersion, String versionReport)
+      throws IOException {
+    LOG.info("User " + RequestContext.getRequestUserName() + " from client :"
+        + RequestContext.get().getRemoteAddress() + " connect to server with version: "
+        + versionReport);
     return PROTOCOL_VERSION;
   }
 

@@ -21,11 +21,14 @@
 package org.apache.hadoop.hbase.util;
 
 import org.apache.commons.logging.LogFactory;
+
 import java.io.PrintWriter;
 
 import org.apache.hadoop.hbase.VersionAnnotation;
 import org.apache.hadoop.hbase.master.HMaster;
 import org.apache.commons.logging.Log;
+
+import com.google.common.base.Joiner;
 
 /**
  * This class finds the package info for hbase and the VersionAnnotation
@@ -88,7 +91,11 @@ public class VersionInfo {
   public static String getUrl() {
     return version != null ? version.url() : "Unknown";
   }
-  
+
+  public static String getReport() {
+    return Joiner.on(", ").join(versionReport());
+  }
+
   static String[] versionReport() {
     return new String[] {
       "HBase " + getVersion(),

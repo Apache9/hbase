@@ -22,7 +22,9 @@ import org.apache.hadoop.hbase.Coprocessor;
 import org.apache.hadoop.hbase.CoprocessorEnvironment;
 import org.apache.hadoop.hbase.ipc.CoprocessorProtocol;
 import org.apache.hadoop.hbase.ipc.ProtocolSignature;
+import org.apache.hadoop.hbase.ipc.RequestContext;
 import org.apache.hadoop.hbase.ipc.VersionedProtocol;
+import org.mortbay.log.Log;
 
 /**
  * This abstract class provides default implementation of an Endpoint.
@@ -72,6 +74,15 @@ public abstract class BaseEndpointCoprocessor implements Coprocessor,
   @Override
   public long getProtocolVersion(String protocol, long clientVersion)
   throws IOException {
+    return getProtocolVersion(protocol, clientVersion, "unknown");
+  }
+
+  @Override
+  public long getProtocolVersion(String protocol, long clientVersion, String versionReport)
+  throws IOException {
+    Log.info("User " + RequestContext.getRequestUserName() + " from client :"
+        + RequestContext.get().getRemoteAddress() + " connect to server with version: "
+        + versionReport);
     return VERSION;
   }
 }

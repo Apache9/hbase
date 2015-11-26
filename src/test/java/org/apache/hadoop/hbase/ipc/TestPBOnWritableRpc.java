@@ -55,6 +55,11 @@ public class TestPBOnWritableRpc {
       return TestProtocol.VERSION;
     }
 
+    @Override
+    public long getProtocolVersion(String arg0, long arg1, String arg2) throws IOException {
+      return TestProtocol.VERSION;
+    }
+
     public ProtocolSignature getProtocolSignature(String protocol, long clientVersion,
         int hashcode) {
       return new ProtocolSignature(TestProtocol.VERSION, null);

@@ -827,6 +827,9 @@ public class TestMasterObserver {
     boolean balanceRun = master.balance();
     assertTrue("Coprocessor should be called on region rebalancing",
         cp.wasBalanceCalled());
+
+    // delete table after test, other test will create again
+    UTIL.deleteTable(TEST_TABLE);
   }
 
   @Test

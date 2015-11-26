@@ -69,6 +69,7 @@ import org.apache.hadoop.hbase.monitoring.TaskMonitor;
 import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.util.ByteBufferOutputStream;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hbase.util.QueueCounter;
 import org.apache.hadoop.hbase.util.SizeBasedThrottler;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.io.WritableUtils;
@@ -129,6 +130,8 @@ public abstract class HBaseServer implements RpcServer {
   protected static final ThreadLocal<RpcServer> SERVER =
     new ThreadLocal<RpcServer>();
   private volatile boolean started = false;
+
+  private QueueCounter queueCounter = new QueueCounter();
 
   private static final Map<String, Class<? extends VersionedProtocol>>
       PROTOCOL_CACHE =
@@ -1446,6 +1449,7 @@ public abstract class HBaseServer implements RpcServer {
         if (methodName.startsWith("get") || methodName.equals("next")
             || methodName.equals("openScanner") || methodName.equals("exists")
             || methodName.equals("close")) {
+          queueCounter.incIncomeReadCount();
           boolean success = readCallQueue.offer(call);
           if (!success) {
             // fail fast on queue inserting, no more waiting!
@@ -1457,12 +1461,16 @@ public abstract class HBaseServer implements RpcServer {
             setupResponse(responseBuffer, failedCall, Status.FATAL, null,
               IOException.class.getName(), "IPC server readQueue is full");
             responder.doRespond(failedCall);
+            queueCounter.setReadQueueFull(true);
+            queueCounter.incRejectedReadCount();
             return;
           }
+          queueCounter.setReadQueueFull(false);
           updateCallQueueLenMetrics(readCallQueue);
         } else {
           // FIXME: execCoprocessor, like AggregateImplementation; checkAndPut...
           // It's hard to tell read/write ops clear seems, just a best effort here
+          queueCounter.incIncomeWriteCount();
           boolean success = writeCallQueue.offer(call);
           if (!success) {
             // fail fast on queue inserting, no more waiting!
@@ -1474,8 +1482,11 @@ public abstract class HBaseServer implements RpcServer {
             setupResponse(responseBuffer, failedCall, Status.FATAL, null,
               IOException.class.getName(), "IPC server writeQueue is full");
             responder.doRespond(failedCall);
+            queueCounter.setWriteQueueFull(true);
+            queueCounter.incRejectedWriteCount();
             return;
           }
+          queueCounter.setWriteQueueFull(false);
           updateCallQueueLenMetrics(writeCallQueue);
         }
       }
@@ -2030,5 +2041,9 @@ public abstract class HBaseServer implements RpcServer {
 
   public long getResponseQueueSize(){
     return responseQueuesSizeThrottler.getCurrentValue();
+  }
+
+  public QueueCounter getQueueCounter() {
+    return queueCounter;
   }
 }

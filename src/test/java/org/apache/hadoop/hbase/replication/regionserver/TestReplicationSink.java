@@ -28,6 +28,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.*;
+import org.apache.hadoop.hbase.catalog.CatalogTracker;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Result;
@@ -37,6 +38,7 @@ import org.apache.hadoop.hbase.regionserver.wal.HLog;
 import org.apache.hadoop.hbase.regionserver.wal.HLogKey;
 import org.apache.hadoop.hbase.regionserver.wal.WALEdit;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -62,7 +64,7 @@ public class TestReplicationSink {
   private static final byte[] FAM_NAME2 = Bytes.toBytes("info2");
 
   private static HTable table1;
-  private static Stoppable STOPPABLE = new Stoppable() {
+  private static Stoppable SERVER = new Server() {
     final AtomicBoolean stop = new AtomicBoolean(false);
 
     @Override
@@ -75,7 +77,36 @@ public class TestReplicationSink {
       LOG.info("STOPPING BECAUSE: " + why);
       this.stop.set(true);
     }
-    
+
+    @Override
+    public Configuration getConfiguration() {
+      return null;
+    }
+
+    @Override
+    public ZooKeeperWatcher getZooKeeper() {
+      return null;
+    }
+
+    @Override
+    public CatalogTracker getCatalogTracker() {
+      return null;
+    }
+
+    @Override
+    public ServerName getServerName() {
+      return new ServerName("foo",9,-1);
+    }
+
+    @Override
+    public void abort(String why, Throwable e) {
+      //To change body of implemented methods use File | Settings | File Templates.
+    }
+
+    @Override
+    public boolean isAborted() {
+      return false;  //To change body of implemented methods use File | Settings | File Templates.
+    }
   };
 
   private static HTable table2;
@@ -89,7 +120,7 @@ public class TestReplicationSink {
     TEST_UTIL.getConfiguration().setBoolean(HConstants.REPLICATION_ENABLE_KEY, true);
     TEST_UTIL.startMiniCluster(3);
     SINK =
-      new ReplicationSink(new Configuration(TEST_UTIL.getConfiguration()), STOPPABLE);
+      new ReplicationSink(new Configuration(TEST_UTIL.getConfiguration()), SERVER);
     table1 = TEST_UTIL.createTable(TABLE_NAME1, FAM_NAME1);
     table2 = TEST_UTIL.createTable(TABLE_NAME2, FAM_NAME2);
   }
@@ -99,7 +130,7 @@ public class TestReplicationSink {
    */
   @AfterClass
   public static void tearDownAfterClass() throws Exception {
-    STOPPABLE.stop("Shutting down");
+    SERVER.stop("Shutting down");
     TEST_UTIL.shutdownMiniCluster();
   }
 

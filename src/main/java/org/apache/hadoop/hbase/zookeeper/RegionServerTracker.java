@@ -75,27 +75,30 @@ public class RegionServerTracker extends ZooKeeperListener {
   }
 
   private void add(final List<String> servers) throws IOException {
+    NavigableMap<ServerName, RegionServerInfo> tmps =
+        new TreeMap<ServerName, RegionServerInfo>();
+    for (String n : servers) {
+      ServerName sn = ServerName.parseServerName(ZKUtil.getNodeName(n));
+      if (tmps.get(sn) == null) {
+        RegionServerInfo rsInfo = new RegionServerInfo();
+        try {
+          String nodePath = ZKUtil.joinZNode(watcher.rsZNode, n);
+          byte[] data = ZKUtil.getData(watcher, nodePath);
+          LOG.info("Rs node: " + nodePath + " data: " + Bytes.toString(data));
+          if (data != null && data.length > 0) {
+            rsInfo = (RegionServerInfo) Writables.getWritable(data, rsInfo);
+          }
+        } catch (KeeperException e) {
+          LOG.warn("Get Rs info port from ephemeral node", e);
+        } catch (IOException e) {
+          LOG.warn("Illegal data from ephemeral node", e);
+        }
+        tmps.put(sn, rsInfo);
+      }
+    }
     synchronized(this.regionServers) {
       this.regionServers.clear();
-      for (String n: servers) {
-        ServerName sn = ServerName.parseServerName(ZKUtil.getNodeName(n));
-        if (regionServers.get(sn) == null) {
-          RegionServerInfo rsInfo = new RegionServerInfo();
-          try {
-            String nodePath = ZKUtil.joinZNode(watcher.rsZNode, n);
-            byte[] data = ZKUtil.getData(watcher, nodePath);
-            LOG.info("Rs node: " + nodePath + " data: " + Bytes.toString(data));
-            if (data != null && data.length > 0) {
-              rsInfo = (RegionServerInfo) Writables.getWritable(data, rsInfo);
-            }
-          } catch (KeeperException e) {
-            LOG.warn("Get Rs info port from ephemeral node", e);
-          } catch (IOException e) {
-            LOG.warn("Illegal data from ephemeral node", e);
-          }
-          this.regionServers.put(sn, rsInfo);
-        }
-      }
+      this.regionServers.putAll(tmps);
     }
   }
 
@@ -159,6 +162,8 @@ public class RegionServerTracker extends ZooKeeperListener {
    * @return
    */
   public boolean checkIfAlive(final ServerName sn) {
-    return regionServers.containsKey(sn);
+    synchronized(this.regionServers) {
+      return regionServers.containsKey(sn);
+    }
   }
 }

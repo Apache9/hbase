@@ -1884,7 +1884,7 @@ public class AssignmentManager extends ZooKeeperListener {
         return; // Should get reassigned later when RIT times out.
       }
       try {
-        LOG.debug("Assigning region " + state.getRegion().getRegionNameAsString() +
+        LOG.info("Assigning region " + state.getRegion().getRegionNameAsString() +
           " to " + plan.getDestination().toString());
         long currentOfflineTimeStamp = state.getStamp();
         RegionOpeningState regionOpenState = serverManager.sendRegionOpen(plan.getDestination(),
@@ -3078,6 +3078,11 @@ public class AssignmentManager extends ZooKeeperListener {
     if (!nodes.isEmpty()) {
       for (String encodedRegionName : nodes) {
         processRegionInTransition(encodedRegionName, null, deadServers);
+        if (this.master.isStopped() || this.master.isAborted()) {
+          throw new IOException("master : " + this.master.getServerName()
+              + " not running, isStopped:" + this.master.isStopped() + ", isAborted:"
+              + this.master.isAborted());
+        }
       }
     }
   }

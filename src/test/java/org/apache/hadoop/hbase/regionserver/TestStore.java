@@ -47,6 +47,7 @@ import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HConstants;
+import org.apache.hadoop.hbase.HDFSBlocksDistribution;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.KeyValue;
@@ -62,6 +63,7 @@ import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManagerTestHelper;
 import org.apache.hadoop.hbase.util.ManualEnvironmentEdge;
 import org.apache.hadoop.util.Progressable;
+import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.mockito.Mockito;
 
@@ -782,6 +784,58 @@ public class TestStore extends TestCase {
     store.getHRegion().forceSplit(null);
     assertNull(store.getSplitPoint());
     store.getHRegion().clearSplit_TESTS_ONLY();
+  }
+
+  @Test
+  public void testGetHDFSBlocksDistribution() throws IOException {
+    final int blockSize = 65536;
+    String[] dataNodeHostsGroupA = new String[] { "host0", "host1", "host2" };
+    String[] dataNodeHostsGroupB = new String[] { "host1", "host2", "host3" };
+    String[] dataNodeHostsGroupC = new String[] { "host2", "host3", "host4" };
+
+    Store store = Mockito.mock(Store.class);
+    List<StoreFile> storeFiles = new ArrayList<StoreFile>();
+
+    // storeFile1 has 2 block, block1 in dn group A, block2 in dn group B
+    StoreFile storeFile1 = Mockito.mock(StoreFile.class);
+    HDFSBlocksDistribution blockDistribution1 = new HDFSBlocksDistribution();
+    blockDistribution1.addHostsAndBlockWeight(dataNodeHostsGroupA, blockSize);
+    blockDistribution1.addHostsAndBlockWeight(dataNodeHostsGroupB, blockSize);
+    Mockito.doReturn(blockDistribution1).when(storeFile1).getHDFSBlockDistribution();
+
+    // store only have storeFile1
+    storeFiles.add(storeFile1);
+    Mockito.doReturn(storeFiles).when(store).getStorefiles();
+    Mockito.doCallRealMethod().when(store).getHDFSBlocksDistribution();
+
+    // locality of host0, host1, host2, host3 is 0.5, 1.0, 1.0, 0.5
+    HDFSBlocksDistribution hdfsBlocksDistribution = store.getHDFSBlocksDistribution();
+    LOG.info("unique blocks total weight is " + hdfsBlocksDistribution);
+    assertEquals(2 * blockSize, hdfsBlocksDistribution.getUniqueBlocksTotalWeight());
+    assertEquals(blockSize, hdfsBlocksDistribution.getWeight("host0"));
+    assertEquals(0.5f, hdfsBlocksDistribution.getBlockLocalityIndex("host0"));
+    assertEquals(2 * blockSize, hdfsBlocksDistribution.getWeight("host1"));
+    assertEquals(1.0f, hdfsBlocksDistribution.getBlockLocalityIndex("host1"));
+
+    // storeFile2 has 2 block, block 1 in dn group A, block in dn group B
+    StoreFile storeFile2 = Mockito.mock(StoreFile.class);
+    HDFSBlocksDistribution blockDistribution2 = new HDFSBlocksDistribution();
+    blockDistribution2.addHostsAndBlockWeight(dataNodeHostsGroupB, blockSize);
+    blockDistribution2.addHostsAndBlockWeight(dataNodeHostsGroupC, blockSize);
+    Mockito.doReturn(blockDistribution2).when(storeFile2).getHDFSBlockDistribution();
+
+    // store have storeFile1 and storeFile2
+    storeFiles.add(storeFile2);
+
+    // locality of host0, host1, host2, host3, host4 is 0.25, 0.75, 1.0, 0.75, 0.25
+    hdfsBlocksDistribution = store.getHDFSBlocksDistribution();
+    LOG.info("unique blocks total weight is " + hdfsBlocksDistribution.getUniqueBlocksTotalWeight());
+    assertEquals(4 * blockSize, hdfsBlocksDistribution.getUniqueBlocksTotalWeight());
+    assertEquals(0.25f, hdfsBlocksDistribution.getBlockLocalityIndex("host0"));
+    assertEquals(0.75f, hdfsBlocksDistribution.getBlockLocalityIndex("host1"));
+    assertEquals(1.0f, hdfsBlocksDistribution.getBlockLocalityIndex("host2"));
+    assertEquals(0.75f, hdfsBlocksDistribution.getBlockLocalityIndex("host3"));
+    assertEquals(0.25f, hdfsBlocksDistribution.getBlockLocalityIndex("host4"));
   }
 
   @org.junit.Rule

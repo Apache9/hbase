@@ -20,8 +20,6 @@
 package com.xiaomi.infra.hbase;
 
 import java.io.IOException;
-import java.util.Timer;
-import java.util.TimerTask;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.commons.httpclient.HttpClient;
@@ -45,8 +43,6 @@ public class FalconSink implements Sink, Configurable {
   private static final String DEFAULT_FALCON_URI = "http://127.0.0.1:1988/v1/push";
   private static final String DEFAULT_COLLECTOR_URI = "http://10.105.5.111:8000/canary/push_metric/";
 
-  private static final int PERIOD = 60; // s
-
   private Configuration conf;
   private HttpClient client = new HttpClient();
   private AtomicLong failedReadCounter = new AtomicLong(0);
@@ -55,12 +51,6 @@ public class FalconSink implements Sink, Configurable {
   private AtomicLong totalWriteCounter = new AtomicLong(0);
 
   private FalconSink() {
-    new Timer(true).schedule(new TimerTask() {
-      @Override
-      public void run() {
-        pushMetrics();
-      }
-    }, PERIOD * 1000, PERIOD * 1000);
   }
 
   @Override
@@ -126,12 +116,15 @@ public class FalconSink implements Sink, Configurable {
       return;
     }
     String clusterName = conf.get("hbase.cluster.name", "unknown");
+    String sniffCountStr = "failedReadCount=" + failedReadCounter.get() + ", totalReadCount="
+            + totalReadCounter.get() + ", failedWriteCounter=" + failedWriteCounter.get()
+            + ", totalWriterCount=" + totalWriteCounter.get();
     double readAvail = calc(failedReadCounter, totalReadCounter);
     double writeAvail = calc(failedWriteCounter, totalWriteCounter);
     double avail = (readAvail + writeAvail) /2;
     LOG.info("Try to push metrics to falcon and collector. Cluster: "
         + clusterName + " availability is " + avail + ", read availability is "
-        + readAvail + ", write availability is " + writeAvail);
+        + readAvail + ", write availability is " + writeAvail + ", " + sniffCountStr);
     pushToCollector(clusterName, avail, readAvail, writeAvail);
     pushToFalcon(clusterName, avail, readAvail, writeAvail);
   }
@@ -172,7 +165,7 @@ public class FalconSink implements Sink, Configurable {
     metric.put("metric", key);
     metric.put("timestamp", System.currentTimeMillis() / 1000);
     metric.put("value", value);
-    metric.put("step", PERIOD);
+    metric.put("step", 60);
     metric.put("counterType", "GAUGE");
     ClusterType type = new ClusterInfo(clusterName).getZkClusterInfo().getClusterType();
     metric.put("tags", "srv=hbase,type=" + type.toString().toLowerCase() + ",cluster=" + clusterName);
@@ -196,6 +189,11 @@ public class FalconSink implements Sink, Configurable {
     } catch (IOException e) {
       LOG.info("Push metrics to falcon failed", e);
     }
+  }
+
+  @Override
+  public void reportSummary() {
+    pushMetrics();
   }
 
   @Override

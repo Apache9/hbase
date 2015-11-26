@@ -25,6 +25,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.SmallTests;
+import org.apache.hadoop.hbase.ipc.TestPBOnWritableRpc.TestProtocol;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
@@ -53,6 +54,11 @@ public class TestProtocolExtension {
 
   public static class TestImpl implements TestProtocol {
     public long getProtocolVersion(String protocol, long clientVersion) {
+      return TestProtocol.VERSION;
+    }
+
+    @Override
+    public long getProtocolVersion(String arg0, long arg1, String arg2) throws IOException {
       return TestProtocol.VERSION;
     }
 

@@ -75,7 +75,7 @@ public class ManualAssigner {
   }
 
   public void assign(final String table) throws IOException {
-    if (admin.isTableEnabled(table)) {
+    if (admin.isTableDisabled(table)) {
       LOG.info("Skip diabled table: " + table);
       return;
     }

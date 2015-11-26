@@ -25,7 +25,6 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Array;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.InvocationTargetException;
-
 import java.net.InetSocketAddress;
 import java.io.*;
 import java.util.Map;
@@ -33,8 +32,8 @@ import java.util.HashMap;
 
 import javax.net.SocketFactory;
 
+import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.commons.logging.*;
-
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.client.Operation;
 import org.apache.hadoop.hbase.io.HbaseObjectWritable;
@@ -42,13 +41,14 @@ import org.apache.hadoop.hbase.monitoring.MonitoredRPCHandler;
 import org.apache.hadoop.hbase.regionserver.HRegionServer;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.Objects;
+import org.apache.hadoop.hbase.util.VersionInfo;
 import org.apache.hadoop.io.*;
 import org.apache.hadoop.ipc.RPC;
+import org.apache.hadoop.ipc.RemoteException;
 import org.apache.hadoop.hbase.ipc.VersionedProtocol;
 import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.security.authorize.ServiceAuthorizationManager;
 import org.apache.hadoop.conf.*;
-
 import org.codehaus.jackson.map.ObjectMapper;
 
 /** An RpcEngine implementation for Writable data. */
@@ -143,8 +143,8 @@ class WritableRpcEngine implements RpcEngine {
      * HBaseClient.Connection.  Doing it every time we retrieve a proxy instance is resulting
      * in unnecessary RPC traffic.
      */
-    long serverVersion = ((VersionedProtocol)proxy)
-      .getProtocolVersion(protocol.getName(), clientVersion);
+    long serverVersion =
+        HBaseRPC.getProtocolVersion((VersionedProtocol) proxy, protocol.getName(), clientVersion);
     if (serverVersion != clientVersion) {
       throw new HBaseRPC.VersionMismatch(protocol.getName(), clientVersion,
                                     serverVersion);

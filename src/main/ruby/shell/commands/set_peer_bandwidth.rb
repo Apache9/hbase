@@ -23,11 +23,11 @@ module Shell
     class SetPeerBandwidth< Command
       def help
         return <<-EOF
-Set the bandwidth for the specified peer
+Set the replication bandwidth of every regionserver for the specified peer.
 Examples:
 
-  # set bandwidth=2MB for a peer 
-  hbase> set_peer_bandwidth '1', '2097152'
+  # set bandwidth=2MB per regionserver for a peer
+  hbase> set_peer_bandwidth '1', 2097152
   # unset bandwidth for a peer to use the default bandwidth configured in server-side
   hbase> set_peer_bandwidth '1'
 

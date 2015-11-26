@@ -390,7 +390,22 @@ public class FSTableDescriptors implements TableDescriptors {
   throws IOException {
     return getTableDescriptorFromFs(fs, FSUtils.getTablePath(hbaseRootDir, tableDir));
   }
-  
+
+  /**
+   * Returns the latest table descriptor for the given table directly from the file system if it
+   * exists, bypassing the local cache. Returns null if it's not found.
+   */
+  public static HTableDescriptor getTableDescriptorFromFs(FileSystem fs, Path hbaseRootDir,
+      String tableName) throws IOException {
+    // ignore both -ROOT- and .META. tables
+    if (Bytes.compareTo(Bytes.toBytes(tableName), HConstants.ROOT_TABLE_NAME) == 0
+        || Bytes.compareTo(Bytes.toBytes(tableName), HConstants.META_TABLE_NAME) == 0) {
+      return null;
+    }
+    Path tableDir = FSUtils.getTablePath(hbaseRootDir, tableName);
+    return getTableDescriptorFromFs(fs, tableDir);
+  }
+
   /**
    * Returns the latest table descriptor for the table located at the given directory
    * directly from the file system if it exists.
