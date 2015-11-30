@@ -127,6 +127,7 @@ import org.apache.hadoop.hbase.regionserver.metrics.SchemaMetrics;
 import org.apache.hadoop.hbase.regionserver.wal.HLog;
 import org.apache.hadoop.hbase.regionserver.wal.HLogKey;
 import org.apache.hadoop.hbase.regionserver.wal.WALEdit;
+import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.snapshot.TakeSnapshotUtils;
 import org.apache.hadoop.hbase.types.NumberCodecType;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -3956,6 +3957,7 @@ public class HRegion implements HeapSize { // , Writable{
     protected int isScan;
     private boolean filterClosed = false;
     private long readPt;
+    private long maxResultSize;
     protected HRegion region;
 	  private Map<byte[], NavigableSet<byte[]>> familyMap = null;
 
@@ -3967,6 +3969,7 @@ public class HRegion implements HeapSize { // , Writable{
         throws IOException {
       // DebugPrint.println("HRegionScanner.<init>");
       this.region = region;
+      this.maxResultSize = scan.getMaxResultSize();
       this.filter = scan.getFilter();
       this.batch = scan.getBatch();
       this.rawLimit = scan.getRawLimit();
@@ -4027,6 +4030,11 @@ public class HRegion implements HeapSize { // , Writable{
       if (!joinedScanners.isEmpty()) {
         this.joinedHeap = new KeyValueHeap(joinedScanners, region.comparator);
       }
+    }
+
+    @Override
+    public long getMaxResultSize() {
+      return maxResultSize;
     }
 
     @Override public int getRawLimit() {
@@ -4121,7 +4129,7 @@ public class HRegion implements HeapSize { // , Writable{
       ScannerStatus status = populateResult(results, this.joinedHeap, limit,
           joinedContinuationRow.getBuffer(), joinedContinuationRow.getRowOffset(),
           joinedContinuationRow.getRowLength(), metric);
-      if (results.size() < limit) {
+      if (limit <= 0 || results.size() < limit) {
         // We are done with this row, reset the continuation.
         joinedContinuationRow = null;
       }
@@ -4234,8 +4242,6 @@ public class HRegion implements HeapSize { // , Writable{
                 "Filter whose hasFilterRow() returns true is incompatible with scan with limit!");
             }
             return ScannerStatus.continued(filterStopRow(nextKv), rawCount); // We hit the limit.
-          } else if (rawLimit > 0 && rawCount >= rawLimit) {
-            return ScannerStatus.continued(filterStopRow(nextKv), rawCount); // We hit the limit.
           }
           stopRow = nextKv == null
               || isStopRow(nextKv.getBuffer(), nextKv.getRowOffset(), nextKv.getRowLength());
@@ -4251,6 +4257,7 @@ public class HRegion implements HeapSize { // , Writable{
           if (isEmptyRow || filterRow()) {
             results.clear();
             status = nextRow(currentRow, offset, length);
+            rawCount += status.getRawValueScanned();
             if (!status.hasNext() || rawLimit > 0 && rawCount >= rawLimit) {
               return new ScannerStatus(status.hasNext(), filterStopRow(status.next()), rawCount);
             }
@@ -6270,6 +6277,18 @@ public class HRegion implements HeapSize { // , Writable{
     this.opMetrics.setWriteRequestCountMetrics(this.writeRequestsCount.get());
   }
   
+  public void updateReadCount(User user, byte[] table, byte[] family, byte[] qualifier) {
+    if (this.rsServices != null && this.rsServices.getAccessCounter() != null) {
+      this.rsServices.getAccessCounter().incrementReadCount(user, table, family, qualifier);
+    }
+  }
+
+  public void updateWriteCount(User user, byte[] table, byte[] family, byte[] qualifier) {
+    if (this.rsServices != null && this.rsServices.getAccessCounter() != null) {
+      this.rsServices.getAccessCounter().incrementWriteCount(user, table, family, qualifier);
+    }
+  }
+
   /**
    * update coproessor metrics
    * @param methodName

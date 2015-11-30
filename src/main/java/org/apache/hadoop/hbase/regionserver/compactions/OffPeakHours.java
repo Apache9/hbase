@@ -46,11 +46,11 @@ public abstract class OffPeakHours {
       return DISABLED;
     }
 
-    if (! isValidHour(startHour) || ! isValidHour(endHour)) {
+    if (! isValidHour(startHour) || ! isValidEndHour(endHour)) {
       if (LOG.isWarnEnabled()) {
         LOG.warn("Ignoring invalid start/end hour for peak hour : start = " +
             startHour + " end = " + endHour +
-            ". Valid numbers are [0-23]");
+            ". Valid numbers are [0-23/24]");
       }
       return DISABLED;
     }
@@ -61,9 +61,20 @@ public abstract class OffPeakHours {
 
     return new OffPeakHoursImpl(startHour, endHour);
   }
-
+  
+  /**
+   * @param startHour inclusive
+   * @param endHour exclusive
+   */
   private static boolean isValidHour(int hour) {
     return 0 <= hour && hour <= 23;
+  }
+  
+  /**
+   * endHour is exclusive, so it can be 24
+   */
+  private static boolean isValidEndHour(int hour) {
+    return 0 <= hour && hour <= 24;
   }
 
   /**

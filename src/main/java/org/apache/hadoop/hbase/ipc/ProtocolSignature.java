@@ -234,7 +234,7 @@ public class ProtocolSignature implements Writable {
     } catch (Exception e) {
       throw new IOException(e);
     }
-    long serverVersion = server.getProtocolVersion(protocol, clientVersion);
+    long serverVersion = HBaseRPC.getProtocolVersion(server, protocol, clientVersion);
     return ProtocolSignature.getProtocolSignature(
         clientMethodsHash, serverVersion, inter);
   }

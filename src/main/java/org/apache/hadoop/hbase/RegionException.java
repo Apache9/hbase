@@ -40,4 +40,8 @@ public class RegionException extends IOException {
     super(s);
   }
 
+  public RegionException(String message, Throwable cause) {
+    super(message, cause);
+  }
+
 }

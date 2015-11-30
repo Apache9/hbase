@@ -37,6 +37,8 @@ import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.replication.ReplicationAdmin;
 import org.apache.hadoop.hbase.coprocessor.CoprocessorHost;
+import org.apache.hadoop.hbase.replication.ReplicationZookeeper.PeerProtocol;
+import org.apache.hadoop.hbase.replication.ReplicationZookeeper.PeerState;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.zookeeper.MiniZooKeeperCluster;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
@@ -178,7 +180,8 @@ public class TestMultiSlaveReplication {
     HTable htable3 = new HTable(conf3, tableName);
     htable3.setWriteBufferSize(1024);
     
-    admin1.addPeer("1", utility2.getClusterKey());
+    admin1.addPeer("1", utility2.getClusterKey(), PeerState.ENABLED.toString(), "", null,
+      PeerProtocol.NATIVE.toString());
 
     // put "row" and wait 'til it got around, then delete
     putAndWait(row, famName, htable1, htable2);
@@ -193,7 +196,8 @@ public class TestMultiSlaveReplication {
     // after the log was rolled put a new row
     putAndWait(row3, famName, htable1, htable2);
 
-    admin1.addPeer("2", utility3.getClusterKey());
+    admin1.addPeer("2", utility3.getClusterKey(), PeerState.ENABLED.toString(), "", null,
+      PeerProtocol.NATIVE.toString());
 
     // put a row, check it was replicated to all clusters
     putAndWait(row1, famName, htable1, htable2, htable3);
@@ -277,8 +281,10 @@ public class TestMultiSlaveReplication {
     htab3C.setWriteBufferSize(1024);
 
     // A. add cluster2/cluster3 as peers to cluster1
-    admin1.addPeer("2", utility2.getClusterKey(), "ENABLED", "TC; TB:f1,f3");
-    admin1.addPeer("3", utility3.getClusterKey(), "ENABLED", "TA; TB:f1,f2");
+    admin1.addPeer("2", utility2.getClusterKey(), "ENABLED", "TC; TB:f1,f3", null,
+      PeerProtocol.NATIVE.toString());
+    admin1.addPeer("3", utility3.getClusterKey(), "ENABLED", "TA; TB:f1,f2", null,
+      PeerProtocol.NATIVE.toString());
 
     // A1. tableA can only replicated to cluster3
     putAndWaitWithFamily(row1, f1Name, val, htab1A, htab3A);

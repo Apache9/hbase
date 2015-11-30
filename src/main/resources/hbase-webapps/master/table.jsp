@@ -146,8 +146,7 @@
 </tr>
 <%  } %>
 </table>
-<%} else {
-  try { %>
+<%} else { %>
 <h2>Table Attributes</h2>
 <table>
   <tr>
@@ -243,9 +242,6 @@
 <% } %>
 </table>
 <% }
-} catch(Exception ex) {
-  ex.printStackTrace(System.err);
-}
 } // end else
 
 HConnectionManager.deleteConnection(hbadmin.getConfiguration());

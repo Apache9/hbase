@@ -76,6 +76,7 @@ import org.apache.hadoop.hbase.client.MetaScanner;
 import org.apache.hadoop.hbase.client.MetaScanner.MetaScannerVisitor;
 import org.apache.hadoop.hbase.client.MetaScanner.MetaScannerVisitorBase;
 import org.apache.hadoop.hbase.client.Result;
+import org.apache.hadoop.hbase.client.UnmodifyableHTableDescriptor;
 import org.apache.hadoop.hbase.client.coprocessor.Exec;
 import org.apache.hadoop.hbase.client.coprocessor.ExecResult;
 import org.apache.hadoop.hbase.conf.ConfigurationManager;
@@ -90,6 +91,7 @@ import org.apache.hadoop.hbase.ipc.HMasterRegionInterface;
 import org.apache.hadoop.hbase.ipc.ProtocolSignature;
 import org.apache.hadoop.hbase.ipc.RSReportRequest;
 import org.apache.hadoop.hbase.ipc.RSReportResponse;
+import org.apache.hadoop.hbase.ipc.RequestContext;
 import org.apache.hadoop.hbase.ipc.RpcServer;
 import org.apache.hadoop.hbase.master.cleaner.HFileCleaner;
 import org.apache.hadoop.hbase.master.cleaner.LogCleaner;
@@ -966,7 +968,16 @@ Server {
     throw new IOException("Unknown protocol: " + protocol);
   }
 
-  public long getProtocolVersion(String protocol, long clientVersion) {
+  @Override
+  public long getProtocolVersion(String protocol, long clientVersion) throws IOException {
+    return getProtocolVersion(protocol, clientVersion, "unkown");
+  }
+
+  public long getProtocolVersion(String protocol, long clientVersion, String versionReport)
+      throws IOException {
+    LOG.info("User " + RequestContext.getRequestUserName() + " from client :"
+        + RequestContext.get().getRemoteAddress() + " connect to server with version: "
+        + versionReport);
     if (HMasterInterface.class.getName().equals(protocol)) {
       return HMasterInterface.VERSION;
     } else if (HMasterRegionInterface.class.getName().equals(protocol)) {
@@ -1110,7 +1121,11 @@ Server {
     Chore chore = new Chore(name, balancerPeriod, master) {
       @Override
       protected void chore() {
-        master.balance();
+        try {
+          master.balance();
+        } catch(IOException ioe) {
+          LOG.error("Error while invoking master balance", ioe);
+        }
       }
     };
     return Threads.setDaemonThreadRunning(chore.getThread());
@@ -1231,12 +1246,12 @@ Server {
   }
 
   @Override
-  public boolean balance() {
+  public boolean balance() throws IOException {
     return balance(null);
   }
   
   @Override
-  public boolean balance(final byte[] tableName) {
+  public boolean balance(final byte[] tableName) throws IOException {
     // if master not initialized, don't run balancer.
     if (!this.initialized) {
       LOG.debug("Master has not been initialized, don't run balancer.");
@@ -1271,15 +1286,7 @@ Server {
       }
 
       if (this.cpHost != null) {
-        try {
-          if (this.cpHost.preBalance()) {
-            LOG.debug("Coprocessor bypassing balancer request");
-            return false;
-          }
-        } catch (IOException ioe) {
-          LOG.error("Error invoking master coprocessor preBalance()", ioe);
-          return false;
-        }
+        this.cpHost.preBalance();
       }
       
       this.balancer.setClusterStatus(getClusterStatus());
@@ -1359,7 +1366,7 @@ Server {
    * @param mode BalanceSwitchMode
    * @return old balancer switch
    */
-  public boolean switchBalancer(final boolean b, BalanceSwitchMode mode) {
+  public boolean switchBalancer(final boolean b, BalanceSwitchMode mode) throws IOException {
     boolean oldValue = this.clusterSwitches.getBalanceSwitch();
     boolean newValue = b;
     try {
@@ -1381,17 +1388,18 @@ Server {
       }
     } catch (IOException ioe) {
       LOG.warn("Error flipping balance switch", ioe);
+      throw ioe;
     }
     return oldValue;
   }
   
   @Override
-  public boolean synchronousBalanceSwitch(final boolean b) {
+  public boolean synchronousBalanceSwitch(final boolean b) throws IOException {
     return switchBalancer(b, BalanceSwitchMode.SYNC);
   }
 
   @Override
-  public boolean balanceSwitch(final boolean b) {
+  public boolean balanceSwitch(final boolean b) throws IOException {
     return switchBalancer(b, BalanceSwitchMode.ASYNC);
   }
 
@@ -1453,7 +1461,9 @@ Server {
       throw new MasterNotRunningException();
     }
 
-    if (ignoreSplitsWhenCreatingTable) {
+    // truncate table will pass UnmodifyableHTableDescriptor to server-side
+    if (!(hTableDescriptor instanceof UnmodifyableHTableDescriptor)
+        && ignoreSplitsWhenCreatingTable) {
       boolean isSalted = hTableDescriptor.isSalted();
       if (isSalted) {
         hTableDescriptor.setSlotsCount(1);

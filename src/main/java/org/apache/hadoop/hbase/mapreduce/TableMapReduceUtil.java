@@ -52,7 +52,9 @@ import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
 import org.apache.hadoop.hbase.mapreduce.hadoopbackport.JarFinder;
+import org.apache.hadoop.hbase.mapreduce.salted.SaltedMultiTableInputFormat;
 import org.apache.hadoop.hbase.mapreduce.salted.SaltedTableInputFormat;
+import org.apache.hadoop.hbase.mapreduce.salted.SaltedTableMapReduceUtil;
 import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.util.Base64;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -176,22 +178,23 @@ public class TableMapReduceUtil {
               outputValueClass, job, addDependencyJars, inputFormatClass);
   }
   
-  protected static Class<? extends TableInputFormat> getTableInputFormatCls(Configuration conf,
-      byte[] tableName) throws IOException {
-    HTable table = null;
-    try {
-      table = new HTable(conf, tableName);
-      HTableDescriptor desc = table.getTableDescriptor();
-      if (desc.isSalted()) {
-        return SaltedTableInputFormat.class;
-      } else {
-        return TableInputFormat.class;
-      }
-    } finally {
-      if (table != null) {
-        table.close();
+  protected static Class<? extends MultiTableInputFormat> getMultiTableInputFormatCls(
+      Configuration conf, List<Scan> scans) throws IOException {
+    for (Scan scan : scans) {
+      byte[] tableName = scan.getAttribute(Scan.SCAN_ATTRIBUTES_TABLE_NAME);
+      if (tableName == null) 
+        throw new IOException("A scan object did not have a table name");
+      if (SaltedTableMapReduceUtil.isSaltedTable(conf, tableName)) {
+        return SaltedMultiTableInputFormat.class;
       }
     }
+    return MultiTableInputFormat.class;
+  }
+  
+  protected static Class<? extends TableInputFormat> getTableInputFormatCls(Configuration conf,
+      byte[] tableName) throws IOException {
+    return SaltedTableMapReduceUtil.isSaltedTable(conf, tableName) ? SaltedTableInputFormat.class
+        : TableInputFormat.class;
   }
   
   /**
@@ -283,7 +286,7 @@ public class TableMapReduceUtil {
       Class<? extends WritableComparable> outputKeyClass,
       Class<? extends Writable> outputValueClass, Job job,
       boolean addDependencyJars) throws IOException {
-    job.setInputFormatClass(MultiTableInputFormat.class);
+    job.setInputFormatClass(getMultiTableInputFormatCls(job.getConfiguration(), scans));
     if (outputValueClass != null) {
       job.setMapOutputValueClass(outputValueClass);
     }

@@ -39,11 +39,13 @@ import org.apache.hadoop.hbase.ipc.ProtocolSignature;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.JVMClusterUtil;
 import org.apache.hadoop.hbase.ipc.VersionedProtocol;
+import org.apache.hadoop.hbase.ipc.TestPBOnWritableRpc.TestProtocol;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.google.common.collect.Lists;
+
 import org.junit.experimental.categories.Category;
 
 @Category(MediumTests.class)
@@ -102,6 +104,11 @@ public class TestServerCustomProtocol {
 
     @Override
     public long getProtocolVersion(String s, long l) throws IOException {
+      return VERSION;
+    }
+
+    @Override
+    public long getProtocolVersion(String s, long l, String v) throws IOException {
       return VERSION;
     }
 

@@ -1676,7 +1676,7 @@ public class HBaseAdmin implements Abortable, Closeable {
    */
   @Deprecated
   public boolean balanceSwitch(final boolean b)
-  throws MasterNotRunningException, ZooKeeperConnectionException {
+  throws MasterNotRunningException, ZooKeeperConnectionException, IOException {
     return getMaster().balanceSwitch(b);
   }
 
@@ -1687,7 +1687,7 @@ public class HBaseAdmin implements Abortable, Closeable {
    * @return Previous balancer value
    */
   public boolean setBalancerRunning(final boolean on, final boolean synchronous)
-  throws MasterNotRunningException, ZooKeeperConnectionException {
+  throws MasterNotRunningException, ZooKeeperConnectionException, IOException {
     if (synchronous && synchronousBalanceSwitchSupported) {
       try {
         return getMaster().synchronousBalanceSwitch(on);
@@ -1712,7 +1712,7 @@ public class HBaseAdmin implements Abortable, Closeable {
    * @return True if balancer ran, false otherwise.
    */
   public boolean balancer()
-  throws MasterNotRunningException, ZooKeeperConnectionException {
+  throws MasterNotRunningException, ZooKeeperConnectionException, IOException {
     return getMaster().balance();
   }
   
@@ -1722,7 +1722,7 @@ public class HBaseAdmin implements Abortable, Closeable {
    * @return True if balancer ran, false otherwise.
    */
   public boolean balancer(final byte[] tableName) throws MasterNotRunningException,
-      ZooKeeperConnectionException {
+      ZooKeeperConnectionException, IOException {
     return getMaster().balance(tableName);
   }
 
@@ -2452,7 +2452,7 @@ public class HBaseAdmin implements Abortable, Closeable {
   public void cloneSnapshot(final String snapshotName, final String tableName)
       throws IOException, TableExistsException, RestoreSnapshotException, InterruptedException {
     if (tableExists(tableName)) {
-      throw new TableExistsException("Table '" + tableName + " already exists");
+      throw new TableExistsException(tableName);
     }
     internalRestoreSnapshot(snapshotName, tableName);
     waitUntilTableIsEnabled(Bytes.toBytes(tableName));

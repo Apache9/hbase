@@ -107,4 +107,9 @@ public interface RegionScanner extends InternalScanner {
    */
   public ScannerStatus nextRaw(List<KeyValue> result, final int limit, final int rawLimit,
       String metric) throws IOException;
+  
+  /**
+   * @return The preferred max buffersize. See {@link Scan#setMaxResultSize(long)}
+  */
+  public long getMaxResultSize();
 }

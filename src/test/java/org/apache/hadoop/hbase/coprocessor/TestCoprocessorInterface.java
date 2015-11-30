@@ -125,6 +125,11 @@ public class TestCoprocessorInterface extends HBaseTestCase {
     public long getMvccReadPoint() {
       return delegate.getMvccReadPoint();
     }
+
+    @Override
+    public long getMaxResultSize() {
+      return delegate.getMaxResultSize();
+    }
   }
 
   public static class CoprocessorImpl extends BaseRegionObserver {

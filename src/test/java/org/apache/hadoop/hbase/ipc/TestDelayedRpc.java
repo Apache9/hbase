@@ -227,6 +227,11 @@ public class TestDelayedRpc {
     }
 
     @Override
+    public long getProtocolVersion(String arg0, long arg1, String arg2) throws IOException {
+      return 0;
+    }
+
+    @Override
     public ProtocolSignature getProtocolSignature(String protocol,
         long clientVersion, int clientMethodsHash) throws IOException {
       Method [] methods = this.getClass().getMethods();
@@ -327,6 +332,11 @@ public class TestDelayedRpc {
 
     @Override
     public long getProtocolVersion(String arg0, long arg1) throws IOException {
+      return 0;
+    }
+
+    @Override
+    public long getProtocolVersion(String arg0, long arg1, String arg2) throws IOException {
       return 0;
     }
 

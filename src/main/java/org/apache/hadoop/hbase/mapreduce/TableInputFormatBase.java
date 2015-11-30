@@ -292,4 +292,8 @@ extends InputFormat<ImmutableBytesWritable, Result> {
   protected void setTableRecordReader(TableRecordReader tableRecordReader) {
     this.tableRecordReader = tableRecordReader;
   }
+  
+  protected TableRecordReader getTableRecordReader() {
+    return this.tableRecordReader;
+  }
 }

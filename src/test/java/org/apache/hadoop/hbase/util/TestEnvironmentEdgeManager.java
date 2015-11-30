@@ -26,7 +26,6 @@ import org.junit.experimental.categories.Category;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verify;
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -62,6 +61,7 @@ public class TestEnvironmentEdgeManager {
     long result = EnvironmentEdgeManager.currentTimeMillis();
     verify(mock).currentTimeMillis();
     assertEquals(expectation, result);
+    EnvironmentEdgeManager.reset();
   }
 
   @org.junit.Rule

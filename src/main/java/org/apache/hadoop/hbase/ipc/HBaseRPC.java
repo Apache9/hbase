@@ -20,6 +20,7 @@
 
 package org.apache.hadoop.hbase.ipc;
 
+import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -27,10 +28,14 @@ import org.apache.hadoop.hbase.DoNotRetryIOException;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.client.RetriesExhaustedException;
 import org.apache.hadoop.hbase.security.User;
+import org.apache.hadoop.hbase.util.VersionInfo;
 import org.apache.hadoop.io.Writable;
+import org.apache.hadoop.ipc.RemoteException;
 import org.apache.hadoop.net.NetUtils;
 import org.apache.hadoop.util.ReflectionUtils;
+
 import javax.net.SocketFactory;
+
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
@@ -356,5 +361,21 @@ public class HBaseRPC {
    */
   public static int getRpcTimeout(int defaultTimeout) {
     return Math.min(defaultTimeout, HBaseRPC.rpcTimeout.get());
+  }
+
+  public static long getProtocolVersion(VersionedProtocol proxy, String protocol,
+      long clientVersion) throws IOException {
+    try {
+      return proxy.getProtocolVersion(protocol, clientVersion, VersionInfo.getReport());
+    } catch (IOException ioe) {
+      if (ioe instanceof RemoteException
+          && ExceptionUtils.getStackTrace(ioe).contains("java.lang.NoSuchMethodException")) {
+        LOG.warn("The getProtocolVersion API with version report not present at RS side."
+            + " Consider upgrading the hbase cluster");
+        return proxy.getProtocolVersion(protocol, clientVersion);
+      } else {
+        throw ioe;
+      }
+    }
   }
 }

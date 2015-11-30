@@ -46,7 +46,6 @@ public class RetriesExhaustedWithDetailsException
 extends RetriesExhaustedException {
   List<Throwable> exceptions;
   List<Row> actions;
-  List<String> hostnameAndPort;
 
   public RetriesExhaustedWithDetailsException(List<Throwable> exceptions,
                                               List<Row> actions,

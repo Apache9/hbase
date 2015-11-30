@@ -268,6 +268,7 @@ public class TestSnapshotFromMaster {
     SnapshotTestingUtils.assertNoSnapshots(admin);
     // load the table
     UTIL.loadTable(new HTable(UTIL.getConfiguration(), TABLE_NAME), TEST_FAM);
+    UTIL.flush(TABLE_NAME);
 
     // disable the table so we can take a snapshot
     admin.disableTable(TABLE_NAME);
