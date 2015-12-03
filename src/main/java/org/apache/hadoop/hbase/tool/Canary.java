@@ -23,10 +23,13 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
@@ -52,6 +55,7 @@ import org.apache.hadoop.hbase.client.HConnectionManager;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.client.MetaScanner;
+import org.apache.hadoop.hbase.client.RetriesExhaustedException;
 import org.apache.hadoop.hbase.client.MetaScanner.MetaScannerVisitor;
 import org.apache.hadoop.hbase.client.MetaScanner.MetaScannerVisitorBase;
 import org.apache.hadoop.hbase.client.Put;
@@ -231,13 +235,14 @@ public final class Canary implements Tool {
     
     private void clearCacheAndPublishReadFailure(HColumnDescriptor column, Exception e) {
       canary.clearCachedTasks(tableDesc.getNameAsString());
+      canary.recordFailedServer(e);
       if (column == null) {
         sink.publishReadFailure(region, e);
       } else {
         sink.publishReadFailure(region, column, e);
       }
     }
-
+    
     /**
      * Check writes for the canary table
      * @return
@@ -260,11 +265,13 @@ public final class Canary implements Tool {
             long time = System.currentTimeMillis() - startTime;
             sink.publishWriteTiming(region, column, time);
           } catch (Exception e) {
+            canary.recordFailedServer(e);
             sink.publishWriteFailure(region, column, e);
           }
         }
         table.close();
       } catch (IOException e) {
+        canary.recordFailedServer(e);
         sink.publishWriteFailure(region, e);
       }
       return null;
@@ -297,12 +304,14 @@ public final class Canary implements Tool {
   private Sink sink = null;
   private HConnection connection = null;
   private List<RegionTask> tasks;
+  private Map<String, Integer> failuresByServer;
   private Map<String, List<RegionTask>> cachedTasks;
 
   public Canary(ExecutorService executor, Sink sink) {
     this.executor = executor;
     this.sink = sink;
     this.tasks = new LinkedList<RegionTask>();
+    this.failuresByServer = new HashMap<String, Integer>();
     this.cachedTasks = new ConcurrentHashMap<String, List<RegionTask>>();
   }
 
@@ -369,6 +378,10 @@ public final class Canary implements Tool {
       }
     }
 
+    // set client socket max idle time according to interval to void socket
+    // close/open and kerberos auth in each period
+    conf.setInt("hbase.ipc.client.connection.maxidletime", (int)(2 * interval));
+    
     // initialize HBase conf and admin
     if (conf == null) conf = HBaseConfiguration.create();
     connection = HConnectionManager.createConnection(this.conf);
@@ -416,6 +429,7 @@ public final class Canary implements Tool {
       long  finishTime = System.currentTimeMillis();
       LOG.info("finish one turn sniff, consume(ms)=" + (finishTime - startTime) + ", interval(ms)="
           + interval + ", taskCount=" + tasks.size());
+      logFailedServer();
       if (finishTime < startTime + interval) {
         Thread.sleep(startTime + interval - finishTime);
       }
@@ -479,6 +493,40 @@ public final class Canary implements Tool {
       LOG.warn(String.format("Table %s is not available", tableName));
     }
     return tasks;
+  }
+
+  protected synchronized void recordFailedServer(Exception e) {
+    // HTable.get() may throw RetriesExhaustedException and HTable.put() may throw
+    // RetriesExhaustedWithDetailsException(a subclass of RetriesExhaustedException),
+    // both exceptions will contain the failed server list.
+    if (e instanceof RetriesExhaustedException) {
+      for (String hostAndPort : ((RetriesExhaustedException)e).getUniqHostnamePort()) {
+        if (!failuresByServer.containsKey(hostAndPort)) {
+          failuresByServer.put(hostAndPort, 1);
+        } else {
+          failuresByServer.put(hostAndPort, failuresByServer.get(hostAndPort) + 1);
+        }
+      }
+    }
+  }
+  
+  protected void logFailedServer() {
+    if (failuresByServer.size() > 0) {
+      List<Entry<String, Integer>> failureServerList = new ArrayList<Map.Entry<String, Integer>>(
+          failuresByServer.entrySet());
+      Collections.sort(failureServerList, new Comparator<Entry<String, Integer>>() {
+        @Override
+        public int compare(Entry<String, Integer> o1, Entry<String, Integer> o2) {
+          return o2.getValue().compareTo(o1.getValue());
+        }
+      });
+      LOG.warn("Failed server and count:");
+      for (Entry<String, Integer> failureServer : failureServerList) {
+        LOG.warn(failureServer.getKey() + " : " + failureServer.getValue());
+      }
+      
+      failuresByServer.clear();
+    }
   }
 
   protected void clearCachedTasks(String tableName) {
