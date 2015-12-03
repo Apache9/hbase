@@ -467,4 +467,11 @@ public interface HConnection extends Abortable, Closeable {
    * @param sn A server name as hostname:port
    */
   public void clearCaches(final String sn);
+  
+  /**
+   * The count after which ServerCallable.withRetries() will start to log exception.
+   * For detail, see HBASE-12432.
+   * @return
+   */
+  public int getStartLogErrorsAfterCount();
 }
