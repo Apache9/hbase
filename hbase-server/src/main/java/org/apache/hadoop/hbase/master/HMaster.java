@@ -1953,6 +1953,8 @@ MasterServices, Server {
     HRegionInfo[] newRegions = getHRegionInfos(hTableDescriptor, splitKeys);
     checkInitialized();
     sanityCheckTableDescriptor(hTableDescriptor);
+    this.quotaManager.checkNamespaceTableAndRegionQuota(hTableDescriptor.getTableName(),
+        newRegions.length);
     if (cpHost != null) {
       cpHost.preCreateTable(hTableDescriptor, newRegions);
     }
