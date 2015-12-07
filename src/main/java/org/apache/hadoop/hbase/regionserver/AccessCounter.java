@@ -31,7 +31,7 @@ public class AccessCounter extends Chore {
   public static final byte[] READ_FAMILY = Bytes.toBytes("R");
   public static final byte[] WRITE_FAMILY = Bytes.toBytes("W");
   
-  public static final String KEY_DELIMITER = "_";
+  public static final String KEY_DELIMITER = "#";
   public static final byte[] COLUMN_SEPARATOR = Bytes.toBytes(",");
   
   private HRegionServer server;
@@ -40,13 +40,15 @@ public class AccessCounter extends Chore {
   private Configuration conf;
   private boolean enabled = false;
   private long timestamp;
+  private int period;
   
   public AccessCounter(final HRegionServer server, int period) {
     super("AccessCounter", period, server);
     this.server = server;
     this.conf = server.getConfiguration();
+    this.period = period;
     counter = AtomicLongMap.create();
-    timestamp = EnvironmentEdgeManager.currentTimeMillis();
+    timestamp = normalizeTimestamp();
     LOG.info("New AccessCounter : flush period=" + period);
   }
   
@@ -86,7 +88,7 @@ public class AccessCounter extends Chore {
       return;
     }
     LOG.info("Start to flush counter data to table " + Bytes.toString(ACCOUNT_TABLE_NAME));
-    long nextTimestamp = EnvironmentEdgeManager.currentTimeMillis();
+    long nextTimestamp = normalizeTimestamp();
     for (Entry<CounterKey, Long> entry : counter.asMap().entrySet()) {
       CounterKey key = entry.getKey();
       long currentValue = entry.getValue();
@@ -105,6 +107,12 @@ public class AccessCounter extends Chore {
     timestamp = nextTimestamp;
   }
   
+  @VisibleForTesting
+  public long normalizeTimestamp() {
+    long now = EnvironmentEdgeManager.currentTimeMillis();
+    return now - (now % period);
+  }
+
   private Increment makeIncrement(CounterKey key, long value) {
     Increment increment = new Increment(key.getRowKey(timestamp));
     if (key.getType().equals(AccessType.READ)) {

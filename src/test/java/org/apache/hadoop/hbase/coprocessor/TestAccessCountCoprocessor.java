@@ -115,7 +115,7 @@ public class TestAccessCountCoprocessor {
   @Test
   public void testPostGet() throws Exception {
     envEdge.incValue(2 * period);
-    counter.setTimestamp(EnvironmentEdgeManager.currentTimeMillis());
+    counter.setTimestamp(counter.normalizeTimestamp());
     for (int i = 0; i < QUALIFIER.length; i++) {
       opNum[i] = (int) (Math.random() * rowNum) + 1;
     }
@@ -152,7 +152,7 @@ public class TestAccessCountCoprocessor {
   @Test
   public void testPostScan() throws Exception {
     envEdge.incValue(2 * period);
-    counter.setTimestamp(EnvironmentEdgeManager.currentTimeMillis());
+    counter.setTimestamp(counter.normalizeTimestamp());
     Thread[] threads = new Thread[threadNum];
     for (int k = 0; k < threadNum; k++) {
       threads[k] = new Thread() {
@@ -185,7 +185,7 @@ public class TestAccessCountCoprocessor {
   @Test
   public void testPostPut() throws Exception {
     envEdge.incValue(2 * period);
-    counter.setTimestamp(EnvironmentEdgeManager.currentTimeMillis());
+    counter.setTimestamp(counter.normalizeTimestamp());
     for (int i = 0; i < QUALIFIER.length; i++) {
       opNum[i] = (int) (Math.random() * rowNum) + 1;
     }
@@ -213,8 +213,7 @@ public class TestAccessCountCoprocessor {
         + AccessCounter.KEY_DELIMITER
         + Bytes.toString(tableName)
         + AccessCounter.KEY_DELIMITER
-        + new SimpleDateFormat("yyyy-MM-dd,HH:mm:ss").format(EnvironmentEdgeManager
-            .currentTimeMillis());
+        + new SimpleDateFormat("yyyy-MM-dd,HH:mm:ss").format(counter.normalizeTimestamp());
     Get get = new Get(Bytes.toBytes(key));
     get.addColumn(family, qualifier);
     Result result = accountTable.get(get);
