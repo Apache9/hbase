@@ -32,6 +32,8 @@ import org.apache.hadoop.hbase.ServerLoad;
 import org.apache.hadoop.hbase.RegionLoad;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.TableLoad;
+import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.namespace.NamespaceLoad;
 import org.apache.hadoop.hbase.replication.ReplicationLoadSource;
 
 /**
@@ -197,6 +199,21 @@ public class MXBeanImpl implements MXBean {
       }
     }
     return new LinkedList<TableLoad>(data.values());
+  }
+  
+  @Override
+  public List<NamespaceLoad> getNamespaceLoads() {
+    Map<String, NamespaceLoad> data = new HashMap<String, NamespaceLoad>();
+    for (final Entry<TableName, TableLoad> entry : master.getTableLoads().entrySet()) {
+      String namespace = entry.getKey().getNamespaceAsString();
+      NamespaceLoad load = data.get(namespace);
+      if (load == null) {
+        load = new NamespaceLoad(namespace);
+        data.put(namespace, load);
+      }
+      load.updateNamespaceLoad(entry.getValue());
+    }
+    return new LinkedList<NamespaceLoad>(data.values());
   }
 
   @Override

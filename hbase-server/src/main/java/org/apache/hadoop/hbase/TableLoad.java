@@ -219,11 +219,11 @@ public class TableLoad {
     return writeRequestsPerSecond;
   }
 
-  public long getReadRequestsCountByCapacityUnit() {
+  public long getReadRequestsByCapacityUnitPerSecond() {
     return readRequestsByCapacityUnitPerSecond;
   }
 
-  public long getWriteRequestsCountByCapacityUnit() {
+  public long getWriteRequestsByCapacityUnitPerSecond() {
     return writeRequestsByCapacityUnitPerSecond;
   }
 
