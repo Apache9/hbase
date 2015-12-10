@@ -28,12 +28,13 @@ import java.util.Map;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
+import org.apache.hadoop.hbase.client.replication.TableCFsHelper;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Abortable;
+import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.exceptions.DeserializationException;
 import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos;
-import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.zookeeper.ZKUtil;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperNodeTracker;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
@@ -43,17 +44,18 @@ import org.apache.zookeeper.KeeperException.NodeExistsException;
 import com.google.protobuf.InvalidProtocolBufferException;
 
 @InterfaceAudience.Private
-public class ReplicationPeerZKImpl implements ReplicationPeer, Abortable, Closeable {
+public class ReplicationPeerZKImpl extends ReplicationStateZKBase
+    implements ReplicationPeer, Abortable, Closeable {
   private static final Log LOG = LogFactory.getLog(ReplicationPeerZKImpl.class);
 
-  private final ReplicationPeerConfig peerConfig;
+  private ReplicationPeerConfig peerConfig;
   private final String id;
   private volatile PeerState peerState;
-  private volatile Map<String, List<String>> tableCFs = new HashMap<String, List<String>>();
+  private volatile Map<TableName, List<String>> tableCFs = new HashMap<TableName, List<String>>();
   private final Configuration conf;
 
   private PeerStateTracker peerStateTracker;
-  private TableCFsTracker tableCFsTracker;
+  private PeerConfigTracker peerConfigTracker;
 
   /**
    * Constructor that takes all the objects required to communicate with the
@@ -62,8 +64,11 @@ public class ReplicationPeerZKImpl implements ReplicationPeer, Abortable, Closea
    * @param id string representation of this peer's identifier
    * @param peerConfig configuration for the replication peer
    */
-  public ReplicationPeerZKImpl(Configuration conf, String id, ReplicationPeerConfig peerConfig)
+  public ReplicationPeerZKImpl(ZooKeeperWatcher zkWatcher, Configuration conf,
+                               String id, ReplicationPeerConfig peerConfig,
+                               Abortable abortable)
       throws ReplicationException {
+    super(zkWatcher, conf, abortable);
     this.conf = conf;
     this.peerConfig = peerConfig;
     this.id = id;
@@ -72,13 +77,12 @@ public class ReplicationPeerZKImpl implements ReplicationPeer, Abortable, Closea
   /**
    * start a state tracker to check whether this peer is enabled or not
    *
-   * @param zookeeper zk watcher for the local cluster
    * @param peerStateNode path to zk node which stores peer state
    * @throws KeeperException
    */
-  public void startStateTracker(ZooKeeperWatcher zookeeper, String peerStateNode)
+  public void startStateTracker(String peerStateNode)
       throws KeeperException {
-    ensurePeerEnabled(zookeeper, peerStateNode);
+    ensurePeerEnabled(peerStateNode);
     this.peerStateTracker = new PeerStateTracker(peerStateNode, zookeeper, this);
     this.peerStateTracker.start();
     try {
@@ -97,17 +101,15 @@ public class ReplicationPeerZKImpl implements ReplicationPeer, Abortable, Closea
 
   /**
    * start a table-cfs tracker to listen the (table, cf-list) map change
-   *
-   * @param zookeeper zk watcher for the local cluster
-   * @param tableCFsNode path to zk node which stores table-cfs
+   * @param peerConfigNode path to zk node which stores table-cfs
    * @throws KeeperException
    */
-  public void startTableCFsTracker(ZooKeeperWatcher zookeeper, String tableCFsNode)
+  public void startPeerConfigTracker(String peerConfigNode)
     throws KeeperException {
-    this.tableCFsTracker = new TableCFsTracker(tableCFsNode, zookeeper,
+    this.peerConfigTracker = new PeerConfigTracker(peerConfigNode, zookeeper,
         this);
-    this.tableCFsTracker.start();
-    this.readTableCFsZnode();
+    this.peerConfigTracker.start();
+    this.readPeerConfig();
   }
 
   static Map<String, List<String>> parseTableCFsFromConfig(String tableCFsConfig) {
@@ -160,10 +162,16 @@ public class ReplicationPeerZKImpl implements ReplicationPeer, Abortable, Closea
     return tableCFsMap;
   }
 
-  private void readTableCFsZnode() {
-    String currentTableCFs = Bytes.toString(tableCFsTracker.getData(false));
-    this.tableCFs = parseTableCFsFromConfig(currentTableCFs);
-  }
+  private void readPeerConfig() {
+    try {
+      byte[] data = peerConfigTracker.getData(false);
+      if (data != null) {
+        this.peerConfig = TableCFsHelper.parsePeerFrom(data);
+      }
+    } catch (DeserializationException e) {
+      LOG.error("", e);
+    }
+   }
 
   @Override
   public PeerState getPeerState() {
@@ -202,7 +210,8 @@ public class ReplicationPeerZKImpl implements ReplicationPeer, Abortable, Closea
    * @return the replicable (table, cf-list) map
    */
   @Override
-  public Map<String, List<String>> getTableCFs() {
+  public Map<TableName, List<String>> getTableCFs() {
+    this.tableCFs = TableCFsHelper.convert2Map(peerConfig.getTableCFs());
     return this.tableCFs;
   }
 
@@ -257,13 +266,12 @@ public class ReplicationPeerZKImpl implements ReplicationPeer, Abortable, Closea
 
   /**
    * Utility method to ensure an ENABLED znode is in place; if not present, we create it.
-   * @param zookeeper
    * @param path Path to znode to check
    * @return True if we created the znode.
    * @throws NodeExistsException
    * @throws KeeperException
    */
-  private static boolean ensurePeerEnabled(final ZooKeeperWatcher zookeeper, final String path)
+  private boolean ensurePeerEnabled(final String path)
       throws NodeExistsException, KeeperException {
     if (ZKUtil.checkExists(zookeeper, path) == -1) {
       // There is a race b/w PeerWatcher and ReplicationZookeeper#add method to create the
@@ -300,20 +308,20 @@ public class ReplicationPeerZKImpl implements ReplicationPeer, Abortable, Closea
   }
 
   /**
-   * Tracker for (table, cf-list) map of this peer
+   * Tracker for PeerConfigNode of this peer
    */
-  public class TableCFsTracker extends ZooKeeperNodeTracker {
+  public class PeerConfigTracker extends ZooKeeperNodeTracker {
 
-    public TableCFsTracker(String tableCFsZNode, ZooKeeperWatcher watcher,
+    public PeerConfigTracker(String peerConfigNode, ZooKeeperWatcher watcher,
         Abortable abortable) {
-      super(watcher, tableCFsZNode, abortable);
+      super(watcher, peerConfigNode, abortable);
     }
 
     @Override
     public synchronized void nodeCreated(String path) {
       if (path.equals(node)) {
         super.nodeCreated(path);
-        readTableCFsZnode();
+        readPeerConfig();
       }
     }
 

@@ -301,8 +301,9 @@ public class TestMasterReplication {
     try {
       replicationAdmin = new ReplicationAdmin(
           configurations[masterClusterNumber]);
-      replicationAdmin.addPeer(id,
-          utilities[slaveClusterNumber].getClusterKey());
+      ReplicationPeerConfig rpc = new ReplicationPeerConfig();
+      rpc.setClusterKey(utilities[slaveClusterNumber].getClusterKey());
+      replicationAdmin.addPeer(id, rpc, null);
     } finally {
       close(replicationAdmin);
     }

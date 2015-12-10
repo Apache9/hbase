@@ -24,12 +24,13 @@ import java.util.Map;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.KeyValue;
+import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.regionserver.wal.HLog.Entry;
 import org.apache.hadoop.hbase.util.Bytes;
 
 public class TableCfWALEntryFilter implements WALEntryFilter {
 
-  private static final Log LOG = LogFactory.getLog(TableCfWALEntryFilter.class);
+  public static final Log LOG = LogFactory.getLog(TableCfWALEntryFilter.class);
   private final ReplicationPeer peer;
 
   public TableCfWALEntryFilter(ReplicationPeer peer) {
@@ -38,9 +39,9 @@ public class TableCfWALEntryFilter implements WALEntryFilter {
 
   @Override
   public Entry filter(Entry entry) {
-    String tabName = entry.getKey().getTablename().getNameAsString();
+    TableName tabName = entry.getKey().getTablename();
     ArrayList<KeyValue> kvs = entry.getEdit().getKeyValues();
-    Map<String, List<String>> tableCFs = null;
+    Map<TableName, List<String>> tableCFs = null;
 
     try {
       tableCFs = this.peer.getTableCFs();

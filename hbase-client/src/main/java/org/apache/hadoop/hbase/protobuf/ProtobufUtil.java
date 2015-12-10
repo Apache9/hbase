@@ -22,6 +22,7 @@ import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ListMultimap;
 import com.google.common.collect.Lists;
 import com.google.protobuf.ByteString;
+import com.google.protobuf.CodedInputStream;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.Message;
 import com.google.protobuf.Parser;
@@ -2960,6 +2961,23 @@ public final class ProtobufUtil {
             .setTimeUnit(toProtoTimeUnit(timeUnit))
             .setScope(toProtoQuotaScope(scope))
             .build();
+  }
+
+  /**
+   * This version of protobuf's mergeFrom avoids the hard-coded 64MB limit for decoding
+   * buffers when working with byte arrays
+   * @param builder current message builder
+   * @param b byte array
+   * @param offset
+   * @param length
+   * @throws IOException
+   */
+  public static void mergeFrom(Message.Builder builder, byte[] b, int offset, int length)
+      throws IOException {
+    final CodedInputStream codedInput = CodedInputStream.newInstance(b, offset, length);
+    codedInput.setSizeLimit(length);
+    builder.mergeFrom(codedInput);
+    codedInput.checkLastTagWas(0);
   }
 
   public static ReplicationLoadSink toReplicationLoadSink(

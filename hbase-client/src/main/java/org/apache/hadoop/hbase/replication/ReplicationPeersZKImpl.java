@@ -20,6 +20,7 @@ package org.apache.hadoop.hbase.replication;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -32,7 +33,9 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Abortable;
 import org.apache.hadoop.hbase.CompoundConfiguration;
+import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
+import org.apache.hadoop.hbase.client.replication.TableCFsHelper;
 import org.apache.hadoop.hbase.exceptions.DeserializationException;
 import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.BytesBytesPair;
@@ -81,14 +84,14 @@ public class ReplicationPeersZKImpl extends ReplicationStateZKBase implements Re
 
   // Map of peer clusters keyed by their id
   private Map<String, ReplicationPeerZKImpl> peerClusters;
-  private final String tableCFsNodeName;
+  private Abortable abortable;
 
   private static final Log LOG = LogFactory.getLog(ReplicationPeersZKImpl.class);
 
   public ReplicationPeersZKImpl(final ZooKeeperWatcher zk, final Configuration conf,
       Abortable abortable) {
     super(zk, conf, abortable);
-    this.tableCFsNodeName = conf.get("zookeeper.znode.replication.peers.tableCFs", "tableCFs");
+    this.abortable = abortable;
     this.peerClusters = new ConcurrentHashMap<String, ReplicationPeerZKImpl>();
   }
 
@@ -105,7 +108,7 @@ public class ReplicationPeersZKImpl extends ReplicationStateZKBase implements Re
   }
 
   @Override
-  public void addPeer(String id, ReplicationPeerConfig peerConfig, String tableCFs)
+  public void addPeer(String id, ReplicationPeerConfig peerConfig)
       throws ReplicationException {
     try {
       if (peerExists(id)) {
@@ -119,20 +122,16 @@ public class ReplicationPeersZKImpl extends ReplicationStateZKBase implements Re
       
       ZKUtil.createWithParents(this.zookeeper, this.peersZNode);
       List<ZKUtilOp> listOfOps = new ArrayList<ZKUtil.ZKUtilOp>();
-      ZKUtilOp op1 =
-          ZKUtilOp.createAndFailSilent(ZKUtil.joinZNode(this.peersZNode, id),
-            toByteArray(peerConfig));
+      ZKUtilOp op1 = ZKUtilOp.createAndFailSilent(getPeerNode(id),
+        TableCFsHelper.toByteArray(peerConfig));
       // There is a race (if hbase.zookeeper.useMulti is false)
       // b/w PeerWatcher and ReplicationZookeeper#add method to create the
       // peer-state znode. This happens while adding a peer
       byte[] stateBytes = peerConfig.getState().equals(ReplicationState.State.ENABLED) ? ENABLED_ZNODE_BYTES
           : DISABLED_ZNODE_BYTES;
       ZKUtilOp op2 = ZKUtilOp.createAndFailSilent(getPeerStateNode(id), stateBytes);
-      String tableCFsStr = (tableCFs == null) ? "" : tableCFs;
-      ZKUtilOp op3 = ZKUtilOp.createAndFailSilent(getTableCFsNode(id), Bytes.toBytes(tableCFsStr));
       listOfOps.add(op1);
       listOfOps.add(op2);
-      listOfOps.add(op3);
       ZKUtil.multiOrSequential(this.zookeeper, listOfOps, false);
     } catch (KeeperException e) {
       throw new ReplicationException("Could not add peer with id=" + id + ", peerConfif="
@@ -147,7 +146,7 @@ public class ReplicationPeersZKImpl extends ReplicationStateZKBase implements Re
         throw new IllegalArgumentException("Cannot remove peer with id=" + id
             + " because that id does not exist.");
       }
-      ZKUtil.deleteNodeRecursively(this.zookeeper, ZKUtil.joinZNode(this.peersZNode, id));
+      ZKUtil.deleteNodeRecursively(this.zookeeper, getPeerNode(id));
     } catch (KeeperException e) {
       throw new ReplicationException("Could not remove peer with id=" + id, e);
     }
@@ -166,13 +165,17 @@ public class ReplicationPeersZKImpl extends ReplicationStateZKBase implements Re
   }
 
   @Override
-  public String getPeerTableCFsConfig(String id) throws ReplicationException {
+  public Map<TableName, List<String>> getPeerTableCFsConfig(String id) throws ReplicationException {
     try {
       if (!peerExists(id)) {
         throw new IllegalArgumentException("peer " + id + " doesn't exist");
       }
       try {
-        return Bytes.toString(ZKUtil.getData(this.zookeeper, getTableCFsNode(id)));
+        ReplicationPeerConfig rpc = getReplicationPeerConfig(id);
+        if (rpc == null) {
+          throw new ReplicationException("Unable to get tableCFs of the peer with id=" + id);
+        }
+        return TableCFsHelper.convert2Map(rpc.getTableCFs());
       } catch (Exception e) {
         throw new ReplicationException(e);
       }
@@ -182,32 +185,24 @@ public class ReplicationPeersZKImpl extends ReplicationStateZKBase implements Re
   }
 
   @Override
-  public void setPeerTableCFsConfig(String id, String tableCFsStr) throws ReplicationException {
+  public void setPeerTableCFsConfig(String id, Map<TableName, ? extends Collection<String>> tableCFs)
+      throws ReplicationException {
     try {
       if (!peerExists(id)) {
         throw new IllegalArgumentException("Cannot set peer tableCFs because id=" + id
             + " does not exist.");
       }
-      String tableCFsZKNode = getTableCFsNode(id);
-      byte[] tableCFs = Bytes.toBytes(tableCFsStr);
-      if (ZKUtil.checkExists(this.zookeeper, tableCFsZKNode) != -1) {
-        ZKUtil.setData(this.zookeeper, tableCFsZKNode, tableCFs);
-      } else {
-        ZKUtil.createAndWatch(this.zookeeper, tableCFsZKNode, tableCFs);
+      ReplicationPeerConfig rpc = getReplicationPeerConfig(id);
+      if (rpc == null) {
+        throw new ReplicationException("Unable to get tableCFs of the peer with id=" + id);
       }
-      LOG.info("Peer tableCFs with id= " + id + " is now " + tableCFsStr);
+      rpc.setTableCFs(TableCFsHelper.convert(tableCFs));
+      ZKUtil.setData(this.zookeeper, getPeerNode(id),
+          TableCFsHelper.toByteArray(rpc));
+      LOG.info("Peer tableCFs with id= " + id + " is now " + TableCFsHelper.convert(tableCFs));
     } catch (KeeperException e) {
       throw new ReplicationException("Unable to change tableCFs of the peer with id=" + id, e);
     }
-  }
-
-  @Override
-  public Map<String, List<String>> getTableCFs(String id) throws IllegalArgumentException {
-    ReplicationPeer replicationPeer = this.peerClusters.get(id);
-    if (replicationPeer == null) {
-      throw new IllegalArgumentException("Peer with id= " + id + " is not connected");
-    }
-    return replicationPeer.getTableCFs();
   }
 
   @Override
@@ -264,7 +259,7 @@ public class ReplicationPeersZKImpl extends ReplicationStateZKBase implements Re
 
   @Override
   public ReplicationPeerConfig getReplicationPeerConfig(String peerId) throws ReplicationException {
-    String znode = ZKUtil.joinZNode(this.peersZNode, peerId);
+    String znode = getPeerNode(peerId);
     byte[] data = null;
     try {
       data = ZKUtil.getData(this.zookeeper, znode);
@@ -277,7 +272,7 @@ public class ReplicationPeersZKImpl extends ReplicationStateZKBase implements Re
     }
 
     try {
-      return parsePeerFrom(data);
+      return TableCFsHelper.parsePeerFrom(data);
     } catch (DeserializationException e) {
       LOG.warn("Failed to parse cluster key from peerId=" + peerId
           + ", specifically the content from the following znode: " + znode);
@@ -402,14 +397,6 @@ public class ReplicationPeersZKImpl extends ReplicationStateZKBase implements Re
     return true;
   }
 
-  private String getTableCFsNode(String id) {
-    return ZKUtil.joinZNode(this.peersZNode, ZKUtil.joinZNode(id, this.tableCFsNodeName));
-  }
-
-  private String getPeerStateNode(String id) {
-    return ZKUtil.joinZNode(this.peersZNode, ZKUtil.joinZNode(id, this.peerStateNodeName));
-  }
-
   /**
    * Update the state znode of a peer cluster.
    * @param id
@@ -450,16 +437,17 @@ public class ReplicationPeersZKImpl extends ReplicationStateZKBase implements Re
     }
     Configuration peerConf = pair.getSecond();
 
-    ReplicationPeerZKImpl peer = new ReplicationPeerZKImpl(peerConf, peerId, pair.getFirst());
+    ReplicationPeerZKImpl peer = new ReplicationPeerZKImpl(zookeeper,
+        peerConf, peerId, pair.getFirst(), abortable);
     try {
-      peer.startStateTracker(this.zookeeper, this.getPeerStateNode(peerId));
+      peer.startStateTracker(this.getPeerStateNode(peerId));
     } catch (KeeperException e) {
       throw new ReplicationException("Error starting the peer state tracker for peerId=" +
           peerId, e);
     }
 
     try {
-      peer.startTableCFsTracker(this.zookeeper, this.getTableCFsNode(peerId));
+      peer.startPeerConfigTracker(this.getPeerNode(peerId));
     } catch (KeeperException e) {
       throw new ReplicationException("Error starting the peer tableCFs tracker for peerId=" +
           peerId, e);
@@ -467,89 +455,5 @@ public class ReplicationPeersZKImpl extends ReplicationStateZKBase implements Re
 
     return peer;
   }
-
-  /**
-   * @param bytes Content of a peer znode.
-   * @return ClusterKey parsed from the passed bytes.
-   * @throws DeserializationException
-   */
-  private static ReplicationPeerConfig parsePeerFrom(final byte[] bytes)
-      throws DeserializationException {
-    if (ProtobufUtil.isPBMagicPrefix(bytes)) {
-      int pblen = ProtobufUtil.lengthOfPBMagic();
-      ZooKeeperProtos.ReplicationPeer.Builder builder =
-          ZooKeeperProtos.ReplicationPeer.newBuilder();
-      ZooKeeperProtos.ReplicationPeer peer;
-      try {
-        peer = builder.mergeFrom(bytes, pblen, bytes.length - pblen).build();
-      } catch (InvalidProtocolBufferException e) {
-        throw new DeserializationException(e);
-      }
-      return convert(peer);
-    } else {
-      if (bytes.length > 0) {
-        return new ReplicationPeerConfig().setClusterKey(Bytes.toString(bytes));
-      }
-      return new ReplicationPeerConfig().setClusterKey("");
-    }
-  }
-
-  private static ReplicationPeerConfig convert(ZooKeeperProtos.ReplicationPeer peer) {
-    ReplicationPeerConfig peerConfig = new ReplicationPeerConfig();
-    if (peer.hasClusterkey()) {
-      peerConfig.setClusterKey(peer.getClusterkey());
-    }
-    if (peer.hasReplicationEndpointImpl()) {
-      peerConfig.setReplicationEndpointImpl(peer.getReplicationEndpointImpl());
-    }
-
-    for (BytesBytesPair pair : peer.getDataList()) {
-      peerConfig.getPeerData().put(pair.getFirst().toByteArray(), pair.getSecond().toByteArray());
-    }
-
-    for (NameStringPair pair : peer.getConfigurationList()) {
-      peerConfig.getConfiguration().put(pair.getName(), pair.getValue());
-    }
-    peerConfig.setProtocol(ReplicationPeer.PeerProtocol.fromProtobuf(peer.getPeerProtocol()));
-    return peerConfig;
-  }
-
-  private static ZooKeeperProtos.ReplicationPeer convert(ReplicationPeerConfig  peerConfig) {
-    ZooKeeperProtos.ReplicationPeer.Builder builder = ZooKeeperProtos.ReplicationPeer.newBuilder();
-    if (peerConfig.getClusterKey() != null) {
-      builder.setClusterkey(peerConfig.getClusterKey());
-    }
-    if (peerConfig.getReplicationEndpointImpl() != null) {
-      builder.setReplicationEndpointImpl(peerConfig.getReplicationEndpointImpl());
-    }
-
-    for (Map.Entry<byte[], byte[]> entry : peerConfig.getPeerData().entrySet()) {
-      builder.addData(BytesBytesPair.newBuilder()
-        .setFirst(ByteString.copyFrom(entry.getKey()))
-        .setSecond(ByteString.copyFrom(entry.getValue()))
-          .build());
-    }
-
-    for (Map.Entry<String, String> entry : peerConfig.getConfiguration().entrySet()) {
-      builder.addConfiguration(NameStringPair.newBuilder()
-        .setName(entry.getKey())
-        .setValue(entry.getValue())
-        .build());
-    }
-    builder.setPeerProtocol(peerConfig.getProtocol().getProtocol());
-    return builder.build();
-  }
-
-  /**
-   * @param peerConfig
-   * @return Serialized protobuf of <code>peerConfig</code> with pb magic prefix prepended suitable
-   *         for use as content of a this.peersZNode; i.e. the content of PEER_ID znode under
-   *         /hbase/replication/peers/PEER_ID
-   */
-  private static byte[] toByteArray(final ReplicationPeerConfig peerConfig) {
-    byte[] bytes = convert(peerConfig).toByteArray();
-    return ProtobufUtil.prependPBMagic(bytes);
-  }
-
 
 }

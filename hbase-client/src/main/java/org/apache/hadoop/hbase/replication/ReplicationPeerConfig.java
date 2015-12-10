@@ -24,6 +24,7 @@ import java.util.TreeMap;
 
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.classification.InterfaceStability;
+import org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos;
 import org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.ReplicationState;
 import org.apache.hadoop.hbase.util.Bytes;
 
@@ -40,11 +41,13 @@ public class ReplicationPeerConfig {
   private ReplicationState.State state = ReplicationState.State.ENABLED;
   private final Map<byte[], byte[]> peerData;
   private final Map<String, String> configuration;
+  private ZooKeeperProtos.TableCFs tableCFs;
 
 
   public ReplicationPeerConfig() {
     this.peerData = new TreeMap<byte[], byte[]>(Bytes.BYTES_COMPARATOR);
     this.configuration = new HashMap<String, String>(0);
+    this.tableCFs = ZooKeeperProtos.TableCFs.newBuilder().build();
   }
 
   /**
@@ -106,11 +109,19 @@ public class ReplicationPeerConfig {
     return state;
   }
 
+  public ZooKeeperProtos.TableCFs getTableCFs() {
+    return tableCFs;
+  }
+
+  public void setTableCFs(ZooKeeperProtos.TableCFs tableCFs) {
+    this.tableCFs = tableCFs;
+  }
+
   @Override
   public String toString() {
     StringBuilder builder = new StringBuilder("clusterKey=").append(clusterKey).append(",");
-    builder.append("replicationEndpointImpl=").append(replicationEndpointImpl).append(",");
     builder.append("state=").append(state).append(",");
+    builder.append("tableCFs=").append(tableCFs.toString()).append(",");
     builder.append("rpcProtocol=").append(protocol.name());
     return builder.toString();
   }

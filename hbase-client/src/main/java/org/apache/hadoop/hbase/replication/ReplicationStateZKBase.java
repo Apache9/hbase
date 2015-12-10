@@ -29,6 +29,8 @@ import org.apache.hadoop.hbase.zookeeper.ZKUtil;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
 import org.apache.zookeeper.KeeperException;
 
+import com.google.common.annotations.VisibleForTesting;
+
 
 /**
  * This is a base class for maintaining replication state in zookeeper.
@@ -47,6 +49,8 @@ public abstract class ReplicationStateZKBase {
   protected final String peersZNode;
   /** The name of the znode that contains all replication queues */
   protected final String queuesZNode;
+  /** The name of the znode that contains tableCFs */
+  protected final String tableCFsNodeName;
   /** The cluster key of the local cluster */
   protected final String ourClusterKey;
   protected final ZooKeeperWatcher zookeeper;
@@ -69,6 +73,7 @@ public abstract class ReplicationStateZKBase {
     String peersZNodeName = conf.get("zookeeper.znode.replication.peers", "peers");
     String queuesZNodeName = conf.get("zookeeper.znode.replication.rs", "rs");
     this.peerStateNodeName = conf.get("zookeeper.znode.replication.peers.state", "peer-state");
+    this.tableCFsNodeName = conf.get("zookeeper.znode.replication.peers.tableCFs", "tableCFs");
     this.ourClusterKey = ZKUtil.getZooKeeperClusterKey(this.conf);
     this.replicationZNode = ZKUtil.joinZNode(this.zookeeper.baseZNode, replicationZNodeName);
     this.peersZNode = ZKUtil.joinZNode(replicationZNode, peersZNodeName);
@@ -108,5 +113,18 @@ public abstract class ReplicationStateZKBase {
    */
   protected boolean isPeerPath(String path) {
     return path.split("/").length == peersZNode.split("/").length + 1;
+  }
+
+  @VisibleForTesting
+  protected String getTableCFsNode(String id) {
+    return ZKUtil.joinZNode(this.peersZNode, ZKUtil.joinZNode(id, this.tableCFsNodeName));
+  }
+  @VisibleForTesting
+  protected String getPeerStateNode(String id) {
+    return ZKUtil.joinZNode(this.peersZNode, ZKUtil.joinZNode(id, this.peerStateNodeName));
+  }
+  @VisibleForTesting
+  protected String getPeerNode(String id) {
+    return ZKUtil.joinZNode(this.peersZNode, id);
   }
 }

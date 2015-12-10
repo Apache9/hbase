@@ -20,6 +20,10 @@
 include Java
 
 java_import org.apache.hadoop.hbase.TableName
+java_import org.apache.hadoop.hbase.replication.ReplicationPeerConfig
+java_import org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos::ReplicationState::State
+java_import org.apache.hadoop.hbase.replication.ReplicationPeer::PeerProtocol
+java_import org.apache.hadoop.hbase.client.replication::TableCFsHelper
 # Wrapper for org.apache.hadoop.hbase.client.HBaseAdmin
 
 module Hbase
@@ -34,7 +38,26 @@ module Hbase
     #----------------------------------------------------------------------------------------------
     # Add a new peer cluster to replicate to
     def add_peer(id, cluster_key, peer_state = nil, peer_tableCFs = nil, protocol = nil)
-      @replication_admin.addPeer(id, cluster_key, peer_tableCFs, protocol, peer_state)
+      replication_peer_config = ReplicationPeerConfig.new
+      replication_peer_config.set_cluster_key(cluster_key)
+      unless peer_state.nil?
+        replication_peer_config.set_state(State.valueOf(peer_state))
+      end
+
+      map = nil
+      unless peer_tableCFs.nil?
+        # convert table_cfs to TableName
+        map = java.util.HashMap.new
+        peer_tableCFs.each{|key, val|
+          map.put(org.apache.hadoop.hbase.TableName.valueOf(key), val)
+        }
+      end
+
+      unless protocol.nil?
+        replication_peer_config.set_protocol(PeerProtocol.valueOf(protocol))
+      end
+
+      @replication_admin.add_peer(id, replication_peer_config, map)
     end
 
     #----------------------------------------------------------------------------------------------
@@ -55,7 +78,7 @@ module Hbase
     #----------------------------------------------------------------------------------------------
     # List all peer clusters
     def list_peers
-      @replication_admin.listPeers
+      @replication_admin.listPeerConfigs
     end
 
     #----------------------------------------------------------------------------------------------
@@ -79,19 +102,33 @@ module Hbase
     #----------------------------------------------------------------------------------------------
     # Show the current tableCFs config for the specified peer
     def show_peer_tableCFs(id)
-      @replication_admin.getPeerTableCFs(id)
+      TableCFsHelper.convert(TableCFsHelper.convert(@replication_admin.getPeerTableCFs(id)))
     end
 
     #----------------------------------------------------------------------------------------------
     # Set new tableCFs config for the specified peer
     def set_peer_tableCFs(id, tableCFs)
-      @replication_admin.setPeerTableCFs(id, tableCFs)
+      unless tableCFs.nil?
+        # convert tableCFs to TableName
+        map = java.util.HashMap.new
+        tableCFs.each{|key, val|
+          map.put(org.apache.hadoop.hbase.TableName.valueOf(key), val)
+        }
+      end
+      @replication_admin.setPeerTableCFs(id, map)
     end
 
     #----------------------------------------------------------------------------------------------
     # Append a tableCFs config for the specified peer
     def append_peer_tableCFs(id, tableCFs)
-      @replication_admin.appendPeerTableCFs(id, tableCFs)
+      unless tableCFs.nil?
+        # convert tableCFs to TableName
+        map = java.util.HashMap.new
+        tableCFs.each{|key, val|
+          map.put(org.apache.hadoop.hbase.TableName.valueOf(key), val)
+        }
+      end
+      @replication_admin.appendPeerTableCFs(id, map)
     end
 
     #----------------------------------------------------------------------------------------------
@@ -106,6 +143,12 @@ module Hbase
     def disable_tablerep(table_name)
       tableName = TableName.valueOf(table_name)
       @replication_admin.disableTableRep(tableName)
+    end
+
+    #----------------------------------------------------------------------------------------------
+    # Upgrade tableCFs 
+    def upgrade_tablecfs 
+      @replication_admin.upgradeTableCFs
     end
   end
 end

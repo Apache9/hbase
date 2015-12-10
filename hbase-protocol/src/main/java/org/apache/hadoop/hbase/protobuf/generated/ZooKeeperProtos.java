@@ -4927,6 +4927,1440 @@ public final class ZooKeeperProtos {
     // @@protoc_insertion_point(class_scope:Table)
   }
 
+  public interface TableCFOrBuilder
+      extends com.google.protobuf.MessageOrBuilder {
+
+    // optional .TableName table_name = 1;
+    /**
+     * <code>optional .TableName table_name = 1;</code>
+     */
+    boolean hasTableName();
+    /**
+     * <code>optional .TableName table_name = 1;</code>
+     */
+    org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.TableName getTableName();
+    /**
+     * <code>optional .TableName table_name = 1;</code>
+     */
+    org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.TableNameOrBuilder getTableNameOrBuilder();
+
+    // repeated bytes families = 2;
+    /**
+     * <code>repeated bytes families = 2;</code>
+     */
+    java.util.List<com.google.protobuf.ByteString> getFamiliesList();
+    /**
+     * <code>repeated bytes families = 2;</code>
+     */
+    int getFamiliesCount();
+    /**
+     * <code>repeated bytes families = 2;</code>
+     */
+    com.google.protobuf.ByteString getFamilies(int index);
+  }
+  /**
+   * Protobuf type {@code TableCF}
+   */
+  public static final class TableCF extends
+      com.google.protobuf.GeneratedMessage
+      implements TableCFOrBuilder {
+    // Use TableCF.newBuilder() to construct.
+    private TableCF(com.google.protobuf.GeneratedMessage.Builder<?> builder) {
+      super(builder);
+      this.unknownFields = builder.getUnknownFields();
+    }
+    private TableCF(boolean noInit) { this.unknownFields = com.google.protobuf.UnknownFieldSet.getDefaultInstance(); }
+
+    private static final TableCF defaultInstance;
+    public static TableCF getDefaultInstance() {
+      return defaultInstance;
+    }
+
+    public TableCF getDefaultInstanceForType() {
+      return defaultInstance;
+    }
+
+    private final com.google.protobuf.UnknownFieldSet unknownFields;
+    @java.lang.Override
+    public final com.google.protobuf.UnknownFieldSet
+        getUnknownFields() {
+      return this.unknownFields;
+    }
+    private TableCF(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      initFields();
+      int mutable_bitField0_ = 0;
+      com.google.protobuf.UnknownFieldSet.Builder unknownFields =
+          com.google.protobuf.UnknownFieldSet.newBuilder();
+      try {
+        boolean done = false;
+        while (!done) {
+          int tag = input.readTag();
+          switch (tag) {
+            case 0:
+              done = true;
+              break;
+            default: {
+              if (!parseUnknownField(input, unknownFields,
+                                     extensionRegistry, tag)) {
+                done = true;
+              }
+              break;
+            }
+            case 10: {
+              org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.TableName.Builder subBuilder = null;
+              if (((bitField0_ & 0x00000001) == 0x00000001)) {
+                subBuilder = tableName_.toBuilder();
+              }
+              tableName_ = input.readMessage(org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.TableName.PARSER, extensionRegistry);
+              if (subBuilder != null) {
+                subBuilder.mergeFrom(tableName_);
+                tableName_ = subBuilder.buildPartial();
+              }
+              bitField0_ |= 0x00000001;
+              break;
+            }
+            case 18: {
+              if (!((mutable_bitField0_ & 0x00000002) == 0x00000002)) {
+                families_ = new java.util.ArrayList<com.google.protobuf.ByteString>();
+                mutable_bitField0_ |= 0x00000002;
+              }
+              families_.add(input.readBytes());
+              break;
+            }
+          }
+        }
+      } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+        throw e.setUnfinishedMessage(this);
+      } catch (java.io.IOException e) {
+        throw new com.google.protobuf.InvalidProtocolBufferException(
+            e.getMessage()).setUnfinishedMessage(this);
+      } finally {
+        if (((mutable_bitField0_ & 0x00000002) == 0x00000002)) {
+          families_ = java.util.Collections.unmodifiableList(families_);
+        }
+        this.unknownFields = unknownFields.build();
+        makeExtensionsImmutable();
+      }
+    }
+    public static final com.google.protobuf.Descriptors.Descriptor
+        getDescriptor() {
+      return org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.internal_static_TableCF_descriptor;
+    }
+
+    protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+        internalGetFieldAccessorTable() {
+      return org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.internal_static_TableCF_fieldAccessorTable
+          .ensureFieldAccessorsInitialized(
+              org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCF.class, org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCF.Builder.class);
+    }
+
+    public static com.google.protobuf.Parser<TableCF> PARSER =
+        new com.google.protobuf.AbstractParser<TableCF>() {
+      public TableCF parsePartialFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws com.google.protobuf.InvalidProtocolBufferException {
+        return new TableCF(input, extensionRegistry);
+      }
+    };
+
+    @java.lang.Override
+    public com.google.protobuf.Parser<TableCF> getParserForType() {
+      return PARSER;
+    }
+
+    private int bitField0_;
+    // optional .TableName table_name = 1;
+    public static final int TABLE_NAME_FIELD_NUMBER = 1;
+    private org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.TableName tableName_;
+    /**
+     * <code>optional .TableName table_name = 1;</code>
+     */
+    public boolean hasTableName() {
+      return ((bitField0_ & 0x00000001) == 0x00000001);
+    }
+    /**
+     * <code>optional .TableName table_name = 1;</code>
+     */
+    public org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.TableName getTableName() {
+      return tableName_;
+    }
+    /**
+     * <code>optional .TableName table_name = 1;</code>
+     */
+    public org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.TableNameOrBuilder getTableNameOrBuilder() {
+      return tableName_;
+    }
+
+    // repeated bytes families = 2;
+    public static final int FAMILIES_FIELD_NUMBER = 2;
+    private java.util.List<com.google.protobuf.ByteString> families_;
+    /**
+     * <code>repeated bytes families = 2;</code>
+     */
+    public java.util.List<com.google.protobuf.ByteString>
+        getFamiliesList() {
+      return families_;
+    }
+    /**
+     * <code>repeated bytes families = 2;</code>
+     */
+    public int getFamiliesCount() {
+      return families_.size();
+    }
+    /**
+     * <code>repeated bytes families = 2;</code>
+     */
+    public com.google.protobuf.ByteString getFamilies(int index) {
+      return families_.get(index);
+    }
+
+    private void initFields() {
+      tableName_ = org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.TableName.getDefaultInstance();
+      families_ = java.util.Collections.emptyList();
+    }
+    private byte memoizedIsInitialized = -1;
+    public final boolean isInitialized() {
+      byte isInitialized = memoizedIsInitialized;
+      if (isInitialized != -1) return isInitialized == 1;
+
+      if (hasTableName()) {
+        if (!getTableName().isInitialized()) {
+          memoizedIsInitialized = 0;
+          return false;
+        }
+      }
+      memoizedIsInitialized = 1;
+      return true;
+    }
+
+    public void writeTo(com.google.protobuf.CodedOutputStream output)
+                        throws java.io.IOException {
+      getSerializedSize();
+      if (((bitField0_ & 0x00000001) == 0x00000001)) {
+        output.writeMessage(1, tableName_);
+      }
+      for (int i = 0; i < families_.size(); i++) {
+        output.writeBytes(2, families_.get(i));
+      }
+      getUnknownFields().writeTo(output);
+    }
+
+    private int memoizedSerializedSize = -1;
+    public int getSerializedSize() {
+      int size = memoizedSerializedSize;
+      if (size != -1) return size;
+
+      size = 0;
+      if (((bitField0_ & 0x00000001) == 0x00000001)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeMessageSize(1, tableName_);
+      }
+      {
+        int dataSize = 0;
+        for (int i = 0; i < families_.size(); i++) {
+          dataSize += com.google.protobuf.CodedOutputStream
+            .computeBytesSizeNoTag(families_.get(i));
+        }
+        size += dataSize;
+        size += 1 * getFamiliesList().size();
+      }
+      size += getUnknownFields().getSerializedSize();
+      memoizedSerializedSize = size;
+      return size;
+    }
+
+    private static final long serialVersionUID = 0L;
+    @java.lang.Override
+    protected java.lang.Object writeReplace()
+        throws java.io.ObjectStreamException {
+      return super.writeReplace();
+    }
+
+    @java.lang.Override
+    public boolean equals(final java.lang.Object obj) {
+      if (obj == this) {
+       return true;
+      }
+      if (!(obj instanceof org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCF)) {
+        return super.equals(obj);
+      }
+      org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCF other = (org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCF) obj;
+
+      boolean result = true;
+      result = result && (hasTableName() == other.hasTableName());
+      if (hasTableName()) {
+        result = result && getTableName()
+            .equals(other.getTableName());
+      }
+      result = result && getFamiliesList()
+          .equals(other.getFamiliesList());
+      result = result &&
+          getUnknownFields().equals(other.getUnknownFields());
+      return result;
+    }
+
+    private int memoizedHashCode = 0;
+    @java.lang.Override
+    public int hashCode() {
+      if (memoizedHashCode != 0) {
+        return memoizedHashCode;
+      }
+      int hash = 41;
+      hash = (19 * hash) + getDescriptorForType().hashCode();
+      if (hasTableName()) {
+        hash = (37 * hash) + TABLE_NAME_FIELD_NUMBER;
+        hash = (53 * hash) + getTableName().hashCode();
+      }
+      if (getFamiliesCount() > 0) {
+        hash = (37 * hash) + FAMILIES_FIELD_NUMBER;
+        hash = (53 * hash) + getFamiliesList().hashCode();
+      }
+      hash = (29 * hash) + getUnknownFields().hashCode();
+      memoizedHashCode = hash;
+      return hash;
+    }
+
+    public static org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCF parseFrom(
+        com.google.protobuf.ByteString data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCF parseFrom(
+        com.google.protobuf.ByteString data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCF parseFrom(byte[] data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCF parseFrom(
+        byte[] data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCF parseFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCF parseFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCF parseDelimitedFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return PARSER.parseDelimitedFrom(input);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCF parseDelimitedFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseDelimitedFrom(input, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCF parseFrom(
+        com.google.protobuf.CodedInputStream input)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCF parseFrom(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input, extensionRegistry);
+    }
+
+    public static Builder newBuilder() { return Builder.create(); }
+    public Builder newBuilderForType() { return newBuilder(); }
+    public static Builder newBuilder(org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCF prototype) {
+      return newBuilder().mergeFrom(prototype);
+    }
+    public Builder toBuilder() { return newBuilder(this); }
+
+    @java.lang.Override
+    protected Builder newBuilderForType(
+        com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+      Builder builder = new Builder(parent);
+      return builder;
+    }
+    /**
+     * Protobuf type {@code TableCF}
+     */
+    public static final class Builder extends
+        com.google.protobuf.GeneratedMessage.Builder<Builder>
+       implements org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFOrBuilder {
+      public static final com.google.protobuf.Descriptors.Descriptor
+          getDescriptor() {
+        return org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.internal_static_TableCF_descriptor;
+      }
+
+      protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+          internalGetFieldAccessorTable() {
+        return org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.internal_static_TableCF_fieldAccessorTable
+            .ensureFieldAccessorsInitialized(
+                org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCF.class, org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCF.Builder.class);
+      }
+
+      // Construct using org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCF.newBuilder()
+      private Builder() {
+        maybeForceBuilderInitialization();
+      }
+
+      private Builder(
+          com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+        super(parent);
+        maybeForceBuilderInitialization();
+      }
+      private void maybeForceBuilderInitialization() {
+        if (com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders) {
+          getTableNameFieldBuilder();
+        }
+      }
+      private static Builder create() {
+        return new Builder();
+      }
+
+      public Builder clear() {
+        super.clear();
+        if (tableNameBuilder_ == null) {
+          tableName_ = org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.TableName.getDefaultInstance();
+        } else {
+          tableNameBuilder_.clear();
+        }
+        bitField0_ = (bitField0_ & ~0x00000001);
+        families_ = java.util.Collections.emptyList();
+        bitField0_ = (bitField0_ & ~0x00000002);
+        return this;
+      }
+
+      public Builder clone() {
+        return create().mergeFrom(buildPartial());
+      }
+
+      public com.google.protobuf.Descriptors.Descriptor
+          getDescriptorForType() {
+        return org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.internal_static_TableCF_descriptor;
+      }
+
+      public org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCF getDefaultInstanceForType() {
+        return org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCF.getDefaultInstance();
+      }
+
+      public org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCF build() {
+        org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCF result = buildPartial();
+        if (!result.isInitialized()) {
+          throw newUninitializedMessageException(result);
+        }
+        return result;
+      }
+
+      public org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCF buildPartial() {
+        org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCF result = new org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCF(this);
+        int from_bitField0_ = bitField0_;
+        int to_bitField0_ = 0;
+        if (((from_bitField0_ & 0x00000001) == 0x00000001)) {
+          to_bitField0_ |= 0x00000001;
+        }
+        if (tableNameBuilder_ == null) {
+          result.tableName_ = tableName_;
+        } else {
+          result.tableName_ = tableNameBuilder_.build();
+        }
+        if (((bitField0_ & 0x00000002) == 0x00000002)) {
+          families_ = java.util.Collections.unmodifiableList(families_);
+          bitField0_ = (bitField0_ & ~0x00000002);
+        }
+        result.families_ = families_;
+        result.bitField0_ = to_bitField0_;
+        onBuilt();
+        return result;
+      }
+
+      public Builder mergeFrom(com.google.protobuf.Message other) {
+        if (other instanceof org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCF) {
+          return mergeFrom((org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCF)other);
+        } else {
+          super.mergeFrom(other);
+          return this;
+        }
+      }
+
+      public Builder mergeFrom(org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCF other) {
+        if (other == org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCF.getDefaultInstance()) return this;
+        if (other.hasTableName()) {
+          mergeTableName(other.getTableName());
+        }
+        if (!other.families_.isEmpty()) {
+          if (families_.isEmpty()) {
+            families_ = other.families_;
+            bitField0_ = (bitField0_ & ~0x00000002);
+          } else {
+            ensureFamiliesIsMutable();
+            families_.addAll(other.families_);
+          }
+          onChanged();
+        }
+        this.mergeUnknownFields(other.getUnknownFields());
+        return this;
+      }
+
+      public final boolean isInitialized() {
+        if (hasTableName()) {
+          if (!getTableName().isInitialized()) {
+            
+            return false;
+          }
+        }
+        return true;
+      }
+
+      public Builder mergeFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws java.io.IOException {
+        org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCF parsedMessage = null;
+        try {
+          parsedMessage = PARSER.parsePartialFrom(input, extensionRegistry);
+        } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+          parsedMessage = (org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCF) e.getUnfinishedMessage();
+          throw e;
+        } finally {
+          if (parsedMessage != null) {
+            mergeFrom(parsedMessage);
+          }
+        }
+        return this;
+      }
+      private int bitField0_;
+
+      // optional .TableName table_name = 1;
+      private org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.TableName tableName_ = org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.TableName.getDefaultInstance();
+      private com.google.protobuf.SingleFieldBuilder<
+          org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.TableName, org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.TableName.Builder, org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.TableNameOrBuilder> tableNameBuilder_;
+      /**
+       * <code>optional .TableName table_name = 1;</code>
+       */
+      public boolean hasTableName() {
+        return ((bitField0_ & 0x00000001) == 0x00000001);
+      }
+      /**
+       * <code>optional .TableName table_name = 1;</code>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.TableName getTableName() {
+        if (tableNameBuilder_ == null) {
+          return tableName_;
+        } else {
+          return tableNameBuilder_.getMessage();
+        }
+      }
+      /**
+       * <code>optional .TableName table_name = 1;</code>
+       */
+      public Builder setTableName(org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.TableName value) {
+        if (tableNameBuilder_ == null) {
+          if (value == null) {
+            throw new NullPointerException();
+          }
+          tableName_ = value;
+          onChanged();
+        } else {
+          tableNameBuilder_.setMessage(value);
+        }
+        bitField0_ |= 0x00000001;
+        return this;
+      }
+      /**
+       * <code>optional .TableName table_name = 1;</code>
+       */
+      public Builder setTableName(
+          org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.TableName.Builder builderForValue) {
+        if (tableNameBuilder_ == null) {
+          tableName_ = builderForValue.build();
+          onChanged();
+        } else {
+          tableNameBuilder_.setMessage(builderForValue.build());
+        }
+        bitField0_ |= 0x00000001;
+        return this;
+      }
+      /**
+       * <code>optional .TableName table_name = 1;</code>
+       */
+      public Builder mergeTableName(org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.TableName value) {
+        if (tableNameBuilder_ == null) {
+          if (((bitField0_ & 0x00000001) == 0x00000001) &&
+              tableName_ != org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.TableName.getDefaultInstance()) {
+            tableName_ =
+              org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.TableName.newBuilder(tableName_).mergeFrom(value).buildPartial();
+          } else {
+            tableName_ = value;
+          }
+          onChanged();
+        } else {
+          tableNameBuilder_.mergeFrom(value);
+        }
+        bitField0_ |= 0x00000001;
+        return this;
+      }
+      /**
+       * <code>optional .TableName table_name = 1;</code>
+       */
+      public Builder clearTableName() {
+        if (tableNameBuilder_ == null) {
+          tableName_ = org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.TableName.getDefaultInstance();
+          onChanged();
+        } else {
+          tableNameBuilder_.clear();
+        }
+        bitField0_ = (bitField0_ & ~0x00000001);
+        return this;
+      }
+      /**
+       * <code>optional .TableName table_name = 1;</code>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.TableName.Builder getTableNameBuilder() {
+        bitField0_ |= 0x00000001;
+        onChanged();
+        return getTableNameFieldBuilder().getBuilder();
+      }
+      /**
+       * <code>optional .TableName table_name = 1;</code>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.TableNameOrBuilder getTableNameOrBuilder() {
+        if (tableNameBuilder_ != null) {
+          return tableNameBuilder_.getMessageOrBuilder();
+        } else {
+          return tableName_;
+        }
+      }
+      /**
+       * <code>optional .TableName table_name = 1;</code>
+       */
+      private com.google.protobuf.SingleFieldBuilder<
+          org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.TableName, org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.TableName.Builder, org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.TableNameOrBuilder> 
+          getTableNameFieldBuilder() {
+        if (tableNameBuilder_ == null) {
+          tableNameBuilder_ = new com.google.protobuf.SingleFieldBuilder<
+              org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.TableName, org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.TableName.Builder, org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.TableNameOrBuilder>(
+                  tableName_,
+                  getParentForChildren(),
+                  isClean());
+          tableName_ = null;
+        }
+        return tableNameBuilder_;
+      }
+
+      // repeated bytes families = 2;
+      private java.util.List<com.google.protobuf.ByteString> families_ = java.util.Collections.emptyList();
+      private void ensureFamiliesIsMutable() {
+        if (!((bitField0_ & 0x00000002) == 0x00000002)) {
+          families_ = new java.util.ArrayList<com.google.protobuf.ByteString>(families_);
+          bitField0_ |= 0x00000002;
+         }
+      }
+      /**
+       * <code>repeated bytes families = 2;</code>
+       */
+      public java.util.List<com.google.protobuf.ByteString>
+          getFamiliesList() {
+        return java.util.Collections.unmodifiableList(families_);
+      }
+      /**
+       * <code>repeated bytes families = 2;</code>
+       */
+      public int getFamiliesCount() {
+        return families_.size();
+      }
+      /**
+       * <code>repeated bytes families = 2;</code>
+       */
+      public com.google.protobuf.ByteString getFamilies(int index) {
+        return families_.get(index);
+      }
+      /**
+       * <code>repeated bytes families = 2;</code>
+       */
+      public Builder setFamilies(
+          int index, com.google.protobuf.ByteString value) {
+        if (value == null) {
+    throw new NullPointerException();
+  }
+  ensureFamiliesIsMutable();
+        families_.set(index, value);
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>repeated bytes families = 2;</code>
+       */
+      public Builder addFamilies(com.google.protobuf.ByteString value) {
+        if (value == null) {
+    throw new NullPointerException();
+  }
+  ensureFamiliesIsMutable();
+        families_.add(value);
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>repeated bytes families = 2;</code>
+       */
+      public Builder addAllFamilies(
+          java.lang.Iterable<? extends com.google.protobuf.ByteString> values) {
+        ensureFamiliesIsMutable();
+        super.addAll(values, families_);
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>repeated bytes families = 2;</code>
+       */
+      public Builder clearFamilies() {
+        families_ = java.util.Collections.emptyList();
+        bitField0_ = (bitField0_ & ~0x00000002);
+        onChanged();
+        return this;
+      }
+
+      // @@protoc_insertion_point(builder_scope:TableCF)
+    }
+
+    static {
+      defaultInstance = new TableCF(true);
+      defaultInstance.initFields();
+    }
+
+    // @@protoc_insertion_point(class_scope:TableCF)
+  }
+
+  public interface TableCFsOrBuilder
+      extends com.google.protobuf.MessageOrBuilder {
+
+    // repeated .TableCF table_cfs = 1;
+    /**
+     * <code>repeated .TableCF table_cfs = 1;</code>
+     */
+    java.util.List<org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCF> 
+        getTableCfsList();
+    /**
+     * <code>repeated .TableCF table_cfs = 1;</code>
+     */
+    org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCF getTableCfs(int index);
+    /**
+     * <code>repeated .TableCF table_cfs = 1;</code>
+     */
+    int getTableCfsCount();
+    /**
+     * <code>repeated .TableCF table_cfs = 1;</code>
+     */
+    java.util.List<? extends org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFOrBuilder> 
+        getTableCfsOrBuilderList();
+    /**
+     * <code>repeated .TableCF table_cfs = 1;</code>
+     */
+    org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFOrBuilder getTableCfsOrBuilder(
+        int index);
+  }
+  /**
+   * Protobuf type {@code TableCFs}
+   */
+  public static final class TableCFs extends
+      com.google.protobuf.GeneratedMessage
+      implements TableCFsOrBuilder {
+    // Use TableCFs.newBuilder() to construct.
+    private TableCFs(com.google.protobuf.GeneratedMessage.Builder<?> builder) {
+      super(builder);
+      this.unknownFields = builder.getUnknownFields();
+    }
+    private TableCFs(boolean noInit) { this.unknownFields = com.google.protobuf.UnknownFieldSet.getDefaultInstance(); }
+
+    private static final TableCFs defaultInstance;
+    public static TableCFs getDefaultInstance() {
+      return defaultInstance;
+    }
+
+    public TableCFs getDefaultInstanceForType() {
+      return defaultInstance;
+    }
+
+    private final com.google.protobuf.UnknownFieldSet unknownFields;
+    @java.lang.Override
+    public final com.google.protobuf.UnknownFieldSet
+        getUnknownFields() {
+      return this.unknownFields;
+    }
+    private TableCFs(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      initFields();
+      int mutable_bitField0_ = 0;
+      com.google.protobuf.UnknownFieldSet.Builder unknownFields =
+          com.google.protobuf.UnknownFieldSet.newBuilder();
+      try {
+        boolean done = false;
+        while (!done) {
+          int tag = input.readTag();
+          switch (tag) {
+            case 0:
+              done = true;
+              break;
+            default: {
+              if (!parseUnknownField(input, unknownFields,
+                                     extensionRegistry, tag)) {
+                done = true;
+              }
+              break;
+            }
+            case 10: {
+              if (!((mutable_bitField0_ & 0x00000001) == 0x00000001)) {
+                tableCfs_ = new java.util.ArrayList<org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCF>();
+                mutable_bitField0_ |= 0x00000001;
+              }
+              tableCfs_.add(input.readMessage(org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCF.PARSER, extensionRegistry));
+              break;
+            }
+          }
+        }
+      } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+        throw e.setUnfinishedMessage(this);
+      } catch (java.io.IOException e) {
+        throw new com.google.protobuf.InvalidProtocolBufferException(
+            e.getMessage()).setUnfinishedMessage(this);
+      } finally {
+        if (((mutable_bitField0_ & 0x00000001) == 0x00000001)) {
+          tableCfs_ = java.util.Collections.unmodifiableList(tableCfs_);
+        }
+        this.unknownFields = unknownFields.build();
+        makeExtensionsImmutable();
+      }
+    }
+    public static final com.google.protobuf.Descriptors.Descriptor
+        getDescriptor() {
+      return org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.internal_static_TableCFs_descriptor;
+    }
+
+    protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+        internalGetFieldAccessorTable() {
+      return org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.internal_static_TableCFs_fieldAccessorTable
+          .ensureFieldAccessorsInitialized(
+              org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs.class, org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs.Builder.class);
+    }
+
+    public static com.google.protobuf.Parser<TableCFs> PARSER =
+        new com.google.protobuf.AbstractParser<TableCFs>() {
+      public TableCFs parsePartialFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws com.google.protobuf.InvalidProtocolBufferException {
+        return new TableCFs(input, extensionRegistry);
+      }
+    };
+
+    @java.lang.Override
+    public com.google.protobuf.Parser<TableCFs> getParserForType() {
+      return PARSER;
+    }
+
+    // repeated .TableCF table_cfs = 1;
+    public static final int TABLE_CFS_FIELD_NUMBER = 1;
+    private java.util.List<org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCF> tableCfs_;
+    /**
+     * <code>repeated .TableCF table_cfs = 1;</code>
+     */
+    public java.util.List<org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCF> getTableCfsList() {
+      return tableCfs_;
+    }
+    /**
+     * <code>repeated .TableCF table_cfs = 1;</code>
+     */
+    public java.util.List<? extends org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFOrBuilder> 
+        getTableCfsOrBuilderList() {
+      return tableCfs_;
+    }
+    /**
+     * <code>repeated .TableCF table_cfs = 1;</code>
+     */
+    public int getTableCfsCount() {
+      return tableCfs_.size();
+    }
+    /**
+     * <code>repeated .TableCF table_cfs = 1;</code>
+     */
+    public org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCF getTableCfs(int index) {
+      return tableCfs_.get(index);
+    }
+    /**
+     * <code>repeated .TableCF table_cfs = 1;</code>
+     */
+    public org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFOrBuilder getTableCfsOrBuilder(
+        int index) {
+      return tableCfs_.get(index);
+    }
+
+    private void initFields() {
+      tableCfs_ = java.util.Collections.emptyList();
+    }
+    private byte memoizedIsInitialized = -1;
+    public final boolean isInitialized() {
+      byte isInitialized = memoizedIsInitialized;
+      if (isInitialized != -1) return isInitialized == 1;
+
+      for (int i = 0; i < getTableCfsCount(); i++) {
+        if (!getTableCfs(i).isInitialized()) {
+          memoizedIsInitialized = 0;
+          return false;
+        }
+      }
+      memoizedIsInitialized = 1;
+      return true;
+    }
+
+    public void writeTo(com.google.protobuf.CodedOutputStream output)
+                        throws java.io.IOException {
+      getSerializedSize();
+      for (int i = 0; i < tableCfs_.size(); i++) {
+        output.writeMessage(1, tableCfs_.get(i));
+      }
+      getUnknownFields().writeTo(output);
+    }
+
+    private int memoizedSerializedSize = -1;
+    public int getSerializedSize() {
+      int size = memoizedSerializedSize;
+      if (size != -1) return size;
+
+      size = 0;
+      for (int i = 0; i < tableCfs_.size(); i++) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeMessageSize(1, tableCfs_.get(i));
+      }
+      size += getUnknownFields().getSerializedSize();
+      memoizedSerializedSize = size;
+      return size;
+    }
+
+    private static final long serialVersionUID = 0L;
+    @java.lang.Override
+    protected java.lang.Object writeReplace()
+        throws java.io.ObjectStreamException {
+      return super.writeReplace();
+    }
+
+    @java.lang.Override
+    public boolean equals(final java.lang.Object obj) {
+      if (obj == this) {
+       return true;
+      }
+      if (!(obj instanceof org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs)) {
+        return super.equals(obj);
+      }
+      org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs other = (org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs) obj;
+
+      boolean result = true;
+      result = result && getTableCfsList()
+          .equals(other.getTableCfsList());
+      result = result &&
+          getUnknownFields().equals(other.getUnknownFields());
+      return result;
+    }
+
+    private int memoizedHashCode = 0;
+    @java.lang.Override
+    public int hashCode() {
+      if (memoizedHashCode != 0) {
+        return memoizedHashCode;
+      }
+      int hash = 41;
+      hash = (19 * hash) + getDescriptorForType().hashCode();
+      if (getTableCfsCount() > 0) {
+        hash = (37 * hash) + TABLE_CFS_FIELD_NUMBER;
+        hash = (53 * hash) + getTableCfsList().hashCode();
+      }
+      hash = (29 * hash) + getUnknownFields().hashCode();
+      memoizedHashCode = hash;
+      return hash;
+    }
+
+    public static org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs parseFrom(
+        com.google.protobuf.ByteString data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs parseFrom(
+        com.google.protobuf.ByteString data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs parseFrom(byte[] data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs parseFrom(
+        byte[] data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs parseFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs parseFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs parseDelimitedFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return PARSER.parseDelimitedFrom(input);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs parseDelimitedFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseDelimitedFrom(input, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs parseFrom(
+        com.google.protobuf.CodedInputStream input)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs parseFrom(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input, extensionRegistry);
+    }
+
+    public static Builder newBuilder() { return Builder.create(); }
+    public Builder newBuilderForType() { return newBuilder(); }
+    public static Builder newBuilder(org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs prototype) {
+      return newBuilder().mergeFrom(prototype);
+    }
+    public Builder toBuilder() { return newBuilder(this); }
+
+    @java.lang.Override
+    protected Builder newBuilderForType(
+        com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+      Builder builder = new Builder(parent);
+      return builder;
+    }
+    /**
+     * Protobuf type {@code TableCFs}
+     */
+    public static final class Builder extends
+        com.google.protobuf.GeneratedMessage.Builder<Builder>
+       implements org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFsOrBuilder {
+      public static final com.google.protobuf.Descriptors.Descriptor
+          getDescriptor() {
+        return org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.internal_static_TableCFs_descriptor;
+      }
+
+      protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+          internalGetFieldAccessorTable() {
+        return org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.internal_static_TableCFs_fieldAccessorTable
+            .ensureFieldAccessorsInitialized(
+                org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs.class, org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs.Builder.class);
+      }
+
+      // Construct using org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs.newBuilder()
+      private Builder() {
+        maybeForceBuilderInitialization();
+      }
+
+      private Builder(
+          com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+        super(parent);
+        maybeForceBuilderInitialization();
+      }
+      private void maybeForceBuilderInitialization() {
+        if (com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders) {
+          getTableCfsFieldBuilder();
+        }
+      }
+      private static Builder create() {
+        return new Builder();
+      }
+
+      public Builder clear() {
+        super.clear();
+        if (tableCfsBuilder_ == null) {
+          tableCfs_ = java.util.Collections.emptyList();
+          bitField0_ = (bitField0_ & ~0x00000001);
+        } else {
+          tableCfsBuilder_.clear();
+        }
+        return this;
+      }
+
+      public Builder clone() {
+        return create().mergeFrom(buildPartial());
+      }
+
+      public com.google.protobuf.Descriptors.Descriptor
+          getDescriptorForType() {
+        return org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.internal_static_TableCFs_descriptor;
+      }
+
+      public org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs getDefaultInstanceForType() {
+        return org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs.getDefaultInstance();
+      }
+
+      public org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs build() {
+        org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs result = buildPartial();
+        if (!result.isInitialized()) {
+          throw newUninitializedMessageException(result);
+        }
+        return result;
+      }
+
+      public org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs buildPartial() {
+        org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs result = new org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs(this);
+        int from_bitField0_ = bitField0_;
+        if (tableCfsBuilder_ == null) {
+          if (((bitField0_ & 0x00000001) == 0x00000001)) {
+            tableCfs_ = java.util.Collections.unmodifiableList(tableCfs_);
+            bitField0_ = (bitField0_ & ~0x00000001);
+          }
+          result.tableCfs_ = tableCfs_;
+        } else {
+          result.tableCfs_ = tableCfsBuilder_.build();
+        }
+        onBuilt();
+        return result;
+      }
+
+      public Builder mergeFrom(com.google.protobuf.Message other) {
+        if (other instanceof org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs) {
+          return mergeFrom((org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs)other);
+        } else {
+          super.mergeFrom(other);
+          return this;
+        }
+      }
+
+      public Builder mergeFrom(org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs other) {
+        if (other == org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs.getDefaultInstance()) return this;
+        if (tableCfsBuilder_ == null) {
+          if (!other.tableCfs_.isEmpty()) {
+            if (tableCfs_.isEmpty()) {
+              tableCfs_ = other.tableCfs_;
+              bitField0_ = (bitField0_ & ~0x00000001);
+            } else {
+              ensureTableCfsIsMutable();
+              tableCfs_.addAll(other.tableCfs_);
+            }
+            onChanged();
+          }
+        } else {
+          if (!other.tableCfs_.isEmpty()) {
+            if (tableCfsBuilder_.isEmpty()) {
+              tableCfsBuilder_.dispose();
+              tableCfsBuilder_ = null;
+              tableCfs_ = other.tableCfs_;
+              bitField0_ = (bitField0_ & ~0x00000001);
+              tableCfsBuilder_ = 
+                com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders ?
+                   getTableCfsFieldBuilder() : null;
+            } else {
+              tableCfsBuilder_.addAllMessages(other.tableCfs_);
+            }
+          }
+        }
+        this.mergeUnknownFields(other.getUnknownFields());
+        return this;
+      }
+
+      public final boolean isInitialized() {
+        for (int i = 0; i < getTableCfsCount(); i++) {
+          if (!getTableCfs(i).isInitialized()) {
+            
+            return false;
+          }
+        }
+        return true;
+      }
+
+      public Builder mergeFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws java.io.IOException {
+        org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs parsedMessage = null;
+        try {
+          parsedMessage = PARSER.parsePartialFrom(input, extensionRegistry);
+        } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+          parsedMessage = (org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs) e.getUnfinishedMessage();
+          throw e;
+        } finally {
+          if (parsedMessage != null) {
+            mergeFrom(parsedMessage);
+          }
+        }
+        return this;
+      }
+      private int bitField0_;
+
+      // repeated .TableCF table_cfs = 1;
+      private java.util.List<org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCF> tableCfs_ =
+        java.util.Collections.emptyList();
+      private void ensureTableCfsIsMutable() {
+        if (!((bitField0_ & 0x00000001) == 0x00000001)) {
+          tableCfs_ = new java.util.ArrayList<org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCF>(tableCfs_);
+          bitField0_ |= 0x00000001;
+         }
+      }
+
+      private com.google.protobuf.RepeatedFieldBuilder<
+          org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCF, org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCF.Builder, org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFOrBuilder> tableCfsBuilder_;
+
+      /**
+       * <code>repeated .TableCF table_cfs = 1;</code>
+       */
+      public java.util.List<org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCF> getTableCfsList() {
+        if (tableCfsBuilder_ == null) {
+          return java.util.Collections.unmodifiableList(tableCfs_);
+        } else {
+          return tableCfsBuilder_.getMessageList();
+        }
+      }
+      /**
+       * <code>repeated .TableCF table_cfs = 1;</code>
+       */
+      public int getTableCfsCount() {
+        if (tableCfsBuilder_ == null) {
+          return tableCfs_.size();
+        } else {
+          return tableCfsBuilder_.getCount();
+        }
+      }
+      /**
+       * <code>repeated .TableCF table_cfs = 1;</code>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCF getTableCfs(int index) {
+        if (tableCfsBuilder_ == null) {
+          return tableCfs_.get(index);
+        } else {
+          return tableCfsBuilder_.getMessage(index);
+        }
+      }
+      /**
+       * <code>repeated .TableCF table_cfs = 1;</code>
+       */
+      public Builder setTableCfs(
+          int index, org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCF value) {
+        if (tableCfsBuilder_ == null) {
+          if (value == null) {
+            throw new NullPointerException();
+          }
+          ensureTableCfsIsMutable();
+          tableCfs_.set(index, value);
+          onChanged();
+        } else {
+          tableCfsBuilder_.setMessage(index, value);
+        }
+        return this;
+      }
+      /**
+       * <code>repeated .TableCF table_cfs = 1;</code>
+       */
+      public Builder setTableCfs(
+          int index, org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCF.Builder builderForValue) {
+        if (tableCfsBuilder_ == null) {
+          ensureTableCfsIsMutable();
+          tableCfs_.set(index, builderForValue.build());
+          onChanged();
+        } else {
+          tableCfsBuilder_.setMessage(index, builderForValue.build());
+        }
+        return this;
+      }
+      /**
+       * <code>repeated .TableCF table_cfs = 1;</code>
+       */
+      public Builder addTableCfs(org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCF value) {
+        if (tableCfsBuilder_ == null) {
+          if (value == null) {
+            throw new NullPointerException();
+          }
+          ensureTableCfsIsMutable();
+          tableCfs_.add(value);
+          onChanged();
+        } else {
+          tableCfsBuilder_.addMessage(value);
+        }
+        return this;
+      }
+      /**
+       * <code>repeated .TableCF table_cfs = 1;</code>
+       */
+      public Builder addTableCfs(
+          int index, org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCF value) {
+        if (tableCfsBuilder_ == null) {
+          if (value == null) {
+            throw new NullPointerException();
+          }
+          ensureTableCfsIsMutable();
+          tableCfs_.add(index, value);
+          onChanged();
+        } else {
+          tableCfsBuilder_.addMessage(index, value);
+        }
+        return this;
+      }
+      /**
+       * <code>repeated .TableCF table_cfs = 1;</code>
+       */
+      public Builder addTableCfs(
+          org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCF.Builder builderForValue) {
+        if (tableCfsBuilder_ == null) {
+          ensureTableCfsIsMutable();
+          tableCfs_.add(builderForValue.build());
+          onChanged();
+        } else {
+          tableCfsBuilder_.addMessage(builderForValue.build());
+        }
+        return this;
+      }
+      /**
+       * <code>repeated .TableCF table_cfs = 1;</code>
+       */
+      public Builder addTableCfs(
+          int index, org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCF.Builder builderForValue) {
+        if (tableCfsBuilder_ == null) {
+          ensureTableCfsIsMutable();
+          tableCfs_.add(index, builderForValue.build());
+          onChanged();
+        } else {
+          tableCfsBuilder_.addMessage(index, builderForValue.build());
+        }
+        return this;
+      }
+      /**
+       * <code>repeated .TableCF table_cfs = 1;</code>
+       */
+      public Builder addAllTableCfs(
+          java.lang.Iterable<? extends org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCF> values) {
+        if (tableCfsBuilder_ == null) {
+          ensureTableCfsIsMutable();
+          super.addAll(values, tableCfs_);
+          onChanged();
+        } else {
+          tableCfsBuilder_.addAllMessages(values);
+        }
+        return this;
+      }
+      /**
+       * <code>repeated .TableCF table_cfs = 1;</code>
+       */
+      public Builder clearTableCfs() {
+        if (tableCfsBuilder_ == null) {
+          tableCfs_ = java.util.Collections.emptyList();
+          bitField0_ = (bitField0_ & ~0x00000001);
+          onChanged();
+        } else {
+          tableCfsBuilder_.clear();
+        }
+        return this;
+      }
+      /**
+       * <code>repeated .TableCF table_cfs = 1;</code>
+       */
+      public Builder removeTableCfs(int index) {
+        if (tableCfsBuilder_ == null) {
+          ensureTableCfsIsMutable();
+          tableCfs_.remove(index);
+          onChanged();
+        } else {
+          tableCfsBuilder_.remove(index);
+        }
+        return this;
+      }
+      /**
+       * <code>repeated .TableCF table_cfs = 1;</code>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCF.Builder getTableCfsBuilder(
+          int index) {
+        return getTableCfsFieldBuilder().getBuilder(index);
+      }
+      /**
+       * <code>repeated .TableCF table_cfs = 1;</code>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFOrBuilder getTableCfsOrBuilder(
+          int index) {
+        if (tableCfsBuilder_ == null) {
+          return tableCfs_.get(index);  } else {
+          return tableCfsBuilder_.getMessageOrBuilder(index);
+        }
+      }
+      /**
+       * <code>repeated .TableCF table_cfs = 1;</code>
+       */
+      public java.util.List<? extends org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFOrBuilder> 
+           getTableCfsOrBuilderList() {
+        if (tableCfsBuilder_ != null) {
+          return tableCfsBuilder_.getMessageOrBuilderList();
+        } else {
+          return java.util.Collections.unmodifiableList(tableCfs_);
+        }
+      }
+      /**
+       * <code>repeated .TableCF table_cfs = 1;</code>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCF.Builder addTableCfsBuilder() {
+        return getTableCfsFieldBuilder().addBuilder(
+            org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCF.getDefaultInstance());
+      }
+      /**
+       * <code>repeated .TableCF table_cfs = 1;</code>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCF.Builder addTableCfsBuilder(
+          int index) {
+        return getTableCfsFieldBuilder().addBuilder(
+            index, org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCF.getDefaultInstance());
+      }
+      /**
+       * <code>repeated .TableCF table_cfs = 1;</code>
+       */
+      public java.util.List<org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCF.Builder> 
+           getTableCfsBuilderList() {
+        return getTableCfsFieldBuilder().getBuilderList();
+      }
+      private com.google.protobuf.RepeatedFieldBuilder<
+          org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCF, org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCF.Builder, org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFOrBuilder> 
+          getTableCfsFieldBuilder() {
+        if (tableCfsBuilder_ == null) {
+          tableCfsBuilder_ = new com.google.protobuf.RepeatedFieldBuilder<
+              org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCF, org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCF.Builder, org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFOrBuilder>(
+                  tableCfs_,
+                  ((bitField0_ & 0x00000001) == 0x00000001),
+                  getParentForChildren(),
+                  isClean());
+          tableCfs_ = null;
+        }
+        return tableCfsBuilder_;
+      }
+
+      // @@protoc_insertion_point(builder_scope:TableCFs)
+    }
+
+    static {
+      defaultInstance = new TableCFs(true);
+      defaultInstance.initFields();
+    }
+
+    // @@protoc_insertion_point(class_scope:TableCFs)
+  }
+
   public interface ReplicationPeerOrBuilder
       extends com.google.protobuf.MessageOrBuilder {
 
@@ -5034,6 +6468,20 @@ public final class ZooKeeperProtos {
      * <code>optional .ReplicationPeer.Protocol peerProtocol = 5 [default = NATIVE];</code>
      */
     org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.ReplicationPeer.Protocol getPeerProtocol();
+
+    // optional .TableCFs tableCFs = 6;
+    /**
+     * <code>optional .TableCFs tableCFs = 6;</code>
+     */
+    boolean hasTableCFs();
+    /**
+     * <code>optional .TableCFs tableCFs = 6;</code>
+     */
+    org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs getTableCFs();
+    /**
+     * <code>optional .TableCFs tableCFs = 6;</code>
+     */
+    org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFsOrBuilder getTableCFsOrBuilder();
   }
   /**
    * Protobuf type {@code ReplicationPeer}
@@ -5126,6 +6574,19 @@ public final class ZooKeeperProtos {
                 bitField0_ |= 0x00000004;
                 peerProtocol_ = value;
               }
+              break;
+            }
+            case 50: {
+              org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs.Builder subBuilder = null;
+              if (((bitField0_ & 0x00000008) == 0x00000008)) {
+                subBuilder = tableCFs_.toBuilder();
+              }
+              tableCFs_ = input.readMessage(org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs.PARSER, extensionRegistry);
+              if (subBuilder != null) {
+                subBuilder.mergeFrom(tableCFs_);
+                tableCFs_ = subBuilder.buildPartial();
+              }
+              bitField0_ |= 0x00000008;
               break;
             }
           }
@@ -5445,12 +6906,35 @@ public final class ZooKeeperProtos {
       return peerProtocol_;
     }
 
+    // optional .TableCFs tableCFs = 6;
+    public static final int TABLECFS_FIELD_NUMBER = 6;
+    private org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs tableCFs_;
+    /**
+     * <code>optional .TableCFs tableCFs = 6;</code>
+     */
+    public boolean hasTableCFs() {
+      return ((bitField0_ & 0x00000008) == 0x00000008);
+    }
+    /**
+     * <code>optional .TableCFs tableCFs = 6;</code>
+     */
+    public org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs getTableCFs() {
+      return tableCFs_;
+    }
+    /**
+     * <code>optional .TableCFs tableCFs = 6;</code>
+     */
+    public org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFsOrBuilder getTableCFsOrBuilder() {
+      return tableCFs_;
+    }
+
     private void initFields() {
       clusterkey_ = "";
       replicationEndpointImpl_ = "";
       data_ = java.util.Collections.emptyList();
       configuration_ = java.util.Collections.emptyList();
       peerProtocol_ = org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.ReplicationPeer.Protocol.NATIVE;
+      tableCFs_ = org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs.getDefaultInstance();
     }
     private byte memoizedIsInitialized = -1;
     public final boolean isInitialized() {
@@ -5469,6 +6953,12 @@ public final class ZooKeeperProtos {
       }
       for (int i = 0; i < getConfigurationCount(); i++) {
         if (!getConfiguration(i).isInitialized()) {
+          memoizedIsInitialized = 0;
+          return false;
+        }
+      }
+      if (hasTableCFs()) {
+        if (!getTableCFs().isInitialized()) {
           memoizedIsInitialized = 0;
           return false;
         }
@@ -5494,6 +6984,9 @@ public final class ZooKeeperProtos {
       }
       if (((bitField0_ & 0x00000004) == 0x00000004)) {
         output.writeEnum(5, peerProtocol_.getNumber());
+      }
+      if (((bitField0_ & 0x00000008) == 0x00000008)) {
+        output.writeMessage(6, tableCFs_);
       }
       getUnknownFields().writeTo(output);
     }
@@ -5523,6 +7016,10 @@ public final class ZooKeeperProtos {
       if (((bitField0_ & 0x00000004) == 0x00000004)) {
         size += com.google.protobuf.CodedOutputStream
           .computeEnumSize(5, peerProtocol_.getNumber());
+      }
+      if (((bitField0_ & 0x00000008) == 0x00000008)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeMessageSize(6, tableCFs_);
       }
       size += getUnknownFields().getSerializedSize();
       memoizedSerializedSize = size;
@@ -5566,6 +7063,11 @@ public final class ZooKeeperProtos {
         result = result &&
             (getPeerProtocol() == other.getPeerProtocol());
       }
+      result = result && (hasTableCFs() == other.hasTableCFs());
+      if (hasTableCFs()) {
+        result = result && getTableCFs()
+            .equals(other.getTableCFs());
+      }
       result = result &&
           getUnknownFields().equals(other.getUnknownFields());
       return result;
@@ -5598,6 +7100,10 @@ public final class ZooKeeperProtos {
       if (hasPeerProtocol()) {
         hash = (37 * hash) + PEERPROTOCOL_FIELD_NUMBER;
         hash = (53 * hash) + hashEnum(getPeerProtocol());
+      }
+      if (hasTableCFs()) {
+        hash = (37 * hash) + TABLECFS_FIELD_NUMBER;
+        hash = (53 * hash) + getTableCFs().hashCode();
       }
       hash = (29 * hash) + getUnknownFields().hashCode();
       memoizedHashCode = hash;
@@ -5707,6 +7213,7 @@ public final class ZooKeeperProtos {
         if (com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders) {
           getDataFieldBuilder();
           getConfigurationFieldBuilder();
+          getTableCFsFieldBuilder();
         }
       }
       private static Builder create() {
@@ -5733,6 +7240,12 @@ public final class ZooKeeperProtos {
         }
         peerProtocol_ = org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.ReplicationPeer.Protocol.NATIVE;
         bitField0_ = (bitField0_ & ~0x00000010);
+        if (tableCFsBuilder_ == null) {
+          tableCFs_ = org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs.getDefaultInstance();
+        } else {
+          tableCFsBuilder_.clear();
+        }
+        bitField0_ = (bitField0_ & ~0x00000020);
         return this;
       }
 
@@ -5791,6 +7304,14 @@ public final class ZooKeeperProtos {
           to_bitField0_ |= 0x00000004;
         }
         result.peerProtocol_ = peerProtocol_;
+        if (((from_bitField0_ & 0x00000020) == 0x00000020)) {
+          to_bitField0_ |= 0x00000008;
+        }
+        if (tableCFsBuilder_ == null) {
+          result.tableCFs_ = tableCFs_;
+        } else {
+          result.tableCFs_ = tableCFsBuilder_.build();
+        }
         result.bitField0_ = to_bitField0_;
         onBuilt();
         return result;
@@ -5872,6 +7393,9 @@ public final class ZooKeeperProtos {
         if (other.hasPeerProtocol()) {
           setPeerProtocol(other.getPeerProtocol());
         }
+        if (other.hasTableCFs()) {
+          mergeTableCFs(other.getTableCFs());
+        }
         this.mergeUnknownFields(other.getUnknownFields());
         return this;
       }
@@ -5889,6 +7413,12 @@ public final class ZooKeeperProtos {
         }
         for (int i = 0; i < getConfigurationCount(); i++) {
           if (!getConfiguration(i).isInitialized()) {
+            
+            return false;
+          }
+        }
+        if (hasTableCFs()) {
+          if (!getTableCFs().isInitialized()) {
             
             return false;
           }
@@ -6607,6 +8137,123 @@ public final class ZooKeeperProtos {
         peerProtocol_ = org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.ReplicationPeer.Protocol.NATIVE;
         onChanged();
         return this;
+      }
+
+      // optional .TableCFs tableCFs = 6;
+      private org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs tableCFs_ = org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs.getDefaultInstance();
+      private com.google.protobuf.SingleFieldBuilder<
+          org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs, org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs.Builder, org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFsOrBuilder> tableCFsBuilder_;
+      /**
+       * <code>optional .TableCFs tableCFs = 6;</code>
+       */
+      public boolean hasTableCFs() {
+        return ((bitField0_ & 0x00000020) == 0x00000020);
+      }
+      /**
+       * <code>optional .TableCFs tableCFs = 6;</code>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs getTableCFs() {
+        if (tableCFsBuilder_ == null) {
+          return tableCFs_;
+        } else {
+          return tableCFsBuilder_.getMessage();
+        }
+      }
+      /**
+       * <code>optional .TableCFs tableCFs = 6;</code>
+       */
+      public Builder setTableCFs(org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs value) {
+        if (tableCFsBuilder_ == null) {
+          if (value == null) {
+            throw new NullPointerException();
+          }
+          tableCFs_ = value;
+          onChanged();
+        } else {
+          tableCFsBuilder_.setMessage(value);
+        }
+        bitField0_ |= 0x00000020;
+        return this;
+      }
+      /**
+       * <code>optional .TableCFs tableCFs = 6;</code>
+       */
+      public Builder setTableCFs(
+          org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs.Builder builderForValue) {
+        if (tableCFsBuilder_ == null) {
+          tableCFs_ = builderForValue.build();
+          onChanged();
+        } else {
+          tableCFsBuilder_.setMessage(builderForValue.build());
+        }
+        bitField0_ |= 0x00000020;
+        return this;
+      }
+      /**
+       * <code>optional .TableCFs tableCFs = 6;</code>
+       */
+      public Builder mergeTableCFs(org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs value) {
+        if (tableCFsBuilder_ == null) {
+          if (((bitField0_ & 0x00000020) == 0x00000020) &&
+              tableCFs_ != org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs.getDefaultInstance()) {
+            tableCFs_ =
+              org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs.newBuilder(tableCFs_).mergeFrom(value).buildPartial();
+          } else {
+            tableCFs_ = value;
+          }
+          onChanged();
+        } else {
+          tableCFsBuilder_.mergeFrom(value);
+        }
+        bitField0_ |= 0x00000020;
+        return this;
+      }
+      /**
+       * <code>optional .TableCFs tableCFs = 6;</code>
+       */
+      public Builder clearTableCFs() {
+        if (tableCFsBuilder_ == null) {
+          tableCFs_ = org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs.getDefaultInstance();
+          onChanged();
+        } else {
+          tableCFsBuilder_.clear();
+        }
+        bitField0_ = (bitField0_ & ~0x00000020);
+        return this;
+      }
+      /**
+       * <code>optional .TableCFs tableCFs = 6;</code>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs.Builder getTableCFsBuilder() {
+        bitField0_ |= 0x00000020;
+        onChanged();
+        return getTableCFsFieldBuilder().getBuilder();
+      }
+      /**
+       * <code>optional .TableCFs tableCFs = 6;</code>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFsOrBuilder getTableCFsOrBuilder() {
+        if (tableCFsBuilder_ != null) {
+          return tableCFsBuilder_.getMessageOrBuilder();
+        } else {
+          return tableCFs_;
+        }
+      }
+      /**
+       * <code>optional .TableCFs tableCFs = 6;</code>
+       */
+      private com.google.protobuf.SingleFieldBuilder<
+          org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs, org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs.Builder, org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFsOrBuilder> 
+          getTableCFsFieldBuilder() {
+        if (tableCFsBuilder_ == null) {
+          tableCFsBuilder_ = new com.google.protobuf.SingleFieldBuilder<
+              org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs, org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs.Builder, org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFsOrBuilder>(
+                  tableCFs_,
+                  getParentForChildren(),
+                  isClean());
+          tableCFs_ = null;
+        }
+        return tableCFsBuilder_;
       }
 
       // @@protoc_insertion_point(builder_scope:ReplicationPeer)
@@ -10775,6 +12422,16 @@ public final class ZooKeeperProtos {
     com.google.protobuf.GeneratedMessage.FieldAccessorTable
       internal_static_Table_fieldAccessorTable;
   private static com.google.protobuf.Descriptors.Descriptor
+    internal_static_TableCF_descriptor;
+  private static
+    com.google.protobuf.GeneratedMessage.FieldAccessorTable
+      internal_static_TableCF_fieldAccessorTable;
+  private static com.google.protobuf.Descriptors.Descriptor
+    internal_static_TableCFs_descriptor;
+  private static
+    com.google.protobuf.GeneratedMessage.FieldAccessorTable
+      internal_static_TableCFs_fieldAccessorTable;
+  private static com.google.protobuf.Descriptors.Descriptor
     internal_static_ReplicationPeer_descriptor;
   private static
     com.google.protobuf.GeneratedMessage.FieldAccessorTable
@@ -10837,27 +12494,30 @@ public final class ZooKeeperProtos {
       "G\020\001\022\016\n\nLOG_REPLAY\020\002\"n\n\005Table\022$\n\005state\030\001 " +
       "\002(\0162\014.Table.State:\007ENABLED\"?\n\005State\022\013\n\007E" +
       "NABLED\020\000\022\014\n\010DISABLED\020\001\022\r\n\tDISABLING\020\002\022\014\n" +
-      "\010ENABLING\020\003\"\352\001\n\017ReplicationPeer\022\022\n\nclust",
-      "erkey\030\001 \002(\t\022\037\n\027replicationEndpointImpl\030\002" +
-      " \001(\t\022\035\n\004data\030\003 \003(\0132\017.BytesBytesPair\022&\n\rc" +
-      "onfiguration\030\004 \003(\0132\017.NameStringPair\0227\n\014p" +
-      "eerProtocol\030\005 \001(\0162\031.ReplicationPeer.Prot" +
-      "ocol:\006NATIVE\"\"\n\010Protocol\022\n\n\006NATIVE\020\000\022\n\n\006" +
-      "THRIFT\020\001\"^\n\020ReplicationState\022&\n\005state\030\001 " +
-      "\002(\0162\027.ReplicationState.State\"\"\n\005State\022\013\n" +
-      "\007ENABLED\020\000\022\014\n\010DISABLED\020\001\"+\n\027ReplicationH" +
-      "LogPosition\022\020\n\010position\030\001 \002(\003\"%\n\017Replica" +
-      "tionLock\022\022\n\nlock_owner\030\001 \002(\t\"\230\001\n\tTableLo",
-      "ck\022\036\n\ntable_name\030\001 \001(\0132\n.TableName\022\037\n\nlo" +
-      "ck_owner\030\002 \001(\0132\013.ServerName\022\021\n\tthread_id" +
-      "\030\003 \001(\003\022\021\n\tis_shared\030\004 \001(\010\022\017\n\007purpose\030\005 \001" +
-      "(\t\022\023\n\013create_time\030\006 \001(\003\";\n\017StoreSequence" +
-      "Id\022\023\n\013family_name\030\001 \002(\014\022\023\n\013sequence_id\030\002" +
-      " \002(\004\"g\n\026RegionStoreSequenceIds\022 \n\030last_f" +
-      "lushed_sequence_id\030\001 \002(\004\022+\n\021store_sequen" +
-      "ce_id\030\002 \003(\0132\020.StoreSequenceIdBE\n*org.apa" +
-      "che.hadoop.hbase.protobuf.generatedB\017Zoo" +
-      "KeeperProtosH\001\210\001\001\240\001\001"
+      "\010ENABLING\020\003\";\n\007TableCF\022\036\n\ntable_name\030\001 \001",
+      "(\0132\n.TableName\022\020\n\010families\030\002 \003(\014\"\'\n\010Tabl" +
+      "eCFs\022\033\n\ttable_cfs\030\001 \003(\0132\010.TableCF\"\207\002\n\017Re" +
+      "plicationPeer\022\022\n\nclusterkey\030\001 \002(\t\022\037\n\027rep" +
+      "licationEndpointImpl\030\002 \001(\t\022\035\n\004data\030\003 \003(\013" +
+      "2\017.BytesBytesPair\022&\n\rconfiguration\030\004 \003(\013" +
+      "2\017.NameStringPair\0227\n\014peerProtocol\030\005 \001(\0162" +
+      "\031.ReplicationPeer.Protocol:\006NATIVE\022\033\n\010ta" +
+      "bleCFs\030\006 \001(\0132\t.TableCFs\"\"\n\010Protocol\022\n\n\006N" +
+      "ATIVE\020\000\022\n\n\006THRIFT\020\001\"^\n\020ReplicationState\022" +
+      "&\n\005state\030\001 \002(\0162\027.ReplicationState.State\"",
+      "\"\n\005State\022\013\n\007ENABLED\020\000\022\014\n\010DISABLED\020\001\"+\n\027R" +
+      "eplicationHLogPosition\022\020\n\010position\030\001 \002(\003" +
+      "\"%\n\017ReplicationLock\022\022\n\nlock_owner\030\001 \002(\t\"" +
+      "\230\001\n\tTableLock\022\036\n\ntable_name\030\001 \001(\0132\n.Tabl" +
+      "eName\022\037\n\nlock_owner\030\002 \001(\0132\013.ServerName\022\021" +
+      "\n\tthread_id\030\003 \001(\003\022\021\n\tis_shared\030\004 \001(\010\022\017\n\007" +
+      "purpose\030\005 \001(\t\022\023\n\013create_time\030\006 \001(\003\";\n\017St" +
+      "oreSequenceId\022\023\n\013family_name\030\001 \002(\014\022\023\n\013se" +
+      "quence_id\030\002 \002(\004\"g\n\026RegionStoreSequenceId" +
+      "s\022 \n\030last_flushed_sequence_id\030\001 \002(\004\022+\n\021s",
+      "tore_sequence_id\030\002 \003(\0132\020.StoreSequenceId" +
+      "BE\n*org.apache.hadoop.hbase.protobuf.gen" +
+      "eratedB\017ZooKeeperProtosH\001\210\001\001\240\001\001"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
       new com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner() {
@@ -10900,44 +12560,56 @@ public final class ZooKeeperProtos {
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_Table_descriptor,
               new java.lang.String[] { "State", });
-          internal_static_ReplicationPeer_descriptor =
+          internal_static_TableCF_descriptor =
             getDescriptor().getMessageTypes().get(6);
+          internal_static_TableCF_fieldAccessorTable = new
+            com.google.protobuf.GeneratedMessage.FieldAccessorTable(
+              internal_static_TableCF_descriptor,
+              new java.lang.String[] { "TableName", "Families", });
+          internal_static_TableCFs_descriptor =
+            getDescriptor().getMessageTypes().get(7);
+          internal_static_TableCFs_fieldAccessorTable = new
+            com.google.protobuf.GeneratedMessage.FieldAccessorTable(
+              internal_static_TableCFs_descriptor,
+              new java.lang.String[] { "TableCfs", });
+          internal_static_ReplicationPeer_descriptor =
+            getDescriptor().getMessageTypes().get(8);
           internal_static_ReplicationPeer_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_ReplicationPeer_descriptor,
-              new java.lang.String[] { "Clusterkey", "ReplicationEndpointImpl", "Data", "Configuration", "PeerProtocol", });
+              new java.lang.String[] { "Clusterkey", "ReplicationEndpointImpl", "Data", "Configuration", "PeerProtocol", "TableCFs", });
           internal_static_ReplicationState_descriptor =
-            getDescriptor().getMessageTypes().get(7);
+            getDescriptor().getMessageTypes().get(9);
           internal_static_ReplicationState_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_ReplicationState_descriptor,
               new java.lang.String[] { "State", });
           internal_static_ReplicationHLogPosition_descriptor =
-            getDescriptor().getMessageTypes().get(8);
+            getDescriptor().getMessageTypes().get(10);
           internal_static_ReplicationHLogPosition_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_ReplicationHLogPosition_descriptor,
               new java.lang.String[] { "Position", });
           internal_static_ReplicationLock_descriptor =
-            getDescriptor().getMessageTypes().get(9);
+            getDescriptor().getMessageTypes().get(11);
           internal_static_ReplicationLock_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_ReplicationLock_descriptor,
               new java.lang.String[] { "LockOwner", });
           internal_static_TableLock_descriptor =
-            getDescriptor().getMessageTypes().get(10);
+            getDescriptor().getMessageTypes().get(12);
           internal_static_TableLock_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_TableLock_descriptor,
               new java.lang.String[] { "TableName", "LockOwner", "ThreadId", "IsShared", "Purpose", "CreateTime", });
           internal_static_StoreSequenceId_descriptor =
-            getDescriptor().getMessageTypes().get(11);
+            getDescriptor().getMessageTypes().get(13);
           internal_static_StoreSequenceId_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_StoreSequenceId_descriptor,
               new java.lang.String[] { "FamilyName", "SequenceId", });
           internal_static_RegionStoreSequenceIds_descriptor =
-            getDescriptor().getMessageTypes().get(12);
+            getDescriptor().getMessageTypes().get(14);
           internal_static_RegionStoreSequenceIds_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_RegionStoreSequenceIds_descriptor,

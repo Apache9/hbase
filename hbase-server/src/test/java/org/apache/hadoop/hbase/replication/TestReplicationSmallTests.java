@@ -355,7 +355,9 @@ public class TestReplicationSmallTests extends TestReplicationBase {
       }
     }
 
-    admin.addPeer("2", utility2.getClusterKey());
+    ReplicationPeerConfig pc = new ReplicationPeerConfig();
+    pc.setClusterKey(utility2.getClusterKey());
+    admin.addPeer("2", pc, null);
     Thread.sleep(SLEEP_TIME);
     rowKey = Bytes.toBytes("do rep");
     put = new Put(rowKey);
