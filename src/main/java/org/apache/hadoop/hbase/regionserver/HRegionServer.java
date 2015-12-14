@@ -3009,7 +3009,7 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
     RegionScannerHolder holder = this.scanners.get(scannerName);
 
     TracerUtils.addAnnotation("start a next(" + scannerId + "," + nbRows + "," + callSeq
-        + ") for scan: " + holder.getScan());
+        + ") for scan: " + (holder == null ? "null" : holder.getScan()));
 
     if (holder == null) throw new UnknownScannerException("Name: " + scannerName);
     // if callSeq does not match throw Exception straight away. This needs to be performed even
