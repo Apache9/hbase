@@ -164,21 +164,27 @@ public class MXBeanImpl implements MXBean {
     int regionNum = 0;
     long readRequestPerSecond = 0;
     long writeRequestPerSecond = 0;
-    for (final Entry<ServerName, ServerLoad> entry : master.getServerManager()
-        .getOnlineServers().entrySet()) {
+    long readRequestsByCapacityUnitPerSecond = 0;
+    long writeRequestsByCapacityUnitPerSecond = 0;
+    for (final Entry<ServerName, ServerLoad> entry : master.getServerManager().getOnlineServers()
+        .entrySet()) {
       regionServerNum++;
       readRequestPerSecond += entry.getValue().getReadRequestsPerSecond();
       writeRequestPerSecond += entry.getValue().getWriteRequestsPerSecond();
-      for (final Entry<byte[], RegionLoad> regionEntry : entry.getValue()
-          .getRegionsLoad().entrySet()) {
-        String table =
-            new String(HRegionInfo.getTableName(regionEntry.getKey()));
+      readRequestsByCapacityUnitPerSecond += entry.getValue()
+          .getReadRequestsByCapacityUnitPerSecond();
+      writeRequestsByCapacityUnitPerSecond += entry.getValue()
+          .getWriteRequestsByCapacityUnitPerSecond();
+      for (final Entry<byte[], RegionLoad> regionEntry : entry.getValue().getRegionsLoad()
+          .entrySet()) {
+        String table = new String(HRegionInfo.getTableName(regionEntry.getKey()));
         regionNum++;
         tableSet.add(table);
       }
     }
-    return new ClusterLoad(tableSet.size(), regionServerNum, regionNum,
-        readRequestPerSecond, writeRequestPerSecond);
+    return new ClusterLoad(tableSet.size(), regionServerNum, regionNum, readRequestPerSecond,
+        writeRequestPerSecond, readRequestsByCapacityUnitPerSecond,
+        writeRequestsByCapacityUnitPerSecond);
   }
 
   @Override

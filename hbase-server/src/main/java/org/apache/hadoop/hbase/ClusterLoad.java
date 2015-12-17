@@ -32,9 +32,12 @@ public class ClusterLoad {
   private long readRequestPerSecond;
   private long writeRequestPerSecond;
   private long requestPerSecond;
+  private long readRequestsByCapacityUnitPerSecond;
+  private long writeRequestsByCapacityUnitPerSecond;
 
-  public ClusterLoad(int tableNum, int regionServerNum, int regionNum,
-      long readRequestPerSecond, long writeRequestPerSecond) {
+  public ClusterLoad(int tableNum, int regionServerNum, int regionNum, long readRequestPerSecond,
+      long writeRequestPerSecond, long readRequestsByCapacityUnitPerSecond,
+      long writeRequestsByCapacityUnitPerSecond) {
     super();
     this.tableNum = tableNum;
     this.regionServerNum = regionServerNum;
@@ -42,6 +45,8 @@ public class ClusterLoad {
     this.readRequestPerSecond = readRequestPerSecond;
     this.writeRequestPerSecond = writeRequestPerSecond;
     this.requestPerSecond = writeRequestPerSecond + writeRequestPerSecond;
+    this.readRequestsByCapacityUnitPerSecond = readRequestsByCapacityUnitPerSecond;
+    this.writeRequestsByCapacityUnitPerSecond = writeRequestsByCapacityUnitPerSecond;
   }
 
   public int getTableNum() {
@@ -68,26 +73,29 @@ public class ClusterLoad {
     return requestPerSecond;
   }
 
+  public long getReadRequestsByCapacityUnitPerSecond() {
+    return readRequestsByCapacityUnitPerSecond;
+  }
+
+  public long getWriteRequestsByCapacityUnitPerSecond() {
+    return writeRequestsByCapacityUnitPerSecond;
+  }
+
   @Override
   public String toString() {
-    StringBuilder sb =
-        Strings.appendKeyValue(new StringBuilder(), "numberOfTable:",
-          Integer.valueOf(tableNum));
-    sb =
-        Strings.appendKeyValue(sb, "numberOfRegionServer",
-          Integer.valueOf(this.regionServerNum));
-    sb =
-        Strings.appendKeyValue(sb, "numberOfRegion",
-          Integer.valueOf(this.regionNum));
-    sb =
-        Strings.appendKeyValue(sb, "readRequestPerSecond",
-          Long.valueOf(this.readRequestPerSecond));
-    sb =
-        Strings.appendKeyValue(sb, "writeRequestPerSecond",
-          Long.valueOf(this.writeRequestPerSecond));
-    sb =
-        Strings.appendKeyValue(sb, "requestPerSecond",
-          Long.valueOf(this.requestPerSecond));
+    StringBuilder sb = Strings.appendKeyValue(new StringBuilder(), "numberOfTable:",
+      Integer.valueOf(tableNum));
+    sb = Strings.appendKeyValue(sb, "numberOfRegionServer", Integer.valueOf(this.regionServerNum));
+    sb = Strings.appendKeyValue(sb, "numberOfRegion", Integer.valueOf(this.regionNum));
+    sb = Strings
+        .appendKeyValue(sb, "readRequestPerSecond", Long.valueOf(this.readRequestPerSecond));
+    sb = Strings.appendKeyValue(sb, "writeRequestPerSecond",
+      Long.valueOf(this.writeRequestPerSecond));
+    sb = Strings.appendKeyValue(sb, "requestPerSecond", Long.valueOf(this.requestPerSecond));
+    sb = Strings.appendKeyValue(sb, "readRequestsByCapacityUnitPerSecond",
+      Long.valueOf(this.readRequestsByCapacityUnitPerSecond));
+    sb = Strings.appendKeyValue(sb, "writeRequestsByCapacityUnitPerSecond",
+      Long.valueOf(this.writeRequestsByCapacityUnitPerSecond));
     return sb.toString();
   }
 }
