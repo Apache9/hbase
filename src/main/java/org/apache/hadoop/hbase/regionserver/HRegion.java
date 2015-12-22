@@ -381,6 +381,7 @@ public class HRegion implements HeapSize { // , Writable{
 
   // Coprocessor host
   private RegionCoprocessorHost coprocessorHost;
+  private int warnThresholdForRawScanned = Integer.MAX_VALUE;
 
   /**
    * Name of the region info file that resides just under the region directory.
@@ -513,6 +514,10 @@ public class HRegion implements HeapSize { // , Writable{
       // TODO: revisit if coprocessors should load in other cases
       this.coprocessorHost = new RegionCoprocessorHost(this, rsServices, conf);
     }
+    
+    this.warnThresholdForRawScanned = conf.getInt(HConstants.WARN_THRESHOLD_FOR_RAW_SCANNED_COUNT,
+      Integer.MAX_VALUE);
+    
     if (LOG.isDebugEnabled()) {
       // Write out region name as string and its encoded name.
       LOG.debug("Instantiated " + this);
@@ -4092,6 +4097,7 @@ public class HRegion implements HeapSize { // , Writable{
     @Override
     public ScannerStatus nextRaw(List<KeyValue> outResults, final int limit, final int rawLimit,
         String metric) throws IOException {
+      int beforeScanned = outResults.size();
       ScannerStatus status;
       if (outResults.isEmpty()) {
         // Usually outResults is empty. This is true when next is called
@@ -4107,13 +4113,14 @@ public class HRegion implements HeapSize { // , Writable{
         return ScannerStatus.done(status.getRawValueScanned());
       }
       
-      if (status.getRawValueScanned() >= HConstants.DEFAULT_WARN_THRESHOLD_FOR_RAW_SCANNED) {
+      if (status.getRawValueScanned() >= warnThresholdForRawScanned) {
         if (outResults.size() <= 0) {
           LOG.error("unexpected outResults for read");
         } else {
           KeyValue kv = outResults.get(outResults.size() - 1);
           LOG.warn("TooMany raw scanned kvs for read, region: " + region.getRegionNameAsString()
-              + ", row: " + Bytes.toStringBinary(kv.getRow()));
+              + ", row: " + Bytes.toStringBinary(kv.getRow()) + ", rawScanned: "
+              + status.getRawValueScanned() + ", returned: " + (outResults.size() - beforeScanned));
         }
       }
       

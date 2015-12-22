@@ -776,6 +776,7 @@ public final class HConstants {
       "hbase.client.start.log.errors.counter";
   public static final int DEFAULT_START_LOG_ERRORS_AFTER_COUNT = 9;
 
+  public static final String WARN_THRESHOLD_FOR_RAW_SCANNED_COUNT = "hbase.warn.threshold.for.raw.scanned.count";
   public static final int DEFAULT_WARN_THRESHOLD_FOR_RAW_SCANNED = 500;
   
   private HConstants() {
