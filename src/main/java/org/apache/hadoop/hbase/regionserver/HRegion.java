@@ -4106,6 +4106,17 @@ public class HRegion implements HeapSize { // , Writable{
       if (isFilterDone()) {
         return ScannerStatus.done(status.getRawValueScanned());
       }
+      
+      if (status.getRawValueScanned() >= HConstants.DEFAULT_WARN_THRESHOLD_FOR_RAW_SCANNED) {
+        if (outResults.size() <= 0) {
+          LOG.error("unexpected outResults for read");
+        } else {
+          KeyValue kv = outResults.get(outResults.size() - 1);
+          LOG.warn("TooMany raw scanned kvs for read, region: " + region.getRegionNameAsString()
+              + ", row: " + Bytes.toStringBinary(kv.getRow()));
+        }
+      }
+      
       return status;
     }
 

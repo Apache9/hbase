@@ -776,6 +776,8 @@ public final class HConstants {
       "hbase.client.start.log.errors.counter";
   public static final int DEFAULT_START_LOG_ERRORS_AFTER_COUNT = 9;
 
+  public static final int DEFAULT_WARN_THRESHOLD_FOR_RAW_SCANNED = 500;
+  
   private HConstants() {
     // Can't be instantiated with this ctor.
   }
