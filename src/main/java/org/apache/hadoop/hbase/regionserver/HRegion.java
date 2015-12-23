@@ -4108,20 +4108,27 @@ public class HRegion implements HeapSize { // , Writable{
         status = nextInternal(tmpList, limit, rawLimit, metric);
         outResults.addAll(tmpList);
       }
+      
+      if (status.getRawValueScanned() >= warnThresholdForRawScanned) {
+        int scanned = outResults.size() - beforeScanned;
+        KeyValue kv = null;
+        if (scanned <= 0) {
+          kv = status.next();
+        } else {
+          kv = outResults.get(outResults.size() - 1);
+        }
+        String rowString = null;
+        if (kv != null) {
+          rowString = Bytes.toStringBinary(kv.getRow());
+        }
+        LOG.warn("TooMany raw scanned kvs for read, region: " + region.getRegionNameAsString()
+            + ", row: " + rowString + ", rawScanned: " + status.getRawValueScanned()
+            + ", returned: " + scanned);
+      }
+      
       resetFilters();
       if (isFilterDone()) {
         return ScannerStatus.done(status.getRawValueScanned());
-      }
-      
-      if (status.getRawValueScanned() >= warnThresholdForRawScanned) {
-        if (outResults.size() <= 0) {
-          LOG.error("unexpected outResults for read");
-        } else {
-          KeyValue kv = outResults.get(outResults.size() - 1);
-          LOG.warn("TooMany raw scanned kvs for read, region: " + region.getRegionNameAsString()
-              + ", row: " + Bytes.toStringBinary(kv.getRow()) + ", rawScanned: "
-              + status.getRawValueScanned() + ", returned: " + (outResults.size() - beforeScanned));
-        }
       }
       
       return status;
