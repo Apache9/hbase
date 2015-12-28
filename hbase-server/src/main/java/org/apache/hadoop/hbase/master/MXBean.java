@@ -23,6 +23,7 @@ import java.util.Map;
 import org.apache.hadoop.hbase.ClusterLoad;
 import org.apache.hadoop.hbase.ServerLoad;
 import org.apache.hadoop.hbase.TableLoad;
+import org.apache.hadoop.hbase.namespace.NamespaceLoad;
 import org.apache.hadoop.hbase.replication.ReplicationLoadSource;
 import org.apache.hadoop.hbase.replication.regionserver.Replication;
 
@@ -129,6 +130,12 @@ public interface MXBean {
    * @return all table loads
    */
   public List<TableLoad> getTableLoads();
+
+  /**
+   * Get the current namespace loads
+   * @return all namespace loads
+   */
+  public List<NamespaceLoad> getNamespaceLoads();
 
   /**
    * Get the replication loads

@@ -121,16 +121,19 @@ public class TestOperationQuota {
 
   @Test
   public void testCanLogThrottlingException() {
-    QuotaLimiter userLimiter = QuotaLimiterFactory.fromThrottle(Throttle.newBuilder().build());
-    QuotaLimiter rsLimiter = QuotaLimiterFactory.fromThrottle(buildThrottle(10, TimeUnit.MINUTES, 10, TimeUnit.MINUTES));
+    QuotaLimiter userLimiter = QuotaLimiterFactory.fromThrottle(buildThrottle(10, TimeUnit.MINUTES,
+      10, TimeUnit.MINUTES));
+    QuotaLimiter rsLimiter = QuotaLimiterFactory.fromThrottle(buildThrottle(10, TimeUnit.MINUTES,
+      10, TimeUnit.MINUTES));
     operationQuota = new AllowExceedOperationQuota(userLimiter, rsLimiter);
-    // 5 is equals to DEFAULT_MAX_LOG_THROTTLING_COUNT
-    for (int i = 0; i < 5; i++) {
+    // 2 * DEFAULT_MAX_LOG_THROTTLING_COUNT = 10
+    for (int i = 0; i < 10; i++) {
       assertTrue(operationQuota.canLogThrottlingException());
     }
     assertFalse(operationQuota.canLogThrottlingException());
+    QuotaLimiterFactory.update(userLimiter, userLimiter);
     QuotaLimiterFactory.update(rsLimiter, rsLimiter);
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < 10; i++) {
       assertTrue(operationQuota.canLogThrottlingException());
     }
     assertFalse(operationQuota.canLogThrottlingException());

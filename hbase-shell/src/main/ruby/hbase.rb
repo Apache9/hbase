@@ -70,6 +70,7 @@ module HBaseConstants
   TYPE = 'TYPE'
   NONE = 'NONE'
   VALUE = 'VALUE'
+  TABLE_CFS = 'TABLE_CFS'
 
   # Load constants from hbase java API
   def self.promote_constants(constants)

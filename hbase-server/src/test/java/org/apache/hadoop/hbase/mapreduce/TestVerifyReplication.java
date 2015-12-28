@@ -31,6 +31,7 @@ import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.client.replication.ReplicationAdmin;
 import org.apache.hadoop.hbase.mapreduce.replication.VerifyReplication;
+import org.apache.hadoop.hbase.replication.ReplicationPeerConfig;
 import org.apache.hadoop.hbase.testclassification.LargeTests;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.zookeeper.MiniZooKeeperCluster;
@@ -113,7 +114,9 @@ public class TestVerifyReplication {
     htable1 = new HTable(utility1.getConfiguration(), tableName);
     htable2 = new HTable(utility2.getConfiguration(), tableName);
     
-    admin.addPeer("1", utility2.getClusterKey());
+    ReplicationPeerConfig pc = new ReplicationPeerConfig();
+    pc.setClusterKey(utility2.getClusterKey());
+    admin.addPeer("1", pc, null);
   }
 
   

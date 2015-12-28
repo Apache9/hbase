@@ -119,7 +119,7 @@ public class CombinedBlockCache implements BlockCache, HeapSize {
     return lruCache.getBlockCount() + bucketCache.getBlockCount();
   }
 
-  private static class CombinedCacheStats extends CacheStats {
+  public static class CombinedCacheStats extends CacheStats {
     private final CacheStats lruCacheStats;
     private final CacheStats bucketCacheStats;
 
@@ -175,22 +175,33 @@ public class CombinedBlockCache implements BlockCache, HeapSize {
     }
 
     @Override
-    public double getHitRatioPastNPeriods() {
-      double ratio = ((double) (lruCacheStats.getSumHitCountsPastNPeriods() + bucketCacheStats
-          .getSumHitCountsPastNPeriods()) / (double) (lruCacheStats
-          .getSumRequestCountsPastNPeriods() + bucketCacheStats
-          .getSumRequestCountsPastNPeriods()));
-      return Double.isNaN(ratio) ? 0 : ratio;
+    public void rollMetricsPeriod() {
+      lruCacheStats.rollMetricsPeriod();
+      bucketCacheStats.rollMetricsPeriod();
+    }
+    
+    @Override
+    public long getSumHitCountsPastNPeriods() {
+      return lruCacheStats.getSumHitCountsPastNPeriods()
+          + bucketCacheStats.getSumHitCountsPastNPeriods();
+    }
+    
+    @Override
+    public long getSumRequestCountsPastNPeriods() {
+      return lruCacheStats.getSumRequestCountsPastNPeriods()
+          + bucketCacheStats.getSumRequestCountsPastNPeriods();
+    }
+    
+    @Override
+    public long getSumHitCachingCountsPastNPeriods() {
+      return lruCacheStats.getSumHitCachingCountsPastNPeriods()
+          + bucketCacheStats.getSumHitCachingCountsPastNPeriods();
     }
 
     @Override
-    public double getHitCachingRatioPastNPeriods() {
-      double ratio = ((double) (lruCacheStats
-          .getSumHitCachingCountsPastNPeriods() + bucketCacheStats
-          .getSumHitCachingCountsPastNPeriods()) / (double) (lruCacheStats
-          .getSumRequestCachingCountsPastNPeriods() + bucketCacheStats
-          .getSumRequestCachingCountsPastNPeriods()));
-      return Double.isNaN(ratio) ? 0 : ratio;
+    public long getSumRequestCachingCountsPastNPeriods() {
+      return lruCacheStats.getSumRequestCachingCountsPastNPeriods()
+          + bucketCacheStats.getSumRequestCachingCountsPastNPeriods();
     }
   }
 

@@ -115,6 +115,15 @@ message Table {
   required State state = 1 [default = ENABLED];
 }
 
+message TableCF {
+  optional TableName table_name = 1;
+  repeated bytes families = 2;
+}
+
+message TableCFs {
+  repeated TableCF table_cfs = 1;
+}
+
 /**
  * Used by replication. Holds a replication peer key.
  */
@@ -130,6 +139,7 @@ message ReplicationPeer {
   repeated BytesBytesPair data = 3;
   repeated NameStringPair configuration = 4;
   optional Protocol peerProtocol = 5 [default = NATIVE];
+  optional TableCFs tableCFs = 6;
 }
 
 /**

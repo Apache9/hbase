@@ -32,6 +32,8 @@ import org.apache.hadoop.hbase.ServerLoad;
 import org.apache.hadoop.hbase.RegionLoad;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.TableLoad;
+import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.namespace.NamespaceLoad;
 import org.apache.hadoop.hbase.replication.ReplicationLoadSource;
 
 /**
@@ -162,21 +164,27 @@ public class MXBeanImpl implements MXBean {
     int regionNum = 0;
     long readRequestPerSecond = 0;
     long writeRequestPerSecond = 0;
-    for (final Entry<ServerName, ServerLoad> entry : master.getServerManager()
-        .getOnlineServers().entrySet()) {
+    long readRequestsByCapacityUnitPerSecond = 0;
+    long writeRequestsByCapacityUnitPerSecond = 0;
+    for (final Entry<ServerName, ServerLoad> entry : master.getServerManager().getOnlineServers()
+        .entrySet()) {
       regionServerNum++;
       readRequestPerSecond += entry.getValue().getReadRequestsPerSecond();
       writeRequestPerSecond += entry.getValue().getWriteRequestsPerSecond();
-      for (final Entry<byte[], RegionLoad> regionEntry : entry.getValue()
-          .getRegionsLoad().entrySet()) {
-        String table =
-            new String(HRegionInfo.getTableName(regionEntry.getKey()));
+      readRequestsByCapacityUnitPerSecond += entry.getValue()
+          .getReadRequestsByCapacityUnitPerSecond();
+      writeRequestsByCapacityUnitPerSecond += entry.getValue()
+          .getWriteRequestsByCapacityUnitPerSecond();
+      for (final Entry<byte[], RegionLoad> regionEntry : entry.getValue().getRegionsLoad()
+          .entrySet()) {
+        String table = new String(HRegionInfo.getTableName(regionEntry.getKey()));
         regionNum++;
         tableSet.add(table);
       }
     }
-    return new ClusterLoad(tableSet.size(), regionServerNum, regionNum,
-        readRequestPerSecond, writeRequestPerSecond);
+    return new ClusterLoad(tableSet.size(), regionServerNum, regionNum, readRequestPerSecond,
+        writeRequestPerSecond, readRequestsByCapacityUnitPerSecond,
+        writeRequestsByCapacityUnitPerSecond);
   }
 
   @Override
@@ -197,6 +205,21 @@ public class MXBeanImpl implements MXBean {
       }
     }
     return new LinkedList<TableLoad>(data.values());
+  }
+  
+  @Override
+  public List<NamespaceLoad> getNamespaceLoads() {
+    Map<String, NamespaceLoad> data = new HashMap<String, NamespaceLoad>();
+    for (final Entry<TableName, TableLoad> entry : master.getTableLoads().entrySet()) {
+      String namespace = entry.getKey().getNamespaceAsString();
+      NamespaceLoad load = data.get(namespace);
+      if (load == null) {
+        load = new NamespaceLoad(namespace);
+        data.put(namespace, load);
+      }
+      load.updateNamespaceLoad(entry.getValue());
+    }
+    return new LinkedList<NamespaceLoad>(data.values());
   }
 
   @Override

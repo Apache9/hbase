@@ -30,7 +30,7 @@ import org.apache.hadoop.hbase.Coprocessor;
 import org.apache.hadoop.hbase.DoNotRetryIOException;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HTableDescriptor;
-//import org.apache.hadoop.hbase.MetaTableAccessor;
+import org.apache.hadoop.hbase.NamespaceDescriptor;
 import org.apache.hadoop.hbase.catalog.MetaReader; 
 import org.apache.hadoop.hbase.NamespaceDescriptor;
 import org.apache.hadoop.hbase.TableName;
@@ -41,6 +41,7 @@ import org.apache.hadoop.hbase.ipc.RequestContext;
 import org.apache.hadoop.hbase.master.MasterServices;
 import org.apache.hadoop.hbase.master.RegionState;
 import org.apache.hadoop.hbase.master.handler.CreateTableHandler;
+import org.apache.hadoop.hbase.namespace.NamespaceAuditor;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetQuotaRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetQuotaResponse;
 import org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.Quotas;
@@ -74,6 +75,7 @@ public class MasterQuotaManager {
   private NamedLock<TableName> tableLocks;
   private NamedLock<String> userLocks;
   private boolean enabled = false;
+  private NamespaceAuditor namespaceQuotaManager;
   private long totalExistedReadLimit = 0;
   private long totalExistedWriteLimit = 0;
   private int regionServerNum;
@@ -117,6 +119,8 @@ public class MasterQuotaManager {
     regionServerWriteLimit *= getConfiguration().getFloat(REGION_SERVER_OVERCONSUMPTION_FACTOR,
       DEFAULT_REGION_SERVER_OVERCONSUMPTION_FACTOR);
 
+    namespaceQuotaManager = new NamespaceAuditor(masterServices);
+    namespaceQuotaManager.start();
     enabled = true;
   }
 
@@ -124,7 +128,7 @@ public class MasterQuotaManager {
   }
 
   public boolean isQuotaEnabled() {
-    return enabled;
+    return enabled && namespaceQuotaManager.isInitialized();
   }
 
   private Configuration getConfiguration() {
@@ -305,6 +309,18 @@ public class MasterQuotaManager {
     });
   }
 
+  public void setNamespaceQuota(NamespaceDescriptor desc) throws IOException {
+    if (enabled) {
+      this.namespaceQuotaManager.addNamespace(desc);
+    }
+  }
+
+  public void removeNamespaceQuota(String namespace) throws IOException {
+    if (enabled) {
+      this.namespaceQuotaManager.deleteNamespace(namespace);
+    }
+  }
+
   private void setQuota(final SetQuotaRequest req, final SetQuotaOperations quotaOps)
       throws IOException, InterruptedException {
     if (req.hasRemoveAll() && req.getRemoveAll() == true) {
@@ -337,6 +353,28 @@ public class MasterQuotaManager {
     } catch (IOException e) {
       LOG.info("fail to update total existed limit");
     }
+  }
+
+  public void checkNamespaceTableAndRegionQuota(TableName tName, int regions) throws IOException {
+    if (enabled) {
+      namespaceQuotaManager.checkQuotaToCreateTable(tName, regions);
+    }
+  }
+
+  /**
+   * Remove table from namespace quota.
+   *
+   * @param tName - The table name to update quota usage.
+   * @throws IOException Signals that an I/O exception has occurred.
+   */
+  public void removeTableFromNamespaceQuota(TableName tName) throws IOException {
+    if (enabled) {
+      namespaceQuotaManager.removeFromNamespaceUsage(tName);
+    }
+  }
+
+  public NamespaceAuditor getNamespaceQuotaManager() {
+    return this.namespaceQuotaManager;
   }
 
   private static interface SetQuotaOperations {
@@ -643,4 +681,5 @@ public class MasterQuotaManager {
       }
     }
   }
+
 }

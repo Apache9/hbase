@@ -451,9 +451,12 @@ AssignmentManager assignmentManager = master.getAssignmentManager();
     <%for Map.Entry<TableName, TableLoad> entry : tableLoads.entrySet() %>
     <%java>
       TableName table = entry.getKey();
+      if (table.isSystemTable()) {
+          continue;
+      }
       TableLoad load = entry.getValue();
-      long readCapacityUnitPerSecond = load.getReadRequestsCountByCapacityUnit();
-      long writeCapacityUnitPerSecond = load.getWriteRequestsCountByCapacityUnit();
+      long readCapacityUnitPerSecond = load.getReadRequestsByCapacityUnitPerSecond();
+      long writeCapacityUnitPerSecond = load.getWriteRequestsByCapacityUnitPerSecond();
       long throttledReadCount = load.getThrottledReadRequestsCount();
       long throttledWriteCount = load.getThrottledWriteRequestsCount();
     </%java>

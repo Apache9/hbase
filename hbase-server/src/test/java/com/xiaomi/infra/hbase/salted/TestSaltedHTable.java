@@ -25,7 +25,9 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -35,6 +37,7 @@ import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HTableDescriptor;
+import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
@@ -48,6 +51,7 @@ import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.client.replication.ReplicationAdmin;
+import org.apache.hadoop.hbase.replication.ReplicationPeerConfig;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.Threads;
@@ -455,7 +459,11 @@ public class TestSaltedHTable {
     HBaseAdmin admin1 = new HBaseAdmin(utility1.getConfiguration());
     admin1.createTable(tableDesc);
     ReplicationAdmin repAdmin = new ReplicationAdmin(TEST_UTIL.getConfiguration());
-    repAdmin.addPeer("10", utility1.getClusterKey(), Bytes.toString(TEST_TABLE));
+    ReplicationPeerConfig pc = new ReplicationPeerConfig();
+    pc.setClusterKey(utility1.getClusterKey());
+    Map<TableName, List<String>> tableCf = new HashMap<TableName, List<String>>();
+    tableCf.put(TableName.valueOf(TEST_TABLE), null);
+    repAdmin.addPeer("10", pc, tableCf);
     
     // write data to source cluster
     HTableInterface table = connection.getTable(TEST_TABLE);

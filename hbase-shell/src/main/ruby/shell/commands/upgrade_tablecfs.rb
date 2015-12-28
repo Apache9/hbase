@@ -1,5 +1,5 @@
 #
-# Copyright 2010 The Apache Software Foundation
+# Copyright The Apache Software Foundation
 #
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
@@ -20,22 +20,21 @@
 
 module Shell
   module Commands
-    class AppendPeerTableCFs< Command
+    class UpgradeTablecfs< Command
       def help
         return <<-EOF
-Append a replicable table-cf config for the specified peer
-Examples:
+Upgrade tableCFs: add old tableCFs string into ReplicationPeerConfig(Pub).
 
-  # append a table / table-cf to be replicable for a peer
-  hbase> append_peer_tableCFs '2', { "ns1:table4" => ["cfA", "cfB"]}
-
+  hbase> upgrade_tablecfs 
 EOF
       end
 
-      def command(id, table_cfs)
-        format_simple_command do
-          replication_admin.append_peer_tableCFs(id, table_cfs)
-        end
+      def command()
+        now = Time.now
+        formatter.header(["Status"])
+        replication_admin.upgrade_tablecfs
+        formatter.row(["done"])
+        formatter.footer(now)
       end
     end
   end

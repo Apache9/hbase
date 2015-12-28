@@ -1953,6 +1953,8 @@ MasterServices, Server {
     HRegionInfo[] newRegions = getHRegionInfos(hTableDescriptor, splitKeys);
     checkInitialized();
     sanityCheckTableDescriptor(hTableDescriptor);
+    this.quotaManager.checkNamespaceTableAndRegionQuota(hTableDescriptor.getTableName(),
+        newRegions.length);
     if (cpHost != null) {
       cpHost.preCreateTable(hTableDescriptor, newRegions);
     }
@@ -3660,9 +3662,6 @@ MasterServices, Server {
       for (final Entry<byte[], RegionLoad> regionEntry : entry.getValue()
           .getRegionsLoad().entrySet()) {
         TableName table = HRegionInfo.getTable(regionEntry.getKey());
-        if (table.isSystemTable()) {
-          continue;
-        }
         TableLoad load = tableLoads.get(table);
         if (load == null) {
           load = new TableLoad(table);
