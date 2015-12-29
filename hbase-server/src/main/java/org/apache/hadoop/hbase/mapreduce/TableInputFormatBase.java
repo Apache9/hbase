@@ -103,7 +103,7 @@ extends InputFormat<ImmutableBytesWritable, Result> {
     new HashMap<InetAddress, String>();
   
   /** The NameServer address */
-  private String nameServer = null;
+  protected String nameServer = null;
   
   /**
    * Builds a TableRecordReader. If no TableRecordReader was provided, uses
@@ -318,5 +318,9 @@ extends InputFormat<ImmutableBytesWritable, Result> {
    */
   protected void setTableRecordReader(TableRecordReader tableRecordReader) {
     this.tableRecordReader = tableRecordReader;
+  }
+  
+  protected TableRecordReader getTableRecordReader() {
+    return this.tableRecordReader;
   }
 }

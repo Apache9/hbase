@@ -30,6 +30,7 @@ import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.HTable;
+import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.client.Mutation;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.zookeeper.ZKUtil;
@@ -38,6 +39,8 @@ import org.apache.hadoop.mapreduce.OutputCommitter;
 import org.apache.hadoop.mapreduce.OutputFormat;
 import org.apache.hadoop.mapreduce.RecordWriter;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
+
+import com.xiaomi.infra.hbase.salted.SaltedHTable;
 
 /**
  * Convert Map/Reduce output and write it to an HBase table. The KEY is ignored
@@ -77,7 +80,7 @@ implements Configurable {
   /** The configuration. */
   private Configuration conf = null;
 
-  private HTable table;
+  private HTableInterface table;
 
   /**
    * Writes the reducer output to an HBase table.
@@ -88,14 +91,14 @@ implements Configurable {
   extends RecordWriter<KEY, Mutation> {
 
     /** The table to write to. */
-    private HTable table;
+    private HTableInterface table;
 
     /**
      * Instantiate a TableRecordWriter with the HBase HClient for writing.
      *
      * @param table  The table to write to.
      */
-    public TableRecordWriter(HTable table) {
+    public TableRecordWriter(HTableInterface table) {
       this.table = table;
     }
 
@@ -203,7 +206,12 @@ implements Configurable {
       if (zkClientPort != 0) {
         this.conf.setInt(HConstants.ZOOKEEPER_CLIENT_PORT, zkClientPort);
       }
-      this.table = new HTable(this.conf, tableName);
+      HTableInterface hTable = new HTable(this.conf, tableName);
+      if (hTable.getTableDescriptor().isSalted()) {
+        this.table = new SaltedHTable(hTable);
+      } else {
+        this.table = hTable;
+      }
       this.table.setAutoFlush(false, true);
       LOG.info("Created table instance for "  + tableName);
     } catch(IOException e) {
