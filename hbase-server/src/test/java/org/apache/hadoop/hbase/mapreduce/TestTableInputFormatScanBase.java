@@ -31,6 +31,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.client.HTable;
+import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
@@ -56,14 +57,14 @@ import org.junit.BeforeClass;
 public abstract class TestTableInputFormatScanBase {
 
   static final Log LOG = LogFactory.getLog(TestTableInputFormatScanBase.class);
-  static final HBaseTestingUtility TEST_UTIL = new HBaseTestingUtility();
+  protected static final HBaseTestingUtility TEST_UTIL = new HBaseTestingUtility();
 
-  static final byte[] TABLE_NAME = Bytes.toBytes("scantest");
-  static final byte[] INPUT_FAMILY = Bytes.toBytes("contents");
+  protected static final byte[] TABLE_NAME = Bytes.toBytes("scantest");
+  protected static final byte[] INPUT_FAMILY = Bytes.toBytes("contents");
   static final String KEY_STARTROW = "startRow";
   static final String KEY_LASTROW = "stpRow";
 
-  private static HTable table = null;
+  protected static HTableInterface table = null;
 
   @BeforeClass
   public static void setUpBeforeClass() throws Exception {
@@ -78,7 +79,7 @@ public abstract class TestTableInputFormatScanBase {
     TEST_UTIL.startMiniCluster(3);
     // create and fill table
     table = TEST_UTIL.createTable(TABLE_NAME, INPUT_FAMILY);
-    TEST_UTIL.createMultiRegions(table, INPUT_FAMILY);
+    TEST_UTIL.createMultiRegions((HTable)table, INPUT_FAMILY);
     TEST_UTIL.loadTable(table, INPUT_FAMILY, false);
     // start MR cluster
     TEST_UTIL.startMiniMapReduceCluster();
@@ -196,7 +197,8 @@ public abstract class TestTableInputFormatScanBase {
     job.setReducerClass(ScanReducer.class);
     job.setMapOutputKeyClass(ImmutableBytesWritable.class);
     job.setMapOutputValueClass(ImmutableBytesWritable.class);
-    job.setInputFormatClass(TableInputFormat.class);
+    job.setInputFormatClass(TableMapReduceUtil.getTableInputFormatCls(job.getConfiguration(),
+      TABLE_NAME));
     job.setNumReduceTasks(1);
     FileOutputFormat.setOutputPath(job, new Path(job.getJobName()));
     TableMapReduceUtil.addDependencyJars(job);

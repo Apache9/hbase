@@ -18,6 +18,8 @@
  */
 package com.xiaomi.infra.hbase.salted;
 
+import java.io.DataInput;
+import java.io.DataOutput;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -36,7 +38,6 @@ import org.apache.hadoop.hbase.client.Append;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Durability;
 import org.apache.hadoop.hbase.client.Get;
-import org.apache.hadoop.hbase.client.HConnection;
 import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.client.Increment;
 import org.apache.hadoop.hbase.client.Put;
@@ -50,6 +51,9 @@ import org.apache.hadoop.hbase.client.coprocessor.Batch.Callback;
 import org.apache.hadoop.hbase.filter.CompareFilter.CompareOp;
 import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
 import org.apache.hadoop.hbase.ipc.CoprocessorRpcChannel;
+import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hbase.util.Writables;
+import org.apache.hadoop.io.Writable;
 import org.jboss.netty.util.internal.ConcurrentHashMap;
 
 import com.google.protobuf.Descriptors.MethodDescriptor;
@@ -62,12 +66,17 @@ import com.google.protobuf.ServiceException;
  *
  */
 public class SaltedHTable implements HTableInterface{
+  public static final String SLOTS_IN_SCAN = "__salted_slots_in_scan__";
   private static Map<ImmutableBytesWritable, KeySalter> saltedTables =
       new ConcurrentHashMap<ImmutableBytesWritable, KeySalter>();
   
   private KeySalter salter;
   private HTableInterface table;
 
+  public SaltedHTable(HTableInterface table) throws IOException {
+    this(table, getKeySalter(table));
+  }
+  
   public SaltedHTable(HTableInterface table, KeySalter salter) {
     this.table = table;
     this.salter = salter;
@@ -86,7 +95,14 @@ public class SaltedHTable implements HTableInterface{
    */
   @Override
   public ResultScanner getScanner(Scan scan) throws IOException {
-     return getScanner(scan, null);
+    byte[] slotsValue = scan.getAttribute(SLOTS_IN_SCAN);
+    if (slotsValue == null) {
+      return getScanner(scan, null);
+    } else {
+      SlotsWritable slotsWritable = new SlotsWritable();
+      Writables.getWritable(slotsValue, slotsWritable);
+      return getScanner(scan, slotsWritable.getSlots());
+    }
   }
 
   /**
@@ -833,5 +849,36 @@ public class SaltedHTable implements HTableInterface{
   public boolean checkAndMutate(byte[] row, byte[] family, byte[] qualifier, CompareOp compareOp,
       byte[] value, RowMutations mutation) throws IOException {
     throw new UnsupportedOperationException("not implemented");
+  }
+  
+  public static class SlotsWritable implements Writable {
+    private byte[][] slots;
+    
+    public SlotsWritable() {}
+    
+    public SlotsWritable(byte[][] slots) {
+      this.slots = slots;
+    }
+    
+    public byte[][] getSlots() {
+      return slots;
+    }
+
+    @Override
+    public void readFields(DataInput in) throws IOException {
+      int slotCount = in.readInt();
+      slots = new byte[slotCount][];
+      for (int i = 0; i < slotCount; ++i) {
+        slots[i] = Bytes.readByteArray(in);
+      }
+    }
+
+    @Override
+    public void write(DataOutput out) throws IOException {
+      out.writeInt(slots.length);
+      for (byte[] slot : slots) {
+        Bytes.writeByteArray(out, slot);
+      }
+    }
   }
 }

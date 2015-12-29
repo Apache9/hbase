@@ -57,7 +57,7 @@ import java.util.Iterator;
 public abstract class MultiTableInputFormatBase extends
     InputFormat<ImmutableBytesWritable, Result> {
 
-  final Log LOG = LogFactory.getLog(MultiTableInputFormatBase.class);
+  static final Log LOG = LogFactory.getLog(MultiTableInputFormatBase.class);
 
   /** Holds the set of scans used to define the input. */
   private List<Scan> scans;
@@ -156,48 +156,46 @@ public abstract class MultiTableInputFormatBase extends
       RegionSizeCalculator sizeCalculator = new RegionSizeCalculator(table);
 
       for (Scan scan : scanList) {
-        if (keys == null || keys.getFirst() == null ||
-                keys.getFirst().length == 0) {
-          throw new IOException("Expecting at least one region for table : "
-                  + tableNameStr);
-        }
-        int count = 0;
-        byte[] startRow = scan.getStartRow();
-        byte[] stopRow = scan.getStopRow();
-        for (int i = 0; i < keys.getFirst().length; i++) {
-          if (!includeRegionInSplit(keys.getFirst()[i], keys.getSecond()[i])) {
-            continue;
-          }
-
-          // determine if the given start and stop keys fall into the range
-          if ((startRow.length == 0 || keys.getSecond()[i].length == 0 ||
-                  Bytes.compareTo(startRow, keys.getSecond()[i]) < 0) &&
-                  (stopRow.length == 0 || Bytes.compareTo(stopRow,
-                  keys.getFirst()[i]) > 0)) {
-            byte[] splitStart = startRow.length == 0 ||
-                    Bytes.compareTo(keys.getFirst()[i], startRow) >= 0 ?
-                    keys.getFirst()[i] : startRow;
-            byte[] splitStop = (stopRow.length == 0 ||
-                    Bytes.compareTo(keys.getSecond()[i], stopRow) <= 0) &&
-                    keys.getSecond()[i].length > 0 ?
-                    keys.getSecond()[i] : stopRow;
-            HRegionLocation hregionLocation = table.getRegionLocation(
-                    keys.getFirst()[i], false);
-            String regionHostname = hregionLocation.getHostname();
-            HRegionInfo regionInfo = hregionLocation.getRegionInfo();
-            long regionSize = sizeCalculator.getRegionSize(
-                    regionInfo.getRegionName());
-            TableSplit split = new TableSplit(table.getName(), scan, splitStart,
-                    splitStop, regionHostname, regionSize);
-            splits.add(split);
-            if (LOG.isDebugEnabled())
-              LOG.debug("getSplits: split -> " + (count++) + " -> " + split);
-          }
-        }
+        splits.addAll(getSplits(table, scan, keys, sizeCalculator));
       }
       table.close();
     }
 
+    return splits;
+  }
+  
+  protected List<InputSplit> getSplits(HTable table, Scan scan, Pair<byte[][], byte[][]> keys,
+      RegionSizeCalculator sizeCalculator) throws IOException {
+    if (keys == null || keys.getFirst() == null || keys.getFirst().length == 0) {
+      throw new IOException("Expecting at least one region for table : " + table.getName());
+    }
+    List<InputSplit> splits = new ArrayList<InputSplit>();
+    int count = 0;
+    byte[] startRow = scan.getStartRow();
+    byte[] stopRow = scan.getStopRow();
+    for (int i = 0; i < keys.getFirst().length; i++) {
+      if (!includeRegionInSplit(keys.getFirst()[i], keys.getSecond()[i])) {
+        continue;
+      }
+
+      // determine if the given start and stop keys fall into the range
+      if ((startRow.length == 0 || keys.getSecond()[i].length == 0 || Bytes.compareTo(startRow,
+        keys.getSecond()[i]) < 0)
+          && (stopRow.length == 0 || Bytes.compareTo(stopRow, keys.getFirst()[i]) > 0)) {
+        byte[] splitStart = startRow.length == 0
+            || Bytes.compareTo(keys.getFirst()[i], startRow) >= 0 ? keys.getFirst()[i] : startRow;
+        byte[] splitStop = (stopRow.length == 0 || Bytes.compareTo(keys.getSecond()[i], stopRow) <= 0)
+            && keys.getSecond()[i].length > 0 ? keys.getSecond()[i] : stopRow;
+        HRegionLocation hregionLocation = table.getRegionLocation(keys.getFirst()[i], false);
+        String regionHostname = hregionLocation.getHostname();
+        HRegionInfo regionInfo = hregionLocation.getRegionInfo();
+        long regionSize = sizeCalculator.getRegionSize(regionInfo.getRegionName());
+        TableSplit split = new TableSplit(table.getName(), scan, splitStart, splitStop,
+            regionHostname, regionSize);
+        splits.add(split);
+        if (LOG.isDebugEnabled()) LOG.debug("getSplits: split -> " + (count++) + " -> " + split);
+      }
+    }
     return splits;
   }
 
@@ -252,5 +250,9 @@ public abstract class MultiTableInputFormatBase extends
    */
   protected void setTableRecordReader(TableRecordReader tableRecordReader) {
     this.tableRecordReader = tableRecordReader;
+  }
+  
+  protected TableRecordReader getTableRecordReader() {
+    return this.tableRecordReader;
   }
 }

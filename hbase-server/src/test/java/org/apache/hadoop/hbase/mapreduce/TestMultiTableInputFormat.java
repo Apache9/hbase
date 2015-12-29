@@ -59,10 +59,10 @@ import org.junit.experimental.categories.Category;
 public class TestMultiTableInputFormat {
 
   static final Log LOG = LogFactory.getLog(TestMultiTableInputFormat.class);
-  static final HBaseTestingUtility TEST_UTIL = new HBaseTestingUtility();
+  protected static final HBaseTestingUtility TEST_UTIL = new HBaseTestingUtility();
 
-  static final String TABLE_NAME = "scantest";
-  static final byte[] INPUT_FAMILY = Bytes.toBytes("contents");
+  protected static final String TABLE_NAME = "scantest";
+  protected static final byte[] INPUT_FAMILY = Bytes.toBytes("contents");
   static final String KEY_STARTROW = "startRow";
   static final String KEY_LASTROW = "stpRow";
 

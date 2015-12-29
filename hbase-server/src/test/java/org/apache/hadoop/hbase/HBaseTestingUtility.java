@@ -62,6 +62,7 @@ import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HConnection;
 import org.apache.hadoop.hbase.client.HTable;
+import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
@@ -111,6 +112,8 @@ import org.apache.zookeeper.KeeperException.NodeExistsException;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.ZooKeeper;
 import org.apache.zookeeper.ZooKeeper.States;
+
+import com.xiaomi.infra.hbase.salted.SaltedHTable;
 
 /**
  * Facility for testing HBase. Replacement for
@@ -1122,6 +1125,14 @@ public class HBaseTestingUtility extends HBaseCommonTestingUtility {
   throws IOException{
     return createTable(TableName.valueOf(tableName), new byte[][]{family});
   }
+  
+  public SaltedHTable createSaltedTable(byte[] tableName, byte[] family, int slotsCount)
+      throws IOException {
+    HTableDescriptor desc = new HTableDescriptor(TableName.valueOf(tableName));
+    desc.setSlotsCount(slotsCount);
+    return new SaltedHTable(createTable(desc, new byte[][] { family }, new Configuration(
+        getConfiguration())));
+  }
 
   /**
    * Create a table.
@@ -1712,7 +1723,7 @@ public class HBaseTestingUtility extends HBaseCommonTestingUtility {
    * @return Count of rows loaded.
    * @throws IOException
    */
-  public int loadTable(final HTable t, final byte[] f, boolean writeToWAL) throws IOException {
+  public int loadTable(final HTableInterface t, final byte[] f, boolean writeToWAL) throws IOException {
     return loadTable(t, new byte[][] {f}, null, writeToWAL);
   }
 
@@ -1747,7 +1758,7 @@ public class HBaseTestingUtility extends HBaseCommonTestingUtility {
    * @return Count of rows loaded.
    * @throws IOException
    */
-  public int loadTable(final HTable t, final byte[][] f, byte[] value, boolean writeToWAL) throws IOException {
+  public int loadTable(final HTableInterface t, final byte[][] f, byte[] value, boolean writeToWAL) throws IOException {
     t.setAutoFlush(false);
     int rowCount = 0;
     for (byte[] row : HBaseTestingUtility.ROWS) {
