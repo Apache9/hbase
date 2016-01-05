@@ -120,6 +120,6 @@ public class NameService {
       throw new IOException("Unrecognized scheme: " + entry.getScheme());
     }
     // it just copy configuration and change it, the old configuration do not change
-    return entry.createClusterConf(null);
+    return entry.createClusterConf(conf);
   }
 }
