@@ -1,15 +1,17 @@
 package org.apache.hadoop.hbase.mapreduce.salted;
 
-import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.mapreduce.MultiTableInputFormat;
 import org.apache.hadoop.hbase.mapreduce.MultiTableInputFormatBase;
 import org.apache.hadoop.hbase.mapreduce.TestMultiTableInputFormat;
+import org.apache.hadoop.hbase.testclassification.LargeTests;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.BeforeClass;
+import org.junit.experimental.categories.Category;
 
+@Category(LargeTests.class)
 public class TestSaltedMultiTableInputFormat extends TestMultiTableInputFormat {
   @BeforeClass
   public static void setUpBeforeClass() throws Exception {

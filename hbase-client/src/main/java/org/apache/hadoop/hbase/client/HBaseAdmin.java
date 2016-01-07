@@ -530,6 +530,9 @@ public class HBaseAdmin implements Abortable, Closeable {
     
     // use slots to pre-split table if splitKeys is not set and the table is salted
     // there is no change to set splitKeys in coprocessor of server-side so that we reset here
+    if (desc.getSlotsCount() == null && desc.getKeySalter() != null) {
+      throw new IOException("must specify SLOTS_COUNT when KEY_SALTER is set");
+    }
     if (splitKeys == null && desc.isSalted()) {
       KeySalter salter = SaltedHTable.createKeySalter(desc.getKeySalter(), desc.getSlotsCount());
       if (salter.getAllSalts().length > 1) {
@@ -2110,16 +2113,21 @@ public class HBaseAdmin implements Abortable, Closeable {
   protected void checkSaltedAttributeUnModified(TableName tableName, HTableDescriptor modifiedHtd)
       throws IOException {
     HTableDescriptor htd = this.getTableDescriptor(tableName);
-    boolean saltedAttributeUnModified = true;
-    if (htd.getKeySalter() == null || modifiedHtd.getKeySalter() == null) {
-      saltedAttributeUnModified = (htd.getKeySalter() == modifiedHtd.getKeySalter());
-    } else {
-      saltedAttributeUnModified = htd.getKeySalter().equals(modifiedHtd.getKeySalter());
+    boolean saltedAttributeUnModified = false;
+    if (htd.isSalted() != modifiedHtd.isSalted()) {
+      saltedAttributeUnModified = true;
     }
-    if (!saltedAttributeUnModified) {
-      throw new IOException("can not modify the KeySalter attribute of table : "
-          + tableName);
+    if (htd.isSalted()) {
+      if (!htd.getSlotsCount().equals(modifiedHtd.getSlotsCount())
+          || !htd.getKeySalter().equals(modifiedHtd.getKeySalter())) {
+        saltedAttributeUnModified = true;
+      }
     }
+    
+    if (saltedAttributeUnModified) {
+      throw new IOException("can not modify the salted attribute of table : "
+           + tableName);
+     }
   }
 
   public void modifyTable(final byte[] tableName, final HTableDescriptor htd)

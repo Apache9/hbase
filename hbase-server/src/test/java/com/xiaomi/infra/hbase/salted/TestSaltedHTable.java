@@ -199,6 +199,15 @@ public class TestSaltedHTable {
   @Test
   public void testCreateSaltedTable() throws IOException {
     TEST_UTIL.deleteTable(TEST_TABLE);
+    HTableDescriptor desc = getUnSaltedHTableDescriptor(TEST_TABLE);
+    desc.setValue(HTableDescriptor.KEY_SALTER, NBytePrefixKeySalter.class.getName());
+    desc.setValue(HTableDescriptor.SLOTS_COUNT, null);
+    try {
+      admin.createTable(desc);
+    } catch (IOException e) {
+      Assert.assertTrue(e.getMessage().indexOf("must specify SLOTS_COUNT when KEY_SALTER is set") >= 0);
+    }
+
     // set slots count
     int slotCount = 10;
     HTable table = toHTable(createSaltedTable(slotCount));
@@ -214,7 +223,7 @@ public class TestSaltedHTable {
     // won't pre-split by salted-slots if splitKeys are set
     TEST_UTIL.deleteTable(TEST_TABLE);
     byte[] splitKey = Bytes.toBytes("aa");
-    HTableDescriptor desc = getSaltedHTableDescriptor(defaultSlotsCount);
+    desc = getSaltedHTableDescriptor(defaultSlotsCount);
     admin.createTable(desc, new byte[][]{splitKey});
     table = toHTable(connection.getTable(TEST_TABLE));
     stopKeys = table.getEndKeys();
@@ -229,14 +238,14 @@ public class TestSaltedHTable {
     createSaltedTable();
     HTableDescriptor desc = admin.getTableDescriptor(TEST_TABLE);
 
-    // unset KeySalter
-    desc.setSalted(null, 1);
+    // unset slots count
+    desc.setValue(HTableDescriptor.SLOTS_COUNT, null);
     try {
       admin.modifyTable(TEST_TABLE, desc);
       Assert.fail();
     } catch (IOException e) {
       Assert
-          .assertTrue(e.getMessage().indexOf("can not modify the KeySalter attribute of table") >= 0);
+          .assertTrue(e.getMessage().indexOf("can not modify the salted attribute of table") >= 0);
     }
     
     // use another Salter class
@@ -246,20 +255,20 @@ public class TestSaltedHTable {
       Assert.fail();
     } catch (IOException e) {
       Assert
-          .assertTrue(e.getMessage().indexOf("can not modify the KeySalter attribute of table") >= 0);
+          .assertTrue(e.getMessage().indexOf("can not modify the salted attribute of table") >= 0);
     }
     
-    // set KeySalter
+    // set KeySalter in unsalted table
     TEST_UTIL.deleteTable(TEST_TABLE);
     createUnSaltedTable();
     desc = admin.getTableDescriptor(TEST_TABLE);
-    desc.setSalted(NBytePrefixKeySalter.class.getName(), 1);
+    desc.setSlotsCount(1);
     try {
       admin.modifyTable(TEST_TABLE, desc);
       Assert.fail();
     } catch (IOException e) {
       Assert
-          .assertTrue(e.getMessage().indexOf("can not modify the KeySalter attribute of table") >= 0);
+          .assertTrue(e.getMessage().indexOf("can not modify the salted attribute of table") >= 0);
     }
   }
   
