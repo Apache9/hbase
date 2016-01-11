@@ -111,6 +111,7 @@ import org.apache.hadoop.hbase.io.HeapSize;
 import org.apache.hadoop.hbase.io.TimeRange;
 import org.apache.hadoop.hbase.io.hfile.BlockCache;
 import org.apache.hadoop.hbase.io.hfile.CacheConfig;
+import org.apache.hadoop.hbase.ipc.CallerDisconnectedException;
 import org.apache.hadoop.hbase.ipc.CoprocessorProtocol;
 import org.apache.hadoop.hbase.ipc.HBaseRPC;
 import org.apache.hadoop.hbase.ipc.HBaseServer;
@@ -3850,6 +3851,8 @@ public class HRegion implements HeapSize { // , Writable{
           } catch (WrongRegionException wre) {
             // recoverable (file doesn't fit in region)
             failures.add(p);
+          } catch (CallerDisconnectedException cde) {
+            throw cde;
           } catch (IOException ioe) {
             // unrecoverable (hdfs problem)
             ioes.add(ioe);
