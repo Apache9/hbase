@@ -65,6 +65,8 @@ implements Configurable {
   public static final String SCAN_CACHEBLOCKS = "hbase.mapreduce.scan.cacheblocks";
   /** The number of rows for caching that will be passed to scanners. */
   public static final String SCAN_CACHEDROWS = "hbase.mapreduce.scan.cachedrows";
+  /** The number of raw keyvalues to scan (include filtered ones) for each next call */
+  public static final String SCAN_RAWLIMIT = "hbase.mapreduce.scan.rawlimit";
 
   /** The configuration. */
   private Configuration conf = null;
@@ -142,6 +144,10 @@ implements Configurable {
 
         if (conf.get(SCAN_CACHEDROWS) != null) {
           scan.setCaching(Integer.parseInt(conf.get(SCAN_CACHEDROWS)));
+        }
+
+        if (conf.get(SCAN_RAWLIMIT) != null) {
+          scan.setRawLimit(Integer.parseInt(conf.get(SCAN_RAWLIMIT)));
         }
 
         // false by default, full table scans generate too much BC churn
