@@ -237,7 +237,7 @@ public class ReplicationSource extends Thread
     this.checkIfQueueRecovered(peerClusterZnode);
 
     try {
-      if (zkHelper.getPeerProtocol(peerClusterZnode)
+      if (zkHelper.getPeerProtocol(peerId)
           .equals(ReplicationZookeeper.PeerProtocol.THRIFT)) {
         thriftClient = new ThriftClient(conf, peerId);
         LOG.info("Starting new replication peer " + peerId + " with Thrift protocol over port");
