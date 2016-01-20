@@ -249,4 +249,10 @@ public class MXBeanImpl implements MXBean {
     }
     return new LinkedList<ReplicationLoad>(replications.values());
   }
+
+  @Override
+  public List<ServerCrashStatistics> getServerCrashStatistics() {
+    AssignmentManager am = master.getAssignmentManager();
+    return am.getCrashedServersStatistics();
+  }
 }
