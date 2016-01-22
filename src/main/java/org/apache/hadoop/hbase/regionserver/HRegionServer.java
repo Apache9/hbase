@@ -452,6 +452,8 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
   /** The health check chore. */
   private HealthCheckChore healthCheckChore;
 
+  private int blockMissingCountWarnThreshold;
+  
   /**
    * Starts a HRegionServer at the default location
    *
@@ -497,6 +499,10 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
         HConstants.HBASE_REGIONSERVER_LEASE_PERIOD_KEY,
         HConstants.DEFAULT_HBASE_REGIONSERVER_LEASE_PERIOD);
 
+    this.blockMissingCountWarnThreshold = conf.getInt(
+        HConstants.BLOCK_MISSING_COUNT_WARN_THRESHOLD_KEY,
+        HConstants.DEFAULT_BLOCK_MISSING_COUNT_WARN_VALUE);
+    
     this.abortRequested = false;
     this.stopped = false;
 
@@ -1939,11 +1945,26 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
       // past N period block cache hit / hit caching ratios
       cacheStats.rollMetricsPeriod();
       ratio = cacheStats.getHitRatioPastNPeriods();
-      percent = (int) (ratio * 100);
-      this.metrics.blockCacheHitRatioPastNPeriods.set(percent);
+      int hitPercentPastNPeriod = (int) (ratio * 100);
+      this.metrics.blockCacheHitRatioPastNPeriods.set(hitPercentPastNPeriod);
       ratio = cacheStats.getHitCachingRatioPastNPeriods();
-      percent = (int) (ratio * 100);
-      this.metrics.blockCacheHitCachingRatioPastNPeriods.set(percent);
+      int hitCachingPercentPastNPeriod = (int) (ratio * 100);
+      this.metrics.blockCacheHitCachingRatioPastNPeriods.set(hitCachingPercentPastNPeriod);
+      this.metrics.blockCacheSumRequestCountsPastNPeriods.set(cacheStats
+          .getSumRequestCountsPastNPeriods());
+      this.metrics.blockCacheSumRequestCachingCountsPastNPeriods.set(cacheStats
+          .getSumRequestCachingCountsPastNPeriods());
+      
+      int missingBlocksPastNPeriods = (int) (this.metrics.blockCacheSumRequestCountsPastNPeriods
+          .get() * (1 - hitPercentPastNPeriod));
+      if (missingBlocksPastNPeriods >= blockMissingCountWarnThreshold) {
+        LOG.info("Block read stats in past N periods, readBlocks="
+            + this.metrics.blockCacheSumRequestCountsPastNPeriods.get() + ", hitRatio="
+            + hitPercentPastNPeriod + "%, missBlocks=" + missingBlocksPastNPeriods
+            + ", readCachingBlocks=" + this.metrics.blockCacheSumRequestCachingCountsPastNPeriods.get()
+            + ", hitCachingRatio=" + hitCachingPercentPastNPeriod + "%, missCachingBlocks="
+            + (int)(this.metrics.blockCacheSumRequestCachingCountsPastNPeriods.get() * (1 - hitCachingPercentPastNPeriod)));
+      }
     }
     float localityIndex = hdfsBlocksDistribution.getBlockLocalityIndex(
       getServerName().getHostname());

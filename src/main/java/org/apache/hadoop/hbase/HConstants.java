@@ -776,6 +776,15 @@ public final class HConstants {
       "hbase.client.start.log.errors.counter";
   public static final int DEFAULT_START_LOG_ERRORS_AFTER_COUNT = 9;
 
+  public static final String BLOCK_MISSING_COUNT_WARN_THRESHOLD_KEY =
+      "hbase.block.missing.count.warn.threshold";
+  /**
+   * For hdd, the max iops is about 100 for each disk, we usually have 12 disks each machine, 
+   * so that the total iops is 360 when disk util is about 30%. Should configure different
+   * value for ssd.
+   */
+  public static final int DEFAULT_BLOCK_MISSING_COUNT_WARN_VALUE = 360;
+  
   private HConstants() {
     // Can't be instantiated with this ctor.
   }

@@ -130,10 +130,18 @@ public class RegionServerMetrics implements Updater {
 
   /** Block hit ratio for past N periods. */
   public final MetricsIntValue blockCacheHitRatioPastNPeriods = new MetricsIntValue("blockCacheHitRatioPastNPeriods", registry);
+  
+  /** Block sum request count for past N period. */
+  public final MetricsLongValue blockCacheSumRequestCountsPastNPeriods = new MetricsLongValue(
+      "blockCacheSumRequestCountsPastNPeriods", registry);
 
   /** Block hit caching ratio for past N periods */
   public final MetricsIntValue blockCacheHitCachingRatioPastNPeriods = new MetricsIntValue("blockCacheHitCachingRatioPastNPeriods", registry);
 
+  /** Block sum caching request count for past N periods */
+  public final MetricsLongValue blockCacheSumRequestCachingCountsPastNPeriods = new MetricsLongValue(
+      "blockCacheSumRequestCachingCountsPastNPeriods", registry);
+  
   /*
    * Count of requests to the regionservers since last call to metrics update
    */
@@ -458,6 +466,8 @@ public class RegionServerMetrics implements Updater {
       this.hdfsBlocksLocalityIndex.pushMetric(this.metricsRecord);
       this.blockCacheHitRatioPastNPeriods.pushMetric(this.metricsRecord);
       this.blockCacheHitCachingRatioPastNPeriods.pushMetric(this.metricsRecord);
+      this.blockCacheSumRequestCountsPastNPeriods.pushMetric(this.metricsRecord);
+      this.blockCacheSumRequestCachingCountsPastNPeriods.pushMetric(this.metricsRecord);
 
       // Mix in HFile and HLog metrics
       // Be careful. Here is code for MTVR from up in hadoop:
@@ -676,6 +686,10 @@ public class RegionServerMetrics implements Updater {
       Long.valueOf(this.blockCacheHitRatioPastNPeriods.get())+"%");
     sb = Strings.appendKeyValue(sb, this.blockCacheHitCachingRatioPastNPeriods.getName(),
         Long.valueOf(this.blockCacheHitCachingRatioPastNPeriods.get())+"%");
+    sb = Strings.appendKeyValue(sb, this.blockCacheSumRequestCountsPastNPeriods.getName(),
+        Long.valueOf(this.blockCacheSumRequestCountsPastNPeriods.get()));
+    sb = Strings.appendKeyValue(sb, this.blockCacheSumRequestCachingCountsPastNPeriods.getName(),
+        Long.valueOf(this.blockCacheSumRequestCachingCountsPastNPeriods.get()));
     sb = Strings.appendKeyValue(sb, this.hdfsBlocksLocalityIndex.getName(),
         Long.valueOf(this.hdfsBlocksLocalityIndex.get()));
     sb = Strings.appendKeyValue(sb, "slowHLogAppendCount",
