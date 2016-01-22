@@ -1258,10 +1258,13 @@ public class HRegion implements HeapSize { // , Writable{
   /** @return info about the last flushes <time, size> */
   public List<Pair<Long,Long>> getRecentFlushInfo() {
     this.lock.readLock().lock();
-    List<Pair<Long,Long>> ret = this.recentFlushes;
-    this.recentFlushes = new ArrayList<Pair<Long,Long>>();
-    this.lock.readLock().unlock();
-    return ret;
+    try {
+      List<Pair<Long,Long>> ret = this.recentFlushes;
+      this.recentFlushes = new ArrayList<Pair<Long,Long>>();
+      return ret;
+    } finally {
+      this.lock.readLock().unlock();
+    }
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -5327,16 +5330,19 @@ public class HRegion implements HeapSize { // , Writable{
         }
       }
     } finally {
-      if (acquiredLocks != null) {
-        for (Integer lid : acquiredLocks.values()) {
-          releaseRowLock(lid);
+      try {
+        if (acquiredLocks != null) {
+          for (Integer lid : acquiredLocks.values()) {
+            releaseRowLock(lid);
+          }
         }
+        if (flush) {
+          // 17. Flush cache if needed. Do it outside update lock.
+          requestFlush();
+        }
+      } finally {
+        closeRegionOperation();
       }
-      if (flush) {
-        // 17. Flush cache if needed. Do it outside update lock.
-        requestFlush();
-      }
-      closeRegionOperation();
     }
     return true;
   }
@@ -5510,10 +5516,13 @@ public class HRegion implements HeapSize { // , Writable{
         syncOrDefer(txid, append.getDurability());
       }
     } finally {
-      if (w != null) {
-        mvcc.completeMemstoreInsert(w);
+      try {
+        if (w != null) {
+          mvcc.completeMemstoreInsert(w);
+        }
+      } finally {
+        closeRegionOperation();
       }
-      closeRegionOperation();
     }
 
 
@@ -5739,10 +5748,13 @@ public class HRegion implements HeapSize { // , Writable{
         syncOrDefer(txid, Durability.USE_DEFAULT);
       }
     } finally {
-      if (w != null) {
-        mvcc.completeMemstoreInsert(w);
+      try {
+        if (w != null) {
+          mvcc.completeMemstoreInsert(w);
+        }
+      } finally {
+        closeRegionOperation();
       }
-      closeRegionOperation();
       long afterNs = System.nanoTime();
       this.opMetrics.updateIncrementMetrics(increment.getFamilyMap().keySet(), (afterNs - beforeNs) / 1000);
     }
@@ -5846,10 +5858,13 @@ public class HRegion implements HeapSize { // , Writable{
         syncOrDefer(txid, Durability.USE_DEFAULT);
       }
     } finally {
-      if (w != null) {
-        mvcc.completeMemstoreInsert(w);
+      try {
+        if (w != null) {
+          mvcc.completeMemstoreInsert(w);
+        }
+      } finally {
+        closeRegionOperation();
       }
-      closeRegionOperation();
     }
 
     // do after lock

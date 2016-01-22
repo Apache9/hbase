@@ -21,6 +21,7 @@ package org.apache.hadoop.hbase.regionserver;
 
 import java.io.IOException;
 import java.lang.Thread.UncaughtExceptionHandler;
+import java.lang.Throwable;
 import java.lang.management.ManagementFactory;
 import java.util.ConcurrentModificationException;
 import java.util.HashMap;
@@ -253,8 +254,8 @@ public class MemStoreFlusher implements FlushRequester {
           continue;
         } catch (ConcurrentModificationException ex) {
           continue;
-        } catch (Exception ex) {
-          LOG.error("Cache flusher failed for entry " + fqe, ex);
+        } catch (Throwable t) {
+          LOG.error("Cache flusher failed for entry " + fqe, t);
           if (!server.checkFileSystem()) {
             break;
           }
