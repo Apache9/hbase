@@ -360,6 +360,21 @@ public class MemStoreFlusher implements FlushRequester {
     }
   }
 
+  /**
+   * Only interrupt once it's done with a run through the work loop.
+   */
+  void tryInterruptIfNecessary() {
+    if (lock.writeLock().tryLock()) {
+      try {
+        for (FlushHandler flushHander : flushHandlers) {
+          if (flushHander != null) flushHander.interrupt();
+        }
+      } finally {
+        lock.writeLock().unlock();
+      }
+    }
+  }
+
   synchronized void start(UncaughtExceptionHandler eh) {
     ThreadFactory flusherThreadFactory = Threads.newDaemonThreadFactory(
         server.getServerName().toString() + "-MemStoreFlusher", eh);

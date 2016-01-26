@@ -47,6 +47,8 @@ import java.util.Map.Entry;
 import java.util.Random;
 import java.util.Set;
 import java.util.SortedMap;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
@@ -227,6 +229,8 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
   protected volatile boolean abortRequested;
 
   private volatile boolean killed = false;
+
+  private volatile boolean queueFullDetected = false;
 
   // If false, the file system has become unavailable
   protected volatile boolean fsOk;
@@ -900,6 +904,15 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
         abort("Unhandled exception: " + t.getMessage(), t);
       }
     }
+
+    // Add a timer to monitor the procedure in case something hang
+    Timer exitMonitor = new Timer(true);
+    exitMonitor.schedule(new TimerTask() {
+      public void run() {
+        System.exit(-1);
+      }
+    }, conf.getLong("hbase.exit.timeout.ms", 30000));
+
     // Run shutdown.
     if (mxBean != null) {
       MBeanUtil.unregisterMBean(mxBean);
@@ -928,10 +941,28 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
 
     // Send interrupts to wake up threads if sleeping so they notice shutdown.
     // TODO: Should we check they are alive? If OOME could have exited already
-    if (this.cacheFlusher != null) this.cacheFlusher.interruptIfNecessary();
+    if (this.cacheFlusher != null) {
+      if (queueFullDetected) {
+        this.cacheFlusher.tryInterruptIfNecessary();
+      } else {
+        this.cacheFlusher.interruptIfNecessary();
+      }
+    }
     if (this.compactSplitThread != null) this.compactSplitThread.interruptIfNecessary();
-    if (this.hlogRoller != null) this.hlogRoller.interruptIfNecessary();
-    if (this.metaHLogRoller != null) this.metaHLogRoller.interruptIfNecessary();
+    if (this.hlogRoller != null) {
+      if (queueFullDetected) {
+        this.hlogRoller.tryInterruptIfNecessary();
+      } else {
+        this.hlogRoller.interruptIfNecessary();
+      }
+    }
+    if (this.metaHLogRoller != null) { 
+      if (queueFullDetected) {
+        this.metaHLogRoller.tryInterruptIfNecessary();
+      } else {
+        this.metaHLogRoller.interruptIfNecessary();
+      }
+    }
     if (this.compactionChecker != null)
       this.compactionChecker.interrupt();
     if (this.queueFullDetector != null) {
@@ -952,12 +983,12 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
 
     // Stop the snapshot handler, forcefully killing all running tasks
     try {
-      if (snapshotManager != null) snapshotManager.stop(this.abortRequested || this.killed);
+      if (snapshotManager != null) snapshotManager.stop(this.abortRequested || this.killed || this.queueFullDetected);
     } catch (IOException e) {
       LOG.warn("Failed to close snapshot handler cleanly", e);
     }
 
-    if (this.killed) {
+    if (this.killed || this.queueFullDetected) {
       // Just skip out w/o closing regions.  Used when testing.
     } else if (abortRequested) {
       if (this.fsOk) {
@@ -974,7 +1005,7 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
     if (this.catalogTracker != null) this.catalogTracker.stop();
 
     // Closing the compactSplit thread before closing meta regions
-    if (!this.killed && containsMetaTableRegions()) {
+    if (!this.killed && !this.queueFullDetected && containsMetaTableRegions()) {
       if (!abortRequested || this.fsOk) {
         if (this.compactSplitThread != null) {
           this.compactSplitThread.join();
@@ -984,14 +1015,14 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
       }
     }
 
-    if (!this.killed && this.fsOk) {
+    if (!this.killed && !this.queueFullDetected && this.fsOk) {
       waitOnAllRegionsToClose(abortRequested);
       LOG.info("stopping server " + this.serverNameFromMasterPOV +
         "; all regions closed.");
     }
 
     //fsOk flag may be changed when closing regions throws exception.
-    if (!this.killed && this.fsOk) {
+    if (!this.killed && !this.queueFullDetected && this.fsOk) {
       closeWAL(abortRequested ? false : true);
     }
 
@@ -1003,7 +1034,7 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
       parallelSFSeekExecutor.shutdownNow();
     }
 
-    if (!killed) {
+    if (!killed && !queueFullDetected) {
       join();
     }
 
@@ -1672,6 +1703,7 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
             shouldExit = true;
           }
           if (shouldExit) {
+            queueFullDetected = true;
             abort("Detected queue full and canot come back to normal state in a long duration");
           }
         }
