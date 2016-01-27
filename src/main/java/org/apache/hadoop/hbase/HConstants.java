@@ -785,6 +785,9 @@ public final class HConstants {
    */
   public static final int DEFAULT_BLOCK_MISSING_COUNT_WARN_VALUE = 360;
   
+  public static final String MULTI_REQUEST_MAX_ACTION_COUNT = "multi.requst.max.action.count";
+  public static final int DEFAULT_MULTI_REQUEST_MAX_ACTION_COUNT = 500;
+  
   private HConstants() {
     // Can't be instantiated with this ctor.
   }

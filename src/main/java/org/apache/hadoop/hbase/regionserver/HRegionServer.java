@@ -457,6 +457,8 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
   private HealthCheckChore healthCheckChore;
 
   private int blockMissingCountWarnThreshold;
+
+  private int multiRequestMaxActionCount;
   
   /**
    * Starts a HRegionServer at the default location
@@ -491,6 +493,8 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
     this.maxScannerResultSize = conf.getLong(
       HConstants.HBASE_CLIENT_SCANNER_MAX_RESULT_SIZE_KEY,
       HConstants.DEFAULT_HBASE_CLIENT_SCANNER_MAX_RESULT_SIZE);
+    this.multiRequestMaxActionCount = conf.getInt(HConstants.MULTI_REQUEST_MAX_ACTION_COUNT,
+      HConstants.DEFAULT_MULTI_REQUEST_MAX_ACTION_COUNT);
 
     this.numRegionsToReport = conf.getInt(
       "hbase.regionserver.numregionstoreport", 10);
@@ -4361,6 +4365,11 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
   @Override
   public <R> MultiResponse multi(MultiAction<R> multi) throws IOException {
     checkOpen();
+    if (multi.size() > multiRequestMaxActionCount) {
+      throw new DoNotRetryIOException("multi request action count exceeded, maxActionCount="
+          + multiRequestMaxActionCount);
+    }
+    
     MultiResponse response = new MultiResponse();
     
     TracerUtils.addAnnotation("start a multi actions, actions size:" + multi.size());
