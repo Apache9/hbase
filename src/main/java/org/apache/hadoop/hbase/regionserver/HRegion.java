@@ -516,7 +516,7 @@ public class HRegion implements HeapSize { // , Writable{
     }
     
     this.warnThresholdForRawScanned = conf.getInt(HConstants.WARN_THRESHOLD_FOR_RAW_SCANNED_COUNT,
-      Integer.MAX_VALUE);
+      HConstants.DEFAULT_WARN_THRESHOLD_FOR_RAW_SCANNED);
     
     if (LOG.isDebugEnabled()) {
       // Write out region name as string and its encoded name.
