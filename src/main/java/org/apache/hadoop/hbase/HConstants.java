@@ -787,6 +787,9 @@ public final class HConstants {
   
   public static final String MULTI_REQUEST_MAX_ACTION_COUNT = "multi.requst.max.action.count";
   public static final int DEFAULT_MULTI_REQUEST_MAX_ACTION_COUNT = 500;
+
+  public static final String WARN_THRESHOLD_FOR_RAW_SCANNED_COUNT = "hbase.warn.threshold.for.raw.scanned.count";
+  public static final int DEFAULT_WARN_THRESHOLD_FOR_RAW_SCANNED = 500;
   
   private HConstants() {
     // Can't be instantiated with this ctor.

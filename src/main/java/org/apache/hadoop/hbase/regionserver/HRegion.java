@@ -382,6 +382,7 @@ public class HRegion implements HeapSize { // , Writable{
 
   // Coprocessor host
   private RegionCoprocessorHost coprocessorHost;
+  private int warnThresholdForRawScanned = Integer.MAX_VALUE;
 
   /**
    * Name of the region info file that resides just under the region directory.
@@ -514,6 +515,10 @@ public class HRegion implements HeapSize { // , Writable{
       // TODO: revisit if coprocessors should load in other cases
       this.coprocessorHost = new RegionCoprocessorHost(this, rsServices, conf);
     }
+    
+    this.warnThresholdForRawScanned = conf.getInt(HConstants.WARN_THRESHOLD_FOR_RAW_SCANNED_COUNT,
+      HConstants.DEFAULT_WARN_THRESHOLD_FOR_RAW_SCANNED);
+    
     if (LOG.isDebugEnabled()) {
       // Write out region name as string and its encoded name.
       LOG.debug("Instantiated " + this);
@@ -4098,6 +4103,7 @@ public class HRegion implements HeapSize { // , Writable{
     @Override
     public ScannerStatus nextRaw(List<KeyValue> outResults, final int limit, final int rawLimit,
         String metric) throws IOException {
+      int beforeScanned = outResults.size();
       ScannerStatus status;
       if (outResults.isEmpty()) {
         // Usually outResults is empty. This is true when next is called
@@ -4108,10 +4114,29 @@ public class HRegion implements HeapSize { // , Writable{
         status = nextInternal(tmpList, limit, rawLimit, metric);
         outResults.addAll(tmpList);
       }
+      
+      if (status.getRawValueScanned() >= warnThresholdForRawScanned) {
+        int scanned = outResults.size() - beforeScanned;
+        KeyValue kv = null;
+        if (scanned <= 0) {
+          kv = status.next();
+        } else {
+          kv = outResults.get(outResults.size() - 1);
+        }
+        String rowString = null;
+        if (kv != null) {
+          rowString = Bytes.toStringBinary(kv.getRow());
+        }
+        LOG.warn("TooMany raw scanned kvs for read, region: " + region.getRegionNameAsString()
+            + ", row: " + rowString + ", rawScanned: " + status.getRawValueScanned()
+            + ", returned: " + scanned);
+      }
+      
       resetFilters();
       if (isFilterDone()) {
         return ScannerStatus.done(status.getRawValueScanned());
       }
+      
       return status;
     }
 
