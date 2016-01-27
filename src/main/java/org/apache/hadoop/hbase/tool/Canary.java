@@ -49,6 +49,7 @@ import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.TableNotFoundException;
+import org.apache.hadoop.hbase.catalog.MetaReader;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HConnection;
 import org.apache.hadoop.hbase.client.HConnectionManager;
@@ -298,6 +299,7 @@ public final class Canary implements Tool {
   private static final Log LOG = LogFactory.getLog(Canary.class);
 
   private Configuration conf = null;
+  private Configuration confForSmallScan = null;
   private HBaseAdmin admin = null;
   private long interval = 0;
   private ExecutorService executor; // threads to retrieve data from regionservers
@@ -384,6 +386,9 @@ public final class Canary implements Tool {
     
     // initialize HBase conf and admin
     if (conf == null) conf = HBaseConfiguration.create();
+    confForSmallScan = new Configuration(conf);
+    confForSmallScan.setInt(HConstants.HBASE_META_SCANNER_CACHING, 1);
+    
     connection = HConnectionManager.createConnection(this.conf);
     String hostname =
         conf.get(
@@ -571,13 +576,21 @@ public final class Canary implements Tool {
     final AtomicBoolean exist = new AtomicBoolean(false);
     MetaScannerVisitor visitor = new MetaScannerVisitorBase() {
       @Override
-      public boolean processRow(Result row) throws IOException {
-        exist.set(true);
-        // break the meta scan once region hit
+      public boolean processRow(Result r) throws IOException {
+        HRegionInfo current =
+          MetaReader.parseHRegionInfoFromCatalogResult(r, HConstants.REGIONINFO_QUALIFIER);
+        if (current == null) {
+          LOG.warn("No serialized HRegionInfo in " + r);
+          return true;
+        }
+        if (Bytes.equals(tableName, current.getTableName())) {
+          // break the meta scan once region hit
+          exist.set(true);
+        }
         return false;
       }
     };
-    MetaScanner.metaScan(conf, connection, visitor, tableName);
+    MetaScanner.metaScan(confForSmallScan, connection, visitor, tableName);
     return exist.get();
   }
   
