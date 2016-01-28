@@ -208,6 +208,9 @@ public class HBaseTestingUtility {
 
     // In case test is stopped by System.exit
     conf.setLong("hbase.exit.timeout.ms", 3600000);
+
+    // Many ut use loadTable(), which exceed the default multi request max action count
+    conf.setInt(HConstants.MULTI_REQUEST_MAX_ACTION_COUNT, 10000);
   }
 
   private void setHDFSClientRetryProperty() {
