@@ -127,7 +127,7 @@ public class AccessCounter extends Chore {
     if (!isCounterEnabled()) {
       return;
     }
-    CounterKey key = new CounterKey(user, tableName, family, qualifier, AccessType.READ);
+    CounterKey key = new CounterKey(user.getShortName(), tableName, family, qualifier, AccessType.READ);
     counter.incrementAndGet(key);
   }
   
@@ -135,8 +135,22 @@ public class AccessCounter extends Chore {
     if (!isCounterEnabled()) {
       return;
     }
-    CounterKey key = new CounterKey(user, tableName, family, qualifier, AccessType.WRITE);
+    CounterKey key = new CounterKey(user.getShortName(), tableName, family, qualifier, AccessType.WRITE);
     counter.incrementAndGet(key);
+  }
+
+  protected void addReadCount(CounterKey key, long delta) {
+    if (!isCounterEnabled()) {
+      return;
+    }
+    counter.addAndGet(key, delta);
+  }
+
+  protected void addWriteCount(CounterKey key, long delta) {
+    if (!isCounterEnabled()) {
+      return;
+    }
+    counter.addAndGet(key, delta);
   }
 
   @VisibleForTesting
@@ -144,27 +158,27 @@ public class AccessCounter extends Chore {
     this.timestamp = timestamp;
   }
   
-  private enum AccessType {
+  public enum AccessType {
     READ,
     WRITE
   }
   
-  class CounterKey {
+  public static class CounterKey {
     private String userName;
-    private String tableName;
+    private byte[] tableName;
     private byte[] column;
     private AccessType type;
     
-    public CounterKey(User user, byte[] tableName, byte[] family, byte[] qualifier, AccessType type) {
-      this.userName = user.getShortName();
-      this.tableName = Bytes.toString(tableName);
+    public CounterKey(String userName, byte[] tableName, byte[] family, byte[] qualifier, AccessType type) {
+      this.userName = userName;
+      this.tableName = tableName;
       this.column = Bytes.add(family, COLUMN_SEPARATOR, qualifier);
       this.type = type;
     }
     
     public byte[] getRowKey(long timestamp) {
-      return Bytes.toBytes(userName + KEY_DELIMITER + tableName + KEY_DELIMITER
-          + new SimpleDateFormat("yyyy-MM-dd,HH:mm:ss").format(timestamp));
+      return Bytes.add(Bytes.toBytes(userName + KEY_DELIMITER), tableName, Bytes
+          .toBytes(KEY_DELIMITER + new SimpleDateFormat("yyyy-MM-dd,HH:mm:ss").format(timestamp)));
     }
     
     public String getUserName() {
@@ -175,11 +189,11 @@ public class AccessCounter extends Chore {
       this.userName = userName;
     }
 
-    public String getTableName() {
+    public byte[] getTableName() {
       return tableName;
     }
 
-    public void setTableName(String tableName) {
+    public void setTableName(byte[] tableName) {
       this.tableName = tableName;
     }
 
@@ -203,7 +217,6 @@ public class AccessCounter extends Chore {
     public int hashCode() {
       final int prime = 31;
       int result = 1;
-      result = prime * result + getOuterType().hashCode();
       result = prime * result + Arrays.hashCode(column);
       result = prime * result + ((tableName == null) ? 0 : tableName.hashCode());
       result = prime * result + ((type == null) ? 0 : type.hashCode());
@@ -217,7 +230,6 @@ public class AccessCounter extends Chore {
       if (obj == null) return false;
       if (getClass() != obj.getClass()) return false;
       CounterKey other = (CounterKey) obj;
-      if (!getOuterType().equals(other.getOuterType())) return false;
       if (!Arrays.equals(column, other.column)) return false;
       if (tableName == null) {
         if (other.tableName != null) return false;
@@ -227,10 +239,6 @@ public class AccessCounter extends Chore {
         if (other.userName != null) return false;
       } else if (!userName.equals(other.userName)) return false;
       return true;
-    }
-
-    private AccessCounter getOuterType() {
-      return AccessCounter.this;
     }
   }
 }

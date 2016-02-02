@@ -120,6 +120,7 @@ import org.apache.hadoop.hbase.metrics.MetricsRate;
 import org.apache.hadoop.hbase.monitoring.MonitoredTask;
 import org.apache.hadoop.hbase.monitoring.TaskMonitor;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.SnapshotDescription;
+import org.apache.hadoop.hbase.regionserver.AccessCounter.CounterKey;
 import org.apache.hadoop.hbase.regionserver.MultiVersionConsistencyControl.WriteEntry;
 import org.apache.hadoop.hbase.regionserver.compactions.CompactionRequest;
 import org.apache.hadoop.hbase.regionserver.compactions.OffPeakHours;
@@ -6329,6 +6330,18 @@ public class HRegion implements HeapSize { // , Writable{
   public void updateWriteCount(User user, byte[] table, byte[] family, byte[] qualifier) {
     if (this.rsServices != null && this.rsServices.getAccessCounter() != null) {
       this.rsServices.getAccessCounter().incrementWriteCount(user, table, family, qualifier);
+    }
+  }
+
+  public void updateReadCount(CounterKey key, long delta) {
+    if (this.rsServices != null && this.rsServices.getAccessCounter() != null) {
+      this.rsServices.getAccessCounter().addReadCount(key, delta);
+    }
+  }
+
+  public void updateWriteCount(CounterKey key, long delta) {
+    if (this.rsServices != null && this.rsServices.getAccessCounter() != null) {
+      this.rsServices.getAccessCounter().addWriteCount(key, delta);
     }
   }
 
