@@ -104,6 +104,7 @@ public class LoadIncrementalHFiles extends Configured implements Tool {
   private boolean useSecure;
   private Token<?> userToken;
   private String bulkToken;
+  private CacheConfig cacheConfig;
 
   //package private for testing
   LoadIncrementalHFiles(Configuration conf, Boolean useSecure) throws Exception {
@@ -112,6 +113,7 @@ public class LoadIncrementalHFiles extends Configured implements Tool {
     this.hbAdmin = new HBaseAdmin(conf);
     //added simple for testing
     this.useSecure = useSecure != null ? useSecure : User.isHBaseSecurityEnabled(conf);
+    this.cacheConfig = new CacheConfig(conf);
   }
 
   public LoadIncrementalHFiles(Configuration conf) throws Exception {
@@ -443,7 +445,7 @@ public class LoadIncrementalHFiles extends Configured implements Tool {
     final Path hfilePath = item.hfilePath;
     final FileSystem fs = hfilePath.getFileSystem(getConf());
     HFile.Reader hfr = HFile.createReader(fs, hfilePath,
-        new CacheConfig(getConf()));
+        this.cacheConfig);
     final byte[] first, last;
     try {
       hfr.loadFileInfo();

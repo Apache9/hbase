@@ -21,15 +21,23 @@ package org.apache.hadoop.hbase.io.hfile;
 
 import java.util.concurrent.atomic.AtomicLong;
 
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.HBaseConfiguration;
+
 /**
  * Class that implements cache metrics.
  */
 public class CacheStats {
-
+  static final Configuration conf = HBaseConfiguration.create();
+  
+  static final String WINDOW_PERIODS_KEY = "hbase.cachestats.window.periods";
+  
   /** Sliding window statistics. The number of metric periods to include in
    * sliding window hit ratio calculations.
    */
   static final int DEFAULT_WINDOW_PERIODS = 5;
+  
+  static final int WINDOW_PERIODS = conf.getInt(WINDOW_PERIODS_KEY, DEFAULT_WINDOW_PERIODS);
 
   /** The number of getBlock requests that were cache hits */
   private final AtomicLong hitCount = new AtomicLong(0);
@@ -74,7 +82,7 @@ public class CacheStats {
   private int windowIndex = 0;
 
   public CacheStats() {
-    this(DEFAULT_WINDOW_PERIODS);
+    this(WINDOW_PERIODS);
   }
 
   public CacheStats(int numPeriodsInWindow) {

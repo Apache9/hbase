@@ -130,10 +130,18 @@ public class RegionServerMetrics implements Updater {
 
   /** Block hit ratio for past N periods. */
   public final MetricsIntValue blockCacheHitRatioPastNPeriods = new MetricsIntValue("blockCacheHitRatioPastNPeriods", registry);
+  
+  /** Block sum request count for past N period. */
+  public final MetricsLongValue blockCacheSumRequestCountsPastNPeriods = new MetricsLongValue(
+      "blockCacheSumRequestCountsPastNPeriods", registry);
 
   /** Block hit caching ratio for past N periods */
   public final MetricsIntValue blockCacheHitCachingRatioPastNPeriods = new MetricsIntValue("blockCacheHitCachingRatioPastNPeriods", registry);
 
+  /** Block sum caching request count for past N periods */
+  public final MetricsLongValue blockCacheSumRequestCachingCountsPastNPeriods = new MetricsLongValue(
+      "blockCacheSumRequestCachingCountsPastNPeriods", registry);
+  
   /*
    * Count of requests to the regionservers since last call to metrics update
    */
@@ -179,6 +187,18 @@ public class RegionServerMetrics implements Updater {
    */
   public final MetricsLongValue writeRequestsCount = 
       new MetricsLongValue("writeRequestsCount", registry);
+
+  /**
+   * Count of read requests
+   */
+  public final MetricsLongValue readRequestsPerSecond = 
+      new MetricsLongValue("readRequestsPerSecond", registry);
+
+  /**
+   * Count of write requests
+   */
+  public final MetricsLongValue writeRequestsPerSecond = 
+      new MetricsLongValue("writeRequestsPerSecond", registry);
 
   /**
    */
@@ -441,6 +461,8 @@ public class RegionServerMetrics implements Updater {
       this.numPutsWithoutWAL.pushMetric(this.metricsRecord);
       this.readRequestsCount.pushMetric(this.metricsRecord);
       this.writeRequestsCount.pushMetric(this.metricsRecord);
+      this.readRequestsPerSecond.pushMetric(this.metricsRecord);
+      this.writeRequestsPerSecond.pushMetric(this.metricsRecord);
       this.regions.pushMetric(this.metricsRecord);
       this.requests.pushMetric(this.metricsRecord);
       this.compactionQueueSize.pushMetric(this.metricsRecord);
@@ -458,6 +480,8 @@ public class RegionServerMetrics implements Updater {
       this.hdfsBlocksLocalityIndex.pushMetric(this.metricsRecord);
       this.blockCacheHitRatioPastNPeriods.pushMetric(this.metricsRecord);
       this.blockCacheHitCachingRatioPastNPeriods.pushMetric(this.metricsRecord);
+      this.blockCacheSumRequestCountsPastNPeriods.pushMetric(this.metricsRecord);
+      this.blockCacheSumRequestCachingCountsPastNPeriods.pushMetric(this.metricsRecord);
 
       // Mix in HFile and HLog metrics
       // Be careful. Here is code for MTVR from up in hadoop:
@@ -676,6 +700,10 @@ public class RegionServerMetrics implements Updater {
       Long.valueOf(this.blockCacheHitRatioPastNPeriods.get())+"%");
     sb = Strings.appendKeyValue(sb, this.blockCacheHitCachingRatioPastNPeriods.getName(),
         Long.valueOf(this.blockCacheHitCachingRatioPastNPeriods.get())+"%");
+    sb = Strings.appendKeyValue(sb, this.blockCacheSumRequestCountsPastNPeriods.getName(),
+        Long.valueOf(this.blockCacheSumRequestCountsPastNPeriods.get()));
+    sb = Strings.appendKeyValue(sb, this.blockCacheSumRequestCachingCountsPastNPeriods.getName(),
+        Long.valueOf(this.blockCacheSumRequestCachingCountsPastNPeriods.get()));
     sb = Strings.appendKeyValue(sb, this.hdfsBlocksLocalityIndex.getName(),
         Long.valueOf(this.hdfsBlocksLocalityIndex.get()));
     sb = Strings.appendKeyValue(sb, "slowHLogAppendCount",
@@ -689,6 +717,10 @@ public class RegionServerMetrics implements Updater {
       Long.valueOf(this.hedgedReadWins.get()));
     sb = Strings.appendKeyValue(sb, "hedgedReadsInCurThread",
       Long.valueOf(this.hedgedReadsInCurThread.get()));
+    sb = Strings.appendKeyValue(sb, "readRequestsPerSecond",
+      Long.valueOf(this.readRequestsPerSecond.get()));
+    sb = Strings.appendKeyValue(sb, "writeRequestsPerSecond",
+      Long.valueOf(this.writeRequestsPerSecond.get()));
     return sb.toString();
   }
   

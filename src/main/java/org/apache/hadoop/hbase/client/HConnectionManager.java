@@ -570,6 +570,7 @@ public class HConnectionManager {
     private final Class<? extends HRegionInterface> serverInterfaceClass;
     private final long pause;
     private final int numRetries;
+    private final int startLogErrorsCnt;
     private final int maxRPCAttempts;
     private final int rpcTimeout;
     private final int prefetchRegionLimit;
@@ -655,6 +656,8 @@ public class HConnectionManager {
           HConstants.DEFAULT_HBASE_CLIENT_PAUSE);
       this.numRetries = conf.getInt(HConstants.HBASE_CLIENT_RETRIES_NUMBER,
           HConstants.DEFAULT_HBASE_CLIENT_RETRIES_NUMBER);
+      this.startLogErrorsCnt = conf.getInt(HConstants.START_LOG_ERRORS_AFTER_COUNT_KEY,
+        HConstants.DEFAULT_START_LOG_ERRORS_AFTER_COUNT);
       this.maxRPCAttempts = conf.getInt(
           HConstants.HBASE_CLIENT_RPC_MAXATTEMPTS,
           HConstants.DEFAULT_HBASE_CLIENT_RPC_MAXATTEMPTS);
@@ -669,6 +672,11 @@ public class HConnectionManager {
       this.resetting = false;
     }
 
+    @Override
+    public int getStartLogErrorsAfterCount() {
+      return startLogErrorsCnt;
+    }
+    
     @Override
     public HTableInterface getTable(String tableName) throws IOException {
       return getTable(Bytes.toBytes(tableName));

@@ -31,6 +31,7 @@ import java.util.Random;
 import java.util.SortedMap;
 import java.util.SortedSet;
 import java.util.TreeSet;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.RejectedExecutionException;
@@ -79,6 +80,8 @@ public class ReplicationSourceManager {
   private final Stoppable stopper;
   // All logs we are currently trackign
   private final Map<String, SortedSet<String>> hlogsById;
+  //Logs for recovered sources we are currently tracking
+  private final Map<String, SortedSet<String>> hlogsByIdRecoveredQueues;
   private final Configuration conf;
   private final FileSystem fs;
   // The path to the latest log we saw, for new coming sources
@@ -120,6 +123,7 @@ public class ReplicationSourceManager {
     this.zkHelper = zkHelper;
     this.stopper = stopper;
     this.hlogsById = new HashMap<String, SortedSet<String>>();
+    this.hlogsByIdRecoveredQueues = new ConcurrentHashMap<String, SortedSet<String>>();
     this.oldsources = new CopyOnWriteArrayList<ReplicationSourceInterface>();
     this.conf = conf;
     this.fs = fs;
@@ -172,29 +176,35 @@ public class ReplicationSourceManager {
   }
 
   /**
-   * Cleans a log file and all older files from ZK. Called when we are sure that a
-   * log file is closed and has no more entries.
+   * Cleans a log file and all older files from ZK. Called when we are sure that a log file is
+   * closed and has no more entries.
    * @param key Path to the log
    * @param id id of the peer cluster
    * @param queueRecovered Whether this is a recovered queue
    */
-  public void cleanOldLogs(String key,
-                           String id,
-                           boolean queueRecovered) {
-    synchronized (this.hlogsById) {
-      SortedSet<String> hlogs = this.hlogsById.get(id);
-      if (queueRecovered || hlogs.first().equals(key)) {
-        return;
+  public void cleanOldLogs(String key, String id, boolean queueRecovered) {
+    if (queueRecovered) {
+      SortedSet<String> hlogs = hlogsByIdRecoveredQueues.get(id);
+      if (hlogs != null && !hlogs.first().equals(key)) {
+        cleanOldLogs(hlogs, key, id);
       }
-      SortedSet<String> hlogSet = hlogs.headSet(key);
-      if (LOG.isDebugEnabled()) {
-        LOG.debug("Removing " + hlogSet.size() + " logs in the list: " + hlogSet);
+    } else {
+      synchronized (this.hlogsById) {
+        SortedSet<String> hlogs = hlogsById.get(id);
+        if (!hlogs.first().equals(key)) {
+          cleanOldLogs(hlogs, key, id);
+        }
       }
-      for (String hlog : hlogSet) {
-        this.zkHelper.removeLogFromList(hlog, id);
-      }
-      hlogSet.clear();
     }
+  }
+
+  private void cleanOldLogs(SortedSet<String> hlogs, String key, String id) {
+    SortedSet<String> hlogSet = hlogs.headSet(key);
+    LOG.debug("Removing " + hlogSet.size() + " logs in the list: " + hlogSet);
+    for (String hlog : hlogSet) {
+      this.zkHelper.removeLogFromList(hlog, id);
+    }
+    hlogSet.clear();
   }
 
   /**
@@ -285,6 +295,14 @@ public class ReplicationSourceManager {
    */
   protected Map<String, SortedSet<String>> getHLogs() {
     return Collections.unmodifiableMap(hlogsById);
+  }
+
+  /**
+   * Get a copy of the hlogs of the recovered sources on this rs
+   * @return a sorted set of hlog names
+   */
+  protected Map<String, SortedSet<String>> getHlogsByIdRecoveredQueues() {
+    return Collections.unmodifiableMap(hlogsByIdRecoveredQueues);
   }
 
   /**
@@ -403,6 +421,7 @@ public class ReplicationSourceManager {
     LOG.info("Done with the recovered queue " + src.getPeerClusterZnode());
     this.oldsources.remove(src);
     this.zkHelper.deleteSource(src.getPeerClusterZnode(), false);
+    this.hlogsByIdRecoveredQueues.remove(src.getPeerClusterZnode());
   }
 
   /**
@@ -649,10 +668,12 @@ public class ReplicationSourceManager {
             break;
           }
           oldsources.add(src);
-          for (String hlog : entry.getValue()) {
+          SortedSet<String> hlogsSet = entry.getValue();
+          for (String hlog : hlogsSet) {
             src.enqueueLog(new Path(oldLogDir, hlog));
           }
           src.startup();
+          hlogsByIdRecoveredQueues.put(peerId, hlogsSet);
         } catch (IOException e) {
           // TODO manage it
           LOG.error("Failed creating a source", e);

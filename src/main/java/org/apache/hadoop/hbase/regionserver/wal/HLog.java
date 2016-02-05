@@ -705,13 +705,13 @@ public class HLog implements Syncable {
           oldPath = computeFilename(currentFilenum);
         }
         Path newPath = computeNewFilename();
+        HLog.Writer nextWriter = this.createWriterInstance(fs, newPath, conf);
         // Tell our listeners that a new log is about to be created
         if (!this.listeners.isEmpty()) {
           for (WALActionsListener i : this.listeners) {
             i.preLogRoll(oldPath, newPath);
           }
         }
-        HLog.Writer nextWriter = this.createWriterInstance(fs, newPath, conf);
         // Can we get at the dfsclient outputstream?  If an instance of
         // SFLW, it'll have done the necessary reflection to get at the
         // protected field name.

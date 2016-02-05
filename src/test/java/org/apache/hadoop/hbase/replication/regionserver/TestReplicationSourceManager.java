@@ -29,6 +29,8 @@ import java.util.Collection;
 import java.util.List;
 import java.util.SortedMap;
 import java.util.SortedSet;
+import java.util.TreeSet;
+import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -56,6 +58,7 @@ import org.apache.hadoop.hbase.regionserver.wal.WALEdit;
 import org.apache.hadoop.hbase.replication.ReplicationSourceDummy;
 import org.apache.hadoop.hbase.replication.ReplicationZookeeper;
 import org.apache.hadoop.hbase.replication.master.ReplicationLogCleaner;
+import org.apache.hadoop.hbase.replication.regionserver.ReplicationSourceManager.NodeFailoverWorker;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.zookeeper.ZKUtil;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
@@ -66,6 +69,8 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+
+import com.google.common.collect.Sets;
 
 @Category(MediumTests.class)
 public class TestReplicationSourceManager {
@@ -128,14 +133,14 @@ public class TestReplicationSourceManager {
         Bytes.toBytes(ReplicationZookeeper.PeerState.ENABLED.name()));
     ZKUtil.createWithParents(zkw, "/hbase/replication/state");
     ZKUtil.setData(zkw, "/hbase/replication/state", Bytes.toBytes("true"));
-
-    replication = new Replication(new DummyServer(), fs, logDir, oldLogDir);
-    manager = replication.getReplicationManager();
+    
     fs = FileSystem.get(conf);
     oldLogDir = new Path(utility.getDataTestDir(),
         HConstants.HREGION_OLDLOGDIR_NAME);
     logDir = new Path(utility.getDataTestDir(),
         HConstants.HREGION_LOGDIR_NAME);
+    replication = new Replication(new DummyServer(), fs, logDir, oldLogDir);
+    manager = replication.getReplicationManager();
 
     manager.addSource(slaveId);
 
@@ -226,7 +231,31 @@ public class TestReplicationSourceManager {
 
     // TODO Need a case with only 2 HLogs and we only want to delete the first one
   }
-  
+
+  @Test
+  public void testCleanupFailoverQueues() throws Exception {
+    final Server server = new DummyServer("hostname1.example.org");
+    AtomicBoolean replicating = new AtomicBoolean(true);
+    ReplicationZookeeper rz = new ReplicationZookeeper(server, replicating);
+    // populate some znodes in the peer znode
+    SortedSet<String> files = new TreeSet<String>();
+    files.add("log1");
+    files.add("log2");
+    for (String file : files) {
+      rz.addLogToList(file, "1");
+    }
+
+    NodeFailoverWorker w1 = manager.new NodeFailoverWorker(server.getServerName().getServerName());
+    w1.start();
+    w1.join(5000);
+    assertEquals(1, manager.getHlogsByIdRecoveredQueues().size());
+    String id = "1-" + server.getServerName().getServerName();
+    assertEquals(files, manager.getHlogsByIdRecoveredQueues().get(id));
+    manager.cleanOldLogs("log2", id, true);
+    // log1 should be deleted
+    assertEquals(Sets.newHashSet("log2"), manager.getHlogsByIdRecoveredQueues().get(id));
+  }
+
   @Test
   public void testNodeFailoverWorkerCopyQueuesFromRSUsingMulti() throws Exception {
     LOG.debug("testNodeFailoverWorkerCopyQueuesFromRSUsingMulti");

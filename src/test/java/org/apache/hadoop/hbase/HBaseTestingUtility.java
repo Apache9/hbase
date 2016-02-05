@@ -205,6 +205,12 @@ public class HBaseTestingUtility {
     // hadoop-2.0.5+'s HDFS-4305 by default enforces a min block size of 1024*1024.  Many unit
     // tests that use the hlog use smaller blocks.  Setting this config to 0 to have tests pass
     conf.setInt("dfs.namenode.fs-limits.min-block-size", 0);
+
+    // In case test is stopped by System.exit
+    conf.setLong("hbase.exit.timeout.ms", 3600000);
+
+    // Many ut use loadTable(), which exceed the default multi request max action count
+    conf.setInt(HConstants.MULTI_REQUEST_MAX_ACTION_COUNT, 10000);
   }
 
   private void setHDFSClientRetryProperty() {

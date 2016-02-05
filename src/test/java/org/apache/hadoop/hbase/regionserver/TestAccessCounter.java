@@ -69,7 +69,7 @@ public class TestAccessCounter {
     envEdge = new ManualEnvironmentEdge();
     envEdge.setValue(EnvironmentEdgeManager.currentTimeMillis());
     EnvironmentEdgeManager.injectEdge(envEdge);
-    counter.setTimestamp(EnvironmentEdgeManager.currentTimeMillis());
+    counter.setTimestamp(counter.normalizeTimestamp());
   }
   
   @AfterClass
@@ -89,11 +89,11 @@ public class TestAccessCounter {
         counter.incrementReadCount(User.getCurrent(), tableName, FAMILY, QUALIFIER[i]);
       }
     }
-    // flush counter map to _account_ table
+    // flush counter map to _access_account_ table
     counter.chore();
     String key = User.getCurrent().getShortName() + AccessCounter.KEY_DELIMITER
         + Bytes.toString(tableName) + AccessCounter.KEY_DELIMITER
-        + new SimpleDateFormat("yyyy-MM-dd,HH:mm:ss").format(EnvironmentEdgeManager.currentTimeMillis());
+        + new SimpleDateFormat("yyyy-MM-dd,HH:mm:ss").format(counter.normalizeTimestamp());
     for (int i = 0; i < QUALIFIER.length; i++) {
       Get get = new Get(Bytes.toBytes(key));
       get.addColumn(AccessCounter.READ_FAMILY,
@@ -113,14 +113,11 @@ public class TestAccessCounter {
         counter.incrementWriteCount(User.getCurrent(), tableName, FAMILY, QUALIFIER[i]);
       }
     }
-    // flush counter map to _account_ table
+    // flush counter map to _access_account_ table
     counter.chore();
-    String key = User.getCurrent().getShortName()
-        + AccessCounter.KEY_DELIMITER
-        + Bytes.toString(tableName)
-        + AccessCounter.KEY_DELIMITER
-        + new SimpleDateFormat("yyyy-MM-dd,HH:mm:ss").format(EnvironmentEdgeManager
-            .currentTimeMillis());
+    String key = User.getCurrent().getShortName() + AccessCounter.KEY_DELIMITER
+        + Bytes.toString(tableName) + AccessCounter.KEY_DELIMITER
+        + new SimpleDateFormat("yyyy-MM-dd,HH:mm:ss").format(counter.normalizeTimestamp());
     for (int i = 0; i < QUALIFIER.length; i++) {
       Get get = new Get(Bytes.toBytes(key));
       get.addColumn(AccessCounter.WRITE_FAMILY,

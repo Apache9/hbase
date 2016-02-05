@@ -30,6 +30,7 @@ import org.apache.hadoop.hbase.security.token.AuthenticationTokenSecretManager;
 import org.apache.hadoop.hbase.util.Objects;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.security.authorize.ServiceAuthorizationManager;
+import org.apache.hadoop.yarn.webapp.hamlet.HamletSpec._;
 
 import java.io.IOException;
 import java.lang.reflect.*;
@@ -364,7 +365,8 @@ public class SecureRpcEngine implements RpcEngine {
               + (tooLarge ? "TooLarge" : "TooSlow") + "; Served: "
               + protocol.getSimpleName() + "#" + call.getMethodName()
               + " queueTime=" + qTime + " processingTime=" + processingTime
-              + " contents=" + Objects.describeQuantity(params));
+              + " contents=" + Objects.describeQuantity(params)
+              + " detail=" + Objects.getOperationDetails(params));
           // provides a count of log-reported slow responses
           if (tooSlow) {
             rpcMetrics.rpcSlowResponseTime.inc(processingTime);

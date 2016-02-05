@@ -145,6 +145,9 @@ public class VerifyReplication  extends Configured implements Tool {
         Configuration conf = context.getConfiguration();
         final Scan scan = new Scan();
         scan.setCaching(conf.getInt(TableInputFormat.SCAN_CACHEDROWS, 1));
+        if (conf.get(TableInputFormat.SCAN_BATCHSIZE) != null) {
+          scan.setBatch(Integer.parseInt(conf.get(TableInputFormat.SCAN_BATCHSIZE)));
+        }
         long startTime = conf.getLong(NAME + ".startTime", 0);
         long endTime = conf.getLong(NAME + ".endTime", 0);
         String families = conf.get(NAME + ".families", null);

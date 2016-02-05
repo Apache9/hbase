@@ -237,7 +237,7 @@ public class ReplicationSource extends Thread
     this.checkIfQueueRecovered(peerClusterZnode);
 
     try {
-      if (zkHelper.getPeerProtocol(peerClusterZnode)
+      if (zkHelper.getPeerProtocol(peerId)
           .equals(ReplicationZookeeper.PeerProtocol.THRIFT)) {
         thriftClient = new ThriftClient(conf, peerId);
         LOG.info("Starting new replication peer " + peerId + " with Thrift protocol over port");
@@ -750,6 +750,7 @@ public class ReplicationSource extends Thread
     } catch (IOException ioe) {
       if (ioe instanceof EOFException) {
         if (isCurrentLogEmpty()) {
+          LOG.info(this.peerClusterZnode + " got EOFException because current log is empty, file path: " + this.currentPath);
           return true;
         } else if (queueRecovered) {
           boolean atTail = this.queue.size() == 0;
@@ -761,9 +762,16 @@ public class ReplicationSource extends Thread
               + ", file path:" + this.currentPath, ioe);
           processEndOfFile();
           return false;
+        } else if (this.repLogReader.getPosition() == 0 && queue.size() != 0) {
+          LOG.warn(this.peerClusterZnode + " got EOFException, file path: " + this.currentPath, ioe);
+          if (sleepMultiplier == this.maxRetriesMultiplier) {
+            LOG.warn("Got too many EOF Exception when openReader for this file, this file length should be zero");
+            return !processEndOfFile();
+          }
+          return true;
         }
       }
-      LOG.warn(peerClusterZnode + " Got: ", ioe);
+      LOG.warn(this.peerClusterZnode + ", file path: " + this.currentPath + ", got: ", ioe);
       this.reader = null;
       if (ioe.getCause() instanceof NullPointerException) {
         // Workaround for race condition in HDFS-4380
