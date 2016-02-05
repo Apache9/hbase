@@ -17,32 +17,39 @@
  */
 package org.apache.hadoop.hbase.regionserver.wal;
 
-import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertFalse;
 
-import java.util.List;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
+import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.TableName;
-import org.apache.hadoop.hbase.testclassification.MediumTests;
-import org.apache.hadoop.hbase.testclassification.RegionServerTests;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Table;
 import org.apache.hadoop.hbase.regionserver.HRegionServer;
-import org.apache.hadoop.hbase.wal.WAL;
+import org.apache.hadoop.hbase.testclassification.MediumTests;
+import org.apache.hadoop.hbase.testclassification.RegionServerTests;
 import org.apache.hadoop.hbase.util.Bytes;
-import org.junit.AfterClass;
+import org.apache.hadoop.hbase.wal.WAL;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
+import org.junit.runners.Parameterized.Parameters;
 
 /**
  * Tests that verifies that the log is forced to be rolled every "hbase.regionserver.logroll.period"
  */
+@RunWith(Parameterized.class)
 @Category({RegionServerTests.class, MediumTests.class})
 public class TestLogRollPeriod {
   private static final Log LOG = LogFactory.getLog(TestLogRolling.class);
@@ -51,18 +58,30 @@ public class TestLogRollPeriod {
 
   private final static long LOG_ROLL_PERIOD = 4000;
 
+  @Parameter
+  public boolean walAsyncEnabled;
+
+  @Parameters(name = "{index}: async={0}")
+  public static Iterable<Object[]> data() {
+    return Arrays.asList(new Object[]{false}, new Object[]{true});
+  }
+
   @BeforeClass
   public static void setUpBeforeClass() throws Exception {
     // disable the ui
     TEST_UTIL.getConfiguration().setInt("hbase.regionsever.info.port", -1);
 
     TEST_UTIL.getConfiguration().setLong("hbase.regionserver.logroll.period", LOG_ROLL_PERIOD);
+  }
 
+  @Before
+  public void setUp() throws Exception {
+    TEST_UTIL.getConfiguration().setBoolean(HConstants.WAL_ASYNC_ENABLED, walAsyncEnabled);
     TEST_UTIL.startMiniCluster();
   }
 
-  @AfterClass
-  public static void tearDownAfterClass() throws Exception {
+  @After
+  public void tearDown() throws Exception {
     TEST_UTIL.shutdownMiniCluster();
   }
 

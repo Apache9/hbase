@@ -22,12 +22,14 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
 import java.io.IOException;
+import java.util.Arrays;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.HColumnDescriptor;
+import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
@@ -44,14 +46,21 @@ import org.apache.hadoop.hbase.wal.DefaultWALProvider;
 import org.apache.hadoop.hbase.wal.WAL;
 import org.apache.hadoop.hbase.wal.WALFactory;
 import org.apache.hadoop.hdfs.MiniDFSCluster;
+import org.junit.After;
 import org.junit.AfterClass;
+import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
+import org.junit.runners.Parameterized.Parameters;
 
 /**
  * Tests for WAL write durability
  */
+@RunWith(Parameterized.class)
 @Category({RegionServerTests.class, MediumTests.class})
 public class TestDurability {
   private static final HBaseTestingUtility TEST_UTIL = new HBaseTestingUtility();
@@ -64,6 +73,13 @@ public class TestDurability {
   private static byte[] ROW = Bytes.toBytes("row");
   private static byte[] COL = Bytes.toBytes("col");
 
+  @Parameter
+  public boolean walAsyncEnabled;
+
+  @Parameters(name = "{index}: async={0}")
+  public static Iterable<Object[]> data() {
+    return Arrays.asList(new Object[] { false }, new Object[] { true });
+  }
 
   @BeforeClass
   public static void setUpBeforeClass() throws Exception {
@@ -79,6 +95,16 @@ public class TestDurability {
   @AfterClass
   public static void tearDownAfterClass() throws Exception {
     TEST_UTIL.shutdownMiniCluster();
+  }
+
+  @Before
+  public void setUp() {
+    CONF.setBoolean(HConstants.WAL_ASYNC_ENABLED, walAsyncEnabled);
+  }
+
+  @After
+  public void tearDown() throws IOException {
+    FS.delete(DIR, true);
   }
 
   @Test

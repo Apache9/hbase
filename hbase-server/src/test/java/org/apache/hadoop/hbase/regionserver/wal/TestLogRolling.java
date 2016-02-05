@@ -22,10 +22,12 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assume.*;
 
 import java.io.EOFException;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -70,17 +72,21 @@ import org.apache.hadoop.hdfs.MiniDFSCluster;
 import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
 import org.apache.hadoop.hdfs.server.datanode.DataNode;
 import org.junit.After;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.rules.TestName;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
+import org.junit.runners.Parameterized.Parameters;
 
 /**
  * Test log deletion as logs are rolled.
  */
+@RunWith(Parameterized.class)
 @Category({VerySlowRegionServerTests.class, LargeTests.class})
 public class TestLogRolling  {
   private static final Log LOG = LogFactory.getLog(TestLogRolling.class);
@@ -93,6 +99,14 @@ public class TestLogRolling  {
   private MiniHBaseCluster cluster;
   private static final HBaseTestingUtility TEST_UTIL = new HBaseTestingUtility();
   @Rule public final TestName name = new TestName();
+
+  @Parameter
+  public boolean walAsyncEnabled;
+
+  @Parameters(name = "{index}: async={0}")
+  public static Iterable<Object[]> data() {
+    return Arrays.asList(new Object[] { false }, new Object[] { true });
+  }
 
   public TestLogRolling()  {
     this.server = null;
@@ -147,13 +161,14 @@ public class TestLogRolling  {
     TEST_UTIL.getConfiguration().setInt("dfs.heartbeat.interval", 1);
     // the namenode might still try to choose the recently-dead datanode
     // for a pipeline, so try to a new pipeline multiple times
-     TEST_UTIL.getConfiguration().setInt("dfs.client.block.write.retries", 30);
+    TEST_UTIL.getConfiguration().setInt("dfs.client.block.write.retries", 30);
     TEST_UTIL.getConfiguration().setInt("hbase.regionserver.hlog.tolerable.lowreplication", 2);
     TEST_UTIL.getConfiguration().setInt("hbase.regionserver.hlog.lowreplication.rolllimit", 3);
   }
 
   @Before
   public void setUp() throws Exception {
+    TEST_UTIL.getConfiguration().setBoolean(HConstants.WAL_ASYNC_ENABLED, walAsyncEnabled);
     TEST_UTIL.startMiniCluster(1, 1, 2);
 
     cluster = TEST_UTIL.getHBaseCluster();
@@ -238,7 +253,9 @@ public class TestLogRolling  {
   }
 
   private String getName() {
-    return "TestLogRolling-" + name.getMethodName();
+    int i = name.getMethodName().indexOf('[');
+    String methodName = i >= 0 ? name.getMethodName().substring(0, i) : name.getMethodName();
+    return "TestLogRolling-" + methodName;
   }
 
   void writeData(Table table, int rownum) throws IOException {
@@ -297,6 +314,7 @@ public class TestLogRolling  {
    */
   @Test
   public void testLogRollOnDatanodeDeath() throws Exception {
+    assumeFalse(walAsyncEnabled);
     TEST_UTIL.ensureSomeRegionServersAvailable(2);
     assertTrue("This test requires WAL file replication set to 2.",
       fs.getDefaultReplication(TEST_UTIL.getDataTestDirOnTestFS()) == 2);
@@ -414,6 +432,7 @@ public class TestLogRolling  {
    */
   @Test
   public void testLogRollOnPipelineRestart() throws Exception {
+    assumeFalse(walAsyncEnabled);
     LOG.info("Starting testLogRollOnPipelineRestart");
     assertTrue("This test requires WAL file replication.",
       fs.getDefaultReplication(TEST_UTIL.getDataTestDirOnTestFS()) > 1);
@@ -573,6 +592,7 @@ public class TestLogRolling  {
    */
   @Test
   public void testCompactionRecordDoesntBlockRolling() throws Exception {
+    assumeFalse(walAsyncEnabled);
     Table table = null;
 
     // When the hbase:meta table can be opened, the region servers are running
@@ -605,7 +625,7 @@ public class TestLogRolling  {
       admin.flush(table.getName());
       region.compact(false);
       // Wait for compaction in case if flush triggered it before us.
-      Assert.assertNotNull(s);
+      assertNotNull(s);
       for (int waitTime = 3000; s.getStorefilesCount() > 1 && waitTime > 0; waitTime -= 200) {
         Threads.sleepWithoutInterrupt(200);
       }

@@ -33,6 +33,7 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.HBaseInterfaceAudience;
 import org.apache.hadoop.hbase.util.FSUtils;
+import org.apache.hadoop.hbase.wal.DefaultWALProvider;
 import org.apache.hadoop.hbase.wal.WAL;
 import org.apache.hadoop.hbase.wal.WALProvider;
 import org.apache.hadoop.io.SequenceFile;
@@ -52,7 +53,7 @@ import org.apache.hadoop.io.compress.DefaultCodec;
  * Hadoop serialization).
  */
 @InterfaceAudience.LimitedPrivate(HBaseInterfaceAudience.CONFIG)
-public class SequenceFileLogWriter extends WriterBase {
+public class SequenceFileLogWriter extends WriterBase implements DefaultWALProvider.Writer {
   private static final Log LOG = LogFactory.getLog(SequenceFileLogWriter.class);
   // The sequence file we delegate to.
   private SequenceFile.Writer writer;

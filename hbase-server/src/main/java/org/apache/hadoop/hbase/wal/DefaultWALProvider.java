@@ -18,6 +18,10 @@
  */
 package org.apache.hadoop.hbase.wal;
 
+import io.netty.channel.EventLoop;
+import io.netty.channel.EventLoopGroup;
+import io.netty.channel.nio.NioEventLoopGroup;
+
 import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -36,22 +40,24 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.util.FSUtils;
-
+import org.apache.hadoop.hbase.util.Threads;
+import org.apache.hadoop.hbase.regionserver.wal.AbstractFSHLog;
+import org.apache.hadoop.hbase.regionserver.wal.AsyncFSHLog;
+import org.apache.hadoop.hbase.regionserver.wal.AsyncProtobufLogWriter;
 // imports for things that haven't moved from regionserver.wal yet.
 import org.apache.hadoop.hbase.regionserver.wal.FSHLog;
 import org.apache.hadoop.hbase.regionserver.wal.ProtobufLogWriter;
 import org.apache.hadoop.hbase.regionserver.wal.WALActionsListener;
 
 /**
- * A WAL Provider that returns a single thread safe WAL that writes to HDFS.
- * By default, this implementation picks a directory in HDFS based on a combination of
+ * A WAL Provider that returns a single thread safe WAL that writes to HDFS. By default, this
+ * implementation picks a directory in HDFS based on a combination of
  * <ul>
- *   <li>the HBase root directory
- *   <li>HConstants.HREGION_LOGDIR_NAME
- *   <li>the given factory's factoryId (usually identifying the regionserver by host:port)
+ * <li>the HBase root directory
+ * <li>HConstants.HREGION_LOGDIR_NAME
+ * <li>the given factory's factoryId (usually identifying the regionserver by host:port)
  * </ul>
  * It also uses the providerId to diffentiate among files.
- *
  */
 @InterfaceAudience.Private
 @InterfaceStability.Evolving
@@ -74,9 +80,14 @@ public class DefaultWALProvider implements WALProvider {
     void init(FileSystem fs, Path path, Configuration c, boolean overwritable) throws IOException;
   }
 
-  protected volatile FSHLog log = null;
+  public interface AsyncWriter extends WALProvider.AsyncWriter {
+    void init(FileSystem fs, Path path, Configuration c, boolean overwritable) throws IOException;
+  }
+
+  protected volatile AbstractFSHLog<?> log = null;
   private WALFactory factory = null;
   private Configuration conf = null;
+  private EventLoopGroup eventLoopGroup = null;
   private List<WALActionsListener> listeners = null;
   private String providerId = null;
   private AtomicBoolean initialized = new AtomicBoolean(false);
@@ -92,8 +103,8 @@ public class DefaultWALProvider implements WALProvider {
    * @param factory factory that made us, identity used for FS layout. may not be null
    * @param conf may not be null
    * @param listeners may be null
-   * @param providerId differentiate between providers from one facotry, used for FS layout. may be
-   *                   null
+   * @param providerId differentiate between providers from one factory, used for FS layout. may be
+   *          null
    */
   @Override
   public void init(final WALFactory factory, final Configuration conf,
@@ -115,6 +126,24 @@ public class DefaultWALProvider implements WALProvider {
       }
     }
     logPrefix = sb.toString();
+    if (conf.getBoolean(HConstants.WAL_ASYNC_ENABLED, HConstants.DEFAULT_WAL_ASYNC_ENABLED)) {
+      eventLoopGroup = new NioEventLoopGroup(1, Threads.newDaemonThreadFactory("AsyncFSHLog"));
+    }
+  }
+
+  private AbstractFSHLog<?> createWAL() throws IOException {
+    if (eventLoopGroup != null) {
+      return new AsyncFSHLog(FileSystem.get(conf), FSUtils.getRootDir(conf),
+          getWALDirectoryName(factory.factoryId), HConstants.HREGION_OLDLOGDIR_NAME, conf,
+          listeners, true, logPrefix,
+          META_WAL_PROVIDER_ID.equals(providerId) ? META_WAL_PROVIDER_ID : null,
+          eventLoopGroup.next());
+    } else {
+      return new FSHLog(FileSystem.get(conf), FSUtils.getRootDir(conf),
+          getWALDirectoryName(factory.factoryId), HConstants.HREGION_OLDLOGDIR_NAME, conf,
+          listeners, true, logPrefix,
+          META_WAL_PROVIDER_ID.equals(providerId) ? META_WAL_PROVIDER_ID : null);
+    }
   }
 
   @Override
@@ -124,10 +153,7 @@ public class DefaultWALProvider implements WALProvider {
       // creating hlog on fs is time consuming
       synchronized (walCreateLock) {
         if (log == null) {
-          log = new FSHLog(FileSystem.get(conf), FSUtils.getRootDir(conf),
-              getWALDirectoryName(factory.factoryId), HConstants.HREGION_OLDLOGDIR_NAME, conf,
-              listeners, true, logPrefix,
-              META_WAL_PROVIDER_ID.equals(providerId) ? META_WAL_PROVIDER_ID : null);
+          log = createWAL();
         }
       }
     }
@@ -156,9 +182,8 @@ public class DefaultWALProvider implements WALProvider {
   public static final String SPLITTING_EXT = "-splitting";
 
   /**
-   * iff the given WALFactory is using the DefaultWALProvider for meta and/or non-meta,
-   * count the number of files (rolled and active). if either of them aren't, count 0
-   * for that provider.
+   * iff the given WALFactory is using the DefaultWALProvider for meta and/or non-meta, count the
+   * number of files (rolled and active). if either of them aren't, count 0 for that provider.
    */
   @Override
   public long getNumLogFiles() {
@@ -166,9 +191,8 @@ public class DefaultWALProvider implements WALProvider {
   }
 
   /**
-   * iff the given WALFactory is using the DefaultWALProvider for meta and/or non-meta,
-   * count the size of files (rolled and active). if either of them aren't, count 0
-   * for that provider.
+   * iff the given WALFactory is using the DefaultWALProvider for meta and/or non-meta, count the
+   * size of files (rolled and active). if either of them aren't, count 0 for that provider.
    */
   @Override
   public long getLogFileSize() {
@@ -180,7 +204,7 @@ public class DefaultWALProvider implements WALProvider {
    */
   @VisibleForTesting
   public static int getNumRolledLogFiles(WAL wal) {
-    return ((FSHLog)wal).getNumRolledLogFiles();
+    return ((AbstractFSHLog<?>) wal).getNumRolledLogFiles();
   }
 
   /**
@@ -188,7 +212,7 @@ public class DefaultWALProvider implements WALProvider {
    */
   @VisibleForTesting
   public static Path getCurrentFileName(final WAL wal) {
-    return ((FSHLog)wal).getCurrentFileName();
+    return ((AbstractFSHLog<?>) wal).getCurrentFileName();
   }
 
   /**
@@ -196,41 +220,38 @@ public class DefaultWALProvider implements WALProvider {
    */
   @VisibleForTesting
   static void requestLogRoll(final WAL wal) {
-    ((FSHLog)wal).requestLogRoll();
+    ((AbstractFSHLog<?>) wal).requestLogRoll();
   }
 
   /**
-   * It returns the file create timestamp from the file name.
-   * For name format see {@link #validateWALFilename(String)}
-   * public until remaining tests move to o.a.h.h.wal
+   * It returns the file create timestamp from the file name. For name format see
+   * {@link #validateWALFilename(String)} public until remaining tests move to o.a.h.h.wal
    * @param wal must not be null
    * @return the file number that is part of the WAL file name
    */
   @VisibleForTesting
   public static long extractFileNumFromWAL(final WAL wal) {
-    final Path walName = ((FSHLog)wal).getCurrentFileName();
+    final Path walName = ((AbstractFSHLog<?>) wal).getCurrentFileName();
     if (walName == null) {
       throw new IllegalArgumentException("The WAL path couldn't be null");
     }
     final String[] walPathStrs = walName.toString().split("\\" + WAL_FILE_NAME_DELIMITER);
-    return Long.parseLong(walPathStrs[walPathStrs.length - (isMetaFile(walName) ? 2:1)]);
+    return Long.parseLong(walPathStrs[walPathStrs.length - (isMetaFile(walName) ? 2 : 1)]);
   }
 
   /**
-   * Pattern used to validate a WAL file name
-   * see {@link #validateWALFilename(String)} for description.
+   * Pattern used to validate a WAL file name see {@link #validateWALFilename(String)} for
+   * description.
    */
-  private static final Pattern pattern = Pattern.compile(".*\\.\\d*("+META_WAL_PROVIDER_ID+")*");
+  private static final Pattern pattern = Pattern
+      .compile(".*\\.\\d*(" + META_WAL_PROVIDER_ID + ")*");
 
   /**
-   * A WAL file name is of the format:
-   * &lt;wal-name&gt;{@link #WAL_FILE_NAME_DELIMITER}&lt;file-creation-timestamp&gt;[.meta].
-   *
-   * provider-name is usually made up of a server-name and a provider-id
-   *
+   * A WAL file name is of the format: &lt;wal-name&gt;{@link #WAL_FILE_NAME_DELIMITER}
+   * &lt;file-creation-timestamp&gt;[.meta]. provider-name is usually made up of a server-name and a
+   * provider-id
    * @param filename name of the file to validate
-   * @return <tt>true</tt> if the filename matches an WAL, <tt>false</tt>
-   *         otherwise
+   * @return <tt>true</tt> if the filename matches an WAL, <tt>false</tt> otherwise
    */
   public static boolean validateWALFilename(String filename) {
     return pattern.matcher(filename).matches();
@@ -238,13 +259,9 @@ public class DefaultWALProvider implements WALProvider {
 
   /**
    * Construct the directory name for all WALs on a given server.
-   *
-   * @param serverName
-   *          Server name formatted as described in {@link ServerName}
-   * @return the relative WAL directory name, e.g.
-   *         <code>.logs/1.example.org,60030,12345</code> if
-   *         <code>serverName</code> passed is
-   *         <code>1.example.org,60030,12345</code>
+   * @param serverName Server name formatted as described in {@link ServerName}
+   * @return the relative WAL directory name, e.g. <code>.logs/1.example.org,60030,12345</code> if
+   *         <code>serverName</code> passed is <code>1.example.org,60030,12345</code>
    */
   public static String getWALDirectoryName(final String serverName) {
     StringBuilder dirName = new StringBuilder(HConstants.HREGION_LOGDIR_NAME);
@@ -254,25 +271,17 @@ public class DefaultWALProvider implements WALProvider {
   }
 
   /**
-   * Pulls a ServerName out of a Path generated according to our layout rules.
-   *
-   * In the below layouts, this method ignores the format of the logfile component.
-   *
-   * Current format:
-   *
-   * [base directory for hbase]/hbase/.logs/ServerName/logfile
-   *      or
-   * [base directory for hbase]/hbase/.logs/ServerName-splitting/logfile
-   *
-   * Expected to work for individual log files and server-specific directories.
-   *
-   * @return null if it's not a log file. Returns the ServerName of the region
-   *         server that created this log file otherwise.
+   * Pulls a ServerName out of a Path generated according to our layout rules. In the below layouts,
+   * this method ignores the format of the logfile component. Current format: [base directory for
+   * hbase]/hbase/.logs/ServerName/logfile or [base directory for
+   * hbase]/hbase/.logs/ServerName-splitting/logfile Expected to work for individual log files and
+   * server-specific directories.
+   * @return null if it's not a log file. Returns the ServerName of the region server that created
+   *         this log file otherwise.
    */
   public static ServerName getServerNameFromWALDirectoryName(Configuration conf, String path)
       throws IOException {
-    if (path == null
-        || path.length() <= HConstants.HREGION_LOGDIR_NAME.length()) {
+    if (path == null || path.length() <= HConstants.HREGION_LOGDIR_NAME.length()) {
       return null;
     }
 
@@ -282,16 +291,13 @@ public class DefaultWALProvider implements WALProvider {
 
     final String rootDir = conf.get(HConstants.HBASE_DIR);
     if (rootDir == null || rootDir.isEmpty()) {
-      throw new IllegalArgumentException(HConstants.HBASE_DIR
-          + " key not found in conf.");
+      throw new IllegalArgumentException(HConstants.HBASE_DIR + " key not found in conf.");
     }
 
     final StringBuilder startPathSB = new StringBuilder(rootDir);
-    if (!rootDir.endsWith("/"))
-      startPathSB.append('/');
+    if (!rootDir.endsWith("/")) startPathSB.append('/');
     startPathSB.append(HConstants.HREGION_LOGDIR_NAME);
-    if (!HConstants.HREGION_LOGDIR_NAME.endsWith("/"))
-      startPathSB.append('/');
+    if (!HConstants.HREGION_LOGDIR_NAME.endsWith("/")) startPathSB.append('/');
     final String startPath = startPathSB.toString();
 
     String fullPath;
@@ -321,8 +327,8 @@ public class DefaultWALProvider implements WALProvider {
    * This function returns region server name from a log file name which is in one of the following
    * formats:
    * <ul>
-   *   <li>hdfs://&lt;name node&gt;/hbase/.logs/&lt;server name&gt;-splitting/...</li>
-   *   <li>hdfs://&lt;name node&gt;/hbase/.logs/&lt;server name&gt;/...</li>
+   * <li>hdfs://&lt;name node&gt;/hbase/.logs/&lt;server name&gt;-splitting/...</li>
+   * <li>hdfs://&lt;name node&gt;/hbase/.logs/&lt;server name&gt;/...</li>
    * </ul>
    * @param logFile
    * @return null if the passed in logFile isn't a valid WAL file path
@@ -365,11 +371,10 @@ public class DefaultWALProvider implements WALProvider {
    * public because of FSHLog. Should be package-private
    */
   public static Writer createWriter(final Configuration conf, final FileSystem fs, final Path path,
-      final boolean overwritable)
-      throws IOException {
+      final boolean overwritable) throws IOException {
     // Configuration already does caching for the Class lookup.
     Class<? extends Writer> logWriterClass = conf.getClass("hbase.regionserver.hlog.writer.impl",
-        ProtobufLogWriter.class, Writer.class);
+      ProtobufLogWriter.class, Writer.class);
     try {
       Writer writer = logWriterClass.newInstance();
       writer.init(fs, path, conf, overwritable);
@@ -378,6 +383,13 @@ public class DefaultWALProvider implements WALProvider {
       LOG.debug("Error instantiating log writer.", e);
       throw new IOException("cannot get log writer", e);
     }
+  }
+
+  public static AsyncWriter createAsyncWriter(Configuration conf, FileSystem fs, Path path,
+      boolean overwritable, EventLoop eventLoop) throws IOException {
+    AsyncWriter writer = new AsyncProtobufLogWriter(eventLoop);
+    writer.init(fs, path, conf, overwritable);
+    return writer;
   }
 
   /**

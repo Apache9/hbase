@@ -20,27 +20,24 @@ package org.apache.hadoop.hbase.regionserver.wal;
 
 import java.io.IOException;
 
-import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.HConstants;
+import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.io.util.LRUDictionary;
 import org.apache.hadoop.hbase.util.FSUtils;
-
-import org.apache.hadoop.hbase.wal.DefaultWALProvider;
 
 /**
  * Context used by our wal dictionary compressor. Null if we're not to do our
  * custom dictionary compression.
  */
 @InterfaceAudience.Private
-public abstract class WriterBase implements DefaultWALProvider.Writer {
+public abstract class WriterBase {
 
   protected CompressionContext compressionContext;
   protected Configuration conf;
 
-  @Override
   public void init(FileSystem fs, Path path, Configuration conf, boolean overwritable) throws IOException {
     this.conf = conf;
   }

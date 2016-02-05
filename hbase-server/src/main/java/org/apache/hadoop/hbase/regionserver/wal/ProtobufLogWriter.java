@@ -37,13 +37,14 @@ import org.apache.hadoop.hbase.codec.Codec;
 import org.apache.hadoop.hbase.protobuf.generated.WALProtos.WALHeader;
 import org.apache.hadoop.hbase.protobuf.generated.WALProtos.WALTrailer;
 import org.apache.hadoop.hbase.util.FSUtils;
+import org.apache.hadoop.hbase.wal.DefaultWALProvider;
 import org.apache.hadoop.hbase.wal.WAL.Entry;
 
 /**
  * Writer for protobuf-based WAL.
  */
 @InterfaceAudience.LimitedPrivate(HBaseInterfaceAudience.CONFIG)
-public class ProtobufLogWriter extends WriterBase {
+public class ProtobufLogWriter extends WriterBase implements DefaultWALProvider.Writer {
   private static final Log LOG = LogFactory.getLog(ProtobufLogWriter.class);
   protected FSDataOutputStream output;
   protected Codec.Encoder cellEncoder;

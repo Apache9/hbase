@@ -1260,6 +1260,12 @@ public final class HConstants {
   public static final String DEFAULT_TEMPORARY_HDFS_DIRECTORY = "/user/"
       + System.getProperty("user.name") + "/hbase-staging";
 
+  public static final String WAL_BATCH_SIZE = "hbase.wal.batch.size";
+  public static final long DEFAULT_WAL_BATCH_SIZE = 64L * 1024;
+
+  public static final String WAL_ASYNC_ENABLED = "hbase.wal.async.enabled";
+  public static final boolean DEFAULT_WAL_ASYNC_ENABLED = false;
+
   private HConstants() {
     // Can't be instantiated with this ctor.
   }
