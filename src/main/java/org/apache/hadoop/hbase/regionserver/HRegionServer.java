@@ -460,6 +460,9 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
 
   private int multiRequestMaxActionCount;
   
+  private long readRequestsPerSecond = 0;
+  private long writeRequestsPerSecond = 0;
+
   /**
    * Starts a HRegionServer at the default location
    *
@@ -1123,6 +1126,8 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
       readRequestsPerSecond += load.getReadRequestsPerSecond();
       writeRequestsPerSecond += load.getWriteRequestsPerSecond();
     }
+    this.readRequestsPerSecond = readRequestsPerSecond;
+    this.writeRequestsPerSecond = writeRequestsPerSecond;
     List<ReplicationLoad> replicationLoads = new LinkedList<ReplicationLoad>();
     if (this.replicationSourceHandler != null) {
       replicationLoads = replicationSourceHandler.getReplicatonLoad();
@@ -1938,6 +1943,8 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
         (int) (totalStaticBloomSize / 1024));
     this.metrics.readRequestsCount.set(readRequestsCount);
     this.metrics.writeRequestsCount.set(writeRequestsCount);
+    this.metrics.readRequestsPerSecond.set(this.readRequestsPerSecond);
+    this.metrics.writeRequestsPerSecond.set(this.writeRequestsPerSecond);
     this.metrics.compactionQueueSize.set(compactSplitThread
         .getCompactionQueueSize());
     this.metrics.largeCompactionQueueSize.set(compactSplitThread

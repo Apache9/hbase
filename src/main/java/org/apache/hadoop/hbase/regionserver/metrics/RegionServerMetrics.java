@@ -189,6 +189,18 @@ public class RegionServerMetrics implements Updater {
       new MetricsLongValue("writeRequestsCount", registry);
 
   /**
+   * Count of read requests
+   */
+  public final MetricsLongValue readRequestsPerSecond = 
+      new MetricsLongValue("readRequestsPerSecond", registry);
+
+  /**
+   * Count of write requests
+   */
+  public final MetricsLongValue writeRequestsPerSecond = 
+      new MetricsLongValue("writeRequestsPerSecond", registry);
+
+  /**
    */
   public final MetricsIntValue storefileIndexSizeMB =
     new MetricsIntValue("storefileIndexSizeMB", registry);
@@ -449,6 +461,8 @@ public class RegionServerMetrics implements Updater {
       this.numPutsWithoutWAL.pushMetric(this.metricsRecord);
       this.readRequestsCount.pushMetric(this.metricsRecord);
       this.writeRequestsCount.pushMetric(this.metricsRecord);
+      this.readRequestsPerSecond.pushMetric(this.metricsRecord);
+      this.writeRequestsPerSecond.pushMetric(this.metricsRecord);
       this.regions.pushMetric(this.metricsRecord);
       this.requests.pushMetric(this.metricsRecord);
       this.compactionQueueSize.pushMetric(this.metricsRecord);
@@ -703,6 +717,10 @@ public class RegionServerMetrics implements Updater {
       Long.valueOf(this.hedgedReadWins.get()));
     sb = Strings.appendKeyValue(sb, "hedgedReadsInCurThread",
       Long.valueOf(this.hedgedReadsInCurThread.get()));
+    sb = Strings.appendKeyValue(sb, "readRequestsPerSecond",
+      Long.valueOf(this.readRequestsPerSecond.get()));
+    sb = Strings.appendKeyValue(sb, "writeRequestsPerSecond",
+      Long.valueOf(this.writeRequestsPerSecond.get()));
     return sb.toString();
   }
   
