@@ -765,9 +765,35 @@ public final class HConstants {
   public static final int HUGE_ROW_SIZE_IN_BYTE_WARN_VALUE = 134217728; //128M
 
   public static final String IGNORE_SPLITS_WHEN_CREATE_TABLE = "hbase.ignore.splits.when.create.table";
+
+  /**
+   * Configure the number of failures after which the client will start logging. A few failures
+   * is fine: region moved, then is not opened, then is overloaded. We try to have an acceptable
+   * heuristic for the number of errors we don't log. 9 was chosen because we wait for 1s at
+   * this stage.
+   */
+  public static final String START_LOG_ERRORS_AFTER_COUNT_KEY =
+      "hbase.client.start.log.errors.counter";
+  public static final int DEFAULT_START_LOG_ERRORS_AFTER_COUNT = 9;
+
+  public static final String BLOCK_MISSING_COUNT_WARN_THRESHOLD_KEY =
+      "hbase.block.missing.count.warn.threshold";
+  /**
+   * For hdd, the max iops is about 100 for each disk, we usually have 12 disks each machine, 
+   * so that the total iops is 360 when disk util is about 30%. Should configure different
+   * value for ssd.
+   */
+  public static final int DEFAULT_BLOCK_MISSING_COUNT_WARN_VALUE = 360;
+  
+  public static final String MULTI_REQUEST_MAX_ACTION_COUNT = "multi.requst.max.action.count";
+  public static final int DEFAULT_MULTI_REQUEST_MAX_ACTION_COUNT = 500;
+
+  public static final String WARN_THRESHOLD_FOR_RAW_SCANNED_COUNT = "hbase.warn.threshold.for.raw.scanned.count";
+  public static final int DEFAULT_WARN_THRESHOLD_FOR_RAW_SCANNED = 500;
   
   private HConstants() {
     // Can't be instantiated with this ctor.
   }
+
 }
 

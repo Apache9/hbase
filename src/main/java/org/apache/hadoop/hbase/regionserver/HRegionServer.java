@@ -47,6 +47,8 @@ import java.util.Map.Entry;
 import java.util.Random;
 import java.util.Set;
 import java.util.SortedMap;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
@@ -227,6 +229,8 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
   protected volatile boolean abortRequested;
 
   private volatile boolean killed = false;
+
+  private volatile boolean queueFullDetected = false;
 
   // If false, the file system has become unavailable
   protected volatile boolean fsOk;
@@ -452,6 +456,13 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
   /** The health check chore. */
   private HealthCheckChore healthCheckChore;
 
+  private int blockMissingCountWarnThreshold;
+
+  private int multiRequestMaxActionCount;
+  
+  private long readRequestsPerSecond = 0;
+  private long writeRequestsPerSecond = 0;
+
   /**
    * Starts a HRegionServer at the default location
    *
@@ -485,6 +496,8 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
     this.maxScannerResultSize = conf.getLong(
       HConstants.HBASE_CLIENT_SCANNER_MAX_RESULT_SIZE_KEY,
       HConstants.DEFAULT_HBASE_CLIENT_SCANNER_MAX_RESULT_SIZE);
+    this.multiRequestMaxActionCount = conf.getInt(HConstants.MULTI_REQUEST_MAX_ACTION_COUNT,
+      HConstants.DEFAULT_MULTI_REQUEST_MAX_ACTION_COUNT);
 
     this.numRegionsToReport = conf.getInt(
       "hbase.regionserver.numregionstoreport", 10);
@@ -497,6 +510,10 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
         HConstants.HBASE_REGIONSERVER_LEASE_PERIOD_KEY,
         HConstants.DEFAULT_HBASE_REGIONSERVER_LEASE_PERIOD);
 
+    this.blockMissingCountWarnThreshold = conf.getInt(
+        HConstants.BLOCK_MISSING_COUNT_WARN_THRESHOLD_KEY,
+        HConstants.DEFAULT_BLOCK_MISSING_COUNT_WARN_VALUE);
+    
     this.abortRequested = false;
     this.stopped = false;
 
@@ -894,6 +911,15 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
         abort("Unhandled exception: " + t.getMessage(), t);
       }
     }
+
+    // Add a timer to monitor the procedure in case something hang
+    Timer exitMonitor = new Timer(true);
+    exitMonitor.schedule(new TimerTask() {
+      public void run() {
+        System.exit(-1);
+      }
+    }, conf.getLong("hbase.exit.timeout.ms", 30000));
+
     // Run shutdown.
     if (mxBean != null) {
       MBeanUtil.unregisterMBean(mxBean);
@@ -922,10 +948,28 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
 
     // Send interrupts to wake up threads if sleeping so they notice shutdown.
     // TODO: Should we check they are alive? If OOME could have exited already
-    if (this.cacheFlusher != null) this.cacheFlusher.interruptIfNecessary();
+    if (this.cacheFlusher != null) {
+      if (queueFullDetected) {
+        this.cacheFlusher.tryInterruptIfNecessary();
+      } else {
+        this.cacheFlusher.interruptIfNecessary();
+      }
+    }
     if (this.compactSplitThread != null) this.compactSplitThread.interruptIfNecessary();
-    if (this.hlogRoller != null) this.hlogRoller.interruptIfNecessary();
-    if (this.metaHLogRoller != null) this.metaHLogRoller.interruptIfNecessary();
+    if (this.hlogRoller != null) {
+      if (queueFullDetected) {
+        this.hlogRoller.tryInterruptIfNecessary();
+      } else {
+        this.hlogRoller.interruptIfNecessary();
+      }
+    }
+    if (this.metaHLogRoller != null) { 
+      if (queueFullDetected) {
+        this.metaHLogRoller.tryInterruptIfNecessary();
+      } else {
+        this.metaHLogRoller.interruptIfNecessary();
+      }
+    }
     if (this.compactionChecker != null)
       this.compactionChecker.interrupt();
     if (this.queueFullDetector != null) {
@@ -946,12 +990,12 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
 
     // Stop the snapshot handler, forcefully killing all running tasks
     try {
-      if (snapshotManager != null) snapshotManager.stop(this.abortRequested || this.killed);
+      if (snapshotManager != null) snapshotManager.stop(this.abortRequested || this.killed || this.queueFullDetected);
     } catch (IOException e) {
       LOG.warn("Failed to close snapshot handler cleanly", e);
     }
 
-    if (this.killed) {
+    if (this.killed || this.queueFullDetected) {
       // Just skip out w/o closing regions.  Used when testing.
     } else if (abortRequested) {
       if (this.fsOk) {
@@ -968,7 +1012,7 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
     if (this.catalogTracker != null) this.catalogTracker.stop();
 
     // Closing the compactSplit thread before closing meta regions
-    if (!this.killed && containsMetaTableRegions()) {
+    if (!this.killed && !this.queueFullDetected && containsMetaTableRegions()) {
       if (!abortRequested || this.fsOk) {
         if (this.compactSplitThread != null) {
           this.compactSplitThread.join();
@@ -978,14 +1022,14 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
       }
     }
 
-    if (!this.killed && this.fsOk) {
+    if (!this.killed && !this.queueFullDetected && this.fsOk) {
       waitOnAllRegionsToClose(abortRequested);
       LOG.info("stopping server " + this.serverNameFromMasterPOV +
         "; all regions closed.");
     }
 
     //fsOk flag may be changed when closing regions throws exception.
-    if (!this.killed && this.fsOk) {
+    if (!this.killed && !this.queueFullDetected && this.fsOk) {
       closeWAL(abortRequested ? false : true);
     }
 
@@ -997,7 +1041,7 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
       parallelSFSeekExecutor.shutdownNow();
     }
 
-    if (!killed) {
+    if (!killed && !queueFullDetected) {
       join();
     }
 
@@ -1082,6 +1126,8 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
       readRequestsPerSecond += load.getReadRequestsPerSecond();
       writeRequestsPerSecond += load.getWriteRequestsPerSecond();
     }
+    this.readRequestsPerSecond = readRequestsPerSecond;
+    this.writeRequestsPerSecond = writeRequestsPerSecond;
     List<ReplicationLoad> replicationLoads = new LinkedList<ReplicationLoad>();
     if (this.replicationSourceHandler != null) {
       replicationLoads = replicationSourceHandler.getReplicatonLoad();
@@ -1666,6 +1712,7 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
             shouldExit = true;
           }
           if (shouldExit) {
+            queueFullDetected = true;
             abort("Detected queue full and canot come back to normal state in a long duration");
           }
         }
@@ -1896,6 +1943,8 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
         (int) (totalStaticBloomSize / 1024));
     this.metrics.readRequestsCount.set(readRequestsCount);
     this.metrics.writeRequestsCount.set(writeRequestsCount);
+    this.metrics.readRequestsPerSecond.set(this.readRequestsPerSecond);
+    this.metrics.writeRequestsPerSecond.set(this.writeRequestsPerSecond);
     this.metrics.compactionQueueSize.set(compactSplitThread
         .getCompactionQueueSize());
     this.metrics.largeCompactionQueueSize.set(compactSplitThread
@@ -1939,11 +1988,26 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
       // past N period block cache hit / hit caching ratios
       cacheStats.rollMetricsPeriod();
       ratio = cacheStats.getHitRatioPastNPeriods();
-      percent = (int) (ratio * 100);
-      this.metrics.blockCacheHitRatioPastNPeriods.set(percent);
+      int hitPercentPastNPeriod = (int) (ratio * 100);
+      this.metrics.blockCacheHitRatioPastNPeriods.set(hitPercentPastNPeriod);
       ratio = cacheStats.getHitCachingRatioPastNPeriods();
-      percent = (int) (ratio * 100);
-      this.metrics.blockCacheHitCachingRatioPastNPeriods.set(percent);
+      int hitCachingPercentPastNPeriod = (int) (ratio * 100);
+      this.metrics.blockCacheHitCachingRatioPastNPeriods.set(hitCachingPercentPastNPeriod);
+      this.metrics.blockCacheSumRequestCountsPastNPeriods.set(cacheStats
+          .getSumRequestCountsPastNPeriods());
+      this.metrics.blockCacheSumRequestCachingCountsPastNPeriods.set(cacheStats
+          .getSumRequestCachingCountsPastNPeriods());
+      
+      int missingBlocksPastNPeriods = (int) (this.metrics.blockCacheSumRequestCountsPastNPeriods
+          .get() * (1 - hitPercentPastNPeriod));
+      if (missingBlocksPastNPeriods >= blockMissingCountWarnThreshold) {
+        LOG.info("Block read stats in past N periods, readBlocks="
+            + this.metrics.blockCacheSumRequestCountsPastNPeriods.get() + ", hitRatio="
+            + hitPercentPastNPeriod + "%, missBlocks=" + missingBlocksPastNPeriods
+            + ", readCachingBlocks=" + this.metrics.blockCacheSumRequestCachingCountsPastNPeriods.get()
+            + ", hitCachingRatio=" + hitCachingPercentPastNPeriod + "%, missCachingBlocks="
+            + (int)(this.metrics.blockCacheSumRequestCachingCountsPastNPeriods.get() * (1 - hitCachingPercentPastNPeriod)));
+      }
     }
     float localityIndex = hdfsBlocksDistribution.getBlockLocalityIndex(
       getServerName().getHostname());
@@ -3009,7 +3073,7 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
     RegionScannerHolder holder = this.scanners.get(scannerName);
 
     TracerUtils.addAnnotation("start a next(" + scannerId + "," + nbRows + "," + callSeq
-        + ") for scan: " + holder.getScan());
+        + ") for scan: " + (holder == null ? "null" : holder.getScan()));
 
     if (holder == null) throw new UnknownScannerException("Name: " + scannerName);
     // if callSeq does not match throw Exception straight away. This needs to be performed even
@@ -4308,6 +4372,11 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
   @Override
   public <R> MultiResponse multi(MultiAction<R> multi) throws IOException {
     checkOpen();
+    if (multi.size() > multiRequestMaxActionCount) {
+      throw new DoNotRetryIOException("multi request action count exceeded, maxActionCount="
+          + multiRequestMaxActionCount);
+    }
+    
     MultiResponse response = new MultiResponse();
     
     TracerUtils.addAnnotation("start a multi actions, actions size:" + multi.size());

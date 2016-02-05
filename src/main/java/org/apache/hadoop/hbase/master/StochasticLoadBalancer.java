@@ -1644,4 +1644,9 @@ public class StochasticLoadBalancer extends DefaultLoadBalancer {
       return desc;
     }
   }
+
+  @VisibleForTesting
+  public void setMaxRunningTime(long maxRunningTime) {
+    this.maxRunningTime = maxRunningTime;
+  }
 }

@@ -21,6 +21,7 @@ package org.apache.hadoop.hbase.coprocessor;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.KeyValue;
@@ -35,10 +36,17 @@ import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.filter.WritableByteArrayComparable;
 import org.apache.hadoop.hbase.filter.CompareFilter.CompareOp;
 import org.apache.hadoop.hbase.ipc.RequestContext;
+import org.apache.hadoop.hbase.regionserver.AccessCounter;
+import org.apache.hadoop.hbase.regionserver.AccessCounter.AccessType;
 import org.apache.hadoop.hbase.regionserver.HRegion;
 import org.apache.hadoop.hbase.regionserver.InternalScanner;
+import org.apache.hadoop.hbase.regionserver.MiniBatchOperationInProgress;
+import org.apache.hadoop.hbase.regionserver.AccessCounter.CounterKey;
 import org.apache.hadoop.hbase.regionserver.wal.WALEdit;
 import org.apache.hadoop.hbase.security.User;
+import org.apache.hadoop.hbase.util.Pair;
+
+import com.google.common.util.concurrent.AtomicLongMap;
 
 public class AccessCountCoprocessor extends BaseRegionObserver {
  
@@ -63,12 +71,20 @@ public class AccessCountCoprocessor extends BaseRegionObserver {
     RegionCoprocessorEnvironment e = c.getEnvironment();
     User user = getActiveUser();
     byte[] table = getTableName(e);
+
+    AtomicLongMap<CounterKey> counter = AtomicLongMap.create();
+    for (Result result : results) {
+      for (KeyValue kv : result.list()) {
+        CounterKey key = new CounterKey(user.getShortName(), table, kv.getFamily(),
+            kv.getQualifier(), AccessType.READ);
+        counter.incrementAndGet(key);
+      }
+    }
+
     HRegion region = e.getRegion();
     if (region != null) {
-      for (Result result : results) {
-        for (KeyValue kv : result.list()) {
-          region.updateReadCount(user, table, kv.getFamily(), kv.getQualifier());
-        }
+      for (Map.Entry<CounterKey, Long> entry : counter.asMap().entrySet()) {
+        region.updateReadCount(entry.getKey(), entry.getValue());
       }
     }
     return hasMore;
@@ -88,31 +104,34 @@ public class AccessCountCoprocessor extends BaseRegionObserver {
       }
     }
   }
-  
-  @Override
-  public void postPut(final ObserverContext<RegionCoprocessorEnvironment> c, 
-      final Put put, final WALEdit edit, final boolean writeToWAL) throws IOException {
-    RegionCoprocessorEnvironment e = c.getEnvironment();
-    User user = getActiveUser();
-    byte[] table = getTableName(e);
-    HRegion region = e.getRegion();
-    if (region != null) {
-      for (KeyValue kv : edit.getKeyValues()) {
-        region.updateWriteCount(user, table, kv.getFamily(), kv.getQualifier());
-      }
-    }
-  }
 
   @Override
-  public void postDelete(final ObserverContext<RegionCoprocessorEnvironment> c,
-      final Delete delete, final WALEdit edit, final boolean writeToWAL) throws IOException {
+  public void postBatchMutate(final ObserverContext<RegionCoprocessorEnvironment> c,
+      final MiniBatchOperationInProgress<Pair<Mutation, Integer>> miniBatchOp) throws IOException {
     RegionCoprocessorEnvironment e = c.getEnvironment();
     User user = getActiveUser();
     byte[] table = getTableName(e);
+
+    AtomicLongMap<CounterKey> counter = AtomicLongMap.create();
+    int length = miniBatchOp.size();
+    for (int i = 0; i < length; i++) {
+      Mutation mutation = miniBatchOp.getOperation(i).getFirst();
+      if(mutation instanceof  Delete) {
+        continue;
+      }
+      for (Map.Entry<byte[], List<KeyValue>> entry : mutation.getFamilyMap().entrySet()) {
+        for (KeyValue kv : entry.getValue()) {
+          CounterKey key = new CounterKey(user.getShortName(), table, kv.getFamily(),
+              kv.getQualifier(), AccessType.WRITE);
+          counter.incrementAndGet(key);
+        }
+      }
+    }
+
     HRegion region = e.getRegion();
     if (region != null) {
-      for (KeyValue kv : edit.getKeyValues()) {
-        region.updateWriteCount(user, table, kv.getFamily(), kv.getQualifier());
+      for (Map.Entry<CounterKey, Long> entry : counter.asMap().entrySet()) {
+        region.updateWriteCount(entry.getKey(), entry.getValue());
       }
     }
   }

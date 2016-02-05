@@ -61,6 +61,7 @@ public abstract class ServerCallable<T> implements Callable<T> {
   protected HRegionLocation location;
   protected HRegionInterface server;
   protected int callTimeout;
+  protected int startLogErrorsCnt;
   protected long globalStartTime;
   protected long startTime, endTime;
   protected final static int MIN_RPC_TIMEOUT = 2000;
@@ -79,6 +80,7 @@ public abstract class ServerCallable<T> implements Callable<T> {
     this.tableName = tableName;
     this.row = row;
     this.callTimeout = callTimeout;
+    this.startLogErrorsCnt = connection.getStartLogErrorsAfterCount();
   }
 
   /**
@@ -181,6 +183,11 @@ public abstract class ServerCallable<T> implements Callable<T> {
         connect(tries != 0);
         return call();
       } catch (Throwable t) {
+        if (tries >= startLogErrorsCnt) {
+          LOG.warn("Call exception, tries=" + tries + ", retries=" + numRetries + ", retryTime="
+              + (EnvironmentEdgeManager.currentTimeMillis() - this.globalStartTime) + "ms, msg="
+              + getExceptionMessageAdditionalDetail(), t);
+        }
         t = translateException(t);
         if (t instanceof SocketTimeoutException ||
             t instanceof ConnectException ||
@@ -213,17 +220,16 @@ public abstract class ServerCallable<T> implements Callable<T> {
         // If, after the planned sleep, there won't be enough time left, we stop now.
         long duration = singleCallDuration(expectedSleep);
         if (duration > this.callTimeout) {
-          throw (SocketTimeoutException) new SocketTimeoutException(
-            "Call to access row '" + Bytes.toString(row) + "' on table '"
-              + Bytes.toString(tableName) + "' failed on timeout. "
-              + " callTimeout=" + this.callTimeout + ", callDuration="
-              + duration).initCause(t);
+          throw (SocketTimeoutException) new SocketTimeoutException("Call to access "
+              + getExceptionMessageAdditionalDetail() + " failed on timeout. " + " callTimeout="
+              + this.callTimeout + ", callDuration=" + duration).initCause(t);
         }
       } finally {
         afterCall();
       }
       try {
-        LOG.info("Sleep for next retry, tries=" + tries + ", sleepTime=" + expectedSleep);
+        LOG.info("Sleep for next retry, tries=" + tries + ", retries=" + numRetries
+            + ", sleepTime=" + expectedSleep);
         Thread.sleep(expectedSleep);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
@@ -233,6 +239,11 @@ public abstract class ServerCallable<T> implements Callable<T> {
     return null;
   }
 
+  public String getExceptionMessageAdditionalDetail() {
+    return "row '" + Bytes.toString(row) + "' on table '" + tableName + "' at " + location;
+  }
+
+  
   /**
    * Run this instance against the server once.
    * @param <T> the type of the return value

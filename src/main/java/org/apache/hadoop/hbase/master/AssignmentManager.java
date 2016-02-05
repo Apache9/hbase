@@ -29,6 +29,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
@@ -155,6 +156,33 @@ public class AssignmentManager extends ZooKeeperListener {
    */
   private final NavigableMap<ServerName, Set<HRegionInfo>> servers =
     new TreeMap<ServerName, Set<HRegionInfo>>();
+
+  /**
+   * Recently crashed server failover statistics.
+   * This map should always keep consistent with {@link #regionToCrashedServers}.
+   * Always update this under a lock on {@link #crashedServers}.
+   */
+  private final Map<ServerName, ServerCrashStatistics> crashedServers =
+      new LinkedHashMap<ServerName, ServerCrashStatistics>() {
+        @Override protected boolean removeEldestEntry(
+            Map.Entry<ServerName, ServerCrashStatistics> eldest) {
+          if (System.currentTimeMillis() - eldest.getValue().getCrashTs() >
+              3600 * 24 && this.size() > 10) { // keep at least 1 day and 10 crashes
+            for (String regionName : eldest.getValue().getPendingRegions()) {
+              regionToCrashedServers.remove(regionName);
+            }
+            return true;
+          }
+          return false;
+        }
+      };
+
+  /**
+   * Region to crashed server map.
+   * This map should always keep consistent with {@link #crashedServers}.
+   */
+  private final Map<String, ServerName> regionToCrashedServers =
+      new HashMap<String, ServerName>();
 
   /**
    * Contains the server which need to update timer, these servers will be
@@ -3115,6 +3143,7 @@ public class AssignmentManager extends ZooKeeperListener {
       servers.put(sn, hris);
     }
     if (!hris.contains(hri)) hris.add(hri);
+    markRegionAsRecovered(hri);
   }
 
   /**
@@ -3501,6 +3530,7 @@ public class AssignmentManager extends ZooKeeperListener {
         for (HRegionInfo region : deadRegions) {
           this.regions.remove(region);
         }
+        this.addCrashedServer(sn, assignedRegions);
       }
     }
     // See if any of the regions that were online on this server were in RIT
@@ -3659,6 +3689,50 @@ public class AssignmentManager extends ZooKeeperListener {
           }
         }
       }
+    }
+  }
+
+  private void addCrashedServer(ServerName sn, Set<HRegionInfo> regions) {
+    synchronized (crashedServers) {
+      if (crashedServers.containsKey(sn)) {
+        LOG.error("Duplicated crash server: " + sn);
+      } else {
+        Set<String> currentRegions = new TreeSet<String>();
+        for (HRegionInfo region : regions) {
+          String regionName = region.getEncodedName();
+          currentRegions.add(regionName);
+          if (regionToCrashedServers.containsKey(regionName)) {
+            LOG.error("Duplicated region " + region + " from crashed servers: " + sn + ", " +
+                regionToCrashedServers.get(regionName));
+          }
+          regionToCrashedServers.put(regionName, sn);
+        }
+        ServerCrashStatistics stat = new ServerCrashStatistics(sn.getServerName(),
+            System.currentTimeMillis(), currentRegions);
+        crashedServers.put(sn, stat);
+      }
+    }
+  }
+
+  private void markRegionAsRecovered(HRegionInfo region) {
+    synchronized (crashedServers) {
+      ServerName sn = regionToCrashedServers.get(region.getEncodedName());
+      if (sn != null) {
+        ServerCrashStatistics stat = crashedServers.get(sn);
+        if (stat != null) stat.markRegionAsRecovered(region.getEncodedName());
+      }
+      regionToCrashedServers.remove(region.getEncodedName());
+    }
+  }
+
+  public List<ServerCrashStatistics> getCrashedServersStatistics() {
+    synchronized (crashedServers) {
+      List<ServerCrashStatistics> stats =
+          new ArrayList<ServerCrashStatistics>(crashedServers.size());
+      for (ServerCrashStatistics stat : crashedServers.values()) {
+        stats.add(new ServerCrashStatistics(stat));
+      }
+      return stats;
     }
   }
 

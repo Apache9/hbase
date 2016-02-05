@@ -83,8 +83,8 @@ public class FlushSnapshotSubprocedure extends Subprocedure {
         region.addRegionToSnapshot(snapshot, monitor);
         LOG.debug("... Flush Snapshotting region " + region.toString() + " completed.");
       } finally {
-        LOG.debug("Closing region operation on " + region);
         region.closeRegionOperation();
+        LOG.debug("Closing region operation on " + region);
       }
       return null;
     }

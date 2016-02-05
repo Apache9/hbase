@@ -210,6 +210,12 @@ public class CombinedBlockCache implements BlockCache, HeapSize {
       return Double.isNaN(ratio) ? 0 : ratio;
     }
 
+    @Override
+    public void rollMetricsPeriod() {
+      lruCacheStats.rollMetricsPeriod();
+      bucketCacheStats.rollMetricsPeriod();
+    }
+
   }
 
 }

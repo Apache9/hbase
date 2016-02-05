@@ -18,6 +18,7 @@
 package org.apache.hadoop.hbase.mapreduce;
 
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
 import org.apache.commons.logging.Log;
@@ -192,7 +193,7 @@ public class TableRecordReaderImpl {
     if (value == null) value = new Result();
     try {
       try {
-        value = this.scanner.next();
+        value = nextWithoutFakeRow(this.scanner);
         if (logScannerActivity) {
           rowcount ++;
           if (rowcount >= logPerRowCount) {
@@ -221,9 +222,9 @@ public class TableRecordReaderImpl {
           restart(scan.getStartRow());
         } else {
           restart(lastSuccessfulRow);
-          scanner.next();    // skip presumed already mapped row
+          nextWithoutFakeRow(this.scanner); // skip presumed already mapped row
         }
-        value = scanner.next();
+        value = nextWithoutFakeRow(this.scanner);
         numRestarts++;
       }
       if (value != null && value.size() > 0) {
@@ -247,6 +248,22 @@ public class TableRecordReaderImpl {
       }
       throw ioe;
     }
+  }
+
+  private Result nextWithoutFakeRow(ResultScanner scanner) throws IOException {
+    Result value;
+    while (true) {
+      value = scanner.next();
+      if (value == null || !value.isFake()) break;
+      try {
+        ((Counter) this.getCounter.invoke(context, HBASE_COUNTER_GROUP_NAME,
+            "NUM_FAKE_RESULTS")).increment(1);
+        assert false;
+      } catch (Exception e) {
+        LOG.debug("can't update counter." + StringUtils.stringifyException(e));
+      }
+    }
+    return value;
   }
 
   /**

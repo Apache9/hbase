@@ -19,12 +19,16 @@
  */
 package org.apache.hadoop.hbase.util;
 
+import java.io.IOException;
 import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
 
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Action;
@@ -32,12 +36,18 @@ import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Increment;
 import org.apache.hadoop.hbase.client.MultiAction;
+import org.apache.hadoop.hbase.client.Operation;
 import org.apache.hadoop.hbase.client.Put;
+import org.apache.hadoop.hbase.client.Row;
+import org.codehaus.jackson.map.ObjectMapper;
 
 /**
  * Utility methods for interacting with object instances.
  */
 public class Objects {
+  private static final ObjectMapper MAPPER = new ObjectMapper();
+  private static final int MAX_MULTI_SIZE_TO_LOG_OPERATION_DETAIL = 10;
+  
   private static class QuantityMap extends HashMap<String,Quantity> {
     public void increment(String type, int count) {
       Quantity q = get(type);
@@ -137,6 +147,56 @@ public class Objects {
       q.appendToString(str);
     }
     return str.toString();
+  }
+  
+  public static String getOperationDetails(Object[] params) throws IOException {
+    if (params == null) {
+      return "";
+    }
+    
+    Map<String, Object> details = new HashMap<String, Object>();
+    if (params.length == 1) {
+      if (params[0] instanceof MultiAction) {
+        MultiAction multi = (MultiAction) params[0];
+        // for small multi operation, such as single put
+        if (multi.size() < MAX_MULTI_SIZE_TO_LOG_OPERATION_DETAIL) {
+          for (Entry<byte[], List<Action>> entry : (Set<Entry<byte[], List<Action>>>) multi.actions
+              .entrySet()) {
+            Map<String, Object> regionDetails = new HashMap<String, Object>();
+            details.put(Bytes.toStringBinary(entry.getKey()), regionDetails);
+            for (Action action : entry.getValue()) {
+              Row row = action.getAction();
+              addOperationDetail(regionDetails,
+                row.getClass().getSimpleName() + "_" + action.getOriginalIndex(), row);
+            }
+          }
+        }
+        return MAPPER.writeValueAsString(details);
+      }
+    } else if (params.length == 2) {
+      // params[0] is regionName, params[1] is Get/Delete, etc
+      if (params[0] instanceof byte[] && params[1] instanceof Row) {
+        byte[] regionName = (byte[])params[0];
+        Row row = (Row)params[1];
+        details.put("region", Bytes.toStringBinary(regionName));
+        addOperationDetail(details, row.getClass().getSimpleName(), row);
+        return MAPPER.writeValueAsString(details);
+      }
+    }
+    
+    return "";
+  }
+  
+  public static void addOperationDetail(Map<String, Object> details, String key, Object param) {
+    if (param instanceof Row) {
+      if (param instanceof Operation) {
+        Operation operation = (Operation)param;
+        details.put(key, operation.toMap());
+      } else {
+        Row row = (Row) param;
+        details.put(key, Bytes.toStringBinary(row.getRow()));
+      }
+    }
   }
 
   public static void quantify(Object obj, QuantityMap quantities) {

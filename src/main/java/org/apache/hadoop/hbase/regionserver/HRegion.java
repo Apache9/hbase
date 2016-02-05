@@ -111,6 +111,7 @@ import org.apache.hadoop.hbase.io.HeapSize;
 import org.apache.hadoop.hbase.io.TimeRange;
 import org.apache.hadoop.hbase.io.hfile.BlockCache;
 import org.apache.hadoop.hbase.io.hfile.CacheConfig;
+import org.apache.hadoop.hbase.ipc.CallerDisconnectedException;
 import org.apache.hadoop.hbase.ipc.CoprocessorProtocol;
 import org.apache.hadoop.hbase.ipc.HBaseRPC;
 import org.apache.hadoop.hbase.ipc.HBaseServer;
@@ -119,6 +120,7 @@ import org.apache.hadoop.hbase.metrics.MetricsRate;
 import org.apache.hadoop.hbase.monitoring.MonitoredTask;
 import org.apache.hadoop.hbase.monitoring.TaskMonitor;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.SnapshotDescription;
+import org.apache.hadoop.hbase.regionserver.AccessCounter.CounterKey;
 import org.apache.hadoop.hbase.regionserver.MultiVersionConsistencyControl.WriteEntry;
 import org.apache.hadoop.hbase.regionserver.compactions.CompactionRequest;
 import org.apache.hadoop.hbase.regionserver.compactions.OffPeakHours;
@@ -381,6 +383,7 @@ public class HRegion implements HeapSize { // , Writable{
 
   // Coprocessor host
   private RegionCoprocessorHost coprocessorHost;
+  private int warnThresholdForRawScanned = Integer.MAX_VALUE;
 
   /**
    * Name of the region info file that resides just under the region directory.
@@ -513,6 +516,10 @@ public class HRegion implements HeapSize { // , Writable{
       // TODO: revisit if coprocessors should load in other cases
       this.coprocessorHost = new RegionCoprocessorHost(this, rsServices, conf);
     }
+    
+    this.warnThresholdForRawScanned = conf.getInt(HConstants.WARN_THRESHOLD_FOR_RAW_SCANNED_COUNT,
+      HConstants.DEFAULT_WARN_THRESHOLD_FOR_RAW_SCANNED);
+    
     if (LOG.isDebugEnabled()) {
       // Write out region name as string and its encoded name.
       LOG.debug("Instantiated " + this);
@@ -1257,10 +1264,13 @@ public class HRegion implements HeapSize { // , Writable{
   /** @return info about the last flushes <time, size> */
   public List<Pair<Long,Long>> getRecentFlushInfo() {
     this.lock.readLock().lock();
-    List<Pair<Long,Long>> ret = this.recentFlushes;
-    this.recentFlushes = new ArrayList<Pair<Long,Long>>();
-    this.lock.readLock().unlock();
-    return ret;
+    try {
+      List<Pair<Long,Long>> ret = this.recentFlushes;
+      this.recentFlushes = new ArrayList<Pair<Long,Long>>();
+      return ret;
+    } finally {
+      this.lock.readLock().unlock();
+    }
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -3850,6 +3860,8 @@ public class HRegion implements HeapSize { // , Writable{
           } catch (WrongRegionException wre) {
             // recoverable (file doesn't fit in region)
             failures.add(p);
+          } catch (CallerDisconnectedException cde) {
+            throw cde;
           } catch (IOException ioe) {
             // unrecoverable (hdfs problem)
             ioes.add(ioe);
@@ -4092,6 +4104,7 @@ public class HRegion implements HeapSize { // , Writable{
     @Override
     public ScannerStatus nextRaw(List<KeyValue> outResults, final int limit, final int rawLimit,
         String metric) throws IOException {
+      int beforeScanned = outResults.size();
       ScannerStatus status;
       if (outResults.isEmpty()) {
         // Usually outResults is empty. This is true when next is called
@@ -4102,10 +4115,29 @@ public class HRegion implements HeapSize { // , Writable{
         status = nextInternal(tmpList, limit, rawLimit, metric);
         outResults.addAll(tmpList);
       }
+      
+      if (status.getRawValueScanned() >= warnThresholdForRawScanned) {
+        int scanned = outResults.size() - beforeScanned;
+        KeyValue kv = null;
+        if (scanned <= 0) {
+          kv = status.next();
+        } else {
+          kv = outResults.get(outResults.size() - 1);
+        }
+        String rowString = null;
+        if (kv != null) {
+          rowString = Bytes.toStringBinary(kv.getRow());
+        }
+        LOG.warn("TooMany raw scanned kvs for read, region: " + region.getRegionNameAsString()
+            + ", row: " + rowString + ", rawScanned: " + status.getRawValueScanned()
+            + ", returned: " + scanned);
+      }
+      
       resetFilters();
       if (isFilterDone()) {
         return ScannerStatus.done(status.getRawValueScanned());
       }
+      
       return status;
     }
 
@@ -5324,16 +5356,19 @@ public class HRegion implements HeapSize { // , Writable{
         }
       }
     } finally {
-      if (acquiredLocks != null) {
-        for (Integer lid : acquiredLocks.values()) {
-          releaseRowLock(lid);
+      try {
+        if (acquiredLocks != null) {
+          for (Integer lid : acquiredLocks.values()) {
+            releaseRowLock(lid);
+          }
         }
+        if (flush) {
+          // 17. Flush cache if needed. Do it outside update lock.
+          requestFlush();
+        }
+      } finally {
+        closeRegionOperation();
       }
-      if (flush) {
-        // 17. Flush cache if needed. Do it outside update lock.
-        requestFlush();
-      }
-      closeRegionOperation();
     }
     return true;
   }
@@ -5507,10 +5542,13 @@ public class HRegion implements HeapSize { // , Writable{
         syncOrDefer(txid, append.getDurability());
       }
     } finally {
-      if (w != null) {
-        mvcc.completeMemstoreInsert(w);
+      try {
+        if (w != null) {
+          mvcc.completeMemstoreInsert(w);
+        }
+      } finally {
+        closeRegionOperation();
       }
-      closeRegionOperation();
     }
 
 
@@ -5736,10 +5774,13 @@ public class HRegion implements HeapSize { // , Writable{
         syncOrDefer(txid, Durability.USE_DEFAULT);
       }
     } finally {
-      if (w != null) {
-        mvcc.completeMemstoreInsert(w);
+      try {
+        if (w != null) {
+          mvcc.completeMemstoreInsert(w);
+        }
+      } finally {
+        closeRegionOperation();
       }
-      closeRegionOperation();
       long afterNs = System.nanoTime();
       this.opMetrics.updateIncrementMetrics(increment.getFamilyMap().keySet(), (afterNs - beforeNs) / 1000);
     }
@@ -5843,10 +5884,13 @@ public class HRegion implements HeapSize { // , Writable{
         syncOrDefer(txid, Durability.USE_DEFAULT);
       }
     } finally {
-      if (w != null) {
-        mvcc.completeMemstoreInsert(w);
+      try {
+        if (w != null) {
+          mvcc.completeMemstoreInsert(w);
+        }
+      } finally {
+        closeRegionOperation();
       }
-      closeRegionOperation();
     }
 
     // do after lock
@@ -6286,6 +6330,18 @@ public class HRegion implements HeapSize { // , Writable{
   public void updateWriteCount(User user, byte[] table, byte[] family, byte[] qualifier) {
     if (this.rsServices != null && this.rsServices.getAccessCounter() != null) {
       this.rsServices.getAccessCounter().incrementWriteCount(user, table, family, qualifier);
+    }
+  }
+
+  public void updateReadCount(CounterKey key, long delta) {
+    if (this.rsServices != null && this.rsServices.getAccessCounter() != null) {
+      this.rsServices.getAccessCounter().addReadCount(key, delta);
+    }
+  }
+
+  public void updateWriteCount(CounterKey key, long delta) {
+    if (this.rsServices != null && this.rsServices.getAccessCounter() != null) {
+      this.rsServices.getAccessCounter().addWriteCount(key, delta);
     }
   }
 

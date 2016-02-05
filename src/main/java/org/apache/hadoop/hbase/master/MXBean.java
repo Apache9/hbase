@@ -170,4 +170,10 @@ public interface MXBean {
    * @return all table loads
    */
   public List<ReplicationLoad> getReplicationLoads();
+
+  /**
+   * Get the statistics of recent crashes
+   * @return list of recent server crash statistics
+   */
+  public List<ServerCrashStatistics> getServerCrashStatistics();
 }
