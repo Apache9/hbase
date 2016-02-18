@@ -1602,7 +1602,7 @@
         </os>
       </activation>
       <properties>
-        <build.platform>Mac_OS_X-${sun.arch.data.model}</build.platform>
+        <build.platform>Linux-amd64-64</build.platform>
       </properties>
     </profile>
     <profile>
