@@ -556,14 +556,6 @@ public class Scan extends Query {
   }
 
   /**
-   * @return get the limit of raw values to scan for each call to next()
-   */
-  public int getRawLimit() {
-    byte[] attr = getAttribute(RAWLIMIT_ATTR);
-    return attr == null ? -1 : Bytes.toInt(attr);
-  }
-
-  /**
    * @return caching the number of rows fetched when calling next on a scanner
    */
   public int getCaching() {
@@ -754,7 +746,6 @@ public class Scan extends Query {
     map.put("stopRow", Bytes.toStringBinary(this.stopRow));
     map.put("maxVersions", this.maxVersions);
     map.put("batch", this.batch);
-    map.put("rawLimit", getRawLimit());
     map.put("caching", this.caching);
     map.put("maxResultSize", this.maxResultSize);
     map.put("cacheBlocks", this.cacheBlocks);

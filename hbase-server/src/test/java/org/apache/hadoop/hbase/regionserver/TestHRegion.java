@@ -5616,62 +5616,6 @@ public class TestHRegion {
     }
   }
 
-  @Test
-  public void testScanWithRawLimit()
-      throws IOException {
-    byte[] row1 = Bytes.toBytes("row1");
-    byte[] row2 = Bytes.toBytes("row2");
-    byte[] row3 = Bytes.toBytes("row3");
-    byte[] row4 = Bytes.toBytes("row4");
-    byte[] cf = Bytes.toBytes("CF1");
-    byte[][] families = { cf };
-    byte[] col = Bytes.toBytes("C");
-    long ts = 1;
-    String method = this.getName();
-    HBaseConfiguration conf = new HBaseConfiguration();
-    // disable compactions in this test.
-    conf.setInt("hbase.hstore.compactionThreshold", 10000);
-    this.region = initHRegion(tableName, method, conf, families);
-    try {
-      KeyValue kv1 = new KeyValue(row1, cf, col, ts, KeyValue.Type.Delete, null);
-      KeyValue kv2 = new KeyValue(row2, cf, col, ts, KeyValue.Type.Delete, null);
-      KeyValue kv3 = new KeyValue(row3, cf, col, ts, KeyValue.Type.Put, null);
-      KeyValue kv4 = new KeyValue(row4, cf, col, ts, KeyValue.Type.Put, null);
-      Put put = new Put(row1);
-      put.add(kv1);
-      region.put(put);
-      put = new Put(row2);
-      put.add(kv2);
-      region.put(put);
-      put = new Put(row3);
-      put.add(kv3);
-      region.put(put);
-      put = new Put(row4);
-      put.add(kv4);
-      region.put(put);
-      region.flushcache();
-
-      Scan scan = new Scan();
-      InternalScanner scanner = region.getScanner(scan);
-      List<Cell> currRow = new ArrayList<Cell>();
-      boolean hasNext = scanner.next(currRow, -1, 1).hasMoreValues();
-      assertEquals(0, currRow.size());
-      assertTrue(hasNext);
-      hasNext = scanner.next(currRow, -1, 1).hasMoreValues();
-      assertEquals(0, currRow.size());
-      assertTrue(hasNext);
-      hasNext = scanner.next(currRow, -1, 1).hasMoreValues();
-      assertEquals(1, currRow.size());
-      assertTrue(hasNext);
-      scanner.next(currRow, -1, 1).hasMoreValues();
-      assertEquals(2, currRow.size());
-      scanner.close();
-    } finally {
-      HRegion.closeHRegion(this.region);
-      this.region = null;
-    }
-  }
-
   private static HRegion initHRegion(byte[] tableName, String callingMethod,
       byte[]... families) throws IOException {
     return initHRegion(tableName, callingMethod, HBaseConfiguration.create(),
