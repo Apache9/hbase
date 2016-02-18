@@ -1291,7 +1291,9 @@ public final class ProtobufUtil {
    * Convert a protocol buffer Result to a client Result
    *
    * @param proto the protocol buffer Result to convert
-   * @return the converted client Result
+   * @return the co
+   *
+   * nverted client Result
    */
   public static Result toResult(final ClientProtos.Result proto) {
     if (proto.hasExists()) {
@@ -1307,7 +1309,7 @@ public final class ProtobufUtil {
     for (CellProtos.Cell c : values) {
       cells.add(toCell(c));
     }
-    return Result.create(cells, null);
+    return Result.create(cells, null, proto.getStale(), proto.getPartial());
   }
 
   /**
