@@ -411,6 +411,11 @@ public abstract class BaseMasterAndRegionObserver extends BaseRegionObserver
   }
 
   @Override
+  public void preBypassUserQuota(final ObserverContext<MasterCoprocessorEnvironment> ctx,
+      final String userName, final TableName tableName) throws IOException {
+  }
+  
+  @Override
   public void postSetUserQuota(final ObserverContext<MasterCoprocessorEnvironment> ctx,
       final String userName, final TableName tableName, final Quotas quotas) throws IOException {
   }

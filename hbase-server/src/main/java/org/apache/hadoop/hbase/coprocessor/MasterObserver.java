@@ -774,6 +774,17 @@ public interface MasterObserver extends Coprocessor {
       final String userName, final TableName tableName, final Quotas quotas) throws IOException;
 
   /**
+   * Called before the quota for the user on the specified table is bypassed.
+   * @param ctx the environment to interact with the framework and master
+   * @param userName the name of user
+   * @param tableName the name of the table
+   * @param quotas the quota settings
+   * @throws IOException
+   */
+  void preBypassUserQuota(final ObserverContext<MasterCoprocessorEnvironment> ctx,
+      final String userName, final TableName tableName) throws IOException;
+  
+  /**
    * Called after the quota for the user on the specified table is stored.
    * @param ctx the environment to interact with the framework and master
    * @param userName the name of user

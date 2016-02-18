@@ -282,4 +282,9 @@ public class QuotaSettingsFactory {
   public static QuotaSettings bypassGlobals(final String userName, final boolean bypassGlobals) {
     return new QuotaGlobalsSettingsBypass(userName, null, null, bypassGlobals);
   }
+  
+  public static QuotaSettings bypassGlobals(final String userName, final TableName tableName,
+      final boolean bypassGlobals) {
+    return new QuotaGlobalsSettingsBypass(userName, tableName, null, bypassGlobals);
+  }
 }

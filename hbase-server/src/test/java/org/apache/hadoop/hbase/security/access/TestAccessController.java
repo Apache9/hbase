@@ -89,6 +89,7 @@ import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.protobuf.generated.AccessControlProtos;
 import org.apache.hadoop.hbase.protobuf.generated.AccessControlProtos.AccessControlService;
 import org.apache.hadoop.hbase.protobuf.generated.AccessControlProtos.CheckPermissionsRequest;
+import org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.Quotas;
 import org.apache.hadoop.hbase.regionserver.HRegion;
 import org.apache.hadoop.hbase.regionserver.HRegionServer;
 import org.apache.hadoop.hbase.regionserver.RegionCoprocessorHost;
@@ -137,6 +138,8 @@ public class TestAccessController extends SecureTestUtil {
   private static User SUPERUSER;
   // user granted with all global permission
   private static User USER_ADMIN;
+  // user granted with permission on namespace
+  private static User USER_NAMESPACE_ADMIN;
   // user with rw permissions on column family.
   private static User USER_RW;
   // user with read-only permissions
@@ -201,6 +204,7 @@ public class TestAccessController extends SecureTestUtil {
     // create a set of test users
     SUPERUSER = User.createUserForTesting(conf, "admin", new String[] { "supergroup" });
     USER_ADMIN = User.createUserForTesting(conf, "admin2", new String[0]);
+    USER_NAMESPACE_ADMIN = User.createUserForTesting(conf, "ns_admin", new String[0]);
     USER_RW = User.createUserForTesting(conf, "rwuser", new String[0]);
     USER_RO = User.createUserForTesting(conf, "rouser", new String[0]);
     USER_OWNER = User.createUserForTesting(conf, "owner", new String[0]);
@@ -239,6 +243,10 @@ public class TestAccessController extends SecureTestUtil {
       Permission.Action.READ,
       Permission.Action.WRITE);
 
+    grantOnNamespace(TEST_UTIL, USER_NAMESPACE_ADMIN.getShortName(),
+      TEST_TABLE.getTableName().getNamespaceAsString(),
+      Permission.Action.ADMIN);
+    
     grantOnTable(TEST_UTIL, USER_RW.getShortName(),
       TEST_TABLE.getTableName(), TEST_FAMILY, null,
       Permission.Action.READ,
@@ -2433,6 +2441,15 @@ public class TestAccessController extends SecureTestUtil {
       }
     };
 
+    AccessTestAction setBypassUserTableQuota = new AccessTestAction() {
+      @Override
+      public Object run() throws Exception {
+        ACCESS_CONTROLLER.preBypassUserQuota(ObserverContext.createAndPrepare(CP_ENV, null), null,
+          TEST_TABLE.getTableName());
+        return null;
+      }
+    };
+
     AccessTestAction setUserNamespaceQuotaAction = new AccessTestAction() {
       @Override
       public Object run() throws Exception {
@@ -2463,9 +2480,14 @@ public class TestAccessController extends SecureTestUtil {
     verifyAllowed(setUserQuotaAction, SUPERUSER, USER_ADMIN);
     verifyDenied(setUserQuotaAction, USER_CREATE, USER_RW, USER_RO, USER_NONE, USER_OWNER);
 
-    verifyAllowed(setUserTableQuotaAction, SUPERUSER, USER_ADMIN, USER_OWNER);
-    verifyDenied(setUserTableQuotaAction, USER_CREATE, USER_RW, USER_RO, USER_NONE);
+    verifyAllowed(setUserTableQuotaAction, SUPERUSER, USER_ADMIN, USER_NAMESPACE_ADMIN);
+    verifyDenied(setUserTableQuotaAction, USER_OWNER, USER_CREATE, USER_RW, USER_RO, USER_NONE);
 
+    verifyAllowed(setBypassUserTableQuota, SUPERUSER, USER_ADMIN);
+    SecureTestUtil.verifyDenied(USER_NAMESPACE_ADMIN, true, setBypassUserTableQuota);
+    verifyDenied(setBypassUserTableQuota, USER_OWNER, USER_CREATE, USER_RW,
+      USER_RO, USER_NONE);
+    
     verifyAllowed(setUserNamespaceQuotaAction, SUPERUSER, USER_ADMIN);
     verifyDenied(setUserNamespaceQuotaAction, USER_CREATE, USER_RW, USER_RO, USER_NONE, USER_OWNER);
 

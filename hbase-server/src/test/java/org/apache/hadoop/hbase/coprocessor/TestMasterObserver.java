@@ -1042,6 +1042,13 @@ public class TestMasterObserver {
         final String namespace, final Quotas quotas) throws IOException {
     }
 
+    @Override
+    public void preBypassUserQuota(ObserverContext<MasterCoprocessorEnvironment> ctx,
+        String userName, TableName tableName) throws IOException {
+      // TODO Auto-generated method stub
+      
+    }
+
   }
 
   private static HBaseTestingUtility UTIL = new HBaseTestingUtility();

@@ -2378,7 +2378,14 @@ public class AccessController extends BaseMasterAndRegionObserver
   @Override
   public void preSetUserQuota(final ObserverContext<MasterCoprocessorEnvironment> ctx,
       final String userName, final TableName tableName, final Quotas quotas) throws IOException {
-    requirePermission("setUserTableQuota", tableName, null, null, Action.ADMIN);
+    // global admin or namespace admin will be allowed
+    requireGlobalPermission("setUserTableQuota", Action.ADMIN, tableName, null);
+  }
+  
+  @Override
+  public void preBypassUserQuota(final ObserverContext<MasterCoprocessorEnvironment> ctx,
+      final String userName, final TableName tableName) throws IOException {
+    requireGlobalPermission("setUserTableQuota", Action.ADMIN, null, null);
   }
 
   @Override

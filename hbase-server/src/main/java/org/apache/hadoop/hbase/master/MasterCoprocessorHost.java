@@ -880,6 +880,16 @@ public class MasterCoprocessorHost
       }
     });
   }
+  
+  public void preBypassUserQuota(final String user, final TableName table) throws IOException {
+    execOperation(coprocessors.isEmpty() ? null : new CoprocessorOperation() {
+      @Override
+      public void call(MasterObserver oserver, ObserverContext<MasterCoprocessorEnvironment> ctx)
+          throws IOException {
+        oserver.preBypassUserQuota(ctx, user, table);
+      }
+    });
+  }
 
   public void postSetUserQuota(final String user, final TableName table, final Quotas quotas)
       throws IOException {

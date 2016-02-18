@@ -18,6 +18,9 @@
 
 package org.apache.hadoop.hbase.quotas;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -30,25 +33,14 @@ import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HTable;
-import org.apache.hadoop.hbase.client.Get;
-import org.apache.hadoop.hbase.client.Put;
-import org.apache.hadoop.hbase.client.Result;
-import org.apache.hadoop.hbase.client.RetriesExhaustedWithDetailsException;
 import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.apache.hadoop.hbase.util.Bytes;
-import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
-import org.apache.hadoop.hbase.util.EnvironmentEdgeManagerTestHelper;
-import org.apache.hadoop.hbase.util.IncrementingEnvironmentEdge;
-import org.apache.hadoop.hbase.util.JVMClusterUtil.RegionServerThread;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
 
 /**
  * minicluster tests that validate that quota  entries are properly set in the quota table
@@ -108,6 +100,10 @@ public class TestQuotaAdmin {
     HBaseAdmin admin = TEST_UTIL.getHBaseAdmin();
     String userName = User.getCurrent().getShortName();
 
+    admin.setQuota(QuotaSettingsFactory.throttleNamespace(TABLE_NAMES[0].getNamespaceAsString(),
+      ThrottleType.READ_NUMBER, 10500, TimeUnit.SECONDS));
+    admin.setQuota(QuotaSettingsFactory.throttleNamespace(TABLE_NAMES[0].getNamespaceAsString(),
+      ThrottleType.WRITE_NUMBER, 35000, TimeUnit.SECONDS));
     // table[1] have 5 region, so quota is distributed by regionServerNum
     admin.setQuota(QuotaSettingsFactory.throttleUser(userName, TABLE_NAMES[1], ThrottleType.READ_NUMBER, 5000,
       TimeUnit.SECONDS));
@@ -136,6 +132,7 @@ public class TestQuotaAdmin {
     assertEquals(1000, quotaManager.getTotalExistedWriteLimit());
 
     admin.setQuota(QuotaSettingsFactory.unthrottleUser(userName));
+    admin.setQuota(QuotaSettingsFactory.unthrottleNamespace(TABLE_NAMES[0].getNamespaceAsString()));
     assertNumResults(0, null);
     assertEquals(0, quotaManager.getTotalExistedReadLimit());
     assertEquals(0, quotaManager.getTotalExistedWriteLimit());
@@ -150,6 +147,11 @@ public class TestQuotaAdmin {
     final HBaseAdmin admin = TEST_UTIL.getHBaseAdmin();
     final String userName = User.getCurrent().getShortName();
 
+    admin.setQuota(QuotaSettingsFactory.throttleNamespace(TABLE_NAMES[0].getNamespaceAsString(),
+      ThrottleType.READ_NUMBER, 10500, TimeUnit.SECONDS));
+    admin.setQuota(QuotaSettingsFactory.throttleNamespace(TABLE_NAMES[0].getNamespaceAsString(),
+      ThrottleType.WRITE_NUMBER, 35000, TimeUnit.SECONDS));
+    
     // table[1] have 5 region, so quota is distributed by regionServerNum
     // read default limit : 3000 * 0.7 = 2100, write default limit: 10000 * 0.7 = 7000
     admin.setQuota(QuotaSettingsFactory.throttleUser(userName, TABLE_NAMES[1], ThrottleType.READ_NUMBER, 2100 * regionServerNum,
@@ -196,6 +198,7 @@ public class TestQuotaAdmin {
     }, QuotaExceededException.class);
 
     admin.setQuota(QuotaSettingsFactory.unthrottleUser(userName));
+    admin.setQuota(QuotaSettingsFactory.unthrottleNamespace(TABLE_NAMES[0].getNamespaceAsString()));
     assertNumResults(0, null);
     assertEquals(0, quotaManager.getTotalExistedReadLimit());
     assertEquals(0, quotaManager.getTotalExistedWriteLimit());

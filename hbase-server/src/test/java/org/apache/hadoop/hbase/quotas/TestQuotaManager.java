@@ -101,6 +101,8 @@ public class TestQuotaManager {
     admin = TEST_UTIL.getHBaseAdmin();
     userName = User.getCurrent().getShortName();
 
+    admin.setQuota(QuotaSettingsFactory.throttleNamespace(TABLE_NAME.getNamespaceAsString(),
+      ThrottleType.READ_NUMBER, 5, TimeUnit.SECONDS));
     admin.setQuota(QuotaSettingsFactory.throttleUser(userName, TABLE_NAME,
       ThrottleType.READ_NUMBER, 5, TimeUnit.SECONDS));
   }

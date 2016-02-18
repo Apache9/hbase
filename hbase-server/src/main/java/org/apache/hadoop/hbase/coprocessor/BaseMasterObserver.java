@@ -459,4 +459,9 @@ public class BaseMasterObserver implements MasterObserver {
   public void postSetNamespaceQuota(final ObserverContext<MasterCoprocessorEnvironment> ctx,
       final String namespace, final Quotas quotas) throws IOException {
   }
+
+  @Override
+  public void preBypassUserQuota(ObserverContext<MasterCoprocessorEnvironment> ctx,
+      String userName, TableName tableName) throws IOException {
+  }
 }
