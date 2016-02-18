@@ -224,7 +224,7 @@ public class TestSeekOptimizations {
     // result, not to the one already returned in results.
     boolean hasNext;
     do {
-      hasNext = scanner.next(results).hasNext();
+      hasNext = scanner.next(results).hasMoreValues();
       actualKVs.addAll(results);
       results.clear();
     } while (hasNext);

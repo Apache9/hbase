@@ -89,7 +89,7 @@ implements Coprocessor, CoprocessorService {
       boolean hasMore = false;
       do {
         curVals.clear();
-        hasMore = scanner.next(curVals).hasNext();
+        hasMore = InternalScanner.NextState.hasMoreValues(scanner.next(curVals));
         for (Cell kv : curVals) {
           if (CellUtil.matchingQualifier(kv, qualifier)) {
             sumResult += Bytes.toInt(kv.getValueArray(), kv.getValueOffset());

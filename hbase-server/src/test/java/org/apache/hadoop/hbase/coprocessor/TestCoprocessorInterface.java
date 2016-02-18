@@ -57,7 +57,6 @@ import org.apache.hadoop.hbase.regionserver.InternalScanner;
 import org.apache.hadoop.hbase.regionserver.RegionCoprocessorHost;
 import org.apache.hadoop.hbase.regionserver.RegionScanner;
 import org.apache.hadoop.hbase.regionserver.ScanType;
-import org.apache.hadoop.hbase.regionserver.ScannerStatus;
 import org.apache.hadoop.hbase.regionserver.SplitTransaction;
 import org.apache.hadoop.hbase.regionserver.Store;
 import org.apache.hadoop.hbase.regionserver.StoreFile;
@@ -84,35 +83,43 @@ public class TestCoprocessorInterface {
       this.delegate = delegate;
     }
 
-    @Override public int getRawLimit() {
-      return delegate.getRawLimit();
-    }
-
     @Override
-    public ScannerStatus next(List<Cell> results) throws IOException {
+    public NextState next(List<Cell> results) throws IOException {
       return delegate.next(results);
     }
-
     @Override
-    public ScannerStatus next(List<Cell> result, int limit, int rawLimit) throws IOException {
-      return delegate.next(result, limit, rawLimit);
+    public NextState next(List<Cell> result, int limit) throws IOException {
+      return delegate.next(result, limit);
     }
 
+    @Override public NextState next(List<Cell> result, int limit, long remainingResultSize)
+        throws IOException {
+      return delegate.next(result, limit, remainingResultSize);
+    }
     @Override
-    public ScannerStatus nextRaw(List<Cell> result) 
+    public NextState nextRaw(List<Cell> result)
         throws IOException {
       return delegate.nextRaw(result);
     }
 
     @Override
-    public ScannerStatus nextRaw(List<Cell> result, int limit, int rawLimit)
+    public NextState nextRaw(List<Cell> result, int limit) throws IOException {
+      return delegate.nextRaw(result, limit);
+    }
+    @Override
+    public NextState nextRaw(List<Cell> result, int limit, long remainingResultSize)
         throws IOException {
-      return delegate.nextRaw(result, limit, rawLimit);
+      return delegate.nextRaw(result, limit, remainingResultSize);
     }
 
     @Override
     public void close() throws IOException {
       delegate.close();
+    }
+
+    @Override
+     public int getBatch() {
+      return delegate.getBatch();
     }
 
     @Override

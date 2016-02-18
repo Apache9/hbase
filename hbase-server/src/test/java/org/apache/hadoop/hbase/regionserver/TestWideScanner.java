@@ -101,7 +101,7 @@ public class TestWideScanner extends HBaseTestCase {
       int i = 0;
       boolean more;
       do {
-        more = s.next(results).hasNext();
+        more = s.next(results).hasMoreValues();
         i++;
         LOG.info("iteration #" + i + ", results.size=" + results.size());
 

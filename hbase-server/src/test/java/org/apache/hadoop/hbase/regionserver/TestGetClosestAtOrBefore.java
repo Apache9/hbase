@@ -90,7 +90,7 @@ public class TestGetClosestAtOrBefore extends HBaseTestCase {
     InternalScanner s = mr.getScanner(new Scan());
     try {
       List<Cell> keys = new ArrayList<Cell>();
-      while(s.next(keys).hasNext()) {
+      while(s.next(keys).hasMoreValues()) {
         LOG.info(keys);
         keys.clear();
       }
@@ -114,7 +114,7 @@ public class TestGetClosestAtOrBefore extends HBaseTestCase {
     s = mr.getScanner(scan);
     try {
       List<Cell> keys = new ArrayList<Cell>();
-      while (s.next(keys).hasNext()) {
+      while (s.next(keys).hasMoreValues()) {
         mr.delete(new Delete(CellUtil.cloneRow(keys.get(0))));
         keys.clear();
       }

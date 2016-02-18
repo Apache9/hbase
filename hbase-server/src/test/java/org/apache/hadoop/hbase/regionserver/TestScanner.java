@@ -136,7 +136,7 @@ public class TestScanner {
 
       InternalScanner s = r.getScanner(scan);
       int count = 0;
-      while (s.next(results).hasNext()) {
+      while (s.next(results).hasMoreValues()) {
         count++;
       }
       s.close();
@@ -149,7 +149,7 @@ public class TestScanner {
       count = 0;
       Cell kv = null;
       results = new ArrayList<Cell>();
-      for (boolean first = true; s.next(results).hasNext();) {
+      for (boolean first = true; s.next(results).hasMoreValues();) {
         kv = results.get(0);
         if (first) {
           assertTrue(CellUtil.matchingRow(kv,  startrow));
@@ -172,7 +172,7 @@ public class TestScanner {
     InternalScanner s = r.getScanner(scan);
     boolean hasMore = true;
     while (hasMore) {
-      hasMore = s.next(results).hasNext();
+      hasMore = s.next(results).hasMoreValues();
       for (Cell kv : results) {
         assertEquals((byte)'a', CellUtil.cloneRow(kv)[0]);
         assertEquals((byte)'b', CellUtil.cloneRow(kv)[1]);
@@ -188,7 +188,7 @@ public class TestScanner {
     InternalScanner s = r.getScanner(scan);
     boolean hasMore = true;
     while (hasMore) {
-      hasMore = s.next(results).hasNext();
+      hasMore = s.next(results).hasMoreValues();
       for (Cell kv : results) {
         assertTrue(Bytes.compareTo(CellUtil.cloneRow(kv), stopRow) <= 0);
       }
@@ -388,7 +388,7 @@ public class TestScanner {
           scan.addColumn(COLS[0],  EXPLICIT_COLS[ii]);
         }
         scanner = r.getScanner(scan);
-        while (scanner.next(results).hasNext()) {
+        while (scanner.next(results).hasMoreValues()) {
           assertTrue(hasColumn(results, HConstants.CATALOG_FAMILY,
               HConstants.REGIONINFO_QUALIFIER));
           byte [] val = CellUtil.cloneValue(getColumn(results, HConstants.CATALOG_FAMILY,

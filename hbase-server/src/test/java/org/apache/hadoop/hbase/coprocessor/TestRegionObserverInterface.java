@@ -42,7 +42,6 @@ import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.KeyValue;
-import org.apache.hadoop.hbase.regionserver.ScannerStatus;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.apache.hadoop.hbase.MiniHBaseCluster;
 import org.apache.hadoop.hbase.ServerName;
@@ -435,17 +434,24 @@ public class TestRegionObserverInterface {
         Store store, final InternalScanner scanner, final ScanType scanType) {
       return new InternalScanner() {
         @Override
-        public ScannerStatus next(List<Cell> results) throws IOException {
-          return next(results, -1, -1);
+        public NextState next(List<Cell> results) throws IOException {
+          return next(results, -1);
         }
 
         @Override
-        public ScannerStatus next(List<Cell> results, int limit, int rawLimit)
-            throws IOException{
+        public NextState next(List<Cell> results, int limit) throws IOException {
+          return next(results, limit, -1);
+        }
+
+        @Override
+        public NextState next(List<Cell> results, int limit, long remainingResultSize)
+            throws IOException {
           List<Cell> internalResults = new ArrayList<Cell>();
-          ScannerStatus status;
+          boolean hasMore;
+          NextState state;
           do {
-            status = scanner.next(internalResults, limit, rawLimit);
+            state = scanner.next(internalResults, limit, remainingResultSize);
+            hasMore = state != null && state.hasMoreValues();
             if (!internalResults.isEmpty()) {
               long row = Bytes.toLong(CellUtil.cloneValue(internalResults.get(0)));
               if (row % 2 == 0) {
@@ -455,12 +461,11 @@ public class TestRegionObserverInterface {
               // clear and continue
               internalResults.clear();
             }
-          } while (status.hasNext());
-
+          } while (hasMore);
           if (!internalResults.isEmpty()) {
             results.addAll(internalResults);
           }
-          return status;
+          return state;
         }
 
         @Override

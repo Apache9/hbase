@@ -736,7 +736,7 @@ public class TestWALReplay {
     int scannedCount = 0;
     List<Cell> results = new ArrayList<Cell>();
     while (true) {
-      boolean existMore = scanner.next(results).hasNext();
+      boolean existMore = scanner.next(results).hasMoreValues();
       if (!results.isEmpty())
         scannedCount++;
       if (!existMore)

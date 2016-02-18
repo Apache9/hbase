@@ -433,7 +433,7 @@ public class TestReversibleScanners {
     int rowCount = 0;
     int kvCount = 0;
     try {
-      while (scanner.next(kvList).hasNext()) {
+      while (scanner.next(kvList).hasMoreValues()) {
         if (kvList.isEmpty()) continue;
         rowCount++;
         kvCount += kvList.size();

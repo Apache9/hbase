@@ -465,7 +465,7 @@ public class TestAtomicOperation {
               Scan s = new Scan(row);
               RegionScanner rs = region.getScanner(s);
               List<Cell> r = new ArrayList<Cell>();
-              while(rs.next(r).hasNext());
+              while(InternalScanner.NextState.hasMoreValues(rs.next(r)));
               rs.close();
               if (r.size() != 1) {
                 LOG.debug(r);

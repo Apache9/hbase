@@ -262,7 +262,7 @@ public class TestKeepDeletes {
     s.setTimeRange(0L, ts+1);
     InternalScanner scanner = region.getScanner(s);
     List<Cell> kvs = new ArrayList<Cell>();
-    while(scanner.next(kvs).hasNext());
+    while(scanner.next(kvs).hasMoreValues());
     assertTrue(kvs.isEmpty());
 
     // flushing and minor compaction keep delete markers
@@ -944,7 +944,7 @@ public class TestKeepDeletes {
     int res = 0;
     boolean hasMore;
     do {
-      hasMore = scan.next(kvs).hasNext();
+      hasMore = scan.next(kvs).hasMoreValues();
       for (Cell kv : kvs) {
         if(CellUtil.isDelete(kv)) res++;
       }
