@@ -690,7 +690,7 @@ public final class HConstants {
   /**
    * Default value for {@link #HBASE_CLIENT_SCANNER_CACHING}
    */
-  public static final int DEFAULT_HBASE_CLIENT_SCANNER_CACHING = 100;
+  public static final int DEFAULT_HBASE_CLIENT_SCANNER_CACHING = Integer.MAX_VALUE;;
 
   /**
    * Parameter name for number of versions, kept by meta table.

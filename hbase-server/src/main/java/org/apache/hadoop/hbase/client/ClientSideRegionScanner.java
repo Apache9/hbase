@@ -74,7 +74,11 @@ public class ClientSideRegionScanner extends AbstractClientScanner {
   public Result next() throws IOException {
     values.clear();
 
-    scanner.nextRaw(values, -1, -1); // pass -1 as limit so that we see the whole row.
+    // negative values indicate no limits
+    final long remainingResultSize = -1;
+    final int batchLimit = -1;
+    scanner.nextRaw(values, batchLimit, remainingResultSize);
+
     if (values == null || values.isEmpty()) {
       //we are done
       return null;

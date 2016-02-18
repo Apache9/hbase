@@ -215,6 +215,7 @@ import org.apache.hadoop.hbase.quotas.OperationQuota;
 import org.apache.hadoop.hbase.quotas.RegionServerQuotaManager;
 import org.apache.hadoop.hbase.quotas.ThrottlingException;
 import org.apache.hadoop.hbase.regionserver.HRegion.Operation;
+import org.apache.hadoop.hbase.regionserver.InternalScanner.NextState;
 import org.apache.hadoop.hbase.regionserver.Leases.LeaseStillHeldException;
 import org.apache.hadoop.hbase.regionserver.compactions.CompactionProgress;
 import org.apache.hadoop.hbase.regionserver.handler.CloseMetaHandler;
@@ -3294,6 +3295,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
       RegionScannerHolder rsh = null;
       boolean moreResults = true;
       boolean closeScanner = false;
+      boolean isSmallScan = false;
       ScanResponse.Builder builder = ScanResponse.newBuilder();
       if (request.hasCloseScanner()) {
         closeScanner = request.getCloseScanner();
@@ -3326,6 +3328,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
           scan.setLoadColumnFamiliesOnDemand(region.isLoadingCfsOnDemandDefault());
         }
         scan.getAttribute(Scan.SCAN_ATTRIBUTES_METRICS_ENABLE);
+        isSmallScan = scan.isSmall();
         region.prepareScanner(scan);
         if (region.getCoprocessorHost() != null) {
           scanner = region.getCoprocessorHost().preScannerOpen(scan);
@@ -3369,9 +3372,9 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
           // Remove lease while its being processed in server; protects against case
           // where processing of request takes > lease expiration time.
           lease = leases.removeLease(scannerName);
-          List<Result> results = new ArrayList<Result>(rows);
-          long currentScanResultSize = 0;
+          List<Result> results = new ArrayList<Result>();
           long totalKvSize = 0;
+          long currentScanResultSize = 0;
 
           boolean done = false;
           // Call coprocessor. Get region info from scanner.
@@ -3403,51 +3406,62 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
             region.startRegionOperation(Operation.SCAN);
             try {
               int i = 0;
-              int rawLimit = scanner.getRawLimit();
               int rawCount = 0;
               synchronized(scanner) {
-                while (i < rows && (rawLimit < 0 || rawCount < rawLimit)) {
+                boolean clientHandlesPartials =
+                    request.hasClientHandlesPartials() && request.getClientHandlesPartials();
+                // On the server side we must ensure that the correct ordering of partial results is
+                // returned to the client to allow them to properly reconstruct the partial results.
+                // If the coprocessor host is adding to the result list, we cannot guarantee the
+                // correct ordering of partial results and so we prevent partial results from being
+                // formed.
+                boolean serverGuaranteesOrderOfPartials = currentScanResultSize == 0;
+                boolean enforceMaxResultSizeAtCellLevel =
+                    clientHandlesPartials && serverGuaranteesOrderOfPartials && !isSmallScan;
+
+
+                while (i < rows) {
                   // Stop collecting results if maxScannerResultSize is set and we have exceeded it
-                  if ((maxScannerResultSize < Long.MAX_VALUE) &&
-                      (currentScanResultSize >= maxResultSize)) {
+                  if (currentScanResultSize >= maxResultSize) {
                     break;
                   }
+                  // A negative remainingResultSize communicates that there is no limit on the size
+                  // of the results.
+                  final long remainingResultSize =
+                      enforceMaxResultSizeAtCellLevel ? maxResultSize - currentScanResultSize
+                          : -1;
                   // Collect values to be returned here
-                  ScannerStatus status;
-                  if (rawLimit <= 0) {
-                    status = scanner.nextRaw(values);
-                  } else {
-                    // set batch to -1 to fetch a full row
-                    status = scanner.nextRaw(values, -1, rawLimit - rawCount);
-                    rawCount += status.getRawValueScanned();
+                  NextState state =
+                      scanner.nextRaw(values, scanner.getBatch(), remainingResultSize);
+                  // Invalid states should never be returned. If one is seen, throw exception
+                  // to stop the scan -- We have no way of telling how we should proceed
+                  if (!NextState.isValidState(state)) {
+                    throw new IOException("NextState returned from call to nextRaw was invalid");
                   }
+
                   if (!values.isEmpty()) {
+                    // The state should always contain an estimate of the result size because that
+                    // estimate must be used to decide when partial results are formed.
+                    boolean skipResultSizeCalculation = state.hasResultSizeEstimate();
+                    if (skipResultSizeCalculation) currentScanResultSize += state.getResultSize();
+
+
                     for (Cell cell : values) {
                       KeyValue kv = KeyValueUtil.ensureKeyValue(cell);
-                      currentScanResultSize += kv.heapSize();
                       totalKvSize += kv.getLength();
+                      // If the calculation can't be skipped, then do it now.
+                      if (!skipResultSizeCalculation) {
+                        currentScanResultSize += kv.heapSize();
+                      }
                     }
-                    results.add(Result.create(values));
+                    // The size limit was reached. This means there are more cells remaining in
+                    // the row but we had to stop because we exceeded our max result size. This
+                    // indicates that we are returning a partial result
+                    final boolean partial = state != null && state.sizeLimitReached();
+                    results.add(Result.create(values, null, false, partial));
                     i++;
                   }
-                  boolean limitReached = false;
-                  if (rawLimit > 0 && rawCount >= rawLimit) {
-                    limitReached = true;
-                  }
-                  if (maxScannerResultSize < Long.MAX_VALUE && currentScanResultSize > maxScannerResultSize) {
-                    limitReached = true;
-                  }
-                  if (status.hasNext() && limitReached) {
-                    // when there is no visible key values scanned out yet but the raw limit is reached,
-                    // we fill a fake result which contains the next position and pass it to the client
-                    // to avoid RPC timeout.
-                    KeyValue next = status.next();
-                    if (next != null) {
-                      // append a fake row which is larger than the next peeked row
-                      results.add(Result.fakeResult(next));
-                    }
-                  }
-                  if (!status.hasNext()) {
+                  if (!NextState.hasMoreValues(state)) {
                     break;
                   }
                   values.clear();
@@ -3538,6 +3552,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     if (isClientCellBlockSupport()) {
       for (Result res : results) {
         builder.addCellsPerResult(res.size());
+        builder.addPartialFlagPerResult(res.isPartial());
       }
       ((PayloadCarryingRpcController)controller).
         setCellScanner(CellUtil.createCellScanner(results));

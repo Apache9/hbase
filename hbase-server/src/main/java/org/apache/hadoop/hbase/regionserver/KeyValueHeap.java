@@ -123,6 +123,10 @@ public class KeyValueHeap extends NonReversedNonLazyKeyValueScanner
     return kvReturn;
   }
 
+  public NextState next(List<Cell> result, int limit) throws IOException {
+    return next(result, limit, -1);
+  }
+
   /**
    * Gets the next row of keys from the top-most scanner.
    * <p>
@@ -134,12 +138,18 @@ public class KeyValueHeap extends NonReversedNonLazyKeyValueScanner
    * @param limit
    * @return true if there are more keys, false if all scanners are done
    */
-  public ScannerStatus next(List<Cell> result, int limit, int rawLimit) throws IOException {
+  public NextState next(List<Cell> result, int limit, long remainingResultSize) throws IOException {
     if (this.current == null) {
-      return ScannerStatus.DONE_WITH_NO_STATS;
+      return NextState.makeState(NextState.State.NO_MORE_VALUES);
     }
     InternalScanner currentAsInternal = (InternalScanner)this.current;
-    ScannerStatus status = currentAsInternal.next(result, limit, rawLimit);
+    NextState state = currentAsInternal.next(result, limit, remainingResultSize);
+    // Invalid states should never be returned. Receiving an invalid state means that we have
+    // no clue how to proceed. Throw an exception.
+    if (!NextState.isValidState(state)) {
+      throw new IOException("Invalid state returned from InternalScanner#next");
+    }
+    boolean mayContainMoreRows = NextState.hasMoreValues(state);
     KeyValue pee = this.current.peek();
     /*
      * By definition, any InternalScanner must return false only when it has no
@@ -148,15 +158,17 @@ public class KeyValueHeap extends NonReversedNonLazyKeyValueScanner
      * more efficient to close scanners which are not needed than keep them in
      * the heap. This is also required for certain optimizations.
      */
-    if (pee == null || !status.hasNext()) {
+    if (pee == null || !mayContainMoreRows) {
       this.current.close();
     } else {
       this.heap.add(this.current);
     }
     this.current = null;
     this.current = pollRealKV();
-    return this.current == null ? ScannerStatus.done(status.getRawValueScanned()) :
-        ScannerStatus.continued(this.current.peek(), status.getRawValueScanned());
+    if (this.current == null) {
+      state = NextState.makeState(NextState.State.NO_MORE_VALUES, state.getResultSize());
+    }
+    return state;
   }
 
   /**
@@ -169,7 +181,7 @@ public class KeyValueHeap extends NonReversedNonLazyKeyValueScanner
    * @param result
    * @return true if there are more keys, false if all scanners are done
    */
-  public ScannerStatus next(List<Cell> result) throws IOException {
+  public NextState next(List<Cell> result) throws IOException {
     return next(result, -1, -1);
   }
 

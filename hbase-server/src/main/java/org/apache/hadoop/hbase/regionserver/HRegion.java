@@ -141,6 +141,7 @@ import org.apache.hadoop.hbase.regionserver.wal.HLogSplitter;
 import org.apache.hadoop.hbase.regionserver.wal.HLogSplitter.MutationReplay;
 import org.apache.hadoop.hbase.regionserver.wal.HLogUtil;
 import org.apache.hadoop.hbase.regionserver.wal.WALEdit;
+import org.apache.hadoop.hbase.regionserver.InternalScanner.NextState;
 import org.apache.hadoop.hbase.snapshot.SnapshotDescriptionUtils;
 import org.apache.hadoop.hbase.snapshot.SnapshotManifest;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -4061,7 +4062,6 @@ public class HRegion implements HeapSize { // , Writable{
     protected final byte[] stopRow;
     private final FilterWrapper filter;
     private int batch;
-    private int rawLimit;
     protected int isScan;
     private boolean filterClosed = false;
     private long readPt;
@@ -4085,7 +4085,6 @@ public class HRegion implements HeapSize { // , Writable{
       }
 
       this.batch = scan.getBatch();
-      this.rawLimit = scan.getRawLimit();
       if (Bytes.equals(scan.getStopRow(), HConstants.EMPTY_END_ROW) && !scan.isGetScan()) {
         this.stopRow = null;
       } else {
@@ -4139,13 +4138,13 @@ public class HRegion implements HeapSize { // , Writable{
     }
 
     @Override
-    public long getMaxResultSize() {
-      return maxResultSize;
+    public int getBatch() {
+      return this.batch;
     }
 
     @Override
-    public int getRawLimit() {
-      return rawLimit;
+    public long getMaxResultSize() {
+      return maxResultSize;
     }
 
     @Override
@@ -4165,14 +4164,18 @@ public class HRegion implements HeapSize { // , Writable{
     }
 
     @Override
-    public ScannerStatus next(List<Cell> outResults)
+    public NextState next(List<Cell> outResults)
         throws IOException {
       // apply the batching limit by default
-      return next(outResults, batch, -1);
+      return next(outResults, batch);
+    }
+
+    public NextState next(List<Cell> outResults, int limit) throws IOException {
+      return next(outResults, limit, -1);
     }
 
     @Override
-    public synchronized ScannerStatus next(List<Cell> outResults, int limit, int rawLimit)
+    public synchronized NextState next(List<Cell> outResults, int limit, long remainingResultSize)
         throws IOException {
       if (this.filterClosed) {
         throw new UnknownScannerException("Scanner was closed (timed out?) " +
@@ -4182,7 +4185,7 @@ public class HRegion implements HeapSize { // , Writable{
       startRegionOperation(Operation.SCAN);
       updateReadMetrics(1);
       try {
-        ScannerStatus returnResult = nextRaw(outResults, limit, rawLimit);
+        NextState nextState = nextRaw(outResults, limit, remainingResultSize);
         if (region != null && region.metricsRegion != null) {
           long totalSize = 0;
           for (Cell cell: outResults) {
@@ -4193,80 +4196,165 @@ public class HRegion implements HeapSize { // , Writable{
           region.readRequestsByCapacityUnitPerSecond.inc((int) QuotaUtil
               .calculateReadCapacityUnitNum(totalSize));
         }
-        return returnResult;
+        return nextState;
       } finally {
         closeRegionOperation(Operation.SCAN);
       }
     }
 
     @Override
-    public ScannerStatus nextRaw(List<Cell> outResults)
+    public NextState nextRaw(List<Cell> outResults)
         throws IOException {
       return nextRaw(outResults, batch, -1);
     }
 
     @Override
-    public ScannerStatus nextRaw(List<Cell> outResults, int limit, int rawLimit)
+    public NextState nextRaw(List<Cell> outResults, int limit)
+        throws IOException {
+      return nextRaw(outResults, limit, -1);
+    }
+
+    @Override
+    public NextState nextRaw(List<Cell> outResults, int batchLimit, long remainingResultSize)
         throws IOException {
       if (storeHeap == null) {
         // scanner is closed
         throw new UnknownScannerException("Scanner was closed");
       }
-      ScannerStatus status;
+      NextState state;
       if (outResults.isEmpty()) {
         // Usually outResults is empty. This is true when next is called
         // to handle scan or get operation.
-        status = nextInternal(outResults, limit, rawLimit);
+        state = nextInternal(outResults, batchLimit, remainingResultSize);
       } else {
         List<Cell> tmpList = new ArrayList<Cell>();
-        status = nextInternal(tmpList, limit, rawLimit);
+        state = nextInternal(tmpList, batchLimit, remainingResultSize);
         outResults.addAll(tmpList);
+      }
+      // State should never be null, this is a precautionary measure
+      if (state == null) {
+        if (LOG.isTraceEnabled()) LOG.trace("State was null. Defaulting to no more values state");
+        state = NextState.makeState(NextState.State.NO_MORE_VALUES);
       }
       resetFilters();
       if (isFilterDoneInternal()) {
-        status = ScannerStatus.done(status.getRawValueScanned());
+        state = NextState.makeState(NextState.State.NO_MORE_VALUES,
+            state.getResultSize());
       }
-      return status;
+      return state;
     }
 
-    private ScannerStatus populateFromJoinedHeap(List<Cell> results, int limit)
+    /**
+     *
+     * @param results
+     * @param limit
+     * @param resultSize
+     * @return the state the joinedHeap returned on the call to
+     *          {@link KeyValueHeap#next(List, int, long)}
+     * @throws IOException
+     */
+    private NextState populateFromJoinedHeap(List<Cell> results, int limit, long resultSize)
         throws IOException {
       assert joinedContinuationRow != null;
-      ScannerStatus status = populateResult(results, this.joinedHeap, limit,
-          joinedContinuationRow.getBuffer(), joinedContinuationRow.getRowOffset(),
+      NextState state = populateResult(results, this.joinedHeap, limit, resultSize,
+          joinedContinuationRow.getRowArray(), joinedContinuationRow.getRowOffset(),
           joinedContinuationRow.getRowLength());
-      if (limit <= 0 || results.size() < limit) {
+      if (state != null && !state.batchLimitReached() && !state.sizeLimitReached()) {
         // We are done with this row, reset the continuation.
         joinedContinuationRow = null;
       }
       // As the data is obtained from two independent heaps, we need to
       // ensure that result list is sorted, because Result relies on that.
       Collections.sort(results, comparator);
-      return status;
+      return state;
     }
 
     /**
-     * Fetches records with currentRow into results list, until next row or limit (if not -1).
-     * @param results
+     * Fetches records with currentRow into results list, until next row, batchLimit (if not -1) is
+     * reached, or remainingResultSize (if not -1) is reaced
      * @param heap KeyValueHeap to fetch data from.It must be positioned on correct row before call.
-     * @param limit Max amount of KVs to place in result list, -1 means no limit.
+     * @param remainingResultSize The remaining space within our result size limit. A negative value
+     *          indicate no limit
+     * @param batchLimit Max amount of KVs to place in result list, -1 means no limit.
      * @param currentRow Byte array with key we are fetching.
      * @param offset offset for currentRow
      * @param length length for currentRow
-     * @return KV_LIMIT if limit reached, next KeyValue otherwise.
+     * @return state of last call to {@link KeyValueHeap#next()}
      */
-    private ScannerStatus populateResult(List<Cell> results, KeyValueHeap heap,
-        final int limit, byte[] currentRow, int offset, short length) throws IOException {
-      KeyValue nextKv;
-      int rawCount = 0;
+    private NextState populateResult(List<Cell> results, KeyValueHeap heap, int batchLimit,
+        long remainingResultSize, byte[] currentRow, int offset, short length) throws IOException {
+      Cell nextKv;
+      boolean moreCellsInRow = false;
+      long accumulatedResultSize = 0;
+      List<Cell> tmpResults = new ArrayList<Cell>();
       do {
-        ScannerStatus status = heap.next(results, limit - results.size(), -1);
-        rawCount += status.getRawValueScanned();
+        int remainingBatchLimit = batchLimit - results.size();
+        NextState heapState =
+            heap.next(tmpResults, remainingBatchLimit, remainingResultSize - accumulatedResultSize);
+        results.addAll(tmpResults);
+        accumulatedResultSize += calculateResultSize(tmpResults, heapState);
+        tmpResults.clear();
+
+        if (batchLimit > 0 && results.size() == batchLimit) {
+          return NextState.makeState(NextState.State.BATCH_LIMIT_REACHED, accumulatedResultSize);
+        }
+
         nextKv = heap.peek();
-      } while (nextKv != null && nextKv.matchingRow(currentRow, offset, length) &&
-          (limit < 0 || results.size() < limit));
-      return ScannerStatus.continued(nextKv, rawCount);
+        moreCellsInRow = moreCellsInRow(nextKv, currentRow, offset, length);
+        boolean sizeLimitReached =
+            remainingResultSize > 0 && accumulatedResultSize >= remainingResultSize;
+        if (moreCellsInRow && sizeLimitReached) {
+          return NextState.makeState(NextState.State.SIZE_LIMIT_REACHED, accumulatedResultSize);
+        }
+      } while (moreCellsInRow);
+
+      if (nextKv != null) {
+        return NextState.makeState(NextState.State.MORE_VALUES, accumulatedResultSize);
+      } else {
+        return NextState.makeState(NextState.State.NO_MORE_VALUES, accumulatedResultSize);
+      }
     }
+
+
+    /**
+     * Based on the nextKv in the heap, and the current row, decide whether or not there are more
+     * cells to be read in the heap. If the row of the nextKv in the heap matches the current row
+     * then there are more cells to be read in the row.
+     * @param nextKv
+     * @param currentRow
+     * @param offset
+     * @param length
+     * @return true When there are more cells in the row to be read
+     */
+    private boolean moreCellsInRow(final Cell nextKv, byte[] currentRow, int offset,
+        short length) {
+      return nextKv != null && CellUtil.matchingRow(nextKv, currentRow, offset, length);
+    }
+    /**
+     * Calculates the size of the results. If the state of the scanner that these results came from
+     * indicates that an estimate of the result size has already been generated, we can skip the
+     * calculation and use that instead.
+     * @param results List of cells we want to calculate size of
+     * @param state The state returned from the scanner that generated these results
+     * @return aggregate size of results
+     */
+    private long calculateResultSize(List<Cell> results, NextState state) {
+      if (results == null || results.isEmpty()) return 0;
+      // In general, the state should contain the estimate because the result size used to
+      // determine when the scan has exceeded its size limit. If the estimate is contained in the
+      // state then we can avoid an unnecesasry calculation.
+      if (state != null && state.hasResultSizeEstimate()) return state.getResultSize();
+      long size = 0;
+      for (Cell c : results) {
+        KeyValue kv = KeyValueUtil.ensureKeyValue(c);
+        size += kv.getLength();
+      }
+      return size;
+    }
+
+
+
+
 
     /*
      * @return True if a filter rules the scanner is over, done.
@@ -4280,11 +4368,14 @@ public class HRegion implements HeapSize { // , Writable{
       return this.filter != null && this.filter.filterAllRemaining();
     }
 
-    private ScannerStatus nextInternal(List<Cell> results, int limit, int rawLimit)
+    private NextState nextInternal(List<Cell> results, int batchLimit, long remainingResultSize)
     throws IOException {
       if (!results.isEmpty()) {
         throw new IllegalArgumentException("First parameter should be an empty list");
       }
+      // Estimate of the size (heap size) of the results returned from this method
+      long resultSize = 0;
+
       RpcCallContext rpcCall = RpcServer.getCurrentCall();
       // The loop here is used only when at some point during the next we determine
       // that due to effects of filters or otherwise, we have an empty row in the result.
@@ -4319,67 +4410,98 @@ public class HRegion implements HeapSize { // , Writable{
           length = current.getRowLength();
         }
         boolean stopRow = isStopRow(currentRow, offset, length);
-        ScannerStatus status = null;
+        boolean hasFilterRow = this.filter != null && this.filter.hasFilterRow();
+        // If filter#hasFilterRow is true, partial results are not allowed since allowing them
+        // would prevent the filters from being evaluated. Thus, if it is true, change the
+        // remainingResultSize to -1 so that the entire row's worth of cells are fetched.
+        if (hasFilterRow && remainingResultSize > 0) {
+          remainingResultSize = -1;
+          if (LOG.isTraceEnabled()) {
+            LOG.trace("filter#hasFilterRow is true which prevents partial results from being " +
+                " formed. The remainingResultSize of: " + remainingResultSize + " will not " +
+                " be considered when fetching the cells for this row.");
+          }
+        }
+
+        NextState joinedHeapState;
         // Check if we were getting data from the joinedHeap and hit the limit.
         // If not, then it's main path - getting results from storeHeap.
         if (joinedContinuationRow == null) {
           // First, check if we are at a stop row. If so, there are no more results.
           if (stopRow) {
-            if (filter != null && filter.hasFilterRow()) {
+            if (hasFilterRow) {
               filter.filterRowCells(results);
             }
-            return ScannerStatus.done(rawCount);
+            return NextState.makeState(NextState.State.NO_MORE_VALUES,
+                resultSize);
           }
 
           // Check if rowkey filter wants to exclude this row. If so, loop to next.
           // Technically, if we hit limits before on this row, we don't need this call.
           if (filterRowKey(currentRow, offset, length)) {
-            status = nextRow(currentRow, offset, length);
-            rawCount += status.getRawValueScanned();
-            if (!status.hasNext() || rawLimit > 0 && rawCount >= rawLimit) {
-              return new ScannerStatus(status.hasNext(), status.next(), rawCount);
+            boolean moreRows = nextRow(currentRow, offset, length);
+            if (!moreRows) {
+              return NextState.makeState(NextState.State.NO_MORE_VALUES, resultSize);
             }
             results.clear();
             continue;
           }
 
-          status = populateResult(results, this.storeHeap, limit, currentRow,
-              offset, length);
-          rawCount += status.getRawValueScanned();
-          KeyValue nextKv = status.next();
-          // Ok, we are good, let's try to get some results from the main heap.
-          if (limit > 0 && results.size() >= limit) {
-            if (this.filter != null && filter.hasFilterRow()) {
-              throw new IncompatibleFilterException(
-                "Filter whose hasFilterRow() returns true is incompatible with scan with limit!");
-            }
-            return ScannerStatus.continued(nextKv, rawCount); // We hit the limit.
+          NextState storeHeapState =
+              populateResult(results, this.storeHeap, batchLimit, remainingResultSize, currentRow,
+                  offset, length);
+          resultSize += calculateResultSize(results, storeHeapState);
+          // Invalid states should never be returned. If one is seen, throw exception
+          // since we have no way of telling how we should proceed
+          if (!NextState.isValidState(storeHeapState)) {
+            throw new IOException("NextState returned from call storeHeap was invalid");
           }
+          // Ok, we are good, let's try to get some results from the main heap.
+          if (storeHeapState.batchLimitReached()) {
+            if (hasFilterRow) {
+              throw new IncompatibleFilterException(
+                  "Filter whose hasFilterRow() returns true is incompatible with scan with limit!");
+            }
+            // We hit the batch limit.
+            return NextState.makeState(NextState.State.BATCH_LIMIT_REACHED, resultSize);
+          } else if (storeHeapState.sizeLimitReached()) {
+            if (hasFilterRow) {
+              // We try to guard against this case above when remainingResultSize is set to -1 if
+              // hasFilterRow is true. In the even that the guard doesn't work, an exception must be
+              // thrown
+              throw new IncompatibleFilterException(
+                  "Filter whose hasFilterRows() returns true is incompatible with scans that"
+                      + " return partial results");
+            }
+            // We hit the size limit.
+            return NextState.makeState(NextState.State.SIZE_LIMIT_REACHED, resultSize);
+          }
+          Cell nextKv = this.storeHeap.peek();
+
 
           stopRow = nextKv == null ||
-              isStopRow(nextKv.getBuffer(), nextKv.getRowOffset(), nextKv.getRowLength());
+              isStopRow(nextKv.getRowArray(), nextKv.getRowOffset(), nextKv.getRowLength());
           // save that the row was empty before filters applied to it.
           final boolean isEmptyRow = results.isEmpty();
 
           // We have the part of the row necessary for filtering (all of it, usually).
           // First filter with the filterRow(List).
           FilterWrapper.FilterRowRetCode ret = FilterWrapper.FilterRowRetCode.NOT_CALLED;
-          if (filter != null && filter.hasFilterRow()) {
+          if (hasFilterRow) {
             ret = filter.filterRowCellsWithRet(results);
           }
 
           if ((isEmptyRow || ret == FilterWrapper.FilterRowRetCode.EXCLUDE) || filterRow()) {
             results.clear();
-            status = nextRow(currentRow, offset, length);
-            rawCount += status.getRawValueScanned();
-            if (!status.hasNext() || rawLimit > 0 && rawCount >= rawLimit) {
-              return new ScannerStatus(status.hasNext(), status.next(), rawCount);
+            boolean moreRows = nextRow(currentRow, offset, length);
+            if (!moreRows) {
+              return NextState.makeState(NextState.State.NO_MORE_VALUES, 0);
             }
 
             // This row was totally filtered out, if this is NOT the last row,
             // we should continue on. Otherwise, nothing else to do.
             if (!stopRow) continue;
-            return ScannerStatus.done(rawCount);
+            return NextState.makeState(NextState.State.NO_MORE_VALUES, 0);
           }
 
           // Ok, we are done with storeHeap for this row.
@@ -4397,36 +4519,49 @@ public class HRegion implements HeapSize { // , Writable{
                 && joinedHeap.peek().matchingRow(currentRow, offset, length));
             if (mayHaveData) {
               joinedContinuationRow = current;
-              status = populateFromJoinedHeap(results, limit);
-              rawCount += status.getRawValueScanned();
+              joinedHeapState =
+                  populateFromJoinedHeap(results, batchLimit, remainingResultSize - resultSize);
+              resultSize +=
+                  joinedHeapState != null && joinedHeapState.hasResultSizeEstimate() ?
+                      joinedHeapState.getResultSize() : 0;
+              if (joinedHeapState != null && joinedHeapState.sizeLimitReached()) {
+                return NextState.makeState(NextState.State.SIZE_LIMIT_REACHED, resultSize);
+              }
             }
           }
         } else {
           // Populating from the joined heap was stopped by limits, populate some more.
-          status = populateFromJoinedHeap(results, limit);
-          rawCount += status.getRawValueScanned();
+          joinedHeapState =
+              populateFromJoinedHeap(results, batchLimit, remainingResultSize - resultSize);
+          resultSize +=
+              joinedHeapState != null && joinedHeapState.hasResultSizeEstimate() ?
+                  joinedHeapState.getResultSize() : 0;
+          if (joinedHeapState != null && joinedHeapState.sizeLimitReached()) {
+            return NextState.makeState(NextState.State.SIZE_LIMIT_REACHED, resultSize);
+          }
         }
 
         // We may have just called populateFromJoinedMap and hit the limits. If that is
         // the case, we need to call it again on the next next() invocation.
         if (joinedContinuationRow != null) {
-          return ScannerStatus.continued(status.next(), rawCount);
+          return NextState.makeState(NextState.State.MORE_VALUES, resultSize);
         }
 
         // Finally, we are done with both joinedHeap and storeHeap.
         // Double check to prevent empty rows from appearing in result. It could be
         // the case when SingleColumnValueExcludeFilter is used.
         if (results.isEmpty()) {
-          status = nextRow(currentRow, offset, length);
-          rawCount += status.getRawValueScanned();
-          if (!status.hasNext() || rawLimit > 0 && rawCount >= rawLimit) {
-            return new ScannerStatus(status.hasNext(), status.next(), rawCount);
-          }
+          boolean moreRows = nextRow(currentRow, offset, length);
+          if (!moreRows) return NextState.makeState(NextState.State.NO_MORE_VALUES, 0);
           if (!stopRow) continue;
         }
 
         // We are done. Return the result.
-        return new ScannerStatus(!stopRow, status.next(), rawCount);
+        if (stopRow) {
+          return NextState.makeState(NextState.State.NO_MORE_VALUES, resultSize);
+        } else {
+          return NextState.makeState(NextState.State.MORE_VALUES, resultSize);
+        }
       }
     }
 
@@ -4449,22 +4584,19 @@ public class HRegion implements HeapSize { // , Writable{
           && filter.filterRowKey(row, offset, length);
     }
 
-    protected ScannerStatus nextRow(byte [] currentRow, int offset, short length) throws IOException {
+    protected boolean nextRow(byte [] currentRow, int offset, short length) throws IOException {
       assert this.joinedContinuationRow == null: "Trying to go to next row during joinedHeap read.";
       int rawCount = 0;
       KeyValue next;
       while ((next = this.storeHeap.peek()) != null &&
-             next.matchingRow(currentRow, offset, length)) {
-        ScannerStatus status = this.storeHeap.next(MOCKED_LIST);
-        rawCount += status.getRawValueScanned();
+          CellUtil.matchingRow(next, currentRow, offset, length)) {
+        this.storeHeap.next(MOCKED_LIST);
       }
       resetFilters();
       // Calling the hook in CP which allows it to do a fast forward
-      if (this.region.getCoprocessorHost() != null) {
-        return this.region.getCoprocessorHost().postScannerFilterRow(this, currentRow, offset, length) ?
-            ScannerStatus.continued(next, rawCount) : ScannerStatus.done(rawCount);
-      }
-      return ScannerStatus.continued(next, rawCount);
+      return this.region.getCoprocessorHost() == null
+          || this.region.getCoprocessorHost()
+          .postScannerFilterRow(this, currentRow, offset, length);
     }
 
     protected boolean isStopRow(byte[] currentRow, int offset, short length) {
@@ -6139,7 +6271,7 @@ public class HRegion implements HeapSize { // , Writable{
           boolean done;
           do {
             kvs.clear();
-            done = scanner.next(kvs).hasNext();
+            done = NextState.hasMoreValues(scanner.next(kvs));
             if (kvs.size() > 0) LOG.info(kvs);
           } while (done);
         } finally {

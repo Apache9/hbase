@@ -37,6 +37,7 @@ import org.apache.hadoop.hbase.KeyValueUtil;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.monitoring.MonitoredTask;
 import org.apache.hadoop.hbase.regionserver.compactions.Compactor;
+import org.apache.hadoop.hbase.regionserver.InternalScanner.NextState;
 import org.apache.hadoop.hbase.util.CollectionBackedScanner;
 
 /**
@@ -125,7 +126,7 @@ abstract class StoreFlusher {
     boolean hasMore;
     long flushed = 0;
     do {
-      hasMore = scanner.next(kvs, compactionKVMax, -1).hasNext();
+      hasMore = NextState.hasMoreValues(scanner.next(kvs, compactionKVMax, -1));
       if (!kvs.isEmpty()) {
         for (Cell c : kvs) {
           // If we know that this KV is going to be included always, then let us
