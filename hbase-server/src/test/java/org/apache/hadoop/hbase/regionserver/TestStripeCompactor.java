@@ -231,9 +231,8 @@ public class TestStripeCompactor {
     public NextState next(List<Cell> results) throws IOException {
       if (kvs.isEmpty()) return  NextState.makeState(NextState.State.NO_MORE_VALUES);
       results.add(kvs.remove(0));
-      return kvs.isEmpty() ?
-          NextState.makeState(NextState.State.MORE_VALUES)
-          :NextState.makeState(NextState.State.NO_MORE_VALUES);
+      return kvs.isEmpty() ? NextState.makeState(NextState.State.NO_MORE_VALUES):
+          NextState.makeState(NextState.State.MORE_VALUES);
     }
     @Override
     public NextState next(List<Cell> result, int limit) throws IOException {
