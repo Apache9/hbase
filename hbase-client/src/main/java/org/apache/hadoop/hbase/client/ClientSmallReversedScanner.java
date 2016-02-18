@@ -143,6 +143,7 @@ public class ClientSmallReversedScanner extends ReversedClientScanner {
         if (values != null && values.length > 0) {
           for (int i = 0; i < values.length; i++) {
             Result rs = values[i];
+            /*
             if (rs.isFake()) {
               // End of 1 next RPC
               fakeResultReturned = true;
@@ -152,6 +153,7 @@ public class ClientSmallReversedScanner extends ReversedClientScanner {
               }
               break;
             }
+            */
             cache.add(rs);
             for (Cell kv : rs.rawCells()) {
               remainingResultSize -= KeyValueUtil.ensureKeyValue(kv).heapSize();

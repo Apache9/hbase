@@ -15,12 +15,15 @@ public abstract class BaseSaltedScanner extends AbstractClientScanner {
     for(int i = 0; i < nbRows; i++) {
       Result next = next();
       if (next != null) {
+        /*
         // skip the fake row filled when raw limit is hit
         if (!next.isFake()) {
           resultSets.add(next);
         } else {
           i--;
         }
+        */
+        resultSets.add(next);
       } else {
         break;
       }
