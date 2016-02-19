@@ -1,19 +1,12 @@
 /**
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Licensed to the Apache Software Foundation (ASF) under one or more contributor license
+ * agreements. See the NOTICE file distributed with this work for additional information regarding
+ * copyright ownership. The ASF licenses this file to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance with the License. You may obtain a
+ * copy of the License at http://www.apache.org/licenses/LICENSE-2.0 Unless required by applicable
+ * law or agreed to in writing, software distributed under the License is distributed on an "AS IS"
+ * BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License
+ * for the specific language governing permissions and limitations under the License.
  */
 package org.apache.hadoop.hbase.namespace;
 
@@ -25,22 +18,20 @@ import java.util.concurrent.ConcurrentMap;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.classification.InterfaceAudience;
-import org.apache.hadoop.hbase.DoNotRetryIOException;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.NamespaceDescriptor;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.TableName;
-import org.apache.hadoop.hbase.client.HConnection;
-import org.apache.hadoop.hbase.client.HConnectionManager;
+import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.client.MetaScanner;
 import org.apache.hadoop.hbase.master.MasterServices;
 import org.apache.hadoop.hbase.master.TableNamespaceManager;
+import org.apache.hadoop.hbase.quotas.QuotaExceededException;
 import org.apache.hadoop.hbase.util.Bytes;
 
 /**
- * NamespaceStateManager manages state (in terms of quota) of all the namespaces. It contains
- * a cache which is updated based on the hooks in the NamespaceAuditor class.
+ * NamespaceStateManager manages state (in terms of quota) of all the namespaces. It contains a
+ * cache which is updated based on the hooks in the NamespaceAuditor class.
  */
 @InterfaceAudience.Private
 class NamespaceStateManager {
@@ -56,10 +47,8 @@ class NamespaceStateManager {
   }
 
   /**
-   * Starts the NamespaceStateManager. The boot strap of cache
-   * is done in the post master start hook of the NamespaceAuditor
-   * class.
-   *
+   * Starts the NamespaceStateManager. The boot strap of cache is done in the post master start hook
+   * of the NamespaceAuditor class.
    * @throws IOException Signals that an I/O exception has occurred.
    */
   public void start() throws IOException {
@@ -78,34 +67,63 @@ class NamespaceStateManager {
 
   /**
    * Check if adding a region violates namespace quota, if not update namespace cache.
-   *
    * @param TableName
    * @param regionName
+   * @param incr
    * @return true, if region can be added to table.
    * @throws IOException Signals that an I/O exception has occurred.
    */
-  synchronized boolean checkAndUpdateNamespaceRegionCount(TableName name,
-                                                      byte[] regionName) throws IOException {
+  synchronized boolean checkAndUpdateNamespaceRegionCount(TableName name, byte[] regionName,
+      int incr) throws IOException {
     String namespace = name.getNamespaceAsString();
     NamespaceDescriptor nspdesc = getNamespaceDescriptor(namespace);
     if (nspdesc != null) {
       NamespaceTableAndRegionInfo currentStatus;
       currentStatus = getState(namespace);
-      if (currentStatus.getRegionCount() >= TableNamespaceManager.getMaxRegions(nspdesc)) {
+      if (incr > 0
+          && currentStatus.getRegionCount() >= TableNamespaceManager.getMaxRegions(nspdesc)) {
         LOG.warn("The region " + Bytes.toStringBinary(regionName)
             + " cannot be created. The region count  will exceed quota on the namespace. "
             + "This may be transient, please retry later if there are any ongoing split"
-            + " operations in the namespace.");
+            + " operations in the namespace. currentRegionCount: " + currentStatus.getRegionCount()
+            + ", namespaceMaxRegions: " + TableNamespaceManager.getMaxRegions(nspdesc));
         return false;
       }
       NamespaceTableAndRegionInfo nsInfo = nsStateCache.get(namespace);
       if (nsInfo != null) {
-        nsInfo.incRegionCountForTable(name, 1);
+        nsInfo.incRegionCountForTable(name, incr);
       } else {
         LOG.warn("Namespace state found null for namespace : " + namespace);
       }
     }
     return true;
+  }
+
+  /**
+   * Check and update region count for an existing table. To handle scenarios like restore snapshot
+   * @param TableName name of the table for region count needs to be checked and updated
+   * @param incr count of regions
+   * @throws QuotaExceededException if quota exceeds for the number of regions allowed in a
+   *           namespace
+   * @throws IOException Signals that an I/O exception has occurred.
+   */
+  synchronized void checkAndUpdateNamespaceRegionCount(TableName name, int incr)
+      throws IOException {
+    String namespace = name.getNamespaceAsString();
+    NamespaceDescriptor nspdesc = getNamespaceDescriptor(namespace);
+    if (nspdesc != null) {
+      NamespaceTableAndRegionInfo currentStatus = getState(namespace);
+      int regionCountOfTable = currentStatus.getRegionCountOfTable(name);
+      if ((currentStatus.getRegionCount() - regionCountOfTable + incr) > TableNamespaceManager
+          .getMaxRegions(nspdesc)) {
+        throw new QuotaExceededException("The table " + name.getNameAsString()
+            + " region count cannot be updated as it would exceed maximum number "
+            + "of regions allowed in the namespace.  The total number of regions permitted is "
+            + TableNamespaceManager.getMaxRegions(nspdesc));
+      }
+      currentStatus.removeTable(name);
+      currentStatus.addTable(name, incr);
+    }
   }
 
   private NamespaceDescriptor getNamespaceDescriptor(String namespaceAsString) {
@@ -117,24 +135,26 @@ class NamespaceStateManager {
     }
   }
 
-  synchronized void checkAndUpdateNamespaceTableCount(TableName table, int numRegions) throws IOException {
+  synchronized void checkAndUpdateNamespaceTableCount(TableName table, int numRegions)
+      throws IOException {
     String namespace = table.getNamespaceAsString();
     NamespaceDescriptor nspdesc = getNamespaceDescriptor(namespace);
     if (nspdesc != null) {
       NamespaceTableAndRegionInfo currentStatus;
       currentStatus = getState(nspdesc.getName());
       if ((currentStatus.getTables().size()) >= TableNamespaceManager.getMaxTables(nspdesc)) {
-        throw new DoNotRetryIOException("The table " + table.getNameAsString()
+        throw new QuotaExceededException("The table " + table.getNameAsString()
             + " cannot be created as it would exceed maximum number of tables allowed "
-            + " in the namespace.");
+            + " in the namespace.  The total number of tables permitted is "
+            + TableNamespaceManager.getMaxTables(nspdesc));
       }
       if ((currentStatus.getRegionCount() + numRegions) > TableNamespaceManager
           .getMaxRegions(nspdesc)) {
-        throw new DoNotRetryIOException("The table " + table.getNameAsString()
+        throw new QuotaExceededException("The table " + table.getNameAsString()
             + " is not allowed to have " + numRegions
             + " regions. The total number of regions permitted is only "
-            + TableNamespaceManager.getMaxRegions(nspdesc)
-            + ", while current region count is " + currentStatus.getRegionCount()
+            + TableNamespaceManager.getMaxRegions(nspdesc) + ", while current region count is "
+            + currentStatus.getRegionCount()
             + ". This may be transient, please retry later if there are any"
             + " ongoing split operations in the namespace.");
       }
@@ -155,7 +175,6 @@ class NamespaceStateManager {
 
   /**
    * Delete the namespace state.
-   *
    * @param An instance of NamespaceTableAndRegionInfo
    */
   void deleteNamespace(String namespace) {
@@ -163,9 +182,8 @@ class NamespaceStateManager {
   }
 
   private void addTable(TableName tableName, int regionCount) throws IOException {
-    NamespaceTableAndRegionInfo info =
-        nsStateCache.get(tableName.getNamespaceAsString());
-    if(info != null) {
+    NamespaceTableAndRegionInfo info = nsStateCache.get(tableName.getNamespaceAsString());
+    if (info != null) {
       info.addTable(tableName, regionCount);
     } else {
       throw new IOException("Bad state : Namespace quota information not found for namespace : "
@@ -174,8 +192,7 @@ class NamespaceStateManager {
   }
 
   synchronized void removeTable(TableName tableName) {
-    NamespaceTableAndRegionInfo info =
-        nsStateCache.get(tableName.getNamespaceAsString());
+    NamespaceTableAndRegionInfo info = nsStateCache.get(tableName.getNamespaceAsString());
     if (info != null) {
       info.removeTable(tableName);
     }
@@ -184,18 +201,16 @@ class NamespaceStateManager {
   /**
    * Initialize namespace state cache by scanning meta table.
    */
-  void initialize() {
-    HConnection connection = null;
-    try {
-      connection = HConnectionManager.createConnection(this.master.getConfiguration());
-      List<NamespaceDescriptor> namespaces = this.master.listNamespaceDescriptors();
-      for (NamespaceDescriptor namespace : namespaces) {
-        addNamespace(namespace.getName());
-        List<TableName> tables = this.master.listTableNamesByNamespace(namespace.getName());
-        for (TableName table : tables) {
+  private void initialize() throws IOException {
+    List<NamespaceDescriptor> namespaces = this.master.listNamespaceDescriptors();
+    for (NamespaceDescriptor namespace : namespaces) {
+      addNamespace(namespace.getName());
+      List<TableName> tables = this.master.listTableNamesByNamespace(namespace.getName());
+      for (TableName table : tables) {
+        if (!table.isSystemTable()) {
           int regionCount = 0;
           Map<HRegionInfo, ServerName> regions = MetaScanner.allTableRegions(
-            this.master.getConfiguration(), connection, table, false);
+            this.master.getConfiguration(), null, table, true);
           for (HRegionInfo info : regions.keySet()) {
             if (!info.isSplit()) {
               regionCount++;
@@ -204,12 +219,9 @@ class NamespaceStateManager {
           addTable(table, regionCount);
         }
       }
-      LOG.info("Finished updating state of " + nsStateCache.size() + " namespaces. ");
-      initialized = true;
-    } catch (IOException e) {
-      LOG.error("Error while update namespace state.", e);
-      initialized = false;
     }
+    LOG.info("Finished updating state of " + nsStateCache.size() + " namespaces. ");
+    initialized = true;
   }
 
   boolean isInitialized() {

@@ -27,7 +27,6 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.NavigableMap;
 import java.util.Set;
 import java.util.TreeMap;
@@ -43,7 +42,6 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -60,6 +58,7 @@ import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.TableNotFoundException;
 import org.apache.hadoop.hbase.catalog.CatalogTracker;
 import org.apache.hadoop.hbase.catalog.MetaReader;
+import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.exceptions.DeserializationException;
 import org.apache.hadoop.hbase.executor.EventHandler;
@@ -77,6 +76,7 @@ import org.apache.hadoop.hbase.master.handler.EnableTableHandler;
 import org.apache.hadoop.hbase.master.handler.OpenedRegionHandler;
 import org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.RegionStateTransition;
 import org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.RegionStateTransition.TransitionCode;
+import org.apache.hadoop.hbase.quotas.RegionStateListener;
 import org.apache.hadoop.hbase.regionserver.RegionAlreadyInTransitionException;
 import org.apache.hadoop.hbase.regionserver.RegionMergeTransaction;
 import org.apache.hadoop.hbase.regionserver.RegionOpeningState;
@@ -98,6 +98,7 @@ import org.apache.hadoop.hbase.zookeeper.ZKTable;
 import org.apache.hadoop.hbase.zookeeper.ZKUtil;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperListener;
 import org.apache.hadoop.ipc.RemoteException;
+import org.apache.hadoop.util.StringUtils;
 import org.apache.zookeeper.AsyncCallback;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.KeeperException.NoNodeException;
@@ -264,6 +265,8 @@ public class AssignmentManager extends ZooKeeperListener {
 
   /** Listeners that are called on assignment events. */
   private List<AssignmentListener> listeners = new CopyOnWriteArrayList<AssignmentListener>();
+
+  private RegionStateListener regionStateListener;
 
   /**
    * Constructs a new assignment manager.
@@ -3915,6 +3918,12 @@ public class AssignmentManager extends ZooKeeperListener {
 
     if (et == EventType.RS_ZK_REGION_MERGED) {
       LOG.debug("Handling MERGED event for " + encodedName + "; deleting node");
+      try {
+        regionStateListener.onRegionMerged(p);
+      } catch (IOException e) {
+        LOG.error("Fail to check and update region quota when merge", e);
+      }
+      
       // Remove region from ZK
       try {
         boolean successful = false;
@@ -3995,6 +4004,14 @@ public class AssignmentManager extends ZooKeeperListener {
     EventType et = rt.getEventType();
     if (et == EventType.RS_ZK_REQUEST_REGION_SPLIT) {
       try {
+        try {
+          regionStateListener.onRegionSplit(p);
+        } catch (IOException e) {
+          // return false will delete the splitting zk node
+          LOG.error("Fail to check and update region quota when split", e);
+          return false;
+        }
+        
         if (SplitTransaction.transitionSplittingNode(watcher, p,
             hri_a, hri_b, sn, -1, EventType.RS_ZK_REQUEST_REGION_SPLIT,
             EventType.RS_ZK_REGION_SPLITTING) == -1) {
@@ -4197,17 +4214,36 @@ public class AssignmentManager extends ZooKeeperListener {
       break;
 
     case READY_TO_SPLIT:
+      try {
+        regionStateListener.onRegionSplit(hri);
+      } catch (IOException exp) {
+        errorMsg = StringUtils.stringifyException(exp);
+        break;
+      }
     case SPLIT_PONR:
     case SPLIT:
     case SPLIT_REVERTED:
-      errorMsg = onRegionSplit(serverName, code, hri,
-        HRegionInfo.convert(transition.getRegionInfo(1)),
-        HRegionInfo.convert(transition.getRegionInfo(2)));
+      errorMsg =
+          onRegionSplit(serverName, code, hri, HRegionInfo.convert(transition.getRegionInfo(1)),
+            HRegionInfo.convert(transition.getRegionInfo(2)));
+      if (code == TransitionCode.SPLIT_REVERTED) {
+        try {
+          regionStateListener.onRegionSplitReverted(hri);
+        } catch (IOException exp) {
+          LOG.warn(StringUtils.stringifyException(exp));
+        }
+      }
       break;
-
     case READY_TO_MERGE:
     case MERGE_PONR:
     case MERGED:
+      if (code == TransitionCode.MERGED) {
+        try {
+          regionStateListener.onRegionMerged(hri);
+        } catch (IOException exp) {
+          errorMsg = StringUtils.stringifyException(exp);
+        }
+      }
     case MERGE_REVERTED:
       errorMsg = onRegionMerge(serverName, code, hri,
         HRegionInfo.convert(transition.getRegionInfo(1)),
@@ -4229,5 +4265,9 @@ public class AssignmentManager extends ZooKeeperListener {
    */
   public LoadBalancer getBalancer() {
     return this.balancer;
+  }
+
+  void setRegionStateListener(RegionStateListener listener) {
+    this.regionStateListener = listener;
   }
 }

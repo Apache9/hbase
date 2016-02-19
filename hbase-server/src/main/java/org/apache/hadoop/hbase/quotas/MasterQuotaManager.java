@@ -60,7 +60,7 @@ import com.google.common.annotations.VisibleForTesting;
  */
 @InterfaceAudience.Private
 @InterfaceStability.Evolving
-public class MasterQuotaManager {
+public class MasterQuotaManager implements RegionStateListener {
   private static final Log LOG = LogFactory.getLog(MasterQuotaManager.class);
 
   private final MasterServices masterServices;
@@ -787,5 +787,29 @@ public class MasterQuotaManager {
       }
     }
   }
+  
+  public void checkAndUpdateNamespaceRegionQuota(TableName tName, int regions) throws IOException {
+    if (enabled) {
+      namespaceQuotaManager.checkQuotaToUpdateRegion(tName, regions);
+    }
+  }
 
+  public void onRegionMerged(HRegionInfo hri) throws IOException {
+    if (enabled) {
+      namespaceQuotaManager.updateQuotaForRegionMerge(hri);
+    }
+  }
+
+  public void onRegionSplit(HRegionInfo hri) throws IOException {
+    if (enabled) {
+      namespaceQuotaManager.checkQuotaToSplitRegion(hri);
+    }
+  }
+
+  @Override
+  public void onRegionSplitReverted(HRegionInfo hri) throws IOException {
+    if (enabled) {
+      this.namespaceQuotaManager.removeRegionFromNamespaceUsage(hri);
+    }
+  }
 }
