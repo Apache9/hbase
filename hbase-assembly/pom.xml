@@ -114,5 +114,20 @@
        <artifactId>hbase-testing-util</artifactId>
        <version>${project.version}</version>
     </dependency>
+    <dependency>
+      <groupId>com.xiaomi.infra</groupId>
+      <artifactId>rrd-on-hbase</artifactId>
+      <version>${rrd-on-hbase.version}</version>
+      <exclusions>
+        <exclusion>
+          <groupId>org.apache.hbase</groupId>
+          <artifactId>hbase-client</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.apache.hbase</groupId>
+          <artifactId>hbase-server</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
   </dependencies>
 </project>

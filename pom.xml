@@ -1014,6 +1014,7 @@
     <zookeeper-mdh.version>3.4.5-mdh1.2.0</zookeeper-mdh.version>
     <hadoop-mdh.version>2.4.0-mdh2.2.2</hadoop-mdh.version>
     <htrace-mdh.version>3.1.1-mdh1.0-SNAPSHOT</htrace-mdh.version>
+    <rrd-on-hbase.version>1.0.0-SNAPSHOT</rrd-on-hbase.version>
     <slf4j.version>1.6.4</slf4j.version>
     <hadoop-snappy.version>0.0.1-SNAPSHOT</hadoop-snappy.version>
     <clover.version>2.6.3</clover.version>
