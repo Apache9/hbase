@@ -356,7 +356,9 @@ public class ClientScanner extends AbstractClientScanner {
         // this when we reset scanner because it split under us.
         boolean skipFirst = false;
         boolean retryAfterOutOfOrderException  = true;
-        boolean fakeResultReturned = false;
+        // We don't expect that the server will have more results for us if
+        // it doesn't tell us otherwise. We rely on the size or count of results
+        boolean serverHasMoreResults = false;
         do {
           try {
             if (skipFirst) {
@@ -473,12 +475,21 @@ public class ClientScanner extends AbstractClientScanner {
               this.lastResult = rs;
             }
           }
+          // We expect that the server won't have more results for us when we exhaust
+          // the size (bytes or count) of the results returned. If the server *does* inform us that
+          // there are more results, we want to avoid possiblyNextScanner(...). Only when we actually
+          // get results is the moreResults context valid.
+          if (null != values && values.length > 0 && callable.hasMoreResultsContext()) {
+            // Only adhere to more server results when we don't have any partialResults
+            // as it keeps the outer loop logic the same.
+            serverHasMoreResults = callable.getServerHasMoreResults();
+          }
 
           // Values == null means server-side filter has determined we must STOP
           // !partialResults.isEmpty() means that we are still accumulating partial Results for a
           // row. We should not change scanners before we receive all the partial Results for that
           // row.
-        } while (/*!fakeResultReturned && */remainingResultSize > 0 && countdown > 0
+        } while (remainingResultSize > 0 && countdown > 0 && !serverHasMoreResults
             && (!partialResults.isEmpty() || nextScanner(countdown,
             values == null)));
       }

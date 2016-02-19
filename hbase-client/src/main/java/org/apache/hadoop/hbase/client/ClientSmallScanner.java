@@ -172,6 +172,12 @@ public class ClientSmallScanner extends ClientScanner {
         try {
           controller.setPriority(getTableName());
           response = getStub().scan(controller, request);
+          if (response.hasMoreResultsInRegion()) {
+            setHasMoreResultsContext(true);
+            setServerHasMoreResults(response.getMoreResultsInRegion());
+          } else {
+            setHasMoreResultsContext(false);
+          }
           if (Trace.isTracing()) {
             Trace.addTimelineAnnotation("Small scan to " + location);
           }

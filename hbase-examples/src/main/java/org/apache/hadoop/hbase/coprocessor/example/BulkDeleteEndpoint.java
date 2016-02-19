@@ -47,7 +47,6 @@ import org.apache.hadoop.hbase.filter.FirstKeyOnlyFilter;
 import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.protobuf.ResponseConverter;
 import org.apache.hadoop.hbase.regionserver.HRegion;
-import org.apache.hadoop.hbase.regionserver.InternalScanner;
 import org.apache.hadoop.hbase.regionserver.OperationStatus;
 import org.apache.hadoop.hbase.regionserver.RegionScanner;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -137,8 +136,7 @@ public class BulkDeleteEndpoint extends BulkDeleteService implements Coprocessor
         List<List<Cell>> deleteRows = new ArrayList<List<Cell>>(rowBatchSize);
         for (int i = 0; i < rowBatchSize; i++) {
           List<Cell> results = new ArrayList<Cell>();
-          hasMore = InternalScanner.NextState
-              .hasMoreValues(scanner.next(results));
+          hasMore = scanner.next(results);
           if (results.size() > 0) {
             deleteRows.add(results);
           }

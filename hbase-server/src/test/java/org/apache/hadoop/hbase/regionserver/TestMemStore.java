@@ -101,7 +101,7 @@ public class TestMemStore extends TestCase {
     StoreScanner s = new StoreScanner(scan, scanInfo, scanType, null, memstorescanners);
     int count = 0;
     try {
-      while (s.next(result).hasMoreValues()) {
+      while (s.next(result)) {
         LOG.info(result);
         count++;
         // Row count is same as column count.
@@ -121,7 +121,7 @@ public class TestMemStore extends TestCase {
     s = new StoreScanner(scan, scanInfo, scanType, null, memstorescanners);
     count = 0;
     try {
-      while (s.next(result).hasMoreValues()) {
+      while (s.next(result)) {
         LOG.info(result);
         // Assert the stuff is coming out in right order.
         assertTrue(CellUtil.matchingRow(result.get(0), Bytes.toBytes(count)));
@@ -148,7 +148,7 @@ public class TestMemStore extends TestCase {
     count = 0;
     int snapshotIndex = 5;
     try {
-      while (s.next(result).hasMoreValues()) {
+      while (s.next(result)) {
         LOG.info(result);
         // Assert the stuff is coming out in right order.
         assertTrue(CellUtil.matchingRow(result.get(0), Bytes.toBytes(count)));
@@ -520,7 +520,7 @@ public class TestMemStore extends TestCase {
           Bytes.toBytes(startRowId)), scanInfo, scanType, null,
           memstore.getScanners(0));
       List<Cell> results = new ArrayList<Cell>();
-      for (int i = 0; scanner.next(results).hasMoreValues(); i++) {
+      for (int i = 0; scanner.next(results); i++) {
         int rowId = startRowId + i;
         Cell left = results.get(0);
         byte[] row1 = Bytes.toBytes(rowId);

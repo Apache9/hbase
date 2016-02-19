@@ -408,15 +408,15 @@ public class TestPartialResultsFromClientSide {
     scan.setMaxResultSize(getResultSizeForNumberOfCells(cellsPerPartialResult));
     scan.setBatch(batch);
     ResultScanner scanner = TABLE.getScanner(scan);
-    Result result = scanner.next();
-
+    Result result;
+    int repCount = 0;
     while ((result = scanner.next()) != null) {
       assertTrue(result.rawCells() != null);
 
       if (result.isPartial()) {
         final String error =
             "Cells:" + result.rawCells().length + " Batch size:" + batch
-                + " cellsPerPartialResult:" + cellsPerPartialResult;
+                + " cellsPerPartialResult:" + cellsPerPartialResult + " rep:" + repCount;
         assertTrue(error, result.rawCells().length <= Math.min(batch, cellsPerPartialResult));
       } else {
         assertTrue(result.rawCells().length <= batch);
@@ -458,7 +458,7 @@ public class TestPartialResultsFromClientSide {
       do {
         partialResult = partialScanner.next();
         partials.add(partialResult);
-      } while (partialResult.isPartial());
+      } while (partialResult != null && partialResult.isPartial());
 
       completeResult = Result.createCompleteResult(partials);
       oneShotResult = oneShotScanner.next();

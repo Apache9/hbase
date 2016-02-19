@@ -101,7 +101,7 @@ public class TestMultipleColumnPrefixFilter {
     scan.setFilter(filter);
     List<Cell> results = new ArrayList<Cell>();  
     InternalScanner scanner = region.getScanner(scan);
-    while(InternalScanner.NextState.hasMoreValues(scanner.next(results)));
+    while(scanner.next(results));
     assertEquals(prefixMap.get("p").size() + prefixMap.get("q").size(), results.size());
 
     HRegion.closeHRegion(region);
@@ -173,7 +173,7 @@ public class TestMultipleColumnPrefixFilter {
     scan.setFilter(filter);
     List<Cell> results = new ArrayList<Cell>();  
     InternalScanner scanner = region.getScanner(scan);
-    while(InternalScanner.NextState.hasMoreValues(scanner.next(results)));
+    while(scanner.next(results));
     assertEquals(prefixMap.get("p").size() + prefixMap.get("q").size(), results.size());
 
     HRegion.closeHRegion(region);
@@ -217,7 +217,7 @@ public class TestMultipleColumnPrefixFilter {
     scan1.setFilter(multiplePrefixFilter);
     List<Cell> results1 = new ArrayList<Cell>();  
     InternalScanner scanner1 = region.getScanner(scan1);
-    while(InternalScanner.NextState.hasMoreValues(scanner1.next(results1)));
+    while(scanner1.next(results1));
     
     ColumnPrefixFilter singlePrefixFilter;
     Scan scan2 = new Scan();
@@ -227,7 +227,7 @@ public class TestMultipleColumnPrefixFilter {
     scan2.setFilter(singlePrefixFilter);
     List<Cell> results2 = new ArrayList<Cell>();  
     InternalScanner scanner2 = region.getScanner(scan1);
-    while(InternalScanner.NextState.hasMoreValues(scanner2.next(results2)));
+    while(scanner2.next(results2));
     
     assertEquals(results1.size(), results2.size());
 

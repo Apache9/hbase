@@ -352,7 +352,7 @@ public class TestSplitTransaction {
       List<Cell> kvs = new ArrayList<Cell>();
       boolean hasNext = true;
       while (hasNext) {
-        hasNext = scanner.next(kvs).hasMoreValues();
+        hasNext = scanner.next(kvs);
         if (!kvs.isEmpty()) rowcount++;
       }
     } finally {

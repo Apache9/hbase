@@ -32,6 +32,7 @@ import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.KeyValueUtil;
 import org.apache.hadoop.hbase.client.metrics.ScanMetrics;
 import org.apache.hadoop.hbase.regionserver.HRegion;
+import org.apache.hadoop.hbase.regionserver.NoLimitScannerContext;
 import org.apache.hadoop.hbase.regionserver.RegionScanner;
 import org.mortbay.log.Log;
 
@@ -74,10 +75,7 @@ public class ClientSideRegionScanner extends AbstractClientScanner {
   public Result next() throws IOException {
     values.clear();
 
-    // negative values indicate no limits
-    final long remainingResultSize = -1;
-    final int batchLimit = -1;
-    scanner.nextRaw(values, batchLimit, remainingResultSize);
+    scanner.nextRaw(values, NoLimitScannerContext.getInstance());
 
     if (values == null || values.isEmpty()) {
       //we are done

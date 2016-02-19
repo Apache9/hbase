@@ -17589,6 +17589,28 @@ public final class ClientProtos {
      * </pre>
      */
     boolean getPartialFlagPerResult(int index);
+
+    // optional bool more_results_in_region = 8;
+    /**
+     * <code>optional bool more_results_in_region = 8;</code>
+     *
+     * <pre>
+     * A server may choose to limit the number of results returned to the client for
+     * reasons such as the size in bytes or quantity of results accumulated. This field
+     * will true when more results exist in the current region.
+     * </pre>
+     */
+    boolean hasMoreResultsInRegion();
+    /**
+     * <code>optional bool more_results_in_region = 8;</code>
+     *
+     * <pre>
+     * A server may choose to limit the number of results returned to the client for
+     * reasons such as the size in bytes or quantity of results accumulated. This field
+     * will true when more results exist in the current region.
+     * </pre>
+     */
+    boolean getMoreResultsInRegion();
   }
   /**
    * Protobuf type {@code ScanResponse}
@@ -17715,6 +17737,11 @@ public final class ClientProtos {
                 partialFlagPerResult_.add(input.readBool());
               }
               input.popLimit(limit);
+              break;
+            }
+            case 64: {
+              bitField0_ |= 0x00000010;
+              moreResultsInRegion_ = input.readBool();
               break;
             }
           }
@@ -18002,6 +18029,34 @@ public final class ClientProtos {
       return partialFlagPerResult_.get(index);
     }
 
+    // optional bool more_results_in_region = 8;
+    public static final int MORE_RESULTS_IN_REGION_FIELD_NUMBER = 8;
+    private boolean moreResultsInRegion_;
+    /**
+     * <code>optional bool more_results_in_region = 8;</code>
+     *
+     * <pre>
+     * A server may choose to limit the number of results returned to the client for
+     * reasons such as the size in bytes or quantity of results accumulated. This field
+     * will true when more results exist in the current region.
+     * </pre>
+     */
+    public boolean hasMoreResultsInRegion() {
+      return ((bitField0_ & 0x00000010) == 0x00000010);
+    }
+    /**
+     * <code>optional bool more_results_in_region = 8;</code>
+     *
+     * <pre>
+     * A server may choose to limit the number of results returned to the client for
+     * reasons such as the size in bytes or quantity of results accumulated. This field
+     * will true when more results exist in the current region.
+     * </pre>
+     */
+    public boolean getMoreResultsInRegion() {
+      return moreResultsInRegion_;
+    }
+
     private void initFields() {
       cellsPerResult_ = java.util.Collections.emptyList();
       scannerId_ = 0L;
@@ -18010,6 +18065,7 @@ public final class ClientProtos {
       results_ = java.util.Collections.emptyList();
       stale_ = false;
       partialFlagPerResult_ = java.util.Collections.emptyList();
+      moreResultsInRegion_ = false;
     }
     private byte memoizedIsInitialized = -1;
     public final boolean isInitialized() {
@@ -18043,6 +18099,9 @@ public final class ClientProtos {
       }
       for (int i = 0; i < partialFlagPerResult_.size(); i++) {
         output.writeBool(7, partialFlagPerResult_.get(i));
+      }
+      if (((bitField0_ & 0x00000010) == 0x00000010)) {
+        output.writeBool(8, moreResultsInRegion_);
       }
       getUnknownFields().writeTo(output);
     }
@@ -18087,6 +18146,10 @@ public final class ClientProtos {
         dataSize = 1 * getPartialFlagPerResultList().size();
         size += dataSize;
         size += 1 * getPartialFlagPerResultList().size();
+      }
+      if (((bitField0_ & 0x00000010) == 0x00000010)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeBoolSize(8, moreResultsInRegion_);
       }
       size += getUnknownFields().getSerializedSize();
       memoizedSerializedSize = size;
@@ -18137,6 +18200,11 @@ public final class ClientProtos {
       }
       result = result && getPartialFlagPerResultList()
           .equals(other.getPartialFlagPerResultList());
+      result = result && (hasMoreResultsInRegion() == other.hasMoreResultsInRegion());
+      if (hasMoreResultsInRegion()) {
+        result = result && (getMoreResultsInRegion()
+            == other.getMoreResultsInRegion());
+      }
       result = result &&
           getUnknownFields().equals(other.getUnknownFields());
       return result;
@@ -18177,6 +18245,10 @@ public final class ClientProtos {
       if (getPartialFlagPerResultCount() > 0) {
         hash = (37 * hash) + PARTIAL_FLAG_PER_RESULT_FIELD_NUMBER;
         hash = (53 * hash) + getPartialFlagPerResultList().hashCode();
+      }
+      if (hasMoreResultsInRegion()) {
+        hash = (37 * hash) + MORE_RESULTS_IN_REGION_FIELD_NUMBER;
+        hash = (53 * hash) + hashBoolean(getMoreResultsInRegion());
       }
       hash = (29 * hash) + getUnknownFields().hashCode();
       memoizedHashCode = hash;
@@ -18312,6 +18384,8 @@ public final class ClientProtos {
         bitField0_ = (bitField0_ & ~0x00000020);
         partialFlagPerResult_ = java.util.Collections.emptyList();
         bitField0_ = (bitField0_ & ~0x00000040);
+        moreResultsInRegion_ = false;
+        bitField0_ = (bitField0_ & ~0x00000080);
         return this;
       }
 
@@ -18375,6 +18449,10 @@ public final class ClientProtos {
           bitField0_ = (bitField0_ & ~0x00000040);
         }
         result.partialFlagPerResult_ = partialFlagPerResult_;
+        if (((from_bitField0_ & 0x00000080) == 0x00000080)) {
+          to_bitField0_ |= 0x00000010;
+        }
+        result.moreResultsInRegion_ = moreResultsInRegion_;
         result.bitField0_ = to_bitField0_;
         onBuilt();
         return result;
@@ -18448,6 +18526,9 @@ public final class ClientProtos {
             partialFlagPerResult_.addAll(other.partialFlagPerResult_);
           }
           onChanged();
+        }
+        if (other.hasMoreResultsInRegion()) {
+          setMoreResultsInRegion(other.getMoreResultsInRegion());
         }
         this.mergeUnknownFields(other.getUnknownFields());
         return this;
@@ -19224,6 +19305,63 @@ public final class ClientProtos {
       public Builder clearPartialFlagPerResult() {
         partialFlagPerResult_ = java.util.Collections.emptyList();
         bitField0_ = (bitField0_ & ~0x00000040);
+        onChanged();
+        return this;
+      }
+
+      // optional bool more_results_in_region = 8;
+      private boolean moreResultsInRegion_ ;
+      /**
+       * <code>optional bool more_results_in_region = 8;</code>
+       *
+       * <pre>
+       * A server may choose to limit the number of results returned to the client for
+       * reasons such as the size in bytes or quantity of results accumulated. This field
+       * will true when more results exist in the current region.
+       * </pre>
+       */
+      public boolean hasMoreResultsInRegion() {
+        return ((bitField0_ & 0x00000080) == 0x00000080);
+      }
+      /**
+       * <code>optional bool more_results_in_region = 8;</code>
+       *
+       * <pre>
+       * A server may choose to limit the number of results returned to the client for
+       * reasons such as the size in bytes or quantity of results accumulated. This field
+       * will true when more results exist in the current region.
+       * </pre>
+       */
+      public boolean getMoreResultsInRegion() {
+        return moreResultsInRegion_;
+      }
+      /**
+       * <code>optional bool more_results_in_region = 8;</code>
+       *
+       * <pre>
+       * A server may choose to limit the number of results returned to the client for
+       * reasons such as the size in bytes or quantity of results accumulated. This field
+       * will true when more results exist in the current region.
+       * </pre>
+       */
+      public Builder setMoreResultsInRegion(boolean value) {
+        bitField0_ |= 0x00000080;
+        moreResultsInRegion_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>optional bool more_results_in_region = 8;</code>
+       *
+       * <pre>
+       * A server may choose to limit the number of results returned to the client for
+       * reasons such as the size in bytes or quantity of results accumulated. This field
+       * will true when more results exist in the current region.
+       * </pre>
+       */
+      public Builder clearMoreResultsInRegion() {
+        bitField0_ = (bitField0_ & ~0x00000080);
+        moreResultsInRegion_ = false;
         onChanged();
         return this;
       }
@@ -32360,56 +32498,57 @@ public final class ClientProtos {
       "can\030\002 \001(\0132\005.Scan\022\022\n\nscanner_id\030\003 \001(\004\022\026\n\016",
       "number_of_rows\030\004 \001(\r\022\025\n\rclose_scanner\030\005 " +
       "\001(\010\022\025\n\rnext_call_seq\030\006 \001(\004\022\037\n\027client_han" +
-      "dles_partials\030\007 \001(\010\"\251\001\n\014ScanResponse\022\030\n\020" +
+      "dles_partials\030\007 \001(\010\"\311\001\n\014ScanResponse\022\030\n\020" +
       "cells_per_result\030\001 \003(\r\022\022\n\nscanner_id\030\002 \001" +
       "(\004\022\024\n\014more_results\030\003 \001(\010\022\013\n\003ttl\030\004 \001(\r\022\030\n" +
       "\007results\030\005 \003(\0132\007.Result\022\r\n\005stale\030\006 \001(\010\022\037" +
-      "\n\027partial_flag_per_result\030\007 \003(\010\"\263\001\n\024Bulk" +
-      "LoadHFileRequest\022 \n\006region\030\001 \002(\0132\020.Regio" +
-      "nSpecifier\0225\n\013family_path\030\002 \003(\0132 .BulkLo" +
-      "adHFileRequest.FamilyPath\022\026\n\016assign_seq_",
-      "num\030\003 \001(\010\032*\n\nFamilyPath\022\016\n\006family\030\001 \002(\014\022" +
-      "\014\n\004path\030\002 \002(\t\"\'\n\025BulkLoadHFileResponse\022\016" +
-      "\n\006loaded\030\001 \002(\010\"a\n\026CoprocessorServiceCall" +
-      "\022\013\n\003row\030\001 \002(\014\022\024\n\014service_name\030\002 \002(\t\022\023\n\013m" +
-      "ethod_name\030\003 \002(\t\022\017\n\007request\030\004 \002(\014\"9\n\030Cop" +
-      "rocessorServiceResult\022\035\n\005value\030\001 \001(\0132\016.N" +
-      "ameBytesPair\"d\n\031CoprocessorServiceReques" +
-      "t\022 \n\006region\030\001 \002(\0132\020.RegionSpecifier\022%\n\004c" +
-      "all\030\002 \002(\0132\027.CoprocessorServiceCall\"]\n\032Co" +
-      "processorServiceResponse\022 \n\006region\030\001 \002(\013",
-      "2\020.RegionSpecifier\022\035\n\005value\030\002 \002(\0132\016.Name" +
-      "BytesPair\"{\n\006Action\022\r\n\005index\030\001 \001(\r\022 \n\010mu" +
-      "tation\030\002 \001(\0132\016.MutationProto\022\021\n\003get\030\003 \001(" +
-      "\0132\004.Get\022-\n\014service_call\030\004 \001(\0132\027.Coproces" +
-      "sorServiceCall\"Y\n\014RegionAction\022 \n\006region" +
-      "\030\001 \002(\0132\020.RegionSpecifier\022\016\n\006atomic\030\002 \001(\010" +
-      "\022\027\n\006action\030\003 \003(\0132\007.Action\"D\n\017RegionLoadS" +
-      "tats\022\027\n\014memstoreLoad\030\001 \001(\005:\0010\022\030\n\rheapOcc" +
-      "upancy\030\002 \001(\005:\0010\"\266\001\n\021ResultOrException\022\r\n" +
-      "\005index\030\001 \001(\r\022\027\n\006result\030\002 \001(\0132\007.Result\022!\n",
-      "\texception\030\003 \001(\0132\016.NameBytesPair\0221\n\016serv" +
-      "ice_result\030\004 \001(\0132\031.CoprocessorServiceRes" +
-      "ult\022#\n\tloadStats\030\005 \001(\0132\020.RegionLoadStats" +
-      "\"f\n\022RegionActionResult\022-\n\021resultOrExcept" +
-      "ion\030\001 \003(\0132\022.ResultOrException\022!\n\texcepti" +
-      "on\030\002 \001(\0132\016.NameBytesPair\"f\n\014MultiRequest" +
-      "\022#\n\014regionAction\030\001 \003(\0132\r.RegionAction\022\022\n" +
-      "\nnonceGroup\030\002 \001(\004\022\035\n\tcondition\030\003 \001(\0132\n.C" +
-      "ondition\"S\n\rMultiResponse\022/\n\022regionActio" +
-      "nResult\030\001 \003(\0132\023.RegionActionResult\022\021\n\tpr",
-      "ocessed\030\002 \001(\0102\205\003\n\rClientService\022 \n\003Get\022\013" +
-      ".GetRequest\032\014.GetResponse\022)\n\006Mutate\022\016.Mu" +
-      "tateRequest\032\017.MutateResponse\022#\n\004Scan\022\014.S" +
-      "canRequest\032\r.ScanResponse\022>\n\rBulkLoadHFi" +
-      "le\022\025.BulkLoadHFileRequest\032\026.BulkLoadHFil" +
-      "eResponse\022F\n\013ExecService\022\032.CoprocessorSe" +
-      "rviceRequest\032\033.CoprocessorServiceRespons" +
-      "e\022R\n\027ExecRegionServerService\022\032.Coprocess" +
-      "orServiceRequest\032\033.CoprocessorServiceRes" +
-      "ponse\022&\n\005Multi\022\r.MultiRequest\032\016.MultiRes",
-      "ponseBB\n*org.apache.hadoop.hbase.protobu" +
-      "f.generatedB\014ClientProtosH\001\210\001\001\240\001\001"
+      "\n\027partial_flag_per_result\030\007 \003(\010\022\036\n\026more_" +
+      "results_in_region\030\010 \001(\010\"\263\001\n\024BulkLoadHFil" +
+      "eRequest\022 \n\006region\030\001 \002(\0132\020.RegionSpecifi" +
+      "er\0225\n\013family_path\030\002 \003(\0132 .BulkLoadHFileR",
+      "equest.FamilyPath\022\026\n\016assign_seq_num\030\003 \001(" +
+      "\010\032*\n\nFamilyPath\022\016\n\006family\030\001 \002(\014\022\014\n\004path\030" +
+      "\002 \002(\t\"\'\n\025BulkLoadHFileResponse\022\016\n\006loaded" +
+      "\030\001 \002(\010\"a\n\026CoprocessorServiceCall\022\013\n\003row\030" +
+      "\001 \002(\014\022\024\n\014service_name\030\002 \002(\t\022\023\n\013method_na" +
+      "me\030\003 \002(\t\022\017\n\007request\030\004 \002(\014\"9\n\030Coprocessor" +
+      "ServiceResult\022\035\n\005value\030\001 \001(\0132\016.NameBytes" +
+      "Pair\"d\n\031CoprocessorServiceRequest\022 \n\006reg" +
+      "ion\030\001 \002(\0132\020.RegionSpecifier\022%\n\004call\030\002 \002(" +
+      "\0132\027.CoprocessorServiceCall\"]\n\032Coprocesso",
+      "rServiceResponse\022 \n\006region\030\001 \002(\0132\020.Regio" +
+      "nSpecifier\022\035\n\005value\030\002 \002(\0132\016.NameBytesPai" +
+      "r\"{\n\006Action\022\r\n\005index\030\001 \001(\r\022 \n\010mutation\030\002" +
+      " \001(\0132\016.MutationProto\022\021\n\003get\030\003 \001(\0132\004.Get\022" +
+      "-\n\014service_call\030\004 \001(\0132\027.CoprocessorServi" +
+      "ceCall\"Y\n\014RegionAction\022 \n\006region\030\001 \002(\0132\020" +
+      ".RegionSpecifier\022\016\n\006atomic\030\002 \001(\010\022\027\n\006acti" +
+      "on\030\003 \003(\0132\007.Action\"D\n\017RegionLoadStats\022\027\n\014" +
+      "memstoreLoad\030\001 \001(\005:\0010\022\030\n\rheapOccupancy\030\002" +
+      " \001(\005:\0010\"\266\001\n\021ResultOrException\022\r\n\005index\030\001",
+      " \001(\r\022\027\n\006result\030\002 \001(\0132\007.Result\022!\n\texcepti" +
+      "on\030\003 \001(\0132\016.NameBytesPair\0221\n\016service_resu" +
+      "lt\030\004 \001(\0132\031.CoprocessorServiceResult\022#\n\tl" +
+      "oadStats\030\005 \001(\0132\020.RegionLoadStats\"f\n\022Regi" +
+      "onActionResult\022-\n\021resultOrException\030\001 \003(" +
+      "\0132\022.ResultOrException\022!\n\texception\030\002 \001(\013" +
+      "2\016.NameBytesPair\"f\n\014MultiRequest\022#\n\014regi" +
+      "onAction\030\001 \003(\0132\r.RegionAction\022\022\n\nnonceGr" +
+      "oup\030\002 \001(\004\022\035\n\tcondition\030\003 \001(\0132\n.Condition" +
+      "\"S\n\rMultiResponse\022/\n\022regionActionResult\030",
+      "\001 \003(\0132\023.RegionActionResult\022\021\n\tprocessed\030" +
+      "\002 \001(\0102\205\003\n\rClientService\022 \n\003Get\022\013.GetRequ" +
+      "est\032\014.GetResponse\022)\n\006Mutate\022\016.MutateRequ" +
+      "est\032\017.MutateResponse\022#\n\004Scan\022\014.ScanReque" +
+      "st\032\r.ScanResponse\022>\n\rBulkLoadHFile\022\025.Bul" +
+      "kLoadHFileRequest\032\026.BulkLoadHFileRespons" +
+      "e\022F\n\013ExecService\022\032.CoprocessorServiceReq" +
+      "uest\032\033.CoprocessorServiceResponse\022R\n\027Exe" +
+      "cRegionServerService\022\032.CoprocessorServic" +
+      "eRequest\032\033.CoprocessorServiceResponse\022&\n",
+      "\005Multi\022\r.MultiRequest\032\016.MultiResponseBB\n" +
+      "*org.apache.hadoop.hbase.protobuf.genera" +
+      "tedB\014ClientProtosH\001\210\001\001\240\001\001"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
       new com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner() {
@@ -32511,7 +32650,7 @@ public final class ClientProtos {
           internal_static_ScanResponse_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_ScanResponse_descriptor,
-              new java.lang.String[] { "CellsPerResult", "ScannerId", "MoreResults", "Ttl", "Results", "Stale", "PartialFlagPerResult", });
+              new java.lang.String[] { "CellsPerResult", "ScannerId", "MoreResults", "Ttl", "Results", "Stale", "PartialFlagPerResult", "MoreResultsInRegion", });
           internal_static_BulkLoadHFileRequest_descriptor =
             getDescriptor().getMessageTypes().get(14);
           internal_static_BulkLoadHFileRequest_fieldAccessorTable = new

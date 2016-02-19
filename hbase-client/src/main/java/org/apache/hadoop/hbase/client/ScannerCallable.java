@@ -198,11 +198,22 @@ public class ScannerCallable extends RegionServerCallable<Result[]> {
                   + rows + " rows from scanner=" + scannerId);
               }
             }
-            if (response.hasMoreResults()
-                && !response.getMoreResults()) {
+            // moreResults is only used for the case where a filter exhausts all elements
+            if (response.hasMoreResults() && !response.getMoreResults()) {
               scannerId = -1L;
               closed = true;
+              // Implied that no results were returned back, either.
               return null;
+            }
+            // moreResultsInRegion explicitly defines when a RS may choose to terminate a batch due
+            // to size or quantity of results in the response.
+            if (response.hasMoreResultsInRegion()) {
+              // Set what the RS said
+              setHasMoreResultsContext(true);
+              setServerHasMoreResults(response.getMoreResultsInRegion());
+            } else {
+              // Server didn't respond whether it has more results or not.
+              setHasMoreResultsContext(false);
             }
           } catch (ServiceException se) {
             throw ProtobufUtil.getRemoteException(se);

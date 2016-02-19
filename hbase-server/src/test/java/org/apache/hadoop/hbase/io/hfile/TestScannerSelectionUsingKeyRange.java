@@ -118,7 +118,7 @@ public class TestScannerSelectionUsingKeyRange {
     cache.clearCache();
     InternalScanner scanner = region.getScanner(scan);
     List<Cell> results = new ArrayList<Cell>();
-    while (InternalScanner.NextState.hasMoreValues(scanner.next(results))) {
+    while (scanner.next(results)) {
     }
     scanner.close();
     assertEquals(0, results.size());

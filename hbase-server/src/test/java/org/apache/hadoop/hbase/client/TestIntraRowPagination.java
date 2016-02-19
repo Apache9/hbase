@@ -93,8 +93,7 @@ public class TestIntraRowPagination {
       RegionScanner scanner = region.getScanner(scan);
       List<Cell> kvListScan = new ArrayList<Cell>();
       List<Cell> results = new ArrayList<Cell>();
-      while (InternalScanner.NextState.hasMoreValues(scanner.next(results))
-          || !results.isEmpty()) {
+      while (scanner.next(results) || !results.isEmpty()) {
         kvListScan.addAll(results);
         results.clear();
       }
