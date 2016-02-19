@@ -243,6 +243,7 @@ message Scan {
   optional bool small = 14;
   optional bool reversed = 15 [default = false];
   optional uint32 caching = 17;
+  optional bool allow_partial_results = 18;
 }
 
 /**
