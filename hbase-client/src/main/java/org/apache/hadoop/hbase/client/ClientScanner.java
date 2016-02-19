@@ -482,7 +482,7 @@ public class ClientScanner extends AbstractClientScanner {
           if (null != values && values.length > 0 && callable.hasMoreResultsContext()) {
             // Only adhere to more server results when we don't have any partialResults
             // as it keeps the outer loop logic the same.
-            serverHasMoreResults = callable.getServerHasMoreResults();
+            serverHasMoreResults = callable.getServerHasMoreResults() && partialResults.isEmpty();
           }
 
           // Values == null means server-side filter has determined we must STOP
