@@ -3370,7 +3370,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
           // Remove lease while its being processed in server; protects against case
           // where processing of request takes > lease expiration time.
           lease = leases.removeLease(scannerName);
-          List<Result> results = new ArrayList<Result>();
+          List<Result> results = new ArrayList<Result>(Math.min(rows, 100));
           long totalKvSize = 0;
           long currentScanResultSize = 0;
 
