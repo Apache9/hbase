@@ -673,6 +673,10 @@ public abstract class FSUtils {
           s = null;
           // Move the temp version file to its normal location. Returns false
           // if the rename failed. Throw an IOE in that case.
+          if (fs.exists(versionFile)) {
+            LOG.info("Delete old version file: " + versionFile);
+            fs.delete(versionFile, false);
+          }
           if (!fs.rename(tempVersionFile, versionFile)) {
             throw new IOException("Unable to move temp version file to " + versionFile);
           }

@@ -334,8 +334,12 @@ public class NamespaceUpgrade implements Tool {
     removeTableInfoInPre96Format(TableName.META_TABLE_NAME);
 
     Path oldRootDir = new Path(rootDir, "-ROOT-");
-    if(!fs.rename(oldRootDir, backupDir)) {
-      throw new IllegalStateException("Failed to old data: "+oldRootDir+" to "+backupDir);
+    if (!fs.exists(oldRootDir) && fs.exists(new Path(backupDir, "-ROOT-"))) {
+      LOG.info("Root dir has been moved to " + backupDir);
+    } else {
+      if (!fs.rename(oldRootDir, backupDir)) {
+        throw new IllegalStateException("Failed to old data: " + oldRootDir + " to " + backupDir);
+      }
     }
   }
 
