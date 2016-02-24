@@ -6240,7 +6240,7 @@ public class HRegion implements HeapSize { // , Writable{
           boolean done;
           do {
             kvs.clear();
-            done = done = scanner.next(kvs);
+            done = scanner.next(kvs);
             if (kvs.size() > 0) LOG.info(kvs);
           } while (done);
         } finally {
