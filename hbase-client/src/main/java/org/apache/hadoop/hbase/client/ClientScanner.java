@@ -20,7 +20,6 @@ package org.apache.hadoop.hbase.client;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -76,8 +75,10 @@ public class ClientScanner extends AbstractClientScanner {
      */
     protected byte[] partialResultsRow = null;
     protected long partialResultSize;
-    protected final static long MAX_PARTIAL_SIZE = ManagementFactory.getMemoryMXBean().getHeapMemoryUsage().getMax()
-        > 0 ? ManagementFactory.getMemoryMXBean().getHeapMemoryUsage().getMax() / 5: 200000000;
+    protected long maxPartialCacheSize = 200000000;
+    protected static final long HEAP_SIZE =
+        ManagementFactory.getMemoryMXBean().getHeapMemoryUsage().getMax()>0?
+            ManagementFactory.getMemoryMXBean().getHeapMemoryUsage().getMax():500000000;
 
     protected final int caching;
     protected long lastNext;
@@ -188,6 +189,10 @@ public class ClientScanner extends AbstractClientScanner {
         HConstants.HBASE_REGIONSERVER_LEASE_PERIOD_KEY,
         HConstants.DEFAULT_HBASE_CLIENT_SCANNER_TIMEOUT_PERIOD);
 
+      this.maxPartialCacheSize = (long)(HEAP_SIZE*
+          (scan.getMaxCompleteRowHeapRatio() > 0 ? scan.getMaxCompleteRowHeapRatio():
+          conf.getDouble(HConstants.HBASE_CLIENT_SCANNER_MAX_COMPLETEROW_HEAPRATIO_KEY,
+              HConstants.DEFAULT_HBASE_CLIENT_SCANNER_MAX_COMPLETEROW_HEAPRATIO)));
       // check if application wants to collect scan metrics
       initScanMetrics(scan);
 
@@ -626,7 +631,7 @@ public class ClientScanner extends AbstractClientScanner {
     for(Cell c: result.rawCells()){
       partialResultSize += CellUtil.estimatedSizeOf(c);
     }
-    if(partialResultSize > MAX_PARTIAL_SIZE){
+    if(partialResultSize > maxPartialCacheSize){
       throw new RowTooLargeException();
     }
   }

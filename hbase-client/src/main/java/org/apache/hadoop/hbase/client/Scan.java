@@ -142,7 +142,9 @@ public class Scan extends Query {
   // define this attribute with the appropriate table name by calling
   // scan.setAttribute(Scan.SCAN_ATTRIBUTES_TABLE_NAME, Bytes.toBytes(tableName))
   static public final String SCAN_ATTRIBUTES_TABLE_NAME = "scan.attributes.table.name";
-  
+
+  private double maxCompleteRowHeapRatio = -1.0;
+
   /*
    * -1 means no caching
    */
@@ -861,5 +863,17 @@ public class Scan extends Query {
   public boolean isIgnoreTtl() {
     byte[] attr = getAttribute(IGNORETTL_ATTR);
     return attr == null ? false : Bytes.toBoolean(attr);
+  }
+
+  public double getMaxCompleteRowHeapRatio() {
+    return maxCompleteRowHeapRatio;
+  }
+
+  /**
+   * See HConstans.DEFAULT_HBASE_CLIENT_SCANNER_MAX_COMPLETEROW_HEAPRATIO
+   * and RowTooLargeException.
+   */
+  public void setMaxCompleteRowHeapRatio(double maxCompleteRowHeapRatio) {
+    this.maxCompleteRowHeapRatio = maxCompleteRowHeapRatio;
   }
 }
