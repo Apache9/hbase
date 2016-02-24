@@ -455,17 +455,6 @@ public class ClientScanner extends AbstractClientScanner {
           List<Result> resultsToAddToCache = getResultsToAddToCache(values);
           if (!resultsToAddToCache.isEmpty()) {
             for (Result rs : resultsToAddToCache) {
-              /*
-              if (rs.isFake()) {
-                // End of 1 next RPC
-                fakeResultReturned = true;
-                // return the fake result to users when raw limit is set
-                if (scan.getRawLimit() > 0) {
-                  cache.add(rs);
-                }
-                break;
-              }
-              */
               cache.add(rs);
               for (Cell kv : rs.rawCells()) {
                 // TODO make method in Cell or CellUtil
