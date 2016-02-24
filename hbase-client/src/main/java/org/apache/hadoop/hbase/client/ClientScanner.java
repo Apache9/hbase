@@ -18,6 +18,7 @@
 package org.apache.hadoop.hbase.client;
 
 import java.io.IOException;
+import java.lang.management.ManagementFactory;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedList;
@@ -26,6 +27,7 @@ import java.util.List;
 import com.google.common.annotations.VisibleForTesting;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.hbase.CellUtil;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
@@ -73,6 +75,10 @@ public class ClientScanner extends AbstractClientScanner {
      * via the methods {@link #addToPartialResults(Result)} and {@link #clearPartialResults()}
      */
     protected byte[] partialResultsRow = null;
+    protected long partialResultSize;
+    protected final static long MAX_PARTIAL_SIZE = ManagementFactory.getMemoryMXBean().getHeapMemoryUsage().getMax()
+        > 0 ? ManagementFactory.getMemoryMXBean().getHeapMemoryUsage().getMax() / 5: 200000000;
+
     protected final int caching;
     protected long lastNext;
     // Keep lastResult returned successfully in case we have to reset scanner.
@@ -617,6 +623,12 @@ public class ClientScanner extends AbstractClientScanner {
     }
     partialResultsRow = row;
     partialResults.add(result);
+    for(Cell c: result.rawCells()){
+      partialResultSize += CellUtil.estimatedSizeOf(c);
+    }
+    if(partialResultSize > MAX_PARTIAL_SIZE){
+      throw new RowTooLargeException();
+    }
   }
 
   /**
@@ -625,6 +637,7 @@ public class ClientScanner extends AbstractClientScanner {
   private void clearPartialResults() {
     partialResults.clear();
     partialResultsRow = null;
+    partialResultSize = 0;
   }
 
 
