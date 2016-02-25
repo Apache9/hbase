@@ -632,7 +632,7 @@ public class ClientScanner extends AbstractClientScanner {
       partialResultSize += CellUtil.estimatedSizeOf(c);
     }
     if(partialResultSize > maxPartialCacheSize){
-      throw new RowTooLargeException();
+      throw new RowTooLargeException(row, partialResultSize);
     }
   }
 

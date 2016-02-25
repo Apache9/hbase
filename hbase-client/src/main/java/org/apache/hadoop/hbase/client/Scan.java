@@ -235,6 +235,7 @@ public class Scan extends Query {
     reversed = scan.isReversed();
     small = scan.isSmall();
     allowPartialResults = scan.getAllowPartialResults();
+    maxCompleteRowHeapRatio = scan.getMaxCompleteRowHeapRatio();
     Map<byte[], NavigableSet<byte[]>> fams = scan.getFamilyMap();
     for (Map.Entry<byte[],NavigableSet<byte[]>> entry : fams.entrySet()) {
       byte [] fam = entry.getKey();

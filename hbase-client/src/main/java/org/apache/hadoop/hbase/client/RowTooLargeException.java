@@ -1,6 +1,7 @@
 package org.apache.hadoop.hbase.client;
 
 import org.apache.hadoop.hbase.DoNotRetryIOException;
+import org.apache.hadoop.hbase.util.Bytes;
 
 /**
  * Thrown when a scanner get a very large row and client do not allow partial
@@ -13,8 +14,9 @@ import org.apache.hadoop.hbase.DoNotRetryIOException;
  */
 public class RowTooLargeException extends DoNotRetryIOException {
 
-  RowTooLargeException(){
-    super("This row is too large."
-        +"Use scan.setAllowPartialResults(true) to prevent your client OOM");
+  RowTooLargeException(byte[] rowKey, long rowSize) {
+    super("This row is too large: " + Bytes.toString(rowKey)
+        + " with size " + rowSize + ". "
+        + "Use scan.setAllowPartialResults(true) to prevent your client OOM");
   }
 }
