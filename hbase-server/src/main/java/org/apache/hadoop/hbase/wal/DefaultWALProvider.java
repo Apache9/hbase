@@ -117,6 +117,13 @@ public class DefaultWALProvider implements WALProvider {
     logPrefix = sb.toString();
   }
 
+  protected FSHLog createFSHLog(FileSystem fs, Path rootDir, String logDir, String archiveDir,
+      Configuration conf, List<WALActionsListener> listeners, boolean failIfWALExists,
+      String prefix, String suffix) throws IOException {
+    return new FSHLog(fs, rootDir, logDir, archiveDir, conf, listeners, failIfWALExists, prefix,
+        suffix);
+  }
+
   @Override
   public WAL getWAL(final byte[] identifier, byte[] namespace) throws IOException {
     if (log == null) {
@@ -124,7 +131,7 @@ public class DefaultWALProvider implements WALProvider {
       // creating hlog on fs is time consuming
       synchronized (walCreateLock) {
         if (log == null) {
-          log = new FSHLog(FileSystem.get(conf), FSUtils.getRootDir(conf),
+          log = createFSHLog(FileSystem.get(conf), FSUtils.getRootDir(conf),
               getWALDirectoryName(factory.factoryId), HConstants.HREGION_OLDLOGDIR_NAME, conf,
               listeners, true, logPrefix,
               META_WAL_PROVIDER_ID.equals(providerId) ? META_WAL_PROVIDER_ID : null);

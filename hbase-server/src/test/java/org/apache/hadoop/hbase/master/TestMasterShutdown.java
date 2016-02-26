@@ -23,37 +23,53 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
+import java.io.IOException;
 import java.util.List;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.ClusterStatus;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
+import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.LocalHBaseCluster;
 import org.apache.hadoop.hbase.MiniHBaseCluster;
+import org.apache.hadoop.hbase.NamespaceDescriptor;
+import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.Admin;
 import org.apache.hadoop.hbase.client.Connection;
 import org.apache.hadoop.hbase.client.ConnectionFactory;
+import org.apache.hadoop.hbase.client.HTable;
+import org.apache.hadoop.hbase.client.Put;
+import org.apache.hadoop.hbase.regionserver.wal.FSHLog;
+import org.apache.hadoop.hbase.regionserver.wal.WALActionsListener;
 import org.apache.hadoop.hbase.testclassification.LargeTests;
 import org.apache.hadoop.hbase.testclassification.MasterTests;
+import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hbase.util.FSUtils;
 import org.apache.hadoop.hbase.util.JVMClusterUtil.MasterThread;
+import org.apache.hadoop.hbase.wal.DefaultWALProvider;
+import org.apache.hadoop.hbase.wal.WAL;
+import org.apache.hadoop.hbase.wal.WALFactory;
+import org.apache.hadoop.hbase.wal.WALProvider;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
-@Category({MasterTests.class, LargeTests.class})
+@Category({ MasterTests.class, LargeTests.class })
 public class TestMasterShutdown {
   private static final Log LOG = LogFactory.getLog(TestMasterShutdown.class);
 
   /**
    * Simple test of shutdown.
    * <p>
-   * Starts with three masters.  Tells the active master to shutdown the cluster.
-   * Verifies that all masters are properly shutdown.
+   * Starts with three masters. Tells the active master to shutdown the cluster. Verifies that all
+   * masters are properly shutdown.
    * @throws Exception
    */
-  @Test (timeout=120000)
+  @Test(timeout = 120000)
   public void testMasterShutdown() throws Exception {
     final int NUM_MASTERS = 3;
     final int NUM_RS = 3;
@@ -91,7 +107,7 @@ public class TestMasterShutdown {
     // tell the active master to shutdown the cluster
     active.shutdown();
 
-    for (int i = NUM_MASTERS - 1; i >= 0 ;--i) {
+    for (int i = NUM_MASTERS - 1; i >= 0; --i) {
       cluster.waitOnMaster(i);
     }
     // make sure all the masters properly shutdown
@@ -115,9 +131,8 @@ public class TestMasterShutdown {
     util.startMiniDFSCluster(3);
     util.startMiniZKCluster();
     util.createRootDir();
-    final LocalHBaseCluster cluster =
-        new LocalHBaseCluster(conf, NUM_MASTERS, NUM_RS, HMaster.class,
-            MiniHBaseCluster.MiniHBaseClusterRegionServer.class);
+    final LocalHBaseCluster cluster = new LocalHBaseCluster(conf, NUM_MASTERS, NUM_RS,
+        HMaster.class, MiniHBaseCluster.MiniHBaseClusterRegionServer.class);
     final int MASTER_INDEX = 0;
     final MasterThread master = cluster.getMasters().get(MASTER_INDEX);
     master.start();
@@ -126,8 +141,8 @@ public class TestMasterShutdown {
       public void run() {
         LOG.info("Before call to shutdown master");
         try {
-          try (Connection connection =
-              ConnectionFactory.createConnection(util.getConfiguration())) {
+          try (
+              Connection connection = ConnectionFactory.createConnection(util.getConfiguration())) {
             try (Admin admin = connection.getAdmin()) {
               admin.shutdown();
             }
@@ -150,5 +165,53 @@ public class TestMasterShutdown {
     util.shutdownMiniZKCluster();
     util.shutdownMiniDFSCluster();
     util.cleanupTestDir();
+  }
+  private static volatile boolean simulateSyncError = false;
+
+  private static final class BrokenFSHLog extends FSHLog {
+
+    public BrokenFSHLog(FileSystem fs, Path rootDir, String logDir, String archiveDir,
+        Configuration conf, List<WALActionsListener> listeners, boolean failIfWALExists,
+        String prefix, String suffix) throws IOException {
+      super(fs, rootDir, logDir, archiveDir, conf, listeners, failIfWALExists, prefix, suffix);
+    }
+
+    @Override
+    public void sync() throws IOException {
+      if (simulateSyncError) {
+        throw new IOException("sync error");
+      }
+      super.sync();
+    }
+  }
+
+  public static final class BrokenWALProvider extends DefaultWALProvider {
+
+    @Override
+    protected FSHLog createFSHLog(FileSystem fs, Path rootDir, String logDir, String archiveDir,
+        Configuration conf, List<WALActionsListener> listeners, boolean failIfWALExists,
+        String prefix, String suffix) throws IOException {
+      return new BrokenFSHLog(fs, rootDir, logDir, archiveDir, conf, listeners, failIfWALExists,
+          prefix, suffix);
+    }
+  }
+
+  @Test
+  public void testMasterShutdownDeadLock() throws Exception {
+    HBaseTestingUtility util = new HBaseTestingUtility();
+    util.getConfiguration().setClass(WALFactory.WAL_PROVIDER, BrokenWALProvider.class,
+      WALProvider.class);
+    HTable table = null;
+    try {
+      util.startMiniCluster(1, 1, 3);
+      util.getAdmin()
+          .createNamespace(NamespaceDescriptor.create("testMasterShutdownDeadLock").build());
+      simulateSyncError = true;
+    } finally {
+      if (table != null) {
+        table.close();
+      }
+      util.shutdownMiniCluster();
+    }
   }
 }
