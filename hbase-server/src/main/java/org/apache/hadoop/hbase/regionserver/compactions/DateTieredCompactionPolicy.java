@@ -17,14 +17,6 @@
  */
 package org.apache.hadoop.hbase.regionserver.compactions;
 
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Predicate;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Iterables;
-import com.google.common.collect.Iterators;
-import com.google.common.collect.Lists;
-import com.google.common.collect.PeekingIterator;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -38,9 +30,18 @@ import org.apache.hadoop.hbase.HBaseInterfaceAudience;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.regionserver.StoreConfigInformation;
 import org.apache.hadoop.hbase.regionserver.StoreFile;
+import org.apache.hadoop.hbase.regionserver.compactions.DateTieredWindowFactory.Window;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.Pair;
 import org.apache.hadoop.hbase.util.ReflectionUtils;
+
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Predicate;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Iterables;
+import com.google.common.collect.Iterators;
+import com.google.common.collect.Lists;
+import com.google.common.collect.PeekingIterator;
 
 /**
  * HBASE-15181 This is a simple implementation of date-based tiered compaction similar to
@@ -60,7 +61,9 @@ import org.apache.hadoop.hbase.util.ReflectionUtils;
 public class DateTieredCompactionPolicy extends RatioBasedCompactionPolicy {
   private static final Log LOG = LogFactory.getLog(DateTieredCompactionPolicy.class);
 
-  private RatioBasedCompactionPolicy compactionPolicyPerWindow;
+  private final RatioBasedCompactionPolicy compactionPolicyPerWindow;
+  
+  private final DateTieredWindowFactory windowFactory;
 
   public DateTieredCompactionPolicy(Configuration conf, StoreConfigInformation storeConfigInfo)
       throws IOException {
@@ -73,6 +76,13 @@ public class DateTieredCompactionPolicy extends RatioBasedCompactionPolicy {
     } catch (Exception e) {
       throw new IOException("Unable to load configured compaction policy '"
           + comConf.getCompactionPolicyForTieredWindow() + "'", e);
+    }
+    try {
+      this.windowFactory = ReflectionUtils.instantiateWithCustomCtor(comConf.getWindowFactory(),
+        new Class[] { CompactionConfiguration.class }, new Object[] { comConf });
+    } catch (Exception e) {
+      throw new IOException(
+          "Unable to load configured window factory '" + comConf.getWindowFactory() + "'", e);
     }
   }
 
@@ -132,12 +142,10 @@ public class DateTieredCompactionPolicy extends RatioBasedCompactionPolicy {
       filterOldStoreFiles(Lists.newArrayList(candidates), comConf.getMaxStoreFileAgeMillis(), now);
 
     List<ArrayList<StoreFile>> buckets =
-        partitionFilesToBuckets(candidatesInWindow, comConf.getBaseWindowMillis(),
-          comConf.getWindowsPerTier(), now);
+        partitionFilesToBuckets(candidatesInWindow, windowFactory, now);
     LOG.debug("Compaction buckets are: " + buckets);
 
-    return newestBucket(buckets, comConf.getIncomingWindowMin(), now,
-      comConf.getBaseWindowMillis(), mayUseOffPeak);
+    return newestBucket(buckets, comConf.getIncomingWindowMin(), now, mayUseOffPeak);
   }
 
   /**
@@ -150,9 +158,9 @@ public class DateTieredCompactionPolicy extends RatioBasedCompactionPolicy {
    * @throws IOException error
    */
   private ArrayList<StoreFile> newestBucket(List<ArrayList<StoreFile>> buckets,
-      int incomingWindowThreshold, long now, long baseWindowMillis, boolean mayUseOffPeak)
+      int incomingWindowThreshold, long now, boolean mayUseOffPeak)
       throws IOException {
-    Window incomingWindow = getInitialWindow(now, baseWindowMillis);
+    Window incomingWindow = windowFactory.getInitialWindow(now);
     for (ArrayList<StoreFile> bucket : buckets) {
       int minThreshold =
           incomingWindow.compareToTimestamp(bucket.get(0).getMaximumTimestamp()) <= 0 ? comConf
@@ -172,13 +180,12 @@ public class DateTieredCompactionPolicy extends RatioBasedCompactionPolicy {
    * current file has a maxTimestamp older than last known maximum, treat this file as it carries
    * the last known maximum. This way both seqId and timestamp are in the same order. If files carry
    * the same maxTimestamps, they are ordered by seqId. We then reverse the list so they are ordered
-   * by seqId and maxTimestamp in decending order and build the time windows. All the out-of-order
+   * by seqId and maxTimestamp in descending order and build the time windows. All the out-of-order
    * data into the same compaction windows, guaranteeing contiguous compaction based on sequence id.
    */
-  private static List<ArrayList<StoreFile>> partitionFilesToBuckets(Iterable<StoreFile> storeFiles,
-      long baseWindowSizeMillis, int windowsPerTier, long now) {
+  private static List<ArrayList<StoreFile>> partitionFilesToBuckets(Iterable<StoreFile> storeFiles, DateTieredWindowFactory windowFactory, long now) {
     List<ArrayList<StoreFile>> buckets = Lists.newArrayList();
-    Window window = getInitialWindow(now, baseWindowSizeMillis);
+    Window window = windowFactory.getInitialWindow(now);
 
     List<Pair<StoreFile, Long>> storefileMaxTimestampPairs =
         Lists.newArrayListWithCapacity(Iterables.size(storeFiles));
@@ -198,7 +205,7 @@ public class DateTieredCompactionPolicy extends RatioBasedCompactionPolicy {
       int compResult = window.compareToTimestamp(it.peek().getSecond());
       if (compResult > 0) {
         // If the file is too old for the window, switch to the next window
-        window = window.nextWindow(windowsPerTier);
+        window = window.nextWindow();
       } else {
         // The file is within the target window
         ArrayList<StoreFile> bucket = Lists.newArrayList();
@@ -239,56 +246,5 @@ public class DateTieredCompactionPolicy extends RatioBasedCompactionPolicy {
         return storeFile.getMaximumTimestamp() >= cutoff;
       }
     });
-  }
-
-  private static Window getInitialWindow(long now, long timeUnit) {
-    return new Window(timeUnit, now / timeUnit);
-  }
-
-  /**
-   * This is the class we use to partition from epoch time to now into tiers of exponential sizes of
-   * windows.
-   */
-  private static final class Window {
-    /**
-     * How big a range of timestamps fit inside the window in milliseconds.
-     */
-    private final long windowMillis;
-
-    /**
-     * A timestamp t is within the window iff t / size == divPosition.
-     */
-    private final long divPosition;
-
-    private Window(long baseWindowMillis, long divPosition) {
-      this.windowMillis = baseWindowMillis;
-      this.divPosition = divPosition;
-    }
-
-    /**
-     * Compares the window to a timestamp.
-     * @param timestamp the timestamp to compare.
-     * @return a negative integer, zero, or a positive integer as the window lies before, covering,
-     *         or after than the timestamp.
-     */
-    public int compareToTimestamp(long timestamp) {
-      long pos = timestamp / windowMillis;
-      return divPosition == pos ? 0 : divPosition < pos ? -1 : 1;
-    }
-
-    /**
-     * Move to the new window of the same tier or of the next tier, which represents an earlier time
-     * span.
-     * @param windowsPerTier The number of contiguous windows that will have the same size. Windows
-     *          following those will be <code>tierBase</code> times as big.
-     * @return The next window
-     */
-    public Window nextWindow(int windowsPerTier) {
-      if (divPosition % windowsPerTier > 0) {
-        return new Window(windowMillis, divPosition - 1);
-      } else {
-        return new Window(windowMillis * windowsPerTier, divPosition / windowsPerTier - 1);
-      }
-    }
   }
 }

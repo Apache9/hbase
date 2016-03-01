@@ -84,6 +84,12 @@ public class CompactionConfiguration {
   private static final Class<? extends RatioBasedCompactionPolicy>
     DEFAULT_TIER_COMPACTION_POLICY_CLASS = ExploringCompactionPolicy.class;
 
+  public static final String WINDOW_FACTORY_CLASS =
+      "hbase.hstore.compaction.date.tiered.window.factory.class";
+
+  private static final Class<? extends DateTieredWindowFactory>
+  DEFAULT_WINDOW_FACTORY_CLASS = FixedDateTieredWindowFactory.class;
+      
   Configuration conf;
   StoreConfigInformation storeConfigInfo;
 
@@ -105,6 +111,7 @@ public class CompactionConfiguration {
   private final int windowsPerTier;
   private final int incomingWindowMin;
   private final String compactionPolicyForTieredWindow;
+  private final String windowFactory;
 
   CompactionConfiguration(Configuration conf, StoreConfigInformation storeConfigInfo) {
     this.conf = conf;
@@ -134,6 +141,7 @@ public class CompactionConfiguration {
     incomingWindowMin = conf.getInt(INCOMING_WINDOW_MIN_KEY, 6);
     compactionPolicyForTieredWindow = conf.get(COMPACTION_POLICY_CLASS_FOR_TIERED_WINDOWS_KEY,
         DEFAULT_TIER_COMPACTION_POLICY_CLASS.getName());
+    windowFactory = conf.get(WINDOW_FACTORY_CLASS, DEFAULT_WINDOW_FACTORY_CLASS.getName());
     LOG.info(this);
   }
 
@@ -143,7 +151,7 @@ public class CompactionConfiguration {
       "size [%d, %d, %d); files [%d, %d); ratio %f; off-peak ratio %f; throttle point %d;"
       + " major period %d, major jitter %f, min locality to compact %f;"
       + " tiered compaction: max_age %d, base window in milliseconds %d, windows per tier %d,"
-      + "incoming window min %d",
+      + "incoming window min %d, compaction policy per window %s,window factory %s",
       minCompactSize,
       maxCompactSize,
       offPeakMaxCompactSize,
@@ -158,7 +166,9 @@ public class CompactionConfiguration {
       maxStoreFileAgeMillis,
       baseWindowMillis,
       windowsPerTier,
-      incomingWindowMin);
+      incomingWindowMin,
+      compactionPolicyForTieredWindow,
+      windowFactory);
   }
 
   /**
@@ -273,5 +283,9 @@ public class CompactionConfiguration {
 
   public String getCompactionPolicyForTieredWindow() {
     return compactionPolicyForTieredWindow;
+  }
+
+  public String getWindowFactory() {
+    return windowFactory;
   }
 }

@@ -18,68 +18,23 @@
  */
 package org.apache.hadoop.hbase.regionserver;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Lists;
-
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 
 import org.apache.hadoop.hbase.regionserver.compactions.CompactionConfiguration;
-import org.apache.hadoop.hbase.regionserver.compactions.DateTieredCompactionPolicy;
+import org.apache.hadoop.hbase.regionserver.compactions.DateTieredWindowFactory;
+import org.apache.hadoop.hbase.regionserver.compactions.FixedDateTieredWindowFactory;
 import org.apache.hadoop.hbase.testclassification.SmallTests;
-import org.junit.Assert;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
 @Category(SmallTests.class)
-public class TestDateTieredCompaction extends TestCompactionPolicy {
-  ArrayList<StoreFile> sfCreate(long[] minTimestamps, long[] maxTimestamps, long[] sizes)
-      throws IOException {
-    ArrayList<Long> ageInDisk = new ArrayList<Long>();
-    for (int i = 0; i < sizes.length; i++) {
-      ageInDisk.add(0L);
-    }
-
-    ArrayList<StoreFile> ret = Lists.newArrayList();
-    for (int i = 0; i < sizes.length; i++) {
-      MockStoreFile msf =
-          new MockStoreFile(TEST_UTIL, TEST_FILE, sizes[i], ageInDisk.get(i), false, i);
-      msf.setTimeRangeTracker(new TimeRangeTracker(minTimestamps[i], maxTimestamps[i]));
-      ret.add(msf);
-    }
-    return ret;
-  }
+public class TestDateTieredCompactionWithFixedWindow extends TestDateTieredCompactionPolicy {
 
   @Override
   protected void config() {
     super.config();
-
-    // Set up policy
-    conf.setLong(CompactionConfiguration.MAX_AGE_MILLIS_KEY, 100);
-    conf.setLong(CompactionConfiguration.INCOMING_WINDOW_MIN_KEY, 3);
-    conf.setLong(CompactionConfiguration.BASE_WINDOW_MILLIS_KEY, 6);
-    conf.setInt(CompactionConfiguration.WINDOWS_PER_TIER_KEY, 4);
-    conf.set(DefaultStoreEngine.DEFAULT_COMPACTION_POLICY_CLASS_KEY,
-      DateTieredCompactionPolicy.class.getName());
-
-    // Special settings for compaction policy per window
-    this.conf.setInt(CompactionConfiguration.HBASE_HSTORE_COMPACTION_MIN_KEY, 2);
-    this.conf.setInt(CompactionConfiguration.HBASE_HSTORE_COMPACTION_MAX_KEY, 12);
-    this.conf.setFloat(CompactionConfiguration.HBASE_HSTORE_COMPACTION_RATIO_KEY, 1.2F);
-  }
-
-  void compactEquals(long now, ArrayList<StoreFile> candidates, long... expected)
-      throws IOException {
-    Assert.assertTrue(((DateTieredCompactionPolicy) store.storeEngine.getCompactionPolicy())
-        .needsCompaction(candidates, ImmutableList.<StoreFile> of(), now));
-
-    List<StoreFile> actual =
-        ((DateTieredCompactionPolicy) store.storeEngine.getCompactionPolicy())
-            .applyCompactionPolicy(candidates, false, false, now);
-
-    Assert.assertEquals(Arrays.toString(expected), Arrays.toString(getSizes(actual)));
+    this.conf.setClass(CompactionConfiguration.WINDOW_FACTORY_CLASS,
+      FixedDateTieredWindowFactory.class, DateTieredWindowFactory.class);
   }
 
   /**
