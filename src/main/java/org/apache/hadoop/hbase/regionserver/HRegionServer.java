@@ -916,7 +916,8 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
     Timer exitMonitor = new Timer(true);
     exitMonitor.schedule(new TimerTask() {
       public void run() {
-        System.exit(-1);
+        LOG.warn("Aborting region server timed out, terminate forcibly...");
+        Runtime.getRuntime().halt(1);
       }
     }, conf.getLong("hbase.exit.timeout.ms", 30000));
 
