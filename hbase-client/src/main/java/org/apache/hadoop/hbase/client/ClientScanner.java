@@ -74,6 +74,7 @@ public class ClientScanner extends AbstractClientScanner {
      * via the methods {@link #addToPartialResults(Result)} and {@link #clearPartialResults()}
      */
     protected byte[] partialResultsRow = null;
+    protected Cell lastCellOfLoadCache = null;
     protected long partialResultSize;
     protected long maxPartialCacheSize = 200000000;
     protected static final long HEAP_SIZE =
@@ -370,7 +371,9 @@ public class ClientScanner extends AbstractClientScanner {
         // We don't expect that the server will have more results for us if
         // it doesn't tell us otherwise. We rely on the size or count of results
         boolean serverHasMoreResults = false;
+        boolean allResultsSkipped = false;
         do {
+          allResultsSkipped = false;
           try {
             if (skipFirst) {
               // Skip only the first row (which was the last row of the last
