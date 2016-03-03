@@ -151,26 +151,4 @@ public class ReversedClientScanner extends ClientScanner {
     return false; // unlikely.
   }
 
-  /**
-   * Create the closest row before the specified row
-   * @param row
-   * @return a new byte array which is the closest front row of the specified one
-   */
-  protected byte[] createClosestRowBefore(byte[] row) {
-    if (row == null) {
-      throw new IllegalArgumentException("The passed row is empty");
-    }
-    if (Bytes.equals(row, HConstants.EMPTY_BYTE_ARRAY)) {
-      return MAX_BYTE_ARRAY;
-    }
-    if (row[row.length - 1] == 0) {
-      return Arrays.copyOf(row, row.length - 1);
-    } else {
-      byte[] closestFrontRow = Arrays.copyOf(row, row.length);
-      closestFrontRow[row.length - 1] = (byte) ((closestFrontRow[row.length - 1] & 0xff) - 1);
-      closestFrontRow = Bytes.add(closestFrontRow, MAX_BYTE_ARRAY);
-      return closestFrontRow;
-    }
-  }
-
 }

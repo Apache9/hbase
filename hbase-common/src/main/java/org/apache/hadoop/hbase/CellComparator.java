@@ -51,13 +51,12 @@ public class CellComparator implements Comparator<Cell>, Serializable{
   public static int compareStatic(Cell a, Cell b) {
     return compareStatic(a, b, false);
   }
-  
-  public static int compareStatic(Cell a, Cell b, boolean onlyKey) {
-    //row
-    int c = Bytes.compareTo(
-        a.getRowArray(), a.getRowOffset(), a.getRowLength(),
-        b.getRowArray(), b.getRowOffset(), b.getRowLength());
-    if (c != 0) return c;
+
+  public static int compareRows(Cell a,Cell b) {
+    return Bytes.compareTo(a.getRowArray(), a.getRowOffset(),
+        a.getRowLength(), b.getRowArray(), b.getRowOffset(), b.getRowLength());
+  }
+  public static int compareWithoutRow(Cell a, Cell b, boolean onlyKey) {
 
     // If the column is not specified, the "minimum" key type appears the
     // latest in the sorted order, regardless of the timestamp. This is used
@@ -73,9 +72,9 @@ public class CellComparator implements Comparator<Cell>, Serializable{
     }
 
     //family
-    c = Bytes.compareTo(
-      a.getFamilyArray(), a.getFamilyOffset(), a.getFamilyLength(),
-      b.getFamilyArray(), b.getFamilyOffset(), b.getFamilyLength());
+    int c = Bytes.compareTo(
+        a.getFamilyArray(), a.getFamilyOffset(), a.getFamilyLength(),
+        b.getFamilyArray(), b.getFamilyOffset(), b.getFamilyLength());
     if (c != 0) return c;
 
     //qualifier
@@ -96,6 +95,10 @@ public class CellComparator implements Comparator<Cell>, Serializable{
 
     //mvccVersion: later sorts first
     return Longs.compare(b.getMvccVersion(), a.getMvccVersion());
+  }
+  public static int compareStatic(Cell a, Cell b, boolean onlyKey) {
+    int c = compareRows(a, b);
+    return c != 0 ? c : compareWithoutRow(a, b, onlyKey);
   }
 
 
