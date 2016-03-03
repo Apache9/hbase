@@ -155,6 +155,16 @@ public class Get extends OperationWithAttributes
   }
 
   /**
+   * Get versions of columns only within the specified timestamp range.
+   * @param timeRange
+   * @return this for invocation chaining
+   */
+  public Get setTimeRange(TimeRange timeRange) {
+    this.tr = timeRange;
+    return this;
+  }
+
+  /**
    * Get versions of columns with the specified timestamp.
    * @param timestamp version timestamp
    * @return this for invocation chaining

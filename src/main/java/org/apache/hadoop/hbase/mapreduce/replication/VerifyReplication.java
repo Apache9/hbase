@@ -76,7 +76,7 @@ public class VerifyReplication  extends Configured implements Tool {
   public final static String NAME = "verifyrep";
   
   private long startTime = 0;
-  private long endTime = 0;
+  private long endTime = HConstants.LATEST_TIMESTAMP;
   private String tableName = null;
   private String families = null;
   private String peerId = null;
@@ -119,6 +119,7 @@ public class VerifyReplication  extends Configured implements Tool {
     private long maxErrorLog;
     private int errors = 0;
     private int sleepToReCompare;
+    private Scan scan;
 
     @Override
     public void setup(Context context) {
@@ -126,9 +127,57 @@ public class VerifyReplication  extends Configured implements Tool {
       st = EnvironmentEdgeManager.currentTimeMillis();
       scanRateLimit = conf.getInt(TableMapper.SCAN_RATE_LIMIT, -1);
       sleepToReCompare = conf.getInt(NAME +".sleepToReCompare", 0);
+      initialize(conf);
       LOG.info("The scan rate limit for verify is " + scanRateLimit
           + " rows per second, sleepToReCompare=" + sleepToReCompare);
     }
+
+    private void initialize(Configuration conf) {
+      scan = new Scan();
+      scan.setCaching(conf.getInt(TableInputFormat.SCAN_CACHEDROWS, 1));
+      if (conf.get(TableInputFormat.SCAN_BATCHSIZE) != null) {
+        scan.setBatch(Integer.parseInt(conf.get(TableInputFormat.SCAN_BATCHSIZE)));
+      }
+      long startTime = conf.getLong(NAME + ".startTime", 0);
+      long endTime = conf.getLong(NAME + ".endTime", HConstants.LATEST_TIMESTAMP);
+      try {
+        scan.setTimeRange(startTime, endTime);
+      } catch (IOException e) {
+        LOG.error("Invalid time range filter: starttime=" + startTime + " >  endtime=" + endTime, e);
+      }
+      String families = conf.get(NAME + ".families", null);
+      long verifyRows = conf.getLong(NAME + ".verifyrows", Long.MAX_VALUE);
+      if(families != null) {
+        String[] fams = families.split(",");
+        for(String fam : fams) {
+          scan.addFamily(Bytes.toBytes(fam));
+        }
+      }
+      if (verifyRows != Long.MAX_VALUE) {
+        scan.setFilter(new PageFilter(verifyRows));
+      }
+      int versions = conf.getInt(NAME + ".versions", 1);
+      if (versions != 1) {
+        scan.setMaxVersions(versions);
+      }
+    }
+
+    private Get constructGetFromScan(byte[] row) {
+      Get get = new Get(row);
+      get.setTimeRange(scan.getTimeRange()).setFilter(scan.getFilter());
+      try {
+        get.setMaxVersions(scan.getMaxVersions());
+      } catch (IOException e) {
+        LOG.error(e);
+      }
+      if (scan.hasFamilies()) {
+        for (byte[] family : scan.getFamilyMap().keySet()) {
+          get.addFamily(family);
+        }
+      }
+      return get;
+    }
+
     /**
      * Map method that compares every scanned row with the equivalent from
      * a distant cluster.
@@ -143,33 +192,6 @@ public class VerifyReplication  extends Configured implements Tool {
         throws IOException {
       if (replicatedScanner == null) {
         Configuration conf = context.getConfiguration();
-        final Scan scan = new Scan();
-        scan.setCaching(conf.getInt(TableInputFormat.SCAN_CACHEDROWS, 1));
-        if (conf.get(TableInputFormat.SCAN_BATCHSIZE) != null) {
-          scan.setBatch(Integer.parseInt(conf.get(TableInputFormat.SCAN_BATCHSIZE)));
-        }
-        long startTime = conf.getLong(NAME + ".startTime", 0);
-        long endTime = conf.getLong(NAME + ".endTime", 0);
-        String families = conf.get(NAME + ".families", null);
-        long verifyRows = conf.getLong(NAME + ".verifyrows", Long.MAX_VALUE);
-        if(families != null) {
-          String[] fams = families.split(",");
-          for(String fam : fams) {
-            scan.addFamily(Bytes.toBytes(fam));
-          }
-        }
-        if (startTime != 0) {
-          scan.setTimeRange(startTime,
-              endTime == 0 ? HConstants.LATEST_TIMESTAMP : endTime);
-        }
-        if (verifyRows != Long.MAX_VALUE) {
-          scan.setFilter(new PageFilter(verifyRows));
-        }
-        int versions = conf.getInt(NAME + ".versions", 1);
-        if (versions != 1) {
-          scan.setMaxVersions(versions);
-        }
-
         peerId = conf.get(NAME + ".peerId");
         tableName = conf.get(NAME + ".tableName");
         sourceTable = new HTable(conf, tableName);
@@ -244,8 +266,9 @@ public class VerifyReplication  extends Configured implements Tool {
         throws IOException {
       if (sleepToReCompare > 0) {
         Threads.sleep(sleepToReCompare);
-        Result sourceResult = sourceTable.get(new Get(row.getRow()));
-        Result peerResult = peerTable.get(new Get(row.getRow()));
+        Get get = constructGetFromScan(row.getRow());
+        Result sourceResult = sourceTable.get(get);
+        Result peerResult = peerTable.get(get);
         try {
           // online replication is eventually consistency, need recompare
           Result.compareResults(sourceResult, peerResult);
@@ -429,10 +452,7 @@ public class VerifyReplication  extends Configured implements Tool {
     job.setJarByClass(VerifyReplication.class);
 
     Scan scan = new Scan();
-    if (startTime != 0) {
-      scan.setTimeRange(startTime,
-          endTime == 0 ? HConstants.LATEST_TIMESTAMP : endTime);
-    }
+    scan.setTimeRange(startTime, endTime);
     if(families != null) {
       String[] fams = families.split(",");
       for(String fam : fams) {
@@ -450,6 +470,10 @@ public class VerifyReplication  extends Configured implements Tool {
 
     if (verifyRows != Long.MAX_VALUE) {
       scan.setFilter(new PageFilter(verifyRows));
+    }
+
+    if (versions > 1) {
+      scan.setMaxVersions(versions);
     }
 
     if (scanRateLimit > 0) {
@@ -579,6 +603,11 @@ public class VerifyReplication  extends Configured implements Tool {
         if (i == args.length-1) {
           tableName = cmd;
         }
+      }
+
+      if (startTime > endTime) {
+        printUsage("Invalid time range filter: starttime=" + startTime + " >  endtime=" + endTime);
+        return false;
       }
     } catch (Exception e) {
       e.printStackTrace();
