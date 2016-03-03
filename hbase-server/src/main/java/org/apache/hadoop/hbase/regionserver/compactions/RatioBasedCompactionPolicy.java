@@ -73,7 +73,9 @@ public class RatioBasedCompactionPolicy extends CompactionPolicy {
   }
 
   /**
-   * @param candidateFiles candidate files, ordered from oldest to newest
+   * @param candidateFiles candidate files, ordered from oldest to newest by seqId. We rely on
+   *   DefaultStoreFileManager to sort the files by seqId to guarantee contiguous compaction based
+   *   on seqId for data consistency.
    * @return subset copy of candidate list that meets compaction criteria
    * @throws java.io.IOException
    */
@@ -126,7 +128,7 @@ public class RatioBasedCompactionPolicy extends CompactionPolicy {
    * exclude all files above maxCompactSize
    * Also save all references. We MUST compact them
    */
-  private ArrayList<StoreFile> skipLargeFiles(ArrayList<StoreFile> candidates) {
+  protected ArrayList<StoreFile> skipLargeFiles(ArrayList<StoreFile> candidates) {
     int pos = 0;
     while (pos < candidates.size() && !candidates.get(pos).isReference()
       && (candidates.get(pos).getReader().length() > comConf.getMaxCompactSize())) {
@@ -145,7 +147,7 @@ public class RatioBasedCompactionPolicy extends CompactionPolicy {
    * @return filtered subset
    * exclude all bulk load files if configured
    */
-  private ArrayList<StoreFile> filterBulk(ArrayList<StoreFile> candidates) {
+  protected ArrayList<StoreFile> filterBulk(ArrayList<StoreFile> candidates) {
     candidates.removeAll(Collections2.filter(candidates,
         new Predicate<StoreFile>() {
           @Override
@@ -181,7 +183,7 @@ public class RatioBasedCompactionPolicy extends CompactionPolicy {
    * @return filtered subset
    * forget the compactionSelection if we don't have enough files
    */
-  private ArrayList<StoreFile> checkMinFilesCriteria(ArrayList<StoreFile> candidates) {
+  protected ArrayList<StoreFile> checkMinFilesCriteria(ArrayList<StoreFile> candidates) {
     int minFiles = comConf.getMinFilesToCompact();
     if (candidates.size() < minFiles) {
       if(LOG.isDebugEnabled()) {
@@ -375,5 +377,14 @@ public class RatioBasedCompactionPolicy extends CompactionPolicy {
       final List<StoreFile> filesCompacting) {
     int numCandidates = storeFiles.size() - filesCompacting.size();
     return numCandidates >= comConf.getMinFilesToCompact();
+  }
+
+  /**
+   * Overwrite min threshold for compaction
+   * @param minThreshold
+   */
+  public void setMinThreshold(int minThreshold)
+  {
+    comConf.setMinFilesToCompact(minThreshold);
   }
 }
