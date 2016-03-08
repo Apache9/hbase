@@ -471,6 +471,18 @@ public class Result implements Writable, WritableWithSize {
     return this.kvs == null? 0: this.kvs.length;
   }
 
+  public long kvHeapSize() {
+    long size = 0;
+    if (isEmpty()) {
+      return size;
+    }
+    
+    for (KeyValue kv : kvs) {
+      size += kv.heapSize();
+    }
+    return size;
+  }
+  
   /**
    * @return String
    */

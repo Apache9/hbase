@@ -317,6 +317,7 @@ public abstract class HBaseServer implements RpcServer {
     protected long size;                          // size of current call
     protected boolean isError;
     protected Tracer tracer;
+    private long responseCellSize = 0;
     
     public Call(int id, Writable param, Connection connection,
         Responder responder, long size) {
@@ -341,6 +342,14 @@ public abstract class HBaseServer implements RpcServer {
     @Override
     public String toString() {
       return param + " from " + connection;
+    }
+
+    public long getResponseCellSize() {
+      return responseCellSize;
+    }
+
+    public void incrementResponseCellSize(long cellSize) {
+      responseCellSize += cellSize;
     }
 
     protected synchronized void setResponse(Object value, Status status,

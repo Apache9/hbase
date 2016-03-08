@@ -86,6 +86,7 @@ import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.HealthCheckChore;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.MasterAddressTracker;
+import org.apache.hadoop.hbase.MultiActionResultTooLarge;
 import org.apache.hadoop.hbase.NotServingRegionException;
 import org.apache.hadoop.hbase.RegionStatistics;
 import org.apache.hadoop.hbase.RemoteExceptionHandler;
@@ -143,6 +144,7 @@ import org.apache.hadoop.hbase.ipc.ProtocolSignature;
 import org.apache.hadoop.hbase.ipc.RSReportRequest;
 import org.apache.hadoop.hbase.ipc.RSReportResponse;
 import org.apache.hadoop.hbase.ipc.RequestContext;
+import org.apache.hadoop.hbase.ipc.RpcCallContext;
 import org.apache.hadoop.hbase.ipc.RpcEngine;
 import org.apache.hadoop.hbase.ipc.RpcServer;
 import org.apache.hadoop.hbase.ipc.ServerNotRunningYetException;
@@ -4381,6 +4383,8 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
     MultiResponse response = new MultiResponse();
     
     TracerUtils.addAnnotation("start a multi actions, actions size:" + multi.size());
+    RpcCallContext rpcCall = HBaseServer.getCurrentCall();
+    IOException sizeIOE = null;
     
     for (Map.Entry<byte[], List<Action<R>>> e : multi.actions.entrySet()) {
       byte[] regionName = e.getKey();
@@ -4399,8 +4403,31 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
           if (action instanceof Delete || action instanceof Put) {
             mutations.add(a); 
           } else if (action instanceof Get) {
-            response.add(regionName, originalIndex,
-                get(regionName, (Get)action));
+            if (maxScannerResultSize < Long.MAX_VALUE && rpcCall != null
+                && rpcCall.getResponseCellSize() > maxScannerResultSize) {
+    
+              // We're storing the exception since the exception and reason string won't
+              // change after the response size limit is reached.
+              if (sizeIOE == null ) {
+                // We don't need the stack un-winding do don't throw the exception.
+                // Throwing will kill the JVM's JIT.
+                //
+                // Instead just create the exception and then store it.
+                sizeIOE = new MultiActionResultTooLarge("Max response size exceeded: "
+                        + rpcCall.getResponseCellSize());
+                LOG.warn("Max response size exceeded, region:" + Bytes.toStringBinary(regionName)
+                    + ", cumulatedCellSize=" + rpcCall.getResponseCellSize()
+                    + ", maxScannerResultSize=" + maxScannerResultSize
+                    + ", regions=" + multi.getRegions().size() + ", actions=" + multi.size());
+              }
+              response.add(regionName, originalIndex, sizeIOE); 
+            } else {
+              Result r = get(regionName, (Get)action);
+              response.add(regionName, originalIndex, r);
+              if (maxScannerResultSize < Long.MAX_VALUE && rpcCall != null) {
+                rpcCall.incrementResponseCellSize(r.kvHeapSize());
+              }
+            }
           } else if (action instanceof Exec) {
             ExecResult result = execCoprocessor(regionName, (Exec)action);
             response.add(regionName, new Pair<Integer, Object>(
