@@ -61,8 +61,14 @@ public class QuotaUtil extends QuotaTableUtil {
   public static final String QUOTA_CONF_KEY = "hbase.quota.enabled";
   private static final boolean QUOTA_ENABLED_DEFAULT = false;
   
-  public static final int READ_CAPACITY_UNIT = 4096;
-  public static final int WRITE_CAPACITY_UNIT = 1024;
+  public static final String READ_CAPACITY_UNIT_CONF_KEY = "hbase.read.capacity.unit";
+  public static final int DEFAULT_READ_CAPACITY_UNIT = 1024;
+  public static final String WRITE_CAPACITY_UNIT_CONF_KEY = "hbase.write.capacity.unit";
+  public static final int DEFAULT_WRITE_CAPACITY_UNIT = 1024;
+
+  //there are many unit test not allow exceed (for the DefaultOperationQuota), so need this conf
+  public static final String QUOTA_ALLOW_EXCEED_CONF_KEY = "hbase.quota.allow.exceed";
+  public static final boolean DEFAULT_QUOTA_ALLOW_EXCEED = true;
 
   /** Table descriptor for Quota internal table */
   public static final HTableDescriptor QUOTA_TABLE_DESC =
@@ -409,25 +415,5 @@ public class QuotaUtil extends QuotaTableUtil {
       }
     }
     return size;
-  }
-  
-  public static int calculateRequestUnitNum(final Result result) {
-    return (int) calculateReadCapacityUnitNum(calculateResultSize(result));
-  }
-
-  public static int calculateRequestUnitNum(final List<Result> results) {
-    return (int) calculateReadCapacityUnitNum(calculateResultSize(results));
-  }
-
-  public static int calculateRequestUnitNum(final Mutation mutation) {
-    return (int) calculateWriteCapacityUnitNum(calculateMutationSize(mutation));
-  }
-
-  public static long calculateReadCapacityUnitNum(final long size) {
-    return (long) Math.ceil(size * 1.0 / READ_CAPACITY_UNIT);
-  }
-
-  public static long calculateWriteCapacityUnitNum(final long size) {
-    return (long) Math.ceil(size * 1.0 / WRITE_CAPACITY_UNIT);
   }
 }

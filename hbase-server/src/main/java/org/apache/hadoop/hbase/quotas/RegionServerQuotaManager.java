@@ -57,9 +57,6 @@ import com.google.common.annotations.VisibleForTesting;
 public class RegionServerQuotaManager {
   private static final Log LOG = LogFactory.getLog(RegionServerQuotaManager.class);
   
-  // there are many unit test not allow exceed (for the DefaultOperationQuota), so need this conf
-  public static final String ALLOW_EXCEED_CONF_KEY = "hbase.quota.allow.exceed";
-  
   private final RegionServerServices rsServices;
 
   private QuotaCache quotaCache = null;
@@ -68,8 +65,22 @@ public class RegionServerQuotaManager {
 
   private Counter grabQuotaFailedCount = new Counter();
 
+  private final boolean allowExceed;
+
+  private final int readCapacityUnit;
+  private final int writeCapacityUnit;
+
+  private final Configuration conf;
+
   public RegionServerQuotaManager(final RegionServerServices rsServices) {
     this.rsServices = rsServices;
+    this.conf = rsServices.getConfiguration();
+    this.allowExceed = this.conf.getBoolean(QuotaUtil.QUOTA_ALLOW_EXCEED_CONF_KEY,
+      QuotaUtil.DEFAULT_QUOTA_ALLOW_EXCEED);
+    this.readCapacityUnit = this.conf.getInt(QuotaUtil.READ_CAPACITY_UNIT_CONF_KEY,
+      QuotaUtil.DEFAULT_READ_CAPACITY_UNIT);
+    this.writeCapacityUnit = this.conf.getInt(QuotaUtil.WRITE_CAPACITY_UNIT_CONF_KEY,
+      QuotaUtil.DEFAULT_WRITE_CAPACITY_UNIT);
   }
 
   public void start(final RpcScheduler rpcScheduler) throws IOException {
@@ -126,7 +137,15 @@ public class RegionServerQuotaManager {
   private Configuration getConfiguration() {
     return rsServices.getConfiguration();
   }
-  
+
+  protected int getReadCapacityUnit() {
+    return this.readCapacityUnit;
+  }
+
+  protected int getWriteCapacityUnit() {
+    return this.writeCapacityUnit;
+  }
+
   /**
    * Returns the quota for an operation.
    *
@@ -135,7 +154,6 @@ public class RegionServerQuotaManager {
    * @return the OperationQuota
    */
   public OperationQuota getQuota(final UserGroupInformation ugi, final TableName table) {
-    boolean allowExceed = getConfiguration().getBoolean(ALLOW_EXCEED_CONF_KEY, true);
     if (isQuotaEnabled() && !table.isSystemTable()) {
       UserQuotaState userQuotaState = quotaCache.getUserQuotaState(ugi);
       QuotaLimiter userLimiter = userQuotaState.getTableLimiter(table);
@@ -224,13 +242,13 @@ public class RegionServerQuotaManager {
    */
   public OperationQuota checkQuota(final HRegion region, final Mutation mutation) throws IOException,
       ThrottlingException {
-    int numWrites = QuotaUtil.calculateRequestUnitNum(mutation);
+    int numWrites = calculateRequestUnitNum(mutation);
     return checkQuota(region, numWrites, 0, 0);
   }
 
   public OperationQuota checkQuota(final UserGroupInformation ugi, final TableName table,
       final Mutation mutation) throws IOException, ThrottlingException {
-    int numWrites = QuotaUtil.calculateRequestUnitNum(mutation);
+    int numWrites = calculateRequestUnitNum(mutation);
     return checkQuota(ugi, table, numWrites, 0, 0);
   }
 
@@ -358,7 +376,7 @@ public class RegionServerQuotaManager {
     OperationQuota quota = getQuota(ugi, table);
     if (quota instanceof AllowExceedOperationQuota) {
       ((AllowExceedOperationQuota) quota)
-          .grabQuota(0, QuotaUtil.calculateRequestUnitNum(result) - 1, 0);
+          .grabQuota(0, calculateRequestUnitNum(result) - 1, 0);
     } else {
       quota.addGetResult(result);
       quota.close();
@@ -389,7 +407,7 @@ public class RegionServerQuotaManager {
     OperationQuota quota = getQuota(ugi, table);
     if (quota instanceof AllowExceedOperationQuota) {
       ((AllowExceedOperationQuota) quota).grabQuota(0, 0,
-        QuotaUtil.calculateRequestUnitNum(results) - 1);
+        calculateRequestUnitNum(results) - 1);
     } else {
       quota.addScanResult(results);
       quota.close();
@@ -419,7 +437,7 @@ public class RegionServerQuotaManager {
   public void grabQuota(final UserGroupInformation ugi, final TableName table, final Mutation mutation) {
     OperationQuota quota = getQuota(ugi, table);
     if (quota instanceof AllowExceedOperationQuota) {
-      ((AllowExceedOperationQuota) quota).grabQuota(QuotaUtil.calculateRequestUnitNum(mutation) - 1, 0,
+      ((AllowExceedOperationQuota) quota).grabQuota(calculateRequestUnitNum(mutation) - 1, 0,
         0);
     } else {
       quota.addMutation(mutation);
@@ -458,5 +476,39 @@ public class RegionServerQuotaManager {
       throw new DoNotRetryIOException(
         new UnsupportedOperationException("quota support disabled"));
     }
+  }
+  
+  public int calculateRequestUnitNum(final Result result) {
+    return (int) calculateReadCapacityUnitNum(QuotaUtil.calculateResultSize(result));
+  }
+
+  public int calculateRequestUnitNum(final List<Result> results) {
+    return (int) calculateReadCapacityUnitNum(QuotaUtil.calculateResultSize(results));
+  }
+
+  public int calculateRequestUnitNum(final Mutation mutation) {
+    return (int) calculateWriteCapacityUnitNum(QuotaUtil.calculateMutationSize(mutation));
+  }
+
+  public long calculateReadCapacityUnitNum(final long size) {
+    return (long) Math.ceil(size * 1.0 / this.readCapacityUnit);
+  }
+
+  public long calculateWriteCapacityUnitNum(final long size) {
+    return (long) Math.ceil(size * 1.0 / this.writeCapacityUnit);
+  }
+
+  public long getQuotaReadAvailable(OperationQuota quota) {
+    if (quota instanceof AllowExceedOperationQuota) {
+      return quota.getReadAvailable() * this.readCapacityUnit;
+    }
+    return quota.getReadAvailable();
+  }
+
+  public long getQuotaWriteAvailable(OperationQuota quota) {
+    if (quota instanceof AllowExceedOperationQuota) {
+      return quota.getWriteAvailable() * this.writeCapacityUnit;
+    }
+    return quota.getWriteAvailable();
   }
 }

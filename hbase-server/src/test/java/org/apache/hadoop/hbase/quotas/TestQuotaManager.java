@@ -34,6 +34,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -57,6 +58,8 @@ public class TestQuotaManager {
 
   private HBaseAdmin admin;
   private String userName;
+
+  private RegionServerQuotaManager quotaManager;
 
   @BeforeClass
   public static void setUpBeforeClass() throws Exception {
@@ -98,6 +101,7 @@ public class TestQuotaManager {
 
   @Before
   public void setupQuota() throws IOException {
+    quotaManager = TEST_UTIL.getMiniHBaseCluster().getRegionServer(0).getRegionServerQuotaManager();
     admin = TEST_UTIL.getHBaseAdmin();
     userName = User.getCurrent().getShortName();
 
@@ -109,8 +113,6 @@ public class TestQuotaManager {
 
   @Test
   public void testCheckQuota() throws IOException, InterruptedException {
-    final RegionServerQuotaManager quotaManager = TEST_UTIL.getMiniHBaseCluster()
-        .getRegionServer(0).getRegionServerQuotaManager();
     final HRegion region = TEST_UTIL.getMiniHBaseCluster().getRegionServer(0)
         .getOnlineRegions(TABLE_NAME).get(0);
     // update cache need one get first
@@ -137,8 +139,6 @@ public class TestQuotaManager {
   public void testUserNotSetQuota() throws IOException, InterruptedException {
     // remove user quota
     admin.setQuota(QuotaSettingsFactory.unthrottleUser(userName));
-    final RegionServerQuotaManager quotaManager = TEST_UTIL.getMiniHBaseCluster()
-        .getRegionServer(0).getRegionServerQuotaManager();
     final HRegion region = TEST_UTIL.getMiniHBaseCluster().getRegionServer(0)
         .getOnlineRegions(TABLE_NAME).get(0);
     // update cache need one get first
@@ -163,8 +163,6 @@ public class TestQuotaManager {
 
   @Test
   public void testGrabQuota() throws IOException, InterruptedException {
-    final RegionServerQuotaManager quotaManager = TEST_UTIL.getMiniHBaseCluster()
-        .getRegionServer(0).getRegionServerQuotaManager();
     final UserGroupInformation ugi = User.getCurrent().getUGI();
     // update cache need one get first
     quotaManager.getQuotaCache().getUserLimiter(ugi, table.getName());
@@ -188,8 +186,6 @@ public class TestQuotaManager {
 
   @Test
   public void testGetQuota() throws IOException, InterruptedException {
-    RegionServerQuotaManager quotaManager = TEST_UTIL.getMiniHBaseCluster().getRegionServer(0)
-        .getRegionServerQuotaManager();
     UserGroupInformation ugi = User.getCurrent().getUGI();
     OperationQuota quota = quotaManager.getQuota(ugi, table.getName());
     Thread.sleep(1000);
@@ -199,8 +195,6 @@ public class TestQuotaManager {
 
   @Test
   public void testSimulateThrottle() throws Exception {
-    RegionServerQuotaManager quotaManager = TEST_UTIL.getMiniHBaseCluster().getRegionServer(0)
-        .getRegionServerQuotaManager();
     HRegion region = TEST_UTIL.getMiniHBaseCluster().getRegionServer(0)
         .getOnlineRegions(TABLE_NAME).get(0);
     // update cache need one get first
@@ -234,4 +228,41 @@ public class TestQuotaManager {
     fail("Should have thrown exception " + exceptionClass);
   }
 
+  @Test
+  public void testCalculateReadCapacityUnitNum() {
+    assertEquals(0, quotaManager.calculateReadCapacityUnitNum(0));
+
+    assertEquals(1, quotaManager.calculateReadCapacityUnitNum(1));
+    assertEquals(1, quotaManager.calculateReadCapacityUnitNum(quotaManager.getReadCapacityUnit() / 4));
+    assertEquals(1, quotaManager.calculateReadCapacityUnitNum(quotaManager.getReadCapacityUnit() / 2));
+    assertEquals(1, quotaManager.calculateReadCapacityUnitNum(quotaManager.getReadCapacityUnit()));
+
+    assertEquals(2, quotaManager.calculateReadCapacityUnitNum(quotaManager.getReadCapacityUnit() + 1));
+    assertEquals(2, quotaManager.calculateReadCapacityUnitNum(quotaManager.getReadCapacityUnit() * 3 / 2));
+    assertEquals(2, quotaManager.calculateReadCapacityUnitNum(quotaManager.getReadCapacityUnit() * 2));
+
+    assertEquals(3, quotaManager.calculateReadCapacityUnitNum(quotaManager.getReadCapacityUnit() * 2 + 1));
+    assertEquals(3, quotaManager.calculateReadCapacityUnitNum(quotaManager.getReadCapacityUnit() * 3));
+
+    assertEquals(5, quotaManager.calculateReadCapacityUnitNum(quotaManager.getReadCapacityUnit() * 5));
+  }
+
+  @Test
+  public void testCalculateWriteCapacityUnitNum() {
+    assertEquals(0, quotaManager.calculateWriteCapacityUnitNum(0));
+
+    assertEquals(1, quotaManager.calculateWriteCapacityUnitNum(1));
+    assertEquals(1, quotaManager.calculateWriteCapacityUnitNum(quotaManager.getWriteCapacityUnit() / 4));
+    assertEquals(1, quotaManager.calculateWriteCapacityUnitNum(quotaManager.getWriteCapacityUnit() / 2));
+    assertEquals(1, quotaManager.calculateWriteCapacityUnitNum(quotaManager.getWriteCapacityUnit()));
+
+    assertEquals(2, quotaManager.calculateWriteCapacityUnitNum(quotaManager.getWriteCapacityUnit() + 1));
+    assertEquals(2, quotaManager.calculateWriteCapacityUnitNum(quotaManager.getWriteCapacityUnit() * 3 / 2));
+    assertEquals(2, quotaManager.calculateWriteCapacityUnitNum(quotaManager.getWriteCapacityUnit() * 2));
+
+    assertEquals(3, quotaManager.calculateWriteCapacityUnitNum(quotaManager.getWriteCapacityUnit() * 2 + 1));
+    assertEquals(3, quotaManager.calculateWriteCapacityUnitNum(quotaManager.getWriteCapacityUnit() * 3));
+
+    assertEquals(5, quotaManager.calculateWriteCapacityUnitNum(quotaManager.getWriteCapacityUnit() * 5));
+  }
 }

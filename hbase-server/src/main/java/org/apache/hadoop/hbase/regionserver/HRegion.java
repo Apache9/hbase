@@ -2460,7 +2460,7 @@ public class HRegion implements HeapSize { // , Writable{
     int lastIndexExclusive = firstIndex;
     boolean success = false;
     int noOfPuts = 0, noOfDeletes = 0;
-    long numOfWriteCapacityUnit = 0;
+    long batchMutationSize = 0;
     boolean isAtomic = htableDescriptor.isAcrossPrefixRowsAtomic();
     try {
       // ------------------------------------
@@ -2587,7 +2587,7 @@ public class HRegion implements HeapSize { // , Writable{
           }
           noOfDeletes++;
         }
-        numOfWriteCapacityUnit += QuotaUtil.calculateRequestUnitNum(mutation);
+        batchMutationSize += QuotaUtil.calculateMutationSize(mutation);
         rewriteCellTags(familyMaps[i], mutation);
       }
 
@@ -2777,11 +2777,8 @@ public class HRegion implements HeapSize { // , Writable{
           this.metricsRegion.updateDelete();
         }
       }
-      if (numOfWriteCapacityUnit > 0) {
-        if (this.metricsRegion != null) {
-          this.metricsRegion.updateWrite(numOfWriteCapacityUnit);
-          this.writeRequestsByCapacityUnitPerSecond.inc((int) numOfWriteCapacityUnit);
-        }
+      if (batchMutationSize > 0) {
+        updateWriteCapacityUnitMetrics(batchMutationSize);
       }
       if (!success) {
         for (int i = firstIndex; i < lastIndexExclusive; i++) {
@@ -4189,9 +4186,7 @@ public class HRegion implements HeapSize { // , Writable{
             KeyValue kv = KeyValueUtil.ensureKeyValue(cell);
             totalSize += kv.getLength();
           }
-          region.metricsRegion.updateScanNext(totalSize);
-          region.readRequestsByCapacityUnitPerSecond.inc((int) QuotaUtil
-              .calculateReadCapacityUnitNum(totalSize));
+          region.updateReadCapacityUnitMetrics(totalSize);
         }
         return returnResult;
       } finally {
@@ -5705,8 +5700,7 @@ public class HRegion implements HeapSize { // , Writable{
 
     if (this.metricsRegion != null) {
       this.metricsRegion.updateAppend();
-      this.metricsRegion.updateWrite(QuotaUtil.calculateRequestUnitNum(append));
-      this.writeRequestsByCapacityUnitPerSecond.inc(QuotaUtil.calculateRequestUnitNum(append));
+      updateWriteCapacityUnitMetrics(QuotaUtil.calculateMutationSize(append));
     }
 
     if (flush) {
@@ -5927,8 +5921,7 @@ public class HRegion implements HeapSize { // , Writable{
       closeRegionOperation(Operation.INCREMENT);
       if (this.metricsRegion != null) {
         this.metricsRegion.updateIncrement();
-        this.metricsRegion.updateWrite(QuotaUtil.calculateRequestUnitNum(increment));
-        this.writeRequestsByCapacityUnitPerSecond.inc(QuotaUtil.calculateRequestUnitNum(increment));
+        updateWriteCapacityUnitMetrics(QuotaUtil.calculateMutationSize(increment));
       }
     }
 
@@ -6386,9 +6379,20 @@ public class HRegion implements HeapSize { // , Writable{
     }
   }
   
-  public void updateReadCapacityUnitMetrics(long scanSize) {
-    int readCapacityUnitNum = (int) QuotaUtil.calculateReadCapacityUnitNum(scanSize);
+  public void updateReadCapacityUnitMetrics(long readSize) {
+    int readCapacityUnitNum = (int) this.rsServices.getRegionServerQuotaManager().calculateReadCapacityUnitNum(readSize);
     this.readRequestsByCapacityUnitPerSecond.inc(readCapacityUnitNum);
+    if (this.metricsRegion != null) {
+      this.metricsRegion.updateRead(readCapacityUnitNum);
+    }
+  }
+
+  public void updateWriteCapacityUnitMetrics(long writeSize) {
+    int writeCapacityUnitNum = (int) this.rsServices.getRegionServerQuotaManager().calculateWriteCapacityUnitNum(writeSize);
+    this.writeRequestsByCapacityUnitPerSecond.inc(writeCapacityUnitNum);
+    if (this.metricsRegion != null) {
+      this.metricsRegion.updateWrite(writeCapacityUnitNum);
+    }
   }
 
   /**

@@ -3344,7 +3344,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
       long maxQuotaResultSize = maxScannerResultSize;
       if (isQuotaEnabled()) {
         quota = rsQuotaManager.checkQuota(region, OperationQuota.OperationType.SCAN);
-        maxQuotaResultSize = Math.min(maxScannerResultSize, quota.getReadAvailable());
+        maxQuotaResultSize = Math.min(maxScannerResultSize, rsQuotaManager.getQuotaReadAvailable(quota));
       }
 
       if (rows > 0) {
@@ -3454,7 +3454,6 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
                 }
               }
               region.updateReadMetrics(i);
-              region.getMetrics().updateScanNext(totalKvSize);
               region.updateReadCapacityUnitMetrics(totalKvSize);
             } finally {
               region.closeRegionOperation();
