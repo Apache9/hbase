@@ -49,7 +49,7 @@ public class TestMultiRespectsLimits {
   @BeforeClass
   public static void setUpBeforeClass() throws Exception {
     TEST_UTIL.getConfiguration().setLong(
-        HConstants.HBASE_CLIENT_SCANNER_MAX_RESULT_SIZE_KEY,
+        HConstants.HBASE_SERVER_SCANNER_MAX_RESULT_SIZE_KEY,
         MAX_SIZE);
 
     // Only start on regionserver so that all regions are on the same server.

@@ -280,6 +280,14 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
   protected final int numRegionsToReport;
 
   private final long maxScannerResultSize;
+  
+  // In trunk, multi-get request result size threshold is also maxScannerResultSize. However,
+  // in 0.94 client, the ClientScanner may loss region data if maxScannerResultSize is set.
+  // We don't know how many users are using the buggy client so that can't notify them to
+  // update client version. Therefore, we introduce a new option to set the size threshold
+  // for multi-get request. Will remove this option and use maxScannerResultSize for multi-get
+  // after upgraded to 0.98.
+  private final long maxMultiResultSize;
 
   // Remote HMaster
   private HMasterRegionInterface hbaseMaster;
@@ -498,6 +506,9 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
     this.maxScannerResultSize = conf.getLong(
       HConstants.HBASE_CLIENT_SCANNER_MAX_RESULT_SIZE_KEY,
       HConstants.DEFAULT_HBASE_CLIENT_SCANNER_MAX_RESULT_SIZE);
+    this.maxMultiResultSize = conf.getLong(
+      HConstants.HBASE_SERVER_SCANNER_MAX_RESULT_SIZE_KEY,
+      HConstants.DEFAULT_HBASE_SERVER_SCANNER_MAX_RESULT_SIZE);
     this.multiRequestMaxActionCount = conf.getInt(HConstants.MULTI_REQUEST_MAX_ACTION_COUNT,
       HConstants.DEFAULT_MULTI_REQUEST_MAX_ACTION_COUNT);
 
@@ -4403,8 +4414,8 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
           if (action instanceof Delete || action instanceof Put) {
             mutations.add(a); 
           } else if (action instanceof Get) {
-            if (maxScannerResultSize < Long.MAX_VALUE && rpcCall != null
-                && rpcCall.getResponseCellSize() > maxScannerResultSize) {
+            if (maxMultiResultSize < Long.MAX_VALUE && rpcCall != null
+                && rpcCall.getResponseCellSize() > maxMultiResultSize) {
     
               // We're storing the exception since the exception and reason string won't
               // change after the response size limit is reached.
@@ -4417,14 +4428,14 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
                         + rpcCall.getResponseCellSize());
                 LOG.warn("Max response size exceeded, region:" + Bytes.toStringBinary(regionName)
                     + ", cumulatedCellSize=" + rpcCall.getResponseCellSize()
-                    + ", maxScannerResultSize=" + maxScannerResultSize
+                    + ", maxScannerResultSize=" + maxMultiResultSize
                     + ", regions=" + multi.getRegions().size() + ", actions=" + multi.size());
               }
               response.add(regionName, originalIndex, sizeIOE); 
             } else {
               Result r = get(regionName, (Get)action);
               response.add(regionName, originalIndex, r);
-              if (maxScannerResultSize < Long.MAX_VALUE && rpcCall != null) {
+              if (maxMultiResultSize < Long.MAX_VALUE && rpcCall != null) {
                 rpcCall.incrementResponseCellSize(r.kvHeapSize());
               }
             }
