@@ -40,6 +40,7 @@ import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.Server;
 import org.apache.hadoop.hbase.ServerName;
+import org.apache.hadoop.hbase.ZooKeeperConnectionException;
 import org.apache.hadoop.hbase.replication.regionserver.Replication;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.Pair;
@@ -52,6 +53,7 @@ import org.apache.hadoop.hbase.zookeeper.ZKUtil.ZKUtilOp;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.KeeperException.AuthFailedException;
 import org.apache.zookeeper.KeeperException.ConnectionLossException;
+import org.apache.zookeeper.KeeperException.NoNodeException;
 import org.apache.zookeeper.KeeperException.SessionExpiredException;
 import org.apache.zookeeper.data.Stat;
 
@@ -1195,6 +1197,69 @@ public class ReplicationZookeeper {
         super.nodeDataChanged(path);
         readReplicationStateZnode();
       }
+    }
+  }
+
+  public static void main(String[] args) {
+    if (args.length < 1) {
+      System.out
+          .println("./hbase org.apache.hadoop.hbase.replication.ReplicationZookeeper list baseZnode");
+      System.out
+          .println("./hbase org.apache.hadoop.hbase.replication.ReplicationZookeeper set znode length");
+      System.exit(2);
+    }
+    String cmd = args[0];
+    if (cmd.equals("list")) {
+      if (args.length != 2) {
+        System.out
+            .println("./hbase org.apache.hadoop.hbase.replication.ReplicationZookeeper list baseZnode");
+        System.exit(2);
+      }
+      String baseZnode = args[1] + "/replication/rs";
+      Configuration conf = HBaseConfiguration.create();
+      try {
+        ZooKeeperWatcher zkw = new ZooKeeperWatcher(conf, "Update replication postion", null);
+        for (String server : ZKUtil.listChildrenNoWatch(zkw, baseZnode)) {
+          String serverZnode = baseZnode + "/" + server;
+          for (String peer : ZKUtil.listChildrenNoWatch(zkw, baseZnode + "/" + server)) {
+            String peerZnode = serverZnode + "/" + peer;
+            List<String> queues = ZKUtil.listChildrenNoWatch(zkw, peerZnode);
+            if (queues.size() > 100) {
+              Collections.sort(queues);
+              String log = peerZnode + "/" + queues.get(0);
+              String data = new String(ZKUtil.getData(zkw, log));
+              System.out.println(peer + " queue length: " + queues.size() + " " + log + " " + data);
+              ZKUtil.setData(zkw, log, Bytes.toBytes(Long.toString(0) + "," + Long.toString(0)));
+            }
+          }
+        }
+        zkw.close();
+      } catch (Exception e) {
+        e.printStackTrace();
+      }
+    } else if (cmd.equals("set")) {
+      if (args.length != 3) {
+        System.out
+            .println("./hbase org.apache.hadoop.hbase.replication.ReplicationZookeeper set znode position");
+        System.exit(2);
+      }
+      String fileName = args[1];
+      long position = Long.parseLong(args[2]);
+      Configuration conf = HBaseConfiguration.create();
+      try {
+        ZooKeeperWatcher zk = new ZooKeeperWatcher(conf, "Update replication postion", null);
+        long writeTime = 0;
+        String znode = fileName;
+        System.out.println("Znode: " + znode);
+        // Why serialize String of Long and note Long as bytes?
+        ZKUtil.setData(zk, znode,
+          Bytes.toBytes(Long.toString(position) + "," + Long.toString(writeTime)));
+        zk.close();
+      } catch (Exception e) {
+        e.printStackTrace();
+      }
+    } else {
+      System.out.println("Unsupported cmd: " + cmd);
     }
   }
 }

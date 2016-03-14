@@ -61,7 +61,6 @@ import org.apache.hadoop.hbase.regionserver.wal.HLogKey;
 import org.apache.hadoop.hbase.regionserver.wal.WALEdit;
 import org.apache.hadoop.hbase.replication.ReplicationZookeeper;
 import org.apache.hadoop.hbase.replication.thrift.ThriftClient;
-import org.apache.hadoop.hbase.replication.thrift.ThriftUtilities;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.FSUtils;
 import org.apache.hadoop.hbase.util.Pair;
@@ -539,6 +538,9 @@ public class ReplicationSource extends Thread
    * Check if log position is needed to avoid too many write operations to zookeeper
    */
   private boolean shouldLogPosition(long logPostion) {
+    if (logPostion == this.lastLoggedPosition) {
+      return false;
+    }
     if ((logPostion - this.lastLoggedPosition) >= this.logPositionSizeLimit) {
       return true;
     }
