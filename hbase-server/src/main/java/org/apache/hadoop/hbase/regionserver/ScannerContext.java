@@ -188,8 +188,7 @@ public class ScannerContext {
    *         reached in the middle of a row.
    */
   boolean partialResultFormed() {
-    return scannerState == NextState.SIZE_LIMIT_REACHED_MID_ROW
-        || scannerState == NextState.BATCH_LIMIT_REACHED;
+    return scannerState == NextState.SIZE_LIMIT_REACHED_MID_ROW;
   }
 
   /**

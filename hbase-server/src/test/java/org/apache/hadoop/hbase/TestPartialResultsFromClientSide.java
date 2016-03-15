@@ -1003,7 +1003,9 @@ public class TestPartialResultsFromClientSide {
 
   }
 
-  @Test public void testBatchingResultWhenRegionMove() throws IOException {
+
+  @Test
+  public void testBatchingResultWhenRegionMove() throws IOException {
     HTable table =
         createTestTable(TableName.valueOf("testBatchingResultWhenRegionMove"), ROWS, FAMILIES,
             QUALIFIERS, VALUE);
@@ -1022,7 +1024,6 @@ public class TestPartialResultsFromClientSide {
     assertEquals(1, result1.rawCells().length);
     Cell c1 = result1.rawCells()[0];
     assertCell(c1, ROWS[0], FAMILIES[NUM_FAMILIES - 1], QUALIFIERS[NUM_QUALIFIERS - 1]);
-    assertTrue(result1.isPartial());
 
     moveRegion(table, 2);
 
@@ -1030,7 +1031,6 @@ public class TestPartialResultsFromClientSide {
     assertEquals(1, result2.rawCells().length);
     Cell c2 = result2.rawCells()[0];
     assertCell(c2, ROWS[1], FAMILIES[0], QUALIFIERS[0]);
-    assertTrue(result2.isPartial());
 
     moveRegion(table, 3);
 
@@ -1038,7 +1038,6 @@ public class TestPartialResultsFromClientSide {
     assertEquals(1, result3.rawCells().length);
     Cell c3 = result3.rawCells()[0];
     assertCell(c3, ROWS[1], FAMILIES[0], QUALIFIERS[1]);
-    assertTrue(result3.isPartial());
-
   }
+
 }

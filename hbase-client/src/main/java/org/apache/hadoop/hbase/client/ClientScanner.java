@@ -423,7 +423,7 @@ public class ClientScanner extends AbstractClientScanner {
           // scanner starts at the correct row. Otherwise we may see previously
           // returned rows again.
           // (ScannerCallable by now has "relocated" the correct region)
-          if (!this.lastResult.isPartial()) {
+          if (!this.lastResult.isPartial() && scan.getBatch() < 0 ) {
             if (scan.isReversed()) {
               scan.setStartRow(createClosestRowBefore(lastResult.getRow()));
             } else {
@@ -461,7 +461,7 @@ public class ClientScanner extends AbstractClientScanner {
       List<Result> resultsToAddToCache = getResultsToAddToCache(values);
       if (!resultsToAddToCache.isEmpty()) {
         for (Result rs : resultsToAddToCache) {
-          if (this.lastResult != null && this.lastResult.isPartial()) {
+          if (this.lastResult != null && (this.lastResult.isPartial() || scan.getBatch() > 0 )) {
             rs = filterLoadedCell(rs);
             if (rs == null) {
               continue;
