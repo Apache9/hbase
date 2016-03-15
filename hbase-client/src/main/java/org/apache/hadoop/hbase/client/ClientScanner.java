@@ -29,6 +29,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.CellComparator;
 import org.apache.hadoop.hbase.CellUtil;
+import org.apache.hadoop.hbase.KeyValue.MetaComparator;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
@@ -720,12 +721,19 @@ public class ClientScanner extends AbstractClientScanner {
     this.lastCellOfLoadCache = result.rawCells()[result.rawCells().length - 1];
   }
 
+  private static MetaComparator metaComparator = new MetaComparator();
+
   private int compare(Cell a, Cell b) {
-    int r = CellComparator.compareRows(a, b);
+    boolean isMeta = currentRegion != null && currentRegion.isMetaRegion();
+    int r = isMeta ?
+        metaComparator
+            .compareRows(a.getRowArray(), a.getRowOffset(), a.getRowLength(), b.getRowArray(),
+                b.getRowOffset(), b.getRowLength()) :
+        CellComparator.compareRows(a, b);
     if (r != 0) {
       return this.scan.isReversed() ? -r : r;
     }
-    return CellComparator.compareWithoutRow(a, b, true);
+    return isMeta ? metaComparator.compare(a, b) : CellComparator.compareWithoutRow(a, b, true);
   }
 
   private Result filterLoadedCell(Result result) {
