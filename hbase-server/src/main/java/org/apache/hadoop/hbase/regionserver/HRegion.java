@@ -6378,9 +6378,13 @@ public class HRegion implements HeapSize { // , Writable{
       this.writeRequestsPerSecond.inc(num);
     }
   }
-  
+
   public void updateReadCapacityUnitMetrics(long readSize) {
-    int readCapacityUnitNum = (int) this.rsServices.getRegionServerQuotaManager().calculateReadCapacityUnitNum(readSize);
+    int readCapacityUnitNum = 0;
+    if (this.rsServices != null && this.rsServices.getRegionServerQuotaManager() != null) {
+      readCapacityUnitNum = (int) this.rsServices.getRegionServerQuotaManager()
+          .calculateReadCapacityUnitNum(readSize);
+    }
     this.readRequestsByCapacityUnitPerSecond.inc(readCapacityUnitNum);
     if (this.metricsRegion != null) {
       this.metricsRegion.updateRead(readCapacityUnitNum);
@@ -6388,7 +6392,11 @@ public class HRegion implements HeapSize { // , Writable{
   }
 
   public void updateWriteCapacityUnitMetrics(long writeSize) {
-    int writeCapacityUnitNum = (int) this.rsServices.getRegionServerQuotaManager().calculateWriteCapacityUnitNum(writeSize);
+    int writeCapacityUnitNum = 0;
+    if (this.rsServices != null && this.rsServices.getRegionServerQuotaManager() != null) {
+      writeCapacityUnitNum = (int) this.rsServices.getRegionServerQuotaManager()
+          .calculateWriteCapacityUnitNum(writeSize);
+    }
     this.writeRequestsByCapacityUnitPerSecond.inc(writeCapacityUnitNum);
     if (this.metricsRegion != null) {
       this.metricsRegion.updateWrite(writeCapacityUnitNum);
