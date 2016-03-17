@@ -3454,6 +3454,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
                 }
               }
               region.updateReadMetrics(i);
+              region.getMetrics().updateScanNext(totalKvSize);
               region.updateReadCapacityUnitMetrics(totalKvSize);
             } finally {
               region.closeRegionOperation();
