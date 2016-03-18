@@ -79,7 +79,7 @@ public class ClientScanner extends AbstractClientScanner {
    * via the methods {@link #addToPartialResults(Result)} and {@link #clearPartialResults()}
    */
   protected byte[] partialResultsRow = null;
-  protected Cell lastCellOfLoadCache = null;
+  protected Cell lastCellLoadedToCache = null;
   protected long partialResultSize;
   protected long maxPartialCacheSize = 200000000;
   protected static final long HEAP_SIZE =
@@ -462,11 +462,9 @@ public class ClientScanner extends AbstractClientScanner {
       List<Result> resultsToAddToCache = getResultsToAddToCache(values);
       if (!resultsToAddToCache.isEmpty()) {
         for (Result rs : resultsToAddToCache) {
-          if (this.lastResult != null && (this.lastResult.isPartial() || scan.getBatch() > 0 )) {
-            rs = filterLoadedCell(rs);
-            if (rs == null) {
-              continue;
-            }
+          rs = filterLoadedCell(rs);
+          if (rs == null) {
+            continue;
           }
           cache.add(rs);
           long estimatedHeapSizeOfResult = calcEstimatedSize(rs);
@@ -474,7 +472,11 @@ public class ClientScanner extends AbstractClientScanner {
           remainingResultSize -= estimatedHeapSizeOfResult;
           addEstimatedSize(estimatedHeapSizeOfResult);
           this.lastResult = rs;
-          updateLastCellOfLoadCache(this.lastResult);
+          if (this.lastResult.isPartial() || scan.getBatch() > 0 ) {
+            updateLastCellLoadedToCache(this.lastResult);
+          } else {
+            this.lastCellLoadedToCache = null;
+          }
         }
         if (cache.isEmpty()) {
           // all result has been seen before, we need scan more.
@@ -714,11 +716,11 @@ public class ClientScanner extends AbstractClientScanner {
     }
     closed = true;
   }
-  protected void updateLastCellOfLoadCache(Result result) {
+  protected void updateLastCellLoadedToCache(Result result) {
     if (result.rawCells().length == 0) {
       return;
     }
-    this.lastCellOfLoadCache = result.rawCells()[result.rawCells().length - 1];
+    this.lastCellLoadedToCache = result.rawCells()[result.rawCells().length - 1];
   }
 
   private static MetaComparator metaComparator = new MetaComparator();
@@ -738,25 +740,25 @@ public class ClientScanner extends AbstractClientScanner {
 
   private Result filterLoadedCell(Result result) {
     // we only filter result when last result is partial
-    // so lastCellOfLoadCache and result should have same row key.
+    // so lastCellLoadedToCache and result should have same row key.
     // However, if 1) read some cells; 1.1) delete this row at the same time 2) move region;
-    // 3) read more cell. lastCellOfLoadCache and result will be not at same row.
-    if (lastCellOfLoadCache == null || result.rawCells().length == 0) {
+    // 3) read more cell. lastCellLoadedToCache and result will be not at same row.
+    if (lastCellLoadedToCache == null || result.rawCells().length == 0) {
       return result;
     }
-    if (compare(this.lastCellOfLoadCache, result.rawCells()[0]) < 0) {
+    if (compare(this.lastCellLoadedToCache, result.rawCells()[0]) < 0) {
       // The first cell of this result is larger than the last cell of loadcache.
       // If user do not allow partial result, it must be true.
       return result;
     }
-    if (compare(this.lastCellOfLoadCache, result.rawCells()[result.rawCells().length - 1]) >= 0) {
+    if (compare(this.lastCellLoadedToCache, result.rawCells()[result.rawCells().length - 1]) >= 0) {
       // The last cell of this result is smaller than the last cell of loadcache, skip all.
       return null;
     }
 
     int index = 0;
     while (index < result.rawCells().length) {
-      if (compare(this.lastCellOfLoadCache, result.rawCells()[index]) < 0) {
+      if (compare(this.lastCellLoadedToCache, result.rawCells()[index]) < 0) {
         break;
       }
       index++;
