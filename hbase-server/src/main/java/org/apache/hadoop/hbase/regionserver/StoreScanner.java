@@ -524,7 +524,6 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
           store != null ? store.getComparator() : null;
 
       int count = 0;
-      long totalBytesRead = 0;
 
       LOOP:
       while ((kv = this.heap.peek()) != null) {
@@ -567,7 +566,7 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
             outResult.add(kv);
             count++;
 
-            totalBytesRead += kv.getLength();
+            checkKvSize(kv);
             // Update the progress of the scanner context
             scannerContext.incrementSizeProgress(kv.heapSize());
             scannerContext.incrementBatchProgress(1);
