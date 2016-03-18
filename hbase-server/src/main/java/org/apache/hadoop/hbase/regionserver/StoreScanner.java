@@ -32,6 +32,7 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.Cell;
+import org.apache.hadoop.hbase.CellUtil;
 import org.apache.hadoop.hbase.DoNotRetryIOException;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.KeyValue;
@@ -79,10 +80,12 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
   protected final long oldestUnexpiredTS;
   protected final long now;
   protected final int minVersions;
+  protected final long maxRowSize;
   private int hugeKvWarningSizeInByte = HConstants.HUGE_KV_SIZE_IN_BYTE_WARN_VALUE;
   private long hugeRowWarningSizeInByte = HConstants.HUGE_ROW_SIZE_IN_BYTE_WARN_VALUE;
   private long currentInResultRowSizeInByte;
-  
+  private boolean logHugeRow;
+
   /**
    * The number of KVs seen by the scanner. Includes explicitly skipped KVs, but not
    * KVs skipped via seeking to next row/column. TODO: estimate them?
@@ -130,12 +133,15 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
     this.oldestUnexpiredTS = now - ttl;
     this.minVersions = minVersions;
 
-    if (store != null && ((HStore)store).getHRegion() != null
-        && ((HStore)store).getHRegion().getBaseConf() != null) {
+    if (store != null && ((HStore) store).getHRegion() != null
+        && ((HStore) store).getHRegion().getBaseConf() != null) {
       Configuration conf = ((HStore) store).getHRegion().getBaseConf();
       this.scanUsePread = conf.getBoolean("hbase.storescanner.use.pread", scan.isSmall());
+      this.maxRowSize = conf.getLong(HConstants.TABLE_MAX_ROWSIZE_KEY,
+        HConstants.TABLE_MAX_ROWSIZE_DEFAULT);
     } else {
       this.scanUsePread = scan.isSmall();
+      this.maxRowSize = HConstants.TABLE_MAX_ROWSIZE_DEFAULT;
     }
 
     // We look up row-column Bloom filters for multi-column queries as part of
@@ -341,9 +347,18 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
         scanner.requestSeek(seekKey, false, true);
       }
     } else {
+      long totalScannersSoughtBytes = 0;
       if (!isParallelSeek) {
         for (KeyValueScanner scanner : scanners) {
+          if (matcher.isUserScan() && totalScannersSoughtBytes >= maxRowSize) {
+            throw new RowTooBigException("Max row size allowed: " + maxRowSize
+              + ", but row is bigger than that");
+          }
           scanner.seek(seekKey);
+          Cell c = scanner.peek();
+          if (c != null ) {
+            totalScannersSoughtBytes += CellUtil.estimatedSizeOf(c);
+          }
         }
       } else {
         parallelSeek(scanners, seekKey);
@@ -484,7 +499,6 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
         matcher.rowOffset, matcher.rowLength)) {
       this.countPerRow = 0;
       matcher.setRow(row, offset, length);
-      currentInResultRowSizeInByte = 0;
     }
 
     KeyValue kv;
@@ -495,6 +509,9 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
 
     int count = 0;
     int rawCount = 0;
+    currentInResultRowSizeInByte = 0;
+    logHugeRow = true;
+
     LOOP: while((kv = this.heap.peek()) != null) {
       if (prevKV != kv) {
         ++kvsScanned; // Do object compare - we set prevKV from the same heap.
@@ -534,9 +551,9 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
           // also update metric accordingly
           if (this.countPerRow > storeOffset) {
             checkScanOrder(outResult, kv, comparator);
-            checkKvSize(kv);
             outResult.add(kv);
             count++;
+            checkKvSize(kv);
           }
 
           if (qcode == ScanQueryMatcher.MatchCode.INCLUDE_AND_SEEK_NEXT_ROW) {
@@ -739,7 +756,6 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
       this.countPerRow = 0;
       matcher.reset();
       matcher.setRow(row, offset, length);
-      currentInResultRowSizeInByte = 0;
     }
   }
 
@@ -764,18 +780,22 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
   }
 
   // Only be used while adding the kv into result currently
-  protected void checkKvSize(KeyValue kv) {
-    long size = kv.heapSize();
-    if (kv.heapSize() > hugeKvWarningSizeInByte) {
-      LOG.warn("adding a HUGE KV into result list, kv size:" + size + ", key:"
-          + Bytes.toStringBinary(kv.getKey()) + ", from table "
-          + store.getRegionInfo().getTable().getNameAsString());
+  protected void checkKvSize(KeyValue kv) throws RowTooBigException {
+    long size = CellUtil.estimatedSizeOf(kv);
+    if (size > hugeKvWarningSizeInByte) {
+      LOG.warn("adding a HUGE KV into result list, kv size:" + size + ", kv:" + kv
+          + ", from table " + store.getRegionInfo().getTable().getNameAsString());
     }
     currentInResultRowSizeInByte += size;
-    if (currentInResultRowSizeInByte > hugeRowWarningSizeInByte) {
+    if (logHugeRow && currentInResultRowSizeInByte > hugeRowWarningSizeInByte) {
       LOG.warn("adding a HUGE ROW's kv into result list, added row size:"
-          + currentInResultRowSizeInByte + ", key:" + Bytes.toStringBinary(kv.getKey())
-          + ", from table " + store.getRegionInfo().getTable().getNameAsString());
+          + currentInResultRowSizeInByte + ", kv:" + kv + ", from table "
+          + store.getRegionInfo().getTable().getNameAsString());
+      logHugeRow = false;
+    }
+    if (matcher.isUserScan() && currentInResultRowSizeInByte > maxRowSize) {
+      throw new RowTooBigException("Max row size allowed: " + maxRowSize
+          + ", but the row is bigger than that.");
     }
   }
   
