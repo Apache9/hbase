@@ -172,6 +172,12 @@ public class ClientSmallScanner extends ClientScanner {
         try {
           controller.setPriority(getTableName());
           response = getStub().scan(controller, request);
+          if (response.hasMoreResultsInRegion()) {
+            setHasMoreResultsContext(true);
+            setServerHasMoreResults(response.getMoreResultsInRegion());
+          } else {
+            setHasMoreResultsContext(false);
+          }
           if (Trace.isTracing()) {
             Trace.addTimelineAnnotation("Small scan to " + location);
           }
@@ -215,15 +221,6 @@ public class ClientSmallScanner extends ClientScanner {
         if (values != null && values.length > 0) {
           for (int i = 0; i < values.length; i++) {
             Result rs = values[i];
-            if (rs.isFake()) {
-              // End of 1 next RPC
-              fakeResultReturned = true;
-              // return the fake result to users when raw limit is set
-              if (scan.getRawLimit() > 0) {
-                cache.add(rs);
-              }
-              break;
-            }
             cache.add(rs);
             for (Cell kv : rs.rawCells()) {
               remainingResultSize -= KeyValueUtil.ensureKeyValue(kv).heapSize();

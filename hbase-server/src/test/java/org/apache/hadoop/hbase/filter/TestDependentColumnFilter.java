@@ -144,7 +144,7 @@ public class TestDependentColumnFilter {
     int i = 0;
     int cells = 0;
     for (boolean done = true; done; i++) {
-      done = scanner.next(results).hasNext();
+      done = scanner.next(results);
       Arrays.sort(results.toArray(new KeyValue[results.size()]),
           KeyValue.COMPARATOR);
       LOG.info("counter=" + i + ", " + results);

@@ -357,10 +357,12 @@ public final class ResponseConverter {
         // Cells are out in cellblocks.  Group them up again as Results.  How many to read at a
         // time will be found in getCellsLength -- length here is how many Cells in the i'th Result
         int noOfCells = response.getCellsPerResult(i);
+        boolean isPartial = response.getPartialFlagPerResultCount() > i &&
+            response.getPartialFlagPerResult(i);
         List<Cell> cells = new ArrayList<Cell>(noOfCells);
         for (int j = 0; j < noOfCells; j++) {
           try {
-            if (cellScanner.advance() == false) {
+            if (!cellScanner.advance()) {
               // We are not able to retrieve the exact number of cells which ResultCellMeta says us.
               // We have to scan for the same results again. Throwing DNRIOE as a client retry on the
               // same scanner will result in OutOfOrderScannerNextException
@@ -379,7 +381,7 @@ public final class ResponseConverter {
           }
           cells.add(cellScanner.current());
         }
-        results[i] = Result.create(cells);
+        results[i] = Result.create(cells, null, response.getStale(), isPartial);
       } else {
         // Result is pure pb.
         results[i] = ProtobufUtil.toResult(response.getResults(i));

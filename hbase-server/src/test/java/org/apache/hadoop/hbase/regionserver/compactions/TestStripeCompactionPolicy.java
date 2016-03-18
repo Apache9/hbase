@@ -54,7 +54,7 @@ import org.apache.hadoop.hbase.io.hfile.HFile;
 import org.apache.hadoop.hbase.regionserver.BloomType;
 import org.apache.hadoop.hbase.regionserver.InternalScanner;
 import org.apache.hadoop.hbase.regionserver.ScanType;
-import org.apache.hadoop.hbase.regionserver.ScannerStatus;
+import org.apache.hadoop.hbase.regionserver.ScannerContext;
 import org.apache.hadoop.hbase.regionserver.Store;
 import org.apache.hadoop.hbase.regionserver.StoreConfigInformation;
 import org.apache.hadoop.hbase.regionserver.StoreFile;
@@ -765,14 +765,14 @@ public class TestStripeCompactionPolicy {
     }
 
     @Override
-    public ScannerStatus next(List<Cell> results) throws IOException {
-      if (kvs.isEmpty()) return ScannerStatus.DONE_WITH_NO_STATS;
+    public boolean next(List<Cell> results) throws IOException {
+      if (kvs.isEmpty()) return false;
       results.add(kvs.remove(0));
-      return kvs.isEmpty() ? ScannerStatus.DONE_WITH_NO_STATS : ScannerStatus.CONTINUED_WITH_NO_STATS;
+      return !kvs.isEmpty();
     }
-
     @Override
-    public ScannerStatus next(List<Cell> result, int limit, int rawLimit) throws IOException {
+    public boolean next(List<Cell> result, ScannerContext scannerContext)
+        throws IOException {
       return next(result);
     }
 

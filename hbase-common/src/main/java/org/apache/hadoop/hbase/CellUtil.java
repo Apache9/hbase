@@ -28,6 +28,7 @@ import java.util.NavigableMap;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.classification.InterfaceStability;
 import org.apache.hadoop.hbase.KeyValue.Type;
+import org.apache.hadoop.hbase.util.ByteBufferUtils;
 import org.apache.hadoop.hbase.util.ByteRange;
 import org.apache.hadoop.hbase.util.Bytes;
 
@@ -322,7 +323,11 @@ public final class CellUtil {
     return Bytes.equals(left.getRowArray(),  left.getRowOffset(), left.getRowLength(),
       buf, 0, buf.length);
   }
-
+  public static boolean matchingRow(final Cell left, final byte[] buf, final int offset,
+      final int length) {
+    return Bytes.equals(left.getRowArray(), left.getRowOffset(),
+        left.getRowLength(), buf, offset,length);
+  }
   public static boolean matchingFamily(final Cell left, final Cell right) {
     return Bytes.equals(left.getFamilyArray(), left.getFamilyOffset(), left.getFamilyLength(),
         right.getFamilyArray(), right.getFamilyOffset(), right.getFamilyLength());

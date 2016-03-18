@@ -28,7 +28,6 @@ import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellUtil;
 import org.apache.hadoop.hbase.Coprocessor;
 import org.apache.hadoop.hbase.CoprocessorEnvironment;
-import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.coprocessor.protobuf.generated.ColumnAggregationProtos.ColumnAggregationService;
 import org.apache.hadoop.hbase.coprocessor.protobuf.generated.ColumnAggregationProtos.SumRequest;
@@ -89,7 +88,7 @@ implements Coprocessor, CoprocessorService {
       boolean hasMore = false;
       do {
         curVals.clear();
-        hasMore = scanner.next(curVals).hasNext();
+        hasMore = scanner.next(curVals);
         for (Cell kv : curVals) {
           if (CellUtil.matchingQualifier(kv, qualifier)) {
             sumResult += Bytes.toInt(kv.getValueArray(), kv.getValueOffset());

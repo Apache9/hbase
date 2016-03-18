@@ -226,7 +226,7 @@ public class TestMergeTool extends HBaseTestCase {
     List<Cell> testRes = null;
       while (true) {
         testRes = new ArrayList<Cell>();
-        boolean hasNext = scanner.next(testRes).hasNext();
+        boolean hasNext = scanner.next(testRes);
         if (!hasNext) {
           break;
         }

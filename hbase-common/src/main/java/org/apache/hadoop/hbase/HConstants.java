@@ -596,6 +596,27 @@ public final class HConstants {
   public static final long DEFAULT_HBASE_CLIENT_SCANNER_MAX_RESULT_SIZE = 2 * 1024 * 1024;
 
   /**
+   * Parameter name for maximum ratio which occupy the whole heap when calling a
+   * scanner's next method to get a complete row.
+   */
+  public static final String HBASE_CLIENT_SCANNER_MAX_COMPLETEROW_HEAPRATIO_KEY =
+      "hbase.client.scanner.max.completerow.heapratio";
+
+  /**
+   * The maximum ratio which occupy the whole heap when calling a
+   * scanner's next method to get a complete row. It is to previet client OOM.
+   * If cached partial results are larger than the max size, a RowTooLargeException
+   * will be thrown.
+   * When you have a very large row, use Scan.setAllowPartialResults(true)
+   * or Scan.setBatch is a good idea to read partial row each time to reduce
+   * the pressue of memory.
+   *
+   * The default value is 20%.
+   */
+  public static final double DEFAULT_HBASE_CLIENT_SCANNER_MAX_COMPLETEROW_HEAPRATIO = 0.2;
+
+
+  /**
    * Parameter name for client pause value, used mostly as value to wait
    * before running a retry of a failed get, region lookup, etc.
    */
@@ -700,7 +721,7 @@ public final class HConstants {
   /**
    * Default value for {@link #HBASE_CLIENT_SCANNER_CACHING}
    */
-  public static final int DEFAULT_HBASE_CLIENT_SCANNER_CACHING = 100;
+  public static final int DEFAULT_HBASE_CLIENT_SCANNER_CACHING = Integer.MAX_VALUE;;
 
   /**
    * Parameter name for number of versions, kept by meta table.

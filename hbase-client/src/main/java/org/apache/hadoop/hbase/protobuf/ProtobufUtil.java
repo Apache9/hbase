@@ -850,6 +850,9 @@ public final class ProtobufUtil {
     if (scan.isSmall()) {
       scanBuilder.setSmall(scan.isSmall());
     }
+    if (scan.getAllowPartialResults()) {
+      scanBuilder.setAllowPartialResults(scan.getAllowPartialResults());
+    }
     Boolean loadColumnFamiliesOnDemand = scan.getLoadColumnFamiliesOnDemandValue();
     if (loadColumnFamiliesOnDemand != null) {
       scanBuilder.setLoadColumnFamiliesOnDemand(loadColumnFamiliesOnDemand.booleanValue());
@@ -970,6 +973,9 @@ public final class ProtobufUtil {
     }
     if (proto.hasSmall()) {
       scan.setSmall(proto.getSmall());
+    }
+    if (scan.getAllowPartialResults()) {
+      scan.setAllowPartialResults(scan.getAllowPartialResults());
     }
     for (NameBytesPair attribute: proto.getAttributeList()) {
       scan.setAttribute(attribute.getName(), attribute.getValue().toByteArray());
@@ -1291,7 +1297,9 @@ public final class ProtobufUtil {
    * Convert a protocol buffer Result to a client Result
    *
    * @param proto the protocol buffer Result to convert
-   * @return the converted client Result
+   * @return the co
+   *
+   * nverted client Result
    */
   public static Result toResult(final ClientProtos.Result proto) {
     if (proto.hasExists()) {
@@ -1307,7 +1315,7 @@ public final class ProtobufUtil {
     for (CellProtos.Cell c : values) {
       cells.add(toCell(c));
     }
-    return Result.create(cells, null);
+    return Result.create(cells, null, proto.getStale(), proto.getPartial());
   }
 
   /**

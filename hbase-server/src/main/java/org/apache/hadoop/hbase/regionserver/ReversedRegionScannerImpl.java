@@ -63,7 +63,7 @@ class ReversedRegionScannerImpl extends RegionScannerImpl {
   }
 
   @Override
-  protected ScannerStatus nextRow(byte[] currentRow, int offset, short length)
+  protected boolean nextRow(byte[] currentRow, int offset, short length)
       throws IOException {
     assert super.joinedContinuationRow == null : "Trying to go to next row during joinedHeap read.";
     byte row[] = new byte[length];
@@ -71,13 +71,10 @@ class ReversedRegionScannerImpl extends RegionScannerImpl {
     this.storeHeap.seekToPreviousRow(KeyValue.createFirstOnRow(row));
     resetFilters();
     // Calling the hook in CP which allows it to do a fast forward
-    if (this.region.getCoprocessorHost() != null) {
-      return this.region.getCoprocessorHost().postScannerFilterRow(this,
-          currentRow, offset, length) ?
-          ScannerStatus.continued(this.storeHeap.peek(), 1) :
-          ScannerStatus.done(1);
-    }
-    return ScannerStatus.continued(this.storeHeap.peek(), 1);
+    // Calling the hook in CP which allows it to do a fast forward
+    return this.region.getCoprocessorHost() == null
+        || this.region.getCoprocessorHost()
+        .postScannerFilterRow(this, currentRow, offset, length);
   }
 
 }

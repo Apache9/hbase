@@ -92,6 +92,15 @@ message Result {
   // used for Get to check existence only. Not set if existence_only was not set to true
   //  in the query.
   optional bool exists = 3;
+
+  // Whether or not the results are coming from possibly stale data
+  optional bool stale = 4 [default = false];
+
+  // Whether or not the entire result could be returned. Results will be split when
+  // the RPC chunk size limit is reached. Partial results contain only a subset of the
+  // cells for a row and must be combined with a result containing the remaining cells
+  // to form a complete result
+  optional bool partial = 5 [default = false];
 }
 
 /**
@@ -234,6 +243,7 @@ message Scan {
   optional bool small = 14;
   optional bool reversed = 15 [default = false];
   optional uint32 caching = 17;
+  optional bool allow_partial_results = 18;
 }
 
 /**
@@ -254,6 +264,7 @@ message ScanRequest {
   optional uint32 number_of_rows = 4;
   optional bool close_scanner = 5;
   optional uint64 next_call_seq = 6;
+  optional bool client_handles_partials = 7;
 }
 
 /**
@@ -276,6 +287,21 @@ message ScanResponse {
   // This field is mutually exclusive with cells_per_result (since the Cells will
   // be inside the pb'd Result)
   repeated Result results = 5;
+  optional bool stale = 6;
+
+  // This field is filled in if we are doing cellblocks. In the event that a row
+  // could not fit all of its cells into a single RPC chunk, the results will be
+  // returned as partials, and reconstructed into a complete result on the client
+  // side. This field is a list of flags indicating whether or not the result
+  // that the cells belong to is a partial result. For example, if this field
+  // has false, false, true in it, then we know that on the client side, we need to
+  // make another RPC request since the last result was only a partial.
+  repeated bool partial_flag_per_result = 7;
+
+  // A server may choose to limit the number of results returned to the client for
+  // reasons such as the size in bytes or quantity of results accumulated. This field
+  // will true when more results exist in the current region.
+  optional bool more_results_in_region = 8;
 }
 
 /**

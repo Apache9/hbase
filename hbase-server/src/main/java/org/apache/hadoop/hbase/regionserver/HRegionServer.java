@@ -209,13 +209,12 @@ import org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.Regio
 import org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.ReportRSFatalErrorRequest;
 import org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.ReportRegionStateTransitionRequest;
 import org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.ReportRegionStateTransitionResponse;
-import org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.TableRegionCount;
 import org.apache.hadoop.hbase.protobuf.generated.WALProtos.CompactionDescriptor;
 import org.apache.hadoop.hbase.quotas.OperationQuota;
 import org.apache.hadoop.hbase.quotas.RegionServerQuotaManager;
-import org.apache.hadoop.hbase.quotas.ThrottlingException;
 import org.apache.hadoop.hbase.regionserver.HRegion.Operation;
 import org.apache.hadoop.hbase.regionserver.Leases.LeaseStillHeldException;
+import org.apache.hadoop.hbase.regionserver.ScannerContext.LimitScope;
 import org.apache.hadoop.hbase.regionserver.compactions.CompactionProgress;
 import org.apache.hadoop.hbase.regionserver.handler.CloseMetaHandler;
 import org.apache.hadoop.hbase.regionserver.handler.CloseRegionHandler;
@@ -3294,6 +3293,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
       RegionScannerHolder rsh = null;
       boolean moreResults = true;
       boolean closeScanner = false;
+      boolean isSmallScan = false;
       ScanResponse.Builder builder = ScanResponse.newBuilder();
       if (request.hasCloseScanner()) {
         closeScanner = request.getCloseScanner();
@@ -3326,6 +3326,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
           scan.setLoadColumnFamiliesOnDemand(region.isLoadingCfsOnDemandDefault());
         }
         scan.getAttribute(Scan.SCAN_ATTRIBUTES_METRICS_ENABLE);
+        isSmallScan = scan.isSmall();
         region.prepareScanner(scan);
         if (region.getCoprocessorHost() != null) {
           scanner = region.getCoprocessorHost().preScannerOpen(scan);
@@ -3369,9 +3370,9 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
           // Remove lease while its being processed in server; protects against case
           // where processing of request takes > lease expiration time.
           lease = leases.removeLease(scannerName);
-          List<Result> results = new ArrayList<Result>(rows);
-          long currentScanResultSize = 0;
+          List<Result> results = new ArrayList<Result>(Math.min(rows, 100));
           long totalKvSize = 0;
+          long currentScanResultSize = 0;
 
           boolean done = false;
           // Call coprocessor. Get region info from scanner.
@@ -3403,52 +3404,65 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
             region.startRegionOperation(Operation.SCAN);
             try {
               int i = 0;
-              int rawLimit = scanner.getRawLimit();
-              int rawCount = 0;
               synchronized(scanner) {
-                while (i < rows && (rawLimit < 0 || rawCount < rawLimit)) {
+                boolean clientHandlesPartials =
+                    request.hasClientHandlesPartials() && request.getClientHandlesPartials();
+                // On the server side we must ensure that the correct ordering of partial results is
+                // returned to the client to allow them to properly reconstruct the partial results.
+                // If the coprocessor host is adding to the result list, we cannot guarantee the
+                // correct ordering of partial results and so we prevent partial results from being
+                // formed.
+                boolean serverGuaranteesOrderOfPartials = currentScanResultSize == 0;
+                boolean allowPartialResults =
+                    clientHandlesPartials && serverGuaranteesOrderOfPartials && !isSmallScan;
+                boolean moreRows = false;
+                final LimitScope sizeScope =
+                    allowPartialResults ? LimitScope.BETWEEN_CELLS : LimitScope.BETWEEN_ROWS;
+                // Configure with limits for this RPC. Set keep progress true since size progress
+                // towards size limit should be kept between calls to nextRaw
+                ScannerContext.Builder contextBuilder = ScannerContext.newBuilder(true);
+                contextBuilder.setSizeLimit(sizeScope, maxResultSize);
+                contextBuilder.setBatchLimit(scanner.getBatch());
+                ScannerContext scannerContext = contextBuilder.build();
+
+                while (i < rows) {
                   // Stop collecting results if maxScannerResultSize is set and we have exceeded it
-                  if ((maxScannerResultSize < Long.MAX_VALUE) &&
-                      (currentScanResultSize >= maxResultSize)) {
+                  if (scannerContext.checkSizeLimit(LimitScope.BETWEEN_ROWS)) {
+                    builder.setMoreResultsInRegion(true);
                     break;
                   }
+
+                  // Reset the batch progress to 0 before every call to RegionScanner#nextRaw. The
+                  // batch limit is a limit on the number of cells per Result. Thus, if progress is
+                  // being tracked (i.e. scannerContext.keepProgress() is true) then we need to
+                  // reset the batch progress between nextRaw invocations since we don't want the
+                  // batch progress from previous calls to affect future calls
+                  scannerContext.setBatchProgress(0);
+
                   // Collect values to be returned here
-                  ScannerStatus status;
-                  if (rawLimit <= 0) {
-                    status = scanner.nextRaw(values);
-                  } else {
-                    // set batch to -1 to fetch a full row
-                    status = scanner.nextRaw(values, -1, rawLimit - rawCount);
-                    rawCount += status.getRawValueScanned();
-                  }
+                  moreRows = scanner.nextRaw(values, scannerContext);
+
+
                   if (!values.isEmpty()) {
+
                     for (Cell cell : values) {
                       KeyValue kv = KeyValueUtil.ensureKeyValue(cell);
-                      currentScanResultSize += kv.heapSize();
                       totalKvSize += kv.getLength();
                     }
-                    results.add(Result.create(values));
+
+                    final boolean partial = scannerContext.partialResultFormed();
+                    results.add(Result.create(values, null, false, partial));
                     i++;
                   }
-                  boolean limitReached = false;
-                  if (rawLimit > 0 && rawCount >= rawLimit) {
-                    limitReached = true;
-                  }
-                  if (maxScannerResultSize < Long.MAX_VALUE && currentScanResultSize > maxScannerResultSize) {
-                    limitReached = true;
-                  }
-                  if (status.hasNext() && limitReached) {
-                    // when there is no visible key values scanned out yet but the raw limit is reached,
-                    // we fill a fake result which contains the next position and pass it to the client
-                    // to avoid RPC timeout.
-                    KeyValue next = status.next();
-                    if (next != null) {
-                      // append a fake row which is larger than the next peeked row
-                      results.add(Result.fakeResult(next));
-                    }
-                  }
-                  if (!status.hasNext()) {
+                  if (!moreRows) {
                     break;
+                  }
+                  if (currentScanResultSize >= maxResultSize || i >= rows || moreRows) {
+                    // We stopped prematurely
+                    builder.setMoreResultsInRegion(true);
+                  } else {
+                    // We didn't get a single batch
+                    builder.setMoreResultsInRegion(false);
                   }
                   values.clear();
                 }
@@ -3538,6 +3552,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     if (isClientCellBlockSupport()) {
       for (Result res : results) {
         builder.addCellsPerResult(res.size());
+        builder.addPartialFlagPerResult(res.isPartial());
       }
       ((PayloadCarryingRpcController)controller).
         setCellScanner(CellUtil.createCellScanner(results));

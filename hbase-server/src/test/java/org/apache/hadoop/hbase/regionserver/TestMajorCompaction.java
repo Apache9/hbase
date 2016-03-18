@@ -130,7 +130,7 @@ public class TestMajorCompaction {
     InternalScanner s = r.getScanner(new Scan());
     do {
       List<Cell> results = new ArrayList<Cell>();
-      boolean result = s.next(results).hasNext();
+      boolean result = s.next(results);
       r.delete(new Delete(CellUtil.cloneRow(results.get(0))));
       if (!result) break;
     } while(true);
@@ -143,7 +143,7 @@ public class TestMajorCompaction {
     int counter = 0;
     do {
       List<Cell> results = new ArrayList<Cell>();
-      boolean result = s.next(results).hasNext();
+      boolean result = s.next(results);
       if (!result) break;
       counter++;
     } while(true);
@@ -446,6 +446,7 @@ public class TestMajorCompaction {
    * basically works.
    * @throws IOException
    */
+  @Test
   public void testMajorCompactingToNoOutputWithReverseScan() throws IOException {
     createStoreFile(r);
     for (int i = 0; i < compactionThreshold; i++) {
@@ -457,7 +458,7 @@ public class TestMajorCompaction {
     InternalScanner s = r.getScanner(scan);
     do {
       List<Cell> results = new ArrayList<Cell>();
-      boolean result = s.next(results).hasNext();
+      boolean result = s.next(results);
       assertTrue(!results.isEmpty());
       r.delete(new Delete(results.get(0).getRow()));
       if (!result) break;
@@ -473,7 +474,7 @@ public class TestMajorCompaction {
     int counter = 0;
     do {
       List<Cell> results = new ArrayList<Cell>();
-      boolean result = s.next(results).hasNext();
+      boolean result = s.next(results);
       if (!result) break;
       counter++;
     } while (true);

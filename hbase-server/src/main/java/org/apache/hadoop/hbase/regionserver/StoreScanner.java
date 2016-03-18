@@ -43,6 +43,8 @@ import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.executor.ExecutorService;
 import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.regionserver.ScanQueryMatcher.MatchCode;
+import org.apache.hadoop.hbase.regionserver.ScannerContext.LimitScope;
+import org.apache.hadoop.hbase.regionserver.ScannerContext.NextState;
 import org.apache.hadoop.hbase.regionserver.handler.ParallelSeekHandler;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
@@ -460,71 +462,84 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
     }
   }
 
+  @Override
+  public boolean next(List<Cell> outResult) throws IOException {
+    return next(outResult, NoLimitScannerContext.getInstance());
+  }
+
   /**
    * Get the next row of values from this Store.
    * @param outResult
-   * @param limit
    * @return true if there are more rows, false if scanner is done
    */
   @Override
-  public ScannerStatus next(List<Cell> outResult, int limit, int rawLimit) throws IOException {
+  public boolean next(List<Cell> outResult, ScannerContext scannerContext)
+      throws IOException {
     lock.lock();
     try {
-    if (checkReseek()) {
-      return ScannerStatus.CONTINUED_WITH_NO_STATS;
-    }
-
-    // if the heap was left null, then the scanners had previously run out anyways, close and
-    // return.
-    if (this.heap == null) {
-      close();
-      return ScannerStatus.DONE_WITH_NO_STATS;
-    }
-
-    KeyValue peeked = this.heap.peek();
-    if (peeked == null) {
-      close();
-      return ScannerStatus.DONE_WITH_NO_STATS;
-    }
-    if (scan.isDebug()) {
-      LOG.info("Debug scan: peeked kv: " + peeked);
-    }
-    
-    // only call setRow if the row changes; avoids confusing the query matcher
-    // if scanning intra-row
-    byte[] row = peeked.getBuffer();
-    int offset = peeked.getRowOffset();
-    short length = peeked.getRowLength();
-    if (limit < 0 || matcher.row == null || !Bytes.equals(row, offset, length, matcher.row,
-        matcher.rowOffset, matcher.rowLength)) {
-      this.countPerRow = 0;
-      matcher.setRow(row, offset, length);
-    }
-
-    KeyValue kv;
-
-    // Only do a sanity-check if store and comparator are available.
-    KeyValue.KVComparator comparator =
-        store != null ? store.getComparator() : null;
-
-    int count = 0;
-    int rawCount = 0;
-    currentInResultRowSizeInByte = 0;
-    logHugeRow = true;
-
-    LOOP: while((kv = this.heap.peek()) != null) {
-      if (prevKV != kv) {
-        ++kvsScanned; // Do object compare - we set prevKV from the same heap.
+      if (scannerContext == null) {
+        throw new IllegalArgumentException("Scanner context cannot be null");
       }
-      checkScanOrder(prevKV, kv, comparator);
-      prevKV = kv;
+      if (checkReseek()) {
+        return scannerContext.setScannerState(NextState.MORE_VALUES).hasMoreValues();
+      }
 
-      ScanQueryMatcher.MatchCode qcode = matcher.match(kv);
-      qcode = optimize(qcode, kv);
+      // if the heap was left null, then the scanners had previously run out anyways, close and
+      // return.
+      if (this.heap == null) {
+        close();
+        return scannerContext.setScannerState(NextState.NO_MORE_VALUES).hasMoreValues();
+      }
+
+      KeyValue peeked = this.heap.peek();
+      if (peeked == null) {
+        close();
+        return scannerContext.setScannerState(NextState.NO_MORE_VALUES).hasMoreValues();
+      }
       if (scan.isDebug()) {
-        LOG.info("Debug scan: current kv: " + kv + " match code: " + qcode);
+        LOG.info("Debug scan: peeked kv: " + peeked);
       }
-      switch(qcode) {
+
+      // only call setRow if the row changes; avoids confusing the query matcher
+      // if scanning intra-row
+      byte[] row = peeked.getBuffer();
+      int offset = peeked.getRowOffset();
+      short length = peeked.getRowLength();
+
+      // If no limits exists in the scope LimitScope.Between_Cells then we are sure we are changing
+      // rows. Else it is possible we are still traversing the same row so we must perform the row
+      // comparison.
+      if (!scannerContext.hasAnyLimit(LimitScope.BETWEEN_CELLS) || matcher.row == null ||
+          !Bytes.equals(row, offset, length, matcher.row, matcher.rowOffset, matcher.rowLength)) {
+        this.countPerRow = 0;
+        matcher.setRow(row, offset, length);
+      }
+      // Clear progress away unless invoker has indicated it should be kept.
+      if (!scannerContext.getKeepProgress()) scannerContext.clearProgress();
+
+      KeyValue kv;
+
+      // Only do a sanity-check if store and comparator are available.
+      KeyValue.KVComparator comparator =
+          store != null ? store.getComparator() : null;
+
+      int count = 0;
+      long totalBytesRead = 0;
+
+      LOOP:
+      while ((kv = this.heap.peek()) != null) {
+        if (prevKV != kv) {
+          ++kvsScanned; // Do object compare - we set prevKV from the same heap.
+        }
+        checkScanOrder(prevKV, kv, comparator);
+        prevKV = kv;
+
+        ScanQueryMatcher.MatchCode qcode = matcher.match(kv);
+        qcode = optimize(qcode, kv);
+        if (scan.isDebug()) {
+          LOG.info("Debug scan: current kv: " + kv + " match code: " + qcode);
+        }
+        switch (qcode) {
         case INCLUDE:
         case INCLUDE_AND_SEEK_NEXT_ROW:
         case INCLUDE_AND_SEEK_NEXT_COL:
@@ -536,14 +551,12 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
           }
 
           this.countPerRow++;
-          if (storeLimit > -1 &&
-              this.countPerRow > (storeLimit + storeOffset)) {
+          if (storeLimit > -1 && this.countPerRow > (storeLimit + storeOffset)) {
             // do what SEEK_NEXT_ROW does.
             if (!matcher.moreRowsMayExistAfter(kv)) {
-              return ScannerStatus.done(rawCount);
+              return scannerContext.setScannerState(NextState.NO_MORE_VALUES).hasMoreValues();
             }
             seekToNextRow(kv);
-            ++rawCount;
             break LOOP;
           }
 
@@ -553,60 +566,55 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
             checkScanOrder(outResult, kv, comparator);
             outResult.add(kv);
             count++;
-            checkKvSize(kv);
+
+            totalBytesRead += kv.getLength();
+            // Update the progress of the scanner context
+            scannerContext.incrementSizeProgress(kv.heapSize());
+            scannerContext.incrementBatchProgress(1);
           }
 
           if (qcode == ScanQueryMatcher.MatchCode.INCLUDE_AND_SEEK_NEXT_ROW) {
             if (!matcher.moreRowsMayExistAfter(kv)) {
-              return ScannerStatus.done(rawCount);
+              return scannerContext.setScannerState(NextState.NO_MORE_VALUES).hasMoreValues();
             }
             seekToNextRow(kv);
-            ++rawCount;
-            if (rawLimit > 0 && rawCount >= rawLimit) {
-              return ScannerStatus.continued(this.heap.peek(), rawCount);
-            }
           } else if (qcode == ScanQueryMatcher.MatchCode.INCLUDE_AND_SEEK_NEXT_COL) {
             seekAsDirection(matcher.getKeyForNextColumn(kv));
-            ++rawCount;
           } else {
             this.heap.next();
-            ++rawCount;
           }
 
-          if (limit > 0 && (count == limit)) {
+          if (scannerContext.checkBatchLimit(LimitScope.BETWEEN_CELLS)) {
+            break LOOP;
+          }
+          if (scannerContext.checkSizeLimit(LimitScope.BETWEEN_CELLS)) {
             break LOOP;
           }
           continue;
 
         case DONE:
-          return ScannerStatus.continued(this.heap.peek(), rawCount);
+          return scannerContext.setScannerState(NextState.MORE_VALUES).hasMoreValues();
 
         case DONE_SCAN:
           close();
-          return ScannerStatus.done(rawCount);
+          return scannerContext.setScannerState(NextState.NO_MORE_VALUES).hasMoreValues();
 
         case SEEK_NEXT_ROW:
           // This is just a relatively simple end of scan fix, to short-cut end
           // us if there is an endKey in the scan.
           if (!matcher.moreRowsMayExistAfter(kv)) {
-            return ScannerStatus.done(rawCount);
+            return scannerContext.setScannerState(NextState.NO_MORE_VALUES).hasMoreValues();
           }
 
           seekToNextRow(kv);
-          ++rawCount;
-          if (rawLimit > 0 && rawCount >= rawLimit) {
-            return ScannerStatus.continued(this.heap.peek(), rawCount);
-          }
           break;
 
         case SEEK_NEXT_COL:
           seekAsDirection(matcher.getKeyForNextColumn(kv));
-          ++rawCount;
           break;
 
         case SKIP:
           this.heap.next();
-          ++rawCount;
           break;
 
         case SEEK_NEXT_USING_HINT:
@@ -614,25 +622,23 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
           KeyValue nextKV = KeyValueUtil.ensureKeyValue(matcher.getNextKeyHint(kv));
           if (nextKV != null) {
             seekAsDirection(nextKV);
-            ++rawCount;
           } else {
             heap.next();
-            ++rawCount;
           }
           break;
 
         default:
           throw new RuntimeException("UNEXPECTED");
+        }
       }
-    }
 
-    if (count > 0) {
-      return ScannerStatus.continued(this.heap.peek(), rawCount);
-    }
+      if (count > 0) {
+        return scannerContext.setScannerState(NextState.MORE_VALUES).hasMoreValues();
+      }
 
-    // No more keys
-    close();
-    return ScannerStatus.done(rawCount);
+      // No more keys
+      close();
+      return scannerContext.setScannerState(NextState.NO_MORE_VALUES).hasMoreValues();
     } finally {
       lock.unlock();
     }
@@ -668,11 +674,6 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
       break;
     }
     return qcode;
-  }
-
-  @Override
-  public ScannerStatus next(List<Cell> outResult) throws IOException {
-    return next(outResult, -1, -1);
   }
 
   // Implementation of ChangedReadersObserver
