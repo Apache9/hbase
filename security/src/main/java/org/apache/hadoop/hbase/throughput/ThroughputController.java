@@ -59,6 +59,7 @@ import org.apache.hadoop.hbase.regionserver.InternalScanner;
 import org.apache.hadoop.hbase.regionserver.RegionScanner;
 import org.apache.hadoop.hbase.regionserver.wal.WALEdit;
 import org.apache.hadoop.hbase.security.User;
+import org.apache.hadoop.hbase.security.access.Permission;
 import org.apache.hadoop.hbase.util.Bytes;
 
 /**
@@ -393,26 +394,25 @@ public class ThroughputController extends BaseRegionObserver implements
   public void postDeleteColumn(ObserverContext<MasterCoprocessorEnvironment> ctx, byte[] tableName,
       byte[] c) throws IOException {
   }
-
+  
   @Override
-  public void preEnableTable(ObserverContext<MasterCoprocessorEnvironment> ctx, byte[] tableName)
-      throws IOException {
+  public void preEnableTable(ObserverContext<MasterCoprocessorEnvironment> c, byte[] tableName,
+      boolean skipTableStateCheck) throws IOException {
   }
 
   @Override
-  public void postEnableTable(ObserverContext<MasterCoprocessorEnvironment> ctx, byte[] tableName)
-      throws IOException {
+  public void postEnableTable(ObserverContext<MasterCoprocessorEnvironment> c, byte[] tableName,
+      boolean skipTableStateCheck) throws IOException {
   }
 
   @Override
-  public void preDisableTable(ObserverContext<MasterCoprocessorEnvironment> c, byte[] tableName)
-      throws IOException {
-    // should not allow user to disable the meta table, we can rely on ACL externally
+  public void preDisableTable(ObserverContext<MasterCoprocessorEnvironment> c, byte[] tableName,
+      boolean skipTableStateCheck) throws IOException {
   }
 
   @Override
-  public void postDisableTable(ObserverContext<MasterCoprocessorEnvironment> ctx, byte[] tableName)
-      throws IOException {
+  public void postDisableTable(ObserverContext<MasterCoprocessorEnvironment> ctx, byte[] tableName,
+      boolean skipTableStateCheck) throws IOException {
   }
 
   @Override

@@ -830,7 +830,7 @@ public class HBaseAdmin implements Abortable, Closeable {
 
   public void enableTable(final String tableName)
   throws IOException {
-    enableTable(Bytes.toBytes(tableName));
+    enableTable(tableName, false);
   }
 
   /**
@@ -848,13 +848,29 @@ public class HBaseAdmin implements Abortable, Closeable {
    */
   public void enableTable(final byte [] tableName)
   throws IOException {
-    enableTableAsync(tableName);
-
+    enableTable(tableName, false);
+  }
+  
+  public void enableTable(final String tableName, final boolean skipTableStateCheck)
+      throws IOException {
+      enableTable(Bytes.toBytes(tableName), skipTableStateCheck);
+  }
+  
+  /**
+   * Enable a table. If skipTableStateCheck is true, it will skip to check table state.
+   * The table state may be enabling, disabling or disabled
+   * @param tableName
+   * @param skipTableStateCheck
+   * @throws IOException
+   */
+  public void enableTable(final byte[] tableName, final boolean skipTableStateCheck)
+      throws IOException {
+    enableTableAsync(tableName, skipTableStateCheck);
     // Wait until all regions are enabled
     waitUntilTableIsEnabled(tableName);
-
     LOG.info("Enabled table " + Bytes.toString(tableName));
   }
+  
 
   /**
    * Wait for the table to be enabled and available
@@ -909,10 +925,15 @@ public class HBaseAdmin implements Abortable, Closeable {
    */
   public void enableTableAsync(final byte [] tableName)
   throws IOException {
+    enableTableAsync(tableName, false);
+  }
+
+  public void enableTableAsync(final byte [] tableName, boolean skipTableStateCheck)
+  throws IOException {
     HTableDescriptor.isLegalTableName(tableName);
     isMasterRunning();
     try {
-      getMaster().enableTable(tableName);
+      getMaster().enableTable(tableName, skipTableStateCheck);
     } catch (RemoteException e) {
       throw e.unwrapRemoteException();
     }
@@ -978,19 +999,34 @@ public class HBaseAdmin implements Abortable, Closeable {
    * @since 0.90.0
    */
   public void disableTableAsync(final byte [] tableName) throws IOException {
+    disableTableAsync(tableName, false);
+  }
+
+  public void disableTableAsync(final byte[] tableName, final boolean skipTableStateCheck)
+      throws IOException {
     HTableDescriptor.isLegalTableName(tableName);
     isMasterRunning();
     try {
-      getMaster().disableTable(tableName);
+      getMaster().disableTable(tableName, skipTableStateCheck);
     } catch (RemoteException e) {
       throw e.unwrapRemoteException();
     }
     LOG.info("Started disable of " + Bytes.toString(tableName));
   }
 
+  public void disableTable(final String tableName, boolean skipTableStateCheck) throws IOException {
+    disableTable(Bytes.toBytes(tableName), skipTableStateCheck);
+  }
+
+  public void disableTable(final byte[] tableName, boolean skipTableStateCheck) throws IOException {
+    disableTableAsync(tableName, skipTableStateCheck);
+    waitUntilTableIsDisabled(tableName);
+    LOG.info("Disabled " + Bytes.toString(tableName));
+  }
+
   public void disableTable(final String tableName)
   throws IOException {
-    disableTable(Bytes.toBytes(tableName));
+    disableTable(tableName, false);
   }
 
   /**
@@ -1006,8 +1042,10 @@ public class HBaseAdmin implements Abortable, Closeable {
    */
   public void disableTable(final byte [] tableName)
   throws IOException {
-    disableTableAsync(tableName);
-    // Wait until table is disabled
+    disableTable(tableName, false);
+  }
+
+  private void waitUntilTableIsDisabled(final byte[] tableName) throws IOException {
     boolean disabled = false;
     for (int tries = 0; tries < (this.numRetries * this.retryLongerMultiplier); tries++) {
       disabled = isTableDisabled(tableName);
@@ -1032,9 +1070,8 @@ public class HBaseAdmin implements Abortable, Closeable {
       throw new RegionException("Retries exhausted, it took too long to wait"+
         " for the table " + Bytes.toString(tableName) + " to be disabled.");
     }
-    LOG.info("Disabled " + Bytes.toString(tableName));
   }
-
+  
   /**
    * Disable tables matching the passed in pattern and wait on completion.
    *

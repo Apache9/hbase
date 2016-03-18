@@ -150,34 +150,38 @@ public interface MasterObserver extends Coprocessor {
    * It can't bypass the default action, e.g., ctx.bypass() won't have effect.
    * @param ctx the environment to interact with the framework and master
    * @param tableName the name of the table
+   * @param skipTableStateCheck if skip table state check befor enable table
    */
   void preEnableTable(final ObserverContext<MasterCoprocessorEnvironment> ctx,
-      final byte[] tableName) throws IOException;
+      final byte[] tableName, final boolean skipTableStateCheck) throws IOException;
 
   /**
    * Called after the enableTable operation has been requested.
    * @param ctx the environment to interact with the framework and master
    * @param tableName the name of the table
+   * @param skipTableStateCheck if skip table state check befor enable table
    */
   void postEnableTable(final ObserverContext<MasterCoprocessorEnvironment> ctx,
-      final byte[] tableName) throws IOException;
+      final byte[] tableName, final boolean skipTableStateCheck) throws IOException;
 
   /**
    * Called prior to disabling a table.
    * It can't bypass the default action, e.g., ctx.bypass() won't have effect.
    * @param ctx the environment to interact with the framework and master
    * @param tableName the name of the table
+   * @param skipTableStateCheck if skip table state check befor disable table
    */
   void preDisableTable(final ObserverContext<MasterCoprocessorEnvironment> ctx,
-      final byte[] tableName) throws IOException;
+      final byte[] tableName, final boolean skipTableStateCheck) throws IOException;
 
   /**
    * Called after the disableTable operation has been requested.
    * @param ctx the environment to interact with the framework and master
    * @param tableName the name of the table
+   * @param skipTableStateCheck if skip table state check befor disable table
    */
   void postDisableTable(final ObserverContext<MasterCoprocessorEnvironment> ctx,
-      final byte[] tableName) throws IOException;
+      final byte[] tableName, final boolean skipTableStateCheck) throws IOException;
 
   /**
    * Called prior to moving a given region from one region server to another.

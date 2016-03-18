@@ -1589,29 +1589,39 @@ Server {
     }
   }
 
-  public void enableTable(final byte [] tableName) throws IOException {
+  public void enableTable(final byte[] tableName) throws IOException {
+    enableTable(tableName, false);
+  }
+
+  public void enableTable(final byte[] tableName, final boolean skipTableStateCheck)
+      throws IOException {
     checkInitialized();
     if (cpHost != null) {
-      cpHost.preEnableTable(tableName);
+      cpHost.preEnableTable(tableName, skipTableStateCheck);
     }
-    this.executorService.submit(new EnableTableHandler(this, tableName,
-      catalogTracker, assignmentManager, false));
+    this.executorService.submit(new EnableTableHandler(this, tableName, catalogTracker,
+        assignmentManager, skipTableStateCheck));
 
     if (cpHost != null) {
-      cpHost.postEnableTable(tableName);
+      cpHost.postEnableTable(tableName, skipTableStateCheck);
     }
   }
 
-  public void disableTable(final byte [] tableName) throws IOException {
+  public void disableTable(final byte[] tableName) throws IOException {
+    disableTable(tableName, false);
+  }
+
+  public void disableTable(final byte[] tableName, final boolean skipTableStateCheck)
+      throws IOException {
     checkInitialized();
     if (cpHost != null) {
-      cpHost.preDisableTable(tableName);
+      cpHost.preDisableTable(tableName, skipTableStateCheck);
     }
-    this.executorService.submit(new DisableTableHandler(this, tableName,
-        catalogTracker, assignmentManager, false));
+    this.executorService.submit(new DisableTableHandler(this, tableName, catalogTracker,
+        assignmentManager, skipTableStateCheck));
 
     if (cpHost != null) {
-      cpHost.postDisableTable(tableName);
+      cpHost.postDisableTable(tableName, skipTableStateCheck);
     }
   }
 
