@@ -33,7 +33,15 @@ Usually, global admins need to set quota for namespace, such as:
     # set quota for namespace, all the users can issue at most 100 read requests and
     # 1000 write requests to tables under ns1
     hbase> set_quota TYPE => READ, NAMESPACE => 'ns1', LIMIT => 100 
-    hbase> set_quota TYPE => WRITE, NAMESPACE => 'ns1', LIMIT => 1000 
+    hbase> set_quota TYPE => WRITE, NAMESPACE => 'ns1', LIMIT => 1000
+
+global admins can also cancel quota setting for namespace:
+    # cancel read quota setting for ns1
+    hbase> set_quota TYPE => READ, NAMESPACE => 'ns1', LIMIT => NONE
+    # cancel write quota setting for ns1
+    hbase> set_quota TYPE => WRITE, NAMESPACE => 'ns1', LIMIT => NONE
+    # cancle all quota settings for ns1
+    hbase> set_quota NAMESPACE => 'ns1', LIMIT => NONE
 
 namespace admins need to set quota for the user and table(under the namespace):
     # set quota for (user, table): u1 can issue at most 10 read requests to ns1:t1 per second
@@ -45,7 +53,11 @@ namespace admins can cancel quota setting for user and table(under the namespace
     # cancel read quota setting for (u1, ns1:t1):
     hbase> set_quota TYPE => READ, USER => 'u1', TABLE => 'ns1:t1', LIMIT => NONE 
     # cancel write quota setting for (u2, ns1:t1):
-    hbase> set_quota TYPE => WRITE, USER => 'u2', TABLE => 'ns1:t1', LIMIT => NONE 
+    hbase> set_quota TYPE => WRITE, USER => 'u2', TABLE => 'ns1:t1', LIMIT => NONE
+    # cancel all quota settings for (u1, ns1:t1)
+    hbase> set_quota USER => 'u1', TABLE => 'ns1:t1', LIMIT => NONE
+    # cancel all related quota settings about ns1:t1
+    hbase> set_quota TABLE => 'ns1:t1', LIMIT => NONE
 
 Meanwhile, gobal admins can bypass quota check for user and table:
     # bypass quota check when u1 access ns1:t1

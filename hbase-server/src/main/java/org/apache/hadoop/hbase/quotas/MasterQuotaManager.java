@@ -430,7 +430,6 @@ public class MasterQuotaManager implements RegionStateListener {
 
       // apply the new settings
       throttle = quotas.hasThrottle() ? quotas.getThrottle().toBuilder() : Throttle.newBuilder();
-
       switch (req.getType()) {
         case REQUEST_NUMBER:
           if (req.hasTimedQuota()) {
@@ -464,7 +463,7 @@ public class MasterQuotaManager implements RegionStateListener {
           if (req.hasTimedQuota()) {
             throttle.setReadNum(req.getTimedQuota());
           } else {
-            throttle.clearReqNum();
+            throttle.clearReadNum();
           }
           break;
         case READ_SIZE:

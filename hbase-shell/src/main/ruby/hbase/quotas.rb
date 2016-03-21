@@ -69,23 +69,53 @@ module Hbase
 
     def unthrottle(args)
       raise(ArgumentError, "Arguments should be a Hash") unless args.kind_of?(Hash)
+      if args.has_key?(TYPE)
+        type = ThrottleType.valueOf(args.delete(TYPE) + "_NUMBER")
+      end
       if args.has_key?(USER)
         user = args.delete(USER)
         if args.has_key?(TABLE)
           table = TableName.valueOf(args.delete(TABLE))
           raise(ArgumentError, "Unexpected arguments: " + args.inspect) unless args.empty?
-          settings = QuotaSettingsFactory.unthrottleUser(user, table)
+          settings = QuotaSettingsFactory.unthrottleUser(user, table, type)
         else
           raise(ArgumentError, "Must specify table") 
         end
+      elsif args.has_key?(TABLE)
+        table = args.delete(TABLE)
+        raise(ArgumentError, "Unexpected arguments: " + args.inspect) unless args.empty?
+        unthrottle_table(table)
+        return
       elsif args.has_key?(NAMESPACE)
         namespace = args.delete(NAMESPACE)
         raise(ArgumentError, "Unexpected arguments: " + args.inspect) unless args.empty?
-        settings = QuotaSettingsFactory.unthrottleNamespace(namespace)
+        settings = QuotaSettingsFactory.unthrottleNamespace(namespace, type)
       else
-        raise "One of USER=>TABLE or NAMESPACE must be specified"
+        raise "One of USER=>TABLE , TABLE or NAMESPACE must be specified"
       end
       @admin.setQuota(settings)
+    end
+
+    def unthrottle_table(table)
+      filter = QuotaFilter.new()
+      filter.setUserFilter("(.+)").setTableFilter(table)
+      $stdout.puts "start cancel all related quota settings about table #{table}..."
+
+      scanner = @admin.getQuotaRetriever(filter)
+      begin
+        iter = scanner.iterator
+        # Iterate results
+        while iter.hasNext
+          settings = iter.next
+          user = settings.getUserName()
+          table = settings.getTableName()
+          @admin.setQuota(QuotaSettingsFactory.unthrottleUser(user, table))
+          $stdout.puts "finish unthrottling for (USER => #{user}, TABLE => #{table})."
+        end
+      ensure
+        scanner.close()
+      end
+      $stdout.puts "finish cancel all related quota settings about table #{table}."
     end
 
     def set_global_bypass(bypass, args)

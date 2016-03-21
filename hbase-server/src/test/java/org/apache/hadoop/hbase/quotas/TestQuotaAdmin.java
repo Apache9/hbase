@@ -379,6 +379,72 @@ public class TestQuotaAdmin {
     assertNumResults(0, null);
   }
 
+  @Test
+  public void testUnthrottleWithQuotaType() throws Exception {
+    HBaseAdmin admin = TEST_UTIL.getHBaseAdmin();
+    TableName[] tables = new TableName[] {
+      TableName.valueOf("T0"), TableName.valueOf("T1"), TableName.valueOf("NS0:T2"),
+    };
+    String[] namespaces = new String[] { "NS0", "NS1", "NS2" };
+    String[] users = new String[] { "User0", "User1", "User2" };
+
+    for (String user: users) {
+      for (TableName table: tables) {
+        admin.setQuota(QuotaSettingsFactory
+          .throttleUser(user, table, ThrottleType.READ_NUMBER, 10, TimeUnit.MINUTES));
+        admin.setQuota(QuotaSettingsFactory
+          .throttleUser(user, table, ThrottleType.WRITE_NUMBER, 10, TimeUnit.MINUTES));
+      }
+    }
+
+    assertNumResults(18, null);
+    assertNumResults(6, new QuotaFilter().setUserFilter("(.+)").setTableFilter("T0"));
+    assertNumResults(6, new QuotaFilter().setUserFilter("(.+)").setTableFilter("NS0:T2"));
+
+    for (String user: users) {
+      for (TableName table: tables) {
+        admin.setQuota(QuotaSettingsFactory
+          .unthrottleUser(user, table, ThrottleType.READ_NUMBER));
+      }
+    }
+    assertNumResults(9, null);
+    assertNumResults(3, new QuotaFilter().setUserFilter("(.+)").setTableFilter("T0"));
+    assertNumResults(3, new QuotaFilter().setUserFilter("(.+)").setTableFilter("NS0:T2"));
+
+    for (String user: users) {
+      for (TableName table: tables) {
+        admin.setQuota(QuotaSettingsFactory
+          .unthrottleUser(user, table, ThrottleType.WRITE_NUMBER));
+      }
+    }
+    assertNumResults(0, null);
+    assertNumResults(0, new QuotaFilter().setUserFilter("(.+)").setTableFilter("T0"));
+    assertNumResults(0, new QuotaFilter().setUserFilter("(.+)").setTableFilter("NS0:T2"));
+
+    for (String ns : namespaces) {
+      admin.setQuota(QuotaSettingsFactory
+        .throttleNamespace(ns, ThrottleType.READ_NUMBER, 100, TimeUnit.MINUTES));
+      admin.setQuota(QuotaSettingsFactory
+        .throttleNamespace(ns, ThrottleType.WRITE_NUMBER, 100, TimeUnit.MINUTES));
+    }
+    assertNumResults(6, null);
+    assertNumResults(2, new QuotaFilter().setNamespaceFilter("NS0"));
+
+    for (String ns : namespaces) {
+      admin.setQuota(QuotaSettingsFactory
+        .unthrottleNamespace(ns, ThrottleType.READ_NUMBER));
+    }
+    assertNumResults(3, null);
+    assertNumResults(1, new QuotaFilter().setNamespaceFilter("NS0"));
+
+    for (String ns : namespaces) {
+      admin.setQuota(QuotaSettingsFactory
+        .unthrottleNamespace(ns, ThrottleType.WRITE_NUMBER));
+    }
+    assertNumResults(0, null);
+    assertNumResults(0, new QuotaFilter().setNamespaceFilter("NS0"));
+  }
+
   private void assertNumResults(int expected, final QuotaFilter filter) throws Exception {
     assertEquals(expected, countResults(filter));
   }
