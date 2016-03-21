@@ -144,8 +144,8 @@ public class TestMultiParallel {
    * @throws NoSuchFieldException
    * @throws SecurityException
    */
-  @Test(timeout=300000)
-  public void testActiveThreadsCount() throws Exception{
+  @Test(timeout = 300000)
+  public void testActiveThreadsCount() throws Exception {
     ThreadPoolExecutor executor = HTable.getDefaultExecutor(UTIL.getConfiguration());
     HTable table = new HTable(UTIL.getConfiguration(), TableName.valueOf(TEST_TABLE), executor);
     try {
@@ -158,7 +158,9 @@ public class TestMultiParallel {
       for (int i = 0; i < 20; i++) {
         table.batch(puts);
       }
-      assertEquals(regionservers.size(), executor.getLargestPoolSize());
+      assertTrue(
+        "expected at least " + regionservers.size() + " but got " + executor.getLargestPoolSize(),
+        regionservers.size() <= executor.getLargestPoolSize());
     } finally {
       table.close();
       executor.shutdownNow();
