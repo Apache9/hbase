@@ -146,16 +146,17 @@ public class TestMultiParallel {
    */
   @Test(timeout=300000)
   public void testActiveThreadsCount() throws Exception{
-    UTIL.getConfiguration().setLong("hbase.htable.threads.coresize", slaves + 1);
     ThreadPoolExecutor executor = HTable.getDefaultExecutor(UTIL.getConfiguration());
     HTable table = new HTable(UTIL.getConfiguration(), TableName.valueOf(TEST_TABLE), executor);
     try {
-      List<Row> puts = constructPutRequests(); // creates a Put for every region
-      table.batch(puts);
       Set<ServerName> regionservers = new HashSet<ServerName>();
       for (HRegion region : UTIL.getMiniHBaseCluster().getRegions(TableName.valueOf(TEST_TABLE))) {
         regionservers
             .add(UTIL.getMiniHBaseCluster().getServerHoldingRegion(region.getRegionName()));
+      }
+      List<Row> puts = constructPutRequests(); // creates a Put for every region
+      for (int i = 0; i < 20; i++) {
+        table.batch(puts);
       }
       assertEquals(regionservers.size(), executor.getLargestPoolSize());
     } finally {
