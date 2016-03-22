@@ -93,6 +93,7 @@ import org.apache.hadoop.hbase.regionserver.HRegion;
 import org.apache.hadoop.hbase.regionserver.HRegionServer;
 import org.apache.hadoop.hbase.regionserver.NoSuchColumnFamilyException;
 import org.apache.hadoop.hbase.regionserver.Store;
+import org.apache.hadoop.hbase.types.NumberCodecType;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
@@ -4817,6 +4818,43 @@ public class TestFromClientSide {
     }
   }
 
+  @Test
+  public void testIncrementWithTypes() throws Exception {
+    LOG.info("Starting testIncrementWithTypes");
+    final byte [] TABLENAME = Bytes.toBytes("testIncrementWithTypes");
+    HTable ht = TEST_UTIL.createTable(TABLENAME, FAMILY);
+
+    byte [][] QUALIFIERS = new byte [][] {
+        Bytes.toBytes("A")
+    };
+
+    Increment inc = new Increment(ROW);
+    for (NumberCodecType type : NumberCodecType.values()) {
+      inc.addColumn(FAMILY, type.name().getBytes(), 1);
+    }
+    ht.increment(inc);
+
+    // Verify expected results
+    Result r = ht.get(new Get(ROW));
+    Cell [] kvs = r.rawCells();
+    assertEquals(NumberCodecType.values().length, kvs.length);
+    for (int i = 0; i < kvs.length; ++i) {
+      assertIncrementKey(kvs[i], ROW, FAMILY, CellUtil.cloneQualifier(kvs[i]), 1);
+    }
+
+    // inc by 0
+    inc = new Increment(ROW);
+    for (NumberCodecType type : NumberCodecType.values()) {
+      inc.addColumn(FAMILY, type.name().getBytes(), 0);
+    }
+    ht.increment(inc);
+    r = ht.get(new Get(ROW));
+    kvs = r.rawCells();
+    assertEquals(NumberCodecType.values().length, kvs.length);
+    for (int i = 0; i < kvs.length; ++i) {
+      assertIncrementKey(kvs[i], ROW, FAMILY, CellUtil.cloneQualifier(kvs[i]), 1);
+    }
+  }
 
   @Test
   public void testClientPoolRoundRobin() throws IOException {

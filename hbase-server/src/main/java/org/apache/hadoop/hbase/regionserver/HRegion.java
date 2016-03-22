@@ -145,6 +145,7 @@ import org.apache.hadoop.hbase.regionserver.wal.HLogUtil;
 import org.apache.hadoop.hbase.regionserver.wal.WALEdit;
 import org.apache.hadoop.hbase.snapshot.SnapshotDescriptionUtils;
 import org.apache.hadoop.hbase.snapshot.SnapshotManifest;
+import org.apache.hadoop.hbase.types.NumberCodecType;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.CancelableProgressable;
 import org.apache.hadoop.hbase.util.ClassSize;
@@ -5906,15 +5907,19 @@ public class HRegion implements HeapSize { // , Writable{
 
               Cell c = null;
               long ts = now;
+              NumberCodecType codec = NumberCodecType.RAW_LONG;
               if (idx < results.size() && CellUtil.matchingQualifier(results.get(idx), cell)) {
                 c = results.get(idx);
                 ts = Math.max(now, c.getTimestamp());
-                if(c.getValueLength() == Bytes.SIZEOF_LONG) {
-                  amount += Bytes.toLong(c.getValueArray(), c.getValueOffset(), Bytes.SIZEOF_LONG);
-                } else {
+                codec = increment.getNumberCodecType(family.getKey(), CellUtil.cloneQualifier(c));
+                try {
+                  amount += codec.decode(c.getValueArray(),
+                      c.getValueOffset(),
+                      c.getValueLength()).longValue();
+                } catch (Exception ex) {
                   // throw DoNotRetryIOException instead of IllegalArgumentException
-                  throw new org.apache.hadoop.hbase.DoNotRetryIOException(
-                      "Attempted to increment field that isn't 64 bits wide");
+                  throw new DoNotRetryIOException(
+                      "Attempted to increment field that has incorrect type: " + cell);
                 }
                 // Carry tags forward from previous version
                 if (c.getTagsLength() > 0) {
@@ -5930,7 +5935,7 @@ public class HRegion implements HeapSize { // , Writable{
 
               // Append new incremented KeyValue to list
               byte[] q = CellUtil.cloneQualifier(cell);
-              byte[] val = Bytes.toBytes(amount);
+              byte[] val = codec.encode(amount);
 
               // Add the TTL tag if the mutation carried one
               if (increment.getTTL() != Long.MAX_VALUE) {
