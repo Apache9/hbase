@@ -5459,7 +5459,7 @@ public class HRegion implements HeapSize { // , Writable{
         //    waledits
         doProcessRowWithTimeout(
             processor, now, this, mutations, walEdit, timeout);
-        if (!processor.getUnmetConditions().isEmpty()) {
+        if (processor.getUnmetConditions() != null && !processor.getUnmetConditions().isEmpty()) {
           return; // some conditions unmet
         }
 
