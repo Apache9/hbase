@@ -18,6 +18,7 @@
 package org.apache.hadoop.hbase.regionserver;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
@@ -28,10 +29,13 @@ import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.DoNotRetryIOException;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.KeyValueUtil;
+import org.apache.hadoop.hbase.client.Condition;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Durability;
+import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Mutation;
 import org.apache.hadoop.hbase.client.Put;
+import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.protobuf.generated.MultiRowMutationProtos.MultiRowMutationProcessorRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MultiRowMutationProtos.MultiRowMutationProcessorResponse;
 import org.apache.hadoop.hbase.regionserver.wal.WALEdit;
@@ -44,18 +48,38 @@ import org.apache.hadoop.hbase.util.Bytes;
 class MultiRowMutationProcessor extends BaseRowProcessor<MultiRowMutationProcessorRequest,
 MultiRowMutationProcessorResponse> {
   Collection<byte[]> rowsToLock;
+  Collection<Condition> conditions;
   Collection<Mutation> mutations;
   MiniBatchOperationInProgress<Mutation> miniBatch;
+  List<Integer> unmetConditions;
 
   MultiRowMutationProcessor(Collection<Mutation> mutations,
                             Collection<byte[]> rowsToLock) {
+    this(mutations, null, rowsToLock);
+  }
+
+  MultiRowMutationProcessor(Collection<Mutation> mutations,
+      Collection<Condition> conditions,
+      Collection<byte[]> rowsToLock) {
     this.rowsToLock = rowsToLock;
+    this.conditions = conditions;
     this.mutations = mutations;
+    this.unmetConditions = new ArrayList<Integer>();
   }
 
   @Override
   public Collection<byte[]> getRowsToLock() {
     return rowsToLock;
+  }
+
+  @Override
+  public Collection<Condition> getConditions() {
+    return conditions;
+  }
+
+  @Override
+  public Collection<Integer> getUnmetConditions() {
+    return unmetConditions;
   }
 
   @Override
@@ -73,6 +97,20 @@ MultiRowMutationProcessorResponse> {
                       HRegion region,
                       List<Mutation> mutationsToApply,
                       WALEdit walEdit) throws IOException {
+    // check the conditions
+    int i = 0;
+    for (Condition c : conditions) {
+      Get get = new Get(c.getRow());
+      get.addColumn(c.getFamily(), c.getQualifier());
+      List<Cell> cells = region.get(get, true);
+      if (!c.isMatch(Result.create(cells))) { // no match
+        unmetConditions.add(i);
+        ++i;
+      }
+    }
+    if (!unmetConditions.isEmpty()) {
+      return;
+    }
     byte[] byteNow = Bytes.toBytes(now);
     // Check mutations
     for (Mutation m : this.mutations) {

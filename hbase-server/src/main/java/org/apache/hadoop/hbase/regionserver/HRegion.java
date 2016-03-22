@@ -92,6 +92,7 @@ import org.apache.hadoop.hbase.backup.HFileArchiver;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.client.Action;
 import org.apache.hadoop.hbase.client.Append;
+import org.apache.hadoop.hbase.client.Condition;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Durability;
 import org.apache.hadoop.hbase.client.Get;
@@ -5335,8 +5336,32 @@ public class HRegion implements HeapSize { // , Writable{
    */
   public void mutateRowsWithLocks(Collection<Mutation> mutations,
       Collection<byte[]> rowsToLock, long nonceGroup, long nonce) throws IOException {
-    MultiRowMutationProcessor proc = new MultiRowMutationProcessor(mutations, rowsToLock);
+    MultiRowMutationProcessor proc =
+        new MultiRowMutationProcessor(mutations, new ArrayList<Condition>(), rowsToLock);
     processRowsWithLocks(proc, -1, nonceGroup, nonce);
+  }
+
+  /**
+   * Perform atomic mutations within the region.
+   * @param mutations The list of mutations to perform.
+   * <code>mutations</code> can contain operations for multiple rows.
+   * Caller has to ensure that all rows are contained in this region.
+   * @param conditions The list of conditions to check.
+   * @param rowsToLock Rows to lock
+   * @param nonceGroup Optional nonce group of the operation (client Id)
+   * @param nonce Optional nonce of the operation (unique random id to ensure "more idempotence")
+   * If multiple rows are locked care should be taken that
+   * <code>rowsToLock</code> is sorted in order to avoid deadlocks.
+   * @return The collection of failed conditions indexes
+   * @throws IOException
+   */
+  public Collection<Integer> mutateRowsWithLocks(Collection<Mutation> mutations,
+      Collection<Condition> conditions,
+      Collection<byte[]> rowsToLock, long nonceGroup, long nonce) throws IOException {
+    MultiRowMutationProcessor proc =
+        new MultiRowMutationProcessor(mutations, conditions, rowsToLock);
+    processRowsWithLocks(proc, -1, nonceGroup, nonce);
+    return proc.getUnmetConditions();
   }
 
   /**
@@ -5434,6 +5459,9 @@ public class HRegion implements HeapSize { // , Writable{
         //    waledits
         doProcessRowWithTimeout(
             processor, now, this, mutations, walEdit, timeout);
+        if (!processor.getUnmetConditions().isEmpty()) {
+          return; // some conditions unmet
+        }
 
         if (!mutations.isEmpty()) {
           // 5. Get a mvcc write number

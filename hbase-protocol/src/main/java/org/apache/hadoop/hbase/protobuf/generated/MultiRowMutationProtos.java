@@ -731,6 +731,31 @@ public final class MultiRowMutationProtos {
      * <code>optional uint64 nonce = 3;</code>
      */
     long getNonce();
+
+    // repeated .Condition condition = 4;
+    /**
+     * <code>repeated .Condition condition = 4;</code>
+     */
+    java.util.List<org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Condition> 
+        getConditionList();
+    /**
+     * <code>repeated .Condition condition = 4;</code>
+     */
+    org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Condition getCondition(int index);
+    /**
+     * <code>repeated .Condition condition = 4;</code>
+     */
+    int getConditionCount();
+    /**
+     * <code>repeated .Condition condition = 4;</code>
+     */
+    java.util.List<? extends org.apache.hadoop.hbase.protobuf.generated.ClientProtos.ConditionOrBuilder> 
+        getConditionOrBuilderList();
+    /**
+     * <code>repeated .Condition condition = 4;</code>
+     */
+    org.apache.hadoop.hbase.protobuf.generated.ClientProtos.ConditionOrBuilder getConditionOrBuilder(
+        int index);
   }
   /**
    * Protobuf type {@code MutateRowsRequest}
@@ -801,6 +826,14 @@ public final class MultiRowMutationProtos {
               nonce_ = input.readUInt64();
               break;
             }
+            case 34: {
+              if (!((mutable_bitField0_ & 0x00000008) == 0x00000008)) {
+                condition_ = new java.util.ArrayList<org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Condition>();
+                mutable_bitField0_ |= 0x00000008;
+              }
+              condition_.add(input.readMessage(org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Condition.PARSER, extensionRegistry));
+              break;
+            }
           }
         }
       } catch (com.google.protobuf.InvalidProtocolBufferException e) {
@@ -811,6 +844,9 @@ public final class MultiRowMutationProtos {
       } finally {
         if (((mutable_bitField0_ & 0x00000001) == 0x00000001)) {
           mutationRequest_ = java.util.Collections.unmodifiableList(mutationRequest_);
+        }
+        if (((mutable_bitField0_ & 0x00000008) == 0x00000008)) {
+          condition_ = java.util.Collections.unmodifiableList(condition_);
         }
         this.unknownFields = unknownFields.build();
         makeExtensionsImmutable();
@@ -912,10 +948,47 @@ public final class MultiRowMutationProtos {
       return nonce_;
     }
 
+    // repeated .Condition condition = 4;
+    public static final int CONDITION_FIELD_NUMBER = 4;
+    private java.util.List<org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Condition> condition_;
+    /**
+     * <code>repeated .Condition condition = 4;</code>
+     */
+    public java.util.List<org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Condition> getConditionList() {
+      return condition_;
+    }
+    /**
+     * <code>repeated .Condition condition = 4;</code>
+     */
+    public java.util.List<? extends org.apache.hadoop.hbase.protobuf.generated.ClientProtos.ConditionOrBuilder> 
+        getConditionOrBuilderList() {
+      return condition_;
+    }
+    /**
+     * <code>repeated .Condition condition = 4;</code>
+     */
+    public int getConditionCount() {
+      return condition_.size();
+    }
+    /**
+     * <code>repeated .Condition condition = 4;</code>
+     */
+    public org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Condition getCondition(int index) {
+      return condition_.get(index);
+    }
+    /**
+     * <code>repeated .Condition condition = 4;</code>
+     */
+    public org.apache.hadoop.hbase.protobuf.generated.ClientProtos.ConditionOrBuilder getConditionOrBuilder(
+        int index) {
+      return condition_.get(index);
+    }
+
     private void initFields() {
       mutationRequest_ = java.util.Collections.emptyList();
       nonceGroup_ = 0L;
       nonce_ = 0L;
+      condition_ = java.util.Collections.emptyList();
     }
     private byte memoizedIsInitialized = -1;
     public final boolean isInitialized() {
@@ -924,6 +997,12 @@ public final class MultiRowMutationProtos {
 
       for (int i = 0; i < getMutationRequestCount(); i++) {
         if (!getMutationRequest(i).isInitialized()) {
+          memoizedIsInitialized = 0;
+          return false;
+        }
+      }
+      for (int i = 0; i < getConditionCount(); i++) {
+        if (!getCondition(i).isInitialized()) {
           memoizedIsInitialized = 0;
           return false;
         }
@@ -943,6 +1022,9 @@ public final class MultiRowMutationProtos {
       }
       if (((bitField0_ & 0x00000002) == 0x00000002)) {
         output.writeUInt64(3, nonce_);
+      }
+      for (int i = 0; i < condition_.size(); i++) {
+        output.writeMessage(4, condition_.get(i));
       }
       getUnknownFields().writeTo(output);
     }
@@ -964,6 +1046,10 @@ public final class MultiRowMutationProtos {
       if (((bitField0_ & 0x00000002) == 0x00000002)) {
         size += com.google.protobuf.CodedOutputStream
           .computeUInt64Size(3, nonce_);
+      }
+      for (int i = 0; i < condition_.size(); i++) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeMessageSize(4, condition_.get(i));
       }
       size += getUnknownFields().getSerializedSize();
       memoizedSerializedSize = size;
@@ -1000,6 +1086,8 @@ public final class MultiRowMutationProtos {
         result = result && (getNonce()
             == other.getNonce());
       }
+      result = result && getConditionList()
+          .equals(other.getConditionList());
       result = result &&
           getUnknownFields().equals(other.getUnknownFields());
       return result;
@@ -1024,6 +1112,10 @@ public final class MultiRowMutationProtos {
       if (hasNonce()) {
         hash = (37 * hash) + NONCE_FIELD_NUMBER;
         hash = (53 * hash) + hashLong(getNonce());
+      }
+      if (getConditionCount() > 0) {
+        hash = (37 * hash) + CONDITION_FIELD_NUMBER;
+        hash = (53 * hash) + getConditionList().hashCode();
       }
       hash = (29 * hash) + getUnknownFields().hashCode();
       memoizedHashCode = hash;
@@ -1127,6 +1219,7 @@ public final class MultiRowMutationProtos {
       private void maybeForceBuilderInitialization() {
         if (com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders) {
           getMutationRequestFieldBuilder();
+          getConditionFieldBuilder();
         }
       }
       private static Builder create() {
@@ -1145,6 +1238,12 @@ public final class MultiRowMutationProtos {
         bitField0_ = (bitField0_ & ~0x00000002);
         nonce_ = 0L;
         bitField0_ = (bitField0_ & ~0x00000004);
+        if (conditionBuilder_ == null) {
+          condition_ = java.util.Collections.emptyList();
+          bitField0_ = (bitField0_ & ~0x00000008);
+        } else {
+          conditionBuilder_.clear();
+        }
         return this;
       }
 
@@ -1190,6 +1289,15 @@ public final class MultiRowMutationProtos {
           to_bitField0_ |= 0x00000002;
         }
         result.nonce_ = nonce_;
+        if (conditionBuilder_ == null) {
+          if (((bitField0_ & 0x00000008) == 0x00000008)) {
+            condition_ = java.util.Collections.unmodifiableList(condition_);
+            bitField0_ = (bitField0_ & ~0x00000008);
+          }
+          result.condition_ = condition_;
+        } else {
+          result.condition_ = conditionBuilder_.build();
+        }
         result.bitField0_ = to_bitField0_;
         onBuilt();
         return result;
@@ -1238,6 +1346,32 @@ public final class MultiRowMutationProtos {
         if (other.hasNonce()) {
           setNonce(other.getNonce());
         }
+        if (conditionBuilder_ == null) {
+          if (!other.condition_.isEmpty()) {
+            if (condition_.isEmpty()) {
+              condition_ = other.condition_;
+              bitField0_ = (bitField0_ & ~0x00000008);
+            } else {
+              ensureConditionIsMutable();
+              condition_.addAll(other.condition_);
+            }
+            onChanged();
+          }
+        } else {
+          if (!other.condition_.isEmpty()) {
+            if (conditionBuilder_.isEmpty()) {
+              conditionBuilder_.dispose();
+              conditionBuilder_ = null;
+              condition_ = other.condition_;
+              bitField0_ = (bitField0_ & ~0x00000008);
+              conditionBuilder_ = 
+                com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders ?
+                   getConditionFieldBuilder() : null;
+            } else {
+              conditionBuilder_.addAllMessages(other.condition_);
+            }
+          }
+        }
         this.mergeUnknownFields(other.getUnknownFields());
         return this;
       }
@@ -1245,6 +1379,12 @@ public final class MultiRowMutationProtos {
       public final boolean isInitialized() {
         for (int i = 0; i < getMutationRequestCount(); i++) {
           if (!getMutationRequest(i).isInitialized()) {
+            
+            return false;
+          }
+        }
+        for (int i = 0; i < getConditionCount(); i++) {
+          if (!getCondition(i).isInitialized()) {
             
             return false;
           }
@@ -1577,6 +1717,246 @@ public final class MultiRowMutationProtos {
         return this;
       }
 
+      // repeated .Condition condition = 4;
+      private java.util.List<org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Condition> condition_ =
+        java.util.Collections.emptyList();
+      private void ensureConditionIsMutable() {
+        if (!((bitField0_ & 0x00000008) == 0x00000008)) {
+          condition_ = new java.util.ArrayList<org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Condition>(condition_);
+          bitField0_ |= 0x00000008;
+         }
+      }
+
+      private com.google.protobuf.RepeatedFieldBuilder<
+          org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Condition, org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Condition.Builder, org.apache.hadoop.hbase.protobuf.generated.ClientProtos.ConditionOrBuilder> conditionBuilder_;
+
+      /**
+       * <code>repeated .Condition condition = 4;</code>
+       */
+      public java.util.List<org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Condition> getConditionList() {
+        if (conditionBuilder_ == null) {
+          return java.util.Collections.unmodifiableList(condition_);
+        } else {
+          return conditionBuilder_.getMessageList();
+        }
+      }
+      /**
+       * <code>repeated .Condition condition = 4;</code>
+       */
+      public int getConditionCount() {
+        if (conditionBuilder_ == null) {
+          return condition_.size();
+        } else {
+          return conditionBuilder_.getCount();
+        }
+      }
+      /**
+       * <code>repeated .Condition condition = 4;</code>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Condition getCondition(int index) {
+        if (conditionBuilder_ == null) {
+          return condition_.get(index);
+        } else {
+          return conditionBuilder_.getMessage(index);
+        }
+      }
+      /**
+       * <code>repeated .Condition condition = 4;</code>
+       */
+      public Builder setCondition(
+          int index, org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Condition value) {
+        if (conditionBuilder_ == null) {
+          if (value == null) {
+            throw new NullPointerException();
+          }
+          ensureConditionIsMutable();
+          condition_.set(index, value);
+          onChanged();
+        } else {
+          conditionBuilder_.setMessage(index, value);
+        }
+        return this;
+      }
+      /**
+       * <code>repeated .Condition condition = 4;</code>
+       */
+      public Builder setCondition(
+          int index, org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Condition.Builder builderForValue) {
+        if (conditionBuilder_ == null) {
+          ensureConditionIsMutable();
+          condition_.set(index, builderForValue.build());
+          onChanged();
+        } else {
+          conditionBuilder_.setMessage(index, builderForValue.build());
+        }
+        return this;
+      }
+      /**
+       * <code>repeated .Condition condition = 4;</code>
+       */
+      public Builder addCondition(org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Condition value) {
+        if (conditionBuilder_ == null) {
+          if (value == null) {
+            throw new NullPointerException();
+          }
+          ensureConditionIsMutable();
+          condition_.add(value);
+          onChanged();
+        } else {
+          conditionBuilder_.addMessage(value);
+        }
+        return this;
+      }
+      /**
+       * <code>repeated .Condition condition = 4;</code>
+       */
+      public Builder addCondition(
+          int index, org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Condition value) {
+        if (conditionBuilder_ == null) {
+          if (value == null) {
+            throw new NullPointerException();
+          }
+          ensureConditionIsMutable();
+          condition_.add(index, value);
+          onChanged();
+        } else {
+          conditionBuilder_.addMessage(index, value);
+        }
+        return this;
+      }
+      /**
+       * <code>repeated .Condition condition = 4;</code>
+       */
+      public Builder addCondition(
+          org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Condition.Builder builderForValue) {
+        if (conditionBuilder_ == null) {
+          ensureConditionIsMutable();
+          condition_.add(builderForValue.build());
+          onChanged();
+        } else {
+          conditionBuilder_.addMessage(builderForValue.build());
+        }
+        return this;
+      }
+      /**
+       * <code>repeated .Condition condition = 4;</code>
+       */
+      public Builder addCondition(
+          int index, org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Condition.Builder builderForValue) {
+        if (conditionBuilder_ == null) {
+          ensureConditionIsMutable();
+          condition_.add(index, builderForValue.build());
+          onChanged();
+        } else {
+          conditionBuilder_.addMessage(index, builderForValue.build());
+        }
+        return this;
+      }
+      /**
+       * <code>repeated .Condition condition = 4;</code>
+       */
+      public Builder addAllCondition(
+          java.lang.Iterable<? extends org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Condition> values) {
+        if (conditionBuilder_ == null) {
+          ensureConditionIsMutable();
+          super.addAll(values, condition_);
+          onChanged();
+        } else {
+          conditionBuilder_.addAllMessages(values);
+        }
+        return this;
+      }
+      /**
+       * <code>repeated .Condition condition = 4;</code>
+       */
+      public Builder clearCondition() {
+        if (conditionBuilder_ == null) {
+          condition_ = java.util.Collections.emptyList();
+          bitField0_ = (bitField0_ & ~0x00000008);
+          onChanged();
+        } else {
+          conditionBuilder_.clear();
+        }
+        return this;
+      }
+      /**
+       * <code>repeated .Condition condition = 4;</code>
+       */
+      public Builder removeCondition(int index) {
+        if (conditionBuilder_ == null) {
+          ensureConditionIsMutable();
+          condition_.remove(index);
+          onChanged();
+        } else {
+          conditionBuilder_.remove(index);
+        }
+        return this;
+      }
+      /**
+       * <code>repeated .Condition condition = 4;</code>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Condition.Builder getConditionBuilder(
+          int index) {
+        return getConditionFieldBuilder().getBuilder(index);
+      }
+      /**
+       * <code>repeated .Condition condition = 4;</code>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.ClientProtos.ConditionOrBuilder getConditionOrBuilder(
+          int index) {
+        if (conditionBuilder_ == null) {
+          return condition_.get(index);  } else {
+          return conditionBuilder_.getMessageOrBuilder(index);
+        }
+      }
+      /**
+       * <code>repeated .Condition condition = 4;</code>
+       */
+      public java.util.List<? extends org.apache.hadoop.hbase.protobuf.generated.ClientProtos.ConditionOrBuilder> 
+           getConditionOrBuilderList() {
+        if (conditionBuilder_ != null) {
+          return conditionBuilder_.getMessageOrBuilderList();
+        } else {
+          return java.util.Collections.unmodifiableList(condition_);
+        }
+      }
+      /**
+       * <code>repeated .Condition condition = 4;</code>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Condition.Builder addConditionBuilder() {
+        return getConditionFieldBuilder().addBuilder(
+            org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Condition.getDefaultInstance());
+      }
+      /**
+       * <code>repeated .Condition condition = 4;</code>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Condition.Builder addConditionBuilder(
+          int index) {
+        return getConditionFieldBuilder().addBuilder(
+            index, org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Condition.getDefaultInstance());
+      }
+      /**
+       * <code>repeated .Condition condition = 4;</code>
+       */
+      public java.util.List<org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Condition.Builder> 
+           getConditionBuilderList() {
+        return getConditionFieldBuilder().getBuilderList();
+      }
+      private com.google.protobuf.RepeatedFieldBuilder<
+          org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Condition, org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Condition.Builder, org.apache.hadoop.hbase.protobuf.generated.ClientProtos.ConditionOrBuilder> 
+          getConditionFieldBuilder() {
+        if (conditionBuilder_ == null) {
+          conditionBuilder_ = new com.google.protobuf.RepeatedFieldBuilder<
+              org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Condition, org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Condition.Builder, org.apache.hadoop.hbase.protobuf.generated.ClientProtos.ConditionOrBuilder>(
+                  condition_,
+                  ((bitField0_ & 0x00000008) == 0x00000008),
+                  getParentForChildren(),
+                  isClean());
+          condition_ = null;
+        }
+        return conditionBuilder_;
+      }
+
       // @@protoc_insertion_point(builder_scope:MutateRowsRequest)
     }
 
@@ -1590,6 +1970,20 @@ public final class MultiRowMutationProtos {
 
   public interface MutateRowsResponseOrBuilder
       extends com.google.protobuf.MessageOrBuilder {
+
+    // repeated int32 unmet_conditions = 1;
+    /**
+     * <code>repeated int32 unmet_conditions = 1;</code>
+     */
+    java.util.List<java.lang.Integer> getUnmetConditionsList();
+    /**
+     * <code>repeated int32 unmet_conditions = 1;</code>
+     */
+    int getUnmetConditionsCount();
+    /**
+     * <code>repeated int32 unmet_conditions = 1;</code>
+     */
+    int getUnmetConditions(int index);
   }
   /**
    * Protobuf type {@code MutateRowsResponse}
@@ -1624,6 +2018,7 @@ public final class MultiRowMutationProtos {
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
       initFields();
+      int mutable_bitField0_ = 0;
       com.google.protobuf.UnknownFieldSet.Builder unknownFields =
           com.google.protobuf.UnknownFieldSet.newBuilder();
       try {
@@ -1641,6 +2036,27 @@ public final class MultiRowMutationProtos {
               }
               break;
             }
+            case 8: {
+              if (!((mutable_bitField0_ & 0x00000001) == 0x00000001)) {
+                unmetConditions_ = new java.util.ArrayList<java.lang.Integer>();
+                mutable_bitField0_ |= 0x00000001;
+              }
+              unmetConditions_.add(input.readInt32());
+              break;
+            }
+            case 10: {
+              int length = input.readRawVarint32();
+              int limit = input.pushLimit(length);
+              if (!((mutable_bitField0_ & 0x00000001) == 0x00000001) && input.getBytesUntilLimit() > 0) {
+                unmetConditions_ = new java.util.ArrayList<java.lang.Integer>();
+                mutable_bitField0_ |= 0x00000001;
+              }
+              while (input.getBytesUntilLimit() > 0) {
+                unmetConditions_.add(input.readInt32());
+              }
+              input.popLimit(limit);
+              break;
+            }
           }
         }
       } catch (com.google.protobuf.InvalidProtocolBufferException e) {
@@ -1649,6 +2065,9 @@ public final class MultiRowMutationProtos {
         throw new com.google.protobuf.InvalidProtocolBufferException(
             e.getMessage()).setUnfinishedMessage(this);
       } finally {
+        if (((mutable_bitField0_ & 0x00000001) == 0x00000001)) {
+          unmetConditions_ = java.util.Collections.unmodifiableList(unmetConditions_);
+        }
         this.unknownFields = unknownFields.build();
         makeExtensionsImmutable();
       }
@@ -1680,7 +2099,31 @@ public final class MultiRowMutationProtos {
       return PARSER;
     }
 
+    // repeated int32 unmet_conditions = 1;
+    public static final int UNMET_CONDITIONS_FIELD_NUMBER = 1;
+    private java.util.List<java.lang.Integer> unmetConditions_;
+    /**
+     * <code>repeated int32 unmet_conditions = 1;</code>
+     */
+    public java.util.List<java.lang.Integer>
+        getUnmetConditionsList() {
+      return unmetConditions_;
+    }
+    /**
+     * <code>repeated int32 unmet_conditions = 1;</code>
+     */
+    public int getUnmetConditionsCount() {
+      return unmetConditions_.size();
+    }
+    /**
+     * <code>repeated int32 unmet_conditions = 1;</code>
+     */
+    public int getUnmetConditions(int index) {
+      return unmetConditions_.get(index);
+    }
+
     private void initFields() {
+      unmetConditions_ = java.util.Collections.emptyList();
     }
     private byte memoizedIsInitialized = -1;
     public final boolean isInitialized() {
@@ -1694,6 +2137,9 @@ public final class MultiRowMutationProtos {
     public void writeTo(com.google.protobuf.CodedOutputStream output)
                         throws java.io.IOException {
       getSerializedSize();
+      for (int i = 0; i < unmetConditions_.size(); i++) {
+        output.writeInt32(1, unmetConditions_.get(i));
+      }
       getUnknownFields().writeTo(output);
     }
 
@@ -1703,6 +2149,15 @@ public final class MultiRowMutationProtos {
       if (size != -1) return size;
 
       size = 0;
+      {
+        int dataSize = 0;
+        for (int i = 0; i < unmetConditions_.size(); i++) {
+          dataSize += com.google.protobuf.CodedOutputStream
+            .computeInt32SizeNoTag(unmetConditions_.get(i));
+        }
+        size += dataSize;
+        size += 1 * getUnmetConditionsList().size();
+      }
       size += getUnknownFields().getSerializedSize();
       memoizedSerializedSize = size;
       return size;
@@ -1726,6 +2181,8 @@ public final class MultiRowMutationProtos {
       org.apache.hadoop.hbase.protobuf.generated.MultiRowMutationProtos.MutateRowsResponse other = (org.apache.hadoop.hbase.protobuf.generated.MultiRowMutationProtos.MutateRowsResponse) obj;
 
       boolean result = true;
+      result = result && getUnmetConditionsList()
+          .equals(other.getUnmetConditionsList());
       result = result &&
           getUnknownFields().equals(other.getUnknownFields());
       return result;
@@ -1739,6 +2196,10 @@ public final class MultiRowMutationProtos {
       }
       int hash = 41;
       hash = (19 * hash) + getDescriptorForType().hashCode();
+      if (getUnmetConditionsCount() > 0) {
+        hash = (37 * hash) + UNMET_CONDITIONS_FIELD_NUMBER;
+        hash = (53 * hash) + getUnmetConditionsList().hashCode();
+      }
       hash = (29 * hash) + getUnknownFields().hashCode();
       memoizedHashCode = hash;
       return hash;
@@ -1848,6 +2309,8 @@ public final class MultiRowMutationProtos {
 
       public Builder clear() {
         super.clear();
+        unmetConditions_ = java.util.Collections.emptyList();
+        bitField0_ = (bitField0_ & ~0x00000001);
         return this;
       }
 
@@ -1874,6 +2337,12 @@ public final class MultiRowMutationProtos {
 
       public org.apache.hadoop.hbase.protobuf.generated.MultiRowMutationProtos.MutateRowsResponse buildPartial() {
         org.apache.hadoop.hbase.protobuf.generated.MultiRowMutationProtos.MutateRowsResponse result = new org.apache.hadoop.hbase.protobuf.generated.MultiRowMutationProtos.MutateRowsResponse(this);
+        int from_bitField0_ = bitField0_;
+        if (((bitField0_ & 0x00000001) == 0x00000001)) {
+          unmetConditions_ = java.util.Collections.unmodifiableList(unmetConditions_);
+          bitField0_ = (bitField0_ & ~0x00000001);
+        }
+        result.unmetConditions_ = unmetConditions_;
         onBuilt();
         return result;
       }
@@ -1889,6 +2358,16 @@ public final class MultiRowMutationProtos {
 
       public Builder mergeFrom(org.apache.hadoop.hbase.protobuf.generated.MultiRowMutationProtos.MutateRowsResponse other) {
         if (other == org.apache.hadoop.hbase.protobuf.generated.MultiRowMutationProtos.MutateRowsResponse.getDefaultInstance()) return this;
+        if (!other.unmetConditions_.isEmpty()) {
+          if (unmetConditions_.isEmpty()) {
+            unmetConditions_ = other.unmetConditions_;
+            bitField0_ = (bitField0_ & ~0x00000001);
+          } else {
+            ensureUnmetConditionsIsMutable();
+            unmetConditions_.addAll(other.unmetConditions_);
+          }
+          onChanged();
+        }
         this.mergeUnknownFields(other.getUnknownFields());
         return this;
       }
@@ -1912,6 +2391,73 @@ public final class MultiRowMutationProtos {
             mergeFrom(parsedMessage);
           }
         }
+        return this;
+      }
+      private int bitField0_;
+
+      // repeated int32 unmet_conditions = 1;
+      private java.util.List<java.lang.Integer> unmetConditions_ = java.util.Collections.emptyList();
+      private void ensureUnmetConditionsIsMutable() {
+        if (!((bitField0_ & 0x00000001) == 0x00000001)) {
+          unmetConditions_ = new java.util.ArrayList<java.lang.Integer>(unmetConditions_);
+          bitField0_ |= 0x00000001;
+         }
+      }
+      /**
+       * <code>repeated int32 unmet_conditions = 1;</code>
+       */
+      public java.util.List<java.lang.Integer>
+          getUnmetConditionsList() {
+        return java.util.Collections.unmodifiableList(unmetConditions_);
+      }
+      /**
+       * <code>repeated int32 unmet_conditions = 1;</code>
+       */
+      public int getUnmetConditionsCount() {
+        return unmetConditions_.size();
+      }
+      /**
+       * <code>repeated int32 unmet_conditions = 1;</code>
+       */
+      public int getUnmetConditions(int index) {
+        return unmetConditions_.get(index);
+      }
+      /**
+       * <code>repeated int32 unmet_conditions = 1;</code>
+       */
+      public Builder setUnmetConditions(
+          int index, int value) {
+        ensureUnmetConditionsIsMutable();
+        unmetConditions_.set(index, value);
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>repeated int32 unmet_conditions = 1;</code>
+       */
+      public Builder addUnmetConditions(int value) {
+        ensureUnmetConditionsIsMutable();
+        unmetConditions_.add(value);
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>repeated int32 unmet_conditions = 1;</code>
+       */
+      public Builder addAllUnmetConditions(
+          java.lang.Iterable<? extends java.lang.Integer> values) {
+        ensureUnmetConditionsIsMutable();
+        super.addAll(values, unmetConditions_);
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>repeated int32 unmet_conditions = 1;</code>
+       */
+      public Builder clearUnmetConditions() {
+        unmetConditions_ = java.util.Collections.emptyList();
+        bitField0_ = (bitField0_ & ~0x00000001);
+        onChanged();
         return this;
       }
 
@@ -2189,14 +2735,16 @@ public final class MultiRowMutationProtos {
     java.lang.String[] descriptorData = {
       "\n\026MultiRowMutation.proto\032\014Client.proto\"\"" +
       "\n MultiRowMutationProcessorRequest\"#\n!Mu" +
-      "ltiRowMutationProcessorResponse\"a\n\021Mutat" +
-      "eRowsRequest\022(\n\020mutation_request\030\001 \003(\0132\016" +
-      ".MutationProto\022\023\n\013nonce_group\030\002 \001(\004\022\r\n\005n" +
-      "once\030\003 \001(\004\"\024\n\022MutateRowsResponse2P\n\027Mult" +
-      "iRowMutationService\0225\n\nMutateRows\022\022.Muta" +
-      "teRowsRequest\032\023.MutateRowsResponseBL\n*or" +
-      "g.apache.hadoop.hbase.protobuf.generated" +
-      "B\026MultiRowMutationProtosH\001\210\001\001\240\001\001"
+      "ltiRowMutationProcessorResponse\"\200\001\n\021Muta" +
+      "teRowsRequest\022(\n\020mutation_request\030\001 \003(\0132" +
+      "\016.MutationProto\022\023\n\013nonce_group\030\002 \001(\004\022\r\n\005" +
+      "nonce\030\003 \001(\004\022\035\n\tcondition\030\004 \003(\0132\n.Conditi" +
+      "on\".\n\022MutateRowsResponse\022\030\n\020unmet_condit" +
+      "ions\030\001 \003(\0052P\n\027MultiRowMutationService\0225\n" +
+      "\nMutateRows\022\022.MutateRowsRequest\032\023.Mutate" +
+      "RowsResponseBL\n*org.apache.hadoop.hbase.",
+      "protobuf.generatedB\026MultiRowMutationProt" +
+      "osH\001\210\001\001\240\001\001"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
       new com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner() {
@@ -2220,13 +2768,13 @@ public final class MultiRowMutationProtos {
           internal_static_MutateRowsRequest_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_MutateRowsRequest_descriptor,
-              new java.lang.String[] { "MutationRequest", "NonceGroup", "Nonce", });
+              new java.lang.String[] { "MutationRequest", "NonceGroup", "Nonce", "Condition", });
           internal_static_MutateRowsResponse_descriptor =
             getDescriptor().getMessageTypes().get(3);
           internal_static_MutateRowsResponse_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_MutateRowsResponse_descriptor,
-              new java.lang.String[] { });
+              new java.lang.String[] { "UnmetConditions", });
           return null;
         }
       };

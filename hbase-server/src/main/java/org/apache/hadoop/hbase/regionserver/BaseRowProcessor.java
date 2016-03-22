@@ -19,12 +19,14 @@ package org.apache.hadoop.hbase.regionserver;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.classification.InterfaceStability;
 import org.apache.hadoop.hbase.HBaseInterfaceAudience;
+import org.apache.hadoop.hbase.client.Condition;
 import org.apache.hadoop.hbase.client.Durability;
 import org.apache.hadoop.hbase.regionserver.wal.WALEdit;
 
@@ -67,5 +69,15 @@ implements RowProcessor<S,T> {
   @Override
   public Durability useDurability() {
     return Durability.USE_DEFAULT;
+  }
+
+  @Override
+  public Collection<Condition> getConditions() {
+    return null;
+  }
+
+  @Override
+  public Collection<Integer> getUnmetConditions() {
+    return null;
   }
 }

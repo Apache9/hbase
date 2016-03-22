@@ -32,9 +32,11 @@ message MutateRowsRequest {
   repeated MutationProto mutation_request = 1;
   optional uint64 nonce_group = 2;
   optional uint64 nonce = 3;
+  repeated Condition condition = 4;
 }
 
 message MutateRowsResponse {
+  repeated int32 unmet_conditions = 1;
 }
 
 service MultiRowMutationService {

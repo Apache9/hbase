@@ -46,7 +46,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.NavigableSet;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.Condition;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -65,6 +64,7 @@ import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.Tag;
 import org.apache.hadoop.hbase.client.Append;
+import org.apache.hadoop.hbase.client.Condition;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Durability;
 import org.apache.hadoop.hbase.client.Get;
@@ -77,6 +77,7 @@ import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.client.metrics.ScanMetrics;
 import org.apache.hadoop.hbase.exceptions.DeserializationException;
 import org.apache.hadoop.hbase.filter.ByteArrayComparable;
+import org.apache.hadoop.hbase.filter.CompareFilter;
 import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.io.TimeRange;
 import org.apache.hadoop.hbase.ipc.PayloadCarryingRpcController;
@@ -1241,6 +1242,68 @@ public final class ProtobufUtil {
       }
     }
     return builder;
+  }
+
+  /**
+   * Convert a protocol buffer Condition to a client Condition
+   *
+   * @param condition the protocol buffer Condition
+   * @return the client Condition
+   */
+  public static Condition toCondition(ClientProtos.Condition condition) throws IOException {
+    byte[] row = condition.getRow().toByteArray();
+    byte[] family = condition.getFamily().toByteArray();
+    byte[] qualifier = condition.getQualifier().toByteArray();
+    CompareFilter.CompareOp compareOp =
+        CompareFilter.CompareOp.valueOf(condition.getCompareType().name());
+    ByteArrayComparable comparator = toComparator(condition.getComparator());
+    return new Condition(row, family, qualifier, compareOp, comparator);
+  }
+
+  /**
+   * Convert protocol buffer Conditions to client Conditions
+   *
+   * @param conditions the protocol buffer Conditions
+   * @return the client Condition
+   */
+  public static List<Condition> toCondition(Collection<ClientProtos.Condition> conditions)
+      throws IOException {
+    ArrayList<Condition> newConds = new ArrayList<Condition>(conditions.size());
+    for (ClientProtos.Condition c : conditions) {
+      newConds.add(toCondition(c));
+    }
+    return newConds;
+  }
+
+  /**
+   * Convert a client Condition to a protocol buffer Condition
+   * 
+   * @param condition the client Condition
+   * @return the protocol buffer Condition
+   */
+  public static ClientProtos.Condition toCondition(Condition condition) {
+    ClientProtos.Condition.Builder builder = ClientProtos.Condition.newBuilder();
+    builder.setRow(ByteStringer.wrap(condition.getRow()));
+    builder.setFamily(ByteStringer.wrap(condition.getFamily()));
+    builder.setQualifier(ByteStringer.wrap(condition.getQualifier()));
+    builder.setComparator(ProtobufUtil.toComparator(condition.getComparator()));
+    builder.setCompareType(HBaseProtos.CompareType.valueOf(condition.getCompareOp().name()));
+    return builder.build();
+  }
+
+  /**
+   * Convert client Conditions to protocol buffer Conditions
+   *
+   * @param conditions the client Conditions
+   * @return the protocol buffer Conditions
+   */
+  public static List<ClientProtos.Condition> toConditions(Collection<Condition> conditions) {
+    ArrayList<ClientProtos.Condition> newConds =
+        new ArrayList<ClientProtos.Condition>(conditions.size());
+    for (Condition c : conditions) {
+      newConds.add(toCondition(c));
+    }
+    return newConds;
   }
 
   /**

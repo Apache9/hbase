@@ -58,6 +58,8 @@ import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HRegionLocation;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.KeyValue;
+import org.apache.hadoop.hbase.protobuf.generated.ClientProtos;
+import org.apache.hadoop.hbase.protobuf.generated.MultiRowMutationProtos;
 import org.apache.hadoop.hbase.testclassification.LargeTests;
 import org.apache.hadoop.hbase.MiniHBaseCluster;
 import org.apache.hadoop.hbase.ServerName;
@@ -4487,6 +4489,42 @@ public class TestFromClientSide {
     g = new Get(ROW1);
     r = t.get(g);
     assertEquals(0, Bytes.compareTo(VALUE, r.getValue(FAMILY, QUALIFIER)));
+
+    // test conditions
+    p = new Put(ROW1);
+    p.add(FAMILY, QUALIFIER, Bytes.toBytes(1));
+    t.put(p);
+
+    // condition pass
+    p = new Put(ROW);
+    p.add(FAMILY, QUALIFIER, Bytes.toBytes(1));
+    m1 = ProtobufUtil.toMutation(MutationType.PUT, p);
+    mrmBuilder = MutateRowsRequest.newBuilder();
+    mrmBuilder.addMutationRequest(m1);
+    Condition condition = new Condition(ROW1, FAMILY, QUALIFIER, Bytes.toBytes(1));
+    mrmBuilder.addCondition(ProtobufUtil.toCondition(condition));
+    mrm = mrmBuilder.build();
+    MultiRowMutationProtos.MutateRowsResponse response = service.mutateRows(null, mrm);
+    assertEquals(0, response.getUnmetConditionsCount());
+    g = new Get(ROW);
+    r = t.get(g);
+    assertEquals(0, Bytes.compareTo(Bytes.toBytes(1), r.getValue(FAMILY, QUALIFIER)));
+
+    // condition not pass
+    p = new Put(ROW);
+    p.add(FAMILY, QUALIFIER, Bytes.toBytes(2));
+    m1 = ProtobufUtil.toMutation(MutationType.PUT, p);
+    mrmBuilder = MutateRowsRequest.newBuilder();
+    mrmBuilder.addMutationRequest(m1);
+    condition = new Condition(ROW1, FAMILY, QUALIFIER, Bytes.toBytes(2));
+    mrmBuilder.addCondition(ProtobufUtil.toCondition(condition));
+    mrm = mrmBuilder.build();
+    response = service.mutateRows(null, mrm);
+    assertEquals(1, response.getUnmetConditionsCount());
+    assertEquals(0, response.getUnmetConditionsList().get(0).intValue());
+    g = new Get(ROW);
+    r = t.get(g);
+    assertEquals(0, Bytes.compareTo(Bytes.toBytes(1), r.getValue(FAMILY, QUALIFIER)));
   }
 
   @Test

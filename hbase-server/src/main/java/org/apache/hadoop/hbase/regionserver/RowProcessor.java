@@ -24,6 +24,7 @@ import java.util.UUID;
 
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.classification.InterfaceStability;
+import org.apache.hadoop.hbase.client.Condition;
 import org.apache.hadoop.hbase.client.Durability;
 import org.apache.hadoop.hbase.client.Mutation;
 import org.apache.hadoop.hbase.HBaseInterfaceAudience;
@@ -54,6 +55,16 @@ public interface RowProcessor<S extends Message, T extends Message> {
    * to avoid deadlock.
    */
   Collection<byte[]> getRowsToLock();
+
+  /**
+   * Conditions to check before operation.
+   */
+  Collection<Condition> getConditions();
+
+  /**
+   * Collections failed to pass the check.
+   */
+  Collection<Integer> getUnmetConditions();
 
   /**
    * Obtain the processing result. All row processor implementations must

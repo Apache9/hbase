@@ -19,10 +19,12 @@ package org.apache.hadoop.hbase.coprocessor;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
+import org.apache.hadoop.hbase.DoNotRetryIOException;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.classification.InterfaceStability;
 import org.apache.hadoop.hbase.Coprocessor;
@@ -30,7 +32,9 @@ import org.apache.hadoop.hbase.CoprocessorEnvironment;
 import org.apache.hadoop.hbase.HBaseInterfaceAudience;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HRegionInfo;
+import org.apache.hadoop.hbase.client.Condition;
 import org.apache.hadoop.hbase.client.Mutation;
+import org.apache.hadoop.hbase.protobuf.generated.ClientProtos;
 import org.apache.hadoop.hbase.regionserver.HRegion;
 import org.apache.hadoop.hbase.regionserver.WrongRegionException;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -83,7 +87,7 @@ CoprocessorService, Coprocessor {
   @Override
   public void mutateRows(RpcController controller, MutateRowsRequest request,
       RpcCallback<MutateRowsResponse> done) {
-    MutateRowsResponse response = MutateRowsResponse.getDefaultInstance();
+    MutateRowsResponse.Builder responseBuilder = MutateRowsResponse.newBuilder();
     try {
       // set of rows to lock, sorted to avoid deadlocks
       SortedSet<byte[]> rowsToLock = new TreeSet<byte[]>(Bytes.BYTES_COMPARATOR);
@@ -110,14 +114,43 @@ CoprocessorService, Coprocessor {
         }
         rowsToLock.add(m.getRow());
       }
+
+      List<Condition> conditions = new ArrayList<Condition>(request.getConditionCount());
+      if (request.getConditionCount() > 0) {
+        for (ClientProtos.Condition c : request.getConditionList()) {
+          byte[] row = c.getRow().toByteArray();
+          // check whether rows are in range for this region
+          if (!HRegion.rowIsInRange(regionInfo, row)) {
+            String msg = "Condition row out of range '"
+                + Bytes.toStringBinary(c.getRow().toByteArray()) + "'";
+            if (rowsToLock.isEmpty()) {
+              // if this is the first row, region might have moved,
+              // allow client to retry
+              throw new WrongRegionException(msg);
+            } else {
+              // rows are split between regions, do not retry
+              throw new DoNotRetryIOException(msg);
+            }
+          }
+          rowsToLock.add(row);
+          conditions.add(ProtobufUtil.toCondition(c));
+        }
+      }
+
       // call utility method on region
       long nonceGroup = request.hasNonceGroup() ? request.getNonceGroup() : HConstants.NO_NONCE;
       long nonce = request.hasNonce() ? request.getNonce() : HConstants.NO_NONCE;
-      env.getRegion().mutateRowsWithLocks(mutations, rowsToLock, nonceGroup, nonce);
+      if (request.getConditionCount() > 0) {
+        Collection<Integer> unmet = env.getRegion().mutateRowsWithLocks(mutations,
+            conditions, rowsToLock, nonceGroup, nonce);
+        responseBuilder.addAllUnmetConditions(unmet);
+      } else {
+        env.getRegion().mutateRowsWithLocks(mutations, rowsToLock, nonceGroup, nonce);
+      }
     } catch (IOException e) {
       ResponseConverter.setControllerException(controller, e);
     }
-    done.run(response);
+    done.run(responseBuilder.build());
   }
 
 
