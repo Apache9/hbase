@@ -20,6 +20,7 @@ package org.apache.hadoop.hbase;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -41,6 +42,7 @@ import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.filter.ColumnPrefixFilter;
 import org.apache.hadoop.hbase.filter.ColumnRangeFilter;
 import org.apache.hadoop.hbase.filter.Filter;
+import org.apache.hadoop.hbase.filter.FilterBase;
 import org.apache.hadoop.hbase.filter.FirstKeyOnlyFilter;
 import org.apache.hadoop.hbase.filter.FirstKeyValueMatchingQualifiersFilter;
 import org.apache.hadoop.hbase.filter.RandomRowFilter;
@@ -72,7 +74,7 @@ public class TestPartialResultsFromClientSide {
   private static HTable TABLE = null;
 
   /**
-   * Table configuration
+   * Table configurationTestSizeFailures
    */
   private static TableName TABLE_NAME = TableName.valueOf("testTable");
 
@@ -430,7 +432,7 @@ public class TestPartialResultsFromClientSide {
   }
 
   /**
-   * Test the method {@link Result#createCompleteResult(List)}
+   * Test the method {@link ClientScanner#createCompleteResult(List, boolean, int)}
    *
    * @throws Exception
    */
@@ -451,19 +453,20 @@ public class TestPartialResultsFromClientSide {
     oneShotScan.setMaxResultSize(Long.MAX_VALUE);
     ResultScanner oneShotScanner = TABLE.getScanner(oneShotScan);
 
-    ArrayList<Result> partials = new ArrayList<Result>();
+    ArrayList<Cell[]> partials = new ArrayList<Cell[]>();
     for (int i = 0; i < NUM_ROWS; i++) {
       Result partialResult = null;
       Result completeResult = null;
       Result oneShotResult = null;
       partials.clear();
-
+      int count = 0;
       do {
         partialResult = partialScanner.next();
-        partials.add(partialResult);
-      } while (partialResult != null && partialResult.isPartial());
+        partials.add(partialResult.rawCells());
+        count += partialResult.rawCells().length;
+      } while (partialResult.isPartial());
 
-      completeResult = Result.createCompleteResult(partials);
+      completeResult = ClientScanner.createCompleteResult(partials, false, count);
       oneShotResult = oneShotScanner.next();
 
       compareResults(completeResult, oneShotResult, null);
@@ -474,34 +477,6 @@ public class TestPartialResultsFromClientSide {
 
     oneShotScanner.close();
     partialScanner.close();
-  }
-
-  /**
-   * When reconstructing the complete result from its partials we ensure that the row of each
-   * partial result is the same. If one of the rows differs, an exception is thrown.
-   */
-  @Test public void testExceptionThrownOnMismatchedPartialResults() throws IOException {
-    assertTrue(NUM_ROWS >= 2);
-
-    ArrayList<Result> partials = new ArrayList<Result>();
-    Scan scan = new Scan();
-    scan.setMaxResultSize(Long.MAX_VALUE);
-    ResultScanner scanner = TABLE.getScanner(scan);
-    Result r1 = scanner.next();
-    partials.add(r1);
-    Result r2 = scanner.next();
-    partials.add(r2);
-
-    assertFalse(Bytes.equals(r1.getRow(), r2.getRow()));
-
-    try {
-      Result.createCompleteResult(partials);
-      fail("r1 and r2 are from different rows. It should not be possible to combine them into"
-          + " a single result");
-    } catch (IOException e) {
-    }
-
-    scanner.close();
   }
 
   /**
@@ -1003,41 +978,171 @@ public class TestPartialResultsFromClientSide {
 
   }
 
-
   @Test
   public void testBatchingResultWhenRegionMove() throws IOException {
+    // If user setBatch(5) and rpc returns 3+5+5+5+3 cells,
+    // we should return 5+5+5+5+1 to user.
+    // setBatch doesn't mean setAllowPartialResult(true)
     HTable table =
         createTestTable(TableName.valueOf("testBatchingResultWhenRegionMove"), ROWS, FAMILIES,
             QUALIFIERS, VALUE);
+    Put put = new Put(ROWS[1]);
+    put.add(FAMILIES[0], QUALIFIERS[1], new byte[VALUE_SIZE * 10]);
+    table.put(put);
+    Delete delete = new Delete(ROWS[1]);
+    delete.deleteColumns(FAMILIES[NUM_FAMILIES - 1], QUALIFIERS[NUM_QUALIFIERS - 1]);
+    table.delete(delete);
 
     moveRegion(table, 1);
 
     Scan scan = new Scan();
     scan.setCaching(1);
-    scan.setBatch(1);
+    scan.setBatch(5);
+    scan.setMaxResultSize(VALUE_SIZE * 6);
 
     ResultScanner scanner = table.getScanner(scan);
-    for (int i = 0; i < NUM_FAMILIES * NUM_QUALIFIERS - 1; i++) {
+    for (int i = 0; i < NUM_FAMILIES * NUM_QUALIFIERS / 5 - 1; i++) {
       scanner.next();
     }
     Result result1 = scanner.next();
-    assertEquals(1, result1.rawCells().length);
-    Cell c1 = result1.rawCells()[0];
-    assertCell(c1, ROWS[0], FAMILIES[NUM_FAMILIES - 1], QUALIFIERS[NUM_QUALIFIERS - 1]);
+    assertEquals(5, result1.rawCells().length);
+    assertCell(result1.rawCells()[0], ROWS[0], FAMILIES[NUM_FAMILIES - 1], QUALIFIERS[NUM_QUALIFIERS - 5]);
+    assertCell(result1.rawCells()[4], ROWS[0], FAMILIES[NUM_FAMILIES - 1], QUALIFIERS[NUM_QUALIFIERS - 1]);
+    assertFalse(result1.isPartial());
 
     moveRegion(table, 2);
 
     Result result2 = scanner.next();
-    assertEquals(1, result2.rawCells().length);
-    Cell c2 = result2.rawCells()[0];
-    assertCell(c2, ROWS[1], FAMILIES[0], QUALIFIERS[0]);
+    assertEquals(5, result2.rawCells().length);
+    assertCell(result2.rawCells()[0], ROWS[1], FAMILIES[0], QUALIFIERS[0]);
+    assertCell(result2.rawCells()[4], ROWS[1], FAMILIES[0], QUALIFIERS[4]);
+    assertFalse(result2.isPartial());
 
     moveRegion(table, 3);
 
     Result result3 = scanner.next();
-    assertEquals(1, result3.rawCells().length);
-    Cell c3 = result3.rawCells()[0];
-    assertCell(c3, ROWS[1], FAMILIES[0], QUALIFIERS[1]);
+    assertEquals(5, result3.rawCells().length);
+    assertCell(result3.rawCells()[0], ROWS[1], FAMILIES[0], QUALIFIERS[5]);
+    assertCell(result3.rawCells()[4], ROWS[1], FAMILIES[0], QUALIFIERS[9]);
+    assertFalse(result3.isPartial());
+    for (int i = 0; i < NUM_FAMILIES * NUM_QUALIFIERS / 5 - 3; i++) {
+      Result result = scanner.next();
+      assertEquals(5, result.rawCells().length);
+      assertFalse(result.isPartial());
+    }
+    Result result = scanner.next();
+    assertEquals(4, result.rawCells().length);
+    assertFalse(result.isPartial());
+    for (int i = 0; i < (NUM_ROWS - 2) * NUM_FAMILIES * NUM_QUALIFIERS / 5; i++) {
+      result = scanner.next();
+      assertEquals(5, result.rawCells().length);
+      assertFalse(result.isPartial());
+    }
+    assertNull(scanner.next());
   }
+
+
+  public static class EssentialFilter extends FilterBase {
+
+    @Override public ReturnCode filterKeyValue(Cell v) throws IOException {
+      return ReturnCode.INCLUDE;
+    }
+
+    public boolean isFamilyEssential(byte[] cf) {
+      return Bytes.equals(cf, FAMILIES[1]);
+    }
+
+    public boolean hasFilterRow() {
+      return true;
+    }
+
+    public static Filter parseFrom(final byte[] pbBytes) {
+      return new EssentialFilter();
+    }
+
+  }
+
+  public static class CellLevelEnssentialFilter extends EssentialFilter {
+
+    public boolean hasFilterRow() {
+      return false;
+    }
+
+    public static Filter parseFrom(final byte[] pbBytes) {
+      return new CellLevelEnssentialFilter();
+    }
+  }
+
+  @Test
+  public void testEssentialHeapOrderForCompleteRow() throws IOException {
+    HTable table =
+        createTestTable(TableName.valueOf("testEssentialHeapOrderForCompleteRow"), ROWS, FAMILIES,
+            QUALIFIERS, VALUE);
+    Scan scan = new Scan();
+    scan.setFilter(new EssentialFilter());
+    scan.setMaxResultSize(1);
+    ResultScanner scanner = table.getScanner(scan);
+    for (int i = 0; i < NUM_ROWS; i++) {
+      Result result = scanner.next();
+      assertFalse(result.isPartial());
+      Cell[] row = result.rawCells();
+      assertEquals(NUM_FAMILIES * NUM_QUALIFIERS, row.length);
+      for (int j = 0; j < NUM_FAMILIES; j++) {
+        for (int k = 0; k < NUM_QUALIFIERS; k++) {
+          assertCell(row[j * NUM_FAMILIES + k], ROWS[i], FAMILIES[j], QUALIFIERS[k]);
+        }
+      }
+    }
+    assertTrue(scanner.next() == null);
+  }
+
+  @Test(expected = DoNotRetryIOException.class)
+  public void testEssentialHeapOrderForPartialRow() throws IOException {
+    HTable table =
+        createTestTable(TableName.valueOf("testEssentialHeapOrderForPartialRow"), ROWS, FAMILIES,
+            QUALIFIERS, VALUE);
+    Scan scan = new Scan();
+    scan.setFilter(new EssentialFilter());
+    scan.setMaxResultSize(1);
+    scan.setAllowPartialResults(true);
+    ResultScanner scanner = table.getScanner(scan);
+    for (int i = 0; i < NUM_ROWS; i++) {
+      Result result = scanner.next();
+      assertFalse(result.isPartial());
+      Cell[] row = result.rawCells();
+      assertEquals(NUM_FAMILIES * NUM_QUALIFIERS, row.length);
+      for (int j = 0; j < NUM_FAMILIES; j++) {
+        for (int k = 0; k < NUM_QUALIFIERS; k++) {
+          assertCell(row[j * NUM_FAMILIES + k], ROWS[i], FAMILIES[j], QUALIFIERS[k]);
+        }
+      }
+    }
+    assertTrue(scanner.next() == null);
+  }
+
+  @Test(expected = DoNotRetryIOException.class)
+  public void testCellLevelEssentialFilterBanned() throws IOException {
+    HTable table =
+        createTestTable(TableName.valueOf("testCellLevelEssentialFilterBanned"), ROWS, FAMILIES,
+            QUALIFIERS, VALUE);
+    Scan scan = new Scan();
+    scan.setFilter(new CellLevelEnssentialFilter());
+    scan.setMaxResultSize(1);
+    scan.setAllowPartialResults(true);
+    ResultScanner scanner = table.getScanner(scan);
+    for (int i = 0; i < NUM_ROWS; i++) {
+      Result result = scanner.next();
+      assertFalse(result.isPartial());
+      Cell[] row = result.rawCells();
+      assertEquals(NUM_FAMILIES * NUM_QUALIFIERS, row.length);
+      for (int j = 0; j < NUM_FAMILIES; j++) {
+        for (int k = 0; k < NUM_QUALIFIERS; k++) {
+          assertCell(row[j * NUM_FAMILIES + k], ROWS[i], FAMILIES[j], QUALIFIERS[k]);
+        }
+      }
+    }
+    assertTrue(scanner.next() == null);
+  }
+
 
 }

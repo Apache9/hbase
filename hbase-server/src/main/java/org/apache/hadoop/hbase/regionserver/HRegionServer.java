@@ -476,8 +476,6 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
   // A sleeper that sleeps for msgInterval.
   private final Sleeper sleeper;
 
-  private final int rpcTimeout;
-
   private final RegionServerAccounting regionServerAccounting;
 
   // Cache configuration and block cache reference
@@ -518,11 +516,31 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
    * Chore to clean periodically the moved region list
    */
   private MovedRegionsCleaner movedRegionsCleaner;
+  /**
+   * Minimum allowable time limit delta (in milliseconds) that can be enforced during scans. This
+   * configuration exists to prevent the scenario where a time limit is specified to be so
+   * restrictive that the time limit is reached immediately (before any cells are scanned).
+   */
+  private static final String REGION_SERVER_RPC_MINIMUM_SCAN_TIME_LIMIT_DELTA =
+            "hbase.region.server.rpc.minimum.scan.time.limit.delta";
+  /**
+   * Default value of {@link RSRpcServices#REGION_SERVER_RPC_MINIMUM_SCAN_TIME_LIMIT_DELTA}
+   */
+  private static final long DEFAULT_REGION_SERVER_RPC_MINIMUM_SCAN_TIME_LIMIT_DELTA = 10;
 
   /**
    * The lease timeout period for client scanners (milliseconds).
    */
   private final int scannerLeaseTimeoutPeriod;
+  /**
+   * The RPC timeout period (milliseconds)
+   */
+  private final int rpcTimeout;
+
+  /**
+   * The minimum allowable delta to use for the scan limit
+   */
+  private final long minimumScanTimeLimitDelta;
 
   /**
    * The reference to the priority extraction function
@@ -610,6 +628,9 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
       HConstants.HBASE_RPC_SHORTOPERATION_TIMEOUT_KEY,
       HConstants.DEFAULT_HBASE_RPC_SHORTOPERATION_TIMEOUT);
 
+    minimumScanTimeLimitDelta = conf.getLong(
+        REGION_SERVER_RPC_MINIMUM_SCAN_TIME_LIMIT_DELTA,
+        DEFAULT_REGION_SERVER_RPC_MINIMUM_SCAN_TIME_LIMIT_DELTA);
     this.abortRequested = false;
     this.stopped = false;
 
@@ -3407,6 +3428,8 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
               synchronized(scanner) {
                 boolean clientHandlesPartials =
                     request.hasClientHandlesPartials() && request.getClientHandlesPartials();
+                boolean clientHandlesHeartbeats =
+                    request.hasClientHandlesHeartbeats() && request.getClientHandlesHeartbeats();
                 // On the server side we must ensure that the correct ordering of partial results is
                 // returned to the client to allow them to properly reconstruct the partial results.
                 // If the coprocessor host is adding to the result list, we cannot guarantee the
@@ -3416,14 +3439,49 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
                 boolean allowPartialResults =
                     clientHandlesPartials && serverGuaranteesOrderOfPartials && !isSmallScan;
                 boolean moreRows = false;
+                // Heartbeat messages occur when the processing of the ScanRequest is exceeds a
+                // certain time threshold on the server. When the time threshold is exceeded, the
+                // server stops the scan and sends back whatever Results it has accumulated within
+                // that time period (may be empty). Since heartbeat messages have the potential to
+                // create partial Results (in the event that the timeout occurs in the middle of a
+                // row), we must only generate heartbeat messages when the client can handle both
+                // heartbeats AND partials
+                boolean allowHeartbeatMessages = clientHandlesHeartbeats && allowPartialResults;
+
+                // Default value of timeLimit is negative to indicate no timeLimit should be
+                // enforced.
+                long timeLimit = -1;
+                // Set the time limit to be half of the more restrictive timeout value (one of the
+                // timeout values must be positive). In the event that both values are positive, the
+                // more restrictive of the two is used to calculate the limit.
+                if (allowHeartbeatMessages && (scannerLeaseTimeoutPeriod > 0 || rpcTimeout > 0)) {
+                  long timeLimitDelta;
+                  if (scannerLeaseTimeoutPeriod > 0 && rpcTimeout > 0) {
+                    timeLimitDelta = Math.min(scannerLeaseTimeoutPeriod, rpcTimeout);
+                  } else {
+                    timeLimitDelta =
+                        scannerLeaseTimeoutPeriod > 0 ? scannerLeaseTimeoutPeriod : rpcTimeout;
+                    }
+                  // Use half of whichever timeout value was more restrictive... But don't allow
+                  // the time limit to be less than the allowable minimum (could cause an
+                  // immediatate timeout before scanning any data).
+                  timeLimitDelta = Math.max(timeLimitDelta / 2, minimumScanTimeLimitDelta);
+                  timeLimit = System.currentTimeMillis() + timeLimitDelta;
+                }
+
+
                 final LimitScope sizeScope =
                     allowPartialResults ? LimitScope.BETWEEN_CELLS : LimitScope.BETWEEN_ROWS;
+                final LimitScope timeScope =
+                    allowHeartbeatMessages ? LimitScope.BETWEEN_CELLS : LimitScope.BETWEEN_ROWS;
                 // Configure with limits for this RPC. Set keep progress true since size progress
                 // towards size limit should be kept between calls to nextRaw
                 ScannerContext.Builder contextBuilder = ScannerContext.newBuilder(true);
                 contextBuilder.setSizeLimit(sizeScope, maxResultSize);
                 contextBuilder.setBatchLimit(scanner.getBatch());
+                contextBuilder.setTimeLimit(timeScope, timeLimit);
                 ScannerContext scannerContext = contextBuilder.build();
+                boolean limitReached = false;
 
                 while (i < rows) {
                   // Stop collecting results if maxScannerResultSize is set and we have exceeded it
@@ -3454,17 +3512,33 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
                     results.add(Result.create(values, null, false, partial));
                     i++;
                   }
-                  if (!moreRows) {
+                  boolean sizeLimitReached = scannerContext.checkSizeLimit(LimitScope.BETWEEN_ROWS);
+                  boolean timeLimitReached = scannerContext.checkTimeLimit(LimitScope.BETWEEN_ROWS);
+                  boolean rowLimitReached = i >= rows;
+                  limitReached = sizeLimitReached || timeLimitReached || rowLimitReached;
+                  if (limitReached || !moreRows) {
+                    if (LOG.isTraceEnabled()) {
+                      LOG.trace("Done scanning. limitReached: " + limitReached + " moreRows: "
+                          + moreRows + " scannerContext: " + scannerContext);
+                      }
+                    // We only want to mark a ScanResponse as a heartbeat message in the event that
+                    // there are more values to be read server side. If there aren't more values,
+                    // marking it as a heartbeat is wasteful because the client will need to issue
+                    // another ScanRequest only to realize that they already have all the values
+                    if (moreRows) {
+                      // Heartbeat messages occur when the time limit has been reached.
+                      builder.setHeartbeatMessage(timeLimitReached);
+                    }
                     break;
                   }
-                  if (currentScanResultSize >= maxResultSize || i >= rows || moreRows) {
-                    // We stopped prematurely
-                    builder.setMoreResultsInRegion(true);
-                  } else {
-                    // We didn't get a single batch
-                    builder.setMoreResultsInRegion(false);
-                  }
                   values.clear();
+                }
+                if (limitReached || moreRows) {
+                  // We stopped prematurely
+                  builder.setMoreResultsInRegion(true);
+                } else {
+                  // We didn't get a single batch
+                  builder.setMoreResultsInRegion(false);
                 }
               }
               region.updateReadMetrics(i);

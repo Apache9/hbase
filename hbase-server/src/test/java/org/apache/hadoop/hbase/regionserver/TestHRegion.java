@@ -3140,6 +3140,11 @@ public class TestHRegion {
         public boolean isFamilyEssential(byte[] name) {
           return Bytes.equals(name, cf_first);
         }
+
+        @Override
+        public boolean hasFilterRow(){
+          return true;
+        }
       };
 
       scan.setFilter(bogusFilter);

@@ -975,8 +975,8 @@ public final class ProtobufUtil {
     if (proto.hasSmall()) {
       scan.setSmall(proto.getSmall());
     }
-    if (scan.getAllowPartialResults()) {
-      scan.setAllowPartialResults(scan.getAllowPartialResults());
+    if (proto.getAllowPartialResults()) {
+      scan.setAllowPartialResults(proto.getAllowPartialResults());
     }
     for (NameBytesPair attribute: proto.getAttributeList()) {
       scan.setAttribute(attribute.getName(), attribute.getValue().toByteArray());

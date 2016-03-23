@@ -75,7 +75,7 @@ public class ClientSideRegionScanner extends AbstractClientScanner {
   public Result next() throws IOException {
     values.clear();
 
-    scanner.nextRaw(values, NoLimitScannerContext.getInstance());
+    scanner.nextRaw(values);
 
     if (values == null || values.isEmpty()) {
       //we are done

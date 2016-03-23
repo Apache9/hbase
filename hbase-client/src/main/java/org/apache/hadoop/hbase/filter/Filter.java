@@ -233,7 +233,9 @@ public abstract class Filter {
    * true here. But some could have more sophisticated logic which could significantly reduce
    * scanning process by not even touching columns until we are 100% sure that it's data is needed
    * in result.
-   * 
+   * If your filter doesn't always return true here, its hasFilterRow() must return true, or it
+   * will be banned by server. (See HBASE-15398)
+   *
    * Concrete implementers can signal a failure condition in their code by throwing an
    * {@link IOException}.
    * 
