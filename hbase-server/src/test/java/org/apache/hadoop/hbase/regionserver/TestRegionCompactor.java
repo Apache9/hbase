@@ -145,7 +145,7 @@ public class TestRegionCompactor {
     }
     // make sure test in offpeak
     server.getConfiguration().setInt("hbase.offpeak.end.hour", 23);
-    server.getConfiguration().setFloat(RegionCompactor.REGION_COMPACT_LOCALITY_THRESHOLD, 0.0f);
+    server.getConfiguration().setFloat(RegionCompactor.REGION_COMPACT_LOCALITY_THRESHOLD, -1.0f);
     RegionCompactor compactor = new RegionCompactor(server, 60000);
     long lastCompactTime = compactor.getLastAutoCompactTime();
     // in local ut, dn host is 127.0.0.1, rs host is localhost
@@ -154,7 +154,7 @@ public class TestRegionCompactor {
     // make sure compact interval is big enough
     envEdge.incValue(36 * 3600 * 1000);
     compactor.chore();
-    // can compact, but compact request is 0
+    // no compact
     assertEquals(lastCompactTime + 36 * 3600 * 1000, compactor.getLastAutoCompactTime());
     assertEquals(0, compactor.getLastTotalCompactRequestCount());
     

@@ -203,7 +203,7 @@ public class TestAssignmentManager {
    * @throws InterruptedException
    * @throws DeserializationException
    */
-  @Test(timeout = 60000)
+  @Test(timeout = 120000)
   public void testBalanceOnMasterFailoverScenarioWithOpenedNode()
   throws IOException, KeeperException, InterruptedException, ServiceException, DeserializationException {
     AssignmentManagerWithExtrasForTesting am =
@@ -264,7 +264,7 @@ public class TestAssignmentManager {
     }
   }
 
-  @Test(timeout = 60000)
+  @Test(timeout = 120000)
   public void testBalanceOnMasterFailoverScenarioWithClosedNode()
   throws IOException, KeeperException, InterruptedException, ServiceException, DeserializationException {
     AssignmentManagerWithExtrasForTesting am =
@@ -313,7 +313,7 @@ public class TestAssignmentManager {
     }
   }
 
-  @Test(timeout = 60000)
+  @Test(timeout = 120000)
   public void testBalanceOnMasterFailoverScenarioWithOfflineNode()
   throws IOException, KeeperException, InterruptedException, ServiceException, DeserializationException {
     AssignmentManagerWithExtrasForTesting am =
