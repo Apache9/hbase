@@ -1659,7 +1659,7 @@ MasterServices, Server {
           getConfiguration().getInt("hbase.balancer.min.balancing.interval", -1);
       int rpCount = 0;  // number of RegionPlans balanced so far
       long totalRegPlanExecTime = 0;
-      balancerRan = plans != null;
+      balancerRan = plans != null && !plans.isEmpty();
       if (plans != null && !plans.isEmpty()) {
         for (RegionPlan plan: plans) {
           LOG.info("balance " + plan);

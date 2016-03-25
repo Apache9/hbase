@@ -40,6 +40,7 @@ import org.apache.hadoop.hbase.ServerLoad;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.master.MasterServices;
 import org.apache.hadoop.hbase.master.RegionPlan;
+import org.apache.hadoop.hbase.master.StochasticLoadBalancer.CostFunction;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.Pair;
@@ -210,6 +211,8 @@ public class StochasticLoadBalancer extends BaseLoadBalancer {
     // Keep track of servers to iterate through them.
     Cluster cluster = new Cluster(clusterState, loads, finder);
     double currentCost = computeCost(cluster, Double.MAX_VALUE);
+    LOG.info("start StochasticLoadBalancer.balaner, initCost=" + currentCost + ", functionCost="
+        + functionCost(cluster));
 
     double initCost = currentCost;
     double newCost = currentCost;
@@ -268,21 +271,30 @@ public class StochasticLoadBalancer extends BaseLoadBalancer {
 
     if (initCost > currentCost) {
       List<RegionPlan> plans = createRegionPlans(cluster);
-      if (LOG.isDebugEnabled()) {
-        LOG.debug("Finished computing new load balance plan.  Computation took "
-            + (endTime - startTime) + "ms to try " + step
-            + " different iterations.  Found a solution that moves "
-            + plans.size() + " regions; Going from a computed cost of "
-            + initCost + " to a new cost of " + currentCost);
-      }
+      LOG.info("Finished computing new load balance plan.  Computation took "
+          + (endTime - startTime) + "ms to try " + step
+          + " different iterations.  Found a solution that moves " + plans.size()
+          + " regions; Going from a computed cost of " + initCost + " to a new cost of "
+          + currentCost);
       return plans;
     }
-    if (LOG.isDebugEnabled()) {
-      LOG.debug("Could not find a better load balance plan.  Tried "
-          + step + " different configurations in " + (endTime - startTime)
-          + "ms, and did not find anything with a computed cost less than " + initCost);
-    }
+    LOG.info("Could not find a better load balance plan.  Tried " + step
+        + " different configurations in " + (endTime - startTime)
+        + "ms, and did not find anything with a computed cost less than " + initCost);
     return null;
+  }
+
+  private String functionCost(Cluster cluster) {
+    StringBuilder builder = new StringBuilder();
+    for (CostFunction c:costFunctions) {
+      builder.append(c.getClass().getSimpleName());
+      builder.append(" : (");
+      builder.append(c.getMultiplier());
+      builder.append(", ");
+      builder.append(c.cost(cluster));
+      builder.append("); ");
+    }
+    return builder.toString();
   }
 
   /**

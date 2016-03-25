@@ -386,10 +386,8 @@ public abstract class BaseLoadBalancer implements LoadBalancer {
 
   protected boolean needsBalance(ClusterLoadState cs) {
     if (cs.getNumServers() < MIN_SERVER_BALANCE) {
-      if (LOG.isDebugEnabled()) {
-        LOG.debug("Not running balancer because only " + cs.getNumServers()
-            + " active regionserver(s)");
-      }
+      LOG.info("Not running balancer because only " + cs.getNumServers()
+          + " active regionserver(s)");
       return false;
     }
     // Check if we even need to do any load balancing
@@ -399,14 +397,11 @@ public abstract class BaseLoadBalancer implements LoadBalancer {
     int ceiling = (int) Math.ceil(average * (1 + slop));
     if (!(cs.getMaxLoad() > ceiling || cs.getMinLoad() < floor)) {
       NavigableMap<ServerAndLoad, List<HRegionInfo>> serversByLoad = cs.getServersByLoad();
-      if (LOG.isTraceEnabled()) {
-        // If nothing to balance, then don't say anything unless trace-level logging.
-        LOG.trace("Skipping load balancing because balanced cluster; " +
-          "servers=" + cs.getNumServers() + " " +
-          "regions=" + cs.getNumRegions() + " average=" + average + " " +
-          "mostloaded=" + serversByLoad.lastKey().getLoad() +
-          " leastloaded=" + serversByLoad.firstKey().getLoad());
-      }
+      // If nothing to balance, then don't say anything unless trace-level logging.
+      LOG.info("Skipping load balancing because balanced cluster; " + "servers="
+          + cs.getNumServers() + " " + "regions=" + cs.getNumRegions() + " average=" + average
+          + " " + "mostloaded=" + serversByLoad.lastKey().getLoad() + " leastloaded="
+          + serversByLoad.firstKey().getLoad());
       return false;
     }
     return true;
