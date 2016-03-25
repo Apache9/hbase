@@ -79,6 +79,10 @@ public class ReplicationSourceMetrics implements Updater {
   public final MetricsIntValue sizeOfLogQueue =
       new MetricsIntValue("sizeOfLogQueue", registry);
 
+  /** Time lag in ms between the current time and the write time of last replicated log entry */
+  public final MetricsLongValue replicationLag =
+      new MetricsLongValue("replicationLag", registry);
+
   // It's a little dirty to preset the age to now since if we fail
   // to replicate the very first time then it will show that age instead
   // of nothing (although that might not be good either).
@@ -141,6 +145,7 @@ public class ReplicationSourceMetrics implements Updater {
       this.logEditsFilteredRate.pushMetric(this.metricsRecord);
       this.ageOfLastShippedOp.pushMetric(this.metricsRecord);
       this.sizeOfLogQueue.pushMetric(this.metricsRecord);
+      this.replicationLag.pushMetric(this.metricsRecord);
       this.logReadRateInByte.pushMetric(this.metricsRecord);
       this.replicationFatalError.pushMetric(this.metricsRecord);
       this.replicationIoeError.pushMetric(this.metricsRecord);
