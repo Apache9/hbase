@@ -288,6 +288,11 @@ public interface Store extends HeapSize, StoreConfigInformation {
   HColumnDescriptor getFamily();
 
   /**
+   * @return The maximum sequence id in all store files.
+   */
+  long getMaxSequenceId();
+
+  /**
    * @return The maximum memstoreTS in all store files.
    */
   long getMaxMemstoreTS();
