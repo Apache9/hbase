@@ -203,7 +203,7 @@ public class TestAssignmentManager {
    * @throws InterruptedException
    * @throws DeserializationException
    */
-  @Test(timeout = 120000)
+  @Test(timeout = 180000)
   public void testBalanceOnMasterFailoverScenarioWithOpenedNode()
   throws IOException, KeeperException, InterruptedException, ServiceException, DeserializationException {
     AssignmentManagerWithExtrasForTesting am =
@@ -264,7 +264,7 @@ public class TestAssignmentManager {
     }
   }
 
-  @Test(timeout = 120000)
+  @Test(timeout = 180000)
   public void testBalanceOnMasterFailoverScenarioWithClosedNode()
   throws IOException, KeeperException, InterruptedException, ServiceException, DeserializationException {
     AssignmentManagerWithExtrasForTesting am =
@@ -313,7 +313,7 @@ public class TestAssignmentManager {
     }
   }
 
-  @Test(timeout = 120000)
+  @Test(timeout = 180000)
   public void testBalanceOnMasterFailoverScenarioWithOfflineNode()
   throws IOException, KeeperException, InterruptedException, ServiceException, DeserializationException {
     AssignmentManagerWithExtrasForTesting am =
@@ -1421,6 +1421,8 @@ public class TestAssignmentManager {
       // Should fail once, but succeed on the second attempt for the SERVERNAME_A
       am.assign(hri, true, false);
     } finally {
+      // reset hbase assignment maximum attempts
+      this.server.getConfiguration().setInt("hbase.assignment.maximum.attempts", 10);
       assertEquals(SERVERNAME_A, regionStates.getRegionState(REGIONINFO).getServerName());
     }
   }
