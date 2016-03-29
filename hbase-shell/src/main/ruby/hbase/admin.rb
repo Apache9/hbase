@@ -458,41 +458,15 @@ module Hbase
     end
 
     #----------------------------------------------------------------------------------------------
-    # Truncates table (deletes all records by recreating the table)
+    # Truncates table while maintaing region boundaries (deletes all records by recreating the table)
     def truncate(table_name, conf = @conf)
       h_table = @connection.getTable(TableName.valueOf(table_name))
       table_description = h_table.getTableDescriptor()
-      raise ArgumentError, "Table #{table_name} is not enabled. Enable it first." unless enabled?(table_name)
-      yield 'Disabling table...' if block_given?
-      @admin.disableTable(table_name)
-
-      begin
-        yield 'Truncating table...' if block_given?
-        @admin.truncateTable(org.apache.hadoop.hbase.TableName.valueOf(table_name), false)
-      rescue => e
-        # Handle the compatibility case, where the truncate method doesn't exists on the Master
-        raise e unless e.respond_to?(:cause) && e.cause != nil
-        rootCause = e.cause
-        if rootCause.kind_of?(org.apache.hadoop.hbase.DoNotRetryIOException) then
-          # Handle the compatibility case, where the truncate method doesn't exists on the Master
-          yield 'Dropping table...' if block_given?
-          @admin.deleteTable(table_name)
-
-          yield 'Creating table...' if block_given?
-          @admin.createTable(table_description)
-        else
-          raise e
-        end
+      if table_description.isSalted()
+        h_table = h_table.getRawTable()
       end
-    end
-
-    #----------------------------------------------------------------------------------------------
-    # Truncates table while maintaing region boundaries (deletes all records by recreating the table)
-    def truncate_preserve(table_name, conf = @conf)
-      h_table = @connection.getTable(TableName.valueOf(table_name))
       splits = h_table.getRegionLocations().keys().map{|i| Bytes.toStringBinary(i.getStartKey)}.delete_if{|k| k == ""}.to_java :String
       splits = org.apache.hadoop.hbase.util.Bytes.toBinaryByteArrays(splits)
-      table_description = h_table.getTableDescriptor()
       yield 'Disabling table...' if block_given?
       disable(table_name)
 
