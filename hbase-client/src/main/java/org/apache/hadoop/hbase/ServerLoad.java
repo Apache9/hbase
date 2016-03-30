@@ -61,6 +61,8 @@ public class ServerLoad {
   private long writeRequestsByCapacityUnitPerSecond = 0;
   private long throttledReadRequestsCount = 0;
   private long throttledWriteRequestsCount = 0;
+  private long readCellCountPerSecond = 0;
+  private long readRawCellCountPerSecond = 0;
 
   public ServerLoad(ClusterStatusProtos.ServerLoad serverLoad) {
     this.serverLoad = serverLoad;
@@ -82,6 +84,8 @@ public class ServerLoad {
       writeRequestsByCapacityUnitPerSecond += rl.getWriteRequestsByCapacityUnitPerSecond();
       throttledReadRequestsCount += rl.getThrottledReadRequestsCount();
       throttledWriteRequestsCount += rl.getThrottledWriteRequestsCount();
+      readCellCountPerSecond += rl.getReadCellCountPerSecond();
+      readRawCellCountPerSecond += rl.getReadRawCellCountPerSecond();
     }
 
   }
@@ -173,6 +177,14 @@ public class ServerLoad {
 
   public long getWriteRequestsByCapacityUnitPerSecond() {
     return writeRequestsByCapacityUnitPerSecond;
+  }
+
+  public long getReadCellCountPerSecond() {
+    return readCellCountPerSecond;
+  }
+
+  public long getReadRawCellCountPerSecond() {
+    return readRawCellCountPerSecond;
   }
 
   public long getThrottledReadRequestsCount() {
@@ -334,6 +346,10 @@ public class ServerLoad {
     sb = Strings.appendKeyValue(sb, "writeRequestsCount", Long.valueOf(this.writeRequestsCount));
     sb = Strings.appendKeyValue(sb, "readRequestsPerSecond", Long.valueOf(this.getReadRequestsPerSecond()));
     sb = Strings.appendKeyValue(sb, "writeRequestsPerSecond", Long.valueOf(this.getWriteRequestsPerSecond()));
+    sb = Strings.appendKeyValue(sb, "readCellCountPerSecond",
+        this.getReadCellCountPerSecond());
+    sb = Strings.appendKeyValue(sb, "readRawCellCountPerSecond",
+        this.getReadRawCellCountPerSecond());
     sb = Strings.appendKeyValue(sb, "readRequestsByCapacityUnitPerSecond", Long.valueOf(this.readRequestsByCapacityUnitPerSecond));
     sb = Strings.appendKeyValue(sb, "writeRequestsByCapacityUnitPerSecond", Long.valueOf(this.writeRequestsByCapacityUnitPerSecond));
     sb = Strings.appendKeyValue(sb, "throttledReadRequestsCount", Long.valueOf(this.throttledReadRequestsCount));

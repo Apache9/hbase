@@ -297,6 +297,8 @@ public class HRegion implements HeapSize { // , Writable{
       "readRequestsByCapacityUnitPerSecond", registry);
   final MetricsRate writeRequestsByCapacityUnitPerSecond = new MetricsRate(
       "writeRequestsByCapacityUnitPerSecond", registry);
+  final MetricsRate readCellCountPerSecond = new MetricsRate("readCellCountPerSecond", registry);
+  final MetricsRate readRawCellCountPerSecond = new MetricsRate("readRawCellCountPerSecond", registry);
 
   // Number of requests blocked by memstore size.
   private final Counter blockedRequestsCount = new Counter();
@@ -1015,6 +1017,16 @@ public class HRegion implements HeapSize { // , Writable{
   long getWriteRequestsByCapacityUnitPerSecond() {
     this.writeRequestsByCapacityUnitPerSecond.intervalHeartBeat();
     return (long) this.writeRequestsByCapacityUnitPerSecond.getPreviousIntervalValue();
+  }
+
+  long getReadCellCountPerSecond() {
+    this.readCellCountPerSecond.intervalHeartBeat();
+    return (long) this.readCellCountPerSecond.getPreviousIntervalValue();
+  }
+
+  long getReadRawCellCountPerSecond() {
+    this.readRawCellCountPerSecond.intervalHeartBeat();
+    return (long) this.readRawCellCountPerSecond.getPreviousIntervalValue();
   }
 
   long getThrottleadReadCount() {
@@ -5333,8 +5345,11 @@ public class HRegion implements HeapSize { // , Writable{
     RegionScanner scanner = null;
     try {
       scanner = getScanner(scan);
-      scanner.next(results);
+      ScannerContext scannerContext = ScannerContext.newBuilder().build();
+      scanner.next(results, scannerContext);
       this.getRequestsCount.increment();
+      this.updateReadRawCellMetrics(scannerContext.getReadRawCells());
+      this.updateReadCellMetrics(results.size());
     } finally {
       if (scanner != null)
         scanner.close();
@@ -6549,6 +6564,14 @@ public class HRegion implements HeapSize { // , Writable{
       this.readRequestsCount.add(num);
       this.readRequestsPerSecond.inc(num);
     }
+  }
+
+  public void updateReadCellMetrics(int num) {
+    this.readCellCountPerSecond.inc(num);
+  }
+
+  public void updateReadRawCellMetrics(int num) {
+    this.readRawCellCountPerSecond.inc(num);
   }
 
   /**

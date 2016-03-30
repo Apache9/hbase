@@ -166,6 +166,8 @@ public class MXBeanImpl implements MXBean {
     long writeRequestPerSecond = 0;
     long readRequestsByCapacityUnitPerSecond = 0;
     long writeRequestsByCapacityUnitPerSecond = 0;
+    long readCellCountPerSecond = 0;
+    long readRawCellCountPerSecond = 0;
     for (final Entry<ServerName, ServerLoad> entry : master.getServerManager().getOnlineServers()
         .entrySet()) {
       regionServerNum++;
@@ -175,6 +177,8 @@ public class MXBeanImpl implements MXBean {
           .getReadRequestsByCapacityUnitPerSecond();
       writeRequestsByCapacityUnitPerSecond += entry.getValue()
           .getWriteRequestsByCapacityUnitPerSecond();
+      readCellCountPerSecond += entry.getValue().getReadCellCountPerSecond();
+      readRawCellCountPerSecond += entry.getValue().getReadRawCellCountPerSecond();
       for (final Entry<byte[], RegionLoad> regionEntry : entry.getValue().getRegionsLoad()
           .entrySet()) {
         String table = new String(HRegionInfo.getTableName(regionEntry.getKey()));
@@ -184,7 +188,7 @@ public class MXBeanImpl implements MXBean {
     }
     return new ClusterLoad(tableSet.size(), regionServerNum, regionNum, readRequestPerSecond,
         writeRequestPerSecond, readRequestsByCapacityUnitPerSecond,
-        writeRequestsByCapacityUnitPerSecond);
+        writeRequestsByCapacityUnitPerSecond, readCellCountPerSecond, readRawCellCountPerSecond);
   }
 
   @Override

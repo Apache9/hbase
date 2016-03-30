@@ -557,7 +557,7 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
         }
         checkScanOrder(prevKV, kv, comparator);
         prevKV = kv;
-
+        scannerContext.incReadRawCells();
         ScanQueryMatcher.MatchCode qcode = matcher.match(kv);
         qcode = optimize(qcode, kv);
         if (scan.isDebug()) {

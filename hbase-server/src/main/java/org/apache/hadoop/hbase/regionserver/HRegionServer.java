@@ -1245,14 +1245,20 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     RegionSpecifier.Builder regionSpecifier = RegionSpecifier.newBuilder();
     long readRequestsPerSecond = 0;
     long writeRequestsPerSecond = 0;
+    long readCellCountPerSecond = 0;
+    long readRawCellCountPerSecond = 0;
     for (HRegion region : regions) {
       RegionLoad load = createRegionLoad(region, regionLoadBldr, regionSpecifier);
       serverLoad.addRegionLoads(load);
       readRequestsPerSecond += load.getReadRequestsPerSecond();
       writeRequestsPerSecond += load.getWriteRequestsPerSecond();
+      readCellCountPerSecond += load.getReadCellCountPerSecond();
+      readRawCellCountPerSecond += load.getReadCellCountPerSecond();
     }
     serverLoad.setReadRequestsPerSecond(readRequestsPerSecond);
     serverLoad.setWriteRequestsPerSecond(writeRequestsPerSecond);
+    serverLoad.setReadCellCountPerSecond(readCellCountPerSecond);
+    serverLoad.setReadRawCellCountPerSecond(readRawCellCountPerSecond);
     serverLoad.setReportStartTime(reportStartTime);
     serverLoad.setReportEndTime(reportEndTime);
     if (this.infoServer != null) {
@@ -1545,6 +1551,8 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
       .setWriteRequestsCount(r.writeRequestsCount.get())
       .setReadRequestsPerSecond(r.getReadRequestsPerSecond())
       .setWriteRequestsPerSecond(r.getWriteRequestsPerSecond())
+      .setReadCellCountPerSecond(r.getReadCellCountPerSecond())
+      .setReadRawCellCountPerSecond(r.getReadRawCellCountPerSecond())
       .setTotalCompactingKVs(totalCompactingKVs)
       .setCurrentCompactedKVs(currentCompactedKVs)
       .setCompleteSequenceId(r.completeSequenceId)
@@ -3425,6 +3433,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
             region.startRegionOperation(Operation.SCAN);
             try {
               int i = 0;
+              int resultCells = 0;
               synchronized(scanner) {
                 boolean clientHandlesPartials =
                     request.hasClientHandlesPartials() && request.getClientHandlesPartials();
@@ -3511,6 +3520,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
                     final boolean partial = scannerContext.partialResultFormed();
                     results.add(Result.create(values, null, false, partial));
                     i++;
+                    resultCells += values.size();
                   }
                   boolean sizeLimitReached = scannerContext.checkSizeLimit(LimitScope.BETWEEN_ROWS);
                   boolean timeLimitReached = scannerContext.checkTimeLimit(LimitScope.BETWEEN_ROWS);
@@ -3540,10 +3550,12 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
                   // We didn't get a single batch
                   builder.setMoreResultsInRegion(false);
                 }
+                region.updateReadRawCellMetrics(scannerContext.getReadRawCells());
               }
               region.updateReadMetrics(i);
               region.getMetrics().updateScanNext(totalKvSize);
               region.updateReadCapacityUnitMetrics(totalKvSize);
+              region.updateReadCellMetrics(resultCells);
             } finally {
               region.closeRegionOperation();
             }

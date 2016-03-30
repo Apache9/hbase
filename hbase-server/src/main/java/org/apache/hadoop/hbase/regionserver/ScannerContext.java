@@ -95,6 +95,7 @@ public class ScannerContext {
    */
   boolean keepProgress;
   private static boolean DEFAULT_KEEP_PROGRESS = false;
+  private int readRawCells = 0;
 
   ScannerContext(boolean keepProgress, LimitFields limitsToCopy) {
     this.limits = new LimitFields();
@@ -119,6 +120,18 @@ public class ScannerContext {
 
   void setKeepProgress(boolean keepProgress) {
     this.keepProgress = keepProgress;
+  }
+
+  public int getReadRawCells() {
+    return readRawCells;
+  }
+
+  public void setReadRawCells(int readRawCells) {
+    this.readRawCells = readRawCells;
+  }
+
+  public void incReadRawCells(){
+    this.readRawCells++;
   }
 
   /**
@@ -179,6 +192,7 @@ public class ScannerContext {
    */
   void clearProgress() {
     progress.setFields(0, LimitFields.DEFAULT_SCOPE, 0, LimitFields.DEFAULT_SCOPE, 0);
+    this.readRawCells = 0;
   }
 
   /**
