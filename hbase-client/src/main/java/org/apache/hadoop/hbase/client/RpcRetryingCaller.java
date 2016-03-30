@@ -148,8 +148,8 @@ public class RpcRetryingCaller<T> {
         // If, after the planned sleep, there won't be enough time left, we stop now.
         long duration = singleCallDuration(expectedSleep);
         if (duration > this.callTimeout) {
-          String msg = "callTimeout=" + this.callTimeout + ", callDuration=" + duration +
-              ": " + callable.getExceptionMessageAdditionalDetail();
+          String msg = "callTimeout=" + this.callTimeout + ", callDuration=" + duration
+              + ", tries=" + tries + ": " + callable.getExceptionMessageAdditionalDetail();
           throw (SocketTimeoutException)(new SocketTimeoutException(msg).initCause(t));
         }
       } finally {
@@ -170,8 +170,7 @@ public class RpcRetryingCaller<T> {
    * @return Calculate how long a single call took
    */
   private long singleCallDuration(final long expectedSleep) {
-    return (EnvironmentEdgeManager.currentTimeMillis() - this.globalStartTime)
-      + MIN_RPC_TIMEOUT + expectedSleep;
+    return (EnvironmentEdgeManager.currentTimeMillis() - this.globalStartTime) + expectedSleep;
   }
 
   /**
