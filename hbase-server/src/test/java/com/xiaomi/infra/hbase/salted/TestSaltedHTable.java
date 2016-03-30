@@ -32,6 +32,7 @@ import java.util.Map;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.DoNotRetryIOException;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.HColumnDescriptor;
@@ -51,6 +52,12 @@ import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.client.replication.ReplicationAdmin;
+import org.apache.hadoop.hbase.filter.CompareFilter.CompareOp;
+import org.apache.hadoop.hbase.filter.FilterList;
+import org.apache.hadoop.hbase.filter.PrefixFilter;
+import org.apache.hadoop.hbase.filter.SingleColumnValueFilter;
+import org.apache.hadoop.hbase.filter.SkipFilter;
+import org.apache.hadoop.hbase.filter.WhileMatchFilter;
 import org.apache.hadoop.hbase.replication.ReplicationPeerConfig;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -448,6 +455,68 @@ public class TestSaltedHTable {
       Assert.assertNull(result.getValue(TEST_FAMILY, deleteQual));
       Assert.assertEquals(incrValue + 10, Bytes.toLong(result.getValue(TEST_FAMILY, incrementQual)));
     }
+
+  @Test
+  public void testReadWithFilter() throws Exception {
+    Get get = new Get(ROW_A);
+    // no filter, ok
+    saltedHTable.get(get);
+    // no-row filter, ok
+    get = new Get(ROW_A);
+    SingleColumnValueFilter scvf =
+        new SingleColumnValueFilter(TEST_FAMILY, qualifierCol1, CompareOp.EQUAL, bytes1);
+    get.setFilter(scvf);
+    saltedHTable.get(get);
+    // filter list with no-row filters, ok
+    FilterList filterList = new FilterList();
+    filterList.addFilter(scvf);
+    filterList.addFilter(scvf);
+    get.setFilter(filterList);
+    saltedHTable.get(get);
+    // filter list with wrapper filter, no-row filters, ok
+    filterList.addFilter(new WhileMatchFilter(scvf));
+    filterList.addFilter(new SkipFilter(scvf));
+    saltedHTable.get(get);
+    
+    // row-level filter, fail
+    PrefixFilter prefixFilter = new PrefixFilter(Bytes.toBytes("prefix"));
+    get.setFilter(prefixFilter);
+    try {
+      saltedHTable.get(get);
+      Assert.fail("should fail when using PrefixFilter");
+    } catch (DoNotRetryIOException e) {
+    }
+    // wrapped filter contains row-level filter
+    get.setFilter(new WhileMatchFilter(prefixFilter));
+    try {
+      saltedHTable.get(get);
+      Assert.fail("should fail when WhileMatchFilter wrapped PrefixFilter");
+    } catch (DoNotRetryIOException e) {
+    }
+    
+    // filter list, contains row-level filter
+    filterList = new FilterList();
+    filterList.addFilter(scvf);
+    filterList.addFilter(prefixFilter);
+    get.setFilter(filterList);
+    try {
+      saltedHTable.get(get);
+      Assert.fail("should fail when contains PrefixFilter in FilterList");
+    } catch (DoNotRetryIOException e) {
+    }
+    
+    // filter list, contains wrapper filter which wrapped row-level filter
+    filterList = new FilterList();
+    filterList.addFilter(scvf);
+    filterList.addFilter(new SkipFilter(scvf));
+    filterList.addFilter(new WhileMatchFilter(prefixFilter));
+    get.setFilter(filterList);
+    try {
+      saltedHTable.get(get);
+      Assert.fail("should fail when contains FilterList contains PrefixFilter");
+    } catch (DoNotRetryIOException e) {
+    }
+  }
     
   @Test
   public void testReplication() throws Exception {

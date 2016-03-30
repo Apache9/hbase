@@ -29,6 +29,7 @@ import java.util.Map;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Cell;
+import org.apache.hadoop.hbase.DoNotRetryIOException;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.KeyValue;
@@ -49,6 +50,13 @@ import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.client.coprocessor.Batch.Call;
 import org.apache.hadoop.hbase.client.coprocessor.Batch.Callback;
 import org.apache.hadoop.hbase.filter.CompareFilter.CompareOp;
+import org.apache.hadoop.hbase.filter.Filter;
+import org.apache.hadoop.hbase.filter.FilterList;
+import org.apache.hadoop.hbase.filter.FuzzyRowFilter;
+import org.apache.hadoop.hbase.filter.PrefixFilter;
+import org.apache.hadoop.hbase.filter.RowFilter;
+import org.apache.hadoop.hbase.filter.SkipFilter;
+import org.apache.hadoop.hbase.filter.WhileMatchFilter;
 import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
 import org.apache.hadoop.hbase.ipc.CoprocessorRpcChannel;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -87,6 +95,7 @@ public class SaltedHTable implements HTableInterface{
    */
   @Override
   public Result get(Get get) throws IOException {
+    checkNoRowFilter(get.getFilter());
     return unSalt(table.get(salt(get)));
   }
 
@@ -322,6 +331,7 @@ public class SaltedHTable implements HTableInterface{
     }
     Result[] result = new Result[gets.size()];
     for (int i = 0; i < gets.size(); i++) {
+      checkNoRowFilter(gets.get(i).getFilter());
       Get newGet = salt(gets.get(i));
       result[i] = unSalt(table.get(newGet));
     }
@@ -542,6 +552,7 @@ public class SaltedHTable implements HTableInterface{
     }
     
     public SaltedScanner (Scan scan, byte[][] salts, boolean keepSalt, boolean merge) throws IOException {
+      checkNoRowFilter(scan.getFilter());
       Scan[] scans = salt(scan, salts);
       this.keepSalt = keepSalt;
       if (merge) {
@@ -875,5 +886,52 @@ public class SaltedHTable implements HTableInterface{
         Bytes.writeByteArray(out, slot);
       }
     }
+  }
+  
+  // Salted table will add salt as prefix of user's rowkey, the salted/unsalted logic
+  // is implemented purely in client-side. However, the Filter logic is implemented in
+  // server side. So, if users set filters on row when reading from salted table, the
+  // server won't get the right result. And it is not easy to add salt to filter in
+  // client side. Now, we throw DNRIOE for such case, and will study smarter way when
+  // needed(Currently, there are no users use row level Filter on salted table).
+  protected void checkNoRowFilter(Filter filter) throws DoNotRetryIOException {
+    if (filter == null) {
+      return;
+    }
+    
+    if (filter instanceof FilterList) {
+      for (Filter filterInList : ((FilterList)filter).getFilters()) {
+        checkNoRowFilter(filterInList);
+      }
+      return;
+    }
+    
+    if (isRowFilter(filter)) {
+      String tableName = table == null ? "" : Bytes.toString(table.getTableName());
+      throw new DoNotRetryIOException(
+          "Filter on row is not allowed when reading salted table, table=" + tableName
+              + ", filterClass=" + filter.getClass().getName());
+    } else if (isWrapperFilter(filter)) {
+      checkNoRowFilter(getWrappedFilter(filter));
+    }
+  }
+  
+  protected static boolean isRowFilter(Filter filter) {
+    return (filter instanceof PrefixFilter) || (filter instanceof RowFilter)
+        || (filter instanceof FuzzyRowFilter);
+  }
+  
+  protected static boolean isWrapperFilter(Filter filter) {
+    return (filter instanceof WhileMatchFilter) || (filter instanceof SkipFilter);
+  }
+  
+  protected static Filter getWrappedFilter(Filter filter) {
+    Filter wrappedFilter = null;
+    if (filter instanceof WhileMatchFilter) {
+      wrappedFilter = ((WhileMatchFilter)filter).getFilter();
+    } else if (filter instanceof SkipFilter) {
+      wrappedFilter = ((SkipFilter)filter).getFilter();
+    }
+    return wrappedFilter;
   }
 }
