@@ -55,7 +55,7 @@ public enum NumberCodecType {
   public byte[] encode(Number value) {
     switch (this) {
     case RAW_BYTE: {
-      return Bytes.toBytes(value.byteValue());
+      return new byte[] { value.byteValue() };
     }
     case RAW_SHORT: {
       return Bytes.toBytes(value.shortValue());
@@ -133,7 +133,7 @@ public enum NumberCodecType {
     PositionedByteRange src = new SimplePositionedByteRange(bytes, offset, length);
     switch (this) {
     case RAW_BYTE:
-      return bytes[0];
+      return src.get();
     case RAW_SHORT:
       return Bytes.toShort(bytes, offset, length);
     case RAW_INTEGER:

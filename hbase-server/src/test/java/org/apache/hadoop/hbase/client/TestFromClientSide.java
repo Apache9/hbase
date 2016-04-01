@@ -3220,7 +3220,12 @@ public class TestFromClientSide {
   }
 
   private void assertIncrementKey(Cell key, byte [] row, byte [] family,
-      byte [] qualifier, long value)
+      byte [] qualifier, long value) throws Exception {
+    assertIncrementKey(key, row, family, qualifier, value, NumberCodecType.RAW_LONG);
+  }
+
+  private void assertIncrementKey(Cell key, byte [] row, byte [] family,
+      byte [] qualifier, long value, NumberCodecType type)
   throws Exception {
     assertTrue("Expected row [" + Bytes.toString(row) + "] " +
         "Got row [" + Bytes.toString(CellUtil.cloneRow(key)) +"]",
@@ -3232,8 +3237,8 @@ public class TestFromClientSide {
         "Got qualifier [" + Bytes.toString(CellUtil.cloneQualifier(key)) + "]",
         equals(qualifier, CellUtil.cloneQualifier(key)));
     assertTrue("Expected value [" + value + "] " +
-        "Got value [" + Bytes.toLong(CellUtil.cloneValue(key)) + "]",
-        Bytes.toLong(CellUtil.cloneValue(key)) == value);
+        "Got value [" + type.decode(CellUtil.cloneValue(key)) + "]",
+        Bytes.compareTo(CellUtil.cloneValue(key), type.encode(value)) == 0);
   }
 
   private void assertNumKeys(Result result, int n) throws Exception {
@@ -4862,13 +4867,9 @@ public class TestFromClientSide {
     final byte [] TABLENAME = Bytes.toBytes("testIncrementWithTypes");
     HTable ht = TEST_UTIL.createTable(TABLENAME, FAMILY);
 
-    byte [][] QUALIFIERS = new byte [][] {
-        Bytes.toBytes("A")
-    };
-
     Increment inc = new Increment(ROW);
     for (NumberCodecType type : NumberCodecType.values()) {
-      inc.addColumn(FAMILY, type.name().getBytes(), 1);
+      inc.addColumn(FAMILY, type.name().getBytes(), 1, type);
     }
     ht.increment(inc);
 
@@ -4877,20 +4878,39 @@ public class TestFromClientSide {
     Cell [] kvs = r.rawCells();
     assertEquals(NumberCodecType.values().length, kvs.length);
     for (int i = 0; i < kvs.length; ++i) {
-      assertIncrementKey(kvs[i], ROW, FAMILY, CellUtil.cloneQualifier(kvs[i]), 1);
+      byte[] q = CellUtil.cloneQualifier(kvs[i]);
+      NumberCodecType type = NumberCodecType.valueOf(Bytes.toString(q));
+      assertIncrementKey(kvs[i], ROW, FAMILY, CellUtil.cloneQualifier(kvs[i]), 1, type);
     }
 
     // inc by 0
     inc = new Increment(ROW);
     for (NumberCodecType type : NumberCodecType.values()) {
-      inc.addColumn(FAMILY, type.name().getBytes(), 0);
+      inc.addColumn(FAMILY, type.name().getBytes(), 0, type);
     }
     ht.increment(inc);
     r = ht.get(new Get(ROW));
     kvs = r.rawCells();
     assertEquals(NumberCodecType.values().length, kvs.length);
     for (int i = 0; i < kvs.length; ++i) {
-      assertIncrementKey(kvs[i], ROW, FAMILY, CellUtil.cloneQualifier(kvs[i]), 1);
+      byte[] q = CellUtil.cloneQualifier(kvs[i]);
+      NumberCodecType type = NumberCodecType.valueOf(Bytes.toString(q));
+      assertIncrementKey(kvs[i], ROW, FAMILY, CellUtil.cloneQualifier(kvs[i]), 1, type);
+    }
+
+    // inc by -2
+    inc = new Increment(ROW);
+    for (NumberCodecType type : NumberCodecType.values()) {
+      inc.addColumn(FAMILY, type.name().getBytes(), -2, type);
+    }
+    ht.increment(inc);
+    r = ht.get(new Get(ROW));
+    kvs = r.rawCells();
+    assertEquals(NumberCodecType.values().length, kvs.length);
+    for (int i = 0; i < kvs.length; ++i) {
+      byte[] q = CellUtil.cloneQualifier(kvs[i]);
+      NumberCodecType type = NumberCodecType.valueOf(Bytes.toString(q));
+      assertIncrementKey(kvs[i], ROW, FAMILY, CellUtil.cloneQualifier(kvs[i]), -1, type);
     }
   }
 

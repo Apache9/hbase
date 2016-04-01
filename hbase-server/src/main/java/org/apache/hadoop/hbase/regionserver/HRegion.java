@@ -6001,11 +6001,11 @@ public class HRegion implements HeapSize { // , Writable{
 
               Cell c = null;
               long ts = now;
-              NumberCodecType codec = NumberCodecType.RAW_LONG;
+              NumberCodecType codec =
+                  increment.getNumberCodecType(family.getKey(), CellUtil.cloneQualifier(cell));
               if (idx < results.size() && CellUtil.matchingQualifier(results.get(idx), cell)) {
                 c = results.get(idx);
                 ts = Math.max(now, c.getTimestamp());
-                codec = increment.getNumberCodecType(family.getKey(), CellUtil.cloneQualifier(c));
                 try {
                   amount += codec.decode(c.getValueArray(),
                       c.getValueOffset(),
