@@ -160,6 +160,8 @@ import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ShutdownRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ShutdownResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.StopMasterRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.StopMasterResponse;
+import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleRequest;
+import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.TruncateTableRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.TruncateTableResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.UnassignRegionRequest;
@@ -2254,6 +2256,12 @@ public class HConnectionManager {
             RpcController controller, SetQuotaRequest request)
             throws ServiceException {
           return stub.setQuota(controller, request);
+        }
+
+        @Override
+        public SwitchThrottleResponse switchThrottle(RpcController controller,
+            SwitchThrottleRequest request) throws ServiceException {
+          return stub.switchThrottle(controller, request);
         }
       };
     }

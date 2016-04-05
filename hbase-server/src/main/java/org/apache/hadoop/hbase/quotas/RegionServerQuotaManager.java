@@ -61,6 +61,7 @@ public class RegionServerQuotaManager {
 
   private QuotaCache quotaCache = null;
 
+  private boolean enabled = false;
   private boolean isSimulated = false;
 
   private Counter grabQuotaFailedCount = new Counter();
@@ -101,24 +102,24 @@ public class RegionServerQuotaManager {
     }
 
     this.grabQuotaFailedCount.set(0);
+    enabled = true;
   }
 
   public void stop() {
-    if (isQuotaEnabled()) {
+    if (enabled) {
       quotaCache.stop("shutdown");
-      quotaCache = null;
     }
   }
   
   public boolean isStopped() {
-    if (isQuotaEnabled()) {
+    if (enabled) {
       return quotaCache.isStopped();
     }
-    return true;
+    return false;
   }
 
   public boolean isQuotaEnabled() {
-    return quotaCache != null;
+    return enabled;
   }
 
   public boolean isThrottleSimulated() {

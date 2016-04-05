@@ -21,7 +21,6 @@ import java.io.IOException;
 import java.util.List;
 
 import org.apache.hadoop.hbase.util.ByteStringer;
-
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.CellScannable;
 import org.apache.hadoop.hbase.DoNotRetryIOException;
@@ -98,9 +97,11 @@ import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.MoveRegionRequest
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.OfflineRegionRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RunCatalogScanRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetBalancerRunningRequest;
+import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.TruncateTableRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.UnassignRegionRequest;
 import org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.GetLastFlushedSequenceIdRequest;
+import org.apache.hadoop.hbase.quotas.ThrottleState;
 import org.apache.hadoop.hbase.util.ByteStringer;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.Pair;
@@ -1570,5 +1571,11 @@ public final class RequestConverter {
       builder.setOpenForDistributedLogReplay(openForReplay);
     }
     return builder.build();
+  }
+
+  public static SwitchThrottleRequest buildSwitchThrottleRequest(ThrottleState state) {
+    SwitchThrottleRequest.Builder request = SwitchThrottleRequest.newBuilder();
+    request.setThrottleState(ProtobufUtil.toProtoThrottleState(state));
+    return request.build();
   }
 }

@@ -85,7 +85,7 @@ public class TestThrottleAdmin {
     TEST_UTIL.getConfiguration().setInt("hbase.hstore.compactionThreshold", 10);
     TEST_UTIL.getConfiguration().setInt("hbase.regionserver.msginterval", 100);
     TEST_UTIL.getConfiguration().setInt("hbase.client.pause", 250);
-    TEST_UTIL.getConfiguration().setInt(HConstants.HBASE_CLIENT_RETRIES_NUMBER, 6);
+    TEST_UTIL.getConfiguration().setInt(HConstants.HBASE_CLIENT_RETRIES_NUMBER, 1);
     TEST_UTIL.getConfiguration().setBoolean("hbase.master.enabletable.roundrobin", true);
     TEST_UTIL.getConfiguration().setBoolean("hbase.quota.allow.exceed", false);
     TEST_UTIL.startMiniCluster(regionServerNum);
@@ -119,8 +119,8 @@ public class TestThrottleAdmin {
     quotaManager = TEST_UTIL.getMiniHBaseCluster()
         .getRegionServer(0).getRegionServerQuotaManager();
     // start throttle before all unit tests
-    admin.switchThrottle(true, false, false);
-    triggerUserCacheRefresh(false, TABLE_NAME);
+    admin.switchThrottle(ThrottleState.ON);
+    checkIfStart();
   }
 
   @After
@@ -129,60 +129,66 @@ public class TestThrottleAdmin {
   }
 
   @Test
-  public void testStartThrottle() throws Exception {
-    checkIfStart();
-  }
-
-  @Test
   public void testSimulateThrottle() throws Exception {
-    checkIfStart();
     // simulate throttle
-    admin.switchThrottle(false, true, false);
+    admin.switchThrottle(ThrottleState.SIMULATION);
     checkIfSimulate();
+    // start throttle
+    admin.switchThrottle(ThrottleState.ON);
+    checkIfStart();
   }
 
   @Test
   public void testStopThrottle() throws Exception {
-    checkIfStart();
     // stop throttle
-    admin.switchThrottle(false, false, true);
+    admin.switchThrottle(ThrottleState.OFF);
     checkIfStop();
+    // start throttle
+    admin.switchThrottle(ThrottleState.ON);
+    checkIfStart();
   }
-  
+
   @Test
   public void testSimulateAndStopThrottle() throws Exception {
-    checkIfStart();
     // simulate throttle
-    admin.switchThrottle(false, true, false);
+    admin.switchThrottle(ThrottleState.SIMULATION);
     checkIfSimulate();
     // stop throttle
-    admin.switchThrottle(false, false, true);
+    admin.switchThrottle(ThrottleState.OFF);
     checkIfStop();
     // simulate throttle
-    admin.switchThrottle(false, true, false);
+    admin.switchThrottle(ThrottleState.SIMULATION);
     checkIfSimulate();
   }
 
   private void checkIfStart() throws Exception {
+    Thread.sleep(1000);
+
     assertTrue(quotaManager.isQuotaEnabled());
     assertFalse(quotaManager.isThrottleSimulated());
     assertFalse(quotaManager.isStopped());
 
+    triggerUserCacheRefresh(false, TABLE_NAME);
     assertEquals(10, doPuts(100, table));
     assertEquals(10, doGets(100, table));
   }
 
   private void checkIfSimulate() throws Exception {
+    Thread.sleep(1000);
+
     assertTrue(quotaManager.isQuotaEnabled());
     assertTrue(quotaManager.isThrottleSimulated());
     assertFalse(quotaManager.isStopped());
 
+    triggerUserCacheRefresh(false, TABLE_NAME);
     assertEquals(100, doPuts(100, table));
     assertEquals(100, doGets(100, table));
   }
 
   private void checkIfStop() throws Exception {
-    assertFalse(quotaManager.isQuotaEnabled());
+    Thread.sleep(1000);
+
+    assertTrue(quotaManager.isQuotaEnabled());
     assertFalse(quotaManager.isThrottleSimulated());
     assertTrue(quotaManager.isStopped());
 
@@ -232,17 +238,9 @@ public class TestThrottleAdmin {
     triggerCacheRefresh(bypass, true, false, false, tables);
   }
 
-  private void triggerTableCacheRefresh(boolean bypass, TableName... tables) throws Exception {
-    triggerCacheRefresh(bypass, false, true, false, tables);
-  }
-
-  private void triggerNamespaceCacheRefresh(boolean bypass, TableName... tables) throws Exception {
-    triggerCacheRefresh(bypass, false, false, true, tables);
-  }
-
   private void triggerCacheRefresh(boolean bypass, boolean userLimiter, boolean tableLimiter,
       boolean nsLimiter, final TableName... tables) throws Exception {
-  envEdge.incValue(2 * REFRESH_TIME);
+    envEdge.incValue(2 * REFRESH_TIME);
     for (RegionServerThread rst: TEST_UTIL.getMiniHBaseCluster().getRegionServerThreads()) {
       RegionServerQuotaManager quotaManager = rst.getRegionServer().getRegionServerQuotaManager();
       QuotaCache quotaCache = quotaManager.getQuotaCache();

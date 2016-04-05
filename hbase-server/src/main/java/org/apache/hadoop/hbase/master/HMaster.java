@@ -207,6 +207,8 @@ import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SnapshotRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SnapshotResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.StopMasterRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.StopMasterResponse;
+import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleRequest;
+import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.TruncateTableRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.TruncateTableResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.UnassignRegionRequest;
@@ -226,6 +228,7 @@ import org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.Table
 import org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.SplitLogTask.RecoveryMode;
 import org.apache.hadoop.hbase.quotas.MasterQuotaManager;
 import org.apache.hadoop.hbase.quotas.RegionStateListener;
+import org.apache.hadoop.hbase.quotas.ThrottleState;
 import org.apache.hadoop.hbase.regionserver.RegionCoprocessorHost;
 import org.apache.hadoop.hbase.regionserver.RegionSplitPolicy;
 import org.apache.hadoop.hbase.replication.regionserver.Replication;
@@ -254,6 +257,7 @@ import org.apache.hadoop.hbase.zookeeper.DrainingServerTracker;
 import org.apache.hadoop.hbase.zookeeper.LoadBalancerTracker;
 import org.apache.hadoop.hbase.zookeeper.MasterAddressTracker;
 import org.apache.hadoop.hbase.zookeeper.RegionServerTracker;
+import org.apache.hadoop.hbase.zookeeper.ThrottleStateTracker;
 import org.apache.hadoop.hbase.zookeeper.ZKClusterId;
 import org.apache.hadoop.hbase.zookeeper.ZKUtil;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperListener;
@@ -367,6 +371,8 @@ MasterServices, Server {
   private LoadBalancerTracker loadBalancerTracker;
   // master address tracker
   private MasterAddressTracker masterAddressTracker;
+  // Tracker for throttle state
+  private ThrottleStateTracker throttleStateTracker;
 
   // RPC server for the HMaster
   private final RpcServerInterface rpcServer;
@@ -803,6 +809,9 @@ MasterServices, Server {
       this.serverManager);
     this.drainingServerTracker.start();
 
+    this.throttleStateTracker = new ThrottleStateTracker(zooKeeper, this);
+    this.throttleStateTracker.start();
+    
     // Set the cluster as up.  If new RSs, they'll be waiting on this before
     // going ahead with their startup.
     boolean wasUp = this.clusterStatusTracker.isClusterUp();
@@ -3661,6 +3670,24 @@ MasterServices, Server {
     }
   }
 
+  @Override
+  public SwitchThrottleResponse switchThrottle(RpcController controller,
+      SwitchThrottleRequest request) throws ServiceException {
+    SwitchThrottleResponse.Builder response = SwitchThrottleResponse.newBuilder();
+    if (isQuotaEnabled()) {
+      ThrottleState prevState = this.throttleStateTracker.getThrottleState();
+      ThrottleState state = ProtobufUtil.toThrottleState(request.getThrottleState());
+      try {
+        this.throttleStateTracker.setThrottleState(state);
+      } catch (KeeperException e) {
+        throw new ServiceException(e);
+      }
+      LOG.info(getClientIdAuditPrefix() + " set throttleSwitch from " + prevState + " to " + state);
+      response.setPrevThrottleState(ProtobufUtil.toProtoThrottleState(prevState));
+    }
+    return response.build();
+  }
+
   public Map<TableName, TableLoad> getTableLoads() {
     Map<TableName, TableLoad> tableLoads = new HashMap<TableName, TableLoad>();
     for (final Entry<ServerName, ServerLoad> entry : this.getServerManager()
@@ -3677,5 +3704,9 @@ MasterServices, Server {
       }
     }
     return tableLoads;
+  }
+
+  private boolean isQuotaEnabled() {
+    return (this.quotaManager != null) && (this.quotaManager.isQuotaEnabled());
   }
 }

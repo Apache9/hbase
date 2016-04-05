@@ -71,3 +71,9 @@ message Quotas {
 
 message QuotaUsage {
 }
+
+enum ThrottleState {
+  ON = 1;
+  SIMULATION = 2;
+  OFF = 3;
+}

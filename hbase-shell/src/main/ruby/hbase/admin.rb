@@ -1026,19 +1026,19 @@ module Hbase
     #----------------------------------------------------------------------------------------------
     # start throttle by quota
     def start_throttle()
-      @admin.switchThrottle(true, false, false)
+      @admin.switchThrottle(org.apache.hadoop.hbase.quotas.ThrottleState.valueOf("ON"))
     end
 
     #----------------------------------------------------------------------------------------------
     # simulate throttle by quota
     def simulate_throttle()
-      @admin.switchThrottle(false, true, false)
+      @admin.switchThrottle(org.apache.hadoop.hbase.quotas.ThrottleState.valueOf("SIMULATION"))
     end
 
     #----------------------------------------------------------------------------------------------
     # stop throttle by quota
     def stop_throttle()
-      @admin.switchThrottle(false, false, true)
+      @admin.switchThrottle(org.apache.hadoop.hbase.quotas.ThrottleState.valueOf("OFF"))
     end
 
   end

@@ -279,4 +279,8 @@ class MockRegionServerServices implements RegionServerServices {
   public RegionServerReportResponse getRegionServerReportResponse() {
     return null;
   }
+
+  @Override
+  public void switchThrottle() {
+  }
 }

@@ -6952,6 +6952,7 @@ public class HRegion implements HeapSize { // , Writable{
       return false;
     }
     RegionServerQuotaManager rsQuotaManager = this.rsServices.getRegionServerQuotaManager();
-    return (rsQuotaManager != null) && (rsQuotaManager.isQuotaEnabled());
+    return (rsQuotaManager != null) && (rsQuotaManager.isQuotaEnabled())
+        && (!rsQuotaManager.isStopped());
   }
 }

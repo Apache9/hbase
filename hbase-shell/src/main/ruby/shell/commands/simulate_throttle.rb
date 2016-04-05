@@ -33,7 +33,10 @@ EOF
 
       def command()
         format_simple_command do
-          admin.simulate_throttle()
+          state = admin.simulate_throttle()
+          formatter.row([
+            state == nil ? "Quota is not enabled" : state.name + " ==> SIMULATION"
+          ])
         end
       end
     end

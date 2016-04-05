@@ -174,4 +174,6 @@ public interface RegionServerServices
    * @return the report response by master return 
    */
   RegionServerReportResponse getRegionServerReportResponse();
+  
+  void switchThrottle();
 }

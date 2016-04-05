@@ -30,6 +30,7 @@ import com.google.protobuf.RpcChannel;
 import com.google.protobuf.Service;
 import com.google.protobuf.ServiceException;
 import com.google.protobuf.TextFormat;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
@@ -142,6 +143,7 @@ import org.apache.hadoop.hbase.replication.ReplicationLoadSource;
 import org.apache.hadoop.hbase.quotas.QuotaType;
 import org.apache.hadoop.hbase.quotas.QuotaScope;
 import org.apache.hadoop.hbase.quotas.ThrottleType;
+import org.apache.hadoop.hbase.quotas.ThrottleState;
 import org.apache.hadoop.hbase.security.access.Permission;
 import org.apache.hadoop.hbase.security.access.TablePermission;
 import org.apache.hadoop.hbase.security.access.UserPermission;
@@ -3015,6 +3017,40 @@ public final class ProtobufUtil {
       case THROTTLE: return QuotaProtos.QuotaType.THROTTLE;
     }
     throw new RuntimeException("Invalid QuotaType " + type);
+  }
+
+  /**
+   * Convert a protocol buffer ThrottleState to a client ThrottleState
+   * @param proto
+   * @return the converted client ThrottleState
+   */
+  public static ThrottleState toThrottleState(final QuotaProtos.ThrottleState proto) {
+    switch (proto) {
+    case ON:
+      return ThrottleState.ON;
+    case SIMULATION:
+      return ThrottleState.SIMULATION;
+    case OFF:
+      return ThrottleState.OFF;
+    }
+    throw new RuntimeException("Invalid ThrottleState " + proto);
+  }
+
+  /**
+   * Convert a client ThrottleState to a protocol buffer ThrottleState
+   * @param state
+   * @return the converted protocol buffer ThrottleState
+   */
+  public static QuotaProtos.ThrottleState toProtoThrottleState(final ThrottleState state) {
+    switch (state) {
+    case ON:
+      return QuotaProtos.ThrottleState.ON;
+    case SIMULATION:
+      return QuotaProtos.ThrottleState.SIMULATION;
+    case OFF:
+      return QuotaProtos.ThrottleState.OFF;
+    }
+    throw new RuntimeException("Invalid ThrottleState " + state);
   }
 
   /**

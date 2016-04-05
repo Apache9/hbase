@@ -166,8 +166,6 @@ import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.StopServerRequest;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.StopServerResponse;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.UpdateFavoredNodesRequest;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.UpdateFavoredNodesResponse;
-import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.SwitchThrottleRequest;
-import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.SwitchThrottleResponse;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.WALEntry;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.BulkLoadHFileRequest;
@@ -212,6 +210,8 @@ import org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.Repor
 import org.apache.hadoop.hbase.protobuf.generated.WALProtos.CompactionDescriptor;
 import org.apache.hadoop.hbase.quotas.OperationQuota;
 import org.apache.hadoop.hbase.quotas.RegionServerQuotaManager;
+import org.apache.hadoop.hbase.quotas.ThrottleState;
+import org.apache.hadoop.hbase.quotas.ThrottlingException;
 import org.apache.hadoop.hbase.regionserver.HRegion.Operation;
 import org.apache.hadoop.hbase.regionserver.Leases.LeaseStillHeldException;
 import org.apache.hadoop.hbase.regionserver.ScannerContext.LimitScope;
@@ -252,6 +252,7 @@ import org.apache.hadoop.hbase.zookeeper.ZKClusterId;
 import org.apache.hadoop.hbase.zookeeper.ZKUtil;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperNodeTracker;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
+import org.apache.hadoop.hbase.zookeeper.ThrottleStateTracker;
 import org.apache.hadoop.ipc.RemoteException;
 import org.apache.hadoop.metrics.util.MBeanUtil;
 import org.apache.hadoop.net.DNS;
@@ -469,6 +470,9 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
 
   // Cluster Status Tracker
   private ClusterStatusTracker clusterStatusTracker;
+
+  // Throttle state tracker
+  private ThrottleStateTracker throttleStateTracker;
 
   // Log Splitting Worker
   private SplitLogWorker splitLogWorker;
@@ -870,6 +874,10 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
 
     // register watcher for recovering regions
     this.recoveringRegionWatcher = new RecoveringRegionWatcher(this.zooKeeper, this);
+    
+    // register throttle state tracker
+    this.throttleStateTracker = new ThrottleStateTracker(this.zooKeeper, this, this);
+    this.throttleStateTracker.start();
   }
 
   /**
@@ -5390,19 +5398,25 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
   }
   
   @Override
-  public SwitchThrottleResponse switchThrottle(RpcController controller,
-      SwitchThrottleRequest request) throws ServiceException {
-    if (request.hasStartThrottle() && request.getStartThrottle()) {
-      startQuotaManager();
-      rsQuotaManager.setThrottleSimulated(false);
-    } else if (request.hasSimulateThrottle() && request.getSimulateThrottle()) {
-      startQuotaManager();
-      rsQuotaManager.setThrottleSimulated(true);
-    } else if (request.hasStopThrottle() && request.getStopThrottle()) {
-      rsQuotaManager.stop();
-      rsQuotaManager.setThrottleSimulated(false);
+  public void switchThrottle() {
+    if (this.rsQuotaManager != null && this.rsQuotaManager.isQuotaEnabled()) {
+      ThrottleState state = this.throttleStateTracker.getThrottleState();
+      LOG.info("set throttleSwitch to " + state);
+      switch(state) {
+        case ON:
+          startQuotaManager();
+          rsQuotaManager.setThrottleSimulated(false);
+          break;
+        case SIMULATION:
+          startQuotaManager();
+          rsQuotaManager.setThrottleSimulated(true);
+          break;
+        case OFF:
+          rsQuotaManager.stop();
+          rsQuotaManager.setThrottleSimulated(false);
+          break;
+      }
     }
-    return SwitchThrottleResponse.newBuilder().build();
   }
   
   @Override
@@ -5417,16 +5431,17 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
   public boolean isEnableCompact() {
     return this.enableCompact;
   }
-  
-  private void startQuotaManager() throws ServiceException {
-    if (rsQuotaManager.isStopped()) {
+
+  private void startQuotaManager() {
+    if (rsQuotaManager != null && rsQuotaManager.isStopped()) {
       try {
         rsQuotaManager.start(getRpcServer().getScheduler());
       } catch (Throwable t) {
-        throw new ServiceException(t);
+        LOG.error("Fail to statr regionserver quota manager", t);
       }
     }
   }
+
   /**
    * @return The cache config instance used by the regionserver.
    */
@@ -5453,16 +5468,13 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     return max;
   }
 
-  private RegionServerQuotaManager getQuotaManager() {
-    return getRegionServerQuotaManager();
-  }
-  
   @Override
   public RegionServerReportResponse getRegionServerReportResponse() {
     return reportResponse;
   }
 
   private boolean isQuotaEnabled() {
-    return (this.rsQuotaManager != null) && (this.rsQuotaManager.isQuotaEnabled());
+    return (this.rsQuotaManager != null) && (this.rsQuotaManager.isQuotaEnabled())
+        && (!this.rsQuotaManager.isStopped());
   }
 }

@@ -21,7 +21,7 @@ module Shell
     class StartThrottle < Command
       def help
         return <<-EOF
-Start throttle by quota.
+Start throttle by quota. Returns previous throttle state.
 NOTE: if quota is not enabled, this will not work.
   
 Syntax : start_throttle
@@ -33,7 +33,10 @@ EOF
 
       def command()
         format_simple_command do
-          admin.start_throttle()
+          state = admin.start_throttle()
+          formatter.row([
+            state == nil ? "Quota is not enabled" : state.name + " ==> ON"
+          ])
         end
       end
     end

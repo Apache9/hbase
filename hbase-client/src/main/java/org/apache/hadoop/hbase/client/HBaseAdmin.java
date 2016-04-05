@@ -85,7 +85,6 @@ import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionInfoRespo
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.RollWALWriterRequest;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.RollWALWriterResponse;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.StopServerRequest;
-import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.SwitchThrottleRequest;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.ClientService;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.ScanRequest;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.ScanResponse;
@@ -134,11 +133,14 @@ import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ShutdownRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SnapshotRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SnapshotResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.StopMasterRequest;
+import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleRequest;
+import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.TruncateTableRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.UnassignRegionRequest;
 import org.apache.hadoop.hbase.quotas.QuotaFilter;
 import org.apache.hadoop.hbase.quotas.QuotaRetriever;
 import org.apache.hadoop.hbase.quotas.QuotaSettings;
+import org.apache.hadoop.hbase.quotas.ThrottleState;
 import org.apache.hadoop.hbase.regionserver.wal.FailedLogCloseException;
 import org.apache.hadoop.hbase.snapshot.ClientSnapshotDescriptionUtils;
 import org.apache.hadoop.hbase.snapshot.HBaseSnapshotException;
@@ -156,6 +158,7 @@ import org.apache.zookeeper.KeeperException;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.ServiceException;
+import com.sun.research.ws.wadl.Response;
 import com.xiaomi.infra.hbase.salted.KeySalter;
 import com.xiaomi.infra.hbase.salted.SaltedHTable;
 
@@ -3583,31 +3586,27 @@ public class HBaseAdmin implements Abortable, Closeable {
     });
   }
   
-  public void switchThrottle(final boolean isStart, final boolean isSimulate, final boolean isStop)
-      throws IOException {
-    List<ServerName> servers = new ArrayList<ServerName>();
-    servers.addAll(getClusterStatus().getServers());
-    for (ServerName sn : servers) {
-      switchThrottle(sn, isStart, isSimulate, isStop);
-    }
-  }
-
-  private void switchThrottle(final ServerName sn, final boolean isStart, final boolean isSimulate,
-      final boolean isStop) throws IOException {
-    AdminService.BlockingInterface admin = this.connection.getAdmin(sn);
-    SwitchThrottleRequest.Builder request = SwitchThrottleRequest.newBuilder();
-    if (isStart) {
-      request.setStartThrottle(isStart);
-    } else if (isSimulate) {
-      request.setSimulateThrottle(isSimulate);
-    } else if (isStop) {
-      request.setStopThrottle(isStop);
-    }
+  public ThrottleState switchThrottle(final ThrottleState state) throws IOException {
+    MasterKeepAliveConnection stub = connection.getKeepAliveMasterService();
     try {
-      admin.switchThrottle(null, request.build());
+      SwitchThrottleResponse response = stub.switchThrottle(null,
+        RequestConverter.buildSwitchThrottleRequest(state));
+      return response.hasPrevThrottleState() ? ProtobufUtil.toThrottleState(response
+          .getPrevThrottleState()) : null;
     } catch (ServiceException se) {
-      throw ProtobufUtil.getRemoteException(se);
+      IOException ioe = ProtobufUtil.getRemoteException(se);
+      if (ioe instanceof MasterNotRunningException) {
+        throw (MasterNotRunningException) ioe;
+      }
+      if (ioe instanceof ZooKeeperConnectionException) {
+        throw (ZooKeeperConnectionException) ioe;
+      }
+
+      // Throwing MasterNotRunningException even though not really valid in order to not
+      // break interface by adding additional exception type.
+      throw new MasterNotRunningException("Unexpected exception when calling balanceSwitch", se);
+    } finally {
+      stub.close();
     }
   }
-
 }
