@@ -51,6 +51,7 @@ public class TimeBasedLimiter implements QuotaLimiter {
   public static final String MAX_LOG_THROTTLING_COUNT_KEY = "hbase.throttling.log.max.count";
   private int maxLogThrottlingCount = conf.getInt(MAX_LOG_THROTTLING_COUNT_KEY, 5);
   private int logThrottlingCount = maxLogThrottlingCount;
+  private boolean bypassGlobals = false;
 
   private TimeBasedLimiter() {
     if (FixedIntervalRateLimiter.class.getName().equals(
@@ -249,6 +250,16 @@ public class TimeBasedLimiter implements QuotaLimiter {
   @Override
   public long getAvgOperationSize(OperationType type) {
     return avgOpSize.getAvgOperationSize(type);
+  }
+
+  @Override
+  public boolean getBypassGlobals() {
+    return this.bypassGlobals;
+  }
+
+  @Override
+  public void setBypassGlobals(boolean bypassGlobals) {
+    this.bypassGlobals = bypassGlobals;
   }
 
   /**

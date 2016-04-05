@@ -64,6 +64,10 @@ Meanwhile, gobal admins can bypass quota check for user and table:
     hbase> set_quota GLOBAL_BYPASS => true, USER => 'u1', TABLE => 'ns1:t1'
     # recovery quota check when u1 access ns1:t1
     hbase> set_quota GLOBAL_BYPASS => false, USER => 'u1', TABLE => 'ns1:t1'
+    # bypass quota check for user u1
+    hbase> set_quota GLOBAL_BYPASS => true, USER => 'u1'
+    # recovery quota check for user u1
+    hbase> set_quota GLOBAL_BYPASS => false, USER => 'u1'
 
 EOF
       end

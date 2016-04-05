@@ -127,8 +127,9 @@ module Hbase
           table = TableName.valueOf(args.delete(TABLE))
           raise(ArgumentError, "Unexpected arguments: " + args.inspect) unless args.empty?
           settings = QuotaSettingsFactory.bypassGlobals(user, table, bypass)
-        elsif
-          raise "Expected TABLE"
+        else
+          raise(ArgumentError, "Unexpected arguments: " + args.inspect) unless args.empty?
+          settings = QuotaSettingsFactory.bypassGlobals(user, bypass)
         end
       else
         raise "Expected USER"

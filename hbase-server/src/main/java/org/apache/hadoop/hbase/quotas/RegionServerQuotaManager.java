@@ -160,13 +160,15 @@ public class RegionServerQuotaManager {
       QuotaLimiter rsLimiter = quotaCache.getRegionServerLimiter();
       boolean useNoop = userLimiter.isBypass();
       useNoop &= rsLimiter.isBypass();
-      if (userQuotaState.hasBypassGlobals()) {
+      // For allow exceed quota, bypass globals means that user will not throttled by any limiter.
+      // For default quota, bypass globals meeans that user only throttled by user own limiter.
+      if (userQuotaState.hasBypassGlobals() || userLimiter.getBypassGlobals()) {
         if (LOG.isTraceEnabled()) {
           LOG.trace("get quota for ugi=" + ugi + " table=" + table + " userLimiter=" + userLimiter);
         }
         if (!useNoop) {
           if (allowExceed) {
-            return new AllowExceedOperationQuota(userLimiter, rsLimiter);
+            return NoopOperationQuota.get();
           } else {
             return new DefaultOperationQuota(userLimiter);
           }

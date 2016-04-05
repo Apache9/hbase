@@ -123,4 +123,14 @@ class NoopQuotaLimiter implements QuotaLimiter {
   public boolean canLogThrottlingException() {
     return true;
   }
+
+  @Override
+  public boolean getBypassGlobals() {
+    return false;
+  }
+
+  @Override
+  public void setBypassGlobals(boolean bypassGlobals) {
+    // no-op
+  }
 }
