@@ -45,19 +45,17 @@ public class AllowExceedOperationQuota implements OperationQuota {
     boolean userQuotaExceed = false;
     try {
       userLimiter.checkQuotaByRequestUnit(writeNeed, readNeed);
-      userLimiter.grabQuotaByRequestUnit(writeNeed, readNeed);
     } catch (ThrottlingException e) {
       userQuotaExceed = true;
     }
     try {
       regionServerLimiter.checkQuotaByRequestUnit(writeNeed, readNeed);
-      regionServerLimiter.grabQuotaByRequestUnit(writeNeed, readNeed);
     } catch (ThrottlingException e) {
       if (userQuotaExceed || userLimiter.isBypass()) {
         throw e;
       }
-      regionServerLimiter.grabQuotaByRequestUnit(writeNeed, readNeed);
     }
+    grabQuota(numWrites, numReads, numScans);
   }
 
   public void grabQuota(int numWrites, int numReads, int numScans) {

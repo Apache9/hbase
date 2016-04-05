@@ -28,13 +28,17 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.DoNotRetryIOException;
 import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.client.Append;
+import org.apache.hadoop.hbase.client.Increment;
 import org.apache.hadoop.hbase.client.Mutation;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.RowMutations;
 import org.apache.hadoop.hbase.ipc.RpcScheduler;
 import org.apache.hadoop.hbase.ipc.RequestContext;
+import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos;
 import org.apache.hadoop.hbase.regionserver.HRegion;
 import org.apache.hadoop.hbase.regionserver.RegionServerServices;
@@ -213,15 +217,9 @@ public class RegionServerQuotaManager {
    */
   public OperationQuota checkQuota(final HRegion region, final OperationQuota.OperationType type)
       throws IOException, ThrottlingException {
-    switch (type) {
-    case SCAN:
-      return checkQuota(region, 0, 0, 1);
-    case GET:
-      return checkQuota(region, 0, 1, 0);
-    case MUTATE:
-      return checkQuota(region, 1, 0, 0);
-    }
-    throw new RuntimeException("Invalid operation type: " + type);
+    UserGroupInformation ugi = getUserGroupInformation(region);
+    TableName table = region.getTableDesc().getTableName();
+    return checkQuota(ugi, table, type);
   }
 
   public OperationQuota checkQuota(final UserGroupInformation ugi, final TableName table,
@@ -245,14 +243,20 @@ public class RegionServerQuotaManager {
    */
   public OperationQuota checkQuota(final HRegion region, final Mutation mutation) throws IOException,
       ThrottlingException {
-    int numWrites = calculateRequestUnitNum(mutation);
-    return checkQuota(region, numWrites, 0, 0);
+    UserGroupInformation ugi = getUserGroupInformation(region);
+    TableName table = region.getTableDesc().getTableName();
+    return checkQuota(ugi, table, mutation);
   }
 
   public OperationQuota checkQuota(final UserGroupInformation ugi, final TableName table,
       final Mutation mutation) throws IOException, ThrottlingException {
     int numWrites = calculateRequestUnitNum(mutation);
     return checkQuota(ugi, table, numWrites, 0, 0);
+  }
+
+  public OperationQuota checkQuota(final HRegion region, final RowMutations rowMutations) throws IOException {
+    int numWrites = calculateRequestUnitNum(rowMutations);
+    return checkQuota(region, numWrites, 0, 0);
   }
 
   /**
@@ -264,30 +268,23 @@ public class RegionServerQuotaManager {
    */
   public OperationQuota checkQuota(final HRegion region, final List<ClientProtos.Action> actions)
       throws IOException, ThrottlingException {
-    int numWrites = 0;
-    int numReads = 0;
-    for (final ClientProtos.Action action : actions) {
-      if (action.hasMutation()) {
-        numWrites++;
-      } else if (action.hasGet()) {
-        numReads++;
-      }
-    }
-    return checkQuota(region, numWrites, numReads, 0);
+    UserGroupInformation ugi = getUserGroupInformation(region);
+    TableName table = region.getTableDesc().getTableName();
+    return checkQuota(ugi, table, actions);
   }
   
   public OperationQuota checkQuota(final UserGroupInformation ugi, final TableName table,
       final List<ClientProtos.Action> actions) throws IOException, ThrottlingException {
-    int numWrites = 0;
     int numReads = 0;
+    long writeSize = 0;
     for (final ClientProtos.Action action : actions) {
-      if (action.hasMutation()) {
-        numWrites++;
-      } else if (action.hasGet()) {
+      if (action.hasGet()) {
         numReads++;
+      } else if (action.hasMutation()) {
+        writeSize += QuotaUtil.calculateMutationSize(ProtobufUtil.toMutation(action.getMutation()));
       }
     }
-    return checkQuota(ugi, table, numWrites, numReads, 0);
+    return checkQuota(ugi, table, (int) calculateWriteCapacityUnitNum(writeSize), numReads, 0);
   }
 
   /**
@@ -305,28 +302,7 @@ public class RegionServerQuotaManager {
     checkQuotaSupport();
     UserGroupInformation ugi = getUserGroupInformation(region);
     TableName table = region.getTableDesc().getTableName();
-    OperationQuota quota = null;
-    try {
-      quota = getQuota(ugi, table);
-      quota.checkQuota(numWrites, numReads, numScans);
-    } catch (ThrottlingException e) {
-      // avoid log too much exception when overload
-      if (quota.canLogThrottlingException()) {
-        LOG.error("Throttling exception for user=" + ugi.getUserName() + " table=" + table
-            + " numWrites=" + numWrites + " numReads=" + numReads + " numScans=" + numScans + ": "
-            + e.getMessage());
-        LOG.info("Quota snapshot for user=" + ugi.getUserName() + " table=" + table + " : "
-            + quota);
-      }
-      region.getMetrics().updateThrottledRead(numReads + numScans);
-      region.getMetrics().updateThrottledWrite(numWrites);
-      if (!isThrottleSimulated()) {
-        throw e;
-      }
-    } catch (Throwable t) {
-      throw new IOException("Unexcepted exception when check quota", t);
-    }
-    return quota;
+    return checkQuota(ugi, table, numWrites, numReads, numScans);
   }
 
   private OperationQuota checkQuota(final UserGroupInformation ugi, final TableName table,
@@ -470,6 +446,24 @@ public class RegionServerQuotaManager {
     }
   }
 
+  public void grabQuota(final HRegion region, final List<Cell> result, final Mutation mutation) {
+    UserGroupInformation ugi = null;
+    TableName table = null;
+    try {
+      ugi = getUserGroupInformation(region);
+      table = region.getTableDesc().getTableName();
+      OperationQuota quota = getQuota(ugi, table);
+      if (quota instanceof AllowExceedOperationQuota) {
+        ((AllowExceedOperationQuota) quota).grabQuota(calculateWriteRequestUnitNum(result)
+            - calculateRequestUnitNum(mutation), 0, 0);
+      }
+    } catch (Throwable t) {
+      this.grabQuotaFailedCount.increment();
+      LOG.fatal("Unexpected exception when grab quota after RowMutations, user=" + ugi + ", table="
+          + table, t);
+    }
+  }
+
   public long getGrabQuotaFailedCount() {
     return this.grabQuotaFailedCount.get();
   }
@@ -480,7 +474,7 @@ public class RegionServerQuotaManager {
         new UnsupportedOperationException("quota support disabled"));
     }
   }
-  
+
   public int calculateRequestUnitNum(final Result result) {
     return (int) calculateReadCapacityUnitNum(QuotaUtil.calculateResultSize(result));
   }
@@ -491,6 +485,18 @@ public class RegionServerQuotaManager {
 
   public int calculateRequestUnitNum(final Mutation mutation) {
     return (int) calculateWriteCapacityUnitNum(QuotaUtil.calculateMutationSize(mutation));
+  }
+
+  public int calculateRequestUnitNum(final RowMutations rowMutations) {
+    return (int) calculateWriteCapacityUnitNum(QuotaUtil.calculateMutationSize(rowMutations));
+  }
+
+  public int calculateReadRequestUnitNum(final List<Cell> cells) {
+    return (int) calculateReadCapacityUnitNum(QuotaUtil.calculateCellsSize(cells));
+  }
+
+  public int calculateWriteRequestUnitNum(final List<Cell> cells) {
+    return (int) calculateWriteCapacityUnitNum(QuotaUtil.calculateCellsSize(cells));
   }
 
   public long calculateReadCapacityUnitNum(final long size) {

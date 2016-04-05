@@ -19,6 +19,7 @@
 package org.apache.hadoop.hbase.quotas;
 
 import java.io.IOException;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -29,6 +30,7 @@ import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Cell;
+import org.apache.hadoop.hbase.CellUtil;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HTableDescriptor;
@@ -40,6 +42,7 @@ import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Mutation;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
+import org.apache.hadoop.hbase.client.RowMutations;
 import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.Quotas;
 import org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.Throttle;
@@ -402,6 +405,30 @@ public class QuotaUtil extends QuotaTableUtil {
     return size;
   }
 
+  public static long calculateMutationSize(final RowMutations rowMutations) {
+    long size = 0;
+    for (Mutation mutation : rowMutations.getMutations()) {
+      size += calculateMutationSize(mutation);
+    }
+    return size;
+  }
+
+  public static long calculateMutationSize(final Collection<Mutation> mutations) {
+    long size = 0;
+    for (Mutation mutation : mutations) {
+      size += calculateMutationSize(mutation);
+    }
+    return size;
+  }
+
+  public static long calculateMutationSize(final Mutation[] mutations) {
+    long size = 0;
+    for (Mutation mutation : mutations) {
+      size += calculateMutationSize(mutation);
+    }
+    return size;
+  }
+
   public static long calculateResultSize(final Result result) {
     long size = 0;
     for (Cell cell : result.rawCells()) {
@@ -416,6 +443,14 @@ public class QuotaUtil extends QuotaTableUtil {
       for (Cell cell : result.rawCells()) {
         size += KeyValueUtil.length(cell);
       }
+    }
+    return size;
+  }
+
+  public static long calculateCellsSize(final List<Cell> cells) {
+    long size = 0;
+    for (Cell cell : cells) {
+      size += CellUtil.estimatedSizeOf(cell);
     }
     return size;
   }

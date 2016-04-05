@@ -132,6 +132,7 @@ import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.SnapshotDescriptio
 import org.apache.hadoop.hbase.protobuf.generated.WALProtos.CompactionDescriptor;
 import org.apache.hadoop.hbase.quotas.QuotaUtil;
 import org.apache.hadoop.hbase.quotas.RegionServerQuotaManager;
+import org.apache.hadoop.hbase.quotas.OperationQuota.OperationType;
 import org.apache.hadoop.hbase.regionserver.MultiVersionConsistencyControl.WriteEntry;
 import org.apache.hadoop.hbase.regionserver.ScannerContext.LimitScope;
 import org.apache.hadoop.hbase.regionserver.ScannerContext.NextState;
@@ -165,7 +166,6 @@ import org.apache.hadoop.metrics.util.MetricsRegistry;
 import org.apache.hadoop.util.StringUtils;
 import org.apache.htrace.Trace;
 import org.apache.htrace.TraceScope;
-
 import org.cliffc.high_scale_lib.Counter;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -2000,7 +2000,6 @@ public class HRegion implements HeapSize { // , Writable{
     // closest key is across all column families, since the data may be sparse
     checkRow(row, "getClosestRowBefore");
     startRegionOperation(Operation.GET);
-    updateReadMetrics(1);
     try {
       Store store = getStore(family);
       // get the closest key. (HStore.getRowKeyAtOrBefore can return null)
@@ -2328,6 +2327,9 @@ public class HRegion implements HeapSize { // , Writable{
    */
   public OperationStatus[] batchMutate(
       Mutation[] mutations, long nonceGroup, long nonce) throws IOException {
+    updateWriteMetrics(mutations.length);
+    updateWriteCapacityUnitMetrics(QuotaUtil.calculateMutationSize(mutations));
+
     // As it stands, this is used for 3 things
     //  * batchMutate with single mutation - put/delete, separate or from checkAndMutate.
     //  * coprocessor calls (see ex. BulkDeleteEndpoint).
@@ -2335,7 +2337,7 @@ public class HRegion implements HeapSize { // , Writable{
     if (mutations.length <= 1 || !htableDescriptor.isAcrossPrefixRowsAtomic()) {
       return batchMutate(new MutationBatch(mutations, nonceGroup, nonce));
     }
-    
+
     // sort mutations by rowkey to avoid dead lock when getting row locks
     List<Action<Object>> actions = Lists.newArrayListWithCapacity(mutations.length);
     for (int i = 0; i < mutations.length; ++i) {
@@ -2392,7 +2394,6 @@ public class HRegion implements HeapSize { // , Writable{
         checkResources();
 
         if (!initialized) {
-          updateWriteMetrics(batchOp.operations.length);
           if (!batchOp.isInReplay()) {
             doPreMutationHook(batchOp);
           }
@@ -2478,7 +2479,6 @@ public class HRegion implements HeapSize { // , Writable{
     int lastIndexExclusive = firstIndex;
     boolean success = false;
     int noOfPuts = 0, noOfDeletes = 0;
-    long batchMutationSize = 0;
     boolean isAtomic = htableDescriptor.isAcrossPrefixRowsAtomic();
     try {
       // ------------------------------------
@@ -2605,7 +2605,6 @@ public class HRegion implements HeapSize { // , Writable{
           }
           noOfDeletes++;
         }
-        batchMutationSize += QuotaUtil.calculateMutationSize(mutation);
         rewriteCellTags(familyMaps[i], mutation);
       }
 
@@ -2795,9 +2794,6 @@ public class HRegion implements HeapSize { // , Writable{
           this.metricsRegion.updateDelete();
         }
       }
-      if (batchMutationSize > 0) {
-        updateWriteCapacityUnitMetrics(batchMutationSize);
-      }
       if (!success) {
         for (int i = firstIndex; i < lastIndexExclusive; i++) {
           if (batchOp.retCodeDetails[i].getOperationStatusCode() == OperationStatusCode.NOT_RUN) {
@@ -2865,6 +2861,10 @@ public class HRegion implements HeapSize { // , Writable{
       Get get = new Get(row);
       checkFamily(family);
       get.addColumn(family, qualifier);
+
+      if (isQuotaEnabled()) {
+        this.rsServices.getRegionServerQuotaManager().checkQuota(this, OperationType.GET);
+      }
 
       // Lock row - note that doBatchMutate will relock this row if called
       RowLock rowLock = getRowLock(get.getRow());
@@ -2986,6 +2986,10 @@ public class HRegion implements HeapSize { // , Writable{
       checkFamily(family);
       get.addColumn(family, qualifier);
 
+      if (isQuotaEnabled()) {
+        this.rsServices.getRegionServerQuotaManager().checkQuota(this, OperationType.GET);
+      }
+
       // Lock row - note that doBatchMutate will relock this row if called
       RowLock rowLock = getRowLock(get.getRow());
       // wait for all previous transactions to complete (with lock held)
@@ -3053,6 +3057,9 @@ public class HRegion implements HeapSize { // , Writable{
         }
         //If matches put the new put or delete the new delete
         if (matches) {
+          if (rm != null && isQuotaEnabled()) {
+            this.rsServices.getRegionServerQuotaManager().checkQuota(this, rm);
+          }
           // All edits for the given row (across all column families) must
           // happen atomically.
           mutateRow(rm);
@@ -3942,8 +3949,6 @@ public class HRegion implements HeapSize { // , Writable{
     // we need writeLock for multi-family bulk load
     startBulkRegionOperation(hasMultipleColumnFamilies(familyPaths));
     try {
-      updateWriteMetrics(1);
-
       // There possibly was a split that happend between when the split keys
       // were gathered and before the HReiogn's write lock was taken.  We need
       // to validate the HFile region before attempting to bulk load all of them
@@ -4212,17 +4217,8 @@ public class HRegion implements HeapSize { // , Writable{
             "or a lengthy garbage collection");
       }
       startRegionOperation(Operation.SCAN);
-      updateReadMetrics(1);
       try {
         boolean nextState = nextRaw(outResults, scannerContext);
-        if (region != null && region.metricsRegion != null) {
-          long totalSize = 0;
-          for (Cell cell: outResults) {
-            KeyValue kv = KeyValueUtil.ensureKeyValue(cell);
-            totalSize += kv.getLength();
-          }
-          region.updateReadCapacityUnitMetrics(totalSize);
-        }
         return nextState;
       } finally {
         closeRegionOperation(Operation.SCAN);
@@ -5340,8 +5336,8 @@ public class HRegion implements HeapSize { // , Writable{
        }
     }
 
+    updateReadMetrics(1);
     Scan scan = new Scan(get);
-
     RegionScanner scanner = null;
     try {
       scanner = getScanner(scan);
@@ -5369,6 +5365,7 @@ public class HRegion implements HeapSize { // , Writable{
         }
       }
       this.metricsRegion.updateGet(totalSize);
+      this.updateReadCapacityUnitMetrics(totalSize);
     }
 
     return results;
@@ -5402,6 +5399,8 @@ public class HRegion implements HeapSize { // , Writable{
    */
   public void mutateRowsWithLocks(Collection<Mutation> mutations,
       Collection<byte[]> rowsToLock, long nonceGroup, long nonce) throws IOException {
+    updateWriteMetrics(mutations.size());
+    updateWriteCapacityUnitMetrics(QuotaUtil.calculateMutationSize(mutations));
     MultiRowMutationProcessor proc =
         new MultiRowMutationProcessor(mutations, new ArrayList<Condition>(), rowsToLock);
     processRowsWithLocks(proc, -1, nonceGroup, nonce);
@@ -5731,7 +5730,9 @@ public class HRegion implements HeapSize { // , Writable{
               get.addColumn(family.getKey(), kv.getQualifier());
             }
             List<Cell> results = get(get, false);
-
+            if (isQuotaEnabled()) {
+              this.rsServices.getRegionServerQuotaManager().grabQuota(this, Result.create(results));
+            }
             // Iterate the input columns and update existing values if they were
             // found, otherwise add new column initialized to the append value
 
@@ -5843,6 +5844,9 @@ public class HRegion implements HeapSize { // , Writable{
               }
             }
 
+            if (isQuotaEnabled()) {
+              this.rsServices.getRegionServerQuotaManager().grabQuota(this, kvs, append);
+            }
             //store the kvs to the temporary memstore before writing HLog
             tempMemstore.put(store, kvs);
           }
@@ -5875,6 +5879,7 @@ public class HRegion implements HeapSize { // , Writable{
             }
             allKVs.addAll(entry.getValue());
           }
+          updateWriteCapacityUnitMetrics(size);
           size = this.addAndGetGlobalMemstoreSize(size);
           flush = isFlushSize(size);
         } finally {
@@ -5941,6 +5946,7 @@ public class HRegion implements HeapSize { // , Writable{
     // Lock row
     startRegionOperation(Operation.INCREMENT);
     updateWriteMetrics(1);
+    updateWriteCapacityUnitMetrics(QuotaUtil.calculateMutationSize(increment));
     WriteEntry w = null;
     try {
       RowLock rowLock = getRowLock(row);
