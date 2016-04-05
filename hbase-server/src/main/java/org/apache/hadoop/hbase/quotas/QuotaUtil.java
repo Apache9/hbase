@@ -66,6 +66,9 @@ public class QuotaUtil extends QuotaTableUtil {
   public static final String WRITE_CAPACITY_UNIT_CONF_KEY = "hbase.write.capacity.unit";
   public static final int DEFAULT_WRITE_CAPACITY_UNIT = 1024;
 
+  public static final String THROTTLING_MIN_WAIT_INTERVAL = "hbase.throttling.min.wait.interval";
+  public static final long DEFAULT_THROTTLING_MIN_WAIT_INTERVAL = 10;
+
   //there are many unit test not allow exceed (for the DefaultOperationQuota), so need this conf
   public static final String QUOTA_ALLOW_EXCEED_CONF_KEY = "hbase.quota.allow.exceed";
   public static final boolean DEFAULT_QUOTA_ALLOW_EXCEED = true;

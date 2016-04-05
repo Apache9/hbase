@@ -21,8 +21,8 @@ package org.apache.hadoop.hbase.quotas;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.apache.hadoop.hbase.DoNotRetryNowIOException;
 import org.apache.hadoop.util.StringUtils;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -33,7 +33,7 @@ import org.apache.commons.logging.LogFactory;
  * operation to go on the server if the waitInterval is grater than the one got
  * as result of this exception.
  */
-public class ThrottlingException extends QuotaExceededException {
+public class ThrottlingException extends DoNotRetryNowIOException {
   private static final long serialVersionUID = 1406576492085155743L;
 
   private static final Log LOG = LogFactory.getLog(ThrottlingException.class);
@@ -56,7 +56,6 @@ public class ThrottlingException extends QuotaExceededException {
 
   private static final String MSG_WAIT = " - wait ";
 
-  private long waitInterval;
   private Type type;
 
   public ThrottlingException(String msg) {
@@ -76,17 +75,12 @@ public class ThrottlingException extends QuotaExceededException {
   }
 
   public ThrottlingException(final Type type, final long waitInterval, final String msg) {
-    super(msg);
-    this.waitInterval = waitInterval;
+    super(msg, waitInterval);
     this.type = type;
   }
 
   public Type getType() {
     return this.type;
-  }
-
-  public long getWaitInterval() {
-    return this.waitInterval;
   }
 
   public static void throwNumRequestsExceeded(final long waitInterval)

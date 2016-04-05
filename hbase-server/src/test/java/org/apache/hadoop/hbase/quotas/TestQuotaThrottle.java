@@ -76,7 +76,7 @@ public class TestQuotaThrottle {
     TEST_UTIL.getConfiguration().setInt("hbase.hstore.compactionThreshold", 10);
     TEST_UTIL.getConfiguration().setInt("hbase.regionserver.msginterval", 100);
     TEST_UTIL.getConfiguration().setInt("hbase.client.pause", 250);
-    TEST_UTIL.getConfiguration().setInt(HConstants.HBASE_CLIENT_RETRIES_NUMBER, 6);
+    TEST_UTIL.getConfiguration().setInt(HConstants.HBASE_CLIENT_RETRIES_NUMBER, 1);
     TEST_UTIL.getConfiguration().setBoolean("hbase.master.enabletable.roundrobin", true);
     TEST_UTIL.getConfiguration().setBoolean("hbase.quota.allow.exceed", false);
     TEST_UTIL.startMiniCluster(1);
@@ -540,7 +540,10 @@ public class TestQuotaThrottle {
         }
         count += tables.length;
       }
-    } catch (ThrottlingException e) {
+    } catch (Exception e) {
+      if (!(e.getCause() instanceof ThrottlingException)) {
+        throw e;
+      }
       LOG.error("get failed after nRetries=" + count, e);
     }
     return count;

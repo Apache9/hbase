@@ -30,9 +30,9 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.DoNotRetryIOException;
+import org.apache.hadoop.hbase.DoNotRetryNowIOException;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.ipc.RpcClient;
-import org.apache.hadoop.hbase.quotas.ThrottlingException;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.ExceptionUtil;
 import org.apache.hadoop.ipc.RemoteException;
@@ -64,17 +64,11 @@ public class RpcRetryingCaller<T> {
 
   private final long pause;
   private final int retries;
-  private final int throttleRetries;
 
   public RpcRetryingCaller(long pause, int retries, int startLogErrorsCnt) {
-    this(pause, retries, HConstants.DEFAULT_HBASE_CLIENT_THROTTLE_RETRIES_NUMBER, startLogErrorsCnt);
-  }
-
-  public RpcRetryingCaller(long pause, int retries, int throttleRetries, int startLogErrorsCnt) {
     this.pause = pause;
     this.retries = retries;
     this.startLogErrorsCnt = startLogErrorsCnt;
-    this.throttleRetries = throttleRetries;
   }
 
   private void beforeCall() {
@@ -134,16 +128,11 @@ public class RpcRetryingCaller<T> {
                 EnvironmentEdgeManager.currentTimeMillis(), toString());
         exceptions.add(qt);
         ExceptionUtil.rethrowIfInterrupt(t);
-        if (t instanceof ThrottlingException && tries >= throttleRetries - 1) {
-          throw new RetriesExhaustedException(tries, exceptions);
-        }
         if (tries >= retries - 1) {
           throw new RetriesExhaustedException(tries, exceptions);
         }
-        // If the server is dead, we need to wait a little before retrying, to give
-        //  a chance to the regions to be
-        // tries hasn't been bumped up yet so we use "tries + 1" to get right pause time
-        expectedSleep = callable.sleep(pause, tries + 1);
+
+        expectedSleep = calculateExpectedSleep(callable, tries, t);
 
         // If, after the planned sleep, there won't be enough time left, we stop now.
         long duration = singleCallDuration(expectedSleep);
@@ -162,6 +151,23 @@ public class RpcRetryingCaller<T> {
       } catch (InterruptedException e) {
         throw new InterruptedIOException("Interrupted after " + tries + " tries  on " + retries);
       }
+    }
+  }
+
+  /**
+   * @param callable The {@link RetryingCallable} to run.
+   * @param tries Have retried number
+   * @param t the throwable to analyze
+   * @return expected sleep time
+   */
+  private long calculateExpectedSleep(RetryingCallable<T> callable, final int tries, Throwable t) {
+    if (t instanceof DoNotRetryNowIOException) {
+      return ((DoNotRetryNowIOException) t).getWaitInterval();
+    } else {
+      // If the server is dead, we need to wait a little before retrying, to give
+      // a chance to the regions to be
+      // tries hasn't been bumped up yet so we use "tries + 1" to get right pause time
+      return callable.sleep(pause, tries + 1);
     }
   }
 
@@ -227,9 +233,6 @@ public class RpcRetryingCaller<T> {
     if (t instanceof ServiceException) {
       ServiceException se = (ServiceException)t;
       Throwable cause = se.getCause();
-      if (cause != null && cause instanceof ThrottlingException) {
-        return cause;
-      }
       if (cause != null && cause instanceof DoNotRetryIOException) {
         throw (DoNotRetryIOException)cause;
       }

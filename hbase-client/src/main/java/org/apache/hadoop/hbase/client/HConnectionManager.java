@@ -164,6 +164,7 @@ import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.TruncateTableRequ
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.TruncateTableResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.UnassignRegionRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.UnassignRegionResponse;
+import org.apache.hadoop.hbase.quotas.ThrottlingException;
 import org.apache.hadoop.hbase.regionserver.RegionServerStoppedException;
 import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.security.UserProvider;
@@ -181,7 +182,6 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.protobuf.BlockingRpcChannel;
 import com.google.protobuf.RpcController;
 import com.google.protobuf.ServiceException;
-
 import com.xiaomi.infra.base.nameservice.NameService;
 import com.xiaomi.infra.base.nameservice.NameServiceEntry;
 import com.xiaomi.infra.hbase.salted.KeySalter;
@@ -2377,7 +2377,8 @@ public class HConnectionManager {
       HRegionInfo regionInfo = oldLocation.getRegionInfo();
       Throwable cause = findException(exception);
       if (cause != null) {
-        if (cause instanceof RegionTooBusyException || cause instanceof RegionOpeningException) {
+        if (cause instanceof RegionTooBusyException || cause instanceof RegionOpeningException
+            || cause instanceof ThrottlingException) {
           // We know that the region is still on this region server
           return;
         }
@@ -2886,7 +2887,8 @@ public class HConnectionManager {
    * - hadoop.ipc wrapped exceptions
    * - nested exceptions
    *
-   * Looks for: RegionMovedException / RegionOpeningException / RegionTooBusyException
+   * Looks for: RegionMovedException / RegionOpeningException / RegionTooBusyException 
+   * / ThrottlingException
    * @return null if we didn't find the exception, the exception otherwise.
    */
   public static Throwable findException(Object exception) {
@@ -2896,7 +2898,7 @@ public class HConnectionManager {
     Throwable cur = (Throwable) exception;
     while (cur != null) {
       if (cur instanceof RegionMovedException || cur instanceof RegionOpeningException
-          || cur instanceof RegionTooBusyException) {
+          || cur instanceof RegionTooBusyException || cur instanceof ThrottlingException) {
         return cur;
       }
       if (cur instanceof RemoteException) {

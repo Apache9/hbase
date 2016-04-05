@@ -41,6 +41,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.DoNotRetryIOException;
+import org.apache.hadoop.hbase.DoNotRetryNowIOException;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HRegionLocation;
@@ -49,6 +50,7 @@ import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.backoff.ServerStatistics;
 import org.apache.hadoop.hbase.client.coprocessor.Batch;
 import org.apache.hadoop.hbase.ipc.RpcControllerFactory;
+import org.apache.hadoop.hbase.quotas.ThrottlingException;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.Pair;
@@ -790,13 +792,7 @@ class AsyncProcess<CResult> {
     }
 
     // We have something to replay. We're going to sleep a little before.
-
-    // We have two contradicting needs here:
-    //  1) We want to get the new location after having slept, as it may change.
-    //  2) We want to take into account the location when calculating the sleep time.
-    // It should be possible to have some heuristics to take the right decision. Short term,
-    //  we go for one.
-    long backOffTime = errorsByServer.calculateBackoffTime(oldLocation, pause);
+    long backOffTime = calculateBackoffTime(oldLocation, throwable, errorsByServer);
 
     if (numAttempt > startLogErrorsCnt) {
       // We use this value to have some logs when we have multiple failures, but not too many
@@ -815,6 +811,26 @@ class AsyncProcess<CResult> {
     }
 
     submit(initialActions, toReplay, numAttempt + 1, errorsByServer);
+  }
+
+  /**
+   * @param location  the server destination
+   * @param throwable the throwable (if any) that caused the resubmit
+   * @param errorsByServer The record of errors for servers.
+   * @return the backoff time
+   */
+  private long calculateBackoffTime(HRegionLocation location, Throwable throwable,
+      HConnectionManager.ServerErrorTracker errorsByServer) {
+    if (throwable instanceof DoNotRetryNowIOException) {
+      return ((DoNotRetryNowIOException) throwable).getWaitInterval();
+    } else {
+      // We have two contradicting needs here:
+      //  1) We want to get the new location after having slept, as it may change.
+      //  2) We want to take into account the location when calculating the sleep time.
+      // It should be possible to have some heuristics to take the right decision. Short term,
+      //  we go for one.
+      return errorsByServer.calculateBackoffTime(location, pause);
+    }
   }
 
   /**

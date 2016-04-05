@@ -52,6 +52,7 @@ public class TimeBasedLimiter implements QuotaLimiter {
   private int maxLogThrottlingCount = conf.getInt(MAX_LOG_THROTTLING_COUNT_KEY, 5);
   private int logThrottlingCount = maxLogThrottlingCount;
   private boolean bypassGlobals = false;
+  private long minWaitInterval;
 
   private TimeBasedLimiter() {
     if (FixedIntervalRateLimiter.class.getName().equals(
@@ -71,6 +72,8 @@ public class TimeBasedLimiter implements QuotaLimiter {
       readReqsLimiter = new AverageIntervalRateLimiter();
       readSizeLimiter = new AverageIntervalRateLimiter();
     }
+    minWaitInterval = conf.getLong(QuotaUtil.THROTTLING_MIN_WAIT_INTERVAL,
+      QuotaUtil.DEFAULT_THROTTLING_MIN_WAIT_INTERVAL);
   }
 
   static QuotaLimiter fromThrottle(final Throttle throttle) {
@@ -124,30 +127,35 @@ public class TimeBasedLimiter implements QuotaLimiter {
   }
 
   @Override
-  public void checkQuota(long writeSize, long readSize)
-      throws ThrottlingException {
+  public void checkQuota(long writeSize, long readSize) throws ThrottlingException {
     if (!reqsLimiter.canExecute()) {
-      ThrottlingException.throwNumRequestsExceeded(reqsLimiter.waitInterval());
+      ThrottlingException.throwNumRequestsExceeded(Math.max(reqsLimiter.waitInterval(),
+        minWaitInterval));
     }
     if (!reqSizeLimiter.canExecute(writeSize + readSize)) {
-      ThrottlingException.throwNumRequestsExceeded(reqSizeLimiter.waitInterval(writeSize+readSize));
+      ThrottlingException.throwNumRequestsExceeded(Math.max(
+        reqSizeLimiter.waitInterval(writeSize + readSize), minWaitInterval));
     }
 
     if (writeSize > 0) {
       if (!writeReqsLimiter.canExecute()) {
-        ThrottlingException.throwNumWriteRequestsExceeded(writeReqsLimiter.waitInterval());
+        ThrottlingException.throwNumWriteRequestsExceeded(Math.max(writeReqsLimiter.waitInterval(),
+          minWaitInterval));
       }
       if (!writeSizeLimiter.canExecute(writeSize)) {
-        ThrottlingException.throwWriteSizeExceeded(writeSizeLimiter.waitInterval(writeSize));
+        ThrottlingException.throwWriteSizeExceeded(Math.max(
+          writeSizeLimiter.waitInterval(writeSize), minWaitInterval));
       }
     }
 
     if (readSize > 0) {
       if (!readReqsLimiter.canExecute()) {
-        ThrottlingException.throwNumReadRequestsExceeded(readReqsLimiter.waitInterval());
+        ThrottlingException.throwNumReadRequestsExceeded(Math.max(readReqsLimiter.waitInterval(),
+          minWaitInterval));
       }
       if (!readSizeLimiter.canExecute()) {
-        ThrottlingException.throwReadSizeExceeded(readSizeLimiter.waitInterval(readSize));
+        ThrottlingException.throwReadSizeExceeded(Math.max(readSizeLimiter.waitInterval(readSize),
+          minWaitInterval));
       }
     }
   }
@@ -156,13 +164,15 @@ public class TimeBasedLimiter implements QuotaLimiter {
   public void checkQuotaByRequestUnit(long writeNum, long readNum) throws ThrottlingException {
     if (writeNum > 0) {
       if (!writeReqsLimiter.canExecute(writeNum)) {
-        ThrottlingException.throwNumWriteRequestsExceeded(writeReqsLimiter.waitInterval());
+        ThrottlingException.throwNumWriteRequestsExceeded(Math.max(
+          writeReqsLimiter.waitInterval(writeNum), minWaitInterval));
       }
     }
 
     if (readNum > 0) {
       if (!readReqsLimiter.canExecute(readNum)) {
-        ThrottlingException.throwNumReadRequestsExceeded(readReqsLimiter.waitInterval());
+        ThrottlingException.throwNumReadRequestsExceeded(Math.max(
+          readReqsLimiter.waitInterval(readNum), minWaitInterval));
       }
     }
   }
