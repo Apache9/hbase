@@ -48,11 +48,14 @@ public class ThriftServer extends Thread {
   private Configuration conf;
   private THBaseService.Iface sinkInterface;
   private boolean useSecure;
+  private static final String THRIFT_SERVER_MAX_WORKER_THREADS = "hbase.rplication.thrift.max.worker.threads";
+  private int maxWorkerThreads = 24;
 
   public ThriftServer(Configuration conf, THBaseService.Iface sinkInterface) throws IOException {
     this.conf = conf;
     this.sinkInterface = sinkInterface;
     this.useSecure = User.isHBaseSecurityEnabled(conf);
+    this.maxWorkerThreads = this.conf.getInt(THRIFT_SERVER_MAX_WORKER_THREADS, maxWorkerThreads);
     try {
       init();
     } catch (TTransportException e) {
@@ -95,12 +98,21 @@ public class ThriftServer extends Thread {
     }
   }
 
-  private static TServer getTThreadPoolServer(TProtocolFactory protocolFactory, THBaseService.Processor processor,
-      TTransportFactory transportFactory, InetSocketAddress inetSocketAddress) throws TTransportException {
+  private static TServer getTThreadPoolServer(TProtocolFactory protocolFactory,
+      THBaseService.Processor processor, TTransportFactory transportFactory,
+      InetSocketAddress inetSocketAddress) throws TTransportException {
+    return getTThreadPoolServer(protocolFactory, processor, transportFactory, inetSocketAddress,
+      100);
+  }
+
+  private static TServer getTThreadPoolServer(TProtocolFactory protocolFactory,
+      THBaseService.Processor processor, TTransportFactory transportFactory,
+      InetSocketAddress inetSocketAddress, int maxWorkerThreads) throws TTransportException {
     TServerTransport serverTransport = new TServerSocket(inetSocketAddress);
-    LOG.info("starting HBase ThreadPool Thrift server on " + inetSocketAddress.toString());
+    LOG.info("starting HBase ThreadPool Thrift server on " + inetSocketAddress.toString()
+        + ", maxWorkerThreads is " + maxWorkerThreads);
     TThreadPoolServer.Args serverArgs = new TThreadPoolServer.Args(serverTransport);
-    serverArgs.maxWorkerThreads(100);
+    serverArgs.maxWorkerThreads(maxWorkerThreads);
     serverArgs.processor(processor);
     serverArgs.transportFactory(transportFactory);
     serverArgs.protocolFactory(protocolFactory);
@@ -161,7 +173,8 @@ public class ThriftServer extends Thread {
     InetSocketAddress inetSocketAddress =
         bindToPort(conf.get("hbase.replication.thrift.address"), listenPort);
     LOG.info("Listening on "+inetSocketAddress.getHostName()+":"+inetSocketAddress.getPort());
-    server = getTThreadPoolServer(protocolFactory, processor, transportFactory, inetSocketAddress);
+    server = getTThreadPoolServer(protocolFactory, processor, transportFactory, inetSocketAddress,
+      this.maxWorkerThreads);
   }
 
   public void run() {
