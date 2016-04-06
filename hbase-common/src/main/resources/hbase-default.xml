@@ -497,7 +497,7 @@ possible configurations would overwhelm and obscure the important.
   </property>
   <property>
     <name>hbase.client.scanner.caching</name>
-    <value>2147483647</value>
+    <value>100</value>
     <description>Number of rows that we try to fetch when calling next
     on a scanner if it is not served from (local, client) memory. This configuration
     works together with hbase.client.scanner.max.result.size to try and use the
