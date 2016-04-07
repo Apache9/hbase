@@ -54,7 +54,7 @@ public class TimeBasedLimiter implements QuotaLimiter {
   private boolean bypassGlobals = false;
   private long minWaitInterval;
 
-  private TimeBasedLimiter() {
+  TimeBasedLimiter() {
     if (FixedIntervalRateLimiter.class.getName().equals(
       conf.getClass(RateLimiter.QUOTA_RATE_LIMITER_CONF_KEY, AverageIntervalRateLimiter.class)
           .getName())) {

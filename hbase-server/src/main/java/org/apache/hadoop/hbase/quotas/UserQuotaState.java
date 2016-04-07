@@ -136,6 +136,9 @@ public class UserQuotaState extends QuotaState {
     QuotaLimiter limiter = quotas.hasThrottle() ?
       QuotaLimiterFactory.fromThrottle(quotas.getThrottle()) : null;
     if (quotas.hasBypassGlobals()) {
+      if (limiter == null) {
+        limiter = new TimeBasedLimiter();
+      }
       limiter.setBypassGlobals(quotas.getBypassGlobals());
     }
     if (limiter != null && !limiter.isBypass()) {
