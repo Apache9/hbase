@@ -70,8 +70,9 @@ import org.apache.hadoop.io.Writable;
 public class SaltedHTable implements HTableInterface{
   public static final String SLOTS_IN_SCAN = "__salted_slots_in_scan__";
   public static final String KEEP_SALT_IN_SCAN = "__salted_keep_salt_in_scan__";
-  private static Map<ImmutableBytesWritable, KeySalter> saltedTables =
-      new ConcurrentHashMap<ImmutableBytesWritable, KeySalter>();
+  // KeySalter of table on cluster
+  private static ConcurrentHashMap<String, Map<String, KeySalter>> saltedTables =
+      new ConcurrentHashMap<String, Map<String, KeySalter>>();
   
   private KeySalter salter;
   private HTableInterface table;
@@ -820,18 +821,29 @@ public class SaltedHTable implements HTableInterface{
   public static KeySalter getKeySalter(HTableInterface hTable) throws IOException {
     // tables with the same name in different clusters may have different slats attributes, we
     // use the full table name as key to cache table descriptor
-    ImmutableBytesWritable tableNameAsKey = new ImmutableBytesWritable(hTable.getFullTableName());
-    if (saltedTables.containsKey(tableNameAsKey)) {
-      KeySalter salter = saltedTables.get(tableNameAsKey);
+    // znode parent and table name can identity a table among clusters
+    String znodeParent = hTable.getConfiguration().get(HConstants.ZOOKEEPER_ZNODE_PARENT);
+    Map<String, KeySalter> tableSalters = saltedTables.get(znodeParent);
+    if (tableSalters == null) {
+      tableSalters = new ConcurrentHashMap<String, KeySalter>();
+      Map<String, KeySalter> previous = saltedTables.putIfAbsent(znodeParent, tableSalters);
+      if (previous != null) {
+        tableSalters= previous;
+      }
+    }
+    String tableName = Bytes.toString(hTable.getTableName());
+
+    KeySalter salter = tableSalters.get(tableName);
+    if (salter != null) {
       return salter instanceof NotKeySalter ? null : salter;
     } else {
       HTableDescriptor desc = hTable.getTableDescriptor();
       if (desc.isSalted()) {
-        KeySalter salter = createKeySalter(desc.getKeySalter(), desc.getSlotsCount());
-        saltedTables.put(tableNameAsKey, salter);
+        salter = createKeySalter(desc.getKeySalter(), desc.getSlotsCount());
+        tableSalters.put(tableName, salter);
         return salter;
       } else {
-        saltedTables.put(tableNameAsKey, new NotKeySalter());
+        tableSalters.put(tableName, new NotKeySalter());
         return null;
       }
     }
