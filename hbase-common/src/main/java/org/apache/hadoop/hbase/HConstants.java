@@ -800,6 +800,15 @@ public final class HConstants {
    */
   public static final long NO_SEQNUM = -1;
 
+  /**
+   * Config for client to ignore throttling exception
+   */
+  public static final String HBASE_CLIENT_IGNORE_THROTTLING_EXCEPTION = "hbase.client.ignore.throttling";
+
+  /**
+   * Default value of {@link #HBASE_CLIENT_IGNORE_THROTTLING_EXCEPTION}
+   */
+  public static final boolean DEFAULT_HBASE_CLIENT_IGNORE_THROTTLING_EXCEPTION = false;
 
   /*
    * cluster replication constants.

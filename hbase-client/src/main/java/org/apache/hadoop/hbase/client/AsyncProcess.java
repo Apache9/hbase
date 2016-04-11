@@ -147,7 +147,7 @@ class AsyncProcess<CResult> {
   protected int serverTrackerTimeout;
   protected RpcRetryingCallerFactory rpcCallerFactory;
   private RpcControllerFactory rpcFactory;
-
+  private final boolean ignoreThrottlingException;
 
   /**
    * This interface allows to keep the interface of the previous synchronous interface, that uses
@@ -236,6 +236,9 @@ class AsyncProcess<CResult> {
         HConstants.DEFAULT_HBASE_CLIENT_RETRIES_NUMBER);
     this.timeout = conf.getInt(HConstants.HBASE_RPC_TIMEOUT_KEY,
         HConstants.DEFAULT_HBASE_RPC_TIMEOUT);
+    this.ignoreThrottlingException = conf.getBoolean(
+      HConstants.HBASE_CLIENT_IGNORE_THROTTLING_EXCEPTION,
+      HConstants.DEFAULT_HBASE_CLIENT_IGNORE_THROTTLING_EXCEPTION);
 
 
     this.maxTotalConcurrentTasks = conf.getInt(HConstants.HBASE_CLIENT_MAX_TOTAL_TASKS,
@@ -752,7 +755,7 @@ class AsyncProcess<CResult> {
     hConnection.updateCachedLocations(tableName,
       rsActions.actions.values().iterator().next().get(0).getAction().getRow(), null, location);
     errorsByServer.reportServerError(location);
-    boolean canRetry = errorsByServer.canRetryMore(numAttempt);
+    boolean canRetry = errorsByServer.canRetryMore(numAttempt, t);
 
     List<Action<Row>> toReplay = new ArrayList<Action<Row>>(initialActions.size());
     for (Map.Entry<byte[], List<Action<Row>>> e : rsActions.actions.entrySet()) {
@@ -822,7 +825,8 @@ class AsyncProcess<CResult> {
   private long calculateBackoffTime(HRegionLocation location, Throwable throwable,
       HConnectionManager.ServerErrorTracker errorsByServer) {
     if (throwable instanceof DoNotRetryNowIOException) {
-      return ((DoNotRetryNowIOException) throwable).getWaitInterval();
+      return ((DoNotRetryNowIOException) throwable).getWaitInterval()
+          + ConnectionUtils.addJitter(pause, 1.0f);
     } else {
       // We have two contradicting needs here:
       //  1) We want to get the new location after having slept, as it may change.
@@ -879,7 +883,7 @@ class AsyncProcess<CResult> {
             hConnection.updateCachedLocations(this.tableName, row.getRow(), result, location);
             if (failureCount == 1) {
               errorsByServer.reportServerError(location);
-              canRetry = errorsByServer.canRetryMore(numAttempt);
+              canRetry = errorsByServer.canRetryMore(numAttempt, throwable);
             }
           }
 
@@ -1086,6 +1090,7 @@ class AsyncProcess<CResult> {
    * @return ServerErrorTracker to use, null if there is no ServerErrorTracker on this connection
    */
   protected HConnectionManager.ServerErrorTracker createServerErrorTracker() {
-    return new HConnectionManager.ServerErrorTracker(this.serverTrackerTimeout, this.numTries);
+    return new HConnectionManager.ServerErrorTracker(this.serverTrackerTimeout, this.numTries,
+        this.ignoreThrottlingException);
   }
 }

@@ -33,6 +33,7 @@ import org.apache.hadoop.hbase.DoNotRetryIOException;
 import org.apache.hadoop.hbase.DoNotRetryNowIOException;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.ipc.RpcClient;
+import org.apache.hadoop.hbase.quotas.ThrottlingException;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.ExceptionUtil;
 import org.apache.hadoop.ipc.RemoteException;
@@ -64,11 +65,18 @@ public class RpcRetryingCaller<T> {
 
   private final long pause;
   private final int retries;
+  private final boolean ignoreThrottlingException;
 
   public RpcRetryingCaller(long pause, int retries, int startLogErrorsCnt) {
+    this(pause, retries, startLogErrorsCnt, false);
+  }
+
+  public RpcRetryingCaller(long pause, int retries, int startLogErrorsCnt,
+      boolean ignoreThrottlingException) {
     this.pause = pause;
     this.retries = retries;
     this.startLogErrorsCnt = startLogErrorsCnt;
+    this.ignoreThrottlingException = ignoreThrottlingException;
   }
 
   private void beforeCall() {
@@ -128,7 +136,7 @@ public class RpcRetryingCaller<T> {
                 EnvironmentEdgeManager.currentTimeMillis(), toString());
         exceptions.add(qt);
         ExceptionUtil.rethrowIfInterrupt(t);
-        if (tries >= retries - 1) {
+        if (tries >= retries - 1 && !handleException(t)) {
           throw new RetriesExhaustedException(tries, exceptions);
         }
 
@@ -162,7 +170,8 @@ public class RpcRetryingCaller<T> {
    */
   private long calculateExpectedSleep(RetryingCallable<T> callable, final int tries, Throwable t) {
     if (t instanceof DoNotRetryNowIOException) {
-      return ((DoNotRetryNowIOException) t).getWaitInterval();
+      return ((DoNotRetryNowIOException) t).getWaitInterval()
+          + ConnectionUtils.addJitter(pause, 1.0f);
     } else {
       // If the server is dead, we need to wait a little before retrying, to give
       // a chance to the regions to be
@@ -244,5 +253,12 @@ public class RpcRetryingCaller<T> {
       throw (DoNotRetryIOException)t;
     }
     return t;
+  }
+
+  private boolean handleException(Throwable t) {
+    if (ignoreThrottlingException && t instanceof ThrottlingException) {
+      return true;
+    }
+    return false;
   }
 }

@@ -36,6 +36,7 @@ public class RpcRetryingCallerFactory {
   private final int startLogErrorsCnt;
   private final boolean enableBackPressure;
   private ServerStatisticTracker stats;
+  private final boolean ignoreThrottlingException;
 
   public RpcRetryingCallerFactory(Configuration conf) {
     this(conf, null);
@@ -52,6 +53,9 @@ public class RpcRetryingCallerFactory {
         AsyncProcess.DEFAULT_START_LOG_ERRORS_AFTER_COUNT);
     enableBackPressure = conf.getBoolean(HConstants.ENABLE_CLIENT_BACKPRESSURE,
       HConstants.DEFAULT_ENABLE_CLIENT_BACKPRESSURE);
+    ignoreThrottlingException = conf.getBoolean(
+      HConstants.HBASE_CLIENT_IGNORE_THROTTLING_EXCEPTION,
+      HConstants.DEFAULT_HBASE_CLIENT_IGNORE_THROTTLING_EXCEPTION);
   }
 
   /**
@@ -67,9 +71,10 @@ public class RpcRetryingCallerFactory {
     RpcRetryingCaller<T> caller;
     if (enableBackPressure && this.stats != null) {
       caller = new StatsTrackingRpcRetryingCaller<T>(pause, retries, startLogErrorsCnt,
-        this.stats);
+          ignoreThrottlingException, this.stats);
     } else {
-      caller = new RpcRetryingCaller<T>(pause, retries, startLogErrorsCnt);
+      caller = new RpcRetryingCaller<T>(pause, retries, startLogErrorsCnt,
+          ignoreThrottlingException);
     }
     return caller;
   }

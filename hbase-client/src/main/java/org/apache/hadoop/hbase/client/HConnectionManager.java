@@ -2823,11 +2823,17 @@ public class HConnectionManager {
     private final long canRetryUntil;
     private final int maxRetries;
     private final String startTrackingTime;
+    private final boolean ignoreThrottlingException;
 
     public ServerErrorTracker(long timeout, int maxRetries) {
+      this(timeout, maxRetries, false);
+    }
+
+    public ServerErrorTracker(long timeout, int maxRetries, boolean ignoreThrottlingException) {
       this.maxRetries = maxRetries;
       this.canRetryUntil = EnvironmentEdgeManager.currentTimeMillis() + timeout;
       this.startTrackingTime = new Date().toString();
+      this.ignoreThrottlingException = ignoreThrottlingException;
     }
 
     /**
@@ -2837,6 +2843,13 @@ public class HConnectionManager {
       // If there is a single try we must not take into account the time.
       return numRetry < maxRetries || (maxRetries > 1 &&
           EnvironmentEdgeManager.currentTimeMillis() < this.canRetryUntil);
+    }
+
+    boolean canRetryMore(int numRetry, Throwable t) {
+      if (ignoreThrottlingException && t instanceof ThrottlingException) {
+        return true;
+      }
+      return canRetryMore(numRetry);
     }
 
     /**
