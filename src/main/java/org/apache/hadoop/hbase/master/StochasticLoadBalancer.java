@@ -223,8 +223,10 @@ public class StochasticLoadBalancer extends DefaultLoadBalancer {
 
     double currentCost = computeCost(cluster, Double.MAX_VALUE);
     LOG.info("start StochasticLoadBalancer.balaner, initCost=" + currentCost + ", functionCost="
-        + functionCost() + ", costDetail:");
-    LOG.info(functionCostDetail());
+        + functionCost());
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("costDetail:\n" + functionCostDetail());
+    }
     
     double initCost = currentCost;
     double newCost = currentCost;
@@ -1049,7 +1051,7 @@ public class StochasticLoadBalancer extends DefaultLoadBalancer {
       }
       return scale(0, max, cost);
     }
-    
+
     @Override
     String costDetail() {
       StringBuilder builder = new StringBuilder();
@@ -1070,7 +1072,7 @@ public class StochasticLoadBalancer extends DefaultLoadBalancer {
       return builder.toString();
     }
   }
-  
+
   protected static class RoundRobinSelector<R> {
     private ArrayList<R> candidates;
     private int next;
