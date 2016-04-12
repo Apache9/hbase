@@ -34,6 +34,7 @@ import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.KeyValue;
+import org.apache.hadoop.hbase.client.Durability;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Put;
@@ -97,6 +98,7 @@ public class VerifyReplication98 extends Configured implements Tool {
   private int maxErrorLog = 1000;
   private String logTable = null;
   private int sleepToReCompare = 0;
+  private boolean skipWal = false;
       
   public VerifyReplication98(Configuration conf) {
     super(conf);
@@ -129,6 +131,7 @@ public class VerifyReplication98 extends Configured implements Tool {
     private int maxErrorLog;
     private int errors = 0;
     private int sleepToReCompare;
+    private boolean skipWal;
 
     @Override
     public void setup(Context context) {
@@ -232,7 +235,8 @@ public class VerifyReplication98 extends Configured implements Tool {
         thriftServer = conf.get(NAME + ".thriftServer");
         tableName = conf.get(NAME + ".tableName");
         sourceTable = new HTable(conf, tableName);
-        maxErrorLog = conf.getInt(NAME + ".maxErrorLog", 0);
+        maxErrorLog = conf.getInt(NAME + ".maxErrorLog", Integer.MAX_VALUE);
+        skipWal = conf.getBoolean(NAME + ".skipWal", false);
         String logTableName = conf.get(NAME + ".logTable");
         if (logTableName != null) {
           logTable = new HTable(conf, logTableName);
@@ -332,7 +336,21 @@ public class VerifyReplication98 extends Configured implements Tool {
 
     private void recordError(byte[] row, Counters type) throws IOException {
       if (logTable != null && errors < maxErrorLog) {
-        // TODO : record into log table
+        byte[] tableNameBytes = tableName.getBytes();
+        // rowkey format: [salt][table-name-length][table-name][row-len][row]
+        int bufflen = 1 + 2 + tableNameBytes.length + 2 + row.length;
+        ByteBuffer buff = ByteBuffer.allocate(bufflen);
+        buff.put((byte) (Bytes.hashCode(row) % 256)); // append salt
+        buff.putShort((short) tableNameBytes.length);
+        buff.put(tableNameBytes);
+        buff.putShort((short) row.length);
+        buff.put(row);
+        Put put = new Put(buff.array());
+        put.add("A".getBytes(), "e".getBytes(), type.name().getBytes());
+        if (skipWal) {
+          put.setDurability(Durability.SKIP_WAL);
+        }
+        logTable.put(put);
         ++errors;
       }
     }
@@ -406,6 +424,7 @@ public class VerifyReplication98 extends Configured implements Tool {
       conf.set(NAME + ".logTable", logTable);
     }
     conf.setInt(NAME+".maxErrorLog", maxErrorLog);
+    conf.setBoolean(NAME + ".skipWal", skipWal);
     
     if (families != null) {
       conf.set(NAME+".families", families);
@@ -531,6 +550,12 @@ public class VerifyReplication98 extends Configured implements Tool {
           continue;
         }
 
+        final String skipWalKey = "--skipwal";
+        if (cmd.equals(skipWalKey)) {
+          skipWal = true;
+          continue;
+        }
+
         if (i == args.length-2) {
           thriftServer = cmd;
         }
@@ -560,7 +585,7 @@ public class VerifyReplication98 extends Configured implements Tool {
     System.err.println("Options:");
     System.err.println(" starttime    beginning of the time range");
     System.err.println("              without endtime means from starttime to forever");
-    System.err.println(" stoptime     end of the time range");
+    System.err.println(" endtime     end of the time range");
     System.err.println(" startrow     beginning of row");
     System.err.println(" stoprow      end of the row");
     System.err.println(" families     comma-separated list of families to copy");
@@ -568,7 +593,8 @@ public class VerifyReplication98 extends Configured implements Tool {
     System.err.println(" versions     number of cell versions to verify.");
     System.err.println(" verifyrows   number of rows each region in source table to verify.");
     System.err.println(" recomparesleep   milliseconds to sleep before recompare row.");
-    System.err.println(" logtable     table to log the errors/differences (with column family C).");
+    System.err.println(" logtable     table to log the errors/differences (with column family A).");
+    System.err.println(" skipwal      skip writing WAL of log table.");
     System.err.println(" maxerrorlog  max number of errors to log for each region.");
     System.err.println();
     System.err.println("Args:");
@@ -579,7 +605,7 @@ public class VerifyReplication98 extends Configured implements Tool {
     System.err.println(" To verify the data replicated from TestTable for a 1 hour window with peer #5 ");
     System.err.println(" $ bin/hbase " +
         "org.apache.hadoop.hbase.mapreduce.replication.VerifyReplication98" +
-        " --starttime=1265875194289 --stoptime=1265878794289 127.0.0.1:15000 TestTable ");
+        " --starttime=1265875194289 --endtime=1265878794289 127.0.0.1:9090 TestTable ");
   }
 
   /**

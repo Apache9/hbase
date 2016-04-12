@@ -638,7 +638,7 @@ public class VerifyReplication  extends Configured implements Tool {
     System.err.println(" versions     number of cell versions to verify.");
     System.err.println(" verifyrows   number of rows each region in source table to verify.");
     System.err.println(" recomparesleep   milliseconds to sleep before recompare row.");
-    System.err.println(" logtable     table to log the errors/differences (with column family C).");
+    System.err.println(" logtable     table to log the errors/differences (with column family A).");
     System.err.println(" skipwal      skip writing WAL of log table.");
     System.err.println(" maxerrorlog  max number of errors to log for each region.");
     System.err.println(" repair       repair the data by copy rows.");
