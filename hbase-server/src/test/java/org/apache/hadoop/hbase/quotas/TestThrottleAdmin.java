@@ -228,7 +228,10 @@ public class TestThrottleAdmin {
         }
         count += tables.length;
       }
-    } catch (ThrottlingException e) {
+    } catch (Exception e) {
+      if (!(e.getCause() instanceof ThrottlingException)) {
+        throw e;
+      }
       LOG.error("get failed after nRetries=" + count, e);
     }
     return count;
