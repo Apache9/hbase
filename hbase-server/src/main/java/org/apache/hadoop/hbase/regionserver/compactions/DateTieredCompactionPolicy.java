@@ -36,7 +36,6 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseInterfaceAudience;
-import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HDFSBlocksDistribution;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.regionserver.RSRpcServices;
@@ -119,7 +118,7 @@ public class DateTieredCompactionPolicy extends SortedCompactionPolicy {
     for (StoreFile file: filesToCompact) {
       Long minTimestamp = file.getMinimumTimestamp();
       long oldest = (minTimestamp == null) ? (Long)Long.MIN_VALUE : now - minTimestamp.longValue();
-      if (cfTTL != HConstants.FOREVER && oldest >= cfTTL) {
+      if (cfTTL != Long.MAX_VALUE && oldest >= cfTTL) {
         LOG.debug("Major compaction triggered on store " + this
           + "; for TTL maintenance");
         return true;
