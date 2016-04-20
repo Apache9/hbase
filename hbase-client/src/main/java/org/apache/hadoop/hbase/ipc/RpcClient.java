@@ -283,9 +283,10 @@ public class RpcClient {
     boolean done;                                 // true when call is done
     long startTime;
     final MethodDescriptor md;
+    final int timeout;
 
     protected Call(final MethodDescriptor md, Message param, final CellScanner cells,
-        final Message responseDefaultType) {
+        final Message responseDefaultType, int timeout) {
       this.param = param;
       this.md = md;
       this.cells = cells;
@@ -294,6 +295,7 @@ public class RpcClient {
       synchronized (RpcClient.this) {
         this.id = counter++;
       }
+      this.timeout = timeout;
     }
 
     @Override
@@ -1051,6 +1053,8 @@ public class RpcClient {
         }
         // Only pass priority if there one.  Let zero be same as no priority.
         if (priority != 0) builder.setPriority(priority);
+        builder.setTimeout(call.timeout);
+
         //noinspection SynchronizeOnNonFinalField
         RequestHeader header = builder.build();
         synchronized (this.out) { // FindBugs IS2_INCONSISTENT_SYNC
@@ -1448,7 +1452,7 @@ public class RpcClient {
       Message returnType, User ticket, InetSocketAddress addr,
       int rpcTimeout, int priority)
   throws InterruptedException, IOException {
-    Call call = new Call(md, param, cells, returnType);
+    Call call = new Call(md, param, cells, returnType, rpcTimeout);
     Connection connection =
       getConnection(ticket, call, addr, rpcTimeout, this.codec, this.compressor);
     connection.writeRequest(call, priority);                 // send the parameter

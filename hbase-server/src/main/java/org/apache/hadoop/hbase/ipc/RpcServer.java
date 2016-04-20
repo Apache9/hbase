@@ -179,7 +179,15 @@ public class RpcServer implements RpcServerInterface {
 
   private static final int DEFAULT_WARN_DELAYED_CALLS = 1000;
 
+  /**
+   * Minimum allowable timeout (in milliseconds) in rpc request's header. This
+   * configuration exists to prevent the rpc service regarding this request as timeout immediately.
+   */
+  private static final String MIN_CLIENT_REQUEST_TIMEOUT = "hbase.ipc.min.client.request.timeout";
+  private static final int DEFAULT_MIN_CLIENT_REQUEST_TIMEOUT = 20;
+
   private final int warnDelayedCalls;
+  private final int minClientRequestTimeout;
 
   private AtomicInteger delayedCalls;
   private final IPCUtil ipcUtil;
@@ -285,6 +293,7 @@ public class RpcServer implements RpcServerInterface {
     protected Connection connection;              // connection to client
     protected long timestamp;      // the time received when response is null
                                    // the time served when response is not null
+    protected int timeout;
     /**
      * Chain of buffers to send as response.
      */
@@ -299,7 +308,7 @@ public class RpcServer implements RpcServerInterface {
 
     Call(int id, final BlockingService service, final MethodDescriptor md, RequestHeader header,
          Message param, CellScanner cellScanner, Connection connection, Responder responder,
-         long size, TraceInfo tinfo) {
+         long size, TraceInfo tinfo, int timeout) {
       this.id = id;
       this.service = service;
       this.md = md;
@@ -314,6 +323,7 @@ public class RpcServer implements RpcServerInterface {
       this.isError = false;
       this.size = size;
       this.tinfo = tinfo;
+      this.timeout = timeout;
     }
 
     @Override
@@ -1188,13 +1198,13 @@ public class RpcServer implements RpcServerInterface {
     private static final int AUTHROIZATION_FAILED_CALLID = -1;
     private final Call authFailedCall =
       new Call(AUTHROIZATION_FAILED_CALLID, this.service, null,
-        null, null, null, this, null, 0, null);
+        null, null, null, this, null, 0, null,0);
     private ByteArrayOutputStream authFailedResponse =
         new ByteArrayOutputStream();
     // Fake 'call' for SASL context setup
     private static final int SASL_CALLID = -33;
     private final Call saslCall =
-      new Call(SASL_CALLID, this.service, null, null, null, null, this, null, 0, null);
+      new Call(SASL_CALLID, this.service, null, null, null, null, this, null, 0, null, 0);
 
     public UserGroupInformation attemptingUser = null; // user name before auth
 
@@ -1561,7 +1571,7 @@ public class RpcServer implements RpcServerInterface {
 
     private int doBadPreambleHandling(final String msg, final Exception e) throws IOException {
       LOG.warn(msg);
-      Call fakeCall = new Call(-1, null, null, null, null, null, this, responder, -1, null);
+      Call fakeCall = new Call(-1, null, null, null, null, null, this, responder, -1, null, 0);
       setupResponse(null, fakeCall, e, msg);
       responder.doRespond(fakeCall);
       // Returning -1 closes out the connection.
@@ -1721,7 +1731,7 @@ public class RpcServer implements RpcServerInterface {
       if ((totalRequestSize + callQueueSize.get()) > maxQueueSize) {
         final Call callTooBig =
           new Call(id, this.service, null, null, null, null, this,
-            responder, totalRequestSize, null);
+            responder, totalRequestSize, null, 0);
         ByteArrayOutputStream responseBuffer = new ByteArrayOutputStream();
         setupResponse(responseBuffer, callTooBig, new CallQueueTooBigException(),
           "Call queue is full on " + getListenerAddress() +
@@ -1766,7 +1776,7 @@ public class RpcServer implements RpcServerInterface {
 
         final Call readParamsFailedCall =
           new Call(id, this.service, null, null, null, null, this,
-            responder, totalRequestSize, null);
+            responder, totalRequestSize, null, 0);
         ByteArrayOutputStream responseBuffer = new ByteArrayOutputStream();
         setupResponse(responseBuffer, readParamsFailedCall, t,
           msg + "; " + t.getMessage());
@@ -1777,9 +1787,12 @@ public class RpcServer implements RpcServerInterface {
       TraceInfo traceInfo = header.hasTraceInfo()
           ? new TraceInfo(header.getTraceInfo().getTraceId(), header.getTraceInfo().getParentId())
           : null;
+      int timeout = 0;
+      if (header.hasTimeout()){
+        timeout = Math.max(minClientRequestTimeout, header.getTimeout());
+      }
       Call call = new Call(id, this.service, md, header, param, cellScanner, this, responder,
-              totalRequestSize,
-              traceInfo);
+              totalRequestSize, traceInfo, timeout);
       scheduler.dispatch(new CallRunner(RpcServer.this, call, userProvider));
     }
 
@@ -1921,7 +1934,8 @@ public class RpcServer implements RpcServerInterface {
     this.warnDelayedCalls = conf.getInt(WARN_DELAYED_CALLS, DEFAULT_WARN_DELAYED_CALLS);
     this.delayedCalls = new AtomicInteger(0);
     this.ipcUtil = new IPCUtil(conf);
-
+    this.minClientRequestTimeout = conf.getInt(MIN_CLIENT_REQUEST_TIMEOUT,
+        DEFAULT_MIN_CLIENT_REQUEST_TIMEOUT);
 
     // Create the responder here
     responder = new Responder();
@@ -2047,13 +2061,19 @@ public class RpcServer implements RpcServerInterface {
     this.secretManager = (SecretManager<TokenIdentifier>) secretManager;
   }
 
+  public Pair<Message, CellScanner> call(BlockingService service, MethodDescriptor md,
+      Message param, CellScanner cellScanner, long receiveTime, MonitoredRPCHandler status)
+      throws IOException {
+    return call(service, md, param, cellScanner, receiveTime, status, 0);
+  }
+
   /**
    * This is a server side method, which is invoked over RPC. On success
    * the return response has protobuf response payload. On failure, the
    * exception name and the stack trace are returned in the protobuf response.
    */
   public Pair<Message, CellScanner> call(BlockingService service, MethodDescriptor md,
-      Message param, CellScanner cellScanner, long receiveTime, MonitoredRPCHandler status)
+      Message param, CellScanner cellScanner, long receiveTime, MonitoredRPCHandler status, int timeout)
   throws IOException {
     try {
       status.setRPC(md.getName(), new Object[]{param}, receiveTime);
@@ -2064,6 +2084,7 @@ public class RpcServer implements RpcServerInterface {
       long startTime = System.currentTimeMillis();
       long startTimeInNs = System.nanoTime();
       PayloadCarryingRpcController controller = new PayloadCarryingRpcController(cellScanner);
+      controller.setTimeout(timeout);
       Message result = service.callBlockingMethod(md, controller, param);
       int processingTimeInUs = (int) ((System.nanoTime() - startTimeInNs) / 1000);
       int processingTime = (int) (System.currentTimeMillis() - startTime);

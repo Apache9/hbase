@@ -56,6 +56,8 @@ public class PayloadCarryingRpcController implements RpcController, CellScannabl
    */
   private CellScanner cellScanner;
 
+  private int timeout = 0;
+
   public PayloadCarryingRpcController() {
     this((CellScanner)null);
   }
@@ -134,5 +136,13 @@ public class PayloadCarryingRpcController implements RpcController, CellScannabl
    */
   public int getPriority() {
     return priority;
+  }
+
+  public int getTimeout() {
+    return timeout;
+  }
+
+  public void setTimeout(int timeout) {
+    this.timeout = timeout;
   }
 }

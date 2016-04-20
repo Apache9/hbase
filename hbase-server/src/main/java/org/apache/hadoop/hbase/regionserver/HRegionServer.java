@@ -3479,7 +3479,13 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
                   } else {
                     timeLimitDelta =
                         scannerLeaseTimeoutPeriod > 0 ? scannerLeaseTimeoutPeriod : rpcTimeout;
+                  }
+                  if (controller instanceof PayloadCarryingRpcController) {
+                    PayloadCarryingRpcController pc = (PayloadCarryingRpcController) controller;
+                    if (pc.getTimeout() > 0) {
+                      timeLimitDelta = Math.min(timeLimitDelta, pc.getTimeout());
                     }
+                  }
                   // Use half of whichever timeout value was more restrictive... But don't allow
                   // the time limit to be less than the allowable minimum (could cause an
                   // immediatate timeout before scanning any data).
