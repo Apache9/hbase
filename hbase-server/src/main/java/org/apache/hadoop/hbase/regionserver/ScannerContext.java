@@ -221,6 +221,12 @@ public class ScannerContext {
         || scannerState == NextState.TIME_LIMIT_REACHED_MID_ROW;
   }
 
+  boolean midRowResultFormed() {
+    return scannerState == NextState.SIZE_LIMIT_REACHED_MID_ROW
+        || scannerState == NextState.TIME_LIMIT_REACHED_MID_ROW
+        || scannerState == NextState.BATCH_LIMIT_REACHED;
+  }
+
   /**
    * @param checkerScope
    * @return true if the batch limit can be enforced in the checker's scope

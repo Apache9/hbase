@@ -4253,11 +4253,8 @@ public class HRegion implements HeapSize { // , Writable{
       // If the size limit was reached it means a partial Result is being returned. Returning a
       // partial Result means that we should not reset the filters; filters should only be reset in
       // between rows
-      if (!scannerContext.partialResultFormed()) {
+      if (!scannerContext.midRowResultFormed()) {
         resetFilters();
-        if (!outResults.isEmpty()) {
-          //incrementCountOfRowsScannedMetric(scannerContext);
-        }
       }
 
       if (isFilterDoneInternal()) {
@@ -4319,7 +4316,7 @@ public class HRegion implements HeapSize { // , Writable{
         moreCellsInRow = moreCellsInRow(nextKv, currentRowCell);
         boolean mustSetMidRowState = !isJoinedHeapOrNoJoinedHeap || moreCellsInRow;
 
-        if (scannerContext.checkBatchLimit(limitScope)) {
+        if (moreCellsInRow && scannerContext.checkBatchLimit(limitScope)) {
           return scannerContext.setScannerState(NextState.BATCH_LIMIT_REACHED).hasMoreValues();
         } else if (scannerContext.checkSizeLimit(limitScope)) {
           ScannerContext.NextState state =
