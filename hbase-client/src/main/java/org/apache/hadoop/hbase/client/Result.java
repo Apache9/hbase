@@ -905,4 +905,12 @@ public class Result implements CellScannable, CellScanner {
   public ClientProtos.RegionLoadStats getStats() {
     return loadStats;
   }
+
+  /**
+   * It will return false now.
+   * @return
+   */
+  public boolean isFake() {
+    return false;
+  }
 }

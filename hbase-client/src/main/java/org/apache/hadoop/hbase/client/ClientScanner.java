@@ -654,13 +654,6 @@ public class ClientScanner extends AbstractClientScanner {
     isPartialResultStale = isPartialResultStale || result.isStale();
     numOfPartialCells += result.size();
   }
-  private int countOfCells(List<Result> list) {
-    int count = 0;
-    for (Result result : list) {
-      count += result.size();
-    }
-    return count;
-  }
 
   private List<Result> filterResultsFromServer(Result[] results) {
     List<Result> list = new ArrayList<Result>();

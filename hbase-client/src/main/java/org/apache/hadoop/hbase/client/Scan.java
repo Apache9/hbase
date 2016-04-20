@@ -426,14 +426,17 @@ public class Scan extends Query {
   }
 
   /**
-   * Set the limit of raw values to scan for each call to next(). This is a soft limit, and the
-   * number of actual scanned values can exceeds this limit to include a full row (so the exceeded
-   * amount is bounded to the max number of values in a single row). This limit can be used to
-   * control the total time of each RPC call to avoid unexpected timeout.
-   * @param rawLimit the maximum number of raw values to scan
+   * It will do nothing now.
    */
   public void setRawLimit(int rawLimit) {
-    setAttribute(RAWLIMIT_ATTR, Bytes.toBytes(rawLimit));
+  }
+
+  /**
+   * It will return 0 now.
+   * @return
+   */
+  public int getRawLimit() {
+    return 0;
   }
 
   /**
