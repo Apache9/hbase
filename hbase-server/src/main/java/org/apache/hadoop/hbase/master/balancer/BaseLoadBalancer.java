@@ -55,8 +55,10 @@ import com.google.common.collect.Sets;
  *
  */
 public abstract class BaseLoadBalancer implements LoadBalancer {
-  private static final int MIN_SERVER_BALANCE = 2;
+  protected static final int MIN_SERVER_BALANCE = 2;
   private volatile boolean stopped = false;
+
+  protected final RegionLocationFinder regionFinder = new RegionLocationFinder();
 
   /**
    * The constructor that uses the basic MetricsBalancer
@@ -109,8 +111,12 @@ public abstract class BaseLoadBalancer implements LoadBalancer {
     int numMovedRegions = 0; //num moved regions from the initial configuration
     int numMovedMetaRegions = 0;       //num of moved regions that are META
 
+    Map<ServerName, List<HRegionInfo>> clusterState;
+
     protected Cluster(Map<ServerName, List<HRegionInfo>> clusterState,  Map<String, Deque<RegionLoad>> loads,
         RegionLocationFinder regionFinder) {
+
+      this.clusterState = clusterState;
 
       serversToIndex = new HashMap<String, Integer>();
       tablesToIndex = new HashMap<String, Integer>();
@@ -119,7 +125,6 @@ public abstract class BaseLoadBalancer implements LoadBalancer {
       //TODO: We should get the list of tables from master
       tables = new ArrayList<String>();
       this.regionFinder = regionFinder;
-
 
       numRegions = 0;
 
@@ -561,7 +566,8 @@ public abstract class BaseLoadBalancer implements LoadBalancer {
     this.services = masterServices;
   }
 
-  protected boolean needsBalance(ClusterLoadState cs) {
+  protected boolean needsBalance(Cluster c) {
+    ClusterLoadState cs = new ClusterLoadState(c.clusterState);
     if (cs.getNumServers() < MIN_SERVER_BALANCE) {
       LOG.info("Not running balancer because only " + cs.getNumServers()
           + " active regionserver(s)");

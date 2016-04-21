@@ -93,6 +93,8 @@ import org.apache.hadoop.hbase.util.Pair;
 @InterfaceAudience.LimitedPrivate(HBaseInterfaceAudience.CONFIG)
 public class StochasticLoadBalancer extends BaseLoadBalancer {
 
+  private static final String TABLE_FUNCTION_SEP = "_";
+
   private static final String STEPS_PER_REGION_KEY =
       "hbase.master.balancer.stochastic.stepsPerRegion";
   private static final String MAX_STEPS_KEY =
@@ -101,12 +103,12 @@ public class StochasticLoadBalancer extends BaseLoadBalancer {
       "hbase.master.balancer.stochastic.maxRunningTime";
   private static final String KEEP_REGION_LOADS =
       "hbase.master.balancer.stochastic.numRegionLoadsToRemember";
-  private static final String TABLE_FUNCTION_SEP = "_";
+  private static final String MIN_COST_NEED_BALANCE_KEY =
+      "hbase.master.balancer.stochastic.minCostNeedBalance";
 
   private static final Random RANDOM = new Random(System.currentTimeMillis());
   private static final Log LOG = LogFactory.getLog(StochasticLoadBalancer.class);
 
-  private final RegionLocationFinder regionFinder = new RegionLocationFinder();
   private ClusterStatus clusterStatus = null;
   Map<String, Deque<RegionLoad>> loads = new HashMap<String, Deque<RegionLoad>>();
 
@@ -115,6 +117,7 @@ public class StochasticLoadBalancer extends BaseLoadBalancer {
   private int stepsPerRegion = 800;
   private long maxRunningTime = 30 * 1000 * 1; // 30 seconds.
   private int numRegionLoadsToRemember = 15;
+  private float minCostNeedBalance = 0.05f;
 
   private RegionPicker[] pickers;
   private CostFromRegionLoadFunction[] regionLoadFunctions;
@@ -149,6 +152,8 @@ public class StochasticLoadBalancer extends BaseLoadBalancer {
 
     numRegionLoadsToRemember = conf.getInt(KEEP_REGION_LOADS, numRegionLoadsToRemember);
     isByTable = conf.getBoolean(HConstants.HBASE_MASTER_LOADBALANCE_BYTABLE, isByTable);
+
+    minCostNeedBalance = conf.getFloat(MIN_COST_NEED_BALANCE_KEY, minCostNeedBalance);
 
     localityPicker = new LocalityBasedPicker(services);
     localityCost = new LocalityCostFunction(conf, services);
@@ -227,16 +232,42 @@ public class StochasticLoadBalancer extends BaseLoadBalancer {
     return balanceCluster(clusterState);
   }
 
+  @Override
+  protected boolean needsBalance(Cluster cluster) {
+    ClusterLoadState cs = new ClusterLoadState(cluster.clusterState);
+    if (cs.getNumServers() < MIN_SERVER_BALANCE) {
+      LOG.info("Not running balancer because only " + cs.getNumServers()
+          + " active regionserver(s)");
+      return false;
+    }
+
+    double total = 0.0;
+    float sumMultiplier = 0.0f;
+    for (CostFunction c : costFunctions) {
+      float multiplier = c.getMultiplier();
+      if (multiplier <= 0) {
+        continue;
+      }
+      sumMultiplier += multiplier;
+      total += c.cost(cluster) * multiplier;
+    }
+
+    if (total <= 0 || sumMultiplier <= 0
+        || (sumMultiplier > 0 && (total / sumMultiplier) < minCostNeedBalance)) {
+      LOG.info("Skipping load balancing because balanced cluster; " + "total cost is " + total
+          + ", sum multiplier is " + sumMultiplier + " min cost which need balance is "
+          + minCostNeedBalance);
+      return false;
+    }
+    return true;
+  }
+
   /**
    * Given the cluster state this will try and approach an optimal balance. This
    * should always approach the optimal state given enough steps.
    */
   @Override
   public List<RegionPlan> balanceCluster(Map<ServerName, List<HRegionInfo>> clusterState) {
-    if (!needsBalance(new ClusterLoadState(clusterState))) {
-      return null;
-    }
-
     long startTime = EnvironmentEdgeManager.currentTimeMillis();
 
     // On clusters with lots of HFileLinks or lots of reference files,
@@ -250,6 +281,10 @@ public class StochasticLoadBalancer extends BaseLoadBalancer {
     
     // Keep track of servers to iterate through them.
     Cluster cluster = new Cluster(clusterState, loads, finder);
+    if (!needsBalance(cluster)) {
+      return null;
+    }
+
     double currentCost = computeCost(cluster, Double.MAX_VALUE);
     curOverallCost = currentCost;
     for (int i = 0; i < this.curFunctionCosts.length; i++) {

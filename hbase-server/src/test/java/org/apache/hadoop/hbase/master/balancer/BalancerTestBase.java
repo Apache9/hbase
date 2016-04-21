@@ -265,5 +265,4 @@ public class BalancerTestBase {
   protected void returnServers(List<ServerName> servers) {
     this.serverQueue.addAll(servers);
   }
-
 }
