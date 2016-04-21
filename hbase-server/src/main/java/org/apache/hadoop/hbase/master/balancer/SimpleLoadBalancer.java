@@ -33,6 +33,7 @@ import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.HBaseInterfaceAudience;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.ServerName;
+import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.master.AssignmentManager;
 import org.apache.hadoop.hbase.master.RegionPlan;
 
@@ -418,6 +419,12 @@ public class SimpleLoadBalancer extends BaseLoadBalancer {
         serversUnderloaded + " less loaded servers");
 
     return regionsToReturn;
+  }
+
+  @Override
+  public List<RegionPlan> balanceCluster(TableName tableName,
+    Map<ServerName, List<HRegionInfo>> clusterState) {
+    return balanceCluster(clusterState);
   }
 
   /**

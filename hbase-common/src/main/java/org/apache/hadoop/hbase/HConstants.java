@@ -122,7 +122,13 @@ public final class HConstants {
 
   /** Config for pluggable load balancers */
   public static final String HBASE_MASTER_LOADBALANCER_CLASS = "hbase.master.loadbalancer.class";
-  
+
+  /** Config for balancing the cluster by table */
+  public static final String HBASE_MASTER_LOADBALANCE_BYTABLE = "hbase.master.loadbalance.bytable";
+
+  /** The name of the ensemble table */
+  public static final String ENSEMBLE_TABLE_NAME = "hbase:ensemble";
+
   public static final String HBASE_CLUSTER_COLUMN_COMPRESSION = "hbase.cluster.column.compression";
 
   /** Cluster is standalone or pseudo-distributed */

@@ -1659,8 +1659,8 @@ MasterServices, Server {
       List<RegionPlan> plans = new ArrayList<RegionPlan>();
       //Give the balancer the current cluster state.
       this.balancer.setClusterStatus(getClusterStatus());
-      for (Map<ServerName, List<HRegionInfo>> assignments : assignmentsByTable.values()) {
-        List<RegionPlan> partialPlans = this.balancer.balanceCluster(assignments);
+      for (Entry<TableName, Map<ServerName, List<HRegionInfo>>> e : assignmentsByTable.entrySet()) {
+        List<RegionPlan> partialPlans = this.balancer.balanceCluster(e.getKey(), e.getValue());
         if (partialPlans != null) plans.addAll(partialPlans);
       }
       long cutoffTime = System.currentTimeMillis() + maximumBalanceTime;
