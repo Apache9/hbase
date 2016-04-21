@@ -103,7 +103,7 @@ public class TestScannerHeartbeatMessages {
 
   private static int VALUE_SIZE = 128;
   private static byte[] VALUE = Bytes.createMaxByteArray(VALUE_SIZE);
-  private static int SERVER_TIMEOUT = 2000;
+  private static int SERVER_TIMEOUT = 6000;
   // Time, in milliseconds, that the client will wait for a response from the server before timing
   // out. This value is used server side to determine when it is necessary to send a heartbeat
   // message to the client
