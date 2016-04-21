@@ -43,6 +43,7 @@ import org.apache.hadoop.hbase.master.AssignmentManager;
 import org.apache.hadoop.hbase.master.LoadBalancer;
 import org.apache.hadoop.hbase.master.MasterServices;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Sets;
@@ -384,7 +385,7 @@ public abstract class BaseLoadBalancer implements LoadBalancer {
     int getLowestLocalityRegionOnServer(int serverIndex) {
       if (regionFinder != null) {
         float lowestLocality = 1.0f;
-        int lowestLocalityRegionIndex = 0;
+        int lowestLocalityRegionIndex = -1;
         if (regionsPerServer[serverIndex].length == 0) {
           // No regions on that region server
           return -1;
@@ -394,12 +395,21 @@ public abstract class BaseLoadBalancer implements LoadBalancer {
           HDFSBlocksDistribution distribution = regionFinder
               .getBlockDistribution(regions[regionIndex]);
           float locality = distribution.getBlockLocalityIndex(servers[serverIndex].getHostname());
+          // skip empty region
+          if (distribution.getUniqueBlocksTotalWeight() == 0) {
+            continue;
+          }
           if (locality < lowestLocality) {
             lowestLocality = locality;
             lowestLocalityRegionIndex = j;
           }
         }
-        LOG.debug(" Lowest locality region index is " + lowestLocalityRegionIndex
+        if (lowestLocalityRegionIndex == -1) {
+          return -1;
+        }
+        LOG.debug("Lowest locality region is "
+            + regions[regionsPerServer[serverIndex][lowestLocalityRegionIndex]]
+                .getRegionNameAsString() + " with locality " + lowestLocality
             + " and its region server contains " + regionsPerServer[serverIndex].length
             + " regions");
         return regionsPerServer[serverIndex][lowestLocalityRegionIndex];
@@ -413,18 +423,33 @@ public abstract class BaseLoadBalancer implements LoadBalancer {
       return distribution.getBlockLocalityIndex(servers[server].getHostname());
     }
 
-    int getLeastLoadedTopServerForRegion(int region) {
+    /**
+     * Returns a least loaded server which have better locality for this region
+     * than the current server.
+     */
+    int getLeastLoadedTopServerForRegion(int region, int currentServer) {
       if (regionFinder != null) {
-        List<ServerName> topLocalServers = regionFinder.getTopBlockLocations(regions[region]);
+        List<ServerName> topLocalServers = regionFinder.getTopBlockLocations(regions[region], 
+          servers[currentServer].getHostname());
         int leastLoadedServerIndex = -1;
         int load = Integer.MAX_VALUE;
         for (ServerName sn : topLocalServers) {
-          int index = serversToIndex.get(sn);
+          if (!serversToIndex.containsKey(sn.getHostAndPort())) {
+            continue;
+          }
+          int index = serversToIndex.get(sn.getHostAndPort());
+          if (regionsPerServer[index] == null) {
+            continue;
+          }
           int tempLoad = regionsPerServer[index].length;
           if (tempLoad <= load) {
             leastLoadedServerIndex = index;
             load = tempLoad;
           }
+        }
+        if (leastLoadedServerIndex != -1) {
+          LOG.debug("Pick the least loaded server " + servers[leastLoadedServerIndex].getHostname()
+            + " with better locality for region " + regions[region]);
         }
         return leastLoadedServerIndex;
       } else {
@@ -449,6 +474,21 @@ public abstract class BaseLoadBalancer implements LoadBalancer {
         }
         localityPerServer[i] = distribution.getBlockLocalityIndex(servers[i].getHostname());
       }
+    }
+
+    @VisibleForTesting
+    protected void setNumRegions(int numRegions) {
+      this.numRegions = numRegions;
+    }
+
+    @VisibleForTesting
+    protected void setNumMovedRegions(int numMovedRegions) {
+      this.numMovedRegions = numMovedRegions;
+    }
+
+    @VisibleForTesting
+    protected void setNumMovedMetaRegions(int numMovedMetaRegions) {
+      this.numMovedMetaRegions = numMovedMetaRegions;
     }
 
     @Override

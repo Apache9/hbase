@@ -637,9 +637,8 @@ public class StochasticLoadBalancer extends BaseLoadBalancer {
       if (this.masterServices == null) {
         return nothingPicked;
       }
-      cluster.calculateRegionServerLocalities();
-      // Pick lowest local region server
-      int thisServer = pickLowestLocalityServer(cluster);
+
+      int thisServer = pickRandomServer(cluster);
       int thisRegion;
       if ( thisServer == -1) {
         LOG.warn("Could not pick lowest locality region server");
@@ -657,11 +656,11 @@ public class StochasticLoadBalancer extends BaseLoadBalancer {
         return nothingPicked;
       }
 
-      // Pick the server with the highest locality
-      int otherServer = pickHighestLocalityServer(cluster, thisServer, thisRegion);
+      // Pick the least loaded server with good locality for the region
+      int otherServer = cluster.getLeastLoadedTopServerForRegion(thisRegion, thisServer);
 
-      // pick an region on the other server to potentially swap
-      int otherRegion = this.pickRandomRegion(cluster, otherServer, 0.5f);
+      // Let the candidate region be moved to its highest locality server.
+      int otherRegion = -1;
 
       return new Pair<Pair<Integer, Integer>, Pair<Integer, Integer>>(
           new Pair<Integer, Integer>(thisServer,thisRegion),
@@ -675,25 +674,6 @@ public class StochasticLoadBalancer extends BaseLoadBalancer {
 
     private int pickLowestLocalityRegionOnServer(Cluster cluster, int server) {
       return cluster.getLowestLocalityRegionOnServer(server);
-    }
-
-    private int pickHighestLocalityServer(Cluster cluster, int thisServer, int thisRegion) {
-      int[] regionLocations = cluster.regionLocations[thisRegion];
-
-      if (regionLocations == null || regionLocations.length <= 1) {
-        LOG.warn("Picking random destination as pickHighestLocalityServer did not give good result");
-        return pickOtherRandomServer(cluster, thisServer);
-      }
-
-      for (int loc : regionLocations) {
-        if (loc >= 0 && loc != thisServer) { // find the first suitable server
-          return loc;
-        }
-      }
-
-      // no location found
-      LOG.warn("Picking random destination as pickHighestLocalityServer did not give good result");
-      return pickOtherRandomServer(cluster, thisServer);
     }
 
     void setServices(MasterServices services) {
@@ -835,7 +815,7 @@ public class StochasticLoadBalancer extends BaseLoadBalancer {
         moveCost += META_MOVE_COST_MULT * cluster.numMovedMetaRegions;
       }
 
-      return scale(0, cluster.numRegions + META_MOVE_COST_MULT, moveCost);
+      return scale(0, Math.min(cluster.numRegions, maxMoves) + META_MOVE_COST_MULT, moveCost);
     }
   }
 
