@@ -60,6 +60,7 @@ public class TestStochasticLoadBalancer extends BalancerTestBase {
     conf.setFloat("hbase.regions.slop", 0.0f);
     conf.setFloat("hbase.master.balancer.stochastic.localityCost", 0);
     conf.setInt("hbase.master.balancer.stochastic.maxSteps", 10000000);
+    conf.setFloat("hbase.master.balancer.stochastic.minCostNeedBalance", 0.0f);
     loadBalancer = new StochasticLoadBalancer();
     loadBalancer.setConf(conf);
   }
@@ -138,6 +139,21 @@ public class TestStochasticLoadBalancer extends BalancerTestBase {
       largeCluster,
 
   };
+
+  @Test
+  public void testNeedsBalance() {
+    Configuration conf = loadBalancer.getConf();
+    conf.setFloat("hbase.master.balancer.stochastic.minCostNeedBalance", 1.0f);
+    loadBalancer.setConf(conf);
+    for (int[] mockCluster : clusterStateMocks) {
+      Map<ServerName, List<HRegionInfo>> servers = mockClusterServers(mockCluster);
+      List<RegionPlan> plans = loadBalancer.balanceCluster(servers);
+      assertNull(plans);
+    }
+    // reset config
+    conf.setFloat("hbase.master.balancer.stochastic.minCostNeedBalance", 0.0f);
+    loadBalancer.setConf(conf);
+  }
 
   @Test
   public void testKeepRegionLoad() throws Exception {

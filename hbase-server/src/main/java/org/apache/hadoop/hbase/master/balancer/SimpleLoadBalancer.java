@@ -184,10 +184,10 @@ public class SimpleLoadBalancer extends BaseLoadBalancer {
     boolean emptyRegionServerPresent = false;
     long startTime = System.currentTimeMillis();
 
-    ClusterLoadState cs = new ClusterLoadState(clusterMap);
+    Cluster c = new Cluster(clusterMap, null, this.regionFinder);
+    if (!this.needsBalance(c)) return null;
 
-    if (!this.needsBalance(cs)) return null;
-    
+    ClusterLoadState cs = new ClusterLoadState(clusterMap);
     int numServers = cs.getNumServers();
     NavigableMap<ServerAndLoad, List<HRegionInfo>> serversByLoad = cs.getServersByLoad();
     int numRegions = cs.getNumRegions();
