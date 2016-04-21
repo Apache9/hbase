@@ -987,6 +987,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
         // Start the Quota Manager
         if (rsQuotaManager != null) {
           rsQuotaManager.start(getRpcServer().getScheduler());
+          this.switchThrottle();
         }
       }
 

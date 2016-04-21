@@ -25,6 +25,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.HConstants;
+import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HTable;
@@ -82,11 +83,7 @@ public class TestThrottleAdmin {
   public static void setUpBeforeClass() throws Exception {
     TEST_UTIL.getConfiguration().setBoolean(QuotaUtil.QUOTA_CONF_KEY, true);
     TEST_UTIL.getConfiguration().setInt(QuotaCache.REFRESH_CONF_KEY, REFRESH_TIME);
-    TEST_UTIL.getConfiguration().setInt("hbase.hstore.compactionThreshold", 10);
-    TEST_UTIL.getConfiguration().setInt("hbase.regionserver.msginterval", 100);
-    TEST_UTIL.getConfiguration().setInt("hbase.client.pause", 250);
     TEST_UTIL.getConfiguration().setInt(HConstants.HBASE_CLIENT_RETRIES_NUMBER, 1);
-    TEST_UTIL.getConfiguration().setBoolean("hbase.master.enabletable.roundrobin", true);
     TEST_UTIL.getConfiguration().setBoolean("hbase.quota.allow.exceed", false);
     TEST_UTIL.startMiniCluster(regionServerNum);
     TEST_UTIL.waitTableAvailable(QuotaTableUtil.QUOTA_TABLE_NAME.getName());
@@ -136,6 +133,24 @@ public class TestThrottleAdmin {
     // start throttle
     admin.switchThrottle(ThrottleState.ON);
     checkIfStart();
+  }
+
+  @Test
+  public void testSimulateThrottleWithNewNode() throws Exception {
+    // simulate throttle
+    admin.switchThrottle(ThrottleState.SIMULATION);
+    checkIfSimulate();
+    EnvironmentEdgeManagerTestHelper.reset();
+    RegionServerThread newServer = TEST_UTIL.getMiniHBaseCluster().startRegionServer();
+    newServer.waitForServerOnline();
+    EnvironmentEdgeManagerTestHelper.injectEdge(envEdge);
+    LOG.info("Start region server success");
+    quotaManager = newServer.getRegionServer().getRegionServerQuotaManager();
+    checkIfSimulate();
+    // start throttle
+    admin.switchThrottle(ThrottleState.ON);
+    checkIfStart();
+    quotaManager = TEST_UTIL.getMiniHBaseCluster().getRegionServer(0).getRegionServerQuotaManager();
   }
 
   @Test
