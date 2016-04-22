@@ -206,6 +206,26 @@ public class ReplicationPeersZKImpl extends ReplicationStateZKBase implements Re
   }
 
   @Override
+  public void setPeerBandwidth(String id, long bandwidth) throws ReplicationException {
+    try {
+      if (!peerExists(id)) {
+        throw new IllegalArgumentException("Cannot set peer tableCFs because id=" + id
+            + " does not exist.");
+      }
+      ReplicationPeerConfig rpc = getReplicationPeerConfig(id);
+      if (rpc == null) {
+        throw new ReplicationException("Unable to get tableCFs of the peer with id=" + id);
+      }
+      rpc.setBandwidth(bandwidth);
+      ZKUtil.setData(this.zookeeper, getPeerNode(id),
+          TableCFsHelper.toByteArray(rpc));
+      LOG.info("Peer per node bandwidth with id= " + id + " is now " + bandwidth);
+    } catch (KeeperException e) {
+      throw new ReplicationException("Unable to change tableCFs of the peer with id=" + id, e);
+    }
+  }
+
+  @Override
   public boolean getStatusOfPeer(String id) {
     ReplicationPeer replicationPeer = this.peerClusters.get(id);
     if (replicationPeer == null) {

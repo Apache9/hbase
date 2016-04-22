@@ -330,7 +330,16 @@ public class ReplicationAdmin implements Closeable {
       throws ReplicationException {
     this.replicationPeers.setPeerTableCFsConfig(id, tableCfs);
   }
-  
+
+  /**
+   * Set the replication source per node bandwidth for the specified peer
+   * @param id a short name that identifies the cluster
+   * @param bandwidth the replication source per node bandwidth
+   */
+  public void setPeerBandwidth(String id, long bandwidth) throws ReplicationException {
+    this.replicationPeers.setPeerBandwidth(id, bandwidth);
+  }
+
   /**
    * Get the state of the specified peer cluster
    * @param id String format of the Short name that identifies the peer,

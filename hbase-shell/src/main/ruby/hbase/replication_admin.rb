@@ -37,9 +37,11 @@ module Hbase
 
     #----------------------------------------------------------------------------------------------
     # Add a new peer cluster to replicate to
-    def add_peer(id, cluster_key, peer_state = nil, peer_tableCFs = nil, protocol = nil)
+    def add_peer(id, cluster_key, peer_state = nil, peer_tableCFs = nil, protocol = nil, bandwidth = 0)
       replication_peer_config = ReplicationPeerConfig.new
       replication_peer_config.set_cluster_key(cluster_key)
+      replication_peer_config.set_bandwidth(bandwidth)
+
       unless peer_state.nil?
         replication_peer_config.set_state(State.valueOf(peer_state))
       end
@@ -151,7 +153,7 @@ module Hbase
       @replication_admin.enableTableRep(tableName)
     end
 
-#----------------------------------------------------------------------------------------------
+    #----------------------------------------------------------------------------------------------
     # Disables a table's replication switch
     def disable_tablerep(table_name)
       tableName = TableName.valueOf(table_name)
@@ -162,6 +164,12 @@ module Hbase
     # Upgrade tableCFs 
     def upgrade_tablecfs 
       @replication_admin.upgradeTableCFs
+    end
+
+    #----------------------------------------------------------------------------------------------
+    # Set per node bandwidth for the specified peer 
+    def set_peer_bandwidth(peer, bandwidth)
+      @replication_admin.setPeerBandwidth(id, bandwidth)
     end
   end
 end

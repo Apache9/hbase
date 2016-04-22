@@ -140,6 +140,7 @@ message ReplicationPeer {
   repeated NameStringPair configuration = 4;
   optional Protocol peerProtocol = 5 [default = NATIVE];
   optional TableCFs tableCFs = 6;
+  optional int64 bandwidth = 7;
 }
 
 /**

@@ -6482,6 +6482,16 @@ public final class ZooKeeperProtos {
      * <code>optional .TableCFs tableCFs = 6;</code>
      */
     org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFsOrBuilder getTableCFsOrBuilder();
+
+    // optional int64 bandwidth = 7;
+    /**
+     * <code>optional int64 bandwidth = 7;</code>
+     */
+    boolean hasBandwidth();
+    /**
+     * <code>optional int64 bandwidth = 7;</code>
+     */
+    long getBandwidth();
   }
   /**
    * Protobuf type {@code ReplicationPeer}
@@ -6587,6 +6597,11 @@ public final class ZooKeeperProtos {
                 tableCFs_ = subBuilder.buildPartial();
               }
               bitField0_ |= 0x00000008;
+              break;
+            }
+            case 56: {
+              bitField0_ |= 0x00000010;
+              bandwidth_ = input.readInt64();
               break;
             }
           }
@@ -6928,6 +6943,22 @@ public final class ZooKeeperProtos {
       return tableCFs_;
     }
 
+    // optional int64 bandwidth = 7;
+    public static final int BANDWIDTH_FIELD_NUMBER = 7;
+    private long bandwidth_;
+    /**
+     * <code>optional int64 bandwidth = 7;</code>
+     */
+    public boolean hasBandwidth() {
+      return ((bitField0_ & 0x00000010) == 0x00000010);
+    }
+    /**
+     * <code>optional int64 bandwidth = 7;</code>
+     */
+    public long getBandwidth() {
+      return bandwidth_;
+    }
+
     private void initFields() {
       clusterkey_ = "";
       replicationEndpointImpl_ = "";
@@ -6935,6 +6966,7 @@ public final class ZooKeeperProtos {
       configuration_ = java.util.Collections.emptyList();
       peerProtocol_ = org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.ReplicationPeer.Protocol.NATIVE;
       tableCFs_ = org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs.getDefaultInstance();
+      bandwidth_ = 0L;
     }
     private byte memoizedIsInitialized = -1;
     public final boolean isInitialized() {
@@ -6988,6 +7020,9 @@ public final class ZooKeeperProtos {
       if (((bitField0_ & 0x00000008) == 0x00000008)) {
         output.writeMessage(6, tableCFs_);
       }
+      if (((bitField0_ & 0x00000010) == 0x00000010)) {
+        output.writeInt64(7, bandwidth_);
+      }
       getUnknownFields().writeTo(output);
     }
 
@@ -7020,6 +7055,10 @@ public final class ZooKeeperProtos {
       if (((bitField0_ & 0x00000008) == 0x00000008)) {
         size += com.google.protobuf.CodedOutputStream
           .computeMessageSize(6, tableCFs_);
+      }
+      if (((bitField0_ & 0x00000010) == 0x00000010)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeInt64Size(7, bandwidth_);
       }
       size += getUnknownFields().getSerializedSize();
       memoizedSerializedSize = size;
@@ -7068,6 +7107,11 @@ public final class ZooKeeperProtos {
         result = result && getTableCFs()
             .equals(other.getTableCFs());
       }
+      result = result && (hasBandwidth() == other.hasBandwidth());
+      if (hasBandwidth()) {
+        result = result && (getBandwidth()
+            == other.getBandwidth());
+      }
       result = result &&
           getUnknownFields().equals(other.getUnknownFields());
       return result;
@@ -7104,6 +7148,10 @@ public final class ZooKeeperProtos {
       if (hasTableCFs()) {
         hash = (37 * hash) + TABLECFS_FIELD_NUMBER;
         hash = (53 * hash) + getTableCFs().hashCode();
+      }
+      if (hasBandwidth()) {
+        hash = (37 * hash) + BANDWIDTH_FIELD_NUMBER;
+        hash = (53 * hash) + hashLong(getBandwidth());
       }
       hash = (29 * hash) + getUnknownFields().hashCode();
       memoizedHashCode = hash;
@@ -7246,6 +7294,8 @@ public final class ZooKeeperProtos {
           tableCFsBuilder_.clear();
         }
         bitField0_ = (bitField0_ & ~0x00000020);
+        bandwidth_ = 0L;
+        bitField0_ = (bitField0_ & ~0x00000040);
         return this;
       }
 
@@ -7312,6 +7362,10 @@ public final class ZooKeeperProtos {
         } else {
           result.tableCFs_ = tableCFsBuilder_.build();
         }
+        if (((from_bitField0_ & 0x00000040) == 0x00000040)) {
+          to_bitField0_ |= 0x00000010;
+        }
+        result.bandwidth_ = bandwidth_;
         result.bitField0_ = to_bitField0_;
         onBuilt();
         return result;
@@ -7395,6 +7449,9 @@ public final class ZooKeeperProtos {
         }
         if (other.hasTableCFs()) {
           mergeTableCFs(other.getTableCFs());
+        }
+        if (other.hasBandwidth()) {
+          setBandwidth(other.getBandwidth());
         }
         this.mergeUnknownFields(other.getUnknownFields());
         return this;
@@ -8254,6 +8311,39 @@ public final class ZooKeeperProtos {
           tableCFs_ = null;
         }
         return tableCFsBuilder_;
+      }
+
+      // optional int64 bandwidth = 7;
+      private long bandwidth_ ;
+      /**
+       * <code>optional int64 bandwidth = 7;</code>
+       */
+      public boolean hasBandwidth() {
+        return ((bitField0_ & 0x00000040) == 0x00000040);
+      }
+      /**
+       * <code>optional int64 bandwidth = 7;</code>
+       */
+      public long getBandwidth() {
+        return bandwidth_;
+      }
+      /**
+       * <code>optional int64 bandwidth = 7;</code>
+       */
+      public Builder setBandwidth(long value) {
+        bitField0_ |= 0x00000040;
+        bandwidth_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>optional int64 bandwidth = 7;</code>
+       */
+      public Builder clearBandwidth() {
+        bitField0_ = (bitField0_ & ~0x00000040);
+        bandwidth_ = 0L;
+        onChanged();
+        return this;
       }
 
       // @@protoc_insertion_point(builder_scope:ReplicationPeer)
@@ -12496,28 +12586,29 @@ public final class ZooKeeperProtos {
       "NABLED\020\000\022\014\n\010DISABLED\020\001\022\r\n\tDISABLING\020\002\022\014\n" +
       "\010ENABLING\020\003\";\n\007TableCF\022\036\n\ntable_name\030\001 \001",
       "(\0132\n.TableName\022\020\n\010families\030\002 \003(\014\"\'\n\010Tabl" +
-      "eCFs\022\033\n\ttable_cfs\030\001 \003(\0132\010.TableCF\"\207\002\n\017Re" +
+      "eCFs\022\033\n\ttable_cfs\030\001 \003(\0132\010.TableCF\"\232\002\n\017Re" +
       "plicationPeer\022\022\n\nclusterkey\030\001 \002(\t\022\037\n\027rep" +
       "licationEndpointImpl\030\002 \001(\t\022\035\n\004data\030\003 \003(\013" +
       "2\017.BytesBytesPair\022&\n\rconfiguration\030\004 \003(\013" +
       "2\017.NameStringPair\0227\n\014peerProtocol\030\005 \001(\0162" +
       "\031.ReplicationPeer.Protocol:\006NATIVE\022\033\n\010ta" +
-      "bleCFs\030\006 \001(\0132\t.TableCFs\"\"\n\010Protocol\022\n\n\006N" +
-      "ATIVE\020\000\022\n\n\006THRIFT\020\001\"^\n\020ReplicationState\022" +
-      "&\n\005state\030\001 \002(\0162\027.ReplicationState.State\"",
-      "\"\n\005State\022\013\n\007ENABLED\020\000\022\014\n\010DISABLED\020\001\"+\n\027R" +
-      "eplicationHLogPosition\022\020\n\010position\030\001 \002(\003" +
-      "\"%\n\017ReplicationLock\022\022\n\nlock_owner\030\001 \002(\t\"" +
-      "\230\001\n\tTableLock\022\036\n\ntable_name\030\001 \001(\0132\n.Tabl" +
-      "eName\022\037\n\nlock_owner\030\002 \001(\0132\013.ServerName\022\021" +
-      "\n\tthread_id\030\003 \001(\003\022\021\n\tis_shared\030\004 \001(\010\022\017\n\007" +
-      "purpose\030\005 \001(\t\022\023\n\013create_time\030\006 \001(\003\";\n\017St" +
-      "oreSequenceId\022\023\n\013family_name\030\001 \002(\014\022\023\n\013se" +
-      "quence_id\030\002 \002(\004\"g\n\026RegionStoreSequenceId" +
-      "s\022 \n\030last_flushed_sequence_id\030\001 \002(\004\022+\n\021s",
-      "tore_sequence_id\030\002 \003(\0132\020.StoreSequenceId" +
-      "BE\n*org.apache.hadoop.hbase.protobuf.gen" +
-      "eratedB\017ZooKeeperProtosH\001\210\001\001\240\001\001"
+      "bleCFs\030\006 \001(\0132\t.TableCFs\022\021\n\tbandwidth\030\007 \001" +
+      "(\003\"\"\n\010Protocol\022\n\n\006NATIVE\020\000\022\n\n\006THRIFT\020\001\"^" +
+      "\n\020ReplicationState\022&\n\005state\030\001 \002(\0162\027.Repl",
+      "icationState.State\"\"\n\005State\022\013\n\007ENABLED\020\000" +
+      "\022\014\n\010DISABLED\020\001\"+\n\027ReplicationHLogPositio" +
+      "n\022\020\n\010position\030\001 \002(\003\"%\n\017ReplicationLock\022\022" +
+      "\n\nlock_owner\030\001 \002(\t\"\230\001\n\tTableLock\022\036\n\ntabl" +
+      "e_name\030\001 \001(\0132\n.TableName\022\037\n\nlock_owner\030\002" +
+      " \001(\0132\013.ServerName\022\021\n\tthread_id\030\003 \001(\003\022\021\n\t" +
+      "is_shared\030\004 \001(\010\022\017\n\007purpose\030\005 \001(\t\022\023\n\013crea" +
+      "te_time\030\006 \001(\003\";\n\017StoreSequenceId\022\023\n\013fami" +
+      "ly_name\030\001 \002(\014\022\023\n\013sequence_id\030\002 \002(\004\"g\n\026Re" +
+      "gionStoreSequenceIds\022 \n\030last_flushed_seq",
+      "uence_id\030\001 \002(\004\022+\n\021store_sequence_id\030\002 \003(" +
+      "\0132\020.StoreSequenceIdBE\n*org.apache.hadoop" +
+      ".hbase.protobuf.generatedB\017ZooKeeperProt" +
+      "osH\001\210\001\001\240\001\001"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
       new com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner() {
@@ -12577,7 +12668,7 @@ public final class ZooKeeperProtos {
           internal_static_ReplicationPeer_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_ReplicationPeer_descriptor,
-              new java.lang.String[] { "Clusterkey", "ReplicationEndpointImpl", "Data", "Configuration", "PeerProtocol", "TableCFs", });
+              new java.lang.String[] { "Clusterkey", "ReplicationEndpointImpl", "Data", "Configuration", "PeerProtocol", "TableCFs", "Bandwidth", });
           internal_static_ReplicationState_descriptor =
             getDescriptor().getMessageTypes().get(9);
           internal_static_ReplicationState_fieldAccessorTable = new

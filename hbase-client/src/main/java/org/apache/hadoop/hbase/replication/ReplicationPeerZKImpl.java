@@ -216,6 +216,11 @@ public class ReplicationPeerZKImpl extends ReplicationStateZKBase
   }
 
   @Override
+  public long getPeerBandwidth() {
+    return this.peerConfig.getBandwidth();
+  }
+
+  @Override
   public void abort(String why, Throwable e) {
     LOG.fatal("The ReplicationPeer coresponding to peer " + peerConfig
         + " was aborted for the following reason(s):" + why, e);
