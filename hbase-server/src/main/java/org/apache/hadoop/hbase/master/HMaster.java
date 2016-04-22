@@ -579,8 +579,6 @@ MasterServices, Server {
 
     this.zooKeeper = new ZooKeeperWatcher(conf, MASTER + ":" + isa.getPort(), this, true);
     this.rpcServer.startThreads();
-    this.pauseMonitor = new JvmPauseMonitor(conf);
-    this.pauseMonitor.start();
     this.jvmThreadMonitor = new JvmThreadMonitor(conf);
     this.jvmThreadMonitor.start();
 
@@ -594,6 +592,8 @@ MasterServices, Server {
     this.masterCheckEncryption = conf.getBoolean("hbase.master.check.encryption", true);
 
     this.metricsMaster = new MetricsMaster( new MetricsMasterWrapperImpl(this));
+    this.pauseMonitor = new JvmPauseMonitor(conf, metricsMaster.getMetricsSource());
+    this.pauseMonitor.start();
 
     // preload table descriptor at startup
     this.preLoadTableDescriptors = conf.getBoolean("hbase.master.preload.tabledescriptors", true);
