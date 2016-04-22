@@ -49,6 +49,8 @@ import javax.management.ObjectName;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.ContentSummary;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.Chore;
 import org.apache.hadoop.hbase.ClusterStatus;
@@ -1016,6 +1018,22 @@ Server {
   @Override
   public MasterFileSystem getMasterFileSystem() {
     return this.fileSystemManager;
+  }
+
+  public FileSystemStatistics getFileSystemStatistics() {
+    long oldLogsFileCount = -1;
+    long oldLogsSpaceConsumed = -1;
+    if (this.fileSystemManager != null) {
+      try {
+        FileSystem fs = this.fileSystemManager.getFileSystem();
+        ContentSummary summary = fs.getContentSummary(this.fileSystemManager.getOldLogDir());
+        oldLogsFileCount = summary.getFileCount();
+        oldLogsSpaceConsumed = summary.getSpaceConsumed();
+      } catch (IOException e) {
+        LOG.error("Failed to get master filesystem statistics", e);
+      }
+    }
+    return new FileSystemStatistics(oldLogsFileCount, oldLogsSpaceConsumed);
   }
 
   /**

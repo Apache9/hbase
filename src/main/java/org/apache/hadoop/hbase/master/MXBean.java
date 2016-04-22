@@ -176,4 +176,10 @@ public interface MXBean {
    * @return list of recent server crash statistics
    */
   public List<ServerCrashStatistics> getServerCrashStatistics();
+
+  /**
+   * Get the statistics of filesystem statistics
+   * @return the statistics of master filesystem
+   */
+  public FileSystemStatistics getFileSystemStatistics();
 }
