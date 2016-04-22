@@ -132,6 +132,19 @@ module Hbase
     end
 
     #----------------------------------------------------------------------------------------------
+    # Remove some tableCFs from the tableCFs config of the specified peer
+    def remove_peer_tableCFs(id, tableCFs)
+      unless tableCFs.nil?
+        # convert tableCFs to TableName
+        map = java.util.HashMap.new
+        tableCFs.each{|key, val|
+          map.put(org.apache.hadoop.hbase.TableName.valueOf(key), val)
+        }
+      end
+      @replication_admin.removePeerTableCFs(id, map)
+    end
+
+    #----------------------------------------------------------------------------------------------
     # Enables a table's replication switch
     def enable_tablerep(table_name)
       tableName = TableName.valueOf(table_name)
