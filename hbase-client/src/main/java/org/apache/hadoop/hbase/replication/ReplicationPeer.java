@@ -116,4 +116,10 @@ public interface ReplicationPeer {
    * @return the replicable (table, cf-list) map
    */
   public Map<TableName, List<String>> getTableCFs();
+
+  /**
+   * Get the replication source per node bandwidth of this peer
+   * @return per node bandwidth
+   */
+  public long getPeerBandwidth();
 }

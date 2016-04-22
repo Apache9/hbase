@@ -253,6 +253,10 @@ public final class TableCFsHelper {
     if (peer.getTableCFs() != null) {
       peerConfig.setTableCFs(peer.getTableCFs());
     }
+
+    if (peer.hasBandwidth()) {
+      peerConfig.setBandwidth(peer.getBandwidth());
+    }
     return peerConfig;
   }
 
@@ -280,6 +284,7 @@ public final class TableCFsHelper {
     }
     builder.setPeerProtocol(peerConfig.getProtocol().getProtocol());
     builder.setTableCFs(peerConfig.getTableCFs());
+    builder.setBandwidth(peerConfig.getBandwidth());
     return builder.build();
   }
 

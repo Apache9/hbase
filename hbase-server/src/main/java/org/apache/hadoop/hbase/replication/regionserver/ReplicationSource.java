@@ -138,6 +138,9 @@ public class ReplicationSource extends Thread
   private ReplicationEndpoint.ReplicateContext replicateContext;
   // throttler
   private ReplicationThrottler throttler;
+  private long defaultBandwidth;
+  private long currentBandwidth;
+
   private int ioeSleepBeforeRetry = 0;
   
   /**
@@ -176,8 +179,6 @@ public class ReplicationSource extends Thread
         new PriorityBlockingQueue<Path>(
             this.conf.getInt("hbase.regionserver.maxlogs", 32),
             new LogsComparator());
-    long bandwidth = this.conf.getLong("replication.source.per.peer.node.bandwidth", 0);
-    this.throttler = new ReplicationThrottler((double)bandwidth/10.0);
     this.replicationQueues = replicationQueues;
     this.replicationPeers = replicationPeers;
     this.manager = manager;
@@ -197,6 +198,16 @@ public class ReplicationSource extends Thread
     this.replicationEndpoint = replicationEndpoint;
 
     this.replicateContext = new ReplicationEndpoint.ReplicateContext();
+
+    defaultBandwidth = this.conf.getLong("replication.source.per.peer.node.bandwidth", 0);
+    currentBandwidth = getCurrentBandwidth(
+      this.replicationPeers.getPeer(peerId).getPeerBandwidth(), defaultBandwidth);
+    this.throttler = new ReplicationThrottler((double) currentBandwidth / 10.0);
+
+    LOG.info("peerClusterZnode=" + peerClusterZnode + ", ReplicationSource : " + peerId
+        + " inited, replicationQueueSizeCapacity=" + replicationQueueSizeCapacity
+        + ", replicationQueueNbCapacity=" + replicationQueueNbCapacity + ", curerntBandwidth="
+        + this.currentBandwidth);
   }
 
   private void decorateConf() {
@@ -725,6 +736,23 @@ public class ReplicationSource extends Thread
     return distinctRowKeys;
   }
 
+  private long getCurrentBandwidth(long peerBandwidth, long defaultBandwidth) {
+    return peerBandwidth != 0 ? peerBandwidth : defaultBandwidth;
+  }
+
+  private void checkBandwidthChangeAndResetThrottler() {
+    long peerBandwidth = this.replicationPeers.getPeer(peerId).getPeerBandwidth();
+    if (peerBandwidth != currentBandwidth) {
+      // user can set peer bandwidth to 0 to use default bandwidth
+      if (peerBandwidth != 0 || currentBandwidth != defaultBandwidth) {
+        currentBandwidth = getCurrentBandwidth(peerBandwidth, defaultBandwidth);
+        this.throttler.setBandwidth((double) currentBandwidth / 10.0);
+        LOG.info("ReplicationSource : " + peerId
+            + " bandwidth throttling changed, currentBandWidth=" + currentBandwidth);
+      }
+    }
+  }
+
   /**
    * Do the shipping logic
    * @param currentWALisBeingWrittenTo was the current WAL being (seemingly)
@@ -738,6 +766,7 @@ public class ReplicationSource extends Thread
     }
     while (this.isActive()) {
       try {
+        checkBandwidthChangeAndResetThrottler();
         if (this.throttler.isEnabled()) {
           long sleepTicks = this.throttler.getNextSleepInterval(currentSize);
           if (sleepTicks > 0) {

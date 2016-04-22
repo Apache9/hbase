@@ -1,5 +1,5 @@
 #
-# Copyright The Apache Software Foundation
+# Copyright 2010 The Apache Software Foundation
 #
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
@@ -20,30 +20,24 @@
 
 module Shell
   module Commands
-    class ListPeers< Command
+    class SetPeerBandwidth< Command
       def help
         return <<-EOF
-List all replication peer clusters.
+Set the replication source per node bandwidth for the specified peer.
+Examples:
 
-  hbase> list_peers
+  # set bandwidth=2MB per regionserver for a peer
+  hbase> set_peer_bandwidth '1', 2097152
+  # unset bandwidth for a peer to use the default bandwidth configured in server-side
+  hbase> set_peer_bandwidth '1'
+
 EOF
       end
 
-      def command()
-        now = Time.now
-        peers = replication_admin.list_peers
-
-        formatter.header(["PEER_ID", "CLUSTER_KEY", "STATE", "TABLE_CFS", "PROTOCOL", "BANDWIDTH"])
-
-        peers.entrySet().each do |e|
-          state = replication_admin.get_peer_state(e.key)
-          tableCFs = replication_admin.show_peer_tableCFs(e.key)
-          protocol = e.value.getProtocol().getProtocol()
-          bandwidth = e.value.getBandwidth()
-          formatter.row([ e.key, e.value.getClusterKey, state, tableCFs, protocol, bandwidth ])
+      def command(id, bandwidth = 0)
+        format_simple_command do
+          replication_admin.set_peer_bandwidth(id, bandwidth)
         end
-
-        formatter.footer(now)
       end
     end
   end
