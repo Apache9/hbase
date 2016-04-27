@@ -47,33 +47,33 @@ public abstract class SortedCompactionPolicy extends CompactionPolicy {
   }
 
   /**
-   * @param candidateFiles candidate files, ordered from oldest to newest by seqId. We rely on
+   * @param allFiles candidate files, ordered from oldest to newest by seqId. We rely on
    *   DefaultStoreFileManager to sort the files by seqId to guarantee contiguous compaction based
    *   on seqId for data consistency.
    * @return subset copy of candidate list that meets compaction criteria
    */
-  public CompactionRequest selectCompaction(Collection<StoreFile> candidateFiles,
+  public CompactionRequest selectCompaction(Collection<StoreFile> allFiles,
       final List<StoreFile> filesCompacting, final boolean isUserCompaction,
       final boolean mayUseOffPeak, final boolean forceMajor) throws IOException {
     // Preliminary compaction subject to filters
-    ArrayList<StoreFile> candidateSelection = new ArrayList<StoreFile>(candidateFiles);
+    ArrayList<StoreFile> candidateSelection = new ArrayList<StoreFile>(allFiles);
     // Stuck and not compacting enough (estimate). It is not guaranteed that we will be
     // able to compact more if stuck and compacting, because ratio policy excludes some
     // non-compacting files from consideration during compaction (see getCurrentEligibleFiles).
     int futureFiles = filesCompacting.isEmpty() ? 0 : 1;
-    boolean mayBeStuck = (candidateFiles.size() - filesCompacting.size() + futureFiles)
+    boolean mayBeStuck = (allFiles.size() - filesCompacting.size() + futureFiles)
         >= storeConfigInfo.getBlockingFileCount();
 
     candidateSelection = getCurrentEligibleFiles(candidateSelection, filesCompacting);
-    LOG.debug("Selecting compaction from " + candidateFiles.size() + " store files, " +
+    LOG.debug("Selecting compaction from " + allFiles.size() + " store files, " +
         filesCompacting.size() + " compacting, " + candidateSelection.size() +
         " eligible, " + storeConfigInfo.getBlockingFileCount() + " blocking");
 
     // If we can't have all files, we cannot do major anyway
-    boolean isAllFiles = candidateFiles.size() == candidateSelection.size();
+    boolean isAllFiles = allFiles.size() == candidateSelection.size();
     if (!(forceMajor && isAllFiles)) {
       candidateSelection = skipLargeFiles(candidateSelection, mayUseOffPeak);
-      isAllFiles = candidateFiles.size() == candidateSelection.size();
+      isAllFiles = allFiles.size() == candidateSelection.size();
     }
 
     // Try a major compaction if this is a user-requested major compaction,
@@ -84,25 +84,25 @@ public abstract class SortedCompactionPolicy extends CompactionPolicy {
     // Or, if there are any references among the candidates.
     boolean isAfterSplit = StoreUtils.hasReferences(candidateSelection);
 
-    CompactionRequest result = createCompactionRequest(candidateSelection,
-      isTryingMajor || isAfterSplit, mayUseOffPeak, mayBeStuck);
+    CompactionRequest result = createCompactionRequest(allFiles, filesCompacting,
+      candidateSelection, isTryingMajor || isAfterSplit, mayUseOffPeak, mayBeStuck);
 
     ArrayList<StoreFile> filesToCompact = Lists.newArrayList(result.getFiles());
     removeExcessFiles(filesToCompact, isUserCompaction, isTryingMajor);
     result.updateFiles(filesToCompact);
 
-    isAllFiles = (candidateFiles.size() == filesToCompact.size());
+    isAllFiles = (allFiles.size() == filesToCompact.size());
     result.setOffPeak(!filesToCompact.isEmpty() && !isAllFiles && mayUseOffPeak);
     result.setIsMajor(isTryingMajor && isAllFiles, isAllFiles);
 
     return result;
   }
 
-  protected abstract CompactionRequest createCompactionRequest(ArrayList<StoreFile>
-    candidateSelection, boolean tryingMajor, boolean mayUseOffPeak, boolean mayBeStuck)
-    throws IOException;
+  protected abstract CompactionRequest createCompactionRequest(Collection<StoreFile> allFiles,
+      List<StoreFile> filesCompacting, ArrayList<StoreFile> candidateSelection, boolean tryingMajor,
+      boolean mayUseOffPeak, boolean mayBeStuck) throws IOException;
 
-  /*
+  /**
    * @param filesToCompact Files to compact. Can be null.
    * @return True if we should run a major compaction.
    */
@@ -152,7 +152,7 @@ public abstract class SortedCompactionPolicy extends CompactionPolicy {
     return compactionSize > comConf.getThrottlePoint();
   }
 
-  public abstract boolean needsCompaction(final Collection<StoreFile> storeFiles,
+  public abstract boolean needsCompaction(final Collection<StoreFile> allFiles,
     final List<StoreFile> filesCompacting);
 
   protected ArrayList<StoreFile> getCurrentEligibleFiles(ArrayList<StoreFile> candidateFiles,

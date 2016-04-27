@@ -66,6 +66,9 @@ public class DateTieredCompactionPolicy extends SortedCompactionPolicy {
 
   private static final Log LOG = LogFactory.getLog(DateTieredCompactionPolicy.class);
 
+  private static DateTieredCompactionRequest EMPTY_REQUEST = new DateTieredCompactionRequest(
+      Collections.<StoreFile> emptyList(), Collections.<Long> emptyList(), Long.MIN_VALUE);
+
   private final RatioBasedCompactionPolicy compactionPolicyPerWindow;
 
   private final CompactionWindowFactory windowFactory;
@@ -97,11 +100,12 @@ public class DateTieredCompactionPolicy extends SortedCompactionPolicy {
    */
   @Override
   @VisibleForTesting
-  public boolean needsCompaction(final Collection<StoreFile> storeFiles,
+  public boolean needsCompaction(final Collection<StoreFile> allFiles,
       final List<StoreFile> filesCompacting) {
-    ArrayList<StoreFile> candidates = new ArrayList<StoreFile>(storeFiles);
+    ArrayList<StoreFile> candidates = new ArrayList<StoreFile>(allFiles);
     try {
-      return !selectMinorCompaction(candidates, false, true).getFiles().isEmpty();
+      return !selectMinorCompaction(allFiles, filesCompacting, candidates, false, true).getFiles()
+          .isEmpty();
     } catch (Exception e) {
       LOG.error("Can not check for compaction: ", e);
       return false;
@@ -130,10 +134,9 @@ public class DateTieredCompactionPolicy extends SortedCompactionPolicy {
     }
 
     long cfTTL = this.storeConfigInfo.getStoreFileTtl();
-    HDFSBlocksDistribution hdfsBlocksDistribution = new HDFSBlocksDistribution();
     List<Long> boundaries = getCompactBoundariesForMajor(filesToCompact, now);
     boolean[] filesInWindow = new boolean[boundaries.size()];
-
+    HDFSBlocksDistribution hdfsBlocksDistribution = new HDFSBlocksDistribution();
     for (StoreFile file: filesToCompact) {
       Long minTimestamp = file.getMinimumTimestamp();
       long oldest = (minTimestamp == null) ? Long.MIN_VALUE : now - minTimestamp.longValue();
@@ -150,9 +153,9 @@ public class DateTieredCompactionPolicy extends SortedCompactionPolicy {
       }
 
       int lowerWindowIndex = Collections.binarySearch(boundaries,
-        minTimestamp == null ? (Long)Long.MAX_VALUE : minTimestamp);
+        minTimestamp == null ? (Long) Long.MAX_VALUE : minTimestamp);
       int upperWindowIndex = Collections.binarySearch(boundaries,
-        file.getMaximumTimestamp() == null ? (Long)Long.MAX_VALUE : file.getMaximumTimestamp());
+        file.getMaximumTimestamp() == null ? (Long) Long.MAX_VALUE : file.getMaximumTimestamp());
       if (lowerWindowIndex != upperWindowIndex) {
         LOG.debug("Major compaction triggered on store " + this + "; because file "
           + file.getPath() + " has data with timestamps cross window boundaries");
@@ -182,10 +185,12 @@ public class DateTieredCompactionPolicy extends SortedCompactionPolicy {
   }
 
   @Override
-  protected CompactionRequest createCompactionRequest(ArrayList<StoreFile> candidateSelection,
-    boolean tryingMajor, boolean mayUseOffPeak, boolean mayBeStuck) throws IOException {
+  protected CompactionRequest createCompactionRequest(Collection<StoreFile> allFiles,
+      List<StoreFile> filesCompacting, ArrayList<StoreFile> candidateSelection, boolean tryingMajor,
+      boolean mayUseOffPeak, boolean mayBeStuck) throws IOException {
     CompactionRequest result = tryingMajor ? selectMajorCompaction(candidateSelection)
-      : selectMinorCompaction(candidateSelection, mayUseOffPeak, mayBeStuck);
+        : selectMinorCompaction(allFiles, filesCompacting, candidateSelection, mayUseOffPeak,
+          mayBeStuck);
     if (LOG.isDebugEnabled()) {
       LOG.debug("Generated compaction request: " + result);
     }
@@ -194,8 +199,122 @@ public class DateTieredCompactionPolicy extends SortedCompactionPolicy {
 
   public CompactionRequest selectMajorCompaction(ArrayList<StoreFile> candidateSelection) {
     long now = EnvironmentEdgeManager.currentTime();
+    long oldestToCompact = getOldestToCompact(comConf.getDateTieredMaxStoreFileAgeMillis(), now);
     return new DateTieredCompactionRequest(candidateSelection,
-      this.getCompactBoundariesForMajor(candidateSelection, now));
+        this.getCompactBoundariesForMajor(candidateSelection, now), oldestToCompact);
+  }
+
+  private boolean shouldIncludeForFreezing(long startMillis, long endMillis, StoreFile file) {
+    if (file.getMinimumTimestamp() == null) {
+      if (file.getMaximumTimestamp() == null) {
+        return true;
+      } else {
+        return file.getMaximumTimestamp().longValue() >= startMillis;
+      }
+    } else {
+      if (file.getMaximumTimestamp() == null) {
+        return file.getMinimumTimestamp().longValue() < endMillis;
+      } else {
+        return file.getMinimumTimestamp().longValue() < endMillis
+            && file.getMaximumTimestamp().longValue() >= startMillis;
+      }
+    }
+  }
+
+  private boolean canDropWholeFile(long now, long cfTTL, StoreFile file) {
+    long expiredBefore = now - cfTTL;
+    return cfTTL != Long.MAX_VALUE && file.getMaximumTimestamp() != null
+        && file.getMaximumTimestamp().longValue() < expiredBefore;
+  }
+
+  private boolean fitsInWindow(long startMillis, long endMillis, StoreFile file) {
+    return file.getMinimumTimestamp() != null && file.getMaximumTimestamp() != null
+        && file.getMinimumTimestamp().longValue() >= startMillis
+        && file.getMaximumTimestamp().longValue() < endMillis;
+  }
+
+  private CompactionRequest freezeOldWindows(Collection<StoreFile> allFiles,
+      List<StoreFile> filesCompacting, CompactionWindow youngestFreezingWindow,
+      long oldestToCompact, long now) {
+    if (!comConf.freezeDateTieredWindowOlderThanMaxAge()) {
+      // A non-null file list is expected by HStore
+      return EMPTY_REQUEST;
+    }
+    long minTimestamp = Long.MAX_VALUE;
+    for (StoreFile file : allFiles) {
+      minTimestamp = Math.min(minTimestamp, file.getMinimumTimestamp() == null ? Long.MAX_VALUE
+          : file.getMinimumTimestamp().longValue());
+    }
+    List<Long> freezingWindowBoundaries = Lists.newArrayList();
+    freezingWindowBoundaries.add(youngestFreezingWindow.endMillis());
+    for (CompactionWindow window = youngestFreezingWindow; window
+        .compareToTimestamp(minTimestamp) >= 0; window = window.nextEarlierWindow()) {
+      freezingWindowBoundaries.add(window.startMillis());
+    }
+    Collections.reverse(freezingWindowBoundaries);
+    if (freezingWindowBoundaries.size() < 2) {
+      return EMPTY_REQUEST;
+    }
+    List<StoreFile> candidates = Lists.newArrayList(allFiles);
+    // from old to young
+    for (int i = 0, n = freezingWindowBoundaries.size() - 1; i < n; i++) {
+      long startMillis = freezingWindowBoundaries.get(i);
+      long endMillis = freezingWindowBoundaries.get(i + 1);
+      int first = 0, total = candidates.size();
+      for (; first < total; first++) {
+        if (shouldIncludeForFreezing(startMillis, endMillis, candidates.get(first))) {
+          break;
+        }
+      }
+      if (first == total) {
+        continue;
+      }
+      int last = total - 1;
+      for (; last > first; last--) {
+        if (shouldIncludeForFreezing(startMillis, endMillis, candidates.get(last))) {
+          break;
+        }
+      }
+      if (last == first) {
+        StoreFile file = candidates.get(first);
+        // If we could drop the whole file due to TTL then we can create a compaction request.
+        // And also check if the only file fits in the window. Otherwise we still need a compaction
+        // to move the data that does not belong to this window to other windows.
+        if (!canDropWholeFile(now, storeConfigInfo.getStoreFileTtl(), file)
+            && fitsInWindow(startMillis, endMillis, file)) {
+          continue;
+        }
+      }
+      if (!filesCompacting.isEmpty()) {
+        // check if we are overlapped with filesCompacting.
+        int firstCompactingIdx = candidates.indexOf(filesCompacting.get(0));
+        int lastCompactingIdx = candidates.indexOf(filesCompacting.get(filesCompacting.size() - 1));
+        assert firstCompactingIdx >= 0;
+        assert lastCompactingIdx >= 0;
+        if (last >= firstCompactingIdx && first <= lastCompactingIdx) {
+          continue;
+        }
+      }
+      if (last - first + 1 > comConf.getMaxFilesToCompact()) {
+        LOG.warn("Too many files(got " + (last - first + 1) + ", expected less than or equal to "
+            + comConf.getMaxFilesToCompact() + ") to compact when freezing [" + startMillis + ", "
+            + endMillis + "), give up");
+        continue;
+      }
+      for (int j = first; j <= last; j++) {
+        StoreFile file = candidates.get(j);
+        if (file.excludeFromMinorCompaction()) {
+          LOG.warn("Find bulk load file " + file.getPath()
+              + " which is configured to be excluded from minor compaction when archiving ["
+              + startMillis + ", " + endMillis + ") give up");
+          continue;
+        }
+      }
+      List<StoreFile> filesToCompact = Lists.newArrayList(candidates.subList(first, last + 1));
+      return new DateTieredCompactionRequest(filesToCompact,
+          getCompactBoundariesForMajor(filesToCompact, now), oldestToCompact);
+    }
+    return EMPTY_REQUEST;
   }
 
   /**
@@ -206,7 +325,8 @@ public class DateTieredCompactionPolicy extends SortedCompactionPolicy {
    * by seqId and maxTimestamp in descending order and build the time windows. All the out-of-order
    * data into the same compaction windows, guaranteeing contiguous compaction based on sequence id.
    */
-  public CompactionRequest selectMinorCompaction(ArrayList<StoreFile> candidateSelection,
+  public CompactionRequest selectMinorCompaction(Collection<StoreFile> allFiles,
+      List<StoreFile> filesCompacting, ArrayList<StoreFile> candidateSelection,
       boolean mayUseOffPeak, boolean mayBeStuck) throws IOException {
     long now = EnvironmentEdgeManager.currentTime();
     long oldestToCompact = getOldestToCompact(comConf.getDateTieredMaxStoreFileAgeMillis(), now);
@@ -229,6 +349,7 @@ public class DateTieredCompactionPolicy extends SortedCompactionPolicy {
         Iterators.peekingIterator(storefileMaxTimestampPairs.iterator());
     while (it.hasNext()) {
       if (window.compareToTimestamp(oldestToCompact) < 0) {
+        // the whole window lies before oldestToCompact
         break;
       }
       int compResult = window.compareToTimestamp(it.peek().getSecond());
@@ -248,21 +369,26 @@ public class DateTieredCompactionPolicy extends SortedCompactionPolicy {
           if (LOG.isDebugEnabled()) {
             LOG.debug("Processing files: " + fileList + " for window: " + window);
           }
-          DateTieredCompactionRequest request = generateCompactionRequest(fileList, window,
-            mayUseOffPeak, mayBeStuck, minThreshold);
+          DateTieredCompactionRequest request = generateCompactionRequestForMinorCompaction(
+            fileList, window, mayUseOffPeak, mayBeStuck, minThreshold);
           if (request != null) {
             return request;
           }
         }
       }
     }
-    // A non-null file list is expected by HStore
-    return new CompactionRequest(Collections.<StoreFile> emptyList());
+    if (comConf.freezeDateTieredWindowOlderThanMaxAge()) {
+      return freezeOldWindows(allFiles, filesCompacting, window, oldestToCompact, now);
+    } else {
+      // A non-null file list is expected by HStore
+      return EMPTY_REQUEST;
+    }
+
   }
 
-  private DateTieredCompactionRequest generateCompactionRequest(ArrayList<StoreFile> storeFiles,
-      CompactionWindow window, boolean mayUseOffPeak, boolean mayBeStuck, int minThreshold)
-      throws IOException {
+  private DateTieredCompactionRequest generateCompactionRequestForMinorCompaction(
+      ArrayList<StoreFile> storeFiles, CompactionWindow window, boolean mayUseOffPeak,
+      boolean mayBeStuck, int minThreshold) throws IOException {
     // The files has to be in ascending order for ratio-based compaction to work right
     // and removeExcessFile to exclude youngest files.
     Collections.reverse(storeFiles);
@@ -277,34 +403,40 @@ public class DateTieredCompactionPolicy extends SortedCompactionPolicy {
       boolean singleOutput = storeFiles.size() != storeFileSelection.size() ||
         comConf.useDateTieredSingleOutputForMinorCompaction();
       List<Long> boundaries = getCompactionBoundariesForMinor(window, singleOutput);
+      // minor compaction will not compact window older than max age, so pass Long.MIN_VALUE is OK.
       DateTieredCompactionRequest result = new DateTieredCompactionRequest(storeFileSelection,
-        boundaries);
+        boundaries, Long.MIN_VALUE);
       return result;
     }
     return null;
   }
 
   /**
-   * Return a list of boundaries for multiple compaction output
-   *   in ascending order.
+   * Return a list of boundaries for multiple compaction output in ascending order.
    */
   private List<Long> getCompactBoundariesForMajor(Collection<StoreFile> filesToCompact, long now) {
     long minTimestamp = Long.MAX_VALUE;
+    long maxTimestamp = Long.MIN_VALUE;
     for (StoreFile file : filesToCompact) {
-      minTimestamp =
-        Math.min(minTimestamp,
-          file.getMinimumTimestamp() == null ? Long.MAX_VALUE : file.getMinimumTimestamp());
+      minTimestamp = Math.min(minTimestamp, file.getMinimumTimestamp() == null ? Long.MAX_VALUE
+          : file.getMinimumTimestamp().longValue());
+      maxTimestamp = Math.max(maxTimestamp, file.getMaximumTimestamp() == null ? Long.MIN_VALUE
+          : file.getMaximumTimestamp().longValue());
     }
 
-    List<Long> boundaries = new ArrayList<Long>();
+    List<Long> boundaries = Lists.newArrayList();
+    CompactionWindow window = getIncomingWindow(now);
+    // find the first window that covers the max timestamp.
+    while (window.compareToTimestamp(maxTimestamp) > 0) {
+      window = window.nextEarlierWindow();
+    }
+    boundaries.add(window.endMillis());
 
-    // Add startMillis of all windows between now and min timestamp
-    for (CompactionWindow window = getIncomingWindow(now);
-        window.compareToTimestamp(minTimestamp) > 0;
-        window = window.nextEarlierWindow()) {
+    // Add startMillis of all windows between overall max and min timestamp
+    for (; window.compareToTimestamp(minTimestamp) > 0; window = window.nextEarlierWindow()) {
       boundaries.add(window.startMillis());
     }
-    boundaries.add(Long.MIN_VALUE);
+    boundaries.add(minTimestamp);
     Collections.reverse(boundaries);
     return boundaries;
   }
@@ -319,6 +451,7 @@ public class DateTieredCompactionPolicy extends SortedCompactionPolicy {
     if (!singleOutput) {
       boundaries.add(window.startMillis());
     }
+    boundaries.add(Long.MAX_VALUE);
     return boundaries;
   }
 

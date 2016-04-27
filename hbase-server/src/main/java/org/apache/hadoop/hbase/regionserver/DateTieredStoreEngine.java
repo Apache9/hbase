@@ -41,7 +41,7 @@ import org.apache.hadoop.hbase.security.User;
  */
 @InterfaceAudience.Private
 public class DateTieredStoreEngine extends StoreEngine<DefaultStoreFlusher,
-  DateTieredCompactionPolicy, DateTieredCompactor, DefaultStoreFileManager> {
+  DateTieredCompactionPolicy, DateTieredCompactor, DateTieredStoreFileManager> {
   @Override
   public boolean needsCompaction(List<StoreFile> filesCompacting) {
     return compactionPolicy.needsCompaction(storeFileManager.getStorefiles(),
@@ -57,9 +57,8 @@ public class DateTieredStoreEngine extends StoreEngine<DefaultStoreFlusher,
   protected void createComponents(Configuration conf, Store store, CellComparator kvComparator)
       throws IOException {
     this.compactionPolicy = new DateTieredCompactionPolicy(conf, store);
-    this.storeFileManager =
-        new DefaultStoreFileManager(kvComparator, StoreFile.Comparators.SEQ_ID_MAX_TIMESTAMP, conf,
-            compactionPolicy.getConf());
+    this.storeFileManager = new DateTieredStoreFileManager(kvComparator, conf,
+        compactionPolicy.getConf());
     this.storeFlusher = new DefaultStoreFlusher(conf, store);
     this.compactor = new DateTieredCompactor(conf, store);
   }
@@ -92,8 +91,9 @@ public class DateTieredStoreEngine extends StoreEngine<DefaultStoreFlusher,
     public List<Path> compact(ThroughputController throughputController, User user)
         throws IOException {
       if (request instanceof DateTieredCompactionRequest) {
-        return compactor.compact(request, ((DateTieredCompactionRequest) request).getBoundaries(),
-          throughputController, user);
+        DateTieredCompactionRequest dateTieredRequest = (DateTieredCompactionRequest) request;
+        return compactor.compact(request, dateTieredRequest.getBoundaries(),
+          dateTieredRequest.getFreezeWindowOlderThan(), throughputController, user);
       } else {
         throw new IllegalArgumentException("DateTieredCompactionRequest is expected. Actual: "
           + request.getClass().getCanonicalName());

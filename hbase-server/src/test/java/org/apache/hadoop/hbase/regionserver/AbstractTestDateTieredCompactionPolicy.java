@@ -17,19 +17,22 @@
  */
 package org.apache.hadoop.hbase.regionserver;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import static org.junit.Assert.assertEquals;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
 
 import org.apache.hadoop.hbase.regionserver.compactions.DateTieredCompactionPolicy;
 import org.apache.hadoop.hbase.regionserver.compactions.DateTieredCompactionRequest;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.ManualEnvironmentEdge;
-import static org.junit.Assert.*;
 
 public class AbstractTestDateTieredCompactionPolicy extends TestCompactionPolicy {
 
@@ -46,8 +49,8 @@ public class AbstractTestDateTieredCompactionPolicy extends TestCompactionPolicy
 
     ArrayList<StoreFile> ret = Lists.newArrayList();
     for (int i = 0; i < sizes.length; i++) {
-      MockStoreFile msf =
-          new MockStoreFile(TEST_UTIL, TEST_FILE, sizes[i], ageInDisk.get(i), false, i);
+      MockStoreFile msf = new MockStoreFile(TEST_UTIL, TEST_FILE, sizes[i], ageInDisk.get(i), false,
+          i);
       msf.setTimeRangeTracker(new TimeRangeTracker(minTimestamps[i], maxTimestamps[i]));
       ret.add(msf);
     }
@@ -56,22 +59,31 @@ public class AbstractTestDateTieredCompactionPolicy extends TestCompactionPolicy
 
   protected void compactEquals(long now, ArrayList<StoreFile> candidates, long[] expectedFileSizes,
       long[] expectedBoundaries, boolean isMajor, boolean toCompact) throws IOException {
+    compactEquals(now, candidates, Collections.<StoreFile> emptyList(), expectedFileSizes,
+      expectedBoundaries, isMajor, toCompact);
+  }
+
+  protected void compactEquals(long now, Collection<StoreFile> candidateFiles,
+      List<StoreFile> filesCompacting, long[] expectedFileSizes, long[] expectedBoundaries,
+      boolean isMajor, boolean toCompact) throws IOException {
     ManualEnvironmentEdge timeMachine = new ManualEnvironmentEdge();
     EnvironmentEdgeManager.injectEdge(timeMachine);
     timeMachine.setValue(now);
     DateTieredCompactionRequest request;
-    DateTieredCompactionPolicy policy =
-        (DateTieredCompactionPolicy) store.storeEngine.getCompactionPolicy();
+    DateTieredCompactionPolicy policy = (DateTieredCompactionPolicy) store.storeEngine
+        .getCompactionPolicy();
     if (isMajor) {
-      for (StoreFile file : candidates) {
+      for (StoreFile file : candidateFiles) {
         ((MockStoreFile) file).setIsMajor(true);
       }
-      assertEquals(toCompact, policy.shouldPerformMajorCompaction(candidates));
-      request = (DateTieredCompactionRequest) policy.selectMajorCompaction(candidates);
+      assertEquals(toCompact, policy.shouldPerformMajorCompaction(candidateFiles));
+      request = (DateTieredCompactionRequest) policy
+          .selectMajorCompaction(Lists.newArrayList(candidateFiles));
     } else {
-      assertEquals(toCompact, policy.needsCompaction(candidates, ImmutableList.<StoreFile> of()));
-      request =
-          (DateTieredCompactionRequest) policy.selectMinorCompaction(candidates, false, false);
+      assertEquals(toCompact,
+        policy.needsCompaction(candidateFiles, ImmutableList.<StoreFile> of()));
+      request = (DateTieredCompactionRequest) policy.selectMinorCompaction(candidateFiles,
+        filesCompacting, Lists.newArrayList(candidateFiles), false, false);
     }
     List<StoreFile> actual = Lists.newArrayList(request.getFiles());
     assertEquals(Arrays.toString(expectedFileSizes), Arrays.toString(getSizes(actual)));

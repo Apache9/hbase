@@ -64,7 +64,7 @@ public class TestDateTieredCompactionPolicy extends AbstractTestDateTieredCompac
     long[] sizes = new long[] { 30, 31, 32, 33, 34, 20, 21, 22, 23, 24, 25, 10, 11, 12, 13 };
 
     compactEquals(16, sfCreate(minTimestamps, maxTimestamps, sizes), new long[] { 10, 11, 12, 13 },
-      new long[] { Long.MIN_VALUE, 12 }, false, true);
+      new long[] { Long.MIN_VALUE, 12, Long.MAX_VALUE }, false, true);
   }
 
   /**
@@ -78,7 +78,7 @@ public class TestDateTieredCompactionPolicy extends AbstractTestDateTieredCompac
     long[] sizes = new long[] { 30, 31, 32, 33, 34, 20, 21, 22, 23, 24, 25, 10, 11 };
 
     compactEquals(16, sfCreate(minTimestamps, maxTimestamps, sizes), new long[] { 20, 21, 22, 23,
-        24, 25 }, new long[] { Long.MIN_VALUE, 6}, false, true);
+        24, 25 }, new long[] { Long.MIN_VALUE, 6, Long.MAX_VALUE}, false, true);
   }
 
   /**
@@ -92,7 +92,7 @@ public class TestDateTieredCompactionPolicy extends AbstractTestDateTieredCompac
     long[] sizes = new long[] { 30, 31, 32, 33, 34, 20, 21, 22, 23, 24, 25, 10, 11, 12, 13 };
 
     compactEquals(16, sfCreate(minTimestamps, maxTimestamps, sizes), new long[] { 10, 11, 12, 13 },
-      new long[] { Long.MIN_VALUE, 12 }, false, true);
+      new long[] { Long.MIN_VALUE, 12, Long.MAX_VALUE }, false, true);
   }
 
   /**
@@ -106,7 +106,7 @@ public class TestDateTieredCompactionPolicy extends AbstractTestDateTieredCompac
     long[] sizes = new long[] { 30, 31, 32, 33, 34, 20, 21, 22, 23, 24, 25, 10, 11, 12, 13 };
 
     compactEquals(16, sfCreate(minTimestamps, maxTimestamps, sizes), new long[] { 10, 11, 12, 13 },
-      new long[] { Long.MIN_VALUE, 12}, false, true);
+      new long[] { Long.MIN_VALUE, 12, Long.MAX_VALUE}, false, true);
   }
 
   /**
@@ -120,7 +120,7 @@ public class TestDateTieredCompactionPolicy extends AbstractTestDateTieredCompac
     long[] sizes = new long[] { 0, 20, 21, 22, 23, 1 };
 
     compactEquals(194, sfCreate(minTimestamps, maxTimestamps, sizes), new long[] { 22, 23 },
-      new long[] { Long.MIN_VALUE, 96}, false, true);
+      new long[] { Long.MIN_VALUE, 96, Long.MAX_VALUE}, false, true);
   }
 
   @Test
@@ -130,7 +130,7 @@ public class TestDateTieredCompactionPolicy extends AbstractTestDateTieredCompac
     long[] sizes = new long[] { 0, 50, 51, 40, 41, 42, 30, 31, 32, 2, 1 };
 
     compactEquals(161, sfCreate(minTimestamps, maxTimestamps, sizes), new long[] { 30, 31, 32 },
-      new long[] { Long.MIN_VALUE, 120 }, false, true);
+      new long[] { Long.MIN_VALUE, 120, Long.MAX_VALUE }, false, true);
   }
 
   /**
@@ -144,7 +144,7 @@ public class TestDateTieredCompactionPolicy extends AbstractTestDateTieredCompac
     long[] sizes = new long[] { 30, 31, 32, 33, 34, 20, 21, 22, 280, 23, 24, 1 };
 
     compactEquals(16, sfCreate(minTimestamps, maxTimestamps, sizes), new long[] { 20, 21, 22 },
-      new long[] { Long.MIN_VALUE }, false, true);
+      new long[] { Long.MIN_VALUE, Long.MAX_VALUE }, false, true);
   }
 
   /**
@@ -158,7 +158,7 @@ public class TestDateTieredCompactionPolicy extends AbstractTestDateTieredCompac
     long[] sizes = new long[] { 0, 50, 51, 40, 41, 42, 350, 30, 31, 2, 1 };
 
     compactEquals(161, sfCreate(minTimestamps, maxTimestamps, sizes), new long[] { 30, 31 },
-      new long[] { Long.MIN_VALUE }, false, true);
+      new long[] { Long.MIN_VALUE, Long.MAX_VALUE }, false, true);
   }
 
   /**
@@ -172,7 +172,7 @@ public class TestDateTieredCompactionPolicy extends AbstractTestDateTieredCompac
     long[] sizes = new long[] { 30, 31, 32, 33, 34, 22, 280, 23, 24, 1 };
 
     compactEquals(16, sfCreate(minTimestamps, maxTimestamps, sizes), new long[] { 23, 24 },
-      new long[] { Long.MIN_VALUE }, false, true);
+      new long[] { Long.MIN_VALUE, Long.MAX_VALUE }, false, true);
   }
 
   /**
@@ -186,7 +186,7 @@ public class TestDateTieredCompactionPolicy extends AbstractTestDateTieredCompac
     long[] sizes = new long[] { 0, 50, 51, 40, 41, 42, 33, 30, 31, 2, 1 };
 
     compactEquals(161, sfCreate(minTimestamps, maxTimestamps, sizes), new long[] { 40, 41, 42, 33,
-        30, 31 }, new long[] { Long.MIN_VALUE, 96 }, false, true);
+        30, 31 }, new long[] { Long.MIN_VALUE, 96, Long.MAX_VALUE }, false, true);
   }
 
   /**
@@ -200,7 +200,7 @@ public class TestDateTieredCompactionPolicy extends AbstractTestDateTieredCompac
     long[] sizes = new long[] { 30, 31, 32, 33, 34, 22, 28, 23, 24, 1 };
 
     compactEquals(16, sfCreate(minTimestamps, maxTimestamps, sizes), new long[] { 31, 32, 33, 34,
-        22, 28, 23, 24, 1 }, new long[] { Long.MIN_VALUE, 12 }, false, true);
+        22, 28, 23, 24, 1 }, new long[] { Long.MIN_VALUE, 12, Long.MAX_VALUE }, false, true);
   }
 
   /**
@@ -216,7 +216,7 @@ public class TestDateTieredCompactionPolicy extends AbstractTestDateTieredCompac
 
     compactEquals(1, sfCreate(minTimestamps, maxTimestamps, sizes),
       new long[] { 31, 32, 33, 34, 22, 25, 23, 24, 1 },
-      new long[] { Long.MIN_VALUE, -24 }, false, true);
+      new long[] { Long.MIN_VALUE, -24, Long.MAX_VALUE }, false, true);
   }
 
   /**
@@ -231,7 +231,7 @@ public class TestDateTieredCompactionPolicy extends AbstractTestDateTieredCompac
 
     compactEquals(161, sfCreate(minTimestamps, maxTimestamps, sizes),
       new long[] { 0, 50, 51, 40, 41, 42, 33, 30, 31, 2, 1 },
-      new long[] { Long.MIN_VALUE, 24, 48, 72, 96, 120, 144, 150, 156 }, true, true);
+      new long[] { 0, 24, 48, 72, 96, 120, 144, 150, 156, 162 }, true, true);
   }
 
   /**
@@ -247,6 +247,6 @@ public class TestDateTieredCompactionPolicy extends AbstractTestDateTieredCompac
 
     compactEquals(16, sfCreate(minTimestamps, maxTimestamps, sizes), new long[] { 0, 50, 51, 40,
         41, 42, 33, 30, 31, 2, 1 },
-      new long[] { Long.MIN_VALUE, -144, -120, -96, -72, -48, -24, 0, 6, 12 }, true, true);
+      new long[] { -155, -144, -120, -96, -72, -48, -24, 0, 6, 12, 18 }, true, true);
   }
 }

@@ -88,6 +88,11 @@ public class CompactionConfiguration {
   private static final Class<? extends CompactionWindowFactory>
     DEFAULT_DATE_TIERED_COMPACTION_WINDOW_FACTORY_CLASS = ExponentialCompactionWindowFactory.class;
 
+  public static final String FREEZE_DATE_TIERED_WINDOW_OLDER_THAN_MAX_AGE_KEY =
+      "hbase.hstore.compaction.date.tiered.freeze.window.older.than.max.age";
+
+  private static final boolean DEFAULT_FREEZE_DATE_TIERED_WINDOW_OLDER_THAN_MAX_AGE = false;
+
   Configuration conf;
   StoreConfigInformation storeConfigInfo;
 
@@ -109,6 +114,7 @@ public class CompactionConfiguration {
   private final String compactionPolicyForDateTieredWindow;
   private final boolean dateTieredSingleOutputForMinorCompaction;
   private final String dateTieredCompactionWindowFactory;
+  private final boolean freezeDateTieredWindowOlderThanMaxAge;
 
   CompactionConfiguration(Configuration conf, StoreConfigInformation storeConfigInfo) {
     this.conf = conf;
@@ -139,9 +145,12 @@ public class CompactionConfiguration {
       DEFAULT_COMPACTION_POLICY_CLASS_FOR_DATE_TIERED_WINDOWS.getName());
     dateTieredSingleOutputForMinorCompaction = conf
         .getBoolean(DATE_TIERED_SINGLE_OUTPUT_FOR_MINOR_COMPACTION_KEY, true);
-    this.dateTieredCompactionWindowFactory = conf.get(
+    dateTieredCompactionWindowFactory = conf.get(
       DATE_TIERED_COMPACTION_WINDOW_FACTORY_CLASS_KEY,
       DEFAULT_DATE_TIERED_COMPACTION_WINDOW_FACTORY_CLASS.getName());
+    freezeDateTieredWindowOlderThanMaxAge = conf.getBoolean(
+      FREEZE_DATE_TIERED_WINDOW_OLDER_THAN_MAX_AGE_KEY,
+      DEFAULT_FREEZE_DATE_TIERED_WINDOW_OLDER_THAN_MAX_AGE);
     LOG.info(this);
   }
 
@@ -152,7 +161,7 @@ public class CompactionConfiguration {
       + " major period %d, major jitter %f, min locality to compact %f;"
       + " tiered compaction: max_age %d, incoming window min %d,"
       + " compaction policy for tiered window %s, single output for minor %b,"
-      + " compaction window factory %s",
+      + " compaction window factory %s, freeze window older than max age %b",
       minCompactSize,
       maxCompactSize,
       offPeakMaxCompactSize,
@@ -168,7 +177,8 @@ public class CompactionConfiguration {
       dateTieredIncomingWindowMin,
       compactionPolicyForDateTieredWindow,
       dateTieredSingleOutputForMinorCompaction,
-      dateTieredCompactionWindowFactory
+      dateTieredCompactionWindowFactory,
+      freezeDateTieredWindowOlderThanMaxAge
       );
   }
 
@@ -284,5 +294,9 @@ public class CompactionConfiguration {
 
   public String getDateTieredCompactionWindowFactory() {
     return dateTieredCompactionWindowFactory;
+  }
+
+  public boolean freezeDateTieredWindowOlderThanMaxAge() {
+    return freezeDateTieredWindowOlderThanMaxAge;
   }
 }

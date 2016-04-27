@@ -122,14 +122,14 @@ public class TestDateTieredCompactor {
     };
   }
 
-  private void verify(KeyValue[] input, List<Long> boundaries, KeyValue[][] output,
-      boolean allFiles) throws Exception {
+  private void verify(KeyValue[] input, List<Long> boundaries, long freezeWindowOlderThan,
+      KeyValue[][] output, boolean allFiles) throws Exception {
     StoreFileWritersCapture writers = new StoreFileWritersCapture();
     StoreFile sf1 = createDummyStoreFile(1L);
     StoreFile sf2 = createDummyStoreFile(2L);
     DateTieredCompactor dtc = createCompactor(writers, input, Arrays.asList(sf1, sf2));
-    List<Path> paths = dtc.compact(new CompactionRequest(Arrays.asList(sf1)),
-      boundaries.subList(0, boundaries.size() - 1), NoLimitThroughputController.INSTANCE, null);
+    List<Path> paths = dtc.compact(new CompactionRequest(Arrays.asList(sf1)), boundaries,
+      freezeWindowOlderThan, NoLimitThroughputController.INSTANCE, null);
     writers.verifyKvs(output, allFiles, boundaries);
     if (allFiles) {
       assertEquals(output.length, paths.size());
@@ -143,11 +143,11 @@ public class TestDateTieredCompactor {
 
   @Test
   public void test() throws Exception {
-    verify(a(KV_A, KV_B, KV_C, KV_D), Arrays.asList(100L, 200L, 300L, 400L, 500L),
+    verify(a(KV_A, KV_B, KV_C, KV_D), Arrays.asList(100L, 200L, 300L, 400L, 500L), 300L,
       a(a(KV_A), a(KV_B), a(KV_C), a(KV_D)), true);
     verify(a(KV_A, KV_B, KV_C, KV_D), Arrays.asList(Long.MIN_VALUE, 200L, Long.MAX_VALUE),
-      a(a(KV_A), a(KV_B, KV_C, KV_D)), false);
-    verify(a(KV_A, KV_B, KV_C, KV_D), Arrays.asList(Long.MIN_VALUE, Long.MAX_VALUE),
+      Long.MIN_VALUE, a(a(KV_A), a(KV_B, KV_C, KV_D)), false);
+    verify(a(KV_A, KV_B, KV_C, KV_D), Arrays.asList(Long.MIN_VALUE, Long.MAX_VALUE), Long.MIN_VALUE,
       new KeyValue[][] { a(KV_A, KV_B, KV_C, KV_D) }, false);
   }
 
@@ -158,7 +158,7 @@ public class TestDateTieredCompactor {
     DateTieredCompactor dtc = createCompactor(writers, new KeyValue[0],
       new ArrayList<StoreFile>(request.getFiles()));
     List<Path> paths = dtc.compact(request, Arrays.asList(Long.MIN_VALUE, Long.MAX_VALUE),
-      NoLimitThroughputController.INSTANCE, null);
+      Long.MIN_VALUE, NoLimitThroughputController.INSTANCE, null);
     assertEquals(1, paths.size());
     List<StoreFileWritersCapture.Writer> dummyWriters = writers.getWriters();
     assertEquals(1, dummyWriters.size());

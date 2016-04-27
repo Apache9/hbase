@@ -101,9 +101,9 @@ public class RatioBasedCompactionPolicy extends SortedCompactionPolicy {
   }
 
   @Override
-  protected CompactionRequest createCompactionRequest(ArrayList<StoreFile>
-    candidateSelection, boolean tryingMajor, boolean mayUseOffPeak, boolean mayBeStuck)
-    throws IOException {
+  protected CompactionRequest createCompactionRequest(Collection<StoreFile> allFiles,
+      List<StoreFile> filesCompacting, ArrayList<StoreFile> candidateSelection, boolean tryingMajor,
+      boolean mayUseOffPeak, boolean mayBeStuck) throws IOException {
     if (!tryingMajor) {
       candidateSelection = filterBulk(candidateSelection);
       candidateSelection = applyCompactionPolicy(candidateSelection, mayUseOffPeak, mayBeStuck);

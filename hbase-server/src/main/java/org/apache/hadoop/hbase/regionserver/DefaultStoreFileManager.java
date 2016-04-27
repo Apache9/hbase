@@ -49,7 +49,6 @@ class DefaultStoreFileManager implements StoreFileManager {
   private final CellComparator kvComparator;
   private final CompactionConfiguration comConf;
   private final int blockingFileCount;
-  private final Comparator<StoreFile> storeFileComparator;
   /**
    * List of store files inside this store. This is an immutable list that
    * is atomically replaced when its contents change.
@@ -63,11 +62,9 @@ class DefaultStoreFileManager implements StoreFileManager {
    */
   private volatile List<StoreFile> compactedfiles = null;
 
-  public DefaultStoreFileManager(CellComparator kvComparator,
-      Comparator<StoreFile> storeFileComparator, Configuration conf,
+  public DefaultStoreFileManager(CellComparator kvComparator, Configuration conf,
       CompactionConfiguration comConf) {
     this.kvComparator = kvComparator;
-    this.storeFileComparator = storeFileComparator;
     this.comConf = comConf;
     this.blockingFileCount =
         conf.getInt(HStore.BLOCKING_STOREFILES_KEY, HStore.DEFAULT_BLOCKING_STOREFILE_COUNT);
@@ -213,13 +210,13 @@ class DefaultStoreFileManager implements StoreFileManager {
   }
 
   private void sortAndSetStoreFiles(List<StoreFile> storeFiles) {
-    Collections.sort(storeFiles, storeFileComparator);
+    Collections.sort(storeFiles, getStoreFileComparator());
     storefiles = ImmutableList.copyOf(storeFiles);
   }
 
   private List<StoreFile> sortCompactedfiles(List<StoreFile> storefiles) {
     // Sorting may not be really needed here for the compacted files?
-    Collections.sort(storefiles, storeFileComparator);
+    Collections.sort(storefiles, getStoreFileComparator());
     return new ArrayList<StoreFile>(storefiles);
   }
 
@@ -235,7 +232,7 @@ class DefaultStoreFileManager implements StoreFileManager {
 
   @Override
   public Comparator<StoreFile> getStoreFileComparator() {
-    return storeFileComparator;
+    return StoreFile.Comparators.SEQ_ID;
   }
 }
 

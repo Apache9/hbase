@@ -17,6 +17,7 @@
  */
 package org.apache.hadoop.hbase.regionserver.compactions;
 
+import static org.apache.hadoop.hbase.regionserver.DateTieredStoreFileManager.*;
 import static org.apache.hadoop.hbase.regionserver.StripeStoreFileManager.STRIPE_END_KEY;
 import static org.apache.hadoop.hbase.regionserver.StripeStoreFileManager.STRIPE_START_KEY;
 import static org.junit.Assert.assertArrayEquals;
@@ -179,6 +180,21 @@ public class TestCompactor {
         } else {
           assertFalse(allFiles);
           ++skippedWriters;
+        }
+      }
+    }
+
+    public void verifyBoundaries(List<Long> boundaries, long freezeWindowOlderThan) {
+      assertEquals(boundaries.size() - 1, writers.size());
+      for (int i = 0; i < writers.size(); ++i) {
+        if (boundaries.get(i + 1) <= freezeWindowOlderThan) {
+          assertEquals("i = " + i, boundaries.get(i).longValue(),
+            Bytes.toLong(writers.get(i).data.get(FREEZING_WINDOW_START_TIMESTAMP)));
+          assertEquals("i = " + i, boundaries.get(i + 1).longValue(),
+            Bytes.toLong(writers.get(i).data.get(FREEZING_WINDOW_END_TIMESTAMP)));
+        } else {
+          assertNull(writers.get(i).data.get(FREEZING_WINDOW_START_TIMESTAMP));
+          assertNull(writers.get(i).data.get(FREEZING_WINDOW_END_TIMESTAMP));
         }
       }
     }

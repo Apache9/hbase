@@ -50,11 +50,12 @@ public class DateTieredCompactor extends AbstractMultiOutputCompactor<DateTiered
     return StoreFile.getMaxSequenceIdInList(request.getFiles()) == store.getMaxSequenceId();
   }
 
-  public List<Path> compact(final CompactionRequest request, final List<Long> lowerBoundaries,
-      ThroughputController throughputController, User user) throws IOException {
+  public List<Path> compact(final CompactionRequest request, final List<Long> boundaries,
+      final long freezeWindowOlderThan, ThroughputController throughputController, User user)
+          throws IOException {
     if (LOG.isDebugEnabled()) {
-      LOG.debug("Executing compaction with " + lowerBoundaries.size()
-          + "windows, lower boundaries: " + lowerBoundaries);
+      LOG.debug(
+        "Executing compaction with " + boundaries.size() + " windows, boundaries: " + boundaries);
     }
 
     return compact(request, defaultScannerFactory,
@@ -63,8 +64,8 @@ public class DateTieredCompactor extends AbstractMultiOutputCompactor<DateTiered
         @Override
         public DateTieredMultiFileWriter createWriter(InternalScanner scanner, FileDetails fd,
             boolean shouldDropBehind) throws IOException {
-          DateTieredMultiFileWriter writer = new DateTieredMultiFileWriter(lowerBoundaries,
-              needEmptyFile(request));
+          DateTieredMultiFileWriter writer = new DateTieredMultiFileWriter(boundaries,
+              freezeWindowOlderThan, needEmptyFile(request));
           initMultiWriter(writer, scanner, fd, shouldDropBehind);
           return writer;
         }

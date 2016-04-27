@@ -26,19 +26,29 @@ import org.apache.hadoop.hbase.regionserver.StoreFile;
 @edu.umd.cs.findbugs.annotations.SuppressWarnings(value="EQ_DOESNT_OVERRIDE_EQUALS",
   justification="It is intended to use the same equal method as superclass")
 public class DateTieredCompactionRequest extends CompactionRequest {
+
   private List<Long> boundaries;
 
-  public DateTieredCompactionRequest(Collection<StoreFile> files, List<Long> boundaryList) {
+  private final long freezeWindowOlderThan;
+
+  public DateTieredCompactionRequest(Collection<StoreFile> files, List<Long> boundaries,
+      long freezeWindowOlderThan) {
     super(files);
-    boundaries = boundaryList;
+    this.boundaries = boundaries;
+    this.freezeWindowOlderThan = freezeWindowOlderThan;
   }
 
   public List<Long> getBoundaries() {
     return boundaries;
   }
 
+  public long getFreezeWindowOlderThan() {
+    return freezeWindowOlderThan;
+  }
+
   @Override
   public String toString() {
-    return super.toString() + " boundaries=" + Arrays.toString(boundaries.toArray());
+    return super.toString() + " boundaries=" + Arrays.toString(boundaries.toArray())
+        + " freezeWindowOlderThan=" + freezeWindowOlderThan;
   }
 }

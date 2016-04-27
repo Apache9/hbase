@@ -17,8 +17,13 @@
  */
 package org.apache.hadoop.hbase.regionserver;
 
+import static org.apache.hadoop.hbase.regionserver.DateTieredStoreFileManager.FREEZING_WINDOW_END_TIMESTAMP;
+import static org.apache.hadoop.hbase.regionserver.DateTieredStoreFileManager.FREEZING_WINDOW_START_TIMESTAMP;
+
 import java.io.IOException;
 import java.util.Collection;
+import java.util.IdentityHashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
@@ -26,6 +31,8 @@ import java.util.TreeMap;
 
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
+import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hbase.util.Pair;
 
 /**
  * class for cell sink that separates the provided cells into multiple files for date tiered
@@ -37,16 +44,34 @@ public class DateTieredMultiFileWriter extends AbstractMultiFileWriter {
   private final NavigableMap<Long, StoreFileWriter> lowerBoundary2Writer
     = new TreeMap<Long, StoreFileWriter>();
 
+  private final IdentityHashMap<StoreFileWriter, Pair<Long, Long>> writer2FreezingWindow
+    = new IdentityHashMap<StoreFileWriter, Pair<Long, Long>>();
+
+  private final Long highestBoundary;
+
+  private final long freezeWindowOlderThan;
+
   private final boolean needEmptyFile;
 
   /**
    * @param needEmptyFile whether need to create an empty store file if we haven't written out
    *          anything.
    */
-  public DateTieredMultiFileWriter(List<Long> lowerBoundaries, boolean needEmptyFile) {
-    for (Long lowerBoundary : lowerBoundaries) {
-      lowerBoundary2Writer.put(lowerBoundary, null);
+  public DateTieredMultiFileWriter(List<Long> boundaries, long freezeWindowOlderThan,
+      boolean needEmptyFile) {
+    assert boundaries.size() >= 2;
+    Iterator<Long> iter = boundaries.iterator();
+    lowerBoundary2Writer.put(iter.next(), null);
+    for (;;) {
+      Long boundary = iter.next();
+      if (iter.hasNext()) {
+        lowerBoundary2Writer.put(boundary, null);
+      } else {
+        highestBoundary = boundary;
+        break;
+      }
     }
+    this.freezeWindowOlderThan = freezeWindowOlderThan;
     this.needEmptyFile = needEmptyFile;
   }
 
@@ -57,6 +82,16 @@ public class DateTieredMultiFileWriter extends AbstractMultiFileWriter {
     if (writer == null) {
       writer = writerFactory.createWriter();
       lowerBoundary2Writer.put(entry.getKey(), writer);
+      if (entry.getKey().longValue() < freezeWindowOlderThan) {
+        // maybe an freezing window
+        Long higherBoundary = lowerBoundary2Writer.higherKey(entry.getKey());
+        if (higherBoundary == null) {
+          higherBoundary = highestBoundary;
+        }
+        if (higherBoundary.longValue() <= freezeWindowOlderThan) {
+          writer2FreezingWindow.put(writer, Pair.newPair(entry.getKey(), higherBoundary));
+        }
+      }
     }
     writer.append(cell);
   }
@@ -64,6 +99,17 @@ public class DateTieredMultiFileWriter extends AbstractMultiFileWriter {
   @Override
   protected Collection<StoreFileWriter> writers() {
     return lowerBoundary2Writer.values();
+  }
+
+  @Override
+  protected void preCloseWriter(StoreFileWriter writer) throws IOException {
+    Pair<Long, Long> freezingWindow = writer2FreezingWindow.get(writer);
+    if (freezingWindow != null) {
+      writer.appendFileInfo(FREEZING_WINDOW_START_TIMESTAMP,
+        Bytes.toBytes(freezingWindow.getFirst().longValue()));
+      writer.appendFileInfo(FREEZING_WINDOW_END_TIMESTAMP,
+        Bytes.toBytes(freezingWindow.getSecond().longValue()));
+    }
   }
 
   @Override
