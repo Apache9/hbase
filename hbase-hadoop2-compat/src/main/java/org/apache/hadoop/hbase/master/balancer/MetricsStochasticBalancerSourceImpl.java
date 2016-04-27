@@ -48,6 +48,11 @@ public class MetricsStochasticBalancerSourceImpl extends MetricsBalancerSourceIm
       };
   private Map<String, String> costFunctionDescs = new ConcurrentHashMap<String, String>();
 
+  public MetricsStochasticBalancerSourceImpl() {
+    super(STOCHASTIC_METRICS_NAME, METRICS_DESCRIPTION, METRICS_CONTEXT,
+        STOCHASTIC_METRICS_JMX_CONTEXT);
+  }
+
   /**
    * Calculates the mru cache capacity from the metrics size
    */
