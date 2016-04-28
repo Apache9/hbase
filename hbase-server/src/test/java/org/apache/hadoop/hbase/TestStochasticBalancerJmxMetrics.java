@@ -175,7 +175,7 @@ public class TestStochasticBalancerJmxMetrics extends BalancerTestBase {
           JMXConnectorFactory.connect(JMXListener.buildJMXServiceURL(connectorPort, connectorPort));
       MBeanServerConnection mb = connector.getMBeanServerConnection();
 
-      ObjectName target = new ObjectName("Hadoop:service=HBase,name=Master,sub=Balancer");
+      ObjectName target = new ObjectName("Hadoop:service=HBase,name=Master,sub=StochasticBalancer");
       MBeanInfo beanInfo = mb.getMBeanInfo(target);
 
       Set<String> existingAttrs = new HashSet<String>();
