@@ -47,6 +47,8 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.Pair;
 
+import com.google.common.annotations.VisibleForTesting;
+
 /**
  * <p>This is a best effort load balancer. Given a Cost function F(C) => x It will
  * randomly try and mutate the cluster to Cprime. If F(Cprime) < F(C) then the
@@ -1139,5 +1141,10 @@ public class StochasticLoadBalancer extends BaseLoadBalancer {
    */
   public static String composeAttributeName(String tableName, String costFunctionName) {
     return tableName + TABLE_FUNCTION_SEP + costFunctionName;
+  }
+
+  @VisibleForTesting
+  public void setMaxRunningTime(long maxRunningTime) {
+    this.maxRunningTime = maxRunningTime;
   }
 }
