@@ -24,10 +24,10 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.commons.math.stat.descriptive.DescriptiveStatistics;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
+import org.apache.hadoop.hbase.metrics.Interns;
 import org.apache.hadoop.metrics2.MetricsRecordBuilder;
 import org.apache.hadoop.metrics2.impl.JmxCacheBuster;
 import org.apache.hadoop.metrics2.lib.DynamicMetricsRegistry;
-import org.apache.hadoop.metrics2.lib.Interns;
 import org.apache.hadoop.metrics2.lib.MutableCounterLong;
 import org.apache.hadoop.metrics2.lib.MutableHistogram;
 
@@ -67,6 +67,16 @@ public class MetricsRegionSourceImpl implements MetricsRegionSource {
 
   private MutableCounterLong regionThrottledRead;
   private MutableCounterLong regionThrottledWrite;
+
+  private boolean metricsStringInited;
+  private String STORE_COUNT;
+  private String STOREFILE_COUNT;
+  private String MEMSTORE_SIZE;
+  private String STOREFILE_SIZE;
+  private String COMPACTIONS_COMPLETED_COUNT;
+  private String NUM_BYTES_COMPACTED_COUNT;
+  private String NUM_FILES_COMPACTED_COUNT;
+
 
   public MetricsRegionSourceImpl(MetricsRegionWrapper regionWrapper,
                                  MetricsRegionAggregateSourceImpl aggregate) {
@@ -228,26 +238,34 @@ public class MetricsRegionSourceImpl implements MetricsRegionSource {
   void snapshot(MetricsRecordBuilder mrb, boolean ignored) {
     if (closed) return;
 
+    if (!metricsStringInited) {
+      STORE_COUNT = regionNamePrefix + MetricsRegionServerSource.STORE_COUNT;
+      STOREFILE_COUNT = regionNamePrefix + MetricsRegionServerSource.STOREFILE_COUNT;
+      MEMSTORE_SIZE = regionNamePrefix + MetricsRegionServerSource.MEMSTORE_SIZE;
+      STOREFILE_SIZE = regionNamePrefix + MetricsRegionServerSource.STOREFILE_SIZE;
+      COMPACTIONS_COMPLETED_COUNT = regionNamePrefix +
+          MetricsRegionSource.COMPACTIONS_COMPLETED_COUNT;
+      NUM_BYTES_COMPACTED_COUNT = regionNamePrefix + MetricsRegionSource.NUM_BYTES_COMPACTED_COUNT;
+      NUM_FILES_COMPACTED_COUNT = regionNamePrefix + MetricsRegionSource.NUM_FILES_COMPACTED_COUNT;
+      metricsStringInited = true;
+    }
+
     mrb.addGauge(
-        Interns.info(regionNamePrefix + MetricsRegionServerSource.STORE_COUNT,
-            MetricsRegionServerSource.STORE_COUNT_DESC),
+        Interns.info(STORE_COUNT, MetricsRegionServerSource.STORE_COUNT_DESC),
         this.regionWrapper.getNumStores());
-    mrb.addGauge(Interns.info(regionNamePrefix + MetricsRegionServerSource.STOREFILE_COUNT,
-        MetricsRegionServerSource.STOREFILE_COUNT_DESC),
+    mrb.addGauge(Interns.info(STOREFILE_COUNT, MetricsRegionServerSource.STOREFILE_COUNT_DESC),
         this.regionWrapper.getNumStoreFiles());
-    mrb.addGauge(Interns.info(regionNamePrefix + MetricsRegionServerSource.MEMSTORE_SIZE,
-        MetricsRegionServerSource.MEMSTORE_SIZE_DESC),
+    mrb.addGauge(Interns.info(MEMSTORE_SIZE, MetricsRegionServerSource.MEMSTORE_SIZE_DESC),
         this.regionWrapper.getMemstoreSize());
-    mrb.addGauge(Interns.info(regionNamePrefix + MetricsRegionServerSource.STOREFILE_SIZE,
-        MetricsRegionServerSource.STOREFILE_SIZE_DESC),
+    mrb.addGauge(Interns.info(STOREFILE_SIZE, MetricsRegionServerSource.STOREFILE_SIZE_DESC),
         this.regionWrapper.getStoreFileSize());
-    mrb.addCounter(Interns.info(regionNamePrefix + MetricsRegionSource.COMPACTIONS_COMPLETED_COUNT,
+    mrb.addCounter(Interns.info(COMPACTIONS_COMPLETED_COUNT,
         MetricsRegionSource.COMPACTIONS_COMPLETED_DESC),
         this.regionWrapper.getNumCompactionsCompleted());
-    mrb.addCounter(Interns.info(regionNamePrefix + MetricsRegionSource.NUM_BYTES_COMPACTED_COUNT,
+    mrb.addCounter(Interns.info(NUM_BYTES_COMPACTED_COUNT,
         MetricsRegionSource.NUM_BYTES_COMPACTED_DESC),
         this.regionWrapper.getNumBytesCompacted());
-    mrb.addCounter(Interns.info(regionNamePrefix + MetricsRegionSource.NUM_FILES_COMPACTED_COUNT,
+    mrb.addCounter(Interns.info(NUM_FILES_COMPACTED_COUNT,
         MetricsRegionSource.NUM_FILES_COMPACTED_DESC),
         this.regionWrapper.getNumFilesCompacted());
     for (Map.Entry<String, DescriptiveStatistics> entry : this.regionWrapper
