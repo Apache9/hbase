@@ -62,7 +62,8 @@ public class ThriftServer extends Thread {
     this.conf = conf;
     this.sinkInterface = sinkInterface;
     this.serverName = serverName;
-    this.useSecure = User.isHBaseSecurityEnabled(conf);
+    this.useSecure = User.isHBaseSecurityEnabled(conf) && ThriftUtilities.thriftSecureEnabled(conf);
+    LOG.info("prepare start replication thrift server, use secure: " + this.useSecure);
     try {
       init();
     } catch (TTransportException e) {
@@ -145,7 +146,7 @@ public class ThriftServer extends Thread {
 
     String serverProtocol = UserGroupInformation.getCurrentUser().getUserName();
     String serverAddress = null;
-    if(User.isHBaseSecurityEnabled(conf)) {
+    if(useSecure) {
       String kerberosName = UserGroupInformation.getCurrentUser().getUserName();
       final String names[] = SaslRpcServer.splitKerberosName(kerberosName);
       if (names.length != 3) {
