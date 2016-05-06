@@ -19,6 +19,7 @@
 package org.apache.hadoop.hbase.quotas;
 
 import java.io.IOException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -39,6 +40,9 @@ import org.apache.hadoop.hbase.Stoppable;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Get;
+import org.apache.hadoop.hbase.client.Result;
+import org.apache.hadoop.hbase.client.ResultScanner;
+import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.TimeUnit;
 import org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.Throttle;
@@ -47,8 +51,8 @@ import org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.Regio
 import org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.TableRegionCount;
 import org.apache.hadoop.hbase.regionserver.HRegion;
 import org.apache.hadoop.hbase.regionserver.RegionServerServices;
+import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
-import org.apache.hadoop.hbase.util.Pair;
 import org.apache.hadoop.hbase.util.Threads;
 import org.apache.hadoop.security.UserGroupInformation;
 
@@ -72,21 +76,25 @@ public class QuotaCache implements Stoppable {
 
   public static final String REFRESH_CONF_KEY = "hbase.quota.refresh.period";
   private static final int REFRESH_DEFAULT_PERIOD = 5 * 60000; // 5min
-  private static final int EVICT_PERIOD_FACTOR = 5; // N * REFRESH_DEFAULT_PERIOD
+  public static final int EVICT_PERIOD_FACTOR = 5; // N * REFRESH_DEFAULT_PERIOD
   static final String REGION_SERVER_READ_LIMIT_KEY = "hbase.regionserver.read.limit";
   static final int DEFAULT_REGION_SERVER_READ_LIMIT = 3000;
   static final String REGION_SERVER_WRITE_LIMIT_KEY = "hbase.regionserver.write.limit";
   static final int DEFAULT_REGION_SERVER_WRITE_LIMIT = 10000;
-  
+
+  // If true, will cache all quota settings.
+  public static final String QUOTA_CACHE_CONF_KEY = "hbase.quota.cache.all";
+  public static final boolean DEFAULT_QUOTA_CACHE_CONF = false;
+  private boolean cacheAll;
 
   // for testing purpose only, enforce the cache to be always refreshed
   static boolean TEST_FORCE_REFRESH = false;
 
-  private final ConcurrentHashMap<String, QuotaState> namespaceQuotaCache =
+  private ConcurrentHashMap<String, QuotaState> namespaceQuotaCache =
       new ConcurrentHashMap<String, QuotaState>();
-  private final ConcurrentHashMap<TableName, QuotaState> tableQuotaCache =
+  private ConcurrentHashMap<TableName, QuotaState> tableQuotaCache =
       new ConcurrentHashMap<TableName, QuotaState>();
-  private final ConcurrentHashMap<String, UserQuotaState> userQuotaCache =
+  private ConcurrentHashMap<String, UserQuotaState> userQuotaCache =
       new ConcurrentHashMap<String, UserQuotaState>();
   private final QuotaLimiter rsQuotaLimiter;
   private final RegionServerServices rsServices;
@@ -98,8 +106,9 @@ public class QuotaCache implements Stoppable {
     this.rsServices = rsServices;
     Configuration conf = getConfiguration();
     rsQuotaLimiter = createRegionServerQuotaLimiter(conf);
+    this.cacheAll = conf.getBoolean(QUOTA_CACHE_CONF_KEY, DEFAULT_QUOTA_CACHE_CONF);
   }
-  
+
   /**
    * Returns the QuotaLimiter of regionserver
    * @param conf
@@ -369,19 +378,101 @@ public class QuotaCache implements Stoppable {
           QuotaCache.this.namespaceQuotaCache.putIfAbsent(ns, new QuotaState());
         }
       }
-      
+
       // first update, then fetch
       updateRegionServerQuotaLimiter();
       updateLocalQuotaFactors();
-      fetchNamespaceQuotaState();
-      fetchTableQuotaState();
-      fetchUserQuotaState();
-      lastUpdate = EnvironmentEdgeManager.currentTimeMillis();
-      LOG.info("QuotaCache refreshed");
+      if (cacheAll) {
+        fetchAllQuotaState();
+      } else {
+        fetchNamespaceQuotaState();
+        fetchTableQuotaState();
+        fetchUserQuotaState();
+      }
+      LOG.info("QuotaCache refreshed, cacheAll=" + cacheAll);
       LOG.info("RegionServer Limiter is " + rsQuotaLimiter);
       for (Map.Entry<String, UserQuotaState> entry : userQuotaCache.entrySet()) {
         LOG.info("For user " + entry.getKey() + " " + entry.getValue());
       }
+    }
+
+    private void fetchAllQuotaState() {
+      long now = EnvironmentEdgeManager.currentTimeMillis();
+      long refreshPeriod = getPeriod() / 2;
+      if ((now - lastUpdate) <= refreshPeriod) {
+        LOG.info("No refresh because lastUpdate is "
+            + new SimpleDateFormat("yyyy-MM-dd,HH:mm:ss").format(lastUpdate));
+        return;
+      }
+      lastUpdate = now;
+
+      HTable table = null;
+      ResultScanner scanner = null;
+      ConcurrentHashMap<String, QuotaState> newNamespaceQuotaCache =
+          new ConcurrentHashMap<String, QuotaState>();
+      ConcurrentHashMap<TableName, QuotaState> newTableQuotaCache =
+          new ConcurrentHashMap<TableName, QuotaState>();
+      ConcurrentHashMap<String, UserQuotaState> newUserQuotaCache =
+          new ConcurrentHashMap<String, UserQuotaState>();
+      try {
+        table = new HTable(getConfiguration(), QuotaTableUtil.QUOTA_TABLE_NAME);
+        Scan scan = QuotaTableUtil.makeScan(new QuotaFilter());
+        scanner = table.getScanner(scan);
+        Result result = null;
+        while ((result = scanner.next()) != null) {
+          byte[] row = result.getRow();
+          QuotaState quotaInfo;
+          if (QuotaTableUtil.isNamespaceRowKey(row)) {
+            quotaInfo = QuotaUtil.getNamespaceQuotaState(result);
+            String namespace = QuotaTableUtil.getNamespaceFromRowKey(row);
+            newNamespaceQuotaCache.put(namespace,
+              updateQuotaState(namespace, quotaInfo, namespaceQuotaCache));
+          } else if (QuotaTableUtil.isTableRowKey(row)) {
+            quotaInfo = QuotaUtil.getTableQuotaState(result);
+            TableName tableName = QuotaTableUtil.getTableFromRowKey(row);
+            newTableQuotaCache.put(tableName,
+              updateQuotaState(tableName, quotaInfo, tableQuotaCache));
+          } else if (QuotaTableUtil.isUserRowKey(row)) {
+            quotaInfo = QuotaUtil.getUserQuotaState(result, localQuotaFactors);
+            String user = QuotaTableUtil.getUserFromRowKey(row);
+            newUserQuotaCache.put(user,
+              updateQuotaState(user, (UserQuotaState) quotaInfo, userQuotaCache));
+          } else {
+            quotaInfo = null;
+            LOG.warn("unexpected row-key: " + Bytes.toString(row));
+          }
+        }
+        namespaceQuotaCache = newNamespaceQuotaCache;
+        tableQuotaCache = newTableQuotaCache;
+        userQuotaCache = newUserQuotaCache;
+      } catch (Exception e) {
+        LOG.warn("Got exception when refresh all quota cache", e);
+      } finally {
+        if (scanner != null) {
+          try {
+            scanner.close();
+          } catch (Throwable t) {
+            LOG.warn("Got exception in closing the result scanner", t);
+          }
+        }
+        if (table != null) {
+          try {
+            table.close();
+          } catch (Throwable t) {
+            LOG.warn("Got exception in closing the quota table", t);
+          }
+        }
+      }
+    }
+
+    private <K, V extends QuotaState> V updateQuotaState(K key, V quotaInfo,
+        final ConcurrentHashMap<K, V> quotasMap) {
+      V preQuotaInfo = quotasMap.get(key);
+      if (preQuotaInfo != null) {
+        preQuotaInfo.update(quotaInfo);
+        return preQuotaInfo;
+      }
+      return quotaInfo;
     }
 
     private void fetchNamespaceQuotaState() {
