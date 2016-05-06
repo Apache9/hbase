@@ -365,6 +365,59 @@ public class QuotaUtil extends QuotaTableUtil {
     return globalQuotas;
   }
 
+  public static QuotaState getNamespaceQuotaState(Result result) throws IOException {
+    long nowTs = EnvironmentEdgeManager.currentTimeMillis();
+    final QuotaState quotaInfo = new QuotaState(nowTs);
+    parseNamespaceResult(result, new QuotaTableUtil.NamespaceQuotasVisitor() {
+      @Override
+      public void visitNamespaceQuotas(String namespace, Quotas quotas) {
+        quotaInfo.setQuotas(quotas);
+      }
+    });
+    return quotaInfo;
+  }
+
+  public static QuotaState getTableQuotaState(Result result) throws IOException {
+    long nowTs = EnvironmentEdgeManager.currentTimeMillis();
+    final QuotaState quotaInfo = new QuotaState(nowTs);
+    parseTableResult(result, new QuotaTableUtil.TableQuotasVisitor() {
+      @Override
+      public void visitTableQuotas(TableName table, Quotas quotas) {
+        quotaInfo.setQuotas(quotas);
+      }
+    });
+    return quotaInfo;
+  }
+
+  public static UserQuotaState getUserQuotaState(Result result,
+      final Map<TableName, Double> localTableFactors) throws IOException {
+    long nowTs = EnvironmentEdgeManager.currentTimeMillis();
+    final UserQuotaState quotaInfo = new UserQuotaState(nowTs);
+    parseUserResult(result, new QuotaTableUtil.UserQuotasVisitor() {
+      @Override
+      public void visitUserQuotas(String userName, String namespace, Quotas quotas) {
+        quotaInfo.setQuotas(namespace, quotas);
+      }
+
+      @Override
+      public void visitUserQuotas(String userName, TableName table, Quotas quotas) {
+        // update factors first, then fetch quota, but need update by local factor
+        // if no local factor, table will get all quota
+        Double factor = localTableFactors.get(table);
+        if (factor != null) {
+          quotas = QuotaUtil.updateByLocalFactor(quotas, factor);
+        }
+        quotaInfo.setQuotas(table, quotas);
+      }
+
+      @Override
+      public void visitUserQuotas(String userName, Quotas quotas) {
+        quotaInfo.setQuotas(quotas);
+      }
+    });
+    return quotaInfo;
+  }
+
   private static interface KeyFromRow<T> {
     T getKeyFromRow(final byte[] row);
   }
