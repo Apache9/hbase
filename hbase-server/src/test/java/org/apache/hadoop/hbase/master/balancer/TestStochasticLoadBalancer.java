@@ -415,8 +415,10 @@ public class TestStochasticLoadBalancer extends BalancerTestBase {
     int numRegions = 100000; //100 regions per RS
     int numRegionsPerServer = 80; //all servers except one
     int numTables = 100;
-    loadBalancer.setMaxRunningTime(60000);
+    loadBalancer.setMaxRunningTime(300000);
     testWithCluster(numNodes, numRegions, numRegionsPerServer, numTables, true);
+    // reset to the default value
+    loadBalancer.setMaxRunningTime(30000);
   }
 
   protected void testWithCluster(int numNodes,
