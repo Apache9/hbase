@@ -61,8 +61,8 @@ import org.apache.hadoop.hbase.regionserver.wal.HLogKey;
 import org.apache.hadoop.hbase.regionserver.wal.WALEdit;
 import org.apache.hadoop.hbase.replication.ReplicationZookeeper;
 import org.apache.hadoop.hbase.replication.thrift.ThriftClient;
-import org.apache.hadoop.hbase.replication.thrift.ThriftUtilities;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.FSUtils;
 import org.apache.hadoop.hbase.util.Pair;
 import org.apache.hadoop.hbase.util.Threads;
@@ -126,6 +126,8 @@ public class ReplicationSource extends Thread
   private long lastLoggingTime = -1;
   // number edits whose postions we have not sent to ZooKeeper
   private long unLoggedPositionEdits = 0;
+  // current log reader log write time
+  private long currentWriteTime = 0;
 
   // Path of the current log
   private volatile Path currentPath;
@@ -478,6 +480,7 @@ public class ReplicationSource extends Thread
       }
       sleepMultiplier = 1;
       shipEdits(currentWALisBeingWrittenTo);
+      this.metrics.replicationLag.set(this.getReplicationLag());
     }
   }
 
@@ -539,6 +542,9 @@ public class ReplicationSource extends Thread
    * Check if log position is needed to avoid too many write operations to zookeeper
    */
   private boolean shouldLogPosition(long logPostion) {
+    if (logPostion == this.lastLoggedPosition) {
+      return false;
+    }
     if ((logPostion - this.lastLoggedPosition) >= this.logPositionSizeLimit) {
       return true;
     }
@@ -1233,6 +1239,15 @@ public class ReplicationSource extends Thread
   @Override
   public int getSizeOfLogQueue() {
     return queue.size();
+  }
+
+  @Override
+  public long getReplicationLag() {
+    long writeTime = this.repLogReader.getCurrentWriteTime();
+    if (writeTime > 0) {
+      this.currentWriteTime = writeTime;
+    }
+    return EnvironmentEdgeManager.currentTimeMillis() - this.currentWriteTime;
   }
 
   private void shipIt(ServerName address, HLog.Entry[] entries) throws IOException {

@@ -26,17 +26,19 @@ import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.io.WritableUtils;
 
 public class ReplicationLoad implements Writable {
-  private static final byte VERSION = 0;
+  private static final byte VERSION = 1;
   private String peerId;
   private int sizeOfLogQueue;
+  private long replicationLag;
 
   public ReplicationLoad() {
   }
 
-  public ReplicationLoad(String peerId, int sizeOfLogQueue) {
+  public ReplicationLoad(String peerId, int sizeOfLogQueue, long replicationLag) {
     super();
     this.peerId = peerId;
     this.sizeOfLogQueue = sizeOfLogQueue;
+    this.replicationLag = replicationLag;
   }
 
   public String getPeerId() {
@@ -56,11 +58,20 @@ public class ReplicationLoad implements Writable {
     this.sizeOfLogQueue = sizeOfLogQueue;
   }
 
+  public long getReplicationLag() {
+    return replicationLag;
+  }
+
+  public void setReplicationLag(long replicationLag) {
+    this.replicationLag = replicationLag;
+  }
+
   @Override
   public void write(DataOutput out) throws IOException {
     out.write(VERSION);
     WritableUtils.writeString(out, peerId);
     out.writeInt(sizeOfLogQueue);
+    out.writeLong(replicationLag);
   }
 
   @Override
@@ -69,5 +80,10 @@ public class ReplicationLoad implements Writable {
     if (version > VERSION) throw new IOException("Version mismatch; " + version);
     peerId = WritableUtils.readString(in);
     sizeOfLogQueue = in.readInt();
+    if (version == VERSION) {
+      replicationLag = in.readLong();
+    } else {
+      replicationLag = -1;
+    }
   }
 }

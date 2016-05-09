@@ -452,7 +452,15 @@ public class TestAccessController {
     PrivilegedExceptionAction disableTable = new PrivilegedExceptionAction() {
       public Object run() throws Exception {
         ACCESS_CONTROLLER.preDisableTable(ObserverContext.createAndPrepare(CP_ENV, null),
-          TEST_TABLE);
+          TEST_TABLE, false);
+        return null;
+      }
+    };
+
+    PrivilegedExceptionAction disableTableSkipTableStateCheck = new PrivilegedExceptionAction() {
+      public Object run() throws Exception {
+        ACCESS_CONTROLLER.preDisableTable(ObserverContext.createAndPrepare(CP_ENV, null),
+          TEST_TABLE, true);
         return null;
       }
     };
@@ -460,30 +468,55 @@ public class TestAccessController {
     PrivilegedExceptionAction disableAclTable = new PrivilegedExceptionAction() {
       public Object run() throws Exception {
         ACCESS_CONTROLLER.preDisableTable(ObserverContext.createAndPrepare(CP_ENV, null),
-            AccessControlLists.ACL_TABLE_NAME);
+          AccessControlLists.ACL_TABLE_NAME, false);
+        return null;
+      }
+    };
+
+    PrivilegedExceptionAction disableAclTableSkipTableStateCheck = new PrivilegedExceptionAction() {
+      public Object run() throws Exception {
+        ACCESS_CONTROLLER.preDisableTable(ObserverContext.createAndPrepare(CP_ENV, null),
+          AccessControlLists.ACL_TABLE_NAME, true);
         return null;
       }
     };
 
     verifyAllowed(disableTable, SUPERUSER, USER_ADMIN, USER_CREATE, USER_OWNER);
     verifyDenied(disableTable, USER_RW, USER_RO, USER_NONE);
-    
+
+    // Only global admin be allowed to disable table while skip table state check
+    verifyAllowed(disableTableSkipTableStateCheck, SUPERUSER, USER_ADMIN);
+    verifyDenied(disableTableSkipTableStateCheck, USER_A, USER_CREATE, USER_OWNER, USER_RW, USER_RO, USER_NONE);
+
     // No user should be allowed to disable _acl_ table
     verifyDenied(disableAclTable, SUPERUSER, USER_ADMIN, USER_CREATE, USER_OWNER, USER_RW, USER_RO);
+    verifyDenied(disableAclTableSkipTableStateCheck, SUPERUSER, USER_ADMIN, USER_CREATE, USER_OWNER, USER_RW, USER_RO);
   }
 
   @Test
   public void testTableEnable() throws Exception {
     PrivilegedExceptionAction enableTable = new PrivilegedExceptionAction() {
       public Object run() throws Exception {
-        ACCESS_CONTROLLER
-            .preEnableTable(ObserverContext.createAndPrepare(CP_ENV, null), TEST_TABLE);
+        ACCESS_CONTROLLER.preEnableTable(ObserverContext.createAndPrepare(CP_ENV, null),
+          TEST_TABLE, false);
+        return null;
+      }
+    };
+
+    PrivilegedExceptionAction enableTableSkipTableStateCheck = new PrivilegedExceptionAction() {
+      public Object run() throws Exception {
+        ACCESS_CONTROLLER.preEnableTable(ObserverContext.createAndPrepare(CP_ENV, null),
+          TEST_TABLE, true);
         return null;
       }
     };
 
     verifyAllowed(enableTable, SUPERUSER, USER_ADMIN, USER_CREATE, USER_OWNER);
     verifyDenied(enableTable, USER_RW, USER_RO, USER_NONE);
+
+    // Only global admin be allowed to enable table while skip table state check
+    verifyAllowed(enableTableSkipTableStateCheck, SUPERUSER, USER_ADMIN);
+    verifyDenied(enableTableSkipTableStateCheck, USER_A, USER_CREATE, USER_OWNER, USER_RW, USER_RO, USER_NONE);
   }
 
   @Test

@@ -110,7 +110,6 @@ public class ReplicationHLogReaderManager {
   public void seek() throws IOException {
     if (this.position != 0) {
       this.reader.seek(this.position);
-      this.currentWriteTime = 0;
     }
   }
 

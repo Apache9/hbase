@@ -23,13 +23,21 @@ module Shell
     class Disable < Command
       def help
         return <<-EOF
-Start disable of named table: e.g. "hbase> disable 't1'"
+Start disable of named table: 
+e.g. "hbase> disable 't1'"
+
+Start disable of named table without table state check, but it need global admin permission
+e.g. "hbase> disable 't1', true"
 EOF
       end
 
-      def command(table)
+      def command(table, skipTableStateCheck = false)
         format_simple_command do
-          admin.disable(table)
+          if skipTableStateCheck == true
+            admin.disableSkipTableStateCheck(table)
+          else
+            admin.disable(table)
+          end
         end
       end
     end

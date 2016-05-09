@@ -671,30 +671,42 @@ public class AccessController extends BaseRegionObserver
   }
 
   @Override
-  public void preEnableTable(ObserverContext<MasterCoprocessorEnvironment> c, byte[] tableName)
-      throws IOException {
-    requirePermission("enableTable", tableName, null, null, Action.ADMIN, Action.CREATE);
+  public void preEnableTable(ObserverContext<MasterCoprocessorEnvironment> c, byte[] tableName,
+      boolean skipTableStateCheck) throws IOException {
+    if (skipTableStateCheck) {
+      // Only global admin can enable table while skip table state check
+      requirePermission("enableTableSkipTableStateCheck", Permission.Action.ADMIN);
+    } else {
+      requirePermission("enableTable", tableName, null, null, Action.ADMIN, Action.CREATE);
+    }
   }
 
   @Override
-  public void postEnableTable(ObserverContext<MasterCoprocessorEnvironment> c,
-      byte[] tableName) throws IOException {}
+  public void postEnableTable(ObserverContext<MasterCoprocessorEnvironment> c, byte[] tableName,
+      boolean skipTableStateCheck) throws IOException {
+  }
 
   @Override
-  public void preDisableTable(ObserverContext<MasterCoprocessorEnvironment> c, byte[] tableName)
-      throws IOException {
+  public void preDisableTable(ObserverContext<MasterCoprocessorEnvironment> c, byte[] tableName,
+      boolean skipTableStateCheck) throws IOException {
     if (Bytes.equals(tableName, AccessControlLists.ACL_GLOBAL_NAME)) {
       User user = getActiveUser();
       throw new AccessDeniedException("Not allowed to disable "
           + AccessControlLists.ACL_TABLE_NAME_STR + " table." + " user="
           + (user != null ? user.getShortName() : "null"));
     }
-    requirePermission("disableTable", tableName, null, null, Action.ADMIN, Action.CREATE);
+    if (skipTableStateCheck) {
+      // Only global admin can disable table while skip table state check
+      requirePermission("disableTable", Permission.Action.ADMIN);
+    } else {
+      requirePermission("disableTable", tableName, null, null, Action.ADMIN, Action.CREATE);
+    }
   }
 
   @Override
-  public void postDisableTable(ObserverContext<MasterCoprocessorEnvironment> c,
-      byte[] tableName) throws IOException {}
+  public void postDisableTable(ObserverContext<MasterCoprocessorEnvironment> c, byte[] tableName,
+      boolean skipTableStateCheck) throws IOException {
+  }
 
   @Override
   public void preMove(ObserverContext<MasterCoprocessorEnvironment> c, HRegionInfo region,

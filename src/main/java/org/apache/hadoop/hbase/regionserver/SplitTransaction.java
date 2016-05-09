@@ -162,7 +162,10 @@ public class SplitTransaction {
    * <code>false</code> if it is not (e.g. its already closed, etc.).
    */
   public boolean prepare() {
-    if (!this.parent.isSplittable()) return false;
+    if (!this.parent.isSplittable()) {
+      LOG.info("Region is closing/closed or region has reference hfile");
+      return false;
+    }
     // Split key can be null if this region is unsplittable; i.e. has refs.
     if (this.splitrow == null) return false;
     HRegionInfo hri = this.parent.getRegionInfo();

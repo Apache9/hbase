@@ -62,8 +62,10 @@ public class CompactionCoordinator implements Configurable {
       final ServerName serverName, final CompactionQuota request) {
     CompactionQuota last = quotas.remove(serverName);
 
-    updateUsedQuota(last, request);
     CompactionQuota response = grantQuota(request);
+    // Don't grant a server quota released by the the same server to avoid the starvation of other
+    // servers
+    updateUsedQuota(last, request);
     updateUsedQuota(request, response);
 
     quotas.put(serverName, response);

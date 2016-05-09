@@ -121,6 +121,9 @@ public class SequenceFileLogReader implements HLog.Reader {
                 invoke(realIn, new Object []{})).longValue();
               assert(realLength >= this.length);
               adjust = realLength - this.length;
+              LOG.warn("Input stream class: " + realIn.getClass().getName() +
+                  ", adjust length: " + adjust + " actual position: " + super.getPos()
+                  + " adjust postion: " + (adjust + super.getPos()));
             } else {
               LOG.info("Input stream class: " + realIn.getClass().getName() +
                   ", not adjusting length");
