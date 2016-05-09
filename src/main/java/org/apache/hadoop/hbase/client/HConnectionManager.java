@@ -61,6 +61,7 @@ import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.MasterAddressTracker;
 import org.apache.hadoop.hbase.MasterNotRunningException;
 import org.apache.hadoop.hbase.RemoteExceptionHandler;
+import org.apache.hadoop.hbase.RetryImmediatelyException;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.TableNotFoundException;
 import org.apache.hadoop.hbase.ZooKeeperConnectionException;
@@ -1706,17 +1707,25 @@ public class HConnectionManager {
       HRegionLocation [] lastServers = new HRegionLocation[results.length];
       List<Row> workingList = new ArrayList<Row>(list);
       boolean retry = true;
+      boolean retryImmediately = false;
+      int retryActionCnt = 0;
       // count that helps presize actions array
       int actionCount = 0;
 
-      for (int tries = 0; tries < numRetries && retry; ++tries) {
-
-        // sleep first, if this is a retry
-        if (tries >= 1) {
+      for (int tries = 0; tries < numRetries && retry;
+          tries = retryImmediately ? tries : tries + 1) {
+        
+        if (retryImmediately) {
+          LOG.info("Retry immediately, remaning " + retryActionCnt + " actions");
+          // set retryImmediately to false default
+          retryImmediately = false;
+        } else if (tries >= 1) {
+          // sleep first, if this is not a immediate retry
           long sleepTime = ConnectionUtils.getPauseTime(this.pause, tries);
-          LOG.info("Retry " +tries+ " in process batch, sleepTime=" +sleepTime);
+          LOG.info("Retry " + tries + " in process batch, sleepTime=" + sleepTime);
           Thread.sleep(sleepTime);
         }
+
         // step 1: break up into regionserver-sized chunks and build the data structs
         Map<HRegionLocation, MultiAction<R>> actionsByServer =
           new HashMap<HRegionLocation, MultiAction<R>>();
@@ -1800,6 +1809,8 @@ public class HConnectionManager {
         // Find failures (i.e. null Result), and add them to the workingList (in
         // order), so they can be retried.
         retry = false;
+        retryImmediately = true;
+        retryActionCnt = 0;
         workingList.clear();
         actionCount = 0;
         for (int i = 0; i < results.length; i++) {
@@ -1808,8 +1819,14 @@ public class HConnectionManager {
           if (results[i] == null ||
               (results[i] instanceof Throwable &&
                   !(results[i] instanceof DoNotRetryIOException))) {
-
+            
             retry = true;
+            // set retryImmediately to true if all the retriable results are
+            // RetryImmediatelyException
+            if (results[i] == null || !(results[i] instanceof RetryImmediatelyException)) {
+              retryImmediately = false;
+            }
+            retryActionCnt++;
             actionCount++;
             Row row = list.get(i);
             workingList.add(row);

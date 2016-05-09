@@ -49,6 +49,8 @@ import javax.management.ObjectName;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.ContentSummary;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.Chore;
 import org.apache.hadoop.hbase.ClusterStatus;
@@ -1018,6 +1020,22 @@ Server {
     return this.fileSystemManager;
   }
 
+  public FileSystemStatistics getFileSystemStatistics() {
+    long oldLogsFileCount = -1;
+    long oldLogsSpaceConsumed = -1;
+    if (this.fileSystemManager != null) {
+      try {
+        FileSystem fs = this.fileSystemManager.getFileSystem();
+        ContentSummary summary = fs.getContentSummary(this.fileSystemManager.getOldLogDir());
+        oldLogsFileCount = summary.getFileCount();
+        oldLogsSpaceConsumed = summary.getSpaceConsumed();
+      } catch (IOException e) {
+        LOG.error("Failed to get master filesystem statistics", e);
+      }
+    }
+    return new FileSystemStatistics(oldLogsFileCount, oldLogsSpaceConsumed);
+  }
+
   /**
    * Get the ZK wrapper object - needed by master_jsp.java
    * @return the zookeeper wrapper
@@ -1589,29 +1607,39 @@ Server {
     }
   }
 
-  public void enableTable(final byte [] tableName) throws IOException {
+  public void enableTable(final byte[] tableName) throws IOException {
+    enableTable(tableName, false);
+  }
+
+  public void enableTable(final byte[] tableName, final boolean skipTableStateCheck)
+      throws IOException {
     checkInitialized();
     if (cpHost != null) {
-      cpHost.preEnableTable(tableName);
+      cpHost.preEnableTable(tableName, skipTableStateCheck);
     }
-    this.executorService.submit(new EnableTableHandler(this, tableName,
-      catalogTracker, assignmentManager, false));
+    this.executorService.submit(new EnableTableHandler(this, tableName, catalogTracker,
+        assignmentManager, skipTableStateCheck));
 
     if (cpHost != null) {
-      cpHost.postEnableTable(tableName);
+      cpHost.postEnableTable(tableName, skipTableStateCheck);
     }
   }
 
-  public void disableTable(final byte [] tableName) throws IOException {
+  public void disableTable(final byte[] tableName) throws IOException {
+    disableTable(tableName, false);
+  }
+
+  public void disableTable(final byte[] tableName, final boolean skipTableStateCheck)
+      throws IOException {
     checkInitialized();
     if (cpHost != null) {
-      cpHost.preDisableTable(tableName);
+      cpHost.preDisableTable(tableName, skipTableStateCheck);
     }
-    this.executorService.submit(new DisableTableHandler(this, tableName,
-        catalogTracker, assignmentManager, false));
+    this.executorService.submit(new DisableTableHandler(this, tableName, catalogTracker,
+        assignmentManager, skipTableStateCheck));
 
     if (cpHost != null) {
-      cpHost.postDisableTable(tableName);
+      cpHost.postDisableTable(tableName, skipTableStateCheck);
     }
   }
 

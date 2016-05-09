@@ -27,6 +27,7 @@ import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.UnknownRegionException;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.SnapshotDescription;
+import org.apache.hadoop.hbase.security.access.Permission;
 
 import java.io.IOException;
 import java.util.List;
@@ -91,25 +92,25 @@ public class BaseMasterObserver implements MasterObserver {
   public void postDeleteColumn(ObserverContext<MasterCoprocessorEnvironment> ctx,
       byte[] tableName, byte[] c) throws IOException {
   }
-
+  
   @Override
-  public void preEnableTable(ObserverContext<MasterCoprocessorEnvironment> ctx,
-      byte[] tableName) throws IOException {
+  public void preEnableTable(ObserverContext<MasterCoprocessorEnvironment> c, byte[] tableName,
+      boolean skipTableStateCheck) throws IOException {
   }
 
   @Override
-  public void postEnableTable(ObserverContext<MasterCoprocessorEnvironment> ctx,
-      byte[] tableName) throws IOException {
+  public void postEnableTable(ObserverContext<MasterCoprocessorEnvironment> c, byte[] tableName,
+      boolean skipTableStateCheck) throws IOException {
   }
 
   @Override
   public void preDisableTable(ObserverContext<MasterCoprocessorEnvironment> ctx,
-      byte[] tableName) throws IOException {
+      byte[] tableName, boolean skipTableStateCheck) throws IOException {
   }
 
   @Override
   public void postDisableTable(ObserverContext<MasterCoprocessorEnvironment> ctx,
-      byte[] tableName) throws IOException {
+      byte[] tableName, boolean skipTableStateCheck) throws IOException {
   }
 
   @Override

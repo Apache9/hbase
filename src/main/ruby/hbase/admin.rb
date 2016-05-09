@@ -137,6 +137,14 @@ module Hbase
 
     #----------------------------------------------------------------------------------------------
     # Enables a table
+    def enableSkipTableStateCheck(table_name)
+      tableExists(table_name)
+      return if enabled?(table_name)
+      @admin.enableTable(table_name, true)
+    end
+
+    #----------------------------------------------------------------------------------------------
+    # Enables a table
     def enable(table_name)
       tableExists(table_name)
       return if enabled?(table_name)
@@ -148,6 +156,14 @@ module Hbase
     def enable_all(regex)
       regex = regex.to_s
       @admin.enableTables(regex)
+    end
+
+    #----------------------------------------------------------------------------------------------
+    # Disables a table
+    def disableSkipTableStateCheck(table_name)
+      tableExists(table_name)
+      return if disabled?(table_name)
+      @admin.disableTable(table_name, true)
     end
 
     #----------------------------------------------------------------------------------------------

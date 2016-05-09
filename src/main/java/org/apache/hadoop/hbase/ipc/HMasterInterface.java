@@ -139,6 +139,15 @@ public interface HMasterInterface extends VersionedProtocol {
    * @throws IOException e
    */
   public void enableTable(final byte [] tableName) throws IOException;
+  
+  /**
+   * Puts the table on-line.
+   * @param tableName table to enable
+   * @param skipTableStateCheck
+   * @throws IOException e
+   */
+  public void enableTable(final byte[] tableName, final boolean skipTableStateCheck)
+      throws IOException;
 
   /**
    * Take table offline
@@ -147,6 +156,14 @@ public interface HMasterInterface extends VersionedProtocol {
    * @throws IOException e
    */
   public void disableTable(final byte [] tableName) throws IOException;
+  
+  /**
+   * Take table offline
+   * @param tableName table to take offline
+   * @param skipTableStateCheck
+   * @throws IOException e
+   */
+  public void disableTable(final byte [] tableName, final boolean skipTableStateCheck) throws IOException;
 
   /**
    * Modify a table's metadata

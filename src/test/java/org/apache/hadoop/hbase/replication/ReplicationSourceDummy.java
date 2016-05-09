@@ -88,4 +88,9 @@ public class ReplicationSourceDummy implements ReplicationSourceInterface {
   public int getSizeOfLogQueue() {
     return 1;
   }
+
+  @Override
+  public long getReplicationLag() {
+    return 0;
+  }
 }

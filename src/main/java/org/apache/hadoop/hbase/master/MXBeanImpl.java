@@ -255,4 +255,9 @@ public class MXBeanImpl implements MXBean {
     AssignmentManager am = master.getAssignmentManager();
     return am.getCrashedServersStatistics();
   }
+
+  @Override
+  public FileSystemStatistics getFileSystemStatistics() {
+    return this.master.getFileSystemStatistics();
+  }
 }

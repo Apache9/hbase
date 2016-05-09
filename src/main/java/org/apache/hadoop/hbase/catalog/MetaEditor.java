@@ -313,19 +313,23 @@ public class MetaEditor {
   }
 
   /**
-   * Deletes the specified regions from META.
+   * Deletes the specified regions of table from META.
    * @param catalogTracker
-   * @param regionsInfo list of regions to be deleted from META
+   * @param tableName
+   * @param regionsInfos list of regions to be deleted from META
    * @throws IOException
    */
-  public static void deleteRegions(CatalogTracker catalogTracker,
-      List<HRegionInfo> regionsInfo) throws IOException {
-    List<Delete> deletes = new ArrayList<Delete>(regionsInfo.size());
-    for (HRegionInfo hri: regionsInfo) {
+  public static void deleteRegions(CatalogTracker catalogTracker, String tableName,
+      List<HRegionInfo> regionsInfos) throws IOException {
+    List<Delete> deletes = new ArrayList<Delete>(regionsInfos.size());
+    for (HRegionInfo hri: regionsInfos) {
       deletes.add(new Delete(hri.getRegionName()));
     }
     deleteFromMetaTable(catalogTracker, deletes);
-    LOG.info("Deleted from META, regions: " + regionsInfo);
+    LOG.info("Deleted " + regionsInfos.size() + " regions of table " + tableName + " from META");
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("Deleted " + regionsInfos);
+    }
   }
 
   /**

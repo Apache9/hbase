@@ -23,13 +23,21 @@ module Shell
     class Enable < Command
       def help
         return <<-EOF
-Start enable of named table: e.g. "hbase> enable 't1'"
+Start enable of named table:
+e.g. "hbase> enable 't1'"
+
+Start enable of named table without table state check, but it need global admin permission
+e.g. "hbase> enable 't1'"
 EOF
       end
 
-      def command(table)
+      def command(table, skipTableStateCheck = false)
         format_simple_command do
-          admin.enable(table)
+          if skipTableStateCheck == true
+            admin.enableSkipTableStateCheck(table)
+          else
+            admin.enable(table)
+          end  
         end
       end
     end

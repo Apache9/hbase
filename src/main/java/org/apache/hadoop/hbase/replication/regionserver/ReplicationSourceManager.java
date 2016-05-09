@@ -716,23 +716,27 @@ public class ReplicationSourceManager {
     for (ReplicationSourceInterface source : this.sources) {
       String peerId = source.getPeerClusterId();
       int sizeOfLogQueue = source.getSizeOfLogQueue();
+      long replicationLag = source.getReplicationLag();
       ReplicationLoad load = replications.get(peerId);
       if (load == null) {
-        load = new ReplicationLoad(peerId, sizeOfLogQueue);
+        load = new ReplicationLoad(peerId, sizeOfLogQueue, replicationLag);
         replications.put(peerId, load);
       } else {
         load.setSizeOfLogQueue(load.getSizeOfLogQueue() + sizeOfLogQueue);
+        load.setReplicationLag(replicationLag);
       }
     }
     for (ReplicationSourceInterface source : this.oldsources) {
       String peerId = source.getPeerClusterId();
       int sizeOfLogQueue = source.getSizeOfLogQueue();
+      long replicationLag = source.getReplicationLag();
       ReplicationLoad load = replications.get(peerId);
       if (load == null) {
-        load = new ReplicationLoad(peerId, sizeOfLogQueue);
+        load = new ReplicationLoad(peerId, sizeOfLogQueue, replicationLag);
         replications.put(peerId, load);
       } else {
         load.setSizeOfLogQueue(load.getSizeOfLogQueue() + sizeOfLogQueue);
+        load.setReplicationLag(replicationLag);
       }
     }
     return new LinkedList(replications.values());

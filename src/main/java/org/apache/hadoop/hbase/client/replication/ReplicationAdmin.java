@@ -306,6 +306,9 @@ public class ReplicationAdmin implements Closeable {
   }
   
   private void checkTableCFs(String tableCFs) throws IOException {
+    if (tableCFs == null) {
+      return;
+    }
     String[] tables = tableCFs.split(";");
     for (String tab : tables) {
       // 1. split to "table" and "cf1,cf2"

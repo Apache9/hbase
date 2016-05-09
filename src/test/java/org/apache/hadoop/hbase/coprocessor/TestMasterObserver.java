@@ -43,6 +43,7 @@ import org.apache.hadoop.hbase.master.MasterCoprocessorHost;
 import org.apache.hadoop.hbase.master.snapshot.SnapshotManager;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.SnapshotDescription;
 import org.apache.hadoop.hbase.regionserver.HRegionServer;
+import org.apache.hadoop.hbase.security.access.Permission;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.Threads;
 import org.junit.AfterClass;
@@ -286,7 +287,7 @@ public class TestMasterObserver {
 
     @Override
     public void preEnableTable(ObserverContext<MasterCoprocessorEnvironment> env,
-        byte[] tableName) throws IOException {
+        byte[] tableName, boolean skipTableStateCheck) throws IOException {
       if (bypass) {
         env.bypass();
       }
@@ -295,7 +296,7 @@ public class TestMasterObserver {
 
     @Override
     public void postEnableTable(ObserverContext<MasterCoprocessorEnvironment> env,
-        byte[] tableName) throws IOException {
+        byte[] tableName, boolean skipTableStateCheck) throws IOException {
       postEnableTableCalled = true;
     }
 
@@ -309,7 +310,7 @@ public class TestMasterObserver {
 
     @Override
     public void preDisableTable(ObserverContext<MasterCoprocessorEnvironment> env,
-        byte[] tableName) throws IOException {
+        byte[] tableName, boolean skipTableStateCheck) throws IOException {
       if (bypass) {
         env.bypass();
       }
@@ -318,7 +319,7 @@ public class TestMasterObserver {
 
     @Override
     public void postDisableTable(ObserverContext<MasterCoprocessorEnvironment> env,
-        byte[] tableName) throws IOException {
+        byte[] tableName, boolean skipTableStateCheck) throws IOException {
       postDisableTableCalled = true;
     }
 

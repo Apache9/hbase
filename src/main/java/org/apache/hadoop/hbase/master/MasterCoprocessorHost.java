@@ -318,13 +318,13 @@ public class MasterCoprocessorHost
     }
   }
 
-  void preEnableTable(final byte [] tableName) throws IOException {
+  void preEnableTable(final byte[] tableName, final boolean skipTableStateCheck) throws IOException {
     ObserverContext<MasterCoprocessorEnvironment> ctx = null;
-    for (MasterEnvironment env: coprocessors) {
+    for (MasterEnvironment env : coprocessors) {
       if (env.getInstance() instanceof MasterObserver) {
         ctx = ObserverContext.createAndPrepare(env, ctx);
         try {
-          ((MasterObserver)env.getInstance()).preEnableTable(ctx, tableName);
+          ((MasterObserver) env.getInstance()).preEnableTable(ctx, tableName, skipTableStateCheck);
         } catch (Throwable e) {
           handleCoprocessorThrowable(env, e);
         }
@@ -335,13 +335,14 @@ public class MasterCoprocessorHost
     }
   }
 
-  void postEnableTable(final byte [] tableName) throws IOException {
+  void postEnableTable(final byte[] tableName, final boolean skipTableStateCheck)
+      throws IOException {
     ObserverContext<MasterCoprocessorEnvironment> ctx = null;
-    for (MasterEnvironment env: coprocessors) {
+    for (MasterEnvironment env : coprocessors) {
       if (env.getInstance() instanceof MasterObserver) {
         ctx = ObserverContext.createAndPrepare(env, ctx);
         try {
-          ((MasterObserver)env.getInstance()).postEnableTable(ctx, tableName);
+          ((MasterObserver) env.getInstance()).postEnableTable(ctx, tableName, skipTableStateCheck);
         } catch (Throwable e) {
           handleCoprocessorThrowable(env, e);
         }
@@ -352,13 +353,14 @@ public class MasterCoprocessorHost
     }
   }
 
-  void preDisableTable(final byte [] tableName) throws IOException {
+  void preDisableTable(final byte[] tableName, final boolean skipTableStateCheck)
+      throws IOException {
     ObserverContext<MasterCoprocessorEnvironment> ctx = null;
-    for (MasterEnvironment env: coprocessors) {
+    for (MasterEnvironment env : coprocessors) {
       if (env.getInstance() instanceof MasterObserver) {
         ctx = ObserverContext.createAndPrepare(env, ctx);
         try {
-          ((MasterObserver)env.getInstance()).preDisableTable(ctx, tableName);
+          ((MasterObserver) env.getInstance()).preDisableTable(ctx, tableName, skipTableStateCheck);
         } catch (Throwable e) {
           handleCoprocessorThrowable(env, e);
         }
@@ -369,13 +371,15 @@ public class MasterCoprocessorHost
     }
   }
 
-  void postDisableTable(final byte [] tableName) throws IOException {
+  void postDisableTable(final byte[] tableName, final boolean skipTableStateCheck)
+      throws IOException {
     ObserverContext<MasterCoprocessorEnvironment> ctx = null;
-    for (MasterEnvironment env: coprocessors) {
+    for (MasterEnvironment env : coprocessors) {
       if (env.getInstance() instanceof MasterObserver) {
         ctx = ObserverContext.createAndPrepare(env, ctx);
         try {
-          ((MasterObserver)env.getInstance()).postDisableTable(ctx, tableName);
+          ((MasterObserver) env.getInstance())
+              .postDisableTable(ctx, tableName, skipTableStateCheck);
         } catch (Throwable e) {
           handleCoprocessorThrowable(env, e);
         }

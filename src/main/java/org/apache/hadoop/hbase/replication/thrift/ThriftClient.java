@@ -69,10 +69,10 @@ public class ThriftClient {
   public ThriftClient(Configuration conf, String peerId) throws IOException {
     this.conf = conf;
     this.peerId = peerId;
-    this.isSecure = User.isHBaseSecurityEnabled(conf);
+    this.isSecure = User.isHBaseSecurityEnabled(conf) && ThriftUtilities.thriftSecureEnabled(conf);
     loadTableNameMap(conf.get(HBASE_REPLICATION_THRIFT_TABLE_NAME_MAP));
   }
-  
+
   protected static void loadTableNameMap(String mappingString) throws IOException {
     if (mappingString == null) {
       return;
@@ -108,7 +108,7 @@ public class ThriftClient {
 
     String serverProtocol = UserGroupInformation.getCurrentUser().getUserName();
     String serverAddress = null;
-    if(User.isHBaseSecurityEnabled(conf)) {
+    if(isSecure) {
       String kerberosName = UserGroupInformation.getCurrentUser().getUserName();
       final String names[] = SaslRpcServer.splitKerberosName(kerberosName);
       if (names.length != 3) {
@@ -135,7 +135,7 @@ public class ThriftClient {
       transport.open();
       LOG.debug("Connected to "+host+":"+port);
     } catch (TTransportException e) {
-      throw new IOException("Failed to open transport connection to : "+host+":"+port, e);
+      throw new IOException("Failed to open transport connection to : "+host+":"+port + ", isSecure: " + isSecure, e);
     }
 
     TProtocol protocol;

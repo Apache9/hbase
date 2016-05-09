@@ -77,6 +77,7 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
   private int hugeKvWarningSizeInByte;
   private long hugeRowWarningSizeInByte;
   private long currentInResultRowSizeInByte;
+  private boolean logHugeRow;
 
   /** We don't ever expect to change this, the constant is just for clarity. */
   static final boolean LAZY_SEEK_ENABLED_BY_DEFAULT = true;
@@ -418,7 +419,6 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
     short length = peeked.getRowLength();
     if (limit < 0 || matcher.row == null || !Bytes.equals(row, offset, length, matcher.row, matcher.rowOffset, matcher.rowLength)) {
       matcher.setRow(row, offset, length);
-      currentInResultRowSizeInByte = 0;
     }
 
     KeyValue kv;
@@ -431,6 +431,9 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
     long cumulativeMetric = 0;
     int count = 0;
     int rawCount = 0;
+    currentInResultRowSizeInByte = 0;
+    logHugeRow = true;
+
     try {
       LOOP: while((kv = this.heap.peek()) != null) {
         checkScanOrder(prevKV, kv, comparator);
@@ -655,7 +658,6 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
     if ((matcher.row == null) || !Bytes.equals(row, offset, length, matcher.row, matcher.rowOffset, matcher.rowLength)) {
       matcher.reset();
       matcher.setRow(row, offset, length);
-      currentInResultRowSizeInByte = 0;
     }
   }
 
@@ -682,16 +684,16 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
   // Only be used while adding the kv into result currently
   protected void checkKvSize(KeyValue kv) {
     long size = kv.heapSize();
-    if (kv.heapSize() > hugeKvWarningSizeInByte) {
-      LOG.warn("adding a HUGE KV into result list, kv size:" + size + ", key:"
-          + Bytes.toStringBinary(kv.getKey()) + ", from table "
-          + store.getHRegionInfo().getTableNameAsString());
+    if (size > hugeKvWarningSizeInByte) {
+      LOG.warn("adding a HUGE KV into result list, kv size:" + size + ", kv:" + kv
+          + ", from table " + store.getHRegionInfo().getTableNameAsString());
     }
     currentInResultRowSizeInByte += size;
-    if (currentInResultRowSizeInByte > hugeRowWarningSizeInByte) {
+    if (logHugeRow && currentInResultRowSizeInByte > hugeRowWarningSizeInByte) {
       LOG.warn("adding a HUGE ROW's kv into result list, added row size:"
-          + currentInResultRowSizeInByte + ", key:" + Bytes.toStringBinary(kv.getKey())
-          + ", from table " + store.getHRegionInfo().getTableNameAsString());
+          + currentInResultRowSizeInByte + ", kv:" + kv + ", from table "
+          + store.getHRegionInfo().getTableNameAsString());
+      logHugeRow = false;
     }
   }
 

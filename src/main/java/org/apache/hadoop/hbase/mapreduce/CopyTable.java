@@ -45,7 +45,7 @@ public class CopyTable extends Configured implements Tool {
 
   final static String NAME = "copytable";
   static long startTime = 0;
-  static long endTime = 0;
+  static long endTime = HConstants.LATEST_TIMESTAMP;
   static int versions = -1;
   static String tableName = null;
   static String startRow = null;
@@ -76,10 +76,7 @@ public class CopyTable extends Configured implements Tool {
     job.setJarByClass(CopyTable.class);
     Scan scan = new Scan();
     scan.setCacheBlocks(false);
-    if (startTime != 0) {
-      scan.setTimeRange(startTime,
-          endTime == 0 ? HConstants.LATEST_TIMESTAMP : endTime);
-    }
+    scan.setTimeRange(startTime, endTime);
     if (allCells) {
       scan.setRaw(true);
     }

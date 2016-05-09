@@ -73,7 +73,7 @@ public class DeleteTableHandler extends TableEventHandler {
 
     // 2. Remove regions from META
     LOG.debug("Deleting regions from META");
-    MetaEditor.deleteRegions(this.server.getCatalogTracker(), regions);
+    MetaEditor.deleteRegions(this.server.getCatalogTracker(), Bytes.toString(tableName), regions);
 
     // 3. Move the table in /hbase/.tmp
     LOG.debug("Moving table directory to a temp directory");

@@ -384,6 +384,7 @@ public class HRegion implements HeapSize { // , Writable{
   // Coprocessor host
   private RegionCoprocessorHost coprocessorHost;
   private int warnThresholdForRawScanned = Integer.MAX_VALUE;
+  private long lastRawScannedWarnedTime = Long.MIN_VALUE;
 
   /**
    * Name of the region info file that resides just under the region directory.
@@ -4115,24 +4116,30 @@ public class HRegion implements HeapSize { // , Writable{
         status = nextInternal(tmpList, limit, rawLimit, metric);
         outResults.addAll(tmpList);
       }
-      
+
       if (status.getRawValueScanned() >= warnThresholdForRawScanned) {
-        int scanned = outResults.size() - beforeScanned;
-        KeyValue kv = null;
-        if (scanned <= 0) {
-          kv = status.next();
-        } else {
-          kv = outResults.get(outResults.size() - 1);
+        // If we enter here once, it seems that we are very likely to enter here every time. So we
+        // force a 15s interval here to avoid log being flooded.
+        long currentTime = EnvironmentEdgeManager.currentTimeMillis();
+        if (currentTime - lastRawScannedWarnedTime > 15L * 1000) {
+          int scanned = outResults.size() - beforeScanned;
+          KeyValue kv = null;
+          if (scanned <= 0) {
+            kv = status.next();
+          } else {
+            kv = outResults.get(outResults.size() - 1);
+          }
+          String rowString = null;
+          if (kv != null) {
+            rowString = Bytes.toStringBinary(kv.getRow());
+          }
+          LOG.warn("TooMany raw scanned kvs for read, region: " + region.getRegionNameAsString()
+              + ", row: " + rowString + ", rawScanned: " + status.getRawValueScanned()
+              + ", returned: " + scanned);
+          lastRawScannedWarnedTime = currentTime;
         }
-        String rowString = null;
-        if (kv != null) {
-          rowString = Bytes.toStringBinary(kv.getRow());
-        }
-        LOG.warn("TooMany raw scanned kvs for read, region: " + region.getRegionNameAsString()
-            + ", row: " + rowString + ", rawScanned: " + status.getRawValueScanned()
-            + ", returned: " + scanned);
       }
-      
+
       resetFilters();
       if (isFilterDone()) {
         return ScannerStatus.done(status.getRawValueScanned());
