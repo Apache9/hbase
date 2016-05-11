@@ -435,6 +435,8 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
   private MetricsRegionServer metricsRegionServer;
   private SpanReceiverHost spanReceiverHost;
 
+  private AccessCounter accessCounter;
+
   /*
    * Check for compactions requests.
    */
@@ -926,6 +928,10 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
       RegionCompactor.DEFAULT_REGION_ATUO_COMPACT_PERIOD);
     this.regionCompactor = new RegionCompactor(this, compactorPeriod);
 
+    int flushCounterPeriod = conf.getInt(AccessCounter.FLUSH_ACCESS_COUNTER_PERIOD,
+      AccessCounter.DEFAULT_FLUSH_ACCESS_COUNTER_PERIOD_MS);
+    this.accessCounter = new AccessCounter(this, flushCounterPeriod);
+
     this.leases = new Leases(this.threadWakeFrequency);
 
     // Create the thread to clean the moved regions list
@@ -1079,6 +1085,9 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     }
     if (this.regionCompactor != null) {
       this.regionCompactor.interrupt();
+    }
+    if (this.accessCounter != null) {
+      this.accessCounter.interrupt();
     }
 
     // Stop the quota manager
@@ -1831,6 +1840,10 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
       Threads.setDaemonThreadRunning(this.regionCompactor.getThread(), n +
         ".regionCompactor", uncaughtExceptionHandler);
     }
+    if (this.accessCounter != null) {
+      Threads.setDaemonThreadRunning(this.accessCounter.getThread(), n + ".accessCounter",
+        uncaughtExceptionHandler);
+    }
 
     Threads.setDaemonThreadRunning(leases.getThread(), n + ".leaseChecker",
       uncaughtExceptionHandler);
@@ -2101,6 +2114,9 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     }
     if (regionCompactor != null) {
       Threads.shutdown(this.regionCompactor.getThread());
+    }
+    if (accessCounter != null) {
+      Threads.shutdown(this.accessCounter.getThread());
     }
     if (this.periodicFlusher != null) {
       Threads.shutdown(this.periodicFlusher.getThread());
@@ -5333,6 +5349,11 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
   @Override
   public RegionServerReportResponse getRegionServerReportResponse() {
     return reportResponse;
+  }
+
+  @Override
+  public AccessCounter getAccessCounter() {
+    return this.accessCounter;
   }
 
   private boolean isQuotaEnabled() {

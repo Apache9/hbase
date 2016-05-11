@@ -133,6 +133,7 @@ import org.apache.hadoop.hbase.protobuf.generated.WALProtos.CompactionDescriptor
 import org.apache.hadoop.hbase.quotas.QuotaUtil;
 import org.apache.hadoop.hbase.quotas.RegionServerQuotaManager;
 import org.apache.hadoop.hbase.quotas.OperationQuota.OperationType;
+import org.apache.hadoop.hbase.regionserver.AccessCounter.CounterKey;
 import org.apache.hadoop.hbase.regionserver.MultiVersionConsistencyControl.WriteEntry;
 import org.apache.hadoop.hbase.regionserver.ScannerContext.LimitScope;
 import org.apache.hadoop.hbase.regionserver.ScannerContext.NextState;
@@ -147,6 +148,7 @@ import org.apache.hadoop.hbase.regionserver.wal.HLogSplitter;
 import org.apache.hadoop.hbase.regionserver.wal.HLogSplitter.MutationReplay;
 import org.apache.hadoop.hbase.regionserver.wal.HLogUtil;
 import org.apache.hadoop.hbase.regionserver.wal.WALEdit;
+import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.snapshot.SnapshotDescriptionUtils;
 import org.apache.hadoop.hbase.snapshot.SnapshotManifest;
 import org.apache.hadoop.hbase.types.NumberCodecType;
@@ -6611,6 +6613,30 @@ public class HRegion implements HeapSize { // , Writable{
     this.writeRequestsByCapacityUnitPerSecond.inc(writeCapacityUnitNum);
     if (this.metricsRegion != null) {
       this.metricsRegion.updateWrite(writeCapacityUnitNum);
+    }
+  }
+
+  public void updateReadCount(User user, byte[] table, byte[] family, byte[] qualifier) {
+    if (this.rsServices != null && this.rsServices.getAccessCounter() != null) {
+      this.rsServices.getAccessCounter().incrementReadCount(user, table, family, qualifier);
+    }
+  }
+
+  public void updateWriteCount(User user, byte[] table, byte[] family, byte[] qualifier) {
+    if (this.rsServices != null && this.rsServices.getAccessCounter() != null) {
+      this.rsServices.getAccessCounter().incrementWriteCount(user, table, family, qualifier);
+    }
+  }
+
+  public void updateReadCount(CounterKey key, long delta) {
+    if (this.rsServices != null && this.rsServices.getAccessCounter() != null) {
+      this.rsServices.getAccessCounter().addReadCount(key, delta);
+    }
+  }
+
+  public void updateWriteCount(CounterKey key, long delta) {
+    if (this.rsServices != null && this.rsServices.getAccessCounter() != null) {
+      this.rsServices.getAccessCounter().addWriteCount(key, delta);
     }
   }
 

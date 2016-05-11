@@ -176,4 +176,9 @@ public interface RegionServerServices
   RegionServerReportResponse getRegionServerReportResponse();
   
   void switchThrottle();
+
+  /**
+   * @return access counter
+   */
+  public AccessCounter getAccessCounter();
 }
