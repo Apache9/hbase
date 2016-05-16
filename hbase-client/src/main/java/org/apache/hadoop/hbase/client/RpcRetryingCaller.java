@@ -175,8 +175,8 @@ public class RpcRetryingCaller<T> {
     } else {
       // If the server is dead, we need to wait a little before retrying, to give
       // a chance to the regions to be
-      // tries hasn't been bumped up yet so we use "tries + 1" to get right pause time
-      return callable.sleep(pause, tries + 1);
+      // get right pause time, start by RETRY_BACKOFF[0] * pause
+      return callable.sleep(pause, tries);
     }
   }
 

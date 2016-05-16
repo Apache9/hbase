@@ -1732,7 +1732,7 @@ public class RpcClient {
         Message param, Message returnType)
     throws ServiceException {
       return this.rpcClient.callBlockingMethod(md, controller, param, returnType, this.ticket,
-        this.isa, this.rpcTimeout);
+        this.isa, getRpcTimeout(this.rpcTimeout));
     }
   }
 }
