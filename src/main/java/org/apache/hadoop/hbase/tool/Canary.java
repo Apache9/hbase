@@ -600,7 +600,7 @@ public final class Canary implements Tool {
   }
 
   private void checkCanaryDistribution() throws IOException {
-    if (isTableExists(Bytes.toBytes(CANARY_TABLE_NAME))) {
+    if (!isTableExists(Bytes.toBytes(CANARY_TABLE_NAME))) {
       int numberOfServers = admin.getClusterStatus().getServers().size();
       if (numberOfServers == 0) {
         throw new IllegalStateException("No live regionservers");
@@ -608,7 +608,7 @@ public final class Canary implements Tool {
       createCanaryTable(numberOfServers);
     }
 
-    if (isTableEnabled(Bytes.toBytes(CANARY_TABLE_NAME))) {
+    if (!isTableEnabled(Bytes.toBytes(CANARY_TABLE_NAME))) {
       admin.enableTable(CANARY_TABLE_NAME);
     }
 
