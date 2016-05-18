@@ -1657,7 +1657,7 @@ public class RpcClient {
    */
   Message callBlockingMethod(MethodDescriptor md, RpcController controller,
       Message param, Message returnType, final User ticket, final InetSocketAddress isa,
-      final int rpcTimeout)
+      int rpcTimeout)
   throws ServiceException {
     long startTime = System.currentTimeMillis();
     PayloadCarryingRpcController pcrc = (PayloadCarryingRpcController)controller;
@@ -1666,6 +1666,11 @@ public class RpcClient {
       cells = pcrc.cellScanner();
       // Clear it here so we don't by mistake try and these cells processing results.
       pcrc.setCellScanner(null);
+
+      int timeout = pcrc.getTimeout();
+      if (timeout > 0 ){
+        rpcTimeout = timeout;
+      }
     }
     Pair<Message, CellScanner> val = null;
     try {

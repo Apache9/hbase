@@ -318,7 +318,7 @@ public class ClientScanner extends AbstractClientScanner {
   @InterfaceAudience.Private protected ScannerCallable getScannerCallable(byte[] localStartKey, int nbRows) {
     scan.setStartRow(localStartKey);
     ScannerCallable s = new ScannerCallable(getConnection(), getTable(), scan, this.scanMetrics,
-        rpcControllerFactory.newController());
+        rpcControllerFactory.newController(), scannerTimeout);
     s.setCaching(nbRows);
     return s;
   }

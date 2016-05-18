@@ -51,7 +51,7 @@ public class ReversedScannerCallable extends ScannerCallable {
   public ReversedScannerCallable(HConnection connection, TableName tableName, Scan scan,
       ScanMetrics scanMetrics, byte[] locateStartRow) {
     this(connection, tableName, scan, scanMetrics, locateStartRow, RpcControllerFactory
-        .instantiate(connection.getConfiguration()).newController());
+        .instantiate(connection.getConfiguration()).newController(), 0);
   }
 
   /**
@@ -63,8 +63,9 @@ public class ReversedScannerCallable extends ScannerCallable {
    * @param rpcFactory
    */
   public ReversedScannerCallable(HConnection connection, TableName tableName, Scan scan,
-      ScanMetrics scanMetrics, byte[] locateStartRow, PayloadCarryingRpcController rpcFactory) {
-    super(connection, tableName, scan, scanMetrics, rpcFactory);
+      ScanMetrics scanMetrics, byte[] locateStartRow, PayloadCarryingRpcController rpcFactory,
+      int timeout) {
+    super(connection, tableName, scan, scanMetrics, rpcFactory, timeout);
     this.locateStartRow = locateStartRow;
   }
 

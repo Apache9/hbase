@@ -140,7 +140,6 @@ public class TestScannerHeartbeatMessages {
       byte[][] qualifiers, byte[] cellValue) throws IOException {
     Configuration c = new Configuration(TEST_UTIL.getConfiguration());
     c.setInt(HConstants.HBASE_CLIENT_SCANNER_TIMEOUT_PERIOD, CLIENT_TIMEOUT);
-    c.setInt(HConstants.HBASE_RPC_TIMEOUT_KEY, CLIENT_TIMEOUT);
     HTable ht = TEST_UTIL.createTable(name, families, c);
     List<Put> puts = createPuts(rows, families, qualifiers, cellValue);
     ht.put(puts);
