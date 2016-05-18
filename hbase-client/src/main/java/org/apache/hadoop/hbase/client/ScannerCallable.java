@@ -73,6 +73,7 @@ public class ScannerCallable extends RegionServerCallable<Result[]> {
   private boolean logScannerActivity = false;
   private int logCutOffLatency = 1000;
   private static String myAddress;
+  private int timeout;
   /**
    * Saves whether or not the most recent response from the server was a heartbeat message.
    * Heartbeat messages are identified by the flag {@link ScanResponse#getHeartbeatMessage()}
@@ -100,7 +101,7 @@ public class ScannerCallable extends RegionServerCallable<Result[]> {
    * @param controller to use when writing the rpc
    */
   public ScannerCallable (HConnection connection, TableName tableName, Scan scan,
-      ScanMetrics scanMetrics, PayloadCarryingRpcController controller) {
+      ScanMetrics scanMetrics, PayloadCarryingRpcController controller, int timeout) {
     super(connection, tableName, scan.getStartRow());
     this.scan = scan;
     this.scanMetrics = scanMetrics;
@@ -108,6 +109,7 @@ public class ScannerCallable extends RegionServerCallable<Result[]> {
     logScannerActivity = conf.getBoolean(LOG_SCANNER_ACTIVITY, false);
     logCutOffLatency = conf.getInt(LOG_SCANNER_LATENCY_CUTOFF, 1000);
     this.controller = controller;
+    this.timeout = timeout;
   }
 
   /**
@@ -118,7 +120,7 @@ public class ScannerCallable extends RegionServerCallable<Result[]> {
   public ScannerCallable (HConnection connection, final byte [] tableName, Scan scan,
       ScanMetrics scanMetrics) {
     this(connection, TableName.valueOf(tableName), scan, scanMetrics, RpcControllerFactory
-        .instantiate(connection.getConfiguration()).newController());
+        .instantiate(connection.getConfiguration()).newController(), 0);
   }
 
   /**
@@ -178,6 +180,7 @@ public class ScannerCallable extends RegionServerCallable<Result[]> {
           ScanResponse response = null;
           try {
             controller.setPriority(getTableName());
+            controller.setTimeout(timeout);
             response = getStub().scan(controller, request);
             // Client and RS maintain a nextCallSeq number during the scan. Every next() call
             // from client to server will increment this number in both sides. Client passes this
