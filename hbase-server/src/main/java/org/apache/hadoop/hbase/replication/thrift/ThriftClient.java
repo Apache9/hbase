@@ -56,7 +56,7 @@ public class ThriftClient {
   // of the value should be 'sourceTable1=>destTable1,sourceTable2=>destTable2'
   public static final String HBASE_REPLICATION_THRIFT_TABLE_NAME_MAP = "hbase.replication.thrift.tablename.map";
   private static Object tableNameMapLock = new Object();
-  protected static Map<String, String> tableNameMap = null;
+  public static Map<String, String> tableNameMap = null;
   private Configuration conf;
   private final String peerId;
   private boolean isSecure;
@@ -67,7 +67,7 @@ public class ThriftClient {
   public ThriftClient(Configuration conf, String peerId) throws IOException {
     this.conf = conf;
     this.peerId = peerId;
-    this.isSecure = User.isHBaseSecurityEnabled(conf) && ThriftUtilities.thriftSecureEnabled(conf);
+    this.isSecure = ThriftUtilities.useSecure(conf);
     loadTableNameMap(conf.get(HBASE_REPLICATION_THRIFT_TABLE_NAME_MAP));
   }
 
@@ -92,7 +92,7 @@ public class ThriftClient {
       }
     }
   }
-
+  
   private THBaseService.Client createClient(String host, int port) throws IOException,
       TTransportException {
     boolean isCompact =
