@@ -168,7 +168,7 @@ module Hbase
 
     #----------------------------------------------------------------------------------------------
     # Set per node bandwidth for the specified peer 
-    def set_peer_bandwidth(peer, bandwidth)
+    def set_peer_bandwidth(id, bandwidth)
       @replication_admin.setPeerBandwidth(id, bandwidth)
     end
   end

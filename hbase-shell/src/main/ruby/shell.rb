@@ -347,6 +347,7 @@ Shell.load_command_group(
     enable_table_replication
     disable_table_replication
     upgrade_tablecfs
+    set_peer_bandwidth
   ]
 )
 
