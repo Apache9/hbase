@@ -403,12 +403,20 @@ AssignmentManager assignmentManager = master.getAssignmentManager();
         <%if (frags != null) %>
             <td align="center"><% frags.get(htDesc.getTableName().getNameAsString()) != null ? frags.get(htDesc.getTableName().getQualifierAsString()).intValue() + "%" : "n/a" %></td>
         </%if>
-        <td><% openRegionsCount %></td>
+        <%if (openRegionsCount <= 1) %>
+          <td><span style="color:red"><% openRegionsCount %></span></td>
+        <%else>
+          <td><% openRegionsCount %></td>
+        </%if>
         <td><% offlineRegionsCount %></td>
         <td><% failedRegionsCount %></td>
         <td><% splitRegionsCount %></td>
         <td><% otherRegionsCount %></td>
-        <td><% htDesc.toStringCustomizedValues() %></td>
+        <td>
+          <span class="more">
+            <% htDesc.toStringCustomizedValues() %>
+          </span>
+        </td>
     </tr>
     </%for>
     <p><% tables.length %> table(s) in set. [<a href=tablesDetailed.jsp>Details</a>]</p>
@@ -544,7 +552,11 @@ AssignmentManager assignmentManager = master.getAssignmentManager();
         <td><% peerConfig.getState() %></td>
         <td><% peerConfig.getProtocol() %></td>
         <td><% peerConfig.getBandwidth() %></td>
-        <td><% TableCFsHelper.convert(peerConfig.getTableCFs()).replaceAll(";", "; ") %></td>
+        <td>
+          <span class="more">
+            <% TableCFsHelper.convert(peerConfig.getTableCFs()).replaceAll(";", "; ") %>
+          </span>
+        </td>
     </tr>
     </%for>
 </%if>
