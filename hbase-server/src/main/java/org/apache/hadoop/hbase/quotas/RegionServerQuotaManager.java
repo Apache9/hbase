@@ -74,6 +74,7 @@ public class RegionServerQuotaManager {
 
   private final int readCapacityUnit;
   private final int writeCapacityUnit;
+  private final int scanCapacityUnit;
 
   private final Configuration conf;
 
@@ -86,6 +87,8 @@ public class RegionServerQuotaManager {
       QuotaUtil.DEFAULT_READ_CAPACITY_UNIT);
     this.writeCapacityUnit = this.conf.getInt(QuotaUtil.WRITE_CAPACITY_UNIT_CONF_KEY,
       QuotaUtil.DEFAULT_WRITE_CAPACITY_UNIT);
+    this.scanCapacityUnit = this.conf.getInt(QuotaUtil.SCAN_CAPACITY_UNIT_CONF_KEY,
+      QuotaUtil.DEFAULT_SCAN_CAPACITY_UNIT);
   }
 
   public void start(final RpcScheduler rpcScheduler) throws IOException {
@@ -480,7 +483,7 @@ public class RegionServerQuotaManager {
   }
 
   public int calculateRequestUnitNum(final List<Result> results) {
-    return (int) calculateReadCapacityUnitNum(QuotaUtil.calculateResultSize(results));
+    return (int) calculateScanCapacityUnitNum(QuotaUtil.calculateResultSize(results));
   }
 
   public int calculateRequestUnitNum(final Mutation mutation) {
@@ -505,6 +508,10 @@ public class RegionServerQuotaManager {
 
   public long calculateWriteCapacityUnitNum(final long size) {
     return (long) Math.ceil(size * 1.0 / this.writeCapacityUnit);
+  }
+
+  public long calculateScanCapacityUnitNum(final long size) {
+    return (long) Math.ceil(size * 1.0 / this.scanCapacityUnit);
   }
 
   public long getQuotaReadAvailable(OperationQuota quota) {

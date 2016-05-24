@@ -68,6 +68,8 @@ public class QuotaUtil extends QuotaTableUtil {
   public static final int DEFAULT_READ_CAPACITY_UNIT = 1024;
   public static final String WRITE_CAPACITY_UNIT_CONF_KEY = "hbase.write.capacity.unit";
   public static final int DEFAULT_WRITE_CAPACITY_UNIT = 1024;
+  public static final String SCAN_CAPACITY_UNIT_CONF_KEY = "hbase.scan.capacity.unit";
+  public static final int DEFAULT_SCAN_CAPACITY_UNIT = 1024 * 16;
 
   public static final String THROTTLING_MIN_WAIT_INTERVAL = "hbase.throttling.min.wait.interval";
   public static final long DEFAULT_THROTTLING_MIN_WAIT_INTERVAL = 10;
