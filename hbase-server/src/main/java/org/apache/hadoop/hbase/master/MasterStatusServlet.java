@@ -19,7 +19,6 @@
 package org.apache.hadoop.hbase.master;
 
 import java.io.IOException;
-
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -34,9 +33,11 @@ import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
+import org.apache.hadoop.hbase.client.replication.ReplicationAdmin;
 import org.apache.hadoop.hbase.util.FSUtils;
 import org.apache.hadoop.hbase.protobuf.RequestConverter;
 import org.apache.hadoop.hbase.tmpl.master.MasterStatusTmpl;
+
 import com.google.protobuf.ServiceException;
 
 /**
@@ -57,6 +58,7 @@ public class MasterStatusServlet extends HttpServlet {
 
     Configuration conf = master.getConfiguration();
     HBaseAdmin admin = new HBaseAdmin(conf);
+    ReplicationAdmin repAdmin = new ReplicationAdmin(conf);
 
     Map<String, Integer> frags = getFragmentationInfo(master, conf);
     ServerName metaLocation = null;
@@ -86,14 +88,14 @@ public class MasterStatusServlet extends HttpServlet {
           RequestConverter.buildIsCatalogJanitorEnabledRequest()).getValue());
     } catch (ServiceException s) {
       admin.close();
+      repAdmin.close();
       throw new IOException(s);
     }
     if (request.getParameter("filter") != null)
       tmpl.setFilter(request.getParameter("filter"));
     if (request.getParameter("format") != null)
       tmpl.setFormat(request.getParameter("format"));
-    tmpl.render(response.getWriter(),
-          master, admin);
+    tmpl.render(response.getWriter(), master, admin, repAdmin);
   }
 
   private ServerName getMetaLocationOrNull(HMaster master) {

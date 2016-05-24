@@ -19,6 +19,7 @@ limitations under the License.
 <%args>
 HMaster master;
 HBaseAdmin admin;
+ReplicationAdmin repAdmin;
 Map<String, Integer> frags = null;
 ServerName metaLocation = null;
 List<ServerName> servers = null;
@@ -46,6 +47,9 @@ org.apache.hadoop.hbase.TableLoad;
 org.apache.hadoop.hbase.TableName;
 org.apache.hadoop.hbase.client.HBaseAdmin;
 org.apache.hadoop.hbase.client.HConnectionManager;
+org.apache.hadoop.hbase.client.replication.ReplicationAdmin;
+org.apache.hadoop.hbase.client.replication.TableCFsHelper;
+org.apache.hadoop.hbase.replication.ReplicationPeerConfig;
 org.apache.hadoop.hbase.HRegionInfo;
 org.apache.hadoop.hbase.master.RegionState;
 org.apache.hadoop.hbase.HTableDescriptor;
@@ -212,6 +216,11 @@ AssignmentManager assignmentManager = master.getAssignmentManager();
             </div>
         </section>
         <& AssignmentManagerStatusTmpl; assignmentManager=master.getAssignmentManager()&>
+
+		<section>
+			<h2>Peers</h2>
+			<& peerConfigs &>
+		</section>
 	<%else>
         <section>
             <& BackupMasterStatusTmpl; master = master &>
@@ -508,4 +517,37 @@ AssignmentManager assignmentManager = master.getAssignmentManager();
 <%java>
    HConnectionManager.deleteConnection(admin.getConfiguration());
 </%java>
+</%def>
+
+<%def peerConfigs>
+<%java>
+    Map<String, ReplicationPeerConfig> allPeerConfigs = repAdmin.listPeerConfigs();
+</%java>
+<table class="table table-striped">
+    <tr>
+        <th>Peer Id</th>
+        <th>Cluster Key</th>
+        <th>State</th>
+        <th>Protocol</th>
+        <th>Bandwidth</th>
+        <th>Table Cfs</th>
+    </tr>
+<%if (allPeerConfigs != null && allPeerConfigs.size() > 0)%>
+    <%for Map.Entry<String, ReplicationPeerConfig> entry : allPeerConfigs.entrySet() %>
+    <%java>
+		String peerId = entry.getKey();
+		ReplicationPeerConfig peerConfig = entry.getValue();
+    </%java>
+    <tr>
+        <td><% peerId %></td>
+        <td><% peerConfig.getClusterKey() %></td>
+        <td><% peerConfig.getState() %></td>
+        <td><% peerConfig.getProtocol() %></td>
+        <td><% peerConfig.getBandwidth() %></td>
+        <td><% TableCFsHelper.convert(peerConfig.getTableCFs()).replaceAll(";", "; ") %></td>
+    </tr>
+    </%for>
+</%if>
+<tr><td>Total: <% (allPeerConfigs != null) ? allPeerConfigs.size() : 0 %></td></tr>
+</table>
 </%def>
