@@ -362,10 +362,13 @@ public class StoreFile {
 
   /**
    * @return the cached value of HDFS blocks distribution. The cached value is
-   * calculated when store file is opened.
+   * calculated when fisrt getHDFSBlockDistribution() of this store file.
+   * If some exceptions happen when calculate HDFS blocks distribution and the
+   * cached value is null, it return a empty HDFSBlocksDistribution.
    */
   public HDFSBlocksDistribution getHDFSBlockDistribution() {
-    return this.fileInfo.getHDFSBlockDistribution();
+    HDFSBlocksDistribution hdfsBlocksDistribution = this.fileInfo.getHDFSBlockDistribution(this.fs);
+    return hdfsBlocksDistribution == null ? new HDFSBlocksDistribution() : hdfsBlocksDistribution;
   }
 
   /**
