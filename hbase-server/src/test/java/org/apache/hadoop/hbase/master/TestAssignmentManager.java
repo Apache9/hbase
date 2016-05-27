@@ -81,6 +81,7 @@ import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.mockito.Mockito;
@@ -264,7 +265,7 @@ public class TestAssignmentManager {
     }
   }
 
-  @Test(timeout = 180000)
+  @Ignore ("See https://phabricator.d.xiaomi.net/T6412") @Test(timeout = 180000)
   public void testBalanceOnMasterFailoverScenarioWithClosedNode()
   throws IOException, KeeperException, InterruptedException, ServiceException, DeserializationException {
     AssignmentManagerWithExtrasForTesting am =
@@ -313,7 +314,7 @@ public class TestAssignmentManager {
     }
   }
 
-  @Test(timeout = 180000)
+  @Ignore ("See https://phabricator.d.xiaomi.net/T6412") @Test(timeout = 180000)
   public void testBalanceOnMasterFailoverScenarioWithOfflineNode()
   throws IOException, KeeperException, InterruptedException, ServiceException, DeserializationException {
     AssignmentManagerWithExtrasForTesting am =
