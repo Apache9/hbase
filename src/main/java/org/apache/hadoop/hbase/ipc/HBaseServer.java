@@ -1457,7 +1457,7 @@ public abstract class HBaseServer implements RpcServer {
         }
         if (methodName.startsWith("get") || methodName.equals("next")
             || methodName.equals("openScanner") || methodName.equals("exists")
-            || methodName.equals("close")) {
+            || methodName.equals("close") || methodName.equals("scan")) {
           queueCounter.incIncomeReadCount();
           boolean success = readCallQueue.offer(call);
           if (!success) {
