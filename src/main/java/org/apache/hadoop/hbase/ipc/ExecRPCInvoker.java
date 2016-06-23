@@ -25,6 +25,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.client.*;
 import org.apache.hadoop.hbase.client.coprocessor.Exec;
 import org.apache.hadoop.hbase.client.coprocessor.ExecResult;
+import org.apache.hadoop.hbase.coprocessor.MultiRowMutationProtocol;
 import org.apache.hadoop.hbase.util.Bytes;
 
 import java.lang.reflect.InvocationHandler;
@@ -63,6 +64,18 @@ public class ExecRPCInvoker implements InvocationHandler {
       WritableRpcEngine.DEFAULT_CLIENT_WARN_IPC_RESPONSE_TIME);
   }
 
+  protected boolean isNonIdmpotentMethod(Method method) {
+    // currently, only 'mutateRowsWithConditions' and 'batchMutatesWithConditions' of
+    // MultiRowMutationProtocol is non-idmpotent for coprocessor
+    if (MultiRowMutationProtocol.class.isAssignableFrom(protocol)) {
+      if (method.getName().equals("mutateRowsWithConditions")
+          || method.getName().equals("batchMutatesWithConditions")) {
+        return true;
+      }
+    }
+    return false;
+  }
+  
   @Override
   public Object invoke(Object instance, final Method method, final Object[] args)
       throws Throwable {
@@ -72,8 +85,9 @@ public class ExecRPCInvoker implements InvocationHandler {
 
     if (row != null) {
       final Exec exec = new Exec(conf, row, protocol, method, args);
+      
       ServerCallable<ExecResult> callable =
-          new ServerCallable<ExecResult>(connection, table, row) {
+          new ServerCallable<ExecResult>(connection, table, row, isNonIdmpotentMethod(method)) {
             public ExecResult call() throws Exception {
               return server.execCoprocessor(location.getRegionInfo().getRegionName(),
                   exec);

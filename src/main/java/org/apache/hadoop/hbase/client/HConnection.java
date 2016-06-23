@@ -474,4 +474,14 @@ public interface HConnection extends Abortable, Closeable {
    * @return
    */
   public int getStartLogErrorsAfterCount();
+  
+  /**
+   * Non-idempotent operations include increment/append/checkAndMutate/mutateWithCondition.
+   * If these operation encounter SocketTimeoutException, we don't know whether it has
+   * succeeded in server side, and retry in client side may get incorrect result. This
+   * flag indicate whether we will retry for non-idempotent operations when encountering
+   * SocketTimeoutException.
+   * @return
+   */
+  public boolean isNonIdempotentOperationRetry();
 }

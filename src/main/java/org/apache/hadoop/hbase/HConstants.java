@@ -808,6 +808,9 @@ public final class HConstants {
   public static final String WARN_THRESHOLD_FOR_RAW_SCANNED_COUNT = "hbase.warn.threshold.for.raw.scanned.count";
   public static final int DEFAULT_WARN_THRESHOLD_FOR_RAW_SCANNED = 500;
   
+  public static final String HBASE_NON_IDEMPOTENT_OPERATION_RETRY_KEY = "hbase.nonidempotent.operation.retry";
+  public static final boolean DEFAULT_HBASE_NON_IDEMPOTENT_OPERATION_RETRY = true;
+  
   private HConstants() {
     // Can't be instantiated with this ctor.
   }
