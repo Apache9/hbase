@@ -5761,6 +5761,10 @@ public class HRegion implements HeapSize { // , Writable{
           tempMemstore.put(store, kvs);
         }
         
+        if (coprocessorHost != null) {
+          coprocessorHost.preIncrementWriteHLog(increment, tempMemstore, walEdits);
+        }
+        
         // add row mutations to walEdits if neccessary
         if (mutations != null) {
           // TODO : make sure memstoreTs is not used in HLog?
