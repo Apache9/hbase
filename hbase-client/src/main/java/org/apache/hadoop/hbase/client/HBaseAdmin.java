@@ -356,14 +356,7 @@ public class HBaseAdmin implements Abortable, Closeable {
    * @see #listTables()
    */
   public HTableDescriptor[] listTables(Pattern pattern) throws IOException {
-    List<HTableDescriptor> matched = new LinkedList<HTableDescriptor>();
-    HTableDescriptor[] tables = listTables();
-    for (HTableDescriptor table : tables) {
-      if (pattern.matcher(table.getTableName().getNameAsString()).matches()) {
-        matched.add(table);
-      }
-    }
-    return matched.toArray(new HTableDescriptor[matched.size()]);
+    return this.connection.listTables(pattern.toString());
   }
 
   /**

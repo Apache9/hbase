@@ -30,6 +30,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -40,6 +41,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.regex.Pattern;
 
 import javax.management.ObjectName;
 
@@ -3018,9 +3020,10 @@ MasterServices, Server {
       tableNameList.add(ProtobufUtil.toTableName(tableNamePB));
     }
     boolean bypass = false;
+    String regex = req.hasRegex() ? req.getRegex() : null;
     if (this.cpHost != null) {
       try {
-        bypass = this.cpHost.preGetTableDescriptors(tableNameList, descriptors);
+        bypass = this.cpHost.preGetTableDescriptors(tableNameList, descriptors, regex);
       } catch (IOException ioe) {
         throw new ServiceException(ioe);
       }
@@ -3055,9 +3058,20 @@ MasterServices, Server {
         }
       }
 
+      // Retains only those matched by regular expression.
+      if (regex != null) {
+        Pattern pat = Pattern.compile(regex);
+        for (Iterator<HTableDescriptor> itr = descriptors.iterator(); itr.hasNext();) {
+          HTableDescriptor htd = itr.next();
+          if (!pat.matcher(htd.getTableName().getNameAsString()).matches()) {
+            itr.remove();
+          }
+        }
+      }
+
       if (this.cpHost != null) {
         try {
-          this.cpHost.postGetTableDescriptors(descriptors);
+          this.cpHost.postGetTableDescriptors(descriptors, regex);
         } catch (IOException ioe) {
           throw new ServiceException(ioe);
         }

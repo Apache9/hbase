@@ -20,10 +20,13 @@ package org.apache.hadoop.hbase.security.access;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
+import java.security.PrivilegedAction;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
@@ -44,7 +47,6 @@ import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.KeyValue;
-import org.apache.hadoop.hbase.testclassification.LargeTests;
 import org.apache.hadoop.hbase.MiniHBaseCluster;
 import org.apache.hadoop.hbase.NamespaceDescriptor;
 import org.apache.hadoop.hbase.ServerName;
@@ -89,7 +91,6 @@ import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.protobuf.generated.AccessControlProtos;
 import org.apache.hadoop.hbase.protobuf.generated.AccessControlProtos.AccessControlService;
 import org.apache.hadoop.hbase.protobuf.generated.AccessControlProtos.CheckPermissionsRequest;
-import org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.Quotas;
 import org.apache.hadoop.hbase.regionserver.HRegion;
 import org.apache.hadoop.hbase.regionserver.HRegionServer;
 import org.apache.hadoop.hbase.regionserver.RegionCoprocessorHost;
@@ -97,6 +98,7 @@ import org.apache.hadoop.hbase.regionserver.RegionServerCoprocessorHost;
 import org.apache.hadoop.hbase.regionserver.ScanType;
 import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.security.access.Permission.Action;
+import org.apache.hadoop.hbase.testclassification.LargeTests;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.JVMClusterUtil;
 import org.apache.hadoop.hbase.util.TestTableName;
@@ -114,6 +116,7 @@ import com.google.protobuf.BlockingRpcChannel;
 import com.google.protobuf.RpcCallback;
 import com.google.protobuf.RpcController;
 import com.google.protobuf.Service;
+import com.google.protobuf.ServiceException;
 import com.google.protobuf.ServiceException;
 
 /**
@@ -2496,5 +2499,39 @@ public class TestAccessController extends SecureTestUtil {
 
     verifyAllowed(setNamespaceQuotaAction, SUPERUSER, USER_ADMIN);
     verifyDenied(setNamespaceQuotaAction, USER_CREATE, USER_RW, USER_RO, USER_NONE, USER_OWNER);
+  }
+
+  @Test
+  public void testAccessControlClientUserPerms() throws Exception {
+    try {
+      final String regex = TEST_TABLE.getTableName().getNameAsString();
+      User testUserPerms = User.createUserForTesting(conf, "testUserPerms", new String[0]);
+
+      PrivilegedAction<List<UserPermission>> listTablesRestrictedAction =
+          new PrivilegedAction<List<UserPermission>>() {
+            @Override
+            public List<UserPermission> run() {
+              try {
+                return AccessControlClient.getUserPermissions(conf, regex);
+              } catch (Throwable e) {
+                LOG.error("error during call of AccessControlClient.getUserPermissions. "
+                    + e.getStackTrace());
+                return null;
+              }
+            }
+          };
+      assertNull(testUserPerms.runAs(listTablesRestrictedAction));
+
+      // Grant TABLE ADMIN privs to testUserPerms
+      grantOnTable(TEST_UTIL, testUserPerms.getShortName(),
+          TEST_TABLE.getTableName(), null, null,
+          Permission.Action.ADMIN);
+      List<UserPermission> perms = testUserPerms.runAs(listTablesRestrictedAction);
+      assertNotNull(perms);
+      // USER_ADMIN, USER_CREATE, USER_RW, USER_RO, testUserPerms has row each.
+      assertEquals(5, perms.size());
+    } catch (Throwable e) {
+      throw new HBaseIOException(e);
+    }
   }
 }

@@ -2292,28 +2292,57 @@ public class AccessController extends BaseMasterAndRegionObserver
   @Override
   public void preGetTableDescriptors(ObserverContext<MasterCoprocessorEnvironment> ctx,
       List<TableName> tableNamesList,
-      List<HTableDescriptor> descriptors) throws IOException {
-    // If the list is empty, this is a request for all table descriptors and requires GLOBAL
-    // ADMIN privs.
-    if (tableNamesList == null || tableNamesList.isEmpty()) {
-      requireGlobalPermission("getTableDescriptors", Action.ADMIN, null, null);
+      List<HTableDescriptor> descriptors, String regex) throws IOException {
+    // We are delegating the authorization check to postGetTableDescriptors as we don't have
+    // any concrete set of table names when regex is present.
+    if (regex == null) {
+      // If the list is empty, this is a request for all table descriptors and requires GLOBAL
+      // ADMIN privs.
+      if (tableNamesList == null || tableNamesList.isEmpty()) {
+        requireGlobalPermission("getTableDescriptors", Action.ADMIN, null, null);
+      }
+      // Otherwise, if the requestor has ADMIN or CREATE privs for all listed tables, the
+      // request can be granted.
+      else {
+        // After salted is stored in HTableDescriptor, any operation Read/Write will need to
+        // get table descriptor to judge whether it is a salted table. We don't do any acl
+        // check to getTableDescriptor to keep compatible with old grants.
+        // TODO: grant to users having any permission on any family
+        // MasterServices masterServices = ctx.getEnvironment().getMasterServices();
+        // for (TableName tableName: tableNamesList) {
+        // // Skip checks for a table that does not exist
+        // if (masterServices.getTableDescriptors().get(tableName) == null) {
+        // continue;
+        // }
+        // requirePermission("getTableDescriptors", tableName, null, null,
+        // Action.ADMIN, Action.CREATE);
+        // }
+      }
     }
-    // Otherwise, if the requestor has ADMIN or CREATE privs for all listed tables, the
-    // request can be granted.
-    else {
-      // After salted is stored in HTableDescriptor, any operation Read/Write will need to
-      // get table descriptor to judge whether it is a salted table. We don't do any acl
-      // check to getTableDescriptor to keep compatible with old grants.
-      // TODO: grant to users having any permission on any family
-//      MasterServices masterServices = ctx.getEnvironment().getMasterServices();
-//      for (TableName tableName: tableNamesList) {
-//        // Skip checks for a table that does not exist
-//        if (masterServices.getTableDescriptors().get(tableName) == null) {
-//          continue;
-//        }
-//        requirePermission("getTableDescriptors", tableName, null, null,
-//          Action.ADMIN, Action.CREATE);
-//      }
+  }
+
+  @Override
+  public void postGetTableDescriptors(ObserverContext<MasterCoprocessorEnvironment> ctx,
+      List<HTableDescriptor> descriptors, String regex) throws IOException {
+    // Skipping as checks in this case are already done by preGetTableDescriptors.
+    if (regex == null) {
+      return;
+    }
+    int numMatchedTables = descriptors.size();
+    // Retains only those which passes authorization checks, as the checks weren't done as part
+    // of preGetTableDescriptors.
+    for(Iterator<HTableDescriptor> itr = descriptors.iterator(); itr.hasNext();) {
+      HTableDescriptor htd = itr.next();
+      try {
+        requirePermission("getTableDescriptors", htd.getTableName(), null, null,
+            Action.ADMIN, Action.CREATE);
+      } catch(AccessDeniedException exception) {
+        itr.remove();
+      }
+    }
+    // Throws exception if none of the matched tables are authorized for the user.
+    if(numMatchedTables > 0 && descriptors.size() == 0) {
+      throw new AccessDeniedException("Insufficient permissions for accessing tables");
     }
   }
 
