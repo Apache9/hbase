@@ -153,7 +153,7 @@ public class Compressor {
         throw new IOException("Missing dictionary entry for index "
             + dictIdx);
       }
-      if (to.length - offset >= entry.length) {
+      if (to.length - offset < entry.length) {
         throw new IOException("Wrong data length of log entry");
       }
       // now we write the uncompressed value.
