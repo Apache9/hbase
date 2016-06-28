@@ -35,16 +35,16 @@ import org.apache.hadoop.hbase.replication.regionserver.ReplicationSourceManager
 public class ReplicationSourceDummy implements ReplicationSourceInterface {
 
   ReplicationSourceManager manager;
-  String peerClusterId;
+  String peerClusterZnode;
   Path currentPath;
 
   @Override
   public void init(Configuration conf, FileSystem fs,
                    ReplicationSourceManager manager, Stoppable stopper,
-                   AtomicBoolean replicating, String peerClusterId)
+                   AtomicBoolean replicating, String peerClusterZnode)
       throws IOException {
     this.manager = manager;
-    this.peerClusterId = peerClusterId;
+    this.peerClusterZnode = peerClusterZnode;
   }
 
   @Override
@@ -74,14 +74,14 @@ public class ReplicationSourceDummy implements ReplicationSourceInterface {
 
   @Override
   public String getPeerClusterZnode() {
-    return peerClusterId;
+    return peerClusterZnode;
   }
 
   @Override
   public String getPeerClusterId() {
-    String[] parts = peerClusterId.split("-", 2);
+    String[] parts = peerClusterZnode.split("-", 2);
     return parts.length != 1 ?
-        parts[0] : peerClusterId;
+        parts[0] : peerClusterZnode;
   }
 
   @Override

@@ -368,7 +368,7 @@ public class ReplicationSourceManager {
    * @param manager the manager to use
    * @param stopper the stopper object for this region server
    * @param replicating the status of the replication on this cluster
-   * @param peerId the id of the peer cluster
+   * @param peerClusterZnode the name of our znode
    * @return the created source
    * @throws IOException
    */
@@ -378,7 +378,7 @@ public class ReplicationSourceManager {
       final ReplicationSourceManager manager,
       final Stoppable stopper,
       final AtomicBoolean replicating,
-      final String peerId) throws IOException {
+      final String peerClusterZnode) throws IOException {
     ReplicationSourceInterface src;
     try {
       @SuppressWarnings("rawtypes")
@@ -391,7 +391,7 @@ public class ReplicationSourceManager {
       src = new ReplicationSource();
 
     }
-    src.init(conf, fs, manager, stopper, replicating, peerId);
+    src.init(conf, fs, manager, stopper, replicating, peerClusterZnode);
     return src;
   }
 
@@ -445,7 +445,7 @@ public class ReplicationSourceManager {
     }
     for (ReplicationSourceInterface src : oldSourcesToDelete) {
       src.terminate(terminateMessage);
-      closeRecoveredQueue((src));
+      closeRecoveredQueue(src);
     }
     LOG.info("Number of deleted recovered sources for " + id + ": "
         + oldSourcesToDelete.size());
@@ -659,13 +659,15 @@ public class ReplicationSourceManager {
       }
 
       for (Map.Entry<String, SortedSet<String>> entry : newQueues.entrySet()) {
-        String peerId = entry.getKey();
+        String peerZnode = entry.getKey();
         try {
           ReplicationSourceInterface src = getReplicationSource(conf,
-              fs, ReplicationSourceManager.this, stopper, replicating, peerId);
+              fs, ReplicationSourceManager.this, stopper, replicating, peerZnode);
           if (!zkHelper.getPeerClusters().containsKey(src.getPeerClusterId())) {
             src.terminate("Recovered queue doesn't belong to any current peer");
-            break;
+            // the source does not exists so do not need to close.
+            zkHelper.deleteSource(peerZnode, false);
+            continue;
           }
           oldsources.add(src);
           SortedSet<String> hlogsSet = entry.getValue();
@@ -673,7 +675,7 @@ public class ReplicationSourceManager {
             src.enqueueLog(new Path(oldLogDir, hlog));
           }
           src.startup();
-          hlogsByIdRecoveredQueues.put(peerId, hlogsSet);
+          hlogsByIdRecoveredQueues.put(peerZnode, hlogsSet);
         } catch (IOException e) {
           // TODO manage it
           LOG.error("Failed creating a source", e);
@@ -739,6 +741,6 @@ public class ReplicationSourceManager {
         load.setReplicationLag(replicationLag);
       }
     }
-    return new LinkedList(replications.values());
+    return new LinkedList<ReplicationLoad>(replications.values());
   }
 }
