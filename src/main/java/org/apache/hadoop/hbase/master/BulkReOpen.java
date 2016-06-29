@@ -38,6 +38,8 @@ public class BulkReOpen extends BulkAssigner {
   private final Map<ServerName, List<HRegionInfo>> rsToRegions;
   private final AssignmentManager assignmentManager;
   private static final Log LOG = LogFactory.getLog(BulkReOpen.class);
+  // max estimated time to reopen a region
+  private static final long MAX_REGION_REOPEN_TIME = 20000;
 
   public BulkReOpen(final Server server,
       final Map<ServerName, List<HRegionInfo>> serverToRegions,
@@ -130,5 +132,17 @@ public class BulkReOpen extends BulkAssigner {
 
   public boolean bulkReOpen() throws InterruptedException, IOException {
     return bulkAssign();
+  }
+  
+  protected long getTimeoutOnRIT() {
+    int regionCount = 0;
+    for (List<HRegionInfo> regions : rsToRegions.values()) {
+      regionCount += regions.size();
+    }
+    long timeoutByRegionCount = (regionCount * MAX_REGION_REOPEN_TIME) / getThreadCount();
+    long configuredTimeout = super.getTimeoutOnRIT();
+    LOG.info("BulkReOpen timeoutOnRIT, regionCount=" + regionCount + ", timeoutByRegionCount="
+        + timeoutByRegionCount + ", configuredTimeout=" + configuredTimeout);
+    return Math.max(timeoutByRegionCount, configuredTimeout);
   }
 }
