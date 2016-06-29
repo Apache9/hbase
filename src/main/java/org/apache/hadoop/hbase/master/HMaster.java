@@ -97,6 +97,7 @@ import org.apache.hadoop.hbase.ipc.RequestContext;
 import org.apache.hadoop.hbase.ipc.RpcServer;
 import org.apache.hadoop.hbase.master.cleaner.HFileCleaner;
 import org.apache.hadoop.hbase.master.cleaner.LogCleaner;
+import org.apache.hadoop.hbase.master.cleaner.ReplicationZKLockCleanerChore;
 import org.apache.hadoop.hbase.master.handler.CreateTableHandler;
 import org.apache.hadoop.hbase.master.handler.DeleteTableHandler;
 import org.apache.hadoop.hbase.master.handler.DisableTableHandler;
@@ -115,6 +116,7 @@ import org.apache.hadoop.hbase.monitoring.TaskMonitor;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.SnapshotDescription;
 import org.apache.hadoop.hbase.regionserver.CompactionQuota;
 import org.apache.hadoop.hbase.regionserver.wal.HLog;
+import org.apache.hadoop.hbase.replication.ReplicationZookeeper;
 import org.apache.hadoop.hbase.replication.regionserver.Replication;
 import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.snapshot.HSnapshotDescription;
@@ -250,7 +252,7 @@ Server {
   private CatalogJanitor catalogJanitorChore;
   private LogCleaner logCleaner;
   private HFileCleaner hfileCleaner;
-
+  private ReplicationZKLockCleanerChore zkLockCleanerChore;
   private MasterCoprocessorHost cpHost;
   private final ServerName serverName;
 
@@ -1086,6 +1088,15 @@ Server {
     this.hfileCleaner = new HFileCleaner(cleanerInterval, this, conf, getMasterFileSystem()
         .getFileSystem(), archiveDir);
     Threads.setDaemonThreadRunning(hfileCleaner.getThread(), n + ".archivedHFileCleaner");
+    if (!conf.getBoolean(HConstants.ZOOKEEPER_USEMULTI, true)) {
+      try {
+        this.zkLockCleanerChore = new ReplicationZKLockCleanerChore(cleanerInterval, this,
+            new ReplicationZookeeper(this, conf, zooKeeper));
+      } catch (KeeperException e) {
+        LOG.warn("ReplicationZKLockCleanerChore failing in creation", e);
+      }
+      Threads.setDaemonThreadRunning(zkLockCleanerChore.getThread(), "zkLockCleanerChore");
+    }
 
    // Start the health checker
    if (this.healthCheckChore != null) {
@@ -1113,7 +1124,7 @@ Server {
     // Clean up and close up shop
     if (this.logCleaner!= null) this.logCleaner.interrupt();
     if (this.hfileCleaner != null) this.hfileCleaner.interrupt();
-
+    if (this.zkLockCleanerChore != null) this.zkLockCleanerChore.interrupt();
     if (this.infoServer != null) {
       LOG.info("Stopping infoServer");
       try {

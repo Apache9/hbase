@@ -21,9 +21,14 @@ package org.apache.hadoop.hbase.replication;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -37,10 +42,12 @@ import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.replication.ReplicationAdmin;
 import org.apache.hadoop.hbase.coprocessor.CoprocessorHost;
+import org.apache.hadoop.hbase.master.cleaner.ReplicationZKLockCleanerChore;
 import org.apache.hadoop.hbase.replication.ReplicationZookeeper.PeerProtocol;
 import org.apache.hadoop.hbase.replication.ReplicationZookeeper.PeerState;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.zookeeper.MiniZooKeeperCluster;
+import org.apache.hadoop.hbase.zookeeper.ZKUtil;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -97,6 +104,9 @@ public class TestMultiSlaveReplication {
     conf1.setLong(HConstants.THREAD_WAKE_FREQUENCY, 100);
     conf1.setStrings(CoprocessorHost.USER_REGION_COPROCESSOR_CONF_KEY,
         "org.apache.hadoop.hbase.replication.TestMasterReplication$CoprocessorCounter");
+    conf1.setBoolean(HConstants.ZOOKEEPER_USEMULTI , false);// for testZKLockCleaner
+    conf1.setInt("hbase.master.cleaner.interval", 5 * 1000);
+    ReplicationZKLockCleanerChore.TTL = 0;
 
     utility1 = new HBaseTestingUtility(conf1);
     utility1.startMiniZKCluster();
@@ -373,6 +383,36 @@ public class TestMultiSlaveReplication {
     admin1.removePeer("3");
 
     utility3.shutdownMiniCluster();
+    utility2.shutdownMiniCluster();
+    utility1.shutdownMiniCluster();
+  }
+
+  @Test
+  public void testZKLockCleaner() throws Exception {
+    MiniHBaseCluster master = utility1.startMiniCluster(1, 2);
+    utility2.startMiniCluster();
+    HBaseAdmin admin = new HBaseAdmin(conf1);
+    admin.createTable(tabA);
+    new HBaseAdmin(conf2).createTable(tabA);
+    ReplicationAdmin replicationAdmin = new ReplicationAdmin(conf1);
+    replicationAdmin.addPeer("2", utility2.getClusterKey(), "ENABLED", "TA", null,
+        PeerProtocol.NATIVE.toString());
+
+    ReplicationZookeeper zk = new ReplicationZookeeper(master.getRegionServer(0),
+        new AtomicBoolean(true));
+    List<String> replicators = zk.getListOfReplicators();
+    assertEquals(2, replicators.size());
+    String zNode = master.getRegionServer(1).getServerName().toString();
+
+    assertTrue(zk.lockOtherRS(zNode));
+    assertTrue(zk.checkLockExist(zNode));
+    Thread.sleep(10000);
+    assertTrue(zk.checkLockExist(zNode));
+    master.abortRegionServer(0);
+    Thread.sleep(10000);
+    zk = new ReplicationZookeeper(master.getRegionServer(1), new AtomicBoolean(true));
+    assertFalse(zk.checkLockExist(zNode));
+
     utility2.shutdownMiniCluster();
     utility1.shutdownMiniCluster();
   }
