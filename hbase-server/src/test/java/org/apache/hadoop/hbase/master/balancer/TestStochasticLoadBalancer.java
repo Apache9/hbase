@@ -349,7 +349,7 @@ public class TestStochasticLoadBalancer extends BalancerTestBase {
     assertNull(plans);
   }
 
-  @Test (timeout = 60000)
+  @Test (timeout = 600000)
   public void testSmallCluster() {
     int numNodes = 10;
     int numRegions = 1000;
@@ -358,7 +358,7 @@ public class TestStochasticLoadBalancer extends BalancerTestBase {
     testWithCluster(numNodes, numRegions, numRegionsPerServer, numTables, true);
   }
 
-  @Test (timeout = 60000)
+  @Test (timeout = 600000)
   public void testSmallCluster2() {
     int numNodes = 20;
     int numRegions = 2000;
@@ -367,7 +367,7 @@ public class TestStochasticLoadBalancer extends BalancerTestBase {
     testWithCluster(numNodes, numRegions, numRegionsPerServer, numTables, true);
   }
 
-  @Test (timeout = 60000)
+  @Test (timeout = 600000)
   public void testSmallCluster3() {
     int numNodes = 20;
     int numRegions = 2000;

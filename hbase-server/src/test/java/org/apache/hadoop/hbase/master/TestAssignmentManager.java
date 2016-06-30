@@ -204,7 +204,7 @@ public class TestAssignmentManager {
    * @throws InterruptedException
    * @throws DeserializationException
    */
-  @Test(timeout = 180000)
+  @Ignore ("See https://phabricator.d.xiaomi.net/T6412") @Test(timeout = 180000)
   public void testBalanceOnMasterFailoverScenarioWithOpenedNode()
   throws IOException, KeeperException, InterruptedException, ServiceException, DeserializationException {
     AssignmentManagerWithExtrasForTesting am =
