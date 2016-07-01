@@ -968,6 +968,7 @@ public abstract class HBaseServer implements RpcServer {
         if (processResponse(call.connection.responseQueue, false)) {
           try {
             key.interestOps(0);
+            key.attach(null);
           } catch (CancelledKeyException e) {
             /* The Listener/reader might have closed the socket.
              * We don't explicitly cancel the key, so not sure if this will
