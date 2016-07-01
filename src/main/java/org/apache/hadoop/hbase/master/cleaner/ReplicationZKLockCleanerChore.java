@@ -32,7 +32,8 @@ public class ReplicationZKLockCleanerChore extends Chore {
     this.zookeeper = zk;
   }
 
-  @Override protected void chore() {
+  @Override
+  protected void chore() {
     try {
       List<String> regionServers = zookeeper.getRegisteredRegionServers();
       if (regionServers == null) {

@@ -1088,15 +1088,17 @@ Server {
     this.hfileCleaner = new HFileCleaner(cleanerInterval, this, conf, getMasterFileSystem()
         .getFileSystem(), archiveDir);
     Threads.setDaemonThreadRunning(hfileCleaner.getThread(), n + ".archivedHFileCleaner");
+
     if (!conf.getBoolean(HConstants.ZOOKEEPER_USEMULTI, true)) {
       try {
         this.zkLockCleanerChore = new ReplicationZKLockCleanerChore(cleanerInterval, this,
             new ReplicationZookeeper(this, conf, zooKeeper));
+        Threads.setDaemonThreadRunning(zkLockCleanerChore.getThread(), "zkLockCleanerChore");
       } catch (KeeperException e) {
-        LOG.warn("ReplicationZKLockCleanerChore failing in creation", e);
+        LOG.error("ReplicationZKLockCleanerChore failing in creation", e);
       }
-      Threads.setDaemonThreadRunning(zkLockCleanerChore.getThread(), "zkLockCleanerChore");
     }
+
 
    // Start the health checker
    if (this.healthCheckChore != null) {
@@ -1863,6 +1865,17 @@ Server {
     }
 
     this.zooKeeper.reconnectAfterExpiration();
+    if (this.zkLockCleanerChore != null) {
+      this.zkLockCleanerChore.interrupt();
+      int cleanerInterval = conf.getInt("hbase.master.cleaner.interval", 60 * 1000);
+      try {
+        this.zkLockCleanerChore = new ReplicationZKLockCleanerChore(cleanerInterval, this,
+            new ReplicationZookeeper(this, conf, zooKeeper));
+        Threads.setDaemonThreadRunning(zkLockCleanerChore.getThread(), "zkLockCleanerChore");
+      } catch (KeeperException e) {
+        LOG.error("ReplicationZKLockCleanerChore failing in creation", e);
+      }
+    }
 
     Callable<Boolean> callable = new Callable<Boolean> () {
       public Boolean call() throws InterruptedException,
