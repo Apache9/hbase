@@ -43,37 +43,37 @@ public class TestHBaseClient {
     InetSocketAddress ia4 = InetSocketAddress.createUnresolved("badtoo", 13);
 
 
-    Assert.assertFalse( fs.isFailedServer(ia) );
+    Assert.assertFalse(fs.getFailedServer(ia)!= null );
 
     fs.addToFailedServers(ia);
-    Assert.assertTrue( fs.isFailedServer(ia) );
-    Assert.assertTrue( fs.isFailedServer(ia2) );
+    Assert.assertTrue( fs.getFailedServer(ia)!= null );
+    Assert.assertTrue(fs.getFailedServer(ia2)!= null );
 
-    ee.incValue( 1 );
-    Assert.assertTrue( fs.isFailedServer(ia) );
-    Assert.assertTrue( fs.isFailedServer(ia2) );
+    ee.incValue(1);
+    Assert.assertTrue( fs.getFailedServer(ia)!= null );
+    Assert.assertTrue( fs.getFailedServer(ia2)!= null );
 
     ee.incValue( RpcClient.FAILED_SERVER_EXPIRY_DEFAULT + 1 );
-    Assert.assertFalse( fs.isFailedServer(ia) );
-    Assert.assertFalse( fs.isFailedServer(ia2) );
+    Assert.assertFalse( fs.getFailedServer(ia)!=null );
+    Assert.assertFalse( fs.getFailedServer(ia2)!=null );
 
     fs.addToFailedServers(ia);
     fs.addToFailedServers(ia3);
     fs.addToFailedServers(ia4);
 
-    Assert.assertTrue( fs.isFailedServer(ia) );
-    Assert.assertTrue( fs.isFailedServer(ia2) );
-    Assert.assertTrue( fs.isFailedServer(ia3) );
-    Assert.assertTrue( fs.isFailedServer(ia4) );
+    Assert.assertTrue( fs.getFailedServer(ia)!=null );
+    Assert.assertTrue( fs.getFailedServer(ia2)!=null );
+    Assert.assertTrue( fs.getFailedServer(ia3)!=null );
+    Assert.assertTrue( fs.getFailedServer(ia4)!=null );
 
     ee.incValue( RpcClient.FAILED_SERVER_EXPIRY_DEFAULT + 1 );
-    Assert.assertFalse( fs.isFailedServer(ia) );
-    Assert.assertFalse( fs.isFailedServer(ia2) );
-    Assert.assertFalse( fs.isFailedServer(ia3) );
-    Assert.assertFalse( fs.isFailedServer(ia4) );
+    Assert.assertFalse( fs.getFailedServer(ia)!=null );
+    Assert.assertFalse( fs.getFailedServer(ia2)!=null );
+    Assert.assertFalse( fs.getFailedServer(ia3)!=null );
+    Assert.assertFalse( fs.getFailedServer(ia4)!=null );
 
 
     fs.addToFailedServers(ia3);
-    Assert.assertFalse( fs.isFailedServer(ia4) );
+    Assert.assertFalse( fs.getFailedServer(ia4)!=null );
   }
 }
