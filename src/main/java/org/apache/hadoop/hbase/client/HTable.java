@@ -938,7 +938,7 @@ public class HTable implements HTableInterface {
       throw new IOException(
           "Invalid arguments to append, no columns specified");
     }
-    return new ServerCallable<Result>(connection, tableName, append.getRow(), operationTimeout) {
+    return new ServerCallable<Result>(connection, tableName, append.getRow(), operationTimeout, true) {
           public Result call() throws IOException {
             return server.append(
                 location.getRegionInfo().getRegionName(), append);
@@ -955,7 +955,7 @@ public class HTable implements HTableInterface {
       throw new IOException(
           "Invalid arguments to increment, no columns specified");
     }
-    return new ServerCallable<Result>(connection, tableName, increment.getRow(), operationTimeout) {
+    return new ServerCallable<Result>(connection, tableName, increment.getRow(), operationTimeout, true) {
           public Result call() throws IOException {
             return server.increment(
                 location.getRegionInfo().getRegionName(), increment);
@@ -1006,7 +1006,7 @@ public class HTable implements HTableInterface {
       }
     }
     
-    return new ServerCallable<Result>(connection, tableName, increment.getRow(), operationTimeout) {
+    return new ServerCallable<Result>(connection, tableName, increment.getRow(), operationTimeout, true) {
           public Result call() throws IOException {
             return server.incrementAndMutate(
                 location.getRegionInfo().getRegionName(), increment, rowMutation);
@@ -1041,7 +1041,7 @@ public class HTable implements HTableInterface {
       throw new IOException(
           "Invalid arguments to incrementColumnValue", npe);
     }
-    return new ServerCallable<Long>(connection, tableName, row, operationTimeout) {
+    return new ServerCallable<Long>(connection, tableName, row, operationTimeout, true) {
           public Long call() throws IOException {
             return server.incrementColumnValue(
                 location.getRegionInfo().getRegionName(), row, family,
@@ -1058,7 +1058,7 @@ public class HTable implements HTableInterface {
       final byte [] family, final byte [] qualifier, final byte [] value,
       final Put put)
   throws IOException {
-    return new ServerCallable<Boolean>(connection, tableName, row, operationTimeout) {
+    return new ServerCallable<Boolean>(connection, tableName, row, operationTimeout, true) {
           public Boolean call() throws IOException {
             return server.checkAndPut(location.getRegionInfo().getRegionName(),
                 row, family, qualifier, value, put) ? Boolean.TRUE : Boolean.FALSE;
@@ -1074,7 +1074,7 @@ public class HTable implements HTableInterface {
       final byte [] family, final byte [] qualifier, final CompareOp compareOp,
       final byte [] value, final Put put)
   throws IOException {
-    return new ServerCallable<Boolean>(connection, tableName, row, operationTimeout) {
+    return new ServerCallable<Boolean>(connection, tableName, row, operationTimeout, true) {
           public Boolean call() throws IOException {
             return server.checkAndPut(location.getRegionInfo().getRegionName(),
                 row, family, qualifier, compareOp, new BinaryComparator(value),
@@ -1091,7 +1091,7 @@ public class HTable implements HTableInterface {
       final byte [] family, final byte [] qualifier, final byte [] value,
       final Delete delete)
   throws IOException {
-    return new ServerCallable<Boolean>(connection, tableName, row, operationTimeout) {
+    return new ServerCallable<Boolean>(connection, tableName, row, operationTimeout, true) {
           public Boolean call() throws IOException {
             return server.checkAndDelete(
                 location.getRegionInfo().getRegionName(),
@@ -1108,7 +1108,7 @@ public class HTable implements HTableInterface {
   public boolean checkAndDelete(final byte[] row,
       final byte[] family, final byte[] qualifier, final CompareOp compareOp,
       final byte[] value, final Delete delete) throws IOException {
-    return new ServerCallable<Boolean>(connection, tableName, row, operationTimeout) {
+    return new ServerCallable<Boolean>(connection, tableName, row, operationTimeout, true) {
       public Boolean call() throws IOException {
         return server.checkAndDelete(location.getRegionInfo().getRegionName(),
           row, family, qualifier, compareOp, new BinaryComparator(value),
@@ -1123,7 +1123,7 @@ public class HTable implements HTableInterface {
   @Override
   public boolean checkAndMutate(final Check check, final Mutation mutate)
       throws IOException {
-    return new ServerCallable<Boolean>(connection, tableName, mutate.getRow(), operationTimeout) {
+    return new ServerCallable<Boolean>(connection, tableName, mutate.getRow(), operationTimeout, true) {
       public Boolean call() throws IOException {
         return server.checkAndMutate(location.getRegionInfo().getRegionName(), check, mutate);
       }

@@ -23,6 +23,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -165,6 +166,41 @@ public class TestDefaultLoadBalancer extends BalancerTestBase {
 
   }
 
+  @Test
+  public void testAdjustPerTableBalance() throws Exception {
+    // region is balanced per-table, but not globally
+    int[] tableRegionStateA = new int[]{1, 1, 1, 1, 1};
+    int[] tableRegionStateB = new int[]{2, 2, 2, 1, 1};
+    int[] tableRegionStateC = new int[]{2, 2, 1, 1, 1};
+    int[][] tableRegionStates = new int[][] { tableRegionStateA, tableRegionStateB,
+        tableRegionStateC };
+    String[] tableNames = new String[] { "tableRegionStateA", "tableRegionStateB",
+        "tableRegionStateC" };
+    ServerName[] serverNames = new ServerName[tableRegionStateA.length];
+    for (int i = 0; i < tableRegionStateA.length; ++i) {
+      serverNames[i] = randomServer(0).getServerName();
+    }
+    
+    Map<String, Map<ServerName, List<HRegionInfo>>> clusterState = new HashMap<String, Map<ServerName, List<HRegionInfo>>>();
+    List<RegionPlan> plans = new ArrayList<RegionPlan>();
+    for (int i = 0; i < tableNames.length; ++i) {
+      Map<ServerName, List<HRegionInfo>> servers = new HashMap<ServerName, List<HRegionInfo>>();
+      for (int j = 0; j < tableRegionStates[i].length; ++j) {
+        servers.put(serverNames[j], randomRegions(tableRegionStates[i][j], -1, tableNames[i]));
+      }
+      clusterState.put(tableNames[i], servers);
+      List<RegionPlan> tablePlans = loadBalancer.balanceCluster(servers);
+      if (tablePlans != null) {
+        plans.addAll(tablePlans);
+      }
+    }
+    
+    plans = loadBalancer.adjustPerTablePlans(clusterState, plans);
+    Map<ServerName, List<HRegionInfo>> regionByServers = DefaultLoadBalancer.applyRegionPlan(
+      clusterState, plans);
+    assertClusterAsBalanced(convertToList(regionByServers));
+  }
+  
   /**
    * Tests immediate assignment.
    *

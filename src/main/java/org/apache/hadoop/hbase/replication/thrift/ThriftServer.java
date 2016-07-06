@@ -22,11 +22,16 @@ package org.apache.hadoop.hbase.replication.thrift;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.thrift.ThriftMetrics;
+import org.apache.hadoop.hbase.zookeeper.ClusterId;
+import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
+import org.apache.hadoop.hbase.replication.regionserver.ReplicationSink;
 import org.apache.hadoop.hbase.replication.thrift.generated.THBaseService;
+import org.apache.hadoop.hdfs.web.resources.UserProvider;
 import org.apache.hadoop.security.SaslRpcServer;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.thrift.protocol.TBinaryProtocol;
@@ -62,8 +67,9 @@ public class ThriftServer extends Thread {
     this.conf = conf;
     this.sinkInterface = sinkInterface;
     this.serverName = serverName;
-    this.useSecure = User.isHBaseSecurityEnabled(conf) && ThriftUtilities.thriftSecureEnabled(conf);
+    this.useSecure = ThriftUtilities.useSecure(conf);
     LOG.info("prepare start replication thrift server, use secure: " + this.useSecure);
+    ThriftClient.loadTableNameMap(conf.get(ThriftClient.HBASE_REPLICATION_THRIFT_TABLE_NAME_MAP));
     try {
       init();
     } catch (TTransportException e) {
@@ -187,5 +193,27 @@ public class ThriftServer extends Thread {
     } catch (Throwable e) {
       LOG.error("Error stopping thrift server", e);
     }
+  }
+  
+  public static void main(String[] args) throws Exception {
+    Configuration conf = HBaseConfiguration.create();
+    // always write secure hbase cluster
+    System.setProperty("hadoop.property.hadoop.security.authentication", "kerberos");
+    System.setProperty("hadoop.property.hadoop.client.keytab.file",
+        conf.get("hbase.regionserver.keytab.file"));
+    System.setProperty("hadoop.property.hadoop.client.kerberos.principal",
+        conf.get("hbase.regionserver.kerberos.principal"));
+    conf = HBaseConfiguration.create();
+    
+    User.login(conf, "hbase.regionserver.keytab.file", "hbase.regionserver.kerberos.principal",
+      new InetSocketAddress(9001).getHostName());
+    LOG.info("replicate data to cluster, zkQuorum=" + conf.get(HConstants.ZOOKEEPER_QUORUM)
+        + ", parentNode=" + conf.get(HConstants.ZOOKEEPER_ZNODE_PARENT));
+
+    ZooKeeperWatcher zkw = new ZooKeeperWatcher(conf, "thrift-rep", null);
+    ReplicationSink sink = new ReplicationSink(conf, null, ClusterId.readClusterIdZNode(zkw)
+        .toString());
+    ThriftServer server = new ThriftServer(conf, sink, null);
+    server.run();
   }
 }

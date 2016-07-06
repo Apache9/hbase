@@ -1536,7 +1536,7 @@
             </os>
         </activation>
         <properties>
-            <build.platform>Mac_OS_X-${sun.arch.data.model}</build.platform>
+            <build.platform>Linux-amd64-64</build.platform>
         </properties>
     </profile>
 	<profile>
@@ -1638,7 +1638,7 @@
       <properties>
         <hadoop.version>${hadoop-mdh.version}</hadoop.version>
         <slf4j.version>1.6.1</slf4j.version>
-        <galaxy-sds.version>1.2.21</galaxy-sds.version>
+        <galaxy-sds.version>1.3.1</galaxy-sds.version>
         <rrd-on-hbase.version>0.0.2-SNAPSHOT</rrd-on-hbase.version>
         <themis-coprocessor.version>1.0.2</themis-coprocessor.version>
       </properties>

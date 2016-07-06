@@ -148,7 +148,7 @@ public class BalancerTestBase {
       List<HRegionInfo> regions = randomRegions(numRegions, numTables);
       servers.put(sal.getServerName(), regions);
     }
-    return servers;
+    return servers;    
   }
 
   private Queue<HRegionInfo> regionQueue = new LinkedList<HRegionInfo>();
@@ -158,6 +158,10 @@ public class BalancerTestBase {
   }
 
   protected List<HRegionInfo> randomRegions(int numRegions, int numTables) {
+    return randomRegions(numRegions, numTables, null);
+  }
+  
+  protected List<HRegionInfo> randomRegions(int numRegions, int numTables, String tableNameStr) {
     List<HRegionInfo> regions = new ArrayList<HRegionInfo>(numRegions);
     byte[] start = new byte[16];
     byte[] end = new byte[16];
@@ -170,8 +174,12 @@ public class BalancerTestBase {
       }
       Bytes.putInt(start, 0, numRegions << 1);
       Bytes.putInt(end, 0, (numRegions << 1) + 1);
-      byte[] tableName =
-          Bytes.toBytes("table" + (numTables > 0 ? rand.nextInt(numTables) : i));
+      byte[] tableName = null;
+      if (tableNameStr != null) {
+        tableName = Bytes.toBytes(tableNameStr);
+      } else {
+        tableName = Bytes.toBytes("table" + (numTables > 0 ? rand.nextInt(numTables) : i));
+      }
       HRegionInfo hri = new HRegionInfo(tableName, start, end, false, regionId++);
       regions.add(hri);
     }

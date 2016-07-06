@@ -49,6 +49,7 @@ import java.util.TreeMap;
 import java.util.UUID;
 
 import org.apache.hadoop.hbase.replication.thrift.ThriftAdaptors;
+import org.apache.hadoop.hbase.replication.thrift.ThriftClient;
 import org.apache.hadoop.hbase.replication.thrift.ThriftServer;
 import org.apache.hadoop.hbase.replication.thrift.generated.TBatchEdit;
 import org.apache.hadoop.hbase.replication.thrift.generated.THBaseService;
@@ -260,6 +261,9 @@ public class ReplicationSink implements THBaseService.Iface {
 
   @Override public void replicate(TBatchEdit edits) throws TIOError, TException {
     try {
+      if (ThriftClient.tableNameMap != null) {
+        ThriftClient.transferTableNames(edits, ThriftClient.tableNameMap);
+      }
       replicateEntries(ThriftAdaptors.REPLICATION_BATCH_ADAPTOR.fromThrift(edits));
     } catch (IOException e) {
       throw new TException("Failed to replicate", e);

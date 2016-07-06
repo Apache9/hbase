@@ -39,7 +39,7 @@ public interface ReplicationSourceInterface {
    * @param manager the manager to use
    * @param stopper the stopper object for this region server
    * @param replicating the status of the replication on this cluster
-   * @param peerClusterId the id of the peer cluster
+   * @param peerClusterZnode the name of our znode
    * @throws IOException
    */
   public void init(final Configuration conf,
@@ -47,7 +47,7 @@ public interface ReplicationSourceInterface {
                    final ReplicationSourceManager manager,
                    final Stoppable stopper,
                    final AtomicBoolean replicating,
-                   final String peerClusterId) throws IOException;
+                   final String peerClusterZnode) throws IOException;
 
   /**
    * Add a log to the list of logs to replicate

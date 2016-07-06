@@ -18,6 +18,7 @@ package org.apache.hadoop.hbase.coprocessor;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.NavigableSet;
 
 import com.google.common.collect.ImmutableList;
@@ -324,6 +325,12 @@ public abstract class BaseRegionObserver implements RegionObserver {
   public Result preIncrement(final ObserverContext<RegionCoprocessorEnvironment> e,
       final Increment increment) throws IOException {
     return null;
+  }
+
+  @Override
+  public void preIncrementWriteHLog(final ObserverContext<RegionCoprocessorEnvironment> c,
+      final Increment increment, final Map<Store, List<KeyValue>> incrementedState,
+      final WALEdit walEdits) throws IOException {
   }
 
   @Override

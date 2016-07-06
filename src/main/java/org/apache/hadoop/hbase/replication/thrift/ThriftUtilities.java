@@ -36,6 +36,10 @@ public class ThriftUtilities {
     return conf.getBoolean(HBASE_REPLICATION_THRIFT_SECURE_ENABLED, true);
   }
   
+  public static boolean useSecure(Configuration conf) {
+    return User.isHBaseSecurityEnabled(conf) && thriftSecureEnabled(conf);
+  }
+  
   public static QualityOfProtection getQOP(Configuration conf) {
     QualityOfProtection saslQOP = QualityOfProtection.AUTHENTICATION;
     String rpcProtection = conf.get("hbase.replication.thrift.protection",

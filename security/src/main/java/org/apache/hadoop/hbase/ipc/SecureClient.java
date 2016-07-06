@@ -276,18 +276,21 @@ public class SecureClient extends HBaseClient {
         return;
       }
 
-      if (failedServers.isFailedServer(remoteId.getAddress())) {
+      FailedServer failedServer = failedServers.getFailedServer(remoteId.getAddress());
+      if (failedServer != null) {
         if (LOG.isDebugEnabled()) {
           LOG.debug("Not trying to connect to " + remoteId.getAddress() +
               " this server is in the failed servers list");
         }
         IOException e = null;
         if (clientFailFast) {
-          e = new DoNotRetryIOException("Fast Fail! This server is in the failed servers list: "
-              + remoteId.getAddress());
+          e = new DoNotRetryIOException("Fast Fail! This server is in the failed servers list"
+                  + failedServer.formatFailedTimeStamp() + ": "
+                  + remoteId.getAddress(), failedServer.cause);
         } else {
-          e = new FailedServerException("This server is in the failed servers list: "
-              + remoteId.getAddress());
+          e = new FailedServerException("This server is in the failed servers list"
+                  + failedServer.formatFailedTimeStamp() + ": "
+                  + remoteId.getAddress(), failedServer.cause);
         }
         markClosed(e);
         close();
@@ -362,7 +365,7 @@ public class SecureClient extends HBaseClient {
           return;
         }
       } catch (Throwable t) {
-        failedServers.addToFailedServers(remoteId.address);
+        failedServers.addToFailedServers(remoteId.address, t);
         IOException e;
         if (t instanceof IOException) {
           e = (IOException)t;

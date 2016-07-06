@@ -275,8 +275,10 @@ public class StochasticLoadBalancer extends DefaultLoadBalancer {
           + (endTime - startTime) + "ms to try " + step
           + " different iterations.  Found a solution that moves " + plans.size()
           + " regions; Going from a computed cost of " + initCost + " to a new cost of "
-          + currentCost + ", functionCost=" + functionCost() + ", costDetail:");
-      LOG.info(functionCostDetail());
+          + currentCost + ", functionCost=" + functionCost());
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("costDetail:\n" + functionCostDetail());
+      }
       return plans;
     }
     LOG.info("Finished computing new load balance plan, Could not find a better "

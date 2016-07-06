@@ -19,6 +19,7 @@ package org.apache.hadoop.hbase.coprocessor;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.NavigableSet;
 
 import org.apache.hadoop.hbase.Coprocessor;
@@ -741,6 +742,24 @@ public interface RegionObserver extends Coprocessor {
   Result preIncrement(final ObserverContext<RegionCoprocessorEnvironment> c,
       final Increment increment)
     throws IOException;
+
+  /**
+   * Called after HRegion#increment computed increment result but before write
+   * to HLog.
+   * <p>
+   * Call CoprocessorEnvironment#bypass to skip default actions
+   * <p>
+   * Call CoprocessorEnvironment#complete to skip any subsequent chained
+   * coprocessors
+   * @param c the environment provided by the region server
+   * @param increment increment object
+   * @param incrementedState column values after incremented
+   * @param walEdits edits to write to HLog
+   * @throws IOException if an error occurred on the coprocessor
+   */
+  void preIncrementWriteHLog(final ObserverContext<RegionCoprocessorEnvironment> c,
+      final Increment increment, final Map<Store, List<KeyValue>> incrementedState,
+      final WALEdit walEdits) throws IOException;
 
   /**
    * Called after increment

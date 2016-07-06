@@ -101,6 +101,7 @@ public class ZKSecretWatcher extends ZooKeeperListener {
           return;
         }
 
+        LOG.info("Node " + path + " data changed");
         AuthenticationKey key = (AuthenticationKey)Writables.getWritable(data,
             new AuthenticationKey());
         secretManager.addKey(key);
@@ -119,6 +120,7 @@ public class ZKSecretWatcher extends ZooKeeperListener {
     if (path.equals(keysParentZNode)) {
       // keys changed
       try {
+        LOG.info("Node " + path + " children data changed");
         List<ZKUtil.NodeAndData> nodes =
             ZKUtil.getChildDataAndWatchForNewChildren(watcher, keysParentZNode);
         refreshNodes(nodes);
