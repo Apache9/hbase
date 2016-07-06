@@ -32,6 +32,7 @@ import java.util.TreeSet;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import com.google.common.annotations.VisibleForTesting;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -90,7 +91,7 @@ public class ReplicationZookeeper {
   private static final Log LOG =
     LogFactory.getLog(ReplicationZookeeper.class);
   // Name of znode we use to lock when failover
-  private final static String RS_LOCK_ZNODE = "lock";
+  public final static String RS_LOCK_ZNODE = "lock";
 
   // Values of znode which stores state of a peer
   public static enum PeerState {
@@ -890,6 +891,11 @@ public class ReplicationZookeeper {
       return false;
     }
     return true;
+  }
+
+  @VisibleForTesting
+  public boolean checkLockExist(String znode) throws KeeperException {
+    return ZKUtil.checkExists(zookeeper, this.rsZNode + "/" + znode + "/" + RS_LOCK_ZNODE) >= 0;
   }
 
   /**

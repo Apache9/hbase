@@ -38,7 +38,9 @@ public class ColumnPaginationFilter extends FilterBase
   private int limit = 0;
   private int offset = 0;
   private int count = 0;
-
+  private byte[] family = null;
+  private byte[] qualifier = null;
+  
     /**
      * Used during serialization. Do not use.
      */
@@ -76,6 +78,16 @@ public class ColumnPaginationFilter extends FilterBase
     {
       return ReturnCode.NEXT_ROW;
     }
+    
+    // The StoreScanner#optimize() may transfer the NEXT_COL to SKIP, or transfer
+    // INCLUDE_AND_NEXT_COL to INCLUDE, this will cause multi cells of the same column be
+    // judged by this filter. Therefore, we only increment the count when encounter
+    // a different column.
+    if (family != null && v.matchingColumn(family, qualifier)) {
+      return ReturnCode.NEXT_COL;
+    }
+    this.family = v.getFamily();
+    this.qualifier = v.getQualifier();
 
     ReturnCode code = count < offset ? ReturnCode.NEXT_COL :
                                        ReturnCode.INCLUDE_AND_NEXT_COL;
@@ -87,6 +99,8 @@ public class ColumnPaginationFilter extends FilterBase
   public void reset()
   {
     this.count = 0;
+    this.family = null;
+    this.qualifier = null;
   }
 
   public static Filter createFilterFromArguments(ArrayList<byte []> filterArguments) {

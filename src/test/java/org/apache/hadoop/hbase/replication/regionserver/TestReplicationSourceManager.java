@@ -20,9 +20,11 @@
 package org.apache.hadoop.hbase.replication.regionserver;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import com.google.common.collect.Sets;
+
+import java.io.IOException;
 import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -30,14 +32,12 @@ import java.util.List;
 import java.util.SortedMap;
 import java.util.SortedSet;
 import java.util.TreeSet;
-import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.HBaseConfiguration;
@@ -57,7 +57,6 @@ import org.apache.hadoop.hbase.regionserver.wal.WALActionsListener;
 import org.apache.hadoop.hbase.regionserver.wal.WALEdit;
 import org.apache.hadoop.hbase.replication.ReplicationSourceDummy;
 import org.apache.hadoop.hbase.replication.ReplicationZookeeper;
-import org.apache.hadoop.hbase.replication.master.ReplicationLogCleaner;
 import org.apache.hadoop.hbase.replication.regionserver.ReplicationSourceManager.NodeFailoverWorker;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.zookeeper.ZKUtil;
@@ -69,8 +68,6 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-
-import com.google.common.collect.Sets;
 
 @Category(MediumTests.class)
 public class TestReplicationSourceManager {
@@ -114,7 +111,6 @@ public class TestReplicationSourceManager {
 
   @BeforeClass
   public static void setUpBeforeClass() throws Exception {
-
     conf = HBaseConfiguration.create();
     conf.set("replication.replicationsource.implementation",
         ReplicationSourceDummy.class.getCanonicalName());
@@ -153,8 +149,6 @@ public class TestReplicationSourceManager {
     htd.addFamily(col);
 
     hri = new HRegionInfo(htd.getName(), r1, r2);
-
-
   }
 
   @AfterClass
@@ -358,6 +352,34 @@ public class TestReplicationSourceManager {
     rz1.copyQueuesFromRSUsingMulti(server.getServerName().getServerName());
     int v1 = rz.getRsZNodeVersion();
     assertEquals(v0 + 1, v1);
+
+    // close out the resources.
+    server.abort("", null);
+  }
+
+  @Test
+  public void testCleanupUnknownPeerZNode()
+      throws IOException, KeeperException, InterruptedException {
+    final Server server = new DummyServer("hostname1.example.org");
+    AtomicBoolean replicating = new AtomicBoolean(true);
+    ReplicationZookeeper rz = new ReplicationZookeeper(server, replicating);
+    // populate some znodes in the peer znode
+    SortedSet<String> files = new TreeSet<String>();
+    files.add("log1");
+    files.add("log2");
+    for (String file : files) {
+      // add log to an unknown peer
+      rz.addLogToList(file, "2");
+    }
+
+    NodeFailoverWorker w1 = manager.new NodeFailoverWorker(server.getServerName().getServerName());
+    w1.start();
+    w1.join(10000);
+    // The log of the unknown peer should be removed from zk
+    for (String peer : manager.getRepZkWrapper().getListPeersForRS(
+      new DummyServer("hostname.example.org").getServerName().getServerName())) {
+      assertTrue(peer.startsWith("1"));
+    }
 
     // close out the resources.
     server.abort("", null);

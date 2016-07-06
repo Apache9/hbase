@@ -64,6 +64,8 @@ public abstract class ServerCallable<T> implements Callable<T> {
   protected int startLogErrorsCnt;
   protected long globalStartTime;
   protected long startTime, endTime;
+  protected boolean isNonIdmpotentOperation;
+  protected boolean nonIdmpotentOperationRetry;
   protected final static int MIN_RPC_TIMEOUT = 2000;
 
   /**
@@ -75,12 +77,25 @@ public abstract class ServerCallable<T> implements Callable<T> {
     this(connection, tableName, row, HConstants.DEFAULT_HBASE_CLIENT_OPERATION_TIMEOUT);
   }
 
+  public ServerCallable(HConnection connection, byte[] tableName, byte[] row,
+      boolean isNonIdmpotentOperation) {
+    this(connection, tableName, row, HConstants.DEFAULT_HBASE_CLIENT_OPERATION_TIMEOUT,
+        isNonIdmpotentOperation);
+  }
+  
   public ServerCallable(HConnection connection, byte [] tableName, byte [] row, int callTimeout) {
+    this(connection, tableName, row, callTimeout, false);
+  }
+  
+  public ServerCallable(HConnection connection, byte[] tableName, byte[] row, int callTimeout,
+      boolean isNonIdmpotentOperation) {
     this.connection = connection;
     this.tableName = tableName;
     this.row = row;
     this.callTimeout = callTimeout;
     this.startLogErrorsCnt = connection.getStartLogErrorsAfterCount();
+    this.isNonIdmpotentOperation = isNonIdmpotentOperation;
+    this.nonIdmpotentOperationRetry = connection.isNonIdempotentOperationRetry();
   }
 
   /**
@@ -192,6 +207,15 @@ public abstract class ServerCallable<T> implements Callable<T> {
         if (t instanceof SocketTimeoutException ||
             t instanceof ConnectException ||
             t instanceof RetriesExhaustedException) {
+          // if SocketTimeoutException and the operation is non-idmpotent, judge whether retry
+          // by nonIdmpotentOperationRetry flag
+          if (t instanceof SocketTimeoutException && this.isNonIdmpotentOperation
+              && !this.nonIdmpotentOperationRetry) {
+            throw new RetriesExhaustedException(
+                "not retry non-idmpotent operation when SocketTimeoutException",
+                (SocketTimeoutException) t);
+          }
+          
           // if thrown these exceptions, we clear all the cache entries that
           // map to that slow/dead server; otherwise, let cache miss and ask
           // .META. again to find the new location

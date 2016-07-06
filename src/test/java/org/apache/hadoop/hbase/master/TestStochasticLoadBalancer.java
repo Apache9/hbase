@@ -58,6 +58,7 @@ public class TestStochasticLoadBalancer extends BalancerTestBase {
     conf.setFloat("hbase.master.balancer.stochastic.maxMovePercent", 0.75f);
     conf.setFloat("hbase.regions.slop", 0.0f);
     conf.setFloat("hbase.master.balancer.stochastic.localityCost", 0);
+    conf.setFloat("hbase.master.balancer.stochastic.minCostNeedBalance", 0.0f);
     loadBalancer = new StochasticLoadBalancer();
     loadBalancer.setConf(conf);
   }
@@ -449,8 +450,9 @@ public class TestStochasticLoadBalancer extends BalancerTestBase {
     int numRegions = 100000; //100 regions per RS
     int numRegionsPerServer = 80; //all servers except one
     int numTables = 100;
-    loadBalancer.setMaxRunningTime(60000);
+    loadBalancer.setMaxRunningTime(300000);
     testWithCluster(numNodes, numRegions, numRegionsPerServer, numTables, true);
+    loadBalancer.setMaxRunningTime(30000);
   }
 
   protected void testWithCluster(int numNodes,

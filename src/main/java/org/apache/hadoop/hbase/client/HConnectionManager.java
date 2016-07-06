@@ -572,6 +572,7 @@ public class HConnectionManager {
     private final long pause;
     private final int numRetries;
     private final int startLogErrorsCnt;
+    private final boolean nonIdempotentOperationRetry;
     private final int maxRPCAttempts;
     private final int rpcTimeout;
     private final int prefetchRegionLimit;
@@ -659,6 +660,9 @@ public class HConnectionManager {
           HConstants.DEFAULT_HBASE_CLIENT_RETRIES_NUMBER);
       this.startLogErrorsCnt = conf.getInt(HConstants.START_LOG_ERRORS_AFTER_COUNT_KEY,
         HConstants.DEFAULT_START_LOG_ERRORS_AFTER_COUNT);
+      this.nonIdempotentOperationRetry = conf.getBoolean(
+        HConstants.HBASE_NON_IDEMPOTENT_OPERATION_RETRY_KEY,
+        HConstants.DEFAULT_HBASE_NON_IDEMPOTENT_OPERATION_RETRY);
       this.maxRPCAttempts = conf.getInt(
           HConstants.HBASE_CLIENT_RPC_MAXATTEMPTS,
           HConstants.DEFAULT_HBASE_CLIENT_RPC_MAXATTEMPTS);
@@ -676,6 +680,11 @@ public class HConnectionManager {
     @Override
     public int getStartLogErrorsAfterCount() {
       return startLogErrorsCnt;
+    }
+    
+    @Override
+    public boolean isNonIdempotentOperationRetry() {
+      return nonIdempotentOperationRetry;
     }
     
     @Override
