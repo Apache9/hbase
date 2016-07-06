@@ -1338,6 +1338,13 @@ Server {
           List<RegionPlan> partialPlans = this.balancer.balanceCluster(assignments);
           if (partialPlans != null) plans.addAll(partialPlans);
         }
+        
+        if (conf.getBoolean("hbase.master.loadbalance.bytable", true)
+            && conf.getBoolean(HConstants.HBASE_GLOBALLY_BALANCE_ADJUST_ENABLE_KEY, false)
+            && this.balancer instanceof DefaultLoadBalancer) {
+          LOG.info("try to check and achieve globally load balance");
+          plans = this.balancer.adjustPerTablePlans(assignmentsByTable, plans);
+        }
       }
       int rpCount = 0;  // number of RegionPlans balanced so far
       long totalRegPlanExecTime = 0;

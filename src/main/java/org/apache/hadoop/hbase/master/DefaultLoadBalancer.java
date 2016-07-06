@@ -27,8 +27,10 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.NavigableMap;
 import java.util.Random;
 import java.util.Set;
@@ -43,9 +45,9 @@ import org.apache.hadoop.hbase.HDFSBlocksDistribution;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.ServerName;
-import org.apache.hadoop.hbase.TableExistsException;
 import org.apache.hadoop.hbase.regionserver.HRegion;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hbase.util.Pair;
 
 import com.google.common.base.Joiner;
 import com.google.common.collect.ArrayListMultimap;
@@ -218,6 +220,11 @@ public class DefaultLoadBalancer implements LoadBalancer {
    */
   public List<RegionPlan> balanceCluster(
       Map<ServerName, List<HRegionInfo>> clusterState) {
+    return balanceCluster(clusterState, null);
+  }
+
+  public List<RegionPlan> balanceCluster(Map<ServerName, List<HRegionInfo>> clusterState,
+      OverLoadRegionSelector regionSelector) {
     boolean emptyRegionServerPresent = false;
     long startTime = System.currentTimeMillis();
 
@@ -293,10 +300,18 @@ public class DefaultLoadBalancer implements LoadBalancer {
       Collections.sort(regions, riComparator);
       int numTaken = 0;
       for (int i = 0; i <= numToOffload; ) {
-        HRegionInfo hri = regions.get(i); // fetch from head
-        if (fetchFromTail) {
-          hri = regions.get(regions.size() - 1 - i);
+        HRegionInfo hri = null;
+        if (regionSelector == null) {
+          hri = regions.get(i); // fetch from head
+          if (fetchFromTail) {
+            hri = regions.get(regions.size() - 1 - i);
+          }
+        } else {
+          hri = regionSelector.selectRegion(sal.getServerName());
+          if (hri == null) continue;
         }
+        // TODO(cuijianwei): the same region may be selected multi-times if
+        //                   emptyRegionServerPresent is true
         i++;
         // Don't rebalance meta regions.
         if (hri.isMetaRegion()) continue;
@@ -349,7 +364,15 @@ public class DefaultLoadBalancer implements LoadBalancer {
         int numToTake = underloadedServers.get(si);
         if (numToTake == 0) continue;
 
-        addRegionPlan(regionsToMove, fetchFromTail, si, regionsToReturn);
+        if (regionSelector == null) {
+          addRegionPlan(regionsToMove, fetchFromTail, si, regionsToReturn);
+        } else {
+          RegionPlan rp = takeRegionPlan(regionsToMove, fetchFromTail);
+          if (!checkAndAddRegionPlan(regionsToMove, rp, si, regionsToReturn, regionSelector)) {
+            continue;
+          }
+        }
+        
         if (emptyRegionServerPresent) {
           fetchFromTail = !fetchFromTail;
         }
@@ -393,10 +416,15 @@ public class DefaultLoadBalancer implements LoadBalancer {
         serversByLoad.descendingMap().entrySet()) {
         BalanceInfo balanceInfo =
           serverBalanceInfo.get(server.getKey().getServerName());
-        int idx =
-          balanceInfo == null ? 0 : balanceInfo.getNextRegionForUnload();
-        if (idx >= server.getValue().size()) break;
-        HRegionInfo region = server.getValue().get(idx);
+        HRegionInfo region = null;
+        if (regionSelector == null) {
+          int idx = balanceInfo == null ? 0 : balanceInfo.getNextRegionForUnload();
+          if (idx >= server.getValue().size()) break;
+          region = server.getValue().get(idx);
+        } else {
+          region = regionSelector.selectRegion(server.getKey().getServerName());
+          if (region == null) continue;
+        }
         if (region.isMetaRegion()) continue; // Don't move meta regions.
         regionsToMove.add(new RegionPlan(region, server.getKey().getServerName(), null));
         totalNumMoved++;
@@ -424,13 +452,29 @@ public class DefaultLoadBalancer implements LoadBalancer {
       }
       int numToTake = min - regionCount;
       int numTaken = 0;
-      while(numTaken < numToTake && 0 < regionsToMove.size()) {
-        addRegionPlan(regionsToMove, fetchFromTail,
-          server.getKey().getServerName(), regionsToReturn);
+      MinMaxPriorityQueue<RegionPlan> unassignedPlans = null;
+      if (regionSelector != null) {
+        unassignedPlans = MinMaxPriorityQueue.orderedBy(rpComparator).create();
+      }
+      while (numTaken < numToTake && 0 < regionsToMove.size()) {
+        if (regionSelector == null) {
+          addRegionPlan(regionsToMove, fetchFromTail, server.getKey().getServerName(),
+            regionsToReturn);
+        } else {
+          RegionPlan rp = takeRegionPlan(regionsToMove, fetchFromTail);
+          if (!checkAndAddRegionPlan(unassignedPlans, rp, server.getKey().getServerName(),
+            regionsToReturn, regionSelector)) {
+            continue;
+          }
+        }
         numTaken++;
         if (emptyRegionServerPresent) {
           fetchFromTail = !fetchFromTail;
         }
+      }
+      if (regionSelector != null) {
+        unassignedPlans.addAll(regionsToMove);
+        regionsToMove = unassignedPlans;
       }
     }
 
@@ -446,8 +490,22 @@ public class DefaultLoadBalancer implements LoadBalancer {
         if(regionCount >= max) {
           break;
         }
-        addRegionPlan(regionsToMove, fetchFromTail,
-          server.getKey().getServerName(), regionsToReturn);
+        if (regionSelector == null) {
+          addRegionPlan(regionsToMove, fetchFromTail, server.getKey().getServerName(),
+            regionsToReturn);
+        } else {
+          MinMaxPriorityQueue<RegionPlan> unassignedPlans =
+              MinMaxPriorityQueue.orderedBy(rpComparator).create();
+          while (0 < regionsToMove.size()) {
+            RegionPlan rp = takeRegionPlan(regionsToMove, fetchFromTail);
+            if (checkAndAddRegionPlan(unassignedPlans, rp, server.getKey().getServerName(),
+              regionsToReturn, regionSelector)) {
+              break;
+            }
+          }
+          unassignedPlans.addAll(regionsToMove);
+          regionsToMove = unassignedPlans;
+        }
         if (emptyRegionServerPresent) {
           fetchFromTail = !fetchFromTail;
         }
@@ -483,16 +541,230 @@ public class DefaultLoadBalancer implements LoadBalancer {
     return regionsToReturn;
   }
 
+  public static class OverLoadRegionSelector {
+    private boolean initialize = false; // lazily initialize
+    private final Map<String, Map<ServerName, List<HRegionInfo>>> perTableState;
+    private final Map<ServerName, List<HRegionInfo>> regionByServer;
+    private Map<String, Pair<Integer, Integer>> minMaxRegionCount;
+    private Map<ServerName, Map<String, List<HRegionInfo>>> serverWithMaxRegions;
+    private Map<ServerName, Set<String>> balancedRegions;
+    
+    public OverLoadRegionSelector(Map<String, Map<ServerName, List<HRegionInfo>>> perTableState,
+        Map<ServerName, List<HRegionInfo>> regionByServer) {
+      this.perTableState = perTableState;
+      this.regionByServer = regionByServer;
+    }
+    
+    protected void initialize() {
+      initializeMinMaxRegionCount();
+      initializeOverloadServerByTable();
+      this.balancedRegions = new HashMap<ServerName, Set<String>>();
+      this.initialize = true;
+    }
+    
+    protected void initializeMinMaxRegionCount() {
+      minMaxRegionCount = new HashMap<String, Pair<Integer,Integer>>();
+      for (Entry<String, Map<ServerName, List<HRegionInfo>>> entry : perTableState.entrySet()) {
+        String tableName = entry.getKey();
+        int numServers = entry.getValue().size();
+        if (numServers == 0) continue;
+        int numRegions = 0;
+        for (List<HRegionInfo> regionInfos : entry.getValue().values()) {
+          numRegions += regionInfos.size();
+        }
+        int min = numRegions / numServers;
+        int max = numRegions % numServers == 0 ? min : min + 1;
+        minMaxRegionCount.put(tableName, new Pair<Integer, Integer>(min, max));
+      }
+    }
+    
+    protected void initializeOverloadServerByTable() {
+      serverWithMaxRegions = new HashMap<ServerName, Map<String, List<HRegionInfo>>>();
+      for (Entry<ServerName, List<HRegionInfo>> entry : regionByServer.entrySet()) {
+        Map<String, List<HRegionInfo>> tableRegions = new HashMap<String, List<HRegionInfo>>();
+        for (HRegionInfo regionInfo : entry.getValue()) {
+          String tableName = regionInfo.getTableNameAsString();
+          if (!tableRegions.containsKey(tableName)) {
+            tableRegions.put(tableName, new ArrayList<HRegionInfo>());
+          }
+          tableRegions.get(tableName).add(regionInfo);
+        }
+
+        Map<String, List<HRegionInfo>> tableWithMaxRegions = new HashMap<String, List<HRegionInfo>>();
+        for (Entry<String, List<HRegionInfo>> tableRegion : tableRegions.entrySet()) {
+          String tableName = tableRegion.getKey();
+          Pair<Integer, Integer> minMax = minMaxRegionCount.get(tableName);
+          if (minMax == null) continue;
+          int min = minMax.getFirst().intValue();
+          int max = minMax.getSecond().intValue();
+          // if min == max, the regions of the table are equally assigned to servers, we can't do
+          // future adjust
+          if (min != max && tableRegion.getValue().size() >= max) {
+            tableWithMaxRegions.put(tableName, tableRegion.getValue());
+          }
+        }
+        serverWithMaxRegions.put(entry.getKey(), tableWithMaxRegions);
+      }
+    }
+    
+    protected String pickRandomTable(Map<String, List<HRegionInfo>> tableRegion) {
+      int tableIndex = RANDOM.nextInt(tableRegion.size());
+      int index = 0;
+      for (Entry<String, List<HRegionInfo>> entry : tableRegion.entrySet()) {
+        if (index == tableIndex) {
+          return entry.getKey();
+        }
+        ++index;
+      }
+      throw new RuntimeException("can't find a random table from overloaded server");
+    }
+
+    // The regions are balanced for each table, we randomly select a table from
+    // 'serverWithMaxRegions', and then randomly take one region away.
+    public HRegionInfo selectRegion(ServerName serverName) {
+      if (!initialize) {
+        initialize();
+      }
+      
+      Map<String, List<HRegionInfo>> tableRegion = serverWithMaxRegions.get(serverName);
+      if (tableRegion == null || tableRegion.size() == 0) {
+        return null;
+      }
+      String tableName = pickRandomTable(tableRegion);
+      List<HRegionInfo> regions = tableRegion.get(tableName);
+      HRegionInfo regionInfo = regions.get(RANDOM.nextInt(regions.size()));
+      tableRegion.remove(tableName);
+      LOG.debug("select region: " + regionInfo + " from server: " + serverName);
+      return regionInfo;
+    }
+    
+    // for given table and destination, we only allow move one region to the destination when
+    // destination don't have max count regions of the table.
+    public boolean checkAndAddPlan(HRegionInfo regionInfo, ServerName destination) {
+      // check 'serverWithMaxRegions' first
+      Map<String, List<HRegionInfo>> overLoadTables = serverWithMaxRegions.get(destination);
+      if (overLoadTables != null && overLoadTables.containsKey(regionInfo.getTableNameAsString())) {
+        return false;
+      }
+      // check region of the table has been moved to the server
+      Set<String> balancedTables = balancedRegions.get(destination);
+      if (balancedTables != null && balancedTables.contains(regionInfo.getTableNameAsString())) {
+        return false;
+      }
+      // mark balanced table for this server
+      if (balancedTables == null) {
+        balancedTables = new HashSet<String>();
+        balancedRegions.put(destination, balancedTables);
+      }
+      balancedTables.add(regionInfo.getTableNameAsString());
+      return true;
+    }
+  }
+  
+  protected static Map<ServerName, List<HRegionInfo>> applyRegionPlan(
+      Map<String, Map<ServerName, List<HRegionInfo>>> clusterState, List<RegionPlan> perTablePlans) {
+    Map<ServerName, Set<HRegionInfo>> regionByServer = new HashMap<ServerName, Set<HRegionInfo>>();
+    for (Entry<String, Map<ServerName, List<HRegionInfo>>> entry : clusterState.entrySet()) {
+      for (Entry<ServerName, List<HRegionInfo>> serverAndRegions : entry.getValue().entrySet()) {
+        ServerName serverName = serverAndRegions.getKey();
+        if (!regionByServer.containsKey(serverAndRegions.getKey())) {
+          regionByServer.put(serverName, new HashSet<HRegionInfo>());
+        }
+        regionByServer.get(serverName).addAll(serverAndRegions.getValue());
+      }
+    }
+
+    if (perTablePlans != null) {
+      for (RegionPlan plan : perTablePlans) {
+        if (plan.getSource() == null || plan.getDestination() == null) {
+          continue;
+        }
+        if (regionByServer.get(plan.getSource()).remove(plan.getRegionInfo())) {
+          regionByServer.get(plan.getDestination()).add(plan.getRegionInfo());
+        } else {
+          LOG.warn("can't find region in source, plan=" + plan);
+        }
+      }
+    }
+
+    Map<ServerName, List<HRegionInfo>> result = new HashMap<ServerName, List<HRegionInfo>>();
+    for (Entry<ServerName, Set<HRegionInfo>> entry : regionByServer.entrySet()) {
+      List<HRegionInfo> regions = new ArrayList<HRegionInfo>();
+      regions.addAll(entry.getValue());
+      result.put(entry.getKey(), regions);
+    }
+    return result;
+  }
+  
+  protected List<RegionPlan> mergePlans(List<RegionPlan> perTablePlans, List<RegionPlan> adjustPlans) {
+    if (perTablePlans == null) {
+      return adjustPlans;
+    }
+    if (adjustPlans == null) {
+      return perTablePlans;
+    }
+    Map<HRegionInfo, RegionPlan> adjustPlanMap = new HashMap<HRegionInfo, RegionPlan>();
+    for (RegionPlan regionPlan : adjustPlans) {
+      adjustPlanMap.put(regionPlan.getRegionInfo(), regionPlan);
+    }
+    for (RegionPlan plan : perTablePlans) {
+      RegionPlan adjustPlan = adjustPlanMap.get(plan.getRegionInfo());
+      if (adjustPlan != null) {
+        if (plan.getDestination() != null && !plan.getDestination().equals(adjustPlan.getSource())) {
+          LOG.warn("per-table plan's destination is not equals to adjust plan's source, plan: "
+              + plan + ", adjustPlan: " + adjustPlan);
+        }
+        plan.setDestination(adjustPlan.getDestination());
+        adjustPlanMap.remove(adjustPlan);
+      }
+    }
+    for (Entry<HRegionInfo, RegionPlan> entry : adjustPlanMap.entrySet()) {
+      perTablePlans.add(entry.getValue());
+    }
+    return perTablePlans;
+  }
+  
+  @Override
+  public List<RegionPlan> adjustPerTablePlans(
+      Map<String, Map<ServerName, List<HRegionInfo>>> clusterState, List<RegionPlan> perTablePlans) {
+    Map<ServerName, List<HRegionInfo>> regionByServer = applyRegionPlan(clusterState, perTablePlans);
+    OverLoadRegionSelector regionSelector = new OverLoadRegionSelector(clusterState, regionByServer);
+    List<RegionPlan> adjustPlans = balanceCluster(regionByServer, regionSelector);
+    return mergePlans(perTablePlans, adjustPlans);
+  }
+  
   /**
    * Add a region from the head or tail to the List of regions to return.
    */
   void addRegionPlan(final MinMaxPriorityQueue<RegionPlan> regionsToMove,
       final boolean fetchFromTail, final ServerName sn, List<RegionPlan> regionsToReturn) {
+    RegionPlan rp = takeRegionPlan(regionsToMove, fetchFromTail);
+    assignPlan(rp, sn, regionsToReturn);
+  }
+  
+  void assignPlan(RegionPlan rp, final ServerName sn, List<RegionPlan> regionsToReturn) {
+    rp.setDestination(sn);
+    regionsToReturn.add(rp);    
+  }
+  
+  boolean checkAndAddRegionPlan(final MinMaxPriorityQueue<RegionPlan> unassignedPlans,
+      RegionPlan rp, final ServerName sn, List<RegionPlan> regionsToReturn,
+      OverLoadRegionSelector selector) {
+    if (selector.checkAndAddPlan(rp.getRegionInfo(), sn)) {
+      assignPlan(rp, sn, regionsToReturn);
+      return true;
+    } else {
+      unassignedPlans.add(rp);
+      return false;
+    }
+  }
+  
+  RegionPlan takeRegionPlan(final MinMaxPriorityQueue<RegionPlan> regionsToMove,
+      final boolean fetchFromTail) {
     RegionPlan rp = null;
     if (!fetchFromTail) rp = regionsToMove.remove();
     else rp = regionsToMove.removeLast();
-    rp.setDestination(sn);
-    regionsToReturn.add(rp);
+    return rp;
   }
 
   /**

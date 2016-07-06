@@ -810,6 +810,7 @@ public final class HConstants {
   
   public static final String HBASE_NON_IDEMPOTENT_OPERATION_RETRY_KEY = "hbase.nonidempotent.operation.retry";
   public static final boolean DEFAULT_HBASE_NON_IDEMPOTENT_OPERATION_RETRY = true;
+  public static final String HBASE_GLOBALLY_BALANCE_ADJUST_ENABLE_KEY = "hbase.globally.balance.adjust.enable";
   
   private HConstants() {
     // Can't be instantiated with this ctor.

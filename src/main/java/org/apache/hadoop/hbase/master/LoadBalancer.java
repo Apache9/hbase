@@ -64,6 +64,16 @@ public interface LoadBalancer extends Configurable {
    * @return List of plans
    */
   public List<RegionPlan> balanceCluster(Map<ServerName, List<HRegionInfo>> clusterState);
+  
+  /**
+   * The per-table balanced plans can not guarantee all the regions globally balanced, need to
+   * adjust the perTablePlans to achieve globally balanced while not break the per-table balance.
+   * @param clusterState clusterState before per-table balance
+   * @param perTablePlans per-table balance plans
+   * @return the adjusted plans
+   */
+  public List<RegionPlan> adjustPerTablePlans(
+      Map<String, Map<ServerName, List<HRegionInfo>>> clusterState, List<RegionPlan> perTablePlans);
 
   /**
    * Perform a Round Robin assignment of regions.
