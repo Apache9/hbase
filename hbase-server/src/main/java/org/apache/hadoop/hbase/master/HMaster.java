@@ -45,6 +45,7 @@ import java.util.regex.Pattern;
 
 import javax.management.ObjectName;
 
+import com.google.common.base.Throwables;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -635,8 +636,8 @@ MasterServices, Server {
   private List<BlockingServiceAndInterface> getServices() {
     List<BlockingServiceAndInterface> bssi = new ArrayList<BlockingServiceAndInterface>(3);
     bssi.add(new BlockingServiceAndInterface(
-        MasterProtos.MasterService.newReflectiveBlockingService(this),
-        MasterProtos.MasterService.BlockingInterface.class));
+            MasterProtos.MasterService.newReflectiveBlockingService(this),
+            MasterProtos.MasterService.BlockingInterface.class));
     bssi.add(new BlockingServiceAndInterface(
         RegionServerStatusProtos.RegionServerStatusService.newReflectiveBlockingService(this),
         RegionServerStatusProtos.RegionServerStatusService.BlockingInterface.class));
@@ -1485,7 +1486,7 @@ MasterServices, Server {
    */
   protected RegionServerStartupResponse.Builder createConfigurationSubset() {
     RegionServerStartupResponse.Builder resp = addConfig(
-      RegionServerStartupResponse.newBuilder(), HConstants.HBASE_DIR);
+            RegionServerStartupResponse.newBuilder(), HConstants.HBASE_DIR);
     resp = addConfig(resp, "fs.default.name");
     return addConfig(resp, "hbase.master.info.port");
   }
@@ -1970,19 +1971,25 @@ MasterServices, Server {
     sanityCheckTableDescriptor(hTableDescriptor);
     this.quotaManager.checkNamespaceTableAndRegionQuota(hTableDescriptor.getTableName(),
         newRegions.length);
+    CreateTableHandler cth = null;
     try {
       if (cpHost != null) {
         cpHost.preCreateTable(hTableDescriptor, newRegions);
       }
       LOG.info(getClientIdAuditPrefix() + " create " + hTableDescriptor);
-      this.executorService.submit(new CreateTableHandler(this,
-        this.fileSystemManager, hTableDescriptor, conf,
-        newRegions, this).prepare());
-    } catch (IOException e) {
+
+      cth =  new CreateTableHandler(this, this.fileSystemManager, hTableDescriptor, conf, newRegions,
+              this);
+      this.executorService.submit(cth.prepare());
+    } catch (Exception e) {
       LOG.warn("create table: " + hTableDescriptor.getTableName()
-          + " fail, will remove table from quota cache", e);
+              + " fail, will remove table from quota/zk cache", e);
+      if(cth != null){
+        cth.completed(e);
+      }
       this.quotaManager.removeTableFromNamespaceQuota(hTableDescriptor.getTableName());
-      throw e;
+      Throwables.propagateIfPossible(e, IOException.class);
+      throw new IOException("create table: " + hTableDescriptor.getTableName() + " failed.", e);
     }
     if (cpHost != null) {
       cpHost.postCreateTable(hTableDescriptor, newRegions);
