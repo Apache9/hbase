@@ -147,7 +147,8 @@ public class SecureBulkLoadEndpoint extends BaseEndpointCoprocessor
 
   @Override
   public boolean bulkLoadHFiles(final List<Pair<byte[], String>> familyPaths,
-                                final Token<?> userToken, final String bulkToken, boolean assignSeqNum) throws IOException {
+                                final Token<?> userToken, final String bulkToken,
+                                final boolean assignSeqNum) throws IOException {
     User user = getActiveUser();
     final UserGroupInformation ugi = user.getUGI();
     if(userToken != null) {
@@ -186,7 +187,7 @@ public class SecureBulkLoadEndpoint extends BaseEndpointCoprocessor
             //We call bulkLoadHFiles as requesting user
             //To enable access prior to staging
             return env.getRegion().bulkLoadHFiles(familyPaths,
-                new SecureBulkLoadListener(fs, bulkToken));
+                new SecureBulkLoadListener(fs, bulkToken), assignSeqNum);
           }
           catch(DoNotRetryIOException e){
             es[0] = e;
