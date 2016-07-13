@@ -88,6 +88,9 @@ public class TableLoad {
   /** the total throttled write request count made to all regions of the table  */
   private long throttledWriteRequestsCount;
 
+  private long scanCountPerSecond;
+  private long scanRowsPerSecond;
+
   public TableLoad(final String name) {
     this.name = name;
     this.region = 0;
@@ -113,6 +116,8 @@ public class TableLoad {
     this.writeRequestsByCapacityUnitPerSecond = 0;
     this.throttledReadRequestsCount = 0;
     this.throttledWriteRequestsCount = 0;
+    this.scanCountPerSecond = 0;
+    this.scanRowsPerSecond = 0;
   }
 
   public TableLoad(TableName table) {
@@ -147,6 +152,8 @@ public class TableLoad {
     this.readRequestsPerSecond += regionLoad.getReadRequestsPerSecond();
     this.readCellCountPerSecond += regionLoad.getReadCellCountPerSecond();
     this.readRawCellCountPerSecond += regionLoad.getReadRawCellCountPerSecond();
+    this.scanCountPerSecond += regionLoad.getScanCountPerSecond();
+    this.scanRowsPerSecond += regionLoad.getScanRowsPerSecond();
     this.writeRequestsPerSecond += regionLoad.getWriteRequestsPerSecond();
     this.readRequestsByCapacityUnitPerSecond += regionLoad.getReadRequestsByCapacityUnitPerSecond();
     this.writeRequestsByCapacityUnitPerSecond += regionLoad.getWriteRequestsByCapacityUnitPerSecond();
@@ -226,6 +233,14 @@ public class TableLoad {
     return readCellCountPerSecond;
   }
 
+  public long getScanCountPerSecond(){
+    return this.scanCountPerSecond;
+  }
+
+  public long getScanRowsPerSecond(){
+    return this.scanRowsPerSecond;
+  }
+
   public long getReadRawCellCountPerSecond() {
     return readRawCellCountPerSecond;
   }
@@ -301,6 +316,8 @@ public class TableLoad {
         this.getReadCellCountPerSecond());
     sb = Strings.appendKeyValue(sb, "readRawCellCountPerSecond",
         this.getReadRawCellCountPerSecond());
+    sb = Strings.appendKeyValue(sb, "scanCountPerSecond", this.getScanCountPerSecond());
+    sb = Strings.appendKeyValue(sb, "scanRowsPerSecond", this.getScanRowsPerSecond());
     sb = Strings.appendKeyValue(sb, "readRequestsByCapacityUnitPerSecond",
       this.readRequestsByCapacityUnitPerSecond);
     sb = Strings.appendKeyValue(sb, "writeRequestsByCapacityUnitPerSecond",

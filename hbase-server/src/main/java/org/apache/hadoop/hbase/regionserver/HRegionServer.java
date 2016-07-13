@@ -1265,6 +1265,8 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     long writeRequestsPerSecond = 0;
     long readCellCountPerSecond = 0;
     long readRawCellCountPerSecond = 0;
+    long scanCountPerSecond = 0;
+    long scanRowsPerSecond = 0;
     for (HRegion region : regions) {
       RegionLoad load = createRegionLoad(region, regionLoadBldr, regionSpecifier);
       serverLoad.addRegionLoads(load);
@@ -1272,11 +1274,15 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
       writeRequestsPerSecond += load.getWriteRequestsPerSecond();
       readCellCountPerSecond += load.getReadCellCountPerSecond();
       readRawCellCountPerSecond += load.getReadCellCountPerSecond();
+      scanCountPerSecond += load.getScanCountPerSecond();
+      scanRowsPerSecond += load.getScanRowsPerSecond();
     }
     serverLoad.setReadRequestsPerSecond(readRequestsPerSecond);
     serverLoad.setWriteRequestsPerSecond(writeRequestsPerSecond);
     serverLoad.setReadCellCountPerSecond(readCellCountPerSecond);
     serverLoad.setReadRawCellCountPerSecond(readRawCellCountPerSecond);
+    serverLoad.setScanCountPerSecond(scanCountPerSecond);
+    serverLoad.setScanRowsPerSecond(scanRowsPerSecond);
     serverLoad.setReportStartTime(reportStartTime);
     serverLoad.setReportEndTime(reportEndTime);
     if (this.infoServer != null) {
@@ -1582,7 +1588,9 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
       .setReadRequestsByCapacityUnitPerSecond(r.getReadRequestsByCapacityUnitPerSecond())
       .setWriteRequestsByCapacityUnitPerSecond(r.getWriteRequestsByCapacityUnitPerSecond())
       .setThrottledReadRequestsCount(r.getThrottleadReadCount())
-      .setThrottledWriteRequestsCount(r.getThrottledWriteCount());
+      .setThrottledWriteRequestsCount(r.getThrottledWriteCount())
+      .setScanCountPerSecond(r.getScanCountPerSecond())
+      .setScanRowsPerSecond(r.getScanRowsPerSecond());
 
     return regionLoadBldr.build();
   }
@@ -3594,6 +3602,8 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
               region.getMetrics().updateScanNext(totalKvSize);
               region.updateReadCapacityUnitMetrics(totalKvSize);
               region.updateReadCellMetrics(resultCells);
+              region.updateScanCountPerSecond(1);
+              region.updateScanRowsPerSecond(i);
             } finally {
               region.closeRegionOperation();
             }

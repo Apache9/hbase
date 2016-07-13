@@ -36,11 +36,13 @@ public class ClusterLoad {
   private long writeRequestsByCapacityUnitPerSecond;
   private long readCellCountPerSecond;
   private long readRawCellCountPerSecond;
+  private long scanCountPerSecond;
+  private long scanRowsPerSecond;
 
   public ClusterLoad(int tableNum, int regionServerNum, int regionNum, long readRequestPerSecond,
       long writeRequestPerSecond, long readRequestsByCapacityUnitPerSecond,
       long writeRequestsByCapacityUnitPerSecond, long readCellCountPerSecond,
-      long readRawCellCountPerSecond) {
+      long readRawCellCountPerSecond, long scanCountPerSecond, long scanRowsPerSecond) {
     super();
     this.tableNum = tableNum;
     this.regionServerNum = regionServerNum;
@@ -52,6 +54,8 @@ public class ClusterLoad {
     this.writeRequestsByCapacityUnitPerSecond = writeRequestsByCapacityUnitPerSecond;
     this.readCellCountPerSecond = readCellCountPerSecond;
     this.readRawCellCountPerSecond = readRawCellCountPerSecond;
+    this.scanCountPerSecond = scanCountPerSecond;
+    this.scanRowsPerSecond = scanRowsPerSecond;
   }
 
   public int getTableNum() {
@@ -94,6 +98,14 @@ public class ClusterLoad {
     return readRawCellCountPerSecond;
   }
 
+  public long getScanCountPerSecond(){
+    return this.scanCountPerSecond;
+  }
+
+  public long getScanRowsPerSecond(){
+    return this.scanRowsPerSecond;
+  }
+
   @Override
   public String toString() {
     StringBuilder sb = Strings.appendKeyValue(new StringBuilder(), "numberOfTable:",
@@ -113,6 +125,8 @@ public class ClusterLoad {
       Long.valueOf(this.readRequestsByCapacityUnitPerSecond));
     sb = Strings.appendKeyValue(sb, "writeRequestsByCapacityUnitPerSecond",
       Long.valueOf(this.writeRequestsByCapacityUnitPerSecond));
+    sb = Strings.appendKeyValue(sb, "scanCountPerSecond", Long.valueOf(this.scanCountPerSecond));
+    sb = Strings.appendKeyValue(sb, "scanRowsPerSecond", Long.valueOf(this.scanRowsPerSecond));
     return sb.toString();
   }
 }

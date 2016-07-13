@@ -95,6 +95,9 @@ public class NamespaceLoad {
   /** the total throttled write requests count made to all tables in this namespace */
   private long throttledWriteRequestsCount;
 
+  private long scanCountPerSecond;
+  private long scanRowsPerSecond;
+
   public NamespaceLoad(final String name) {
     this.name = name;
     this.tables = 0;
@@ -120,6 +123,8 @@ public class NamespaceLoad {
     this.throttledWriteRequestsCount = 0;
     this.readCellCountPerSecond = 0;
     this.readRawCellCountPerSecond = 0;
+    this.scanCountPerSecond = 0;
+    this.scanRowsPerSecond = 0;
   }
 
   public void updateNamespaceLoad(final TableLoad tableLoad) {
@@ -147,6 +152,8 @@ public class NamespaceLoad {
     this.throttledWriteRequestsCount += tableLoad.getThrottledWriteRequestsCount();
     this.readCellCountPerSecond += tableLoad.getReadCellCountPerSecond();
     this.readRawCellCountPerSecond += tableLoad.getReadRawCellCountPerSecond();
+    this.scanCountPerSecond += tableLoad.getScanCountPerSecond();
+    this.scanRowsPerSecond += tableLoad.getScanRowsPerSecond();
   }
 
   public String getName() {
@@ -245,6 +252,14 @@ public class NamespaceLoad {
     return readRawCellCountPerSecond;
   }
 
+  public long getScanCountPerSecond(){
+    return this.scanCountPerSecond;
+  }
+
+  public long getScanRowsPerSecond(){
+    return this.scanRowsPerSecond;
+  }
+
   @Override
   public String toString() {
     StringBuilder sb = Strings.appendKeyValue(new StringBuilder(), "Namespace name:", name);
@@ -289,6 +304,8 @@ public class NamespaceLoad {
     sb = Strings.appendKeyValue(sb, "throttledReadRequestsCount", this.throttledReadRequestsCount);
     sb = Strings
         .appendKeyValue(sb, "throttledWriteRequestsCount", this.throttledWriteRequestsCount);
+    sb = Strings.appendKeyValue(sb, "scanCountPerSecond", Long.valueOf(this.scanCountPerSecond));
+    sb = Strings.appendKeyValue(sb, "scanRowsPerSecond", Long.valueOf(this.scanRowsPerSecond));
     return sb.toString();
   }
 }
