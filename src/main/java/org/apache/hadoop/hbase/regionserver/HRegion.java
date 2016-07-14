@@ -255,6 +255,16 @@ public class HRegion implements HeapSize { // , Writable{
       "readRequestsPerSecond", registry);
   final MetricsRate writeRequestsPerSecond = new MetricsRate(
       "writeRequestsPerSecond", registry);
+  final MetricsRate writeRequestsByCapacityUnitPerSecond = new MetricsRate(
+      "writeRequestsByCapacityUnitPerSecond", registry);
+  final MetricsRate readRequestsByCapacityUnitPerSecond = new MetricsRate(
+      "readRequestsByCapacityUnitPerSecond", registry);
+  final MetricsRate readCellCountPerSecond = new MetricsRate("readCellCountPerSecond", registry);
+  final MetricsRate readRawCellCountPerSecond = new MetricsRate("readRawCellCountPerSecond",
+      registry);
+  final MetricsRate scanCountPerSecond = new MetricsRate("scanCountPerSecond", registry);
+  final MetricsRate scanRowsPerSecond = new MetricsRate("scanRowsPerSecond", registry);
+
 
   /**
    * The directory for the table this region is part of.
@@ -997,6 +1007,39 @@ public class HRegion implements HeapSize { // , Writable{
     this.writeRequestsPerSecond.intervalHeartBeat();
     return (long) this.writeRequestsPerSecond.getPreviousIntervalValue();
   }
+
+
+  public long getWriteRequestsByCapacityUnitPerSecond() {
+    this.writeRequestsByCapacityUnitPerSecond.intervalHeartBeat();
+    return (long) this.writeRequestsByCapacityUnitPerSecond.getPreviousIntervalValue();
+  }
+
+  public long getReadRequestsByCapacityUnitPerSecond() {
+    this.readRequestsByCapacityUnitPerSecond.intervalHeartBeat();
+    return (long) this.readRequestsByCapacityUnitPerSecond.getPreviousIntervalValue();
+  }
+
+  public long getReadCellCountPerSecond() {
+    this.readCellCountPerSecond.intervalHeartBeat();
+    return (long) this.readCellCountPerSecond.getPreviousIntervalValue();
+  }
+
+  public long getReadRawCellCountPerSecond() {
+    this.readRawCellCountPerSecond.intervalHeartBeat();
+    return (long) this.readRawCellCountPerSecond.getPreviousIntervalValue();
+  }
+
+
+  public long getScanCountPerSecond() {
+    this.scanCountPerSecond.intervalHeartBeat();
+    return (long) this.scanCountPerSecond.getPreviousIntervalValue();
+  }
+
+  public long getScanRowsPerSecond() {
+    this.scanRowsPerSecond.intervalHeartBeat();
+    return (long) this.scanRowsPerSecond.getPreviousIntervalValue();
+  }
+
 
   /** @return true if region is closed */
   public boolean isClosed() {
@@ -2169,6 +2212,7 @@ public class HRegion implements HeapSize { // , Writable{
       long addedSize = applyFamilyMapToMemstore(familyMap, null);
       flush = isFlushSize(this.addAndGetGlobalMemstoreSize(addedSize));
 
+      this.updateWriteRequestsByCapacityUnitPerSecond(addedSize);
     } finally {
       this.updatesLock.readLock().unlock();
     }
@@ -2356,6 +2400,8 @@ public class HRegion implements HeapSize { // , Writable{
         }
         long addedSize = doMiniBatchMutation(batchOp);
         newSize = this.addAndGetGlobalMemstoreSize(addedSize);
+
+        this.updateWriteRequestsByCapacityUnitPerSecond(addedSize);
       } finally {
         closeRegionOperation();
       }
@@ -3213,6 +3259,8 @@ public class HRegion implements HeapSize { // , Writable{
 
       long addedSize = applyFamilyMapToMemstore(familyMap, null);
       flush = isFlushSize(this.addAndGetGlobalMemstoreSize(addedSize));
+
+      this.updateWriteRequestsByCapacityUnitPerSecond(addedSize);
     } finally {
       this.updatesLock.readLock().unlock();
     }
@@ -5282,8 +5330,12 @@ public class HRegion implements HeapSize { // , Writable{
     RegionScanner scanner = null;
     try {
       scanner = getScanner(scan);
-      scanner.next(results, SchemaMetrics.METRIC_GETSIZE);
+      ScannerStatus scannerStatus = scanner.next(results, SchemaMetrics.METRIC_GETSIZE);
       getRequestsCount.increment();
+
+      this.updateReadCellCountPerSecond(results.size());
+      this.updateReadRawCellCountPerSecond(scannerStatus.getRawValueScanned());
+      this.updateReadRequestsByCapacityUnitPerSecond(results);
     } finally {
       if (scanner != null)
         scanner.close();
@@ -5402,6 +5454,7 @@ public class HRegion implements HeapSize { // , Writable{
         Get get = new Get(c.getRow());
         get.addColumn(c.getFamily(), c.getQualifier());
         Result result = get(get, acquiredLocks.get(row));
+
         if (!c.isMatch(result)) { // no match
           return false;
         }
@@ -5499,6 +5552,9 @@ public class HRegion implements HeapSize { // , Writable{
             }
           }
         }
+
+        this.updateWriteRequestsByCapacityUnitPerSecond(addedSize);
+        this.updateWriteMetrics(mutations.size());
       } finally {
         // 16. clean up if needed
         if (!walSyncSuccessful) {
@@ -5704,6 +5760,7 @@ public class HRegion implements HeapSize { // , Writable{
           }
           allKVs.addAll(entry.getValue());
         }
+        this.updateWriteRequestsByCapacityUnitPerSecond(size);
         size = this.addAndGetGlobalMemstoreSize(size);
         flush = isFlushSize(size);
       } finally {
@@ -5939,7 +5996,8 @@ public class HRegion implements HeapSize { // , Writable{
         if (mutations != null) {
           applyMutationsToMemstore(mutations, w);
         }
-        
+
+        this.updateWriteRequestsByCapacityUnitPerSecond(size);
         size = this.addAndGetGlobalMemstoreSize(size);
         flush = isFlushSize(size);
       } finally {
@@ -6048,7 +6106,7 @@ public class HRegion implements HeapSize { // , Writable{
           } else {
             size = store.add(newKv);
           }
-
+          this.updateWriteRequestsByCapacityUnitPerSecond(size);
           size = this.addAndGetGlobalMemstoreSize(size);
           flush = isFlushSize(size);
         }
@@ -6138,7 +6196,7 @@ public class HRegion implements HeapSize { // , Writable{
     System.out.println("Usage: HRegion CATLALOG_TABLE_DIR [major_compact]");
     System.out.println("Options:");
     System.out.println(" major_compact  Pass this option to major compact " +
-      "passed region.");
+            "passed region.");
     System.out.println("Default outputs scan of passed region.");
     System.exit(1);
   }
@@ -6530,6 +6588,38 @@ public class HRegion implements HeapSize { // , Writable{
    */
   public void updateCoprocessorMetrics(String methodName, long value) {
     this.opMetrics.updateCoprocessorMetrics(methodName, value);
+  }
+
+  public void updateWriteRequestsByCapacityUnitPerSecond(long writeRequestsByCapacityUnitPerSecond){
+    this.writeRequestsByCapacityUnitPerSecond.inc(writeRequestsByCapacityUnitPerSecond / 1024);
+  }
+
+  public void updateReadRequestsByCapacityUnitPerSecond(long readRequestsByCapacityUnitPerSecond){
+    this.readRequestsByCapacityUnitPerSecond.inc(readRequestsByCapacityUnitPerSecond / 1024);
+  }
+
+  public void updateReadRequestsByCapacityUnitPerSecond(List<KeyValue> results){
+    long bytes = 0;
+    for(KeyValue kv: results){
+      bytes += kv.getLength();
+    }
+    this.updateReadRequestsByCapacityUnitPerSecond(bytes);
+  }
+
+  public void updateReadCellCountPerSecond(long readCellCountPerSecond){
+    this.readCellCountPerSecond.inc(readCellCountPerSecond);
+  }
+
+  public void updateReadRawCellCountPerSecond(long readRawCellCountPerSecond){
+    this.readRawCellCountPerSecond.inc(readRawCellCountPerSecond);
+  }
+
+  public void updateScanCountPerSecond(long scanCountPerSecond){
+    this.scanCountPerSecond.inc(scanCountPerSecond);
+  }
+
+  public void updateScanRowsPerSecond(long scanRowsPerSecond){
+    this.scanRowsPerSecond.inc(scanRowsPerSecond);
   }
 
   /**

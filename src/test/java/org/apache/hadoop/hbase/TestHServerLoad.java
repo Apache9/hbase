@@ -68,12 +68,24 @@ public class TestHServerLoad {
     int totalStaticBloomSizeKB = 0;
     long totalCompactingKVs = 0;
     long currentCompactedKVs = 0;
+    long writeRequestsByCapacityUnitPerSecond = 0;
+    long readRequestsByCapacityUnitPerSecond = 0;
+    long readCellCountPerSecond = 0;
+    long readRawCellCountPerSecond = 0;
+    long scanCountPerSecond = 0;
+    long scanRowsPerSecond = 0;
 
     return new HServerLoad.RegionLoad(name, stores, storefiles,
         storeUncompressedSizeMB, storefileSizeMB, memstoreSizeMB,
         storefileIndexSizeMB, rootIndexSizeKB, totalStaticIndexSizeKB,
         totalStaticBloomSizeKB, 0, 0, 0, totalCompactingKVs, currentCompactedKVs,
-        LAST_FLUSH_SEQID, 0.0f, 0, 0);
+        LAST_FLUSH_SEQID, 0.0f, 0, 0,
+        writeRequestsByCapacityUnitPerSecond,
+        readRequestsByCapacityUnitPerSecond,
+        readCellCountPerSecond,
+        readRawCellCountPerSecond,
+        scanCountPerSecond,
+        scanRowsPerSecond);
   }
 
   @Test
@@ -94,7 +106,7 @@ public class TestHServerLoad {
     byte[] bytes = regionLoadV2Bytes();
     HServerLoad.RegionLoad deserialized = (HServerLoad.RegionLoad) Writables
         .getWritable(bytes, new HServerLoad.RegionLoad());
-    assertEquals(6, deserialized.getVersion());
+    assertEquals(7, deserialized.getVersion());
     assertEquals(-1, deserialized.getLastFlushSeqId());
   }
 }

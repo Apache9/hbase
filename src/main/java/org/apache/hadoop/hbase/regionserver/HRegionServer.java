@@ -1134,11 +1134,24 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
       new TreeMap<byte [], HServerLoad.RegionLoad>(Bytes.BYTES_COMPARATOR);
     long readRequestsPerSecond = 0;
     long writeRequestsPerSecond = 0;
+    long writeRequestsByCapacityUnitPerSecond = 0;
+    long readRequestsByCapacityUnitPerSecond = 0;
+    long readCellCountPerSecond = 0;
+    long readRawCellCountPerSecond = 0;
+    long scanCountPerSecond = 0;
+    long scanRowsPerSecond = 0;
+
     for (HRegion region: regions) {
       RegionLoad load = createRegionLoad(region);
       regionLoads.put(region.getRegionName(), load);
       readRequestsPerSecond += load.getReadRequestsPerSecond();
       writeRequestsPerSecond += load.getWriteRequestsPerSecond();
+      writeRequestsByCapacityUnitPerSecond += load.getWriteRequestsByCapacityUnitPerSecond();
+      readRequestsByCapacityUnitPerSecond += load.getReadRequestsByCapacityUnitPerSecond();
+      readCellCountPerSecond += load.getReadCellCountPerSecond();
+      readRawCellCountPerSecond += load.getReadRawCellCountPerSecond();
+      scanCountPerSecond += load.getScanCountPerSecond();
+      scanRowsPerSecond += load.getScanRowsPerSecond();
     }
     this.readRequestsPerSecond = readRequestsPerSecond;
     this.writeRequestsPerSecond = writeRequestsPerSecond;
@@ -1152,7 +1165,13 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
       (int)(memory.getUsed() / 1024 / 1024),
       (int) (memory.getMax() / 1024 / 1024), regionLoads,
       this.hlog.getCoprocessorHost().getCoprocessors(),
-      readRequestsPerSecond, writeRequestsPerSecond, replicationLoads);
+      readRequestsPerSecond, writeRequestsPerSecond, replicationLoads,
+      writeRequestsByCapacityUnitPerSecond,
+      readRequestsByCapacityUnitPerSecond,
+      readCellCountPerSecond,
+      readRawCellCountPerSecond,
+      scanCountPerSecond,
+      scanRowsPerSecond);
   }
 
   String getOnlineRegionsAsPrintableString() {
@@ -1428,7 +1447,13 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
         r.getRequestsCount.get(), r.readRequestsCount.get(), r.writeRequestsCount.get(),
         totalCompactingKVs, currentCompactedKVs, 
         r.getLastFlushSequenceId(), locality,
-        r.getReadRequestsPerSecond(), r.getWriteRequestsPerSecond());
+        r.getReadRequestsPerSecond(), r.getWriteRequestsPerSecond(),
+        r.getWriteRequestsByCapacityUnitPerSecond(),
+        r.getReadRequestsByCapacityUnitPerSecond(),
+        r.getReadCellCountPerSecond(),
+        r.getReadRawCellCountPerSecond(),
+        r.getScanCountPerSecond(),
+        r.getScanRowsPerSecond());
   }
 
   /**
@@ -3202,12 +3227,21 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
                 results.add(Result.fakeResult(next));
               }
             }
+
+            // update metrics for a row.
+            region.updateReadRequestsByCapacityUnitPerSecond(values);
+            region.updateReadCellCountPerSecond(values.size());
+            region.updateReadRawCellCountPerSecond(status.getRawValueScanned());
+
             if (!status.hasNext()) {
               break;
             }
             values.clear();
           }
         }
+
+        region.updateScanCountPerSecond(1);
+        region.updateScanRowsPerSecond(i);
         requestCount.addAndGet(i);
         region.updateReadMetrics(i);
       } finally {
