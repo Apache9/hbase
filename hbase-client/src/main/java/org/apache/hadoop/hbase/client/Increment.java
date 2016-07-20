@@ -24,12 +24,14 @@ import java.util.Map;
 import java.util.NavigableMap;
 import java.util.TreeMap;
 
+import com.google.common.annotations.VisibleForTesting;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.classification.InterfaceStability;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.KeyValueUtil;
 import org.apache.hadoop.hbase.io.TimeRange;
+import org.apache.hadoop.hbase.types.NumberCodecType;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.ClassSize;
 
@@ -121,6 +123,22 @@ public class Increment extends Mutation implements Comparable<Row> {
    */
   @SuppressWarnings("unchecked")
   public Increment addColumn(byte [] family, byte [] qualifier, long amount) {
+    return addColumn(family, qualifier, amount, null);
+  }
+
+  /**
+   * Increment the column from the specific family with the specified qualifier
+   * by the specified amount.
+   * <p>
+   * Overrides previous calls to addColumn for this family and qualifier.
+   * @param family family name
+   * @param qualifier column qualifier
+   * @param amount amount to increment by
+   * @param type number codec type
+   * @return the Increment object
+   */
+  @SuppressWarnings("unchecked")
+  public Increment addColumn(byte [] family, byte [] qualifier, long amount, NumberCodecType type) {
     if (family == null) {
       throw new IllegalArgumentException("family cannot be null");
     }
@@ -131,6 +149,11 @@ public class Increment extends Mutation implements Comparable<Row> {
     KeyValue kv = createPutKeyValue(family, qualifier, ts, Bytes.toBytes(amount));
     list.add(kv);
     familyMap.put(kv.getFamily(), list);
+    if (type != null) {
+      byte[] value = new byte[1];
+      value[0] = type.getTypeId();
+      setAttribute(getTypeAttributeName(family, qualifier), value);
+    }
     return this;
   }
 
@@ -200,6 +223,16 @@ public class Increment extends Mutation implements Comparable<Row> {
       results.put(entry.getKey(), longs);
     }
     return results;
+  }
+
+  public NumberCodecType getNumberCodecType(byte[] family, byte[] qualifier) {
+    byte[] value = getAttribute(getTypeAttributeName(family, qualifier));
+    NumberCodecType type = NumberCodecType.RAW_LONG; // default
+    if (value != null) {
+      assert value.length == 1;
+      type = NumberCodecType.fromTypeId(value[0]);
+    }
+    return type;
   }
 
   /**
@@ -272,6 +305,13 @@ public class Increment extends Mutation implements Comparable<Row> {
     }
     Row other = (Row) obj;
     return compareTo(other) == 0;
+  }
+
+  @VisibleForTesting
+  protected static String getTypeAttributeName(byte[] family, byte[] qualifier) {
+    String f = Bytes.toString(family);
+    String q = Bytes.toString(qualifier);
+    return f.replaceAll("\\.", "\\\\.") + "." + q.replaceAll("\\.", "\\\\.") + ".type";
   }
 
   protected long extraHeapSize(){

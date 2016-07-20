@@ -25,6 +25,7 @@ import java.util.SortedSet;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
+import com.google.common.annotations.VisibleForTesting;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -221,7 +222,8 @@ public class ReplicationQueuesZKImpl extends ReplicationStateZKBase implements R
    * @param znode the server names of the other server
    * @return true if the lock was acquired, false in every other cases
    */
-  private boolean lockOtherRS(String znode) {
+  @VisibleForTesting
+  public boolean lockOtherRS(String znode) {
     try {
       String parent = ZKUtil.joinZNode(this.queuesZNode, znode);
       if (parent.equals(this.myQueuesZnode)) {
@@ -246,6 +248,15 @@ public class ReplicationQueuesZKImpl extends ReplicationStateZKBase implements R
       return false;
     }
     return true;
+  }
+
+  public String getLockZNode(String znode) {
+    return this.queuesZNode + "/" + znode + "/" + RS_LOCK_ZNODE;
+  }
+
+  @VisibleForTesting
+  public boolean checkLockExists(String znode) throws KeeperException {
+    return ZKUtil.checkExists(zookeeper, getLockZNode(znode)) >= 0;
   }
 
   /**
@@ -299,9 +310,11 @@ public class ReplicationQueuesZKImpl extends ReplicationStateZKBase implements R
       for (String peerId : peerIdsToProcess) {
         ReplicationQueueInfo replicationQueueInfo = new ReplicationQueueInfo(peerId);
         if (!peerExists(replicationQueueInfo.getPeerId())) {
-          LOG.warn("Peer " + peerId + " didn't exist, skipping the replay");
-          // Protection against moving orphaned queues
-          continue;
+          // the orphaned queues must be moved, otherwise the delete op of dead rs will fail,
+          // this will cause the whole multi op fail.
+          // NodeFailoverWorker will skip the orphaned queues.
+          LOG.warn("Peer " + peerId
+              + " didn't exist, will move its queue to avoid the failure of multi op");
         }
         String newPeerId = peerId + "-" + znode;
         String newPeerZnode = ZKUtil.joinZNode(this.myQueuesZnode, newPeerId);

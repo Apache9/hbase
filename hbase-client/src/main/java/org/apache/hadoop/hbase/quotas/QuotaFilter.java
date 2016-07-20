@@ -108,4 +108,9 @@ public class QuotaFilter {
   public String getUserFilter() {
     return userRegex;
   }
+  
+  public String toString() {
+    return "namespaceRegex=" + namespaceRegex + ", tableRegex=" + tableRegex + ", userRegex="
+        + userRegex;
+  }
 }

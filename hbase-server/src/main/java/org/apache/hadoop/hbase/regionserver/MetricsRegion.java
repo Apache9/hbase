@@ -57,7 +57,6 @@ public class MetricsRegion {
 
   public void updateScanNext(final long scanSize) {
     source.updateScan(scanSize);
-    this.updateRead(QuotaUtil.calculateReadCapacityUnitNum(scanSize));
   }
 
   public void updateAppend() {

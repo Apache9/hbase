@@ -22,9 +22,14 @@ package org.apache.hadoop.hbase.replication.thrift;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HConstants;
+import org.apache.hadoop.hbase.replication.regionserver.ReplicationSink;
 import org.apache.hadoop.hbase.replication.thrift.generated.THBaseService;
 import org.apache.hadoop.hbase.security.User;
+import org.apache.hadoop.hbase.security.UserProvider;
+import org.apache.hadoop.hbase.zookeeper.ZKClusterId;
+import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
 import org.apache.hadoop.security.SaslRpcServer;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.thrift.protocol.TBinaryProtocol;
@@ -48,18 +53,23 @@ public class ThriftServer extends Thread {
   private Configuration conf;
   private THBaseService.Iface sinkInterface;
   private boolean useSecure;
+  private static final String THRIFT_SERVER_MAX_WORKER_THREADS = "hbase.rplication.thrift.max.worker.threads";
+  private int maxWorkerThreads = 24;
 
   public ThriftServer(Configuration conf, THBaseService.Iface sinkInterface) throws IOException {
     this.conf = conf;
     this.sinkInterface = sinkInterface;
-    this.useSecure = User.isHBaseSecurityEnabled(conf);
+    this.useSecure = ThriftUtilities.useSecure(conf);
+    LOG.info("prepare start replication thrift server, use secure: " + this.useSecure);
+    this.maxWorkerThreads = this.conf.getInt(THRIFT_SERVER_MAX_WORKER_THREADS, maxWorkerThreads);
+    ThriftClient.loadTableNameMap(conf.get(ThriftClient.HBASE_REPLICATION_THRIFT_TABLE_NAME_MAP));
     try {
       init();
     } catch (TTransportException e) {
       throw new IOException(e);
     }
   }
-
+  
   private static TProtocolFactory getTProtocolFactory(boolean isCompact) {
     if (isCompact) {
       LOG.debug("Using compact protocol");
@@ -95,12 +105,21 @@ public class ThriftServer extends Thread {
     }
   }
 
-  private static TServer getTThreadPoolServer(TProtocolFactory protocolFactory, THBaseService.Processor processor,
-      TTransportFactory transportFactory, InetSocketAddress inetSocketAddress) throws TTransportException {
+  private static TServer getTThreadPoolServer(TProtocolFactory protocolFactory,
+      THBaseService.Processor processor, TTransportFactory transportFactory,
+      InetSocketAddress inetSocketAddress) throws TTransportException {
+    return getTThreadPoolServer(protocolFactory, processor, transportFactory, inetSocketAddress,
+      100);
+  }
+
+  private static TServer getTThreadPoolServer(TProtocolFactory protocolFactory,
+      THBaseService.Processor processor, TTransportFactory transportFactory,
+      InetSocketAddress inetSocketAddress, int maxWorkerThreads) throws TTransportException {
     TServerTransport serverTransport = new TServerSocket(inetSocketAddress);
-    LOG.info("starting HBase ThreadPool Thrift server on " + inetSocketAddress.toString());
+    LOG.info("starting HBase ThreadPool Thrift server on " + inetSocketAddress.toString()
+        + ", maxWorkerThreads is " + maxWorkerThreads);
     TThreadPoolServer.Args serverArgs = new TThreadPoolServer.Args(serverTransport);
-    serverArgs.maxWorkerThreads(100);
+    serverArgs.maxWorkerThreads(maxWorkerThreads);
     serverArgs.processor(processor);
     serverArgs.transportFactory(transportFactory);
     serverArgs.protocolFactory(protocolFactory);
@@ -133,7 +152,7 @@ public class ThriftServer extends Thread {
 
     String serverProtocol = UserGroupInformation.getCurrentUser().getUserName();
     String serverAddress = null;
-    if(User.isHBaseSecurityEnabled(conf)) {
+    if(useSecure) {
       String kerberosName = UserGroupInformation.getCurrentUser().getUserName();
       final String names[] = SaslRpcServer.splitKerberosName(kerberosName);
       if (names.length != 3) {
@@ -161,7 +180,8 @@ public class ThriftServer extends Thread {
     InetSocketAddress inetSocketAddress =
         bindToPort(conf.get("hbase.replication.thrift.address"), listenPort);
     LOG.info("Listening on "+inetSocketAddress.getHostName()+":"+inetSocketAddress.getPort());
-    server = getTThreadPoolServer(protocolFactory, processor, transportFactory, inetSocketAddress);
+    server = getTThreadPoolServer(protocolFactory, processor, transportFactory, inetSocketAddress,
+      this.maxWorkerThreads);
   }
 
   public void run() {
@@ -174,5 +194,27 @@ public class ThriftServer extends Thread {
     } catch (Throwable e) {
       LOG.error("Error stopping thrift server", e);
     }
+  }
+  
+  public static void main(String[] args) throws Exception {
+    Configuration conf = HBaseConfiguration.create();
+    System.setProperty("hadoop.property.hadoop.security.authentication", "kerberos");
+    System.setProperty("hadoop.property.hadoop.client.keytab.file",
+        conf.get("hbase.regionserver.keytab.file"));
+    System.setProperty("hadoop.property.hadoop.client.kerberos.principal",
+        conf.get("hbase.regionserver.kerberos.principal"));
+    conf = HBaseConfiguration.create();
+    
+    UserProvider userProvider = UserProvider.instantiate(conf);
+    userProvider.login("hbase.regionserver.keytab.file", "hbase.regionserver.kerberos.principal",
+      new InetSocketAddress(9001).getHostName());
+    LOG.info("replicate data to cluster, zkQuorum=" + conf.get(HConstants.ZOOKEEPER_QUORUM)
+        + ", parentNode=" + conf.get(HConstants.ZOOKEEPER_ZNODE_PARENT));
+
+    ZooKeeperWatcher zkw = new ZooKeeperWatcher(conf, "thrift-rep", null);
+    ReplicationSink sink = new ReplicationSink(conf, null, ZKClusterId.getUUIDForCluster(zkw)
+        .toString());
+    ThriftServer server = new ThriftServer(conf, sink);
+    server.run();
   }
 }

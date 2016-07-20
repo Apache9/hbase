@@ -59,6 +59,7 @@ import org.apache.hadoop.hbase.coprocessor.protobuf.generated.IncrementCounterPr
 import org.apache.hadoop.hbase.coprocessor.protobuf.generated.IncrementCounterProcessorTestProtos.TimeoutProcessorRequest;
 import org.apache.hadoop.hbase.coprocessor.protobuf.generated.IncrementCounterProcessorTestProtos.TimeoutProcessorResponse;
 import org.apache.hadoop.hbase.ipc.CoprocessorRpcChannel;
+import org.apache.hadoop.hbase.ipc.SimpleRpcScheduler;
 import org.apache.hadoop.hbase.protobuf.generated.RowProcessorProtos.ProcessRequest;
 import org.apache.hadoop.hbase.protobuf.generated.RowProcessorProtos.ProcessResponse;
 import org.apache.hadoop.hbase.protobuf.generated.RowProcessorProtos.RowProcessorService;
@@ -73,6 +74,7 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
 import com.google.protobuf.Message;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -118,6 +120,7 @@ public class TestRowProcessorEndpoint {
         RowProcessorEndpoint.class.getName());
     conf.setInt(HConstants.HBASE_CLIENT_RETRIES_NUMBER, 2);
     conf.setLong("hbase.hregion.row.processor.timeout", 1000L);
+    conf.setLong(SimpleRpcScheduler.CALL_QUEUE_MAX_LENGTH_CONF_KEY, 1024);
     util.startMiniCluster();
   }
 

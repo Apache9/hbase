@@ -2,6 +2,9 @@ package org.apache.hadoop.hbase.replication.thrift;
 
 import com.google.common.base.Function;
 import com.google.common.collect.Lists;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.*;
 import org.apache.hadoop.hbase.regionserver.wal.HLog;
 import org.apache.hadoop.hbase.regionserver.wal.HLogKey;
@@ -11,7 +14,8 @@ import java.util.List;
 import java.util.UUID;
 
 public class ThriftAdaptors {
-
+  private static final Log LOG = LogFactory.getLog(ThriftAdaptors.class);
+  
   interface Adaptor<K, V> {
 
     K fromThrift(V vee);
@@ -34,7 +38,8 @@ public class ThriftAdaptors {
               new HLogKeyAdaptor(
                   CLUSTER_ID_ADAPTOR.fromThrift(input.getClusterIds()))
                   .fromThrift(input.getHLogKey()),
-              WAL_ENTRY_ADAPTOR.fromThrift(input.getWalEdit())
+              WAL_ENTRY_ADAPTOR.withTableName(input.getHLogKey().getTableName())
+                  .fromThrift(input.getWalEdit())
           );
         }
       });
@@ -87,10 +92,21 @@ public class ThriftAdaptors {
 
   // Maps WALEdit to Thrift: TWalEdit
   static class WALEntryAdaptor implements Adaptor<WALEdit, TWalLEdit> {
-
+    private byte[] tableName;
+    
+    public WALEntryAdaptor withTableName(byte[] tableName) {
+      this.tableName = tableName;
+      return this;
+    }
+    
     @Override public WALEdit fromThrift(TWalLEdit thriftEdit) {
       WALEdit walEdit = new WALEdit();
       for (TColumnValue mutation : thriftEdit.getMutations()) {
+        if (mutation.getRow() == null || mutation.getRow().length == 0) {
+          LOG.warn("Receive cell with null row, tableName=" + TableName.valueOf(tableName)
+              + ", type=" + ThriftEditType.codeToType(mutation.getType()).getKvType());
+          continue;
+        }
         walEdit.add(COLUMN_VALUE_ADAPTOR.fromThrift(mutation));
       }
       return walEdit;

@@ -18,7 +18,6 @@
  */
 package org.apache.hadoop.hbase;
 
-import org.apache.hadoop.hbase.RegionLoad;
 import org.apache.hadoop.hbase.util.Strings;
 
 /**
@@ -75,6 +74,10 @@ public class TableLoad {
   /** the current write requests per second made to all regions of the table  */
   private long writeRequestsPerSecond;
 
+  private long readCellCountPerSecond;
+
+  private long readRawCellCountPerSecond;
+
   /** the current total read capacity unit made to all regions of the table  */
   private long readRequestsByCapacityUnitPerSecond;
   /** the current total write capacity unit made to all regions of the table  */
@@ -104,6 +107,8 @@ public class TableLoad {
     this.locality = 0;
     this.readRequestsPerSecond = 0;
     this.writeRequestsPerSecond = 0;
+    this.readCellCountPerSecond = 0;
+    this.readRawCellCountPerSecond = 0;
     this.readRequestsByCapacityUnitPerSecond = 0;
     this.writeRequestsByCapacityUnitPerSecond = 0;
     this.throttledReadRequestsCount = 0;
@@ -140,6 +145,8 @@ public class TableLoad {
     this.totalCompactingKVs += regionLoad.getTotalCompactingKVs();
     this.currentCompactedKVs += regionLoad.getCurrentCompactedKVs();
     this.readRequestsPerSecond += regionLoad.getReadRequestsPerSecond();
+    this.readCellCountPerSecond += regionLoad.getReadCellCountPerSecond();
+    this.readRawCellCountPerSecond += regionLoad.getReadRawCellCountPerSecond();
     this.writeRequestsPerSecond += regionLoad.getWriteRequestsPerSecond();
     this.readRequestsByCapacityUnitPerSecond += regionLoad.getReadRequestsByCapacityUnitPerSecond();
     this.writeRequestsByCapacityUnitPerSecond += regionLoad.getWriteRequestsByCapacityUnitPerSecond();
@@ -215,6 +222,14 @@ public class TableLoad {
     return readRequestsPerSecond;
   }
 
+  public long getReadCellCountPerSecond() {
+    return readCellCountPerSecond;
+  }
+
+  public long getReadRawCellCountPerSecond() {
+    return readRawCellCountPerSecond;
+  }
+
   public long getWriteRequestsPerSecond() {
     return writeRequestsPerSecond;
   }
@@ -282,6 +297,10 @@ public class TableLoad {
       this.readRequestsPerSecond);
     sb = Strings.appendKeyValue(sb, "writeRequestsPerSecond",
       this.writeRequestsPerSecond);
+    sb = Strings.appendKeyValue(sb, "readCellCountPerSecond",
+        this.getReadCellCountPerSecond());
+    sb = Strings.appendKeyValue(sb, "readRawCellCountPerSecond",
+        this.getReadRawCellCountPerSecond());
     sb = Strings.appendKeyValue(sb, "readRequestsByCapacityUnitPerSecond",
       this.readRequestsByCapacityUnitPerSecond);
     sb = Strings.appendKeyValue(sb, "writeRequestsByCapacityUnitPerSecond",

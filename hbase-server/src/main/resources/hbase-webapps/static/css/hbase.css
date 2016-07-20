@@ -33,4 +33,11 @@ section { margin-bottom: 3em; }
     margin-top: 1.2em;
 }
 
+.morecontent span {
+      display: none;
+}
+.morelink {
+      display: block;
+}
+
 /* Region Server page styling */

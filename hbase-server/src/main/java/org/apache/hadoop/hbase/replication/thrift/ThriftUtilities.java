@@ -26,11 +26,20 @@ import org.apache.hadoop.security.SaslRpcServer.AuthMethod;
 import org.apache.hadoop.security.SaslRpcServer.QualityOfProtection;
 
 public class ThriftUtilities {
+  public static final String HBASE_REPLICATION_THRIFT_SECURE_ENABLED = "hbase.replication.thrift.secure.enabled";
 
   private ThriftUtilities() {
     throw new UnsupportedOperationException("Can't initialize class");
   }
 
+  public static boolean thriftSecureEnabled(Configuration conf) {
+    return conf.getBoolean(HBASE_REPLICATION_THRIFT_SECURE_ENABLED, true);
+  }
+  
+  public static boolean useSecure(Configuration conf) {
+    return User.isHBaseSecurityEnabled(conf) && thriftSecureEnabled(conf);
+  }
+  
   public static SaslRpcServer.QualityOfProtection getQOP(Configuration conf) {
     QualityOfProtection saslQOP = QualityOfProtection.AUTHENTICATION;
     String rpcProtection = conf.get("hbase.replication.thrift.protection",

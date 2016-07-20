@@ -116,6 +116,19 @@ public class Scan extends Query {
   private int maxVersions = 1;
   private int batch = -1;
 
+  /**
+   * Partial {@link Result}s are {@link Result}s must be combined to form a complete {@link Result}.
+   * The {@link Result}s had to be returned in fragments (i.e. as partials) because the size of the
+   * cells in the row exceeded max result size on the server. Typically partial results will be
+   * combined client side into complete results before being delivered to the caller. However, if
+   * this flag is set, the caller is indicating that they do not mind seeing partial results (i.e.
+   * they understand that the results returned from the Scanner may only represent part of a
+   * particular row). In such a case, any attempt to combine the partials into a complete result on
+   * the client side will be skipped, and the caller will be able to see the exact results returned
+   * from the server.
+   */
+  private boolean allowPartialResults = false;
+
   private int storeLimit = -1;
   private int storeOffset = 0;
   private boolean getScan;
@@ -129,7 +142,9 @@ public class Scan extends Query {
   // define this attribute with the appropriate table name by calling
   // scan.setAttribute(Scan.SCAN_ATTRIBUTES_TABLE_NAME, Bytes.toBytes(tableName))
   static public final String SCAN_ATTRIBUTES_TABLE_NAME = "scan.attributes.table.name";
-  
+
+  private double maxCompleteRowHeapRatio = -1.0;
+
   /*
    * -1 means no caching
    */
@@ -219,6 +234,8 @@ public class Scan extends Query {
     tr = new TimeRange(ctr.getMin(), ctr.getMax());
     reversed = scan.isReversed();
     small = scan.isSmall();
+    allowPartialResults = scan.getAllowPartialResults();
+    maxCompleteRowHeapRatio = scan.getMaxCompleteRowHeapRatio();
     Map<byte[], NavigableSet<byte[]>> fams = scan.getFamilyMap();
     for (Map.Entry<byte[],NavigableSet<byte[]>> entry : fams.entrySet()) {
       byte [] fam = entry.getKey();
@@ -409,14 +426,17 @@ public class Scan extends Query {
   }
 
   /**
-   * Set the limit of raw values to scan for each call to next(). This is a soft limit, and the
-   * number of actual scanned values can exceeds this limit to include a full row (so the exceeded
-   * amount is bounded to the max number of values in a single row). This limit can be used to
-   * control the total time of each RPC call to avoid unexpected timeout.
-   * @param rawLimit the maximum number of raw values to scan
+   * It will do nothing now.
    */
   public void setRawLimit(int rawLimit) {
-    setAttribute(RAWLIMIT_ATTR, Bytes.toBytes(rawLimit));
+  }
+
+  /**
+   * It will return 0 now.
+   * @return
+   */
+  public int getRawLimit() {
+    return 0;
   }
 
   /**
@@ -543,14 +563,6 @@ public class Scan extends Query {
   }
 
   /**
-   * @return get the limit of raw values to scan for each call to next()
-   */
-  public int getRawLimit() {
-    byte[] attr = getAttribute(RAWLIMIT_ATTR);
-    return attr == null ? -1 : Bytes.toInt(attr);
-  }
-
-  /**
    * @return caching the number of rows fetched when calling next on a scanner
    */
   public int getCaching() {
@@ -621,7 +633,28 @@ public class Scan extends Query {
   public boolean isReversed() {
     return reversed;
   }
-  
+
+  /**
+   * Setting whether the caller wants to see the partial results that may be returned from the
+   * server. By default this value is false and the complete results will be assembled client side
+   * before being delivered to the caller.
+   * @param allowPartialResults
+   * @return this
+   */
+  public Scan setAllowPartialResults(final boolean allowPartialResults) {
+    this.allowPartialResults = allowPartialResults;
+    return this;
+  }
+  /**
+   * @return true when the constructor of this scan understands that the results they will see may
+   *         only represent a partial portion of a row. The entire row would be retrieved by
+   *         subsequent calls to {@link ResultScanner#next()}
+   */
+  public boolean getAllowPartialResults() {
+    return allowPartialResults;
+  }
+
+
   /**
    * Set whether this scan is a debug one.
    * @param debug
@@ -720,7 +753,6 @@ public class Scan extends Query {
     map.put("stopRow", Bytes.toStringBinary(this.stopRow));
     map.put("maxVersions", this.maxVersions);
     map.put("batch", this.batch);
-    map.put("rawLimit", getRawLimit());
     map.put("caching", this.caching);
     map.put("maxResultSize", this.maxResultSize);
     map.put("cacheBlocks", this.cacheBlocks);
@@ -835,5 +867,17 @@ public class Scan extends Query {
   public boolean isIgnoreTtl() {
     byte[] attr = getAttribute(IGNORETTL_ATTR);
     return attr == null ? false : Bytes.toBoolean(attr);
+  }
+
+  public double getMaxCompleteRowHeapRatio() {
+    return maxCompleteRowHeapRatio;
+  }
+
+  /**
+   * See HConstans.DEFAULT_HBASE_CLIENT_SCANNER_MAX_COMPLETEROW_HEAPRATIO
+   * and RowTooLargeException.
+   */
+  public void setMaxCompleteRowHeapRatio(double maxCompleteRowHeapRatio) {
+    this.maxCompleteRowHeapRatio = maxCompleteRowHeapRatio;
   }
 }

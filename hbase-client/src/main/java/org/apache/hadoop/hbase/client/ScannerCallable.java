@@ -73,6 +73,12 @@ public class ScannerCallable extends RegionServerCallable<Result[]> {
   private boolean logScannerActivity = false;
   private int logCutOffLatency = 1000;
   private static String myAddress;
+  private int timeout;
+  /**
+   * Saves whether or not the most recent response from the server was a heartbeat message.
+   * Heartbeat messages are identified by the flag {@link ScanResponse#getHeartbeatMessage()}
+   */
+  protected boolean heartbeatMessage = false;
   static {
     try {
       myAddress = DNS.getDefaultHost("default", "default");
@@ -95,7 +101,7 @@ public class ScannerCallable extends RegionServerCallable<Result[]> {
    * @param controller to use when writing the rpc
    */
   public ScannerCallable (HConnection connection, TableName tableName, Scan scan,
-      ScanMetrics scanMetrics, PayloadCarryingRpcController controller) {
+      ScanMetrics scanMetrics, PayloadCarryingRpcController controller, int timeout) {
     super(connection, tableName, scan.getStartRow());
     this.scan = scan;
     this.scanMetrics = scanMetrics;
@@ -103,6 +109,7 @@ public class ScannerCallable extends RegionServerCallable<Result[]> {
     logScannerActivity = conf.getBoolean(LOG_SCANNER_ACTIVITY, false);
     logCutOffLatency = conf.getInt(LOG_SCANNER_LATENCY_CUTOFF, 1000);
     this.controller = controller;
+    this.timeout = timeout;
   }
 
   /**
@@ -113,7 +120,7 @@ public class ScannerCallable extends RegionServerCallable<Result[]> {
   public ScannerCallable (HConnection connection, final byte [] tableName, Scan scan,
       ScanMetrics scanMetrics) {
     this(connection, TableName.valueOf(tableName), scan, scanMetrics, RpcControllerFactory
-        .instantiate(connection.getConfiguration()).newController());
+        .instantiate(connection.getConfiguration()).newController(), 0);
   }
 
   /**
@@ -165,12 +172,15 @@ public class ScannerCallable extends RegionServerCallable<Result[]> {
       } else {
         Result [] rrs = null;
         ScanRequest request = null;
+        // Reset the heartbeat flag prior to each RPC in case an exception is thrown by the server
+        setHeartbeatMessage(false);
         try {
           incRPCcallsMetrics();
           request = RequestConverter.buildScanRequest(scannerId, caching, false, nextCallSeq);
           ScanResponse response = null;
           try {
             controller.setPriority(getTableName());
+            controller.setTimeout(timeout);
             response = getStub().scan(controller, request);
             // Client and RS maintain a nextCallSeq number during the scan. Every next() call
             // from client to server will increment this number in both sides. Client passes this
@@ -183,6 +193,7 @@ public class ScannerCallable extends RegionServerCallable<Result[]> {
             // See HBASE-5974
             nextCallSeq++;
             long timestamp = System.currentTimeMillis();
+            setHeartbeatMessage(response.hasHeartbeatMessage() && response.getHeartbeatMessage());
             // Results are returned via controller
             CellScanner cellScanner = controller.cellScanner();
             rrs = ResponseConverter.getResults(cellScanner, response);
@@ -198,11 +209,22 @@ public class ScannerCallable extends RegionServerCallable<Result[]> {
                   + rows + " rows from scanner=" + scannerId);
               }
             }
-            if (response.hasMoreResults()
-                && !response.getMoreResults()) {
+            // moreResults is only used for the case where a filter exhausts all elements
+            if (response.hasMoreResults() && !response.getMoreResults()) {
               scannerId = -1L;
               closed = true;
+              // Implied that no results were returned back, either.
               return null;
+            }
+            // moreResultsInRegion explicitly defines when a RS may choose to terminate a batch due
+            // to size or quantity of results in the response.
+            if (response.hasMoreResultsInRegion()) {
+              // Set what the RS said
+              setHasMoreResultsContext(true);
+              setServerHasMoreResults(response.getMoreResultsInRegion());
+            } else {
+              // Server didn't respond whether it has more results or not.
+              setHasMoreResultsContext(false);
             }
           } catch (ServiceException se) {
             throw ProtobufUtil.getRemoteException(se);
@@ -254,6 +276,20 @@ public class ScannerCallable extends RegionServerCallable<Result[]> {
       }
     }
     return null;
+  }
+
+  /**
+   * @return true when the most recent RPC response indicated that the response was a heartbeat
+   *         message. Heartbeat messages are sent back from the server when the processing of the
+   *         scan request exceeds a certain time threshold. Heartbeats allow the server to avoid
+   *         timeouts during long running scan operations.
+   */
+  protected boolean isHeartbeatMessage() {
+    return heartbeatMessage;
+  }
+
+  protected void setHeartbeatMessage(boolean heartbeatMessage) {
+    this.heartbeatMessage = heartbeatMessage;
   }
 
   private void incRPCcallsMetrics() {

@@ -196,6 +196,19 @@ public class QuotaSettingsFactory {
   }
 
   /**
+   * Remove the throttling which have the specified type for the specified user on the specified
+   * table.
+   * @param userName the user
+   * @param tableName the table
+   * @param type the thottle type
+   * @return the quota settings
+   */
+  public static QuotaSettings unthrottleUser(final String userName, final TableName tableName,
+      final ThrottleType type) {
+    return throttle(userName, tableName, null, type, 0, null);
+  }
+
+  /**
    * Remove the throttling for the specified user on the specified namespace.
    *
    * @param userName the user
@@ -254,6 +267,17 @@ public class QuotaSettingsFactory {
     return throttle(null, null, namespace, null, 0, null);
   }
 
+  /**
+   * Remove the throttling which have the speified type for the specified namespace.
+   *
+   * @param namespace the namespace
+   * @param type the throttle type
+   * @return the quota settings
+   */
+  public static QuotaSettings unthrottleNamespace(final String namespace, final ThrottleType type) {
+    return throttle(null, null, namespace, type, 0, null);
+  }
+
   /* Throttle helper */
   private static QuotaSettings throttle(final String userName, final TableName tableName,
       final String namespace, final ThrottleType type, final long limit,
@@ -281,5 +305,10 @@ public class QuotaSettingsFactory {
    */
   public static QuotaSettings bypassGlobals(final String userName, final boolean bypassGlobals) {
     return new QuotaGlobalsSettingsBypass(userName, null, null, bypassGlobals);
+  }
+  
+  public static QuotaSettings bypassGlobals(final String userName, final TableName tableName,
+      final boolean bypassGlobals) {
+    return new QuotaGlobalsSettingsBypass(userName, tableName, null, bypassGlobals);
   }
 }

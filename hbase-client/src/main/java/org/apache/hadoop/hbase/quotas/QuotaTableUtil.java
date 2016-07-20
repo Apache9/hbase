@@ -314,8 +314,16 @@ public class QuotaTableUtil {
 
   public static boolean isEmptyQuota(final Quotas quotas) {
     boolean hasSettings = false;
-    hasSettings |= quotas.hasThrottle();
-    hasSettings |= quotas.hasBypassGlobals();
+    if (quotas.hasThrottle()) {
+      hasSettings |= quotas.getThrottle().hasReqNum();
+      hasSettings |= quotas.getThrottle().hasReqSize();
+      hasSettings |= quotas.getThrottle().hasReadNum();
+      hasSettings |= quotas.getThrottle().hasReadSize();
+      hasSettings |= quotas.getThrottle().hasWriteNum();
+      hasSettings |= quotas.getThrottle().hasWriteSize();
+    } else {
+      hasSettings |= quotas.hasBypassGlobals();
+    }
     return !hasSettings;
   }
 

@@ -27,7 +27,7 @@ java_import org.apache.hadoop.hbase.quotas.QuotaSettingsFactory
 
 module HBaseQuotasConstants
   GLOBAL_BYPASS = 'GLOBAL_BYPASS'
-  THROTTLE_TYPE = 'THROTTLE_TYPE'
+  TYPE = 'TYPE'
   THROTTLE = 'THROTTLE'
   REQUEST = 'REQUEST'
   WRITE = 'WRITE'
@@ -44,65 +44,78 @@ module Hbase
 
     def throttle(args)
       raise(ArgumentError, "Arguments should be a Hash") unless args.kind_of?(Hash)
-      type = args.fetch(THROTTLE_TYPE, REQUEST)
-      args.delete(THROTTLE_TYPE)
-      type, limit, time_unit = _parse_limit(args.delete(LIMIT), ThrottleType, type)
+      type = ThrottleType.valueOf(args.delete(TYPE) + "_NUMBER")
+      limit = args.delete(LIMIT)
+      time_unit = TimeUnit::SECONDS
+
       if args.has_key?(USER)
         user = args.delete(USER)
         if args.has_key?(TABLE)
           table = TableName.valueOf(args.delete(TABLE))
           raise(ArgumentError, "Unexpected arguments: " + args.inspect) unless args.empty?
           settings = QuotaSettingsFactory.throttleUser(user, table, type, limit, time_unit)
-        elsif args.has_key?(NAMESPACE)
-          namespace = args.delete(NAMESPACE)
-          raise(ArgumentError, "Unexpected arguments: " + args.inspect) unless args.empty?
-          settings = QuotaSettingsFactory.throttleUser(user, namespace, type, limit, time_unit)
         else
-          raise(ArgumentError, "Unexpected arguments: " + args.inspect) unless args.empty?
-          settings = QuotaSettingsFactory.throttleUser(user, type, limit, time_unit)
+          raise(ArgumentError, "Must specify table") 
         end
-      elsif args.has_key?(TABLE)
-        table = TableName.valueOf(args.delete(TABLE))
-        raise(ArgumentError, "Unexpected arguments: " + args.inspect) unless args.empty?
-        settings = QuotaSettingsFactory.throttleTable(table, type, limit, time_unit)
       elsif args.has_key?(NAMESPACE)
         namespace = args.delete(NAMESPACE)
         raise(ArgumentError, "Unexpected arguments: " + args.inspect) unless args.empty?
         settings = QuotaSettingsFactory.throttleNamespace(namespace, type, limit, time_unit)
       else
-        raise "One of USER, TABLE or NAMESPACE must be specified"
+        raise "One of USER=>TABLE or NAMESPACE must be specified"
       end
       @admin.setQuota(settings)
     end
 
     def unthrottle(args)
       raise(ArgumentError, "Arguments should be a Hash") unless args.kind_of?(Hash)
+      if args.has_key?(TYPE)
+        type = ThrottleType.valueOf(args.delete(TYPE) + "_NUMBER")
+      end
       if args.has_key?(USER)
         user = args.delete(USER)
         if args.has_key?(TABLE)
           table = TableName.valueOf(args.delete(TABLE))
           raise(ArgumentError, "Unexpected arguments: " + args.inspect) unless args.empty?
-          settings = QuotaSettingsFactory.unthrottleUser(user, table)
-        elsif args.has_key?(NAMESPACE)
-          namespace = args.delete(NAMESPACE)
-          raise(ArgumentError, "Unexpected arguments: " + args.inspect) unless args.empty?
-          settings = QuotaSettingsFactory.unthrottleUser(user, namespace)
+          settings = QuotaSettingsFactory.unthrottleUser(user, table, type)
         else
-          raise(ArgumentError, "Unexpected arguments: " + args.inspect) unless args.empty?
-          settings = QuotaSettingsFactory.unthrottleUser(user)
+          raise(ArgumentError, "Must specify table") 
         end
       elsif args.has_key?(TABLE)
-        table = TableName.valueOf(args.delete(TABLE))
+        table = args.delete(TABLE)
         raise(ArgumentError, "Unexpected arguments: " + args.inspect) unless args.empty?
-        settings = QuotaSettingsFactory.unthrottleTable(table)
+        unthrottle_table(table)
+        return
       elsif args.has_key?(NAMESPACE)
         namespace = args.delete(NAMESPACE)
         raise(ArgumentError, "Unexpected arguments: " + args.inspect) unless args.empty?
-        settings = QuotaSettingsFactory.unthrottleNamespace(namespace)
+        settings = QuotaSettingsFactory.unthrottleNamespace(namespace, type)
       else
-        raise "One of USER, TABLE or NAMESPACE must be specified"
+        raise "One of USER=>TABLE , TABLE or NAMESPACE must be specified"
       end
       @admin.setQuota(settings)
+    end
+
+    def unthrottle_table(table)
+      filter = QuotaFilter.new()
+      filter.setUserFilter("(.+)").setTableFilter(table)
+      $stdout.puts "start cancel all related quota settings about table #{table}..."
+
+      scanner = @admin.getQuotaRetriever(filter)
+      begin
+        iter = scanner.iterator
+        # Iterate results
+        while iter.hasNext
+          settings = iter.next
+          user = settings.getUserName()
+          table = settings.getTableName()
+          @admin.setQuota(QuotaSettingsFactory.unthrottleUser(user, table))
+          $stdout.puts "finish unthrottling for (USER => #{user}, TABLE => #{table})."
+        end
+      ensure
+        scanner.close()
+      end
+      $stdout.puts "finish cancel all related quota settings about table #{table}."
     end
 
     def set_global_bypass(bypass, args)
@@ -110,8 +123,14 @@ module Hbase
 
       if args.has_key?(USER)
         user = args.delete(USER)
-        raise(ArgumentError, "Unexpected arguments: " + args.inspect) unless args.empty?
-        settings = QuotaSettingsFactory.bypassGlobals(user, bypass)
+        if args.has_key?(TABLE)
+          table = TableName.valueOf(args.delete(TABLE))
+          raise(ArgumentError, "Unexpected arguments: " + args.inspect) unless args.empty?
+          settings = QuotaSettingsFactory.bypassGlobals(user, table, bypass)
+        else
+          raise(ArgumentError, "Unexpected arguments: " + args.inspect) unless args.empty?
+          settings = QuotaSettingsFactory.bypassGlobals(user, bypass)
+        end
       else
         raise "Expected USER"
       end
@@ -173,34 +192,34 @@ module Hbase
       end
     end
 
-    def _parse_limit(str_limit, type_cls, type)
-      str_limit = str_limit.downcase
-      match = /(\d+)(req|[bkmgtp])\/(sec|min|hour|day)/.match(str_limit)
-      if match
-        if match[2] == 'req'
-          limit = match[1].to_i
-          type = type_cls.valueOf(type + "_NUMBER")
-        else
-          limit = _size_from_str(match[1].to_i, match[2])
-          type = type_cls.valueOf(type + "_SIZE")
-        end
+    #def _parse_limit(str_limit, type_cls, type)
+    #  str_limit = str_limit.downcase
+    #  match = /(\d+)(req|[bkmgtp])\/(sec|min|hour|day)/.match(str_limit)
+    #  if match
+    #    if match[2] == 'req'
+    #      limit = match[1].to_i
+    #      type = type_cls.valueOf(type + "_NUMBER")
+    #    else
+    #      limit = _size_from_str(match[1].to_i, match[2])
+    #      type = type_cls.valueOf(type + "_SIZE")
+    #    end
 
-        if limit <= 0
-          raise "Invalid throttle limit, must be greater then 0"
-        end
+    #    if limit <= 0
+    #      raise "Invalid throttle limit, must be greater then 0"
+    #    end
 
-        case match[3]
-          when 'sec'  then time_unit = TimeUnit::SECONDS
-          when 'min'  then time_unit = TimeUnit::MINUTES
-          when 'hour' then time_unit = TimeUnit::HOURS
-          when 'day'  then time_unit = TimeUnit::DAYS
-        end
+    #    case match[3]
+    #      when 'sec'  then time_unit = TimeUnit::SECONDS
+    #      when 'min'  then time_unit = TimeUnit::MINUTES
+    #      when 'hour' then time_unit = TimeUnit::HOURS
+    #      when 'day'  then time_unit = TimeUnit::DAYS
+    #    end
 
-        return type, limit, time_unit
-      else
-        raise "Invalid throttle limit syntax"
-      end
-    end
+    #    return type, limit, time_unit
+    #  else
+    #    raise "Invalid throttle limit syntax"
+    #  end
+    #end
 
     def _size_from_str(value, suffix)
       case suffix

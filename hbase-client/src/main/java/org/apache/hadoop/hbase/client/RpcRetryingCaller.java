@@ -30,6 +30,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.DoNotRetryIOException;
+import org.apache.hadoop.hbase.DoNotRetryNowIOException;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.ipc.RpcClient;
 import org.apache.hadoop.hbase.quotas.ThrottlingException;
@@ -58,23 +59,24 @@ public class RpcRetryingCaller<T> {
   /**
    * Start and end times for a single call.
    */
-  private final static int MIN_RPC_TIMEOUT = 2000;
+  private final static int MIN_RPC_TIMEOUT = 1;
   /** How many retries are allowed before we start to log */
   private final int startLogErrorsCnt;
 
   private final long pause;
   private final int retries;
-  private final int throttleRetries;
+  private final boolean ignoreThrottlingException;
 
   public RpcRetryingCaller(long pause, int retries, int startLogErrorsCnt) {
-    this(pause, retries, HConstants.DEFAULT_HBASE_CLIENT_THROTTLE_RETRIES_NUMBER, startLogErrorsCnt);
+    this(pause, retries, startLogErrorsCnt, false);
   }
 
-  public RpcRetryingCaller(long pause, int retries, int throttleRetries, int startLogErrorsCnt) {
+  public RpcRetryingCaller(long pause, int retries, int startLogErrorsCnt,
+      boolean ignoreThrottlingException) {
     this.pause = pause;
     this.retries = retries;
     this.startLogErrorsCnt = startLogErrorsCnt;
-    this.throttleRetries = throttleRetries;
+    this.ignoreThrottlingException = ignoreThrottlingException;
   }
 
   private void beforeCall() {
@@ -134,22 +136,17 @@ public class RpcRetryingCaller<T> {
                 EnvironmentEdgeManager.currentTimeMillis(), toString());
         exceptions.add(qt);
         ExceptionUtil.rethrowIfInterrupt(t);
-        if (t instanceof ThrottlingException && tries >= throttleRetries - 1) {
+        if (tries >= retries - 1 && !handleException(t)) {
           throw new RetriesExhaustedException(tries, exceptions);
         }
-        if (tries >= retries - 1) {
-          throw new RetriesExhaustedException(tries, exceptions);
-        }
-        // If the server is dead, we need to wait a little before retrying, to give
-        //  a chance to the regions to be
-        // tries hasn't been bumped up yet so we use "tries + 1" to get right pause time
-        expectedSleep = callable.sleep(pause, tries + 1);
+
+        expectedSleep = calculateExpectedSleep(callable, tries, t);
 
         // If, after the planned sleep, there won't be enough time left, we stop now.
         long duration = singleCallDuration(expectedSleep);
         if (duration > this.callTimeout) {
-          String msg = "callTimeout=" + this.callTimeout + ", callDuration=" + duration +
-              ": " + callable.getExceptionMessageAdditionalDetail();
+          String msg = "callTimeout=" + this.callTimeout + ", callDuration=" + duration
+              + ", tries=" + tries + ": " + callable.getExceptionMessageAdditionalDetail();
           throw (SocketTimeoutException)(new SocketTimeoutException(msg).initCause(t));
         }
       } finally {
@@ -166,12 +163,29 @@ public class RpcRetryingCaller<T> {
   }
 
   /**
+   * @param callable The {@link RetryingCallable} to run.
+   * @param tries Have retried number
+   * @param t the throwable to analyze
+   * @return expected sleep time
+   */
+  private long calculateExpectedSleep(RetryingCallable<T> callable, final int tries, Throwable t) {
+    if (t instanceof DoNotRetryNowIOException) {
+      return ((DoNotRetryNowIOException) t).getWaitInterval()
+          + ConnectionUtils.addJitter(pause, 1.0f);
+    } else {
+      // If the server is dead, we need to wait a little before retrying, to give
+      // a chance to the regions to be
+      // get right pause time, start by RETRY_BACKOFF[0] * pause
+      return callable.sleep(pause, tries);
+    }
+  }
+
+  /**
    * @param expectedSleep
    * @return Calculate how long a single call took
    */
   private long singleCallDuration(final long expectedSleep) {
-    return (EnvironmentEdgeManager.currentTimeMillis() - this.globalStartTime)
-      + MIN_RPC_TIMEOUT + expectedSleep;
+    return (EnvironmentEdgeManager.currentTimeMillis() - this.globalStartTime) + expectedSleep;
   }
 
   /**
@@ -228,9 +242,6 @@ public class RpcRetryingCaller<T> {
     if (t instanceof ServiceException) {
       ServiceException se = (ServiceException)t;
       Throwable cause = se.getCause();
-      if (cause != null && cause instanceof ThrottlingException) {
-        return cause;
-      }
       if (cause != null && cause instanceof DoNotRetryIOException) {
         throw (DoNotRetryIOException)cause;
       }
@@ -242,5 +253,12 @@ public class RpcRetryingCaller<T> {
       throw (DoNotRetryIOException)t;
     }
     return t;
+  }
+
+  private boolean handleException(Throwable t) {
+    if (ignoreThrottlingException && t instanceof ThrottlingException) {
+      return true;
+    }
+    return false;
   }
 }

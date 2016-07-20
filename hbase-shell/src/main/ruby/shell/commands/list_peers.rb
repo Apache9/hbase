@@ -33,13 +33,14 @@ EOF
         now = Time.now
         peers = replication_admin.list_peers
 
-        formatter.header(["PEER_ID", "CLUSTER_KEY", "STATE", "TABLE_CFS", "PROTOCOL"])
+        formatter.header(["PEER_ID", "CLUSTER_KEY", "STATE", "TABLE_CFS", "PROTOCOL", "BANDWIDTH"])
 
         peers.entrySet().each do |e|
           state = replication_admin.get_peer_state(e.key)
           tableCFs = replication_admin.show_peer_tableCFs(e.key)
           protocol = e.value.getProtocol().getProtocol()
-          formatter.row([ e.key, e.value.getClusterKey, state, tableCFs, protocol ])
+          bandwidth = e.value.getBandwidth()
+          formatter.row([ e.key, e.value.getClusterKey, state, tableCFs, protocol, bandwidth ])
         end
 
         formatter.footer(now)

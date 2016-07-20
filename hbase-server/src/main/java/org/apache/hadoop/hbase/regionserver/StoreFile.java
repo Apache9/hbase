@@ -18,6 +18,11 @@
  */
 package org.apache.hadoop.hbase.regionserver;
 
+import com.google.common.base.Function;
+import com.google.common.base.Preconditions;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Ordering;
+
 import java.io.DataInput;
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -58,11 +63,6 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.ChecksumType;
 import org.apache.hadoop.hbase.util.Writables;
 import org.apache.hadoop.io.WritableUtils;
-
-import com.google.common.base.Function;
-import com.google.common.base.Preconditions;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Ordering;
 
 /**
  * A Store data file.  Stores usually have one or more of these files.  They
@@ -231,6 +231,13 @@ public class StoreFile {
   }
 
   /**
+   * Clone a StoreFile for opening private reader.
+   */
+  public StoreFile cloneForReader() {
+    return new StoreFile(this);
+  }
+
+  /**
    * @return the StoreFile object associated to this StoreFile.
    *         null if the StoreFile is not a reference.
    */
@@ -335,7 +342,7 @@ public class StoreFile {
    * is turned off, fall back to BULKLOAD_TIME_KEY.
    * @return true if this storefile was created by bulk load.
    */
-  boolean isBulkLoadResult() {
+  public boolean isBulkLoadResult() {
     boolean bulkLoadedHFile = false;
     String fileName = this.getPath().getName();
     int startPos = fileName.indexOf("SeqId_");
@@ -355,10 +362,13 @@ public class StoreFile {
 
   /**
    * @return the cached value of HDFS blocks distribution. The cached value is
-   * calculated when store file is opened.
+   * calculated when fisrt getHDFSBlockDistribution() of this store file.
+   * If some exceptions happen when calculate HDFS blocks distribution and the
+   * cached value is null, it return a empty HDFSBlocksDistribution.
    */
   public HDFSBlocksDistribution getHDFSBlockDistribution() {
-    return this.fileInfo.getHDFSBlockDistribution();
+    HDFSBlocksDistribution hdfsBlocksDistribution = this.fileInfo.getHDFSBlockDistribution(this.fs);
+    return hdfsBlocksDistribution == null ? new HDFSBlocksDistribution() : hdfsBlocksDistribution;
   }
 
   /**
@@ -673,9 +683,16 @@ public class StoreFile {
 
   public Long getMinimumTimestamp() {
     return (getReader().timeRangeTracker == null) ?
-        null :
-        getReader().timeRangeTracker.getMinimumTimestamp();
+      null :
+      getReader().timeRangeTracker.getMinimumTimestamp();
   }
+
+  public Long getMaximumTimestamp() {
+    return (getReader().timeRangeTracker == null) ?
+      null :
+      getReader().timeRangeTracker.getMaximumTimestamp();
+  }
+
 
   /**
    * Gets the approximate mid-point of this file that is optimal for use in splitting it.
@@ -1582,6 +1599,19 @@ public class StoreFile {
           Ordering.natural().onResultOf(new GetPathName())
       ));
 
+    /**
+     * Comparator for time-aware compaction. SeqId is still the first
+     *   ordering criterion to maintain MVCC.
+     */
+    public static final Comparator<StoreFile> SEQ_ID_MAX_TIMESTAMP =
+      Ordering.compound(ImmutableList.of(
+        Ordering.natural().onResultOf(new GetSeqId()),
+        Ordering.natural().onResultOf(new GetMaxTimestamp()),
+        Ordering.natural().onResultOf(new GetFileSize()).reverse(),
+        Ordering.natural().onResultOf(new GetBulkTime()),
+        Ordering.natural().onResultOf(new GetPathName())
+      ));
+
     private static class GetSeqId implements Function<StoreFile, Long> {
       @Override
       public Long apply(StoreFile sf) {
@@ -1608,6 +1638,13 @@ public class StoreFile {
       @Override
       public String apply(StoreFile sf) {
         return sf.getPath().getName();
+      }
+    }
+
+    private static class GetMaxTimestamp implements Function<StoreFile, Long> {
+      @Override
+      public Long apply(StoreFile sf) {
+        return sf.getMaximumTimestamp() == null? (Long)Long.MAX_VALUE : sf.getMaximumTimestamp();
       }
     }
   }

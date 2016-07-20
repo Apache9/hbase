@@ -81,6 +81,10 @@ public class StoreFileInfo {
   // FileSystem information for the file.
   private final FileStatus fileStatus;
 
+  // For hfile, same with fileStatus
+  // For reference/hlink, FileSystem information for the referenced file
+  private FileStatus refFileStatus = null;
+
   private RegionCoprocessorHost coprocessorHost;
 
   /**
@@ -163,7 +167,23 @@ public class StoreFileInfo {
   }
 
   /** @return the HDFS block distribution */
-  public HDFSBlocksDistribution getHDFSBlockDistribution() {
+  public HDFSBlocksDistribution getHDFSBlockDistribution(final FileSystem fs) {
+    if (this.hdfsBlocksDistribution == null) {
+      try {
+        FileStatus status = fileStatus;
+        if (this.link != null || this.reference != null) {
+          status = this.refFileStatus;
+        }
+        long length = status.getLen();
+        if (this.reference != null) {
+          hdfsBlocksDistribution = computeRefFileHDFSBlockDistribution(fs, reference, status);
+        } else {
+          hdfsBlocksDistribution = FSUtils.computeHDFSBlocksDistribution(fs, status, 0, length);
+        }
+      } catch (IOException e) {
+        LOG.error("Fail to get HDFSBlockDistribution for file " + this.fileStatus.getPath(), e);
+      }
+    }
     return this.hdfsBlocksDistribution;
   }
 
@@ -183,23 +203,20 @@ public class StoreFileInfo {
       // HFileLink
       in = new FSDataInputStreamWrapper(fs, this.link, doDropBehind);
       status = this.link.getFileStatus(fs);
+      this.refFileStatus = status;
     } else if (this.reference != null) {
       // HFile Reference
       Path referencePath = getReferredToFile(this.getPath());
       in = new FSDataInputStreamWrapper(fs, referencePath,
           doDropBehind);
       status = fs.getFileStatus(referencePath);
+      this.refFileStatus = status;
     } else {
       in = new FSDataInputStreamWrapper(fs, this.getPath(),
           doDropBehind);
       status = fileStatus;
     }
     long length = status.getLen();
-    if (this.reference != null) {
-      hdfsBlocksDistribution = computeRefFileHDFSBlockDistribution(fs, reference, status);
-    } else {
-      hdfsBlocksDistribution = FSUtils.computeHDFSBlocksDistribution(fs, status, 0, length);
-    }
     StoreFile.Reader reader = null;
     if (this.coprocessorHost != null) {
       reader = this.coprocessorHost.preStoreFileReaderOpen(fs, this.getPath(), in, length,

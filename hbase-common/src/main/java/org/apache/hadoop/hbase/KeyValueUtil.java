@@ -68,6 +68,41 @@ public class KeyValueUtil {
     return length;
   }
 
+  /**
+   * Create a KeyValue that is smaller than all other possible KeyValues
+   * for the given row. That is any (valid) KeyValue on 'row' would sort
+   * _after_ the result.
+   *
+   * @param row - row key (arbitrary byte array)
+   * @return First possible KeyValue on passed <code>row</code>
+   */
+  public static KeyValue createFirstOnRow(final byte [] row, int roffset, short rlength) {
+    return new KeyValue(row, roffset, rlength,
+        null, 0, 0, null, 0, 0, HConstants.LATEST_TIMESTAMP, KeyValue.Type.Maximum, null, 0, 0);
+  }
+  /**
+   * Creates a KeyValue that is smaller than all other KeyValues that
+   * are older than the passed timestamp.
+   * @param row - row key (arbitrary byte array)
+   * @param ts - timestamp
+   * @return First possible key on passed <code>row</code> and timestamp.
+   */
+  public static KeyValue createFirstOnRow(final byte [] row,
+      final long ts) {
+    return new KeyValue(row, null, null, ts, KeyValue.Type.Maximum);
+  }
+
+  /**
+   * Create a KeyValue that is smaller than all other possible KeyValues
+   * for the given row. That is any (valid) KeyValue on 'row' would sort
+   * _after_ the result.
+   *
+   * @param row - row key (arbitrary byte array)
+   * @return First possible KeyValue on passed <code>row</code>
+   */
+  public static KeyValue createFirstOnRow(final byte [] row) {
+    return createFirstOnRow(row, HConstants.LATEST_TIMESTAMP);
+  }
 
   /**************** copy key only *********************/
 

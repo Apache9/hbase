@@ -33,6 +33,7 @@ import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.HBaseInterfaceAudience;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.ServerName;
+import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.master.AssignmentManager;
 import org.apache.hadoop.hbase.master.RegionPlan;
 
@@ -184,10 +185,10 @@ public class SimpleLoadBalancer extends BaseLoadBalancer {
     boolean emptyRegionServerPresent = false;
     long startTime = System.currentTimeMillis();
 
-    ClusterLoadState cs = new ClusterLoadState(clusterMap);
+    Cluster c = new Cluster(clusterMap, null, this.regionFinder);
+    if (!this.needsBalance(c)) return null;
 
-    if (!this.needsBalance(cs)) return null;
-    
+    ClusterLoadState cs = new ClusterLoadState(clusterMap);
     int numServers = cs.getNumServers();
     NavigableMap<ServerAndLoad, List<HRegionInfo>> serversByLoad = cs.getServersByLoad();
     int numRegions = cs.getNumRegions();
@@ -418,6 +419,12 @@ public class SimpleLoadBalancer extends BaseLoadBalancer {
         serversUnderloaded + " less loaded servers");
 
     return regionsToReturn;
+  }
+
+  @Override
+  public List<RegionPlan> balanceCluster(TableName tableName,
+    Map<ServerName, List<HRegionInfo>> clusterState) {
+    return balanceCluster(clusterState);
   }
 
   /**

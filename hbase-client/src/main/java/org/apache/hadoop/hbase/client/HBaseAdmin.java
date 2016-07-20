@@ -85,7 +85,6 @@ import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionInfoRespo
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.RollWALWriterRequest;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.RollWALWriterResponse;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.StopServerRequest;
-import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.SwitchThrottleRequest;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.ClientService;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.ScanRequest;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.ScanResponse;
@@ -134,11 +133,14 @@ import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ShutdownRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SnapshotRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SnapshotResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.StopMasterRequest;
+import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleRequest;
+import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.TruncateTableRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.UnassignRegionRequest;
 import org.apache.hadoop.hbase.quotas.QuotaFilter;
 import org.apache.hadoop.hbase.quotas.QuotaRetriever;
 import org.apache.hadoop.hbase.quotas.QuotaSettings;
+import org.apache.hadoop.hbase.quotas.ThrottleState;
 import org.apache.hadoop.hbase.regionserver.wal.FailedLogCloseException;
 import org.apache.hadoop.hbase.snapshot.ClientSnapshotDescriptionUtils;
 import org.apache.hadoop.hbase.snapshot.HBaseSnapshotException;
@@ -156,6 +158,7 @@ import org.apache.zookeeper.KeeperException;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.ServiceException;
+import com.sun.research.ws.wadl.Response;
 import com.xiaomi.infra.hbase.salted.KeySalter;
 import com.xiaomi.infra.hbase.salted.SaltedHTable;
 
@@ -353,14 +356,7 @@ public class HBaseAdmin implements Abortable, Closeable {
    * @see #listTables()
    */
   public HTableDescriptor[] listTables(Pattern pattern) throws IOException {
-    List<HTableDescriptor> matched = new LinkedList<HTableDescriptor>();
-    HTableDescriptor[] tables = listTables();
-    for (HTableDescriptor table : tables) {
-      if (pattern.matcher(table.getTableName().getNameAsString()).matches()) {
-        matched.add(table);
-      }
-    }
-    return matched.toArray(new HTableDescriptor[matched.size()]);
+    return this.connection.listTables(pattern.toString());
   }
 
   /**
@@ -530,6 +526,9 @@ public class HBaseAdmin implements Abortable, Closeable {
     
     // use slots to pre-split table if splitKeys is not set and the table is salted
     // there is no change to set splitKeys in coprocessor of server-side so that we reset here
+    if (desc.getSlotsCount() == null && desc.getKeySalter() != null) {
+      throw new IOException("must specify SLOTS_COUNT when KEY_SALTER is set");
+    }
     if (splitKeys == null && desc.isSalted()) {
       KeySalter salter = SaltedHTable.createKeySalter(desc.getKeySalter(), desc.getSlotsCount());
       if (salter.getAllSalts().length > 1) {
@@ -2110,16 +2109,21 @@ public class HBaseAdmin implements Abortable, Closeable {
   protected void checkSaltedAttributeUnModified(TableName tableName, HTableDescriptor modifiedHtd)
       throws IOException {
     HTableDescriptor htd = this.getTableDescriptor(tableName);
-    boolean saltedAttributeUnModified = true;
-    if (htd.getKeySalter() == null || modifiedHtd.getKeySalter() == null) {
-      saltedAttributeUnModified = (htd.getKeySalter() == modifiedHtd.getKeySalter());
-    } else {
-      saltedAttributeUnModified = htd.getKeySalter().equals(modifiedHtd.getKeySalter());
+    boolean saltedAttributeUnModified = false;
+    if (htd.isSalted() != modifiedHtd.isSalted()) {
+      saltedAttributeUnModified = true;
     }
-    if (!saltedAttributeUnModified) {
-      throw new IOException("can not modify the KeySalter attribute of table : "
-          + tableName);
+    if (htd.isSalted()) {
+      if (!htd.getSlotsCount().equals(modifiedHtd.getSlotsCount())
+          || !htd.getKeySalter().equals(modifiedHtd.getKeySalter())) {
+        saltedAttributeUnModified = true;
+      }
     }
+    
+    if (saltedAttributeUnModified) {
+      throw new IOException("can not modify the salted attribute of table : "
+           + tableName);
+     }
   }
 
   public void modifyTable(final byte[] tableName, final HTableDescriptor htd)
@@ -3575,31 +3579,27 @@ public class HBaseAdmin implements Abortable, Closeable {
     });
   }
   
-  public void switchThrottle(final boolean isStart, final boolean isSimulate, final boolean isStop)
-      throws IOException {
-    List<ServerName> servers = new ArrayList<ServerName>();
-    servers.addAll(getClusterStatus().getServers());
-    for (ServerName sn : servers) {
-      switchThrottle(sn, isStart, isSimulate, isStop);
-    }
-  }
-
-  private void switchThrottle(final ServerName sn, final boolean isStart, final boolean isSimulate,
-      final boolean isStop) throws IOException {
-    AdminService.BlockingInterface admin = this.connection.getAdmin(sn);
-    SwitchThrottleRequest.Builder request = SwitchThrottleRequest.newBuilder();
-    if (isStart) {
-      request.setStartThrottle(isStart);
-    } else if (isSimulate) {
-      request.setSimulateThrottle(isSimulate);
-    } else if (isStop) {
-      request.setStopThrottle(isStop);
-    }
+  public ThrottleState switchThrottle(final ThrottleState state) throws IOException {
+    MasterKeepAliveConnection stub = connection.getKeepAliveMasterService();
     try {
-      admin.switchThrottle(null, request.build());
+      SwitchThrottleResponse response = stub.switchThrottle(null,
+        RequestConverter.buildSwitchThrottleRequest(state));
+      return response.hasPrevThrottleState() ? ProtobufUtil.toThrottleState(response
+          .getPrevThrottleState()) : null;
     } catch (ServiceException se) {
-      throw ProtobufUtil.getRemoteException(se);
+      IOException ioe = ProtobufUtil.getRemoteException(se);
+      if (ioe instanceof MasterNotRunningException) {
+        throw (MasterNotRunningException) ioe;
+      }
+      if (ioe instanceof ZooKeeperConnectionException) {
+        throw (ZooKeeperConnectionException) ioe;
+      }
+
+      // Throwing MasterNotRunningException even though not really valid in order to not
+      // break interface by adding additional exception type.
+      throw new MasterNotRunningException("Unexpected exception when calling balanceSwitch", se);
+    } finally {
+      stub.close();
     }
   }
-
 }

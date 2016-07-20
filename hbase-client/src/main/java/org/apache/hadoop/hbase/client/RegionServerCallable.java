@@ -49,6 +49,8 @@ public abstract class RegionServerCallable<T> implements RetryingCallable<T> {
   protected final byte[] row;
   protected HRegionLocation location;
   private ClientService.BlockingInterface stub;
+  protected boolean serverHasMoreResultsContext;
+  protected boolean serverHasMoreResults;
 
   protected final static int MIN_WAIT_DEAD_SERVER = 10000;
 
@@ -135,8 +137,7 @@ public abstract class RegionServerCallable<T> implements RetryingCallable<T> {
 
   @Override
   public long sleep(long pause, int tries) {
-    // Tries hasn't been bumped up yet so we use "tries + 1" to get right pause time
-    long sleep = ConnectionUtils.getPauseTime(pause, tries + 1);
+    long sleep = ConnectionUtils.getPauseTime(pause, tries);
     if (sleep < MIN_WAIT_DEAD_SERVER
         && (location == null || getConnection().isDeadServer(location.getServerName()))) {
       sleep = ConnectionUtils.addJitter(MIN_WAIT_DEAD_SERVER, 0.10f);
@@ -152,5 +153,28 @@ public abstract class RegionServerCallable<T> implements RetryingCallable<T> {
       return null;
     }
     return this.location.getRegionInfo();
+  }
+
+  /**
+   * Should the client attempt to fetch more results from this region
+   * @return True if the client should attempt to fetch more results, false otherwise.
+   */
+  protected boolean getServerHasMoreResults() {
+    assert serverHasMoreResultsContext;
+    return this.serverHasMoreResults;
+  }
+  protected void setServerHasMoreResults(boolean serverHasMoreResults) {
+    this.serverHasMoreResults = serverHasMoreResults;
+  }
+  /**
+   * Did the server respond with information about whether more results might exist.
+   * Not guaranteed to respond with older server versions
+   * @return True if the server responded with information about more results.
+   */
+  protected boolean hasMoreResultsContext() {
+    return serverHasMoreResultsContext;
+  }
+  protected void setHasMoreResultsContext(boolean serverHasMoreResultsContext) {
+    this.serverHasMoreResultsContext = serverHasMoreResultsContext;
   }
 }

@@ -25,6 +25,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.HConstants;
+import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HTable;
@@ -82,11 +83,7 @@ public class TestThrottleAdmin {
   public static void setUpBeforeClass() throws Exception {
     TEST_UTIL.getConfiguration().setBoolean(QuotaUtil.QUOTA_CONF_KEY, true);
     TEST_UTIL.getConfiguration().setInt(QuotaCache.REFRESH_CONF_KEY, REFRESH_TIME);
-    TEST_UTIL.getConfiguration().setInt("hbase.hstore.compactionThreshold", 10);
-    TEST_UTIL.getConfiguration().setInt("hbase.regionserver.msginterval", 100);
-    TEST_UTIL.getConfiguration().setInt("hbase.client.pause", 250);
-    TEST_UTIL.getConfiguration().setInt(HConstants.HBASE_CLIENT_RETRIES_NUMBER, 6);
-    TEST_UTIL.getConfiguration().setBoolean("hbase.master.enabletable.roundrobin", true);
+    TEST_UTIL.getConfiguration().setInt(HConstants.HBASE_CLIENT_RETRIES_NUMBER, 1);
     TEST_UTIL.getConfiguration().setBoolean("hbase.quota.allow.exceed", false);
     TEST_UTIL.startMiniCluster(regionServerNum);
     TEST_UTIL.waitTableAvailable(QuotaTableUtil.QUOTA_TABLE_NAME.getName());
@@ -119,8 +116,8 @@ public class TestThrottleAdmin {
     quotaManager = TEST_UTIL.getMiniHBaseCluster()
         .getRegionServer(0).getRegionServerQuotaManager();
     // start throttle before all unit tests
-    admin.switchThrottle(true, false, false);
-    triggerUserCacheRefresh(false, TABLE_NAME);
+    admin.switchThrottle(ThrottleState.ON);
+    checkIfStart();
   }
 
   @After
@@ -129,60 +126,84 @@ public class TestThrottleAdmin {
   }
 
   @Test
-  public void testStartThrottle() throws Exception {
+  public void testSimulateThrottle() throws Exception {
+    // simulate throttle
+    admin.switchThrottle(ThrottleState.SIMULATION);
+    checkIfSimulate();
+    // start throttle
+    admin.switchThrottle(ThrottleState.ON);
     checkIfStart();
   }
 
   @Test
-  public void testSimulateThrottle() throws Exception {
-    checkIfStart();
+  public void testSimulateThrottleWithNewNode() throws Exception {
     // simulate throttle
-    admin.switchThrottle(false, true, false);
+    admin.switchThrottle(ThrottleState.SIMULATION);
     checkIfSimulate();
+    EnvironmentEdgeManagerTestHelper.reset();
+    RegionServerThread newServer = TEST_UTIL.getMiniHBaseCluster().startRegionServer();
+    newServer.waitForServerOnline();
+    EnvironmentEdgeManagerTestHelper.injectEdge(envEdge);
+    LOG.info("Start region server success");
+    quotaManager = newServer.getRegionServer().getRegionServerQuotaManager();
+    checkIfSimulate();
+    // start throttle
+    admin.switchThrottle(ThrottleState.ON);
+    checkIfStart();
+    quotaManager = TEST_UTIL.getMiniHBaseCluster().getRegionServer(0).getRegionServerQuotaManager();
   }
 
   @Test
   public void testStopThrottle() throws Exception {
-    checkIfStart();
     // stop throttle
-    admin.switchThrottle(false, false, true);
+    admin.switchThrottle(ThrottleState.OFF);
     checkIfStop();
+    // start throttle
+    admin.switchThrottle(ThrottleState.ON);
+    checkIfStart();
   }
-  
+
   @Test
   public void testSimulateAndStopThrottle() throws Exception {
-    checkIfStart();
     // simulate throttle
-    admin.switchThrottle(false, true, false);
+    admin.switchThrottle(ThrottleState.SIMULATION);
     checkIfSimulate();
     // stop throttle
-    admin.switchThrottle(false, false, true);
+    admin.switchThrottle(ThrottleState.OFF);
     checkIfStop();
     // simulate throttle
-    admin.switchThrottle(false, true, false);
+    admin.switchThrottle(ThrottleState.SIMULATION);
     checkIfSimulate();
   }
 
   private void checkIfStart() throws Exception {
+    Thread.sleep(1000);
+
     assertTrue(quotaManager.isQuotaEnabled());
     assertFalse(quotaManager.isThrottleSimulated());
     assertFalse(quotaManager.isStopped());
 
+    triggerUserCacheRefresh(false, TABLE_NAME);
     assertEquals(10, doPuts(100, table));
     assertEquals(10, doGets(100, table));
   }
 
   private void checkIfSimulate() throws Exception {
+    Thread.sleep(1000);
+
     assertTrue(quotaManager.isQuotaEnabled());
     assertTrue(quotaManager.isThrottleSimulated());
     assertFalse(quotaManager.isStopped());
 
+    triggerUserCacheRefresh(false, TABLE_NAME);
     assertEquals(100, doPuts(100, table));
     assertEquals(100, doGets(100, table));
   }
 
   private void checkIfStop() throws Exception {
-    assertFalse(quotaManager.isQuotaEnabled());
+    Thread.sleep(1000);
+
+    assertTrue(quotaManager.isQuotaEnabled());
     assertFalse(quotaManager.isThrottleSimulated());
     assertTrue(quotaManager.isStopped());
 
@@ -222,7 +243,10 @@ public class TestThrottleAdmin {
         }
         count += tables.length;
       }
-    } catch (ThrottlingException e) {
+    } catch (Exception e) {
+      if (!(e.getCause() instanceof ThrottlingException)) {
+        throw e;
+      }
       LOG.error("get failed after nRetries=" + count, e);
     }
     return count;
@@ -232,17 +256,9 @@ public class TestThrottleAdmin {
     triggerCacheRefresh(bypass, true, false, false, tables);
   }
 
-  private void triggerTableCacheRefresh(boolean bypass, TableName... tables) throws Exception {
-    triggerCacheRefresh(bypass, false, true, false, tables);
-  }
-
-  private void triggerNamespaceCacheRefresh(boolean bypass, TableName... tables) throws Exception {
-    triggerCacheRefresh(bypass, false, false, true, tables);
-  }
-
   private void triggerCacheRefresh(boolean bypass, boolean userLimiter, boolean tableLimiter,
       boolean nsLimiter, final TableName... tables) throws Exception {
-  envEdge.incValue(2 * REFRESH_TIME);
+    envEdge.incValue(2 * REFRESH_TIME);
     for (RegionServerThread rst: TEST_UTIL.getMiniHBaseCluster().getRegionServerThreads()) {
       RegionServerQuotaManager quotaManager = rst.getRegionServer().getRegionServerQuotaManager();
       QuotaCache quotaCache = quotaManager.getQuotaCache();

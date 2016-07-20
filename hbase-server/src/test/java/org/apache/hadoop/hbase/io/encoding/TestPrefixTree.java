@@ -115,7 +115,7 @@ public class TestPrefixTree {
     RegionScanner scanner = region.getScanner(scan);
     List<Cell> cells = new ArrayList<Cell>();
     for (int i = 0; i < 3; i++) {
-      assertEquals(i < 2, scanner.next(cells).hasNext());
+      assertEquals(i < 2, scanner.next(cells));
       CellScanner cellScanner = Result.create(cells).cellScanner();
       while (cellScanner.advance()) {
         assertEquals(rows[i], Bytes.toString(cellScanner.current().getRowArray(), cellScanner
@@ -134,7 +134,7 @@ public class TestPrefixTree {
     scan.setStopRow(Bytes.toBytes("a-b-A-1:"));
     scanner = region.getScanner(scan);
     for (int i = 1; i < 3; i++) {
-      assertEquals(i < 2, scanner.next(cells).hasNext());
+      assertEquals(i < 2, scanner.next(cells));
       CellScanner cellScanner = Result.create(cells).cellScanner();
       while (cellScanner.advance()) {
         assertEquals(rows[i], Bytes.toString(cellScanner.current().getRowArray(), cellScanner
@@ -150,7 +150,7 @@ public class TestPrefixTree {
     scan.setStopRow(Bytes.toBytes("a-b-A-1:"));
     scanner = region.getScanner(scan);
     for (int i = 1; i < 3; i++) {
-      assertEquals(i < 2, scanner.next(cells).hasNext());
+      assertEquals(i < 2, scanner.next(cells));
       CellScanner cellScanner = Result.create(cells).cellScanner();
       while (cellScanner.advance()) {
         assertEquals(rows[i], Bytes.toString(cellScanner.current().getRowArray(), cellScanner
@@ -165,7 +165,7 @@ public class TestPrefixTree {
     scan.setStartRow(Bytes.toBytes("a-b-A-1-140239"));
     scan.setStopRow(Bytes.toBytes("a-b-A-1:"));
     scanner = region.getScanner(scan);
-    assertFalse(scanner.next(cells).hasNext());
+    assertFalse(scanner.next(cells));
     assertFalse(cells.isEmpty());
     scanner.close();
   }
@@ -183,7 +183,7 @@ public class TestPrefixTree {
     Scan scan = new Scan(Bytes.toBytes("obj29995"));
     RegionScanner scanner = region.getScanner(scan);
     List<Cell> cells = new ArrayList<Cell>();
-    assertFalse(scanner.next(cells).hasNext());
+    assertFalse(scanner.next(cells));
     assertArrayEquals(Bytes.toBytes("obj3"), Result.create(cells).getRow());
   }
 }

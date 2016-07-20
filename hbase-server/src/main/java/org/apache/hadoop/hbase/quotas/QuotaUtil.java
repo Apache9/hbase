@@ -19,6 +19,7 @@
 package org.apache.hadoop.hbase.quotas;
 
 import java.io.IOException;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -29,6 +30,7 @@ import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Cell;
+import org.apache.hadoop.hbase.CellUtil;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HTableDescriptor;
@@ -40,6 +42,7 @@ import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Mutation;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
+import org.apache.hadoop.hbase.client.RowMutations;
 import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.Quotas;
 import org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.Throttle;
@@ -61,8 +64,19 @@ public class QuotaUtil extends QuotaTableUtil {
   public static final String QUOTA_CONF_KEY = "hbase.quota.enabled";
   private static final boolean QUOTA_ENABLED_DEFAULT = false;
   
-  public static final int READ_CAPACITY_UNIT = 4096;
-  public static final int WRITE_CAPACITY_UNIT = 1024;
+  public static final String READ_CAPACITY_UNIT_CONF_KEY = "hbase.read.capacity.unit";
+  public static final int DEFAULT_READ_CAPACITY_UNIT = 1024;
+  public static final String WRITE_CAPACITY_UNIT_CONF_KEY = "hbase.write.capacity.unit";
+  public static final int DEFAULT_WRITE_CAPACITY_UNIT = 1024;
+  public static final String SCAN_CAPACITY_UNIT_CONF_KEY = "hbase.scan.capacity.unit";
+  public static final int DEFAULT_SCAN_CAPACITY_UNIT = 1024 * 16;
+
+  public static final String THROTTLING_MIN_WAIT_INTERVAL = "hbase.throttling.min.wait.interval";
+  public static final long DEFAULT_THROTTLING_MIN_WAIT_INTERVAL = 10;
+
+  //there are many unit test not allow exceed (for the DefaultOperationQuota), so need this conf
+  public static final String QUOTA_ALLOW_EXCEED_CONF_KEY = "hbase.quota.allow.exceed";
+  public static final boolean DEFAULT_QUOTA_ALLOW_EXCEED = true;
 
   /** Table descriptor for Quota internal table */
   public static final HTableDescriptor QUOTA_TABLE_DESC =
@@ -353,6 +367,59 @@ public class QuotaUtil extends QuotaTableUtil {
     return globalQuotas;
   }
 
+  public static QuotaState getNamespaceQuotaState(Result result) throws IOException {
+    long nowTs = EnvironmentEdgeManager.currentTimeMillis();
+    final QuotaState quotaInfo = new QuotaState(nowTs);
+    parseNamespaceResult(result, new QuotaTableUtil.NamespaceQuotasVisitor() {
+      @Override
+      public void visitNamespaceQuotas(String namespace, Quotas quotas) {
+        quotaInfo.setQuotas(quotas);
+      }
+    });
+    return quotaInfo;
+  }
+
+  public static QuotaState getTableQuotaState(Result result) throws IOException {
+    long nowTs = EnvironmentEdgeManager.currentTimeMillis();
+    final QuotaState quotaInfo = new QuotaState(nowTs);
+    parseTableResult(result, new QuotaTableUtil.TableQuotasVisitor() {
+      @Override
+      public void visitTableQuotas(TableName table, Quotas quotas) {
+        quotaInfo.setQuotas(quotas);
+      }
+    });
+    return quotaInfo;
+  }
+
+  public static UserQuotaState getUserQuotaState(Result result,
+      final Map<TableName, Double> localTableFactors) throws IOException {
+    long nowTs = EnvironmentEdgeManager.currentTimeMillis();
+    final UserQuotaState quotaInfo = new UserQuotaState(nowTs);
+    parseUserResult(result, new QuotaTableUtil.UserQuotasVisitor() {
+      @Override
+      public void visitUserQuotas(String userName, String namespace, Quotas quotas) {
+        quotaInfo.setQuotas(namespace, quotas);
+      }
+
+      @Override
+      public void visitUserQuotas(String userName, TableName table, Quotas quotas) {
+        // update factors first, then fetch quota, but need update by local factor
+        // if no local factor, table will get all quota
+        Double factor = localTableFactors.get(table);
+        if (factor != null) {
+          quotas = QuotaUtil.updateByLocalFactor(quotas, factor);
+        }
+        quotaInfo.setQuotas(table, quotas);
+      }
+
+      @Override
+      public void visitUserQuotas(String userName, Quotas quotas) {
+        quotaInfo.setQuotas(quotas);
+      }
+    });
+    return quotaInfo;
+  }
+
   private static interface KeyFromRow<T> {
     T getKeyFromRow(final byte[] row);
   }
@@ -393,6 +460,30 @@ public class QuotaUtil extends QuotaTableUtil {
     return size;
   }
 
+  public static long calculateMutationSize(final RowMutations rowMutations) {
+    long size = 0;
+    for (Mutation mutation : rowMutations.getMutations()) {
+      size += calculateMutationSize(mutation);
+    }
+    return size;
+  }
+
+  public static long calculateMutationSize(final Collection<Mutation> mutations) {
+    long size = 0;
+    for (Mutation mutation : mutations) {
+      size += calculateMutationSize(mutation);
+    }
+    return size;
+  }
+
+  public static long calculateMutationSize(final Mutation[] mutations) {
+    long size = 0;
+    for (Mutation mutation : mutations) {
+      size += calculateMutationSize(mutation);
+    }
+    return size;
+  }
+
   public static long calculateResultSize(final Result result) {
     long size = 0;
     for (Cell cell : result.rawCells()) {
@@ -410,24 +501,12 @@ public class QuotaUtil extends QuotaTableUtil {
     }
     return size;
   }
-  
-  public static int calculateRequestUnitNum(final Result result) {
-    return (int) calculateReadCapacityUnitNum(calculateResultSize(result));
-  }
 
-  public static int calculateRequestUnitNum(final List<Result> results) {
-    return (int) calculateReadCapacityUnitNum(calculateResultSize(results));
-  }
-
-  public static int calculateRequestUnitNum(final Mutation mutation) {
-    return (int) calculateWriteCapacityUnitNum(calculateMutationSize(mutation));
-  }
-
-  public static long calculateReadCapacityUnitNum(final long size) {
-    return (long) Math.ceil(size * 1.0 / READ_CAPACITY_UNIT);
-  }
-
-  public static long calculateWriteCapacityUnitNum(final long size) {
-    return (long) Math.ceil(size * 1.0 / WRITE_CAPACITY_UNIT);
+  public static long calculateCellsSize(final List<Cell> cells) {
+    long size = 0;
+    for (Cell cell : cells) {
+      size += CellUtil.estimatedSizeOf(cell);
+    }
+    return size;
   }
 }

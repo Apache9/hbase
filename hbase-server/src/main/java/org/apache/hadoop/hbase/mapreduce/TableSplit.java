@@ -78,6 +78,7 @@ implements Writable, Comparable<TableSplit> {
   
   private static final Version VERSION = Version.INITIAL;
   private TableName tableName;
+  private byte[] fullTableName;
   private byte [] startRow;
   private byte [] endRow;
   private String regionLocation;
@@ -125,10 +126,25 @@ implements Writable, Comparable<TableSplit> {
    */
   public TableSplit(TableName tableName, Scan scan, byte [] startRow, byte [] endRow,
       final String location, long length) {
+    this(tableName.toBytes(), tableName, scan, startRow, endRow, location, length);
+  }
+
+  /**
+   * Creates a new instance while assigning all variables.
+   *
+   * @param fullTableName full table uri or table name. It will be resloved when new HTable.
+   * @param tableName  The name of the current table.
+   * @param scan The scan associated with this split.
+   * @param startRow  The start row of the split.
+   * @param endRow  The end row of the split.
+   * @param location  The location of the region.
+   */
+  public TableSplit(byte[] fullTableName, TableName tableName, Scan scan, byte[] startRow,
+      byte[] endRow, final String location, long length) {
+    this.fullTableName = fullTableName;
     this.tableName = tableName;
     try {
-      this.scan =
-        (null == scan) ? "" : TableMapReduceUtil.convertScanToString(scan);
+      this.scan = (null == scan) ? "" : TableMapReduceUtil.convertScanToString(scan);
     } catch (IOException e) {
       LOG.warn("Failed to convert Scan to String", e);
     }
@@ -191,6 +207,14 @@ implements Writable, Comparable<TableSplit> {
    */
   public byte [] getTableName() {
     return tableName.getName();
+  }
+
+  /**
+   * Returns the full table uri or table name. It will be resolved when new HTable.
+   * @return
+   */
+  public byte[] getFullTableName() {
+    return this.fullTableName;
   }
 
   /**

@@ -34,6 +34,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.replication.ReplicationException;
 import org.apache.hadoop.hbase.replication.ReplicationPeer;
 import org.apache.hadoop.hbase.replication.ReplicationPeerConfig;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
@@ -213,5 +214,93 @@ public class TestReplicationAdmin {
     assertEquals("f2", result.get(tab4).get(1));
 
     admin.removePeer(ID_ONE);
+  }
+
+  @Test
+  public void testRemovePeerTableCFs() throws Exception {
+    ReplicationPeerConfig rpc1 = new ReplicationPeerConfig();
+    rpc1.setClusterKey(KEY_ONE);
+    TableName tab1 = TableName.valueOf("t1");
+    TableName tab2 = TableName.valueOf("t2");
+    TableName tab3 = TableName.valueOf("t3");
+    // Add a valid peer
+    admin.addPeer(ID_ONE, rpc1, null);
+    Map<TableName, List<String>> tableCFs = new HashMap<TableName, List<String>>();
+    try {
+      tableCFs.put(tab3, null);
+      admin.removePeerTableCFs(ID_ONE, tableCFs);
+      assertTrue(false);
+    } catch (ReplicationException e) {
+    }
+    assertNull(admin.getPeerTableCFs(ID_ONE));
+
+    tableCFs.clear();
+    tableCFs.put(tab1, null);
+    tableCFs.put(tab2, new ArrayList<String>());
+    tableCFs.get(tab2).add("cf1");
+    admin.setPeerTableCFs(ID_ONE, tableCFs);
+    try {
+      tableCFs.clear();
+      tableCFs.put(tab3, null);
+      admin.removePeerTableCFs(ID_ONE, tableCFs);
+      assertTrue(false);
+    } catch (ReplicationException e) {
+    }
+    Map<TableName, List<String>> result = admin.getPeerTableCFs(ID_ONE);
+    assertEquals(2, result.size());
+    assertTrue("Should contain t1", result.containsKey(tab1));
+    assertTrue("Should contain t2", result.containsKey(tab2));
+    assertNull(result.get(tab1));
+    assertEquals(1, result.get(tab2).size());
+    assertEquals("cf1", result.get(tab2).get(0));
+
+    try {
+      tableCFs.clear();
+      tableCFs.put(tab1, new ArrayList<String>());
+      tableCFs.get(tab1).add("f1");
+      admin.removePeerTableCFs(ID_ONE, tableCFs);
+      assertTrue(false);
+    } catch (ReplicationException e) {
+    }
+    tableCFs.clear();
+    tableCFs.put(tab1, null);
+    admin.removePeerTableCFs(ID_ONE, tableCFs);
+    result = admin.getPeerTableCFs(ID_ONE);
+    assertEquals(1, result.size());
+    assertEquals(1, result.get(tab2).size());
+    assertEquals("cf1", result.get(tab2).get(0));
+
+    try {
+      tableCFs.clear();
+      tableCFs.put(tab2, null);
+      admin.removePeerTableCFs(ID_ONE, tableCFs);
+      assertTrue(false);
+    } catch (ReplicationException e) {
+    }
+    tableCFs.clear();
+    tableCFs.put(tab2, new ArrayList<String>());
+    tableCFs.get(tab2).add("cf1");
+    admin.removePeerTableCFs(ID_ONE, tableCFs);
+    assertNull(admin.getPeerTableCFs(ID_ONE));
+    admin.removePeer(ID_ONE);
+  }
+
+  @Test
+  public void testSetPeerBandwidth() throws Exception {
+    ReplicationPeerConfig rpc = new ReplicationPeerConfig();
+    rpc.setClusterKey(KEY_ONE);
+    // Add a valid peer
+    admin.addPeer(ID_ONE, rpc, null);
+    assertEquals(0, admin.getPeerConfig(ID_ONE).getBandwidth());
+
+    admin.setPeerBandwidth(ID_ONE, 102400);
+    assertEquals(102400, admin.getPeerConfig(ID_ONE).getBandwidth());
+
+    rpc.setClusterKey(KEY_SECOND);
+    rpc.setBandwidth(1048576);
+    admin.addPeer(ID_SECOND, rpc, null);
+    assertEquals(1048576, admin.getPeerConfig(ID_SECOND).getBandwidth());
+    admin.removePeer(ID_ONE);
+    admin.removePeer(ID_SECOND);
   }
 }

@@ -465,7 +465,7 @@ public class TestAtomicOperation {
               Scan s = new Scan(row);
               RegionScanner rs = region.getScanner(s);
               List<Cell> r = new ArrayList<Cell>();
-              while(rs.next(r).hasNext());
+              while(rs.next(r));
               rs.close();
               if (r.size() != 1) {
                 LOG.debug(r);
@@ -558,7 +558,8 @@ public class TestAtomicOperation {
     Scan s = new Scan();
     RegionScanner scanner = region.getScanner(s);
     List<Cell> results = new ArrayList<Cell>();
-    scanner.next(results, 2, -1);
+    ScannerContext scannerContext = ScannerContext.newBuilder().setBatchLimit(2).build();
+    scanner.next(results, scannerContext);
     for (Cell keyValue : results) {
       assertEquals("50",Bytes.toString(CellUtil.cloneValue(keyValue)));
     }

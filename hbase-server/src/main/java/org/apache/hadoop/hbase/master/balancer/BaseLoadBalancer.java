@@ -35,6 +35,7 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.ClusterStatus;
 import org.apache.hadoop.hbase.HBaseIOException;
+import org.apache.hadoop.hbase.HDFSBlocksDistribution;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.RegionLoad;
 import org.apache.hadoop.hbase.ServerName;
@@ -42,6 +43,7 @@ import org.apache.hadoop.hbase.master.AssignmentManager;
 import org.apache.hadoop.hbase.master.LoadBalancer;
 import org.apache.hadoop.hbase.master.MasterServices;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Sets;
@@ -53,8 +55,26 @@ import com.google.common.collect.Sets;
  *
  */
 public abstract class BaseLoadBalancer implements LoadBalancer {
-  private static final int MIN_SERVER_BALANCE = 2;
+  protected static final int MIN_SERVER_BALANCE = 2;
   private volatile boolean stopped = false;
+
+  protected final RegionLocationFinder regionFinder = new RegionLocationFinder();
+
+  /**
+   * The constructor that uses the basic MetricsBalancer
+   */
+  protected BaseLoadBalancer() {
+    metricsBalancer = new MetricsBalancer();
+  }
+
+  /**
+   * This Constructor accepts an instance of MetricsBalancer,
+   * which will be used instead of creating a new one
+   * @param metricsBalancer
+   */
+  protected BaseLoadBalancer(MetricsBalancer metricsBalancer) {
+    this.metricsBalancer = (metricsBalancer != null) ? metricsBalancer : new MetricsBalancer();
+  }
 
   /**
    * An efficient array based implementation similar to ClusterState for keeping
@@ -66,16 +86,20 @@ public abstract class BaseLoadBalancer implements LoadBalancer {
     ArrayList<String> tables;
     HRegionInfo[] regions;
     Deque<RegionLoad>[] regionLoads;
+    RegionLocationFinder regionFinder;
     int[][] regionLocations; //regionIndex -> list of serverIndex sorted by locality
 
     int[][] regionsPerServer;            //serverIndex -> region list
+    float[] localityPerServer;
     int[]   regionIndexToServerIndex;    //regionIndex -> serverIndex
     int[]   initialRegionIndexToServerIndex;    //regionIndex -> serverIndex (initial cluster state)
     int[]   regionIndexToTableIndex;     //regionIndex -> tableIndex
     int[][] numRegionsPerServerPerTable; //serverIndex -> tableIndex -> # regions
     int[]   numMaxRegionsPerTable;       //tableIndex -> max number of regions in a single RS
 
+
     Integer[] serverIndicesSortedByRegionCount;
+    Integer[] serverIndicesSortedByLocality;
 
     Map<String, Integer> serversToIndex;
     Map<String, Integer> tablesToIndex;
@@ -87,8 +111,12 @@ public abstract class BaseLoadBalancer implements LoadBalancer {
     int numMovedRegions = 0; //num moved regions from the initial configuration
     int numMovedMetaRegions = 0;       //num of moved regions that are META
 
+    Map<ServerName, List<HRegionInfo>> clusterState;
+
     protected Cluster(Map<ServerName, List<HRegionInfo>> clusterState,  Map<String, Deque<RegionLoad>> loads,
         RegionLocationFinder regionFinder) {
+
+      this.clusterState = clusterState;
 
       serversToIndex = new HashMap<String, Integer>();
       tablesToIndex = new HashMap<String, Integer>();
@@ -96,7 +124,7 @@ public abstract class BaseLoadBalancer implements LoadBalancer {
 
       //TODO: We should get the list of tables from master
       tables = new ArrayList<String>();
-
+      this.regionFinder = regionFinder;
 
       numRegions = 0;
 
@@ -126,6 +154,8 @@ public abstract class BaseLoadBalancer implements LoadBalancer {
       regionLoads = new Deque[numRegions];
       regionLocations = new int[numRegions][];
       serverIndicesSortedByRegionCount = new Integer[numServers];
+      serverIndicesSortedByLocality = new Integer[numServers];
+      localityPerServer = new float[numServers];
 
       int tableIndex = 0, regionIndex = 0, regionPerServerIndex = 0;
 
@@ -147,6 +177,7 @@ public abstract class BaseLoadBalancer implements LoadBalancer {
           regionsPerServer[serverIndex] = new int[entry.getValue().size()];
         }
         serverIndicesSortedByRegionCount[serverIndex] = serverIndex;
+        serverIndicesSortedByLocality[serverIndex] = serverIndex;
       }
 
       for (Entry<ServerName, List<HRegionInfo>> entry : clusterState.entrySet()) {
@@ -189,7 +220,6 @@ public abstract class BaseLoadBalancer implements LoadBalancer {
                     (serversToIndex.get(loc.get(i).getHostAndPort()) == null ? -1 : serversToIndex.get(loc.get(i).getHostAndPort()));
             }
           }
-
           regionIndex++;
         }
       }
@@ -303,8 +333,16 @@ public abstract class BaseLoadBalancer implements LoadBalancer {
       Arrays.sort(serverIndicesSortedByRegionCount, numRegionsComparator);
     }
 
+    void sortServersByLocality() {
+      Arrays.sort(serverIndicesSortedByLocality, localityComparator);
+    }
+
     int getNumRegions(int server) {
       return regionsPerServer[server].length;
+    }
+
+    float getLocality(int server) {
+      return localityPerServer[server];
     }
 
     private Comparator<Integer> numRegionsComparator = new Comparator<Integer>() {
@@ -313,6 +351,150 @@ public abstract class BaseLoadBalancer implements LoadBalancer {
         return Integer.valueOf(getNumRegions(integer)).compareTo(getNumRegions(integer2));
       }
     };
+
+    private Comparator<Integer> localityComparator = new Comparator<Integer>() {
+      @Override
+      public int compare(Integer integer, Integer integer2) {
+        float locality1 = getLocality(integer);
+        float locality2 = getLocality(integer2);
+        if (locality1 < locality2) {
+          return -1;
+        } else if (locality1 > locality2) {
+          return 1;
+        } else {
+          return 0;
+        }
+      }
+    };
+
+    int getLowestLocalityRegionServer() {
+      if (regionFinder == null) {
+        return -1;
+      } else {
+        sortServersByLocality();
+        // We want to find server with non zero regions having lowest locality.
+        int i = 0;
+        int lowestLocalityServerIndex = serverIndicesSortedByLocality[i];
+        while (localityPerServer[lowestLocalityServerIndex] == 0
+            && (regionsPerServer[lowestLocalityServerIndex].length == 0)) {
+          i++;
+          lowestLocalityServerIndex = serverIndicesSortedByLocality[i];
+        }
+        LOG.debug("Lowest locality region server with non zero regions is "
+            + servers[lowestLocalityServerIndex].getHostname() + " with locality "
+            + localityPerServer[lowestLocalityServerIndex]);
+        return lowestLocalityServerIndex;
+      }
+    }
+
+    int getLowestLocalityRegionOnServer(int serverIndex) {
+      if (regionFinder != null) {
+        float lowestLocality = 1.0f;
+        int lowestLocalityRegionIndex = -1;
+        if (regionsPerServer[serverIndex].length == 0) {
+          // No regions on that region server
+          return -1;
+        }
+        for (int j = 0; j < regionsPerServer[serverIndex].length; j++) {
+          int regionIndex = regionsPerServer[serverIndex][j];
+          HDFSBlocksDistribution distribution = regionFinder
+              .getBlockDistribution(regions[regionIndex]);
+          float locality = distribution.getBlockLocalityIndex(servers[serverIndex].getHostname());
+          // skip empty region
+          if (distribution.getUniqueBlocksTotalWeight() == 0) {
+            continue;
+          }
+          if (locality < lowestLocality) {
+            lowestLocality = locality;
+            lowestLocalityRegionIndex = j;
+          }
+        }
+        if (lowestLocalityRegionIndex == -1) {
+          return -1;
+        }
+        LOG.debug("Lowest locality region is "
+            + regions[regionsPerServer[serverIndex][lowestLocalityRegionIndex]]
+                .getRegionNameAsString() + " with locality " + lowestLocality
+            + " and its region server contains " + regionsPerServer[serverIndex].length
+            + " regions");
+        return regionsPerServer[serverIndex][lowestLocalityRegionIndex];
+      } else {
+        return -1;
+      }
+    }
+
+    float getLocalityOfRegion(int region, int server) {
+      HDFSBlocksDistribution distribution = regionFinder.getBlockDistribution(regions[region]);
+      return distribution.getBlockLocalityIndex(servers[server].getHostname());
+    }
+
+    /**
+     * Returns a least loaded server which have better locality for this region
+     * than the current server.
+     */
+    int getLeastLoadedTopServerForRegion(int region, int currentServer) {
+      if (regionFinder != null) {
+        List<ServerName> topLocalServers = regionFinder.getTopBlockLocations(regions[region], 
+          servers[currentServer].getHostname());
+        int leastLoadedServerIndex = -1;
+        int load = Integer.MAX_VALUE;
+        for (ServerName sn : topLocalServers) {
+          if (!serversToIndex.containsKey(sn.getHostAndPort())) {
+            continue;
+          }
+          int index = serversToIndex.get(sn.getHostAndPort());
+          if (regionsPerServer[index] == null) {
+            continue;
+          }
+          int tempLoad = regionsPerServer[index].length;
+          if (tempLoad <= load) {
+            leastLoadedServerIndex = index;
+            load = tempLoad;
+          }
+        }
+        if (leastLoadedServerIndex != -1) {
+          LOG.debug("Pick the least loaded server " + servers[leastLoadedServerIndex].getHostname()
+            + " with better locality for region " + regions[region]);
+        }
+        return leastLoadedServerIndex;
+      } else {
+        return -1;
+      }
+    }
+
+    void calculateRegionServerLocalities() {
+      if (regionFinder == null) {
+        LOG.warn("Region location finder found null, skipping locality calculations.");
+        return;
+      }
+      for (int i = 0; i < regionsPerServer.length; i++) {
+        HDFSBlocksDistribution distribution = new HDFSBlocksDistribution();
+        if (regionsPerServer[i].length > 0) {
+          for (int j = 0; j < regionsPerServer[i].length; j++) {
+            int regionIndex = regionsPerServer[i][j];
+            distribution.add(regionFinder.getBlockDistribution(regions[regionIndex]));
+          }
+        } else {
+          LOG.debug("Server " + servers[i].getHostname() + " had 0 regions.");
+        }
+        localityPerServer[i] = distribution.getBlockLocalityIndex(servers[i].getHostname());
+      }
+    }
+
+    @VisibleForTesting
+    protected void setNumRegions(int numRegions) {
+      this.numRegions = numRegions;
+    }
+
+    @VisibleForTesting
+    protected void setNumMovedRegions(int numMovedRegions) {
+      this.numMovedRegions = numMovedRegions;
+    }
+
+    @VisibleForTesting
+    protected void setNumMovedMetaRegions(int numMovedMetaRegions) {
+      this.numMovedMetaRegions = numMovedMetaRegions;
+    }
 
     @Override
     public String toString() {
@@ -350,10 +532,10 @@ public abstract class BaseLoadBalancer implements LoadBalancer {
   // slop for regions
   protected float slop;
   private Configuration config;
-  private static final Random RANDOM = new Random(System.currentTimeMillis());
+  static final Random RANDOM = new Random(System.currentTimeMillis());
   private static final Log LOG = LogFactory.getLog(BaseLoadBalancer.class);
 
-  protected final MetricsBalancer metricsBalancer = new MetricsBalancer();
+  protected MetricsBalancer metricsBalancer = null;
   protected MasterServices services;
 
   @Override
@@ -384,12 +566,11 @@ public abstract class BaseLoadBalancer implements LoadBalancer {
     this.services = masterServices;
   }
 
-  protected boolean needsBalance(ClusterLoadState cs) {
+  protected boolean needsBalance(Cluster c) {
+    ClusterLoadState cs = new ClusterLoadState(c.clusterState);
     if (cs.getNumServers() < MIN_SERVER_BALANCE) {
-      if (LOG.isDebugEnabled()) {
-        LOG.debug("Not running balancer because only " + cs.getNumServers()
-            + " active regionserver(s)");
-      }
+      LOG.info("Not running balancer because only " + cs.getNumServers()
+          + " active regionserver(s)");
       return false;
     }
     // Check if we even need to do any load balancing
@@ -399,14 +580,11 @@ public abstract class BaseLoadBalancer implements LoadBalancer {
     int ceiling = (int) Math.ceil(average * (1 + slop));
     if (!(cs.getMaxLoad() > ceiling || cs.getMinLoad() < floor)) {
       NavigableMap<ServerAndLoad, List<HRegionInfo>> serversByLoad = cs.getServersByLoad();
-      if (LOG.isTraceEnabled()) {
-        // If nothing to balance, then don't say anything unless trace-level logging.
-        LOG.trace("Skipping load balancing because balanced cluster; " +
-          "servers=" + cs.getNumServers() + " " +
-          "regions=" + cs.getNumRegions() + " average=" + average + " " +
-          "mostloaded=" + serversByLoad.lastKey().getLoad() +
-          " leastloaded=" + serversByLoad.firstKey().getLoad());
-      }
+      // If nothing to balance, then don't say anything unless trace-level logging.
+      LOG.info("Skipping load balancing because balanced cluster; " + "servers="
+          + cs.getNumServers() + " " + "regions=" + cs.getNumRegions() + " average=" + average
+          + " " + "mostloaded=" + serversByLoad.lastKey().getLoad() + " leastloaded="
+          + serversByLoad.firstKey().getLoad());
       return false;
     }
     return true;
@@ -477,7 +655,7 @@ public abstract class BaseLoadBalancer implements LoadBalancer {
    */
   @Override
   public Map<HRegionInfo, ServerName> immediateAssignment(List<HRegionInfo> regions,
-      List<ServerName> servers) {
+      List<ServerName> servers) throws HBaseIOException {
     metricsBalancer.incrMiscInvocations();
 
     Map<HRegionInfo, ServerName> assignments = new TreeMap<HRegionInfo, ServerName>();

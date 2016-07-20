@@ -33,6 +33,7 @@ import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.NamespaceDescriptor;
 import org.apache.hadoop.hbase.ServerLoad;
 import org.apache.hadoop.hbase.ServerName;
+import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.master.LoadBalancer;
 import org.apache.hadoop.hbase.master.RackManager;
 import org.apache.hadoop.hbase.master.RegionPlan;
@@ -67,6 +68,12 @@ public class FavoredNodeLoadBalancer extends BaseLoadBalancer {
     globalFavoredNodesAssignmentPlan = new FavoredNodesPlan();
     this.rackManager = new RackManager(conf);
     this.conf = conf;
+  }
+
+  @Override
+  public List<RegionPlan> balanceCluster(TableName tableName,
+    Map<ServerName, List<HRegionInfo>> clusterState) {
+    return balanceCluster(clusterState);
   }
 
   @Override

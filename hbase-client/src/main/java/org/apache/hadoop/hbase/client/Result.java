@@ -19,11 +19,14 @@
 
 package org.apache.hadoop.hbase.client;
 
+import java.io.IOException;
 import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
@@ -78,6 +81,19 @@ import org.apache.hadoop.hbase.util.Bytes;
 public class Result implements CellScannable, CellScanner {
   private Cell[] cells;
   private Boolean exists; // if the query was just to check existence.
+  private boolean stale = false;
+
+  /**
+   * Partial results do not contain the full row's worth of cells. The result had to be returned in
+   * parts because the size of the cells in the row exceeded the RPC result size on the server.
+   * Partial results must be combined client side with results representing the remainder of the
+   * row's cells to form the complete result. Partial results and RPC result size allow us to avoid
+   * OOME on the server when servicing requests for large rows. The Scan configuration used to
+   * control the result size on the server is {@link Scan#setMaxResultSize(long)} and the default
+   * value can be seen here: {@link HConstants#DEFAULT_HBASE_CLIENT_SCANNER_MAX_RESULT_SIZE}
+   */
+  private boolean partial = false;
+
   // We're not using java serialization.  Transient here is just a marker to say
   // that this is where we cache row if we're ever asked for it.
   private transient byte [] row = null;
@@ -120,7 +136,7 @@ public class Result implements CellScannable, CellScanner {
   @Deprecated
   public Result(List<KeyValue> kvs) {
     // TODO: Here we presume the passed in Cells are KVs.  One day this won't always be so.
-    this(kvs.toArray(new Cell[kvs.size()]), null);
+    this(kvs.toArray(new Cell[kvs.size()]), null, false, false);
   }
 
   /**
@@ -129,56 +145,43 @@ public class Result implements CellScannable, CellScanner {
    * @param cells List of cells
    */
   public static Result create(List<Cell> cells) {
-    return new Result(cells.toArray(new Cell[cells.size()]), null);
+    return create(cells, null);
   }
-
   public static Result create(List<Cell> cells, Boolean exists) {
-    if (exists != null){
-      return new Result(null, exists);
-    }
-    return new Result(cells.toArray(new Cell[cells.size()]), null);
+    return create(cells, exists, false);
   }
-
+  public static Result create(List<Cell> cells, Boolean exists, boolean stale) {
+    return create(cells, exists, stale, false);
+  }
+  public static Result create(List<Cell> cells, Boolean exists, boolean stale, boolean partial) {
+    if (exists != null){
+      return new Result(null, exists, stale, partial);
+    }
+    return new Result(cells.toArray(new Cell[cells.size()]), null, stale, partial);
+  }
   /**
    * Instantiate a Result with the specified array of KeyValues.
    * <br><strong>Note:</strong> You must ensure that the keyvalues are already sorted.
    * @param cells array of cells
    */
   public static Result create(Cell[] cells) {
-    return new Result(cells, null);
+    return create(cells, null, false);
   }
-
-  /**
-   * Create a fake result based on the next value. This will be passed to the client side to
-   * notify the client that the raw limit is reached but no valid row is found yet, then avoiding
-   * the unnecessary RPC timeout.
-   * @param next the next key value, usually invisible(i.e. deleted or filtered out)
-   * @return new result instance
-   */
-  public static Result fakeResult(Cell next) {
-    KeyValue[] nextKvs = {
-        KeyValue.createFirstOnRow(next.getRow(), next.getTimestamp())
-    };
-    return new Result(nextKvs);
+  public static Result create(Cell[] cells, Boolean exists, boolean stale) {
+    return create(cells, exists, stale, false);
   }
-
-  /**
-   * Whether this is a fake result set when raw limit is reached, it's used to notify the client
-   * that the scanner is still in progress but no valid data yet to avoid RPC timeout.
-   * @return true if this is fake result
-   */
-  public boolean isFake() {
-    if (this.cells != null && this.cells.length == 1) {
-      byte type = cells[0].getTypeByte();
-      return type == KeyValue.Type.Minimum.getCode() || type == KeyValue.Type.Maximum.getCode();
+  public static Result create(Cell[] cells, Boolean exists, boolean stale, boolean partial) {
+    if (exists != null){
+      return new Result(null, exists, stale, partial);
     }
-    return false;
+    return new Result(cells, null, stale, partial);
   }
-
   /** Private ctor. Use {@link #create(Cell[])}. */
-  private Result(Cell[] cells, Boolean exists) {
+  private Result(Cell[] cells, Boolean exists, boolean stale, boolean partial) {
     this.cells = cells;
     this.exists = exists;
+    this.stale = stale;
+    this.partial = partial;
   }
 
   /**
@@ -869,6 +872,25 @@ public class Result implements CellScannable, CellScanner {
   }
 
   /**
+   * Whether or not the results are coming from possibly stale data. Stale results
+   * might be returned if {@link Consistency} is not STRONG for the query.
+   * @return Whether or not the results are coming from possibly stale data.
+   */
+  public boolean isStale() {
+    return stale;
+  }
+
+  /**
+   * Whether or not the result is a partial result. Partial results contain a subset of the cells
+   * for a row and should be combined with a result representing the remaining cells in that row to
+   * form a complete (non-partial) result.
+   * @return Whether or not the result is a partial result
+   */
+  public boolean isPartial() {
+    return partial;
+  }
+
+  /**
    * Add load information about the region to the information about the result
    * @param loadStats statistics about the current region from which this was returned
    */
@@ -882,5 +904,13 @@ public class Result implements CellScannable, CellScanner {
    */
   public ClientProtos.RegionLoadStats getStats() {
     return loadStats;
+  }
+
+  /**
+   * It will return false now.
+   * @return
+   */
+  public boolean isFake() {
+    return false;
   }
 }

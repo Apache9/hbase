@@ -21,7 +21,6 @@ import java.io.IOException;
 import java.util.List;
 
 import org.apache.hadoop.hbase.util.ByteStringer;
-
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.CellScannable;
 import org.apache.hadoop.hbase.DoNotRetryIOException;
@@ -98,9 +97,11 @@ import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.MoveRegionRequest
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.OfflineRegionRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RunCatalogScanRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetBalancerRunningRequest;
+import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.TruncateTableRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.UnassignRegionRequest;
 import org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.GetLastFlushedSequenceIdRequest;
+import org.apache.hadoop.hbase.quotas.ThrottleState;
 import org.apache.hadoop.hbase.util.ByteStringer;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.Pair;
@@ -486,6 +487,8 @@ public final class RequestConverter {
     builder.setCloseScanner(closeScanner);
     builder.setRegion(region);
     builder.setScan(ProtobufUtil.toScan(scan));
+    builder.setClientHandlesPartials(true);
+    builder.setClientHandlesHeartbeats(true);
     return builder.build();
   }
 
@@ -503,6 +506,8 @@ public final class RequestConverter {
     builder.setNumberOfRows(numberOfRows);
     builder.setCloseScanner(closeScanner);
     builder.setScannerId(scannerId);
+    builder.setClientHandlesPartials(true);
+    builder.setClientHandlesHeartbeats(true);
     return builder.build();
   }
 
@@ -522,6 +527,8 @@ public final class RequestConverter {
     builder.setCloseScanner(closeScanner);
     builder.setScannerId(scannerId);
     builder.setNextCallSeq(nextCallSeq);
+    builder.setClientHandlesPartials(true);
+    builder.setClientHandlesHeartbeats(true);
     return builder.build();
   }
 
@@ -1260,6 +1267,17 @@ public final class RequestConverter {
   }
 
   /**
+   * Creates a protocol buffer GetTableDescriptorsRequest
+   *
+   * @return a GetTableDescriptorsRequest
+   */
+  public static GetTableDescriptorsRequest buildGetTableDescriptorsRequest(final String pattern) {
+    GetTableDescriptorsRequest.Builder builder = GetTableDescriptorsRequest.newBuilder();
+    builder.setRegex(pattern);
+    return builder.build();
+  }
+
+  /**
    * Creates a protocol buffer IsMasterRunningRequest
    *
    * @return a IsMasterRunningRequest
@@ -1564,5 +1582,11 @@ public final class RequestConverter {
       builder.setOpenForDistributedLogReplay(openForReplay);
     }
     return builder.build();
+  }
+
+  public static SwitchThrottleRequest buildSwitchThrottleRequest(ThrottleState state) {
+    SwitchThrottleRequest.Builder request = SwitchThrottleRequest.newBuilder();
+    request.setThrottleState(ProtobufUtil.toProtoThrottleState(state));
+    return request.build();
   }
 }

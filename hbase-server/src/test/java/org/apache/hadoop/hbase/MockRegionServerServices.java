@@ -40,6 +40,7 @@ import org.apache.hadoop.hbase.protobuf.generated.RPCProtos;
 import org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.RegionServerReportResponse;
 import org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.RegionStateTransition.TransitionCode;
 import org.apache.hadoop.hbase.quotas.RegionServerQuotaManager;
+import org.apache.hadoop.hbase.regionserver.AccessCounter;
 import org.apache.hadoop.hbase.regionserver.CompactionRequestor;
 import org.apache.hadoop.hbase.regionserver.FlushRequester;
 import org.apache.hadoop.hbase.regionserver.HRegion;
@@ -277,6 +278,15 @@ class MockRegionServerServices implements RegionServerServices {
   
   @Override
   public RegionServerReportResponse getRegionServerReportResponse() {
+    return null;
+  }
+
+  @Override
+  public void switchThrottle() {
+  }
+
+  @Override
+  public AccessCounter getAccessCounter() {
     return null;
   }
 }

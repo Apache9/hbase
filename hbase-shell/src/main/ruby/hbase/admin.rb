@@ -279,14 +279,7 @@ module Hbase
           split_algo = RegionSplitter.newSplitAlgoInstance(@conf, arg.delete(SPLITALGO))
           splits = split_algo.split(JInteger.valueOf(num_regions))
         elsif (arg.has_key?(SLOTS_COUNT))
-          # salted table
-          slots_count = arg.delete(SLOTS_COUNT)
-          if (arg.has_key?(KEY_SALTER))
-            key_salter = arg.delete(KEY_SALTER)
-            htd.setSalted(key_salter, JInteger.valueOf(slots_count))
-          elsif
-            htd.setSlotsCount(JInteger.valueOf(slots_count))
-          end
+          htd.setSlotsCount(JInteger.valueOf(slots_count))
         end
         
         # Done with splits; apply formerly-table_att parameters.
@@ -465,41 +458,15 @@ module Hbase
     end
 
     #----------------------------------------------------------------------------------------------
-    # Truncates table (deletes all records by recreating the table)
+    # Truncates table while maintaing region boundaries (deletes all records by recreating the table)
     def truncate(table_name, conf = @conf)
       h_table = @connection.getTable(TableName.valueOf(table_name))
       table_description = h_table.getTableDescriptor()
-      raise ArgumentError, "Table #{table_name} is not enabled. Enable it first." unless enabled?(table_name)
-      yield 'Disabling table...' if block_given?
-      @admin.disableTable(table_name)
-
-      begin
-        yield 'Truncating table...' if block_given?
-        @admin.truncateTable(org.apache.hadoop.hbase.TableName.valueOf(table_name), false)
-      rescue => e
-        # Handle the compatibility case, where the truncate method doesn't exists on the Master
-        raise e unless e.respond_to?(:cause) && e.cause != nil
-        rootCause = e.cause
-        if rootCause.kind_of?(org.apache.hadoop.hbase.DoNotRetryIOException) then
-          # Handle the compatibility case, where the truncate method doesn't exists on the Master
-          yield 'Dropping table...' if block_given?
-          @admin.deleteTable(table_name)
-
-          yield 'Creating table...' if block_given?
-          @admin.createTable(table_description)
-        else
-          raise e
-        end
+      if table_description.isSalted()
+        h_table = h_table.getRawTable()
       end
-    end
-
-    #----------------------------------------------------------------------------------------------
-    # Truncates table while maintaing region boundaries (deletes all records by recreating the table)
-    def truncate_preserve(table_name, conf = @conf)
-      h_table = @connection.getTable(TableName.valueOf(table_name))
       splits = h_table.getRegionLocations().keys().map{|i| Bytes.toStringBinary(i.getStartKey)}.delete_if{|k| k == ""}.to_java :String
       splits = org.apache.hadoop.hbase.util.Bytes.toBinaryByteArrays(splits)
-      table_description = h_table.getTableDescriptor()
       yield 'Disabling table...' if block_given?
       disable(table_name)
 
@@ -1059,19 +1026,19 @@ module Hbase
     #----------------------------------------------------------------------------------------------
     # start throttle by quota
     def start_throttle()
-      @admin.switchThrottle(true, false, false)
+      @admin.switchThrottle(org.apache.hadoop.hbase.quotas.ThrottleState.valueOf("ON"))
     end
 
     #----------------------------------------------------------------------------------------------
     # simulate throttle by quota
     def simulate_throttle()
-      @admin.switchThrottle(false, true, false)
+      @admin.switchThrottle(org.apache.hadoop.hbase.quotas.ThrottleState.valueOf("SIMULATION"))
     end
 
     #----------------------------------------------------------------------------------------------
     # stop throttle by quota
     def stop_throttle()
-      @admin.switchThrottle(false, false, true)
+      @admin.switchThrottle(org.apache.hadoop.hbase.quotas.ThrottleState.valueOf("OFF"))
     end
 
   end

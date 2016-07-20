@@ -91,7 +91,7 @@ public abstract class MultiTableInputFormatBase extends
           + " the task's full log for more details.");
     }
     HTable table =
-        new HTable(context.getConfiguration(), tSplit.getTableName());
+        new HTable(context.getConfiguration(), tSplit.getFullTableName());
 
     TableRecordReader trr = this.tableRecordReader;
 
@@ -190,8 +190,8 @@ public abstract class MultiTableInputFormatBase extends
         String regionHostname = hregionLocation.getHostname();
         HRegionInfo regionInfo = hregionLocation.getRegionInfo();
         long regionSize = sizeCalculator.getRegionSize(regionInfo.getRegionName());
-        TableSplit split = new TableSplit(table.getName(), scan, splitStart, splitStop,
-            regionHostname, regionSize);
+        TableSplit split = new TableSplit(table.getFullTableName(), table.getName(), scan,
+            splitStart, splitStop, regionHostname, regionSize);
         splits.add(split);
         if (LOG.isDebugEnabled()) LOG.debug("getSplits: split -> " + (count++) + " -> " + split);
       }

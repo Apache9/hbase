@@ -281,6 +281,97 @@ public final class QuotaProtos {
     // @@protoc_insertion_point(enum_scope:QuotaType)
   }
 
+  /**
+   * Protobuf enum {@code ThrottleState}
+   */
+  public enum ThrottleState
+      implements com.google.protobuf.ProtocolMessageEnum {
+    /**
+     * <code>ON = 1;</code>
+     */
+    ON(0, 1),
+    /**
+     * <code>SIMULATION = 2;</code>
+     */
+    SIMULATION(1, 2),
+    /**
+     * <code>OFF = 3;</code>
+     */
+    OFF(2, 3),
+    ;
+
+    /**
+     * <code>ON = 1;</code>
+     */
+    public static final int ON_VALUE = 1;
+    /**
+     * <code>SIMULATION = 2;</code>
+     */
+    public static final int SIMULATION_VALUE = 2;
+    /**
+     * <code>OFF = 3;</code>
+     */
+    public static final int OFF_VALUE = 3;
+
+
+    public final int getNumber() { return value; }
+
+    public static ThrottleState valueOf(int value) {
+      switch (value) {
+        case 1: return ON;
+        case 2: return SIMULATION;
+        case 3: return OFF;
+        default: return null;
+      }
+    }
+
+    public static com.google.protobuf.Internal.EnumLiteMap<ThrottleState>
+        internalGetValueMap() {
+      return internalValueMap;
+    }
+    private static com.google.protobuf.Internal.EnumLiteMap<ThrottleState>
+        internalValueMap =
+          new com.google.protobuf.Internal.EnumLiteMap<ThrottleState>() {
+            public ThrottleState findValueByNumber(int number) {
+              return ThrottleState.valueOf(number);
+            }
+          };
+
+    public final com.google.protobuf.Descriptors.EnumValueDescriptor
+        getValueDescriptor() {
+      return getDescriptor().getValues().get(index);
+    }
+    public final com.google.protobuf.Descriptors.EnumDescriptor
+        getDescriptorForType() {
+      return getDescriptor();
+    }
+    public static final com.google.protobuf.Descriptors.EnumDescriptor
+        getDescriptor() {
+      return org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.getDescriptor().getEnumTypes().get(3);
+    }
+
+    private static final ThrottleState[] VALUES = values();
+
+    public static ThrottleState valueOf(
+        com.google.protobuf.Descriptors.EnumValueDescriptor desc) {
+      if (desc.getType() != getDescriptor()) {
+        throw new java.lang.IllegalArgumentException(
+          "EnumValueDescriptor is not for this type.");
+      }
+      return VALUES[desc.getIndex()];
+    }
+
+    private final int index;
+    private final int value;
+
+    private ThrottleState(int index, int value) {
+      this.index = index;
+      this.value = value;
+    }
+
+    // @@protoc_insertion_point(enum_scope:ThrottleState)
+  }
+
   public interface TimedQuotaOrBuilder
       extends com.google.protobuf.MessageOrBuilder {
 
@@ -4325,9 +4416,10 @@ public final class QuotaProtos {
       "leType\022\022\n\016REQUEST_NUMBER\020\001\022\020\n\014REQUEST_SI" +
       "ZE\020\002\022\020\n\014WRITE_NUMBER\020\003\022\016\n\nWRITE_SIZE\020\004\022\017" +
       "\n\013READ_NUMBER\020\005\022\r\n\tREAD_SIZE\020\006*\031\n\tQuotaT" +
-      "ype\022\014\n\010THROTTLE\020\001BA\n*org.apache.hadoop.h" +
-      "base.protobuf.generatedB\013QuotaProtosH\001\210\001" +
-      "\001\240\001\001"
+      "ype\022\014\n\010THROTTLE\020\001*0\n\rThrottleState\022\006\n\002ON" +
+      "\020\001\022\016\n\nSIMULATION\020\002\022\007\n\003OFF\020\003BA\n*org.apach" +
+      "e.hadoop.hbase.protobuf.generatedB\013Quota",
+      "ProtosH\001\210\001\001\240\001\001"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
       new com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner() {

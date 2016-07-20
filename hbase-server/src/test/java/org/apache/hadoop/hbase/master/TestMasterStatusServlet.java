@@ -32,6 +32,7 @@ import java.util.regex.Pattern;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.*;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
+import org.apache.hadoop.hbase.client.replication.ReplicationAdmin;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.zookeeper.MasterAddressTracker;
@@ -55,6 +56,7 @@ public class TestMasterStatusServlet {
   private HMaster master;
   private Configuration conf;
   private HBaseAdmin admin;
+  private ReplicationAdmin repAdmin;
 
   static final ServerName FAKE_HOST =
       ServerName.valueOf("fakehost", 12345, 1234567890);
@@ -104,7 +106,8 @@ public class TestMasterStatusServlet {
     Mockito.doReturn(FAKE_HOST).when(tracker).getMasterAddress();
 
     // Mock admin
-    admin = Mockito.mock(HBaseAdmin.class); 
+    admin = Mockito.mock(HBaseAdmin.class);
+    repAdmin = Mockito.mock(ReplicationAdmin.class);
   }
 
   private void setupMockTables() throws IOException {
@@ -118,7 +121,7 @@ public class TestMasterStatusServlet {
   @Test
   public void testStatusTemplateNoTables() throws IOException {
     new MasterStatusTmpl().render(new StringWriter(),
-        master, admin);
+        master, admin, repAdmin);
   }
 
   @Test
@@ -128,7 +131,7 @@ public class TestMasterStatusServlet {
     new MasterStatusTmpl()
       .setMetaLocation(ServerName.valueOf("metaserver:123,12345"))
       .render(new StringWriter(),
-        master, admin);
+        master, admin, repAdmin);
   }
 
   @Test
@@ -149,7 +152,7 @@ public class TestMasterStatusServlet {
       .setServers(servers)
       .setDeadServers(deadServers)
       .render(new StringWriter(),
-        master, admin);
+        master, admin, repAdmin);
   }
   
   @Test

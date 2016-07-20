@@ -25,8 +25,6 @@ import java.util.List;
 import java.util.SortedSet;
 import java.util.concurrent.atomic.AtomicLong;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -122,10 +120,12 @@ abstract class StoreFlusher {
     int compactionKVMax =
       conf.getInt(HConstants.COMPACTION_KV_MAX, HConstants.COMPACTION_KV_MAX_DEFAULT);
     List<Cell> kvs = new ArrayList<Cell>();
+    ScannerContext scannerContext =
+        ScannerContext.newBuilder().setBatchLimit(compactionKVMax).build();
     boolean hasMore;
     long flushed = 0;
     do {
-      hasMore = scanner.next(kvs, compactionKVMax, -1).hasNext();
+      hasMore = scanner.next(kvs, scannerContext);
       if (!kvs.isEmpty()) {
         for (Cell c : kvs) {
           // If we know that this KV is going to be included always, then let us

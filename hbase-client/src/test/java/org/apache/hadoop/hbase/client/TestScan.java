@@ -132,15 +132,5 @@ public class TestScan {
     }
   }
 
-  @Test
-  public void testRawLimit() throws IOException {
-    Scan scan = new Scan();
-    Assert.assertEquals(-1, scan.getRawLimit());
-    Scan scan2 = ProtobufUtil.toScan(ProtobufUtil.toScan(scan));
-    Assert.assertEquals(-1, scan2.getRawLimit());
-    scan.setRawLimit(100);
-    scan2 = ProtobufUtil.toScan(ProtobufUtil.toScan(scan));
-    Assert.assertEquals(100, scan2.getRawLimit());
-  }
 }
 

@@ -32,7 +32,12 @@ public class StatsTrackingRpcRetryingCaller<T> extends RpcRetryingCaller<T> {
 
   public StatsTrackingRpcRetryingCaller(long pause, int retries, int startLogErrorsCnt,
       ServerStatisticTracker stats) {
-    super(pause, retries, startLogErrorsCnt);
+    this(pause, retries, startLogErrorsCnt, false, stats);
+  }
+
+  public StatsTrackingRpcRetryingCaller(long pause, int retries, int startLogErrorsCnt,
+      boolean ignoreThrottlingException, ServerStatisticTracker stats) {
+    super(pause, retries, startLogErrorsCnt, ignoreThrottlingException);
     this.stats = stats;
   }
 

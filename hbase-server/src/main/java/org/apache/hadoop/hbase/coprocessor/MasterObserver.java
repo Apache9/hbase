@@ -673,20 +673,22 @@ public interface MasterObserver extends Coprocessor {
    * @param ctx the environment to interact with the framework and master
    * @param tableNamesList the list of table names, or null if querying for all
    * @param descriptors an empty list, can be filled with what to return if bypassing
+   * @param regex regular expression used for filtering the table names
    * @throws IOException
    */
   void preGetTableDescriptors(ObserverContext<MasterCoprocessorEnvironment> ctx,
-      List<TableName> tableNamesList,
-      List<HTableDescriptor> descriptors) throws IOException;
+      List<TableName> tableNamesList, List<HTableDescriptor> descriptors, String regex)
+      throws IOException;
 
   /**
    * Called after a getTableDescriptors request has been processed.
    * @param ctx the environment to interact with the framework and master
    * @param descriptors the list of descriptors about to be returned
+   * @param regex regular expression used for filtering the table names
    * @throws IOException
    */
   void postGetTableDescriptors(ObserverContext<MasterCoprocessorEnvironment> ctx,
-      List<HTableDescriptor> descriptors) throws IOException;
+      List<HTableDescriptor> descriptors, String regex) throws IOException;
 
   /**
    * Called before a new namespace is created by
@@ -773,6 +775,17 @@ public interface MasterObserver extends Coprocessor {
   void preSetUserQuota(final ObserverContext<MasterCoprocessorEnvironment> ctx,
       final String userName, final TableName tableName, final Quotas quotas) throws IOException;
 
+  /**
+   * Called before the quota for the user on the specified table is bypassed.
+   * @param ctx the environment to interact with the framework and master
+   * @param userName the name of user
+   * @param tableName the name of the table
+   * @param quotas the quota settings
+   * @throws IOException
+   */
+  void preBypassUserQuota(final ObserverContext<MasterCoprocessorEnvironment> ctx,
+      final String userName, final TableName tableName) throws IOException;
+  
   /**
    * Called after the quota for the user on the specified table is stored.
    * @param ctx the environment to interact with the framework and master

@@ -39,6 +39,7 @@ import org.apache.hadoop.hbase.io.hfile.HFileWriterV2;
 import org.apache.hadoop.hbase.regionserver.HStore;
 import org.apache.hadoop.hbase.regionserver.InternalScanner;
 import org.apache.hadoop.hbase.regionserver.ScanType;
+import org.apache.hadoop.hbase.regionserver.ScannerContext;
 import org.apache.hadoop.hbase.regionserver.Store;
 import org.apache.hadoop.hbase.regionserver.StoreFile;
 import org.apache.hadoop.hbase.regionserver.StoreFileScanner;
@@ -55,8 +56,8 @@ import org.apache.hadoop.util.StringUtils;
 public abstract class Compactor {
   private static final Log LOG = LogFactory.getLog(Compactor.class);
   protected CompactionProgress progress;
-  protected Configuration conf;
-  protected Store store;
+  protected final Configuration conf;
+  protected final Store store;
 
   private int compactionKVMax;
   protected Compression.Algorithm compactionCompression;
@@ -229,10 +230,12 @@ public abstract class Compactor {
         store.getRegionInfo().getRegionNameAsString() + "#" + store.getFamily().getNameAsString();
     long now = 0;
     boolean hasMore;
+    ScannerContext scannerContext =
+        ScannerContext.newBuilder().setBatchLimit(compactionKVMax).build();
     throughputController.start(compactionName);
     try {
       do {
-        hasMore = scanner.next(kvs, compactionKVMax, -1).hasNext();
+        hasMore = scanner.next(kvs, scannerContext);
         if (LOG.isDebugEnabled()) {
           now = EnvironmentEdgeManager.currentTimeMillis();
         }

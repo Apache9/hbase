@@ -373,7 +373,7 @@ public class AccessControlLists {
       while (true) {
         List<Cell> row = new ArrayList<Cell>();
 
-        boolean hasNext = iScanner.next(row).hasNext();
+        boolean hasNext = iScanner.next(row);
         ListMultimap<String,TablePermission> perms = ArrayListMultimap.create();
         byte[] entry = null;
         for (Cell kv : row) {

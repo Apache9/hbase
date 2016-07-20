@@ -198,7 +198,7 @@ public class CreateTableHandler extends EventHandler {
    * Called after that process() is completed.
    * @param exception null if process() is successful or not null if something has failed.
    */
-  protected void completed(final Throwable exception) {
+  public void completed(final Throwable exception) {
     releaseTableLock();
     String msg = exception == null ? null : exception.getMessage();
     LOG.info("Table, " + this.hTableDescriptor.getTableName() + ", creation " +
@@ -210,7 +210,7 @@ public class CreateTableHandler extends EventHandler {
       // It will block the creation saying TableAlreadyExists.
       try {
         this.assignmentManager.getZKTable().removeEnablingTable(
-            this.hTableDescriptor.getTableName(), false);
+            this.hTableDescriptor.getTableName(), true);
       } catch (KeeperException e) {
         // Keeper exception should not happen here
         LOG.error("Got a keeper exception while removing the ENABLING table znode "

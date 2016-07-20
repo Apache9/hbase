@@ -296,7 +296,6 @@ Shell.load_command_group(
     put
     scan
     truncate
-    truncate_preserve
     append
   ]
 )
@@ -343,10 +342,12 @@ Shell.load_command_group(
     show_peer_tableCFs
     set_peer_tableCFs
     append_peer_tableCFs
+    remove_peer_tableCFs
     list_replicated_tables
     enable_table_replication
     disable_table_replication
     upgrade_tablecfs
+    set_peer_bandwidth
   ]
 )
 
@@ -369,6 +370,7 @@ Shell.load_command_group(
   :commands => %w[
     set_quota
     list_quotas
+    user_quotas
     start_throttle
     simulate_throttle
     stop_throttle

@@ -33,7 +33,10 @@ EOF
 
       def command()
         format_simple_command do
-          admin.stop_throttle()
+          state = admin.stop_throttle()
+          formatter.row([
+            state == nil ? "Quota is not enabled" : state.name + " ==> OFF"
+          ])
         end
       end
     end

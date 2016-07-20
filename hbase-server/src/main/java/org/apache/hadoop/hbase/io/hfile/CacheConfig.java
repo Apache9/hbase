@@ -120,6 +120,17 @@ public class CacheConfig {
       "hbase.hfile.drop.behind.compaction";
   private static final boolean DROP_BEHIND_CACHE_COMPACTION_DEFAULT = false;
 
+
+  /**
+   * Configuration key to disable data blocks cache for testing the performance of file system
+   */
+  public static final String DISABLE_DATA_BLOCKS_CACHE_KEY = "hbase.block.data.cache.disable";
+
+  /**
+   * Default value for the configuration: DISABLE_DATA_BLOCKS_CACHE_KEY
+   */
+  private static final boolean DISABLE_DATA_BLOCKS_CACHE_DEFAULT = false;
+
   // Defaults
 
   public static final boolean DEFAULT_CACHE_DATA_ON_READ = true;
@@ -165,6 +176,10 @@ public class CacheConfig {
   private final boolean dropBehindCompaction;
 
   /**
+   * Whether or not to disable the data block cache
+   */
+  private final boolean disableCacheDataBlock;
+  /**
    * Create a cache configuration using the specified configuration object and
    * family descriptor.
    * @param conf hbase configuration
@@ -187,7 +202,8 @@ public class CacheConfig {
         conf.getBoolean(CACHE_DATA_BLOCKS_COMPRESSED_KEY, DEFAULT_CACHE_DATA_COMPRESSED),
         conf.getBoolean(PREFETCH_BLOCKS_ON_OPEN_KEY,
             DEFAULT_PREFETCH_ON_OPEN) || family.shouldPrefetchBlocksOnOpen(),
-        conf.getBoolean(DROP_BEHIND_CACHE_COMPACTION_KEY,DROP_BEHIND_CACHE_COMPACTION_DEFAULT)
+        conf.getBoolean(DROP_BEHIND_CACHE_COMPACTION_KEY,DROP_BEHIND_CACHE_COMPACTION_DEFAULT),
+        conf.getBoolean(DISABLE_DATA_BLOCKS_CACHE_KEY, DISABLE_DATA_BLOCKS_CACHE_DEFAULT)
      );
   }
 
@@ -207,7 +223,8 @@ public class CacheConfig {
         conf.getBoolean(EVICT_BLOCKS_ON_CLOSE_KEY, DEFAULT_EVICT_ON_CLOSE),
         conf.getBoolean(CACHE_DATA_BLOCKS_COMPRESSED_KEY, DEFAULT_CACHE_DATA_COMPRESSED),
         conf.getBoolean(PREFETCH_BLOCKS_ON_OPEN_KEY, DEFAULT_PREFETCH_ON_OPEN),
-        conf.getBoolean(DROP_BEHIND_CACHE_COMPACTION_KEY,DROP_BEHIND_CACHE_COMPACTION_DEFAULT)
+        conf.getBoolean(DROP_BEHIND_CACHE_COMPACTION_KEY,DROP_BEHIND_CACHE_COMPACTION_DEFAULT),
+        conf.getBoolean(DISABLE_DATA_BLOCKS_CACHE_KEY, DISABLE_DATA_BLOCKS_CACHE_DEFAULT)
      );
   }
 
@@ -229,7 +246,7 @@ public class CacheConfig {
       final boolean cacheDataOnWrite, final boolean cacheIndexesOnWrite,
       final boolean cacheBloomsOnWrite, final boolean evictOnClose,
       final boolean cacheDataCompressed, final boolean prefetchOnOpen,
-      final boolean dropBehindCompaction) {
+      final boolean dropBehindCompaction, final boolean disableDataBlockCache) {
     this.blockCache = blockCache;
     this.cacheDataOnRead = cacheDataOnRead;
     this.inMemory = inMemory;
@@ -240,6 +257,7 @@ public class CacheConfig {
     this.cacheDataCompressed = cacheDataCompressed;
     this.prefetchOnOpen = prefetchOnOpen;
     this.dropBehindCompaction = dropBehindCompaction;
+    this.disableCacheDataBlock = disableDataBlockCache;
   }
 
   /**
@@ -251,7 +269,7 @@ public class CacheConfig {
         cacheConf.cacheDataOnWrite, cacheConf.cacheIndexesOnWrite,
         cacheConf.cacheBloomsOnWrite, cacheConf.evictOnClose,
         cacheConf.cacheDataCompressed, cacheConf.prefetchOnOpen,
-        cacheConf.dropBehindCompaction);
+        cacheConf.dropBehindCompaction, cacheConf.disableCacheDataBlock);
   }
 
   /**
@@ -274,6 +292,9 @@ public class CacheConfig {
    * @return true if blocks should be cached on read, false if not
    */
   public boolean shouldCacheDataOnRead() {
+    if (disableCacheDataBlock) {
+      return false;
+    }
     return isBlockCacheEnabled() && cacheDataOnRead;
   }
 
@@ -287,6 +308,9 @@ public class CacheConfig {
    * available.
    */
   public boolean shouldCacheBlockOnRead(BlockCategory category) {
+    if (disableCacheDataBlock && category == BlockCategory.DATA) {
+      return false;
+    }
     return isBlockCacheEnabled()
         && (cacheDataOnRead ||
             category == BlockCategory.INDEX ||
@@ -308,6 +332,9 @@ public class CacheConfig {
    *         written, false if not
    */
   public boolean shouldCacheDataOnWrite() {
+    if (disableCacheDataBlock) {
+      return false;
+    }
     return isBlockCacheEnabled() && this.cacheDataOnWrite;
   }
 
@@ -357,6 +384,9 @@ public class CacheConfig {
    * @return true if data blocks should be compressed in the cache, false if not
    */
   public boolean shouldCacheDataCompressed() {
+    if (disableCacheDataBlock) {
+      return false;
+    }
     return isBlockCacheEnabled() && this.cacheDataCompressed;
   }
 
@@ -365,6 +395,9 @@ public class CacheConfig {
    */
   public boolean shouldCacheCompressed(BlockCategory category) {
     if (!isBlockCacheEnabled()) return false;
+    if (disableCacheDataBlock && category == BlockCategory.DATA) {
+      return false;
+    }
     switch (category) {
       case DATA:
         return this.cacheDataCompressed;

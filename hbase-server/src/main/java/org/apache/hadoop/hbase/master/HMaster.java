@@ -19,37 +19,35 @@
 package org.apache.hadoop.hbase.master;
 
 import java.io.IOException;
-import java.io.InterruptedIOException;
-import java.io.PrintWriter;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.regex.Pattern;
 
 import javax.management.ObjectName;
 
+import com.google.common.base.Throwables;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.Abortable;
@@ -81,6 +79,7 @@ import org.apache.hadoop.hbase.UnknownRegionException;
 import org.apache.hadoop.hbase.YouAreDeadException;
 import org.apache.hadoop.hbase.catalog.CatalogTracker;
 import org.apache.hadoop.hbase.catalog.MetaReader;
+import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.client.HConnectionManager;
 import org.apache.hadoop.hbase.client.MetaScanner;
 import org.apache.hadoop.hbase.client.MetaScanner.MetaScannerVisitor;
@@ -105,6 +104,7 @@ import org.apache.hadoop.hbase.master.balancer.ClusterStatusChore;
 import org.apache.hadoop.hbase.master.balancer.LoadBalancerFactory;
 import org.apache.hadoop.hbase.master.cleaner.HFileCleaner;
 import org.apache.hadoop.hbase.master.cleaner.LogCleaner;
+import org.apache.hadoop.hbase.master.cleaner.ReplicationZKLockCleanerChore;
 import org.apache.hadoop.hbase.master.handler.CreateTableHandler;
 import org.apache.hadoop.hbase.master.handler.DeleteTableHandler;
 import org.apache.hadoop.hbase.master.handler.DisableTableHandler;
@@ -203,18 +203,20 @@ import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RunCatalogScanReq
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RunCatalogScanResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetBalancerRunningRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetBalancerRunningResponse;
+import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetQuotaRequest;
+import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetQuotaResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ShutdownRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ShutdownResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SnapshotRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SnapshotResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.StopMasterRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.StopMasterResponse;
+import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleRequest;
+import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.TruncateTableRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.TruncateTableResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.UnassignRegionRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.UnassignRegionResponse;
-import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetQuotaRequest;
-import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetQuotaResponse;
 import org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.GetLastFlushedSequenceIdRequest;
 import org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.GetLastFlushedSequenceIdResponse;
 import org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.RegionServerReportRequest;
@@ -229,8 +231,14 @@ import org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.Repor
 import org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.TableRegionCount;
 import org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.SplitLogTask.RecoveryMode;
 import org.apache.hadoop.hbase.quotas.MasterQuotaManager;
+import org.apache.hadoop.hbase.quotas.RegionStateListener;
+import org.apache.hadoop.hbase.quotas.ThrottleState;
+import org.apache.hadoop.hbase.regionserver.DefaultStoreEngine;
+import org.apache.hadoop.hbase.regionserver.HStore;
 import org.apache.hadoop.hbase.regionserver.RegionCoprocessorHost;
 import org.apache.hadoop.hbase.regionserver.RegionSplitPolicy;
+import org.apache.hadoop.hbase.regionserver.compactions.ExploringCompactionPolicy;
+import org.apache.hadoop.hbase.regionserver.compactions.FIFOCompactionPolicy;
 import org.apache.hadoop.hbase.replication.regionserver.Replication;
 import org.apache.hadoop.hbase.security.UserProvider;
 import org.apache.hadoop.hbase.snapshot.ClientSnapshotDescriptionUtils;
@@ -239,8 +247,8 @@ import org.apache.hadoop.hbase.trace.SpanReceiverHost;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.CompressionTest;
 import org.apache.hadoop.hbase.util.ConfigUtil;
-import org.apache.hadoop.hbase.util.FSTableDescriptors;
 import org.apache.hadoop.hbase.util.EncryptionTest;
+import org.apache.hadoop.hbase.util.FSTableDescriptors;
 import org.apache.hadoop.hbase.util.FSUtils;
 import org.apache.hadoop.hbase.util.HFileArchiveUtil;
 import org.apache.hadoop.hbase.util.HasThread;
@@ -257,6 +265,7 @@ import org.apache.hadoop.hbase.zookeeper.DrainingServerTracker;
 import org.apache.hadoop.hbase.zookeeper.LoadBalancerTracker;
 import org.apache.hadoop.hbase.zookeeper.MasterAddressTracker;
 import org.apache.hadoop.hbase.zookeeper.RegionServerTracker;
+import org.apache.hadoop.hbase.zookeeper.ThrottleStateTracker;
 import org.apache.hadoop.hbase.zookeeper.ZKClusterId;
 import org.apache.hadoop.hbase.zookeeper.ZKUtil;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperListener;
@@ -370,6 +379,8 @@ MasterServices, Server {
   private LoadBalancerTracker loadBalancerTracker;
   // master address tracker
   private MasterAddressTracker masterAddressTracker;
+  // Tracker for throttle state
+  private ThrottleStateTracker throttleStateTracker;
 
   // RPC server for the HMaster
   private final RpcServerInterface rpcServer;
@@ -432,6 +443,7 @@ MasterServices, Server {
   private ClusterStatusPublisher clusterStatusPublisherChore = null;
 
   private CatalogJanitor catalogJanitorChore;
+  private ReplicationZKLockCleanerChore replicationZKLockCleanerChore;
   private LogCleaner logCleaner;
   private HFileCleaner hfileCleaner;
 
@@ -471,7 +483,8 @@ MasterServices, Server {
   // monitor for distributed procedures
   private MasterProcedureManagerHost mpmHost;
 
-  private MasterQuotaManager quotaManager;
+  // it is assigned after 'initialized' guard set to true, so should be volatile
+  private volatile MasterQuotaManager quotaManager;
 
   /** The health check chore. */
   private HealthCheckChore healthCheckChore;
@@ -571,8 +584,6 @@ MasterServices, Server {
 
     this.zooKeeper = new ZooKeeperWatcher(conf, MASTER + ":" + isa.getPort(), this, true);
     this.rpcServer.startThreads();
-    this.pauseMonitor = new JvmPauseMonitor(conf);
-    this.pauseMonitor.start();
     this.jvmThreadMonitor = new JvmThreadMonitor(conf);
     this.jvmThreadMonitor.start();
 
@@ -586,6 +597,8 @@ MasterServices, Server {
     this.masterCheckEncryption = conf.getBoolean("hbase.master.check.encryption", true);
 
     this.metricsMaster = new MetricsMaster( new MetricsMasterWrapperImpl(this));
+    this.pauseMonitor = new JvmPauseMonitor(conf, metricsMaster.getMetricsSource());
+    this.pauseMonitor.start();
 
     // preload table descriptor at startup
     this.preLoadTableDescriptors = conf.getBoolean("hbase.master.preload.tabledescriptors", true);
@@ -625,8 +638,8 @@ MasterServices, Server {
   private List<BlockingServiceAndInterface> getServices() {
     List<BlockingServiceAndInterface> bssi = new ArrayList<BlockingServiceAndInterface>(3);
     bssi.add(new BlockingServiceAndInterface(
-        MasterProtos.MasterService.newReflectiveBlockingService(this),
-        MasterProtos.MasterService.BlockingInterface.class));
+            MasterProtos.MasterService.newReflectiveBlockingService(this),
+            MasterProtos.MasterService.BlockingInterface.class));
     bssi.add(new BlockingServiceAndInterface(
         RegionServerStatusProtos.RegionServerStatusService.newReflectiveBlockingService(this),
         RegionServerStatusProtos.RegionServerStatusService.BlockingInterface.class));
@@ -805,6 +818,9 @@ MasterServices, Server {
       this.serverManager);
     this.drainingServerTracker.start();
 
+    this.throttleStateTracker = new ThrottleStateTracker(zooKeeper, this);
+    this.throttleStateTracker.start();
+    
     // Set the cluster as up.  If new RSs, they'll be waiting on this before
     // going ahead with their startup.
     boolean wasUp = this.clusterStatusTracker.isClusterUp();
@@ -1201,8 +1217,10 @@ MasterServices, Server {
   }
 
   void initQuotaManager() throws IOException {
-    quotaManager = new MasterQuotaManager(this);
+    MasterQuotaManager quotaManager = new MasterQuotaManager(this); 
+    this.assignmentManager.setRegionStateListener((RegionStateListener) quotaManager);
     quotaManager.start();
+    this.quotaManager = quotaManager;
   }
 
   private void splitMetaLogBeforeAssignment(ServerName currentMetaServer) throws IOException {
@@ -1361,6 +1379,16 @@ MasterServices, Server {
     if (LOG.isTraceEnabled()) {
       LOG.trace("Started service threads");
     }
+    if (!conf.getBoolean(HConstants.ZOOKEEPER_USEMULTI, true)) {
+      try {
+        replicationZKLockCleanerChore = new ReplicationZKLockCleanerChore(this, this,
+            cleanerInterval, this.getZooKeeper(), this.conf);
+        Threads.setDaemonThreadRunning(replicationZKLockCleanerChore.getThread(),
+            "replicationZKLockCleanerChore");
+      } catch (Exception e) {
+        LOG.error("start replicationZKLockCleanerChore failed", e);
+      }
+    }
   }
 
   /**
@@ -1379,6 +1407,7 @@ MasterServices, Server {
     this.rpcServerOpen = false;
     // Clean up and close up shop
     if (this.logCleaner!= null) this.logCleaner.interrupt();
+    if (this.replicationZKLockCleanerChore != null) this.replicationZKLockCleanerChore.interrupt();
     if (this.hfileCleaner != null) this.hfileCleaner.interrupt();
     if (this.quotaManager != null) this.quotaManager.stop();
 
@@ -1470,7 +1499,7 @@ MasterServices, Server {
    */
   protected RegionServerStartupResponse.Builder createConfigurationSubset() {
     RegionServerStartupResponse.Builder resp = addConfig(
-      RegionServerStartupResponse.newBuilder(), HConstants.HBASE_DIR);
+            RegionServerStartupResponse.newBuilder(), HConstants.HBASE_DIR);
     resp = addConfig(resp, "fs.default.name");
     return addConfig(resp, "hbase.master.info.port");
   }
@@ -1646,8 +1675,8 @@ MasterServices, Server {
       List<RegionPlan> plans = new ArrayList<RegionPlan>();
       //Give the balancer the current cluster state.
       this.balancer.setClusterStatus(getClusterStatus());
-      for (Map<ServerName, List<HRegionInfo>> assignments : assignmentsByTable.values()) {
-        List<RegionPlan> partialPlans = this.balancer.balanceCluster(assignments);
+      for (Entry<TableName, Map<ServerName, List<HRegionInfo>>> e : assignmentsByTable.entrySet()) {
+        List<RegionPlan> partialPlans = this.balancer.balanceCluster(e.getKey(), e.getValue());
         if (partialPlans != null) plans.addAll(partialPlans);
       }
       long cutoffTime = System.currentTimeMillis() + maximumBalanceTime;
@@ -1659,7 +1688,7 @@ MasterServices, Server {
           getConfiguration().getInt("hbase.balancer.min.balancing.interval", -1);
       int rpCount = 0;  // number of RegionPlans balanced so far
       long totalRegPlanExecTime = 0;
-      balancerRan = plans != null;
+      balancerRan = plans != null && !plans.isEmpty();
       if (plans != null && !plans.isEmpty()) {
         for (RegionPlan plan: plans) {
           LOG.info("balance " + plan);
@@ -1955,17 +1984,29 @@ MasterServices, Server {
     sanityCheckTableDescriptor(hTableDescriptor);
     this.quotaManager.checkNamespaceTableAndRegionQuota(hTableDescriptor.getTableName(),
         newRegions.length);
-    if (cpHost != null) {
-      cpHost.preCreateTable(hTableDescriptor, newRegions);
+    CreateTableHandler cth = null;
+    try {
+      if (cpHost != null) {
+        cpHost.preCreateTable(hTableDescriptor, newRegions);
+      }
+      LOG.info(getClientIdAuditPrefix() + " create " + hTableDescriptor);
+
+      cth =  new CreateTableHandler(this, this.fileSystemManager, hTableDescriptor, conf, newRegions,
+              this);
+      this.executorService.submit(cth.prepare());
+    } catch (Exception e) {
+      LOG.warn("create table: " + hTableDescriptor.getTableName()
+              + " fail, will remove table from quota/zk cache", e);
+      if(cth != null){
+        cth.completed(e);
+      }
+      this.quotaManager.removeTableFromNamespaceQuota(hTableDescriptor.getTableName());
+      Throwables.propagateIfPossible(e, IOException.class);
+      throw new IOException("create table: " + hTableDescriptor.getTableName() + " failed.", e);
     }
-    LOG.info(getClientIdAuditPrefix() + " create " + hTableDescriptor);
-    this.executorService.submit(new CreateTableHandler(this,
-      this.fileSystemManager, hTableDescriptor, conf,
-      newRegions, this).prepare());
     if (cpHost != null) {
       cpHost.postCreateTable(hTableDescriptor, newRegions);
     }
-
   }
 
   /**
@@ -2030,7 +2071,12 @@ MasterServices, Server {
     } catch (IOException e) {
       throw new DoNotRetryIOException(e.getMessage(), e);
     }
-
+    // Verify compaction policy
+    try{
+      checkCompactionPolicy(conf, htd);
+    } catch(IOException e){
+      warnOrThrowExceptionForFailure(false, CONF_KEY, e.getMessage(), e);
+    }
     // check that we have at least 1 CF
     if (htd.getColumnFamilies().length == 0) {
       throw new DoNotRetryIOException("Table should have at least one column family "
@@ -2070,23 +2116,89 @@ MasterServices, Server {
     }
   }
 
-  private void checkCompression(final HTableDescriptor htd)
-  throws IOException {
+  private void checkCompactionPolicy(Configuration conf, HTableDescriptor htd)
+      throws IOException {
+    // FIFO compaction has some requirements
+    // Actually FCP ignores periodic major compactions
+    String className =
+        htd.getConfigurationValue(DefaultStoreEngine.DEFAULT_COMPACTION_POLICY_CLASS_KEY);
+    if (className == null) {
+      className =
+          conf.get(DefaultStoreEngine.DEFAULT_COMPACTION_POLICY_CLASS_KEY,
+            ExploringCompactionPolicy.class.getName());
+    }
+
+    int blockingFileCount = HStore.DEFAULT_BLOCKING_STOREFILE_COUNT;
+    String sv = htd.getConfigurationValue(HStore.BLOCKING_STOREFILES_KEY);
+    if (sv != null) {
+      blockingFileCount = Integer.parseInt(sv);
+    } else {
+      blockingFileCount = conf.getInt(HStore.BLOCKING_STOREFILES_KEY, blockingFileCount);
+    }
+
+    for (HColumnDescriptor hcd : htd.getColumnFamilies()) {
+      String compactionPolicy =
+          hcd.getConfigurationValue(DefaultStoreEngine.DEFAULT_COMPACTION_POLICY_CLASS_KEY);
+      if (compactionPolicy == null) {
+        compactionPolicy = className;
+      }
+      if (!compactionPolicy.equals(FIFOCompactionPolicy.class.getName())) {
+        continue;
+      }
+      // FIFOCompaction
+      String message = null;
+
+      // 1. Check TTL
+      if (hcd.getTimeToLive() == HColumnDescriptor.DEFAULT_TTL) {
+        message = "Default TTL is not supported for FIFO compaction";
+        throw new IOException(message);
+      }
+
+      // 2. Check min versions
+      if (hcd.getMinVersions() > 0) {
+        message = "MIN_VERSION > 0 is not supported for FIFO compaction";
+        throw new IOException(message);
+      }
+
+      // 3. blocking file count
+      String sbfc = htd.getConfigurationValue(HStore.BLOCKING_STOREFILES_KEY);
+      if (sbfc != null) {
+        blockingFileCount = Integer.parseInt(sbfc);
+      }
+      if (blockingFileCount < 1000) {
+        message =
+            "blocking file count '" + HStore.BLOCKING_STOREFILES_KEY + "' " + blockingFileCount
+                + " is below recommended minimum of 1000";
+        throw new IOException(message);
+      }
+    }
+  }
+
+  // HBASE-13350 - Helper method to log warning on sanity check failures if checks disabled.
+  private static void warnOrThrowExceptionForFailure(boolean logWarn, String confKey,
+      String message, Exception cause) throws IOException {
+    if (!logWarn) {
+      throw new DoNotRetryIOException(message + " Set " + confKey +
+          " to false at conf or table descriptor if you want to bypass sanity checks", cause);
+    }
+    LOG.warn(message);
+  }
+
+  private void checkCompression(final HTableDescriptor htd) throws IOException {
     if (!this.masterCheckCompression) return;
     for (HColumnDescriptor hcd : htd.getColumnFamilies()) {
       checkCompression(hcd);
     }
   }
 
-  private void checkCompression(final HColumnDescriptor hcd)
-  throws IOException {
+  private void checkCompression(final HColumnDescriptor hcd) throws IOException {
     if (!this.masterCheckCompression) return;
     CompressionTest.testCompression(hcd.getCompression());
     CompressionTest.testCompression(hcd.getCompactionCompression());
   }
 
   private void checkEncryption(final Configuration conf, final HTableDescriptor htd)
-  throws IOException {
+      throws IOException {
     if (!this.masterCheckEncryption) return;
     for (HColumnDescriptor hcd : htd.getColumnFamilies()) {
       checkEncryption(conf, hcd);
@@ -2094,24 +2206,24 @@ MasterServices, Server {
   }
 
   private void checkEncryption(final Configuration conf, final HColumnDescriptor hcd)
-  throws IOException {
+      throws IOException {
     if (!this.masterCheckEncryption) return;
     EncryptionTest.testEncryption(conf, hcd.getEncryptionType(), hcd.getEncryptionKey());
   }
 
   private void checkClassLoading(final Configuration conf, final HTableDescriptor htd)
-  throws IOException {
+      throws IOException {
     RegionSplitPolicy.getSplitPolicyClass(htd, conf);
     RegionCoprocessorHost.testTableCoprocessorAttrs(conf, htd);
   }
 
   @Override
   public CreateTableResponse createTable(RpcController controller, CreateTableRequest req)
-  throws ServiceException {
+      throws ServiceException {
     HTableDescriptor hTableDescriptor = HTableDescriptor.convert(req.getTableSchema());
-    byte [][] splitKeys = ProtobufUtil.getSplitKeysArray(req);
+    byte[][] splitKeys = ProtobufUtil.getSplitKeysArray(req);
     try {
-      createTable(hTableDescriptor,splitKeys);
+      createTable(hTableDescriptor, splitKeys);
     } catch (IOException ioe) {
       throw new ServiceException(ioe);
     }
@@ -2928,9 +3040,10 @@ MasterServices, Server {
       tableNameList.add(ProtobufUtil.toTableName(tableNamePB));
     }
     boolean bypass = false;
+    String regex = req.hasRegex() ? req.getRegex() : null;
     if (this.cpHost != null) {
       try {
-        bypass = this.cpHost.preGetTableDescriptors(tableNameList, descriptors);
+        bypass = this.cpHost.preGetTableDescriptors(tableNameList, descriptors, regex);
       } catch (IOException ioe) {
         throw new ServiceException(ioe);
       }
@@ -2965,9 +3078,20 @@ MasterServices, Server {
         }
       }
 
+      // Retains only those matched by regular expression.
+      if (regex != null) {
+        Pattern pat = Pattern.compile(regex);
+        for (Iterator<HTableDescriptor> itr = descriptors.iterator(); itr.hasNext();) {
+          HTableDescriptor htd = itr.next();
+          if (!pat.matcher(htd.getTableName().getNameAsString()).matches()) {
+            itr.remove();
+          }
+        }
+      }
+
       if (this.cpHost != null) {
         try {
-          this.cpHost.postGetTableDescriptors(descriptors);
+          this.cpHost.postGetTableDescriptors(descriptors, regex);
         } catch (IOException ioe) {
           throw new ServiceException(ioe);
         }
@@ -3655,6 +3779,24 @@ MasterServices, Server {
     }
   }
 
+  @Override
+  public SwitchThrottleResponse switchThrottle(RpcController controller,
+      SwitchThrottleRequest request) throws ServiceException {
+    SwitchThrottleResponse.Builder response = SwitchThrottleResponse.newBuilder();
+    if (isQuotaEnabled()) {
+      ThrottleState prevState = this.throttleStateTracker.getThrottleState();
+      ThrottleState state = ProtobufUtil.toThrottleState(request.getThrottleState());
+      try {
+        this.throttleStateTracker.setThrottleState(state);
+      } catch (KeeperException e) {
+        throw new ServiceException(e);
+      }
+      LOG.info(getClientIdAuditPrefix() + " set throttleSwitch from " + prevState + " to " + state);
+      response.setPrevThrottleState(ProtobufUtil.toProtoThrottleState(prevState));
+    }
+    return response.build();
+  }
+
   public Map<TableName, TableLoad> getTableLoads() {
     Map<TableName, TableLoad> tableLoads = new HashMap<TableName, TableLoad>();
     for (final Entry<ServerName, ServerLoad> entry : this.getServerManager()
@@ -3671,5 +3813,9 @@ MasterServices, Server {
       }
     }
     return tableLoads;
+  }
+
+  private boolean isQuotaEnabled() {
+    return (this.quotaManager != null) && (this.quotaManager.isQuotaEnabled());
   }
 }

@@ -36,12 +36,14 @@ import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.security.PrivilegedExceptionAction;
+import java.text.SimpleDateFormat;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Random;
+import java.util.Date;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
@@ -167,12 +169,31 @@ public class RpcClient {
     }
   };
 
+
+  static class FailedServer{
+    public long expiry;
+    public String address;
+    public Throwable cause;
+    public long failedTimeStamp;
+
+    public FailedServer(long expiry, String address, Throwable cause, long failedTimeStamp){
+      this.expiry = expiry;
+      this.address = address;
+      this.cause = cause;
+      this.failedTimeStamp = failedTimeStamp;
+    }
+
+    public String formatFailedTimeStamp(){
+      String failedTimeStr = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date(this.failedTimeStamp));
+      return "(put to failed server list at: " + failedTimeStr + ")";
+    }
+  }
+
   /**
    * A class to manage a list of servers that failed recently.
    */
   static class FailedServers {
-    private final LinkedList<Pair<Long, String>> failedServers = new
-        LinkedList<Pair<Long, java.lang.String>>();
+    private final LinkedList<FailedServer> failedServers = new LinkedList<FailedServer>();
     private final int recheckServersTimeout;
 
     FailedServers(Configuration conf) {
@@ -184,8 +205,12 @@ public class RpcClient {
      * Add an address to the list of the failed servers list.
      */
     public synchronized void addToFailedServers(InetSocketAddress address) {
+      addToFailedServers(address, null);
+    }
+
+    public synchronized void addToFailedServers(InetSocketAddress address, Throwable t) {
       final long expiry = EnvironmentEdgeManager.currentTimeMillis() + recheckServersTimeout;
-      failedServers.addFirst(new Pair<Long, String>(expiry, address.toString()));
+      failedServers.addFirst(new FailedServer(expiry, address.toString(), t, expiry - recheckServersTimeout));
     }
 
     /**
@@ -193,28 +218,28 @@ public class RpcClient {
      *
      * @return true if the server is in the failed servers list
      */
-    public synchronized boolean isFailedServer(final InetSocketAddress address) {
+    public synchronized FailedServer getFailedServer(final InetSocketAddress address) {
       if (failedServers.isEmpty()) {
-        return false;
+        return null;
       }
 
       final String lookup = address.toString();
       final long now = EnvironmentEdgeManager.currentTimeMillis();
 
       // iterate, looking for the search entry and cleaning expired entries
-      Iterator<Pair<Long, String>> it = failedServers.iterator();
+      Iterator<FailedServer> it = failedServers.iterator();
       while (it.hasNext()) {
-        Pair<Long, String> cur = it.next();
-        if (cur.getFirst() < now) {
+        FailedServer cur = it.next();
+        if (cur.expiry < now) {
           it.remove();
         } else {
-          if (lookup.equals(cur.getSecond())) {
-            return true;
+          if (lookup.equals(cur.address)) {
+            return cur;
           }
         }
       }
 
-      return false;
+      return null;
     }
   }
 
@@ -225,6 +250,10 @@ public class RpcClient {
   public static class FailedServerException extends HBaseIOException {
     public FailedServerException(String s) {
       super(s);
+    }
+
+    public FailedServerException(String s, Throwable cause) {
+      super(s, cause);
     }
   }
 
@@ -283,9 +312,10 @@ public class RpcClient {
     boolean done;                                 // true when call is done
     long startTime;
     final MethodDescriptor md;
+    final int timeout;
 
     protected Call(final MethodDescriptor md, Message param, final CellScanner cells,
-        final Message responseDefaultType) {
+        final Message responseDefaultType, int timeout) {
       this.param = param;
       this.md = md;
       this.cells = cells;
@@ -294,6 +324,7 @@ public class RpcClient {
       synchronized (RpcClient.this) {
         this.id = counter++;
       }
+      this.timeout = timeout;
     }
 
     @Override
@@ -851,13 +882,15 @@ public class RpcClient {
         return;
       }
 
-      if (failedServers.isFailedServer(remoteId.getAddress())) {
+      FailedServer failedServer = failedServers.getFailedServer(remoteId.getAddress());
+      if (failedServer != null) {
         if (LOG.isDebugEnabled()) {
           LOG.debug("Not trying to connect to " + server +
               " this server is in the failed servers list");
         }
         IOException e = new FailedServerException(
-            "This server is in the failed servers list: " + server);
+            "This server is in the failed servers list" + failedServer.formatFailedTimeStamp() + ": " + server,
+            failedServer.cause);
         markClosed(e);
         close();
         throw e;
@@ -927,7 +960,7 @@ public class RpcClient {
           return;
         }
       } catch (Throwable t) {
-        failedServers.addToFailedServers(remoteId.address);
+        failedServers.addToFailedServers(remoteId.address, t);
         IOException e = null;
         if (t instanceof LinkageError) {
           // probably the hbase hadoop version does not match the running hadoop version
@@ -1051,6 +1084,8 @@ public class RpcClient {
         }
         // Only pass priority if there one.  Let zero be same as no priority.
         if (priority != 0) builder.setPriority(priority);
+        builder.setTimeout(call.timeout);
+
         //noinspection SynchronizeOnNonFinalField
         RequestHeader header = builder.build();
         synchronized (this.out) { // FindBugs IS2_INCONSISTENT_SYNC
@@ -1448,7 +1483,7 @@ public class RpcClient {
       Message returnType, User ticket, InetSocketAddress addr,
       int rpcTimeout, int priority)
   throws InterruptedException, IOException {
-    Call call = new Call(md, param, cells, returnType);
+    Call call = new Call(md, param, cells, returnType, rpcTimeout);
     Connection connection =
       getConnection(ticket, call, addr, rpcTimeout, this.codec, this.compressor);
     connection.writeRequest(call, priority);                 // send the parameter
@@ -1653,7 +1688,7 @@ public class RpcClient {
    */
   Message callBlockingMethod(MethodDescriptor md, RpcController controller,
       Message param, Message returnType, final User ticket, final InetSocketAddress isa,
-      final int rpcTimeout)
+      int rpcTimeout)
   throws ServiceException {
     long startTime = System.currentTimeMillis();
     PayloadCarryingRpcController pcrc = (PayloadCarryingRpcController)controller;
@@ -1662,6 +1697,11 @@ public class RpcClient {
       cells = pcrc.cellScanner();
       // Clear it here so we don't by mistake try and these cells processing results.
       pcrc.setCellScanner(null);
+
+      int timeout = pcrc.getTimeout();
+      if (timeout > 0 ){
+        rpcTimeout = timeout;
+      }
     }
     Pair<Message, CellScanner> val = null;
     try {
@@ -1728,7 +1768,7 @@ public class RpcClient {
         Message param, Message returnType)
     throws ServiceException {
       return this.rpcClient.callBlockingMethod(md, controller, param, returnType, this.ticket,
-        this.isa, this.rpcTimeout);
+        this.isa, getRpcTimeout(this.rpcTimeout));
     }
   }
 }

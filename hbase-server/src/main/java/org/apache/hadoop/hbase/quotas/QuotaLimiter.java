@@ -115,4 +115,8 @@ public interface QuotaLimiter {
    * @return true if it need to log throttling exception
    **/
   boolean canLogThrottlingException();
+
+  boolean getBypassGlobals();
+
+  void setBypassGlobals(boolean bypassGlobals);
 }

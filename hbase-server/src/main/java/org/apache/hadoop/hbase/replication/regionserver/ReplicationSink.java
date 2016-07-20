@@ -51,6 +51,7 @@ import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.WALEntry;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos;
 import org.apache.hadoop.hbase.regionserver.wal.HLog;
 import org.apache.hadoop.hbase.replication.thrift.ThriftAdaptors;
+import org.apache.hadoop.hbase.replication.thrift.ThriftClient;
 import org.apache.hadoop.hbase.replication.thrift.ThriftServer;
 import org.apache.hadoop.hbase.replication.thrift.generated.TBatchEdit;
 import org.apache.hadoop.hbase.replication.thrift.generated.THBaseService;
@@ -290,6 +291,9 @@ public class ReplicationSink implements THBaseService.Iface {
 
   @Override public void replicate(TBatchEdit edits) throws TIOError, TException {
     try {
+      if (ThriftClient.tableNameMap != null) {
+        ThriftClient.transferTableNames(edits, ThriftClient.tableNameMap);
+      }
       List<HLog.Entry> logEntries = ThriftAdaptors.REPLICATION_BATCH_ADAPTOR.fromThrift(edits);
       Pair<AdminProtos.ReplicateWALEntryRequest, CellScanner> p =
           ReplicationProtbufUtil.buildReplicateWALEntryRequest(

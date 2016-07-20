@@ -39,20 +39,26 @@ import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HRegionLocation;
+import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.Waiter;
 import org.apache.hadoop.hbase.client.HConnectionManager.HConnectionImplementation;
+import org.apache.hadoop.hbase.coprocessor.BaseRegionObserver;
+import org.apache.hadoop.hbase.coprocessor.ObserverContext;
+import org.apache.hadoop.hbase.coprocessor.RegionCoprocessorEnvironment;
 import org.apache.hadoop.hbase.exceptions.DeserializationException;
 import org.apache.hadoop.hbase.exceptions.RegionMovedException;
 import org.apache.hadoop.hbase.filter.Filter;
@@ -97,6 +103,36 @@ public class TestHCM {
   private static final byte[] ROW = Bytes.toBytes("bbb");
   private static final byte[] ROW_X = Bytes.toBytes("xxx");
   private static Random _randy = new Random();
+
+  /**
+   * This copro sleeps 20 second. The first call it fails. The second time, it works.
+   */
+  public static class SleepAndFailFirstTime extends BaseRegionObserver {
+    static final AtomicLong ct = new AtomicLong(0);
+    static final String SLEEP_TIME_CONF_KEY =
+        "hbase.coprocessor.SleepAndFailFirstTime.sleepTime";
+    static final long DEFAULT_SLEEP_TIME = 20000;
+    static final AtomicLong sleepTime = new AtomicLong(DEFAULT_SLEEP_TIME);
+
+    public SleepAndFailFirstTime() {
+    }
+
+    @Override
+    public void postOpen(ObserverContext<RegionCoprocessorEnvironment> c) {
+      RegionCoprocessorEnvironment env = c.getEnvironment();
+      Configuration conf = env.getConfiguration();
+      sleepTime.set(conf.getLong(SLEEP_TIME_CONF_KEY, DEFAULT_SLEEP_TIME));
+    }
+
+    @Override
+    public void preGetOp(final ObserverContext<RegionCoprocessorEnvironment> e,
+        final Get get, final List<Cell> results) throws IOException {
+      Threads.sleep(sleepTime.get());
+      if (ct.incrementAndGet() == 1) {
+        throw new IOException("first call I fail");
+      }
+    }
+  }
 
   @BeforeClass
   public static void setUpBeforeClass() throws Exception {
@@ -227,6 +263,118 @@ public class TestHCM {
 
     t.close();
     hci.getClient(sn);  // will throw an exception: RegionServerStoppedException
+  }
+
+  /**
+   * Test that an operation can fail if we read the global operation timeout, even if the
+   * individual timeout is fine. We do that with:
+   * - client side: an operation timeout of 30 seconds
+   * - server side: we sleep 20 second at each attempt. The first work fails, the second one
+   * succeeds. But the client won't wait that much, because 20 + 20 > 30, so the client
+   * timeouted when the server answers.
+   */
+  @Test
+  public void testOperationTimeout() throws Exception {
+    HTableDescriptor hdt = TEST_UTIL.createTableDescriptor("HCM-testOperationTimeout");
+    hdt.addCoprocessor(SleepAndFailFirstTime.class.getName());
+    TEST_UTIL.createTable(hdt, new byte[][] { FAM_NAM }).close();
+
+    Configuration c = new Configuration(TEST_UTIL.getConfiguration());
+    c.setInt(HConstants.HBASE_CLIENT_RETRIES_NUMBER, 3);
+    c.setInt(HConstants.HBASE_RPC_TIMEOUT_KEY, Integer.MAX_VALUE);
+
+    HConnection connection = HConnectionManager.createConnection(c);
+    HTableInterface t = connection.getTable(TableName.valueOf("HCM-testOperationTimeout"));
+    if (t instanceof HTable) {
+      HTable table = (HTable) t;
+      // Check that it works if the timeout is big enough
+      table.setOperationTimeout(120 * 1000);
+      table.get(new Get(FAM_NAM));
+
+      // Resetting and retrying. Will fail this time, not enough time for the second try
+      SleepAndFailFirstTime.ct.set(0);
+      try {
+        table.setOperationTimeout(30 * 1000);
+        table.get(new Get(FAM_NAM));
+        Assert.fail("We expect an exception here");
+      } catch (SocketTimeoutException e) {
+        // The client has a CallTimeout class, but it's not shared.We're not very clean today,
+        //  in the general case you can expect the call to stop, but the exception may vary.
+        // In this test however, we're sure that it will be a socket timeout.
+        LOG.info("We received an exception, as expected ", e);
+      } catch (IOException e) {
+        Assert.fail("Wrong exception:" + e.getMessage());
+      } finally {
+        table.close();
+      }
+    }
+  }
+
+  /**
+   * Test starting from 0 index when calculate the backoff time.
+   */
+  @Test
+  public void testRpcRetryingCallerSleep() throws Exception {
+    HTableDescriptor hdt = TEST_UTIL.createTableDescriptor("HCM-testRpcRetryingCallerSlee");
+    Map<String, String> kvs = new HashMap<String, String>();
+    kvs.put(SleepAndFailFirstTime.SLEEP_TIME_CONF_KEY, "2000");
+    hdt.addCoprocessor(SleepAndFailFirstTime.class.getName(), null, 1, kvs);
+    TEST_UTIL.createTable(hdt, new byte[][] { FAM_NAM }).close();
+
+    Configuration c = new Configuration(TEST_UTIL.getConfiguration());
+    c.setInt(HConstants.HBASE_CLIENT_PAUSE, 3 * 1000);
+    c.setInt(HConstants.HBASE_RPC_TIMEOUT_KEY, 4 * 1000);
+
+    HConnection connection = HConnectionManager.createConnection(c);
+    HTableInterface t = connection.getTable(TableName.valueOf("HCM-testRpcRetryingCallerSlee"));
+    if (t instanceof HTable) {
+      HTable table = (HTable) t;
+      table.setOperationTimeout(8 * 1000);
+      // Check that it works. Because 2s + 3s * RETRY_BACKOFF[0] + 2s < 8s
+      table.get(new Get(FAM_NAM));
+
+      // Resetting and retrying.
+      SleepAndFailFirstTime.ct.set(0);
+      try {
+        table.setOperationTimeout(6 * 1000);
+        // Will fail this time. After sleep, there are not enough time for second retry
+        // Beacuse 2s + 3s * RETRY_BACKOFF[0] + 2s > 6s
+        table.get(new Get(FAM_NAM));
+        Assert.fail("We expect an exception here");
+      } catch (SocketTimeoutException e) {
+        LOG.info("We received an exception, as expected ", e);
+      } catch (IOException e) {
+        Assert.fail("Wrong exception:" + e.getMessage());
+      } finally {
+        table.close();
+        connection.close();
+      }
+    }
+  }
+
+  @Test
+  public void testCallableSleep() throws Exception {
+    long pauseTime;
+    long baseTime = 100;
+    TableName tableName = TableName.valueOf("HCM-testCallableSleep");
+    HTable table = TEST_UTIL.createTable(tableName, FAM_NAM);
+    RegionServerCallable<Object> regionServerCallable = new RegionServerCallable<Object>(
+        table.getConnection(), tableName, ROW) {
+      @Override
+      public Object call() throws Exception {
+        // TODO Auto-generated method stub
+        return null;
+      }
+    };
+
+    regionServerCallable.prepare(false);
+    for (int i = 0; i < HConstants.RETRY_BACKOFF.length; i++) {
+      pauseTime = regionServerCallable.sleep(baseTime, i);
+      assertTrue(pauseTime >= (baseTime * HConstants.RETRY_BACKOFF[i]));
+      assertTrue(pauseTime <= (baseTime * HConstants.RETRY_BACKOFF[i] * 1.01f));
+    }
+
+    table.close();
   }
 
   /**
@@ -866,7 +1014,7 @@ public class TestHCM {
     conn.close();
   }
 
-  @Ignore ("Test presumes RETRY_BACKOFF will never change; it has") @Test
+  @Test
   public void testErrorBackoffTimeCalculation() throws Exception {
     // TODO: This test would seem to presume hardcoded RETRY_BACKOFF which it should not.
     final long ANY_PAUSE = 100;
@@ -887,46 +1035,29 @@ public class TestHCM {
 
       // Check some backoff values from HConstants sequence.
       tracker.reportServerError(location);
-      assertEqualsWithJitter(ANY_PAUSE, tracker.calculateBackoffTime(location, ANY_PAUSE));
+      assertEqualsWithJitter(ANY_PAUSE * HConstants.RETRY_BACKOFF[0],
+        tracker.calculateBackoffTime(location, ANY_PAUSE));
       tracker.reportServerError(location);
       tracker.reportServerError(location);
       tracker.reportServerError(location);
-      assertEqualsWithJitter(ANY_PAUSE * 5, tracker.calculateBackoffTime(location, ANY_PAUSE));
+      assertEqualsWithJitter(ANY_PAUSE * HConstants.RETRY_BACKOFF[3],
+        tracker.calculateBackoffTime(location, ANY_PAUSE));
 
       // All of this shouldn't affect backoff for different location.
-
       assertEquals(0, tracker.calculateBackoffTime(diffLocation, ANY_PAUSE));
       tracker.reportServerError(diffLocation);
-      assertEqualsWithJitter(ANY_PAUSE, tracker.calculateBackoffTime(diffLocation, ANY_PAUSE));
+      assertEqualsWithJitter(ANY_PAUSE * HConstants.RETRY_BACKOFF[0],
+        tracker.calculateBackoffTime(diffLocation, ANY_PAUSE));
 
       // But should still work for a different region in the same location.
       HRegionInfo ri2 = new HRegionInfo(TABLE_NAME2);
       HRegionLocation diffRegion = new HRegionLocation(ri2, location.getServerName());
-      assertEqualsWithJitter(ANY_PAUSE * 5, tracker.calculateBackoffTime(diffRegion, ANY_PAUSE));
+      assertEqualsWithJitter(ANY_PAUSE * HConstants.RETRY_BACKOFF[3],
+        tracker.calculateBackoffTime(diffRegion, ANY_PAUSE));
 
       // Check with different base.
-      assertEqualsWithJitter(ANY_PAUSE * 10,
-          tracker.calculateBackoffTime(location, ANY_PAUSE * 2));
-
-      // See that time from last error is taken into account. Time shift is applied after jitter,
-      // so pass the original expected backoff as the base for jitter.
-      long timeShift = (long)(ANY_PAUSE * 0.5);
-      timeMachine.setValue(timeBase + timeShift);
-      assertEqualsWithJitter((ANY_PAUSE * 5) - timeShift,
-        tracker.calculateBackoffTime(location, ANY_PAUSE), ANY_PAUSE * 2);
-
-      // However we should not go into negative.
-      timeMachine.setValue(timeBase + ANY_PAUSE * 100);
-      assertEquals(0, tracker.calculateBackoffTime(location, ANY_PAUSE));
-
-      // We also should not go over the boundary; last retry would be on it.
-      long timeLeft = (long)(ANY_PAUSE * 0.5);
-      timeMachine.setValue(timeBase + largeAmountOfTime - timeLeft);
-      assertTrue(tracker.canRetryMore(1));
-      tracker.reportServerError(location);
-      assertEquals(timeLeft, tracker.calculateBackoffTime(location, ANY_PAUSE));
-      timeMachine.setValue(timeBase + largeAmountOfTime);
-      assertFalse(tracker.canRetryMore(1));
+      assertEqualsWithJitter(ANY_PAUSE * 2 * HConstants.RETRY_BACKOFF[3],
+        tracker.calculateBackoffTime(location, ANY_PAUSE * 2));
     } finally {
       EnvironmentEdgeManager.reset();
     }

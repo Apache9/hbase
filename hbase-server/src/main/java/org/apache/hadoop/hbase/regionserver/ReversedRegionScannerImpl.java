@@ -21,6 +21,9 @@ package org.apache.hadoop.hbase.regionserver;
 import java.io.IOException;
 import java.util.List;
 
+import org.apache.hadoop.hbase.Cell;
+import org.apache.hadoop.hbase.CellUtil;
+import org.apache.hadoop.hbase.KeyValueUtil;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Scan;
@@ -54,30 +57,25 @@ class ReversedRegionScannerImpl extends RegionScannerImpl {
           region.getComparator());
     }
   }
-
   @Override
-  protected boolean isStopRow(byte[] currentRow, int offset, short length) {
-    return currentRow == null
-        || (super.stopRow != null && region.getComparator().compareRows(
-            stopRow, 0, stopRow.length, currentRow, offset, length) >= super.isScan);
-  }
-
-  @Override
-  protected ScannerStatus nextRow(byte[] currentRow, int offset, short length)
+  protected boolean seekToNextRowForTwoHeaps(ScannerContext scannerContext, Cell curRowCell)
       throws IOException {
-    assert super.joinedContinuationRow == null : "Trying to go to next row during joinedHeap read.";
-    byte row[] = new byte[length];
-    System.arraycopy(currentRow, offset, row, 0, length);
-    this.storeHeap.seekToPreviousRow(KeyValue.createFirstOnRow(row));
+    if (curRowCell == null) {
+      return false;
+    }
+    byte[] row = new byte[curRowCell.getRowLength()];
+    CellUtil.copyRowTo(curRowCell, row, 0);
+    this.storeHeap.seekToPreviousRow(KeyValueUtil.createFirstOnRow(row));
+    if (this.joinedHeap != null) {
+      this.joinedHeap.seekToPreviousRow(KeyValueUtil.createFirstOnRow(row));
+    }
     resetFilters();
     // Calling the hook in CP which allows it to do a fast forward
     if (this.region.getCoprocessorHost() != null) {
-      return this.region.getCoprocessorHost().postScannerFilterRow(this,
-          currentRow, offset, length) ?
-          ScannerStatus.continued(this.storeHeap.peek(), 1) :
-          ScannerStatus.done(1);
+      return this.region.getCoprocessorHost().postScannerFilterRow(this, curRowCell.getRowArray(),
+          curRowCell.getRowOffset(), curRowCell.getRowLength());
     }
-    return ScannerStatus.continued(this.storeHeap.peek(), 1);
+    return true;
   }
 
 }

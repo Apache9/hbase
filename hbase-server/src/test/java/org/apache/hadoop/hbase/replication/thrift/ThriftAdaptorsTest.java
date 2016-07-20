@@ -1,6 +1,15 @@
 package org.apache.hadoop.hbase.replication.thrift;
 
-import com.google.common.collect.Lists;
+import static org.apache.hadoop.hbase.replication.thrift.ThriftAdaptors.REPLICATION_BATCH_ADAPTOR;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.UUID;
+
 import org.apache.commons.lang.builder.EqualsBuilder;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.KeyValue;
@@ -15,14 +24,7 @@ import org.hamcrest.CoreMatchers;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.UUID;
-
-import static org.apache.hadoop.hbase.replication.thrift.ThriftAdaptors.REPLICATION_BATCH_ADAPTOR;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import com.google.common.collect.Lists;
 
 @Category(SmallTests.class)
 public class ThriftAdaptorsTest {
@@ -54,6 +56,34 @@ public class ThriftAdaptorsTest {
     List<KeyValue> transformedKeyValues = onlyEntry.getEdit().getKeyValues();
     assertThat(transformedKeyValues, CoreMatchers.hasItems(
         keyValues.toArray(new KeyValue[keyValues.size()])));
+  }
+  
+  @Test
+  public void testWALEntryAdaptorWithNullRow() throws Exception {
+    long now = System.currentTimeMillis();
+    UUID uuid = UUID.randomUUID();
+    KeyValue nullRowPut = new KeyValue(new byte[] {}, Bytes.toBytes("CF"), Bytes.toBytes("CQ"),
+        now, KeyValue.Type.Put, Bytes.toBytes("value"));
+    KeyValue nullRowDelete = new KeyValue(new byte[] {}, Bytes.toBytes("CF"), Bytes.toBytes("CQ"),
+      now, KeyValue.Type.Delete, Bytes.toBytes("value"));
+    KeyValue normalRow = new KeyValue(Bytes.toBytes("row"), Bytes.toBytes("CF"),
+        Bytes.toBytes("CQ"), now, KeyValue.Type.Delete, Bytes.toBytes("value"));
+    List<KeyValue> kvs = new ArrayList<KeyValue>();
+    kvs.add(nullRowPut);
+    kvs.add(nullRowDelete);
+    kvs.add(normalRow);
+    
+    List<UUID> clusterIds = Arrays.asList(uuid);
+    HLogKey key = createKey("region", "table", now, clusterIds);
+    WALEdit walEdit = createWALEdit(Lists.<UUID>newArrayList(), kvs);
+    HLog.Entry entry = new HLog.Entry(key, walEdit);
+    TBatchEdit result = REPLICATION_BATCH_ADAPTOR.toThrift(Arrays.asList(entry));
+    List<HLog.Entry> entries = REPLICATION_BATCH_ADAPTOR.fromThrift(result);
+    
+    assertEquals(1, entries.size());
+    entry = entries.get(0);
+    assertEquals(1, entry.getEdit().getKeyValues().size());
+    assertEquals("row", Bytes.toString(entry.getEdit().getKeyValues().get(0).getRow()));
   }
 
   private HLogKey createKey(String region, String table, long timestamp, List<UUID> clusterIds) {

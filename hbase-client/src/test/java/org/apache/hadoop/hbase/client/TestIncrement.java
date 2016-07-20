@@ -23,6 +23,7 @@ import java.util.Map;
 import java.util.NavigableMap;
 
 import org.apache.hadoop.hbase.testclassification.SmallTests;
+import org.apache.hadoop.hbase.types.NumberCodecType;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -47,5 +48,23 @@ public class TestIncrement {
       }
     }
     assertEquals(total, found);
+  }
+
+  @Test
+  public void testType() {
+    assertEquals("a.b.type", Increment.getTypeAttributeName("a".getBytes(), "b".getBytes()));
+    assertEquals("\\..\\..type", Increment.getTypeAttributeName(".".getBytes(), ".".getBytes()));
+    assertEquals("a\\.\\..\\.\\.b.type",
+        Increment.getTypeAttributeName("a..".getBytes(), "..b".getBytes()));
+
+    Increment increment = new Increment("row".getBytes());
+    for (NumberCodecType type : NumberCodecType.values()) {
+      increment.addColumn("c".getBytes(), type.name().getBytes(), 1, type);
+    }
+    for (NumberCodecType type : NumberCodecType.values()) {
+      assertEquals(type, increment.getNumberCodecType("c".getBytes(), type.name().getBytes()));
+    }
+    assertEquals(NumberCodecType.RAW_LONG,
+        increment.getNumberCodecType("c".getBytes(), "invalid".getBytes()));
   }
 }

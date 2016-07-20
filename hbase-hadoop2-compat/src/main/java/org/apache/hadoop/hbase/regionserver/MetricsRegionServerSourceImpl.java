@@ -20,10 +20,10 @@ package org.apache.hadoop.hbase.regionserver;
 
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.metrics.BaseSourceImpl;
+import org.apache.hadoop.hbase.metrics.Interns;
 import org.apache.hadoop.metrics2.MetricHistogram;
 import org.apache.hadoop.metrics2.MetricsCollector;
 import org.apache.hadoop.metrics2.MetricsRecordBuilder;
-import org.apache.hadoop.metrics2.lib.Interns;
 import org.apache.hadoop.metrics2.lib.MutableCounterLong;
 
 /**
@@ -59,6 +59,12 @@ public class MetricsRegionServerSourceImpl
   private final MetricHistogram splitTimeHisto;
   private final MetricHistogram flushTimeHisto;
 
+  // pause monitor metrics
+  private final MutableCounterLong infoPauseThresholdExceeded;
+  private final MutableCounterLong warnPauseThresholdExceeded;
+  private final MetricHistogram pausesWithGc;
+  private final MetricHistogram pausesWithoutGc;
+
   public MetricsRegionServerSourceImpl(MetricsRegionServerWrapper rsWrap) {
     this(METRICS_NAME, METRICS_DESCRIPTION, METRICS_CONTEXT, METRICS_JMX_CONTEXT, rsWrap);
   }
@@ -93,7 +99,15 @@ public class MetricsRegionServerSourceImpl
 
     splitRequest = getMetricsRegistry().newCounter(SPLIT_REQUEST_KEY, SPLIT_REQUEST_DESC, 0l);
     splitSuccess = getMetricsRegistry().newCounter(SPLIT_SUCCESS_KEY, SPLIT_SUCCESS_DESC, 0l);
-  
+
+    // pause monitor metrics
+    infoPauseThresholdExceeded = getMetricsRegistry().newCounter(INFO_THRESHOLD_COUNT_KEY,
+      INFO_THRESHOLD_COUNT_DESC, 0L);
+    warnPauseThresholdExceeded = getMetricsRegistry().newCounter(WARN_THRESHOLD_COUNT_KEY,
+      WARN_THRESHOLD_COUNT_DESC, 0L);
+    pausesWithGc = getMetricsRegistry().newHistogram(PAUSE_TIME_WITH_GC_KEY);
+    pausesWithoutGc = getMetricsRegistry().newHistogram(PAUSE_TIME_WITHOUT_GC_KEY);
+
     fsRead = getMetricsRegistry().newHistogram(FS_READ_KEY);
     fsPread = getMetricsRegistry().newHistogram(FS_PREAD_KEY);
     fsWrite = getMetricsRegistry().newHistogram(FS_WRITE_KEY);
@@ -175,6 +189,26 @@ public class MetricsRegionServerSourceImpl
   @Override
   public void updateFlushTime(long t) {
     flushTimeHisto.add(t);
+  }
+
+  @Override
+  public void incInfoThresholdExceeded(int count) {
+    infoPauseThresholdExceeded.incr(count);
+  }
+
+  @Override
+  public void incWarnThresholdExceeded(int count) {
+    warnPauseThresholdExceeded.incr(count);
+  }
+
+  @Override
+  public void updatePauseTimeWithGc(long t) {
+    pausesWithGc.add(t);
+  }
+
+  @Override
+  public void updatePauseTimeWithoutGc(long t) {
+    pausesWithoutGc.add(t);
   }
 
   /**

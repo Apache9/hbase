@@ -110,6 +110,8 @@ public class ZooKeeperWatcher implements Watcher, Abortable, Closeable {
   public String recoveringRegionsZNode;
   // znode containing namespace descriptors
   public static String namespaceZNode = "namespace";
+  // znode containing throttle state
+  public String throttleZNode;
 
   // Certain ZooKeeper nodes need to be world-readable
   public static final ArrayList<ACL> CREATOR_ALL_AND_WORLD_READABLE =
@@ -238,6 +240,8 @@ public class ZooKeeperWatcher implements Watcher, Abortable, Closeable {
         conf.get("zookeeper.znode.recovering.regions", "recovering-regions"));
     namespaceZNode = ZKUtil.joinZNode(baseZNode,
         conf.get("zookeeper.znode.namespace", "namespace"));
+    throttleZNode = ZKUtil.joinZNode(baseZNode,
+        conf.get("zookeeper.znode.throttle", "throttle"));
   }
 
   /**

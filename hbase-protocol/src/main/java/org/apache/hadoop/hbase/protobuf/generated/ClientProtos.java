@@ -4043,6 +4043,48 @@ public final class ClientProtos {
      * </pre>
      */
     boolean getExists();
+
+    // optional bool stale = 4 [default = false];
+    /**
+     * <code>optional bool stale = 4 [default = false];</code>
+     *
+     * <pre>
+     * Whether or not the results are coming from possibly stale data
+     * </pre>
+     */
+    boolean hasStale();
+    /**
+     * <code>optional bool stale = 4 [default = false];</code>
+     *
+     * <pre>
+     * Whether or not the results are coming from possibly stale data
+     * </pre>
+     */
+    boolean getStale();
+
+    // optional bool partial = 5 [default = false];
+    /**
+     * <code>optional bool partial = 5 [default = false];</code>
+     *
+     * <pre>
+     * Whether or not the entire result could be returned. Results will be split when
+     * the RPC chunk size limit is reached. Partial results contain only a subset of the
+     * cells for a row and must be combined with a result containing the remaining cells
+     * to form a complete result
+     * </pre>
+     */
+    boolean hasPartial();
+    /**
+     * <code>optional bool partial = 5 [default = false];</code>
+     *
+     * <pre>
+     * Whether or not the entire result could be returned. Results will be split when
+     * the RPC chunk size limit is reached. Partial results contain only a subset of the
+     * cells for a row and must be combined with a result containing the remaining cells
+     * to form a complete result
+     * </pre>
+     */
+    boolean getPartial();
   }
   /**
    * Protobuf type {@code Result}
@@ -4111,6 +4153,16 @@ public final class ClientProtos {
             case 24: {
               bitField0_ |= 0x00000002;
               exists_ = input.readBool();
+              break;
+            }
+            case 32: {
+              bitField0_ |= 0x00000004;
+              stale_ = input.readBool();
+              break;
+            }
+            case 40: {
+              bitField0_ |= 0x00000008;
+              partial_ = input.readBool();
               break;
             }
           }
@@ -4277,10 +4329,66 @@ public final class ClientProtos {
       return exists_;
     }
 
+    // optional bool stale = 4 [default = false];
+    public static final int STALE_FIELD_NUMBER = 4;
+    private boolean stale_;
+    /**
+     * <code>optional bool stale = 4 [default = false];</code>
+     *
+     * <pre>
+     * Whether or not the results are coming from possibly stale data
+     * </pre>
+     */
+    public boolean hasStale() {
+      return ((bitField0_ & 0x00000004) == 0x00000004);
+    }
+    /**
+     * <code>optional bool stale = 4 [default = false];</code>
+     *
+     * <pre>
+     * Whether or not the results are coming from possibly stale data
+     * </pre>
+     */
+    public boolean getStale() {
+      return stale_;
+    }
+
+    // optional bool partial = 5 [default = false];
+    public static final int PARTIAL_FIELD_NUMBER = 5;
+    private boolean partial_;
+    /**
+     * <code>optional bool partial = 5 [default = false];</code>
+     *
+     * <pre>
+     * Whether or not the entire result could be returned. Results will be split when
+     * the RPC chunk size limit is reached. Partial results contain only a subset of the
+     * cells for a row and must be combined with a result containing the remaining cells
+     * to form a complete result
+     * </pre>
+     */
+    public boolean hasPartial() {
+      return ((bitField0_ & 0x00000008) == 0x00000008);
+    }
+    /**
+     * <code>optional bool partial = 5 [default = false];</code>
+     *
+     * <pre>
+     * Whether or not the entire result could be returned. Results will be split when
+     * the RPC chunk size limit is reached. Partial results contain only a subset of the
+     * cells for a row and must be combined with a result containing the remaining cells
+     * to form a complete result
+     * </pre>
+     */
+    public boolean getPartial() {
+      return partial_;
+    }
+
     private void initFields() {
       cell_ = java.util.Collections.emptyList();
       associatedCellCount_ = 0;
       exists_ = false;
+      stale_ = false;
+      partial_ = false;
     }
     private byte memoizedIsInitialized = -1;
     public final boolean isInitialized() {
@@ -4303,6 +4411,12 @@ public final class ClientProtos {
       if (((bitField0_ & 0x00000002) == 0x00000002)) {
         output.writeBool(3, exists_);
       }
+      if (((bitField0_ & 0x00000004) == 0x00000004)) {
+        output.writeBool(4, stale_);
+      }
+      if (((bitField0_ & 0x00000008) == 0x00000008)) {
+        output.writeBool(5, partial_);
+      }
       getUnknownFields().writeTo(output);
     }
 
@@ -4323,6 +4437,14 @@ public final class ClientProtos {
       if (((bitField0_ & 0x00000002) == 0x00000002)) {
         size += com.google.protobuf.CodedOutputStream
           .computeBoolSize(3, exists_);
+      }
+      if (((bitField0_ & 0x00000004) == 0x00000004)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeBoolSize(4, stale_);
+      }
+      if (((bitField0_ & 0x00000008) == 0x00000008)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeBoolSize(5, partial_);
       }
       size += getUnknownFields().getSerializedSize();
       memoizedSerializedSize = size;
@@ -4359,6 +4481,16 @@ public final class ClientProtos {
         result = result && (getExists()
             == other.getExists());
       }
+      result = result && (hasStale() == other.hasStale());
+      if (hasStale()) {
+        result = result && (getStale()
+            == other.getStale());
+      }
+      result = result && (hasPartial() == other.hasPartial());
+      if (hasPartial()) {
+        result = result && (getPartial()
+            == other.getPartial());
+      }
       result = result &&
           getUnknownFields().equals(other.getUnknownFields());
       return result;
@@ -4383,6 +4515,14 @@ public final class ClientProtos {
       if (hasExists()) {
         hash = (37 * hash) + EXISTS_FIELD_NUMBER;
         hash = (53 * hash) + hashBoolean(getExists());
+      }
+      if (hasStale()) {
+        hash = (37 * hash) + STALE_FIELD_NUMBER;
+        hash = (53 * hash) + hashBoolean(getStale());
+      }
+      if (hasPartial()) {
+        hash = (37 * hash) + PARTIAL_FIELD_NUMBER;
+        hash = (53 * hash) + hashBoolean(getPartial());
       }
       hash = (29 * hash) + getUnknownFields().hashCode();
       memoizedHashCode = hash;
@@ -4504,6 +4644,10 @@ public final class ClientProtos {
         bitField0_ = (bitField0_ & ~0x00000002);
         exists_ = false;
         bitField0_ = (bitField0_ & ~0x00000004);
+        stale_ = false;
+        bitField0_ = (bitField0_ & ~0x00000008);
+        partial_ = false;
+        bitField0_ = (bitField0_ & ~0x00000010);
         return this;
       }
 
@@ -4549,6 +4693,14 @@ public final class ClientProtos {
           to_bitField0_ |= 0x00000002;
         }
         result.exists_ = exists_;
+        if (((from_bitField0_ & 0x00000008) == 0x00000008)) {
+          to_bitField0_ |= 0x00000004;
+        }
+        result.stale_ = stale_;
+        if (((from_bitField0_ & 0x00000010) == 0x00000010)) {
+          to_bitField0_ |= 0x00000008;
+        }
+        result.partial_ = partial_;
         result.bitField0_ = to_bitField0_;
         onBuilt();
         return result;
@@ -4596,6 +4748,12 @@ public final class ClientProtos {
         }
         if (other.hasExists()) {
           setExists(other.getExists());
+        }
+        if (other.hasStale()) {
+          setStale(other.getStale());
+        }
+        if (other.hasPartial()) {
+          setPartial(other.getPartial());
         }
         this.mergeUnknownFields(other.getUnknownFields());
         return this;
@@ -5072,6 +5230,116 @@ public final class ClientProtos {
       public Builder clearExists() {
         bitField0_ = (bitField0_ & ~0x00000004);
         exists_ = false;
+        onChanged();
+        return this;
+      }
+
+      // optional bool stale = 4 [default = false];
+      private boolean stale_ ;
+      /**
+       * <code>optional bool stale = 4 [default = false];</code>
+       *
+       * <pre>
+       * Whether or not the results are coming from possibly stale data
+       * </pre>
+       */
+      public boolean hasStale() {
+        return ((bitField0_ & 0x00000008) == 0x00000008);
+      }
+      /**
+       * <code>optional bool stale = 4 [default = false];</code>
+       *
+       * <pre>
+       * Whether or not the results are coming from possibly stale data
+       * </pre>
+       */
+      public boolean getStale() {
+        return stale_;
+      }
+      /**
+       * <code>optional bool stale = 4 [default = false];</code>
+       *
+       * <pre>
+       * Whether or not the results are coming from possibly stale data
+       * </pre>
+       */
+      public Builder setStale(boolean value) {
+        bitField0_ |= 0x00000008;
+        stale_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>optional bool stale = 4 [default = false];</code>
+       *
+       * <pre>
+       * Whether or not the results are coming from possibly stale data
+       * </pre>
+       */
+      public Builder clearStale() {
+        bitField0_ = (bitField0_ & ~0x00000008);
+        stale_ = false;
+        onChanged();
+        return this;
+      }
+
+      // optional bool partial = 5 [default = false];
+      private boolean partial_ ;
+      /**
+       * <code>optional bool partial = 5 [default = false];</code>
+       *
+       * <pre>
+       * Whether or not the entire result could be returned. Results will be split when
+       * the RPC chunk size limit is reached. Partial results contain only a subset of the
+       * cells for a row and must be combined with a result containing the remaining cells
+       * to form a complete result
+       * </pre>
+       */
+      public boolean hasPartial() {
+        return ((bitField0_ & 0x00000010) == 0x00000010);
+      }
+      /**
+       * <code>optional bool partial = 5 [default = false];</code>
+       *
+       * <pre>
+       * Whether or not the entire result could be returned. Results will be split when
+       * the RPC chunk size limit is reached. Partial results contain only a subset of the
+       * cells for a row and must be combined with a result containing the remaining cells
+       * to form a complete result
+       * </pre>
+       */
+      public boolean getPartial() {
+        return partial_;
+      }
+      /**
+       * <code>optional bool partial = 5 [default = false];</code>
+       *
+       * <pre>
+       * Whether or not the entire result could be returned. Results will be split when
+       * the RPC chunk size limit is reached. Partial results contain only a subset of the
+       * cells for a row and must be combined with a result containing the remaining cells
+       * to form a complete result
+       * </pre>
+       */
+      public Builder setPartial(boolean value) {
+        bitField0_ |= 0x00000010;
+        partial_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>optional bool partial = 5 [default = false];</code>
+       *
+       * <pre>
+       * Whether or not the entire result could be returned. Results will be split when
+       * the RPC chunk size limit is reached. Partial results contain only a subset of the
+       * cells for a row and must be combined with a result containing the remaining cells
+       * to form a complete result
+       * </pre>
+       */
+      public Builder clearPartial() {
+        bitField0_ = (bitField0_ & ~0x00000010);
+        partial_ = false;
         onChanged();
         return this;
       }
@@ -13350,6 +13618,16 @@ public final class ClientProtos {
      * <code>optional uint32 caching = 17;</code>
      */
     int getCaching();
+
+    // optional bool allow_partial_results = 18;
+    /**
+     * <code>optional bool allow_partial_results = 18;</code>
+     */
+    boolean hasAllowPartialResults();
+    /**
+     * <code>optional bool allow_partial_results = 18;</code>
+     */
+    boolean getAllowPartialResults();
   }
   /**
    * Protobuf type {@code Scan}
@@ -13513,6 +13791,11 @@ public final class ClientProtos {
             case 136: {
               bitField0_ |= 0x00002000;
               caching_ = input.readUInt32();
+              break;
+            }
+            case 144: {
+              bitField0_ |= 0x00004000;
+              allowPartialResults_ = input.readBool();
               break;
             }
           }
@@ -13877,6 +14160,22 @@ public final class ClientProtos {
       return caching_;
     }
 
+    // optional bool allow_partial_results = 18;
+    public static final int ALLOW_PARTIAL_RESULTS_FIELD_NUMBER = 18;
+    private boolean allowPartialResults_;
+    /**
+     * <code>optional bool allow_partial_results = 18;</code>
+     */
+    public boolean hasAllowPartialResults() {
+      return ((bitField0_ & 0x00004000) == 0x00004000);
+    }
+    /**
+     * <code>optional bool allow_partial_results = 18;</code>
+     */
+    public boolean getAllowPartialResults() {
+      return allowPartialResults_;
+    }
+
     private void initFields() {
       column_ = java.util.Collections.emptyList();
       attribute_ = java.util.Collections.emptyList();
@@ -13894,6 +14193,7 @@ public final class ClientProtos {
       small_ = false;
       reversed_ = false;
       caching_ = 0;
+      allowPartialResults_ = false;
     }
     private byte memoizedIsInitialized = -1;
     public final boolean isInitialized() {
@@ -13973,6 +14273,9 @@ public final class ClientProtos {
       if (((bitField0_ & 0x00002000) == 0x00002000)) {
         output.writeUInt32(17, caching_);
       }
+      if (((bitField0_ & 0x00004000) == 0x00004000)) {
+        output.writeBool(18, allowPartialResults_);
+      }
       getUnknownFields().writeTo(output);
     }
 
@@ -14045,6 +14348,10 @@ public final class ClientProtos {
       if (((bitField0_ & 0x00002000) == 0x00002000)) {
         size += com.google.protobuf.CodedOutputStream
           .computeUInt32Size(17, caching_);
+      }
+      if (((bitField0_ & 0x00004000) == 0x00004000)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeBoolSize(18, allowPartialResults_);
       }
       size += getUnknownFields().getSerializedSize();
       memoizedSerializedSize = size;
@@ -14143,6 +14450,11 @@ public final class ClientProtos {
         result = result && (getCaching()
             == other.getCaching());
       }
+      result = result && (hasAllowPartialResults() == other.hasAllowPartialResults());
+      if (hasAllowPartialResults()) {
+        result = result && (getAllowPartialResults()
+            == other.getAllowPartialResults());
+      }
       result = result &&
           getUnknownFields().equals(other.getUnknownFields());
       return result;
@@ -14219,6 +14531,10 @@ public final class ClientProtos {
       if (hasCaching()) {
         hash = (37 * hash) + CACHING_FIELD_NUMBER;
         hash = (53 * hash) + getCaching();
+      }
+      if (hasAllowPartialResults()) {
+        hash = (37 * hash) + ALLOW_PARTIAL_RESULTS_FIELD_NUMBER;
+        hash = (53 * hash) + hashBoolean(getAllowPartialResults());
       }
       hash = (29 * hash) + getUnknownFields().hashCode();
       memoizedHashCode = hash;
@@ -14392,6 +14708,8 @@ public final class ClientProtos {
         bitField0_ = (bitField0_ & ~0x00004000);
         caching_ = 0;
         bitField0_ = (bitField0_ & ~0x00008000);
+        allowPartialResults_ = false;
+        bitField0_ = (bitField0_ & ~0x00010000);
         return this;
       }
 
@@ -14502,6 +14820,10 @@ public final class ClientProtos {
           to_bitField0_ |= 0x00002000;
         }
         result.caching_ = caching_;
+        if (((from_bitField0_ & 0x00010000) == 0x00010000)) {
+          to_bitField0_ |= 0x00004000;
+        }
+        result.allowPartialResults_ = allowPartialResults_;
         result.bitField0_ = to_bitField0_;
         onBuilt();
         return result;
@@ -14611,6 +14933,9 @@ public final class ClientProtos {
         }
         if (other.hasCaching()) {
           setCaching(other.getCaching());
+        }
+        if (other.hasAllowPartialResults()) {
+          setAllowPartialResults(other.getAllowPartialResults());
         }
         this.mergeUnknownFields(other.getUnknownFields());
         return this;
@@ -15789,6 +16114,39 @@ public final class ClientProtos {
         return this;
       }
 
+      // optional bool allow_partial_results = 18;
+      private boolean allowPartialResults_ ;
+      /**
+       * <code>optional bool allow_partial_results = 18;</code>
+       */
+      public boolean hasAllowPartialResults() {
+        return ((bitField0_ & 0x00010000) == 0x00010000);
+      }
+      /**
+       * <code>optional bool allow_partial_results = 18;</code>
+       */
+      public boolean getAllowPartialResults() {
+        return allowPartialResults_;
+      }
+      /**
+       * <code>optional bool allow_partial_results = 18;</code>
+       */
+      public Builder setAllowPartialResults(boolean value) {
+        bitField0_ |= 0x00010000;
+        allowPartialResults_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>optional bool allow_partial_results = 18;</code>
+       */
+      public Builder clearAllowPartialResults() {
+        bitField0_ = (bitField0_ & ~0x00010000);
+        allowPartialResults_ = false;
+        onChanged();
+        return this;
+      }
+
       // @@protoc_insertion_point(builder_scope:Scan)
     }
 
@@ -15870,6 +16228,26 @@ public final class ClientProtos {
      * <code>optional uint64 next_call_seq = 6;</code>
      */
     long getNextCallSeq();
+
+    // optional bool client_handles_partials = 7;
+    /**
+     * <code>optional bool client_handles_partials = 7;</code>
+     */
+    boolean hasClientHandlesPartials();
+    /**
+     * <code>optional bool client_handles_partials = 7;</code>
+     */
+    boolean getClientHandlesPartials();
+
+    // optional bool client_handles_heartbeats = 8;
+    /**
+     * <code>optional bool client_handles_heartbeats = 8;</code>
+     */
+    boolean hasClientHandlesHeartbeats();
+    /**
+     * <code>optional bool client_handles_heartbeats = 8;</code>
+     */
+    boolean getClientHandlesHeartbeats();
   }
   /**
    * Protobuf type {@code ScanRequest}
@@ -15979,6 +16357,16 @@ public final class ClientProtos {
             case 48: {
               bitField0_ |= 0x00000020;
               nextCallSeq_ = input.readUInt64();
+              break;
+            }
+            case 56: {
+              bitField0_ |= 0x00000040;
+              clientHandlesPartials_ = input.readBool();
+              break;
+            }
+            case 64: {
+              bitField0_ |= 0x00000080;
+              clientHandlesHeartbeats_ = input.readBool();
               break;
             }
           }
@@ -16129,6 +16517,38 @@ public final class ClientProtos {
       return nextCallSeq_;
     }
 
+    // optional bool client_handles_partials = 7;
+    public static final int CLIENT_HANDLES_PARTIALS_FIELD_NUMBER = 7;
+    private boolean clientHandlesPartials_;
+    /**
+     * <code>optional bool client_handles_partials = 7;</code>
+     */
+    public boolean hasClientHandlesPartials() {
+      return ((bitField0_ & 0x00000040) == 0x00000040);
+    }
+    /**
+     * <code>optional bool client_handles_partials = 7;</code>
+     */
+    public boolean getClientHandlesPartials() {
+      return clientHandlesPartials_;
+    }
+
+    // optional bool client_handles_heartbeats = 8;
+    public static final int CLIENT_HANDLES_HEARTBEATS_FIELD_NUMBER = 8;
+    private boolean clientHandlesHeartbeats_;
+    /**
+     * <code>optional bool client_handles_heartbeats = 8;</code>
+     */
+    public boolean hasClientHandlesHeartbeats() {
+      return ((bitField0_ & 0x00000080) == 0x00000080);
+    }
+    /**
+     * <code>optional bool client_handles_heartbeats = 8;</code>
+     */
+    public boolean getClientHandlesHeartbeats() {
+      return clientHandlesHeartbeats_;
+    }
+
     private void initFields() {
       region_ = org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.RegionSpecifier.getDefaultInstance();
       scan_ = org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Scan.getDefaultInstance();
@@ -16136,6 +16556,8 @@ public final class ClientProtos {
       numberOfRows_ = 0;
       closeScanner_ = false;
       nextCallSeq_ = 0L;
+      clientHandlesPartials_ = false;
+      clientHandlesHeartbeats_ = false;
     }
     private byte memoizedIsInitialized = -1;
     public final boolean isInitialized() {
@@ -16179,6 +16601,12 @@ public final class ClientProtos {
       if (((bitField0_ & 0x00000020) == 0x00000020)) {
         output.writeUInt64(6, nextCallSeq_);
       }
+      if (((bitField0_ & 0x00000040) == 0x00000040)) {
+        output.writeBool(7, clientHandlesPartials_);
+      }
+      if (((bitField0_ & 0x00000080) == 0x00000080)) {
+        output.writeBool(8, clientHandlesHeartbeats_);
+      }
       getUnknownFields().writeTo(output);
     }
 
@@ -16211,6 +16639,14 @@ public final class ClientProtos {
       if (((bitField0_ & 0x00000020) == 0x00000020)) {
         size += com.google.protobuf.CodedOutputStream
           .computeUInt64Size(6, nextCallSeq_);
+      }
+      if (((bitField0_ & 0x00000040) == 0x00000040)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeBoolSize(7, clientHandlesPartials_);
+      }
+      if (((bitField0_ & 0x00000080) == 0x00000080)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeBoolSize(8, clientHandlesHeartbeats_);
       }
       size += getUnknownFields().getSerializedSize();
       memoizedSerializedSize = size;
@@ -16265,6 +16701,16 @@ public final class ClientProtos {
         result = result && (getNextCallSeq()
             == other.getNextCallSeq());
       }
+      result = result && (hasClientHandlesPartials() == other.hasClientHandlesPartials());
+      if (hasClientHandlesPartials()) {
+        result = result && (getClientHandlesPartials()
+            == other.getClientHandlesPartials());
+      }
+      result = result && (hasClientHandlesHeartbeats() == other.hasClientHandlesHeartbeats());
+      if (hasClientHandlesHeartbeats()) {
+        result = result && (getClientHandlesHeartbeats()
+            == other.getClientHandlesHeartbeats());
+      }
       result = result &&
           getUnknownFields().equals(other.getUnknownFields());
       return result;
@@ -16301,6 +16747,14 @@ public final class ClientProtos {
       if (hasNextCallSeq()) {
         hash = (37 * hash) + NEXT_CALL_SEQ_FIELD_NUMBER;
         hash = (53 * hash) + hashLong(getNextCallSeq());
+      }
+      if (hasClientHandlesPartials()) {
+        hash = (37 * hash) + CLIENT_HANDLES_PARTIALS_FIELD_NUMBER;
+        hash = (53 * hash) + hashBoolean(getClientHandlesPartials());
+      }
+      if (hasClientHandlesHeartbeats()) {
+        hash = (37 * hash) + CLIENT_HANDLES_HEARTBEATS_FIELD_NUMBER;
+        hash = (53 * hash) + hashBoolean(getClientHandlesHeartbeats());
       }
       hash = (29 * hash) + getUnknownFields().hashCode();
       memoizedHashCode = hash;
@@ -16446,6 +16900,10 @@ public final class ClientProtos {
         bitField0_ = (bitField0_ & ~0x00000010);
         nextCallSeq_ = 0L;
         bitField0_ = (bitField0_ & ~0x00000020);
+        clientHandlesPartials_ = false;
+        bitField0_ = (bitField0_ & ~0x00000040);
+        clientHandlesHeartbeats_ = false;
+        bitField0_ = (bitField0_ & ~0x00000080);
         return this;
       }
 
@@ -16506,6 +16964,14 @@ public final class ClientProtos {
           to_bitField0_ |= 0x00000020;
         }
         result.nextCallSeq_ = nextCallSeq_;
+        if (((from_bitField0_ & 0x00000040) == 0x00000040)) {
+          to_bitField0_ |= 0x00000040;
+        }
+        result.clientHandlesPartials_ = clientHandlesPartials_;
+        if (((from_bitField0_ & 0x00000080) == 0x00000080)) {
+          to_bitField0_ |= 0x00000080;
+        }
+        result.clientHandlesHeartbeats_ = clientHandlesHeartbeats_;
         result.bitField0_ = to_bitField0_;
         onBuilt();
         return result;
@@ -16539,6 +17005,12 @@ public final class ClientProtos {
         }
         if (other.hasNextCallSeq()) {
           setNextCallSeq(other.getNextCallSeq());
+        }
+        if (other.hasClientHandlesPartials()) {
+          setClientHandlesPartials(other.getClientHandlesPartials());
+        }
+        if (other.hasClientHandlesHeartbeats()) {
+          setClientHandlesHeartbeats(other.getClientHandlesHeartbeats());
         }
         this.mergeUnknownFields(other.getUnknownFields());
         return this;
@@ -16945,6 +17417,72 @@ public final class ClientProtos {
         return this;
       }
 
+      // optional bool client_handles_partials = 7;
+      private boolean clientHandlesPartials_ ;
+      /**
+       * <code>optional bool client_handles_partials = 7;</code>
+       */
+      public boolean hasClientHandlesPartials() {
+        return ((bitField0_ & 0x00000040) == 0x00000040);
+      }
+      /**
+       * <code>optional bool client_handles_partials = 7;</code>
+       */
+      public boolean getClientHandlesPartials() {
+        return clientHandlesPartials_;
+      }
+      /**
+       * <code>optional bool client_handles_partials = 7;</code>
+       */
+      public Builder setClientHandlesPartials(boolean value) {
+        bitField0_ |= 0x00000040;
+        clientHandlesPartials_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>optional bool client_handles_partials = 7;</code>
+       */
+      public Builder clearClientHandlesPartials() {
+        bitField0_ = (bitField0_ & ~0x00000040);
+        clientHandlesPartials_ = false;
+        onChanged();
+        return this;
+      }
+
+      // optional bool client_handles_heartbeats = 8;
+      private boolean clientHandlesHeartbeats_ ;
+      /**
+       * <code>optional bool client_handles_heartbeats = 8;</code>
+       */
+      public boolean hasClientHandlesHeartbeats() {
+        return ((bitField0_ & 0x00000080) == 0x00000080);
+      }
+      /**
+       * <code>optional bool client_handles_heartbeats = 8;</code>
+       */
+      public boolean getClientHandlesHeartbeats() {
+        return clientHandlesHeartbeats_;
+      }
+      /**
+       * <code>optional bool client_handles_heartbeats = 8;</code>
+       */
+      public Builder setClientHandlesHeartbeats(boolean value) {
+        bitField0_ |= 0x00000080;
+        clientHandlesHeartbeats_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>optional bool client_handles_heartbeats = 8;</code>
+       */
+      public Builder clearClientHandlesHeartbeats() {
+        bitField0_ = (bitField0_ & ~0x00000080);
+        clientHandlesHeartbeats_ = false;
+        onChanged();
+        return this;
+      }
+
       // @@protoc_insertion_point(builder_scope:ScanRequest)
     }
 
@@ -17087,6 +17625,106 @@ public final class ClientProtos {
      */
     org.apache.hadoop.hbase.protobuf.generated.ClientProtos.ResultOrBuilder getResultsOrBuilder(
         int index);
+
+    // optional bool stale = 6;
+    /**
+     * <code>optional bool stale = 6;</code>
+     */
+    boolean hasStale();
+    /**
+     * <code>optional bool stale = 6;</code>
+     */
+    boolean getStale();
+
+    // repeated bool partial_flag_per_result = 7;
+    /**
+     * <code>repeated bool partial_flag_per_result = 7;</code>
+     *
+     * <pre>
+     * This field is filled in if we are doing cellblocks. In the event that a row
+     * could not fit all of its cells into a single RPC chunk, the results will be
+     * returned as partials, and reconstructed into a complete result on the client
+     * side. This field is a list of flags indicating whether or not the result
+     * that the cells belong to is a partial result. For example, if this field
+     * has false, false, true in it, then we know that on the client side, we need to
+     * make another RPC request since the last result was only a partial.
+     * </pre>
+     */
+    java.util.List<java.lang.Boolean> getPartialFlagPerResultList();
+    /**
+     * <code>repeated bool partial_flag_per_result = 7;</code>
+     *
+     * <pre>
+     * This field is filled in if we are doing cellblocks. In the event that a row
+     * could not fit all of its cells into a single RPC chunk, the results will be
+     * returned as partials, and reconstructed into a complete result on the client
+     * side. This field is a list of flags indicating whether or not the result
+     * that the cells belong to is a partial result. For example, if this field
+     * has false, false, true in it, then we know that on the client side, we need to
+     * make another RPC request since the last result was only a partial.
+     * </pre>
+     */
+    int getPartialFlagPerResultCount();
+    /**
+     * <code>repeated bool partial_flag_per_result = 7;</code>
+     *
+     * <pre>
+     * This field is filled in if we are doing cellblocks. In the event that a row
+     * could not fit all of its cells into a single RPC chunk, the results will be
+     * returned as partials, and reconstructed into a complete result on the client
+     * side. This field is a list of flags indicating whether or not the result
+     * that the cells belong to is a partial result. For example, if this field
+     * has false, false, true in it, then we know that on the client side, we need to
+     * make another RPC request since the last result was only a partial.
+     * </pre>
+     */
+    boolean getPartialFlagPerResult(int index);
+
+    // optional bool more_results_in_region = 8;
+    /**
+     * <code>optional bool more_results_in_region = 8;</code>
+     *
+     * <pre>
+     * A server may choose to limit the number of results returned to the client for
+     * reasons such as the size in bytes or quantity of results accumulated. This field
+     * will true when more results exist in the current region.
+     * </pre>
+     */
+    boolean hasMoreResultsInRegion();
+    /**
+     * <code>optional bool more_results_in_region = 8;</code>
+     *
+     * <pre>
+     * A server may choose to limit the number of results returned to the client for
+     * reasons such as the size in bytes or quantity of results accumulated. This field
+     * will true when more results exist in the current region.
+     * </pre>
+     */
+    boolean getMoreResultsInRegion();
+
+    // optional bool heartbeat_message = 9;
+    /**
+     * <code>optional bool heartbeat_message = 9;</code>
+     *
+     * <pre>
+     * This field is filled in if the server is sending back a heartbeat message.
+     * Heartbeat messages are sent back to the client to prevent the scanner from
+     * timing out. Seeing a heartbeat message communicates to the Client that the
+     * server would have continued to scan had the time limit not been reached.
+     * </pre>
+     */
+    boolean hasHeartbeatMessage();
+    /**
+     * <code>optional bool heartbeat_message = 9;</code>
+     *
+     * <pre>
+     * This field is filled in if the server is sending back a heartbeat message.
+     * Heartbeat messages are sent back to the client to prevent the scanner from
+     * timing out. Seeing a heartbeat message communicates to the Client that the
+     * server would have continued to scan had the time limit not been reached.
+     * </pre>
+     */
+    boolean getHeartbeatMessage();
   }
   /**
    * Protobuf type {@code ScanResponse}
@@ -17189,6 +17827,42 @@ public final class ClientProtos {
               results_.add(input.readMessage(org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Result.PARSER, extensionRegistry));
               break;
             }
+            case 48: {
+              bitField0_ |= 0x00000008;
+              stale_ = input.readBool();
+              break;
+            }
+            case 56: {
+              if (!((mutable_bitField0_ & 0x00000040) == 0x00000040)) {
+                partialFlagPerResult_ = new java.util.ArrayList<java.lang.Boolean>();
+                mutable_bitField0_ |= 0x00000040;
+              }
+              partialFlagPerResult_.add(input.readBool());
+              break;
+            }
+            case 58: {
+              int length = input.readRawVarint32();
+              int limit = input.pushLimit(length);
+              if (!((mutable_bitField0_ & 0x00000040) == 0x00000040) && input.getBytesUntilLimit() > 0) {
+                partialFlagPerResult_ = new java.util.ArrayList<java.lang.Boolean>();
+                mutable_bitField0_ |= 0x00000040;
+              }
+              while (input.getBytesUntilLimit() > 0) {
+                partialFlagPerResult_.add(input.readBool());
+              }
+              input.popLimit(limit);
+              break;
+            }
+            case 64: {
+              bitField0_ |= 0x00000010;
+              moreResultsInRegion_ = input.readBool();
+              break;
+            }
+            case 72: {
+              bitField0_ |= 0x00000020;
+              heartbeatMessage_ = input.readBool();
+              break;
+            }
           }
         }
       } catch (com.google.protobuf.InvalidProtocolBufferException e) {
@@ -17202,6 +17876,9 @@ public final class ClientProtos {
         }
         if (((mutable_bitField0_ & 0x00000010) == 0x00000010)) {
           results_ = java.util.Collections.unmodifiableList(results_);
+        }
+        if (((mutable_bitField0_ & 0x00000040) == 0x00000040)) {
+          partialFlagPerResult_ = java.util.Collections.unmodifiableList(partialFlagPerResult_);
         }
         this.unknownFields = unknownFields.build();
         makeExtensionsImmutable();
@@ -17402,12 +18079,143 @@ public final class ClientProtos {
       return results_.get(index);
     }
 
+    // optional bool stale = 6;
+    public static final int STALE_FIELD_NUMBER = 6;
+    private boolean stale_;
+    /**
+     * <code>optional bool stale = 6;</code>
+     */
+    public boolean hasStale() {
+      return ((bitField0_ & 0x00000008) == 0x00000008);
+    }
+    /**
+     * <code>optional bool stale = 6;</code>
+     */
+    public boolean getStale() {
+      return stale_;
+    }
+
+    // repeated bool partial_flag_per_result = 7;
+    public static final int PARTIAL_FLAG_PER_RESULT_FIELD_NUMBER = 7;
+    private java.util.List<java.lang.Boolean> partialFlagPerResult_;
+    /**
+     * <code>repeated bool partial_flag_per_result = 7;</code>
+     *
+     * <pre>
+     * This field is filled in if we are doing cellblocks. In the event that a row
+     * could not fit all of its cells into a single RPC chunk, the results will be
+     * returned as partials, and reconstructed into a complete result on the client
+     * side. This field is a list of flags indicating whether or not the result
+     * that the cells belong to is a partial result. For example, if this field
+     * has false, false, true in it, then we know that on the client side, we need to
+     * make another RPC request since the last result was only a partial.
+     * </pre>
+     */
+    public java.util.List<java.lang.Boolean>
+        getPartialFlagPerResultList() {
+      return partialFlagPerResult_;
+    }
+    /**
+     * <code>repeated bool partial_flag_per_result = 7;</code>
+     *
+     * <pre>
+     * This field is filled in if we are doing cellblocks. In the event that a row
+     * could not fit all of its cells into a single RPC chunk, the results will be
+     * returned as partials, and reconstructed into a complete result on the client
+     * side. This field is a list of flags indicating whether or not the result
+     * that the cells belong to is a partial result. For example, if this field
+     * has false, false, true in it, then we know that on the client side, we need to
+     * make another RPC request since the last result was only a partial.
+     * </pre>
+     */
+    public int getPartialFlagPerResultCount() {
+      return partialFlagPerResult_.size();
+    }
+    /**
+     * <code>repeated bool partial_flag_per_result = 7;</code>
+     *
+     * <pre>
+     * This field is filled in if we are doing cellblocks. In the event that a row
+     * could not fit all of its cells into a single RPC chunk, the results will be
+     * returned as partials, and reconstructed into a complete result on the client
+     * side. This field is a list of flags indicating whether or not the result
+     * that the cells belong to is a partial result. For example, if this field
+     * has false, false, true in it, then we know that on the client side, we need to
+     * make another RPC request since the last result was only a partial.
+     * </pre>
+     */
+    public boolean getPartialFlagPerResult(int index) {
+      return partialFlagPerResult_.get(index);
+    }
+
+    // optional bool more_results_in_region = 8;
+    public static final int MORE_RESULTS_IN_REGION_FIELD_NUMBER = 8;
+    private boolean moreResultsInRegion_;
+    /**
+     * <code>optional bool more_results_in_region = 8;</code>
+     *
+     * <pre>
+     * A server may choose to limit the number of results returned to the client for
+     * reasons such as the size in bytes or quantity of results accumulated. This field
+     * will true when more results exist in the current region.
+     * </pre>
+     */
+    public boolean hasMoreResultsInRegion() {
+      return ((bitField0_ & 0x00000010) == 0x00000010);
+    }
+    /**
+     * <code>optional bool more_results_in_region = 8;</code>
+     *
+     * <pre>
+     * A server may choose to limit the number of results returned to the client for
+     * reasons such as the size in bytes or quantity of results accumulated. This field
+     * will true when more results exist in the current region.
+     * </pre>
+     */
+    public boolean getMoreResultsInRegion() {
+      return moreResultsInRegion_;
+    }
+
+    // optional bool heartbeat_message = 9;
+    public static final int HEARTBEAT_MESSAGE_FIELD_NUMBER = 9;
+    private boolean heartbeatMessage_;
+    /**
+     * <code>optional bool heartbeat_message = 9;</code>
+     *
+     * <pre>
+     * This field is filled in if the server is sending back a heartbeat message.
+     * Heartbeat messages are sent back to the client to prevent the scanner from
+     * timing out. Seeing a heartbeat message communicates to the Client that the
+     * server would have continued to scan had the time limit not been reached.
+     * </pre>
+     */
+    public boolean hasHeartbeatMessage() {
+      return ((bitField0_ & 0x00000020) == 0x00000020);
+    }
+    /**
+     * <code>optional bool heartbeat_message = 9;</code>
+     *
+     * <pre>
+     * This field is filled in if the server is sending back a heartbeat message.
+     * Heartbeat messages are sent back to the client to prevent the scanner from
+     * timing out. Seeing a heartbeat message communicates to the Client that the
+     * server would have continued to scan had the time limit not been reached.
+     * </pre>
+     */
+    public boolean getHeartbeatMessage() {
+      return heartbeatMessage_;
+    }
+
     private void initFields() {
       cellsPerResult_ = java.util.Collections.emptyList();
       scannerId_ = 0L;
       moreResults_ = false;
       ttl_ = 0;
       results_ = java.util.Collections.emptyList();
+      stale_ = false;
+      partialFlagPerResult_ = java.util.Collections.emptyList();
+      moreResultsInRegion_ = false;
+      heartbeatMessage_ = false;
     }
     private byte memoizedIsInitialized = -1;
     public final boolean isInitialized() {
@@ -17435,6 +18243,18 @@ public final class ClientProtos {
       }
       for (int i = 0; i < results_.size(); i++) {
         output.writeMessage(5, results_.get(i));
+      }
+      if (((bitField0_ & 0x00000008) == 0x00000008)) {
+        output.writeBool(6, stale_);
+      }
+      for (int i = 0; i < partialFlagPerResult_.size(); i++) {
+        output.writeBool(7, partialFlagPerResult_.get(i));
+      }
+      if (((bitField0_ & 0x00000010) == 0x00000010)) {
+        output.writeBool(8, moreResultsInRegion_);
+      }
+      if (((bitField0_ & 0x00000020) == 0x00000020)) {
+        output.writeBool(9, heartbeatMessage_);
       }
       getUnknownFields().writeTo(output);
     }
@@ -17469,6 +18289,24 @@ public final class ClientProtos {
       for (int i = 0; i < results_.size(); i++) {
         size += com.google.protobuf.CodedOutputStream
           .computeMessageSize(5, results_.get(i));
+      }
+      if (((bitField0_ & 0x00000008) == 0x00000008)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeBoolSize(6, stale_);
+      }
+      {
+        int dataSize = 0;
+        dataSize = 1 * getPartialFlagPerResultList().size();
+        size += dataSize;
+        size += 1 * getPartialFlagPerResultList().size();
+      }
+      if (((bitField0_ & 0x00000010) == 0x00000010)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeBoolSize(8, moreResultsInRegion_);
+      }
+      if (((bitField0_ & 0x00000020) == 0x00000020)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeBoolSize(9, heartbeatMessage_);
       }
       size += getUnknownFields().getSerializedSize();
       memoizedSerializedSize = size;
@@ -17512,6 +18350,23 @@ public final class ClientProtos {
       }
       result = result && getResultsList()
           .equals(other.getResultsList());
+      result = result && (hasStale() == other.hasStale());
+      if (hasStale()) {
+        result = result && (getStale()
+            == other.getStale());
+      }
+      result = result && getPartialFlagPerResultList()
+          .equals(other.getPartialFlagPerResultList());
+      result = result && (hasMoreResultsInRegion() == other.hasMoreResultsInRegion());
+      if (hasMoreResultsInRegion()) {
+        result = result && (getMoreResultsInRegion()
+            == other.getMoreResultsInRegion());
+      }
+      result = result && (hasHeartbeatMessage() == other.hasHeartbeatMessage());
+      if (hasHeartbeatMessage()) {
+        result = result && (getHeartbeatMessage()
+            == other.getHeartbeatMessage());
+      }
       result = result &&
           getUnknownFields().equals(other.getUnknownFields());
       return result;
@@ -17544,6 +18399,22 @@ public final class ClientProtos {
       if (getResultsCount() > 0) {
         hash = (37 * hash) + RESULTS_FIELD_NUMBER;
         hash = (53 * hash) + getResultsList().hashCode();
+      }
+      if (hasStale()) {
+        hash = (37 * hash) + STALE_FIELD_NUMBER;
+        hash = (53 * hash) + hashBoolean(getStale());
+      }
+      if (getPartialFlagPerResultCount() > 0) {
+        hash = (37 * hash) + PARTIAL_FLAG_PER_RESULT_FIELD_NUMBER;
+        hash = (53 * hash) + getPartialFlagPerResultList().hashCode();
+      }
+      if (hasMoreResultsInRegion()) {
+        hash = (37 * hash) + MORE_RESULTS_IN_REGION_FIELD_NUMBER;
+        hash = (53 * hash) + hashBoolean(getMoreResultsInRegion());
+      }
+      if (hasHeartbeatMessage()) {
+        hash = (37 * hash) + HEARTBEAT_MESSAGE_FIELD_NUMBER;
+        hash = (53 * hash) + hashBoolean(getHeartbeatMessage());
       }
       hash = (29 * hash) + getUnknownFields().hashCode();
       memoizedHashCode = hash;
@@ -17675,6 +18546,14 @@ public final class ClientProtos {
         } else {
           resultsBuilder_.clear();
         }
+        stale_ = false;
+        bitField0_ = (bitField0_ & ~0x00000020);
+        partialFlagPerResult_ = java.util.Collections.emptyList();
+        bitField0_ = (bitField0_ & ~0x00000040);
+        moreResultsInRegion_ = false;
+        bitField0_ = (bitField0_ & ~0x00000080);
+        heartbeatMessage_ = false;
+        bitField0_ = (bitField0_ & ~0x00000100);
         return this;
       }
 
@@ -17729,6 +18608,23 @@ public final class ClientProtos {
         } else {
           result.results_ = resultsBuilder_.build();
         }
+        if (((from_bitField0_ & 0x00000020) == 0x00000020)) {
+          to_bitField0_ |= 0x00000008;
+        }
+        result.stale_ = stale_;
+        if (((bitField0_ & 0x00000040) == 0x00000040)) {
+          partialFlagPerResult_ = java.util.Collections.unmodifiableList(partialFlagPerResult_);
+          bitField0_ = (bitField0_ & ~0x00000040);
+        }
+        result.partialFlagPerResult_ = partialFlagPerResult_;
+        if (((from_bitField0_ & 0x00000080) == 0x00000080)) {
+          to_bitField0_ |= 0x00000010;
+        }
+        result.moreResultsInRegion_ = moreResultsInRegion_;
+        if (((from_bitField0_ & 0x00000100) == 0x00000100)) {
+          to_bitField0_ |= 0x00000020;
+        }
+        result.heartbeatMessage_ = heartbeatMessage_;
         result.bitField0_ = to_bitField0_;
         onBuilt();
         return result;
@@ -17789,6 +18685,25 @@ public final class ClientProtos {
               resultsBuilder_.addAllMessages(other.results_);
             }
           }
+        }
+        if (other.hasStale()) {
+          setStale(other.getStale());
+        }
+        if (!other.partialFlagPerResult_.isEmpty()) {
+          if (partialFlagPerResult_.isEmpty()) {
+            partialFlagPerResult_ = other.partialFlagPerResult_;
+            bitField0_ = (bitField0_ & ~0x00000040);
+          } else {
+            ensurePartialFlagPerResultIsMutable();
+            partialFlagPerResult_.addAll(other.partialFlagPerResult_);
+          }
+          onChanged();
+        }
+        if (other.hasMoreResultsInRegion()) {
+          setMoreResultsInRegion(other.getMoreResultsInRegion());
+        }
+        if (other.hasHeartbeatMessage()) {
+          setHeartbeatMessage(other.getHeartbeatMessage());
         }
         this.mergeUnknownFields(other.getUnknownFields());
         return this;
@@ -18398,6 +19313,293 @@ public final class ClientProtos {
           results_ = null;
         }
         return resultsBuilder_;
+      }
+
+      // optional bool stale = 6;
+      private boolean stale_ ;
+      /**
+       * <code>optional bool stale = 6;</code>
+       */
+      public boolean hasStale() {
+        return ((bitField0_ & 0x00000020) == 0x00000020);
+      }
+      /**
+       * <code>optional bool stale = 6;</code>
+       */
+      public boolean getStale() {
+        return stale_;
+      }
+      /**
+       * <code>optional bool stale = 6;</code>
+       */
+      public Builder setStale(boolean value) {
+        bitField0_ |= 0x00000020;
+        stale_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>optional bool stale = 6;</code>
+       */
+      public Builder clearStale() {
+        bitField0_ = (bitField0_ & ~0x00000020);
+        stale_ = false;
+        onChanged();
+        return this;
+      }
+
+      // repeated bool partial_flag_per_result = 7;
+      private java.util.List<java.lang.Boolean> partialFlagPerResult_ = java.util.Collections.emptyList();
+      private void ensurePartialFlagPerResultIsMutable() {
+        if (!((bitField0_ & 0x00000040) == 0x00000040)) {
+          partialFlagPerResult_ = new java.util.ArrayList<java.lang.Boolean>(partialFlagPerResult_);
+          bitField0_ |= 0x00000040;
+         }
+      }
+      /**
+       * <code>repeated bool partial_flag_per_result = 7;</code>
+       *
+       * <pre>
+       * This field is filled in if we are doing cellblocks. In the event that a row
+       * could not fit all of its cells into a single RPC chunk, the results will be
+       * returned as partials, and reconstructed into a complete result on the client
+       * side. This field is a list of flags indicating whether or not the result
+       * that the cells belong to is a partial result. For example, if this field
+       * has false, false, true in it, then we know that on the client side, we need to
+       * make another RPC request since the last result was only a partial.
+       * </pre>
+       */
+      public java.util.List<java.lang.Boolean>
+          getPartialFlagPerResultList() {
+        return java.util.Collections.unmodifiableList(partialFlagPerResult_);
+      }
+      /**
+       * <code>repeated bool partial_flag_per_result = 7;</code>
+       *
+       * <pre>
+       * This field is filled in if we are doing cellblocks. In the event that a row
+       * could not fit all of its cells into a single RPC chunk, the results will be
+       * returned as partials, and reconstructed into a complete result on the client
+       * side. This field is a list of flags indicating whether or not the result
+       * that the cells belong to is a partial result. For example, if this field
+       * has false, false, true in it, then we know that on the client side, we need to
+       * make another RPC request since the last result was only a partial.
+       * </pre>
+       */
+      public int getPartialFlagPerResultCount() {
+        return partialFlagPerResult_.size();
+      }
+      /**
+       * <code>repeated bool partial_flag_per_result = 7;</code>
+       *
+       * <pre>
+       * This field is filled in if we are doing cellblocks. In the event that a row
+       * could not fit all of its cells into a single RPC chunk, the results will be
+       * returned as partials, and reconstructed into a complete result on the client
+       * side. This field is a list of flags indicating whether or not the result
+       * that the cells belong to is a partial result. For example, if this field
+       * has false, false, true in it, then we know that on the client side, we need to
+       * make another RPC request since the last result was only a partial.
+       * </pre>
+       */
+      public boolean getPartialFlagPerResult(int index) {
+        return partialFlagPerResult_.get(index);
+      }
+      /**
+       * <code>repeated bool partial_flag_per_result = 7;</code>
+       *
+       * <pre>
+       * This field is filled in if we are doing cellblocks. In the event that a row
+       * could not fit all of its cells into a single RPC chunk, the results will be
+       * returned as partials, and reconstructed into a complete result on the client
+       * side. This field is a list of flags indicating whether or not the result
+       * that the cells belong to is a partial result. For example, if this field
+       * has false, false, true in it, then we know that on the client side, we need to
+       * make another RPC request since the last result was only a partial.
+       * </pre>
+       */
+      public Builder setPartialFlagPerResult(
+          int index, boolean value) {
+        ensurePartialFlagPerResultIsMutable();
+        partialFlagPerResult_.set(index, value);
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>repeated bool partial_flag_per_result = 7;</code>
+       *
+       * <pre>
+       * This field is filled in if we are doing cellblocks. In the event that a row
+       * could not fit all of its cells into a single RPC chunk, the results will be
+       * returned as partials, and reconstructed into a complete result on the client
+       * side. This field is a list of flags indicating whether or not the result
+       * that the cells belong to is a partial result. For example, if this field
+       * has false, false, true in it, then we know that on the client side, we need to
+       * make another RPC request since the last result was only a partial.
+       * </pre>
+       */
+      public Builder addPartialFlagPerResult(boolean value) {
+        ensurePartialFlagPerResultIsMutable();
+        partialFlagPerResult_.add(value);
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>repeated bool partial_flag_per_result = 7;</code>
+       *
+       * <pre>
+       * This field is filled in if we are doing cellblocks. In the event that a row
+       * could not fit all of its cells into a single RPC chunk, the results will be
+       * returned as partials, and reconstructed into a complete result on the client
+       * side. This field is a list of flags indicating whether or not the result
+       * that the cells belong to is a partial result. For example, if this field
+       * has false, false, true in it, then we know that on the client side, we need to
+       * make another RPC request since the last result was only a partial.
+       * </pre>
+       */
+      public Builder addAllPartialFlagPerResult(
+          java.lang.Iterable<? extends java.lang.Boolean> values) {
+        ensurePartialFlagPerResultIsMutable();
+        super.addAll(values, partialFlagPerResult_);
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>repeated bool partial_flag_per_result = 7;</code>
+       *
+       * <pre>
+       * This field is filled in if we are doing cellblocks. In the event that a row
+       * could not fit all of its cells into a single RPC chunk, the results will be
+       * returned as partials, and reconstructed into a complete result on the client
+       * side. This field is a list of flags indicating whether or not the result
+       * that the cells belong to is a partial result. For example, if this field
+       * has false, false, true in it, then we know that on the client side, we need to
+       * make another RPC request since the last result was only a partial.
+       * </pre>
+       */
+      public Builder clearPartialFlagPerResult() {
+        partialFlagPerResult_ = java.util.Collections.emptyList();
+        bitField0_ = (bitField0_ & ~0x00000040);
+        onChanged();
+        return this;
+      }
+
+      // optional bool more_results_in_region = 8;
+      private boolean moreResultsInRegion_ ;
+      /**
+       * <code>optional bool more_results_in_region = 8;</code>
+       *
+       * <pre>
+       * A server may choose to limit the number of results returned to the client for
+       * reasons such as the size in bytes or quantity of results accumulated. This field
+       * will true when more results exist in the current region.
+       * </pre>
+       */
+      public boolean hasMoreResultsInRegion() {
+        return ((bitField0_ & 0x00000080) == 0x00000080);
+      }
+      /**
+       * <code>optional bool more_results_in_region = 8;</code>
+       *
+       * <pre>
+       * A server may choose to limit the number of results returned to the client for
+       * reasons such as the size in bytes or quantity of results accumulated. This field
+       * will true when more results exist in the current region.
+       * </pre>
+       */
+      public boolean getMoreResultsInRegion() {
+        return moreResultsInRegion_;
+      }
+      /**
+       * <code>optional bool more_results_in_region = 8;</code>
+       *
+       * <pre>
+       * A server may choose to limit the number of results returned to the client for
+       * reasons such as the size in bytes or quantity of results accumulated. This field
+       * will true when more results exist in the current region.
+       * </pre>
+       */
+      public Builder setMoreResultsInRegion(boolean value) {
+        bitField0_ |= 0x00000080;
+        moreResultsInRegion_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>optional bool more_results_in_region = 8;</code>
+       *
+       * <pre>
+       * A server may choose to limit the number of results returned to the client for
+       * reasons such as the size in bytes or quantity of results accumulated. This field
+       * will true when more results exist in the current region.
+       * </pre>
+       */
+      public Builder clearMoreResultsInRegion() {
+        bitField0_ = (bitField0_ & ~0x00000080);
+        moreResultsInRegion_ = false;
+        onChanged();
+        return this;
+      }
+
+      // optional bool heartbeat_message = 9;
+      private boolean heartbeatMessage_ ;
+      /**
+       * <code>optional bool heartbeat_message = 9;</code>
+       *
+       * <pre>
+       * This field is filled in if the server is sending back a heartbeat message.
+       * Heartbeat messages are sent back to the client to prevent the scanner from
+       * timing out. Seeing a heartbeat message communicates to the Client that the
+       * server would have continued to scan had the time limit not been reached.
+       * </pre>
+       */
+      public boolean hasHeartbeatMessage() {
+        return ((bitField0_ & 0x00000100) == 0x00000100);
+      }
+      /**
+       * <code>optional bool heartbeat_message = 9;</code>
+       *
+       * <pre>
+       * This field is filled in if the server is sending back a heartbeat message.
+       * Heartbeat messages are sent back to the client to prevent the scanner from
+       * timing out. Seeing a heartbeat message communicates to the Client that the
+       * server would have continued to scan had the time limit not been reached.
+       * </pre>
+       */
+      public boolean getHeartbeatMessage() {
+        return heartbeatMessage_;
+      }
+      /**
+       * <code>optional bool heartbeat_message = 9;</code>
+       *
+       * <pre>
+       * This field is filled in if the server is sending back a heartbeat message.
+       * Heartbeat messages are sent back to the client to prevent the scanner from
+       * timing out. Seeing a heartbeat message communicates to the Client that the
+       * server would have continued to scan had the time limit not been reached.
+       * </pre>
+       */
+      public Builder setHeartbeatMessage(boolean value) {
+        bitField0_ |= 0x00000100;
+        heartbeatMessage_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>optional bool heartbeat_message = 9;</code>
+       *
+       * <pre>
+       * This field is filled in if the server is sending back a heartbeat message.
+       * Heartbeat messages are sent back to the client to prevent the scanner from
+       * timing out. Seeing a heartbeat message communicates to the Client that the
+       * server would have continued to scan had the time limit not been reached.
+       * </pre>
+       */
+      public Builder clearHeartbeatMessage() {
+        bitField0_ = (bitField0_ & ~0x00000100);
+        heartbeatMessage_ = false;
+        onChanged();
+        return this;
       }
 
       // @@protoc_insertion_point(builder_scope:ScanResponse)
@@ -31482,102 +32684,109 @@ public final class ClientProtos {
       "blocks\030\007 \001(\010:\004true\022\023\n\013store_limit\030\010 \001(\r\022",
       "\024\n\014store_offset\030\t \001(\r\022\035\n\016existence_only\030" +
       "\n \001(\010:\005false\022!\n\022closest_row_before\030\013 \001(\010" +
-      ":\005false\"L\n\006Result\022\023\n\004cell\030\001 \003(\0132\005.Cell\022\035" +
+      ":\005false\"z\n\006Result\022\023\n\004cell\030\001 \003(\0132\005.Cell\022\035" +
       "\n\025associated_cell_count\030\002 \001(\005\022\016\n\006exists\030" +
-      "\003 \001(\010\"A\n\nGetRequest\022 \n\006region\030\001 \002(\0132\020.Re" +
-      "gionSpecifier\022\021\n\003get\030\002 \002(\0132\004.Get\"&\n\013GetR" +
-      "esponse\022\027\n\006result\030\001 \001(\0132\007.Result\"\200\001\n\tCon" +
-      "dition\022\013\n\003row\030\001 \002(\014\022\016\n\006family\030\002 \002(\014\022\021\n\tq" +
-      "ualifier\030\003 \002(\014\022\"\n\014compare_type\030\004 \002(\0162\014.C" +
-      "ompareType\022\037\n\ncomparator\030\005 \002(\0132\013.Compara",
-      "tor\"\265\006\n\rMutationProto\022\013\n\003row\030\001 \001(\014\0220\n\013mu" +
-      "tate_type\030\002 \001(\0162\033.MutationProto.Mutation" +
-      "Type\0220\n\014column_value\030\003 \003(\0132\032.MutationPro" +
-      "to.ColumnValue\022\021\n\ttimestamp\030\004 \001(\004\022!\n\tatt" +
-      "ribute\030\005 \003(\0132\016.NameBytesPair\022:\n\ndurabili" +
-      "ty\030\006 \001(\0162\031.MutationProto.Durability:\013USE" +
-      "_DEFAULT\022\036\n\ntime_range\030\007 \001(\0132\n.TimeRange" +
-      "\022\035\n\025associated_cell_count\030\010 \001(\005\022\r\n\005nonce" +
-      "\030\t \001(\004\032\347\001\n\013ColumnValue\022\016\n\006family\030\001 \002(\014\022B" +
-      "\n\017qualifier_value\030\002 \003(\0132).MutationProto.",
-      "ColumnValue.QualifierValue\032\203\001\n\016Qualifier" +
-      "Value\022\021\n\tqualifier\030\001 \001(\014\022\r\n\005value\030\002 \001(\014\022" +
-      "\021\n\ttimestamp\030\003 \001(\004\022.\n\013delete_type\030\004 \001(\0162" +
-      "\031.MutationProto.DeleteType\022\014\n\004tags\030\005 \001(\014" +
-      "\"W\n\nDurability\022\017\n\013USE_DEFAULT\020\000\022\014\n\010SKIP_" +
-      "WAL\020\001\022\r\n\tASYNC_WAL\020\002\022\014\n\010SYNC_WAL\020\003\022\r\n\tFS" +
-      "YNC_WAL\020\004\">\n\014MutationType\022\n\n\006APPEND\020\000\022\r\n" +
-      "\tINCREMENT\020\001\022\007\n\003PUT\020\002\022\n\n\006DELETE\020\003\"p\n\nDel" +
-      "eteType\022\026\n\022DELETE_ONE_VERSION\020\000\022\034\n\030DELET" +
-      "E_MULTIPLE_VERSIONS\020\001\022\021\n\rDELETE_FAMILY\020\002",
-      "\022\031\n\025DELETE_FAMILY_VERSION\020\003\"\207\001\n\rMutateRe" +
-      "quest\022 \n\006region\030\001 \002(\0132\020.RegionSpecifier\022" +
-      " \n\010mutation\030\002 \002(\0132\016.MutationProto\022\035\n\tcon" +
-      "dition\030\003 \001(\0132\n.Condition\022\023\n\013nonce_group\030" +
-      "\004 \001(\004\"<\n\016MutateResponse\022\027\n\006result\030\001 \001(\0132" +
-      "\007.Result\022\021\n\tprocessed\030\002 \001(\010\"\216\003\n\004Scan\022\027\n\006" +
-      "column\030\001 \003(\0132\007.Column\022!\n\tattribute\030\002 \003(\013" +
-      "2\016.NameBytesPair\022\021\n\tstart_row\030\003 \001(\014\022\020\n\010s" +
-      "top_row\030\004 \001(\014\022\027\n\006filter\030\005 \001(\0132\007.Filter\022\036" +
-      "\n\ntime_range\030\006 \001(\0132\n.TimeRange\022\027\n\014max_ve",
-      "rsions\030\007 \001(\r:\0011\022\032\n\014cache_blocks\030\010 \001(\010:\004t" +
-      "rue\022\022\n\nbatch_size\030\t \001(\r\022\027\n\017max_result_si" +
-      "ze\030\n \001(\004\022\023\n\013store_limit\030\013 \001(\r\022\024\n\014store_o" +
-      "ffset\030\014 \001(\r\022&\n\036load_column_families_on_d" +
-      "emand\030\r \001(\010\022\r\n\005small\030\016 \001(\010\022\027\n\010reversed\030\017" +
-      " \001(\010:\005false\022\017\n\007caching\030\021 \001(\r\"\236\001\n\013ScanReq" +
-      "uest\022 \n\006region\030\001 \001(\0132\020.RegionSpecifier\022\023" +
-      "\n\004scan\030\002 \001(\0132\005.Scan\022\022\n\nscanner_id\030\003 \001(\004\022" +
-      "\026\n\016number_of_rows\030\004 \001(\r\022\025\n\rclose_scanner" +
-      "\030\005 \001(\010\022\025\n\rnext_call_seq\030\006 \001(\004\"y\n\014ScanRes",
-      "ponse\022\030\n\020cells_per_result\030\001 \003(\r\022\022\n\nscann" +
-      "er_id\030\002 \001(\004\022\024\n\014more_results\030\003 \001(\010\022\013\n\003ttl" +
-      "\030\004 \001(\r\022\030\n\007results\030\005 \003(\0132\007.Result\"\263\001\n\024Bul" +
-      "kLoadHFileRequest\022 \n\006region\030\001 \002(\0132\020.Regi" +
-      "onSpecifier\0225\n\013family_path\030\002 \003(\0132 .BulkL" +
-      "oadHFileRequest.FamilyPath\022\026\n\016assign_seq" +
-      "_num\030\003 \001(\010\032*\n\nFamilyPath\022\016\n\006family\030\001 \002(\014" +
-      "\022\014\n\004path\030\002 \002(\t\"\'\n\025BulkLoadHFileResponse\022" +
-      "\016\n\006loaded\030\001 \002(\010\"a\n\026CoprocessorServiceCal" +
-      "l\022\013\n\003row\030\001 \002(\014\022\024\n\014service_name\030\002 \002(\t\022\023\n\013",
-      "method_name\030\003 \002(\t\022\017\n\007request\030\004 \002(\014\"9\n\030Co" +
-      "processorServiceResult\022\035\n\005value\030\001 \001(\0132\016." +
-      "NameBytesPair\"d\n\031CoprocessorServiceReque" +
-      "st\022 \n\006region\030\001 \002(\0132\020.RegionSpecifier\022%\n\004" +
-      "call\030\002 \002(\0132\027.CoprocessorServiceCall\"]\n\032C" +
-      "oprocessorServiceResponse\022 \n\006region\030\001 \002(" +
-      "\0132\020.RegionSpecifier\022\035\n\005value\030\002 \002(\0132\016.Nam" +
-      "eBytesPair\"{\n\006Action\022\r\n\005index\030\001 \001(\r\022 \n\010m" +
-      "utation\030\002 \001(\0132\016.MutationProto\022\021\n\003get\030\003 \001" +
-      "(\0132\004.Get\022-\n\014service_call\030\004 \001(\0132\027.Coproce",
-      "ssorServiceCall\"Y\n\014RegionAction\022 \n\006regio" +
-      "n\030\001 \002(\0132\020.RegionSpecifier\022\016\n\006atomic\030\002 \001(" +
-      "\010\022\027\n\006action\030\003 \003(\0132\007.Action\"D\n\017RegionLoad" +
-      "Stats\022\027\n\014memstoreLoad\030\001 \001(\005:\0010\022\030\n\rheapOc" +
-      "cupancy\030\002 \001(\005:\0010\"\266\001\n\021ResultOrException\022\r" +
-      "\n\005index\030\001 \001(\r\022\027\n\006result\030\002 \001(\0132\007.Result\022!" +
-      "\n\texception\030\003 \001(\0132\016.NameBytesPair\0221\n\016ser" +
-      "vice_result\030\004 \001(\0132\031.CoprocessorServiceRe" +
-      "sult\022#\n\tloadStats\030\005 \001(\0132\020.RegionLoadStat" +
-      "s\"f\n\022RegionActionResult\022-\n\021resultOrExcep",
-      "tion\030\001 \003(\0132\022.ResultOrException\022!\n\texcept" +
-      "ion\030\002 \001(\0132\016.NameBytesPair\"f\n\014MultiReques" +
-      "t\022#\n\014regionAction\030\001 \003(\0132\r.RegionAction\022\022" +
-      "\n\nnonceGroup\030\002 \001(\004\022\035\n\tcondition\030\003 \001(\0132\n." +
-      "Condition\"S\n\rMultiResponse\022/\n\022regionActi" +
-      "onResult\030\001 \003(\0132\023.RegionActionResult\022\021\n\tp" +
-      "rocessed\030\002 \001(\0102\205\003\n\rClientService\022 \n\003Get\022" +
-      "\013.GetRequest\032\014.GetResponse\022)\n\006Mutate\022\016.M" +
-      "utateRequest\032\017.MutateResponse\022#\n\004Scan\022\014." +
-      "ScanRequest\032\r.ScanResponse\022>\n\rBulkLoadHF",
-      "ile\022\025.BulkLoadHFileRequest\032\026.BulkLoadHFi" +
-      "leResponse\022F\n\013ExecService\022\032.CoprocessorS" +
-      "erviceRequest\032\033.CoprocessorServiceRespon" +
-      "se\022R\n\027ExecRegionServerService\022\032.Coproces" +
-      "sorServiceRequest\032\033.CoprocessorServiceRe" +
-      "sponse\022&\n\005Multi\022\r.MultiRequest\032\016.MultiRe" +
-      "sponseBB\n*org.apache.hadoop.hbase.protob" +
-      "uf.generatedB\014ClientProtosH\001\210\001\001\240\001\001"
+      "\003 \001(\010\022\024\n\005stale\030\004 \001(\010:\005false\022\026\n\007partial\030\005" +
+      " \001(\010:\005false\"A\n\nGetRequest\022 \n\006region\030\001 \002(" +
+      "\0132\020.RegionSpecifier\022\021\n\003get\030\002 \002(\0132\004.Get\"&" +
+      "\n\013GetResponse\022\027\n\006result\030\001 \001(\0132\007.Result\"\200" +
+      "\001\n\tCondition\022\013\n\003row\030\001 \002(\014\022\016\n\006family\030\002 \002(" +
+      "\014\022\021\n\tqualifier\030\003 \002(\014\022\"\n\014compare_type\030\004 \002",
+      "(\0162\014.CompareType\022\037\n\ncomparator\030\005 \002(\0132\013.C" +
+      "omparator\"\265\006\n\rMutationProto\022\013\n\003row\030\001 \001(\014" +
+      "\0220\n\013mutate_type\030\002 \001(\0162\033.MutationProto.Mu" +
+      "tationType\0220\n\014column_value\030\003 \003(\0132\032.Mutat" +
+      "ionProto.ColumnValue\022\021\n\ttimestamp\030\004 \001(\004\022" +
+      "!\n\tattribute\030\005 \003(\0132\016.NameBytesPair\022:\n\ndu" +
+      "rability\030\006 \001(\0162\031.MutationProto.Durabilit" +
+      "y:\013USE_DEFAULT\022\036\n\ntime_range\030\007 \001(\0132\n.Tim" +
+      "eRange\022\035\n\025associated_cell_count\030\010 \001(\005\022\r\n" +
+      "\005nonce\030\t \001(\004\032\347\001\n\013ColumnValue\022\016\n\006family\030\001",
+      " \002(\014\022B\n\017qualifier_value\030\002 \003(\0132).Mutation" +
+      "Proto.ColumnValue.QualifierValue\032\203\001\n\016Qua" +
+      "lifierValue\022\021\n\tqualifier\030\001 \001(\014\022\r\n\005value\030" +
+      "\002 \001(\014\022\021\n\ttimestamp\030\003 \001(\004\022.\n\013delete_type\030" +
+      "\004 \001(\0162\031.MutationProto.DeleteType\022\014\n\004tags" +
+      "\030\005 \001(\014\"W\n\nDurability\022\017\n\013USE_DEFAULT\020\000\022\014\n" +
+      "\010SKIP_WAL\020\001\022\r\n\tASYNC_WAL\020\002\022\014\n\010SYNC_WAL\020\003" +
+      "\022\r\n\tFSYNC_WAL\020\004\">\n\014MutationType\022\n\n\006APPEN" +
+      "D\020\000\022\r\n\tINCREMENT\020\001\022\007\n\003PUT\020\002\022\n\n\006DELETE\020\003\"" +
+      "p\n\nDeleteType\022\026\n\022DELETE_ONE_VERSION\020\000\022\034\n",
+      "\030DELETE_MULTIPLE_VERSIONS\020\001\022\021\n\rDELETE_FA" +
+      "MILY\020\002\022\031\n\025DELETE_FAMILY_VERSION\020\003\"\207\001\n\rMu" +
+      "tateRequest\022 \n\006region\030\001 \002(\0132\020.RegionSpec" +
+      "ifier\022 \n\010mutation\030\002 \002(\0132\016.MutationProto\022" +
+      "\035\n\tcondition\030\003 \001(\0132\n.Condition\022\023\n\013nonce_" +
+      "group\030\004 \001(\004\"<\n\016MutateResponse\022\027\n\006result\030" +
+      "\001 \001(\0132\007.Result\022\021\n\tprocessed\030\002 \001(\010\"\255\003\n\004Sc" +
+      "an\022\027\n\006column\030\001 \003(\0132\007.Column\022!\n\tattribute" +
+      "\030\002 \003(\0132\016.NameBytesPair\022\021\n\tstart_row\030\003 \001(" +
+      "\014\022\020\n\010stop_row\030\004 \001(\014\022\027\n\006filter\030\005 \001(\0132\007.Fi",
+      "lter\022\036\n\ntime_range\030\006 \001(\0132\n.TimeRange\022\027\n\014" +
+      "max_versions\030\007 \001(\r:\0011\022\032\n\014cache_blocks\030\010 " +
+      "\001(\010:\004true\022\022\n\nbatch_size\030\t \001(\r\022\027\n\017max_res" +
+      "ult_size\030\n \001(\004\022\023\n\013store_limit\030\013 \001(\r\022\024\n\014s" +
+      "tore_offset\030\014 \001(\r\022&\n\036load_column_familie" +
+      "s_on_demand\030\r \001(\010\022\r\n\005small\030\016 \001(\010\022\027\n\010reve" +
+      "rsed\030\017 \001(\010:\005false\022\017\n\007caching\030\021 \001(\r\022\035\n\025al" +
+      "low_partial_results\030\022 \001(\010\"\342\001\n\013ScanReques" +
+      "t\022 \n\006region\030\001 \001(\0132\020.RegionSpecifier\022\023\n\004s" +
+      "can\030\002 \001(\0132\005.Scan\022\022\n\nscanner_id\030\003 \001(\004\022\026\n\016",
+      "number_of_rows\030\004 \001(\r\022\025\n\rclose_scanner\030\005 " +
+      "\001(\010\022\025\n\rnext_call_seq\030\006 \001(\004\022\037\n\027client_han" +
+      "dles_partials\030\007 \001(\010\022!\n\031client_handles_he" +
+      "artbeats\030\010 \001(\010\"\344\001\n\014ScanResponse\022\030\n\020cells" +
+      "_per_result\030\001 \003(\r\022\022\n\nscanner_id\030\002 \001(\004\022\024\n" +
+      "\014more_results\030\003 \001(\010\022\013\n\003ttl\030\004 \001(\r\022\030\n\007resu" +
+      "lts\030\005 \003(\0132\007.Result\022\r\n\005stale\030\006 \001(\010\022\037\n\027par" +
+      "tial_flag_per_result\030\007 \003(\010\022\036\n\026more_resul" +
+      "ts_in_region\030\010 \001(\010\022\031\n\021heartbeat_message\030" +
+      "\t \001(\010\"\263\001\n\024BulkLoadHFileRequest\022 \n\006region",
+      "\030\001 \002(\0132\020.RegionSpecifier\0225\n\013family_path\030" +
+      "\002 \003(\0132 .BulkLoadHFileRequest.FamilyPath\022" +
+      "\026\n\016assign_seq_num\030\003 \001(\010\032*\n\nFamilyPath\022\016\n" +
+      "\006family\030\001 \002(\014\022\014\n\004path\030\002 \002(\t\"\'\n\025BulkLoadH" +
+      "FileResponse\022\016\n\006loaded\030\001 \002(\010\"a\n\026Coproces" +
+      "sorServiceCall\022\013\n\003row\030\001 \002(\014\022\024\n\014service_n" +
+      "ame\030\002 \002(\t\022\023\n\013method_name\030\003 \002(\t\022\017\n\007reques" +
+      "t\030\004 \002(\014\"9\n\030CoprocessorServiceResult\022\035\n\005v" +
+      "alue\030\001 \001(\0132\016.NameBytesPair\"d\n\031Coprocesso" +
+      "rServiceRequest\022 \n\006region\030\001 \002(\0132\020.Region",
+      "Specifier\022%\n\004call\030\002 \002(\0132\027.CoprocessorSer" +
+      "viceCall\"]\n\032CoprocessorServiceResponse\022 " +
+      "\n\006region\030\001 \002(\0132\020.RegionSpecifier\022\035\n\005valu" +
+      "e\030\002 \002(\0132\016.NameBytesPair\"{\n\006Action\022\r\n\005ind" +
+      "ex\030\001 \001(\r\022 \n\010mutation\030\002 \001(\0132\016.MutationPro" +
+      "to\022\021\n\003get\030\003 \001(\0132\004.Get\022-\n\014service_call\030\004 " +
+      "\001(\0132\027.CoprocessorServiceCall\"Y\n\014RegionAc" +
+      "tion\022 \n\006region\030\001 \002(\0132\020.RegionSpecifier\022\016" +
+      "\n\006atomic\030\002 \001(\010\022\027\n\006action\030\003 \003(\0132\007.Action\"" +
+      "D\n\017RegionLoadStats\022\027\n\014memstoreLoad\030\001 \001(\005",
+      ":\0010\022\030\n\rheapOccupancy\030\002 \001(\005:\0010\"\266\001\n\021Result" +
+      "OrException\022\r\n\005index\030\001 \001(\r\022\027\n\006result\030\002 \001" +
+      "(\0132\007.Result\022!\n\texception\030\003 \001(\0132\016.NameByt" +
+      "esPair\0221\n\016service_result\030\004 \001(\0132\031.Coproce" +
+      "ssorServiceResult\022#\n\tloadStats\030\005 \001(\0132\020.R" +
+      "egionLoadStats\"f\n\022RegionActionResult\022-\n\021" +
+      "resultOrException\030\001 \003(\0132\022.ResultOrExcept" +
+      "ion\022!\n\texception\030\002 \001(\0132\016.NameBytesPair\"f" +
+      "\n\014MultiRequest\022#\n\014regionAction\030\001 \003(\0132\r.R" +
+      "egionAction\022\022\n\nnonceGroup\030\002 \001(\004\022\035\n\tcondi",
+      "tion\030\003 \001(\0132\n.Condition\"S\n\rMultiResponse\022" +
+      "/\n\022regionActionResult\030\001 \003(\0132\023.RegionActi" +
+      "onResult\022\021\n\tprocessed\030\002 \001(\0102\205\003\n\rClientSe" +
+      "rvice\022 \n\003Get\022\013.GetRequest\032\014.GetResponse\022" +
+      ")\n\006Mutate\022\016.MutateRequest\032\017.MutateRespon" +
+      "se\022#\n\004Scan\022\014.ScanRequest\032\r.ScanResponse\022" +
+      ">\n\rBulkLoadHFile\022\025.BulkLoadHFileRequest\032" +
+      "\026.BulkLoadHFileResponse\022F\n\013ExecService\022\032" +
+      ".CoprocessorServiceRequest\032\033.Coprocessor" +
+      "ServiceResponse\022R\n\027ExecRegionServerServi",
+      "ce\022\032.CoprocessorServiceRequest\032\033.Coproce" +
+      "ssorServiceResponse\022&\n\005Multi\022\r.MultiRequ" +
+      "est\032\016.MultiResponseBB\n*org.apache.hadoop" +
+      ".hbase.protobuf.generatedB\014ClientProtosH" +
+      "\001\210\001\001\240\001\001"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
       new com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner() {
@@ -31613,7 +32822,7 @@ public final class ClientProtos {
           internal_static_Result_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_Result_descriptor,
-              new java.lang.String[] { "Cell", "AssociatedCellCount", "Exists", });
+              new java.lang.String[] { "Cell", "AssociatedCellCount", "Exists", "Stale", "Partial", });
           internal_static_GetRequest_descriptor =
             getDescriptor().getMessageTypes().get(5);
           internal_static_GetRequest_fieldAccessorTable = new
@@ -31667,19 +32876,19 @@ public final class ClientProtos {
           internal_static_Scan_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_Scan_descriptor,
-              new java.lang.String[] { "Column", "Attribute", "StartRow", "StopRow", "Filter", "TimeRange", "MaxVersions", "CacheBlocks", "BatchSize", "MaxResultSize", "StoreLimit", "StoreOffset", "LoadColumnFamiliesOnDemand", "Small", "Reversed", "Caching", });
+              new java.lang.String[] { "Column", "Attribute", "StartRow", "StopRow", "Filter", "TimeRange", "MaxVersions", "CacheBlocks", "BatchSize", "MaxResultSize", "StoreLimit", "StoreOffset", "LoadColumnFamiliesOnDemand", "Small", "Reversed", "Caching", "AllowPartialResults", });
           internal_static_ScanRequest_descriptor =
             getDescriptor().getMessageTypes().get(12);
           internal_static_ScanRequest_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_ScanRequest_descriptor,
-              new java.lang.String[] { "Region", "Scan", "ScannerId", "NumberOfRows", "CloseScanner", "NextCallSeq", });
+              new java.lang.String[] { "Region", "Scan", "ScannerId", "NumberOfRows", "CloseScanner", "NextCallSeq", "ClientHandlesPartials", "ClientHandlesHeartbeats", });
           internal_static_ScanResponse_descriptor =
             getDescriptor().getMessageTypes().get(13);
           internal_static_ScanResponse_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_ScanResponse_descriptor,
-              new java.lang.String[] { "CellsPerResult", "ScannerId", "MoreResults", "Ttl", "Results", });
+              new java.lang.String[] { "CellsPerResult", "ScannerId", "MoreResults", "Ttl", "Results", "Stale", "PartialFlagPerResult", "MoreResultsInRegion", "HeartbeatMessage", });
           internal_static_BulkLoadHFileRequest_descriptor =
             getDescriptor().getMessageTypes().get(14);
           internal_static_BulkLoadHFileRequest_fieldAccessorTable = new

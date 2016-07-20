@@ -1,4 +1,5 @@
 #
+# Copyright 2010 The Apache Software Foundation
 #
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
@@ -19,20 +20,25 @@
 
 module Shell
   module Commands
-    class TruncatePreserve < Command
+    class SetPeerBandwidth< Command
       def help
         return <<-EOF
-  Disables, drops and recreates the specified table while still maintaing the previous region boundaries.
+Set the replication source per node bandwidth for the specified peer.
+Examples:
+
+  # set bandwidth=2MB per regionserver for a peer
+  hbase> set_peer_bandwidth '1', 2097152
+  # unset bandwidth for a peer to use the default bandwidth configured in server-side
+  hbase> set_peer_bandwidth '1'
+
 EOF
       end
 
-      def command(table)
+      def command(id, bandwidth = 0)
         format_simple_command do
-          puts "Truncating '#{table}' table (it may take a while):"
-          admin.truncate_preserve(table) { |log| puts " - #{log}" }
+          replication_admin.set_peer_bandwidth(id, bandwidth)
         end
       end
-
     end
   end
 end

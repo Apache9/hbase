@@ -58,6 +58,9 @@ public class TestStochasticLoadBalancer extends BalancerTestBase {
     Configuration conf = HBaseConfiguration.create();
     conf.setFloat("hbase.master.balancer.stochastic.maxMovePercent", 0.75f);
     conf.setFloat("hbase.regions.slop", 0.0f);
+    conf.setFloat("hbase.master.balancer.stochastic.localityCost", 0);
+    conf.setInt("hbase.master.balancer.stochastic.maxSteps", 10000000);
+    conf.setFloat("hbase.master.balancer.stochastic.minCostNeedBalance", 0.0f);
     loadBalancer = new StochasticLoadBalancer();
     loadBalancer.setConf(conf);
   }
@@ -132,9 +135,25 @@ public class TestStochasticLoadBalancer extends BalancerTestBase {
       new int[]{13, 14, 6, 10, 10, 10, 8, 10},
       new int[]{130, 14, 60, 10, 100, 10, 80, 10},
       new int[]{130, 140, 60, 100, 100, 100, 80, 100},
+      new int[]{0, 5 , 5, 5, 5},
       largeCluster,
 
   };
+
+  @Test
+  public void testNeedsBalance() {
+    Configuration conf = loadBalancer.getConf();
+    conf.setFloat("hbase.master.balancer.stochastic.minCostNeedBalance", 1.0f);
+    loadBalancer.setConf(conf);
+    for (int[] mockCluster : clusterStateMocks) {
+      Map<ServerName, List<HRegionInfo>> servers = mockClusterServers(mockCluster);
+      List<RegionPlan> plans = loadBalancer.balanceCluster(servers);
+      assertNull(plans);
+    }
+    // reset config
+    conf.setFloat("hbase.master.balancer.stochastic.minCostNeedBalance", 0.0f);
+    loadBalancer.setConf(conf);
+  }
 
   @Test
   public void testKeepRegionLoad() throws Exception {
@@ -197,6 +216,40 @@ public class TestStochasticLoadBalancer extends BalancerTestBase {
       }
     }
 
+  }
+
+  @Test
+  public void testMoveCost() throws Exception {
+    Configuration conf = HBaseConfiguration.create();
+    StochasticLoadBalancer.CostFunction
+        costFunction = new StochasticLoadBalancer.MoveCostFunction(conf);
+    for (int[] mockCluster : clusterStateMocks) {
+      BaseLoadBalancer.Cluster cluster = mockCluster(mockCluster);
+      double cost = costFunction.cost(cluster);
+      assertEquals(0.0f, cost, 0.001);
+
+      // cluster region number is smaller than maxMoves=600
+      cluster.setNumRegions(190);
+      cluster.setNumMovedRegions(10);
+      cost = costFunction.cost(cluster);
+      assertEquals(0.05f, cost, 0.001);
+      cluster.setNumMovedRegions(100);
+      cost = costFunction.cost(cluster);
+      assertEquals(0.5f, cost, 0.001);
+
+      // cluster region number is bigger than maxMoves=2500
+      cluster.setNumRegions(10000);
+      cluster.setNumMovedRegions(250);
+      cost = costFunction.cost(cluster);
+      assertEquals(0.1f, cost, 0.01);
+      cluster.setNumMovedRegions(1250);
+      cost = costFunction.cost(cluster);
+      assertEquals(0.5f, cost, 0.01);
+      cluster.setNumMovedRegions(2500);
+      cluster.setNumMovedMetaRegions(1);
+      cost = costFunction.cost(cluster);
+      assertEquals(1.0f, cost, 0.01);
+    }
   }
 
   @Test
@@ -296,7 +349,7 @@ public class TestStochasticLoadBalancer extends BalancerTestBase {
     assertNull(plans);
   }
 
-  @Test (timeout = 60000)
+  @Test (timeout = 600000)
   public void testSmallCluster() {
     int numNodes = 10;
     int numRegions = 1000;
@@ -305,7 +358,7 @@ public class TestStochasticLoadBalancer extends BalancerTestBase {
     testWithCluster(numNodes, numRegions, numRegionsPerServer, numTables, true);
   }
 
-  @Test (timeout = 60000)
+  @Test (timeout = 600000)
   public void testSmallCluster2() {
     int numNodes = 20;
     int numRegions = 2000;
@@ -314,7 +367,7 @@ public class TestStochasticLoadBalancer extends BalancerTestBase {
     testWithCluster(numNodes, numRegions, numRegionsPerServer, numTables, true);
   }
 
-  @Test (timeout = 60000)
+  @Test (timeout = 600000)
   public void testSmallCluster3() {
     int numNodes = 20;
     int numRegions = 2000;
@@ -362,7 +415,10 @@ public class TestStochasticLoadBalancer extends BalancerTestBase {
     int numRegions = 100000; //100 regions per RS
     int numRegionsPerServer = 80; //all servers except one
     int numTables = 100;
+    loadBalancer.setMaxRunningTime(300000);
     testWithCluster(numNodes, numRegions, numRegionsPerServer, numTables, true);
+    // reset to the default value
+    loadBalancer.setMaxRunningTime(30000);
   }
 
   protected void testWithCluster(int numNodes,

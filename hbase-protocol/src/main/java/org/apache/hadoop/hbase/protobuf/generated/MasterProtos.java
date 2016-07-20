@@ -33192,6 +33192,21 @@ public final class MasterProtos {
      */
     org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.TableNameOrBuilder getTableNamesOrBuilder(
         int index);
+
+    // optional string regex = 2;
+    /**
+     * <code>optional string regex = 2;</code>
+     */
+    boolean hasRegex();
+    /**
+     * <code>optional string regex = 2;</code>
+     */
+    java.lang.String getRegex();
+    /**
+     * <code>optional string regex = 2;</code>
+     */
+    com.google.protobuf.ByteString
+        getRegexBytes();
   }
   /**
    * Protobuf type {@code GetTableDescriptorsRequest}
@@ -33252,6 +33267,11 @@ public final class MasterProtos {
               tableNames_.add(input.readMessage(org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.TableName.PARSER, extensionRegistry));
               break;
             }
+            case 18: {
+              bitField0_ |= 0x00000001;
+              regex_ = input.readBytes();
+              break;
+            }
           }
         }
       } catch (com.google.protobuf.InvalidProtocolBufferException e) {
@@ -33294,6 +33314,7 @@ public final class MasterProtos {
       return PARSER;
     }
 
+    private int bitField0_;
     // repeated .TableName table_names = 1;
     public static final int TABLE_NAMES_FIELD_NUMBER = 1;
     private java.util.List<org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.TableName> tableNames_;
@@ -33330,8 +33351,52 @@ public final class MasterProtos {
       return tableNames_.get(index);
     }
 
+    // optional string regex = 2;
+    public static final int REGEX_FIELD_NUMBER = 2;
+    private java.lang.Object regex_;
+    /**
+     * <code>optional string regex = 2;</code>
+     */
+    public boolean hasRegex() {
+      return ((bitField0_ & 0x00000001) == 0x00000001);
+    }
+    /**
+     * <code>optional string regex = 2;</code>
+     */
+    public java.lang.String getRegex() {
+      java.lang.Object ref = regex_;
+      if (ref instanceof java.lang.String) {
+        return (java.lang.String) ref;
+      } else {
+        com.google.protobuf.ByteString bs = 
+            (com.google.protobuf.ByteString) ref;
+        java.lang.String s = bs.toStringUtf8();
+        if (bs.isValidUtf8()) {
+          regex_ = s;
+        }
+        return s;
+      }
+    }
+    /**
+     * <code>optional string regex = 2;</code>
+     */
+    public com.google.protobuf.ByteString
+        getRegexBytes() {
+      java.lang.Object ref = regex_;
+      if (ref instanceof java.lang.String) {
+        com.google.protobuf.ByteString b = 
+            com.google.protobuf.ByteString.copyFromUtf8(
+                (java.lang.String) ref);
+        regex_ = b;
+        return b;
+      } else {
+        return (com.google.protobuf.ByteString) ref;
+      }
+    }
+
     private void initFields() {
       tableNames_ = java.util.Collections.emptyList();
+      regex_ = "";
     }
     private byte memoizedIsInitialized = -1;
     public final boolean isInitialized() {
@@ -33354,6 +33419,9 @@ public final class MasterProtos {
       for (int i = 0; i < tableNames_.size(); i++) {
         output.writeMessage(1, tableNames_.get(i));
       }
+      if (((bitField0_ & 0x00000001) == 0x00000001)) {
+        output.writeBytes(2, getRegexBytes());
+      }
       getUnknownFields().writeTo(output);
     }
 
@@ -33366,6 +33434,10 @@ public final class MasterProtos {
       for (int i = 0; i < tableNames_.size(); i++) {
         size += com.google.protobuf.CodedOutputStream
           .computeMessageSize(1, tableNames_.get(i));
+      }
+      if (((bitField0_ & 0x00000001) == 0x00000001)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeBytesSize(2, getRegexBytes());
       }
       size += getUnknownFields().getSerializedSize();
       memoizedSerializedSize = size;
@@ -33392,6 +33464,11 @@ public final class MasterProtos {
       boolean result = true;
       result = result && getTableNamesList()
           .equals(other.getTableNamesList());
+      result = result && (hasRegex() == other.hasRegex());
+      if (hasRegex()) {
+        result = result && getRegex()
+            .equals(other.getRegex());
+      }
       result = result &&
           getUnknownFields().equals(other.getUnknownFields());
       return result;
@@ -33408,6 +33485,10 @@ public final class MasterProtos {
       if (getTableNamesCount() > 0) {
         hash = (37 * hash) + TABLE_NAMES_FIELD_NUMBER;
         hash = (53 * hash) + getTableNamesList().hashCode();
+      }
+      if (hasRegex()) {
+        hash = (37 * hash) + REGEX_FIELD_NUMBER;
+        hash = (53 * hash) + getRegex().hashCode();
       }
       hash = (29 * hash) + getUnknownFields().hashCode();
       memoizedHashCode = hash;
@@ -33525,6 +33606,8 @@ public final class MasterProtos {
         } else {
           tableNamesBuilder_.clear();
         }
+        regex_ = "";
+        bitField0_ = (bitField0_ & ~0x00000002);
         return this;
       }
 
@@ -33552,6 +33635,7 @@ public final class MasterProtos {
       public org.apache.hadoop.hbase.protobuf.generated.MasterProtos.GetTableDescriptorsRequest buildPartial() {
         org.apache.hadoop.hbase.protobuf.generated.MasterProtos.GetTableDescriptorsRequest result = new org.apache.hadoop.hbase.protobuf.generated.MasterProtos.GetTableDescriptorsRequest(this);
         int from_bitField0_ = bitField0_;
+        int to_bitField0_ = 0;
         if (tableNamesBuilder_ == null) {
           if (((bitField0_ & 0x00000001) == 0x00000001)) {
             tableNames_ = java.util.Collections.unmodifiableList(tableNames_);
@@ -33561,6 +33645,11 @@ public final class MasterProtos {
         } else {
           result.tableNames_ = tableNamesBuilder_.build();
         }
+        if (((from_bitField0_ & 0x00000002) == 0x00000002)) {
+          to_bitField0_ |= 0x00000001;
+        }
+        result.regex_ = regex_;
+        result.bitField0_ = to_bitField0_;
         onBuilt();
         return result;
       }
@@ -33601,6 +33690,11 @@ public final class MasterProtos {
               tableNamesBuilder_.addAllMessages(other.tableNames_);
             }
           }
+        }
+        if (other.hasRegex()) {
+          bitField0_ |= 0x00000002;
+          regex_ = other.regex_;
+          onChanged();
         }
         this.mergeUnknownFields(other.getUnknownFields());
         return this;
@@ -33873,6 +33967,80 @@ public final class MasterProtos {
           tableNames_ = null;
         }
         return tableNamesBuilder_;
+      }
+
+      // optional string regex = 2;
+      private java.lang.Object regex_ = "";
+      /**
+       * <code>optional string regex = 2;</code>
+       */
+      public boolean hasRegex() {
+        return ((bitField0_ & 0x00000002) == 0x00000002);
+      }
+      /**
+       * <code>optional string regex = 2;</code>
+       */
+      public java.lang.String getRegex() {
+        java.lang.Object ref = regex_;
+        if (!(ref instanceof java.lang.String)) {
+          java.lang.String s = ((com.google.protobuf.ByteString) ref)
+              .toStringUtf8();
+          regex_ = s;
+          return s;
+        } else {
+          return (java.lang.String) ref;
+        }
+      }
+      /**
+       * <code>optional string regex = 2;</code>
+       */
+      public com.google.protobuf.ByteString
+          getRegexBytes() {
+        java.lang.Object ref = regex_;
+        if (ref instanceof String) {
+          com.google.protobuf.ByteString b = 
+              com.google.protobuf.ByteString.copyFromUtf8(
+                  (java.lang.String) ref);
+          regex_ = b;
+          return b;
+        } else {
+          return (com.google.protobuf.ByteString) ref;
+        }
+      }
+      /**
+       * <code>optional string regex = 2;</code>
+       */
+      public Builder setRegex(
+          java.lang.String value) {
+        if (value == null) {
+    throw new NullPointerException();
+  }
+  bitField0_ |= 0x00000002;
+        regex_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>optional string regex = 2;</code>
+       */
+      public Builder clearRegex() {
+        bitField0_ = (bitField0_ & ~0x00000002);
+        regex_ = getDefaultInstance().getRegex();
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>optional string regex = 2;</code>
+       */
+      public Builder setRegexBytes(
+          com.google.protobuf.ByteString value) {
+        if (value == null) {
+    throw new NullPointerException();
+  }
+  bitField0_ |= 0x00000002;
+        regex_ = value;
+        onChanged();
+        return this;
       }
 
       // @@protoc_insertion_point(builder_scope:GetTableDescriptorsRequest)
@@ -42324,6 +42492,900 @@ public final class MasterProtos {
     // @@protoc_insertion_point(class_scope:SetQuotaResponse)
   }
 
+  public interface SwitchThrottleRequestOrBuilder
+      extends com.google.protobuf.MessageOrBuilder {
+
+    // required .ThrottleState throttle_state = 1;
+    /**
+     * <code>required .ThrottleState throttle_state = 1;</code>
+     */
+    boolean hasThrottleState();
+    /**
+     * <code>required .ThrottleState throttle_state = 1;</code>
+     */
+    org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.ThrottleState getThrottleState();
+  }
+  /**
+   * Protobuf type {@code SwitchThrottleRequest}
+   */
+  public static final class SwitchThrottleRequest extends
+      com.google.protobuf.GeneratedMessage
+      implements SwitchThrottleRequestOrBuilder {
+    // Use SwitchThrottleRequest.newBuilder() to construct.
+    private SwitchThrottleRequest(com.google.protobuf.GeneratedMessage.Builder<?> builder) {
+      super(builder);
+      this.unknownFields = builder.getUnknownFields();
+    }
+    private SwitchThrottleRequest(boolean noInit) { this.unknownFields = com.google.protobuf.UnknownFieldSet.getDefaultInstance(); }
+
+    private static final SwitchThrottleRequest defaultInstance;
+    public static SwitchThrottleRequest getDefaultInstance() {
+      return defaultInstance;
+    }
+
+    public SwitchThrottleRequest getDefaultInstanceForType() {
+      return defaultInstance;
+    }
+
+    private final com.google.protobuf.UnknownFieldSet unknownFields;
+    @java.lang.Override
+    public final com.google.protobuf.UnknownFieldSet
+        getUnknownFields() {
+      return this.unknownFields;
+    }
+    private SwitchThrottleRequest(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      initFields();
+      int mutable_bitField0_ = 0;
+      com.google.protobuf.UnknownFieldSet.Builder unknownFields =
+          com.google.protobuf.UnknownFieldSet.newBuilder();
+      try {
+        boolean done = false;
+        while (!done) {
+          int tag = input.readTag();
+          switch (tag) {
+            case 0:
+              done = true;
+              break;
+            default: {
+              if (!parseUnknownField(input, unknownFields,
+                                     extensionRegistry, tag)) {
+                done = true;
+              }
+              break;
+            }
+            case 8: {
+              int rawValue = input.readEnum();
+              org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.ThrottleState value = org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.ThrottleState.valueOf(rawValue);
+              if (value == null) {
+                unknownFields.mergeVarintField(1, rawValue);
+              } else {
+                bitField0_ |= 0x00000001;
+                throttleState_ = value;
+              }
+              break;
+            }
+          }
+        }
+      } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+        throw e.setUnfinishedMessage(this);
+      } catch (java.io.IOException e) {
+        throw new com.google.protobuf.InvalidProtocolBufferException(
+            e.getMessage()).setUnfinishedMessage(this);
+      } finally {
+        this.unknownFields = unknownFields.build();
+        makeExtensionsImmutable();
+      }
+    }
+    public static final com.google.protobuf.Descriptors.Descriptor
+        getDescriptor() {
+      return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.internal_static_SwitchThrottleRequest_descriptor;
+    }
+
+    protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+        internalGetFieldAccessorTable() {
+      return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.internal_static_SwitchThrottleRequest_fieldAccessorTable
+          .ensureFieldAccessorsInitialized(
+              org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleRequest.class, org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleRequest.Builder.class);
+    }
+
+    public static com.google.protobuf.Parser<SwitchThrottleRequest> PARSER =
+        new com.google.protobuf.AbstractParser<SwitchThrottleRequest>() {
+      public SwitchThrottleRequest parsePartialFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws com.google.protobuf.InvalidProtocolBufferException {
+        return new SwitchThrottleRequest(input, extensionRegistry);
+      }
+    };
+
+    @java.lang.Override
+    public com.google.protobuf.Parser<SwitchThrottleRequest> getParserForType() {
+      return PARSER;
+    }
+
+    private int bitField0_;
+    // required .ThrottleState throttle_state = 1;
+    public static final int THROTTLE_STATE_FIELD_NUMBER = 1;
+    private org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.ThrottleState throttleState_;
+    /**
+     * <code>required .ThrottleState throttle_state = 1;</code>
+     */
+    public boolean hasThrottleState() {
+      return ((bitField0_ & 0x00000001) == 0x00000001);
+    }
+    /**
+     * <code>required .ThrottleState throttle_state = 1;</code>
+     */
+    public org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.ThrottleState getThrottleState() {
+      return throttleState_;
+    }
+
+    private void initFields() {
+      throttleState_ = org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.ThrottleState.ON;
+    }
+    private byte memoizedIsInitialized = -1;
+    public final boolean isInitialized() {
+      byte isInitialized = memoizedIsInitialized;
+      if (isInitialized != -1) return isInitialized == 1;
+
+      if (!hasThrottleState()) {
+        memoizedIsInitialized = 0;
+        return false;
+      }
+      memoizedIsInitialized = 1;
+      return true;
+    }
+
+    public void writeTo(com.google.protobuf.CodedOutputStream output)
+                        throws java.io.IOException {
+      getSerializedSize();
+      if (((bitField0_ & 0x00000001) == 0x00000001)) {
+        output.writeEnum(1, throttleState_.getNumber());
+      }
+      getUnknownFields().writeTo(output);
+    }
+
+    private int memoizedSerializedSize = -1;
+    public int getSerializedSize() {
+      int size = memoizedSerializedSize;
+      if (size != -1) return size;
+
+      size = 0;
+      if (((bitField0_ & 0x00000001) == 0x00000001)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeEnumSize(1, throttleState_.getNumber());
+      }
+      size += getUnknownFields().getSerializedSize();
+      memoizedSerializedSize = size;
+      return size;
+    }
+
+    private static final long serialVersionUID = 0L;
+    @java.lang.Override
+    protected java.lang.Object writeReplace()
+        throws java.io.ObjectStreamException {
+      return super.writeReplace();
+    }
+
+    @java.lang.Override
+    public boolean equals(final java.lang.Object obj) {
+      if (obj == this) {
+       return true;
+      }
+      if (!(obj instanceof org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleRequest)) {
+        return super.equals(obj);
+      }
+      org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleRequest other = (org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleRequest) obj;
+
+      boolean result = true;
+      result = result && (hasThrottleState() == other.hasThrottleState());
+      if (hasThrottleState()) {
+        result = result &&
+            (getThrottleState() == other.getThrottleState());
+      }
+      result = result &&
+          getUnknownFields().equals(other.getUnknownFields());
+      return result;
+    }
+
+    private int memoizedHashCode = 0;
+    @java.lang.Override
+    public int hashCode() {
+      if (memoizedHashCode != 0) {
+        return memoizedHashCode;
+      }
+      int hash = 41;
+      hash = (19 * hash) + getDescriptorForType().hashCode();
+      if (hasThrottleState()) {
+        hash = (37 * hash) + THROTTLE_STATE_FIELD_NUMBER;
+        hash = (53 * hash) + hashEnum(getThrottleState());
+      }
+      hash = (29 * hash) + getUnknownFields().hashCode();
+      memoizedHashCode = hash;
+      return hash;
+    }
+
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleRequest parseFrom(
+        com.google.protobuf.ByteString data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleRequest parseFrom(
+        com.google.protobuf.ByteString data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleRequest parseFrom(byte[] data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleRequest parseFrom(
+        byte[] data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleRequest parseFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleRequest parseFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleRequest parseDelimitedFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return PARSER.parseDelimitedFrom(input);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleRequest parseDelimitedFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseDelimitedFrom(input, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleRequest parseFrom(
+        com.google.protobuf.CodedInputStream input)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleRequest parseFrom(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input, extensionRegistry);
+    }
+
+    public static Builder newBuilder() { return Builder.create(); }
+    public Builder newBuilderForType() { return newBuilder(); }
+    public static Builder newBuilder(org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleRequest prototype) {
+      return newBuilder().mergeFrom(prototype);
+    }
+    public Builder toBuilder() { return newBuilder(this); }
+
+    @java.lang.Override
+    protected Builder newBuilderForType(
+        com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+      Builder builder = new Builder(parent);
+      return builder;
+    }
+    /**
+     * Protobuf type {@code SwitchThrottleRequest}
+     */
+    public static final class Builder extends
+        com.google.protobuf.GeneratedMessage.Builder<Builder>
+       implements org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleRequestOrBuilder {
+      public static final com.google.protobuf.Descriptors.Descriptor
+          getDescriptor() {
+        return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.internal_static_SwitchThrottleRequest_descriptor;
+      }
+
+      protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+          internalGetFieldAccessorTable() {
+        return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.internal_static_SwitchThrottleRequest_fieldAccessorTable
+            .ensureFieldAccessorsInitialized(
+                org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleRequest.class, org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleRequest.Builder.class);
+      }
+
+      // Construct using org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleRequest.newBuilder()
+      private Builder() {
+        maybeForceBuilderInitialization();
+      }
+
+      private Builder(
+          com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+        super(parent);
+        maybeForceBuilderInitialization();
+      }
+      private void maybeForceBuilderInitialization() {
+        if (com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders) {
+        }
+      }
+      private static Builder create() {
+        return new Builder();
+      }
+
+      public Builder clear() {
+        super.clear();
+        throttleState_ = org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.ThrottleState.ON;
+        bitField0_ = (bitField0_ & ~0x00000001);
+        return this;
+      }
+
+      public Builder clone() {
+        return create().mergeFrom(buildPartial());
+      }
+
+      public com.google.protobuf.Descriptors.Descriptor
+          getDescriptorForType() {
+        return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.internal_static_SwitchThrottleRequest_descriptor;
+      }
+
+      public org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleRequest getDefaultInstanceForType() {
+        return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleRequest.getDefaultInstance();
+      }
+
+      public org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleRequest build() {
+        org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleRequest result = buildPartial();
+        if (!result.isInitialized()) {
+          throw newUninitializedMessageException(result);
+        }
+        return result;
+      }
+
+      public org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleRequest buildPartial() {
+        org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleRequest result = new org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleRequest(this);
+        int from_bitField0_ = bitField0_;
+        int to_bitField0_ = 0;
+        if (((from_bitField0_ & 0x00000001) == 0x00000001)) {
+          to_bitField0_ |= 0x00000001;
+        }
+        result.throttleState_ = throttleState_;
+        result.bitField0_ = to_bitField0_;
+        onBuilt();
+        return result;
+      }
+
+      public Builder mergeFrom(com.google.protobuf.Message other) {
+        if (other instanceof org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleRequest) {
+          return mergeFrom((org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleRequest)other);
+        } else {
+          super.mergeFrom(other);
+          return this;
+        }
+      }
+
+      public Builder mergeFrom(org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleRequest other) {
+        if (other == org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleRequest.getDefaultInstance()) return this;
+        if (other.hasThrottleState()) {
+          setThrottleState(other.getThrottleState());
+        }
+        this.mergeUnknownFields(other.getUnknownFields());
+        return this;
+      }
+
+      public final boolean isInitialized() {
+        if (!hasThrottleState()) {
+          
+          return false;
+        }
+        return true;
+      }
+
+      public Builder mergeFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws java.io.IOException {
+        org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleRequest parsedMessage = null;
+        try {
+          parsedMessage = PARSER.parsePartialFrom(input, extensionRegistry);
+        } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+          parsedMessage = (org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleRequest) e.getUnfinishedMessage();
+          throw e;
+        } finally {
+          if (parsedMessage != null) {
+            mergeFrom(parsedMessage);
+          }
+        }
+        return this;
+      }
+      private int bitField0_;
+
+      // required .ThrottleState throttle_state = 1;
+      private org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.ThrottleState throttleState_ = org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.ThrottleState.ON;
+      /**
+       * <code>required .ThrottleState throttle_state = 1;</code>
+       */
+      public boolean hasThrottleState() {
+        return ((bitField0_ & 0x00000001) == 0x00000001);
+      }
+      /**
+       * <code>required .ThrottleState throttle_state = 1;</code>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.ThrottleState getThrottleState() {
+        return throttleState_;
+      }
+      /**
+       * <code>required .ThrottleState throttle_state = 1;</code>
+       */
+      public Builder setThrottleState(org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.ThrottleState value) {
+        if (value == null) {
+          throw new NullPointerException();
+        }
+        bitField0_ |= 0x00000001;
+        throttleState_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>required .ThrottleState throttle_state = 1;</code>
+       */
+      public Builder clearThrottleState() {
+        bitField0_ = (bitField0_ & ~0x00000001);
+        throttleState_ = org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.ThrottleState.ON;
+        onChanged();
+        return this;
+      }
+
+      // @@protoc_insertion_point(builder_scope:SwitchThrottleRequest)
+    }
+
+    static {
+      defaultInstance = new SwitchThrottleRequest(true);
+      defaultInstance.initFields();
+    }
+
+    // @@protoc_insertion_point(class_scope:SwitchThrottleRequest)
+  }
+
+  public interface SwitchThrottleResponseOrBuilder
+      extends com.google.protobuf.MessageOrBuilder {
+
+    // optional .ThrottleState prev_throttle_state = 1;
+    /**
+     * <code>optional .ThrottleState prev_throttle_state = 1;</code>
+     */
+    boolean hasPrevThrottleState();
+    /**
+     * <code>optional .ThrottleState prev_throttle_state = 1;</code>
+     */
+    org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.ThrottleState getPrevThrottleState();
+  }
+  /**
+   * Protobuf type {@code SwitchThrottleResponse}
+   */
+  public static final class SwitchThrottleResponse extends
+      com.google.protobuf.GeneratedMessage
+      implements SwitchThrottleResponseOrBuilder {
+    // Use SwitchThrottleResponse.newBuilder() to construct.
+    private SwitchThrottleResponse(com.google.protobuf.GeneratedMessage.Builder<?> builder) {
+      super(builder);
+      this.unknownFields = builder.getUnknownFields();
+    }
+    private SwitchThrottleResponse(boolean noInit) { this.unknownFields = com.google.protobuf.UnknownFieldSet.getDefaultInstance(); }
+
+    private static final SwitchThrottleResponse defaultInstance;
+    public static SwitchThrottleResponse getDefaultInstance() {
+      return defaultInstance;
+    }
+
+    public SwitchThrottleResponse getDefaultInstanceForType() {
+      return defaultInstance;
+    }
+
+    private final com.google.protobuf.UnknownFieldSet unknownFields;
+    @java.lang.Override
+    public final com.google.protobuf.UnknownFieldSet
+        getUnknownFields() {
+      return this.unknownFields;
+    }
+    private SwitchThrottleResponse(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      initFields();
+      int mutable_bitField0_ = 0;
+      com.google.protobuf.UnknownFieldSet.Builder unknownFields =
+          com.google.protobuf.UnknownFieldSet.newBuilder();
+      try {
+        boolean done = false;
+        while (!done) {
+          int tag = input.readTag();
+          switch (tag) {
+            case 0:
+              done = true;
+              break;
+            default: {
+              if (!parseUnknownField(input, unknownFields,
+                                     extensionRegistry, tag)) {
+                done = true;
+              }
+              break;
+            }
+            case 8: {
+              int rawValue = input.readEnum();
+              org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.ThrottleState value = org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.ThrottleState.valueOf(rawValue);
+              if (value == null) {
+                unknownFields.mergeVarintField(1, rawValue);
+              } else {
+                bitField0_ |= 0x00000001;
+                prevThrottleState_ = value;
+              }
+              break;
+            }
+          }
+        }
+      } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+        throw e.setUnfinishedMessage(this);
+      } catch (java.io.IOException e) {
+        throw new com.google.protobuf.InvalidProtocolBufferException(
+            e.getMessage()).setUnfinishedMessage(this);
+      } finally {
+        this.unknownFields = unknownFields.build();
+        makeExtensionsImmutable();
+      }
+    }
+    public static final com.google.protobuf.Descriptors.Descriptor
+        getDescriptor() {
+      return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.internal_static_SwitchThrottleResponse_descriptor;
+    }
+
+    protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+        internalGetFieldAccessorTable() {
+      return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.internal_static_SwitchThrottleResponse_fieldAccessorTable
+          .ensureFieldAccessorsInitialized(
+              org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleResponse.class, org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleResponse.Builder.class);
+    }
+
+    public static com.google.protobuf.Parser<SwitchThrottleResponse> PARSER =
+        new com.google.protobuf.AbstractParser<SwitchThrottleResponse>() {
+      public SwitchThrottleResponse parsePartialFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws com.google.protobuf.InvalidProtocolBufferException {
+        return new SwitchThrottleResponse(input, extensionRegistry);
+      }
+    };
+
+    @java.lang.Override
+    public com.google.protobuf.Parser<SwitchThrottleResponse> getParserForType() {
+      return PARSER;
+    }
+
+    private int bitField0_;
+    // optional .ThrottleState prev_throttle_state = 1;
+    public static final int PREV_THROTTLE_STATE_FIELD_NUMBER = 1;
+    private org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.ThrottleState prevThrottleState_;
+    /**
+     * <code>optional .ThrottleState prev_throttle_state = 1;</code>
+     */
+    public boolean hasPrevThrottleState() {
+      return ((bitField0_ & 0x00000001) == 0x00000001);
+    }
+    /**
+     * <code>optional .ThrottleState prev_throttle_state = 1;</code>
+     */
+    public org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.ThrottleState getPrevThrottleState() {
+      return prevThrottleState_;
+    }
+
+    private void initFields() {
+      prevThrottleState_ = org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.ThrottleState.ON;
+    }
+    private byte memoizedIsInitialized = -1;
+    public final boolean isInitialized() {
+      byte isInitialized = memoizedIsInitialized;
+      if (isInitialized != -1) return isInitialized == 1;
+
+      memoizedIsInitialized = 1;
+      return true;
+    }
+
+    public void writeTo(com.google.protobuf.CodedOutputStream output)
+                        throws java.io.IOException {
+      getSerializedSize();
+      if (((bitField0_ & 0x00000001) == 0x00000001)) {
+        output.writeEnum(1, prevThrottleState_.getNumber());
+      }
+      getUnknownFields().writeTo(output);
+    }
+
+    private int memoizedSerializedSize = -1;
+    public int getSerializedSize() {
+      int size = memoizedSerializedSize;
+      if (size != -1) return size;
+
+      size = 0;
+      if (((bitField0_ & 0x00000001) == 0x00000001)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeEnumSize(1, prevThrottleState_.getNumber());
+      }
+      size += getUnknownFields().getSerializedSize();
+      memoizedSerializedSize = size;
+      return size;
+    }
+
+    private static final long serialVersionUID = 0L;
+    @java.lang.Override
+    protected java.lang.Object writeReplace()
+        throws java.io.ObjectStreamException {
+      return super.writeReplace();
+    }
+
+    @java.lang.Override
+    public boolean equals(final java.lang.Object obj) {
+      if (obj == this) {
+       return true;
+      }
+      if (!(obj instanceof org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleResponse)) {
+        return super.equals(obj);
+      }
+      org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleResponse other = (org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleResponse) obj;
+
+      boolean result = true;
+      result = result && (hasPrevThrottleState() == other.hasPrevThrottleState());
+      if (hasPrevThrottleState()) {
+        result = result &&
+            (getPrevThrottleState() == other.getPrevThrottleState());
+      }
+      result = result &&
+          getUnknownFields().equals(other.getUnknownFields());
+      return result;
+    }
+
+    private int memoizedHashCode = 0;
+    @java.lang.Override
+    public int hashCode() {
+      if (memoizedHashCode != 0) {
+        return memoizedHashCode;
+      }
+      int hash = 41;
+      hash = (19 * hash) + getDescriptorForType().hashCode();
+      if (hasPrevThrottleState()) {
+        hash = (37 * hash) + PREV_THROTTLE_STATE_FIELD_NUMBER;
+        hash = (53 * hash) + hashEnum(getPrevThrottleState());
+      }
+      hash = (29 * hash) + getUnknownFields().hashCode();
+      memoizedHashCode = hash;
+      return hash;
+    }
+
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleResponse parseFrom(
+        com.google.protobuf.ByteString data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleResponse parseFrom(
+        com.google.protobuf.ByteString data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleResponse parseFrom(byte[] data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleResponse parseFrom(
+        byte[] data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleResponse parseFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleResponse parseFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleResponse parseDelimitedFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return PARSER.parseDelimitedFrom(input);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleResponse parseDelimitedFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseDelimitedFrom(input, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleResponse parseFrom(
+        com.google.protobuf.CodedInputStream input)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleResponse parseFrom(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input, extensionRegistry);
+    }
+
+    public static Builder newBuilder() { return Builder.create(); }
+    public Builder newBuilderForType() { return newBuilder(); }
+    public static Builder newBuilder(org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleResponse prototype) {
+      return newBuilder().mergeFrom(prototype);
+    }
+    public Builder toBuilder() { return newBuilder(this); }
+
+    @java.lang.Override
+    protected Builder newBuilderForType(
+        com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+      Builder builder = new Builder(parent);
+      return builder;
+    }
+    /**
+     * Protobuf type {@code SwitchThrottleResponse}
+     */
+    public static final class Builder extends
+        com.google.protobuf.GeneratedMessage.Builder<Builder>
+       implements org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleResponseOrBuilder {
+      public static final com.google.protobuf.Descriptors.Descriptor
+          getDescriptor() {
+        return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.internal_static_SwitchThrottleResponse_descriptor;
+      }
+
+      protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+          internalGetFieldAccessorTable() {
+        return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.internal_static_SwitchThrottleResponse_fieldAccessorTable
+            .ensureFieldAccessorsInitialized(
+                org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleResponse.class, org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleResponse.Builder.class);
+      }
+
+      // Construct using org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleResponse.newBuilder()
+      private Builder() {
+        maybeForceBuilderInitialization();
+      }
+
+      private Builder(
+          com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+        super(parent);
+        maybeForceBuilderInitialization();
+      }
+      private void maybeForceBuilderInitialization() {
+        if (com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders) {
+        }
+      }
+      private static Builder create() {
+        return new Builder();
+      }
+
+      public Builder clear() {
+        super.clear();
+        prevThrottleState_ = org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.ThrottleState.ON;
+        bitField0_ = (bitField0_ & ~0x00000001);
+        return this;
+      }
+
+      public Builder clone() {
+        return create().mergeFrom(buildPartial());
+      }
+
+      public com.google.protobuf.Descriptors.Descriptor
+          getDescriptorForType() {
+        return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.internal_static_SwitchThrottleResponse_descriptor;
+      }
+
+      public org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleResponse getDefaultInstanceForType() {
+        return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleResponse.getDefaultInstance();
+      }
+
+      public org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleResponse build() {
+        org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleResponse result = buildPartial();
+        if (!result.isInitialized()) {
+          throw newUninitializedMessageException(result);
+        }
+        return result;
+      }
+
+      public org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleResponse buildPartial() {
+        org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleResponse result = new org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleResponse(this);
+        int from_bitField0_ = bitField0_;
+        int to_bitField0_ = 0;
+        if (((from_bitField0_ & 0x00000001) == 0x00000001)) {
+          to_bitField0_ |= 0x00000001;
+        }
+        result.prevThrottleState_ = prevThrottleState_;
+        result.bitField0_ = to_bitField0_;
+        onBuilt();
+        return result;
+      }
+
+      public Builder mergeFrom(com.google.protobuf.Message other) {
+        if (other instanceof org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleResponse) {
+          return mergeFrom((org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleResponse)other);
+        } else {
+          super.mergeFrom(other);
+          return this;
+        }
+      }
+
+      public Builder mergeFrom(org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleResponse other) {
+        if (other == org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleResponse.getDefaultInstance()) return this;
+        if (other.hasPrevThrottleState()) {
+          setPrevThrottleState(other.getPrevThrottleState());
+        }
+        this.mergeUnknownFields(other.getUnknownFields());
+        return this;
+      }
+
+      public final boolean isInitialized() {
+        return true;
+      }
+
+      public Builder mergeFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws java.io.IOException {
+        org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleResponse parsedMessage = null;
+        try {
+          parsedMessage = PARSER.parsePartialFrom(input, extensionRegistry);
+        } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+          parsedMessage = (org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleResponse) e.getUnfinishedMessage();
+          throw e;
+        } finally {
+          if (parsedMessage != null) {
+            mergeFrom(parsedMessage);
+          }
+        }
+        return this;
+      }
+      private int bitField0_;
+
+      // optional .ThrottleState prev_throttle_state = 1;
+      private org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.ThrottleState prevThrottleState_ = org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.ThrottleState.ON;
+      /**
+       * <code>optional .ThrottleState prev_throttle_state = 1;</code>
+       */
+      public boolean hasPrevThrottleState() {
+        return ((bitField0_ & 0x00000001) == 0x00000001);
+      }
+      /**
+       * <code>optional .ThrottleState prev_throttle_state = 1;</code>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.ThrottleState getPrevThrottleState() {
+        return prevThrottleState_;
+      }
+      /**
+       * <code>optional .ThrottleState prev_throttle_state = 1;</code>
+       */
+      public Builder setPrevThrottleState(org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.ThrottleState value) {
+        if (value == null) {
+          throw new NullPointerException();
+        }
+        bitField0_ |= 0x00000001;
+        prevThrottleState_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>optional .ThrottleState prev_throttle_state = 1;</code>
+       */
+      public Builder clearPrevThrottleState() {
+        bitField0_ = (bitField0_ & ~0x00000001);
+        prevThrottleState_ = org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.ThrottleState.ON;
+        onChanged();
+        return this;
+      }
+
+      // @@protoc_insertion_point(builder_scope:SwitchThrottleResponse)
+    }
+
+    static {
+      defaultInstance = new SwitchThrottleResponse(true);
+      defaultInstance.initFields();
+    }
+
+    // @@protoc_insertion_point(class_scope:SwitchThrottleResponse)
+  }
+
   /**
    * Protobuf service {@code MasterService}
    */
@@ -42873,6 +43935,14 @@ public final class MasterProtos {
           org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetQuotaRequest request,
           com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetQuotaResponse> done);
 
+      /**
+       * <code>rpc SwitchThrottle(.SwitchThrottleRequest) returns (.SwitchThrottleResponse);</code>
+       */
+      public abstract void switchThrottle(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleRequest request,
+          com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleResponse> done);
+
     }
 
     public static com.google.protobuf.Service newReflectiveService(
@@ -43222,6 +44292,14 @@ public final class MasterProtos {
           impl.setQuota(controller, request, done);
         }
 
+        @java.lang.Override
+        public  void switchThrottle(
+            com.google.protobuf.RpcController controller,
+            org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleRequest request,
+            com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleResponse> done) {
+          impl.switchThrottle(controller, request, done);
+        }
+
       };
     }
 
@@ -43330,6 +44408,8 @@ public final class MasterProtos {
               return impl.truncateTable(controller, (org.apache.hadoop.hbase.protobuf.generated.MasterProtos.TruncateTableRequest)request);
             case 42:
               return impl.setQuota(controller, (org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetQuotaRequest)request);
+            case 43:
+              return impl.switchThrottle(controller, (org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleRequest)request);
             default:
               throw new java.lang.AssertionError("Can't get here.");
           }
@@ -43430,6 +44510,8 @@ public final class MasterProtos {
               return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.TruncateTableRequest.getDefaultInstance();
             case 42:
               return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetQuotaRequest.getDefaultInstance();
+            case 43:
+              return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleRequest.getDefaultInstance();
             default:
               throw new java.lang.AssertionError("Can't get here.");
           }
@@ -43530,6 +44612,8 @@ public final class MasterProtos {
               return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.TruncateTableResponse.getDefaultInstance();
             case 42:
               return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetQuotaResponse.getDefaultInstance();
+            case 43:
+              return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleResponse.getDefaultInstance();
             default:
               throw new java.lang.AssertionError("Can't get here.");
           }
@@ -44079,6 +45163,14 @@ public final class MasterProtos {
         org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetQuotaRequest request,
         com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetQuotaResponse> done);
 
+    /**
+     * <code>rpc SwitchThrottle(.SwitchThrottleRequest) returns (.SwitchThrottleResponse);</code>
+     */
+    public abstract void switchThrottle(
+        com.google.protobuf.RpcController controller,
+        org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleRequest request,
+        com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleResponse> done);
+
     public static final
         com.google.protobuf.Descriptors.ServiceDescriptor
         getDescriptor() {
@@ -44316,6 +45408,11 @@ public final class MasterProtos {
             com.google.protobuf.RpcUtil.<org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetQuotaResponse>specializeCallback(
               done));
           return;
+        case 43:
+          this.switchThrottle(controller, (org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleRequest)request,
+            com.google.protobuf.RpcUtil.<org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleResponse>specializeCallback(
+              done));
+          return;
         default:
           throw new java.lang.AssertionError("Can't get here.");
       }
@@ -44416,6 +45513,8 @@ public final class MasterProtos {
           return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.TruncateTableRequest.getDefaultInstance();
         case 42:
           return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetQuotaRequest.getDefaultInstance();
+        case 43:
+          return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleRequest.getDefaultInstance();
         default:
           throw new java.lang.AssertionError("Can't get here.");
       }
@@ -44516,6 +45615,8 @@ public final class MasterProtos {
           return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.TruncateTableResponse.getDefaultInstance();
         case 42:
           return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetQuotaResponse.getDefaultInstance();
+        case 43:
+          return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleResponse.getDefaultInstance();
         default:
           throw new java.lang.AssertionError("Can't get here.");
       }
@@ -45181,6 +46282,21 @@ public final class MasterProtos {
             org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetQuotaResponse.class,
             org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetQuotaResponse.getDefaultInstance()));
       }
+
+      public  void switchThrottle(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleRequest request,
+          com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleResponse> done) {
+        channel.callMethod(
+          getDescriptor().getMethods().get(43),
+          controller,
+          request,
+          org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleResponse.getDefaultInstance(),
+          com.google.protobuf.RpcUtil.generalizeCallback(
+            done,
+            org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleResponse.class,
+            org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleResponse.getDefaultInstance()));
+      }
     }
 
     public static BlockingInterface newBlockingStub(
@@ -45402,6 +46518,11 @@ public final class MasterProtos {
       public org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetQuotaResponse setQuota(
           com.google.protobuf.RpcController controller,
           org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetQuotaRequest request)
+          throws com.google.protobuf.ServiceException;
+
+      public org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleResponse switchThrottle(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleRequest request)
           throws com.google.protobuf.ServiceException;
     }
 
@@ -45927,6 +47048,18 @@ public final class MasterProtos {
           org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetQuotaResponse.getDefaultInstance());
       }
 
+
+      public org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleResponse switchThrottle(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleRequest request)
+          throws com.google.protobuf.ServiceException {
+        return (org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleResponse) channel.callBlockingMethod(
+          getDescriptor().getMethods().get(43),
+          controller,
+          request,
+          org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleResponse.getDefaultInstance());
+      }
+
     }
 
     // @@protoc_insertion_point(class_scope:MasterService)
@@ -46352,6 +47485,16 @@ public final class MasterProtos {
   private static
     com.google.protobuf.GeneratedMessage.FieldAccessorTable
       internal_static_SetQuotaResponse_fieldAccessorTable;
+  private static com.google.protobuf.Descriptors.Descriptor
+    internal_static_SwitchThrottleRequest_descriptor;
+  private static
+    com.google.protobuf.GeneratedMessage.FieldAccessorTable
+      internal_static_SwitchThrottleRequest_fieldAccessorTable;
+  private static com.google.protobuf.Descriptors.Descriptor
+    internal_static_SwitchThrottleResponse_descriptor;
+  private static
+    com.google.protobuf.GeneratedMessage.FieldAccessorTable
+      internal_static_SwitchThrottleResponse_fieldAccessorTable;
 
   public static com.google.protobuf.Descriptors.FileDescriptor
       getDescriptor() {
@@ -46450,109 +47593,115 @@ public final class MasterProtos {
       "erStatusRequest\022\036\n\ntable_name\030\001 \002(\0132\n.Ta" +
       "bleName\"T\n\034GetSchemaAlterStatusResponse\022" +
       "\035\n\025yet_to_update_regions\030\001 \001(\r\022\025\n\rtotal_" +
-      "regions\030\002 \001(\r\"=\n\032GetTableDescriptorsRequ",
-      "est\022\037\n\013table_names\030\001 \003(\0132\n.TableName\"A\n\033" +
-      "GetTableDescriptorsResponse\022\"\n\014table_sch" +
-      "ema\030\001 \003(\0132\014.TableSchema\"\026\n\024GetTableNames" +
-      "Request\"8\n\025GetTableNamesResponse\022\037\n\013tabl" +
-      "e_names\030\001 \003(\0132\n.TableName\"\031\n\027GetClusterS" +
-      "tatusRequest\"B\n\030GetClusterStatusResponse" +
-      "\022&\n\016cluster_status\030\001 \002(\0132\016.ClusterStatus" +
-      "\"\030\n\026IsMasterRunningRequest\"4\n\027IsMasterRu" +
-      "nningResponse\022\031\n\021is_master_running\030\001 \002(\010" +
-      "\"@\n\024ExecProcedureRequest\022(\n\tprocedure\030\001 ",
-      "\002(\0132\025.ProcedureDescription\"1\n\025ExecProced" +
-      "ureResponse\022\030\n\020expected_timeout\030\001 \002(\003\"B\n" +
-      "\026IsProcedureDoneRequest\022(\n\tprocedure\030\001 \001" +
-      "(\0132\025.ProcedureDescription\"W\n\027IsProcedure" +
-      "DoneResponse\022\023\n\004done\030\001 \001(\010:\005false\022\'\n\010sna" +
-      "pshot\030\002 \001(\0132\025.ProcedureDescription\"T\n\024Tr" +
-      "uncateTableRequest\022\035\n\ttableName\030\001 \002(\0132\n." +
-      "TableName\022\035\n\016preserveSplits\030\002 \001(\010:\005false" +
-      "\"\027\n\025TruncateTableResponse\"\273\001\n\017SetQuotaRe" +
-      "quest\022\021\n\tuser_name\030\001 \001(\t\022\022\n\nuser_group\030\002",
-      " \001(\t\022\021\n\tnamespace\030\003 \001(\t\022\036\n\ntable_name\030\004 " +
-      "\001(\0132\n.TableName\022\022\n\nremove_all\030\005 \001(\010\022\026\n\016b" +
-      "ypass_globals\030\006 \001(\010\022\"\n\010throttle\030\007 \001(\0132\020." +
-      "ThrottleRequest\"\022\n\020SetQuotaResponse2\337\027\n\r" +
-      "MasterService\022S\n\024GetSchemaAlterStatus\022\034." +
-      "GetSchemaAlterStatusRequest\032\035.GetSchemaA" +
-      "lterStatusResponse\022P\n\023GetTableDescriptor" +
-      "s\022\033.GetTableDescriptorsRequest\032\034.GetTabl" +
-      "eDescriptorsResponse\022>\n\rGetTableNames\022\025." +
-      "GetTableNamesRequest\032\026.GetTableNamesResp",
-      "onse\022G\n\020GetClusterStatus\022\030.GetClusterSta" +
-      "tusRequest\032\031.GetClusterStatusResponse\022D\n" +
-      "\017IsMasterRunning\022\027.IsMasterRunningReques" +
-      "t\032\030.IsMasterRunningResponse\0222\n\tAddColumn" +
-      "\022\021.AddColumnRequest\032\022.AddColumnResponse\022" +
-      ";\n\014DeleteColumn\022\024.DeleteColumnRequest\032\025." +
-      "DeleteColumnResponse\022;\n\014ModifyColumn\022\024.M" +
-      "odifyColumnRequest\032\025.ModifyColumnRespons" +
-      "e\0225\n\nMoveRegion\022\022.MoveRegionRequest\032\023.Mo" +
-      "veRegionResponse\022Y\n\026DispatchMergingRegio",
-      "ns\022\036.DispatchMergingRegionsRequest\032\037.Dis" +
-      "patchMergingRegionsResponse\022;\n\014AssignReg" +
-      "ion\022\024.AssignRegionRequest\032\025.AssignRegion" +
-      "Response\022A\n\016UnassignRegion\022\026.UnassignReg" +
-      "ionRequest\032\027.UnassignRegionResponse\022>\n\rO" +
-      "fflineRegion\022\025.OfflineRegionRequest\032\026.Of" +
-      "flineRegionResponse\0228\n\013DeleteTable\022\023.Del" +
-      "eteTableRequest\032\024.DeleteTableResponse\0228\n" +
-      "\013EnableTable\022\023.EnableTableRequest\032\024.Enab" +
-      "leTableResponse\022;\n\014DisableTable\022\024.Disabl",
-      "eTableRequest\032\025.DisableTableResponse\0228\n\013" +
-      "ModifyTable\022\023.ModifyTableRequest\032\024.Modif" +
-      "yTableResponse\0228\n\013CreateTable\022\023.CreateTa" +
-      "bleRequest\032\024.CreateTableResponse\022/\n\010Shut" +
-      "down\022\020.ShutdownRequest\032\021.ShutdownRespons" +
-      "e\0225\n\nStopMaster\022\022.StopMasterRequest\032\023.St" +
-      "opMasterResponse\022,\n\007Balance\022\017.BalanceReq" +
-      "uest\032\020.BalanceResponse\022M\n\022SetBalancerRun" +
-      "ning\022\032.SetBalancerRunningRequest\032\033.SetBa" +
-      "lancerRunningResponse\022A\n\016RunCatalogScan\022",
-      "\026.RunCatalogScanRequest\032\027.RunCatalogScan" +
-      "Response\022S\n\024EnableCatalogJanitor\022\034.Enabl" +
-      "eCatalogJanitorRequest\032\035.EnableCatalogJa" +
-      "nitorResponse\022\\\n\027IsCatalogJanitorEnabled" +
-      "\022\037.IsCatalogJanitorEnabledRequest\032 .IsCa" +
-      "talogJanitorEnabledResponse\022L\n\021ExecMaste" +
-      "rService\022\032.CoprocessorServiceRequest\032\033.C" +
-      "oprocessorServiceResponse\022/\n\010Snapshot\022\020." +
-      "SnapshotRequest\032\021.SnapshotResponse\022V\n\025Ge" +
-      "tCompletedSnapshots\022\035.GetCompletedSnapsh",
-      "otsRequest\032\036.GetCompletedSnapshotsRespon" +
-      "se\022A\n\016DeleteSnapshot\022\026.DeleteSnapshotReq" +
-      "uest\032\027.DeleteSnapshotResponse\022A\n\016IsSnaps" +
-      "hotDone\022\026.IsSnapshotDoneRequest\032\027.IsSnap" +
-      "shotDoneResponse\022D\n\017RestoreSnapshot\022\027.Re" +
-      "storeSnapshotRequest\032\030.RestoreSnapshotRe" +
-      "sponse\022V\n\025IsRestoreSnapshotDone\022\035.IsRest" +
-      "oreSnapshotDoneRequest\032\036.IsRestoreSnapsh" +
-      "otDoneResponse\022>\n\rExecProcedure\022\025.ExecPr" +
-      "ocedureRequest\032\026.ExecProcedureResponse\022D",
-      "\n\017IsProcedureDone\022\027.IsProcedureDoneReque" +
-      "st\032\030.IsProcedureDoneResponse\022D\n\017ModifyNa" +
-      "mespace\022\027.ModifyNamespaceRequest\032\030.Modif" +
-      "yNamespaceResponse\022D\n\017CreateNamespace\022\027." +
-      "CreateNamespaceRequest\032\030.CreateNamespace" +
-      "Response\022D\n\017DeleteNamespace\022\027.DeleteName" +
-      "spaceRequest\032\030.DeleteNamespaceResponse\022Y" +
-      "\n\026GetNamespaceDescriptor\022\036.GetNamespaceD" +
-      "escriptorRequest\032\037.GetNamespaceDescripto" +
-      "rResponse\022_\n\030ListNamespaceDescriptors\022 .",
-      "ListNamespaceDescriptorsRequest\032!.ListNa" +
-      "mespaceDescriptorsResponse\022t\n\037ListTableD" +
-      "escriptorsByNamespace\022\'.ListTableDescrip" +
-      "torsByNamespaceRequest\032(.ListTableDescri" +
-      "ptorsByNamespaceResponse\022b\n\031ListTableNam" +
-      "esByNamespace\022!.ListTableNamesByNamespac" +
-      "eRequest\032\".ListTableNamesByNamespaceResp" +
-      "onse\022>\n\rtruncateTable\022\025.TruncateTableReq" +
-      "uest\032\026.TruncateTableResponse\022/\n\010SetQuota" +
-      "\022\020.SetQuotaRequest\032\021.SetQuotaResponseBB\n",
-      "*org.apache.hadoop.hbase.protobuf.genera" +
-      "tedB\014MasterProtosH\001\210\001\001\240\001\001"
+      "regions\030\002 \001(\r\"L\n\032GetTableDescriptorsRequ",
+      "est\022\037\n\013table_names\030\001 \003(\0132\n.TableName\022\r\n\005" +
+      "regex\030\002 \001(\t\"A\n\033GetTableDescriptorsRespon" +
+      "se\022\"\n\014table_schema\030\001 \003(\0132\014.TableSchema\"\026" +
+      "\n\024GetTableNamesRequest\"8\n\025GetTableNamesR" +
+      "esponse\022\037\n\013table_names\030\001 \003(\0132\n.TableName" +
+      "\"\031\n\027GetClusterStatusRequest\"B\n\030GetCluste" +
+      "rStatusResponse\022&\n\016cluster_status\030\001 \002(\0132" +
+      "\016.ClusterStatus\"\030\n\026IsMasterRunningReques" +
+      "t\"4\n\027IsMasterRunningResponse\022\031\n\021is_maste" +
+      "r_running\030\001 \002(\010\"@\n\024ExecProcedureRequest\022",
+      "(\n\tprocedure\030\001 \002(\0132\025.ProcedureDescriptio" +
+      "n\"1\n\025ExecProcedureResponse\022\030\n\020expected_t" +
+      "imeout\030\001 \002(\003\"B\n\026IsProcedureDoneRequest\022(" +
+      "\n\tprocedure\030\001 \001(\0132\025.ProcedureDescription" +
+      "\"W\n\027IsProcedureDoneResponse\022\023\n\004done\030\001 \001(" +
+      "\010:\005false\022\'\n\010snapshot\030\002 \001(\0132\025.ProcedureDe" +
+      "scription\"T\n\024TruncateTableRequest\022\035\n\ttab" +
+      "leName\030\001 \002(\0132\n.TableName\022\035\n\016preserveSpli" +
+      "ts\030\002 \001(\010:\005false\"\027\n\025TruncateTableResponse" +
+      "\"\273\001\n\017SetQuotaRequest\022\021\n\tuser_name\030\001 \001(\t\022",
+      "\022\n\nuser_group\030\002 \001(\t\022\021\n\tnamespace\030\003 \001(\t\022\036" +
+      "\n\ntable_name\030\004 \001(\0132\n.TableName\022\022\n\nremove" +
+      "_all\030\005 \001(\010\022\026\n\016bypass_globals\030\006 \001(\010\022\"\n\010th" +
+      "rottle\030\007 \001(\0132\020.ThrottleRequest\"\022\n\020SetQuo" +
+      "taResponse\"?\n\025SwitchThrottleRequest\022&\n\016t" +
+      "hrottle_state\030\001 \002(\0162\016.ThrottleState\"E\n\026S" +
+      "witchThrottleResponse\022+\n\023prev_throttle_s" +
+      "tate\030\001 \001(\0162\016.ThrottleState2\242\030\n\rMasterSer" +
+      "vice\022S\n\024GetSchemaAlterStatus\022\034.GetSchema" +
+      "AlterStatusRequest\032\035.GetSchemaAlterStatu",
+      "sResponse\022P\n\023GetTableDescriptors\022\033.GetTa" +
+      "bleDescriptorsRequest\032\034.GetTableDescript" +
+      "orsResponse\022>\n\rGetTableNames\022\025.GetTableN" +
+      "amesRequest\032\026.GetTableNamesResponse\022G\n\020G" +
+      "etClusterStatus\022\030.GetClusterStatusReques" +
+      "t\032\031.GetClusterStatusResponse\022D\n\017IsMaster" +
+      "Running\022\027.IsMasterRunningRequest\032\030.IsMas" +
+      "terRunningResponse\0222\n\tAddColumn\022\021.AddCol" +
+      "umnRequest\032\022.AddColumnResponse\022;\n\014Delete" +
+      "Column\022\024.DeleteColumnRequest\032\025.DeleteCol",
+      "umnResponse\022;\n\014ModifyColumn\022\024.ModifyColu" +
+      "mnRequest\032\025.ModifyColumnResponse\0225\n\nMove" +
+      "Region\022\022.MoveRegionRequest\032\023.MoveRegionR" +
+      "esponse\022Y\n\026DispatchMergingRegions\022\036.Disp" +
+      "atchMergingRegionsRequest\032\037.DispatchMerg" +
+      "ingRegionsResponse\022;\n\014AssignRegion\022\024.Ass" +
+      "ignRegionRequest\032\025.AssignRegionResponse\022" +
+      "A\n\016UnassignRegion\022\026.UnassignRegionReques" +
+      "t\032\027.UnassignRegionResponse\022>\n\rOfflineReg" +
+      "ion\022\025.OfflineRegionRequest\032\026.OfflineRegi",
+      "onResponse\0228\n\013DeleteTable\022\023.DeleteTableR" +
+      "equest\032\024.DeleteTableResponse\0228\n\013EnableTa" +
+      "ble\022\023.EnableTableRequest\032\024.EnableTableRe" +
+      "sponse\022;\n\014DisableTable\022\024.DisableTableReq" +
+      "uest\032\025.DisableTableResponse\0228\n\013ModifyTab" +
+      "le\022\023.ModifyTableRequest\032\024.ModifyTableRes" +
+      "ponse\0228\n\013CreateTable\022\023.CreateTableReques" +
+      "t\032\024.CreateTableResponse\022/\n\010Shutdown\022\020.Sh" +
+      "utdownRequest\032\021.ShutdownResponse\0225\n\nStop" +
+      "Master\022\022.StopMasterRequest\032\023.StopMasterR",
+      "esponse\022,\n\007Balance\022\017.BalanceRequest\032\020.Ba" +
+      "lanceResponse\022M\n\022SetBalancerRunning\022\032.Se" +
+      "tBalancerRunningRequest\032\033.SetBalancerRun" +
+      "ningResponse\022A\n\016RunCatalogScan\022\026.RunCata" +
+      "logScanRequest\032\027.RunCatalogScanResponse\022" +
+      "S\n\024EnableCatalogJanitor\022\034.EnableCatalogJ" +
+      "anitorRequest\032\035.EnableCatalogJanitorResp" +
+      "onse\022\\\n\027IsCatalogJanitorEnabled\022\037.IsCata" +
+      "logJanitorEnabledRequest\032 .IsCatalogJani" +
+      "torEnabledResponse\022L\n\021ExecMasterService\022",
+      "\032.CoprocessorServiceRequest\032\033.Coprocesso" +
+      "rServiceResponse\022/\n\010Snapshot\022\020.SnapshotR" +
+      "equest\032\021.SnapshotResponse\022V\n\025GetComplete" +
+      "dSnapshots\022\035.GetCompletedSnapshotsReques" +
+      "t\032\036.GetCompletedSnapshotsResponse\022A\n\016Del" +
+      "eteSnapshot\022\026.DeleteSnapshotRequest\032\027.De" +
+      "leteSnapshotResponse\022A\n\016IsSnapshotDone\022\026" +
+      ".IsSnapshotDoneRequest\032\027.IsSnapshotDoneR" +
+      "esponse\022D\n\017RestoreSnapshot\022\027.RestoreSnap" +
+      "shotRequest\032\030.RestoreSnapshotResponse\022V\n",
+      "\025IsRestoreSnapshotDone\022\035.IsRestoreSnapsh" +
+      "otDoneRequest\032\036.IsRestoreSnapshotDoneRes" +
+      "ponse\022>\n\rExecProcedure\022\025.ExecProcedureRe" +
+      "quest\032\026.ExecProcedureResponse\022D\n\017IsProce" +
+      "dureDone\022\027.IsProcedureDoneRequest\032\030.IsPr" +
+      "ocedureDoneResponse\022D\n\017ModifyNamespace\022\027" +
+      ".ModifyNamespaceRequest\032\030.ModifyNamespac" +
+      "eResponse\022D\n\017CreateNamespace\022\027.CreateNam" +
+      "espaceRequest\032\030.CreateNamespaceResponse\022" +
+      "D\n\017DeleteNamespace\022\027.DeleteNamespaceRequ",
+      "est\032\030.DeleteNamespaceResponse\022Y\n\026GetName" +
+      "spaceDescriptor\022\036.GetNamespaceDescriptor" +
+      "Request\032\037.GetNamespaceDescriptorResponse" +
+      "\022_\n\030ListNamespaceDescriptors\022 .ListNames" +
+      "paceDescriptorsRequest\032!.ListNamespaceDe" +
+      "scriptorsResponse\022t\n\037ListTableDescriptor" +
+      "sByNamespace\022\'.ListTableDescriptorsByNam" +
+      "espaceRequest\032(.ListTableDescriptorsByNa" +
+      "mespaceResponse\022b\n\031ListTableNamesByNames" +
+      "pace\022!.ListTableNamesByNamespaceRequest\032",
+      "\".ListTableNamesByNamespaceResponse\022>\n\rt" +
+      "runcateTable\022\025.TruncateTableRequest\032\026.Tr" +
+      "uncateTableResponse\022/\n\010SetQuota\022\020.SetQuo" +
+      "taRequest\032\021.SetQuotaResponse\022A\n\016SwitchTh" +
+      "rottle\022\026.SwitchThrottleRequest\032\027.SwitchT" +
+      "hrottleResponseBB\n*org.apache.hadoop.hba" +
+      "se.protobuf.generatedB\014MasterProtosH\001\210\001\001" +
+      "\240\001\001"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
       new com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner() {
@@ -46972,7 +48121,7 @@ public final class MasterProtos {
           internal_static_GetTableDescriptorsRequest_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_GetTableDescriptorsRequest_descriptor,
-              new java.lang.String[] { "TableNames", });
+              new java.lang.String[] { "TableNames", "Regex", });
           internal_static_GetTableDescriptorsResponse_descriptor =
             getDescriptor().getMessageTypes().get(69);
           internal_static_GetTableDescriptorsResponse_fieldAccessorTable = new
@@ -47063,6 +48212,18 @@ public final class MasterProtos {
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_SetQuotaResponse_descriptor,
               new java.lang.String[] { });
+          internal_static_SwitchThrottleRequest_descriptor =
+            getDescriptor().getMessageTypes().get(84);
+          internal_static_SwitchThrottleRequest_fieldAccessorTable = new
+            com.google.protobuf.GeneratedMessage.FieldAccessorTable(
+              internal_static_SwitchThrottleRequest_descriptor,
+              new java.lang.String[] { "ThrottleState", });
+          internal_static_SwitchThrottleResponse_descriptor =
+            getDescriptor().getMessageTypes().get(85);
+          internal_static_SwitchThrottleResponse_fieldAccessorTable = new
+            com.google.protobuf.GeneratedMessage.FieldAccessorTable(
+              internal_static_SwitchThrottleResponse_descriptor,
+              new java.lang.String[] { "PrevThrottleState", });
           return null;
         }
       };

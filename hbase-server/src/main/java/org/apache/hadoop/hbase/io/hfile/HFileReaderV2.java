@@ -64,7 +64,7 @@ public class HFileReaderV2 extends AbstractHFileReader {
   public static final int MINOR_VERSION_NO_CHECKSUM = 0;
 
   /** HFile minor version that introduced pbuf filetrailer */
-  // currently, the minor version of xiaomi hbase 0.94 is 2
+  /** In XIAOMI distribution of HBase, protobuf Hfile trailer begin with HFile version 2.3 */
   public static final int PBUF_TRAILER_MINOR_VERSION = 3;
 
   /**

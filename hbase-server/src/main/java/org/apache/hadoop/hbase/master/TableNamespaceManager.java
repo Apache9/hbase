@@ -91,24 +91,19 @@ public class TableNamespaceManager {
     }
 
     try {
-      // Wait for the namespace table to be assigned.
-      // If timed out, we will move ahead without initializing it.
-      // So that it should be initialized later on lazily.
+      // Wait for the namespace table to be initialized.
       long startTime = EnvironmentEdgeManager.currentTimeMillis();
       int timeout = conf.getInt(NS_INIT_TIMEOUT, DEFAULT_NS_INIT_TIMEOUT);
-      while (!isTableAssigned()) {
+      while (!isTableAvailableAndInitialized()) {
         if (EnvironmentEdgeManager.currentTimeMillis() - startTime + 100 > timeout) {
-          LOG.warn("Timedout waiting for namespace table to be assigned.");
-          return;
+          throw new IOException("Timedout " + timeout
+              + "ms waiting for namespace table to be assigned and enabled");
         }
         Thread.sleep(100);
       }
     } catch (InterruptedException e) {
-      throw (InterruptedIOException)new InterruptedIOException().initCause(e);
+      throw (InterruptedIOException) new InterruptedIOException().initCause(e);
     }
-
-    // initialize namespace table
-    isTableAvailableAndInitialized();
   }
 
   private synchronized HTable getNamespaceTable() throws IOException {

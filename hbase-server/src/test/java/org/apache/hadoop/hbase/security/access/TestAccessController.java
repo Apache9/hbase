@@ -20,10 +20,13 @@ package org.apache.hadoop.hbase.security.access;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
+import java.security.PrivilegedAction;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
@@ -44,7 +47,6 @@ import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.KeyValue;
-import org.apache.hadoop.hbase.testclassification.LargeTests;
 import org.apache.hadoop.hbase.MiniHBaseCluster;
 import org.apache.hadoop.hbase.NamespaceDescriptor;
 import org.apache.hadoop.hbase.ServerName;
@@ -96,6 +98,7 @@ import org.apache.hadoop.hbase.regionserver.RegionServerCoprocessorHost;
 import org.apache.hadoop.hbase.regionserver.ScanType;
 import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.security.access.Permission.Action;
+import org.apache.hadoop.hbase.testclassification.LargeTests;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.JVMClusterUtil;
 import org.apache.hadoop.hbase.util.TestTableName;
@@ -113,6 +116,7 @@ import com.google.protobuf.BlockingRpcChannel;
 import com.google.protobuf.RpcCallback;
 import com.google.protobuf.RpcController;
 import com.google.protobuf.Service;
+import com.google.protobuf.ServiceException;
 import com.google.protobuf.ServiceException;
 
 /**
@@ -137,6 +141,8 @@ public class TestAccessController extends SecureTestUtil {
   private static User SUPERUSER;
   // user granted with all global permission
   private static User USER_ADMIN;
+  // user granted with permission on namespace
+  private static User USER_NAMESPACE_ADMIN;
   // user with rw permissions on column family.
   private static User USER_RW;
   // user with read-only permissions
@@ -201,6 +207,7 @@ public class TestAccessController extends SecureTestUtil {
     // create a set of test users
     SUPERUSER = User.createUserForTesting(conf, "admin", new String[] { "supergroup" });
     USER_ADMIN = User.createUserForTesting(conf, "admin2", new String[0]);
+    USER_NAMESPACE_ADMIN = User.createUserForTesting(conf, "ns_admin", new String[0]);
     USER_RW = User.createUserForTesting(conf, "rwuser", new String[0]);
     USER_RO = User.createUserForTesting(conf, "rouser", new String[0]);
     USER_OWNER = User.createUserForTesting(conf, "owner", new String[0]);
@@ -239,6 +246,10 @@ public class TestAccessController extends SecureTestUtil {
       Permission.Action.READ,
       Permission.Action.WRITE);
 
+    grantOnNamespace(TEST_UTIL, USER_NAMESPACE_ADMIN.getShortName(),
+      TEST_TABLE.getTableName().getNamespaceAsString(),
+      Permission.Action.ADMIN);
+    
     grantOnTable(TEST_UTIL, USER_RW.getShortName(),
       TEST_TABLE.getTableName(), TEST_FAMILY, null,
       Permission.Action.READ,
@@ -2433,6 +2444,15 @@ public class TestAccessController extends SecureTestUtil {
       }
     };
 
+    AccessTestAction setBypassUserTableQuota = new AccessTestAction() {
+      @Override
+      public Object run() throws Exception {
+        ACCESS_CONTROLLER.preBypassUserQuota(ObserverContext.createAndPrepare(CP_ENV, null), null,
+          TEST_TABLE.getTableName());
+        return null;
+      }
+    };
+
     AccessTestAction setUserNamespaceQuotaAction = new AccessTestAction() {
       @Override
       public Object run() throws Exception {
@@ -2463,9 +2483,14 @@ public class TestAccessController extends SecureTestUtil {
     verifyAllowed(setUserQuotaAction, SUPERUSER, USER_ADMIN);
     verifyDenied(setUserQuotaAction, USER_CREATE, USER_RW, USER_RO, USER_NONE, USER_OWNER);
 
-    verifyAllowed(setUserTableQuotaAction, SUPERUSER, USER_ADMIN, USER_OWNER);
-    verifyDenied(setUserTableQuotaAction, USER_CREATE, USER_RW, USER_RO, USER_NONE);
+    verifyAllowed(setUserTableQuotaAction, SUPERUSER, USER_ADMIN, USER_NAMESPACE_ADMIN);
+    verifyDenied(setUserTableQuotaAction, USER_OWNER, USER_CREATE, USER_RW, USER_RO, USER_NONE);
 
+    verifyAllowed(setBypassUserTableQuota, SUPERUSER, USER_ADMIN);
+    SecureTestUtil.verifyDenied(USER_NAMESPACE_ADMIN, true, setBypassUserTableQuota);
+    verifyDenied(setBypassUserTableQuota, USER_OWNER, USER_CREATE, USER_RW,
+      USER_RO, USER_NONE);
+    
     verifyAllowed(setUserNamespaceQuotaAction, SUPERUSER, USER_ADMIN);
     verifyDenied(setUserNamespaceQuotaAction, USER_CREATE, USER_RW, USER_RO, USER_NONE, USER_OWNER);
 
@@ -2474,5 +2499,39 @@ public class TestAccessController extends SecureTestUtil {
 
     verifyAllowed(setNamespaceQuotaAction, SUPERUSER, USER_ADMIN);
     verifyDenied(setNamespaceQuotaAction, USER_CREATE, USER_RW, USER_RO, USER_NONE, USER_OWNER);
+  }
+
+  @Test
+  public void testAccessControlClientUserPerms() throws Exception {
+    try {
+      final String regex = TEST_TABLE.getTableName().getNameAsString();
+      User testUserPerms = User.createUserForTesting(conf, "testUserPerms", new String[0]);
+
+      PrivilegedAction<List<UserPermission>> listTablesRestrictedAction =
+          new PrivilegedAction<List<UserPermission>>() {
+            @Override
+            public List<UserPermission> run() {
+              try {
+                return AccessControlClient.getUserPermissions(conf, regex);
+              } catch (Throwable e) {
+                LOG.error("error during call of AccessControlClient.getUserPermissions. "
+                    + e.getStackTrace());
+                return null;
+              }
+            }
+          };
+      assertNull(testUserPerms.runAs(listTablesRestrictedAction));
+
+      // Grant TABLE ADMIN privs to testUserPerms
+      grantOnTable(TEST_UTIL, testUserPerms.getShortName(),
+          TEST_TABLE.getTableName(), null, null,
+          Permission.Action.ADMIN);
+      List<UserPermission> perms = testUserPerms.runAs(listTablesRestrictedAction);
+      assertNotNull(perms);
+      // USER_ADMIN, USER_CREATE, USER_RW, USER_RO, testUserPerms has row each.
+      assertEquals(5, perms.size());
+    } catch (Throwable e) {
+      throw new HBaseIOException(e);
+    }
   }
 }

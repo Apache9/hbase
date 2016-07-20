@@ -112,11 +112,16 @@ EOF
     attr_reader :name
 
     def initialize(configuration, table_name, shell)
+      connection = org.apache.hadoop.hbase.client.HConnectionManager.createConnection(configuration)
       if @@thread_pool then
-        @table = org.apache.hadoop.hbase.client.HTable.new(configuration, table_name.to_java_bytes, @@thread_pool)
+        @table = connection.getTable(table_name, @@thread_pool)
       else
-        @table = org.apache.hadoop.hbase.client.HTable.new(configuration, table_name)
-        @@thread_pool = @table.getPool()
+        @table = connection.getTable(table_name)
+        if @table.class == org.apache.hadoop.hbase.client.HTable
+          @@thread_pool = @table.getPool()
+        elsif @table.class == com.xiaomi.infra.hbase.salted.SaltedHTable
+          @@thread_pool = @table.getRawTable().getPool()
+        end
       end
       @name = table_name
       @shell = shell

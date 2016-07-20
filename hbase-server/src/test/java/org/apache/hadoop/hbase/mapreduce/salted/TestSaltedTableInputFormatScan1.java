@@ -3,8 +3,11 @@ package org.apache.hadoop.hbase.mapreduce.salted;
 import org.apache.hadoop.hbase.mapreduce.TableInputFormat;
 import org.apache.hadoop.hbase.mapreduce.TableInputFormatBase;
 import org.apache.hadoop.hbase.mapreduce.TestTableInputFormatScan1;
+import org.apache.hadoop.hbase.testclassification.LargeTests;
 import org.junit.BeforeClass;
+import org.junit.experimental.categories.Category;
 
+@Category(LargeTests.class)
 public class TestSaltedTableInputFormatScan1 extends TestTableInputFormatScan1 {
   @BeforeClass
   public static void setUpBeforeClass() throws Exception {

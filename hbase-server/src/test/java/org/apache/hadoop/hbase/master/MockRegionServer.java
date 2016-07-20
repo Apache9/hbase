@@ -76,8 +76,6 @@ import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.SplitRegionRequest
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.SplitRegionResponse;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.StopServerRequest;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.StopServerResponse;
-import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.SwitchThrottleRequest;
-import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.SwitchThrottleResponse;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.UpdateFavoredNodesRequest;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.UpdateFavoredNodesResponse;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos;
@@ -96,6 +94,7 @@ import org.apache.hadoop.hbase.protobuf.generated.RPCProtos;
 import org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.RegionServerReportResponse;
 import org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.RegionStateTransition.TransitionCode;
 import org.apache.hadoop.hbase.quotas.RegionServerQuotaManager;
+import org.apache.hadoop.hbase.regionserver.AccessCounter;
 import org.apache.hadoop.hbase.regionserver.CompactionRequestor;
 import org.apache.hadoop.hbase.regionserver.FlushRequester;
 import org.apache.hadoop.hbase.regionserver.HRegion;
@@ -623,16 +622,19 @@ ClientProtos.ClientService.BlockingInterface, RegionServerServices {
   public RegionServerReportResponse getRegionServerReportResponse() {
     return null;
   }
-  
-  @Override
-  public SwitchThrottleResponse switchThrottle(RpcController controller,
-      SwitchThrottleRequest request) throws ServiceException {
-    return null;
-  }
 
   @Override
   public CompactionEnableResponse switchCompaction(RpcController controller,
       CompactionEnableRequest request) throws ServiceException {
+    return null;
+  }
+
+  @Override
+  public void switchThrottle() {
+  }
+
+  @Override
+  public AccessCounter getAccessCounter() {
     return null;
   }
 }

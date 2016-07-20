@@ -134,6 +134,12 @@ message RegionLoad {
 
   /** the current total get requests made to region */
   optional uint64 get_requests_count = 23;
+
+  /** cell read per second made to region */
+  optional uint64 read_cell_count_per_second = 24;
+
+  /** raw cell read per second made to region */
+  optional uint64 read_raw_cell_count_per_second = 25;
 }
 
 /* Server-level protobufs */
@@ -208,6 +214,12 @@ message ServerLoad {
 
   /** write requests per second made to region */
   optional uint64 write_requests_per_second = 13;
+
+  /** cell read per second made to region */
+  optional uint64 read_cell_count_per_second = 14;
+
+  /** raw cell read per second made to region */
+  optional uint64 read_raw_cell_count_per_second = 15;
 }
 
 message LiveServerInfo {

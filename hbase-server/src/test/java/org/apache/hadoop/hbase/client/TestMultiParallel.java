@@ -24,9 +24,10 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
-import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ThreadPoolExecutor;
 
@@ -35,10 +36,13 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellUtil;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
-import org.apache.hadoop.hbase.testclassification.MediumTests;
+import org.apache.hadoop.hbase.ServerName;
+import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.Waiter;
 import org.apache.hadoop.hbase.exceptions.OperationConflictException;
 import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
+import org.apache.hadoop.hbase.regionserver.HRegion;
+import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.JVMClusterUtil;
 import org.apache.hadoop.hbase.util.Threads;
@@ -130,7 +134,6 @@ public class TestMultiParallel {
     return keys.toArray(new byte [][] {new byte [] {}});
   }
 
-
   /**
    * This is for testing the active number of threads that were used while
    * doing a batch operation. It inserts one row per region via the batch
@@ -141,16 +144,27 @@ public class TestMultiParallel {
    * @throws NoSuchFieldException
    * @throws SecurityException
    */
-  @Test(timeout=300000)
-  public void testActiveThreadsCount() throws Exception{
-    HTable table = new HTable(UTIL.getConfiguration(), TEST_TABLE);
-    List<Row> puts = constructPutRequests(); // creates a Put for every region
-    table.batch(puts);
-    Field poolField = table.getClass().getDeclaredField("pool");
-    poolField.setAccessible(true);
-    ThreadPoolExecutor tExecutor = (ThreadPoolExecutor) poolField.get(table);
-    assertEquals(slaves, tExecutor.getLargestPoolSize());
-    table.close();
+  @Test(timeout = 300000)
+  public void testActiveThreadsCount() throws Exception {
+    ThreadPoolExecutor executor = HTable.getDefaultExecutor(UTIL.getConfiguration());
+    HTable table = new HTable(UTIL.getConfiguration(), TableName.valueOf(TEST_TABLE), executor);
+    try {
+      Set<ServerName> regionservers = new HashSet<ServerName>();
+      for (HRegion region : UTIL.getMiniHBaseCluster().getRegions(TableName.valueOf(TEST_TABLE))) {
+        regionservers
+            .add(UTIL.getMiniHBaseCluster().getServerHoldingRegion(region.getRegionName()));
+      }
+      List<Row> puts = constructPutRequests(); // creates a Put for every region
+      for (int i = 0; i < 20; i++) {
+        table.batch(puts);
+      }
+      assertTrue(
+        "expected at least " + regionservers.size() + " but got " + executor.getLargestPoolSize(),
+        regionservers.size() <= executor.getLargestPoolSize());
+    } finally {
+      table.close();
+      executor.shutdownNow();
+    }
   }
 
   @Test(timeout=300000)

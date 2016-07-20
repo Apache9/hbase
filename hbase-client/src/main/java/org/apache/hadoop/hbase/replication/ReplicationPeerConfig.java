@@ -42,7 +42,7 @@ public class ReplicationPeerConfig {
   private final Map<byte[], byte[]> peerData;
   private final Map<String, String> configuration;
   private ZooKeeperProtos.TableCFs tableCFs;
-
+  private long bandwidth = 0;
 
   public ReplicationPeerConfig() {
     this.peerData = new TreeMap<byte[], byte[]>(Bytes.BYTES_COMPARATOR);
@@ -117,12 +117,21 @@ public class ReplicationPeerConfig {
     this.tableCFs = tableCFs;
   }
 
+  public long getBandwidth() {
+    return this.bandwidth;
+  }
+
+  public void setBandwidth(long bandwidth) {
+    this.bandwidth = bandwidth;
+  }
+
   @Override
   public String toString() {
     StringBuilder builder = new StringBuilder("clusterKey=").append(clusterKey).append(",");
     builder.append("state=").append(state).append(",");
     builder.append("tableCFs=").append(tableCFs.toString()).append(",");
-    builder.append("rpcProtocol=").append(protocol.name());
+    builder.append("rpcProtocol=").append(protocol.name()).append(",");
+    builder.append("bandwidth=").append(bandwidth);
     return builder.toString();
   }
 }

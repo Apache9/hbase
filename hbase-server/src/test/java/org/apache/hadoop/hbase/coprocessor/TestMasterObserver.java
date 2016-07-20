@@ -977,14 +977,14 @@ public class TestMasterObserver {
 
     @Override
     public void preGetTableDescriptors(ObserverContext<MasterCoprocessorEnvironment> ctx,
-        List<TableName> tableNamesList, List<HTableDescriptor> descriptors)
+        List<TableName> tableNamesList, List<HTableDescriptor> descriptors, String regex)
         throws IOException {
       preGetTableDescriptorsCalled = true;
     }
 
     @Override
     public void postGetTableDescriptors(ObserverContext<MasterCoprocessorEnvironment> ctx,
-        List<HTableDescriptor> descriptors) throws IOException {
+        List<HTableDescriptor> descriptors, String regex) throws IOException {
       postGetTableDescriptorsCalled = true;
     }
 
@@ -1040,6 +1040,13 @@ public class TestMasterObserver {
     @Override
     public void postSetNamespaceQuota(final ObserverContext<MasterCoprocessorEnvironment> ctx,
         final String namespace, final Quotas quotas) throws IOException {
+    }
+
+    @Override
+    public void preBypassUserQuota(ObserverContext<MasterCoprocessorEnvironment> ctx,
+        String userName, TableName tableName) throws IOException {
+      // TODO Auto-generated method stub
+      
     }
 
   }

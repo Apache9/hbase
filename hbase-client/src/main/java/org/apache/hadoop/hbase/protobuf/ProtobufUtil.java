@@ -30,6 +30,7 @@ import com.google.protobuf.RpcChannel;
 import com.google.protobuf.Service;
 import com.google.protobuf.ServiceException;
 import com.google.protobuf.TextFormat;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
@@ -46,7 +47,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.NavigableSet;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.Condition;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -65,6 +65,7 @@ import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.Tag;
 import org.apache.hadoop.hbase.client.Append;
+import org.apache.hadoop.hbase.client.Condition;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Durability;
 import org.apache.hadoop.hbase.client.Get;
@@ -77,6 +78,7 @@ import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.client.metrics.ScanMetrics;
 import org.apache.hadoop.hbase.exceptions.DeserializationException;
 import org.apache.hadoop.hbase.filter.ByteArrayComparable;
+import org.apache.hadoop.hbase.filter.CompareFilter;
 import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.io.TimeRange;
 import org.apache.hadoop.hbase.ipc.PayloadCarryingRpcController;
@@ -141,6 +143,7 @@ import org.apache.hadoop.hbase.replication.ReplicationLoadSource;
 import org.apache.hadoop.hbase.quotas.QuotaType;
 import org.apache.hadoop.hbase.quotas.QuotaScope;
 import org.apache.hadoop.hbase.quotas.ThrottleType;
+import org.apache.hadoop.hbase.quotas.ThrottleState;
 import org.apache.hadoop.hbase.security.access.Permission;
 import org.apache.hadoop.hbase.security.access.TablePermission;
 import org.apache.hadoop.hbase.security.access.UserPermission;
@@ -850,6 +853,9 @@ public final class ProtobufUtil {
     if (scan.isSmall()) {
       scanBuilder.setSmall(scan.isSmall());
     }
+    if (scan.getAllowPartialResults()) {
+      scanBuilder.setAllowPartialResults(scan.getAllowPartialResults());
+    }
     Boolean loadColumnFamiliesOnDemand = scan.getLoadColumnFamiliesOnDemandValue();
     if (loadColumnFamiliesOnDemand != null) {
       scanBuilder.setLoadColumnFamiliesOnDemand(loadColumnFamiliesOnDemand.booleanValue());
@@ -970,6 +976,9 @@ public final class ProtobufUtil {
     }
     if (proto.hasSmall()) {
       scan.setSmall(proto.getSmall());
+    }
+    if (proto.getAllowPartialResults()) {
+      scan.setAllowPartialResults(proto.getAllowPartialResults());
     }
     for (NameBytesPair attribute: proto.getAttributeList()) {
       scan.setAttribute(attribute.getName(), attribute.getValue().toByteArray());
@@ -1238,6 +1247,68 @@ public final class ProtobufUtil {
   }
 
   /**
+   * Convert a protocol buffer Condition to a client Condition
+   *
+   * @param condition the protocol buffer Condition
+   * @return the client Condition
+   */
+  public static Condition toCondition(ClientProtos.Condition condition) throws IOException {
+    byte[] row = condition.getRow().toByteArray();
+    byte[] family = condition.getFamily().toByteArray();
+    byte[] qualifier = condition.getQualifier().toByteArray();
+    CompareFilter.CompareOp compareOp =
+        CompareFilter.CompareOp.valueOf(condition.getCompareType().name());
+    ByteArrayComparable comparator = toComparator(condition.getComparator());
+    return new Condition(row, family, qualifier, compareOp, comparator);
+  }
+
+  /**
+   * Convert protocol buffer Conditions to client Conditions
+   *
+   * @param conditions the protocol buffer Conditions
+   * @return the client Condition
+   */
+  public static List<Condition> toCondition(Collection<ClientProtos.Condition> conditions)
+      throws IOException {
+    ArrayList<Condition> newConds = new ArrayList<Condition>(conditions.size());
+    for (ClientProtos.Condition c : conditions) {
+      newConds.add(toCondition(c));
+    }
+    return newConds;
+  }
+
+  /**
+   * Convert a client Condition to a protocol buffer Condition
+   * 
+   * @param condition the client Condition
+   * @return the protocol buffer Condition
+   */
+  public static ClientProtos.Condition toCondition(Condition condition) {
+    ClientProtos.Condition.Builder builder = ClientProtos.Condition.newBuilder();
+    builder.setRow(ByteStringer.wrap(condition.getRow()));
+    builder.setFamily(ByteStringer.wrap(condition.getFamily()));
+    builder.setQualifier(ByteStringer.wrap(condition.getQualifier()));
+    builder.setComparator(ProtobufUtil.toComparator(condition.getComparator()));
+    builder.setCompareType(HBaseProtos.CompareType.valueOf(condition.getCompareOp().name()));
+    return builder.build();
+  }
+
+  /**
+   * Convert client Conditions to protocol buffer Conditions
+   *
+   * @param conditions the client Conditions
+   * @return the protocol buffer Conditions
+   */
+  public static List<ClientProtos.Condition> toConditions(Collection<Condition> conditions) {
+    ArrayList<ClientProtos.Condition> newConds =
+        new ArrayList<ClientProtos.Condition>(conditions.size());
+    for (Condition c : conditions) {
+      newConds.add(toCondition(c));
+    }
+    return newConds;
+  }
+
+  /**
    * Convert a client Result to a protocol buffer Result
    *
    * @param result the client Result to convert
@@ -1291,7 +1362,9 @@ public final class ProtobufUtil {
    * Convert a protocol buffer Result to a client Result
    *
    * @param proto the protocol buffer Result to convert
-   * @return the converted client Result
+   * @return the co
+   *
+   * nverted client Result
    */
   public static Result toResult(final ClientProtos.Result proto) {
     if (proto.hasExists()) {
@@ -1307,7 +1380,7 @@ public final class ProtobufUtil {
     for (CellProtos.Cell c : values) {
       cells.add(toCell(c));
     }
-    return Result.create(cells, null);
+    return Result.create(cells, null, proto.getStale(), proto.getPartial());
   }
 
   /**
@@ -2944,6 +3017,40 @@ public final class ProtobufUtil {
       case THROTTLE: return QuotaProtos.QuotaType.THROTTLE;
     }
     throw new RuntimeException("Invalid QuotaType " + type);
+  }
+
+  /**
+   * Convert a protocol buffer ThrottleState to a client ThrottleState
+   * @param proto
+   * @return the converted client ThrottleState
+   */
+  public static ThrottleState toThrottleState(final QuotaProtos.ThrottleState proto) {
+    switch (proto) {
+    case ON:
+      return ThrottleState.ON;
+    case SIMULATION:
+      return ThrottleState.SIMULATION;
+    case OFF:
+      return ThrottleState.OFF;
+    }
+    throw new RuntimeException("Invalid ThrottleState " + proto);
+  }
+
+  /**
+   * Convert a client ThrottleState to a protocol buffer ThrottleState
+   * @param state
+   * @return the converted protocol buffer ThrottleState
+   */
+  public static QuotaProtos.ThrottleState toProtoThrottleState(final ThrottleState state) {
+    switch (state) {
+    case ON:
+      return QuotaProtos.ThrottleState.ON;
+    case SIMULATION:
+      return QuotaProtos.ThrottleState.SIMULATION;
+    case OFF:
+      return QuotaProtos.ThrottleState.OFF;
+    }
+    throw new RuntimeException("Invalid ThrottleState " + state);
   }
 
   /**

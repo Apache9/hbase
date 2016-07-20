@@ -109,14 +109,14 @@ public class TestOperationQuota {
     QuotaLimiter rsLimiter = QuotaLimiterFactory.fromThrottle(buildThrottle(3000, TimeUnit.SECONDS,
       10000, TimeUnit.SECONDS));
     operationQuota = new AllowExceedOperationQuota(userLimiter, rsLimiter);
-    assertEquals(3000 * QuotaUtil.READ_CAPACITY_UNIT, operationQuota.getReadAvailable());
-    assertEquals(10000 * QuotaUtil.WRITE_CAPACITY_UNIT, operationQuota.getWriteAvailable());
+    assertEquals(3000, operationQuota.getReadAvailable());
+    assertEquals(10000, operationQuota.getWriteAvailable());
 
     userLimiter = QuotaLimiterFactory.fromThrottle(buildThrottle(500, TimeUnit.SECONDS,
       1000, TimeUnit.SECONDS));
     operationQuota = new AllowExceedOperationQuota(userLimiter, rsLimiter);
-    assertEquals(3000 * QuotaUtil.READ_CAPACITY_UNIT, operationQuota.getReadAvailable());
-    assertEquals(10000 * QuotaUtil.WRITE_CAPACITY_UNIT, operationQuota.getWriteAvailable());
+    assertEquals(3000, operationQuota.getReadAvailable());
+    assertEquals(10000, operationQuota.getWriteAvailable());
   }
 
   @Test

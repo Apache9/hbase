@@ -75,6 +75,10 @@ public class NamespaceLoad {
   /** the current write requests per second made to all tables in this namespace */
   private long writeRequestsPerSecond;
 
+  private long readCellCountPerSecond;
+
+  private long readRawCellCountPerSecond;
+
   /**
    * the current total read requests by capacity unit per second made to all tables in this
    * namespace
@@ -114,6 +118,8 @@ public class NamespaceLoad {
     this.writeRequestsByCapacityUnitPerSecond = 0;
     this.throttledReadRequestsCount = 0;
     this.throttledWriteRequestsCount = 0;
+    this.readCellCountPerSecond = 0;
+    this.readRawCellCountPerSecond = 0;
   }
 
   public void updateNamespaceLoad(final TableLoad tableLoad) {
@@ -139,6 +145,8 @@ public class NamespaceLoad {
         .getWriteRequestsByCapacityUnitPerSecond();
     this.throttledReadRequestsCount += tableLoad.getThrottledReadRequestsCount();
     this.throttledWriteRequestsCount += tableLoad.getThrottledWriteRequestsCount();
+    this.readCellCountPerSecond += tableLoad.getReadCellCountPerSecond();
+    this.readRawCellCountPerSecond += tableLoad.getReadRawCellCountPerSecond();
   }
 
   public String getName() {
@@ -229,6 +237,14 @@ public class NamespaceLoad {
     return throttledWriteRequestsCount;
   }
 
+  public long getReadCellCountPerSecond() {
+    return readCellCountPerSecond;
+  }
+
+  public long getReadRawCellCountPerSecond() {
+    return readRawCellCountPerSecond;
+  }
+
   @Override
   public String toString() {
     StringBuilder sb = Strings.appendKeyValue(new StringBuilder(), "Namespace name:", name);
@@ -248,6 +264,10 @@ public class NamespaceLoad {
       Integer.valueOf(this.storefileIndexSizeMB));
     sb = Strings.appendKeyValue(sb, "readRequestsCount", Long.valueOf(this.readRequestsCount));
     sb = Strings.appendKeyValue(sb, "writeRequestsCount", Long.valueOf(this.writeRequestsCount));
+    sb = Strings.appendKeyValue(sb, "readCellCountPerSecond",
+        this.getReadCellCountPerSecond());
+    sb = Strings.appendKeyValue(sb, "readRawCellCountPerSecond",
+        this.getReadRawCellCountPerSecond());
     sb = Strings.appendKeyValue(sb, "rootIndexSizeKB", Integer.valueOf(this.rootIndexSizeKB));
     sb = Strings.appendKeyValue(sb, "totalStaticIndexSizeKB",
       Integer.valueOf(this.totalStaticIndexSizeKB));

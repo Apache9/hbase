@@ -250,6 +250,101 @@ extends InputFormat<ImmutableBytesWritable, Result> {
   }
 
   /**
+   * select a split point in the region. The selection of the split point is based on an uniform
+   * distribution assumption for the keys in a region.
+   * Here are some examples:
+   * startKey: aaabcdefg  endKey: aaafff    split point: aaad
+   * startKey: 111000  endKey: 1125790    split point: 111b
+   * startKey: 1110  endKey: 1120    split point: 111_
+   * startKey: binary key { 13, -19, 126, 127 }, endKey: binary key { 13, -19, 127, 0 },
+   * split point: binary key { 13, -19, 127, -64 }
+   * Set this function as "public static", make it easier for test.
+   *
+   * @param start Start key of the region
+   * @param end End key of the region
+   * @param isText It determines to use text key mode or binary key mode
+   * @return The split point in the region.
+   */
+  @InterfaceAudience.Private
+  public static byte[] getSplitKey(byte[] start, byte[] end, boolean isText) {
+    byte upperLimitByte;
+    byte lowerLimitByte;
+    //Use text mode or binary mode.
+    if (isText) {
+      //The range of text char set in ASCII is [32,126], the lower limit is space and the upper
+      // limit is '~'.
+      upperLimitByte = '~';
+      lowerLimitByte = ' ';
+    } else {
+      upperLimitByte = Byte.MAX_VALUE;
+      lowerLimitByte = Byte.MIN_VALUE;
+    }
+    // For special case
+    // Example 1 : startkey=null, endkey="hhhqqqwww", splitKey="h"
+    // Example 2 (text key mode): startKey="ffffaaa", endKey=null, splitkey="f~~~~~~"
+    if (start.length == 0 && end.length == 0){
+      return new byte[]{(byte) ((lowerLimitByte + upperLimitByte) / 2)};
+    }
+    if (start.length == 0 && end.length != 0){
+      return new byte[]{ end[0] };
+    }
+    if (start.length != 0 && end.length == 0){
+      byte[] result =new byte[start.length];
+      result[0]=start[0];
+      for (int k = 1; k < start.length; k++){
+          result[k] = upperLimitByte;
+      }
+      return result;
+    }
+    // A list to store bytes in split key
+    List resultBytesList = new ArrayList();
+    int maxLength = start.length > end.length ? start.length : end.length;
+    for (int i = 0; i < maxLength; i++) {
+      //calculate the midpoint byte between the first difference
+      //for example: "11ae" and "11chw", the midpoint is "11b"
+      //another example: "11ae" and "11bhw", the first different byte is 'a' and 'b',
+      // there is no midpoint between 'a' and 'b', so we need to check the next byte.
+      if (start[i] == end[i]) {
+        resultBytesList.add(start[i]);
+        //For special case like: startKey="aaa", endKey="aaaz", splitKey="aaaM"
+        if (i + 1 == start.length) {
+          resultBytesList.add((byte) ((lowerLimitByte + end[i + 1]) / 2));
+          break;
+        }
+      } else {
+        //if the two bytes differ by 1, like ['a','b'], We need to check the next byte to find
+        // the midpoint.
+        if ((int)end[i] - (int)start[i] == 1) {
+          //get next byte after the first difference
+          byte startNextByte = (i + 1 < start.length) ? start[i + 1] : lowerLimitByte;
+          byte endNextByte = (i + 1 < end.length) ? end[i + 1] : lowerLimitByte;
+          int byteRange = (upperLimitByte - startNextByte) + (endNextByte - lowerLimitByte) + 1;
+          int halfRange = byteRange / 2;
+          if ((int)startNextByte + halfRange > (int)upperLimitByte) {
+            resultBytesList.add(end[i]);
+            resultBytesList.add((byte) (startNextByte + halfRange - upperLimitByte +
+                    lowerLimitByte));
+          } else {
+            resultBytesList.add(start[i]);
+            resultBytesList.add((byte) (startNextByte + halfRange));
+          }
+        } else {
+          //calculate the midpoint key by the fist different byte (normal case),
+          // like "11ae" and "11chw", the midpoint is "11b"
+          resultBytesList.add((byte) ((start[i] + end[i]) / 2));
+        }
+        break;
+      }
+    }
+    //transform the List of bytes to byte[]
+    byte[] result = new byte[resultBytesList.size()];
+    for (int k = 0; k < resultBytesList.size(); k++) {
+      result[k] = (Byte) resultBytesList.get(k);
+    }
+    return result;
+  }
+
+  /**
    *
    *
    * Test if the given region is to be included in the InputSplit while splitting

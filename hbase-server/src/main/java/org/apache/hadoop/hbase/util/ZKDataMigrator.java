@@ -204,7 +204,7 @@ public class ZKDataMigrator extends Configured implements Tool {
         if (data == null || Bytes.equals(data, HConstants.EMPTY_BYTE_ARRAY)) continue;
         if (ProtobufUtil.isPBMagicPrefix(data)) continue;
         ZKUtil.setData(zkw, filePath,
-          ZKUtil.positionToByteArray(Long.parseLong(Bytes.toString(data))));
+          ZKUtil.positionToByteArray(Long.parseLong(Bytes.toString(data).split(",")[0])));
       }
     }
   }

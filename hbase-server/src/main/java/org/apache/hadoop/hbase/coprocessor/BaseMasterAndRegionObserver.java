@@ -386,13 +386,13 @@ public abstract class BaseMasterAndRegionObserver extends BaseRegionObserver
 
   @Override
   public void preGetTableDescriptors(ObserverContext<MasterCoprocessorEnvironment> ctx,
-      List<TableName> tableNamesList, List<HTableDescriptor> descriptors)
+      List<TableName> tableNamesList, List<HTableDescriptor> descriptors, String regex)
       throws IOException {
   }
 
   @Override
   public void postGetTableDescriptors(ObserverContext<MasterCoprocessorEnvironment> ctx,
-      List<HTableDescriptor> descriptors) throws IOException {
+      List<HTableDescriptor> descriptors, String regex) throws IOException {
   }
 
   @Override
@@ -410,6 +410,11 @@ public abstract class BaseMasterAndRegionObserver extends BaseRegionObserver
       final String userName, final TableName tableName, final Quotas quotas) throws IOException {
   }
 
+  @Override
+  public void preBypassUserQuota(final ObserverContext<MasterCoprocessorEnvironment> ctx,
+      final String userName, final TableName tableName) throws IOException {
+  }
+  
   @Override
   public void postSetUserQuota(final ObserverContext<MasterCoprocessorEnvironment> ctx,
       final String userName, final TableName tableName, final Quotas quotas) throws IOException {

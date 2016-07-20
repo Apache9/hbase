@@ -76,7 +76,7 @@ public class TestQuotaThrottle {
     TEST_UTIL.getConfiguration().setInt("hbase.hstore.compactionThreshold", 10);
     TEST_UTIL.getConfiguration().setInt("hbase.regionserver.msginterval", 100);
     TEST_UTIL.getConfiguration().setInt("hbase.client.pause", 250);
-    TEST_UTIL.getConfiguration().setInt(HConstants.HBASE_CLIENT_RETRIES_NUMBER, 6);
+    TEST_UTIL.getConfiguration().setInt(HConstants.HBASE_CLIENT_RETRIES_NUMBER, 1);
     TEST_UTIL.getConfiguration().setBoolean("hbase.master.enabletable.roundrobin", true);
     TEST_UTIL.getConfiguration().setBoolean("hbase.quota.allow.exceed", false);
     TEST_UTIL.startMiniCluster(1);
@@ -471,7 +471,7 @@ public class TestQuotaThrottle {
     admin.setQuota(QuotaSettingsFactory
       .throttleTable(TABLE_NAMES[0], ThrottleType.REQUEST_NUMBER, 6, TimeUnit.MINUTES));
     triggerTableCacheRefresh(false, TABLE_NAMES[0]);
-    // Add 13req/min limit for the user
+    // Add 13req/min limit for default namespace
     admin.setQuota(QuotaSettingsFactory
       .throttleNamespace(NAMESPACE, ThrottleType.REQUEST_NUMBER, 13, TimeUnit.MINUTES));
     triggerNamespaceCacheRefresh(false, TABLE_NAMES[1]);
@@ -493,6 +493,53 @@ public class TestQuotaThrottle {
     // Remove the global bypass
     // should execute at max 6 requests on table[0] and (13 - 6) on table[1]
     admin.setQuota(QuotaSettingsFactory.bypassGlobals(userName, false));
+    admin.setQuota(QuotaSettingsFactory.unthrottleUser(userName, TABLE_NAMES[2]));
+    triggerUserCacheRefresh(true, TABLE_NAMES[2]);
+    assertEquals(6, doPuts(100, tables[0]));
+    assertEquals(7, doGets(100, tables[1]));
+
+    // unset throttle
+    admin.setQuota(QuotaSettingsFactory.unthrottleTable(TABLE_NAMES[0]));
+    admin.setQuota(QuotaSettingsFactory.unthrottleNamespace(NAMESPACE));
+    waitMinuteQuota();
+    triggerTableCacheRefresh(true, TABLE_NAMES[0]);
+    triggerNamespaceCacheRefresh(true, TABLE_NAMES[1]);
+    assertEquals(30, doGets(30, tables[0]));
+    assertEquals(30, doGets(30, tables[1]));
+  }
+
+  @Test(timeout=60000)
+  public void testUserTableGlobalBypassThrottle() throws Exception {
+    final HBaseAdmin admin = TEST_UTIL.getHBaseAdmin();
+    final String userName = User.getCurrent().getShortName();
+    final String NAMESPACE = "default";
+
+    // Add 6req/min limit for tables[0]
+    admin.setQuota(QuotaSettingsFactory
+      .throttleTable(TABLE_NAMES[0], ThrottleType.REQUEST_NUMBER, 6, TimeUnit.MINUTES));
+    triggerTableCacheRefresh(false, TABLE_NAMES[0]);
+    // Add 13req/min limit for default namespace
+    admin.setQuota(QuotaSettingsFactory
+      .throttleNamespace(NAMESPACE, ThrottleType.REQUEST_NUMBER, 13, TimeUnit.MINUTES));
+    triggerNamespaceCacheRefresh(false, TABLE_NAMES[1]);
+
+    // should execute at max 6 requests on table[0] and (13 - 6) on table[1]
+    assertEquals(6, doPuts(100, tables[0]));
+    assertEquals(7, doGets(100, tables[1]));
+    waitMinuteQuota();
+
+    // Set the global bypass for the user and tables[0]
+    admin.setQuota(QuotaSettingsFactory.bypassGlobals(userName, TABLE_NAMES[0], true));
+    admin.setQuota(QuotaSettingsFactory
+      .throttleUser(userName, TABLE_NAMES[2], ThrottleType.REQUEST_NUMBER, 6, TimeUnit.MINUTES));
+    triggerUserCacheRefresh(false, TABLE_NAMES[2]);
+    assertEquals(30, doGets(30, tables[0]));
+    assertEquals(13, doGets(30, tables[1]));
+    waitMinuteQuota();
+
+    // Remove the global bypass
+    // should execute at max 6 requests on table[0] and (13 - 6) on table[1]
+    admin.setQuota(QuotaSettingsFactory.bypassGlobals(userName, TABLE_NAMES[0], false));
     admin.setQuota(QuotaSettingsFactory.unthrottleUser(userName, TABLE_NAMES[2]));
     triggerUserCacheRefresh(true, TABLE_NAMES[2]);
     assertEquals(6, doPuts(100, tables[0]));
@@ -540,7 +587,10 @@ public class TestQuotaThrottle {
         }
         count += tables.length;
       }
-    } catch (ThrottlingException e) {
+    } catch (Exception e) {
+      if (!(e.getCause() instanceof ThrottlingException)) {
+        throw e;
+      }
       LOG.error("get failed after nRetries=" + count, e);
     }
     return count;

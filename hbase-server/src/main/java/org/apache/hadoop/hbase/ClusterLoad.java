@@ -34,10 +34,13 @@ public class ClusterLoad {
   private long requestPerSecond;
   private long readRequestsByCapacityUnitPerSecond;
   private long writeRequestsByCapacityUnitPerSecond;
+  private long readCellCountPerSecond;
+  private long readRawCellCountPerSecond;
 
   public ClusterLoad(int tableNum, int regionServerNum, int regionNum, long readRequestPerSecond,
       long writeRequestPerSecond, long readRequestsByCapacityUnitPerSecond,
-      long writeRequestsByCapacityUnitPerSecond) {
+      long writeRequestsByCapacityUnitPerSecond, long readCellCountPerSecond,
+      long readRawCellCountPerSecond) {
     super();
     this.tableNum = tableNum;
     this.regionServerNum = regionServerNum;
@@ -47,6 +50,8 @@ public class ClusterLoad {
     this.requestPerSecond = writeRequestPerSecond + writeRequestPerSecond;
     this.readRequestsByCapacityUnitPerSecond = readRequestsByCapacityUnitPerSecond;
     this.writeRequestsByCapacityUnitPerSecond = writeRequestsByCapacityUnitPerSecond;
+    this.readCellCountPerSecond = readCellCountPerSecond;
+    this.readRawCellCountPerSecond = readRawCellCountPerSecond;
   }
 
   public int getTableNum() {
@@ -81,6 +86,14 @@ public class ClusterLoad {
     return writeRequestsByCapacityUnitPerSecond;
   }
 
+  public long getReadCellCountPerSecond() {
+    return readCellCountPerSecond;
+  }
+
+  public long getReadRawCellCountPerSecond() {
+    return readRawCellCountPerSecond;
+  }
+
   @Override
   public String toString() {
     StringBuilder sb = Strings.appendKeyValue(new StringBuilder(), "numberOfTable:",
@@ -92,6 +105,10 @@ public class ClusterLoad {
     sb = Strings.appendKeyValue(sb, "writeRequestPerSecond",
       Long.valueOf(this.writeRequestPerSecond));
     sb = Strings.appendKeyValue(sb, "requestPerSecond", Long.valueOf(this.requestPerSecond));
+    sb = Strings.appendKeyValue(sb, "readCellCountPerSecond",
+        this.getReadCellCountPerSecond());
+    sb = Strings.appendKeyValue(sb, "readRawCellCountPerSecond",
+        this.getReadRawCellCountPerSecond());
     sb = Strings.appendKeyValue(sb, "readRequestsByCapacityUnitPerSecond",
       Long.valueOf(this.readRequestsByCapacityUnitPerSecond));
     sb = Strings.appendKeyValue(sb, "writeRequestsByCapacityUnitPerSecond",

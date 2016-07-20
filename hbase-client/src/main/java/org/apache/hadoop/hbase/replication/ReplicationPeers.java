@@ -95,6 +95,14 @@ public interface ReplicationPeers {
       throws ReplicationException;
 
   /**
+   * Set the replication source per node bandwidth of the peer to ZK.
+   * @param peerId a short that identifies the cluster
+   * @param bandwidth per node bandwidth for replication source
+   * @throws ReplicationException
+   */
+  public void setPeerBandwidth(String peerId, long bandwidth) throws ReplicationException;
+
+  /**
    * Returns the ReplicationPeer
    * @param peerId id for the peer
    * @return ReplicationPeer object

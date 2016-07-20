@@ -714,7 +714,16 @@ public class SnapshotManager extends MasterProcedureManager implements Stoppable
       if (cpHost != null) {
         cpHost.preRestoreSnapshot(fsSnapshot, snapshotTableDesc);
       }
-      restoreSnapshot(fsSnapshot, snapshotTableDesc);
+      try {
+        // Table already exist. Check and update the region quota for this table namespace
+        checkAndUpdateNamespaceRegionQuota(manifest, tableName);
+        restoreSnapshot(fsSnapshot, snapshotTableDesc);
+      } catch (IOException e) {
+        this.master.getMasterQuotaManager().removeTableFromNamespaceQuota(tableName);
+        LOG.error("Exception occurred while restoring the snapshot " + fsSnapshot.getName()
+            + " as table " + tableName.getNameAsString(), e);
+        throw e;
+      }
       LOG.info("Restore snapshot=" + fsSnapshot.getName() + " as table=" + tableName);
 
       if (cpHost != null) {
@@ -725,12 +734,36 @@ public class SnapshotManager extends MasterProcedureManager implements Stoppable
       if (cpHost != null) {
         cpHost.preCloneSnapshot(fsSnapshot, htd);
       }
-      cloneSnapshot(fsSnapshot, htd);
+      try {
+        checkAndUpdateNamespaceQuota(manifest, tableName);
+        cloneSnapshot(fsSnapshot, htd);
+      } catch (IOException e) {
+        this.master.getMasterQuotaManager().removeTableFromNamespaceQuota(tableName);
+        LOG.error("Exception occurred while cloning the snapshot " + fsSnapshot.getName()
+            + " as table " + tableName.getNameAsString(), e);
+        throw e;
+      }
       LOG.info("Clone snapshot=" + fsSnapshot.getName() + " as table=" + tableName);
 
       if (cpHost != null) {
         cpHost.postCloneSnapshot(fsSnapshot, htd);
       }
+    }
+  }
+  
+  private void checkAndUpdateNamespaceQuota(SnapshotManifest manifest, TableName tableName)
+      throws IOException {
+    if (this.master.getMasterQuotaManager().isQuotaEnabled()) {
+      this.master.getMasterQuotaManager().checkNamespaceTableAndRegionQuota(tableName,
+        manifest.getRegionManifestsMap().size());
+    }
+  }
+
+  private void checkAndUpdateNamespaceRegionQuota(SnapshotManifest manifest, TableName tableName)
+      throws IOException {
+    if (this.master.getMasterQuotaManager().isQuotaEnabled()) {
+      this.master.getMasterQuotaManager().checkAndUpdateNamespaceRegionQuota(tableName,
+        manifest.getRegionManifestsMap().size());
     }
   }
 

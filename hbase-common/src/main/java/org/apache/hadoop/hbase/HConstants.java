@@ -122,7 +122,13 @@ public final class HConstants {
 
   /** Config for pluggable load balancers */
   public static final String HBASE_MASTER_LOADBALANCER_CLASS = "hbase.master.loadbalancer.class";
-  
+
+  /** Config for balancing the cluster by table */
+  public static final String HBASE_MASTER_LOADBALANCE_BYTABLE = "hbase.master.loadbalance.bytable";
+
+  /** The name of the ensemble table */
+  public static final String ENSEMBLE_TABLE_NAME = "hbase:ensemble";
+
   public static final String HBASE_CLUSTER_COLUMN_COMPRESSION = "hbase.cluster.column.compression";
 
   /** Cluster is standalone or pseudo-distributed */
@@ -315,6 +321,16 @@ public final class HConstants {
 
   /** Default maximum file size */
   public static final long DEFAULT_MAX_FILE_SIZE = 10 * 1024 * 1024 * 1024L;
+
+  /**
+   * Max size of single row for Get's or Scan's without in-row scanning flag set.
+   */
+  public static final String TABLE_MAX_ROWSIZE_KEY = "hbase.table.max.rowsize";
+
+  /**
+   * Default max row size (1 Gb).
+   */
+  public static final long TABLE_MAX_ROWSIZE_DEFAULT = 1024 * 1024 * 1024L;
 
   /**
    * The max number of threads used for opening and closing stores or store
@@ -586,6 +602,27 @@ public final class HConstants {
   public static final long DEFAULT_HBASE_CLIENT_SCANNER_MAX_RESULT_SIZE = 2 * 1024 * 1024;
 
   /**
+   * Parameter name for maximum ratio which occupy the whole heap when calling a
+   * scanner's next method to get a complete row.
+   */
+  public static final String HBASE_CLIENT_SCANNER_MAX_COMPLETEROW_HEAPRATIO_KEY =
+      "hbase.client.scanner.max.completerow.heapratio";
+
+  /**
+   * The maximum ratio which occupy the whole heap when calling a
+   * scanner's next method to get a complete row. It is to previet client OOM.
+   * If cached partial results are larger than the max size, a RowTooLargeException
+   * will be thrown.
+   * When you have a very large row, use Scan.setAllowPartialResults(true)
+   * or Scan.setBatch is a good idea to read partial row each time to reduce
+   * the pressue of memory.
+   *
+   * The default value is 20%.
+   */
+  public static final double DEFAULT_HBASE_CLIENT_SCANNER_MAX_COMPLETEROW_HEAPRATIO = 0.2;
+
+
+  /**
    * Parameter name for client pause value, used mostly as value to wait
    * before running a retry of a failed get, region lookup, etc.
    */
@@ -652,16 +689,6 @@ public final class HConstants {
   public static final int DEFAULT_HBASE_CLIENT_RETRIES_NUMBER = 31;
 
   /**
-   * Parameter name for maximum retries when request was throttled.
-   */
-  public static final String HBASE_CLIENT_THROTTLE_RETRIES_NUMBER = "hbase.client.throttle.retries.number";
-
-  /**
-   * Default value of {@link #HBASE_CLIENT_THROTTLE_RETRIES_NUMBER}.
-   */
-  public static final int DEFAULT_HBASE_CLIENT_THROTTLE_RETRIES_NUMBER = 1;
-
-  /**
    * Parameter name for client region location prefetch toggle.
    */
   public static String HBASE_CLIENT_PREFETCH = "hbase.client.prefetch";
@@ -690,7 +717,7 @@ public final class HConstants {
   /**
    * Default value for {@link #HBASE_CLIENT_SCANNER_CACHING}
    */
-  public static final int DEFAULT_HBASE_CLIENT_SCANNER_CACHING = 100;
+  public static final int DEFAULT_HBASE_CLIENT_SCANNER_CACHING = Integer.MAX_VALUE;;
 
   /**
    * Parameter name for number of versions, kept by meta table.
@@ -779,6 +806,15 @@ public final class HConstants {
    */
   public static final long NO_SEQNUM = -1;
 
+  /**
+   * Config for client to ignore throttling exception
+   */
+  public static final String HBASE_CLIENT_IGNORE_THROTTLING_EXCEPTION = "hbase.client.ignore.throttling";
+
+  /**
+   * Default value of {@link #HBASE_CLIENT_IGNORE_THROTTLING_EXCEPTION}
+   */
+  public static final boolean DEFAULT_HBASE_CLIENT_IGNORE_THROTTLING_EXCEPTION = false;
 
   /*
    * cluster replication constants.

@@ -306,6 +306,7 @@ message GetSchemaAlterStatusResponse {
 
 message GetTableDescriptorsRequest {
   repeated TableName table_names = 1;
+  optional string regex = 2;
 }
 
 message GetTableDescriptorsResponse {
@@ -370,6 +371,14 @@ message SetQuotaRequest {
 }
 
 message SetQuotaResponse {
+}
+
+message SwitchThrottleRequest {
+  required ThrottleState throttle_state = 1;
+}
+
+message SwitchThrottleResponse {
+  optional ThrottleState prev_throttle_state = 1;
 }
 
 service MasterService {
@@ -577,4 +586,7 @@ service MasterService {
 
   /** Apply the new quota settings */
   rpc SetQuota(SetQuotaRequest) returns(SetQuotaResponse);
+  
+  rpc SwitchThrottle(SwitchThrottleRequest)
+    returns(SwitchThrottleResponse); 
 }
