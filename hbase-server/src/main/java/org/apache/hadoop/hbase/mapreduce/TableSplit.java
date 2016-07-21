@@ -124,9 +124,10 @@ implements Writable, Comparable<TableSplit> {
    * @param endRow  The end row of the split.
    * @param location  The location of the region.
    */
-  public TableSplit(TableName tableName, Scan scan, byte [] startRow, byte [] endRow,
+  public TableSplit(TableName tableName, Scan scan, byte[] startRow, byte[] endRow,
       final String location, long length) {
-    this(tableName.toBytes(), tableName, scan, startRow, endRow, location, length);
+    this(tableName == null ? null : tableName.toBytes(), tableName, scan, startRow, endRow,
+        location, length);
   }
 
   /**
@@ -340,7 +341,8 @@ implements Writable, Comparable<TableSplit> {
   public String toString() {
     StringBuilder sb = new StringBuilder();
     sb.append("HBase table split(");
-    sb.append("table name: ").append(tableName);
+    sb.append("full table name: ").append(Bytes.toStringBinary(fullTableName));
+    sb.append(", table name: ").append(tableName);
     sb.append(", scan: ").append(scan);
     sb.append(", start row: ").append(Bytes.toStringBinary(startRow));
     sb.append(", end row: ").append(Bytes.toStringBinary(endRow));
