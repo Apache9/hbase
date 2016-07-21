@@ -55,6 +55,7 @@ public class CopyTable extends Configured implements Tool {
   static String families = null;
   static boolean allCells = false;
   static int scanRateLimit = -1;
+  static boolean keepSaltBytes = false;
   
   public CopyTable(Configuration conf) {
     super(conf);
@@ -96,8 +97,10 @@ public class CopyTable extends Configured implements Tool {
       job.getConfiguration().setInt(TableMapper.SCAN_RATE_LIMIT, scanRateLimit);
     }
     
-    // keep salt prefix if the source table is salted table
-    scan.setAttribute(SaltedHTable.KEEP_SALT_IN_SCAN, Bytes.toBytes(true));
+    if (keepSaltBytes) {
+      // keep salt prefix if the source table is salted table
+      scan.setAttribute(SaltedHTable.KEEP_SALT_IN_SCAN, Bytes.toBytes(true));
+    }
     
     if(families != null) {
       String[] fams = families.split(",");
@@ -154,6 +157,7 @@ public class CopyTable extends Configured implements Tool {
     System.err.println("              To copy from cf1 to cf2, give sourceCfName:destCfName. ");
     System.err.println("              To keep the same name, just give \"cfName\"");
     System.err.println(" all.cells    also copy delete markers and deleted cells");
+    System.err.println(" keep.salt    also keep salted bytes in scan results");
     System.err.println(" scanrate     the scan rate limit: rows per second for each region.");
     System.err.println();
     System.err.println("Args:");
@@ -242,7 +246,12 @@ public class CopyTable extends Configured implements Tool {
           allCells = true;
           continue;
         }
-        
+
+        if (cmd.startsWith("--keep.salt")) {
+          keepSaltBytes = true;
+          continue;
+        }
+
         if (i == args.length-1) {
           tableName = cmd;
         } else {
