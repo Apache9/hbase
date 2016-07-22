@@ -17,31 +17,31 @@
  */
 package org.apache.hadoop.hbase.client;
 
+import com.google.common.annotations.VisibleForTesting;
+
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 
-import com.google.common.annotations.VisibleForTesting;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.hbase.CellComparator;
-import org.apache.hadoop.hbase.CellUtil;
-import org.apache.hadoop.hbase.KeyValue.MetaComparator;
-import org.apache.hadoop.hbase.classification.InterfaceAudience;
-import org.apache.hadoop.hbase.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Cell;
+import org.apache.hadoop.hbase.CellComparator;
+import org.apache.hadoop.hbase.CellUtil;
 import org.apache.hadoop.hbase.DoNotRetryIOException;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HRegionInfo;
+import org.apache.hadoop.hbase.KeyValue.MetaComparator;
 import org.apache.hadoop.hbase.NotServingRegionException;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.UnknownScannerException;
+import org.apache.hadoop.hbase.classification.InterfaceAudience;
+import org.apache.hadoop.hbase.classification.InterfaceStability;
 import org.apache.hadoop.hbase.exceptions.OutOfOrderScannerNextException;
 import org.apache.hadoop.hbase.ipc.RpcControllerFactory;
 import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
@@ -393,32 +393,17 @@ public class ClientScanner extends AbstractClientScanner {
 
         // DNRIOEs are thrown to make us break out of retries.  Some types of DNRIOEs want us
         // to reset the scanner and come back in again.
-        if (e instanceof UnknownScannerException) {
-          long timeout = lastNext + scannerTimeout;
-          // If we are over the timeout, throw this exception to the client wrapped in
-          // a ScannerTimeoutException. Else, it's because the region moved and we used the old
-          // id against the new region server; reset the scanner.
-          if (timeout < System.currentTimeMillis()) {
-            long elapsed = System.currentTimeMillis() - lastNext;
-            ScannerTimeoutException ex =
-                new ScannerTimeoutException(elapsed + "ms passed since the last invocation, " +
-                    "timeout is currently set to " + scannerTimeout);
-            ex.initCause(e);
-            throw ex;
-          }
+        // If exception is any but the list below throw it back to the client; else setup
+        // the scanner and retry.
+        Throwable cause = e.getCause();
+        if ((cause != null && cause instanceof NotServingRegionException) ||
+            (cause != null && cause instanceof RegionServerStoppedException) ||
+            e instanceof OutOfOrderScannerNextException ||
+            e instanceof UnknownScannerException) {
+          // Pass. It is easier writing the if loop test as list of what is allowed rather than
+          // as a list of what is not allowed... so if in here, it means we do not throw.
         } else {
-          // If exception is any but the list below throw it back to the client; else setup
-          // the scanner and retry.
-          Throwable cause = e.getCause();
-          if ((cause != null && cause instanceof NotServingRegionException) ||
-              (cause != null && cause instanceof RegionServerStoppedException) ||
-              e instanceof OutOfOrderScannerNextException) {
-            // Pass
-            // It is easier writing the if loop test as list of what is allowed rather than
-            // as a list of what is not allowed... so if in here, it means we do not throw.
-          } else {
-            throw e;
-          }
+          throw e;
         }
         // Else, its signal from depths of ScannerCallable that we need to reset the scanner.
         if (this.lastResult != null) {

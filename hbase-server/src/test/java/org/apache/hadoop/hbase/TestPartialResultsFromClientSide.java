@@ -97,6 +97,7 @@ public class TestPartialResultsFromClientSide {
   private static byte[] VALUE = Bytes.createMaxByteArray(VALUE_SIZE);
 
   private static int NUM_COLS = NUM_FAMILIES * NUM_QUALIFIERS;
+  private static long timeout = 5000;
 
   // Approximation of how large the heap size of cells in our table. Should be accessed through
   // getCellHeapSize().
@@ -104,6 +105,7 @@ public class TestPartialResultsFromClientSide {
   private final static int MINICLUSTER_SIZE = 5;
 
   @BeforeClass public static void setUpBeforeClass() throws Exception {
+    TEST_UTIL.getConfiguration().setLong(HConstants.HBASE_CLIENT_SCANNER_TIMEOUT_PERIOD, timeout);
     TEST_UTIL.startMiniCluster(MINICLUSTER_SIZE);
     TEST_UTIL.getHBaseAdmin().setBalancerRunning(false, true);
     TABLE = createTestTable(TABLE_NAME, ROWS, FAMILIES, QUALIFIERS, VALUE);
@@ -1144,5 +1146,22 @@ public class TestPartialResultsFromClientSide {
     assertTrue(scanner.next() == null);
   }
 
+  @Test
+  public void testDontThrowUnknowScannerExceptionToClient() throws Exception {
+    HTable table =
+        createTestTable(TableName.valueOf("testDontThrowUnknowScannerException"), ROWS, FAMILIES,
+            QUALIFIERS, VALUE);
+    Scan scan = new Scan();
+    scan.setCaching(1);
+    ResultScanner scanner = table.getScanner(scan);
+    scanner.next();
+    Thread.sleep(timeout * 3);
+    int count = 1;
+    while (scanner.next() != null) {
+      count++;
+    }
+    assertEquals(NUM_ROWS, count);
+    scanner.close();
+  }
 
 }
