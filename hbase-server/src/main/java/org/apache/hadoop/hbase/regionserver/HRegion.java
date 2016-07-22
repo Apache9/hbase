@@ -301,6 +301,8 @@ public class HRegion implements HeapSize { // , Writable{
       "writeRequestsByCapacityUnitPerSecond", registry);
   final MetricsRate readCellCountPerSecond = new MetricsRate("readCellCountPerSecond", registry);
   final MetricsRate readRawCellCountPerSecond = new MetricsRate("readRawCellCountPerSecond", registry);
+  final MetricsRate scanCountPerSecond = new MetricsRate("scanCountPerSecond", registry);
+  final MetricsRate scanRowsPerSecond = new MetricsRate("scanRowsPerSecond", registry);
 
   // Number of requests blocked by memstore size.
   private final Counter blockedRequestsCount = new Counter();
@@ -578,7 +580,7 @@ public class HRegion implements HeapSize { // , Writable{
       final Configuration confParam, final HRegionInfo regionInfo,
       final HTableDescriptor htd, final RegionServerServices rsServices) {
     this(new HRegionFileSystem(confParam, fs, tableDir, regionInfo),
-      log, confParam, htd, rsServices);
+            log, confParam, htd, rsServices);
   }
 
   /**
@@ -1043,6 +1045,16 @@ public class HRegion implements HeapSize { // , Writable{
       return this.metricsRegion.getSource().getThrottledWrite();
     }
     return 0;
+  }
+
+  long getScanCountPerSecond(){
+    this.scanCountPerSecond.intervalHeartBeat();
+    return (long) this.scanCountPerSecond.getPreviousIntervalValue();
+  }
+
+  long getScanRowsPerSecond(){
+    this.scanRowsPerSecond.intervalHeartBeat();
+    return (long) this.scanRowsPerSecond.getPreviousIntervalValue();
   }
 
   public MetricsRegion getMetrics() {
@@ -6605,6 +6617,14 @@ public class HRegion implements HeapSize { // , Writable{
 
   public void updateReadRawCellMetrics(int num) {
     this.readRawCellCountPerSecond.inc(num);
+  }
+
+  public void updateScanCountPerSecond(int num){
+    this.scanCountPerSecond.inc(num);
+  }
+
+  public void updateScanRowsPerSecond(int num){
+    this.scanRowsPerSecond.inc(num);
   }
 
   /**

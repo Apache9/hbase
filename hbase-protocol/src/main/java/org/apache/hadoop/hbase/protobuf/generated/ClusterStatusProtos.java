@@ -2333,6 +2333,42 @@ public final class ClusterStatusProtos {
      * </pre>
      */
     long getReadRawCellCountPerSecond();
+
+    // optional uint64 scan_count_per_second = 26;
+    /**
+     * <code>optional uint64 scan_count_per_second = 26;</code>
+     *
+     * <pre>
+     * scan count per second made to region 
+     * </pre>
+     */
+    boolean hasScanCountPerSecond();
+    /**
+     * <code>optional uint64 scan_count_per_second = 26;</code>
+     *
+     * <pre>
+     * scan count per second made to region 
+     * </pre>
+     */
+    long getScanCountPerSecond();
+
+    // optional uint64 scan_rows_per_second = 27;
+    /**
+     * <code>optional uint64 scan_rows_per_second = 27;</code>
+     *
+     * <pre>
+     * scan rows per second made to region 
+     * </pre>
+     */
+    boolean hasScanRowsPerSecond();
+    /**
+     * <code>optional uint64 scan_rows_per_second = 27;</code>
+     *
+     * <pre>
+     * scan rows per second made to region 
+     * </pre>
+     */
+    long getScanRowsPerSecond();
   }
   /**
    * Protobuf type {@code RegionLoad}
@@ -2516,6 +2552,16 @@ public final class ClusterStatusProtos {
             case 200: {
               bitField0_ |= 0x01000000;
               readRawCellCountPerSecond_ = input.readUInt64();
+              break;
+            }
+            case 208: {
+              bitField0_ |= 0x02000000;
+              scanCountPerSecond_ = input.readUInt64();
+              break;
+            }
+            case 216: {
+              bitField0_ |= 0x04000000;
+              scanRowsPerSecond_ = input.readUInt64();
               break;
             }
           }
@@ -3176,6 +3222,54 @@ public final class ClusterStatusProtos {
       return readRawCellCountPerSecond_;
     }
 
+    // optional uint64 scan_count_per_second = 26;
+    public static final int SCAN_COUNT_PER_SECOND_FIELD_NUMBER = 26;
+    private long scanCountPerSecond_;
+    /**
+     * <code>optional uint64 scan_count_per_second = 26;</code>
+     *
+     * <pre>
+     * scan count per second made to region 
+     * </pre>
+     */
+    public boolean hasScanCountPerSecond() {
+      return ((bitField0_ & 0x02000000) == 0x02000000);
+    }
+    /**
+     * <code>optional uint64 scan_count_per_second = 26;</code>
+     *
+     * <pre>
+     * scan count per second made to region 
+     * </pre>
+     */
+    public long getScanCountPerSecond() {
+      return scanCountPerSecond_;
+    }
+
+    // optional uint64 scan_rows_per_second = 27;
+    public static final int SCAN_ROWS_PER_SECOND_FIELD_NUMBER = 27;
+    private long scanRowsPerSecond_;
+    /**
+     * <code>optional uint64 scan_rows_per_second = 27;</code>
+     *
+     * <pre>
+     * scan rows per second made to region 
+     * </pre>
+     */
+    public boolean hasScanRowsPerSecond() {
+      return ((bitField0_ & 0x04000000) == 0x04000000);
+    }
+    /**
+     * <code>optional uint64 scan_rows_per_second = 27;</code>
+     *
+     * <pre>
+     * scan rows per second made to region 
+     * </pre>
+     */
+    public long getScanRowsPerSecond() {
+      return scanRowsPerSecond_;
+    }
+
     private void initFields() {
       regionSpecifier_ = org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.RegionSpecifier.getDefaultInstance();
       stores_ = 0;
@@ -3202,6 +3296,8 @@ public final class ClusterStatusProtos {
       getRequestsCount_ = 0L;
       readCellCountPerSecond_ = 0L;
       readRawCellCountPerSecond_ = 0L;
+      scanCountPerSecond_ = 0L;
+      scanRowsPerSecond_ = 0L;
     }
     private byte memoizedIsInitialized = -1;
     public final boolean isInitialized() {
@@ -3297,6 +3393,12 @@ public final class ClusterStatusProtos {
       }
       if (((bitField0_ & 0x01000000) == 0x01000000)) {
         output.writeUInt64(25, readRawCellCountPerSecond_);
+      }
+      if (((bitField0_ & 0x02000000) == 0x02000000)) {
+        output.writeUInt64(26, scanCountPerSecond_);
+      }
+      if (((bitField0_ & 0x04000000) == 0x04000000)) {
+        output.writeUInt64(27, scanRowsPerSecond_);
       }
       getUnknownFields().writeTo(output);
     }
@@ -3406,6 +3508,14 @@ public final class ClusterStatusProtos {
       if (((bitField0_ & 0x01000000) == 0x01000000)) {
         size += com.google.protobuf.CodedOutputStream
           .computeUInt64Size(25, readRawCellCountPerSecond_);
+      }
+      if (((bitField0_ & 0x02000000) == 0x02000000)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeUInt64Size(26, scanCountPerSecond_);
+      }
+      if (((bitField0_ & 0x04000000) == 0x04000000)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeUInt64Size(27, scanRowsPerSecond_);
       }
       size += getUnknownFields().getSerializedSize();
       memoizedSerializedSize = size;
@@ -3554,6 +3664,16 @@ public final class ClusterStatusProtos {
         result = result && (getReadRawCellCountPerSecond()
             == other.getReadRawCellCountPerSecond());
       }
+      result = result && (hasScanCountPerSecond() == other.hasScanCountPerSecond());
+      if (hasScanCountPerSecond()) {
+        result = result && (getScanCountPerSecond()
+            == other.getScanCountPerSecond());
+      }
+      result = result && (hasScanRowsPerSecond() == other.hasScanRowsPerSecond());
+      if (hasScanRowsPerSecond()) {
+        result = result && (getScanRowsPerSecond()
+            == other.getScanRowsPerSecond());
+      }
       result = result &&
           getUnknownFields().equals(other.getUnknownFields());
       return result;
@@ -3667,6 +3787,14 @@ public final class ClusterStatusProtos {
       if (hasReadRawCellCountPerSecond()) {
         hash = (37 * hash) + READ_RAW_CELL_COUNT_PER_SECOND_FIELD_NUMBER;
         hash = (53 * hash) + hashLong(getReadRawCellCountPerSecond());
+      }
+      if (hasScanCountPerSecond()) {
+        hash = (37 * hash) + SCAN_COUNT_PER_SECOND_FIELD_NUMBER;
+        hash = (53 * hash) + hashLong(getScanCountPerSecond());
+      }
+      if (hasScanRowsPerSecond()) {
+        hash = (37 * hash) + SCAN_ROWS_PER_SECOND_FIELD_NUMBER;
+        hash = (53 * hash) + hashLong(getScanRowsPerSecond());
       }
       hash = (29 * hash) + getUnknownFields().hashCode();
       memoizedHashCode = hash;
@@ -3832,6 +3960,10 @@ public final class ClusterStatusProtos {
         bitField0_ = (bitField0_ & ~0x00800000);
         readRawCellCountPerSecond_ = 0L;
         bitField0_ = (bitField0_ & ~0x01000000);
+        scanCountPerSecond_ = 0L;
+        bitField0_ = (bitField0_ & ~0x02000000);
+        scanRowsPerSecond_ = 0L;
+        bitField0_ = (bitField0_ & ~0x04000000);
         return this;
       }
 
@@ -3964,6 +4096,14 @@ public final class ClusterStatusProtos {
           to_bitField0_ |= 0x01000000;
         }
         result.readRawCellCountPerSecond_ = readRawCellCountPerSecond_;
+        if (((from_bitField0_ & 0x02000000) == 0x02000000)) {
+          to_bitField0_ |= 0x02000000;
+        }
+        result.scanCountPerSecond_ = scanCountPerSecond_;
+        if (((from_bitField0_ & 0x04000000) == 0x04000000)) {
+          to_bitField0_ |= 0x04000000;
+        }
+        result.scanRowsPerSecond_ = scanRowsPerSecond_;
         result.bitField0_ = to_bitField0_;
         onBuilt();
         return result;
@@ -4054,6 +4194,12 @@ public final class ClusterStatusProtos {
         }
         if (other.hasReadRawCellCountPerSecond()) {
           setReadRawCellCountPerSecond(other.getReadRawCellCountPerSecond());
+        }
+        if (other.hasScanCountPerSecond()) {
+          setScanCountPerSecond(other.getScanCountPerSecond());
+        }
+        if (other.hasScanRowsPerSecond()) {
+          setScanRowsPerSecond(other.getScanRowsPerSecond());
         }
         this.mergeUnknownFields(other.getUnknownFields());
         return this;
@@ -5431,6 +5577,104 @@ public final class ClusterStatusProtos {
       public Builder clearReadRawCellCountPerSecond() {
         bitField0_ = (bitField0_ & ~0x01000000);
         readRawCellCountPerSecond_ = 0L;
+        onChanged();
+        return this;
+      }
+
+      // optional uint64 scan_count_per_second = 26;
+      private long scanCountPerSecond_ ;
+      /**
+       * <code>optional uint64 scan_count_per_second = 26;</code>
+       *
+       * <pre>
+       * scan count per second made to region 
+       * </pre>
+       */
+      public boolean hasScanCountPerSecond() {
+        return ((bitField0_ & 0x02000000) == 0x02000000);
+      }
+      /**
+       * <code>optional uint64 scan_count_per_second = 26;</code>
+       *
+       * <pre>
+       * scan count per second made to region 
+       * </pre>
+       */
+      public long getScanCountPerSecond() {
+        return scanCountPerSecond_;
+      }
+      /**
+       * <code>optional uint64 scan_count_per_second = 26;</code>
+       *
+       * <pre>
+       * scan count per second made to region 
+       * </pre>
+       */
+      public Builder setScanCountPerSecond(long value) {
+        bitField0_ |= 0x02000000;
+        scanCountPerSecond_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>optional uint64 scan_count_per_second = 26;</code>
+       *
+       * <pre>
+       * scan count per second made to region 
+       * </pre>
+       */
+      public Builder clearScanCountPerSecond() {
+        bitField0_ = (bitField0_ & ~0x02000000);
+        scanCountPerSecond_ = 0L;
+        onChanged();
+        return this;
+      }
+
+      // optional uint64 scan_rows_per_second = 27;
+      private long scanRowsPerSecond_ ;
+      /**
+       * <code>optional uint64 scan_rows_per_second = 27;</code>
+       *
+       * <pre>
+       * scan rows per second made to region 
+       * </pre>
+       */
+      public boolean hasScanRowsPerSecond() {
+        return ((bitField0_ & 0x04000000) == 0x04000000);
+      }
+      /**
+       * <code>optional uint64 scan_rows_per_second = 27;</code>
+       *
+       * <pre>
+       * scan rows per second made to region 
+       * </pre>
+       */
+      public long getScanRowsPerSecond() {
+        return scanRowsPerSecond_;
+      }
+      /**
+       * <code>optional uint64 scan_rows_per_second = 27;</code>
+       *
+       * <pre>
+       * scan rows per second made to region 
+       * </pre>
+       */
+      public Builder setScanRowsPerSecond(long value) {
+        bitField0_ |= 0x04000000;
+        scanRowsPerSecond_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>optional uint64 scan_rows_per_second = 27;</code>
+       *
+       * <pre>
+       * scan rows per second made to region 
+       * </pre>
+       */
+      public Builder clearScanRowsPerSecond() {
+        bitField0_ = (bitField0_ & ~0x04000000);
+        scanRowsPerSecond_ = 0L;
         onChanged();
         return this;
       }
@@ -7293,6 +7537,26 @@ public final class ClusterStatusProtos {
      * </pre>
      */
     long getReadRawCellCountPerSecond();
+
+    // optional uint64 scan_count_per_second = 16;
+    /**
+     * <code>optional uint64 scan_count_per_second = 16;</code>
+     */
+    boolean hasScanCountPerSecond();
+    /**
+     * <code>optional uint64 scan_count_per_second = 16;</code>
+     */
+    long getScanCountPerSecond();
+
+    // optional uint64 scan_rows_per_second = 17;
+    /**
+     * <code>optional uint64 scan_rows_per_second = 17;</code>
+     */
+    boolean hasScanRowsPerSecond();
+    /**
+     * <code>optional uint64 scan_rows_per_second = 17;</code>
+     */
+    long getScanRowsPerSecond();
   }
   /**
    * Protobuf type {@code ServerLoad}
@@ -7435,6 +7699,16 @@ public final class ClusterStatusProtos {
             case 120: {
               bitField0_ |= 0x00000800;
               readRawCellCountPerSecond_ = input.readUInt64();
+              break;
+            }
+            case 128: {
+              bitField0_ |= 0x00001000;
+              scanCountPerSecond_ = input.readUInt64();
+              break;
+            }
+            case 136: {
+              bitField0_ |= 0x00002000;
+              scanRowsPerSecond_ = input.readUInt64();
               break;
             }
           }
@@ -7989,6 +8263,38 @@ public final class ClusterStatusProtos {
       return readRawCellCountPerSecond_;
     }
 
+    // optional uint64 scan_count_per_second = 16;
+    public static final int SCAN_COUNT_PER_SECOND_FIELD_NUMBER = 16;
+    private long scanCountPerSecond_;
+    /**
+     * <code>optional uint64 scan_count_per_second = 16;</code>
+     */
+    public boolean hasScanCountPerSecond() {
+      return ((bitField0_ & 0x00001000) == 0x00001000);
+    }
+    /**
+     * <code>optional uint64 scan_count_per_second = 16;</code>
+     */
+    public long getScanCountPerSecond() {
+      return scanCountPerSecond_;
+    }
+
+    // optional uint64 scan_rows_per_second = 17;
+    public static final int SCAN_ROWS_PER_SECOND_FIELD_NUMBER = 17;
+    private long scanRowsPerSecond_;
+    /**
+     * <code>optional uint64 scan_rows_per_second = 17;</code>
+     */
+    public boolean hasScanRowsPerSecond() {
+      return ((bitField0_ & 0x00002000) == 0x00002000);
+    }
+    /**
+     * <code>optional uint64 scan_rows_per_second = 17;</code>
+     */
+    public long getScanRowsPerSecond() {
+      return scanRowsPerSecond_;
+    }
+
     private void initFields() {
       numberOfRequests_ = 0;
       totalNumberOfRequests_ = 0;
@@ -8005,6 +8311,8 @@ public final class ClusterStatusProtos {
       writeRequestsPerSecond_ = 0L;
       readCellCountPerSecond_ = 0L;
       readRawCellCountPerSecond_ = 0L;
+      scanCountPerSecond_ = 0L;
+      scanRowsPerSecond_ = 0L;
     }
     private byte memoizedIsInitialized = -1;
     public final boolean isInitialized() {
@@ -8087,6 +8395,12 @@ public final class ClusterStatusProtos {
       if (((bitField0_ & 0x00000800) == 0x00000800)) {
         output.writeUInt64(15, readRawCellCountPerSecond_);
       }
+      if (((bitField0_ & 0x00001000) == 0x00001000)) {
+        output.writeUInt64(16, scanCountPerSecond_);
+      }
+      if (((bitField0_ & 0x00002000) == 0x00002000)) {
+        output.writeUInt64(17, scanRowsPerSecond_);
+      }
       getUnknownFields().writeTo(output);
     }
 
@@ -8155,6 +8469,14 @@ public final class ClusterStatusProtos {
       if (((bitField0_ & 0x00000800) == 0x00000800)) {
         size += com.google.protobuf.CodedOutputStream
           .computeUInt64Size(15, readRawCellCountPerSecond_);
+      }
+      if (((bitField0_ & 0x00001000) == 0x00001000)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeUInt64Size(16, scanCountPerSecond_);
+      }
+      if (((bitField0_ & 0x00002000) == 0x00002000)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeUInt64Size(17, scanRowsPerSecond_);
       }
       size += getUnknownFields().getSerializedSize();
       memoizedSerializedSize = size;
@@ -8245,6 +8567,16 @@ public final class ClusterStatusProtos {
         result = result && (getReadRawCellCountPerSecond()
             == other.getReadRawCellCountPerSecond());
       }
+      result = result && (hasScanCountPerSecond() == other.hasScanCountPerSecond());
+      if (hasScanCountPerSecond()) {
+        result = result && (getScanCountPerSecond()
+            == other.getScanCountPerSecond());
+      }
+      result = result && (hasScanRowsPerSecond() == other.hasScanRowsPerSecond());
+      if (hasScanRowsPerSecond()) {
+        result = result && (getScanRowsPerSecond()
+            == other.getScanRowsPerSecond());
+      }
       result = result &&
           getUnknownFields().equals(other.getUnknownFields());
       return result;
@@ -8317,6 +8649,14 @@ public final class ClusterStatusProtos {
       if (hasReadRawCellCountPerSecond()) {
         hash = (37 * hash) + READ_RAW_CELL_COUNT_PER_SECOND_FIELD_NUMBER;
         hash = (53 * hash) + hashLong(getReadRawCellCountPerSecond());
+      }
+      if (hasScanCountPerSecond()) {
+        hash = (37 * hash) + SCAN_COUNT_PER_SECOND_FIELD_NUMBER;
+        hash = (53 * hash) + hashLong(getScanCountPerSecond());
+      }
+      if (hasScanRowsPerSecond()) {
+        hash = (37 * hash) + SCAN_ROWS_PER_SECOND_FIELD_NUMBER;
+        hash = (53 * hash) + hashLong(getScanRowsPerSecond());
       }
       hash = (29 * hash) + getUnknownFields().hashCode();
       memoizedHashCode = hash;
@@ -8477,6 +8817,10 @@ public final class ClusterStatusProtos {
         bitField0_ = (bitField0_ & ~0x00002000);
         readRawCellCountPerSecond_ = 0L;
         bitField0_ = (bitField0_ & ~0x00004000);
+        scanCountPerSecond_ = 0L;
+        bitField0_ = (bitField0_ & ~0x00008000);
+        scanRowsPerSecond_ = 0L;
+        bitField0_ = (bitField0_ & ~0x00010000);
         return this;
       }
 
@@ -8584,6 +8928,14 @@ public final class ClusterStatusProtos {
           to_bitField0_ |= 0x00000800;
         }
         result.readRawCellCountPerSecond_ = readRawCellCountPerSecond_;
+        if (((from_bitField0_ & 0x00008000) == 0x00008000)) {
+          to_bitField0_ |= 0x00001000;
+        }
+        result.scanCountPerSecond_ = scanCountPerSecond_;
+        if (((from_bitField0_ & 0x00010000) == 0x00010000)) {
+          to_bitField0_ |= 0x00002000;
+        }
+        result.scanRowsPerSecond_ = scanRowsPerSecond_;
         result.bitField0_ = to_bitField0_;
         onBuilt();
         return result;
@@ -8713,6 +9065,12 @@ public final class ClusterStatusProtos {
         }
         if (other.hasReadRawCellCountPerSecond()) {
           setReadRawCellCountPerSecond(other.getReadRawCellCountPerSecond());
+        }
+        if (other.hasScanCountPerSecond()) {
+          setScanCountPerSecond(other.getScanCountPerSecond());
+        }
+        if (other.hasScanRowsPerSecond()) {
+          setScanRowsPerSecond(other.getScanRowsPerSecond());
         }
         this.mergeUnknownFields(other.getUnknownFields());
         return this;
@@ -10498,6 +10856,72 @@ public final class ClusterStatusProtos {
       public Builder clearReadRawCellCountPerSecond() {
         bitField0_ = (bitField0_ & ~0x00004000);
         readRawCellCountPerSecond_ = 0L;
+        onChanged();
+        return this;
+      }
+
+      // optional uint64 scan_count_per_second = 16;
+      private long scanCountPerSecond_ ;
+      /**
+       * <code>optional uint64 scan_count_per_second = 16;</code>
+       */
+      public boolean hasScanCountPerSecond() {
+        return ((bitField0_ & 0x00008000) == 0x00008000);
+      }
+      /**
+       * <code>optional uint64 scan_count_per_second = 16;</code>
+       */
+      public long getScanCountPerSecond() {
+        return scanCountPerSecond_;
+      }
+      /**
+       * <code>optional uint64 scan_count_per_second = 16;</code>
+       */
+      public Builder setScanCountPerSecond(long value) {
+        bitField0_ |= 0x00008000;
+        scanCountPerSecond_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>optional uint64 scan_count_per_second = 16;</code>
+       */
+      public Builder clearScanCountPerSecond() {
+        bitField0_ = (bitField0_ & ~0x00008000);
+        scanCountPerSecond_ = 0L;
+        onChanged();
+        return this;
+      }
+
+      // optional uint64 scan_rows_per_second = 17;
+      private long scanRowsPerSecond_ ;
+      /**
+       * <code>optional uint64 scan_rows_per_second = 17;</code>
+       */
+      public boolean hasScanRowsPerSecond() {
+        return ((bitField0_ & 0x00010000) == 0x00010000);
+      }
+      /**
+       * <code>optional uint64 scan_rows_per_second = 17;</code>
+       */
+      public long getScanRowsPerSecond() {
+        return scanRowsPerSecond_;
+      }
+      /**
+       * <code>optional uint64 scan_rows_per_second = 17;</code>
+       */
+      public Builder setScanRowsPerSecond(long value) {
+        bitField0_ |= 0x00010000;
+        scanRowsPerSecond_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>optional uint64 scan_rows_per_second = 17;</code>
+       */
+      public Builder clearScanRowsPerSecond() {
+        bitField0_ = (bitField0_ & ~0x00010000);
+        scanRowsPerSecond_ = 0L;
         onChanged();
         return this;
       }
@@ -14325,7 +14749,7 @@ public final class ClusterStatusProtos {
       "PLITTING_NEW\020\r\022\017\n\013MERGING_NEW\020\016\"X\n\022Regio",
       "nInTransition\022\036\n\004spec\030\001 \002(\0132\020.RegionSpec" +
       "ifier\022\"\n\014region_state\030\002 \002(\0132\014.RegionStat" +
-      "e\"\312\006\n\nRegionLoad\022*\n\020region_specifier\030\001 \002" +
+      "e\"\207\007\n\nRegionLoad\022*\n\020region_specifier\030\001 \002" +
       "(\0132\020.RegionSpecifier\022\016\n\006stores\030\002 \001(\r\022\022\n\n" +
       "storefiles\030\003 \001(\r\022\"\n\032store_uncompressed_s" +
       "ize_MB\030\004 \001(\r\022\031\n\021storefile_size_MB\030\005 \001(\r\022" +
@@ -14346,38 +14770,41 @@ public final class ClusterStatusProtos {
       "e_requests_count\030\026 \001(\004\022\032\n\022get_requests_c" +
       "ount\030\027 \001(\004\022\"\n\032read_cell_count_per_second" +
       "\030\030 \001(\004\022&\n\036read_raw_cell_count_per_second" +
-      "\030\031 \001(\004\"T\n\023ReplicationLoadSink\022\032\n\022ageOfLa" +
-      "stAppliedOp\030\001 \002(\004\022!\n\031timeStampsOfLastApp" +
-      "liedOp\030\002 \002(\004\"\225\001\n\025ReplicationLoadSource\022\016" +
-      "\n\006peerID\030\001 \002(\t\022\032\n\022ageOfLastShippedOp\030\002 \002" +
-      "(\004\022\026\n\016sizeOfLogQueue\030\003 \002(\r\022 \n\030timeStampO" +
-      "fLastShippedOp\030\004 \002(\004\022\026\n\016replicationLag\030\005" +
-      " \002(\004\"\367\003\n\nServerLoad\022\032\n\022number_of_request",
-      "s\030\001 \001(\r\022 \n\030total_number_of_requests\030\002 \001(" +
-      "\r\022\024\n\014used_heap_MB\030\003 \001(\r\022\023\n\013max_heap_MB\030\004" +
-      " \001(\r\022!\n\014region_loads\030\005 \003(\0132\013.RegionLoad\022" +
-      "\"\n\014coprocessors\030\006 \003(\0132\014.Coprocessor\022\031\n\021r" +
-      "eport_start_time\030\007 \001(\004\022\027\n\017report_end_tim" +
-      "e\030\010 \001(\004\022\030\n\020info_server_port\030\t \001(\r\022.\n\016rep" +
-      "lLoadSource\030\n \003(\0132\026.ReplicationLoadSourc" +
-      "e\022*\n\014replLoadSink\030\013 \001(\0132\024.ReplicationLoa" +
-      "dSink\022 \n\030read_requests_per_second\030\014 \001(\004\022" +
-      "!\n\031write_requests_per_second\030\r \001(\004\022\"\n\032re",
-      "ad_cell_count_per_second\030\016 \001(\004\022&\n\036read_r" +
-      "aw_cell_count_per_second\030\017 \001(\004\"O\n\016LiveSe" +
-      "rverInfo\022\033\n\006server\030\001 \002(\0132\013.ServerName\022 \n" +
-      "\013server_load\030\002 \002(\0132\013.ServerLoad\"\340\002\n\rClus" +
-      "terStatus\022/\n\rhbase_version\030\001 \001(\0132\030.HBase" +
-      "VersionFileContent\022%\n\014live_servers\030\002 \003(\013" +
-      "2\017.LiveServerInfo\022!\n\014dead_servers\030\003 \003(\0132" +
-      "\013.ServerName\0222\n\025regions_in_transition\030\004 " +
-      "\003(\0132\023.RegionInTransition\022\036\n\ncluster_id\030\005" +
-      " \001(\0132\n.ClusterId\022)\n\023master_coprocessors\030",
-      "\006 \003(\0132\014.Coprocessor\022\033\n\006master\030\007 \001(\0132\013.Se" +
-      "rverName\022#\n\016backup_masters\030\010 \003(\0132\013.Serve" +
-      "rName\022\023\n\013balancer_on\030\t \001(\010BF\n*org.apache" +
-      ".hadoop.hbase.protobuf.generatedB\023Cluste" +
-      "rStatusProtosH\001\240\001\001"
+      "\030\031 \001(\004\022\035\n\025scan_count_per_second\030\032 \001(\004\022\034\n" +
+      "\024scan_rows_per_second\030\033 \001(\004\"T\n\023Replicati" +
+      "onLoadSink\022\032\n\022ageOfLastAppliedOp\030\001 \002(\004\022!" +
+      "\n\031timeStampsOfLastAppliedOp\030\002 \002(\004\"\225\001\n\025Re" +
+      "plicationLoadSource\022\016\n\006peerID\030\001 \002(\t\022\032\n\022a" +
+      "geOfLastShippedOp\030\002 \002(\004\022\026\n\016sizeOfLogQueu" +
+      "e\030\003 \002(\r\022 \n\030timeStampOfLastShippedOp\030\004 \002(",
+      "\004\022\026\n\016replicationLag\030\005 \002(\004\"\264\004\n\nServerLoad" +
+      "\022\032\n\022number_of_requests\030\001 \001(\r\022 \n\030total_nu" +
+      "mber_of_requests\030\002 \001(\r\022\024\n\014used_heap_MB\030\003" +
+      " \001(\r\022\023\n\013max_heap_MB\030\004 \001(\r\022!\n\014region_load" +
+      "s\030\005 \003(\0132\013.RegionLoad\022\"\n\014coprocessors\030\006 \003" +
+      "(\0132\014.Coprocessor\022\031\n\021report_start_time\030\007 " +
+      "\001(\004\022\027\n\017report_end_time\030\010 \001(\004\022\030\n\020info_ser" +
+      "ver_port\030\t \001(\r\022.\n\016replLoadSource\030\n \003(\0132\026" +
+      ".ReplicationLoadSource\022*\n\014replLoadSink\030\013" +
+      " \001(\0132\024.ReplicationLoadSink\022 \n\030read_reque",
+      "sts_per_second\030\014 \001(\004\022!\n\031write_requests_p" +
+      "er_second\030\r \001(\004\022\"\n\032read_cell_count_per_s" +
+      "econd\030\016 \001(\004\022&\n\036read_raw_cell_count_per_s" +
+      "econd\030\017 \001(\004\022\035\n\025scan_count_per_second\030\020 \001" +
+      "(\004\022\034\n\024scan_rows_per_second\030\021 \001(\004\"O\n\016Live" +
+      "ServerInfo\022\033\n\006server\030\001 \002(\0132\013.ServerName\022" +
+      " \n\013server_load\030\002 \002(\0132\013.ServerLoad\"\340\002\n\rCl" +
+      "usterStatus\022/\n\rhbase_version\030\001 \001(\0132\030.HBa" +
+      "seVersionFileContent\022%\n\014live_servers\030\002 \003" +
+      "(\0132\017.LiveServerInfo\022!\n\014dead_servers\030\003 \003(",
+      "\0132\013.ServerName\0222\n\025regions_in_transition\030" +
+      "\004 \003(\0132\023.RegionInTransition\022\036\n\ncluster_id" +
+      "\030\005 \001(\0132\n.ClusterId\022)\n\023master_coprocessor" +
+      "s\030\006 \003(\0132\014.Coprocessor\022\033\n\006master\030\007 \001(\0132\013." +
+      "ServerName\022#\n\016backup_masters\030\010 \003(\0132\013.Ser" +
+      "verName\022\023\n\013balancer_on\030\t \001(\010BF\n*org.apac" +
+      "he.hadoop.hbase.protobuf.generatedB\023Clus" +
+      "terStatusProtosH\001\240\001\001"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
       new com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner() {
@@ -14401,7 +14828,7 @@ public final class ClusterStatusProtos {
           internal_static_RegionLoad_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_RegionLoad_descriptor,
-              new java.lang.String[] { "RegionSpecifier", "Stores", "Storefiles", "StoreUncompressedSizeMB", "StorefileSizeMB", "MemstoreSizeMB", "StorefileIndexSizeMB", "ReadRequestsCount", "WriteRequestsCount", "TotalCompactingKVs", "CurrentCompactedKVs", "RootIndexSizeKB", "TotalStaticIndexSizeKB", "TotalStaticBloomSizeKB", "CompleteSequenceId", "DataLocality", "ReadRequestsPerSecond", "WriteRequestsPerSecond", "ReadRequestsByCapacityUnitPerSecond", "WriteRequestsByCapacityUnitPerSecond", "ThrottledReadRequestsCount", "ThrottledWriteRequestsCount", "GetRequestsCount", "ReadCellCountPerSecond", "ReadRawCellCountPerSecond", });
+              new java.lang.String[] { "RegionSpecifier", "Stores", "Storefiles", "StoreUncompressedSizeMB", "StorefileSizeMB", "MemstoreSizeMB", "StorefileIndexSizeMB", "ReadRequestsCount", "WriteRequestsCount", "TotalCompactingKVs", "CurrentCompactedKVs", "RootIndexSizeKB", "TotalStaticIndexSizeKB", "TotalStaticBloomSizeKB", "CompleteSequenceId", "DataLocality", "ReadRequestsPerSecond", "WriteRequestsPerSecond", "ReadRequestsByCapacityUnitPerSecond", "WriteRequestsByCapacityUnitPerSecond", "ThrottledReadRequestsCount", "ThrottledWriteRequestsCount", "GetRequestsCount", "ReadCellCountPerSecond", "ReadRawCellCountPerSecond", "ScanCountPerSecond", "ScanRowsPerSecond", });
           internal_static_ReplicationLoadSink_descriptor =
             getDescriptor().getMessageTypes().get(3);
           internal_static_ReplicationLoadSink_fieldAccessorTable = new
@@ -14419,7 +14846,7 @@ public final class ClusterStatusProtos {
           internal_static_ServerLoad_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_ServerLoad_descriptor,
-              new java.lang.String[] { "NumberOfRequests", "TotalNumberOfRequests", "UsedHeapMB", "MaxHeapMB", "RegionLoads", "Coprocessors", "ReportStartTime", "ReportEndTime", "InfoServerPort", "ReplLoadSource", "ReplLoadSink", "ReadRequestsPerSecond", "WriteRequestsPerSecond", "ReadCellCountPerSecond", "ReadRawCellCountPerSecond", });
+              new java.lang.String[] { "NumberOfRequests", "TotalNumberOfRequests", "UsedHeapMB", "MaxHeapMB", "RegionLoads", "Coprocessors", "ReportStartTime", "ReportEndTime", "InfoServerPort", "ReplLoadSource", "ReplLoadSink", "ReadRequestsPerSecond", "WriteRequestsPerSecond", "ReadCellCountPerSecond", "ReadRawCellCountPerSecond", "ScanCountPerSecond", "ScanRowsPerSecond", });
           internal_static_LiveServerInfo_descriptor =
             getDescriptor().getMessageTypes().get(6);
           internal_static_LiveServerInfo_fieldAccessorTable = new

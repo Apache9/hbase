@@ -140,6 +140,12 @@ message RegionLoad {
 
   /** raw cell read per second made to region */
   optional uint64 read_raw_cell_count_per_second = 25;
+
+  /* scan count per second made to region */
+  optional uint64 scan_count_per_second = 26;
+
+  /* scan rows per second made to region */
+  optional uint64 scan_rows_per_second = 27;
 }
 
 /* Server-level protobufs */
@@ -220,6 +226,9 @@ message ServerLoad {
 
   /** raw cell read per second made to region */
   optional uint64 read_raw_cell_count_per_second = 15;
+
+  optional uint64 scan_count_per_second = 16;
+  optional uint64 scan_rows_per_second = 17;
 }
 
 message LiveServerInfo {

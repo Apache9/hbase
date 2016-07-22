@@ -68,7 +68,6 @@ public class ThriftClient {
     this.conf = conf;
     this.peerId = peerId;
     this.isSecure = ThriftUtilities.useSecure(conf);
-    loadTableNameMap(conf.get(HBASE_REPLICATION_THRIFT_TABLE_NAME_MAP));
   }
 
   protected static void loadTableNameMap(String mappingString) throws IOException {

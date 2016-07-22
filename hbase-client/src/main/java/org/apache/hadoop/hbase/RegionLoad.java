@@ -124,6 +124,14 @@ public class RegionLoad {
     return regionLoadPB.getReadRawCellCountPerSecond();
   }
 
+  public long getScanCountPerSecond(){
+    return regionLoadPB.getScanCountPerSecond();
+  }
+
+  public long getScanRowsPerSecond(){
+    return regionLoadPB.getScanRowsPerSecond();
+  }
+
   /**
    * @return write requests per second made to region
    */
@@ -267,6 +275,8 @@ public class RegionLoad {
         this.getReadCellCountPerSecond());
     sb = Strings.appendKeyValue(sb, "readRawCellCountPerSecond",
         this.getReadRawCellCountPerSecond());
+    sb = Strings.appendKeyValue(sb, "scanCountPerSecond", this.getScanCountPerSecond());
+    sb = Strings.appendKeyValue(sb, "scanRowsPerSecond", this.getScanRowsPerSecond());
     sb = Strings.appendKeyValue(sb, "readRequestsByCapacityUnitPerSecond",
         this.getReadRequestsByCapacityUnitPerSecond());
     sb = Strings.appendKeyValue(sb, "writeRequestsByCapacityUnitPerSecond",

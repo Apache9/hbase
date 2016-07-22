@@ -63,6 +63,8 @@ public class ServerLoad {
   private long throttledWriteRequestsCount = 0;
   private long readCellCountPerSecond = 0;
   private long readRawCellCountPerSecond = 0;
+  private long scanCountPerSecond = 0;
+  private long scanRowsPerSecond = 0;
 
   public ServerLoad(ClusterStatusProtos.ServerLoad serverLoad) {
     this.serverLoad = serverLoad;
@@ -86,6 +88,8 @@ public class ServerLoad {
       throttledWriteRequestsCount += rl.getThrottledWriteRequestsCount();
       readCellCountPerSecond += rl.getReadCellCountPerSecond();
       readRawCellCountPerSecond += rl.getReadRawCellCountPerSecond();
+      scanCountPerSecond += rl.getScanCountPerSecond();
+      scanRowsPerSecond += rl.getScanRowsPerSecond();
     }
 
   }
@@ -213,6 +217,14 @@ public class ServerLoad {
 
   public long getCurrentCompactedKVs() {
     return currentCompactedKVs;
+  }
+
+  public long getScanCountPerSecond(){
+    return this.scanCountPerSecond;
+  }
+
+  public long getScanRowsPerSecond(){
+    return this.scanRowsPerSecond;
   }
 
   /**
@@ -354,6 +366,9 @@ public class ServerLoad {
     sb = Strings.appendKeyValue(sb, "writeRequestsByCapacityUnitPerSecond", Long.valueOf(this.writeRequestsByCapacityUnitPerSecond));
     sb = Strings.appendKeyValue(sb, "throttledReadRequestsCount", Long.valueOf(this.throttledReadRequestsCount));
     sb = Strings.appendKeyValue(sb, "throttledWriteRequestsCount", Long.valueOf(this.throttledWriteRequestsCount));
+    sb = Strings.appendKeyValue(sb, "scanCountPerSecond", Long.valueOf(this.scanCountPerSecond));
+    sb = Strings.appendKeyValue(sb, "scanRowsPerSecond", Long.valueOf(this.scanRowsPerSecond));
+
     sb = Strings.appendKeyValue(sb, "rootIndexSizeKB", Integer.valueOf(this.rootIndexSizeKB));
     sb =
         Strings.appendKeyValue(sb, "totalStaticIndexSizeKB",
