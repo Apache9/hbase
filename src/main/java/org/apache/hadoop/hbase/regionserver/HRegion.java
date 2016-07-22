@@ -6591,11 +6591,11 @@ public class HRegion implements HeapSize { // , Writable{
   }
 
   public void updateWriteRequestsByCapacityUnitPerSecond(long writeRequestsByCapacityUnitPerSecond){
-    this.writeRequestsByCapacityUnitPerSecond.inc(writeRequestsByCapacityUnitPerSecond / 1024);
+    this.writeRequestsByCapacityUnitPerSecond.inc(writeRequestsByCapacityUnitPerSecond / 1024 + 1);
   }
 
-  public void updateReadRequestsByCapacityUnitPerSecond(long readRequestsByCapacityUnitPerSecond){
-    this.readRequestsByCapacityUnitPerSecond.inc(readRequestsByCapacityUnitPerSecond / 1024);
+  public void updateReadRequestsByCapacityUnitPerSecond(long readRequestsByCapacityUnitPerSecond) {
+    this.readRequestsByCapacityUnitPerSecond.inc(readRequestsByCapacityUnitPerSecond / 1024 + 1);
   }
 
   public void updateReadRequestsByCapacityUnitPerSecond(List<KeyValue> results){
