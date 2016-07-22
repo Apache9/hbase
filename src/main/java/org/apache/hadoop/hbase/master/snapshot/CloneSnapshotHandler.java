@@ -143,7 +143,7 @@ public class CloneSnapshotHandler extends CreateTableHandler implements Snapshot
   }
 
   @Override
-  protected void completed(final Throwable exception) {
+  public void completed(final Throwable exception) {
     this.stopped = true;
     if (exception != null) {
      status.abort("Snapshot '" + snapshot.getName() + "' clone failed because " +

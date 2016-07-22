@@ -139,7 +139,7 @@ public class CreateTableHandler extends EventHandler {
    * Called after that process() is completed.
    * @param exception null if process() is successful or not null if something has failed.
    */
-  protected void completed(final Throwable exception) {
+  public void completed(final Throwable exception) {
     // Try deleting the enabling node
     // If this does not happen then if the client tries to create the table
     // again with the same Active master
@@ -147,7 +147,7 @@ public class CreateTableHandler extends EventHandler {
     if (exception != null) {
       try {
         this.assignmentManager.getZKTable().removeEnablingTable(
-            this.hTableDescriptor.getNameAsString(), false);
+            this.hTableDescriptor.getNameAsString(), true);
       } catch (KeeperException e) {
         // Keeper exception should not happen here
         LOG.error("Got a keeper exception while removing the ENABLING table znode "

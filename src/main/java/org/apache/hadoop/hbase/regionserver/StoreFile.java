@@ -454,9 +454,7 @@ public class StoreFile extends SchemaConfigured {
   public static long getMaxSequenceIdInList(Collection<StoreFile> sfs) {
     long max = 0;
     for (StoreFile sf : sfs) {
-      if (!sf.isBulkLoadResult()) {
-        max = Math.max(max, sf.getMaxSequenceId());
-      }
+      max = Math.max(max, sf.getMaxSequenceId());
     }
     return max;
   }
@@ -594,6 +592,24 @@ public class StoreFile extends SchemaConfigured {
         }
       }
     }
+
+    if (isBulkLoadResult()) {
+      // generate the sequenceId from the fileName
+      // fileName is of the form <randomName>_SeqId_<id-when-loaded>_
+      String fileName = this.path.getName();
+      int startPos = fileName.indexOf("SeqId_");
+      if (startPos != -1) {
+        this.sequenceid =
+            Long.parseLong(fileName.substring(startPos + 6, fileName.indexOf('_', startPos + 6)));
+        // Handle reference files as done above.
+        if (isReference()) {
+          if (Reference.isTopFileRegion(this.reference.getFileRegion())) {
+            this.sequenceid += 1;
+          }
+        }
+      }
+    }
+
     this.reader.setSequenceID(this.sequenceid);
 
     b = metadataMap.get(HFileWriterV2.MAX_MEMSTORE_TS_KEY);
@@ -1882,14 +1898,26 @@ public class StoreFile extends SchemaConfigured {
      * Comparator that compares based on the flush time of
      * the StoreFiles. All bulk loads are placed before all non-
      * bulk loads, and then all files are sorted by sequence ID.
-     * If there are ties, the path name is used as a tie-breaker.
+     * Comparator that compares based on the Sequence Ids of the
+     * the StoreFiles. Bulk loads that did not request a seq ID
+     * are given a seq id of -1; thus, they are placed before all non-
+     * bulk loads, and bulk loads with sequence Id. Among these files,
+     * the bulkLoadTime is used to determine the ordering.
+     * If there are ties, the path name is used as a tie-breaker. 
      */
-    static final Comparator<StoreFile> FLUSH_TIME =
+    static final Comparator<StoreFile> SEQ_ID =
       Ordering.compound(ImmutableList.of(
-          Ordering.natural().onResultOf(new GetBulkTime()),
           Ordering.natural().onResultOf(new GetSeqId()),
+          Ordering.natural().onResultOf(new GetBulkTime()),
           Ordering.natural().onResultOf(new GetPathName())
       ));
+
+    private static class GetSeqId implements Function<StoreFile, Long> {
+      @Override
+      public Long apply(StoreFile sf) {
+        return sf.getMaxSequenceId();
+      }
+    }
 
     private static class GetBulkTime implements Function<StoreFile, Long> {
       @Override
@@ -1898,13 +1926,7 @@ public class StoreFile extends SchemaConfigured {
         return sf.getBulkLoadTimestamp();
       }
     }
-    private static class GetSeqId implements Function<StoreFile, Long> {
-      @Override
-      public Long apply(StoreFile sf) {
-        if (sf.isBulkLoadResult()) return -1L;
-        return sf.getMaxSequenceId();
-      }
-    }
+
     private static class GetPathName implements Function<StoreFile, String> {
       @Override
       public String apply(StoreFile sf) {

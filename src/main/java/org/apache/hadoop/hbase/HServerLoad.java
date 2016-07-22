@@ -43,7 +43,7 @@ import org.apache.hadoop.io.WritableUtils;
 public class HServerLoad extends VersionedWritable
 implements WritableComparable<HServerLoad> {
   private static final byte INT_REQUEST_VERSION = 2;
-  private static final byte VERSION = 4;
+  private static final byte VERSION = 5;
 
   // Empty load instance.
   public static final HServerLoad EMPTY_HSERVERLOAD = new HServerLoad();
@@ -90,11 +90,23 @@ implements WritableComparable<HServerLoad> {
     return INT_REQUEST_VERSION;
   }
 
+  private long writeRequestsByCapacityUnitPerSecond;
+
+  private long readRequestsByCapacityUnitPerSecond;
+
+  private long readCellCountPerSecond;
+
+  private long readRawCellCountPerSecond;
+
+  private long scanCountPerSecond;
+
+  private long scanRowsPerSecond;
+
   /**
    * Encapsulates per-region loading metrics.
    */
   public static class RegionLoad extends VersionedWritable {
-    private static final byte VERSION = 6;
+    private static final byte VERSION = 7;
 
     /** @return the object version number */
     public byte getVersion() {
@@ -152,6 +164,19 @@ implements WritableComparable<HServerLoad> {
 
     /** the current write requests per second made to region */
     private long writeRequestsPerSecond;
+
+    private long writeRequestsByCapacityUnitPerSecond;
+
+    private long readRequestsByCapacityUnitPerSecond;
+
+    private long readCellCountPerSecond;
+
+    private long readRawCellCountPerSecond;
+
+    private long scanCountPerSecond;
+
+    private long scanRowsPerSecond;
+
     /**
      * Constructor, for Writable
      */
@@ -183,7 +208,13 @@ implements WritableComparable<HServerLoad> {
         final long totalCompactingKVs, final long currentCompactedKVs,
         final long lastFlushSeqId, final float locality,
         final long readRequestsPerSecond,
-        final long writeRequestsPerSecond) {
+        final long writeRequestsPerSecond,
+        final long writeRequestsByCapacityUnitPerSecond,
+        final long readRequestsByCapacityUnitPerSecond,
+        final long readCellCountPerSecond,
+        final long readRawCellCountPerSecond,
+        final long scanCountPerSecond,
+        final long scanRowsPerSecond) {
       this.name = name;
       this.stores = stores;
       this.storefiles = storefiles;
@@ -203,6 +234,12 @@ implements WritableComparable<HServerLoad> {
       this.locality = locality;
       this.readRequestsPerSecond = readRequestsPerSecond;
       this.writeRequestsPerSecond = writeRequestsPerSecond;
+      this.writeRequestsByCapacityUnitPerSecond = writeRequestsByCapacityUnitPerSecond;
+      this.readRequestsByCapacityUnitPerSecond = readRequestsByCapacityUnitPerSecond;
+      this.readCellCountPerSecond = readCellCountPerSecond;
+      this.readRawCellCountPerSecond = readRawCellCountPerSecond;
+      this.scanCountPerSecond = scanCountPerSecond;
+      this.scanRowsPerSecond = scanRowsPerSecond;
     }
 
     /**
@@ -347,6 +384,29 @@ implements WritableComparable<HServerLoad> {
       return currentCompactedKVs;
     }
 
+    public long getWriteRequestsByCapacityUnitPerSecond(){
+      return this.writeRequestsByCapacityUnitPerSecond;
+    }
+
+    public long getReadRequestsByCapacityUnitPerSecond(){
+      return this.readRequestsByCapacityUnitPerSecond;
+    }
+
+    public long getReadCellCountPerSecond(){
+      return this.readCellCountPerSecond;
+    }
+
+    public long getReadRawCellCountPerSecond(){
+      return this.readRawCellCountPerSecond;
+    }
+
+    public long getScanCountPerSecond(){
+      return this.scanCountPerSecond;
+    }
+
+    public long getScanRowsPerSecond(){
+      return this.scanRowsPerSecond;
+    }
     // Setters
 
     /**
@@ -412,6 +472,30 @@ implements WritableComparable<HServerLoad> {
      */
     public void setCurrentCompactedKVs(long currentCompactedKVs) {
       this.currentCompactedKVs = currentCompactedKVs;
+    }
+
+    public void setWriteRequestsByCapacityUnitPerSecond(long writeRequestsByCapacityUnitPerSecond){
+      this.writeRequestsByCapacityUnitPerSecond = writeRequestsByCapacityUnitPerSecond;
+    }
+
+    public void setReadRequestsByCapacityUnitPerSecond(long readRequestsByCapacityUnitPerSecond){
+      this.readRequestsByCapacityUnitPerSecond = readRequestsByCapacityUnitPerSecond;
+    }
+
+    public void setReadCellCountPerSecond(long readCellCountPerSecond){
+      this.readCellCountPerSecond = readCellCountPerSecond;
+    }
+
+    public void setReadRawCellCountPerSecond(long readRawCellCountPerSecond){
+      this.readRawCellCountPerSecond = readRawCellCountPerSecond;
+    }
+
+    public void setScanCountPerSecond(long scanCountPerSecond){
+      this.scanCountPerSecond = scanCountPerSecond;
+    }
+
+    public void setScanRowsPerSecond(long scanRowsPerSecond){
+      this.scanRowsPerSecond = scanRowsPerSecond;
     }
 
     /**
@@ -499,6 +583,14 @@ implements WritableComparable<HServerLoad> {
         this.readRequestsPerSecond = WritableUtils.readVLong(in);
         this.writeRequestsPerSecond = WritableUtils.readVLong(in);
       }
+      if(version >= 7){
+        this.writeRequestsByCapacityUnitPerSecond = WritableUtils.readVLong(in);
+        this.readRequestsByCapacityUnitPerSecond = WritableUtils.readVLong(in);
+        this.readCellCountPerSecond = WritableUtils.readVLong(in);
+        this.readRawCellCountPerSecond = WritableUtils.readVLong(in);
+        this.scanCountPerSecond = WritableUtils.readVLong(in);
+        this.scanRowsPerSecond = WritableUtils.readVLong(in);
+      }
     }
 
     public void write(DataOutput out) throws IOException {
@@ -526,6 +618,12 @@ implements WritableComparable<HServerLoad> {
       WritableUtils.writeVLong(out, getRequestsCount);
       WritableUtils.writeVLong(out, readRequestsPerSecond);
       WritableUtils.writeVLong(out, writeRequestsPerSecond);
+      WritableUtils.writeVLong(out, writeRequestsByCapacityUnitPerSecond);
+      WritableUtils.writeVLong(out, readRequestsByCapacityUnitPerSecond);
+      WritableUtils.writeVLong(out, readCellCountPerSecond);
+      WritableUtils.writeVLong(out, readRawCellCountPerSecond);
+      WritableUtils.writeVLong(out, scanCountPerSecond);
+      WritableUtils.writeVLong(out, scanRowsPerSecond);
     }
 
     /**
@@ -577,6 +675,14 @@ implements WritableComparable<HServerLoad> {
         this.readRequestsPerSecond);
       sb = Strings.appendKeyValue(sb, "writeRequestsPerSecond",
         this.writeRequestsPerSecond);
+      sb = Strings.appendKeyValue(sb, "writeRequestsByCapacityUnitPerSecond",
+        Long.valueOf(this.writeRequestsByCapacityUnitPerSecond));
+      sb = Strings.appendKeyValue(sb, "readRequestsByCapacityUnitPerSecond",
+        Long.valueOf(this.readRequestsByCapacityUnitPerSecond));
+      sb = Strings.appendKeyValue(sb, "readCellCountPerSecond", Long.valueOf(this.readCellCountPerSecond));
+      sb = Strings.appendKeyValue(sb, "readRawCellCountPerSecond", Long.valueOf(this.readRawCellCountPerSecond));
+      sb = Strings.appendKeyValue(sb, "scanCountPerSecond", Long.valueOf(this.scanCountPerSecond));
+      sb = Strings.appendKeyValue(sb, "scanRowsPerSecond", Long.valueOf(this.scanRowsPerSecond));
       return sb.toString();
     }
   }
@@ -610,7 +716,10 @@ implements WritableComparable<HServerLoad> {
       final int numberOfRequests, final int usedHeapMB, final int maxHeapMB,
       final Map<byte[], RegionLoad> regionLoad,
       final Set<String> coprocessors, final long readRequestsPerSecond,
-      final long writeRequestsPerSecond, final List<ReplicationLoad> replicationLoads) {
+      final long writeRequestsPerSecond, final List<ReplicationLoad> replicationLoads,
+      final long writeRequestsByCapacityUnitPerSecond, final long readRequestsByCapacityUnitPerSecond,
+      final long readCellCountPerSecond, final long readRawCellCountPerSecond,
+      final long scanCountPerSecond, final long scanRowsPerSecond) {
     this.numberOfRequests = numberOfRequests;
     this.usedHeapMB = usedHeapMB;
     this.maxHeapMB = maxHeapMB;
@@ -620,6 +729,12 @@ implements WritableComparable<HServerLoad> {
     this.readRequestsPerSecond = readRequestsPerSecond;
     this.writeRequestsPerSecond = writeRequestsPerSecond;
     this.replicationLoads = replicationLoads;
+    this.writeRequestsByCapacityUnitPerSecond = writeRequestsByCapacityUnitPerSecond;
+    this.readRequestsByCapacityUnitPerSecond = readRequestsByCapacityUnitPerSecond;
+    this.readCellCountPerSecond = readCellCountPerSecond;
+    this.readRawCellCountPerSecond = readRawCellCountPerSecond;
+    this.scanCountPerSecond = scanCountPerSecond;
+    this.scanRowsPerSecond = scanRowsPerSecond;
   }
 
   /**
@@ -629,7 +744,10 @@ implements WritableComparable<HServerLoad> {
   public HServerLoad(final HServerLoad hsl) {
     this(hsl.totalNumberOfRequests, hsl.numberOfRequests, hsl.usedHeapMB,
         hsl.maxHeapMB, hsl.getRegionsLoad(), hsl.coprocessors,
-        hsl.readRequestsPerSecond, hsl.writeRequestsPerSecond, hsl.replicationLoads);
+        hsl.readRequestsPerSecond, hsl.writeRequestsPerSecond, hsl.replicationLoads,
+        hsl.writeRequestsByCapacityUnitPerSecond, hsl.readRequestsByCapacityUnitPerSecond,
+        hsl.readCellCountPerSecond, hsl.readRawCellCountPerSecond,
+        hsl.scanCountPerSecond, hsl.scanRowsPerSecond);
     for (Map.Entry<byte[], RegionLoad> e : hsl.regionLoad.entrySet()) {
       this.regionLoad.put(e.getKey(), e.getValue());
     }
@@ -679,6 +797,14 @@ implements WritableComparable<HServerLoad> {
     sb = Strings.appendKeyValue(sb, "usedHeapMB",
       Integer.valueOf(this.usedHeapMB));
     sb = Strings.appendKeyValue(sb, "maxHeapMB", Integer.valueOf(maxHeapMB));
+    sb = Strings.appendKeyValue(sb, "writeRequestsByCapacityUnitPerSecond",
+      Long.valueOf(writeRequestsByCapacityUnitPerSecond));
+    sb = Strings.appendKeyValue(sb, "readRequestsByCapacityUnitPerSecond",
+         Long.valueOf(readRequestsByCapacityUnitPerSecond));
+    sb = Strings.appendKeyValue(sb, "readCellCountPerSecond", Long.valueOf(readCellCountPerSecond));
+    sb = Strings.appendKeyValue(sb, "readRawCellCountPerSecond", Long.valueOf(readRawCellCountPerSecond));
+    sb = Strings.appendKeyValue(sb, "scanCountPerSecond", Long.valueOf(scanCountPerSecond));
+    sb = Strings.appendKeyValue(sb, "scanRowsPerSecond", Long.valueOf(scanRowsPerSecond));
     return sb.toString();
   }
 
@@ -801,8 +927,56 @@ implements WritableComparable<HServerLoad> {
     return count;
   }
 
-  // Writable
+  public long getWriteRequestsByCapacityUnitPerSecond() {
+    long count = 0;
+    for (RegionLoad info: regionLoad.values()){
+      count += info.getWriteRequestsByCapacityUnitPerSecond();
+    }
+    return count;
+  }
 
+  public long getReadRequestsByCapacityUnitPerSecond(){
+    long count = 0;
+    for(RegionLoad info: regionLoad.values()){
+      count += info.getReadRequestsByCapacityUnitPerSecond();
+    }
+    return count;
+  }
+
+  public long getReadCellCountPerSecond(){
+    long count = 0;
+    for(RegionLoad info: regionLoad.values()){
+      count += info.getReadCellCountPerSecond();
+    }
+    return count;
+  }
+
+  public long getReadRawCellCountPerSecond(){
+    long count =0;
+    for(RegionLoad info: regionLoad.values()){
+      count += info.getReadRawCellCountPerSecond();
+    }
+    return count;
+  }
+
+  public long getScanCountPerSecond(){
+    long count = 0;
+    for(RegionLoad info: regionLoad.values()){
+      count += info.getScanCountPerSecond();
+    }
+    return count;
+  }
+
+  public long getScanRowsPerSecond(){
+    long count = 0;
+    for(RegionLoad info: regionLoad.values()){
+      count += info.getScanRowsPerSecond();
+    }
+    return count;
+  }
+
+
+  // Writable
   public void readFields(DataInput in) throws IOException {
     super.readFields(in);
     int version = in.readByte();
@@ -825,7 +999,7 @@ implements WritableComparable<HServerLoad> {
     for (int i = 0; i < coprocessorsSize; i++) {
       coprocessors.add(in.readUTF());
     }
-    if (version == VERSION) {
+    if (version >= 4) {
       this.readRequestsPerSecond = in.readLong();
       this.writeRequestsPerSecond = in.readLong();
       int numberofLoads = in.readInt();
@@ -834,6 +1008,14 @@ implements WritableComparable<HServerLoad> {
         load.readFields(in);
         replicationLoads.add(load);
       }
+    }
+    if(version >=5 ){
+      this.writeRequestsByCapacityUnitPerSecond = in.readLong();
+      this.readRequestsByCapacityUnitPerSecond = in.readLong();
+      this.readCellCountPerSecond = in.readLong();
+      this.readRawCellCountPerSecond = in.readLong();
+      this.scanCountPerSecond = in.readLong();
+      this.scanRowsPerSecond = in.readLong();
     }
   }
 
@@ -857,6 +1039,12 @@ implements WritableComparable<HServerLoad> {
     for (ReplicationLoad load: replicationLoads) {
       load.write(out);
     }
+    out.writeLong(writeRequestsByCapacityUnitPerSecond);
+    out.writeLong(readRequestsByCapacityUnitPerSecond);
+    out.writeLong(readCellCountPerSecond);
+    out.writeLong(readRawCellCountPerSecond);
+    out.writeLong(scanCountPerSecond);
+    out.writeLong(scanRowsPerSecond);
   }
 
   // Comparable
