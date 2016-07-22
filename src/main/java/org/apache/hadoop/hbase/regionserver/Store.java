@@ -632,7 +632,7 @@ public class Store extends SchemaConfigured implements HeapSize {
    * ranges of values in the HFile fit within the stores assigned region.
    * (assertBulkLoadHFileOk checks this)
    */
-  void bulkLoadHFile(String srcPathStr) throws IOException {
+  public void bulkLoadHFile(String srcPathStr, long seqNum) throws IOException {
     Path srcPath = new Path(srcPathStr);
 
     // Move the file if it's on another filesystem
@@ -651,7 +651,8 @@ public class Store extends SchemaConfigured implements HeapSize {
       srcPath = tmpPath;
     }
 
-    Path dstPath = StoreFile.getRandomFilename(fs, homedir);
+    Path dstPath =
+        StoreFile.getRandomFilename(fs, homedir, (seqNum == -1) ? null : "_SeqId_" + seqNum + "_");
     LOG.debug("Renaming bulk load file " + srcPath + " to " + dstPath);
     StoreFile.rename(fs, srcPath, dstPath);
 
@@ -1215,7 +1216,7 @@ public class Store extends SchemaConfigured implements HeapSize {
         maxId = StoreFile.getMaxSequenceIdInList(filesToCompact);
         isMajor = (filesToCompact.size() == storefiles.size());
         filesCompacting.addAll(filesToCompact);
-        Collections.sort(filesCompacting, StoreFile.Comparators.FLUSH_TIME);
+        Collections.sort(filesCompacting, StoreFile.Comparators.SEQ_ID);
       }
     } finally {
       this.lock.readLock().unlock();
@@ -1442,7 +1443,7 @@ public class Store extends SchemaConfigured implements HeapSize {
               filesToCompact, filesCompacting);
         }
         filesCompacting.addAll(filesToCompact.getFilesToCompact());
-        Collections.sort(filesCompacting, StoreFile.Comparators.FLUSH_TIME);
+        Collections.sort(filesCompacting, StoreFile.Comparators.SEQ_ID);
 
         // major compaction iff all StoreFiles are included
         boolean isMajor = (filesToCompact.getFilesToCompact().size() == this.storefiles.size());
@@ -1914,7 +1915,7 @@ public class Store extends SchemaConfigured implements HeapSize {
   }
 
   public ImmutableList<StoreFile> sortAndClone(List<StoreFile> storeFiles) {
-    Collections.sort(storeFiles, StoreFile.Comparators.FLUSH_TIME);
+    Collections.sort(storeFiles, StoreFile.Comparators.SEQ_ID);
     ImmutableList<StoreFile> newList = ImmutableList.copyOf(storeFiles);
     return newList;
   }

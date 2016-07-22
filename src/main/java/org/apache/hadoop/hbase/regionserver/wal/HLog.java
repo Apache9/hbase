@@ -1849,7 +1849,7 @@ public class HLog implements Syncable {
   /**
    * Obtain a log sequence number.
    */
-  private long obtainSeqNum() {
+  public long obtainSeqNum() {
     return this.logSeqNum.incrementAndGet();
   }
 

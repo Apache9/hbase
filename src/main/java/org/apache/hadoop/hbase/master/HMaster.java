@@ -873,7 +873,7 @@ Server {
     }
     enableCatalogTables(Bytes.toString(HConstants.META_TABLE_NAME));
     LOG.info(".META. assigned=" + assigned + ", rit=" + rit + ", location="
-        + catalogTracker.getMetaLocation());
+            + catalogTracker.getMetaLocation());
     status.setStatus("META assigned.");
     return true;
   }
@@ -1510,7 +1510,7 @@ Server {
       hTableDescriptor.setValue(Bytes.toBytes(HTableDescriptor.IGNORE_SPLITS_WHEN_CREATING),
         Bytes.toBytes("true"));
       LOG.info("ignore splits for table " + hTableDescriptor.getNameAsString() + ", isSalted="
-          + isSalted);
+              + isSalted);
     }
     
 
@@ -1520,9 +1520,15 @@ Server {
       cpHost.preCreateTable(hTableDescriptor, newRegions);
     }
 
-    this.executorService.submit(new CreateTableHandler(this,
-      this.fileSystemManager, this.serverManager, hTableDescriptor, conf,
-      newRegions, catalogTracker, assignmentManager));
+    CreateTableHandler cth =
+        new CreateTableHandler(this, this.fileSystemManager, this.serverManager, hTableDescriptor,
+            conf, newRegions, catalogTracker, assignmentManager);
+    try {
+      this.executorService.submit(cth);
+    }catch(Exception e){
+      // if we submit CreateTableHandler failed, we should remove created znode with ENABLING state.
+      cth.completed(e);
+    }
 
     if (cpHost != null) {
       cpHost.postCreateTable(hTableDescriptor, newRegions);
