@@ -83,9 +83,9 @@ public abstract class MultiTableInputFormatBase extends
       InputSplit split, TaskAttemptContext context)
       throws IOException, InterruptedException {
     TableSplit tSplit = (TableSplit) split;
-    LOG.info(MessageFormat.format("Input split length: {0} bytes.", tSplit.getLength()));
+    LOG.info("Input split: " + tSplit);
 
-    if (tSplit.getTableName() == null) {
+    if (tSplit.getFullTableName() == null) {
       throw new IOException("Cannot create a record reader because of a"
           + " previous error. Please look at the previous logs lines from"
           + " the task's full log for more details.");
