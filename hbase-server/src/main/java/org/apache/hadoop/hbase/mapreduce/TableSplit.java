@@ -305,6 +305,7 @@ implements Writable, Comparable<TableSplit> {
     byte[] tableNameBytes = new byte[len];
     in.readFully(tableNameBytes);
     tableName = TableName.valueOf(tableNameBytes);
+    fullTableName = Bytes.readByteArray(in);
     startRow = Bytes.readByteArray(in);
     endRow = Bytes.readByteArray(in);
     regionLocation = Bytes.toString(Bytes.readByteArray(in));
@@ -324,6 +325,7 @@ implements Writable, Comparable<TableSplit> {
   public void write(DataOutput out) throws IOException {
     WritableUtils.writeVInt(out, VERSION.code);
     Bytes.writeByteArray(out, tableName.getName());
+    Bytes.writeByteArray(out, fullTableName);
     Bytes.writeByteArray(out, startRow);
     Bytes.writeByteArray(out, endRow);
     Bytes.writeByteArray(out, Bytes.toBytes(regionLocation));
