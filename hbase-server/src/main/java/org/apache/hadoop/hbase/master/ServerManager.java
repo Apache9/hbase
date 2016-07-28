@@ -31,6 +31,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentNavigableMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
@@ -114,8 +115,8 @@ public class ServerManager {
     new ConcurrentSkipListMap<byte[], Long>(Bytes.BYTES_COMPARATOR);
 
   /** Map of registered servers to their current load */
-  private final ConcurrentHashMap<ServerName, ServerLoad> onlineServers =
-    new ConcurrentHashMap<ServerName, ServerLoad>();
+  private final ConcurrentNavigableMap<ServerName, ServerLoad> onlineServers =
+    new ConcurrentSkipListMap<ServerName, ServerLoad>();
 
   /**
    * Map of admin interfaces per registered regionserver; these interfaces we use to control
@@ -395,8 +396,14 @@ public class ServerManager {
    */
   private ServerName findServerWithSameHostnamePortWithLock(
       final ServerName serverName) {
-    for (ServerName sn: this.onlineServers.keySet()) {
-      if (ServerName.isSameHostnameAndPort(serverName, sn)) return sn;
+    ServerName end = ServerName.valueOf(serverName.getHostname(), serverName.getPort(),
+        Long.MAX_VALUE);
+
+    ServerName r = onlineServers.lowerKey(end);
+    if (r != null) {
+      if (ServerName.isSameHostnameAndPort(r, serverName)) {
+        return r;
+      }
     }
     return null;
   }
