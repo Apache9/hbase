@@ -73,8 +73,7 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public class SecureClient extends HBaseClient {
 
-  private static final Log LOG =
-    LogFactory.getLog("org.apache.hadoop.ipc.SecureClient");
+  private static final Log LOG = LogFactory.getLog(SecureClient.class);
   
   private final int slowReloginMs;
 

@@ -53,11 +53,8 @@ import com.xiaomi.infra.hbase.trace.TracerUtils;
  * @see SecureServer
  */
 public class SecureRpcEngine implements RpcEngine {
-  // Leave this out in the hadoop ipc package but keep class name.  Do this
-  // so that we do not get the logging of this class' invocations by doing our
-  // blanket enabling DEBUG on the o.a.h.h. package.
-  protected static final Log LOG =
-    LogFactory.getLog("org.apache.hadoop.ipc.SecureRpcEngine");
+
+  protected static final Log LOG = LogFactory.getLog(SecureRpcEngine.class);
 
   private Configuration conf;
   private SecureClient client;
