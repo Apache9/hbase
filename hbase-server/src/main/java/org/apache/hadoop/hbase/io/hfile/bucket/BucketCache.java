@@ -66,6 +66,7 @@ import org.apache.hadoop.hbase.util.ConcurrentIndex;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.HasThread;
 import org.apache.hadoop.hbase.util.IdLock;
+import org.apache.hadoop.hbase.util.LongUtils;
 import org.apache.hadoop.util.StringUtils;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -1054,6 +1055,7 @@ public class BucketCache implements BlockCache, HeapSize {
    */
   static class BucketEntry implements Serializable, Comparable<BucketEntry> {
     private static final long serialVersionUID = -6741504807982257534L;
+
     private int offsetBase;
     private int length;
     private byte offset1;
@@ -1182,9 +1184,7 @@ public class BucketCache implements BlockCache, HeapSize {
 
     @Override
     public int compareTo(BucketEntryGroup that) {
-      if (this.overflow() == that.overflow())
-        return 0;
-      return this.overflow() > that.overflow() ? 1 : -1;
+      return LongUtils.compare(this.overflow(), that.overflow());
     }
 
     @Override
@@ -1331,13 +1331,13 @@ public class BucketCache implements BlockCache, HeapSize {
           public int compareTo(CachedBlock other) {
             int diff = this.getFilename().compareTo(other.getFilename());
             if (diff != 0) return diff;
-            diff = (int)(this.getOffset() - other.getOffset());
+            diff = LongUtils.compare(this.getOffset(), other.getOffset());
             if (diff != 0) return diff;
             if (other.getCachedTime() < 0 || this.getCachedTime() < 0) {
               throw new IllegalStateException("" + this.getCachedTime() + ", " +
                 other.getCachedTime());
             }
-            return (int)(other.getCachedTime() - this.getCachedTime());
+            return LongUtils.compare(other.getCachedTime(), this.getCachedTime());
           }
 
           @Override
