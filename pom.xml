@@ -1654,9 +1654,9 @@
           <version>${hadoop.version}</version>
         </dependency>
         <dependency>
-          <groupId>org.apache.hadoop</groupId>
+          <groupId>com.xiaomi.infra</groupId>
           <artifactId>hadoop-security</artifactId>
-          <version>${hadoop.version}</version>
+          <version>${hadoop-security.version}</version>
         </dependency>
         <!-- test deps for hadoop-2.0 profile -->
         <dependency>
@@ -1744,7 +1744,26 @@
         </plugins>
       </build>
     </profile>
-
+    <!-- profiles for selecting different hadoop-security -->
+    <profile>
+      <id>java8</id>
+      <activation>
+        <jdk>1.8</jdk>
+      </activation>
+      <properties>
+        <hadoop-security.version>1.0.0-jdk8</hadoop-security.version>
+        <additionalparam>-Xdoclint:none</additionalparam>
+      </properties>
+    </profile>
+    <profile>
+      <id>java7-</id>
+      <activation>
+        <jdk>(,1.8)</jdk>
+      </activation>
+      <properties>
+        <hadoop-security.version>1.0.0</hadoop-security.version>
+      </properties>
+    </profile>
     <!--
       profile for building against Hadoop 1.0.x. Activate using:
        mvn -Dhadoop.profile=1.0
