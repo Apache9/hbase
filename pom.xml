@@ -1012,7 +1012,7 @@
     <thrift.path>thrift</thrift.path>
     <thrift.version>0.9.0</thrift.version>
     <zookeeper-mdh.version>3.4.5-mdh1.2.0</zookeeper-mdh.version>
-    <hadoop-mdh.version>2.4.0-mdh2.2.2</hadoop-mdh.version>
+    <hadoop-mdh.version>2.4.0-mdh2.3.10</hadoop-mdh.version>
     <htrace-mdh.version>3.1.1-mdh1.0-SNAPSHOT</htrace-mdh.version>
     <rrd-on-hbase.version>1.0.0-SNAPSHOT</rrd-on-hbase.version>
     <galaxy-sds-core.version>2.0-SNAPSHOT</galaxy-sds-core.version>
@@ -2020,12 +2020,13 @@
       </activation>
       <properties>
         <hadoop-security.version>1.0.0-jdk8</hadoop-security.version>
+        <additionalparam>-Xdoclint:none</additionalparam>
       </properties>
     </profile>
     <profile>
-      <id>java6</id>
+      <id>java7-</id>
       <activation>
-        <jdk>1.6</jdk>
+        <jdk>(,1.8)</jdk>
       </activation>
       <properties>
         <hadoop-security.version>1.0.0</hadoop-security.version>
