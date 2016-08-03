@@ -121,17 +121,21 @@ public class SequenceFileLogReader implements HLog.Reader {
                 invoke(realIn, new Object []{})).longValue();
               assert(realLength >= this.length);
               adjust = realLength - this.length;
-              LOG.warn("Input stream class: " + realIn.getClass().getName() +
-                  ", adjust length: " + adjust + " actual position: " + super.getPos()
-                  + " adjust postion: " + (adjust + super.getPos()));
+              if (LOG.isDebugEnabled()) {
+                LOG.debug("Input stream class: " + realIn.getClass().getName() + ", adjust length: "
+                    + adjust + " actual position: " + super.getPos() + " adjust postion: "
+                    + (adjust + super.getPos()));
+              }
             } else {
-              LOG.info("Input stream class: " + realIn.getClass().getName() +
-                  ", not adjusting length");
+              if (LOG.isDebugEnabled()) {
+                LOG.debug(
+                  "Input stream class: " + realIn.getClass().getName() + ", not adjusting length");
+              }
             }
           } catch(Exception e) {
-            SequenceFileLogReader.LOG.warn(
-              "Error while trying to get accurate file length.  " +
-              "Truncation / data loss may occur if RegionServers die.", e);
+            LOG.warn("Error while trying to get accurate file length.  "
+                + "Truncation / data loss may occur if RegionServers die.",
+              e);
           }
 
           return adjust + super.getPos();
