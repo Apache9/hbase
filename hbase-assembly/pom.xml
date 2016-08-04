@@ -70,7 +70,7 @@
         <artifactId>maven-dependency-plugin</artifactId>
         <executions>
           <execution>
-	        <!-- generates the file that will be used by the bin/hbase script in the dev env -->
+            <!-- generates the file that will be used by the bin/hbase script in the dev env -->
             <id>create-hbase-generated-classpath</id>
             <phase>test</phase>
             <goals>
@@ -85,7 +85,7 @@
     </plugins>
   </build>
   <dependencies>
-	<!-- Intra-project dependencies -->
+    <!-- Intra-project dependencies -->
     <dependency>
       <groupId>org.apache.hbase</groupId>
       <artifactId>hbase-it</artifactId>
@@ -96,23 +96,23 @@
       <artifactId>hbase-server</artifactId>
     </dependency>
     <dependency>
-        <groupId>org.apache.hbase</groupId>
-        <artifactId>hbase-hadoop-compat</artifactId>
+      <groupId>org.apache.hbase</groupId>
+      <artifactId>hbase-hadoop-compat</artifactId>
     </dependency>
     <dependency>
-        <groupId>org.apache.hbase</groupId>
-        <artifactId>${compat.module}</artifactId>
-        <version>${project.version}</version>
+      <groupId>org.apache.hbase</groupId>
+      <artifactId>${compat.module}</artifactId>
+      <version>${project.version}</version>
     </dependency>
     <dependency>
-       <groupId>org.apache.hbase</groupId>
-       <artifactId>hbase-shell</artifactId>
-       <version>${project.version}</version>
+      <groupId>org.apache.hbase</groupId>
+      <artifactId>hbase-shell</artifactId>
+      <version>${project.version}</version>
     </dependency>
     <dependency>
-       <groupId>org.apache.hbase</groupId>
-       <artifactId>hbase-testing-util</artifactId>
-       <version>${project.version}</version>
+      <groupId>org.apache.hbase</groupId>
+      <artifactId>hbase-testing-util</artifactId>
+      <version>${project.version}</version>
     </dependency>
     <dependency>
       <groupId>com.xiaomi.infra</groupId>
@@ -143,6 +143,10 @@
           <artifactId>hbase-server</artifactId>
         </exclusion>
       </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>com.xiaomi.infra</groupId>
+      <artifactId>hadoop-security</artifactId>
     </dependency>
   </dependencies>
 </project>
