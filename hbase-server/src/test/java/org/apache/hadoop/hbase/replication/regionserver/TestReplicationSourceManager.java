@@ -30,6 +30,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.SortedMap;
 import java.util.SortedSet;
+import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
@@ -67,6 +68,7 @@ import org.apache.hadoop.hbase.replication.ReplicationSourceDummy;
 import org.apache.hadoop.hbase.replication.ReplicationStateZKBase;
 import org.apache.hadoop.hbase.replication.regionserver.ReplicationSourceManager.NodeFailoverWorker;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hbase.util.Pair;
 import org.apache.hadoop.hbase.zookeeper.ZKClusterId;
 import org.apache.hadoop.hbase.zookeeper.ZKUtil;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
@@ -316,7 +318,7 @@ public class TestReplicationSourceManager {
         manager.new NodeFailoverWorker(server.getServerName().getServerName(), rq1, rp1, new UUID(
             new Long(1), new Long(2)));
     w1.start();
-    w1.join(5000);
+    w1.join(10000);
     assertEquals(1, manager.getHlogsByIdRecoveredQueues().size());
     String id = "1-" + server.getServerName().getServerName();
     assertEquals(files, manager.getHlogsByIdRecoveredQueues().get(id));
@@ -349,18 +351,26 @@ public class TestReplicationSourceManager {
     ReplicationQueues rq1 =
         ReplicationFactory.getReplicationQueues(s1.getZooKeeper(), s1.getConfiguration(), s1);
     rq1.init(s1.getServerName().toString());
-    SortedMap<String, SortedSet<String>> testMap =
-        rq1.claimQueues(server.getServerName().getServerName());
+    String serverName = server.getServerName().getServerName();
+    List<String> unclaimed = rq1.getUnClaimedQueueIds(serverName);
+    rq1.claimQueue(serverName, unclaimed.get(0)).getSecond();
+    rq1.removeReplicatorIfQueueIsEmpty(unclaimed.get(0));
+
     ReplicationQueues rq2 =
         ReplicationFactory.getReplicationQueues(s2.getZooKeeper(), s2.getConfiguration(), s2);
     rq2.init(s2.getServerName().toString());
-    testMap = rq2.claimQueues(s1.getServerName().getServerName());
+    serverName = s1.getServerName().getServerName();
+    unclaimed = rq2.getUnClaimedQueueIds(serverName);
+    rq2.claimQueue(serverName, unclaimed.get(0)).getSecond();
+    rq2.removeReplicatorIfQueueIsEmpty(unclaimed.get(0));
     ReplicationQueues rq3 =
         ReplicationFactory.getReplicationQueues(s3.getZooKeeper(), s3.getConfiguration(), s3);
     rq3.init(s3.getServerName().toString());
-    testMap = rq3.claimQueues(s2.getServerName().getServerName());
-
-    ReplicationQueueInfo replicationQueueInfo = new ReplicationQueueInfo(testMap.firstKey());
+    serverName = s2.getServerName().getServerName();
+    unclaimed = rq3.getUnClaimedQueueIds(serverName);
+    String queue3 = rq3.claimQueue(serverName, unclaimed.get(0)).getFirst();
+    rq3.removeReplicatorIfQueueIsEmpty(unclaimed.get(0));
+    ReplicationQueueInfo replicationQueueInfo = new ReplicationQueueInfo(queue3);
     List<String> result = replicationQueueInfo.getDeadRegionServers();
 
     // verify
@@ -396,7 +406,11 @@ public class TestReplicationSourceManager {
         ReplicationFactory.getReplicationQueuesClient(s1.getZooKeeper(), s1.getConfiguration(), s1);
 
     int v0 = client.getQueuesZNodeCversion();
-    rq1.claimQueues(s0.getServerName().getServerName());
+    List<String> queues = rq1.getUnClaimedQueueIds(s0.getServerName().getServerName());
+    for(String queue : queues) {
+      rq1.claimQueue(s0.getServerName().getServerName(), queue);
+    }
+    rq1.removeReplicatorIfQueueIsEmpty(s0.getServerName().getServerName());
     int v1 = client.getQueuesZNodeCversion();
     // cversion should increased by 1 since a child node is deleted
     assertEquals(v0 + 1, v1);
@@ -444,7 +458,12 @@ public class TestReplicationSourceManager {
     @Override
     public void run() {
       try {
-        logZnodesMap = rq.claimQueues(deadRsZnode);
+        logZnodesMap = new TreeMap<String, SortedSet<String>>();
+        List<String> queues = rq.getUnClaimedQueueIds(deadRsZnode);
+        for(String queue:queues){
+          Pair<String, SortedSet<String>> pair = rq.claimQueue(deadRsZnode, queue);
+          logZnodesMap.put(pair.getFirst(), pair.getSecond());
+        }
         server.abort("Done with testing", null);
       } catch (Exception e) {
         LOG.error("Got exception while running NodeFailoverWorker", e);

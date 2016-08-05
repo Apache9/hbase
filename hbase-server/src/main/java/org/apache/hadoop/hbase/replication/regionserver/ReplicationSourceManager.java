@@ -29,7 +29,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
-import java.util.SortedMap;
 import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.UUID;
@@ -58,6 +57,7 @@ import org.apache.hadoop.hbase.replication.ReplicationPeers;
 import org.apache.hadoop.hbase.replication.ReplicationQueueInfo;
 import org.apache.hadoop.hbase.replication.ReplicationQueues;
 import org.apache.hadoop.hbase.replication.ReplicationTracker;
+import org.apache.hadoop.hbase.util.Pair;
 
 /**
  * This class is responsible to manage all the replication
@@ -590,9 +590,28 @@ public class ReplicationSourceManager implements ReplicationListener {
         LOG.info("Not transferring queue since we are shutting down");
         return;
       }
-      SortedMap<String, SortedSet<String>> newQueues = null;
 
-      newQueues = this.rq.claimQueues(rsZnode);
+      Map<String, SortedSet<String>> newQueues = new HashMap<String, SortedSet<String>>();
+      List<String> peers = rq.getUnClaimedQueueIds(rsZnode);
+      while (peers != null && !peers.isEmpty()) {
+        Pair<String, SortedSet<String>> peer = this.rq.claimQueue(rsZnode,
+            peers.get(rand.nextInt(peers.size())));
+        long sleep = sleepBeforeFailover/2;
+        if (peer != null) {
+          newQueues.put(peer.getFirst(), peer.getSecond());
+          sleep = sleepBeforeFailover;
+        }
+        try {
+          Thread.sleep(sleep);
+        } catch (InterruptedException e) {
+          LOG.warn("Interrupted while waiting before transferring a queue.");
+          Thread.currentThread().interrupt();
+        }
+        peers = rq.getUnClaimedQueueIds(rsZnode);
+      }
+      if (peers != null) {
+        rq.removeReplicatorIfQueueIsEmpty(rsZnode);
+      }
 
       // Copying over the failed queue is completed.
       if (newQueues.isEmpty()) {
