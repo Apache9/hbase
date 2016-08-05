@@ -1,5 +1,4 @@
 /**
- *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -17,7 +16,7 @@
  * limitations under the License.
  */
 
-package org.apache.hadoop.hbase.regionserver;
+package org.apache.hadoop.hbase.regionserver.querymatcher;
 
 import java.util.SortedSet;
 import java.util.TreeSet;
@@ -28,17 +27,22 @@ import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.util.Bytes;
 
 /**
- * This class is responsible for the tracking and enforcement of Deletes
- * during the course of a Scan operation.
- *
- * It only has to enforce Delete and DeleteColumn, since the
- * DeleteFamily is handled at a higher level.
- *
+ * This class is responsible for the tracking and enforcement of Deletes during the course of a Scan
+ * operation. It only has to enforce Delete and DeleteColumn, since the DeleteFamily is handled at a
+ * higher level.
  * <p>
  * This class is utilized through three methods:
+<<<<<<< HEAD:hbase-server/src/main/java/org/apache/hadoop/hbase/regionserver/ScanDeleteTracker.java
  * <ul><li>{@link #add} when encountering a Delete or DeleteColumn
  * <li>{@link #isDeleted} when checking if a Put KeyValue has been deleted
  * <li>{@link #update} when reaching the end of a StoreFile or row for scans
+=======
+ * <ul>
+ * <li>{@link #add} when encountering a Delete or DeleteColumn</li>
+ * <li>{@link #isDeleted} when checking if a Put KeyValue has been deleted</li>
+ * <li>{@link #update} when reaching the end of a StoreFile or row for scans</li>
+ * </ul>
+>>>>>>> dc56aa2... HBASE-16225 Refactor ScanQueryMatcher:hbase-server/src/main/java/org/apache/hadoop/hbase/regionserver/querymatcher/ScanDeleteTracker.java
  * <p>
  * This class is NOT thread-safe as queries are never multi-threaded
  */
@@ -48,22 +52,14 @@ public class ScanDeleteTracker implements DeleteTracker {
   protected boolean hasFamilyStamp = false;
   protected long familyStamp = 0L;
   protected SortedSet<Long> familyVersionStamps = new TreeSet<Long>();
-  protected byte [] deleteBuffer = null;
+  protected byte[] deleteBuffer = null;
   protected int deleteOffset = 0;
   protected int deleteLength = 0;
   protected byte deleteType = 0;
   protected long deleteTimestamp = 0L;
 
   /**
-   * Constructor for ScanDeleteTracker
-   */
-  public ScanDeleteTracker() {
-    super();
-  }
-
-  /**
-   * Add the specified KeyValue to the list of deletes to check against for
-   * this row operation.
+   * Add the specified KeyValue to the list of deletes to check against for this row operation.
    * <p>
    * This is called when a Delete is encountered.
    * @param cell - the delete cell
@@ -86,8 +82,8 @@ public class ScanDeleteTracker implements DeleteTracker {
 
       if (deleteBuffer != null && type < deleteType) {
         // same column, so ignore less specific delete
-        if (Bytes.equals(deleteBuffer, deleteOffset, deleteLength,
-            cell.getQualifierArray(), qualifierOffset, qualifierLength)){
+        if (Bytes.equals(deleteBuffer, deleteOffset, deleteLength, cell.getQualifierArray(),
+          qualifierOffset, qualifierLength)) {
           return;
         }
       }
@@ -102,9 +98,7 @@ public class ScanDeleteTracker implements DeleteTracker {
   }
 
   /**
-   * Check if the specified KeyValue buffer has been deleted by a previously
-   * seen delete.
-   *
+   * Check if the specified KeyValue buffer has been deleted by a previously seen delete.
    * @param cell - current cell to check if deleted by a previously seen delete
    * @return deleteResult
    */
@@ -118,12 +112,12 @@ public class ScanDeleteTracker implements DeleteTracker {
     }
 
     if (familyVersionStamps.contains(Long.valueOf(timestamp))) {
-        return DeleteResult.FAMILY_VERSION_DELETED;
+      return DeleteResult.FAMILY_VERSION_DELETED;
     }
 
     if (deleteBuffer != null) {
-      int ret = Bytes.compareTo(deleteBuffer, deleteOffset, deleteLength,
-          cell.getQualifierArray(), qualifierOffset, qualifierLength);
+      int ret = Bytes.compareTo(deleteBuffer, deleteOffset, deleteLength, cell.getQualifierArray(),
+        qualifierOffset, qualifierLength);
 
       if (ret == 0) {
         if (deleteType == KeyValue.Type.DeleteColumn.getCode()) {
@@ -139,13 +133,12 @@ public class ScanDeleteTracker implements DeleteTracker {
 
         // different timestamp, let's clear the buffer.
         deleteBuffer = null;
-      } else if(ret < 0){
+      } else if (ret < 0) {
         // Next column case.
         deleteBuffer = null;
       } else {
         throw new IllegalStateException("isDelete failed: deleteBuffer="
-            + Bytes.toStringBinary(deleteBuffer, deleteOffset, deleteLength)
-            + ", qualifier="
+            + Bytes.toStringBinary(deleteBuffer, deleteOffset, deleteLength) + ", qualifier="
             + Bytes.toStringBinary(cell.getQualifierArray(), qualifierOffset, qualifierLength)
             + ", timestamp=" + timestamp + ", comparison result: " + ret);
       }
@@ -156,8 +149,7 @@ public class ScanDeleteTracker implements DeleteTracker {
 
   @Override
   public boolean isEmpty() {
-    return deleteBuffer == null && !hasFamilyStamp &&
-           familyVersionStamps.isEmpty();
+    return deleteBuffer == null && !hasFamilyStamp && familyVersionStamps.isEmpty();
   }
 
   @Override

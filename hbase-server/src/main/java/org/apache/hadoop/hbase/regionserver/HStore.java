@@ -18,6 +18,12 @@
  */
 package org.apache.hadoop.hbase.regionserver;
 
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Preconditions;
+import com.google.common.collect.ImmutableCollection;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
+
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.net.InetSocketAddress;
@@ -78,10 +84,11 @@ import org.apache.hadoop.hbase.protobuf.generated.WALProtos.CompactionDescriptor
 import org.apache.hadoop.hbase.regionserver.compactions.CompactionContext;
 import org.apache.hadoop.hbase.regionserver.compactions.CompactionProgress;
 import org.apache.hadoop.hbase.regionserver.compactions.CompactionRequest;
+import org.apache.hadoop.hbase.regionserver.compactions.CompactionThroughputController;
 import org.apache.hadoop.hbase.regionserver.compactions.DefaultCompactor;
 import org.apache.hadoop.hbase.regionserver.compactions.OffPeakHours;
+import org.apache.hadoop.hbase.regionserver.querymatcher.ScanQueryMatcher;
 import org.apache.hadoop.hbase.regionserver.wal.HLogUtil;
-import org.apache.hadoop.hbase.regionserver.compactions.CompactionThroughputController;
 import org.apache.hadoop.hbase.security.EncryptionUtil;
 import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -89,12 +96,6 @@ import org.apache.hadoop.hbase.util.ChecksumType;
 import org.apache.hadoop.hbase.util.ClassSize;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.util.StringUtils;
-
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Preconditions;
-import com.google.common.collect.ImmutableCollection;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Lists;
 
 /**
  * A Store holds a column family in a Region.  Its a memstore and a set of zero
@@ -1629,10 +1630,10 @@ public class HStore implements Store {
    * @param oldestTimestamp
    * @return true if the cell is expired
    */
-  static boolean isCellTTLExpired(final Cell cell, final long oldestTimestamp, final long now) {
-    // Do not create an Iterator or Tag objects unless the cell actually has
-    // tags
-    if (cell.getTagsLengthUnsigned() > 0) {
+  public static boolean isCellTTLExpired(final Cell cell, final long oldestTimestamp, final long now) {
+    // Do not create an Iterator or Tag objects unless the cell actually has tags.
+    // TODO: This check for tags is really expensive. We decode an int for key and value. Costs.
+    if (cell.getTagsLength() > 0) {
       // Look for a TTL tag first. Use it instead of the family setting if
       // found. If a cell has multiple TTLs, resolve the conflict by using the
       // first tag encountered.

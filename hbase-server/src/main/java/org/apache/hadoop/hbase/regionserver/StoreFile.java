@@ -48,7 +48,6 @@ import org.apache.hadoop.hbase.KeyValue.KVComparator;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.io.FSDataInputStreamWrapper;
-import org.apache.hadoop.hbase.io.encoding.DataBlockEncoding;
 import org.apache.hadoop.hbase.io.hfile.BlockType;
 import org.apache.hadoop.hbase.io.hfile.CacheConfig;
 import org.apache.hadoop.hbase.io.hfile.HFile;
@@ -1089,22 +1088,6 @@ public class StoreFile {
     }
 
     /**
-     * Get a scanner to scan over this StoreFile. Do not use
-     * this overload if using this scanner for compactions.
-     *
-     * @param cacheBlocks should this scanner cache blocks?
-     * @param pread use pread (for highly concurrent small readers)
-     * @return a scanner
-     */
-    public StoreFileScanner getStoreFileScanner(boolean cacheBlocks,
-                                               boolean pread) {
-      return getStoreFileScanner(cacheBlocks, pread, false,
-        // 0 is passed as readpoint because this method is only used by test
-        // where StoreFile is directly operated upon
-        0);
-    }
-
-    /**
      * Get a scanner to scan over this StoreFile.
      * Bulk loaded files may or may not have mvcc info.
      * We will consistently ignore MVCC info in bulk loaded file.
@@ -1113,15 +1096,14 @@ public class StoreFile {
      * @param cacheBlocks should this scanner cache blocks?
      * @param pread use pread (for highly concurrent small readers)
      * @param isCompaction is scanner being used for compaction?
+     * @param canOptimizeForNonNullColumn {@code true} if we can make sure there is no null column,
+     *          otherwise {@code false}. This is a hint for optimization.
      * @return a scanner
      */
-    public StoreFileScanner getStoreFileScanner(boolean cacheBlocks,
-                                               boolean pread,
-                                               boolean isCompaction, long readPt) {
-      return new StoreFileScanner(this,
-                                 getScanner(cacheBlocks, pread, isCompaction),
-                                 !isCompaction, reader.hasMVCCInfo() && !this.bulkLoadResult,
-                                 readPt);
+    public StoreFileScanner getStoreFileScanner(boolean cacheBlocks, boolean pread,
+        boolean isCompaction, long readPt, boolean canOptimizeForNonNullColumn) {
+      return new StoreFileScanner(this, getScanner(cacheBlocks, pread, isCompaction), !isCompaction,
+          reader.hasMVCCInfo() && !this.bulkLoadResult, readPt, canOptimizeForNonNullColumn);
     }
 
     /**

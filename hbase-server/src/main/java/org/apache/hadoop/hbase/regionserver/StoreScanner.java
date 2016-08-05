@@ -19,6 +19,8 @@
 
 package org.apache.hadoop.hbase.regionserver;
 
+import com.google.common.annotations.VisibleForTesting;
+
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.util.ArrayList;
@@ -42,11 +44,15 @@ import org.apache.hadoop.hbase.client.IsolationLevel;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.executor.ExecutorService;
 import org.apache.hadoop.hbase.filter.Filter;
-import org.apache.hadoop.hbase.regionserver.ScanQueryMatcher.MatchCode;
 import org.apache.hadoop.hbase.regionserver.ScannerContext.LimitScope;
 import org.apache.hadoop.hbase.regionserver.ScannerContext.NextState;
 import org.apache.hadoop.hbase.regionserver.handler.ParallelSeekHandler;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hbase.regionserver.querymatcher.CompactionScanQueryMatcher;
+import org.apache.hadoop.hbase.regionserver.querymatcher.LegacyScanQueryMatcher;
+import org.apache.hadoop.hbase.regionserver.querymatcher.ScanQueryMatcher;
+import org.apache.hadoop.hbase.regionserver.querymatcher.ScanQueryMatcher.MatchCode;
+import org.apache.hadoop.hbase.regionserver.querymatcher.UserScanQueryMatcher;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 
 /**
@@ -208,17 +214,15 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
    * @throws IOException
    */
   public StoreScanner(Store store, ScanInfo scanInfo, Scan scan, final NavigableSet<byte[]> columns,
-      long readPt)
-                              throws IOException {
+      long readPt) throws IOException {
     this(store, scan.getCacheBlocks(), scan, columns, scanInfo.getTtl(),
         scanInfo.getMinVersions(), readPt);
     if (columns != null && scan.isRaw()) {
       throw new DoNotRetryIOException(
           "Cannot specify any column for a raw scan");
     }
-    matcher = new ScanQueryMatcher(scan, scanInfo, columns,
-        ScanType.USER_SCAN, Long.MAX_VALUE, HConstants.LATEST_TIMESTAMP,
-        oldestUnexpiredTS, now, store.getCoprocessorHost());
+    matcher = UserScanQueryMatcher.create(scan, scanInfo, columns, oldestUnexpiredTS, now,
+      store.getCoprocessorHost());
 
     this.store.addChangedReaderObserver(this);
 
@@ -288,12 +292,18 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
       long earliestPutTs, byte[] dropDeletesFromRow, byte[] dropDeletesToRow) throws IOException {
     this(store, false, scan, null, scanInfo.getTtl(), scanInfo.getMinVersions(),
         ((HStore)store).getHRegion().getReadpoint(IsolationLevel.READ_COMMITTED));
-    if (dropDeletesFromRow == null) {
-      matcher = new ScanQueryMatcher(scan, scanInfo, null, scanType, smallestReadPoint,
-          earliestPutTs, oldestUnexpiredTS, now, store.getCoprocessorHost());
+    if (scan.hasFilter() || (scan.getStartRow() != null && scan.getStartRow().length > 0)
+        || (scan.getStopRow() != null && scan.getStopRow().length > 0)
+        || !scan.getTimeRange().isAllTime()) {
+      // use legacy query matcher since we do not consider the scan object in our code. Only used to
+      // keep compatibility for coprocessor.
+      matcher = LegacyScanQueryMatcher.create(scan, scanInfo, null, scanType, smallestReadPoint,
+        earliestPutTs, oldestUnexpiredTS, now, dropDeletesFromRow, dropDeletesToRow,
+        store.getCoprocessorHost());
     } else {
-      matcher = new ScanQueryMatcher(scan, scanInfo, null, smallestReadPoint, earliestPutTs,
-          oldestUnexpiredTS, now, dropDeletesFromRow, dropDeletesToRow, store.getCoprocessorHost());
+      matcher = CompactionScanQueryMatcher.create(scanInfo, scanType, smallestReadPoint,
+        earliestPutTs, oldestUnexpiredTS, now, dropDeletesFromRow, dropDeletesToRow,
+        store.getCoprocessorHost());
     }
 
     // Filter the list of scanners using Bloom filters, time range, TTL, etc.
@@ -332,13 +342,23 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
           throws IOException {
     this(null, scan.getCacheBlocks(), scan, columns, scanInfo.getTtl(),
         scanInfo.getMinVersions(), readPt);
-    this.matcher = new ScanQueryMatcher(scan, scanInfo, columns, scanType,
-        Long.MAX_VALUE, earliestPutTs, oldestUnexpiredTS, now, null);
-
-    // In unit tests, the store could be null
-    if (this.store != null) {
-      this.store.addChangedReaderObserver(this);
+    if (scanType == ScanType.USER_SCAN) {
+      this.matcher = UserScanQueryMatcher.create(scan, scanInfo, columns, oldestUnexpiredTS, now,
+        null);
+    } else {
+      if (scan.hasFilter() || (scan.getStartRow() != null && scan.getStartRow().length > 0)
+          || (scan.getStopRow() != null && scan.getStopRow().length > 0)
+          || !scan.getTimeRange().isAllTime() || columns != null) {
+        // use legacy query matcher since we do not consider the scan object in our code. Only used
+        // to keep compatibility for coprocessor.
+        matcher = LegacyScanQueryMatcher.create(scan, scanInfo, columns, scanType, Long.MAX_VALUE,
+          earliestPutTs, oldestUnexpiredTS, now, null, null, store.getCoprocessorHost());
+      } else {
+        this.matcher = CompactionScanQueryMatcher.create(scanInfo, scanType, Long.MAX_VALUE,
+          earliestPutTs, oldestUnexpiredTS, now, null, null, null);
+      }
     }
+
     // Seek all scanners to the initial key
     seekScanners(scanners, matcher.getStartKey(), false, isParallelSeekEnabled);
     resetKVHeap(scanners, scanInfo.getComparator());
@@ -528,17 +548,19 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
 
       // only call setRow if the row changes; avoids confusing the query matcher
       // if scanning intra-row
-      byte[] row = peeked.getBuffer();
+      byte[] row = peeked.getRowArray();
       int offset = peeked.getRowOffset();
       short length = peeked.getRowLength();
 
+      KeyValue currentRow = matcher.currentRow();
       // If no limits exists in the scope LimitScope.Between_Cells then we are sure we are changing
       // rows. Else it is possible we are still traversing the same row so we must perform the row
       // comparison.
-      if (!scannerContext.hasAnyLimit(LimitScope.BETWEEN_CELLS) || matcher.row == null ||
-          !Bytes.equals(row, offset, length, matcher.row, matcher.rowOffset, matcher.rowLength)) {
+      if (!scannerContext.hasAnyLimit(LimitScope.BETWEEN_CELLS) || currentRow == null
+          || !Bytes.equals(row, offset, length, currentRow.getRowArray(), currentRow.getRowOffset(),
+            currentRow.getRowLength())) {
         this.countPerRow = 0;
-        matcher.setRow(row, offset, length);
+        matcher.setToNewRow(peeked);
       }
       // Clear progress away unless invoker has indicated it should be kept.
       if (!scannerContext.getKeepProgress()) scannerContext.clearProgress();
@@ -675,6 +697,7 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
     }
   }
 
+
   /*
    * See if we should actually SEEK or rather just SKIP to the next Cell.
    * (See HBASE-13109)
@@ -783,11 +806,12 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
     byte[] row = kv.getBuffer();
     int offset = kv.getRowOffset();
     short length = kv.getRowLength();
-    if ((matcher.row == null) || !Bytes.equals(row, offset, length, matcher.row,
-        matcher.rowOffset, matcher.rowLength)) {
+    Cell currentRow = matcher.currentRow();
+
+    if ((currentRow == null) || !Bytes.equals(row, offset, length, currentRow.getRowArray(),
+      currentRow.getRowOffset(), currentRow.getRowLength())) {
       this.countPerRow = 0;
-      matcher.reset();
-      matcher.setRow(row, offset, length);
+      matcher.setToNewRow(kv);
     }
   }
 

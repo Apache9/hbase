@@ -28,19 +28,19 @@ import java.util.List;
 import java.util.NavigableSet;
 import java.util.TreeSet;
 
-import junit.framework.TestCase;
-
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.KeepDeletedCells;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.KeyValueTestUtil;
-import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.apache.hadoop.hbase.client.Scan;
+import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.EnvironmentEdge;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManagerTestHelper;
 import org.junit.experimental.categories.Category;
+
+import junit.framework.TestCase;
 
 // Can't be small as it plays with EnvironmentEdgeManager
 @Category(MediumTests.class)

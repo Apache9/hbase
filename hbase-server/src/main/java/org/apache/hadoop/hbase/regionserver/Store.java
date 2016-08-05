@@ -42,6 +42,7 @@ import org.apache.hadoop.hbase.regionserver.compactions.CompactionContext;
 import org.apache.hadoop.hbase.regionserver.compactions.CompactionProgress;
 import org.apache.hadoop.hbase.regionserver.compactions.CompactionRequest;
 import org.apache.hadoop.hbase.regionserver.compactions.CompactionThroughputController;
+import org.apache.hadoop.hbase.regionserver.querymatcher.ScanQueryMatcher;
 
 /**
  * Interface for objects that hold a column family in a Region. Its a memstore and a set of zero or

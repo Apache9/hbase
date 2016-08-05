@@ -31,9 +31,16 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.KeyValue;
+import org.apache.hadoop.hbase.Cell;
+import org.apache.hadoop.hbase.CellUtil;
+import org.apache.hadoop.hbase.HConstants;
+import org.apache.hadoop.hbase.KeyValue;
+import org.apache.hadoop.hbase.KeyValueUtil;
+import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.io.hfile.HFileScanner;
 import org.apache.hadoop.hbase.regionserver.StoreFile.Reader;
+import org.apache.hadoop.hbase.regionserver.querymatcher.ScanQueryMatcher;
 
 /**
  * KeyValueScanner adaptor over the Reader.  It also provides hooks into
@@ -52,29 +59,34 @@ public class StoreFileScanner implements KeyValueScanner {
   private boolean delayedReseek;
   private KeyValue delayedSeekKV;
 
-  private boolean enforceMVCC = false;
-  private boolean hasMVCCInfo = false;
+  private final boolean enforceMVCC;
+  private final boolean hasMVCCInfo;
   // A flag represents whether could stop skipping KeyValues for MVCC
   // if have encountered the next row. Only used for reversed scan
   private boolean stopSkippingKVsIfNextRow = false;
 
   private static AtomicLong seekCount;
 
-  private ScanQueryMatcher matcher;
-  
-  private long readPt;
+  private final boolean canOptimizeForNonNullColumn;
+
+  private final long readPt;
 
   /**
    * Implements a {@link KeyValueScanner} on top of the specified {@link HFileScanner}
-   * @param hfs HFile scanner
+   * @param useMVCC If true, scanner will filter out updates with MVCC larger than {@code readPt}.
+   * @param readPt MVCC value to use to filter out the updates newer than this scanner.
+   * @param hasMVCC Set to true if underlying store file reader has MVCC info.
+   * @param canOptimizeForNonNullColumn {@code true} if we can make sure there is no null column,
+   *          otherwise {@code false}. This is a hint for optimization.
    */
   public StoreFileScanner(StoreFile.Reader reader, HFileScanner hfs, boolean useMVCC,
-      boolean hasMVCC, long readPt) {
+      boolean hasMVCC, long readPt, boolean canOptimizeForNonNullColumn) {
     this.readPt = readPt;
     this.reader = reader;
     this.hfs = hfs;
     this.enforceMVCC = useMVCC;
     this.hasMVCCInfo = hasMVCC;
+    this.canOptimizeForNonNullColumn = canOptimizeForNonNullColumn;
   }
 
   /**
@@ -110,33 +122,17 @@ public class StoreFileScanner implements KeyValueScanner {
   }
 
   /**
-   * Return an array of scanners corresponding to the given set of store files,
-   * And set the ScanQueryMatcher for each store file scanner for further
-   * optimization
+   * Return an array of scanners corresponding to the given set of store files, And set the
+   * ScanQueryMatcher for each store file scanner for further optimization
    */
-  public static List<StoreFileScanner> getScannersForStoreFiles(
-      Collection<StoreFile> files, boolean cacheBlocks, boolean usePread,
-      boolean isCompaction, ScanQueryMatcher matcher, long readPt) throws IOException {
-    return getScannersForStoreFiles(files, cacheBlocks, usePread, isCompaction, false,
-      matcher, readPt);
-  }
-
-  /**
-   * Return an array of scanners corresponding to the given set of store files,
-   * And set the ScanQueryMatcher for each store file scanner for further
-   * optimization
-   */
-  public static List<StoreFileScanner> getScannersForStoreFiles(
-      Collection<StoreFile> files, boolean cacheBlocks, boolean usePread,
-      boolean isCompaction, boolean canUseDrop,
+  public static List<StoreFileScanner> getScannersForStoreFiles(Collection<StoreFile> files,
+      boolean cacheBlocks, boolean usePread, boolean isCompaction, boolean canUseDrop,
       ScanQueryMatcher matcher, long readPt) throws IOException {
-    List<StoreFileScanner> scanners = new ArrayList<StoreFileScanner>(
-        files.size());
+    List<StoreFileScanner> scanners = new ArrayList<StoreFileScanner>(files.size());
     for (StoreFile file : files) {
       StoreFile.Reader r = file.createReader(canUseDrop);
-      StoreFileScanner scanner = r.getStoreFileScanner(cacheBlocks, usePread,
-          isCompaction, readPt);
-      scanner.setScanQueryMatcher(matcher);
+      StoreFileScanner scanner = r.getStoreFileScanner(cacheBlocks, usePread, isCompaction, readPt,
+        matcher != null ? !matcher.hasNullColumnInQuery() : false);
       scanners.add(scanner);
     }
     return scanners;
@@ -326,15 +322,14 @@ public class StoreFileScanner implements KeyValueScanner {
     if (useBloom) {
       // check ROWCOL Bloom filter first.
       if (reader.getBloomFilterType() == BloomType.ROWCOL) {
-        haveToSeek = reader.passesGeneralBloomFilter(kv.getBuffer(),
-            kv.getRowOffset(), kv.getRowLength(), kv.getBuffer(),
-            kv.getQualifierOffset(), kv.getQualifierLength());
-      } else if (this.matcher != null && !matcher.hasNullColumnInQuery() &&
-          (kv.isDeleteFamily() || kv.isDeleteFamilyVersion())) {
+        haveToSeek = reader.passesGeneralBloomFilter(kv.getBuffer(), kv.getRowOffset(),
+          kv.getRowLength(), kv.getBuffer(), kv.getQualifierOffset(), kv.getQualifierLength());
+      } else if (canOptimizeForNonNullColumn
+          && (kv.isDeleteFamily() || kv.isDeleteFamilyVersion())) {
         // if there is no such delete family kv in the store file,
         // then no need to seek.
-        haveToSeek = reader.passesDeleteFamilyBloomFilter(kv.getBuffer(),
-            kv.getRowOffset(), kv.getRowLength());
+        haveToSeek = reader.passesDeleteFamilyBloomFilter(kv.getRowArray(), kv.getRowOffset(),
+          kv.getRowLength());
       }
     }
 
@@ -401,10 +396,6 @@ public class StoreFileScanner implements KeyValueScanner {
     } else {
       seek(delayedSeekKV);
     }
-  }
-
-  public void setScanQueryMatcher(ScanQueryMatcher matcher) {
-    this.matcher = matcher;
   }
 
   @Override
