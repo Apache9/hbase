@@ -1,5 +1,4 @@
 /*
- * Copyright 2010 The Apache Software Foundation
  *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -19,23 +18,26 @@
  */
 package org.apache.hadoop.hbase.replication.master;
 
+import java.io.IOException;
+import java.util.List;
+import java.util.Set;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
-import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.Abortable;
 import org.apache.hadoop.hbase.HConstants;
-import org.apache.hadoop.hbase.client.HConnectionManager;
 import org.apache.hadoop.hbase.master.cleaner.BaseLogCleanerDelegate;
 import org.apache.hadoop.hbase.replication.ReplicationZookeeper;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
 import org.apache.zookeeper.KeeperException;
 
-import java.io.IOException;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import com.google.common.base.Predicate;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Iterables;
+import com.google.common.collect.Sets;
 
 /**
  * Implementation of a log cleaner that checks if a log is still scheduled for
@@ -44,7 +46,6 @@ import java.util.Set;
 public class ReplicationLogCleaner extends BaseLogCleanerDelegate implements Abortable {
   private static final Log LOG = LogFactory.getLog(ReplicationLogCleaner.class);
   private ReplicationZookeeper zkHelper;
-  private Set<String> hlogs = new HashSet<String>();
   private boolean stopped = false;
   private boolean aborted;
 
@@ -54,74 +55,50 @@ public class ReplicationLogCleaner extends BaseLogCleanerDelegate implements Abo
   public ReplicationLogCleaner() {}
 
   @Override
-  public boolean isLogDeletable(FileStatus fStat) {
-
+  public Iterable<FileStatus> getDeletableFiles(Iterable<FileStatus> files) {
     try {
       if (!zkHelper.getReplication()) {
-        return false;
+        return ImmutableList.of();
       }
+
+
+    // all members of this class are null if replication is disabled,
+    // so we cannot filter the files
+    if (this.getConf() == null) {
+      return files;
+    }
+
+    final Set<String> hlogs = loadHLogsFromQueues();
+    return Iterables.filter(files, new Predicate<FileStatus>() {
+      @Override
+      public boolean apply(FileStatus file) {
+        String hlog = file.getPath().getName();
+        boolean logInReplicationQueue = hlogs.contains(hlog);
+        if (LOG.isDebugEnabled()) {
+          if (logInReplicationQueue) {
+            LOG.debug("Found log in ZK, keeping: " + hlog);
+          } else {
+            LOG.debug("Didn't find this log in ZK, deleting: " + hlog);
+          }
+        }
+        return !logInReplicationQueue;
+      }});
     } catch (KeeperException e) {
       abort("Cannot get the state of replication", e);
-      return false;
+      return ImmutableList.of();
     }
-
-    // all members of this class are null if replication is disabled, and we
-    // return true since false would render the LogsCleaner useless
-    if (this.getConf() == null) {
-      return true;
-    }
-    String log = fStat.getPath().getName();
-    // If we saw the hlog previously, let's consider it's still used
-    // At some point in the future we will refresh the list and it will be gone
-    if (this.hlogs.contains(log)) {
-      return false;
-    }
-
-    // Let's see it's still there
-    // This solution makes every miss very expensive to process since we
-    // almost completely refresh the cache each time
-    return !refreshHLogsAndSearchWithRetry(log);
   }
 
   /**
-   * Search through all the hlogs we have in ZK to refresh the cache
-   * If a log is specified and found, then we early out and return true
-   * @param searchedLog log we are searching for, pass null to cache everything
-   *                    that's in zookeeper.
-   * @return false until a specified log is found.
+   * Load all hlogs in all replication queues from ZK
    */
-  private boolean refreshHLogsAndSearchWithRetry(String searchedLog) {
-    boolean found = false;
-    while (true) {
-      try {
-        int v0 = zkHelper.getRsZNodeVersion();
-        if(refreshHLogsAndSearch(searchedLog)) {
-          found = true;
-          break;
-        }
-        int v1 = zkHelper.getRsZNodeVersion();
-        if (v1 == v0) {
-          LOG.debug("Didn't find this log in ZK, deleting: " + searchedLog);
-          break;
-        }
-        LOG.info("Retry zk scan since there was concurrent replication failover, version "
-            + v0 + " => " + v1);
-      } catch (KeeperException e) {
-        LOG.error("Zk exception when search hlogs, retry", e);
-      }
-    }
-    return found;
-  }
-
-  private boolean refreshHLogsAndSearch(String searchedLog) throws KeeperException {
-    this.hlogs.clear();
-    final boolean lookForLog = searchedLog != null;
+  private Set<String> loadHLogsFromQueues() throws KeeperException {
     List<String> rss = zkHelper.getListOfReplicators();
     if (rss == null) {
-      LOG.debug("Didn't find any region server that replicates, deleting: " +
-          searchedLog);
-      return false;
+      LOG.debug("Didn't find any region server that replicates, won't prevent any deletions.");
+      return ImmutableSet.of();
     }
+    Set<String> hlogs = Sets.newHashSet();
     for (String rs: rss) {
       List<String> listOfPeers = zkHelper.getListPeersForRS(rs);
       // if rs just died, this will be null
@@ -131,23 +108,18 @@ public class ReplicationLogCleaner extends BaseLogCleanerDelegate implements Abo
       for (String id : listOfPeers) {
         List<String> peersHlogs = zkHelper.getListHLogsForPeerForRS(rs, id);
         if (peersHlogs != null) {
-          this.hlogs.addAll(peersHlogs);
-        }
-        // early exit if we found the log
-        if(lookForLog && this.hlogs.contains(searchedLog)) {
-          LOG.debug("Found log in ZK, keeping: " + searchedLog);
-          return true;
+          hlogs.addAll(peersHlogs);
         }
       }
     }
-    LOG.debug("Didn't find this log in ZK, deleting: " + searchedLog);
-    return false;
+    return hlogs;
   }
 
   @Override
   public void setConf(Configuration config) {
     // If replication is disabled, keep all members null
     if (!config.getBoolean(HConstants.REPLICATION_ENABLE_KEY, false)) {
+      LOG.warn("Not configured - allowing all hlogs to be deleted");
       return;
     }
     // Make my own Configuration.  Then I'll have my own connection to zk that
@@ -162,7 +134,6 @@ public class ReplicationLogCleaner extends BaseLogCleanerDelegate implements Abo
     } catch (IOException e) {
       LOG.error("Error while configuring " + this.getClass().getName(), e);
     }
-    refreshHLogsAndSearchWithRetry(null);
   }
 
 
@@ -174,8 +145,6 @@ public class ReplicationLogCleaner extends BaseLogCleanerDelegate implements Abo
       LOG.info("Stopping " + this.zkHelper.getZookeeperWatcher());
       this.zkHelper.getZookeeperWatcher().close();
     }
-    // Not sure why we're deleting a connection that we never acquired or used
-    HConnectionManager.deleteConnection(this.getConf());
   }
 
   @Override
