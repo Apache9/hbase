@@ -266,7 +266,6 @@ public abstract class CleanerChore<T extends FileCleanerDelegate> extends Chore 
         LOG.warn("Error while deleting: " + filePath, e);
       }
     }
-    LOG.info("Deleted "+deletedFileCount+" logs");
     return deletedFileCount == files.size();
   }
 
