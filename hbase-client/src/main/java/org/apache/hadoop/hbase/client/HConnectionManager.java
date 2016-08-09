@@ -18,6 +18,15 @@
  */
 package org.apache.hadoop.hbase.client;
 
+import com.google.common.annotations.VisibleForTesting;
+import com.google.protobuf.BlockingRpcChannel;
+import com.google.protobuf.RpcController;
+import com.google.protobuf.ServiceException;
+import com.xiaomi.infra.base.nameservice.NameService;
+import com.xiaomi.infra.base.nameservice.NameServiceEntry;
+import com.xiaomi.infra.hbase.salted.KeySalter;
+import com.xiaomi.infra.hbase.salted.SaltedHTable;
+
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.InterruptedIOException;
@@ -47,8 +56,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.hbase.classification.InterfaceAudience;
-import org.apache.hadoop.hbase.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Chore;
 import org.apache.hadoop.hbase.HBaseConfiguration;
@@ -64,6 +71,8 @@ import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.TableNotEnabledException;
 import org.apache.hadoop.hbase.TableNotFoundException;
 import org.apache.hadoop.hbase.ZooKeeperConnectionException;
+import org.apache.hadoop.hbase.classification.InterfaceAudience;
+import org.apache.hadoop.hbase.classification.InterfaceStability;
 import org.apache.hadoop.hbase.client.MetaScanner.MetaScannerVisitor;
 import org.apache.hadoop.hbase.client.MetaScanner.MetaScannerVisitorBase;
 import org.apache.hadoop.hbase.client.backoff.ClientBackoffPolicy;
@@ -72,6 +81,7 @@ import org.apache.hadoop.hbase.client.coprocessor.Batch;
 import org.apache.hadoop.hbase.exceptions.RegionMovedException;
 import org.apache.hadoop.hbase.exceptions.RegionOpeningException;
 import org.apache.hadoop.hbase.ipc.RpcClient;
+import org.apache.hadoop.hbase.ipc.RpcClientFactory;
 import org.apache.hadoop.hbase.ipc.RpcControllerFactory;
 import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.protobuf.RequestConverter;
@@ -152,12 +162,12 @@ import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RunCatalogScanReq
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RunCatalogScanResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetBalancerRunningRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetBalancerRunningResponse;
-import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SnapshotRequest;
-import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SnapshotResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetQuotaRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetQuotaResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ShutdownRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ShutdownResponse;
+import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SnapshotRequest;
+import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SnapshotResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.StopMasterRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.StopMasterResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleRequest;
@@ -179,16 +189,6 @@ import org.apache.hadoop.hbase.zookeeper.ZKUtil;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
 import org.apache.hadoop.ipc.RemoteException;
 import org.apache.zookeeper.KeeperException;
-
-import com.google.common.annotations.VisibleForTesting;
-import com.google.protobuf.BlockingRpcChannel;
-import com.google.protobuf.RpcController;
-import com.google.protobuf.ServiceException;
-import com.xiaomi.infra.base.nameservice.NameService;
-import com.xiaomi.infra.base.nameservice.NameServiceEntry;
-import com.xiaomi.infra.hbase.salted.KeySalter;
-import com.xiaomi.infra.hbase.salted.SaltedHTable;
-import com.xiaomi.infra.hbase.salted.SaltedHTable.NotKeySalter;
 
 /**
  * A non-instantiable class that manages creation of {@link HConnection}s.
@@ -725,7 +725,7 @@ public class HConnectionManager {
       this.registry = setupRegistry();
       retrieveClusterId();
 
-      this.rpcClient = new RpcClient(this.conf, this.clusterId);
+      this.rpcClient = RpcClientFactory.createClient(this.conf, this.clusterId);
 
       // Do we publish the status?
       boolean shouldListen = conf.getBoolean(HConstants.STATUS_PUBLISHED,
@@ -744,9 +744,8 @@ public class HConnectionManager {
                 @Override
                 public void newDead(ServerName sn) {
                   clearCaches(sn);
-                  rpcClient.cancelConnections(sn.getHostname(), sn.getPort(),
-                      new SocketException(sn.getServerName() +
-                          " is dead: closing its connection."));
+                  rpcClient.cancelConnections(sn,
+                    new SocketException(sn.getServerName() + " is dead: closing its connection."));
                 }
               }, conf, listenerClass);
         }
@@ -835,7 +834,8 @@ public class HConnectionManager {
         throw new IOException("The connection has to be unmanaged.");
       }
       
-      HTableInterface table = new HTable(tableName, this, pool);
+      HTableInterface table = new HTable(tableName, this, tableConfig, rpcCallerFactory,
+          rpcControllerFactory, pool);
       KeySalter salter = SaltedHTable.getKeySalter(table);
       if (salter == null) {
         return table;
@@ -2486,7 +2486,7 @@ public class HConnectionManager {
     }
 
     // For tests.
-    protected <R> AsyncProcess createAsyncProcess(TableName tableName, ExecutorService pool,
+    protected <R> AsyncProcess<R> createAsyncProcess(TableName tableName, ExecutorService pool,
            AsyncProcess.AsyncProcessCallback<R> callback, Configuration conf) {
       RpcControllerFactory controllerFactory = RpcControllerFactory.instantiate(conf);
       RpcRetryingCallerFactory callerFactory = RpcRetryingCallerFactory.instantiate(conf, this.stats);
@@ -2672,7 +2672,7 @@ public class HConnectionManager {
         clusterStatusListener.close();
       }
       if (rpcClient != null) {
-        rpcClient.stop();
+        rpcClient.close();
       }
     }
 
@@ -2779,7 +2779,7 @@ public class HConnectionManager {
     @Override
     public HTableDescriptor[] getHTableDescriptors(
         List<String> names) throws IOException {
-      List<TableName> tableNames = new ArrayList(names.size());
+      List<TableName> tableNames = new ArrayList<TableName>(names.size());
       for(String name : names) {
         tableNames.add(TableName.valueOf(name));
       }

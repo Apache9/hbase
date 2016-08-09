@@ -18,11 +18,16 @@
 
 package org.apache.hadoop.hbase.security.token;
 
-import static org.apache.hadoop.fs.CommonConfigurationKeys.HADOOP_SECURITY_AUTHORIZATION;
+import static org.apache.hadoop.fs.CommonConfigurationKeysPublic.HADOOP_SECURITY_AUTHORIZATION;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+
+import com.google.protobuf.BlockingRpcChannel;
+import com.google.protobuf.BlockingService;
+import com.google.protobuf.RpcController;
+import com.google.protobuf.ServiceException;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -40,7 +45,6 @@ import org.apache.hadoop.hbase.Coprocessor;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HRegionInfo;
-import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.apache.hadoop.hbase.Server;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.TableName;
@@ -53,6 +57,7 @@ import org.apache.hadoop.hbase.ipc.BlockingRpcCallback;
 import org.apache.hadoop.hbase.ipc.FifoRpcScheduler;
 import org.apache.hadoop.hbase.ipc.RequestContext;
 import org.apache.hadoop.hbase.ipc.RpcClient;
+import org.apache.hadoop.hbase.ipc.RpcClientImpl;
 import org.apache.hadoop.hbase.ipc.RpcServer;
 import org.apache.hadoop.hbase.ipc.RpcServer.BlockingServiceAndInterface;
 import org.apache.hadoop.hbase.ipc.RpcServerInterface;
@@ -62,6 +67,7 @@ import org.apache.hadoop.hbase.regionserver.HRegion;
 import org.apache.hadoop.hbase.regionserver.RegionServerServices;
 import org.apache.hadoop.hbase.security.SecurityInfo;
 import org.apache.hadoop.hbase.security.User;
+import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.Sleeper;
@@ -81,11 +87,6 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-
-import com.google.protobuf.BlockingRpcChannel;
-import com.google.protobuf.BlockingService;
-import com.google.protobuf.RpcController;
-import com.google.protobuf.ServiceException;
 
 /**
  * Tests for authentication token creation and usage
@@ -395,7 +396,7 @@ public class TestTokenAuthentication {
     testuser.doAs(new PrivilegedExceptionAction<Object>() {
       public Object run() throws Exception {
         Configuration c = server.getConfiguration();
-        RpcClient rpcClient = new RpcClient(c, clusterId.toString());
+        RpcClient rpcClient = new RpcClientImpl(c, clusterId.toString());
         ServerName sn =
             ServerName.valueOf(server.getAddress().getHostName(), server.getAddress().getPort(),
                 System.currentTimeMillis());
@@ -411,7 +412,7 @@ public class TestTokenAuthentication {
           String authMethod = response.getAuthMethod();
           assertEquals("TOKEN", authMethod);
         } finally {
-          rpcClient.stop();
+          rpcClient.close();
         }
         return null;
       }

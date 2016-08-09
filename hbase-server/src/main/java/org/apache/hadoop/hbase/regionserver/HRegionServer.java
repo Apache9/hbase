@@ -129,6 +129,7 @@ import org.apache.hadoop.hbase.ipc.PayloadCarryingRpcController;
 import org.apache.hadoop.hbase.ipc.PriorityFunction;
 import org.apache.hadoop.hbase.ipc.RpcCallContext;
 import org.apache.hadoop.hbase.ipc.RpcClient;
+import org.apache.hadoop.hbase.ipc.RpcClientFactory;
 import org.apache.hadoop.hbase.ipc.RpcServer;
 import org.apache.hadoop.hbase.ipc.RpcServer.BlockingServiceAndInterface;
 import org.apache.hadoop.hbase.ipc.RpcServerInterface;
@@ -945,7 +946,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     rsQuotaManager = new RegionServerQuotaManager(this);
 
     // Setup RPC client for master communication
-    rpcClient = new RpcClient(conf, clusterId, new InetSocketAddress(
+    rpcClient = RpcClientFactory.createClient(conf, clusterId, new InetSocketAddress(
         this.isa.getAddress(), 0));
     jvmThreadMonitor = new JvmThreadMonitor(conf);
     jvmThreadMonitor.start();
@@ -1142,7 +1143,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
       this.rssStub = null;
     }
     if (this.rpcClient != null) {
-      this.rpcClient.stop();
+      this.rpcClient.close();
     }
     if (this.leases != null) {
       this.leases.close();

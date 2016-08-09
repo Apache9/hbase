@@ -28,52 +28,50 @@ import org.junit.experimental.categories.Category;
 
 import java.net.InetSocketAddress;
 
-@Category(MediumTests.class)   // Can't be small, we're playing with the EnvironmentEdge
+@Category(MediumTests.class) // Can't be small, we're playing with the EnvironmentEdge
 public class TestHBaseClient {
 
   @Test
-  public void testFailedServer(){
+  public void testFailedServer() {
     ManualEnvironmentEdge ee = new ManualEnvironmentEdge();
-    EnvironmentEdgeManager.injectEdge(  ee );
-    RpcClient.FailedServers fs = new RpcClient.FailedServers(new Configuration());
+    EnvironmentEdgeManager.injectEdge(ee);
+    FailedServers fs = new FailedServers(new Configuration());
 
     InetSocketAddress ia = InetSocketAddress.createUnresolved("bad", 12);
-    InetSocketAddress ia2 = InetSocketAddress.createUnresolved("bad", 12);  // same server as ia
+    InetSocketAddress ia2 = InetSocketAddress.createUnresolved("bad", 12); // same server as ia
     InetSocketAddress ia3 = InetSocketAddress.createUnresolved("badtoo", 12);
     InetSocketAddress ia4 = InetSocketAddress.createUnresolved("badtoo", 13);
 
-
-    Assert.assertFalse(fs.getFailedServer(ia)!= null );
+    Assert.assertFalse(fs.getFailedServer(ia) != null);
 
     fs.addToFailedServers(ia);
-    Assert.assertTrue( fs.getFailedServer(ia)!= null );
-    Assert.assertTrue(fs.getFailedServer(ia2)!= null );
+    Assert.assertTrue(fs.getFailedServer(ia) != null);
+    Assert.assertTrue(fs.getFailedServer(ia2) != null);
 
     ee.incValue(1);
-    Assert.assertTrue( fs.getFailedServer(ia)!= null );
-    Assert.assertTrue( fs.getFailedServer(ia2)!= null );
+    Assert.assertTrue(fs.getFailedServer(ia) != null);
+    Assert.assertTrue(fs.getFailedServer(ia2) != null);
 
-    ee.incValue( RpcClient.FAILED_SERVER_EXPIRY_DEFAULT + 1 );
-    Assert.assertFalse( fs.getFailedServer(ia)!=null );
-    Assert.assertFalse( fs.getFailedServer(ia2)!=null );
+    ee.incValue(FailedServers.FAILED_SERVER_EXPIRY_DEFAULT + 1);
+    Assert.assertFalse(fs.getFailedServer(ia) != null);
+    Assert.assertFalse(fs.getFailedServer(ia2) != null);
 
     fs.addToFailedServers(ia);
     fs.addToFailedServers(ia3);
     fs.addToFailedServers(ia4);
 
-    Assert.assertTrue( fs.getFailedServer(ia)!=null );
-    Assert.assertTrue( fs.getFailedServer(ia2)!=null );
-    Assert.assertTrue( fs.getFailedServer(ia3)!=null );
-    Assert.assertTrue( fs.getFailedServer(ia4)!=null );
+    Assert.assertTrue(fs.getFailedServer(ia) != null);
+    Assert.assertTrue(fs.getFailedServer(ia2) != null);
+    Assert.assertTrue(fs.getFailedServer(ia3) != null);
+    Assert.assertTrue(fs.getFailedServer(ia4) != null);
 
-    ee.incValue( RpcClient.FAILED_SERVER_EXPIRY_DEFAULT + 1 );
-    Assert.assertFalse( fs.getFailedServer(ia)!=null );
-    Assert.assertFalse( fs.getFailedServer(ia2)!=null );
-    Assert.assertFalse( fs.getFailedServer(ia3)!=null );
-    Assert.assertFalse( fs.getFailedServer(ia4)!=null );
-
+    ee.incValue(FailedServers.FAILED_SERVER_EXPIRY_DEFAULT + 1);
+    Assert.assertFalse(fs.getFailedServer(ia) != null);
+    Assert.assertFalse(fs.getFailedServer(ia2) != null);
+    Assert.assertFalse(fs.getFailedServer(ia3) != null);
+    Assert.assertFalse(fs.getFailedServer(ia4) != null);
 
     fs.addToFailedServers(ia3);
-    Assert.assertFalse( fs.getFailedServer(ia4)!=null );
+    Assert.assertFalse(fs.getFailedServer(ia4) != null);
   }
 }

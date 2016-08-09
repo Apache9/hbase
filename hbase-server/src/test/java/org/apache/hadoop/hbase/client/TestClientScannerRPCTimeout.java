@@ -19,6 +19,9 @@ package org.apache.hadoop.hbase.client;
 
 import static org.junit.Assert.assertTrue;
 
+import com.google.protobuf.RpcController;
+import com.google.protobuf.ServiceException;
+
 import java.io.IOException;
 
 import org.apache.commons.logging.Log;
@@ -27,22 +30,19 @@ import org.apache.commons.logging.impl.Log4JLogger;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.HConstants;
-import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.apache.hadoop.hbase.MiniHBaseCluster.MiniHBaseClusterRegionServer;
 import org.apache.hadoop.hbase.TableName;
-import org.apache.hadoop.hbase.ipc.RpcClient;
+import org.apache.hadoop.hbase.ipc.RpcClientImpl;
 import org.apache.hadoop.hbase.ipc.RpcServer;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.ScanRequest;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.ScanResponse;
+import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.log4j.Level;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-
-import com.google.protobuf.RpcController;
-import com.google.protobuf.ServiceException;
 
 /**
  * Test the scenario where a HRegionServer#scan() call, while scanning, timeout at client side and
@@ -61,7 +61,7 @@ public class TestClientScannerRPCTimeout {
   @BeforeClass
   public static void setUpBeforeClass() throws Exception {
     ((Log4JLogger)RpcServer.LOG).getLogger().setLevel(Level.ALL);
-    ((Log4JLogger)RpcClient.LOG).getLogger().setLevel(Level.ALL);
+    ((Log4JLogger)RpcClientImpl.LOG).getLogger().setLevel(Level.ALL);
     ((Log4JLogger)ScannerCallable.LOG).getLogger().setLevel(Level.ALL);
     Configuration conf = TEST_UTIL.getConfiguration();
     // Don't report so often so easier to see other rpcs

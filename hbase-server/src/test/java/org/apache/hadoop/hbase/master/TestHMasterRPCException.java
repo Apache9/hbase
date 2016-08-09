@@ -19,15 +19,20 @@
 
 package org.apache.hadoop.hbase.master;
 
-import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+
+import com.google.protobuf.BlockingRpcChannel;
+import com.google.protobuf.ServiceException;
 
 import java.io.IOException;
 import java.net.SocketTimeoutException;
 
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.*;
+import org.apache.hadoop.hbase.HBaseTestingUtility;
+import org.apache.hadoop.hbase.HConstants;
+import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.ipc.RpcClient;
+import org.apache.hadoop.hbase.ipc.RpcClientImpl;
 import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsMasterRunningRequest;
@@ -35,9 +40,6 @@ import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-
-import com.google.protobuf.BlockingRpcChannel;
-import com.google.protobuf.ServiceException;
 
 @Category(MediumTests.class)
 public class TestHMasterRPCException {
@@ -50,7 +52,7 @@ public class TestHMasterRPCException {
     conf.set(HConstants.MASTER_PORT, "0");
     HMaster hm = new HMaster(conf);
     ServerName sm = hm.getServerName();
-    RpcClient rpcClient = new RpcClient(conf, HConstants.CLUSTER_ID_DEFAULT);
+    RpcClient rpcClient = new RpcClientImpl(conf, HConstants.CLUSTER_ID_DEFAULT);
     try {
       int i = 0;
       //retry the RPC a few times; we have seen SocketTimeoutExceptions if we
@@ -84,7 +86,7 @@ public class TestHMasterRPCException {
       }
       fail();
     } finally {
-      rpcClient.stop();
+      rpcClient.close();
     }
   }
 }

@@ -39,7 +39,6 @@ import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.MasterNotRunningException;
-import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.ZooKeeperConnectionException;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
@@ -49,8 +48,9 @@ import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.client.ScannerCallable;
-import org.apache.hadoop.hbase.ipc.RpcClient;
+import org.apache.hadoop.hbase.ipc.RpcClientImpl;
 import org.apache.hadoop.hbase.ipc.RpcServer;
+import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.log4j.Level;
 import org.junit.AfterClass;
@@ -183,7 +183,7 @@ public class TestFilterWithScanLimits {
   @BeforeClass
   public static void setUp() throws Exception {
     ((Log4JLogger)RpcServer.LOG).getLogger().setLevel(Level.ALL);
-    ((Log4JLogger)RpcClient.LOG).getLogger().setLevel(Level.ALL);
+    ((Log4JLogger)RpcClientImpl.LOG).getLogger().setLevel(Level.ALL);
     ((Log4JLogger)ScannerCallable.LOG).getLogger().setLevel(Level.ALL);
     TEST_UTIL.startMiniCluster(1);
     initialize(TEST_UTIL.getConfiguration());

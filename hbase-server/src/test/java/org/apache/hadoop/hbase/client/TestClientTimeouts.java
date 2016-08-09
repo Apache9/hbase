@@ -22,6 +22,12 @@ package org.apache.hadoop.hbase.client;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import com.google.protobuf.BlockingRpcChannel;
+import com.google.protobuf.Descriptors.MethodDescriptor;
+import com.google.protobuf.Message;
+import com.google.protobuf.RpcController;
+import com.google.protobuf.ServiceException;
+
 import java.net.SocketTimeoutException;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -33,20 +39,15 @@ import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.MasterNotRunningException;
-import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.ipc.RpcClient;
+import org.apache.hadoop.hbase.ipc.RpcClientImpl;
 import org.apache.hadoop.hbase.security.User;
+import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-
-import com.google.protobuf.BlockingRpcChannel;
-import com.google.protobuf.Descriptors.MethodDescriptor;
-import com.google.protobuf.Message;
-import com.google.protobuf.RpcController;
-import com.google.protobuf.ServiceException;
 
 @Category(MediumTests.class)
 public class TestClientTimeouts {
@@ -99,7 +100,7 @@ public class TestClientTimeouts {
             ((HConnectionManager.HConnectionImplementation)connection).setRpcClient(
               rpcClient);
           if (oldRpcClient != null) {
-            oldRpcClient.stop();
+            oldRpcClient.close();
           }
           // run some admin commands
           HBaseAdmin.checkHBaseAvailable(conf);
@@ -119,12 +120,12 @@ public class TestClientTimeouts {
       assertFalse(lastFailed);
       assertTrue(RandomTimeoutBlockingRpcChannel.invokations.get() > initialInvocations);
     } finally {
-      rpcClient.stop();
+      rpcClient.close();
     }
   }
 
   private static RpcClient newRandomTimeoutRpcClient() {
-    return new RpcClient(
+    return new RpcClientImpl(
         TEST_UTIL.getConfiguration(), TEST_UTIL.getClusterKey()) {
       // Return my own instance, one that does random timeouts
       @Override
@@ -138,12 +139,12 @@ public class TestClientTimeouts {
   /**
    * Blocking rpc channel that goes via hbase rpc.
    */
-  static class RandomTimeoutBlockingRpcChannel extends RpcClient.BlockingRpcChannelImplementation {
+  static class RandomTimeoutBlockingRpcChannel extends RpcClientImpl.BlockingRpcChannelImplementation {
     private static final Random RANDOM = new Random(System.currentTimeMillis());
     public static final double CHANCE_OF_TIMEOUT = 0.3;
     private static AtomicInteger invokations = new AtomicInteger();
 
-    RandomTimeoutBlockingRpcChannel(final RpcClient rpcClient, final ServerName sn,
+    RandomTimeoutBlockingRpcChannel(final RpcClientImpl rpcClient, final ServerName sn,
         final User ticket, final int rpcTimeout) {
       super(rpcClient, sn, ticket, rpcTimeout);
     }

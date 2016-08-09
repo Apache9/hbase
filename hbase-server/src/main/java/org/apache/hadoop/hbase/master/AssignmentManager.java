@@ -18,6 +18,10 @@
  */
 package org.apache.hadoop.hbase.master;
 
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Preconditions;
+import com.google.common.collect.LinkedHashMultimap;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -65,7 +69,8 @@ import org.apache.hadoop.hbase.executor.EventHandler;
 import org.apache.hadoop.hbase.executor.EventType;
 import org.apache.hadoop.hbase.executor.ExecutorService;
 import org.apache.hadoop.hbase.ipc.RpcClient;
-import org.apache.hadoop.hbase.ipc.RpcClient.FailedServerException;
+import org.apache.hadoop.hbase.ipc.FailedServerException;
+import org.apache.hadoop.hbase.ipc.FailedServers;
 import org.apache.hadoop.hbase.ipc.ServerNotRunningYetException;
 import org.apache.hadoop.hbase.master.RegionState.State;
 import org.apache.hadoop.hbase.master.balancer.FavoredNodeAssignmentHelper;
@@ -104,10 +109,6 @@ import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.KeeperException.NoNodeException;
 import org.apache.zookeeper.KeeperException.NodeExistsException;
 import org.apache.zookeeper.data.Stat;
-
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Preconditions;
-import com.google.common.collect.LinkedHashMultimap;
 
 /**
  * Manages and performs region assignment.
@@ -1885,8 +1886,8 @@ public class AssignmentManager extends ZooKeeperListener {
           long sleepTime = 0;
           Configuration conf = this.server.getConfiguration();
           if(t instanceof FailedServerException) {
-            sleepTime = 1 + conf.getInt(RpcClient.FAILED_SERVER_EXPIRY_KEY,
-                  RpcClient.FAILED_SERVER_EXPIRY_DEFAULT);
+            sleepTime = 1 + conf.getInt(FailedServers.FAILED_SERVER_EXPIRY_KEY,
+              FailedServers.FAILED_SERVER_EXPIRY_DEFAULT);
           } else {
             // RS is already processing this region, only need to update the timestamp
             LOG.debug("update " + state + " the timestamp.");
@@ -2266,8 +2267,8 @@ public class AssignmentManager extends ZooKeeperListener {
             try {
               LOG.info("Trying to re-assign " + region.getRegionNameAsString() +
                 " to the same failed server.");
-              Thread.sleep(1 + conf.getInt(RpcClient.FAILED_SERVER_EXPIRY_KEY,
-                RpcClient.FAILED_SERVER_EXPIRY_DEFAULT));
+              Thread.sleep(1 + conf.getInt(FailedServers.FAILED_SERVER_EXPIRY_KEY,
+                FailedServers.FAILED_SERVER_EXPIRY_DEFAULT));
             } catch (InterruptedException ie) {
               LOG.warn("Failed to assign "
                   + region.getRegionNameAsString() + " since interrupted", ie);

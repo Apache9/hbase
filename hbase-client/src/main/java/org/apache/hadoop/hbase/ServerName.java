@@ -21,20 +21,19 @@ package org.apache.hadoop.hbase;
 import com.google.common.net.InetAddresses;
 import com.google.protobuf.InvalidProtocolBufferException;
 
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.regex.Pattern;
+
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.classification.InterfaceStability;
 import org.apache.hadoop.hbase.exceptions.DeserializationException;
 import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos;
-import org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.MetaRegionServer;
 import org.apache.hadoop.hbase.util.Addressing;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.LongUtils;
-
-import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.regex.Pattern;
 
 /**
  * Instance of an HBase ServerName.

@@ -22,10 +22,13 @@ import static org.apache.hadoop.hbase.security.HBaseKerberosUtils.getKeytabFileF
 import static org.apache.hadoop.hbase.security.HBaseKerberosUtils.getPrincipalForTesting;
 import static org.apache.hadoop.hbase.security.HBaseKerberosUtils.getSecuredConfiguration;
 import static org.apache.hadoop.hbase.security.HBaseKerberosUtils.isKerberosPropertySetted;
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assume.assumeTrue;
+
+import com.google.common.collect.Lists;
+import com.google.protobuf.BlockingRpcChannel;
+import com.google.protobuf.BlockingService;
 
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
@@ -37,6 +40,7 @@ import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.ipc.FifoRpcScheduler;
 import org.apache.hadoop.hbase.ipc.RpcClient;
+import org.apache.hadoop.hbase.ipc.RpcClientImpl;
 import org.apache.hadoop.hbase.ipc.RpcServer;
 import org.apache.hadoop.hbase.ipc.RpcServerInterface;
 import org.apache.hadoop.hbase.ipc.TestDelayedRpc.TestDelayedImplementation;
@@ -48,10 +52,6 @@ import org.apache.hadoop.security.UserGroupInformation.AuthenticationMethod;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.mockito.Mockito;
-
-import com.google.common.collect.Lists;
-import com.google.protobuf.BlockingRpcChannel;
-import com.google.protobuf.BlockingService;
 
 @Category(SmallTests.class)
 public class TestSecureRPC {
@@ -98,7 +98,7 @@ public class TestSecureRPC {
         Lists.newArrayList(new RpcServer.BlockingServiceAndInterface(service, null)),
           isa, conf, new FifoRpcScheduler(conf, 1));
     rpcServer.start();
-    RpcClient rpcClient = new RpcClient(conf, HConstants.DEFAULT_CLUSTER_ID.toString());
+    RpcClient rpcClient = new RpcClientImpl(conf, HConstants.DEFAULT_CLUSTER_ID.toString());
     try {
       BlockingRpcChannel channel = rpcClient.createBlockingRpcChannel(
           ServerName.valueOf(rpcServer.getListenerAddress().getHostName(),
@@ -114,7 +114,7 @@ public class TestSecureRPC {
 
       assertEquals(0xDEADBEEF, results.get(0).intValue());
     } finally {
-      rpcClient.stop();
+      rpcClient.close();
     }
   }
 }

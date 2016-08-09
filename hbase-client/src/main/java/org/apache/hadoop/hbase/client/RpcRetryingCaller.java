@@ -19,6 +19,8 @@
 
 package org.apache.hadoop.hbase.client;
 
+import com.google.protobuf.ServiceException;
+
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.lang.reflect.UndeclaredThrowableException;
@@ -28,17 +30,15 @@ import java.util.List;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.DoNotRetryIOException;
 import org.apache.hadoop.hbase.DoNotRetryNowIOException;
 import org.apache.hadoop.hbase.HConstants;
-import org.apache.hadoop.hbase.ipc.RpcClient;
+import org.apache.hadoop.hbase.classification.InterfaceAudience;
+import org.apache.hadoop.hbase.ipc.AbstractRpcClient;
 import org.apache.hadoop.hbase.quotas.ThrottlingException;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.ExceptionUtil;
 import org.apache.hadoop.ipc.RemoteException;
-
-import com.google.protobuf.ServiceException;
 
 /**
  * Dynamic rather than static so can set the generic return type appropriately.
@@ -88,11 +88,11 @@ public class RpcRetryingCaller<T> {
       // resetting to the minimum.
       remaining = MIN_RPC_TIMEOUT;
     }
-    RpcClient.setRpcTimeout(remaining);
+    AbstractRpcClient.setRpcTimeout(remaining);
   }
 
   private void afterCall() {
-    RpcClient.resetRpcTimeout();
+    AbstractRpcClient.resetRpcTimeout();
   }
 
   public synchronized T callWithRetries(RetryingCallable<T> callable) throws IOException,
