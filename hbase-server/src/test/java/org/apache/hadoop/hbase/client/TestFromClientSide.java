@@ -32,6 +32,7 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -41,6 +42,7 @@ import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.commons.lang.ArrayUtils;
@@ -67,8 +69,11 @@ import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.Waiter;
 import org.apache.hadoop.hbase.client.HConnectionManager.HConnectionImplementation;
 import org.apache.hadoop.hbase.client.metrics.ScanMetrics;
+import org.apache.hadoop.hbase.coprocessor.BaseRegionObserver;
 import org.apache.hadoop.hbase.coprocessor.CoprocessorHost;
 import org.apache.hadoop.hbase.coprocessor.MultiRowMutationEndpoint;
+import org.apache.hadoop.hbase.coprocessor.ObserverContext;
+import org.apache.hadoop.hbase.coprocessor.RegionCoprocessorEnvironment;
 import org.apache.hadoop.hbase.filter.BinaryComparator;
 import org.apache.hadoop.hbase.filter.CompareFilter;
 import org.apache.hadoop.hbase.filter.CompareFilter.CompareOp;
@@ -98,6 +103,7 @@ import org.apache.hadoop.hbase.regionserver.Store;
 import org.apache.hadoop.hbase.types.NumberCodecType;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
+import org.apache.hadoop.hbase.util.Threads;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -165,6 +171,131 @@ public class TestFromClientSide {
   @After
   public void tearDown() throws Exception {
     // Nothing to do.
+  }
+
+  /**
+   * This coproceesor sleep 2s at first increment/append rpc call.
+   */
+  public static class SleepAtFirstRpcCall extends BaseRegionObserver {
+    static final AtomicLong ct = new AtomicLong(0);
+    static final String SLEEP_TIME_CONF_KEY = "hbase.coprocessor.SleepAtFirstRpcCall.sleepTime";
+    static final long DEFAULT_SLEEP_TIME = 2000;
+    static final AtomicLong sleepTime = new AtomicLong(DEFAULT_SLEEP_TIME);
+
+    public SleepAtFirstRpcCall() {
+    }
+
+    @Override
+    public void postOpen(ObserverContext<RegionCoprocessorEnvironment> e) {
+      RegionCoprocessorEnvironment env = e.getEnvironment();
+      Configuration conf = env.getConfiguration();
+      sleepTime.set(conf.getLong(SLEEP_TIME_CONF_KEY, DEFAULT_SLEEP_TIME));
+    }
+
+    @Override
+    public Result postIncrement(final ObserverContext<RegionCoprocessorEnvironment> e,
+        final Increment increment, final Result result) throws IOException {
+      if (ct.incrementAndGet() == 1) {
+        Threads.sleep(sleepTime.get());
+      }
+      return result;
+    }
+
+    @Override
+    public Result postAppend(final ObserverContext<RegionCoprocessorEnvironment> e,
+        final Append append, final Result result) throws IOException {
+      if (ct.incrementAndGet() == 1) {
+        Threads.sleep(sleepTime.get());
+      }
+      return result;
+    }
+  }
+
+  /**
+   * Test append result when there are duplicate rpc request.
+   */
+  @Test
+  public void testDuplicateAppend() throws Exception {
+    HTableDescriptor hdt = TEST_UTIL.createTableDescriptor("HCM-testDuplicateAppend");
+    Map<String, String> kvs = new HashMap<String, String>();
+    kvs.put(SleepAtFirstRpcCall.SLEEP_TIME_CONF_KEY, "2000");
+    hdt.addCoprocessor(SleepAtFirstRpcCall.class.getName(), null, 1, kvs);
+    TEST_UTIL.createTable(hdt, new byte[][] { ROW }).close();
+
+    Configuration c = new Configuration(TEST_UTIL.getConfiguration());
+    c.setInt(HConstants.HBASE_CLIENT_PAUSE, 50);
+    // Client will retry beacuse rpc timeout is small than the sleep time of first rpc call
+    c.setInt(HConstants.HBASE_RPC_TIMEOUT_KEY, 1500);
+
+    HConnection connection = HConnectionManager.createConnection(c);
+    HTableInterface t = connection.getTable(TableName.valueOf("HCM-testDuplicateAppend"));
+    if (t instanceof HTable) {
+      HTable table = (HTable) t;
+      table.setOperationTimeout(3 * 1000);
+
+      try {
+        Append append = new Append(ROW);
+        append.add(TEST_UTIL.fam1, QUALIFIER, VALUE);
+        Result result = table.append(append);
+
+        // Verify expected result
+        Cell[] cells = result.rawCells();
+        assertEquals(1, cells.length);
+        assertKey(cells[0], ROW, TEST_UTIL.fam1, QUALIFIER, VALUE);
+
+        // Verify expected result again
+        Result readResult = table.get(new Get(ROW));
+        cells = readResult.rawCells();
+        assertEquals(1, cells.length);
+        assertKey(cells[0], ROW, TEST_UTIL.fam1, QUALIFIER, VALUE);
+      } finally {
+        table.close();
+        connection.close();
+      }
+    }
+  }
+
+  /**
+   * Test increment result when there are duplicate rpc request.
+   */
+  @Test
+  public void testDuplicateIncrement() throws Exception {
+    HTableDescriptor hdt = TEST_UTIL.createTableDescriptor("HCM-testDuplicateIncrement");
+    Map<String, String> kvs = new HashMap<String, String>();
+    kvs.put(SleepAtFirstRpcCall.SLEEP_TIME_CONF_KEY, "2000");
+    hdt.addCoprocessor(SleepAtFirstRpcCall.class.getName(), null, 1, kvs);
+    TEST_UTIL.createTable(hdt, new byte[][] { ROW }).close();
+
+    Configuration c = new Configuration(TEST_UTIL.getConfiguration());
+    c.setInt(HConstants.HBASE_CLIENT_PAUSE, 50);
+    // Client will retry beacuse rpc timeout is small than the sleep time of first rpc call
+    c.setInt(HConstants.HBASE_RPC_TIMEOUT_KEY, 1500);
+
+    HConnection connection = HConnectionManager.createConnection(c);
+    HTableInterface t = connection.getTable(TableName.valueOf("HCM-testDuplicateIncrement"));
+    if (t instanceof HTable) {
+      HTable table = (HTable) t;
+      table.setOperationTimeout(3 * 1000);
+
+      try {
+        Increment inc = new Increment(ROW);
+        inc.addColumn(TEST_UTIL.fam1, QUALIFIER, 1);
+        Result result = table.increment(inc);
+
+        Cell[] cells = result.rawCells();
+        assertEquals(1, cells.length);
+        assertIncrementKey(cells[0], ROW, TEST_UTIL.fam1, QUALIFIER, 1);
+
+        // Verify expected result
+        Result readResult = table.get(new Get(ROW));
+        cells = readResult.rawCells();
+        assertEquals(1, cells.length);
+        assertIncrementKey(cells[0], ROW, TEST_UTIL.fam1, QUALIFIER, 1);
+      } finally {
+        table.close();
+        connection.close();
+      }
+    }
   }
 
   /**

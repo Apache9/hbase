@@ -4718,9 +4718,9 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
    * @throws IOException
    */
   protected Result append(final HRegion region,
-      final MutationProto m, final CellScanner cellScanner, long nonceGroup) throws IOException {
+      final MutationProto mutation, final CellScanner cellScanner, long nonceGroup) throws IOException {
     long before = EnvironmentEdgeManager.currentTimeMillis();
-    Append append = ProtobufUtil.toAppend(m, cellScanner);
+    Append append = ProtobufUtil.toAppend(mutation, cellScanner);
     if (isQuotaEnabled()) {
       rsQuotaManager.checkQuota(region, append);
     }
@@ -4729,13 +4729,21 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
       r = region.getCoprocessorHost().preAppend(append);
     }
     if (r == null) {
-      long nonce = startNonceOperation(m, nonceGroup);
+      boolean canProceed = startNonceOperation(mutation, nonceGroup);
       boolean success = false;
       try {
-        r = region.append(append, nonceGroup, nonce);
+        long nonce = mutation.hasNonce() ? mutation.getNonce() : HConstants.NO_NONCE;
+        if (canProceed) {
+          r = region.append(append, nonceGroup, nonce);
+        } else {
+          // convert duplicate append to get
+          List<Cell> results = region.get(ProtobufUtil.toGet(mutation, cellScanner), false,
+            nonceGroup, nonce);
+          r = Result.create(results);
+        }
         success = true;
       } finally {
-        endNonceOperation(m, nonceGroup, success);
+        endNonceOperation(mutation, nonceGroup, success);
       }
       if (region.getCoprocessorHost() != null) {
         region.getCoprocessorHost().postAppend(append, r);
@@ -4754,9 +4762,9 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
    * @throws IOException
    */
   protected Result increment(final HRegion region, final MutationProto mutation,
-      final CellScanner cells, long nonceGroup) throws IOException {
+      final CellScanner cellScanner, long nonceGroup) throws IOException {
     long before = EnvironmentEdgeManager.currentTimeMillis();
-    Increment increment = ProtobufUtil.toIncrement(mutation, cells);
+    Increment increment = ProtobufUtil.toIncrement(mutation, cellScanner);
     if (isQuotaEnabled()) {
       rsQuotaManager.checkQuota(region, OperationType.GET);
       rsQuotaManager.checkQuota(region, increment);
@@ -4766,13 +4774,23 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
       r = region.getCoprocessorHost().preIncrement(increment);
     }
     if (r == null) {
-      long nonce = startNonceOperation(mutation, nonceGroup);
+      boolean canProceed = startNonceOperation(mutation, nonceGroup);
       boolean success = false;
       try {
-        r = region.increment(increment, nonceGroup, nonce);
+        long nonce = mutation.hasNonce() ? mutation.getNonce() : HConstants.NO_NONCE;
+        if (canProceed) {
+          r = region.increment(increment, nonceGroup, nonce);
+        } else {
+          // convert duplicate increment to get
+          List<Cell> results = region.get(ProtobufUtil.toGet(mutation, cellScanner), false,
+            nonceGroup, nonce);
+          r = Result.create(results);
+        }
         success = true;
       } finally {
-        endNonceOperation(mutation, nonceGroup, success);
+        if (canProceed) {
+          endNonceOperation(mutation, nonceGroup, success);
+        }
       }
       if (region.getCoprocessorHost() != null) {
         r = region.getCoprocessorHost().postIncrement(increment, r);
@@ -4786,25 +4804,18 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
    * Starts the nonce operation for a mutation, if needed.
    * @param mutation Mutation.
    * @param nonceGroup Nonce group from the request.
-   * @returns Nonce used (can be NO_NONCE).
+   * @returns whether to proceed this mutation.
    */
-  private long startNonceOperation(final MutationProto mutation, long nonceGroup)
+  private boolean startNonceOperation(final MutationProto mutation, long nonceGroup)
       throws IOException, OperationConflictException {
-    if (nonceManager == null || !mutation.hasNonce()) return HConstants.NO_NONCE;
+    if (nonceManager == null || !mutation.hasNonce()) return true;
     boolean canProceed = false;
     try {
       canProceed = nonceManager.startOperation(nonceGroup, mutation.getNonce(), this);
     } catch (InterruptedException ex) {
       throw new InterruptedIOException("Nonce start operation interrupted");
     }
-    if (!canProceed) {
-      // TODO: instead, we could convert append/increment to get w/mvcc
-      String message = "The operation with nonce {" + nonceGroup + ", " + mutation.getNonce()
-          + "} on row [" + Bytes.toString(mutation.getRow().toByteArray())
-          + "] may have already completed";
-      throw new OperationConflictException(message);
-    }
-    return mutation.getNonce();
+    return canProceed;
   }
 
   /**
