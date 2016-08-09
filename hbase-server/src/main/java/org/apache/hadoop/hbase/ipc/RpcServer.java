@@ -278,6 +278,7 @@ public class RpcServer implements RpcServerInterface {
 
   private UserProvider userProvider;
 
+
   /**
    * Datastructure that holds all necessary to a method invocation and then afterward, carries
    * the result.
@@ -294,6 +295,9 @@ public class RpcServer implements RpcServerInterface {
     protected long timestamp;      // the time received when response is null
                                    // the time served when response is not null
     protected int timeout;
+    protected long startTime;
+    protected long deadline;// the deadline to handle this call, if exceed we can drop it.
+
     /**
      * Chain of buffers to send as response.
      */
@@ -324,6 +328,7 @@ public class RpcServer implements RpcServerInterface {
       this.size = size;
       this.tinfo = tinfo;
       this.timeout = timeout;
+      this.deadline = this.timeout > 0 ? this.timestamp + this.timeout : Long.MAX_VALUE;
     }
 
     @Override
@@ -2064,7 +2069,7 @@ public class RpcServer implements RpcServerInterface {
   public Pair<Message, CellScanner> call(BlockingService service, MethodDescriptor md,
       Message param, CellScanner cellScanner, long receiveTime, MonitoredRPCHandler status)
       throws IOException {
-    return call(service, md, param, cellScanner, receiveTime, status, 0);
+    return call(service, md, param, cellScanner, receiveTime, status, System.currentTimeMillis(),0);
   }
 
   /**
@@ -2073,15 +2078,14 @@ public class RpcServer implements RpcServerInterface {
    * exception name and the stack trace are returned in the protobuf response.
    */
   public Pair<Message, CellScanner> call(BlockingService service, MethodDescriptor md,
-      Message param, CellScanner cellScanner, long receiveTime, MonitoredRPCHandler status, int timeout)
-  throws IOException {
+      Message param, CellScanner cellScanner, long receiveTime, MonitoredRPCHandler status,
+      long startTime, int timeout) throws IOException {
     try {
       status.setRPC(md.getName(), new Object[]{param}, receiveTime);
       // TODO: Review after we add in encoded data blocks.
       status.setRPCPacket(param);
       status.resume("Servicing call");
       //get an instance of the method arg type
-      long startTime = System.currentTimeMillis();
       long startTimeInNs = System.nanoTime();
       PayloadCarryingRpcController controller = new PayloadCarryingRpcController(cellScanner);
       controller.setTimeout(timeout);
