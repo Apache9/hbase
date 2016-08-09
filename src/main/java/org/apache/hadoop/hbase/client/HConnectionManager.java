@@ -1106,11 +1106,11 @@ public class HConnectionManager {
       try {
         long startTime = System.currentTimeMillis();
         // pre-fetch certain number of regions info at region cache.
-        MetaScanner.metaScan(conf, this, visitor, tableName, row,
-            this.prefetchRegionLimit, HConstants.META_TABLE_NAME);
-        LOG.info("Prefetch for table=" + Bytes.toString(tableName) + ", row=" + Bytes.toString(row)
-            + ", prefetchRegionLimit=" + this.prefetchRegionLimit + ", time consume="
-            + (System.currentTimeMillis() - startTime));
+        MetaScanner.metaScan(conf, this, visitor, tableName, row, this.prefetchRegionLimit,
+          HConstants.META_TABLE_NAME);
+        LOG.info("Prefetch for table=" + Bytes.toString(tableName) + ", row="
+            + Bytes.toStringBinary(row) + ", prefetchRegionLimit=" + this.prefetchRegionLimit
+            + ", time consume=" + (System.currentTimeMillis() - startTime));
       } catch (IOException e) {
         LOG.warn("Encountered problems when prefetch META table: ", e);
       }
