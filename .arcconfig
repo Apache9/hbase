@@ -1,6 +1,6 @@
 {
   "project_id" : "HBase",
   "conduit_uri" : "https://phabricator.d.xiaomi.net/",
-  "base" : "git:merge-base(origin/0.98.11-mdh2.0), arc:prompt",
-  "arc.land.onto.default": "0.98.11-mdh2.0"
+  "base" : "git:merge-base(origin/0.98.11-mdh2), arc:prompt",
+  "arc.land.onto.default": "0.98.11-mdh2"
 }
