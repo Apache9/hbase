@@ -20,6 +20,11 @@
 
 package org.apache.hadoop.hbase.ipc;
 
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
+
+import javax.net.SocketFactory;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.DataInputStream;
@@ -39,10 +44,9 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
-
-import javax.net.SocketFactory;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -52,7 +56,6 @@ import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
-import org.apache.hadoop.hbase.util.Pair;
 import org.apache.hadoop.hbase.util.PoolMap;
 import org.apache.hadoop.hbase.util.PoolMap.PoolType;
 import org.apache.hadoop.io.DataOutputBuffer;
@@ -106,6 +109,15 @@ public class HBaseClient {
   public final static String CLIENT_FAIL_FAST_FOR_FAILED_SERVER = "hbase.client.fail.fast.for.failed.server";
   protected final boolean clientFailFast;
 
+  private long maxConcurrentCallsPerServer;
+
+  private static final LoadingCache<InetSocketAddress, AtomicLong> concurrentCounterCache =
+  CacheBuilder.newBuilder().expireAfterAccess(1, TimeUnit.HOURS).
+      build(new CacheLoader<InetSocketAddress, AtomicLong>() {
+    @Override public AtomicLong load(InetSocketAddress key) throws Exception {
+      return new AtomicLong(0);
+    }
+  });
 
   static class FailedServer{
     public long expiry;
@@ -924,6 +936,9 @@ public class HBaseClient {
     this.connections = new PoolMap<ConnectionId, Connection>(
         getPoolType(conf), getPoolSize(conf));
     this.failedServers = new FailedServers(conf);
+    this.maxConcurrentCallsPerServer = conf.getLong(
+        HConstants.HBASE_CLIENT_PERSERVER_REQUESTS_THRESHOLD,
+        HConstants.DEFAULT_HBASE_CLIENT_PERSERVER_REQUESTS_THRESHOLD);
   }
 
   /**
@@ -1030,45 +1045,54 @@ public class HBaseClient {
                        Class<? extends VersionedProtocol> protocol,
                        User ticket, int rpcTimeout)
       throws InterruptedException, IOException {
-    Call call = new Call(param);
-    Connection connection = getConnection(addr, protocol, ticket, rpcTimeout, call);
-    connection.sendParam(call);                 // send the parameter
-    boolean interrupted = false;
-    //noinspection SynchronizationOnLocalVariableOrMethodParameter
-    synchronized (call) {
-      while (!call.done) {
-        if (connection.shouldCloseConnection.get()) {
-          throw new IOException("Unexpected closed connection");
-        }
-        try {
-          call.wait(1000);                       // wait for the result
-        } catch (InterruptedException ignored) {
-          // save the fact that we were interrupted
-          interrupted = true;
-        }
+    AtomicLong counter = concurrentCounterCache.getUnchecked(addr);
+    long count = counter.incrementAndGet();
+    try {
+      if (count > this.maxConcurrentCallsPerServer) {
+        throw new ServerBusyException(addr, count);
       }
+      Call call = new Call(param);
+      Connection connection = getConnection(addr, protocol, ticket, rpcTimeout, call);
+      connection.sendParam(call);                 // send the parameter
+      boolean interrupted = false;
+      //noinspection SynchronizationOnLocalVariableOrMethodParameter
+      synchronized (call) {
+        while (!call.done) {
+          if (connection.shouldCloseConnection.get()) {
+            throw new IOException("Unexpected closed connection");
+          }
+          try {
+            call.wait(1000);                       // wait for the result
+          } catch (InterruptedException ignored) {
+            // save the fact that we were interrupted
+            interrupted = true;
+          }
+        }
 
-      if (interrupted) {
-        // set the interrupt flag now that we are done waiting
-        Thread.currentThread().interrupt();
-      }
+        if (interrupted) {
+          // set the interrupt flag now that we are done waiting
+          Thread.currentThread().interrupt();
+        }
 
-      if (call.error != null) {
-        if (call.error instanceof RemoteException) {
-          call.error.fillInStackTrace();
-          throw call.error;
+        if (call.error != null) {
+          if (call.error instanceof RemoteException) {
+            call.error.fillInStackTrace();
+            throw call.error;
+          }
+
+          // do not wrap DoNotRetryIOException; otherwise outer loop may
+          // also retry
+          if (call.error instanceof DoNotRetryIOException) {
+            throw call.error;
+          }
+
+          // local exception
+          throw wrapException(addr, call.error);
         }
-        
-        // do not wrap DoNotRetryIOException; otherwise outer loop may
-        // also retry
-        if (call.error instanceof DoNotRetryIOException) {
-          throw call.error;
-        }
-        
-        // local exception
-        throw wrapException(addr, call.error);
+        return call.value;
       }
-      return call.value;
+    } finally {
+      counter.decrementAndGet();
     }
   }
 
@@ -1136,7 +1160,12 @@ public class HBaseClient {
     synchronized (results) {
       for (int i = 0; i < params.length; i++) {
         ParallelCall call = new ParallelCall(params[i], results, i);
+        AtomicLong counter = concurrentCounterCache.getUnchecked(addresses[i]);
+        long count = counter.incrementAndGet();
         try {
+          if (count > this.maxConcurrentCallsPerServer) {
+            throw new ServerBusyException(addresses[i], count);
+          }
           Connection connection =
               getConnection(addresses[i], protocol, ticket, 0, call);
           connection.sendParam(call);             // send each parameter
@@ -1145,6 +1174,8 @@ public class HBaseClient {
           LOG.info("Calling "+addresses[i]+" caught: " +
                    e.getMessage(),e);
           results.size--;                         //  wait for one fewer result
+        } finally {
+          counter.decrementAndGet();
         }
       }
       while (results.count != results.size) {
