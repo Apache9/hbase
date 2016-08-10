@@ -30,14 +30,13 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.HServerInfo;
 import org.apache.hadoop.hbase.HServerLoad;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.master.AssignmentManager.RegionState;
 import org.apache.hadoop.hbase.monitoring.LogMonitoring;
 import org.apache.hadoop.hbase.monitoring.StateDumpServlet;
 import org.apache.hadoop.hbase.monitoring.TaskMonitor;
-import org.apache.hadoop.util.ReflectionUtils;
+import org.apache.hadoop.hbase.util.ThreadInfoUtils;
 
 public class MasterDumpServlet extends StateDumpServlet {
   private static final long serialVersionUID = 1L;
@@ -79,7 +78,7 @@ public class MasterDumpServlet extends StateDumpServlet {
     
     out.println("\n\nStacks:");
     out.println(LINE);
-    ReflectionUtils.printThreadInfo(out, "");
+    ThreadInfoUtils.printThreadInfo(out, "");
     
     out.println("\n\nMaster configuration:");
     out.println(LINE);
