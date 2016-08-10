@@ -29,6 +29,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryUsage;
+import java.lang.management.ThreadInfo;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.net.BindException;
@@ -183,6 +184,7 @@ import org.apache.hadoop.hbase.util.Pair;
 import org.apache.hadoop.hbase.util.QueueCounter;
 import org.apache.hadoop.hbase.util.Sleeper;
 import org.apache.hadoop.hbase.util.Strings;
+import org.apache.hadoop.hbase.util.ThreadInfoUtils;
 import org.apache.hadoop.hbase.util.Threads;
 import org.apache.hadoop.hbase.util.VersionInfo;
 import org.apache.hadoop.hbase.util.Writables;
@@ -1543,7 +1545,7 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
         stop = true;
         LOG.fatal(
           "Run out of memory; HRegionServer will abort itself immediately", e);
-        ReflectionUtils.logThreadInfo(LOG, "thread dump from JvmThreadMonitor", 60);
+        ThreadInfoUtils.logThreadInfo("thread dump from JvmThreadMonitor", true);
       }
     } finally {
       if (stop) {

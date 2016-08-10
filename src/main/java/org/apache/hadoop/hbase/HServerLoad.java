@@ -253,7 +253,7 @@ implements WritableComparable<HServerLoad> {
      * @return the region name as a string
      */
     public String getNameAsString() {
-      return Bytes.toString(name);
+      return Bytes.toStringBinary(name);
     }
 
     /**

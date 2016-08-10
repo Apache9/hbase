@@ -31,6 +31,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.monitoring.LogMonitoring;
 import org.apache.hadoop.hbase.monitoring.StateDumpServlet;
 import org.apache.hadoop.hbase.monitoring.TaskMonitor;
+import org.apache.hadoop.hbase.util.ThreadInfoUtils;
 import org.apache.hadoop.util.ReflectionUtils;
 
 public class RSDumpServlet extends StateDumpServlet {
@@ -77,7 +78,7 @@ public class RSDumpServlet extends StateDumpServlet {
     
     out.println("\n\nStacks:");
     out.println(LINE);
-    ReflectionUtils.printThreadInfo(out, "");
+    ThreadInfoUtils.printThreadInfo(out, "");
     
     out.println("\n\nRS Configuration:");
     out.println(LINE);
