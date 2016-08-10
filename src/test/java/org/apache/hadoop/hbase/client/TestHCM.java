@@ -19,12 +19,6 @@
  */
 package org.apache.hadoop.hbase.client;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
@@ -42,12 +36,19 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
+import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HRegionLocation;
+import org.apache.hadoop.hbase.HTableDescriptor;
+import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.MediumTests;
 import org.apache.hadoop.hbase.ZooKeeperConnectionException;
 import org.apache.hadoop.hbase.client.HConnectionManager.HConnectionImplementation;
 import org.apache.hadoop.hbase.client.HConnectionManager.HConnectionKey;
+import org.apache.hadoop.hbase.coprocessor.BaseRegionObserver;
+import org.apache.hadoop.hbase.coprocessor.ObserverContext;
+import org.apache.hadoop.hbase.coprocessor.RegionCoprocessorEnvironment;
+import org.apache.hadoop.hbase.ipc.ServerBusyException;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.Threads;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
@@ -56,6 +57,13 @@ import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 /**
  * This class is for testing HCM features
@@ -67,11 +75,14 @@ public class TestHCM {
   private static final byte[] TABLE_NAME = Bytes.toBytes("test");
   private static final byte[] TABLE_NAME1 = Bytes.toBytes("test1");
   private static final byte[] TABLE_NAME2 = Bytes.toBytes("test2");
+  private static final byte[] TABLE_NAME3 = Bytes.toBytes("test3");
   private static final byte[] FAM_NAM = Bytes.toBytes("f");
   private static final byte[] ROW = Bytes.toBytes("bbb");
 
   @BeforeClass
   public static void setUpBeforeClass() throws Exception {
+    TEST_UTIL.getConfiguration().setLong(HConstants.HBASE_CLIENT_PERSERVER_REQUESTS_THRESHOLD, 1);
+    TEST_UTIL.getConfiguration().setInt(HConstants.HBASE_RPC_TIMEOUT_KEY, 60000);
     TEST_UTIL.startMiniCluster(1);
   }
 
@@ -465,5 +476,52 @@ public class TestHCM {
   @org.junit.Rule
   public org.apache.hadoop.hbase.ResourceCheckerJUnitRule cu =
     new org.apache.hadoop.hbase.ResourceCheckerJUnitRule();
+
+  private class TestThread extends Thread {
+
+    HTable table;
+    int getServerBusyException = 0;
+    public TestThread(HTable table){
+      this.table = table;
+    }
+
+    @Override public void run() {
+      try {
+        table.get(new Get(ROW));
+      } catch (ServerBusyException e) {
+        getServerBusyException = 1;
+      } catch (IOException ignore) {
+      }
+    }
+  }
+
+  /**
+   * This copro sleeps 10 second in get.
+   */
+  public static class SleepCP extends BaseRegionObserver {
+
+    @Override
+    public void preGet(final ObserverContext<RegionCoprocessorEnvironment> e,
+        final Get get, final List<KeyValue> results) throws IOException {
+      Threads.sleep(10000);
+    }
+  }
+
+  @Test()
+  public void testServerBusyException() throws Exception {
+    HTableDescriptor desc = new HTableDescriptor("test3");
+    String className = SleepCP.class.getName();
+    // add and check that it is present
+    desc.addCoprocessor(className);
+    desc.addFamily(new HColumnDescriptor(FAM_NAM));
+    TEST_UTIL.getHBaseAdmin().createTable(desc);
+    TestThread t1 = new TestThread(new HTable(TEST_UTIL.getConfiguration(), TABLE_NAME3));
+    TestThread t2 = new TestThread(new HTable(TEST_UTIL.getConfiguration(), TABLE_NAME3));
+    t1.start();
+    t2.start();
+    t1.join();
+    t2.join();
+    assertEquals(1, t1.getServerBusyException + t2.getServerBusyException);
+  }
 }
 

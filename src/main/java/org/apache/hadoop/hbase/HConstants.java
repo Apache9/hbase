@@ -537,6 +537,11 @@ public final class HConstants {
    */
   public static int DEFAULT_HBASE_CLIENT_RETRIES_NUMBER = 10;
 
+  public static final String HBASE_CLIENT_PERSERVER_REQUESTS_THRESHOLD =
+      "hbase.client.perserver.requests.threshold";
+
+  public static final long DEFAULT_HBASE_CLIENT_PERSERVER_REQUESTS_THRESHOLD = Long.MAX_VALUE;
+
   /**
    * Parameter name for maximum attempts, used to limit the number of times the
    * client will try to obtain the proxy for a given region server.
