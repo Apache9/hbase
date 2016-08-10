@@ -17,24 +17,16 @@
  */
 package org.apache.hadoop.hbase.util;
 
-import static java.lang.Thread.State.BLOCKED;
-import static java.lang.Thread.State.NEW;
-import static java.lang.Thread.State.RUNNABLE;
-import static java.lang.Thread.State.TERMINATED;
-import static java.lang.Thread.State.TIMED_WAITING;
-import static java.lang.Thread.State.WAITING;
-
 import com.google.common.base.Preconditions;
+
+import java.lang.management.ManagementFactory;
+import java.lang.management.ThreadInfo;
+import java.lang.management.ThreadMXBean;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.util.ReflectionUtils;
-
-import java.lang.management.ManagementFactory;
-import java.lang.management.ThreadInfo;
-import java.lang.management.ThreadMXBean;
 
 /**
  * Class which sets up a simple thread which runs in a loop sleeping
@@ -111,29 +103,25 @@ public class JvmThreadMonitor {
         long threadIds[] = threadMXBean.getAllThreadIds();
         ThreadInfo[] threadInfos = threadMXBean.getThreadInfo(threadIds, 0);
 
-        int threadsNew = 0;
         int threadsRunnable = 0;
         int threadsBlocked = 0;
         int threadsWaiting = 0;
-        int threadsTimedWaiting = 0;
-        int threadsTerminated = 0;
 
         for (ThreadInfo threadInfo : threadInfos) {
           // threadInfo is null if the thread is not alive or doesn't exist
           if (threadInfo == null) continue;
-          Thread.State state = threadInfo.getThreadState();
-          if (state == NEW) {
-            threadsNew++;
-          } else if (state == RUNNABLE) {
-            threadsRunnable++;
-          } else if (state == BLOCKED) {
-            threadsBlocked++;
-          } else if (state == WAITING) {
-            threadsWaiting++;
-          } else if (state == TIMED_WAITING) {
-            threadsTimedWaiting++;
-          } else if (state == TERMINATED) {
-            threadsTerminated++;
+          switch (threadInfo.getThreadState()) {
+            case RUNNABLE:
+              threadsRunnable++;
+              break;
+            case BLOCKED:
+              threadsBlocked++;
+              break;
+            case WAITING:
+              threadsWaiting++;
+              break;
+            default:
+              break;
           }
         }
 
@@ -153,8 +141,7 @@ public class JvmThreadMonitor {
         }
 
         if (printDump) {
-          ReflectionUtils
-              .logThreadInfo(LOG, "thread dump from JvmThreadMonitor", SLEEP_INTERVAL_MS/1000);
+          ThreadInfoUtils.logThreadInfo("thread dump from JvmThreadMonitor", false);
         }
       }
     }

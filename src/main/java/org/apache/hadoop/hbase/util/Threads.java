@@ -19,7 +19,6 @@
  */
 package org.apache.hadoop.hbase.util;
 
-import java.io.PrintWriter;
 import java.lang.Thread.UncaughtExceptionHandler;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadFactory;
@@ -29,11 +28,12 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.util.ReflectionUtils;
+import org.apache.hadoop.classification.InterfaceAudience;
 
 /**
  * Thread Utility
  */
+@InterfaceAudience.Private
 public class Threads {
   protected static final Log LOG = LogFactory.getLog(Threads.class);
   private static final AtomicInteger poolNumber = new AtomicInteger(1);
@@ -116,9 +116,8 @@ public class Threads {
     while (t.isAlive()) {
       t.join(60 * 1000);
       if (t.isAlive()) {
-        ReflectionUtils.printThreadInfo(new PrintWriter(System.out),
-            "Automatic Stack Trace every 60 seconds waiting on " +
-            t.getName());
+        ThreadInfoUtils.printThreadInfo(System.out,
+          "Automatic Stack Trace every 60 seconds waiting on " + t.getName());
       }
     }
   }
