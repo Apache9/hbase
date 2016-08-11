@@ -40,6 +40,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.commons.math.stat.descriptive.DescriptiveStatistics;
@@ -47,18 +48,23 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hbase.client.Append;
+import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Durability;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HConnection;
 import org.apache.hadoop.hbase.client.HConnectionManager;
 import org.apache.hadoop.hbase.client.HTableInterface;
+import org.apache.hadoop.hbase.client.Increment;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
+import org.apache.hadoop.hbase.client.RowMutations;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.filter.BinaryComparator;
 import org.apache.hadoop.hbase.filter.CompareFilter;
+import org.apache.hadoop.hbase.filter.CompareFilter.CompareOp;
 import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.filter.FilterAllFilter;
 import org.apache.hadoop.hbase.filter.FilterList;
@@ -73,6 +79,7 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.Hash;
 import org.apache.hadoop.hbase.util.MurmurHash;
 import org.apache.hadoop.hbase.util.Pair;
+import org.apache.hadoop.hbase.util.YammerHistogramUtils;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
@@ -84,9 +91,8 @@ import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 import org.codehaus.jackson.map.ObjectMapper;
 
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.yammer.metrics.core.Histogram;
-import com.yammer.metrics.core.MetricsRegistry;
+import com.yammer.metrics.stats.UniformSample;
 
 /**
  * Script used evaluating HBase performance and scalability.  Runs a HBase
@@ -167,6 +173,16 @@ public class PerformanceEvaluation extends Configured implements Tool {
         "Run scan test (read every row)");
     addCommandDescriptor(FilteredScanTest.class, "filterScan",
         "Run scan test using a filter to find a specific row based on it's value (make sure to use --rows=20)");
+    addCommandDescriptor(IncrementTest.class, "increment",
+        "Increment on each row; clients overlap on keyspace so some concurrent operations");
+    addCommandDescriptor(AppendTest.class, "append",
+      "Append on each row; clients overlap on keyspace so some concurrent operations");
+    addCommandDescriptor(CheckAndMutateTest.class, "checkAndMutate",
+      "CheckAndMutate on each row; clients overlap on keyspace so some concurrent operations");
+    addCommandDescriptor(CheckAndPutTest.class, "checkAndPut",
+      "CheckAndPut on each row; clients overlap on keyspace so some concurrent operations");
+    addCommandDescriptor(CheckAndDeleteTest.class, "checkAndDelete",
+      "CheckAndDelete on each row; clients overlap on keyspace so some concurrent operations");
   }
 
   protected void addCommandDescriptor(Class<? extends Test> cmdClass,
@@ -548,6 +564,9 @@ public class PerformanceEvaluation extends Configured implements Tool {
     protected HConnection connection;
     protected HTableInterface table;
 
+    private String testName;
+    private Histogram latencyHistogram;
+
     /**
      * Note that all subclasses of this class must provide a public contructor
      * that has the exact same list of arguments.
@@ -556,10 +575,18 @@ public class PerformanceEvaluation extends Configured implements Tool {
       this.conf = conf;
       this.opts = options;
       this.status = status;
+      this.testName = this.getClass().getSimpleName();
     }
 
     private String generateStatus(final int sr, final int i, final int lr) {
-      return sr + "/" + i + "/" + lr;
+      return sr + "/" + i + "/" + lr + ", latency " + getShortLatencyReport();
+    }
+
+    /**
+     * @return Subset of the histograms' calculation.
+     */
+    public String getShortLatencyReport() {
+      return YammerHistogramUtils.getShortHistogramReport(this.latencyHistogram);
     }
 
     protected int getReportingPeriod() {
@@ -571,6 +598,7 @@ public class PerformanceEvaluation extends Configured implements Tool {
       this.connection = HConnectionManager.createConnection(conf);
       this.table = connection.getTable(opts.tableName);
       this.table.setAutoFlush(false, true);
+      latencyHistogram = YammerHistogramUtils.newHistogram(new UniformSample(1024 * 500));
     }
 
     void testTakedown() throws IOException {
@@ -579,6 +607,17 @@ public class PerformanceEvaluation extends Configured implements Tool {
       }
       table.close();
       connection.close();
+
+      // Print all stats for this thread continuously.
+      // Synchronize on Test.class so different threads don't intermingle the
+      // output. We can't use 'this' here because each thread has its own instance of Test class.
+      synchronized (Test.class) {
+        status.setStatus("Test : " + testName + ", Thread : " + Thread.currentThread().getName());
+        status.setStatus("Latency (us) : " + YammerHistogramUtils.getHistogramReport(
+            latencyHistogram));
+        status.setStatus("Num measures (latency) : " + latencyHistogram.count());
+        status.setStatus(YammerHistogramUtils.getShortHistogramReport(latencyHistogram));
+      }
     }
 
     /*
@@ -605,7 +644,16 @@ public class PerformanceEvaluation extends Configured implements Tool {
       int lastRow = opts.startRow + opts.perClientRunRows;
       // Report on completion of 1/10th of total.
       for (int i = opts.startRow; i < lastRow; i++) {
+        long startTime = System.nanoTime();
         testRow(i);
+
+        // If multiget is enabled, say set to 10, testRow() returns immediately first 9 times
+        // and sends the actual get request in the 10th iteration. We should only set latency
+        // when actual request is sent because otherwise it turns out to be 0.
+        if (opts.multiGet == 0 || (i - opts.startRow + 1) % opts.multiGet == 0) {
+          latencyHistogram.update((System.nanoTime() - startTime) / 1000);
+        }
+
         if (status != null && i > 0 && (i % getReportingPeriod()) == 0) {
           status.setStatus(generateStatus(opts.startRow, i, lastRow));
         }
@@ -964,6 +1012,107 @@ public class PerformanceEvaluation extends Configured implements Tool {
   }
 
   /**
+   * Base class for operations that are CAS-like; that read a value and then set it based off what
+   * they read. In this category is increment, append, checkAndPut, etc.
+   *
+   * <p>These operations also want some concurrency going on. Usually when these tests run, they
+   * operate in their own part of the key range. In CASTest, we will have them all overlap on the
+   * same key space. We do this with our getStartRow and getLastRow overrides.
+   */
+  static abstract class CASTableTest extends Test {
+    private final byte[] qualifier;
+
+    CASTableTest(Configuration conf, TestOptions options, Status status) {
+      super(conf, options, status);
+      qualifier = Bytes.toBytes(this.getClass().getSimpleName());
+    }
+
+    byte[] getQualifier() {
+      return this.qualifier;
+    }
+  }
+
+  static class IncrementTest extends CASTableTest {
+    IncrementTest(Configuration conf, TestOptions options, Status status) {
+      super(conf, options, status);
+    }
+
+    @Override
+    void testRow(final int i) throws IOException {
+      Increment increment = new Increment(format(i));
+      increment.addColumn(FAMILY_NAME, getQualifier(), 1l);
+      this.table.increment(increment);
+    }
+  }
+
+  static class AppendTest extends CASTableTest {
+    AppendTest(Configuration conf, TestOptions options, Status status) {
+      super(conf, options, status);
+    }
+
+    @Override
+    void testRow(final int i) throws IOException {
+      byte[] bytes = format(i);
+      Append append = new Append(bytes);
+      append.add(FAMILY_NAME, getQualifier(), bytes);
+      this.table.append(append);
+    }
+  }
+
+  static class CheckAndMutateTest extends CASTableTest {
+    CheckAndMutateTest(Configuration conf, TestOptions options, Status status) {
+      super(conf, options, status);
+    }
+
+    @Override
+    void testRow(final int i) throws IOException {
+      byte[] bytes = format(i);
+      // Put a known value so when we go to check it, it is there.
+      Put put = new Put(bytes);
+      put.add(FAMILY_NAME, getQualifier(), bytes);
+      this.table.put(put);
+      RowMutations mutations = new RowMutations(bytes);
+      mutations.add(put);
+      this.table.checkAndMutate(bytes, FAMILY_NAME, getQualifier(), CompareOp.EQUAL, bytes,
+        mutations);
+    }
+  }
+
+  static class CheckAndPutTest extends CASTableTest {
+    CheckAndPutTest(Configuration conf, TestOptions options, Status status) {
+      super(conf, options, status);
+    }
+
+    @Override
+    void testRow(final int i) throws IOException {
+      byte[] bytes = format(i);
+      // Put a known value so when we go to check it, it is there.
+      Put put = new Put(bytes);
+      put.add(FAMILY_NAME, getQualifier(), bytes);
+      this.table.put(put);
+      this.table.checkAndPut(bytes, FAMILY_NAME, getQualifier(), bytes, put);
+    }
+  }
+
+  static class CheckAndDeleteTest extends CASTableTest {
+    CheckAndDeleteTest(Configuration conf, TestOptions options, Status status) {
+      super(conf, options, status);
+    }
+
+    @Override
+    void testRow(final int i) throws IOException {
+      byte[] bytes = format(i);
+      // Put a known value so when we go to check it, it is there.
+      Put put = new Put(bytes);
+      put.add(FAMILY_NAME, getQualifier(), bytes);
+      this.table.put(put);
+      Delete delete = new Delete(put.getRow());
+      delete.deleteColumn(FAMILY_NAME, QUALIFIER_NAME);
+      this.table.checkAndDelete(bytes, FAMILY_NAME, getQualifier(), bytes, delete);
+    }
+  }
+
+  /**
    * Compute a throughput rate in MB/s.
    * @param rows Number of records consumed.
    * @param timeMs Time taken in milliseconds.
@@ -1136,9 +1285,11 @@ public class PerformanceEvaluation extends Configured implements Tool {
       "clients (and HRegionServers)");
     System.err.println("                 running: 1 <= value <= 500");
     System.err.println("Examples:");
-    System.err.println(" To run a single evaluation client:");
+    System.err.println(" To run a single client doing the default 1M sequentialWrites:");
+    System.err.println(" $ bin/hbase " + this.getClass().getName() + " sequentialWrite 1");
+    System.err.println(" To run 10 clients doing increments over ten rows:");
     System.err.println(" $ bin/hbase " + this.getClass().getName()
-        + " sequentialWrite 1");
+        + " --rows=10 --nomapred increment 10");
   }
 
   private static int getNumClients(final int start, final String[] args) {
