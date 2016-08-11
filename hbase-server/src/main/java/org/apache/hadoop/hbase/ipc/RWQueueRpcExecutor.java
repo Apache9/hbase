@@ -18,6 +18,8 @@
 
 package org.apache.hadoop.hbase.ipc;
 
+import com.google.protobuf.Message;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -37,8 +39,7 @@ import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.MultiRequest;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.RegionAction;
 import org.apache.hadoop.hbase.protobuf.generated.RPCProtos.RequestHeader;
 import org.apache.hadoop.hbase.util.ReflectionUtils;
-
-import com.google.protobuf.Message;
+import org.apache.hadoop.hbase.util.ThreadInfoUtils;
 
 /**
  * RPC Executor that uses different queues for reads and writes.
@@ -127,10 +128,9 @@ public class RWQueueRpcExecutor extends RpcExecutor {
       callTask.resetCallQueueSize();
       String queueType = queueIndex < numWriteQueues ? "write" : "read";
       LOG.error("Could not insert into " + queueType + "Queue!");
-      org.apache.hadoop.util.ReflectionUtils.logThreadInfo(LOG,
-        "thread dump when call queue is full", 60);
-      callTask.doRespond(null, new IOException(), "IPC server unable to " + queueType
-          + " call method");
+      ThreadInfoUtils.logThreadInfo("thread dump when " + queueType + " queue is full", false);
+      callTask.doRespond(null, new IOException(),
+        "IPC server unable to " + queueType + " call method");
     }
   }
 

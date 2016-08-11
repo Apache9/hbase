@@ -27,12 +27,12 @@ import java.util.Date;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.monitoring.LogMonitoring;
 import org.apache.hadoop.hbase.monitoring.StateDumpServlet;
 import org.apache.hadoop.hbase.monitoring.TaskMonitor;
-import org.apache.hadoop.hbase.util.Threads;
+import org.apache.hadoop.hbase.util.ThreadInfoUtils;
 
 @InterfaceAudience.Private
 public class RSDumpServlet extends StateDumpServlet {
@@ -80,7 +80,7 @@ public class RSDumpServlet extends StateDumpServlet {
     out.println("\n\nStacks:");
     out.println(LINE);
     PrintStream ps = new PrintStream(response.getOutputStream(), false, "UTF-8");
-    Threads.printThreadInfo(ps, "");
+    ThreadInfoUtils.printThreadInfo(ps, "");
     ps.flush();
     
     out.println("\n\nRS Configuration:");

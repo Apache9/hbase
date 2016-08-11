@@ -31,6 +31,7 @@ import org.apache.hadoop.hbase.HBaseInterfaceAudience;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.classification.InterfaceStability;
 import org.apache.hadoop.hbase.util.ReflectionUtils;
+import org.apache.hadoop.hbase.util.ThreadInfoUtils;
 
 /**
  * An {@link RpcExecutor} that will balance requests evenly across all its queues, but still remains
@@ -76,8 +77,7 @@ public class BalancedQueueRpcExecutor extends RpcExecutor {
     if (!queues.get(queueIndex).offer(callTask)) {
       callTask.resetCallQueueSize();
       LOG.error("Could not insert into Queue!");
-      org.apache.hadoop.util.ReflectionUtils.logThreadInfo(LOG,
-        "thread dump when call queue is full", 60);
+      ThreadInfoUtils.logThreadInfo("thread dump when call queue is full", false);
       callTask.doRespond(null, new IOException(), "IPC server unable to call method");
     }
   }
