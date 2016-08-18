@@ -81,7 +81,7 @@ public class TestHCM {
 
   @BeforeClass
   public static void setUpBeforeClass() throws Exception {
-    TEST_UTIL.getConfiguration().setLong(HConstants.HBASE_CLIENT_PERSERVER_REQUESTS_THRESHOLD, 1);
+    TEST_UTIL.getConfiguration().setLong(HConstants.HBASE_CLIENT_PERSERVER_REQUESTS_THRESHOLD, 3);
     TEST_UTIL.getConfiguration().setInt(HConstants.HBASE_RPC_TIMEOUT_KEY, 60000);
     TEST_UTIL.startMiniCluster(1);
   }
@@ -517,11 +517,21 @@ public class TestHCM {
     TEST_UTIL.getHBaseAdmin().createTable(desc);
     TestThread t1 = new TestThread(new HTable(TEST_UTIL.getConfiguration(), TABLE_NAME3));
     TestThread t2 = new TestThread(new HTable(TEST_UTIL.getConfiguration(), TABLE_NAME3));
+    TestThread t3 = new TestThread(new HTable(TEST_UTIL.getConfiguration(), TABLE_NAME3));
+    TestThread t4 = new TestThread(new HTable(TEST_UTIL.getConfiguration(), TABLE_NAME3));
+    TestThread t5 = new TestThread(new HTable(TEST_UTIL.getConfiguration(), TABLE_NAME3));
     t1.start();
     t2.start();
+    t3.start();
+    t4.start();
+    t5.start();
     t1.join();
     t2.join();
-    assertEquals(1, t1.getServerBusyException + t2.getServerBusyException);
+    t3.join();
+    t4.join();
+    t5.join();
+    assertEquals(2, t1.getServerBusyException + t2.getServerBusyException
+        + t3.getServerBusyException + t4.getServerBusyException + t5.getServerBusyException);
   }
 }
 
