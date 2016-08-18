@@ -15,20 +15,33 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-option java_package = "org.apache.hadoop.hbase.ipc.protobuf.generated";
-option java_outer_classname = "TestRpcServiceProtos";
-option java_generic_services = true;
-option java_generate_equals_and_hash = true;
+package org.apache.hadoop.hbase.ipc;
 
-import "test.proto";
-
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.HConstants;
+import org.apache.hadoop.hbase.codec.Codec;
+import org.apache.hadoop.hbase.testclassification.SmallTests;
+import org.junit.experimental.categories.Category;
 
 /**
- * A protobuf service for use in tests
+ * Test NettyRpcClient.
  */
-service TestProtobufRpcProto {
-  rpc ping(EmptyRequestProto) returns (EmptyResponseProto);
-  rpc echo(EchoRequestProto) returns (EchoResponseProto);
-  rpc error(EmptyRequestProto) returns (EmptyResponseProto);
-  rpc pause(PauseRequestProto) returns (PauseResponseProto);
+@Category(SmallTests.class)
+public class TestNettyIPC extends AbstractTestIPC {
+
+  @Override
+  protected AbstractRpcClient<?> createRpcClientNoCodec(Configuration conf) {
+    return new NettyRpcClient(conf, HConstants.CLUSTER_ID_DEFAULT) {
+
+      @Override
+      protected Codec getCodec() {
+        return null;
+      }
+    };
+  }
+
+  @Override
+  protected AbstractRpcClient<?> createRpcClient(Configuration conf) {
+    return new NettyRpcClient(conf, HConstants.CLUSTER_ID_DEFAULT);
+  }
 }

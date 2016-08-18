@@ -25,6 +25,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
+import org.apache.hadoop.hbase.util.Threads;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos;
 import org.apache.hadoop.hbase.ipc.protobuf.generated.TestRpcServiceProtos;
@@ -32,6 +33,8 @@ import org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.EchoRequestProt
 import org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.EchoResponseProto;
 import org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.EmptyRequestProto;
 import org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.EmptyResponseProto;
+import org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.PauseRequestProto;
+import org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.PauseResponseProto;
 import org.apache.hadoop.hbase.security.User;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
@@ -81,6 +84,13 @@ public class TestProtoBufRpc {
     public EmptyResponseProto error(RpcController unused,
         EmptyRequestProto request) throws ServiceException {
       throw new ServiceException("error", new IOException("error"));
+    }
+
+    @Override
+    public PauseResponseProto pause(RpcController controller, PauseRequestProto request)
+        throws ServiceException {
+      Threads.sleepWithoutInterrupt(request.getMs());
+      return PauseResponseProto.getDefaultInstance();
     }
   }
 

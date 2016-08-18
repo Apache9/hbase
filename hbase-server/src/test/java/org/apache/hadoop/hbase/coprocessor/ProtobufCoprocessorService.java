@@ -21,13 +21,15 @@ package org.apache.hadoop.hbase.coprocessor;
 import com.google.protobuf.RpcCallback;
 import com.google.protobuf.RpcController;
 import com.google.protobuf.Service;
+
+import java.io.IOException;
+
 import org.apache.hadoop.hbase.Coprocessor;
 import org.apache.hadoop.hbase.CoprocessorEnvironment;
 import org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos;
 import org.apache.hadoop.hbase.ipc.protobuf.generated.TestRpcServiceProtos;
 import org.apache.hadoop.hbase.protobuf.ResponseConverter;
-
-import java.io.IOException;
+import org.apache.hadoop.hbase.util.Threads;
 
 /**
  * Test implementation of a coprocessor endpoint exposing the
@@ -73,5 +75,12 @@ public class ProtobufCoprocessorService
   @Override
   public void stop(CoprocessorEnvironment env) throws IOException {
     //To change body of implemented methods use File | Settings | File Templates.
+  }
+
+  @Override
+  public void pause(RpcController controller, TestProtos.PauseRequestProto request,
+      RpcCallback<TestProtos.PauseResponseProto> done) {
+    Threads.sleepWithoutInterrupt(request.getMs());
+    done.run(TestProtos.PauseResponseProto.getDefaultInstance());
   }
 }

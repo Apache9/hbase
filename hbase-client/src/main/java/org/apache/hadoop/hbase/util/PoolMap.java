@@ -92,6 +92,11 @@ public class PoolMap<K, V> implements Map<K, V> {
     }
     return null;
   }
+  
+  public Collection<V> removeAll(Object key) {
+    Pool<V> pool = pools.remove(key);
+    return pool != null ? pool.values() : null;
+  }
 
   public boolean removeValue(K key, V value) {
     Pool<V> pool = pools.get(key);

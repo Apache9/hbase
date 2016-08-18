@@ -18,22 +18,41 @@
 package org.apache.hadoop.hbase.ipc;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.protobuf.BlockingRpcChannel;
+import com.google.protobuf.Descriptors.MethodDescriptor;
+import com.google.protobuf.Message;
+import com.google.protobuf.RpcController;
+import com.google.protobuf.ServiceException;
 
+import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.CellScanner;
 import org.apache.hadoop.hbase.HConstants;
+import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.codec.Codec;
 import org.apache.hadoop.hbase.codec.KeyValueCodec;
+import org.apache.hadoop.hbase.ipc.FailedServers.FailedServer;
 import org.apache.hadoop.hbase.protobuf.generated.AuthenticationProtos.TokenIdentifier.Kind;
+import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.security.UserProvider;
 import org.apache.hadoop.hbase.security.token.AuthenticationTokenSelector;
+import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
+import org.apache.hadoop.hbase.util.Pair;
+import org.apache.hadoop.hbase.util.PoolMap;
+import org.apache.hadoop.hbase.util.PoolMap.PoolType;
 import org.apache.hadoop.io.compress.CompressionCodec;
+import org.apache.hadoop.ipc.RemoteException;
 import org.apache.hadoop.security.token.TokenIdentifier;
 import org.apache.hadoop.security.token.TokenSelector;
 
@@ -41,7 +60,7 @@ import org.apache.hadoop.security.token.TokenSelector;
  * Base class of all RpcClient implementations.
  */
 @InterfaceAudience.Private
-public abstract class AbstractRpcClient implements RpcClient {
+public abstract class AbstractRpcClient<T extends Connection> implements RpcClient {
 
   private static final Log LOG = LogFactory.getLog(AbstractRpcClient.class);
 
@@ -65,6 +84,10 @@ public abstract class AbstractRpcClient implements RpcClient {
   protected final boolean fallbackAllowed;
 
   protected final int clientWarnIpcResponseTime;
+
+  protected final PoolMap<ConnectionId, T> connections;
+
+  protected final AtomicInteger callIdCnt = new AtomicInteger(0);
 
   /**
    * Construct an IPC client for the cluster <code>clusterId</code>
@@ -93,6 +116,7 @@ public abstract class AbstractRpcClient implements RpcClient {
       IPC_CLIENT_FALLBACK_TO_SIMPLE_AUTH_ALLOWED_DEFAULT);
     this.clientWarnIpcResponseTime = conf.getInt(CLIENT_WARN_IPC_RESPONSE_TIME,
       DEFAULT_CLIENT_WARN_IPC_RESPONSE_TIME);
+    this.connections = new PoolMap<ConnectionId, T>(getPoolType(conf), getPoolSize(conf));
     // login the server principal (if using secure Hadoop)
     if (LOG.isDebugEnabled()) {
       LOG.debug("Codec=" + this.codec + ", compressor=" + this.compressor + ", tcpKeepAlive="
@@ -105,16 +129,41 @@ public abstract class AbstractRpcClient implements RpcClient {
   }
 
   /**
+   * Return the pool type specified in the configuration, which must be set to either
+   * {@link PoolType#RoundRobin} or {@link PoolType#ThreadLocal}, otherwise default to the former.
+   * For applications with many user threads, use a small round-robin pool. For applications with
+   * few user threads, you may want to try using a thread-local pool. In any case, the number of
+   * {@link RpcClientImpl} instances should not exceed the operating system's hard limit on the
+   * number of connections.
+   * @param config configuration
+   * @return either a {@link PoolType#RoundRobin} or {@link PoolType#ThreadLocal}
+   */
+  private static PoolType getPoolType(Configuration config) {
+    return PoolType.valueOf(config.get(HConstants.HBASE_CLIENT_IPC_POOL_TYPE), PoolType.RoundRobin,
+      PoolType.ThreadLocal);
+  }
+
+  /**
+   * Return the pool size specified in the configuration, which is applicable only if the pool type
+   * is {@link PoolType#RoundRobin}.
+   * @param config
+   * @return the maximum pool size
+   */
+  private static int getPoolSize(Configuration config) {
+    return config.getInt(HConstants.HBASE_CLIENT_IPC_POOL_SIZE, 1);
+  }
+
+  /**
    * Encapsulate the ugly casting and RuntimeException conversion in private method.
    * @return Codec to use on this client.
    */
-  Codec getCodec() {
+  protected Codec getCodec() {
     // For NO CODEC, "hbase.client.rpc.codec" must be configured with empty string AND
     // "hbase.client.default.rpc.codec" also -- because default is to do cell block encoding.
     String className = conf.get(HConstants.RPC_CODEC_CONF_KEY, getDefaultCodec(this.conf));
     if (className == null || className.length() == 0) return null;
     try {
-      return (Codec) Class.forName(className).newInstance();
+      return Class.forName(className).asSubclass(Codec.class).newInstance();
     } catch (Exception e) {
       throw new RuntimeException("Failed getting codec " + className, e);
     }
@@ -160,19 +209,236 @@ public abstract class AbstractRpcClient implements RpcClient {
     return conf.getInt(SOCKET_TIMEOUT, conf.getInt("ipc.socket.timeout", DEFAULT_SOCKET_TIMEOUT));
   }
 
-  protected final static Map<Kind, TokenSelector<? extends TokenIdentifier>> TOKEN_HANDLERS
-    = new HashMap<Kind, TokenSelector<? extends TokenIdentifier>>();
+  /**
+   * Interrupt the connections to the given ip:port server. This should be called if the server is
+   * known as actually dead. This will not prevent current operation to be retried, and, depending
+   * on their own behavior, they may retry on the same server. This can be a feature, for example at
+   * startup. In any case, they're likely to get connection refused (if the process died) or no
+   * route to host: i.e. there next retries should be faster and with a safe exception.
+   */
+  @Override
+  public void cancelConnections(ServerName sn, Throwable exc) {
+    List<T> toShutdown = new ArrayList<T>();
+    synchronized (connections) {
+      for (ConnectionId remoteId : connections.keySet()) {
+        if (remoteId.address.getPort() == sn.getPort()
+            && remoteId.address.getHostName().equals(sn.getHostname())) {
+          LOG.info(
+            "The server " + sn.getServerName() + " is dead - stopping the connection " + remoteId);
+          toShutdown.addAll(connections.removeAll(remoteId));
+        }
+      }
+    }
+    if (toShutdown != null) {
+      for (T conn : toShutdown) {
+        conn.shutdown();
+      }
+    }
+  }
+
+  /**
+   * Get a connection from the pool, or create a new one and add it to the pool. Connections to a
+   * given host/port are reused.
+   */
+  private T getConnection(ConnectionId remoteId) throws IOException {
+    FailedServer failedServer = failedServers.getFailedServer(remoteId.address);
+    if (failedServer != null) {
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("Not trying to connect to " + remoteId.address
+            + " this server is in the failed servers list");
+      }
+      throw new FailedServerException("This server is in the failed servers list"
+          + failedServer.formatFailedTimeStamp() + ": " + remoteId.address, failedServer.cause);
+    }
+    T conn;
+    synchronized (connections) {
+      conn = connections.get(remoteId);
+      if (conn == null) {
+        conn = createConnection(remoteId);
+        connections.put(remoteId, conn);
+      }
+      conn.setLastTouched(EnvironmentEdgeManager.currentTimeMillis());
+    }
+    return conn;
+  }
+
+  /**
+   * Not connected.
+   */
+  protected abstract T createConnection(ConnectionId remoteId) throws IOException;
+
+  protected int nextCallId() {
+    int id, next;
+    do {
+      id = callIdCnt.get();
+      next = id < Integer.MAX_VALUE ? id + 1 : 0;
+    } while (!callIdCnt.compareAndSet(id, next));
+    return id;
+  }
+
+  /**
+   * Creates a "channel" that can be used by a blocking protobuf service. Useful setting up protobuf
+   * blocking stubs.
+   * @param sn
+   * @param ticket
+   * @param rpcTimeout
+   * @return A blocking rpc channel that goes via this rpc client instance.
+   */
+  @Override
+  public BlockingRpcChannel createBlockingRpcChannel(final ServerName sn, final User ticket,
+      final int rpcTimeout) {
+    return new BlockingRpcChannelImplementation(this, sn, ticket, rpcTimeout);
+  }
+
+  Pair<Message, CellScanner> call(MethodDescriptor md, Message param, CellScanner cells,
+      Message returnType, User ticket, InetSocketAddress addr, int rpcTimeout)
+      throws InterruptedException, IOException {
+    return call(md, param, cells, returnType, ticket, addr, rpcTimeout, HConstants.NORMAL_QOS);
+  }
+
+  /**
+   * Make a call, passing <code>param</code>, to the IPC server running at <code>address</code>
+   * which is servicing the <code>protocol</code> protocol, with the <code>ticket</code>
+   * credentials, returning the value. Throws exceptions if there are network problems or if the
+   * remote code threw an exception.
+   * @param md
+   * @param param
+   * @param cells
+   * @param addr
+   * @param returnType
+   * @param ticket Be careful which ticket you pass. A new user will mean a new Connection.
+   *          {@link UserProvider#getCurrent()} makes a new instance of User each time so will be a
+   *          new Connection each time.
+   * @param rpcTimeout
+   * @return A pair with the Message response and the Cell data (if any).
+   * @throws InterruptedException
+   * @throws IOException
+   */
+  protected Pair<Message, CellScanner> call(MethodDescriptor md, Message param, CellScanner cells,
+      Message returnType, User ticket, InetSocketAddress addr, int rpcTimeout, int priority)
+      throws InterruptedException, IOException {
+    Call call = new Call(nextCallId(), md, param, cells, returnType, rpcTimeout, priority);
+    ConnectionId remoteId = new ConnectionId(ticket, md.getService().getName(), addr, rpcTimeout);
+    T connection = getConnection(remoteId);
+    connection.sendRequest(call);
+
+    // noinspection SynchronizationOnLocalVariableOrMethodParameter
+    synchronized (call) {
+      while (!call.done) {
+        call.wait(); // wait for the result
+      }
+    }
+    if (call.error != null) {
+      if (call.error instanceof RemoteException) {
+        call.error.fillInStackTrace();
+        throw call.error;
+      }
+      // local exception
+      throw IPCUtil.wrapException(addr, call.error);
+    }
+    return new Pair<Message, CellScanner>(call.response, call.cells);
+  }
+
+  /**
+   * Make a blocking call. Throws exceptions if there are network problems or if the remote code
+   * threw an exception.
+   * @param md
+   * @param controller
+   * @param param
+   * @param returnType
+   * @param isa
+   * @param ticket Be careful which ticket you pass. A new user will mean a new Connection.
+   *          {@link UserProvider#getCurrent()} makes a new instance of User each time so will be a
+   *          new Connection each time.
+   * @param rpcTimeout
+   * @return A pair with the Message response and the Cell data (if any).
+   * @throws InterruptedException
+   * @throws IOException
+   */
+  Message callBlockingMethod(MethodDescriptor md, RpcController controller, Message param,
+      Message returnType, final User ticket, final InetSocketAddress isa, int rpcTimeout)
+      throws ServiceException {
+    long startTime = System.currentTimeMillis();
+    PayloadCarryingRpcController pcrc = (PayloadCarryingRpcController) controller;
+    CellScanner cells = null;
+    if (pcrc != null) {
+      cells = pcrc.cellScanner();
+      // Clear it here so we don't by mistake try and these cells processing results.
+      pcrc.setCellScanner(null);
+
+      int timeout = pcrc.getTimeout();
+      if (timeout > 0) {
+        rpcTimeout = timeout;
+      }
+    }
+    Pair<Message, CellScanner> val = null;
+    try {
+      val = call(md, param, cells, returnType, ticket, isa, rpcTimeout,
+        pcrc != null ? pcrc.getPriority() : HConstants.NORMAL_QOS);
+      if (pcrc != null) {
+        // Shove the results into controller so can be carried across the proxy/pb service void.
+        if (val.getSecond() != null) {
+          pcrc.setCellScanner(val.getSecond());
+        }
+      } else if (val.getSecond() != null) {
+        throw new ServiceException("Client dropping data on the floor!");
+      }
+
+      long callTime = System.currentTimeMillis() - startTime;
+      if (LOG.isTraceEnabled()) {
+        if (LOG.isTraceEnabled()) {
+          LOG.trace("Call: " + md.getName() + ", callTime: " + callTime + "ms");
+        }
+      }
+      if (callTime > this.clientWarnIpcResponseTime) {
+        LOG.warn("Slow ipc call, MethodName=" + md.getName() + ", consume time=" + callTime
+            + ", remote address:" + isa);
+      }
+      return val.getFirst();
+    } catch (Throwable e) {
+      throw new ServiceException(e);
+    }
+  }
+
+  /**
+   * Blocking rpc channel that goes via hbase rpc.
+   */
+  // Public so can be subclassed for tests.
+  public static class BlockingRpcChannelImplementation implements BlockingRpcChannel {
+    private final InetSocketAddress isa;
+    private volatile AbstractRpcClient<?> rpcClient;
+    private final int rpcTimeout;
+    private final User ticket;
+
+    protected BlockingRpcChannelImplementation(AbstractRpcClient<?> rpcClient, final ServerName sn,
+        final User ticket, final int rpcTimeout) {
+      this.isa = new InetSocketAddress(sn.getHostname(), sn.getPort());
+      this.rpcClient = rpcClient;
+      // Set the rpc timeout to be the minimum of configured timeout and whatever the current
+      // thread local setting is.
+      this.rpcTimeout = getRpcTimeout(rpcTimeout);
+      this.ticket = ticket;
+    }
+
+    @Override
+    public Message callBlockingMethod(MethodDescriptor md, RpcController controller, Message param,
+        Message returnType) throws ServiceException {
+      return this.rpcClient.callBlockingMethod(md, controller, param, returnType, this.ticket,
+        this.isa, getRpcTimeout(this.rpcTimeout));
+    }
+  }
+
+  protected static final Map<Kind, TokenSelector<? extends TokenIdentifier>> TOKEN_HANDLERS = new HashMap<Kind, TokenSelector<? extends TokenIdentifier>>();
 
   static {
     TOKEN_HANDLERS.put(Kind.HBASE_AUTH_TOKEN, new AuthenticationTokenSelector());
   }
-
   // thread-specific RPC timeout, which may override that of what was passed in.
   // This is used to change dynamically the timeout (for read only) when retrying: if
   // the time allowed for the operation is less than the usual socket timeout, then
   // we lower the timeout. This is subject to race conditions, and should be used with
   // extreme caution.
-  private static ThreadLocal<Integer> RPC_TIMEOUT = new ThreadLocal<Integer>() {
+  private static final ThreadLocal<Integer> RPC_TIMEOUT = new ThreadLocal<Integer>() {
 
     @Override
     protected Integer initialValue() {

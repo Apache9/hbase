@@ -18,7 +18,17 @@
 
 package org.apache.hadoop.hbase.ipc;
 
-import static org.apache.hadoop.fs.CommonConfigurationKeys.HADOOP_SECURITY_AUTHORIZATION;
+import static org.apache.hadoop.fs.CommonConfigurationKeysPublic.HADOOP_SECURITY_AUTHORIZATION;
+
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.google.protobuf.BlockingService;
+import com.google.protobuf.CodedInputStream;
+import com.google.protobuf.Descriptors.MethodDescriptor;
+import com.google.protobuf.Message;
+import com.google.protobuf.Message.Builder;
+import com.google.protobuf.ServiceException;
+import com.google.protobuf.TextFormat;
+// Uses Writables doing sasl
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -61,23 +71,19 @@ import javax.security.sasl.SaslServer;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.hbase.classification.InterfaceAudience;
-import org.apache.hadoop.hbase.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.CellScanner;
 import org.apache.hadoop.hbase.DoNotRetryIOException;
 import org.apache.hadoop.hbase.HBaseInterfaceAudience;
 import org.apache.hadoop.hbase.HConstants;
-import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.Server;
-import org.apache.hadoop.hbase.TableName;
-import org.apache.hadoop.hbase.client.Operation;
+import org.apache.hadoop.hbase.classification.InterfaceAudience;
+import org.apache.hadoop.hbase.classification.InterfaceStability;
 import org.apache.hadoop.hbase.codec.Codec;
 import org.apache.hadoop.hbase.exceptions.RegionMovedException;
 import org.apache.hadoop.hbase.io.ByteBufferOutputStream;
 import org.apache.hadoop.hbase.monitoring.MonitoredRPCHandler;
 import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
-import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.CoprocessorServiceCall;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.CoprocessorServiceRequest;
 import org.apache.hadoop.hbase.protobuf.generated.RPCProtos.CellBlockMeta;
 import org.apache.hadoop.hbase.protobuf.generated.RPCProtos.ConnectionHeader;
@@ -85,7 +91,6 @@ import org.apache.hadoop.hbase.protobuf.generated.RPCProtos.ExceptionResponse;
 import org.apache.hadoop.hbase.protobuf.generated.RPCProtos.RequestHeader;
 import org.apache.hadoop.hbase.protobuf.generated.RPCProtos.ResponseHeader;
 import org.apache.hadoop.hbase.protobuf.generated.RPCProtos.UserInformation;
-import org.apache.hadoop.hbase.regionserver.HRegionServer;
 import org.apache.hadoop.hbase.security.AccessDeniedException;
 import org.apache.hadoop.hbase.security.AuthMethod;
 import org.apache.hadoop.hbase.security.HBasePolicyProvider;
@@ -116,16 +121,6 @@ import org.apache.hadoop.util.StringUtils;
 import org.apache.htrace.TraceInfo;
 import org.cliffc.high_scale_lib.Counter;
 import org.codehaus.jackson.map.ObjectMapper;
-
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import com.google.protobuf.BlockingService;
-import com.google.protobuf.CodedInputStream;
-import com.google.protobuf.Descriptors.MethodDescriptor;
-import com.google.protobuf.Message;
-import com.google.protobuf.Message.Builder;
-import com.google.protobuf.ServiceException;
-import com.google.protobuf.TextFormat;
-// Uses Writables doing sasl
 
 /**
  * An RPC server that hosts protobuf described Services.
@@ -278,6 +273,7 @@ public class RpcServer implements RpcServerInterface {
 
   private UserProvider userProvider;
 
+  private final Map<String, String> saslProps;
 
   /**
    * Datastructure that holds all necessary to a method invocation and then afterward, carries
@@ -1323,7 +1319,7 @@ public class RpcServer implements RpcServerInterface {
               }
               saslServer = Sasl.createSaslServer(AuthMethod.DIGEST
                   .getMechanismName(), null, SaslUtil.SASL_DEFAULT_REALM,
-                  SaslUtil.SASL_PROPS, new SaslDigestCallbackHandler(
+                  saslProps, new SaslDigestCallbackHandler(
                       secretManager, this));
               break;
             default:
@@ -1344,7 +1340,7 @@ public class RpcServer implements RpcServerInterface {
                 public Object run() throws SaslException {
                   saslServer = Sasl.createSaslServer(AuthMethod.KERBEROS
                       .getMechanismName(), names[0], names[1],
-                      SaslUtil.SASL_PROPS, new SaslGssCallbackHandler());
+                      saslProps, new SaslGssCallbackHandler());
                   return null;
                 }
               });
@@ -1948,7 +1944,9 @@ public class RpcServer implements RpcServerInterface {
     this.userProvider = UserProvider.instantiate(conf);
     this.isSecurityEnabled = userProvider.isHBaseSecurityEnabled();
     if (isSecurityEnabled) {
-      HBaseSaslRpcServer.init(conf);
+     this.saslProps = HBaseSaslRpcServer.init(conf);
+    } else {
+      this.saslProps = null;
     }
     this.scheduler = scheduler;
     this.scheduler.init(new RpcSchedulerContext(this));

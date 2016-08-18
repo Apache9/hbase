@@ -17,14 +17,17 @@
  */
 package org.apache.hadoop.hbase.ipc;
 
-import com.google.protobuf.Message;
 import com.google.protobuf.Descriptors.MethodDescriptor;
+import com.google.protobuf.Message;
+
+import io.netty.util.Timeout;
 
 import java.io.IOException;
 
 import org.apache.hadoop.hbase.CellScanner;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
+import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 
 /** A call waiting for a value. */
 @InterfaceAudience.Private
@@ -44,16 +47,19 @@ class Call {
   long startTime;
   final MethodDescriptor md;
   final int timeout;
+  final int priority;
+  Timeout timeoutTask;
 
-  protected Call(int id, final MethodDescriptor md, Message param, final CellScanner cells,
-      final Message responseDefaultType, int timeout) {
+  public Call(int id, final MethodDescriptor md, Message param, final CellScanner cells,
+      final Message responseDefaultType, int timeout, int priority) {
     this.param = param;
     this.md = md;
     this.cells = cells;
-    this.startTime = System.currentTimeMillis();
+    this.startTime = EnvironmentEdgeManager.currentTimeMillis();
     this.responseDefaultType = responseDefaultType;
     this.id = id;
     this.timeout = timeout;
+    this.priority = priority;
   }
 
   @Override
@@ -65,16 +71,34 @@ class Call {
   /**
    * Indicate when the call is complete and the value or error are available. Notifies by default.
    */
-  protected synchronized void callComplete() {
+  private void callComplete() {
     this.done = true;
+    if (timeoutTask != null) {
+      timeoutTask.cancel();
+    }
     notify(); // notify caller
+  }
+
+  /**
+   * Call this method inside the timeoutTask to prevent cancel yourself...
+   */
+  public synchronized void setTimeout(IOException error) {
+    if (done) {
+      return;
+    }
+    this.done = true;
+    this.error = error;
+    notify();
   }
 
   /**
    * Set the exception when there is an error. Notify the caller the call is done.
    * @param error exception thrown by the call; either local or remote
    */
-  public void setException(IOException error) {
+  public synchronized void setException(IOException error) {
+    if (done) {
+      return;
+    }
     this.error = error;
     callComplete();
   }
@@ -84,7 +108,10 @@ class Call {
    * @param response return value of the call.
    * @param cells Can be null
    */
-  public void setResponse(Message response, final CellScanner cells) {
+  public synchronized void setResponse(Message response, final CellScanner cells) {
+    if (done) {
+      return;
+    }
     this.response = response;
     this.cells = cells;
     callComplete();

@@ -15,20 +15,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-option java_package = "org.apache.hadoop.hbase.ipc.protobuf.generated";
-option java_outer_classname = "TestRpcServiceProtos";
-option java_generic_services = true;
-option java_generate_equals_and_hash = true;
+package org.apache.hadoop.hbase.ipc;
 
-import "test.proto";
-
+import org.apache.hadoop.hbase.classification.InterfaceAudience;
 
 /**
- * A protobuf service for use in tests
+ * Indicate that a call is timed out.
  */
-service TestProtobufRpcProto {
-  rpc ping(EmptyRequestProto) returns (EmptyResponseProto);
-  rpc echo(EchoRequestProto) returns (EchoResponseProto);
-  rpc error(EmptyRequestProto) returns (EmptyResponseProto);
-  rpc pause(PauseRequestProto) returns (PauseResponseProto);
+@InterfaceAudience.Private
+class CallTimeoutEvent {
+
+  private final int callId;
+
+  public CallTimeoutEvent(int callId) {
+    this.callId = callId;
+  }
+
+  public int getCallId() {
+    return callId;
+  }
 }

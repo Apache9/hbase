@@ -15,20 +15,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-option java_package = "org.apache.hadoop.hbase.ipc.protobuf.generated";
-option java_outer_classname = "TestRpcServiceProtos";
-option java_generic_services = true;
-option java_generate_equals_and_hash = true;
+package org.apache.hadoop.hbase.ipc;
 
-import "test.proto";
+import java.io.IOException;
 
+import org.apache.hadoop.hbase.classification.InterfaceAudience;
+import org.apache.hadoop.hbase.classification.InterfaceStability;
 
 /**
- * A protobuf service for use in tests
+ * Indicate that the rpc server tells client to fallback to simple auth but client is disabled to do
+ * so.
  */
-service TestProtobufRpcProto {
-  rpc ping(EmptyRequestProto) returns (EmptyResponseProto);
-  rpc echo(EchoRequestProto) returns (EchoResponseProto);
-  rpc error(EmptyRequestProto) returns (EmptyResponseProto);
-  rpc pause(PauseRequestProto) returns (PauseResponseProto);
+@InterfaceAudience.Public
+@InterfaceStability.Evolving
+public class FallbackDisallowedException extends IOException {
+
+  private static final long serialVersionUID = -6942845066279358253L;
+
+  public FallbackDisallowedException() {
+    super("Server asks us to fall back to SIMPLE auth, "
+        + "but this client is configured to only allow secure connections.");
+  }
 }

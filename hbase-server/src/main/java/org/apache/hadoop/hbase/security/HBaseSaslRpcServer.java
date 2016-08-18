@@ -21,6 +21,7 @@ package org.apache.hadoop.hbase.security;
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
+import java.util.Map;
 
 import javax.security.auth.callback.Callback;
 import javax.security.auth.callback.CallbackHandler;
@@ -48,9 +49,9 @@ import org.apache.hadoop.security.token.SecretManager.InvalidToken;
 public class HBaseSaslRpcServer {
   public static final Log LOG = LogFactory.getLog(HBaseSaslRpcServer.class);
 
-  public static void init(Configuration conf) {
-    SaslUtil.initSaslProperties(conf.get("hbase.rpc.protection", 
-          QualityOfProtection.AUTHENTICATION.name().toLowerCase()));
+  public static Map<String, String> init(Configuration conf) {
+    return SaslUtil.initSaslProperties(
+      conf.get("hbase.rpc.protection", QualityOfProtection.AUTHENTICATION.name().toLowerCase()));
   }
 
   public static <T extends TokenIdentifier> T getIdentifier(String id,
