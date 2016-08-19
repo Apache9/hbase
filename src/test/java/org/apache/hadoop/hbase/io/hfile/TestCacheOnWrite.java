@@ -183,7 +183,7 @@ public class TestCacheOnWrite {
     FileSystem.get(conf).mkdirs(TEST_UTIL.getDataTestDir());
     BlockCache bucketcache =
         new BucketCache("file:" + TEST_UTIL.getDataTestDir() + "/bucket.data",
-            128 * 1024 * 1024, 5, 64 * 10, null, BucketCache.DEFAULT_ERROR_TOLERATION_DURATION);
+            128 * 1024 * 1024, null, 5, 64 * 10, null, BucketCache.DEFAULT_ERROR_TOLERATION_DURATION);
     blockcaches.add(bucketcache);
     return blockcaches;
   }

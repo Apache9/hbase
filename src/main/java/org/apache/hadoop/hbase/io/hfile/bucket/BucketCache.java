@@ -135,8 +135,6 @@ public class BucketCache implements BlockCache, HeapSize {
   @VisibleForTesting
   WriterThread writerThreads[];
 
-
-
   /** Volatile boolean to track if free space is in process or not */
   private volatile boolean freeInProgress = false;
   private Lock freeSpaceLock = new ReentrantLock();
@@ -165,6 +163,7 @@ public class BucketCache implements BlockCache, HeapSize {
   private long cacheCapacity;
   /** Approximate block size */
   private final long blockSize;
+  private final int[] bucketSizes;
 
   /** Duration of IO errors tolerated before we disable cache, 1 min as default */
   private final int ioErrorsTolerationDuration;
@@ -208,14 +207,14 @@ public class BucketCache implements BlockCache, HeapSize {
   // Allocate or free space for the block
   private BucketAllocator bucketAllocator;
   
-  public BucketCache(String ioEngineName, long capacity, int writerThreadNum,
+  public BucketCache(String ioEngineName, long capacity, int[] bucketSizes, int writerThreadNum,
       int writerQLen, String persistencePath) throws FileNotFoundException,
       IOException {
-    this(ioEngineName, capacity, writerThreadNum, writerQLen, persistencePath,
+    this(ioEngineName, capacity, bucketSizes, writerThreadNum, writerQLen, persistencePath,
         DEFAULT_ERROR_TOLERATION_DURATION);
   }
   
-  public BucketCache(String ioEngineName, long capacity, int writerThreadNum,
+  public BucketCache(String ioEngineName, long capacity, int[] bucketSizes, int writerThreadNum,
       int writerQLen, String persistencePath, int ioErrorsTolerationDuration)
       throws FileNotFoundException, IOException {
     this.ioEngine = getIOEngineFromName(ioEngineName, capacity);
@@ -230,9 +229,10 @@ public class BucketCache implements BlockCache, HeapSize {
     this.cacheCapacity = capacity;
     this.persistencePath = persistencePath;
     this.blockSize = StoreFile.DEFAULT_BLOCKSIZE_SMALL;
+    this.bucketSizes = bucketSizes;
     this.ioErrorsTolerationDuration = ioErrorsTolerationDuration;
 
-    bucketAllocator = new BucketAllocator(capacity);
+    bucketAllocator = new BucketAllocator(capacity, bucketSizes);
     for (int i = 0; i < writerThreads.length; ++i) {
       writerQueues.add(new ArrayBlockingQueue<RAMQueueEntry>(writerQLen));
       this.cacheWaitSignals[i] = new Object();
@@ -871,7 +871,7 @@ public class BucketCache implements BlockCache, HeapSize {
             + ", expected:" + backingMap.getClass().getName());
       UniqueIndexMap<Integer> deserMap = (UniqueIndexMap<Integer>) ois
           .readObject();
-      BucketAllocator allocator = new BucketAllocator(cacheCapacity,
+      BucketAllocator allocator = new BucketAllocator(cacheCapacity, this.bucketSizes,
           backingMap, this.realCacheSize);
       backingMap = (ConcurrentHashMap<BlockCacheKey, BucketEntry>) ois
           .readObject();
