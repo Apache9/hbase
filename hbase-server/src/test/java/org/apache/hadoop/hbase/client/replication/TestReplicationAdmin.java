@@ -156,6 +156,8 @@ public class TestReplicationAdmin {
     TableName tab2 = TableName.valueOf("t2");
     TableName tab3 = TableName.valueOf("t3");
     TableName tab4 = TableName.valueOf("t4");
+    TableName tab5 = TableName.valueOf("t5");
+    TableName tab6 = TableName.valueOf("t6");
 
     // Add a valid peer
     admin.addPeer(ID_ONE, rpc1, null);
@@ -212,6 +214,34 @@ public class TestReplicationAdmin {
     assertEquals(2, result.get(tab4).size());
     assertEquals("f1", result.get(tab4).get(0));
     assertEquals("f2", result.get(tab4).get(1));
+
+    // append "table5" => [], then append "table5" => ["f1"]
+    tableCFs.clear();
+    tableCFs.put(tab5, new ArrayList<String>());
+    admin.appendPeerTableCFs(ID_ONE, tableCFs);
+    tableCFs.clear();
+    tableCFs.put(tab5, new ArrayList<String>());
+    tableCFs.get(tab5).add("f1");
+    admin.appendPeerTableCFs(ID_ONE, tableCFs);
+    result = ReplicationSerDeHelper.parseTableCFsFromConfig(admin.getPeerTableCFs(ID_ONE));
+    assertEquals(5, result.size());
+    assertTrue("Should contain t5", result.containsKey(tab5));
+    // null means replication all cfs of tab5
+    assertNull(result.get(tab5));
+
+    // append "table6" => ["f1"], then append "table6" => []
+    tableCFs.clear();
+    tableCFs.put(tab6, new ArrayList<String>());
+    tableCFs.get(tab6).add("f1");
+    admin.appendPeerTableCFs(ID_ONE, tableCFs);
+    tableCFs.clear();
+    tableCFs.put(tab6, new ArrayList<String>());
+    admin.appendPeerTableCFs(ID_ONE, tableCFs);
+    result = ReplicationSerDeHelper.parseTableCFsFromConfig(admin.getPeerTableCFs(ID_ONE));
+    assertEquals(6, result.size());
+    assertTrue("Should contain t6", result.containsKey(tab6));
+    // null means replication all cfs of tab6
+    assertNull(result.get(tab6));
 
     admin.removePeer(ID_ONE);
   }

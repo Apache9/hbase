@@ -255,7 +255,7 @@ public class ReplicationAdmin implements Closeable {
       Collection<String> appendCfs = entry.getValue();
       if (preTableCfs.containsKey(table)) {
         List<String> cfs = preTableCfs.get(table);
-        if (cfs == null || appendCfs == null) {
+        if (cfs == null || cfs.isEmpty() || appendCfs == null || appendCfs.isEmpty()) {
           preTableCfs.put(table, null);
         } else {
           Set<String> cfSet = new HashSet<String>(cfs);
