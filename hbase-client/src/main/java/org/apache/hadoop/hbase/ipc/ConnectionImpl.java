@@ -191,7 +191,7 @@ class ConnectionImpl extends Connection implements Runnable {
         }
         // connection time out is 20s
         NetUtils.connect(this.socket, remoteId.getAddress(),
-          RpcClientImpl.getSocketTimeout(this.rpcClient.conf));
+          AbstractRpcClient.getSocketTimeout(this.rpcClient.conf));
         this.socket.setSoTimeout(pingInterval);
         return;
       } catch (SocketTimeoutException toe) {

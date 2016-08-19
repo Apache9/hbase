@@ -21,6 +21,8 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.protobuf.BlockingRpcChannel;
 import com.google.protobuf.Descriptors.MethodDescriptor;
 import com.google.protobuf.Message;
+import com.google.protobuf.RpcCallback;
+import com.google.protobuf.RpcChannel;
 import com.google.protobuf.RpcController;
 import com.google.protobuf.ServiceException;
 
@@ -48,11 +50,9 @@ import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.security.UserProvider;
 import org.apache.hadoop.hbase.security.token.AuthenticationTokenSelector;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
-import org.apache.hadoop.hbase.util.Pair;
 import org.apache.hadoop.hbase.util.PoolMap;
 import org.apache.hadoop.hbase.util.PoolMap.PoolType;
 import org.apache.hadoop.io.compress.CompressionCodec;
-import org.apache.hadoop.ipc.RemoteException;
 import org.apache.hadoop.security.token.TokenIdentifier;
 import org.apache.hadoop.security.token.TokenSelector;
 
@@ -155,6 +155,8 @@ public abstract class AbstractRpcClient<T extends Connection> implements RpcClie
 
   /**
    * Encapsulate the ugly casting and RuntimeException conversion in private method.
+   * <p>
+   * Protected as we want to override this method in UT.
    * @return Codec to use on this client.
    */
   protected Codec getCodec() {
@@ -276,77 +278,25 @@ public abstract class AbstractRpcClient<T extends Connection> implements RpcClie
     return id;
   }
 
-  /**
-   * Creates a "channel" that can be used by a blocking protobuf service. Useful setting up protobuf
-   * blocking stubs.
-   * @param sn
-   * @param ticket
-   * @param rpcTimeout
-   * @return A blocking rpc channel that goes via this rpc client instance.
-   */
   @Override
   public BlockingRpcChannel createBlockingRpcChannel(final ServerName sn, final User ticket,
       final int rpcTimeout) {
     return new BlockingRpcChannelImplementation(this, sn, ticket, rpcTimeout);
   }
 
-  Pair<Message, CellScanner> call(MethodDescriptor md, Message param, CellScanner cells,
-      Message returnType, User ticket, InetSocketAddress addr, int rpcTimeout)
-      throws InterruptedException, IOException {
-    return call(md, param, cells, returnType, ticket, addr, rpcTimeout, HConstants.NORMAL_QOS);
-  }
-
-  /**
-   * Make a call, passing <code>param</code>, to the IPC server running at <code>address</code>
-   * which is servicing the <code>protocol</code> protocol, with the <code>ticket</code>
-   * credentials, returning the value. Throws exceptions if there are network problems or if the
-   * remote code threw an exception.
-   * @param md
-   * @param param
-   * @param cells
-   * @param addr
-   * @param returnType
-   * @param ticket Be careful which ticket you pass. A new user will mean a new Connection.
-   *          {@link UserProvider#getCurrent()} makes a new instance of User each time so will be a
-   *          new Connection each time.
-   * @param rpcTimeout
-   * @return A pair with the Message response and the Cell data (if any).
-   * @throws InterruptedException
-   * @throws IOException
-   */
-  protected Pair<Message, CellScanner> call(MethodDescriptor md, Message param, CellScanner cells,
-      Message returnType, User ticket, InetSocketAddress addr, int rpcTimeout, int priority)
-      throws InterruptedException, IOException {
-    Call call = new Call(nextCallId(), md, param, cells, returnType, rpcTimeout, priority);
-    ConnectionId remoteId = new ConnectionId(ticket, md.getService().getName(), addr, rpcTimeout);
-    T connection = getConnection(remoteId);
-    connection.sendRequest(call);
-
-    // noinspection SynchronizationOnLocalVariableOrMethodParameter
-    synchronized (call) {
-      while (!call.done) {
-        call.wait(); // wait for the result
-      }
-    }
-    if (call.error != null) {
-      if (call.error instanceof RemoteException) {
-        call.error.fillInStackTrace();
-        throw call.error;
-      }
-      // local exception
-      throw IPCUtil.wrapException(addr, call.error);
-    }
-    return new Pair<Message, CellScanner>(call.response, call.cells);
+  @Override
+  public RpcChannel createRpcChannel(ServerName sn, User ticket, int rpcTimeout) {
+    return new RpcChannelImplementation(this, sn, ticket, rpcTimeout);
   }
 
   /**
    * Make a blocking call. Throws exceptions if there are network problems or if the remote code
    * threw an exception.
    * @param md
-   * @param controller
+   * @param pcrc
    * @param param
    * @param returnType
-   * @param isa
+   * @param addr
    * @param ticket Be careful which ticket you pass. A new user will mean a new Connection.
    *          {@link UserProvider#getCurrent()} makes a new instance of User each time so will be a
    *          new Connection each time.
@@ -355,11 +305,26 @@ public abstract class AbstractRpcClient<T extends Connection> implements RpcClie
    * @throws InterruptedException
    * @throws IOException
    */
-  Message callBlockingMethod(MethodDescriptor md, RpcController controller, Message param,
-      Message returnType, final User ticket, final InetSocketAddress isa, int rpcTimeout)
+  Message callBlockingMethod(MethodDescriptor md, PayloadCarryingRpcController pcrc, Message param,
+      Message returnType, final User ticket, final InetSocketAddress addr, int rpcTimeout)
       throws ServiceException {
-    long startTime = System.currentTimeMillis();
-    PayloadCarryingRpcController pcrc = (PayloadCarryingRpcController) controller;
+    BlockingRpcCallback<Message> callback = new BlockingRpcCallback<Message>();
+    callMethod(md, pcrc, param, returnType, ticket, addr, rpcTimeout, callback);
+    Message ret;
+    try {
+      ret = callback.get();
+    } catch (Exception e) {
+      throw new ServiceException(e);
+    }
+    if (pcrc.failed()) {
+      throw new ServiceException(pcrc.getError());
+    }
+    return ret;
+  }
+
+  void callMethod(MethodDescriptor md, PayloadCarryingRpcController pcrc, Message param,
+      Message returnType, final User ticket, final InetSocketAddress addr, int rpcTimeout,
+      RpcCallback<Message> callback) {
     CellScanner cells = null;
     if (pcrc != null) {
       cells = pcrc.cellScanner();
@@ -371,48 +336,79 @@ public abstract class AbstractRpcClient<T extends Connection> implements RpcClie
         rpcTimeout = timeout;
       }
     }
-    Pair<Message, CellScanner> val = null;
-    try {
-      val = call(md, param, cells, returnType, ticket, isa, rpcTimeout,
-        pcrc != null ? pcrc.getPriority() : HConstants.NORMAL_QOS);
-      if (pcrc != null) {
-        // Shove the results into controller so can be carried across the proxy/pb service void.
-        if (val.getSecond() != null) {
-          pcrc.setCellScanner(val.getSecond());
-        }
-      } else if (val.getSecond() != null) {
-        throw new ServiceException("Client dropping data on the floor!");
-      }
+    call(md, pcrc, param, cells, returnType, ticket, addr, rpcTimeout, callback);
+  }
 
-      long callTime = System.currentTimeMillis() - startTime;
+  private void onCallFinished(Call call, PayloadCarryingRpcController pcrc, InetSocketAddress addr,
+      RpcCallback<Message> callback) {
+    long callTime = EnvironmentEdgeManager.currentTimeMillis() - call.startTime;
+    if (LOG.isTraceEnabled()) {
       if (LOG.isTraceEnabled()) {
-        if (LOG.isTraceEnabled()) {
-          LOG.trace("Call: " + md.getName() + ", callTime: " + callTime + "ms");
-        }
+        LOG.trace("Call: " + call.md.getName() + ", callTime: " + callTime + "ms");
       }
-      if (callTime > this.clientWarnIpcResponseTime) {
-        LOG.warn("Slow ipc call, MethodName=" + md.getName() + ", consume time=" + callTime
-            + ", remote address:" + isa);
+    }
+    if (callTime > this.clientWarnIpcResponseTime) {
+      LOG.warn("Slow ipc call, MethodName=" + call.md.getName() + ", consume time=" + callTime
+          + ", remote address:" + addr);
+    }
+    if (call.error != null) {
+      pcrc.setFailed(call.error);
+      callback.run(null);
+    } else {
+      if (call.cells != null) {
+        pcrc.setCellScanner(call.cells);
       }
-      return val.getFirst();
-    } catch (Throwable e) {
-      throw new ServiceException(e);
+      callback.run(call.response);
     }
   }
 
   /**
-   * Blocking rpc channel that goes via hbase rpc.
+   * Make a call, passing <code>param</code>, to the IPC server running at <code>address</code>
+   * which is servicing the <code>protocol</code> protocol, with the <code>ticket</code>
+   * credentials.
+   * @param md
+   * @param pcrc
+   * @param param
+   * @param addr
+   * @param returnType
+   * @param ticket Be careful which ticket you pass. A new user will mean a new Connection.
+   *          {@link UserProvider#getCurrent()} makes a new instance of User each time so will be a
+   *          new Connection each time.
+   * @param rpcTimeout
+   * @return A pair with the Message response and the Cell data (if any).
+   * @throws InterruptedException
+   * @throws IOException
    */
-  // Public so can be subclassed for tests.
-  public static class BlockingRpcChannelImplementation implements BlockingRpcChannel {
-    private final InetSocketAddress isa;
-    private volatile AbstractRpcClient<?> rpcClient;
-    private final int rpcTimeout;
-    private final User ticket;
+  private void call(MethodDescriptor md, final PayloadCarryingRpcController pcrc, Message param,
+      CellScanner cells, Message returnType, User ticket, final InetSocketAddress addr,
+      int rpcTimeout, final RpcCallback<Message> callback) {
+    Call call = new Call(nextCallId(), md, param, cells, returnType, rpcTimeout, pcrc.getPriority(),
+        new RpcCallback<Call>() {
 
-    protected BlockingRpcChannelImplementation(AbstractRpcClient<?> rpcClient, final ServerName sn,
+          @Override
+          public void run(Call call) {
+            onCallFinished(call, pcrc, addr, callback);
+          }
+        });
+    ConnectionId remoteId = new ConnectionId(ticket, md.getService().getName(), addr, rpcTimeout);
+    try {
+      T connection = getConnection(remoteId);
+      connection.sendRequest(call);
+    } catch (Exception e) {
+      call.setException(IPCUtil.toIOE(e));
+    }
+  }
+
+  private static abstract class HBaseRpcChannel {
+
+    protected final InetSocketAddress addr;
+    protected final AbstractRpcClient<?> rpcClient;
+    protected final int rpcTimeout;
+    protected final User ticket;
+
+    protected HBaseRpcChannel(AbstractRpcClient<?> rpcClient, final ServerName sn,
         final User ticket, final int rpcTimeout) {
-      this.isa = new InetSocketAddress(sn.getHostname(), sn.getPort());
+      this.addr = new InetSocketAddress(sn.getHostname(), sn.getPort());
       this.rpcClient = rpcClient;
       // Set the rpc timeout to be the minimum of configured timeout and whatever the current
       // thread local setting is.
@@ -420,11 +416,44 @@ public abstract class AbstractRpcClient<T extends Connection> implements RpcClie
       this.ticket = ticket;
     }
 
+  }
+
+  /**
+   * Blocking rpc channel that goes via hbase rpc.
+   */
+  // Public so can be subclassed for tests.
+  public static class BlockingRpcChannelImplementation extends HBaseRpcChannel
+      implements BlockingRpcChannel {
+
+    protected BlockingRpcChannelImplementation(AbstractRpcClient<?> rpcClient, final ServerName sn,
+        final User ticket, final int rpcTimeout) {
+      super(rpcClient, sn, ticket, rpcTimeout);
+    }
+
     @Override
-    public Message callBlockingMethod(MethodDescriptor md, RpcController controller, Message param,
-        Message returnType) throws ServiceException {
-      return this.rpcClient.callBlockingMethod(md, controller, param, returnType, this.ticket,
-        this.isa, getRpcTimeout(this.rpcTimeout));
+    public Message callBlockingMethod(MethodDescriptor method, RpcController controller,
+        Message request, Message responsePrototype) throws ServiceException {
+      return rpcClient.callBlockingMethod(method, (PayloadCarryingRpcController) controller,
+        request, responsePrototype, ticket, addr, getRpcTimeout(rpcTimeout));
+    }
+  }
+
+  /**
+   * Rpc channel that goes via hbase rpc.
+   */
+  // Public so can be subclassed for tests.
+  public static class RpcChannelImplementation extends HBaseRpcChannel implements RpcChannel {
+
+    protected RpcChannelImplementation(AbstractRpcClient<?> rpcClient, final ServerName sn,
+        final User ticket, final int rpcTimeout) {
+      super(rpcClient, sn, ticket, rpcTimeout);
+    }
+
+    @Override
+    public void callMethod(MethodDescriptor method, RpcController controller, Message request,
+        Message responsePrototype, RpcCallback<Message> done) {
+      rpcClient.callMethod(method, (PayloadCarryingRpcController) controller, request,
+        responsePrototype, ticket, addr, getRpcTimeout(rpcTimeout), done);
     }
   }
 

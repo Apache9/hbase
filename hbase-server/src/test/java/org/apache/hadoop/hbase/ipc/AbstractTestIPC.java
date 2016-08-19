@@ -18,8 +18,11 @@
 package org.apache.hadoop.hbase.ipc;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import static org.mockito.Matchers.anyObject;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
@@ -60,6 +63,8 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.Pair;
 import org.apache.hadoop.hbase.util.Threads;
 import org.apache.hadoop.io.compress.GzipCodec;
+import org.apache.hadoop.ipc.RemoteException;
+import org.apache.hadoop.util.StringUtils;
 import org.junit.Test;
 
 /**
@@ -91,7 +96,7 @@ public abstract class AbstractTestIPC {
           @Override
           public EmptyResponseProto error(RpcController controller, EmptyRequestProto request)
               throws ServiceException {
-            return EmptyResponseProto.getDefaultInstance();
+            throw new ServiceException(new IOException("remote error"));
           }
 
           @Override
@@ -157,11 +162,11 @@ public abstract class AbstractTestIPC {
 
   /**
    * Ensure we do not HAVE TO HAVE a codec.
-   * @throws InterruptedException
    * @throws IOException
+   * @throws ServiceException
    */
   @Test
-  public void testNoCodec() throws InterruptedException, IOException {
+  public void testNoCodec() throws IOException, ServiceException {
     AbstractRpcClient<?> client = createRpcClientNoCodec(CONF);
     TestRpcServer rpcServer = new TestRpcServer();
     try {
@@ -170,11 +175,12 @@ public abstract class AbstractTestIPC {
       MethodDescriptor md = SERVICE.getDescriptorForType().findMethodByName("echo");
       final String message = "hello";
       EchoRequestProto param = EchoRequestProto.newBuilder().setMessage(message).build();
-      Pair<Message, CellScanner> r = client.call(md, param, null, md.getOutputType().toProto(),
+      PayloadCarryingRpcController pcrc = new PayloadCarryingRpcController();
+      Message r = client.callBlockingMethod(md, pcrc, param, EchoResponseProto.getDefaultInstance(),
         User.getCurrent(), address, 0);
-      assertTrue(r.getSecond() == null);
+      assertNull(pcrc.cellScanner());
       // Silly assertion that the message is in the returned pb.
-      assertTrue(r.getFirst().toString().contains(message));
+      assertTrue(r.toString().contains(message));
     } finally {
       client.close();
       rpcServer.stop();
@@ -185,7 +191,7 @@ public abstract class AbstractTestIPC {
 
   @Test
   public void testCompressCellBlock()
-      throws IOException, InterruptedException, SecurityException, NoSuchMethodException {
+      throws IOException, SecurityException, NoSuchMethodException, ServiceException {
     Configuration conf = new Configuration(CONF);
     conf.set("hbase.client.rpc.compressor", GzipCodec.class.getCanonicalName());
     AbstractRpcClient<?> client = createRpcClient(conf);
@@ -200,11 +206,13 @@ public abstract class AbstractTestIPC {
       InetSocketAddress address = rpcServer.getListenerAddress();
       MethodDescriptor md = SERVICE.getDescriptorForType().findMethodByName("echo");
       EchoRequestProto param = EchoRequestProto.newBuilder().setMessage("hello").build();
-      Pair<Message, CellScanner> r = client.call(md, param, CellUtil.createCellScanner(cells),
-        md.getOutputType().toProto(), User.getCurrent(), address, 0);
+      PayloadCarryingRpcController pcrc = new PayloadCarryingRpcController();
+      pcrc.setCellScanner(CellUtil.createCellScanner(cells));
+      client.callBlockingMethod(md, pcrc, param, EchoResponseProto.getDefaultInstance(),
+        User.getCurrent(), address, 0);
       int index = 0;
-      while (r.getSecond().advance()) {
-        assertTrue(CELL.equals(r.getSecond().current()));
+      while (pcrc.cellScanner().advance()) {
+        assertEquals(CELL, pcrc.cellScanner().current());
         index++;
       }
       assertEquals(count, index);
@@ -214,9 +222,11 @@ public abstract class AbstractTestIPC {
     }
   }
 
-  /** Tests that the rpc scheduler is called when requests arrive. */
+  /**
+   * Tests that the rpc scheduler is called when requests arrive.
+   */
   @Test
-  public void testRpcScheduler() throws IOException, InterruptedException {
+  public void testRpcScheduler() throws IOException, InterruptedException, ServiceException {
     RpcScheduler scheduler = spy(new FifoRpcScheduler(CONF, 1));
     RpcServer rpcServer = new TestRpcServer(scheduler);
     verify(scheduler).init((RpcScheduler.Context) anyObject());
@@ -226,9 +236,12 @@ public abstract class AbstractTestIPC {
       verify(scheduler).start();
       MethodDescriptor md = SERVICE.getDescriptorForType().findMethodByName("echo");
       EchoRequestProto param = EchoRequestProto.newBuilder().setMessage("hello").build();
+      PayloadCarryingRpcController pcrc = new PayloadCarryingRpcController();
       for (int i = 0; i < 10; i++) {
-        client.call(md, param, CellUtil.createCellScanner(ImmutableList.of(CELL)),
-          md.getOutputType().toProto(), User.getCurrent(), rpcServer.getListenerAddress(), 0);
+        pcrc.reset();
+        pcrc.setCellScanner(CellUtil.createCellScanner(ImmutableList.of(CELL)));
+        client.callBlockingMethod(md, pcrc, param, EchoResponseProto.getDefaultInstance(),
+          User.getCurrent(), rpcServer.getListenerAddress(), 0);
       }
       verify(scheduler, times(10)).dispatch((CallRunner) anyObject());
     } finally {
@@ -239,20 +252,22 @@ public abstract class AbstractTestIPC {
   }
 
   @Test
-  public void testEcho() throws InterruptedException, IOException {
+  public void testEcho() throws IOException, ServiceException {
     AbstractRpcClient<?> client = createRpcClient(CONF);
     TestRpcServer rpcServer = new TestRpcServer();
     try {
       rpcServer.start();
       InetSocketAddress address = rpcServer.getListenerAddress();
       MethodDescriptor md = SERVICE.getDescriptorForType().findMethodByName("echo");
+      PayloadCarryingRpcController pcrc = new PayloadCarryingRpcController();
       for (int i = 0; i < 100; i++) {
         final String message = "hello-" + i;
         EchoRequestProto param = EchoRequestProto.newBuilder().setMessage(message).build();
-        Pair<Message, CellScanner> r = client.call(md, param, null,
+        pcrc.reset();
+        Message r = client.callBlockingMethod(md, pcrc, param,
           EchoResponseProto.getDefaultInstance(), User.getCurrent(), address, 0);
-        assertTrue(r.getSecond() == null);
-        assertEquals(message, ((EchoResponseProto) r.getFirst()).getMessage());
+        assertNull(pcrc.cellScanner());
+        assertEquals(message, ((EchoResponseProto) r).getMessage());
       }
     } finally {
       client.close();
@@ -261,21 +276,45 @@ public abstract class AbstractTestIPC {
   }
 
   @Test
-  public void testTimeout() throws IOException, InterruptedException {
+  public void testRemoteError() throws IOException, ServiceException {
+    AbstractRpcClient<?> client = createRpcClient(CONF);
+    TestRpcServer rpcServer = new TestRpcServer();
+    try {
+      rpcServer.start();
+      InetSocketAddress address = rpcServer.getListenerAddress();
+      MethodDescriptor md = SERVICE.getDescriptorForType().findMethodByName("error");
+      client.callBlockingMethod(md, new PayloadCarryingRpcController(),
+        EmptyRequestProto.getDefaultInstance(), EmptyResponseProto.getDefaultInstance(),
+        User.getCurrent(), address, 0);
+      fail("Expected an exception to have been thrown!");
+    } catch (ServiceException e) {
+      LOG.info("Caught expected exception: ", e);
+      assertTrue(e.getCause() instanceof RemoteException);
+      assertTrue(StringUtils.stringifyException(e).contains("remote error"));
+    } finally {
+      client.close();
+      rpcServer.stop();
+    }
+  }
+
+  @Test
+  public void testTimeout() throws IOException {
     AbstractRpcClient<?> client = createRpcClient(CONF);
     TestRpcServer rpcServer = new TestRpcServer();
     try {
       rpcServer.start();
       InetSocketAddress address = rpcServer.getListenerAddress();
       MethodDescriptor md = SERVICE.getDescriptorForType().findMethodByName("pause");
+      PayloadCarryingRpcController pcrc = new PayloadCarryingRpcController();
       int ms = 2000;
       int timeout = 100;
       for (int i = 0; i < 10; i++) {
+        pcrc.reset();
         long startTime = System.nanoTime();
         try {
-          client.call(md, PauseRequestProto.newBuilder().setMs(ms).build(), null,
+          client.callBlockingMethod(md, pcrc, PauseRequestProto.newBuilder().setMs(ms).build(),
             EchoResponseProto.getDefaultInstance(), User.getCurrent(), address, timeout);
-        } catch (IOException e) {
+        } catch (ServiceException e) {
           long waitTime = (System.nanoTime() - startTime) / 1000000;
           // expected
           LOG.warn("", e);
@@ -290,9 +329,10 @@ public abstract class AbstractTestIPC {
   }
 
   @Test
-  public void testCleanupIdleConnections() throws IOException, InterruptedException {
+  public void testCleanupIdleConnections()
+      throws IOException, ServiceException, InterruptedException {
     Configuration conf = new Configuration(CONF);
-    // 1s
+    // +1s
     conf.setInt("hbase.ipc.client.connection.maxidletime", 1000);
     AbstractRpcClient<?> client = createRpcClient(conf);
     TestRpcServer rpcServer = new TestRpcServer();
@@ -300,19 +340,110 @@ public abstract class AbstractTestIPC {
       rpcServer.start();
       InetSocketAddress address = rpcServer.getListenerAddress();
       MethodDescriptor md = SERVICE.getDescriptorForType().findMethodByName("ping");
-      client.call(md, EmptyRequestProto.getDefaultInstance(), null,
-        EmptyResponseProto.getDefaultInstance(), User.getCurrent(), address, 0);
+      client.callBlockingMethod(md, new PayloadCarryingRpcController(),
+        EmptyRequestProto.getDefaultInstance(), EmptyResponseProto.getDefaultInstance(),
+        User.getCurrent(), address, 0);
       Collection<? extends Connection> conns = client.connections.values();
       assertEquals(1, conns.size());
       Connection conn = conns.iterator().next();
       Thread.sleep(5000);
       assertEquals(0, client.connections.values().size());
-      client.call(md, EmptyRequestProto.getDefaultInstance(), null,
-        EmptyResponseProto.getDefaultInstance(), User.getCurrent(), address, 0);
+      client.callBlockingMethod(md, new PayloadCarryingRpcController(),
+        EmptyRequestProto.getDefaultInstance(), EmptyResponseProto.getDefaultInstance(),
+        User.getCurrent(), address, 0);
       conns = client.connections.values();
       assertEquals(1, conns.size());
       Connection conn1 = conns.iterator().next();
       assertNotSame(conn, conn1);
+    } finally {
+      client.close();
+      rpcServer.stop();
+    }
+  }
+
+  @Test
+  public void testRTEDuringConnectionSetup() throws Exception {
+    Configuration conf = new Configuration(CONF) {
+
+      @Override
+      public int getInt(String name, int defaultValue) {
+        if (name.equals(RpcClient.SOCKET_TIMEOUT)) {
+          throw new RuntimeException("Injected fault");
+        }
+        return super.getInt(name, defaultValue);
+      }
+
+    };
+
+    TestRpcServer rpcServer = new TestRpcServer();
+    AbstractRpcClient<?> client = createRpcClient(conf);
+    try {
+      rpcServer.start();
+      InetSocketAddress address = rpcServer.getListenerAddress();
+      MethodDescriptor md = SERVICE.getDescriptorForType().findMethodByName("echo");
+      EchoRequestProto param = EchoRequestProto.newBuilder().setMessage("hello").build();
+      client.callBlockingMethod(md, new PayloadCarryingRpcController(), param,
+        EchoResponseProto.getDefaultInstance(), User.getCurrent(), address, 0);
+      fail("Expected an exception to have been thrown!");
+    } catch (Exception e) {
+      LOG.info("Caught expected exception: ", e);
+      assertTrue(StringUtils.stringifyException(e).contains("Injected fault"));
+    } finally {
+      client.close();
+      rpcServer.stop();
+    }
+  }
+
+  @Test
+  public void testAsyncEcho() throws IOException {
+    AbstractRpcClient<?> client = createRpcClient(CONF);
+    TestRpcServer rpcServer = new TestRpcServer();
+    try {
+      rpcServer.start();
+      InetSocketAddress address = rpcServer.getListenerAddress();
+      MethodDescriptor md = SERVICE.getDescriptorForType().findMethodByName("echo");
+      List<BlockingRpcCallback<Message>> callbackList = new ArrayList<BlockingRpcCallback<Message>>();
+      List<PayloadCarryingRpcController> pcrcList = new ArrayList<PayloadCarryingRpcController>();
+      for (int i = 0; i < 100; i++) {
+        final String message = "hello-" + i;
+        EchoRequestProto param = EchoRequestProto.newBuilder().setMessage(message).build();
+        PayloadCarryingRpcController pcrc = new PayloadCarryingRpcController();
+        BlockingRpcCallback<Message> callback = new BlockingRpcCallback<Message>();
+        client.callMethod(md, pcrc, param, EchoResponseProto.getDefaultInstance(),
+          User.getCurrent(), address, 0, callback);
+        callbackList.add(callback);
+        pcrcList.add(pcrc);
+      }
+      for (int i = 0; i < 100; i++) {
+        Message r = callbackList.get(i).get();
+        PayloadCarryingRpcController pcrc = pcrcList.get(i);
+        assertFalse(pcrc.failed());
+        assertEquals("hello-" + i, ((EchoResponseProto) r).getMessage());
+        assertNull(pcrc.cellScanner());
+      }
+    } finally {
+      client.close();
+      rpcServer.stop();
+    }
+  }
+
+  @Test
+  public void testAsyncRemoteError() throws IOException {
+    AbstractRpcClient<?> client = createRpcClient(CONF);
+    TestRpcServer rpcServer = new TestRpcServer();
+    try {
+      rpcServer.start();
+      InetSocketAddress address = rpcServer.getListenerAddress();
+      MethodDescriptor md = SERVICE.getDescriptorForType().findMethodByName("error");
+      BlockingRpcCallback<Message> callback = new BlockingRpcCallback<Message>();
+      PayloadCarryingRpcController pcrc = new PayloadCarryingRpcController();
+      client.callMethod(md, pcrc, EmptyRequestProto.getDefaultInstance(),
+        EmptyResponseProto.getDefaultInstance(), User.getCurrent(), address, 0, callback);
+      callback.get();
+      assertTrue(pcrc.failed());
+      LOG.info("Caught expected exception: ", pcrc.getError());
+      assertTrue(pcrc.getError() instanceof RemoteException);
+      assertTrue(StringUtils.stringifyException(pcrc.getError()).contains("remote error"));
     } finally {
       client.close();
       rpcServer.stop();

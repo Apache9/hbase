@@ -18,6 +18,7 @@
 package org.apache.hadoop.hbase.ipc;
 
 import com.google.protobuf.BlockingRpcChannel;
+import com.google.protobuf.RpcChannel;
 
 import java.io.Closeable;
 
@@ -43,17 +44,6 @@ public interface RpcClient extends Closeable {
   static final int DEFAULT_CLIENT_WARN_IPC_RESPONSE_TIME = 100; // milliseconds
   static final String CLIENT_WARN_IPC_RESPONSE_TIME = "hbase.client.ipc.warn.response.time";
 
-  static final String SOCKET_TIMEOUT_CONNECT = "hbase.ipc.client.socket.timeout.connect";
-  /**
-   * How long we wait when we wait for an answer. It's not the operation time, it's the time we wait
-   * when we start to receive an answer, when the remote write starts to send the data.
-   */
-  static final String SOCKET_TIMEOUT_READ = "hbase.ipc.client.socket.timeout.read";
-  static final String SOCKET_TIMEOUT_WRITE = "hbase.ipc.client.socket.timeout.write";
-  static final int DEFAULT_SOCKET_TIMEOUT_CONNECT = 10000; // 10 seconds
-  static final int DEFAULT_SOCKET_TIMEOUT_READ = 20000; // 20 seconds
-  static final int DEFAULT_SOCKET_TIMEOUT_WRITE = 60000; // 60 second
-
   /**
    * Creates a "channel" that can be used by a blocking protobuf service. Useful setting up protobuf
    * blocking stubs.
@@ -63,6 +53,16 @@ public interface RpcClient extends Closeable {
    * @return A blocking rpc channel that goes via this rpc client instance.
    */
   BlockingRpcChannel createBlockingRpcChannel(ServerName sn, User ticket, int rpcTimeout);
+
+  /**
+   * Creates a "channel" that can be used by a blocking protobuf service. Useful setting up protobuf
+   * blocking stubs.
+   * @param sn
+   * @param ticket
+   * @param rpcTimeout
+   * @return A rpc channel that goes via this rpc client instance.
+   */
+  RpcChannel createRpcChannel(ServerName sn, User ticket, int rpcTimeout);
 
   /**
    * Interrupt the connections to the given ip:port server. This should be called if the server is

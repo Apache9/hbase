@@ -19,11 +19,9 @@
 
 package org.apache.hadoop.hbase.ipc;
 
-import com.google.protobuf.Descriptors.MethodDescriptor;
 import com.google.protobuf.Message;
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketAddress;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -33,11 +31,8 @@ import javax.net.SocketFactory;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.CellScanner;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.codec.Codec;
-import org.apache.hadoop.hbase.security.User;
-import org.apache.hadoop.hbase.util.Pair;
 import org.apache.hadoop.io.compress.CompressionCodec;
 import org.apache.hadoop.net.NetUtils;
 
@@ -137,8 +132,12 @@ public class RpcClientImpl extends AbstractRpcClient<ConnectionImpl> {
    */
   @Override
   public void close() {
-    if (LOG.isDebugEnabled()) LOG.debug("Stopping rpc client");
-    if (!running.compareAndSet(true, false)) return;
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("Stopping rpc client");
+    }
+    if (!running.compareAndSet(true, false)) {
+      return;
+    }
 
     // wake up all connections
     synchronized (connections) {
@@ -155,16 +154,6 @@ public class RpcClientImpl extends AbstractRpcClient<ConnectionImpl> {
       } catch (InterruptedException ignored) {
       }
     }
-  }
-
-  @Override
-  protected Pair<Message, CellScanner> call(MethodDescriptor md, Message param, CellScanner cells,
-      Message returnType, User ticket, InetSocketAddress addr, int rpcTimeout, int priority)
-      throws InterruptedException, IOException {
-    if (!running.get()) {
-      throw new StoppedRpcClientException();
-    }
-    return super.call(md, param, cells, returnType, ticket, addr, rpcTimeout, priority);
   }
 
   @Override

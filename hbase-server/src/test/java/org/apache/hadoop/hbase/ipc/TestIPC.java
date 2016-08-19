@@ -18,23 +18,14 @@
   */
 package org.apache.hadoop.hbase.ipc;
 
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-import static org.mockito.Matchers.anyInt;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.spy;
-
 import com.google.protobuf.ByteString;
 import com.google.protobuf.Descriptors.MethodDescriptor;
-import com.google.protobuf.Message;
+import com.google.protobuf.ServiceException;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.net.Socket;
 import java.util.ArrayList;
 import java.util.List;
-
-import javax.net.SocketFactory;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -59,14 +50,7 @@ import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.RegionSpecifier;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.RegionSpecifier.RegionSpecifierType;
 import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.testclassification.SmallTests;
-import org.apache.hadoop.hbase.util.Pair;
-import org.apache.hadoop.net.NetUtils;
-import org.apache.hadoop.util.StringUtils;
-import org.junit.Test;
 import org.junit.experimental.categories.Category;
-import org.mockito.Mockito;
-import org.mockito.invocation.InvocationOnMock;
-import org.mockito.stubbing.Answer;
 
 /**
  * Test RpcClientImpl.
@@ -76,39 +60,8 @@ public class TestIPC extends AbstractTestIPC {
 
   private static final Log LOG = LogFactory.getLog(TestIPC.class);
 
-  @Test
-  public void testRTEDuringConnectionSetup() throws Exception {
-    Configuration conf = HBaseConfiguration.create();
-    SocketFactory spyFactory = spy(NetUtils.getDefaultSocketFactory(conf));
-    Mockito.doAnswer(new Answer<Socket>() {
-      @Override
-      public Socket answer(InvocationOnMock invocation) throws Throwable {
-        Socket s = spy((Socket) invocation.callRealMethod());
-        doThrow(new RuntimeException("Injected fault")).when(s).setSoTimeout(anyInt());
-        return s;
-      }
-    }).when(spyFactory).createSocket();
-
-    TestRpcServer rpcServer = new TestRpcServer();
-    RpcClientImpl client = new RpcClientImpl(conf, HConstants.CLUSTER_ID_DEFAULT, spyFactory);
-    try {
-      rpcServer.start();
-      InetSocketAddress address = rpcServer.getListenerAddress();
-      MethodDescriptor md = SERVICE.getDescriptorForType().findMethodByName("echo");
-      EchoRequestProto param = EchoRequestProto.newBuilder().setMessage("hello").build();
-      client.call(md, param, null, null, User.getCurrent(), address, 0);
-      fail("Expected an exception to have been thrown!");
-    } catch (Exception e) {
-      LOG.info("Caught expected exception: " + e.toString());
-      assertTrue(StringUtils.stringifyException(e).contains("Injected fault"));
-    } finally {
-      client.close();
-      rpcServer.stop();
-    }
-  }
-
-  public static void main(String[] args)
-      throws IOException, SecurityException, NoSuchMethodException, InterruptedException {
+  public static void main(String[] args) throws IOException, SecurityException,
+      NoSuchMethodException, InterruptedException, ServiceException {
     if (args.length != 2) {
       System.out.println("Usage: TestIPC <CYCLES> <CELLS_PER_CYCLE>");
       return;
@@ -150,8 +103,9 @@ public class TestIPC extends AbstractTestIPC {
           // "Thread dump " + Thread.currentThread().getName());
         }
         CellScanner cellScanner = CellUtil.createCellScanner(cells);
-        Pair<Message, CellScanner> response = client.call(md, builder.build(), cellScanner, param,
-          user, address, 0);
+        PayloadCarryingRpcController pcrc = new PayloadCarryingRpcController();
+        pcrc.setCellScanner(cellScanner);
+        client.callBlockingMethod(md, pcrc, builder.build(), param, user, address, 0);
         /*
          * int count = 0; while (p.getSecond().advance()) { count++; } assertEquals(cells.size(),
          * count);

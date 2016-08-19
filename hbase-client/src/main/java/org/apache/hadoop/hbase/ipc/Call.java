@@ -19,6 +19,7 @@ package org.apache.hadoop.hbase.ipc;
 
 import com.google.protobuf.Descriptors.MethodDescriptor;
 import com.google.protobuf.Message;
+import com.google.protobuf.RpcCallback;
 
 import io.netty.util.Timeout;
 
@@ -48,10 +49,11 @@ class Call {
   final MethodDescriptor md;
   final int timeout;
   final int priority;
+  final RpcCallback<Call> callback;
   Timeout timeoutTask;
 
   public Call(int id, final MethodDescriptor md, Message param, final CellScanner cells,
-      final Message responseDefaultType, int timeout, int priority) {
+      final Message responseDefaultType, int timeout, int priority, RpcCallback<Call> callback) {
     this.param = param;
     this.md = md;
     this.cells = cells;
@@ -60,6 +62,7 @@ class Call {
     this.id = id;
     this.timeout = timeout;
     this.priority = priority;
+    this.callback = callback;
   }
 
   @Override
@@ -72,34 +75,38 @@ class Call {
    * Indicate when the call is complete and the value or error are available. Notifies by default.
    */
   private void callComplete() {
-    this.done = true;
     if (timeoutTask != null) {
       timeoutTask.cancel();
     }
-    notify(); // notify caller
+    callback.run(this);
   }
 
   /**
    * Call this method inside the timeoutTask to prevent cancel yourself...
    */
-  public synchronized void setTimeout(IOException error) {
-    if (done) {
-      return;
+  public void setTimeout(IOException error) {
+    synchronized (this) {
+      if (done) {
+        return;
+      }
+      this.done = true;
+      this.error = error;
     }
-    this.done = true;
-    this.error = error;
-    notify();
+    callback.run(this);
   }
 
   /**
    * Set the exception when there is an error. Notify the caller the call is done.
    * @param error exception thrown by the call; either local or remote
    */
-  public synchronized void setException(IOException error) {
-    if (done) {
-      return;
+  public void setException(IOException error) {
+    synchronized (this) {
+      if (done) {
+        return;
+      }
+      this.done = true;
+      this.error = error;
     }
-    this.error = error;
     callComplete();
   }
 
@@ -108,12 +115,15 @@ class Call {
    * @param response return value of the call.
    * @param cells Can be null
    */
-  public synchronized void setResponse(Message response, final CellScanner cells) {
-    if (done) {
-      return;
+  public void setResponse(Message response, final CellScanner cells) {
+    synchronized (this) {
+      if (done) {
+        return;
+      }
+      this.done = true;
+      this.response = response;
+      this.cells = cells;
     }
-    this.response = response;
-    this.cells = cells;
     callComplete();
   }
 
