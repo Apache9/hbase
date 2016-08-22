@@ -179,6 +179,7 @@ public class ScannerCallable extends RegionServerCallable<Result[]> {
           request = RequestConverter.buildScanRequest(scannerId, caching, false, nextCallSeq);
           ScanResponse response = null;
           try {
+            controller.reset();
             controller.setPriority(getTableName());
             controller.setTimeout(timeout);
             response = getStub().scan(controller, request);

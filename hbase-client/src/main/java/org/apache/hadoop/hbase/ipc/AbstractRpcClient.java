@@ -18,6 +18,7 @@
 package org.apache.hadoop.hbase.ipc;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Preconditions;
 import com.google.protobuf.BlockingRpcChannel;
 import com.google.protobuf.Descriptors.MethodDescriptor;
 import com.google.protobuf.Message;
@@ -412,10 +413,9 @@ public abstract class AbstractRpcClient<T extends Connection> implements RpcClie
       this.rpcClient = rpcClient;
       // Set the rpc timeout to be the minimum of configured timeout and whatever the current
       // thread local setting is.
-      this.rpcTimeout = getRpcTimeout(rpcTimeout);
+      this.rpcTimeout = rpcTimeout;
       this.ticket = ticket;
     }
-
   }
 
   /**
@@ -433,7 +433,9 @@ public abstract class AbstractRpcClient<T extends Connection> implements RpcClie
     @Override
     public Message callBlockingMethod(MethodDescriptor method, RpcController controller,
         Message request, Message responsePrototype) throws ServiceException {
-      return rpcClient.callBlockingMethod(method, (PayloadCarryingRpcController) controller,
+      return rpcClient.callBlockingMethod(method,
+        controller == null ? new PayloadCarryingRpcController()
+            : (PayloadCarryingRpcController) controller,
         request, responsePrototype, ticket, addr, getRpcTimeout(rpcTimeout));
     }
   }
@@ -452,6 +454,8 @@ public abstract class AbstractRpcClient<T extends Connection> implements RpcClie
     @Override
     public void callMethod(MethodDescriptor method, RpcController controller, Message request,
         Message responsePrototype, RpcCallback<Message> done) {
+      Preconditions.checkNotNull(controller,
+        "must provide a controller because the exception will be passed by it.");
       rpcClient.callMethod(method, (PayloadCarryingRpcController) controller, request,
         responsePrototype, ticket, addr, getRpcTimeout(rpcTimeout), done);
     }
@@ -488,7 +492,7 @@ public abstract class AbstractRpcClient<T extends Connection> implements RpcClie
    * default timeout.
    */
   public static int getRpcTimeout(int defaultTimeout) {
-    return Math.min(defaultTimeout, RPC_TIMEOUT.get());
+    return Math.min(defaultTimeout, getRpcTimeout());
   }
 
   public static void resetRpcTimeout() {

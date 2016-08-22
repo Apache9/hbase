@@ -18,17 +18,19 @@
  */
 package org.apache.hadoop.hbase.client;
 
+import com.google.protobuf.ServiceException;
+
 import java.io.IOException;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.hbase.classification.InterfaceAudience;
-import org.apache.hadoop.hbase.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.KeyValueUtil;
 import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.classification.InterfaceAudience;
+import org.apache.hadoop.hbase.classification.InterfaceStability;
 import org.apache.hadoop.hbase.ipc.PayloadCarryingRpcController;
 import org.apache.hadoop.hbase.ipc.RpcControllerFactory;
 import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
@@ -38,8 +40,6 @@ import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.ScanRequest;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.ScanResponse;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.htrace.Trace;
-
-import com.google.protobuf.ServiceException;
 
 /**
  * Client scanner for small scan. Generally, only one RPC is called to fetch the
@@ -162,14 +162,15 @@ public class ClientSmallScanner extends ClientScanner {
       final Scan sc, HConnection connection, TableName table, byte[] localStartKey,
       final int cacheNum, final RpcControllerFactory rpcControllerFactory) throws IOException { 
     sc.setStartRow(localStartKey);
+    final PayloadCarryingRpcController controller = rpcControllerFactory.newController();
     RegionServerCallable<Result[]> callable = new RegionServerCallable<Result[]>(
         connection, table, sc.getStartRow()) {
       public Result[] call() throws IOException {
         ScanRequest request = RequestConverter.buildScanRequest(getLocation()
           .getRegionInfo().getRegionName(), sc, cacheNum, true);
         ScanResponse response = null;
-        PayloadCarryingRpcController controller = rpcControllerFactory.newController();
         try {
+          controller.reset();
           controller.setPriority(getTableName());
           response = getStub().scan(controller, request);
           if (response.hasMoreResultsInRegion()) {

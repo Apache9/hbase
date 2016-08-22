@@ -18,6 +18,13 @@
  */
 package org.apache.hadoop.hbase.client;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
 import com.google.common.collect.Lists;
 
 import java.io.IOException;
@@ -74,13 +81,6 @@ import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 /**
  * This class is for testing HCM features
@@ -159,11 +159,11 @@ public class TestHCM {
     TEST_UTIL.getConfiguration().setInt(HConstants.HBASE_CLIENT_RETRIES_NUMBER, RPC_RETRY);
     // simulate queue blocking in testDropTimeoutRequest
     TEST_UTIL.getConfiguration().setInt(HConstants.REGION_SERVER_HANDLER_COUNT, 1);
-    TEST_UTIL.getConfiguration().setInt(HConstants.HBASE_CLIENT_PAUSE, 0);
     TEST_UTIL.startMiniCluster(2);
   }
 
-  @AfterClass public static void tearDownAfterClass() throws Exception {
+  @AfterClass
+  public static void tearDownAfterClass() throws Exception {
     TEST_UTIL.shutdownMiniCluster();
   }
 
@@ -410,6 +410,7 @@ public class TestHCM {
     hdt.addCoprocessor(SleepLongerAtFirstCoprocessor.class.getName());
     Configuration c = new Configuration(TEST_UTIL.getConfiguration());
     c.setInt(HConstants.HBASE_RPC_TIMEOUT_KEY, SleepLongerAtFirstCoprocessor.SLEEP_TIME * 2);
+    c.setInt(HConstants.HBASE_CLIENT_PAUSE, 0);
     HTable t = TEST_UTIL.createTable(hdt, new byte[][] { FAM_NAM }, c);
     try {
       t.get(new Get(FAM_NAM));

@@ -86,7 +86,6 @@ public class RegionCoprocessorRpcChannel extends CoprocessorRpcChannel{
             .setMethodName(method.getName())
             .setRequest(request.toByteString()).build();
     final PayloadCarryingRpcController controller = rpcController.newController();
-    controller.setPriority(table);
     RegionServerCallable<CoprocessorServiceResponse> callable =
         new RegionServerCallable<CoprocessorServiceResponse>(connection, table, row) {
           public CoprocessorServiceResponse call() throws Exception {
@@ -94,6 +93,8 @@ public class RegionCoprocessorRpcChannel extends CoprocessorRpcChannel{
             if (Trace.isTracing()) {
               Trace.addTimelineAnnotation("Call coprocessor to " + location);
             }
+            controller.reset();
+            controller.setPriority(table);
             return ProtobufUtil.execService(getStub(), call, regionName, controller);
           }
         };

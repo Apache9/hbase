@@ -79,20 +79,27 @@ public class RpcRetryingCaller<T> {
     this.ignoreThrottlingException = ignoreThrottlingException;
   }
 
+  private int previousRpcTimeout;
+
   private void beforeCall() {
-    int remaining = (int)(callTimeout -
-      (EnvironmentEdgeManager.currentTimeMillis() - this.globalStartTime));
+    int remaining = (int) (callTimeout
+        - (EnvironmentEdgeManager.currentTimeMillis() - this.globalStartTime));
     if (remaining < MIN_RPC_TIMEOUT) {
       // If there is no time left, we're trying anyway. It's too late.
       // 0 means no timeout, and it's not the intent here. So we secure both cases by
       // resetting to the minimum.
       remaining = MIN_RPC_TIMEOUT;
     }
+    previousRpcTimeout = AbstractRpcClient.getRpcTimeout();
     AbstractRpcClient.setRpcTimeout(remaining);
   }
 
   private void afterCall() {
-    AbstractRpcClient.resetRpcTimeout();
+    if (previousRpcTimeout == HConstants.DEFAULT_HBASE_CLIENT_OPERATION_TIMEOUT) {
+      AbstractRpcClient.resetRpcTimeout();
+    } else {
+      AbstractRpcClient.setRpcTimeout(previousRpcTimeout);
+    }
   }
 
   public synchronized T callWithRetries(RetryingCallable<T> callable) throws IOException,
