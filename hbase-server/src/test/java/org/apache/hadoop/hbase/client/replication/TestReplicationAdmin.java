@@ -223,7 +223,7 @@ public class TestReplicationAdmin {
     tableCFs.put(tab5, new ArrayList<String>());
     tableCFs.get(tab5).add("f1");
     admin.appendPeerTableCFs(ID_ONE, tableCFs);
-    result = ReplicationSerDeHelper.parseTableCFsFromConfig(admin.getPeerTableCFs(ID_ONE));
+    result = admin.getPeerTableCFs(ID_ONE);
     assertEquals(5, result.size());
     assertTrue("Should contain t5", result.containsKey(tab5));
     // null means replication all cfs of tab5
@@ -237,7 +237,7 @@ public class TestReplicationAdmin {
     tableCFs.clear();
     tableCFs.put(tab6, new ArrayList<String>());
     admin.appendPeerTableCFs(ID_ONE, tableCFs);
-    result = ReplicationSerDeHelper.parseTableCFsFromConfig(admin.getPeerTableCFs(ID_ONE));
+    result = admin.getPeerTableCFs(ID_ONE);
     assertEquals(6, result.size());
     assertTrue("Should contain t6", result.containsKey(tab6));
     // null means replication all cfs of tab6

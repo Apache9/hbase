@@ -120,7 +120,8 @@ public class RpcRetryingCaller<T> {
       long expectedSleep = 0;
       try {
         beforeCall();
-        callable.prepare(tries != 0); // if called with false, check table status on ZK
+        // bad cache entries are cleared in the call to RetryingCallable#throwable() in catch block
+        callable.prepare(tries != 0);
         return callable.call();
       } catch (Throwable t) {
         if (tries > startLogErrorsCnt) {

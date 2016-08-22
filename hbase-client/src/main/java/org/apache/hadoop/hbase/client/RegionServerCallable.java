@@ -30,6 +30,7 @@ import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HRegionLocation;
 import org.apache.hadoop.hbase.NotServingRegionException;
 import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.TableNotEnabledException;
 import org.apache.hadoop.hbase.exceptions.RegionMovedException;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.ClientService;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -72,7 +73,13 @@ public abstract class RegionServerCallable<T> implements RetryingCallable<T> {
    * @throws IOException e
    */
   public void prepare(final boolean reload) throws IOException {
-    this.location = connection.getRegionLocation(tableName, row, reload);
+    // check table state if this is a retry
+    if (reload && !tableName.equals(TableName.META_TABLE_NAME)
+        && getConnection().isTableDisabled(tableName)) {
+      throw new TableNotEnabledException(tableName.getNameAsString() + " is disabled.");
+    }
+
+    this.location = connection.getRegionLocation(tableName, row, false);
     if (this.location == null) {
       throw new IOException("Failed to find location, tableName=" + tableName +
         ", row=" + Bytes.toString(row) + ", reload=" + reload);
