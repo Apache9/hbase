@@ -1789,7 +1789,7 @@ public class RpcServer implements RpcServerInterface {
           ? new TraceInfo(header.getTraceInfo().getTraceId(), header.getTraceInfo().getParentId())
           : null;
       int timeout = 0;
-      if (header.hasTimeout()){
+      if (header.hasTimeout() && header.getTimeout() > 0){
         timeout = Math.max(minClientRequestTimeout, header.getTimeout());
       }
       Call call = new Call(id, this.service, md, header, param, cellScanner, this, responder,

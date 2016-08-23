@@ -44,9 +44,7 @@ import org.apache.hadoop.net.NetUtils;
 @InterfaceAudience.Private
 public class RpcClientImpl extends AbstractRpcClient<ConnectionImpl> {
 
-  // The LOG key is intentionally not from this package to avoid ipc logging at DEBUG (all under
-  // o.a.h.hbase is set to DEBUG as default).
-  public static final Log LOG = LogFactory.getLog("org.apache.hadoop.ipc.RpcClient");
+  public static final Log LOG = LogFactory.getLog(RpcClientImpl.class);
 
   protected final AtomicBoolean running = new AtomicBoolean(true); // if client runs
 
@@ -58,7 +56,7 @@ public class RpcClientImpl extends AbstractRpcClient<ConnectionImpl> {
    */
   protected ConnectionImpl createConnection(ConnectionId remoteId, final Codec codec,
       final CompressionCodec compressor) throws IOException {
-    return new ConnectionImpl(this, remoteId, codec, compressor);
+    return new ConnectionImpl(this, remoteId);
   }
 
   @edu.umd.cs.findbugs.annotations.SuppressWarnings(value = "IS2_INCONSISTENT_SYNC", justification = "Presume sync not needed setting socket timeout")
@@ -158,6 +156,6 @@ public class RpcClientImpl extends AbstractRpcClient<ConnectionImpl> {
 
   @Override
   protected ConnectionImpl createConnection(ConnectionId remoteId) throws IOException {
-    return new ConnectionImpl(this, remoteId, codec, compressor);
+    return new ConnectionImpl(this, remoteId);
   }
 }

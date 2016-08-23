@@ -29,7 +29,6 @@ import io.netty.channel.ChannelOption;
 import io.netty.channel.ChannelPipeline;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import io.netty.handler.timeout.IdleStateHandler;
-import io.netty.util.HashedWheelTimer;
 import io.netty.util.Timeout;
 import io.netty.util.TimerTask;
 import io.netty.util.concurrent.Future;
@@ -44,14 +43,12 @@ import java.util.concurrent.TimeUnit;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
-import org.apache.hadoop.hbase.codec.Codec;
 import org.apache.hadoop.hbase.ipc.BufferCallBeforeInitHandler.BufferCallEvent;
 import org.apache.hadoop.hbase.security.NettyHBaseSaslRpcClientHandler;
 import org.apache.hadoop.hbase.security.SaslChallengeDecoder;
 import org.apache.hadoop.hbase.security.SaslUtil.QualityOfProtection;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.Threads;
-import org.apache.hadoop.io.compress.CompressionCodec;
 import org.apache.hadoop.security.UserGroupInformation;
 
 /**
@@ -67,15 +64,12 @@ public class NettyConnection extends Connection {
 
   private final NettyRpcClient rpcClient;
 
-  private final HashedWheelTimer timeoutTimer;
-
   private Channel channel;
 
-  public NettyConnection(NettyRpcClient rpcClient, HashedWheelTimer timeoutTimer,
-      ConnectionId remoteId, Codec codec, CompressionCodec compressor) throws IOException {
-    super(rpcClient.conf, remoteId, rpcClient.clusterId,
-        rpcClient.userProvider.isHBaseSecurityEnabled(), rpcClient.pingInterval, codec, compressor);
-    this.timeoutTimer = timeoutTimer;
+  public NettyConnection(NettyRpcClient rpcClient, ConnectionId remoteId) throws IOException {
+    super(rpcClient.conf, rpcClient.timeoutTimer, remoteId, rpcClient.clusterId,
+        rpcClient.userProvider.isHBaseSecurityEnabled(), rpcClient.pingInterval, rpcClient.codec,
+        rpcClient.compressor);
     this.rpcClient = rpcClient;
   }
 
@@ -96,7 +90,7 @@ public class NettyConnection extends Connection {
       new IdleStateHandler(pingInterval, rpcClient.maxIdleTime, 0, TimeUnit.MILLISECONDS));
     p.addBefore(addBeforeHandler, null, new LengthFieldBasedFrameDecoder(Integer.MAX_VALUE, 0, 4));
     p.addBefore(addBeforeHandler, null,
-      new NettyRpcDuplexHandler(this, rpcClient.ipcUtil, rpcClient.codec, rpcClient.compressor));
+      new NettyRpcDuplexHandler(this, rpcClient.ipcUtil, codec, compressor));
     p.fireUserEventTriggered(BufferCallEvent.success());
   }
 
@@ -221,14 +215,19 @@ public class NettyConnection extends Connection {
           call.setTimeout(new IOException(
               "Timed out waiting for response, timeout = " + call.timeout + "ms, waitTime = "
                   + (EnvironmentEdgeManager.currentTimeMillis() - call.startTime) + "ms"));
-          synchronized (NettyConnection.this) {
-            if (channel != null) {
-              channel.pipeline().fireUserEventTriggered(new CallTimeoutEvent(call.id));
-            }
-          }
+
         }
       }, call.timeout, TimeUnit.MILLISECONDS);
     }
     channel.writeAndFlush(call);
+  }
+
+  @Override
+  protected void callTimeout(Call call) {
+    synchronized (NettyConnection.this) {
+      if (channel != null) {
+        channel.pipeline().fireUserEventTriggered(new CallTimeoutEvent(call.id));
+      }
+    }
   }
 }

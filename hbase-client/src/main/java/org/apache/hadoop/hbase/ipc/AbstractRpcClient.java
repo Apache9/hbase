@@ -21,6 +21,9 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.protobuf.BlockingRpcChannel;
 import com.google.protobuf.Descriptors.MethodDescriptor;
+
+import io.netty.util.HashedWheelTimer;
+
 import com.google.protobuf.Message;
 import com.google.protobuf.RpcCallback;
 import com.google.protobuf.RpcChannel;
@@ -34,6 +37,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.commons.logging.Log;
@@ -89,6 +93,8 @@ public abstract class AbstractRpcClient<T extends Connection> implements RpcClie
   protected final PoolMap<ConnectionId, T> connections;
 
   protected final AtomicInteger callIdCnt = new AtomicInteger(0);
+
+  protected final HashedWheelTimer timeoutTimer = new HashedWheelTimer(10, TimeUnit.MILLISECONDS);
 
   /**
    * Construct an IPC client for the cluster <code>clusterId</code>

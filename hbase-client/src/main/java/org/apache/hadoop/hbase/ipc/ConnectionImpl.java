@@ -21,6 +21,7 @@ import java.security.PrivilegedExceptionAction;
 import java.util.Iterator;
 import java.util.Map.Entry;
 import java.util.Random;
+import java.util.concurrent.ConcurrentNavigableMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
@@ -32,7 +33,6 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.CellScanner;
 import org.apache.hadoop.hbase.DoNotRetryIOException;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
-import org.apache.hadoop.hbase.codec.Codec;
 import org.apache.hadoop.hbase.ipc.FailedServers.FailedServer;
 import org.apache.hadoop.hbase.protobuf.generated.RPCProtos.CellBlockMeta;
 import org.apache.hadoop.hbase.protobuf.generated.RPCProtos.ExceptionResponse;
@@ -42,7 +42,6 @@ import org.apache.hadoop.hbase.security.HBaseSaslRpcClient;
 import org.apache.hadoop.hbase.security.SaslUtil.QualityOfProtection;
 import org.apache.hadoop.hbase.util.ExceptionUtil;
 import org.apache.hadoop.io.IOUtils;
-import org.apache.hadoop.io.compress.CompressionCodec;
 import org.apache.hadoop.ipc.RemoteException;
 import org.apache.hadoop.net.NetUtils;
 import org.apache.hadoop.security.UserGroupInformation;
@@ -60,24 +59,24 @@ class ConnectionImpl extends Connection implements Runnable {
   private final RpcClientImpl rpcClient;
   final Thread thread;
 
-  protected Socket socket = null; // connected socket
-  protected DataInputStream in;
-  protected DataOutputStream out;
+  private Socket socket = null; // connected socket
+  private DataInputStream in;
+  private DataOutputStream out;
 
   private HBaseSaslRpcClient saslRpcClient;
 
   // currently active calls
-  protected final ConcurrentSkipListMap<Integer, Call> calls = new ConcurrentSkipListMap<Integer, Call>();
-  protected final AtomicLong lastActivity = new AtomicLong(); // last I/O activity time
-  protected final AtomicBoolean shouldCloseConnection = new AtomicBoolean(); // indicate if the
-                                                                             // connection is
-                                                                             // closed
-  protected IOException closeException; // close reason
+  private final ConcurrentNavigableMap<Integer, Call> calls = new ConcurrentSkipListMap<Integer, Call>();
+  private final AtomicLong lastActivity = new AtomicLong(); // last I/O activity time
+  private final AtomicBoolean shouldCloseConnection = new AtomicBoolean(); // indicate if the
+                                                                           // connection is
+                                                                           // closed
+  private IOException closeException; // close reason
 
-  ConnectionImpl(RpcClientImpl rpcClient, ConnectionId remoteId, Codec codec,
-      CompressionCodec compressor) throws IOException {
-    super(rpcClient.conf, remoteId, rpcClient.clusterId,
-        rpcClient.userProvider.isHBaseSecurityEnabled(), rpcClient.pingInterval, codec, compressor);
+  ConnectionImpl(RpcClientImpl rpcClient, ConnectionId remoteId) throws IOException {
+    super(rpcClient.conf, rpcClient.timeoutTimer, remoteId, rpcClient.clusterId,
+        rpcClient.userProvider.isHBaseSecurityEnabled(), rpcClient.pingInterval, rpcClient.codec,
+        rpcClient.compressor);
     this.rpcClient = rpcClient;
 
     this.thread = new Thread(this);
@@ -89,7 +88,7 @@ class ConnectionImpl extends Connection implements Runnable {
   }
 
   /** Update lastActivity with the current time. */
-  protected void touch() {
+  private void touch() {
     lastActivity.set(System.currentTimeMillis());
   }
 
@@ -100,8 +99,7 @@ class ConnectionImpl extends Connection implements Runnable {
    * check this status.
    * @param call to add
    */
-  @edu.umd.cs.findbugs.annotations.SuppressWarnings(value = "NN_NAKED_NOTIFY", justification = "Notify because new call available for processing")
-  protected synchronized void addCall(Call call) {
+  private void addCall(Call call) {
     // If the connection is about to close, we manage this as if the call was already added
     // to the connection calls list. If not, the connection creations are serialized, as
     // mentioned in HBASE-6364
@@ -112,14 +110,9 @@ class ConnectionImpl extends Connection implements Runnable {
       } else {
         call.setException(this.closeException);
       }
-      synchronized (call) {
-        call.notifyAll();
-      }
     } else {
       calls.put(call.id, call);
-      synchronized (call) {
-        notify();
-      }
+      notifyAll();
     }
   }
 
@@ -178,7 +171,7 @@ class ConnectionImpl extends Connection implements Runnable {
     }
   }
 
-  protected synchronized void setupConnection() throws IOException {
+  private void setupConnection() throws IOException {
     short ioFailures = 0;
     short timeoutFailures = 0;
     while (true) {
@@ -278,7 +271,7 @@ class ConnectionImpl extends Connection implements Runnable {
    * as to be closed, or the client is marked as not running. Return true if it is time to read a
    * response; false otherwise.
    */
-  protected synchronized boolean waitForWork() {
+  private synchronized boolean waitForWork() {
     if (calls.isEmpty() && !shouldCloseConnection.get() && this.rpcClient.running.get()) {
       long timeout = this.rpcClient.maxIdleTime - (System.currentTimeMillis() - lastActivity.get());
       if (timeout > 0) {
@@ -311,7 +304,7 @@ class ConnectionImpl extends Connection implements Runnable {
    * Send a ping to the server if the time elapsed since last I/O activity is equal to or greater
    * than the ping interval
    */
-  protected synchronized void sendPing() throws IOException {
+  private synchronized void sendPing() throws IOException {
     // Can we do tcp keepalive instead of this pinging?
     long curTime = System.currentTimeMillis();
     if (curTime - lastActivity.get() >= pingInterval) {
@@ -339,21 +332,23 @@ class ConnectionImpl extends Connection implements Runnable {
       markClosed(new IOException("Unexpected exception receiving call responses", t));
     }
 
-    close();
+    synchronized (this) {
+      close();
+    }
 
     if (LOG.isDebugEnabled()) {
       LOG.debug("stopped, connections " + this.rpcClient.connections.size());
     }
   }
 
-  private synchronized void disposeSasl() {
+  private void disposeSasl() {
     if (saslRpcClient != null) {
       saslRpcClient.dispose();
       saslRpcClient = null;
     }
   }
 
-  private synchronized boolean setupSaslConnection(final InputStream in2, final OutputStream out2)
+  private boolean setupSaslConnection(final InputStream in2, final OutputStream out2)
       throws IOException {
     saslRpcClient = new HBaseSaslRpcClient(authMethod, token, serverPrincipal,
         this.rpcClient.fallbackAllowed, this.rpcClient.conf.get("hbase.rpc.protection",
@@ -375,7 +370,7 @@ class ConnectionImpl extends Connection implements Runnable {
    * HCM or HBaseAdmin).
    * </p>
    */
-  private synchronized void handleSaslConnectionFailure(final int currRetries, final int maxRetries,
+  private void handleSaslConnectionFailure(final int currRetries, final int maxRetries,
       final Exception ex, final Random rand, final UserGroupInformation user)
       throws IOException, InterruptedException {
     user.doAs(new PrivilegedExceptionAction<Object>() {
@@ -416,7 +411,7 @@ class ConnectionImpl extends Connection implements Runnable {
     });
   }
 
-  private synchronized void connect() throws IOException {
+  private void connect() throws IOException {
     if (socket != null || shouldCloseConnection.get()) {
       return;
     }
@@ -533,7 +528,7 @@ class ConnectionImpl extends Connection implements Runnable {
   }
 
   /** Close the connection. */
-  protected synchronized void close() {
+  private void close() {
     if (!shouldCloseConnection.get()) {
       LOG.error(thread.getName() + ": the connection is not in the closed state");
       return;
@@ -587,8 +582,10 @@ class ConnectionImpl extends Connection implements Runnable {
    * @param priority
    * @see #readResponse()
    */
-  protected void writeRequest(Call call) {
-    if (shouldCloseConnection.get()) return;
+  private void writeRequest(Call call) {
+    if (shouldCloseConnection.get()) {
+      return;
+    }
     try {
       ByteBuffer cellBlock = this.rpcClient.ipcUtil.buildCellBlock(this.codec, this.compressor,
         call.cells);
@@ -606,8 +603,7 @@ class ConnectionImpl extends Connection implements Runnable {
         IPCUtil.write(this.out, requestHeader, call.param, cellBlock);
       }
       if (LOG.isDebugEnabled()) {
-        LOG.debug(
-          thread.getName() + ": wrote request header " + TextFormat.shortDebugString(header));
+        LOG.debug(thread.getName() + ": wrote request " + call);
       }
     } catch (IOException e) {
       synchronized (this) {
@@ -622,8 +618,10 @@ class ConnectionImpl extends Connection implements Runnable {
   /*
    * Receive a response. Because only one receiver, so no synchronization on in.
    */
-  protected void readResponse() {
-    if (shouldCloseConnection.get()) return;
+  private void readResponse() {
+    if (shouldCloseConnection.get()) {
+      return;
+    }
     touch();
     int totalSize = -1;
     try {
@@ -701,7 +699,7 @@ class ConnectionImpl extends Connection implements Runnable {
     }
   }
 
-  protected synchronized void markClosed(IOException e) {
+  private synchronized void markClosed(IOException e) {
     if (shouldCloseConnection.compareAndSet(false, true)) {
       closeException = e;
       notifyAll();
@@ -709,12 +707,11 @@ class ConnectionImpl extends Connection implements Runnable {
   }
 
   /* Cleanup all calls and mark them as done */
-  protected void cleanupCalls() {
+  private void cleanupCalls() {
     cleanupCalls(0);
   }
 
-  @edu.umd.cs.findbugs.annotations.SuppressWarnings(value = "NN_NAKED_NOTIFY", justification = "Notify because timedout")
-  protected void cleanupCalls(long rpcTimeout) {
+  private void cleanupCalls(long rpcTimeout) {
     Iterator<Entry<Integer, Call>> itor = calls.entrySet().iterator();
     while (itor.hasNext()) {
       Call c = itor.next().getValue();
@@ -757,9 +754,15 @@ class ConnectionImpl extends Connection implements Runnable {
   }
 
   @Override
-  public void sendRequest(Call call) throws IOException {
+  protected void callTimeout(Call call) {
+    calls.remove(call.id);
+  }
+
+  @Override
+  public synchronized void sendRequest(Call call) throws IOException {
     connect();
     addCall(call);
+    scheduleTimeoutTask(call);
     writeRequest(call);
   }
 }

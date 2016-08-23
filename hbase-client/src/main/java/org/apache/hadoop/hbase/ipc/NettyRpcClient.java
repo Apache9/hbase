@@ -21,7 +21,6 @@ import io.netty.channel.Channel;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
-import io.netty.util.HashedWheelTimer;
 
 import java.io.IOException;
 import java.net.SocketAddress;
@@ -55,8 +54,6 @@ public class NettyRpcClient extends AbstractRpcClient<NettyConnection> {
   final Class<? extends Channel> channelClass;
 
   private final boolean shutdownGroupWhenClose;
-
-  private final HashedWheelTimer timeoutTimer = new HashedWheelTimer(10, TimeUnit.MILLISECONDS);
 
   private final ScheduledFuture<?> cleanupIdleConnectionTask;
 
@@ -105,7 +102,7 @@ public class NettyRpcClient extends AbstractRpcClient<NettyConnection> {
 
   @Override
   protected NettyConnection createConnection(ConnectionId remoteId) throws IOException {
-    return new NettyConnection(this, timeoutTimer, remoteId, codec, compressor);
+    return new NettyConnection(this, remoteId);
   }
 
   @Override

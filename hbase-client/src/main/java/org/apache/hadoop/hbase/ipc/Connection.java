@@ -17,8 +17,13 @@
  */
 package org.apache.hadoop.hbase.ipc;
 
+import io.netty.util.HashedWheelTimer;
+import io.netty.util.Timeout;
+import io.netty.util.TimerTask;
+
 import java.io.IOException;
 import java.net.UnknownHostException;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -32,6 +37,7 @@ import org.apache.hadoop.hbase.protobuf.generated.RPCProtos.ConnectionHeader;
 import org.apache.hadoop.hbase.protobuf.generated.RPCProtos.UserInformation;
 import org.apache.hadoop.hbase.security.AuthMethod;
 import org.apache.hadoop.hbase.security.SecurityInfo;
+import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.io.compress.CompressionCodec;
 import org.apache.hadoop.security.SecurityUtil;
@@ -66,6 +72,8 @@ public abstract class Connection {
 
   protected final CompressionCodec compressor;
 
+  protected final HashedWheelTimer timeoutTimer;
+
   protected final ConnectionHeader header; // connection header
 
   // the last time we were picked up from connection pool.
@@ -90,12 +98,13 @@ public abstract class Connection {
     return userInfoPB.build();
   }
 
-  protected Connection(Configuration conf, ConnectionId remoteId, String clusterId,
-      boolean isSecurityEnabled, int pingInterval, final Codec codec,
+  protected Connection(Configuration conf, HashedWheelTimer timeoutTimer, ConnectionId remoteId,
+      String clusterId, boolean isSecurityEnabled, int pingInterval, final Codec codec,
       final CompressionCodec compressor) throws IOException {
     if (remoteId.getAddress().isUnresolved()) {
       throw new UnknownHostException("unknown host: " + remoteId.getAddress().getHostName());
     }
+    this.timeoutTimer = timeoutTimer;
     this.codec = codec;
     this.compressor = compressor;
 
@@ -213,6 +222,23 @@ public abstract class Connection {
       UserGroupInformation.getLoginUser().reloginFromTicketCache();
     }
   }
+
+  protected void scheduleTimeoutTask(final Call call) {
+    if (call.timeout > 0) {
+      call.timeoutTask = timeoutTimer.newTimeout(new TimerTask() {
+
+        @Override
+        public void run(Timeout timeout) throws Exception {
+          call.setTimeout(new CallTimeoutException("Call id=" + call.id + ", waitTime="
+              + (EnvironmentEdgeManager.currentTimeMillis() - call.startTime) + ", rpcTimetout="
+              + call.timeout));
+          callTimeout(call);
+        }
+      }, call.timeout, TimeUnit.MILLISECONDS);
+    }
+  }
+
+  protected abstract void callTimeout(Call call);
 
   public ConnectionId remoteId() {
     return remoteId;
