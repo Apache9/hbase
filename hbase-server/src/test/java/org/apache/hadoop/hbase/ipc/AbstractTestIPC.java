@@ -177,7 +177,7 @@ public abstract class AbstractTestIPC {
       EchoRequestProto param = EchoRequestProto.newBuilder().setMessage(message).build();
       PayloadCarryingRpcController pcrc = new PayloadCarryingRpcController();
       Message r = client.callBlockingMethod(md, pcrc, param, EchoResponseProto.getDefaultInstance(),
-        User.getCurrent(), address, 0);
+        User.getCurrent(), address);
       assertNull(pcrc.cellScanner());
       // Silly assertion that the message is in the returned pb.
       assertTrue(r.toString().contains(message));
@@ -209,7 +209,7 @@ public abstract class AbstractTestIPC {
       PayloadCarryingRpcController pcrc = new PayloadCarryingRpcController();
       pcrc.setCellScanner(CellUtil.createCellScanner(cells));
       client.callBlockingMethod(md, pcrc, param, EchoResponseProto.getDefaultInstance(),
-        User.getCurrent(), address, 0);
+        User.getCurrent(), address);
       int index = 0;
       while (pcrc.cellScanner().advance()) {
         assertEquals(CELL, pcrc.cellScanner().current());
@@ -241,7 +241,7 @@ public abstract class AbstractTestIPC {
         pcrc.reset();
         pcrc.setCellScanner(CellUtil.createCellScanner(ImmutableList.of(CELL)));
         client.callBlockingMethod(md, pcrc, param, EchoResponseProto.getDefaultInstance(),
-          User.getCurrent(), rpcServer.getListenerAddress(), 0);
+          User.getCurrent(), rpcServer.getListenerAddress());
       }
       verify(scheduler, times(10)).dispatch((CallRunner) anyObject());
     } finally {
@@ -265,7 +265,7 @@ public abstract class AbstractTestIPC {
         EchoRequestProto param = EchoRequestProto.newBuilder().setMessage(message).build();
         pcrc.reset();
         Message r = client.callBlockingMethod(md, pcrc, param,
-          EchoResponseProto.getDefaultInstance(), User.getCurrent(), address, 0);
+          EchoResponseProto.getDefaultInstance(), User.getCurrent(), address);
         assertNull(pcrc.cellScanner());
         assertEquals(message, ((EchoResponseProto) r).getMessage());
       }
@@ -285,7 +285,7 @@ public abstract class AbstractTestIPC {
       MethodDescriptor md = SERVICE.getDescriptorForType().findMethodByName("error");
       client.callBlockingMethod(md, new PayloadCarryingRpcController(),
         EmptyRequestProto.getDefaultInstance(), EmptyResponseProto.getDefaultInstance(),
-        User.getCurrent(), address, 0);
+        User.getCurrent(), address);
       fail("Expected an exception to have been thrown!");
     } catch (ServiceException e) {
       LOG.info("Caught expected exception: ", e);
@@ -310,10 +310,11 @@ public abstract class AbstractTestIPC {
       int timeout = 100;
       for (int i = 0; i < 10; i++) {
         pcrc.reset();
+        pcrc.setTimeout(timeout);
         long startTime = System.nanoTime();
         try {
           client.callBlockingMethod(md, pcrc, PauseRequestProto.newBuilder().setMs(ms).build(),
-            EchoResponseProto.getDefaultInstance(), User.getCurrent(), address, timeout);
+            EchoResponseProto.getDefaultInstance(), User.getCurrent(), address);
         } catch (ServiceException e) {
           long waitTime = (System.nanoTime() - startTime) / 1000000;
           // expected
@@ -342,7 +343,7 @@ public abstract class AbstractTestIPC {
       MethodDescriptor md = SERVICE.getDescriptorForType().findMethodByName("ping");
       client.callBlockingMethod(md, new PayloadCarryingRpcController(),
         EmptyRequestProto.getDefaultInstance(), EmptyResponseProto.getDefaultInstance(),
-        User.getCurrent(), address, 0);
+        User.getCurrent(), address);
       Collection<? extends Connection> conns = client.connections.values();
       assertEquals(1, conns.size());
       Connection conn = conns.iterator().next();
@@ -350,7 +351,7 @@ public abstract class AbstractTestIPC {
       assertEquals(0, client.connections.values().size());
       client.callBlockingMethod(md, new PayloadCarryingRpcController(),
         EmptyRequestProto.getDefaultInstance(), EmptyResponseProto.getDefaultInstance(),
-        User.getCurrent(), address, 0);
+        User.getCurrent(), address);
       conns = client.connections.values();
       assertEquals(1, conns.size());
       Connection conn1 = conns.iterator().next();
@@ -383,7 +384,7 @@ public abstract class AbstractTestIPC {
       MethodDescriptor md = SERVICE.getDescriptorForType().findMethodByName("echo");
       EchoRequestProto param = EchoRequestProto.newBuilder().setMessage("hello").build();
       client.callBlockingMethod(md, new PayloadCarryingRpcController(), param,
-        EchoResponseProto.getDefaultInstance(), User.getCurrent(), address, 0);
+        EchoResponseProto.getDefaultInstance(), User.getCurrent(), address);
       fail("Expected an exception to have been thrown!");
     } catch (Exception e) {
       LOG.info("Caught expected exception: ", e);
@@ -410,7 +411,7 @@ public abstract class AbstractTestIPC {
         PayloadCarryingRpcController pcrc = new PayloadCarryingRpcController();
         BlockingRpcCallback<Message> callback = new BlockingRpcCallback<Message>();
         client.callMethod(md, pcrc, param, EchoResponseProto.getDefaultInstance(),
-          User.getCurrent(), address, 0, callback);
+          User.getCurrent(), address, callback);
         callbackList.add(callback);
         pcrcList.add(pcrc);
       }
@@ -438,7 +439,7 @@ public abstract class AbstractTestIPC {
       BlockingRpcCallback<Message> callback = new BlockingRpcCallback<Message>();
       PayloadCarryingRpcController pcrc = new PayloadCarryingRpcController();
       client.callMethod(md, pcrc, EmptyRequestProto.getDefaultInstance(),
-        EmptyResponseProto.getDefaultInstance(), User.getCurrent(), address, 0, callback);
+        EmptyResponseProto.getDefaultInstance(), User.getCurrent(), address, callback);
       callback.get();
       assertTrue(pcrc.failed());
       LOG.info("Caught expected exception: ", pcrc.getError());

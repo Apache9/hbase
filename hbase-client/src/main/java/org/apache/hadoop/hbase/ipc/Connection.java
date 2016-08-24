@@ -151,11 +151,7 @@ public abstract class Connection {
     }
     reloginMaxBackoff = conf.getInt("hbase.security.relogin.maxbackoff", 5000);
     this.remoteId = remoteId;
-    if (remoteId.rpcTimeout > 0) {
-      this.pingInterval = remoteId.rpcTimeout; // overwrite pingInterval
-    } else {
-      this.pingInterval = pingInterval;
-    }
+    this.pingInterval = pingInterval;
 
     ConnectionHeader.Builder builder = ConnectionHeader.newBuilder();
     builder.setServiceName(remoteId.getServiceName());

@@ -105,7 +105,7 @@ public class TestIPC extends AbstractTestIPC {
         CellScanner cellScanner = CellUtil.createCellScanner(cells);
         PayloadCarryingRpcController pcrc = new PayloadCarryingRpcController();
         pcrc.setCellScanner(cellScanner);
-        client.callBlockingMethod(md, pcrc, builder.build(), param, user, address, 0);
+        client.callBlockingMethod(md, pcrc, builder.build(), param, user, address);
         /*
          * int count = 0; while (p.getSecond().advance()) { count++; } assertEquals(cells.size(),
          * count);

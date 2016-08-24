@@ -21,14 +21,15 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import com.google.protobuf.RpcController;
+import com.google.protobuf.ServiceException;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
 
 import org.apache.commons.lang.exception.ExceptionUtils;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.commons.logging.impl.Log4JLogger;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
@@ -54,9 +55,8 @@ import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.ScanRequest;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.ScanResponse;
 import org.apache.hadoop.hbase.regionserver.HRegion.RegionScannerImpl;
 import org.apache.hadoop.hbase.regionserver.wal.HLog;
-import org.apache.hadoop.hbase.testclassification.MediumTests;
+import org.apache.hadoop.hbase.testclassification.LargeTests;
 import org.apache.hadoop.hbase.util.Bytes;
-import org.apache.hadoop.hbase.CellComparator;
 import org.apache.log4j.Level;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -64,9 +64,6 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-
-import com.google.protobuf.RpcController;
-import com.google.protobuf.ServiceException;
 
 /**
  * Here we test to make sure that scans return the expected Results when the server is sending the
@@ -76,9 +73,8 @@ import com.google.protobuf.ServiceException;
  * the time limit is reached, the server will return to the Client whatever Results it has
  * accumulated (potentially empty).
  */
-@Category(MediumTests.class)
+@Category(LargeTests.class)
 public class TestScannerHeartbeatMessages {
-  private static final Log LOG = LogFactory.getLog(TestScannerHeartbeatMessages.class);
 
   private final static HBaseTestingUtility TEST_UTIL = new HBaseTestingUtility();
 
@@ -115,13 +111,10 @@ public class TestScannerHeartbeatMessages {
 
   // In this test, we sleep after reading each row. So we should make sure after we get some number
   // of rows and sleep same times we must reach time limit, and do not timeout after next sleeping.
-  // So set this to 200, we will get 3 rows and reach time limit at the start of 4th row, then sleep
-  // for the 4th time. Total time is 800 ms so we will not timeout.
-  private static int DEFAULT_ROW_SLEEP_TIME = 200;
+  private static int DEFAULT_ROW_SLEEP_TIME = 300;
 
   // Similar with row sleep time.
-  private static int DEFAULT_CF_SLEEP_TIME = 200;
-
+  private static int DEFAULT_CF_SLEEP_TIME = 300;
 
   @BeforeClass
   public static void setUpBeforeClass() throws Exception {
@@ -197,26 +190,13 @@ public class TestScannerHeartbeatMessages {
   }
 
   /**
-   * Test a variety of scan configurations to ensure that they return the expected Results when
-   * heartbeat messages are necessary. These tests are accumulated under one test case to ensure
-   * that they don't run in parallel. If the tests ran in parallel, they may conflict with each
-   * other due to changing static variables
-   */
-  @Test
-  public void testScannerHeartbeatMessages() throws Exception {
-    testImportanceOfHeartbeats(testHeartbeatBetweenRows());
-    testImportanceOfHeartbeats(testHeartbeatBetweenColumnFamilies());
-    testImportanceOfHeartbeats(testHeartbeatWithSparseFilter());
-  }
-
-  /**
    * Run the test callable when heartbeats are enabled/disabled. We expect all tests to only pass
    * when heartbeat messages are enabled (otherwise the test is pointless). When heartbeats are
    * disabled, the test should throw an exception.
    * @param testCallable
    * @throws InterruptedException
    */
-  public void testImportanceOfHeartbeats(Callable<Void> testCallable) throws InterruptedException {
+  private void testImportanceOfHeartbeats(Callable<Void> testCallable) throws InterruptedException {
     HeartbeatHRegionServer.heartbeatsEnabled = true;
 
     try {
@@ -243,8 +223,9 @@ public class TestScannerHeartbeatMessages {
    * fetched.
    * @throws Exception
    */
-  public Callable<Void> testHeartbeatBetweenRows() throws Exception {
-    return new Callable<Void>() {
+  @Test
+  public void testHeartbeatBetweenRows() throws Exception {
+    testImportanceOfHeartbeats(new Callable<Void>() {
 
       @Override
       public Void call() throws Exception {
@@ -257,15 +238,16 @@ public class TestScannerHeartbeatMessages {
         testEquivalenceOfScanWithHeartbeats(scan, DEFAULT_ROW_SLEEP_TIME, -1, false);
         return null;
       }
-    };
+    });
   }
 
   /**
    * Test the case that the time limit for scans is reached in between column families
    * @throws Exception
    */
-  public Callable<Void> testHeartbeatBetweenColumnFamilies() throws Exception {
-    return new Callable<Void>() {
+  @Test
+  public void testHeartbeatBetweenColumnFamilies() throws Exception {
+    testImportanceOfHeartbeats(new Callable<Void>() {
       @Override
       public Void call() throws Exception {
         // Configure the scan so that it can read the entire table in a single RPC. We want to test
@@ -282,24 +264,23 @@ public class TestScannerHeartbeatMessages {
         testEquivalenceOfScanWithHeartbeats(scanCopy, -1, DEFAULT_CF_SLEEP_TIME, true);
         return null;
       }
-    };
+    });
   }
 
-  public static class SparseFilter extends FilterBase{
+  public static class SparseFilter extends FilterBase {
 
     @Override
     public ReturnCode filterKeyValue(Cell v) throws IOException {
       try {
-        Thread.sleep(CLIENT_TIMEOUT/2 + 10);
+        Thread.sleep(CLIENT_TIMEOUT / 2 + 100);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
       }
-      return Bytes.equals(CellUtil.cloneRow(v), ROWS[NUM_ROWS - 1]) ?
-          ReturnCode.INCLUDE :
-          ReturnCode.SKIP;
+      return Bytes.equals(CellUtil.cloneRow(v), ROWS[NUM_ROWS - 1]) ? ReturnCode.INCLUDE
+          : ReturnCode.SKIP;
     }
 
-    public static Filter parseFrom(final byte [] pbBytes){
+    public static Filter parseFrom(final byte[] pbBytes) {
       return new SparseFilter();
     }
   }
@@ -308,8 +289,9 @@ public class TestScannerHeartbeatMessages {
    * Test the case that there is a filter which filters most of cells
    * @throws Exception
    */
-  public Callable<Void> testHeartbeatWithSparseFilter() throws Exception {
-    return new Callable<Void>() {
+  @Test
+  public void testHeartbeatWithSparseFilter() throws Exception {
+    testImportanceOfHeartbeats(new Callable<Void>() {
       @Override
       public Void call() throws Exception {
         Scan scan = new Scan();
@@ -339,7 +321,7 @@ public class TestScannerHeartbeatMessages {
 
         return null;
       }
-    };
+    });
   }
 
   /**
@@ -352,7 +334,7 @@ public class TestScannerHeartbeatMessages {
    *          that column family are fetched
    * @throws Exception
    */
-  public void testEquivalenceOfScanWithHeartbeats(final Scan scan, int rowSleepTime,
+  private void testEquivalenceOfScanWithHeartbeats(final Scan scan, int rowSleepTime,
       int cfSleepTime, boolean sleepBeforeCf) throws Exception {
     disableSleeping();
     final ResultScanner scanner = TABLE.getScanner(scan);
@@ -449,8 +431,8 @@ public class TestScannerHeartbeatMessages {
     }
 
     public HeartbeatHRegion(final Path tableDir, final HLog log, final FileSystem fs,
-        final Configuration confParam, final HRegionInfo regionInfo,
-        final HTableDescriptor htd, final RegionServerServices rsServices) {
+        final Configuration confParam, final HRegionInfo regionInfo, final HTableDescriptor htd,
+        final RegionServerServices rsServices) {
       super(tableDir, log, fs, confParam, regionInfo, htd, rsServices);
     }
 
@@ -497,8 +479,7 @@ public class TestScannerHeartbeatMessages {
     }
 
     @Override
-    public boolean nextRaw(List<Cell> outResults, ScannerContext context)
-        throws IOException {
+    public boolean nextRaw(List<Cell> outResults, ScannerContext context) throws IOException {
       boolean moreRows = super.nextRaw(outResults, context);
       HeartbeatHRegion.rowSleep();
       return moreRows;
@@ -519,13 +500,13 @@ public class TestScannerHeartbeatMessages {
    * column family cells
    */
   private static class HeartbeatRegionScanner extends RegionScannerImpl {
-    HeartbeatRegionScanner(Scan scan, List<KeyValueScanner> additionalScanners, HRegion region) throws IOException {
+    HeartbeatRegionScanner(Scan scan, List<KeyValueScanner> additionalScanners, HRegion region)
+        throws IOException {
       region.super(scan, additionalScanners, region);
     }
 
     @Override
-    public boolean nextRaw(List<Cell> outResults, ScannerContext context)
-        throws IOException {
+    public boolean nextRaw(List<Cell> outResults, ScannerContext context) throws IOException {
       boolean moreRows = super.nextRaw(outResults, context);
       HeartbeatHRegion.rowSleep();
       return moreRows;
@@ -555,8 +536,7 @@ public class TestScannerHeartbeatMessages {
     }
 
     @Override
-    public boolean next(List<Cell> result, ScannerContext context)
-        throws IOException {
+    public boolean next(List<Cell> result, ScannerContext context) throws IOException {
       if (HeartbeatHRegion.sleepBeforeColumnFamily) HeartbeatHRegion.columnFamilySleep();
       boolean moreRows = super.next(result, context);
       if (!HeartbeatHRegion.sleepBeforeColumnFamily) HeartbeatHRegion.columnFamilySleep();
@@ -575,8 +555,7 @@ public class TestScannerHeartbeatMessages {
     }
 
     @Override
-    public boolean next(List<Cell> result, ScannerContext context)
-        throws IOException {
+    public boolean next(List<Cell> result, ScannerContext context) throws IOException {
       if (HeartbeatHRegion.sleepBeforeColumnFamily) HeartbeatHRegion.columnFamilySleep();
       boolean moreRows = super.next(result, context);
       if (!HeartbeatHRegion.sleepBeforeColumnFamily) HeartbeatHRegion.columnFamilySleep();

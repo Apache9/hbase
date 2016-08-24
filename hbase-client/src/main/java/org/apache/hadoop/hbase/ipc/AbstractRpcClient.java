@@ -313,10 +313,9 @@ public abstract class AbstractRpcClient<T extends Connection> implements RpcClie
    * @throws IOException
    */
   Message callBlockingMethod(MethodDescriptor md, PayloadCarryingRpcController pcrc, Message param,
-      Message returnType, final User ticket, final InetSocketAddress addr, int rpcTimeout)
-      throws ServiceException {
+      Message returnType, final User ticket, final InetSocketAddress addr) throws ServiceException {
     BlockingRpcCallback<Message> callback = new BlockingRpcCallback<Message>();
-    callMethod(md, pcrc, param, returnType, ticket, addr, rpcTimeout, callback);
+    callMethod(md, pcrc, param, returnType, ticket, addr, callback);
     Message ret;
     try {
       ret = callback.get();
@@ -330,20 +329,15 @@ public abstract class AbstractRpcClient<T extends Connection> implements RpcClie
   }
 
   void callMethod(MethodDescriptor md, PayloadCarryingRpcController pcrc, Message param,
-      Message returnType, final User ticket, final InetSocketAddress addr, int rpcTimeout,
+      Message returnType, final User ticket, final InetSocketAddress addr,
       RpcCallback<Message> callback) {
     CellScanner cells = null;
     if (pcrc != null) {
       cells = pcrc.cellScanner();
       // Clear it here so we don't by mistake try and these cells processing results.
       pcrc.setCellScanner(null);
-
-      int timeout = pcrc.getTimeout();
-      if (timeout > 0) {
-        rpcTimeout = timeout;
-      }
     }
-    call(md, pcrc, param, cells, returnType, ticket, addr, rpcTimeout, callback);
+    call(md, pcrc, param, cells, returnType, ticket, addr, callback);
   }
 
   private void onCallFinished(Call call, PayloadCarryingRpcController pcrc, InetSocketAddress addr,
@@ -388,16 +382,16 @@ public abstract class AbstractRpcClient<T extends Connection> implements RpcClie
    */
   private void call(MethodDescriptor md, final PayloadCarryingRpcController pcrc, Message param,
       CellScanner cells, Message returnType, User ticket, final InetSocketAddress addr,
-      int rpcTimeout, final RpcCallback<Message> callback) {
-    Call call = new Call(nextCallId(), md, param, cells, returnType, rpcTimeout, pcrc.getPriority(),
-        new RpcCallback<Call>() {
+      final RpcCallback<Message> callback) {
+    Call call = new Call(nextCallId(), md, param, cells, returnType, pcrc.getTimeout(),
+        pcrc.getPriority(), new RpcCallback<Call>() {
 
           @Override
           public void run(Call call) {
             onCallFinished(call, pcrc, addr, callback);
           }
         });
-    ConnectionId remoteId = new ConnectionId(ticket, md.getService().getName(), addr, rpcTimeout);
+    ConnectionId remoteId = new ConnectionId(ticket, md.getService().getName(), addr);
     try {
       T connection = getConnection(remoteId);
       connection.sendRequest(call);
@@ -422,6 +416,12 @@ public abstract class AbstractRpcClient<T extends Connection> implements RpcClie
       this.rpcTimeout = rpcTimeout;
       this.ticket = ticket;
     }
+
+    protected void setTimeout(PayloadCarryingRpcController controller) {
+      if (controller.getTimeout() <= 0) {
+        controller.setTimeout(getRpcTimeout(rpcTimeout));
+      }
+    }
   }
 
   /**
@@ -439,10 +439,14 @@ public abstract class AbstractRpcClient<T extends Connection> implements RpcClie
     @Override
     public Message callBlockingMethod(MethodDescriptor method, RpcController controller,
         Message request, Message responsePrototype) throws ServiceException {
-      return rpcClient.callBlockingMethod(method,
-        controller == null ? new PayloadCarryingRpcController()
-            : (PayloadCarryingRpcController) controller,
-        request, responsePrototype, ticket, addr, getRpcTimeout(rpcTimeout));
+      PayloadCarryingRpcController pcrc;
+      if (controller == null) {
+        pcrc = new PayloadCarryingRpcController();
+      } else {
+        pcrc = (PayloadCarryingRpcController) controller;
+      }
+      setTimeout(pcrc);
+      return rpcClient.callBlockingMethod(method, pcrc, request, responsePrototype, ticket, addr);
     }
   }
 
@@ -460,10 +464,10 @@ public abstract class AbstractRpcClient<T extends Connection> implements RpcClie
     @Override
     public void callMethod(MethodDescriptor method, RpcController controller, Message request,
         Message responsePrototype, RpcCallback<Message> done) {
-      Preconditions.checkNotNull(controller,
-        "must provide a controller because the exception will be passed by it.");
-      rpcClient.callMethod(method, (PayloadCarryingRpcController) controller, request,
-        responsePrototype, ticket, addr, getRpcTimeout(rpcTimeout), done);
+      PayloadCarryingRpcController pcrc = (PayloadCarryingRpcController) Preconditions.checkNotNull(
+        controller, "must provide a controller because the exception will be passed by it.");
+      setTimeout(pcrc);
+      rpcClient.callMethod(method, pcrc, request, responsePrototype, ticket, addr, done);
     }
   }
 

@@ -28,16 +28,18 @@ import org.apache.hadoop.hbase.security.User;
  */
 @InterfaceAudience.Private
 class ConnectionId {
-  final InetSocketAddress address;
-  final User ticket;
-  final int rpcTimeout;
+
   private static final int PRIME = 16777619;
+
+  final InetSocketAddress address;
+
+  final User ticket;
+
   final String serviceName;
 
-  ConnectionId(User ticket, String serviceName, InetSocketAddress address, int rpcTimeout) {
+  ConnectionId(User ticket, String serviceName, InetSocketAddress address) {
     this.address = address;
     this.ticket = ticket;
-    this.rpcTimeout = rpcTimeout;
     this.serviceName = serviceName;
   }
 
@@ -55,8 +57,7 @@ class ConnectionId {
 
   @Override
   public String toString() {
-    return this.address.toString() + "/" + this.serviceName + "/" + this.ticket + "/"
-        + this.rpcTimeout;
+    return this.address.toString() + "/" + this.serviceName + "/" + this.ticket;
   }
 
   @Override
@@ -65,16 +66,18 @@ class ConnectionId {
       ConnectionId id = (ConnectionId) obj;
       return address.equals(id.address)
           && ((ticket != null && ticket.equals(id.ticket)) || (ticket == id.ticket))
-          && rpcTimeout == id.rpcTimeout && this.serviceName == id.serviceName;
+          && this.serviceName == id.serviceName;
     }
     return false;
   }
 
   @Override // simply use the default Object#hashcode() ?
   public int hashCode() {
-    int hashcode = (address.hashCode()
-        + PRIME * (PRIME * this.serviceName.hashCode() ^ (ticket == null ? 0 : ticket.hashCode())))
-        ^ rpcTimeout;
-    return hashcode;
+    int h = address.hashCode();
+    if (ticket != null) {
+      h = PRIME * h + ticket.hashCode();
+    }
+    h = PRIME * h + serviceName.hashCode();
+    return h;
   }
 }

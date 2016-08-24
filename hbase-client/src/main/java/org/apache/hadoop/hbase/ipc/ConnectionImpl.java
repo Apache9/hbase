@@ -14,12 +14,9 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.net.Socket;
-import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
 import java.security.PrivilegedExceptionAction;
-import java.util.Iterator;
-import java.util.Map.Entry;
 import java.util.Random;
 import java.util.concurrent.ConcurrentNavigableMap;
 import java.util.concurrent.ConcurrentSkipListMap;
@@ -131,8 +128,7 @@ class ConnectionImpl extends Connection implements Runnable {
      * otherwise, throw the timeout exception.
      */
     private void handleTimeout(SocketTimeoutException e) throws IOException {
-      if (shouldCloseConnection.get() || !ConnectionImpl.this.rpcClient.running.get()
-          || remoteId.rpcTimeout > 0) {
+      if (shouldCloseConnection.get() || !ConnectionImpl.this.rpcClient.running.get()) {
         throw e;
       }
       sendPing();
@@ -329,7 +325,9 @@ class ConnectionImpl extends Connection implements Runnable {
       }
     } catch (Throwable t) {
       LOG.warn("unexpected exception receiving call responses", t);
-      markClosed(new IOException("Unexpected exception receiving call responses", t));
+      synchronized (this) {
+        markClosed(new IOException("Unexpected exception receiving call responses", t));
+      }
     }
 
     synchronized (this) {
@@ -606,11 +604,9 @@ class ConnectionImpl extends Connection implements Runnable {
         LOG.debug(thread.getName() + ": wrote request " + call);
       }
     } catch (IOException e) {
-      synchronized (this) {
-        if (!shouldCloseConnection.get()) {
-          markClosed(e);
-          thread.interrupt();
-        }
+      if (!shouldCloseConnection.get()) {
+        markClosed(e);
+        thread.interrupt();
       }
     }
   }
@@ -655,7 +651,9 @@ class ConnectionImpl extends Connection implements Runnable {
         ExceptionResponse exceptionResponse = responseHeader.getException();
         RemoteException re = IPCUtil.createRemoteException(exceptionResponse);
         if (IPCUtil.isFatalConnectionException(exceptionResponse)) {
-          markClosed(re);
+          synchronized (this) {
+            markClosed(re);
+          }
         } else {
           if (call != null) {
             call.setException(re);
@@ -681,25 +679,22 @@ class ConnectionImpl extends Connection implements Runnable {
         // timeout, so check if it still exists before setting the value.
         if (call != null) call.setResponse(value, cellBlockScanner);
       }
-      if (call != null) calls.remove(id);
-    } catch (IOException e) {
-      if (e instanceof SocketTimeoutException && remoteId.rpcTimeout > 0) {
-        // Clean up open calls but don't treat this as a fatal condition,
-        // since we expect certain responses to not make it by the specified
-        // {@link ConnectionId#rpcTimeout}.
-        closeException = e;
-      } else {
-        // Treat this as a fatal condition and close this connection
-        markClosed(e);
+      if (call != null) {
+        calls.remove(id);
       }
-    } finally {
-      if (remoteId.rpcTimeout > 0) {
-        cleanupCalls(remoteId.rpcTimeout);
+    } catch (IOException e) {
+      // The call's timeout is triggered by the timeoutTimer so here we do not need to clean up
+      // calls.
+      if (!(e instanceof SocketTimeoutException)) {
+        // Treat this as a fatal condition and close this connection
+        synchronized (this) {
+          markClosed(e);
+        }
       }
     }
   }
 
-  private synchronized void markClosed(IOException e) {
+  private void markClosed(IOException e) {
     if (shouldCloseConnection.compareAndSet(false, true)) {
       closeException = e;
       notifyAll();
@@ -708,49 +703,10 @@ class ConnectionImpl extends Connection implements Runnable {
 
   /* Cleanup all calls and mark them as done */
   private void cleanupCalls() {
-    cleanupCalls(0);
-  }
-
-  private void cleanupCalls(long rpcTimeout) {
-    Iterator<Entry<Integer, Call>> itor = calls.entrySet().iterator();
-    while (itor.hasNext()) {
-      Call c = itor.next().getValue();
-      long waitTime = System.currentTimeMillis() - c.getStartTime();
-      if (waitTime >= rpcTimeout) {
-        if (this.closeException == null) {
-          // There may be no exception in the case that there are many calls
-          // being multiplexed over this connection and these are succeeding
-          // fine while this Call object is taking a long time to finish
-          // over on the server; e.g. I just asked the regionserver to bulk
-          // open 3k regions or its a big fat multiput into a heavily-loaded
-          // server (Perhaps this only happens at the extremes?)
-          this.closeException = new CallTimeoutException(
-              "Call id=" + c.id + ", waitTime=" + waitTime + ", rpcTimetout=" + rpcTimeout);
-        }
-        c.setException(this.closeException);
-        synchronized (c) {
-          c.notifyAll();
-        }
-        itor.remove();
-      } else {
-        break;
-      }
+    for (Call call : calls.values()) {
+      call.setException(closeException);
     }
-    try {
-      if (!calls.isEmpty()) {
-        Call firstCall = calls.get(calls.firstKey());
-        long maxWaitTime = System.currentTimeMillis() - firstCall.getStartTime();
-        if (maxWaitTime < rpcTimeout) {
-          rpcTimeout -= maxWaitTime;
-        }
-      }
-      if (!shouldCloseConnection.get()) {
-        closeException = null;
-        RpcClientImpl.setSocketTimeout(socket, (int) rpcTimeout);
-      }
-    } catch (SocketException e) {
-      LOG.debug("Couldn't lower timeout, which may result in longer than expected calls");
-    }
+    calls.clear();
   }
 
   @Override
