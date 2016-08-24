@@ -71,10 +71,12 @@ import org.apache.hadoop.hbase.filter.FilterBase;
 import org.apache.hadoop.hbase.ipc.NettyRpcClient;
 import org.apache.hadoop.hbase.ipc.RpcClientFactory;
 import org.apache.hadoop.hbase.ipc.RpcClientImpl;
+import org.apache.hadoop.hbase.ipc.ServerBusyException;
 import org.apache.hadoop.hbase.master.HMaster;
 import org.apache.hadoop.hbase.regionserver.HRegion;
 import org.apache.hadoop.hbase.regionserver.HRegionServer;
 import org.apache.hadoop.hbase.regionserver.RegionServerStoppedException;
+import org.apache.hadoop.hbase.regionserver.wal.WALEdit;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
@@ -138,6 +140,22 @@ public class TestHCM {
     }
   }
 
+  public static class SleepCoprocessor extends BaseRegionObserver {
+    public static final int SLEEP_TIME = 5000;
+
+    @Override
+    public void preGetOp(final ObserverContext<RegionCoprocessorEnvironment> e,
+        final Get get, final List<Cell> results) throws IOException {
+      Threads.sleep(SLEEP_TIME);
+    }
+
+    @Override
+    public void prePut(final ObserverContext<RegionCoprocessorEnvironment> e,
+        final Put put, final WALEdit edit, final Durability durability) throws IOException {
+      Threads.sleep(SLEEP_TIME);
+    }
+  }
+
   public static class SleepLongerAtFirstCoprocessor extends BaseRegionObserver {
     public static final int SLEEP_TIME = 2000;
     static final AtomicLong ct = new AtomicLong(0);
@@ -162,6 +180,7 @@ public class TestHCM {
     TEST_UTIL.getConfiguration().setInt(HConstants.HBASE_CLIENT_RETRIES_NUMBER, RPC_RETRY);
     // simulate queue blocking in testDropTimeoutRequest
     TEST_UTIL.getConfiguration().setInt(HConstants.REGION_SERVER_HANDLER_COUNT, 1);
+    TEST_UTIL.getConfiguration().setInt(HConstants.HBASE_CLIENT_PERSERVER_REQUESTS_THRESHOLD, 3);
     TEST_UTIL.startMiniCluster(2);
   }
 
@@ -1197,5 +1216,98 @@ public class TestHCM {
       }
     }
     pool.shutdownNow();
+  }
+
+  private class TestGetThread extends Thread {
+
+    HTable table;
+    int getServerBusyException = 0;
+
+    TestGetThread(HTable table) {
+      this.table = table;
+    }
+
+    @Override
+    public void run() {
+      try {
+        table.get(new Get(ROW));
+      } catch (ServerBusyException e) {
+        getServerBusyException = 1;
+      } catch (IOException ignore) {
+      }
+    }
+  }
+
+  private class TestPutThread extends Thread {
+    HTable table;
+    int getServerBusyException = 0;
+
+    TestPutThread(HTable table) {
+      this.table = table;
+    }
+
+    @Override
+    public void run() {
+      try {
+        Put p = new Put(ROW);
+        p.addImmutable(FAM_NAM, new byte[] { 0 }, new byte[] { 0 });
+        table.put(p);
+      } catch (RetriesExhaustedWithDetailsException e) {
+        // For put we use AsyncProcess and it will wrap all exceptions to this.
+        if (e.exceptions.get(0) instanceof ServerBusyException) {
+          getServerBusyException = 1;
+        }
+      } catch (IOException ignore) {
+      }
+    }
+  }
+
+  @Test()
+  public void testServerBusyException() throws Exception {
+    HTableDescriptor hdt = TEST_UTIL.createTableDescriptor("HCM-testServerBusy");
+    hdt.addCoprocessor(SleepCoprocessor.class.getName());
+    Configuration c = new Configuration(TEST_UTIL.getConfiguration());
+    TEST_UTIL.createTable(hdt, new byte[][] { FAM_NAM }, c);
+
+    TestGetThread tg1 = new TestGetThread(new HTable(c, hdt.getTableName()));
+    TestGetThread tg2 = new TestGetThread(new HTable(c, hdt.getTableName()));
+    TestGetThread tg3 = new TestGetThread(new HTable(c, hdt.getTableName()));
+    TestGetThread tg4 = new TestGetThread(new HTable(c, hdt.getTableName()));
+    TestGetThread tg5 = new TestGetThread(new HTable(c, hdt.getTableName()));
+    tg1.start();
+    tg2.start();
+    tg3.start();
+    tg4.start();
+    tg5.start();
+    tg1.join();
+    tg2.join();
+    tg3.join();
+    tg4.join();
+    tg5.join();
+    assertEquals(2,
+        tg1.getServerBusyException + tg2.getServerBusyException + tg3.getServerBusyException
+            + tg4.getServerBusyException + tg5.getServerBusyException);
+
+    // Put has its own logic in HTable, test Put alone. We use AsyncProcess for Put (use multi at
+    // RPC level) and it wrap exceptions to RetriesExhaustedWithDetailsException.
+
+    TestPutThread tp1 = new TestPutThread(new HTable(c, hdt.getTableName()));
+    TestPutThread tp2 = new TestPutThread(new HTable(c, hdt.getTableName()));
+    TestPutThread tp3 = new TestPutThread(new HTable(c, hdt.getTableName()));
+    TestPutThread tp4 = new TestPutThread(new HTable(c, hdt.getTableName()));
+    TestPutThread tp5 = new TestPutThread(new HTable(c, hdt.getTableName()));
+    tp1.start();
+    tp2.start();
+    tp3.start();
+    tp4.start();
+    tp5.start();
+    tp1.join();
+    tp2.join();
+    tp3.join();
+    tp4.join();
+    tp5.join();
+    assertEquals(2,
+        tp1.getServerBusyException + tp2.getServerBusyException + tp3.getServerBusyException
+            + tp4.getServerBusyException + tp5.getServerBusyException);
   }
 }

@@ -19,6 +19,9 @@ package org.apache.hadoop.hbase.ipc;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 import com.google.protobuf.BlockingRpcChannel;
 import com.google.protobuf.Descriptors.MethodDescriptor;
 
@@ -90,6 +93,16 @@ public abstract class AbstractRpcClient<T extends Connection> implements RpcClie
 
   protected final int clientWarnIpcResponseTime;
 
+  protected int maxConcurrentCallsPerServer;
+
+  protected static final LoadingCache<InetSocketAddress, AtomicInteger> concurrentCounterCache =
+      CacheBuilder.newBuilder().expireAfterAccess(1, TimeUnit.HOURS).
+          build(new CacheLoader<InetSocketAddress, AtomicInteger>() {
+            @Override public AtomicInteger load(InetSocketAddress key) throws Exception {
+              return new AtomicInteger(0);
+            }
+          });
+
   protected final PoolMap<ConnectionId, T> connections;
 
   protected final AtomicInteger callIdCnt = new AtomicInteger(0);
@@ -133,6 +146,9 @@ public abstract class AbstractRpcClient<T extends Connection> implements RpcClie
           + ", ping interval=" + this.pingInterval + "ms" + ", bind address="
           + (this.localAddr != null ? this.localAddr : "null"));
     }
+    this.maxConcurrentCallsPerServer = conf.getInt(
+        HConstants.HBASE_CLIENT_PERSERVER_REQUESTS_THRESHOLD,
+        HConstants.DEFAULT_HBASE_CLIENT_PERSERVER_REQUESTS_THRESHOLD);
   }
 
   /**
@@ -307,7 +323,6 @@ public abstract class AbstractRpcClient<T extends Connection> implements RpcClie
    * @param ticket Be careful which ticket you pass. A new user will mean a new Connection.
    *          {@link UserProvider#getCurrent()} makes a new instance of User each time so will be a
    *          new Connection each time.
-   * @param rpcTimeout
    * @return A pair with the Message response and the Cell data (if any).
    * @throws InterruptedException
    * @throws IOException
@@ -375,7 +390,6 @@ public abstract class AbstractRpcClient<T extends Connection> implements RpcClie
    * @param ticket Be careful which ticket you pass. A new user will mean a new Connection.
    *          {@link UserProvider#getCurrent()} makes a new instance of User each time so will be a
    *          new Connection each time.
-   * @param rpcTimeout
    * @return A pair with the Message response and the Cell data (if any).
    * @throws InterruptedException
    * @throws IOException
@@ -383,16 +397,23 @@ public abstract class AbstractRpcClient<T extends Connection> implements RpcClie
   private void call(MethodDescriptor md, final PayloadCarryingRpcController pcrc, Message param,
       CellScanner cells, Message returnType, User ticket, final InetSocketAddress addr,
       final RpcCallback<Message> callback) {
+    final AtomicInteger counter = concurrentCounterCache.getUnchecked(addr);
     Call call = new Call(nextCallId(), md, param, cells, returnType, pcrc.getTimeout(),
         pcrc.getPriority(), new RpcCallback<Call>() {
 
           @Override
           public void run(Call call) {
+            counter.decrementAndGet();
             onCallFinished(call, pcrc, addr, callback);
           }
         });
     ConnectionId remoteId = new ConnectionId(ticket, md.getService().getName(), addr);
+
+    int count = counter.incrementAndGet();
     try {
+      if (count > maxConcurrentCallsPerServer) {
+        throw new ServerBusyException(addr, count);
+      }
       T connection = getConnection(remoteId);
       connection.sendRequest(call);
     } catch (Exception e) {
