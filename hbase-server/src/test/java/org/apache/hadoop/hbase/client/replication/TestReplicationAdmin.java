@@ -253,6 +253,8 @@ public class TestReplicationAdmin {
     TableName tab1 = TableName.valueOf("t1");
     TableName tab2 = TableName.valueOf("t2");
     TableName tab3 = TableName.valueOf("t3");
+    TableName tab4 = TableName.valueOf("t4");
+
     // Add a valid peer
     admin.addPeer(ID_ONE, rpc1, null);
     Map<TableName, List<String>> tableCFs = new HashMap<TableName, List<String>>();
@@ -312,6 +314,13 @@ public class TestReplicationAdmin {
     tableCFs.get(tab2).add("cf1");
     admin.removePeerTableCFs(ID_ONE, tableCFs);
     assertNull(admin.getPeerTableCFs(ID_ONE));
+
+    tableCFs.clear();
+    tableCFs.put(tab4, new ArrayList<String>());
+    admin.setPeerTableCFs(ID_ONE, tableCFs);
+    admin.removePeerTableCFs(ID_ONE, tableCFs);
+    assertNull(admin.getPeerTableCFs(ID_ONE));
+
     admin.removePeer(ID_ONE);
   }
 
