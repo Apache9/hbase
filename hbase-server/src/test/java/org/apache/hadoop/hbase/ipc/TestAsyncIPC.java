@@ -19,6 +19,8 @@ package org.apache.hadoop.hbase.ipc;
 
 import com.google.protobuf.ByteString;
 import com.google.protobuf.Descriptors.MethodDescriptor;
+import com.google.protobuf.ServiceException;
+
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOutboundHandlerAdapter;
@@ -42,7 +44,6 @@ import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.KeyValue;
-import org.apache.hadoop.hbase.client.MetricsConnection;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.RowMutations;
 import org.apache.hadoop.hbase.codec.Codec;
@@ -137,7 +138,7 @@ public class TestAsyncIPC extends AbstractTestIPC {
   }
 
   public static void main(String[] args) throws IOException, SecurityException,
-      NoSuchMethodException, InterruptedException {
+      NoSuchMethodException, InterruptedException, ServiceException {
     if (args.length != 2) {
       System.out.println("Usage: TestAsyncIPC <CYCLES> <CELLS_PER_CYCLE>");
       return;
@@ -186,8 +187,7 @@ public class TestAsyncIPC extends AbstractTestIPC {
         PayloadCarryingRpcController pcrc =
             new PayloadCarryingRpcController(CellUtil.createCellScanner(cells));
         // Pair<Message, CellScanner> response =
-        client.call(pcrc, md, builder.build(), param, user, address,
-            new MetricsConnection.CallStats());
+        client.callBlockingMethod(md, pcrc, builder.build(), param, user, address);
         /*
          * int count = 0; while (p.getSecond().advance()) { count++; } assertEquals(cells.size(),
          * count);

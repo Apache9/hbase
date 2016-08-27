@@ -108,9 +108,8 @@ public abstract class RegionServerCallable<T> extends AbstractRegionServerCallab
     try {
       if (this.rpcController != null &&
           this.rpcController instanceof PayloadCarryingRpcController) {
+        this.rpcController.reset();
         ((PayloadCarryingRpcController)this.rpcController).setCallTimeout(callTimeout);
-        // Do a reset of the CellScanner in case we are carrying any Cells since last time through.
-        setRpcControllerCellScanner(null);
       }
       return rpcCall();
     } catch (Exception e) {

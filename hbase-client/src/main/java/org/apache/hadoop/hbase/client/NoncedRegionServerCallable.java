@@ -96,6 +96,7 @@ public abstract class NoncedRegionServerCallable<T> extends AbstractRegionServer
   @Override
   public T call(int callTimeout) throws IOException {
     if (this.rpcController != null) {
+      this.rpcController.reset();
       this.rpcController.setCallTimeout(callTimeout);
     }
     try {

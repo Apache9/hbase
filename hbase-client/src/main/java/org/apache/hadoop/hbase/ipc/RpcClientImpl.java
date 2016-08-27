@@ -22,7 +22,9 @@ import com.google.protobuf.Descriptors.MethodDescriptor;
 import com.google.protobuf.Message;
 import com.google.protobuf.Message.Builder;
 import com.google.protobuf.RpcCallback;
-import com.google.protobuf.RpcChannel;
+
+import io.netty.util.Timeout;
+import io.netty.util.TimerTask;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -51,6 +53,7 @@ import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -66,6 +69,7 @@ import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.client.MetricsConnection;
+import org.apache.hadoop.hbase.client.MetricsConnection.CallStats;
 import org.apache.hadoop.hbase.codec.Codec;
 import org.apache.hadoop.hbase.exceptions.ConnectionClosingException;
 import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
@@ -86,7 +90,6 @@ import org.apache.hadoop.hbase.security.UserProvider;
 import org.apache.hadoop.hbase.security.token.AuthenticationTokenSelector;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.ExceptionUtil;
-import org.apache.hadoop.hbase.util.Pair;
 import org.apache.hadoop.hbase.util.PoolMap;
 import org.apache.hadoop.io.IOUtils;
 import org.apache.hadoop.io.Text;
@@ -204,9 +207,9 @@ public class RpcClientImpl extends AbstractRpcClient {
       protected final BlockingQueue<CallFuture> callsToWrite;
 
 
-      public CallFuture sendCall(Call call, int priority, Span span)
+      public CallFuture sendCall(final Call call, int priority, Span span)
           throws InterruptedException, IOException {
-        CallFuture cts = new CallFuture(call, priority, span);
+        final CallFuture cts = new CallFuture(call, priority, span);
         if (!callsToWrite.offer(cts)) {
           throw new IOException("Can't add the call " + call.id +
               " to the write queue. callsToWrite.size()=" + callsToWrite.size());
@@ -237,7 +240,7 @@ public class RpcClientImpl extends AbstractRpcClient {
         // By removing the call from the expected call list, we make the list smaller, but
         //  it means as well that we don't know how many calls we cancelled.
         calls.remove(cts.call.id);
-        cts.call.callComplete();
+        cts.call.setResponse(null, null);
       }
 
       /**
@@ -896,7 +899,7 @@ public class RpcClientImpl extends AbstractRpcClient {
       }
       builder.setMethodName(call.md.getName());
       builder.setRequestParam(call.param != null);
-      ByteBuffer cellBlock = ipcUtil.buildCellBlock(this.codec, this.compressor, call.cells);
+      ByteBuffer cellBlock = ipcUtil.buildCellBlock(this.codec, this.compressor, call.requestCells);
       if (cellBlock != null) {
         CellBlockMeta.Builder cellBlockBuilder = CellBlockMeta.newBuilder();
         cellBlockBuilder.setLength(cellBlock.limit());
@@ -1218,119 +1221,79 @@ public class RpcClientImpl extends AbstractRpcClient {
   }
 
   /**
-   * Make a call, passing <code>param</code>, to the IPC server running at
-   * <code>address</code> which is servicing the <code>protocol</code> protocol,
-   * with the <code>ticket</code> credentials, returning the value.
-   * Throws exceptions if there are network problems or if the remote code
-   * threw an exception.
+   * Make a call, passing <code>param</code>, to the IPC server running at {@code address} which is
+   * servicing the {@code protocol} protocol, with the {@code ticket} credentials, returning the
+   * value. Exception and Cell data(if any) will be filled into the PayloadCarryingRpcController
+   * passed in.
+   * <p>
    * @param ticket Be careful which ticket you pass. A new user will mean a new Connection.
    *          {@link UserProvider#getCurrent()} makes a new instance of User each time so will be a
    *          new Connection each time.
-   * @return A pair with the Message response and the Cell data (if any).
-   * @throws InterruptedException if the call is interrupted
-   * @throws IOException if something fails on the connection
    */
   @Override
-  protected Pair<Message, CellScanner> call(PayloadCarryingRpcController pcrc, MethodDescriptor md,
-      Message param, Message returnType, User ticket, InetSocketAddress addr,
-      MetricsConnection.CallStats callStats)
-      throws IOException, InterruptedException {
-    if (pcrc == null) {
-      pcrc = new PayloadCarryingRpcController();
-    }
-
-    Call call = this.call(md, param, returnType, pcrc, ticket, addr, callStats);
-
-    return new Pair<>(call.response, call.cells);
-  }
-
-
-  /**
-   * Make a call, passing <code>param</code>, to the IPC server running at
-   * <code>address</code> which is servicing the <code>protocol</code> protocol,
-   * with the <code>ticket</code> credentials, returning the value.
-   * Throws exceptions if there are network problems or if the remote code
-   * threw an exception.
-   * @param ticket Be careful which ticket you pass. A new user will mean a new Connection.
-   *          {@link UserProvider#getCurrent()} makes a new instance of User each time so will be a
-   *          new Connection each time.
-   * @return A Call
-   * @throws InterruptedException if the call is interrupted
-   * @throws IOException if something fails on the connection
-   */
-  private <R extends Message> Call call(MethodDescriptor method, Message request,
-      R responsePrototype, PayloadCarryingRpcController pcrc, User ticket,
-      InetSocketAddress addr, MetricsConnection.CallStats callStats)
-      throws IOException, InterruptedException {
-
+  protected void call(final PayloadCarryingRpcController pcrc, MethodDescriptor md, Message param,
+      Message returnType, User ticket, final InetSocketAddress addr, final RpcCallback<Message> callback,
+      CallStats callStats) {
     CellScanner cells = pcrc.cellScanner();
-
-    final Call call = new Call(callIdCnt.getAndIncrement(), method, request, cells,
-        responsePrototype, pcrc.getCallTimeout(), callStats);
-
-    final Connection connection = getConnection(ticket, call, addr);
-
     final CallFuture cts;
-    if (connection.callSender != null) {
-      cts = connection.callSender.sendCall(call, pcrc.getPriority(), Trace.currentSpan());
-      pcrc.notifyOnCancel(new RpcCallback<Object>() {
-        @Override
-        public void run(Object parameter) {
-          connection.callSender.remove(cts);
-        }
-      });
-      if (pcrc.isCanceled()) {
-        // To finish if the call was cancelled before we set the notification (race condition)
-        call.callComplete();
-        return call;
-      }
-    } else {
-      cts = null;
-      connection.tracedWriteRequest(call, pcrc.getPriority(), Trace.currentSpan());
-    }
+    final Call call = new Call(callIdCnt.getAndIncrement(), md, param, cells, returnType,
+        pcrc.getCallTimeout(), new RpcCallback<Call>() {
 
-    while (!call.done) {
-      if (call.checkAndSetTimeout()) {
-        if (cts != null){
-          connection.callSender.remove(cts);
-        }
-        break;
-      }
-      if (connection.shouldCloseConnection.get()) {
-        throw new ConnectionClosingException("Call id=" + call.id +
-            " on server " + addr + " aborted: connection is closing");
-      }
-      try {
-        synchronized (call) {
-          if (call.done){
-            break;
+          @Override
+          public void run(Call c) {
+            if (c.error != null) {
+              if (c.error instanceof RemoteException) {
+                c.error.fillInStackTrace();
+                pcrc.setFailed(c.error);
+              } else {
+                // local exception
+                pcrc.setFailed(wrapException(addr, c.error));
+              }
+            } else if (c.responseCells != null) {
+              pcrc.setCellScanner(c.responseCells);
+            }
+            callback.run(c.response);
           }
-          call.wait(Math.min(call.remainingTime(), 1000) + 1);
-        }
-      } catch (InterruptedException e) {
-        call.setException(new InterruptedIOException());
-        if (cts != null) {
+        }, callStats);
+    try {
+      final Connection connection = getConnection(ticket, call, addr);
+      if (call.timeout > 0) {
+        call.timeoutTask = WHEEL_TIMER.newTimeout(new TimerTask() {
+
+          @Override
+          public void run(Timeout timeout) throws Exception {
+            call.setTimeout(new IOException(
+                "Timed out waiting for response, timeout = " + call.timeout + "ms, waitTime = "
+                    + (EnvironmentEdgeManager.currentTime() - call.getStartTime()) + "ms"));
+            // there is a race that if the call is timed out before adding to calls, then the call
+            // maybe left in the calls for ever if the remote server does not return.
+            connection.calls.remove(call.id);
+          }
+        }, call.timeout, TimeUnit.MILLISECONDS);
+      }
+      if (connection.callSender != null) {
+        cts = connection.callSender.sendCall(call, pcrc.getPriority(), Trace.currentSpan());
+        pcrc.notifyOnCancel(new RpcCallback<Object>() {
+          @Override
+          public void run(Object parameter) {
+            connection.callSender.remove(cts);
+          }
+        });
+        if (pcrc.isCanceled()) {
+          // To finish if the call was cancelled before we set the notification (race condition)
           connection.callSender.remove(cts);
         }
-        throw e;
+      } else {
+        cts = null;
+        connection.tracedWriteRequest(call, pcrc.getPriority(), Trace.currentSpan());
       }
+    } catch (IOException e) {
+      pcrc.setFailed(e);
+      callback.run(null);
+    } catch (InterruptedException e) {
+      pcrc.setFailed((IOException) new InterruptedIOException().initCause(e));
+      callback.run(null);
     }
-
-    if (call.error != null) {
-      if (call.error instanceof RemoteException) {
-        call.error.fillInStackTrace();
-        throw call.error;
-      }
-      // local exception
-      throw wrapException(addr, call.error);
-    }
-
-    return call;
-  }
-
-  @Override
-  public RpcChannel createProtobufRpcChannel(ServerName sn, User user, int rpcTimeout) {
-    throw new UnsupportedOperationException();
   }
 
   /**
@@ -1379,4 +1342,6 @@ public class RpcClientImpl extends AbstractRpcClient {
 
     return connection;
   }
+
+
 }

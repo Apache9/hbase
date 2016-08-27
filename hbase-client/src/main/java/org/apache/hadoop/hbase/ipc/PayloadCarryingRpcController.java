@@ -46,7 +46,6 @@ public class PayloadCarryingRpcController implements RpcController, CellScannabl
   protected volatile Integer callTimeout;
   protected volatile boolean cancelled = false;
   protected final AtomicReference<RpcCallback<Object>> cancellationCb = new AtomicReference<>(null);
-  protected final AtomicReference<RpcCallback<IOException>> failureCb = new AtomicReference<>(null);
   private IOException exception;
 
   public static final int PRIORITY_UNSET = -1;
@@ -118,7 +117,6 @@ public class PayloadCarryingRpcController implements RpcController, CellScannabl
     cellScanner = null;
     exception = null;
     cancelled = false;
-    failureCb.set(null);
     cancellationCb.set(null);
     callTimeout = null;
   }
@@ -170,25 +168,9 @@ public class PayloadCarryingRpcController implements RpcController, CellScannabl
     }
   }
 
-  /**
-   * Notify a callback on error.
-   * For use in async rpc clients
-   *
-   * @param failureCb the callback to call on error
-   */
-  public void notifyOnFail(RpcCallback<IOException> failureCb) {
-    this.failureCb.set(failureCb);
-    if (this.exception != null) {
-      failureCb.run(this.exception);
-    }
-  }
-
   @Override
   public void setFailed(String reason) {
     this.exception = new IOException(reason);
-    if (this.failureCb.get() != null) {
-      this.failureCb.get().run(this.exception);
-    }
   }
 
   /**
@@ -199,9 +181,13 @@ public class PayloadCarryingRpcController implements RpcController, CellScannabl
    */
   public void setFailed(IOException e) {
     this.exception = e;
-    if (this.failureCb.get() != null) {
-      this.failureCb.get().run(this.exception);
-    }
+  }
+
+  /**
+   * @return the exception
+   */
+  public IOException getFailed() {
+    return exception;
   }
 
   @Override

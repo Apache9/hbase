@@ -31,6 +31,7 @@ import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import io.netty.util.Timeout;
 import io.netty.util.TimerTask;
 import io.netty.util.concurrent.GenericFutureListener;
+import io.netty.util.concurrent.Promise;
 
 import java.io.IOException;
 import java.net.ConnectException;
@@ -323,7 +324,7 @@ public class AsyncRpcChannel {
    * @param priority for request
    * @return Promise for the response Message
    */
-  public <R extends Message, O> io.netty.util.concurrent.Promise<O> callMethod(
+  public <R extends Message, O> Promise<O> callMethod(
       final Descriptors.MethodDescriptor method,
       final Message request,final CellScanner cellScanner,
       R responsePrototype, MessageConverter<R, O> messageConverter, IOExceptionConverter

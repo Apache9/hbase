@@ -22,6 +22,7 @@ package org.apache.hadoop.hbase.client;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
@@ -154,8 +155,8 @@ public class TestClientTimeouts {
     private static AtomicInteger invokations = new AtomicInteger();
 
     RandomTimeoutBlockingRpcChannel(final RpcClientImpl rpcClient, final ServerName sn,
-        final User ticket, final int rpcTimeout) throws UnknownHostException {
-      super(rpcClient, sn, ticket, rpcTimeout);
+        final User ticket, final int rpcTimeout) {
+      super(rpcClient, new InetSocketAddress(sn.getHostname(), sn.getPort()), ticket, rpcTimeout);
     }
 
     @Override

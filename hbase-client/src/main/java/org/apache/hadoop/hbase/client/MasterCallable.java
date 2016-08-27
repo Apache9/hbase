@@ -92,6 +92,7 @@ abstract class MasterCallable<V> implements RetryingCallable<V>, Closeable {
   public V call(int callTimeout) throws IOException {
     try {
       if (this.rpcController != null) {
+        this.rpcController.reset();
         this.rpcController.setCallTimeout(callTimeout);
       }
       return rpcCall();
