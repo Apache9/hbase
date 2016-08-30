@@ -51,8 +51,10 @@ import com.google.common.primitives.Longs;
  * HBase applications and users should use the Cell interface and avoid directly using KeyValue
  * and member functions not defined in Cell.
  * <p>
- * If being used client-side, the primary methods to access individual fields are {@link #getRow()},
- * {@link #getFamily()}, {@link #getQualifier()}, {@link #getTimestamp()}, and {@link #getValue()}.
+ * If being used client-side, the primary methods to access individual fields are
+ * {@link CellUtil#cloneRow(Cell)}, {@link CellUtil#cloneFamily(Cell)},
+ * {@link CellUtil#cloneQualifier(Cell)}, {@link #getTimestamp()},
+ * and {@link CellUtil#cloneValue(Cell)}.
  * These methods allocate new byte arrays and return copies. Avoid their use server-side.
  * <p>
  * Instances of this class are immutable. They do not implement Comparable but Comparators are
@@ -1452,8 +1454,9 @@ public class KeyValue implements Cell, HeapSize, Cloneable {
    * {@link #getBuffer()} with appropriate offsets and lengths instead to
    * save on allocations.
    * @return Value in a new byte array.
+   * @deprecated use {@link CellUtil#cloneValue(Cell)} instead.
    */
-  @Deprecated // use CellUtil.getValueArray()
+  @Deprecated
   public byte [] getValue() {
     return CellUtil.cloneValue(this);
   }
@@ -1465,8 +1468,9 @@ public class KeyValue implements Cell, HeapSize, Cloneable {
    * If server-side, use {@link #getBuffer()} with appropriate offsets and
    * lengths instead.
    * @return Row in a new byte array.
+   * @deprecated use {@link CellUtil#cloneRow(Cell)} instead.
    */
-  @Deprecated // use CellUtil.getRowArray()
+  @Deprecated
   public byte [] getRow() {
     return CellUtil.cloneRow(this);
   }
@@ -1491,6 +1495,7 @@ public class KeyValue implements Cell, HeapSize, Cloneable {
 
   /**
    * @return Type of this KeyValue.
+   * @deprecated use {@link #getTypeByte()} instead.
    */
   @Deprecated
   public byte getType() {
@@ -1509,8 +1514,9 @@ public class KeyValue implements Cell, HeapSize, Cloneable {
    * @return True if a delete type, a {@link KeyValue.Type#Delete} or
    * a {KeyValue.Type#DeleteFamily} or a {@link KeyValue.Type#DeleteColumn}
    * KeyValue type.
+   * @deprecated use {@link #isDelete(byte)} instead.
    */
-  @Deprecated // use CellUtil#isDelete
+  @Deprecated
   public boolean isDelete() {
     return KeyValue.isDelete(getType());
   }
@@ -1553,8 +1559,9 @@ public class KeyValue implements Cell, HeapSize, Cloneable {
    * If server-side, use {@link #getBuffer()} with appropriate offsets and
    * lengths instead.
    * @return Returns family. Makes a copy.
+   * @deprecated use {@link CellUtil#cloneFamily(Cell)} instead.
    */
-  @Deprecated // use CellUtil.getFamilyArray
+  @Deprecated
   public byte [] getFamily() {
     return CellUtil.cloneFamily(this);
   }
@@ -1567,8 +1574,9 @@ public class KeyValue implements Cell, HeapSize, Cloneable {
    * lengths instead.
    * Use {@link #getBuffer()} with appropriate offsets and lengths instead.
    * @return Returns qualifier. Makes a copy.
+   * @deprecated use {@link CellUtil#cloneQualifier(Cell)} instead.
    */
-  @Deprecated // use CellUtil.getQualifierArray
+  @Deprecated
   public byte [] getQualifier() {
     return CellUtil.cloneQualifier(this);
   }
