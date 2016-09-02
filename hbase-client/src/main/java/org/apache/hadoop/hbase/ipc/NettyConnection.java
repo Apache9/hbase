@@ -219,7 +219,15 @@ public class NettyConnection extends Connection {
         }
       }, call.timeout, TimeUnit.MILLISECONDS);
     }
-    channel.writeAndFlush(call);
+    channel.writeAndFlush(call).addListener(new ChannelFutureListener() {
+
+      @Override
+      public void operationComplete(ChannelFuture future) throws Exception {
+        if (!future.isSuccess()) {
+          call.setException(IPCUtil.toIOE(future.cause()));
+        }
+      }
+    });
   }
 
   @Override
