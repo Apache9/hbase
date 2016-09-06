@@ -20,6 +20,7 @@
 package org.apache.hadoop.hbase.master;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
@@ -200,7 +201,86 @@ public class TestDefaultLoadBalancer extends BalancerTestBase {
       clusterState, plans);
     assertClusterAsBalanced(convertToList(regionByServers));
   }
-  
+
+  @Test
+  public void testCheckAdjustPreCondition() throws Exception {
+    // There are region servers which don't server any regions
+    int[] tableRegionStateA = new int[]{10, 0, 0};
+    int[] tableRegionStateB = new int[]{9, 0, 0};
+    int[] tableRegionStateC = new int[]{8, 0, 0};
+    int[][] tableRegionStates = new int[][] { tableRegionStateA, tableRegionStateB,
+        tableRegionStateC };
+    String[] tableNames = new String[] { "tableRegionStateA", "tableRegionStateB",
+        "tableRegionStateC" };
+    ServerName[] serverNames = new ServerName[tableRegionStateA.length];
+    for (int i = 0; i < tableRegionStateA.length; ++i) {
+      serverNames[i] = randomServer(0).getServerName();
+    }
+
+    Map<String, Map<ServerName, List<HRegionInfo>>> clusterState = new HashMap<String, Map<ServerName, List<HRegionInfo>>>();
+    List<RegionPlan> plans = new ArrayList<RegionPlan>();
+    for (int i = 0; i < tableNames.length; ++i) {
+      Map<ServerName, List<HRegionInfo>> servers = new HashMap<ServerName, List<HRegionInfo>>();
+      for (int j = 0; j < tableRegionStates[i].length; ++j) {
+        servers.put(serverNames[j], randomRegions(tableRegionStates[i][j], -1, tableNames[i]));
+      }
+      clusterState.put(tableNames[i], servers);
+      List<RegionPlan> tablePlans = loadBalancer.balanceCluster(servers);
+      if (tablePlans != null) {
+        plans.addAll(tablePlans);
+      }
+    }
+
+    // cluster is not balanced per table
+    Map<ServerName, List<HRegionInfo>> regionByServers = DefaultLoadBalancer.applyRegionPlan(
+      clusterState, plans);
+    assertFalse(DefaultLoadBalancer.checkAdjustPreCondition(clusterState, regionByServers));
+
+    // can't adjust because check pre condition failed
+    plans = loadBalancer.adjustPerTablePlans(clusterState, plans);
+    regionByServers = DefaultLoadBalancer.applyRegionPlan(
+      clusterState, plans);
+    assertFalse(DefaultLoadBalancer.checkAdjustPreCondition(clusterState, regionByServers));
+
+    tableRegionStateA = new int[]{1, 2, 3, 2, 0};
+    tableRegionStateB = new int[]{3, 2, 2, 1, 2};
+    tableRegionStateC = new int[]{1, 1, 0, 2, 3};
+    tableRegionStates = new int[][] { tableRegionStateA, tableRegionStateB,
+        tableRegionStateC };
+    tableNames = new String[] { "tableRegionStateA", "tableRegionStateB",
+        "tableRegionStateC" };
+    serverNames = new ServerName[tableRegionStateA.length];
+    for (int i = 0; i < tableRegionStateA.length; ++i) {
+      serverNames[i] = randomServer(0).getServerName();
+    }
+
+    clusterState = new HashMap<String, Map<ServerName, List<HRegionInfo>>>();
+    plans = new ArrayList<RegionPlan>();
+    for (int i = 0; i < tableNames.length; ++i) {
+      Map<ServerName, List<HRegionInfo>> servers = new HashMap<ServerName, List<HRegionInfo>>();
+      for (int j = 0; j < tableRegionStates[i].length; ++j) {
+        servers.put(serverNames[j], randomRegions(tableRegionStates[i][j], -1, tableNames[i]));
+      }
+      clusterState.put(tableNames[i], servers);
+      List<RegionPlan> tablePlans = loadBalancer.balanceCluster(servers);
+      if (tablePlans != null) {
+        plans.addAll(tablePlans);
+      }
+    }
+
+    // cluster is balanced per table
+    regionByServers = DefaultLoadBalancer.applyRegionPlan(
+      clusterState, plans);
+    assertTrue(DefaultLoadBalancer.checkAdjustPreCondition(clusterState, regionByServers));
+
+    // adjust region plans globally
+    plans = loadBalancer.adjustPerTablePlans(clusterState, plans);
+    regionByServers = DefaultLoadBalancer.applyRegionPlan(
+      clusterState, plans);
+    assertTrue(DefaultLoadBalancer.checkAdjustPreCondition(clusterState, regionByServers));
+    assertClusterAsBalanced(convertToList(regionByServers));
+  }
+
   /**
    * Tests immediate assignment.
    *
