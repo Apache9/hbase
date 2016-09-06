@@ -60,7 +60,7 @@ public class TestBucketWriterThread {
     // Run with one writer thread only. Means there will be one writer queue only too.  We depend
     // on this in below.
     final int writerThreadsCount = 1;
-    this.bc = new BucketCache("heap", capacity, writerThreadsCount,
+    this.bc = new BucketCache("heap", capacity, null, writerThreadsCount,
       capacity, null, 100/*Tolerate ioerrors for 100ms*/);
     assertEquals(writerThreadsCount, bc.writerThreads.length);
     assertEquals(writerThreadsCount, bc.writerQueues.size());
