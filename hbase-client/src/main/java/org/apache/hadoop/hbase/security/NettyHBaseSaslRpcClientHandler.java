@@ -121,7 +121,9 @@ public class NettyHBaseSaslRpcClientHandler extends SimpleChannelInboundHandler<
         return saslRpcClient.evaluateChallenge(challenge);
       }
     });
-    writeResponse(ctx, response);
+    if (response != null) {
+      writeResponse(ctx, response);
+    }
     tryComplete(ctx);
   }
 

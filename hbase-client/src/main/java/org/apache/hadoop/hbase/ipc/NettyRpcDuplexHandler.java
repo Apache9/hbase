@@ -124,8 +124,8 @@ public class NettyRpcDuplexHandler extends ChannelDuplexHandler {
     ByteBufInputStream in = new ByteBufInputStream(buf);
     ResponseHeader responseHeader = ResponseHeader.parseDelimitedFrom(in);
     int id = responseHeader.getCallId();
-    if (LOG.isDebugEnabled()) {
-      LOG.debug("got response header " + TextFormat.shortDebugString(responseHeader)
+    if (LOG.isTraceEnabled()) {
+      LOG.trace("got response header " + TextFormat.shortDebugString(responseHeader)
           + ", totalSize: " + totalSize + " bytes");
     }
     RemoteException remoteExc;

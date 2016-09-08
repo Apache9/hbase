@@ -17,6 +17,7 @@
  */
 package org.apache.hadoop.hbase.ipc;
 
+
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.cache.CacheBuilder;
@@ -24,14 +25,13 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.protobuf.BlockingRpcChannel;
 import com.google.protobuf.Descriptors.MethodDescriptor;
-
-import io.netty.util.HashedWheelTimer;
-
 import com.google.protobuf.Message;
 import com.google.protobuf.RpcCallback;
 import com.google.protobuf.RpcChannel;
 import com.google.protobuf.RpcController;
 import com.google.protobuf.ServiceException;
+
+import io.netty.util.HashedWheelTimer;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -61,6 +61,7 @@ import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.PoolMap;
 import org.apache.hadoop.hbase.util.PoolMap.PoolType;
 import org.apache.hadoop.io.compress.CompressionCodec;
+import org.apache.hadoop.ipc.RemoteException;
 import org.apache.hadoop.security.token.TokenIdentifier;
 import org.apache.hadoop.security.token.TokenSelector;
 
@@ -368,7 +369,12 @@ public abstract class AbstractRpcClient<T extends Connection> implements RpcClie
           + ", remote address:" + addr);
     }
     if (call.error != null) {
-      pcrc.setFailed(call.error);
+      if (call.error instanceof RemoteException) {
+        call.error.fillInStackTrace();
+        pcrc.setFailed(call.error);
+      } else {
+        pcrc.setFailed(IPCUtil.wrapException(addr, call.error));
+      }
       callback.run(null);
     } else {
       if (call.cells != null) {
