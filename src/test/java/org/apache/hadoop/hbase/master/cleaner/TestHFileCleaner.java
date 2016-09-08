@@ -70,9 +70,9 @@ public class TestHFileCleaner {
     assertTrue("Test file not created!", fs.exists(file));
     TimeToLiveHFileCleaner cleaner = new TimeToLiveHFileCleaner();
     // update the time info for the file, so the cleaner removes it
-    fs.setTimes(file, createTime - 100, -1);
+    fs.setTimes(file, createTime - TimeToLiveHFileCleaner.MIN_TTL - 1, -1);
     Configuration conf = UTIL.getConfiguration();
-    conf.setLong(TimeToLiveHFileCleaner.TTL_CONF_KEY, 100);
+    conf.setLong(TimeToLiveHFileCleaner.TTL_CONF_KEY, TimeToLiveHFileCleaner.MIN_TTL);
     cleaner.setConf(conf);
     assertTrue("File not set deletable - check mod time:" + getFileStats(file, fs)
         + " with create time:" + createTime, cleaner.isFileDeletable(fs.getFileStatus(file)));
@@ -94,7 +94,7 @@ public class TestHFileCleaner {
     String prefix = "someHFileThatWouldBeAUUID";
     Configuration conf = UTIL.getConfiguration();
     // set TTL
-    long ttl = 2000;
+    long ttl = TimeToLiveHFileCleaner.MIN_TTL;
     conf.set(HFileCleaner.MASTER_HFILE_CLEANER_PLUGINS,
       "org.apache.hadoop.hbase.master.cleaner.TimeToLiveHFileCleaner");
     conf.setLong(TimeToLiveHFileCleaner.TTL_CONF_KEY, ttl);
