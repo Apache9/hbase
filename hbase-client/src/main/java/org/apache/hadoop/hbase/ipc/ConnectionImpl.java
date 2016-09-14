@@ -128,7 +128,7 @@ class ConnectionImpl extends Connection implements Runnable {
      * otherwise, throw the timeout exception.
      */
     private void handleTimeout(SocketTimeoutException e) throws IOException {
-      if (shouldCloseConnection.get() || !ConnectionImpl.this.rpcClient.running.get()) {
+      if (shouldCloseConnection.get()) {
         throw e;
       }
       sendPing();
@@ -268,7 +268,7 @@ class ConnectionImpl extends Connection implements Runnable {
    * response; false otherwise.
    */
   private synchronized boolean waitForWork() {
-    if (calls.isEmpty() && !shouldCloseConnection.get() && this.rpcClient.running.get()) {
+    if (calls.isEmpty() && !shouldCloseConnection.get()) {
       long timeout = this.rpcClient.maxIdleTime - (System.currentTimeMillis() - lastActivity.get());
       if (timeout > 0) {
         try {
@@ -279,7 +279,7 @@ class ConnectionImpl extends Connection implements Runnable {
       }
     }
 
-    if (!calls.isEmpty() && !shouldCloseConnection.get() && this.rpcClient.running.get()) {
+    if (!calls.isEmpty() && !shouldCloseConnection.get()) {
       return true;
     } else if (shouldCloseConnection.get()) {
       return false;

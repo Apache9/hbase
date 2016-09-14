@@ -17,12 +17,12 @@
  */
 package org.apache.hadoop.hbase.ipc;
 
-
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.google.protobuf.BlockingRpcChannel;
 import com.google.protobuf.Descriptors.MethodDescriptor;
 import com.google.protobuf.Message;
@@ -37,6 +37,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -73,6 +74,8 @@ public abstract class AbstractRpcClient<T extends Connection> implements RpcClie
 
   private static final Log LOG = LogFactory.getLog(AbstractRpcClient.class);
 
+  protected boolean running = true; // if client runs
+
   protected final Configuration conf;
   protected final String clusterId;
   protected final SocketAddress localAddr;
@@ -96,19 +99,22 @@ public abstract class AbstractRpcClient<T extends Connection> implements RpcClie
 
   protected int maxConcurrentCallsPerServer;
 
-  protected static final LoadingCache<InetSocketAddress, AtomicInteger> concurrentCounterCache =
-      CacheBuilder.newBuilder().expireAfterAccess(1, TimeUnit.HOURS).
-          build(new CacheLoader<InetSocketAddress, AtomicInteger>() {
-            @Override public AtomicInteger load(InetSocketAddress key) throws Exception {
-              return new AtomicInteger(0);
-            }
-          });
+  protected static final LoadingCache<InetSocketAddress, AtomicInteger> concurrentCounterCache = CacheBuilder
+      .newBuilder().expireAfterAccess(1, TimeUnit.HOURS)
+      .build(new CacheLoader<InetSocketAddress, AtomicInteger>() {
+        @Override
+        public AtomicInteger load(InetSocketAddress key) throws Exception {
+          return new AtomicInteger(0);
+        }
+      });
 
   protected final PoolMap<ConnectionId, T> connections;
 
   protected final AtomicInteger callIdCnt = new AtomicInteger(0);
 
-  protected final HashedWheelTimer timeoutTimer = new HashedWheelTimer(10, TimeUnit.MILLISECONDS);
+  protected final HashedWheelTimer timeoutTimer = new HashedWheelTimer(
+      new ThreadFactoryBuilder().setDaemon(true).setNameFormat("IPC-Timeout-Timer-%d").build(), 10,
+      TimeUnit.MILLISECONDS);
 
   /**
    * Construct an IPC client for the cluster <code>clusterId</code>
@@ -148,8 +154,8 @@ public abstract class AbstractRpcClient<T extends Connection> implements RpcClie
           + (this.localAddr != null ? this.localAddr : "null"));
     }
     this.maxConcurrentCallsPerServer = conf.getInt(
-        HConstants.HBASE_CLIENT_PERSERVER_REQUESTS_THRESHOLD,
-        HConstants.DEFAULT_HBASE_CLIENT_PERSERVER_REQUESTS_THRESHOLD);
+      HConstants.HBASE_CLIENT_PERSERVER_REQUESTS_THRESHOLD,
+      HConstants.DEFAULT_HBASE_CLIENT_PERSERVER_REQUESTS_THRESHOLD);
   }
 
   /**
@@ -278,6 +284,9 @@ public abstract class AbstractRpcClient<T extends Connection> implements RpcClie
     }
     T conn;
     synchronized (connections) {
+      if (!running) {
+        throw new StoppedRpcClientException();
+      }
       conn = connections.get(remoteId);
       if (conn == null) {
         conn = createConnection(remoteId);
@@ -425,6 +434,29 @@ public abstract class AbstractRpcClient<T extends Connection> implements RpcClie
     } catch (Exception e) {
       call.setException(IPCUtil.toIOE(e));
     }
+  }
+
+  protected abstract void closeInternal();
+
+  @Override
+  public void close() {
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("Stopping rpc client");
+    }
+    timeoutTimer.stop();
+    Collection<T> connToClose;
+    synchronized (connections) {
+      if (!running) {
+        return;
+      }
+      running = false;
+      connToClose = connections.values();
+      connections.clear();
+    }
+    for (T conn : connToClose) {
+      conn.shutdown();
+    }
+    closeInternal();
   }
 
   private static abstract class HBaseRpcChannel {
