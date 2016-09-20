@@ -33,6 +33,7 @@ import org.apache.hadoop.hbase.KeyValue.Type;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.regionserver.wal.WALEdit;
 import org.apache.hadoop.hbase.replication.ReplicationEndpoint;
+import org.apache.hadoop.hbase.replication.ReplicationPeerConfig;
 import org.apache.hadoop.hbase.replication.WALEntryFilter;
 import org.apache.hadoop.hbase.regionserver.wal.HLog.Entry;
 
@@ -162,5 +163,10 @@ public class VisibilityReplicationEndpoint implements ReplicationEndpoint {
   @Override
   public void addListener(Listener listener, Executor executor) {
     delegator.addListener(listener, executor);
+  }
+
+  @Override
+  public void peerConfigUpdated(ReplicationPeerConfig rpc) {
+
   }
 }

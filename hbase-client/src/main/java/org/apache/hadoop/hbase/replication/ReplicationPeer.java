@@ -122,4 +122,6 @@ public interface ReplicationPeer {
    * @return per node bandwidth
    */
   public long getPeerBandwidth();
+
+  void trackPeerConfigChanges(ReplicationPeerConfigListener listener);
 }

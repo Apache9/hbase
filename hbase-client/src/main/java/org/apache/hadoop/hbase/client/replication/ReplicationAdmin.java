@@ -58,6 +58,7 @@ import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.data.Stat;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Lists;
 
 /**
@@ -185,6 +186,15 @@ public class ReplicationAdmin implements Closeable {
   }
 
   /**
+   * Add a new remote slave cluster for replication.
+   * @param id a short name that identifies the cluster
+   * @param peerConfig configuration for the replication slave cluster
+   */
+  public void addPeer(String id, ReplicationPeerConfig peerConfig) throws ReplicationException {
+    this.replicationPeers.addPeer(id, peerConfig);
+  }
+
+  /**
    * Removes a peer cluster and stops the replication to it.
    * @param id a short name that identifies the cluster
    */
@@ -222,6 +232,11 @@ public class ReplicationAdmin implements Closeable {
 
   public ReplicationPeerConfig getPeerConfig(String id) throws ReplicationException {
     return this.replicationPeers.getReplicationPeerConfig(id);
+  }
+
+  public void updatePeerConfig(String id, ReplicationPeerConfig peerConfig)
+      throws ReplicationException {
+    this.replicationPeers.updatePeerConfig(id, peerConfig);
   }
 
   /**
@@ -532,6 +547,12 @@ public class ReplicationAdmin implements Closeable {
     }
   }
 
+  @VisibleForTesting
+  public void peerAdded(String id) throws ReplicationException {
+    this.replicationPeers.peerAdded(id);
+  }
+
+  @VisibleForTesting
   private List<ReplicationPeer> listValidReplicationPeers() {
     Map<String, ReplicationPeerConfig> peers = listPeerConfigs();
     if (peers == null || peers.size() <= 0) {
