@@ -297,10 +297,10 @@ public class TestNamespace {
         FSUtils.getNamespaceDir(FSUtils.getRootDir(TEST_UTIL.getConfiguration()), "foo");
     assertTrue(fs.mkdirs(fakeNSPath));
 
-    String fakeZnode = ZKUtil.joinZNode(ZooKeeperWatcher.namespaceZNode, "foo");
-    int zkCount = ZKUtil.listChildrenNoWatch(TEST_UTIL.getZooKeeperWatcher(),
-        ZooKeeperWatcher.namespaceZNode).size();
-    ZKUtil.createWithParents(TEST_UTIL.getZooKeeperWatcher(), fakeZnode);
+    ZooKeeperWatcher zkw = TEST_UTIL.getZooKeeperWatcher();
+    String fakeZnode = ZKUtil.joinZNode(zkw.namespaceZNode, "foo");
+    int zkCount = ZKUtil.listChildrenNoWatch(zkw, zkw.namespaceZNode).size();
+    ZKUtil.createWithParents(zkw, fakeZnode);
     Thread.sleep(10000);
 
     //verify namespace count is the same and orphan is removed
@@ -308,10 +308,8 @@ public class TestNamespace {
     assertEquals(fsCount, fs.listStatus(new Path(FSUtils.getRootDir(TEST_UTIL.getConfiguration()),
             HConstants.BASE_NAMESPACE_DIR)).length);
 
-    assertEquals(-1, ZKUtil.checkExists(TEST_UTIL.getZooKeeperWatcher(), fakeZnode));
-    assertEquals(zkCount,
-        ZKUtil.listChildrenNoWatch(TEST_UTIL.getZooKeeperWatcher(),
-            ZooKeeperWatcher.namespaceZNode).size());
+    assertEquals(-1, ZKUtil.checkExists(zkw, fakeZnode));
+    assertEquals(zkCount, ZKUtil.listChildrenNoWatch(zkw, zkw.namespaceZNode).size());
   }
 
   @Test(timeout = 60000)

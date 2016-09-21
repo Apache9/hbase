@@ -26,7 +26,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Abortable;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.TableName;
-import org.apache.hadoop.hbase.client.replication.TableCFsHelper;
+import org.apache.hadoop.hbase.client.replication.ReplicationSerDeHelper;
 import org.apache.hadoop.hbase.client.replication.TableCFsUpdater;
 import org.apache.hadoop.hbase.exceptions.DeserializationException;
 import org.apache.hadoop.hbase.replication.ReplicationPeerConfig;
@@ -94,36 +94,36 @@ public class TestTableCFsUpdater extends TableCFsUpdater {
     ReplicationPeerConfig rpc = new ReplicationPeerConfig();
     rpc.setClusterKey(zkw.getQuorum());
     String peerNode = getPeerNode(peerId);
-    ZKUtil.createWithParents(zkw, peerNode, TableCFsHelper.toByteArray(rpc));
+    ZKUtil.createWithParents(zkw, peerNode, ReplicationSerDeHelper.toByteArray(rpc));
 
     String tableCFs = "table1:cf1,cf2;table2:cf3;table3";
     String tableCFsNode = getTableCFsNode(peerId);
     LOG.info("create tableCFs :" + tableCFsNode + " for peerId=" + peerId);
     ZKUtil.createWithParents(zkw, tableCFsNode , Bytes.toBytes(tableCFs));
 
-    ReplicationPeerConfig actualRpc = TableCFsHelper.parsePeerFrom(ZKUtil.getData(zkw, peerNode));
+    ReplicationPeerConfig actualRpc = ReplicationSerDeHelper.parsePeerFrom(ZKUtil.getData(zkw, peerNode));
     String actualTableCfs = Bytes.toString(ZKUtil.getData(zkw, tableCFsNode));
 
     assertEquals(rpc.getClusterKey(), actualRpc.getClusterKey());
-    assertEquals(0, actualRpc.getTableCFs().getTableCfsCount());
+    assertEquals(0, actualRpc.getTableCFsMap().size());
     assertEquals(tableCFs, actualTableCfs);
 
     peerId = "2";
     rpc = new ReplicationPeerConfig();
     rpc.setClusterKey(zkw.getQuorum());
     peerNode = getPeerNode(peerId);
-    ZKUtil.createWithParents(zkw, peerNode, TableCFsHelper.toByteArray(rpc));
+    ZKUtil.createWithParents(zkw, peerNode, ReplicationSerDeHelper.toByteArray(rpc));
 
     tableCFs = "table1:cf1,cf3;table2:cf2";
     tableCFsNode = getTableCFsNode(peerId);
     LOG.info("create tableCFs :" + tableCFsNode + " for peerId=" + peerId);
     ZKUtil.createWithParents(zkw, tableCFsNode , Bytes.toBytes(tableCFs));
 
-    actualRpc = TableCFsHelper.parsePeerFrom(ZKUtil.getData(zkw, peerNode));
+    actualRpc = ReplicationSerDeHelper.parsePeerFrom(ZKUtil.getData(zkw, peerNode));
     actualTableCfs = Bytes.toString(ZKUtil.getData(zkw, tableCFsNode));
 
     assertEquals(rpc.getClusterKey(), actualRpc.getClusterKey());
-    assertEquals(0, actualRpc.getTableCFs().getTableCfsCount());
+    assertEquals(0, actualRpc.getTableCFsMap().size());
     assertEquals(tableCFs, actualTableCfs);
 
 
@@ -131,10 +131,9 @@ public class TestTableCFsUpdater extends TableCFsUpdater {
 
     peerId = "1";
     peerNode = getPeerNode(peerId);
-    actualRpc = TableCFsHelper.parsePeerFrom(ZKUtil.getData(zkw, peerNode));
+    actualRpc = ReplicationSerDeHelper.parsePeerFrom(ZKUtil.getData(zkw, peerNode));
     assertEquals(rpc.getClusterKey(), actualRpc.getClusterKey());
-    Map<TableName, List<String>> tableNameListMap =
-        TableCFsHelper.convert2Map(actualRpc.getTableCFs());
+    Map<TableName, List<String>> tableNameListMap = actualRpc.getTableCFsMap();
     assertEquals(3, tableNameListMap.size());
     assertTrue(tableNameListMap.containsKey(tab1));
     assertTrue(tableNameListMap.containsKey(tab2));
@@ -149,10 +148,9 @@ public class TestTableCFsUpdater extends TableCFsUpdater {
 
     peerId = "2";
     peerNode = getPeerNode(peerId);
-    actualRpc = TableCFsHelper.parsePeerFrom(ZKUtil.getData(zkw, peerNode));
+    actualRpc = ReplicationSerDeHelper.parsePeerFrom(ZKUtil.getData(zkw, peerNode));
     assertEquals(rpc.getClusterKey(), actualRpc.getClusterKey());
-    tableNameListMap =
-        TableCFsHelper.convert2Map(actualRpc.getTableCFs());
+    tableNameListMap = actualRpc.getTableCFsMap();
     assertEquals(2, tableNameListMap.size());
     assertTrue(tableNameListMap.containsKey(tab1));
     assertTrue(tableNameListMap.containsKey(tab2));

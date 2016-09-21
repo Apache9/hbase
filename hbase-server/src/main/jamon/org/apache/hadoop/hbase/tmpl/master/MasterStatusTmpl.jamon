@@ -48,7 +48,7 @@ org.apache.hadoop.hbase.TableName;
 org.apache.hadoop.hbase.client.HBaseAdmin;
 org.apache.hadoop.hbase.client.HConnectionManager;
 org.apache.hadoop.hbase.client.replication.ReplicationAdmin;
-org.apache.hadoop.hbase.client.replication.TableCFsHelper;
+org.apache.hadoop.hbase.client.replication.ReplicationSerDeHelper;
 org.apache.hadoop.hbase.replication.ReplicationPeerConfig;
 org.apache.hadoop.hbase.HRegionInfo;
 org.apache.hadoop.hbase.master.RegionState;
@@ -554,7 +554,7 @@ AssignmentManager assignmentManager = master.getAssignmentManager();
         <td><% peerConfig.getBandwidth() %></td>
         <td>
           <span class="more">
-            <% TableCFsHelper.convert(peerConfig.getTableCFs()).replaceAll(";", "; ") %>
+            <% ReplicationSerDeHelper.convertToString(peerConfig.getTableCFsMap()).replaceAll(";", "; ") %>
           </span>
         </td>
     </tr>

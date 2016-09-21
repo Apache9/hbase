@@ -24,14 +24,15 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.hbase.classification.InterfaceAudience;
-import org.apache.hadoop.hbase.client.replication.TableCFsHelper;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Abortable;
 import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.classification.InterfaceAudience;
+import org.apache.hadoop.hbase.client.replication.ReplicationSerDeHelper;
 import org.apache.hadoop.hbase.exceptions.DeserializationException;
 import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos;
@@ -166,7 +167,7 @@ public class ReplicationPeerZKImpl extends ReplicationStateZKBase
     try {
       byte[] data = peerConfigTracker.getData(false);
       if (data != null) {
-        this.peerConfig = TableCFsHelper.parsePeerFrom(data);
+        this.peerConfig = ReplicationSerDeHelper.parsePeerFrom(data);
       }
     } catch (DeserializationException e) {
       LOG.error("", e);
@@ -212,8 +213,17 @@ public class ReplicationPeerZKImpl extends ReplicationStateZKBase
    */
   @Override
   public Map<TableName, List<String>> getTableCFs() {
-    this.tableCFs = TableCFsHelper.convert2Map(peerConfig.getTableCFs());
+    this.tableCFs = peerConfig.getTableCFsMap();
     return this.tableCFs;
+  }
+
+  /**
+   * Get replicable namespace set of this peer
+   * @return the replicable namespaces set
+   */
+  @Override
+  public Set<String> getNamespaces() {
+    return this.peerConfig.getNamespaces();
   }
 
   @Override

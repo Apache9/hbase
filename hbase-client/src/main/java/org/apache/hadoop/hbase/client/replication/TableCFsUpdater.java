@@ -24,7 +24,6 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Abortable;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.classification.InterfaceStability;
-import org.apache.hadoop.hbase.client.replication.TableCFsHelper;
 import org.apache.hadoop.hbase.exceptions.DeserializationException;
 import org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos;
 import org.apache.hadoop.hbase.replication.ReplicationPeerConfig;
@@ -72,15 +71,15 @@ public class TableCFsUpdater extends ReplicationStateZKBase {
       if (ZKUtil.checkExists(zookeeper, tableCFsNode) != -1) {
         String peerNode = getPeerNode(peerId);
         ReplicationPeerConfig rpc = getReplicationPeerConig(peerNode);
-        if (rpc.getTableCFs().getTableCfsCount() == 0) {
+        if (rpc.getTableCFsMap() == null || rpc.getTableCFsMap().size() == 0) {
           // we copy TableCFs node into PeerNode
           LOG.info("copy tableCFs into peerNode:" + peerId);
-          ZooKeeperProtos.TableCFs tableCFs =
-                  TableCFsHelper.parseTableCFs(
-                          ZKUtil.getData(this.zookeeper, tableCFsNode));
-          rpc.setTableCFs(tableCFs);
-          ZKUtil.setData(this.zookeeper, peerNode,
-                  TableCFsHelper.toByteArray(rpc));
+          ZooKeeperProtos.TableCF[] tableCFs = ReplicationSerDeHelper.parseTableCFs(
+            ZKUtil.getData(this.zookeeper, tableCFsNode));
+          if (tableCFs != null && tableCFs.length > 0) {
+            rpc.setTableCFsMap(ReplicationSerDeHelper.convert2Map(tableCFs));
+            ZKUtil.setData(this.zookeeper, peerNode, ReplicationSerDeHelper.toByteArray(rpc));
+          }
         } else {
           LOG.info("No tableCFs in peerNode:" + peerId);
         }
@@ -108,7 +107,7 @@ public class TableCFsUpdater extends ReplicationStateZKBase {
       return null;
     }
     try {
-      return TableCFsHelper.parsePeerFrom(data);
+      return ReplicationSerDeHelper.parsePeerFrom(data);
     } catch (DeserializationException e) {
       LOG.warn("Failed to parse cluster key from peer=" + peerNode);
       return null;

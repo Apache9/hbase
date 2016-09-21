@@ -23,7 +23,7 @@ java_import org.apache.hadoop.hbase.TableName
 java_import org.apache.hadoop.hbase.replication.ReplicationPeerConfig
 java_import org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos::ReplicationState::State
 java_import org.apache.hadoop.hbase.replication.ReplicationPeer::PeerProtocol
-java_import org.apache.hadoop.hbase.client.replication::TableCFsHelper
+java_import org.apache.hadoop.hbase.client.replication::ReplicationSerDeHelper
 # Wrapper for org.apache.hadoop.hbase.client.HBaseAdmin
 
 module Hbase
@@ -37,30 +37,44 @@ module Hbase
 
     #----------------------------------------------------------------------------------------------
     # Add a new peer cluster to replicate to
-    def add_peer(id, cluster_key, peer_state = nil, peer_tableCFs = nil, protocol = nil, bandwidth = 0)
-      replication_peer_config = ReplicationPeerConfig.new
-      replication_peer_config.set_cluster_key(cluster_key)
-      replication_peer_config.set_bandwidth(bandwidth)
+    def add_peer(id, cluster_key, args = {})
+      if args.is_a?(Hash)
+        replication_peer_config = ReplicationPeerConfig.new
+        replication_peer_config.set_cluster_key(cluster_key)
 
-      unless peer_state.nil?
-        replication_peer_config.set_state(State.valueOf(peer_state))
+        peer_state = args.fetch(STATE, nil)
+        unless peer_state.nil?
+          replication_peer_config.set_state(State.valueOf(peer_state))
+        end
+
+        namespaces = args.fetch(NAMESPACES, nil)
+        unless namespaces.nil?
+          ns_set = java.util.HashSet.new
+          namespaces.each do |n|
+            ns_set.add(n)
+          end
+          replication_peer_config.set_namespaces(ns_set)
+        end
+
+        table_cfs = args.fetch(TABLE_CFS, nil)
+        unless table_cfs.nil?
+          # convert table_cfs to TableName
+          map = java.util.HashMap.new
+          table_cfs.each{|key, val|
+            map.put(org.apache.hadoop.hbase.TableName.valueOf(key), val)
+          }
+          replication_peer_config.set_table_cfs_map(map)
+        end
+
+        protocol = args.fetch(PROTOCOL, nil)
+        unless protocol.nil?
+          replication_peer_config.set_protocol(PeerProtocol.valueOf(protocol))
+        end
+
+        @replication_admin.add_peer(id, replication_peer_config)
+      else
+        raise(ArgumentError, "args must be a Hash")
       end
-
-      map = nil
-      unless peer_tableCFs.nil?
-        # convert table_cfs to TableName
-        map = java.util.HashMap.new
-        peer_tableCFs.each{|key, val|
-          map.put(org.apache.hadoop.hbase.TableName.valueOf(key), val)
-        }
-        replication_peer_config.set_table_cfs_map(map)
-      end
-
-      unless protocol.nil?
-        replication_peer_config.set_protocol(PeerProtocol.valueOf(protocol))
-      end
-
-      @replication_admin.add_peer(id, replication_peer_config)
     end
 
     #----------------------------------------------------------------------------------------------
@@ -105,7 +119,7 @@ module Hbase
     #----------------------------------------------------------------------------------------------
     # Show the current tableCFs config for the specified peer
     def show_peer_tableCFs(id)
-      TableCFsHelper.convert(TableCFsHelper.convert(@replication_admin.getPeerTableCFs(id)))
+      ReplicationSerDeHelper.convertToString(@replication_admin.getPeerTableCFs(id))
     end
 
     #----------------------------------------------------------------------------------------------
@@ -145,6 +159,31 @@ module Hbase
         }
       end
       @replication_admin.removePeerTableCFs(id, map)
+    end
+
+    # Set new namespaces config for the specified peer
+    def set_peer_namespaces(id, namespaces)
+      unless namespaces.nil?
+        ns_set = java.util.HashSet.new
+        namespaces.each do |n|
+          ns_set.add(n)
+        end
+        rpc = @replication_admin.getPeerConfig(id)
+        unless rpc.nil?
+          rpc.setNamespaces(ns_set)
+          @replication_admin.updatePeerConfig(id, rpc)
+        end
+      end
+    end
+
+    # Show the current namespaces config for the specified peer
+    def show_peer_namespaces(peer_config)
+      namespaces = peer_config.get_namespaces
+      if !namespaces.nil?
+        return namespaces.join(';')
+      else
+        return nil
+      end
     end
 
     #----------------------------------------------------------------------------------------------

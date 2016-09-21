@@ -21,6 +21,8 @@ package org.apache.hadoop.hbase.replication;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.KeyValue;
@@ -28,12 +30,12 @@ import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.regionserver.wal.HLog.Entry;
 import org.apache.hadoop.hbase.util.Bytes;
 
-public class TableCfWALEntryFilter implements WALEntryFilter {
+public class NamespaceTableCfWALEntryFilter implements WALEntryFilter {
 
-  public static final Log LOG = LogFactory.getLog(TableCfWALEntryFilter.class);
+  public static final Log LOG = LogFactory.getLog(NamespaceTableCfWALEntryFilter.class);
   private final ReplicationPeer peer;
 
-  public TableCfWALEntryFilter(ReplicationPeer peer) {
+  public NamespaceTableCfWALEntryFilter(ReplicationPeer peer) {
     this.peer = peer;
   }
 
@@ -41,6 +43,8 @@ public class TableCfWALEntryFilter implements WALEntryFilter {
   public Entry filter(Entry entry) {
     TableName tabName = entry.getKey().getTablename();
     ArrayList<KeyValue> kvs = entry.getEdit().getKeyValues();
+    String namespace = tabName.getNamespaceAsString();
+    Set<String> namespaces = this.peer.getNamespaces();
     Map<TableName, List<String>> tableCFs = null;
 
     try {
@@ -51,9 +55,22 @@ public class TableCfWALEntryFilter implements WALEntryFilter {
     }
     int size = kvs.size();
 
+    // If null means user has explicitly not configured any namespaces and table CFs
+    // so all the tables data are applicable for replication
+    if (namespaces == null && tableCFs == null) {
+      return entry;
+    }
+
+    // First filter by namespaces config
+    // If table's namespace in peer config, all the tables data are applicable for replication
+    if (namespaces != null && namespaces.contains(namespace)) {
+      return entry;
+    }
+
+    // Then filter by table-cfs config
     // return null(prevent replicating) if logKey's table isn't in this peer's
-    // replicable table list (empty tableCFs means all table are replicable)
-    if (tableCFs != null && !tableCFs.containsKey(tabName)) {
+    // replicaable namespace list and table list
+    if (tableCFs == null || !tableCFs.containsKey(tabName)) {
       return null;
     } else {
       List<String> cfs = (tableCFs == null) ? null : tableCFs.get(tabName);
@@ -71,5 +88,4 @@ public class TableCfWALEntryFilter implements WALEntryFilter {
     }
     return entry;
   }
-
 }

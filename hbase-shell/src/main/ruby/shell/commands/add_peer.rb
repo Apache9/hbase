@@ -26,23 +26,43 @@ Add a peer cluster to replicate to, the id must be a short and
 the cluster key is composed like this:
 hbase.zookeeper.quorum:hbase.zookeeper.property.clientPort:zookeeper.znode.parent
 This gives a full path for HBase to connect to another cluster.
+
+An optional parameter for namespaces identifies which namespace's tables will be replicated
+to the peer cluster.
+An optional parameter for table column families identifies which tables and/or column families
+will be replicated to the peer cluster.
+
+Notice: Set a namespace in the peer config means that all tables in this namespace
+will be replicated to the peer cluster. So if you already have set a namespace in peer config,
+then you can't set this namespace's tables in the peer config again.
+
 Examples:
 
   hbase> add_peer '1', "server1.cie.com:2181:/hbase"
   hbase> add_peer '2', "zk1,zk2,zk3:2182:/hbase-prod"
-  hbase> add_peer '3', "zk4,zk5,zk6:11000:/hbase-test", "ENABLED"
-  hbase> add_peer '4', "zk7,zk8,zk9:11000:/hbase-proc", "DISABLED"
-  hbase> add_peer '5', "zk4,zk5,zk6:11000:/hbase-test", "ENABLED",
-    { "table1" => [], "ns2:table2" => ["cf1"], "ns3:table3" => ["cf1", "cf2"] }
-  hbase> add_peer '6', "zk4,zk5,zk6:11000:/hbase-test", "ENABLED", " ", "THRIFT"
-  hbase> add_peer '7', "zk4,zk5,zk6:11000:/hbase-test",
-    { "table1" => [], "ns2:table2" => ["cf1"], "ns3:table3" => ["cf1", "cf2"] }, "THRIFT"
+  hbase> add_peer '3', "zk4,zk5,zk6:11000:/hbase-test", STATE => "ENABLED"
+  hbase> add_peer '4', "zk7,zk8,zk9:11000:/hbase-proc", STATE => "DISABLED"
+  hbase> add_peer '5', "zk4,zk5,zk6:11000:/hbase-test", STATE => "ENABLED",
+    NAMESPACES => ["ns1", "ns2", "ns3"]
+  hbase> add_peer '6', "zk4,zk5,zk6:11000:/hbase-test", STATE => "ENABLED",
+    NAMESPACES => ["ns1", "ns2"], TABLE_CFS => { "ns3:table1" => [], "ns3:table2" => ["cf1"] }
+  hbase> add_peer '7', "zk4,zk5,zk6:11000:/hbase-test", STATE => "ENABLED",
+    TABLE_CFS => { "ns3:table1" => [], "ns3:table2" => ["cf1"] }, PROTOCOL => "THRIFT"
+
+  # Xiaomi HBase Cluster
+  hbase> add_peer '1', "hbase://c3tst-pressure98", STATE => "ENABLED"
+  hbase> add_peer '2', 'hbase://c3tst-pressure98', STATE => "ENABLED",
+    NAMESPACES => ["ns1", "ns2"]
+  hbase> add_peer '3', 'hbase://c3tst-pressure98', STATE => "ENABLED", NAMESPACES => ["ns1"],
+    TABLE_CFS => { "ns2:table1" => [], "ns2:table2" => ["cf1"] }
+  hbase> add_peer '4', 'hbase://c3tst-pressure98', STATE => "ENABLED", NAMESPACES => ["ns1"],
+    TABLE_CFS => { "ns2:table1" => [], "ns2:table2" => ["cf1"] }, PROTOCOL => "THRIFT"
 EOF
       end
 
-      def command(id, cluster_key, peer_state = nil, peer_tableCFs = nil, protocol = nil)
+      def command(id, cluster_key, args = {})
         format_simple_command do
-          replication_admin.add_peer(id, cluster_key, peer_state, peer_tableCFs, protocol)
+          replication_admin.add_peer(id, cluster_key, args)
         end
       end
     end

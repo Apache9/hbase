@@ -35,7 +35,7 @@ import org.apache.hadoop.hbase.Abortable;
 import org.apache.hadoop.hbase.CompoundConfiguration;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
-import org.apache.hadoop.hbase.client.replication.TableCFsHelper;
+import org.apache.hadoop.hbase.client.replication.ReplicationSerDeHelper;
 import org.apache.hadoop.hbase.exceptions.DeserializationException;
 import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.BytesBytesPair;
@@ -123,7 +123,7 @@ public class ReplicationPeersZKImpl extends ReplicationStateZKBase implements Re
       ZKUtil.createWithParents(this.zookeeper, this.peersZNode);
       List<ZKUtilOp> listOfOps = new ArrayList<ZKUtil.ZKUtilOp>();
       ZKUtilOp op1 = ZKUtilOp.createAndFailSilent(getPeerNode(id),
-        TableCFsHelper.toByteArray(peerConfig));
+        ReplicationSerDeHelper.toByteArray(peerConfig));
       // There is a race (if hbase.zookeeper.useMulti is false)
       // b/w PeerWatcher and ReplicationZookeeper#add method to create the
       // peer-state znode. This happens while adding a peer
@@ -175,7 +175,7 @@ public class ReplicationPeersZKImpl extends ReplicationStateZKBase implements Re
         if (rpc == null) {
           throw new ReplicationException("Unable to get tableCFs of the peer with id=" + id);
         }
-        return TableCFsHelper.convert2Map(rpc.getTableCFs());
+        return rpc.getTableCFsMap();
       } catch (Exception e) {
         throw new ReplicationException(e);
       }
@@ -196,10 +196,11 @@ public class ReplicationPeersZKImpl extends ReplicationStateZKBase implements Re
       if (rpc == null) {
         throw new ReplicationException("Unable to get tableCFs of the peer with id=" + id);
       }
-      rpc.setTableCFs(TableCFsHelper.convert(tableCFs));
+      rpc.setTableCFsMap(tableCFs);
       ZKUtil.setData(this.zookeeper, getPeerNode(id),
-          TableCFsHelper.toByteArray(rpc));
-      LOG.info("Peer tableCFs with id= " + id + " is now " + TableCFsHelper.convert(tableCFs));
+        ReplicationSerDeHelper.toByteArray(rpc));
+      LOG.info("Peer tableCFs with id= " + id + " is now "
+          + ReplicationSerDeHelper.convertToString(tableCFs));
     } catch (KeeperException e) {
       throw new ReplicationException("Unable to change tableCFs of the peer with id=" + id, e);
     }
@@ -218,7 +219,7 @@ public class ReplicationPeersZKImpl extends ReplicationStateZKBase implements Re
       }
       rpc.setBandwidth(bandwidth);
       ZKUtil.setData(this.zookeeper, getPeerNode(id),
-          TableCFsHelper.toByteArray(rpc));
+        ReplicationSerDeHelper.toByteArray(rpc));
       LOG.info("Peer per node bandwidth with id= " + id + " is now " + bandwidth);
     } catch (KeeperException e) {
       throw new ReplicationException("Unable to change tableCFs of the peer with id=" + id, e);
@@ -292,7 +293,7 @@ public class ReplicationPeersZKImpl extends ReplicationStateZKBase implements Re
     }
 
     try {
-      return TableCFsHelper.parsePeerFrom(data);
+      return ReplicationSerDeHelper.parsePeerFrom(data);
     } catch (DeserializationException e) {
       LOG.warn("Failed to parse cluster key from peerId=" + peerId
           + ", specifically the content from the following znode: " + znode);
@@ -367,10 +368,12 @@ public class ReplicationPeersZKImpl extends ReplicationStateZKBase implements Re
     // config or data that weren't explicitly changed
     existingConfig.getConfiguration().putAll(newConfig.getConfiguration());
     existingConfig.getPeerData().putAll(newConfig.getPeerData());
+    existingConfig.setTableCFsMap(newConfig.getTableCFsMap());
+    existingConfig.setNamespaces(newConfig.getNamespaces());
 
     try {
       ZKUtil.setData(this.zookeeper, getPeerNode(id),
-        TableCFsHelper.toByteArray(existingConfig));
+        ReplicationSerDeHelper.toByteArray(existingConfig));
     } catch (KeeperException ke) {
       throw new ReplicationException(
           "There was a problem trying to save changes to the replication peer " + id, ke);

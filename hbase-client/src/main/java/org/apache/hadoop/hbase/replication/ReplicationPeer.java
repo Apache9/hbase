@@ -20,9 +20,11 @@ package org.apache.hadoop.hbase.replication;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import com.google.common.base.Function;
 import com.google.common.collect.Maps;
+
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseInterfaceAudience;
@@ -116,6 +118,12 @@ public interface ReplicationPeer {
    * @return the replicable (table, cf-list) map
    */
   public Map<TableName, List<String>> getTableCFs();
+
+  /**
+   * Get replicable namespace set of this peer
+   * @return the replicable namespaces set
+   */
+  public Set<String> getNamespaces();
 
   /**
    * Get the replication source per node bandwidth of this peer

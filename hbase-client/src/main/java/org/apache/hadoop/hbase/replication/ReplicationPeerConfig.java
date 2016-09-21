@@ -18,10 +18,14 @@
 
 package org.apache.hadoop.hbase.replication;
 
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 
+import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.classification.InterfaceStability;
 import org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos;
@@ -41,13 +45,13 @@ public class ReplicationPeerConfig {
   private ReplicationState.State state = ReplicationState.State.ENABLED;
   private final Map<byte[], byte[]> peerData;
   private final Map<String, String> configuration;
-  private ZooKeeperProtos.TableCFs tableCFs;
+  private Map<TableName, ? extends Collection<String>> tableCFsMap = null;
   private long bandwidth = 0;
+  private Set<String> namespaces = null;
 
   public ReplicationPeerConfig() {
     this.peerData = new TreeMap<byte[], byte[]>(Bytes.BYTES_COMPARATOR);
     this.configuration = new HashMap<String, String>(0);
-    this.tableCFs = ZooKeeperProtos.TableCFs.newBuilder().build();
   }
 
   /**
@@ -109,12 +113,23 @@ public class ReplicationPeerConfig {
     return state;
   }
 
-  public ZooKeeperProtos.TableCFs getTableCFs() {
-    return tableCFs;
+  public Map<TableName, List<String>> getTableCFsMap() {
+    return (Map<TableName, List<String>>) tableCFsMap;
   }
 
-  public void setTableCFs(ZooKeeperProtos.TableCFs tableCFs) {
-    this.tableCFs = tableCFs;
+  public ReplicationPeerConfig setTableCFsMap(
+      Map<TableName, ? extends Collection<String>> tableCFsMap) {
+    this.tableCFsMap = tableCFsMap;
+    return this;
+  }
+
+  public Set<String> getNamespaces() {
+    return namespaces;
+  }
+
+  public ReplicationPeerConfig setNamespaces(Set<String> namespaces) {
+    this.namespaces = namespaces;
+    return this;
   }
 
   public long getBandwidth() {
@@ -129,7 +144,12 @@ public class ReplicationPeerConfig {
   public String toString() {
     StringBuilder builder = new StringBuilder("clusterKey=").append(clusterKey).append(",");
     builder.append("state=").append(state).append(",");
-    builder.append("tableCFs=").append(tableCFs.toString()).append(",");
+    if (namespaces != null) {
+      builder.append("namespaces=").append(namespaces.toString()).append(",");
+    }
+    if (tableCFsMap != null) {
+      builder.append("tableCFs=").append(tableCFsMap.toString());
+    }
     builder.append("rpcProtocol=").append(protocol.name()).append(",");
     builder.append("bandwidth=").append(bandwidth);
     return builder.toString();

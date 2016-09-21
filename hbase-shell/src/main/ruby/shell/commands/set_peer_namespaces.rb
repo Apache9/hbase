@@ -20,33 +20,33 @@
 
 module Shell
   module Commands
-    class ListPeers< Command
+    class SetPeerNamespaces< Command
       def help
         return <<-EOF
-List all replication peer clusters.
+  Set the replicable namespaces config for the specified peer.
 
-  hbase> list_peers
-EOF
+  Set a namespace in the peer config means that all tables in this
+  namespace will be replicated to the peer cluster. So if you already
+  have set a namespace in the peer config, then you can't set this
+  namespace's tables in the peer config again.
+
+  Examples:
+
+    # set namespaces config is null, then the table-cfs config decide
+    # which table to be replicated.
+    hbase> set_peer_namespaces '1', []
+    # set namespaces to be replicable for a peer.
+    # set a namespace in the peer config means that all tables in this
+    # namespace (with replication_scope != 0 ) will be replicated.
+    hbase> set_peer_namespaces '2', ["ns1", "ns2"]
+
+  EOF
       end
 
-      def command()
-        now = Time.now
-        peers = replication_admin.list_peers
-
-        formatter.header(["PEER_ID", "CLUSTER_KEY", "STATE", "NAMESPACES",
-          "TABLE_CFS", "PROTOCOL", "BANDWIDTH"])
-
-        peers.entrySet().each do |e|
-          state = replication_admin.get_peer_state(e.key)
-          namespaces = replication_admin.show_peer_namespaces(e.value)
-          tableCFs = replication_admin.show_peer_tableCFs(e.key)
-          protocol = e.value.getProtocol().getProtocol()
-          bandwidth = e.value.getBandwidth()
-          formatter.row([ e.key, e.value.getClusterKey, state, namespaces,
-            tableCFs, protocol, bandwidth ])
+      def command(id, namespaces)
+        format_simple_command do
+          replication_admin.set_peer_namespaces(id, namespaces)
         end
-
-        formatter.footer(now)
       end
     end
   end
