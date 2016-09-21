@@ -73,7 +73,7 @@ public class NettyHBaseSaslRpcClientHandler extends SimpleChannelInboundHandler<
       return;
     }
     saslRpcClient.setupSaslHandler(ctx.pipeline());
-    saslPromise.setSuccess(true);
+    saslPromise.trySuccess(true);
   }
 
   @Override
@@ -98,14 +98,21 @@ public class NettyHBaseSaslRpcClientHandler extends SimpleChannelInboundHandler<
   }
 
   @Override
+  public void channelInactive(ChannelHandlerContext ctx) {
+    saslRpcClient.dispose();
+    saslPromise.tryFailure(new IOException("Connection closed"));
+    ctx.fireChannelInactive();
+  }
+
+  @Override
   protected void channelRead0(ChannelHandlerContext ctx, ByteBuf msg) throws Exception {
     int len = msg.readInt();
     if (len == SaslUtil.SWITCH_TO_SIMPLE_AUTH) {
       saslRpcClient.dispose();
       if (saslRpcClient.fallbackAllowed) {
-        saslPromise.setSuccess(false);
+        saslPromise.trySuccess(false);
       } else {
-        saslPromise.setFailure(new FallbackDisallowedException());
+        saslPromise.tryFailure(new FallbackDisallowedException());
       }
       return;
     }
@@ -130,6 +137,6 @@ public class NettyHBaseSaslRpcClientHandler extends SimpleChannelInboundHandler<
   @Override
   public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
     saslRpcClient.dispose();
-    saslPromise.setFailure(cause);
+    saslPromise.tryFailure(cause);
   }
 }
