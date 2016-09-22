@@ -97,10 +97,10 @@ public class TestZooKeeperNodeTracker {
     Abortable abortable = new StubAbortable();
     ZooKeeperWatcher zk = new ZooKeeperWatcher(TEST_UTIL.getConfiguration(),
         "testNodeTracker", abortable);
-    ZKUtil.createAndFailSilent(zk, zk.baseZNode);
+    ZKUtil.createAndFailSilent(zk, zk.znodePaths.baseZNode);
 
     final String node =
-      ZKUtil.joinZNode(zk.baseZNode, new Long(rand.nextLong()).toString());
+      ZKUtil.joinZNode(zk.znodePaths.baseZNode, new Long(rand.nextLong()).toString());
 
     final byte [] dataOne = Bytes.toBytes("dataOne");
     final byte [] dataTwo = Bytes.toBytes("dataTwo");

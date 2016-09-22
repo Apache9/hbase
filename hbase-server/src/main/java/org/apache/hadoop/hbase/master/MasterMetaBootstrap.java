@@ -243,7 +243,7 @@ public class MasterMetaBootstrap {
   private Set<ServerName> getPreviouselyFailedMetaServersFromZK() throws KeeperException {
     final ZooKeeperWatcher zooKeeper = master.getZooKeeper();
     Set<ServerName> result = new HashSet<ServerName>();
-    String metaRecoveringZNode = ZKUtil.joinZNode(zooKeeper.recoveringRegionsZNode,
+    String metaRecoveringZNode = ZKUtil.joinZNode(zooKeeper.znodePaths.recoveringRegionsZNode,
       HRegionInfo.FIRST_META_REGIONINFO.getEncodedName());
     List<String> regionFailedServers = ZKUtil.listChildrenNoWatch(zooKeeper, metaRecoveringZNode);
     if (regionFailedServers == null) return result;

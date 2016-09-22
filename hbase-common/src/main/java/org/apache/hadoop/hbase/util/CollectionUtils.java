@@ -22,6 +22,8 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.ConcurrentMap;
+import java.util.function.Supplier;
 
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 
@@ -31,14 +33,13 @@ import org.apache.hadoop.hbase.classification.InterfaceAudience;
 @InterfaceAudience.Private
 public class CollectionUtils {
 
-  private static final List<Object> EMPTY_LIST = Collections.unmodifiableList(
-    new ArrayList<Object>(0));
+  private static final List<Object> EMPTY_LIST = Collections
+      .unmodifiableList(new ArrayList<Object>(0));
 
-  
   @SuppressWarnings("unchecked")
   public static <T> Collection<T> nullSafe(Collection<T> in) {
     if (in == null) {
-      return (Collection<T>)EMPTY_LIST;
+      return (Collection<T>) EMPTY_LIST;
     }
     return in;
   }
@@ -77,24 +78,24 @@ public class CollectionUtils {
     }
     return null;
   }
-  
+
   /**
    * @param list any list
    * @return -1 if list is empty, otherwise the max index
    */
-  public static int getLastIndex(List<?> list){
-    if(isEmpty(list)){
+  public static int getLastIndex(List<?> list) {
+    if (isEmpty(list)) {
       return -1;
     }
     return list.size() - 1;
   }
-  
+
   /**
    * @param list
    * @param index the index in question
    * @return true if it is the last index or if list is empty and -1 is passed for the index param
    */
-  public static boolean isLastIndex(List<?> list, int index){
+  public static boolean isLastIndex(List<?> list, int index) {
     return index == getLastIndex(list);
   }
 
@@ -103,5 +104,18 @@ public class CollectionUtils {
       return null;
     }
     return list.get(list.size() - 1);
+  }
+
+  /**
+   * In HBASE-16648 we found that ConcurrentHashMap.get is much faster than computeIfAbsent if the
+   * value already exists. So here we copy the implementation of
+   * {@link ConcurrentMap#computeIfAbsent(Object, java.util.function.Function)} here. It uses get
+   * and putIfAbsent to implement computeIfAbsent. And notice that the implementation does not
+   * guarantee that the supplier will only be executed once.
+   */
+  public static <K, V> V computeIfAbsent(ConcurrentMap<K, V> map, K key, Supplier<V> supplier) {
+    V v, newValue;
+    return ((v = map.get(key)) == null && (newValue = supplier.get()) != null
+        && (v = map.putIfAbsent(key, newValue)) == null) ? newValue : v;
   }
 }

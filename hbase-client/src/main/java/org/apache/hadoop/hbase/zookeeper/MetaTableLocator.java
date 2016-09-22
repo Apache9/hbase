@@ -204,7 +204,7 @@ public class MetaTableLocator {
   public ServerName waitMetaRegionLocation(ZooKeeperWatcher zkw, int replicaId, long timeout)
   throws InterruptedException, NotAllMetaRegionsOnlineException {
     try {
-      if (ZKUtil.checkExists(zkw, zkw.baseZNode) == -1) {
+      if (ZKUtil.checkExists(zkw, zkw.znodePaths.baseZNode) == -1) {
         String errorMsg = "Check the value configured in 'zookeeper.znode.parent'. "
             + "There could be a mismatch with the one configured in the master.";
         LOG.error(errorMsg);

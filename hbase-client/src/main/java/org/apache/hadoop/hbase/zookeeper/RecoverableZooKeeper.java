@@ -352,7 +352,7 @@ public class RecoverableZooKeeper {
       while (true) {
         try {
           byte[] revData = checkZk().getData(path, watcher, stat);
-          return this.removeMetaData(revData);
+          return removeMetaData(revData);
         } catch (KeeperException e) {
           switch (e.code()) {
             case CONNECTIONLOSS:
@@ -384,7 +384,7 @@ public class RecoverableZooKeeper {
       while (true) {
         try {
           byte[] revData = checkZk().getData(path, watch, stat);
-          return this.removeMetaData(revData);
+          return removeMetaData(revData);
         } catch (KeeperException e) {
           switch (e.code()) {
             case CONNECTIONLOSS:
@@ -707,19 +707,19 @@ public class RecoverableZooKeeper {
     return null;
   }
 
-  public byte[] removeMetaData(byte[] data) {
-    if(data == null || data.length == 0) {
+  public static byte[] removeMetaData(byte[] data) {
+    if (data == null || data.length == 0) {
       return data;
     }
     // check the magic data; to be backward compatible
     byte magic = data[0];
-    if(magic != MAGIC) {
+    if (magic != MAGIC) {
       return data;
     }
 
     int idLength = Bytes.toInt(data, ID_LENGTH_OFFSET);
-    int dataLength = data.length-MAGIC_SIZE-ID_LENGTH_SIZE-idLength;
-    int dataOffset = MAGIC_SIZE+ID_LENGTH_SIZE+idLength;
+    int dataLength = data.length - MAGIC_SIZE - ID_LENGTH_SIZE - idLength;
+    int dataOffset = MAGIC_SIZE + ID_LENGTH_SIZE + idLength;
 
     byte[] newData = new byte[dataLength];
     System.arraycopy(data, dataOffset, newData, 0, dataLength);

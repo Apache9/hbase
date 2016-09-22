@@ -104,7 +104,7 @@ import com.google.protobuf.ServiceException;
     value="AT_OPERATION_SEQUENCE_ON_CONCURRENT_ABSTRACTION",
     justification="Access to the conncurrent hash map is under a lock so should be fine.")
 @InterfaceAudience.Private
-class ConnectionImplementation implements ClusterConnection, Closeable {
+public class ConnectionImplementation implements ClusterConnection, Closeable {
   public static final String RETRIES_BY_SERVER_KEY = "hbase.client.retries.by.server";
   private static final Log LOG = LogFactory.getLog(ConnectionImplementation.class);
   private static final String CLIENT_NONCES_ENABLED_KEY = "hbase.client.nonces.enabled";
@@ -457,8 +457,8 @@ class ConnectionImplementation implements ClusterConnection, Closeable {
     throws MasterNotRunningException {
     String errorMsg;
     try {
-      if (ZKUtil.checkExists(zkw, zkw.baseZNode) == -1) {
-        errorMsg = "The node " + zkw.baseZNode+" is not in ZooKeeper. "
+      if (ZKUtil.checkExists(zkw, zkw.znodePaths.baseZNode) == -1) {
+        errorMsg = "The node " + zkw.znodePaths.baseZNode+" is not in ZooKeeper. "
           + "It should have been written by the master. "
           + "Check the value configured in 'zookeeper.znode.parent'. "
           + "There could be a mismatch with the one configured in the master.";

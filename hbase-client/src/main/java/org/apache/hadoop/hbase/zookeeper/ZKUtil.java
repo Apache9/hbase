@@ -903,7 +903,7 @@ public class ZKUtil {
 
   public static ArrayList<ACL> createACL(ZooKeeperWatcher zkw, String node,
     boolean isSecureZooKeeper) {
-    if (!node.startsWith(zkw.baseZNode)) {
+    if (!node.startsWith(zkw.znodePaths.baseZNode)) {
       return Ids.OPEN_ACL_UNSAFE;
     }
     if (isSecureZooKeeper) {
@@ -1703,7 +1703,7 @@ public class ZKUtil {
   public static String dump(ZooKeeperWatcher zkw) {
     StringBuilder sb = new StringBuilder();
     try {
-      sb.append("HBase is rooted at ").append(zkw.baseZNode);
+      sb.append("HBase is rooted at ").append(zkw.znodePaths.baseZNode);
       sb.append("\nActive master address: ");
       try {
         sb.append(MasterAddressTracker.getMasterAddress(zkw));
@@ -1711,8 +1711,7 @@ public class ZKUtil {
         sb.append("<<FAILED LOOKUP: " + e.getMessage() + ">>");
       }
       sb.append("\nBackup master addresses:");
-      for (String child : listChildrenNoWatch(zkw,
-                                              zkw.backupMasterAddressesZNode)) {
+      for (String child : listChildrenNoWatch(zkw, zkw.znodePaths.backupMasterAddressesZNode)) {
         sb.append("\n ").append(child);
       }
       sb.append("\nRegion server holding hbase:meta: "
@@ -1725,7 +1724,7 @@ public class ZKUtil {
                     + new MetaTableLocator().getMetaRegionLocation(zkw, i));
       }
       sb.append("\nRegion servers:");
-      for (String child : listChildrenNoWatch(zkw, zkw.rsZNode)) {
+      for (String child : listChildrenNoWatch(zkw, zkw.znodePaths.rsZNode)) {
         sb.append("\n ").append(child);
       }
       try {
@@ -1769,7 +1768,7 @@ public class ZKUtil {
       throws KeeperException {
     String replicationZNodeName = zkw.getConfiguration().get("zookeeper.znode.replication",
       "replication");
-    String replicationZnode = joinZNode(zkw.baseZNode, replicationZNodeName);
+    String replicationZnode = joinZNode(zkw.znodePaths.baseZNode, replicationZNodeName);
     if (ZKUtil.checkExists(zkw, replicationZnode) == -1) return;
     // do a ls -r on this znode
     sb.append("\n").append(replicationZnode).append(": ");
@@ -1950,9 +1949,9 @@ public class ZKUtil {
       " byte(s) of data from znode " + znode +
       (watcherSet? " and set watcher; ": "; data=") +
       (data == null? "null": data.length == 0? "empty": (
-          znode.startsWith(ZooKeeperWatcher.META_ZNODE_PREFIX)?
+          znode.startsWith(ZNodePaths.META_ZNODE_PREFIX)?
             getServerNameOrEmptyString(data):
-          znode.startsWith(zkw.backupMasterAddressesZNode)?
+          znode.startsWith(zkw.znodePaths.backupMasterAddressesZNode)?
             getServerNameOrEmptyString(data):
           StringUtils.abbreviate(Bytes.toStringBinary(data), 32)))));
   }

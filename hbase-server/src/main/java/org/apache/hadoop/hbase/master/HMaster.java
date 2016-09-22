@@ -768,7 +768,7 @@ public class HMaster extends HRegionServer implements MasterServices {
       LOG.info("Converting state from zk to new states:" + entry);
       tableStateManager.setTableState(entry.getKey(), entry.getValue());
     }
-    ZKUtil.deleteChildrenRecursively(getZooKeeper(), getZooKeeper().tableZNode);
+    ZKUtil.deleteChildrenRecursively(getZooKeeper(), getZooKeeper().znodePaths.tableZNode);
 
     status.setStatus("Submitting log splitting work for previously failed region servers");
     metaBootstrap.processDeadServers();
@@ -1693,7 +1693,7 @@ public class HMaster extends HRegionServer implements MasterServices {
 
   private void startActiveMasterManager(int infoPort) throws KeeperException {
     String backupZNode = ZKUtil.joinZNode(
-      zooKeeper.backupMasterAddressesZNode, serverName.toString());
+      zooKeeper.znodePaths.backupMasterAddressesZNode, serverName.toString());
     /*
     * Add a ZNode for ourselves in the backup master directory since we
     * may not become the active master. If so, we want the actual active
@@ -2093,7 +2093,7 @@ public class HMaster extends HRegionServer implements MasterServices {
     List<String> backupMasterStrings;
     try {
       backupMasterStrings = ZKUtil.listChildrenNoWatch(this.zooKeeper,
-        this.zooKeeper.backupMasterAddressesZNode);
+        this.zooKeeper.znodePaths.backupMasterAddressesZNode);
     } catch (KeeperException e) {
       LOG.warn(this.zooKeeper.prefix("Unable to list backup servers"), e);
       backupMasterStrings = null;
@@ -2107,7 +2107,7 @@ public class HMaster extends HRegionServer implements MasterServices {
           byte [] bytes;
           try {
             bytes = ZKUtil.getData(this.zooKeeper, ZKUtil.joinZNode(
-                this.zooKeeper.backupMasterAddressesZNode, s));
+                this.zooKeeper.znodePaths.backupMasterAddressesZNode, s));
           } catch (InterruptedException e) {
             throw new InterruptedIOException();
           }

@@ -1227,6 +1227,7 @@
     <checkstyle.version>6.18</checkstyle.version>
     <javadoc.version>2.10.3</javadoc.version>
     <asciidoctor.plugin.version>1.5.2.1</asciidoctor.plugin.version>
+    <curator.version>2.11.0</curator.version>
     <!-- General Packaging -->
     <package.prefix>/usr</package.prefix>
     <package.conf.dir>/etc/hbase</package.conf.dir>
@@ -1765,28 +1766,39 @@
         <artifactId>disruptor</artifactId>
         <version>${disruptor.version}</version>
       </dependency>
-        <dependency>
+      <dependency>
         <groupId>net.spy</groupId>
         <artifactId>spymemcached</artifactId>
         <version>${spy.version}</version>
         <optional>true</optional>
-    </dependency>
-     <dependency>
-       <groupId>org.bouncycastle</groupId>
-       <artifactId>bcprov-jdk16</artifactId>
-       <version>${bouncycastle.version}</version>
-       <scope>test</scope>
-     </dependency>
-     <dependency>
-       <groupId>org.apache.kerby</groupId>
-       <artifactId>kerb-client</artifactId>
-       <version>${kerby.version}</version>
-     </dependency>
-     <dependency>
-       <groupId>org.apache.kerby</groupId>
-       <artifactId>kerb-simplekdc</artifactId>
-       <version>${kerby.version}</version>
-     </dependency>
+      </dependency>
+      <dependency>
+        <groupId>org.bouncycastle</groupId>
+        <artifactId>bcprov-jdk16</artifactId>
+        <version>${bouncycastle.version}</version>
+        <scope>test</scope>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.kerby</groupId>
+        <artifactId>kerb-client</artifactId>
+        <version>${kerby.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.kerby</groupId>
+        <artifactId>kerb-simplekdc</artifactId>
+        <version>${kerby.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.curator</groupId>
+        <artifactId>curator-framework</artifactId>
+        <version>${curator.version}</version>
+        <exclusions>
+          <exclusion>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+          </exclusion>
+        </exclusions>
+      </dependency>
     </dependencies>
   </dependencyManagement>
   <!-- Dependencies needed by subprojects -->

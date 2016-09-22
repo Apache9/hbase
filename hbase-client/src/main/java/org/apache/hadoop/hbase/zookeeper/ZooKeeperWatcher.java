@@ -21,9 +21,7 @@ package org.apache.hadoop.hbase.zookeeper;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.regex.Matcher;
@@ -34,7 +32,6 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Abortable;
 import org.apache.hadoop.hbase.AuthUtil;
-import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.ZooKeeperConnectionException;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
@@ -89,44 +86,7 @@ public class ZooKeeperWatcher implements Watcher, Abortable, Closeable {
   public CountDownLatch saslLatch = new CountDownLatch(1);
 
   // node names
-
-  // base znode for this cluster
-  public String baseZNode;
-  //znodes containing the locations of the servers hosting the meta replicas
-  private Map<Integer,String> metaReplicaZnodes = new HashMap<Integer, String>();
-  // znode containing ephemeral nodes of the regionservers
-  public String rsZNode;
-  // znode containing ephemeral nodes of the draining regionservers
-  public String drainingZNode;
-  // znode of currently active master
-  private String masterAddressZNode;
-  // znode of this master in backup master directory, if not the active master
-  public String backupMasterAddressesZNode;
-  // znode containing the current cluster state
-  public String clusterStateZNode;
-  // znode used for table disabling/enabling
-  @Deprecated
-  public String tableZNode;
-  // znode containing the unique cluster ID
-  public String clusterIdZNode;
-  // znode used for log splitting work assignment
-  public String splitLogZNode;
-  // znode containing the state of the load balancer
-  public String balancerZNode;
-  // znode containing the state of region normalizer
-  private String regionNormalizerZNode;
-  // znode containing the state of all switches, currently there are split and merge child node.
-  private String switchZNode;
-  // znode containing the lock for the tables
-  public String tableLockZNode;
-  // znode containing the state of recovering regions
-  public String recoveringRegionsZNode;
-  // znode containing namespace descriptors
-  public String namespaceZNode = "namespace";
-  // znode of indicating master maintenance mode
-  public static String masterMaintZNode = "masterMaintenance";
-
-  public final static String META_ZNODE_PREFIX = "meta-region-server";
+  public final ZNodePaths znodePaths;
 
   private final Configuration conf;
 
@@ -166,7 +126,7 @@ public class ZooKeeperWatcher implements Watcher, Abortable, Closeable {
     // handle the syncconnect event.
     this.identifier = identifier + "0x0";
     this.abortable = abortable;
-    setNodeNames(conf);
+    this.znodePaths = new ZNodePaths(conf);
     PendingWatcher pendingWatcher = new PendingWatcher();
     this.recoverableZooKeeper = ZKUtil.connect(conf, quorum, pendingWatcher, identifier);
     pendingWatcher.prepare(this);
@@ -188,15 +148,15 @@ public class ZooKeeperWatcher implements Watcher, Abortable, Closeable {
   private void createBaseZNodes() throws ZooKeeperConnectionException {
     try {
       // Create all the necessary "directories" of znodes
-      ZKUtil.createWithParents(this, baseZNode);
-      ZKUtil.createAndFailSilent(this, rsZNode);
-      ZKUtil.createAndFailSilent(this, drainingZNode);
-      ZKUtil.createAndFailSilent(this, tableZNode);
-      ZKUtil.createAndFailSilent(this, splitLogZNode);
-      ZKUtil.createAndFailSilent(this, backupMasterAddressesZNode);
-      ZKUtil.createAndFailSilent(this, tableLockZNode);
-      ZKUtil.createAndFailSilent(this, recoveringRegionsZNode);
-      ZKUtil.createAndFailSilent(this, masterMaintZNode);
+      ZKUtil.createWithParents(this, znodePaths.baseZNode);
+      ZKUtil.createAndFailSilent(this, znodePaths.rsZNode);
+      ZKUtil.createAndFailSilent(this, znodePaths.drainingZNode);
+      ZKUtil.createAndFailSilent(this, znodePaths.tableZNode);
+      ZKUtil.createAndFailSilent(this, znodePaths.splitLogZNode);
+      ZKUtil.createAndFailSilent(this, znodePaths.backupMasterAddressesZNode);
+      ZKUtil.createAndFailSilent(this, znodePaths.tableLockZNode);
+      ZKUtil.createAndFailSilent(this, znodePaths.recoveringRegionsZNode);
+      ZKUtil.createAndFailSilent(this, ZNodePaths.masterMaintZNode);
     } catch (KeeperException e) {
       throw new ZooKeeperConnectionException(
           prefix("Unexpected KeeperException creating base node"), e);
@@ -210,14 +170,14 @@ public class ZooKeeperWatcher implements Watcher, Abortable, Closeable {
     // all clients need to access this data to work. Using zk for sharing data to clients (other
     // than service lookup case is not a recommended design pattern.
     return
-        node.equals(baseZNode) ||
+        node.equals(znodePaths.baseZNode) ||
         isAnyMetaReplicaZnode(node) ||
         node.equals(getMasterAddressZNode()) ||
-        node.equals(clusterIdZNode)||
-        node.equals(rsZNode) ||
+        node.equals(znodePaths.clusterIdZNode)||
+        node.equals(znodePaths.rsZNode) ||
         // /hbase/table and /hbase/table/foo is allowed, /hbase/table-lock is not
-        node.equals(tableZNode) ||
-        node.startsWith(tableZNode + "/");
+        node.equals(znodePaths.tableZNode) ||
+        node.startsWith(znodePaths.tableZNode + "/");
   }
 
   /**
@@ -235,11 +195,11 @@ public class ZooKeeperWatcher implements Watcher, Abortable, Closeable {
     // Check the base znodes permission first. Only do the recursion if base znode's perms are not
     // correct.
     try {
-      List<ACL> actualAcls = recoverableZooKeeper.getAcl(baseZNode, new Stat());
+      List<ACL> actualAcls = recoverableZooKeeper.getAcl(znodePaths.baseZNode, new Stat());
 
       if (!isBaseZnodeAclSetup(actualAcls)) {
         LOG.info("setting znode ACLs");
-        setZnodeAclsRecursive(baseZNode);
+        setZnodeAclsRecursive(znodePaths.baseZNode);
       }
     } catch(KeeperException.NoNodeException nne) {
       return;
@@ -390,7 +350,7 @@ public class ZooKeeperWatcher implements Watcher, Abortable, Closeable {
 
   @Override
   public String toString() {
-    return this.identifier + ", quorum=" + quorum + ", baseZNode=" + baseZNode;
+    return this.identifier + ", quorum=" + quorum + ", baseZNode=" + znodePaths.baseZNode;
   }
 
   /**
@@ -404,58 +364,12 @@ public class ZooKeeperWatcher implements Watcher, Abortable, Closeable {
   }
 
   /**
-   * Set the local variable node names using the specified configuration.
-   */
-  private void setNodeNames(Configuration conf) {
-    baseZNode = conf.get(HConstants.ZOOKEEPER_ZNODE_PARENT,
-        HConstants.DEFAULT_ZOOKEEPER_ZNODE_PARENT);
-    metaReplicaZnodes.put(0, ZKUtil.joinZNode(baseZNode,
-           conf.get("zookeeper.znode.metaserver", "meta-region-server")));
-    int numMetaReplicas = conf.getInt(HConstants.META_REPLICAS_NUM,
-            HConstants.DEFAULT_META_REPLICA_NUM);
-    for (int i = 1; i < numMetaReplicas; i++) {
-      String str = ZKUtil.joinZNode(baseZNode,
-        conf.get("zookeeper.znode.metaserver", "meta-region-server") + "-" + i);
-      metaReplicaZnodes.put(i, str);
-    }
-    rsZNode = ZKUtil.joinZNode(baseZNode,
-        conf.get("zookeeper.znode.rs", "rs"));
-    drainingZNode = ZKUtil.joinZNode(baseZNode,
-        conf.get("zookeeper.znode.draining.rs", "draining"));
-    masterAddressZNode = ZKUtil.joinZNode(baseZNode,
-        conf.get("zookeeper.znode.master", "master"));
-    backupMasterAddressesZNode = ZKUtil.joinZNode(baseZNode,
-        conf.get("zookeeper.znode.backup.masters", "backup-masters"));
-    clusterStateZNode = ZKUtil.joinZNode(baseZNode,
-        conf.get("zookeeper.znode.state", "running"));
-    tableZNode = ZKUtil.joinZNode(baseZNode,
-        conf.get("zookeeper.znode.tableEnableDisable", "table"));
-    clusterIdZNode = ZKUtil.joinZNode(baseZNode,
-        conf.get("zookeeper.znode.clusterId", "hbaseid"));
-    splitLogZNode = ZKUtil.joinZNode(baseZNode,
-        conf.get("zookeeper.znode.splitlog", HConstants.SPLIT_LOGDIR_NAME));
-    balancerZNode = ZKUtil.joinZNode(baseZNode,
-        conf.get("zookeeper.znode.balancer", "balancer"));
-    regionNormalizerZNode = ZKUtil.joinZNode(baseZNode,
-      conf.get("zookeeper.znode.regionNormalizer", "normalizer"));
-    switchZNode = ZKUtil.joinZNode(baseZNode, conf.get("zookeeper.znode.switch", "switch"));
-    tableLockZNode = ZKUtil.joinZNode(baseZNode,
-        conf.get("zookeeper.znode.tableLock", "table-lock"));
-    recoveringRegionsZNode = ZKUtil.joinZNode(baseZNode,
-        conf.get("zookeeper.znode.recovering.regions", "recovering-regions"));
-    namespaceZNode = ZKUtil.joinZNode(baseZNode,
-        conf.get("zookeeper.znode.namespace", "namespace"));
-    masterMaintZNode = ZKUtil.joinZNode(baseZNode,
-      conf.get("zookeeper.znode.masterMaintenance", "master-maintenance"));
-  }
-
-  /**
    * Is the znode of any meta replica
    * @param node
    * @return true or false
    */
   public boolean isAnyMetaReplicaZnode(String node) {
-    if (metaReplicaZnodes.values().contains(node)) {
+    if (znodePaths.metaReplicaZNodes.values().contains(node)) {
       return true;
     }
     return false;
@@ -479,7 +393,7 @@ public class ZooKeeperWatcher implements Watcher, Abortable, Closeable {
    * @throws KeeperException
    */
   public List<String> getMetaReplicaNodes() throws KeeperException {
-    List<String> childrenOfBaseNode = ZKUtil.listChildrenNoWatch(this, baseZNode);
+    List<String> childrenOfBaseNode = ZKUtil.listChildrenNoWatch(this, znodePaths.baseZNode);
     List<String> metaReplicaNodes = new ArrayList<String>(2);
     String pattern = conf.get("zookeeper.znode.metaserver","meta-region-server");
     for (String child : childrenOfBaseNode) {
@@ -494,12 +408,12 @@ public class ZooKeeperWatcher implements Watcher, Abortable, Closeable {
    * @return znode
    */
   public String getZNodeForReplica(int replicaId) {
-    String str = metaReplicaZnodes.get(replicaId);
+    String str = znodePaths.metaReplicaZNodes.get(replicaId);
     // return a newly created path but don't update the cache of paths
     // This is mostly needed for tests that attempt to create meta replicas
     // from outside the master
     if (str == null) {
-      str = ZKUtil.joinZNode(baseZNode,
+      str = ZKUtil.joinZNode(znodePaths.baseZNode,
           conf.get("zookeeper.znode.metaserver", "meta-region-server") + "-" + replicaId);
     }
     return str;
@@ -584,7 +498,7 @@ public class ZooKeeperWatcher implements Watcher, Abortable, Closeable {
    * @return the base znode of this zookeeper connection instance.
    */
   public String getBaseZNode() {
-    return baseZNode;
+    return znodePaths.baseZNode;
   }
 
   /**
@@ -768,20 +682,20 @@ public class ZooKeeperWatcher implements Watcher, Abortable, Closeable {
    * @return Path to the currently active master.
    */
   public String getMasterAddressZNode() {
-    return this.masterAddressZNode;
+    return this.znodePaths.masterAddressZNode;
   }
 
   /**
    * @return ZooKeeper znode for region normalizer state
    */
   public String getRegionNormalizerZNode() {
-    return regionNormalizerZNode;
+    return znodePaths.regionNormalizerZNode;
   }
 
   /**
    *  @return ZK node for switch
    * */
   public String getSwitchZNode() {
-    return switchZNode;
+    return znodePaths.switchZNode;
   }
 }

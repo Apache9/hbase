@@ -73,7 +73,7 @@ public class TestActiveMasterManager {
       "testActiveMasterManagerFromZK", null, true);
     try {
       ZKUtil.deleteNode(zk, zk.getMasterAddressZNode());
-      ZKUtil.deleteNode(zk, zk.clusterStateZNode);
+      ZKUtil.deleteNode(zk, zk.znodePaths.clusterStateZNode);
     } catch(KeeperException.NoNodeException nne) {}
 
     // Create the master node with a dummy address
@@ -115,7 +115,7 @@ public class TestActiveMasterManager {
       "testActiveMasterManagerFromZK", null, true);
     try {
       ZKUtil.deleteNode(zk, zk.getMasterAddressZNode());
-      ZKUtil.deleteNode(zk, zk.clusterStateZNode);
+      ZKUtil.deleteNode(zk, zk.znodePaths.clusterStateZNode);
     } catch(KeeperException.NoNodeException nne) {}
 
     // Create the master node with a dummy address

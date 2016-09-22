@@ -82,7 +82,7 @@ public class TestMasterAddressTracker {
       throws Exception {
     ZooKeeperWatcher zk = new ZooKeeperWatcher(TEST_UTIL.getConfiguration(),
         name.getMethodName(), null);
-    ZKUtil.createAndFailSilent(zk, zk.baseZNode);
+    ZKUtil.createAndFailSilent(zk, zk.znodePaths.baseZNode);
 
     // Should not have a master yet
     MasterAddressTracker addressTracker = new MasterAddressTracker(zk, null);

@@ -91,7 +91,7 @@ public class ActiveMasterManager extends ZooKeeperListener {
     // shut down, so that state is now irrelevant. This means that the shutdown
     // state must be set while we wait on the active master in order
     // to shutdown this master. See HBASE-8519.
-    if(path.equals(watcher.clusterStateZNode) && !master.isStopped()) {
+    if (path.equals(watcher.znodePaths.clusterStateZNode) && !master.isStopped()) {
       clusterShutDown.set(true);
     }
 
@@ -155,7 +155,7 @@ public class ActiveMasterManager extends ZooKeeperListener {
   boolean blockUntilBecomingActiveMaster(
       int checkInterval, MonitoredTask startupStatus) {
     String backupZNode = ZKUtil.joinZNode(
-      this.watcher.backupMasterAddressesZNode, this.sn.toString());
+      this.watcher.znodePaths.backupMasterAddressesZNode, this.sn.toString());
     while (!(master.isAborted() || master.isStopped())) {
       startupStatus.setStatus("Trying to register in ZK as active master");
       // Try to become the active master, watch if there is another master.
