@@ -105,7 +105,7 @@ public class TestTableCFsUpdater extends TableCFsUpdater {
     String actualTableCfs = Bytes.toString(ZKUtil.getData(zkw, tableCFsNode));
 
     assertEquals(rpc.getClusterKey(), actualRpc.getClusterKey());
-    assertEquals(0, actualRpc.getTableCFsMap().size());
+    assertNull(actualRpc.getTableCFsMap());
     assertEquals(tableCFs, actualTableCfs);
 
     peerId = "2";
@@ -123,7 +123,7 @@ public class TestTableCFsUpdater extends TableCFsUpdater {
     actualTableCfs = Bytes.toString(ZKUtil.getData(zkw, tableCFsNode));
 
     assertEquals(rpc.getClusterKey(), actualRpc.getClusterKey());
-    assertEquals(0, actualRpc.getTableCFsMap().size());
+    assertNull(actualRpc.getTableCFsMap());
     assertEquals(tableCFs, actualTableCfs);
 
 

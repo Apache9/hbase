@@ -19,12 +19,14 @@
 package org.apache.hadoop.hbase.replication.regionserver;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-
 import org.apache.hadoop.hbase.testclassification.SmallTests;
+import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
+import org.apache.hadoop.hbase.util.EnvironmentEdgeManagerTestHelper;
+import org.apache.hadoop.hbase.util.ManualEnvironmentEdge;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
@@ -32,6 +34,15 @@ import org.junit.experimental.categories.Category;
 public class TestReplicationThrottler {
 
   private static final Log LOG = LogFactory.getLog(TestReplicationThrottler.class);
+
+  private static ManualEnvironmentEdge envEdge;
+
+  @BeforeClass
+  public static void setUpBeforeClass() throws Exception {
+    envEdge = new ManualEnvironmentEdge();
+    envEdge.setValue(EnvironmentEdgeManager.currentTimeMillis());
+    EnvironmentEdgeManagerTestHelper.injectEdge(envEdge);
+  }
 
   /**
    * unit test for throttling
@@ -64,8 +75,9 @@ public class TestReplicationThrottler {
     //    sleep 1000/100 = 10 cycles = 1s and make throttler2 sleep 1000/10
     //    = 100 cycles = 10s before the second push occurs -- amortize case
     //    after amortizing, both cycleStartTick and cyclePushSize are reset
-    assertTrue(ticks1 == 1000 || ticks1 == 999);
-    assertTrue(ticks2 == 10000 || ticks2 == 9999);
+    // Add 10% error range for unit test
+    assertEquals(1000, ticks1);
+    assertEquals(10000, ticks2);
 
     throttler1.resetStartTick();
     throttler2.resetStartTick();
@@ -81,8 +93,8 @@ public class TestReplicationThrottler {
     //    sleep, but can make throttler2 delay to next cycle
     // note: in real case, sleep time should cover time elapses during push
     //       operation
-    assertTrue(ticks1 == 0);
-    assertTrue(ticks2 == 100 || ticks2 == 99);
+    assertEquals(0, ticks1);
+    assertEquals(100, ticks2);
 
     throttler2.resetStartTick();
 
@@ -97,7 +109,7 @@ public class TestReplicationThrottler {
     //    ceiling(45/10)= 5 cycles = 500ms to amortize previous push
     // note: in real case, sleep time should cover time elapses during push
     //       operation
-    assertTrue(ticks1 == 100 || ticks1 == 99);
-    assertTrue(ticks2 == 500 || ticks2 == 499);
+    assertEquals(100, ticks1);
+    assertEquals(500, ticks2);
   }
 }
