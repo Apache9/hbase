@@ -41,19 +41,17 @@ import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HTableDescriptor;
-import org.apache.hadoop.hbase.testclassification.MediumTests;
+import org.apache.hadoop.hbase.testclassification.LargeTests;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.master.snapshot.SnapshotManager;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.SnapshotDescription;
-import org.apache.hadoop.hbase.protobuf.generated.SnapshotProtos.SnapshotFileInfo;
 import org.apache.hadoop.hbase.protobuf.generated.SnapshotProtos.SnapshotRegionManifest;
 import org.apache.hadoop.hbase.regionserver.HRegionFileSystem;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.FSUtils;
 import org.apache.hadoop.hbase.util.FSTableDescriptors;
-import org.apache.hadoop.hbase.util.Pair;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -64,7 +62,7 @@ import org.junit.experimental.categories.Category;
 /**
  * Test Export Snapshot Tool
  */
-@Category(MediumTests.class)
+@Category(LargeTests.class)
 public class TestExportSnapshot {
   private final Log LOG = LogFactory.getLog(getClass());
 
@@ -131,61 +129,6 @@ public class TestExportSnapshot {
     TEST_UTIL.deleteTable(tableName);
     SnapshotTestingUtils.deleteAllSnapshots(TEST_UTIL.getHBaseAdmin());
     SnapshotTestingUtils.deleteArchiveDirectory(TEST_UTIL);
-  }
-
-
-  /**
-   * Verfy the result of getBalanceSplits() method.
-   * The result are groups of files, used as input list for the "export" mappers.
-   * All the groups should have similar amount of data.
-   *
-   * The input list is a pair of file path and length.
-   * The getBalanceSplits() function sort it by length,
-   * and assign to each group a file, going back and forth through the groups.
-   */
-  @Test
-  public void testBalanceSplit() throws Exception {
-    // Create a list of files
-    List<Pair<SnapshotFileInfo, Long>> files = new ArrayList<Pair<SnapshotFileInfo, Long>>();
-    for (long i = 0; i <= 20; i++) {
-      SnapshotFileInfo fileInfo = SnapshotFileInfo.newBuilder()
-        .setType(SnapshotFileInfo.Type.HFILE)
-        .setHfile("file-" + i)
-        .build();
-      files.add(new Pair<SnapshotFileInfo, Long>(fileInfo, i));
-    }
-
-    // Create 5 groups (total size 210)
-    //    group 0: 20, 11, 10,  1 (total size: 42)
-    //    group 1: 19, 12,  9,  2 (total size: 42)
-    //    group 2: 18, 13,  8,  3 (total size: 42)
-    //    group 3: 17, 12,  7,  4 (total size: 42)
-    //    group 4: 16, 11,  6,  5 (total size: 42)
-    List<List<Pair<SnapshotFileInfo, Long>>> splits = ExportSnapshot.getBalancedSplits(files, 5);
-    assertEquals(5, splits.size());
-
-    String[] split0 = new String[] {"file-20", "file-11", "file-10", "file-1", "file-0"};
-    verifyBalanceSplit(splits.get(0), split0, 42);
-    String[] split1 = new String[] {"file-19", "file-12", "file-9",  "file-2"};
-    verifyBalanceSplit(splits.get(1), split1, 42);
-    String[] split2 = new String[] {"file-18", "file-13", "file-8",  "file-3"};
-    verifyBalanceSplit(splits.get(2), split2, 42);
-    String[] split3 = new String[] {"file-17", "file-14", "file-7",  "file-4"};
-    verifyBalanceSplit(splits.get(3), split3, 42);
-    String[] split4 = new String[] {"file-16", "file-15", "file-6",  "file-5"};
-    verifyBalanceSplit(splits.get(4), split4, 42);
-  }
-
-  private void verifyBalanceSplit(final List<Pair<SnapshotFileInfo, Long>> split,
-      final String[] expected, final long expectedSize) {
-    assertEquals(expected.length, split.size());
-    long totalSize = 0;
-    for (int i = 0; i < expected.length; ++i) {
-      Pair<SnapshotFileInfo, Long> fileInfo = split.get(i);
-      assertEquals(expected[i], fileInfo.getFirst().getHfile());
-      totalSize += fileInfo.getSecond();
-    }
-    assertEquals(expectedSize, totalSize);
   }
 
   /**
