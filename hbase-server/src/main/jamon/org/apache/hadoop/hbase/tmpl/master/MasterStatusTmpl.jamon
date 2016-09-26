@@ -538,6 +538,7 @@ AssignmentManager assignmentManager = master.getAssignmentManager();
         <th>State</th>
         <th>Protocol</th>
         <th>Bandwidth</th>
+        <th>Namespaces</th>
         <th>Table Cfs</th>
     </tr>
 <%if (allPeerConfigs != null && allPeerConfigs.size() > 0)%>
@@ -554,7 +555,12 @@ AssignmentManager assignmentManager = master.getAssignmentManager();
         <td><% peerConfig.getBandwidth() %></td>
         <td>
           <span class="more">
-            <% ReplicationSerDeHelper.convertToString(peerConfig.getTableCFsMap()).replaceAll(";", "; ") %>
+            <% peerConfig.getNamespaces() == null ? "" : ReplicationSerDeHelper.convertToString(peerConfig.getNamespaces()).replaceAll(";", "; ") %>
+          </span>
+        </td>
+        <td>
+          <span class="more">
+            <% peerConfig.getTableCFsMap() == null ? "" : ReplicationSerDeHelper.convertToString(peerConfig.getTableCFsMap()).replaceAll(";", "; ") %>
           </span>
         </td>
     </tr>
