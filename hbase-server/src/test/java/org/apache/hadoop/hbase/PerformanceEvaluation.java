@@ -1254,8 +1254,9 @@ public class PerformanceEvaluation extends Configured implements Tool {
     System.err.println(" flushCommits    Used to determine if the test should flush the table. " +
       "Default: false");
     System.err.println(" writeToWAL      Set writeToWAL on puts. Default: True");
-    System.err.println(" presplit        Create presplit table. Recommended for accurate perf " +
-      "analysis (see guide).  Default: disabled");
+    System.err.println(" presplit        Create presplit table. If a table with same name exists,"
+        + " it'll be deleted and recreated (instead of verifying count of its existing regions). "
+        + "Recommended for accurate perf analysis (see guide). Default: disabled");
     System.err.println(" inmemory        Tries to keep the HFiles of the CF " +
       "inmemory as far as possible. Not guaranteed that reads are always served " +
       "from memory.  Default: false");
@@ -1268,7 +1269,11 @@ public class PerformanceEvaluation extends Configured implements Tool {
         + " performance.  Uses FilterAllFilter internally. ");
     System.err.println(" latency         Set to report operation latencies. " +
       "Currently only supported by randomRead test. Default: False");
-    System.err.println(" bloomFilter      Bloom filter type, one of " + Arrays.toString(BloomType.values()));
+    System.err.println(" bloomFilter     Bloom filter type, one of " + Arrays.toString(BloomType.values()));
+    System.err.println(" multiGet        Batch gets together into groups of N. Only supported "
+        + "by randomRead. Default: disabled");
+    System.err.println(" blockEncoding   Block encoding to use. Value should be one of "
+        + Arrays.toString(DataBlockEncoding.values()) + ". Default: NONE");
     System.err.println();
     System.err.println(" Note: -D properties will be applied to the conf used. ");
     System.err.println("  For example: ");
