@@ -33,6 +33,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.commons.logging.Log;
@@ -281,11 +282,14 @@ public final class Canary implements Tool {
 
   private static final long DEFAULT_INTERVAL = 6000;
 
+  private static final long DEFAULT_TIMEOUT = 600000; // 10 mins
+
   private static final Log LOG = LogFactory.getLog(Canary.class);
 
   private Configuration conf = null;
   private HBaseAdmin admin = null;
   private long interval = 0;
+  private long timeout = DEFAULT_TIMEOUT;
   private ExecutorService executor; // threads to retrieve data from regionservers
   private Sink sink = null;
   private HConnection connection = null;
@@ -363,6 +367,20 @@ public final class Canary implements Tool {
             System.err.println("-interval needs a numeric value argument.");
             printUsageAndExit();
           }
+        } else if (cmd.equals("-timeout")) {
+          i++;
+
+          if (i == args.length) {
+            System.err.println("-timeout needs a numeric value argument.");
+            printUsageAndExit();
+          }
+
+          try {
+            this.timeout = Long.parseLong(args[i]) * 1000;
+          } catch (NumberFormatException e) {
+            System.err.println("-timeout needs a numeric value argument.");
+            printUsageAndExit();
+          }
         } else {
           // no options match
           System.err.println(cmd + " options is invalid.");
@@ -415,18 +433,19 @@ public final class Canary implements Tool {
         }
         lastCheckTime = EnvironmentEdgeManager.currentTimeMillis();
       }
-      List<Future<Void>> taskFutures = this.executor.invokeAll(tasks);
+      List<Future<Void>> taskFutures = this.executor.invokeAll(tasks, timeout,
+        TimeUnit.MILLISECONDS);
       for (Future<Void> future : taskFutures) {
         try {
           future.get();
-        } catch (ExecutionException e) {
+        } catch (Exception e) {
           LOG.error("Sniff region failed!", e);
         }
       }
       sink.reportSummary();
       long  finishTime = System.currentTimeMillis();
       LOG.info("finish one turn sniff, consume(ms)=" + (finishTime - startTime) + ", interval(ms)="
-          + interval + ", taskCount=" + tasks.size());
+          + interval + ", timeout(ms)=" + timeout + ", taskCount=" + tasks.size());
       if (finishTime < startTime + interval) {
         Thread.sleep(startTime + interval - finishTime);
       }
@@ -459,7 +478,8 @@ public final class Canary implements Tool {
     System.err.println(" where [opts] are:");
     System.err.println("   -help          Show this help and exit.");
     System.err.println("   -daemon        Continuous check at defined intervals.");
-    System.err.println("   -interval <N>  Interval between checks (sec)");
+    System.err.println("   -interval <N>  Interval between checks, default is 6 (sec)");
+    System.err.println("   -timeout <N>   timeout for a check, default is 600 (sec)");
     System.exit(1);
   }
 
