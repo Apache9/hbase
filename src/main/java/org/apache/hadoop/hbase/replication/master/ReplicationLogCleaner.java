@@ -19,6 +19,7 @@
 package org.apache.hadoop.hbase.replication.master;
 
 import java.io.IOException;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -30,8 +31,10 @@ import org.apache.hadoop.hbase.Abortable;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.master.cleaner.BaseLogCleanerDelegate;
 import org.apache.hadoop.hbase.replication.ReplicationZookeeper;
+import org.apache.hadoop.hbase.zookeeper.ZKUtil;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
 import org.apache.zookeeper.KeeperException;
+import org.apache.zookeeper.data.Stat;
 
 import com.google.common.base.Predicate;
 import com.google.common.collect.ImmutableList;
@@ -89,30 +92,40 @@ public class ReplicationLogCleaner extends BaseLogCleanerDelegate implements Abo
     }
   }
 
+
   /**
    * Load all hlogs in all replication queues from ZK
    */
   private Set<String> loadHLogsFromQueues() throws KeeperException {
-    List<String> rss = zkHelper.getListOfReplicators();
-    if (rss == null) {
-      LOG.debug("Didn't find any region server that replicates, won't prevent any deletions.");
-      return ImmutableSet.of();
-    }
-    Set<String> hlogs = Sets.newHashSet();
-    for (String rs: rss) {
-      List<String> listOfPeers = zkHelper.getListPeersForRS(rs);
-      // if rs just died, this will be null
-      if (listOfPeers == null) {
-        continue;
+    int v0 = zkHelper.getRsZNodeVersion();
+    Set<String> hlogs = new HashSet<String>();
+    for (int retry = 0; ; retry++) {
+      List<String> rss = zkHelper.getListOfReplicators();
+      if (rss == null) {
+        LOG.debug("Didn't find any region server that replicates, won't prevent any deletions.");
+        return ImmutableSet.of();
       }
-      for (String id : listOfPeers) {
-        List<String> peersHlogs = zkHelper.getListHLogsForPeerForRS(rs, id);
-        if (peersHlogs != null) {
-          hlogs.addAll(peersHlogs);
+
+      for (String rs : rss) {
+        List<String> listOfPeers = zkHelper.getListPeersForRS(rs);
+        // if rs just died, this will be null
+        if (listOfPeers == null) {
+          continue;
+        }
+        for (String id : listOfPeers) {
+          List<String> peersHlogs = zkHelper.getListHLogsForPeerForRS(rs, id);
+          if (peersHlogs != null) {
+            hlogs.addAll(peersHlogs);
+          }
         }
       }
+      int v1 = zkHelper.getRsZNodeVersion();
+      if (v0 == v1) {
+        return hlogs;
+      }
+      LOG.info(String.format("Replication queue node cversion changed from %d to %d, retry = %d",
+          v0, v1, retry));
     }
-    return hlogs;
   }
 
   @Override
