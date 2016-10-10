@@ -29,11 +29,21 @@ import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
  * be deleted. By default they are allowed to live for 10 minutes.
  */
 @InterfaceAudience.Private
-public class TimeToLiveLogCleaner extends BaseLogCleanerDelegate {
+public class TimeToLiveLogCleaner extends BaseLogCleanerDelegate implements TimeToLiveCleanable {
   static final Log LOG = LogFactory.getLog(TimeToLiveLogCleaner.class.getName());
+
+  public static final String TTL_CONF_KEY = "hbase.master.logcleaner.ttl";
+  // default ttl = 5 minutes
+  public static final long DEFAULT_TTL = 60000 * 5;
+  public static final long MIN_TTL = 60000;
+
+  public static final String OLDLOG_LIMIT_CONF_KEY = "hbase.master.oldlog.size.limit";
+  public static final long DEFAULT_LIMIT = Long.MAX_VALUE;
+
   // Configured time a log can be kept after it was closed
   private long ttl;
   private boolean stopped = false;
+  private long sizeLimit;
 
   @Override
   public boolean isLogDeletable(FileStatus fStat) {
@@ -55,10 +65,11 @@ public class TimeToLiveLogCleaner extends BaseLogCleanerDelegate {
 
   @Override
   public void setConf(Configuration conf) {
+    this.ttl = getTTL(conf, TTL_CONF_KEY);
+    this.sizeLimit = conf.getLong(OLDLOG_LIMIT_CONF_KEY, DEFAULT_LIMIT);
     super.setConf(conf);
-    this.ttl = conf.getLong("hbase.master.logcleaner.ttl", 600000);
+    LOG.info("Initialize TimeToLiveLogCleaner, ttl=" + ttl + ", sizeLimit=" + sizeLimit);
   }
-
 
   @Override
   public void stop(String why) {
@@ -68,5 +79,31 @@ public class TimeToLiveLogCleaner extends BaseLogCleanerDelegate {
   @Override
   public boolean isStopped() {
     return this.stopped;
+  }
+
+  @Override
+  public void decreaseTTL() {
+    ttl = Math.max(ttl / 2, MIN_TTL);
+    LOG.info("Decrease ttl to " + ttl);
+  }
+
+  @Override
+  public void increaseTTL() {
+    ttl = Math.min(ttl * 2, getConf().getLong(TTL_CONF_KEY, DEFAULT_TTL));
+    LOG.info("Increase ttl to " + ttl);
+  }
+
+  @Override
+  public boolean isExceedSizeLimit(long size) {
+    return size > this.sizeLimit;
+  }
+
+  private long getTTL(Configuration conf, String confKey) {
+    long confTTL = conf.getLong(confKey, DEFAULT_TTL);
+    if (confTTL < MIN_TTL) {
+      confTTL = MIN_TTL;
+      conf.setLong(confKey, confTTL);
+    }
+    return confTTL;
   }
 }

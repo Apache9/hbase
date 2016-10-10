@@ -375,27 +375,36 @@ module Hbase
 
     #----------------------------------------------------------------------------------------------
     # Move regions of a table
-    def move_table(table_name, server = nil)
+    def move_table(table_name, target_servers = [], time_interval = 0)
       table_regions = org.apache.hadoop.hbase.catalog.MetaReader.getTableRegionsAndLocations(@catalog_tracker, table_name)
       if table_regions == nil || table_regions.size == 0
         $stdout.puts "no regions found for table #{table_name}"
         return
       end
 
-      # random choose a server to serve all the regions if given server is nil
-      if server == nil
+      # random choose a server to serve all the regions if given servers is empty
+      if target_servers == []
         region_servers = getServers()
         server = region_servers[rand(region_servers.size)]
       end
 
       region_count = table_regions.size
-      $stdout.puts "start move #{region_count} regions of table : #{table_name} to server : #{server}"
+      $stdout.puts "start move #{region_count} regions of table : #{table_name}, time interval is #{time_interval} seconds"
       index = 0
-      server_bytes = server.to_java_bytes
       while index < region_count
         encoded_region_name = table_regions[index].getFirst().getEncodedName
+        if target_servers == []
+          target_server = server
+        else
+          target_server = target_servers[index % target_servers.size]
+        end
         # move one region to the server 
-        @admin.move(encoded_region_name.to_java_bytes, server_bytes)
+        @admin.move(Bytes.toBytes(encoded_region_name), Bytes.toBytes(target_server))
+        puts "finished moving region #{encoded_region_name} to #{target_server}"
+
+        if time_interval > 0
+          sleep time_interval
+        end
 
         index += 1
         # we print a promote every 10 regions
@@ -416,15 +425,15 @@ module Hbase
     end
 
     #----------------------------------------------------------------------------------------------
-    # Move regions of a server to the given server, randomly to other servers
-    def move_server(source_server, target_server = nil)
-      if source_server == target_server
-        puts "source_server is same with the target_server"
-      return
+    # Move regions of a server to a servers list, or randomly to other servers
+    def move_server(source_server, target_servers = [], time_interval = 0)
+      if target_servers.include?(source_server)
+        puts "source_server is same with one of target_servers"
+        return
       end
 
       other_servers = []
-      if target_server == nil
+      if target_servers == []
         other_servers = getServers()
         find_source_server = false
         # remove source_server from other_servers
@@ -447,16 +456,21 @@ module Hbase
       end
 
       regions = getRegions(source_server)
-      puts "will move #{regions.size} regions on server #{source_server}"
+      puts "will move #{regions.size} regions on server #{source_server}, time interval is #{time_interval} seconds"
       for region in regions:
-        server = target_server
         # if no target server specified, we choose a server randomly
-        if server == nil
+        if target_servers == []
           server = other_servers[rand(other_servers.size)]
+        else
+          server = target_servers[rand(target_servers.size)]
         end
         encode_name = region.getEncodedName
         @admin.move(Bytes.toBytes(encode_name), Bytes.toBytes(server))
         puts "finished moving region #{encode_name} from #{source_server} to #{server}"
+
+        if time_interval > 0
+          sleep time_interval
+        end
       end
     end
 
