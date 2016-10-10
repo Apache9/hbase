@@ -65,7 +65,7 @@ public class TestLogsCleaner {
   public void testLogCleaning() throws Exception{
     Configuration conf = TEST_UTIL.getConfiguration();
     // set TTL
-    long ttl = 2000;
+    long ttl = TimeToLiveLogCleaner.MIN_TTL;
     conf.setLong("hbase.master.logcleaner.ttl", ttl);
     conf.setBoolean(HConstants.REPLICATION_ENABLE_KEY, true);
     Replication.decorateMasterConfiguration(conf);

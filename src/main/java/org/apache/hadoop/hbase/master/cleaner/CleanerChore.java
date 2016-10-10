@@ -118,9 +118,24 @@ public abstract class CleanerChore<T extends FileCleanerDelegate> extends Chore 
     }
   }
 
+  private void checkDirectorySizeForTimeToLiveCleaner() throws IOException {
+    FileStatus status = this.fs.getFileStatus(this.oldFileDir);
+    for (T cleaner : this.cleanersChain) {
+      if (cleaner instanceof TimeToLiveCleanable) {
+        TimeToLiveCleanable ttlCleaner = (TimeToLiveCleanable) cleaner;
+        if (ttlCleaner.isExceedSizeLimit(status.getLen())) {
+          ttlCleaner.decreaseTTL();
+        } else {
+          ttlCleaner.increaseTTL();
+        }
+      }
+    }
+  }
+
   @Override
   protected void chore() {
     try {
+      checkDirectorySizeForTimeToLiveCleaner();
       FileStatus[] files = FSUtils.listStatus(this.fs, this.oldFileDir);
       checkAndDeleteEntries(files);
     } catch (IOException e) {

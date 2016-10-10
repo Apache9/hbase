@@ -49,6 +49,7 @@ import org.apache.hadoop.hbase.regionserver.HRegion;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.Pair;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.MinMaxPriorityQueue;
@@ -728,11 +729,69 @@ public class DefaultLoadBalancer implements LoadBalancer {
   public List<RegionPlan> adjustPerTablePlans(
       Map<String, Map<ServerName, List<HRegionInfo>>> clusterState, List<RegionPlan> perTablePlans) {
     Map<ServerName, List<HRegionInfo>> regionByServer = applyRegionPlan(clusterState, perTablePlans);
+    if (!checkAdjustPreCondition(clusterState, regionByServer)) {
+      LOG.warn("Skip to achieve globally load balance, because cluster regions in not balanced per table");
+      return perTablePlans;
+    }
     OverLoadRegionSelector regionSelector = new OverLoadRegionSelector(clusterState, regionByServer);
     List<RegionPlan> adjustPlans = balanceCluster(regionByServer, regionSelector);
     return mergePlans(perTablePlans, adjustPlans);
   }
-  
+
+  /**
+   * The pre condition of adjust golbally is that regions are balanced per table. For each table,
+   * all servers will either host MIN=floor(average) or MAX=ceiling(average) regions.
+   * @param regionByServer
+   * @return
+   */
+  @VisibleForTesting
+  public static boolean checkAdjustPreCondition(
+      Map<String, Map<ServerName, List<HRegionInfo>>> clusterState,
+      Map<ServerName, List<HRegionInfo>> regionByServer) {
+    Map<String, Pair<Integer, Integer>> minMaxRegionCount = new HashMap<String, Pair<Integer, Integer>>();
+    minMaxRegionCount = new HashMap<String, Pair<Integer,Integer>>();
+    for (Entry<String, Map<ServerName, List<HRegionInfo>>> entry : clusterState.entrySet()) {
+      String tableName = entry.getKey();
+      int numServers = entry.getValue().size();
+      if (numServers == 0) continue;
+      int numRegions = 0;
+      for (List<HRegionInfo> regionInfos : entry.getValue().values()) {
+        numRegions += regionInfos.size();
+      }
+      int min = numRegions / numServers;
+      int max = numRegions % numServers == 0 ? min : min + 1;
+      minMaxRegionCount.put(tableName, new Pair<Integer, Integer>(min, max));
+    }
+
+    for (Entry<ServerName, List<HRegionInfo>> entry : regionByServer.entrySet()) {
+      Map<String, List<HRegionInfo>> tableRegions = new HashMap<String, List<HRegionInfo>>();
+      for (HRegionInfo regionInfo : entry.getValue()) {
+        if (regionInfo.isMetaTable()) {
+          continue;
+        }
+        String tableName = regionInfo.getTableNameAsString();
+        if (!tableRegions.containsKey(tableName)) {
+          tableRegions.put(tableName, new ArrayList<HRegionInfo>());
+        }
+        tableRegions.get(tableName).add(regionInfo);
+      }
+
+      for (Entry<String, List<HRegionInfo>> tableRegion : tableRegions.entrySet()) {
+        String tableName = tableRegion.getKey();
+        Pair<Integer, Integer> minMax = minMaxRegionCount.get(tableName);
+        if (minMax == null) continue;
+        int min = minMax.getFirst().intValue();
+        int max = minMax.getSecond().intValue();
+        int regionNum = tableRegion.getValue().size();
+        if (regionNum > max || regionNum < min) {
+          return false;
+        }
+      }
+    }
+
+    return true;
+  }
+
   /**
    * Add a region from the head or tail to the List of regions to return.
    */

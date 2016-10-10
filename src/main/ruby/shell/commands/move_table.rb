@@ -23,23 +23,28 @@ module Shell
     class MoveTable < Command
       def help
         return <<-EOF
-Move all regions of the table to a regionserver. All regions will be moved to the
-given regionserver if the 'SERVER_NAME' is specified, or to a random regionserver if
-'SERVER_NAME' is absent
+Move all regions of the table to a list of regionservers. All regions will be moved to the
+given regionservers list if the TARGET_SERVERS is specified, or to a random regionserver if
+TARGET_SERVERS is absent.
+The last parameter is time interval between moving regions. When moved one region,
+first sleep time interval seconds, then move another region. The default time interval is 1s.
 
 NOTE:
 A server name is its host, port plus startcode. For example:
 host187.example.com,60020,1289493121758
 Examples:
 
-  hbase> move_table 'TABLENAME', 'SERVER_NAME'
+  # move all regions of TABLENAME to TARGET_SERVER1 and TARGET_SERVER2, time interval is 10s
+  hbase> move_table 'TABLENAME', ['TARGET_SERVER1', 'TARGET_SERVER2'], 10
+
+  hbase> move_table 'TABLENAME', ['TARGET_SERVER1', 'TARGET_SERVER2', 'TARGET_SERVER3']
   hbase> move_table 'TABLENAME'
 EOF
       end
 
-      def command(table_name, server_name = nil)
+      def command(table_name, target_servers = [], time_interval = 0)
         format_simple_command do
-          admin.move_table(table_name, server_name)
+          admin.move_table(table_name, target_servers, time_interval)
         end
       end
     end
