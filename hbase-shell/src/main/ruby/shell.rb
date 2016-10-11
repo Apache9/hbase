@@ -344,6 +344,8 @@ Shell.load_command_group(
     append_peer_tableCFs
     remove_peer_tableCFs
     set_peer_namespaces
+    append_peer_namespaces
+    remove_peer_namespaces
     list_replicated_tables
     enable_table_replication
     disable_table_replication

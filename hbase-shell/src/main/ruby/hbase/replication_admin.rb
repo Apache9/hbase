@@ -176,10 +176,47 @@ module Hbase
       end
     end
 
+    # Append some namespaces for the specified peer
+    def append_peer_namespaces(id, namespaces)
+      unless namespaces.nil?
+        rpc = @replication_admin.getPeerConfig(id)
+        unless rpc.nil?
+          ns_set = rpc.getNamespaces()
+          if ns_set.nil?
+            ns_set = java.util.HashSet.new
+          end
+          namespaces.each do |n|
+            ns_set.add(n)
+          end
+          rpc.setNamespaces(ns_set)
+          @replication_admin.updatePeerConfig(id, rpc)
+        end
+      end
+    end
+
+    # Remove some namespaces for the specified peer
+    def remove_peer_namespaces(id, namespaces)
+      unless namespaces.nil?
+        rpc = @replication_admin.getPeerConfig(id)
+        unless rpc.nil?
+          ns_set = rpc.getNamespaces()
+          unless ns_set.nil?
+            namespaces.each do |n|
+              ns_set.remove(n)
+            end
+          end
+          rpc.setNamespaces(ns_set)
+          @replication_admin.updatePeerConfig(id, rpc)
+        end
+      end
+    end
+
     # Show the current namespaces config for the specified peer
     def show_peer_namespaces(peer_config)
       namespaces = peer_config.get_namespaces
       if !namespaces.nil?
+        namespaces = java.util.ArrayList.new(namespaces)
+        java.util.Collections.sort(namespaces)
         return namespaces.join(';')
       else
         return nil
