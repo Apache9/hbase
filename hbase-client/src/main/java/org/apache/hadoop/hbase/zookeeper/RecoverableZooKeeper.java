@@ -707,7 +707,7 @@ public class RecoverableZooKeeper {
     return null;
   }
 
-  public byte[] removeMetaData(byte[] data) {
+  public static byte[] removeMetaData(byte[] data) {
     if(data == null || data.length == 0) {
       return data;
     }
