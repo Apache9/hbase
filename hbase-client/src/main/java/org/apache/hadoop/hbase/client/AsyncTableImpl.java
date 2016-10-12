@@ -47,11 +47,17 @@ class AsyncTableImpl implements AsyncTable {
 
   private final TableName tableName;
 
+  private final int defaultScannerCaching;
+
+  private final long defaultScannerMaxResultSize;
+
   private long readRpcTimeoutNs;
 
   private long writeRpcTimeoutNs;
 
   private long operationTimeoutNs;
+
+  private long scanTimeoutNs;
 
   public AsyncTableImpl(AsyncConnectionImpl conn, TableName tableName) {
     this.conn = conn;
@@ -60,6 +66,9 @@ class AsyncTableImpl implements AsyncTable {
     this.writeRpcTimeoutNs = conn.connConf.writeRpcTimeoutNs;
     this.operationTimeoutNs = tableName.isSystemTable() ? conn.connConf.metaOperationTimeoutNs
         : conn.connConf.operationTimeoutNs;
+    this.scanTimeoutNs = conn.connConf.scanTimeoutNs;
+    this.defaultScannerCaching = conn.connConf.scannerCaching;
+    this.defaultScannerMaxResultSize = conn.connConf.scannerMaxResultSize;
   }
 
   @Override
@@ -161,6 +170,23 @@ class AsyncTableImpl implements AsyncTable {
   }
 
   @Override
+  public void scan(Scan scan, ScanObserver respObserver) {
+    if (scan.getBatch() > 0 && scan.isSmall()) {
+      respObserver
+          .onError(new IllegalArgumentException("Small scan should not be used with batching"));
+    }
+    // as we may change the scan object later.
+    scan = ReflectionUtils.newInstance(scan.getClass(), scan);
+    if (scan.getCaching() <= 0) {
+      scan.setCaching(defaultScannerCaching);
+    }
+    if (scan.getMaxResultSize() <= 0) {
+      scan.setMaxResultSize(defaultScannerMaxResultSize);
+    }
+    
+  }
+
+  @Override
   public void setReadRpcTimeout(long timeout, TimeUnit unit) {
     this.readRpcTimeoutNs = unit.toNanos(timeout);
   }
@@ -189,4 +215,15 @@ class AsyncTableImpl implements AsyncTable {
   public long getOperationTimeout(TimeUnit unit) {
     return unit.convert(operationTimeoutNs, TimeUnit.NANOSECONDS);
   }
+
+  @Override
+  public void setScanTimeout(long timeout, TimeUnit unit) {
+    this.scanTimeoutNs = unit.toNanos(timeout);
+  }
+
+  @Override
+  public long getScanTimeout(TimeUnit unit) {
+    return TimeUnit.NANOSECONDS.convert(scanTimeoutNs, unit);
+  }
+
 }

@@ -93,6 +93,10 @@ public interface AsyncTable {
    */
   long getOperationTimeout(TimeUnit unit);
 
+  void setScanTimeout(long timeout, TimeUnit unit);
+
+  long getScanTimeout(TimeUnit unit);
+
   /**
    * Test for the existence of columns in the table, as specified by the Get.
    * <p>
@@ -123,4 +127,6 @@ public interface AsyncTable {
    * @param delete The object that specifies what to delete.
    */
   CompletableFuture<Void> delete(Delete delete);
+
+  void scan(Scan scan, ScanObserver respObserver);
 }
