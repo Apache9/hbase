@@ -21,6 +21,7 @@ import java.nio.channels.ClosedChannelException;
 
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.CellScanner;
+import org.apache.hadoop.hbase.exceptions.TimeoutIOException;
 import org.apache.hadoop.hbase.ipc.RpcServer.Call;
 import org.apache.hadoop.hbase.monitoring.MonitoredRPCHandler;
 import org.apache.hadoop.hbase.monitoring.TaskMonitor;
@@ -85,7 +86,7 @@ public class CallRunner {
       }
       call.startTime = System.currentTimeMillis();
       if (call.startTime > call.deadline) {
-        RpcServer.LOG.info("Drop timeout call: " + call);
+        RpcServer.LOG.warn("Drop timeout call: " + call);
         return;
       }
       this.status.setStatus("Setting up call");
@@ -114,7 +115,10 @@ public class CallRunner {
           call.connection.service);
         // make the call
         resultPair = this.rpcServer.call(call.service, call.md, call.param, call.cellScanner,
-          call.timestamp, this.status, call.startTime, call.timeout);
+            call.timestamp, this.status, call.startTime, call.timeout);
+      } catch (TimeoutIOException e) {
+        RpcServer.LOG.warn("Can not complete this request in time, drop it: " + call);
+        return;
       } catch (Throwable e) {
         this.rpcServer.getMetrics().failedCalls();
         RpcServer.LOG.debug(Thread.currentThread().getName() + ": " + call.toShortString(), e);

@@ -356,6 +356,7 @@ public class RpcServer implements RpcServerInterface {
       sb.append(StringUtils.humanReadableInt(this.size));
       sb.append(" connection: ");
       sb.append(connection.toString());
+      sb.append(" deadline: ").append(deadline);
       return sb.toString();
     }
 
@@ -495,6 +496,11 @@ public class RpcServer implements RpcServerInterface {
     @Override
     public boolean isClientCellBlockSupport() {
       return this.connection != null && this.connection.codec != null;
+    }
+
+    @Override
+    public long getDeadline() {
+      return deadline;
     }
 
     @Override
