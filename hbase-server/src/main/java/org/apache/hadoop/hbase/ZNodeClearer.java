@@ -129,7 +129,7 @@ public class ZNodeClearer {
    */
   public static boolean clear(Configuration conf) {
     Configuration tempConf = new Configuration(conf);
-    tempConf.setInt("zookeeper.recovery.retry", 0);
+    tempConf.setInt(HConstants.ZK_RECOVERY_RETRY, 0);
 
     ZooKeeperWatcher zkw;
     try {

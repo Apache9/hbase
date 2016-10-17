@@ -461,7 +461,7 @@ AssignmentManager assignmentManager = master.getAssignmentManager();
         <th>Namespace</th>
         <th>Table Name</th>
         <th>Read Capacity Units Per Second</th>
-        <th>Read Capacity Units Per Second</th>
+        <th>Write Capacity Units Per Second</th>
         <th>Throttled Read Count</th>
         <th>Throttled Write Count</th>
     </tr>
@@ -529,7 +529,7 @@ AssignmentManager assignmentManager = master.getAssignmentManager();
 
 <%def peerConfigs>
 <%java>
-    Map<String, ReplicationPeerConfig> allPeerConfigs = repAdmin.listPeerConfigs();
+    Map<String, ReplicationPeerConfig> allPeerConfigs = repAdmin == null ? new HashMap<String, ReplicationPeerConfig>() : repAdmin.listPeerConfigs();
 </%java>
 <table class="table table-striped">
     <tr>

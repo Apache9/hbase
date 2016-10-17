@@ -145,9 +145,8 @@ public class ZKUtil {
     int timeout = conf.getInt(HConstants.ZK_SESSION_TIMEOUT,
         HConstants.DEFAULT_ZK_SESSION_TIMEOUT);
     LOG.info(identifier + " opening connection to ZooKeeper ensemble=" + ensemble);
-    int retry = conf.getInt("zookeeper.recovery.retry", 3);
-    int retryIntervalMillis =
-      conf.getInt("zookeeper.recovery.retry.intervalmill", 1000);
+    int retry = conf.getInt(HConstants.ZK_RECOVERY_RETRY, 3);
+    int retryIntervalMillis = conf.getInt(HConstants.ZK_RECOVERY_RETRY_INTERVAL, 1000);
     zkDumpConnectionTimeOut = conf.getInt("zookeeper.dump.connection.timeout",
         1000);
     return new RecoverableZooKeeper(ensemble, timeout, watcher,

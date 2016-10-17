@@ -31,6 +31,8 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.replication.ReplicationAdmin;
@@ -58,7 +60,15 @@ public class MasterStatusServlet extends HttpServlet {
 
     Configuration conf = master.getConfiguration();
     HBaseAdmin admin = new HBaseAdmin(conf);
-    ReplicationAdmin repAdmin = new ReplicationAdmin(conf);
+
+    Configuration repConf = new Configuration(conf);
+    repConf.setInt(HConstants.ZK_RECOVERY_RETRY, 0);
+    ReplicationAdmin repAdmin = null;
+    try {
+      repAdmin = new ReplicationAdmin(repConf);
+    } catch (Exception e) {
+      LOG.warn("Failed to initialize replication admin", e);
+    }
 
     Map<String, Integer> frags = getFragmentationInfo(master, conf);
     ServerName metaLocation = null;

@@ -221,6 +221,12 @@ public final class HConstants {
   /** Configuration key for whether to use ZK.multi */
   public static final String ZOOKEEPER_USEMULTI = "hbase.zookeeper.useMulti";
 
+  /** Configuration key for recovery zookeeper retry number */
+  public static final String ZK_RECOVERY_RETRY = "zookeeper.recovery.retry";
+
+  /** Configuration key for recovery zookeeper sleep interval(ms) between retry */
+  public static final String ZK_RECOVERY_RETRY_INTERVAL = "zookeeper.recovery.retry.intervalmill";
+
   /** Parameter name for port region server listens on. */
   public static final String REGIONSERVER_PORT = "hbase.regionserver.port";
 
