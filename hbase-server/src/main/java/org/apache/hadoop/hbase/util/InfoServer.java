@@ -19,6 +19,7 @@
 
 package org.apache.hadoop.hbase.util;
 
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URL;
@@ -59,6 +60,7 @@ public class InfoServer extends HttpServer {
     super(name, bindAddress, port, findPort, c);
     this.config = c;
     fixupLogsServletLocation();
+    addStdoutServlet();
   }
 
   /**
@@ -91,6 +93,28 @@ public class InfoServer extends HttpServer {
       logContext.addServlet(DefaultServlet.class, "/");
       HttpServerUtil.constrainHttpMethods(logContext);
       defaultContexts.put(logContext, true);
+    }
+  }
+
+  // servlet for retrieving gc log
+  private void addStdoutServlet() {
+    String logDir = System.getProperty("hbase.log.dir");
+    if (logDir != null) {
+      try {
+        File stdoutDir = new File(new File(logDir).getCanonicalFile().getParentFile(), "stdout");
+        if (!stdoutDir.exists()) {
+          return;
+        }
+        String stdoutDirStr = stdoutDir.getCanonicalPath();
+        Context stdoutContext = new Context((ContextHandlerCollection) this.webServer.getHandler(),
+            "/stdout");
+        stdoutContext.setResourceBase(stdoutDirStr);
+        stdoutContext.addServlet(DefaultServlet.class, "/");
+        HttpServerUtil.constrainHttpMethods(stdoutContext);
+        defaultContexts.put(stdoutContext, true);
+      } catch (IOException e) {
+        return;
+      }
     }
   }
 
