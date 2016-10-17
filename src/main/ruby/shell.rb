@@ -303,6 +303,7 @@ Shell.load_command_group(
     disable_peer
     show_peer_tableCFs
     set_peer_tableCFs
+    set_peer_excluded_tableCFs
     set_peer_bandwidth
     remove_peer_tableCFs
     append_peer_tableCFs

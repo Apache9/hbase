@@ -151,7 +151,7 @@ public class ReplicationAdmin implements Closeable {
     this.replicationZk.addPeer(id, clusterKey, peerState, tableCFs, bandwidth,
       ReplicationZookeeper.PeerProtocol.valueOf(protocol));
   }
-  
+
   /**
    * Get the protocol for the peer
    * @param id peer's identifier
@@ -238,11 +238,41 @@ public class ReplicationAdmin implements Closeable {
    * @param id a short that identifies the cluster
    */
   public void setPeerTableCFs(String id, String tableCFs)
-    throws IOException {
+    throws IOException, KeeperException {
     checkTableCFs(tableCFs);
+    String excludedTableCFs = getPeerExcludedTableCFs(id);
+    if (!isTableCFsEmpty(excludedTableCFs)) {
+      throw new IOException("Can't set table-cfs when there are excluded table-cfs config "
+          + excludedTableCFs + " in this peer:" + id);
+    }
     this.replicationZk.setTableCFsStr(id, tableCFs);
   }
-  
+
+  /**
+   * Get the replicable table-cf config of the specified peer.
+   * @param id a short that identifies the cluster
+   */
+  public String getPeerExcludedTableCFs(String id)
+    throws IOException, KeeperException {
+    return this.replicationZk.getExcludedTableCFsStr(id);
+  }
+
+  /**
+   * Set the excluded table-cfs config of the specified peer
+   * @param id a short that identifies the cluster
+   * @throws KeeperException
+   */
+  public void setPeerExcludedTableCFs(String id, String excludedTableCFs)
+      throws IOException, KeeperException {
+    checkTableCFs(excludedTableCFs);
+    String tableCFs = getPeerTableCFs(id);
+    if (!isTableCFsEmpty(tableCFs)) {
+      throw new IOException("Can't set excluded table-cfs when there are table-cfs config "
+          + tableCFs + " in this peer:" + id);
+    }
+    this.replicationZk.setExcludedTableCFsStr(id, excludedTableCFs);
+  }
+
   public void setPeerBandwidth(String id, Long bandwidth) throws IOException {
     this.replicationZk.setPeerBandwidth(id, bandwidth);
   }
@@ -280,6 +310,9 @@ public class ReplicationAdmin implements Closeable {
   }
   
   private boolean isTableCFsEmpty(String tableCFs) throws IOException {
+    if (tableCFs == null || tableCFs.trim().isEmpty()) {
+      return true;
+    }
     String[] tables = tableCFs.split(";");
     for (String tab : tables) {
       if (!tab.trim().isEmpty()) {
@@ -302,6 +335,11 @@ public class ReplicationAdmin implements Closeable {
     }
     LOG.info("The new table-cf config for peer: " + id + " is: " + tableCFs);
     checkTableCFs(tableCFs);
+    String excludedTableCFs = getPeerExcludedTableCFs(id);
+    if (!isTableCFsEmpty(excludedTableCFs)) {
+      throw new IOException("Can't set table-cfs when there are excluded table-cfs config "
+          + excludedTableCFs + " in this peer:" + id);
+    }
     this.replicationZk.setTableCFsStr(id, tableCFs);
   }
   

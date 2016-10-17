@@ -53,6 +53,8 @@ public class ReplicationPeer implements Abortable {
   private final AtomicBoolean peerEnabled = new AtomicBoolean();
   private Map<String, List<String>> tableCFs =
     new HashMap<String, List<String>>();
+  private Map<String, List<String>> excludedTableCFs =
+      new HashMap<String, List<String>>();
   private AtomicLong bandwidth = new AtomicLong();
   // Cannot be final since a new object needs to be recreated when session fails
   private ZooKeeperWatcher zkw;
@@ -60,6 +62,7 @@ public class ReplicationPeer implements Abortable {
 
   private PeerStateTracker peerStateTracker;
   private TableCFsTracker tableCFsTracker;
+  private ExcludedTableCFsTracker excludedTableCFsTracker;
   private BandwidthTracker bandwidthTracker;
   
   /**
@@ -83,21 +86,14 @@ public class ReplicationPeer implements Abortable {
    * @param zookeeper zk watcher for the local cluster
    * @param peerStateNode path to zk node which stores peer state
    * @throws KeeperException
+   * @throws IOException
    */
   public void startStateTracker(ZooKeeperWatcher zookeeper, String peerStateNode)
-      throws KeeperException {
-    // wait 5000ms for client to add peer_state zknode
-    int times = 500;
-    while (ZKUtil.checkExists(zookeeper, peerStateNode) == -1 && times-- > 0) {
-      try {
-        Thread.sleep(10);
-      } catch (InterruptedException e) {}
-    }
-
-    if (ZKUtil.checkExists(zookeeper, peerStateNode) == -1) {
+      throws KeeperException, IOException {
+    if (!waitZnodeAvailable(zookeeper, peerStateNode)) {
       LOG.error("wait 5s for client to create" + peerStateNode + " but failed!" +
           " give up startStateTracker for this peer");
-      return;
+      throw new IOException("Failed to start peer state tracker");
     }
     this.peerStateTracker = new PeerStateTracker(peerStateNode, zookeeper,
         this);
@@ -122,20 +118,14 @@ public class ReplicationPeer implements Abortable {
    * @param zookeeper zk watcher for the local cluster
    * @param tableCFsNode path to zk node which stores table-cfs
    * @throws KeeperException
+   * @throws IOException
    */
   public void startTableCFsTracker(ZooKeeperWatcher zookeeper, String tableCFsNode)
-      throws KeeperException {
-    int times = 500;
-    while (ZKUtil.checkExists(zookeeper, tableCFsNode) == -1 && times-- > 0) {
-      try {
-        Thread.sleep(10);
-      } catch (InterruptedException e) {}
-    }
-
-    if (ZKUtil.checkExists(zookeeper, tableCFsNode) == -1) {
+      throws KeeperException, IOException {
+    if (!waitZnodeAvailable(zookeeper, tableCFsNode)) {
       LOG.error("wait 5s for client to create" + tableCFsNode + " but failed!" +
           " give up startTableCFsTracker for this peer");
-      return;
+      throw new IOException("Failed to start peer table-cfs tracker");
     }
 
     this.tableCFsTracker = new TableCFsTracker(tableCFsNode, zookeeper,
@@ -147,14 +137,7 @@ public class ReplicationPeer implements Abortable {
   // TODO : reuse the common code among startStateTracker/startTableCFsTracker/startBandwidthTracker
   public void startBandwidthTracker(ZooKeeperWatcher zookeeper, String bandwidthNode)
       throws KeeperException {
-    int times = 500;
-    while (ZKUtil.checkExists(zookeeper, bandwidthNode) == -1 && times-- > 0) {
-      try {
-        Thread.sleep(10);
-      } catch (InterruptedException e) {}
-    }
-
-    if (ZKUtil.checkExists(zookeeper, bandwidthNode) == -1) {
+    if (!waitZnodeAvailable(zookeeper, bandwidthNode)) {
       LOG.error("wait 5s for client to create" + bandwidthNode + " but failed!" +
           " give up startBandwidthTracker for this peer");
       return;
@@ -164,23 +147,59 @@ public class ReplicationPeer implements Abortable {
     this.bandwidthTracker.start();
     this.readBandwidthZnode();
   }
-  
+
   private void readTableCFsZnode() {
     String currentTableCFs = Bytes.toString(tableCFsTracker.getData(false));
 
-    // 0. all tables are replicable if 'tableCFs' not set or empty
     if (currentTableCFs == null || currentTableCFs.trim().isEmpty()) {
       this.tableCFs.clear();
       return;
     }
 
+    this.tableCFs = translateTableCFs(currentTableCFs);
+  }
+
+  /**
+   * start a exclude table-cfs tracker to listen the (table, cf-list) map change
+   *
+   * @param zookeeper zk watcher for the local cluster
+   * @param tableCFsNode path to zk node which stores table-cfs
+   * @throws KeeperException
+   * @throws IOException
+   */
+  public void startExcludedTableCFsTracker(ZooKeeperWatcher zookeeper, String excludedTableCFsNode)
+      throws KeeperException, IOException {
+    if (!waitZnodeAvailable(zookeeper, excludedTableCFsNode)) {
+      LOG.error("wait 5s for client to create" + excludedTableCFsNode + " but failed!" +
+          " give up startExcludeTableCFsTracker for this peer");
+      throw new IOException("Failed to start peer excluded table-cfs tracker");
+    }
+
+    this.excludedTableCFsTracker = new ExcludedTableCFsTracker(excludedTableCFsNode, zookeeper,
+        this);
+    this.excludedTableCFsTracker.start();
+    this.readExcludedTableCFsZnode();
+  }
+
+  private void readExcludedTableCFsZnode() {
+    String currentExcludedTableCFs = Bytes.toString(excludedTableCFsTracker.getData(false));
+
+    if (currentExcludedTableCFs == null || currentExcludedTableCFs.trim().isEmpty()) {
+      this.excludedTableCFs.clear();
+      return;
+    }
+
+    this.excludedTableCFs = translateTableCFs(currentExcludedTableCFs);
+  }
+
+  private Map<String, List<String>> translateTableCFs(String tableCFs) {
     // 1. parse out (table, cf-list) pairs from currentTableCFs
-    //    format: "table1:cf1,cf2;table2:cfA,cfB"
-    String[] tables = currentTableCFs.split(";");
+    // format: "table1:cf1,cf2;table2:cfA,cfB"
+    String[] tables = tableCFs.split(";");
     Map<String, List<String>> curMap = new HashMap<String, List<String>>();
     for (String tab : tables) {
       // 1.1 split to "table" and "cf1,cf2"
-      //     for each table: "table:cf1,cf2" or "table"
+      // for each table: "table:cf1,cf2" or "table"
       String[] pair = tab.split(":");
       if (pair.length > 2) {
         LOG.error("ignore invalid tableCFs setting: " + tab);
@@ -205,9 +224,28 @@ public class ReplicationPeer implements Abortable {
       // 1.4 put <table, List<cf>> to map
       curMap.put(tabName, cfs);
     }
+    return curMap;
+  }
 
-    // 2. update peer's tableCFs
-    this.tableCFs = curMap;
+  /**
+   * Wait 5000ms for client to add zknode
+   * @param zookeeper
+   * @param zNode
+   * @throws KeeperException
+   */
+  private boolean waitZnodeAvailable(ZooKeeperWatcher zookeeper, String zNode)
+      throws KeeperException {
+    int times = 500;
+    while (ZKUtil.checkExists(zookeeper, zNode) == -1) {
+      if (times-- < 0) {
+        return false;
+      }
+      try {
+        Thread.sleep(10);
+      } catch (InterruptedException e) {
+      }
+    }
+    return true;
   }
 
   /**
@@ -234,7 +272,15 @@ public class ReplicationPeer implements Abortable {
   public Map<String, List<String>> getTableCFs() {
     return this.tableCFs;
   }
-  
+
+  /**
+   * Get excluded (table, cf-list) map of this peer
+   * @return the excluded (table, cf-list) map
+   */
+  public Map<String, List<String>> getExcludedTableCFs() {
+    return this.excludedTableCFs;
+  }
+
   public long getBandwidth() {
     return this.bandwidth.get();
   }
@@ -340,7 +386,26 @@ public class ReplicationPeer implements Abortable {
       }
     }
   }
-  
+
+  /**
+   * Tracker for the exclude (table, cf-list) map of this peer
+   */
+  public class ExcludedTableCFsTracker extends ZooKeeperNodeTracker {
+
+    public ExcludedTableCFsTracker(String excludedTableCFsZNode, ZooKeeperWatcher watcher,
+        Abortable abortable) {
+      super(watcher, excludedTableCFsZNode, abortable);
+    }
+
+    @Override
+    public synchronized void nodeDataChanged(String path) {
+      if (path.equals(node)) {
+        super.nodeDataChanged(path);
+        readExcludedTableCFsZnode();
+      }
+    }
+  }
+
   public class BandwidthTracker extends ZooKeeperNodeTracker {
 
     public BandwidthTracker(String bandwidthZNode, ZooKeeperWatcher watcher,

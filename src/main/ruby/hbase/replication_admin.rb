@@ -86,6 +86,14 @@ module Hbase
       @replication_admin.getPeerTableCFs(id)
     end
 
+    # Show the excluded tableCFs config for the specified peer
+    def show_peer_excluded_tableCFs(id)
+      tableCFs = @replication_admin.getPeerExcludedTableCFs(id)
+      if !tableCFs.nil? and !tableCFs.empty?
+        tableCFs = "!" + tableCFs
+      end
+    end
+
     #----------------------------------------------------------------------------------------------
     # Show the current bandwidth config for the specified peer
     def show_peer_bandwidth(id)
@@ -96,6 +104,11 @@ module Hbase
     # Set new tableCFs config for the specified peer
     def set_peer_tableCFs(id, tableCFs)
       @replication_admin.setPeerTableCFs(id, tableCFs)
+    end
+
+    # Set excluded tableCFs config for the specified peer
+    def set_peer_excluded_tableCFs(id, tableCFs)
+      @replication_admin.setPeerExcludedTableCFs(id, tableCFs)
     end
 
     # Set new bandwidth config for the specified peer
