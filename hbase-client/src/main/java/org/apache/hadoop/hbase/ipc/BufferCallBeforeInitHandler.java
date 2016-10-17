@@ -69,6 +69,7 @@ class BufferCallBeforeInitHandler extends ChannelDuplexHandler {
     if (msg instanceof Call) {
       Call call = (Call) msg;
       id2Call.put(call.id, call);
+      promise.trySuccess();
     } else {
       ctx.write(msg, promise);
     }

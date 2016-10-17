@@ -21,10 +21,10 @@ import io.netty.channel.Channel;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
+import io.netty.util.concurrent.DefaultThreadFactory;
 
 import java.io.IOException;
 import java.net.SocketAddress;
-import java.util.Collection;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -67,7 +67,8 @@ public class NettyRpcClient extends AbstractRpcClient<NettyConnection> {
         .getEventLoopConfig(conf);
     if (groupAndChannelClass == null) {
       // Use our own EventLoopGroup.
-      this.group = new NioEventLoopGroup();
+      this.group = new NioEventLoopGroup(0,
+          new DefaultThreadFactory("IPC-NioEventLoopGroup", true, Thread.MAX_PRIORITY));
       this.channelClass = NioSocketChannel.class;
       this.shutdownGroupWhenClose = true;
     } else {
@@ -106,24 +107,10 @@ public class NettyRpcClient extends AbstractRpcClient<NettyConnection> {
   }
 
   @Override
-  public void close() {
+  protected void closeInternal() {
     cleanupIdleConnectionTask.cancel(false);
     if (shutdownGroupWhenClose) {
-      synchronized (connections) {
-        connections.clear();
-      }
       group.shutdownGracefully();
-      return;
-    }
-    // the event loop group is not owned by us, so we can not close all connections just by closing
-    // it.
-    Collection<NettyConnection> toBeShutdown;
-    synchronized (connections) {
-      toBeShutdown = connections.values();
-      connections.clear();
-    }
-    for (NettyConnection conn : toBeShutdown) {
-      conn.shutdown();
     }
   }
 }

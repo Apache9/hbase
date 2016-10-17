@@ -24,7 +24,6 @@ import com.google.protobuf.Message;
 import java.io.IOException;
 import java.net.Socket;
 import java.net.SocketAddress;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.net.SocketFactory;
 
@@ -45,8 +44,6 @@ import org.apache.hadoop.net.NetUtils;
 public class RpcClientImpl extends AbstractRpcClient<ConnectionImpl> {
 
   public static final Log LOG = LogFactory.getLog(RpcClientImpl.class);
-
-  protected final AtomicBoolean running = new AtomicBoolean(true); // if client runs
 
   protected final SocketFactory socketFactory; // how to create sockets
 
@@ -125,37 +122,12 @@ public class RpcClientImpl extends AbstractRpcClient<ConnectionImpl> {
     return socketFactory;
   }
 
-  /**
-   * Stop all threads related to this client. No further calls may be made using this client.
-   */
-  @Override
-  public void close() {
-    if (LOG.isDebugEnabled()) {
-      LOG.debug("Stopping rpc client");
-    }
-    if (!running.compareAndSet(true, false)) {
-      return;
-    }
-
-    // wake up all connections
-    synchronized (connections) {
-      for (ConnectionImpl conn : connections.values()) {
-        conn.thread.interrupt();
-      }
-    }
-
-    // wait until all connections are closed
-    while (!connections.isEmpty()) {
-      try {
-        LOG.info("Sleep in stop, sleepTime=100");
-        Thread.sleep(100);
-      } catch (InterruptedException ignored) {
-      }
-    }
-  }
-
   @Override
   protected ConnectionImpl createConnection(ConnectionId remoteId) throws IOException {
     return new ConnectionImpl(this, remoteId);
+  }
+
+  @Override
+  protected void closeInternal() {
   }
 }

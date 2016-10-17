@@ -25,6 +25,8 @@ import io.netty.channel.ChannelPromise;
 import io.netty.channel.CoalescingBufferQueue;
 import io.netty.util.concurrent.PromiseCombiner;
 
+import java.io.IOException;
+
 import javax.security.sasl.SaslClient;
 
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
@@ -59,6 +61,14 @@ public class SaslWrapHandler extends ChannelOutboundHandlerAdapter {
   }
 
   @Override
+  public void close(ChannelHandlerContext ctx, ChannelPromise promise) throws Exception {
+    if (!queue.isEmpty()) {
+      queue.releaseAndFailAll(new IOException("Connection closed"));
+    }
+    ctx.close(promise);
+  }
+
+  @Override
   public void flush(ChannelHandlerContext ctx) throws Exception {
     if (!queue.isEmpty()) {
       ChannelPromise promise = ctx.newPromise();
@@ -66,6 +76,7 @@ public class SaslWrapHandler extends ChannelOutboundHandlerAdapter {
       ByteBuf buf = queue.remove(readableBytes, promise);
       byte[] bytes = new byte[readableBytes];
       buf.readBytes(bytes);
+      buf.release();
       byte[] wrapperBytes = saslClient.wrap(bytes, 0, bytes.length);
       ChannelPromise lenPromise = ctx.newPromise();
       ctx.write(ctx.alloc().buffer(4).writeInt(wrapperBytes.length), lenPromise);
@@ -77,5 +88,4 @@ public class SaslWrapHandler extends ChannelOutboundHandlerAdapter {
     }
     ctx.flush();
   }
-
 }

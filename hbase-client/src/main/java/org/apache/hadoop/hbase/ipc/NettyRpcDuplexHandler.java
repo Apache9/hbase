@@ -206,6 +206,7 @@ public class NettyRpcDuplexHandler extends ChannelDuplexHandler {
   public void channelInactive(ChannelHandlerContext ctx) throws Exception {
     cleanupCalls(ctx, new IOException("Connection closed"));
     conn.shutdown();
+    ctx.fireChannelInactive();
   }
 
   @Override
