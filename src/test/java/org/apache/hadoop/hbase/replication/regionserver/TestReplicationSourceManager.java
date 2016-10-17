@@ -127,6 +127,8 @@ public class TestReplicationSourceManager {
     ZKUtil.createWithParents(zkw, "/hbase/replication/peers/1/peer-state");
     ZKUtil.setData(zkw, "/hbase/replication/peers/1/peer-state",
         Bytes.toBytes(ReplicationZookeeper.PeerState.ENABLED.name()));
+    ZKUtil.createWithParents(zkw, "/hbase/replication/peers/1/tableCFs");
+    ZKUtil.createWithParents(zkw, "/hbase/replication/peers/1/excludedTableCFs");
     ZKUtil.createWithParents(zkw, "/hbase/replication/state");
     ZKUtil.setData(zkw, "/hbase/replication/state", Bytes.toBytes("true"));
     

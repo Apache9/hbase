@@ -586,8 +586,10 @@ public class ReplicationSourceManager {
         } catch (IOException e) {
           // TODO manage better than that ?
           LOG.error("Error while adding a new peer", e);
+          stopper.stop("Error while adding a new peer");
         } catch (KeeperException e) {
           LOG.error("Error while adding a new peer", e);
+          stopper.stop("Error while adding a new peer");
         }
       }
     }

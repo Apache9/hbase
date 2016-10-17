@@ -1,5 +1,5 @@
 #
-# Copyright The Apache Software Foundation
+# Copyright 2010 The Apache Software Foundation
 #
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
@@ -20,32 +20,23 @@
 
 module Shell
   module Commands
-    class ListPeers< Command
+    class SetPeerExcludedTableCFs< Command
       def help
         return <<-EOF
-List all replication peer clusters.
+Set the excluded table-cfs config for the specified peer
+Examples:
 
-  hbase> list_peers
+  # set table / table-cf to be excluded for a peer
+  # table1 and table2:cf1,cf2 will not be replicated to slave cluster
+  hbase> set_peer_tableCFs '2', "table1;table2:cf1,cf2"
+
 EOF
       end
 
-      def command()
-        now = Time.now
-        peers = replication_admin.list_peers
-
-        formatter.header(["PEER_ID", "CLUSTER_KEY", "STATE", "TABLE_CFS",
-          "EXCLUDED_TABLE_CFS", "BANDWIDTH", "PROTOCOL"])
-
-        peers.entrySet().each do |e|
-          state = replication_admin.get_peer_state(e.key)
-          tableCFs = replication_admin.show_peer_tableCFs(e.key)
-          excludedTableCFs = replication_admin.show_peer_excluded_tableCFs(e.key)
-          bandwidth = replication_admin.show_peer_bandwidth(e.key)
-          protocol = replication_admin.get_peer_protocol(e.key)
-          formatter.row([ e.key, e.value, state, tableCFs, excludedTableCFs, bandwidth, protocol ])
+      def command(id, table_cfs)
+        format_simple_command do
+          replication_admin.set_peer_excluded_tableCFs(id, table_cfs)
         end
-
-        formatter.footer(now)
       end
     end
   end

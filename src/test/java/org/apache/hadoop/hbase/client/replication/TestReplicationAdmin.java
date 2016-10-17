@@ -17,6 +17,7 @@
  */
 package org.apache.hadoop.hbase.client.replication;
 
+import java.io.IOException;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -35,6 +36,7 @@ import org.junit.BeforeClass;
 import org.junit.AfterClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.experimental.theories.suppliers.TestedOn;
 
 import static org.junit.Assert.fail;
 import static org.junit.Assert.assertEquals;
@@ -274,6 +276,70 @@ public class TestReplicationAdmin {
     // Remove the first peer we added
     admin.removePeer(ID_ONE);
     assertEquals(1, admin.getPeersCount());
+    admin.removePeer(ID_SECOND);
+  }
+
+  @Test
+  public void testSetPeerExcludedTableCFs() throws Exception {
+    assertEquals(0, manager.getSources().size());
+    String table1 = "t1";
+    HBaseAdmin hAdmin = new HBaseAdmin(TEST_UTIL.getConfiguration());
+
+    if (!hAdmin.tableExists(table1)) {
+      HTableDescriptor desc = new HTableDescriptor(table1);
+      desc.addFamily(new HColumnDescriptor("cf"));
+      hAdmin.createTable(desc);
+    }
+    // Add a valid peer
+    admin.addPeer(ID_ONE, KEY_ONE, "ENABLED");
+    admin.setPeerExcludedTableCFs(ID_ONE, "t1");
+    String excludedTableCFs = admin.getPeerExcludedTableCFs(ID_ONE);
+    assertEquals("t1", excludedTableCFs);
+
+    String table2 = "t2";
+    if (!hAdmin.tableExists(table2)) {
+      HTableDescriptor desc = new HTableDescriptor(table2);
+      desc.addFamily(new HColumnDescriptor("cf"));
+      hAdmin.createTable(desc);
+    }
+    admin.setPeerExcludedTableCFs(ID_ONE, "t2:cf");
+    excludedTableCFs = admin.getPeerExcludedTableCFs(ID_ONE);
+    assertEquals("t2:cf", excludedTableCFs);
+
+    admin.removePeer(ID_ONE);
+  }
+
+  @Test
+  public void testPeerTableCFsAndExcludedTableCFsConflict() throws Exception {
+    assertEquals(0, manager.getSources().size());
+    String table1 = "t1";
+    HBaseAdmin hAdmin = new HBaseAdmin(TEST_UTIL.getConfiguration());
+
+    if (!hAdmin.tableExists(table1)) {
+      HTableDescriptor desc = new HTableDescriptor(table1);
+      desc.addFamily(new HColumnDescriptor("cf"));
+      hAdmin.createTable(desc);
+    }
+
+    // Add a valid peer
+    admin.addPeer(ID_ONE, KEY_ONE, "ENABLED");
+    admin.setPeerTableCFs(ID_ONE, "t1");
+    try {
+      admin.setPeerExcludedTableCFs(ID_ONE, "t1");
+      fail("Should throw exception, because this peer already has table-cfs config");
+    } catch (IOException e) {
+    }
+
+    // Add a valid peer
+    admin.addPeer(ID_SECOND, KEY_SECOND, "ENABLED");
+    admin.setPeerExcludedTableCFs(ID_SECOND, "t1");
+    try {
+      admin.setPeerTableCFs(ID_SECOND, "t1");
+      fail("Should throw exception, because this peer already has excluded table-cfs config");
+    } catch (IOException e) {
+    }
+
+    admin.removePeer(ID_ONE);
     admin.removePeer(ID_SECOND);
   }
 
