@@ -388,6 +388,137 @@ public class TestMultiSlaveReplication {
   }
 
   @Test
+  public void testExcludedTableCFsReplication() throws Exception {
+    LOG.info("testExcludedTableCFsReplication");
+    MiniHBaseCluster master = utility1.startMiniCluster();
+    utility2.startMiniCluster();
+    utility3.startMiniCluster();
+    ReplicationAdmin admin1 = new ReplicationAdmin(conf1);
+
+    new HBaseAdmin(conf1).createTable(tabA);
+    new HBaseAdmin(conf1).createTable(tabB);
+    new HBaseAdmin(conf1).createTable(tabC);
+    new HBaseAdmin(conf2).createTable(tabA);
+    new HBaseAdmin(conf2).createTable(tabB);
+    new HBaseAdmin(conf2).createTable(tabC);
+    new HBaseAdmin(conf3).createTable(tabA);
+    new HBaseAdmin(conf3).createTable(tabB);
+    new HBaseAdmin(conf3).createTable(tabC);
+
+    HTable htab1A = new HTable(conf1, tabAName);
+    htab1A.setWriteBufferSize(1024);
+    HTable htab2A = new HTable(conf2, tabAName);
+    htab2A.setWriteBufferSize(1024);
+    HTable htab3A = new HTable(conf3, tabAName);
+    htab3A.setWriteBufferSize(1024);
+
+    HTable htab1B = new HTable(conf1, tabBName);
+    htab1B.setWriteBufferSize(1024);
+    HTable htab2B = new HTable(conf2, tabBName);
+    htab2B.setWriteBufferSize(1024);
+    HTable htab3B = new HTable(conf3, tabBName);
+    htab3B.setWriteBufferSize(1024);
+
+    HTable htab1C = new HTable(conf1, tabCName);
+    htab1C.setWriteBufferSize(1024);
+    HTable htab2C = new HTable(conf2, tabCName);
+    htab2C.setWriteBufferSize(1024);
+    HTable htab3C = new HTable(conf3, tabCName);
+    htab3C.setWriteBufferSize(1024);
+
+    // A. add cluster2/cluster3 as peers to cluster1
+    admin1.addPeer("2", utility2.getClusterKey(), "ENABLED");
+    admin1.addPeer("3", utility3.getClusterKey(), "ENABLED");
+    admin1.setPeerExcludedTableCFs("2", "TA");
+    admin1.setPeerExcludedTableCFs("3", "TB");
+
+    // A1. tableA can only replicated to cluster3
+    putAndWaitWithFamily(row1, f1Name, val, htab1A, htab3A);
+    checkRowWithFamily(row1, f1Name, 0, htab2A);
+    deleteAndWaitWithFamily(row1, f1Name, htab1A, htab3A);
+
+    putAndWaitWithFamily(row1, f2Name, val, htab1A, htab3A);
+    checkRowWithFamily(row1, f2Name, 0, htab2A);
+    deleteAndWaitWithFamily(row1, f2Name, htab1A, htab3A);
+
+    putAndWaitWithFamily(row1, f3Name, val, htab1A, htab3A);
+    checkRowWithFamily(row1, f3Name, 0, htab2A);
+    deleteAndWaitWithFamily(row1, f3Name, htab1A, htab3A);
+
+    // A2. tableB can only replicated to cluster2
+    putAndWaitWithFamily(row1, f1Name, val, htab1B, htab2B);
+    checkRowWithFamily(row1, f1Name, 0, htab3B);
+    deleteAndWaitWithFamily(row1, f1Name, htab1B, htab2B);
+
+    putAndWaitWithFamily(row1, f2Name, val, htab1B, htab2B);
+    checkRowWithFamily(row1, f2Name, 0, htab3B);
+    deleteAndWaitWithFamily(row1, f2Name, htab1B, htab2B);
+
+    putAndWaitWithFamily(row1, f3Name, val, htab1B, htab2B);
+    checkRowWithFamily(row1, f3Name, 0, htab3B);
+    deleteAndWaitWithFamily(row1, f3Name, htab1B, htab2B);
+
+    // A3. tableC can be replicated to cluster2 and cluster3
+    putAndWaitWithFamily(row1, f1Name, val, htab1C, htab2C, htab3C);
+    deleteAndWaitWithFamily(row1, f1Name, htab1C, htab2C, htab3C);
+
+    putAndWaitWithFamily(row1, f1Name, val, htab1C, htab2C, htab3C);
+    deleteAndWaitWithFamily(row1, f1Name, htab1C, htab2C, htab3C);
+
+    putAndWaitWithFamily(row1, f1Name, val, htab1C, htab2C, htab3C);
+    deleteAndWaitWithFamily(row1, f1Name, htab1C, htab2C, htab3C);
+
+    // B. change the excluded table-cfs config
+    admin1.setPeerExcludedTableCFs("2", "TB:f1,f2;TC");
+    admin1.setPeerExcludedTableCFs("3", "TA:f3:TC");
+
+    // A1. tableA can be replicated to cluster2
+    // tableA:f1,f2 can be replicated to cluster3
+    putAndWaitWithFamily(row1, f1Name, val, htab1A, htab2A, htab3A);
+    deleteAndWaitWithFamily(row1, f1Name, htab1A, htab2A, htab3A);
+
+    putAndWaitWithFamily(row1, f2Name, val, htab1A, htab2A, htab3A);
+    deleteAndWaitWithFamily(row1, f2Name, htab1A, htab2A, htab3A);
+
+    putAndWaitWithFamily(row1, f3Name, val, htab1A, htab2A);
+    checkRowWithFamily(row1, f3Name, 0, htab3A);
+    deleteAndWaitWithFamily(row1, f3Name, htab1A, htab2A);
+
+    // B2. tableB:f3 can be replicated to cluster2
+    // tableB can be replicated to cluster3
+    putAndWaitWithFamily(row1, f1Name, val, htab1B, htab3B);
+    checkRowWithFamily(row1, f1Name, 0, htab2B);
+    deleteAndWaitWithFamily(row1, f1Name, htab1B, htab3B);
+
+    putAndWaitWithFamily(row1, f2Name, val, htab1B, htab3B);
+    checkRowWithFamily(row1, f2Name, 0, htab2B);
+    deleteAndWaitWithFamily(row1, f2Name, htab1B, htab3B);
+
+    putAndWaitWithFamily(row1, f3Name, val, htab1B, htab2B, htab3B);
+    deleteAndWaitWithFamily(row1, f3Name, htab1B, htab2B, htab3B);
+
+    // B3. tableC can not be replicated to cluster2 and cluster3
+    putAndWaitWithFamily(row1, f2Name, val, htab1C);
+    checkRowWithFamily(row1, f2Name, 0, htab2C, htab3C);
+    deleteAndWaitWithFamily(row1, f2Name, htab1C);
+
+    putAndWaitWithFamily(row1, f2Name, val, htab1C);
+    checkRowWithFamily(row1, f2Name, 0, htab2C, htab3C);
+    deleteAndWaitWithFamily(row1, f2Name, htab1C);
+
+    putAndWaitWithFamily(row1, f3Name, val, htab1C);
+    checkRowWithFamily(row1, f3Name, 0, htab2C, htab3C);
+    deleteAndWaitWithFamily(row1, f3Name, htab1C);
+
+    admin1.removePeer("2");
+    admin1.removePeer("3");
+
+    utility3.shutdownMiniCluster();
+    utility2.shutdownMiniCluster();
+    utility1.shutdownMiniCluster();
+  }
+
+  @Test
   public void testZKLockCleaner() throws Exception {
     MiniHBaseCluster master = utility1.startMiniCluster(1, 2);
     utility2.startMiniCluster();

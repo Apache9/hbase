@@ -33,6 +33,7 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.google.common.annotations.VisibleForTesting;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -42,6 +43,8 @@ import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.Server;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.ZooKeeperConnectionException;
+import org.apache.hadoop.hbase.client.HConnection;
+import org.apache.hadoop.hbase.client.HConnectionManager;
 import org.apache.hadoop.hbase.replication.regionserver.Replication;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.Pair;
@@ -123,6 +126,8 @@ public class ReplicationZookeeper {
   private String peerProtocolNodeName;
   // Name of zk node which stores peer's table-cfs
   private String tableCFsNodeName;
+  // Name of zk node which stores peer's excluded table-cfs
+  private String excludedTableCFsNodeName;
   // Name of zk node which stores peer's bandwidth
   private String bandwidthNodeName;
   private final Configuration conf;
@@ -185,6 +190,8 @@ public class ReplicationZookeeper {
         "zookeeper.znode.replication.peers.protocol", "peer-protocol");
     this.tableCFsNodeName = conf.get(
         "zookeeper.znode.replication.peers.tableCFs", "tableCFs");
+    this.excludedTableCFsNodeName = conf.get(
+      "zookeeper.znode.replication.peers.excluded.tableCFs", "excludedTableCFs");
     this.bandwidthNodeName = conf.get("zookeeper.znode.replication.peers.bandwidth", "bandwidth");
     this.replicationStateNodeName =
         conf.get("zookeeper.znode.replication.state", "state");
@@ -374,6 +381,7 @@ public class ReplicationZookeeper {
         otherClusterKey);
     peer.startStateTracker(this.zookeeper, this.getPeerStateNode(peerId));
     peer.startTableCFsTracker(this.zookeeper, this.getTableCFsNode(peerId));
+    peer.startExcludedTableCFsTracker(zookeeper, this.getExcludedTableCFsNode(peerId));
     peer.startBandwidthTracker(this.zookeeper, this.getBandwidthNode(peerId));
     return peer;
   }
@@ -461,7 +469,9 @@ public class ReplicationZookeeper {
       String tableCFsStr = (tableCFs == null) ? "" : tableCFs;
       ZKUtil.createAndWatch(this.zookeeper, getTableCFsNode(id),
           Bytes.toBytes(tableCFsStr));
-      
+
+      ZKUtil.createAndWatch(this.zookeeper, getExcludedTableCFsNode(id), Bytes.toBytes(""));
+
       ZKUtil.createAndWatch(this.zookeeper, getBandwidthNode(id),
         Bytes.toBytes(String.valueOf(bandwidth)));
       // There is a race b/w PeerWatcher and ReplicationZookeeper#add method to create the
@@ -613,7 +623,32 @@ public class ReplicationZookeeper {
       throw new IOException("Unable to change table-cfs of the peer " + id, e);
     }
   }
-  
+
+  /**
+  * Set excluded table-cfs string of the peer.
+  * This method write the excluded table-cfs by connecting to ZK.
+  * used by ReplicationAdmin
+  *
+  * @param id peer's identifier
+  * @param newTableCFs peer's new excluded table-cf config
+  */
+  public void setExcludedTableCFsStr(String id, String newTableCFs) throws IOException {
+    try {
+      if (!peerExists(id)) {
+        throw new IllegalArgumentException("peer " + id + " is not registered");
+      }
+      String excludedTableCFsZNode = getExcludedTableCFsNode(id);
+      if (ZKUtil.checkExists(this.zookeeper, excludedTableCFsZNode) != -1) {
+        ZKUtil.setData(this.zookeeper, excludedTableCFsZNode, Bytes.toBytes(newTableCFs));
+      } else {
+        ZKUtil.createAndWatch(zookeeper, excludedTableCFsZNode, Bytes.toBytes(newTableCFs));
+      }
+      LOG.info("excluded table-cfs of the peer " + id + " set to " + newTableCFs);
+    } catch (KeeperException e) {
+      throw new IOException("Unable to change table-cfs of the peer " + id, e);
+    }
+  }
+
   public void setPeerBandwidth(String id, Long bandwidth) throws IOException {
     try {
       if (!peerExists(id)) {
@@ -656,6 +691,35 @@ public class ReplicationZookeeper {
     return Bytes.toString(tableCFsBytes);
   }
 
+  /**
+   * Get excluded table-cfs string of the peer.
+   * This method read the excluded table-cfs by connecting to ZK.
+   * used by ReplicationAdmin
+   *
+   * @param id peer's identifier
+   * @return excluded table-cfs of the peer
+   */
+  public String getExcludedTableCFsStr(String id) throws KeeperException {
+    byte[] excludedTableCFsBytes = ZKUtil
+        .getData(this.zookeeper, getExcludedTableCFsNode(id));
+    return Bytes.toString(excludedTableCFsBytes);
+  }
+
+  /**
+   * Get the excluded (table, cf-list) map of given peer.
+   * used by ReplicationSource
+   *
+   * @param id peer identifier
+   * @return (table, cf-list) map
+   * @throws IllegalArgumentException Thrown when the peer doesn't exist
+   */
+  public Map<String, List<String>> getExcludedTableCFs(String id) {
+    if (!this.peerClusters.containsKey(id)) {
+      throw new IllegalArgumentException("peer " + id + " is not registered");
+    }
+    return this.peerClusters.get(id).getExcludedTableCFs();
+  }
+
   public long getPeerBandwidthFromZK(String id) throws KeeperException {
     byte[] bandwidthBytes = ZKUtil
         .getData(this.zookeeper, getBandwidthNode(id));
@@ -682,7 +746,12 @@ public class ReplicationZookeeper {
     return ZKUtil.joinZNode(this.peersZNode,
         ZKUtil.joinZNode(id, this.tableCFsNodeName));
   }
-  
+
+  private String getExcludedTableCFsNode(String id) {
+    return ZKUtil.joinZNode(this.peersZNode,
+        ZKUtil.joinZNode(id, this.excludedTableCFsNodeName));
+  }
+
   private String getBandwidthNode(String id) {
     return ZKUtil.joinZNode(this.peersZNode,
       ZKUtil.joinZNode(id, this.bandwidthNodeName));
@@ -1189,6 +1258,48 @@ public class ReplicationZookeeper {
   }
 
   /**
+   * Used to create znode: peer-state, tableCFs, excludedTableCFs for every peer. After
+   * https://phabricator.d.xiaomi.net/D40758, region server will stop itself if these znodes were
+   * not exist.
+   */
+  public void update() {
+    List<String> znodes = null;
+    try {
+      znodes = ZKUtil.listChildrenNoWatch(this.zookeeper, this.peersZNode);
+    } catch (KeeperException e) {
+      LOG.error("Fail to update all existing peers", e);
+    }
+    if (znodes != null) {
+      for (String peerId : znodes) {
+        update(peerId);
+      }
+    }
+  }
+
+  public void update(String peerId) {
+    try {
+      String peerStateNode = getPeerStateNode(peerId);
+      if (ZKUtil.checkExists(zookeeper, peerStateNode) == -1) {
+        ZKUtil.createWithParentsIfNotExists(zookeeper, peerStateNode);
+        LOG.info("Create znode " + peerStateNode + " for peer " + peerId);
+      }
+      String tableCFsNode = getTableCFsNode(peerId);
+      if (ZKUtil.checkExists(zookeeper, tableCFsNode) == -1) {
+        ZKUtil.createWithParentsIfNotExists(zookeeper, tableCFsNode);
+        LOG.info("Create znode " + tableCFsNode + " for peer " + peerId);
+      }
+      String excludedTableCFsNode = getExcludedTableCFsNode(peerId);
+      if (ZKUtil.checkExists(zookeeper, excludedTableCFsNode) == -1) {
+        ZKUtil.createWithParentsIfNotExists(zookeeper, excludedTableCFsNode);
+        LOG.info("Create znode " + excludedTableCFsNode + " for peer " + peerId);
+      }
+    } catch (KeeperException e) {
+      LOG.error("Fail to update znode for peer " + peerId
+          + " and this may cause regionserver crash!", e);
+    }
+  }
+
+  /**
    * Tracker for status of the replication
    */
   public class ReplicationStatusTracker extends ZooKeeperNodeTracker {
@@ -1212,6 +1323,8 @@ public class ReplicationZookeeper {
           .println("./hbase org.apache.hadoop.hbase.replication.ReplicationZookeeper list baseZnode");
       System.out
           .println("./hbase org.apache.hadoop.hbase.replication.ReplicationZookeeper set znode length");
+      System.out
+        .println("./hbase org.apache.hadoop.hbase.replication.ReplicationZookeeper upgrade");
       System.exit(2);
     }
     String cmd = args[0];
@@ -1261,6 +1374,17 @@ public class ReplicationZookeeper {
         ZKUtil.setData(zk, znode,
           Bytes.toBytes(Long.toString(position) + "," + Long.toString(writeTime)));
         zk.close();
+      } catch (Exception e) {
+        e.printStackTrace();
+      }
+    } else if (cmd.equals("upgrade")) {
+      Configuration conf = HBaseConfiguration.create();
+      try {
+        HConnection connection = HConnectionManager.getConnection(conf);
+        ZooKeeperWatcher zkw = connection.getZooKeeperWatcher();
+        ReplicationZookeeper zkHelper = new ReplicationZookeeper(connection, conf, zkw);
+        zkHelper.update();
+        zkw.close();
       } catch (Exception e) {
         e.printStackTrace();
       }

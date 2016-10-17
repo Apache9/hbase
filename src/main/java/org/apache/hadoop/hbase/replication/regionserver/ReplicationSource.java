@@ -838,23 +838,58 @@ public class ReplicationSource extends Thread
     WALEdit edit = entry.getEdit();
     List<KeyValue> kvs = edit.getKeyValues();
     Map<String, List<String>> tableCFs = this.zkHelper.getTableCFs(peerId);
+    Map<String, List<String>> excludedTableCFs = this.zkHelper.getExcludedTableCFs(peerId);
 
-    // clear kvs(prevent replicating) if logKey's table isn't in this peer's
-    // replicable table list (empty tableCFs means all table are replicable)
-    if (tableCFs != null && !tableCFs.isEmpty() && !tableCFs.containsKey(tabName)) {
-      kvs.clear();
-    } else {
-      List<String> cfs = tableCFs.get(tabName);
-      for (int i = edit.size() - 1; i >= 0; i--) {
-        KeyValue kv = kvs.get(i);
-        // The scope will be null or empty if
-        // there's nothing to replicate in that WALEdit
-        // ignore(remove) kv if its cf isn't in the replicable cf list
-        // (empty cfs means all cfs of this table are replicable)
-        if ((!edit.hasKeyInScope(kv.getFamily())) ||
-            (cfs != null && !cfs.isEmpty() &&
-             !cfs.contains(Bytes.toString(kv.getFamily())))) {
-          kvs.remove(i);
+    // First filter by replication scope
+    for (int i = edit.size() - 1; i >= 0; i--) {
+      KeyValue kv = kvs.get(i);
+      // The scope will be null or empty if
+      // there's nothing to replicate in that WALEdit
+      if (!edit.hasKeyInScope(kv.getFamily())) {
+        kvs.remove(i);
+      }
+    }
+
+    // Then filter by table-cfs config and excluded table-cfs config
+    // Case 1. No table-cfs config and no excluded table-cfs config
+    if ((tableCFs == null || tableCFs.isEmpty())
+        && (excludedTableCFs == null || excludedTableCFs.isEmpty())) {
+      return;
+    }
+
+    // Case 2. Only has table-cfs config
+    if (excludedTableCFs == null || excludedTableCFs.isEmpty()) {
+      // clear kvs(prevent replicating) if logKey's table isn't in this peer's
+      // replicable table list
+      if (!tableCFs.containsKey(tabName)) {
+        kvs.clear();
+      } else {
+        List<String> cfs = tableCFs.get(tabName);
+        for (int i = edit.size() - 1; i >= 0; i--) {
+          KeyValue kv = kvs.get(i);
+          // ignore(remove) kv if its cf isn't in the replicable cf list
+          // (empty cfs means all cfs of this table are replicable)
+          if (cfs != null && !cfs.isEmpty() && !cfs.contains(Bytes.toString(kv.getFamily()))) {
+            kvs.remove(i);
+          }
+        }
+      }
+    }
+
+    // Case 3. Only has excluded table-cfs config
+    if (tableCFs == null || tableCFs.isEmpty()) {
+      if (excludedTableCFs.containsKey(tabName)) {
+        List<String> cfs = excludedTableCFs.get(tabName);
+        // empty cfs means all cfs of this table are excluded
+        if (cfs == null || cfs.isEmpty()) {
+          kvs.clear();
+        } else {
+          for (int i = edit.size() - 1; i >= 0; i--) {
+            KeyValue kv = kvs.get(i);
+            if (cfs.contains(Bytes.toString(kv.getFamily()))) {
+              kvs.remove(i);
+            }
+          }
         }
       }
     }
