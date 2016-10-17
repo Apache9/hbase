@@ -279,6 +279,7 @@ module Hbase
           split_algo = RegionSplitter.newSplitAlgoInstance(@conf, arg.delete(SPLITALGO))
           splits = split_algo.split(JInteger.valueOf(num_regions))
         elsif (arg.has_key?(SLOTS_COUNT))
+          slots_count = arg.delete(SLOTS_COUNT)
           htd.setSlotsCount(JInteger.valueOf(slots_count))
         end
         
