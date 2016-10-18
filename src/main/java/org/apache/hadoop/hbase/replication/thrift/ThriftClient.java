@@ -30,6 +30,7 @@ import javax.security.sasl.Sasl;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.regionserver.wal.HLog;
 import org.apache.hadoop.hbase.replication.thrift.generated.TBatchEdit;
@@ -104,7 +105,8 @@ public class ThriftClient {
       TTransportException {
     boolean isCompact =
         conf.getBoolean("hbase.replication.thrift.compact", true);
-
+    int timeout = conf.getInt(HConstants.HBASE_RPC_TIMEOUT_KEY,
+        HConstants.DEFAULT_HBASE_RPC_TIMEOUT);
     String serverProtocol = UserGroupInformation.getCurrentUser().getUserName();
     String serverAddress = null;
     if(isSecure) {
@@ -117,7 +119,7 @@ public class ThriftClient {
       serverAddress = names[1];
     }
 
-    TTransport transport = new TSocket(host, port);
+    TTransport transport = new TSocket(host, port, timeout);
     if(isSecure) {
       Map<String, String> saslProps = new HashMap<String, String>();
       saslProps.put(Sasl.QOP, ThriftUtilities.getQOP(conf).getSaslQop());
