@@ -23,11 +23,15 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URL;
+import java.util.Collections;
 import java.util.Map;
 
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.http.HttpServer;
+import org.apache.hadoop.http.NoCacheFilter;
 import org.mortbay.jetty.handler.ContextHandlerCollection;
 import org.mortbay.jetty.servlet.Context;
 import org.mortbay.jetty.servlet.DefaultServlet;
@@ -42,6 +46,9 @@ import org.mortbay.jetty.servlet.DefaultServlet;
  */
 @InterfaceAudience.Private
 public class InfoServer extends HttpServer {
+
+  private static final Log LOG = LogFactory.getLog(InfoServer.class);
+
   private final Configuration config;
 
   /**
@@ -60,7 +67,13 @@ public class InfoServer extends HttpServer {
     super(name, bindAddress, port, findPort, c);
     this.config = c;
     fixupLogsServletLocation();
-    addStdoutServlet();
+  }
+
+  @Override
+  protected void addDefaultApps(ContextHandlerCollection parent, String appDir, Configuration conf)
+      throws IOException {
+    super.addDefaultApps(parent, appDir, conf);
+    addStdoutServlet(parent, conf);
   }
 
   /**
@@ -97,24 +110,30 @@ public class InfoServer extends HttpServer {
   }
 
   // servlet for retrieving gc log
-  private void addStdoutServlet() {
+  private void addStdoutServlet(ContextHandlerCollection parent, Configuration conf) {
+    LOG.info("Going to setup servlet to retrieve gc log");
     String logDir = System.getProperty("hbase.log.dir");
-    if (logDir != null) {
-      try {
-        File stdoutDir = new File(new File(logDir).getCanonicalFile().getParentFile(), "stdout");
-        if (!stdoutDir.exists()) {
-          return;
-        }
-        String stdoutDirStr = stdoutDir.getCanonicalPath();
-        Context stdoutContext = new Context((ContextHandlerCollection) this.webServer.getHandler(),
-            "/stdout");
-        stdoutContext.setResourceBase(stdoutDirStr);
-        stdoutContext.addServlet(DefaultServlet.class, "/");
-        HttpServerUtil.constrainHttpMethods(stdoutContext);
-        defaultContexts.put(stdoutContext, true);
-      } catch (IOException e) {
+    if (logDir == null) {
+      LOG.info("No log dir sepecific, will not try to locate stdout dir");
+      return;
+    }
+    try {
+      File stdoutDir = new File(new File(logDir).getAbsoluteFile().getParentFile(), "stdout");
+      if (!stdoutDir.exists()) {
+        LOG.warn("Stdout dir " + stdoutDir.getAbsolutePath() + " does not exists, give up");
         return;
       }
+      String stdoutDirStr = stdoutDir.getCanonicalPath();
+      Context stdoutContext = new Context(parent, "/stdout");
+      stdoutContext.setResourceBase(stdoutDirStr);
+      stdoutContext.addServlet(DefaultServlet.class, "/*");
+      stdoutContext.setDisplayName("stdout");
+      defineFilter(stdoutContext, NO_CACHE_FILTER, NoCacheFilter.class.getName(),
+        Collections.EMPTY_MAP, new String[] { "/*" });
+      defaultContexts.put(stdoutContext, true);
+    } catch (IOException e) {
+      LOG.warn("Failed to setup servlet for retrieving gc log", e);
+      return;
     }
   }
 
