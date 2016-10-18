@@ -27,6 +27,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentSkipListMap;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -63,13 +65,13 @@ public class RegionStates {
   /**
    * Regions currently in transition.
    */
-  final HashMap<String, RegionState> regionsInTransition;
+  final Map<String, RegionState> regionsInTransition;
 
   /**
    * Region encoded name to state map.
    * All the regions should be in this map.
    */
-  private final HashMap<String, RegionState> regionStates;
+  private final Map<String, RegionState> regionStates;
 
   /**
    * Holds mapping of table -> region state
@@ -87,7 +89,7 @@ public class RegionStates {
    * Region to server assignment map.
    * Contains the server a given region is currently assigned to.
    */
-  private final TreeMap<HRegionInfo, ServerName> regionAssignments;
+  private final ConcurrentSkipListMap<HRegionInfo, ServerName> regionAssignments;
 
   /**
    * Encoded region name to server assignment map for re-assignment
@@ -99,14 +101,14 @@ public class RegionStates {
    * is offline while the info in lastAssignments is cleared when
    * the region is closed or the server is dead and processed.
    */
-  private final HashMap<String, ServerName> lastAssignments;
+  private final Map<String, ServerName> lastAssignments;
 
   /**
    * Map a host port pair string to the latest start code
    * of a region server which is known to be dead. It is dead
    * to us, but server manager may not know it yet.
    */
-  private final HashMap<String, Long> deadServers;
+  private final Map<String, Long> deadServers;
 
   /**
    * Map a dead servers to the time when log split is done.
@@ -115,7 +117,7 @@ public class RegionStates {
    * on a configured time. By default, we assume a dead
    * server should be done with log splitting in two hours.
    */
-  private final HashMap<ServerName, Long> processedServers;
+  private final Map<ServerName, Long> processedServers;
   private long lastProcessedServerCleanTime;
 
   private final RegionStateStore regionStateStore;
@@ -128,13 +130,13 @@ public class RegionStates {
 
   RegionStates(final Server master,
       final ServerManager serverManager, final RegionStateStore regionStateStore) {
-    regionStates = new HashMap<String, RegionState>();
-    regionsInTransition = new HashMap<String, RegionState>();
-    serverHoldings = new HashMap<ServerName, Set<HRegionInfo>>();
-    regionAssignments = new TreeMap<HRegionInfo, ServerName>();
-    lastAssignments = new HashMap<String, ServerName>();
-    processedServers = new HashMap<ServerName, Long>();
-    deadServers = new HashMap<String, Long>();
+    regionStates = new ConcurrentHashMap<String, RegionState>();
+    regionsInTransition = new ConcurrentHashMap<String, RegionState>();
+    serverHoldings = new ConcurrentHashMap<ServerName, Set<HRegionInfo>>();
+    regionAssignments = new ConcurrentSkipListMap<HRegionInfo, ServerName>();
+    lastAssignments = new ConcurrentHashMap<String, ServerName>();
+    processedServers = new ConcurrentHashMap<ServerName, Long>();
+    deadServers = new ConcurrentHashMap<String, Long>();
     this.regionStateStore = regionStateStore;
     this.serverManager = serverManager;
     this.server = master;
@@ -156,7 +158,7 @@ public class RegionStates {
    */
   @SuppressWarnings("unchecked")
   public synchronized Map<String, RegionState> getRegionsInTransition() {
-    return (Map<String, RegionState>)regionsInTransition.clone();
+    return Collections.unmodifiableMap(regionsInTransition);
   }
 
   /**
