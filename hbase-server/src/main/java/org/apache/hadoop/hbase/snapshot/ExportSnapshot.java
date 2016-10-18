@@ -841,6 +841,18 @@ public class ExportSnapshot extends Configured implements Tool {
     SnapshotReferenceUtil.verifySnapshot(conf, fs, snapshotDir, snapshotDesc);
   }
 
+  private static void setOwner(final FileSystem fs, final Path path, final String user,
+                               final String group, final boolean recursive) throws IOException {
+    if (user != null || group != null) {
+      if (recursive && fs.isDirectory(path)) {
+        for (FileStatus child : fs.listStatus(path)) {
+          setOwner(fs, child.getPath(), user, group, recursive);
+        }
+      }
+      fs.setOwner(path, user, group);
+    }
+  }
+
   /**
    * Execute the export snapshot by copying the snapshot metadata, hfiles and hlogs.
    * @return 0 on success, and != 0 upon failure.
@@ -922,10 +934,29 @@ public class ExportSnapshot extends Configured implements Tool {
 
     boolean skipTmp = conf.getBoolean(CONF_SKIP_TMP, false);
 
+    if(filesUser == null || filesUser.length() <= 0){
+      filesUser = outputFs.getFileStatus(outputRoot).getOwner();
+    }
+    if(filesGroup == null || filesGroup.length() <= 0){
+      filesGroup = outputFs.getFileStatus(outputRoot).getGroup();
+    }
+
     Path snapshotDir = SnapshotDescriptionUtils.getCompletedSnapshotDir(snapshotName, inputRoot);
     Path snapshotTmpDir = SnapshotDescriptionUtils.getWorkingSnapshotDir(targetName, outputRoot);
     Path outputSnapshotDir = SnapshotDescriptionUtils.getCompletedSnapshotDir(targetName, outputRoot);
     Path initialOutputSnapshotDir = skipTmp ? outputSnapshotDir : snapshotTmpDir;
+
+    Path needSetOwnerDir = SnapshotDescriptionUtils.getSnapshotRootDir(outputRoot);
+    if (outputFs.exists(needSetOwnerDir)) {
+      if(skipTmp){
+        needSetOwnerDir = outputSnapshotDir;
+      }else{
+        needSetOwnerDir = SnapshotDescriptionUtils.getWorkingSnapshotDir(outputRoot);
+        if (outputFs.exists(needSetOwnerDir)) {
+          needSetOwnerDir = snapshotTmpDir;
+        }
+      }
+    }
 
     // Check if the snapshot already exists
     if (outputFs.exists(outputSnapshotDir)) {
@@ -967,6 +998,11 @@ public class ExportSnapshot extends Configured implements Tool {
     } catch (IOException e) {
       throw new ExportSnapshotException("Failed to copy the snapshot directory: from=" +
         snapshotDir + " to=" + initialOutputSnapshotDir, e);
+    } finally {
+      // set owner for references
+      if(filesUser != null || filesGroup != null){
+        setOwner(outputFs, needSetOwnerDir, filesUser, filesGroup, true);
+      }
     }
 
     // Write a new .snapshotinfo if the target name is different from the source name
