@@ -20,6 +20,7 @@
 package org.apache.hadoop.hbase.client;
 
 
+import com.google.protobuf.ServiceException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
@@ -29,7 +30,13 @@ import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.KeyValueUtil;
 import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.ipc.RpcControllerFactory;
+import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
+import org.apache.hadoop.hbase.protobuf.RequestConverter;
+import org.apache.hadoop.hbase.protobuf.ResponseConverter;
+import org.apache.hadoop.hbase.protobuf.generated.ClientProtos;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.htrace.Trace;
 
 import java.io.IOException;
 
@@ -44,7 +51,7 @@ import java.io.IOException;
 @InterfaceStability.Evolving
 public class ClientSmallReversedScanner extends ReversedClientScanner {
   private static final Log LOG = LogFactory.getLog(ClientSmallReversedScanner.class);
-  private RegionServerCallable<Result[]> smallScanCallable = null;
+  private RegionServerCallable<Result[]> smallReversedScannerCallable = null;
 
   /**
    * Create a new ReversibleClientScanner for the specified table Note that the
@@ -76,6 +83,7 @@ public class ClientSmallReversedScanner extends ReversedClientScanner {
     // Where to start the next getter
     byte[] localStartKey;
     int cacheNum = nbRows;
+    boolean isFirstRegionToLocate = false;
     // if we're at end of table, close and return false to stop iterating
     if (this.currentRegion != null && currentRegionDone) {
       byte[] startKey = this.currentRegion.getStartKey();
@@ -98,14 +106,21 @@ public class ClientSmallReversedScanner extends ReversedClientScanner {
       cacheNum++;
     } else {
       localStartKey = this.scan.getStartRow();
+      isFirstRegionToLocate = true;
+    }
+
+    if (!isFirstRegionToLocate && (localStartKey == null || localStartKey.length == 0)) {
+      // when non-firstRegion & localStartKey is empty bytes, no more rowKey should scan.
+      // otherwise, maybe infinity results with RowKey=0x00 will return.
+      return false;
     }
 
     if (LOG.isTraceEnabled()) {
       LOG.trace("Advancing internal small scanner to startKey at '"
           + Bytes.toStringBinary(localStartKey) + "'");
     }
-    smallScanCallable = ClientSmallScanner.getSmallScanCallable(
-        scan, getConnection(), getTable(), localStartKey, cacheNum, this.rpcControllerFactory);
+    smallReversedScannerCallable = getSmallReversedScannerCallable(localStartKey, cacheNum,
+      rpcControllerFactory, isFirstRegionToLocate);
 
     if (this.scanMetrics != null) {
       this.scanMetrics.countOfRegions.incrementAndGet();
@@ -132,8 +147,8 @@ public class ClientSmallReversedScanner extends ReversedClientScanner {
         // Server returns a null values if scanning is to stop. Else,
         // returns an empty array if scanning is to go on and we've just
         // exhausted current region.
-        values = this.caller.callWithRetries(smallScanCallable, scannerTimeout);
-        this.currentRegion = smallScanCallable.getHRegionInfo();
+        values = this.caller.callWithRetries(smallReversedScannerCallable, scannerTimeout);
+        this.currentRegion = smallReversedScannerCallable.getHRegionInfo();
         long currentTime = System.currentTimeMillis();
         if (this.scanMetrics != null) {
           this.scanMetrics.sumOfMillisSecBetweenNexts.addAndGet(currentTime
@@ -166,6 +181,43 @@ public class ClientSmallReversedScanner extends ReversedClientScanner {
     return null;
   }
 
+  protected RegionServerCallable<Result[]> getSmallReversedScannerCallable(byte[] localStartKey,
+      final int cacheNum, RpcControllerFactory rpcControllerFactory,
+      boolean isFirstRegionToLocate) {
+    byte[] locateStartRow = null;
+    if (isFirstRegionToLocate
+        && (localStartKey == null || Bytes.equals(localStartKey, HConstants.EMPTY_BYTE_ARRAY))) {
+      // HBASE-16886: if not setting startRow, then we will use a range [MAX_BYTE_ARRAY, +oo) to
+      // locate a region list, and the last one in region list is the region where our scan start.
+      locateStartRow = ClientScanner.MAX_BYTE_ARRAY;
+    }
+    scan.setStartRow(localStartKey);
+    return new ReversedScannerCallable(getConnection(), getTable(), scan, null, locateStartRow,
+        rpcControllerFactory.newController(), scannerTimeout) {
+      public Result[] call() throws IOException {
+        ClientProtos.ScanRequest request = RequestConverter
+            .buildScanRequest(getLocation().getRegionInfo().getRegionName(), scan, cacheNum, true);
+        ClientProtos.ScanResponse response = null;
+        try {
+          controller.reset();
+          controller.setPriority(getTableName());
+          response = getStub().scan(controller, request);
+          if (response.hasMoreResultsInRegion()) {
+            setHasMoreResultsContext(true);
+            setServerHasMoreResults(response.getMoreResultsInRegion());
+          } else {
+            setHasMoreResultsContext(false);
+          }
+          if (Trace.isTracing()) {
+            Trace.addTimelineAnnotation("Reversed Small scan to " + location);
+          }
+          return ResponseConverter.getResults(controller.cellScanner(), response);
+        } catch (ServiceException se) {
+          throw ProtobufUtil.getRemoteException(se);
+        }
+      }
+    };
+  }
 
   @Override
   protected void initializeScannerInConstruction() throws IOException {
