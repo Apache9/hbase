@@ -20,7 +20,9 @@ package org.apache.hadoop.hbase.replication.regionserver;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.NavigableMap;
 import java.util.TreeMap;
 import java.util.UUID;
@@ -29,6 +31,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
@@ -357,15 +360,24 @@ public class Replication implements WALActionsListener,
   }
 
   private void buildReplicationLoad() {
-    // get source
-    List<ReplicationSourceInterface> sources = this.replicationManager.getSources();
     List<MetricsSource> sourceMetricsList = new ArrayList<MetricsSource>();
 
+    // get source
+    List<ReplicationSourceInterface> sources = this.replicationManager.getSources();
     for (ReplicationSourceInterface source : sources) {
       if (source instanceof ReplicationSource) {
         sourceMetricsList.add(((ReplicationSource) source).getSourceMetrics());
       }
     }
+
+    // get old source
+    List<ReplicationSourceInterface> oldSources = this.replicationManager.getOldSources();
+    for (ReplicationSourceInterface source : oldSources) {
+      if (source instanceof ReplicationSource) {
+        sourceMetricsList.add(((ReplicationSource) source).getSourceMetrics());
+      }
+    }
+
     // get sink
     MetricsSink sinkMetrics = this.replicationSink.getSinkMetrics();
     this.replicationLoad.buildReplicationLoad(sourceMetricsList, sinkMetrics);

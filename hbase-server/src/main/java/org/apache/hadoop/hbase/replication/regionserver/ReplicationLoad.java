@@ -11,12 +11,15 @@
  */
 package org.apache.hadoop.hbase.replication.regionserver;
 
-import java.util.Date;
-import java.util.List;
 import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos;
+import org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.ReplicationLoadSource;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.Strings;
 
@@ -59,8 +62,15 @@ public class ReplicationLoad {
     this.replicationLoadSink = rLoadSinkBuild.build();
 
     // build the SourceLoad List
+    Map<String, ClusterStatusProtos.ReplicationLoadSource> replicationLoadSourceMap =
+        new HashMap<String, ClusterStatusProtos.ReplicationLoadSource>();
     this.replicationLoadSourceList = new ArrayList<ClusterStatusProtos.ReplicationLoadSource>();
     for (MetricsSource sm : this.sourceMetricsList) {
+      // Get the actual peerId
+      String peerId = sm.getPeerID();
+      String[] parts = peerId.split("-", 2);
+      peerId = parts.length != 1 ? parts[0] : peerId;
+
       long ageOfLastShippedOp = sm.getAgeOfLastShippedOp();
       int sizeOfLogQueue = sm.getSizeOfLogQueue();
       long timeStampOfLastShippedOp = sm.getTimeStampOfLastShippedOp();
@@ -78,17 +88,25 @@ public class ReplicationLoad {
         replicationLag = 0;
       }
 
-      ClusterStatusProtos.ReplicationLoadSource.Builder rLoadSourceBuild =
-          ClusterStatusProtos.ReplicationLoadSource.newBuilder();
-      rLoadSourceBuild.setPeerID(sm.getPeerID());
+      ClusterStatusProtos.ReplicationLoadSource rLoadSource = replicationLoadSourceMap.get(peerId);
+      if (rLoadSource != null) {
+        ageOfLastShippedOp = Math.max(rLoadSource.getAgeOfLastShippedOp(), ageOfLastShippedOp);
+        sizeOfLogQueue += rLoadSource.getSizeOfLogQueue();
+        timeStampOfLastShippedOp = Math.min(rLoadSource.getTimeStampOfLastShippedOp(),
+          timeStampOfLastShippedOp);
+        replicationLag = Math.max(rLoadSource.getReplicationLag(), replicationLag);
+      }
+      ClusterStatusProtos.ReplicationLoadSource.Builder rLoadSourceBuild = ClusterStatusProtos.ReplicationLoadSource
+          .newBuilder();
+      rLoadSourceBuild.setPeerID(peerId);
       rLoadSourceBuild.setAgeOfLastShippedOp(ageOfLastShippedOp);
       rLoadSourceBuild.setSizeOfLogQueue(sizeOfLogQueue);
       rLoadSourceBuild.setTimeStampOfLastShippedOp(timeStampOfLastShippedOp);
       rLoadSourceBuild.setReplicationLag(replicationLag);
-
-      this.replicationLoadSourceList.add(rLoadSourceBuild.build());
+      replicationLoadSourceMap.put(peerId, rLoadSourceBuild.build());
     }
-
+    this.replicationLoadSourceList = new ArrayList<ClusterStatusProtos.ReplicationLoadSource>(
+        replicationLoadSourceMap.values());
   }
 
   /**
