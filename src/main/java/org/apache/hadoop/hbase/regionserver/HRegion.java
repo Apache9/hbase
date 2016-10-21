@@ -5943,6 +5943,7 @@ public class HRegion implements HeapSize { // , Writable{
                 now, codec.encode(amount));
             newKV.setMemstoreTS(w.getWriteNumber());
             kvs.add(newKV);
+            allKVs.add(newKV);
 
             // Append update to WAL
             if (writeToWAL) {
@@ -5989,7 +5990,6 @@ public class HRegion implements HeapSize { // , Writable{
               size += store.add(kv);
             }
           }
-          allKVs.addAll(entry.getValue());
         }
         
         // apply row mutations to memstore if necessary
