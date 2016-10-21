@@ -1018,11 +1018,6 @@ MasterServices, Server {
 
     this.initializationBeforeMetaAssignment = true;
 
-    //initialize load balancer
-    this.balancer.setClusterStatus(getClusterStatus());
-    this.balancer.setMasterServices(this);
-    this.balancer.initialize();
-
     // Make sure meta assigned before proceeding.
     status.setStatus("Assigning Meta Region");
     assignMeta(status, previouslyFailedMetaRSs);
@@ -1048,8 +1043,11 @@ MasterServices, Server {
     status.setStatus("Starting assignment manager");
     this.assignmentManager.joinCluster();
 
-    //set cluster status again after user regions are assigned
+    // initialize load balancer
+    this.balancer.setMasterServices(this);
+    // set cluster status after user regions are assigned
     this.balancer.setClusterStatus(getClusterStatus());
+    this.balancer.initialize();
 
     if (!masterRecovery) {
       // Start balancer and meta catalog janitor after meta and regions have

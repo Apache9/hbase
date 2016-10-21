@@ -206,7 +206,7 @@ public class StochasticLoadBalancer extends BaseLoadBalancer {
       int functionsCount = getCostFunctionNames().length;
       updateMetricsSize(tablesCount * (functionsCount + 1)); // +1 for overall
     } catch (Exception e) {
-      LOG.error("failed to get the size of all tables, exception = " + e.getMessage());
+      LOG.error("failed to get the size of all tables", e);
     }
   }
 
