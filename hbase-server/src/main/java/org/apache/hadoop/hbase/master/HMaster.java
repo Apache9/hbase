@@ -1019,8 +1019,8 @@ MasterServices, Server {
     this.initializationBeforeMetaAssignment = true;
 
     //initialize load balancer
-    this.balancer.setClusterStatus(getClusterStatus());
     this.balancer.setMasterServices(this);
+    this.balancer.setClusterStatus(getClusterStatus());
     this.balancer.initialize();
 
     // Make sure meta assigned before proceeding.
