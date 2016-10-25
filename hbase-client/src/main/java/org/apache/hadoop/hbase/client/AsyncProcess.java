@@ -19,6 +19,8 @@
 
 package org.apache.hadoop.hbase.client;
 
+import com.google.common.base.Preconditions;
+
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.util.ArrayList;
@@ -50,13 +52,10 @@ import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.backoff.ServerStatistics;
 import org.apache.hadoop.hbase.client.coprocessor.Batch;
 import org.apache.hadoop.hbase.ipc.RpcControllerFactory;
-import org.apache.hadoop.hbase.quotas.ThrottlingException;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.Pair;
 import org.apache.htrace.Trace;
-
-import com.google.common.base.Preconditions;
 
 /**
  * This class  allows a continuous flow of requests. It's written to be compatible with a

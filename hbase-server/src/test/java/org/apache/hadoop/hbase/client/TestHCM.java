@@ -31,6 +31,7 @@ import static org.junit.Assert.fail;
 import com.google.common.collect.Lists;
 
 import java.io.IOException;
+import java.io.InterruptedIOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.net.SocketTimeoutException;
@@ -178,9 +179,9 @@ public class TestHCM {
   public static void setUpBeforeClass() throws Exception {
     TEST_UTIL.getConfiguration().setBoolean(HConstants.STATUS_PUBLISHED, true);
     TEST_UTIL.getConfiguration().setInt(HConstants.HBASE_CLIENT_RETRIES_NUMBER, RPC_RETRY);
-    // simulate queue blocking in testDropTimeoutRequest
-    TEST_UTIL.getConfiguration().setInt(HConstants.REGION_SERVER_HANDLER_COUNT, 1);
-    TEST_UTIL.getConfiguration().setInt(HConstants.HBASE_CLIENT_PERSERVER_REQUESTS_THRESHOLD, 3);
+    TEST_UTIL.getConfiguration().setInt(HConstants.HBASE_CLIENT_PERSERVER_REQUESTS_THRESHOLD, 8);
+    TEST_UTIL.getConfiguration().setInt(HConstants.HBASE_CLIENT_MAX_PERSERVER_TASKS, 100);
+    TEST_UTIL.getConfiguration().setInt(HConstants.HBASE_CLIENT_MAX_PERREGION_TASKS, 100);
     TEST_UTIL.startMiniCluster(2);
   }
 
@@ -452,6 +453,9 @@ public class TestHCM {
     // on handling timeout requests and finally all requests timeout and client throws exception.
     HTableDescriptor hdt = TEST_UTIL.createTableDescriptor(getTestTableName());
     hdt.addCoprocessor(SleepLongerAtFirstCoprocessor.class.getName());
+
+    // simulate queue blocking
+    TEST_UTIL.getConfiguration().setInt(HConstants.REGION_SERVER_HANDLER_COUNT, 1);
     Configuration c = new Configuration(TEST_UTIL.getConfiguration());
     c.setInt(HConstants.HBASE_RPC_TIMEOUT_KEY, SleepLongerAtFirstCoprocessor.SLEEP_TIME * 2);
     c.setInt(HConstants.HBASE_CLIENT_PAUSE, 0);
@@ -460,6 +464,7 @@ public class TestHCM {
       t.get(new Get(FAM_NAM));
     } finally {
       t.close();
+      TEST_UTIL.getConfiguration().setInt(HConstants.REGION_SERVER_HANDLER_COUNT, 50);
     }
   }
 
@@ -1223,7 +1228,8 @@ public class TestHCM {
     HTable table;
     int getServerBusyException = 0;
 
-    TestGetThread(HTable table) {
+    TestGetThread(HTable table)
+        throws IOException {
       this.table = table;
     }
 
@@ -1231,9 +1237,8 @@ public class TestHCM {
     public void run() {
       try {
         table.get(new Get(ROW));
-      } catch (ServerBusyException e) {
+      } catch (IOException e) {
         getServerBusyException = 1;
-      } catch (IOException ignore) {
       }
     }
   }
@@ -1242,7 +1247,8 @@ public class TestHCM {
     HTable table;
     int getServerBusyException = 0;
 
-    TestPutThread(HTable table) {
+    TestPutThread(HTable table)
+        throws InterruptedIOException, RetriesExhaustedWithDetailsException {
       this.table = table;
     }
 
@@ -1252,62 +1258,47 @@ public class TestHCM {
         Put p = new Put(ROW);
         p.addImmutable(FAM_NAM, new byte[] { 0 }, new byte[] { 0 });
         table.put(p);
-      } catch (RetriesExhaustedWithDetailsException e) {
+      } catch (IOException e) {
         // For put we use AsyncProcess and it will wrap all exceptions to this.
-        if (e.exceptions.get(0) instanceof ServerBusyException) {
-          getServerBusyException = 1;
-        }
-      } catch (IOException ignore) {
+        getServerBusyException = 1;
       }
     }
   }
 
   @Test()
   public void testServerBusyException() throws Exception {
-    HTableDescriptor hdt = TEST_UTIL.createTableDescriptor("HCM-testServerBusy");
+    HTableDescriptor hdt = TEST_UTIL.createTableDescriptor(getTestTableName());
     hdt.addCoprocessor(SleepCoprocessor.class.getName());
     Configuration c = new Configuration(TEST_UTIL.getConfiguration());
     TEST_UTIL.createTable(hdt, new byte[][] { FAM_NAM }, c);
-
-    TestGetThread tg1 = new TestGetThread(new HTable(c, hdt.getTableName()));
-    TestGetThread tg2 = new TestGetThread(new HTable(c, hdt.getTableName()));
-    TestGetThread tg3 = new TestGetThread(new HTable(c, hdt.getTableName()));
-    TestGetThread tg4 = new TestGetThread(new HTable(c, hdt.getTableName()));
-    TestGetThread tg5 = new TestGetThread(new HTable(c, hdt.getTableName()));
-    tg1.start();
-    tg2.start();
-    tg3.start();
-    tg4.start();
-    tg5.start();
-    tg1.join();
-    tg2.join();
-    tg3.join();
-    tg4.join();
-    tg5.join();
-    assertEquals(2,
-        tg1.getServerBusyException + tg2.getServerBusyException + tg3.getServerBusyException
-            + tg4.getServerBusyException + tg5.getServerBusyException);
-
+    TestGetThread[] tgs = new TestGetThread[10];
+    for (int i = 0 ; i < 10; i++) {
+      tgs[i] = new TestGetThread(new HTable(c, hdt.getTableName()));
+      tgs[i].start();
+    }
+    for (int i = 0 ; i < 10; i++) {
+      tgs[i].join();
+    }
+    int count = 0;
+    for (int i = 0 ; i < 10; i++) {
+      count += tgs[i].getServerBusyException;
+    }
+    assertEquals(2, count);
     // Put has its own logic in HTable, test Put alone. We use AsyncProcess for Put (use multi at
     // RPC level) and it wrap exceptions to RetriesExhaustedWithDetailsException.
 
-    TestPutThread tp1 = new TestPutThread(new HTable(c, hdt.getTableName()));
-    TestPutThread tp2 = new TestPutThread(new HTable(c, hdt.getTableName()));
-    TestPutThread tp3 = new TestPutThread(new HTable(c, hdt.getTableName()));
-    TestPutThread tp4 = new TestPutThread(new HTable(c, hdt.getTableName()));
-    TestPutThread tp5 = new TestPutThread(new HTable(c, hdt.getTableName()));
-    tp1.start();
-    tp2.start();
-    tp3.start();
-    tp4.start();
-    tp5.start();
-    tp1.join();
-    tp2.join();
-    tp3.join();
-    tp4.join();
-    tp5.join();
-    assertEquals(2,
-        tp1.getServerBusyException + tp2.getServerBusyException + tp3.getServerBusyException
-            + tp4.getServerBusyException + tp5.getServerBusyException);
+    TestPutThread[] tps = new TestPutThread[10];
+    for (int i = 0 ; i < 10; i++) {
+      tps[i] = new TestPutThread(new HTable(c, hdt.getTableName()));
+      tps[i].start();
+    }
+    for (int i = 0 ; i < 10; i++) {
+      tps[i].join();
+    }
+    count = 0;
+    for (int i = 0 ; i < 10; i++) {
+      count += tps[i].getServerBusyException;
+    }
+    assertEquals(2, count);
   }
 }

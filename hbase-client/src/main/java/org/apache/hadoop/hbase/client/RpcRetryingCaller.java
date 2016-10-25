@@ -259,6 +259,8 @@ public class RpcRetryingCaller<T> {
       translateException(t);
     } else if (t instanceof DoNotRetryIOException) {
       throw (DoNotRetryIOException)t;
+    } else if (t.getCause() != null && t.getCause() instanceof DoNotRetryIOException) {
+      throw (DoNotRetryIOException)t.getCause();
     }
     return t;
   }
