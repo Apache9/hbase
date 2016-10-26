@@ -61,8 +61,10 @@ public class MetricsReplicationSourceImpl extends BaseSourceImpl implements
   @Override
   public void getMetrics(MetricsCollector metricsCollector, boolean all) {
     MetricsRecordBuilder mrb = metricsCollector.addRecord(metricsName);
-    for (Entry<String, String> entry : peerIdToClusterKey.entrySet()) {
-      mrb.tag(Interns.info("source." + entry.getKey() + ".clusterKey", ""), entry.getValue());
+    if (peerIdToClusterKey != null) {
+      for (Entry<String, String> entry : peerIdToClusterKey.entrySet()) {
+        mrb.tag(Interns.info("source." + entry.getKey() + ".clusterKey", ""), entry.getValue());
+      }
     }
     metricsRegistry.snapshot(mrb, all);
   }
