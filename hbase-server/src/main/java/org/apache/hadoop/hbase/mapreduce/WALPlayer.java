@@ -82,7 +82,7 @@ public class WALPlayer extends Configured implements Tool {
         // skip all other tables
         if (Bytes.equals(table, key.getTablename().getName())) {
           for (KeyValue kv : value.getKeyValues()) {
-            if (WALEdit.isMetaEditFamily(kv.getFamily())) continue;
+            if (WALEdit.isMetaEditFamily(kv)) continue;
             context.write(new ImmutableBytesWritable(kv.getRow()), kv);
           }
         }
@@ -127,7 +127,7 @@ public class WALPlayer extends Configured implements Tool {
           KeyValue lastKV = null;
           for (KeyValue kv : value.getKeyValues()) {
             // filtering HLog meta entries
-            if (WALEdit.isMetaEditFamily(kv.getFamily())) continue;
+            if (WALEdit.isMetaEditFamily(kv)) continue;
 
             // A WALEdit may contain multiple operations (HBASE-3584) and/or
             // multiple rows (HBASE-5229).

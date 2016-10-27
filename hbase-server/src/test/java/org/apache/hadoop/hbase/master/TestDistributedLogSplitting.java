@@ -1484,8 +1484,11 @@ public class TestDistributedLogSplitting {
   throws IOException {
     int count = 0;
     HLog.Reader in = HLogFactory.createReader(fs, log, conf);
-    while (in.next() != null) {
-      count++;
+    HLog.Entry e;
+    while ((e = in.next()) != null) {
+      if (!WALEdit.isMetaEditFamily(e.getEdit().getKeyValues().get(0))) {
+        count++;
+      }
     }
     return count;
   }

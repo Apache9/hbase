@@ -297,7 +297,7 @@ public interface HLog {
    * @param sequenceId of the region.
    */
   @VisibleForTesting
-  public void append(HRegionInfo info, TableName tableName, WALEdit edits,
+  void append(HRegionInfo info, TableName tableName, WALEdit edits,
       final long now, HTableDescriptor htd, AtomicLong sequenceId) throws IOException;
 
   /**

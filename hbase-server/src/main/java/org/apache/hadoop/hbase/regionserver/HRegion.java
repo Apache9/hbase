@@ -18,6 +18,17 @@
  */
 package org.apache.hadoop.hbase.regionserver;
 
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Preconditions;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import com.google.common.io.Closeables;
+import com.google.protobuf.Descriptors;
+import com.google.protobuf.Message;
+import com.google.protobuf.RpcCallback;
+import com.google.protobuf.RpcController;
+import com.google.protobuf.Service;
+
 import java.io.EOFException;
 import java.io.IOException;
 import java.io.InterruptedIOException;
@@ -125,14 +136,16 @@ import org.apache.hadoop.hbase.master.AssignmentManager;
 import org.apache.hadoop.hbase.metrics.MetricsRate;
 import org.apache.hadoop.hbase.monitoring.MonitoredTask;
 import org.apache.hadoop.hbase.monitoring.TaskMonitor;
+import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionInfoResponse.CompactionState;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.CoprocessorServiceCall;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.SnapshotDescription;
 import org.apache.hadoop.hbase.protobuf.generated.WALProtos.CompactionDescriptor;
+import org.apache.hadoop.hbase.protobuf.generated.WALProtos.RegionEventDescriptor;
+import org.apache.hadoop.hbase.quotas.OperationQuota.OperationType;
 import org.apache.hadoop.hbase.quotas.QuotaUtil;
 import org.apache.hadoop.hbase.quotas.RegionServerQuotaManager;
-import org.apache.hadoop.hbase.quotas.OperationQuota.OperationType;
 import org.apache.hadoop.hbase.regionserver.AccessCounter.CounterKey;
 import org.apache.hadoop.hbase.regionserver.MultiVersionConsistencyControl.WriteEntry;
 import org.apache.hadoop.hbase.regionserver.ScannerContext.LimitScope;
@@ -169,17 +182,6 @@ import org.apache.hadoop.util.StringUtils;
 import org.apache.htrace.Trace;
 import org.apache.htrace.TraceScope;
 import org.cliffc.high_scale_lib.Counter;
-
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Preconditions;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.common.io.Closeables;
-import com.google.protobuf.Descriptors;
-import com.google.protobuf.Message;
-import com.google.protobuf.RpcCallback;
-import com.google.protobuf.RpcController;
-import com.google.protobuf.Service;
 
 /**
  * HRegion stores data for a certain region of a table.  It stores all columns
@@ -881,6 +883,44 @@ public class HRegion implements HeapSize { // , Writable{
     return maxSeqId;
   }
 
+  private void writeRegionOpenMarker(HLog log, long openSeqId) throws IOException {
+    Map<byte[], List<Path>> storeFiles
+        = new TreeMap<byte[], List<Path>>(Bytes.BYTES_COMPARATOR);
+    for (Map.Entry<byte[], Store> entry : getStores().entrySet()) {
+      Store store = entry.getValue();
+      ArrayList<Path> storeFileNames = new ArrayList<Path>();
+      for (StoreFile storeFile : store.getStorefiles()) {
+        storeFileNames.add(storeFile.getPath());
+      }
+      storeFiles.put(entry.getKey(), storeFileNames);
+    }
+
+    RegionEventDescriptor regionOpenDesc = ProtobufUtil.toRegionEventDescriptor(
+        RegionEventDescriptor.EventType.REGION_OPEN, getRegionInfo(), openSeqId,
+        getRegionServerServices().getServerName(), storeFiles);
+    HLogUtil.writeRegionEventMarker(log, getTableDesc(), getRegionInfo(), regionOpenDesc,
+        getSequenceId());
+  }
+
+  private void writeRegionCloseMarker(HLog log) throws IOException {
+    Map<byte[], List<Path>> storeFiles
+        = new TreeMap<byte[], List<Path>>(Bytes.BYTES_COMPARATOR);
+    for (Map.Entry<byte[], Store> entry : getStores().entrySet()) {
+      Store store = entry.getValue();
+      ArrayList<Path> storeFileNames = new ArrayList<Path>();
+      for (StoreFile storeFile : store.getStorefiles()) {
+        storeFileNames.add(storeFile.getPath());
+      }
+      storeFiles.put(entry.getKey(), storeFileNames);
+    }
+
+    RegionEventDescriptor regionEventDesc = ProtobufUtil.toRegionEventDescriptor(
+        RegionEventDescriptor.EventType.REGION_CLOSE, getRegionInfo(), getSequenceId().get(),
+        getRegionServerServices().getServerName(), storeFiles);
+    HLogUtil.writeRegionEventMarker(log, getTableDesc(), getRegionInfo(), regionEventDesc,
+        getSequenceId());
+  }
+
   /**
    * @return True if this region has references.
    */
@@ -1324,6 +1364,10 @@ public class HRegion implements HeapSize { // , Writable{
         } finally {
           storeCloserThreadPool.shutdownNow();
         }
+      }
+      status.setStatus("Writing region close event to WAL");
+      if (!abort && log != null && getRegionServerServices() != null) {
+        writeRegionCloseMarker(log);
       }
       this.closed.set(true);
       if (memstoreSize.get() != 0) LOG.error("Memstore size is " + memstoreSize.get());
@@ -5113,6 +5157,9 @@ public class HRegion implements HeapSize { // , Writable{
     checkClassLoading();
     this.openSeqNum = initialize(reporter);
     this.setSequenceId(openSeqNum);
+    if (log != null && getRegionServerServices() != null) {
+      writeRegionOpenMarker(log, openSeqNum);
+    }
     return this;
   }
 

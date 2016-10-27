@@ -21,6 +21,7 @@ package org.apache.hadoop.hbase.regionserver.wal;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.mockito.Mockito.when;
 
 import java.io.IOException;
 import java.security.PrivilegedExceptionAction;
@@ -671,6 +672,7 @@ public class TestWALReplay {
     HLog wal = createWAL(this.conf);
     RegionServerServices rsServices = Mockito.mock(RegionServerServices.class);
     Mockito.doReturn(false).when(rsServices).isAborted();
+    when(rsServices.getServerName()).thenReturn(ServerName.valueOf("foo", 10, 10));
     Configuration customConf = new Configuration(this.conf);
     customConf.set(DefaultStoreEngine.DEFAULT_STORE_FLUSHER_CLASS_KEY,
         CustomStoreFlusher.class.getName());

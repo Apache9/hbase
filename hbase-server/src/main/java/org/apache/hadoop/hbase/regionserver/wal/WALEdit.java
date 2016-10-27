@@ -27,15 +27,17 @@ import java.util.TreeMap;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellUtil;
-import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HBaseInterfaceAudience;
+import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.KeyValueUtil;
+import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.codec.Codec;
 import org.apache.hadoop.hbase.io.HeapSize;
+import org.apache.hadoop.hbase.protobuf.generated.WALProtos;
+import org.apache.hadoop.hbase.protobuf.generated.WALProtos.RegionEventDescriptor;
 import org.apache.hadoop.hbase.protobuf.generated.WALProtos.CompactionDescriptor;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.ClassSize;
@@ -85,6 +87,7 @@ public class WALEdit implements Writable, HeapSize {
   static final byte [] METAROW = Bytes.toBytes("METAROW");
   static final byte[] COMPLETE_CACHE_FLUSH = Bytes.toBytes("HBASE::CACHEFLUSH");
   static final byte[] COMPACTION = Bytes.toBytes("HBASE::COMPACTION");
+  static final byte [] REGION_EVENT = Bytes.toBytes("HBASE::REGION_EVENT");
   private final int VERSION_2 = -1;
   private final boolean isReplay;
 
@@ -108,8 +111,9 @@ public class WALEdit implements Writable, HeapSize {
    * @param f
    * @return True is <code>f</code> is {@link #METAFAMILY}
    */
-  public static boolean isMetaEditFamily(final byte [] f) {
-    return Bytes.equals(METAFAMILY, f);
+  public static boolean isMetaEditFamily(final Cell c) {
+    return Bytes.equals(METAFAMILY, 0, METAFAMILY.length,
+        c.getFamilyArray(), c.getFamilyOffset(), c.getFamilyLength());
   }
 
   /**
@@ -284,6 +288,20 @@ public class WALEdit implements Writable, HeapSize {
     }
     sb.append(">]");
     return sb.toString();
+  }
+
+  public static WALEdit createRegionEventWALEdit(HRegionInfo hri,
+      RegionEventDescriptor regionEventDesc) {
+    KeyValue kv = new KeyValue(getRowForRegion(hri), METAFAMILY, REGION_EVENT,
+        System.currentTimeMillis(), regionEventDesc.toByteArray());
+    return new WALEdit().add(kv);
+  }
+
+  public static WALProtos.RegionEventDescriptor getRegionEventDescriptor(Cell cell) throws IOException {
+    if (CellUtil.matchingColumn(cell, METAFAMILY, REGION_EVENT)) {
+      return RegionEventDescriptor.parseFrom(cell.getValue());
+    }
+    return null;
   }
 
   /**

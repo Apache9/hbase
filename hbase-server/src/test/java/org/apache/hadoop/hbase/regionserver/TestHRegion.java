@@ -35,12 +35,15 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyBoolean;
+import static org.mockito.Matchers.anyList;
 import static org.mockito.Matchers.anyLong;
 import static org.mockito.Matchers.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.io.IOException;
 import java.io.InterruptedIOException;
@@ -76,12 +79,15 @@ import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.RegionTooBusyException;
+import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.Tag;
 import org.apache.hadoop.hbase.HConstants.OperationStatusCode;
 import org.apache.hadoop.hbase.HDFSBlocksDistribution;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.KeyValue;
+import org.apache.hadoop.hbase.protobuf.generated.WALProtos.RegionEventDescriptor;
+import org.apache.hadoop.hbase.protobuf.generated.WALProtos.RegionEventDescriptor.StoreDescriptor;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.apache.hadoop.hbase.MiniHBaseCluster;
 import org.apache.hadoop.hbase.MultithreadedTestUtil;
@@ -143,6 +149,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.rules.TestName;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 
 import com.google.common.collect.ImmutableList;
@@ -3363,11 +3370,11 @@ public class TestHRegion {
       assertTrue(Bytes.equals(splitRowBytes, region.checkSplit()));
 
       // Add a store that has references.
-      HStore storeMock = Mockito.mock(HStore.class);
-      Mockito.when(storeMock.hasReferences()).thenReturn(true);
-      Mockito.when(storeMock.getFamily()).thenReturn(new HColumnDescriptor("cf"));
-      Mockito.when(storeMock.close()).thenReturn(ImmutableList.<StoreFile>of());
-      Mockito.when(storeMock.getColumnFamilyName()).thenReturn("cf");
+      HStore storeMock = mock(HStore.class);
+      when(storeMock.hasReferences()).thenReturn(true);
+      when(storeMock.getFamily()).thenReturn(new HColumnDescriptor("cf"));
+      when(storeMock.close()).thenReturn(ImmutableList.<StoreFile>of());
+      when(storeMock.getColumnFamilyName()).thenReturn("cf");
       region.stores.put(Bytes.toBytes(storeMock.getColumnFamilyName()), storeMock);
       assertTrue(region.hasReferences());
 
@@ -4103,8 +4110,8 @@ public class TestHRegion {
     TableName tableName = TableName.valueOf(name.getMethodName());
     HRegionInfo info = null;
     try {
-      FileSystem fs = Mockito.mock(FileSystem.class);
-      Mockito.when(fs.exists((Path) Mockito.anyObject())).thenThrow(new IOException());
+      FileSystem fs = mock(FileSystem.class);
+      when(fs.exists((Path) Mockito.anyObject())).thenThrow(new IOException());
       HTableDescriptor htd = new HTableDescriptor(tableName);
       htd.addFamily(new HColumnDescriptor("cf"));
       info = new HRegionInfo(htd.getTableName(), HConstants.EMPTY_BYTE_ARRAY,
@@ -5620,6 +5627,138 @@ public class TestHRegion {
     } finally {
       HRegion.closeHRegion(region);
     }
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  public void testOpenRegionWrittenToWAL() throws Exception {
+    final ServerName serverName = ServerName.valueOf("testOpenRegionWrittenToWAL", 100, 42);
+    final RegionServerServices rss = spy(TEST_UTIL.createMockRegionServerService(serverName));
+
+    HTableDescriptor htd
+        = new HTableDescriptor(TableName.valueOf("testOpenRegionWrittenToWAL"));
+    htd.addFamily(new HColumnDescriptor(fam1));
+    htd.addFamily(new HColumnDescriptor(fam2));
+
+    HRegionInfo hri = new HRegionInfo(htd.getTableName(),
+        HConstants.EMPTY_BYTE_ARRAY, HConstants.EMPTY_BYTE_ARRAY);
+
+    // open the region w/o rss and log and flush some files
+    HRegion region =
+        HRegion.createHRegion(hri, TEST_UTIL.getDataTestDir(), TEST_UTIL
+            .getConfiguration(), htd);
+    assertNotNull(region);
+
+    // create a file in fam1 for the region before opening in OpenRegionHandler
+    region.put(new Put(Bytes.toBytes("a")).add(fam1, fam1, fam1));
+    region.flushcache();
+    region.close();
+
+    ArgumentCaptor<WALEdit> editCaptor = ArgumentCaptor.forClass(WALEdit.class);
+
+    // capture appendNoSync() calls
+    HLog log = mock(HLog.class);
+    when(rss.getWAL((HRegionInfo) any())).thenReturn(log);
+
+    try {
+      region = HRegion.openHRegion(hri, htd, rss.getWAL(hri),
+          TEST_UTIL.getConfiguration(), rss, null);
+
+      verify(log, times(1)).appendNoSync((HRegionInfo)any(), (TableName)any(), editCaptor.capture(),
+          anyList(), anyLong(), (HTableDescriptor) any(), (AtomicLong)any(), anyBoolean(),
+          anyLong(), anyLong());
+
+      WALEdit edit = editCaptor.getValue();
+      assertNotNull(edit);
+      assertNotNull(edit.getKeyValues());
+      assertEquals(1, edit.getKeyValues().size());
+      RegionEventDescriptor desc = WALEdit.getRegionEventDescriptor(edit.getKeyValues().get(0));
+      assertNotNull(desc);
+
+      LOG.info("RegionEventDescriptor from WAL: " + desc);
+
+      assertEquals(RegionEventDescriptor.EventType.REGION_OPEN, desc.getEventType());
+      assertTrue(Bytes.equals(desc.getTableName().toByteArray(), htd.getName()));
+      assertTrue(Bytes.equals(desc.getEncodedRegionName().toByteArray(),
+          hri.getEncodedNameAsBytes()));
+      assertTrue(desc.getLogSequenceNumber() > 0);
+      assertEquals(serverName, ProtobufUtil.toServerName(desc.getServer()));
+      assertEquals(2, desc.getStoresCount());
+
+      StoreDescriptor store = desc.getStores(0);
+      assertTrue(Bytes.equals(store.getFamilyName().toByteArray(), fam1));
+      assertEquals(store.getStoreHomeDir(), Bytes.toString(fam1));
+      assertEquals(1, store.getStoreFileCount()); // 1store file
+      assertFalse(store.getStoreFile(0).contains("/")); // ensure path is relative
+
+      store = desc.getStores(1);
+      assertTrue(Bytes.equals(store.getFamilyName().toByteArray(), fam2));
+      assertEquals(store.getStoreHomeDir(), Bytes.toString(fam2));
+      assertEquals(0, store.getStoreFileCount()); // no store files
+
+    } finally {
+      HRegion.closeHRegion(region);
+    }
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  public void testCloseRegionWrittenToWAL() throws Exception {
+    final ServerName serverName = ServerName.valueOf("testCloseRegionWrittenToWAL", 100, 42);
+    final RegionServerServices rss = spy(TEST_UTIL.createMockRegionServerService(serverName));
+
+    HTableDescriptor htd
+        = new HTableDescriptor(TableName.valueOf("testOpenRegionWrittenToWAL"));
+    htd.addFamily(new HColumnDescriptor(fam1));
+    htd.addFamily(new HColumnDescriptor(fam2));
+
+    HRegionInfo hri = new HRegionInfo(htd.getTableName(),
+        HConstants.EMPTY_BYTE_ARRAY, HConstants.EMPTY_BYTE_ARRAY);
+
+    ArgumentCaptor<WALEdit> editCaptor = ArgumentCaptor.forClass(WALEdit.class);
+
+    // capture appendNoSync() calls
+    HLog log = mock(HLog.class);
+    when(rss.getWAL((HRegionInfo) any())).thenReturn(log);
+
+    // open a region first so that it can be closed later
+    region = HRegion.openHRegion(hri, htd, rss.getWAL(hri),
+        TEST_UTIL.getConfiguration(), rss, null);
+
+    // close the region
+    region.close(false);
+
+    // 2 times, one for region open, the other close region
+    verify(log, times(2)).appendNoSync((HRegionInfo)any(), (TableName)any(), editCaptor.capture(),
+        anyList(), anyLong(), (HTableDescriptor) any(), (AtomicLong)any(), anyBoolean(),
+        anyLong(), anyLong());
+
+    WALEdit edit = editCaptor.getAllValues().get(1);
+    assertNotNull(edit);
+    assertNotNull(edit.getKeyValues());
+    assertEquals(1, edit.getKeyValues().size());
+    RegionEventDescriptor desc = WALEdit.getRegionEventDescriptor(edit.getKeyValues().get(0));
+    assertNotNull(desc);
+
+    LOG.info("RegionEventDescriptor from WAL: " + desc);
+
+    assertEquals(RegionEventDescriptor.EventType.REGION_CLOSE, desc.getEventType());
+    assertTrue(Bytes.equals(desc.getTableName().toByteArray(), htd.getName()));
+    assertTrue(Bytes.equals(desc.getEncodedRegionName().toByteArray(),
+        hri.getEncodedNameAsBytes()));
+    assertTrue(desc.getLogSequenceNumber() > 0);
+    assertEquals(serverName, ProtobufUtil.toServerName(desc.getServer()));
+    assertEquals(2, desc.getStoresCount());
+
+    StoreDescriptor store = desc.getStores(0);
+    assertTrue(Bytes.equals(store.getFamilyName().toByteArray(), fam1));
+    assertEquals(store.getStoreHomeDir(), Bytes.toString(fam1));
+    assertEquals(0, store.getStoreFileCount()); // no store files
+
+    store = desc.getStores(1);
+    assertTrue(Bytes.equals(store.getFamilyName().toByteArray(), fam2));
+    assertEquals(store.getStoreHomeDir(), Bytes.toString(fam2));
+    assertEquals(0, store.getStoreFileCount()); // no store files
   }
 
   private static HRegion initHRegion(byte[] tableName, String callingMethod,

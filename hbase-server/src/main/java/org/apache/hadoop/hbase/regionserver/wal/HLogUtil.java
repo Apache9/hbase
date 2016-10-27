@@ -19,6 +19,8 @@
 
 package org.apache.hadoop.hbase.regionserver.wal;
 
+import com.google.protobuf.TextFormat;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.NavigableSet;
@@ -30,22 +32,21 @@ import java.util.regex.Pattern;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.PathFilter;
-import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.ServerName;
+import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.classification.InterfaceAudience;
+import org.apache.hadoop.hbase.protobuf.generated.WALProtos.RegionEventDescriptor;
 import org.apache.hadoop.hbase.protobuf.generated.WALProtos.CompactionDescriptor;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.FSUtils;
-
-import com.google.protobuf.TextFormat;
 
 @InterfaceAudience.Private
 public class HLogUtil {
@@ -275,6 +276,22 @@ public class HLogUtil {
     if (LOG.isTraceEnabled()) {
       LOG.trace("Appended compaction marker " + TextFormat.shortDebugString(c));
     }
+  }
+
+  /**
+   * Write a region open marker indicating that the region is opened
+   */
+  public static long writeRegionEventMarker(HLog log, HTableDescriptor htd, HRegionInfo info,
+      final RegionEventDescriptor r, AtomicLong sequenceId) throws IOException {
+    TableName tn = TableName.valueOf(r.getTableName().toByteArray());
+    long trx = log.appendNoSync(info, tn, WALEdit.createRegionEventWALEdit(info, r),
+        new ArrayList<UUID>(), System.currentTimeMillis(), htd, sequenceId, false,
+        HConstants.NO_NONCE, HConstants.NO_NONCE);
+    log.sync(trx);
+    if (LOG.isTraceEnabled()) {
+      LOG.trace("Appended region event marker " + TextFormat.shortDebugString(r));
+    }
+    return trx;
   }
   
   public static double getHLogCompressionRatio() {
