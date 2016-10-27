@@ -755,7 +755,6 @@
                       <include>IncrementCounterProcessor.proto</include>
                       <include>PingProtocol.proto</include>
                       <include>test.proto</include>
-                      <include>test_delayed_rpc.proto</include>
                       <include>test_rpc_service.proto</include>
                     </includes>
                   </source>
