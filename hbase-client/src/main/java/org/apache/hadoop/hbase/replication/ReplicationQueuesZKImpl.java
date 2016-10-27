@@ -82,7 +82,9 @@ public class ReplicationQueuesZKImpl extends ReplicationStateZKBase implements R
   public void init(String serverName) throws ReplicationException {
     this.myQueuesZnode = ZKUtil.joinZNode(this.queuesZNode, serverName);
     try {
-      ZKUtil.createWithParents(this.zookeeper, this.myQueuesZnode);
+      if (ZKUtil.checkExists(this.zookeeper, this.myQueuesZnode) < 0) {
+        ZKUtil.createWithParents(this.zookeeper, this.myQueuesZnode);
+      }
     } catch (KeeperException e) {
       throw new ReplicationException("Could not initialize replication queues.", e);
     }
@@ -106,7 +108,7 @@ public class ReplicationQueuesZKImpl extends ReplicationStateZKBase implements R
     } catch (KeeperException e) {
       throw new ReplicationException(
           "Could not add log because znode could not be created. queueId=" + queueId
-              + ", filename=" + filename);
+              + ", filename=" + filename, e);
     }
   }
 
@@ -150,7 +152,7 @@ public class ReplicationQueuesZKImpl extends ReplicationStateZKBase implements R
       return ZKUtil.parseHLogPositionFrom(bytes);
     } catch (DeserializationException de) {
       LOG.warn("Failed to parse HLogPosition for queueId=" + queueId + " and hlog=" + filename
-          + "znode content, continuing.");
+          + " znode content, continuing.", de);
     }
     // if we can not parse the position, start at the beginning of the hlog file
     // again
@@ -293,7 +295,7 @@ public class ReplicationQueuesZKImpl extends ReplicationStateZKBase implements R
       if (e instanceof KeeperException.NoNodeException
           || e instanceof KeeperException.NodeExistsException) {
         LOG.info("Won't transfer the queue," + " another RS took care of it because of: "
-            + e.getMessage());
+            + e.getMessage(), e);
       } else {
         LOG.info("Failed lock other rs", e);
       }
