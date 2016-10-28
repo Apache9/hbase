@@ -111,7 +111,6 @@ import org.apache.hadoop.hbase.client.RowMutations;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.coprocessor.CoprocessorHost;
 import org.apache.hadoop.hbase.exceptions.FailedSanityCheckException;
-import org.apache.hadoop.hbase.exceptions.OperationConflictException;
 import org.apache.hadoop.hbase.exceptions.OutOfOrderScannerNextException;
 import org.apache.hadoop.hbase.exceptions.RegionMovedException;
 import org.apache.hadoop.hbase.exceptions.RegionOpeningException;
@@ -4806,7 +4805,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
    * @returns whether to proceed this mutation.
    */
   private boolean startNonceOperation(final MutationProto mutation, long nonceGroup)
-      throws IOException, OperationConflictException {
+      throws IOException {
     if (nonceManager == null || !mutation.hasNonce()) return true;
     boolean canProceed = false;
     try {

@@ -74,7 +74,6 @@ import org.apache.hadoop.hbase.client.PerClientRandomNonceGenerator;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.RetriesExhaustedWithDetailsException;
-import org.apache.hadoop.hbase.exceptions.OperationConflictException;
 import org.apache.hadoop.hbase.exceptions.RegionInRecoveryException;
 import org.apache.hadoop.hbase.master.SplitLogManager.TaskBatch;
 import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
@@ -338,7 +337,8 @@ public class TestDistributedLogSplitting {
             }
             Increment incr = new Increment(key);
             incr.addColumn(Bytes.toBytes(FAMILY_NAME), Bytes.toBytes("q"), 1);
-            ht.increment(incr);
+            Result result = ht.increment(incr);
+            assertEquals(1, Bytes.toLong(result.getValue(Bytes.toBytes(FAMILY_NAME), Bytes.toBytes("q"))));
             reqs.add(incr);
           }
         }
@@ -348,12 +348,8 @@ public class TestDistributedLogSplitting {
       abortRSAndWaitForRecovery(hrs, zkw, NUM_REGIONS_TO_CREATE);
       ng.startDups();
       for (Increment incr : reqs) {
-        try {
-          ht.increment(incr);
-          fail("should have thrown");
-        } catch (OperationConflictException ope) {
-          LOG.debug("Caught as expected: " + ope.getMessage());
-        }
+        Result result = ht.increment(incr);
+        assertEquals(1, Bytes.toLong(result.getValue(Bytes.toBytes(FAMILY_NAME), Bytes.toBytes("q"))));
       }
     } finally {
       HConnectionManager.injectNonceGeneratorForTesting(ht.getConnection(), oldNg);

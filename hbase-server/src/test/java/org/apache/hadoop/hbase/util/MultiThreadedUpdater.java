@@ -46,7 +46,6 @@ import org.apache.hadoop.hbase.client.Mutation;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.RetriesExhaustedWithDetailsException;
-import org.apache.hadoop.hbase.exceptions.OperationConflictException;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.MutationProto.MutationType;
 import org.apache.hadoop.hbase.util.test.LoadTestDataGenerator;
 import org.apache.hadoop.util.StringUtils;
@@ -61,7 +60,6 @@ public class MultiThreadedUpdater extends MultiThreadedWriterBase {
 
   private MultiThreadedWriterBase writer = null;
   private boolean isBatchUpdate = false;
-  private boolean ignoreNonceConflicts = false;
   private final double updatePercent;
 
   public MultiThreadedUpdater(LoadTestDataGenerator dataGen, Configuration conf,
@@ -296,11 +294,6 @@ public class MultiThreadedUpdater extends MultiThreadedWriterBase {
         }
         totalOpTimeMs.addAndGet(System.currentTimeMillis() - start);
       } catch (IOException e) {
-        if (ignoreNonceConflicts && (e instanceof OperationConflictException)) {
-          LOG.info("Detected nonce conflict, ignoring: " + e.getMessage());
-	  totalOpTimeMs.addAndGet(System.currentTimeMillis() - start);
-          return;
-        }
         failedKeySet.add(keyBase);
         String exceptionInfo;
         if (e instanceof RetriesExhaustedWithDetailsException) {
@@ -365,9 +358,5 @@ public class MultiThreadedUpdater extends MultiThreadedWriterBase {
         "ms; region information: " + getRegionDebugInfoSafe(table, m.getRow()) + "; errors: "
           + exceptionInfo);
     }
-  }
-
-  public void setIgnoreNonceConflicts(boolean value) {
-    this.ignoreNonceConflicts = value;
   }
 }

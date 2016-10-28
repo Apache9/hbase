@@ -186,7 +186,6 @@ public class LoadTestTool extends AbstractHBaseTool {
   // Updater options
   protected int numUpdaterThreads = DEFAULT_NUM_THREADS;
   protected int updatePercent;
-  protected boolean ignoreConflicts = false;
   protected boolean isBatchUpdate;
 
   // Reader options
@@ -394,16 +393,12 @@ public class LoadTestTool extends AbstractHBaseTool {
       if (colIndex < mutateOpts.length) {
         numUpdaterThreads = getNumThreads(mutateOpts[colIndex++]);
       }
-      if (colIndex < mutateOpts.length) {
-        ignoreConflicts = parseInt(mutateOpts[colIndex++], 0, 1) == 1;
-      }
 
       isBatchUpdate = cmd.hasOption(OPT_BATCHUPDATE);
 
       System.out.println("Batch updates: " + isBatchUpdate);
       System.out.println("Percent of keys to update: " + updatePercent);
       System.out.println("Updater threads: " + numUpdaterThreads);
-      System.out.println("Ignore nonce conflicts: " + ignoreConflicts);
     }
 
     if (isRead) {
@@ -578,7 +573,6 @@ public class LoadTestTool extends AbstractHBaseTool {
         updaterThreads = new MultiThreadedUpdater(dataGen, conf, tableName, updatePercent);
       }
       updaterThreads.setBatchUpdate(isBatchUpdate);
-      updaterThreads.setIgnoreNonceConflicts(ignoreConflicts);
     }
 
     if (isRead) {
