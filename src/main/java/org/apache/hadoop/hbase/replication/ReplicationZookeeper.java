@@ -1280,17 +1280,18 @@ public class ReplicationZookeeper {
     try {
       String peerStateNode = getPeerStateNode(peerId);
       if (ZKUtil.checkExists(zookeeper, peerStateNode) == -1) {
-        ZKUtil.createWithParentsIfNotExists(zookeeper, peerStateNode);
+        ZKUtil.createWithParents(zookeeper, peerStateNode,
+          Bytes.toBytes(PeerState.ENABLED.name()));
         LOG.info("Create znode " + peerStateNode + " for peer " + peerId);
       }
       String tableCFsNode = getTableCFsNode(peerId);
       if (ZKUtil.checkExists(zookeeper, tableCFsNode) == -1) {
-        ZKUtil.createWithParentsIfNotExists(zookeeper, tableCFsNode);
+        ZKUtil.createWithParents(zookeeper, tableCFsNode, Bytes.toBytes(""));
         LOG.info("Create znode " + tableCFsNode + " for peer " + peerId);
       }
       String excludedTableCFsNode = getExcludedTableCFsNode(peerId);
       if (ZKUtil.checkExists(zookeeper, excludedTableCFsNode) == -1) {
-        ZKUtil.createWithParentsIfNotExists(zookeeper, excludedTableCFsNode);
+        ZKUtil.createWithParents(zookeeper, excludedTableCFsNode, Bytes.toBytes(""));
         LOG.info("Create znode " + excludedTableCFsNode + " for peer " + peerId);
       }
     } catch (KeeperException e) {
