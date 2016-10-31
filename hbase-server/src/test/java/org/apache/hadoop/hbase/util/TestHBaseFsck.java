@@ -79,6 +79,7 @@ import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
+import org.apache.hadoop.hbase.client.replication.ReplicationAdmin;
 import org.apache.hadoop.hbase.io.hfile.TestHFile;
 import org.apache.hadoop.hbase.master.AssignmentManager;
 import org.apache.hadoop.hbase.master.HMaster;
@@ -94,6 +95,9 @@ import org.apache.hadoop.hbase.regionserver.HRegionFileSystem;
 import org.apache.hadoop.hbase.regionserver.HRegionServer;
 import org.apache.hadoop.hbase.regionserver.SplitTransaction;
 import org.apache.hadoop.hbase.regionserver.TestEndToEndSplitTransaction;
+import org.apache.hadoop.hbase.replication.ReplicationFactory;
+import org.apache.hadoop.hbase.replication.ReplicationPeerConfig;
+import org.apache.hadoop.hbase.replication.ReplicationQueues;
 import org.apache.hadoop.hbase.util.HBaseFsck.ErrorReporter;
 import org.apache.hadoop.hbase.util.HBaseFsck.ErrorReporter.ERROR_CODE;
 import org.apache.hadoop.hbase.util.HBaseFsck.HbckInfo;
@@ -103,6 +107,7 @@ import org.apache.hadoop.hbase.util.hbck.HFileCorruptionChecker;
 import org.apache.hadoop.hbase.util.hbck.HbckTestingUtil;
 import org.apache.hadoop.hbase.zookeeper.MetaRegionTracker;
 import org.apache.hadoop.hbase.zookeeper.ZKAssign;
+import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
 import org.apache.zookeeper.KeeperException;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -1425,8 +1430,8 @@ public class TestHBaseFsck {
       // TODO: fixHdfsHoles does not work against splits, since the parent dir lingers on
       // for some time until children references are deleted. HBCK erroneously sees this as
       // overlapping regions
-      HBaseFsck hbck = doFsck(
-        conf, true, true, false, false, false, true, true, true, false, false, false, null);
+      HBaseFsck hbck = doFsck(conf, true, true, false, false, false, true, true, true, false,
+        false, false, false, null);
       assertErrors(hbck, new ERROR_CODE[] {}); //no LINGERING_SPLIT_PARENT reported
 
       // assert that the split hbase:meta entry is still there.
@@ -1489,8 +1494,8 @@ public class TestHBaseFsck {
           ERROR_CODE.NOT_IN_META_OR_DEPLOYED, ERROR_CODE.HOLE_IN_REGION_CHAIN}); //no LINGERING_SPLIT_PARENT
 
       // now fix it. The fix should not revert the region split, but add daughters to META
-      hbck = doFsck(
-        conf, true, true, false, false, false, false, false, false, false, false, false, null);
+      hbck = doFsck(conf, true, true, false, false, false, false, false, false, false, false,
+        false, false, null);
       assertErrors(hbck, new ERROR_CODE[] {ERROR_CODE.NOT_IN_META_OR_DEPLOYED,
           ERROR_CODE.NOT_IN_META_OR_DEPLOYED, ERROR_CODE.HOLE_IN_REGION_CHAIN});
 
@@ -2461,10 +2466,9 @@ public class TestHBaseFsck {
 
       // fix hole
       assertErrors(
-        doFsck(
-          conf, false, true, false, false, false, false, false, false, false, false, false, null),
-        new ERROR_CODE[] { ERROR_CODE.NOT_IN_META_OR_DEPLOYED,
-          ERROR_CODE.NOT_IN_META_OR_DEPLOYED });
+        doFsck(conf, false, true, false, false, false, false, false, false, false, false, false,
+          false, null), new ERROR_CODE[] { ERROR_CODE.NOT_IN_META_OR_DEPLOYED,
+            ERROR_CODE.NOT_IN_META_OR_DEPLOYED });
 
       // check that hole fixed
       assertNoErrors(doFsck(conf, false));
@@ -2476,5 +2480,58 @@ public class TestHBaseFsck {
       }
       deleteTable(table);
     }
+  }
+
+  @Test(timeout=60000)
+  public void testCheckReplication() throws Exception {
+    // check no errors
+    HBaseFsck hbck = doFsck(conf, false);
+    assertNoErrors(hbck);
+
+    // create peer
+    ReplicationAdmin replicationAdmin = new ReplicationAdmin(conf);
+    Assert.assertEquals(0, replicationAdmin.getPeersCount());
+    int zkPort =  conf.getInt(HConstants.ZOOKEEPER_CLIENT_PORT, 2181);
+    ReplicationPeerConfig peerConf = new ReplicationPeerConfig();
+    peerConf.setClusterKey("127.0.0.1:" + zkPort + ":/hbase");
+    replicationAdmin.addPeer("1", peerConf);
+    replicationAdmin.getPeersCount();
+    Assert.assertEquals(1, replicationAdmin.getPeersCount());
+
+    // create replicator
+    HConnection connection = HConnectionManager.createConnection(conf);
+    ZooKeeperWatcher zkw = new ZooKeeperWatcher(conf, "Test Hbase Fsck", connection);
+    ReplicationQueues repQueues =
+        ReplicationFactory.getReplicationQueues(zkw, conf, connection);
+    repQueues.init("server1");
+    // queues for current peer, no errors
+    repQueues.addLog("1", "file1");
+    repQueues.addLog("1-server2", "file1");
+    Assert.assertEquals(2, repQueues.getAllQueues().size());
+    hbck = doFsck(conf, false);
+    assertNoErrors(hbck);
+
+    // queues for removed peer
+    repQueues.addLog("2", "file1");
+    repQueues.addLog("2-server2", "file1");
+    Assert.assertEquals(4, repQueues.getAllQueues().size());
+    hbck = doFsck(conf, false);
+    assertErrors(hbck, new ERROR_CODE[] { ERROR_CODE.UNDELETED_REPLICATION_QUEUE,
+        ERROR_CODE.UNDELETED_REPLICATION_QUEUE });
+
+    // fix the case
+    hbck = doFsck(conf, true);
+    hbck = doFsck(conf, false);
+    assertNoErrors(hbck);
+    // ensure only "2" is deleted
+    Assert.assertEquals(2, repQueues.getAllQueues().size());
+    Assert.assertNull(repQueues.getLogsInQueue("2"));
+    Assert.assertNull(repQueues.getLogsInQueue("2-sever2"));
+
+    replicationAdmin.removePeer("1");
+    repQueues.removeAllQueues();
+    zkw.close();
+    replicationAdmin.close();
+    connection.close();
   }
 }

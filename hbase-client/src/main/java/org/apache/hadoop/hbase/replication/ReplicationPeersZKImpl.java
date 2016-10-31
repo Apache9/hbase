@@ -85,14 +85,16 @@ public class ReplicationPeersZKImpl extends ReplicationStateZKBase implements Re
   // Map of peer clusters keyed by their id
   private Map<String, ReplicationPeerZKImpl> peerClusters;
   private Abortable abortable;
+  private final ReplicationQueuesClient queuesClient;
 
   private static final Log LOG = LogFactory.getLog(ReplicationPeersZKImpl.class);
 
   public ReplicationPeersZKImpl(final ZooKeeperWatcher zk, final Configuration conf,
-      Abortable abortable) {
+      final ReplicationQueuesClient queuesClient, Abortable abortable) {
     super(zk, conf, abortable);
     this.abortable = abortable;
     this.peerClusters = new ConcurrentHashMap<String, ReplicationPeerZKImpl>();
+    this.queuesClient = queuesClient;
   }
 
   @Override
@@ -115,11 +117,13 @@ public class ReplicationPeersZKImpl extends ReplicationStateZKBase implements Re
         throw new IllegalArgumentException("Cannot add a peer with id=" + id
             + " because that id already exists.");
       }
-      
+
       if(id.contains("-")){
         throw new IllegalArgumentException("Found invalid peer name:" + id);
       }
-      
+
+      checkQueuesDeleted(id);
+
       ZKUtil.createWithParents(this.zookeeper, this.peersZNode);
       List<ZKUtilOp> listOfOps = new ArrayList<ZKUtil.ZKUtilOp>();
       ZKUtilOp op1 = ZKUtilOp.createAndFailSilent(getPeerNode(id),
@@ -517,4 +521,35 @@ public class ReplicationPeersZKImpl extends ReplicationStateZKBase implements Re
     return peer;
   }
 
+  /**
+   * See https://issues.apache.org/jira/browse/HBASE-12769
+   * When removing a peer, the client side will delete peerId under peersZNode node;
+   * then alive region servers will be notified and delete corresponding hlog queues
+   * under its rsZNode of replication. However, if there are failed servers whose hlog
+   * queues have not been transferred by alive servers, these hlog queues won't be deleted
+   * after the peer is removed.
+   * When adding a new peer, we can firstly check all replication rs znode and
+   * throw exception if there are uncleaned queues belongs to the peer,
+   * this will prevent adding a new peer before old queues cleaned.
+   * @param peerId
+   * @throws ReplicationException
+   */
+  private void checkQueuesDeleted(String peerId) throws ReplicationException {
+    if (queuesClient == null) return;
+    try {
+      List<String> replicators = queuesClient.getListOfReplicators();
+      for (String replicator : replicators) {
+        List<String> queueIds = queuesClient.getAllQueues(replicator);
+        for (String queueId : queueIds) {
+          ReplicationQueueInfo queueInfo = new ReplicationQueueInfo(queueId);
+          if (queueInfo.getPeerId().equals(peerId)) {
+            throw new ReplicationException("undeleted queue for peerId: " + peerId
+                + ", replicator: " + replicator + ", queueId: " + queueId);
+          }
+        }
+      }
+    } catch (KeeperException e) {
+      throw new ReplicationException("Could not check queues deleted with id=" + peerId, e);
+    }
+  }
 }
