@@ -97,15 +97,15 @@ public class ReplicationLogCleaner extends BaseLogCleanerDelegate implements Abo
    * Load all hlogs in all replication queues from ZK
    */
   private Set<String> loadHLogsFromQueues() throws KeeperException {
-    int v0 = zkHelper.getRsZNodeVersion();
-    Set<String> hlogs = new HashSet<String>();
     for (int retry = 0; ; retry++) {
+      int v0 = zkHelper.getRsZNodeVersion();
       List<String> rss = zkHelper.getListOfReplicators();
       if (rss == null) {
         LOG.debug("Didn't find any region server that replicates, won't prevent any deletions.");
         return ImmutableSet.of();
       }
 
+      Set<String> hlogs = new HashSet<String>();
       for (String rs : rss) {
         List<String> listOfPeers = zkHelper.getListPeersForRS(rs);
         // if rs just died, this will be null
