@@ -2214,6 +2214,7 @@ public class TestHBaseFsck {
 
   /**
    * Test orphaned table ZNode (for table states)
+   * XiaoMi HBase Team fixed this case: D36340
    */
   @Test
   public void testOrphanedTableZNode() throws Exception {
@@ -2238,14 +2239,8 @@ public class TestHBaseFsck {
         // throw some exception.  Ignore and continue.
       }
 
-      HBaseFsck hbck = doFsck(conf, false);
-      assertTrue(hbck.getErrors().getErrorList().contains(ERROR_CODE.ORPHANED_ZK_TABLE_ENTRY));
-
-      // fix the orphaned ZK entry
-      hbck = doFsck(conf, true);
-
       // check that orpahned ZK table entry is gone.
-      hbck = doFsck(conf, false);
+      HBaseFsck hbck = doFsck(conf, false);
       assertFalse(hbck.getErrors().getErrorList().contains(ERROR_CODE.ORPHANED_ZK_TABLE_ENTRY));
       // Now create table should succeed.
       setupTable(table);
