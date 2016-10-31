@@ -22,7 +22,9 @@ package org.apache.hadoop.hbase.master.cleaner;
 import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.net.URLEncoder;
+import java.util.LinkedList;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.hadoop.conf.Configuration;
@@ -33,12 +35,14 @@ import org.apache.hadoop.hbase.*;
 import org.apache.hadoop.hbase.catalog.CatalogTracker;
 import org.apache.hadoop.hbase.master.cleaner.LogCleaner;
 import org.apache.hadoop.hbase.replication.ReplicationZookeeper;
+import org.apache.hadoop.hbase.replication.master.ReplicationLogCleaner;
 import org.apache.hadoop.hbase.replication.regionserver.Replication;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.mockito.Mockito;
 
 @Category(MediumTests.class)
 public class TestLogsCleaner {
@@ -129,6 +133,24 @@ public class TestLogsCleaner {
     for (FileStatus file : fs.listStatus(oldLogDir)) {
       System.out.println("Kept log files: " + file.getPath().getName());
     }
+  }
+
+  @Test(timeout = 5000)
+  public void testZnodeCversionChange() throws Exception {
+    Configuration conf = TEST_UTIL.getConfiguration();
+    ReplicationLogCleaner cleaner = new ReplicationLogCleaner();
+    cleaner.setConf(conf);
+
+    ReplicationZookeeper rqcMock = Mockito.mock(ReplicationZookeeper.class);
+    Mockito.when(rqcMock.getRsZNodeVersion()).thenReturn(1, 2, 3, 4);
+
+    Field rqc = ReplicationLogCleaner.class.getDeclaredField("zkHelper");
+    rqc.setAccessible(true);
+
+    rqc.set(cleaner, rqcMock);
+
+    // This should return eventually when cversion stabilizes
+    cleaner.getDeletableFiles(new LinkedList<FileStatus>());
   }
 
   static class DummyServer implements Server {
