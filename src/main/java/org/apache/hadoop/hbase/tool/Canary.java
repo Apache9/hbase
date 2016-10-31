@@ -367,20 +367,6 @@ public final class Canary implements Tool {
             System.err.println("-interval needs a numeric value argument.");
             printUsageAndExit();
           }
-        } else if (cmd.equals("-timeout")) {
-          i++;
-
-          if (i == args.length) {
-            System.err.println("-timeout needs a numeric value argument.");
-            printUsageAndExit();
-          }
-
-          try {
-            this.timeout = Long.parseLong(args[i]) * 1000;
-          } catch (NumberFormatException e) {
-            System.err.println("-timeout needs a numeric value argument.");
-            printUsageAndExit();
-          }
         } else {
           // no options match
           System.err.println(cmd + " options is invalid.");
@@ -414,6 +400,8 @@ public final class Canary implements Tool {
           Strings.domainNamePointerToHostName(DNS.getDefaultHost(
             conf.get("hbase.regionserver.dns.interface", "default"),
             conf.get("hbase.regionserver.dns.nameserver", "default"))));
+
+    this.timeout = conf.getLong("hbase.canary.executor.timeout", DEFAULT_TIMEOUT);
 
     // initialize server principal (if using secure Hadoop)
     User.login(conf, "hbase.canary.keytab.file", "hbase.canary.kerberos.principal", hostname);
@@ -487,7 +475,6 @@ public final class Canary implements Tool {
     System.err.println("   -help          Show this help and exit.");
     System.err.println("   -daemon        Continuous check at defined intervals.");
     System.err.println("   -interval <N>  Interval between checks, default is 6 (sec)");
-    System.err.println("   -timeout <N>   timeout for a check, default is 600 (sec)");
     System.exit(1);
   }
 
