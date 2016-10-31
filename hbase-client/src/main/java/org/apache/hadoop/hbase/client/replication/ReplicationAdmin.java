@@ -125,11 +125,12 @@ public class ReplicationAdmin implements Closeable {
     try {
       zkw = createZooKeeperWatcher();
       try {
-        this.replicationPeers = ReplicationFactory.getReplicationPeers(zkw, conf, this.connection);
-        this.replicationPeers.init();
         this.replicationQueuesClient =
             ReplicationFactory.getReplicationQueuesClient(zkw, conf, this.connection);
         this.replicationQueuesClient.init();
+        this.replicationPeers = ReplicationFactory.getReplicationPeers(zkw, conf,
+          replicationQueuesClient, this.connection);
+        this.replicationPeers.init();
       } catch (Exception exception) {
         if (zkw != null) {
           zkw.close();

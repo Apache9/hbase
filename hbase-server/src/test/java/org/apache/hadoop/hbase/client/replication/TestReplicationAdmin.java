@@ -37,9 +37,12 @@ import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.replication.ReplicationException;
+import org.apache.hadoop.hbase.replication.ReplicationFactory;
 import org.apache.hadoop.hbase.replication.ReplicationPeer;
 import org.apache.hadoop.hbase.replication.ReplicationPeerConfig;
+import org.apache.hadoop.hbase.replication.ReplicationQueues;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
+import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -115,6 +118,41 @@ public class TestReplicationAdmin {
     assertEquals(1, admin.getPeersCount());
     admin.removePeer(ID_SECOND);
     assertEquals(0, admin.getPeersCount());
+  }
+
+  @Test
+  public void testAddPeerWithUnDeletedQueues() throws Exception {
+    ReplicationPeerConfig rpc1 = new ReplicationPeerConfig();
+    rpc1.setClusterKey(KEY_ONE);
+    ReplicationPeerConfig rpc2 = new ReplicationPeerConfig();
+    rpc2.setClusterKey(KEY_SECOND);
+    Configuration conf = TEST_UTIL.getConfiguration();
+    ZooKeeperWatcher zkw = new ZooKeeperWatcher(conf, "Test HBaseAdmin", null);
+    ReplicationQueues repQueues =
+        ReplicationFactory.getReplicationQueues(zkw, conf, null);
+    repQueues.init("server1");
+
+    // add queue for ID_ONE
+    repQueues.addLog(ID_ONE, "file1");
+    try {
+      admin.addPeer(ID_ONE, rpc1, null);
+      fail();
+    } catch (ReplicationException e) {
+      // OK!
+    }
+    repQueues.removeQueue(ID_ONE);
+    assertEquals(0, repQueues.getAllQueues().size());
+
+    // add recovered queue for ID_ONE
+    repQueues.addLog(ID_ONE + "-server2", "file1");
+    try {
+      admin.addPeer(ID_ONE, rpc2, null);
+      fail();
+    } catch (ReplicationException e) {
+      // OK!
+    }
+    repQueues.removeAllQueues();
+    zkw.close();
   }
 
   /**
