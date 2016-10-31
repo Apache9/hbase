@@ -299,7 +299,7 @@ public class CreateTableHandler extends EventHandler {
     if (this.tableLock != null) {
       try {
         this.tableLock.release();
-      } catch (IOException ex) {
+      } catch (Exception ex) {
         LOG.warn("Could not release the table lock", ex);
       }
     }
