@@ -21,8 +21,6 @@ package org.apache.hadoop.hbase.regionserver.wal;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.htrace.Span;
 
-import com.lmax.disruptor.EventFactory;
-
 /**
  * A 'truck' to carry a payload across the {@link FSHLog} ring buffer from Handler to WAL.
  * Has EITHER a {@link FSWALEntry} for making an append OR it has a {@link SyncFuture} to
@@ -31,7 +29,7 @@ import com.lmax.disruptor.EventFactory;
  * to GC.
  */
 @InterfaceAudience.Private
-class RingBufferTruck {
+final class FSHLogRingBufferTruck {
   /**
    * Either this syncFuture is set or entry is set, but not both.
    */
@@ -104,13 +102,4 @@ class RingBufferTruck {
     this.span = null;
     return ret;
   }
-
-  /**
-   * Factory for making a bunch of these.  Needed by the ringbuffer/disruptor.
-   */
-  final static EventFactory<RingBufferTruck> EVENT_FACTORY = new EventFactory<RingBufferTruck>() {
-    public RingBufferTruck newInstance() {
-      return new RingBufferTruck();
-    }
-  };
 }
