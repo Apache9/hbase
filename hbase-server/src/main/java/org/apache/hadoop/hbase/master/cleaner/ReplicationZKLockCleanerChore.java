@@ -68,6 +68,12 @@ public class ReplicationZKLockCleanerChore extends Chore {
     queues = new ReplicationQueuesZKImpl(zk, conf, abortable);
   }
 
+  public void updateReplicationTracker(Stoppable stopper, Abortable abortable, ZooKeeperWatcher zk,
+      Configuration conf) {
+    tracker = ReplicationFactory.getReplicationTracker(zk,
+      ReplicationFactory.getReplicationPeers(zk, conf, abortable), conf, abortable, stopper);
+  }
+
   @Override protected void chore() {
     try {
       List<String> regionServers = tracker.getListOfRegionServers();

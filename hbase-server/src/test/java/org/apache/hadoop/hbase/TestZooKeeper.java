@@ -630,7 +630,7 @@ public class TestZooKeeper {
 
     ZkClusterInfo info = new ZkClusterInfo("lgprc");
     assertEquals(clusterKey.quorumString, info.resolve());
-    assertEquals(clusterKey.clientPort, Integer.toString(info.getPort()));
+    assertEquals(clusterKey.clientPort, info.getPort());
     assertEquals(clusterKey.znodeParent, "/hbase/lgprc-xiaomi");
 
     try {

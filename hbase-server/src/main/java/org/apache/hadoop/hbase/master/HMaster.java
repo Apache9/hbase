@@ -962,6 +962,13 @@ MasterServices, Server {
     status.setStatus("Initializing ZK system trackers");
     initializeZKBasedSystemTrackers();
 
+    if (masterRecovery) {
+      if (this.replicationZKLockCleanerChore != null) {
+        this.replicationZKLockCleanerChore.updateReplicationTracker(this, this, this.zooKeeper,
+          this.conf);
+      }
+    }
+
     if (!masterRecovery) {
       // initialize master side coprocessors before we start handling requests
       status.setStatus("Initializing master coprocessors");
