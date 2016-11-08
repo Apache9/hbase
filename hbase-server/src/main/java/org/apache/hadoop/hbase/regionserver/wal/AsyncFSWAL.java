@@ -156,6 +156,13 @@ public class AsyncFSWAL extends AbstractFSWAL<AsyncWriter> {
       "hbase.wal.async.logroller.exited.check.interval.ms";
   public static final long DEFAULT_ASYNC_WAL_LOG_ROLLER_EXITED_CHECK_INTERVAL_MS = 1000;
 
+  public static final String ASYNC_WAL_MAX_CONCURRENT_SYNC = "hbase.wal.async.max.concurrent.sync";
+
+  public static final int DEFAULT_ASYNC_WAL_MAX_CONCURRENT_SYNC = 5;
+
+  public static final String ASYNC_WAL_RESUME_SYNC_THRESHOLD =
+      "hbase.wal.async.resume.sync.threshold";
+
   private final EventLoop eventLoop;
 
   private final Lock consumeLock = new ReentrantLock();
@@ -204,6 +211,14 @@ public class AsyncFSWAL extends AbstractFSWAL<AsyncWriter> {
 
   // file length when we issue last sync request on the writer
   private long fileLengthAtLastSync;
+
+  private final int maxConcurrentSync;
+
+  private final int resumeSyncThreshold;
+
+  private int pendingSync;
+
+  private boolean stopSync;
 
   private volatile boolean logRollerExited;
 
@@ -321,6 +336,9 @@ public class AsyncFSWAL extends AbstractFSWAL<AsyncWriter> {
         conf.getInt(ASYNC_WAL_CREATE_MAX_RETRIES, DEFAULT_ASYNC_WAL_CREATE_MAX_RETRIES);
     logRollerExitedCheckIntervalMs = conf.getLong(ASYNC_WAL_LOG_ROLLER_EXITED_CHECK_INTERVAL_MS,
       DEFAULT_ASYNC_WAL_LOG_ROLLER_EXITED_CHECK_INTERVAL_MS);
+    maxConcurrentSync =
+        conf.getInt(ASYNC_WAL_MAX_CONCURRENT_SYNC, DEFAULT_ASYNC_WAL_MAX_CONCURRENT_SYNC);
+    resumeSyncThreshold = conf.getInt(ASYNC_WAL_RESUME_SYNC_THRESHOLD, maxConcurrentSync / 2);
     rollWriter();
   }
 
@@ -373,6 +391,8 @@ public class AsyncFSWAL extends AbstractFSWAL<AsyncWriter> {
       logRollerExitedChecker.setFuture(eventLoop.scheduleAtFixedRate(logRollerExitedChecker,
         logRollerExitedCheckIntervalMs, logRollerExitedCheckIntervalMs, TimeUnit.MILLISECONDS));
       writerBroken = true;
+      pendingSync = 0;
+      stopSync = false;
       if (waitingRoll) {
         readyForRolling = true;
         readyForRollingCond.signalAll();
@@ -388,6 +408,16 @@ public class AsyncFSWAL extends AbstractFSWAL<AsyncWriter> {
     requestLogRoll();
   }
 
+  private void tryResumeSync(AsyncWriter writer) {
+    pendingSync--;
+    if (stopSync && pendingSync <= resumeSyncThreshold) {
+      stopSync = false;
+      if (writer.getLength() > fileLengthAtLastSync) {
+        sync(writer, highestProcessedAppendTxid);
+      }
+    }
+  }
+
   private void syncCompleted(AsyncWriter writer, long processedTxid, long startTimeNs) {
     highestSyncedTxid.set(processedTxid);
     int syncCount = finishSync(true);
@@ -399,6 +429,7 @@ public class AsyncFSWAL extends AbstractFSWAL<AsyncWriter> {
       }
     }
     postSync(System.nanoTime() - startTimeNs, syncCount);
+    tryResumeSync(writer);
     // Ideally, we should set a flag to indicate that the log roll has already been requested for
     // the current writer and give up here, and reset the flag when roll is finished. But we
     // finish roll in the log roller thread so the flag need to be set by different thread which
@@ -435,6 +466,9 @@ public class AsyncFSWAL extends AbstractFSWAL<AsyncWriter> {
         syncCompleted(writer, processedTxid, startTimeNs);
       }
     });
+    if (++pendingSync >= maxConcurrentSync) {
+      stopSync = true;
+    }
   }
 
   private void addTimeAnnotation(SyncFuture future, String annotation) {
@@ -536,11 +570,6 @@ public class AsyncFSWAL extends AbstractFSWAL<AsyncWriter> {
       newHighestProcessedTxid = highestProcessedAppendTxid;
     }
 
-    if (writer.getLength() - fileLengthAtLastSync >= batchSize) {
-      // sync because buffer size limit.
-      sync(writer, newHighestProcessedTxid);
-      return;
-    }
     if (writer.getLength() == fileLengthAtLastSync) {
       // we haven't written anything out, just advance the highestSyncedSequence since we may only
       // stamped some region sequence id.
@@ -549,6 +578,17 @@ public class AsyncFSWAL extends AbstractFSWAL<AsyncWriter> {
       trySetReadyForRolling();
       return;
     }
+
+    if (stopSync) {
+      return;
+    }
+
+    if (writer.getLength() - fileLengthAtLastSync >= batchSize) {
+      // sync because buffer size limit.
+      sync(writer, newHighestProcessedTxid);
+      return;
+    }
+
     // we have some unsynced data but haven't reached the batch size yet
     if (!syncFutures.isEmpty()) {
       // we have at least one sync request
