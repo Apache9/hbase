@@ -19,38 +19,33 @@
 
 package org.apache.hadoop.hbase.client;
 
+import java.io.IOException;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
 
-import java.io.IOException;
-
 /**
- * We inherit the current ZooKeeperWatcher implementation to change the semantic
- *  of the close: the new close won't immediately close the connection but
- *  will have a keep alive. See {@link HConnection}.
- * This allows to make it available with a consistent interface. The whole
- *  ZooKeeperWatcher use in HConnection will be then changed to remove the
- *   watcher part.
- *
- * This class is intended to be used internally by HBase classes; but not by
- * final user code. Hence it's package protected.
+ * We inherit the current ZooKeeperWatcher implementation to change the semantic of the close: the
+ * new close won't immediately close the connection but will have a keep alive. See
+ * {@link HConnection}. This allows to make it available with a consistent interface. The whole
+ * ZooKeeperWatcher use in HConnection will be then changed to remove the watcher part. This class
+ * is intended to be used internally by HBase classes; but not by final user code. Hence it's
+ * package protected.
  */
-class ZooKeeperKeepAliveConnection extends ZooKeeperWatcher{
-  ZooKeeperKeepAliveConnection(
-    Configuration conf, String descriptor,
-    HConnectionManager.HConnectionImplementation conn) throws IOException {
+class ZooKeeperKeepAliveConnection extends ZooKeeperWatcher {
+  ZooKeeperKeepAliveConnection(Configuration conf, String descriptor,
+      HConnectionImplementation conn) throws IOException {
     super(conf, descriptor, conn);
   }
 
   @Override
   public void close() {
     if (this.abortable != null) {
-      ((HConnectionManager.HConnectionImplementation)abortable).releaseZooKeeperWatcher(this);
+      ((HConnectionImplementation) abortable).releaseZooKeeperWatcher(this);
     }
   }
 
-  void internalClose(){
+  void internalClose() {
     super.close();
   }
 }

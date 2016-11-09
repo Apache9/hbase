@@ -170,7 +170,7 @@ public class TestAsyncProcess {
   /**
    * Returns our async process.
    */
-  static class MyConnectionImpl extends HConnectionManager.HConnectionImplementation {
+  static class MyConnectionImpl extends HConnectionImplementation {
     MyAsyncProcess<?> ap;
     final AtomicInteger nbThreads = new AtomicInteger(0);
     final static Configuration c = new Configuration();

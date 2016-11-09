@@ -61,7 +61,6 @@ import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.Waiter;
-import org.apache.hadoop.hbase.client.HConnectionManager.HConnectionImplementation;
 import org.apache.hadoop.hbase.coprocessor.BaseRegionObserver;
 import org.apache.hadoop.hbase.coprocessor.ObserverContext;
 import org.apache.hadoop.hbase.coprocessor.RegionCoprocessorEnvironment;
@@ -72,7 +71,6 @@ import org.apache.hadoop.hbase.filter.FilterBase;
 import org.apache.hadoop.hbase.ipc.NettyRpcClient;
 import org.apache.hadoop.hbase.ipc.RpcClientFactory;
 import org.apache.hadoop.hbase.ipc.RpcClientImpl;
-import org.apache.hadoop.hbase.ipc.ServerBusyException;
 import org.apache.hadoop.hbase.master.HMaster;
 import org.apache.hadoop.hbase.regionserver.HRegion;
 import org.apache.hadoop.hbase.regionserver.HRegionServer;
@@ -593,8 +591,7 @@ public class TestHCM {
     Put put = new Put(ROW);
     put.add(FAM_NAM, ROW, ROW);
     table.put(put);
-    HConnectionManager.HConnectionImplementation conn = (HConnectionManager.HConnectionImplementation) table
-        .getConnection();
+    HConnectionImplementation conn = (HConnectionImplementation) table.getConnection();
 
     assertNotNull(conn.getCachedLocation(tableName, ROW));
 
@@ -783,8 +780,7 @@ public class TestHCM {
     Put put = new Put(ROW);
     put.add(FAM_NAM, ROW, ROW);
     table.put(put);
-    HConnectionManager.HConnectionImplementation conn = (HConnectionManager.HConnectionImplementation) table
-        .getConnection();
+    HConnectionImplementation conn = (HConnectionImplementation) table.getConnection();
 
     HRegionLocation location = conn.getCachedLocation(tableName, ROW);
     assertNotNull(location);
@@ -982,8 +978,8 @@ public class TestHCM {
     TableName tableName = TableName.valueOf(getTestTableName());
     HTable table = TEST_UTIL.createTable(tableName, FAM_NAM);
     TEST_UTIL.createMultiRegions(table, FAM_NAM);
-    HConnectionManager.HConnectionImplementation conn = (HConnectionManager.HConnectionImplementation) HConnectionManager
-        .getConnection(TEST_UTIL.getConfiguration());
+    HConnectionImplementation conn =
+        (HConnectionImplementation) HConnectionManager.getConnection(TEST_UTIL.getConfiguration());
 
     // We're now going to move the region and check that it works for the client
     // First a new put to add the location in the cache

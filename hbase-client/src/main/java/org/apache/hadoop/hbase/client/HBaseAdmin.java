@@ -19,6 +19,12 @@
 package org.apache.hadoop.hbase.client;
 
 
+import com.google.common.annotations.VisibleForTesting;
+import com.google.protobuf.ByteString;
+import com.google.protobuf.ServiceException;
+import com.xiaomi.infra.hbase.salted.KeySalter;
+import com.xiaomi.infra.hbase.salted.SaltedHTable;
+
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.InterruptedIOException;
@@ -133,7 +139,6 @@ import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ShutdownRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SnapshotRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SnapshotResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.StopMasterRequest;
-import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.TruncateTableRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.UnassignRegionRequest;
@@ -154,13 +159,6 @@ import org.apache.hadoop.hbase.util.Pair;
 import org.apache.hadoop.ipc.RemoteException;
 import org.apache.hadoop.util.StringUtils;
 import org.apache.zookeeper.KeeperException;
-
-import com.google.common.annotations.VisibleForTesting;
-import com.google.protobuf.ByteString;
-import com.google.protobuf.ServiceException;
-import com.sun.research.ws.wadl.Response;
-import com.xiaomi.infra.hbase.salted.KeySalter;
-import com.xiaomi.infra.hbase.salted.SaltedHTable;
 
 /**
  * Provides an interface to manage HBase database table metadata + general
@@ -2457,9 +2455,8 @@ public class HBaseAdmin implements Abortable, Closeable {
     copyOfConf.setInt(HConstants.HBASE_CLIENT_RETRIES_NUMBER, 1);
     copyOfConf.setInt(HConstants.ZK_RECOVERY_RETRY, 0);
 
-    HConnectionManager.HConnectionImplementation connection
-      = (HConnectionManager.HConnectionImplementation)
-      HConnectionManager.getConnection(copyOfConf);
+    HConnectionImplementation connection =
+        (HConnectionImplementation) HConnectionManager.getConnection(copyOfConf);
 
     try {
       // Check ZK first.
