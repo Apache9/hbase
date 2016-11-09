@@ -218,44 +218,6 @@ public class TestTableInputFormat {
   }
 
   /**
-   * Create a table that throws a DoNoRetryIOException on first scanner next
-   * call
-   * 
-   * @throws IOException
-   */
-  static HTable createDNRIOEScannerTable(byte[] name, final int failCnt)
-      throws IOException {
-    // build up a mock scanner stuff to fail the first time
-    Answer<ResultScanner> a = new Answer<ResultScanner>() {
-      int cnt = 0;
-
-      @Override
-      public ResultScanner answer(InvocationOnMock invocation) throws Throwable {
-        // first invocation return the busted mock scanner
-        if (cnt++ < failCnt) {
-          // create mock ResultScanner that always fails.
-          Scan scan = mock(Scan.class);
-          doReturn("bogus".getBytes()).when(scan).getStartRow(); // avoid npe
-          ResultScanner scanner = mock(ResultScanner.class);
-
-          invocation.callRealMethod(); // simulate UnknownScannerException
-          doThrow(
-              new UnknownScannerException("Injected simulated TimeoutException"))
-              .when(scanner).next();
-          return scanner;
-        }
-
-        // otherwise return the real scanner.
-        return (ResultScanner) invocation.callRealMethod();
-      }
-    };
-
-    HTable htable = spy(createTable(name));
-    doAnswer(a).when(htable).getScanner((Scan) anyObject());
-    return htable;
-  }
-
-  /**
    * Run test assuming no errors using mapred api.
    * 
    * @throws IOException
@@ -285,30 +247,6 @@ public class TestTableInputFormat {
   @Test(expected = IOException.class)
   public void testTableRecordReaderScannerFailTwice() throws IOException {
     HTable htable = createIOEScannerTable("table3".getBytes(), 2);
-    runTestMapred(htable);
-  }
-
-  /**
-   * Run test assuming UnknownScannerException (which is a type of
-   * DoNotRetryIOException) using mapred api.
-   * 
-   * @throws org.apache.hadoop.hbase.DoNotRetryIOException
-   */
-  @Test
-  public void testTableRecordReaderScannerTimeout() throws IOException {
-    HTable htable = createDNRIOEScannerTable("table4".getBytes(), 1);
-    runTestMapred(htable);
-  }
-
-  /**
-   * Run test assuming UnknownScannerException (which is a type of
-   * DoNotRetryIOException) using mapred api.
-   * 
-   * @throws org.apache.hadoop.hbase.DoNotRetryIOException
-   */
-  @Test(expected = org.apache.hadoop.hbase.DoNotRetryIOException.class)
-  public void testTableRecordReaderScannerTimeoutTwice() throws IOException {
-    HTable htable = createDNRIOEScannerTable("table5".getBytes(), 2);
     runTestMapred(htable);
   }
 
