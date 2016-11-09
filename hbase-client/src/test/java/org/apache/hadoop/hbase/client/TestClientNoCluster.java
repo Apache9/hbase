@@ -253,8 +253,7 @@ public class TestClientNoCluster extends Configured implements Tool {
   /**
    * Override to shutdown going to zookeeper for cluster id and meta location.
    */
-  static class ScanOpenNextThenExceptionThenRecoverConnection
-  extends HConnectionManager.HConnectionImplementation {
+  static class ScanOpenNextThenExceptionThenRecoverConnection extends HConnectionImplementation {
     final ClientService.BlockingInterface stub;
 
     ScanOpenNextThenExceptionThenRecoverConnection(Configuration conf,
@@ -285,8 +284,7 @@ public class TestClientNoCluster extends Configured implements Tool {
   /**
    * Override to shutdown going to zookeeper for cluster id and meta location.
    */
-  static class RegionServerStoppedOnScannerOpenConnection
-  extends HConnectionManager.HConnectionImplementation {
+  static class RegionServerStoppedOnScannerOpenConnection extends HConnectionImplementation {
     final ClientService.BlockingInterface stub;
 
     RegionServerStoppedOnScannerOpenConnection(Configuration conf, boolean managed,
@@ -317,8 +315,7 @@ public class TestClientNoCluster extends Configured implements Tool {
   /**
    * Override to check we are setting rpc timeout right.
    */
-  static class RpcTimeoutConnection
-  extends HConnectionManager.HConnectionImplementation {
+  static class RpcTimeoutConnection extends HConnectionImplementation {
     final ClientService.BlockingInterface stub;
 
     RpcTimeoutConnection(Configuration conf, boolean managed, ExecutorService pool, User user)
@@ -344,8 +341,7 @@ public class TestClientNoCluster extends Configured implements Tool {
   /**
    * Fake many regionservers and many regions on a connection implementation.
    */
-  static class ManyServersManyRegionsConnection
-  extends HConnectionManager.HConnectionImplementation {
+  static class ManyServersManyRegionsConnection extends HConnectionImplementation {
     // All access should be synchronized
     final Map<ServerName, ClientService.BlockingInterface> serversByClient;
 

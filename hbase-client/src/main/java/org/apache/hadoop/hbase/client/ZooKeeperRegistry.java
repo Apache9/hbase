@@ -36,15 +36,15 @@ import org.apache.zookeeper.KeeperException;
  */
 class ZooKeeperRegistry implements Registry {
   static final Log LOG = LogFactory.getLog(ZooKeeperRegistry.class);
-  // Needs an instance of hci to function.  Set after construct this instance.
-  HConnectionManager.HConnectionImplementation hci;
+  // Needs an instance of hci to function. Set after construct this instance.
+  HConnectionImplementation hci;
 
   @Override
   public void init(HConnection connection) {
-    if (!(connection instanceof HConnectionManager.HConnectionImplementation)) {
+    if (!(connection instanceof HConnectionImplementation)) {
       throw new RuntimeException("This registry depends on HConnectionImplementation");
     }
-    this.hci = (HConnectionManager.HConnectionImplementation)connection;
+    this.hci = (HConnectionImplementation) connection;
   }
 
   @Override
@@ -57,8 +57,8 @@ class ZooKeeperRegistry implements Registry {
       }
       ServerName servername = MetaRegionTracker.blockUntilAvailable(zkw, hci.rpcTimeout);
       if (LOG.isTraceEnabled()) {
-        LOG.trace("Looked up meta region location, connection=" + this +
-          "; serverName=" + ((servername == null) ? "null" : servername));
+        LOG.trace("Looked up meta region location, connection=" + this + "; serverName="
+            + ((servername == null) ? "null" : servername));
       }
       if (servername == null) return null;
       return new HRegionLocation(HRegionInfo.FIRST_META_REGIONINFO, servername, 0);
@@ -76,7 +76,7 @@ class ZooKeeperRegistry implements Registry {
   public String getClusterId() {
     if (this.clusterId != null) return this.clusterId;
     // No synchronized here, worse case we will retrieve it twice, that's
-    //  not an issue.
+    // not an issue.
     ZooKeeperKeepAliveConnection zkw = null;
     try {
       zkw = hci.getKeepAliveZooKeeperWatcher();
@@ -95,8 +95,7 @@ class ZooKeeperRegistry implements Registry {
   }
 
   @Override
-  public boolean isTableOnlineState(TableName tableName, boolean enabled)
-  throws IOException {
+  public boolean isTableOnlineState(TableName tableName, boolean enabled) throws IOException {
     ZooKeeperKeepAliveConnection zkw = hci.getKeepAliveZooKeeperWatcher();
     try {
       if (enabled) {
@@ -106,7 +105,7 @@ class ZooKeeperRegistry implements Registry {
     } catch (KeeperException e) {
       throw new IOException("Enable/Disable failed", e);
     } finally {
-       zkw.close();
+      zkw.close();
     }
   }
 
@@ -115,12 +114,12 @@ class ZooKeeperRegistry implements Registry {
     ZooKeeperKeepAliveConnection zkw = hci.getKeepAliveZooKeeperWatcher();
     try {
       // We go to zk rather than to master to get count of regions to avoid
-      // HTable having a Master dependency.  See HBase-2828
+      // HTable having a Master dependency. See HBase-2828
       return ZKUtil.getNumberOfChildren(zkw, zkw.rsZNode);
     } catch (KeeperException ke) {
       throw new IOException("Unexpected ZooKeeper exception", ke);
     } finally {
-        zkw.close();
+      zkw.close();
     }
   }
 }

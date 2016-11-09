@@ -60,14 +60,10 @@ import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HRegionLocation;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.KeyValue;
-import org.apache.hadoop.hbase.protobuf.generated.ClientProtos;
-import org.apache.hadoop.hbase.protobuf.generated.MultiRowMutationProtos;
-import org.apache.hadoop.hbase.testclassification.LargeTests;
 import org.apache.hadoop.hbase.MiniHBaseCluster;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.Waiter;
-import org.apache.hadoop.hbase.client.HConnectionManager.HConnectionImplementation;
 import org.apache.hadoop.hbase.client.metrics.ScanMetrics;
 import org.apache.hadoop.hbase.coprocessor.BaseRegionObserver;
 import org.apache.hadoop.hbase.coprocessor.CoprocessorHost;
@@ -94,12 +90,14 @@ import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.MutationProto;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.MutationProto.MutationType;
-import org.apache.hadoop.hbase.protobuf.generated.MultiRowMutationProtos.MutateRowsRequest;
+import org.apache.hadoop.hbase.protobuf.generated.MultiRowMutationProtos;
 import org.apache.hadoop.hbase.protobuf.generated.MultiRowMutationProtos.MultiRowMutationService;
+import org.apache.hadoop.hbase.protobuf.generated.MultiRowMutationProtos.MutateRowsRequest;
 import org.apache.hadoop.hbase.regionserver.HRegion;
 import org.apache.hadoop.hbase.regionserver.HRegionServer;
 import org.apache.hadoop.hbase.regionserver.NoSuchColumnFamilyException;
 import org.apache.hadoop.hbase.regionserver.Store;
+import org.apache.hadoop.hbase.testclassification.LargeTests;
 import org.apache.hadoop.hbase.types.NumberCodecType;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
@@ -440,9 +438,8 @@ public class TestFromClientSide {
      z0.close();
 
      // Then a ZooKeeperKeepAliveConnection
-     HConnectionManager.HConnectionImplementation connection1 =
-       (HConnectionManager.HConnectionImplementation)
-         HConnectionManager.getConnection(newConfig);
+    HConnectionImplementation connection1 =
+        (HConnectionImplementation) HConnectionManager.getConnection(newConfig);
 
      ZooKeeperKeepAliveConnection z1 = connection1.getKeepAliveZooKeeperWatcher();
      z1.getRecoverableZooKeeper().getZooKeeper().exists("/z1", false);
@@ -462,9 +459,8 @@ public class TestFromClientSide {
 
      Configuration newConfig2 = new Configuration(TEST_UTIL.getConfiguration());
      newConfig2.set(HConstants.HBASE_CLIENT_INSTANCE_ID, "6789");
-     HConnectionManager.HConnectionImplementation connection2 =
-       (HConnectionManager.HConnectionImplementation)
-         HConnectionManager.getConnection(newConfig2);
+    HConnectionImplementation connection2 =
+        (HConnectionImplementation) HConnectionManager.getConnection(newConfig2);
 
      assertTrue("connections should be different ", connection1 != connection2);
 
@@ -474,8 +470,7 @@ public class TestFromClientSide {
          " on different connections", z1 != z3);
 
      // Bypass the private access
-     Method m = HConnectionManager.HConnectionImplementation.class.
-       getDeclaredMethod("closeZooKeeperWatcher");
+    Method m = HConnectionImplementation.class.getDeclaredMethod("closeZooKeeperWatcher");
      m.setAccessible(true);
      m.invoke(connection2);
 

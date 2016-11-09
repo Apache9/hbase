@@ -96,9 +96,7 @@ public class TestClientTimeouts {
           assertFalse(connection == lastConnection);
           lastConnection = connection;
           // Override the connection's rpc client for timeout testing
-          RpcClient oldRpcClient =
-            ((HConnectionManager.HConnectionImplementation)connection).setRpcClient(
-              rpcClient);
+          RpcClient oldRpcClient = ((HConnectionImplementation) connection).setRpcClient(rpcClient);
           if (oldRpcClient != null) {
             oldRpcClient.close();
           }
