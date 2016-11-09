@@ -934,11 +934,15 @@ public class ExportSnapshot extends Configured implements Tool {
 
     boolean skipTmp = conf.getBoolean(CONF_SKIP_TMP, false);
 
-    if(filesUser == null || filesUser.length() <= 0){
-      filesUser = outputFs.getFileStatus(outputRoot).getOwner();
+    if (filesUser == null || filesUser.length() <= 0) {
+      if (outputFs.exists(outputRoot)) {
+        filesUser = outputFs.getFileStatus(outputRoot).getOwner();
+      }
     }
-    if(filesGroup == null || filesGroup.length() <= 0){
-      filesGroup = outputFs.getFileStatus(outputRoot).getGroup();
+    if (filesGroup == null || filesGroup.length() <= 0) {
+      if (outputFs.exists(outputRoot)) {
+        filesGroup = outputFs.getFileStatus(outputRoot).getGroup();
+      }
     }
 
     Path snapshotDir = SnapshotDescriptionUtils.getCompletedSnapshotDir(snapshotName, inputRoot);
