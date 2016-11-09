@@ -2528,8 +2528,8 @@ public class TestAccessController extends SecureTestUtil {
           Permission.Action.ADMIN);
       List<UserPermission> perms = testUserPerms.runAs(listTablesRestrictedAction);
       assertNotNull(perms);
-      // USER_ADMIN, USER_CREATE, USER_RW, USER_RO, testUserPerms has row each.
-      assertEquals(5, perms.size());
+      // USER_ADMIN, USER_CREATE, USER_RW, USER_RO, USER_ADMIN_CF, testUserPerms has row each.
+      assertEquals(6, perms.size());
     } catch (Throwable e) {
       throw new HBaseIOException(e);
     }
