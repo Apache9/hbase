@@ -43,16 +43,14 @@ import org.apache.hadoop.hbase.UnknownScannerException;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.classification.InterfaceStability;
 import org.apache.hadoop.hbase.exceptions.OutOfOrderScannerNextException;
-import org.apache.hadoop.hbase.ipc.RpcControllerFactory;
 import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.protobuf.generated.MapReduceProtos;
 import org.apache.hadoop.hbase.regionserver.RegionServerStoppedException;
 import org.apache.hadoop.hbase.util.Bytes;
 
 /**
- * Implements the scanner interface for the HBase client.
- * If there are multiple regions in a table, this scanner will iterate
- * through them all.
+ * Implements the scanner interface for the HBase client. If there are multiple regions in a table,
+ * this scanner will iterate through them all.
  */
 @InterfaceAudience.Public
 @InterfaceStability.Stable
@@ -63,7 +61,7 @@ public class ClientScanner extends AbstractClientScanner {
   static byte[] MAX_BYTE_ARRAY = Bytes.createMaxByteArray(9);
   protected Scan scan;
   protected boolean closed = false;
-  // Current region scanner is against.  Gets cleared if current region goes
+  // Current region scanner is against. Gets cleared if current region goes
   // wonky: e.g. if it splits on us.
   protected HRegionInfo currentRegion = null;
   protected ScannerCallable callable = null;
@@ -76,8 +74,8 @@ public class ClientScanner extends AbstractClientScanner {
   protected final LinkedList<Cell[]> partialResults = new LinkedList<Cell[]>();
   /**
    * The row for which we are accumulating partial Results (i.e. the row of the Results stored
-   * inside partialResults). Changes to partialResultsRow and partialResults are kept in sync
-   * via the methods {@link #addToPartialResults(Result)} and {@link #clearPartialResults()}
+   * inside partialResults). Changes to partialResultsRow and partialResults are kept in sync via
+   * the methods {@link #addToPartialResults(Result)} and {@link #clearPartialResults()}
    */
   protected byte[] partialResultsRow = null;
   protected boolean isPartialResultStale = false;
@@ -86,9 +84,8 @@ public class ClientScanner extends AbstractClientScanner {
   protected long partialResultSize;
   protected long maxPartialCacheSize = 200000000;
   protected static final long HEAP_SIZE =
-      ManagementFactory.getMemoryMXBean().getHeapMemoryUsage().getMax() > 0 ?
-          ManagementFactory.getMemoryMXBean().getHeapMemoryUsage().getMax() :
-          500000000;
+      ManagementFactory.getMemoryMXBean().getHeapMemoryUsage().getMax() > 0
+          ? ManagementFactory.getMemoryMXBean().getHeapMemoryUsage().getMax() : 500000000;
 
   protected final int caching;
   protected long lastNext;
@@ -99,81 +96,45 @@ public class ClientScanner extends AbstractClientScanner {
   private final TableName tableName;
   protected final int scannerTimeout;
   protected boolean scanMetricsPublished = false;
-  protected RpcRetryingCaller<Result[]> caller;
-  protected RpcControllerFactory rpcControllerFactory;
-
-  /**
-   * Create a new ClientScanner for the specified table. An HConnection will be
-   * retrieved using the passed Configuration.
-   * Note that the passed {@link Scan}'s start row maybe changed changed.
-   *
-   * @param conf      The {@link Configuration} to use.
-   * @param scan      {@link Scan} to use in this scanner
-   * @param tableName The table that we wish to scan
-   * @throws IOException
-   */
-  @Deprecated public ClientScanner(final Configuration conf, final Scan scan, final TableName tableName) throws IOException {
-    this(conf, scan, tableName, HConnectionManager.getConnection(conf));
-  }
+  protected final RpcRetryingCaller<Result[]> caller;
 
   /**
    * @deprecated Use {@link #ClientScanner(Configuration, Scan, TableName)}
    */
-  @Deprecated public ClientScanner(final Configuration conf, final Scan scan, final byte[] tableName) throws IOException {
+  @Deprecated
+  public ClientScanner(final Configuration conf, final Scan scan, final byte[] tableName)
+      throws IOException {
     this(conf, scan, TableName.valueOf(tableName));
   }
 
   /**
-   * Create a new ClientScanner for the specified table
-   * Note that the passed {@link Scan}'s start row maybe changed changed.
-   *
-   * @param conf       The {@link Configuration} to use.
-   * @param scan       {@link Scan} to use in this scanner
-   * @param tableName  The table that we wish to scan
-   * @param connection Connection identifying the cluster
+   * Create a new ClientScanner for the specified table. An HConnection will be retrieved using the
+   * passed Configuration. Note that the passed {@link Scan}'s start row maybe changed changed.
+   * @param conf The {@link Configuration} to use.
+   * @param scan {@link Scan} to use in this scanner
+   * @param tableName The table that we wish to scan
    * @throws IOException
    */
-  public ClientScanner(final Configuration conf, final Scan scan, final TableName tableName,
-      HConnection connection) throws IOException {
-    this(conf, scan, tableName, connection, RpcRetryingCallerFactory.instantiate(conf, connection.getStatisticsTracker()),
-        RpcControllerFactory.instantiate(conf));
-  }
-
-  /**
-   * @deprecated Use {@link #ClientScanner(Configuration, Scan, TableName, HConnection)}
-   */
-  @Deprecated public ClientScanner(final Configuration conf, final Scan scan, final byte[] tableName,
-      HConnection connection) throws IOException {
-    this(conf, scan, TableName.valueOf(tableName), connection, new RpcRetryingCallerFactory(conf),
-        RpcControllerFactory.instantiate(conf));
-  }
-
-  /**
-   * @deprecated Use
-   * {@link #ClientScanner(Configuration, Scan, TableName, HConnection,
-   * RpcRetryingCallerFactory, RpcControllerFactory)}
-   * instead
-   */
-  @Deprecated public ClientScanner(final Configuration conf, final Scan scan, final TableName tableName,
-      HConnection connection, RpcRetryingCallerFactory rpcFactory) throws IOException {
-    this(conf, scan, tableName, connection, rpcFactory, RpcControllerFactory.instantiate(conf));
+  @Deprecated
+  public ClientScanner(final Configuration conf, final Scan scan, final TableName tableName)
+      throws IOException {
+    this(conf, scan, tableName, HConnectionManager.getConnection(conf));
   }
 
   /**
    * Create a new ClientScanner for the specified table Note that the passed {@link Scan}'s start
    * row maybe changed changed.
-   *
-   * @param conf       The {@link Configuration} to use.
-   * @param scan       {@link Scan} to use in this scanner
-   * @param tableName  The table that we wish to scan
+   * @param conf The {@link Configuration} to use.
+   * @param scan {@link Scan} to use in this scanner
+   * @param tableName The table that we wish to scan
    * @param connection Connection identifying the cluster
    * @throws IOException
    */
   public ClientScanner(final Configuration conf, final Scan scan, final TableName tableName,
-      HConnection connection, RpcRetryingCallerFactory rpcFactory,
-      RpcControllerFactory controllerFactory) throws IOException {
+      HConnection connection) throws IOException {
     if (LOG.isTraceEnabled()) {
-      LOG.trace("Scan table=" + tableName + ", startRow=" + Bytes.toStringBinary(scan.getStartRow()));
+      LOG.trace(
+        "Scan table=" + tableName + ", startRow=" + Bytes.toStringBinary(scan.getStartRow()));
     }
     this.scan = scan;
     this.tableName = tableName;
@@ -183,28 +144,29 @@ public class ClientScanner extends AbstractClientScanner {
       this.maxScannerResultSize = scan.getMaxResultSize();
     } else {
       this.maxScannerResultSize = conf.getLong(HConstants.HBASE_CLIENT_SCANNER_MAX_RESULT_SIZE_KEY,
-          HConstants.DEFAULT_HBASE_CLIENT_SCANNER_MAX_RESULT_SIZE);
+        HConstants.DEFAULT_HBASE_CLIENT_SCANNER_MAX_RESULT_SIZE);
     }
-    this.scannerTimeout = HBaseConfiguration
-        .getInt(conf, HConstants.HBASE_CLIENT_SCANNER_TIMEOUT_PERIOD,
-            HConstants.HBASE_REGIONSERVER_LEASE_PERIOD_KEY,
-            HConstants.DEFAULT_HBASE_CLIENT_SCANNER_TIMEOUT_PERIOD);
+    this.scannerTimeout =
+        HBaseConfiguration.getInt(conf, HConstants.HBASE_CLIENT_SCANNER_TIMEOUT_PERIOD,
+          HConstants.HBASE_REGIONSERVER_LEASE_PERIOD_KEY,
+          HConstants.DEFAULT_HBASE_CLIENT_SCANNER_TIMEOUT_PERIOD);
 
-    this.maxPartialCacheSize = (long) (HEAP_SIZE * (scan.getMaxCompleteRowHeapRatio() > 0 ?
-        scan.getMaxCompleteRowHeapRatio() :
-        conf.getDouble(HConstants.HBASE_CLIENT_SCANNER_MAX_COMPLETEROW_HEAPRATIO_KEY, HConstants.DEFAULT_HBASE_CLIENT_SCANNER_MAX_COMPLETEROW_HEAPRATIO)));
+    this.maxPartialCacheSize = (long) (HEAP_SIZE
+        * (scan.getMaxCompleteRowHeapRatio() > 0 ? scan.getMaxCompleteRowHeapRatio()
+            : conf.getDouble(HConstants.HBASE_CLIENT_SCANNER_MAX_COMPLETEROW_HEAPRATIO_KEY,
+              HConstants.DEFAULT_HBASE_CLIENT_SCANNER_MAX_COMPLETEROW_HEAPRATIO)));
     // check if application wants to collect scan metrics
     initScanMetrics(scan);
 
-    // Use the caching from the Scan.  If not set, use the default cache setting for this table.
+    // Use the caching from the Scan. If not set, use the default cache setting for this table.
     if (this.scan.getCaching() > 0) {
       this.caching = this.scan.getCaching();
     } else {
-      this.caching = conf.getInt(HConstants.HBASE_CLIENT_SCANNER_CACHING, HConstants.DEFAULT_HBASE_CLIENT_SCANNER_CACHING);
+      this.caching = conf.getInt(HConstants.HBASE_CLIENT_SCANNER_CACHING,
+        HConstants.DEFAULT_HBASE_CLIENT_SCANNER_CACHING);
     }
 
-    this.caller = rpcFactory.<Result[]>newCaller();
-    this.rpcControllerFactory = controllerFactory;
+    this.caller = connection.getRpcRetryingCallerFactory().newCaller();
 
     initializeScannerInConstruction();
   }
@@ -222,7 +184,8 @@ public class ClientScanner extends AbstractClientScanner {
    * @return Table name
    * @deprecated Since 0.96.0; use {@link #getTable()}
    */
-  @Deprecated protected byte[] getTableName() {
+  @Deprecated
+  protected byte[] getTableName() {
     return this.tableName.getName();
   }
 
@@ -250,14 +213,13 @@ public class ClientScanner extends AbstractClientScanner {
         return true;
       }
     }
-    return false; //unlikely.
+    return false; // unlikely.
   }
 
   /*
-   * Gets a scanner for the next region.  If this.currentRegion != null, then
-   * we will move to the endrow of this.currentRegion.  Else we will get
-   * scanner at the scan.getStartRow().  We will go no further, just tidy
-   * up outstanding scanners, if <code>currentRegion != null</code> and
+   * Gets a scanner for the next region. If this.currentRegion != null, then we will move to the
+   * endrow of this.currentRegion. Else we will get scanner at the scan.getStartRow(). We will go no
+   * further, just tidy up outstanding scanners, if <code>currentRegion != null</code> and
    * <code>done</code> is true.
    * @param nbRows
    * @param done Server-side says we're done scanning.
@@ -276,10 +238,8 @@ public class ClientScanner extends AbstractClientScanner {
     // if we're at end of table, close and return false to stop iterating
     if (this.currentRegion != null) {
       byte[] endKey = this.currentRegion.getEndKey();
-      if (endKey == null ||
-          Bytes.equals(endKey, HConstants.EMPTY_BYTE_ARRAY) ||
-          checkScanStopRow(endKey) ||
-          done) {
+      if (endKey == null || Bytes.equals(endKey, HConstants.EMPTY_BYTE_ARRAY)
+          || checkScanStopRow(endKey) || done) {
         close();
         if (LOG.isTraceEnabled()) {
           LOG.trace("Finished " + this.currentRegion);
@@ -296,8 +256,8 @@ public class ClientScanner extends AbstractClientScanner {
 
     if (LOG.isDebugEnabled() && this.currentRegion != null) {
       // Only worth logging if NOT first region in scan.
-      LOG.debug("Advancing internal scanner to startKey at '" +
-          Bytes.toStringBinary(localStartKey) + "'");
+      LOG.debug(
+        "Advancing internal scanner to startKey at '" + Bytes.toStringBinary(localStartKey) + "'");
     }
     try {
       callable = getScannerCallable(localStartKey, nbRows);
@@ -315,10 +275,11 @@ public class ClientScanner extends AbstractClientScanner {
     return true;
   }
 
-  @InterfaceAudience.Private protected ScannerCallable getScannerCallable(byte[] localStartKey, int nbRows) {
+  @InterfaceAudience.Private
+  protected ScannerCallable getScannerCallable(byte[] localStartKey, int nbRows) {
     scan.setStartRow(localStartKey);
-    ScannerCallable s = new ScannerCallable(getConnection(), getTable(), scan, this.scanMetrics,
-        rpcControllerFactory.newController(), scannerTimeout);
+    ScannerCallable s =
+        new ScannerCallable(getConnection(), getTable(), scan, this.scanMetrics, scannerTimeout);
     s.setCaching(nbRows);
     return s;
   }
@@ -343,7 +304,8 @@ public class ClientScanner extends AbstractClientScanner {
     scanMetricsPublished = true;
   }
 
-  @Override public Result next() throws IOException {
+  @Override
+  public Result next() throws IOException {
     if (cache.size() == 0 && this.closed) {
       return null;
     }
@@ -367,7 +329,7 @@ public class ClientScanner extends AbstractClientScanner {
     // We need to reset it if it's a new callable that was created
     // with a countdown in nextScanner
     callable.setCaching(this.caching);
-    // This flag is set when we want to skip the result returned.  We do
+    // This flag is set when we want to skip the result returned. We do
     // this when we reset scanner because it split under us.
     boolean skipFirst = false;
     boolean retryAfterOutOfOrderException = true;
@@ -380,7 +342,7 @@ public class ClientScanner extends AbstractClientScanner {
       continueScanInCurrentRegion = false;
       try {
 
-        // Server returns a null values if scanning is to stop.  Else,
+        // Server returns a null values if scanning is to stop. Else,
         // returns an empty array if scanning is to go on and we've just
         // exhausted current region.
         values = this.caller.callWithRetries(callable);
@@ -391,15 +353,15 @@ public class ClientScanner extends AbstractClientScanner {
         // invalid. The scanner will need to be reset to the beginning of a row.
         clearPartialResults();
 
-        // DNRIOEs are thrown to make us break out of retries.  Some types of DNRIOEs want us
+        // DNRIOEs are thrown to make us break out of retries. Some types of DNRIOEs want us
         // to reset the scanner and come back in again.
         // If exception is any but the list below throw it back to the client; else setup
         // the scanner and retry.
         Throwable cause = e.getCause();
-        if ((cause != null && cause instanceof NotServingRegionException) ||
-            (cause != null && cause instanceof RegionServerStoppedException) ||
-            e instanceof OutOfOrderScannerNextException ||
-            e instanceof UnknownScannerException) {
+        if ((cause != null && cause instanceof NotServingRegionException)
+            || (cause != null && cause instanceof RegionServerStoppedException)
+            || e instanceof OutOfOrderScannerNextException
+            || e instanceof UnknownScannerException) {
           // Pass. It is easier writing the if loop test as list of what is allowed rather than
           // as a list of what is not allowed... so if in here, it means we do not throw.
         } else {
@@ -446,8 +408,8 @@ public class ClientScanner extends AbstractClientScanner {
         this.scanMetrics.sumOfMillisSecBetweenNexts.addAndGet(currentTime - lastNext);
       }
       lastNext = currentTime;
-      if (this.lastCellLoadedToCache != null && values != null && values.length > 0 &&
-          compare(this.lastCellLoadedToCache, values[0].rawCells()[0]) >= 0) {
+      if (this.lastCellLoadedToCache != null && values != null && values.length > 0
+          && compare(this.lastCellLoadedToCache, values[0].rawCells()[0]) >= 0) {
         // If we will drop some results because we have loaded them to cache, we must continue to
         // scan this region in next rpc.
         // Set this flag to true to prevent doneWithRegion return true.
@@ -456,7 +418,8 @@ public class ClientScanner extends AbstractClientScanner {
       // Groom the array of Results that we received back from the server before adding that
       // Results to the scanner's cache. If partial results are not allowed to be seen by the
       // caller, all book keeping will be performed within this method.
-      List<Result> resultsToAddToCache = getResultsToAddToCache(values, callable.isHeartbeatMessage());
+      List<Result> resultsToAddToCache =
+          getResultsToAddToCache(values, callable.isHeartbeatMessage());
       for (Result rs : resultsToAddToCache) {
         cache.add(rs);
         long estimatedHeapSizeOfResult = calcEstimatedSize(rs);
@@ -506,8 +469,8 @@ public class ClientScanner extends AbstractClientScanner {
       // !partialResults.isEmpty() means that we are still accumulating partial Results for a
       // row. We should not change scanners before we receive all the partial Results for that
       // row.
-    } while (continueScanInCurrentRegion || (
-        doneWithRegion(remainingResultSize, countdown, serverHasMoreResults)
+    } while (continueScanInCurrentRegion
+        || (doneWithRegion(remainingResultSize, countdown, serverHasMoreResults)
             && (!partialResults.isEmpty() || nextScanner(countdown, values == null))));
   }
 
@@ -536,7 +499,8 @@ public class ClientScanner extends AbstractClientScanner {
     return;
   }
 
-  @VisibleForTesting public int getCacheSize() {
+  @VisibleForTesting
+  public int getCacheSize() {
     return cache != null ? cache.size() : 0;
   }
 
@@ -546,13 +510,11 @@ public class ClientScanner extends AbstractClientScanner {
    * not contain errors. We return a list of results that should be added to the cache. In general,
    * this list will contain all NON-partial results from the input array (unless the client has
    * specified that they are okay with receiving partial results)
-   *
    * @return the list of results that should be added to the cache.
    * @throws IOException
    */
-  protected List<Result>
-  getResultsToAddToCache(Result[] origionResultsFromServer, boolean heartbeatMessage)
-      throws IOException {
+  protected List<Result> getResultsToAddToCache(Result[] origionResultsFromServer,
+      boolean heartbeatMessage) throws IOException {
     List<Result> filteredResults = filterResultsFromServer(origionResultsFromServer);
     List<Result> resultsToAddToCache = new ArrayList<Result>(filteredResults.size());
 
@@ -588,8 +550,8 @@ public class ClientScanner extends AbstractClientScanner {
       }
       addToPartialResults(result);
       if (scan.getBatch() > 0 && numOfPartialCells >= scan.getBatch()) {
-        List<Result> batchedResults = createBatchedResults(partialResults, scan.getBatch(),
-            isPartialResultStale, false);
+        List<Result> batchedResults =
+            createBatchedResults(partialResults, scan.getBatch(), isPartialResultStale, false);
         // remaining partialResults has at most one Cell[]
         if (partialResults.size() > 0) {
           numOfPartialCells = partialResults.get(0).length;
@@ -601,26 +563,28 @@ public class ClientScanner extends AbstractClientScanner {
         }
       }
 
-      if (!result.isPartial() && (scan.getBatch() < 0
-          || scan.getBatch() > 0 && result.size() < scan.getBatch())) {
+      if (!result.isPartial()
+          && (scan.getBatch() < 0 || scan.getBatch() > 0 && result.size() < scan.getBatch())) {
         // It is the last part of this row.
         completeCurrentPartialRow(resultsToAddToCache);
       }
     }
     return resultsToAddToCache;
   }
-  private void completeCurrentPartialRow(List<Result> list)
-      throws IOException {
+
+  private void completeCurrentPartialRow(List<Result> list) throws IOException {
     if (partialResultsRow == null) {
       return;
     }
     if (scan.getBatch() > 0) {
-      list.addAll(createBatchedResults(partialResults, scan.getBatch(), isPartialResultStale, true));
+      list.addAll(
+        createBatchedResults(partialResults, scan.getBatch(), isPartialResultStale, true));
     } else {
       list.add(createCompleteResult(partialResults, isPartialResultStale, numOfPartialCells));
     }
     clearPartialResults();
   }
+
   /**
    * A convenience method for adding a Result to our list of partials. This method ensure that only
    * Results that belong to the same row as the other partials can be added to the list.
@@ -662,6 +626,7 @@ public class ClientScanner extends AbstractClientScanner {
     }
     return list;
   }
+
   /**
    * Convenience method for clearing the list of partials and resetting the partialResultsRow.
    */
@@ -671,7 +636,6 @@ public class ClientScanner extends AbstractClientScanner {
     isPartialResultStale = false;
     numOfPartialCells = 0;
   }
-
 
   /**
    * Create the closest row before the specified row
@@ -695,9 +659,9 @@ public class ClientScanner extends AbstractClientScanner {
     }
   }
 
-  @Override public void close() {
-    if (!scanMetricsPublished)
-      writeScanMetrics();
+  @Override
+  public void close() {
+    if (!scanMetricsPublished) writeScanMetrics();
     if (callable != null) {
       callable.setClose();
       try {
@@ -707,13 +671,14 @@ public class ClientScanner extends AbstractClientScanner {
         // have since decided that it's not nice for a scanner's close to
         // throw exceptions. Chances are it was just due to lease time out.
       } catch (IOException e) {
-           /* An exception other than UnknownScanner is unexpected. */
+        /* An exception other than UnknownScanner is unexpected. */
         LOG.warn("scanner failed to close. Exception follows: " + e);
       }
       callable = null;
     }
     closed = true;
   }
+
   protected void updateLastCellLoadedToCache(Result result) {
     if (result.rawCells().length == 0) {
       return;
@@ -725,11 +690,11 @@ public class ClientScanner extends AbstractClientScanner {
 
   private int compare(Cell a, Cell b) {
     boolean isMeta = currentRegion != null && currentRegion.isMetaRegion();
-    int r = isMeta ?
-        metaComparator
-            .compareRows(a.getRowArray(), a.getRowOffset(), a.getRowLength(), b.getRowArray(),
-                b.getRowOffset(), b.getRowLength()) :
-        CellComparator.compareRows(a, b);
+    int r =
+        isMeta
+            ? metaComparator.compareRows(a.getRowArray(), a.getRowOffset(), a.getRowLength(),
+              b.getRowArray(), b.getRowOffset(), b.getRowLength())
+            : CellComparator.compareRows(a, b);
     if (r != 0) {
       return this.scan.isReversed() ? -r : r;
     }
@@ -769,7 +734,6 @@ public class ClientScanner extends AbstractClientScanner {
     return Result.create(list, result.getExists(), result.isStale(), true);
   }
 
-
   /**
    * Forms a single result from the partial results in the partialResults list. This method is
    * useful for reconstructing partial results on the client side.
@@ -795,16 +759,14 @@ public class ClientScanner extends AbstractClientScanner {
   }
 
   /**
-   * Forms a group of batched results.
-   * This method will change the list by LinkedList.poll(). And may add the remaining cells to head
-   * if complete is false.
-   * If complete is false and the last part is less than batch size,
-   * it'll addFirst to LinkedList with remaining cells.
+   * Forms a group of batched results. This method will change the list by LinkedList.poll(). And
+   * may add the remaining cells to head if complete is false. If complete is false and the last
+   * part is less than batch size, it'll addFirst to LinkedList with remaining cells.
    * @param complete true if they are last part of this row, false if there may be more
    */
   @VisibleForTesting
-  public static List<Result> createBatchedResults(LinkedList<Cell[]> list, int batch,
-      boolean stale, boolean complete) {
+  public static List<Result> createBatchedResults(LinkedList<Cell[]> list, int batch, boolean stale,
+      boolean complete) {
     int count = 0;
     Cell[] tmp = new Cell[batch];
     List<Result> results = new ArrayList<Result>();

@@ -18,7 +18,6 @@
  */
 package org.apache.hadoop.hbase.client;
 
-
 import com.google.common.annotations.VisibleForTesting;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.ServiceException;
@@ -45,7 +44,6 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Abortable;
 import org.apache.hadoop.hbase.ClusterStatus;
 import org.apache.hadoop.hbase.HBaseConfiguration;
-import org.apache.hadoop.hbase.HBaseIOException;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HRegionInfo;
@@ -69,8 +67,6 @@ import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.classification.InterfaceStability;
 import org.apache.hadoop.hbase.client.MetaScanner.MetaScannerVisitor;
 import org.apache.hadoop.hbase.client.MetaScanner.MetaScannerVisitorBase;
-import org.apache.hadoop.hbase.exceptions.DeserializationException;
-import org.apache.hadoop.hbase.exceptions.MergeRegionException;
 import org.apache.hadoop.hbase.ipc.CoprocessorRpcChannel;
 import org.apache.hadoop.hbase.ipc.MasterCoprocessorRpcChannel;
 import org.apache.hadoop.hbase.ipc.PayloadCarryingRpcController;
@@ -109,10 +105,10 @@ import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.DeleteSnapshotReq
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.DeleteTableRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.DisableTableRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.DispatchMergingRegionsRequest;
+import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.EnableCatalogJanitorRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.EnableTableRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ExecProcedureRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ExecProcedureResponse;
-import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.GetClusterStatusRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.GetCompletedSnapshotsRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.GetNamespaceDescriptorRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.GetSchemaAlterStatusRequest;
@@ -120,25 +116,27 @@ import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.GetSchemaAlterSta
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.GetTableDescriptorsRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.GetTableDescriptorsResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsProcedureDoneRequest;
-import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsProcedureDoneResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsRestoreSnapshotDoneRequest;
-import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsRestoreSnapshotDoneResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSnapshotDoneRequest;
-import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSnapshotDoneResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListNamespaceDescriptorsRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListTableDescriptorsByNamespaceRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListTableNamesByNamespaceRequest;
+import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.MasterService;
+import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.MasterService.BlockingInterface;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ModifyColumnRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ModifyNamespaceRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ModifyTableRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.MoveRegionRequest;
+import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.OfflineRegionRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RestoreSnapshotRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.RestoreSnapshotResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetBalancerRunningRequest;
+import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetQuotaRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ShutdownRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SnapshotRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SnapshotResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.StopMasterRequest;
+import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.TruncateTableRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.UnassignRegionRequest;
@@ -161,13 +159,14 @@ import org.apache.hadoop.util.StringUtils;
 import org.apache.zookeeper.KeeperException;
 
 /**
- * Provides an interface to manage HBase database table metadata + general
- * administrative functions.  Use HBaseAdmin to create, drop, list, enable and
- * disable tables. Use it also to add and drop table column families.
- *
- * <p>See {@link HTable} to add, update, and delete data from an individual table.
- * <p>Currently HBaseAdmin instances are not expected to be long-lived.  For
- * example, an HBaseAdmin instance will not ride over a Master restart.
+ * Provides an interface to manage HBase database table metadata + general administrative functions.
+ * Use HBaseAdmin to create, drop, list, enable and disable tables. Use it also to add and drop
+ * table column families.
+ * <p>
+ * See {@link HTable} to add, update, and delete data from an individual table.
+ * <p>
+ * Currently HBaseAdmin instances are not expected to be long-lived. For example, an HBaseAdmin
+ * instance will not ride over a Master restart.
  */
 @InterfaceAudience.Public
 @InterfaceStability.Evolving
@@ -175,7 +174,7 @@ public class HBaseAdmin implements Abortable, Closeable {
   private static final Log LOG = LogFactory.getLog(HBaseAdmin.class);
 
   // We use the implementation class rather then the interface because we
-  //  need the package protected functions to get the connection to master
+  // need the package protected functions to get the connection to master
   private HConnection connection;
 
   private volatile Configuration conf;
@@ -191,52 +190,46 @@ public class HBaseAdmin implements Abortable, Closeable {
   private RpcRetryingCallerFactory rpcCallerFactory;
 
   /**
-   * Constructor.
-   * See {@link #HBaseAdmin(HConnection connection)}
-   *
+   * Constructor. See {@link #HBaseAdmin(HConnection connection)}
    * @param c Configuration object. Copied internally.
    */
   public HBaseAdmin(Configuration c)
-  throws MasterNotRunningException, ZooKeeperConnectionException, IOException {
+      throws MasterNotRunningException, ZooKeeperConnectionException, IOException {
     // Will not leak connections, as the new implementation of the constructor
     // does not throw exceptions anymore.
     this(HConnectionManager.getConnection(new Configuration(c)));
     this.cleanupConnectionOnClose = true;
   }
 
- /**
-  * Constructor for externally managed HConnections.
-  * The connection to master will be created when required by admin functions.
-  *
-  * @param connection The HConnection instance to use
-  * @throws MasterNotRunningException, ZooKeeperConnectionException are not
-  *  thrown anymore but kept into the interface for backward api compatibility
-  */
+  /**
+   * Constructor for externally managed HConnections. The connection to master will be created when
+   * required by admin functions.
+   * @param connection The HConnection instance to use
+   * @throws MasterNotRunningException, ZooKeeperConnectionException are not thrown anymore but kept
+   *           into the interface for backward api compatibility
+   */
   public HBaseAdmin(HConnection connection)
       throws MasterNotRunningException, ZooKeeperConnectionException {
     this.conf = connection.getConfiguration();
     this.connection = connection;
 
-    this.pause = this.conf.getLong(HConstants.HBASE_CLIENT_PAUSE,
-        HConstants.DEFAULT_HBASE_CLIENT_PAUSE);
+    this.pause =
+        this.conf.getLong(HConstants.HBASE_CLIENT_PAUSE, HConstants.DEFAULT_HBASE_CLIENT_PAUSE);
     this.numRetries = this.conf.getInt(HConstants.HBASE_CLIENT_RETRIES_NUMBER,
-        HConstants.DEFAULT_HBASE_CLIENT_RETRIES_NUMBER);
-    this.retryLongerMultiplier = this.conf.getInt(
-        "hbase.client.retries.longer.multiplier", 10);
-    this.rpcCallerFactory = RpcRetryingCallerFactory.instantiate(this.conf,
-      connection.getStatisticsTracker());
+      HConstants.DEFAULT_HBASE_CLIENT_RETRIES_NUMBER);
+    this.retryLongerMultiplier = this.conf.getInt("hbase.client.retries.longer.multiplier", 10);
+    this.rpcCallerFactory = connection.getRpcRetryingCallerFactory();
   }
 
   /**
-   * @return A new CatalogTracker instance; call {@link #cleanupCatalogTracker(CatalogTracker)}
-   * to cleanup the returned catalog tracker.
+   * @return A new CatalogTracker instance; call {@link #cleanupCatalogTracker(CatalogTracker)} to
+   *         cleanup the returned catalog tracker.
    * @throws org.apache.hadoop.hbase.ZooKeeperConnectionException
    * @throws IOException
    * @see #cleanupCatalogTracker(CatalogTracker)
    */
   @VisibleForTesting
-  synchronized CatalogTracker getCatalogTracker()
-  throws ZooKeeperConnectionException, IOException {
+  synchronized CatalogTracker getCatalogTracker() throws ZooKeeperConnectionException, IOException {
     boolean succeeded = false;
     CatalogTracker ct = null;
     try {
@@ -245,7 +238,7 @@ public class HBaseAdmin implements Abortable, Closeable {
       succeeded = true;
     } catch (InterruptedException e) {
       // Let it out as an IOE for now until we redo all so tolerate IEs
-      throw (InterruptedIOException)new InterruptedIOException("Interrupted").initCause(e);
+      throw (InterruptedIOException) new InterruptedIOException("Interrupted").initCause(e);
     } finally {
       // If we did not succeed but created a catalogtracker, clean it up. CT has a ZK instance
       // in it and we'll leak if we don't do the 'stop'.
@@ -253,11 +246,13 @@ public class HBaseAdmin implements Abortable, Closeable {
         try {
           ct.stop();
         } catch (RuntimeException re) {
-          LOG.error("Failed to clean up HBase's internal catalog tracker after a failed initialization. " +
-            "We may have leaked network connections to ZooKeeper; they won't be cleaned up until " +
-            "the JVM exits. If you see a large number of stale connections to ZooKeeper this is likely " +
-            "the cause. The following exception details will be needed for assistance from the " +
-            "HBase community.", re);
+          LOG.error(
+            "Failed to clean up HBase's internal catalog tracker after a failed initialization. "
+                + "We may have leaked network connections to ZooKeeper; they won't be cleaned up until "
+                + "the JVM exits. If you see a large number of stale connections to ZooKeeper this is likely "
+                + "the cause. The following exception details will be needed for assistance from the "
+                + "HBase community.",
+            re);
         }
         ct = null;
       }
@@ -267,7 +262,7 @@ public class HBaseAdmin implements Abortable, Closeable {
 
   @VisibleForTesting
   CatalogTracker startCatalogTracker(final CatalogTracker ct)
-  throws IOException, InterruptedException {
+      throws IOException, InterruptedException {
     ct.start();
     return ct;
   }
@@ -285,7 +280,7 @@ public class HBaseAdmin implements Abortable, Closeable {
   }
 
   @Override
-  public boolean isAborted(){
+  public boolean isAborted() {
     return this.aborted;
   }
 
@@ -294,13 +289,12 @@ public class HBaseAdmin implements Abortable, Closeable {
     return connection;
   }
 
-  /** @return - true if the master server is running. Throws an exception
-   *  otherwise.
+  /**
+   * @return - true if the master server is running. Throws an exception otherwise.
    * @throws ZooKeeperConnectionException
    * @throws MasterNotRunningException
    */
-  public boolean isMasterRunning()
-  throws MasterNotRunningException, ZooKeeperConnectionException {
+  public boolean isMasterRunning() throws IOException {
     return connection.isMasterRunning();
   }
 
@@ -309,8 +303,7 @@ public class HBaseAdmin implements Abortable, Closeable {
    * @return True if table exists already.
    * @throws IOException
    */
-  public boolean tableExists(final TableName tableName)
-  throws IOException {
+  public boolean tableExists(final TableName tableName) throws IOException {
     boolean b = false;
     CatalogTracker ct = getCatalogTracker();
     try {
@@ -321,23 +314,18 @@ public class HBaseAdmin implements Abortable, Closeable {
     return b;
   }
 
-  public boolean tableExists(final byte[] tableName)
-  throws IOException {
+  public boolean tableExists(final byte[] tableName) throws IOException {
     return tableExists(TableName.valueOf(tableName));
   }
 
-  public boolean tableExists(final String tableName)
-  throws IOException {
+  public boolean tableExists(final String tableName) throws IOException {
     return tableExists(TableName.valueOf(tableName));
   }
 
   /**
-   * List all the userspace tables.  In other words, scan the hbase:meta table.
-   *
-   * If we wanted this to be really fast, we could implement a special
-   * catalog table that just contains table names and their descriptors.
-   * Right now, it only exists as part of the hbase:meta table's region info.
-   *
+   * List all the userspace tables. In other words, scan the hbase:meta table. If we wanted this to
+   * be really fast, we could implement a special catalog table that just contains table names and
+   * their descriptors. Right now, it only exists as part of the hbase:meta table's region info.
    * @return - returns an array of HTableDescriptors
    * @throws IOException if a remote or network exception occurs
    */
@@ -347,7 +335,6 @@ public class HBaseAdmin implements Abortable, Closeable {
 
   /**
    * List all the userspace tables matching the given pattern.
-   *
    * @param pattern The compiled regular expression to match against
    * @return - returns an array of HTableDescriptors
    * @throws IOException if a remote or network exception occurs
@@ -359,7 +346,6 @@ public class HBaseAdmin implements Abortable, Closeable {
 
   /**
    * List all the userspace tables matching the given regular expression.
-   *
    * @param regex The regular expression to match against
    * @return - returns an array of HTableDescriptors
    * @throws IOException if a remote or network exception occurs
@@ -388,7 +374,7 @@ public class HBaseAdmin implements Abortable, Closeable {
   @Deprecated
   public String[] getTableNames(Pattern pattern) throws IOException {
     List<String> matched = new ArrayList<String>();
-    for (String name: this.connection.getTableNames()) {
+    for (String name : this.connection.getTableNames()) {
       if (pattern.matcher(name).matches()) {
         matched.add(name);
       }
@@ -424,12 +410,12 @@ public class HBaseAdmin implements Abortable, Closeable {
    * @throws IOException if a remote or network exception occurs
    */
   public HTableDescriptor getTableDescriptor(final TableName tableName)
-  throws TableNotFoundException, IOException {
+      throws TableNotFoundException, IOException {
     return this.connection.getHTableDescriptor(tableName);
   }
 
   public HTableDescriptor getTableDescriptor(final byte[] tableName)
-  throws TableNotFoundException, IOException {
+      throws TableNotFoundException, IOException {
     return getTableDescriptor(TableName.valueOf(tableName));
   }
 
@@ -442,86 +428,69 @@ public class HBaseAdmin implements Abortable, Closeable {
   }
 
   /**
-   * Creates a new table.
-   * Synchronous operation.
-   *
+   * Creates a new table. Synchronous operation.
    * @param desc table descriptor for table
-   *
    * @throws IllegalArgumentException if the table name is reserved
    * @throws MasterNotRunningException if master is not running
-   * @throws TableExistsException if table already exists (If concurrent
-   * threads, the table may have been created between test-for-existence
-   * and attempt-at-creation).
+   * @throws TableExistsException if table already exists (If concurrent threads, the table may have
+   *           been created between test-for-existence and attempt-at-creation).
    * @throws IOException if a remote or network exception occurs
    */
-  public void createTable(HTableDescriptor desc)
-  throws IOException {
+  public void createTable(HTableDescriptor desc) throws IOException {
     createTable(desc, null);
   }
 
   /**
-   * Creates a new table with the specified number of regions.  The start key
-   * specified will become the end key of the first region of the table, and
-   * the end key specified will become the start key of the last region of the
-   * table (the first region has a null start key and the last region has a
-   * null end key).
-   *
-   * BigInteger math will be used to divide the key range specified into
-   * enough segments to make the required number of total regions.
-   *
-   * Synchronous operation.
-   *
+   * Creates a new table with the specified number of regions. The start key specified will become
+   * the end key of the first region of the table, and the end key specified will become the start
+   * key of the last region of the table (the first region has a null start key and the last region
+   * has a null end key). BigInteger math will be used to divide the key range specified into enough
+   * segments to make the required number of total regions. Synchronous operation.
    * @param desc table descriptor for table
    * @param startKey beginning of key range
    * @param endKey end of key range
    * @param numRegions the total number of regions to create
-   *
    * @throws IllegalArgumentException if the table name is reserved
    * @throws MasterNotRunningException if master is not running
    * @throws org.apache.hadoop.hbase.TableExistsException if table already exists (If concurrent
-   * threads, the table may have been created between test-for-existence
-   * and attempt-at-creation).
+   *           threads, the table may have been created between test-for-existence and
+   *           attempt-at-creation).
    * @throws IOException
    */
-  public void createTable(HTableDescriptor desc, byte [] startKey,
-      byte [] endKey, int numRegions)
-  throws IOException {
-    if(numRegions < 3) {
+  public void createTable(HTableDescriptor desc, byte[] startKey, byte[] endKey, int numRegions)
+      throws IOException {
+    if (numRegions < 3) {
       throw new IllegalArgumentException("Must create at least three regions");
-    } else if(Bytes.compareTo(startKey, endKey) >= 0) {
+    } else if (Bytes.compareTo(startKey, endKey) >= 0) {
       throw new IllegalArgumentException("Start key must be smaller than end key");
     }
     if (numRegions == 3) {
-      createTable(desc, new byte[][]{startKey, endKey});
+      createTable(desc, new byte[][] { startKey, endKey });
       return;
     }
-    byte [][] splitKeys = Bytes.split(startKey, endKey, numRegions - 3);
-    if(splitKeys == null || splitKeys.length != numRegions - 1) {
+    byte[][] splitKeys = Bytes.split(startKey, endKey, numRegions - 3);
+    if (splitKeys == null || splitKeys.length != numRegions - 1) {
       throw new IllegalArgumentException("Unable to split key range into enough regions");
     }
     createTable(desc, splitKeys);
   }
 
   /**
-   * Creates a new table with an initial set of empty regions defined by the
-   * specified split keys.  The total number of regions created will be the
-   * number of split keys plus one. Synchronous operation.
-   * Note : Avoid passing empty split key.
-   *
+   * Creates a new table with an initial set of empty regions defined by the specified split keys.
+   * The total number of regions created will be the number of split keys plus one. Synchronous
+   * operation. Note : Avoid passing empty split key.
    * @param desc table descriptor for table
    * @param splitKeys array of split keys for the initial regions of the table
-   *
-   * @throws IllegalArgumentException if the table name is reserved, if the split keys
-   * are repeated and if the split key has empty byte array.
+   * @throws IllegalArgumentException if the table name is reserved, if the split keys are repeated
+   *           and if the split key has empty byte array.
    * @throws MasterNotRunningException if master is not running
    * @throws org.apache.hadoop.hbase.TableExistsException if table already exists (If concurrent
-   * threads, the table may have been created between test-for-existence
-   * and attempt-at-creation).
+   *           threads, the table may have been created between test-for-existence and
+   *           attempt-at-creation).
    * @throws IOException
    */
-  public void createTable(final HTableDescriptor desc, byte [][] splitKeys)
-  throws IOException {
-    
+  public void createTable(final HTableDescriptor desc, byte[][] splitKeys) throws IOException {
+
     // use slots to pre-split table if splitKeys is not set and the table is salted
     // there is no change to set splitKeys in coprocessor of server-side so that we reset here
     if (desc.getSlotsCount() == null && desc.getKeySalter() != null) {
@@ -537,7 +506,7 @@ public class HBaseAdmin implements Abortable, Closeable {
         }
       }
     }
-    
+
     try {
       createTableAsync(desc, splitKeys);
     } catch (SocketTimeoutException ste) {
@@ -546,8 +515,7 @@ public class HBaseAdmin implements Abortable, Closeable {
     int numRegs = splitKeys == null ? 1 : splitKeys.length + 1;
     int prevRegCount = 0;
     boolean doneWithMetaScan = false;
-    for (int tries = 0; tries < this.numRetries * this.retryLongerMultiplier;
-      ++tries) {
+    for (int tries = 0; tries < this.numRetries * this.retryLongerMultiplier; ++tries) {
       if (!doneWithMetaScan) {
         // Wait for new table to come on-line
         final AtomicInteger actualRegCount = new AtomicInteger(0);
@@ -572,28 +540,27 @@ public class HBaseAdmin implements Abortable, Closeable {
           }
         };
         MetaScanner.metaScan(conf, connection, visitor, desc.getTableName());
-        
-        // if the server side enable IGNORE_SPLITS_WHEN_CREATE_TABLE option, 
+
+        // if the server side enable IGNORE_SPLITS_WHEN_CREATE_TABLE option,
         if (actualRegCount.get() > 0) {
           HTableDescriptor htdFromMaster = getTableDescriptor(desc.getName());
           if (htdFromMaster.getValue(HTableDescriptor.IGNORE_SPLITS_WHEN_CREATING) != null
-              && Boolean.parseBoolean(htdFromMaster
-                  .getValue(HTableDescriptor.IGNORE_SPLITS_WHEN_CREATING))) {
+              && Boolean.parseBoolean(
+                htdFromMaster.getValue(HTableDescriptor.IGNORE_SPLITS_WHEN_CREATING))) {
             numRegs = 1;
           }
         }
-        
+
         if (actualRegCount.get() < numRegs) {
           if (tries == this.numRetries * this.retryLongerMultiplier - 1) {
-            throw new RegionOfflineException("Only " + actualRegCount.get() +
-              " of " + numRegs + " regions are online; retries exhausted.");
+            throw new RegionOfflineException("Only " + actualRegCount.get() + " of " + numRegs
+                + " regions are online; retries exhausted.");
           }
           try { // Sleep
             Thread.sleep(getPauseTime(tries));
           } catch (InterruptedException e) {
-            throw new InterruptedIOException("Interrupted when opening" +
-              " regions; " + actualRegCount.get() + " of " + numRegs +
-              " regions processed so far");
+            throw new InterruptedIOException("Interrupted when opening" + " regions; "
+                + actualRegCount.get() + " of " + numRegs + " regions processed so far");
           }
           if (actualRegCount.get() > prevRegCount) { // Making progress
             prevRegCount = actualRegCount.get();
@@ -609,61 +576,55 @@ public class HBaseAdmin implements Abortable, Closeable {
         try { // Sleep
           Thread.sleep(getPauseTime(tries));
         } catch (InterruptedException e) {
-          throw new InterruptedIOException("Interrupted when waiting" +
-            " for table to be enabled; meta scan was done");
+          throw new InterruptedIOException(
+              "Interrupted when waiting" + " for table to be enabled; meta scan was done");
         }
       }
     }
-    throw new TableNotEnabledException(
-      "Retries exhausted while still waiting for table: "
-      + desc.getTableName() + " to be enabled");
+    throw new TableNotEnabledException("Retries exhausted while still waiting for table: "
+        + desc.getTableName() + " to be enabled");
   }
 
   /**
-   * Creates a new table but does not block and wait for it to come online.
-   * Asynchronous operation.  To check if the table exists, use
-   * {@link #isTableAvailable} -- it is not safe to create an HTable
-   * instance to this table before it is available.
-   * Note : Avoid passing empty split key.
+   * Creates a new table but does not block and wait for it to come online. Asynchronous operation.
+   * To check if the table exists, use {@link #isTableAvailable} -- it is not safe to create an
+   * HTable instance to this table before it is available. Note : Avoid passing empty split key.
    * @param desc table descriptor for table
-   *
-   * @throws IllegalArgumentException Bad table name, if the split keys
-   * are repeated and if the split key has empty byte array.
+   * @throws IllegalArgumentException Bad table name, if the split keys are repeated and if the
+   *           split key has empty byte array.
    * @throws MasterNotRunningException if master is not running
    * @throws org.apache.hadoop.hbase.TableExistsException if table already exists (If concurrent
-   * threads, the table may have been created between test-for-existence
-   * and attempt-at-creation).
+   *           threads, the table may have been created between test-for-existence and
+   *           attempt-at-creation).
    * @throws IOException
    */
-  public void createTableAsync(
-    final HTableDescriptor desc, final byte [][] splitKeys)
-  throws IOException {
-    if(desc.getTableName() == null) {
+  public void createTableAsync(HTableDescriptor desc, byte[][] splitKeys) throws IOException {
+    if (desc.getTableName() == null) {
       throw new IllegalArgumentException("TableName cannot be null");
     }
-    if(splitKeys != null && splitKeys.length > 0) {
+    if (splitKeys != null && splitKeys.length > 0) {
       Arrays.sort(splitKeys, Bytes.BYTES_COMPARATOR);
       // Verify there are no duplicate split keys
-      byte [] lastKey = null;
-      for(byte [] splitKey : splitKeys) {
+      byte[] lastKey = null;
+      for (byte[] splitKey : splitKeys) {
         if (Bytes.compareTo(splitKey, HConstants.EMPTY_BYTE_ARRAY) == 0) {
           throw new IllegalArgumentException(
               "Empty split key must not be passed in the split keys.");
         }
-        if(lastKey != null && Bytes.equals(splitKey, lastKey)) {
-          throw new IllegalArgumentException("All split keys must be unique, " +
-            "found duplicate: " + Bytes.toStringBinary(splitKey) +
-            ", " + Bytes.toStringBinary(lastKey));
+        if (lastKey != null && Bytes.equals(splitKey, lastKey)) {
+          throw new IllegalArgumentException("All split keys must be unique, " + "found duplicate: "
+              + Bytes.toStringBinary(splitKey) + ", " + Bytes.toStringBinary(lastKey));
         }
         lastKey = splitKey;
       }
     }
-
+    final CreateTableRequest req = RequestConverter.buildCreateTableRequest(desc, splitKeys);
     executeCallable(new MasterCallable<Void>(getConnection()) {
+
       @Override
-      public Void call() throws ServiceException {
-        CreateTableRequest request = RequestConverter.buildCreateTableRequest(desc, splitKeys);
-        master.createTable(null, request);
+      protected Void rpcCall(MasterService.BlockingInterface master,
+          PayloadCarryingRpcController controller) throws ServiceException {
+        master.createTable(controller, req);
         return null;
       }
     });
@@ -678,20 +639,19 @@ public class HBaseAdmin implements Abortable, Closeable {
   }
 
   /**
-   * Deletes a table.
-   * Synchronous operation.
-   *
+   * Deletes a table. Synchronous operation.
    * @param tableName name of table to delete
    * @throws IOException if a remote or network exception occurs
    */
-  public void deleteTable(final TableName tableName) throws IOException {
+  public void deleteTable(TableName tableName) throws IOException {
     boolean tableExists = true;
+    final DeleteTableRequest deleteReq = RequestConverter.buildDeleteTableRequest(tableName);
+    executeCallable(new MasterCallable<Void>(getConnection(), tableName) {
 
-    executeCallable(new MasterCallable<Void>(getConnection()) {
       @Override
-      public Void call() throws ServiceException {
-        DeleteTableRequest req = RequestConverter.buildDeleteTableRequest(tableName);
-        master.deleteTable(null,req);
+      protected Void rpcCall(MasterService.BlockingInterface master,
+          PayloadCarryingRpcController controller) throws ServiceException {
+        master.deleteTable(controller, deleteReq);
         return null;
       }
     });
@@ -703,12 +663,12 @@ public class HBaseAdmin implements Abortable, Closeable {
         HRegionLocation firstMetaServer = getFirstMetaServerForTable(tableName);
         Scan scan = MetaReader.getScanForTableName(tableName);
         scan.addColumn(HConstants.CATALOG_FAMILY, HConstants.REGIONINFO_QUALIFIER);
-        ScanRequest request = RequestConverter.buildScanRequest(
-          firstMetaServer.getRegionInfo().getRegionName(), scan, 1, true);
+        ScanRequest request = RequestConverter
+            .buildScanRequest(firstMetaServer.getRegionInfo().getRegionName(), scan, 1, true);
         Result[] values = null;
         // Get a batch at a time.
-        ClientService.BlockingInterface server = connection.getClient(firstMetaServer
-            .getServerName());
+        ClientService.BlockingInterface server =
+            connection.getClient(firstMetaServer.getServerName());
         PayloadCarryingRpcController controller = new PayloadCarryingRpcController();
         try {
           controller.setPriority(tableName);
@@ -726,7 +686,7 @@ public class HBaseAdmin implements Abortable, Closeable {
           MasterKeepAliveConnection master = connection.getKeepAliveMasterService();
           try {
             GetTableDescriptorsRequest req =
-              RequestConverter.buildGetTableDescriptorsRequest(tableName);
+                RequestConverter.buildGetTableDescriptorsRequest(tableName);
             htds = master.getTableDescriptors(null, req);
           } catch (ServiceException se) {
             throw ProtobufUtil.getRemoteException(se);
@@ -740,7 +700,7 @@ public class HBaseAdmin implements Abortable, Closeable {
         }
       } catch (IOException ex) {
         failures++;
-        if(failures == numRetries - 1) {           // no more tries left
+        if (failures == numRetries - 1) { // no more tries left
           if (ex instanceof RemoteException) {
             throw ((RemoteException) ex).unwrapRemoteException();
           } else {
@@ -756,8 +716,8 @@ public class HBaseAdmin implements Abortable, Closeable {
     }
 
     if (tableExists) {
-      throw new IOException("Retries exhausted, it took too long to wait"+
-        " for the table " + tableName + " to be deleted.");
+      throw new IOException("Retries exhausted, it took too long to wait" + " for the table "
+          + tableName + " to be deleted.");
     }
     // Delete cached information to prevent clients from using old locations
     this.connection.clearRegionCache(tableName);
@@ -765,12 +725,9 @@ public class HBaseAdmin implements Abortable, Closeable {
   }
 
   /**
-   * Deletes tables matching the passed in pattern and wait on completion.
-   *
-   * Warning: Use this method carefully, there is no prompting and the effect is
-   * immediate. Consider using {@link #listTables(java.lang.String)} and
-   * {@link #deleteTable(byte[])}
-   *
+   * Deletes tables matching the passed in pattern and wait on completion. Warning: Use this method
+   * carefully, there is no prompting and the effect is immediate. Consider using
+   * {@link #listTables(java.lang.String)} and {@link #deleteTable(byte[])}
    * @param regex The regular expression to match table names against
    * @return Table descriptors for tables that couldn't be deleted
    * @throws IOException
@@ -782,12 +739,9 @@ public class HBaseAdmin implements Abortable, Closeable {
   }
 
   /**
-   * Delete tables matching the passed in pattern and wait on completion.
-   *
-   * Warning: Use this method carefully, there is no prompting and the effect is
-   * immediate. Consider using {@link #listTables(java.util.regex.Pattern) } and
-   * {@link #deleteTable(byte[])}
-   *
+   * Delete tables matching the passed in pattern and wait on completion. Warning: Use this method
+   * carefully, there is no prompting and the effect is immediate. Consider using
+   * {@link #listTables(java.util.regex.Pattern) } and {@link #deleteTable(byte[])}
    * @param pattern The pattern to match table names against
    * @return Table descriptors for tables that couldn't be deleted
    * @throws IOException
@@ -805,22 +759,19 @@ public class HBaseAdmin implements Abortable, Closeable {
     return failed.toArray(new HTableDescriptor[failed.size()]);
   }
 
-
   /**
-   * Enable a table.  May timeout.  Use {@link #enableTableAsync(byte[])}
-   * and {@link #isTableEnabled(byte[])} instead.
-   * The table has to be in disabled state for it to be enabled.
+   * Enable a table. May timeout. Use {@link #enableTableAsync(byte[])} and
+   * {@link #isTableEnabled(byte[])} instead. The table has to be in disabled state for it to be
+   * enabled.
    * @param tableName name of the table
-   * @throws IOException if a remote or network exception occurs
-   * There could be couple types of IOException
-   * TableNotFoundException means the table doesn't exist.
-   * TableNotDisabledException means the table isn't in disabled state.
+   * @throws IOException if a remote or network exception occurs There could be couple types of
+   *           IOException TableNotFoundException means the table doesn't exist.
+   *           TableNotDisabledException means the table isn't in disabled state.
    * @see #isTableEnabled(byte[])
    * @see #disableTable(byte[])
    * @see #enableTableAsync(byte[])
    */
-  public void enableTable(final TableName tableName)
-  throws IOException {
+  public void enableTable(final TableName tableName) throws IOException {
     enableTableAsync(tableName);
 
     // Wait until all regions are enabled
@@ -829,22 +780,20 @@ public class HBaseAdmin implements Abortable, Closeable {
     LOG.info("Enabled table " + tableName);
   }
 
-  public void enableTable(final byte[] tableName)
-  throws IOException {
+  public void enableTable(final byte[] tableName) throws IOException {
     enableTable(TableName.valueOf(tableName));
   }
 
-  public void enableTable(final String tableName)
-  throws IOException {
+  public void enableTable(final String tableName) throws IOException {
     enableTable(TableName.valueOf(tableName));
   }
 
   /**
-   * Wait for the table to be enabled and available
-   * If enabling the table exceeds the retry period, an exception is thrown.
+   * Wait for the table to be enabled and available If enabling the table exceeds the retry period,
+   * an exception is thrown.
    * @param tableName name of the table
-   * @throws IOException if a remote or network exception occurs or
-   *    table is not enabled after the retries period.
+   * @throws IOException if a remote or network exception occurs or table is not enabled after the
+   *           retries period.
    */
   private void waitUntilTableIsEnabled(final TableName tableName) throws IOException {
     boolean enabled = false;
@@ -862,65 +811,59 @@ public class HBaseAdmin implements Abortable, Closeable {
       }
       long sleep = getPauseTime(tries);
       if (LOG.isDebugEnabled()) {
-        LOG.debug("Sleeping= " + sleep + "ms, waiting for all regions to be " +
-          "enabled in " + tableName);
+        LOG.debug(
+          "Sleeping= " + sleep + "ms, waiting for all regions to be " + "enabled in " + tableName);
       }
       try {
         Thread.sleep(sleep);
       } catch (InterruptedException e) {
         // Do this conversion rather than let it out because do not want to
         // change the method signature.
-        throw (InterruptedIOException)new InterruptedIOException("Interrupted").initCause(e);
+        throw (InterruptedIOException) new InterruptedIOException("Interrupted").initCause(e);
       }
     }
     if (!enabled) {
       long msec = EnvironmentEdgeManager.currentTimeMillis() - start;
-      throw new IOException("Table '" + tableName +
-        "' not yet enabled, after " + msec + "ms.");
+      throw new IOException("Table '" + tableName + "' not yet enabled, after " + msec + "ms.");
     }
   }
 
   /**
-   * Brings a table on-line (enables it).  Method returns immediately though
-   * enable of table may take some time to complete, especially if the table
-   * is large (All regions are opened as part of enabling process).  Check
-   * {@link #isTableEnabled(byte[])} to learn when table is fully online.  If
-   * table is taking too long to online, check server logs.
+   * Brings a table on-line (enables it). Method returns immediately though enable of table may take
+   * some time to complete, especially if the table is large (All regions are opened as part of
+   * enabling process). Check {@link #isTableEnabled(byte[])} to learn when table is fully online.
+   * If table is taking too long to online, check server logs.
    * @param tableName
    * @throws IOException
    * @since 0.90.0
    */
-  public void enableTableAsync(final TableName tableName)
-  throws IOException {
+  public void enableTableAsync(final TableName tableName) throws IOException {
     TableName.isLegalFullyQualifiedTableName(tableName.getName());
-    executeCallable(new MasterCallable<Void>(getConnection()) {
+    final EnableTableRequest req = RequestConverter.buildEnableTableRequest(tableName);
+    executeCallable(new MasterCallable<Void>(getConnection(), tableName) {
+
       @Override
-      public Void call() throws ServiceException {
+      protected Void rpcCall(MasterService.BlockingInterface master,
+          PayloadCarryingRpcController controller) throws ServiceException {
         LOG.info("Started enable of " + tableName);
-        EnableTableRequest req = RequestConverter.buildEnableTableRequest(tableName);
-        master.enableTable(null,req);
+        master.enableTable(controller, req);
         return null;
       }
     });
   }
 
-  public void enableTableAsync(final byte[] tableName)
-  throws IOException {
+  public void enableTableAsync(final byte[] tableName) throws IOException {
     enableTable(TableName.valueOf(tableName));
   }
 
-  public void enableTableAsync(final String tableName)
-  throws IOException {
+  public void enableTableAsync(final String tableName) throws IOException {
     enableTableAsync(TableName.valueOf(tableName));
   }
 
   /**
-   * Enable tables matching the passed in pattern and wait on completion.
-   *
-   * Warning: Use this method carefully, there is no prompting and the effect is
-   * immediate. Consider using {@link #listTables(java.lang.String)} and
-   * {@link #enableTable(byte[])}
-   *
+   * Enable tables matching the passed in pattern and wait on completion. Warning: Use this method
+   * carefully, there is no prompting and the effect is immediate. Consider using
+   * {@link #listTables(java.lang.String)} and {@link #enableTable(byte[])}
    * @param regex The regular expression to match table names against
    * @throws IOException
    * @see #enableTables(java.util.regex.Pattern)
@@ -931,12 +874,9 @@ public class HBaseAdmin implements Abortable, Closeable {
   }
 
   /**
-   * Enable tables matching the passed in pattern and wait on completion.
-   *
-   * Warning: Use this method carefully, there is no prompting and the effect is
-   * immediate. Consider using {@link #listTables(java.util.regex.Pattern) } and
-   * {@link #enableTable(byte[])}
-   *
+   * Enable tables matching the passed in pattern and wait on completion. Warning: Use this method
+   * carefully, there is no prompting and the effect is immediate. Consider using
+   * {@link #listTables(java.util.regex.Pattern) } and {@link #enableTable(byte[])}
    * @param pattern The pattern to match table names against
    * @throws IOException
    */
@@ -956,12 +896,11 @@ public class HBaseAdmin implements Abortable, Closeable {
   }
 
   /**
-   * Starts the disable of a table.  If it is being served, the master
-   * will tell the servers to stop serving it.  This method returns immediately.
-   * The disable of a table can take some time if the table is large (all
-   * regions are closed as part of table disable operation).
-   * Call {@link #isTableDisabled(byte[])} to check for when disable completes.
-   * If table is taking too long to online, check server logs.
+   * Starts the disable of a table. If it is being served, the master will tell the servers to stop
+   * serving it. This method returns immediately. The disable of a table can take some time if the
+   * table is large (all regions are closed as part of table disable operation). Call
+   * {@link #isTableDisabled(byte[])} to check for when disable completes. If table is taking too
+   * long to online, check server logs.
    * @param tableName name of table
    * @throws IOException if a remote or network exception occurs
    * @see #isTableDisabled(byte[])
@@ -970,12 +909,14 @@ public class HBaseAdmin implements Abortable, Closeable {
    */
   public void disableTableAsync(final TableName tableName) throws IOException {
     TableName.isLegalFullyQualifiedTableName(tableName.getName());
-    executeCallable(new MasterCallable<Void>(getConnection()) {
+    final DisableTableRequest req = RequestConverter.buildDisableTableRequest(tableName);
+    executeCallable(new MasterCallable<Void>(getConnection(), tableName) {
+
       @Override
-      public Void call() throws ServiceException {
+      protected Void rpcCall(MasterService.BlockingInterface master,
+          PayloadCarryingRpcController controller) throws ServiceException {
         LOG.info("Started disable of " + tableName);
-        DisableTableRequest req = RequestConverter.buildDisableTableRequest(tableName);
-        master.disableTable(null,req);
+        master.disableTable(controller, req);
         return null;
       }
     });
@@ -990,18 +931,14 @@ public class HBaseAdmin implements Abortable, Closeable {
   }
 
   /**
-   * Disable table and wait on completion.  May timeout eventually.  Use
-   * {@link #disableTableAsync(byte[])} and {@link #isTableDisabled(String)}
-   * instead.
-   * The table has to be in enabled state for it to be disabled.
+   * Disable table and wait on completion. May timeout eventually. Use
+   * {@link #disableTableAsync(byte[])} and {@link #isTableDisabled(String)} instead. The table has
+   * to be in enabled state for it to be disabled.
    * @param tableName
-   * @throws IOException
-   * There could be couple types of IOException
-   * TableNotFoundException means the table doesn't exist.
-   * TableNotEnabledException means the table isn't in enabled state.
+   * @throws IOException There could be couple types of IOException TableNotFoundException means the
+   *           table doesn't exist. TableNotEnabledException means the table isn't in enabled state.
    */
-  public void disableTable(final TableName tableName)
-  throws IOException {
+  public void disableTable(final TableName tableName) throws IOException {
     disableTableAsync(tableName);
     // Wait until table is disabled
     boolean disabled = false;
@@ -1012,41 +949,36 @@ public class HBaseAdmin implements Abortable, Closeable {
       }
       long sleep = getPauseTime(tries);
       if (LOG.isDebugEnabled()) {
-        LOG.debug("Sleeping= " + sleep + "ms, waiting for all regions to be " +
-          "disabled in " + tableName);
+        LOG.debug(
+          "Sleeping= " + sleep + "ms, waiting for all regions to be " + "disabled in " + tableName);
       }
       try {
         Thread.sleep(sleep);
       } catch (InterruptedException e) {
         // Do this conversion rather than let it out because do not want to
         // change the method signature.
-        throw (InterruptedIOException)new InterruptedIOException("Interrupted").initCause(e);
+        throw (InterruptedIOException) new InterruptedIOException("Interrupted").initCause(e);
       }
     }
     if (!disabled) {
-      throw new RegionException("Retries exhausted, it took too long to wait"+
-        " for the table " + tableName + " to be disabled.");
+      throw new RegionException("Retries exhausted, it took too long to wait" + " for the table "
+          + tableName + " to be disabled.");
     }
     LOG.info("Disabled " + tableName);
   }
 
-  public void disableTable(final byte[] tableName)
-  throws IOException {
+  public void disableTable(final byte[] tableName) throws IOException {
     disableTable(TableName.valueOf(tableName));
   }
 
-  public void disableTable(final String tableName)
-  throws IOException {
+  public void disableTable(final String tableName) throws IOException {
     disableTable(TableName.valueOf(tableName));
   }
 
   /**
-   * Disable tables matching the passed in pattern and wait on completion.
-   *
-   * Warning: Use this method carefully, there is no prompting and the effect is
-   * immediate. Consider using {@link #listTables(java.lang.String)} and
-   * {@link #disableTable(byte[])}
-   *
+   * Disable tables matching the passed in pattern and wait on completion. Warning: Use this method
+   * carefully, there is no prompting and the effect is immediate. Consider using
+   * {@link #listTables(java.lang.String)} and {@link #disableTable(byte[])}
    * @param regex The regular expression to match table names against
    * @return Table descriptors for tables that couldn't be disabled
    * @throws IOException
@@ -1058,12 +990,9 @@ public class HBaseAdmin implements Abortable, Closeable {
   }
 
   /**
-   * Disable tables matching the passed in pattern and wait on completion.
-   *
-   * Warning: Use this method carefully, there is no prompting and the effect is
-   * immediate. Consider using {@link #listTables(java.util.regex.Pattern) } and
-   * {@link #disableTable(byte[])}
-   *
+   * Disable tables matching the passed in pattern and wait on completion. Warning: Use this method
+   * carefully, there is no prompting and the effect is immediate. Consider using
+   * {@link #listTables(java.util.regex.Pattern) } and {@link #disableTable(byte[])}
    * @param pattern The pattern to match table names against
    * @return Table descriptors for tables that couldn't be disabled
    * @throws IOException
@@ -1111,8 +1040,6 @@ public class HBaseAdmin implements Abortable, Closeable {
     return isTableEnabled(TableName.valueOf(tableName));
   }
 
-
-
   /**
    * @param tableName name of table to check
    * @return true if table is off-line
@@ -1149,241 +1076,202 @@ public class HBaseAdmin implements Abortable, Closeable {
   }
 
   /**
-   * Use this api to check if the table has been created with the specified number of
-   * splitkeys which was used while creating the given table.
-   * Note : If this api is used after a table's region gets splitted, the api may return
-   * false.
-   * @param tableName
-   *          name of table to check
-   * @param splitKeys
-   *          keys to check if the table has been created with all split keys
-   * @throws IOException
-   *           if a remote or network excpetion occurs
+   * Use this api to check if the table has been created with the specified number of splitkeys
+   * which was used while creating the given table. Note : If this api is used after a table's
+   * region gets splitted, the api may return false.
+   * @param tableName name of table to check
+   * @param splitKeys keys to check if the table has been created with all split keys
+   * @throws IOException if a remote or network excpetion occurs
    */
-  public boolean isTableAvailable(TableName tableName,
-                                  byte[][] splitKeys) throws IOException {
+  public boolean isTableAvailable(TableName tableName, byte[][] splitKeys) throws IOException {
     return connection.isTableAvailable(tableName, splitKeys);
   }
 
-  public boolean isTableAvailable(byte[] tableName,
-                                  byte[][] splitKeys) throws IOException {
+  public boolean isTableAvailable(byte[] tableName, byte[][] splitKeys) throws IOException {
     return isTableAvailable(TableName.valueOf(tableName), splitKeys);
   }
 
-  public boolean isTableAvailable(String tableName,
-                                  byte[][] splitKeys) throws IOException {
+  public boolean isTableAvailable(String tableName, byte[][] splitKeys) throws IOException {
     return isTableAvailable(TableName.valueOf(tableName), splitKeys);
   }
 
   /**
-   * Get the status of alter command - indicates how many regions have received
-   * the updated schema Asynchronous operation.
-   *
+   * Get the status of alter command - indicates how many regions have received the updated schema
+   * Asynchronous operation.
    * @param tableName TableName instance
-   * @return Pair indicating the number of regions updated Pair.getFirst() is the
-   *         regions that are yet to be updated Pair.getSecond() is the total number
-   *         of regions of the table
-   * @throws IOException
-   *           if a remote or network exception occurs
+   * @return Pair indicating the number of regions updated Pair.getFirst() is the regions that are
+   *         yet to be updated Pair.getSecond() is the total number of regions of the table
+   * @throws IOException if a remote or network exception occurs
    */
-  public Pair<Integer, Integer> getAlterStatus(final TableName tableName)
-  throws IOException {
-    return executeCallable(new MasterCallable<Pair<Integer, Integer>>(getConnection()) {
+  public Pair<Integer, Integer> getAlterStatus(TableName tableName) throws IOException {
+    final GetSchemaAlterStatusRequest req =
+        RequestConverter.buildGetSchemaAlterStatusRequest(tableName);
+    return executeCallable(new MasterCallable<Pair<Integer, Integer>>(getConnection(), tableName) {
+
       @Override
-      public Pair<Integer, Integer> call() throws ServiceException {
-        GetSchemaAlterStatusRequest req = RequestConverter
-            .buildGetSchemaAlterStatusRequest(tableName);
-        GetSchemaAlterStatusResponse ret = master.getSchemaAlterStatus(null, req);
-        Pair<Integer, Integer> pair = new Pair<Integer, Integer>(Integer.valueOf(ret
-            .getYetToUpdateRegions()), Integer.valueOf(ret.getTotalRegions()));
+      protected Pair<Integer, Integer> rpcCall(MasterService.BlockingInterface master,
+          PayloadCarryingRpcController controller) throws ServiceException {
+        GetSchemaAlterStatusResponse ret = master.getSchemaAlterStatus(controller, req);
+        Pair<Integer, Integer> pair = new Pair<Integer, Integer>(
+            Integer.valueOf(ret.getYetToUpdateRegions()), Integer.valueOf(ret.getTotalRegions()));
         return pair;
       }
     });
   }
 
   /**
-   * Get the status of alter command - indicates how many regions have received
-   * the updated schema Asynchronous operation.
-   *
-   * @param tableName
-   *          name of the table to get the status of
-   * @return Pair indicating the number of regions updated Pair.getFirst() is the
-   *         regions that are yet to be updated Pair.getSecond() is the total number
-   *         of regions of the table
-   * @throws IOException
-   *           if a remote or network exception occurs
+   * Get the status of alter command - indicates how many regions have received the updated schema
+   * Asynchronous operation.
+   * @param tableName name of the table to get the status of
+   * @return Pair indicating the number of regions updated Pair.getFirst() is the regions that are
+   *         yet to be updated Pair.getSecond() is the total number of regions of the table
+   * @throws IOException if a remote or network exception occurs
    */
-  public Pair<Integer, Integer> getAlterStatus(final byte[] tableName)
-   throws IOException {
+  public Pair<Integer, Integer> getAlterStatus(final byte[] tableName) throws IOException {
     return getAlterStatus(TableName.valueOf(tableName));
   }
 
   /**
-   * Add a column to an existing table.
-   * Asynchronous operation.
-   *
+   * Add a column to an existing table. Asynchronous operation.
    * @param tableName name of the table to add column to
    * @param column column descriptor of column to be added
    * @throws IOException if a remote or network exception occurs
    */
-  public void addColumn(final byte[] tableName, HColumnDescriptor column)
-  throws IOException {
-    addColumn(TableName.valueOf(tableName), column);
-  }
-
-
-  /**
-   * Add a column to an existing table.
-   * Asynchronous operation.
-   *
-   * @param tableName name of the table to add column to
-   * @param column column descriptor of column to be added
-   * @throws IOException if a remote or network exception occurs
-   */
-  public void addColumn(final String tableName, HColumnDescriptor column)
-  throws IOException {
+  public void addColumn(final byte[] tableName, HColumnDescriptor column) throws IOException {
     addColumn(TableName.valueOf(tableName), column);
   }
 
   /**
-   * Add a column to an existing table.
-   * Asynchronous operation.
-   *
+   * Add a column to an existing table. Asynchronous operation.
    * @param tableName name of the table to add column to
    * @param column column descriptor of column to be added
    * @throws IOException if a remote or network exception occurs
    */
-  public void addColumn(final TableName tableName, final HColumnDescriptor column)
-  throws IOException {
-    executeCallable(new MasterCallable<Void>(getConnection()) {
+  public void addColumn(final String tableName, HColumnDescriptor column) throws IOException {
+    addColumn(TableName.valueOf(tableName), column);
+  }
+
+  /**
+   * Add a column to an existing table. Asynchronous operation.
+   * @param tableName name of the table to add column to
+   * @param column column descriptor of column to be added
+   * @throws IOException if a remote or network exception occurs
+   */
+  public void addColumn(TableName tableName, HColumnDescriptor column) throws IOException {
+    final AddColumnRequest req = RequestConverter.buildAddColumnRequest(tableName, column);
+    executeCallable(new MasterCallable<Void>(getConnection(), tableName) {
+
       @Override
-      public Void call() throws ServiceException {
-        AddColumnRequest req = RequestConverter.buildAddColumnRequest(tableName, column);
-        master.addColumn(null,req);
+      protected Void rpcCall(MasterService.BlockingInterface master,
+          PayloadCarryingRpcController controller) throws ServiceException {
+        master.addColumn(controller, req);
         return null;
       }
     });
   }
 
   /**
-   * Delete a column from a table.
-   * Asynchronous operation.
-   *
+   * Delete a column from a table. Asynchronous operation.
    * @param tableName name of table
    * @param columnName name of column to be deleted
    * @throws IOException if a remote or network exception occurs
    */
-  public void deleteColumn(final byte[] tableName, final String columnName)
-  throws IOException {
+  public void deleteColumn(byte[] tableName, String columnName) throws IOException {
     deleteColumn(TableName.valueOf(tableName), Bytes.toBytes(columnName));
   }
 
   /**
-   * Delete a column from a table.
-   * Asynchronous operation.
-   *
+   * Delete a column from a table. Asynchronous operation.
    * @param tableName name of table
    * @param columnName name of column to be deleted
    * @throws IOException if a remote or network exception occurs
    */
-  public void deleteColumn(final String tableName, final String columnName)
-  throws IOException {
+  public void deleteColumn(String tableName, String columnName) throws IOException {
     deleteColumn(TableName.valueOf(tableName), Bytes.toBytes(columnName));
   }
 
   /**
-   * Delete a column from a table.
-   * Asynchronous operation.
-   *
+   * Delete a column from a table. Asynchronous operation.
    * @param tableName name of table
    * @param columnName name of column to be deleted
    * @throws IOException if a remote or network exception occurs
    */
-  public void deleteColumn(final TableName tableName, final byte [] columnName)
-  throws IOException {
+  public void deleteColumn(TableName tableName, byte[] columnName) throws IOException {
+    final DeleteColumnRequest req =
+        RequestConverter.buildDeleteColumnRequest(tableName, columnName);
     executeCallable(new MasterCallable<Void>(getConnection()) {
+
       @Override
-      public Void call() throws ServiceException {
-        DeleteColumnRequest req = RequestConverter.buildDeleteColumnRequest(tableName, columnName);
-        master.deleteColumn(null,req);
+      protected Void rpcCall(MasterService.BlockingInterface master,
+          PayloadCarryingRpcController controller) throws ServiceException {
+        master.deleteColumn(controller, req);
         return null;
       }
     });
   }
 
   /**
-   * Modify an existing column family on a table.
-   * Asynchronous operation.
-   *
+   * Modify an existing column family on a table. Asynchronous operation.
    * @param tableName name of table
    * @param descriptor new column descriptor to use
    * @throws IOException if a remote or network exception occurs
    */
-  public void modifyColumn(final String tableName, HColumnDescriptor descriptor)
-  throws IOException {
+  public void modifyColumn(String tableName, HColumnDescriptor descriptor) throws IOException {
     modifyColumn(TableName.valueOf(tableName), descriptor);
   }
 
   /**
-   * Modify an existing column family on a table.
-   * Asynchronous operation.
-   *
+   * Modify an existing column family on a table. Asynchronous operation.
    * @param tableName name of table
    * @param descriptor new column descriptor to use
    * @throws IOException if a remote or network exception occurs
    */
-  public void modifyColumn(final byte[] tableName, HColumnDescriptor descriptor)
-  throws IOException {
+  public void modifyColumn(byte[] tableName, HColumnDescriptor descriptor) throws IOException {
     modifyColumn(TableName.valueOf(tableName), descriptor);
   }
 
-
-
   /**
-   * Modify an existing column family on a table.
-   * Asynchronous operation.
-   *
+   * Modify an existing column family on a table. Asynchronous operation.
    * @param tableName name of table
    * @param descriptor new column descriptor to use
    * @throws IOException if a remote or network exception occurs
    */
-  public void modifyColumn(final TableName tableName, final HColumnDescriptor descriptor)
-  throws IOException {
-    executeCallable(new MasterCallable<Void>(getConnection()) {
+  public void modifyColumn(TableName tableName, HColumnDescriptor descriptor) throws IOException {
+    final ModifyColumnRequest req =
+        RequestConverter.buildModifyColumnRequest(tableName, descriptor);
+    executeCallable(new MasterCallable<Void>(getConnection(), tableName) {
+
       @Override
-      public Void call() throws ServiceException {
-        ModifyColumnRequest req = RequestConverter.buildModifyColumnRequest(tableName, descriptor);
-        master.modifyColumn(null,req);
+      protected Void rpcCall(MasterService.BlockingInterface master,
+          PayloadCarryingRpcController controller) throws ServiceException {
+        master.modifyColumn(controller, req);
         return null;
       }
     });
   }
 
   /**
-   * Close a region. For expert-admins.  Runs close on the regionserver.  The
-   * master will not be informed of the close.
+   * Close a region. For expert-admins. Runs close on the regionserver. The master will not be
+   * informed of the close.
    * @param regionname region name to close
-   * @param serverName If supplied, we'll use this location rather than
-   * the one currently in <code>hbase:meta</code>
+   * @param serverName If supplied, we'll use this location rather than the one currently in
+   *          <code>hbase:meta</code>
    * @throws IOException if a remote or network exception occurs
    */
-  public void closeRegion(final String regionname, final String serverName)
-  throws IOException {
+  public void closeRegion(final String regionname, final String serverName) throws IOException {
     closeRegion(Bytes.toBytes(regionname), serverName);
   }
 
   /**
-   * Close a region.  For expert-admins  Runs close on the regionserver.  The
-   * master will not be informed of the close.
+   * Close a region. For expert-admins Runs close on the regionserver. The master will not be
+   * informed of the close.
    * @param regionname region name to close
-   * @param serverName The servername of the regionserver.  If passed null we
-   * will use servername found in the hbase:meta table. A server name
-   * is made of host, port and startcode.  Here is an example:
-   * <code> host187.example.com,60020,1289493121758</code>
+   * @param serverName The servername of the regionserver. If passed null we will use servername
+   *          found in the hbase:meta table. A server name is made of host, port and startcode. Here
+   *          is an example: <code> host187.example.com,60020,1289493121758</code>
    * @throws IOException if a remote or network exception occurs
    */
-  public void closeRegion(final byte [] regionname, final String serverName)
-  throws IOException {
+  public void closeRegion(final byte[] regionname, final String serverName) throws IOException {
     CatalogTracker ct = getCatalogTracker();
     try {
       if (serverName != null) {
@@ -1409,37 +1297,30 @@ public class HBaseAdmin implements Abortable, Closeable {
   }
 
   /**
-   * For expert-admins. Runs close on the regionserver. Closes a region based on
-   * the encoded region name. The region server name is mandatory. If the
-   * servername is provided then based on the online regions in the specified
-   * regionserver the specified region will be closed. The master will not be
-   * informed of the close. Note that the regionname is the encoded regionname.
-   *
-   * @param encodedRegionName
-   *          The encoded region name; i.e. the hash that makes up the region
-   *          name suffix: e.g. if regionname is
-   *          <code>TestTable,0094429456,1289497600452.527db22f95c8a9e0116f0cc13c680396.</code>
-   *          , then the encoded region name is:
-   *          <code>527db22f95c8a9e0116f0cc13c680396</code>.
-   * @param serverName
-   *          The servername of the regionserver. A server name is made of host,
-   *          port and startcode. This is mandatory. Here is an example:
+   * For expert-admins. Runs close on the regionserver. Closes a region based on the encoded region
+   * name. The region server name is mandatory. If the servername is provided then based on the
+   * online regions in the specified regionserver the specified region will be closed. The master
+   * will not be informed of the close. Note that the regionname is the encoded regionname.
+   * @param encodedRegionName The encoded region name; i.e. the hash that makes up the region name
+   *          suffix: e.g. if regionname is
+   *          <code>TestTable,0094429456,1289497600452.527db22f95c8a9e0116f0cc13c680396.</code> ,
+   *          then the encoded region name is: <code>527db22f95c8a9e0116f0cc13c680396</code>.
+   * @param serverName The servername of the regionserver. A server name is made of host, port and
+   *          startcode. This is mandatory. Here is an example:
    *          <code> host187.example.com,60020,1289493121758</code>
    * @return true if the region was closed, false if not.
-   * @throws IOException
-   *           if a remote or network exception occurs
+   * @throws IOException if a remote or network exception occurs
    */
   public boolean closeRegionWithEncodedRegionName(final String encodedRegionName,
       final String serverName) throws IOException {
     if (null == serverName || ("").equals(serverName.trim())) {
-      throw new IllegalArgumentException(
-          "The servername cannot be null or empty.");
+      throw new IllegalArgumentException("The servername cannot be null or empty.");
     }
     ServerName sn = ServerName.valueOf(serverName);
     AdminService.BlockingInterface admin = this.connection.getAdmin(sn);
     // Close the region without updating zk state.
     CloseRegionRequest request =
-      RequestConverter.buildCloseRegionRequest(sn, encodedRegionName, false);
+        RequestConverter.buildCloseRegionRequest(sn, encodedRegionName, false);
     try {
       CloseRegionResponse response = admin.closeRegion(null, request);
       boolean isRegionClosed = response.getClosed();
@@ -1453,14 +1334,13 @@ public class HBaseAdmin implements Abortable, Closeable {
   }
 
   /**
-   * Close a region.  For expert-admins  Runs close on the regionserver.  The
-   * master will not be informed of the close.
+   * Close a region. For expert-admins Runs close on the regionserver. The master will not be
+   * informed of the close.
    * @param sn
    * @param hri
    * @throws IOException
    */
-  public void closeRegion(final ServerName sn, final HRegionInfo hri)
-  throws IOException {
+  public void closeRegion(final ServerName sn, final HRegionInfo hri) throws IOException {
     AdminService.BlockingInterface admin = this.connection.getAdmin(sn);
     // Close the region without updating zk state.
     ProtobufUtil.closeRegion(admin, sn, hri.getRegionName(), false);
@@ -1469,39 +1349,31 @@ public class HBaseAdmin implements Abortable, Closeable {
   /**
    * Get all the online regions on a region server.
    */
-  public List<HRegionInfo> getOnlineRegions(
-      final ServerName sn) throws IOException {
+  public List<HRegionInfo> getOnlineRegions(final ServerName sn) throws IOException {
     AdminService.BlockingInterface admin = this.connection.getAdmin(sn);
     return ProtobufUtil.getOnlineRegions(admin);
   }
 
   /**
-   * Flush a table or an individual region.
-   * Synchronous operation.
-   *
+   * Flush a table or an individual region. Synchronous operation.
    * @param tableNameOrRegionName table or region to flush
    * @throws IOException if a remote or network exception occurs
    * @throws InterruptedException
    */
-  public void flush(final String tableNameOrRegionName)
-  throws IOException, InterruptedException {
+  public void flush(final String tableNameOrRegionName) throws IOException, InterruptedException {
     flush(Bytes.toBytes(tableNameOrRegionName));
   }
 
   /**
-   * Flush a table or an individual region.
-   * Synchronous operation.
-   *
+   * Flush a table or an individual region. Synchronous operation.
    * @param tableNameOrRegionName table or region to flush
    * @throws IOException if a remote or network exception occurs
    * @throws InterruptedException
    */
-  public void flush(final byte[] tableNameOrRegionName)
-  throws IOException, InterruptedException {
+  public void flush(final byte[] tableNameOrRegionName) throws IOException, InterruptedException {
     CatalogTracker ct = getCatalogTracker();
     try {
-      Pair<HRegionInfo, ServerName> regionServerPair
-        = getRegion(tableNameOrRegionName, ct);
+      Pair<HRegionInfo, ServerName> regionServerPair = getRegion(tableNameOrRegionName, ct);
       if (regionServerPair != null) {
         if (regionServerPair.getSecond() == null) {
           throw new NoServerForRegionException(Bytes.toStringBinary(tableNameOrRegionName));
@@ -1509,20 +1381,18 @@ public class HBaseAdmin implements Abortable, Closeable {
           flush(regionServerPair.getSecond(), regionServerPair.getFirst());
         }
       } else {
-        final TableName tableName = checkTableExists(
-            TableName.valueOf(tableNameOrRegionName), ct);
+        final TableName tableName = checkTableExists(TableName.valueOf(tableNameOrRegionName), ct);
         List<Pair<HRegionInfo, ServerName>> pairs =
-          MetaReader.getTableRegionsAndLocations(ct,
-              tableName);
-        for (Pair<HRegionInfo, ServerName> pair: pairs) {
+            MetaReader.getTableRegionsAndLocations(ct, tableName);
+        for (Pair<HRegionInfo, ServerName> pair : pairs) {
           if (pair.getFirst().isOffline()) continue;
           if (pair.getSecond() == null) continue;
           try {
             flush(pair.getSecond(), pair.getFirst());
           } catch (NotServingRegionException e) {
             if (LOG.isDebugEnabled()) {
-              LOG.debug("Trying to flush " + pair.getFirst() + ": " +
-                StringUtils.stringifyException(e));
+              LOG.debug(
+                "Trying to flush " + pair.getFirst() + ": " + StringUtils.stringifyException(e));
             }
           }
         }
@@ -1532,11 +1402,9 @@ public class HBaseAdmin implements Abortable, Closeable {
     }
   }
 
-  private void flush(final ServerName sn, final HRegionInfo hri)
-  throws IOException {
+  private void flush(final ServerName sn, final HRegionInfo hri) throws IOException {
     AdminService.BlockingInterface admin = this.connection.getAdmin(sn);
-    FlushRegionRequest request =
-      RequestConverter.buildFlushRegionRequest(hri.getRegionName());
+    FlushRegionRequest request = RequestConverter.buildFlushRegionRequest(hri.getRegionName());
     try {
       admin.flushRegion(null, request);
     } catch (ServiceException se) {
@@ -1545,131 +1413,108 @@ public class HBaseAdmin implements Abortable, Closeable {
   }
 
   /**
-   * Compact a table or an individual region.
-   * Asynchronous operation.
-   *
+   * Compact a table or an individual region. Asynchronous operation.
    * @param tableNameOrRegionName table or region to compact
    * @throws IOException if a remote or network exception occurs
    * @throws InterruptedException
    */
-  public void compact(final String tableNameOrRegionName)
-  throws IOException, InterruptedException {
+  public void compact(final String tableNameOrRegionName) throws IOException, InterruptedException {
     compact(Bytes.toBytes(tableNameOrRegionName));
   }
 
   /**
-   * Compact a table or an individual region.
-   * Asynchronous operation.
-   *
+   * Compact a table or an individual region. Asynchronous operation.
    * @param tableNameOrRegionName table or region to compact
    * @throws IOException if a remote or network exception occurs
    * @throws InterruptedException
    */
-  public void compact(final byte[] tableNameOrRegionName)
-  throws IOException, InterruptedException {
+  public void compact(final byte[] tableNameOrRegionName) throws IOException, InterruptedException {
     compact(tableNameOrRegionName, null, false);
   }
 
   /**
-   * Compact a column family within a table or region.
-   * Asynchronous operation.
-   *
+   * Compact a column family within a table or region. Asynchronous operation.
    * @param tableOrRegionName table or region to compact
    * @param columnFamily column family within a table or region
    * @throws IOException if a remote or network exception occurs
    * @throws InterruptedException
    */
   public void compact(String tableOrRegionName, String columnFamily)
-    throws IOException,  InterruptedException {
+      throws IOException, InterruptedException {
     compact(Bytes.toBytes(tableOrRegionName), Bytes.toBytes(columnFamily));
   }
 
   /**
-   * Compact a column family within a table or region.
-   * Asynchronous operation.
-   *
+   * Compact a column family within a table or region. Asynchronous operation.
    * @param tableNameOrRegionName table or region to compact
    * @param columnFamily column family within a table or region
    * @throws IOException if a remote or network exception occurs
    * @throws InterruptedException
    */
   public void compact(final byte[] tableNameOrRegionName, final byte[] columnFamily)
-  throws IOException, InterruptedException {
+      throws IOException, InterruptedException {
     compact(tableNameOrRegionName, columnFamily, false);
   }
 
   /**
-   * Major compact a table or an individual region.
-   * Asynchronous operation.
-   *
+   * Major compact a table or an individual region. Asynchronous operation.
    * @param tableNameOrRegionName table or region to major compact
    * @throws IOException if a remote or network exception occurs
    * @throws InterruptedException
    */
   public void majorCompact(final String tableNameOrRegionName)
-  throws IOException, InterruptedException {
+      throws IOException, InterruptedException {
     majorCompact(Bytes.toBytes(tableNameOrRegionName));
   }
 
   /**
-   * Major compact a table or an individual region.
-   * Asynchronous operation.
-   *
+   * Major compact a table or an individual region. Asynchronous operation.
    * @param tableNameOrRegionName table or region to major compact
    * @throws IOException if a remote or network exception occurs
    * @throws InterruptedException
    */
   public void majorCompact(final byte[] tableNameOrRegionName)
-  throws IOException, InterruptedException {
+      throws IOException, InterruptedException {
     compact(tableNameOrRegionName, null, true);
   }
 
   /**
-   * Major compact a column family within a table or region.
-   * Asynchronous operation.
-   *
+   * Major compact a column family within a table or region. Asynchronous operation.
    * @param tableNameOrRegionName table or region to major compact
    * @param columnFamily column family within a table or region
    * @throws IOException if a remote or network exception occurs
    * @throws InterruptedException
    */
-  public void majorCompact(final String tableNameOrRegionName,
-    final String columnFamily) throws IOException, InterruptedException {
-    majorCompact(Bytes.toBytes(tableNameOrRegionName),
-      Bytes.toBytes(columnFamily));
+  public void majorCompact(final String tableNameOrRegionName, final String columnFamily)
+      throws IOException, InterruptedException {
+    majorCompact(Bytes.toBytes(tableNameOrRegionName), Bytes.toBytes(columnFamily));
   }
 
   /**
-   * Major compact a column family within a table or region.
-   * Asynchronous operation.
-   *
+   * Major compact a column family within a table or region. Asynchronous operation.
    * @param tableNameOrRegionName table or region to major compact
    * @param columnFamily column family within a table or region
    * @throws IOException if a remote or network exception occurs
    * @throws InterruptedException
    */
-  public void majorCompact(final byte[] tableNameOrRegionName,
-    final byte[] columnFamily) throws IOException, InterruptedException {
+  public void majorCompact(final byte[] tableNameOrRegionName, final byte[] columnFamily)
+      throws IOException, InterruptedException {
     compact(tableNameOrRegionName, columnFamily, true);
   }
 
   /**
-   * Compact a table or an individual region.
-   * Asynchronous operation.
-   *
+   * Compact a table or an individual region. Asynchronous operation.
    * @param tableNameOrRegionName table or region to compact
    * @param columnFamily column family within a table or region
    * @param major True if we are to do a major compaction.
    * @throws IOException if a remote or network exception occurs
    * @throws InterruptedException
    */
-  private void compact(final byte[] tableNameOrRegionName,
-    final byte[] columnFamily,final boolean major)
-  throws IOException, InterruptedException {
+  private void compact(final byte[] tableNameOrRegionName, final byte[] columnFamily,
+      final boolean major) throws IOException, InterruptedException {
     CatalogTracker ct = getCatalogTracker();
     try {
-      Pair<HRegionInfo, ServerName> regionServerPair
-        = getRegion(tableNameOrRegionName, ct);
+      Pair<HRegionInfo, ServerName> regionServerPair = getRegion(tableNameOrRegionName, ct);
       if (regionServerPair != null) {
         if (regionServerPair.getSecond() == null) {
           throw new NoServerForRegionException(Bytes.toStringBinary(tableNameOrRegionName));
@@ -1677,21 +1522,18 @@ public class HBaseAdmin implements Abortable, Closeable {
           compact(regionServerPair.getSecond(), regionServerPair.getFirst(), major, columnFamily);
         }
       } else {
-        final TableName tableName =
-            checkTableExists(TableName.valueOf(tableNameOrRegionName), ct);
+        final TableName tableName = checkTableExists(TableName.valueOf(tableNameOrRegionName), ct);
         List<Pair<HRegionInfo, ServerName>> pairs =
-          MetaReader.getTableRegionsAndLocations(ct,
-              tableName);
-        for (Pair<HRegionInfo, ServerName> pair: pairs) {
+            MetaReader.getTableRegionsAndLocations(ct, tableName);
+        for (Pair<HRegionInfo, ServerName> pair : pairs) {
           if (pair.getFirst().isOffline()) continue;
           if (pair.getSecond() == null) continue;
           try {
             compact(pair.getSecond(), pair.getFirst(), major, columnFamily);
           } catch (NotServingRegionException e) {
             if (LOG.isDebugEnabled()) {
-              LOG.debug("Trying to" + (major ? " major" : "") + " compact " +
-                pair.getFirst() + ": " +
-                StringUtils.stringifyException(e));
+              LOG.debug("Trying to" + (major ? " major" : "") + " compact " + pair.getFirst() + ": "
+                  + StringUtils.stringifyException(e));
             }
           }
         }
@@ -1701,12 +1543,11 @@ public class HBaseAdmin implements Abortable, Closeable {
     }
   }
 
-  private void compact(final ServerName sn, final HRegionInfo hri,
-      final boolean major, final byte [] family)
-  throws IOException {
+  private void compact(final ServerName sn, final HRegionInfo hri, final boolean major,
+      final byte[] family) throws IOException {
     AdminService.BlockingInterface admin = this.connection.getAdmin(sn);
     CompactRegionRequest request =
-      RequestConverter.buildCompactRegionRequest(hri.getRegionName(), major, family);
+        RequestConverter.buildCompactRegionRequest(hri.getRegionName(), major, family);
     try {
       admin.compactRegion(null, request);
     } catch (ServiceException se) {
@@ -1719,10 +1560,8 @@ public class HBaseAdmin implements Abortable, Closeable {
    * @param regionserver the region server name
    * @param major if it's major compaction
    * @throws IOException
-   * @throws InterruptedException
    */
-  public void compactRegionServer(final ServerName sn, boolean major)
-      throws IOException, InterruptedException {
+  public void compactRegionServer(final ServerName sn, boolean major) throws IOException {
     for (HRegionInfo region : getOnlineRegions(sn)) {
       compact(sn, region, major, null);
     }
@@ -1730,83 +1569,66 @@ public class HBaseAdmin implements Abortable, Closeable {
 
   /**
    * Move the region <code>r</code> to <code>dest</code>.
-   * @param encodedRegionName The encoded region name; i.e. the hash that makes
-   * up the region name suffix: e.g. if regionname is
-   * <code>TestTable,0094429456,1289497600452.527db22f95c8a9e0116f0cc13c680396.</code>,
-   * then the encoded region name is: <code>527db22f95c8a9e0116f0cc13c680396</code>.
-   * @param destServerName The servername of the destination regionserver.  If
-   * passed the empty byte array we'll assign to a random server.  A server name
-   * is made of host, port and startcode.  Here is an example:
-   * <code> host187.example.com,60020,1289493121758</code>
-   * @throws UnknownRegionException Thrown if we can't find a region named
-   * <code>encodedRegionName</code>
-   * @throws ZooKeeperConnectionException
-   * @throws MasterNotRunningException
-   */
-  public void move(final byte [] encodedRegionName, final byte [] destServerName)
-  throws HBaseIOException, MasterNotRunningException, ZooKeeperConnectionException {
-    MasterKeepAliveConnection stub = connection.getKeepAliveMasterService();
-    try {
-      MoveRegionRequest request =
-        RequestConverter.buildMoveRegionRequest(encodedRegionName, destServerName);
-      stub.moveRegion(null,request);
-    } catch (ServiceException se) {
-      IOException ioe = ProtobufUtil.getRemoteException(se);
-      if (ioe instanceof HBaseIOException) {
-        throw (HBaseIOException)ioe;
-      }
-      LOG.error("Unexpected exception: " + se + " from calling HMaster.moveRegion");
-    } catch (DeserializationException de) {
-      LOG.error("Could not parse destination server name: " + de);
-    } finally {
-      stub.close();
-    }
-  }
-
-  /**
-   * @param regionName
-   *          Region name to assign.
-   * @throws MasterNotRunningException
-   * @throws ZooKeeperConnectionException
+   * @param encodedRegionName The encoded region name; i.e. the hash that makes up the region name
+   *          suffix: e.g. if regionname is
+   *          <code>TestTable,0094429456,1289497600452.527db22f95c8a9e0116f0cc13c680396.</code>,
+   *          then the encoded region name is: <code>527db22f95c8a9e0116f0cc13c680396</code>.
+   * @param destServerName The servername of the destination regionserver. If passed the empty byte
+   *          array we'll assign to a random server. A server name is made of host, port and
+   *          startcode. Here is an example: <code> host187.example.com,60020,1289493121758</code>
    * @throws IOException
    */
-  public void assign(final byte[] regionName) throws MasterNotRunningException,
-      ZooKeeperConnectionException, IOException {
-    final byte[] toBeAssigned = getRegionName(regionName);
-    executeCallable(new MasterCallable<Void>(getConnection()) {
+  public void move(final byte[] encodedRegionName, final byte[] destServerName) throws IOException {
+    final MoveRegionRequest req =
+        RequestConverter.buildMoveRegionRequest(encodedRegionName, destServerName);
+    executeCallable(new MasterCallable<Void>(getConnection(), encodedRegionName) {
+
       @Override
-      public Void call() throws ServiceException {
-        AssignRegionRequest request =
-          RequestConverter.buildAssignRegionRequest(toBeAssigned);
-        master.assignRegion(null,request);
+      protected Void rpcCall(MasterService.BlockingInterface master,
+          PayloadCarryingRpcController controller) throws ServiceException {
+        master.moveRegion(controller, req);
         return null;
       }
     });
   }
 
   /**
-   * Unassign a region from current hosting regionserver.  Region will then be
-   * assigned to a regionserver chosen at random.  Region could be reassigned
-   * back to the same server.  Use {@link #move(byte[], byte[])} if you want
-   * to control the region movement.
-   * @param regionName Region to unassign. Will clear any existing RegionPlan
-   * if one found.
-   * @param force If true, force unassign (Will remove region from
-   * regions-in-transition too if present. If results in double assignment
-   * use hbck -fix to resolve. To be used by experts).
-   * @throws MasterNotRunningException
-   * @throws ZooKeeperConnectionException
+   * @param regionName Region name to assign.
    * @throws IOException
    */
-  public void unassign(final byte [] regionName, final boolean force)
-  throws MasterNotRunningException, ZooKeeperConnectionException, IOException {
-    final byte[] toBeUnassigned = getRegionName(regionName);
-    executeCallable(new MasterCallable<Void>(getConnection()) {
+  public void assign(final byte[] regionName) throws IOException {
+    byte[] toBeAssigned = getRegionName(regionName);
+    final AssignRegionRequest req = RequestConverter.buildAssignRegionRequest(toBeAssigned);
+    executeCallable(new MasterCallable<Void>(getConnection(), toBeAssigned) {
+
       @Override
-      public Void call() throws ServiceException {
-        UnassignRegionRequest request =
-          RequestConverter.buildUnassignRegionRequest(toBeUnassigned, force);
-        master.unassignRegion(null,request);
+      protected Void rpcCall(MasterService.BlockingInterface master,
+          PayloadCarryingRpcController controller) throws ServiceException {
+        master.assignRegion(controller, req);
+        return null;
+      }
+    });
+  }
+
+  /**
+   * Unassign a region from current hosting regionserver. Region will then be assigned to a
+   * regionserver chosen at random. Region could be reassigned back to the same server. Use
+   * {@link #move(byte[], byte[])} if you want to control the region movement.
+   * @param regionName Region to unassign. Will clear any existing RegionPlan if one found.
+   * @param force If true, force unassign (Will remove region from regions-in-transition too if
+   *          present. If results in double assignment use hbck -fix to resolve. To be used by
+   *          experts).
+   * @throws IOException
+   */
+  public void unassign(final byte[] regionName, final boolean force) throws IOException {
+    byte[] toBeUnassigned = getRegionName(regionName);
+    final UnassignRegionRequest request =
+        RequestConverter.buildUnassignRegionRequest(toBeUnassigned, force);
+    executeCallable(new MasterCallable<Void>(getConnection(), toBeUnassigned) {
+      @Override
+      protected Void rpcCall(MasterService.BlockingInterface master,
+          PayloadCarryingRpcController controller) throws ServiceException {
+        master.unassignRegion(controller, request);
         return null;
       }
     });
@@ -1816,24 +1638,22 @@ public class HBaseAdmin implements Abortable, Closeable {
    * Offline specified region from master's in-memory state. It will not attempt to reassign the
    * region as in unassign. This API can be used when a region not served by any region server and
    * still online as per Master's in memory state. If this API is incorrectly used on active region
-   * then master will loose track of that region.
-   *
-   * This is a special method that should be used by experts or hbck.
-   *
-   * @param regionName
-   *          Region to offline.
+   * then master will loose track of that region. This is a special method that should be used by
+   * experts or hbck.
+   * @param regionName Region to offline.
    * @throws IOException
    */
-  public void offline(final byte [] regionName)
-  throws IOException {
-    MasterKeepAliveConnection master = connection.getKeepAliveMasterService();
-    try {
-      master.offlineRegion(null,RequestConverter.buildOfflineRegionRequest(regionName));
-    } catch (ServiceException se) {
-      throw ProtobufUtil.getRemoteException(se);
-    } finally {
-      master.close();
-    }
+  public void offline(final byte[] regionName) throws IOException {
+    final OfflineRegionRequest req = RequestConverter.buildOfflineRegionRequest(regionName);
+    executeCallable(new MasterCallable<Void>(getConnection(), regionName) {
+
+      @Override
+      protected Void rpcCall(MasterService.BlockingInterface master,
+          PayloadCarryingRpcController controller) throws ServiceException {
+        master.offlineRegion(controller, req);
+        return null;
+      }
+    });
   }
 
   /**
@@ -1842,38 +1662,26 @@ public class HBaseAdmin implements Abortable, Closeable {
    * @param synchronous If true, it waits until current balance() call, if outstanding, to return.
    * @return Previous balancer value
    */
-  public boolean setBalancerRunning(final boolean on, final boolean synchronous)
-  throws MasterNotRunningException, ZooKeeperConnectionException {
-    MasterKeepAliveConnection stub = connection.getKeepAliveMasterService();
-    try {
-      SetBalancerRunningRequest req =
+  public boolean setBalancerRunning(boolean on, boolean synchronous) throws IOException {
+    final SetBalancerRunningRequest req =
         RequestConverter.buildSetBalancerRunningRequest(on, synchronous);
-      return stub.setBalancerRunning(null, req).getPrevBalanceValue();
-    } catch (ServiceException se) {
-      IOException ioe = ProtobufUtil.getRemoteException(se);
-      if (ioe instanceof MasterNotRunningException) {
-        throw (MasterNotRunningException)ioe;
-      }
-      if (ioe instanceof ZooKeeperConnectionException) {
-        throw (ZooKeeperConnectionException)ioe;
-      }
+    return executeCallable(new MasterCallable<Boolean>(getConnection()) {
 
-      // Throwing MasterNotRunningException even though not really valid in order to not
-      // break interface by adding additional exception type.
-      throw new MasterNotRunningException("Unexpected exception when calling balanceSwitch",se);
-    } finally {
-      stub.close();
-    }
+      @Override
+      protected Boolean rpcCall(MasterService.BlockingInterface master,
+          PayloadCarryingRpcController controller) throws ServiceException {
+        return master.setBalancerRunning(controller, req).getPrevBalanceValue();
+      }
+    });
   }
-  
+
   /**
    * Turn the compaction switch in global instance on or off.
    * @param b If false, disable minor&major compaction in all RS.
    * @return Previous value
-   * @throws IOException 
+   * @throws IOException
    */
-  public boolean setCompactionEnable(final boolean b) 
-      throws IOException {
+  public boolean setCompactionEnable(final boolean b) throws IOException {
     boolean ret = false;
     Collection<ServerName> servers = getClusterStatus().getServers();
     for (ServerName sn : servers) {
@@ -1891,164 +1699,145 @@ public class HBaseAdmin implements Abortable, Closeable {
   }
 
   /**
-   * Invoke the balancer.  Will run the balancer and if regions to move, it will
-   * go ahead and do the reassignments.  Can NOT run for various reasons.  Check
-   * logs.
+   * Invoke the balancer. Will run the balancer and if regions to move, it will go ahead and do the
+   * reassignments. Can NOT run for various reasons. Check logs.
    * @return True if balancer ran, false otherwise.
    */
-  public boolean balancer()
-  throws MasterNotRunningException, ZooKeeperConnectionException, ServiceException {
-    MasterKeepAliveConnection stub = connection.getKeepAliveMasterService();
-    try {
-      return stub.balance(null,RequestConverter.buildBalanceRequest()).getBalancerRan();
-    } finally {
-      stub.close();
-    }
+  public boolean balancer() throws IOException {
+    return executeCallable(new MasterCallable<Boolean>(getConnection()) {
+
+      @Override
+      protected Boolean rpcCall(MasterService.BlockingInterface master,
+          PayloadCarryingRpcController controller) throws ServiceException {
+        return master.balance(controller, RequestConverter.buildBalanceRequest()).getBalancerRan();
+      }
+    });
   }
 
   /**
    * Enable/Disable the catalog janitor
    * @param enable if true enables the catalog janitor
    * @return the previous state
-   * @throws ServiceException
-   * @throws MasterNotRunningException
+   * @throws IOException
    */
-  public boolean enableCatalogJanitor(boolean enable)
-      throws ServiceException, MasterNotRunningException {
-    MasterKeepAliveConnection stub = connection.getKeepAliveMasterService();
-    try {
-      return stub.enableCatalogJanitor(null,
-          RequestConverter.buildEnableCatalogJanitorRequest(enable)).getPrevValue();
-    } finally {
-      stub.close();
-    }
+  public boolean enableCatalogJanitor(boolean enable) throws IOException {
+    final EnableCatalogJanitorRequest req =
+        RequestConverter.buildEnableCatalogJanitorRequest(enable);
+    return executeCallable(new MasterCallable<Boolean>(getConnection()) {
+
+      @Override
+      protected Boolean rpcCall(MasterService.BlockingInterface master,
+          PayloadCarryingRpcController controller) throws ServiceException {
+        return master.enableCatalogJanitor(controller, req).getPrevValue();
+      }
+    });
   }
 
   /**
    * Ask for a scan of the catalog table
    * @return the number of entries cleaned
-   * @throws ServiceException
-   * @throws MasterNotRunningException
+   * @throws IOException
    */
-  public int runCatalogScan() throws ServiceException, MasterNotRunningException {
-    MasterKeepAliveConnection stub = connection.getKeepAliveMasterService();
-    try {
-      return stub.runCatalogScan(null,
-          RequestConverter.buildCatalogScanRequest()).getScanResult();
-    } finally {
-      stub.close();
-    }
+  public int runCatalogScan() throws IOException {
+    return executeCallable(new MasterCallable<Integer>(getConnection()) {
+
+      @Override
+      protected Integer rpcCall(MasterService.BlockingInterface master,
+          PayloadCarryingRpcController controller) throws ServiceException {
+        return master.runCatalogScan(controller, RequestConverter.buildCatalogScanRequest())
+            .getScanResult();
+      }
+    });
   }
 
   /**
    * Query on the catalog janitor state (Enabled/Disabled?)
-   * @throws ServiceException
-   * @throws org.apache.hadoop.hbase.MasterNotRunningException
+   * @throws IOException
    */
-  public boolean isCatalogJanitorEnabled() throws ServiceException, MasterNotRunningException {
-    MasterKeepAliveConnection stub = connection.getKeepAliveMasterService();
-    try {
-      return stub.isCatalogJanitorEnabled(null,
+  public boolean isCatalogJanitorEnabled() throws IOException {
+    return executeCallable(new MasterCallable<Boolean>(getConnection()) {
+
+      @Override
+      protected Boolean rpcCall(MasterService.BlockingInterface master,
+          PayloadCarryingRpcController controller) throws ServiceException {
+        return master.isCatalogJanitorEnabled(controller,
           RequestConverter.buildIsCatalogJanitorEnabledRequest()).getValue();
-    } finally {
-      stub.close();
-    }
+      }
+    });
   }
 
   /**
    * Merge two regions. Asynchronous operation.
    * @param encodedNameOfRegionA encoded name of region a
    * @param encodedNameOfRegionB encoded name of region b
-   * @param forcible true if do a compulsory merge, otherwise we will only merge
-   *          two adjacent regions
+   * @param forcible true if do a compulsory merge, otherwise we will only merge two adjacent
+   *          regions
    * @throws IOException
    */
-  public void mergeRegions(final byte[] encodedNameOfRegionA,
-      final byte[] encodedNameOfRegionB, final boolean forcible)
-      throws IOException {
-    MasterKeepAliveConnection master = connection
-        .getKeepAliveMasterService();
-    try {
-      DispatchMergingRegionsRequest request = RequestConverter
-          .buildDispatchMergingRegionsRequest(encodedNameOfRegionA,
-              encodedNameOfRegionB, forcible);
-      master.dispatchMergingRegions(null, request);
-    } catch (ServiceException se) {
-      IOException ioe = ProtobufUtil.getRemoteException(se);
-      if (ioe instanceof UnknownRegionException) {
-        throw (UnknownRegionException) ioe;
+  public void mergeRegions(byte[] encodedNameOfRegionA, byte[] encodedNameOfRegionB,
+      boolean forcible) throws IOException {
+    final DispatchMergingRegionsRequest request = RequestConverter
+        .buildDispatchMergingRegionsRequest(encodedNameOfRegionA, encodedNameOfRegionB, forcible);
+    executeCallable(new MasterCallable<Void>(getConnection(), encodedNameOfRegionA) {
+
+      @Override
+      protected Void rpcCall(MasterService.BlockingInterface master,
+          PayloadCarryingRpcController controller) throws ServiceException {
+        master.dispatchMergingRegions(controller, request);
+        return null;
       }
-      if (ioe instanceof MergeRegionException) {
-        throw (MergeRegionException) ioe;
-      }
-      LOG.error("Unexpected exception: " + se
-          + " from calling HMaster.dispatchMergingRegions");
-    } catch (DeserializationException de) {
-      LOG.error("Could not parse destination server name: " + de);
-    } finally {
-      master.close();
-    }
+    });
   }
 
   /**
-   * Split a table or an individual region.
-   * Asynchronous operation.
-   *
+   * Split a table or an individual region. Asynchronous operation.
    * @param tableNameOrRegionName table or region to split
    * @throws IOException if a remote or network exception occurs
    * @throws InterruptedException
    */
-  public void split(final String tableNameOrRegionName)
-  throws IOException, InterruptedException {
+  public void split(final String tableNameOrRegionName) throws IOException, InterruptedException {
     split(Bytes.toBytes(tableNameOrRegionName));
   }
 
   /**
-   * Split a table or an individual region.  Implicitly finds an optimal split
-   * point.  Asynchronous operation.
-   *
+   * Split a table or an individual region. Implicitly finds an optimal split point. Asynchronous
+   * operation.
    * @param tableNameOrRegionName table to region to split
    * @throws IOException if a remote or network exception occurs
    * @throws InterruptedException
    */
-  public void split(final byte[] tableNameOrRegionName)
-  throws IOException, InterruptedException {
+  public void split(final byte[] tableNameOrRegionName) throws IOException, InterruptedException {
     split(tableNameOrRegionName, null);
   }
 
-  public void split(final String tableNameOrRegionName,
-    final String splitPoint) throws IOException, InterruptedException {
+  public void split(final String tableNameOrRegionName, final String splitPoint)
+      throws IOException, InterruptedException {
     split(Bytes.toBytes(tableNameOrRegionName), Bytes.toBytes(splitPoint));
   }
 
   /**
-   * Split a table or an individual region.
-   * Asynchronous operation.
-   *
+   * Split a table or an individual region. Asynchronous operation.
    * @param tableNameOrRegionName table to region to split
    * @param splitPoint the explicit position to split on
    * @throws IOException if a remote or network exception occurs
    * @throws InterruptedException interrupt exception occurred
    */
-  public void split(final byte[] tableNameOrRegionName,
-      final byte [] splitPoint) throws IOException, InterruptedException {
+  public void split(final byte[] tableNameOrRegionName, final byte[] splitPoint)
+      throws IOException, InterruptedException {
     CatalogTracker ct = getCatalogTracker();
     try {
-      Pair<HRegionInfo, ServerName> regionServerPair
-        = getRegion(tableNameOrRegionName, ct);
+      Pair<HRegionInfo, ServerName> regionServerPair = getRegion(tableNameOrRegionName, ct);
       if (regionServerPair != null) {
         if (regionServerPair.getSecond() == null) {
-            throw new NoServerForRegionException(Bytes.toStringBinary(tableNameOrRegionName));
+          throw new NoServerForRegionException(Bytes.toStringBinary(tableNameOrRegionName));
         } else {
           split(regionServerPair.getSecond(), regionServerPair.getFirst(), splitPoint);
         }
       } else {
-        final TableName tableName =
-            checkTableExists(TableName.valueOf(tableNameOrRegionName), ct);
+        final TableName tableName = checkTableExists(TableName.valueOf(tableNameOrRegionName), ct);
         List<Pair<HRegionInfo, ServerName>> pairs =
-          MetaReader.getTableRegionsAndLocations(ct,
-              tableName);
-        for (Pair<HRegionInfo, ServerName> pair: pairs) {
+            MetaReader.getTableRegionsAndLocations(ct, tableName);
+        for (Pair<HRegionInfo, ServerName> pair : pairs) {
           // May not be a server for a particular row
           if (pair.getSecond() == null) continue;
           HRegionInfo r = pair.getFirst();
@@ -2065,46 +1854,43 @@ public class HBaseAdmin implements Abortable, Closeable {
     }
   }
 
-  private void split(final ServerName sn, final HRegionInfo hri,
-      byte[] splitPoint) throws IOException {
-    if (hri.getStartKey() != null && splitPoint != null &&
-         Bytes.compareTo(hri.getStartKey(), splitPoint) == 0) {
-       throw new IOException("should not give a splitkey which equals to startkey!");
+  private void split(final ServerName sn, final HRegionInfo hri, byte[] splitPoint)
+      throws IOException {
+    if (hri.getStartKey() != null && splitPoint != null
+        && Bytes.compareTo(hri.getStartKey(), splitPoint) == 0) {
+      throw new IOException("should not give a splitkey which equals to startkey!");
     }
     AdminService.BlockingInterface admin = this.connection.getAdmin(sn);
     ProtobufUtil.split(admin, hri, splitPoint);
   }
 
   /**
-   * Modify an existing table, more IRB friendly version.
-   * Asynchronous operation.  This means that it may be a while before your
-   * schema change is updated across all of the table.
-   *
+   * Modify an existing table, more IRB friendly version. Asynchronous operation. This means that it
+   * may be a while before your schema change is updated across all of the table.
    * @param tableName name of table.
    * @param htd modified description of the table
    * @throws IOException if a remote or network exception occurs
    */
-  public void modifyTable(final TableName tableName, final HTableDescriptor htd)
-  throws IOException {
+  public void modifyTable(TableName tableName, HTableDescriptor htd) throws IOException {
     if (!tableName.equals(htd.getTableName())) {
-      throw new IllegalArgumentException("the specified table name '" + tableName +
-        "' doesn't match with the HTD one: " + htd.getTableName());
+      throw new IllegalArgumentException("the specified table name '" + tableName
+          + "' doesn't match with the HTD one: " + htd.getTableName());
     }
 
     // check KeySalter not modified
     checkSaltedAttributeUnModified(tableName, htd);
-
-    executeCallable(new MasterCallable<Void>(getConnection()) {
+    final ModifyTableRequest req = RequestConverter.buildModifyTableRequest(tableName, htd);
+    executeCallable(new MasterCallable<Void>(getConnection(), tableName) {
       @Override
-      public Void call() throws ServiceException {
-        ModifyTableRequest request = RequestConverter.buildModifyTableRequest(tableName, htd);
-        master.modifyTable(null, request);
+      public Void rpcCall(MasterService.BlockingInterface master,
+          PayloadCarryingRpcController controller) throws ServiceException {
+        master.modifyTable(null, req);
         return null;
       }
     });
   }
-  
-  protected void checkSaltedAttributeUnModified(TableName tableName, HTableDescriptor modifiedHtd)
+
+  private void checkSaltedAttributeUnModified(TableName tableName, HTableDescriptor modifiedHtd)
       throws IOException {
     HTableDescriptor htd = this.getTableDescriptor(tableName);
     boolean saltedAttributeUnModified = false;
@@ -2117,30 +1903,26 @@ public class HBaseAdmin implements Abortable, Closeable {
         saltedAttributeUnModified = true;
       }
     }
-    
+
     if (saltedAttributeUnModified) {
-      throw new IOException("can not modify the salted attribute of table : "
-           + tableName);
-     }
+      throw new IOException("can not modify the salted attribute of table : " + tableName);
+    }
   }
 
-  public void modifyTable(final byte[] tableName, final HTableDescriptor htd)
-  throws IOException {
+  public void modifyTable(final byte[] tableName, final HTableDescriptor htd) throws IOException {
     modifyTable(TableName.valueOf(tableName), htd);
   }
 
-  public void modifyTable(final String tableName, final HTableDescriptor htd)
-  throws IOException {
+  public void modifyTable(final String tableName, final HTableDescriptor htd) throws IOException {
     modifyTable(TableName.valueOf(tableName), htd);
   }
 
   /**
    * @param tableNameOrRegionName Name of a table or name of a region.
    * @param ct A {@link CatalogTracker} instance (caller of this method usually has one).
-   * @return a pair of HRegionInfo and ServerName if <code>tableNameOrRegionName</code> is
-   *  a verified region name (we call {@link  MetaReader#getRegion( CatalogTracker, byte[])}
-   *  else null.
-   * Throw an exception if <code>tableNameOrRegionName</code> is null.
+   * @return a pair of HRegionInfo and ServerName if <code>tableNameOrRegionName</code> is a
+   *         verified region name (we call {@link MetaReader#getRegion( CatalogTracker, byte[])}
+   *         else null. Throw an exception if <code>tableNameOrRegionName</code> is null.
    * @throws IOException
    */
   Pair<HRegionInfo, ServerName> getRegion(final byte[] tableNameOrRegionName,
@@ -2151,7 +1933,7 @@ public class HBaseAdmin implements Abortable, Closeable {
     Pair<HRegionInfo, ServerName> pair = MetaReader.getRegion(ct, tableNameOrRegionName);
     if (pair == null) {
       final AtomicReference<Pair<HRegionInfo, ServerName>> result =
-        new AtomicReference<Pair<HRegionInfo, ServerName>>(null);
+          new AtomicReference<Pair<HRegionInfo, ServerName>>(null);
       final String encodedName = Bytes.toString(tableNameOrRegionName);
       MetaScannerVisitor visitor = new MetaScannerVisitorBase() {
         @Override
@@ -2175,26 +1957,22 @@ public class HBaseAdmin implements Abortable, Closeable {
   }
 
   /**
-   * If the input is a region name, it is returned as is. If it's an
-   * encoded region name, the corresponding region is found from meta
-   * and its region name is returned. If we can't find any region in
-   * meta matching the input as either region name or encoded region
-   * name, the input is returned as is. We don't throw unknown
-   * region exception.
+   * If the input is a region name, it is returned as is. If it's an encoded region name, the
+   * corresponding region is found from meta and its region name is returned. If we can't find any
+   * region in meta matching the input as either region name or encoded region name, the input is
+   * returned as is. We don't throw unknown region exception.
    */
-  private byte[] getRegionName(
-      final byte[] regionNameOrEncodedRegionName) throws IOException {
-    if (Bytes.equals(regionNameOrEncodedRegionName,
-        HRegionInfo.FIRST_META_REGIONINFO.getRegionName())
-          || Bytes.equals(regionNameOrEncodedRegionName,
-            HRegionInfo.FIRST_META_REGIONINFO.getEncodedNameAsBytes())) {
+  private byte[] getRegionName(final byte[] regionNameOrEncodedRegionName) throws IOException {
+    if (Bytes
+        .equals(regionNameOrEncodedRegionName, HRegionInfo.FIRST_META_REGIONINFO.getRegionName())
+        || Bytes.equals(regionNameOrEncodedRegionName,
+          HRegionInfo.FIRST_META_REGIONINFO.getEncodedNameAsBytes())) {
       return HRegionInfo.FIRST_META_REGIONINFO.getRegionName();
     }
     CatalogTracker ct = getCatalogTracker();
     byte[] tmp = regionNameOrEncodedRegionName;
     try {
-      Pair<HRegionInfo, ServerName> regionServerPair
-        = getRegion(regionNameOrEncodedRegionName, ct);
+      Pair<HRegionInfo, ServerName> regionServerPair = getRegion(regionNameOrEncodedRegionName, ct);
       if (regionServerPair != null && regionServerPair.getFirst() != null) {
         tmp = regionServerPair.getFirst().getRegionName();
       }
@@ -2212,9 +1990,8 @@ public class HBaseAdmin implements Abortable, Closeable {
    * @throws IOException if a remote or network exception occurs.
    * @throws TableNotFoundException if table does not exist.
    */
-  //TODO rename this method
-  private TableName checkTableExists(
-      final TableName tableName, CatalogTracker ct)
+  // TODO rename this method
+  private TableName checkTableExists(final TableName tableName, CatalogTracker ct)
       throws IOException {
     if (!MetaReader.tableExists(ct, tableName)) {
       throw new TableNotFoundException(tableName);
@@ -2229,24 +2006,25 @@ public class HBaseAdmin implements Abortable, Closeable {
   public synchronized void shutdown() throws IOException {
     executeCallable(new MasterCallable<Void>(getConnection()) {
       @Override
-      public Void call() throws ServiceException {
-        master.shutdown(null,ShutdownRequest.newBuilder().build());
+      public Void rpcCall(MasterService.BlockingInterface master,
+          PayloadCarryingRpcController controller) throws ServiceException {
+        master.shutdown(controller, ShutdownRequest.getDefaultInstance());
         return null;
       }
     });
   }
 
   /**
-   * Shuts down the current HBase master only.
-   * Does not shutdown the cluster.
+   * Shuts down the current HBase master only. Does not shutdown the cluster.
    * @see #shutdown()
    * @throws IOException if a remote or network exception occurs
    */
   public synchronized void stopMaster() throws IOException {
     executeCallable(new MasterCallable<Void>(getConnection()) {
       @Override
-      public Void call() throws ServiceException {
-        master.stopMaster(null,StopMasterRequest.newBuilder().build());
+      public Void rpcCall(MasterService.BlockingInterface master,
+          PayloadCarryingRpcController controller) throws ServiceException {
+        master.stopMaster(null, StopMasterRequest.getDefaultInstance());
         return null;
       }
     });
@@ -2255,17 +2033,16 @@ public class HBaseAdmin implements Abortable, Closeable {
   /**
    * Stop the designated regionserver
    * @param hostnamePort Hostname and port delimited by a <code>:</code> as in
-   * <code>example.org:1234</code>
+   *          <code>example.org:1234</code>
    * @throws IOException if a remote or network exception occurs
    */
-  public synchronized void stopRegionServer(final String hostnamePort)
-  throws IOException {
+  public synchronized void stopRegionServer(final String hostnamePort) throws IOException {
     String hostname = Addressing.parseHostname(hostnamePort);
     int port = Addressing.parsePort(hostnamePort);
     AdminService.BlockingInterface admin =
-      this.connection.getAdmin(ServerName.valueOf(hostname, port, 0));
-    StopServerRequest request = RequestConverter.buildStopServerRequest(
-      "Called by admin client " + this.connection.toString());
+        this.connection.getAdmin(ServerName.valueOf(hostname, port, 0));
+    StopServerRequest request = RequestConverter
+        .buildStopServerRequest("Called by admin client " + this.connection.toString());
     try {
       admin.stopServer(null, request);
     } catch (ServiceException se) {
@@ -2273,23 +2050,24 @@ public class HBaseAdmin implements Abortable, Closeable {
     }
   }
 
-
   /**
    * @return cluster status
    * @throws IOException if a remote or network exception occurs
    */
   public ClusterStatus getClusterStatus() throws IOException {
     return executeCallable(new MasterCallable<ClusterStatus>(getConnection()) {
+
       @Override
-      public ClusterStatus call() throws ServiceException {
-        GetClusterStatusRequest req = RequestConverter.buildGetClusterStatusRequest();
-        return ClusterStatus.convert(master.getClusterStatus(null,req).getClusterStatus());
+      protected ClusterStatus rpcCall(MasterService.BlockingInterface master,
+          PayloadCarryingRpcController controller) throws ServiceException {
+        return ClusterStatus.convert(
+          master.getClusterStatus(controller, RequestConverter.buildGetClusterStatusRequest())
+              .getClusterStatus());
       }
     });
   }
 
-  private HRegionLocation getFirstMetaServerForTable(final TableName tableName)
-  throws IOException {
+  private HRegionLocation getFirstMetaServerForTable(final TableName tableName) throws IOException {
     return connection.locateRegion(TableName.META_TABLE_NAME,
       HRegionInfo.createRegionName(tableName, null, HConstants.NINES, false));
   }
@@ -2306,14 +2084,14 @@ public class HBaseAdmin implements Abortable, Closeable {
    * @param descriptor descriptor which describes the new namespace
    * @throws IOException
    */
-  public void createNamespace(final NamespaceDescriptor descriptor) throws IOException {
+  public void createNamespace(NamespaceDescriptor descriptor) throws IOException {
+    final CreateNamespaceRequest req = RequestConverter.buildCreateNamespaceRequest(descriptor);
     executeCallable(new MasterCallable<Void>(getConnection()) {
+
       @Override
-      public Void call() throws Exception {
-        master.createNamespace(null,
-          CreateNamespaceRequest.newBuilder()
-                .setNamespaceDescriptor(ProtobufUtil
-                    .toProtoNamespaceDescriptor(descriptor)).build());
+      protected Void rpcCall(MasterService.BlockingInterface master,
+          PayloadCarryingRpcController controller) throws Exception {
+        master.createNamespace(controller, req);
         return null;
       }
     });
@@ -2324,12 +2102,14 @@ public class HBaseAdmin implements Abortable, Closeable {
    * @param descriptor descriptor which describes the new namespace
    * @throws IOException
    */
-  public void modifyNamespace(final NamespaceDescriptor descriptor) throws IOException {
+  public void modifyNamespace(NamespaceDescriptor descriptor) throws IOException {
+    final ModifyNamespaceRequest req = RequestConverter.buildModifyNamespaceRequest(descriptor);
     executeCallable(new MasterCallable<Void>(getConnection()) {
+
       @Override
-      public Void call() throws Exception {
-        master.modifyNamespace(null, ModifyNamespaceRequest.newBuilder().
-          setNamespaceDescriptor(ProtobufUtil.toProtoNamespaceDescriptor(descriptor)).build());
+      protected Void rpcCall(MasterService.BlockingInterface master,
+          PayloadCarryingRpcController controller) throws Exception {
+        master.modifyNamespace(controller, req);
         return null;
       }
     });
@@ -2340,12 +2120,14 @@ public class HBaseAdmin implements Abortable, Closeable {
    * @param name namespace name
    * @throws IOException
    */
-  public void deleteNamespace(final String name) throws IOException {
+  public void deleteNamespace(String name) throws IOException {
+    final DeleteNamespaceRequest req = RequestConverter.buildDeleteNamespaceRequest(name);
     executeCallable(new MasterCallable<Void>(getConnection()) {
+
       @Override
-      public Void call() throws Exception {
-        master.deleteNamespace(null, DeleteNamespaceRequest.newBuilder().
-          setNamespaceName(name).build());
+      protected Void rpcCall(MasterService.BlockingInterface master,
+          PayloadCarryingRpcController controller) throws Exception {
+        master.deleteNamespace(controller, req);
         return null;
       }
     });
@@ -2357,16 +2139,18 @@ public class HBaseAdmin implements Abortable, Closeable {
    * @return A descriptor
    * @throws IOException
    */
-  public NamespaceDescriptor getNamespaceDescriptor(final String name) throws IOException {
-    return
-        executeCallable(new MasterCallable<NamespaceDescriptor>(getConnection()) {
-          @Override
-          public NamespaceDescriptor call() throws Exception {
-            return ProtobufUtil.toNamespaceDescriptor(
-              master.getNamespaceDescriptor(null, GetNamespaceDescriptorRequest.newBuilder().
-                setNamespaceName(name).build()).getNamespaceDescriptor());
-          }
-        });
+  public NamespaceDescriptor getNamespaceDescriptor(String name) throws IOException {
+    final GetNamespaceDescriptorRequest req =
+        RequestConverter.buildGetNamespaceDescriptorRequest(name);
+    return executeCallable(new MasterCallable<NamespaceDescriptor>(getConnection()) {
+
+      @Override
+      protected NamespaceDescriptor rpcCall(MasterService.BlockingInterface master,
+          PayloadCarryingRpcController controller) throws Exception {
+        return ProtobufUtil.toNamespaceDescriptor(
+          master.getNamespaceDescriptor(controller, req).getNamespaceDescriptor());
+      }
+    });
   }
 
   /**
@@ -2375,20 +2159,23 @@ public class HBaseAdmin implements Abortable, Closeable {
    * @throws IOException
    */
   public NamespaceDescriptor[] listNamespaceDescriptors() throws IOException {
-    return
-        executeCallable(new MasterCallable<NamespaceDescriptor[]>(getConnection()) {
-          @Override
-          public NamespaceDescriptor[] call() throws Exception {
-            List<HBaseProtos.NamespaceDescriptor> list =
-              master.listNamespaceDescriptors(null, ListNamespaceDescriptorsRequest.newBuilder().
-                build()).getNamespaceDescriptorList();
-            NamespaceDescriptor[] res = new NamespaceDescriptor[list.size()];
-            for(int i = 0; i < list.size(); i++) {
-              res[i] = ProtobufUtil.toNamespaceDescriptor(list.get(i));
-            }
-            return res;
-          }
-        });
+    return executeCallable(new MasterCallable<NamespaceDescriptor[]>(getConnection()) {
+
+      @Override
+      protected NamespaceDescriptor[] rpcCall(MasterService.BlockingInterface master,
+          PayloadCarryingRpcController controller) throws Exception {
+        List<HBaseProtos.NamespaceDescriptor> list =
+            master
+                .listNamespaceDescriptors(controller,
+                  ListNamespaceDescriptorsRequest.getDefaultInstance())
+                .getNamespaceDescriptorList();
+        NamespaceDescriptor[] res = new NamespaceDescriptor[list.size()];
+        for (int i = 0; i < list.size(); i++) {
+          res[i] = ProtobufUtil.toNamespaceDescriptor(list.get(i));
+        }
+        return res;
+      }
+    });
   }
 
   /**
@@ -2397,22 +2184,23 @@ public class HBaseAdmin implements Abortable, Closeable {
    * @return A descriptor
    * @throws IOException
    */
-  public HTableDescriptor[] listTableDescriptorsByNamespace(final String name) throws IOException {
-    return
-        executeCallable(new MasterCallable<HTableDescriptor[]>(getConnection()) {
-          @Override
-          public HTableDescriptor[] call() throws Exception {
-            List<TableSchema> list =
-              master.listTableDescriptorsByNamespace(null, ListTableDescriptorsByNamespaceRequest.
-                newBuilder().setNamespaceName(name).build()).getTableSchemaList();
-            HTableDescriptor[] res = new HTableDescriptor[list.size()];
-            for(int i=0; i < list.size(); i++) {
+  public HTableDescriptor[] listTableDescriptorsByNamespace(String name) throws IOException {
+    final ListTableDescriptorsByNamespaceRequest req =
+        RequestConverter.buildListTableDescriptorsByNamespaceRequest(name);
+    return executeCallable(new MasterCallable<HTableDescriptor[]>(getConnection()) {
+      @Override
+      protected HTableDescriptor[] rpcCall(MasterService.BlockingInterface master,
+          PayloadCarryingRpcController controller) throws Exception {
+        List<TableSchema> list =
+            master.listTableDescriptorsByNamespace(controller, req).getTableSchemaList();
+        HTableDescriptor[] res = new HTableDescriptor[list.size()];
+        for (int i = 0; i < list.size(); i++) {
 
-              res[i] = HTableDescriptor.convert(list.get(i));
-            }
-            return res;
-          }
-        });
+          res[i] = HTableDescriptor.convert(list.get(i));
+        }
+        return res;
+      }
+    });
   }
 
   /**
@@ -2421,34 +2209,34 @@ public class HBaseAdmin implements Abortable, Closeable {
    * @return The list of table names in the namespace
    * @throws IOException
    */
-  public TableName[] listTableNamesByNamespace(final String name) throws IOException {
-    return
-        executeCallable(new MasterCallable<TableName[]>(getConnection()) {
-          @Override
-          public TableName[] call() throws Exception {
-            List<HBaseProtos.TableName> tableNames =
-              master.listTableNamesByNamespace(null, ListTableNamesByNamespaceRequest.
-                newBuilder().setNamespaceName(name).build())
-                .getTableNameList();
-            TableName[] result = new TableName[tableNames.size()];
-            for (int i = 0; i < tableNames.size(); i++) {
-              result[i] = ProtobufUtil.toTableName(tableNames.get(i));
-            }
-            return result;
-          }
-        });
+  public TableName[] listTableNamesByNamespace(String name) throws IOException {
+    final ListTableNamesByNamespaceRequest req =
+        RequestConverter.buildListTableNamesByNamespaceRequest(name);
+    return executeCallable(new MasterCallable<TableName[]>(getConnection()) {
+
+      @Override
+      protected TableName[] rpcCall(MasterService.BlockingInterface master,
+          PayloadCarryingRpcController controller) throws Exception {
+        List<HBaseProtos.TableName> tableNames =
+            master.listTableNamesByNamespace(controller, req).getTableNameList();
+        TableName[] result = new TableName[tableNames.size()];
+        for (int i = 0; i < tableNames.size(); i++) {
+          result[i] = ProtobufUtil.toTableName(tableNames.get(i));
+        }
+        return result;
+      }
+    });
   }
 
   /**
-   * Check to see if HBase is running. Throw an exception if not.
-   * We consider that HBase is running if ZooKeeper and Master are running.
-   *
+   * Check to see if HBase is running. Throw an exception if not. We consider that HBase is running
+   * if ZooKeeper and Master are running.
    * @param conf system configuration
    * @throws MasterNotRunningException if the master is not running
    * @throws ZooKeeperConnectionException if unable to connect to zookeeper
    */
-  public static void checkHBaseAvailable(Configuration conf)
-    throws MasterNotRunningException, ZooKeeperConnectionException, ServiceException, IOException {
+  public static void checkHBaseAvailable(Configuration conf) throws MasterNotRunningException,
+      ZooKeeperConnectionException, ServiceException, IOException {
     Configuration copyOfConf = HBaseConfiguration.create(conf);
 
     // We set it to make it fail as soon as possible if HBase is not available
@@ -2461,18 +2249,17 @@ public class HBaseAdmin implements Abortable, Closeable {
     try {
       // Check ZK first.
       // If the connection exists, we may have a connection to ZK that does
-      //  not work anymore
+      // not work anymore
       ZooKeeperKeepAliveConnection zkw = null;
       try {
         zkw = connection.getKeepAliveZooKeeperWatcher();
-        zkw.getRecoverableZooKeeper().getZooKeeper().exists(
-          zkw.baseZNode, false);
+        zkw.getRecoverableZooKeeper().getZooKeeper().exists(zkw.baseZNode, false);
 
       } catch (IOException e) {
         throw new ZooKeeperConnectionException("Can't connect to ZooKeeper", e);
       } catch (InterruptedException e) {
-        throw (InterruptedIOException)
-            new InterruptedIOException("Can't connect to ZooKeeper").initCause(e);
+        throw (InterruptedIOException) new InterruptedIOException("Can't connect to ZooKeeper")
+            .initCause(e);
       } catch (KeeperException e) {
         throw new ZooKeeperConnectionException("Can't connect to ZooKeeper", e);
       } finally {
@@ -2491,13 +2278,11 @@ public class HBaseAdmin implements Abortable, Closeable {
 
   /**
    * get the regions of a given table.
-   *
    * @param tableName the name of the table
    * @return Ordered list of {@link HRegionInfo}.
    * @throws IOException
    */
-  public List<HRegionInfo> getTableRegions(final TableName tableName)
-  throws IOException {
+  public List<HRegionInfo> getTableRegions(final TableName tableName) throws IOException {
     CatalogTracker ct = getCatalogTracker();
     List<HRegionInfo> Regions = null;
     try {
@@ -2508,8 +2293,7 @@ public class HBaseAdmin implements Abortable, Closeable {
     return Regions;
   }
 
-  public List<HRegionInfo> getTableRegions(final byte[] tableName)
-  throws IOException {
+  public List<HRegionInfo> getTableRegions(final byte[] tableName) throws IOException {
     return getTableRegions(TableName.valueOf(tableName));
   }
 
@@ -2528,7 +2312,7 @@ public class HBaseAdmin implements Abortable, Closeable {
    * @throws IOException if a remote or network exception occurs
    */
   public HTableDescriptor[] getTableDescriptorsByTableName(List<TableName> tableNames)
-  throws IOException {
+      throws IOException {
     return this.connection.getHTableDescriptorsByTableName(tableNames);
   }
 
@@ -2538,10 +2322,9 @@ public class HBaseAdmin implements Abortable, Closeable {
    * @return HTD[] the tableDescriptor
    * @throws IOException if a remote or network exception occurs
    */
-  public HTableDescriptor[] getTableDescriptors(List<String> names)
-  throws IOException {
+  public HTableDescriptor[] getTableDescriptors(List<String> names) throws IOException {
     List<TableName> tableNames = new ArrayList<TableName>(names.size());
-    for(String name : names) {
+    for (String name : names) {
       tableNames.add(TableName.valueOf(name));
     }
     return getTableDescriptorsByTableName(tableNames);
@@ -2549,18 +2332,16 @@ public class HBaseAdmin implements Abortable, Closeable {
 
   /**
    * Roll the log writer. That is, start writing log messages to a new file.
-   *
-   * @param serverName
-   *          The servername of the regionserver. A server name is made of host,
-   *          port and startcode. This is mandatory. Here is an example:
+   * @param serverName The servername of the regionserver. A server name is made of host, port and
+   *          startcode. This is mandatory. Here is an example:
    *          <code> host187.example.com,60020,1289493121758</code>
-   * @return If lots of logs, flush the returned regions so next time through
-   * we can clean logs. Returns null if nothing to flush.  Names are actual
-   * region names as returned by {@link HRegionInfo#getEncodedName()}
+   * @return If lots of logs, flush the returned regions so next time through we can clean logs.
+   *         Returns null if nothing to flush. Names are actual region names as returned by
+   *         {@link HRegionInfo#getEncodedName()}
    * @throws IOException if a remote or network exception occurs
    * @throws FailedLogCloseException
    */
- public synchronized  byte[][] rollHLogWriter(String serverName)
+  public synchronized byte[][] rollHLogWriter(String serverName)
       throws IOException, FailedLogCloseException {
     ServerName sn = ServerName.valueOf(serverName);
     AdminService.BlockingInterface admin = this.connection.getAdmin(sn);
@@ -2583,15 +2364,14 @@ public class HBaseAdmin implements Abortable, Closeable {
     try {
       return getClusterStatus().getMasterCoprocessors();
     } catch (IOException e) {
-      LOG.error("Could not getClusterStatus()",e);
+      LOG.error("Could not getClusterStatus()", e);
       return null;
     }
   }
 
   /**
-   * Get the current compaction state of a table or region.
-   * It could be in a major compaction, a minor compaction, both, or none.
-   *
+   * Get the current compaction state of a table or region. It could be in a major compaction, a
+   * minor compaction, both, or none.
    * @param tableNameOrRegionName table or region to major compact
    * @throws IOException if a remote or network exception occurs
    * @throws InterruptedException
@@ -2603,9 +2383,8 @@ public class HBaseAdmin implements Abortable, Closeable {
   }
 
   /**
-   * Get the current compaction state of a table or region.
-   * It could be in a major compaction, a minor compaction, both, or none.
-   *
+   * Get the current compaction state of a table or region. It could be in a major compaction, a
+   * minor compaction, both, or none.
    * @param tableNameOrRegionName table or region to major compact
    * @throws IOException if a remote or network exception occurs
    * @throws InterruptedException
@@ -2616,56 +2395,53 @@ public class HBaseAdmin implements Abortable, Closeable {
     CompactionState state = CompactionState.NONE;
     CatalogTracker ct = getCatalogTracker();
     try {
-      Pair<HRegionInfo, ServerName> regionServerPair
-        = getRegion(tableNameOrRegionName, ct);
+      Pair<HRegionInfo, ServerName> regionServerPair = getRegion(tableNameOrRegionName, ct);
       if (regionServerPair != null) {
         if (regionServerPair.getSecond() == null) {
           throw new NoServerForRegionException(Bytes.toStringBinary(tableNameOrRegionName));
         } else {
           ServerName sn = regionServerPair.getSecond();
           AdminService.BlockingInterface admin = this.connection.getAdmin(sn);
-          GetRegionInfoRequest request = RequestConverter.buildGetRegionInfoRequest(
-            regionServerPair.getFirst().getRegionName(), true);
+          GetRegionInfoRequest request = RequestConverter
+              .buildGetRegionInfoRequest(regionServerPair.getFirst().getRegionName(), true);
           GetRegionInfoResponse response = admin.getRegionInfo(null, request);
           return response.getCompactionState();
         }
       } else {
-        final TableName tableName =
-            checkTableExists(TableName.valueOf(tableNameOrRegionName), ct);
+        final TableName tableName = checkTableExists(TableName.valueOf(tableNameOrRegionName), ct);
         List<Pair<HRegionInfo, ServerName>> pairs =
-          MetaReader.getTableRegionsAndLocations(ct, tableName);
-        for (Pair<HRegionInfo, ServerName> pair: pairs) {
+            MetaReader.getTableRegionsAndLocations(ct, tableName);
+        for (Pair<HRegionInfo, ServerName> pair : pairs) {
           if (pair.getFirst().isOffline()) continue;
           if (pair.getSecond() == null) continue;
           try {
             ServerName sn = pair.getSecond();
             AdminService.BlockingInterface admin = this.connection.getAdmin(sn);
-            GetRegionInfoRequest request = RequestConverter.buildGetRegionInfoRequest(
-              pair.getFirst().getRegionName(), true);
+            GetRegionInfoRequest request =
+                RequestConverter.buildGetRegionInfoRequest(pair.getFirst().getRegionName(), true);
             GetRegionInfoResponse response = admin.getRegionInfo(null, request);
             switch (response.getCompactionState()) {
-            case MAJOR_AND_MINOR:
-              return CompactionState.MAJOR_AND_MINOR;
-            case MAJOR:
-              if (state == CompactionState.MINOR) {
+              case MAJOR_AND_MINOR:
                 return CompactionState.MAJOR_AND_MINOR;
-              }
-              state = CompactionState.MAJOR;
-              break;
-            case MINOR:
-              if (state == CompactionState.MAJOR) {
-                return CompactionState.MAJOR_AND_MINOR;
-              }
-              state = CompactionState.MINOR;
-              break;
-            case NONE:
+              case MAJOR:
+                if (state == CompactionState.MINOR) {
+                  return CompactionState.MAJOR_AND_MINOR;
+                }
+                state = CompactionState.MAJOR;
+                break;
+              case MINOR:
+                if (state == CompactionState.MAJOR) {
+                  return CompactionState.MAJOR_AND_MINOR;
+                }
+                state = CompactionState.MINOR;
+                break;
+              case NONE:
               default: // nothing, continue
             }
           } catch (NotServingRegionException e) {
             if (LOG.isDebugEnabled()) {
-              LOG.debug("Trying to get compaction state of " +
-                pair.getFirst() + ": " +
-                StringUtils.stringifyException(e));
+              LOG.debug("Trying to get compaction state of " + pair.getFirst() + ": "
+                  + StringUtils.stringifyException(e));
             }
           } catch (RemoteException e) {
             if (e.getMessage().indexOf(NotServingRegionException.class.getName()) >= 0) {
@@ -2703,17 +2479,14 @@ public class HBaseAdmin implements Abortable, Closeable {
    * @throws SnapshotCreationException if snapshot creation failed
    * @throws IllegalArgumentException if the snapshot request is formatted incorrectly
    */
-  public void snapshot(final String snapshotName,
-                       final TableName tableName) throws IOException,
-      SnapshotCreationException, IllegalArgumentException {
+  public void snapshot(final String snapshotName, final TableName tableName)
+      throws IOException, SnapshotCreationException, IllegalArgumentException {
     snapshot(snapshotName, tableName, SnapshotDescription.Type.FLUSH);
   }
 
-  public void snapshot(final String snapshotName,
-                       final String tableName) throws IOException,
-      SnapshotCreationException, IllegalArgumentException {
-    snapshot(snapshotName, TableName.valueOf(tableName),
-        SnapshotDescription.Type.FLUSH);
+  public void snapshot(final String snapshotName, final String tableName)
+      throws IOException, SnapshotCreationException, IllegalArgumentException {
+    snapshot(snapshotName, TableName.valueOf(tableName), SnapshotDescription.Type.FLUSH);
   }
 
   /**
@@ -2731,38 +2504,36 @@ public class HBaseAdmin implements Abortable, Closeable {
    * @throws SnapshotCreationException if snapshot creation failed
    * @throws IllegalArgumentException if the snapshot request is formatted incorrectly
    */
-   public void snapshot(final byte[] snapshotName, final byte[] tableName,
-                       final SnapshotDescription.Type flushType) throws
-      IOException, SnapshotCreationException, IllegalArgumentException {
-      snapshot(Bytes.toString(snapshotName), Bytes.toString(tableName), flushType);
+  public void snapshot(final byte[] snapshotName, final byte[] tableName,
+      final SnapshotDescription.Type flushType)
+      throws IOException, SnapshotCreationException, IllegalArgumentException {
+    snapshot(Bytes.toString(snapshotName), Bytes.toString(tableName), flushType);
   }
+
   /**
-   public void snapshot(final String snapshotName,
-    * Create a timestamp consistent snapshot for the given table.
-                        final byte[] tableName) throws IOException,
-    * <p>
-    * Snapshots are considered unique based on <b>the name of the snapshot</b>. Attempts to take a
-    * snapshot with the same name (even a different type or with different parameters) will fail with
-    * a {@link SnapshotCreationException} indicating the duplicate naming.
-    * <p>
-    * Snapshot names follow the same naming constraints as tables in HBase.
-    * @param snapshotName name of the snapshot to be created
-    * @param tableName name of the table for which snapshot is created
-    * @throws IOException if a remote or network exception occurs
-    * @throws SnapshotCreationException if snapshot creation failed
-    * @throws IllegalArgumentException if the snapshot request is formatted incorrectly
-    */
-  public void snapshot(final byte[] snapshotName,
-                       final TableName tableName) throws IOException,
-      SnapshotCreationException, IllegalArgumentException {
+   * public void snapshot(final String snapshotName, Create a timestamp consistent snapshot for the
+   * given table. final byte[] tableName) throws IOException,
+   * <p>
+   * Snapshots are considered unique based on <b>the name of the snapshot</b>. Attempts to take a
+   * snapshot with the same name (even a different type or with different parameters) will fail with
+   * a {@link SnapshotCreationException} indicating the duplicate naming.
+   * <p>
+   * Snapshot names follow the same naming constraints as tables in HBase.
+   * @param snapshotName name of the snapshot to be created
+   * @param tableName name of the table for which snapshot is created
+   * @throws IOException if a remote or network exception occurs
+   * @throws SnapshotCreationException if snapshot creation failed
+   * @throws IllegalArgumentException if the snapshot request is formatted incorrectly
+   */
+  public void snapshot(final byte[] snapshotName, final TableName tableName)
+      throws IOException, SnapshotCreationException, IllegalArgumentException {
     snapshot(Bytes.toString(snapshotName), tableName, SnapshotDescription.Type.FLUSH);
   }
 
-  public void snapshot(final byte[] snapshotName,
-                       final byte[] tableName) throws IOException,
-      SnapshotCreationException, IllegalArgumentException {
+  public void snapshot(final byte[] snapshotName, final byte[] tableName)
+      throws IOException, SnapshotCreationException, IllegalArgumentException {
     snapshot(Bytes.toString(snapshotName), TableName.valueOf(tableName),
-        SnapshotDescription.Type.FLUSH);
+      SnapshotDescription.Type.FLUSH);
   }
 
   /**
@@ -2783,28 +2554,21 @@ public class HBaseAdmin implements Abortable, Closeable {
    * @throws SnapshotCreationException if snapshot creation failed
    * @throws IllegalArgumentException if the snapshot request is formatted incorrectly
    */
-  public void snapshot(final String snapshotName,
-                       final TableName tableName,
-                      SnapshotDescription.Type type) throws IOException, SnapshotCreationException,
-      IllegalArgumentException {
-    SnapshotDescription.Builder builder = SnapshotDescription.newBuilder();
-    builder.setTable(tableName.getNameAsString());
-    builder.setName(snapshotName);
-    builder.setType(type);
-    snapshot(builder.build());
+  public void snapshot(String snapshotName, TableName tableName, SnapshotDescription.Type type)
+      throws IOException, SnapshotCreationException, IllegalArgumentException {
+    snapshot(SnapshotDescription.newBuilder().setTable(tableName.getNameAsString())
+        .setName(snapshotName).setType(type).build());
   }
 
-  public void snapshot(final String snapshotName,
-                       final String tableName,
-                      SnapshotDescription.Type type) throws IOException, SnapshotCreationException,
-      IllegalArgumentException {
+  public void snapshot(final String snapshotName, final String tableName,
+      SnapshotDescription.Type type)
+      throws IOException, SnapshotCreationException, IllegalArgumentException {
     snapshot(snapshotName, TableName.valueOf(tableName), type);
   }
 
-  public void snapshot(final String snapshotName,
-                       final byte[] tableName,
-                      SnapshotDescription.Type type) throws IOException, SnapshotCreationException,
-      IllegalArgumentException {
+  public void snapshot(final String snapshotName, final byte[] tableName,
+      SnapshotDescription.Type type)
+      throws IOException, SnapshotCreationException, IllegalArgumentException {
     snapshot(snapshotName, TableName.valueOf(tableName), type);
   }
 
@@ -2829,28 +2593,27 @@ public class HBaseAdmin implements Abortable, Closeable {
    * @throws SnapshotCreationException if snapshot failed to be taken
    * @throws IllegalArgumentException if the snapshot request is formatted incorrectly
    */
-  public void snapshot(SnapshotDescription snapshot) throws IOException, SnapshotCreationException,
-      IllegalArgumentException {
+  public void snapshot(SnapshotDescription snapshot)
+      throws IOException, SnapshotCreationException, IllegalArgumentException {
     // actually take the snapshot
     SnapshotResponse response = takeSnapshotAsync(snapshot);
-    final IsSnapshotDoneRequest request = IsSnapshotDoneRequest.newBuilder().setSnapshot(snapshot)
-        .build();
-    IsSnapshotDoneResponse done = null;
+    final IsSnapshotDoneRequest req = RequestConverter.buildIsSnapshotDoneRequest(snapshot);
+    IsSnapshotDoneRequest.newBuilder().setSnapshot(snapshot).build();
+    boolean done = false;
     long start = EnvironmentEdgeManager.currentTimeMillis();
     long max = response.getExpectedTimeout();
     long maxPauseTime = max / this.numRetries;
     int tries = 0;
-    LOG.debug("Waiting a max of " + max + " ms for snapshot '" +
-        ClientSnapshotDescriptionUtils.toString(snapshot) + "'' to complete. (max " +
-        maxPauseTime + " ms per retry)");
-    while (tries == 0
-        || ((EnvironmentEdgeManager.currentTimeMillis() - start) < max && !done.getDone())) {
+    LOG.debug("Waiting a max of " + max + " ms for snapshot '"
+        + ClientSnapshotDescriptionUtils.toString(snapshot) + "'' to complete. (max " + maxPauseTime
+        + " ms per retry)");
+    while (tries == 0 || ((EnvironmentEdgeManager.currentTimeMillis() - start) < max && !done)) {
       try {
         // sleep a backoff <= pauseTime amount
         long sleep = getPauseTime(tries++);
         sleep = sleep > maxPauseTime ? maxPauseTime : sleep;
-        LOG.debug("(#" + tries + ") Sleeping: " + sleep +
-          "ms while waiting for snapshot completion.");
+        LOG.debug(
+          "(#" + tries + ") Sleeping: " + sleep + "ms while waiting for snapshot completion.");
         Thread.sleep(sleep);
 
       } catch (InterruptedException e) {
@@ -2858,16 +2621,21 @@ public class HBaseAdmin implements Abortable, Closeable {
         Thread.currentThread().interrupt();
       }
       LOG.debug("Getting current status of snapshot from master...");
-      done = executeCallable(new MasterCallable<IsSnapshotDoneResponse>(getConnection()) {
-        @Override
-        public IsSnapshotDoneResponse call() throws ServiceException {
-          return master.isSnapshotDone(null, request);
-        }
-      });
-    };
-    if (!done.getDone()) {
-      throw new SnapshotCreationException("Snapshot '" + snapshot.getName()
-          + "' wasn't completed in expectedTime:" + max + " ms", snapshot);
+      done = executeCallable(
+        new MasterCallable<Boolean>(getConnection(), TableName.valueOf(snapshot.getTable())) {
+
+          @Override
+          protected Boolean rpcCall(MasterService.BlockingInterface master,
+              PayloadCarryingRpcController controller) throws ServiceException {
+            return master.isSnapshotDone(controller, req).getDone();
+          }
+        });
+    }
+    ;
+    if (!done) {
+      throw new SnapshotCreationException(
+          "Snapshot '" + snapshot.getName() + "' wasn't completed in expectedTime:" + max + " ms",
+          snapshot);
     }
   }
 
@@ -2881,16 +2649,18 @@ public class HBaseAdmin implements Abortable, Closeable {
    * @throws SnapshotCreationException if snapshot creation failed
    * @throws IllegalArgumentException if the snapshot request is formatted incorrectly
    */
-  public SnapshotResponse takeSnapshotAsync(SnapshotDescription snapshot) throws IOException,
-      SnapshotCreationException {
+  public SnapshotResponse takeSnapshotAsync(SnapshotDescription snapshot)
+      throws IOException, SnapshotCreationException {
     ClientSnapshotDescriptionUtils.assertSnapshotRequestIsValid(snapshot);
-    final SnapshotRequest request = SnapshotRequest.newBuilder().setSnapshot(snapshot)
-        .build();
+    final SnapshotRequest req = RequestConverter.buildSnapshotRequest(snapshot);
     // run the snapshot on the master
-    return executeCallable(new MasterCallable<SnapshotResponse>(getConnection()) {
+    return executeCallable(new MasterCallable<SnapshotResponse>(getConnection(),
+        TableName.valueOf(snapshot.getTable())) {
+
       @Override
-      public SnapshotResponse call() throws ServiceException {
-        return master.snapshot(null, request);
+      protected SnapshotResponse rpcCall(MasterService.BlockingInterface master,
+          PayloadCarryingRpcController controller) throws ServiceException {
+        return master.snapshot(null, req);
       }
     });
   }
@@ -2915,26 +2685,25 @@ public class HBaseAdmin implements Abortable, Closeable {
    * @throws HBaseSnapshotException if the snapshot failed
    * @throws UnknownSnapshotException if the requested snapshot is unknown
    */
-  public boolean isSnapshotFinished(final SnapshotDescription snapshot)
+  public boolean isSnapshotFinished(SnapshotDescription snapshot)
       throws IOException, HBaseSnapshotException, UnknownSnapshotException {
+    final IsSnapshotDoneRequest req = RequestConverter.buildIsSnapshotDoneRequest(snapshot);
+    return executeCallable(new MasterCallable<Boolean>(getConnection()) {
 
-    return executeCallable(new MasterCallable<IsSnapshotDoneResponse>(getConnection()) {
       @Override
-      public IsSnapshotDoneResponse call() throws ServiceException {
-        return master.isSnapshotDone(null,
-          IsSnapshotDoneRequest.newBuilder().setSnapshot(snapshot).build());
+      protected Boolean rpcCall(MasterService.BlockingInterface master,
+          PayloadCarryingRpcController controller) throws ServiceException {
+        return master.isSnapshotDone(controller, req).getDone();
       }
-    }).getDone();
+    });
   }
 
   /**
-   * Restore the specified snapshot on the original table. (The table must be disabled)
-   * If the "hbase.snapshot.restore.take.failsafe.snapshot" configuration property
-   * is set to true, a snapshot of the current table is taken
-   * before executing the restore operation.
-   * In case of restore failure, the failsafe snapshot will be restored.
-   * If the restore completes without problem the failsafe snapshot is deleted.
-   *
+   * Restore the specified snapshot on the original table. (The table must be disabled) If the
+   * "hbase.snapshot.restore.take.failsafe.snapshot" configuration property is set to true, a
+   * snapshot of the current table is taken before executing the restore operation. In case of
+   * restore failure, the failsafe snapshot will be restored. If the restore completes without
+   * problem the failsafe snapshot is deleted.
    * @param snapshotName name of the snapshot to restore
    * @throws IOException if a remote or network exception occurs
    * @throws RestoreSnapshotException if snapshot failed to be restored
@@ -2946,13 +2715,11 @@ public class HBaseAdmin implements Abortable, Closeable {
   }
 
   /**
-   * Restore the specified snapshot on the original table. (The table must be disabled)
-   * If the "hbase.snapshot.restore.take.failsafe.snapshot" configuration property
-   * is set to true, a snapshot of the current table is taken
-   * before executing the restore operation.
-   * In case of restore failure, the failsafe snapshot will be restored.
-   * If the restore completes without problem the failsafe snapshot is deleted.
-   *
+   * Restore the specified snapshot on the original table. (The table must be disabled) If the
+   * "hbase.snapshot.restore.take.failsafe.snapshot" configuration property is set to true, a
+   * snapshot of the current table is taken before executing the restore operation. In case of
+   * restore failure, the failsafe snapshot will be restored. If the restore completes without
+   * problem the failsafe snapshot is deleted.
    * @param snapshotName name of the snapshot to restore
    * @throws IOException if a remote or network exception occurs
    * @throws RestoreSnapshotException if snapshot failed to be restored
@@ -2961,20 +2728,17 @@ public class HBaseAdmin implements Abortable, Closeable {
   public void restoreSnapshot(final String snapshotName)
       throws IOException, RestoreSnapshotException {
     boolean takeFailSafeSnapshot =
-      conf.getBoolean("hbase.snapshot.restore.take.failsafe.snapshot", false);
+        conf.getBoolean("hbase.snapshot.restore.take.failsafe.snapshot", false);
     restoreSnapshot(snapshotName, takeFailSafeSnapshot);
   }
 
   /**
-   * Restore the specified snapshot on the original table. (The table must be disabled)
-   * If 'takeFailSafeSnapshot' is set to true, a snapshot of the current table is taken
-   * before executing the restore operation.
-   * In case of restore failure, the failsafe snapshot will be restored.
-   * If the restore completes without problem the failsafe snapshot is deleted.
-   *
-   * The failsafe snapshot name is configurable by using the property
+   * Restore the specified snapshot on the original table. (The table must be disabled) If
+   * 'takeFailSafeSnapshot' is set to true, a snapshot of the current table is taken before
+   * executing the restore operation. In case of restore failure, the failsafe snapshot will be
+   * restored. If the restore completes without problem the failsafe snapshot is deleted. The
+   * failsafe snapshot name is configurable by using the property
    * "hbase.snapshot.restore.failsafe.name".
-   *
    * @param snapshotName name of the snapshot to restore
    * @param takeFailSafeSnapshot true if the failsafe snapshot should be taken
    * @throws IOException if a remote or network exception occurs
@@ -2987,15 +2751,12 @@ public class HBaseAdmin implements Abortable, Closeable {
   }
 
   /**
-   * Restore the specified snapshot on the original table. (The table must be disabled)
-   * If 'takeFailSafeSnapshot' is set to true, a snapshot of the current table is taken
-   * before executing the restore operation.
-   * In case of restore failure, the failsafe snapshot will be restored.
-   * If the restore completes without problem the failsafe snapshot is deleted.
-   *
-   * The failsafe snapshot name is configurable by using the property
+   * Restore the specified snapshot on the original table. (The table must be disabled) If
+   * 'takeFailSafeSnapshot' is set to true, a snapshot of the current table is taken before
+   * executing the restore operation. In case of restore failure, the failsafe snapshot will be
+   * restored. If the restore completes without problem the failsafe snapshot is deleted. The
+   * failsafe snapshot name is configurable by using the property
    * "hbase.snapshot.restore.failsafe.name".
-   *
    * @param snapshotName name of the snapshot to restore
    * @param takeFailSafeSnapshot true if the failsafe snapshot should be taken
    * @throws IOException if a remote or network exception occurs
@@ -3005,7 +2766,7 @@ public class HBaseAdmin implements Abortable, Closeable {
   public void restoreSnapshot(final String snapshotName, boolean takeFailSafeSnapshot)
       throws IOException, RestoreSnapshotException {
     TableName tableName = null;
-    for (SnapshotDescription snapshotInfo: listSnapshots()) {
+    for (SnapshotDescription snapshotInfo : listSnapshots()) {
       if (snapshotInfo.getName().equals(snapshotName)) {
         tableName = TableName.valueOf(snapshotInfo.getTable());
         break;
@@ -3014,7 +2775,7 @@ public class HBaseAdmin implements Abortable, Closeable {
 
     if (tableName == null) {
       throw new RestoreSnapshotException(
-        "Unable to find the table name for snapshot=" + snapshotName);
+          "Unable to find the table name for snapshot=" + snapshotName);
     }
 
     // The table does not exists, switch to clone.
@@ -3022,8 +2783,8 @@ public class HBaseAdmin implements Abortable, Closeable {
       try {
         cloneSnapshot(snapshotName, tableName);
       } catch (InterruptedException e) {
-        throw new InterruptedIOException("Interrupted when restoring a nonexistent table: " +
-          e.getMessage());
+        throw new InterruptedIOException(
+            "Interrupted when restoring a nonexistent table: " + e.getMessage());
       }
       return;
     }
@@ -3038,10 +2799,11 @@ public class HBaseAdmin implements Abortable, Closeable {
     if (takeFailSafeSnapshot) {
       failSafeSnapshotSnapshotName = conf.get("hbase.snapshot.restore.failsafe.name",
         "hbase-failsafe-{snapshot.name}-{restore.timestamp}");
-      failSafeSnapshotSnapshotName = failSafeSnapshotSnapshotName
-        .replace("{snapshot.name}", snapshotName)
-        .replace("{table.name}", tableName.toString().replace(TableName.NAMESPACE_DELIM, '.'))
-        .replace("{restore.timestamp}", String.valueOf(EnvironmentEdgeManager.currentTimeMillis()));
+      failSafeSnapshotSnapshotName =
+          failSafeSnapshotSnapshotName.replace("{snapshot.name}", snapshotName)
+              .replace("{table.name}", tableName.toString().replace(TableName.NAMESPACE_DELIM, '.'))
+              .replace("{restore.timestamp}",
+                String.valueOf(EnvironmentEdgeManager.currentTimeMillis()));
       LOG.info("Taking restore-failsafe snapshot: " + failSafeSnapshotSnapshotName);
       snapshot(failSafeSnapshotSnapshotName, tableName);
     }
@@ -3055,8 +2817,8 @@ public class HBaseAdmin implements Abortable, Closeable {
       if (takeFailSafeSnapshot) {
         try {
           internalRestoreSnapshot(failSafeSnapshotSnapshotName, tableName);
-          String msg = "Restore snapshot=" + snapshotName +
-            " failed. Rollback to snapshot=" + failSafeSnapshotSnapshotName + " succeeded.";
+          String msg = "Restore snapshot=" + snapshotName + " failed. Rollback to snapshot="
+              + failSafeSnapshotSnapshotName + " succeeded.";
           LOG.error(msg, e);
           throw new RestoreSnapshotException(msg, e);
         } catch (IOException ex) {
@@ -3082,7 +2844,6 @@ public class HBaseAdmin implements Abortable, Closeable {
 
   /**
    * Create a new table by cloning the snapshot content.
-   *
    * @param snapshotName name of the snapshot to be cloned
    * @param tableName name of the table where the snapshot will be restored
    * @throws IOException if a remote or network exception occurs
@@ -3097,7 +2858,6 @@ public class HBaseAdmin implements Abortable, Closeable {
 
   /**
    * Create a new table by cloning the snapshot content.
-   *
    * @param snapshotName name of the snapshot to be cloned
    * @param tableName name of the table where the snapshot will be restored
    * @throws IOException if a remote or network exception occurs
@@ -3110,11 +2870,8 @@ public class HBaseAdmin implements Abortable, Closeable {
     cloneSnapshot(Bytes.toString(snapshotName), tableName);
   }
 
-
-
   /**
    * Create a new table by cloning the snapshot content.
-   *
    * @param snapshotName name of the snapshot to be cloned
    * @param tableName name of the table where the snapshot will be restored
    * @throws IOException if a remote or network exception occurs
@@ -3129,7 +2886,6 @@ public class HBaseAdmin implements Abortable, Closeable {
 
   /**
    * Create a new table by cloning the snapshot content.
-   *
    * @param snapshotName name of the snapshot to be cloned
    * @param tableName name of the table where the snapshot will be restored
    * @throws IOException if a remote or network exception occurs
@@ -3148,49 +2904,48 @@ public class HBaseAdmin implements Abortable, Closeable {
 
   /**
    * Execute a distributed procedure on a cluster.
-   *
-   * @param signature A distributed procedure is uniquely identified
-   * by its signature (default the root ZK node name of the procedure).
+   * @param signature A distributed procedure is uniquely identified by its signature (default the
+   *          root ZK node name of the procedure).
    * @param instance The instance name of the procedure. For some procedures, this parameter is
-   * optional.
+   *          optional.
    * @param props Property/Value pairs of properties passing to the procedure
    */
-  public void execProcedure(String signature, String instance,
-      Map<String, String> props) throws IOException {
+  public void execProcedure(String signature, String instance, Map<String, String> props)
+      throws IOException {
     ProcedureDescription.Builder builder = ProcedureDescription.newBuilder();
     builder.setSignature(signature).setInstance(instance);
     for (String key : props.keySet()) {
-      NameStringPair pair = NameStringPair.newBuilder().setName(key)
-          .setValue(props.get(key)).build();
+      NameStringPair pair =
+          NameStringPair.newBuilder().setName(key).setValue(props.get(key)).build();
       builder.addConfiguration(pair);
     }
 
-    final ExecProcedureRequest request = ExecProcedureRequest.newBuilder()
-        .setProcedure(builder.build()).build();
+    final ExecProcedureRequest req =
+        RequestConverter.buildExecProcedureRequest(signature, instance, props);
     // run the procedure on the master
-    ExecProcedureResponse response = executeCallable(new MasterCallable<ExecProcedureResponse>(
-        getConnection()) {
-      @Override
-      public ExecProcedureResponse call() throws ServiceException {
-        return master.execProcedure(null, request);
-      }
-    });
+    ExecProcedureResponse response =
+        executeCallable(new MasterCallable<ExecProcedureResponse>(getConnection()) {
+          @Override
+          protected ExecProcedureResponse rpcCall(MasterService.BlockingInterface master,
+              PayloadCarryingRpcController controller) throws ServiceException {
+            return master.execProcedure(controller, req);
+          }
+        });
 
     long start = EnvironmentEdgeManager.currentTimeMillis();
     long max = response.getExpectedTimeout();
     long maxPauseTime = max / this.numRetries;
     int tries = 0;
-    LOG.debug("Waiting a max of " + max + " ms for procedure '" +
-        signature + " : " + instance + "'' to complete. (max " + maxPauseTime + " ms per retry)");
+    LOG.debug("Waiting a max of " + max + " ms for procedure '" + signature + " : " + instance
+        + "'' to complete. (max " + maxPauseTime + " ms per retry)");
     boolean done = false;
-    while (tries == 0
-        || ((EnvironmentEdgeManager.currentTimeMillis() - start) < max && !done)) {
+    while (tries == 0 || ((EnvironmentEdgeManager.currentTimeMillis() - start) < max && !done)) {
       try {
         // sleep a backoff <= pauseTime amount
         long sleep = getPauseTime(tries++);
         sleep = sleep > maxPauseTime ? maxPauseTime : sleep;
-        LOG.debug("(#" + tries + ") Sleeping: " + sleep +
-          "ms while waiting for procedure completion.");
+        LOG.debug(
+          "(#" + tries + ") Sleeping: " + sleep + "ms while waiting for procedure completion.");
         Thread.sleep(sleep);
 
       } catch (InterruptedException e) {
@@ -3216,7 +2971,6 @@ public class HBaseAdmin implements Abortable, Closeable {
    * <li>finished with error - throws the exception that caused the procedure to fail</li>
    * </ol>
    * <p>
-   *
    * @param signature The signature that uniquely identifies a procedure
    * @param instance The instance name of the procedure
    * @param props Property/Value pairs of properties passing to the procedure
@@ -3225,70 +2979,63 @@ public class HBaseAdmin implements Abortable, Closeable {
    */
   public boolean isProcedureFinished(String signature, String instance, Map<String, String> props)
       throws IOException {
-    final ProcedureDescription.Builder builder = ProcedureDescription.newBuilder();
-    builder.setSignature(signature).setInstance(instance);
-    for (String key : props.keySet()) {
-      NameStringPair pair = NameStringPair.newBuilder().setName(key)
-          .setValue(props.get(key)).build();
-      builder.addConfiguration(pair);
-    }
-    final ProcedureDescription desc = builder.build();
-    return executeCallable(
-        new MasterCallable<IsProcedureDoneResponse>(getConnection()) {
-          @Override
-          public IsProcedureDoneResponse call() throws ServiceException {
-            return master.isProcedureDone(null, IsProcedureDoneRequest
-                .newBuilder().setProcedure(desc).build());
-          }
-        }).getDone();
+    final IsProcedureDoneRequest req =
+        RequestConverter.buildIsProcedureDoneRequest(signature, instance, props);
+    return executeCallable(new MasterCallable<Boolean>(getConnection()) {
+
+      @Override
+      protected Boolean rpcCall(MasterService.BlockingInterface master,
+          PayloadCarryingRpcController controller) throws ServiceException {
+        return master.isProcedureDone(controller, req).getDone();
+      }
+    });
   }
 
   /**
-   * Execute Restore/Clone snapshot and wait for the server to complete (blocking).
-   * To check if the cloned table exists, use {@link #isTableAvailable} -- it is not safe to
-   * create an HTable instance to this table before it is available.
+   * Execute Restore/Clone snapshot and wait for the server to complete (blocking). To check if the
+   * cloned table exists, use {@link #isTableAvailable} -- it is not safe to create an HTable
+   * instance to this table before it is available.
    * @param snapshotName snapshot to restore
    * @param tableName table name to restore the snapshot on
    * @throws IOException if a remote or network exception occurs
    * @throws RestoreSnapshotException if snapshot failed to be restored
    * @throws IllegalArgumentException if the restore request is formatted incorrectly
    */
-  private void internalRestoreSnapshot(final String snapshotName, final TableName
-      tableName)
+  private void internalRestoreSnapshot(String snapshotName, TableName tableName)
       throws IOException, RestoreSnapshotException {
-    SnapshotDescription snapshot = SnapshotDescription.newBuilder()
-        .setName(snapshotName).setTable(tableName.getNameAsString()).build();
-
+    SnapshotDescription snapshot = SnapshotDescription.newBuilder().setName(snapshotName)
+        .setTable(tableName.getNameAsString()).build();
     // actually restore the snapshot
     internalRestoreSnapshotAsync(snapshot);
 
-    final IsRestoreSnapshotDoneRequest request = IsRestoreSnapshotDoneRequest.newBuilder()
-        .setSnapshot(snapshot).build();
-    IsRestoreSnapshotDoneResponse done = IsRestoreSnapshotDoneResponse.newBuilder()
-        .setDone(false).buildPartial();
+    final IsRestoreSnapshotDoneRequest req =
+        RequestConverter.buildIsRestoreSnapshotDoneRequest(snapshot);
+    boolean done;
     final long maxPauseTime = 5000;
     int tries = 0;
-    while (!done.getDone()) {
+    do {
       try {
         // sleep a backoff <= pauseTime amount
         long sleep = getPauseTime(tries++);
         sleep = sleep > maxPauseTime ? maxPauseTime : sleep;
-        LOG.debug(tries + ") Sleeping: " + sleep + " ms while we wait for snapshot restore to complete.");
+        LOG.debug(
+          tries + ") Sleeping: " + sleep + " ms while we wait for snapshot restore to complete.");
         Thread.sleep(sleep);
       } catch (InterruptedException e) {
         LOG.debug("Interrupted while waiting for snapshot " + snapshot + " restore to complete");
         Thread.currentThread().interrupt();
       }
       LOG.debug("Getting current status of snapshot restore from master...");
-      done = executeCallable(new MasterCallable<IsRestoreSnapshotDoneResponse>(
-          getConnection()) {
+      done = executeCallable(new MasterCallable<Boolean>(getConnection(), tableName) {
+
         @Override
-        public IsRestoreSnapshotDoneResponse call() throws ServiceException {
-          return master.isRestoreSnapshotDone(null, request);
+        protected Boolean rpcCall(MasterService.BlockingInterface master,
+            PayloadCarryingRpcController controller) throws ServiceException {
+          return master.isRestoreSnapshotDone(controller, req).getDone();
         }
       });
-    }
-    if (!done.getDone()) {
+    } while (!done);
+    if (!done) {
       throw new RestoreSnapshotException("Snapshot '" + snapshot.getName() + "' wasn't restored.");
     }
   }
@@ -3303,18 +3050,17 @@ public class HBaseAdmin implements Abortable, Closeable {
    * @throws RestoreSnapshotException if snapshot failed to be restored
    * @throws IllegalArgumentException if the restore request is formatted incorrectly
    */
-  private RestoreSnapshotResponse internalRestoreSnapshotAsync(final SnapshotDescription snapshot)
+  private RestoreSnapshotResponse internalRestoreSnapshotAsync(SnapshotDescription snapshot)
       throws IOException, RestoreSnapshotException {
     ClientSnapshotDescriptionUtils.assertSnapshotRequestIsValid(snapshot);
-
-    final RestoreSnapshotRequest request = RestoreSnapshotRequest.newBuilder().setSnapshot(snapshot)
-        .build();
-
+    final RestoreSnapshotRequest req = RequestConverter.buildRestoreSnapshotRequest(snapshot);
     // run the snapshot restore on the master
-    return executeCallable(new MasterCallable<RestoreSnapshotResponse>(getConnection()) {
+    return executeCallable(new MasterCallable<RestoreSnapshotResponse>(getConnection(),
+        TableName.valueOf(snapshot.getTable())) {
       @Override
-      public RestoreSnapshotResponse call() throws ServiceException {
-        return master.restoreSnapshot(null, request);
+      protected RestoreSnapshotResponse rpcCall(MasterService.BlockingInterface master,
+          PayloadCarryingRpcController controller) throws ServiceException {
+        return master.restoreSnapshot(controller, req);
       }
     });
   }
@@ -3326,9 +3072,12 @@ public class HBaseAdmin implements Abortable, Closeable {
    */
   public List<SnapshotDescription> listSnapshots() throws IOException {
     return executeCallable(new MasterCallable<List<SnapshotDescription>>(getConnection()) {
+
       @Override
-      public List<SnapshotDescription> call() throws ServiceException {
-        return master.getCompletedSnapshots(null, GetCompletedSnapshotsRequest.newBuilder().build())
+      protected List<SnapshotDescription> rpcCall(MasterService.BlockingInterface master,
+          PayloadCarryingRpcController controller) throws ServiceException {
+        return master
+            .getCompletedSnapshots(controller, GetCompletedSnapshotsRequest.getDefaultInstance())
             .getSnapshotsList();
       }
     });
@@ -3336,7 +3085,6 @@ public class HBaseAdmin implements Abortable, Closeable {
 
   /**
    * List all the completed snapshots matching the given regular expression.
-   *
    * @param regex The regular expression to match against
    * @return - returns a List of SnapshotDescription
    * @throws IOException if a remote or network exception occurs
@@ -3347,7 +3095,6 @@ public class HBaseAdmin implements Abortable, Closeable {
 
   /**
    * List all the completed snapshots matching the given pattern.
-   *
    * @param pattern The compiled regular expression to match against
    * @return - returns a List of SnapshotDescription
    * @throws IOException if a remote or network exception occurs
@@ -3368,7 +3115,7 @@ public class HBaseAdmin implements Abortable, Closeable {
    * @param snapshotName name of the snapshot
    * @throws IOException if a remote or network exception occurs
    */
-  public void deleteSnapshot(final byte[] snapshotName) throws IOException {
+  public void deleteSnapshot(byte[] snapshotName) throws IOException {
     deleteSnapshot(Bytes.toString(snapshotName));
   }
 
@@ -3377,19 +3124,10 @@ public class HBaseAdmin implements Abortable, Closeable {
    * @param snapshotName name of the snapshot
    * @throws IOException if a remote or network exception occurs
    */
-  public void deleteSnapshot(final String snapshotName) throws IOException {
+  public void deleteSnapshot(String snapshotName) throws IOException {
     // make sure the snapshot is possibly valid
     TableName.isLegalFullyQualifiedTableName(Bytes.toBytes(snapshotName));
-    // do the delete
-    executeCallable(new MasterCallable<Void>(getConnection()) {
-      @Override
-      public Void call() throws ServiceException {
-        master.deleteSnapshot(null,
-          DeleteSnapshotRequest.newBuilder().
-            setSnapshot(SnapshotDescription.newBuilder().setName(snapshotName).build()).build());
-        return null;
-      }
-    });
+    internalDeleteSnapshot(SnapshotDescription.newBuilder().setName(snapshotName).build());
   }
 
   /**
@@ -3409,22 +3147,24 @@ public class HBaseAdmin implements Abortable, Closeable {
   public void deleteSnapshots(final Pattern pattern) throws IOException {
     List<SnapshotDescription> snapshots = listSnapshots(pattern);
     for (final SnapshotDescription snapshot : snapshots) {
-       try {
-         internalDeleteSnapshot(snapshot);
-       } catch (IOException ex) {
-         LOG.info(
-           "Failed to delete snapshot " + snapshot.getName() + " for table " + snapshot.getTable(),
-           ex);
-       }
+      try {
+        internalDeleteSnapshot(snapshot);
+      } catch (IOException ex) {
+        LOG.info(
+          "Failed to delete snapshot " + snapshot.getName() + " for table " + snapshot.getTable(),
+          ex);
+      }
     }
   }
 
-  private void internalDeleteSnapshot(final SnapshotDescription snapshot) throws IOException {
+  private void internalDeleteSnapshot(SnapshotDescription snapshot) throws IOException {
+    final DeleteSnapshotRequest req = RequestConverter.buildDeleteSnapshotRequest(snapshot);
     executeCallable(new MasterCallable<Void>(getConnection()) {
+
       @Override
-      public Void call() throws ServiceException {
-        this.master.deleteSnapshot(null, DeleteSnapshotRequest.newBuilder().setSnapshot(snapshot)
-            .build());
+      protected Void rpcCall(MasterService.BlockingInterface master,
+          PayloadCarryingRpcController controller) throws ServiceException {
+        master.deleteSnapshot(controller, req);
         return null;
       }
     });
@@ -3432,15 +3172,20 @@ public class HBaseAdmin implements Abortable, Closeable {
 
   /**
    * Apply the new quota settings.
-   *
    * @param quota the quota settings
    * @throws IOException if a remote or network exception occurs
    */
   public void setQuota(final QuotaSettings quota) throws IOException {
+    final SetQuotaRequest req = QuotaSettings.buildSetQuotaRequestProto(quota);
     executeCallable(new MasterCallable<Void>(getConnection()) {
+
       @Override
-      public Void call() throws ServiceException {
-        this.master.setQuota(null, QuotaSettings.buildSetQuotaRequestProto(quota));
+      protected Void rpcCall(MasterService.BlockingInterface master,
+          PayloadCarryingRpcController controller) throws ServiceException {
+        if (quota.getTableName() != null) {
+          controller.setPriority(quota.getTableName());
+        }
+        master.setQuota(controller, req);
         return null;
       }
     });
@@ -3448,7 +3193,6 @@ public class HBaseAdmin implements Abortable, Closeable {
 
   /**
    * Return a Quota Scanner to list the quotas based on the filter.
-   *
    * @param filter the quota settings filter
    * @return the quota scanner
    * @throws IOException if a remote or network exception occurs
@@ -3457,73 +3201,33 @@ public class HBaseAdmin implements Abortable, Closeable {
     return QuotaRetriever.open(conf, filter);
   }
 
-  /**
-   * Parent of {@link MasterCallable} and {@link MasterCallable}.
-   * Has common methods.
-   * @param <V>
-   */
-  abstract static class MasterCallable<V> implements RetryingCallable<V>, Closeable {
-    protected HConnection connection;
-    protected MasterKeepAliveConnection master;
-
-    public MasterCallable(final HConnection connection) {
-      this.connection = connection;
-    }
-
-    @Override
-    public void prepare(boolean reload) throws IOException {
-      this.master = this.connection.getKeepAliveMasterService();
-    }
-
-    @Override
-    public void close() throws IOException {
-      // The above prepare could fail but this would still be called though masterAdmin is null
-      if (this.master != null) this.master.close();
-    }
-
-    @Override
-    public void throwable(Throwable t, boolean retrying) {
-    }
-
-    @Override
-    public String getExceptionMessageAdditionalDetail() {
-      return "";
-    }
-
-    @Override
-    public long sleep(long pause, int tries) {
-      return ConnectionUtils.getPauseTime(pause, tries);
-    }
-  }
-
   private <V> V executeCallable(MasterCallable<V> callable) throws IOException {
-    RpcRetryingCaller<V> caller = rpcCallerFactory.newCaller();
     try {
-      return caller.callWithRetries(callable);
+      return rpcCallerFactory.<V> newCaller().callWithRetries(callable);
     } finally {
       callable.close();
     }
   }
 
   /**
-   * Creates and returns a {@link com.google.protobuf.RpcChannel} instance
-   * connected to the active master.
-   *
+   * Creates and returns a {@link com.google.protobuf.RpcChannel} instance connected to the active
+   * master.
    * <p>
    * The obtained {@link com.google.protobuf.RpcChannel} instance can be used to access a published
    * coprocessor {@link com.google.protobuf.Service} using standard protobuf service invocations:
    * </p>
-   *
-   * <div style="background-color: #cccccc; padding: 2px">
-   * <blockquote><pre>
+   * <div style="background-color: #cccccc; padding: 2px"> <blockquote>
+   * 
+   * <pre>
    * CoprocessorRpcChannel channel = myAdmin.coprocessorService();
    * MyService.BlockingInterface service = MyService.newBlockingStub(channel);
    * MyCallRequest request = MyCallRequest.newBuilder()
    *     ...
    *     .build();
    * MyCallResponse response = service.myCall(null, request);
-   * </pre></blockquote></div>
-   *
+   * </pre>
+   * 
+   * </blockquote></div>
    * @return A MasterCoprocessorRpcChannel instance
    */
   public CoprocessorRpcChannel coprocessorService() {
@@ -3531,24 +3235,24 @@ public class HBaseAdmin implements Abortable, Closeable {
   }
 
   /**
-   * Creates and returns a {@link com.google.protobuf.RpcChannel} instance
-   * connected to the passed region server.
-   *
+   * Creates and returns a {@link com.google.protobuf.RpcChannel} instance connected to the passed
+   * region server.
    * <p>
    * The obtained {@link com.google.protobuf.RpcChannel} instance can be used to access a published
    * coprocessor {@link com.google.protobuf.Service} using standard protobuf service invocations:
    * </p>
-   *
-   * <div style="background-color: #cccccc; padding: 2px">
-   * <blockquote><pre>
+   * <div style="background-color: #cccccc; padding: 2px"> <blockquote>
+   * 
+   * <pre>
    * CoprocessorRpcChannel channel = myAdmin.coprocessorService(serverName);
    * MyService.BlockingInterface service = MyService.newBlockingStub(channel);
    * MyCallRequest request = MyCallRequest.newBuilder()
    *     ...
    *     .build();
    * MyCallResponse response = service.myCall(null, request);
-   * </pre></blockquote></div>
-   *
+   * </pre>
+   * 
+   * </blockquote></div>
    * @param sn the server name to which the endpoint call is made
    * @return A RegionServerCoprocessorRpcChannel instance
    */
@@ -3562,41 +3266,32 @@ public class HBaseAdmin implements Abortable, Closeable {
    * @param preserveSplits True if the splits should be preserved
    * @throws IOException if a remote or network exception occurs
    */
-  public void truncateTable(final TableName tableName, final boolean preserveSplits)
-      throws IOException {
-    executeCallable(new MasterCallable<Void>(getConnection()) {
+  public void truncateTable(final TableName tableName, boolean preserveSplits) throws IOException {
+    final TruncateTableRequest req =
+        RequestConverter.buildTruncateTableRequest(tableName, preserveSplits);
+    executeCallable(new MasterCallable<Void>(getConnection(), tableName) {
+
       @Override
-      public Void call() throws ServiceException {
+      protected Void rpcCall(MasterService.BlockingInterface master,
+          PayloadCarryingRpcController controller) throws ServiceException {
         LOG.info("Started truncate of " + tableName);
-        TruncateTableRequest req = RequestConverter.buildTruncateTableRequest(
-        tableName, preserveSplits);
         master.truncateTable(null, req);
         return null;
       }
     });
   }
-  
-  public ThrottleState switchThrottle(final ThrottleState state) throws IOException {
-    MasterKeepAliveConnection stub = connection.getKeepAliveMasterService();
-    try {
-      SwitchThrottleResponse response = stub.switchThrottle(null,
-        RequestConverter.buildSwitchThrottleRequest(state));
-      return response.hasPrevThrottleState() ? ProtobufUtil.toThrottleState(response
-          .getPrevThrottleState()) : null;
-    } catch (ServiceException se) {
-      IOException ioe = ProtobufUtil.getRemoteException(se);
-      if (ioe instanceof MasterNotRunningException) {
-        throw (MasterNotRunningException) ioe;
-      }
-      if (ioe instanceof ZooKeeperConnectionException) {
-        throw (ZooKeeperConnectionException) ioe;
-      }
 
-      // Throwing MasterNotRunningException even though not really valid in order to not
-      // break interface by adding additional exception type.
-      throw new MasterNotRunningException("Unexpected exception when calling balanceSwitch", se);
-    } finally {
-      stub.close();
-    }
+  public ThrottleState switchThrottle(ThrottleState state) throws IOException {
+    final SwitchThrottleRequest req = RequestConverter.buildSwitchThrottleRequest(state);
+    return executeCallable(new MasterCallable<ThrottleState>(getConnection()) {
+
+      @Override
+      protected ThrottleState rpcCall(BlockingInterface master,
+          PayloadCarryingRpcController controller) throws Exception {
+        SwitchThrottleResponse resp = master.switchThrottle(controller, req);
+        return resp.hasPrevThrottleState()
+            ? ProtobufUtil.toThrottleState(resp.getPrevThrottleState()) : null;
+      }
+    });
   }
 }

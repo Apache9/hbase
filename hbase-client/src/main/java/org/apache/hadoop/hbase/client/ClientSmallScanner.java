@@ -31,8 +31,6 @@ import org.apache.hadoop.hbase.KeyValueUtil;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.classification.InterfaceStability;
-import org.apache.hadoop.hbase.ipc.PayloadCarryingRpcController;
-import org.apache.hadoop.hbase.ipc.RpcControllerFactory;
 import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.protobuf.RequestConverter;
 import org.apache.hadoop.hbase.protobuf.ResponseConverter;
@@ -42,11 +40,9 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.htrace.Trace;
 
 /**
- * Client scanner for small scan. Generally, only one RPC is called to fetch the
- * scan results, unless the results cross multiple regions or the row count of
- * results excess the caching.
- * 
- * For small scan, it will get better performance than {@link ClientScanner}
+ * Client scanner for small scan. Generally, only one RPC is called to fetch the scan results,
+ * unless the results cross multiple regions or the row count of results excess the caching. For
+ * small scan, it will get better performance than {@link ClientScanner}
  */
 @InterfaceAudience.Public
 @InterfaceStability.Evolving
@@ -55,53 +51,31 @@ public class ClientSmallScanner extends ClientScanner {
   private RegionServerCallable<Result[]> smallScanCallable = null;
 
   /**
-   * Create a new ClientSmallScanner for the specified table. An HConnection
-   * will be retrieved using the passed Configuration. Note that the passed
-   * {@link Scan} 's start row maybe changed.
-   * 
+   * Create a new ClientSmallScanner for the specified table. An HConnection will be retrieved using
+   * the passed Configuration. Note that the passed {@link Scan} 's start row maybe changed.
    * @param conf The {@link Configuration} to use.
    * @param scan {@link Scan} to use in this scanner
    * @param tableName The table that we wish to rangeGet
    * @throws IOException
    */
-  public ClientSmallScanner(final Configuration conf, final Scan scan,
-      final TableName tableName) throws IOException {
-    this(conf, scan, tableName, HConnectionManager.getConnection(conf));
+  @Deprecated
+  public ClientSmallScanner(final Configuration conf, final Scan scan, final TableName tableName)
+      throws IOException {
+    super(conf, scan, tableName);
   }
 
   /**
-   * Create a new ClientSmallScanner for the specified table. An HConnection
-   * will be retrieved using the passed Configuration. Note that the passed
-   * {@link Scan} 's start row maybe changed.
+   * Create a new ClientSmallScanner for the specified table. An HConnection will be retrieved using
+   * the passed Configuration. Note that the passed {@link Scan} 's start row maybe changed.
    * @param conf
    * @param scan
    * @param tableName
    * @param connection
    * @throws IOException
    */
-  public ClientSmallScanner(final Configuration conf, final Scan scan,
-      final TableName tableName, HConnection connection) throws IOException {
-    this(conf, scan, tableName, connection, RpcRetryingCallerFactory.instantiate(conf,
-        connection.getStatisticsTracker()),
-      RpcControllerFactory.instantiate(conf));
-  }
-
-  /**
-   * Create a new ShortClientScanner for the specified table Note that the
-   * passed {@link Scan}'s start row maybe changed changed.
-   * 
-   * @param conf The {@link Configuration} to use.
-   * @param scan {@link Scan} to use in this scanner
-   * @param tableName The table that we wish to rangeGet
-   * @param connection Connection identifying the cluster
-   * @param rpcFactory
-   * @param controllerFactory 
-   * @throws IOException
-   */
   public ClientSmallScanner(final Configuration conf, final Scan scan, final TableName tableName,
-      HConnection connection, RpcRetryingCallerFactory rpcFactory,
-      RpcControllerFactory controllerFactory) throws IOException {
-    super(conf, scan, tableName, connection, rpcFactory, controllerFactory);
+      HConnection connection) throws IOException {
+    super(conf, scan, tableName, connection);
   }
 
   @Override
@@ -111,16 +85,16 @@ public class ClientSmallScanner extends ClientScanner {
   }
 
   /**
-   * Gets a scanner for following scan. Move to next region or continue from the
-   * last result or start from the start row.
+   * Gets a scanner for following scan. Move to next region or continue from the last result or
+   * start from the start row.
    * @param nbRows
    * @param done true if Server-side says we're done scanning.
    * @param currentRegionDone true if scan is over on current region
    * @return true if has next scanner
    * @throws IOException
    */
-  private boolean nextScanner(int nbRows, final boolean done,
-      boolean currentRegionDone) throws IOException {
+  private boolean nextScanner(int nbRows, final boolean done, boolean currentRegionDone)
+      throws IOException {
     // Where to start the next getter
     byte[] localStartKey;
     int cacheNum = nbRows;
@@ -140,7 +114,7 @@ public class ClientSmallScanner extends ClientScanner {
         LOG.debug("Finished with region " + this.currentRegion);
       }
     } else if (this.lastResult != null) {
-      localStartKey =  Bytes.add(lastResult.getRow(), new byte[1]);
+      localStartKey = Bytes.add(lastResult.getRow(), new byte[1]);
       cacheNum++;
     } else {
       localStartKey = this.scan.getStartRow();
@@ -150,45 +124,41 @@ public class ClientSmallScanner extends ClientScanner {
       LOG.trace("Advancing internal small scanner to startKey at '"
           + Bytes.toStringBinary(localStartKey) + "'");
     }
-    smallScanCallable = getSmallScanCallable(
-        scan, getConnection(), getTable(), localStartKey, cacheNum, rpcControllerFactory);
+    smallScanCallable =
+        getSmallScanCallable(scan, getConnection(), getTable(), localStartKey, cacheNum);
     if (this.scanMetrics != null) {
       this.scanMetrics.countOfRegions.incrementAndGet();
     }
     return true;
   }
 
-  static RegionServerCallable<Result[]> getSmallScanCallable(
-      final Scan sc, HConnection connection, TableName table, byte[] localStartKey,
-      final int cacheNum, final RpcControllerFactory rpcControllerFactory) throws IOException { 
+  static RegionServerCallable<Result[]> getSmallScanCallable(final Scan sc, HConnection connection,
+      TableName table, byte[] localStartKey, final int cacheNum) throws IOException {
     sc.setStartRow(localStartKey);
-    final PayloadCarryingRpcController controller = rpcControllerFactory.newController();
-    RegionServerCallable<Result[]> callable = new RegionServerCallable<Result[]>(
-        connection, table, sc.getStartRow()) {
-      public Result[] call() throws IOException {
-        ScanRequest request = RequestConverter.buildScanRequest(getLocation()
-          .getRegionInfo().getRegionName(), sc, cacheNum, true);
-        ScanResponse response = null;
-        try {
-          controller.reset();
-          controller.setPriority(getTableName());
-          response = getStub().scan(controller, request);
-          if (response.hasMoreResultsInRegion()) {
-            setHasMoreResultsContext(true);
-            setServerHasMoreResults(response.getMoreResultsInRegion());
-          } else {
-            setHasMoreResultsContext(false);
+    RegionServerCallable<Result[]> callable =
+        new RegionServerCallable<Result[]>(connection, table, sc.getStartRow()) {
+
+          @Override
+          protected Result[] rpcCall() throws IOException {
+            ScanRequest request = RequestConverter.buildScanRequest(
+              getLocation().getRegionInfo().getRegionName(), sc, cacheNum, true);
+            try {
+              ScanResponse response = getStub().scan(getController(), request);
+              if (response.hasMoreResultsInRegion()) {
+                setHasMoreResultsContext(true);
+                setServerHasMoreResults(response.getMoreResultsInRegion());
+              } else {
+                setHasMoreResultsContext(false);
+              }
+              if (Trace.isTracing()) {
+                Trace.addTimelineAnnotation("Small scan to " + location);
+              }
+              return ResponseConverter.getResults(getController().cellScanner(), response);
+            } catch (ServiceException se) {
+              throw ProtobufUtil.getRemoteException(se);
+            }
           }
-          if (Trace.isTracing()) {
-            Trace.addTimelineAnnotation("Small scan to " + location);
-          }
-          return ResponseConverter.getResults(controller.cellScanner(),
-              response);
-        } catch (ServiceException se) {
-          throw ProtobufUtil.getRemoteException(se);
-        }
-      }
-    };
+        };
     return callable;
   }
 
@@ -215,8 +185,7 @@ public class ClientSmallScanner extends ClientScanner {
         this.currentRegion = smallScanCallable.getHRegionInfo();
         long currentTime = System.currentTimeMillis();
         if (this.scanMetrics != null) {
-          this.scanMetrics.sumOfMillisSecBetweenNexts.addAndGet(currentTime
-              - lastNext);
+          this.scanMetrics.sumOfMillisSecBetweenNexts.addAndGet(currentTime - lastNext);
         }
         lastNext = currentTime;
         if (values != null && values.length > 0) {

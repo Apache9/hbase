@@ -18,12 +18,14 @@
 
 package org.apache.hadoop.hbase.client;
 
+import com.google.protobuf.ServiceException;
+import com.google.protobuf.TextFormat;
+
 import java.io.IOException;
 import java.net.UnknownHostException;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellScanner;
@@ -35,9 +37,9 @@ import org.apache.hadoop.hbase.NotServingRegionException;
 import org.apache.hadoop.hbase.RemoteExceptionHandler;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.UnknownScannerException;
+import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.client.metrics.ScanMetrics;
 import org.apache.hadoop.hbase.ipc.PayloadCarryingRpcController;
-import org.apache.hadoop.hbase.ipc.RpcControllerFactory;
 import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.protobuf.RequestConverter;
 import org.apache.hadoop.hbase.protobuf.ResponseConverter;
@@ -48,19 +50,14 @@ import org.apache.hadoop.ipc.RemoteException;
 import org.apache.hadoop.net.DNS;
 import org.apache.htrace.Trace;
 
-import com.google.protobuf.RpcController;
-import com.google.protobuf.ServiceException;
-import com.google.protobuf.TextFormat;
-
 /**
- * Scanner operations such as create, next, etc.
- * Used by {@link ResultScanner}s made by {@link HTable}. Passed to a retrying caller such as
- * {@link RpcRetryingCaller} so fails are retried.
+ * Scanner operations such as create, next, etc. Used by {@link ResultScanner}s made by
+ * {@link HTable}. Passed to a retrying caller such as {@link RpcRetryingCaller} so fails are
+ * retried.
  */
 @InterfaceAudience.Private
 public class ScannerCallable extends RegionServerCallable<Result[]> {
-  public static final String LOG_SCANNER_LATENCY_CUTOFF
-    = "hbase.client.log.scanner.latency.cutoff";
+  public static final String LOG_SCANNER_LATENCY_CUTOFF = "hbase.client.log.scanner.latency.cutoff";
   public static final String LOG_SCANNER_ACTIVITY = "hbase.client.log.scanner.activity";
 
   public static final Log LOG = LogFactory.getLog(ScannerCallable.class);
@@ -73,7 +70,7 @@ public class ScannerCallable extends RegionServerCallable<Result[]> {
   private boolean logScannerActivity = false;
   private int logCutOffLatency = 1000;
   private static String myAddress;
-  private int timeout;
+  protected final int timeout;
   /**
    * Saves whether or not the most recent response from the server was a heartbeat message.
    * Heartbeat messages are identified by the flag {@link ScanResponse#getHeartbeatMessage()}
@@ -90,8 +87,7 @@ public class ScannerCallable extends RegionServerCallable<Result[]> {
   // indicate if it is a remote server call
   protected boolean isRegionServerRemote = true;
   private long nextCallSeq = 0;
-  protected final PayloadCarryingRpcController controller;
-  
+
   /**
    * @param connection which connection
    * @param tableName table callable is on
@@ -100,27 +96,25 @@ public class ScannerCallable extends RegionServerCallable<Result[]> {
    *          metrics
    * @param controller to use when writing the rpc
    */
-  public ScannerCallable (HConnection connection, TableName tableName, Scan scan,
-      ScanMetrics scanMetrics, PayloadCarryingRpcController controller, int timeout) {
+  public ScannerCallable(HConnection connection, TableName tableName, Scan scan,
+      ScanMetrics scanMetrics, int timeout) {
     super(connection, tableName, scan.getStartRow());
     this.scan = scan;
     this.scanMetrics = scanMetrics;
     Configuration conf = connection.getConfiguration();
     logScannerActivity = conf.getBoolean(LOG_SCANNER_ACTIVITY, false);
     logCutOffLatency = conf.getInt(LOG_SCANNER_LATENCY_CUTOFF, 1000);
-    this.controller = controller;
     this.timeout = timeout;
   }
 
   /**
-   * @deprecated Use {@link #ScannerCallable(HConnection, TableName, Scan, 
-   *  ScanMetrics, PayloadCarryingRpcController)}
+   * @deprecated Use
+   *             {@link #ScannerCallable(HConnection, TableName, Scan, ScanMetrics, PayloadCarryingRpcController)}
    */
   @Deprecated
-  public ScannerCallable (HConnection connection, final byte [] tableName, Scan scan,
+  public ScannerCallable(HConnection connection, final byte[] tableName, Scan scan,
       ScanMetrics scanMetrics) {
-    this(connection, TableName.valueOf(tableName), scan, scanMetrics, RpcControllerFactory
-        .instantiate(connection.getConfiguration()).newController(), 0);
+    this(connection, TableName.valueOf(tableName), scan, scanMetrics, 0);
   }
 
   /**
@@ -128,9 +122,9 @@ public class ScannerCallable extends RegionServerCallable<Result[]> {
    * @throws IOException
    */
   @Override
-  public void prepare(boolean reload) throws IOException {
+  public void prepare(int callTimeout, boolean reload) throws IOException {
     if (!instantiated || reload) {
-      super.prepare(reload);
+      super.prepare(callTimeout, reload);
       checkIfRegionServerIsRemote();
       instantiated = true;
     }
@@ -146,8 +140,8 @@ public class ScannerCallable extends RegionServerCallable<Result[]> {
   }
 
   /**
-   * compare the local machine hostname with region server's hostname
-   * to decide if hbase client connects to a remote region server
+   * compare the local machine hostname with region server's hostname to decide if hbase client
+   * connects to a remote region server
    */
   protected void checkIfRegionServerIsRemote() {
     if (getLocation().getHostname().equalsIgnoreCase(myAddress)) {
@@ -161,7 +155,10 @@ public class ScannerCallable extends RegionServerCallable<Result[]> {
    * @see java.util.concurrent.Callable#call()
    */
   @SuppressWarnings("deprecation")
-  public Result [] call() throws IOException {
+  @Override
+  protected Result[] rpcCall() throws IOException {
+    // we use a different timeout for scan.
+    getController().setTimeout(timeout);
     if (closed) {
       if (scannerId != -1) {
         close();
@@ -170,7 +167,7 @@ public class ScannerCallable extends RegionServerCallable<Result[]> {
       if (scannerId == -1L) {
         this.scannerId = openScanner();
       } else {
-        Result [] rrs = null;
+        Result[] rrs = null;
         ScanRequest request = null;
         // Reset the heartbeat flag prior to each RPC in case an exception is thrown by the server
         setHeartbeatMessage(false);
@@ -179,10 +176,7 @@ public class ScannerCallable extends RegionServerCallable<Result[]> {
           request = RequestConverter.buildScanRequest(scannerId, caching, false, nextCallSeq);
           ScanResponse response = null;
           try {
-            controller.reset();
-            controller.setPriority(getTableName());
-            controller.setTimeout(timeout);
-            response = getStub().scan(controller, request);
+            response = getStub().scan(getController(), request);
             // Client and RS maintain a nextCallSeq number during the scan. Every next() call
             // from client to server will increment this number in both sides. Client passes this
             // number along with the request and at RS side both the incoming nextCallSeq and its
@@ -196,7 +190,7 @@ public class ScannerCallable extends RegionServerCallable<Result[]> {
             long timestamp = System.currentTimeMillis();
             setHeartbeatMessage(response.hasHeartbeatMessage() && response.getHeartbeatMessage());
             // Results are returned via controller
-            CellScanner cellScanner = controller.cellScanner();
+            CellScanner cellScanner = getController().cellScanner();
             rrs = ResponseConverter.getResults(cellScanner, response);
 
             int rows = rrs == null ? 0 : rrs.length;
@@ -206,8 +200,8 @@ public class ScannerCallable extends RegionServerCallable<Result[]> {
             if (logScannerActivity) {
               long now = System.currentTimeMillis();
               if (now - timestamp > logCutOffLatency) {
-                LOG.info("Took " + (now-timestamp) + "ms to fetch "
-                  + rows + " rows from scanner=" + scannerId);
+                LOG.info("Took " + (now - timestamp) + "ms to fetch " + rows + " rows from scanner="
+                    + scannerId);
               }
             }
             // moreResults is only used for the case where a filter exhausts all elements
@@ -233,28 +227,29 @@ public class ScannerCallable extends RegionServerCallable<Result[]> {
           updateResultsMetrics(rrs);
         } catch (IOException e) {
           if (logScannerActivity) {
-            LOG.info("Got exception making request " + TextFormat.shortDebugString(request)
-              + " to " + getLocation(), e);
+            LOG.info("Got exception making request " + TextFormat.shortDebugString(request) + " to "
+                + getLocation(),
+              e);
           }
           IOException ioe = e;
           if (e instanceof RemoteException) {
-            ioe = RemoteExceptionHandler.decodeRemoteException((RemoteException)e);
+            ioe = RemoteExceptionHandler.decodeRemoteException((RemoteException) e);
           }
           if (logScannerActivity && (ioe instanceof UnknownScannerException)) {
             try {
               HRegionLocation location =
-                getConnection().relocateRegion(getTableName(), scan.getStartRow());
-              LOG.info("Scanner=" + scannerId
-                + " expired, current region location is " + location.toString());
+                  getConnection().relocateRegion(getTableName(), scan.getStartRow());
+              LOG.info("Scanner=" + scannerId + " expired, current region location is "
+                  + location.toString());
             } catch (Throwable t) {
               LOG.info("Failed to relocate region", t);
             }
           }
           // The below convertion of exceptions into DoNotRetryExceptions is a little strange.
-          // Why not just have these exceptions implment DNRIOE you ask?  Well, usually we want
-          // ServerCallable#withRetries to just retry when it gets these exceptions.  In here in
+          // Why not just have these exceptions implment DNRIOE you ask? Well, usually we want
+          // ServerCallable#withRetries to just retry when it gets these exceptions. In here in
           // a scan when doing a next in particular, we want to break out and get the scanner to
-          // reset itself up again.  Throwing a DNRIOE is how we signal this to happen (its ugly,
+          // reset itself up again. Throwing a DNRIOE is how we signal this to happen (its ugly,
           // yeah and hard to follow and in need of a refactor).
           if (ioe instanceof NotServingRegionException) {
             // Throw a DNRE so that we break out of cycle of calling NSRE
@@ -326,10 +321,9 @@ public class ScannerCallable extends RegionServerCallable<Result[]> {
     }
     try {
       incRPCcallsMetrics();
-      ScanRequest request =
-        RequestConverter.buildScanRequest(this.scannerId, 0, true);
+      ScanRequest request = RequestConverter.buildScanRequest(this.scannerId, 0, true);
       try {
-        getStub().scan(null, request);
+        getStub().scan(getController(), request);
         if (Trace.isTracing()) {
           Trace.addTimelineAnnotation("Close scanner");
         }
@@ -344,19 +338,17 @@ public class ScannerCallable extends RegionServerCallable<Result[]> {
 
   protected long openScanner() throws IOException {
     incRPCcallsMetrics();
-    ScanRequest request =
-      RequestConverter.buildScanRequest(
-        getLocation().getRegionInfo().getRegionName(),
-        this.scan, 0, false);
+    ScanRequest request = RequestConverter
+        .buildScanRequest(getLocation().getRegionInfo().getRegionName(), this.scan, 0, false);
     try {
-      ScanResponse response = getStub().scan(null, request);
+      ScanResponse response = getStub().scan(getController(), request);
       long id = response.getScannerId();
       if (Trace.isTracing()) {
         Trace.addTimelineAnnotation("Open scanner to " + getLocation().toString());
       }
       if (logScannerActivity) {
-        LOG.info("Open scanner=" + id + " for scan=" + scan.toString()
-          + " on region " + getLocation().toString());
+        LOG.info("Open scanner=" + id + " for scan=" + scan.toString() + " on region "
+            + getLocation().toString());
       }
       return id;
     } catch (ServiceException se) {

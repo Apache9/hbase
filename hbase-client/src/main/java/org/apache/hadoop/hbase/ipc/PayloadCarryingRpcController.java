@@ -57,7 +57,7 @@ public class PayloadCarryingRpcController implements RpcController, CellScannabl
    */
   private CellScanner cellScanner;
 
-  private int timeout = 0;
+  private int timeout = -1;
 
   private IOException error;
 

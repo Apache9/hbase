@@ -54,6 +54,7 @@ public class TestMaster {
 
   @BeforeClass
   public static void beforeAllTests() throws Exception {
+    TEST_UTIL.getConfiguration().setInt(HConstants.HBASE_CLIENT_RETRIES_NUMBER, 3);
     // Start a cluster of two regionservers.
     TEST_UTIL.startMiniCluster(2);
     admin = TEST_UTIL.getHBaseAdmin();
@@ -227,7 +228,7 @@ public class TestMaster {
       admin.move(tableRegions.get(0).getEncodedNameAsBytes(), null);
       fail("Region should not be moved since master is not initialized");
     } catch (IOException ioe) {
-      assertTrue(ioe instanceof PleaseHoldException);
+      assertTrue(ioe.getMessage().contains("PleaseHoldException"));
     } finally {
       master.initialized = true;
       TEST_UTIL.deleteTable(tableName);

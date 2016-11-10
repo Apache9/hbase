@@ -19,8 +19,6 @@
 
 package org.apache.hadoop.hbase.client;
 
-import com.google.common.base.Preconditions;
-
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.util.ArrayList;
@@ -51,7 +49,6 @@ import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.backoff.ServerStatistics;
 import org.apache.hadoop.hbase.client.coprocessor.Batch;
-import org.apache.hadoop.hbase.ipc.RpcControllerFactory;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.Pair;
@@ -144,8 +141,6 @@ class AsyncProcess<CResult> {
   protected final long pause;
   protected int numTries;
   protected int serverTrackerTimeout;
-  protected RpcRetryingCallerFactory rpcCallerFactory;
-  private RpcControllerFactory rpcFactory;
   private final boolean ignoreThrottlingException;
 
   /**
@@ -216,8 +211,7 @@ class AsyncProcess<CResult> {
   }
 
   public AsyncProcess(HConnection hc, TableName tableName, ExecutorService pool,
-      AsyncProcessCallback<CResult> callback, Configuration conf,
-      RpcRetryingCallerFactory rpcCaller, RpcControllerFactory rpcFactory) {
+      AsyncProcessCallback<CResult> callback, Configuration conf) {
     if (hc == null){
       throw new IllegalArgumentException("HConnection cannot be null.");
     }
@@ -273,10 +267,6 @@ class AsyncProcess<CResult> {
     for (int i = 0; i < this.numTries; ++i) {
       serverTrackerTimeout += ConnectionUtils.getPauseTime(this.pause, i);
     }
-
-    this.rpcCallerFactory = rpcCaller;
-    Preconditions.checkNotNull(rpcFactory);
-    this.rpcFactory = rpcFactory;
   }
 
   /**
@@ -689,7 +679,7 @@ class AsyncProcess<CResult> {
    */
   protected MultiServerCallable<Row> createCallable(final HRegionLocation location,
       final MultiAction<Row> multi) {
-    return new MultiServerCallable<Row>(hConnection, tableName, location, this.rpcFactory, multi);
+    return new MultiServerCallable<Row>(hConnection, tableName, location, multi);
   }
 
   /**
@@ -698,7 +688,7 @@ class AsyncProcess<CResult> {
    * @return Returns a caller.
    */
   protected RpcRetryingCaller<MultiResponse> createCaller(MultiServerCallable<Row> callable) {
-    return rpcCallerFactory.<MultiResponse> newCaller();
+    return hConnection.getRpcRetryingCallerFactory().<MultiResponse> newCaller();
   }
 
   /**

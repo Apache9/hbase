@@ -29,6 +29,8 @@ import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.testclassification.SmallTests;
 import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.ipc.PayloadCarryingRpcController;
+import org.apache.hadoop.hbase.ipc.RpcControllerFactory;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.SnapshotDescription;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSnapshotDoneRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSnapshotDoneResponse;
@@ -57,7 +59,7 @@ public class TestSnapshotFromAdmin {
   public void testBackoffLogic() throws Exception {
     final int pauseTime = 100;
     final int maxWaitTime =
-      HConstants.RETRY_BACKOFF[HConstants.RETRY_BACKOFF.length - 1] * pauseTime;
+        HConstants.RETRY_BACKOFF[HConstants.RETRY_BACKOFF.length - 1] * pauseTime;
     final int numRetries = HConstants.RETRY_BACKOFF.length;
     // calculate the wait time, if we just do straight backoff (ignoring the expected time from
     // master)
@@ -68,7 +70,8 @@ public class TestSnapshotFromAdmin {
     // the correct wait time, capping at the maxTime/tries + fudge room
     final long time = pauseTime * 3 + ((maxWaitTime / numRetries) * 3) + 300;
     assertTrue("Capped snapshot wait time isn't less that the uncapped backoff time "
-        + "- further testing won't prove anything.", time < ignoreExpectedTime);
+        + "- further testing won't prove anything.",
+      time < ignoreExpectedTime);
 
     // setup the mocks
     HConnectionImplementation mockConnection = Mockito.mock(HConnectionImplementation.class);
@@ -80,22 +83,24 @@ public class TestSnapshotFromAdmin {
     MasterKeepAliveConnection mockMaster = Mockito.mock(MasterKeepAliveConnection.class);
     Mockito.when(mockConnection.getConfiguration()).thenReturn(conf);
     Mockito.when(mockConnection.getKeepAliveMasterService()).thenReturn(mockMaster);
+    Mockito.when(mockConnection.getRpcRetryingCallerFactory()).thenReturn(
+      RpcRetryingCallerFactory.instantiate(conf, ServerStatisticTracker.create(conf)));
+    Mockito.when(mockConnection.getRpcControllerFactory())
+        .thenReturn(RpcControllerFactory.instantiate(conf));
     // set the max wait time for the snapshot to complete
-    SnapshotResponse response = SnapshotResponse.newBuilder()
-        .setExpectedTimeout(maxWaitTime)
-        .build();
+    SnapshotResponse response =
+        SnapshotResponse.newBuilder().setExpectedTimeout(maxWaitTime).build();
     Mockito
         .when(
-          mockMaster.snapshot((RpcController) Mockito.isNull(),
-            Mockito.any(SnapshotRequest.class))).thenReturn(response);
+          mockMaster.snapshot((RpcController) Mockito.isNull(), Mockito.any(SnapshotRequest.class)))
+        .thenReturn(response);
     // setup the response
     IsSnapshotDoneResponse.Builder builder = IsSnapshotDoneResponse.newBuilder();
     builder.setDone(false);
     // first five times, we return false, last we get success
-    Mockito.when(
-      mockMaster.isSnapshotDone((RpcController) Mockito.isNull(),
-        Mockito.any(IsSnapshotDoneRequest.class))).thenReturn(builder.build(), builder.build(),
-      builder.build(), builder.build(), builder.build(), builder.setDone(true).build());
+    Mockito.when(mockMaster.isSnapshotDone(Mockito.any(PayloadCarryingRpcController.class),
+      Mockito.any(IsSnapshotDoneRequest.class))).thenReturn(builder.build(), builder.build(),
+        builder.build(), builder.build(), builder.build(), builder.setDone(true).build());
 
     // setup the admin and run the test
     HBaseAdmin admin = new HBaseAdmin(mockConnection);
@@ -120,6 +125,10 @@ public class TestSnapshotFromAdmin {
     HConnectionImplementation mockConnection = Mockito.mock(HConnectionImplementation.class);
     Configuration conf = HBaseConfiguration.create();
     Mockito.when(mockConnection.getConfiguration()).thenReturn(conf);
+    Mockito.when(mockConnection.getRpcRetryingCallerFactory()).thenReturn(
+      RpcRetryingCallerFactory.instantiate(conf, ServerStatisticTracker.create(conf)));
+    Mockito.when(mockConnection.getRpcControllerFactory())
+        .thenReturn(RpcControllerFactory.instantiate(conf));
     HBaseAdmin admin = new HBaseAdmin(mockConnection);
     SnapshotDescription.Builder builder = SnapshotDescription.newBuilder();
     // check that invalid snapshot names fail
@@ -138,19 +147,19 @@ public class TestSnapshotFromAdmin {
     MasterKeepAliveConnection master = Mockito.mock(MasterKeepAliveConnection.class);
     Mockito.when(mockConnection.getKeepAliveMasterService()).thenReturn(master);
     SnapshotResponse response = SnapshotResponse.newBuilder().setExpectedTimeout(0).build();
-    Mockito.when(
-      master.snapshot((RpcController) Mockito.isNull(), Mockito.any(SnapshotRequest.class)))
+    Mockito
+        .when(master.snapshot((RpcController) Mockito.isNull(), Mockito.any(SnapshotRequest.class)))
         .thenReturn(response);
     IsSnapshotDoneResponse doneResponse = IsSnapshotDoneResponse.newBuilder().setDone(true).build();
-    Mockito.when(
-      master.isSnapshotDone((RpcController) Mockito.isNull(),
-          Mockito.any(IsSnapshotDoneRequest.class))).thenReturn(doneResponse);
+    Mockito.when(master.isSnapshotDone(Mockito.any(PayloadCarryingRpcController.class),
+      Mockito.any(IsSnapshotDoneRequest.class))).thenReturn(doneResponse);
 
-      // make sure that we can use valid names
+    // make sure that we can use valid names
     admin.snapshot(builder.setName("snapshot").setTable("table").build());
   }
 
-  private void failSnapshotStart(HBaseAdmin admin, SnapshotDescription snapshot) throws IOException {
+  private void failSnapshotStart(HBaseAdmin admin, SnapshotDescription snapshot)
+      throws IOException {
     try {
       admin.snapshot(snapshot);
       fail("Snapshot should not have succeed with name:" + snapshot.getName());

@@ -24,7 +24,6 @@ import com.google.protobuf.ServiceException;
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.lang.reflect.UndeclaredThrowableException;
-import java.net.SocketTimeoutException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -34,7 +33,7 @@ import org.apache.hadoop.hbase.DoNotRetryIOException;
 import org.apache.hadoop.hbase.DoNotRetryNowIOException;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
-import org.apache.hadoop.hbase.ipc.AbstractRpcClient;
+import org.apache.hadoop.hbase.ipc.CallTimeoutException;
 import org.apache.hadoop.hbase.quotas.ThrottlingException;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.ExceptionUtil;
@@ -44,27 +43,17 @@ import org.apache.hadoop.ipc.RemoteException;
  * Dynamic rather than static so can set the generic return type appropriately.
  */
 @InterfaceAudience.Private
-@edu.umd.cs.findbugs.annotations.SuppressWarnings
-    (value = "IS2_INCONSISTENT_SYNC", justification = "na")
 public class RpcRetryingCaller<T> {
-  static final Log LOG = LogFactory.getLog(RpcRetryingCaller.class);
-  /**
-   * Timeout for the call including retries
-   */
-  private int callTimeout;
-  /**
-   * When we started making calls.
-   */
-  private long globalStartTime;
-  /**
-   * Start and end times for a single call.
-   */
-  private final static int MIN_RPC_TIMEOUT = 1;
+
+  private static final Log LOG = LogFactory.getLog(RpcRetryingCaller.class);
+
   /** How many retries are allowed before we start to log */
   private final int startLogErrorsCnt;
 
   private final long pause;
+
   private final int retries;
+
   private final boolean ignoreThrottlingException;
 
   public RpcRetryingCaller(long pause, int retries, int startLogErrorsCnt) {
@@ -79,31 +68,18 @@ public class RpcRetryingCaller<T> {
     this.ignoreThrottlingException = ignoreThrottlingException;
   }
 
-  private int previousRpcTimeout;
-
-  private void beforeCall() {
-    int remaining = (int) (callTimeout
-        - (EnvironmentEdgeManager.currentTimeMillis() - this.globalStartTime));
-    if (remaining < MIN_RPC_TIMEOUT) {
-      // If there is no time left, we're trying anyway. It's too late.
-      // 0 means no timeout, and it's not the intent here. So we secure both cases by
-      // resetting to the minimum.
-      remaining = MIN_RPC_TIMEOUT;
+  private int getRemainingTime(long globalStartTime, int callTimeout, int tries)
+      throws CallTimeoutException {
+    long duration = EnvironmentEdgeManager.currentTimeMillis() - globalStartTime;
+    if (callTimeout <= duration) {
+      throw new CallTimeoutException(
+          "callTimeout=" + callTimeout + ", callDuration=" + duration + ", tries=" + tries);
     }
-    previousRpcTimeout = AbstractRpcClient.getRpcTimeout();
-    AbstractRpcClient.setRpcTimeout(remaining);
+    return (int) (callTimeout - duration);
   }
 
-  private void afterCall() {
-    if (previousRpcTimeout == HConstants.DEFAULT_HBASE_CLIENT_OPERATION_TIMEOUT) {
-      AbstractRpcClient.resetRpcTimeout();
-    } else {
-      AbstractRpcClient.setRpcTimeout(previousRpcTimeout);
-    }
-  }
-
-  public synchronized T callWithRetries(RetryingCallable<T> callable) throws IOException,
-      RuntimeException {
+  public synchronized T callWithRetries(RetryingCallable<T> callable)
+      throws IOException, RuntimeException {
     return callWithRetries(callable, HConstants.DEFAULT_HBASE_CLIENT_OPERATION_TIMEOUT);
   }
 
@@ -115,25 +91,23 @@ public class RpcRetryingCaller<T> {
    * @throws IOException if a remote or network exception occurs
    * @throws RuntimeException other unspecified error
    */
-  @edu.umd.cs.findbugs.annotations.SuppressWarnings
-      (value = "SWL_SLEEP_WITH_LOCK_HELD", justification = "na")
+  @edu.umd.cs.findbugs.annotations.SuppressWarnings(value = "SWL_SLEEP_WITH_LOCK_HELD",
+      justification = "na")
   public synchronized T callWithRetries(RetryingCallable<T> callable, int callTimeout)
-  throws IOException, RuntimeException {
-    this.callTimeout = callTimeout;
+      throws IOException, RuntimeException {
+    long globalStartTime = EnvironmentEdgeManager.currentTimeMillis();
     List<RetriesExhaustedException.ThrowableWithExtraContext> exceptions =
-      new ArrayList<RetriesExhaustedException.ThrowableWithExtraContext>();
-    this.globalStartTime = EnvironmentEdgeManager.currentTimeMillis();
+        new ArrayList<RetriesExhaustedException.ThrowableWithExtraContext>();
     for (int tries = 0;; tries++) {
       long expectedSleep = 0;
       try {
-        beforeCall();
         // bad cache entries are cleared in the call to RetryingCallable#throwable() in catch block
-        callable.prepare(tries != 0);
-        return callable.call();
+        callable.prepare(getRemainingTime(globalStartTime, callTimeout, tries), tries != 0);
+        return callable.call(getRemainingTime(globalStartTime, callTimeout, tries));
       } catch (Throwable t) {
         if (tries > startLogErrorsCnt) {
-          LOG.info("Call exception, tries=" + tries + ", retries=" + retries + ", retryTime=" +
-              (EnvironmentEdgeManager.currentTimeMillis() - this.globalStartTime) + "ms, msg="
+          LOG.info("Call exception, tries=" + tries + ", retries=" + retries + ", retryTime="
+              + (EnvironmentEdgeManager.currentTimeMillis() - globalStartTime) + "ms, msg="
               + callable.getExceptionMessageAdditionalDetail());
         }
         // translateException throws exception when should not retry: i.e. when request is bad.
@@ -151,18 +125,16 @@ public class RpcRetryingCaller<T> {
         expectedSleep = calculateExpectedSleep(callable, tries, t);
 
         // If, after the planned sleep, there won't be enough time left, we stop now.
-        long duration = singleCallDuration(expectedSleep);
-        if (duration > this.callTimeout) {
-          String msg = "callTimeout=" + this.callTimeout + ", callDuration=" + duration
-              + ", tries=" + tries + ": " + callable.getExceptionMessageAdditionalDetail();
-          throw (SocketTimeoutException)(new SocketTimeoutException(msg).initCause(t));
+        long duration = singleCallDuration(globalStartTime, expectedSleep);
+        if (duration > callTimeout) {
+          String msg = "callTimeout=" + callTimeout + ", callDuration=" + duration + ", tries="
+              + tries + ": " + callable.getExceptionMessageAdditionalDetail();
+          throw new CallTimeoutException(msg, new RetriesExhaustedException(tries, exceptions));
         }
-      } finally {
-        afterCall();
       }
+      LOG.info("Sleep for next retry, tries=" + tries + ", retries=" + retries + ", sleepTime="
+          + expectedSleep);
       try {
-        LOG.info("Sleep for next retry, tries=" + tries + ", retries=" + retries + ", sleepTime="
-            + expectedSleep);
         Thread.sleep(expectedSleep);
       } catch (InterruptedException e) {
         throw new InterruptedIOException("Interrupted after " + tries + " tries  on " + retries);
@@ -192,42 +164,36 @@ public class RpcRetryingCaller<T> {
    * @param expectedSleep
    * @return Calculate how long a single call took
    */
-  private long singleCallDuration(final long expectedSleep) {
-    return (EnvironmentEdgeManager.currentTimeMillis() - this.globalStartTime) + expectedSleep;
+  private long singleCallDuration(long globalStartTime, long expectedSleep) {
+    return (EnvironmentEdgeManager.currentTimeMillis() - globalStartTime) + expectedSleep;
   }
 
   /**
-   * Call the server once only.
-   * {@link RetryingCallable} has a strange shape so we can do retrys.  Use this invocation if you
-   * want to do a single call only (A call to {@link RetryingCallable#call()} will not likely
-   * succeed).
+   * Call the server once only. {@link RetryingCallable} has a strange shape so we can do retrys.
+   * Use this invocation if you want to do a single call only (A call to
+   * {@link RetryingCallable#call()} will not likely succeed).
    * @return an object of type T
    * @throws IOException if a remote or network exception occurs
    * @throws RuntimeException other unspecified error
    */
   public T callWithoutRetries(RetryingCallable<T> callable, int callTimeout)
-  throws IOException, RuntimeException {
+      throws IOException, RuntimeException {
     // The code of this method should be shared with withRetries.
-    this.globalStartTime = EnvironmentEdgeManager.currentTimeMillis();
-    this.callTimeout = callTimeout;
+    long globalStartTime = EnvironmentEdgeManager.currentTimeMillis();
     try {
-      beforeCall();
-      callable.prepare(false);
-      return callable.call();
+      callable.prepare(getRemainingTime(globalStartTime, callTimeout, 0), false);
+      return callable.call(getRemainingTime(globalStartTime, callTimeout, 0));
     } catch (Throwable t) {
       Throwable t2 = translateException(t);
       ExceptionUtil.rethrowIfInterrupt(t2);
       // It would be nice to clear the location cache here.
       if (t2 instanceof IOException) {
-        throw (IOException)t2;
+        throw (IOException) t2;
       } else {
         throw new RuntimeException(t2);
       }
-    } finally {
-      afterCall();
     }
   }
-
 
   /**
    * Get the good or the remote exception if any, throws the DoNotRetryIOException.
@@ -242,25 +208,24 @@ public class RpcRetryingCaller<T> {
       }
     }
     if (t instanceof RemoteException) {
-      t = ((RemoteException)t).unwrapRemoteException();
+      t = ((RemoteException) t).unwrapRemoteException();
     }
     if (t instanceof LinkageError) {
       throw new DoNotRetryIOException(t);
     }
     if (t instanceof ServiceException) {
-      ServiceException se = (ServiceException)t;
+      ServiceException se = (ServiceException) t;
       Throwable cause = se.getCause();
       if (cause != null && cause instanceof DoNotRetryIOException) {
-        throw (DoNotRetryIOException)cause;
+        throw (DoNotRetryIOException) cause;
       }
       // Don't let ServiceException out; its rpc specific.
-      t = cause;
-      // t could be a RemoteException so go aaround again.
-      translateException(t);
+      // cause could be a RemoteException so go around again.
+      t = translateException(cause);
     } else if (t instanceof DoNotRetryIOException) {
-      throw (DoNotRetryIOException)t;
+      throw (DoNotRetryIOException) t;
     } else if (t.getCause() != null && t.getCause() instanceof DoNotRetryIOException) {
-      throw (DoNotRetryIOException)t.getCause();
+      throw (DoNotRetryIOException) t.getCause();
     }
     return t;
   }

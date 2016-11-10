@@ -19,22 +19,15 @@ package org.apache.hadoop.hbase.client;
 
 import java.io.IOException;
 
-public class DelegatingRetryingCallable<T, D extends RetryingCallable<T>> implements
-    RetryingCallable<T> {
+import org.apache.hadoop.hbase.classification.InterfaceAudience;
+
+@InterfaceAudience.Private
+public class DelegatingRetryingCallable<T, D extends RetryingCallable<T>>
+    implements RetryingCallable<T> {
   protected final D delegate;
 
   public DelegatingRetryingCallable(D delegate) {
     this.delegate = delegate;
-  }
-
-  @Override
-  public T call() throws Exception {
-    return delegate.call();
-  }
-
-  @Override
-  public void prepare(boolean reload) throws IOException {
-    delegate.prepare(reload);
   }
 
   @Override
@@ -50,5 +43,15 @@ public class DelegatingRetryingCallable<T, D extends RetryingCallable<T>> implem
   @Override
   public long sleep(long pause, int tries) {
     return delegate.sleep(pause, tries);
+  }
+
+  @Override
+  public void prepare(int callTimeout, boolean reload) throws IOException {
+    delegate.prepare(callTimeout, reload);
+  }
+
+  @Override
+  public T call(int callTimeout) throws Exception {
+    return delegate.call(callTimeout);
   }
 }

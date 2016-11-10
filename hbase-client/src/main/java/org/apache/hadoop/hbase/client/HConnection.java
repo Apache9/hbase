@@ -23,48 +23,46 @@ import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 
-import org.apache.hadoop.hbase.classification.InterfaceAudience;
-import org.apache.hadoop.hbase.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Abortable;
-import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.HRegionLocation;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.MasterNotRunningException;
 import org.apache.hadoop.hbase.ServerName;
-import org.apache.hadoop.hbase.ZooKeeperConnectionException;
+import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.catalog.CatalogTracker;
+import org.apache.hadoop.hbase.classification.InterfaceAudience;
+import org.apache.hadoop.hbase.classification.InterfaceStability;
 import org.apache.hadoop.hbase.client.backoff.ClientBackoffPolicy;
 import org.apache.hadoop.hbase.client.coprocessor.Batch;
+import org.apache.hadoop.hbase.ipc.RpcControllerFactory;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.AdminService;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.ClientService;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.MasterService;
 
 /**
- * A cluster connection.  Knows how to find the master, locate regions out on the cluster,
- * keeps a cache of locations and then knows how to re-calibrate after they move.  You need one
- * of these to talk to your HBase cluster. {@link HConnectionManager} manages instances of this
- * class.  See it for how to get one of these.
- * 
- * <p>This is NOT a connection to a particular server but to ALL servers in the cluster.  Individual
+ * A cluster connection. Knows how to find the master, locate regions out on the cluster, keeps a
+ * cache of locations and then knows how to re-calibrate after they move. You need one of these to
+ * talk to your HBase cluster. {@link HConnectionManager} manages instances of this class. See it
+ * for how to get one of these.
+ * <p>
+ * This is NOT a connection to a particular server but to ALL servers in the cluster. Individual
  * connections are managed at a lower level.
- *
- * <p>HConnections are used by {@link HTable} mostly but also by
- * {@link HBaseAdmin}, and {@link CatalogTracker}.  HConnection instances can be shared.  Sharing
- * is usually what you want because rather than each HConnection instance
- * having to do its own discovery of regions out on the cluster, instead, all
- * clients get to share the one cache of locations.  {@link HConnectionManager} does the
- * sharing for you if you go by it getting connections.  Sharing makes cleanup of
- * HConnections awkward.  See {@link HConnectionManager} for cleanup discussion.
- *
+ * <p>
+ * HConnections are used by {@link HTable} mostly but also by {@link HBaseAdmin}, and
+ * {@link CatalogTracker}. HConnection instances can be shared. Sharing is usually what you want
+ * because rather than each HConnection instance having to do its own discovery of regions out on
+ * the cluster, instead, all clients get to share the one cache of locations.
+ * {@link HConnectionManager} does the sharing for you if you go by it getting connections. Sharing
+ * makes cleanup of HConnections awkward. See {@link HConnectionManager} for cleanup discussion.
  * @see HConnectionManager
  */
 @InterfaceAudience.Public
 @InterfaceStability.Evolving
 public interface HConnection extends Abortable, Closeable {
   /**
-   * Key for configuration in Configuration whose value is the class we implement making a
-   * new HConnection instance.
+   * Key for configuration in Configuration whose value is the class we implement making a new
+   * HConnection instance.
    */
   public static final String HBASE_CLIENT_CONNECTION_IMPL = "hbase.client.connection.impl";
 
@@ -74,118 +72,98 @@ public interface HConnection extends Abortable, Closeable {
   Configuration getConfiguration();
 
   /**
-   * Retrieve an HTableInterface implementation for access to a table.
-   * The returned HTableInterface is not thread safe, a new instance should
-   * be created for each using thread.
-   * This is a lightweight operation, pooling or caching of the returned HTableInterface
-   * is neither required nor desired.
-   * Note that the HConnection needs to be unmanaged
-   * (created with {@link HConnectionManager#createConnection(Configuration)}).
+   * Retrieve an HTableInterface implementation for access to a table. The returned HTableInterface
+   * is not thread safe, a new instance should be created for each using thread. This is a
+   * lightweight operation, pooling or caching of the returned HTableInterface is neither required
+   * nor desired. Note that the HConnection needs to be unmanaged (created with
+   * {@link HConnectionManager#createConnection(Configuration)}).
    * <p>
-   * Since 0.98.1 this method no longer checks table existence. An exception
-   * will be thrown if the table does not exist only when the first operation is
-   * attempted.
+   * Since 0.98.1 this method no longer checks table existence. An exception will be thrown if the
+   * table does not exist only when the first operation is attempted.
    * @param tableName
    * @return an HTable to use for interactions with this table
    */
   public HTableInterface getTable(String tableName) throws IOException;
 
   /**
-   * Retrieve an HTableInterface implementation for access to a table.
-   * The returned HTableInterface is not thread safe, a new instance should
-   * be created for each using thread.
-   * This is a lightweight operation, pooling or caching of the returned HTableInterface
-   * is neither required nor desired.
-   * Note that the HConnection needs to be unmanaged
-   * (created with {@link HConnectionManager#createConnection(Configuration)}).
+   * Retrieve an HTableInterface implementation for access to a table. The returned HTableInterface
+   * is not thread safe, a new instance should be created for each using thread. This is a
+   * lightweight operation, pooling or caching of the returned HTableInterface is neither required
+   * nor desired. Note that the HConnection needs to be unmanaged (created with
+   * {@link HConnectionManager#createConnection(Configuration)}).
    * <p>
-   * Since 0.98.1 this method no longer checks table existence. An exception
-   * will be thrown if the table does not exist only when the first operation is
-   * attempted.
+   * Since 0.98.1 this method no longer checks table existence. An exception will be thrown if the
+   * table does not exist only when the first operation is attempted.
    * @param tableName
    * @return an HTable to use for interactions with this table
    */
   public HTableInterface getTable(byte[] tableName) throws IOException;
 
   /**
-   * Retrieve an HTableInterface implementation for access to a table.
-   * The returned HTableInterface is not thread safe, a new instance should
-   * be created for each using thread.
-   * This is a lightweight operation, pooling or caching of the returned HTableInterface
-   * is neither required nor desired.
-   * Note that the HConnection needs to be unmanaged
-   * (created with {@link HConnectionManager#createConnection(Configuration)}).
+   * Retrieve an HTableInterface implementation for access to a table. The returned HTableInterface
+   * is not thread safe, a new instance should be created for each using thread. This is a
+   * lightweight operation, pooling or caching of the returned HTableInterface is neither required
+   * nor desired. Note that the HConnection needs to be unmanaged (created with
+   * {@link HConnectionManager#createConnection(Configuration)}).
    * <p>
-   * Since 0.98.1 this method no longer checks table existence. An exception
-   * will be thrown if the table does not exist only when the first operation is
-   * attempted.
+   * Since 0.98.1 this method no longer checks table existence. An exception will be thrown if the
+   * table does not exist only when the first operation is attempted.
    * @param tableName
    * @return an HTable to use for interactions with this table
    */
   public HTableInterface getTable(TableName tableName) throws IOException;
 
   /**
-   * Retrieve an HTableInterface implementation for access to a table.
-   * The returned HTableInterface is not thread safe, a new instance should
-   * be created for each using thread.
-   * This is a lightweight operation, pooling or caching of the returned HTableInterface
-   * is neither required nor desired.
-   * Note that the HConnection needs to be unmanaged
-   * (created with {@link HConnectionManager#createConnection(Configuration)}).
+   * Retrieve an HTableInterface implementation for access to a table. The returned HTableInterface
+   * is not thread safe, a new instance should be created for each using thread. This is a
+   * lightweight operation, pooling or caching of the returned HTableInterface is neither required
+   * nor desired. Note that the HConnection needs to be unmanaged (created with
+   * {@link HConnectionManager#createConnection(Configuration)}).
    * <p>
-   * Since 0.98.1 this method no longer checks table existence. An exception
-   * will be thrown if the table does not exist only when the first operation is
-   * attempted.
+   * Since 0.98.1 this method no longer checks table existence. An exception will be thrown if the
+   * table does not exist only when the first operation is attempted.
    * @param tableName
    * @param pool The thread pool to use for batch operations, null to use a default pool.
    * @return an HTable to use for interactions with this table
    */
-  public HTableInterface getTable(String tableName, ExecutorService pool)  throws IOException;
+  public HTableInterface getTable(String tableName, ExecutorService pool) throws IOException;
 
   /**
-   * Retrieve an HTableInterface implementation for access to a table.
-   * The returned HTableInterface is not thread safe, a new instance should
-   * be created for each using thread.
-   * This is a lightweight operation, pooling or caching of the returned HTableInterface
-   * is neither required nor desired.
-   * Note that the HConnection needs to be unmanaged
-   * (created with {@link HConnectionManager#createConnection(Configuration)}).
+   * Retrieve an HTableInterface implementation for access to a table. The returned HTableInterface
+   * is not thread safe, a new instance should be created for each using thread. This is a
+   * lightweight operation, pooling or caching of the returned HTableInterface is neither required
+   * nor desired. Note that the HConnection needs to be unmanaged (created with
+   * {@link HConnectionManager#createConnection(Configuration)}).
    * <p>
-   * Since 0.98.1 this method no longer checks table existence. An exception
-   * will be thrown if the table does not exist only when the first operation is
-   * attempted.
+   * Since 0.98.1 this method no longer checks table existence. An exception will be thrown if the
+   * table does not exist only when the first operation is attempted.
    * @param tableName
    * @param pool The thread pool to use for batch operations, null to use a default pool.
    * @return an HTable to use for interactions with this table
    */
-  public HTableInterface getTable(byte[] tableName, ExecutorService pool)  throws IOException;
+  public HTableInterface getTable(byte[] tableName, ExecutorService pool) throws IOException;
 
   /**
-   * Retrieve an HTableInterface implementation for access to a table.
-   * The returned HTableInterface is not thread safe, a new instance should
-   * be created for each using thread.
-   * This is a lightweight operation, pooling or caching of the returned HTableInterface
-   * is neither required nor desired.
-   * Note that the HConnection needs to be unmanaged
-   * (created with {@link HConnectionManager#createConnection(Configuration)}).
+   * Retrieve an HTableInterface implementation for access to a table. The returned HTableInterface
+   * is not thread safe, a new instance should be created for each using thread. This is a
+   * lightweight operation, pooling or caching of the returned HTableInterface is neither required
+   * nor desired. Note that the HConnection needs to be unmanaged (created with
+   * {@link HConnectionManager#createConnection(Configuration)}).
    * <p>
-   * Since 0.98.1 this method no longer checks table existence. An exception
-   * will be thrown if the table does not exist only when the first operation is
-   * attempted.
+   * Since 0.98.1 this method no longer checks table existence. An exception will be thrown if the
+   * table does not exist only when the first operation is attempted.
    * @param tableName
    * @param pool The thread pool to use for batch operations, null to use a default pool.
    * @return an HTable to use for interactions with this table
    */
-  public HTableInterface getTable(TableName tableName, ExecutorService pool)  throws IOException;
+  public HTableInterface getTable(TableName tableName, ExecutorService pool) throws IOException;
 
   /** @return - true if the master server is running */
-  boolean isMasterRunning()
-  throws MasterNotRunningException, ZooKeeperConnectionException;
+  boolean isMasterRunning() throws IOException;
 
   /**
-   * A table that isTableEnabled == false and isTableDisabled == false
-   * is possible. This happens when a table has a lot of regions
-   * that must be processed.
+   * A table that isTableEnabled == false and isTableDisabled == false is possible. This happens
+   * when a table has a lot of regions that must be processed.
    * @param tableName table name
    * @return true if the table is enabled, false otherwise
    * @throws IOException if a remote or network exception occurs
@@ -216,31 +194,22 @@ public interface HConnection extends Abortable, Closeable {
   boolean isTableAvailable(byte[] tableName) throws IOException;
 
   /**
-   * Use this api to check if the table has been created with the specified number of
-   * splitkeys which was used while creating the given table.
-   * Note : If this api is used after a table's region gets splitted, the api may return
-   * false.
-   * @param tableName
-   *          tableName
-   * @param splitKeys
-   *          splitKeys used while creating table
-   * @throws IOException
-   *           if a remote or network exception occurs
+   * Use this api to check if the table has been created with the specified number of splitkeys
+   * which was used while creating the given table. Note : If this api is used after a table's
+   * region gets splitted, the api may return false.
+   * @param tableName tableName
+   * @param splitKeys splitKeys used while creating table
+   * @throws IOException if a remote or network exception occurs
    */
-  boolean isTableAvailable(TableName tableName, byte[][] splitKeys) throws
-      IOException;
+  boolean isTableAvailable(TableName tableName, byte[][] splitKeys) throws IOException;
 
   @Deprecated
-  boolean isTableAvailable(byte[] tableName, byte[][] splitKeys) throws
-      IOException;
+  boolean isTableAvailable(byte[] tableName, byte[][] splitKeys) throws IOException;
 
   /**
-   * List all the userspace tables.  In other words, scan the hbase:meta table.
-   *
-   * If we wanted this to be really fast, we could implement a special
-   * catalog table that just contains table names and their descriptors.
-   * Right now, it only exists as part of the hbase:meta table's region info.
-   *
+   * List all the userspace tables. In other words, scan the hbase:meta table. If we wanted this to
+   * be really fast, we could implement a special catalog table that just contains table names and
+   * their descriptors. Right now, it only exists as part of the hbase:meta table's region info.
    * @return - returns an array of HTableDescriptors
    * @throws IOException if a remote or network exception occurs
    */
@@ -267,28 +236,23 @@ public interface HConnection extends Abortable, Closeable {
    * @return table metadata
    * @throws IOException if a remote or network exception occurs
    */
-  HTableDescriptor getHTableDescriptor(TableName tableName)
-  throws IOException;
+  HTableDescriptor getHTableDescriptor(TableName tableName) throws IOException;
 
   @Deprecated
-  HTableDescriptor getHTableDescriptor(byte[] tableName)
-  throws IOException;
+  HTableDescriptor getHTableDescriptor(byte[] tableName) throws IOException;
 
   /**
-   * Find the location of the region of <i>tableName</i> that <i>row</i>
-   * lives in.
+   * Find the location of the region of <i>tableName</i> that <i>row</i> lives in.
    * @param tableName name of the table <i>row</i> is in
    * @param row row key you're trying to find the region of
-   * @return HRegionLocation that describes where to find the region in
-   * question
+   * @return HRegionLocation that describes where to find the region in question
    * @throws IOException if a remote or network exception occurs
    */
-  public HRegionLocation locateRegion(final TableName tableName,
-      final byte [] row) throws IOException;
+  public HRegionLocation locateRegion(final TableName tableName, final byte[] row)
+      throws IOException;
 
   @Deprecated
-  public HRegionLocation locateRegion(final byte[] tableName,
-      final byte [] row) throws IOException;
+  public HRegionLocation locateRegion(final byte[] tableName, final byte[] row) throws IOException;
 
   /**
    * Allows flushing the region cache.
@@ -296,10 +260,8 @@ public interface HConnection extends Abortable, Closeable {
   void clearRegionCache();
 
   /**
-   * Allows flushing the region cache of all locations that pertain to
-   * <code>tableName</code>
-   * @param tableName Name of the table whose regions we are to remove from
-   * cache.
+   * Allows flushing the region cache of all locations that pertain to <code>tableName</code>
+   * @param tableName Name of the table whose regions we are to remove from cache.
    */
   void clearRegionCache(final TableName tableName);
 
@@ -313,45 +275,40 @@ public interface HConnection extends Abortable, Closeable {
   void deleteCachedRegionLocation(final HRegionLocation location);
 
   /**
-   * Find the location of the region of <i>tableName</i> that <i>row</i>
-   * lives in, ignoring any value that might be in the cache.
+   * Find the location of the region of <i>tableName</i> that <i>row</i> lives in, ignoring any
+   * value that might be in the cache.
    * @param tableName name of the table <i>row</i> is in
    * @param row row key you're trying to find the region of
-   * @return HRegionLocation that describes where to find the region in
-   * question
+   * @return HRegionLocation that describes where to find the region in question
    * @throws IOException if a remote or network exception occurs
    */
-  HRegionLocation relocateRegion(final TableName tableName,
-      final byte [] row) throws IOException;
+  HRegionLocation relocateRegion(final TableName tableName, final byte[] row) throws IOException;
 
   @Deprecated
-  HRegionLocation relocateRegion(final byte[] tableName,
-      final byte [] row) throws IOException;
+  HRegionLocation relocateRegion(final byte[] tableName, final byte[] row) throws IOException;
 
   /**
    * Update the location cache. This is used internally by HBase, in most cases it should not be
-   *  used by the client application.
+   * used by the client application.
    * @param tableName the table name
    * @param rowkey the row
    * @param exception the exception if any. Can be null.
    * @param source the previous location
    */
-  void updateCachedLocations(TableName tableName, byte[] rowkey,
-                                    Object exception, HRegionLocation source);
+  void updateCachedLocations(TableName tableName, byte[] rowkey, Object exception,
+      HRegionLocation source);
 
   @Deprecated
-  void updateCachedLocations(byte[] tableName, byte[] rowkey,
-                                    Object exception, HRegionLocation source);
+  void updateCachedLocations(byte[] tableName, byte[] rowkey, Object exception,
+      HRegionLocation source);
 
   /**
    * Gets the location of the region of <i>regionName</i>.
    * @param regionName name of the region to locate
-   * @return HRegionLocation that describes where to find the region in
-   * question
+   * @return HRegionLocation that describes where to find the region in question
    * @throws IOException if a remote or network exception occurs
    */
-  HRegionLocation locateRegion(final byte[] regionName)
-  throws IOException;
+  HRegionLocation locateRegion(final byte[] regionName) throws IOException;
 
   /**
    * Gets the locations of all regions in the specified table, <i>tableName</i>.
@@ -373,20 +330,17 @@ public interface HConnection extends Abortable, Closeable {
    * @return list of region locations for all regions of table
    * @throws IOException
    */
-  public List<HRegionLocation> locateRegions(final TableName tableName,
-      final boolean useCache,
+  public List<HRegionLocation> locateRegions(final TableName tableName, final boolean useCache,
       final boolean offlined) throws IOException;
 
   @Deprecated
-  public List<HRegionLocation> locateRegions(final byte[] tableName,
-      final boolean useCache,
+  public List<HRegionLocation> locateRegions(final byte[] tableName, final boolean useCache,
       final boolean offlined) throws IOException;
 
   /**
    * Returns a {@link MasterKeepAliveConnection} to the active master
    */
   MasterService.BlockingInterface getMaster() throws IOException;
-
 
   /**
    * Establishes a connection to the region server at the specified address.
@@ -397,13 +351,11 @@ public interface HConnection extends Abortable, Closeable {
   AdminService.BlockingInterface getAdmin(final ServerName serverName) throws IOException;
 
   /**
-   * Establishes a connection to the region server at the specified address, and returns
-   * a region client protocol.
-   *
+   * Establishes a connection to the region server at the specified address, and returns a region
+   * client protocol.
    * @param serverName
    * @return ClientProtocol proxy for RegionServer
    * @throws IOException if a remote or network exception occurs
-   *
    */
   ClientService.BlockingInterface getClient(final ServerName serverName) throws IOException;
 
@@ -426,75 +378,62 @@ public interface HConnection extends Abortable, Closeable {
    * @return Location of row.
    * @throws IOException if a remote or network exception occurs
    */
-  HRegionLocation getRegionLocation(TableName tableName, byte [] row,
-    boolean reload)
-  throws IOException;
+  HRegionLocation getRegionLocation(TableName tableName, byte[] row, boolean reload)
+      throws IOException;
 
   @Deprecated
-  HRegionLocation getRegionLocation(byte[] tableName, byte [] row,
-    boolean reload)
-  throws IOException;
+  HRegionLocation getRegionLocation(byte[] tableName, byte[] row, boolean reload)
+      throws IOException;
 
   /**
-   * Process a mixed batch of Get, Put and Delete actions. All actions for a
-   * RegionServer are forwarded in one RPC call.
-   *
-   *
+   * Process a mixed batch of Get, Put and Delete actions. All actions for a RegionServer are
+   * forwarded in one RPC call.
    * @param actions The collection of actions.
    * @param tableName Name of the hbase table
    * @param pool thread pool for parallel execution
-   * @param results An empty array, same size as list. If an exception is thrown,
-   * you can test here for partial results, and to determine which actions
-   * processed successfully.
-   * @throws IOException if there are problems talking to META. Per-item
-   * exceptions are stored in the results array.
+   * @param results An empty array, same size as list. If an exception is thrown, you can test here
+   *          for partial results, and to determine which actions processed successfully.
+   * @throws IOException if there are problems talking to META. Per-item exceptions are stored in
+   *           the results array.
    * @deprecated since 0.96 - Use {@link HTableInterface#batch} instead
    */
   @Deprecated
-  void processBatch(List<? extends Row> actions, final TableName tableName,
-      ExecutorService pool, Object[] results) throws IOException, InterruptedException;
+  void processBatch(List<? extends Row> actions, final TableName tableName, ExecutorService pool,
+      Object[] results) throws IOException, InterruptedException;
 
   @Deprecated
-  void processBatch(List<? extends Row> actions, final byte[] tableName,
-      ExecutorService pool, Object[] results) throws IOException, InterruptedException;
+  void processBatch(List<? extends Row> actions, final byte[] tableName, ExecutorService pool,
+      Object[] results) throws IOException, InterruptedException;
 
   /**
-   * Parameterized batch processing, allowing varying return types for different
-   * {@link Row} implementations.
+   * Parameterized batch processing, allowing varying return types for different {@link Row}
+   * implementations.
    * @deprecated since 0.96 - Use {@link HTableInterface#batchCallback} instead
    */
   @Deprecated
-  public <R> void processBatchCallback(List<? extends Row> list,
-      final TableName tableName,
-      ExecutorService pool,
-      Object[] results,
-      Batch.Callback<R> callback) throws IOException, InterruptedException;
+  public <R> void processBatchCallback(List<? extends Row> list, final TableName tableName,
+      ExecutorService pool, Object[] results, Batch.Callback<R> callback)
+      throws IOException, InterruptedException;
 
   @Deprecated
-  public <R> void processBatchCallback(List<? extends Row> list,
-      final byte[] tableName,
-      ExecutorService pool,
-      Object[] results,
-      Batch.Callback<R> callback) throws IOException, InterruptedException;
+  public <R> void processBatchCallback(List<? extends Row> list, final byte[] tableName,
+      ExecutorService pool, Object[] results, Batch.Callback<R> callback)
+      throws IOException, InterruptedException;
 
   /**
-   * Enable or disable region cache prefetch for the table. It will be
-   * applied for the given table's all HTable instances within this
-   * connection. By default, the cache prefetch is enabled.
+   * Enable or disable region cache prefetch for the table. It will be applied for the given table's
+   * all HTable instances within this connection. By default, the cache prefetch is enabled.
    * @param tableName name of table to configure.
    * @param enable Set to true to enable region cache prefetch.
    */
-  public void setRegionCachePrefetch(final TableName tableName,
-      final boolean enable);
+  public void setRegionCachePrefetch(final TableName tableName, final boolean enable);
 
-  public void setRegionCachePrefetch(final byte[] tableName,
-      final boolean enable);
+  public void setRegionCachePrefetch(final byte[] tableName, final boolean enable);
 
   /**
    * Check whether region cache prefetch is enabled or not.
    * @param tableName name of table to check
-   * @return true if table's region cache prefetch is enabled. Otherwise
-   * it is disabled.
+   * @return true if table's region cache prefetch is enabled. Otherwise it is disabled.
    */
   boolean getRegionCachePrefetch(final TableName tableName);
 
@@ -515,14 +454,12 @@ public interface HConnection extends Abortable, Closeable {
   HTableDescriptor[] getHTableDescriptorsByTableName(List<TableName> tableNames) throws IOException;
 
   @Deprecated
-  HTableDescriptor[] getHTableDescriptors(List<String> tableNames) throws
-      IOException;
+  HTableDescriptor[] getHTableDescriptors(List<String> tableNames) throws IOException;
 
   /**
    * @return true if this connection is closed
    */
   boolean isClosed();
-
 
   /**
    * Clear any caches that pertain to server name <code>sn</code>.
@@ -539,8 +476,7 @@ public interface HConnection extends Abortable, Closeable {
    */
   // TODO: Why is this in the public interface when the returned type is shutdown package access?
   @Deprecated
-  MasterKeepAliveConnection getKeepAliveMasterService()
-  throws MasterNotRunningException;
+  MasterKeepAliveConnection getKeepAliveMasterService() throws IOException;
 
   /**
    * @param serverName
@@ -562,4 +498,8 @@ public interface HConnection extends Abortable, Closeable {
    * @return the configured client backoff policy
    */
   ClientBackoffPolicy getBackoffPolicy();
+
+  RpcRetryingCallerFactory getRpcRetryingCallerFactory();
+
+  RpcControllerFactory getRpcControllerFactory();
 }

@@ -30,6 +30,7 @@ import org.apache.hadoop.hbase.MasterNotRunningException;
 import org.apache.hadoop.hbase.PleaseHoldException;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.ZooKeeperConnectionException;
+import org.apache.hadoop.hbase.ipc.RpcControllerFactory;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.CreateTableRequest;
 import org.apache.hadoop.hbase.testclassification.SmallTests;
 import org.junit.Test;
@@ -69,6 +70,10 @@ public class TestHBaseAdminNoCluster {
       (CreateTableRequest)Mockito.any())).
         thenThrow(new ServiceException("Test fail").initCause(new PleaseHoldException("test")));
     Mockito.when(connection.getKeepAliveMasterService()).thenReturn(masterAdmin);
+    Mockito.when(connection.getRpcRetryingCallerFactory()).thenReturn(RpcRetryingCallerFactory
+        .instantiate(configuration, ServerStatisticTracker.create(configuration)));
+    Mockito.when(connection.getRpcControllerFactory())
+        .thenReturn(RpcControllerFactory.instantiate(configuration));
     // Mock up our admin Interfaces
     HBaseAdmin admin = new HBaseAdmin(configuration);
     try {
