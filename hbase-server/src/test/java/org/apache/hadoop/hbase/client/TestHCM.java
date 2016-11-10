@@ -68,6 +68,7 @@ import org.apache.hadoop.hbase.exceptions.DeserializationException;
 import org.apache.hadoop.hbase.exceptions.RegionMovedException;
 import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.filter.FilterBase;
+import org.apache.hadoop.hbase.ipc.CallTimeoutException;
 import org.apache.hadoop.hbase.ipc.NettyRpcClient;
 import org.apache.hadoop.hbase.ipc.RpcClientFactory;
 import org.apache.hadoop.hbase.ipc.RpcClientImpl;
@@ -337,7 +338,7 @@ public class TestHCM {
    * the client won't wait that much, because 20 + 20 > 30, so the client timeouted when the server
    * answers.
    */
-  @Test
+  @Test(expected = CallTimeoutException.class)
   public void testOperationTimeout() throws Exception {
     String tableName = getTestTableName();
     HTableDescriptor hdt = TEST_UTIL.createTableDescriptor(tableName);
@@ -345,7 +346,7 @@ public class TestHCM {
     TEST_UTIL.createTable(hdt, new byte[][] { FAM_NAM }).close();
 
     Configuration c = new Configuration(TEST_UTIL.getConfiguration());
-    c.setInt(HConstants.HBASE_CLIENT_RETRIES_NUMBER, 3);
+    c.setInt(HConstants.HBASE_CLIENT_RETRIES_NUMBER, 10);
     c.setInt(HConstants.HBASE_RPC_TIMEOUT_KEY, Integer.MAX_VALUE);
 
     HConnection connection = HConnectionManager.createConnection(c);
@@ -361,14 +362,6 @@ public class TestHCM {
       try {
         table.setOperationTimeout(30 * 1000);
         table.get(new Get(FAM_NAM));
-        fail("We expect an exception here");
-      } catch (SocketTimeoutException e) {
-        // The client has a CallTimeout class, but it's not shared.We're not very clean today,
-        // in the general case you can expect the call to stop, but the exception may vary.
-        // In this test however, we're sure that it will be a socket timeout.
-        LOG.info("We received an exception, as expected ", e);
-      } catch (IOException e) {
-        fail("Wrong exception:" + e.getMessage());
       } finally {
         table.close();
       }
@@ -378,7 +371,7 @@ public class TestHCM {
   /**
    * Test starting from 0 index when calculate the backoff time.
    */
-  @Test
+  @Test(expected = CallTimeoutException.class)
   public void testRpcRetryingCallerSleep() throws Exception {
     String tableName = getTestTableName();
     HTableDescriptor hdt = TEST_UTIL.createTableDescriptor(tableName);
@@ -406,11 +399,6 @@ public class TestHCM {
         // Will fail this time. After sleep, there are not enough time for second retry
         // Beacuse 2s + 3s * RETRY_BACKOFF[0] + 2s > 6s
         table.get(new Get(FAM_NAM));
-        fail("We expect an exception here");
-      } catch (SocketTimeoutException e) {
-        LOG.info("We received an exception, as expected ", e);
-      } catch (IOException e) {
-        fail("Wrong exception:" + e.getMessage());
       } finally {
         table.close();
         connection.close();
@@ -427,13 +415,13 @@ public class TestHCM {
     RegionServerCallable<Object> regionServerCallable = new RegionServerCallable<Object>(
         table.getConnection(), tableName, ROW) {
       @Override
-      public Object call() throws Exception {
+      protected Object rpcCall() throws Exception {
         // TODO Auto-generated method stub
         return null;
       }
     };
 
-    regionServerCallable.prepare(false);
+    regionServerCallable.prepare(Integer.MAX_VALUE, false);
     for (int i = 0; i < HConstants.RETRY_BACKOFF.length; i++) {
       pauseTime = regionServerCallable.sleep(baseTime, i);
       assertTrue(pauseTime >= (baseTime * HConstants.RETRY_BACKOFF[i]));

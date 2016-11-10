@@ -158,13 +158,13 @@ public class TestHRegionServerBulkLoad {
       RegionServerCallable<Void> callable =
           new RegionServerCallable<Void>(conn, tbl, Bytes.toBytes("aaa")) {
         @Override
-        public Void call() throws Exception {
+        protected Void rpcCall() throws Exception {
           LOG.debug("Going to connect to server " + getLocation() + " for row "
               + Bytes.toStringBinary(getRow()));
           byte[] regionName = getLocation().getRegionInfo().getRegionName();
           BulkLoadHFileRequest request =
             RequestConverter.buildBulkLoadHFileRequest(famPaths, regionName, true);
-          getStub().bulkLoadHFile(null, request);
+          getStub().bulkLoadHFile(getController(), request);
           return null;
         }
       };
@@ -177,7 +177,7 @@ public class TestHRegionServerBulkLoad {
         // 10 * 50 = 500 open file handles!
         callable = new RegionServerCallable<Void>(conn, tbl, Bytes.toBytes("aaa")) {
           @Override
-          public Void call() throws Exception {
+          protected Void rpcCall() throws Exception {
             LOG.debug("compacting " + getLocation() + " for row "
                 + Bytes.toStringBinary(getRow()));
             AdminProtos.AdminService.BlockingInterface server =
@@ -185,7 +185,7 @@ public class TestHRegionServerBulkLoad {
             CompactRegionRequest request =
               RequestConverter.buildCompactRegionRequest(
                 getLocation().getRegionInfo().getRegionName(), true, null);
-            server.compactRegion(null, request);
+            server.compactRegion(getController(), request);
             numCompactions.incrementAndGet();
             return null;
           }

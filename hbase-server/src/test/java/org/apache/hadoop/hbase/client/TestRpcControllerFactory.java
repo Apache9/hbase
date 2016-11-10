@@ -20,6 +20,8 @@ package org.apache.hadoop.hbase.client;
 import static org.apache.hadoop.hbase.HBaseTestingUtility.fam1;
 import static org.junit.Assert.assertEquals;
 
+import com.google.common.collect.Lists;
+
 import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -29,20 +31,18 @@ import org.apache.hadoop.hbase.CellScannable;
 import org.apache.hadoop.hbase.CellScanner;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.HConstants;
-import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.coprocessor.CoprocessorHost;
 import org.apache.hadoop.hbase.coprocessor.ProtobufCoprocessorService;
 import org.apache.hadoop.hbase.ipc.DelegatingPayloadCarryingRpcController;
 import org.apache.hadoop.hbase.ipc.PayloadCarryingRpcController;
 import org.apache.hadoop.hbase.ipc.RpcControllerFactory;
+import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-
-import com.google.common.collect.Lists;
 
 @Category(MediumTests.class)
 public class TestRpcControllerFactory {
@@ -84,6 +84,7 @@ public class TestRpcControllerFactory {
     @Override
     public void setPriority(TableName tn) {
       super.setPriority(tn);
+      new Exception().printStackTrace();
       // ignore counts for system tables - it could change and we really only want to check on what
       // the client should change
       if (!tn.isSystemTable()) {
@@ -102,7 +103,7 @@ public class TestRpcControllerFactory {
     Configuration conf = UTIL.getConfiguration();
     conf.set(CoprocessorHost.REGION_COPROCESSOR_CONF_KEY,
       ProtobufCoprocessorService.class.getName());
-    
+
     UTIL.startMiniCluster();
   }
 
@@ -130,6 +131,8 @@ public class TestRpcControllerFactory {
     // change one of the connection properties so we get a new HConnection with our configuration
     conf.setInt(HConstants.HBASE_RPC_TIMEOUT_KEY, HConstants.DEFAULT_HBASE_RPC_TIMEOUT + 1);
 
+    int counter = 0;
+
     HTable table = new HTable(conf, name);
     table.setAutoFlushTo(false);
     byte[] row = Bytes.toBytes("row");
@@ -137,67 +140,67 @@ public class TestRpcControllerFactory {
     p.add(fam1, fam1, Bytes.toBytes("val0"));
     table.put(p);
     table.flushCommits();
-    Integer counter = 1;
-    counter = verifyCount(counter);
+    counter = verifyCount(counter, 1);
 
     Delete d = new Delete(row);
     d.deleteColumn(fam1, fam1);
     table.delete(d);
-    counter = verifyCount(counter);
+    counter = verifyCount(counter, 1);
 
     Put p2 = new Put(row);
     p2.add(fam1, Bytes.toBytes("qual"), Bytes.toBytes("val1"));
     table.batch(Lists.newArrayList(p, p2), new Object[2]);
     // this only goes to a single server, so we don't need to change the count here
-    counter = verifyCount(counter);
+    counter = verifyCount(counter, 1);
 
     Append append = new Append(row);
     append.add(fam1, fam1, Bytes.toBytes("val2"));
     table.append(append);
-    counter = verifyCount(counter);
+    counter = verifyCount(counter, 1);
 
     // and check the major lookup calls as well
     Get g = new Get(row);
     table.get(g);
-    counter = verifyCount(counter);
+    counter = verifyCount(counter, 1);
 
     ResultScanner scan = table.getScanner(fam1);
     scan.next();
     scan.close();
-    counter = verifyCount(counter);
+    counter = verifyCount(counter, 3);
 
     Get g2 = new Get(row);
     table.get(Lists.newArrayList(g, g2));
     // same server, so same as above for not changing count
-    counter = verifyCount(counter);
+    counter = verifyCount(counter, 1);
 
     // make sure all the scanner types are covered
     Scan scanInfo = new Scan(row);
     // regular small
     scanInfo.setSmall(true);
-    counter = doScan(table, scanInfo, counter);
+    counter = doScan(table, scanInfo, counter, 1);
 
     // reversed, small
     scanInfo.setReversed(true);
-    counter = doScan(table, scanInfo, counter);
+    counter = doScan(table, scanInfo, counter, 1);
 
     // reversed, regular
     scanInfo.setSmall(false);
-    counter = doScan(table, scanInfo, counter);
+    counter = doScan(table, scanInfo, counter, 3);
 
     table.close();
   }
 
-  int doScan(HTable table, Scan scan, int expectedCount) throws IOException {
+  int doScan(HTable table, Scan scan, int counter, int delta) throws IOException {
     ResultScanner results = table.getScanner(scan);
     results.next();
     results.close();
-    return verifyCount(expectedCount);
+    return verifyCount(counter, delta);
   }
 
-  int verifyCount(Integer counter) {
-    assertEquals(counter.intValue(), CountingRpcController.TABLE_PRIORITY.get());
+  int verifyCount(int prevCounter, int delta) {
+    int counter = prevCounter + delta;
+    assertEquals(counter, CountingRpcController.TABLE_PRIORITY.get());
     assertEquals(0, CountingRpcController.INT_PRIORITY.get());
-    return counter + 1;
+    return counter;
   }
 }

@@ -29,7 +29,12 @@ import org.apache.hadoop.hbase.classification.InterfaceStability;
 @InterfaceAudience.Public
 @InterfaceStability.Evolving
 public class CallTimeoutException extends IOException {
+
   public CallTimeoutException(final String msg) {
     super(msg);
+  }
+
+  public CallTimeoutException(String message, Throwable cause) {
+    super(message, cause);
   }
 }

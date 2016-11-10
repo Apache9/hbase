@@ -19,18 +19,19 @@
 
 package org.apache.hadoop.hbase.client;
 
-
 import com.google.protobuf.ServiceException;
+
+import java.io.IOException;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.hbase.classification.InterfaceAudience;
-import org.apache.hadoop.hbase.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.KeyValueUtil;
 import org.apache.hadoop.hbase.TableName;
-import org.apache.hadoop.hbase.ipc.RpcControllerFactory;
+import org.apache.hadoop.hbase.classification.InterfaceAudience;
+import org.apache.hadoop.hbase.classification.InterfaceStability;
 import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.protobuf.RequestConverter;
 import org.apache.hadoop.hbase.protobuf.ResponseConverter;
@@ -38,12 +39,10 @@ import org.apache.hadoop.hbase.protobuf.generated.ClientProtos;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.htrace.Trace;
 
-import java.io.IOException;
-
 /**
- * Client scanner for small reversed scan. Generally, only one RPC is called to fetch the
- * scan results, unless the results cross multiple regions or the row count of
- * results exceed the caching.
+ * Client scanner for small reversed scan. Generally, only one RPC is called to fetch the scan
+ * results, unless the results cross multiple regions or the row count of results exceed the
+ * caching.
  * <p/>
  * For small scan, it will get better performance than {@link ReversedClientScanner}
  */
@@ -54,32 +53,30 @@ public class ClientSmallReversedScanner extends ReversedClientScanner {
   private RegionServerCallable<Result[]> smallReversedScannerCallable = null;
 
   /**
-   * Create a new ReversibleClientScanner for the specified table Note that the
-   * passed {@link org.apache.hadoop.hbase.client.Scan}'s start row maybe changed.
-   *
-   * @param conf       The {@link org.apache.hadoop.conf.Configuration} to use.
-   * @param scan       {@link org.apache.hadoop.hbase.client.Scan} to use in this scanner
-   * @param tableName  The table that we wish to scan
+   * Create a new ReversibleClientScanner for the specified table Note that the passed
+   * {@link org.apache.hadoop.hbase.client.Scan}'s start row maybe changed.
+   * @param conf The {@link org.apache.hadoop.conf.Configuration} to use.
+   * @param scan {@link org.apache.hadoop.hbase.client.Scan} to use in this scanner
+   * @param tableName The table that we wish to scan
    * @param connection Connection identifying the cluster
    * @throws java.io.IOException
    */
   public ClientSmallReversedScanner(Configuration conf, Scan scan, TableName tableName,
-                                    HConnection connection) throws IOException {
+      HConnection connection) throws IOException {
     super(conf, scan, tableName, connection);
   }
 
   /**
-   * Gets a scanner for following scan. Move to next region or continue from the
-   * last result or start from the start row.
-   *
+   * Gets a scanner for following scan. Move to next region or continue from the last result or
+   * start from the start row.
    * @param nbRows
-   * @param done              true if Server-side says we're done scanning.
+   * @param done true if Server-side says we're done scanning.
    * @param currentRegionDone true if scan is over on current region
    * @return true if has next scanner
    * @throws IOException
    */
-  private boolean nextScanner(int nbRows, final boolean done,
-                              boolean currentRegionDone) throws IOException {
+  private boolean nextScanner(int nbRows, final boolean done, boolean currentRegionDone)
+      throws IOException {
     // Where to start the next getter
     byte[] localStartKey;
     int cacheNum = nbRows;
@@ -87,8 +84,7 @@ public class ClientSmallReversedScanner extends ReversedClientScanner {
     // if we're at end of table, close and return false to stop iterating
     if (this.currentRegion != null && currentRegionDone) {
       byte[] startKey = this.currentRegion.getStartKey();
-      if (startKey == null
-          || Bytes.equals(startKey, HConstants.EMPTY_BYTE_ARRAY)
+      if (startKey == null || Bytes.equals(startKey, HConstants.EMPTY_BYTE_ARRAY)
           || checkScanStopRow(startKey) || done) {
         close();
         if (LOG.isDebugEnabled()) {
@@ -102,7 +98,7 @@ public class ClientSmallReversedScanner extends ReversedClientScanner {
         LOG.debug("Finished with region " + this.currentRegion);
       }
     } else if (this.lastResult != null) {
-      localStartKey =  createClosestRowBefore(lastResult.getRow());
+      localStartKey = createClosestRowBefore(lastResult.getRow());
       cacheNum++;
     } else {
       localStartKey = this.scan.getStartRow();
@@ -119,8 +115,8 @@ public class ClientSmallReversedScanner extends ReversedClientScanner {
       LOG.trace("Advancing internal small scanner to startKey at '"
           + Bytes.toStringBinary(localStartKey) + "'");
     }
-    smallReversedScannerCallable = getSmallReversedScannerCallable(localStartKey, cacheNum,
-      rpcControllerFactory, isFirstRegionToLocate);
+    smallReversedScannerCallable =
+        getSmallReversedScannerCallable(localStartKey, cacheNum, isFirstRegionToLocate);
 
     if (this.scanMetrics != null) {
       this.scanMetrics.countOfRegions.incrementAndGet();
@@ -151,8 +147,7 @@ public class ClientSmallReversedScanner extends ReversedClientScanner {
         this.currentRegion = smallReversedScannerCallable.getHRegionInfo();
         long currentTime = System.currentTimeMillis();
         if (this.scanMetrics != null) {
-          this.scanMetrics.sumOfMillisSecBetweenNexts.addAndGet(currentTime
-              - lastNext);
+          this.scanMetrics.sumOfMillisSecBetweenNexts.addAndGet(currentTime - lastNext);
         }
         lastNext = currentTime;
         if (values != null && values.length > 0) {
@@ -181,9 +176,8 @@ public class ClientSmallReversedScanner extends ReversedClientScanner {
     return null;
   }
 
-  protected RegionServerCallable<Result[]> getSmallReversedScannerCallable(byte[] localStartKey,
-      final int cacheNum, RpcControllerFactory rpcControllerFactory,
-      boolean isFirstRegionToLocate) {
+  private RegionServerCallable<Result[]> getSmallReversedScannerCallable(byte[] localStartKey,
+      final int cacheNum, boolean isFirstRegionToLocate) {
     byte[] locateStartRow = null;
     if (isFirstRegionToLocate
         && (localStartKey == null || Bytes.equals(localStartKey, HConstants.EMPTY_BYTE_ARRAY))) {
@@ -193,15 +187,17 @@ public class ClientSmallReversedScanner extends ReversedClientScanner {
     }
     scan.setStartRow(localStartKey);
     return new ReversedScannerCallable(getConnection(), getTable(), scan, null, locateStartRow,
-        rpcControllerFactory.newController(), scannerTimeout) {
-      public Result[] call() throws IOException {
+        scannerTimeout) {
+
+      @Override
+      protected Result[] rpcCall() throws IOException {
+        // we use a different timeout for scan.
+        getController().setTimeout(timeout);
         ClientProtos.ScanRequest request = RequestConverter
             .buildScanRequest(getLocation().getRegionInfo().getRegionName(), scan, cacheNum, true);
         ClientProtos.ScanResponse response = null;
         try {
-          controller.reset();
-          controller.setPriority(getTableName());
-          response = getStub().scan(controller, request);
+          response = getStub().scan(getController(), request);
           if (response.hasMoreResultsInRegion()) {
             setHasMoreResultsContext(true);
             setServerHasMoreResults(response.getMoreResultsInRegion());
@@ -211,7 +207,7 @@ public class ClientSmallReversedScanner extends ReversedClientScanner {
           if (Trace.isTracing()) {
             Trace.addTimelineAnnotation("Reversed Small scan to " + location);
           }
-          return ResponseConverter.getResults(controller.cellScanner(), response);
+          return ResponseConverter.getResults(getController().cellScanner(), response);
         } catch (ServiceException se) {
           throw ProtobufUtil.getRemoteException(se);
         }

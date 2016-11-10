@@ -78,7 +78,7 @@ public class TestDateTieredCompaction extends TestCompactionPolicy {
     conf.setFloat(CompactionConfiguration.RATIO_KEY, 1.2F);
     
     conf.setInt(HStore.BLOCKING_STOREFILES_KEY, 20);
-    conf.setLong(HConstants.MAJOR_COMPACTION_PERIOD, 10);
+    conf.setLong(HConstants.MAJOR_COMPACTION_PERIOD, 5);
   }
 
   void compactEquals(long now, ArrayList<StoreFile> candidates, long[] expectedFileSizes,

@@ -26,6 +26,8 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import com.google.protobuf.ServiceException;
+
 import java.io.IOException;
 import java.util.Collection;
 import java.util.List;
@@ -40,13 +42,11 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.Abortable;
 import org.apache.hadoop.hbase.Coprocessor;
 import org.apache.hadoop.hbase.CoprocessorEnvironment;
-import org.apache.hadoop.hbase.HBaseIOException;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HTableDescriptor;
-import org.apache.hadoop.hbase.MasterNotRunningException;
 import org.apache.hadoop.hbase.MiniHBaseCluster;
 import org.apache.hadoop.hbase.RegionTransition;
 import org.apache.hadoop.hbase.Server;
@@ -54,7 +54,6 @@ import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.UnknownRegionException;
 import org.apache.hadoop.hbase.Waiter;
-import org.apache.hadoop.hbase.ZooKeeperConnectionException;
 import org.apache.hadoop.hbase.catalog.MetaEditor;
 import org.apache.hadoop.hbase.catalog.MetaReader;
 import org.apache.hadoop.hbase.client.Delete;
@@ -97,8 +96,6 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-
-import com.google.protobuf.ServiceException;
 
 /**
  * Like {@link TestSplitTransaction} in that we're testing {@link SplitTransaction}
@@ -1136,11 +1133,12 @@ public class TestSplitTransactionOnCluster {
   @Test (timeout=300000)
   public void testSSHCleanupDaugtherRegionsOfAbortedSplit() throws Exception {
     TableName table = TableName.valueOf("testSSHCleanupDaugtherRegionsOfAbortedSplit");
+    HTable hTable = null;
     try {
       HTableDescriptor desc = new HTableDescriptor(table);
       desc.addFamily(new HColumnDescriptor(Bytes.toBytes("f")));
       admin.createTable(desc);
-      HTable hTable = new HTable(cluster.getConfiguration(), desc.getTableName());
+      hTable = new HTable(cluster.getConfiguration(), desc.getTableName());
       for(int i = 1; i < 5; i++) {
         Put p1 = new Put(("r"+i).getBytes());
         p1.add(Bytes.toBytes("f"), "q1".getBytes(), "v".getBytes());
@@ -1178,6 +1176,9 @@ public class TestSplitTransactionOnCluster {
           FSUtils.getRegionDirs(tableDir.getFileSystem(cluster.getConfiguration()), tableDir);
       assertEquals(1,regionDirs.size());
     } finally {
+      if (hTable != null) {
+        hTable.close();
+      }
       TESTING_UTIL.deleteTable(table);
     }
   }
@@ -1328,14 +1329,11 @@ public class TestSplitTransactionOnCluster {
    * @param hri
    * @return Index of the server hosting the single table region
    * @throws UnknownRegionException
-   * @throws MasterNotRunningException
-   * @throws org.apache.hadoop.hbase.ZooKeeperConnectionException
    * @throws InterruptedException
+   * @throws IOException 
    */
-  private int ensureTableRegionNotOnSameServerAsMeta(final HBaseAdmin admin,
-      final HRegionInfo hri)
-  throws HBaseIOException, MasterNotRunningException,
-  ZooKeeperConnectionException, InterruptedException {
+  private int ensureTableRegionNotOnSameServerAsMeta(final HBaseAdmin admin, final HRegionInfo hri)
+      throws InterruptedException, IOException {
     // Now make sure that the table region is not on same server as that hosting
     // hbase:meta  We don't want hbase:meta replay polluting our test when we later crash
     // the table region serving server.

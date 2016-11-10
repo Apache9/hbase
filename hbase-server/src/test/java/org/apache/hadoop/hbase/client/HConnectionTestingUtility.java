@@ -25,6 +25,7 @@ import org.apache.hadoop.hbase.HRegionLocation;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.ZooKeeperConnectionException;
+import org.apache.hadoop.hbase.ipc.RpcControllerFactory;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos;
 import org.mockito.Mockito;
@@ -116,6 +117,9 @@ public class HConnectionTestingUtility {
       Mockito.when(c.getClient(Mockito.any(ServerName.class))).
         thenReturn(client);
     }
+    Mockito.when(c.getRpcRetryingCallerFactory()).thenReturn(
+      RpcRetryingCallerFactory.instantiate(conf, ServerStatisticTracker.create(conf)));
+    Mockito.when(c.getRpcControllerFactory()).thenReturn(RpcControllerFactory.instantiate(conf));
     return c;
   }
 

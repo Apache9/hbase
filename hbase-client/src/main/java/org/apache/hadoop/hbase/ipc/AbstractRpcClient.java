@@ -99,14 +99,14 @@ public abstract class AbstractRpcClient<T extends Connection> implements RpcClie
 
   protected int maxConcurrentCallsPerServer;
 
-  protected static final LoadingCache<InetSocketAddress, AtomicInteger> concurrentCounterCache = CacheBuilder
-      .newBuilder().expireAfterAccess(1, TimeUnit.HOURS)
-      .build(new CacheLoader<InetSocketAddress, AtomicInteger>() {
-        @Override
-        public AtomicInteger load(InetSocketAddress key) throws Exception {
-          return new AtomicInteger(0);
-        }
-      });
+  protected static final LoadingCache<InetSocketAddress, AtomicInteger> concurrentCounterCache =
+      CacheBuilder.newBuilder().expireAfterAccess(1, TimeUnit.HOURS)
+          .build(new CacheLoader<InetSocketAddress, AtomicInteger>() {
+            @Override
+            public AtomicInteger load(InetSocketAddress key) throws Exception {
+              return new AtomicInteger(0);
+            }
+          });
 
   protected final PoolMap<ConnectionId, T> connections;
 
@@ -127,8 +127,8 @@ public abstract class AbstractRpcClient<T extends Connection> implements RpcClie
     this.localAddr = localAddr;
     this.tcpKeepAlive = conf.getBoolean("hbase.ipc.client.tcpkeepalive", true);
     this.clusterId = clusterId != null ? clusterId : HConstants.CLUSTER_ID_DEFAULT;
-    this.failureSleep = conf.getLong(HConstants.HBASE_CLIENT_PAUSE,
-      HConstants.DEFAULT_HBASE_CLIENT_PAUSE);
+    this.failureSleep =
+        conf.getLong(HConstants.HBASE_CLIENT_PAUSE, HConstants.DEFAULT_HBASE_CLIENT_PAUSE);
     this.maxRetries = conf.getInt("hbase.ipc.client.connect.max.retries", 0);
     this.tcpNoDelay = conf.getBoolean("hbase.ipc.client.tcpnodelay", true);
     this.pingInterval = getPingInterval(conf);
@@ -141,8 +141,8 @@ public abstract class AbstractRpcClient<T extends Connection> implements RpcClie
     this.compressor = getCompressor(conf);
     this.fallbackAllowed = conf.getBoolean(IPC_CLIENT_FALLBACK_TO_SIMPLE_AUTH_ALLOWED_KEY,
       IPC_CLIENT_FALLBACK_TO_SIMPLE_AUTH_ALLOWED_DEFAULT);
-    this.clientWarnIpcResponseTime = conf.getInt(CLIENT_WARN_IPC_RESPONSE_TIME,
-      DEFAULT_CLIENT_WARN_IPC_RESPONSE_TIME);
+    this.clientWarnIpcResponseTime =
+        conf.getInt(CLIENT_WARN_IPC_RESPONSE_TIME, DEFAULT_CLIENT_WARN_IPC_RESPONSE_TIME);
     this.connections = new PoolMap<ConnectionId, T>(getPoolType(conf), getPoolSize(conf));
     // login the server principal (if using secure Hadoop)
     if (LOG.isDebugEnabled()) {
@@ -153,9 +153,9 @@ public abstract class AbstractRpcClient<T extends Connection> implements RpcClie
           + ", ping interval=" + this.pingInterval + "ms" + ", bind address="
           + (this.localAddr != null ? this.localAddr : "null"));
     }
-    this.maxConcurrentCallsPerServer = conf.getInt(
-      HConstants.HBASE_CLIENT_PERSERVER_REQUESTS_THRESHOLD,
-      HConstants.DEFAULT_HBASE_CLIENT_PERSERVER_REQUESTS_THRESHOLD);
+    this.maxConcurrentCallsPerServer =
+        conf.getInt(HConstants.HBASE_CLIENT_PERSERVER_REQUESTS_THRESHOLD,
+          HConstants.DEFAULT_HBASE_CLIENT_PERSERVER_REQUESTS_THRESHOLD);
   }
 
   /**
@@ -477,8 +477,8 @@ public abstract class AbstractRpcClient<T extends Connection> implements RpcClie
     }
 
     protected void setTimeout(PayloadCarryingRpcController controller) {
-      if (controller.getTimeout() <= 0) {
-        controller.setTimeout(getRpcTimeout(rpcTimeout));
+      if (controller.getTimeout() < 0) {
+        controller.setTimeout(rpcTimeout);
       }
     }
   }
@@ -523,48 +523,18 @@ public abstract class AbstractRpcClient<T extends Connection> implements RpcClie
     @Override
     public void callMethod(MethodDescriptor method, RpcController controller, Message request,
         Message responsePrototype, RpcCallback<Message> done) {
-      PayloadCarryingRpcController pcrc = (PayloadCarryingRpcController) Preconditions.checkNotNull(
-        controller, "must provide a controller because the exception will be passed by it.");
+      PayloadCarryingRpcController pcrc =
+          (PayloadCarryingRpcController) Preconditions.checkNotNull(controller,
+            "must provide a controller because the exception will be passed by it.");
       setTimeout(pcrc);
       rpcClient.callMethod(method, pcrc, request, responsePrototype, ticket, addr, done);
     }
   }
 
-  protected static final Map<Kind, TokenSelector<? extends TokenIdentifier>> TOKEN_HANDLERS = new HashMap<Kind, TokenSelector<? extends TokenIdentifier>>();
+  protected static final Map<Kind, TokenSelector<? extends TokenIdentifier>> TOKEN_HANDLERS =
+      new HashMap<Kind, TokenSelector<? extends TokenIdentifier>>();
 
   static {
     TOKEN_HANDLERS.put(Kind.HBASE_AUTH_TOKEN, new AuthenticationTokenSelector());
-  }
-  // thread-specific RPC timeout, which may override that of what was passed in.
-  // This is used to change dynamically the timeout (for read only) when retrying: if
-  // the time allowed for the operation is less than the usual socket timeout, then
-  // we lower the timeout. This is subject to race conditions, and should be used with
-  // extreme caution.
-  private static final ThreadLocal<Integer> RPC_TIMEOUT = new ThreadLocal<Integer>() {
-
-    @Override
-    protected Integer initialValue() {
-      return HConstants.DEFAULT_HBASE_CLIENT_OPERATION_TIMEOUT;
-    }
-  };
-
-  public static void setRpcTimeout(int t) {
-    RPC_TIMEOUT.set(t);
-  }
-
-  public static int getRpcTimeout() {
-    return RPC_TIMEOUT.get();
-  }
-
-  /**
-   * Returns the lower of the thread-local RPC time from {@link #setRpcTimeout(int)} and the given
-   * default timeout.
-   */
-  public static int getRpcTimeout(int defaultTimeout) {
-    return Math.min(defaultTimeout, getRpcTimeout());
-  }
-
-  public static void resetRpcTimeout() {
-    RPC_TIMEOUT.remove();
   }
 }

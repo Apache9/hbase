@@ -716,9 +716,9 @@ class ConnectionImpl extends Connection implements Runnable {
 
   @Override
   public synchronized void sendRequest(Call call) throws IOException {
-    connect();
     addCall(call);
     scheduleTimeoutTask(call);
+    connect();
     writeRequest(call);
   }
 }

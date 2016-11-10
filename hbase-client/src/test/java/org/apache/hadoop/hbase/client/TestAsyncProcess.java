@@ -98,9 +98,10 @@ public class TestAsyncProcess {
 
       public MyAsyncProcess(HConnection hc, AsyncProcessCallback<Res> callback, Configuration conf,
                           AtomicInteger nbThreads) {
-      super(hc, DUMMY_TABLE, new ThreadPoolExecutor(1, 20, 60, TimeUnit.SECONDS,
-        new SynchronousQueue<Runnable>(), new CountingThreadFactory(nbThreads)),
-          callback, conf, new RpcRetryingCallerFactory(conf), new RpcControllerFactory(conf));
+      super(hc,
+          DUMMY_TABLE, new ThreadPoolExecutor(1, 20, 60, TimeUnit.SECONDS,
+              new SynchronousQueue<Runnable>(), new CountingThreadFactory(nbThreads)),
+          callback, conf);
     }
 
     @Override
@@ -561,6 +562,9 @@ public class TestAsyncProcess {
     Mockito.when(hc.locateRegion(Mockito.eq(DUMMY_TABLE),
         Mockito.eq(FAILS))).thenReturn(loc2);
 
+    Mockito.when(hc.getRpcRetryingCallerFactory()).thenReturn(
+      RpcRetryingCallerFactory.instantiate(conf, ServerStatisticTracker.create(conf)));
+    Mockito.when(hc.getRpcControllerFactory()).thenReturn(RpcControllerFactory.instantiate(conf));
     return hc;
   }
 
