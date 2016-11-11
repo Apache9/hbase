@@ -79,6 +79,8 @@ public class TestReplicationBase {
   protected static final byte[] row = Bytes.toBytes("row");
   protected static final byte[] noRepfamName = Bytes.toBytes("norep");
 
+  protected static final int numRegionServers = 2;
+
   /**
    * @throws java.lang.Exception
    */
@@ -127,8 +129,8 @@ public class TestReplicationBase {
 
     LOG.info("Setup second Zk");
     CONF_WITH_LOCALFS = HBaseConfiguration.create(conf1);
-    utility1.startMiniCluster(2);
-    utility2.startMiniCluster(2);
+    utility1.startMiniCluster(numRegionServers);
+    utility2.startMiniCluster(numRegionServers);
 
     HTableDescriptor table = new HTableDescriptor(TableName.valueOf(tableName));
     HColumnDescriptor fam = new HColumnDescriptor(famName);

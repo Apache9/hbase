@@ -19,6 +19,8 @@
 package org.apache.hadoop.hbase.replication;
 
 
+import java.util.Random;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
@@ -51,12 +53,17 @@ public class TestReplicationKillRS extends TestReplicationBase {
         util.getHBaseCluster().getServerWithMeta() == 0 ? 1 : 0;
 
     // Takes about 20 secs to run the full loading, kill around the middle
-    Thread killer = killARegionServer(util, 5000, rsToKill1);
+    killARegionServer(util, (new Random().nextInt(5) + 1) * 1000, rsToKill1);
 
     LOG.info("Start loading table");
     int initialCount = utility1.loadTable(htable1, famName);
     LOG.info("Done loading table");
-    killer.join(5000);
+
+    // Waiting for stop regionserver
+    while (util.getHBaseCluster().getLiveRegionServerThreads().size() == numRegionServers) {
+      Thread.sleep(1000);
+    }
+    Thread.sleep(5000);
     LOG.info("Done waiting for threads");
 
     Result[] res;
