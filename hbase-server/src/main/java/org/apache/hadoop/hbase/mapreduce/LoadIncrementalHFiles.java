@@ -20,6 +20,11 @@ package org.apache.hadoop.hbase.mapreduce;
 
 import static java.lang.String.format;
 
+import com.google.common.collect.HashMultimap;
+import com.google.common.collect.Multimap;
+import com.google.common.collect.Multimaps;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
+
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InterruptedIOException;
@@ -91,11 +96,6 @@ import org.apache.hadoop.hbase.util.FSHDFSUtils;
 import org.apache.hadoop.hbase.util.Pair;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
-
-import com.google.common.collect.HashMultimap;
-import com.google.common.collect.Multimap;
-import com.google.common.collect.Multimaps;
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
 
 /**
  * Tool to load the output of HFileOutputFormat into an existing table.
@@ -639,8 +639,9 @@ public class LoadIncrementalHFiles extends Configured implements Tool {
 
     final RegionServerCallable<Boolean> svrCallable =
         new RegionServerCallable<Boolean>(conn, tableName, first) {
+
       @Override
-      public Boolean call() throws Exception {
+      protected Boolean rpcCall() throws Exception {
         SecureBulkLoadClient secureClient = null;
         boolean success = false;
 

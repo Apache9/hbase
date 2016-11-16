@@ -48,6 +48,7 @@ import org.apache.hadoop.hbase.RegionTooBusyException;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.testclassification.SmallTests;
 import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.ipc.CallTimeoutException;
 import org.apache.hadoop.hbase.protobuf.generated.CellProtos;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.BulkLoadHFileRequest;
@@ -190,7 +191,7 @@ public class TestClientNoCluster extends Configured implements Tool {
     try {
       // An exists call turns into a get w/ a flag.
       table.exists(new Get(Bytes.toBytes("abc")));
-    } catch (SocketTimeoutException e) {
+    } catch (CallTimeoutException e) {
       // I expect this exception.
       LOG.info("Got expected exception", e);
       t = e;

@@ -33,6 +33,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Chore;
+import org.apache.hadoop.hbase.DoNotRetryIOException;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HRegionLocation;
@@ -246,9 +247,9 @@ public class HConnectionImplementation implements HConnection, Closeable {
 
   private User user;
 
-  private RpcRetryingCallerFactory rpcCallerFactory;
+  private final RpcRetryingCallerFactory rpcCallerFactory;
 
-  private RpcControllerFactory rpcControllerFactory;
+  private final RpcControllerFactory rpcControllerFactory;
 
   // single tracker per connection
   private final ServerStatisticTracker stats;
@@ -308,9 +309,6 @@ public class HConnectionImplementation implements HConnection, Closeable {
             }, conf, listenerClass);
       }
     }
-
-    this.rpcCallerFactory = RpcRetryingCallerFactory.instantiate(conf, this.stats);
-    this.rpcControllerFactory = RpcControllerFactory.instantiate(conf);
   }
 
   /** Dummy nonce generator for disabled nonces. */
@@ -384,8 +382,7 @@ public class HConnectionImplementation implements HConnection, Closeable {
       throw new IOException("The connection has to be unmanaged.");
     }
 
-    HTableInterface table =
-        new HTable(tableName, this, tableConfig, rpcCallerFactory, rpcControllerFactory, pool);
+    HTableInterface table = new HTable(tableName, this, tableConfig, pool);
     KeySalter salter = SaltedHTable.getKeySalter(table);
     if (salter == null) {
       return table;
@@ -515,7 +512,7 @@ public class HConnectionImplementation implements HConnection, Closeable {
    * @throws ZooKeeperConnectionException
    */
   @Override
-  public boolean isMasterRunning() throws MasterNotRunningException, ZooKeeperConnectionException {
+  public boolean isMasterRunning() throws IOException {
     // When getting the master connection, we check it's running,
     // so if there is no exception, it means we've been able to get a
     // connection on a running master
@@ -1186,7 +1183,7 @@ public class HConnectionImplementation implements HConnection, Closeable {
      * Once setup, check it works by doing isMasterRunning check.
      * @throws ServiceException
      */
-    protected abstract void isMasterRunning() throws ServiceException;
+    protected abstract void isMasterRunning() throws IOException;
 
     /**
      * Create a stub. Try once only. It is not typed because there is no common type to protobuf
@@ -1196,7 +1193,7 @@ public class HConnectionImplementation implements HConnection, Closeable {
      * @throws KeeperException
      * @throws ServiceException
      */
-    private Object makeStubNoRetries() throws IOException, KeeperException, ServiceException {
+    private Object makeStubNoRetries() throws IOException, KeeperException {
       ZooKeeperKeepAliveConnection zkw;
       try {
         zkw = getKeepAliveZooKeeperWatcher();
@@ -1239,50 +1236,23 @@ public class HConnectionImplementation implements HConnection, Closeable {
      * @return A stub to do <code>intf</code> against the master
      * @throws MasterNotRunningException
      */
-    @edu.umd.cs.findbugs.annotations.SuppressWarnings(value = "SWL_SLEEP_WITH_LOCK_HELD")
-    Object makeStub() throws MasterNotRunningException {
+    Object makeStub() throws IOException {
       // The lock must be at the beginning to prevent multiple master creations
       // (and leaks) in a multithread context
       synchronized (masterAndZKLock) {
         Exception exceptionCaught = null;
-        Object stub = null;
-        int tries = 0;
-        while (!closed && stub == null) {
-          tries++;
+        if (!closed) {
           try {
-            stub = makeStubNoRetries();
+            return makeStubNoRetries();
           } catch (IOException e) {
             exceptionCaught = e;
           } catch (KeeperException e) {
             exceptionCaught = e;
-          } catch (ServiceException e) {
-            exceptionCaught = e;
           }
-
-          if (exceptionCaught != null)
-            // It failed. If it's not the last try, we're going to wait a little
-            if (tries < numTries && !ExceptionUtil.isInterrupt(exceptionCaught)) {
-            // tries at this point is 1 or more; decrement to start from 0.
-            long pauseTime = ConnectionUtils.getPauseTime(pause, tries - 1);
-            LOG.info("getMaster attempt " + tries + " of " + numTries + " failed; retrying after sleep of " + pauseTime + ", exception=" + exceptionCaught);
-
-            try {
-            Thread.sleep(pauseTime);
-            } catch (InterruptedException e) {
-            throw new MasterNotRunningException("Thread was interrupted while trying to connect to master.", e);
-            }
-            } else {
-            // Enough tries, we stop now
-            LOG.info("getMaster attempt " + tries + " of " + numTries + " failed; no more retrying.", exceptionCaught);
-            throw new MasterNotRunningException(exceptionCaught);
-            }
+          throw new MasterNotRunningException(exceptionCaught);
+        } else {
+          throw new DoNotRetryIOException("Connection was closed while trying to get master");
         }
-
-        if (stub == null) {
-          // implies this.closed true
-          throw new MasterNotRunningException("Connection was closed while trying to get master");
-        }
-        return stub;
       }
     }
   }
@@ -1299,8 +1269,7 @@ public class HConnectionImplementation implements HConnection, Closeable {
     }
 
     @Override
-    @edu.umd.cs.findbugs.annotations.SuppressWarnings("SWL_SLEEP_WITH_LOCK_HELD")
-    MasterService.BlockingInterface makeStub() throws MasterNotRunningException {
+    MasterService.BlockingInterface makeStub() throws IOException {
       return (MasterService.BlockingInterface) super.makeStub();
     }
 
@@ -1311,8 +1280,12 @@ public class HConnectionImplementation implements HConnection, Closeable {
     }
 
     @Override
-    protected void isMasterRunning() throws ServiceException {
-      this.stub.isMasterRunning(null, RequestConverter.buildIsMasterRunningRequest());
+    protected void isMasterRunning() throws IOException {
+      try {
+        this.stub.isMasterRunning(null, RequestConverter.buildIsMasterRunningRequest());
+      } catch (ServiceException e) {
+        ProtobufUtil.getRemoteException(e);
+      }
     }
   }
 
@@ -1498,7 +1471,7 @@ public class HConnectionImplementation implements HConnection, Closeable {
       new MasterServiceState(this);
 
   @Override
-  public MasterService.BlockingInterface getMaster() throws MasterNotRunningException {
+  public MasterService.BlockingInterface getMaster() throws IOException {
     return getKeepAliveMasterService();
   }
 
@@ -1508,7 +1481,7 @@ public class HConnectionImplementation implements HConnection, Closeable {
   }
 
   @Override
-  public MasterKeepAliveConnection getKeepAliveMasterService() throws MasterNotRunningException {
+  public MasterKeepAliveConnection getKeepAliveMasterService() throws IOException {
     synchronized (masterAndZKLock) {
       if (!isKeepAliveMasterConnectedAndRunning(this.masterServiceState)) {
         MasterServiceStubMaker stubMaker = new MasterServiceStubMaker();
@@ -2000,10 +1973,7 @@ public class HConnectionImplementation implements HConnection, Closeable {
   // For tests.
   protected <R> AsyncProcess<R> createAsyncProcess(TableName tableName, ExecutorService pool,
       AsyncProcess.AsyncProcessCallback<R> callback, Configuration conf) {
-    RpcControllerFactory controllerFactory = RpcControllerFactory.instantiate(conf);
-    RpcRetryingCallerFactory callerFactory = RpcRetryingCallerFactory.instantiate(conf, this.stats);
-    return new AsyncProcess<R>(this, tableName, pool, callback, conf, callerFactory,
-        controllerFactory);
+    return new AsyncProcess<R>(this, tableName, pool, callback, conf);
   }
 
   /**
@@ -2318,5 +2288,15 @@ public class HConnectionImplementation implements HConnection, Closeable {
   @Override
   public HTableDescriptor getHTableDescriptor(final byte[] tableName) throws IOException {
     return getHTableDescriptor(TableName.valueOf(tableName));
+  }
+
+  @Override
+  public RpcRetryingCallerFactory getRpcRetryingCallerFactory() {
+    return rpcCallerFactory;
+  }
+
+  @Override
+  public RpcControllerFactory getRpcControllerFactory() {
+    return rpcControllerFactory;
   }
 }

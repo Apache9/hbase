@@ -19,16 +19,14 @@
 package org.apache.hadoop.hbase.client;
 
 import java.io.IOException;
-import java.util.Arrays;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.hbase.classification.InterfaceAudience;
-import org.apache.hadoop.hbase.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.TableName;
-import org.apache.hadoop.hbase.ipc.RpcControllerFactory;
+import org.apache.hadoop.hbase.classification.InterfaceAudience;
+import org.apache.hadoop.hbase.classification.InterfaceStability;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.ExceptionUtil;
 
@@ -44,22 +42,21 @@ public class ReversedClientScanner extends ClientScanner {
   static byte[] MAX_BYTE_ARRAY = Bytes.createMaxByteArray(9);
 
   /**
-   * Create a new ReversibleClientScanner for the specified table Note that the
-   * passed {@link Scan}'s start row maybe changed.
+   * Create a new ReversibleClientScanner for the specified table Note that the passed
+   * {@link Scan}'s start row maybe changed.
    * @param conf The {@link Configuration} to use.
    * @param scan {@link Scan} to use in this scanner
    * @param tableName The table that we wish to scan
    * @param connection Connection identifying the cluster
    * @throws IOException
    */
-  public ReversedClientScanner(Configuration conf, Scan scan,
-      TableName tableName, HConnection connection) throws IOException {
+  public ReversedClientScanner(Configuration conf, Scan scan, TableName tableName,
+      HConnection connection) throws IOException {
     super(conf, scan, tableName, connection);
   }
 
   @Override
-  protected boolean nextScanner(int nbRows, final boolean done)
-      throws IOException {
+  protected boolean nextScanner(int nbRows, final boolean done) throws IOException {
     // Close the previous scanner if it's open
     if (this.callable != null) {
       this.callable.setClose();
@@ -73,8 +70,7 @@ public class ReversedClientScanner extends ClientScanner {
     // if we're at start of table, close and return false to stop iterating
     if (this.currentRegion != null) {
       byte[] startKey = this.currentRegion.getStartKey();
-      if (startKey == null
-          || Bytes.equals(startKey, HConstants.EMPTY_BYTE_ARRAY)
+      if (startKey == null || Bytes.equals(startKey, HConstants.EMPTY_BYTE_ARRAY)
           || checkScanStopRow(startKey) || done) {
         close();
         if (LOG.isDebugEnabled()) {
@@ -95,8 +91,8 @@ public class ReversedClientScanner extends ClientScanner {
 
     if (LOG.isDebugEnabled() && this.currentRegion != null) {
       // Only worth logging if NOT first region in scan.
-      LOG.debug("Advancing internal scanner to startKey at '"
-          + Bytes.toStringBinary(localStartKey) + "'");
+      LOG.debug(
+        "Advancing internal scanner to startKey at '" + Bytes.toStringBinary(localStartKey) + "'");
     }
     try {
       // In reversed scan, we want to locate the previous region through current
@@ -106,8 +102,8 @@ public class ReversedClientScanner extends ClientScanner {
       // current region, thus the last one of located regions should be the
       // previous region of current region. The related logic of locating
       // regions is implemented in ReversedScannerCallable
-      byte[] locateStartRow = locateTheClosestFrontRow ? createClosestRowBefore(localStartKey)
-          : null;
+      byte[] locateStartRow =
+          locateTheClosestFrontRow ? createClosestRowBefore(localStartKey) : null;
       callable = getScannerCallable(localStartKey, nbRows, locateStartRow);
       // Open a scanner on the region server starting at the
       // beginning of the region
@@ -123,13 +119,12 @@ public class ReversedClientScanner extends ClientScanner {
     }
     return true;
   }
-  
-  protected ScannerCallable getScannerCallable(byte[] localStartKey,
-      int nbRows, byte[] locateStartRow) {
+
+  protected ScannerCallable getScannerCallable(byte[] localStartKey, int nbRows,
+      byte[] locateStartRow) {
     scan.setStartRow(localStartKey);
-    ScannerCallable s =
-        new ReversedScannerCallable(getConnection(), getTable(), scan, this.scanMetrics,
-            locateStartRow, rpcControllerFactory.newController(), scannerTimeout);
+    ScannerCallable s = new ReversedScannerCallable(getConnection(), getTable(), scan,
+        this.scanMetrics, locateStartRow, scannerTimeout);
     s.setCaching(nbRows);
     return s;
   }
@@ -140,8 +135,7 @@ public class ReversedClientScanner extends ClientScanner {
     if (this.scan.getStopRow().length > 0) {
       // there is a stop row, check to see if we are past it.
       byte[] stopRow = scan.getStopRow();
-      int cmp = Bytes.compareTo(stopRow, 0, stopRow.length, startKey, 0,
-          startKey.length);
+      int cmp = Bytes.compareTo(stopRow, 0, stopRow.length, startKey, 0, startKey.length);
       if (cmp >= 0) {
         // stopRow >= startKey (stopRow is equals to or larger than endKey)
         // This is a stop.

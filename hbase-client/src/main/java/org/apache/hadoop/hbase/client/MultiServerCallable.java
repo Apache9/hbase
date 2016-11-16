@@ -17,20 +17,20 @@
  */
 package org.apache.hadoop.hbase.client;
 
+import com.google.protobuf.ServiceException;
+
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.CellScannable;
+import org.apache.hadoop.hbase.CellUtil;
 import org.apache.hadoop.hbase.DoNotRetryIOException;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HRegionLocation;
 import org.apache.hadoop.hbase.TableName;
-import org.apache.hadoop.hbase.ipc.PayloadCarryingRpcController;
-import org.apache.hadoop.hbase.ipc.RpcControllerFactory;
 import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.protobuf.RequestConverter;
 import org.apache.hadoop.hbase.protobuf.ResponseConverter;
@@ -41,25 +41,20 @@ import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.RegionAction;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos;
 import org.apache.htrace.Trace;
 
-import com.google.protobuf.ServiceException;
-
 /**
- * Callable that handles the <code>multi</code> method call going against a single
- * regionserver; i.e. A {@link RegionServerCallable} for the multi call (It is not a
- * {@link RegionServerCallable} that goes against multiple regions.
+ * Callable that handles the <code>multi</code> method call going against a single regionserver;
+ * i.e. A {@link RegionServerCallable} for the multi call (It is not a {@link RegionServerCallable}
+ * that goes against multiple regions.
  * @param <R>
  */
 class MultiServerCallable<R> extends RegionServerCallable<MultiResponse> {
   private final MultiAction<R> multiAction;
   private final boolean cellBlock;
-  private RpcControllerFactory rpcFactory;
 
   MultiServerCallable(final HConnection connection, final TableName tableName,
-      final HRegionLocation location, final RpcControllerFactory rpcFactory,
-      final MultiAction<R> multi) {
+      final HRegionLocation location, final MultiAction<R> multi) {
     super(connection, tableName, null);
     this.multiAction = multi;
-    this.rpcFactory = rpcFactory;
     setLocation(location);
     this.cellBlock = isCellBlock();
   }
@@ -69,7 +64,7 @@ class MultiServerCallable<R> extends RegionServerCallable<MultiResponse> {
   }
 
   @Override
-  public MultiResponse call() throws IOException {
+  protected MultiResponse rpcCall() throws IOException {
     int countOfActions = this.multiAction.size();
     if (countOfActions <= 0) throw new DoNotRetryIOException("No Actions");
     MultiRequest.Builder multiRequestBuilder = MultiRequest.newBuilder();
@@ -77,26 +72,28 @@ class MultiServerCallable<R> extends RegionServerCallable<MultiResponse> {
     ClientProtos.Action.Builder actionBuilder = ClientProtos.Action.newBuilder();
     MutationProto.Builder mutationBuilder = MutationProto.newBuilder();
     List<CellScannable> cells = null;
-    // The multi object is a list of Actions by region.  Iterate by region.
+    // The multi object is a list of Actions by region. Iterate by region.
     long nonceGroup = multiAction.getNonceGroup();
     if (nonceGroup != HConstants.NO_NONCE) {
       multiRequestBuilder.setNonceGroup(nonceGroup);
     }
-    for (Map.Entry<byte[], List<Action<R>>> e: this.multiAction.actions.entrySet()) {
-      final byte [] regionName = e.getKey();
+    for (Map.Entry<byte[], List<Action<R>>> e : this.multiAction.actions.entrySet()) {
+      final byte[] regionName = e.getKey();
       final List<Action<R>> actions = e.getValue();
       regionActionBuilder.clear();
       regionActionBuilder.setRegion(RequestConverter.buildRegionSpecifier(
-        HBaseProtos.RegionSpecifier.RegionSpecifierType.REGION_NAME, regionName) );
-
+        HBaseProtos.RegionSpecifier.RegionSpecifierType.REGION_NAME, regionName));
 
       if (this.cellBlock) {
-        // Presize.  Presume at least a KV per Action.  There are likely more.
-        if (cells == null) cells = new ArrayList<CellScannable>(countOfActions);
+        // Presize. Presume at least a KV per Action. There are likely more.
+        if (cells == null) {
+          cells = new ArrayList<CellScannable>(countOfActions);
+        }
         // Send data in cellblocks. The call to buildNoDataMultiRequest will skip RowMutations.
         // They have already been handled above. Guess at count of cells
         regionActionBuilder = RequestConverter.buildNoDataRegionAction(regionName, actions, cells,
           regionActionBuilder, actionBuilder, mutationBuilder);
+        getController().setCellScanner(CellUtil.createCellScanner(cells));
       } else {
         regionActionBuilder = RequestConverter.buildRegionAction(regionName, actions,
           regionActionBuilder, actionBuilder, mutationBuilder);
@@ -106,26 +103,22 @@ class MultiServerCallable<R> extends RegionServerCallable<MultiResponse> {
 
     // Controller optionally carries cell data over the proxy/service boundary and also
     // optionally ferries cell response data back out again.
-    PayloadCarryingRpcController controller = rpcFactory.newController(cells);
-    controller.setPriority(getTableName());
     ClientProtos.MultiResponse responseProto;
     ClientProtos.MultiRequest requestProto = multiRequestBuilder.build();
     try {
       if (Trace.isTracing()) {
         Trace.addTimelineAnnotation("MultiServerCall to " + location);
       }
-      responseProto = getStub().multi(controller, requestProto);
+      responseProto = getStub().multi(getController(), requestProto);
     } catch (ServiceException e) {
       throw ProtobufUtil.getRemoteException(e);
     }
-    return ResponseConverter.getResults(requestProto, responseProto, controller.cellScanner());
+    return ResponseConverter.getResults(requestProto, responseProto, getController().cellScanner());
   }
 
-
-
   /**
-   * @return True if we should send data in cellblocks.  This is an expensive call.  Cache the
-   * result if you can rather than call each time.
+   * @return True if we should send data in cellblocks. This is an expensive call. Cache the result
+   *         if you can rather than call each time.
    */
   private boolean isCellBlock() {
     // This is not exact -- the configuration could have changed on us after connection was set up
@@ -139,7 +132,7 @@ class MultiServerCallable<R> extends RegionServerCallable<MultiResponse> {
   }
 
   @Override
-  public void prepare(boolean reload) throws IOException {
+  public void prepare(int callTimeout, boolean reload) throws IOException {
     // Use the location we were given in the constructor rather than go look it up.
     setStub(getConnection().getClient(getLocation().getServerName()));
   }

@@ -192,7 +192,7 @@ public class WALEditsReplaySink {
     }
 
     @Override
-    public ReplicateWALEntryResponse call() throws IOException {
+    protected ReplicateWALEntryResponse rpcCall() throws IOException {
       try {
         replayToServer(this.regionInfo, this.entries);
       } catch (ServiceException se) {
@@ -223,7 +223,7 @@ public class WALEditsReplaySink {
     }
 
     @Override
-    public void prepare(boolean reload) throws IOException {
+    public void prepare(int callTimeout, boolean reload) throws IOException {
       if (!reload) return;
       // relocate regions in case we have a new dead server or network hiccup
       // if not due to connection issue, the following code should run fast because it uses

@@ -18,14 +18,13 @@
  */
 package org.apache.hadoop.hbase.regionserver;
 
-import org.apache.hadoop.hbase.RegionException;
+import org.apache.hadoop.hbase.client.DoNotRetryRegionException;
 
 /**
- * Gets or Scans throw this exception if running without in-row scan flag
- * set and row size appears to exceed max configured size (configurable via
- * hbase.table.max.rowsize).
+ * Gets or Scans throw this exception if running without in-row scan flag set and row size appears
+ * to exceed max configured size (configurable via hbase.table.max.rowsize).
  */
-public class RowTooBigException extends RegionException {
+public class RowTooBigException extends DoNotRetryRegionException {
 
   public RowTooBigException(String message) {
     super(message);
