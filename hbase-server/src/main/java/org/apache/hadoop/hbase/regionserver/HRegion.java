@@ -5857,7 +5857,7 @@ public class HRegion implements HeapSize { // , Writable{
               if (idx < results.size()
                   && CellUtil.matchingQualifier(results.get(idx), kv)) {
                 oldKv = KeyValueUtil.ensureKeyValue(results.get(idx));
-                long ts = Math.max(now, oldKv.getTimestamp());
+                long ts = Math.max(now, oldKv.getTimestamp() + 1);
 
                 // Process cell tags
                 List<Tag> newTags = new ArrayList<Tag>();
@@ -6128,7 +6128,7 @@ public class HRegion implements HeapSize { // , Writable{
                   increment.getNumberCodecType(family.getKey(), CellUtil.cloneQualifier(cell));
               if (idx < results.size() && CellUtil.matchingQualifier(results.get(idx), cell)) {
                 c = results.get(idx);
-                ts = Math.max(now, c.getTimestamp());
+                ts = Math.max(now, c.getTimestamp() + 1);
                 try {
                   amount += codec.decode(c.getValueArray(),
                       c.getValueOffset(),
