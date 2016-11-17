@@ -28,15 +28,16 @@ be used to filter the output. Examples:
 
   hbase> list
   hbase> list 'abc.*'
+  hbase> list '.*', STATE => 'ENABLED'
+  hbase> list '.*', STATE => 'DISABLED'
 EOF
       end
 
-      def command(regex = ".*")
+      def command(regex = ".*", args = {})
         now = Time.now
         formatter.header([ "TABLE" ])
 
-        regex = /#{regex}/ unless regex.is_a?(Regexp)
-        list = admin.list.grep(regex)
+        list = admin.list(regex, args)
         list.each do |table|
           formatter.row([ table ])
         end

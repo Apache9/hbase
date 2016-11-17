@@ -70,6 +70,14 @@ module Hbase
       assert(admin.list.member?(@test_name))
     end
 
+    define_test "list with STATE => 'ENABLED' should return a list of enabled tables" do
+      assert(admin.list(".*", {STATE => 'ENABLED'}).member?(@test_name))
+    end
+
+    define_test "list with STATE => 'DISABLED' should return a list of disabled tables" do
+      assert(!admin.list(".*", {STATE => 'DISABLED'}).member?(@test_name))
+    end
+
     define_test "list should not return meta tables" do
       assert(!admin.list.member?('.META.'))
       assert(!admin.list.member?('-ROOT-'))
