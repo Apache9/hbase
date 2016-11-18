@@ -18,11 +18,11 @@
  */
 package org.apache.hadoop.hbase.replication.regionserver;
 
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
+
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.NavigableMap;
 import java.util.TreeMap;
 import java.util.UUID;
@@ -30,26 +30,27 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.CellScanner;
+import org.apache.hadoop.hbase.CellUtil;
+import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.Server;
+import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.WALEntry;
-import org.apache.hadoop.hbase.regionserver.ReplicationSourceService;
+import org.apache.hadoop.hbase.protobuf.generated.WALProtos;
 import org.apache.hadoop.hbase.regionserver.ReplicationSinkService;
+import org.apache.hadoop.hbase.regionserver.ReplicationSourceService;
 import org.apache.hadoop.hbase.regionserver.wal.HLogKey;
-import org.apache.hadoop.hbase.regionserver.wal.WALEdit;
 import org.apache.hadoop.hbase.regionserver.wal.WALActionsListener;
+import org.apache.hadoop.hbase.regionserver.wal.WALEdit;
 import org.apache.hadoop.hbase.replication.ReplicationException;
 import org.apache.hadoop.hbase.replication.ReplicationFactory;
 import org.apache.hadoop.hbase.replication.ReplicationPeers;
@@ -241,7 +242,7 @@ public class Replication implements WALActionsListener,
 
   @Override
   public void visitLogEntryBeforeWrite(HTableDescriptor htd, HLogKey logKey,
-                                       WALEdit logEdit) {
+                                       WALEdit logEdit) throws IOException {
     scopeWALEdits(htd, logKey, logEdit);
   }
 
@@ -253,14 +254,27 @@ public class Replication implements WALActionsListener,
    * @param logEdit Edits used to lookup the scopes
    */
   public static void scopeWALEdits(HTableDescriptor htd, HLogKey logKey,
-                                   WALEdit logEdit) {
+                                   WALEdit logEdit) throws IOException {
     NavigableMap<byte[], Integer> scopes =
         new TreeMap<byte[], Integer>(Bytes.BYTES_COMPARATOR);
     byte[] family;
     for (KeyValue kv : logEdit.getKeyValues()) {
       family = kv.getFamily();
       // This is expected and the KV should not be replicated
-      if (kv.matchingFamily(WALEdit.METAFAMILY)) continue;
+      if (kv.matchingFamily(WALEdit.METAFAMILY)) {
+        WALProtos.RegionEventDescriptor maybeEvent = WALEdit.getRegionEventDescriptor(kv);
+        if (maybeEvent != null && (maybeEvent.getEventType() ==
+            WALProtos.RegionEventDescriptor.EventType.REGION_CLOSE)) {
+          // In serially replication, we use scopes when reading close marker.
+          for (HColumnDescriptor cf : htd.getFamilies()) {
+            if (cf.getScope() != REPLICATION_SCOPE_LOCAL) {
+              scopes.put(cf.getName(), cf.getScope());
+            }
+          }
+        }
+        // Skip the flush/compaction
+        continue;
+      }
       // Unexpected, has a tendency to happen in unit tests
       assert htd.getFamily(family) != null;
 

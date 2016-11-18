@@ -350,7 +350,7 @@ public class SplitTransaction {
       if (metaEntries == null || metaEntries.isEmpty()) {
         MetaEditor.splitRegion(server.getCatalogTracker(), parent.getRegionInfo(), daughterRegions
             .getFirst().getRegionInfo(), daughterRegions.getSecond().getRegionInfo(), server
-            .getServerName());
+            .getServerName(), false);
       } else {
         offlineParentInMetaAndputMetaEntries(server.getCatalogTracker(), parent.getRegionInfo(),
           daughterRegions.getFirst().getRegionInfo(), daughterRegions.getSecond().getRegionInfo(),

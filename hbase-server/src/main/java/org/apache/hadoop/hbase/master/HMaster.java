@@ -28,6 +28,7 @@ import com.google.protobuf.RpcController;
 import com.google.protobuf.Service;
 import com.google.protobuf.ServiceException;
 
+import javax.management.ObjectName;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
@@ -52,8 +53,6 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
-
-import javax.management.ObjectName;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -113,6 +112,7 @@ import org.apache.hadoop.hbase.master.balancer.ClusterStatusChore;
 import org.apache.hadoop.hbase.master.balancer.LoadBalancerFactory;
 import org.apache.hadoop.hbase.master.cleaner.HFileCleaner;
 import org.apache.hadoop.hbase.master.cleaner.LogCleaner;
+import org.apache.hadoop.hbase.master.cleaner.ReplicationMetaCleaner;
 import org.apache.hadoop.hbase.master.cleaner.ReplicationZKLockCleanerChore;
 import org.apache.hadoop.hbase.master.handler.CreateTableHandler;
 import org.apache.hadoop.hbase.master.handler.DeleteTableHandler;
@@ -449,6 +449,7 @@ MasterServices, Server {
 
   private CatalogJanitor catalogJanitorChore;
   private ReplicationZKLockCleanerChore replicationZKLockCleanerChore;
+  private ReplicationMetaCleaner replicationMetaCleaner;
   private LogCleaner logCleaner;
   private HFileCleaner hfileCleaner;
 
@@ -1400,6 +1401,13 @@ MasterServices, Server {
       } catch (Exception e) {
         LOG.error("start replicationZKLockCleanerChore failed", e);
       }
+    }
+    try {
+      replicationMetaCleaner = new ReplicationMetaCleaner(this, this, cleanerInterval);
+      Threads.setDaemonThreadRunning(replicationZKLockCleanerChore.getThread(),
+          "ReplicationMetaCleaner");
+    } catch (Exception e) {
+      LOG.error("start ReplicationMetaCleaner failed", e);
     }
   }
 

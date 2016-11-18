@@ -17,8 +17,6 @@
  */
 package org.apache.hadoop.hbase;
 
-import static org.apache.hadoop.hbase.io.hfile.BlockType.MAGIC_LENGTH;
-
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.util.Arrays;
@@ -31,6 +29,8 @@ import org.apache.commons.lang.ArrayUtils;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.classification.InterfaceStability;
 import org.apache.hadoop.hbase.util.Bytes;
+
+import static org.apache.hadoop.hbase.io.hfile.BlockType.MAGIC_LENGTH;
 
 /**
  * HConstants holds a bunch of HBase-related constants
@@ -407,6 +407,45 @@ public final class HConstants {
   /** The catalog family */
   public static final byte [] CATALOG_FAMILY = Bytes.toBytes(CATALOG_FAMILY_STR);
 
+  /**
+   * The replication barrier family as a string
+   */
+  public static final String REPLICATION_BARRIER_FAMILY_STR = "rep_barrier";
+
+  /**
+   * The replication barrier family
+   */
+  public static final byte[] REPLICATION_BARRIER_FAMILY =
+      Bytes.toBytes(REPLICATION_BARRIER_FAMILY_STR);
+
+  /**
+   * The replication position family as a string
+   */
+  public static final String REPLICATION_POSITION_FAMILY_STR = "rep_position";
+
+  /**
+   * The replication position family
+   */
+  public static final byte[] REPLICATION_POSITION_FAMILY =
+      Bytes.toBytes(REPLICATION_POSITION_FAMILY_STR);
+
+  /**
+   * The replication position family as a string
+   */
+  public static final String REPLICATION_POSITION_META_STR = "rep_meta";
+
+  /**
+   * The replication position family
+   */
+  public static final byte[] REPLICATION_META_FAMILY =
+      Bytes.toBytes(REPLICATION_POSITION_META_STR);
+
+  public static final String
+       REPLICATION_SERIALLY_WAITING_KEY = "hbase.serial.replication.waitingMs";
+
+   public static final long
+       REPLICATION_SERIALLY_WAITING_DEFAULT = 10000;
+
   /** The RegionInfo qualifier as a string */
   public static final String REGIONINFO_QUALIFIER_STR = "regioninfo";
 
@@ -584,6 +623,8 @@ public final class HConstants {
    * This data will be replicated to all peers.
    */
   public static final int REPLICATION_SCOPE_GLOBAL = 1;
+
+  public static final int REPLICATION_SCOPE_SERIAL = 2;
 
   /**
    * Default cluster ID, cannot be used to identify a cluster so a key with

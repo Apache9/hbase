@@ -288,7 +288,7 @@ public class AssignmentManager extends ZooKeeperListener {
     this.serverManager = serverManager;
     this.catalogTracker = catalogTracker;
     this.executorService = service;
-    this.regionStateStore = new RegionStateStore(server);
+    this.regionStateStore = new RegionStateStore((MasterServices)server);
     this.regionsToReopen = Collections.synchronizedMap
                            (new HashMap<String, HRegionInfo> ());
     Configuration conf = server.getConfiguration();

@@ -176,7 +176,7 @@ public class MetaReader {
    * @return An {@link HTable} for <code>hbase:meta</code>
    * @throws IOException
    */
-  static HTable getCatalogHTable(final CatalogTracker catalogTracker)
+  public static HTable getCatalogHTable(final CatalogTracker catalogTracker)
   throws IOException {
     return getMetaHTable(catalogTracker);
   }
@@ -187,7 +187,7 @@ public class MetaReader {
    * @return An {@link HTable} for <code>hbase:meta</code>
    * @throws IOException
    */
-  static HTable getMetaHTable(final CatalogTracker ct)
+  public static HTable getMetaHTable(final CatalogTracker ct)
   throws IOException {
     return getHTable(ct, TableName.META_TABLE_NAME);
   }

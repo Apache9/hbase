@@ -91,5 +91,5 @@ public interface WALActionsListener {
    */
   void visitLogEntryBeforeWrite(
     HTableDescriptor htd, HLogKey logKey, WALEdit logEdit
-  );
+  ) throws IOException;
 }

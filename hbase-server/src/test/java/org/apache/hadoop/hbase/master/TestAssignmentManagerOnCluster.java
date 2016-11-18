@@ -964,7 +964,7 @@ public class TestAssignmentManagerOnCluster {
       return;
     }
     conf.setInt("hbase.regionstatestore.meta.connection", 3);
-    final RegionStateStore rss = new RegionStateStore(new MyRegionServer(conf));
+    final RegionStateStore rss = new RegionStateStore(new MyMaster(conf));
     rss.start();
     // Create 10 threads and make each do 10 puts related to region state update
     Thread[] th = new Thread[10];

@@ -18,6 +18,9 @@
  */
 package org.apache.hadoop.hbase;
 
+import com.google.protobuf.InvalidProtocolBufferException;
+import com.xiaomi.infra.hbase.salted.NBytePrefixKeySalter;
+
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
@@ -34,13 +37,12 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.regex.Matcher;
 
-import org.apache.hadoop.hbase.util.ByteStringer;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.hbase.classification.InterfaceAudience;
-import org.apache.hadoop.hbase.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hbase.classification.InterfaceAudience;
+import org.apache.hadoop.hbase.classification.InterfaceStability;
 import org.apache.hadoop.hbase.client.Durability;
 import org.apache.hadoop.hbase.exceptions.DeserializationException;
 import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
@@ -51,14 +53,10 @@ import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.NameStringPair;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.TableSchema;
 import org.apache.hadoop.hbase.regionserver.BloomType;
 import org.apache.hadoop.hbase.security.User;
+import org.apache.hadoop.hbase.util.ByteStringer;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.Writables;
 import org.apache.hadoop.io.WritableComparable;
-
-import com.google.protobuf.HBaseZeroCopyByteString;
-import com.google.protobuf.InvalidProtocolBufferException;
-
-import com.xiaomi.infra.hbase.salted.NBytePrefixKeySalter;
 
 /**
  * HTableDescriptor contains the details about an HBase table  such as the descriptors of
@@ -1561,17 +1559,44 @@ public class HTableDescriptor implements WritableComparable<HTableDescriptor> {
       throws IOException {
     HTableDescriptor metaDescriptor = new HTableDescriptor(
       TableName.META_TABLE_NAME,
-      new HColumnDescriptor[] {
-        new HColumnDescriptor(HConstants.CATALOG_FAMILY)
-          .setMaxVersions(conf.getInt(HConstants.HBASE_META_VERSIONS,
-            HConstants.DEFAULT_HBASE_META_VERSIONS))
-          .setInMemory(true)
-          .setBlocksize(conf.getInt(HConstants.HBASE_META_BLOCK_SIZE,
-            HConstants.DEFAULT_HBASE_META_BLOCK_SIZE))
-          .setScope(HConstants.REPLICATION_SCOPE_LOCAL)
-          // Disable blooms for meta.  Needs work.  Seems to mess w/ getClosestOrBefore.
-          .setBloomFilterType(BloomType.NONE)
-         });
+        new HColumnDescriptor[] {
+            new HColumnDescriptor(HConstants.CATALOG_FAMILY)
+                .setMaxVersions(conf.getInt(HConstants.HBASE_META_VERSIONS,
+                    HConstants.DEFAULT_HBASE_META_VERSIONS))
+                .setInMemory(true)
+                .setBlocksize(conf.getInt(HConstants.HBASE_META_BLOCK_SIZE,
+                    HConstants.DEFAULT_HBASE_META_BLOCK_SIZE))
+                .setScope(HConstants.REPLICATION_SCOPE_LOCAL)
+                // Disable blooms for meta.  Needs work.  Seems to mess w/ getClosestOrBefore.
+                .setBloomFilterType(BloomType.NONE),
+            new HColumnDescriptor(HConstants.REPLICATION_BARRIER_FAMILY)
+                .setMaxVersions(conf.getInt(HConstants.HBASE_META_VERSIONS,
+                    HConstants.DEFAULT_HBASE_META_VERSIONS))
+                .setInMemory(true)
+                .setBlocksize(conf.getInt(HConstants.HBASE_META_BLOCK_SIZE,
+                    HConstants.DEFAULT_HBASE_META_BLOCK_SIZE))
+                .setScope(HConstants.REPLICATION_SCOPE_LOCAL)
+                // Disable blooms for meta.  Needs work.  Seems to mess w/ getClosestOrBefore.
+                .setBloomFilterType(BloomType.NONE),
+            new HColumnDescriptor(HConstants.REPLICATION_POSITION_FAMILY)
+                .setMaxVersions(conf.getInt(HConstants.HBASE_META_VERSIONS,
+                    HConstants.DEFAULT_HBASE_META_VERSIONS))
+                .setInMemory(true)
+                .setBlocksize(conf.getInt(HConstants.HBASE_META_BLOCK_SIZE,
+                    HConstants.DEFAULT_HBASE_META_BLOCK_SIZE))
+                .setScope(HConstants.REPLICATION_SCOPE_LOCAL)
+                // Disable blooms for meta.  Needs work.  Seems to mess w/ getClosestOrBefore.
+                .setBloomFilterType(BloomType.NONE),
+            new HColumnDescriptor(HConstants.REPLICATION_META_FAMILY)
+                .setMaxVersions(conf.getInt(HConstants.HBASE_META_VERSIONS,
+                    HConstants.DEFAULT_HBASE_META_VERSIONS))
+                .setInMemory(true)
+                .setBlocksize(conf.getInt(HConstants.HBASE_META_BLOCK_SIZE,
+                    HConstants.DEFAULT_HBASE_META_BLOCK_SIZE))
+                .setScope(HConstants.REPLICATION_SCOPE_LOCAL)
+                // Disable blooms for meta.  Needs work.  Seems to mess w/ getClosestOrBefore.
+                .setBloomFilterType(BloomType.NONE),
+        });
     metaDescriptor.addCoprocessor(
       "org.apache.hadoop.hbase.coprocessor.MultiRowMutationEndpoint",
       null, Coprocessor.PRIORITY_SYSTEM, null);
@@ -1603,6 +1628,15 @@ public class HTableDescriptor implements WritableComparable<HTableDescriptor> {
   public Integer getSlotsCount() {
     String slotsCountStr = getValue(SLOTS_COUNT);
     return slotsCountStr == null ? null : Integer.parseInt(slotsCountStr);
+  }
+
+  public boolean hasSerialReplicationScope() {
+    for (HColumnDescriptor column : getFamilies()) {
+      if (column.getScope() == HConstants.REPLICATION_SCOPE_SERIAL) {
+        return true;
+      }
+    }
+    return false;
   }
 
 }

@@ -323,7 +323,7 @@ public class RegionMergeTransaction {
     if (!testing && useZKForAssignment) {
       if (metaEntries.isEmpty()) {
         MetaEditor.mergeRegions(server.getCatalogTracker(), mergedRegion.getRegionInfo(), region_a
-            .getRegionInfo(), region_b.getRegionInfo(), server.getServerName());
+            .getRegionInfo(), region_b.getRegionInfo(), server.getServerName(), false);
       } else {
         mergeRegionsAndPutMetaEntries(server.getCatalogTracker(), mergedRegion.getRegionInfo(),
           region_a.getRegionInfo(), region_b.getRegionInfo(), server.getServerName(), metaEntries);

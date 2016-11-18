@@ -19,30 +19,32 @@
 
 package org.apache.hadoop.hbase.regionserver.wal;
 
+import com.google.common.annotations.VisibleForTesting;
+
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Pattern;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.HBaseInterfaceAudience;
+import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.protobuf.generated.WALProtos.WALTrailer;
 import org.apache.hadoop.io.Writable;
 import org.apache.htrace.Span;
-
-import com.google.common.annotations.VisibleForTesting;
 
 
 @InterfaceAudience.Private
@@ -191,6 +193,18 @@ public interface HLog {
     public void setCompressionContext(CompressionContext compressionContext) {
       edit.setCompressionContext(compressionContext);
       key.setCompressionContext(compressionContext);
+    }
+
+    public boolean hasSerialReplicationScope() {
+      if (getKey().getScopes() == null || getKey().getScopes().isEmpty()) {
+        return false;
+      }
+      for (Map.Entry<byte[], Integer> e : getKey().getScopes().entrySet()) {
+        if (e.getValue() == HConstants.REPLICATION_SCOPE_SERIAL) {
+          return true;
+        }
+      }
+      return false;
     }
 
     @Override

@@ -17,22 +17,24 @@
  */
 package org.apache.hadoop.hbase.master;
 
+import com.google.common.base.Preconditions;
+
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.List;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HRegionInfo;
-import org.apache.hadoop.hbase.Server;
+import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.catalog.CatalogTracker;
 import org.apache.hadoop.hbase.catalog.MetaEditor;
-import org.apache.hadoop.hbase.client.HTable;
+import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.master.RegionState.State;
@@ -43,8 +45,6 @@ import org.apache.hadoop.hbase.util.ConfigUtil;
 import org.apache.hadoop.hbase.util.MultiHConnection;
 import org.apache.hadoop.hbase.zookeeper.MetaRegionTracker;
 import org.apache.zookeeper.KeeperException;
-
-import com.google.common.base.Preconditions;
 
 /**
  * A helper to persist region state in meta. We may change this class
@@ -60,7 +60,7 @@ public class RegionStateStore {
 
   private final boolean noPersistence;
   private final CatalogTracker catalogTracker;
-  private final Server server;
+  private final MasterServices server;
   private MultiHConnection multiHConnection;
 
   /**
@@ -107,7 +107,7 @@ public class RegionStateStore {
           State.SPLITTING_NEW, State.MERGED));
   }
 
-  RegionStateStore(final Server server) {
+  RegionStateStore(final MasterServices server) {
     Configuration conf = server.getConfiguration();
     // No need to persist if using ZK but not migrating
     noPersistence = ConfigUtil.useZKForAssignment(conf)
@@ -193,12 +193,24 @@ public class RegionStateStore {
       put.addImmutable(HConstants.CATALOG_FAMILY, HConstants.STATE_QUALIFIER,
         Bytes.toBytes(state.name()));
       LOG.info(info);
+
+      HTableDescriptor descriptor = server.getTableDescriptors().get(hri.getTable());
+      boolean serial = false;
+      if (descriptor != null) {
+        serial = server.getTableDescriptors().get(hri.getTable()).hasSerialReplicationScope();
+      }
+      boolean shouldPutBarrier = serial && state == State.OPEN;
       // Persist the state change to meta
       if (metaRegion != null) {
         try {
           // Assume meta is pinned to master.
           // At least, that's what we want.
           metaRegion.put(put);
+          if (shouldPutBarrier) {
+            Put barrierPut = MetaEditor.makeBarrierPut(hri.getEncodedNameAsBytes(),
+                openSeqNum, hri.getTable().getName());
+            metaRegion.put(barrierPut);
+          }
           return; // Done here
         } catch (Throwable t) {
           // In unit tests, meta could be moved away by intention
@@ -217,8 +229,10 @@ public class RegionStateStore {
         }
       }
       // Called when meta is not on master
-      multiHConnection.processBatchCallback(Arrays.asList(put), TableName.META_TABLE_NAME, null,
-        null);
+      List<Put> list = shouldPutBarrier ?
+          Arrays.asList(put, MetaEditor.makeBarrierPut(hri.getEncodedNameAsBytes(),
+              openSeqNum, hri.getTable().getName())) : Arrays.asList(put);
+      multiHConnection.processBatchCallback(list, TableName.META_TABLE_NAME, null, null);
     } catch (IOException ioe) {
       LOG.error("Failed to persist region state " + newState, ioe);
       server.abort("Failed to update region location", ioe);
@@ -227,12 +241,12 @@ public class RegionStateStore {
 
   void splitRegion(HRegionInfo p,
       HRegionInfo a, HRegionInfo b, ServerName sn) throws IOException {
-    MetaEditor.splitRegion(catalogTracker, p, a, b, sn);
+    MetaEditor.splitRegion(catalogTracker, p, a, b, sn, server.getTableDescriptors().get(p.getTable()).hasSerialReplicationScope());
   }
 
   void mergeRegions(HRegionInfo p,
       HRegionInfo a, HRegionInfo b, ServerName sn) throws IOException {
-    MetaEditor.mergeRegions(catalogTracker, p, a, b, sn);
+    MetaEditor.mergeRegions(catalogTracker, p, a, b, sn, server.getTableDescriptors().get(p.getTable()).hasSerialReplicationScope());
   }
   
 }

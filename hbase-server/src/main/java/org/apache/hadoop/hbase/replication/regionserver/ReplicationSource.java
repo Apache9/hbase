@@ -18,12 +18,21 @@
  */
 package org.apache.hadoop.hbase.replication.regionserver;
 
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
+import com.google.common.collect.Lists;
+import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.Service;
+
 import java.io.EOFException;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -31,8 +40,6 @@ import java.util.concurrent.TimeUnit;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.hbase.classification.InterfaceAudience;
-import org.apache.hadoop.hbase.fs.HFileSystem;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
@@ -40,6 +47,10 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.Stoppable;
+import org.apache.hadoop.hbase.catalog.MetaEditor;
+import org.apache.hadoop.hbase.classification.InterfaceAudience;
+import org.apache.hadoop.hbase.fs.HFileSystem;
+import org.apache.hadoop.hbase.protobuf.generated.WALProtos;
 import org.apache.hadoop.hbase.regionserver.wal.HLog;
 import org.apache.hadoop.hbase.regionserver.wal.HLogKey;
 import org.apache.hadoop.hbase.regionserver.wal.WALEdit;
@@ -51,11 +62,9 @@ import org.apache.hadoop.hbase.replication.ReplicationQueueInfo;
 import org.apache.hadoop.hbase.replication.ReplicationQueues;
 import org.apache.hadoop.hbase.replication.SystemTableWALEntryFilter;
 import org.apache.hadoop.hbase.replication.WALEntryFilter;
+import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.FSUtils;
 import org.apache.hadoop.hbase.util.Threads;
-import com.google.common.collect.Lists;
-import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.Service;
 
 /**
  * Class that handles the source of a replication stream.
@@ -83,6 +92,7 @@ public class ReplicationSource extends Thread
   private ReplicationQueueInfo replicationQueueInfo;
   // id of the peer cluster this source replicates to
   private String peerId;
+  private String actualPeerId;
   // The manager of all sources to which we ping back our progress
   private ReplicationSourceManager manager;
   // Should we stop everything?
@@ -142,6 +152,8 @@ public class ReplicationSource extends Thread
   private long currentBandwidth;
 
   private int ioeSleepBeforeRetry = 0;
+
+  Map<String, Long> lastPositionsForSerialScope = new HashMap<String, Long>();
   
   /**
    * Instantiation method used by region servers
@@ -194,6 +206,8 @@ public class ReplicationSource extends Thread
     this.replicationQueueInfo = new ReplicationQueueInfo(peerClusterZnode);
     // ReplicationQueueInfo parses the peerId out of the znode for us
     this.peerId = this.replicationQueueInfo.getPeerId();
+    ReplicationQueueInfo replicationQueueInfo = new ReplicationQueueInfo(peerId);
+    this.actualPeerId = replicationQueueInfo.getPeerId();
     this.logQueueWarnThreshold = this.conf.getInt("replication.source.log.queue.warn", 2);
     this.replicationEndpoint = replicationEndpoint;
 
@@ -209,6 +223,17 @@ public class ReplicationSource extends Thread
         + ", replicationQueueNbCapacity=" + replicationQueueNbCapacity + ", curerntBandwidth="
         + this.currentBandwidth);
   }
+
+  // Use guava cache to set ttl for each key
+  private LoadingCache<String, Boolean> canSkipWaitingSet = CacheBuilder.newBuilder()
+      .expireAfterAccess(1, TimeUnit.DAYS).build(
+          new CacheLoader<String, Boolean>() {
+            @Override
+            public Boolean load(String key) throws Exception {
+              return false;
+            }
+          }
+      );
 
   private void decorateConf() {
     String replicationCodec = this.conf.get(HConstants.REPLICATION_CODEC_CONF_KEY);
@@ -366,9 +391,22 @@ public class ReplicationSource extends Thread
         boolean gotIOE = false;
         currentNbOperations = 0;
         List<HLog.Entry> entries = new ArrayList<HLog.Entry>(1);
+        lastPositionsForSerialScope.clear();
         currentSize = 0;
         try {
-          if (readAllEntriesToReplicateOrNextFile(currentWALisBeingWrittenTo, entries)) {
+          if (readAllEntriesToReplicateOrNextFile(currentWALisBeingWrittenTo, entries,
+              lastPositionsForSerialScope)) {
+            for (Map.Entry<String, Long> entry : lastPositionsForSerialScope.entrySet()) {
+              waitingUntilCanPush(entry);
+            }
+            try {
+              MetaEditor
+                  .updateReplicationPositions(manager.getConnection(), actualPeerId,
+                      lastPositionsForSerialScope);
+            } catch (IOException e) {
+              LOG.error("updateReplicationPositions fail", e);
+              stopper.stop("updateReplicationPositions fail");
+            }
             continue;
           }
         } catch (IOException ioe) {
@@ -404,10 +442,26 @@ public class ReplicationSource extends Thread
           }
         }
 
+        for (Map.Entry<String, Long> entry : lastPositionsForSerialScope.entrySet()) {
+          waitingUntilCanPush(entry);
+        }
+
         // If we didn't get anything to replicate, or if we hit a IOE,
         // wait a bit and retry.
         // But if we need to stop, don't bother sleeping
         if (this.isActive() && (gotIOE || entries.isEmpty())) {
+
+          // Save positions to meta table before zk.
+          if (!gotIOE) {
+            try {
+              MetaEditor.updateReplicationPositions(manager.getConnection(), actualPeerId,
+                  lastPositionsForSerialScope);
+            } catch (IOException e) {
+              LOG.error("updateReplicationPositions fail", e);
+              stopper.stop("updateReplicationPositions fail");
+            }
+          }
+
           if (shouldLogPosition(this.repLogReader.getPosition())) {
             this.manager.logPositionAndCleanOldLogs(this.currentPath, this.peerClusterZnode,
               this.repLogReader.getPosition(), this.replicationQueueInfo.isQueueRecovered(),
@@ -428,7 +482,7 @@ public class ReplicationSource extends Thread
           continue;
         }
         sleepMultiplier = 1;
-        shipEdits(currentWALisBeingWrittenTo, entries);
+        shipEdits(currentWALisBeingWrittenTo, entries, lastPositionsForSerialScope);
       }
     } catch (Throwable e) {
       if (this.isActive()) {
@@ -436,6 +490,30 @@ public class ReplicationSource extends Thread
       }
     }
     uninitialize();
+  }
+
+  private void waitingUntilCanPush(Map.Entry<String, Long> entry) {
+    String key = entry.getKey();
+    long seq = entry.getValue();
+    boolean deleteKey = false;
+    if (seq <= 0) {
+      // There is a REGION_CLOSE marker, we can not continue skipping after this entry.
+      deleteKey = true;
+      seq = -seq;
+    }
+
+    if (!canSkipWaitingSet.getUnchecked(key)) {
+      try {
+        manager.waitUntilCanBePushed(Bytes.toBytes(key), seq, actualPeerId);
+      } catch (Exception e) {
+        LOG.error("waitUntilCanBePushed fail", e);
+        stopper.stop("waitUntilCanBePushed fail");
+      }
+      canSkipWaitingSet.put(key, true);
+    }
+    if (deleteKey) {
+      canSkipWaitingSet.invalidate(key);
+    }
   }
 
   /**
@@ -472,7 +550,7 @@ public class ReplicationSource extends Thread
    * @throws IOException
    */
   protected boolean readAllEntriesToReplicateOrNextFile(boolean currentWALisBeingWrittenTo,
-      List<HLog.Entry> entries) throws IOException{
+      List<HLog.Entry> entries, Map<String, Long> lastPosition) throws IOException{
     long seenEntries = 0;
     if (LOG.isTraceEnabled()) {
       LOG.trace("Seeking in " + this.currentPath + " at position "
@@ -501,6 +579,27 @@ public class ReplicationSource extends Thread
     while (entry != null) {
       this.metrics.incrLogEditsRead();
       seenEntries++;
+
+      if (entry.hasSerialReplicationScope()) {
+        String key = Bytes.toString(entry.getKey().getEncodedRegionName());
+        lastPosition.put(key, entry.getKey().getLogSeqNum());
+        if (entry.getEdit().getCells().size() > 0) {
+          WALProtos.RegionEventDescriptor maybeEvent =
+              WALEdit.getRegionEventDescriptor(entry.getEdit().getCells().get(0));
+          if (maybeEvent != null && maybeEvent.getEventType()
+              == WALProtos.RegionEventDescriptor.EventType.REGION_CLOSE) {
+            // In serially replication, if we move a region to another RS and move it back, we may
+            // read logs crossing two sections. We should break at REGION_CLOSE and push the first
+            // section first in case of missing the middle section belonging to the other RS.
+            // In a worker thread, if we can push the first log of a region, we can push all logs
+            // in the same region without waiting until we read a close marker because next time
+            // we read logs in this region, it must be a new section and not adjacent with this
+            // region. Mark it negative.
+            lastPosition.put(key, -entry.getKey().getLogSeqNum());
+            break;
+          }
+        }
+      }
 
       // don't replicate if the log entries have already been consumed by the cluster
       if (replicationEndpoint.canReplicateToSameCluster()
@@ -758,7 +857,8 @@ public class ReplicationSource extends Thread
    * @param currentWALisBeingWrittenTo was the current WAL being (seemingly)
    * written to when this method was called
    */
-  protected void shipEdits(boolean currentWALisBeingWrittenTo, List<HLog.Entry> entries) {
+  protected void shipEdits(boolean currentWALisBeingWrittenTo, List<HLog.Entry> entries,
+      Map<String, Long> lastPositionsForSerialScope) {
     int sleepMultiplier = 1;
     if (entries.isEmpty()) {
       LOG.warn("Was given 0 edits to ship");
@@ -796,6 +896,16 @@ public class ReplicationSource extends Thread
         }
 
         this.unLoggedPositionEdits += entries.size();
+
+        // Save positions to meta table before zk.
+        try {
+          MetaEditor.updateReplicationPositions(manager.getConnection(), actualPeerId,
+              lastPositionsForSerialScope);
+        } catch (IOException e) {
+          LOG.error("updateReplicationPositions fail", e);
+          stopper.stop("updateReplicationPositions fail");
+        }
+
         if (shouldLogPosition(this.repLogReader.getPosition())) {
           this.manager.logPositionAndCleanOldLogs(this.currentPath,
               this.peerClusterZnode, this.repLogReader.getPosition(),
@@ -843,6 +953,15 @@ public class ReplicationSource extends Thread
   protected boolean processEndOfFile() {
     if (this.queue.size() != 0) {
       // at the end of the log
+
+      try {
+        MetaEditor.updateReplicationPositions(manager.getConnection(), actualPeerId,
+                lastPositionsForSerialScope);
+      } catch (IOException e) {
+        LOG.error("updateReplicationPositions fail", e);
+        stopper.stop("updateReplicationPositions fail");
+      }
+
       if (this.lastLoggedPosition != this.repLogReader.getPosition()) {
         this.manager.logPositionAndCleanOldLogs(currentPath, this.peerClusterZnode,
           this.repLogReader.getPosition(), this.replicationQueueInfo.isQueueRecovered(), false);
