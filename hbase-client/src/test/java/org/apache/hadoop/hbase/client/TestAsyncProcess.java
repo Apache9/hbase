@@ -19,7 +19,6 @@
 
 package org.apache.hadoop.hbase.client;
 
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.HConstants;
@@ -51,8 +50,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 @Category(MediumTests.class)
 public class TestAsyncProcess {
-  private static final TableName DUMMY_TABLE =
-      TableName.valueOf("DUMMY_TABLE");
+  private static final TableName DUMMY_TABLE = TableName.valueOf("DUMMY_TABLE");
   private static final byte[] DUMMY_BYTES_1 = "DUMMY_BYTES_1".getBytes();
   private static final byte[] DUMMY_BYTES_2 = "DUMMY_BYTES_2".getBytes();
   private static final byte[] DUMMY_BYTES_3 = "DUMMY_BYTES_3".getBytes();
@@ -76,14 +74,15 @@ public class TestAsyncProcess {
 
   static class CountingThreadFactory implements ThreadFactory {
     final AtomicInteger nbThreads;
-    ThreadFactory realFactory =  Threads.newDaemonThreadFactory("test-TestAsyncProcess");
+    ThreadFactory realFactory = Threads.newDaemonThreadFactory("test-TestAsyncProcess");
+
     @Override
     public Thread newThread(Runnable r) {
       nbThreads.incrementAndGet();
       return realFactory.newThread(r);
     }
 
-    CountingThreadFactory(AtomicInteger nbThreads){
+    CountingThreadFactory(AtomicInteger nbThreads) {
       this.nbThreads = nbThreads;
     }
   }
@@ -96,8 +95,8 @@ public class TestAsyncProcess {
       this(hc, callback, conf, new AtomicInteger());
     }
 
-      public MyAsyncProcess(HConnection hc, AsyncProcessCallback<Res> callback, Configuration conf,
-                          AtomicInteger nbThreads) {
+    public MyAsyncProcess(HConnection hc, AsyncProcessCallback<Res> callback, Configuration conf,
+        AtomicInteger nbThreads) {
       super(hc,
           DUMMY_TABLE, new ThreadPoolExecutor(1, 20, 60, TimeUnit.SECONDS,
               new SynchronousQueue<Runnable>(), new CountingThreadFactory(nbThreads)),
@@ -107,14 +106,14 @@ public class TestAsyncProcess {
     @Override
     protected RpcRetryingCaller<MultiResponse> createCaller(MultiServerCallable<Row> callable) {
       final MultiResponse mr = createMultiResponse(callable.getLocation(), callable.getMulti(),
-          nbMultiResponse, nbActions);
+        nbMultiResponse, nbActions);
       return new RpcRetryingCaller<MultiResponse>(100, 10, 9) {
         @Override
         public MultiResponse callWithoutRetries(RetryingCallable<MultiResponse> callable, int to)
-        throws IOException, RuntimeException {
+            throws IOException, RuntimeException {
           try {
             // sleep one second in order for threadpool to start another thread instead of reusing
-            // existing one. 
+            // existing one.
             Thread.sleep(1000);
           } catch (InterruptedException e) {
             // ignore error
@@ -125,7 +124,7 @@ public class TestAsyncProcess {
     }
   }
 
-  static class CallerWithFailure extends RpcRetryingCaller<MultiResponse>{
+  static class CallerWithFailure extends RpcRetryingCaller<MultiResponse> {
 
     public CallerWithFailure() {
       super(100, 100, 9);
@@ -133,7 +132,7 @@ public class TestAsyncProcess {
 
     @Override
     public MultiResponse callWithoutRetries(RetryingCallable<MultiResponse> callable, int to)
-      throws IOException, RuntimeException {
+        throws IOException, RuntimeException {
       throw new IOException("test");
     }
   }
@@ -151,9 +150,8 @@ public class TestAsyncProcess {
     }
   }
 
-
-  static MultiResponse createMultiResponse(final HRegionLocation loc,
-      final MultiAction<Row> multi, AtomicInteger nbMultiResponse, AtomicInteger nbActions) {
+  static MultiResponse createMultiResponse(final HRegionLocation loc, final MultiAction<Row> multi,
+      AtomicInteger nbMultiResponse, AtomicInteger nbActions) {
     final MultiResponse mr = new MultiResponse();
     nbMultiResponse.incrementAndGet();
     for (Map.Entry<byte[], List<Action<Row>>> entry : multi.actions.entrySet()) {
@@ -168,6 +166,7 @@ public class TestAsyncProcess {
     }
     return mr;
   }
+
   /**
    * Returns our async process.
    */
@@ -189,17 +188,14 @@ public class TestAsyncProcess {
     }
 
     @Override
-    protected <R> AsyncProcess createAsyncProcess(TableName tableName,
-                                                  ExecutorService pool,
-                                                  AsyncProcess.AsyncProcessCallback<R> callback,
-                                                  Configuration confn ) {
+    protected <R> AsyncProcess createAsyncProcess(TableName tableName, ExecutorService pool,
+        AsyncProcess.AsyncProcessCallback<R> callback, Configuration confn) {
       ap = new MyAsyncProcess<R>(this, callback, c, nbThreads);
       return ap;
     }
 
     @Override
-    public HRegionLocation locateRegion(final TableName tableName,
-                                        final byte[] row) {
+    public HRegionLocation locateRegion(final TableName tableName, final byte[] row) {
       return loc1;
     }
   }
@@ -218,12 +214,11 @@ public class TestAsyncProcess {
     }
 
     @Override
-    public HRegionLocation locateRegion(final TableName tableName,
-                                        final byte[] row) {
+    public HRegionLocation locateRegion(final TableName tableName, final byte[] row) {
       int i = 0;
-      for (HRegionLocation hr:hrl){
-        if (Arrays.equals(row, hr.getRegionInfo().getStartKey())){
-            usedRegions[i] = true;
+      for (HRegionLocation hr : hrl) {
+        if (Arrays.equals(row, hr.getRegionInfo().getStartKey())) {
+          usedRegions[i] = true;
           return hr;
         }
         i++;
@@ -279,7 +274,6 @@ public class TestAsyncProcess {
     Assert.assertTrue(puts.isEmpty());
   }
 
-
   @Test
   public void testSubmitBusyRegionServer() throws Exception {
     HConnection hc = createHConnection();
@@ -324,13 +318,13 @@ public class TestAsyncProcess {
 
     Assert.assertEquals(1, ap.getErrors().exceptions.size());
     Assert.assertTrue("was: " + ap.getErrors().exceptions.get(0),
-        failure.equals(ap.getErrors().exceptions.get(0)));
+      failure.equals(ap.getErrors().exceptions.get(0)));
     Assert.assertTrue("was: " + ap.getErrors().exceptions.get(0),
-        failure.equals(ap.getErrors().exceptions.get(0)));
+      failure.equals(ap.getErrors().exceptions.get(0)));
 
     Assert.assertEquals(1, ap.getFailedOperations().size());
     Assert.assertTrue("was: " + ap.getFailedOperations().get(0),
-        p.equals(ap.getFailedOperations().get(0)));
+      p.equals(ap.getFailedOperations().get(0)));
   }
 
   @Test
@@ -343,9 +337,9 @@ public class TestAsyncProcess {
     final AtomicBoolean checkPoint = new AtomicBoolean(false);
     final AtomicBoolean checkPoint2 = new AtomicBoolean(false);
 
-    Thread t = new Thread(){
+    Thread t = new Thread() {
       @Override
-      public void run(){
+      public void run() {
         Threads.sleep(1000);
         Assert.assertFalse(checkPoint.get());
         ap.tasksDone.incrementAndGet();
@@ -356,7 +350,7 @@ public class TestAsyncProcess {
     t.start();
     ap.waitForNextTaskDone(0);
     checkPoint.set(true);
-    while (!checkPoint2.get()){
+    while (!checkPoint2.get()) {
       Threads.sleep(1);
     }
   }
@@ -373,9 +367,9 @@ public class TestAsyncProcess {
     final AtomicBoolean checkPoint = new AtomicBoolean(false);
     final AtomicBoolean checkPoint2 = new AtomicBoolean(false);
 
-    Thread t = new Thread(){
+    Thread t = new Thread() {
       @Override
-      public void run(){
+      public void run() {
         Threads.sleep(1000);
         Assert.assertFalse(checkPoint.get());
         ai.decrementAndGet();
@@ -397,7 +391,7 @@ public class TestAsyncProcess {
     Assert.assertTrue(puts.isEmpty());
 
     checkPoint.set(true);
-    while (!checkPoint2.get()){
+    while (!checkPoint2.get()) {
       Threads.sleep(1);
     }
   }
@@ -420,13 +414,12 @@ public class TestAsyncProcess {
       Thread.sleep(1);
     }
     ap.waitUntilDone();
- 
+
     Assert.assertEquals(mcb.successCalled.get(), 2);
     Assert.assertEquals(mcb.retriableFailure.get(), 2);
     Assert.assertEquals(mcb.failureCalled.get(), 1);
 
     Assert.assertEquals(1, ap.getErrors().actions.size());
-
 
     puts.add(createPut(1, true));
     ap.submit(puts, false);
@@ -508,16 +501,14 @@ public class TestAsyncProcess {
     ap.submit(new ArrayList<Row>(), false);
     long end = System.currentTimeMillis();
 
-    //Adds 100 to secure us against approximate timing.
+    // Adds 100 to secure us against approximate timing.
     Assert.assertTrue(start + 100L + sleepTime > end);
   }
-
 
   private class MyCB implements AsyncProcess.AsyncProcessCallback<Object> {
     private final AtomicInteger successCalled = new AtomicInteger(0);
     private final AtomicInteger failureCalled = new AtomicInteger(0);
     private final AtomicInteger retriableFailure = new AtomicInteger(0);
-
 
     @Override
     public void success(int originalIndex, byte[] region, Row row, Object o) {
@@ -532,35 +523,35 @@ public class TestAsyncProcess {
 
     @Override
     public boolean retriableFailure(int originalIndex, Row row, byte[] region,
-                                    Throwable exception) {
+        Throwable exception) {
       // We retry once only.
       return (retriableFailure.incrementAndGet() < 2);
     }
   }
 
-
   private static HConnection createHConnection() throws IOException {
     HConnection hc = Mockito.mock(HConnection.class);
 
-    Mockito.when(hc.getRegionLocation(Mockito.eq(DUMMY_TABLE),
-        Mockito.eq(DUMMY_BYTES_1), Mockito.anyBoolean())).thenReturn(loc1);
-    Mockito.when(hc.locateRegion(Mockito.eq(DUMMY_TABLE),
-        Mockito.eq(DUMMY_BYTES_1))).thenReturn(loc1);
+    Mockito.when(hc.getRegionLocation(Mockito.eq(DUMMY_TABLE), Mockito.eq(DUMMY_BYTES_1),
+      Mockito.anyBoolean())).thenReturn(loc1);
+    Mockito.when(hc.locateRegion(Mockito.eq(DUMMY_TABLE), Mockito.eq(DUMMY_BYTES_1)))
+        .thenReturn(loc1);
 
-    Mockito.when(hc.getRegionLocation(Mockito.eq(DUMMY_TABLE),
-        Mockito.eq(DUMMY_BYTES_2), Mockito.anyBoolean())).thenReturn(loc2);
-    Mockito.when(hc.locateRegion(Mockito.eq(DUMMY_TABLE),
-        Mockito.eq(DUMMY_BYTES_2))).thenReturn(loc2);
+    Mockito.when(hc.getRegionLocation(Mockito.eq(DUMMY_TABLE), Mockito.eq(DUMMY_BYTES_2),
+      Mockito.anyBoolean())).thenReturn(loc2);
+    Mockito.when(hc.locateRegion(Mockito.eq(DUMMY_TABLE), Mockito.eq(DUMMY_BYTES_2)))
+        .thenReturn(loc2);
 
-    Mockito.when(hc.getRegionLocation(Mockito.eq(DUMMY_TABLE),
-        Mockito.eq(DUMMY_BYTES_3), Mockito.anyBoolean())).thenReturn(loc2);
-    Mockito.when(hc.locateRegion(Mockito.eq(DUMMY_TABLE),
-        Mockito.eq(DUMMY_BYTES_3))).thenReturn(loc3);
+    Mockito.when(hc.getRegionLocation(Mockito.eq(DUMMY_TABLE), Mockito.eq(DUMMY_BYTES_3),
+      Mockito.anyBoolean())).thenReturn(loc2);
+    Mockito.when(hc.locateRegion(Mockito.eq(DUMMY_TABLE), Mockito.eq(DUMMY_BYTES_3)))
+        .thenReturn(loc3);
 
-    Mockito.when(hc.getRegionLocation(Mockito.eq(DUMMY_TABLE),
-        Mockito.eq(FAILS), Mockito.anyBoolean())).thenReturn(loc2);
-    Mockito.when(hc.locateRegion(Mockito.eq(DUMMY_TABLE),
-        Mockito.eq(FAILS))).thenReturn(loc2);
+    Mockito
+        .when(
+          hc.getRegionLocation(Mockito.eq(DUMMY_TABLE), Mockito.eq(FAILS), Mockito.anyBoolean()))
+        .thenReturn(loc2);
+    Mockito.when(hc.locateRegion(Mockito.eq(DUMMY_TABLE), Mockito.eq(FAILS))).thenReturn(loc2);
 
     Mockito.when(hc.getRpcRetryingCallerFactory()).thenReturn(
       RpcRetryingCallerFactory.instantiate(conf, ServerStatisticTracker.create(conf)));
@@ -581,26 +572,21 @@ public class TestAsyncProcess {
     Assert.assertEquals(0, ht.getWriteBufferSize());
   }
 
-  private void doHTableFailedPut(boolean bufferOn) throws Exception {
+  @Test
+  public void testHTableFailedPutWithBuffer() throws Exception {
     HTable ht = new HTable();
     HConnection hc = createHConnection();
     MyCB mcb = new MyCB(); // This allows to have some hints on what's going on.
     ht.ap = new MyAsyncProcess<Object>(hc, mcb, conf);
-    ht.setAutoFlush(true, true);
-    if (bufferOn) {
-      ht.setWriteBufferSize(1024L * 1024L);
-    } else {
-      ht.setWriteBufferSize(0L);
-    }
+    ht.setAutoFlush(false, true);
+    ht.setWriteBufferSize(1024L * 1024L);
 
     Put put = createPut(1, false);
 
     Assert.assertEquals(0L, ht.currentWriteBufferSize);
     try {
       ht.put(put);
-      if (bufferOn) {
-        ht.flushCommits();
-      }
+      ht.flushCommits();
       Assert.fail();
     } catch (RetriesExhaustedException expected) {
     }
@@ -611,16 +597,6 @@ public class TestAsyncProcess {
 
     // This should not raise any exception, puts have been 'received' before by the catch.
     ht.close();
-  }
-
-  @Test
-  public void testHTableFailedPutWithBuffer() throws Exception {
-    doHTableFailedPut(true);
-  }
-
-  @Test
-  public void doHTableFailedPutWithoutBuffer() throws Exception {
-    doHTableFailedPut(false);
   }
 
   @Test
@@ -638,10 +614,10 @@ public class TestAsyncProcess {
     ht.ap.waitUntilDone(); // Let's do all the retries.
 
     // We're testing that we're behaving as we were behaving in 0.94: sending exceptions in the
-    //  doPut if it fails.
+    // doPut if it fails.
     // This said, it's not a very easy going behavior. For example, when we insert a list of
-    //  puts, we may raise an exception in the middle of the list. It's then up to the caller to
-    //  manage what was inserted, what was tried but failed, and what was not even tried.
+    // puts, we may raise an exception in the middle of the list. It's then up to the caller to
+    // manage what was inserted, what was tried but failed, and what was not even tried.
     p = createPut(1, true);
     Assert.assertEquals(0, ht.writeAsyncBuffer.size());
     try {
@@ -651,7 +627,6 @@ public class TestAsyncProcess {
     }
     Assert.assertEquals("the put should not been inserted.", 0, ht.writeAsyncBuffer.size());
   }
-
 
   @Test
   public void testWithNoClearOnFail() throws IOException {
@@ -720,7 +695,6 @@ public class TestAsyncProcess {
     ht.connection = mci;
     ht.ap = new MyAsyncProcess<Object>(mci, null, configuration);
 
-
     Assert.assertNotNull(ht.ap.createServerErrorTracker());
     Assert.assertTrue(ht.ap.serverTrackerTimeout > 200);
     ht.ap.serverTrackerTimeout = 1;
@@ -746,7 +720,7 @@ public class TestAsyncProcess {
     configuration.setInt(HConstants.HBASE_CLIENT_RETRIES_NUMBER, 3);
     ht.connection = new MyConnectionImpl(configuration);
     AsyncProcessWithFailure<Object> ap =
-      new AsyncProcessWithFailure<Object>(ht.connection, configuration);
+        new AsyncProcessWithFailure<Object>(ht.connection, configuration);
     ht.ap = ap;
 
     Assert.assertNotNull(ht.ap.createServerErrorTracker());
@@ -764,10 +738,9 @@ public class TestAsyncProcess {
     Assert.assertEquals(3, ht.ap.tasksSent.get());
   }
 
-
   /**
-   * This test simulates multiple regions on 2 servers. We should have 2 multi requests and
-   *  2 threads: 1 per server, this whatever the number of regions.
+   * This test simulates multiple regions on 2 servers. We should have 2 multi requests and 2
+   * threads: 1 per server, this whatever the number of regions.
    */
   @Test
   public void testThreadCreation() throws Exception {
@@ -775,8 +748,8 @@ public class TestAsyncProcess {
     List<HRegionLocation> hrls = new ArrayList<HRegionLocation>(NB_REGS);
     List<Get> gets = new ArrayList<Get>(NB_REGS);
     for (int i = 0; i < NB_REGS; i++) {
-      HRegionInfo hri = new HRegionInfo(
-          DUMMY_TABLE, Bytes.toBytes(i * 10L), Bytes.toBytes(i * 10L + 9L), false, i);
+      HRegionInfo hri = new HRegionInfo(DUMMY_TABLE, Bytes.toBytes(i * 10L),
+          Bytes.toBytes(i * 10L + 9L), false, i);
       HRegionLocation hrl = new HRegionLocation(hri, i % 2 == 0 ? sn : sn2);
       hrls.add(hrl);
 
@@ -795,15 +768,14 @@ public class TestAsyncProcess {
     Assert.assertEquals("1 thread per server", 2, con.nbThreads.get());
 
     int nbReg = 0;
-    for (int i =0; i<NB_REGS; i++){
+    for (int i = 0; i < NB_REGS; i++) {
       if (con.usedRegions[i]) nbReg++;
     }
     Assert.assertEquals("nbReg=" + nbReg, nbReg, NB_REGS);
   }
 
-
   /**
-   * @param regCnt  the region: 1 to 3.
+   * @param regCnt the region: 1 to 3.
    * @param success if true, the put will succeed.
    * @return a put
    */
@@ -811,8 +783,8 @@ public class TestAsyncProcess {
     Put p;
     if (!success) {
       p = new Put(FAILS);
-    } else switch (regCnt){
-      case 1 :
+    } else switch (regCnt) {
+      case 1:
         p = new Put(DUMMY_BYTES_1);
         break;
       case 2:

@@ -144,14 +144,14 @@ public class TestHCM {
     public static final int SLEEP_TIME = 5000;
 
     @Override
-    public void preGetOp(final ObserverContext<RegionCoprocessorEnvironment> e,
-        final Get get, final List<Cell> results) throws IOException {
+    public void preGetOp(final ObserverContext<RegionCoprocessorEnvironment> e, final Get get,
+        final List<Cell> results) throws IOException {
       Threads.sleep(SLEEP_TIME);
     }
 
     @Override
-    public void prePut(final ObserverContext<RegionCoprocessorEnvironment> e,
-        final Put put, final WALEdit edit, final Durability durability) throws IOException {
+    public void prePut(final ObserverContext<RegionCoprocessorEnvironment> e, final Put put,
+        final WALEdit edit, final Durability durability) throws IOException {
       Threads.sleep(SLEEP_TIME);
     }
   }
@@ -412,14 +412,14 @@ public class TestHCM {
     long baseTime = 100;
     TableName tableName = TableName.valueOf(getTestTableName());
     HTable table = TEST_UTIL.createTable(tableName, FAM_NAM);
-    RegionServerCallable<Object> regionServerCallable = new RegionServerCallable<Object>(
-        table.getConnection(), tableName, ROW) {
-      @Override
-      protected Object rpcCall() throws Exception {
-        // TODO Auto-generated method stub
-        return null;
-      }
-    };
+    RegionServerCallable<Object> regionServerCallable =
+        new RegionServerCallable<Object>(table.getConnection(), tableName, ROW) {
+          @Override
+          protected Object rpcCall() throws Exception {
+            // TODO Auto-generated method stub
+            return null;
+          }
+        };
 
     regionServerCallable.prepare(Integer.MAX_VALUE, false);
     for (int i = 0; i < HConstants.RETRY_BACKOFF.length; i++) {
@@ -545,7 +545,8 @@ public class TestHCM {
   @Test
   public void abortingHConnectionRemovesItselfFromHCM() throws Exception {
     // Save off current HConnections
-    Map<HConnectionKey, HConnectionImplementation> oldHBaseInstances = new HashMap<HConnectionKey, HConnectionImplementation>();
+    Map<HConnectionKey, HConnectionImplementation> oldHBaseInstances =
+        new HashMap<HConnectionKey, HConnectionImplementation>();
     oldHBaseInstances.putAll(HConnectionManager.CONNECTION_INSTANCES);
 
     HConnectionManager.CONNECTION_INSTANCES.clear();
@@ -658,8 +659,7 @@ public class TestHCM {
     assertFalse(curServer.getRegionsInTransitionInRS().containsKey(encodedRegionNameBytes));
 
     // Cache was NOT updated and points to the wrong server
-    Assert
-        .assertFalse(conn.getCachedLocation(tableName, ROW).getPort() == destServerName.getPort());
+    assertFalse(conn.getCachedLocation(tableName, ROW).getPort() == destServerName.getPort());
 
     // This part relies on a number of tries equals to 1.
     // We do a put and expect the cache to be updated, even if we don't retry
@@ -669,14 +669,11 @@ public class TestHCM {
     try {
       table.put(put3);
       fail("Unreachable point");
-    } catch (RetriesExhaustedWithDetailsException e) {
+    } catch (RetriesExhaustedException e) {
       LOG.info("Put done, exception caught: " + e.getClass());
-      assertEquals(1, e.getNumExceptions());
-      assertEquals(1, e.getCauses().size());
-      assertArrayEquals(e.getRow(0).getRow(), ROW);
 
       // Check that we unserialized the exception as expected
-      Throwable cause = HConnectionManager.findException(e.getCause(0));
+      Throwable cause = HConnectionManager.findException(e.getCause());
       assertNotNull(cause);
       assertTrue(cause instanceof RegionMovedException);
     }
@@ -1084,8 +1081,8 @@ public class TestHCM {
     try {
       long timeBase = timeMachine.currentTimeMillis();
       long largeAmountOfTime = ANY_PAUSE * 1000;
-      HConnectionManager.ServerErrorTracker tracker = new HConnectionManager.ServerErrorTracker(
-          largeAmountOfTime, 100);
+      HConnectionManager.ServerErrorTracker tracker =
+          new HConnectionManager.ServerErrorTracker(largeAmountOfTime, 100);
 
       // The default backoff is 0.
       assertEquals(0, tracker.calculateBackoffTime(location, ANY_PAUSE));
@@ -1212,8 +1209,7 @@ public class TestHCM {
     HTable table;
     int getServerBusyException = 0;
 
-    TestGetThread(HTable table)
-        throws IOException {
+    TestGetThread(HTable table) throws IOException {
       this.table = table;
     }
 
@@ -1256,15 +1252,15 @@ public class TestHCM {
     Configuration c = new Configuration(TEST_UTIL.getConfiguration());
     TEST_UTIL.createTable(hdt, new byte[][] { FAM_NAM }, c);
     TestGetThread[] tgs = new TestGetThread[10];
-    for (int i = 0 ; i < 10; i++) {
+    for (int i = 0; i < 10; i++) {
       tgs[i] = new TestGetThread(new HTable(c, hdt.getTableName()));
       tgs[i].start();
     }
-    for (int i = 0 ; i < 10; i++) {
+    for (int i = 0; i < 10; i++) {
       tgs[i].join();
     }
     int count = 0;
-    for (int i = 0 ; i < 10; i++) {
+    for (int i = 0; i < 10; i++) {
       count += tgs[i].getServerBusyException;
     }
     assertEquals(2, count);
@@ -1272,15 +1268,15 @@ public class TestHCM {
     // RPC level) and it wrap exceptions to RetriesExhaustedWithDetailsException.
 
     TestPutThread[] tps = new TestPutThread[10];
-    for (int i = 0 ; i < 10; i++) {
+    for (int i = 0; i < 10; i++) {
       tps[i] = new TestPutThread(new HTable(c, hdt.getTableName()));
       tps[i].start();
     }
-    for (int i = 0 ; i < 10; i++) {
+    for (int i = 0; i < 10; i++) {
       tps[i].join();
     }
     count = 0;
-    for (int i = 0 ; i < 10; i++) {
+    for (int i = 0; i < 10; i++) {
       count += tps[i].getServerBusyException;
     }
     assertEquals(2, count);

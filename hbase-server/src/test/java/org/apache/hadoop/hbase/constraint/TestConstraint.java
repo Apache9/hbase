@@ -29,12 +29,12 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
-import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Put;
-import org.apache.hadoop.hbase.client.RetriesExhaustedWithDetailsException;
+import org.apache.hadoop.hbase.client.RetriesExhaustedException;
 import org.apache.hadoop.hbase.coprocessor.CoprocessorHost;
+import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -121,13 +121,8 @@ public class TestConstraint {
     try {
       table.put(put);
       fail("This put should not have suceeded - AllFailConstraint was not run!");
-    } catch (RetriesExhaustedWithDetailsException e) {
-      List<Throwable> causes = e.getCauses();
-      assertEquals(
-          "More than one failure cause - should only be the failure constraint exception",
-          1, causes.size());
-      Throwable t = causes.get(0);
-      assertEquals(ConstraintException.class, t.getClass());
+    } catch (ConstraintException e) {
+      // expected
     }
     table.close();
   }
