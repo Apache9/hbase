@@ -30,6 +30,7 @@ import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.classification.InterfaceStability;
 import org.apache.hadoop.hbase.client.metrics.ScanMetrics;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 
 /**
  * A reversed ScannerCallable which supports backward scanning.
@@ -72,15 +73,12 @@ public class ReversedScannerCallable extends ScannerCallable {
     if (!instantiated || reload) {
       if (locateStartRow == null) {
         // Just locate the region with the row
-        this.location = connection.getRegionLocation(tableName, row, reload);
-        if (this.location == null) {
-          throw new IOException("Failed to find location, tableName=" + tableName + ", row="
-              + Bytes.toStringBinary(row) + ", reload=" + reload);
-        }
+        this.location = getRegionLocation(tableName, row, reload, callTimeout);
       } else {
         // Need to locate the regions with the range, and the target location is
         // the last one which is the previous region of last region scanner
-        List<HRegionLocation> locatedRegions = locateRegionsInRange(locateStartRow, row, reload);
+        List<HRegionLocation> locatedRegions =
+            locateRegionsInRange(locateStartRow, row, reload, callTimeout);
         if (locatedRegions.isEmpty()) {
           throw new DoNotRetryIOException(
               "Does hbase:meta exist hole? Couldn't get regions for the range from "
@@ -104,6 +102,17 @@ public class ReversedScannerCallable extends ScannerCallable {
     }
   }
 
+  private int getRemainingTime(byte[] startKey, byte[] endKey, boolean reload, long startTime,
+      int callTimeout) throws IOException {
+    long duration = EnvironmentEdgeManager.currentTimeMillis() - startTime;
+    if (callTimeout <= duration) {
+      throw new IOException("Timeout when waiting for location, tableName=" + tableName
+          + ", startKey=" + Bytes.toStringBinary(startKey) + ", endKey="
+          + Bytes.toStringBinary(endKey) + ", reload=" + reload);
+    }
+    return (int) (callTimeout - duration);
+  }
+
   /**
    * Get the corresponding regions for an arbitrary range of keys.
    * @param startKey Starting row in range, inclusive
@@ -112,8 +121,9 @@ public class ReversedScannerCallable extends ScannerCallable {
    * @return A list of HRegionLocation corresponding to the regions that contain the specified range
    * @throws IOException
    */
-  private List<HRegionLocation> locateRegionsInRange(byte[] startKey, byte[] endKey, boolean reload)
-      throws IOException {
+  private List<HRegionLocation> locateRegionsInRange(byte[] startKey, byte[] endKey, boolean reload,
+      int callTimeout) throws IOException {
+    long startTime = EnvironmentEdgeManager.currentTimeMillis();
     final boolean endKeyIsEndOfTable = Bytes.equals(endKey, HConstants.EMPTY_END_ROW);
     if ((Bytes.compareTo(startKey, endKey) > 0) && !endKeyIsEndOfTable) {
       throw new IllegalArgumentException("Invalid range: " + Bytes.toStringBinary(startKey) + " > "
@@ -122,7 +132,8 @@ public class ReversedScannerCallable extends ScannerCallable {
     List<HRegionLocation> regionList = new ArrayList<HRegionLocation>();
     byte[] currentKey = startKey;
     do {
-      HRegionLocation regionLocation = connection.getRegionLocation(tableName, currentKey, reload);
+      HRegionLocation regionLocation = getRegionLocation(tableName, currentKey, reload,
+        getRemainingTime(startKey, endKey, reload, startTime, callTimeout));
       if (regionLocation.getRegionInfo().containsRow(currentKey)) {
         regionList.add(regionLocation);
       } else {

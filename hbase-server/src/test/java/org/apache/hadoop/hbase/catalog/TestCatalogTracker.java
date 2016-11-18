@@ -333,7 +333,7 @@ public class TestCatalogTracker {
    * @param client A mocked ClientProtocol instance, can be null
    * @return Mock up a connection that returns a {@link Configuration} when
    * {@link HConnection#getConfiguration()} is called, a 'location' when
-   * {@link HConnection#getRegionLocation(byte[], byte[], boolean)} is called,
+   * {@link HConnection#getRegionLocation(TableName, byte[], boolean)} is called,
    * and that returns the passed {@link AdminProtos.AdminService.BlockingInterface} instance when
    * {@link HConnection#getAdmin(ServerName)} is called, returns the passed
    * {@link ClientProtos.ClientService.BlockingInterface} instance when

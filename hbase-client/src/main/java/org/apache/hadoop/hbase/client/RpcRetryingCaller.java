@@ -127,8 +127,9 @@ public class RpcRetryingCaller<T> {
         // If, after the planned sleep, there won't be enough time left, we stop now.
         long duration = singleCallDuration(globalStartTime, expectedSleep);
         if (duration > callTimeout) {
-          String msg = "callTimeout=" + callTimeout + ", callDuration=" + duration + ", tries="
-              + tries + ": " + callable.getExceptionMessageAdditionalDetail();
+          String msg = "callTimeout=" + callTimeout + ", callDuration="
+              + (EnvironmentEdgeManager.currentTimeMillis() - globalStartTime) + ", tries=" + tries
+              + ": " + callable.getExceptionMessageAdditionalDetail();
           throw new CallTimeoutException(msg, new RetriesExhaustedException(tries, exceptions));
         }
       }

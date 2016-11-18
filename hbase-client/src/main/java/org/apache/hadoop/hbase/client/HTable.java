@@ -65,7 +65,6 @@ import org.apache.hadoop.hbase.client.coprocessor.Batch.Callback;
 import org.apache.hadoop.hbase.filter.BinaryComparator;
 import org.apache.hadoop.hbase.filter.CompareFilter.CompareOp;
 import org.apache.hadoop.hbase.ipc.CoprocessorRpcChannel;
-import org.apache.hadoop.hbase.ipc.PayloadCarryingRpcController;
 import org.apache.hadoop.hbase.ipc.RegionCoprocessorRpcChannel;
 import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.protobuf.RequestConverter;
@@ -792,11 +791,6 @@ public class HTable implements HTableInterface {
     return getScanner(scan);
   }
 
-  private void setPriority(PayloadCarryingRpcController controller) {
-    controller.reset();
-    controller.setPriority(tableName);
-  }
-
   /**
    * {@inheritDoc}
    */
@@ -961,11 +955,27 @@ public class HTable implements HTableInterface {
    * {@inheritDoc}
    */
   @Override
-  public void put(final Put put)
-      throws InterruptedIOException, RetriesExhaustedWithDetailsException {
-    doPut(put);
+  public void put(final Put put) throws IOException {
     if (autoFlush) {
-      flushCommits();
+      if (!writeAsyncBuffer.isEmpty()) {
+        flushCommits();
+      }
+      connection.getRpcRetryingCallerFactory().<Boolean> newCaller()
+          .callWithRetries(new RegionServerCallable<Boolean>(connection, tableName, put.getRow()) {
+
+            @Override
+            protected Boolean rpcCall() throws ServiceException, IOException {
+              if (Trace.isTracing()) {
+                Trace.addTimelineAnnotation("Put to " + location);
+              }
+              MutateRequest request = RequestConverter
+                  .buildMutateRequest(getLocation().getRegionInfo().getRegionName(), put);
+              MutateResponse response = getStub().mutate(getController(), request);
+              return Boolean.valueOf(response.getProcessed());
+            }
+          }, this.operationTimeout);
+    } else {
+      doPut(put);
     }
   }
 

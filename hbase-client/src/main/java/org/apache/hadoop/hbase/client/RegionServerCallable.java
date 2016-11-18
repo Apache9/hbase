@@ -19,9 +19,15 @@
 
 package org.apache.hadoop.hbase.client;
 
+import com.google.common.base.Throwables;
+
 import java.io.IOException;
+import java.io.InterruptedIOException;
 import java.net.ConnectException;
 import java.net.SocketTimeoutException;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -68,6 +74,28 @@ public abstract class RegionServerCallable<T> implements RetryingCallable<T> {
     this.controller = connection.getRpcControllerFactory().newController();
   }
 
+  protected HRegionLocation getRegionLocation(TableName tableName, byte[] row, boolean reload,
+      int callTimeout) throws IOException {
+    HRegionLocation loc;
+    try {
+      loc = connection.getRegionLocationAsync(tableName, row, reload).get(callTimeout,
+        TimeUnit.MILLISECONDS);
+    } catch (InterruptedException e) {
+      throw (InterruptedIOException) new InterruptedIOException().initCause(e);
+    } catch (ExecutionException e) {
+      Throwables.propagateIfPossible(e.getCause(), IOException.class);
+      throw new IOException(e);
+    } catch (TimeoutException e) {
+      throw new IOException("Timeout when waiting for location, tableName=" + tableName + ", row="
+          + Bytes.toString(row) + ", reload=" + reload);
+    }
+    if (loc == null) {
+      throw new IOException("Failed to find location, tableName=" + tableName + ", row="
+          + Bytes.toStringBinary(row) + ", reload=" + reload);
+    }
+    return loc;
+  }
+
   /**
    * Prepare for connection to the server hosting region with row from tablename. Does lookup to
    * find region location and hosting server.
@@ -81,11 +109,7 @@ public abstract class RegionServerCallable<T> implements RetryingCallable<T> {
         && getConnection().isTableDisabled(tableName)) {
       throw new TableNotEnabledException(tableName.getNameAsString() + " is disabled.");
     }
-    this.location = connection.getRegionLocation(tableName, row, false);
-    if (this.location == null) {
-      throw new IOException("Failed to find location, tableName=" + tableName + ", row="
-          + Bytes.toString(row) + ", reload=" + reload);
-    }
+    this.location = getRegionLocation(tableName, row, reload, callTimeout);
     setStub(getConnection().getClient(getLocation().getServerName()));
   }
 

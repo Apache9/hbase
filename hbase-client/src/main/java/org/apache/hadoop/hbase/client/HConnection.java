@@ -22,6 +22,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Abortable;
@@ -384,6 +385,8 @@ public interface HConnection extends Abortable, Closeable {
   @Deprecated
   HRegionLocation getRegionLocation(byte[] tableName, byte[] row, boolean reload)
       throws IOException;
+
+  Future<HRegionLocation> getRegionLocationAsync(TableName tableName, byte[] row, boolean reload);
 
   /**
    * Process a mixed batch of Get, Put and Delete actions. All actions for a RegionServer are
