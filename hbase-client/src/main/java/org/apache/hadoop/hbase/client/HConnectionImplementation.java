@@ -1,5 +1,6 @@
 package org.apache.hadoop.hbase.client;
 
+import com.google.common.hash.Hashing;
 import com.google.protobuf.BlockingRpcChannel;
 import com.google.protobuf.RpcController;
 import com.google.protobuf.ServiceException;
@@ -12,6 +13,7 @@ import java.io.InterruptedIOException;
 import java.lang.reflect.UndeclaredThrowableException;
 import java.net.SocketException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -23,7 +25,10 @@ import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -154,6 +159,7 @@ import org.apache.hadoop.hbase.quotas.ThrottlingException;
 import org.apache.hadoop.hbase.regionserver.RegionServerStoppedException;
 import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hbase.util.CompletedFuture;
 import org.apache.hadoop.hbase.util.ExceptionUtil;
 import org.apache.hadoop.hbase.util.Threads;
 import org.apache.hadoop.hbase.zookeeper.MasterAddressTracker;
@@ -261,6 +267,10 @@ public class HConnectionImplementation implements HConnection, Closeable {
    */
   Registry registry;
 
+  private final ExecutorService locateMetaExecutor;
+
+  private final ExecutorService[] locateRegionExecutors;
+
   HConnectionImplementation(Configuration conf, boolean managed) throws IOException {
     this(conf, managed, null, null);
   }
@@ -349,6 +359,15 @@ public class HConnectionImplementation implements HConnection, Closeable {
     this.rpcControllerFactory = RpcControllerFactory.instantiate(conf);
     this.rpcCallerFactory = RpcRetryingCallerFactory.instantiate(conf, this.stats);
     this.backoffPolicy = ClientBackoffPolicyFactory.create(conf);
+
+    this.locateMetaExecutor =
+        Executors.newSingleThreadExecutor(Threads.newDaemonThreadFactory("Locate-Meta"));
+    int regionLocateMaxConcurrent = Math.max(1, conf.getInt(REGION_LOCATE_MAX_CONCURRENT, 16));
+    ThreadFactory locateRegionThreadFactory = Threads.newDaemonThreadFactory("Locate-Region");
+    locateRegionExecutors = new ExecutorService[regionLocateMaxConcurrent];
+    for (int i = 0; i < regionLocateMaxConcurrent; i++) {
+      locateRegionExecutors[i] = Executors.newSingleThreadExecutor(locateRegionThreadFactory);
+    }
   }
 
   @Override
@@ -533,6 +552,47 @@ public class HConnectionImplementation implements HConnection, Closeable {
     return getRegionLocation(TableName.valueOf(tableName), row, reload);
   }
 
+  private ExecutorService getExecutor(TableName tableName, byte[] row) {
+    if (tableName.equals(TableName.META_TABLE_NAME)) {
+      return locateMetaExecutor;
+    }
+    // Use the first two bytes to select executor
+    byte[] rowPrefix = row.length < 2 ? row : Arrays.copyOf(row, 2);
+    int hash = Math.abs(Hashing.murmur3_32().newHasher().putBytes(tableName.getName())
+        .putBytes(rowPrefix).hash().asInt());
+    // if hash is Integer.MIN_VALUE then abs is still less than zero
+    int index = hash < 0 ? 0 : hash % locateRegionExecutors.length;
+    return locateRegionExecutors[index];
+  }
+
+  @Override
+  public Future<HRegionLocation> getRegionLocationAsync(TableName tableName, byte[] row,
+      boolean reload) {
+    ExecutorService executor = getExecutor(tableName, row);
+    if (reload) {
+      return executor.submit(new LocateRegionCallable(tableName, row) {
+
+        @Override
+        public HRegionLocation call() throws Exception {
+          return relocateRegion(tableName, row);
+        }
+      });
+    }
+    HRegionLocation cachedLoc = getCachedLocation(tableName, row);
+    if (cachedLoc != null) {
+      return new CompletedFuture<HRegionLocation>(cachedLoc);
+    } else {
+      return executor.submit(new LocateRegionCallable(tableName, row) {
+
+        @Override
+        public HRegionLocation call() throws Exception {
+          return locateRegion(tableName, row);
+        }
+
+      });
+    }
+  }
+
   @Override
   public boolean isTableEnabled(TableName tableName) throws IOException {
     return this.registry.isTableOnlineState(tableName, true);
@@ -707,7 +767,9 @@ public class HConnectionImplementation implements HConnection, Closeable {
 
   private HRegionLocation locateRegion(final TableName tableName, final byte[] row,
       boolean useCache, boolean retry) throws IOException {
-    if (this.closed) throw new IOException(toString() + " closed");
+    if (this.closed) {
+      throw new IOException(toString() + " closed");
+    }
     if (tableName == null || tableName.getName().length == 0) {
       throw new IllegalArgumentException("table name cannot be null or zero length");
     }
@@ -716,8 +778,7 @@ public class HConnectionImplementation implements HConnection, Closeable {
       return locateMeta(useCache);
     } else {
       // Region not in the cache - have to go to the meta RS
-      return locateRegionInMeta(TableName.META_TABLE_NAME, tableName, row, useCache, userRegionLock,
-        retry);
+      return locateRegionInMeta(tableName, row, useCache, userRegionLock, retry);
     }
   }
 
@@ -792,9 +853,11 @@ public class HConnectionImplementation implements HConnection, Closeable {
     synchronized (metaRegionLock) {
       // Check the cache again for a hit in case some other thread made the
       // same query while we were waiting on the lock.
-      location = getCachedLocation(TableName.META_TABLE_NAME, metaCacheKey);
-      if (location != null) {
-        return location;
+      if (useCache) {
+        location = getCachedLocation(TableName.META_TABLE_NAME, metaCacheKey);
+        if (location != null) {
+          return location;
+        }
       }
       // Look up from zookeeper
       location = this.registry.getMetaRegionLocation();
@@ -809,9 +872,8 @@ public class HConnectionImplementation implements HConnection, Closeable {
    * Search the hbase:meta table for the HRegionLocation info that contains the table and row we're
    * seeking.
    */
-  private HRegionLocation locateRegionInMeta(final TableName parentTable, final TableName tableName,
-      final byte[] row, boolean useCache, Object regionLockObject, boolean retry)
-      throws IOException {
+  private HRegionLocation locateRegionInMeta(final TableName tableName, final byte[] row,
+      boolean useCache, Object regionLockObject, boolean retry) throws IOException {
     HRegionLocation location;
     // If we are supposed to be using the cache, look in the cache to see if
     // we already have the region.
@@ -823,67 +885,68 @@ public class HConnectionImplementation implements HConnection, Closeable {
     }
 
     Throwable lastCause = null;
-    int localNumRetries = retry ? numTries : 1;
+    int maxAttempts = retry ? numTries : 1;
     // build the key of the meta region we should be looking for.
     // the extra 9's on the end are necessary to allow "exact" matches
     // without knowing the precise region names.
     byte[] metaKey = HRegionInfo.createRegionName(tableName, row, HConstants.NINES, false);
-    for (int tries = 0; true; tries++) {
-      if (tries >= localNumRetries) {
+    Scan s = new Scan();
+    s.setReversed(true);
+    s.setStartRow(metaKey);
+    s.addFamily(HConstants.CATALOG_FAMILY);
+    s.setSmall(true);
+    s.setCaching(1);
+    for (int tries = 0;; tries++) {
+      if (tries >= maxAttempts) {
         throw new NoServerForRegionException("Unable to find region for "
-            + Bytes.toStringBinary(row) + " after " + numTries + " tries.", lastCause);
+            + Bytes.toStringBinary(row) + " after " + tries + " tries.", lastCause);
       }
 
-      HRegionLocation metaLocation = null;
-      try {
-        // locate the meta region
-        metaLocation = locateRegion(parentTable, metaKey, tries == 0, false);
-        // If null still, go around again.
-        if (metaLocation == null) continue;
-        ClientService.BlockingInterface service = getClient(metaLocation.getServerName());
-
-        Result regionInfoRow;
-        // This block guards against two threads trying to load the meta
-        // region at the same time. The first will load the meta region and
-        // the second will use the value that the first one found.
-        if (useCache) {
-          if (TableName.META_TABLE_NAME.equals(parentTable) && usePrefetch
-              && getRegionCachePrefetch(tableName)) {
-            synchronized (regionLockObject) {
-              // Check the cache again for a hit in case some other thread made the
-              // same query while we were waiting on the lock.
-              location = getCachedLocation(tableName, row);
-              if (location != null) {
-                return location;
-              }
-              // If the parent table is META, we may want to pre-fetch some
-              // region info into the global region cache for this table.
-              prefetchRegionCache(tableName, row);
+      // This block guards against two threads trying to load the meta
+      // region at the same time. The first will load the meta region and
+      // the second will use the value that the first one found.
+      if (useCache) {
+        if (usePrefetch && getRegionCachePrefetch(tableName)) {
+          synchronized (regionLockObject) {
+            // Check the cache again for a hit in case some other thread made the
+            // same query while we were waiting on the lock.
+            location = getCachedLocation(tableName, row);
+            if (location != null) {
+              return location;
             }
+            // If the parent table is META, we may want to pre-fetch some
+            // region info into the global region cache for this table.
+            prefetchRegionCache(tableName, row);
           }
-          location = getCachedLocation(tableName, row);
-          if (location != null) {
-            return location;
-          }
-        } else {
-          // If we are not supposed to be using the cache, delete any existing cached location
-          // so it won't interfere.
-          forceDeleteCachedLocation(tableName, row);
         }
-
-        // Query the meta region for the location of the meta region
-        regionInfoRow = ProtobufUtil.getRowOrBefore(service,
-          metaLocation.getRegionInfo().getRegionName(), metaKey, HConstants.CATALOG_FAMILY);
-
+        location = getCachedLocation(tableName, row);
+        if (location != null) {
+          return location;
+        }
+      } else {
+        // If we are not supposed to be using the cache, delete any existing cached location
+        // so it won't interfere.
+        forceDeleteCachedLocation(tableName, row);
+      }
+      try {
+        Result regionInfoRow = null;
+        ReversedClientScanner rcs = null;
+        try {
+          rcs = new ClientSmallReversedScanner(conf, s, TableName.META_TABLE_NAME, this);
+          regionInfoRow = rcs.next();
+        } finally {
+          if (rcs != null) {
+            rcs.close();
+          }
+        }
         if (regionInfoRow == null) {
           throw new TableNotFoundException(tableName);
         }
-
         // convert the row result into the HRegionLocation we need!
         HRegionInfo regionInfo = MetaScanner.getHRegionInfo(regionInfoRow);
         if (regionInfo == null) {
-          throw new IOException(
-              "HRegionInfo was null or empty in " + parentTable + ", row=" + regionInfoRow);
+          throw new IOException("HRegionInfo was null or empty in " + TableName.META_TABLE_NAME
+              + ", row=" + regionInfoRow);
         }
 
         // possible we got a region of a different table...
@@ -903,9 +966,9 @@ public class HConnectionImplementation implements HConnection, Closeable {
 
         ServerName serverName = HRegionInfo.getServerName(regionInfoRow);
         if (serverName == null) {
-          throw new NoServerForRegionException("No server address listed " + "in " + parentTable
-              + " for region " + regionInfo.getRegionNameAsString() + " containing row "
-              + Bytes.toStringBinary(row));
+          throw new NoServerForRegionException("No server address listed " + "in "
+              + TableName.META_TABLE_NAME + " for region " + regionInfo.getRegionNameAsString()
+              + " containing row " + Bytes.toStringBinary(row));
         }
 
         if (isDeadServer(serverName)) {
@@ -930,27 +993,21 @@ public class HConnectionImplementation implements HConnection, Closeable {
         if (e instanceof RemoteException) {
           e = ((RemoteException) e).unwrapRemoteException();
         }
-        lastCause = e;
-        if (tries < numTries - 1) {
-          if (LOG.isDebugEnabled()) {
-            LOG.debug("locateRegionInMeta parentTable=" + parentTable + ", metaLocation="
-                + ((metaLocation == null) ? "null" : "{" + metaLocation + "}") + ", attempt="
-                + tries + " of " + this.numTries + " failed; retrying after sleep of "
-                + ConnectionUtils.getPauseTime(this.pause, tries) + " because: " + e.getMessage());
-          }
+        if (tries < maxAttempts - 1) {
+          LOG.warn("locateRegionInMeta in " + TableName.META_TABLE_NAME + ", attempt=" + tries
+              + " of " + maxAttempts + " failed; retrying after sleep of "
+              + ConnectionUtils.getPauseTime(this.pause, tries),
+            e);
         } else {
           throw e;
         }
         // Only relocate the parent region if necessary
         if (!(e instanceof RegionOfflineException || e instanceof NoServerForRegionException)) {
-          relocateRegion(parentTable, metaKey);
+          relocateRegion(TableName.META_TABLE_NAME, metaKey);
         }
       }
       try {
-        long sleepTime = ConnectionUtils.getPauseTime(this.pause, tries);
-        LOG.info("Sleep for next retry, parentTable=" + parentTable + ", tablename=" + tableName
-            + ", useCaching=" + useCache + ", retries=" + retry + ", sleepTime=" + sleepTime);
-        Thread.sleep(sleepTime);
+        Thread.sleep(ConnectionUtils.getPauseTime(this.pause, tries));
       } catch (InterruptedException e) {
         throw new InterruptedIOException(
             "Giving up trying to location region in " + "meta: thread is interrupted.");
