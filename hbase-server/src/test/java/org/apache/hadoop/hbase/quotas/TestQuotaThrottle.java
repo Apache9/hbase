@@ -18,6 +18,9 @@
 
 package org.apache.hadoop.hbase.quotas;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
 import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.logging.Log;
@@ -25,29 +28,23 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HTable;
-import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Put;
-import org.apache.hadoop.hbase.client.Result;
-import org.apache.hadoop.hbase.client.RetriesExhaustedWithDetailsException;
+import org.apache.hadoop.hbase.client.RetriesExhaustedException;
 import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
-import org.apache.hadoop.hbase.util.ManualEnvironmentEdge;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManagerTestHelper;
-import org.apache.hadoop.hbase.util.IncrementingEnvironmentEdge;
 import org.apache.hadoop.hbase.util.JVMClusterUtil.RegionServerThread;
-import org.apache.hadoop.security.UserGroupInformation;
-
+import org.apache.hadoop.hbase.util.ManualEnvironmentEdge;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-
-import static org.junit.Assert.assertEquals;
 
 @Category({MediumTests.class})
 public class TestQuotaThrottle {
@@ -561,17 +558,13 @@ public class TestQuotaThrottle {
       while (count < maxOps) {
         Put put = new Put(Bytes.toBytes("row-" + count));
         put.add(FAMILY, QUALIFIER, Bytes.toBytes("data-" + count));
-        for (final HTable table: tables) {
+        for (final HTable table : tables) {
           table.put(put);
         }
         count += tables.length;
       }
-    } catch (RetriesExhaustedWithDetailsException e) {
-      for (Throwable t: e.getCauses()) {
-        if (!(t instanceof ThrottlingException)) {
-          throw e;
-        }
-      }
+    } catch (RetriesExhaustedException e) {
+      assertTrue(e.getCause() instanceof ThrottlingException);
       LOG.error("put failed after nRetries=" + count, e);
     }
     return count;

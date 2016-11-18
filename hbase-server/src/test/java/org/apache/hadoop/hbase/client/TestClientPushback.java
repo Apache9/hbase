@@ -94,6 +94,7 @@ public class TestClientPushback {
     // of the correct type
     HConnection conn = HConnectionManager.createConnection(conf);
     HTable table = (HTable) conn.getTable(tablename);
+    table.setAutoFlushTo(false);
 
     HRegionServer rs = UTIL.getHBaseCluster().getRegionServer(0);
     HRegion region = rs.getOnlineRegions(tablename).get(0);
