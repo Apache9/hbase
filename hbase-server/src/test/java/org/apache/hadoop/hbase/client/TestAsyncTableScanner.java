@@ -17,18 +17,14 @@
  */
 package org.apache.hadoop.hbase.client;
 
-import com.google.common.base.Throwables;
-
-import java.io.IOException;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Queue;
+import java.util.concurrent.ForkJoinPool;
 import java.util.function.Supplier;
 
 import org.apache.hadoop.hbase.testclassification.ClientTests;
-import org.apache.hadoop.hbase.testclassification.MediumTests;
+import org.apache.hadoop.hbase.testclassification.LargeTests;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -36,69 +32,18 @@ import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
 @RunWith(Parameterized.class)
-@Category({ MediumTests.class, ClientTests.class })
-public class TestAsyncTableScan extends AbstractTestAsyncTableScan {
-
-  private static final class SimpleScanResultConsumer implements ScanResultConsumer {
-
-    private final Queue<Result> queue = new ArrayDeque<>();
-
-    private boolean finished;
-
-    private Throwable error;
-
-    @Override
-    public synchronized boolean onNext(Result[] results) {
-      for (Result result : results) {
-        queue.offer(result);
-      }
-      notifyAll();
-      return true;
-    }
-
-    @Override
-    public boolean onHeartbeat() {
-      return true;
-    }
-
-    @Override
-    public synchronized void onError(Throwable error) {
-      finished = true;
-      this.error = error;
-      notifyAll();
-    }
-
-    @Override
-    public synchronized void onComplete() {
-      finished = true;
-      notifyAll();
-    }
-
-    public synchronized Result take() throws IOException, InterruptedException {
-      for (;;) {
-        if (!queue.isEmpty()) {
-          return queue.poll();
-        }
-        if (finished) {
-          if (error != null) {
-            Throwables.propagateIfPossible(error, IOException.class);
-            throw new IOException(error);
-          } else {
-            return null;
-          }
-        }
-        wait();
-      }
-    }
-  }
+@Category({ LargeTests.class, ClientTests.class })
+public class TestAsyncTableScanner extends AbstractTestAsyncTableScan {
 
   @Parameter
   public Supplier<Scan> scanCreater;
 
   @Parameters
   public static List<Object[]> params() {
-    return Arrays.asList(new Supplier<?>[] { TestAsyncTableScan::createNormalScan },
-      new Supplier<?>[] { TestAsyncTableScan::createBatchScan });
+    return Arrays.asList(new Supplier<?>[] { TestAsyncTableScanner::createNormalScan },
+      new Supplier<?>[] { TestAsyncTableScanner::createBatchScan },
+      new Supplier<?>[] { TestAsyncTableScanner::createSmallResultSizeScan },
+      new Supplier<?>[] { TestAsyncTableScanner::createBatchSmallResultSizeScan });
   }
 
   private static Scan createNormalScan() {
@@ -109,6 +54,15 @@ public class TestAsyncTableScan extends AbstractTestAsyncTableScan {
     return new Scan().setBatch(1);
   }
 
+  // set a small result size for testing flow control
+  private static Scan createSmallResultSizeScan() {
+    return new Scan().setMaxResultSize(1);
+  }
+
+  private static Scan createBatchSmallResultSizeScan() {
+    return new Scan().setBatch(1).setMaxResultSize(1);
+  }
+
   @Override
   protected Scan createScan() {
     return scanCreater.get();
@@ -116,15 +70,17 @@ public class TestAsyncTableScan extends AbstractTestAsyncTableScan {
 
   @Override
   protected List<Result> doScan(Scan scan) throws Exception {
-    SimpleScanResultConsumer scanConsumer = new SimpleScanResultConsumer();
-    ASYNC_CONN.getRawTable(TABLE_NAME).scan(scan, scanConsumer);
+    AsyncTable table = ASYNC_CONN.getTable(TABLE_NAME, ForkJoinPool.commonPool());
     List<Result> results = new ArrayList<>();
-    for (Result result; (result = scanConsumer.take()) != null;) {
-      results.add(result);
+    try (ResultScanner scanner = table.getScanner(scan)) {
+      for (Result result; (result = scanner.next()) != null;) {
+        results.add(result);
+      }
     }
     if (scan.getBatch() > 0) {
       results = convertFromBatchResult(results);
     }
     return results;
   }
+
 }

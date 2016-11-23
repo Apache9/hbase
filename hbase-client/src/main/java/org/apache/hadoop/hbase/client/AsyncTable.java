@@ -30,4 +30,30 @@ import org.apache.hadoop.hbase.classification.InterfaceStability;
 @InterfaceAudience.Public
 @InterfaceStability.Unstable
 public interface AsyncTable extends AsyncTableBase {
+
+  /**
+   * Gets a scanner on the current table for the given family.
+   * @param family The column family to scan.
+   * @return A scanner.
+   */
+  default ResultScanner getScanner(byte[] family) {
+    return getScanner(new Scan().addFamily(family));
+  }
+
+  /**
+   * Gets a scanner on the current table for the given family and qualifier.
+   * @param family The column family to scan.
+   * @param qualifier The column qualifier to scan.
+   * @return A scanner.
+   */
+  default ResultScanner getScanner(byte[] family, byte[] qualifier) {
+    return getScanner(new Scan().addColumn(family, qualifier));
+  }
+
+  /**
+   * Returns a scanner on the current table as specified by the {@link Scan} object.
+   * @param scan A configured {@link Scan} object.
+   * @return A scanner.
+   */
+  ResultScanner getScanner(Scan scan);
 }

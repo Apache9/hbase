@@ -26,6 +26,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.filter.CompareFilter.CompareOp;
+import org.apache.hadoop.hbase.util.ReflectionUtils;
 
 /**
  * The implementation of AsyncTable. Based on {@link RawAsyncTable}.
@@ -37,9 +38,12 @@ class AsyncTableImpl implements AsyncTable {
 
   private final ExecutorService pool;
 
+  private final long defaultScannerMaxResultSize;
+
   public AsyncTableImpl(AsyncConnectionImpl conn, TableName tableName, ExecutorService pool) {
     this.rawTable = conn.getRawTable(tableName);
     this.pool = pool;
+    this.defaultScannerMaxResultSize = conn.connConf.getScannerMaxResultSize();
   }
 
   @Override
@@ -155,5 +159,17 @@ class AsyncTableImpl implements AsyncTable {
   @Override
   public CompletableFuture<List<Result>> smallScan(Scan scan, int limit) {
     return wrap(rawTable.smallScan(scan, limit));
+  }
+
+  private long resultSize2CacheSize(long maxResultSize) {
+    // * 2 if possible
+    return maxResultSize > Long.MAX_VALUE / 2 ? maxResultSize : maxResultSize * 2;
+  }
+
+  @Override
+  public ResultScanner getScanner(Scan scan) {
+    return new AsyncResultScanner(rawTable, ReflectionUtils.newInstance(scan.getClass(), scan),
+        resultSize2CacheSize(
+          scan.getMaxResultSize() > 0 ? scan.getMaxResultSize() : defaultScannerMaxResultSize));
   }
 }

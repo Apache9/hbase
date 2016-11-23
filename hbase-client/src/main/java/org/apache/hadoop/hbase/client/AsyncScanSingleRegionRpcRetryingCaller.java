@@ -246,7 +246,7 @@ class AsyncScanSingleRegionRpcRetryingCaller {
 
   private void updateNextStartRowWhenError(Result result) {
     nextStartRowWhenError = result.getRow();
-    includeNextStartRowWhenError = result.isPartial();
+    includeNextStartRowWhenError = scan.getBatch() > 0 || result.isPartial();
   }
 
   private void completeWhenNoMoreResultsInRegion() {
