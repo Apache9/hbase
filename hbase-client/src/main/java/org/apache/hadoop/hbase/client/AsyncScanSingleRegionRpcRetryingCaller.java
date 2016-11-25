@@ -18,7 +18,6 @@
 package org.apache.hadoop.hbase.client;
 
 import static org.apache.hadoop.hbase.client.ConnectionUtils.createClosestRowAfter;
-import static org.apache.hadoop.hbase.client.ConnectionUtils.createClosestRowBefore;
 import static org.apache.hadoop.hbase.client.ConnectionUtils.getPauseTime;
 import static org.apache.hadoop.hbase.client.ConnectionUtils.isEmptyStartRow;
 import static org.apache.hadoop.hbase.client.ConnectionUtils.isEmptyStopRow;
@@ -30,14 +29,16 @@ import io.netty.util.HashedWheelTimer;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Supplier;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.hbase.Cell;
+import org.apache.hadoop.hbase.CellUtil;
 import org.apache.hadoop.hbase.DoNotRetryIOException;
 import org.apache.hadoop.hbase.HRegionLocation;
 import org.apache.hadoop.hbase.NotServingRegionException;
@@ -91,17 +92,15 @@ class AsyncScanSingleRegionRpcRetryingCaller {
 
   private final int startLogErrorsCnt;
 
-  private final Supplier<byte[]> createNextStartRowWhenError;
-
   private final Runnable completeWhenNoMoreResultsInRegion;
 
   private final CompletableFuture<Boolean> future;
 
   private final HBaseRpcController controller;
 
-  private byte[] nextStartRowWhenError;
+  private Cell lastCell;
 
-  private boolean includeNextStartRowWhenError;
+  private boolean seekToNextRowWhenError;
 
   private long nextCallStartNs;
 
@@ -128,10 +127,8 @@ class AsyncScanSingleRegionRpcRetryingCaller {
     this.rpcTimeoutNs = rpcTimeoutNs;
     this.startLogErrorsCnt = startLogErrorsCnt;
     if (scan.isReversed()) {
-      createNextStartRowWhenError = this::createReversedNextStartRowWhenError;
       completeWhenNoMoreResultsInRegion = this::completeReversedWhenNoMoreResultsInRegion;
     } else {
-      createNextStartRowWhenError = this::createNextStartRowWhenError;
       completeWhenNoMoreResultsInRegion = this::completeWhenNoMoreResultsInRegion;
     }
     this.future = new CompletableFuture<>();
@@ -172,15 +169,8 @@ class AsyncScanSingleRegionRpcRetryingCaller {
 
   private void completeWithNextStartRow(byte[] nextStartRow) {
     scan.setStartRow(nextStartRow);
+    scan.setStartCell(null);
     future.complete(scan.isReversed());
-  }
-
-  private byte[] createNextStartRowWhenError() {
-    return createClosestRowAfter(nextStartRowWhenError);
-  }
-
-  private byte[] createReversedNextStartRowWhenError() {
-    return createClosestRowBefore(nextStartRowWhenError);
   }
 
   private void completeWhenError(boolean closeScanner) {
@@ -188,9 +178,33 @@ class AsyncScanSingleRegionRpcRetryingCaller {
     if (closeScanner) {
       closeScanner();
     }
-    if (nextStartRowWhenError != null) {
-      scan.setStartRow(
-        includeNextStartRowWhenError ? nextStartRowWhenError : createNextStartRowWhenError.get());
+    if (lastCell != null) {
+      if (seekToNextRowWhenError) {
+        if (scan.isReversed()) {
+          // in general we do not need to change the scan's startRow which is used to locate region
+          // as we will continue scan the same region. A possible problem is that the region has
+          // been split and we have already scanned to the second half. So here we will set the
+          // start row to lastCell. Notice that this is not perfect as we may set startCell to
+          // LastOnRow which means we need to scan to the next of the row. If the row is the split
+          // point, then we will still issue an unnecessary scan. In order to fix this we need to
+          // add more methods for the region locator.
+          scan.setStartRow(Arrays.copyOfRange(lastCell.getRowArray(), lastCell.getRowOffset(),
+            lastCell.getRowLength()));
+          scan.setStartCell(CellUtil.createLastOnRow(lastCell));
+        } else {
+          scan.setStartRow(createClosestRowAfter(lastCell));
+          scan.setStartCell(null);
+        }
+      } else {
+        scan.setStartRow(Arrays.copyOfRange(lastCell.getRowArray(), lastCell.getRowOffset(),
+          lastCell.getRowLength()));
+        if (scan.getBatch() > 0 || scan.getAllowPartialResults()) {
+          scan.setStartCell(lastCell);
+        } else {
+          // just use the start row set above.
+          scan.setStartCell(null);
+        }
+      }
     }
     future.complete(
       scan.isReversed() && Bytes.equals(scan.getStartRow(), loc.getRegionInfo().getEndKey()));
@@ -244,9 +258,9 @@ class AsyncScanSingleRegionRpcRetryingCaller {
     retryTimer.newTimeout(t -> call(), delayNs, TimeUnit.NANOSECONDS);
   }
 
-  private void updateNextStartRowWhenError(Result result) {
-    nextStartRowWhenError = result.getRow();
-    includeNextStartRowWhenError = scan.getBatch() > 0 || result.isPartial();
+  private void updateLastCell(Result result) {
+    lastCell = result.rawCells()[result.rawCells().length - 1];
+    seekToNextRowWhenError = scan.getBatch() <= 0 && !result.isPartial();
   }
 
   private void completeWhenNoMoreResultsInRegion() {
@@ -301,7 +315,7 @@ class AsyncScanSingleRegionRpcRetryingCaller {
       // if we have nothing to return then this must be a heartbeat message.
       stopByUser = !consumer.onHeartbeat();
     } else {
-      updateNextStartRowWhenError(results[results.length - 1]);
+      updateLastCell(results[results.length - 1]);
       stopByUser = !consumer.onNext(results);
     }
     if (resp.hasMoreResults() && !resp.getMoreResults()) {

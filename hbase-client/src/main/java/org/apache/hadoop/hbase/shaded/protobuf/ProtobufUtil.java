@@ -34,6 +34,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.NavigableSet;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
@@ -83,7 +84,6 @@ import org.apache.hadoop.hbase.io.LimitInputStream;
 import org.apache.hadoop.hbase.io.TimeRange;
 import org.apache.hadoop.hbase.master.RegionState;
 import org.apache.hadoop.hbase.protobuf.ProtobufMagic;
-import org.apache.hadoop.hbase.shaded.protobuf.generated.ZooKeeperProtos;
 import org.apache.hadoop.hbase.quotas.QuotaScope;
 import org.apache.hadoop.hbase.quotas.QuotaType;
 import org.apache.hadoop.hbase.quotas.ThrottleType;
@@ -164,6 +164,7 @@ import org.apache.hadoop.hbase.shaded.protobuf.generated.WALProtos.FlushDescript
 import org.apache.hadoop.hbase.shaded.protobuf.generated.WALProtos.RegionEventDescriptor;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.WALProtos.RegionEventDescriptor.EventType;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.WALProtos.StoreDescriptor;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.ZooKeeperProtos;
 import org.apache.hadoop.hbase.util.Addressing;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.DynamicClassLoader;
@@ -977,8 +978,8 @@ public final class ProtobufUtil {
         scanBuilder.addAttribute(attributeBuilder.build());
       }
     }
-    byte[] startRow = scan.getStartRow();
-    if (startRow != null && startRow.length > 0) {
+    byte[] startRow = Optional.ofNullable(scan.getStartRow()).orElse(HConstants.EMPTY_START_ROW);
+    if (startRow.length > 0) {
       scanBuilder.setStartRow(UnsafeByteOperations.unsafeWrap(startRow));
     }
     byte[] stopRow = scan.getStopRow();
@@ -1017,6 +1018,11 @@ public final class ProtobufUtil {
     }
     if (scan.getCaching() > 0) {
       scanBuilder.setCaching(scan.getCaching());
+    }
+    if (scan.getStartCell() != null) {
+      scanBuilder.setStartCell(toCell(scan.getStartCell()));
+    } else {
+      scanBuilder.setStartCell(toCell(CellUtil.createFirstOnRow(startRow)));
     }
     return scanBuilder.build();
   }
@@ -1104,6 +1110,9 @@ public final class ProtobufUtil {
     }
     if (proto.hasCaching()) {
       scan.setCaching(proto.getCaching());
+    }
+    if (proto.hasStartCell()) {
+      scan.setStartCell(toCell(proto.getStartCell()));
     }
     return scan;
   }
@@ -2015,7 +2024,7 @@ public final class ProtobufUtil {
   }
 
   public static ScanMetrics toScanMetrics(final byte[] bytes) {
-    Parser<MapReduceProtos.ScanMetrics> parser = MapReduceProtos.ScanMetrics.PARSER;
+    Parser<MapReduceProtos.ScanMetrics> parser = MapReduceProtos.ScanMetrics.parser();
     MapReduceProtos.ScanMetrics pScanMetrics = null;
     try {
       pScanMetrics = parser.parseFrom(bytes);
@@ -2074,7 +2083,7 @@ public final class ProtobufUtil {
         kv.getFamilyOffset(), kv.getFamilyLength()));
     kvbuilder.setQualifier(UnsafeByteOperations.unsafeWrap(kv.getQualifierArray(),
         kv.getQualifierOffset(), kv.getQualifierLength()));
-    kvbuilder.setCellType(CellProtos.CellType.valueOf(kv.getTypeByte()));
+    kvbuilder.setCellType(CellProtos.CellType.forNumber(kv.getTypeByte() & 0xFF));
     kvbuilder.setTimestamp(kv.getTimestamp());
     kvbuilder.setValue(UnsafeByteOperations.unsafeWrap(kv.getValueArray(), kv.getValueOffset(),
         kv.getValueLength()));
@@ -2504,9 +2513,11 @@ public final class ProtobufUtil {
    */
   public static QuotaProtos.QuotaType toProtoQuotaScope(final QuotaType type) {
     switch (type) {
-      case THROTTLE: return QuotaProtos.QuotaType.THROTTLE;
+      case THROTTLE:
+        return QuotaProtos.QuotaType.THROTTLE;
+      default:
+        throw new RuntimeException("Invalid QuotaType " + type);
     }
-    throw new RuntimeException("Invalid QuotaType " + type);
   }
 
   /**
@@ -3213,7 +3224,7 @@ public final class ProtobufUtil {
       int prefixLen = ProtobufMagic.lengthOfPBMagic();
       try {
         ZooKeeperProtos.Master rss =
-          ZooKeeperProtos.Master.PARSER.parseFrom(data, prefixLen, data.length - prefixLen);
+          ZooKeeperProtos.Master.parser().parseFrom(data, prefixLen, data.length - prefixLen);
         org.apache.hadoop.hbase.shaded.protobuf.generated.HBaseProtos.ServerName sn =
             rss.getMaster();
         return ServerName.valueOf(sn.getHostName(), sn.getPort(), sn.getStartCode());

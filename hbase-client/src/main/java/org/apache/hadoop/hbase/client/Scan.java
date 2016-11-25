@@ -31,6 +31,7 @@ import java.util.TreeSet;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.classification.InterfaceStability;
@@ -174,6 +175,7 @@ public class Scan extends Query {
    */
   private boolean small = false;
 
+  private Cell startCell;
   /**
    * Create a Scan operation across all rows.
    */
@@ -974,6 +976,15 @@ public class Scan extends Query {
 
   public Scan setAsyncPrefetch(boolean asyncPrefetch) {
     this.asyncPrefetch = asyncPrefetch;
+    return this;
+  }
+
+  public Cell getStartCell() {
+    return startCell;
+  }
+
+  public Scan setStartCell(Cell startCell) {
+    this.startCell = startCell;
     return this;
   }
 }

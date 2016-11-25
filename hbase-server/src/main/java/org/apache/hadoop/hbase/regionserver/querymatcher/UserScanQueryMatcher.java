@@ -52,7 +52,7 @@ public abstract class UserScanQueryMatcher extends ScanQueryMatcher {
 
   protected UserScanQueryMatcher(Scan scan, ScanInfo scanInfo, ColumnTracker columns,
       boolean hasNullColumn, long oldestUnexpiredTS, long now) {
-    super(scan.getStartRow(), scanInfo, columns, oldestUnexpiredTS, now);
+    super(createStartKey(scan, scanInfo), scanInfo, columns, oldestUnexpiredTS, now);
     this.hasNullColumn = hasNullColumn;
     this.filter = scan.getFilter();
     this.stopRow = scan.getStopRow();

@@ -19,6 +19,7 @@ package org.apache.hadoop.hbase.regionserver.querymatcher;
 
 import java.io.IOException;
 import java.util.Iterator;
+import java.util.Optional;
 
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellComparator;
@@ -31,8 +32,8 @@ import org.apache.hadoop.hbase.Tag;
 import org.apache.hadoop.hbase.TagType;
 import org.apache.hadoop.hbase.TagUtil;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
+import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.filter.Filter;
-import org.apache.hadoop.hbase.regionserver.KeyValueScanner;
 import org.apache.hadoop.hbase.regionserver.RegionCoprocessorHost;
 import org.apache.hadoop.hbase.regionserver.ScanInfo;
 import org.apache.hadoop.hbase.regionserver.ShipperListener;
@@ -127,10 +128,10 @@ public abstract class ScanQueryMatcher implements ShipperListener {
 
   protected boolean stickyNextRow;
 
-  protected ScanQueryMatcher(byte[] startRow, ScanInfo scanInfo, ColumnTracker columns,
+  protected ScanQueryMatcher(Cell startKey, ScanInfo scanInfo, ColumnTracker columns,
       long oldestUnexpiredTS, long now) {
     this.rowComparator = scanInfo.getComparator();
-    this.startKey = CellUtil.createFirstDeleteFamilyCellOnRow(startRow, scanInfo.getFamily());
+    this.startKey = startKey;
     this.oldestUnexpiredTS = oldestUnexpiredTS;
     this.now = now;
     this.columns = columns;
@@ -352,6 +353,15 @@ public abstract class ScanQueryMatcher implements ShipperListener {
       tracker = host.postInstantiateDeleteTracker(tracker);
     }
     return tracker;
+  }
+
+  protected static Cell createStartKey(Scan scan, ScanInfo scanInfo) {
+    return Optional.ofNullable(scan.getStartCell())
+        .orElseGet(() -> createStartKey(scan.getStartRow(), scanInfo));
+  }
+
+  protected static Cell createStartKey(byte[] startRow, ScanInfo scanInfo) {
+    return CellUtil.createFirstDeleteFamilyCellOnRow(startRow, scanInfo.getFamily());
   }
 
   // Used only for testing purposes

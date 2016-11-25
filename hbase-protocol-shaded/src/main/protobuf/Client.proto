@@ -238,7 +238,7 @@ message MutateResponse {
 message Scan {
   repeated Column column = 1;
   repeated NameBytesPair attribute = 2;
-  optional bytes start_row = 3;
+  optional bytes start_row = 3 [deprecated = true];
   optional bytes stop_row = 4;
   optional Filter filter = 5;
   optional TimeRange time_range = 6;
@@ -255,6 +255,7 @@ message Scan {
   optional uint32 caching = 17;
   optional bool allow_partial_results = 18;
   repeated ColumnFamilyTimeRange cf_time_range = 19;
+  optional Cell start_cell = 20;
 }
 
 /**
