@@ -77,6 +77,11 @@
   <dependencies>
     <!-- Intra-project dependencies -->
     <dependency>
+      <groupId>com.xiaomi.owl</groupId>
+      <artifactId>metric-client</artifactId>
+      <version>1.0.3</version>
+    </dependency>
+    <dependency>
       <groupId>org.apache.hbase</groupId>
       <artifactId>hbase-annotations</artifactId>
     </dependency>
