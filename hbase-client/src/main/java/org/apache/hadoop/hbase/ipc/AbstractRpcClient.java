@@ -31,6 +31,7 @@ import com.google.protobuf.RpcChannel;
 import com.google.protobuf.RpcController;
 import com.google.protobuf.ServiceException;
 
+import com.xiaomi.owl.metric.MetricCounter;
 import io.netty.util.HashedWheelTimer;
 
 import java.io.IOException;
@@ -54,6 +55,7 @@ import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.codec.Codec;
 import org.apache.hadoop.hbase.codec.KeyValueCodec;
 import org.apache.hadoop.hbase.ipc.FailedServers.FailedServer;
+import org.apache.hadoop.hbase.metric.MetricTool;
 import org.apache.hadoop.hbase.protobuf.generated.AuthenticationProtos.TokenIdentifier.Kind;
 import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.security.UserProvider;
@@ -98,6 +100,7 @@ public abstract class AbstractRpcClient<T extends Connection> implements RpcClie
   protected final int clientWarnIpcResponseTime;
 
   protected int maxConcurrentCallsPerServer;
+  protected boolean isPushOwlMetricEnable;
 
   protected static final LoadingCache<InetSocketAddress, AtomicInteger> concurrentCounterCache =
       CacheBuilder.newBuilder().expireAfterAccess(1, TimeUnit.HOURS)
@@ -156,6 +159,11 @@ public abstract class AbstractRpcClient<T extends Connection> implements RpcClie
     this.maxConcurrentCallsPerServer =
         conf.getInt(HConstants.HBASE_CLIENT_PERSERVER_REQUESTS_THRESHOLD,
           HConstants.DEFAULT_HBASE_CLIENT_PERSERVER_REQUESTS_THRESHOLD);
+    this.isPushOwlMetricEnable =
+        conf.getBoolean(MetricTool.HBASE_CLIENT_OWL_METRIC_PUSH_ENABLE, false);
+    if(this.isPushOwlMetricEnable){
+      MetricCounter.startMetricCounterPushTask();
+    }
   }
 
   /**
@@ -377,7 +385,13 @@ public abstract class AbstractRpcClient<T extends Connection> implements RpcClie
       LOG.warn("Slow ipc call, MethodName=" + call.md.getName() + ", consume time=" + callTime
           + ", remote address:" + addr);
     }
+    if(this.isPushOwlMetricEnable){
+      MetricTool.update(call.md.getName(), 1L, callTime, MetricTool.addrNormalize(addr));
+    }
     if (call.error != null) {
+      if(this.isPushOwlMetricEnable){
+        MetricTool.updateFailedCall(call.md.getName(), 1L, MetricTool.addrNormalize(addr));
+      }
       if (call.error instanceof RemoteException) {
         call.error.fillInStackTrace();
         pcrc.setFailed(call.error);
