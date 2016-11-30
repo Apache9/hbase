@@ -61,6 +61,7 @@ module HBaseConstants
   NUMREGIONS = 'NUMREGIONS'
   KEY_SALTER = org.apache.hadoop.hbase.HTableDescriptor::KEY_SALTER
   SLOTS_COUNT = org.apache.hadoop.hbase.HTableDescriptor::SLOTS_COUNT
+  STATE = 'STATE'
 
   # Load constants from hbase java API
   def self.promote_constants(constants)

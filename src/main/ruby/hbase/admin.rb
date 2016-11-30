@@ -43,8 +43,41 @@ module Hbase
 
     #----------------------------------------------------------------------------------------------
     # Returns a list of tables in hbase
-    def list(regex = ".*")
-      @admin.getTableNames(regex)
+    def list(regex = ".*", args = {})
+      unless args.kind_of?(Hash)
+        raise ArgumentError, "Arguments should be a hash. Failed to parse #{args.inspect}, #{args.class}"
+      end
+
+      state = args.delete("STATE") || nil
+      tables = @admin.getTableNames(regex)
+
+      if state == nil
+        return tables
+      end
+
+      if state.kind_of?(String)
+        if state.upcase == "ENABLED"
+          enabled_tables = []
+          tables.each do |table|
+            if enabled?(table)
+              enabled_tables.push(table)
+            end
+          end
+          return enabled_tables
+        elsif state.upcase == "DISABLED"
+          disabled_tables = []
+          tables.each do |table|
+            if disabled?(table)
+              disabled_tables.push(table)
+            end
+          end
+          return disabled_tables
+        else
+          raise ArgumentError, "Table state must be ENABLED or DISABLED"
+        end
+      else
+        raise ArgumentError, "Table state must be a String"
+      end
     end
 
     #----------------------------------------------------------------------------------------------
