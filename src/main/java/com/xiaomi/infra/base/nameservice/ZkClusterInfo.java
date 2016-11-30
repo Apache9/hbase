@@ -50,13 +50,9 @@ public class ZkClusterInfo {
     SEC,
   }
 
-  public static final int REGION_NAME_LEN = 2;
-  public static final int IDC_NAME_LEN = 2;
   public static final int CLUSTER_TYPE_LEN = 3;
 
   private final String clusterName;
-  private final String regionName;
-  private final String idcAndIndexName;
   private final ClusterType clusterType;
   private final int port;
   
@@ -69,30 +65,12 @@ public class ZkClusterInfo {
       throws IOException {
     this.clusterName = clusterName;
     int length = clusterName.length();
-    if (length < IDC_NAME_LEN + CLUSTER_TYPE_LEN) {
-      throw new IOException("Illegal zookeeper cluster name: " + clusterName);
-    }
 
     String clusterTypeName = clusterName.substring(length - CLUSTER_TYPE_LEN, length);
     try {
       clusterType = ClusterType.valueOf(clusterTypeName.toUpperCase());
     } catch (IllegalArgumentException e) {
       throw new IOException("Illegal zookeeper cluster type: " + clusterTypeName);
-    }
-    
-    int index = length - CLUSTER_TYPE_LEN - 1;
-    while (index >= 0 && Character.isDigit(clusterName.charAt(index)))
-      --index;
-    ++index;
-
-    if (index <= IDC_NAME_LEN) {
-      regionName = "bj";
-      idcAndIndexName = clusterName.substring(0, length - CLUSTER_TYPE_LEN);
-    } else if (index <= REGION_NAME_LEN + IDC_NAME_LEN) {
-      regionName = clusterName.substring(0, REGION_NAME_LEN);
-      idcAndIndexName = clusterName.substring(REGION_NAME_LEN, length - CLUSTER_TYPE_LEN);
-    } else {
-      throw new IOException("Illegal zookeeper cluster name: " + clusterName);
     }
 
     this.port = (port == -1) ? 11000 : port;
@@ -107,7 +85,7 @@ public class ZkClusterInfo {
   }
 
   public String toDnsName() {
-    return regionName + idcAndIndexName + "-zk-" + clusterType.toString().toLowerCase() + ".hadoop.srv";
+    return clusterName + ".zk.hadoop.srv";
   }
   
   /**

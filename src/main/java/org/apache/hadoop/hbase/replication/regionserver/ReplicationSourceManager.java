@@ -727,7 +727,7 @@ public class ReplicationSourceManager {
         replications.put(peerId, load);
       } else {
         load.setSizeOfLogQueue(load.getSizeOfLogQueue() + sizeOfLogQueue);
-        load.setReplicationLag(replicationLag);
+        load.setReplicationLag(Math.max(replicationLag, load.getReplicationLag()));
       }
     }
     for (ReplicationSourceInterface source : this.oldsources) {
@@ -740,7 +740,7 @@ public class ReplicationSourceManager {
         replications.put(peerId, load);
       } else {
         load.setSizeOfLogQueue(load.getSizeOfLogQueue() + sizeOfLogQueue);
-        load.setReplicationLag(replicationLag);
+        load.setReplicationLag(Math.max(replicationLag, load.getReplicationLag()));
       }
     }
     return new LinkedList<ReplicationLoad>(replications.values());
