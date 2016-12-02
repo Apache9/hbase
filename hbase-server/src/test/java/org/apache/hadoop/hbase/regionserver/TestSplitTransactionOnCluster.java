@@ -119,7 +119,7 @@ public class TestSplitTransactionOnCluster {
     new HBaseTestingUtility();
 
   static void setupOnce() throws Exception {
-    TESTING_UTIL.getConfiguration().setInt("hbase.balancer.period", 60000);
+    TESTING_UTIL.getConfiguration().setInt(HConstants.HBASE_BALANCER_PERIOD, 60000);
     useZKForAssignment =
         TESTING_UTIL.getConfiguration().getBoolean("hbase.assignment.usezk", false);
     TESTING_UTIL.startMiniCluster(NB_SERVERS);
