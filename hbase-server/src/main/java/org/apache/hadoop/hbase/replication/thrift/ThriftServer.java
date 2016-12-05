@@ -83,7 +83,7 @@ public class ThriftServer extends Thread {
   private static TTransportFactory getTTransportFactory(boolean framed) {
     if (framed) {
       LOG.debug("Using framed transport");
-      return new TFramedTransport.Factory();
+      return new TFramedTransport.Factory(163840000);//160MB
     } else {
       return new TTransportFactory();
     }
