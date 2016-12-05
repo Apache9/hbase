@@ -11,7 +11,8 @@ public enum ThriftEditType {
   PUT((byte)1, KeyValue.Type.Put),
   DELCF((byte)2, KeyValue.Type.DeleteFamily),
   DELCOLS((byte)3, KeyValue.Type.DeleteColumn),
-  DEL((byte)4, KeyValue.Type.Delete);
+  DEL((byte)4, KeyValue.Type.Delete),
+  DELCFV((byte)5, KeyValue.Type.DeleteFamilyVersion);
 
   private static Map<Byte, ThriftEditType> toEditType =
       Maps.uniqueIndex(Arrays.asList(ThriftEditType.values()),
