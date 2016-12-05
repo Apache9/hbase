@@ -244,6 +244,11 @@ Server {
   // Instance of the hbase executor service.
   ExecutorService executorService;
 
+  // Maximum time we should run balancer for
+  private final int maxBlancingTime;
+  // Maximum percent of regions in transition when balancing
+  private final float maxRitPercent;
+
   private LoadBalancer balancer;
   private Thread balancerChore;
 
@@ -382,6 +387,9 @@ Server {
     // preload table descriptor at startup
     this.preLoadTableDescriptors = conf.getBoolean("hbase.master.preload.tabledescriptors", true);
 
+    this.maxBlancingTime = getMaxBalancingTime();
+    this.maxRitPercent = conf.getFloat(HConstants.HBASE_MASTER_BALANCER_MAX_RIT_PERCENT,
+      HConstants.DEFAULT_HBASE_MASTER_BALANCER_MAX_RIT_PERCENT);
 
     // Health checker thread.
     int sleepTime = this.conf.getInt(HConstants.HEALTH_CHORE_WAKE_FREQ,
@@ -1146,8 +1154,8 @@ Server {
 
   private static Thread getAndStartBalancerChore(final HMaster master) {
     String name = master.getServerName() + "-BalancerChore";
-    int balancerPeriod =
-      master.getConfiguration().getInt("hbase.balancer.period", 300000);
+    int balancerPeriod = master.getConfiguration().getInt(HConstants.HBASE_BALANCER_PERIOD,
+      HConstants.DEFAULT_HBASE_BALANCER_PERIOD);
     // Start up the load balancer chore
     Chore chore = new Chore(name, balancerPeriod, master) {
       @Override
@@ -1257,18 +1265,60 @@ Server {
   /**
    * @return Maximum time we should run balancer for
    */
-  private int getBalancerCutoffTime() {
-    int balancerCutoffTime =
-      getConfiguration().getInt("hbase.balancer.max.balancing", -1);
-    if (balancerCutoffTime == -1) {
+  private int getMaxBalancingTime() {
+    int maxBalancingTime = getConfiguration().getInt(HConstants.HBASE_BALANCER_MAX_BALANCING, -1);
+    if (maxBalancingTime == -1) {
       // No time period set so create one -- do half of balancer period.
-      int balancerPeriod =
-        getConfiguration().getInt("hbase.balancer.period", 300000);
-      balancerCutoffTime = balancerPeriod / 2;
-      // If nonsense period, set it to balancerPeriod
-      if (balancerCutoffTime <= 0) balancerCutoffTime = balancerPeriod;
+      maxBalancingTime = getConfiguration().getInt(HConstants.HBASE_BALANCER_PERIOD,
+        HConstants.DEFAULT_HBASE_BALANCER_PERIOD);
     }
-    return balancerCutoffTime;
+    return maxBalancingTime;
+  }
+
+  /**
+   * @return Maximum number of regions in transition
+   */
+  private int getMaxRegionsInTransition() {
+    int numRegions = this.assignmentManager.getOnlineRegionCount();
+    return Math.max((int) Math.floor(numRegions * this.maxRitPercent), 1);
+  }
+
+  /**
+   * It first sleep to the next balance plan start time. Meanwhile, throttling by the max
+   * number regions in transition to protect availability.
+   * @param nextBalanceStartTime The next balance plan start time
+   * @param maxRegionsInTransition max number of regions in transition
+   * @param cutoffTime when to exit balancer
+   */
+  private void balanceThrottling(long nextBalanceStartTime, int maxRegionsInTransition,
+      long cutoffTime) {
+    boolean interrupted = false;
+
+    // Sleep to next balance plan start time
+    // But if there are zero regions in transition, it can skip sleep to speed up.
+    while (!interrupted && System.currentTimeMillis() < nextBalanceStartTime
+        && this.assignmentManager.getRegionsInTransitionCount() != 0) {
+      try {
+        Thread.sleep(100);
+      } catch (InterruptedException ie) {
+        interrupted = true;
+      }
+    }
+
+    // Throttling by max number regions in transition
+    while (!interrupted
+        && maxRegionsInTransition > 0
+        && this.assignmentManager.getRegionsInTransitionCount()
+        >= maxRegionsInTransition && System.currentTimeMillis() <= cutoffTime) {
+      try {
+        // sleep if the number of regions in transition exceeds the limit
+        Thread.sleep(100);
+      } catch (InterruptedException ie) {
+        interrupted = true;
+      }
+    }
+
+    if (interrupted) Thread.currentThread().interrupt();
   }
 
   // only for test
@@ -1290,15 +1340,9 @@ Server {
     }
     // If balance not true, don't run balancer.
     if (!this.clusterSwitches.getBalanceSwitch()) return false;
-    // Do this call outside of synchronized block.
-    int maximumBalanceTime = getBalancerCutoffTime();
-    long cutoffTime = System.currentTimeMillis() + maximumBalanceTime;
+
     // max number of regions in transition when balancing
-    int maxRegionsInTransition =
-        getConfiguration().getInt("hbase.balancer.max.balancing.regions", -1);
-    // min sleep time in milliseconds before start next balance action
-    int minBalanceIntervalMs =
-        getConfiguration().getInt("hbase.balancer.min.balancing.interval", -1);
+    int maxRegionsInTransition = getMaxRegionsInTransition();
     boolean balancerRan;
     synchronized (this.balancer) {
       // Only allow one balance run at at time.
@@ -1346,42 +1390,37 @@ Server {
           plans = this.balancer.adjustPerTablePlans(assignmentsByTable, plans);
         }
       }
+
+      long balanceStartTime = System.currentTimeMillis();
+      long cutoffTime = balanceStartTime + this.maxBlancingTime;
       int rpCount = 0;  // number of RegionPlans balanced so far
-      long totalRegPlanExecTime = 0;
       balancerRan = plans != null;
       if (plans != null && !plans.isEmpty()) {
+        int balanceInterval = this.maxBlancingTime / plans.size();
+        LOG.info("Balancer plans size is " + plans.size() + ", the balance interval is "
+            + balanceInterval + " ms, and the max number regions in transition is "
+            + maxRegionsInTransition);
+
         for (RegionPlan plan: plans) {
           LOG.info("balance " + plan);
           long balStartTime = System.currentTimeMillis();
           this.assignmentManager.balance(plan);
-          totalRegPlanExecTime += System.currentTimeMillis()-balStartTime;
           rpCount++;
-          if (rpCount < plans.size()) {
-            long currentTime = System.currentTimeMillis();
-            long nextBalMinStartTime =
-                minBalanceIntervalMs > 0 ? currentTime + minBalanceIntervalMs : currentTime;
-            boolean interrupted = false;
-            while ((currentTime < nextBalMinStartTime || maxRegionsInTransition > 0 &&
-                this.assignmentManager.getRegionsInTransitionCount() >= maxRegionsInTransition) &&
-                currentTime + (totalRegPlanExecTime / rpCount) <= cutoffTime) {
-              try {
-                // sleep if the number of regions in transition exceeds the limit
-                Thread.sleep(1000);
-              } catch (InterruptedException ie) {
-                interrupted = true;
-              }
-              currentTime = System.currentTimeMillis();
-            }
-            if (interrupted) Thread.currentThread().interrupt();
-            // if performing next balance exceeds cutoff time, exit the loop
-            if (currentTime + (totalRegPlanExecTime / rpCount) > cutoffTime) {
-              LOG.debug("No more balancing till next balance run; maximumBalanceTime=" +
-                  maximumBalanceTime);
-              break;
-            }
+
+          balanceThrottling(balanceStartTime + rpCount * balanceInterval, maxRegionsInTransition,
+            cutoffTime);
+
+          // if performing next balance exceeds cutoff time, exit the loop
+          if (rpCount < plans.size() && System.currentTimeMillis() > cutoffTime) {
+            // TODO: After balance, there should not be a cutoff time (keeping it as
+            // a security net for now)
+            LOG.debug("No more balancing till next balance run; maxBalanceTime="
+                + this.maxBlancingTime);
+            break;
           }
         }
       }
+
       if (this.cpHost != null) {
         try {
           this.cpHost.postBalance();

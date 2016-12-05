@@ -73,7 +73,23 @@ public final class HConstants {
   
   /** Config for pluggable load balancers */
   public static final String HBASE_MASTER_LOADBALANCER_CLASS = "hbase.master.loadbalancer.class";
-  
+
+  /** Config for the max percent of regions in transition */
+  public static final String HBASE_MASTER_BALANCER_MAX_RIT_PERCENT =
+      "hbase.master.balancer.maxRitPercent";
+
+  /** Default value for the max percent of regions in transition */
+  public static final float DEFAULT_HBASE_MASTER_BALANCER_MAX_RIT_PERCENT = 1.0f;
+
+  /** Config for the max balancing time */
+  public static final String HBASE_BALANCER_MAX_BALANCING = "hbase.balancer.max.balancing";
+
+  /** Config for the balancer period */
+  public static final String HBASE_BALANCER_PERIOD = "hbase.balancer.period";
+
+  /** Default value for the balancer period */
+  public static final int DEFAULT_HBASE_BALANCER_PERIOD = 300000;
+
   /** Config for pluggable hbase cluster manager */
   public static final String HBASE_CLUSTER_MANAGER_CLASS = "hbase.it.clustermanager.class";
   
