@@ -53,6 +53,7 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.DoNotRetryIOException;
 import org.apache.hadoop.hbase.HConstants;
+import org.apache.hadoop.hbase.client.metrics.MetricTool;
 import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
@@ -108,6 +109,7 @@ public class HBaseClient {
   public final static int FAILED_SERVER_EXPIRY_DEFAULT = 2000;
   public final static String CLIENT_FAIL_FAST_FOR_FAILED_SERVER = "hbase.client.fail.fast.for.failed.server";
   protected final boolean clientFailFast;
+  protected final boolean isPushOwlMetricEnable;
 
   private long maxConcurrentCallsPerServer;
 
@@ -927,6 +929,7 @@ public class HBaseClient {
     this.tcpKeepAlive = conf.getBoolean("hbase.ipc.client.tcpkeepalive", true);
     this.pingInterval = getPingInterval(conf);
     this.clientFailFast = conf.getBoolean(CLIENT_FAIL_FAST_FOR_FAILED_SERVER, false);
+    this.isPushOwlMetricEnable = conf.getBoolean(MetricTool.HBASE_CLIENT_OWL_METRIC_PUSH_ENABLE, false);
     if (LOG.isDebugEnabled()) {
       LOG.debug("The ping interval is" + this.pingInterval + "ms.");
     }
@@ -1075,6 +1078,10 @@ public class HBaseClient {
         }
 
         if (call.error != null) {
+          if (this.isPushOwlMetricEnable && (param instanceof Invocation)) {
+            MetricTool.updateFailedCall(((Invocation) param).getMethodName(), 1L,
+              MetricTool.addrNormalize(addr));
+          }
           if (call.error instanceof RemoteException) {
             call.error.fillInStackTrace();
             throw call.error;
