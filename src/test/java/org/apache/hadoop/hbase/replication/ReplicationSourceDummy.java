@@ -58,11 +58,6 @@ public class ReplicationSourceDummy implements ReplicationSourceInterface {
   }
 
   @Override
-  public void startup() {
-
-  }
-
-  @Override
   public void terminate(String reason) {
 
   }
@@ -92,5 +87,9 @@ public class ReplicationSourceDummy implements ReplicationSourceInterface {
   @Override
   public long getReplicationLag() {
     return 0;
+  }
+
+  @Override
+  public void run() {
   }
 }

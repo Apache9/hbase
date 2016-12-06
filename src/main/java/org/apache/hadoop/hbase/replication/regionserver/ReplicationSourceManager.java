@@ -96,7 +96,7 @@ public class ReplicationSourceManager {
   private final long sleepBeforeFailover;
   // Homemade executer service for replication
   private final ThreadPoolExecutor executor;
-  
+  private final ThreadPoolExecutor replicationSourceExecutor;
   private final Random rand;
 
 
@@ -147,6 +147,16 @@ public class ReplicationSourceManager {
     tfb.setNameFormat("ReplicationExecutor-%d");
     tfb.setDaemon(true);
     this.executor.setThreadFactory(tfb.build());
+
+    int workers = conf.getInt("hbase.replication.sourse.worker.number", 10);
+    this.replicationSourceExecutor = new ThreadPoolExecutor(workers, workers,
+        100, TimeUnit.MILLISECONDS,
+        new LinkedBlockingQueue<Runnable>());
+    ThreadFactoryBuilder tfb2 = new ThreadFactoryBuilder();
+    tfb2.setNameFormat("ReplicationSourceWorker-%d");
+    tfb2.setDaemon(true);
+    this.replicationSourceExecutor.setThreadFactory(tfb2.build());
+
     this.rand = new Random();
   }
 
@@ -272,7 +282,7 @@ public class ReplicationSourceManager {
         src.enqueueLog(this.latestPath);
       }
     }
-    src.startup();
+    replicationSourceExecutor.execute(src);
     return src;
   }
 
@@ -676,7 +686,7 @@ public class ReplicationSourceManager {
           for (String hlog : hlogsSet) {
             src.enqueueLog(new Path(oldLogDir, hlog));
           }
-          src.startup();
+          replicationSourceExecutor.execute(src);
           hlogsByIdRecoveredQueues.put(peerZnode, hlogsSet);
         } catch (IOException e) {
           // TODO manage it
