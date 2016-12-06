@@ -81,8 +81,7 @@ import org.apache.zookeeper.KeeperException;
  * <p/>
  *
  */
-public class ReplicationSource extends Thread
-    implements ReplicationSourceInterface {
+public class ReplicationSource implements ReplicationSourceInterface {
 
   private static final Log LOG = LogFactory.getLog(ReplicationSource.class);
   // Queue of logs to process
@@ -1140,19 +1139,6 @@ public class ReplicationSource extends Thread
     return false;
   }
 
-  public void startup() {
-    String n = Thread.currentThread().getName();
-    Thread.UncaughtExceptionHandler handler =
-        new Thread.UncaughtExceptionHandler() {
-          public void uncaughtException(final Thread t, final Throwable e) {
-            LOG.error("Unexpected exception in ReplicationSource," +
-              " currentPath=" + currentPath, e);
-          }
-        };
-    Threads.setDaemonThreadRunning(
-        this, n + ".replicationSource," + peerClusterZnode, handler);
-  }
-
   public void terminate(String reason) {
     terminate(reason, null);
   }
@@ -1167,10 +1153,6 @@ public class ReplicationSource extends Thread
           + " because an error occurred: " + reason, cause);
     }
     this.running = false;
-    // Only wait for the thread to die if it's not us
-    if (!Thread.currentThread().equals(this)) {
-      Threads.shutdown(this, this.sleepForRetries);
-    }
   }
 
   /**
