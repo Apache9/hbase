@@ -572,6 +572,8 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
           store != null ? store.getComparator() : null;
 
       int count = 0;
+      currentInResultRowSizeInByte = 0;
+      logHugeRow = true;
 
       LOOP:
       while ((kv = this.heap.peek()) != null) {
