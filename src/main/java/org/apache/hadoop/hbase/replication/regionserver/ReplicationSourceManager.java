@@ -282,7 +282,9 @@ public class ReplicationSourceManager {
         src.enqueueLog(this.latestPath);
       }
     }
-    replicationSourceExecutor.execute(src);
+    Thread thread = new Thread(src, "ReplicationNormalSource for peer " + id);
+    thread.setDaemon(true);
+    thread.start();
     return src;
   }
 
