@@ -18,9 +18,11 @@
 
 package org.apache.hadoop.hbase.ipc;
 
+import com.xiaomi.owl.metric.MetricCounter;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.client.metrics.MetricTool;
 import org.apache.hadoop.hbase.io.HbaseObjectWritable;
 import org.apache.hadoop.hbase.monitoring.MonitoredRPCHandler;
 import org.apache.hadoop.hbase.security.HBasePolicyProvider;
@@ -30,7 +32,6 @@ import org.apache.hadoop.hbase.security.token.AuthenticationTokenSecretManager;
 import org.apache.hadoop.hbase.util.Objects;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.security.authorize.ServiceAuthorizationManager;
-import org.apache.hadoop.yarn.webapp.hamlet.HamletSpec._;
 
 import java.io.IOException;
 import java.lang.reflect.*;
@@ -84,6 +85,7 @@ public class SecureRpcEngine implements RpcEngine {
     private SecureClient client;
     final private int rpcTimeout;
     private final int clientWarnIpcResponseTime;
+    private final boolean isPushOwlMetricEnable;
 
     public Invoker(SecureClient client,
         Class<? extends VersionedProtocol> protocol,
@@ -96,6 +98,11 @@ public class SecureRpcEngine implements RpcEngine {
       this.rpcTimeout = rpcTimeout;
       this.clientWarnIpcResponseTime = conf.getInt(WritableRpcEngine.CLIENT_WARN_IPC_RESPONSE_TIME,
         WritableRpcEngine.DEFAULT_CLIENT_WARN_IPC_RESPONSE_TIME);
+      this.isPushOwlMetricEnable =
+          conf.getBoolean(MetricTool.HBASE_CLIENT_OWL_METRIC_PUSH_ENABLE, false);
+      if(this.isPushOwlMetricEnable){
+        MetricCounter.startMetricCounterPushTask();
+      }
     }
 
     public Object invoke(Object proxy, Method method, Object[] args)
@@ -112,6 +119,9 @@ public class SecureRpcEngine implements RpcEngine {
       if (callTime > this.clientWarnIpcResponseTime) {
         LOG.warn("Slow secure ipc call, MethodName=" + method.getName() + ", consume time="
             + callTime + " remote address: " + address);
+      }
+      if(this.isPushOwlMetricEnable){
+        MetricTool.update(method.getName(), 1L, callTime, MetricTool.addrNormalize(address));
       }
       return value.get();
     }

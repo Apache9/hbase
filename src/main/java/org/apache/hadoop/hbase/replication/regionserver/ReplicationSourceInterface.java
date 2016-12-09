@@ -30,7 +30,7 @@ import org.apache.hadoop.hbase.Stoppable;
 /**
  * Interface that defines a replication source
  */
-public interface ReplicationSourceInterface extends Runnable{
+public interface ReplicationSourceInterface extends Runnable {
 
   /**
    * Initializer for the source
