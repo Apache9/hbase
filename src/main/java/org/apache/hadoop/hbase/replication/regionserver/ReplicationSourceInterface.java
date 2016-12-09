@@ -30,7 +30,7 @@ import org.apache.hadoop.hbase.Stoppable;
 /**
  * Interface that defines a replication source
  */
-public interface ReplicationSourceInterface {
+public interface ReplicationSourceInterface extends Runnable {
 
   /**
    * Initializer for the source
@@ -60,11 +60,6 @@ public interface ReplicationSourceInterface {
    * @return the current log
    */
   public Path getCurrentPath();
-
-  /**
-   * Start the replication
-   */
-  public void startup();
 
   /**
    * End the replication

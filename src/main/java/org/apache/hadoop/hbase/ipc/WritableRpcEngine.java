@@ -30,22 +30,18 @@ import java.io.*;
 import java.util.Map;
 import java.util.HashMap;
 
-import javax.net.SocketFactory;
-
-import org.apache.commons.lang.exception.ExceptionUtils;
+import com.xiaomi.owl.metric.MetricCounter;
 import org.apache.commons.logging.*;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.client.Operation;
+import org.apache.hadoop.hbase.client.metrics.MetricTool;
 import org.apache.hadoop.hbase.io.HbaseObjectWritable;
 import org.apache.hadoop.hbase.monitoring.MonitoredRPCHandler;
 import org.apache.hadoop.hbase.regionserver.HRegionServer;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.Objects;
-import org.apache.hadoop.hbase.util.VersionInfo;
 import org.apache.hadoop.io.*;
 import org.apache.hadoop.ipc.RPC;
-import org.apache.hadoop.ipc.RemoteException;
-import org.apache.hadoop.hbase.ipc.VersionedProtocol;
 import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.security.authorize.ServiceAuthorizationManager;
 import org.apache.hadoop.conf.*;
@@ -68,6 +64,7 @@ class WritableRpcEngine implements RpcEngine {
     private HBaseClient client;
     final private int rpcTimeout;
     private final int clientWarnIpcResponseTime;
+    private final boolean isPushOwlMetricEnable;
 
     public Invoker(HBaseClient client,
                    Class<? extends VersionedProtocol> protocol,
@@ -80,6 +77,10 @@ class WritableRpcEngine implements RpcEngine {
       this.rpcTimeout = rpcTimeout;
       this.clientWarnIpcResponseTime = conf.getInt(CLIENT_WARN_IPC_RESPONSE_TIME,
         DEFAULT_CLIENT_WARN_IPC_RESPONSE_TIME);
+      this.isPushOwlMetricEnable = conf.getBoolean(MetricTool.HBASE_CLIENT_OWL_METRIC_PUSH_ENABLE, false);
+      if(this.isPushOwlMetricEnable){
+        MetricCounter.startMetricCounterPushTask();
+      }
     }
 
     public Object invoke(Object proxy, Method method, Object[] args)
@@ -98,6 +99,9 @@ class WritableRpcEngine implements RpcEngine {
       if (callTime > this.clientWarnIpcResponseTime) {
         LOG.warn("Slow ipc call, MethodName=" + method.getName() + ", consume time=" + callTime
             + " remote address: " + this.address);
+      }
+      if(this.isPushOwlMetricEnable){
+        MetricTool.update(method.getName(), 1L, callTime, MetricTool.addrNormalize(address));
       }
       return value.get();
     }

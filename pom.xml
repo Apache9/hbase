@@ -1179,6 +1179,11 @@
       <version>${ext-log4j.version}</version>
     </dependency>
     <dependency>
+      <groupId>com.xiaomi.owl</groupId>
+      <artifactId>metric-client</artifactId>
+      <version>1.0.3</version>
+    </dependency>
+    <dependency>
       <groupId>org.apache.avro</groupId>
       <artifactId>avro</artifactId>
       <version>${avro.version}</version>
