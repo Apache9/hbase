@@ -92,6 +92,7 @@ public abstract class AbstractRpcClient<T extends Connection> implements RpcClie
   protected final boolean tcpNoDelay; // if T then disable Nagle's Algorithm
   protected final boolean tcpKeepAlive; // if T then use keepalives
   protected final int pingInterval; // how often sends ping to the server in msecs
+  protected final int pingTimeout;
   protected final FailedServers failedServers;
   protected final Codec codec;
   protected final CompressionCodec compressor;
@@ -135,6 +136,7 @@ public abstract class AbstractRpcClient<T extends Connection> implements RpcClie
     this.maxRetries = conf.getInt("hbase.ipc.client.connect.max.retries", 0);
     this.tcpNoDelay = conf.getBoolean("hbase.ipc.client.tcpnodelay", true);
     this.pingInterval = getPingInterval(conf);
+    this.pingTimeout = conf.getInt(PING_TIMEOUT, DEFAULT_PING_TIMEOUT);
     this.failedServers = new FailedServers(conf);
     this.ipcUtil = new IPCUtil(conf);
 

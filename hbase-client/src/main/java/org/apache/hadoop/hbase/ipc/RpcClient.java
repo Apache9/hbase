@@ -33,9 +33,11 @@ import org.apache.hadoop.hbase.security.User;
 public interface RpcClient extends Closeable {
 
   static final String PING_INTERVAL_NAME = "hbase.ipc.ping.interval";
+  static final int DEFAULT_PING_INTERVAL = 30000; // 30 seconds
   static final String SOCKET_TIMEOUT = "hbase.ipc.socket.timeout";
-  static final int DEFAULT_PING_INTERVAL = 60000; // 1 min
-  static final int DEFAULT_SOCKET_TIMEOUT = 20000; // 20 seconds
+  static final int DEFAULT_SOCKET_TIMEOUT = 10000; // 10 seconds
+  static final String PING_TIMEOUT = "hbase.ipc.ping.timeout";
+  static final int DEFAULT_PING_TIMEOUT = 10000; // 10 seconds
   static final int PING_CALL_ID = -1;
 
   static final String IPC_CLIENT_FALLBACK_TO_SIMPLE_AUTH_ALLOWED_KEY = "hbase.ipc.client.fallback-to-simple-auth-allowed";

@@ -58,6 +58,8 @@ public abstract class Connection {
 
   protected final int pingInterval;
 
+  protected final int pingTimeout;
+
   protected final AuthMethod authMethod;
 
   protected final boolean useSasl;
@@ -99,8 +101,8 @@ public abstract class Connection {
   }
 
   protected Connection(Configuration conf, HashedWheelTimer timeoutTimer, ConnectionId remoteId,
-      String clusterId, boolean isSecurityEnabled, int pingInterval, final Codec codec,
-      final CompressionCodec compressor) throws IOException {
+      String clusterId, boolean isSecurityEnabled, int pingInterval, int pingTimeout,
+      final Codec codec, final CompressionCodec compressor) throws IOException {
     if (remoteId.getAddress().isUnresolved()) {
       throw new UnknownHostException("unknown host: " + remoteId.getAddress().getHostName());
     }
@@ -116,8 +118,8 @@ public abstract class Connection {
     if (useSasl && securityInfo != null) {
       AuthenticationProtos.TokenIdentifier.Kind tokenKind = securityInfo.getTokenKind();
       if (tokenKind != null) {
-        TokenSelector<? extends TokenIdentifier> tokenSelector = RpcClientImpl.TOKEN_HANDLERS
-            .get(tokenKind);
+        TokenSelector<? extends TokenIdentifier> tokenSelector =
+            RpcClientImpl.TOKEN_HANDLERS.get(tokenKind);
         if (tokenSelector != null) {
           token = tokenSelector.selectToken(new Text(clusterId), ticket.getTokens());
         } else if (LOG.isDebugEnabled()) {
@@ -152,6 +154,7 @@ public abstract class Connection {
     reloginMaxBackoff = conf.getInt("hbase.security.relogin.maxbackoff", 5000);
     this.remoteId = remoteId;
     this.pingInterval = pingInterval;
+    this.pingTimeout = pingTimeout;
 
     ConnectionHeader.Builder builder = ConnectionHeader.newBuilder();
     builder.setServiceName(remoteId.getServiceName());
