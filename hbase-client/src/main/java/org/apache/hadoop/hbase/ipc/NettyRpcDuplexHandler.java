@@ -28,11 +28,14 @@ import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
 import io.netty.handler.timeout.IdleStateEvent;
+import io.netty.util.Timeout;
+import io.netty.util.TimerTask;
 import io.netty.util.concurrent.PromiseCombiner;
 
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -64,6 +67,8 @@ public class NettyRpcDuplexHandler extends ChannelDuplexHandler {
 
   private final Map<Integer, Call> id2Call = new HashMap<Integer, Call>();
 
+  private Timeout pingTimeout;
+
   public NettyRpcDuplexHandler(NettyConnection conn, IPCUtil ipcUtil, Codec codec,
       CompressionCodec compressor) {
     this.conn = conn;
@@ -87,8 +92,8 @@ public class NettyRpcDuplexHandler extends ChannelDuplexHandler {
     }
     RequestHeader requestHeader = IPCUtil.buildRequestHeader(call, cellBlockMeta);
     int sizeWithoutCellBlock = IPCUtil.getTotalSizeWhenWrittenDelimited(requestHeader, call.param);
-    int totalSize = cellBlock != null ? sizeWithoutCellBlock + cellBlock.writerIndex()
-        : sizeWithoutCellBlock;
+    int totalSize =
+        cellBlock != null ? sizeWithoutCellBlock + cellBlock.writerIndex() : sizeWithoutCellBlock;
     ByteBuf buf = ctx.alloc().buffer(sizeWithoutCellBlock + 4);
     buf.writeInt(totalSize);
     ByteBufOutputStream bbos = new ByteBufOutputStream(buf);
@@ -128,6 +133,13 @@ public class NettyRpcDuplexHandler extends ChannelDuplexHandler {
       LOG.trace("got response header " + TextFormat.shortDebugString(responseHeader)
           + ", totalSize: " + totalSize + " bytes");
     }
+    if (id == RpcClient.PING_CALL_ID) {
+      // ping response, ignore
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("Receive ping response from " + conn.remoteId);
+      }
+      return;
+    }
     RemoteException remoteExc;
     if (responseHeader.hasException()) {
       ExceptionResponse exceptionResponse = responseHeader.getException();
@@ -151,7 +163,7 @@ public class NettyRpcDuplexHandler extends ChannelDuplexHandler {
       int whatIsLeftToRead = totalSize - readSoFar;
       if (LOG.isDebugEnabled()) {
         LOG.debug("Unknown callId: " + id + ", skipping over this response of " + whatIsLeftToRead
-            + " bytes");
+            + " bytes from " + conn.remoteId);
       }
       return;
     }
@@ -183,6 +195,12 @@ public class NettyRpcDuplexHandler extends ChannelDuplexHandler {
 
   @Override
   public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+    // Ping is used to detect if the remote machine is down while the connection is still alive, so
+    // if we get something back then we can make sure the remote machine is alive.
+    if (pingTimeout != null) {
+      pingTimeout.cancel();
+      pingTimeout = null;
+    }
     if (msg instanceof ByteBuf) {
       ByteBuf buf = (ByteBuf) msg;
       try {
@@ -221,19 +239,28 @@ public class NettyRpcDuplexHandler extends ChannelDuplexHandler {
       IdleStateEvent idleEvt = (IdleStateEvent) evt;
       switch (idleEvt.state()) {
         case READER_IDLE:
-          if (!id2Call.isEmpty()) {
+          if (pingTimeout == null) {
             if (LOG.isDebugEnabled()) {
-              LOG.debug("send ping to " + conn.remoteId().address);
+              LOG.debug("send ping to " + conn.remoteId());
             }
             // write a ping
             ctx.writeAndFlush(ctx.alloc().buffer(4).writeInt(RpcClient.PING_CALL_ID));
+            pingTimeout = conn.timeoutTimer.newTimeout(new TimerTask() {
+
+              @Override
+              public void run(Timeout timeout) throws Exception {
+                LOG.warn("Haven't got ping response from " + conn.remoteId
+                    + " in time, shutdown connection");
+                conn.shutdown();
+              }
+            }, conn.pingTimeout, TimeUnit.MILLISECONDS);
           }
           break;
         case WRITER_IDLE:
           if (id2Call.isEmpty()) {
             if (LOG.isDebugEnabled()) {
-              LOG.debug("shutdown connection to " + conn.remoteId().address
-                  + " because idle for a long time");
+              LOG.debug(
+                "shutdown connection to " + conn.remoteId() + " because idle for a long time");
             }
             conn.shutdown();
           }

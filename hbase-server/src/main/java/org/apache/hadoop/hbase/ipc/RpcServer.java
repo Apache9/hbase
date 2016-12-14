@@ -31,7 +31,6 @@ import com.google.protobuf.TextFormat;
 // Uses Writables doing sasl
 
 import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.BindException;
@@ -118,6 +117,7 @@ import org.apache.hadoop.security.token.SecretManager;
 import org.apache.hadoop.security.token.SecretManager.InvalidToken;
 import org.apache.hadoop.security.token.TokenIdentifier;
 import org.apache.hadoop.util.StringUtils;
+import org.apache.hadoop.util.StringUtils.TraditionalBinaryPrefix;
 import org.apache.htrace.TraceInfo;
 import org.cliffc.high_scale_lib.Counter;
 import org.codehaus.jackson.map.ObjectMapper;
@@ -353,7 +353,7 @@ public class RpcServer implements RpcServerInterface {
       sb.append(" methodName: ");
       sb.append((this.md != null) ? this.md.getName() : "");
       sb.append(" size: ");
-      sb.append(StringUtils.humanReadableInt(this.size));
+      sb.append(TraditionalBinaryPrefix.long2String(this.size, "", 1));
       sb.append(" connection: ");
       sb.append(connection.toString());
       sb.append(" deadline: ").append(deadline);
@@ -372,15 +372,17 @@ public class RpcServer implements RpcServerInterface {
       this.response = new BufferChain(response);
     }
 
-    protected synchronized void setResponse(Object m, final CellScanner cells,
-        Throwable t, String errorMsg) {
-      if (this.isError) return;
-      if (t != null) this.isError = true;
+    protected synchronized void setResponse(Message result, final CellScanner cells, Throwable t,
+        String errorMsg) {
+      if (this.isError) {
+        return;
+      }
+      if (t != null) {
+        this.isError = true;
+      }
       BufferChain bc = null;
       try {
         ResponseHeader.Builder headerBuilder = ResponseHeader.newBuilder();
-        // Presume it a pb Message.  Could be null.
-        Message result = (Message)m;
         // Call id.
         headerBuilder.setCallId(this.id);
         if (t != null) {
@@ -1204,12 +1206,10 @@ public class RpcServer implements RpcServerInterface {
     SaslServer saslServer;
     private boolean useWrap = false;
     // Fake 'call' for failed authorization response
-    private static final int AUTHROIZATION_FAILED_CALLID = -1;
+    private static final int AUTHROIZATION_FAILED_CALLID = -2;
     private final Call authFailedCall =
       new Call(AUTHROIZATION_FAILED_CALLID, this.service, null,
         null, null, null, this, null, 0, null,0);
-    private ByteArrayOutputStream authFailedResponse =
-        new ByteArrayOutputStream();
     // Fake 'call' for SASL context setup
     private static final int SASL_CALLID = -33;
     private final Call saslCall =
@@ -1450,6 +1450,14 @@ public class RpcServer implements RpcServerInterface {
       }
     }
 
+    // testcase will override this method to test the ping logic.
+    protected void respondPing() throws IOException {
+      Call call = new Call(RpcClient.PING_CALL_ID, this.service, null, null, null, null, this, null,
+          0, null, 0);
+      call.setResponse(null, null, null, null);
+      responder.doRespond(call);
+    }
+
     /**
      * Read off the wire.
      * @return Returns -1 if failure (and caller will close connection) else return how many
@@ -1499,7 +1507,7 @@ public class RpcServer implements RpcServerInterface {
           }
           if (isSecurityEnabled && authMethod == AuthMethod.SIMPLE) {
             AccessDeniedException ae = new AccessDeniedException("Authentication is required");
-            setupResponse(authFailedResponse, authFailedCall, ae, ae.getMessage());
+            setupResponse(authFailedCall, ae, ae.getMessage());
             responder.doRespond(authFailedCall);
             throw ae;
           }
@@ -1527,7 +1535,11 @@ public class RpcServer implements RpcServerInterface {
           int dataLength = dataLengthBuffer.getInt();
           if (dataLength == RpcClient.PING_CALL_ID) {
             if (!useWrap) { //covers the !useSasl too
+              if (LOG.isDebugEnabled()) {
+                LOG.debug("Received ping message");
+              }
               dataLengthBuffer.clear();
+              respondPing();
               return 0;  //ping message
             }
           }
@@ -1581,7 +1593,7 @@ public class RpcServer implements RpcServerInterface {
     private int doBadPreambleHandling(final String msg, final Exception e) throws IOException {
       LOG.warn(msg);
       Call fakeCall = new Call(-1, null, null, null, null, null, this, responder, -1, null, 0);
-      setupResponse(null, fakeCall, e, msg);
+      setupResponse(fakeCall, e, msg);
       responder.doRespond(fakeCall);
       // Returning -1 closes out the connection.
       return -1;
@@ -1678,9 +1690,11 @@ public class RpcServer implements RpcServerInterface {
           int unwrappedDataLength = unwrappedDataLengthBuffer.getInt();
 
           if (unwrappedDataLength == RpcClient.PING_CALL_ID) {
-            if (LOG.isDebugEnabled())
+            if (LOG.isDebugEnabled()) {
               LOG.debug("Received ping message");
+            }
             unwrappedDataLengthBuffer.clear();
+            respondPing();
             continue; // ping message
           }
           unwrappedData = ByteBuffer.allocate(unwrappedDataLength);
@@ -1738,13 +1752,10 @@ public class RpcServer implements RpcServerInterface {
       // Enforcing the call queue size, this triggers a retry in the client
       // This is a bit late to be doing this check - we have already read in the total request.
       if ((totalRequestSize + callQueueSize.get()) > maxQueueSize) {
-        final Call callTooBig =
-          new Call(id, this.service, null, null, null, null, this,
-            responder, totalRequestSize, null, 0);
-        ByteArrayOutputStream responseBuffer = new ByteArrayOutputStream();
-        setupResponse(responseBuffer, callTooBig, new CallQueueTooBigException(),
-          "Call queue is full on " + getListenerAddress() +
-          ", is hbase.ipc.server.max.callqueue.size too small?");
+        final Call callTooBig = new Call(id, this.service, null, null, null, null, this, responder,
+            totalRequestSize, null, 0);
+        setupResponse(callTooBig, new CallQueueTooBigException(), "Call queue is full on "
+            + getListenerAddress() + ", is hbase.ipc.server.max.callqueue.size too small?");
         responder.doRespond(callTooBig);
         return;
       }
@@ -1783,12 +1794,9 @@ public class RpcServer implements RpcServerInterface {
           t = new DoNotRetryIOException(t);
         }
 
-        final Call readParamsFailedCall =
-          new Call(id, this.service, null, null, null, null, this,
+        Call readParamsFailedCall = new Call(id, this.service, null, null, null, null, this,
             responder, totalRequestSize, null, 0);
-        ByteArrayOutputStream responseBuffer = new ByteArrayOutputStream();
-        setupResponse(responseBuffer, readParamsFailedCall, t,
-          msg + "; " + t.getMessage());
+        setupResponse(readParamsFailedCall, t, msg + "; " + t.getMessage());
         responder.doRespond(readParamsFailedCall);
         return;
       }
@@ -1823,8 +1831,7 @@ public class RpcServer implements RpcServerInterface {
       } catch (AuthorizationException ae) {
         LOG.debug("Connection authorization failed: " + ae.getMessage(), ae);
         metrics.authorizationFailure();
-        setupResponse(authFailedResponse, authFailedCall,
-          new AccessDeniedException(ae), ae.getMessage());
+        setupResponse(authFailedCall, new AccessDeniedException(ae), ae.getMessage());
         responder.doRespond(authFailedCall);
         return false;
       }
@@ -1972,16 +1979,12 @@ public class RpcServer implements RpcServerInterface {
 
   /**
    * Setup response for the RPC Call.
-   *
-   * @param response buffer to serialize the response into
    * @param call {@link Call} to which we are setting up the response
    * @param error error message, if the call failed
    * @param t
    * @throws IOException
    */
-  private void setupResponse(ByteArrayOutputStream response, Call call, Throwable t, String error)
-  throws IOException {
-    if (response != null) response.reset();
+  private void setupResponse(Call call, Throwable t, String error) throws IOException {
     call.setResponse(null, null, t, error);
   }
 
@@ -2263,7 +2266,6 @@ public class RpcServer implements RpcServerInterface {
    * @param addr InetAddress of incoming connection
    * @throws org.apache.hadoop.security.authorize.AuthorizationException when the client isn't authorized to talk the protocol
    */
-  @SuppressWarnings("static-access")
   public void authorize(UserGroupInformation user, ConnectionHeader connection, InetAddress addr)
   throws AuthorizationException {
     if (authorize) {

@@ -4,6 +4,9 @@ import com.google.protobuf.Message;
 import com.google.protobuf.Message.Builder;
 import com.google.protobuf.TextFormat;
 
+import io.netty.util.Timeout;
+import io.netty.util.TimerTask;
+
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.DataInputStream;
@@ -20,6 +23,7 @@ import java.security.PrivilegedExceptionAction;
 import java.util.Random;
 import java.util.concurrent.ConcurrentNavigableMap;
 import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -63,17 +67,20 @@ class ConnectionImpl extends Connection implements Runnable {
   private HBaseSaslRpcClient saslRpcClient;
 
   // currently active calls
-  private final ConcurrentNavigableMap<Integer, Call> calls = new ConcurrentSkipListMap<Integer, Call>();
+  private final ConcurrentNavigableMap<Integer, Call> calls =
+      new ConcurrentSkipListMap<Integer, Call>();
   private final AtomicLong lastActivity = new AtomicLong(); // last I/O activity time
   private final AtomicBoolean shouldCloseConnection = new AtomicBoolean(); // indicate if the
                                                                            // connection is
                                                                            // closed
   private IOException closeException; // close reason
 
+  private volatile Timeout pingTimeoutTask;
+
   ConnectionImpl(RpcClientImpl rpcClient, ConnectionId remoteId) throws IOException {
     super(rpcClient.conf, rpcClient.timeoutTimer, remoteId, rpcClient.clusterId,
-        rpcClient.userProvider.isHBaseSecurityEnabled(), rpcClient.pingInterval, rpcClient.codec,
-        rpcClient.compressor);
+        rpcClient.userProvider.isHBaseSecurityEnabled(), rpcClient.pingInterval,
+        rpcClient.pingTimeout, rpcClient.codec, rpcClient.compressor);
     this.rpcClient = rpcClient;
 
     this.thread = new Thread(this);
@@ -268,7 +275,7 @@ class ConnectionImpl extends Connection implements Runnable {
    * response; false otherwise.
    */
   private synchronized boolean waitForWork() {
-    if (calls.isEmpty() && !shouldCloseConnection.get()) {
+    if (calls.isEmpty() && !shouldCloseConnection.get() && pingTimeoutTask == null) {
       long timeout = this.rpcClient.maxIdleTime - (System.currentTimeMillis() - lastActivity.get());
       if (timeout > 0) {
         try {
@@ -279,7 +286,7 @@ class ConnectionImpl extends Connection implements Runnable {
       }
     }
 
-    if (!calls.isEmpty() && !shouldCloseConnection.get()) {
+    if ((!calls.isEmpty() || pingTimeoutTask != null) && !shouldCloseConnection.get()) {
       return true;
     } else if (shouldCloseConnection.get()) {
       return false;
@@ -304,12 +311,30 @@ class ConnectionImpl extends Connection implements Runnable {
     // Can we do tcp keepalive instead of this pinging?
     long curTime = System.currentTimeMillis();
     if (curTime - lastActivity.get() >= pingInterval) {
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("Send ping request");
+      }
       lastActivity.set(curTime);
+      if (pingTimeoutTask != null) {
+        return;
+      }
       // noinspection SynchronizeOnNonFinalField
       synchronized (this.out) {
         out.writeInt(RpcClientImpl.PING_CALL_ID);
         out.flush();
       }
+      pingTimeoutTask = timeoutTimer.newTimeout(new TimerTask() {
+
+        @Override
+        public void run(Timeout timeout) throws Exception {
+          LOG.warn("Haven't got ping response from " + remoteId + " in time, shutdown connection");
+          if (shouldCloseConnection.compareAndSet(false, true)) {
+            synchronized (this) {
+              close();
+            }
+          }
+        }
+      }, pingTimeout, TimeUnit.MILLISECONDS);
     }
   }
 
@@ -585,8 +610,8 @@ class ConnectionImpl extends Connection implements Runnable {
       return;
     }
     try {
-      ByteBuffer cellBlock = this.rpcClient.ipcUtil.buildCellBlock(this.codec, this.compressor,
-        call.cells);
+      ByteBuffer cellBlock =
+          this.rpcClient.ipcUtil.buildCellBlock(this.codec, this.compressor, call.cells);
       CellBlockMeta cellBlockMeta;
       if (cellBlock != null) {
         CellBlockMeta.Builder cellBlockMetaBuilder = CellBlockMeta.newBuilder();
@@ -624,13 +649,26 @@ class ConnectionImpl extends Connection implements Runnable {
       // See HBaseServer.Call.setResponse for where we write out the response.
       // Total size of the response. Unused. But have to read it in anyways.
       totalSize = in.readInt();
-
+      Timeout pingTimeoutTask = this.pingTimeoutTask;
+      if (pingTimeoutTask != null) {
+        pingTimeoutTask.cancel();
+        this.pingTimeoutTask = null;
+      }
       // Read the header
       ResponseHeader responseHeader = ResponseHeader.parseDelimitedFrom(in);
       int id = responseHeader.getCallId();
       if (LOG.isDebugEnabled()) {
         LOG.debug("got response header " + TextFormat.shortDebugString(responseHeader)
             + ", totalSize: " + totalSize + " bytes");
+      }
+      if (id == RpcClient.PING_CALL_ID) {
+        if (LOG.isDebugEnabled()) {
+          LOG.debug("Receive ping response");
+        }
+        int readSoFar = IPCUtil.getTotalSizeWhenWrittenDelimited(responseHeader);
+        int whatIsLeftToRead = totalSize - readSoFar;
+        IOUtils.skipFully(in, whatIsLeftToRead);
+        return;
       }
       Call call = calls.get(id);
       if (call == null) {
@@ -646,6 +684,7 @@ class ConnectionImpl extends Connection implements Runnable {
               + " bytes");
         }
         IOUtils.skipFully(in, whatIsLeftToRead);
+        return;
       }
       if (responseHeader.hasException()) {
         ExceptionResponse exceptionResponse = responseHeader.getException();
@@ -672,8 +711,8 @@ class ConnectionImpl extends Connection implements Runnable {
           int size = responseHeader.getCellBlockMeta().getLength();
           byte[] cellBlock = new byte[size];
           IOUtils.readFully(this.in, cellBlock, 0, cellBlock.length);
-          cellBlockScanner = this.rpcClient.ipcUtil.createCellScanner(this.codec, this.compressor,
-            cellBlock);
+          cellBlockScanner =
+              this.rpcClient.ipcUtil.createCellScanner(this.codec, this.compressor, cellBlock);
         }
         // it's possible that this call may have been cleaned up due to a RPC
         // timeout, so check if it still exists before setting the value.

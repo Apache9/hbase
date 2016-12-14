@@ -59,8 +59,8 @@ public class NettyConnection extends Connection {
 
   private static final Log LOG = LogFactory.getLog(NettyConnection.class);
 
-  private static final ExecutorService RELOGIN_EXECUTOR = Executors
-      .newSingleThreadExecutor(Threads.newDaemonThreadFactory("Relogin"));
+  private static final ExecutorService RELOGIN_EXECUTOR =
+      Executors.newSingleThreadExecutor(Threads.newDaemonThreadFactory("Relogin"));
 
   private final NettyRpcClient rpcClient;
 
@@ -68,8 +68,8 @@ public class NettyConnection extends Connection {
 
   public NettyConnection(NettyRpcClient rpcClient, ConnectionId remoteId) throws IOException {
     super(rpcClient.conf, rpcClient.timeoutTimer, remoteId, rpcClient.clusterId,
-        rpcClient.userProvider.isHBaseSecurityEnabled(), rpcClient.pingInterval, rpcClient.codec,
-        rpcClient.compressor);
+        rpcClient.userProvider.isHBaseSecurityEnabled(), rpcClient.pingInterval,
+        rpcClient.pingTimeout, rpcClient.codec, rpcClient.compressor);
     this.rpcClient = rpcClient;
   }
 
