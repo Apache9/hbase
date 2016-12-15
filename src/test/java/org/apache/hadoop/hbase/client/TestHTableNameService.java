@@ -82,7 +82,7 @@ public class TestHTableNameService {
       hTable.getConfiguration().get("zookeeper.znode.parent"));
     // The default port of unit test is 21818 , instead of 2181.
     // (defined in security/src/test/resources/hbase-site.xml)
-    Assert.assertEquals(2181,
+    Assert.assertEquals(21818,
       hTable.getConfiguration().getInt("hbase.zookeeper.property.clientPort", -1));
 
     securityDisabled(hTable);
