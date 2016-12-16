@@ -240,7 +240,7 @@ public class VerifyReplication  extends Configured implements Tool {
           // row only exists in peer table
           logFailRowAndIncreaseCounter(context, Counters.ONLY_IN_PEER_TABLE_ROWS,
             currentCompareRowInPeerTable);
-          repair(value.getRow());
+          repair(currentCompareRowInPeerTable.getRow());
           currentCompareRowInPeerTable = replicatedScanner.next();
         }
       }
@@ -252,10 +252,14 @@ public class VerifyReplication  extends Configured implements Tool {
 
     private void repair(byte[] row) throws IOException {
       if (repairSource) {
-        put(sourceTable, rawGet(peerTable, row));
+        Result result = rawGet(peerTable, row);
+        put(sourceTable, result);
+        LOG.info("Put " + result.size() +" cells to source table");
       }
       if (repairPeer) {
-        put(peerTable, rawGet(sourceTable, row));
+        Result result = rawGet(sourceTable, row);
+        put(peerTable, result);
+        LOG.info("Put " + result.size() +" cells to peer table");
       }
     }
 
