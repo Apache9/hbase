@@ -254,12 +254,16 @@ public class VerifyReplication  extends Configured implements Tool {
       if (repairSource) {
         Result result = rawGet(peerTable, row);
         put(sourceTable, result);
-        LOG.info("Put " + result.size() +" cells to source table");
+        if (result != null && !result.isEmpty()) {
+          LOG.info("Put " + result.size() + " cells to source table");
+        }
       }
       if (repairPeer) {
         Result result = rawGet(sourceTable, row);
         put(peerTable, result);
-        LOG.info("Put " + result.size() +" cells to peer table");
+        if (result != null && !result.isEmpty()) {
+          LOG.info("Put " + result.size() + " cells to peer table");
+        }
       }
     }
 
