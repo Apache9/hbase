@@ -447,7 +447,7 @@ public class VerifyReplication  extends Configured implements Tool {
     conf.setLong(NAME + ".maxErrorLog", maxErrorLog);
     conf.setBoolean(NAME + ".repairSource", repairSource);
     conf.setBoolean(NAME + ".repairPeer", repairPeer);
-
+    conf.setLong("mapred.task.timeout", 3600000);
     if (families != null) {
       conf.set(NAME+".families", families);
     }
