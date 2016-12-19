@@ -28,6 +28,7 @@ import org.apache.hadoop.hbase.ZooKeeperConnectionException;
 import org.apache.hadoop.hbase.ipc.RpcControllerFactory;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos;
+import org.apache.hadoop.hbase.util.CompletedFuture;
 import org.mockito.Mockito;
 
 /**
@@ -105,6 +106,9 @@ public class HConnectionTestingUtility {
     Mockito.when(c.getRegionLocation((TableName) Mockito.any(),
         (byte[]) Mockito.any(), Mockito.anyBoolean())).
       thenReturn(loc);
+    Mockito.when(
+      c.getRegionLocationAsync((TableName) Mockito.any(), (byte[]) Mockito.any(),
+        Mockito.anyBoolean())).thenReturn(new CompletedFuture<HRegionLocation>(loc));
     Mockito.when(c.locateRegion((TableName) Mockito.any(), (byte[]) Mockito.any())).
       thenReturn(loc);
     if (admin != null) {
