@@ -26,6 +26,10 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.NavigableMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -50,6 +54,7 @@ import org.apache.hadoop.hbase.protobuf.generated.ClientProtos;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.ScanRequest;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.ScanResponse;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hbase.util.CompletedFuture;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
 import org.junit.After;
 import org.junit.Before;
@@ -86,6 +91,7 @@ public class TestMetaReaderEditorNoCluster {
 
   @Before
   public void before() throws Exception {
+    UTIL.getConfiguration().setInt(HConstants.HBASE_CLIENT_RETRIES_NUMBER, 10);
     UTIL.startMiniZKCluster();
   }
 
@@ -199,6 +205,11 @@ public class TestMetaReaderEditorNoCluster {
       Mockito.doReturn(anyLocation).
         when(connection).getRegionLocation((TableName) Mockito.any(),
           (byte[]) Mockito.any(), Mockito.anyBoolean());
+      Mockito
+          .doReturn(new CompletedFuture<HRegionLocation>(anyLocation))
+          .when(connection)
+          .getRegionLocationAsync((TableName) Mockito.any(), (byte[]) Mockito.any(),
+            Mockito.anyBoolean());
 
       // Now shove our HRI implementation into the spied-upon connection.
       Mockito.doReturn(implementation).

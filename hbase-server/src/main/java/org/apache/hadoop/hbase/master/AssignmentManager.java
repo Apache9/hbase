@@ -133,7 +133,7 @@ public class AssignmentManager extends ZooKeeperListener {
     = "hbase.assignment.already.intransition.waittime";
   public static final int DEFAULT_ALREADY_IN_TRANSITION_WAITTIME = 60000; // 1 minute
 
-  protected final Server server;
+  protected final MasterServices server;
 
   private ServerManager serverManager;
 
@@ -279,7 +279,7 @@ public class AssignmentManager extends ZooKeeperListener {
    * @throws KeeperException
    * @throws IOException
    */
-  public AssignmentManager(Server server, ServerManager serverManager,
+  public AssignmentManager(MasterServices server, ServerManager serverManager,
       CatalogTracker catalogTracker, final LoadBalancer balancer,
       final ExecutorService service, MetricsMaster metricsMaster,
       final TableLockManager tableLockManager) throws KeeperException, IOException {
@@ -288,7 +288,7 @@ public class AssignmentManager extends ZooKeeperListener {
     this.serverManager = serverManager;
     this.catalogTracker = catalogTracker;
     this.executorService = service;
-    this.regionStateStore = new RegionStateStore((MasterServices)server);
+    this.regionStateStore = new RegionStateStore(server);
     this.regionsToReopen = Collections.synchronizedMap
                            (new HashMap<String, HRegionInfo> ());
     Configuration conf = server.getConfiguration();
