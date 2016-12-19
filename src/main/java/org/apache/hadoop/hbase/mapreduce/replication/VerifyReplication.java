@@ -451,6 +451,10 @@ public class VerifyReplication  extends Configured implements Tool {
     if (families != null) {
       conf.set(NAME+".families", families);
     }
+    conf.setBoolean("mapreduce.map.speculative", false);
+    conf.setBoolean("mapreduce.reduce.speculative", false);
+    conf.setBoolean("mapred.map.tasks.speculative.execution", false);
+    conf.setBoolean("mapred.reduce.tasks.speculative.execution", false);
     Job job = new Job(conf, NAME + "_" + tableName + "_" + peerId);
     job.setJarByClass(VerifyReplication.class);
 
