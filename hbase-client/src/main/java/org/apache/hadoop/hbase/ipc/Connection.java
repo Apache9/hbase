@@ -38,6 +38,7 @@ import org.apache.hadoop.hbase.protobuf.generated.RPCProtos.UserInformation;
 import org.apache.hadoop.hbase.security.AuthMethod;
 import org.apache.hadoop.hbase.security.SecurityInfo;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
+import org.apache.hadoop.hbase.util.VersionInfo;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.io.compress.CompressionCodec;
 import org.apache.hadoop.security.SecurityUtil;
@@ -170,6 +171,7 @@ public abstract class Connection {
     }
     builder.setVersionInfo(ProtobufUtil.getVersionInfo());
     this.header = builder.build();
+    VersionInfo.logVersion();
   }
 
   /**
