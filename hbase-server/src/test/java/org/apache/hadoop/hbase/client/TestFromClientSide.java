@@ -4082,8 +4082,8 @@ public class TestFromClientSide {
       Put p = new Put(ROW);
       p.add(BAD_FAM, QUALIFIER, VAL);
       table.put(p);
-    } catch (RetriesExhaustedWithDetailsException e) {
-      caughtNSCFE = e.getCause(0) instanceof NoSuchColumnFamilyException;
+    } catch (NoSuchColumnFamilyException e) {
+      caughtNSCFE = true;
     }
     assertTrue("Should throw NoSuchColumnFamilyException", caughtNSCFE);
 
