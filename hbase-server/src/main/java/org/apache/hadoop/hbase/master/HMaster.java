@@ -29,6 +29,7 @@ import com.google.protobuf.Service;
 import com.google.protobuf.ServiceException;
 
 import javax.management.ObjectName;
+
 import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
@@ -114,6 +115,8 @@ import org.apache.hadoop.hbase.master.cleaner.HFileCleaner;
 import org.apache.hadoop.hbase.master.cleaner.LogCleaner;
 import org.apache.hadoop.hbase.master.cleaner.ReplicationMetaCleaner;
 import org.apache.hadoop.hbase.master.cleaner.ReplicationZKLockCleanerChore;
+import org.apache.hadoop.hbase.master.cleaner.ReplicationZKNodeCleaner;
+import org.apache.hadoop.hbase.master.cleaner.ReplicationZKNodeCleanerChore;
 import org.apache.hadoop.hbase.master.handler.CreateTableHandler;
 import org.apache.hadoop.hbase.master.handler.DeleteTableHandler;
 import org.apache.hadoop.hbase.master.handler.DisableTableHandler;
@@ -454,6 +457,7 @@ MasterServices, Server {
 
   private CatalogJanitor catalogJanitorChore;
   private ReplicationZKLockCleanerChore replicationZKLockCleanerChore;
+  private ReplicationZKNodeCleanerChore replicationZKNodeCleanerChore;
   private ReplicationMetaCleaner replicationMetaCleaner;
   private LogCleaner logCleaner;
   private HFileCleaner hfileCleaner;
@@ -1401,6 +1405,14 @@ MasterServices, Server {
     if (LOG.isTraceEnabled()) {
       LOG.trace("Started service threads");
     }
+    try {
+      replicationZKNodeCleanerChore = new ReplicationZKNodeCleanerChore(this, cleanerInterval,
+          new ReplicationZKNodeCleaner(this.conf, this.getZooKeeper(), this));
+      Threads.setDaemonThreadRunning(replicationZKNodeCleanerChore.getThread(),
+        "replicationZKNodeCleanerChore");
+    } catch (Exception e) {
+      LOG.error("start replicationZKNodeCleanerChore failed", e);
+    }
     if (!conf.getBoolean(HConstants.ZOOKEEPER_USEMULTI, true)) {
       try {
         replicationZKLockCleanerChore = new ReplicationZKLockCleanerChore(this, this,
@@ -1437,6 +1449,7 @@ MasterServices, Server {
     // Clean up and close up shop
     if (this.logCleaner!= null) this.logCleaner.interrupt();
     if (this.replicationZKLockCleanerChore != null) this.replicationZKLockCleanerChore.interrupt();
+    if (this.replicationZKNodeCleanerChore != null) this.replicationZKNodeCleanerChore.interrupt();
     if (this.hfileCleaner != null) this.hfileCleaner.interrupt();
     if (this.quotaManager != null) this.quotaManager.stop();
 
