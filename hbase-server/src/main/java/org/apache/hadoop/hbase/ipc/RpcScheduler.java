@@ -71,4 +71,16 @@ public abstract class RpcScheduler {
 
   /** Retrieves the number of active handler. */
   public abstract int getActiveRpcHandlerCount();
+
+  /** Retrieves length of the write queue for metrics when use RWQueueRpcExecutor. */
+  public abstract int getWriteQueueLength();
+
+  /** Retrieves length of the read queue for metrics when use RWQueueRpcExecutor. */
+  public abstract int getReadQueueLength();
+
+  /** Retrieves the number of active write rpc handler when use RWQueueRpcExecutor. */
+  public abstract int getActiveWriteRpcHandlerCount();
+
+  /** Retrieves the number of active write rpc handler when use RWQueueRpcExecutor. */
+  public abstract int getActiveReadRpcHandlerCount();
 }

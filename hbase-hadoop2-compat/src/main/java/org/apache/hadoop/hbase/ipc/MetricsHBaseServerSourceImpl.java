@@ -123,15 +123,23 @@ public class MetricsHBaseServerSourceImpl extends BaseSourceImpl
     if (wrapper != null) {
       mrb.addGauge(Interns.info(QUEUE_SIZE_NAME, QUEUE_SIZE_DESC), wrapper.getTotalQueueSize())
           .addGauge(Interns.info(GENERAL_QUEUE_NAME, GENERAL_QUEUE_DESC),
-              wrapper.getGeneralQueueLength())
-          .addGauge(Interns.info(REPLICATION_QUEUE_NAME,
-              REPLICATION_QUEUE_DESC), wrapper.getReplicationQueueLength())
+            wrapper.getGeneralQueueLength())
+          .addGauge(Interns.info(REPLICATION_QUEUE_NAME, REPLICATION_QUEUE_DESC),
+            wrapper.getReplicationQueueLength())
           .addGauge(Interns.info(PRIORITY_QUEUE_NAME, PRIORITY_QUEUE_DESC),
-              wrapper.getPriorityQueueLength())
-          .addGauge(Interns.info(NUM_OPEN_CONNECTIONS_NAME,
-              NUM_OPEN_CONNECTIONS_DESC), wrapper.getNumOpenConnections())
-          .addGauge(Interns.info(NUM_ACTIVE_HANDLER_NAME,
-              NUM_ACTIVE_HANDLER_DESC), wrapper.getActiveRpcHandlerCount());
+            wrapper.getPriorityQueueLength())
+          .addGauge(Interns.info(NUM_OPEN_CONNECTIONS_NAME, NUM_OPEN_CONNECTIONS_DESC),
+            wrapper.getNumOpenConnections())
+          .addGauge(Interns.info(NUM_ACTIVE_HANDLER_NAME, NUM_ACTIVE_HANDLER_DESC),
+            wrapper.getActiveRpcHandlerCount())
+          .addGauge(Interns.info(WRITE_QUEUE_NAME, WRITE_QUEUE_DESC),
+            wrapper.getWriteQueueLength())
+          .addGauge(Interns.info(READ_QUEUE_NAME, READ_QUEUE_DESC),
+            wrapper.getReadQueueLength())
+          .addGauge(Interns.info(NUM_ACTIVE_WRITE_HANDLER_NAME, NUM_ACTIVE_WRITE_HANDLER_DESC),
+            wrapper.getActiveWriteRpcHandlerCount())
+          .addGauge(Interns.info(NUM_ACTIVE_READ_HANDLER_NAME, NUM_ACTIVE_READ_HANDLER_DESC),
+            wrapper.getActiveReadRpcHandlerCount());
     }
 
     metricsRegistry.snapshot(mrb, all);

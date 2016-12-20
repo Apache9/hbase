@@ -52,9 +52,19 @@ public interface MetricsHBaseServerSource extends BaseSource {
       "Number of calls in the replication call queue.";
   String PRIORITY_QUEUE_DESC = "Number of calls in the priority call queue.";
   String NUM_OPEN_CONNECTIONS_NAME = "numOpenConnections";
+  String WRITE_QUEUE_NAME = "numCallsInWriteQueue";
+  String WRITE_QUEUE_DESC = "Number of calls in the write call queue; "
+      + "parsed requests waiting in scheduler to be executed";
+  String READ_QUEUE_NAME = "numCallsInReadQueue";
+  String READ_QUEUE_DESC = "Number of calls in the read call queue; "
+      + "parsed requests waiting in scheduler to be executed";
   String NUM_OPEN_CONNECTIONS_DESC = "Number of open connections.";
   String NUM_ACTIVE_HANDLER_NAME = "numActiveHandler";
   String NUM_ACTIVE_HANDLER_DESC = "Number of active rpc handlers.";
+  String NUM_ACTIVE_WRITE_HANDLER_NAME = "numActiveWriteHandler";
+  String NUM_ACTIVE_WRITE_HANDLER_DESC = "Number of active write rpc handlers.";
+  String NUM_ACTIVE_READ_HANDLER_NAME = "numActiveReadHandler";
+  String NUM_ACTIVE_READ_HANDLER_DESC = "Number of active read rpc handlers.";
   String FAILED_CALLS_NAME = "failedCalls";
   String FAILED_CALLS_DESC = "Number of failed rpc calls.";
 
