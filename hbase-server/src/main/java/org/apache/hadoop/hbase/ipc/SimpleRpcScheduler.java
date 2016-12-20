@@ -160,5 +160,25 @@ public class SimpleRpcScheduler extends RpcScheduler {
            (priorityExecutor == null ? 0 : priorityExecutor.getActiveHandlerCount()) +
            (replicationExecutor == null ? 0 : replicationExecutor.getActiveHandlerCount());
   }
+
+  @Override
+  public int getWriteQueueLength() {
+    return callExecutor.getWriteQueueLength();
+  }
+
+  @Override
+  public int getReadQueueLength() {
+    return callExecutor.getReadQueueLength();
+  }
+
+  @Override
+  public int getActiveWriteRpcHandlerCount() {
+    return callExecutor.getActiveWriteHandlerCount();
+  }
+
+  @Override
+  public int getActiveReadRpcHandlerCount() {
+    return callExecutor.getActiveReadHandlerCount();
+  }
 }
 

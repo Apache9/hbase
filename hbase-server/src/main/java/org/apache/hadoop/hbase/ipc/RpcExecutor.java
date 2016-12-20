@@ -93,31 +93,32 @@ public abstract class RpcExecutor {
 
   protected void startHandlers(final int port) {
     List<BlockingQueue<CallRunner>> callQueues = getQueues();
-    startHandlers(null, handlerCount, callQueues, 0, callQueues.size(), port);
+    startHandlers(null, handlerCount, callQueues, 0, callQueues.size(), port, activeHandlerCount);
   }
 
   protected void startHandlers(final String nameSuffix, final int numHandlers,
-      final List<BlockingQueue<CallRunner>> callQueues,
-      final int qindex, final int qsize, final int port) {
+      final List<BlockingQueue<CallRunner>> callQueues, final int qindex, final int qsize,
+      final int port, final AtomicInteger activeHandlerCount) {
     final String threadPrefix = name + Strings.nullToEmpty(nameSuffix);
     for (int i = 0; i < numHandlers; i++) {
       final int index = qindex + (i % qsize);
       Thread t = new Thread(new Runnable() {
         @Override
         public void run() {
-          consumerLoop(callQueues.get(index));
+          consumerLoop(callQueues.get(index), activeHandlerCount);
         }
       });
       t.setDaemon(true);
-      t.setName(threadPrefix + "RpcServer.handler=" + handlers.size() +
-          ",queue=" + index + ",port=" + port);
+      t.setName(threadPrefix + "RpcServer.handler=" + handlers.size() + ",queue=" + index
+          + ",port=" + port);
       t.start();
       LOG.debug(threadPrefix + " Start Handler index=" + handlers.size() + " queue=" + index);
       handlers.add(t);
     }
   }
 
-  protected void consumerLoop(final BlockingQueue<CallRunner> myQueue) {
+  protected void consumerLoop(final BlockingQueue<CallRunner> myQueue,
+      final AtomicInteger activeHandlerCount) {
     boolean interrupted = false;
     double handlerFailureThreshhold =
         conf == null ? 1.0 : conf.getFloat(HConstants.REGION_SERVER_HANDLER_ABORT_ON_ERROR_PERCENT,
@@ -210,5 +211,21 @@ public abstract class RpcExecutor {
     public int getNextQueue() {
       return threadRandom.get().nextInt(queueSize);
     }
+  }
+
+  public int getActiveWriteHandlerCount() {
+    return 0;
+  }
+
+  public int getActiveReadHandlerCount() {
+    return 0;
+  }
+
+  public int getReadQueueLength() {
+    return 0;
+  }
+
+  public int getWriteQueueLength() {
+    return 0;
   }
 }

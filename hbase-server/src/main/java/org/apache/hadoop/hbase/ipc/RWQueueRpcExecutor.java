@@ -25,6 +25,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.logging.Log;
@@ -57,6 +58,9 @@ public class RWQueueRpcExecutor extends RpcExecutor {
   private final int readHandlersCount;
   private final int numWriteQueues;
   private final int numReadQueues;
+
+  private final AtomicInteger activeWriteHandlerCount = new AtomicInteger(0);
+  private final AtomicInteger activeReadHandlerCount = new AtomicInteger(0);
 
   public RWQueueRpcExecutor(final String name, final int handlerCount, final int numQueues,
       final float readShare, final int maxQueueLength) {
@@ -111,8 +115,10 @@ public class RWQueueRpcExecutor extends RpcExecutor {
 
   @Override
   protected void startHandlers(final int port) {
-    startHandlers(".write", writeHandlersCount, queues, 0, numWriteQueues, port);
-    startHandlers(".read", readHandlersCount, queues, numWriteQueues, numReadQueues, port);
+    startHandlers(".write", writeHandlersCount, queues, 0, numWriteQueues, port,
+      activeWriteHandlerCount);
+    startHandlers(".read", readHandlersCount, queues, numWriteQueues, numReadQueues, port,
+      activeReadHandlerCount);
   }
 
   @Override
@@ -162,6 +168,39 @@ public class RWQueueRpcExecutor extends RpcExecutor {
   @Override
   protected List<BlockingQueue<CallRunner>> getQueues() {
     return queues;
+  }
+
+  @Override
+  public int getWriteQueueLength() {
+    int length = 0;
+    for (int i = 0; i < numWriteQueues; i++) {
+      length += queues.get(i).size();
+    }
+    return length;
+  }
+
+  @Override
+  public int getReadQueueLength() {
+    int length = 0;
+    for (int i = numWriteQueues; i < (numWriteQueues + numReadQueues); i++) {
+      length += queues.get(i).size();
+    }
+    return length;
+  }
+
+  @Override
+  public int getActiveHandlerCount() {
+    return activeWriteHandlerCount.get() + activeReadHandlerCount.get();
+  }
+
+  @Override
+  public int getActiveWriteHandlerCount() {
+    return activeWriteHandlerCount.get();
+  }
+
+  @Override
+  public int getActiveReadHandlerCount() {
+    return activeReadHandlerCount.get();
   }
 
   /*
