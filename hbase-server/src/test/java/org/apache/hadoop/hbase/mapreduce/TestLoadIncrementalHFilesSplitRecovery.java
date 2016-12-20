@@ -54,12 +54,14 @@ import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.coprocessor.CoprocessorHost;
+import org.apache.hadoop.hbase.ipc.RpcControllerFactory;
 import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.BulkLoadHFileRequest;
 import org.apache.hadoop.hbase.regionserver.HRegionServer;
 import org.apache.hadoop.hbase.regionserver.TestHRegionServerBulkLoad;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hbase.util.CompletedFuture;
 import org.apache.hadoop.hbase.util.Pair;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -311,6 +313,9 @@ public class TestLoadIncrementalHFilesSplitRecovery {
     Mockito.when(c.getRegionLocation((TableName) Mockito.any(),
         (byte[]) Mockito.any(), Mockito.anyBoolean())).
       thenReturn(loc);
+    Mockito.when(
+      c.getRegionLocationAsync((TableName) Mockito.any(), (byte[]) Mockito.any(),
+        Mockito.anyBoolean())).thenReturn(new CompletedFuture<HRegionLocation>(loc));
     Mockito.when(c.locateRegion((TableName) Mockito.any(), (byte[]) Mockito.any())).
       thenReturn(loc);
     ClientProtos.ClientService.BlockingInterface hri =
@@ -319,6 +324,7 @@ public class TestLoadIncrementalHFilesSplitRecovery {
       thenThrow(new ServiceException(new IOException("injecting bulk load error")));
     Mockito.when(c.getClient(Mockito.any(ServerName.class))).
       thenReturn(hri);
+    Mockito.when(c.getRpcControllerFactory()).thenReturn(RpcControllerFactory.instantiate(conf));
     return c;
   }
 
