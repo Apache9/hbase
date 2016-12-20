@@ -960,6 +960,7 @@ public class HTable implements HTableInterface {
       if (!writeAsyncBuffer.isEmpty()) {
         flushCommits();
       }
+      validatePut(put);
       connection.getRpcRetryingCallerFactory().<Boolean> newCaller()
           .callWithRetries(new RegionServerCallable<Boolean>(connection, tableName, put.getRow()) {
 
