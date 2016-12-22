@@ -835,6 +835,22 @@ public class Result implements CellScannable, CellScanner {
   }
 
   /**
+   * Get total size of raw cells
+   * @param result
+   * @return Total size.
+   */
+  public static long getTotalSizeOfCells(Result result) {
+    long size = 0;
+    if (result.isEmpty()) {
+      return size;
+    }
+    for (Cell c : result.rawCells()) {
+      size += CellUtil.estimatedSizeOf(c);
+    }
+    return size;
+  }
+
+  /**
    * Copy another Result into this one. Needed for the old Mapred framework
    * @param other
    */

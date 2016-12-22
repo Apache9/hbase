@@ -86,6 +86,7 @@ import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.HealthCheckChore;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.KeyValueUtil;
+import org.apache.hadoop.hbase.MultiActionResultTooLarge;
 import org.apache.hadoop.hbase.NotServingRegionException;
 import org.apache.hadoop.hbase.RemoteExceptionHandler;
 import org.apache.hadoop.hbase.ServerName;
@@ -3858,6 +3859,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     MultiResponse.Builder responseBuilder = MultiResponse.newBuilder();
     RegionActionResult.Builder regionActionResultBuilder = RegionActionResult.newBuilder();
     Boolean processed = null;
+    RpcCallContext context = RpcServer.getCurrentCall();
 
     for (RegionAction regionAction : request.getRegionActionList()) {
       this.requestCount.add(regionAction.getActionCount());
@@ -3906,7 +3908,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
       } else {
         // doNonAtomicRegionMutation manages the exception internally
         cellsToReturn = doNonAtomicRegionMutation(region, regionAction, cellScanner,
-            regionActionResultBuilder, cellsToReturn, nonceGroup);
+            regionActionResultBuilder, cellsToReturn, nonceGroup, context);
       }
       responseBuilder.addRegionActionResult(regionActionResultBuilder.build());
     }
@@ -3931,17 +3933,45 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
    */
   private List<CellScannable> doNonAtomicRegionMutation(final HRegion region,
       final RegionAction actions, final CellScanner cellScanner,
-      final RegionActionResult.Builder builder, List<CellScannable> cellsToReturn, long nonceGroup)
+      final RegionActionResult.Builder builder, List<CellScannable> cellsToReturn, long nonceGroup,
+      RpcCallContext context)
       throws ServiceException {
     // Gather up CONTIGUOUS Puts and Deletes in this mutations List.  Idea is that rather than do
     // one at a time, we instead pass them in batch.  Be aware that the corresponding
     // ResultOrException instance that matches each Put or Delete is then added down in the
     // doBatchOp call.  We should be staying aligned though the Put and Delete are deferred/batched
     List<ClientProtos.Action> mutations = null;
+    IOException sizeIOE = null;
     for (ClientProtos.Action action: actions.getActionList()) {
       ClientProtos.ResultOrException.Builder resultOrExceptionBuilder = null;
       try {
         Result r = null;
+        if (context != null && context.getResponseCellSize() > maxScannerResultSize) {
+          // We're storing the exception since the exception and reason string won't
+          // change after the response size limit is reached.
+          if (sizeIOE == null) {
+            // We don't need the stack un-winding do don't throw the exception.
+            // Throwing will kill the JVM's JIT.
+            //
+            // Instead just create the exception and then store it.
+            sizeIOE = new MultiActionResultTooLarge("Max response size exceeded: "
+                + context.getResponseCellSize());
+
+            // Only report the exception once since there's only one request that
+            // caused the exception. Otherwise this number will dominate the exceptions count.
+            rpcServer.getMetrics().exception(sizeIOE);
+          }
+
+          // Now that there's an exception is know to be created
+          // use it for the response.
+          //
+          // This will create a copy in the builder.
+          resultOrExceptionBuilder = ResultOrException.newBuilder().setException(
+            ResponseConverter.buildException(sizeIOE));
+          resultOrExceptionBuilder.setIndex(action.getIndex());
+          builder.addResultOrException(resultOrExceptionBuilder.build());
+          continue;
+        }
         if (action.hasGet()) {
           if (isQuotaEnabled()) {
             this.rsQuotaManager.checkQuota(region, OperationType.GET);
@@ -4003,6 +4033,9 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
             cellsToReturn.add(r);
           } else {
             pbResult = ProtobufUtil.toResult(r);
+          }
+          if (context != null) {
+            context.incrementResponseCellSize(Result.getTotalSizeOfCells(r));
           }
           resultOrExceptionBuilder =
             ClientProtos.ResultOrException.newBuilder().setResult(pbResult);

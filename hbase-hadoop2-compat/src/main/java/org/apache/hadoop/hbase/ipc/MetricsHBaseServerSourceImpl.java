@@ -41,6 +41,8 @@ public class MetricsHBaseServerSourceImpl extends BaseSourceImpl
   private final MutableCounterLong failedCalls;
   private MutableHistogram queueCallTime;
   private MutableHistogram processCallTime;
+  private final MutableCounterLong exceptions;
+  private final MutableCounterLong exceptionsMultiTooLarge;
 
   public MetricsHBaseServerSourceImpl(String metricsName,
                                       String metricsDescription,
@@ -69,6 +71,9 @@ public class MetricsHBaseServerSourceImpl extends BaseSourceImpl
         QUEUE_CALL_TIME_DESC);
     this.processCallTime = this.getMetricsRegistry().newHistogram(PROCESS_CALL_TIME_NAME,
         PROCESS_CALL_TIME_DESC);
+    this.exceptions = this.getMetricsRegistry().newCounter(EXCEPTIONS_NAME, EXCEPTIONS_DESC, 0L);
+    this.exceptionsMultiTooLarge = this.getMetricsRegistry().newCounter(
+      EXCEPTIONS_MULTI_TOO_LARGE_NAME, EXCEPTIONS_MULTI_TOO_LARGE_DESC, 0L);
   }
 
   @Override
@@ -114,6 +119,16 @@ public class MetricsHBaseServerSourceImpl extends BaseSourceImpl
   @Override
   public void processedCall(int processingTime) {
     processCallTime.add(processingTime);
+  }
+
+  @Override
+  public void exception() {
+    exceptions.incr();
+  }
+
+  @Override
+  public void multiActionTooLargeException() {
+    exceptionsMultiTooLarge.incr();
   }
 
   @Override

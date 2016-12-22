@@ -44,6 +44,7 @@ import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HRegionLocation;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.MasterNotRunningException;
+import org.apache.hadoop.hbase.MultiActionResultTooLarge;
 import org.apache.hadoop.hbase.RegionTooBusyException;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.Stoppable;
@@ -1941,7 +1942,7 @@ public class HConnectionImplementation implements HConnection, Closeable {
     Throwable cause = HConnectionManager.findException(exception);
     if (cause != null) {
       if (cause instanceof RegionTooBusyException || cause instanceof RegionOpeningException
-          || cause instanceof ThrottlingException) {
+          || cause instanceof ThrottlingException || cause instanceof MultiActionResultTooLarge) {
         // We know that the region is still on this region server
         return;
       }

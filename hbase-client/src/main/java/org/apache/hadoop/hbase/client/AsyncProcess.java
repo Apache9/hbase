@@ -45,6 +45,7 @@ import org.apache.hadoop.hbase.DoNotRetryNowIOException;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HRegionLocation;
+import org.apache.hadoop.hbase.RetryImmediatelyException;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.backoff.ServerStatistics;
@@ -784,7 +785,10 @@ class AsyncProcess<CResult> {
     }
 
     // We have something to replay. We're going to sleep a little before.
-    long backOffTime = calculateBackoffTime(oldLocation, throwable, errorsByServer);
+    boolean retryImmediately = throwable instanceof RetryImmediatelyException;
+    int nextAttemptNumber = retryImmediately ? numAttempt : numAttempt + 1;
+    long backOffTime = retryImmediately ? 0 : calculateBackoffTime(oldLocation, throwable,
+      errorsByServer);
 
     if (numAttempt > startLogErrorsCnt) {
       // We use this value to have some logs when we have multiple failures, but not too many
@@ -795,14 +799,16 @@ class AsyncProcess<CResult> {
     }
 
     try {
-      Thread.sleep(backOffTime);
+      if (backOffTime > 0) {
+        Thread.sleep(backOffTime);
+      }
     } catch (InterruptedException e) {
       LOG.warn("#" + id + ", not sent: " + toReplay.size() + " operations, " + oldLocation, e);
       Thread.currentThread().interrupt();
       return;
     }
 
-    submit(initialActions, toReplay, numAttempt + 1, errorsByServer);
+    submit(initialActions, toReplay, nextAttemptNumber, errorsByServer);
   }
 
   /**

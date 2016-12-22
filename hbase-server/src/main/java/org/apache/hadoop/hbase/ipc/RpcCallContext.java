@@ -50,4 +50,17 @@ public interface RpcCallContext {
    * @return The system timestamp of deadline.
    */
    long getDeadline();
+
+  /**
+   * The size of response cells that have been accumulated so far. This along with the corresponding
+   * increment call is used to ensure that multi's or scans dont get too excessively large
+   */
+  long getResponseCellSize();
+
+  /**
+   * Add on the given amount to the retained cell size. This is not thread safe and not synchronized
+   * at all. If this is used by more than one thread then everything will break. Since this is
+   * called for every row synchronization would be too onerous.
+   */
+  void incrementResponseCellSize(long cellSize);
 }
