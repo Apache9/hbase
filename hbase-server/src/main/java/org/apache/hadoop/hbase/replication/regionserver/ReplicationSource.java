@@ -36,6 +36,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
@@ -154,7 +155,10 @@ public class ReplicationSource extends Thread
   private int ioeSleepBeforeRetry = 0;
 
   Map<String, Long> lastPositionsForSerialScope = new HashMap<String, Long>();
-  
+
+  private AtomicLong totalBufferUsed;
+  private long totalBufferQuota;
+  List<HLog.Entry> entries;
   /**
    * Instantiation method used by region servers
    *
@@ -217,7 +221,10 @@ public class ReplicationSource extends Thread
     currentBandwidth = getCurrentBandwidth(
       this.replicationPeers.getPeer(peerId).getPeerBandwidth(), defaultBandwidth);
     this.throttler = new ReplicationThrottler((double) currentBandwidth / 10.0);
-
+    this.totalBufferUsed = manager.getTotalBufferUsed();
+    this.totalBufferQuota = conf.getLong(HConstants.REPLICATION_SOURCE_TOTAL_BUFFER_KEY,
+        HConstants.REPLICATION_SOURCE_TOTAL_BUFFER_DFAULT);
+    this.entries = new ArrayList<HLog.Entry>();
     LOG.info("peerClusterZnode=" + peerClusterZnode + ", ReplicationSource : " + peerId
         + " inited, replicationQueueSizeCapacity=" + replicationQueueSizeCapacity
         + ", replicationQueueNbCapacity=" + replicationQueueNbCapacity + ", curerntBandwidth="
@@ -390,8 +397,8 @@ public class ReplicationSource extends Thread
 
         boolean gotIOE = false;
         currentNbOperations = 0;
-        List<HLog.Entry> entries = new ArrayList<HLog.Entry>(1);
         lastPositionsForSerialScope.clear();
+        entries.clear();
         currentSize = 0;
         try {
           if (readAllEntriesToReplicateOrNextFile(currentWALisBeingWrittenTo, entries,
@@ -483,6 +490,7 @@ public class ReplicationSource extends Thread
         }
         sleepMultiplier = 1;
         shipEdits(currentWALisBeingWrittenTo, entries, lastPositionsForSerialScope);
+        releaseBufferQuota();
       }
     } catch (Throwable e) {
       if (this.isActive()) {
@@ -600,7 +608,7 @@ public class ReplicationSource extends Thread
           }
         }
       }
-
+      boolean totalBufferTooLarge = false;
       // don't replicate if the log entries have already been consumed by the cluster
       if (replicationEndpoint.canReplicateToSameCluster()
           || !entry.getKey().getClusterIds().contains(peerClusterId)) {
@@ -618,13 +626,15 @@ public class ReplicationSource extends Thread
           logKey.addClusterId(clusterId);
           currentNbOperations += countDistinctRowKeys(edit);
           entries.add(entry);
-          currentSize += entry.getEdit().heapSize();
+          long delta = entry.getEdit().heapSize();
+          currentSize += delta;
+          totalBufferTooLarge = acquireBufferQuota(delta);
         } else {
           this.metrics.incrLogEditsFiltered();
         }
       }
       // Stop if too many entries or too big
-      if (currentSize >= this.replicationQueueSizeCapacity ||
+      if (totalBufferTooLarge || currentSize >= this.replicationQueueSizeCapacity ||
           entries.size() >= this.replicationQueueNbCapacity) {
         break;
       }
@@ -1091,6 +1101,20 @@ public class ReplicationSource extends Thread
     return "Total replicated edits: " + totalReplicatedEdits +
       ", currently replicating from: " + this.currentPath +
       " at position: " + position;
+  }
+
+  /**
+   * @param size delta size for grown buffer
+   * @return true if we should clear buffer and push all
+   */
+  private boolean acquireBufferQuota(long size) {
+    return totalBufferUsed.addAndGet(size) >= totalBufferQuota;
+  }
+
+  private void releaseBufferQuota() {
+    totalBufferUsed.addAndGet(-currentSize);
+    currentSize = 0;
+    entries.clear();
   }
 
   /**

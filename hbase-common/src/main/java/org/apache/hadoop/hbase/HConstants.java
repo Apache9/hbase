@@ -919,6 +919,10 @@ public final class HConstants {
   /** Whether nonces are enabled; default is true. */
   public static final String HBASE_RS_NONCES_ENABLED = "hbase.regionserver.nonces.enabled";
 
+  public static final String REPLICATION_SOURCE_TOTAL_BUFFER_KEY = "replication.total.buffer.quota";
+  public static final int REPLICATION_SOURCE_TOTAL_BUFFER_DFAULT = 256 * 1024 * 1024;
+
+
   /**
    * Configuration key for the size of the block cache
    */
