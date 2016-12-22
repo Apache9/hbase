@@ -19,8 +19,11 @@
 
 package org.apache.hadoop.hbase.ipc;
 
+import java.io.IOException;
+
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.CompatibilitySingletonFactory;
+import org.apache.hadoop.hbase.MultiActionResultTooLarge;
 
 @InterfaceAudience.Private
 public class MetricsHBaseServer {
@@ -69,5 +72,23 @@ public class MetricsHBaseServer {
 
   public MetricsHBaseServerSource getMetricsSource() {
     return source;
+  }
+
+  public void exception(IOException throwable) {
+    source.exception();
+
+    /**
+     * Keep some metrics for commonly seen exceptions
+     *
+     * Try and  put the most common types first.
+     * Place child types before the parent type that they extend.
+     *
+     * If this gets much larger we might have to go to a hashmap
+     */
+    if (throwable != null) {
+      if (throwable instanceof MultiActionResultTooLarge) {
+        source.multiActionTooLargeException();
+      }
+    }
   }
 }

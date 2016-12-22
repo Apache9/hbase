@@ -297,6 +297,8 @@ public class RpcServer implements RpcServerInterface {
     protected boolean isError;
     protected TraceInfo tinfo;
 
+    private long responseCellSize = 0;
+
     Call(int id, final BlockingService service, final MethodDescriptor md, RequestHeader header,
          Message param, CellScanner cellScanner, Connection connection, Responder responder,
          long size, TraceInfo tinfo, int timeout) {
@@ -480,6 +482,16 @@ public class RpcServer implements RpcServerInterface {
 
     public UserGroupInformation getRemoteUser() {
       return connection.user;
+    }
+
+    @Override
+    public long getResponseCellSize() {
+      return responseCellSize;
+    }
+
+    @Override
+    public void incrementResponseCellSize(long cellSize) {
+      responseCellSize += cellSize;
     }
   }
 

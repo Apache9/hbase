@@ -68,6 +68,12 @@ public interface MetricsHBaseServerSource extends BaseSource {
   String FAILED_CALLS_NAME = "failedCalls";
   String FAILED_CALLS_DESC = "Number of failed rpc calls.";
 
+  String EXCEPTIONS_NAME="exceptions";
+  String EXCEPTIONS_DESC="Exceptions caused by requests";
+  String EXCEPTIONS_MULTI_TOO_LARGE_NAME = "exceptions.multiResponseTooLarge";
+  String EXCEPTIONS_MULTI_TOO_LARGE_DESC = "A response to a multi request was too large and the "
+      + "rest of the requests will have to be retried.";
+
   void authorizationSuccess();
 
   void authorizationFailure();
@@ -85,4 +91,8 @@ public interface MetricsHBaseServerSource extends BaseSource {
   void processedCall(int processingTime);
   
   void failedCalls();
+
+  void multiActionTooLargeException();
+
+  void exception();
 }
