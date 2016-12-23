@@ -388,7 +388,7 @@ public class ReplicationSourceManager implements ReplicationListener {
   }
 
   @VisibleForTesting
-  AtomicLong getTotalBufferUsed() {
+  public AtomicLong getTotalBufferUsed() {
     return totalBufferUsed;
   }
 
