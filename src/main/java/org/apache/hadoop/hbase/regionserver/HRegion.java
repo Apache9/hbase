@@ -5959,7 +5959,7 @@ public class HRegion implements HeapSize { // , Writable{
         }
         
         if (coprocessorHost != null) {
-          coprocessorHost.preIncrementWriteHLog(increment, tempMemstore, walEdits);
+          coprocessorHost.preIncrementWriteHLog(increment, tempMemstore, walEdits, w.getWriteNumber());
         }
         
         // add row mutations to walEdits if neccessary
