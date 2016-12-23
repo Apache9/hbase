@@ -122,13 +122,13 @@ public class RegionStates {
 
   private final RegionStateStore regionStateStore;
   private final ServerManager serverManager;
-  private final Server server;
+  private final MasterServices server;
 
   // The maximum time to keep a log split info in region states map
   static final String LOG_SPLIT_TIME = "hbase.master.maximum.logsplit.keeptime";
   static final long DEFAULT_LOG_SPLIT_TIME = 7200000L; // 2 hours
 
-  RegionStates(final Server master,
+  RegionStates(final MasterServices master,
       final ServerManager serverManager, final RegionStateStore regionStateStore) {
     regionStates = new ConcurrentHashMap<String, RegionState>();
     regionsInTransition = new ConcurrentHashMap<String, RegionState>();
@@ -394,7 +394,15 @@ public class RegionStates {
     updateRegionState(hri, State.OPEN, serverName, openSeqNum);
 
     synchronized (this) {
-      regionsInTransition.remove(hri.getEncodedName());
+      RegionState regionState = regionsInTransition.remove(hri.getEncodedName());
+      // When region is online and remove from regionsInTransition,
+      // update the RIT duration to assignment manager metrics
+      if (regionState != null && this.server.getAssignmentManager() != null) {
+        long ritDuration = System.currentTimeMillis() - regionState.getStamp()
+            + regionState.getRitDuration();
+        this.server.getAssignmentManager().getAssignmentManagerMetrics()
+            .updateRitDuration(ritDuration);
+      }
       ServerName oldServerName = regionAssignments.put(hri, serverName);
       if (!serverName.equals(oldServerName)) {
         LOG.info("Onlined " + hri.getShortNameToLog() + " on " + serverName);
@@ -900,7 +908,12 @@ public class RegionStates {
     }
 
     synchronized (this) {
-      regionsInTransition.put(encodedName, regionState);
+      RegionState oldRegionState = regionsInTransition.put(encodedName, regionState);
+      // When region transform old region state to new region state,
+      // accumulate the RIT duration to new region state.
+      if (oldRegionState != null) {
+        regionState.updateRitDuration(oldRegionState.getStamp());
+      }
       putRegionState(regionState);
 
       // For these states, region should be properly closed.

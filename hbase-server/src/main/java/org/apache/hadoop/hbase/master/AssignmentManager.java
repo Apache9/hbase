@@ -4271,4 +4271,8 @@ public class AssignmentManager extends ZooKeeperListener {
   void setRegionStateListener(RegionStateListener listener) {
     this.regionStateListener = listener;
   }
+
+  public MetricsAssignmentManager getAssignmentManagerMetrics() {
+    return this.metricsAssignmentManager;
+  }
 }
