@@ -63,4 +63,7 @@ public interface RpcCallContext {
    * called for every row synchronization would be too onerous.
    */
   void incrementResponseCellSize(long cellSize);
+
+  long getResponseBlockSize();
+  void incrementResponseBlockSize(long blockSize);
 }

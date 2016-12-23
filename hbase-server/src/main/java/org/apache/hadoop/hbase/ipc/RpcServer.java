@@ -298,6 +298,7 @@ public class RpcServer implements RpcServerInterface {
     protected TraceInfo tinfo;
 
     private long responseCellSize = 0;
+    private long responseBlockSize = 0;
 
     Call(int id, final BlockingService service, final MethodDescriptor md, RequestHeader header,
          Message param, CellScanner cellScanner, Connection connection, Responder responder,
@@ -492,6 +493,16 @@ public class RpcServer implements RpcServerInterface {
     @Override
     public void incrementResponseCellSize(long cellSize) {
       responseCellSize += cellSize;
+    }
+
+    @Override
+    public long getResponseBlockSize() {
+      return responseBlockSize;
+    }
+
+    @Override
+    public void incrementResponseBlockSize(long blockSize) {
+      responseBlockSize += blockSize;
     }
   }
 

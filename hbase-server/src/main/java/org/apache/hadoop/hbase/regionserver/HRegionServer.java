@@ -3088,6 +3088,30 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     return this.fsOk;
   }
 
+  /**
+   * Method to account for the size of retained cells and retained data blocks.
+   * @return an object that represents the last referenced block from this response.
+   */
+  Object addSize(RpcCallContext context, Result r, Object lastBlock) {
+    if (context != null && !r.isEmpty()) {
+      for (Cell c : r.rawCells()) {
+        context.incrementResponseCellSize(CellUtil.estimatedSizeOf(c));
+        // We're using the last block being the same as the current block as
+        // a proxy for pointing to a new block. This won't be exact.
+        // If there are multiple gets that bounce back and forth
+        // Then it's possible that this will over count the size of
+        // referenced blocks. However it's better to over count and
+        // use two rpcs than to OOME the regionserver.
+        byte[] valueArray = c.getValueArray();
+        if (valueArray != lastBlock) {
+          context.incrementResponseBlockSize(valueArray.length);
+          lastBlock = valueArray;
+        }
+      }
+    }
+    return lastBlock;
+  }
+
   protected long addScanner(RegionScanner s, HRegion r) throws LeaseStillHeldException {
     long scannerId = this.scannerIdGen.incrementAndGet();
     String scannerName = String.valueOf(scannerId);
@@ -3941,11 +3965,14 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     // doBatchOp call.  We should be staying aligned though the Put and Delete are deferred/batched
     List<ClientProtos.Action> mutations = null;
     IOException sizeIOE = null;
+    Object lastBlock = null;
     for (ClientProtos.Action action: actions.getActionList()) {
       ClientProtos.ResultOrException.Builder resultOrExceptionBuilder = null;
       try {
         Result r = null;
-        if (context != null && context.getResponseCellSize() > maxScannerResultSize) {
+        if (context != null
+            && (context.getResponseCellSize() > maxScannerResultSize || context
+                .getResponseBlockSize() > maxScannerResultSize)) {
           // We're storing the exception since the exception and reason string won't
           // change after the response size limit is reached.
           if (sizeIOE == null) {
@@ -3953,8 +3980,8 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
             // Throwing will kill the JVM's JIT.
             //
             // Instead just create the exception and then store it.
-            sizeIOE = new MultiActionResultTooLarge("Max response size exceeded: "
-                + context.getResponseCellSize());
+            sizeIOE = new MultiActionResultTooLarge("Max response size exceeded: " + " CellSize: "
+                + context.getResponseCellSize() + " BlockSize: " + context.getResponseBlockSize());
 
             // Only report the exception once since there's only one request that
             // caused the exception. Otherwise this number will dominate the exceptions count.
@@ -4033,9 +4060,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
           } else {
             pbResult = ProtobufUtil.toResult(r);
           }
-          if (context != null) {
-            context.incrementResponseCellSize(Result.getTotalSizeOfCells(r));
-          }
+          lastBlock = addSize(context, r, lastBlock);
           resultOrExceptionBuilder =
             ClientProtos.ResultOrException.newBuilder().setResult(pbResult);
         }

@@ -25,6 +25,7 @@ import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.Waiter;
 import org.apache.hadoop.hbase.ipc.RpcServerInterface;
 import org.apache.hadoop.hbase.metrics.BaseSource;
+import org.apache.hadoop.hbase.regionserver.HRegionServer;
 import org.apache.hadoop.hbase.test.MetricsAssertHelper;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -32,6 +33,8 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+
+import io.netty.util.internal.ThreadLocalRandom;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -85,18 +88,75 @@ public class TestMultiRespectsLimits {
     for (int i = 0; i < MAX_SIZE; i++) {
       gets.add(new Get(HBaseTestingUtility.ROWS[i]));
     }
-    Result[] results = t.get(gets);
-    assertEquals(MAX_SIZE, results.length);
+
     RpcServerInterface rpcServer = TEST_UTIL.getHBaseCluster().getRegionServer(0).getRpcServer();
     BaseSource s = rpcServer.getMetrics().getMetricsSource();
+    long startingExceptions = METRICS_ASSERT.getCounter("exceptions", s);
+    long startingMultiExceptions = METRICS_ASSERT.getCounter("exceptions.multiResponseTooLarge", s);
+
+    Result[] results = t.get(gets);
+    assertEquals(MAX_SIZE, results.length);
 
     // Cells from TEST_UTIL.loadTable have a length of 27.
     // Multiplying by less than that gives an easy lower bound on size.
     // However in reality each kv is being reported as much higher than that.
-    METRICS_ASSERT.assertCounterGt("exceptions", (MAX_SIZE * 25) / MAX_SIZE, s);
-    METRICS_ASSERT.assertCounterGt("exceptions.multiResponseTooLarge",
-        (MAX_SIZE * 25) / MAX_SIZE, s);
+    METRICS_ASSERT
+        .assertCounterGt("exceptions", startingExceptions + (MAX_SIZE * 25) / MAX_SIZE, s);
+    METRICS_ASSERT.assertCounterGt("exceptions.multiResponseTooLarge", startingMultiExceptions
+        + (MAX_SIZE * 25) / MAX_SIZE, s);
 
     admin.close();
+  }
+
+  @Test
+  public void testBlockMultiLimits() throws Exception {
+    final TableName name = TableName.valueOf("testBlockMultiLimits");
+    HTable t = TEST_UTIL.createTable(name, FAMILY);
+
+    final HRegionServer regionServer = TEST_UTIL.getHBaseCluster().getRegionServer(0);
+    RpcServerInterface rpcServer = regionServer.getRpcServer();
+    BaseSource s = rpcServer.getMetrics().getMetricsSource();
+    long startingExceptions = METRICS_ASSERT.getCounter("exceptions", s);
+    long startingMultiExceptions = METRICS_ASSERT.getCounter("exceptions.multiResponseTooLarge", s);
+
+    byte[] row = Bytes.toBytes("TEST");
+    byte[][] cols = new byte[][]{
+        Bytes.toBytes("0"), // Get this
+        Bytes.toBytes("1"), // Buffer
+        Bytes.toBytes("2"), // Get This
+        Bytes.toBytes("3"), // Buffer
+    };
+
+    // Set the value size so that one result will be less than the MAX_SIE
+    // however the block being reference will be larger than MAX_SIZE.
+    // This should cause the regionserver to try and send a result immediately.
+    byte[] value = new byte[MAX_SIZE - 200];
+    ThreadLocalRandom.current().nextBytes(value);
+
+    for (byte[] col:cols) {
+      Put p = new Put(row);
+      p.addImmutable(FAMILY, col, value);
+      t.put(p);
+    }
+
+    // Make sure that a flush happens
+    final HBaseAdmin admin = TEST_UTIL.getHBaseAdmin();
+    admin.flush(name.toString());
+    Thread.sleep(10000);
+
+    List<Get> gets = new ArrayList<Get>(2);
+    Get g0 = new Get(row);
+    g0.addColumn(FAMILY, cols[0]);
+    gets.add(g0);
+
+    Get g2 = new Get(row);
+    g2.addColumn(FAMILY, cols[2]);
+    gets.add(g2);
+
+    Result[] results = t.get(gets);
+    assertEquals(2, results.length);
+    METRICS_ASSERT.assertCounterGt("exceptions", startingExceptions, s);
+    METRICS_ASSERT.assertCounterGt("exceptions.multiResponseTooLarge",
+      startingMultiExceptions, s);
   }
 }
