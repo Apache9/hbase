@@ -5761,8 +5761,8 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
     protected Cell joinedContinuationRow = null;
     private boolean filterClosed = false;
 
-    protected final int isScan;
     protected final byte[] stopRow;
+    protected final boolean includeStopRow;
     protected final HRegion region;
     protected final CellComparator comparator;
 
@@ -5798,15 +5798,8 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
        */
       defaultScannerContext = ScannerContext.newBuilder()
           .setBatchLimit(scan.getBatch()).build();
-
-      if (Bytes.equals(scan.getStopRow(), HConstants.EMPTY_END_ROW) && !scan.isGetScan()) {
-        this.stopRow = null;
-      } else {
-        this.stopRow = scan.getStopRow();
-      }
-      // If we are doing a get, we want to be [startRow,endRow]. Normally
-      // it is [startRow,endRow) and if startRow=endRow we get nothing.
-      this.isScan = scan.isGetScan() ? 1 : 0;
+      this.stopRow = scan.getStopRow();
+      this.includeStopRow = scan.includeStopRow();
 
       // synchronize on scannerReadPoints so that nobody calculates
       // getSmallestReadPoint, before scannerReadPoints is updated.
@@ -6119,7 +6112,7 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
         // Let's see what we have in the storeHeap.
         Cell current = this.storeHeap.peek();
 
-        boolean stopRow = isStopRow(current);
+        boolean shouldStop = shouldStop(current);
         // When has filter row is true it means that the all the cells for a particular row must be
         // read before a filtering decision can be made. This means that filters where hasFilterRow
         // run the risk of enLongAddering out of memory errors in the case that they are applied to a
@@ -6143,7 +6136,7 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
         // If not, then it's main path - getting results from storeHeap.
         if (joinedContinuationRow == null) {
           // First, check if we are at a stop row. If so, there are no more results.
-          if (stopRow) {
+          if (shouldStop) {
             if (hasFilterRow) {
               filter.filterRowCells(results);
             }
@@ -6183,7 +6176,7 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
           }
 
           Cell nextKv = this.storeHeap.peek();
-          stopRow = nextKv == null || isStopRow(nextKv);
+          shouldStop = shouldStop(nextKv);
           // save that the row was empty before filters applied to it.
           final boolean isEmptyRow = results.isEmpty();
 
@@ -6220,7 +6213,7 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
 
             // This row was totally filtered out, if this is NOT the last row,
             // we should continue on. Otherwise, nothing else to do.
-            if (!stopRow) continue;
+            if (!shouldStop) continue;
             return scannerContext.setScannerState(NextState.NO_MORE_VALUES).hasMoreValues();
           }
 
@@ -6261,10 +6254,10 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
           if (!moreRows) {
             return scannerContext.setScannerState(NextState.NO_MORE_VALUES).hasMoreValues();
           }
-          if (!stopRow) continue;
+          if (!shouldStop) continue;
         }
 
-        if (stopRow) {
+        if (shouldStop) {
           return scannerContext.setScannerState(NextState.NO_MORE_VALUES).hasMoreValues();
         } else {
           return scannerContext.setScannerState(NextState.MORE_VALUES).hasMoreValues();
@@ -6344,10 +6337,15 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
               .postScannerFilterRow(this, curRowCell);
     }
 
-    protected boolean isStopRow(Cell currentRowCell) {
-      return currentRowCell == null
-          || (stopRow != null && comparator.compareRows(currentRowCell, stopRow, 0, stopRow
-          .length) >= isScan);
+    protected boolean shouldStop(Cell currentRowCell) {
+      if (currentRowCell == null) {
+        return true;
+      }
+      if (stopRow == null || Bytes.equals(stopRow, HConstants.EMPTY_END_ROW)) {
+        return false;
+      }
+      int c = comparator.compareRows(currentRowCell, stopRow, 0, stopRow.length);
+      return c > 0 || (c == 0 && !includeStopRow);
     }
 
     @Override
