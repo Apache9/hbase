@@ -20,6 +20,7 @@
 package org.apache.hadoop.hbase.tool;
 
 import java.io.IOException;
+import java.net.BindException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -65,9 +66,12 @@ import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.filter.FirstKeyOnlyFilter;
+import org.apache.hadoop.hbase.regionserver.RSDumpServlet;
+import org.apache.hadoop.hbase.regionserver.RSStatusServlet;
 import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
+import org.apache.hadoop.hbase.util.InfoServer;
 import org.apache.hadoop.hbase.util.RegionSplitter;
 import org.apache.hadoop.hbase.util.Strings;
 import org.apache.hadoop.net.DNS;
@@ -94,6 +98,10 @@ public final class Canary implements Tool {
     public void publishWriteFailure(HRegionInfo region, Exception e);
     public void publishWriteFailure(HRegionInfo region, HColumnDescriptor column, Exception e);
     public void publishWriteTiming(HRegionInfo region, HColumnDescriptor column, long msTime);
+
+    public double getReadAvailability();
+    public double getWriteAvailability();
+    public double getAvailability();
 
     public void reportSummary();
   }
@@ -136,6 +144,21 @@ public final class Canary implements Tool {
 
     @Override
     public void reportSummary() {
+    }
+
+    @Override
+    public double getReadAvailability() {
+      return 100.0;
+    }
+
+    @Override
+    public double getWriteAvailability() {
+      return 100.0;
+    }
+
+    @Override
+    public double getAvailability() {
+      return 100.0;
     }
   }
 
@@ -289,6 +312,8 @@ public final class Canary implements Tool {
     }
   }
 
+  public static final String CANARY = "canary";
+  public static final String CANARY_CONF = "canary_conf";
   private static final String CANARY_TABLE_NAME = "_canary_";
   private static final String CANARY_TABLE_FAMILY_NAME = "Test";
   private static int DEFAULT_REGIONS_PER_SERVER = 2;
@@ -311,7 +336,9 @@ public final class Canary implements Tool {
   private HConnection connection = null;
   private List<RegionTask> tasks;
   private Map<String, Integer> failuresByServer;
+  private List<Entry<String, Integer>> lastRoundFailures;
   private Map<String, List<RegionTask>> cachedTasks;
+  private InfoServer infoServer;
 
   public Canary(ExecutorService executor, Sink sink) {
     this.executor = executor;
@@ -319,6 +346,23 @@ public final class Canary implements Tool {
     this.tasks = new LinkedList<RegionTask>();
     this.failuresByServer = new HashMap<String, Integer>();
     this.cachedTasks = new ConcurrentHashMap<String, List<RegionTask>>();
+  }
+
+  private void putUpWebUI() throws IOException {
+    int port = this.conf.getInt("hbase.canary.info.port", 60050);
+    // -1 is for disabling info server
+    if (port < 0) return;
+    String addr = this.conf.get("hbase.canary.info.bindAddress", "0.0.0.0");
+    try {
+      this.infoServer = new InfoServer("canary", addr, port, false, this.conf);
+      this.infoServer.addServlet("status", "/canary-status", CanaryStatusServlet.class);
+      this.infoServer.setAttribute(CANARY, this);
+      this.infoServer.setAttribute(CANARY_CONF, conf);
+      this.infoServer.start();
+      LOG.info("Bind http info server to port: " + port);
+    } catch (BindException e) {
+      LOG.info("Failed binding http info server to port: " + port);
+    }
   }
 
   @Override
@@ -405,6 +449,8 @@ public final class Canary implements Tool {
 
     // initialize server principal (if using secure Hadoop)
     User.login(conf, "hbase.canary.keytab.file", "hbase.canary.kerberos.principal", hostname);
+
+    putUpWebUI();
 
     admin = new HBaseAdmin(connection);
     // lets the canary monitor the cluster
@@ -521,24 +567,46 @@ public final class Canary implements Tool {
       }
     }
   }
-  
+
   protected void logFailedServer() {
+    List<Map.Entry<String, Integer>> failureServerList = new ArrayList<Map.Entry<String, Integer>>();
     if (failuresByServer.size() > 0) {
-      List<Entry<String, Integer>> failureServerList = new ArrayList<Map.Entry<String, Integer>>(
-          failuresByServer.entrySet());
-      Collections.sort(failureServerList, new Comparator<Entry<String, Integer>>() {
-        @Override
-        public int compare(Entry<String, Integer> o1, Entry<String, Integer> o2) {
-          return o2.getValue().compareTo(o1.getValue());
-        }
-      });
+      failureServerList = getFailures();
       LOG.warn("Failed server and count:");
       for (Entry<String, Integer> failureServer : failureServerList) {
         LOG.warn(failureServer.getKey() + " : " + failureServer.getValue());
       }
-      
       failuresByServer.clear();
     }
+    lastRoundFailures = failureServerList;
+  }
+
+  public List<Entry<String, Integer>> getFailures() {
+    List<Entry<String, Integer>> failureServerList = new ArrayList<Map.Entry<String, Integer>>(
+        failuresByServer.entrySet());
+    Collections.sort(failureServerList, new Comparator<Entry<String, Integer>>() {
+      @Override
+      public int compare(Entry<String, Integer> o1, Entry<String, Integer> o2) {
+        return o2.getValue().compareTo(o1.getValue());
+      }
+    });
+    return failureServerList;
+  }
+
+  public List<Entry<String, Integer>> getLastRoundFailures() {
+    return this.lastRoundFailures;
+  }
+
+  public double getReadAvailability() {
+    return sink.getReadAvailability();
+  }
+
+  public double getWriteAvailability() {
+    return sink.getWriteAvailability();
+  }
+
+  public double getAvailability() {
+    return sink.getAvailability();
   }
 
   protected void clearCachedTasks(String tableName) {

@@ -330,7 +330,7 @@ public abstract class BaseRegionObserver implements RegionObserver {
   @Override
   public void preIncrementWriteHLog(final ObserverContext<RegionCoprocessorEnvironment> c,
       final Increment increment, final Map<Store, List<KeyValue>> incrementedState,
-      final WALEdit walEdits) throws IOException {
+      final WALEdit walEdits, final long mvccWriteNumber) throws IOException {
   }
 
   @Override

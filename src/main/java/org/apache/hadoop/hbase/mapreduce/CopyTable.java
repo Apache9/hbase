@@ -73,6 +73,10 @@ public class CopyTable extends Configured implements Tool {
     if (!doCommandLine(args)) {
       return null;
     }
+    conf.setBoolean("mapreduce.map.speculative", false);
+    conf.setBoolean("mapreduce.reduce.speculative", false);
+    conf.setBoolean("mapred.map.tasks.speculative.execution", false);
+    conf.setBoolean("mapred.reduce.tasks.speculative.execution", false);
     Job job = new Job(conf, NAME + "_" + tableName);
     job.setJarByClass(CopyTable.class);
     Scan scan = new Scan();

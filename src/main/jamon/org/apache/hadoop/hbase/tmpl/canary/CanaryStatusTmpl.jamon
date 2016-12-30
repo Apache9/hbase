@@ -1,0 +1,100 @@
+<%doc>
+Copyright 2011 The Apache Software Foundation
+
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+</%doc>
+<%args>
+Canary canary;
+</%args>
+<%import>
+java.util.*;
+java.util.Map.Entry;
+org.apache.hadoop.hbase.tool.Canary;
+</%import>
+
+<?xml version="1.0" encoding="UTF-8" ?>
+<!-- Commenting out DOCTYPE so our blue outline shows on hadoop 0.20.205.0, etc.
+     See tail of HBASE-2110 for explaination.
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" 
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"> 
+-->
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/>
+<title>HBase Canary</title>
+<link rel="stylesheet" type="text/css" href="/static/hbase.css" />
+</head>
+<body>
+<a id="logo" href="http://wiki.apache.org/lucene-hadoop/Hbase"><img src="/static/hbase_logo.png" alt="HBase Logo" title="HBase Logo" /></a>
+
+<h2>Availability</h2>
+<table>
+<tr><td>Cluster Availability</td><td><% canary.getAvailability() %></td></tr>
+<tr><td>Read Availability</td><td><% canary.getReadAvailability() %></td></tr>
+<tr><td>Write Availability</td><td><% canary.getWriteAvailability() %></td></tr>
+</table>
+
+<h2>Failed Servers</h2>
+<%java>
+   List<Entry<String, Integer>> failures = canary.getFailures();
+</%java>
+<table>
+<tr>
+    <th>Failed Server</th>
+    <th>Count</th>
+</tr>
+<%if (failures != null && failures.size() > 0)%>
+<%for Entry<String, Integer> entry : failures%>
+<tr>
+    <td><% entry.getKey() %></td>
+    <td><% entry.getValue() %></td>
+</tr>
+</%for>
+</%if>
+<tr><td>Total: <% (failures != null) ? failures.size() : 0 %></td></tr>
+</table>
+
+<h2>Failed Servers in last round</h2>
+<%java>
+   failures = canary.getLastRoundFailures();
+</%java>
+<table>
+<tr>
+    <th>Failed Server</th>
+    <th>Count</th>
+</tr>
+<%if (failures != null && failures.size() > 0)%>
+<%for Entry<String, Integer> entry : failures%>
+<tr>
+    <td><% entry.getKey() %></td>
+    <td><% entry.getValue() %></td>
+</tr>
+</%for>
+</%if>
+<tr><td>Total: <% (failures != null) ? failures.size() : 0 %></td></tr>
+</table>
+
+<h2>Attributes</h2>
+<table id="attributes_table">
+<tr><th>Attribute Name</th><th>Value</th><th>Description</th></tr>
+<tr><td>HBase Version</td><td><% org.apache.hadoop.hbase.util.VersionInfo.getVersion() %>, r<% org.apache.hadoop.hbase.util.VersionInfo.getRevision() %></td><td>HBase version and revision</td></tr>
+<tr><td>HBase Compiled</td><td><% org.apache.hadoop.hbase.util.VersionInfo.getDate() %>, <% org.apache.hadoop.hbase.util.VersionInfo.getUser() %></td><td>When HBase version was compiled and by whom</td></tr>
+<tr><td>Hadoop Version</td><td><% org.apache.hadoop.util.VersionInfo.getVersion() %>, r<% org.apache.hadoop.util.VersionInfo.getRevision() %></td><td>Hadoop version and revision</td></tr>
+<tr><td>Hadoop Compiled</td><td><% org.apache.hadoop.util.VersionInfo.getDate() %>, <% org.apache.hadoop.util.VersionInfo.getUser() %></td><td>When Hadoop version was compiled and by whom</td></tr>
+</table>
+
+</body>
+</html>

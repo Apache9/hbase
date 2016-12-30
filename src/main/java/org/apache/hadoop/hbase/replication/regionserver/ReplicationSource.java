@@ -65,21 +65,18 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.FSUtils;
 import org.apache.hadoop.hbase.util.Pair;
-import org.apache.hadoop.hbase.util.Threads;
 import org.apache.hadoop.ipc.RemoteException;
 import org.apache.zookeeper.KeeperException;
 
 /**
- * Class that handles the source of a replication stream.
- * Currently does not handle more than 1 slave
- * For each slave cluster it selects a random number of peers
- * using a replication ratio. For example, if replication ration = 0.1
- * and slave cluster has 100 region servers, 10 will be selected.
+ * Class that handles the source of a replication stream. Currently does not handle more than 1
+ * slave For each slave cluster it selects a random number of peers using a replication ratio. For
+ * example, if replication ration = 0.1 and slave cluster has 100 region servers, 10 will be
+ * selected.
  * <p/>
- * A stream is considered down when we cannot contact a region server on the
- * peer cluster for more than 55 seconds by default.
+ * A stream is considered down when we cannot contact a region server on the peer cluster for more
+ * than 55 seconds by default.
  * <p/>
- *
  */
 public class ReplicationSource implements ReplicationSourceInterface {
 
@@ -172,58 +169,47 @@ public class ReplicationSource implements ReplicationSourceInterface {
 
   /**
    * Instantiation method used by region servers
-   *
    * @param conf configuration to use
    * @param fs file system to use
    * @param manager replication manager to ping to
-   * @param stopper     the atomic boolean to use to stop the regionserver
+   * @param stopper the atomic boolean to use to stop the regionserver
    * @param replicating the atomic boolean that starts/stops replication
    * @param peerClusterZnode the name of our znode
    * @throws IOException
    */
-  public void init(final Configuration conf,
-                   final FileSystem fs,
-                   final ReplicationSourceManager manager,
-                   final Stoppable stopper,
-                   final AtomicBoolean replicating,
-                   final String peerClusterZnode)
-      throws IOException {
+  public void init(final Configuration conf, final FileSystem fs,
+      final ReplicationSourceManager manager, final Stoppable stopper,
+      final AtomicBoolean replicating, final String peerClusterZnode) throws IOException {
     this.stopper = stopper;
     this.conf = conf;
-    this.tableNotFoundEditsRemove = this.conf
-        .getBoolean("replication.source.remove.tablenotfound.edits", false);
+    this.tableNotFoundEditsRemove =
+        this.conf.getBoolean("replication.source.remove.tablenotfound.edits", false);
     if (this.tableNotFoundEditsRemove) {
       this.sharedHtableCon = HConnectionManager.createConnection(this.conf);
     }
     this.replicationQueueSizeCapacity =
-        this.conf.getLong("replication.source.size.capacity", 1024*1024*64);
-    this.replicationQueueNbCapacity =
-        this.conf.getInt("replication.source.nb.capacity", 25000);
+        this.conf.getLong("replication.source.size.capacity", 1024 * 1024 * 64);
+    this.replicationQueueNbCapacity = this.conf.getInt("replication.source.nb.capacity", 25000);
     this.logPositionSizeLimit =
         this.conf.getLong("replication.log.position.size.limit", 1024 * 1024 * 64);
-    this.logPositionNbLimit =
-        this.conf.getInt("replication.log.position.nb.limit", 25000);
-    this.maxLogPositionInterval =
-        this.conf.getInt("replication.log.position.maxinterval", 10000);
+    this.logPositionNbLimit = this.conf.getInt("replication.log.position.nb.limit", 25000);
+    this.maxLogPositionInterval = this.conf.getInt("replication.log.position.maxinterval", 10000);
     this.entriesArray = new HLog.Entry[this.replicationQueueNbCapacity];
     for (int i = 0; i < this.replicationQueueNbCapacity; i++) {
       this.entriesArray[i] = new HLog.Entry();
     }
     this.maxRetriesMultiplier = this.conf.getInt("replication.source.maxretriesmultiplier", 10);
     this.socketTimeoutMultiplier = this.conf.getInt("replication.source.socketTimeoutMultiplier",
-        maxRetriesMultiplier * maxRetriesMultiplier);
-    this.queue =
-        new PriorityBlockingQueue<Path>(
-            conf.getInt("hbase.regionserver.maxlogs", 32),
-            new LogsComparator());
+      maxRetriesMultiplier * maxRetriesMultiplier);
+    this.queue = new PriorityBlockingQueue<Path>(conf.getInt("hbase.regionserver.maxlogs", 32),
+        new LogsComparator());
     this.zkHelper = manager.getRepZkWrapper();
     this.ratio = this.conf.getFloat("replication.source.ratio", 0.1f);
     this.currentPeers = new ArrayList<ServerName>();
     this.random = new Random();
     this.replicating = replicating;
     this.manager = manager;
-    this.sleepForRetries =
-        this.conf.getLong("replication.source.sleepforretries", 1000);
+    this.sleepForRetries = this.conf.getLong("replication.source.sleepforretries", 1000);
     this.ioeSleepBeforeRetry = this.conf.getInt("replication.source.ioe.sleepbeforeretry", 0);
     this.fs = fs;
     this.metrics = new ReplicationSourceMetrics(peerClusterZnode);
@@ -238,8 +224,7 @@ public class ReplicationSource implements ReplicationSourceInterface {
     this.checkIfQueueRecovered(peerClusterZnode);
 
     try {
-      if (zkHelper.getPeerProtocol(peerId)
-          .equals(ReplicationZookeeper.PeerProtocol.THRIFT)) {
+      if (zkHelper.getPeerProtocol(peerId).equals(ReplicationZookeeper.PeerProtocol.THRIFT)) {
         thriftClient = new ThriftClient(conf, peerId);
         LOG.info("Starting new replication peer " + peerId + " with Thrift protocol over port");
       }
@@ -257,7 +242,7 @@ public class ReplicationSource implements ReplicationSourceInterface {
     } catch (IllegalArgumentException e) {
       currentBandwidth = defaultBandwidth;
     }
-    this.throttler = new ReplicationThrottler((double)currentBandwidth / 10.0);
+    this.throttler = new ReplicationThrottler((double) currentBandwidth / 10.0);
     LOG.info("peerClusterZnode=" + peerClusterZnode + ", ReplicationSource : " + peerId
         + " inited, replicationQueueSizeCapacity=" + replicationQueueSizeCapacity
         + ", replicationQueueNbCapacity=" + replicationQueueNbCapacity + ", curerntBandwidth="
@@ -271,8 +256,7 @@ public class ReplicationSource implements ReplicationSourceInterface {
   void checkIfQueueRecovered(String peerClusterZnode) {
     String[] parts = peerClusterZnode.split("-", 2);
     this.queueRecovered = parts.length != 1;
-    this.peerId = this.queueRecovered ?
-        parts[0] : peerClusterZnode;
+    this.peerId = this.queueRecovered ? parts[0] : peerClusterZnode;
     this.peerClusterZnode = peerClusterZnode;
 
     if (parts.length < 2) {
@@ -296,8 +280,8 @@ public class ReplicationSource implements ReplicationSourceInterface {
    * "ip-10-46-221-101.ec2.internal", so we need skip some "-" during parsing for the following
    * cases: 2-ip-10-46-221-101.ec2.internal,52170,1364333181125-<server name>-...
    */
-  private static void
-      extractDeadServersFromZNodeString(String deadServerListStr, List<String> result) {
+  private static void extractDeadServersFromZNodeString(String deadServerListStr,
+      List<String> result) {
 
     if (deadServerListStr == null || result == null || deadServerListStr.isEmpty()) return;
 
@@ -308,20 +292,20 @@ public class ReplicationSource implements ReplicationSourceInterface {
 
     for (int i = 0; i < len; i++) {
       switch (deadServerListStr.charAt(i)) {
-      case ',':
-        seenCommaCnt += 1;
-        break;
-      case '-':
-        if (seenCommaCnt >= 2) {
-          if (i > startIndex) {
-            result.add(deadServerListStr.substring(startIndex, i));
-            startIndex = i + 1;
+        case ',':
+          seenCommaCnt += 1;
+          break;
+        case '-':
+          if (seenCommaCnt >= 2) {
+            if (i > startIndex) {
+              result.add(deadServerListStr.substring(startIndex, i));
+              startIndex = i + 1;
+            }
+            seenCommaCnt = 0;
           }
-          seenCommaCnt = 0;
-        }
-        break;
-      default:
-        break;
+          break;
+        default:
+          break;
       }
     }
 
@@ -341,8 +325,7 @@ public class ReplicationSource implements ReplicationSourceInterface {
     List<ServerName> addresses = this.zkHelper.getSlavesAddresses(peerId);
     Set<ServerName> setOfAddr = new HashSet<ServerName>();
     int nbPeers = (int) (Math.ceil(addresses.size() * ratio));
-    LOG.info("Getting " + nbPeers +
-        " rs from peer cluster # " + peerId);
+    LOG.info("Getting " + nbPeers + " rs from peer cluster # " + peerId);
     for (int i = 0; i < nbPeers; i++) {
       ServerName sn;
       // Make sure we get one address that we don't already have
@@ -383,13 +366,13 @@ public class ReplicationSource implements ReplicationSourceInterface {
         }
         continue;
       }
-      Path oldPath = getCurrentPath(); //note that in the current scenario,
-                                       //oldPath will be null when a log roll
-                                       //happens.
+      Path oldPath = getCurrentPath(); // note that in the current scenario,
+                                       // oldPath will be null when a log roll
+                                       // happens.
       // Get a new path
       boolean hasCurrentPath = getNextPath();
       if (getCurrentPath() != null && oldPath == null) {
-        sleepMultiplier = 1; //reset the sleepMultiplier on a path change
+        sleepMultiplier = 1; // reset the sleepMultiplier on a path change
       }
       if (!hasCurrentPath) {
         if (sleepForRetries("No log to process", sleepMultiplier)) {
@@ -398,14 +381,14 @@ public class ReplicationSource implements ReplicationSourceInterface {
         continue;
       }
       boolean currentWALisBeingWrittenTo = false;
-      //For WAL files we own (rather than recovered), take a snapshot of whether the
-      //current WAL file (this.currentPath) is in use (for writing) NOW!
-      //Since the new WAL paths are enqueued only after the prev WAL file
-      //is 'closed', presence of an element in the queue means that
-      //the previous WAL file was closed, else the file is in use (currentPath)
-      //We take the snapshot now so that we are protected against races
-      //where a new file gets enqueued while the current file is being processed
-      //(and where we just finished reading the current file).
+      // For WAL files we own (rather than recovered), take a snapshot of whether the
+      // current WAL file (this.currentPath) is in use (for writing) NOW!
+      // Since the new WAL paths are enqueued only after the prev WAL file
+      // is 'closed', presence of an element in the queue means that
+      // the previous WAL file was closed, else the file is in use (currentPath)
+      // We take the snapshot now so that we are protected against races
+      // where a new file gets enqueued while the current file is being processed
+      // (and where we just finished reading the current file).
       if (!this.queueRecovered && queue.size() == 0) {
         currentWALisBeingWrittenTo = true;
       }
@@ -448,7 +431,8 @@ public class ReplicationSource implements ReplicationSourceInterface {
           }
           LOG.warn(peerClusterZnode + " Got EOF while reading, "
               + "looks like this file is broken? " + currentPath);
-          // Important: When failed to read edits from the hlog , the replication will be blocked here  
+          // Important: When failed to read edits from the hlog , the replication will be blocked
+          // here
           // and wait the operations from cluster admin
         }
       } finally {
@@ -466,9 +450,9 @@ public class ReplicationSource implements ReplicationSourceInterface {
       // But if we need to stop, don't bother sleeping
       if (this.isActive() && (gotIOE || currentNbEntries == 0)) {
         if (shouldLogPosition(this.repLogReader.getPosition())) {
-          this.manager.logPositionAndCleanOldLogs(this.currentPath,
-              this.peerClusterZnode, this.repLogReader.getPosition(),
-              this.repLogReader.getCurrentWriteTime(), queueRecovered, currentWALisBeingWrittenTo);
+          this.manager.logPositionAndCleanOldLogs(this.currentPath, this.peerClusterZnode,
+            this.repLogReader.getPosition(), this.repLogReader.getCurrentWriteTime(),
+            queueRecovered, currentWALisBeingWrittenTo);
           this.lastLoggedPosition = this.repLogReader.getPosition();
           this.unLoggedPositionEdits = 0;
         }
@@ -501,7 +485,7 @@ public class ReplicationSource implements ReplicationSourceInterface {
         }
       }
     }
-    //We were stopped while looping to contact peer's zk ensemble, just abort
+    // We were stopped while looping to contact peer's zk ensemble, just abort
     if (!this.isActive()) {
       uninitialize();
       return;
@@ -511,25 +495,24 @@ public class ReplicationSource implements ReplicationSourceInterface {
     sleepMultiplier = 1;
 
     if (LOG.isDebugEnabled()) {
-      LOG.debug("Replicating "+clusterId + " -> " + peerClusterId);
+      LOG.debug("Replicating " + clusterId + " -> " + peerClusterId);
     }
 
     // If this is recovered, the queue is already full and the first log
     // normally has a position (unless the RS failed between 2 logs)
     if (this.queueRecovered) {
       try {
-        Pair<Long, Long> pos = this.zkHelper.getHLogRepPosition(
-            this.peerClusterZnode, this.queue.peek().getName());
+        Pair<Long, Long> pos =
+            this.zkHelper.getHLogRepPosition(this.peerClusterZnode, this.queue.peek().getName());
         this.repLogReader.setPosition(pos.getFirst());
       } catch (KeeperException e) {
-        this.terminate("Couldn't get the position of this recovered queue " +
-            peerClusterZnode, e);
+        this.terminate("Couldn't get the position of this recovered queue " + peerClusterZnode, e);
       }
     }
 
     try {
       runLoop(sleepMultiplier);
-    } catch (Throwable e){
+    } catch (Throwable e) {
       if (this.isActive()) {
         LOG.fatal("Replication source exited unexpectedly", e);
       }
@@ -556,26 +539,27 @@ public class ReplicationSource implements ReplicationSourceInterface {
     return false;
   }
 
-  public static void recoverFileLease(FileSystem fs, Path filePath, Configuration conf) throws IOException{
-    LOG.info("recoverFileLease fs: " + fs.getClass().getName() + " path: "+filePath.toString());
-    if(fs instanceof HFileSystem) {
+  public static void recoverFileLease(FileSystem fs, Path filePath, Configuration conf)
+      throws IOException {
+    LOG.info("recoverFileLease fs: " + fs.getClass().getName() + " path: " + filePath.toString());
+    if (fs instanceof HFileSystem) {
       HFileSystem hFileSystem = (HFileSystem) fs;
       FileSystem backingFs = hFileSystem.getBackingFs();
-      LOG.info("recoverFileLease fs: " + fs.getClass().getName() + " backingFs: " + backingFs.getClass().getName() + " path: "+filePath.toString());
+      LOG.info("recoverFileLease fs: " + fs.getClass().getName() + " backingFs: "
+          + backingFs.getClass().getName() + " path: " + filePath.toString());
       FSUtils.getInstance(backingFs, conf).recoverFileLease(backingFs, filePath, conf);
     }
   }
 
   /**
-   * Read all the entries from the current log files and retain those
-   * that need to be replicated. Else, process the end of the current file.
+   * Read all the entries from the current log files and retain those that need to be replicated.
+   * Else, process the end of the current file.
    * @param currentWALisBeingWrittenTo is the current WAL being written to
-   * @return true if we got nothing and went to the next file, false if we got
-   * entries
+   * @return true if we got nothing and went to the next file, false if we got entries
    * @throws IOException
    */
   protected boolean readAllEntriesToReplicateOrNextFile(boolean currentWALisBeingWrittenTo)
-      throws IOException{
+      throws IOException {
     long seenEntries = 0;
     this.repLogReader.seek();
     long persitionBeforeRead = this.repLogReader.getPosition();
@@ -583,12 +567,14 @@ public class ReplicationSource implements ReplicationSourceInterface {
     HLog.Entry entry = null;
     try {
       entry = this.repLogReader.readNextAndSetPosition(this.entriesArray, this.currentNbEntries);
-    } catch(EOFException e) {
-      if(!currentWALisBeingWrittenTo) {
+    } catch (EOFException e) {
+      if (!currentWALisBeingWrittenTo) {
         recoverFileLease(this.fs, this.currentPath, this.conf);
         FileStatus stat = this.fs.getFileStatus(this.currentPath);
-        LOG.info("readerPosition: " + this.repLogReader.getReaderPosition() + " len: " + stat.getLen() );
-        if( this.repLogReader.getReaderPosition() >= 0 && this.repLogReader.getReaderPosition() == stat.getLen()) {
+        LOG.info(
+          "readerPosition: " + this.repLogReader.getReaderPosition() + " len: " + stat.getLen());
+        if (this.repLogReader.getReaderPosition() >= 0
+            && this.repLogReader.getReaderPosition() == stat.getLen()) {
           return processEndOfFile();
         }
       }
@@ -612,9 +598,9 @@ public class ReplicationSource implements ReplicationSourceInterface {
         removeNonReplicableEdits(entry);
         // Don't replicate catalog entries, if the WALEdit wasn't
         // containing anything to replicate and if we're currently not set to replicate
-        if (!(Bytes.equals(logKey.getTablename(), HConstants.ROOT_TABLE_NAME) ||
-            Bytes.equals(logKey.getTablename(), HConstants.META_TABLE_NAME)) &&
-            edit.size() != 0 && replicating.get()) {
+        if (!(Bytes.equals(logKey.getTablename(), HConstants.ROOT_TABLE_NAME)
+            || Bytes.equals(logKey.getTablename(), HConstants.META_TABLE_NAME)) && edit.size() != 0
+            && replicating.get()) {
           // Only set the clusterId if is a local key.
           // This ensures that the originator sets the cluster id
           // and all replicas retain the initial cluster id.
@@ -632,8 +618,8 @@ public class ReplicationSource implements ReplicationSourceInterface {
         }
       }
       // Stop if too many entries or too big
-      if (currentSize >= this.replicationQueueSizeCapacity ||
-          currentNbEntries >= this.replicationQueueNbCapacity) {
+      if (currentSize >= this.replicationQueueSizeCapacity
+          || currentNbEntries >= this.replicationQueueNbCapacity) {
         break;
       }
       try {
@@ -645,9 +631,8 @@ public class ReplicationSource implements ReplicationSourceInterface {
     }
     this.metrics.logReadRateInByte
         .inc((int) (this.repLogReader.getPosition() - persitionBeforeRead));
-    LOG.debug("currentNbOperations:" + currentNbOperations +
-        " and seenEntries:" + seenEntries +
-        " and size: " + this.currentSize);
+    LOG.debug("currentNbOperations:" + currentNbOperations + " and seenEntries:" + seenEntries
+        + " and size: " + this.currentSize);
     if (currentWALisBeingWrittenTo) {
       return false;
     }
@@ -681,9 +666,7 @@ public class ReplicationSource implements ReplicationSourceInterface {
         this.currentPath = queue.poll(this.sleepForRetries, TimeUnit.MILLISECONDS);
         this.metrics.sizeOfLogQueue.set(queue.size());
         if (this.currentPath != null) {
-          this.manager.cleanOldLogs(this.currentPath.getName(),
-              this.peerId,
-              this.queueRecovered);
+          this.manager.cleanOldLogs(this.currentPath.getName(), this.peerId, this.queueRecovered);
         }
       }
     } catch (InterruptedException e) {
@@ -694,14 +677,13 @@ public class ReplicationSource implements ReplicationSourceInterface {
 
   /**
    * Open a reader on the current path
-   *
    * @param sleepMultiplier by how many times the default sleeping time is augmented
    * @return true if we should continue with that file, false if we are over with it
    */
   protected boolean openReader(int sleepMultiplier) {
     try {
-      LOG.debug("Opening log for replication " + this.currentPath.getName() +
-          " at " + this.repLogReader.getPosition());
+      LOG.debug("Opening log for replication " + this.currentPath.getName() + " at "
+          + this.repLogReader.getPosition());
       try {
         this.reader = repLogReader.openReader(this.currentPath);
       } catch (FileNotFoundException fnfe) {
@@ -711,19 +693,14 @@ public class ReplicationSource implements ReplicationSourceInterface {
           // to look at)
           LOG.info("NB dead servers : " + deadRegionServers.size());
           for (String curDeadServerName : deadRegionServers) {
-            Path deadRsDirectory =
-                new Path(manager.getLogDir().getParent(), curDeadServerName);
-            Path[] locs = new Path[] {
-                new Path(deadRsDirectory, currentPath.getName()),
-                new Path(deadRsDirectory.suffix(HLog.SPLITTING_EXT),
-                                          currentPath.getName()),
-            };
+            Path deadRsDirectory = new Path(manager.getLogDir().getParent(), curDeadServerName);
+            Path[] locs = new Path[] { new Path(deadRsDirectory, currentPath.getName()),
+                new Path(deadRsDirectory.suffix(HLog.SPLITTING_EXT), currentPath.getName()), };
             for (Path possibleLogLocation : locs) {
               LOG.info("Possible location " + possibleLogLocation.toUri().toString());
               if (this.manager.getFs().exists(possibleLogLocation)) {
                 // We found the right new location
-                LOG.info("Log " + this.currentPath + " still exists at " +
-                    possibleLogLocation);
+                LOG.info("Log " + this.currentPath + " still exists at " + possibleLogLocation);
                 // Breaking here will make us sleep since reader is null
                 return true;
               }
@@ -736,16 +713,13 @@ public class ReplicationSource implements ReplicationSourceInterface {
           // such that the znode pointing to a log exists but the log was
           // deleted a long time ago.
           // For the moment, we'll throw the IO and processEndOfFile
-          throw new IOException("File from recovered queue is " +
-              "nowhere to be found", fnfe);
+          throw new IOException("File from recovered queue is " + "nowhere to be found", fnfe);
         } else {
           // If the log was archived, continue reading from there
-          Path archivedLogLocation =
-              new Path(manager.getOldLogDir(), currentPath.getName());
+          Path archivedLogLocation = new Path(manager.getOldLogDir(), currentPath.getName());
           if (this.manager.getFs().exists(archivedLogLocation)) {
             currentPath = archivedLogLocation;
-            LOG.info("Log " + this.currentPath + " was moved to " +
-                archivedLogLocation);
+            LOG.info("Log " + this.currentPath + " was moved to " + archivedLogLocation);
             // Open the log at the new location
             this.openReader(sleepMultiplier);
           }
@@ -755,7 +729,8 @@ public class ReplicationSource implements ReplicationSourceInterface {
     } catch (IOException ioe) {
       if (ioe instanceof EOFException) {
         if (isCurrentLogEmpty()) {
-          LOG.info(this.peerClusterZnode + " got EOFException because current log is empty, file path: " + this.currentPath);
+          LOG.info(this.peerClusterZnode
+              + " got EOFException because current log is empty, file path: " + this.currentPath);
           return true;
         } else if (queueRecovered) {
           boolean atTail = this.queue.size() == 0;
@@ -764,13 +739,16 @@ public class ReplicationSource implements ReplicationSourceInterface {
             this.metrics.replicationFatalError.inc();
           }
           LOG.warn("EOF in recover queue:" + this.peerClusterZnode + ", atTail=" + atTail
-              + ", file path:" + this.currentPath, ioe);
+              + ", file path:" + this.currentPath,
+            ioe);
           processEndOfFile();
           return false;
         } else if (this.repLogReader.getPosition() == 0 && queue.size() != 0) {
-          LOG.warn(this.peerClusterZnode + " got EOFException, file path: " + this.currentPath, ioe);
+          LOG.warn(this.peerClusterZnode + " got EOFException, file path: " + this.currentPath,
+            ioe);
           if (sleepMultiplier == this.maxRetriesMultiplier) {
-            LOG.warn("Got too many EOF Exception when openReader for this file, this file length should be zero");
+            LOG.warn(
+              "Got too many EOF Exception when openReader for this file, this file length should be zero");
             return !processEndOfFile();
           }
           return true;
@@ -781,10 +759,10 @@ public class ReplicationSource implements ReplicationSourceInterface {
       if (ioe.getCause() instanceof NullPointerException) {
         // Workaround for race condition in HDFS-4380
         // which throws a NPE if we open a file before any data node has the most recent block
-        // Just sleep and retry.  Will require re-reading compressed HLogs for compressionContext.
+        // Just sleep and retry. Will require re-reading compressed HLogs for compressionContext.
         LOG.warn("Got NPE opening reader, will retry.");
       }
-      // Important: When failed to open the hlog ,  replication will be blocked here, 
+      // Important: When failed to open the hlog , replication will be blocked here,
       // and wait for the operations from cluster admin
       this.metrics.replicationIoeError.inc();
       // Throttle the failure logs
@@ -895,8 +873,8 @@ public class ReplicationSource implements ReplicationSourceInterface {
   }
 
   /**
-   * Count the number of different row keys in the given edit because of
-   * mini-batching. We assume that there's at least one KV in the WALEdit.
+   * Count the number of different row keys in the given edit because of mini-batching. We assume
+   * that there's at least one KV in the WALEdit.
    * @param edit edit to count row keys from
    * @return number of different row keys
    */
@@ -941,8 +919,8 @@ public class ReplicationSource implements ReplicationSourceInterface {
           for (HColumnDescriptor hColumnDescriptor : hColumnDescriptors) {
             if (hColumnDescriptor.getScope() == 0) {
               nonReplicateTableCFs.add(hColumnDescriptor.getNameAsString());
-              LOG.debug("table + " + Bytes.toString(table) + " CF "
-                  + hColumnDescriptor.getName() + " has no REPLICATION SCOPE");
+              LOG.debug("table + " + Bytes.toString(table) + " CF " + hColumnDescriptor.getName()
+                  + " has no REPLICATION SCOPE");
             }
           }
           if (nonReplicateTableCFs != null && !nonReplicateTableCFs.isEmpty()) {
@@ -954,7 +932,7 @@ public class ReplicationSource implements ReplicationSourceInterface {
         if (ioe instanceof TableNotFoundException) {
           clearEditKVs(entry);
           LOG.debug(
-              "table " + Bytes.toString(table) + " doesn't exist, clean all KVs of entry " + i);
+            "table " + Bytes.toString(table) + " doesn't exist, clean all KVs of entry " + i);
         }
       }
     }
@@ -963,24 +941,116 @@ public class ReplicationSource implements ReplicationSourceInterface {
   private long getCurrentBandwidth(long peerBandwidth, long defaultBandwidth) {
     return peerBandwidth != 0 ? peerBandwidth : defaultBandwidth;
   }
-  
+
   private void checkBandwidthChangeAndResetThrottler() {
     long peerBandwidth = zkHelper.getPeerBandwidth(peerId);
     if (peerBandwidth != currentBandwidth) {
       // user can set peer bandwidth to 0 to use default bandwidth
       if (peerBandwidth != 0 || currentBandwidth != defaultBandwidth) {
         currentBandwidth = getCurrentBandwidth(peerBandwidth, defaultBandwidth);
-        this.throttler = new ReplicationThrottler((double)currentBandwidth / 10.0);
+        this.throttler = new ReplicationThrottler((double) currentBandwidth / 10.0);
         LOG.info("ReplicationSource : " + peerId
             + " bandwidth throttling changed, currentBandWidth=" + currentBandwidth);
       }
     }
   }
-  
+
+  private void throttle() throws InterruptedException {
+    checkBandwidthChangeAndResetThrottler();
+    if (this.throttler.isEnabled()) {
+      long sleepTicks = this.throttler.getNextSleepInterval(currentSize);
+      if (sleepTicks > 0) {
+        if (LOG.isTraceEnabled()) {
+          LOG.trace("To sleep " + sleepTicks + "ms for throttling control");
+        }
+        Thread.sleep(sleepTicks);
+        // reset throttler's cycle start tick when sleep for throttling occurs
+        this.throttler.resetStartTick();
+      }
+    }
+  }
+
+  private void postShip(boolean currentWALisBeingWrittenTo) {
+    this.unLoggedPositionEdits += currentNbEntries;
+    if (shouldLogPosition(this.repLogReader.getPosition())) {
+      this.manager.logPositionAndCleanOldLogs(this.currentPath, this.peerClusterZnode,
+        this.repLogReader.getPosition(), this.repLogReader.getCurrentWriteTime(), queueRecovered,
+        currentWALisBeingWrittenTo);
+      this.lastLoggedPosition = this.repLogReader.getPosition();
+      this.unLoggedPositionEdits = 0;
+      this.lastLoggingTime = System.currentTimeMillis();
+    }
+    if (this.throttler.isEnabled()) {
+      this.throttler.addPushSize(currentSize);
+    }
+    this.totalReplicatedEdits += currentNbEntries;
+    this.metrics.shippedBatchesRate.inc(1);
+    this.metrics.shippedOpsRate.inc(this.currentNbOperations);
+    this.metrics.setAgeOfLastShippedOp(this.entriesArray[0].getKey().getWriteTime());
+  }
+
+  private int handleShipError(Throwable t, int sleepMultiplier) {
+    // also retry when NPE in HBaseClient(https://phabricator.d.xiaomi.net/T2630) so that
+    // retain the context to help to fix bug
+    // Didn't ship anything, but must still age the last time we did
+    this.metrics.refreshAgeOfLastShippedOp();
+    if (t instanceof RemoteException) {
+      IOException ioe = ((RemoteException) t).unwrapRemoteException();
+      LOG.warn("Can't replicate because of an error on the remote cluster: ", ioe);
+      if (ioe instanceof TableNotFoundException) {
+        if (sleepForRetries("A table is missing in the peer cluster. "
+            + "Replication cannot proceed without losing data.",
+          sleepMultiplier)) {
+          sleepMultiplier++;
+        }
+        if (this.tableNotFoundEditsRemove) {
+          removeTableNotFoundEdits(this.entriesArray, currentNbEntries);
+        }
+      }
+    } else if (t instanceof SocketTimeoutException) {
+      LOG.warn("Socket timeout when replicating edits to peer cluster", t);
+      // This exception means we waited for more than 60s and nothing
+      // happened, the cluster is alive and calling it right away
+      // even for a test just makes things worse.
+      sleepForRetries("Encountered a SocketTimeoutException. Since the "
+          + "call to the remote cluster timed out, which is usually "
+          + "caused by a machine failure or a massive slowdown",
+        this.socketTimeoutMultiplier);
+    } else if (t instanceof ConnectException) {
+      LOG.warn("Peer is unavailable, rechecking all sinks: ", t);
+      chooseSinks();
+    } else {
+      LOG.warn("Can't replicate because of a local or network error: ", t);
+    }
+    return sleepMultiplier;
+  }
+
+  private int resetSinksIfSlaveDown(int sleepMultiplier) {
+    try {
+      boolean down;
+      // Spin while the slave is down and we're not asked to shutdown/close
+      do {
+        down = isSlaveDown();
+        if (down) {
+          if (sleepForRetries("Since we are unable to replicate", sleepMultiplier)) {
+            sleepMultiplier++;
+          } else {
+            chooseSinks();
+          }
+        }
+      } while (this.isActive() && down);
+    } catch (InterruptedException e) {
+      LOG.debug("Interrupted while trying to contact the peer cluster");
+    } catch (Throwable e) {
+      LOG.error("Failed to contact the peer cluster", e);
+    }
+    return sleepMultiplier;
+  }
+
   /**
    * Do the shipping logic
-   * @param currentWALisBeingWrittenTo was the current WAL being (seemingly)
-   * written to when this method was called
+   * @param currentWALisBeingWrittenTo was the current WAL being (seemingly) written to when this
+   *          method was called
    */
   protected void shipEdits(boolean currentWALisBeingWrittenTo) {
     int sleepMultiplier = 1;
@@ -996,113 +1066,39 @@ public class ReplicationSource implements ReplicationSourceInterface {
         continue;
       }
       try {
-        checkBandwidthChangeAndResetThrottler();
-        if (this.throttler.isEnabled()) {
-          long sleepTicks = this.throttler.getNextSleepInterval(currentSize);
-          if (sleepTicks > 0) {
-            try {
-              if (LOG.isTraceEnabled()) {
-                LOG.trace("To sleep " + sleepTicks + "ms for throttling control");
-              }
-              Thread.sleep(sleepTicks);
-            } catch (InterruptedException e) {
-              LOG.debug("Interrupted while sleeping for throttling control");
-              Thread.currentThread().interrupt();
-              // current thread might be interrupted to terminate
-              // directly go back to while() for confirm this
-              continue;
-            }
-            // reset throttler's cycle start tick when sleep for throttling occurs
-            this.throttler.resetStartTick();
-          }
+        try {
+          throttle();
+        } catch (InterruptedException e) {
+          LOG.debug("Interrupted while sleeping for throttling control");
+          Thread.currentThread().interrupt();
+          // current thread might be interrupted to terminate
+          // directly go back to while() for confirm this
+          continue;
         }
 
         if (LOG.isDebugEnabled()) {
           LOG.debug("Replicating " + currentNbEntries);
         }
-        shipIt(chooseSink(), Arrays.copyOf(this.entriesArray, currentNbEntries));
-        this.unLoggedPositionEdits += currentNbEntries;
-        if (shouldLogPosition(this.repLogReader.getPosition())) {
-          this.manager.logPositionAndCleanOldLogs(this.currentPath,
-              this.peerClusterZnode, this.repLogReader.getPosition(),
-              this.repLogReader.getCurrentWriteTime(), queueRecovered, currentWALisBeingWrittenTo);
-          this.lastLoggedPosition = this.repLogReader.getPosition();
-          this.unLoggedPositionEdits = 0;
-          this.lastLoggingTime = System.currentTimeMillis();
-        }
-        if (this.throttler.isEnabled()) {
-          this.throttler.addPushSize(currentSize);
-        }
-        this.totalReplicatedEdits += currentNbEntries;
-        this.metrics.shippedBatchesRate.inc(1);
-        this.metrics.shippedOpsRate.inc(
-            this.currentNbOperations);
-        this.metrics.setAgeOfLastShippedOp(
-            this.entriesArray[0].getKey().getWriteTime());
-        if (LOG.isDebugEnabled()) {
-          LOG.debug("Replicated in total: " + this.totalReplicatedEdits);
-        }
-        break;
-      } catch (Throwable ioe) {
-        LOG.warn("Replicate edites to peer cluster failed.", ioe);
-        // also retry when NPE in HBaseClient(https://phabricator.d.xiaomi.net/T2630) so that
-        // retain the context to help to fix bug
-        // Didn't ship anything, but must still age the last time we did
-        this.metrics.refreshAgeOfLastShippedOp();
-        if (ioe instanceof RemoteException) {
-          ioe = ((RemoteException) ioe).unwrapRemoteException();
-          LOG.warn("Can't replicate because of an error on the remote cluster: ", ioe);
-          if (ioe instanceof TableNotFoundException) {
-            if (sleepForRetries("A table is missing in the peer cluster. "
-                + "Replication cannot proceed without losing data.", sleepMultiplier)) {
-              sleepMultiplier++;
-            }
-            if (this.tableNotFoundEditsRemove) {
-              removeTableNotFoundEdits(this.entriesArray, currentNbEntries);
-            }
+        if (!currentPeers.isEmpty()) {
+          shipIt(chooseSink(), Arrays.copyOf(this.entriesArray, currentNbEntries));
+          postShip(currentWALisBeingWrittenTo);
+          if (LOG.isDebugEnabled()) {
+            LOG.debug("Replicated in total: " + this.totalReplicatedEdits);
           }
+          break;
         } else {
-          if (ioe instanceof SocketTimeoutException) {
-            // This exception means we waited for more than 60s and nothing
-            // happened, the cluster is alive and calling it right away
-            // even for a test just makes things worse.
-            sleepForRetries("Encountered a SocketTimeoutException. Since the " +
-              "call to the remote cluster timed out, which is usually " +
-              "caused by a machine failure or a massive slowdown",
-              this.socketTimeoutMultiplier);
-          } else if (ioe instanceof ConnectException) {
-            LOG.warn("Peer is unavailable, rechecking all sinks: ", ioe);
-            chooseSinks();
-          } else {
-            LOG.warn("Can't replicate because of a local or network error: ", ioe);
-          }
+          LOG.warn(this.peerClusterZnode + " has 0 region servers");
+          sleepMultiplier = resetSinksIfSlaveDown(sleepMultiplier);
         }
-
-        try {
-          boolean down;
-          // Spin while the slave is down and we're not asked to shutdown/close
-          do {
-            down = isSlaveDown();
-            if (down) {
-              if (sleepForRetries("Since we are unable to replicate", sleepMultiplier)) {
-                sleepMultiplier++;
-              } else {
-                chooseSinks();
-              }
-            }
-          } while (this.isActive() && down );
-        } catch (InterruptedException e) {
-          LOG.debug("Interrupted while trying to contact the peer cluster");
-        } catch (Throwable e) {
-          LOG.error("Failed to contact the peer cluster", e);
-        }
+      } catch (Throwable t) {
+        sleepMultiplier = handleShipError(t, sleepMultiplier);
+        sleepMultiplier = resetSinksIfSlaveDown(sleepMultiplier);
       }
     }
   }
 
   /**
    * check whether the peer is enabled or not
-   *
    * @return true if the peer is enabled, otherwise false
    */
   protected boolean isPeerEnabled() {
@@ -1110,19 +1106,18 @@ public class ReplicationSource implements ReplicationSourceInterface {
   }
 
   /**
-   * If the queue isn't empty, switch to the next one
-   * Else if this is a recovered queue, it means we're done!
-   * Else we'll just continue to try reading the log file
-   * @return true if we're done with the current file, false if we should
-   * continue trying to read from it
+   * If the queue isn't empty, switch to the next one Else if this is a recovered queue, it means
+   * we're done! Else we'll just continue to try reading the log file
+   * @return true if we're done with the current file, false if we should continue trying to read
+   *         from it
    */
   protected boolean processEndOfFile() {
     if (this.queue.size() != 0) {
       // at the end of the log
       if (this.lastLoggedPosition != this.repLogReader.getPosition()) {
         this.manager.logPositionAndCleanOldLogs(currentPath, this.peerClusterZnode,
-          this.repLogReader.getPosition(), this.repLogReader.getCurrentWriteTime(),
-          queueRecovered, false);
+          this.repLogReader.getPosition(), this.repLogReader.getCurrentWriteTime(), queueRecovered,
+          false);
         this.lastLoggedPosition = 0;
         this.unLoggedPositionEdits = 0;
       }
@@ -1145,12 +1140,11 @@ public class ReplicationSource implements ReplicationSourceInterface {
 
   public void terminate(String reason, Exception cause) {
     if (cause == null) {
-      LOG.info("Closing source "
-          + this.peerClusterZnode + " because: " + reason);
+      LOG.info("Closing source " + this.peerClusterZnode + " because: " + reason);
 
     } else {
-      LOG.error("Closing source " + this.peerClusterZnode
-          + " because an error occurred: " + reason, cause);
+      LOG.error("Closing source " + this.peerClusterZnode + " because an error occurred: " + reason,
+        cause);
     }
     this.running = false;
   }
@@ -1158,17 +1152,12 @@ public class ReplicationSource implements ReplicationSourceInterface {
   /**
    * Get a new region server at random from this peer
    * @return
-   * @throws IOException
    */
-  private ServerName chooseSink() throws IOException {
-    if (this.currentPeers.size() == 0) {
-      throw new IOException(this.peerClusterZnode + " has 0 region servers");
-    }
-    ServerName address =
-        currentPeers.get(random.nextInt(this.currentPeers.size()));
+  private ServerName chooseSink() {
+    ServerName address = currentPeers.get(random.nextInt(this.currentPeers.size()));
     return address;
   }
-  
+
   /**
    * Get a new region server at random from this peer
    * @return
@@ -1188,12 +1177,16 @@ public class ReplicationSource implements ReplicationSourceInterface {
    * @return true if down, false if up
    * @throws InterruptedException
    */
-  public boolean isSlaveDown() throws InterruptedException {
+  private boolean isSlaveDown() throws InterruptedException {
+    if (currentPeers.isEmpty()) {
+      return true;
+    }
     final CountDownLatch latch = new CountDownLatch(1);
+    final ServerName sn = chooseSink();
     Thread pingThread = new Thread() {
       public void run() {
         try {
-          pingRS(chooseSink());
+          pingRS(sn);
           latch.countDown();
         } catch (IOException ex) {
           if (ex instanceof RemoteException) {
@@ -1205,7 +1198,7 @@ public class ReplicationSource implements ReplicationSourceInterface {
     };
     pingThread.start();
     // awaits returns true if countDown happened
-    boolean down = ! latch.await(this.sleepForRetries, TimeUnit.MILLISECONDS);
+    boolean down = !latch.await(this.sleepForRetries, TimeUnit.MILLISECONDS);
     pingThread.interrupt();
     return down;
   }
@@ -1242,14 +1235,13 @@ public class ReplicationSource implements ReplicationSourceInterface {
     }
 
     /**
-     * Split a path to get the start time
-     * For example: 10.20.20.171%3A60020.1277499063250
+     * Split a path to get the start time For example: 10.20.20.171%3A60020.1277499063250
      * @param p path to split
      * @return start time
      */
     private long getTS(Path p) {
       String[] parts = p.getName().split("\\.");
-      return Long.parseLong(parts[parts.length-1]);
+      return Long.parseLong(parts[parts.length - 1]);
     }
   }
 
@@ -1268,7 +1260,7 @@ public class ReplicationSource implements ReplicationSourceInterface {
   }
 
   private void shipIt(ServerName address, HLog.Entry[] entries) throws IOException {
-    if(thriftClient != null) {
+    if (thriftClient != null) {
       thriftClient.shipEdits(address, entries);
     } else {
       HRegionInterface rrs = getRS(address);
@@ -1276,8 +1268,8 @@ public class ReplicationSource implements ReplicationSourceInterface {
     }
   }
 
-  protected void pingRS(ServerName address) throws IOException {
-    if(thriftClient != null) {
+  private void pingRS(ServerName address) throws IOException {
+    if (thriftClient != null) {
       thriftClient.ping(address);
     } else {
       HRegionInterface rrs = getRS(address);
@@ -1289,9 +1281,8 @@ public class ReplicationSource implements ReplicationSourceInterface {
     if (thriftClient == null) {
       return zkHelper.getPeerUUID(this.peerId);
     } else {
-      return thriftClient.getPeerClusterUUID(
-          currentPeers.get(random.nextInt(this.currentPeers.size()))
-      );
+      return thriftClient
+          .getPeerClusterUUID(currentPeers.get(random.nextInt(this.currentPeers.size())));
     }
   }
 

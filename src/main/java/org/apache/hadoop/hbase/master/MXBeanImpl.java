@@ -240,7 +240,9 @@ public class MXBeanImpl implements MXBean {
       for (ReplicationLoad load : entry.getValue().getReplicationLoads()) {
         ReplicationLoad tmp = replications.get(load.getPeerId());
         if (tmp == null) {
-          replications.put(load.getPeerId(), load);
+          ReplicationLoad newLoad = new ReplicationLoad(load.getPeerId(),
+              load.getSizeOfLogQueue(), load.getReplicationLag());
+          replications.put(load.getPeerId(), newLoad);
         } else {
           tmp.setSizeOfLogQueue(tmp.getSizeOfLogQueue()
               + load.getSizeOfLogQueue());

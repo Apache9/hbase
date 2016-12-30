@@ -39,6 +39,7 @@ import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
+import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.filter.PageFilter;
 import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
@@ -52,6 +53,8 @@ import org.apache.hadoop.hbase.thrift2.generated.TColumn;
 import org.apache.hadoop.hbase.thrift2.generated.TColumnValue;
 import org.apache.hadoop.hbase.thrift2.generated.TGet;
 import org.apache.hadoop.hbase.thrift2.generated.THBaseService;
+import org.apache.hadoop.hbase.thrift2.generated.TIOError;
+import org.apache.hadoop.hbase.thrift2.generated.TPut;
 import org.apache.hadoop.hbase.thrift2.generated.TResult;
 import org.apache.hadoop.hbase.thrift2.generated.TScan;
 import org.apache.hadoop.hbase.thrift2.generated.TTimeRange;
@@ -93,13 +96,14 @@ public class VerifyReplication98 extends Configured implements Tool {
   private String startRow = null;
   private String stopRow = null;
   private int scanRateLimit = -1;
-  private int versions = 1;
+  private int versions = Integer.MAX_VALUE;
   private long verifyRows = Long.MAX_VALUE;
   private int maxErrorLog = 1000;
   private String logTable = null;
   private int sleepToReCompare = 0;
   private boolean skipWal = false;
-      
+  private boolean repairPeer = false;
+
   public VerifyReplication98(Configuration conf) {
     super(conf);
   }
@@ -121,6 +125,7 @@ public class VerifyReplication98 extends Configured implements Tool {
     private long rowdone = 0;
     private String tableName;
     private HTable sourceTable;
+    private String peerTableName;
     private TSocket socket;
     private THBaseService.Client thriftClient;
     private List<TResult> cachedResults = new ArrayList<TResult>();
@@ -132,6 +137,7 @@ public class VerifyReplication98 extends Configured implements Tool {
     private int errors = 0;
     private int sleepToReCompare;
     private boolean skipWal;
+    private boolean repairPeer;
 
     @Override
     public void setup(Context context) {
@@ -227,16 +233,15 @@ public class VerifyReplication98 extends Configured implements Tool {
         if (verifyRows != Long.MAX_VALUE) {
           scan.setFilterString(Bytes.toBytes("PageFilter("+ verifyRows +")"));
         }
-        int versions = conf.getInt(NAME + ".versions", 1);
-        if (versions != 1) {
-          scan.setMaxVersions(versions);
-        }
+        int versions = conf.getInt(NAME + ".versions", Integer.MAX_VALUE);
+        scan.setMaxVersions(versions);
 
         thriftServer = conf.get(NAME + ".thriftServer");
         tableName = conf.get(NAME + ".tableName");
         sourceTable = new HTable(conf, tableName);
         maxErrorLog = conf.getInt(NAME + ".maxErrorLog", Integer.MAX_VALUE);
         skipWal = conf.getBoolean(NAME + ".skipWal", false);
+        repairPeer = conf.getBoolean(NAME + ".repairPeer", false);
         String logTableName = conf.get(NAME + ".logTable");
         if (logTableName != null) {
           logTable = new HTable(conf, logTableName);
@@ -255,7 +260,7 @@ public class VerifyReplication98 extends Configured implements Tool {
         thriftClient = new THBaseService.Client(new TBinaryProtocol(socket));
         scan.setStartRow(value.getRow());
         scan.setStopRow(tableSplit.getEndRow());
-        String peerTableName = conf.get(NAME+".tableName");
+        peerTableName = conf.get(NAME+".tableName");
         
         // table name transfer
         String mappingStr = conf.get(ThriftClient.HBASE_REPLICATION_THRIFT_TABLE_NAME_MAP);
@@ -283,6 +288,7 @@ public class VerifyReplication98 extends Configured implements Tool {
         if (currentCompareRowInPeerTable == null) {
           // reach the region end of peer table, row only in source table
           logFailRowAndIncreaseCounter(context, Counters.ONLY_IN_SOURCE_TABLE_ROWS, value);
+          repair(value.getRow());
           break;
         }
         int rowCmpRet = Bytes.compareTo(value.getRow(), currentCompareRowInPeerTable.getRow());
@@ -293,17 +299,20 @@ public class VerifyReplication98 extends Configured implements Tool {
             context.getCounter(Counters.GOODROWS).increment(1);
           } catch (Exception e) {
             logFailRowAndIncreaseCounter(context, Counters.CONTENT_DIFFERENT_ROWS, value);
+            repair(value.getRow());
           }
           currentCompareRowInPeerTable = nextPeerTableResult();
           break;
         } else if (rowCmpRet < 0) {
           // row only exists in source table
           logFailRowAndIncreaseCounter(context, Counters.ONLY_IN_SOURCE_TABLE_ROWS, value);
+          repair(value.getRow());
           break;
         } else {
           // row only exists in peer table
           logFailRowAndIncreaseCounter(context, Counters.ONLY_IN_PEER_TABLE_ROWS,
             currentCompareRowInPeerTable);
+          repair(value.getRow());
           currentCompareRowInPeerTable = nextPeerTableResult();
         }
       }
@@ -311,6 +320,20 @@ public class VerifyReplication98 extends Configured implements Tool {
       rowdone ++;
       TableMapReduceUtil.limitScanRate(scanRateLimit, rowdone,
         EnvironmentEdgeManager.currentTimeMillis() - st);
+    }
+
+    private void repair(byte[] row) throws IOException {
+      if (repairPeer) {
+        try {
+          put(thriftClient, peerTableNameBuffer, rawGet(sourceTable, row));
+        } catch (TIOError te) {
+          throw new IOException("Failed to repair to peer table, peerTableName=" + peerTableName,
+              te);
+        } catch (TException te) {
+          throw new IOException("Failed to repair to peer table, peerTableName=" + peerTableName,
+              te);
+        }
+      }
     }
 
     private void logFailRowAndIncreaseCounter(Context context, Counters counter, Result row)
@@ -361,6 +384,7 @@ public class VerifyReplication98 extends Configured implements Tool {
           while (currentCompareRowInPeerTable != null) {
             logFailRowAndIncreaseCounter(context, Counters.ONLY_IN_PEER_TABLE_ROWS,
               currentCompareRowInPeerTable);
+            repair(currentCompareRowInPeerTable.getRow());
             currentCompareRowInPeerTable = nextPeerTableResult();
           }
         } catch (Exception e) {
@@ -390,6 +414,35 @@ public class VerifyReplication98 extends Configured implements Tool {
           LOG.error("close source HTable fail", e);
         }
       }
+    }
+  }
+
+  public static void put(THBaseService.Client client, ByteBuffer peerTable, Result result)
+      throws TIOError, TException {
+    if (result != null && !result.isEmpty()) {
+      ByteBuffer row = ByteBuffer.wrap(result.getRow());
+      List<TColumnValue> columnValues = new ArrayList<TColumnValue>();
+      for (KeyValue kv : result.raw()) {
+        columnValues.add(new TColumnValue(ByteBuffer.wrap(kv.getFamily()), ByteBuffer.wrap(kv
+            .getQualifier()), ByteBuffer.wrap(kv.getValue())).setTimestamp(kv.getTimestamp()));
+      }
+      client.put(peerTable, new TPut(row, columnValues));
+    }
+  }
+
+  public static Result rawGet(HTable table, byte[] row) throws IOException {
+    Scan scan = new Scan();
+    scan.setRaw(true);
+    scan.setStartRow(row);
+    scan.setStopRow(row);
+    scan.setCaching(1);
+    scan.setCacheBlocks(false);
+    scan.setMaxVersions(Integer.MAX_VALUE);
+    ResultScanner scanner = table.getScanner(scan);
+    try {
+      return scanner.next();
+    } finally {
+      scanner.close();
     }
   }
 
@@ -425,6 +478,7 @@ public class VerifyReplication98 extends Configured implements Tool {
     }
     conf.setInt(NAME+".maxErrorLog", maxErrorLog);
     conf.setBoolean(NAME + ".skipWal", skipWal);
+    conf.setBoolean(NAME + ".repairPeer", repairPeer);
     
     if (families != null) {
       conf.set(NAME+".families", families);
@@ -556,6 +610,12 @@ public class VerifyReplication98 extends Configured implements Tool {
           continue;
         }
 
+        final String repairPeerKey = "--repairPeer";
+        if (cmd.equals(repairPeerKey)) {
+          repairPeer = true;
+          continue;
+        }
+
         if (i == args.length-2) {
           thriftServer = cmd;
         }
@@ -579,8 +639,8 @@ public class VerifyReplication98 extends Configured implements Tool {
     if (errorMsg != null && errorMsg.length() > 0) {
       System.err.println("ERROR: " + errorMsg);
     }
-    System.err.println("Usage: verifyrep [--starttime=X]" +
-        " [--stoptime=Y] [--families=A] <peerid> <tablename>");
+    System.err.println("Usage: verifyrep [--starttime=X]"
+        + " [--stoptime=Y] [--families=A] <peerid> <tablename>");
     System.err.println();
     System.err.println("Options:");
     System.err.println(" starttime    beginning of the time range");
@@ -596,16 +656,19 @@ public class VerifyReplication98 extends Configured implements Tool {
     System.err.println(" logtable     table to log the errors/differences (with column family A).");
     System.err.println(" skipwal      skip writing WAL of log table.");
     System.err.println(" maxerrorlog  max number of errors to log for each region.");
+    System.err
+        .println(" repairPeer   repair the peer cluster's data by copy raw rows from source cluster.");
     System.err.println();
     System.err.println("Args:");
     System.err.println(" thriftserver thrift server address to schedule a scanner");
     System.err.println(" tablename    name of the table to verify");
     System.err.println();
     System.err.println("Examples:");
-    System.err.println(" To verify the data replicated from TestTable for a 1 hour window with peer #5 ");
-    System.err.println(" $ bin/hbase " +
-        "org.apache.hadoop.hbase.mapreduce.replication.VerifyReplication98" +
-        " --starttime=1265875194289 --endtime=1265878794289 127.0.0.1:9090 TestTable ");
+    System.err
+        .println(" To verify the data replicated from TestTable for a 1 hour window with peer #5 ");
+    System.err.println(" $ bin/hbase "
+        + "org.apache.hadoop.hbase.mapreduce.replication.VerifyReplication98"
+        + " --starttime=1265875194289 --endtime=1265878794289 127.0.0.1:9090 TestTable ");
   }
 
   /**

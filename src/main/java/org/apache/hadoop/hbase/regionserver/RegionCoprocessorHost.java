@@ -1308,8 +1308,8 @@ public class RegionCoprocessorHost
     return bypass ? result : null;
   }
   
-  public boolean preIncrementWriteHLog(final Increment increment,
-      final Map<Store, List<KeyValue>> incrementedState, final WALEdit walEdits) throws IOException {
+  public boolean preIncrementWriteHLog(final Increment increment, final Map<Store, List<KeyValue>> incrementedState,
+      final WALEdit walEdits, long mvccWriteNumber) throws IOException {
     boolean bypass = false;
     ObserverContext<RegionCoprocessorEnvironment> ctx = null;
     for (RegionEnvironment env : coprocessors) {
@@ -1317,7 +1317,7 @@ public class RegionCoprocessorHost
         ctx = ObserverContext.createAndPrepare(env, ctx);
         try {
           ((RegionObserver) env.getInstance()).preIncrementWriteHLog(ctx, increment,
-            incrementedState, walEdits);
+            incrementedState, walEdits, mvccWriteNumber);
         } catch (Throwable e) {
           handleCoprocessorThrowable(env, e);
         }

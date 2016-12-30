@@ -83,12 +83,13 @@ public class VerifyReplication  extends Configured implements Tool {
   private String startRow = null;
   private String stopRow = null;
   private int scanRateLimit = -1;
-  private int versions = 1;
+  private int versions = Integer.MAX_VALUE;
   private long verifyRows = Long.MAX_VALUE;
   private long maxErrorLog = Long.MAX_VALUE;
   private String logTable = null;
   private boolean skipWal = false;
-  private boolean repair = false;
+  private boolean repairSource = false;
+  private boolean repairPeer = false;
   private int sleepToReCompare = 0;
       
   public VerifyReplication(Configuration conf) {
@@ -115,7 +116,8 @@ public class VerifyReplication  extends Configured implements Tool {
     private HTable peerTable;
     private HTable logTable;
     private boolean skipWal;
-    private boolean repair;
+    private boolean repairSource;
+    private boolean repairPeer;
     private long maxErrorLog;
     private int errors = 0;
     private int sleepToReCompare;
@@ -156,10 +158,8 @@ public class VerifyReplication  extends Configured implements Tool {
       if (verifyRows != Long.MAX_VALUE) {
         scan.setFilter(new PageFilter(verifyRows));
       }
-      int versions = conf.getInt(NAME + ".versions", 1);
-      if (versions != 1) {
-        scan.setMaxVersions(versions);
-      }
+      int versions = conf.getInt(NAME + ".versions", Integer.MAX_VALUE);
+      scan.setMaxVersions(versions);
     }
 
     private Get constructGetFromScan(byte[] row) {
@@ -201,7 +201,8 @@ public class VerifyReplication  extends Configured implements Tool {
           logTable = new HTable(conf, logTableName);
         }
         skipWal = conf.getBoolean(NAME + ".skipWal", false);
-        repair = conf.getBoolean(NAME + ".repair", false);
+        repairSource = conf.getBoolean(NAME + ".repairSource", false);
+        repairPeer = conf.getBoolean(NAME + ".repairPeer", false);
 
         final TableSplit tableSplit = (TableSplit)(context.getInputSplit());
         peerTable = peerHTable(conf, peerId, tableName);
@@ -215,11 +216,7 @@ public class VerifyReplication  extends Configured implements Tool {
         if (currentCompareRowInPeerTable == null) {
           // reach the region end of peer table, row only in source table
           logFailRowAndIncreaseCounter(context, Counters.ONLY_IN_SOURCE_TABLE_ROWS, value);
-          if (repair) {
-            // we must repair both side, since the peer side may contains a delete marker
-            put(sourceTable, rawGet(peerTable, value.getRow()));
-            put(peerTable, rawGet(sourceTable, value.getRow()));
-          }
+          repair(value.getRow());
           break;
         }
         int rowCmpRet = Bytes.compareTo(value.getRow(), currentCompareRowInPeerTable.getRow());
@@ -230,29 +227,20 @@ public class VerifyReplication  extends Configured implements Tool {
             context.getCounter(Counters.GOODROWS).increment(1);
           } catch (Exception e) {
             logFailRowAndIncreaseCounter(context, Counters.CONTENT_DIFFERENT_ROWS, value);
-            if (repair) {
-              put(sourceTable, rawGet(peerTable, value.getRow()));
-              put(peerTable, rawGet(sourceTable, value.getRow()));
-            }
+            repair(value.getRow());
           }
           currentCompareRowInPeerTable = replicatedScanner.next();
           break;
         } else if (rowCmpRet < 0) {
           // row only exists in source table
           logFailRowAndIncreaseCounter(context, Counters.ONLY_IN_SOURCE_TABLE_ROWS, value);
-          if (repair) {
-            put(sourceTable, rawGet(peerTable, value.getRow()));
-            put(peerTable, rawGet(sourceTable, value.getRow()));
-          }
+          repair(value.getRow());
           break;
         } else {
           // row only exists in peer table
           logFailRowAndIncreaseCounter(context, Counters.ONLY_IN_PEER_TABLE_ROWS,
             currentCompareRowInPeerTable);
-          if (repair) {
-            put(sourceTable, rawGet(peerTable, currentCompareRowInPeerTable.getRow()));
-            put(peerTable, rawGet(sourceTable, currentCompareRowInPeerTable.getRow()));
-          }
+          repair(currentCompareRowInPeerTable.getRow());
           currentCompareRowInPeerTable = replicatedScanner.next();
         }
       }
@@ -260,6 +248,23 @@ public class VerifyReplication  extends Configured implements Tool {
       rowdone ++;
       TableMapReduceUtil.limitScanRate(scanRateLimit, rowdone,
         EnvironmentEdgeManager.currentTimeMillis() - st);
+    }
+
+    private void repair(byte[] row) throws IOException {
+      if (repairSource) {
+        Result result = rawGet(peerTable, row);
+        put(sourceTable, result);
+        if (result != null && !result.isEmpty()) {
+          LOG.info("Put " + result.size() + " cells to source table");
+        }
+      }
+      if (repairPeer) {
+        Result result = rawGet(sourceTable, row);
+        put(peerTable, result);
+        if (result != null && !result.isEmpty()) {
+          LOG.info("Put " + result.size() + " cells to peer table");
+        }
+      }
     }
 
     private void logFailRowAndIncreaseCounter(Context context, Counters counter, Result row)
@@ -316,10 +321,7 @@ public class VerifyReplication  extends Configured implements Tool {
           while (currentCompareRowInPeerTable != null && rowdone++ < verifyRows) {
             logFailRowAndIncreaseCounter(context, Counters.ONLY_IN_PEER_TABLE_ROWS,
               currentCompareRowInPeerTable);
-            if (repair) {
-              put(sourceTable, rawGet(peerTable, currentCompareRowInPeerTable.getRow()));
-              put(peerTable, rawGet(sourceTable, currentCompareRowInPeerTable.getRow()));
-            }
+            repair(currentCompareRowInPeerTable.getRow());
             currentCompareRowInPeerTable = replicatedScanner.next();
           }
         } catch (Exception e) {
@@ -443,11 +445,16 @@ public class VerifyReplication  extends Configured implements Tool {
     }
     conf.setBoolean(NAME + ".skipWal", skipWal);
     conf.setLong(NAME + ".maxErrorLog", maxErrorLog);
-    conf.setBoolean(NAME + ".repair", repair);
-    
+    conf.setBoolean(NAME + ".repairSource", repairSource);
+    conf.setBoolean(NAME + ".repairPeer", repairPeer);
+    conf.setLong("mapred.task.timeout", 3600000);
     if (families != null) {
       conf.set(NAME+".families", families);
     }
+    conf.setBoolean("mapreduce.map.speculative", false);
+    conf.setBoolean("mapreduce.reduce.speculative", false);
+    conf.setBoolean("mapred.map.tasks.speculative.execution", false);
+    conf.setBoolean("mapred.reduce.tasks.speculative.execution", false);
     Job job = new Job(conf, NAME + "_" + tableName + "_" + peerId);
     job.setJarByClass(VerifyReplication.class);
 
@@ -472,9 +479,7 @@ public class VerifyReplication  extends Configured implements Tool {
       scan.setFilter(new PageFilter(verifyRows));
     }
 
-    if (versions > 1) {
-      scan.setMaxVersions(versions);
-    }
+    scan.setMaxVersions(versions);
 
     if (scanRateLimit > 0) {
       job.getConfiguration().setInt(TableMapper.SCAN_RATE_LIMIT, scanRateLimit);
@@ -590,9 +595,15 @@ public class VerifyReplication  extends Configured implements Tool {
           continue;
         }
 
-        final String repairKey = "--repair";
-        if (cmd.equals(repairKey)) {
-          repair = true;
+        final String repairSourceKey = "--repairSource";
+        if (cmd.equals(repairSourceKey)) {
+          repairSource = true;
+          continue;
+        }
+
+        final String repairPeerKey = "--repairPeer";
+        if (cmd.equals(repairPeerKey)) {
+          repairPeer = true;
           continue;
         }
 
@@ -624,8 +635,8 @@ public class VerifyReplication  extends Configured implements Tool {
     if (errorMsg != null && errorMsg.length() > 0) {
       System.err.println("ERROR: " + errorMsg);
     }
-    System.err.println("Usage: verifyrep [--starttime=X]" +
-        " [--endtime=Y] [--families=A] <peerid> <tablename>");
+    System.err.println("Usage: verifyrep [--starttime=X]"
+        + " [--endtime=Y] [--families=A] <peerid> <tablename>");
     System.err.println();
     System.err.println("Options:");
     System.err.println(" starttime    beginning of the time range");
@@ -641,17 +652,22 @@ public class VerifyReplication  extends Configured implements Tool {
     System.err.println(" logtable     table to log the errors/differences (with column family A).");
     System.err.println(" skipwal      skip writing WAL of log table.");
     System.err.println(" maxerrorlog  max number of errors to log for each region.");
-    System.err.println(" repair       repair the data by copy rows.");
+    System.err
+        .println(" repairSource repair the source cluster's data by copy raw rows from slave cluster.");
+    System.err
+        .println(" repairPeer   repair the peer cluster's data by copy raw rows from source cluster.");
     System.err.println();
     System.err.println("Args:");
-    System.err.println(" peerid       Id of the peer used for verification, must match the one given for replication");
+    System.err
+        .println(" peerid       Id of the peer used for verification, must match the one given for replication");
     System.err.println(" tablename    Name of the table to verify");
     System.err.println();
     System.err.println("Examples:");
-    System.err.println(" To verify the data replicated from TestTable for a 1 hour window with peer #5 ");
-    System.err.println(" $ bin/hbase " +
-        "org.apache.hadoop.hbase.mapreduce.replication.VerifyReplication" +
-        " --starttime=1265875194289 --endtime=1265878794289 5 TestTable ");
+    System.err
+        .println(" To verify the data replicated from TestTable for a 1 hour window with peer #5 ");
+    System.err.println(" $ bin/hbase "
+        + "org.apache.hadoop.hbase.mapreduce.replication.VerifyReplication"
+        + " --starttime=1265875194289 --endtime=1265878794289 5 TestTable ");
   }
 
   /**

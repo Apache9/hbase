@@ -579,13 +579,11 @@ public class HBaseClient {
       out.write(buf.getData(), 0, bufLen);
     }
 
-    /* wait till someone signals us to start reading RPC response or
-     * it is idle too long, it is marked as to be closed,
-     * or the client is marked as not running.
-     *
-     * Return true if it is time to read a response; false otherwise.
+    /**
+     * wait till someone signals us to start reading RPC response or it is idle too long, it is
+     * marked as to be closed, or the client is marked as not running. Return true if it is time to
+     * read a response; false otherwise.
      */
-    @SuppressWarnings({"ThrowableInstanceNeverThrown"})
     protected synchronized boolean waitForWork() {
       if (calls.isEmpty() && !shouldCloseConnection.get()  && running.get())  {
         long timeout = maxIdleTime-
