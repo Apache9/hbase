@@ -71,6 +71,8 @@ public class TestAsyncTableGetMultiThreaded {
 
   private static AsyncConnection CONN;
 
+  private static RawAsyncTable TABLE;
+
   private static byte[][] SPLIT_KEYS;
 
   @BeforeClass
@@ -88,10 +90,10 @@ public class TestAsyncTableGetMultiThreaded {
     TEST_UTIL.createTable(TABLE_NAME, FAMILY);
     TEST_UTIL.waitTableAvailable(TABLE_NAME);
     CONN = ConnectionFactory.createAsyncConnection(TEST_UTIL.getConfiguration());
-    CONN.getRawTable(TABLE_NAME)
-        .putAll(
-          IntStream.range(0, COUNT).mapToObj(i -> new Put(Bytes.toBytes(String.format("%03d", i)))
-              .addColumn(FAMILY, QUALIFIER, Bytes.toBytes(i))).collect(Collectors.toList()))
+    TABLE = CONN.getRawTable(TABLE_NAME);
+    TABLE.putAll(
+      IntStream.range(0, COUNT).mapToObj(i -> new Put(Bytes.toBytes(String.format("%03d", i)))
+          .addColumn(FAMILY, QUALIFIER, Bytes.toBytes(i))).collect(Collectors.toList()))
         .get();
   }
 
@@ -104,10 +106,8 @@ public class TestAsyncTableGetMultiThreaded {
   private void run(AtomicBoolean stop) throws InterruptedException, ExecutionException {
     while (!stop.get()) {
       int i = ThreadLocalRandom.current().nextInt(COUNT);
-      assertEquals(i,
-        Bytes.toInt(
-          CONN.getRawTable(TABLE_NAME).get(new Get(Bytes.toBytes(String.format("%03d", i)))).get()
-              .getValue(FAMILY, QUALIFIER)));
+      assertEquals(i, Bytes.toInt(TABLE.get(new Get(Bytes.toBytes(String.format("%03d", i)))).get()
+          .getValue(FAMILY, QUALIFIER)));
     }
   }
 

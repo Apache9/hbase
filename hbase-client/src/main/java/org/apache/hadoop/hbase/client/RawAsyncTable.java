@@ -20,6 +20,8 @@ package org.apache.hadoop.hbase.client;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.classification.InterfaceStability;
 
+import edu.umd.cs.findbugs.annotations.Nullable;
+
 /**
  * A low level asynchronous table.
  * <p>
@@ -57,5 +59,27 @@ public interface RawAsyncTable extends AsyncTableBase {
    * @param scan A configured {@link Scan} object.
    * @param consumer the consumer used to receive results.
    */
-  void scan(Scan scan, RawScanResultConsumer consumer);
+  default void scan(Scan scan, RawScanResultConsumer consumer) {
+    scan(scan, consumer, null);
+  }
+
+  /**
+   * The basic scan API uses the observer pattern. All results that match the given scan object will
+   * be passed to the given {@code consumer} by calling
+   * {@link RawScanResultConsumer#onNext(Result[])}. {@link RawScanResultConsumer#onComplete()}
+   * means the scan is finished, and {@link RawScanResultConsumer#onError(Throwable)} means we hit
+   * an unrecoverable error and the scan is terminated. {@link RawScanResultConsumer#onHeartbeat()}
+   * means the RS is still working but we can not get a valid result to call
+   * {@link RawScanResultConsumer#onNext(Result[])}. This is usually because the matched results are
+   * too sparse, for example, a filter which almost filters out everything is specified.
+   * <p>
+   * Notice that, the methods of the given {@code consumer} will be called directly in the rpc
+   * framework's callback thread, so typically you should not do any time consuming work inside
+   * these methods, otherwise you will be likely to block at least one connection to RS(even more if
+   * the rpc framework uses NIO).
+   * @param scan A configured {@link Scan} object.
+   * @param consumer the consumer used to receive results.
+   * @param operationConfig the operation configuration for this call, can be null.
+   */
+  void scan(Scan scan, RawScanResultConsumer consumer, @Nullable OperationConfig operationConfig);
 }

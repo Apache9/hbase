@@ -23,7 +23,6 @@ import static org.apache.hadoop.hbase.client.ConnectionUtils.getLocateType;
 
 import java.io.IOException;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
 
 import org.apache.hadoop.hbase.HRegionLocation;
 import org.apache.hadoop.hbase.TableName;
@@ -55,14 +54,12 @@ class AsyncClientScanner {
 
   private final AsyncConnectionImpl conn;
 
-  private final long scanTimeoutNs;
-
-  private final long rpcTimeoutNs;
+  private OperationConfig operationConfig;
 
   private final ScanResultCache resultCache;
 
   public AsyncClientScanner(Scan scan, RawScanResultConsumer consumer, TableName tableName,
-      AsyncConnectionImpl conn, long scanTimeoutNs, long rpcTimeoutNs) {
+      AsyncConnectionImpl conn, OperationConfig operationConfig) {
     if (scan.getStartRow() == null) {
       scan.withStartRow(EMPTY_START_ROW, scan.includeStartRow());
     }
@@ -73,8 +70,7 @@ class AsyncClientScanner {
     this.consumer = consumer;
     this.tableName = tableName;
     this.conn = conn;
-    this.scanTimeoutNs = scanTimeoutNs;
-    this.rpcTimeoutNs = rpcTimeoutNs;
+    this.operationConfig = operationConfig;
     this.resultCache = scan.getAllowPartialResults() || scan.getBatch() > 0
         ? new AllowPartialScanResultCache() : new CompleteScanResultCache();
   }
@@ -115,9 +111,8 @@ class AsyncClientScanner {
 
   private void startScan(OpenScannerResponse resp) {
     conn.callerFactory.scanSingleRegion().id(resp.scannerId).location(resp.loc).stub(resp.stub)
-        .setScan(scan).consumer(consumer).resultCache(resultCache)
-        .rpcTimeout(rpcTimeoutNs, TimeUnit.NANOSECONDS)
-        .scanTimeout(scanTimeoutNs, TimeUnit.NANOSECONDS).start().whenComplete((hasMore, error) -> {
+        .setScan(scan).consumer(consumer).resultCache(resultCache).operationConfig(operationConfig)
+        .start().whenComplete((hasMore, error) -> {
           if (error != null) {
             consumer.onError(error);
             return;
@@ -132,9 +127,8 @@ class AsyncClientScanner {
 
   private void openScanner() {
     conn.callerFactory.<OpenScannerResponse> single().table(tableName).row(scan.getStartRow())
-        .locateType(getLocateType(scan)).rpcTimeout(rpcTimeoutNs, TimeUnit.NANOSECONDS)
-        .operationTimeout(scanTimeoutNs, TimeUnit.NANOSECONDS).action(this::callOpenScanner).call()
-        .whenComplete((resp, error) -> {
+        .locateType(getLocateType(scan)).operationConfig(operationConfig)
+        .action(this::callOpenScanner).call().whenComplete((resp, error) -> {
           if (error != null) {
             consumer.onError(error);
             return;

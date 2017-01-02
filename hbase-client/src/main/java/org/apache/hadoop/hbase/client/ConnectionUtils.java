@@ -342,14 +342,15 @@ public final class ConnectionUtils {
     return gets.stream().map(ConnectionUtils::toCheckExistenceOnly).collect(toList());
   }
 
-  static List<CompletableFuture<Void>> voidBatch(AsyncTableBase table,
-      List<? extends Row> actions) {
-    return table.<Object> batch(actions).stream().map(f -> f.<Void> thenApply(r -> null))
-        .collect(toList());
+  static List<CompletableFuture<Void>> voidBatch(AsyncTableBase table, List<? extends Row> actions,
+      OperationConfig operationConfig) {
+    return table.<Object> batch(actions, operationConfig).stream()
+        .map(f -> f.<Void> thenApply(r -> null)).collect(toList());
   }
 
-  static CompletableFuture<Void> voidBatchAll(AsyncTableBase table, List<? extends Row> actions) {
-    return table.<Object> batchAll(actions).thenApply(r -> null);
+  static CompletableFuture<Void> voidBatchAll(AsyncTableBase table, List<? extends Row> actions,
+      OperationConfig operationConfig) {
+    return table.<Object> batchAll(actions, operationConfig).thenApply(r -> null);
   }
 
   static RegionLocateType getLocateType(Scan scan) {

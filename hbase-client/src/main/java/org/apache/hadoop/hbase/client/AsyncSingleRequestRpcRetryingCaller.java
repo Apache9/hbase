@@ -20,7 +20,6 @@ package org.apache.hadoop.hbase.client;
 import static org.apache.hadoop.hbase.client.ConnectionUtils.SLEEP_DELTA_NS;
 import static org.apache.hadoop.hbase.client.ConnectionUtils.getPauseTime;
 import static org.apache.hadoop.hbase.client.ConnectionUtils.resetController;
-import static org.apache.hadoop.hbase.client.ConnectionUtils.retries2Attempts;
 import static org.apache.hadoop.hbase.client.ConnectionUtils.translateException;
 
 import io.netty.util.HashedWheelTimer;
@@ -70,15 +69,7 @@ class AsyncSingleRequestRpcRetryingCaller<T> {
 
   private final Callable<T> callable;
 
-  private final long pauseNs;
-
-  private final int maxAttempts;
-
-  private final long operationTimeoutNs;
-
-  private final long rpcTimeoutNs;
-
-  private final int startLogErrorsCnt;
+  private final OperationConfig operationConfig;
 
   private final CompletableFuture<T> future;
 
@@ -90,19 +81,14 @@ class AsyncSingleRequestRpcRetryingCaller<T> {
 
   public AsyncSingleRequestRpcRetryingCaller(HashedWheelTimer retryTimer, AsyncConnectionImpl conn,
       TableName tableName, byte[] row, RegionLocateType locateType, Callable<T> callable,
-      long pauseNs, int maxRetries, long operationTimeoutNs, long rpcTimeoutNs,
-      int startLogErrorsCnt) {
+      OperationConfig operationConfig) {
     this.retryTimer = retryTimer;
     this.conn = conn;
     this.tableName = tableName;
     this.row = row;
     this.locateType = locateType;
     this.callable = callable;
-    this.pauseNs = pauseNs;
-    this.maxAttempts = retries2Attempts(maxRetries);
-    this.operationTimeoutNs = operationTimeoutNs;
-    this.rpcTimeoutNs = rpcTimeoutNs;
-    this.startLogErrorsCnt = startLogErrorsCnt;
+    this.operationConfig = operationConfig;
     this.future = new CompletableFuture<>();
     this.controller = conn.rpcControllerFactory.newController();
     this.exceptions = new ArrayList<>();
@@ -116,7 +102,7 @@ class AsyncSingleRequestRpcRetryingCaller<T> {
   }
 
   private long remainingTimeNs() {
-    return operationTimeoutNs - (System.nanoTime() - startNs);
+    return operationConfig.getOperationTimeoutNs() - (System.nanoTime() - startNs);
   }
 
   private void completeExceptionally() {
@@ -126,27 +112,27 @@ class AsyncSingleRequestRpcRetryingCaller<T> {
   private void onError(Throwable error, Supplier<String> errMsg,
       Consumer<Throwable> updateCachedLocation) {
     error = translateException(error);
-    if (tries > startLogErrorsCnt) {
+    if (tries > operationConfig.getStartLogErrorsCnt()) {
       LOG.warn(errMsg.get(), error);
     }
     RetriesExhaustedException.ThrowableWithExtraContext qt =
         new RetriesExhaustedException.ThrowableWithExtraContext(error,
             EnvironmentEdgeManager.currentTime(), "");
     exceptions.add(qt);
-    if (error instanceof DoNotRetryIOException || tries >= maxAttempts) {
+    if (error instanceof DoNotRetryIOException || tries >= operationConfig.getMaxAttempts()) {
       completeExceptionally();
       return;
     }
     long delayNs;
-    if (operationTimeoutNs > 0) {
+    if (operationConfig.getOperationTimeoutNs() > 0) {
       long maxDelayNs = remainingTimeNs() - SLEEP_DELTA_NS;
       if (maxDelayNs <= 0) {
         completeExceptionally();
         return;
       }
-      delayNs = Math.min(maxDelayNs, getPauseTime(pauseNs, tries - 1));
+      delayNs = Math.min(maxDelayNs, getPauseTime(operationConfig.getRetryPauseNs(), tries - 1));
     } else {
-      delayNs = getPauseTime(pauseNs, tries - 1);
+      delayNs = getPauseTime(operationConfig.getRetryPauseNs(), tries - 1);
     }
     updateCachedLocation.accept(error);
     tries++;
@@ -155,15 +141,15 @@ class AsyncSingleRequestRpcRetryingCaller<T> {
 
   private void call(HRegionLocation loc) {
     long callTimeoutNs;
-    if (operationTimeoutNs > 0) {
+    if (operationConfig.getOperationTimeoutNs() > 0) {
       callTimeoutNs = remainingTimeNs();
       if (callTimeoutNs <= 0) {
         completeExceptionally();
         return;
       }
-      callTimeoutNs = Math.min(callTimeoutNs, rpcTimeoutNs);
+      callTimeoutNs = Math.min(callTimeoutNs, operationConfig.getRpcTimeoutNs());
     } else {
-      callTimeoutNs = rpcTimeoutNs;
+      callTimeoutNs = operationConfig.getRpcTimeoutNs();
     }
     ClientService.Interface stub;
     try {
@@ -172,9 +158,9 @@ class AsyncSingleRequestRpcRetryingCaller<T> {
       onError(e,
         () -> "Get async stub to " + loc.getServerName() + " for '" + Bytes.toStringBinary(row)
             + "' in " + loc.getRegionInfo().getEncodedName() + " of " + tableName
-            + " failed, tries = " + tries + ", maxAttempts = " + maxAttempts + ", timeout = "
-            + TimeUnit.NANOSECONDS.toMillis(operationTimeoutNs) + " ms, time elapsed = "
-            + elapsedMs() + " ms",
+            + " failed, tries = " + tries + ", maxAttempts = " + operationConfig.getMaxAttempts()
+            + ", timeout = " + operationConfig.getOperationTimeout(TimeUnit.MILLISECONDS)
+            + " ms, time elapsed = " + elapsedMs() + " ms",
         err -> conn.getLocator().updateCachedLocation(loc, err));
       return;
     }
@@ -184,8 +170,8 @@ class AsyncSingleRequestRpcRetryingCaller<T> {
         onError(error,
           () -> "Call to " + loc.getServerName() + " for '" + Bytes.toStringBinary(row) + "' in "
               + loc.getRegionInfo().getEncodedName() + " of " + tableName + " failed, tries = "
-              + tries + ", maxAttempts = " + maxAttempts + ", timeout = "
-              + TimeUnit.NANOSECONDS.toMillis(operationTimeoutNs) + " ms, time elapsed = "
+              + tries + ", maxAttempts = " + operationConfig.getMaxAttempts() + ", timeout = "
+              + operationConfig.getOperationTimeout(TimeUnit.MILLISECONDS) + " ms, time elapsed = "
               + elapsedMs() + " ms",
           err -> conn.getLocator().updateCachedLocation(loc, err));
         return;
@@ -196,7 +182,7 @@ class AsyncSingleRequestRpcRetryingCaller<T> {
 
   private void locateThenCall() {
     long locateTimeoutNs;
-    if (operationTimeoutNs > 0) {
+    if (operationConfig.getOperationTimeoutNs() > 0) {
       locateTimeoutNs = remainingTimeNs();
       if (locateTimeoutNs <= 0) {
         completeExceptionally();
@@ -210,9 +196,10 @@ class AsyncSingleRequestRpcRetryingCaller<T> {
           if (error != null) {
             onError(error,
               () -> "Locate '" + Bytes.toStringBinary(row) + "' in " + tableName
-                  + " failed, tries = " + tries + ", maxAttempts = " + maxAttempts + ", timeout = "
-                  + TimeUnit.NANOSECONDS.toMillis(operationTimeoutNs) + " ms, time elapsed = "
-                  + elapsedMs() + " ms",
+                  + " failed, tries = " + tries + ", maxAttempts = "
+                  + operationConfig.getMaxAttempts() + ", timeout = "
+                  + operationConfig.getOperationTimeout(TimeUnit.MILLISECONDS)
+                  + " ms, time elapsed = " + elapsedMs() + " ms",
               err -> {
               });
             return;

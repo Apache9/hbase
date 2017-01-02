@@ -20,6 +20,8 @@ package org.apache.hadoop.hbase.client;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.classification.InterfaceStability;
 
+import edu.umd.cs.findbugs.annotations.Nullable;
+
 /**
  * The asynchronous table for normal users.
  * <p>
@@ -55,7 +57,17 @@ public interface AsyncTable extends AsyncTableBase {
    * @param scan A configured {@link Scan} object.
    * @return A scanner.
    */
-  ResultScanner getScanner(Scan scan);
+  default ResultScanner getScanner(Scan scan) {
+    return getScanner(scan, null);
+  }
+
+  /**
+   * Returns a scanner on the current table as specified by the {@link Scan} object.
+   * @param scan A configured {@link Scan} object.
+   * @param operationConfig the operation configuration for this call, can be null.
+   * @return A scanner.
+   */
+  ResultScanner getScanner(Scan scan, @Nullable OperationConfig operationConfig);
 
   /**
    * The scan API uses the observer pattern. All results that match the given scan object will be
@@ -66,5 +78,19 @@ public interface AsyncTable extends AsyncTableBase {
    * @param scan A configured {@link Scan} object.
    * @param consumer the consumer used to receive results.
    */
-  void scan(Scan scan, ScanResultConsumer consumer);
+  default void scan(Scan scan, ScanResultConsumer consumer) {
+    scan(scan, consumer, null);
+  }
+
+  /**
+   * The scan API uses the observer pattern. All results that match the given scan object will be
+   * passed to the given {@code consumer} by calling {@link ScanResultConsumer#onNext(Result)}.
+   * {@link ScanResultConsumer#onComplete()} means the scan is finished, and
+   * {@link ScanResultConsumer#onError(Throwable)} means we hit an unrecoverable error and the scan
+   * is terminated.
+   * @param scan A configured {@link Scan} object.
+   * @param consumer the consumer used to receive results.
+   * @param operationConfig the operation configuration for this call, can be null.
+   */
+  void scan(Scan scan, ScanResultConsumer consumer, @Nullable OperationConfig operationConfig);
 }

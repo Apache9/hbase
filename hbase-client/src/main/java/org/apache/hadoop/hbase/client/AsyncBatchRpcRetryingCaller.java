@@ -21,7 +21,6 @@ import static org.apache.hadoop.hbase.CellUtil.createCellScanner;
 import static org.apache.hadoop.hbase.client.ConnectionUtils.SLEEP_DELTA_NS;
 import static org.apache.hadoop.hbase.client.ConnectionUtils.getPauseTime;
 import static org.apache.hadoop.hbase.client.ConnectionUtils.resetController;
-import static org.apache.hadoop.hbase.client.ConnectionUtils.retries2Attempts;
 import static org.apache.hadoop.hbase.client.ConnectionUtils.translateException;
 import static org.apache.hadoop.hbase.util.CollectionUtils.computeIfAbsent;
 
@@ -40,7 +39,6 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -61,7 +59,6 @@ import org.apache.hadoop.hbase.shaded.protobuf.ResponseConverter;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.ClientProtos;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.ClientProtos.ClientService;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.HBaseProtos.RegionSpecifier.RegionSpecifierType;
-import org.apache.hadoop.hbase.util.AtomicUtils;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 
@@ -96,17 +93,7 @@ class AsyncBatchRpcRetryingCaller<T> {
 
   private final IdentityHashMap<Action, List<ThrowableWithExtraContext>> action2Errors;
 
-  private final long pauseNs;
-
-  private final int maxAttempts;
-
-  private final long operationTimeoutNs;
-
-  private final long readRpcTimeoutNs;
-
-  private final long writeRpcTimeoutNs;
-
-  private final int startLogErrorsCnt;
+  private final OperationConfig operationConfig;
 
   private final long startNs;
 
@@ -128,40 +115,18 @@ class AsyncBatchRpcRetryingCaller<T> {
     public final ConcurrentMap<byte[], RegionRequest> actionsByRegion =
         new ConcurrentSkipListMap<>(Bytes.BYTES_COMPARATOR);
 
-    public final AtomicLong rpcTimeoutNs;
-
-    public ServerRequest(long defaultRpcTimeoutNs) {
-      this.rpcTimeoutNs = new AtomicLong(defaultRpcTimeoutNs);
-    }
-
-    public void addAction(HRegionLocation loc, Action action, long rpcTimeoutNs) {
+    public void addAction(HRegionLocation loc, Action action) {
       computeIfAbsent(actionsByRegion, loc.getRegionInfo().getRegionName(),
         () -> new RegionRequest(loc)).actions.add(action);
-      // try update the timeout to a larger value
-      if (this.rpcTimeoutNs.get() <= 0) {
-        return;
-      }
-      if (rpcTimeoutNs <= 0) {
-        this.rpcTimeoutNs.set(-1L);
-        return;
-      }
-      AtomicUtils.updateMax(this.rpcTimeoutNs, rpcTimeoutNs);
     }
   }
 
   public AsyncBatchRpcRetryingCaller(HashedWheelTimer retryTimer, AsyncConnectionImpl conn,
-      TableName tableName, List<? extends Row> actions, long pauseNs, int maxRetries,
-      long operationTimeoutNs, long readRpcTimeoutNs, long writeRpcTimeoutNs,
-      int startLogErrorsCnt) {
+      TableName tableName, List<? extends Row> actions, OperationConfig operationConfig) {
     this.retryTimer = retryTimer;
     this.conn = conn;
     this.tableName = tableName;
-    this.pauseNs = pauseNs;
-    this.maxAttempts = retries2Attempts(maxRetries);
-    this.operationTimeoutNs = operationTimeoutNs;
-    this.readRpcTimeoutNs = readRpcTimeoutNs;
-    this.writeRpcTimeoutNs = writeRpcTimeoutNs;
-    this.startLogErrorsCnt = startLogErrorsCnt;
+    this.operationConfig = operationConfig;
 
     this.actions = new ArrayList<>(actions.size());
     this.futures = new ArrayList<>(actions.size());
@@ -182,7 +147,7 @@ class AsyncBatchRpcRetryingCaller<T> {
   }
 
   private long remainingTimeNs() {
-    return operationTimeoutNs - (System.nanoTime() - startNs);
+    return operationConfig.getOperationTimeoutNs() - (System.nanoTime() - startNs);
   }
 
   private List<ThrowableWithExtraContext> removeErrors(Action action) {
@@ -193,7 +158,7 @@ class AsyncBatchRpcRetryingCaller<T> {
 
   private void logException(int tries, Supplier<Stream<RegionRequest>> regionsSupplier,
       Throwable error, ServerName serverName) {
-    if (tries > startLogErrorsCnt) {
+    if (tries > operationConfig.getStartLogErrorsCnt()) {
       String regions =
           regionsSupplier.get().map(r -> "'" + r.loc.getRegionInfo().getRegionNameAsString() + "'")
               .collect(Collectors.joining(",", "[", "]"));
@@ -292,7 +257,7 @@ class AsyncBatchRpcRetryingCaller<T> {
     } else if (result instanceof Throwable) {
       Throwable error = translateException((Throwable) result);
       logException(tries, () -> Stream.of(regionReq), error, serverName);
-      if (error instanceof DoNotRetryIOException || tries >= maxAttempts) {
+      if (error instanceof DoNotRetryIOException || tries >= operationConfig.getMaxAttempts()) {
         failOne(action, tries, error, EnvironmentEdgeManager.currentTime(),
           getExtraContextForError(serverName));
       } else {
@@ -322,7 +287,7 @@ class AsyncBatchRpcRetryingCaller<T> {
           error = translateException(t);
           logException(tries, () -> Stream.of(regionReq), error, serverName);
           conn.getLocator().updateCachedLocation(regionReq.loc, error);
-          if (error instanceof DoNotRetryIOException || tries >= maxAttempts) {
+          if (error instanceof DoNotRetryIOException || tries >= operationConfig.getMaxAttempts()) {
             failAll(regionReq.actions.stream(), tries, error, serverName);
             return;
           }
@@ -338,7 +303,7 @@ class AsyncBatchRpcRetryingCaller<T> {
 
   private void send(Map<ServerName, ServerRequest> actionsByServer, int tries) {
     long remainingNs;
-    if (operationTimeoutNs > 0) {
+    if (operationConfig.getOperationTimeoutNs() > 0) {
       remainingNs = remainingTimeNs();
       if (remainingNs <= 0) {
         failAll(actionsByServer.values().stream().flatMap(m -> m.actionsByRegion.values().stream())
@@ -366,7 +331,7 @@ class AsyncBatchRpcRetryingCaller<T> {
         return;
       }
       HBaseRpcController controller = conn.rpcControllerFactory.newController();
-      resetController(controller, Math.min(serverReq.rpcTimeoutNs.get(), remainingNs));
+      resetController(controller, Math.min(operationConfig.getRpcTimeoutNs(), remainingNs));
       if (!cells.isEmpty()) {
         controller.setCellScanner(createCellScanner(cells));
       }
@@ -390,7 +355,7 @@ class AsyncBatchRpcRetryingCaller<T> {
       ServerName serverName) {
     Throwable error = translateException(t);
     logException(tries, () -> actionsByRegion.values().stream(), error, serverName);
-    if (error instanceof DoNotRetryIOException || tries >= maxAttempts) {
+    if (error instanceof DoNotRetryIOException || tries >= operationConfig.getMaxAttempts()) {
       failAll(actionsByRegion.values().stream().flatMap(r -> r.actions.stream()), tries, error,
         serverName);
       return;
@@ -403,26 +368,22 @@ class AsyncBatchRpcRetryingCaller<T> {
 
   private void tryResubmit(Stream<Action> actions, int tries) {
     long delayNs;
-    if (operationTimeoutNs > 0) {
+    if (operationConfig.getOperationTimeoutNs() > 0) {
       long maxDelayNs = remainingTimeNs() - SLEEP_DELTA_NS;
       if (maxDelayNs <= 0) {
         failAll(actions, tries);
         return;
       }
-      delayNs = Math.min(maxDelayNs, getPauseTime(pauseNs, tries - 1));
+      delayNs = Math.min(maxDelayNs, getPauseTime(operationConfig.getRetryPauseNs(), tries - 1));
     } else {
-      delayNs = getPauseTime(pauseNs, tries - 1);
+      delayNs = getPauseTime(operationConfig.getRetryPauseNs(), tries - 1);
     }
     retryTimer.newTimeout(t -> groupAndSend(actions, tries + 1), delayNs, TimeUnit.NANOSECONDS);
   }
 
-  private long getRpcTimeoutNs(Action action) {
-    return action.getAction() instanceof Get ? readRpcTimeoutNs : writeRpcTimeoutNs;
-  }
-
   private void groupAndSend(Stream<Action> actions, int tries) {
     long locateTimeoutNs;
-    if (operationTimeoutNs > 0) {
+    if (operationConfig.getOperationTimeoutNs() > 0) {
       locateTimeoutNs = remainingTimeNs();
       if (locateTimeoutNs <= 0) {
         failAll(actions, tries);
@@ -433,15 +394,6 @@ class AsyncBatchRpcRetryingCaller<T> {
     }
     ConcurrentMap<ServerName, ServerRequest> actionsByServer = new ConcurrentHashMap<>();
     ConcurrentLinkedQueue<Action> locateFailed = new ConcurrentLinkedQueue<>();
-    // use the small one as the default timeout value, and increase the timeout value if we have an
-    // action in the group needs a larger timeout value.
-    long defaultRpcTimeoutNs;
-    if (readRpcTimeoutNs > 0) {
-      defaultRpcTimeoutNs =
-          writeRpcTimeoutNs > 0 ? Math.min(readRpcTimeoutNs, writeRpcTimeoutNs) : readRpcTimeoutNs;
-    } else {
-      defaultRpcTimeoutNs = writeRpcTimeoutNs > 0 ? writeRpcTimeoutNs : -1L;
-    }
     CompletableFuture.allOf(actions
         .map(action -> conn.getLocator().getRegionLocation(tableName, action.getAction().getRow(),
           RegionLocateType.CURRENT, locateTimeoutNs).whenComplete((loc, error) -> {
@@ -454,9 +406,8 @@ class AsyncBatchRpcRetryingCaller<T> {
               addError(action, error, null);
               locateFailed.add(action);
             } else {
-              computeIfAbsent(actionsByServer, loc.getServerName(),
-                () -> new ServerRequest(defaultRpcTimeoutNs)).addAction(loc, action,
-                  getRpcTimeoutNs(action));
+              computeIfAbsent(actionsByServer, loc.getServerName(), () -> new ServerRequest())
+                  .addAction(loc, action);
             }
           }))
         .toArray(CompletableFuture[]::new)).whenComplete((v, r) -> {

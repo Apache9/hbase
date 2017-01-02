@@ -26,21 +26,22 @@ import com.google.common.base.Preconditions;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.classification.InterfaceStability;
+import org.apache.hadoop.hbase.client.OperationConfig.OperationConfigBuilder;
 import org.apache.hadoop.hbase.filter.CompareFilter.CompareOp;
 import org.apache.hadoop.hbase.util.Bytes;
+
+import edu.umd.cs.findbugs.annotations.Nullable;
 
 /**
  * The base interface for asynchronous version of Table. Obtain an instance from a
  * {@link AsyncConnection}.
  * <p>
- * The implementation is NOT required to be thread safe. Do NOT access it from multiple threads
- * concurrently.
+ * The implementation is thread safe.
  * <p>
  * Usually the implementations will not throw any exception directly, you need to get the exception
  * from the returned {@link CompletableFuture}.
@@ -62,62 +63,12 @@ public interface AsyncTableBase {
   Configuration getConfiguration();
 
   /**
-   * Set timeout of each rpc read request in operations of this Table instance, will override the
-   * value of {@code hbase.rpc.read.timeout} in configuration. If a rpc read request waiting too
-   * long, it will stop waiting and send a new request to retry until retries exhausted or operation
-   * timeout reached.
+   * Create a new retry config. The fields of the return builder have already been set with the
+   * default value, so you just need to set the field you care about(Usually rpc timeout and
+   * operation timeout).
+   * @return A builder to create operation config.
    */
-  void setReadRpcTimeout(long timeout, TimeUnit unit);
-
-  /**
-   * Get timeout of each rpc read request in this Table instance.
-   */
-  long getReadRpcTimeout(TimeUnit unit);
-
-  /**
-   * Set timeout of each rpc write request in operations of this Table instance, will override the
-   * value of {@code hbase.rpc.write.timeout} in configuration. If a rpc write request waiting too
-   * long, it will stop waiting and send a new request to retry until retries exhausted or operation
-   * timeout reached.
-   */
-  void setWriteRpcTimeout(long timeout, TimeUnit unit);
-
-  /**
-   * Get timeout of each rpc write request in this Table instance.
-   */
-  long getWriteRpcTimeout(TimeUnit unit);
-
-  /**
-   * Set timeout of each operation in this Table instance, will override the value of
-   * {@code hbase.client.operation.timeout} in configuration.
-   * <p>
-   * Operation timeout is a top-level restriction that makes sure an operation will not be blocked
-   * more than this. In each operation, if rpc request fails because of timeout or other reason, it
-   * will retry until success or throw a RetriesExhaustedException. But if the total time elapsed
-   * reach the operation timeout before retries exhausted, it will break early and throw
-   * SocketTimeoutException.
-   */
-  void setOperationTimeout(long timeout, TimeUnit unit);
-
-  /**
-   * Get timeout of each operation in Table instance.
-   */
-  long getOperationTimeout(TimeUnit unit);
-
-  /**
-   * Set timeout of a single operation in a scan, such as openScanner and next. Will override the
-   * value {@code hbase.client.scanner.timeout.period} in configuration.
-   * <p>
-   * Generally a scan will never timeout after we add heartbeat support unless the region is
-   * crashed. The {@code scanTimeout} works like the {@code operationTimeout} for each single
-   * operation in a scan.
-   */
-  void setScanTimeout(long timeout, TimeUnit unit);
-
-  /**
-   * Get the timeout of a single operation in a scan.
-   */
-  long getScanTimeout(TimeUnit unit);
+  OperationConfigBuilder newOperationConfig();
 
   /**
    * Test for the existence of columns in the table, as specified by the Get.
@@ -125,11 +76,27 @@ public interface AsyncTableBase {
    * This will return true if the Get matches one or more keys, false if not.
    * <p>
    * This is a server-side call so it prevents any data from being transfered to the client.
+   * @param get The object that specifies what data to test and from which row.
    * @return true if the specified Get matches one or more keys, false if not. The return value will
    *         be wrapped by a {@link CompletableFuture}.
    */
   default CompletableFuture<Boolean> exists(Get get) {
-    return get(toCheckExistenceOnly(get)).thenApply(r -> r.getExists());
+    return exists(get, null);
+  }
+
+  /**
+   * Test for the existence of columns in the table, as specified by the Get.
+   * <p>
+   * This will return true if the Get matches one or more keys, false if not.
+   * <p>
+   * This is a server-side call so it prevents any data from being transfered to the client.
+   * @param get The object that specifies what data to test and from which row.
+   * @param operationConfig the operation configuration for this call, can be null.
+   * @return true if the specified Get matches one or more keys, false if not. The return value will
+   *         be wrapped by a {@link CompletableFuture}.
+   */
+  default CompletableFuture<Boolean> exists(Get get, @Nullable OperationConfig operationConfig) {
+    return get(toCheckExistenceOnly(get), operationConfig).thenApply(r -> r.getExists());
   }
 
   /**
@@ -140,21 +107,54 @@ public interface AsyncTableBase {
    *         {@link org.apache.hadoop.hbase.KeyValue}, as indicated by {@link Result#isEmpty()}. The
    *         return value will be wrapped by a {@link CompletableFuture}.
    */
-  CompletableFuture<Result> get(Get get);
+  default CompletableFuture<Result> get(Get get) {
+    return get(get, null);
+  }
+
+  /**
+   * Extracts certain cells from a given row.
+   * @param get The object that specifies what data to fetch and from which row.
+   * @param operationConfig the operation configuration for this call, can be null.
+   * @return The data coming from the specified row, if it exists. If the row specified doesn't
+   *         exist, the {@link Result} instance returned won't contain any
+   *         {@link org.apache.hadoop.hbase.KeyValue}, as indicated by {@link Result#isEmpty()}. The
+   *         return value will be wrapped by a {@link CompletableFuture}.
+   */
+  CompletableFuture<Result> get(Get get, @Nullable OperationConfig operationConfig);
 
   /**
    * Puts some data to the table.
    * @param put The data to put.
    * @return A {@link CompletableFuture} that always returns null when complete normally.
    */
-  CompletableFuture<Void> put(Put put);
+  default CompletableFuture<Void> put(Put put) {
+    return put(put, null);
+  }
+
+  /**
+   * Puts some data to the table.
+   * @param put The data to put.
+   * @param operationConfig the operation configuration for this call, can be null.
+   * @return A {@link CompletableFuture} that always returns null when complete normally.
+   */
+  CompletableFuture<Void> put(Put put, @Nullable OperationConfig operationConfig);
 
   /**
    * Deletes the specified cells/row.
    * @param delete The object that specifies what to delete.
    * @return A {@link CompletableFuture} that always returns null when complete normally.
    */
-  CompletableFuture<Void> delete(Delete delete);
+  default CompletableFuture<Void> delete(Delete delete) {
+    return delete(delete, null);
+  }
+
+  /**
+   * Deletes the specified cells/row.
+   * @param delete The object that specifies what to delete.
+   * @param operationConfig the operation configuration for this call, can be null.
+   * @return A {@link CompletableFuture} that always returns null when complete normally.
+   */
+  CompletableFuture<Void> delete(Delete delete, @Nullable OperationConfig operationConfig);
 
   /**
    * Appends values to one or more columns within a single row.
@@ -167,7 +167,23 @@ public interface AsyncTableBase {
    * @return values of columns after the append operation (maybe null). The return value will be
    *         wrapped by a {@link CompletableFuture}.
    */
-  CompletableFuture<Result> append(Append append);
+  default CompletableFuture<Result> append(Append append) {
+    return append(append, null);
+  }
+
+  /**
+   * Appends values to one or more columns within a single row.
+   * <p>
+   * This operation does not appear atomic to readers. Appends are done under a single row lock, so
+   * write operations to a row are synchronized, but readers do not take row locks so get and scan
+   * operations can see this operation partially completed.
+   * @param append object that specifies the columns and amounts to be used for the increment
+   *          operations.
+   * @param operationConfig the operation configuration for this call, can be null.
+   * @return values of columns after the append operation (maybe null). The return value will be
+   *         wrapped by a {@link CompletableFuture}.
+   */
+  CompletableFuture<Result> append(Append append, @Nullable OperationConfig operationConfig);
 
   /**
    * Increments one or more columns within a single row.
@@ -180,7 +196,24 @@ public interface AsyncTableBase {
    * @return values of columns after the increment. The return value will be wrapped by a
    *         {@link CompletableFuture}.
    */
-  CompletableFuture<Result> increment(Increment increment);
+  default CompletableFuture<Result> increment(Increment increment) {
+    return increment(increment, null);
+  }
+
+  /**
+   * Increments one or more columns within a single row.
+   * <p>
+   * This operation does not appear atomic to readers. Increments are done under a single row lock,
+   * so write operations to a row are synchronized, but readers do not take row locks so get and
+   * scan operations can see this operation partially completed.
+   * @param increment object that specifies the columns and amounts to be used for the increment
+   *          operations.
+   * @param operationConfig the operation configuration for this call, can be null.
+   * @return values of columns after the increment. The return value will be wrapped by a
+   *         {@link CompletableFuture}.
+   */
+  CompletableFuture<Result> increment(Increment increment,
+      @Nullable OperationConfig operationConfig);
 
   /**
    * See {@link #incrementColumnValue(byte[], byte[], byte[], long, Durability)}
@@ -253,8 +286,27 @@ public interface AsyncTableBase {
    * @return true if the new put was executed, false otherwise. The return value will be wrapped by
    *         a {@link CompletableFuture}.
    */
+  default CompletableFuture<Boolean> checkAndPut(byte[] row, byte[] family, byte[] qualifier,
+      CompareOp compareOp, byte[] value, Put put) {
+    return checkAndPut(row, family, qualifier, compareOp, value, put, null);
+  }
+
+  /**
+   * Atomically checks if a row/family/qualifier value matches the expected value. If it does, it
+   * adds the put. If the passed value is null, the check is for the lack of column (ie:
+   * non-existence)
+   * @param row to check
+   * @param family column family to check
+   * @param qualifier column qualifier to check
+   * @param compareOp comparison operator to use
+   * @param value the expected value
+   * @param put data to put if check succeeds
+   * @param operationConfig the operation configuration for this call, can be null.
+   * @return true if the new put was executed, false otherwise. The return value will be wrapped by
+   *         a {@link CompletableFuture}.
+   */
   CompletableFuture<Boolean> checkAndPut(byte[] row, byte[] family, byte[] qualifier,
-      CompareOp compareOp, byte[] value, Put put);
+      CompareOp compareOp, byte[] value, Put put, @Nullable OperationConfig operationConfig);
 
   /**
    * Atomically checks if a row/family/qualifier value equals to the expected value. If it does, it
@@ -286,8 +338,27 @@ public interface AsyncTableBase {
    * @return true if the new delete was executed, false otherwise. The return value will be wrapped
    *         by a {@link CompletableFuture}.
    */
+  default CompletableFuture<Boolean> checkAndDelete(byte[] row, byte[] family, byte[] qualifier,
+      CompareOp compareOp, byte[] value, Delete delete) {
+    return checkAndDelete(row, family, qualifier, compareOp, value, delete, null);
+  }
+
+  /**
+   * Atomically checks if a row/family/qualifier value matches the expected value. If it does, it
+   * adds the delete. If the passed value is null, the check is for the lack of column (ie:
+   * non-existence)
+   * @param row to check
+   * @param family column family to check
+   * @param qualifier column qualifier to check
+   * @param compareOp comparison operator to use
+   * @param value the expected value
+   * @param delete data to delete if check succeeds
+   * @param operationConfig the operation configuration for this call, can be null.
+   * @return true if the new delete was executed, false otherwise. The return value will be wrapped
+   *         by a {@link CompletableFuture}.
+   */
   CompletableFuture<Boolean> checkAndDelete(byte[] row, byte[] family, byte[] qualifier,
-      CompareOp compareOp, byte[] value, Delete delete);
+      CompareOp compareOp, byte[] value, Delete delete, @Nullable OperationConfig operationConfig);
 
   /**
    * Performs multiple mutations atomically on a single row. Currently {@link Put} and
@@ -295,7 +366,19 @@ public interface AsyncTableBase {
    * @param mutation object that specifies the set of mutations to perform atomically
    * @return A {@link CompletableFuture} that always returns null when complete normally.
    */
-  CompletableFuture<Void> mutateRow(RowMutations mutation);
+  default CompletableFuture<Void> mutateRow(RowMutations mutation) {
+    return mutateRow(mutation, null);
+  }
+
+  /**
+   * Performs multiple mutations atomically on a single row. Currently {@link Put} and
+   * {@link Delete} are supported.
+   * @param mutation object that specifies the set of mutations to perform atomically
+   * @param operationConfig the operation configuration for this call, can be null.
+   * @return A {@link CompletableFuture} that always returns null when complete normally.
+   */
+  CompletableFuture<Void> mutateRow(RowMutations mutation,
+      @Nullable OperationConfig operationConfig);
 
   /**
    * Atomically checks if a row/family/qualifier value equals to the expected value. If it does, it
@@ -327,8 +410,28 @@ public interface AsyncTableBase {
    * @return true if the new put was executed, false otherwise. The return value will be wrapped by
    *         a {@link CompletableFuture}.
    */
+  default CompletableFuture<Boolean> checkAndMutate(byte[] row, byte[] family, byte[] qualifier,
+      CompareOp compareOp, byte[] value, RowMutations mutation) {
+    return checkAndMutate(row, family, qualifier, compareOp, value, mutation, null);
+  }
+
+  /**
+   * Atomically checks if a row/family/qualifier value matches the expected value. If it does, it
+   * performs the row mutations. If the passed value is null, the check is for the lack of column
+   * (ie: non-existence)
+   * @param row to check
+   * @param family column family to check
+   * @param qualifier column qualifier to check
+   * @param compareOp the comparison operator
+   * @param value the expected value
+   * @param mutation mutations to perform if check succeeds
+   * @param operationConfig the operation configuration for this call, can be null.
+   * @return true if the new put was executed, false otherwise. The return value will be wrapped by
+   *         a {@link CompletableFuture}.
+   */
   CompletableFuture<Boolean> checkAndMutate(byte[] row, byte[] family, byte[] qualifier,
-      CompareOp compareOp, byte[] value, RowMutations mutation);
+      CompareOp compareOp, byte[] value, RowMutations mutation,
+      @Nullable OperationConfig operationConfig);
 
   /**
    * Just call {@link #smallScan(Scan, int)} with {@link Integer#MAX_VALUE}.
@@ -350,7 +453,25 @@ public interface AsyncTableBase {
    * @return The results of this small scan operation. The return value will be wrapped by a
    *         {@link CompletableFuture}.
    */
-  CompletableFuture<List<Result>> smallScan(Scan scan, int limit);
+  default CompletableFuture<List<Result>> smallScan(Scan scan, int limit) {
+    return smallScan(scan, limit, null);
+  }
+
+  /**
+   * Return all the results that match the given scan object. The number of the returned results
+   * will not be greater than {@code limit}.
+   * <p>
+   * Notice that the scan must be small, and should not use batch or allowPartialResults. The
+   * {@code caching} property of the scan object is also ignored as we will use {@code limit}
+   * instead.
+   * @param scan A configured {@link Scan} object.
+   * @param limit the limit of results count
+   * @param operationConfig the operation configuration for this call, can be null.
+   * @return The results of this small scan operation. The return value will be wrapped by a
+   *         {@link CompletableFuture}.
+   */
+  CompletableFuture<List<Result>> smallScan(Scan scan, int limit,
+      @Nullable OperationConfig operationConfig);
 
   /**
    * Extracts certain cells from the given rows, in batch.
@@ -362,7 +483,22 @@ public interface AsyncTableBase {
    * @return A list of {@link CompletableFuture}s that represent the result for each get.
    */
   default List<CompletableFuture<Result>> get(List<Get> gets) {
-    return batch(gets);
+    return get(gets, null);
+  }
+
+  /**
+   * Extracts certain cells from the given rows, in batch.
+   * <p>
+   * Notice that you may not get all the results with this function, which means some of the
+   * returned {@link CompletableFuture}s may succeed while some of the other returned
+   * {@link CompletableFuture}s may fail.
+   * @param gets The objects that specify what data to fetch and from which rows.
+   * @param operationConfig the operation configuration for this call, can be null.
+   * @return A list of {@link CompletableFuture}s that represent the result for each get.
+   */
+  default List<CompletableFuture<Result>> get(List<Get> gets,
+      @Nullable OperationConfig operationConfig) {
+    return batch(gets, operationConfig);
   }
 
   /**
@@ -372,7 +508,19 @@ public interface AsyncTableBase {
    * @return A {@link CompletableFuture} that wrapper the result list.
    */
   default CompletableFuture<List<Result>> getAll(List<Get> gets) {
-    return batchAll(gets);
+    return getAll(gets, null);
+  }
+
+  /**
+   * A simple version for batch get. It will fail if there are any failures and you will get the
+   * whole result list at once if the operation is succeeded.
+   * @param gets The objects that specify what data to fetch and from which rows.
+   * @param operationConfig the operation configuration for this call, can be null.
+   * @return A {@link CompletableFuture} that wrapper the result list.
+   */
+  default CompletableFuture<List<Result>> getAll(List<Get> gets,
+      @Nullable OperationConfig operationConfig) {
+    return batchAll(gets, operationConfig);
   }
 
   /**
@@ -386,8 +534,24 @@ public interface AsyncTableBase {
    * @return A list of {@link CompletableFuture}s that represent the existence for each get.
    */
   default List<CompletableFuture<Boolean>> exists(List<Get> gets) {
-    return get(toCheckExistenceOnly(gets)).stream().map(f -> f.thenApply(r -> r.getExists()))
-        .collect(toList());
+    return exists(gets, null);
+  }
+
+  /**
+   * Test for the existence of columns in the table, as specified by the Gets.
+   * <p>
+   * This will return a list of booleans. Each value will be true if the related Get matches one or
+   * more keys, false if not.
+   * <p>
+   * This is a server-side call so it prevents any data from being transferred to the client.
+   * @param gets the Gets
+   * @param operationConfig the operation configuration for this call, can be null.
+   * @return A list of {@link CompletableFuture}s that represent the existence for each get.
+   */
+  default List<CompletableFuture<Boolean>> exists(List<Get> gets,
+      @Nullable OperationConfig operationConfig) {
+    return get(toCheckExistenceOnly(gets), operationConfig).stream()
+        .map(f -> f.thenApply(r -> r.getExists())).collect(toList());
   }
 
   /**
@@ -397,7 +561,19 @@ public interface AsyncTableBase {
    * @return A {@link CompletableFuture} that wrapper the result boolean list.
    */
   default CompletableFuture<List<Boolean>> existsAll(List<Get> gets) {
-    return getAll(toCheckExistenceOnly(gets))
+    return existsAll(gets, null);
+  }
+
+  /**
+   * A simple version for batch exists. It will fail if there are any failures and you will get the
+   * whole result boolean list at once if the operation is succeeded.
+   * @param gets the Gets
+   * @param operationConfig the operation configuration for this call, can be null.
+   * @return A {@link CompletableFuture} that wrapper the result boolean list.
+   */
+  default CompletableFuture<List<Boolean>> existsAll(List<Get> gets,
+      OperationConfig operationConfig) {
+    return getAll(toCheckExistenceOnly(gets), operationConfig)
         .thenApply(l -> l.stream().map(r -> r.getExists()).collect(toList()));
   }
 
@@ -407,7 +583,18 @@ public interface AsyncTableBase {
    * @return A list of {@link CompletableFuture}s that represent the result for each put.
    */
   default List<CompletableFuture<Void>> put(List<Put> puts) {
-    return voidBatch(this, puts);
+    return put(puts, null);
+  }
+
+  /**
+   * Puts some data in the table, in batch.
+   * @param puts The list of mutations to apply.
+   * @param operationConfig the operation configuration for this call, can be null.
+   * @return A list of {@link CompletableFuture}s that represent the result for each put.
+   */
+  default List<CompletableFuture<Void>> put(List<Put> puts,
+      @Nullable OperationConfig operationConfig) {
+    return voidBatch(this, puts, operationConfig);
   }
 
   /**
@@ -416,7 +603,18 @@ public interface AsyncTableBase {
    * @return A {@link CompletableFuture} that always returns null when complete normally.
    */
   default CompletableFuture<Void> putAll(List<Put> puts) {
-    return voidBatchAll(this, puts);
+    return putAll(puts, null);
+  }
+
+  /**
+   * A simple version of batch put. It will fail if there are any failures.
+   * @param puts The list of mutations to apply.
+   * @param operationConfig the operation configuration for this call, can be null.
+   * @return A {@link CompletableFuture} that always returns null when complete normally.
+   */
+  default CompletableFuture<Void> putAll(List<Put> puts,
+      @Nullable OperationConfig operationConfig) {
+    return voidBatchAll(this, puts, operationConfig);
   }
 
   /**
@@ -425,7 +623,18 @@ public interface AsyncTableBase {
    * @return A list of {@link CompletableFuture}s that represent the result for each delete.
    */
   default List<CompletableFuture<Void>> delete(List<Delete> deletes) {
-    return voidBatch(this, deletes);
+    return delete(deletes, null);
+  }
+
+  /**
+   * Deletes the specified cells/rows in bulk.
+   * @param deletes list of things to delete.
+   * @param operationConfig the operation configuration for this call, can be null.
+   * @return A list of {@link CompletableFuture}s that represent the result for each delete.
+   */
+  default List<CompletableFuture<Void>> delete(List<Delete> deletes,
+      OperationConfig operationConfig) {
+    return voidBatch(this, deletes, operationConfig);
   }
 
   /**
@@ -434,7 +643,18 @@ public interface AsyncTableBase {
    * @return A {@link CompletableFuture} that always returns null when complete normally.
    */
   default CompletableFuture<Void> deleteAll(List<Delete> deletes) {
-    return voidBatchAll(this, deletes);
+    return deleteAll(deletes, null);
+  }
+
+  /**
+   * A simple version of batch delete. It will fail if there are any failures.
+   * @param deletes list of things to delete.
+   * @param operationConfig the operation configuration for this call, can be null.
+   * @return A {@link CompletableFuture} that always returns null when complete normally.
+   */
+  default CompletableFuture<Void> deleteAll(List<Delete> deletes,
+      @Nullable OperationConfig operationConfig) {
+    return voidBatchAll(this, deletes, operationConfig);
   }
 
   /**
@@ -445,7 +665,21 @@ public interface AsyncTableBase {
    * @param actions list of Get, Put, Delete, Increment, Append objects
    * @return A list of {@link CompletableFuture}s that represent the result for each action.
    */
-  <T> List<CompletableFuture<T>> batch(List<? extends Row> actions);
+  default <T> List<CompletableFuture<T>> batch(List<? extends Row> actions) {
+    return batch(actions, null);
+  }
+
+  /**
+   * Method that does a batch call on Deletes, Gets, Puts, Increments and Appends. The ordering of
+   * execution of the actions is not defined. Meaning if you do a Put and a Get in the same
+   * {@link #batch} call, you will not necessarily be guaranteed that the Get returns what the Put
+   * had put.
+   * @param actions list of Get, Put, Delete, Increment, Append objects
+   * @param operationConfig the operation configuration for this call, can be null.
+   * @return A list of {@link CompletableFuture}s that represent the result for each action.
+   */
+  <T> List<CompletableFuture<T>> batch(List<? extends Row> actions,
+      OperationConfig operationConfig);
 
   /**
    * A simple version of batch. It will fail if there are any failures and you will get the whole
@@ -454,7 +688,19 @@ public interface AsyncTableBase {
    * @return A list of the result for the actions. Wrapped by a {@link CompletableFuture}.
    */
   default <T> CompletableFuture<List<T>> batchAll(List<? extends Row> actions) {
-    List<CompletableFuture<T>> futures = batch(actions);
+    return batchAll(actions, null);
+  }
+
+  /**
+   * A simple version of batch. It will fail if there are any failures and you will get the whole
+   * result list at once if the operation is succeeded.
+   * @param actions list of Get, Put, Delete, Increment, Append objects
+   * @param operationConfig the operation configuration for this call, can be null.
+   * @return A list of the result for the actions. Wrapped by a {@link CompletableFuture}.
+   */
+  default <T> CompletableFuture<List<T>> batchAll(List<? extends Row> actions,
+      OperationConfig operationConfig) {
+    List<CompletableFuture<T>> futures = batch(actions, operationConfig);
     return CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
         .thenApply(v -> futures.stream().map(f -> f.getNow(null)).collect(toList()));
   }

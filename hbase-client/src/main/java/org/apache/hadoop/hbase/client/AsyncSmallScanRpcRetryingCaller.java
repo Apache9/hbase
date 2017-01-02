@@ -26,7 +26,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
 import org.apache.hadoop.hbase.HRegionInfo;
@@ -53,9 +52,7 @@ class AsyncSmallScanRpcRetryingCaller {
 
   private final int limit;
 
-  private final long scanTimeoutNs;
-
-  private final long rpcTimeoutNs;
+  private final OperationConfig operationConfig;
 
   private final Function<HRegionInfo, Boolean> nextScan;
 
@@ -64,13 +61,12 @@ class AsyncSmallScanRpcRetryingCaller {
   private final CompletableFuture<List<Result>> future;
 
   public AsyncSmallScanRpcRetryingCaller(AsyncConnectionImpl conn, TableName tableName, Scan scan,
-      int limit, long scanTimeoutNs, long rpcTimeoutNs) {
+      int limit, OperationConfig operationConfig) {
     this.conn = conn;
     this.tableName = tableName;
     this.scan = scan;
     this.limit = limit;
-    this.scanTimeoutNs = scanTimeoutNs;
-    this.rpcTimeoutNs = rpcTimeoutNs;
+    this.operationConfig = operationConfig;
     if (scan.isReversed()) {
       this.nextScan = this::reversedNextScan;
     } else {
@@ -145,8 +141,7 @@ class AsyncSmallScanRpcRetryingCaller {
 
   private void scan() {
     conn.callerFactory.<SmallScanResponse> single().table(tableName).row(scan.getStartRow())
-        .locateType(getLocateType(scan)).rpcTimeout(rpcTimeoutNs, TimeUnit.NANOSECONDS)
-        .operationTimeout(scanTimeoutNs, TimeUnit.NANOSECONDS).action(this::scan).call()
+        .operationConfig(operationConfig).locateType(getLocateType(scan)).action(this::scan).call()
         .whenComplete((resp, error) -> {
           if (error != null) {
             future.completeExceptionally(error);

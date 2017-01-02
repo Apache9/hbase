@@ -35,6 +35,7 @@ import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HRegionLocation;
 import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.client.OperationConfig.OperationConfigBuilder;
 import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.testclassification.ClientTests;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
@@ -60,7 +61,7 @@ public class TestAsyncSingleRequestRpcRetryingCaller {
 
   private static byte[] VALUE = Bytes.toBytes("value");
 
-  private AsyncConnectionImpl asyncConn;
+  private AsyncConnectionImpl conn;
 
   @BeforeClass
   public static void setUpBeforeClass() throws Exception {
@@ -77,9 +78,9 @@ public class TestAsyncSingleRequestRpcRetryingCaller {
 
   @After
   public void tearDown() {
-    if (asyncConn != null) {
-      asyncConn.close();
-      asyncConn = null;
+    if (conn != null) {
+      conn.close();
+      conn = null;
     }
   }
 
@@ -88,18 +89,18 @@ public class TestAsyncSingleRequestRpcRetryingCaller {
     conf.setInt(AsyncProcess.START_LOG_ERRORS_AFTER_COUNT_KEY, startLogErrorsCnt);
     conf.setLong(HConstants.HBASE_CLIENT_PAUSE, pauseMs);
     conf.setInt(HConstants.HBASE_CLIENT_RETRIES_NUMBER, maxRetires);
-    asyncConn = new AsyncConnectionImpl(conf, User.getCurrent());
+    conn = new AsyncConnectionImpl(conf, User.getCurrent());
   }
 
   @Test
   public void testRegionMove() throws InterruptedException, ExecutionException, IOException {
     initConn(0, 100, 30);
     // This will leave a cached entry in location cache
-    HRegionLocation loc = asyncConn.getRegionLocator(TABLE_NAME).getRegionLocation(ROW).get();
+    HRegionLocation loc = conn.getRegionLocator(TABLE_NAME).getRegionLocation(ROW).get();
     int index = TEST_UTIL.getHBaseCluster().getServerWith(loc.getRegionInfo().getRegionName());
     TEST_UTIL.getAdmin().move(loc.getRegionInfo().getEncodedNameAsBytes(), Bytes.toBytes(
       TEST_UTIL.getHBaseCluster().getRegionServer(1 - index).getServerName().getServerName()));
-    RawAsyncTable table = asyncConn.getRawTable(TABLE_NAME);
+    RawAsyncTable table = conn.getRawTable(TABLE_NAME);
     table.put(new Put(ROW).addColumn(FAMILY, QUALIFIER, VALUE)).get();
 
     // move back
@@ -115,11 +116,21 @@ public class TestAsyncSingleRequestRpcRetryingCaller {
     return future;
   }
 
+  private OperationConfigBuilder newOperationConfig() {
+    return new OperationConfigBuilder()
+        .setRpcTimeout(conn.connConf.getReadRpcTimeoutNs(), TimeUnit.NANOSECONDS)
+        .setOperationTimeout(conn.connConf.getOperationTimeoutNs(), TimeUnit.NANOSECONDS)
+        .setRetryPause(conn.connConf.getPauseNs(), TimeUnit.NANOSECONDS)
+        .setMaxRetries(conn.connConf.getMaxRetries())
+        .setStartLogErrorsCnt(conn.connConf.getStartLogErrorsCnt());
+  }
+
   @Test
   public void testMaxRetries() throws IOException, InterruptedException {
     initConn(0, 10, 2);
     try {
-      asyncConn.callerFactory.single().table(TABLE_NAME).row(ROW).operationTimeout(1, TimeUnit.DAYS)
+      conn.callerFactory.single().table(TABLE_NAME).row(ROW)
+          .operationConfig(newOperationConfig().setOperationTimeout(1, TimeUnit.DAYS).build())
           .action((controller, loc, stub) -> failedFuture()).call().get();
       fail();
     } catch (ExecutionException e) {
@@ -132,9 +143,9 @@ public class TestAsyncSingleRequestRpcRetryingCaller {
     initConn(0, 100, Integer.MAX_VALUE);
     long startNs = System.nanoTime();
     try {
-      asyncConn.callerFactory.single().table(TABLE_NAME).row(ROW)
-          .operationTimeout(1, TimeUnit.SECONDS).action((controller, loc, stub) -> failedFuture())
-          .call().get();
+      conn.callerFactory.single().table(TABLE_NAME).row(ROW)
+          .operationConfig(newOperationConfig().setOperationTimeout(1, TimeUnit.SECONDS).build())
+          .action((controller, loc, stub) -> failedFuture()).call().get();
       fail();
     } catch (ExecutionException e) {
       assertThat(e.getCause(), instanceOf(RetriesExhaustedException.class));
@@ -149,9 +160,9 @@ public class TestAsyncSingleRequestRpcRetryingCaller {
     initConn(0, 100, 5);
     AtomicBoolean errorTriggered = new AtomicBoolean(false);
     AtomicInteger count = new AtomicInteger(0);
-    HRegionLocation loc = asyncConn.getRegionLocator(TABLE_NAME).getRegionLocation(ROW).get();
+    HRegionLocation loc = conn.getRegionLocator(TABLE_NAME).getRegionLocation(ROW).get();
     AsyncRegionLocator mockedLocator =
-        new AsyncRegionLocator(asyncConn, AsyncConnectionImpl.RETRY_TIMER) {
+        new AsyncRegionLocator(conn, AsyncConnectionImpl.RETRY_TIMER) {
           @Override
           CompletableFuture<HRegionLocation> getRegionLocation(TableName tableName, byte[] row,
               RegionLocateType locateType, long timeoutNs) {
@@ -174,7 +185,7 @@ public class TestAsyncSingleRequestRpcRetryingCaller {
           }
         };
     try (AsyncConnectionImpl mockedConn =
-        new AsyncConnectionImpl(asyncConn.getConfiguration(), User.getCurrent()) {
+        new AsyncConnectionImpl(conn.getConfiguration(), User.getCurrent()) {
 
           @Override
           AsyncRegionLocator getLocator() {

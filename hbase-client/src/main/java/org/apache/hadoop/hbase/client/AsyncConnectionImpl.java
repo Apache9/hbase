@@ -90,7 +90,6 @@ class AsyncConnectionImpl implements AsyncConnection {
 
   private final ConcurrentMap<String, ClientService.Interface> rsStubs = new ConcurrentHashMap<>();
 
-  @SuppressWarnings("deprecation")
   public AsyncConnectionImpl(Configuration conf, User user) {
     this.conf = conf;
     this.user = user;

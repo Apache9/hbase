@@ -49,6 +49,8 @@ class AsyncTableResultScanner implements ResultScanner, RawScanResultConsumer {
 
   private final long maxCacheSize;
 
+  private final OperationConfig retryConfig;
+
   private final Queue<Result> queue = new ArrayDeque<>();
 
   private long cacheSize;
@@ -64,11 +66,13 @@ class AsyncTableResultScanner implements ResultScanner, RawScanResultConsumer {
   // used to filter out cells that already returned when we restart a scan
   private Cell lastCell;
 
-  public AsyncTableResultScanner(RawAsyncTable table, Scan scan, long maxCacheSize) {
+  public AsyncTableResultScanner(RawAsyncTable table, Scan scan, long maxCacheSize,
+      OperationConfig retryConfig) {
     this.rawTable = table;
     this.scan = scan;
     this.maxCacheSize = maxCacheSize;
-    table.scan(scan, this);
+    this.retryConfig = retryConfig;
+    table.scan(scan, this, retryConfig);
   }
 
   private void addToCache(Result result) {
@@ -165,7 +169,7 @@ class AsyncTableResultScanner implements ResultScanner, RawScanResultConsumer {
       LOG.debug(String.format("0x%x", System.identityHashCode(this)) + " resume prefetching");
     }
     prefetchStopped = false;
-    rawTable.scan(scan, this);
+    rawTable.scan(scan, this, retryConfig);
   }
 
   @Override

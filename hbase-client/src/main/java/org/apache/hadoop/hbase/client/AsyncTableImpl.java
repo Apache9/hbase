@@ -21,12 +21,12 @@ import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
+import org.apache.hadoop.hbase.client.OperationConfig.OperationConfigBuilder;
 import org.apache.hadoop.hbase.filter.CompareFilter.CompareOp;
 import org.apache.hadoop.hbase.util.ReflectionUtils;
 
@@ -59,43 +59,8 @@ class AsyncTableImpl implements AsyncTable {
   }
 
   @Override
-  public void setReadRpcTimeout(long timeout, TimeUnit unit) {
-    rawTable.setReadRpcTimeout(timeout, unit);
-  }
-
-  @Override
-  public long getReadRpcTimeout(TimeUnit unit) {
-    return rawTable.getReadRpcTimeout(unit);
-  }
-
-  @Override
-  public void setWriteRpcTimeout(long timeout, TimeUnit unit) {
-    rawTable.setWriteRpcTimeout(timeout, unit);
-  }
-
-  @Override
-  public long getWriteRpcTimeout(TimeUnit unit) {
-    return rawTable.getWriteRpcTimeout(unit);
-  }
-
-  @Override
-  public void setOperationTimeout(long timeout, TimeUnit unit) {
-    rawTable.setOperationTimeout(timeout, unit);
-  }
-
-  @Override
-  public long getOperationTimeout(TimeUnit unit) {
-    return rawTable.getOperationTimeout(unit);
-  }
-
-  @Override
-  public void setScanTimeout(long timeout, TimeUnit unit) {
-    rawTable.setScanTimeout(timeout, unit);
-  }
-
-  @Override
-  public long getScanTimeout(TimeUnit unit) {
-    return rawTable.getScanTimeout(unit);
+  public OperationConfigBuilder newOperationConfig() {
+    return rawTable.newOperationConfig();
   }
 
   private <T> CompletableFuture<T> wrap(CompletableFuture<T> future) {
@@ -111,56 +76,59 @@ class AsyncTableImpl implements AsyncTable {
   }
 
   @Override
-  public CompletableFuture<Result> get(Get get) {
-    return wrap(rawTable.get(get));
+  public CompletableFuture<Result> get(Get get, OperationConfig retryConfig) {
+    return wrap(rawTable.get(get, retryConfig));
   }
 
   @Override
-  public CompletableFuture<Void> put(Put put) {
-    return wrap(rawTable.put(put));
+  public CompletableFuture<Void> put(Put put, OperationConfig retryConfig) {
+    return wrap(rawTable.put(put, retryConfig));
   }
 
   @Override
-  public CompletableFuture<Void> delete(Delete delete) {
-    return wrap(rawTable.delete(delete));
+  public CompletableFuture<Void> delete(Delete delete, OperationConfig retryConfig) {
+    return wrap(rawTable.delete(delete, retryConfig));
   }
 
   @Override
-  public CompletableFuture<Result> append(Append append) {
-    return wrap(rawTable.append(append));
+  public CompletableFuture<Result> append(Append append, OperationConfig retryConfig) {
+    return wrap(rawTable.append(append, retryConfig));
   }
 
   @Override
-  public CompletableFuture<Result> increment(Increment increment) {
-    return wrap(rawTable.increment(increment));
+  public CompletableFuture<Result> increment(Increment increment, OperationConfig retryConfig) {
+    return wrap(rawTable.increment(increment, retryConfig));
   }
 
   @Override
   public CompletableFuture<Boolean> checkAndPut(byte[] row, byte[] family, byte[] qualifier,
-      CompareOp compareOp, byte[] value, Put put) {
-    return wrap(rawTable.checkAndPut(row, family, qualifier, compareOp, value, put));
+      CompareOp compareOp, byte[] value, Put put, OperationConfig retryConfig) {
+    return wrap(rawTable.checkAndPut(row, family, qualifier, compareOp, value, put, retryConfig));
   }
 
   @Override
   public CompletableFuture<Boolean> checkAndDelete(byte[] row, byte[] family, byte[] qualifier,
-      CompareOp compareOp, byte[] value, Delete delete) {
-    return wrap(rawTable.checkAndDelete(row, family, qualifier, compareOp, value, delete));
+      CompareOp compareOp, byte[] value, Delete delete, OperationConfig retryConfig) {
+    return wrap(
+      rawTable.checkAndDelete(row, family, qualifier, compareOp, value, delete, retryConfig));
   }
 
   @Override
-  public CompletableFuture<Void> mutateRow(RowMutations mutation) {
-    return wrap(rawTable.mutateRow(mutation));
+  public CompletableFuture<Void> mutateRow(RowMutations mutation, OperationConfig retryConfig) {
+    return wrap(rawTable.mutateRow(mutation, retryConfig));
   }
 
   @Override
   public CompletableFuture<Boolean> checkAndMutate(byte[] row, byte[] family, byte[] qualifier,
-      CompareOp compareOp, byte[] value, RowMutations mutation) {
-    return wrap(rawTable.checkAndMutate(row, family, qualifier, compareOp, value, mutation));
+      CompareOp compareOp, byte[] value, RowMutations mutation, OperationConfig retryConfig) {
+    return wrap(
+      rawTable.checkAndMutate(row, family, qualifier, compareOp, value, mutation, retryConfig));
   }
 
   @Override
-  public CompletableFuture<List<Result>> smallScan(Scan scan, int limit) {
-    return wrap(rawTable.smallScan(scan, limit));
+  public CompletableFuture<List<Result>> smallScan(Scan scan, int limit,
+      OperationConfig retryConfig) {
+    return wrap(rawTable.smallScan(scan, limit, retryConfig));
   }
 
   private long resultSize2CacheSize(long maxResultSize) {
@@ -169,14 +137,15 @@ class AsyncTableImpl implements AsyncTable {
   }
 
   @Override
-  public ResultScanner getScanner(Scan scan) {
+  public ResultScanner getScanner(Scan scan, OperationConfig retryConfig) {
     return new AsyncTableResultScanner(rawTable, ReflectionUtils.newInstance(scan.getClass(), scan),
         resultSize2CacheSize(
-          scan.getMaxResultSize() > 0 ? scan.getMaxResultSize() : defaultScannerMaxResultSize));
+          scan.getMaxResultSize() > 0 ? scan.getMaxResultSize() : defaultScannerMaxResultSize),
+        retryConfig);
   }
 
-  private void scan0(Scan scan, ScanResultConsumer consumer) {
-    try (ResultScanner scanner = getScanner(scan)) {
+  private void scan0(Scan scan, ScanResultConsumer consumer, OperationConfig retryConfig) {
+    try (ResultScanner scanner = getScanner(scan, retryConfig)) {
       for (Result result; (result = scanner.next()) != null;) {
         if (!consumer.onNext(result)) {
           break;
@@ -189,12 +158,14 @@ class AsyncTableImpl implements AsyncTable {
   }
 
   @Override
-  public void scan(Scan scan, ScanResultConsumer consumer) {
-    pool.execute(() -> scan0(scan, consumer));
+  public void scan(Scan scan, ScanResultConsumer consumer, OperationConfig retryConfig) {
+    pool.execute(() -> scan0(scan, consumer, retryConfig));
   }
 
   @Override
-  public <T> List<CompletableFuture<T>> batch(List<? extends Row> actions) {
-    return rawTable.<T> batch(actions).stream().map(this::wrap).collect(Collectors.toList());
+  public <T> List<CompletableFuture<T>> batch(List<? extends Row> actions,
+      OperationConfig retryConfig) {
+    return rawTable.<T> batch(actions, retryConfig).stream().map(this::wrap)
+        .collect(Collectors.toList());
   }
 }
