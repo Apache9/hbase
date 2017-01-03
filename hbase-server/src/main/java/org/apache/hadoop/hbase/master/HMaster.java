@@ -1741,8 +1741,10 @@ MasterServices, Server {
         this.assignmentManager.getRegionStates().getAssignmentsByTable();
 
       List<RegionPlan> plans = new ArrayList<RegionPlan>();
-      //Give the balancer the current cluster state.
+      // Give the balancer the current cluster state.
       this.balancer.setClusterStatus(getClusterStatus());
+      this.balancer.setClusterLoad(this.assignmentManager.getRegionStates().getAssignmentsByTable(
+        true));
       for (Entry<TableName, Map<ServerName, List<HRegionInfo>>> e : assignmentsByTable.entrySet()) {
         List<RegionPlan> partialPlans = this.balancer.balanceCluster(e.getKey(), e.getValue());
         if (partialPlans != null) plans.addAll(partialPlans);

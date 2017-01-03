@@ -39,6 +39,7 @@ import org.apache.hadoop.hbase.HDFSBlocksDistribution;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.RegionLoad;
 import org.apache.hadoop.hbase.ServerName;
+import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.master.AssignmentManager;
 import org.apache.hadoop.hbase.master.LoadBalancer;
 import org.apache.hadoop.hbase.master.MasterServices;
@@ -531,6 +532,8 @@ public abstract class BaseLoadBalancer implements LoadBalancer {
 
   // slop for regions
   protected float slop;
+  //overallSlop to controll simpleLoadBalancer's cluster level threshold
+  protected float overallSlop;
   private Configuration config;
   static final Random RANDOM = new Random(System.currentTimeMillis());
   private static final Log LOG = LogFactory.getLog(BaseLoadBalancer.class);
@@ -541,14 +544,23 @@ public abstract class BaseLoadBalancer implements LoadBalancer {
   @Override
   public void setConf(Configuration conf) {
     setSlop(conf);
-    if (slop < 0) slop = 0;
-    else if (slop > 1) slop = 1;
+    if (slop < 0) {
+      slop = 0;
+    } else if (slop > 1) {
+      slop = 1;
+    }
+    if (overallSlop < 0) {
+      overallSlop = 0;
+    } else if (overallSlop > 1) {
+      overallSlop = 1;
+    }
 
     this.config = conf;
   }
 
   protected void setSlop(Configuration conf) {
     this.slop = conf.getFloat("hbase.regions.slop", (float) 0.2);
+    this.overallSlop = conf.getFloat("hbase.regions.overallSlop", slop);
   }
 
   @Override
@@ -559,6 +571,10 @@ public abstract class BaseLoadBalancer implements LoadBalancer {
   @Override
   public void setClusterStatus(ClusterStatus st) {
     // Not used except for the StocasticBalancer
+  }
+
+  @Override
+  public void setClusterLoad(Map<TableName, Map<ServerName, List<HRegionInfo>>> clusterLoad) {
   }
 
   @Override
