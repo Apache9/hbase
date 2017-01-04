@@ -77,7 +77,6 @@ public class BalancedQueueRpcExecutor extends RpcExecutor {
     if (!queues.get(queueIndex).offer(callTask)) {
       callTask.resetCallQueueSize();
       LOG.error("Could not insert into Queue!");
-      ThreadInfoUtils.logThreadInfo("thread dump when call queue is full", false);
       callTask.doRespond(null, new IOException(), "IPC server unable to call method");
     }
   }
