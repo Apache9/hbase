@@ -134,7 +134,6 @@ public class RWQueueRpcExecutor extends RpcExecutor {
       callTask.resetCallQueueSize();
       String queueType = queueIndex < numWriteQueues ? "write" : "read";
       LOG.error("Could not insert into " + queueType + "Queue!");
-      ThreadInfoUtils.logThreadInfo("thread dump when " + queueType + " queue is full", false);
       callTask.doRespond(null, new IOException(),
         "IPC server unable to " + queueType + " call method");
     }
