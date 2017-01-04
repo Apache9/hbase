@@ -1466,7 +1466,6 @@ public abstract class HBaseServer implements RpcServer {
             // fail fast on queue inserting, no more waiting!
             callQueueSize.add(-callSize);
             LOG.error("Could not insert into readQueue!");
-            ThreadInfoUtils.logThreadInfo("thread dump when call queue is full", false);
             final Call failedCall = createCall(id, null, this, responder, callSize);
             ByteArrayOutputStream responseBuffer = new ByteArrayOutputStream();
             setupResponse(responseBuffer, failedCall, Status.FATAL, null,
@@ -1487,7 +1486,6 @@ public abstract class HBaseServer implements RpcServer {
             // fail fast on queue inserting, no more waiting!
             callQueueSize.add(-callSize);
             LOG.error("Could not insert into writeQueue!");
-            ThreadInfoUtils.logThreadInfo("thread dump when call queue is full", false);
             final Call failedCall = createCall(id, null, this, responder, callSize);
             ByteArrayOutputStream responseBuffer = new ByteArrayOutputStream();
             setupResponse(responseBuffer, failedCall, Status.FATAL, null,

@@ -19,6 +19,11 @@
  */
 package org.apache.hadoop.hbase.regionserver;
 
+import com.google.common.base.Function;
+import com.google.common.collect.Lists;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.xiaomi.infra.hbase.trace.TracerUtils;
+
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
@@ -29,7 +34,6 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryUsage;
-import java.lang.management.ThreadInfo;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.net.BindException;
@@ -204,11 +208,6 @@ import org.apache.hadoop.util.ReflectionUtils;
 import org.apache.hadoop.util.StringUtils;
 import org.apache.zookeeper.KeeperException;
 import org.codehaus.jackson.map.ObjectMapper;
-
-import com.google.common.base.Function;
-import com.google.common.collect.Lists;
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import com.xiaomi.infra.hbase.trace.TracerUtils;
 
 /**
  * HRegionServer makes a set of HRegions available to clients. It checks in with
@@ -1682,8 +1681,6 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
             + rejectThreshold + ", will use 95 instead");
         rejectThreshold = 95;
       }
-      QueueCounter queueCounter = server.server.getQueueCounter();
-
       LOG.info("QueueFullDetector is started");
     }
 
@@ -1754,6 +1751,7 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
           }
           if (shouldExit) {
             queueFullDetected = true;
+            ThreadInfoUtils.logThreadInfo("Thread dump from QueueFullDetector", true);
             abort("Detected queue full and canot come back to normal state in a long duration");
           }
         }
