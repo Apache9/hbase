@@ -1343,7 +1343,7 @@ Server {
 
     // max number of regions in transition when balancing
     int maxRegionsInTransition = getMaxRegionsInTransition();
-    boolean balancerRan;
+    boolean balancerRan = false;
     synchronized (this.balancer) {
       // Only allow one balance run at at time.
       if (this.assignmentManager.isRegionsInTransition()) {
@@ -1375,7 +1375,8 @@ Server {
         String tableNameString = Bytes.toString(tableName);
         if (assignmentsByTable.containsKey(tableNameString)) {
           Map<ServerName, List<HRegionInfo>> serverRegionsMap = assignmentsByTable.get(tableNameString);
-          plans.addAll(this.balancer.balanceCluster(serverRegionsMap));
+          List<RegionPlan> partialPlans = this.balancer.balanceCluster(serverRegionsMap);
+          if (partialPlans != null) plans.addAll(partialPlans);
         }
       } else {
         for (Map<ServerName, List<HRegionInfo>> assignments : assignmentsByTable.values()) {
@@ -1394,8 +1395,8 @@ Server {
       long balanceStartTime = System.currentTimeMillis();
       long cutoffTime = balanceStartTime + this.maxBlancingTime;
       int rpCount = 0;  // number of RegionPlans balanced so far
-      balancerRan = plans != null;
       if (plans != null && !plans.isEmpty()) {
+        balancerRan = true;
         int balanceInterval = this.maxBlancingTime / plans.size();
         LOG.info("Balancer plans size is " + plans.size() + ", the balance interval is "
             + balanceInterval + " ms, and the max number regions in transition is "
