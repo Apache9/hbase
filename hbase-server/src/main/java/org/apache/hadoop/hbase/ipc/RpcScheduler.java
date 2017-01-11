@@ -19,6 +19,7 @@ package org.apache.hadoop.hbase.ipc;
 
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.classification.InterfaceStability;
+import org.apache.hadoop.hbase.util.QueueCounter;
 import org.apache.hadoop.hbase.HBaseInterfaceAudience;
 
 import java.io.IOException;
@@ -83,4 +84,6 @@ public abstract class RpcScheduler {
 
   /** Retrieves the number of active write rpc handler when use RWQueueRpcExecutor. */
   public abstract int getActiveReadRpcHandlerCount();
+
+  public abstract QueueCounter getQueueCounter();
 }

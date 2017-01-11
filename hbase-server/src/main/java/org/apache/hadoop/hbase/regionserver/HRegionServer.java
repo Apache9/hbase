@@ -251,6 +251,7 @@ import org.apache.hadoop.hbase.util.InfoServer;
 import org.apache.hadoop.hbase.util.JvmPauseMonitor;
 import org.apache.hadoop.hbase.util.JvmThreadMonitor;
 import org.apache.hadoop.hbase.util.Pair;
+import org.apache.hadoop.hbase.util.QueueCounter;
 import org.apache.hadoop.hbase.util.Sleeper;
 import org.apache.hadoop.hbase.util.Strings;
 import org.apache.hadoop.hbase.util.ThreadInfoUtils;
@@ -447,6 +448,11 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
    * Check for flushes
    */
   Chore periodicFlusher;
+
+  /*
+   * Queue full detection
+   */
+  Chore queueFullDetector;
 
   /*
    * region compactor by locality
@@ -918,6 +924,11 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     // in a while. It will take care of not checking too frequently on store-by-store basis.
     this.compactionChecker = new CompactionChecker(this, this.threadWakeFrequency, this);
     this.periodicFlusher = new PeriodicMemstoreFlusher(this.threadWakeFrequency, this);
+
+    if (conf.getBoolean("hbase.regionserver.queuefull.detector.enable", false)) {
+      this.queueFullDetector = new QueueFullDetector(this, conf);
+    }
+
     // Health checker thread.
     int sleepTime = this.conf.getInt(HConstants.HEALTH_CHORE_WAKE_FREQ,
       HConstants.DEFAULT_THREAD_WAKE_FREQUENCY);
@@ -1078,6 +1089,9 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     }
     if (this.nonceManagerChore != null) {
       this.nonceManagerChore.interrupt();
+    }
+    if (this.queueFullDetector != null) {
+      this.queueFullDetector.interrupt();
     }
     if (this.regionCompactor != null) {
       this.regionCompactor.interrupt();
@@ -1692,6 +1706,96 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     }
   }
 
+  class QueueFullDetector extends Chore {
+    final HRegionServer server;
+    private int densePeriod;
+    private int denseCheckNum;
+    private int sampleThreshold;
+    private int rejectThreshold;
+    private final QueueCounter queueCounter;
+
+    public QueueFullDetector(HRegionServer server, Configuration conf) {
+      super("QueueFullDetector", conf.getInt("hbase.regionserver.queuefull.detector.sparseperiod",
+        5000), server);
+      this.server = server;
+      this.densePeriod = conf.getInt("hbase.regionserver.queuefull.detector.denseperiod", 1000);
+      this.denseCheckNum = conf.getInt("hbase.regionserver.queuefull.detector.densechecknum", 100);
+      this.sampleThreshold = conf.getInt("hbase.regionserver.queuefull.detector.samplethreshold",
+        95);
+      if (sampleThreshold < 10 || sampleThreshold >= 100) {
+        LOG.warn("Sample threshold of queue full detector should be in range (10, 100), but the configured value is "
+            + sampleThreshold + ", will use 95 instead");
+        sampleThreshold = 95;
+      }
+      this.rejectThreshold = conf.getInt("hbase.regionserver.queuefull.detector.rejectthreshold",
+        95);
+      if (rejectThreshold < 10 || rejectThreshold >= 100) {
+        LOG.warn("Reject threshold of queue full detector should be in range (10, 100), but the configured value is "
+            + rejectThreshold + ", will use 95 instead");
+        rejectThreshold = 95;
+      }
+      queueCounter = server.rpcServer.getScheduler().getQueueCounter();
+
+      LOG.info("QueueFullDetector is started");
+    }
+
+    @Override
+    protected void chore() {
+      boolean queueFull = queueCounter.getQueueFull();
+      if (queueFull) {
+        // Found "queue full" events, start dense detecting
+        LOG.warn("Detected queue full events,  start dense checking");
+        int queueFullNum = 0;
+        int maxNotHit = Math.max((int) (denseCheckNum * (100 - sampleThreshold) / 100.0), 1);
+        long beforeCheckRequestCount = queueCounter.getIncomeRequestCount();
+        long beforeCheckRejectedRequestCount = queueCounter.getRejectedRequestCount();
+        // To detect queue full events in a higher frequency
+        for (int i = 0; i < denseCheckNum; i++) {
+          try {
+            Thread.sleep(densePeriod);
+          } catch (InterruptedException e) {
+              // Check if we should stop after the try-catch block
+            }
+          if (isStopping() || isStopped()){
+            break;
+          }
+          if (queueCounter.getQueueFull()) {
+            queueFullNum++;
+          }
+          int notHit = i + 1 - queueFullNum;
+          if (notHit > maxNotHit) {
+            return;
+          }
+        }
+
+        long afterCheckRequestCount = queueCounter.getIncomeRequestCount();
+        long afterCheckRejectedRequestCount = queueCounter.getRejectedRequestCount();
+        // If the following conditions are detected, we should exit gracefully:
+        // a. the percentage of queueFullNum has reached the configured threshold
+        // b. the region server is not idle (i.e. there are new incoming rpc)
+        // c. the percentage of rejected new incoming request in this period (due to queue full) has reached the configured threshold
+        if (queueFullNum * 100 > sampleThreshold * denseCheckNum) {
+          // Percentage of readFullNum or writeFullNum has reached the configured threshold
+          long newRequestCount = afterCheckRequestCount - beforeCheckRequestCount;
+          long newRejectedRequestCount = afterCheckRejectedRequestCount - beforeCheckRejectedRequestCount;
+          boolean shouldExit = false;
+          StringBuilder sb = new StringBuilder();
+          sb.append("Number of new incoming requests count is ").append(newRequestCount)
+              .append(" rejected requests count is ").append(newRejectedRequestCount);
+          LOG.warn(sb.toString());
+
+          if (newRequestCount > 0 && (newRejectedRequestCount * 100 > rejectThreshold * newRequestCount)) {
+            shouldExit = true;
+          }
+          if (shouldExit) {
+            ThreadInfoUtils.logThreadInfo("Thread dump from QueueFullDetector", true);
+            abort("Detected queue full and canot come back to normal state in a long duration");
+          }
+        }
+      }
+    }
+  }
+
   /**
    * Report the status of the server. A server is online once all the startup is
    * completed (setting up filesystem, starting service threads, etc.). This
@@ -1836,6 +1940,10 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
       ".compactionChecker", uncaughtExceptionHandler);
     Threads.setDaemonThreadRunning(this.periodicFlusher.getThread(), n +
         ".periodicFlusher", uncaughtExceptionHandler);
+    if (this.queueFullDetector != null) {
+      Threads.setDaemonThreadRunning(this.queueFullDetector.getThread(), n + ".queueFullDetector",
+        uncaughtExceptionHandler);
+    }
     if (this.healthCheckChore != null) {
       Threads.setDaemonThreadRunning(this.healthCheckChore.getThread(), n + ".healthChecker",
             uncaughtExceptionHandler);
@@ -2128,6 +2236,9 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     }
     if (this.periodicFlusher != null) {
       Threads.shutdown(this.periodicFlusher.getThread());
+    }
+    if (queueFullDetector != null) {
+      Threads.shutdown(queueFullDetector.getThread());
     }
     if (this.cacheFlusher != null) {
       this.cacheFlusher.join();

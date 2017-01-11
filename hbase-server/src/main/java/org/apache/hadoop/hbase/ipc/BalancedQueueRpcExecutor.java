@@ -74,10 +74,15 @@ public class BalancedQueueRpcExecutor extends RpcExecutor {
   @Override
   public void dispatch(final CallRunner callTask) throws IOException, InterruptedException {
     int queueIndex = balancer.getNextQueue();
+    queueCounter.incIncomeRequestCount();
     if (!queues.get(queueIndex).offer(callTask)) {
       callTask.resetCallQueueSize();
       LOG.error("Could not insert into Queue!");
       callTask.doRespond(null, new IOException(), "IPC server unable to call method");
+      queueCounter.setQueueFull(true);
+      queueCounter.incRejectedRequestCount();
+    } else {
+      queueCounter.setQueueFull(false);
     }
   }
 

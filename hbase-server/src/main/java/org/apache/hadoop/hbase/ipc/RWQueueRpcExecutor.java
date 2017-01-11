@@ -130,12 +130,17 @@ public class RWQueueRpcExecutor extends RpcExecutor {
     } else {
       queueIndex = numWriteQueues + readBalancer.getNextQueue();
     }
+    queueCounter.incIncomeRequestCount();
     if (!queues.get(queueIndex).offer(callTask)) {
       callTask.resetCallQueueSize();
       String queueType = queueIndex < numWriteQueues ? "write" : "read";
       LOG.error("Could not insert into " + queueType + "Queue!");
       callTask.doRespond(null, new IOException(),
         "IPC server unable to " + queueType + " call method");
+      queueCounter.setQueueFull(true);
+      queueCounter.incRejectedRequestCount();
+    } else {
+      queueCounter.setQueueFull(false);
     }
   }
 

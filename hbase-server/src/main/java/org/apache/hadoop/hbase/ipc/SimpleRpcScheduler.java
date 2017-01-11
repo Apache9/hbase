@@ -27,6 +27,7 @@ import org.apache.hadoop.hbase.HBaseInterfaceAudience;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.classification.InterfaceStability;
+import org.apache.hadoop.hbase.util.QueueCounter;
 
 /**
  * A scheduler that maintains isolated handler pools for general, high-priority and replication
@@ -179,6 +180,11 @@ public class SimpleRpcScheduler extends RpcScheduler {
   @Override
   public int getActiveReadRpcHandlerCount() {
     return callExecutor.getActiveReadHandlerCount();
+  }
+
+  @Override
+  public QueueCounter getQueueCounter() {
+    return callExecutor.getQueueCounter();
   }
 }
 
