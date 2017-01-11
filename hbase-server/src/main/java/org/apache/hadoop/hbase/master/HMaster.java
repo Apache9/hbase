@@ -2860,7 +2860,7 @@ MasterServices, Server {
     return this.conf.getBoolean("hbase.master.allow.shutdown", true);
   }
   
-  public void shutdown() {
+  public void shutdown() throws IOException {
     if (!allowShutdown()) {
       LOG.error("Shutdown is not allowed");
       return;
@@ -2870,11 +2870,7 @@ MasterServices, Server {
       spanReceiverHost.closeReceivers();
     }
     if (cpHost != null) {
-      try {
         cpHost.preShutdown();
-      } catch (IOException ioe) {
-        LOG.error("Error call master coprocessor preShutdown()", ioe);
-      }
     }
     if (mxBean != null) {
       MBeanUtil.unregisterMBean(mxBean);
@@ -2895,22 +2891,23 @@ MasterServices, Server {
   public ShutdownResponse shutdown(RpcController controller, ShutdownRequest request)
   throws ServiceException {
     LOG.info(getClientIdAuditPrefix() + " shutdown");
-    shutdown();
+    try{
+      shutdown();
+    }catch (IOException e) {
+      LOG.error("Exception occurred in HMaster.shutdown()", e);
+      throw new ServiceException(e);
+    }
     return ShutdownResponse.newBuilder().build();
   }
 
-  public void stopMaster() {
+  public void stopMaster() throws IOException{
     if (!allowShutdown()) {
       LOG.error("Stop master is not allowed");
       return;
     }
     
     if (cpHost != null) {
-      try {
-        cpHost.preStopMaster();
-      } catch (IOException ioe) {
-        LOG.error("Error call master coprocessor preStopMaster()", ioe);
-      }
+      cpHost.preStopMaster();
     }
     stop("Stopped by " + Thread.currentThread().getName());
   }
@@ -2919,7 +2916,12 @@ MasterServices, Server {
   public StopMasterResponse stopMaster(RpcController controller, StopMasterRequest request)
   throws ServiceException {
     LOG.info(getClientIdAuditPrefix() + " stop");
-    stopMaster();
+    try {
+      stopMaster();
+    } catch (IOException e) {
+      LOG.error("Exception occurred while stopping master", e);
+      throw new ServiceException(e);
+    }
     return StopMasterResponse.newBuilder().build();
   }
 
