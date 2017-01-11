@@ -22,9 +22,12 @@ import org.apache.hadoop.hbase.DaemonThreadFactory;
 
 import java.io.IOException;
 import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+
 import org.apache.hadoop.hbase.ipc.CallRunner;
+import org.apache.hadoop.hbase.util.QueueCounter;
 
 /**
  * A very simple {@code }RpcScheduler} that serves incoming requests in order.
@@ -36,12 +39,14 @@ public class FifoRpcScheduler extends RpcScheduler {
   private final int handlerCount;
   private final int maxQueueLength;
   private ThreadPoolExecutor executor;
+  private final QueueCounter queueCounter;
 
   public FifoRpcScheduler(Configuration conf, int handlerCount) {
     this.handlerCount = handlerCount;
     this.maxQueueLength = conf.getInt("hbase.ipc.server.max.callqueue.length",
       conf.getInt("ipc.server.max.callqueue.length",
         handlerCount * RpcServer.DEFAULT_MAX_CALLQUEUE_LENGTH_PER_HANDLER));
+    this.queueCounter = new QueueCounter();
   }
 
   @Override
@@ -68,12 +73,20 @@ public class FifoRpcScheduler extends RpcScheduler {
 
   @Override
   public void dispatch(final CallRunner task) throws IOException, InterruptedException {
-    executor.submit(new Runnable() {
-      @Override
-      public void run() {
-        task.run();
-      }
-    });
+    try {
+      queueCounter.incIncomeRequestCount();
+      executor.submit(new Runnable() {
+        @Override
+        public void run() {
+          task.run();
+        }
+      });
+      queueCounter.setQueueFull(false);
+    } catch (RejectedExecutionException e) {
+      queueCounter.setQueueFull(true);
+      queueCounter.incRejectedRequestCount();
+      throw e;
+    }
   }
 
   @Override
@@ -118,5 +131,10 @@ public class FifoRpcScheduler extends RpcScheduler {
   public int getActiveReadRpcHandlerCount() {
     // TODO Auto-generated method stub
     return 0;
+  }
+
+  @Override
+  public QueueCounter getQueueCounter() {
+    return queueCounter;
   }
 }
