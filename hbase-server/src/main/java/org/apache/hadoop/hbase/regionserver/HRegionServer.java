@@ -55,6 +55,8 @@ import java.util.NavigableMap;
 import java.util.Random;
 import java.util.Set;
 import java.util.SortedMap;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
@@ -395,6 +397,8 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
   private boolean stopping = false;
 
   private volatile boolean killed = false;
+
+  private volatile boolean queueFullDetected = false;
 
   protected final Configuration conf;
 
@@ -1046,6 +1050,16 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
         abort(prefix + t.getMessage(), t);
       }
     }
+
+    // Add a timer to monitor the procedure in case something hang
+    Timer exitMonitor = new Timer(true);
+    exitMonitor.schedule(new TimerTask() {
+      public void run() {
+        LOG.warn("Aborting region server timed out, terminate forcibly...");
+        Runtime.getRuntime().halt(1);
+      }
+    }, conf.getLong("hbase.exit.timeout.ms", 30000));
+
     // Run shutdown.
     if (mxBean != null) {
       MBeanUtil.unregisterMBean(mxBean);
@@ -1077,10 +1091,28 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     // Send interrupts to wake up threads if sleeping so they notice shutdown.
     // TODO: Should we check they are alive? If OOME could have exited already
     if (this.hMemManager != null) this.hMemManager.stop();
-    if (this.cacheFlusher != null) this.cacheFlusher.interruptIfNecessary();
+    if (this.cacheFlusher != null) {
+      if (queueFullDetected) {
+        this.cacheFlusher.tryInterruptIfNecessary();
+      } else {
+        this.cacheFlusher.interruptIfNecessary();
+      }
+    }
     if (this.compactSplitThread != null) this.compactSplitThread.interruptIfNecessary();
-    if (this.hlogRoller != null) this.hlogRoller.interruptIfNecessary();
-    if (this.metaHLogRoller != null) this.metaHLogRoller.interruptIfNecessary();
+    if (this.hlogRoller != null) {
+      if (queueFullDetected) {
+        this.hlogRoller.tryInterruptIfNecessary();
+      } else {
+        this.hlogRoller.interruptIfNecessary();
+      }
+    }
+    if (this.metaHLogRoller != null) {
+      if (queueFullDetected) {
+        this.metaHLogRoller.tryInterruptIfNecessary();
+      } else {
+        this.metaHLogRoller.interruptIfNecessary();
+      }
+    }
     if (this.compactionChecker != null)
       this.compactionChecker.interrupt();
     if (this.healthCheckChore != null) {
@@ -1788,6 +1820,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
           }
           if (shouldExit) {
             ThreadInfoUtils.logThreadInfo("Thread dump from QueueFullDetector", true);
+            queueFullDetected = true;
             abort("Detected queue full and canot come back to normal state in a long duration");
           }
         }
