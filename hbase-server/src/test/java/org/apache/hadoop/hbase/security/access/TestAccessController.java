@@ -118,7 +118,6 @@ import com.google.protobuf.RpcCallback;
 import com.google.protobuf.RpcController;
 import com.google.protobuf.Service;
 import com.google.protobuf.ServiceException;
-import com.google.protobuf.ServiceException;
 
 /**
  * Performs authorization checks for common operations, according to different
@@ -1278,11 +1277,11 @@ public class TestAccessController extends SecureTestUtil {
       tableName, null, null,
       Permission.Action.WRITE);
 
-    verifyDenied(tblUser, getActionAll, getAction1, getAction2);
+    verifyAllowed(tblUser, getActionAll, getAction1, getAction2);
     verifyAllowed(tblUser, putActionAll, putAction1, putAction2);
     verifyAllowed(tblUser, deleteActionAll, deleteAction1, deleteAction2);
 
-    verifyDenied(gblUser, getActionAll, getAction1, getAction2);
+    verifyAllowed(gblUser, getActionAll, getAction1, getAction2);
     verifyAllowed(gblUser, putActionAll, putAction1, putAction2);
     verifyAllowed(gblUser, deleteActionAll, deleteAction1, deleteAction2);
 
@@ -1328,7 +1327,7 @@ public class TestAccessController extends SecureTestUtil {
     verifyDenied(tblUser, putActionAll, putAction1);
     verifyDenied(tblUser, deleteActionAll, deleteAction1);
 
-    verifyDenied(gblUser, getActionAll, getAction1, getAction2);
+    verifyAllowed(gblUser, getActionAll, getAction1, getAction2);
     verifyAllowed(gblUser, putActionAll, putAction1, putAction2);
     verifyAllowed(gblUser, deleteActionAll, deleteAction1, deleteAction2);
 
@@ -1445,7 +1444,7 @@ public class TestAccessController extends SecureTestUtil {
       tableName, family1, qualifier,
       Permission.Action.WRITE);
 
-    verifyDenied(user, getQualifierAction);
+    verifyAllowed(user, getQualifierAction);
     verifyAllowed(user, putQualifierAction);
     verifyAllowed(user, deleteQualifierAction);
 
@@ -2103,15 +2102,37 @@ public class TestAccessController extends SecureTestUtil {
       }
     };
 
+    AccessTestAction putAction = new AccessTestAction() {
+      @Override
+      public Object run() throws Exception {
+        Put p = new Put(TEST_ROW);
+        p.add(TEST_FAMILY, TEST_QUALIFIER, Bytes.toBytes(2));
+        HTable t = new HTable(conf, TEST_TABLE.getTableName());
+        try {
+          t.put(p);
+        } finally {
+          t.close();
+        }
+        return null;
+      }
+    };
+
     verifyDenied(getAction, USER_NONE);
 
     // Grant namespace READ to USER_NONE, this should supersede any table permissions
     grantOnNamespace(TEST_UTIL, USER_NONE.getShortName(),
-      TEST_TABLE.getTableName().getNamespaceAsString(),
-      Permission.Action.READ);
+      TEST_TABLE.getTableName().getNamespaceAsString(), Permission.Action.READ);
 
     // Now USER_NONE should be able to read also
     verifyAllowed(getAction, USER_NONE);
+
+    // Grant namespace WRITE to USER_NONE, this should supersede any table permissions
+    grantOnNamespace(TEST_UTIL, USER_NONE.getShortName(),
+      TEST_TABLE.getTableName().getNamespaceAsString(), Permission.Action.WRITE);
+
+    // Now USER_NONE should be able to read/write also
+    verifyAllowed(getAction, USER_NONE);
+    verifyAllowed(putAction, USER_NONE);
   }
 
   @Test
@@ -2130,6 +2151,21 @@ public class TestAccessController extends SecureTestUtil {
       }
     };
 
+    AccessTestAction putAction = new AccessTestAction() {
+      @Override
+      public Object run() throws Exception {
+        Put p = new Put(TEST_ROW);
+        p.add(TEST_FAMILY, TEST_QUALIFIER, Bytes.toBytes(2));
+        HTable t = new HTable(conf, TEST_TABLE.getTableName());
+        try {
+          t.put(p);
+        } finally {
+          t.close();
+        }
+        return null;
+      }
+    };
+
     verifyDenied(getAction, testGrantRevoke);
 
     // Grant table READ permissions to testGrantRevoke.
@@ -2142,6 +2178,18 @@ public class TestAccessController extends SecureTestUtil {
 
     // Now testGrantRevoke should be able to read also
     verifyAllowed(getAction, testGrantRevoke);
+
+    // Grant table WRITE permissions to testGrantRevoke.
+    try {
+      grantOnTableUsingAccessControlClient(TEST_UTIL, conf, testGrantRevoke.getShortName(),
+              TEST_TABLE.getTableName(), null, null, Permission.Action.WRITE);
+    } catch (Throwable e) {
+      LOG.error("error during call of AccessControlClient.grant. " + e.getStackTrace());
+    }
+
+    // Now testGrantRevoke should be able to read/write also
+    verifyAllowed(getAction, testGrantRevoke);
+    verifyAllowed(putAction, testGrantRevoke);
 
     // Revoke table READ permission to testGrantRevoke.
     try {
@@ -2172,6 +2220,21 @@ public class TestAccessController extends SecureTestUtil {
       }
     };
 
+    AccessTestAction putAction = new AccessTestAction() {
+      @Override
+      public Object run() throws Exception {
+        Put p = new Put(TEST_ROW);
+        p.add(TEST_FAMILY, TEST_QUALIFIER, Bytes.toBytes(2));
+        HTable t = new HTable(conf, TEST_TABLE.getTableName());
+        try {
+          t.put(p);
+        } finally {
+          t.close();
+        }
+        return null;
+      }
+    };
+
     verifyDenied(getAction, testGlobalGrantRevoke);
 
     // Grant table READ permissions to testGlobalGrantRevoke.
@@ -2184,6 +2247,18 @@ public class TestAccessController extends SecureTestUtil {
 
     // Now testGlobalGrantRevoke should be able to read also
     verifyAllowed(getAction, testGlobalGrantRevoke);
+
+    // Grant table WRITE permissions to testGlobalGrantRevoke.
+    try {
+      grantGlobalUsingAccessControlClient(TEST_UTIL, conf, testGlobalGrantRevoke.getShortName(),
+        Permission.Action.WRITE);
+    } catch (Throwable e) {
+      LOG.error("error during call of AccessControlClient.grant. ", e);
+    }
+
+    // Now testGlobalGrantRevoke should be able to read & write.
+    verifyAllowed(getAction, testGlobalGrantRevoke);
+    verifyAllowed(putAction, testGlobalGrantRevoke);
 
     // Revoke table READ permission to testGlobalGrantRevoke.
     try {

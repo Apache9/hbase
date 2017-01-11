@@ -155,10 +155,31 @@ public class AccessControlLists {
       throw new IOException(msg);
     }
 
-    byte[] value = new byte[actions.length];
-    for (int i = 0; i < actions.length; i++) {
-      value[i] = actions[i].code();
+    List<UserPermission> perms = getUserPermissions(conf, rowKey);
+    UserPermission currentPerm = null;
+    for (UserPermission perm : perms) {
+      if (Bytes.equals(perm.getUser(), userPerm.getUser())
+          && ((userPerm.isGlobal() && ACL_TABLE_NAME.equals(perm.getTableName()))
+              || perm.tableFieldsEqual(userPerm))) {
+        currentPerm = perm;
+        break;
+      }
     }
+
+    // merge current action with new action.
+    Set<Permission.Action> actionSet = new TreeSet<Permission.Action>();
+    if(currentPerm != null && currentPerm.getActions() != null){
+      actionSet.addAll(Arrays.asList(currentPerm.getActions()));
+    }
+    actionSet.addAll(Arrays.asList(actions));
+
+    // serialize to byte array.
+    byte[] value = new byte[actionSet.size()];
+    int index = 0;
+    for (Permission.Action action : actionSet) {
+      value[index++] = action.code();
+    }
+
     p.addImmutable(ACL_LIST_FAMILY, key, value);
     if (LOG.isDebugEnabled()) {
       LOG.debug("Writing permission with rowKey "+
@@ -503,9 +524,7 @@ public class AccessControlLists {
     List<UserPermission> perms = new ArrayList<UserPermission>();
 
     for (Map.Entry<String, TablePermission> entry : allPerms.entries()) {
-      UserPermission up = new UserPermission(Bytes.toBytes(entry.getKey()),
-          entry.getValue().getTableName(), entry.getValue().getFamily(),
-          entry.getValue().getQualifier(), entry.getValue().getActions());
+      UserPermission up = new UserPermission(Bytes.toBytes(entry.getKey()), entry.getValue());
       perms.add(up);
     }
     return perms;
