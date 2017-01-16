@@ -21,13 +21,16 @@ package org.apache.hadoop.hbase;
 import static org.junit.Assert.assertTrue;
 
 import org.apache.hadoop.hbase.regionserver.HRegionServer;
+import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.ManualEnvironmentEdge;
 import org.apache.hadoop.hbase.util.QueueCounter;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 
+@Category(MediumTests.class)
 public class TestQueueFullDetector {
   private final static HBaseTestingUtility TEST_UTIL = new HBaseTestingUtility();
   private static ManualEnvironmentEdge envEdge;
