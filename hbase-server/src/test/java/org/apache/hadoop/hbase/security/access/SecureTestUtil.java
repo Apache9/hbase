@@ -180,36 +180,19 @@ public class SecureTestUtil {
     }
   }
 
-  public static void verifyDeniedWithException(User user, AccessTestAction... actions)
-      throws Exception {
-    verifyDenied(user, true, actions);
-  }
-
-  public static void verifyDeniedWithException(AccessTestAction action, User... users)
-      throws Exception {
+  /** This passes only in case of ADE for all users. */
+  public static void verifyDenied(AccessTestAction action, User... users) throws Exception {
     for (User user : users) {
-      verifyDenied(user, true, action);
+      verifyDenied(user, action);
     }
   }
 
+  /** This passes only in case of ADE for all actions. */
   public static void verifyDenied(User user, AccessTestAction... actions) throws Exception {
-    verifyDenied(user, false, actions);
-  }
-
-  public static void verifyDenied(User user, boolean requireException,
-      AccessTestAction... actions) throws Exception {
     for (AccessTestAction action : actions) {
       try {
         Object obj = user.runAs(action);
-        if (requireException) {
-          fail("Expected exception was not thrown for user '" + user.getShortName() + "'");
-        }
-        if (obj != null && obj instanceof List<?>) {
-          List<?> results = (List<?>) obj;
-          if (results != null && !results.isEmpty()) {
-            fail("Unexpected results for user '" + user.getShortName() + "'");
-          }
-        }
+        fail("Expected exception was not thrown for user '" + user.getShortName() + "'");
       } catch (IOException e) {
         boolean isAccessDeniedException = false;
         if(e instanceof RetriesExhaustedWithDetailsException) {
@@ -255,9 +238,37 @@ public class SecureTestUtil {
     }
   }
 
-  public static void verifyDenied(AccessTestAction action, User... users) throws Exception {
+  /** This passes only in case of empty list for all users. */
+  public static void verifyIfEmptyList(AccessTestAction action, User... users) throws Exception {
     for (User user : users) {
-      verifyDenied(user, action);
+      try {
+        Object obj = user.runAs(action);
+        if (obj != null && obj instanceof List<?>) {
+          List<?> results = (List<?>) obj;
+          if (results != null && !results.isEmpty()) {
+            fail(
+              "Unexpected action results: " + results + " for user '" + user.getShortName() + "'");
+          }
+        } else {
+          fail("Unexpected results for user '" + user.getShortName() + "'");
+        }
+      } catch (AccessDeniedException ade) {
+        fail("Expected action to pass for user '" + user.getShortName() + "' but was denied");
+      }
+    }
+  }
+
+  /** This passes only in case of null for all users. */
+  public static void verifyIfNull(AccessTestAction action, User... users) throws Exception {
+    for (User user : users) {
+      try {
+        Object obj = user.runAs(action);
+        if (obj != null) {
+          fail("Non null results from action for user '" + user.getShortName() + "' : " + obj);
+        }
+      } catch (AccessDeniedException ade) {
+        fail("Expected action to pass for user '" + user.getShortName() + "' but was denied");
+      }
     }
   }
 

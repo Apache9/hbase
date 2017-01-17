@@ -248,7 +248,7 @@ public class TestNamespaceCommands extends SecureTestUtil {
 
     // Only an admin should be able to get the user permission
     verifyAllowed(revokeAction, SUPERUSER, USER_NSP_ADMIN);
-    verifyDeniedWithException(revokeAction, USER_CREATE, USER_RW);
+    verifyDenied(revokeAction, USER_CREATE, USER_RW);
   }
 
   @Test

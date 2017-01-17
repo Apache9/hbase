@@ -356,7 +356,7 @@ public class TestAccessController extends SecureTestUtil {
     };
 
     verifyAllowed(truncateTable, SUPERUSER, USER_ADMIN, USER_CREATE);
-    verifyDenied(truncateTable, USER_RW, USER_RO, USER_NONE, USER_OWNER);
+    verifyDenied(truncateTable, USER_RW, USER_RO, USER_NONE);
   }
 
   @Test
@@ -707,20 +707,6 @@ public class TestAccessController extends SecureTestUtil {
 
     verifyAllowed(action, SUPERUSER, USER_ADMIN, USER_OWNER, USER_CREATE);
     verifyDenied(action, USER_RW, USER_RO, USER_NONE);
-  }
-
-  @Test
-  public void testPreCompactSelection() throws Exception {
-    AccessTestAction action = new AccessTestAction() {
-      @Override
-      public Object run() throws Exception {
-        ACCESS_CONTROLLER.preCompactSelection(ObserverContext.createAndPrepare(RCP_ENV, null), null, null);
-        return null;
-      }
-    };
-
-    verifyAllowed(action, SUPERUSER, USER_ADMIN, USER_OWNER);
-    verifyDenied(action, USER_CREATE, USER_RW, USER_RO, USER_NONE);
   }
 
   private void verifyRead(AccessTestAction action) throws Exception {
@@ -1091,7 +1077,7 @@ public class TestAccessController extends SecureTestUtil {
     verifyDenied(getTablePermissionsAction, USER_CREATE, USER_RW, USER_RO, USER_NONE);
 
     verifyAllowed(getGlobalPermissionsAction, SUPERUSER, USER_ADMIN);
-    verifyDeniedWithException(getGlobalPermissionsAction, USER_CREATE,
+    verifyDenied(getGlobalPermissionsAction, USER_CREATE,
         USER_OWNER, USER_RW, USER_RO, USER_NONE);
   }
 
@@ -2513,7 +2499,7 @@ public class TestAccessController extends SecureTestUtil {
     verifyDenied(setUserTableQuotaAction, USER_OWNER, USER_CREATE, USER_RW, USER_RO, USER_NONE);
 
     verifyAllowed(setBypassUserTableQuota, SUPERUSER, USER_ADMIN);
-    SecureTestUtil.verifyDenied(USER_NAMESPACE_ADMIN, true, setBypassUserTableQuota);
+    SecureTestUtil.verifyDenied(USER_NAMESPACE_ADMIN, setBypassUserTableQuota);
     verifyDenied(setBypassUserTableQuota, USER_OWNER, USER_CREATE, USER_RW,
       USER_RO, USER_NONE);
     
