@@ -979,7 +979,7 @@
       yyyy-MM-dd'T'HH:mm
     </maven.build.timestamp.format>
     <buildDate>${maven.build.timestamp}</buildDate>
-    <compileSource>1.6</compileSource>
+    <compileSource>1.8</compileSource>
     <!-- Build dependencies -->
     <maven.min.version>3.0.3</maven.min.version>
     <java.min.version>${compileSource}</java.min.version>
@@ -1073,6 +1073,8 @@
     </hbase-surefire.cygwin-argline>
     <hbase.skip-jacoco>true</hbase.skip-jacoco>
     <jacoco.version>0.6.2.201302030002</jacoco.version>
+    <hadoop-security.version>1.0.1-jdk8</hadoop-security.version>
+    <additionalparam>-Xdoclint:none</additionalparam>
   </properties>
   <!-- Sorted by groups of dependencies then groupId and artifactId -->
   <dependencyManagement>
@@ -2030,26 +2032,6 @@
           </dependency>
         </dependencies>
       </dependencyManagement>
-    </profile>
-    <!-- profiles for selecting different hadoop-security -->
-    <profile>
-      <id>java8</id>
-      <activation>
-        <jdk>1.8</jdk>
-      </activation>
-      <properties>
-        <hadoop-security.version>1.0.1-jdk8</hadoop-security.version>
-        <additionalparam>-Xdoclint:none</additionalparam>
-      </properties>
-    </profile>
-    <profile>
-      <id>java7-</id>
-      <activation>
-        <jdk>(,1.8)</jdk>
-      </activation>
-      <properties>
-        <hadoop-security.version>1.0.0</hadoop-security.version>
-      </properties>
     </profile>
     <!-- profiles for the tests
          See as well the properties of the project for the values
