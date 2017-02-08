@@ -61,6 +61,7 @@ import org.apache.hadoop.hbase.util.DrainBarrier;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.FSUtils;
 import org.apache.hadoop.hbase.util.HasThread;
+import org.apache.hadoop.hbase.util.ThreadInfoUtils;
 import org.apache.hadoop.hdfs.protocol.DatanodeInfo;
 import org.apache.hadoop.util.StringUtils;
 import org.apache.htrace.Sampler;
@@ -208,7 +209,12 @@ class FSHLog implements HLog, Syncable {
   // If > than this size, roll the log. This is typically 0.95 times the size
   // of the default Hdfs block size.
   private final long logrollsize;
-  
+
+  private final long abortWALSize;
+  private final String HBASE_REGIONSERVER_ABORT_WAL_MULTIPLIER =
+      "hbase.regionserver.abort.wal.multiplier";
+  private final float DEFAULT_ABORT_WAL_MULTIPLIER = 2.0f;
+
   /** size of current log */
   private long curLogSize = 0;
 
@@ -403,7 +409,9 @@ class FSHLog implements HLog, Syncable {
         FSUtils.getDefaultBlockSize(this.fs, this.dir));
     // Roll at 95% of block size.
     float multi = conf.getFloat("hbase.regionserver.logroll.multiplier", 0.95f);
-    this.logrollsize = (long)(this.blocksize * multi);
+    this.logrollsize = (long) (this.blocksize * multi);
+    this.abortWALSize = (long) (this.logrollsize * conf.getFloat(
+      HBASE_REGIONSERVER_ABORT_WAL_MULTIPLIER, DEFAULT_ABORT_WAL_MULTIPLIER));
 
     this.maxLogs = conf.getInt("hbase.regionserver.maxlogs", 32);
     isWALCompressionEnabled = conf.getBoolean(HConstants.ENABLE_WAL_COMPRESSION, false);
@@ -1377,8 +1385,16 @@ class FSHLog implements HLog, Syncable {
               rollWriterLock.unlock();
             }            
             try {
-              if (lowReplication || writer != null && writer.getLength() > logrollsize) {
+              long length = writer != null ? writer.getLength() : 0;
+              if (lowReplication || length > logrollsize) {
                 requestLogRoll(true);
+              }
+              if (length > abortWALSize) {
+                LOG.fatal("WAL size=" + StringUtils.byteDesc(length)
+                    + " is too bigger than the config rollsize="
+                    + StringUtils.byteDesc(logrollsize));
+                ThreadInfoUtils.logThreadInfo("thread dump due to too big WAL", true);
+                Runtime.getRuntime().halt(1);
               }
             } catch (IOException e) {
               LOG.warn("writer.getLength() failed,this failure won't block here");
