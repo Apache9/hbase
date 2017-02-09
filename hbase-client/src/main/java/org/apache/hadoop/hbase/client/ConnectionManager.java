@@ -1256,7 +1256,7 @@ class ConnectionManager {
 
       Scan s = new Scan();
       s.setReversed(true);
-      s.setStartRow(metaKey);
+      s.withStartRow(metaKey);
       s.setOneRowLimit();
       if (this.useMetaReplicas) {
         s.setConsistency(Consistency.TIMELINE);
