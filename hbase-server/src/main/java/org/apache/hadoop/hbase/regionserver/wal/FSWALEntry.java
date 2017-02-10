@@ -18,23 +18,13 @@
 package org.apache.hadoop.hbase.regionserver.wal;
 
 
-import com.google.common.annotations.VisibleForTesting;
-
 import java.io.IOException;
-import java.util.Collections;
-import java.util.List;
-import java.util.Set;
-import java.util.TreeSet;
-import static java.util.stream.Collectors.toCollection;
 
 import org.apache.hadoop.hbase.Cell;
-import org.apache.hadoop.hbase.CellComparator;
 import org.apache.hadoop.hbase.CellUtil;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.regionserver.MultiVersionConcurrencyControl;
-import org.apache.hadoop.hbase.util.Bytes;
-import org.apache.hadoop.hbase.util.CollectionUtils;
 import org.apache.hadoop.hbase.wal.WAL.Entry;
 import org.apache.hadoop.hbase.wal.WALKey;
 import org.apache.htrace.Span;
@@ -54,7 +44,6 @@ class FSWALEntry extends Entry {
   private final transient long txid;
   private final transient boolean inMemstore;
   private final transient HRegionInfo hri;
-  private final transient Set<byte[]> familyNames;
 
   // The tracing span for this entry when writing WAL.
   private transient Span span;
@@ -65,28 +54,9 @@ class FSWALEntry extends Entry {
     this.inMemstore = inMemstore;
     this.hri = hri;
     this.txid = txid;
-    if (inMemstore) {
-      // construct familyNames here to reduce the work of log sinker.
-      this.familyNames = collectFamilies(edit.getCells());
-    } else {
-      this.familyNames = Collections.<byte[]> emptySet();
-    }
   }
 
-  @VisibleForTesting
-  static Set<byte[]> collectFamilies(List<Cell> cells) {
-    if (CollectionUtils.isEmpty(cells)) {
-      return Collections.<byte[]> emptySet();
-    } else {
-      return cells.stream()
-           .filter(v -> !CellUtil.matchingFamily(v, WALEdit.METAFAMILY))
-           .collect(toCollection(() -> new TreeSet<>(CellComparator::compareFamilies)))
-           .stream()
-           .map(CellUtil::cloneFamily)
-           .collect(toCollection(() -> new TreeSet<>(Bytes.BYTES_COMPARATOR)));
-    }
-  }
-
+  @Override
   public String toString() {
     return "sequence=" + this.txid + ", " + super.toString();
   };
@@ -120,13 +90,6 @@ class FSWALEntry extends Entry {
     }
     getKey().setWriteEntry(we);
     return regionSequenceId;
-  }
-
-  /**
-   * @return the family names which are effected by this edit.
-   */
-  Set<byte[]> getFamilyNames() {
-    return familyNames;
   }
 
   void attachSpan(Span span) {

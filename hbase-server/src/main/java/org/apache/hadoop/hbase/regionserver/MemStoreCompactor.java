@@ -205,7 +205,7 @@ public class MemStoreCompactor {
         if (resultSwapped = compactingMemStore.swapCompactedSegments(
             versionedList, result, (action==Action.MERGE))) {
           // update the wal so it can be truncated and not get too long
-          compactingMemStore.updateLowestUnflushedSequenceIdInWAL(true); // only if greater
+          compactingMemStore.updateLowestUnflushedSequenceIdInWAL(); // only if greater
         }
       }
     } catch (IOException e) {

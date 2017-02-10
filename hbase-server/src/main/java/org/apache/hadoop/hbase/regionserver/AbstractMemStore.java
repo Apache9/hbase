@@ -75,10 +75,8 @@ public abstract class AbstractMemStore implements MemStore {
 
   /**
    * Updates the wal with the lowest sequence id (oldest entry) that is still in memory
-   * @param onlyIfMoreRecent a flag that marks whether to update the sequence id no matter what or
-   *                      only if it is greater than the previous sequence id
    */
-  public abstract void updateLowestUnflushedSequenceIdInWAL(boolean onlyIfMoreRecent);
+  public abstract void updateLowestUnflushedSequenceIdInWAL();
 
   @Override
   public void add(Iterable<Cell> cells, MemstoreSize memstoreSize) {

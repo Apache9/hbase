@@ -29,10 +29,12 @@ import org.apache.commons.logging.Log;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellComparator;
 import org.apache.hadoop.hbase.ExtendedCell;
+import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.KeyValueUtil;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.client.Scan;
+import org.apache.hadoop.hbase.util.AtomicUtils;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.ClassSize;
 
@@ -57,7 +59,7 @@ public abstract class Segment {
 
   private AtomicReference<CellSet> cellSet= new AtomicReference<CellSet>();
   private final CellComparator comparator;
-  protected long minSequenceId;
+  protected final AtomicLong minSequenceId = new AtomicLong(Long.MAX_VALUE);
   private MemStoreLAB memStoreLAB;
   // Sum of sizes of all Cells added to this Segment. Cell's heapSize is considered. This is not
   // including the heap overhead of this class.
@@ -79,7 +81,6 @@ public abstract class Segment {
   protected Segment(CellSet cellSet, CellComparator comparator, MemStoreLAB memStoreLAB) {
     this.cellSet.set(cellSet);
     this.comparator = comparator;
-    this.minSequenceId = Long.MAX_VALUE;
     this.memStoreLAB = memStoreLAB;
     this.dataSize = new AtomicLong(0);
     this.heapOverhead = new AtomicLong(0);
@@ -90,7 +91,8 @@ public abstract class Segment {
   protected Segment(Segment segment) {
     this.cellSet.set(segment.getCellSet());
     this.comparator = segment.getComparator();
-    this.minSequenceId = segment.getMinSequenceId();
+    long minSequenceId = segment.getMinSequenceId();
+    this.minSequenceId.set(minSequenceId > 0 ? minSequenceId : Long.MAX_VALUE);
     this.memStoreLAB = segment.getMemStoreLAB();
     this.dataSize = new AtomicLong(segment.keySize());
     this.heapOverhead = new AtomicLong(segment.heapOverhead.get());
@@ -236,7 +238,8 @@ public abstract class Segment {
   }
 
   public long getMinSequenceId() {
-    return minSequenceId;
+    long minSequenceId = this.minSequenceId.get();
+    return minSequenceId != Long.MAX_VALUE ? minSequenceId : HConstants.NO_SEQNUM;
   }
 
   public TimeRangeTracker getTimeRangeTracker() {
@@ -299,7 +302,7 @@ public abstract class Segment {
       memstoreSize.incMemstoreSize(cellSize, overhead);
     }
     getTimeRangeTracker().includeTimestamp(cellToAdd);
-    minSequenceId = Math.min(minSequenceId, cellToAdd.getSequenceId());
+    AtomicUtils.updateMin(minSequenceId, cellToAdd.getSequenceId());
     // In no tags case this NoTagsKeyValue.getTagsLength() is a cheap call.
     // When we use ACL CP or Visibility CP which deals with Tags during
     // mutation, the TagRewriteCell.getTagsLength() is a cheaper call. We do not

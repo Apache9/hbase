@@ -24,7 +24,6 @@ import com.google.common.annotations.VisibleForTesting;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.Map;
-import java.util.Set;
 
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HRegionInfo;
@@ -118,16 +117,12 @@ public interface WAL extends Closeable {
   long append(HRegionInfo info, WALKey key, WALEdit edits, boolean inMemstore) throws IOException;
 
   /**
-   * updates the seuence number of a specific store.
-   * depending on the flag: replaces current seq number if the given seq id is bigger,
-   * or even if it is lower than existing one
+   * updates the sequence number of a specific store.
    * @param encodedRegionName
    * @param familyName
-   * @param sequenceid
-   * @param onlyIfGreater
+   * @param sequenceId
    */
-  void updateStore(byte[] encodedRegionName, byte[] familyName, Long sequenceid,
-      boolean onlyIfGreater);
+  void updateStore(byte[] encodedRegionName, byte[] familyName, long sequenceId);
 
   /**
    * Sync what we have in the WAL.
@@ -143,33 +138,25 @@ public interface WAL extends Closeable {
   void sync(long txid) throws IOException;
 
   /**
-   * WAL keeps track of the sequence numbers that are as yet not flushed im memstores
-   * in order to be able to do accounting to figure which WALs can be let go. This method tells WAL
-   * that some region is about to flush. The flush can be the whole region or for a column family
-   * of the region only.
-   *
-   * <p>Currently, it is expected that the update lock is held for the region; i.e. no
-   * concurrent appends while we set up cache flush.
-   * @param families Families to flush. May be a subset of all families in the region.
-   * @return Returns {@link HConstants#NO_SEQNUM} if we are flushing the whole region OR if
-   * we are flushing a subset of all families but there are no edits in those families not
-   * being flushed; in other words, this is effectively same as a flush of all of the region
-   * though we were passed a subset of regions. Otherwise, it returns the sequence id of the
-   * oldest/lowest outstanding edit.
-   * @see #completeCacheFlush(byte[])
-   * @see #abortCacheFlush(byte[])
+   * Indicate that we will start flushing the given region.
+   * <p>
+   * Notice that, now we will also track the minimum sequence id in memstore, thus we will update the
+   * sequence id map when flush complete by fetching the minimum sequence id for the new
+   * memstore directly. So here we do not need to get any sequence id back.
+   * @param encodedRegionName
+   * @return true if we can start the flush processing, otherwise false.
    */
-  Long startCacheFlush(final byte[] encodedRegionName, Set<byte[]> families);
-
-  Long startCacheFlush(final byte[] encodedRegionName, Map<byte[], Long> familyToSeq);
+  boolean startCacheFlush(byte[] encodedRegionName);
 
   /**
    * Complete the cache flush.
-   * @param encodedRegionName Encoded region name.
-   * @see #startCacheFlush(byte[], Set)
+   * <p>
+   * @param family2LowestUnflushedSequenceId used to update the lowestUnflushedSequenceId.
+   * @see #startCacheFlush(byte[])
    * @see #abortCacheFlush(byte[])
    */
-  void completeCacheFlush(final byte[] encodedRegionName);
+  void completeCacheFlush(final byte[] encodedRegionName,
+      Map<byte[], Long> family2LowestUnflushedSequenceId);
 
   /**
    * Abort a cache flush. Call if the flush fails. Note that the only recovery
@@ -179,6 +166,12 @@ public interface WAL extends Closeable {
    */
   void abortCacheFlush(byte[] encodedRegionName);
 
+  /**
+   * Indicate that a region has been closed.
+   * <p>
+   * This is used to remove the sequence id mapping in SequenceIdAccounting.
+   */
+  void closeRegion(byte[] encodedRegionName);
   /**
    * @return Coprocessor host.
    */

@@ -124,21 +124,10 @@ public class CompactingMemStore extends AbstractMemStore {
     return memstoreSize;
   }
 
-  /**
-   * This method is called before the flush is executed.
-   * @return an estimation (lower bound) of the unflushed sequence id in memstore after the flush
-   * is executed. if memstore will be cleared returns {@code HConstants.NO_SEQNUM}.
-   */
   @Override
-  public long preFlushSeqIDEstimation() {
-    if(compositeSnapshot) {
-      return HConstants.NO_SEQNUM;
-    }
+  public long minSequenceId() {
     Segment segment = getLastSegment();
-    if(segment == null) {
-      return HConstants.NO_SEQNUM;
-    }
-    return segment.getMinSequenceId();
+    return segment != null ? segment.getMinSequenceId() : HConstants.NO_SEQNUM;
   }
 
   @Override
@@ -220,14 +209,14 @@ public class CompactingMemStore extends AbstractMemStore {
   }
 
   @Override
-  public void updateLowestUnflushedSequenceIdInWAL(boolean onlyIfGreater) {
+  public void updateLowestUnflushedSequenceIdInWAL() {
     long minSequenceId = pipeline.getMinSequenceId();
-    if(minSequenceId != Long.MAX_VALUE) {
+    if (minSequenceId > 0) {
       byte[] encodedRegionName = getRegionServices().getRegionInfo().getEncodedNameAsBytes();
       byte[] familyName = getFamilyNameInBytes();
       WAL WAL = getRegionServices().getWAL();
       if (WAL != null) {
-        WAL.updateStore(encodedRegionName, familyName, minSequenceId, onlyIfGreater);
+        WAL.updateStore(encodedRegionName, familyName, minSequenceId);
       }
     }
   }
@@ -526,5 +515,4 @@ public class CompactingMemStore extends AbstractMemStore {
     msg += " inMemoryFlushInProgress is "+ (inMemoryFlushInProgress.get() ? "true" : "false");
     LOG.debug(msg);
   }
-
 }

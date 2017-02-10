@@ -17,8 +17,13 @@
  */
 package org.apache.hadoop.hbase.regionserver.wal;
 
-import static com.google.common.base.Preconditions.*;
+import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkNotNull;
 import static org.apache.hadoop.hbase.wal.AbstractFSWALProvider.WAL_FILE_NAME_DELIMITER;
+
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.ImmutableMap;
+import com.lmax.disruptor.RingBuffer;
 
 import java.io.IOException;
 import java.io.InterruptedIOException;
@@ -29,7 +34,6 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentNavigableMap;
@@ -73,9 +77,6 @@ import org.apache.htrace.NullScope;
 import org.apache.htrace.Span;
 import org.apache.htrace.Trace;
 import org.apache.htrace.TraceScope;
-
-import com.google.common.annotations.VisibleForTesting;
-import com.lmax.disruptor.RingBuffer;
 
 /**
  * Implementation of {@link WAL} to go against {@link FileSystem}; i.e. keep WALs in HDFS. Only one
@@ -423,33 +424,31 @@ public abstract class AbstractFSWAL<W> implements WAL {
   }
 
   @Override
-  public Long startCacheFlush(byte[] encodedRegionName, Set<byte[]> families) {
+  public boolean startCacheFlush(byte[] encodedRegionName) {
     if (!closeBarrier.beginOp()) {
       LOG.info("Flush not started for " + Bytes.toString(encodedRegionName) + "; server closing.");
-      return null;
+      return false;
+    } else {
+      return true;
     }
-    return this.sequenceIdAccounting.startCacheFlush(encodedRegionName, families);
   }
 
   @Override
-  public Long startCacheFlush(byte[] encodedRegionName, Map<byte[], Long> familyToSeq) {
-    if (!closeBarrier.beginOp()) {
-      LOG.info("Flush not started for " + Bytes.toString(encodedRegionName) + "; server closing.");
-      return null;
-    }
-    return this.sequenceIdAccounting.startCacheFlush(encodedRegionName, familyToSeq);
-  }
-
-  @Override
-  public void completeCacheFlush(byte[] encodedRegionName) {
-    this.sequenceIdAccounting.completeCacheFlush(encodedRegionName);
+  public void completeCacheFlush(byte[] encodedRegionName,
+      Map<byte[], Long> family2LowestUnflushedSequenceId) {
+    this.sequenceIdAccounting.updateLowestUnflushedSequenceIds(encodedRegionName,
+      family2LowestUnflushedSequenceId);
     closeBarrier.endOp();
   }
 
   @Override
   public void abortCacheFlush(byte[] encodedRegionName) {
-    this.sequenceIdAccounting.abortCacheFlush(encodedRegionName);
     closeBarrier.endOp();
+  }
+
+  @Override
+  public void closeRegion(byte[] encodedRegionName) {
+    this.sequenceIdAccounting.remove(encodedRegionName);
   }
 
   @Override
@@ -833,18 +832,10 @@ public abstract class AbstractFSWAL<W> implements WAL {
     LOG.info("Closed WAL: " + toString());
   }
 
-  /**
-   * updates the sequence number of a specific store. depending on the flag: replaces current seq
-   * number if the given seq id is bigger, or even if it is lower than existing one
-   * @param encodedRegionName
-   * @param familyName
-   * @param sequenceid
-   * @param onlyIfGreater
-   */
   @Override
-  public void updateStore(byte[] encodedRegionName, byte[] familyName, Long sequenceid,
-      boolean onlyIfGreater) {
-    sequenceIdAccounting.updateStore(encodedRegionName, familyName, sequenceid, onlyIfGreater);
+  public void updateStore(byte[] encodedRegionName, byte[] familyName, long sequenceId) {
+    sequenceIdAccounting.updateLowestUnflushedSequenceIds(encodedRegionName,
+      ImmutableMap.of(familyName, sequenceId));
   }
 
   protected SyncFuture getSyncFuture(long sequence, Span span) {
@@ -908,8 +899,7 @@ public abstract class AbstractFSWAL<W> implements WAL {
     doAppend(writer, entry);
     assert highestUnsyncedTxid < entry.getTxid();
     highestUnsyncedTxid = entry.getTxid();
-    sequenceIdAccounting.update(encodedRegionName, entry.getFamilyNames(), regionSequenceId,
-      entry.isInMemstore());
+    sequenceIdAccounting.update(encodedRegionName, regionSequenceId);
     coprocessorHost.postWALWrite(entry.getHRegionInfo(), entry.getKey(), entry.getEdit());
     // Update metrics.
     postAppend(entry, EnvironmentEdgeManager.currentTime() - start);

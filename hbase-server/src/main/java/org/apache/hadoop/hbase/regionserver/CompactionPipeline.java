@@ -25,6 +25,7 @@ import java.util.List;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.ClassSize;
@@ -224,12 +225,8 @@ public class CompactionPipeline {
   }
 
   public long getMinSequenceId() {
-    long minSequenceId = Long.MAX_VALUE;
     LinkedList<? extends Segment> localCopy = readOnlyCopy;
-    if (!localCopy.isEmpty()) {
-      minSequenceId = localCopy.getLast().getMinSequenceId();
-    }
-    return minSequenceId;
+    return localCopy.isEmpty() ? HConstants.NO_SEQNUM : localCopy.getLast().getMinSequenceId();
   }
 
   public MemstoreSize getTailSize() {

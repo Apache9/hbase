@@ -510,37 +510,33 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
     final TreeMap<byte[], MemstoreSize> storeFlushableSize;
     final long startTime;
     final long flushOpSeqId;
-    final long flushedSeqId;
     final MemstoreSize totalFlushableSize;
 
     /** Constructs an early exit case */
-    PrepareFlushResult(FlushResult result, long flushSeqId) {
-      this(result, null, null, null, Math.max(0, flushSeqId), 0, 0, new MemstoreSize());
+    PrepareFlushResult(FlushResult result, long flushOpSeqId) {
+      this(result, null, null, null, Math.max(0, flushOpSeqId), 0, new MemstoreSize());
     }
 
     /** Constructs a successful prepare flush result */
-    PrepareFlushResult(
-      TreeMap<byte[], StoreFlushContext> storeFlushCtxs,
-      TreeMap<byte[], List<Path>> committedFiles,
-      TreeMap<byte[], MemstoreSize> storeFlushableSize, long startTime, long flushSeqId,
-      long flushedSeqId, MemstoreSize totalFlushableSize) {
-      this(null, storeFlushCtxs, committedFiles, storeFlushableSize, startTime,
-        flushSeqId, flushedSeqId, totalFlushableSize);
+    PrepareFlushResult(TreeMap<byte[], StoreFlushContext> storeFlushCtxs,
+        TreeMap<byte[], List<Path>> committedFiles,
+        TreeMap<byte[], MemstoreSize> storeFlushableSize, long startTime, long flushOpSeqId,
+        MemstoreSize totalFlushableSize) {
+      this(null, storeFlushCtxs, committedFiles, storeFlushableSize, startTime, flushOpSeqId,
+          totalFlushableSize);
     }
 
-    private PrepareFlushResult(
-      FlushResult result,
-      TreeMap<byte[], StoreFlushContext> storeFlushCtxs,
-      TreeMap<byte[], List<Path>> committedFiles,
-      TreeMap<byte[], MemstoreSize> storeFlushableSize, long startTime, long flushSeqId,
-      long flushedSeqId, MemstoreSize totalFlushableSize) {
+    private PrepareFlushResult(FlushResult result,
+        TreeMap<byte[], StoreFlushContext> storeFlushCtxs,
+        TreeMap<byte[], List<Path>> committedFiles,
+        TreeMap<byte[], MemstoreSize> storeFlushableSize, long startTime, long flushOpSeqId,
+        MemstoreSize totalFlushableSize) {
       this.result = result;
       this.storeFlushCtxs = storeFlushCtxs;
       this.committedFiles = committedFiles;
       this.storeFlushableSize = storeFlushableSize;
       this.startTime = startTime;
-      this.flushOpSeqId = flushSeqId;
-      this.flushedSeqId = flushedSeqId;
+      this.flushOpSeqId = flushOpSeqId;
       this.totalFlushableSize = totalFlushableSize;
     }
 
@@ -978,6 +974,7 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
       }
       boolean allStoresOpened = false;
       boolean hasSloppyStores = false;
+      WAL wal = getWAL();
       try {
         for (int i = 0; i < htableDescriptor.getFamilies().size(); i++) {
           Future<HStore> future = completionService.take();
@@ -986,8 +983,15 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
           if (store.isSloppyMemstore()) {
             hasSloppyStores = true;
           }
-
           long storeMaxSequenceId = store.getMaxSequenceId();
+          if (wal != null) {
+            // store the lowestUnflushedSequenceId into WAL. This the max sequence id in storefiles,
+            // so we need to plus one.
+            // 0 means the store does not have any store files yet so we also use 0. Do not use
+            // NO_SEQNUM as it usually means the value does not exist.
+            wal.updateStore(getRegionInfo().getEncodedNameAsBytes(), store.getFamily().getName(),
+              storeMaxSequenceId > 0 ? storeMaxSequenceId + 1 : 0);
+          }
           maxSeqIdInStores.put(store.getColumnFamilyName().getBytes(),
               storeMaxSequenceId);
           if (maxSeqId == -1 || storeMaxSequenceId > maxSeqId) {
@@ -1672,7 +1676,9 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
       if (!abort && wal != null && getRegionServerServices() != null && !writestate.readOnly) {
         writeRegionCloseMarker(wal);
       }
-
+      if (wal != null) {
+        wal.closeRegion(getRegionInfo().getEncodedNameAsBytes());
+      }
       this.closed.set(true);
       if (!canFlush) {
         this.decrMemstoreSize(new MemstoreSize(memstoreDataSize.get(), getMemstoreHeapOverhead()));
@@ -2399,12 +2405,6 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
     status.setStatus("Preparing flush snapshotting stores in " + getRegionInfo().getEncodedName());
     MemstoreSize totalSizeOfFlushableStores = new MemstoreSize();
 
-    Map<byte[], Long> flushedFamilyNamesToSeq = new HashMap<>();
-    for (Store store: storesToFlush) {
-      flushedFamilyNamesToSeq.put(store.getFamily().getName(),
-          ((HStore) store).preFlushSeqIDEstimation());
-    }
-
     TreeMap<byte[], StoreFlushContext> storeFlushCtxs
       = new TreeMap<byte[], StoreFlushContext>(Bytes.BYTES_COMPARATOR);
     TreeMap<byte[], List<Path>> committedFiles = new TreeMap<byte[], List<Path>>(
@@ -2415,16 +2415,11 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
     // createFlushContext to use as the store file's sequence id. It can be in advance of edits
     // still in the memstore, edits that are in other column families yet to be flushed.
     long flushOpSeqId = HConstants.NO_SEQNUM;
-    // The max flushed sequence id after this flush operation completes. All edits in memstore
-    // will be in advance of this sequence id.
-    long flushedSeqId = HConstants.NO_SEQNUM;
     byte[] encodedRegionName = getRegionInfo().getEncodedNameAsBytes();
     try {
       if (wal != null) {
-        Long earliestUnflushedSequenceIdForTheRegion =
-            wal.startCacheFlush(encodedRegionName, flushedFamilyNamesToSeq);
-        if (earliestUnflushedSequenceIdForTheRegion == null) {
-          // This should never happen. This is how startCacheFlush signals flush cannot proceed.
+        if (!wal.startCacheFlush(encodedRegionName)) {
+          // This is how startCacheFlush signals flush cannot proceed.
           String msg = this.getRegionInfo().getEncodedName() + " flush aborted; WAL closing.";
           status.setStatus(msg);
           return new PrepareFlushResult(
@@ -2432,13 +2427,9 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
               myseqid);
         }
         flushOpSeqId = getNextSequenceId(wal);
-        // Back up 1, minus 1 from oldest sequence id in memstore to get last 'flushed' edit
-        flushedSeqId =
-            earliestUnflushedSequenceIdForTheRegion.longValue() == HConstants.NO_SEQNUM?
-                flushOpSeqId: earliestUnflushedSequenceIdForTheRegion.longValue() - 1;
       } else {
         // use the provided sequence Id as WAL is not being used for this flush.
-        flushedSeqId = flushOpSeqId = myseqid;
+        flushOpSeqId = myseqid;
       }
 
       for (Store s : storesToFlush) {
@@ -2473,7 +2464,7 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
     status.setStatus(s);
     doSyncOfUnflushedWALChanges(wal, getRegionInfo());
     return new PrepareFlushResult(storeFlushCtxs, committedFiles, storeFlushableSize, startTime,
-        flushOpSeqId, flushedSeqId, totalSizeOfFlushableStores);
+        flushOpSeqId, totalSizeOfFlushableStores);
   }
 
   /**
@@ -2573,7 +2564,6 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
     TreeMap<byte[], List<Path>> committedFiles = prepareResult.committedFiles;
     long startTime = prepareResult.startTime;
     long flushOpSeqId = prepareResult.flushOpSeqId;
-    long flushedSeqId = prepareResult.flushedSeqId;
 
     String s = "Flushing stores of " + this;
     status.setStatus(s);
@@ -2663,18 +2653,28 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
 
       throw dse;
     }
-
     // If we get to here, the HStores have been written.
+    // Let's construct the new lowestUnflushedSequenceId map for the flushed families
+    Map<byte[], Long> familyToLowestUnflushedSequenceId = new HashMap<>(storesToFlush.size());
+    storesToFlush.forEach(store -> {
+      long lowestUnflushedSequenceId = store.minSequenceIdInMemstore();
+      if (lowestUnflushedSequenceId < 0) {
+        lowestUnflushedSequenceId = flushOpSeqId;
+      }
+      familyToLowestUnflushedSequenceId.put(store.getFamily().getName(), lowestUnflushedSequenceId);
+    });
+
     if (wal != null) {
-      wal.completeCacheFlush(this.getRegionInfo().getEncodedNameAsBytes());
+      wal.completeCacheFlush(this.getRegionInfo().getEncodedNameAsBytes(),
+        familyToLowestUnflushedSequenceId);
     }
 
     // Record latest flush time
     for (Store store: storesToFlush) {
       this.lastStoreFlushTimeMap.put(store, startTime);
     }
-
-    this.maxFlushedSeqId = flushedSeqId;
+    // minus one to get the flushed sequence id as the map is for unflushed sequence id.
+    this.maxFlushedSeqId = Collections.min(familyToLowestUnflushedSequenceId.values()) - 1;
     this.lastFlushOpSeqId = flushOpSeqId;
 
     // C. Finally notify anyone waiting on memstore to clear:

@@ -46,6 +46,7 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.FSUtils;
 import org.apache.hadoop.hbase.util.Threads;
 import org.apache.hadoop.hbase.wal.WALKey;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
@@ -116,6 +117,7 @@ public class TestFSHLog extends AbstractTestFSWAL {
   /**
    * Test case for https://issues.apache.org/jira/browse/HBASE-16721
    */
+  @Ignore
   @Test (timeout = 30000)
   public void testUnflushedSeqIdTracking() throws IOException, InterruptedException {
     final String name = "testSyncRunnerIndexOverflow";

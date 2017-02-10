@@ -191,18 +191,20 @@ public class TestWALFactory {
       for (int i = 0; i < howmany; i++) {
         final WAL log =
             wals.getWAL(infos[i].getEncodedNameAsBytes(), infos[i].getTable().getNamespace());
+        log.updateStore(infos[i].getEncodedNameAsBytes(), Bytes.toBytes("column"),
+          HConstants.NO_SEQNUM);
         for (int j = 0; j < howmany; j++) {
           WALEdit edit = new WALEdit();
-          byte [] family = Bytes.toBytes("column");
-          byte [] qualifier = Bytes.toBytes(Integer.toString(j));
-          byte [] column = Bytes.toBytes("column:" + Integer.toString(j));
+          byte[] family = Bytes.toBytes("column");
+          byte[] qualifier = Bytes.toBytes(Integer.toString(j));
+          byte[] column = Bytes.toBytes("column:" + Integer.toString(j));
           edit.add(new KeyValue(rowName, family, qualifier,
               System.currentTimeMillis(), column));
           LOG.info("Region " + i + ": " + edit);
           WALKey walKey =  new WALKey(infos[i].getEncodedNameAsBytes(), tableName,
               System.currentTimeMillis(), mvcc, scopes);
           log.append(infos[i], walKey, edit, true);
-          walKey.getWriteEntry();
+          mvcc.complete(walKey.getWriteEntry());
         }
         log.sync();
         log.rollWriter(true);
@@ -528,8 +530,6 @@ public class TestWALFactory {
             mvcc, scopes),
         cols, true);
       log.sync(txid);
-      log.startCacheFlush(info.getEncodedNameAsBytes(), htd.getFamiliesKeys());
-      log.completeCacheFlush(info.getEncodedNameAsBytes());
       log.shutdown();
       Path filename = AbstractFSWALProvider.getCurrentFileName(log);
       // Now open a reader on the log and assert append worked.
@@ -591,8 +591,6 @@ public class TestWALFactory {
             mvcc, scopes),
         cols, true);
       log.sync(txid);
-      log.startCacheFlush(hri.getEncodedNameAsBytes(), htd.getFamiliesKeys());
-      log.completeCacheFlush(hri.getEncodedNameAsBytes());
       log.shutdown();
       Path filename = AbstractFSWALProvider.getCurrentFileName(log);
       // Now open a reader on the log and assert append worked.

@@ -18,8 +18,6 @@
  */
 package org.apache.hadoop.hbase.util;
 
-import java.util.Arrays;
-
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.classification.InterfaceStability;
 
@@ -55,7 +53,7 @@ public class HashedBytes {
     if (obj == null || getClass() != obj.getClass())
       return false;
     HashedBytes other = (HashedBytes) obj;
-    return (hashCode == other.hashCode) && Arrays.equals(bytes, other.bytes);
+    return (hashCode == other.hashCode) && Bytes.equals(bytes, other.bytes);
   }
 
   @Override

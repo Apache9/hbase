@@ -535,4 +535,10 @@ public interface Store extends HeapSize, StoreConfigInformation, PropagatingConf
    * @return true if the memstore may need some extra memory space
    */
   boolean isSloppyMemstore();
+
+  /**
+   * @return the minimum sequence id in memstore, or
+   *         {@link org.apache.hadoop.hbase.HConstants#NO_SEQNUM} if no data in memstore.
+   */
+  long minSequenceIdInMemstore();
 }
