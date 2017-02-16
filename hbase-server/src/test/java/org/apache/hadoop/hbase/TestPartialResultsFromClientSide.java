@@ -20,7 +20,6 @@ package org.apache.hadoop.hbase;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -34,11 +33,11 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.client.ClientScanner;
 import org.apache.hadoop.hbase.client.Delete;
+import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
-import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.filter.ColumnPrefixFilter;
 import org.apache.hadoop.hbase.filter.ColumnRangeFilter;
 import org.apache.hadoop.hbase.filter.Filter;
@@ -49,7 +48,6 @@ import org.apache.hadoop.hbase.filter.RandomRowFilter;
 import org.apache.hadoop.hbase.master.HMaster;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.apache.hadoop.hbase.util.Bytes;
-import org.apache.hadoop.hbase.util.Pair;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -705,12 +703,9 @@ public class TestPartialResultsFromClientSide {
 
     HTable tmpTable = createTestTable(testName, rows, families, qualifiers, value);
 
-    Scan scan = new Scan();
-    scan.setMaxResultSize(1);
-    scan.setAllowPartialResults(true);
-
     // Open scanner before deletes
-    ResultScanner scanner = tmpTable.getScanner(scan);
+    ResultScanner scanner =
+        tmpTable.getScanner(new Scan().setMaxResultSize(1).setAllowPartialResults(true));
 
     Delete delete1 = new Delete(rows[0]);
     delete1.deleteColumn(families[0], qualifiers[0], 0);
@@ -727,13 +722,13 @@ public class TestPartialResultsFromClientSide {
         scannerCount == expectedCount);
 
     // Minus 2 for the two cells that were deleted
-    scanner = tmpTable.getScanner(scan);
+    scanner = tmpTable.getScanner(new Scan().setMaxResultSize(1).setAllowPartialResults(true));
     scannerCount = countCellsFromScanner(scanner);
     expectedCount = numRows * numFamilies * numQualifiers - 2;
     assertTrue("scannerCount: " + scannerCount + " expectedCount: " + expectedCount,
         scannerCount == expectedCount);
 
-    scanner = tmpTable.getScanner(scan);
+    scanner = tmpTable.getScanner(new Scan().setMaxResultSize(1).setAllowPartialResults(true));
     // Put in 2 new rows. The timestamps differ from the deleted rows
     Put put1 = new Put(rows[0]);
     put1.add(new KeyValue(rows[0], families[0], qualifiers[0], 1, value));
@@ -750,7 +745,7 @@ public class TestPartialResultsFromClientSide {
         scannerCount == expectedCount);
 
     // Now the scanner should see the cells that were added by puts
-    scanner = tmpTable.getScanner(scan);
+    scanner = tmpTable.getScanner(new Scan().setMaxResultSize(1).setAllowPartialResults(true));
     scannerCount = countCellsFromScanner(scanner);
     expectedCount = numRows * numFamilies * numQualifiers;
     assertTrue("scannerCount: " + scannerCount + " expectedCount: " + expectedCount,
@@ -831,7 +826,8 @@ public class TestPartialResultsFromClientSide {
     assertArrayEquals(cq, Bytes.copy(cell.getQualifierArray(), cell.getQualifierOffset(), cell.getQualifierLength()));
   }
 
-  @Test public void testPartialResultWhenRegionMove() throws IOException {
+  @Test
+  public void testPartialResultWhenRegionMove() throws IOException {
     HTable table =
         createTestTable(TableName.valueOf("testPartialResultWhenRegionMove"), ROWS, FAMILIES,
             QUALIFIERS, VALUE);
@@ -982,65 +978,38 @@ public class TestPartialResultsFromClientSide {
 
   @Test
   public void testBatchingResultWhenRegionMove() throws IOException {
-    // If user setBatch(5) and rpc returns 3+5+5+5+3 cells,
-    // we should return 5+5+5+5+1 to user.
-    // setBatch doesn't mean setAllowPartialResult(true)
     HTable table =
         createTestTable(TableName.valueOf("testBatchingResultWhenRegionMove"), ROWS, FAMILIES,
             QUALIFIERS, VALUE);
-    Put put = new Put(ROWS[1]);
-    put.add(FAMILIES[0], QUALIFIERS[1], new byte[VALUE_SIZE * 10]);
-    table.put(put);
-    Delete delete = new Delete(ROWS[1]);
-    delete.deleteColumns(FAMILIES[NUM_FAMILIES - 1], QUALIFIERS[NUM_QUALIFIERS - 1]);
-    table.delete(delete);
 
     moveRegion(table, 1);
 
     Scan scan = new Scan();
     scan.setCaching(1);
-    scan.setBatch(5);
-    scan.setMaxResultSize(VALUE_SIZE * 6);
+    scan.setBatch(1);
 
     ResultScanner scanner = table.getScanner(scan);
-    for (int i = 0; i < NUM_FAMILIES * NUM_QUALIFIERS / 5 - 1; i++) {
+    for (int i = 0; i < NUM_FAMILIES * NUM_QUALIFIERS - 1; i++) {
       scanner.next();
     }
     Result result1 = scanner.next();
-    assertEquals(5, result1.rawCells().length);
-    assertCell(result1.rawCells()[0], ROWS[0], FAMILIES[NUM_FAMILIES - 1], QUALIFIERS[NUM_QUALIFIERS - 5]);
-    assertCell(result1.rawCells()[4], ROWS[0], FAMILIES[NUM_FAMILIES - 1], QUALIFIERS[NUM_QUALIFIERS - 1]);
-    assertFalse(result1.isPartial());
+    assertEquals(1, result1.rawCells().length);
+    Cell c1 = result1.rawCells()[0];
+    assertCell(c1, ROWS[0], FAMILIES[NUM_FAMILIES - 1], QUALIFIERS[NUM_QUALIFIERS - 1]);
 
     moveRegion(table, 2);
 
     Result result2 = scanner.next();
-    assertEquals(5, result2.rawCells().length);
-    assertCell(result2.rawCells()[0], ROWS[1], FAMILIES[0], QUALIFIERS[0]);
-    assertCell(result2.rawCells()[4], ROWS[1], FAMILIES[0], QUALIFIERS[4]);
-    assertFalse(result2.isPartial());
+    assertEquals(1, result2.rawCells().length);
+    Cell c2 = result2.rawCells()[0];
+    assertCell(c2, ROWS[1], FAMILIES[0], QUALIFIERS[0]);
 
     moveRegion(table, 3);
 
     Result result3 = scanner.next();
-    assertEquals(5, result3.rawCells().length);
-    assertCell(result3.rawCells()[0], ROWS[1], FAMILIES[0], QUALIFIERS[5]);
-    assertCell(result3.rawCells()[4], ROWS[1], FAMILIES[0], QUALIFIERS[9]);
-    assertFalse(result3.isPartial());
-    for (int i = 0; i < NUM_FAMILIES * NUM_QUALIFIERS / 5 - 3; i++) {
-      Result result = scanner.next();
-      assertEquals(5, result.rawCells().length);
-      assertFalse(result.isPartial());
-    }
-    Result result = scanner.next();
-    assertEquals(4, result.rawCells().length);
-    assertFalse(result.isPartial());
-    for (int i = 0; i < (NUM_ROWS - 2) * NUM_FAMILIES * NUM_QUALIFIERS / 5; i++) {
-      result = scanner.next();
-      assertEquals(5, result.rawCells().length);
-      assertFalse(result.isPartial());
-    }
-    assertNull(scanner.next());
+    assertEquals(1, result3.rawCells().length);
+    Cell c3 = result3.rawCells()[0];
+    assertCell(c3, ROWS[1], FAMILIES[0], QUALIFIERS[1]);
   }
 
 

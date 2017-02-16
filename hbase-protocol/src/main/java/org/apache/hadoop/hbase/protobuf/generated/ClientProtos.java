@@ -14219,6 +14219,16 @@ public final class ClientProtos {
      */
     org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.ColumnFamilyTimeRangeOrBuilder getCfTimeRangeOrBuilder(
         int index);
+
+    // optional uint64 mvcc_read_point = 20 [default = 0];
+    /**
+     * <code>optional uint64 mvcc_read_point = 20 [default = 0];</code>
+     */
+    boolean hasMvccReadPoint();
+    /**
+     * <code>optional uint64 mvcc_read_point = 20 [default = 0];</code>
+     */
+    long getMvccReadPoint();
   }
   /**
    * Protobuf type {@code Scan}
@@ -14395,6 +14405,11 @@ public final class ClientProtos {
                 mutable_bitField0_ |= 0x00020000;
               }
               cfTimeRange_.add(input.readMessage(org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.ColumnFamilyTimeRange.PARSER, extensionRegistry));
+              break;
+            }
+            case 160: {
+              bitField0_ |= 0x00008000;
+              mvccReadPoint_ = input.readUInt64();
               break;
             }
           }
@@ -14814,6 +14829,22 @@ public final class ClientProtos {
       return cfTimeRange_.get(index);
     }
 
+    // optional uint64 mvcc_read_point = 20 [default = 0];
+    public static final int MVCC_READ_POINT_FIELD_NUMBER = 20;
+    private long mvccReadPoint_;
+    /**
+     * <code>optional uint64 mvcc_read_point = 20 [default = 0];</code>
+     */
+    public boolean hasMvccReadPoint() {
+      return ((bitField0_ & 0x00008000) == 0x00008000);
+    }
+    /**
+     * <code>optional uint64 mvcc_read_point = 20 [default = 0];</code>
+     */
+    public long getMvccReadPoint() {
+      return mvccReadPoint_;
+    }
+
     private void initFields() {
       column_ = java.util.Collections.emptyList();
       attribute_ = java.util.Collections.emptyList();
@@ -14833,6 +14864,7 @@ public final class ClientProtos {
       caching_ = 0;
       allowPartialResults_ = false;
       cfTimeRange_ = java.util.Collections.emptyList();
+      mvccReadPoint_ = 0L;
     }
     private byte memoizedIsInitialized = -1;
     public final boolean isInitialized() {
@@ -14924,6 +14956,9 @@ public final class ClientProtos {
       for (int i = 0; i < cfTimeRange_.size(); i++) {
         output.writeMessage(19, cfTimeRange_.get(i));
       }
+      if (((bitField0_ & 0x00008000) == 0x00008000)) {
+        output.writeUInt64(20, mvccReadPoint_);
+      }
       getUnknownFields().writeTo(output);
     }
 
@@ -15004,6 +15039,10 @@ public final class ClientProtos {
       for (int i = 0; i < cfTimeRange_.size(); i++) {
         size += com.google.protobuf.CodedOutputStream
           .computeMessageSize(19, cfTimeRange_.get(i));
+      }
+      if (((bitField0_ & 0x00008000) == 0x00008000)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeUInt64Size(20, mvccReadPoint_);
       }
       size += getUnknownFields().getSerializedSize();
       memoizedSerializedSize = size;
@@ -15109,6 +15148,11 @@ public final class ClientProtos {
       }
       result = result && getCfTimeRangeList()
           .equals(other.getCfTimeRangeList());
+      result = result && (hasMvccReadPoint() == other.hasMvccReadPoint());
+      if (hasMvccReadPoint()) {
+        result = result && (getMvccReadPoint()
+            == other.getMvccReadPoint());
+      }
       result = result &&
           getUnknownFields().equals(other.getUnknownFields());
       return result;
@@ -15193,6 +15237,10 @@ public final class ClientProtos {
       if (getCfTimeRangeCount() > 0) {
         hash = (37 * hash) + CF_TIME_RANGE_FIELD_NUMBER;
         hash = (53 * hash) + getCfTimeRangeList().hashCode();
+      }
+      if (hasMvccReadPoint()) {
+        hash = (37 * hash) + MVCC_READ_POINT_FIELD_NUMBER;
+        hash = (53 * hash) + hashLong(getMvccReadPoint());
       }
       hash = (29 * hash) + getUnknownFields().hashCode();
       memoizedHashCode = hash;
@@ -15375,6 +15423,8 @@ public final class ClientProtos {
         } else {
           cfTimeRangeBuilder_.clear();
         }
+        mvccReadPoint_ = 0L;
+        bitField0_ = (bitField0_ & ~0x00040000);
         return this;
       }
 
@@ -15498,6 +15548,10 @@ public final class ClientProtos {
         } else {
           result.cfTimeRange_ = cfTimeRangeBuilder_.build();
         }
+        if (((from_bitField0_ & 0x00040000) == 0x00040000)) {
+          to_bitField0_ |= 0x00008000;
+        }
+        result.mvccReadPoint_ = mvccReadPoint_;
         result.bitField0_ = to_bitField0_;
         onBuilt();
         return result;
@@ -15636,6 +15690,9 @@ public final class ClientProtos {
               cfTimeRangeBuilder_.addAllMessages(other.cfTimeRange_);
             }
           }
+        }
+        if (other.hasMvccReadPoint()) {
+          setMvccReadPoint(other.getMvccReadPoint());
         }
         this.mergeUnknownFields(other.getUnknownFields());
         return this;
@@ -17091,6 +17148,39 @@ public final class ClientProtos {
           cfTimeRange_ = null;
         }
         return cfTimeRangeBuilder_;
+      }
+
+      // optional uint64 mvcc_read_point = 20 [default = 0];
+      private long mvccReadPoint_ ;
+      /**
+       * <code>optional uint64 mvcc_read_point = 20 [default = 0];</code>
+       */
+      public boolean hasMvccReadPoint() {
+        return ((bitField0_ & 0x00040000) == 0x00040000);
+      }
+      /**
+       * <code>optional uint64 mvcc_read_point = 20 [default = 0];</code>
+       */
+      public long getMvccReadPoint() {
+        return mvccReadPoint_;
+      }
+      /**
+       * <code>optional uint64 mvcc_read_point = 20 [default = 0];</code>
+       */
+      public Builder setMvccReadPoint(long value) {
+        bitField0_ |= 0x00040000;
+        mvccReadPoint_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>optional uint64 mvcc_read_point = 20 [default = 0];</code>
+       */
+      public Builder clearMvccReadPoint() {
+        bitField0_ = (bitField0_ & ~0x00040000);
+        mvccReadPoint_ = 0L;
+        onChanged();
+        return this;
       }
 
       // @@protoc_insertion_point(builder_scope:Scan)
@@ -18671,6 +18761,60 @@ public final class ClientProtos {
      * </pre>
      */
     boolean getHeartbeatMessage();
+
+    // optional .ScanMetrics scan_metrics = 10;
+    /**
+     * <code>optional .ScanMetrics scan_metrics = 10;</code>
+     *
+     * <pre>
+     * This field is filled in if the client has requested that scan metrics be tracked.
+     * The metrics tracked here are sent back to the client to be tracked together with
+     * the existing client side metrics.
+     * </pre>
+     */
+    boolean hasScanMetrics();
+    /**
+     * <code>optional .ScanMetrics scan_metrics = 10;</code>
+     *
+     * <pre>
+     * This field is filled in if the client has requested that scan metrics be tracked.
+     * The metrics tracked here are sent back to the client to be tracked together with
+     * the existing client side metrics.
+     * </pre>
+     */
+    org.apache.hadoop.hbase.protobuf.generated.MapReduceProtos.ScanMetrics getScanMetrics();
+    /**
+     * <code>optional .ScanMetrics scan_metrics = 10;</code>
+     *
+     * <pre>
+     * This field is filled in if the client has requested that scan metrics be tracked.
+     * The metrics tracked here are sent back to the client to be tracked together with
+     * the existing client side metrics.
+     * </pre>
+     */
+    org.apache.hadoop.hbase.protobuf.generated.MapReduceProtos.ScanMetricsOrBuilder getScanMetricsOrBuilder();
+
+    // optional uint64 mvcc_read_point = 11 [default = 0];
+    /**
+     * <code>optional uint64 mvcc_read_point = 11 [default = 0];</code>
+     *
+     * <pre>
+     * The mvcc read point which is used to open the scanner at server side. Client can
+     * make use of this mvcc_read_point when restarting a scanner to get a consistent view
+     * of a row.
+     * </pre>
+     */
+    boolean hasMvccReadPoint();
+    /**
+     * <code>optional uint64 mvcc_read_point = 11 [default = 0];</code>
+     *
+     * <pre>
+     * The mvcc read point which is used to open the scanner at server side. Client can
+     * make use of this mvcc_read_point when restarting a scanner to get a consistent view
+     * of a row.
+     * </pre>
+     */
+    long getMvccReadPoint();
   }
   /**
    * Protobuf type {@code ScanResponse}
@@ -18807,6 +18951,24 @@ public final class ClientProtos {
             case 72: {
               bitField0_ |= 0x00000020;
               heartbeatMessage_ = input.readBool();
+              break;
+            }
+            case 82: {
+              org.apache.hadoop.hbase.protobuf.generated.MapReduceProtos.ScanMetrics.Builder subBuilder = null;
+              if (((bitField0_ & 0x00000040) == 0x00000040)) {
+                subBuilder = scanMetrics_.toBuilder();
+              }
+              scanMetrics_ = input.readMessage(org.apache.hadoop.hbase.protobuf.generated.MapReduceProtos.ScanMetrics.PARSER, extensionRegistry);
+              if (subBuilder != null) {
+                subBuilder.mergeFrom(scanMetrics_);
+                scanMetrics_ = subBuilder.buildPartial();
+              }
+              bitField0_ |= 0x00000040;
+              break;
+            }
+            case 88: {
+              bitField0_ |= 0x00000080;
+              mvccReadPoint_ = input.readUInt64();
               break;
             }
           }
@@ -19152,6 +19314,74 @@ public final class ClientProtos {
       return heartbeatMessage_;
     }
 
+    // optional .ScanMetrics scan_metrics = 10;
+    public static final int SCAN_METRICS_FIELD_NUMBER = 10;
+    private org.apache.hadoop.hbase.protobuf.generated.MapReduceProtos.ScanMetrics scanMetrics_;
+    /**
+     * <code>optional .ScanMetrics scan_metrics = 10;</code>
+     *
+     * <pre>
+     * This field is filled in if the client has requested that scan metrics be tracked.
+     * The metrics tracked here are sent back to the client to be tracked together with
+     * the existing client side metrics.
+     * </pre>
+     */
+    public boolean hasScanMetrics() {
+      return ((bitField0_ & 0x00000040) == 0x00000040);
+    }
+    /**
+     * <code>optional .ScanMetrics scan_metrics = 10;</code>
+     *
+     * <pre>
+     * This field is filled in if the client has requested that scan metrics be tracked.
+     * The metrics tracked here are sent back to the client to be tracked together with
+     * the existing client side metrics.
+     * </pre>
+     */
+    public org.apache.hadoop.hbase.protobuf.generated.MapReduceProtos.ScanMetrics getScanMetrics() {
+      return scanMetrics_;
+    }
+    /**
+     * <code>optional .ScanMetrics scan_metrics = 10;</code>
+     *
+     * <pre>
+     * This field is filled in if the client has requested that scan metrics be tracked.
+     * The metrics tracked here are sent back to the client to be tracked together with
+     * the existing client side metrics.
+     * </pre>
+     */
+    public org.apache.hadoop.hbase.protobuf.generated.MapReduceProtos.ScanMetricsOrBuilder getScanMetricsOrBuilder() {
+      return scanMetrics_;
+    }
+
+    // optional uint64 mvcc_read_point = 11 [default = 0];
+    public static final int MVCC_READ_POINT_FIELD_NUMBER = 11;
+    private long mvccReadPoint_;
+    /**
+     * <code>optional uint64 mvcc_read_point = 11 [default = 0];</code>
+     *
+     * <pre>
+     * The mvcc read point which is used to open the scanner at server side. Client can
+     * make use of this mvcc_read_point when restarting a scanner to get a consistent view
+     * of a row.
+     * </pre>
+     */
+    public boolean hasMvccReadPoint() {
+      return ((bitField0_ & 0x00000080) == 0x00000080);
+    }
+    /**
+     * <code>optional uint64 mvcc_read_point = 11 [default = 0];</code>
+     *
+     * <pre>
+     * The mvcc read point which is used to open the scanner at server side. Client can
+     * make use of this mvcc_read_point when restarting a scanner to get a consistent view
+     * of a row.
+     * </pre>
+     */
+    public long getMvccReadPoint() {
+      return mvccReadPoint_;
+    }
+
     private void initFields() {
       cellsPerResult_ = java.util.Collections.emptyList();
       scannerId_ = 0L;
@@ -19162,6 +19392,8 @@ public final class ClientProtos {
       partialFlagPerResult_ = java.util.Collections.emptyList();
       moreResultsInRegion_ = false;
       heartbeatMessage_ = false;
+      scanMetrics_ = org.apache.hadoop.hbase.protobuf.generated.MapReduceProtos.ScanMetrics.getDefaultInstance();
+      mvccReadPoint_ = 0L;
     }
     private byte memoizedIsInitialized = -1;
     public final boolean isInitialized() {
@@ -19201,6 +19433,12 @@ public final class ClientProtos {
       }
       if (((bitField0_ & 0x00000020) == 0x00000020)) {
         output.writeBool(9, heartbeatMessage_);
+      }
+      if (((bitField0_ & 0x00000040) == 0x00000040)) {
+        output.writeMessage(10, scanMetrics_);
+      }
+      if (((bitField0_ & 0x00000080) == 0x00000080)) {
+        output.writeUInt64(11, mvccReadPoint_);
       }
       getUnknownFields().writeTo(output);
     }
@@ -19253,6 +19491,14 @@ public final class ClientProtos {
       if (((bitField0_ & 0x00000020) == 0x00000020)) {
         size += com.google.protobuf.CodedOutputStream
           .computeBoolSize(9, heartbeatMessage_);
+      }
+      if (((bitField0_ & 0x00000040) == 0x00000040)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeMessageSize(10, scanMetrics_);
+      }
+      if (((bitField0_ & 0x00000080) == 0x00000080)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeUInt64Size(11, mvccReadPoint_);
       }
       size += getUnknownFields().getSerializedSize();
       memoizedSerializedSize = size;
@@ -19313,6 +19559,16 @@ public final class ClientProtos {
         result = result && (getHeartbeatMessage()
             == other.getHeartbeatMessage());
       }
+      result = result && (hasScanMetrics() == other.hasScanMetrics());
+      if (hasScanMetrics()) {
+        result = result && getScanMetrics()
+            .equals(other.getScanMetrics());
+      }
+      result = result && (hasMvccReadPoint() == other.hasMvccReadPoint());
+      if (hasMvccReadPoint()) {
+        result = result && (getMvccReadPoint()
+            == other.getMvccReadPoint());
+      }
       result = result &&
           getUnknownFields().equals(other.getUnknownFields());
       return result;
@@ -19361,6 +19617,14 @@ public final class ClientProtos {
       if (hasHeartbeatMessage()) {
         hash = (37 * hash) + HEARTBEAT_MESSAGE_FIELD_NUMBER;
         hash = (53 * hash) + hashBoolean(getHeartbeatMessage());
+      }
+      if (hasScanMetrics()) {
+        hash = (37 * hash) + SCAN_METRICS_FIELD_NUMBER;
+        hash = (53 * hash) + getScanMetrics().hashCode();
+      }
+      if (hasMvccReadPoint()) {
+        hash = (37 * hash) + MVCC_READ_POINT_FIELD_NUMBER;
+        hash = (53 * hash) + hashLong(getMvccReadPoint());
       }
       hash = (29 * hash) + getUnknownFields().hashCode();
       memoizedHashCode = hash;
@@ -19470,6 +19734,7 @@ public final class ClientProtos {
       private void maybeForceBuilderInitialization() {
         if (com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders) {
           getResultsFieldBuilder();
+          getScanMetricsFieldBuilder();
         }
       }
       private static Builder create() {
@@ -19500,6 +19765,14 @@ public final class ClientProtos {
         bitField0_ = (bitField0_ & ~0x00000080);
         heartbeatMessage_ = false;
         bitField0_ = (bitField0_ & ~0x00000100);
+        if (scanMetricsBuilder_ == null) {
+          scanMetrics_ = org.apache.hadoop.hbase.protobuf.generated.MapReduceProtos.ScanMetrics.getDefaultInstance();
+        } else {
+          scanMetricsBuilder_.clear();
+        }
+        bitField0_ = (bitField0_ & ~0x00000200);
+        mvccReadPoint_ = 0L;
+        bitField0_ = (bitField0_ & ~0x00000400);
         return this;
       }
 
@@ -19571,6 +19844,18 @@ public final class ClientProtos {
           to_bitField0_ |= 0x00000020;
         }
         result.heartbeatMessage_ = heartbeatMessage_;
+        if (((from_bitField0_ & 0x00000200) == 0x00000200)) {
+          to_bitField0_ |= 0x00000040;
+        }
+        if (scanMetricsBuilder_ == null) {
+          result.scanMetrics_ = scanMetrics_;
+        } else {
+          result.scanMetrics_ = scanMetricsBuilder_.build();
+        }
+        if (((from_bitField0_ & 0x00000400) == 0x00000400)) {
+          to_bitField0_ |= 0x00000080;
+        }
+        result.mvccReadPoint_ = mvccReadPoint_;
         result.bitField0_ = to_bitField0_;
         onBuilt();
         return result;
@@ -19650,6 +19935,12 @@ public final class ClientProtos {
         }
         if (other.hasHeartbeatMessage()) {
           setHeartbeatMessage(other.getHeartbeatMessage());
+        }
+        if (other.hasScanMetrics()) {
+          mergeScanMetrics(other.getScanMetrics());
+        }
+        if (other.hasMvccReadPoint()) {
+          setMvccReadPoint(other.getMvccReadPoint());
         }
         this.mergeUnknownFields(other.getUnknownFields());
         return this;
@@ -20544,6 +20835,234 @@ public final class ClientProtos {
       public Builder clearHeartbeatMessage() {
         bitField0_ = (bitField0_ & ~0x00000100);
         heartbeatMessage_ = false;
+        onChanged();
+        return this;
+      }
+
+      // optional .ScanMetrics scan_metrics = 10;
+      private org.apache.hadoop.hbase.protobuf.generated.MapReduceProtos.ScanMetrics scanMetrics_ = org.apache.hadoop.hbase.protobuf.generated.MapReduceProtos.ScanMetrics.getDefaultInstance();
+      private com.google.protobuf.SingleFieldBuilder<
+          org.apache.hadoop.hbase.protobuf.generated.MapReduceProtos.ScanMetrics, org.apache.hadoop.hbase.protobuf.generated.MapReduceProtos.ScanMetrics.Builder, org.apache.hadoop.hbase.protobuf.generated.MapReduceProtos.ScanMetricsOrBuilder> scanMetricsBuilder_;
+      /**
+       * <code>optional .ScanMetrics scan_metrics = 10;</code>
+       *
+       * <pre>
+       * This field is filled in if the client has requested that scan metrics be tracked.
+       * The metrics tracked here are sent back to the client to be tracked together with
+       * the existing client side metrics.
+       * </pre>
+       */
+      public boolean hasScanMetrics() {
+        return ((bitField0_ & 0x00000200) == 0x00000200);
+      }
+      /**
+       * <code>optional .ScanMetrics scan_metrics = 10;</code>
+       *
+       * <pre>
+       * This field is filled in if the client has requested that scan metrics be tracked.
+       * The metrics tracked here are sent back to the client to be tracked together with
+       * the existing client side metrics.
+       * </pre>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.MapReduceProtos.ScanMetrics getScanMetrics() {
+        if (scanMetricsBuilder_ == null) {
+          return scanMetrics_;
+        } else {
+          return scanMetricsBuilder_.getMessage();
+        }
+      }
+      /**
+       * <code>optional .ScanMetrics scan_metrics = 10;</code>
+       *
+       * <pre>
+       * This field is filled in if the client has requested that scan metrics be tracked.
+       * The metrics tracked here are sent back to the client to be tracked together with
+       * the existing client side metrics.
+       * </pre>
+       */
+      public Builder setScanMetrics(org.apache.hadoop.hbase.protobuf.generated.MapReduceProtos.ScanMetrics value) {
+        if (scanMetricsBuilder_ == null) {
+          if (value == null) {
+            throw new NullPointerException();
+          }
+          scanMetrics_ = value;
+          onChanged();
+        } else {
+          scanMetricsBuilder_.setMessage(value);
+        }
+        bitField0_ |= 0x00000200;
+        return this;
+      }
+      /**
+       * <code>optional .ScanMetrics scan_metrics = 10;</code>
+       *
+       * <pre>
+       * This field is filled in if the client has requested that scan metrics be tracked.
+       * The metrics tracked here are sent back to the client to be tracked together with
+       * the existing client side metrics.
+       * </pre>
+       */
+      public Builder setScanMetrics(
+          org.apache.hadoop.hbase.protobuf.generated.MapReduceProtos.ScanMetrics.Builder builderForValue) {
+        if (scanMetricsBuilder_ == null) {
+          scanMetrics_ = builderForValue.build();
+          onChanged();
+        } else {
+          scanMetricsBuilder_.setMessage(builderForValue.build());
+        }
+        bitField0_ |= 0x00000200;
+        return this;
+      }
+      /**
+       * <code>optional .ScanMetrics scan_metrics = 10;</code>
+       *
+       * <pre>
+       * This field is filled in if the client has requested that scan metrics be tracked.
+       * The metrics tracked here are sent back to the client to be tracked together with
+       * the existing client side metrics.
+       * </pre>
+       */
+      public Builder mergeScanMetrics(org.apache.hadoop.hbase.protobuf.generated.MapReduceProtos.ScanMetrics value) {
+        if (scanMetricsBuilder_ == null) {
+          if (((bitField0_ & 0x00000200) == 0x00000200) &&
+              scanMetrics_ != org.apache.hadoop.hbase.protobuf.generated.MapReduceProtos.ScanMetrics.getDefaultInstance()) {
+            scanMetrics_ =
+              org.apache.hadoop.hbase.protobuf.generated.MapReduceProtos.ScanMetrics.newBuilder(scanMetrics_).mergeFrom(value).buildPartial();
+          } else {
+            scanMetrics_ = value;
+          }
+          onChanged();
+        } else {
+          scanMetricsBuilder_.mergeFrom(value);
+        }
+        bitField0_ |= 0x00000200;
+        return this;
+      }
+      /**
+       * <code>optional .ScanMetrics scan_metrics = 10;</code>
+       *
+       * <pre>
+       * This field is filled in if the client has requested that scan metrics be tracked.
+       * The metrics tracked here are sent back to the client to be tracked together with
+       * the existing client side metrics.
+       * </pre>
+       */
+      public Builder clearScanMetrics() {
+        if (scanMetricsBuilder_ == null) {
+          scanMetrics_ = org.apache.hadoop.hbase.protobuf.generated.MapReduceProtos.ScanMetrics.getDefaultInstance();
+          onChanged();
+        } else {
+          scanMetricsBuilder_.clear();
+        }
+        bitField0_ = (bitField0_ & ~0x00000200);
+        return this;
+      }
+      /**
+       * <code>optional .ScanMetrics scan_metrics = 10;</code>
+       *
+       * <pre>
+       * This field is filled in if the client has requested that scan metrics be tracked.
+       * The metrics tracked here are sent back to the client to be tracked together with
+       * the existing client side metrics.
+       * </pre>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.MapReduceProtos.ScanMetrics.Builder getScanMetricsBuilder() {
+        bitField0_ |= 0x00000200;
+        onChanged();
+        return getScanMetricsFieldBuilder().getBuilder();
+      }
+      /**
+       * <code>optional .ScanMetrics scan_metrics = 10;</code>
+       *
+       * <pre>
+       * This field is filled in if the client has requested that scan metrics be tracked.
+       * The metrics tracked here are sent back to the client to be tracked together with
+       * the existing client side metrics.
+       * </pre>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.MapReduceProtos.ScanMetricsOrBuilder getScanMetricsOrBuilder() {
+        if (scanMetricsBuilder_ != null) {
+          return scanMetricsBuilder_.getMessageOrBuilder();
+        } else {
+          return scanMetrics_;
+        }
+      }
+      /**
+       * <code>optional .ScanMetrics scan_metrics = 10;</code>
+       *
+       * <pre>
+       * This field is filled in if the client has requested that scan metrics be tracked.
+       * The metrics tracked here are sent back to the client to be tracked together with
+       * the existing client side metrics.
+       * </pre>
+       */
+      private com.google.protobuf.SingleFieldBuilder<
+          org.apache.hadoop.hbase.protobuf.generated.MapReduceProtos.ScanMetrics, org.apache.hadoop.hbase.protobuf.generated.MapReduceProtos.ScanMetrics.Builder, org.apache.hadoop.hbase.protobuf.generated.MapReduceProtos.ScanMetricsOrBuilder> 
+          getScanMetricsFieldBuilder() {
+        if (scanMetricsBuilder_ == null) {
+          scanMetricsBuilder_ = new com.google.protobuf.SingleFieldBuilder<
+              org.apache.hadoop.hbase.protobuf.generated.MapReduceProtos.ScanMetrics, org.apache.hadoop.hbase.protobuf.generated.MapReduceProtos.ScanMetrics.Builder, org.apache.hadoop.hbase.protobuf.generated.MapReduceProtos.ScanMetricsOrBuilder>(
+                  scanMetrics_,
+                  getParentForChildren(),
+                  isClean());
+          scanMetrics_ = null;
+        }
+        return scanMetricsBuilder_;
+      }
+
+      // optional uint64 mvcc_read_point = 11 [default = 0];
+      private long mvccReadPoint_ ;
+      /**
+       * <code>optional uint64 mvcc_read_point = 11 [default = 0];</code>
+       *
+       * <pre>
+       * The mvcc read point which is used to open the scanner at server side. Client can
+       * make use of this mvcc_read_point when restarting a scanner to get a consistent view
+       * of a row.
+       * </pre>
+       */
+      public boolean hasMvccReadPoint() {
+        return ((bitField0_ & 0x00000400) == 0x00000400);
+      }
+      /**
+       * <code>optional uint64 mvcc_read_point = 11 [default = 0];</code>
+       *
+       * <pre>
+       * The mvcc read point which is used to open the scanner at server side. Client can
+       * make use of this mvcc_read_point when restarting a scanner to get a consistent view
+       * of a row.
+       * </pre>
+       */
+      public long getMvccReadPoint() {
+        return mvccReadPoint_;
+      }
+      /**
+       * <code>optional uint64 mvcc_read_point = 11 [default = 0];</code>
+       *
+       * <pre>
+       * The mvcc read point which is used to open the scanner at server side. Client can
+       * make use of this mvcc_read_point when restarting a scanner to get a consistent view
+       * of a row.
+       * </pre>
+       */
+      public Builder setMvccReadPoint(long value) {
+        bitField0_ |= 0x00000400;
+        mvccReadPoint_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>optional uint64 mvcc_read_point = 11 [default = 0];</code>
+       *
+       * <pre>
+       * The mvcc read point which is used to open the scanner at server side. Client can
+       * make use of this mvcc_read_point when restarting a scanner to get a consistent view
+       * of a row.
+       * </pre>
+       */
+      public Builder clearMvccReadPoint() {
+        bitField0_ = (bitField0_ & ~0x00000400);
+        mvccReadPoint_ = 0L;
         onChanged();
         return this;
       }
@@ -33619,124 +34138,127 @@ public final class ClientProtos {
   static {
     java.lang.String[] descriptorData = {
       "\n\014Client.proto\032\013HBase.proto\032\014Filter.prot" +
-      "o\032\nCell.proto\032\020Comparator.proto\"\037\n\016Autho" +
-      "rizations\022\r\n\005label\030\001 \003(\t\"$\n\016CellVisibili" +
-      "ty\022\022\n\nexpression\030\001 \002(\t\"+\n\006Column\022\016\n\006fami" +
-      "ly\030\001 \002(\014\022\021\n\tqualifier\030\002 \003(\014\"\203\003\n\003Get\022\013\n\003r" +
-      "ow\030\001 \002(\014\022\027\n\006column\030\002 \003(\0132\007.Column\022!\n\tatt" +
-      "ribute\030\003 \003(\0132\016.NameBytesPair\022\027\n\006filter\030\004" +
-      " \001(\0132\007.Filter\022\036\n\ntime_range\030\005 \001(\0132\n.Time" +
-      "Range\022\027\n\014max_versions\030\006 \001(\r:\0011\022\032\n\014cache_" +
-      "blocks\030\007 \001(\010:\004true\022\023\n\013store_limit\030\010 \001(\r\022",
-      "\024\n\014store_offset\030\t \001(\r\022\035\n\016existence_only\030" +
-      "\n \001(\010:\005false\022!\n\022closest_row_before\030\013 \001(\010" +
-      ":\005false\022)\n\013consistency\030\014 \001(\0162\014.Consisten" +
-      "cy:\006STRONG\022-\n\rcf_time_range\030\r \003(\0132\026.Colu" +
-      "mnFamilyTimeRange\"z\n\006Result\022\023\n\004cell\030\001 \003(" +
-      "\0132\005.Cell\022\035\n\025associated_cell_count\030\002 \001(\005\022" +
-      "\016\n\006exists\030\003 \001(\010\022\024\n\005stale\030\004 \001(\010:\005false\022\026\n" +
-      "\007partial\030\005 \001(\010:\005false\"A\n\nGetRequest\022 \n\006r" +
-      "egion\030\001 \002(\0132\020.RegionSpecifier\022\021\n\003get\030\002 \002" +
-      "(\0132\004.Get\"&\n\013GetResponse\022\027\n\006result\030\001 \001(\0132",
-      "\007.Result\"\200\001\n\tCondition\022\013\n\003row\030\001 \002(\014\022\016\n\006f" +
-      "amily\030\002 \002(\014\022\021\n\tqualifier\030\003 \002(\014\022\"\n\014compar" +
-      "e_type\030\004 \002(\0162\014.CompareType\022\037\n\ncomparator" +
-      "\030\005 \002(\0132\013.Comparator\"\265\006\n\rMutationProto\022\013\n" +
-      "\003row\030\001 \001(\014\0220\n\013mutate_type\030\002 \001(\0162\033.Mutati" +
-      "onProto.MutationType\0220\n\014column_value\030\003 \003" +
-      "(\0132\032.MutationProto.ColumnValue\022\021\n\ttimest" +
-      "amp\030\004 \001(\004\022!\n\tattribute\030\005 \003(\0132\016.NameBytes" +
-      "Pair\022:\n\ndurability\030\006 \001(\0162\031.MutationProto" +
-      ".Durability:\013USE_DEFAULT\022\036\n\ntime_range\030\007",
-      " \001(\0132\n.TimeRange\022\035\n\025associated_cell_coun" +
-      "t\030\010 \001(\005\022\r\n\005nonce\030\t \001(\004\032\347\001\n\013ColumnValue\022\016" +
-      "\n\006family\030\001 \002(\014\022B\n\017qualifier_value\030\002 \003(\0132" +
-      ").MutationProto.ColumnValue.QualifierVal" +
-      "ue\032\203\001\n\016QualifierValue\022\021\n\tqualifier\030\001 \001(\014" +
-      "\022\r\n\005value\030\002 \001(\014\022\021\n\ttimestamp\030\003 \001(\004\022.\n\013de" +
-      "lete_type\030\004 \001(\0162\031.MutationProto.DeleteTy" +
-      "pe\022\014\n\004tags\030\005 \001(\014\"W\n\nDurability\022\017\n\013USE_DE" +
-      "FAULT\020\000\022\014\n\010SKIP_WAL\020\001\022\r\n\tASYNC_WAL\020\002\022\014\n\010" +
-      "SYNC_WAL\020\003\022\r\n\tFSYNC_WAL\020\004\">\n\014MutationTyp",
-      "e\022\n\n\006APPEND\020\000\022\r\n\tINCREMENT\020\001\022\007\n\003PUT\020\002\022\n\n" +
-      "\006DELETE\020\003\"p\n\nDeleteType\022\026\n\022DELETE_ONE_VE" +
-      "RSION\020\000\022\034\n\030DELETE_MULTIPLE_VERSIONS\020\001\022\021\n" +
-      "\rDELETE_FAMILY\020\002\022\031\n\025DELETE_FAMILY_VERSIO" +
-      "N\020\003\"\207\001\n\rMutateRequest\022 \n\006region\030\001 \002(\0132\020." +
-      "RegionSpecifier\022 \n\010mutation\030\002 \002(\0132\016.Muta" +
-      "tionProto\022\035\n\tcondition\030\003 \001(\0132\n.Condition" +
-      "\022\023\n\013nonce_group\030\004 \001(\004\"<\n\016MutateResponse\022" +
-      "\027\n\006result\030\001 \001(\0132\007.Result\022\021\n\tprocessed\030\002 " +
-      "\001(\010\"\334\003\n\004Scan\022\027\n\006column\030\001 \003(\0132\007.Column\022!\n",
-      "\tattribute\030\002 \003(\0132\016.NameBytesPair\022\021\n\tstar" +
-      "t_row\030\003 \001(\014\022\020\n\010stop_row\030\004 \001(\014\022\027\n\006filter\030" +
-      "\005 \001(\0132\007.Filter\022\036\n\ntime_range\030\006 \001(\0132\n.Tim" +
-      "eRange\022\027\n\014max_versions\030\007 \001(\r:\0011\022\032\n\014cache" +
-      "_blocks\030\010 \001(\010:\004true\022\022\n\nbatch_size\030\t \001(\r\022" +
-      "\027\n\017max_result_size\030\n \001(\004\022\023\n\013store_limit\030" +
-      "\013 \001(\r\022\024\n\014store_offset\030\014 \001(\r\022&\n\036load_colu" +
-      "mn_families_on_demand\030\r \001(\010\022\r\n\005small\030\016 \001" +
-      "(\010\022\027\n\010reversed\030\017 \001(\010:\005false\022\017\n\007caching\030\021" +
-      " \001(\r\022\035\n\025allow_partial_results\030\022 \001(\010\022-\n\rc",
-      "f_time_range\030\023 \003(\0132\026.ColumnFamilyTimeRan" +
-      "ge\"\342\001\n\013ScanRequest\022 \n\006region\030\001 \001(\0132\020.Reg" +
-      "ionSpecifier\022\023\n\004scan\030\002 \001(\0132\005.Scan\022\022\n\nsca" +
-      "nner_id\030\003 \001(\004\022\026\n\016number_of_rows\030\004 \001(\r\022\025\n" +
-      "\rclose_scanner\030\005 \001(\010\022\025\n\rnext_call_seq\030\006 " +
-      "\001(\004\022\037\n\027client_handles_partials\030\007 \001(\010\022!\n\031" +
-      "client_handles_heartbeats\030\010 \001(\010\"\344\001\n\014Scan" +
-      "Response\022\030\n\020cells_per_result\030\001 \003(\r\022\022\n\nsc" +
-      "anner_id\030\002 \001(\004\022\024\n\014more_results\030\003 \001(\010\022\013\n\003" +
-      "ttl\030\004 \001(\r\022\030\n\007results\030\005 \003(\0132\007.Result\022\r\n\005s",
-      "tale\030\006 \001(\010\022\037\n\027partial_flag_per_result\030\007 " +
-      "\003(\010\022\036\n\026more_results_in_region\030\010 \001(\010\022\031\n\021h" +
-      "eartbeat_message\030\t \001(\010\"\263\001\n\024BulkLoadHFile" +
-      "Request\022 \n\006region\030\001 \002(\0132\020.RegionSpecifie" +
-      "r\0225\n\013family_path\030\002 \003(\0132 .BulkLoadHFileRe" +
-      "quest.FamilyPath\022\026\n\016assign_seq_num\030\003 \001(\010" +
-      "\032*\n\nFamilyPath\022\016\n\006family\030\001 \002(\014\022\014\n\004path\030\002" +
-      " \002(\t\"\'\n\025BulkLoadHFileResponse\022\016\n\006loaded\030" +
-      "\001 \002(\010\"a\n\026CoprocessorServiceCall\022\013\n\003row\030\001" +
-      " \002(\014\022\024\n\014service_name\030\002 \002(\t\022\023\n\013method_nam",
-      "e\030\003 \002(\t\022\017\n\007request\030\004 \002(\014\"9\n\030CoprocessorS" +
-      "erviceResult\022\035\n\005value\030\001 \001(\0132\016.NameBytesP" +
-      "air\"d\n\031CoprocessorServiceRequest\022 \n\006regi" +
-      "on\030\001 \002(\0132\020.RegionSpecifier\022%\n\004call\030\002 \002(\013" +
-      "2\027.CoprocessorServiceCall\"]\n\032Coprocessor" +
-      "ServiceResponse\022 \n\006region\030\001 \002(\0132\020.Region" +
-      "Specifier\022\035\n\005value\030\002 \002(\0132\016.NameBytesPair" +
-      "\"{\n\006Action\022\r\n\005index\030\001 \001(\r\022 \n\010mutation\030\002 " +
-      "\001(\0132\016.MutationProto\022\021\n\003get\030\003 \001(\0132\004.Get\022-" +
-      "\n\014service_call\030\004 \001(\0132\027.CoprocessorServic",
-      "eCall\"Y\n\014RegionAction\022 \n\006region\030\001 \002(\0132\020." +
-      "RegionSpecifier\022\016\n\006atomic\030\002 \001(\010\022\027\n\006actio" +
-      "n\030\003 \003(\0132\007.Action\"D\n\017RegionLoadStats\022\027\n\014m" +
-      "emstoreLoad\030\001 \001(\005:\0010\022\030\n\rheapOccupancy\030\002 " +
-      "\001(\005:\0010\"\266\001\n\021ResultOrException\022\r\n\005index\030\001 " +
-      "\001(\r\022\027\n\006result\030\002 \001(\0132\007.Result\022!\n\texceptio" +
-      "n\030\003 \001(\0132\016.NameBytesPair\0221\n\016service_resul" +
-      "t\030\004 \001(\0132\031.CoprocessorServiceResult\022#\n\tlo" +
-      "adStats\030\005 \001(\0132\020.RegionLoadStats\"f\n\022Regio" +
-      "nActionResult\022-\n\021resultOrException\030\001 \003(\013",
-      "2\022.ResultOrException\022!\n\texception\030\002 \001(\0132" +
-      "\016.NameBytesPair\"f\n\014MultiRequest\022#\n\014regio" +
-      "nAction\030\001 \003(\0132\r.RegionAction\022\022\n\nnonceGro" +
-      "up\030\002 \001(\004\022\035\n\tcondition\030\003 \001(\0132\n.Condition\"" +
-      "S\n\rMultiResponse\022/\n\022regionActionResult\030\001" +
-      " \003(\0132\023.RegionActionResult\022\021\n\tprocessed\030\002" +
-      " \001(\010*\'\n\013Consistency\022\n\n\006STRONG\020\000\022\014\n\010TIMEL" +
-      "INE\020\0012\205\003\n\rClientService\022 \n\003Get\022\013.GetRequ" +
-      "est\032\014.GetResponse\022)\n\006Mutate\022\016.MutateRequ" +
-      "est\032\017.MutateResponse\022#\n\004Scan\022\014.ScanReque",
-      "st\032\r.ScanResponse\022>\n\rBulkLoadHFile\022\025.Bul" +
-      "kLoadHFileRequest\032\026.BulkLoadHFileRespons" +
-      "e\022F\n\013ExecService\022\032.CoprocessorServiceReq" +
-      "uest\032\033.CoprocessorServiceResponse\022R\n\027Exe" +
-      "cRegionServerService\022\032.CoprocessorServic" +
-      "eRequest\032\033.CoprocessorServiceResponse\022&\n" +
-      "\005Multi\022\r.MultiRequest\032\016.MultiResponseBB\n" +
-      "*org.apache.hadoop.hbase.protobuf.genera" +
-      "tedB\014ClientProtosH\001\210\001\001\240\001\001"
+      "o\032\nCell.proto\032\020Comparator.proto\032\017MapRedu" +
+      "ce.proto\"\037\n\016Authorizations\022\r\n\005label\030\001 \003(" +
+      "\t\"$\n\016CellVisibility\022\022\n\nexpression\030\001 \002(\t\"" +
+      "+\n\006Column\022\016\n\006family\030\001 \002(\014\022\021\n\tqualifier\030\002" +
+      " \003(\014\"\203\003\n\003Get\022\013\n\003row\030\001 \002(\014\022\027\n\006column\030\002 \003(" +
+      "\0132\007.Column\022!\n\tattribute\030\003 \003(\0132\016.NameByte" +
+      "sPair\022\027\n\006filter\030\004 \001(\0132\007.Filter\022\036\n\ntime_r" +
+      "ange\030\005 \001(\0132\n.TimeRange\022\027\n\014max_versions\030\006" +
+      " \001(\r:\0011\022\032\n\014cache_blocks\030\007 \001(\010:\004true\022\023\n\013s",
+      "tore_limit\030\010 \001(\r\022\024\n\014store_offset\030\t \001(\r\022\035" +
+      "\n\016existence_only\030\n \001(\010:\005false\022!\n\022closest" +
+      "_row_before\030\013 \001(\010:\005false\022)\n\013consistency\030" +
+      "\014 \001(\0162\014.Consistency:\006STRONG\022-\n\rcf_time_r" +
+      "ange\030\r \003(\0132\026.ColumnFamilyTimeRange\"z\n\006Re" +
+      "sult\022\023\n\004cell\030\001 \003(\0132\005.Cell\022\035\n\025associated_" +
+      "cell_count\030\002 \001(\005\022\016\n\006exists\030\003 \001(\010\022\024\n\005stal" +
+      "e\030\004 \001(\010:\005false\022\026\n\007partial\030\005 \001(\010:\005false\"A" +
+      "\n\nGetRequest\022 \n\006region\030\001 \002(\0132\020.RegionSpe" +
+      "cifier\022\021\n\003get\030\002 \002(\0132\004.Get\"&\n\013GetResponse",
+      "\022\027\n\006result\030\001 \001(\0132\007.Result\"\200\001\n\tCondition\022" +
+      "\013\n\003row\030\001 \002(\014\022\016\n\006family\030\002 \002(\014\022\021\n\tqualifie" +
+      "r\030\003 \002(\014\022\"\n\014compare_type\030\004 \002(\0162\014.CompareT" +
+      "ype\022\037\n\ncomparator\030\005 \002(\0132\013.Comparator\"\265\006\n" +
+      "\rMutationProto\022\013\n\003row\030\001 \001(\014\0220\n\013mutate_ty" +
+      "pe\030\002 \001(\0162\033.MutationProto.MutationType\0220\n" +
+      "\014column_value\030\003 \003(\0132\032.MutationProto.Colu" +
+      "mnValue\022\021\n\ttimestamp\030\004 \001(\004\022!\n\tattribute\030" +
+      "\005 \003(\0132\016.NameBytesPair\022:\n\ndurability\030\006 \001(" +
+      "\0162\031.MutationProto.Durability:\013USE_DEFAUL",
+      "T\022\036\n\ntime_range\030\007 \001(\0132\n.TimeRange\022\035\n\025ass" +
+      "ociated_cell_count\030\010 \001(\005\022\r\n\005nonce\030\t \001(\004\032" +
+      "\347\001\n\013ColumnValue\022\016\n\006family\030\001 \002(\014\022B\n\017quali" +
+      "fier_value\030\002 \003(\0132).MutationProto.ColumnV" +
+      "alue.QualifierValue\032\203\001\n\016QualifierValue\022\021" +
+      "\n\tqualifier\030\001 \001(\014\022\r\n\005value\030\002 \001(\014\022\021\n\ttime" +
+      "stamp\030\003 \001(\004\022.\n\013delete_type\030\004 \001(\0162\031.Mutat" +
+      "ionProto.DeleteType\022\014\n\004tags\030\005 \001(\014\"W\n\nDur" +
+      "ability\022\017\n\013USE_DEFAULT\020\000\022\014\n\010SKIP_WAL\020\001\022\r" +
+      "\n\tASYNC_WAL\020\002\022\014\n\010SYNC_WAL\020\003\022\r\n\tFSYNC_WAL",
+      "\020\004\">\n\014MutationType\022\n\n\006APPEND\020\000\022\r\n\tINCREM" +
+      "ENT\020\001\022\007\n\003PUT\020\002\022\n\n\006DELETE\020\003\"p\n\nDeleteType" +
+      "\022\026\n\022DELETE_ONE_VERSION\020\000\022\034\n\030DELETE_MULTI" +
+      "PLE_VERSIONS\020\001\022\021\n\rDELETE_FAMILY\020\002\022\031\n\025DEL" +
+      "ETE_FAMILY_VERSION\020\003\"\207\001\n\rMutateRequest\022 " +
+      "\n\006region\030\001 \002(\0132\020.RegionSpecifier\022 \n\010muta" +
+      "tion\030\002 \002(\0132\016.MutationProto\022\035\n\tcondition\030" +
+      "\003 \001(\0132\n.Condition\022\023\n\013nonce_group\030\004 \001(\004\"<" +
+      "\n\016MutateResponse\022\027\n\006result\030\001 \001(\0132\007.Resul" +
+      "t\022\021\n\tprocessed\030\002 \001(\010\"\370\003\n\004Scan\022\027\n\006column\030",
+      "\001 \003(\0132\007.Column\022!\n\tattribute\030\002 \003(\0132\016.Name" +
+      "BytesPair\022\021\n\tstart_row\030\003 \001(\014\022\020\n\010stop_row" +
+      "\030\004 \001(\014\022\027\n\006filter\030\005 \001(\0132\007.Filter\022\036\n\ntime_" +
+      "range\030\006 \001(\0132\n.TimeRange\022\027\n\014max_versions\030" +
+      "\007 \001(\r:\0011\022\032\n\014cache_blocks\030\010 \001(\010:\004true\022\022\n\n" +
+      "batch_size\030\t \001(\r\022\027\n\017max_result_size\030\n \001(" +
+      "\004\022\023\n\013store_limit\030\013 \001(\r\022\024\n\014store_offset\030\014" +
+      " \001(\r\022&\n\036load_column_families_on_demand\030\r" +
+      " \001(\010\022\r\n\005small\030\016 \001(\010\022\027\n\010reversed\030\017 \001(\010:\005f" +
+      "alse\022\017\n\007caching\030\021 \001(\r\022\035\n\025allow_partial_r",
+      "esults\030\022 \001(\010\022-\n\rcf_time_range\030\023 \003(\0132\026.Co" +
+      "lumnFamilyTimeRange\022\032\n\017mvcc_read_point\030\024" +
+      " \001(\004:\0010\"\342\001\n\013ScanRequest\022 \n\006region\030\001 \001(\0132" +
+      "\020.RegionSpecifier\022\023\n\004scan\030\002 \001(\0132\005.Scan\022\022" +
+      "\n\nscanner_id\030\003 \001(\004\022\026\n\016number_of_rows\030\004 \001" +
+      "(\r\022\025\n\rclose_scanner\030\005 \001(\010\022\025\n\rnext_call_s" +
+      "eq\030\006 \001(\004\022\037\n\027client_handles_partials\030\007 \001(" +
+      "\010\022!\n\031client_handles_heartbeats\030\010 \001(\010\"\244\002\n" +
+      "\014ScanResponse\022\030\n\020cells_per_result\030\001 \003(\r\022" +
+      "\022\n\nscanner_id\030\002 \001(\004\022\024\n\014more_results\030\003 \001(",
+      "\010\022\013\n\003ttl\030\004 \001(\r\022\030\n\007results\030\005 \003(\0132\007.Result" +
+      "\022\r\n\005stale\030\006 \001(\010\022\037\n\027partial_flag_per_resu" +
+      "lt\030\007 \003(\010\022\036\n\026more_results_in_region\030\010 \001(\010" +
+      "\022\031\n\021heartbeat_message\030\t \001(\010\022\"\n\014scan_metr" +
+      "ics\030\n \001(\0132\014.ScanMetrics\022\032\n\017mvcc_read_poi" +
+      "nt\030\013 \001(\004:\0010\"\263\001\n\024BulkLoadHFileRequest\022 \n\006" +
+      "region\030\001 \002(\0132\020.RegionSpecifier\0225\n\013family" +
+      "_path\030\002 \003(\0132 .BulkLoadHFileRequest.Famil" +
+      "yPath\022\026\n\016assign_seq_num\030\003 \001(\010\032*\n\nFamilyP" +
+      "ath\022\016\n\006family\030\001 \002(\014\022\014\n\004path\030\002 \002(\t\"\'\n\025Bul",
+      "kLoadHFileResponse\022\016\n\006loaded\030\001 \002(\010\"a\n\026Co" +
+      "processorServiceCall\022\013\n\003row\030\001 \002(\014\022\024\n\014ser" +
+      "vice_name\030\002 \002(\t\022\023\n\013method_name\030\003 \002(\t\022\017\n\007" +
+      "request\030\004 \002(\014\"9\n\030CoprocessorServiceResul" +
+      "t\022\035\n\005value\030\001 \001(\0132\016.NameBytesPair\"d\n\031Copr" +
+      "ocessorServiceRequest\022 \n\006region\030\001 \002(\0132\020." +
+      "RegionSpecifier\022%\n\004call\030\002 \002(\0132\027.Coproces" +
+      "sorServiceCall\"]\n\032CoprocessorServiceResp" +
+      "onse\022 \n\006region\030\001 \002(\0132\020.RegionSpecifier\022\035" +
+      "\n\005value\030\002 \002(\0132\016.NameBytesPair\"{\n\006Action\022",
+      "\r\n\005index\030\001 \001(\r\022 \n\010mutation\030\002 \001(\0132\016.Mutat" +
+      "ionProto\022\021\n\003get\030\003 \001(\0132\004.Get\022-\n\014service_c" +
+      "all\030\004 \001(\0132\027.CoprocessorServiceCall\"Y\n\014Re" +
+      "gionAction\022 \n\006region\030\001 \002(\0132\020.RegionSpeci" +
+      "fier\022\016\n\006atomic\030\002 \001(\010\022\027\n\006action\030\003 \003(\0132\007.A" +
+      "ction\"D\n\017RegionLoadStats\022\027\n\014memstoreLoad" +
+      "\030\001 \001(\005:\0010\022\030\n\rheapOccupancy\030\002 \001(\005:\0010\"\266\001\n\021" +
+      "ResultOrException\022\r\n\005index\030\001 \001(\r\022\027\n\006resu" +
+      "lt\030\002 \001(\0132\007.Result\022!\n\texception\030\003 \001(\0132\016.N" +
+      "ameBytesPair\0221\n\016service_result\030\004 \001(\0132\031.C",
+      "oprocessorServiceResult\022#\n\tloadStats\030\005 \001" +
+      "(\0132\020.RegionLoadStats\"f\n\022RegionActionResu" +
+      "lt\022-\n\021resultOrException\030\001 \003(\0132\022.ResultOr" +
+      "Exception\022!\n\texception\030\002 \001(\0132\016.NameBytes" +
+      "Pair\"f\n\014MultiRequest\022#\n\014regionAction\030\001 \003" +
+      "(\0132\r.RegionAction\022\022\n\nnonceGroup\030\002 \001(\004\022\035\n" +
+      "\tcondition\030\003 \001(\0132\n.Condition\"S\n\rMultiRes" +
+      "ponse\022/\n\022regionActionResult\030\001 \003(\0132\023.Regi" +
+      "onActionResult\022\021\n\tprocessed\030\002 \001(\010*\'\n\013Con" +
+      "sistency\022\n\n\006STRONG\020\000\022\014\n\010TIMELINE\020\0012\205\003\n\rC",
+      "lientService\022 \n\003Get\022\013.GetRequest\032\014.GetRe" +
+      "sponse\022)\n\006Mutate\022\016.MutateRequest\032\017.Mutat" +
+      "eResponse\022#\n\004Scan\022\014.ScanRequest\032\r.ScanRe" +
+      "sponse\022>\n\rBulkLoadHFile\022\025.BulkLoadHFileR" +
+      "equest\032\026.BulkLoadHFileResponse\022F\n\013ExecSe" +
+      "rvice\022\032.CoprocessorServiceRequest\032\033.Copr" +
+      "ocessorServiceResponse\022R\n\027ExecRegionServ" +
+      "erService\022\032.CoprocessorServiceRequest\032\033." +
+      "CoprocessorServiceResponse\022&\n\005Multi\022\r.Mu" +
+      "ltiRequest\032\016.MultiResponseBB\n*org.apache",
+      ".hadoop.hbase.protobuf.generatedB\014Client" +
+      "ProtosH\001\210\001\001\240\001\001"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
       new com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner() {
@@ -33826,7 +34348,7 @@ public final class ClientProtos {
           internal_static_Scan_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_Scan_descriptor,
-              new java.lang.String[] { "Column", "Attribute", "StartRow", "StopRow", "Filter", "TimeRange", "MaxVersions", "CacheBlocks", "BatchSize", "MaxResultSize", "StoreLimit", "StoreOffset", "LoadColumnFamiliesOnDemand", "Small", "Reversed", "Caching", "AllowPartialResults", "CfTimeRange", });
+              new java.lang.String[] { "Column", "Attribute", "StartRow", "StopRow", "Filter", "TimeRange", "MaxVersions", "CacheBlocks", "BatchSize", "MaxResultSize", "StoreLimit", "StoreOffset", "LoadColumnFamiliesOnDemand", "Small", "Reversed", "Caching", "AllowPartialResults", "CfTimeRange", "MvccReadPoint", });
           internal_static_ScanRequest_descriptor =
             getDescriptor().getMessageTypes().get(12);
           internal_static_ScanRequest_fieldAccessorTable = new
@@ -33838,7 +34360,7 @@ public final class ClientProtos {
           internal_static_ScanResponse_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_ScanResponse_descriptor,
-              new java.lang.String[] { "CellsPerResult", "ScannerId", "MoreResults", "Ttl", "Results", "Stale", "PartialFlagPerResult", "MoreResultsInRegion", "HeartbeatMessage", });
+              new java.lang.String[] { "CellsPerResult", "ScannerId", "MoreResults", "Ttl", "Results", "Stale", "PartialFlagPerResult", "MoreResultsInRegion", "HeartbeatMessage", "ScanMetrics", "MvccReadPoint", });
           internal_static_BulkLoadHFileRequest_descriptor =
             getDescriptor().getMessageTypes().get(14);
           internal_static_BulkLoadHFileRequest_fieldAccessorTable = new
@@ -33933,6 +34455,7 @@ public final class ClientProtos {
           org.apache.hadoop.hbase.protobuf.generated.FilterProtos.getDescriptor(),
           org.apache.hadoop.hbase.protobuf.generated.CellProtos.getDescriptor(),
           org.apache.hadoop.hbase.protobuf.generated.ComparatorProtos.getDescriptor(),
+          org.apache.hadoop.hbase.protobuf.generated.MapReduceProtos.getDescriptor(),
         }, assigner);
   }
 

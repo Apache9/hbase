@@ -179,6 +179,12 @@ public class Scan extends Query {
   private boolean small = false;
 
   /**
+   * The mvcc read point to use when open a scanner. Remember to clear it after switching regions as
+   * the mvcc is only valid within region scope.
+   */
+  private long mvccReadPoint = -1L;
+
+  /**
    * Create a Scan operation across all rows.
    */
   public Scan() {}
@@ -255,6 +261,7 @@ public class Scan extends Query {
       TimeRange tr = entry.getValue();
       setColumnFamilyTimeRange(entry.getKey(), tr.getMin(), tr.getMax());
     }
+    this.mvccReadPoint = scan.getMvccReadPoint();
   }
 
   /**
@@ -279,6 +286,7 @@ public class Scan extends Query {
       TimeRange tr = entry.getValue();
       setColumnFamilyTimeRange(entry.getKey(), tr.getMin(), tr.getMax());
     }
+    this.mvccReadPoint = -1L;
   }
 
   public boolean isGetScan() {
@@ -361,7 +369,8 @@ public class Scan extends Query {
     return this;
   }
 
-  @Override public Scan setColumnFamilyTimeRange(byte[] cf, long minStamp, long maxStamp) {
+  @Override
+  public Scan setColumnFamilyTimeRange(byte[] cf, long minStamp, long maxStamp) {
     return (Scan) super.setColumnFamilyTimeRange(cf, minStamp, maxStamp);
   }
 
@@ -410,35 +419,39 @@ public class Scan extends Query {
    * Set the maximum number of values to return for each call to next()
    * @param batch the maximum number of values
    */
-  public void setBatch(int batch) {
+  public Scan setBatch(int batch) {
     if (this.hasFilter() && this.filter.hasFilterRow()) {
       throw new IncompatibleFilterException(
         "Cannot set batch on a scan using a filter" +
         " that returns true for filter.hasFilterRow");
     }
     this.batch = batch;
+    return this;
   }
 
   /**
    * Set the maximum number of values to return per row per Column Family
    * @param limit the maximum number of values returned / row / CF
    */
-  public void setMaxResultsPerColumnFamily(int limit) {
+  public Scan setMaxResultsPerColumnFamily(int limit) {
     this.storeLimit = limit;
+    return this;
   }
 
   /**
    * Set offset for the row per Column Family.
    * @param offset is the number of kvs that will be skipped.
    */
-  public void setRowOffsetPerColumnFamily(int offset) {
+  public Scan setRowOffsetPerColumnFamily(int offset) {
     this.storeOffset = offset;
+    return this;
   }
 
   /**
    * It will do nothing now.
    */
-  public void setRawLimit(int rawLimit) {
+  public Scan setRawLimit(int rawLimit) {
+    return this;
   }
 
   /**
@@ -455,8 +468,9 @@ public class Scan extends Query {
    * Higher caching values will enable faster scanners but will use more memory.
    * @param caching the number of rows for caching
    */
-  public void setCaching(int caching) {
+  public Scan setCaching(int caching) {
     this.caching = caching;
+    return this;
   }
 
   /**
@@ -473,8 +487,9 @@ public class Scan extends Query {
    *
    * @param maxResultSize The maximum result size in bytes.
    */
-  public void setMaxResultSize(long maxResultSize) {
+  public Scan setMaxResultSize(long maxResultSize) {
     this.maxResultSize = maxResultSize;
+    return this;
   }
 
   @Override
@@ -610,8 +625,9 @@ public class Scan extends Query {
    * @param cacheBlocks if false, default settings are overridden and blocks
    * will not be cached
    */
-  public void setCacheBlocks(boolean cacheBlocks) {
+  public Scan setCacheBlocks(boolean cacheBlocks) {
     this.cacheBlocks = cacheBlocks;
+    return this;
   }
 
   /**
@@ -669,9 +685,10 @@ public class Scan extends Query {
    * Set whether this scan is a debug one.
    * @param debug
    */
-  public void setDebug(boolean debug) {
+  public Scan setDebug(boolean debug) {
     this.debug = debug;
     setAttribute(DEBUG_ATTR, Bytes.toBytes(debug));
+    return this;
   }
 
   /**
@@ -701,8 +718,9 @@ public class Scan extends Query {
    * - if there's a concurrent split and you have more than 2 column families, some rows may be
    *   missing some column families.
    */
-  public void setLoadColumnFamiliesOnDemand(boolean value) {
+  public Scan setLoadColumnFamiliesOnDemand(boolean value) {
     this.loadColumnFamiliesOnDemand = value;
+    return this;
   }
 
   /**
@@ -847,8 +865,9 @@ public class Scan extends Query {
    * 
    * @param small
    */
-  public void setSmall(boolean small) {
+  public Scan setSmall(boolean small) {
     this.small = small;
+    return this;
   }
 
   /**
@@ -867,8 +886,9 @@ public class Scan extends Query {
    * that have lots of out-date kvs and prefer to not "timeout":)
    * @param ignoreTtl True/False to enable/disable "ignorettl" mode.
    */
-  public void setIgnoreTtl(boolean ignoreTtl) {
+  public Scan setIgnoreTtl(boolean ignoreTtl) {
     setAttribute(IGNORETTL_ATTR, Bytes.toBytes(ignoreTtl));
+    return this;
   }
 
   /**
@@ -887,7 +907,30 @@ public class Scan extends Query {
    * See HConstans.DEFAULT_HBASE_CLIENT_SCANNER_MAX_COMPLETEROW_HEAPRATIO
    * and RowTooLargeException.
    */
-  public void setMaxCompleteRowHeapRatio(double maxCompleteRowHeapRatio) {
+  public Scan setMaxCompleteRowHeapRatio(double maxCompleteRowHeapRatio) {
     this.maxCompleteRowHeapRatio = maxCompleteRowHeapRatio;
+    return this;
+  }
+
+  /**
+   * Get the mvcc read point used to open a scanner.
+   */
+  long getMvccReadPoint() {
+    return mvccReadPoint;
+  }
+
+  /**
+   * Set the mvcc read point used to open a scanner.
+   */
+  Scan setMvccReadPoint(long mvccReadPoint) {
+    this.mvccReadPoint = mvccReadPoint;
+    return this;
+  }
+
+  /**
+   * Set the mvcc read point to -1 which means do not use it.
+   */
+  Scan resetMvccReadPoint() {
+    return setMvccReadPoint(-1L);
   }
 }

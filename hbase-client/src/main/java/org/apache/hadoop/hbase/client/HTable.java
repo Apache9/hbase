@@ -748,12 +748,16 @@ public class HTable implements HTableInterface {
    * {@inheritDoc}
    */
   @Override
-  public ResultScanner getScanner(final Scan scan) throws IOException {
+  public ResultScanner getScanner(Scan scan) throws IOException {
     if (scan.getBatch() > 0 && scan.isSmall()) {
       throw new IllegalArgumentException("Small scan should not be used with batching");
     }
     if (scan.getCaching() <= 0) {
       scan.setCaching(getScannerCaching());
+    }
+    if (scan.getMvccReadPoint() > 0) {
+      // it is not supposed to be set by user, clear
+      scan.resetMvccReadPoint();
     }
 
     if (scan.isReversed()) {

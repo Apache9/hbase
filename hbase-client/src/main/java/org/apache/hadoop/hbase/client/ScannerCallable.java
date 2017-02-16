@@ -225,16 +225,13 @@ public class ScannerCallable extends RegionServerCallable<Result[]> {
             throw ProtobufUtil.getRemoteException(se);
           }
           updateResultsMetrics(rrs);
-        } catch (IOException e) {
+        } catch (Exception e) {
           if (logScannerActivity) {
             LOG.info("Got exception making request " + TextFormat.shortDebugString(request) + " to "
                 + getLocation(),
               e);
           }
-          IOException ioe = e;
-          if (e instanceof RemoteException) {
-            ioe = RemoteExceptionHandler.decodeRemoteException((RemoteException) e);
-          }
+          IOException ioe = ProtobufUtil.handleRemoteException(e);
           if (logScannerActivity && (ioe instanceof UnknownScannerException)) {
             try {
               HRegionLocation location =
@@ -349,6 +346,9 @@ public class ScannerCallable extends RegionServerCallable<Result[]> {
       if (logScannerActivity) {
         LOG.info("Open scanner=" + id + " for scan=" + scan.toString() + " on region "
             + getLocation().toString());
+      }
+      if (response.hasMvccReadPoint()) {
+        this.scan.setMvccReadPoint(response.getMvccReadPoint());
       }
       return id;
     } catch (ServiceException se) {

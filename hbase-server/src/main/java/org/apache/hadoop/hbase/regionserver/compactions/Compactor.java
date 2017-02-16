@@ -242,9 +242,6 @@ public abstract class Compactor {
         // output to writer:
         for (Cell c : kvs) {
           KeyValue kv = KeyValueUtil.ensureKeyValue(c);
-          if (kv.getMvccVersion() <= smallestReadPoint) {
-            kv.setMvccVersion(0);
-          }
           writer.append(kv);
           int len = kv.getLength();
           ++progress.currentCompactedKVs;

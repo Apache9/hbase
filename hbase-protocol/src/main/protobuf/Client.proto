@@ -28,6 +28,7 @@ import "HBase.proto";
 import "Filter.proto";
 import "Cell.proto";
 import "Comparator.proto";
+import "MapReduce.proto";
 
 /**
  * The protocol buffer version of Authorizations.
@@ -256,6 +257,7 @@ message Scan {
   optional uint32 caching = 17;
   optional bool allow_partial_results = 18;
   repeated ColumnFamilyTimeRange cf_time_range = 19;
+  optional uint64 mvcc_read_point = 20 [default = 0];
 }
 
 /**
@@ -321,6 +323,16 @@ message ScanResponse {
   // timing out. Seeing a heartbeat message communicates to the Client that the
   // server would have continued to scan had the time limit not been reached.
   optional bool heartbeat_message = 9;
+
+  // This field is filled in if the client has requested that scan metrics be tracked.
+  // The metrics tracked here are sent back to the client to be tracked together with
+  // the existing client side metrics.
+  optional ScanMetrics scan_metrics = 10;
+
+  // The mvcc read point which is used to open the scanner at server side. Client can
+  // make use of this mvcc_read_point when restarting a scanner to get a consistent view
+  // of a row.
+  optional uint64 mvcc_read_point = 11 [default = 0];
 }
 
 /**

@@ -30,7 +30,6 @@ import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.KeyValueUtil;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
-import org.apache.hadoop.hbase.classification.InterfaceStability;
 import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.protobuf.RequestConverter;
 import org.apache.hadoop.hbase.protobuf.ResponseConverter;
@@ -44,25 +43,10 @@ import org.apache.htrace.Trace;
  * unless the results cross multiple regions or the row count of results excess the caching. For
  * small scan, it will get better performance than {@link ClientScanner}
  */
-@InterfaceAudience.Public
-@InterfaceStability.Evolving
+@InterfaceAudience.Private
 public class ClientSmallScanner extends ClientScanner {
   private final Log LOG = LogFactory.getLog(this.getClass());
   private RegionServerCallable<Result[]> smallScanCallable = null;
-
-  /**
-   * Create a new ClientSmallScanner for the specified table. An HConnection will be retrieved using
-   * the passed Configuration. Note that the passed {@link Scan} 's start row maybe changed.
-   * @param conf The {@link Configuration} to use.
-   * @param scan {@link Scan} to use in this scanner
-   * @param tableName The table that we wish to rangeGet
-   * @throws IOException
-   */
-  @Deprecated
-  public ClientSmallScanner(final Configuration conf, final Scan scan, final TableName tableName)
-      throws IOException {
-    super(conf, scan, tableName);
-  }
 
   /**
    * Create a new ClientSmallScanner for the specified table. An HConnection will be retrieved using

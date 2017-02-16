@@ -3576,6 +3576,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
         scannerId = addScanner(scanner, region);
         scannerName = String.valueOf(scannerId);
         ttl = this.scannerLeaseTimeoutPeriod;
+        builder.setMvccReadPoint(scanner.getMvccReadPoint());
       }
 
       long maxQuotaResultSize = maxScannerResultSize;

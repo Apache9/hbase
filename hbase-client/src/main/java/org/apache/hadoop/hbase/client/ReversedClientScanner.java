@@ -26,15 +26,13 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
-import org.apache.hadoop.hbase.classification.InterfaceStability;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.ExceptionUtil;
 
 /**
  * A reversed client scanner which support backward scanning
  */
-@InterfaceAudience.Public
-@InterfaceStability.Evolving
+@InterfaceAudience.Private
 public class ReversedClientScanner extends ClientScanner {
   private static final Log LOG = LogFactory.getLog(ReversedClientScanner.class);
   // A byte array in which all elements are the max byte, and it is used to
@@ -79,6 +77,8 @@ public class ReversedClientScanner extends ClientScanner {
         return false;
       }
       localStartKey = startKey;
+      // clear mvcc read point if we are going to switch regions
+      scan.resetMvccReadPoint();
       if (LOG.isDebugEnabled()) {
         LOG.debug("Finished " + this.currentRegion);
       }

@@ -111,6 +111,7 @@ import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Increment;
 import org.apache.hadoop.hbase.client.IsolationLevel;
 import org.apache.hadoop.hbase.client.Mutation;
+import org.apache.hadoop.hbase.client.PackagePrivateFieldAccessor;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.RowMutations;
@@ -3796,6 +3797,7 @@ public class HRegion implements HeapSize { // , Writable{
    */
   protected boolean restoreEdit(final Store s, final KeyValue kv) {
     long kvSize = s.add(kv);
+    mvcc.initialize(kv.getMvccVersion());
     if (this.rsAccounting != null) {
       rsAccounting.addAndGetRegionReplayEditsSize(this.getRegionName(), kvSize);
     }
@@ -4203,8 +4205,11 @@ public class HRegion implements HeapSize { // , Writable{
       // synchronize on scannerReadPoints so that nobody calculates
       // getSmallestReadPoint, before scannerReadPoints is updated.
       IsolationLevel isolationLevel = scan.getIsolationLevel();
-      synchronized(scannerReadPoints) {
-        if (nonce == HConstants.NO_NONCE || rsServices == null
+      long mvccReadPoint = PackagePrivateFieldAccessor.getMvccReadPoint(scan);
+      synchronized (scannerReadPoints) {
+        if (mvccReadPoint > 0) {
+          this.readPt = mvccReadPoint;
+        } else if (nonce == HConstants.NO_NONCE || rsServices == null
             || rsServices.getNonceManager() == null) {
           this.readPt = getReadpoint(isolationLevel);
         } else {
@@ -4212,7 +4217,6 @@ public class HRegion implements HeapSize { // , Writable{
         }
         scannerReadPoints.put(this, this.readPt);
       }
-
       initializeScanners(scan, additionalScanners);
     }
 
