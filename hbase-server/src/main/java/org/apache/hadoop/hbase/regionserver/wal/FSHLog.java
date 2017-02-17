@@ -577,12 +577,6 @@ class FSHLog implements HLog, Syncable {
           newPath = computeFilename();
         }
 
-        // Tell our listeners that a new log is about to be created
-        if (!this.listeners.isEmpty()) {
-          for (WALActionsListener i : this.listeners) {
-            i.preLogRoll(oldPath, newPath);
-          }
-        }
         FSHLog.Writer nextWriter = this.createWriterInstance(fs, newPath, conf);
         // Can we get at the dfsclient outputstream?
         FSDataOutputStream nextHdfsOut = null;
@@ -594,6 +588,13 @@ class FSHLog implements HLog, Syncable {
           } catch (IOException e) {
             // optimization failed, no need to abort here.
             LOG.warn("pre-sync failed", e);
+          }
+        }
+        
+        // Tell our listeners that a new log is about to be rolled
+        if (!this.listeners.isEmpty()) {
+          for (WALActionsListener i : this.listeners) {
+            i.preLogRoll(oldPath, newPath);
           }
         }
 
