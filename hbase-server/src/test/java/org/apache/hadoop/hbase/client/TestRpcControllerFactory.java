@@ -41,6 +41,7 @@ import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
@@ -119,6 +120,7 @@ public class TestRpcControllerFactory {
    * @throws Exception on failure
    */
   @Test
+  @Ignore
   public void testCountController() throws Exception {
     Configuration conf = new Configuration(UTIL.getConfiguration());
     // setup our custom controller
