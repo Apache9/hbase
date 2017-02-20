@@ -14229,6 +14229,36 @@ public final class ClientProtos {
      * <code>optional uint64 mvcc_read_point = 20 [default = 0];</code>
      */
     long getMvccReadPoint();
+
+    // optional bool include_start_row = 21 [default = true];
+    /**
+     * <code>optional bool include_start_row = 21 [default = true];</code>
+     */
+    boolean hasIncludeStartRow();
+    /**
+     * <code>optional bool include_start_row = 21 [default = true];</code>
+     */
+    boolean getIncludeStartRow();
+
+    // optional bool include_stop_row = 22 [default = false];
+    /**
+     * <code>optional bool include_stop_row = 22 [default = false];</code>
+     */
+    boolean hasIncludeStopRow();
+    /**
+     * <code>optional bool include_stop_row = 22 [default = false];</code>
+     */
+    boolean getIncludeStopRow();
+
+    // optional .Scan.ReadType readType = 23 [default = DEFAULT];
+    /**
+     * <code>optional .Scan.ReadType readType = 23 [default = DEFAULT];</code>
+     */
+    boolean hasReadType();
+    /**
+     * <code>optional .Scan.ReadType readType = 23 [default = DEFAULT];</code>
+     */
+    org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Scan.ReadType getReadType();
   }
   /**
    * Protobuf type {@code Scan}
@@ -14412,6 +14442,27 @@ public final class ClientProtos {
               mvccReadPoint_ = input.readUInt64();
               break;
             }
+            case 168: {
+              bitField0_ |= 0x00010000;
+              includeStartRow_ = input.readBool();
+              break;
+            }
+            case 176: {
+              bitField0_ |= 0x00020000;
+              includeStopRow_ = input.readBool();
+              break;
+            }
+            case 184: {
+              int rawValue = input.readEnum();
+              org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Scan.ReadType value = org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Scan.ReadType.valueOf(rawValue);
+              if (value == null) {
+                unknownFields.mergeVarintField(23, rawValue);
+              } else {
+                bitField0_ |= 0x00040000;
+                readType_ = value;
+              }
+              break;
+            }
           }
         }
       } catch (com.google.protobuf.InvalidProtocolBufferException e) {
@@ -14458,6 +14509,97 @@ public final class ClientProtos {
     @java.lang.Override
     public com.google.protobuf.Parser<Scan> getParserForType() {
       return PARSER;
+    }
+
+    /**
+     * Protobuf enum {@code Scan.ReadType}
+     */
+    public enum ReadType
+        implements com.google.protobuf.ProtocolMessageEnum {
+      /**
+       * <code>DEFAULT = 0;</code>
+       */
+      DEFAULT(0, 0),
+      /**
+       * <code>STREAM = 1;</code>
+       */
+      STREAM(1, 1),
+      /**
+       * <code>PREAD = 2;</code>
+       */
+      PREAD(2, 2),
+      ;
+
+      /**
+       * <code>DEFAULT = 0;</code>
+       */
+      public static final int DEFAULT_VALUE = 0;
+      /**
+       * <code>STREAM = 1;</code>
+       */
+      public static final int STREAM_VALUE = 1;
+      /**
+       * <code>PREAD = 2;</code>
+       */
+      public static final int PREAD_VALUE = 2;
+
+
+      public final int getNumber() { return value; }
+
+      public static ReadType valueOf(int value) {
+        switch (value) {
+          case 0: return DEFAULT;
+          case 1: return STREAM;
+          case 2: return PREAD;
+          default: return null;
+        }
+      }
+
+      public static com.google.protobuf.Internal.EnumLiteMap<ReadType>
+          internalGetValueMap() {
+        return internalValueMap;
+      }
+      private static com.google.protobuf.Internal.EnumLiteMap<ReadType>
+          internalValueMap =
+            new com.google.protobuf.Internal.EnumLiteMap<ReadType>() {
+              public ReadType findValueByNumber(int number) {
+                return ReadType.valueOf(number);
+              }
+            };
+
+      public final com.google.protobuf.Descriptors.EnumValueDescriptor
+          getValueDescriptor() {
+        return getDescriptor().getValues().get(index);
+      }
+      public final com.google.protobuf.Descriptors.EnumDescriptor
+          getDescriptorForType() {
+        return getDescriptor();
+      }
+      public static final com.google.protobuf.Descriptors.EnumDescriptor
+          getDescriptor() {
+        return org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Scan.getDescriptor().getEnumTypes().get(0);
+      }
+
+      private static final ReadType[] VALUES = values();
+
+      public static ReadType valueOf(
+          com.google.protobuf.Descriptors.EnumValueDescriptor desc) {
+        if (desc.getType() != getDescriptor()) {
+          throw new java.lang.IllegalArgumentException(
+            "EnumValueDescriptor is not for this type.");
+        }
+        return VALUES[desc.getIndex()];
+      }
+
+      private final int index;
+      private final int value;
+
+      private ReadType(int index, int value) {
+        this.index = index;
+        this.value = value;
+      }
+
+      // @@protoc_insertion_point(enum_scope:Scan.ReadType)
     }
 
     private int bitField0_;
@@ -14845,6 +14987,54 @@ public final class ClientProtos {
       return mvccReadPoint_;
     }
 
+    // optional bool include_start_row = 21 [default = true];
+    public static final int INCLUDE_START_ROW_FIELD_NUMBER = 21;
+    private boolean includeStartRow_;
+    /**
+     * <code>optional bool include_start_row = 21 [default = true];</code>
+     */
+    public boolean hasIncludeStartRow() {
+      return ((bitField0_ & 0x00010000) == 0x00010000);
+    }
+    /**
+     * <code>optional bool include_start_row = 21 [default = true];</code>
+     */
+    public boolean getIncludeStartRow() {
+      return includeStartRow_;
+    }
+
+    // optional bool include_stop_row = 22 [default = false];
+    public static final int INCLUDE_STOP_ROW_FIELD_NUMBER = 22;
+    private boolean includeStopRow_;
+    /**
+     * <code>optional bool include_stop_row = 22 [default = false];</code>
+     */
+    public boolean hasIncludeStopRow() {
+      return ((bitField0_ & 0x00020000) == 0x00020000);
+    }
+    /**
+     * <code>optional bool include_stop_row = 22 [default = false];</code>
+     */
+    public boolean getIncludeStopRow() {
+      return includeStopRow_;
+    }
+
+    // optional .Scan.ReadType readType = 23 [default = DEFAULT];
+    public static final int READTYPE_FIELD_NUMBER = 23;
+    private org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Scan.ReadType readType_;
+    /**
+     * <code>optional .Scan.ReadType readType = 23 [default = DEFAULT];</code>
+     */
+    public boolean hasReadType() {
+      return ((bitField0_ & 0x00040000) == 0x00040000);
+    }
+    /**
+     * <code>optional .Scan.ReadType readType = 23 [default = DEFAULT];</code>
+     */
+    public org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Scan.ReadType getReadType() {
+      return readType_;
+    }
+
     private void initFields() {
       column_ = java.util.Collections.emptyList();
       attribute_ = java.util.Collections.emptyList();
@@ -14865,6 +15055,9 @@ public final class ClientProtos {
       allowPartialResults_ = false;
       cfTimeRange_ = java.util.Collections.emptyList();
       mvccReadPoint_ = 0L;
+      includeStartRow_ = true;
+      includeStopRow_ = false;
+      readType_ = org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Scan.ReadType.DEFAULT;
     }
     private byte memoizedIsInitialized = -1;
     public final boolean isInitialized() {
@@ -14959,6 +15152,15 @@ public final class ClientProtos {
       if (((bitField0_ & 0x00008000) == 0x00008000)) {
         output.writeUInt64(20, mvccReadPoint_);
       }
+      if (((bitField0_ & 0x00010000) == 0x00010000)) {
+        output.writeBool(21, includeStartRow_);
+      }
+      if (((bitField0_ & 0x00020000) == 0x00020000)) {
+        output.writeBool(22, includeStopRow_);
+      }
+      if (((bitField0_ & 0x00040000) == 0x00040000)) {
+        output.writeEnum(23, readType_.getNumber());
+      }
       getUnknownFields().writeTo(output);
     }
 
@@ -15043,6 +15245,18 @@ public final class ClientProtos {
       if (((bitField0_ & 0x00008000) == 0x00008000)) {
         size += com.google.protobuf.CodedOutputStream
           .computeUInt64Size(20, mvccReadPoint_);
+      }
+      if (((bitField0_ & 0x00010000) == 0x00010000)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeBoolSize(21, includeStartRow_);
+      }
+      if (((bitField0_ & 0x00020000) == 0x00020000)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeBoolSize(22, includeStopRow_);
+      }
+      if (((bitField0_ & 0x00040000) == 0x00040000)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeEnumSize(23, readType_.getNumber());
       }
       size += getUnknownFields().getSerializedSize();
       memoizedSerializedSize = size;
@@ -15153,6 +15367,21 @@ public final class ClientProtos {
         result = result && (getMvccReadPoint()
             == other.getMvccReadPoint());
       }
+      result = result && (hasIncludeStartRow() == other.hasIncludeStartRow());
+      if (hasIncludeStartRow()) {
+        result = result && (getIncludeStartRow()
+            == other.getIncludeStartRow());
+      }
+      result = result && (hasIncludeStopRow() == other.hasIncludeStopRow());
+      if (hasIncludeStopRow()) {
+        result = result && (getIncludeStopRow()
+            == other.getIncludeStopRow());
+      }
+      result = result && (hasReadType() == other.hasReadType());
+      if (hasReadType()) {
+        result = result &&
+            (getReadType() == other.getReadType());
+      }
       result = result &&
           getUnknownFields().equals(other.getUnknownFields());
       return result;
@@ -15241,6 +15470,18 @@ public final class ClientProtos {
       if (hasMvccReadPoint()) {
         hash = (37 * hash) + MVCC_READ_POINT_FIELD_NUMBER;
         hash = (53 * hash) + hashLong(getMvccReadPoint());
+      }
+      if (hasIncludeStartRow()) {
+        hash = (37 * hash) + INCLUDE_START_ROW_FIELD_NUMBER;
+        hash = (53 * hash) + hashBoolean(getIncludeStartRow());
+      }
+      if (hasIncludeStopRow()) {
+        hash = (37 * hash) + INCLUDE_STOP_ROW_FIELD_NUMBER;
+        hash = (53 * hash) + hashBoolean(getIncludeStopRow());
+      }
+      if (hasReadType()) {
+        hash = (37 * hash) + READTYPE_FIELD_NUMBER;
+        hash = (53 * hash) + hashEnum(getReadType());
       }
       hash = (29 * hash) + getUnknownFields().hashCode();
       memoizedHashCode = hash;
@@ -15425,6 +15666,12 @@ public final class ClientProtos {
         }
         mvccReadPoint_ = 0L;
         bitField0_ = (bitField0_ & ~0x00040000);
+        includeStartRow_ = true;
+        bitField0_ = (bitField0_ & ~0x00080000);
+        includeStopRow_ = false;
+        bitField0_ = (bitField0_ & ~0x00100000);
+        readType_ = org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Scan.ReadType.DEFAULT;
+        bitField0_ = (bitField0_ & ~0x00200000);
         return this;
       }
 
@@ -15552,6 +15799,18 @@ public final class ClientProtos {
           to_bitField0_ |= 0x00008000;
         }
         result.mvccReadPoint_ = mvccReadPoint_;
+        if (((from_bitField0_ & 0x00080000) == 0x00080000)) {
+          to_bitField0_ |= 0x00010000;
+        }
+        result.includeStartRow_ = includeStartRow_;
+        if (((from_bitField0_ & 0x00100000) == 0x00100000)) {
+          to_bitField0_ |= 0x00020000;
+        }
+        result.includeStopRow_ = includeStopRow_;
+        if (((from_bitField0_ & 0x00200000) == 0x00200000)) {
+          to_bitField0_ |= 0x00040000;
+        }
+        result.readType_ = readType_;
         result.bitField0_ = to_bitField0_;
         onBuilt();
         return result;
@@ -15693,6 +15952,15 @@ public final class ClientProtos {
         }
         if (other.hasMvccReadPoint()) {
           setMvccReadPoint(other.getMvccReadPoint());
+        }
+        if (other.hasIncludeStartRow()) {
+          setIncludeStartRow(other.getIncludeStartRow());
+        }
+        if (other.hasIncludeStopRow()) {
+          setIncludeStopRow(other.getIncludeStopRow());
+        }
+        if (other.hasReadType()) {
+          setReadType(other.getReadType());
         }
         this.mergeUnknownFields(other.getUnknownFields());
         return this;
@@ -17183,6 +17451,108 @@ public final class ClientProtos {
         return this;
       }
 
+      // optional bool include_start_row = 21 [default = true];
+      private boolean includeStartRow_ = true;
+      /**
+       * <code>optional bool include_start_row = 21 [default = true];</code>
+       */
+      public boolean hasIncludeStartRow() {
+        return ((bitField0_ & 0x00080000) == 0x00080000);
+      }
+      /**
+       * <code>optional bool include_start_row = 21 [default = true];</code>
+       */
+      public boolean getIncludeStartRow() {
+        return includeStartRow_;
+      }
+      /**
+       * <code>optional bool include_start_row = 21 [default = true];</code>
+       */
+      public Builder setIncludeStartRow(boolean value) {
+        bitField0_ |= 0x00080000;
+        includeStartRow_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>optional bool include_start_row = 21 [default = true];</code>
+       */
+      public Builder clearIncludeStartRow() {
+        bitField0_ = (bitField0_ & ~0x00080000);
+        includeStartRow_ = true;
+        onChanged();
+        return this;
+      }
+
+      // optional bool include_stop_row = 22 [default = false];
+      private boolean includeStopRow_ ;
+      /**
+       * <code>optional bool include_stop_row = 22 [default = false];</code>
+       */
+      public boolean hasIncludeStopRow() {
+        return ((bitField0_ & 0x00100000) == 0x00100000);
+      }
+      /**
+       * <code>optional bool include_stop_row = 22 [default = false];</code>
+       */
+      public boolean getIncludeStopRow() {
+        return includeStopRow_;
+      }
+      /**
+       * <code>optional bool include_stop_row = 22 [default = false];</code>
+       */
+      public Builder setIncludeStopRow(boolean value) {
+        bitField0_ |= 0x00100000;
+        includeStopRow_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>optional bool include_stop_row = 22 [default = false];</code>
+       */
+      public Builder clearIncludeStopRow() {
+        bitField0_ = (bitField0_ & ~0x00100000);
+        includeStopRow_ = false;
+        onChanged();
+        return this;
+      }
+
+      // optional .Scan.ReadType readType = 23 [default = DEFAULT];
+      private org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Scan.ReadType readType_ = org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Scan.ReadType.DEFAULT;
+      /**
+       * <code>optional .Scan.ReadType readType = 23 [default = DEFAULT];</code>
+       */
+      public boolean hasReadType() {
+        return ((bitField0_ & 0x00200000) == 0x00200000);
+      }
+      /**
+       * <code>optional .Scan.ReadType readType = 23 [default = DEFAULT];</code>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Scan.ReadType getReadType() {
+        return readType_;
+      }
+      /**
+       * <code>optional .Scan.ReadType readType = 23 [default = DEFAULT];</code>
+       */
+      public Builder setReadType(org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Scan.ReadType value) {
+        if (value == null) {
+          throw new NullPointerException();
+        }
+        bitField0_ |= 0x00200000;
+        readType_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>optional .Scan.ReadType readType = 23 [default = DEFAULT];</code>
+       */
+      public Builder clearReadType() {
+        bitField0_ = (bitField0_ & ~0x00200000);
+        readType_ = org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Scan.ReadType.DEFAULT;
+        onChanged();
+        return this;
+      }
+
       // @@protoc_insertion_point(builder_scope:Scan)
     }
 
@@ -17284,6 +17654,44 @@ public final class ClientProtos {
      * <code>optional bool client_handles_heartbeats = 8;</code>
      */
     boolean getClientHandlesHeartbeats();
+
+    // optional bool track_scan_metrics = 9;
+    /**
+     * <code>optional bool track_scan_metrics = 9;</code>
+     */
+    boolean hasTrackScanMetrics();
+    /**
+     * <code>optional bool track_scan_metrics = 9;</code>
+     */
+    boolean getTrackScanMetrics();
+
+    // optional bool renew = 10 [default = false];
+    /**
+     * <code>optional bool renew = 10 [default = false];</code>
+     */
+    boolean hasRenew();
+    /**
+     * <code>optional bool renew = 10 [default = false];</code>
+     */
+    boolean getRenew();
+
+    // optional uint32 limit_of_rows = 11 [default = 0];
+    /**
+     * <code>optional uint32 limit_of_rows = 11 [default = 0];</code>
+     *
+     * <pre>
+     * if we have returned limit_of_rows rows to client, then close the scanner.
+     * </pre>
+     */
+    boolean hasLimitOfRows();
+    /**
+     * <code>optional uint32 limit_of_rows = 11 [default = 0];</code>
+     *
+     * <pre>
+     * if we have returned limit_of_rows rows to client, then close the scanner.
+     * </pre>
+     */
+    int getLimitOfRows();
   }
   /**
    * Protobuf type {@code ScanRequest}
@@ -17403,6 +17811,21 @@ public final class ClientProtos {
             case 64: {
               bitField0_ |= 0x00000080;
               clientHandlesHeartbeats_ = input.readBool();
+              break;
+            }
+            case 72: {
+              bitField0_ |= 0x00000100;
+              trackScanMetrics_ = input.readBool();
+              break;
+            }
+            case 80: {
+              bitField0_ |= 0x00000200;
+              renew_ = input.readBool();
+              break;
+            }
+            case 88: {
+              bitField0_ |= 0x00000400;
+              limitOfRows_ = input.readUInt32();
               break;
             }
           }
@@ -17585,6 +18008,62 @@ public final class ClientProtos {
       return clientHandlesHeartbeats_;
     }
 
+    // optional bool track_scan_metrics = 9;
+    public static final int TRACK_SCAN_METRICS_FIELD_NUMBER = 9;
+    private boolean trackScanMetrics_;
+    /**
+     * <code>optional bool track_scan_metrics = 9;</code>
+     */
+    public boolean hasTrackScanMetrics() {
+      return ((bitField0_ & 0x00000100) == 0x00000100);
+    }
+    /**
+     * <code>optional bool track_scan_metrics = 9;</code>
+     */
+    public boolean getTrackScanMetrics() {
+      return trackScanMetrics_;
+    }
+
+    // optional bool renew = 10 [default = false];
+    public static final int RENEW_FIELD_NUMBER = 10;
+    private boolean renew_;
+    /**
+     * <code>optional bool renew = 10 [default = false];</code>
+     */
+    public boolean hasRenew() {
+      return ((bitField0_ & 0x00000200) == 0x00000200);
+    }
+    /**
+     * <code>optional bool renew = 10 [default = false];</code>
+     */
+    public boolean getRenew() {
+      return renew_;
+    }
+
+    // optional uint32 limit_of_rows = 11 [default = 0];
+    public static final int LIMIT_OF_ROWS_FIELD_NUMBER = 11;
+    private int limitOfRows_;
+    /**
+     * <code>optional uint32 limit_of_rows = 11 [default = 0];</code>
+     *
+     * <pre>
+     * if we have returned limit_of_rows rows to client, then close the scanner.
+     * </pre>
+     */
+    public boolean hasLimitOfRows() {
+      return ((bitField0_ & 0x00000400) == 0x00000400);
+    }
+    /**
+     * <code>optional uint32 limit_of_rows = 11 [default = 0];</code>
+     *
+     * <pre>
+     * if we have returned limit_of_rows rows to client, then close the scanner.
+     * </pre>
+     */
+    public int getLimitOfRows() {
+      return limitOfRows_;
+    }
+
     private void initFields() {
       region_ = org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.RegionSpecifier.getDefaultInstance();
       scan_ = org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Scan.getDefaultInstance();
@@ -17594,6 +18073,9 @@ public final class ClientProtos {
       nextCallSeq_ = 0L;
       clientHandlesPartials_ = false;
       clientHandlesHeartbeats_ = false;
+      trackScanMetrics_ = false;
+      renew_ = false;
+      limitOfRows_ = 0;
     }
     private byte memoizedIsInitialized = -1;
     public final boolean isInitialized() {
@@ -17643,6 +18125,15 @@ public final class ClientProtos {
       if (((bitField0_ & 0x00000080) == 0x00000080)) {
         output.writeBool(8, clientHandlesHeartbeats_);
       }
+      if (((bitField0_ & 0x00000100) == 0x00000100)) {
+        output.writeBool(9, trackScanMetrics_);
+      }
+      if (((bitField0_ & 0x00000200) == 0x00000200)) {
+        output.writeBool(10, renew_);
+      }
+      if (((bitField0_ & 0x00000400) == 0x00000400)) {
+        output.writeUInt32(11, limitOfRows_);
+      }
       getUnknownFields().writeTo(output);
     }
 
@@ -17683,6 +18174,18 @@ public final class ClientProtos {
       if (((bitField0_ & 0x00000080) == 0x00000080)) {
         size += com.google.protobuf.CodedOutputStream
           .computeBoolSize(8, clientHandlesHeartbeats_);
+      }
+      if (((bitField0_ & 0x00000100) == 0x00000100)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeBoolSize(9, trackScanMetrics_);
+      }
+      if (((bitField0_ & 0x00000200) == 0x00000200)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeBoolSize(10, renew_);
+      }
+      if (((bitField0_ & 0x00000400) == 0x00000400)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeUInt32Size(11, limitOfRows_);
       }
       size += getUnknownFields().getSerializedSize();
       memoizedSerializedSize = size;
@@ -17747,6 +18250,21 @@ public final class ClientProtos {
         result = result && (getClientHandlesHeartbeats()
             == other.getClientHandlesHeartbeats());
       }
+      result = result && (hasTrackScanMetrics() == other.hasTrackScanMetrics());
+      if (hasTrackScanMetrics()) {
+        result = result && (getTrackScanMetrics()
+            == other.getTrackScanMetrics());
+      }
+      result = result && (hasRenew() == other.hasRenew());
+      if (hasRenew()) {
+        result = result && (getRenew()
+            == other.getRenew());
+      }
+      result = result && (hasLimitOfRows() == other.hasLimitOfRows());
+      if (hasLimitOfRows()) {
+        result = result && (getLimitOfRows()
+            == other.getLimitOfRows());
+      }
       result = result &&
           getUnknownFields().equals(other.getUnknownFields());
       return result;
@@ -17791,6 +18309,18 @@ public final class ClientProtos {
       if (hasClientHandlesHeartbeats()) {
         hash = (37 * hash) + CLIENT_HANDLES_HEARTBEATS_FIELD_NUMBER;
         hash = (53 * hash) + hashBoolean(getClientHandlesHeartbeats());
+      }
+      if (hasTrackScanMetrics()) {
+        hash = (37 * hash) + TRACK_SCAN_METRICS_FIELD_NUMBER;
+        hash = (53 * hash) + hashBoolean(getTrackScanMetrics());
+      }
+      if (hasRenew()) {
+        hash = (37 * hash) + RENEW_FIELD_NUMBER;
+        hash = (53 * hash) + hashBoolean(getRenew());
+      }
+      if (hasLimitOfRows()) {
+        hash = (37 * hash) + LIMIT_OF_ROWS_FIELD_NUMBER;
+        hash = (53 * hash) + getLimitOfRows();
       }
       hash = (29 * hash) + getUnknownFields().hashCode();
       memoizedHashCode = hash;
@@ -17940,6 +18470,12 @@ public final class ClientProtos {
         bitField0_ = (bitField0_ & ~0x00000040);
         clientHandlesHeartbeats_ = false;
         bitField0_ = (bitField0_ & ~0x00000080);
+        trackScanMetrics_ = false;
+        bitField0_ = (bitField0_ & ~0x00000100);
+        renew_ = false;
+        bitField0_ = (bitField0_ & ~0x00000200);
+        limitOfRows_ = 0;
+        bitField0_ = (bitField0_ & ~0x00000400);
         return this;
       }
 
@@ -18008,6 +18544,18 @@ public final class ClientProtos {
           to_bitField0_ |= 0x00000080;
         }
         result.clientHandlesHeartbeats_ = clientHandlesHeartbeats_;
+        if (((from_bitField0_ & 0x00000100) == 0x00000100)) {
+          to_bitField0_ |= 0x00000100;
+        }
+        result.trackScanMetrics_ = trackScanMetrics_;
+        if (((from_bitField0_ & 0x00000200) == 0x00000200)) {
+          to_bitField0_ |= 0x00000200;
+        }
+        result.renew_ = renew_;
+        if (((from_bitField0_ & 0x00000400) == 0x00000400)) {
+          to_bitField0_ |= 0x00000400;
+        }
+        result.limitOfRows_ = limitOfRows_;
         result.bitField0_ = to_bitField0_;
         onBuilt();
         return result;
@@ -18047,6 +18595,15 @@ public final class ClientProtos {
         }
         if (other.hasClientHandlesHeartbeats()) {
           setClientHandlesHeartbeats(other.getClientHandlesHeartbeats());
+        }
+        if (other.hasTrackScanMetrics()) {
+          setTrackScanMetrics(other.getTrackScanMetrics());
+        }
+        if (other.hasRenew()) {
+          setRenew(other.getRenew());
+        }
+        if (other.hasLimitOfRows()) {
+          setLimitOfRows(other.getLimitOfRows());
         }
         this.mergeUnknownFields(other.getUnknownFields());
         return this;
@@ -18515,6 +19072,121 @@ public final class ClientProtos {
       public Builder clearClientHandlesHeartbeats() {
         bitField0_ = (bitField0_ & ~0x00000080);
         clientHandlesHeartbeats_ = false;
+        onChanged();
+        return this;
+      }
+
+      // optional bool track_scan_metrics = 9;
+      private boolean trackScanMetrics_ ;
+      /**
+       * <code>optional bool track_scan_metrics = 9;</code>
+       */
+      public boolean hasTrackScanMetrics() {
+        return ((bitField0_ & 0x00000100) == 0x00000100);
+      }
+      /**
+       * <code>optional bool track_scan_metrics = 9;</code>
+       */
+      public boolean getTrackScanMetrics() {
+        return trackScanMetrics_;
+      }
+      /**
+       * <code>optional bool track_scan_metrics = 9;</code>
+       */
+      public Builder setTrackScanMetrics(boolean value) {
+        bitField0_ |= 0x00000100;
+        trackScanMetrics_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>optional bool track_scan_metrics = 9;</code>
+       */
+      public Builder clearTrackScanMetrics() {
+        bitField0_ = (bitField0_ & ~0x00000100);
+        trackScanMetrics_ = false;
+        onChanged();
+        return this;
+      }
+
+      // optional bool renew = 10 [default = false];
+      private boolean renew_ ;
+      /**
+       * <code>optional bool renew = 10 [default = false];</code>
+       */
+      public boolean hasRenew() {
+        return ((bitField0_ & 0x00000200) == 0x00000200);
+      }
+      /**
+       * <code>optional bool renew = 10 [default = false];</code>
+       */
+      public boolean getRenew() {
+        return renew_;
+      }
+      /**
+       * <code>optional bool renew = 10 [default = false];</code>
+       */
+      public Builder setRenew(boolean value) {
+        bitField0_ |= 0x00000200;
+        renew_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>optional bool renew = 10 [default = false];</code>
+       */
+      public Builder clearRenew() {
+        bitField0_ = (bitField0_ & ~0x00000200);
+        renew_ = false;
+        onChanged();
+        return this;
+      }
+
+      // optional uint32 limit_of_rows = 11 [default = 0];
+      private int limitOfRows_ ;
+      /**
+       * <code>optional uint32 limit_of_rows = 11 [default = 0];</code>
+       *
+       * <pre>
+       * if we have returned limit_of_rows rows to client, then close the scanner.
+       * </pre>
+       */
+      public boolean hasLimitOfRows() {
+        return ((bitField0_ & 0x00000400) == 0x00000400);
+      }
+      /**
+       * <code>optional uint32 limit_of_rows = 11 [default = 0];</code>
+       *
+       * <pre>
+       * if we have returned limit_of_rows rows to client, then close the scanner.
+       * </pre>
+       */
+      public int getLimitOfRows() {
+        return limitOfRows_;
+      }
+      /**
+       * <code>optional uint32 limit_of_rows = 11 [default = 0];</code>
+       *
+       * <pre>
+       * if we have returned limit_of_rows rows to client, then close the scanner.
+       * </pre>
+       */
+      public Builder setLimitOfRows(int value) {
+        bitField0_ |= 0x00000400;
+        limitOfRows_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>optional uint32 limit_of_rows = 11 [default = 0];</code>
+       *
+       * <pre>
+       * if we have returned limit_of_rows rows to client, then close the scanner.
+       * </pre>
+       */
+      public Builder clearLimitOfRows() {
+        bitField0_ = (bitField0_ & ~0x00000400);
+        limitOfRows_ = 0;
         onChanged();
         return this;
       }
@@ -34186,7 +34858,7 @@ public final class ClientProtos {
       "tion\030\002 \002(\0132\016.MutationProto\022\035\n\tcondition\030" +
       "\003 \001(\0132\n.Condition\022\023\n\013nonce_group\030\004 \001(\004\"<" +
       "\n\016MutateResponse\022\027\n\006result\030\001 \001(\0132\007.Resul" +
-      "t\022\021\n\tprocessed\030\002 \001(\010\"\370\003\n\004Scan\022\027\n\006column\030",
+      "t\022\021\n\tprocessed\030\002 \001(\010\"\225\005\n\004Scan\022\027\n\006column\030",
       "\001 \003(\0132\007.Column\022!\n\tattribute\030\002 \003(\0132\016.Name" +
       "BytesPair\022\021\n\tstart_row\030\003 \001(\014\022\020\n\010stop_row" +
       "\030\004 \001(\014\022\027\n\006filter\030\005 \001(\0132\007.Filter\022\036\n\ntime_" +
@@ -34199,66 +34871,72 @@ public final class ClientProtos {
       "alse\022\017\n\007caching\030\021 \001(\r\022\035\n\025allow_partial_r",
       "esults\030\022 \001(\010\022-\n\rcf_time_range\030\023 \003(\0132\026.Co" +
       "lumnFamilyTimeRange\022\032\n\017mvcc_read_point\030\024" +
-      " \001(\004:\0010\"\342\001\n\013ScanRequest\022 \n\006region\030\001 \001(\0132" +
-      "\020.RegionSpecifier\022\023\n\004scan\030\002 \001(\0132\005.Scan\022\022" +
-      "\n\nscanner_id\030\003 \001(\004\022\026\n\016number_of_rows\030\004 \001" +
-      "(\r\022\025\n\rclose_scanner\030\005 \001(\010\022\025\n\rnext_call_s" +
-      "eq\030\006 \001(\004\022\037\n\027client_handles_partials\030\007 \001(" +
-      "\010\022!\n\031client_handles_heartbeats\030\010 \001(\010\"\244\002\n" +
-      "\014ScanResponse\022\030\n\020cells_per_result\030\001 \003(\r\022" +
-      "\022\n\nscanner_id\030\002 \001(\004\022\024\n\014more_results\030\003 \001(",
-      "\010\022\013\n\003ttl\030\004 \001(\r\022\030\n\007results\030\005 \003(\0132\007.Result" +
-      "\022\r\n\005stale\030\006 \001(\010\022\037\n\027partial_flag_per_resu" +
-      "lt\030\007 \003(\010\022\036\n\026more_results_in_region\030\010 \001(\010" +
-      "\022\031\n\021heartbeat_message\030\t \001(\010\022\"\n\014scan_metr" +
-      "ics\030\n \001(\0132\014.ScanMetrics\022\032\n\017mvcc_read_poi" +
-      "nt\030\013 \001(\004:\0010\"\263\001\n\024BulkLoadHFileRequest\022 \n\006" +
-      "region\030\001 \002(\0132\020.RegionSpecifier\0225\n\013family" +
-      "_path\030\002 \003(\0132 .BulkLoadHFileRequest.Famil" +
-      "yPath\022\026\n\016assign_seq_num\030\003 \001(\010\032*\n\nFamilyP" +
-      "ath\022\016\n\006family\030\001 \002(\014\022\014\n\004path\030\002 \002(\t\"\'\n\025Bul",
-      "kLoadHFileResponse\022\016\n\006loaded\030\001 \002(\010\"a\n\026Co" +
-      "processorServiceCall\022\013\n\003row\030\001 \002(\014\022\024\n\014ser" +
-      "vice_name\030\002 \002(\t\022\023\n\013method_name\030\003 \002(\t\022\017\n\007" +
-      "request\030\004 \002(\014\"9\n\030CoprocessorServiceResul" +
-      "t\022\035\n\005value\030\001 \001(\0132\016.NameBytesPair\"d\n\031Copr" +
-      "ocessorServiceRequest\022 \n\006region\030\001 \002(\0132\020." +
-      "RegionSpecifier\022%\n\004call\030\002 \002(\0132\027.Coproces" +
-      "sorServiceCall\"]\n\032CoprocessorServiceResp" +
-      "onse\022 \n\006region\030\001 \002(\0132\020.RegionSpecifier\022\035" +
-      "\n\005value\030\002 \002(\0132\016.NameBytesPair\"{\n\006Action\022",
-      "\r\n\005index\030\001 \001(\r\022 \n\010mutation\030\002 \001(\0132\016.Mutat" +
-      "ionProto\022\021\n\003get\030\003 \001(\0132\004.Get\022-\n\014service_c" +
-      "all\030\004 \001(\0132\027.CoprocessorServiceCall\"Y\n\014Re" +
-      "gionAction\022 \n\006region\030\001 \002(\0132\020.RegionSpeci" +
-      "fier\022\016\n\006atomic\030\002 \001(\010\022\027\n\006action\030\003 \003(\0132\007.A" +
-      "ction\"D\n\017RegionLoadStats\022\027\n\014memstoreLoad" +
-      "\030\001 \001(\005:\0010\022\030\n\rheapOccupancy\030\002 \001(\005:\0010\"\266\001\n\021" +
-      "ResultOrException\022\r\n\005index\030\001 \001(\r\022\027\n\006resu" +
-      "lt\030\002 \001(\0132\007.Result\022!\n\texception\030\003 \001(\0132\016.N" +
-      "ameBytesPair\0221\n\016service_result\030\004 \001(\0132\031.C",
-      "oprocessorServiceResult\022#\n\tloadStats\030\005 \001" +
-      "(\0132\020.RegionLoadStats\"f\n\022RegionActionResu" +
-      "lt\022-\n\021resultOrException\030\001 \003(\0132\022.ResultOr" +
-      "Exception\022!\n\texception\030\002 \001(\0132\016.NameBytes" +
-      "Pair\"f\n\014MultiRequest\022#\n\014regionAction\030\001 \003" +
-      "(\0132\r.RegionAction\022\022\n\nnonceGroup\030\002 \001(\004\022\035\n" +
-      "\tcondition\030\003 \001(\0132\n.Condition\"S\n\rMultiRes" +
-      "ponse\022/\n\022regionActionResult\030\001 \003(\0132\023.Regi" +
-      "onActionResult\022\021\n\tprocessed\030\002 \001(\010*\'\n\013Con" +
-      "sistency\022\n\n\006STRONG\020\000\022\014\n\010TIMELINE\020\0012\205\003\n\rC",
-      "lientService\022 \n\003Get\022\013.GetRequest\032\014.GetRe" +
-      "sponse\022)\n\006Mutate\022\016.MutateRequest\032\017.Mutat" +
-      "eResponse\022#\n\004Scan\022\014.ScanRequest\032\r.ScanRe" +
-      "sponse\022>\n\rBulkLoadHFile\022\025.BulkLoadHFileR" +
-      "equest\032\026.BulkLoadHFileResponse\022F\n\013ExecSe" +
-      "rvice\022\032.CoprocessorServiceRequest\032\033.Copr" +
-      "ocessorServiceResponse\022R\n\027ExecRegionServ" +
-      "erService\022\032.CoprocessorServiceRequest\032\033." +
-      "CoprocessorServiceResponse\022&\n\005Multi\022\r.Mu" +
-      "ltiRequest\032\016.MultiResponseBB\n*org.apache",
-      ".hadoop.hbase.protobuf.generatedB\014Client" +
-      "ProtosH\001\210\001\001\240\001\001"
+      " \001(\004:\0010\022\037\n\021include_start_row\030\025 \001(\010:\004true" +
+      "\022\037\n\020include_stop_row\030\026 \001(\010:\005false\022)\n\010rea" +
+      "dType\030\027 \001(\0162\016.Scan.ReadType:\007DEFAULT\".\n\010" +
+      "ReadType\022\013\n\007DEFAULT\020\000\022\n\n\006STREAM\020\001\022\t\n\005PRE" +
+      "AD\020\002\"\256\002\n\013ScanRequest\022 \n\006region\030\001 \001(\0132\020.R" +
+      "egionSpecifier\022\023\n\004scan\030\002 \001(\0132\005.Scan\022\022\n\ns" +
+      "canner_id\030\003 \001(\004\022\026\n\016number_of_rows\030\004 \001(\r\022" +
+      "\025\n\rclose_scanner\030\005 \001(\010\022\025\n\rnext_call_seq\030",
+      "\006 \001(\004\022\037\n\027client_handles_partials\030\007 \001(\010\022!" +
+      "\n\031client_handles_heartbeats\030\010 \001(\010\022\032\n\022tra" +
+      "ck_scan_metrics\030\t \001(\010\022\024\n\005renew\030\n \001(\010:\005fa" +
+      "lse\022\030\n\rlimit_of_rows\030\013 \001(\r:\0010\"\244\002\n\014ScanRe" +
+      "sponse\022\030\n\020cells_per_result\030\001 \003(\r\022\022\n\nscan" +
+      "ner_id\030\002 \001(\004\022\024\n\014more_results\030\003 \001(\010\022\013\n\003tt" +
+      "l\030\004 \001(\r\022\030\n\007results\030\005 \003(\0132\007.Result\022\r\n\005sta" +
+      "le\030\006 \001(\010\022\037\n\027partial_flag_per_result\030\007 \003(" +
+      "\010\022\036\n\026more_results_in_region\030\010 \001(\010\022\031\n\021hea" +
+      "rtbeat_message\030\t \001(\010\022\"\n\014scan_metrics\030\n \001",
+      "(\0132\014.ScanMetrics\022\032\n\017mvcc_read_point\030\013 \001(" +
+      "\004:\0010\"\263\001\n\024BulkLoadHFileRequest\022 \n\006region\030" +
+      "\001 \002(\0132\020.RegionSpecifier\0225\n\013family_path\030\002" +
+      " \003(\0132 .BulkLoadHFileRequest.FamilyPath\022\026" +
+      "\n\016assign_seq_num\030\003 \001(\010\032*\n\nFamilyPath\022\016\n\006" +
+      "family\030\001 \002(\014\022\014\n\004path\030\002 \002(\t\"\'\n\025BulkLoadHF" +
+      "ileResponse\022\016\n\006loaded\030\001 \002(\010\"a\n\026Coprocess" +
+      "orServiceCall\022\013\n\003row\030\001 \002(\014\022\024\n\014service_na" +
+      "me\030\002 \002(\t\022\023\n\013method_name\030\003 \002(\t\022\017\n\007request" +
+      "\030\004 \002(\014\"9\n\030CoprocessorServiceResult\022\035\n\005va",
+      "lue\030\001 \001(\0132\016.NameBytesPair\"d\n\031Coprocessor" +
+      "ServiceRequest\022 \n\006region\030\001 \002(\0132\020.RegionS" +
+      "pecifier\022%\n\004call\030\002 \002(\0132\027.CoprocessorServ" +
+      "iceCall\"]\n\032CoprocessorServiceResponse\022 \n" +
+      "\006region\030\001 \002(\0132\020.RegionSpecifier\022\035\n\005value" +
+      "\030\002 \002(\0132\016.NameBytesPair\"{\n\006Action\022\r\n\005inde" +
+      "x\030\001 \001(\r\022 \n\010mutation\030\002 \001(\0132\016.MutationProt" +
+      "o\022\021\n\003get\030\003 \001(\0132\004.Get\022-\n\014service_call\030\004 \001" +
+      "(\0132\027.CoprocessorServiceCall\"Y\n\014RegionAct" +
+      "ion\022 \n\006region\030\001 \002(\0132\020.RegionSpecifier\022\016\n",
+      "\006atomic\030\002 \001(\010\022\027\n\006action\030\003 \003(\0132\007.Action\"D" +
+      "\n\017RegionLoadStats\022\027\n\014memstoreLoad\030\001 \001(\005:" +
+      "\0010\022\030\n\rheapOccupancy\030\002 \001(\005:\0010\"\266\001\n\021ResultO" +
+      "rException\022\r\n\005index\030\001 \001(\r\022\027\n\006result\030\002 \001(" +
+      "\0132\007.Result\022!\n\texception\030\003 \001(\0132\016.NameByte" +
+      "sPair\0221\n\016service_result\030\004 \001(\0132\031.Coproces" +
+      "sorServiceResult\022#\n\tloadStats\030\005 \001(\0132\020.Re" +
+      "gionLoadStats\"f\n\022RegionActionResult\022-\n\021r" +
+      "esultOrException\030\001 \003(\0132\022.ResultOrExcepti" +
+      "on\022!\n\texception\030\002 \001(\0132\016.NameBytesPair\"f\n",
+      "\014MultiRequest\022#\n\014regionAction\030\001 \003(\0132\r.Re" +
+      "gionAction\022\022\n\nnonceGroup\030\002 \001(\004\022\035\n\tcondit" +
+      "ion\030\003 \001(\0132\n.Condition\"S\n\rMultiResponse\022/" +
+      "\n\022regionActionResult\030\001 \003(\0132\023.RegionActio" +
+      "nResult\022\021\n\tprocessed\030\002 \001(\010*\'\n\013Consistenc" +
+      "y\022\n\n\006STRONG\020\000\022\014\n\010TIMELINE\020\0012\205\003\n\rClientSe" +
+      "rvice\022 \n\003Get\022\013.GetRequest\032\014.GetResponse\022" +
+      ")\n\006Mutate\022\016.MutateRequest\032\017.MutateRespon" +
+      "se\022#\n\004Scan\022\014.ScanRequest\032\r.ScanResponse\022" +
+      ">\n\rBulkLoadHFile\022\025.BulkLoadHFileRequest\032",
+      "\026.BulkLoadHFileResponse\022F\n\013ExecService\022\032" +
+      ".CoprocessorServiceRequest\032\033.Coprocessor" +
+      "ServiceResponse\022R\n\027ExecRegionServerServi" +
+      "ce\022\032.CoprocessorServiceRequest\032\033.Coproce" +
+      "ssorServiceResponse\022&\n\005Multi\022\r.MultiRequ" +
+      "est\032\016.MultiResponseBB\n*org.apache.hadoop" +
+      ".hbase.protobuf.generatedB\014ClientProtosH" +
+      "\001\210\001\001\240\001\001"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
       new com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner() {
@@ -34348,13 +35026,13 @@ public final class ClientProtos {
           internal_static_Scan_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_Scan_descriptor,
-              new java.lang.String[] { "Column", "Attribute", "StartRow", "StopRow", "Filter", "TimeRange", "MaxVersions", "CacheBlocks", "BatchSize", "MaxResultSize", "StoreLimit", "StoreOffset", "LoadColumnFamiliesOnDemand", "Small", "Reversed", "Caching", "AllowPartialResults", "CfTimeRange", "MvccReadPoint", });
+              new java.lang.String[] { "Column", "Attribute", "StartRow", "StopRow", "Filter", "TimeRange", "MaxVersions", "CacheBlocks", "BatchSize", "MaxResultSize", "StoreLimit", "StoreOffset", "LoadColumnFamiliesOnDemand", "Small", "Reversed", "Caching", "AllowPartialResults", "CfTimeRange", "MvccReadPoint", "IncludeStartRow", "IncludeStopRow", "ReadType", });
           internal_static_ScanRequest_descriptor =
             getDescriptor().getMessageTypes().get(12);
           internal_static_ScanRequest_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_ScanRequest_descriptor,
-              new java.lang.String[] { "Region", "Scan", "ScannerId", "NumberOfRows", "CloseScanner", "NextCallSeq", "ClientHandlesPartials", "ClientHandlesHeartbeats", });
+              new java.lang.String[] { "Region", "Scan", "ScannerId", "NumberOfRows", "CloseScanner", "NextCallSeq", "ClientHandlesPartials", "ClientHandlesHeartbeats", "TrackScanMetrics", "Renew", "LimitOfRows", });
           internal_static_ScanResponse_descriptor =
             getDescriptor().getMessageTypes().get(13);
           internal_static_ScanResponse_fieldAccessorTable = new

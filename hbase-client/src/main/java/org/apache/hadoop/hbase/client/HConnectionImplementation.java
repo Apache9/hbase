@@ -931,14 +931,10 @@ public class HConnectionImplementation implements HConnection, Closeable {
       }
       try {
         Result regionInfoRow = null;
-        ReversedClientScanner rcs = null;
-        try {
-          rcs = new ClientSmallReversedScanner(conf, s, TableName.META_TABLE_NAME, this);
+        s.resetMvccReadPoint();
+        try (ReversedClientScanner rcs =
+            new ReversedClientScanner(conf, s, TableName.META_TABLE_NAME, this)) {
           regionInfoRow = rcs.next();
-        } finally {
-          if (rcs != null) {
-            rcs.close();
-          }
         }
         if (regionInfoRow == null) {
           throw new TableNotFoundException(tableName);

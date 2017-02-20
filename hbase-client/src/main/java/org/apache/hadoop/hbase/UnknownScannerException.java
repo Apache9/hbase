@@ -45,4 +45,13 @@ public class UnknownScannerException extends DoNotRetryIOException {
   public UnknownScannerException(String s) {
     super(s);
   }
+
+  /**
+   * Constructor
+   * @param message
+   * @param cause
+   */
+  public UnknownScannerException(String message, Throwable cause) {
+    super(message, cause);
+  }
 }

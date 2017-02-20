@@ -473,6 +473,9 @@ public final class RequestConverter {
     builder.setScan(ProtobufUtil.toScan(scan));
     builder.setClientHandlesPartials(true);
     builder.setClientHandlesHeartbeats(true);
+    if (scan.getLimit() > 0) {
+      builder.setLimitOfRows(scan.getLimit());
+    }
     return builder.build();
   }
 
@@ -503,7 +506,7 @@ public final class RequestConverter {
    * @return a scan request
    */
   public static ScanRequest buildScanRequest(final long scannerId, final int numberOfRows,
-      final boolean closeScanner, final long nextCallSeq) {
+      final boolean closeScanner, final long nextCallSeq, int limitOfRows) {
     ScanRequest.Builder builder = ScanRequest.newBuilder();
     builder.setNumberOfRows(numberOfRows);
     builder.setCloseScanner(closeScanner);
@@ -511,6 +514,9 @@ public final class RequestConverter {
     builder.setNextCallSeq(nextCallSeq);
     builder.setClientHandlesPartials(true);
     builder.setClientHandlesHeartbeats(true);
+    if (limitOfRows > 0) {
+      builder.setLimitOfRows(limitOfRows);
+    }
     return builder.build();
   }
 

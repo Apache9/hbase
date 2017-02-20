@@ -38,9 +38,10 @@ import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 @InterfaceAudience.Public
 @InterfaceStability.Evolving
 public class ReversedScannerCallable extends ScannerCallable {
+
   /**
    * The start row for locating regions. In reversed scanner, may locate the regions for a range of
-   * keys when doing {@link ReversedClientScanner#nextScanner(int, boolean)}
+   * keys when doing {@link ReversedClientScanner#nextScanner(int)}
    */
   protected final byte[] locateStartRow;
 

@@ -17,10 +17,14 @@
  */
 package org.apache.hadoop.hbase.client;
 
+import java.util.Arrays;
 import java.util.Random;
 
-import org.apache.hadoop.hbase.classification.InterfaceAudience;
+import org.apache.commons.logging.Log;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HConstants;
+import org.apache.hadoop.hbase.classification.InterfaceAudience;
+import org.apache.hadoop.hbase.util.Bytes;
 
 /**
  * Utility used by client connections.
@@ -63,5 +67,57 @@ public class ConnectionUtils {
       return 1;
     }
     return newPause;
+  }
+
+  /**
+   * Changes the configuration to set the number of retries needed when using HConnection
+   * internally, e.g. for  updating catalog tables, etc.
+   * Call this method before we create any Connections.
+   * @param c The Configuration instance to set the retries into.
+   * @param log Used to log what we set in here.
+   */
+  public static void setServerSideHConnectionRetriesConfig(
+      final Configuration c, final String sn, final Log log) {
+    // TODO: Fix this. Not all connections from server side should have 10 times the retries.
+    int hcRetries = c.getInt(HConstants.HBASE_CLIENT_RETRIES_NUMBER,
+      HConstants.DEFAULT_HBASE_CLIENT_RETRIES_NUMBER);
+    // Go big.  Multiply by 10.  If we can't get to meta after this many retries
+    // then something seriously wrong.
+    int serversideMultiplier = c.getInt("hbase.client.serverside.retries.multiplier", 10);
+    int retries = hcRetries * serversideMultiplier;
+    c.setInt(HConstants.HBASE_CLIENT_RETRIES_NUMBER, retries);
+    log.info(sn + " server-side HConnection retries=" + retries);
+  }
+
+  // A byte array in which all elements are the max byte, and it is used to
+  // construct closest front row
+  static final byte[] MAX_BYTE_ARRAY = Bytes.createMaxByteArray(9);
+
+  /**
+   * Create the closest row after the specified row
+   */
+  static byte[] createClosestRowAfter(byte[] row) {
+    return Arrays.copyOf(row, row.length + 1);
+  }
+
+  /**
+   * Create the closest row before the specified row
+   * @deprecated in fact, we do not know the closest row before the given row, the result is only a
+   *             row very close to the current row. Avoid using this method in the future.
+   */
+  @Deprecated
+  static byte[] createClosestRowBefore(byte[] row) {
+    if (row.length == 0) {
+      return MAX_BYTE_ARRAY;
+    }
+    if (row[row.length - 1] == 0) {
+      return Arrays.copyOf(row, row.length - 1);
+    } else {
+      byte[] nextRow = new byte[row.length + MAX_BYTE_ARRAY.length];
+      System.arraycopy(row, 0, nextRow, 0, row.length - 1);
+      nextRow[row.length - 1] = (byte) ((row[row.length - 1] & 0xFF) - 1);
+      System.arraycopy(MAX_BYTE_ARRAY, 0, nextRow, row.length, MAX_BYTE_ARRAY.length);
+      return nextRow;
+    }
   }
 }

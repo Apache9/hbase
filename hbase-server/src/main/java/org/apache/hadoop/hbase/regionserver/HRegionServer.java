@@ -3256,18 +3256,16 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     return lastBlock;
   }
 
-  protected long addScanner(RegionScanner s, HRegion r) throws LeaseStillHeldException {
-    long scannerId = this.scannerIdGen.incrementAndGet();
-    String scannerName = String.valueOf(scannerId);
-
-    RegionScannerHolder existing =
-      scanners.putIfAbsent(scannerName, new RegionScannerHolder(s, r));
+  private RegionScannerHolder addScanner(String scannerName, RegionScanner s, HRegion r,
+      boolean allowPartial) throws LeaseStillHeldException {
+    RegionScannerHolder rsh = new RegionScannerHolder(scannerName, s, r, allowPartial);
+    RegionScannerHolder existing = scanners.putIfAbsent(scannerName, rsh);
     assert existing == null : "scannerId must be unique within regionserver's whole lifecycle!";
 
     this.leases.createLease(scannerName, this.scannerLeaseTimeoutPeriod,
-        new ScannerListener(scannerName));
+      new ScannerListener(scannerName));
 
-    return scannerId;
+    return rsh;
   }
 
   // Start Client methods
@@ -3450,7 +3448,8 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
       if (processed != null) {
         builder.setProcessed(processed.booleanValue());
       }
-      addResult(builder, r, controller);
+      boolean clientCellBlockSupported = isClientCellBlockSupport(RpcServer.getCurrentCall());
+      addResult(builder, r, controller, clientCellBlockSupported);
       return builder.build();
     } catch (IOException ie) {
       checkFileSystem();
@@ -3459,18 +3458,14 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
   }
 
 
-  /**
-   * @return True if current call supports cellblocks
-   */
-  private boolean isClientCellBlockSupport() {
-    RpcCallContext context = RpcServer.getCurrentCall();
+  private boolean isClientCellBlockSupport(RpcCallContext context) {
     return context != null && context.isClientCellBlockSupport();
   }
 
-  private void addResult(final MutateResponse.Builder builder,
-      final Result result, final PayloadCarryingRpcController rpcc) {
+  private void addResult(final MutateResponse.Builder builder, final Result result,
+      final PayloadCarryingRpcController rpcc, boolean clientCellBlockSupported) {
     if (result == null) return;
-    if (isClientCellBlockSupport()) {
+    if (clientCellBlockSupported) {
       builder.setResult(ProtobufUtil.toResultNoData(result));
       rpcc.setCellScanner(result.cellScanner());
     } else {
@@ -3483,6 +3478,295 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
   // remote scanner interface
   //
 
+  // This is used to keep compatible with the old client implementation. Consider remove it if we
+  // decide to drop the support of the client that still sends close request to a region scanner
+  // which has already been exhausted.
+  @Deprecated
+  private static final IOException SCANNER_ALREADY_CLOSED = new IOException() {
+
+    private static final long serialVersionUID = -4305297078988180130L;
+
+    @Override
+    public Throwable fillInStackTrace() {
+      return this;
+    }
+  };
+
+  private RegionScannerHolder getRegionScanner(ScanRequest request) throws IOException {
+    String scannerName = Long.toString(request.getScannerId());
+    RegionScannerHolder rsh = scanners.get(scannerName);
+    if (rsh == null) {
+      // just ignore the close request if scanner does not exists.
+      if (request.hasCloseScanner() && request.getCloseScanner()) {
+        throw SCANNER_ALREADY_CLOSED;
+      } else {
+        LOG.warn("Client tried to access missing scanner " + scannerName);
+        throw new UnknownScannerException(
+            "Unknown scanner '" + scannerName + "'. This can happen due to any of the following "
+                + "reasons: a) Scanner id given is wrong, b) Scanner lease expired because of "
+                + "long wait between consecutive client checkins, c) Server may be closing down, "
+                + "d) RegionServer restart during upgrade.\nIf the issue is due to reason (b), a "
+                + "possible fix would be increasing the value of"
+                + "'hbase.client.scanner.timeout.period' configuration.");
+      }
+    }
+    HRegionInfo hri = rsh.s.getRegionInfo();
+    // Yes, should be the same instance
+    if (getOnlineRegion(hri.getRegionName()) != rsh.r) {
+      String msg = "Region was re-opened after the scanner" + scannerName + " was created: "
+          + hri.getRegionNameAsString();
+      LOG.warn(msg + ", closing...");
+      scanners.remove(scannerName);
+      try {
+        rsh.s.close();
+      } catch (IOException e) {
+        LOG.warn("Getting exception closing " + scannerName, e);
+      } finally {
+        try {
+          leases.cancelLease(scannerName);
+        } catch (LeaseException e) {
+          LOG.warn("Getting exception closing " + scannerName, e);
+        }
+      }
+      throw new NotServingRegionException(msg);
+    }
+    return rsh;
+  }
+
+  private RegionScannerHolder newRegionScanner(ScanRequest request, ScanResponse.Builder builder)
+      throws IOException {
+    HRegion region = getRegion(request.getRegion());
+    ClientProtos.Scan protoScan = request.getScan();
+    boolean isLoadingCfsOnDemandSet = protoScan.hasLoadColumnFamiliesOnDemand();
+    Scan scan = ProtobufUtil.toScan(protoScan);
+    // if the request doesn't set this, get the default region setting.
+    if (!isLoadingCfsOnDemandSet) {
+      scan.setLoadColumnFamiliesOnDemand(region.isLoadingCfsOnDemandDefault());
+    }
+
+    if (!scan.hasFamilies()) {
+      // Adding all families to scanner
+      for (byte[] family : region.getTableDesc().getFamiliesKeys()) {
+        scan.addFamily(family);
+      }
+    }
+    RegionScanner scanner = null;
+    if (region.getCoprocessorHost() != null) {
+      scanner = region.getCoprocessorHost().preScannerOpen(scan);
+    }
+    if (scanner == null) {
+      scanner = region.getScanner(scan);
+    }
+    if (region.getCoprocessorHost() != null) {
+      scanner = region.getCoprocessorHost().postScannerOpen(scan, scanner);
+    }
+    long scannerId = this.scannerIdGen.incrementAndGet();
+    builder.setScannerId(scannerId);
+    builder.setMvccReadPoint(scanner.getMvccReadPoint());
+    builder.setTtl(scannerLeaseTimeoutPeriod);
+    String scannerName = String.valueOf(scannerId);
+    return addScanner(scannerName, scanner, region,
+      !scan.isSmall() && !(request.hasLimitOfRows() && request.getLimitOfRows() > 0));
+  }
+
+  private void checkScanNextCallSeq(ScanRequest request, RegionScannerHolder rsh)
+      throws OutOfOrderScannerNextException {
+    // if nextCallSeq does not match throw Exception straight away. This needs to be
+    // performed even before checking of Lease.
+    // See HBASE-5974
+    if (request.hasNextCallSeq()) {
+      long callSeq = request.getNextCallSeq();
+      if (!rsh.incNextCallSeq(callSeq)) {
+        throw new OutOfOrderScannerNextException("Expected nextCallSeq: " + rsh.getNextCallSeq()
+            + " But the nextCallSeq got from client: " + callSeq + "; request="
+            + TextFormat.shortDebugString(request));
+      }
+    }
+  }
+
+  private void addScannerLeaseBack(Leases.Lease lease) {
+    try {
+      leases.addLease(lease);
+    } catch (LeaseStillHeldException e) {
+      // should not happen as the scanner id is unique.
+      throw new AssertionError(e);
+    }
+  }
+
+  private long getTimeLimit(PayloadCarryingRpcController controller, boolean allowHeartbeatMessages) {
+    // Set the time limit to be half of the more restrictive timeout value (one of the
+    // timeout values must be positive). In the event that both values are positive, the
+    // more restrictive of the two is used to calculate the limit.
+    if (allowHeartbeatMessages && (scannerLeaseTimeoutPeriod > 0 || rpcTimeout > 0)) {
+      long timeLimitDelta;
+      if (scannerLeaseTimeoutPeriod > 0 && rpcTimeout > 0) {
+        timeLimitDelta = Math.min(scannerLeaseTimeoutPeriod, rpcTimeout);
+      } else {
+        timeLimitDelta = scannerLeaseTimeoutPeriod > 0 ? scannerLeaseTimeoutPeriod : rpcTimeout;
+      }
+      if (controller != null && controller.getTimeout() > 0) {
+        timeLimitDelta = Math.min(timeLimitDelta, controller.getTimeout());
+      }
+      // Use half of whichever timeout value was more restrictive... But don't allow
+      // the time limit to be less than the allowable minimum (could cause an
+      // immediatate timeout before scanning any data).
+      timeLimitDelta = Math.max(timeLimitDelta / 2, minimumScanTimeLimitDelta);
+      // XXX: Can not use EnvironmentEdge here because TestIncrementTimeRange use a
+      // ManualEnvironmentEdge. Consider using System.nanoTime instead.
+      return System.currentTimeMillis() + timeLimitDelta;
+    }
+    // Default value of timeLimit is negative to indicate no timeLimit should be
+    // enforced.
+    return -1L;
+  }
+
+  // return whether we have more results in region.
+  private boolean scan(PayloadCarryingRpcController controller, ScanRequest request,
+      RegionScannerHolder rsh, long maxQuotaResultSize, int rows, List<Result> results,
+      ScanResponse.Builder builder, RpcCallContext context, long totalKvSize, int resultCells)
+      throws IOException {
+    HRegion region = rsh.r;
+    RegionScanner scanner = rsh.s;
+    long maxResultSize;
+    if (scanner.getMaxResultSize() > 0) {
+      maxResultSize = Math.min(scanner.getMaxResultSize(), maxQuotaResultSize);
+    } else {
+      maxResultSize = maxQuotaResultSize;
+    }
+    // This is cells inside a row. Default size is 10 so if many versions or many cfs,
+    // then we'll resize. Resizings show in profiler. Set it higher than 10. For now
+    // arbitrary 32. TODO: keep record of general size of results being returned.
+    List<Cell> values = new ArrayList<Cell>(32);
+    region.startRegionOperation(Operation.SCAN);
+    try {
+      int i = 0;
+      synchronized (scanner) {
+        boolean clientHandlesPartials =
+            request.hasClientHandlesPartials() && request.getClientHandlesPartials();
+        boolean clientHandlesHeartbeats =
+            request.hasClientHandlesHeartbeats() && request.getClientHandlesHeartbeats();
+
+        // On the server side we must ensure that the correct ordering of partial results is
+        // returned to the client to allow them to properly reconstruct the partial results.
+        // If the coprocessor host is adding to the result list, we cannot guarantee the
+        // correct ordering of partial results and so we prevent partial results from being
+        // formed.
+        boolean serverGuaranteesOrderOfPartials = results.isEmpty();
+        boolean allowPartialResults =
+            clientHandlesPartials && serverGuaranteesOrderOfPartials && rsh.allowPartial;
+        boolean moreRows = false;
+
+        // Heartbeat messages occur when the processing of the ScanRequest is exceeds a
+        // certain time threshold on the server. When the time threshold is exceeded, the
+        // server stops the scan and sends back whatever Results it has accumulated within
+        // that time period (may be empty). Since heartbeat messages have the potential to
+        // create partial Results (in the event that the timeout occurs in the middle of a
+        // row), we must only generate heartbeat messages when the client can handle both
+        // heartbeats AND partials
+        boolean allowHeartbeatMessages = clientHandlesHeartbeats && allowPartialResults;
+
+        long timeLimit = getTimeLimit(controller, allowHeartbeatMessages);
+
+        final LimitScope sizeScope =
+            allowPartialResults ? LimitScope.BETWEEN_CELLS : LimitScope.BETWEEN_ROWS;
+        final LimitScope timeScope =
+            allowHeartbeatMessages ? LimitScope.BETWEEN_CELLS : LimitScope.BETWEEN_ROWS;
+
+        // Configure with limits for this RPC. Set keep progress true since size progress
+        // towards size limit should be kept between calls to nextRaw
+        ScannerContext.Builder contextBuilder = ScannerContext.newBuilder(true);
+        contextBuilder.setSizeLimit(sizeScope, maxResultSize);
+        contextBuilder.setBatchLimit(scanner.getBatch());
+        contextBuilder.setTimeLimit(timeScope, timeLimit);
+        ScannerContext scannerContext = contextBuilder.build();
+        boolean limitReached = false;
+        while (i < rows) {
+          // Reset the batch progress to 0 before every call to RegionScanner#nextRaw. The
+          // batch limit is a limit on the number of cells per Result. Thus, if progress is
+          // being tracked (i.e. scannerContext.keepProgress() is true) then we need to
+          // reset the batch progress between nextRaw invocations since we don't want the
+          // batch progress from previous calls to affect future calls
+          scannerContext.setBatchProgress(0);
+
+          // Collect values to be returned here
+          moreRows = scanner.nextRaw(values, scannerContext);
+
+          if (!values.isEmpty()) {
+            for (Cell cell : values) {
+              KeyValue kv = KeyValueUtil.ensureKeyValue(cell);
+              totalKvSize += kv.getLength();
+            }
+            resultCells += values.size();
+            final boolean partial = scannerContext.partialResultFormed();
+            Result r = Result.create(values, null, false, partial);
+            results.add(r);
+            i++;
+          }
+
+          boolean sizeLimitReached = scannerContext.checkSizeLimit(LimitScope.BETWEEN_ROWS);
+          boolean timeLimitReached = scannerContext.checkTimeLimit(LimitScope.BETWEEN_ROWS);
+          boolean rowLimitReached = i >= rows;
+          limitReached = sizeLimitReached || timeLimitReached || rowLimitReached;
+
+          if (limitReached || !moreRows) {
+            if (LOG.isTraceEnabled()) {
+              LOG.trace("Done scanning. limitReached: " + limitReached + " moreRows: " + moreRows
+                  + " scannerContext: " + scannerContext);
+            }
+            // We only want to mark a ScanResponse as a heartbeat message in the event that
+            // there are more values to be read server side. If there aren't more values,
+            // marking it as a heartbeat is wasteful because the client will need to issue
+            // another ScanRequest only to realize that they already have all the values
+            if (moreRows) {
+              // Heartbeat messages occur when the time limit has been reached.
+              builder.setHeartbeatMessage(timeLimitReached);
+            }
+            break;
+          }
+          values.clear();
+        }
+        if (limitReached || moreRows) {
+          // We stopped prematurely
+          builder.setMoreResultsInRegion(true);
+        } else {
+          // We didn't get a single batch
+          builder.setMoreResultsInRegion(false);
+        }
+        region.updateReadRawCellMetrics(scannerContext.getReadRawCells());
+      }
+      region.updateReadMetrics(i);
+      region.getMetrics().updateScanNext(totalKvSize);
+      region.updateReadCapacityUnitMetrics(totalKvSize);
+      region.updateReadCellMetrics(resultCells);
+      region.updateScanCountPerSecond(1);
+      region.updateScanRowsPerSecond(i);
+    } finally {
+      region.closeRegionOperation();
+    }
+    // coprocessor postNext hook
+    if (region.getCoprocessorHost() != null) {
+      region.getCoprocessorHost().postScannerNext(scanner, results, rows, true);
+    }
+    return builder.getMoreResultsInRegion();
+  }
+
+  private void closeScanner(HRegion region, RegionScanner scanner, String scannerName,
+      RpcCallContext context) throws IOException {
+    if (region.getCoprocessorHost() != null) {
+      if (region.getCoprocessorHost().preScannerClose(scanner)) {
+        // bypass the actual close.
+        return;
+      }
+    }
+    RegionScannerHolder rsh = scanners.remove(scannerName);
+    if (rsh != null) {
+      rsh.s.close();
+      if (region.getCoprocessorHost() != null) {
+        region.getCoprocessorHost().postScannerClose(scanner);
+      }
+    }
+  }
+
   /**
    * Scan data in a table.
    *
@@ -3492,374 +3776,209 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
    */
   @Override
   public ScanResponse scan(final RpcController controller, final ScanRequest request)
-  throws ServiceException {
-    OperationQuota quota = null;  
-    Leases.Lease lease = null;
-    String scannerName = null;
+      throws ServiceException {
+    if (controller != null && !(controller instanceof PayloadCarryingRpcController)) {
+      throw new UnsupportedOperationException(
+          "We only do PayloadCarryingRpcController! FIX IF A PROBLEM: " + controller);
+    }
+    if (!request.hasScannerId() && !request.hasScan()) {
+      throw new ServiceException(
+          new DoNotRetryIOException("Missing required input: scannerId or scan"));
+    }
     try {
-      if (!request.hasScannerId() && !request.hasScan()) {
-        throw new DoNotRetryIOException(
-          "Missing required input: scannerId or scan");
-      }
-      long scannerId = -1;
+      checkOpen();
+    } catch (IOException e) {
       if (request.hasScannerId()) {
-        scannerId = request.getScannerId();
-        scannerName = String.valueOf(scannerId);
-      }
-      try {
-        checkOpen();
-      } catch (IOException e) {
-        // If checkOpen failed, server not running or filesystem gone,
-        // cancel this lease; filesystem is gone or we're closing or something.
-        if (scannerName != null) {
+        String scannerName = Long.toString(request.getScannerId());
+        if (LOG.isDebugEnabled()) {
+          LOG.debug(
+            "Server shutting down and client tried to access missing scanner " + scannerName);
+        }
+        if (leases != null) {
           try {
             leases.cancelLease(scannerName);
           } catch (LeaseException le) {
-            LOG.info("Server shutting down and client tried to access missing scanner " +
-              scannerName);
+            // No problem, ignore
+            if (LOG.isTraceEnabled()) {
+              LOG.trace("Un-able to cancel lease of scanner. It could already be closed.");
+            }
           }
         }
-        throw e;
       }
-      requestCount.increment();
-
-      int ttl = 0;
-      HRegion region = null;
-      RegionScanner scanner = null;
-      RegionScannerHolder rsh = null;
-      boolean moreResults = true;
-      boolean closeScanner = false;
-      boolean isSmallScan = false;
-      ScanResponse.Builder builder = ScanResponse.newBuilder();
-      if (request.hasCloseScanner()) {
-        closeScanner = request.getCloseScanner();
-      }
-      int rows = closeScanner ? 0 : 1;
-      if (request.hasNumberOfRows()) {
-        rows = request.getNumberOfRows();
-      }
+      throw new ServiceException(e);
+    }
+    requestCount.increment();
+    RegionScannerHolder rsh;
+    ScanResponse.Builder builder = ScanResponse.newBuilder();
+    try {
       if (request.hasScannerId()) {
-        rsh = scanners.get(scannerName);
-        if (rsh == null) {
-          LOG.info("Client tried to access missing scanner " + scannerName);
-          throw new UnknownScannerException(
-            "Name: " + scannerName + ", already closed?");
-        }
-        scanner = rsh.s;
-        HRegionInfo hri = scanner.getRegionInfo();
-        region = getRegion(hri.getRegionName());
-        if (region != rsh.r) { // Yes, should be the same instance
-          throw new NotServingRegionException("Region was re-opened after the scanner"
-            + scannerName + " was created: " + hri.getRegionNameAsString());
-        }
+        rsh = getRegionScanner(request);
       } else {
-        region = getRegion(request.getRegion());
-        ClientProtos.Scan protoScan = request.getScan();
-        boolean isLoadingCfsOnDemandSet = protoScan.hasLoadColumnFamiliesOnDemand();
-        Scan scan = ProtobufUtil.toScan(protoScan);
-        // if the request doesn't set this, get the default region setting.
-        if (!isLoadingCfsOnDemandSet) {
-          scan.setLoadColumnFamiliesOnDemand(region.isLoadingCfsOnDemandDefault());
-        }
-        scan.getAttribute(Scan.SCAN_ATTRIBUTES_METRICS_ENABLE);
-        isSmallScan = scan.isSmall();
-        region.prepareScanner(scan);
-        if (region.getCoprocessorHost() != null) {
-          scanner = region.getCoprocessorHost().preScannerOpen(scan);
-        }
-        if (scanner == null) {
-          scanner = region.getScanner(scan);
-        }
-        if (region.getCoprocessorHost() != null) {
-          scanner = region.getCoprocessorHost().postScannerOpen(scan, scanner);
-        }
-        scannerId = addScanner(scanner, region);
-        scannerName = String.valueOf(scannerId);
-        ttl = this.scannerLeaseTimeoutPeriod;
-        builder.setMvccReadPoint(scanner.getMvccReadPoint());
+        rsh = newRegionScanner(request, builder);
       }
-
-      long maxQuotaResultSize = maxScannerResultSize;
-      if (isQuotaEnabled()) {
-        quota = rsQuotaManager.checkQuota(region, OperationQuota.OperationType.SCAN);
-        maxQuotaResultSize = Math.min(maxScannerResultSize, rsQuotaManager.getQuotaReadAvailable(quota));
+    } catch (IOException e) {
+      if (e == SCANNER_ALREADY_CLOSED) {
+        // Now we will close scanner automatically if there are no more results for this region but
+        // the old client will still send a close request to us. Just ignore it and return.
+        return builder.build();
       }
-
+      throw new ServiceException(e);
+    }
+    HRegion region = rsh.r;
+    String scannerName = rsh.scannerName;
+    Leases.Lease lease;
+    try {
+      // Remove lease while its being processed in server; protects against case
+      // where processing of request takes > lease expiration time.
+      lease = leases.removeLease(scannerName);
+    } catch (LeaseException e) {
+      throw new ServiceException(e);
+    }
+    if (request.hasRenew() && request.getRenew()) {
+      // add back and return
+      addScannerLeaseBack(lease);
+      try {
+        checkScanNextCallSeq(request, rsh);
+      } catch (OutOfOrderScannerNextException e) {
+        throw new ServiceException(e);
+      }
+      return builder.build();
+    }
+    long maxQuotaResultSize;
+    if (isQuotaEnabled()) {
+      try {
+        OperationQuota quota = rsQuotaManager.checkQuota(region, OperationQuota.OperationType.SCAN);
+        maxQuotaResultSize =
+            Math.min(maxScannerResultSize, rsQuotaManager.getQuotaReadAvailable(quota));
+      } catch (IOException e) {
+        addScannerLeaseBack(lease);
+        throw new ServiceException(e);
+      }
+    } else {
+      maxQuotaResultSize = maxScannerResultSize;
+    }
+    try {
+      checkScanNextCallSeq(request, rsh);
+    } catch (OutOfOrderScannerNextException e) {
+      addScannerLeaseBack(lease);
+      throw new ServiceException(e);
+    }
+    // Now we have increased the next call sequence. If we give client an error, the retry will
+    // never success. So we'd better close the scanner and return a DoNotRetryIOException to client
+    // and then client will try to open a new scanner.
+    boolean closeScanner = request.hasCloseScanner() ? request.getCloseScanner() : false;
+    int rows; // this is scan.getCaching
+    if (request.hasNumberOfRows()) {
+      rows = request.getNumberOfRows();
+    } else {
+      rows = closeScanner ? 0 : 1;
+    }
+    RpcCallContext context = RpcServer.getCurrentCall();
+    // now let's do the real scan.
+    RegionScanner scanner = rsh.s;
+    boolean moreResults = true;
+    boolean moreResultsInRegion = true;
+    // this is the limit of rows for this scan, if we the number of rows reach this value, we will
+    // close the scanner.
+    int limitOfRows;
+    if (request.hasLimitOfRows()) {
+      limitOfRows = request.getLimitOfRows();
+      rows = Math.min(rows, limitOfRows);
+    } else {
+      limitOfRows = -1;
+    }
+    boolean scannerClosed = false;
+    try {
+      List<Result> results = new ArrayList<>();
+      long totalKvSize = 0L;
+      int resultCells = 0;
       if (rows > 0) {
-        // if nextCallSeq does not match throw Exception straight away. This needs to be
-        // performed even before checking of Lease.
-        // See HBASE-5974
-        if (request.hasNextCallSeq()) {
-          if (rsh == null) {
-            rsh = scanners.get(scannerName);
-          }
-          if (rsh != null) {
-            if (request.getNextCallSeq() != rsh.nextCallSeq) {
-              throw new OutOfOrderScannerNextException("Expected nextCallSeq: " + rsh.nextCallSeq
-                + " But the nextCallSeq got from client: " + request.getNextCallSeq() +
-                "; request=" + TextFormat.shortDebugString(request));
+        boolean done = false;
+        // Call coprocessor. Get region info from scanner.
+        if (region.getCoprocessorHost() != null) {
+          Boolean bypass = region.getCoprocessorHost().preScannerNext(scanner, results, rows);
+          if (!results.isEmpty()) {
+            for (Result r : results) {
+              for (Cell cell : r.rawCells()) {
+                KeyValue kv = KeyValueUtil.ensureKeyValue(cell);
+                totalKvSize += kv.getLength();
+              }
+              resultCells += r.rawCells().length;
             }
-            // Increment the nextCallSeq value which is the next expected from client.
-            rsh.nextCallSeq++;
+          }
+          if (bypass != null && bypass.booleanValue()) {
+            done = true;
           }
         }
-        try {
-          // Remove lease while its being processed in server; protects against case
-          // where processing of request takes > lease expiration time.
-          lease = leases.removeLease(scannerName);
-          List<Result> results = new ArrayList<Result>(Math.min(rows, 100));
-          long totalKvSize = 0;
-          long currentScanResultSize = 0;
-
-          boolean done = false;
-          // Call coprocessor. Get region info from scanner.
-          if (region != null && region.getCoprocessorHost() != null) {
-            Boolean bypass = region.getCoprocessorHost().preScannerNext(
-              scanner, results, rows);
-            if (!results.isEmpty()) {
-              for (Result r : results) {
-                if (maxScannerResultSize < Long.MAX_VALUE){
-                  for (Cell cell : r.rawCells()) {
-                    KeyValue kv = KeyValueUtil.ensureKeyValue(cell);
-                    currentScanResultSize += kv.heapSize();
-                    totalKvSize += kv.getLength();
-                  }
-                }
-              }
-            }
-            if (bypass != null && bypass.booleanValue()) {
-              done = true;
-            }
-          }
-
-          if (!done) {
-            long maxResultSize = Math.min(scanner.getMaxResultSize(), maxQuotaResultSize);
-            if (maxResultSize <= 0) {
-              maxResultSize = maxScannerResultSize;
-            }
-            List<Cell> values = new ArrayList<Cell>();
-            region.startRegionOperation(Operation.SCAN);
-            try {
-              int i = 0;
-              int resultCells = 0;
-              synchronized(scanner) {
-                boolean clientHandlesPartials =
-                    request.hasClientHandlesPartials() && request.getClientHandlesPartials();
-                boolean clientHandlesHeartbeats =
-                    request.hasClientHandlesHeartbeats() && request.getClientHandlesHeartbeats();
-                // On the server side we must ensure that the correct ordering of partial results is
-                // returned to the client to allow them to properly reconstruct the partial results.
-                // If the coprocessor host is adding to the result list, we cannot guarantee the
-                // correct ordering of partial results and so we prevent partial results from being
-                // formed.
-                boolean serverGuaranteesOrderOfPartials = currentScanResultSize == 0;
-                boolean allowPartialResults =
-                    clientHandlesPartials && serverGuaranteesOrderOfPartials && !isSmallScan;
-                boolean moreRows = false;
-                // Heartbeat messages occur when the processing of the ScanRequest is exceeds a
-                // certain time threshold on the server. When the time threshold is exceeded, the
-                // server stops the scan and sends back whatever Results it has accumulated within
-                // that time period (may be empty). Since heartbeat messages have the potential to
-                // create partial Results (in the event that the timeout occurs in the middle of a
-                // row), we must only generate heartbeat messages when the client can handle both
-                // heartbeats AND partials
-                boolean allowHeartbeatMessages = clientHandlesHeartbeats && allowPartialResults;
-
-                // Default value of timeLimit is negative to indicate no timeLimit should be
-                // enforced.
-                long timeLimit = -1;
-                // Set the time limit to be half of the more restrictive timeout value (one of the
-                // timeout values must be positive). In the event that both values are positive, the
-                // more restrictive of the two is used to calculate the limit.
-                if (allowHeartbeatMessages && (scannerLeaseTimeoutPeriod > 0 || rpcTimeout > 0)) {
-                  long timeLimitDelta;
-                  if (scannerLeaseTimeoutPeriod > 0 && rpcTimeout > 0) {
-                    timeLimitDelta = Math.min(scannerLeaseTimeoutPeriod, rpcTimeout);
-                  } else {
-                    timeLimitDelta =
-                        scannerLeaseTimeoutPeriod > 0 ? scannerLeaseTimeoutPeriod : rpcTimeout;
-                  }
-                  if (controller instanceof PayloadCarryingRpcController) {
-                    PayloadCarryingRpcController pc = (PayloadCarryingRpcController) controller;
-                    if (pc.getTimeout() > 0) {
-                      timeLimitDelta = Math.min(timeLimitDelta, pc.getTimeout());
-                    }
-                  }
-                  // Use half of whichever timeout value was more restrictive... But don't allow
-                  // the time limit to be less than the allowable minimum (could cause an
-                  // immediatate timeout before scanning any data).
-                  timeLimitDelta = Math.max(timeLimitDelta / 2, minimumScanTimeLimitDelta);
-                  timeLimit = System.currentTimeMillis() + timeLimitDelta;
-                }
-
-
-                final LimitScope sizeScope =
-                    allowPartialResults ? LimitScope.BETWEEN_CELLS : LimitScope.BETWEEN_ROWS;
-                final LimitScope timeScope =
-                    allowHeartbeatMessages ? LimitScope.BETWEEN_CELLS : LimitScope.BETWEEN_ROWS;
-                // Configure with limits for this RPC. Set keep progress true since size progress
-                // towards size limit should be kept between calls to nextRaw
-                ScannerContext.Builder contextBuilder = ScannerContext.newBuilder(true);
-                contextBuilder.setSizeLimit(sizeScope, maxResultSize);
-                contextBuilder.setBatchLimit(scanner.getBatch());
-                contextBuilder.setTimeLimit(timeScope, timeLimit);
-                ScannerContext scannerContext = contextBuilder.build();
-                boolean limitReached = false;
-
-                while (i < rows) {
-                  // Stop collecting results if maxScannerResultSize is set and we have exceeded it
-                  if (scannerContext.checkSizeLimit(LimitScope.BETWEEN_ROWS)) {
-                    builder.setMoreResultsInRegion(true);
-                    break;
-                  }
-
-                  // Reset the batch progress to 0 before every call to RegionScanner#nextRaw. The
-                  // batch limit is a limit on the number of cells per Result. Thus, if progress is
-                  // being tracked (i.e. scannerContext.keepProgress() is true) then we need to
-                  // reset the batch progress between nextRaw invocations since we don't want the
-                  // batch progress from previous calls to affect future calls
-                  scannerContext.setBatchProgress(0);
-
-                  // Collect values to be returned here
-                  moreRows = scanner.nextRaw(values, scannerContext);
-
-
-                  if (!values.isEmpty()) {
-
-                    for (Cell cell : values) {
-                      KeyValue kv = KeyValueUtil.ensureKeyValue(cell);
-                      totalKvSize += kv.getLength();
-                    }
-
-                    final boolean partial = scannerContext.partialResultFormed();
-                    results.add(Result.create(values, null, false, partial));
-                    i++;
-                    resultCells += values.size();
-                  }
-                  boolean sizeLimitReached = scannerContext.checkSizeLimit(LimitScope.BETWEEN_ROWS);
-                  boolean timeLimitReached = scannerContext.checkTimeLimit(LimitScope.BETWEEN_ROWS);
-                  boolean rowLimitReached = i >= rows;
-                  limitReached = sizeLimitReached || timeLimitReached || rowLimitReached;
-                  if (limitReached || !moreRows) {
-                    if (LOG.isTraceEnabled()) {
-                      LOG.trace("Done scanning. limitReached: " + limitReached + " moreRows: "
-                          + moreRows + " scannerContext: " + scannerContext);
-                      }
-                    // We only want to mark a ScanResponse as a heartbeat message in the event that
-                    // there are more values to be read server side. If there aren't more values,
-                    // marking it as a heartbeat is wasteful because the client will need to issue
-                    // another ScanRequest only to realize that they already have all the values
-                    if (moreRows) {
-                      // Heartbeat messages occur when the time limit has been reached.
-                      builder.setHeartbeatMessage(timeLimitReached);
-                    }
-                    break;
-                  }
-                  values.clear();
-                }
-                if (limitReached || moreRows) {
-                  // We stopped prematurely
-                  builder.setMoreResultsInRegion(true);
-                } else {
-                  // We didn't get a single batch
-                  builder.setMoreResultsInRegion(false);
-                }
-                region.updateReadRawCellMetrics(scannerContext.getReadRawCells());
-              }
-              region.updateReadMetrics(i);
-              region.getMetrics().updateScanNext(totalKvSize);
-              region.updateReadCapacityUnitMetrics(totalKvSize);
-              region.updateReadCellMetrics(resultCells);
-              region.updateScanCountPerSecond(1);
-              region.updateScanRowsPerSecond(i);
-            } finally {
-              region.closeRegionOperation();
-            }
-
-            // coprocessor postNext hook
-            if (region != null && region.getCoprocessorHost() != null) {
-              region.getCoprocessorHost().postScannerNext(scanner, results, rows, true);
-            }
-          }
-
-          if (isQuotaEnabled()) {
-            rsQuotaManager.grabQuota(region, results);
-          }
-
-          // If the scanner's filter - if any - is done with the scan
-          // and wants to tell the client to stop the scan. This is done by passing
-          // a null result, and setting moreResults to false.
-          if (scanner.isFilterDone() && results.isEmpty()) {
-            moreResults = false;
-            results = null;
-          } else {
-            addResults(builder, results, controller);
-          }
-        } finally {
-          // We're done. On way out re-add the above removed lease.
-          // Adding resets expiration time on lease.
-          if (scanners.containsKey(scannerName)) {
-            if (lease != null) leases.addLease(lease);
-            ttl = this.scannerLeaseTimeoutPeriod;
-          }
+        if (!done) {
+          moreResultsInRegion = scan((PayloadCarryingRpcController) controller, request, rsh,
+            maxQuotaResultSize, rows, results, builder, context, totalKvSize, resultCells);
         }
       }
 
-      if (!moreResults || closeScanner) {
-        ttl = 0;
+      if (isQuotaEnabled()) {
+        rsQuotaManager.grabQuota(region, results);
+      }
+
+      if (scanner.isFilterDone() && results.isEmpty()) {
+        // If the scanner's filter - if any - is done with the scan
+        // only set moreResults to false if the results is empty. This is used to keep compatible
+        // with the old scan implementation where we just ignore the returned results if moreResults
+        // is false. Can remove the isEmpty check after we get rid of the old implementation.
         moreResults = false;
-        if (region != null && region.getCoprocessorHost() != null) {
-          if (region.getCoprocessorHost().preScannerClose(scanner)) {
-            return builder.build(); // bypass
-          }
-        }
-        rsh = scanners.remove(scannerName);
-        if (rsh != null) {
-          scanner = rsh.s;
-          scanner.close();
-          leases.cancelLease(scannerName);
-          if (region != null && region.getCoprocessorHost() != null) {
-            region.getCoprocessorHost().postScannerClose(scanner);
-          }
-        }
+      } else if (limitOfRows > 0 && results.size() >= limitOfRows
+          && !results.get(results.size() - 1).isPartial()) {
+        // if we have reached the limit of rows
+        moreResults = false;
       }
-
-      if (ttl > 0) {
-        builder.setTtl(ttl);
+      addResults(builder, results, (PayloadCarryingRpcController) controller,
+        isClientCellBlockSupport(context));
+      if (!moreResults || !moreResultsInRegion || closeScanner) {
+        scannerClosed = true;
+        closeScanner(region, scanner, scannerName, context);
       }
-      builder.setScannerId(scannerId);
       builder.setMoreResults(moreResults);
       return builder.build();
-    } catch (IOException ie) {
-      if (scannerName != null && ie instanceof NotServingRegionException) {
-        RegionScannerHolder rsh = scanners.remove(scannerName);
-        if (rsh != null) {
-          try {
-            RegionScanner scanner = rsh.s;
-            LOG.warn(scannerName + " encountered " + ie.getMessage() + ", closing ...");
-            scanner.close();
-            leases.cancelLease(scannerName);
-          } catch (IOException e) {
-            LOG.warn("Getting exception closing " + scannerName, e);
-          }
+    } catch (Exception e) {
+      try {
+        // scanner is closed here
+        scannerClosed = true;
+        // The scanner state might be left in a dirty state, so we will tell the Client to
+        // fail this RPC and close the scanner while opening up another one from the start of
+        // row that the client has last seen.
+        closeScanner(region, scanner, scannerName, context);
+
+        // rethrow DoNotRetryIOException. This can avoid the retry in ClientScanner.
+        if (e instanceof DoNotRetryIOException) {
+          throw e;
         }
+
+        // We closed the scanner already. Instead of throwing the IOException, and client
+        // retrying with the same scannerId only to get USE on the next RPC, we directly throw
+        // a special exception to save an RPC.
+        throw new UnknownScannerException("Scanner is closed on the server-side", e);
+      } catch (IOException ioe) {
+        throw new ServiceException(ioe);
       }
-      throw new ServiceException(ie);
+    } finally {
+      if (!scannerClosed) {
+        // Adding resets expiration time on lease.
+        addScannerLeaseBack(lease);
+      }
     }
   }
 
-  private void addResults(final ScanResponse.Builder builder, final List<Result> results,
-      final RpcController controller) {
-    if (results == null || results.isEmpty()) return;
-    if (isClientCellBlockSupport()) {
+  private void addResults(ScanResponse.Builder builder, List<Result> results,
+      PayloadCarryingRpcController controller, boolean clientCellBlockSupported) {
+    if (results.isEmpty()) return;
+    if (clientCellBlockSupported) {
       for (Result res : results) {
         builder.addCellsPerResult(res.size());
         builder.addPartialFlagPerResult(res.isPartial());
       }
-      ((PayloadCarryingRpcController)controller).
-        setCellScanner(CellUtil.createCellScanner(results));
+      controller.setCellScanner(CellUtil.createCellScanner(results));
     } else {
-      for (Result res: results) {
+      for (Result res : results) {
         ClientProtos.Result pbr = ProtobufUtil.toResult(res);
         builder.addResults(pbr);
       }
@@ -4197,7 +4316,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
         }
         if (r != null) {
           ClientProtos.Result pbResult = null;
-          if (isClientCellBlockSupport()) {
+          if (isClientCellBlockSupport(RpcServer.getCurrentCall())) {
             pbResult = ProtobufUtil.toResultNoData(r);
             //  Hard to guess the size here.  Just make a rough guess.
             if (cellsToReturn == null) cellsToReturn = new ArrayList<CellScannable>();
@@ -5386,13 +5505,27 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
    * Holder class which holds the RegionScanner and nextCallSeq together.
    */
   private static class RegionScannerHolder {
-    private RegionScanner s;
-    private long nextCallSeq = 0L;
-    private HRegion r;
+    private final String scannerName;
+    private final RegionScanner s;
+    private final AtomicLong nextCallSeq = new AtomicLong(0L);
+    private final HRegion r;
+    private final boolean allowPartial;
 
-    public RegionScannerHolder(RegionScanner s, HRegion r) {
+    public RegionScannerHolder(String scannerName, RegionScanner s, HRegion r,
+        boolean allowPartial) {
+      this.scannerName = scannerName;
       this.s = s;
       this.r = r;
+      this.allowPartial = allowPartial;
+    }
+
+    public long getNextCallSeq() {
+      return nextCallSeq.get();
+    }
+
+    public boolean incNextCallSeq(long currentSeq) {
+      // Use CAS to prevent multiple scan request running on the same scanner.
+      return nextCallSeq.compareAndSet(currentSeq, currentSeq + 1);
     }
   }
 

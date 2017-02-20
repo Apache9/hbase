@@ -19,6 +19,8 @@
 
 package org.apache.hadoop.hbase.tool;
 
+import com.xiaomi.infra.hbase.salted.SaltedHTable;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -29,7 +31,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
@@ -68,8 +69,6 @@ import org.apache.hadoop.net.DNS;
 import org.apache.hadoop.util.ReflectionUtils;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
-
-import com.xiaomi.infra.hbase.salted.SaltedHTable;
 
 /**
  * HBase Canary Tool, that that can be used to do
@@ -176,7 +175,7 @@ public final class Canary implements Tool {
           scan.addFamily(column.getName());
           scan.setCacheBlocks(false);
           scan.setIgnoreTtl(true);
-          scan.setSmall(true);
+          scan.setOneRowLimit();
           ResultScanner scanner = table.getScanner(scan);
           try {
             long startTime = System.currentTimeMillis();

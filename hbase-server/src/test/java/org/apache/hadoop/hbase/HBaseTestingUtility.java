@@ -1889,14 +1889,17 @@ public class HBaseTestingUtility extends HBaseCommonTestingUtility {
    * Return the number of rows in the given table.
    */
   public int countRows(final HTable table) throws IOException {
-    Scan scan = new Scan();
-    ResultScanner results = table.getScanner(scan);
-    int count = 0;
-    for (@SuppressWarnings("unused") Result res : results) {
-      count++;
+    return countRows(table, new Scan());
+  }
+
+  public int countRows(final HTable table, final Scan scan) throws IOException {
+    try (ResultScanner results = table.getScanner(scan)) {
+      int count = 0;
+      while (results.next() != null) {
+        count++;
+      }
+      return count;
     }
-    results.close();
-    return count;
   }
 
   public int countRows(final HTable table, final byte[]... families) throws IOException {
@@ -1904,13 +1907,7 @@ public class HBaseTestingUtility extends HBaseCommonTestingUtility {
     for (byte[] family: families) {
       scan.addFamily(family);
     }
-    ResultScanner results = table.getScanner(scan);
-    int count = 0;
-    for (@SuppressWarnings("unused") Result res : results) {
-      count++;
-    }
-    results.close();
-    return count;
+    return countRows(table, scan);
   }
 
   /**
