@@ -160,11 +160,11 @@ public class TestReplicationTrackerZKImpl {
     zkw.getRecoverableZooKeeper().getZooKeeper().getChildren("/hbase/replication/peers/5", true);
     rt.registerListener(new DummyReplicationListener());
     rp.disablePeer("5");
+    int tmp = plChangedCount.get();
     ZKUtil.deleteNode(zkw, "/hbase/replication/peers/5/peer-state");
     // wait for event
-    int tmp = plChangedCount.get();
     while (plChangedCount.get() <= tmp) {
-      Thread.sleep(5);
+      Thread.sleep(100);
     }
     assertEquals(1, plChangedData.size());
     assertTrue(plChangedData.contains("5"));
