@@ -143,14 +143,14 @@ public class TestReplicationTrackerZKImpl {
 
   @Test(timeout = 30000)
   public void testPeerRemovedEvent() throws Exception {
-    rp.addPeer("5", new ReplicationPeerConfig().setClusterKey(utility.getClusterKey()));
+    rp.addPeer("testPeerRemovedEvent", new ReplicationPeerConfig().setClusterKey(utility.getClusterKey()));
     rt.registerListener(new DummyReplicationListener());
-    rp.removePeer("5");
+    rp.removePeer("testPeerRemovedEvent");
     // wait for event
     while (peerRemovedCount.get() < 1) {
       Thread.sleep(5);
     }
-    assertEquals("5", peerRemovedData);
+    assertEquals("testPeerRemovedEvent", peerRemovedData);
   }
 
   @Test(timeout = 30000)
