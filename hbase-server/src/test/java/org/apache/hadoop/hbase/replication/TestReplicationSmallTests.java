@@ -292,7 +292,7 @@ public class TestReplicationSmallTests extends TestReplicationBase {
 
     // Test disabling replication
     admin.disablePeer("2");
-
+    Thread.sleep(1000);
     byte[] rowkey = Bytes.toBytes("disable enable");
     Put put = new Put(rowkey);
     put.add(famName, row, row);
@@ -311,7 +311,7 @@ public class TestReplicationSmallTests extends TestReplicationBase {
 
     // Test enable replication
     admin.enablePeer("2");
-
+    Thread.sleep(1000);
     for (int i = 0; i < NB_RETRIES; i++) {
       Result res = htable2.get(get);
       if (res.size() == 0) {
