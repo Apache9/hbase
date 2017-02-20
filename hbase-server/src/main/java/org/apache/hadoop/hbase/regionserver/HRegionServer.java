@@ -3193,8 +3193,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
    *
    * @return True if we OOME'd and are aborting.
    */
-  @Override
-  public boolean checkOOME(final Throwable e) {
+  public static boolean exitIfOOME(final Throwable e) {
     boolean stop = false;
     try {
       if (e instanceof OutOfMemoryError
@@ -3212,6 +3211,11 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
       }
     }
     return stop;
+  }
+
+  @Override
+  public boolean checkOOME(final Throwable e) {
+    return exitIfOOME(e);
   }
 
   /**

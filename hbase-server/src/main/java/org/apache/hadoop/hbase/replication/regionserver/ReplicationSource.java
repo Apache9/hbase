@@ -52,6 +52,7 @@ import org.apache.hadoop.hbase.catalog.MetaEditor;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.fs.HFileSystem;
 import org.apache.hadoop.hbase.protobuf.generated.WALProtos;
+import org.apache.hadoop.hbase.regionserver.HRegionServer;
 import org.apache.hadoop.hbase.regionserver.wal.HLog;
 import org.apache.hadoop.hbase.regionserver.wal.HLogKey;
 import org.apache.hadoop.hbase.regionserver.wal.WALEdit;
@@ -1011,8 +1012,10 @@ public class ReplicationSource extends Thread
         new Thread.UncaughtExceptionHandler() {
           @Override
           public void uncaughtException(final Thread t, final Throwable e) {
+            HRegionServer.exitIfOOME(e);
             LOG.error("Unexpected exception in ReplicationSource," +
               " currentPath=" + currentPath, e);
+            stopper.stop("Unexpected exception in ReplicationSource");
           }
         };
     Threads.setDaemonThreadRunning(
