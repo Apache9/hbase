@@ -763,7 +763,7 @@ public class HTable implements HTableInterface {
     if (scan.isReversed()) {
       return new ReversedClientScanner(getConfiguration(), scan, getName(), this.connection);
     } else {
-      return new ClientScanner(getConfiguration(), scan, getName(), this.connection);
+      return new ClientSimpleScanner(getConfiguration(), scan, getName(), this.connection);
     }
   }
 

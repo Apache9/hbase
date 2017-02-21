@@ -893,7 +893,7 @@ public class HConnectionImplementation implements HConnection, Closeable {
     byte[] metaKey = HRegionInfo.createRegionName(tableName, row, HConstants.NINES, false);
     Scan s = new Scan();
     s.setReversed(true);
-    s.setStartRow(metaKey);
+    s.withStartRow(metaKey);
     s.addFamily(HConstants.CATALOG_FAMILY);
     s.setSmall(true);
     s.setCaching(1);

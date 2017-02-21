@@ -1170,7 +1170,7 @@ possible configurations would overwhelm and obscure the important.
 
   <property>
     <name>hbase.client.scanner.max.result.size</name>
-    <value>2097152</value>
+    <value>4194304</value>
     <description>Maximum number of bytes returned when calling a scanner's next method.
     Note that when a single row is larger than this limit the row is still returned completely.
     The default value is 2MB, which is good for 1ge networks.

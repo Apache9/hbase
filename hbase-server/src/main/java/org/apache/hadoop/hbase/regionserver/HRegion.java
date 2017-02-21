@@ -4144,9 +4144,9 @@ public class HRegion implements HeapSize { // , Writable{
      * contain the row for which we are populating the values.*/
     protected Cell joinedContinuationRow = null;
     protected final byte[] stopRow;
+    protected final boolean includeStopRow;
     private final FilterWrapper filter;
     private ScannerContext defaultScannerContext;
-    protected int isScan;
     private boolean filterClosed = false;
     private long readPt;
     private long maxResultSize;
@@ -4193,15 +4193,9 @@ public class HRegion implements HeapSize { // , Writable{
        * ScannerContext is not specified during an invocation of next/nextRaw
        */
       defaultScannerContext = ScannerContext.newBuilder().setBatchLimit(scan.getBatch()).build();
-      if (Bytes.equals(scan.getStopRow(), HConstants.EMPTY_END_ROW) && !scan.isGetScan()) {
-        this.stopRow = null;
-      } else {
-        this.stopRow = scan.getStopRow();
-      }
-      // If we are doing a get, we want to be [startRow,endRow] normally
-      // it is [startRow,endRow) and if startRow=endRow we get nothing.
-      this.isScan = scan.isGetScan() ? 1 : 0;
 
+      this.stopRow = scan.getStopRow();
+      this.includeStopRow = scan.includeStopRow();
       // synchronize on scannerReadPoints so that nobody calculates
       // getSmallestReadPoint, before scannerReadPoints is updated.
       IsolationLevel isolationLevel = scan.getIsolationLevel();
@@ -4485,26 +4479,8 @@ public class HRegion implements HeapSize { // , Writable{
       return (this instanceof ReversedRegionScannerImpl) ? -c : c;
     }
 
-    private int compareRows(Cell a, byte[] row) {
-      if (a == null) {
-        if (row == null) {
-          return 0;
-        } else {
-          return 1;
-        }
-      } else {
-        if (row == null) {
-          return -1;
-        }
-      }
-      int c = this.region.comparator
-          .compareRows(a.getRowArray(), a.getRowOffset(), a.getRowLength(), row, 0, row.length);
-      return (this instanceof ReversedRegionScannerImpl) ? -c : c;
-    }
-
-
     private boolean nextInternal(List<Cell> results, ScannerContext scannerContext)
-    throws IOException {
+        throws IOException {
       if (!results.isEmpty()) {
         throw new IllegalArgumentException("First parameter should be an empty list");
       }
@@ -4593,8 +4569,8 @@ public class HRegion implements HeapSize { // , Writable{
 
 
 
-        boolean isStopRow = isStopRow();
-        if (isStopRow) {
+        boolean shouldStop = shouldStop();
+        if (shouldStop) {
           return scannerContext.setScannerState(NextState.NO_MORE_VALUES).hasMoreValues();
         }
         if (joinedHeap == null || compareRows(currentStoreHeapTop, currentJoinedHeapTop) <= 0) {
@@ -4656,7 +4632,6 @@ public class HRegion implements HeapSize { // , Writable{
             results.clear();
             continue;
           }
-
         }
 
         // Ok, we are done with storeHeap for this row.
@@ -4670,8 +4645,8 @@ public class HRegion implements HeapSize { // , Writable{
             return true;
           }
         }
-        isStopRow = isStopRow();
-        if (isStopRow) {
+        shouldStop = shouldStop();
+        if (shouldStop) {
           return scannerContext.setScannerState(NextState.NO_MORE_VALUES).hasMoreValues();
         } else {
           return scannerContext.setScannerState(NextState.MORE_VALUES).hasMoreValues();
@@ -4717,11 +4692,22 @@ public class HRegion implements HeapSize { // , Writable{
           .postScannerFilterRow(this, curRowCell.getRowArray(), curRowCell.getRowOffset(), curRowCell.getRowLength());
     }
 
-    protected boolean isStopRow() {
+    protected boolean shouldStop() {
       Cell currentStoreHeapCell = this.storeHeap.peek();
       Cell currentJoinHeapCell = this.joinedHeap == null ? null : this.joinedHeap.peek();
-      return (currentStoreHeapCell == null || compareRows(currentStoreHeapCell, stopRow) >= isScan)
-          && (currentJoinHeapCell == null || compareRows(currentJoinHeapCell, stopRow) >= isScan);
+      return shouldStop(currentStoreHeapCell) && shouldStop(currentJoinHeapCell);
+    }
+
+    protected boolean shouldStop(Cell cell) {
+      if (cell == null) {
+        return true;
+      }
+      if (stopRow == null || Bytes.equals(stopRow, HConstants.EMPTY_START_ROW)) {
+        return false;
+      }
+      int c = comparator.compareRows(cell.getRowArray(), cell.getRowOffset(), cell.getRowLength(),
+        stopRow, 0, stopRow.length);
+      return c > 0 || (c == 0 && !includeStopRow);
     }
 
     @Override

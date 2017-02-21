@@ -18,6 +18,9 @@
  */
 package org.apache.hadoop.hbase.client;
 
+import static org.apache.hadoop.hbase.client.ConnectionUtils.createCloseRowBefore;
+import static org.apache.hadoop.hbase.client.ConnectionUtils.isEmptyStartRow;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -39,16 +42,10 @@ import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 @InterfaceStability.Evolving
 public class ReversedScannerCallable extends ScannerCallable {
 
-  /**
-   * The start row for locating regions. In reversed scanner, may locate the regions for a range of
-   * keys when doing {@link ReversedClientScanner#nextScanner(int)}
-   */
-  protected final byte[] locateStartRow;
-
   @Deprecated
   public ReversedScannerCallable(HConnection connection, TableName tableName, Scan scan,
-      ScanMetrics scanMetrics, byte[] locateStartRow) {
-    this(connection, tableName, scan, scanMetrics, locateStartRow, 0);
+      ScanMetrics scanMetrics) {
+    this(connection, tableName, scan, scanMetrics, 0);
   }
 
   /**
@@ -56,13 +53,11 @@ public class ReversedScannerCallable extends ScannerCallable {
    * @param tableName
    * @param scan
    * @param scanMetrics
-   * @param locateStartRow The start row for locating regions
-   * @param rpcFactory
+   * @param timeout
    */
   public ReversedScannerCallable(HConnection connection, TableName tableName, Scan scan,
-      ScanMetrics scanMetrics, byte[] locateStartRow, int timeout) {
+      ScanMetrics scanMetrics, int timeout) {
     super(connection, tableName, scan, scanMetrics, timeout);
-    this.locateStartRow = locateStartRow;
   }
 
   /**
@@ -72,14 +67,23 @@ public class ReversedScannerCallable extends ScannerCallable {
   @Override
   public void prepare(int callTimeout, boolean reload) throws IOException {
     if (!instantiated || reload) {
-      if (locateStartRow == null) {
+      // we should use range locate if
+      // 1. we do not want the start row
+      // 2. the start row is empty which means we need to locate to the last region.
+      if (scan.includeStartRow() && !isEmptyStartRow(getRow())) {
         // Just locate the region with the row
         this.location = getRegionLocation(tableName, row, reload, callTimeout);
+        if (location == null || location.getServerName() == null) {
+          throw new IOException("Failed to find location, tableName="
+              + tableName + ", row=" + Bytes.toStringBinary(row) + ", reload="
+              + reload);
+        }
       } else {
         // Need to locate the regions with the range, and the target location is
         // the last one which is the previous region of last region scanner
-        List<HRegionLocation> locatedRegions =
-            locateRegionsInRange(locateStartRow, row, reload, callTimeout);
+        byte[] locateStartRow = createCloseRowBefore(getRow());
+        List<HRegionLocation> locatedRegions = locateRegionsInRange(
+            locateStartRow, row, reload, callTimeout);
         if (locatedRegions.isEmpty()) {
           throw new DoNotRetryIOException(
               "Does hbase:meta exist hole? Couldn't get regions for the range from "
@@ -147,5 +151,4 @@ public class ReversedScannerCallable extends ScannerCallable {
         && (endKeyIsEndOfTable || Bytes.compareTo(currentKey, endKey) < 0));
     return regionList;
   }
-
 }

@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.util.NavigableSet;
 
 import org.apache.hadoop.hbase.Cell;
+import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.filter.Filter;
@@ -50,9 +51,17 @@ public abstract class UserScanQueryMatcher extends ScanQueryMatcher {
 
   protected final TimeRange tr;
 
+  private static KeyValue createStartKey(Scan scan, ScanInfo scanInfo) {
+    if (scan.includeStartRow()) {
+      return createStartKeyFromRow(scan.getStartRow(), scanInfo);
+    } else {
+      return KeyValue.createLastOnRow(scan.getStartRow());
+    }
+  }
+
   protected UserScanQueryMatcher(Scan scan, ScanInfo scanInfo, ColumnTracker columns,
       boolean hasNullColumn, long oldestUnexpiredTS, long now) {
-    super(scan.getStartRow(), scanInfo, columns, oldestUnexpiredTS, now);
+    super(createStartKey(scan, scanInfo), scanInfo, columns, oldestUnexpiredTS, now);
     this.hasNullColumn = hasNullColumn;
     this.filter = scan.getFilter();
     this.stopRow = scan.getStopRow();
@@ -155,9 +164,7 @@ public abstract class UserScanQueryMatcher extends ScanQueryMatcher {
 
   protected abstract boolean isGet();
 
-  protected boolean moreRowsMayExistsAfter(int cmpToStopRow) {
-    return cmpToStopRow < 0;
-  }
+  protected abstract boolean moreRowsMayExistsAfter(int cmpToStopRow);
 
   @Override
   public boolean moreRowsMayExistAfter(Cell cell) {

@@ -84,7 +84,6 @@ public class TestRpcControllerFactory {
     @Override
     public void setPriority(TableName tn) {
       super.setPriority(tn);
-      new Exception().printStackTrace();
       // ignore counts for system tables - it could change and we really only want to check on what
       // the client should change
       if (!tn.isSystemTable()) {
@@ -143,7 +142,7 @@ public class TestRpcControllerFactory {
     counter = verifyCount(counter, 1);
 
     Delete d = new Delete(row);
-    d.deleteColumn(fam1, fam1);
+    d.deleteColumns(fam1, fam1);
     table.delete(d);
     counter = verifyCount(counter, 1);
 
@@ -166,7 +165,7 @@ public class TestRpcControllerFactory {
     ResultScanner scan = table.getScanner(fam1);
     scan.next();
     scan.close();
-    counter = verifyCount(counter, 3);
+    counter = verifyCount(counter, 2);
 
     Get g2 = new Get(row);
     table.get(Lists.newArrayList(g, g2));
@@ -174,18 +173,16 @@ public class TestRpcControllerFactory {
     counter = verifyCount(counter, 1);
 
     // make sure all the scanner types are covered
-    Scan scanInfo = new Scan(row);
-    // regular small
-    scanInfo.setSmall(true);
-    counter = doScan(table, scanInfo, counter, 1);
+    Scan scanInfo = new Scan().withStartRow(row).setSmall(true);
+    counter = doScan(table, scanInfo, counter, 2);
 
-    // reversed, small
-    scanInfo.setReversed(true);
-    counter = doScan(table, scanInfo, counter, 1);
+    // reversed
+    scanInfo = new Scan().withStartRow(row).setReversed(true).setSmall(true);
+    counter = doScan(table, scanInfo, counter, 2);
 
     // reversed, regular
-    scanInfo.setSmall(false);
-    counter = doScan(table, scanInfo, counter, 3);
+    scanInfo = new Scan().withStartRow(row);
+    counter = doScan(table, scanInfo, counter, 2);
 
     table.close();
   }

@@ -660,9 +660,9 @@ public final class HConstants {
    * Note that when a single row is larger than this limit the row is still
    * returned completely.
    *
-   * The default value is 2MB.
+   * The default value is 4MB as the MSLAB is 2MB and it will be counted as block size.
    */
-  public static final long DEFAULT_HBASE_CLIENT_SCANNER_MAX_RESULT_SIZE = 2 * 1024 * 1024;
+  public static final long DEFAULT_HBASE_CLIENT_SCANNER_MAX_RESULT_SIZE = 4 * 1024 * 1024;
 
   /**
    * Parameter name for maximum ratio which occupy the whole heap when calling a
