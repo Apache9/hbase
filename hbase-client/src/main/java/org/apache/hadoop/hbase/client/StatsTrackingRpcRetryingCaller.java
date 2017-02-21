@@ -31,13 +31,13 @@ public class StatsTrackingRpcRetryingCaller<T> extends RpcRetryingCaller<T> {
   private final ServerStatisticTracker stats;
 
   public StatsTrackingRpcRetryingCaller(long pause, int retries, int startLogErrorsCnt,
-      ServerStatisticTracker stats) {
-    this(pause, retries, startLogErrorsCnt, false, stats);
+      ServerStatisticTracker stats, int rpcTimeout) {
+    this(pause, retries, startLogErrorsCnt, false, stats, rpcTimeout);
   }
 
   public StatsTrackingRpcRetryingCaller(long pause, int retries, int startLogErrorsCnt,
-      boolean ignoreThrottlingException, ServerStatisticTracker stats) {
-    super(pause, retries, startLogErrorsCnt, ignoreThrottlingException);
+      boolean ignoreThrottlingException, ServerStatisticTracker stats, int rpcTimeout) {
+    super(pause, retries, startLogErrorsCnt, ignoreThrottlingException, rpcTimeout);
     this.stats = stats;
   }
 

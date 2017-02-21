@@ -37,6 +37,7 @@ public class RpcRetryingCallerFactory {
   private final boolean enableBackPressure;
   private ServerStatisticTracker stats;
   private final boolean ignoreThrottlingException;
+  private final int rpcTimeout;
 
   public RpcRetryingCallerFactory(Configuration conf) {
     this(conf, null);
@@ -56,6 +57,8 @@ public class RpcRetryingCallerFactory {
     ignoreThrottlingException = conf.getBoolean(
       HConstants.HBASE_CLIENT_IGNORE_THROTTLING_EXCEPTION,
       HConstants.DEFAULT_HBASE_CLIENT_IGNORE_THROTTLING_EXCEPTION);
+    rpcTimeout = conf.getInt(HConstants.HBASE_RPC_TIMEOUT_KEY, HConstants.DEFAULT_HBASE_RPC_TIMEOUT);
+
   }
 
   /**
@@ -71,10 +74,10 @@ public class RpcRetryingCallerFactory {
     RpcRetryingCaller<T> caller;
     if (enableBackPressure && this.stats != null) {
       caller = new StatsTrackingRpcRetryingCaller<T>(pause, retries, startLogErrorsCnt,
-          ignoreThrottlingException, this.stats);
+          ignoreThrottlingException, this.stats, rpcTimeout);
     } else {
       caller = new RpcRetryingCaller<T>(pause, retries, startLogErrorsCnt,
-          ignoreThrottlingException);
+          ignoreThrottlingException, rpcTimeout);
     }
     return caller;
   }
