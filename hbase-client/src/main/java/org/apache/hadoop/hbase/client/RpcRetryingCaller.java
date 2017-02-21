@@ -56,16 +56,19 @@ public class RpcRetryingCaller<T> {
 
   private final boolean ignoreThrottlingException;
 
-  public RpcRetryingCaller(long pause, int retries, int startLogErrorsCnt) {
-    this(pause, retries, startLogErrorsCnt, false);
+  private final int rpcTimeout;
+
+  public RpcRetryingCaller(long pause, int retries, int startLogErrorsCnt, int rpcTimeout) {
+    this(pause, retries, startLogErrorsCnt, false, rpcTimeout);
   }
 
   public RpcRetryingCaller(long pause, int retries, int startLogErrorsCnt,
-      boolean ignoreThrottlingException) {
+      boolean ignoreThrottlingException, int rpcTimeout) {
     this.pause = pause;
     this.retries = retries;
     this.startLogErrorsCnt = startLogErrorsCnt;
     this.ignoreThrottlingException = ignoreThrottlingException;
+    this.rpcTimeout = rpcTimeout;
   }
 
   private int getRemainingTime(long globalStartTime, int callTimeout, int tries)
@@ -75,7 +78,7 @@ public class RpcRetryingCaller<T> {
       throw new CallTimeoutException(
           "callTimeout=" + callTimeout + ", callDuration=" + duration + ", tries=" + tries);
     }
-    return (int) (callTimeout - duration);
+    return (int) Math.min(rpcTimeout, callTimeout - duration);
   }
 
   public synchronized T callWithRetries(RetryingCallable<T> callable)
