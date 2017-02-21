@@ -152,6 +152,20 @@ public class TestHCM {
         final WALEdit edit, final Durability durability) throws IOException {
       Threads.sleep(SLEEP_TIME);
     }
+
+    @Override
+    public Result preIncrement(final ObserverContext<RegionCoprocessorEnvironment> e,
+        final Increment increment) throws IOException {
+      Threads.sleep(SLEEP_TIME);
+      return super.preIncrement(e, increment);
+    }
+
+    @Override
+    public void preDelete(final ObserverContext<RegionCoprocessorEnvironment> e, final Delete delete,
+        final WALEdit edit, final Durability durability) throws IOException {
+      Threads.sleep(SLEEP_TIME);
+    }
+
   }
 
   public static class SleepLongerAtFirstCoprocessor extends BaseRegionObserver {
@@ -445,7 +459,7 @@ public class TestHCM {
 
     // Again, with configuration based override
     c.setInt(HConstants.HBASE_RPC_TIMEOUT_KEY, SleepCoprocessor.SLEEP_TIME / 2);
-    try (HTable t = new HTable(c, name.getMethodName())) {
+    try (HTable t = new HTable(c, getTestTableName())) {
       t.get(new Get(FAM_NAM));
       fail("Get should not have succeeded");
     } catch (RetriesExhaustedException e) {
@@ -473,7 +487,7 @@ public class TestHCM {
 
     // Again, with configuration based override
     c.setInt(HConstants.HBASE_RPC_TIMEOUT_KEY, SleepCoprocessor.SLEEP_TIME / 2);
-    try (HTable t = new HTable(c, name.getMethodName())) {
+    try (HTable t = new HTable(c, getTestTableName())) {
         Increment i = new Increment(FAM_NAM);
         i.addColumn(FAM_NAM, FAM_NAM, 1);
         t.increment(i);
@@ -539,7 +553,7 @@ public class TestHCM {
 
     // Again, with configuration based override
     c.setInt(HConstants.HBASE_RPC_TIMEOUT_KEY, SleepCoprocessor.SLEEP_TIME / 2);
-    try (HTable t = new HTable(c, name.getMethodName())) {
+    try (HTable t = new HTable(c, getTestTableName())) {
         t.get(new Get(FAM_NAM));
         fail("Get should not have succeeded");
       } catch (RetriesExhaustedException e) {
@@ -846,8 +860,7 @@ public class TestHCM {
     assertEquals("Previous server was " + destServer.getServerName().getHostAndPort(),
       curServer.getServerName().getPort(), conn.getCachedLocation(tableName, ROW).getPort());
 
-    TEST_UTIL.getConfiguration().setInt(HConstants.HBASE_CLIENT_RETRIES_NUMBER,
-      HConstants.DEFAULT_HBASE_CLIENT_RETRIES_NUMBER);
+    TEST_UTIL.getConfiguration().setInt(HConstants.HBASE_CLIENT_RETRIES_NUMBER, RPC_RETRY);
     table.close();
   }
 
