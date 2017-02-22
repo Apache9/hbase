@@ -33,6 +33,8 @@ import org.junit.experimental.categories.Category;
 
 import static org.apache.hadoop.hbase.replication.thrift.ReplicationTestUtils.*;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
+
 import org.junit.Assert;
 
 
@@ -129,10 +131,18 @@ public class TestThriftMasterMasterReplication extends TestThriftReplicationBase
     sourceTable.put(put);
     sourceTable.flushCommits();
 
-    // sleep long enough
-    Thread.sleep(1000);
-    Get get = new Get(row);
-    Result result = destTable.get(get);
-    Assert.assertArrayEquals(row, result.getValue(DEFAULT_FAMILY, row));
+    for (int i=0; i<10; i++) {
+      // sleep long enough
+      Thread.sleep(1000);
+      Get get = new Get(row);
+      Result result = destTable.get(get);
+      try {
+        Assert.assertArrayEquals(row, result.getValue(DEFAULT_FAMILY, row));
+      } catch (AssertionError e) {
+        continue;
+      }
+      return;
+    }
+    fail();
   }
 }
