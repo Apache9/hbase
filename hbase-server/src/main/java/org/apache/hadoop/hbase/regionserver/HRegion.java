@@ -120,6 +120,7 @@ import org.apache.hadoop.hbase.coprocessor.RegionObserver;
 import org.apache.hadoop.hbase.errorhandling.ForeignExceptionSnare;
 import org.apache.hadoop.hbase.exceptions.FailedSanityCheckException;
 import org.apache.hadoop.hbase.exceptions.RegionInRecoveryException;
+import org.apache.hadoop.hbase.exceptions.TimeoutIOException;
 import org.apache.hadoop.hbase.exceptions.UnknownProtocolException;
 import org.apache.hadoop.hbase.filter.ByteArrayComparable;
 import org.apache.hadoop.hbase.filter.CompareFilter.CompareOp;
@@ -2606,6 +2607,9 @@ public class HRegion implements HeapSize { // , Writable{
         RowLock rowLock = null;
         try {
           rowLock = getRowLockInternal(mutation.getRow(), shouldBlock);
+        } catch (TimeoutIOException e) {
+          // We will retry when other exceptions, but we should stop if we timeout .
+          throw e;
         } catch (IOException ioe) {
           LOG.warn("Failed getting lock in batch put, row="
             + Bytes.toStringBinary(mutation.getRow()), ioe);
@@ -3924,11 +3928,30 @@ public class HRegion implements HeapSize { // , Writable{
           if (Trace.isTracing()) {
             traceScope = Trace.startSpan("HRegion.getRowLockInternal");
           }
-          if (!existingContext.latch.await(this.rowLockWaitDuration, TimeUnit.MILLISECONDS)) {
-            if(traceScope != null) {
+
+          int timeout = rowLockWaitDuration;
+          boolean reachDeadlineFirst = false;
+          RpcCallContext call = RpcServer.getCurrentCall();
+          if (call != null && call.getDeadline() < Long.MAX_VALUE) {
+            int timeToDeadline = (int) (call.getDeadline() - System.currentTimeMillis());
+            if (timeToDeadline <= this.rowLockWaitDuration) {
+              reachDeadlineFirst = true;
+              timeout = timeToDeadline;
+            }
+          }
+
+          if (timeout <= 0 || !existingContext.latch.await(timeout, TimeUnit.MILLISECONDS)) {
+            if (traceScope != null) {
               traceScope.getSpan().addTimelineAnnotation("Failed to get row lock");
             }
-            throw new IOException("Timed out waiting for lock for row: " + rowKey);
+            String message = "Timed out waiting for lock for row: " + rowKey + " in region "
+                + getRegionInfo().getEncodedName();
+            if (reachDeadlineFirst) {
+              throw new TimeoutIOException(message);
+            } else {
+              // If timeToDeadline is larger than rowLockWaitDuration, we can not drop the request.
+              throw new IOException(message);
+            }
           }
           if (traceScope != null) traceScope.close();
           traceScope = null;
