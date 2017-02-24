@@ -207,6 +207,7 @@ public class TestAtomicOperation {
       htd.addFamily(hcd);
     }
     HRegionInfo info = new HRegionInfo(htd.getTableName(), null, null, false);
+    TEST_UTIL.getConfiguration().setInt("hbase.regionserver.abort.wal.multiplier", 100000);
     region = TEST_UTIL.createLocalHRegion(info, htd);
   }
 
