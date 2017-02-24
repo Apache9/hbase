@@ -132,7 +132,6 @@
     <dependency>
       <groupId>com.xiaomi.infra.galaxy</groupId>
       <artifactId>galaxy-sds-core</artifactId>
-      <version>${galaxy-sds-core.version}</version>
       <exclusions>
         <exclusion>
           <groupId>org.apache.hbase</groupId>
@@ -143,6 +142,10 @@
           <artifactId>hbase-server</artifactId>
         </exclusion>
       </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>com.xiaomi.infra</groupId>
+      <artifactId>themis-coprocessor</artifactId>
     </dependency>
     <dependency>
       <groupId>com.xiaomi.infra</groupId>
