@@ -1017,6 +1017,7 @@
     <minikdc.version>${hadoop-mdh.version}</minikdc.version>
     <rrd-on-hbase.version>1.0.0-SNAPSHOT</rrd-on-hbase.version>
     <galaxy-sds-core.version>2.0.1</galaxy-sds-core.version>
+    <themis-coprocessor.version>2.0.0</themis-coprocessor.version>
     <slf4j.version>1.6.4</slf4j.version>
     <hadoop-snappy.version>0.0.1-SNAPSHOT</hadoop-snappy.version>
     <clover.version>2.6.3</clover.version>
@@ -2022,13 +2023,18 @@
           <dependency>
             <groupId>com.xiaomi.infra.galaxy</groupId>
             <artifactId>galaxy-sds-core</artifactId>
-            <version>${galaxy-sds.version}</version>
+            <version>${galaxy-sds-core.version}</version>
             <exclusions>
               <exclusion>
                 <groupId>org.apache.hadoop</groupId>
                 <artifactId>hadoop-client</artifactId>
               </exclusion>
             </exclusions>
+          </dependency>
+          <dependency>
+            <groupId>com.xiaomi.infra</groupId>
+            <artifactId>themis-coprocessor</artifactId>
+            <version>${themis-coprocessor.version}</version>
           </dependency>
         </dependencies>
       </dependencyManagement>
