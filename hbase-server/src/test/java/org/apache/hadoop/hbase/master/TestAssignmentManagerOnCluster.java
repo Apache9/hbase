@@ -673,7 +673,6 @@ public class TestAssignmentManagerOnCluster {
         am.regionOnline(hri, serverName);
       }
       am.getZKTable().setDisabledTable(table);
-      TEST_UTIL.deleteTable(table);
     }
   }
 
