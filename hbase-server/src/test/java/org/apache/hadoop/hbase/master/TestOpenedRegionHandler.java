@@ -60,7 +60,6 @@ public class TestOpenedRegionHandler {
   private final int NUM_MASTERS = 1;
   private final int NUM_RS = 1;
   private Configuration conf;
-  private Configuration resetConf;
   private ZooKeeperWatcher zkw;
 
   @Before
@@ -74,7 +73,6 @@ public class TestOpenedRegionHandler {
   public void tearDown() throws Exception {
     // Stop the cluster
     TEST_UTIL.shutdownMiniCluster();
-    TEST_UTIL = new HBaseTestingUtility(resetConf);
   }
 
   @Test
@@ -83,7 +81,6 @@ public class TestOpenedRegionHandler {
     log("Starting cluster");
     conf = HBaseConfiguration.create();
     conf.setBoolean("hbase.assignment.usezk", true);
-    resetConf = conf;
     conf.setInt("hbase.master.assignment.timeoutmonitor.period", 2000);
     conf.setInt("hbase.master.assignment.timeoutmonitor.timeout", 5000);
     TEST_UTIL = new HBaseTestingUtility(conf);
