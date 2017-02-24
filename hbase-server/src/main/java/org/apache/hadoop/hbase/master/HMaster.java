@@ -1438,7 +1438,7 @@ MasterServices, Server {
     }
     try {
       replicationMetaCleaner = new ReplicationMetaCleaner(this, this, cleanerInterval);
-      Threads.setDaemonThreadRunning(replicationZKLockCleanerChore.getThread(),
+      Threads.setDaemonThreadRunning(replicationMetaCleaner.getThread(),
           "ReplicationMetaCleaner");
     } catch (Exception e) {
       LOG.error("start ReplicationMetaCleaner failed", e);
