@@ -28,8 +28,6 @@ import com.google.protobuf.RpcController;
 import com.google.protobuf.Service;
 import com.google.protobuf.ServiceException;
 
-import javax.management.ObjectName;
-
 import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
@@ -54,6 +52,8 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
+
+import javax.management.ObjectName;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -117,6 +117,7 @@ import org.apache.hadoop.hbase.master.cleaner.ReplicationMetaCleaner;
 import org.apache.hadoop.hbase.master.cleaner.ReplicationZKLockCleanerChore;
 import org.apache.hadoop.hbase.master.cleaner.ReplicationZKNodeCleaner;
 import org.apache.hadoop.hbase.master.cleaner.ReplicationZKNodeCleanerChore;
+import org.apache.hadoop.hbase.master.cleaner.SnapshotForDeletedTableCleaner;
 import org.apache.hadoop.hbase.master.handler.CreateTableHandler;
 import org.apache.hadoop.hbase.master.handler.DeleteTableHandler;
 import org.apache.hadoop.hbase.master.handler.DisableTableHandler;
@@ -461,6 +462,7 @@ MasterServices, Server {
   private ReplicationMetaCleaner replicationMetaCleaner;
   private LogCleaner logCleaner;
   private HFileCleaner hfileCleaner;
+  private SnapshotForDeletedTableCleaner snapshotForDeletedTableCleaner;
 
   private MasterCoprocessorHost cpHost;
   private final ServerName serverName;
@@ -495,6 +497,8 @@ MasterServices, Server {
 
   // monitor for snapshot of hbase tables
   private SnapshotManager snapshotManager;
+  // take a snapshot before deleting a table
+  private final boolean snapshotBeforeDelete;
   // monitor for distributed procedures
   private MasterProcedureManagerHost mpmHost;
 
@@ -649,6 +653,8 @@ MasterServices, Server {
     }
     this.ignoreSplitsWhenCreatingTable = conf.getBoolean(
       HConstants.IGNORE_SPLITS_WHEN_CREATE_TABLE, false);
+    this.snapshotBeforeDelete = conf.getBoolean(HConstants.SNAPSHOT_BEFORE_DELETE, false);
+    
   }
 
   /**
@@ -1394,6 +1400,13 @@ MasterServices, Server {
         .getFileSystem(), archiveDir);
     Threads.setDaemonThreadRunning(hfileCleaner.getThread(), n + ".archivedHFileCleaner");
 
+    if (snapshotBeforeDelete) {
+      this.snapshotForDeletedTableCleaner =
+          new SnapshotForDeletedTableCleaner(cleanerInterval, this, snapshotManager, conf);
+      Threads.setDaemonThreadRunning(snapshotForDeletedTableCleaner.getThread(),
+        n + ".snapshotForDeletedTableCleaner");
+    }
+
     // Start the health checker
     if (this.healthCheckChore != null) {
       Threads.setDaemonThreadRunning(this.healthCheckChore.getThread(), n + ".healthChecker");
@@ -1451,6 +1464,9 @@ MasterServices, Server {
     if (this.replicationZKLockCleanerChore != null) this.replicationZKLockCleanerChore.interrupt();
     if (this.replicationZKNodeCleanerChore != null) this.replicationZKNodeCleanerChore.interrupt();
     if (this.hfileCleaner != null) this.hfileCleaner.interrupt();
+    if (this.snapshotForDeletedTableCleaner != null) {
+      this.snapshotForDeletedTableCleaner.interrupt();
+    }
     if (this.quotaManager != null) this.quotaManager.stop();
 
     if (this.infoServer != null) {
@@ -2332,6 +2348,11 @@ MasterServices, Server {
     checkInitialized();
     if (cpHost != null) {
       cpHost.preDeleteTable(tableName);
+    }
+    if (snapshotBeforeDelete) {
+      LOG.info("Take snaposhot for " + tableName + " before deleting");
+      snapshotManager
+          .takeSnapshot(SnapshotDescriptionUtils.getSnapshotNameForDeletedTable(tableName));
     }
     LOG.info(getClientIdAuditPrefix() + " delete " + tableName);
     this.executorService.submit(new DeleteTableHandler(tableName, this, this).prepare());

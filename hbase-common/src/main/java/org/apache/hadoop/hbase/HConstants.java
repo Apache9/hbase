@@ -1200,7 +1200,9 @@ public final class HConstants {
   public static final float DEFAULT_HEAP_OCCUPANCY_HIGH_WATERMARK = 0.98f;
 
   public static final String IGNORE_SPLITS_WHEN_CREATE_TABLE = "hbase.ignore.splits.when.create.table";
-  
+
+  public static final String SNAPSHOT_BEFORE_DELETE = "hbase.master.snapshot.before.delete";
+
   private HConstants() {
     // Can't be instantiated with this ctor.
   }

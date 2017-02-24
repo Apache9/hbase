@@ -29,11 +29,9 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.hbase.HConstants;
-import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos;
+import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.SnapshotDescription;
 import org.apache.hadoop.hbase.security.User;
-import org.apache.hadoop.hbase.snapshot.SnapshotManifestV1;
-import org.apache.hadoop.hbase.snapshot.SnapshotManifestV2;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.FSUtils;
 
@@ -69,9 +67,8 @@ import org.apache.hadoop.hbase.util.FSUtils;
  * </pre>
  *
  * Utility methods in this class are useful for getting the correct locations for different parts of
- * the snapshot, as well as moving completed snapshots into place (see
- * {@link #completeSnapshot}, and writing the
- * {@link SnapshotDescription} to the working snapshot directory.
+ * the snapshot, as well as moving completed snapshots into place (see {@link #completeSnapshot},
+ * and writing the {@link SnapshotDescription} to the working snapshot directory.
  */
 public class SnapshotDescriptionUtils {
 
@@ -91,8 +88,8 @@ public class SnapshotDescriptionUtils {
   private static final Log LOG = LogFactory.getLog(SnapshotDescriptionUtils.class);
 
   /**
-   * Version of the fs layout for new snapshot.
-   * Each version of hbase should be able to read older formats.
+   * Version of the fs layout for new snapshot. Each version of hbase should be able to read older
+   * formats.
    */
   public static final String SNAPSHOT_LAYOUT_CONF_KEY = "hbase.snapshot.format.version";
   public static final int SNAPSHOT_LAYOUT_LATEST_FORMAT = SnapshotManifestV2.DESCRIPTOR_VERSION;
@@ -109,7 +106,8 @@ public class SnapshotDescriptionUtils {
   /** Default value if no start time is specified */
   public static final long NO_SNAPSHOT_START_TIME_SPECIFIED = 0;
 
-  public static final String MASTER_SNAPSHOT_TIMEOUT_MILLIS = "hbase.snapshot.master.timeout.millis";
+  public static final String MASTER_SNAPSHOT_TIMEOUT_MILLIS =
+      "hbase.snapshot.master.timeout.millis";
 
   /** By default, wait 300 seconds for a snapshot to complete */
   public static final long DEFAULT_MAX_WAIT_TIME = 5 * 60000;
@@ -129,6 +127,9 @@ public class SnapshotDescriptionUtils {
   @Deprecated
   public static final String SNAPSHOT_TIMEOUT_MILLIS_KEY = "hbase.snapshot.master.timeoutMillis";
 
+  // prefix for snapshot of deleted table
+  public static final String SNAPSHOT_FOR_DELETED_TABLE_PREFIX = "__delete_";
+
   private SnapshotDescriptionUtils() {
     // private constructor for utility class
   }
@@ -141,7 +142,6 @@ public class SnapshotDescriptionUtils {
     return SnapshotManifestV1.DESCRIPTOR_VERSION;
   }
 
-
   /**
    * @param conf {@link Configuration} from which to check for the timeout
    * @param type type of snapshot being taken
@@ -152,9 +152,9 @@ public class SnapshotDescriptionUtils {
       long defaultMaxWaitTime) {
     String confKey;
     switch (type) {
-    case DISABLED:
-    default:
-      confKey = MASTER_SNAPSHOT_TIMEOUT_MILLIS;
+      case DISABLED:
+      default:
+        confKey = MASTER_SNAPSHOT_TIMEOUT_MILLIS;
     }
     return Math.max(conf.getLong(confKey, defaultMaxWaitTime),
       conf.getLong(SNAPSHOT_TIMEOUT_MILLIS_KEY, defaultMaxWaitTime));
@@ -177,7 +177,8 @@ public class SnapshotDescriptionUtils {
    * @param rootDir hbase root directory
    * @return the final directory for the completed snapshot
    */
-  public static Path getCompletedSnapshotDir(final SnapshotDescription snapshot, final Path rootDir) {
+  public static Path getCompletedSnapshotDir(final SnapshotDescription snapshot,
+      final Path rootDir) {
     return getCompletedSnapshotDir(snapshot.getName(), rootDir);
   }
 
@@ -254,15 +255,18 @@ public class SnapshotDescriptionUtils {
       throws IllegalArgumentException {
     if (!snapshot.hasTable()) {
       throw new IllegalArgumentException(
-        "Descriptor doesn't apply to a table, so we can't build it.");
+          "Descriptor doesn't apply to a table, so we can't build it.");
     }
-
+    if (snapshot.getName().startsWith(SNAPSHOT_FOR_DELETED_TABLE_PREFIX)) {
+      throw new IllegalArgumentException(
+          "The prefix " + SNAPSHOT_FOR_DELETED_TABLE_PREFIX + " should not be used.");
+    }
     // set the creation time, if one hasn't been set
     long time = snapshot.getCreationTime();
     if (time == SnapshotDescriptionUtils.NO_SNAPSHOT_START_TIME_SPECIFIED) {
       time = EnvironmentEdgeManager.currentTimeMillis();
-      LOG.debug("Creation time not specified, setting to:" + time + " (current time:"
-          + EnvironmentEdgeManager.currentTimeMillis() + ").");
+      LOG.debug("Creation time not specified, setting to:" + time + " (current time:" +
+          EnvironmentEdgeManager.currentTimeMillis() + ").");
       SnapshotDescription.Builder builder = snapshot.toBuilder();
       builder.setCreationTime(time);
       snapshot = builder.build();
@@ -280,8 +284,8 @@ public class SnapshotDescriptionUtils {
    */
   public static void writeSnapshotInfo(SnapshotDescription snapshot, Path workingDir, FileSystem fs)
       throws IOException {
-    FsPermission perms = FSUtils.getFilePermissions(fs, fs.getConf(),
-      HConstants.DATA_FILE_UMASK_KEY);
+    FsPermission perms =
+        FSUtils.getFilePermissions(fs, fs.getConf(), HConstants.DATA_FILE_UMASK_KEY);
     Path snapshotInfo = new Path(workingDir, SnapshotDescriptionUtils.SNAPSHOTINFO_FILE);
     try {
       FSDataOutputStream out = FSUtils.create(fs, snapshotInfo, perms, true);
@@ -301,12 +305,12 @@ public class SnapshotDescriptionUtils {
   }
 
   /**
-   * Read in the {@link org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.SnapshotDescription} stored for the snapshot in the passed directory
+   * Read in the {@link org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.SnapshotDescription}
+   * stored for the snapshot in the passed directory
    * @param fs filesystem where the snapshot was taken
    * @param snapshotDir directory where the snapshot was stored
    * @return the stored snapshot description
-   * @throws CorruptedSnapshotException if the
-   * snapshot cannot be read
+   * @throws CorruptedSnapshotException if the snapshot cannot be read
    */
   public static SnapshotDescription readSnapshotInfo(FileSystem fs, Path snapshotDir)
       throws CorruptedSnapshotException {
@@ -332,18 +336,18 @@ public class SnapshotDescriptionUtils {
    * @param rootdir root directory of the hbase installation
    * @param workingDir directory where the in progress snapshot was built
    * @param fs {@link FileSystem} where the snapshot was built
-   * @throws org.apache.hadoop.hbase.snapshot.SnapshotCreationException if the
-   * snapshot could not be moved
+   * @throws org.apache.hadoop.hbase.snapshot.SnapshotCreationException if the snapshot could not be
+   *           moved
    * @throws IOException the filesystem could not be reached
    */
   public static void completeSnapshot(SnapshotDescription snapshot, Path rootdir, Path workingDir,
       FileSystem fs) throws SnapshotCreationException, IOException {
     Path finishedDir = getCompletedSnapshotDir(snapshot, rootdir);
-    LOG.debug("Snapshot is done, just moving the snapshot from " + workingDir + " to "
-        + finishedDir);
+    LOG.debug(
+      "Snapshot is done, just moving the snapshot from " + workingDir + " to " + finishedDir);
     if (!fs.rename(workingDir, finishedDir)) {
-      throw new SnapshotCreationException("Failed to move working directory(" + workingDir
-          + ") to completed directory(" + finishedDir + ").", snapshot);
+      throw new SnapshotCreationException("Failed to move working directory(" + workingDir +
+          ") to completed directory(" + finishedDir + ").", snapshot);
     }
   }
 
@@ -356,8 +360,21 @@ public class SnapshotDescriptionUtils {
   public static boolean isSnapshotOwner(final SnapshotDescription snapshot, final User user) {
     if (user == null) return false;
     if (!snapshot.hasOwner()) return false;
-    
+
     if (snapshot.getOwner().equals(user.getName())) return true;
     return false;
+  }
+
+  public static SnapshotDescription getSnapshotNameForDeletedTable(TableName tableName) {
+    long time = EnvironmentEdgeManager.currentTimeMillis();
+    String snapshotName = SNAPSHOT_FOR_DELETED_TABLE_PREFIX + tableName.getNamespaceAsString() +
+        "_" + tableName.getQualifierAsString() + "_" + time;
+    return SnapshotDescription.newBuilder().setTable(tableName.getNameAsString())
+        .setName(snapshotName).setType(SnapshotDescription.Type.DISABLED).setCreationTime(time)
+        .build();
+  }
+
+  public static boolean isSnapshotForDeletedTable(SnapshotDescription snapshot) {
+    return snapshot.getName().startsWith(SNAPSHOT_FOR_DELETED_TABLE_PREFIX);
   }
 }
