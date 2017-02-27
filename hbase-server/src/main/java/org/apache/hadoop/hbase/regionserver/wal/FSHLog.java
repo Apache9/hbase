@@ -405,8 +405,7 @@ class FSHLog implements HLog, Syncable {
       }
     }
 
-    this.blocksize = this.conf.getLong("hbase.regionserver.hlog.blocksize",
-        FSUtils.getDefaultBlockSize(this.fs, this.dir));
+    this.blocksize = this.conf.getLong("hbase.regionserver.hlog.blocksize", 256 * 1024 * 1024);
     // Roll at 95% of block size.
     float multi = conf.getFloat("hbase.regionserver.logroll.multiplier", 0.95f);
     this.logrollsize = (long) (this.blocksize * multi);
