@@ -60,7 +60,11 @@ module Hbase
       end
       security_admin.grant(user,"RXCA", @test_name)
       security_admin.user_permission(@test_name) do |user, permission|
-         assert_no_match(eval("/WRITE/"), permission.to_s)
+         assert_match(eval("/WRITE/"), permission.to_s)
+         assert_match(eval("/READ/"), permission.to_s)
+         assert_match(eval("/CREATE/"), permission.to_s)
+         assert_match(eval("/EXEC/"), permission.to_s)
+         assert_match(eval("/ADMIN/"), permission.to_s)
       end
     end
   end
