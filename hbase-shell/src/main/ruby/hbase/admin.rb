@@ -25,6 +25,7 @@ java_import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos::SnapshotDesc
 java_import org.apache.hadoop.hbase.util.Bytes
 java_import org.apache.hadoop.hbase.util.Pair
 java_import org.apache.hadoop.hbase.util.RegionSplitter
+java_import com.xiaomi.infra.galaxy.sds.core.schema.TableSchema
 
 # Wrapper for org.apache.hadoop.hbase.client.HBaseAdmin
 
@@ -296,6 +297,13 @@ module Hbase
             htd.setDurability(org.apache.hadoop.hbase.client.Durability.valueOf("ASYNC_WAL"))
           else
             htd.setDurability(org.apache.hadoop.hbase.client.Durability.valueOf("SYNC_WAL"))
+          end
+        end
+        if arg.has_key?(CONFIG)
+          raise(ArgumentError, "#{CONFIG} must be a Hash type") unless arg[CONFIG].kind_of?(Hash)
+          for k, v in arg[CONFIG] do
+            v = v.to_s unless v.nil?
+            htd.setValue(k,v)
           end
         end
         htd.setDurability(org.apache.hadoop.hbase.client.Durability.valueOf(arg.delete(DURABILITY))) if arg[DURABILITY]
@@ -836,6 +844,14 @@ module Hbase
       arg.each_key do |unknown_key|
         puts("Unknown argument ignored for column family %s: %s" % [name, unknown_key])
       end
+
+      if arg[CONFIG]                                                                                          
+        raise(ArgumentError, "#{CONFIG} must be a Hash type") unless arg.kind_of?(Hash)
+        for k,v in arg[CONFIG]                                                                                
+          v = v.to_s unless v.nil?                                                                            
+          family.setValue(k, v)                                                                               
+        end                                                                                                   
+      end 
       
       return family
     end
@@ -1040,6 +1056,79 @@ module Hbase
     # stop throttle by quota
     def stop_throttle()
       @admin.switchThrottle(org.apache.hadoop.hbase.quotas.ThrottleState.valueOf("OFF"))
+    end
+
+    #----------------------------------------------------------------------------------------------
+    # Creates a Galaxy SDS table
+    def galaxy_create(schema_file, slave = nil)
+      # Fail if schema file does not exist
+      raise(ArgumentError, "Schema file does not exist") unless File.exist?(schema_file)
+
+      schema_json = org.apache.commons.io.IOUtils.toString(java.io.FileReader.new(schema_file))
+      table_schema = com.xiaomi.infra.galaxy.sds.core.schema.TableSchema.fromJson(schema_json)
+      table_schema.setIsSlave(slave) unless slave == nil
+      htd = table_schema.toHTableDescriptor()
+      splits = com.xiaomi.infra.galaxy.sds.core.model.helper.RowkeyHelper.rowkeySplits(
+          table_schema.getPreSplits())
+      @admin.createTable(htd, splits)
+    end
+
+    #----------------------------------------------------------------------------------------------
+    # Returns Galaxy SDS table's structure description
+    def galaxy_describe(table_name, schema_file)
+      # Table name should be a string
+      raise(ArgumentError, "Table name must be of type String") unless table_name.kind_of?(String)
+
+      # Table should exist
+      raise(ArgumentError, "Can't find a table: #{table_name}") unless exists?(table_name)
+
+      # Fail if schema file path does not exist
+      if schema_file != nil
+        raise(ArgumentError, "Schema file path does not exist") unless File.exist?(File.dirname(schema_file))
+      end
+
+      htd = @admin.getTableDescriptor(table_name.to_java_bytes)
+      table_schema = com.xiaomi.infra.galaxy.sds.core.schema.TableSchema.fromHTableDescriptor(htd)
+      json_string = table_schema.toJson(true)
+      if schema_file != nil
+        begin
+          file_handle = File.new(schema_file, "w")
+          file_handle.puts json_string
+        rescue
+          raise "Failed to write #{schema_file}"
+        ensure
+          file_handle.close
+        end
+      else
+        puts "table #{table_name} schema is:", json_string
+      end
+    end
+
+    #----------------------------------------------------------------------------------------------
+    # Change Galaxy SDS table schema
+    def galaxy_alter(table_name, schema_file, wait = true, slave = nil)
+      # Table name should be a string
+      raise(ArgumentError, "Table name must be of type String") unless table_name.kind_of?(String)
+
+      # Table should exist
+      raise(ArgumentError, "Can't find a table: #{table_name}") unless exists?(table_name)
+
+      # Fail if schema file does not exist
+      raise(ArgumentError, "Schema file does not exist") unless File.exist?(schema_file)
+
+      schema_json = org.apache.commons.io.IOUtils.toString(java.io.FileReader.new(schema_file));
+      table_schema = com.xiaomi.infra.galaxy.sds.core.schema.TableSchema.fromJson(schema_json);
+      table_schema.setIsSlave(slave) unless slave == nil;
+      htd = table_schema.toHTableDescriptor();
+
+      # Table name should not be altered
+      raise(ArgumentError, "Table name could not be altered") unless table_name.eql?(htd.getNameAsString())
+
+      @admin.modifyTable(table_name.to_java_bytes, htd)
+      if wait == true
+        puts "Updating table with the new schema..."
+        alter_status(table_name)
+      end
     end
 
   end

@@ -264,6 +264,13 @@ Shell.load_command_group(
     alter_status
     alter_async
     get_table
+    galaxy_describe
+    galaxy_create
+    galaxy_create_slave
+    galaxy_alter
+    galaxy_alter_slave
+    galaxy_alter_async
+    galaxy_alter_async_slave
   ],
   :aliases => {
     'describe' => ['desc']
