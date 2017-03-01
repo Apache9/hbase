@@ -42,12 +42,10 @@ public class BlockingRpcCallback<R> implements RpcCallback<R> {
    * @param parameter the response object or {@code null} if an error occurred
    */
   @Override
-  public void run(R parameter) {
-    synchronized (this) {
-      result = parameter;
-      resultSet = true;
-      this.notify();
-    }
+  public synchronized void run(R parameter) {
+    result = parameter;
+    resultSet = true;
+    this.notifyAll();
   }
 
   /**

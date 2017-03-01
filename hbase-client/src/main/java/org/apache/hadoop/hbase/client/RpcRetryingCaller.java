@@ -111,7 +111,11 @@ public class RpcRetryingCaller<T> {
         if (tries > startLogErrorsCnt) {
           LOG.info("Call exception, tries=" + tries + ", retries=" + retries + ", retryTime="
               + (EnvironmentEdgeManager.currentTimeMillis() - globalStartTime) + "ms, msg="
-              + callable.getExceptionMessageAdditionalDetail());
+              + callable.getExceptionMessageAdditionalDetail(), t);
+        } else if (LOG.isDebugEnabled()) {
+          LOG.debug("Call exception, tries=" + tries + ", retries=" + retries + ", retryTime="
+              + (EnvironmentEdgeManager.currentTimeMillis() - globalStartTime) + "ms, msg="
+              + callable.getExceptionMessageAdditionalDetail(), t);
         }
         // translateException throws exception when should not retry: i.e. when request is bad.
         t = translateException(t);
