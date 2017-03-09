@@ -37,6 +37,7 @@ public class ScanInfo {
   private KeepDeletedCells keepDeletedCells;
   private long timeToPurgeDeletes;
   private KVComparator comparator;
+  private boolean mvccSensitive;
 
   public static final long FIXED_OVERHEAD = ClassSize.align(ClassSize.OBJECT
       + (2 * ClassSize.REFERENCE) + (2 * Bytes.SIZEOF_INT)
@@ -52,7 +53,13 @@ public class ScanInfo {
   public ScanInfo(final HColumnDescriptor family, final long ttl, final long timeToPurgeDeletes,
       final KVComparator comparator) {
     this(family.getName(), family.getMinVersions(), family.getMaxVersions(), ttl, family
-        .getKeepDeletedCells(), timeToPurgeDeletes, comparator);
+        .getKeepDeletedCells(), timeToPurgeDeletes, comparator, family.isMvccSensitive());
+  }
+
+  public ScanInfo(final byte[] family, final int minVersions, final int maxVersions,
+      final long ttl, final KeepDeletedCells keepDeletedCells, final long timeToPurgeDeletes,
+      final KVComparator comparator) {
+    this(family, minVersions, maxVersions, ttl, keepDeletedCells, timeToPurgeDeletes, comparator, false);
   }
 
   /**
@@ -64,10 +71,11 @@ public class ScanInfo {
    *        be purged during a major compaction.
    * @param keepDeletedCells Store's keepDeletedCells setting
    * @param comparator The store's comparator
+   * @param mvccSensitive use mvcc-sensitive semantics of versions
    */
   public ScanInfo(final byte[] family, final int minVersions, final int maxVersions,
       final long ttl, final KeepDeletedCells keepDeletedCells, final long timeToPurgeDeletes,
-      final KVComparator comparator) {
+      final KVComparator comparator, boolean mvccSensitive) {
     this.family = family;
     this.minVersions = minVersions;
     this.maxVersions = maxVersions;
@@ -75,6 +83,7 @@ public class ScanInfo {
     this.keepDeletedCells = keepDeletedCells;
     this.timeToPurgeDeletes = timeToPurgeDeletes;
     this.comparator = comparator;
+    this.mvccSensitive = mvccSensitive;
   }
 
   public byte[] getFamily() {
@@ -103,5 +112,9 @@ public class ScanInfo {
 
   public KVComparator getComparator() {
     return comparator;
+  }
+
+  public boolean isMvccSensitive() {
+    return mvccSensitive;
   }
 }

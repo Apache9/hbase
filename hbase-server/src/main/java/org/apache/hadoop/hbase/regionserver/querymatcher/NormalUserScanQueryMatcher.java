@@ -86,9 +86,7 @@ public abstract class NormalUserScanQueryMatcher extends UserScanQueryMatcher {
   }
 
   public static NormalUserScanQueryMatcher create(Scan scan, ScanInfo scanInfo,
-      ColumnTracker columns, boolean hasNullColumn, long oldestUnexpiredTS, long now,
-      RegionCoprocessorHost regionCoprocessorHost) throws IOException {
-    DeleteTracker deletes = instantiateDeleteTracker(regionCoprocessorHost);
+      ColumnTracker columns, DeleteTracker deletes, boolean hasNullColumn, long oldestUnexpiredTS, long now) throws IOException {
     if (scan.isReversed()) {
       if (scan.includeStopRow()) {
         return new NormalUserScanQueryMatcher(scan, scanInfo, columns, hasNullColumn, deletes,

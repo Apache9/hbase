@@ -73,8 +73,8 @@ public class HFileReaderV2 extends AbstractHFileReader {
    */
   public final static int KEY_VALUE_LEN_SIZE = 2 * Bytes.SIZEOF_INT;
 
-  protected boolean includesMemstoreTS = false;
-  protected boolean decodeMemstoreTS = false;
+  protected boolean includesMemstoreTS = true;
+  protected boolean decodeMemstoreTS = true;
   protected boolean shouldIncludeMemstoreTS() {
     return includesMemstoreTS;
   }
@@ -163,15 +163,6 @@ public class HFileReaderV2 extends AbstractHFileReader {
     lastKey = fileInfo.get(FileInfo.LASTKEY);
     avgKeyLen = Bytes.toInt(fileInfo.get(FileInfo.AVG_KEY_LEN));
     avgValueLen = Bytes.toInt(fileInfo.get(FileInfo.AVG_VALUE_LEN));
-    byte [] keyValueFormatVersion =
-        fileInfo.get(HFileWriterV2.KEY_VALUE_VERSION);
-    includesMemstoreTS = keyValueFormatVersion != null &&
-        Bytes.toInt(keyValueFormatVersion) ==
-            HFileWriterV2.KEY_VALUE_VER_WITH_MEMSTORE;
-    fsBlockReaderV2.setIncludesMemstoreTS(includesMemstoreTS);
-    if (includesMemstoreTS) {
-      decodeMemstoreTS = Bytes.toLong(fileInfo.get(HFileWriterV2.MAX_MEMSTORE_TS_KEY)) > 0;
-    }
 
     // Read data block encoding algorithm name from file info.
     dataBlockEncoder = HFileDataBlockEncoderImpl.createFromFileInfo(fileInfo);
@@ -700,6 +691,7 @@ public class HFileReaderV2 extends AbstractHFileReader {
       KeyValue ret = new KeyValue(blockBuffer.array(), blockBuffer.arrayOffset()
           + blockBuffer.position(), getCellBufSize());
       if (this.reader.shouldIncludeMemstoreTS()) {
+
         ret.setMvccVersion(currMemstoreTS);
       }
       // no "conf" be passed into this, so let's compare with a magic number...

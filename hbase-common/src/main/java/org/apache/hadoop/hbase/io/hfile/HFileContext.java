@@ -126,11 +126,7 @@ public class HFileContext implements HeapSize, Cloneable {
   }
 
   public boolean isIncludesMvcc() {
-    return includesMvcc;
-  }
-
-  public void setIncludesMvcc(boolean includesMvcc) {
-    this.includesMvcc = includesMvcc;
+    return true;
   }
 
   public boolean isIncludesTags() {

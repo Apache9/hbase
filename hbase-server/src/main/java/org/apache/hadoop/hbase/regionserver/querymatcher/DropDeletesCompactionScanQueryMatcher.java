@@ -52,9 +52,9 @@ public abstract class DropDeletesCompactionScanQueryMatcher extends CompactionSc
    */
   protected final long earliestPutTs;
 
-  protected DropDeletesCompactionScanQueryMatcher(ScanInfo scanInfo, DeleteTracker deletes,
+  protected DropDeletesCompactionScanQueryMatcher(ScanInfo scanInfo, DeleteTracker deletes, ColumnTracker columns,
       long readPointToUse, long earliestPutTs, long oldestUnexpiredTS, long now) {
-    super(scanInfo, deletes, readPointToUse, oldestUnexpiredTS, now);
+    super(scanInfo, deletes, columns, readPointToUse, oldestUnexpiredTS, now);
     this.timeToPurgeDeletes = scanInfo.getTimeToPurgeDeletes();
     this.earliestPutTs = earliestPutTs;
   }

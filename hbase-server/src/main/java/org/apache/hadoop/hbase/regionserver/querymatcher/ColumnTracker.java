@@ -77,14 +77,14 @@ public interface ColumnTracker {
    * the {@link #checkColumn(byte[], int, int, byte)} method and perform all the operations in this
    * checkVersions method.
    * @param type the type of the key value (Put/Delete)
-   * @param ttl The timeToLive to enforce.
+   * @param timestamp The timestamp of the cell.
    * @param ignoreCount indicates if the KV needs to be excluded while counting (used during
    *          compactions. We only count KV's that are older than all the scanners' read points.)
    * @return the scan query matcher match code instance
    * @throws IOException in case there is an internal consistency problem caused by a data
    *           corruption.
    */
-  ScanQueryMatcher.MatchCode checkVersions(byte[] bytes, int offset, int length, long ttl,
+  ScanQueryMatcher.MatchCode checkVersions(byte[] bytes, int offset, int length, long timestamp,
       byte type, boolean ignoreCount) throws IOException;
   /**
    * Resets the Matcher

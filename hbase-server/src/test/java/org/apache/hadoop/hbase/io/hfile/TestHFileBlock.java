@@ -420,7 +420,6 @@ public class TestHFileBlock {
                 .build();
           HFileBlock.FSReaderV2 hbr = new HFileBlock.FSReaderV2(is, totalSize, meta);
           hbr.setDataBlockEncoder(dataBlockEncoder);
-          hbr.setIncludesMemstoreTS(includesMemstoreTS);
           HFileBlock blockFromHFile, blockUnpacked;
           int pos = 0;
           for (int blockId = 0; blockId < numBlocks; ++blockId) {

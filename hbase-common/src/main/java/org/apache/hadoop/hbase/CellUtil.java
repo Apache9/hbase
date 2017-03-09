@@ -343,6 +343,11 @@ public final class CellUtil {
         right.getQualifierArray(), right.getQualifierOffset(), right.getQualifierLength());
   }
 
+  public static boolean matchingQualifier(final Cell left, final byte[] array, final int offsite, final int length) {
+    return Bytes.equals(left.getQualifierArray(), left.getQualifierOffset(), left.getQualifierLength(),
+        array, offsite, length);
+  }
+
   public static boolean matchingQualifier(final Cell left, final byte[] buf) {
     return Bytes.equals(left.getQualifierArray(), left.getQualifierOffset(), left.getQualifierLength(),
         buf, 0, buf.length);

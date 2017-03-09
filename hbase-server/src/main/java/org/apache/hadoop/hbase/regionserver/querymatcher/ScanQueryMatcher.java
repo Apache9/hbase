@@ -18,6 +18,7 @@
 package org.apache.hadoop.hbase.regionserver.querymatcher;
 
 import java.io.IOException;
+import java.util.NavigableSet;
 
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.HConstants;
@@ -25,11 +26,15 @@ import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.KeyValue.KVComparator;
 import org.apache.hadoop.hbase.KeyValue.Type;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
+import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.regionserver.HStore;
 import org.apache.hadoop.hbase.regionserver.RegionCoprocessorHost;
 import org.apache.hadoop.hbase.regionserver.ScanInfo;
 import org.apache.hadoop.hbase.regionserver.querymatcher.DeleteTracker.DeleteResult;
+import org.apache.hadoop.hbase.security.visibility.VisibilityCombinedTracker;
+import org.apache.hadoop.hbase.security.visibility.VisibilityScanDeleteTracker;
+import org.apache.hadoop.hbase.util.Pair;
 
 /**
  * A query matcher that is specifically designed for the scan case.
@@ -172,17 +177,22 @@ public abstract class ScanQueryMatcher {
   }
 
   protected final MatchCode checkDeleted(DeleteTracker deletes, Cell cell) {
-    if (deletes.isEmpty()) {
+    if (deletes.isEmpty() && !(deletes instanceof CombinedTracker)) {
       return null;
     }
+    // MvccSensitiveTracker always need check all cells to save some infos.
     DeleteResult deleteResult = deletes.isDeleted(cell);
     switch (deleteResult) {
       case FAMILY_DELETED:
       case COLUMN_DELETED:
-        return columns.getNextRowOrNextColumn(cell.getQualifierArray(), cell.getQualifierOffset(),
-          cell.getQualifierLength());
+        if (!(deletes instanceof CombinedTracker)) {
+          // MvccSensitive can not seek to next because the Put with lower ts may have higher mvcc
+          return columns.getNextRowOrNextColumn(cell.getQualifierArray(), cell.getQualifierOffset(),
+              cell.getQualifierLength());
+        }
       case VERSION_DELETED:
       case FAMILY_VERSION_DELETED:
+      case VERSION_MASKED:
         return MatchCode.SKIP;
       case NOT_DELETED:
         return null;
@@ -328,13 +338,45 @@ public abstract class ScanQueryMatcher {
    */
   public abstract Cell getNextKeyHint(Cell cell) throws IOException;
 
-  protected static DeleteTracker instantiateDeleteTracker(RegionCoprocessorHost host)
+
+  protected static Pair<DeleteTracker, ColumnTracker> getTrackers(RegionCoprocessorHost host,
+      NavigableSet<byte[]> columns, ScanInfo scanInfo, long oldestUnexpiredTS, Scan userScan)
       throws IOException {
-    DeleteTracker tracker = new ScanDeleteTracker();
-    if (host != null) {
-      tracker = host.postInstantiateDeleteTracker(tracker);
+    int resultMaxVersion = scanInfo.getMaxVersions();
+    if (userScan != null) {
+      if (userScan.isRaw()) {
+        resultMaxVersion = userScan.getMaxVersions();
+      } else {
+        resultMaxVersion = Math.min(userScan.getMaxVersions(), scanInfo.getMaxVersions());
+      }
     }
-    return tracker;
+    DeleteTracker deleteTracker;
+    if (scanInfo.isMvccSensitive() && (userScan == null || !userScan.isRaw())) {
+      deleteTracker = new CombinedTracker(columns, scanInfo.getMinVersions(),
+          scanInfo.getMaxVersions(), resultMaxVersion, oldestUnexpiredTS);
+    } else {
+      deleteTracker = new ScanDeleteTracker();
+    }
+    if (host != null) {
+      deleteTracker = host.postInstantiateDeleteTracker(deleteTracker);
+      if (deleteTracker instanceof VisibilityScanDeleteTracker && scanInfo.isMvccSensitive()) {
+        deleteTracker = new VisibilityCombinedTracker(columns, scanInfo.getMinVersions(),
+            scanInfo.getMaxVersions(), resultMaxVersion, oldestUnexpiredTS);
+      }
+    }
+
+    ColumnTracker columnTracker;
+
+    if (deleteTracker instanceof CombinedTracker) {
+      columnTracker = (CombinedTracker) deleteTracker;
+    } else if (columns == null || columns.size() == 0) {
+      columnTracker = new ScanWildcardColumnTracker(scanInfo.getMinVersions(), resultMaxVersion,
+          oldestUnexpiredTS);
+    } else {
+      columnTracker = new ExplicitColumnTracker(columns, scanInfo.getMinVersions(),
+          resultMaxVersion, oldestUnexpiredTS);
+    }
+    return new Pair<>(deleteTracker, columnTracker);
   }
 
   // Used only for testing purposes

@@ -215,6 +215,9 @@ public class HColumnDescriptor implements WritableComparable<HColumnDescriptor> 
    */
   public static final boolean DEFAULT_PREFETCH_BLOCKS_ON_OPEN = false;
 
+  public static final String MVCC_SENSITIVE = "MVCC_SENSITIVE";
+  public static final boolean DEFAULT_MVCC_SENSITIVE = false;
+
   private final static Map<String, String> DEFAULT_VALUES
     = new HashMap<String, String>();
   private final static Set<ImmutableBytesWritable> RESERVED_KEYWORDS
@@ -236,6 +239,7 @@ public class HColumnDescriptor implements WritableComparable<HColumnDescriptor> 
       DEFAULT_VALUES.put(CACHE_BLOOMS_ON_WRITE, String.valueOf(DEFAULT_CACHE_BLOOMS_ON_WRITE));
       DEFAULT_VALUES.put(EVICT_BLOCKS_ON_CLOSE, String.valueOf(DEFAULT_EVICT_BLOCKS_ON_CLOSE));
       DEFAULT_VALUES.put(PREFETCH_BLOCKS_ON_OPEN, String.valueOf(DEFAULT_PREFETCH_BLOCKS_ON_OPEN));
+      DEFAULT_VALUES.put(MVCC_SENSITIVE, String.valueOf(DEFAULT_MVCC_SENSITIVE));
       for (String s : DEFAULT_VALUES.keySet()) {
         RESERVED_KEYWORDS.add(new ImmutableBytesWritable(Bytes.toBytes(s)));
       }
@@ -784,6 +788,23 @@ public class HColumnDescriptor implements WritableComparable<HColumnDescriptor> 
    */
   public HColumnDescriptor setKeepDeletedCells(KeepDeletedCells keepDeletedCells) {
     return setValue(KEEP_DELETED_CELLS, keepDeletedCells.toString());
+  }
+
+  /**
+   * By default, HBase only consider timestamp in versions. So a previous Delete with higher ts will
+   * mask a later Put with lower ts. Set this to true to open MVCC_SENSITIVE semantics of versions.
+   * We also consider mvcc in versions. See HBASE-15968 for details.
+   */
+  public boolean isMvccSensitive() {
+    String value = getValue(MVCC_SENSITIVE);
+    if (value != null) {
+      return Boolean.parseBoolean(value);
+    }
+    return DEFAULT_MVCC_SENSITIVE;
+  }
+
+  public HColumnDescriptor setMvccSensitive(boolean sensitive) {
+    return setValue(MVCC_SENSITIVE, Boolean.toString(sensitive));
   }
 
   /**

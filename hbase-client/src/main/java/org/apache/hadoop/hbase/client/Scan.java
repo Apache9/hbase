@@ -967,8 +967,9 @@ public class Scan extends Query {
    * It is an error to specify any column when "raw" is set.
    * @param raw True/False to enable/disable "raw" mode.
    */
-  public void setRaw(boolean raw) {
+  public Scan setRaw(boolean raw) {
     setAttribute(RAW_ATTR, Bytes.toBytes(raw));
+    return this;
   }
 
   /**
