@@ -240,8 +240,10 @@ public class HBaseTestingUtility extends HBaseCommonTestingUtility {
     // a hbase checksum verification failure will cause unit tests to fail
     ChecksumUtil.generateExceptionForChecksumFailureForTest(true);
 
-    // In case test is stopped by System.exit
-    conf.setLong("hbase.exit.timeout.ms", 3600000);
+    if (conf != null) {
+      // In case test is stopped by System.exit
+      conf.setLong("hbase.exit.timeout.ms", 3600000);
+    }
   }
 
   /**
