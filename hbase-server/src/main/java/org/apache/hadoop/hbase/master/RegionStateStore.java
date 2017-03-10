@@ -31,6 +31,7 @@ import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.ServerName;
+import org.apache.hadoop.hbase.TableDescriptors;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.catalog.CatalogTracker;
 import org.apache.hadoop.hbase.catalog.MetaEditor;
@@ -194,10 +195,10 @@ public class RegionStateStore {
         Bytes.toBytes(state.name()));
       LOG.info(info);
 
-      HTableDescriptor descriptor = server.getTableDescriptors().get(hri.getTable());
+      TableDescriptors descriptors = server.getTableDescriptors();
       boolean serial = false;
-      if (descriptor != null) {
-        serial = server.getTableDescriptors().get(hri.getTable()).hasSerialReplicationScope();
+      if (descriptors != null) {
+        serial = descriptors.get(hri.getTable()).hasSerialReplicationScope();
       }
       boolean shouldPutBarrier = serial && state == State.OPEN;
       // Persist the state change to meta
