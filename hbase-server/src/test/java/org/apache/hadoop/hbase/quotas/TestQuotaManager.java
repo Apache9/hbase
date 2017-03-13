@@ -100,6 +100,7 @@ public class TestQuotaManager {
     admin = TEST_UTIL.getHBaseAdmin();
     userName = User.getCurrent().getShortName();
 
+    // only set read quota for user
     admin.setQuota(QuotaSettingsFactory.throttleNamespace(TABLE_NAME.getNamespaceAsString(),
       ThrottleType.READ_NUMBER, 5, TimeUnit.SECONDS));
     admin.setQuota(QuotaSettingsFactory.throttleUser(userName, TABLE_NAME,
@@ -116,7 +117,7 @@ public class TestQuotaManager {
     quotaManager.getQuotaCache().triggerCacheRefresh();
     Thread.sleep(1000);
 
-    // allow exceed to 10
+    // read quota allow exceed to 10
     for (int i = 0; i < 10; i++) {
       quotaManager.checkQuota(region, OperationType.GET);
     }
@@ -125,6 +126,19 @@ public class TestQuotaManager {
       @Override
       public Void call() throws Exception {
         quotaManager.checkQuota(region, OperationType.GET);
+        return null;
+      }
+    }, ThrottlingException.class);
+
+    // write quota allow exceed to 10
+    for (int i = 0; i < 10; i++) {
+      quotaManager.checkQuota(region, OperationType.MUTATE);
+    }
+
+    runWithExpectedException(new Callable<Void>() {
+      @Override
+      public Void call() throws Exception {
+        quotaManager.checkQuota(region, OperationType.MUTATE);
         return null;
       }
     }, ThrottlingException.class);
@@ -142,7 +156,7 @@ public class TestQuotaManager {
     quotaManager.getQuotaCache().triggerCacheRefresh();
     Thread.sleep(1000);
 
-    // will throttle by rs quota, allow exceed to 10
+    // will throttle by rs read quota, allow exceed to 10
     for (int i = 0; i < 10; i++) {
       quotaManager.checkQuota(region, OperationType.GET);
     }
@@ -151,6 +165,19 @@ public class TestQuotaManager {
       @Override
       public Void call() throws Exception {
         quotaManager.checkQuota(region, OperationType.GET);
+        return null;
+      }
+    }, ThrottlingException.class);
+
+    // write quota allow exceed to 10
+    for (int i = 0; i < 10; i++) {
+      quotaManager.checkQuota(region, OperationType.MUTATE);
+    }
+
+    runWithExpectedException(new Callable<Void>() {
+      @Override
+      public Void call() throws Exception {
+        quotaManager.checkQuota(region, OperationType.MUTATE);
         return null;
       }
     }, ThrottlingException.class);

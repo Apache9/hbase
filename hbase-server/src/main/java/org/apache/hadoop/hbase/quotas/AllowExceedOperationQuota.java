@@ -11,9 +11,6 @@
 
 package org.apache.hadoop.hbase.quotas;
 
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.commons.logging.Log;
@@ -22,8 +19,6 @@ import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.hbase.client.Mutation;
 import org.apache.hadoop.hbase.client.Result;
-import org.apache.hadoop.hbase.quotas.OperationQuota.AvgOperationSize;
-import org.apache.hadoop.hbase.quotas.OperationQuota.OperationType;
 
 @InterfaceAudience.Private
 @InterfaceStability.Evolving
@@ -43,17 +38,36 @@ public class AllowExceedOperationQuota implements OperationQuota {
     int readNeed = numReads + numScans;
     int writeNeed = numWrites;
     boolean userQuotaExceed = false;
+
+    // Step1. Check user's quota
     try {
       userLimiter.checkQuotaByRequestUnit(writeNeed, readNeed);
       userLimiter.grabQuotaByRequestUnit(writeNeed, readNeed);
     } catch (ThrottlingException e) {
+      // Support soft limit, so it doesn't throw the ThrottlingException directly
       userQuotaExceed = true;
     }
+
+    // Step2. Check regionserver's quota.
     try {
       regionServerLimiter.checkQuotaByRequestUnit(writeNeed, readNeed);
       regionServerLimiter.grabQuotaByRequestUnit(writeNeed, readNeed);
     } catch (ThrottlingException e) {
-      if (userQuotaExceed || userLimiter.isBypass()) {
+      /*
+       * Catch ThrottlingException means regionserver didn't have quota to run the requests.
+       * The regionserver will throttle two type requests.
+       * 1. User didn't have available quota too.
+       * 2. User didn't config read/write quota.
+       *
+       * TODO: Divide ThrottlingException to ReadThrottlingException and WriteThrottlingException.
+       * Now for read and write request, we don't know whether rs doesn't has read quota or
+       * doesn't has write quota. So there is a case which need to fix.
+       * * The request is read and write request.
+       * * User only config read quota and have available read quota to run the requests.
+       * * Regionserver didn't have available read quota to run the requests.
+       * * It should not throw ThrottlingException. But now isBypass() will return true.
+       */
+      if (userQuotaExceed || userLimiter.isBypass(writeNeed, readNeed)) {
         throw e;
       }
       regionServerLimiter.grabQuotaByRequestUnit(writeNeed, readNeed);
