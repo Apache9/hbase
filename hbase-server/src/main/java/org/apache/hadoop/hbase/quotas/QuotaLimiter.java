@@ -83,6 +83,13 @@ public interface QuotaLimiter {
   /** @return true if the limiter is a noop */
   boolean isBypass();
 
+  /**
+   * @param writeNum the number of write request unit
+   * @param readNum the number of read request unit
+   * @return true if the limiter is a noop
+   */
+  boolean isBypass(long writeNum, long readNum);
+
     /** @return the number of bytes available to read to avoid exceeding the quota */
   long getReadAvailable();
 

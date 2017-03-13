@@ -128,6 +128,9 @@ public abstract class RateLimiter {
     }
   }
 
+  /**
+   * @return true if no limit
+   */
   public synchronized boolean isBypass() {
     return limit == Long.MAX_VALUE;
   }

@@ -133,4 +133,9 @@ class NoopQuotaLimiter implements QuotaLimiter {
   public void setBypassGlobals(boolean bypassGlobals) {
     // no-op
   }
+
+  @Override
+  public boolean isBypass(long writeNum, long readNum) {
+    return true;
+  }
 }

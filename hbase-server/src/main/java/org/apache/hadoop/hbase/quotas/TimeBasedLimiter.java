@@ -222,6 +222,22 @@ public class TimeBasedLimiter implements QuotaLimiter {
     return false;
   }
 
+  /**
+   * For write request, return true if no write limit.
+   * For read request, return true if no read limit.
+   * For read and write request, return true if no write limit or no read limit.
+   */
+  @Override
+  public boolean isBypass(long writeNum, long readNum) {
+    if (writeNum > 0 && readNum == 0) {
+      return writeReqsLimiter.isBypass();
+    }
+    if (writeNum == 0 && readNum > 0) {
+      return readReqsLimiter.isBypass();
+    }
+    return writeReqsLimiter.isBypass() || readReqsLimiter.isBypass();
+  }
+
   @Override
   public long getWriteAvailable() {
     return writeSizeLimiter.getAvailable();
