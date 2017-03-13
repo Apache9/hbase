@@ -672,7 +672,7 @@ public class ThriftServerRunner implements Runnable {
     @Override
     public boolean isTableEnabled(ByteBuffer tableName) throws IOError {
       try {
-        return HTable.isTableEnabled(this.conf, getBytes(tableName));
+        return getHBaseAdmin().isTableEnabled(getBytes(tableName));
       } catch (IOException e) {
         LOG.warn(e.getMessage(), e);
         throw new IOError(e.getMessage());

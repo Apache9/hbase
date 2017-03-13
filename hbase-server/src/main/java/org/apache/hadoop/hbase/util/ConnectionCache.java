@@ -142,6 +142,10 @@ public class ConnectionCache {
     return connInfo.connection.getTable(tableName);
   }
 
+  public HTableInterface getTable(byte[] tableName) throws IOException {
+    return getTable(Bytes.toString(tableName));
+  }
+
   /**
    * Get the cached connection for the current user.
    * If none or timed out, create a new one.
