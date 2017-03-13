@@ -30,41 +30,28 @@ import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.client.HTableFactory;
 import org.apache.hadoop.hbase.client.HTableInterface;
-import org.apache.hadoop.hbase.client.HTablePool;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.security.UserProvider;
 import org.apache.hadoop.hbase.thrift.ThriftMetrics;
 import org.apache.hadoop.hbase.thrift2.generated.*;
-import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.ConnectionCache;
 import org.apache.thrift.TException;
-
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
 
 /**
  * This class is a glue object that connects Thrift RPC calls to the HBase client API primarily
  * defined in the HTableInterface.
  */
 @InterfaceAudience.Private
-@SuppressWarnings("deprecation")
 public class ThriftHBaseServiceHandler implements THBaseService.Iface {
 
-  // TODO: Size of pool configuraple
-  private final Cache<String, HTablePool> htablePools;
-  private final Callable<? extends HTablePool> htablePoolCreater;
   private static final Log LOG = LogFactory.getLog(ThriftHBaseServiceHandler.class);
 
   // nextScannerId and scannerMap are used to manage scanner state
@@ -74,8 +61,6 @@ public class ThriftHBaseServiceHandler implements THBaseService.Iface {
       new ConcurrentHashMap<Integer, ResultScanner>();
 
   private final ConnectionCache connectionCache;
-  private final HTableFactory tableFactory;
-  private final int maxPoolSize;
 
   static final String CLEANUP_INTERVAL = "hbase.thrift.connection.cleanup-interval";
   static final String MAX_IDLETIME = "hbase.thrift.connection.max-idletime";
@@ -122,33 +107,12 @@ public class ThriftHBaseServiceHandler implements THBaseService.Iface {
     int maxIdleTime = conf.getInt(MAX_IDLETIME, 10 * 60 * 1000);
     connectionCache = new ConnectionCache(
       conf, userProvider, cleanInterval, maxIdleTime);
-    tableFactory = new HTableFactory() {
-      @Override
-      public HTableInterface createHTableInterface(Configuration config,
-          byte[] tableName) {
-        try {
-          return connectionCache.getTable(Bytes.toString(tableName));
-        } catch (IOException ioe) {
-          throw new RuntimeException(ioe);
-        }
-      }
-    };
-    htablePools = CacheBuilder.newBuilder().expireAfterAccess(
-      maxIdleTime, TimeUnit.MILLISECONDS).softValues().concurrencyLevel(4).build();
-    maxPoolSize = conf.getInt("hbase.thrift.htablepool.size.max", 1000);
-    htablePoolCreater = new Callable<HTablePool>() {
-      public HTablePool call() {
-        return new HTablePool(conf, maxPoolSize, tableFactory);
-      }
-    };
   }
 
   private HTableInterface getTable(ByteBuffer tableName) {
-    String currentUser = connectionCache.getEffectiveUser();
     try {
-      HTablePool htablePool = htablePools.get(currentUser, htablePoolCreater);
-      return htablePool.getTable(byteBufferToByteArray(tableName));
-    } catch (ExecutionException ee) {
+      return connectionCache.getTable(byteBufferToByteArray(tableName));
+    } catch (IOException ee) {
       throw new RuntimeException(ee);
     }
   }
