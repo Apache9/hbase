@@ -58,6 +58,7 @@ import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.KeyValue;
+import org.apache.hadoop.hbase.client.RetriesExhaustedException;
 import org.apache.hadoop.hbase.testclassification.LargeTests;
 import org.apache.hadoop.hbase.MiniHBaseCluster;
 import org.apache.hadoop.hbase.NamespaceDescriptor;
@@ -908,18 +909,10 @@ public class TestDistributedLogSplitting {
       ht.put(put);
       ht.close();
     } catch (IOException ioe) {
-      Assert.assertTrue(ioe instanceof RetriesExhaustedWithDetailsException);
-      RetriesExhaustedWithDetailsException re = (RetriesExhaustedWithDetailsException) ioe;
-      boolean foundRegionInRecoveryException = false;
-      for (Throwable t : re.getCauses()) {
-        if (t instanceof RegionInRecoveryException) {
-          foundRegionInRecoveryException = true;
-          break;
-        }
-      }
-      Assert.assertTrue(
-        "No RegionInRecoveryException. Following exceptions returned=" + re.getCauses(),
-        foundRegionInRecoveryException);
+      Assert.assertTrue(ioe instanceof RetriesExhaustedException);
+      boolean foundRegionInRecoveryException = ioe.toString().contains("RegionInRecoveryException");
+
+      Assert.assertTrue(foundRegionInRecoveryException);
     }
 
     zkw.close();
