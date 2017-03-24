@@ -409,8 +409,8 @@ class FSHLog implements HLog, Syncable {
     // Roll at 95% of block size.
     float multi = conf.getFloat("hbase.regionserver.logroll.multiplier", 0.95f);
     this.logrollsize = (long) (this.blocksize * multi);
-    this.abortWALSize = (long) (this.logrollsize * conf.getFloat(
-      HBASE_REGIONSERVER_ABORT_WAL_MULTIPLIER, DEFAULT_ABORT_WAL_MULTIPLIER));
+    this.abortWALSize = Math.max((long) (this.logrollsize * conf.getFloat(
+      HBASE_REGIONSERVER_ABORT_WAL_MULTIPLIER, DEFAULT_ABORT_WAL_MULTIPLIER)), 256 * 1024 * 1024);
 
     this.maxLogs = conf.getInt("hbase.regionserver.maxlogs", 32);
     isWALCompressionEnabled = conf.getBoolean(HConstants.ENABLE_WAL_COMPRESSION, false);
