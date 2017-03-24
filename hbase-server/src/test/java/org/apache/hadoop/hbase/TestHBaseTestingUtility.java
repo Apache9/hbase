@@ -235,7 +235,7 @@ public class TestHBaseTestingUtility {
         } else {
           // servers with no specified client port will use defaultClientPort or some other ports
           // based on defaultClientPort
-          assertEquals(clientPortListInCluster.get(i).intValue(), defaultClientPort + j);
+          assertTrue(clientPortListInCluster.get(i) >= defaultClientPort + j);
           j++;
         }
       }
