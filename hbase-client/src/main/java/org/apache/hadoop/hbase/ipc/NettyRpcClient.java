@@ -25,29 +25,18 @@ import io.netty.util.concurrent.DefaultThreadFactory;
 
 import java.io.IOException;
 import java.net.SocketAddress;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.HBaseInterfaceAudience;
+import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
-import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.Pair;
-import org.apache.hadoop.hbase.util.Threads;
 
 /**
- * Netty based rpc client.
+ * Netty client for the requests and responses.
  */
-@InterfaceAudience.Private
-public class NettyRpcClient extends AbstractRpcClient<NettyConnection> {
-
-  private static final Log LOG = LogFactory.getLog(NettyRpcClient.class);
-
-  private static final ScheduledExecutorService EXECUTOR = Executors.newScheduledThreadPool(1,
-    Threads.newDaemonThreadFactory("Idle-Rpc-Conn-Sweeper"));
+@InterfaceAudience.LimitedPrivate(HBaseInterfaceAudience.CONFIG)
+public class NettyRpcClient extends AbstractRpcClient<NettyRpcConnection> {
 
   final EventLoopGroup group;
 
@@ -55,16 +44,10 @@ public class NettyRpcClient extends AbstractRpcClient<NettyConnection> {
 
   private final boolean shutdownGroupWhenClose;
 
-  private final ScheduledFuture<?> cleanupIdleConnectionTask;
-
-  public NettyRpcClient(Configuration conf, String clusterId) {
-    this(conf, clusterId, null);
-  }
-
-  public NettyRpcClient(Configuration conf, String clusterId, SocketAddress localAddr) {
-    super(conf, clusterId, localAddr);
-    Pair<EventLoopGroup, Class<? extends Channel>> groupAndChannelClass = NettyRpcClientConfigHelper
-        .getEventLoopConfig(conf);
+  public NettyRpcClient(Configuration configuration, String clusterId, SocketAddress localAddress) {
+    super(configuration, clusterId, localAddress);
+    Pair<EventLoopGroup, Class<? extends Channel>> groupAndChannelClass =
+        NettyRpcClientConfigHelper.getEventLoopConfig(conf);
     if (groupAndChannelClass == null) {
       // Use our own EventLoopGroup.
       this.group = new NioEventLoopGroup(0,
@@ -76,39 +59,20 @@ public class NettyRpcClient extends AbstractRpcClient<NettyConnection> {
       this.channelClass = groupAndChannelClass.getSecond();
       this.shutdownGroupWhenClose = false;
     }
-    cleanupIdleConnectionTask = EXECUTOR.scheduleAtFixedRate(new Runnable() {
-
-      @Override
-      public void run() {
-        cleanupIdleConnections();
-      }
-    }, maxIdleTime, maxIdleTime, TimeUnit.MILLISECONDS);
   }
 
-  private void cleanupIdleConnections() {
-    long closeBeforeTime = EnvironmentEdgeManager.currentTimeMillis() - maxIdleTime;
-    synchronized (connections) {
-      for (NettyConnection conn : connections.values()) {
-        // remove connection if it has not been chosen by anyone for more than maxIdleTime, and the
-        // connection itself has already shutdown. The latter check is because that we may still
-        // have some pending calls on connection so we should not shutdown the connection outside.
-        // The connection itself will disconnect if there is no pending call for maxIdleTime.
-        if (conn.getLastTouched() < closeBeforeTime && !conn.isActive()) {
-          LOG.info("Cleanup idle connection to " + conn.remoteId().address);
-          connections.removeValue(conn.remoteId(), conn);
-        }
-      }
-    }
+  /** Used in test only. */
+  NettyRpcClient(Configuration configuration) {
+    this(configuration, HConstants.CLUSTER_ID_DEFAULT, null);
   }
 
   @Override
-  protected NettyConnection createConnection(ConnectionId remoteId) throws IOException {
-    return new NettyConnection(this, remoteId);
+  protected NettyRpcConnection createConnection(ConnectionId remoteId) throws IOException {
+    return new NettyRpcConnection(this, remoteId);
   }
 
   @Override
   protected void closeInternal() {
-    cleanupIdleConnectionTask.cancel(false);
     if (shutdownGroupWhenClose) {
       group.shutdownGracefully();
     }

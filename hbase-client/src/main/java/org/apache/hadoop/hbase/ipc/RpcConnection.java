@@ -38,7 +38,6 @@ import org.apache.hadoop.hbase.protobuf.generated.RPCProtos.UserInformation;
 import org.apache.hadoop.hbase.security.AuthMethod;
 import org.apache.hadoop.hbase.security.SecurityInfo;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
-import org.apache.hadoop.hbase.util.VersionInfo;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.io.compress.CompressionCodec;
 import org.apache.hadoop.security.SecurityUtil;
@@ -48,12 +47,12 @@ import org.apache.hadoop.security.token.TokenIdentifier;
 import org.apache.hadoop.security.token.TokenSelector;
 
 /**
- * Base class of an RPC connection.
+ * Base class for ipc connection.
  */
 @InterfaceAudience.Private
-public abstract class Connection {
+abstract class RpcConnection {
 
-  private static final Log LOG = LogFactory.getLog(Connection.class);
+  private static final Log LOG = LogFactory.getLog(RpcConnection.class);
 
   protected final ConnectionId remoteId;
 
@@ -77,10 +76,65 @@ public abstract class Connection {
 
   protected final HashedWheelTimer timeoutTimer;
 
-  protected final ConnectionHeader header; // connection header
-
   // the last time we were picked up from connection pool.
   protected long lastTouched;
+
+  protected RpcConnection(Configuration conf, HashedWheelTimer timeoutTimer, ConnectionId remoteId,
+      String clusterId, boolean isSecurityEnabled, int pingInterval, int pingTimeout, Codec codec,
+      CompressionCodec compressor) throws IOException {
+    if (remoteId.getAddress().isUnresolved()) {
+      throw new UnknownHostException("unknown host: " + remoteId.getAddress().getHostName());
+    }
+    this.timeoutTimer = timeoutTimer;
+    this.codec = codec;
+    this.compressor = compressor;
+
+    UserGroupInformation ticket = remoteId.getTicket().getUGI();
+    SecurityInfo securityInfo = SecurityInfo.getInfo(remoteId.getServiceName());
+    this.useSasl = isSecurityEnabled;
+    Token<? extends TokenIdentifier> token = null;
+    String serverPrincipal = null;
+    if (useSasl && securityInfo != null) {
+      AuthenticationProtos.TokenIdentifier.Kind tokenKind = securityInfo.getTokenKind();
+      if (tokenKind != null) {
+        TokenSelector<? extends TokenIdentifier> tokenSelector =
+            AbstractRpcClient.TOKEN_HANDLERS.get(tokenKind);
+        if (tokenSelector != null) {
+          token = tokenSelector.selectToken(new Text(clusterId), ticket.getTokens());
+        } else if (LOG.isDebugEnabled()) {
+          LOG.debug("No token selector found for type " + tokenKind);
+        }
+      }
+      String serverKey = securityInfo.getServerPrincipal();
+      if (serverKey == null) {
+        throw new IOException("Can't obtain server Kerberos config key from SecurityInfo");
+      }
+      serverPrincipal = SecurityUtil.getServerPrincipal(conf.get(serverKey),
+        remoteId.address.getAddress().getCanonicalHostName().toLowerCase());
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("RPC Server Kerberos principal name for service=" + remoteId.getServiceName() +
+            " is " + serverPrincipal);
+      }
+    }
+    this.token = token;
+    this.serverPrincipal = serverPrincipal;
+    if (!useSasl) {
+      authMethod = AuthMethod.SIMPLE;
+    } else if (token != null) {
+      authMethod = AuthMethod.DIGEST;
+    } else {
+      authMethod = AuthMethod.KERBEROS;
+    }
+
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("Use " + authMethod + " authentication for service " + remoteId.serviceName +
+          ", sasl=" + useSasl);
+    }
+    reloginMaxBackoff = conf.getInt("hbase.security.relogin.maxbackoff", 5000);
+    this.remoteId = remoteId;
+    this.pingInterval = pingInterval;
+    this.pingTimeout = pingTimeout;
+  }
 
   private UserInformation getUserInfo(UserGroupInformation ugi) {
     if (ugi == null || authMethod == AuthMethod.DIGEST) {
@@ -101,96 +155,6 @@ public abstract class Connection {
     return userInfoPB.build();
   }
 
-  protected Connection(Configuration conf, HashedWheelTimer timeoutTimer, ConnectionId remoteId,
-      String clusterId, boolean isSecurityEnabled, int pingInterval, int pingTimeout,
-      final Codec codec, final CompressionCodec compressor) throws IOException {
-    if (remoteId.getAddress().isUnresolved()) {
-      throw new UnknownHostException("unknown host: " + remoteId.getAddress().getHostName());
-    }
-    this.timeoutTimer = timeoutTimer;
-    this.codec = codec;
-    this.compressor = compressor;
-
-    UserGroupInformation ticket = remoteId.getTicket().getUGI();
-    SecurityInfo securityInfo = SecurityInfo.getInfo(remoteId.getServiceName());
-    this.useSasl = isSecurityEnabled;
-    Token<? extends TokenIdentifier> token = null;
-    String serverPrincipal = null;
-    if (useSasl && securityInfo != null) {
-      AuthenticationProtos.TokenIdentifier.Kind tokenKind = securityInfo.getTokenKind();
-      if (tokenKind != null) {
-        TokenSelector<? extends TokenIdentifier> tokenSelector =
-            RpcClientImpl.TOKEN_HANDLERS.get(tokenKind);
-        if (tokenSelector != null) {
-          token = tokenSelector.selectToken(new Text(clusterId), ticket.getTokens());
-        } else if (LOG.isDebugEnabled()) {
-          LOG.debug("No token selector found for type " + tokenKind);
-        }
-      }
-      String serverKey = securityInfo.getServerPrincipal();
-      if (serverKey == null) {
-        throw new IOException("Can't obtain server Kerberos config key from SecurityInfo");
-      }
-      serverPrincipal = SecurityUtil.getServerPrincipal(conf.get(serverKey),
-        remoteId.address.getAddress().getCanonicalHostName().toLowerCase());
-      if (LOG.isDebugEnabled()) {
-        LOG.debug("RPC Server Kerberos principal name for service=" + remoteId.getServiceName()
-            + " is " + serverPrincipal);
-      }
-    }
-    this.token = token;
-    this.serverPrincipal = serverPrincipal;
-    if (!useSasl) {
-      authMethod = AuthMethod.SIMPLE;
-    } else if (token != null) {
-      authMethod = AuthMethod.DIGEST;
-    } else {
-      authMethod = AuthMethod.KERBEROS;
-    }
-
-    if (LOG.isDebugEnabled()) {
-      LOG.debug("Use " + authMethod + " authentication for service " + remoteId.serviceName
-          + ", sasl=" + useSasl);
-    }
-    reloginMaxBackoff = conf.getInt("hbase.security.relogin.maxbackoff", 5000);
-    this.remoteId = remoteId;
-    this.pingInterval = pingInterval;
-    this.pingTimeout = pingTimeout;
-
-    ConnectionHeader.Builder builder = ConnectionHeader.newBuilder();
-    builder.setServiceName(remoteId.getServiceName());
-    UserInformation userInfoPB;
-    if ((userInfoPB = getUserInfo(ticket)) != null) {
-      builder.setUserInfo(userInfoPB);
-    }
-    if (this.codec != null) {
-      builder.setCellBlockCodecClass(this.codec.getClass().getCanonicalName());
-    }
-    if (this.compressor != null) {
-      builder.setCellBlockCompressorClass(this.compressor.getClass().getCanonicalName());
-    }
-    builder.setVersionInfo(ProtobufUtil.getVersionInfo());
-    this.header = builder.build();
-    VersionInfo.logVersion();
-  }
-
-  /**
-   * Write the RPC header: <MAGIC WORD -- 'HBas'> <ONEBYTE_VERSION> <ONEBYTE_AUTH_TYPE>
-   */
-  protected byte[] getConnectionHeaderPreamble() {
-    // Assemble the preamble up in a buffer first and then send it. Writing individual elements,
-    // they are getting sent across piecemeal according to wireshark and then server is messing
-    // up the reading on occasion (the passed in stream is not buffered yet).
-
-    // Preamble is six bytes -- 'HBas' + VERSION + AUTH_CODE
-    int rpcHeaderLen = HConstants.RPC_HEADER.array().length;
-    byte[] preamble = new byte[rpcHeaderLen + 2];
-    System.arraycopy(HConstants.RPC_HEADER.array(), 0, preamble, 0, rpcHeaderLen);
-    preamble[rpcHeaderLen] = HConstants.RPC_CURRENT_VERSION;
-    preamble[rpcHeaderLen + 1] = authMethod.code;
-    return preamble;
-  }
-
   protected UserGroupInformation getUGI() {
     UserGroupInformation ticket = remoteId.getTicket().getUGI();
     if (authMethod == AuthMethod.KERBEROS) {
@@ -201,15 +165,12 @@ public abstract class Connection {
     return ticket;
   }
 
-  protected boolean shouldRelogin(Throwable e) throws IOException {
-    if (e instanceof FallbackDisallowedException) {
-      return false;
-    }
+  protected boolean shouldAuthenticateOverKrb() throws IOException {
     UserGroupInformation loginUser = UserGroupInformation.getLoginUser();
     UserGroupInformation currentUser = UserGroupInformation.getCurrentUser();
     UserGroupInformation realUser = currentUser.getRealUser();
     return authMethod == AuthMethod.KERBEROS && loginUser != null &&
-    // Make sure user logged in using Kerberos either keytab or TGT
+        // Make sure user logged in using Kerberos either keytab or TGT
         loginUser.hasKerberosCredentials() &&
         // relogin only in case it is the login user (e.g. JT)
         // or superuser (like oozie).
@@ -230,13 +191,46 @@ public abstract class Connection {
 
         @Override
         public void run(Timeout timeout) throws Exception {
-          call.setTimeout(new CallTimeoutException("Call id=" + call.id + ", waitTime="
-              + (EnvironmentEdgeManager.currentTimeMillis() - call.startTime) + ", rpcTimetout="
-              + call.timeout));
+          call.setTimeout(new CallTimeoutException("Call id=" + call.id + ", waitTime=" +
+              (EnvironmentEdgeManager.currentTimeMillis() - call.getStartTime()) +
+              ", rpcTimetout=" + call.timeout));
           callTimeout(call);
         }
       }, call.timeout, TimeUnit.MILLISECONDS);
     }
+  }
+
+  protected byte[] getConnectionHeaderPreamble() {
+    // Assemble the preamble up in a buffer first and then send it. Writing individual elements,
+    // they are getting sent across piecemeal according to wireshark and then server is messing
+    // up the reading on occasion (the passed in stream is not buffered yet).
+
+    // Preamble is six bytes -- 'HBas' + VERSION + AUTH_CODE
+    int rpcHeaderLen = HConstants.RPC_HEADER.array().length;
+    byte[] preamble = new byte[rpcHeaderLen + 2];
+    System.arraycopy(HConstants.RPC_HEADER.array(), 0, preamble, 0, rpcHeaderLen);
+    preamble[rpcHeaderLen] = HConstants.RPC_CURRENT_VERSION;
+    synchronized (this) {
+      preamble[rpcHeaderLen + 1] = authMethod.code;
+    }
+    return preamble;
+  }
+
+  protected ConnectionHeader getConnectionHeader() {
+    ConnectionHeader.Builder builder = ConnectionHeader.newBuilder();
+    builder.setServiceName(remoteId.getServiceName());
+    UserInformation userInfoPB;
+    if ((userInfoPB = getUserInfo(remoteId.ticket.getUGI())) != null) {
+      builder.setUserInfo(userInfoPB);
+    }
+    if (this.codec != null) {
+      builder.setCellBlockCodecClass(this.codec.getClass().getCanonicalName());
+    }
+    if (this.compressor != null) {
+      builder.setCellBlockCompressorClass(this.compressor.getClass().getCanonicalName());
+    }
+    builder.setVersionInfo(ProtobufUtil.getVersionInfo());
+    return builder.build();
   }
 
   protected abstract void callTimeout(Call call);
@@ -254,9 +248,19 @@ public abstract class Connection {
   }
 
   /**
+   * Tell the idle connection sweeper whether we could be swept.
+   */
+  public abstract boolean isActive();
+
+  /**
    * Just close connection. Do not need to remove from connection pool.
    */
   public abstract void shutdown();
 
-  public abstract void sendRequest(Call call) throws IOException;
+  public abstract void sendRequest(Call call, HBaseRpcController hrc) throws IOException;
+
+  /**
+   * Does the clean up work after the connection is removed from the connection pool
+   */
+  public abstract void cleanupConnection();
 }

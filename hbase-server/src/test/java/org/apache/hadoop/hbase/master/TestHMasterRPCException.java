@@ -31,8 +31,8 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.ServerName;
+import org.apache.hadoop.hbase.ipc.BlockingRpcClient;
 import org.apache.hadoop.hbase.ipc.RpcClient;
-import org.apache.hadoop.hbase.ipc.RpcClientImpl;
 import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsMasterRunningRequest;
@@ -52,7 +52,7 @@ public class TestHMasterRPCException {
     conf.set(HConstants.MASTER_PORT, "0");
     HMaster hm = new HMaster(conf);
     ServerName sm = hm.getServerName();
-    RpcClient rpcClient = new RpcClientImpl(conf, HConstants.CLUSTER_ID_DEFAULT);
+    RpcClient rpcClient = new BlockingRpcClient(conf, HConstants.CLUSTER_ID_DEFAULT, null);
     try {
       int i = 0;
       //retry the RPC a few times; we have seen SocketTimeoutExceptions if we

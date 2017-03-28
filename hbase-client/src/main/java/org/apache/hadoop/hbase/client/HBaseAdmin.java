@@ -68,8 +68,9 @@ import org.apache.hadoop.hbase.classification.InterfaceStability;
 import org.apache.hadoop.hbase.client.MetaScanner.MetaScannerVisitor;
 import org.apache.hadoop.hbase.client.MetaScanner.MetaScannerVisitorBase;
 import org.apache.hadoop.hbase.ipc.CoprocessorRpcChannel;
+import org.apache.hadoop.hbase.ipc.HBaseRpcController;
+import org.apache.hadoop.hbase.ipc.HBaseRpcControllerImpl;
 import org.apache.hadoop.hbase.ipc.MasterCoprocessorRpcChannel;
-import org.apache.hadoop.hbase.ipc.PayloadCarryingRpcController;
 import org.apache.hadoop.hbase.ipc.RegionServerCoprocessorRpcChannel;
 import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.protobuf.RequestConverter;
@@ -247,11 +248,11 @@ public class HBaseAdmin implements Abortable, Closeable {
           ct.stop();
         } catch (RuntimeException re) {
           LOG.error(
-            "Failed to clean up HBase's internal catalog tracker after a failed initialization. "
-                + "We may have leaked network connections to ZooKeeper; they won't be cleaned up until "
-                + "the JVM exits. If you see a large number of stale connections to ZooKeeper this is likely "
-                + "the cause. The following exception details will be needed for assistance from the "
-                + "HBase community.",
+            "Failed to clean up HBase's internal catalog tracker after a failed initialization. " +
+                "We may have leaked network connections to ZooKeeper; they won't be cleaned up until " +
+                "the JVM exits. If you see a large number of stale connections to ZooKeeper this is likely " +
+                "the cause. The following exception details will be needed for assistance from the " +
+                "HBase community.",
             re);
         }
         ct = null;
@@ -532,8 +533,8 @@ public class HBaseAdmin implements Abortable, Closeable {
             }
             ServerName serverName = HRegionInfo.getServerName(rowResult);
             // Make sure that regions are assigned to server
-            if (!(info.isOffline() || info.isSplit()) && serverName != null
-                && serverName.getHostAndPort() != null) {
+            if (!(info.isOffline() || info.isSplit()) && serverName != null &&
+                serverName.getHostAndPort() != null) {
               actualRegCount.incrementAndGet();
             }
             return true;
@@ -544,8 +545,8 @@ public class HBaseAdmin implements Abortable, Closeable {
         // if the server side enable IGNORE_SPLITS_WHEN_CREATE_TABLE option,
         if (actualRegCount.get() > 0) {
           HTableDescriptor htdFromMaster = getTableDescriptor(desc.getName());
-          if (htdFromMaster.getValue(HTableDescriptor.IGNORE_SPLITS_WHEN_CREATING) != null
-              && Boolean.parseBoolean(
+          if (htdFromMaster.getValue(HTableDescriptor.IGNORE_SPLITS_WHEN_CREATING) != null &&
+              Boolean.parseBoolean(
                 htdFromMaster.getValue(HTableDescriptor.IGNORE_SPLITS_WHEN_CREATING))) {
             numRegs = 1;
           }
@@ -553,14 +554,14 @@ public class HBaseAdmin implements Abortable, Closeable {
 
         if (actualRegCount.get() < numRegs) {
           if (tries == this.numRetries * this.retryLongerMultiplier - 1) {
-            throw new RegionOfflineException("Only " + actualRegCount.get() + " of " + numRegs
-                + " regions are online; retries exhausted.");
+            throw new RegionOfflineException("Only " + actualRegCount.get() + " of " + numRegs +
+                " regions are online; retries exhausted.");
           }
           try { // Sleep
             Thread.sleep(getPauseTime(tries));
           } catch (InterruptedException e) {
-            throw new InterruptedIOException("Interrupted when opening" + " regions; "
-                + actualRegCount.get() + " of " + numRegs + " regions processed so far");
+            throw new InterruptedIOException("Interrupted when opening" + " regions; " +
+                actualRegCount.get() + " of " + numRegs + " regions processed so far");
           }
           if (actualRegCount.get() > prevRegCount) { // Making progress
             prevRegCount = actualRegCount.get();
@@ -581,8 +582,8 @@ public class HBaseAdmin implements Abortable, Closeable {
         }
       }
     }
-    throw new TableNotEnabledException("Retries exhausted while still waiting for table: "
-        + desc.getTableName() + " to be enabled");
+    throw new TableNotEnabledException("Retries exhausted while still waiting for table: " +
+        desc.getTableName() + " to be enabled");
   }
 
   /**
@@ -612,8 +613,9 @@ public class HBaseAdmin implements Abortable, Closeable {
               "Empty split key must not be passed in the split keys.");
         }
         if (lastKey != null && Bytes.equals(splitKey, lastKey)) {
-          throw new IllegalArgumentException("All split keys must be unique, " + "found duplicate: "
-              + Bytes.toStringBinary(splitKey) + ", " + Bytes.toStringBinary(lastKey));
+          throw new IllegalArgumentException(
+              "All split keys must be unique, " + "found duplicate: " +
+                  Bytes.toStringBinary(splitKey) + ", " + Bytes.toStringBinary(lastKey));
         }
         lastKey = splitKey;
       }
@@ -622,8 +624,8 @@ public class HBaseAdmin implements Abortable, Closeable {
     executeCallable(new MasterCallable<Void>(getConnection()) {
 
       @Override
-      protected Void rpcCall(MasterService.BlockingInterface master,
-          PayloadCarryingRpcController controller) throws ServiceException {
+      protected Void rpcCall(MasterService.BlockingInterface master, HBaseRpcController controller)
+          throws ServiceException {
         master.createTable(controller, req);
         return null;
       }
@@ -649,8 +651,8 @@ public class HBaseAdmin implements Abortable, Closeable {
     executeCallable(new MasterCallable<Void>(getConnection(), tableName) {
 
       @Override
-      protected Void rpcCall(MasterService.BlockingInterface master,
-          PayloadCarryingRpcController controller) throws ServiceException {
+      protected Void rpcCall(MasterService.BlockingInterface master, HBaseRpcController controller)
+          throws ServiceException {
         master.deleteTable(controller, deleteReq);
         return null;
       }
@@ -669,7 +671,7 @@ public class HBaseAdmin implements Abortable, Closeable {
         // Get a batch at a time.
         ClientService.BlockingInterface server =
             connection.getClient(firstMetaServer.getServerName());
-        PayloadCarryingRpcController controller = new PayloadCarryingRpcController();
+        HBaseRpcController controller = new HBaseRpcControllerImpl();
         try {
           controller.setPriority(tableName);
           ScanResponse response = server.scan(controller, request);
@@ -716,8 +718,8 @@ public class HBaseAdmin implements Abortable, Closeable {
     }
 
     if (tableExists) {
-      throw new IOException("Retries exhausted, it took too long to wait" + " for the table "
-          + tableName + " to be deleted.");
+      throw new IOException("Retries exhausted, it took too long to wait" + " for the table " +
+          tableName + " to be deleted.");
     }
     // Delete cached information to prevent clients from using old locations
     this.connection.clearRegionCache(tableName);
@@ -843,8 +845,8 @@ public class HBaseAdmin implements Abortable, Closeable {
     executeCallable(new MasterCallable<Void>(getConnection(), tableName) {
 
       @Override
-      protected Void rpcCall(MasterService.BlockingInterface master,
-          PayloadCarryingRpcController controller) throws ServiceException {
+      protected Void rpcCall(MasterService.BlockingInterface master, HBaseRpcController controller)
+          throws ServiceException {
         LOG.info("Started enable of " + tableName);
         master.enableTable(controller, req);
         return null;
@@ -913,8 +915,8 @@ public class HBaseAdmin implements Abortable, Closeable {
     executeCallable(new MasterCallable<Void>(getConnection(), tableName) {
 
       @Override
-      protected Void rpcCall(MasterService.BlockingInterface master,
-          PayloadCarryingRpcController controller) throws ServiceException {
+      protected Void rpcCall(MasterService.BlockingInterface master, HBaseRpcController controller)
+          throws ServiceException {
         LOG.info("Started disable of " + tableName);
         master.disableTable(controller, req);
         return null;
@@ -961,8 +963,8 @@ public class HBaseAdmin implements Abortable, Closeable {
       }
     }
     if (!disabled) {
-      throw new RegionException("Retries exhausted, it took too long to wait" + " for the table "
-          + tableName + " to be disabled.");
+      throw new RegionException("Retries exhausted, it took too long to wait" + " for the table " +
+          tableName + " to be disabled.");
     }
     LOG.info("Disabled " + tableName);
   }
@@ -1110,7 +1112,7 @@ public class HBaseAdmin implements Abortable, Closeable {
 
       @Override
       protected Pair<Integer, Integer> rpcCall(MasterService.BlockingInterface master,
-          PayloadCarryingRpcController controller) throws ServiceException {
+          HBaseRpcController controller) throws ServiceException {
         GetSchemaAlterStatusResponse ret = master.getSchemaAlterStatus(controller, req);
         Pair<Integer, Integer> pair = new Pair<Integer, Integer>(
             Integer.valueOf(ret.getYetToUpdateRegions()), Integer.valueOf(ret.getTotalRegions()));
@@ -1162,8 +1164,8 @@ public class HBaseAdmin implements Abortable, Closeable {
     executeCallable(new MasterCallable<Void>(getConnection(), tableName) {
 
       @Override
-      protected Void rpcCall(MasterService.BlockingInterface master,
-          PayloadCarryingRpcController controller) throws ServiceException {
+      protected Void rpcCall(MasterService.BlockingInterface master, HBaseRpcController controller)
+          throws ServiceException {
         master.addColumn(controller, req);
         return null;
       }
@@ -1202,8 +1204,8 @@ public class HBaseAdmin implements Abortable, Closeable {
     executeCallable(new MasterCallable<Void>(getConnection()) {
 
       @Override
-      protected Void rpcCall(MasterService.BlockingInterface master,
-          PayloadCarryingRpcController controller) throws ServiceException {
+      protected Void rpcCall(MasterService.BlockingInterface master, HBaseRpcController controller)
+          throws ServiceException {
         master.deleteColumn(controller, req);
         return null;
       }
@@ -1242,8 +1244,8 @@ public class HBaseAdmin implements Abortable, Closeable {
     executeCallable(new MasterCallable<Void>(getConnection(), tableName) {
 
       @Override
-      protected Void rpcCall(MasterService.BlockingInterface master,
-          PayloadCarryingRpcController controller) throws ServiceException {
+      protected Void rpcCall(MasterService.BlockingInterface master, HBaseRpcController controller)
+          throws ServiceException {
         master.modifyColumn(controller, req);
         return null;
       }
@@ -1532,8 +1534,8 @@ public class HBaseAdmin implements Abortable, Closeable {
             compact(pair.getSecond(), pair.getFirst(), major, columnFamily);
           } catch (NotServingRegionException e) {
             if (LOG.isDebugEnabled()) {
-              LOG.debug("Trying to" + (major ? " major" : "") + " compact " + pair.getFirst() + ": "
-                  + StringUtils.stringifyException(e));
+              LOG.debug("Trying to" + (major ? " major" : "") + " compact " + pair.getFirst() +
+                  ": " + StringUtils.stringifyException(e));
             }
           }
         }
@@ -1584,8 +1586,8 @@ public class HBaseAdmin implements Abortable, Closeable {
     executeCallable(new MasterCallable<Void>(getConnection(), encodedRegionName) {
 
       @Override
-      protected Void rpcCall(MasterService.BlockingInterface master,
-          PayloadCarryingRpcController controller) throws ServiceException {
+      protected Void rpcCall(MasterService.BlockingInterface master, HBaseRpcController controller)
+          throws ServiceException {
         master.moveRegion(controller, req);
         return null;
       }
@@ -1602,8 +1604,8 @@ public class HBaseAdmin implements Abortable, Closeable {
     executeCallable(new MasterCallable<Void>(getConnection(), toBeAssigned) {
 
       @Override
-      protected Void rpcCall(MasterService.BlockingInterface master,
-          PayloadCarryingRpcController controller) throws ServiceException {
+      protected Void rpcCall(MasterService.BlockingInterface master, HBaseRpcController controller)
+          throws ServiceException {
         master.assignRegion(controller, req);
         return null;
       }
@@ -1626,8 +1628,8 @@ public class HBaseAdmin implements Abortable, Closeable {
         RequestConverter.buildUnassignRegionRequest(toBeUnassigned, force);
     executeCallable(new MasterCallable<Void>(getConnection(), toBeUnassigned) {
       @Override
-      protected Void rpcCall(MasterService.BlockingInterface master,
-          PayloadCarryingRpcController controller) throws ServiceException {
+      protected Void rpcCall(MasterService.BlockingInterface master, HBaseRpcController controller)
+          throws ServiceException {
         master.unassignRegion(controller, request);
         return null;
       }
@@ -1648,8 +1650,8 @@ public class HBaseAdmin implements Abortable, Closeable {
     executeCallable(new MasterCallable<Void>(getConnection(), regionName) {
 
       @Override
-      protected Void rpcCall(MasterService.BlockingInterface master,
-          PayloadCarryingRpcController controller) throws ServiceException {
+      protected Void rpcCall(MasterService.BlockingInterface master, HBaseRpcController controller)
+          throws ServiceException {
         master.offlineRegion(controller, req);
         return null;
       }
@@ -1669,7 +1671,7 @@ public class HBaseAdmin implements Abortable, Closeable {
 
       @Override
       protected Boolean rpcCall(MasterService.BlockingInterface master,
-          PayloadCarryingRpcController controller) throws ServiceException {
+          HBaseRpcController controller) throws ServiceException {
         return master.setBalancerRunning(controller, req).getPrevBalanceValue();
       }
     });
@@ -1708,7 +1710,7 @@ public class HBaseAdmin implements Abortable, Closeable {
 
       @Override
       protected Boolean rpcCall(MasterService.BlockingInterface master,
-          PayloadCarryingRpcController controller) throws ServiceException {
+          HBaseRpcController controller) throws ServiceException {
         return master.balance(controller, RequestConverter.buildBalanceRequest()).getBalancerRan();
       }
     });
@@ -1727,7 +1729,7 @@ public class HBaseAdmin implements Abortable, Closeable {
 
       @Override
       protected Boolean rpcCall(MasterService.BlockingInterface master,
-          PayloadCarryingRpcController controller) throws ServiceException {
+          HBaseRpcController controller) throws ServiceException {
         return master.enableCatalogJanitor(controller, req).getPrevValue();
       }
     });
@@ -1743,7 +1745,7 @@ public class HBaseAdmin implements Abortable, Closeable {
 
       @Override
       protected Integer rpcCall(MasterService.BlockingInterface master,
-          PayloadCarryingRpcController controller) throws ServiceException {
+          HBaseRpcController controller) throws ServiceException {
         return master.runCatalogScan(controller, RequestConverter.buildCatalogScanRequest())
             .getScanResult();
       }
@@ -1759,7 +1761,7 @@ public class HBaseAdmin implements Abortable, Closeable {
 
       @Override
       protected Boolean rpcCall(MasterService.BlockingInterface master,
-          PayloadCarryingRpcController controller) throws ServiceException {
+          HBaseRpcController controller) throws ServiceException {
         return master.isCatalogJanitorEnabled(controller,
           RequestConverter.buildIsCatalogJanitorEnabledRequest()).getValue();
       }
@@ -1781,8 +1783,8 @@ public class HBaseAdmin implements Abortable, Closeable {
     executeCallable(new MasterCallable<Void>(getConnection(), encodedNameOfRegionA) {
 
       @Override
-      protected Void rpcCall(MasterService.BlockingInterface master,
-          PayloadCarryingRpcController controller) throws ServiceException {
+      protected Void rpcCall(MasterService.BlockingInterface master, HBaseRpcController controller)
+          throws ServiceException {
         master.dispatchMergingRegions(controller, request);
         return null;
       }
@@ -1856,8 +1858,8 @@ public class HBaseAdmin implements Abortable, Closeable {
 
   private void split(final ServerName sn, final HRegionInfo hri, byte[] splitPoint)
       throws IOException {
-    if (hri.getStartKey() != null && splitPoint != null
-        && Bytes.compareTo(hri.getStartKey(), splitPoint) == 0) {
+    if (hri.getStartKey() != null && splitPoint != null &&
+        Bytes.compareTo(hri.getStartKey(), splitPoint) == 0) {
       throw new IOException("should not give a splitkey which equals to startkey!");
     }
     AdminService.BlockingInterface admin = this.connection.getAdmin(sn);
@@ -1873,8 +1875,8 @@ public class HBaseAdmin implements Abortable, Closeable {
    */
   public void modifyTable(TableName tableName, HTableDescriptor htd) throws IOException {
     if (!tableName.equals(htd.getTableName())) {
-      throw new IllegalArgumentException("the specified table name '" + tableName
-          + "' doesn't match with the HTD one: " + htd.getTableName());
+      throw new IllegalArgumentException("the specified table name '" + tableName +
+          "' doesn't match with the HTD one: " + htd.getTableName());
     }
 
     // check KeySalter not modified
@@ -1882,8 +1884,8 @@ public class HBaseAdmin implements Abortable, Closeable {
     final ModifyTableRequest req = RequestConverter.buildModifyTableRequest(tableName, htd);
     executeCallable(new MasterCallable<Void>(getConnection(), tableName) {
       @Override
-      public Void rpcCall(MasterService.BlockingInterface master,
-          PayloadCarryingRpcController controller) throws ServiceException {
+      public Void rpcCall(MasterService.BlockingInterface master, HBaseRpcController controller)
+          throws ServiceException {
         master.modifyTable(null, req);
         return null;
       }
@@ -1898,8 +1900,8 @@ public class HBaseAdmin implements Abortable, Closeable {
       saltedAttributeUnModified = true;
     }
     if (htd.isSalted()) {
-      if (!htd.getSlotsCount().equals(modifiedHtd.getSlotsCount())
-          || !htd.getKeySalter().equals(modifiedHtd.getKeySalter())) {
+      if (!htd.getSlotsCount().equals(modifiedHtd.getSlotsCount()) ||
+          !htd.getKeySalter().equals(modifiedHtd.getKeySalter())) {
         saltedAttributeUnModified = true;
       }
     }
@@ -1964,8 +1966,8 @@ public class HBaseAdmin implements Abortable, Closeable {
    */
   private byte[] getRegionName(final byte[] regionNameOrEncodedRegionName) throws IOException {
     if (Bytes
-        .equals(regionNameOrEncodedRegionName, HRegionInfo.FIRST_META_REGIONINFO.getRegionName())
-        || Bytes.equals(regionNameOrEncodedRegionName,
+        .equals(regionNameOrEncodedRegionName, HRegionInfo.FIRST_META_REGIONINFO.getRegionName()) ||
+        Bytes.equals(regionNameOrEncodedRegionName,
           HRegionInfo.FIRST_META_REGIONINFO.getEncodedNameAsBytes())) {
       return HRegionInfo.FIRST_META_REGIONINFO.getRegionName();
     }
@@ -2006,8 +2008,8 @@ public class HBaseAdmin implements Abortable, Closeable {
   public synchronized void shutdown() throws IOException {
     executeCallable(new MasterCallable<Void>(getConnection()) {
       @Override
-      public Void rpcCall(MasterService.BlockingInterface master,
-          PayloadCarryingRpcController controller) throws ServiceException {
+      public Void rpcCall(MasterService.BlockingInterface master, HBaseRpcController controller)
+          throws ServiceException {
         master.shutdown(controller, ShutdownRequest.getDefaultInstance());
         return null;
       }
@@ -2022,8 +2024,8 @@ public class HBaseAdmin implements Abortable, Closeable {
   public synchronized void stopMaster() throws IOException {
     executeCallable(new MasterCallable<Void>(getConnection()) {
       @Override
-      public Void rpcCall(MasterService.BlockingInterface master,
-          PayloadCarryingRpcController controller) throws ServiceException {
+      public Void rpcCall(MasterService.BlockingInterface master, HBaseRpcController controller)
+          throws ServiceException {
         master.stopMaster(null, StopMasterRequest.getDefaultInstance());
         return null;
       }
@@ -2059,7 +2061,7 @@ public class HBaseAdmin implements Abortable, Closeable {
 
       @Override
       protected ClusterStatus rpcCall(MasterService.BlockingInterface master,
-          PayloadCarryingRpcController controller) throws ServiceException {
+          HBaseRpcController controller) throws ServiceException {
         return ClusterStatus.convert(
           master.getClusterStatus(controller, RequestConverter.buildGetClusterStatusRequest())
               .getClusterStatus());
@@ -2089,8 +2091,8 @@ public class HBaseAdmin implements Abortable, Closeable {
     executeCallable(new MasterCallable<Void>(getConnection()) {
 
       @Override
-      protected Void rpcCall(MasterService.BlockingInterface master,
-          PayloadCarryingRpcController controller) throws Exception {
+      protected Void rpcCall(MasterService.BlockingInterface master, HBaseRpcController controller)
+          throws Exception {
         master.createNamespace(controller, req);
         return null;
       }
@@ -2107,8 +2109,8 @@ public class HBaseAdmin implements Abortable, Closeable {
     executeCallable(new MasterCallable<Void>(getConnection()) {
 
       @Override
-      protected Void rpcCall(MasterService.BlockingInterface master,
-          PayloadCarryingRpcController controller) throws Exception {
+      protected Void rpcCall(MasterService.BlockingInterface master, HBaseRpcController controller)
+          throws Exception {
         master.modifyNamespace(controller, req);
         return null;
       }
@@ -2125,8 +2127,8 @@ public class HBaseAdmin implements Abortable, Closeable {
     executeCallable(new MasterCallable<Void>(getConnection()) {
 
       @Override
-      protected Void rpcCall(MasterService.BlockingInterface master,
-          PayloadCarryingRpcController controller) throws Exception {
+      protected Void rpcCall(MasterService.BlockingInterface master, HBaseRpcController controller)
+          throws Exception {
         master.deleteNamespace(controller, req);
         return null;
       }
@@ -2146,7 +2148,7 @@ public class HBaseAdmin implements Abortable, Closeable {
 
       @Override
       protected NamespaceDescriptor rpcCall(MasterService.BlockingInterface master,
-          PayloadCarryingRpcController controller) throws Exception {
+          HBaseRpcController controller) throws Exception {
         return ProtobufUtil.toNamespaceDescriptor(
           master.getNamespaceDescriptor(controller, req).getNamespaceDescriptor());
       }
@@ -2163,7 +2165,7 @@ public class HBaseAdmin implements Abortable, Closeable {
 
       @Override
       protected NamespaceDescriptor[] rpcCall(MasterService.BlockingInterface master,
-          PayloadCarryingRpcController controller) throws Exception {
+          HBaseRpcController controller) throws Exception {
         List<HBaseProtos.NamespaceDescriptor> list =
             master
                 .listNamespaceDescriptors(controller,
@@ -2190,7 +2192,7 @@ public class HBaseAdmin implements Abortable, Closeable {
     return executeCallable(new MasterCallable<HTableDescriptor[]>(getConnection()) {
       @Override
       protected HTableDescriptor[] rpcCall(MasterService.BlockingInterface master,
-          PayloadCarryingRpcController controller) throws Exception {
+          HBaseRpcController controller) throws Exception {
         List<TableSchema> list =
             master.listTableDescriptorsByNamespace(controller, req).getTableSchemaList();
         HTableDescriptor[] res = new HTableDescriptor[list.size()];
@@ -2216,7 +2218,7 @@ public class HBaseAdmin implements Abortable, Closeable {
 
       @Override
       protected TableName[] rpcCall(MasterService.BlockingInterface master,
-          PayloadCarryingRpcController controller) throws Exception {
+          HBaseRpcController controller) throws Exception {
         List<HBaseProtos.TableName> tableNames =
             master.listTableNamesByNamespace(controller, req).getTableNameList();
         TableName[] result = new TableName[tableNames.size()];
@@ -2440,14 +2442,14 @@ public class HBaseAdmin implements Abortable, Closeable {
             }
           } catch (NotServingRegionException e) {
             if (LOG.isDebugEnabled()) {
-              LOG.debug("Trying to get compaction state of " + pair.getFirst() + ": "
-                  + StringUtils.stringifyException(e));
+              LOG.debug("Trying to get compaction state of " + pair.getFirst() + ": " +
+                  StringUtils.stringifyException(e));
             }
           } catch (RemoteException e) {
             if (e.getMessage().indexOf(NotServingRegionException.class.getName()) >= 0) {
               if (LOG.isDebugEnabled()) {
-                LOG.debug("Trying to get compaction state of " + pair.getFirst() + ": "
-                    + StringUtils.stringifyException(e));
+                LOG.debug("Trying to get compaction state of " + pair.getFirst() + ": " +
+                    StringUtils.stringifyException(e));
               }
             } else {
               throw e;
@@ -2604,9 +2606,9 @@ public class HBaseAdmin implements Abortable, Closeable {
     long max = response.getExpectedTimeout();
     long maxPauseTime = max / this.numRetries;
     int tries = 0;
-    LOG.debug("Waiting a max of " + max + " ms for snapshot '"
-        + ClientSnapshotDescriptionUtils.toString(snapshot) + "'' to complete. (max " + maxPauseTime
-        + " ms per retry)");
+    LOG.debug("Waiting a max of " + max + " ms for snapshot '" +
+        ClientSnapshotDescriptionUtils.toString(snapshot) + "'' to complete. (max " + maxPauseTime +
+        " ms per retry)");
     while (tries == 0 || ((EnvironmentEdgeManager.currentTimeMillis() - start) < max && !done)) {
       try {
         // sleep a backoff <= pauseTime amount
@@ -2626,7 +2628,7 @@ public class HBaseAdmin implements Abortable, Closeable {
 
           @Override
           protected Boolean rpcCall(MasterService.BlockingInterface master,
-              PayloadCarryingRpcController controller) throws ServiceException {
+              HBaseRpcController controller) throws ServiceException {
             return master.isSnapshotDone(controller, req).getDone();
           }
         });
@@ -2659,7 +2661,7 @@ public class HBaseAdmin implements Abortable, Closeable {
 
       @Override
       protected SnapshotResponse rpcCall(MasterService.BlockingInterface master,
-          PayloadCarryingRpcController controller) throws ServiceException {
+          HBaseRpcController controller) throws ServiceException {
         return master.snapshot(null, req);
       }
     });
@@ -2692,7 +2694,7 @@ public class HBaseAdmin implements Abortable, Closeable {
 
       @Override
       protected Boolean rpcCall(MasterService.BlockingInterface master,
-          PayloadCarryingRpcController controller) throws ServiceException {
+          HBaseRpcController controller) throws ServiceException {
         return master.isSnapshotDone(controller, req).getDone();
       }
     });
@@ -2817,8 +2819,8 @@ public class HBaseAdmin implements Abortable, Closeable {
       if (takeFailSafeSnapshot) {
         try {
           internalRestoreSnapshot(failSafeSnapshotSnapshotName, tableName);
-          String msg = "Restore snapshot=" + snapshotName + " failed. Rollback to snapshot="
-              + failSafeSnapshotSnapshotName + " succeeded.";
+          String msg = "Restore snapshot=" + snapshotName + " failed. Rollback to snapshot=" +
+              failSafeSnapshotSnapshotName + " succeeded.";
           LOG.error(msg, e);
           throw new RestoreSnapshotException(msg, e);
         } catch (IOException ex) {
@@ -2927,7 +2929,7 @@ public class HBaseAdmin implements Abortable, Closeable {
         executeCallable(new MasterCallable<ExecProcedureResponse>(getConnection()) {
           @Override
           protected ExecProcedureResponse rpcCall(MasterService.BlockingInterface master,
-              PayloadCarryingRpcController controller) throws ServiceException {
+              HBaseRpcController controller) throws ServiceException {
             return master.execProcedure(controller, req);
           }
         });
@@ -2936,8 +2938,8 @@ public class HBaseAdmin implements Abortable, Closeable {
     long max = response.getExpectedTimeout();
     long maxPauseTime = max / this.numRetries;
     int tries = 0;
-    LOG.debug("Waiting a max of " + max + " ms for procedure '" + signature + " : " + instance
-        + "'' to complete. (max " + maxPauseTime + " ms per retry)");
+    LOG.debug("Waiting a max of " + max + " ms for procedure '" + signature + " : " + instance +
+        "'' to complete. (max " + maxPauseTime + " ms per retry)");
     boolean done = false;
     while (tries == 0 || ((EnvironmentEdgeManager.currentTimeMillis() - start) < max && !done)) {
       try {
@@ -2956,8 +2958,8 @@ public class HBaseAdmin implements Abortable, Closeable {
       done = isProcedureFinished(signature, instance, props);
     }
     if (!done) {
-      throw new IOException("Procedure '" + signature + " : " + instance
-          + "' wasn't completed in expectedTime:" + max + " ms");
+      throw new IOException("Procedure '" + signature + " : " + instance +
+          "' wasn't completed in expectedTime:" + max + " ms");
     }
   }
 
@@ -2985,7 +2987,7 @@ public class HBaseAdmin implements Abortable, Closeable {
 
       @Override
       protected Boolean rpcCall(MasterService.BlockingInterface master,
-          PayloadCarryingRpcController controller) throws ServiceException {
+          HBaseRpcController controller) throws ServiceException {
         return master.isProcedureDone(controller, req).getDone();
       }
     });
@@ -3030,7 +3032,7 @@ public class HBaseAdmin implements Abortable, Closeable {
 
         @Override
         protected Boolean rpcCall(MasterService.BlockingInterface master,
-            PayloadCarryingRpcController controller) throws ServiceException {
+            HBaseRpcController controller) throws ServiceException {
           return master.isRestoreSnapshotDone(controller, req).getDone();
         }
       });
@@ -3059,7 +3061,7 @@ public class HBaseAdmin implements Abortable, Closeable {
         TableName.valueOf(snapshot.getTable())) {
       @Override
       protected RestoreSnapshotResponse rpcCall(MasterService.BlockingInterface master,
-          PayloadCarryingRpcController controller) throws ServiceException {
+          HBaseRpcController controller) throws ServiceException {
         return master.restoreSnapshot(controller, req);
       }
     });
@@ -3075,7 +3077,7 @@ public class HBaseAdmin implements Abortable, Closeable {
 
       @Override
       protected List<SnapshotDescription> rpcCall(MasterService.BlockingInterface master,
-          PayloadCarryingRpcController controller) throws ServiceException {
+          HBaseRpcController controller) throws ServiceException {
         return master
             .getCompletedSnapshots(controller, GetCompletedSnapshotsRequest.getDefaultInstance())
             .getSnapshotsList();
@@ -3162,8 +3164,8 @@ public class HBaseAdmin implements Abortable, Closeable {
     executeCallable(new MasterCallable<Void>(getConnection()) {
 
       @Override
-      protected Void rpcCall(MasterService.BlockingInterface master,
-          PayloadCarryingRpcController controller) throws ServiceException {
+      protected Void rpcCall(MasterService.BlockingInterface master, HBaseRpcController controller)
+          throws ServiceException {
         master.deleteSnapshot(controller, req);
         return null;
       }
@@ -3180,8 +3182,8 @@ public class HBaseAdmin implements Abortable, Closeable {
     executeCallable(new MasterCallable<Void>(getConnection()) {
 
       @Override
-      protected Void rpcCall(MasterService.BlockingInterface master,
-          PayloadCarryingRpcController controller) throws ServiceException {
+      protected Void rpcCall(MasterService.BlockingInterface master, HBaseRpcController controller)
+          throws ServiceException {
         if (quota.getTableName() != null) {
           controller.setPriority(quota.getTableName());
         }
@@ -3272,8 +3274,8 @@ public class HBaseAdmin implements Abortable, Closeable {
     executeCallable(new MasterCallable<Void>(getConnection(), tableName) {
 
       @Override
-      protected Void rpcCall(MasterService.BlockingInterface master,
-          PayloadCarryingRpcController controller) throws ServiceException {
+      protected Void rpcCall(MasterService.BlockingInterface master, HBaseRpcController controller)
+          throws ServiceException {
         LOG.info("Started truncate of " + tableName);
         master.truncateTable(null, req);
         return null;
@@ -3286,8 +3288,8 @@ public class HBaseAdmin implements Abortable, Closeable {
     return executeCallable(new MasterCallable<ThrottleState>(getConnection()) {
 
       @Override
-      protected ThrottleState rpcCall(BlockingInterface master,
-          PayloadCarryingRpcController controller) throws Exception {
+      protected ThrottleState rpcCall(BlockingInterface master, HBaseRpcController controller)
+          throws Exception {
         SwitchThrottleResponse resp = master.switchThrottle(controller, req);
         return resp.hasPrevThrottleState()
             ? ProtobufUtil.toThrottleState(resp.getPrevThrottleState()) : null;

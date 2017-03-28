@@ -15,29 +15,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.hadoop.hbase.ipc;
 
-option java_package = "org.apache.hadoop.hbase.ipc.protobuf.generated";
-option java_outer_classname = "TestProtos";
-option java_generate_equals_and_hash = true;
+import org.apache.hadoop.hbase.classification.InterfaceAudience;
 
-message EmptyRequestProto {
-}
+/**
+ * Used to tell netty handler the call is cancelled, timeout...
+ */
+@InterfaceAudience.Private
+class CallEvent {
 
-message EmptyResponseProto {
-}
+  public enum Type {
+    TIMEOUT, CANCELLED
+  }
 
-message EchoRequestProto {
-  required string message = 1;
-}
+  final Type type;
 
-message EchoResponseProto {
-  required string message = 1;
-}
+  final Call call;
 
-message PauseRequestProto {
-  required uint32 ms = 1;
-}
-
-message AddrResponseProto {
-  required string addr = 1;
+  CallEvent(Type type, Call call) {
+    this.type = type;
+    this.call = call;
+  }
 }

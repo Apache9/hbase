@@ -26,7 +26,7 @@ import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.util.ReflectionUtils;
 
 /**
- * Factory to create a {@link PayloadCarryingRpcController}
+ * Factory to create a {@link HBaseRpcController}
  */
 @InterfaceAudience.Private
 public class RpcControllerFactory {
@@ -38,23 +38,21 @@ public class RpcControllerFactory {
     this.conf = conf;
   }
 
-  public PayloadCarryingRpcController newController() {
-    return new PayloadCarryingRpcController();
-  }
-  
-  public PayloadCarryingRpcController newController(final CellScanner cellScanner) {
-    return new PayloadCarryingRpcController(cellScanner);
+  public HBaseRpcController newController() {
+    return new HBaseRpcControllerImpl();
   }
 
-  public PayloadCarryingRpcController newController(final List<CellScannable> cellIterables) {
-    return new PayloadCarryingRpcController(cellIterables);
+  public HBaseRpcController newController(CellScanner cellScanner) {
+    return new HBaseRpcControllerImpl(cellScanner);
   }
-  
+
+  public HBaseRpcController newController(List<CellScannable> cellIterables) {
+    return new HBaseRpcControllerImpl(cellIterables);
+  }
 
   public static RpcControllerFactory instantiate(Configuration configuration) {
     String rpcControllerFactoryClazz =
-        configuration.get(CUSTOM_CONTROLLER_CONF_KEY,
-          RpcControllerFactory.class.getName());
+        configuration.get(CUSTOM_CONTROLLER_CONF_KEY, RpcControllerFactory.class.getName());
     return ReflectionUtils.instantiateWithCustomCtor(rpcControllerFactoryClazz,
       new Class[] { Configuration.class }, new Object[] { configuration });
   }

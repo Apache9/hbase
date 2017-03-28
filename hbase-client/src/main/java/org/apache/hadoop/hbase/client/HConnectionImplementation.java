@@ -11,7 +11,6 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.lang.reflect.UndeclaredThrowableException;
-import java.net.SocketException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -314,8 +313,7 @@ public class HConnectionImplementation implements HConnection, Closeable {
               @Override
               public void newDead(ServerName sn) {
                 clearCaches(sn);
-                rpcClient.cancelConnections(sn,
-                  new SocketException(sn.getServerName() + " is dead: closing its connection."));
+                rpcClient.cancelConnections(sn);
               }
             }, conf, listenerClass);
       }

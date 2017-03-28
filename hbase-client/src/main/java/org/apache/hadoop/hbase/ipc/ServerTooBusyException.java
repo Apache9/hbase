@@ -29,10 +29,10 @@ import org.apache.hadoop.hbase.classification.InterfaceStability;
  */
 @InterfaceAudience.Public
 @InterfaceStability.Evolving
-public class ServerBusyException extends DoNotRetryIOException {
+public class ServerTooBusyException extends DoNotRetryIOException {
 
-  public ServerBusyException(InetSocketAddress address, long count){
-    super("There are "+count+" concurrent rpc requests for "+address);
+  public ServerTooBusyException(InetSocketAddress address, long count) {
+    super("There are " + count + " concurrent rpc requests for " + address);
   }
 
 }

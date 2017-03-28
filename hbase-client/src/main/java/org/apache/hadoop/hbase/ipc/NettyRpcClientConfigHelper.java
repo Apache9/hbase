@@ -35,33 +35,38 @@ import org.apache.hadoop.hbase.util.Pair;
  * Helper class for passing config to {@link NettyRpcClient}.
  * <p>
  * As hadoop Configuration can not pass an Object directly, we need to find a way to pass the
- * EventLoopGroup to NettyRpcClient if we want to use a single EventLoopGroup for the whole process.
+ * EventLoopGroup to {@code AsyncRpcClient} if we want to use a single {@code EventLoopGroup} for
+ * the whole process.
  */
 @InterfaceAudience.Public
 @InterfaceStability.Evolving
 public class NettyRpcClientConfigHelper {
 
-  public static final String EVENT_LOOP_CONFIG = "hbase.client.ipc.netty.event-loop.config";
+  public static final String EVENT_LOOP_CONFIG = "hbase.rpc.client.event-loop.config";
 
-  private static final Map<String, Pair<EventLoopGroup, Class<? extends Channel>>> EVENT_LOOP_CONFIG_MAP = new HashMap<String, Pair<EventLoopGroup, Class<? extends Channel>>>();
+  private static final String CONFIG_NAME = "global-event-loop";
+
+  private static final Map<String, Pair<EventLoopGroup, Class<? extends Channel>>>
+    EVENT_LOOP_CONFIG_MAP = new HashMap<>();
 
   /**
-   * Set the EventLoopGroup and channel class for NettyRpcClient. The {@code name} will be set into
-   * the {@code conf} object for referring the event loop config.
+   * Set the EventLoopGroup and channel class for {@code AsyncRpcClient}.
    */
-  public static void setEventLoopConfig(Configuration conf, String name, EventLoopGroup group,
+  public static void setEventLoopConfig(Configuration conf, EventLoopGroup group,
       Class<? extends Channel> channelClass) {
-    Preconditions.checkArgument(!EVENT_LOOP_CONFIG_MAP.containsKey(name), "%s is already used",
-      name);
     Preconditions.checkNotNull(group, "group is null");
     Preconditions.checkNotNull(channelClass, "channel class is null");
-    conf.set(EVENT_LOOP_CONFIG, name);
-    EVENT_LOOP_CONFIG_MAP.put(name,
+    conf.set(EVENT_LOOP_CONFIG, CONFIG_NAME);
+    EVENT_LOOP_CONFIG_MAP.put(CONFIG_NAME,
       Pair.<EventLoopGroup, Class<? extends Channel>> newPair(group, channelClass));
   }
 
+  /**
+   * The {@code AsyncRpcClient} will create its own {@code NioEventLoopGroup}.
+   */
   public static void createEventLoopPerClient(Configuration conf) {
     conf.set(EVENT_LOOP_CONFIG, "");
+    EVENT_LOOP_CONFIG_MAP.clear();
   }
 
   static Pair<EventLoopGroup, Class<? extends Channel>> getEventLoopConfig(Configuration conf) {
@@ -74,4 +79,5 @@ public class NettyRpcClientConfigHelper {
     }
     return EVENT_LOOP_CONFIG_MAP.get(name);
   }
+
 }

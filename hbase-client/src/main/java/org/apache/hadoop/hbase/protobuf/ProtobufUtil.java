@@ -35,6 +35,7 @@ import com.google.protobuf.TextFormat;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -83,8 +84,9 @@ import org.apache.hadoop.hbase.exceptions.DeserializationException;
 import org.apache.hadoop.hbase.filter.ByteArrayComparable;
 import org.apache.hadoop.hbase.filter.CompareFilter;
 import org.apache.hadoop.hbase.filter.Filter;
+import org.apache.hadoop.hbase.io.LimitInputStream;
 import org.apache.hadoop.hbase.io.TimeRange;
-import org.apache.hadoop.hbase.ipc.PayloadCarryingRpcController;
+import org.apache.hadoop.hbase.ipc.HBaseRpcController;
 import org.apache.hadoop.hbase.protobuf.generated.AccessControlProtos;
 import org.apache.hadoop.hbase.protobuf.generated.AccessControlProtos.AccessControlService;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.AdminService;
@@ -1720,7 +1722,7 @@ public final class ProtobufUtil {
    * @throws IOException
    */
   public static Result get(final ClientService.BlockingInterface client, final byte[] regionName,
-      final Get get, PayloadCarryingRpcController controller) throws IOException {
+      final Get get, HBaseRpcController controller) throws IOException {
     GetRequest request =
       RequestConverter.buildGetRequest(regionName, get);
     try {
@@ -1759,7 +1761,7 @@ public final class ProtobufUtil {
    */
   public static Result getRowOrBefore(final ClientService.BlockingInterface client,
       final byte[] regionName, final byte[] row, final byte[] family,
-      PayloadCarryingRpcController payloadCarryingRpcController) throws IOException {
+      HBaseRpcController payloadCarryingRpcController) throws IOException {
     GetRequest request =
       RequestConverter.buildGetRowOrBeforeRequest(
         regionName, row, family);
@@ -1801,7 +1803,7 @@ public final class ProtobufUtil {
    */
   public static boolean bulkLoadHFile(final ClientService.BlockingInterface client,
       final List<Pair<byte[], String>> familyPaths, final byte[] regionName, boolean assignSeqNum,
-      PayloadCarryingRpcController controller) throws IOException {
+      HBaseRpcController controller) throws IOException {
     BulkLoadHFileRequest request =
       RequestConverter.buildBulkLoadHFileRequest(familyPaths, regionName, assignSeqNum);
     try {
@@ -1820,7 +1822,7 @@ public final class ProtobufUtil {
 
   public static CoprocessorServiceResponse execService(
       final ClientService.BlockingInterface client, final CoprocessorServiceCall call,
-      final byte[] regionName, PayloadCarryingRpcController controller) throws IOException {
+      final byte[] regionName, HBaseRpcController controller) throws IOException {
     CoprocessorServiceRequest request = CoprocessorServiceRequest.newBuilder()
         .setCall(call).setRegion(
             RequestConverter.buildRegionSpecifier(REGION_NAME, regionName)).build();
@@ -3184,6 +3186,28 @@ public final class ProtobufUtil {
             .setTimeUnit(toProtoTimeUnit(timeUnit))
             .setScope(toProtoQuotaScope(scope))
             .build();
+  }
+
+  /**
+   * This version of protobuf's mergeDelimitedFrom avoids the hard-coded 64MB limit for decoding
+   * buffers
+   * @param builder current message builder
+   * @param in Inputsream with delimited protobuf data
+   * @throws IOException
+   */
+  public static void mergeDelimitedFrom(Message.Builder builder, InputStream in)
+    throws IOException {
+    // This used to be builder.mergeDelimitedFrom(in);
+    // but is replaced to allow us to bump the protobuf size limit.
+    final int firstByte = in.read();
+    if (firstByte != -1) {
+      final int size = CodedInputStream.readRawVarint32(firstByte, in);
+      final InputStream limitedInput = new LimitInputStream(in, size);
+      final CodedInputStream codedInput = CodedInputStream.newInstance(limitedInput);
+      codedInput.setSizeLimit(size);
+      builder.mergeFrom(codedInput);
+      codedInput.checkLastTagWas(0);
+    }
   }
 
   /**

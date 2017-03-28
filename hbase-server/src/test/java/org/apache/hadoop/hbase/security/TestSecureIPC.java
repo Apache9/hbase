@@ -17,6 +17,7 @@
  */
 package org.apache.hadoop.hbase.security;
 
+import static org.apache.hadoop.hbase.ipc.TestProtobufRpcServiceImpl.SERVICE;
 import static org.apache.hadoop.hbase.security.HBaseKerberosUtils.getKeytabFileForTesting;
 import static org.apache.hadoop.hbase.security.HBaseKerberosUtils.getPrincipalForTesting;
 import static org.apache.hadoop.hbase.security.HBaseKerberosUtils.getSecuredConfiguration;
@@ -25,7 +26,6 @@ import static org.junit.Assert.assertSame;
 
 import com.google.common.collect.Lists;
 import com.google.protobuf.BlockingRpcChannel;
-import com.google.protobuf.BlockingService;
 import com.google.protobuf.ServiceException;
 
 import java.io.File;
@@ -50,12 +50,11 @@ import org.apache.hadoop.fs.CommonConfigurationKeys;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.ServerName;
-import org.apache.hadoop.hbase.ipc.AbstractTestIPC;
+import org.apache.hadoop.hbase.ipc.BlockingRpcClient;
 import org.apache.hadoop.hbase.ipc.FifoRpcScheduler;
 import org.apache.hadoop.hbase.ipc.NettyRpcClient;
 import org.apache.hadoop.hbase.ipc.RpcClient;
 import org.apache.hadoop.hbase.ipc.RpcClientFactory;
-import org.apache.hadoop.hbase.ipc.RpcClientImpl;
 import org.apache.hadoop.hbase.ipc.RpcServer;
 import org.apache.hadoop.hbase.ipc.RpcServerInterface;
 import org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos;
@@ -83,12 +82,10 @@ public class TestSecureIPC {
 
   private static final Log LOG = LogFactory.getLog(TestSecureIPC.class);
 
-  public static final BlockingService SERVICE = AbstractTestIPC.SERVICE;
-
   private static final HBaseTestingUtility TEST_UTIL = new HBaseTestingUtility();
 
-  private static final File KEYTAB_FILE = new File(
-      TEST_UTIL.getDataTestDir("keytab").toUri().getPath());
+  private static final File KEYTAB_FILE =
+      new File(TEST_UTIL.getDataTestDir("keytab").toUri().getPath());
 
   private static Method GET_LOGIN;
 
@@ -104,7 +101,7 @@ public class TestSecureIPC {
 
   @Parameterized.Parameters(name = "{index}: RpcClientClass={0}")
   public static Iterable<Object[]> data() {
-    return Arrays.asList(new Object[] { RpcClientImpl.class.getName() },
+    return Arrays.asList(new Object[] { BlockingRpcClient.class.getName() },
       new Object[] { NettyRpcClient.class.getName() });
   }
 
@@ -250,8 +247,8 @@ public class TestSecureIPC {
         Lists.newArrayList(new RpcServer.BlockingServiceAndInterface(SERVICE, null)), isa,
         serverConf, new FifoRpcScheduler(serverConf, 1));
     rpcServer.start();
-    RpcClient rpcClient = RpcClientFactory.createClient(clientConf,
-      HConstants.DEFAULT_CLUSTER_ID.toString());
+    RpcClient rpcClient =
+        RpcClientFactory.createClient(clientConf, HConstants.DEFAULT_CLUSTER_ID.toString());
     try {
       InetSocketAddress address = rpcServer.getListenerAddress();
       if (address == null) {
@@ -260,8 +257,8 @@ public class TestSecureIPC {
       BlockingRpcChannel channel = rpcClient.createBlockingRpcChannel(
         ServerName.valueOf(address.getHostName(), address.getPort(), System.currentTimeMillis()),
         clientUser, 0);
-      TestRpcServiceProtos.TestProtobufRpcProto.BlockingInterface stub = TestRpcServiceProtos.TestProtobufRpcProto
-          .newBlockingStub(channel);
+      TestRpcServiceProtos.TestProtobufRpcProto.BlockingInterface stub =
+          TestRpcServiceProtos.TestProtobufRpcProto.newBlockingStub(channel);
       TestThread th1 = new TestThread(stub);
       final Throwable exception[] = new Throwable[1];
       Collections.synchronizedList(new ArrayList<Throwable>());
@@ -299,9 +296,9 @@ public class TestSecureIPC {
         int[] messageSize = new int[] { 100, 1000, 10000 };
         for (int i = 0; i < messageSize.length; i++) {
           String input = RandomStringUtils.random(messageSize[i]);
-          String result = stub
-              .echo(null, TestProtos.EchoRequestProto.newBuilder().setMessage(input).build())
-              .getMessage();
+          String result =
+              stub.echo(null, TestProtos.EchoRequestProto.newBuilder().setMessage(input).build())
+                  .getMessage();
           assertEquals(input, result);
         }
       } catch (ServiceException e) {

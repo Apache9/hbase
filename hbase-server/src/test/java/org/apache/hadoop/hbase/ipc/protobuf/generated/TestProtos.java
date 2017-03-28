@@ -2160,28 +2160,43 @@ public final class TestProtos {
     // @@protoc_insertion_point(class_scope:PauseRequestProto)
   }
 
-  public interface PauseResponseProtoOrBuilder
+  public interface AddrResponseProtoOrBuilder
       extends com.google.protobuf.MessageOrBuilder {
+
+    // required string addr = 1;
+    /**
+     * <code>required string addr = 1;</code>
+     */
+    boolean hasAddr();
+    /**
+     * <code>required string addr = 1;</code>
+     */
+    java.lang.String getAddr();
+    /**
+     * <code>required string addr = 1;</code>
+     */
+    com.google.protobuf.ByteString
+        getAddrBytes();
   }
   /**
-   * Protobuf type {@code PauseResponseProto}
+   * Protobuf type {@code AddrResponseProto}
    */
-  public static final class PauseResponseProto extends
+  public static final class AddrResponseProto extends
       com.google.protobuf.GeneratedMessage
-      implements PauseResponseProtoOrBuilder {
-    // Use PauseResponseProto.newBuilder() to construct.
-    private PauseResponseProto(com.google.protobuf.GeneratedMessage.Builder<?> builder) {
+      implements AddrResponseProtoOrBuilder {
+    // Use AddrResponseProto.newBuilder() to construct.
+    private AddrResponseProto(com.google.protobuf.GeneratedMessage.Builder<?> builder) {
       super(builder);
       this.unknownFields = builder.getUnknownFields();
     }
-    private PauseResponseProto(boolean noInit) { this.unknownFields = com.google.protobuf.UnknownFieldSet.getDefaultInstance(); }
+    private AddrResponseProto(boolean noInit) { this.unknownFields = com.google.protobuf.UnknownFieldSet.getDefaultInstance(); }
 
-    private static final PauseResponseProto defaultInstance;
-    public static PauseResponseProto getDefaultInstance() {
+    private static final AddrResponseProto defaultInstance;
+    public static AddrResponseProto getDefaultInstance() {
       return defaultInstance;
     }
 
-    public PauseResponseProto getDefaultInstanceForType() {
+    public AddrResponseProto getDefaultInstanceForType() {
       return defaultInstance;
     }
 
@@ -2191,11 +2206,12 @@ public final class TestProtos {
         getUnknownFields() {
       return this.unknownFields;
     }
-    private PauseResponseProto(
+    private AddrResponseProto(
         com.google.protobuf.CodedInputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
       initFields();
+      int mutable_bitField0_ = 0;
       com.google.protobuf.UnknownFieldSet.Builder unknownFields =
           com.google.protobuf.UnknownFieldSet.newBuilder();
       try {
@@ -2213,6 +2229,11 @@ public final class TestProtos {
               }
               break;
             }
+            case 10: {
+              bitField0_ |= 0x00000001;
+              addr_ = input.readBytes();
+              break;
+            }
           }
         }
       } catch (com.google.protobuf.InvalidProtocolBufferException e) {
@@ -2227,38 +2248,87 @@ public final class TestProtos {
     }
     public static final com.google.protobuf.Descriptors.Descriptor
         getDescriptor() {
-      return org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.internal_static_PauseResponseProto_descriptor;
+      return org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.internal_static_AddrResponseProto_descriptor;
     }
 
     protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
         internalGetFieldAccessorTable() {
-      return org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.internal_static_PauseResponseProto_fieldAccessorTable
+      return org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.internal_static_AddrResponseProto_fieldAccessorTable
           .ensureFieldAccessorsInitialized(
-              org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.PauseResponseProto.class, org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.PauseResponseProto.Builder.class);
+              org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.AddrResponseProto.class, org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.AddrResponseProto.Builder.class);
     }
 
-    public static com.google.protobuf.Parser<PauseResponseProto> PARSER =
-        new com.google.protobuf.AbstractParser<PauseResponseProto>() {
-      public PauseResponseProto parsePartialFrom(
+    public static com.google.protobuf.Parser<AddrResponseProto> PARSER =
+        new com.google.protobuf.AbstractParser<AddrResponseProto>() {
+      public AddrResponseProto parsePartialFrom(
           com.google.protobuf.CodedInputStream input,
           com.google.protobuf.ExtensionRegistryLite extensionRegistry)
           throws com.google.protobuf.InvalidProtocolBufferException {
-        return new PauseResponseProto(input, extensionRegistry);
+        return new AddrResponseProto(input, extensionRegistry);
       }
     };
 
     @java.lang.Override
-    public com.google.protobuf.Parser<PauseResponseProto> getParserForType() {
+    public com.google.protobuf.Parser<AddrResponseProto> getParserForType() {
       return PARSER;
     }
 
+    private int bitField0_;
+    // required string addr = 1;
+    public static final int ADDR_FIELD_NUMBER = 1;
+    private java.lang.Object addr_;
+    /**
+     * <code>required string addr = 1;</code>
+     */
+    public boolean hasAddr() {
+      return ((bitField0_ & 0x00000001) == 0x00000001);
+    }
+    /**
+     * <code>required string addr = 1;</code>
+     */
+    public java.lang.String getAddr() {
+      java.lang.Object ref = addr_;
+      if (ref instanceof java.lang.String) {
+        return (java.lang.String) ref;
+      } else {
+        com.google.protobuf.ByteString bs = 
+            (com.google.protobuf.ByteString) ref;
+        java.lang.String s = bs.toStringUtf8();
+        if (bs.isValidUtf8()) {
+          addr_ = s;
+        }
+        return s;
+      }
+    }
+    /**
+     * <code>required string addr = 1;</code>
+     */
+    public com.google.protobuf.ByteString
+        getAddrBytes() {
+      java.lang.Object ref = addr_;
+      if (ref instanceof java.lang.String) {
+        com.google.protobuf.ByteString b = 
+            com.google.protobuf.ByteString.copyFromUtf8(
+                (java.lang.String) ref);
+        addr_ = b;
+        return b;
+      } else {
+        return (com.google.protobuf.ByteString) ref;
+      }
+    }
+
     private void initFields() {
+      addr_ = "";
     }
     private byte memoizedIsInitialized = -1;
     public final boolean isInitialized() {
       byte isInitialized = memoizedIsInitialized;
       if (isInitialized != -1) return isInitialized == 1;
 
+      if (!hasAddr()) {
+        memoizedIsInitialized = 0;
+        return false;
+      }
       memoizedIsInitialized = 1;
       return true;
     }
@@ -2266,6 +2336,9 @@ public final class TestProtos {
     public void writeTo(com.google.protobuf.CodedOutputStream output)
                         throws java.io.IOException {
       getSerializedSize();
+      if (((bitField0_ & 0x00000001) == 0x00000001)) {
+        output.writeBytes(1, getAddrBytes());
+      }
       getUnknownFields().writeTo(output);
     }
 
@@ -2275,6 +2348,10 @@ public final class TestProtos {
       if (size != -1) return size;
 
       size = 0;
+      if (((bitField0_ & 0x00000001) == 0x00000001)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeBytesSize(1, getAddrBytes());
+      }
       size += getUnknownFields().getSerializedSize();
       memoizedSerializedSize = size;
       return size;
@@ -2292,12 +2369,17 @@ public final class TestProtos {
       if (obj == this) {
        return true;
       }
-      if (!(obj instanceof org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.PauseResponseProto)) {
+      if (!(obj instanceof org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.AddrResponseProto)) {
         return super.equals(obj);
       }
-      org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.PauseResponseProto other = (org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.PauseResponseProto) obj;
+      org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.AddrResponseProto other = (org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.AddrResponseProto) obj;
 
       boolean result = true;
+      result = result && (hasAddr() == other.hasAddr());
+      if (hasAddr()) {
+        result = result && getAddr()
+            .equals(other.getAddr());
+      }
       result = result &&
           getUnknownFields().equals(other.getUnknownFields());
       return result;
@@ -2311,58 +2393,62 @@ public final class TestProtos {
       }
       int hash = 41;
       hash = (19 * hash) + getDescriptorForType().hashCode();
+      if (hasAddr()) {
+        hash = (37 * hash) + ADDR_FIELD_NUMBER;
+        hash = (53 * hash) + getAddr().hashCode();
+      }
       hash = (29 * hash) + getUnknownFields().hashCode();
       memoizedHashCode = hash;
       return hash;
     }
 
-    public static org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.PauseResponseProto parseFrom(
+    public static org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.AddrResponseProto parseFrom(
         com.google.protobuf.ByteString data)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data);
     }
-    public static org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.PauseResponseProto parseFrom(
+    public static org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.AddrResponseProto parseFrom(
         com.google.protobuf.ByteString data,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data, extensionRegistry);
     }
-    public static org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.PauseResponseProto parseFrom(byte[] data)
+    public static org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.AddrResponseProto parseFrom(byte[] data)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data);
     }
-    public static org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.PauseResponseProto parseFrom(
+    public static org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.AddrResponseProto parseFrom(
         byte[] data,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data, extensionRegistry);
     }
-    public static org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.PauseResponseProto parseFrom(java.io.InputStream input)
+    public static org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.AddrResponseProto parseFrom(java.io.InputStream input)
         throws java.io.IOException {
       return PARSER.parseFrom(input);
     }
-    public static org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.PauseResponseProto parseFrom(
+    public static org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.AddrResponseProto parseFrom(
         java.io.InputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
       return PARSER.parseFrom(input, extensionRegistry);
     }
-    public static org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.PauseResponseProto parseDelimitedFrom(java.io.InputStream input)
+    public static org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.AddrResponseProto parseDelimitedFrom(java.io.InputStream input)
         throws java.io.IOException {
       return PARSER.parseDelimitedFrom(input);
     }
-    public static org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.PauseResponseProto parseDelimitedFrom(
+    public static org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.AddrResponseProto parseDelimitedFrom(
         java.io.InputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
       return PARSER.parseDelimitedFrom(input, extensionRegistry);
     }
-    public static org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.PauseResponseProto parseFrom(
+    public static org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.AddrResponseProto parseFrom(
         com.google.protobuf.CodedInputStream input)
         throws java.io.IOException {
       return PARSER.parseFrom(input);
     }
-    public static org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.PauseResponseProto parseFrom(
+    public static org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.AddrResponseProto parseFrom(
         com.google.protobuf.CodedInputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
@@ -2371,7 +2457,7 @@ public final class TestProtos {
 
     public static Builder newBuilder() { return Builder.create(); }
     public Builder newBuilderForType() { return newBuilder(); }
-    public static Builder newBuilder(org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.PauseResponseProto prototype) {
+    public static Builder newBuilder(org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.AddrResponseProto prototype) {
       return newBuilder().mergeFrom(prototype);
     }
     public Builder toBuilder() { return newBuilder(this); }
@@ -2383,24 +2469,24 @@ public final class TestProtos {
       return builder;
     }
     /**
-     * Protobuf type {@code PauseResponseProto}
+     * Protobuf type {@code AddrResponseProto}
      */
     public static final class Builder extends
         com.google.protobuf.GeneratedMessage.Builder<Builder>
-       implements org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.PauseResponseProtoOrBuilder {
+       implements org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.AddrResponseProtoOrBuilder {
       public static final com.google.protobuf.Descriptors.Descriptor
           getDescriptor() {
-        return org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.internal_static_PauseResponseProto_descriptor;
+        return org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.internal_static_AddrResponseProto_descriptor;
       }
 
       protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
           internalGetFieldAccessorTable() {
-        return org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.internal_static_PauseResponseProto_fieldAccessorTable
+        return org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.internal_static_AddrResponseProto_fieldAccessorTable
             .ensureFieldAccessorsInitialized(
-                org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.PauseResponseProto.class, org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.PauseResponseProto.Builder.class);
+                org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.AddrResponseProto.class, org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.AddrResponseProto.Builder.class);
       }
 
-      // Construct using org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.PauseResponseProto.newBuilder()
+      // Construct using org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.AddrResponseProto.newBuilder()
       private Builder() {
         maybeForceBuilderInitialization();
       }
@@ -2420,6 +2506,8 @@ public final class TestProtos {
 
       public Builder clear() {
         super.clear();
+        addr_ = "";
+        bitField0_ = (bitField0_ & ~0x00000001);
         return this;
       }
 
@@ -2429,43 +2517,59 @@ public final class TestProtos {
 
       public com.google.protobuf.Descriptors.Descriptor
           getDescriptorForType() {
-        return org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.internal_static_PauseResponseProto_descriptor;
+        return org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.internal_static_AddrResponseProto_descriptor;
       }
 
-      public org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.PauseResponseProto getDefaultInstanceForType() {
-        return org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.PauseResponseProto.getDefaultInstance();
+      public org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.AddrResponseProto getDefaultInstanceForType() {
+        return org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.AddrResponseProto.getDefaultInstance();
       }
 
-      public org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.PauseResponseProto build() {
-        org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.PauseResponseProto result = buildPartial();
+      public org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.AddrResponseProto build() {
+        org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.AddrResponseProto result = buildPartial();
         if (!result.isInitialized()) {
           throw newUninitializedMessageException(result);
         }
         return result;
       }
 
-      public org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.PauseResponseProto buildPartial() {
-        org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.PauseResponseProto result = new org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.PauseResponseProto(this);
+      public org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.AddrResponseProto buildPartial() {
+        org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.AddrResponseProto result = new org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.AddrResponseProto(this);
+        int from_bitField0_ = bitField0_;
+        int to_bitField0_ = 0;
+        if (((from_bitField0_ & 0x00000001) == 0x00000001)) {
+          to_bitField0_ |= 0x00000001;
+        }
+        result.addr_ = addr_;
+        result.bitField0_ = to_bitField0_;
         onBuilt();
         return result;
       }
 
       public Builder mergeFrom(com.google.protobuf.Message other) {
-        if (other instanceof org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.PauseResponseProto) {
-          return mergeFrom((org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.PauseResponseProto)other);
+        if (other instanceof org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.AddrResponseProto) {
+          return mergeFrom((org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.AddrResponseProto)other);
         } else {
           super.mergeFrom(other);
           return this;
         }
       }
 
-      public Builder mergeFrom(org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.PauseResponseProto other) {
-        if (other == org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.PauseResponseProto.getDefaultInstance()) return this;
+      public Builder mergeFrom(org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.AddrResponseProto other) {
+        if (other == org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.AddrResponseProto.getDefaultInstance()) return this;
+        if (other.hasAddr()) {
+          bitField0_ |= 0x00000001;
+          addr_ = other.addr_;
+          onChanged();
+        }
         this.mergeUnknownFields(other.getUnknownFields());
         return this;
       }
 
       public final boolean isInitialized() {
+        if (!hasAddr()) {
+          
+          return false;
+        }
         return true;
       }
 
@@ -2473,11 +2577,11 @@ public final class TestProtos {
           com.google.protobuf.CodedInputStream input,
           com.google.protobuf.ExtensionRegistryLite extensionRegistry)
           throws java.io.IOException {
-        org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.PauseResponseProto parsedMessage = null;
+        org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.AddrResponseProto parsedMessage = null;
         try {
           parsedMessage = PARSER.parsePartialFrom(input, extensionRegistry);
         } catch (com.google.protobuf.InvalidProtocolBufferException e) {
-          parsedMessage = (org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.PauseResponseProto) e.getUnfinishedMessage();
+          parsedMessage = (org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.AddrResponseProto) e.getUnfinishedMessage();
           throw e;
         } finally {
           if (parsedMessage != null) {
@@ -2486,16 +2590,91 @@ public final class TestProtos {
         }
         return this;
       }
+      private int bitField0_;
 
-      // @@protoc_insertion_point(builder_scope:PauseResponseProto)
+      // required string addr = 1;
+      private java.lang.Object addr_ = "";
+      /**
+       * <code>required string addr = 1;</code>
+       */
+      public boolean hasAddr() {
+        return ((bitField0_ & 0x00000001) == 0x00000001);
+      }
+      /**
+       * <code>required string addr = 1;</code>
+       */
+      public java.lang.String getAddr() {
+        java.lang.Object ref = addr_;
+        if (!(ref instanceof java.lang.String)) {
+          java.lang.String s = ((com.google.protobuf.ByteString) ref)
+              .toStringUtf8();
+          addr_ = s;
+          return s;
+        } else {
+          return (java.lang.String) ref;
+        }
+      }
+      /**
+       * <code>required string addr = 1;</code>
+       */
+      public com.google.protobuf.ByteString
+          getAddrBytes() {
+        java.lang.Object ref = addr_;
+        if (ref instanceof String) {
+          com.google.protobuf.ByteString b = 
+              com.google.protobuf.ByteString.copyFromUtf8(
+                  (java.lang.String) ref);
+          addr_ = b;
+          return b;
+        } else {
+          return (com.google.protobuf.ByteString) ref;
+        }
+      }
+      /**
+       * <code>required string addr = 1;</code>
+       */
+      public Builder setAddr(
+          java.lang.String value) {
+        if (value == null) {
+    throw new NullPointerException();
+  }
+  bitField0_ |= 0x00000001;
+        addr_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>required string addr = 1;</code>
+       */
+      public Builder clearAddr() {
+        bitField0_ = (bitField0_ & ~0x00000001);
+        addr_ = getDefaultInstance().getAddr();
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>required string addr = 1;</code>
+       */
+      public Builder setAddrBytes(
+          com.google.protobuf.ByteString value) {
+        if (value == null) {
+    throw new NullPointerException();
+  }
+  bitField0_ |= 0x00000001;
+        addr_ = value;
+        onChanged();
+        return this;
+      }
+
+      // @@protoc_insertion_point(builder_scope:AddrResponseProto)
     }
 
     static {
-      defaultInstance = new PauseResponseProto(true);
+      defaultInstance = new AddrResponseProto(true);
       defaultInstance.initFields();
     }
 
-    // @@protoc_insertion_point(class_scope:PauseResponseProto)
+    // @@protoc_insertion_point(class_scope:AddrResponseProto)
   }
 
   private static com.google.protobuf.Descriptors.Descriptor
@@ -2524,10 +2703,10 @@ public final class TestProtos {
     com.google.protobuf.GeneratedMessage.FieldAccessorTable
       internal_static_PauseRequestProto_fieldAccessorTable;
   private static com.google.protobuf.Descriptors.Descriptor
-    internal_static_PauseResponseProto_descriptor;
+    internal_static_AddrResponseProto_descriptor;
   private static
     com.google.protobuf.GeneratedMessage.FieldAccessorTable
-      internal_static_PauseResponseProto_fieldAccessorTable;
+      internal_static_AddrResponseProto_fieldAccessorTable;
 
   public static com.google.protobuf.Descriptors.FileDescriptor
       getDescriptor() {
@@ -2541,9 +2720,9 @@ public final class TestProtos {
       "tyResponseProto\"#\n\020EchoRequestProto\022\017\n\007m" +
       "essage\030\001 \002(\t\"$\n\021EchoResponseProto\022\017\n\007mes" +
       "sage\030\001 \002(\t\"\037\n\021PauseRequestProto\022\n\n\002ms\030\001 " +
-      "\002(\r\"\024\n\022PauseResponseProtoB?\n.org.apache." +
-      "hadoop.hbase.ipc.protobuf.generatedB\nTes" +
-      "tProtos\240\001\001"
+      "\002(\r\"!\n\021AddrResponseProto\022\014\n\004addr\030\001 \002(\tB?" +
+      "\n.org.apache.hadoop.hbase.ipc.protobuf.g" +
+      "eneratedB\nTestProtos\240\001\001"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
       new com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner() {
@@ -2580,12 +2759,12 @@ public final class TestProtos {
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_PauseRequestProto_descriptor,
               new java.lang.String[] { "Ms", });
-          internal_static_PauseResponseProto_descriptor =
+          internal_static_AddrResponseProto_descriptor =
             getDescriptor().getMessageTypes().get(5);
-          internal_static_PauseResponseProto_fieldAccessorTable = new
+          internal_static_AddrResponseProto_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
-              internal_static_PauseResponseProto_descriptor,
-              new java.lang.String[] { });
+              internal_static_AddrResponseProto_descriptor,
+              new java.lang.String[] { "Addr", });
           return null;
         }
       };

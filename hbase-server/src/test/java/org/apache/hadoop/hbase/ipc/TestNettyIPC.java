@@ -17,31 +17,111 @@
  */
 package org.apache.hadoop.hbase.ipc;
 
+import io.netty.channel.epoll.EpollEventLoopGroup;
+import io.netty.channel.epoll.EpollSocketChannel;
+import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.socket.nio.NioSocketChannel;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.codec.Codec;
 import org.apache.hadoop.hbase.testclassification.SmallTests;
+import org.apache.hadoop.hbase.util.JVM;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
+import org.junit.runners.Parameterized.Parameters;
 
-/**
- * Test NettyRpcClient.
- */
+@RunWith(Parameterized.class)
 @Category(SmallTests.class)
 public class TestNettyIPC extends AbstractTestIPC {
 
+  @Parameters(name = "{index}: EventLoop={0}")
+  public static Collection<Object[]> parameters() {
+    List<Object[]> params = new ArrayList<>();
+    params.add(new Object[] { "nio" });
+    params.add(new Object[] { "perClientNio" });
+    if (JVM.isLinux() && JVM.isAmd64()) {
+      params.add(new Object[] { "epoll" });
+    }
+    return params;
+  }
+
+  @Parameter
+  public String eventLoopType;
+
+  private static NioEventLoopGroup NIO;
+
+  private static EpollEventLoopGroup EPOLL;
+
+  @BeforeClass
+  public static void setUpBeforeClass() {
+    NIO = new NioEventLoopGroup();
+    if (JVM.isLinux() && JVM.isAmd64()) {
+      EPOLL = new EpollEventLoopGroup();
+    }
+  }
+
+  @AfterClass
+  public static void tearDownAfterClass() {
+    if (NIO != null) {
+      NIO.shutdownGracefully();
+    }
+    if (EPOLL != null) {
+      EPOLL.shutdownGracefully();
+    }
+  }
+
+  private void setConf(Configuration conf) {
+    switch (eventLoopType) {
+      case "nio":
+        NettyRpcClientConfigHelper.setEventLoopConfig(conf, NIO, NioSocketChannel.class);
+        break;
+      case "epoll":
+        NettyRpcClientConfigHelper.setEventLoopConfig(conf, EPOLL, EpollSocketChannel.class);
+        break;
+      case "perClientNio":
+        NettyRpcClientConfigHelper.createEventLoopPerClient(conf);
+        break;
+      default:
+        break;
+    }
+  }
+
   @Override
-  protected AbstractRpcClient<?> createRpcClientNoCodec(Configuration conf) {
-    return new NettyRpcClient(conf, HConstants.CLUSTER_ID_DEFAULT) {
+  protected NettyRpcClient createRpcClientNoCodec(Configuration conf) {
+    setConf(conf);
+    return new NettyRpcClient(conf) {
 
       @Override
-      protected Codec getCodec() {
+      Codec getCodec() {
         return null;
       }
+
     };
   }
 
   @Override
-  protected AbstractRpcClient<?> createRpcClient(Configuration conf) {
-    return new NettyRpcClient(conf, HConstants.CLUSTER_ID_DEFAULT);
+  protected NettyRpcClient createRpcClient(Configuration conf) {
+    setConf(conf);
+    return new NettyRpcClient(conf);
+  }
+
+  @Override
+  protected NettyRpcClient createRpcClientRTEDuringConnectionSetup(Configuration conf) {
+    setConf(conf);
+    return new NettyRpcClient(conf) {
+
+      @Override
+      boolean isTcpNoDelay() {
+        throw new RuntimeException("Injected fault");
+      }
+    };
   }
 }

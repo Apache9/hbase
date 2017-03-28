@@ -67,8 +67,8 @@ class Call {
 
   @Override
   public String toString() {
-    return "callId: " + this.id + " methodName: " + this.md.getName() + " param {"
-        + (this.param != null ? ProtobufUtil.getShortTextFormat(this.param) : "") + "}";
+    return "callId: " + this.id + " methodName: " + this.md.getName() + " param {" +
+        (this.param != null ? ProtobufUtil.getShortTextFormat(this.param) : "") + "}";
   }
 
   /**
@@ -125,6 +125,10 @@ class Call {
       this.cells = cells;
     }
     callComplete();
+  }
+
+  public synchronized boolean isDone() {
+    return done;
   }
 
   public long getStartTime() {

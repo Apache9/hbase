@@ -28,6 +28,7 @@ import com.google.protobuf.Message;
 import com.google.protobuf.RpcController;
 import com.google.protobuf.ServiceException;
 
+import java.net.InetSocketAddress;
 import java.net.SocketTimeoutException;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -40,8 +41,9 @@ import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.MasterNotRunningException;
 import org.apache.hadoop.hbase.ServerName;
+import org.apache.hadoop.hbase.ipc.AbstractRpcClient;
+import org.apache.hadoop.hbase.ipc.BlockingRpcClient;
 import org.apache.hadoop.hbase.ipc.RpcClient;
-import org.apache.hadoop.hbase.ipc.RpcClientImpl;
 import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.junit.AfterClass;
@@ -123,13 +125,14 @@ public class TestClientTimeouts {
   }
 
   private static RpcClient newRandomTimeoutRpcClient() {
-    return new RpcClientImpl(
-        TEST_UTIL.getConfiguration(), TEST_UTIL.getClusterKey()) {
+    return new BlockingRpcClient(
+        TEST_UTIL.getConfiguration(), TEST_UTIL.getClusterKey(), null) {
       // Return my own instance, one that does random timeouts
       @Override
       public BlockingRpcChannel createBlockingRpcChannel(ServerName sn,
           User ticket, int rpcTimeout) {
-        return new RandomTimeoutBlockingRpcChannel(this, sn, ticket, rpcTimeout);
+        return new RandomTimeoutBlockingRpcChannel(this,
+            new InetSocketAddress(sn.getHostname(), sn.getPort()), ticket, rpcTimeout);
       }
     };
   }
@@ -137,14 +140,14 @@ public class TestClientTimeouts {
   /**
    * Blocking rpc channel that goes via hbase rpc.
    */
-  static class RandomTimeoutBlockingRpcChannel extends RpcClientImpl.BlockingRpcChannelImplementation {
+  static class RandomTimeoutBlockingRpcChannel extends BlockingRpcClient.BlockingRpcChannelImplementation {
     private static final Random RANDOM = new Random(System.currentTimeMillis());
     public static final double CHANCE_OF_TIMEOUT = 0.3;
     private static AtomicInteger invokations = new AtomicInteger();
 
-    RandomTimeoutBlockingRpcChannel(final RpcClientImpl rpcClient, final ServerName sn,
-        final User ticket, final int rpcTimeout) {
-      super(rpcClient, sn, ticket, rpcTimeout);
+    RandomTimeoutBlockingRpcChannel(AbstractRpcClient<?> rpcClient,
+      InetSocketAddress addr, User ticket, int rpcTimeout) {
+      super(rpcClient, addr, ticket, rpcTimeout);
     }
 
     @Override

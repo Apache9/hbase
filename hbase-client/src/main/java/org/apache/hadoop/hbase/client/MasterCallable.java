@@ -9,7 +9,7 @@ import java.io.IOException;
 
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
-import org.apache.hadoop.hbase.ipc.PayloadCarryingRpcController;
+import org.apache.hadoop.hbase.ipc.HBaseRpcController;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.MasterService;
 import org.apache.hadoop.hbase.util.Bytes;
 
@@ -24,7 +24,7 @@ abstract class MasterCallable<V> implements RetryingCallable<V>, Closeable {
 
   private MasterKeepAliveConnection master;
 
-  private final PayloadCarryingRpcController controller;
+  private final HBaseRpcController controller;
 
   private final int priority;
 
@@ -43,8 +43,8 @@ abstract class MasterCallable<V> implements RetryingCallable<V>, Closeable {
   }
 
   public MasterCallable(HConnection connection, byte[] regionName) {
-    this(connection, Bytes.equals(regionName, FIRST_META_REGIONINFO.getRegionName())
-        || Bytes.equals(regionName, FIRST_META_REGIONINFO.getEncodedNameAsBytes()));
+    this(connection, Bytes.equals(regionName, FIRST_META_REGIONINFO.getRegionName()) ||
+        Bytes.equals(regionName, FIRST_META_REGIONINFO.getEncodedNameAsBytes()));
   }
 
   @Override
@@ -77,11 +77,11 @@ abstract class MasterCallable<V> implements RetryingCallable<V>, Closeable {
   @Override
   public V call(int callTimeout) throws Exception {
     controller.reset();
-    controller.setTimeout(callTimeout);
+    controller.setCallTimeout(callTimeout);
     controller.setPriority(priority);
     return rpcCall(master, controller);
   }
 
   protected abstract V rpcCall(MasterService.BlockingInterface master,
-      PayloadCarryingRpcController controller) throws Exception;
+      HBaseRpcController controller) throws Exception;
 }

@@ -26,7 +26,7 @@ import org.apache.hadoop.hbase.CellScanner;
 import org.apache.hadoop.hbase.CoprocessorEnvironment;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.coprocessor.RegionCoprocessorEnvironment;
-import org.apache.hadoop.hbase.ipc.PayloadCarryingRpcController;
+import org.apache.hadoop.hbase.ipc.HBaseRpcController;
 import org.apache.hadoop.hbase.ipc.RpcServerInterface;
 import org.apache.hadoop.hbase.monitoring.MonitoredRPCHandler;
 import org.apache.hadoop.hbase.monitoring.TaskMonitor;
@@ -137,7 +137,7 @@ public class CoprocessorHConnection extends HConnectionImplementation {
           Pair<Message, CellScanner> ret = rpc.call(blocking, method, request, null, timestamp,
             status);
           if (ret.getSecond() != null) {
-            PayloadCarryingRpcController rpcc = (PayloadCarryingRpcController) controller;
+            HBaseRpcController rpcc = (HBaseRpcController) controller;
             rpcc.setCellScanner(ret.getSecond());
           }
           return ret.getFirst();

@@ -38,7 +38,7 @@ import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.TableNotEnabledException;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.exceptions.RegionMovedException;
-import org.apache.hadoop.hbase.ipc.PayloadCarryingRpcController;
+import org.apache.hadoop.hbase.ipc.HBaseRpcController;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.ClientService;
 import org.apache.hadoop.hbase.util.Bytes;
 
@@ -56,7 +56,7 @@ public abstract class RegionServerCallable<T> implements RetryingCallable<T> {
   protected final byte[] row;
   protected HRegionLocation location;
   private ClientService.BlockingInterface stub;
-  private final PayloadCarryingRpcController controller;
+  private final HBaseRpcController controller;
   protected boolean serverHasMoreResultsContext;
   protected boolean serverHasMoreResults;
 
@@ -86,12 +86,12 @@ public abstract class RegionServerCallable<T> implements RetryingCallable<T> {
       Throwables.propagateIfPossible(e.getCause(), IOException.class);
       throw new IOException(e);
     } catch (TimeoutException e) {
-      throw new IOException("Timeout when waiting for location, tableName=" + tableName + ", row="
-          + Bytes.toString(row) + ", reload=" + reload);
+      throw new IOException("Timeout when waiting for location, tableName=" + tableName + ", row=" +
+          Bytes.toString(row) + ", reload=" + reload);
     }
     if (loc == null) {
-      throw new IOException("Failed to find location, tableName=" + tableName + ", row="
-          + Bytes.toStringBinary(row) + ", reload=" + reload);
+      throw new IOException("Failed to find location, tableName=" + tableName + ", row=" +
+          Bytes.toStringBinary(row) + ", reload=" + reload);
     }
     return loc;
   }
@@ -105,8 +105,8 @@ public abstract class RegionServerCallable<T> implements RetryingCallable<T> {
   @Override
   public void prepare(int callTimeout, boolean reload) throws IOException {
     // check table state if this is a retry
-    if (reload && !tableName.equals(TableName.META_TABLE_NAME)
-        && getConnection().isTableDisabled(tableName)) {
+    if (reload && !tableName.equals(TableName.META_TABLE_NAME) &&
+        getConnection().isTableDisabled(tableName)) {
       throw new TableNotEnabledException(tableName.getNameAsString() + " is disabled.");
     }
     this.location = getRegionLocation(tableName, row, reload, callTimeout);
@@ -124,7 +124,7 @@ public abstract class RegionServerCallable<T> implements RetryingCallable<T> {
     return this.stub;
   }
 
-  protected PayloadCarryingRpcController getController() {
+  protected HBaseRpcController getController() {
     return controller;
   }
 
@@ -150,9 +150,9 @@ public abstract class RegionServerCallable<T> implements RetryingCallable<T> {
 
   @Override
   public void throwable(Throwable t, boolean retrying) {
-    if (t instanceof SocketTimeoutException || t instanceof ConnectException
-        || t instanceof RetriesExhaustedException
-        || (location != null && getConnection().isDeadServer(location.getServerName()))) {
+    if (t instanceof SocketTimeoutException || t instanceof ConnectException ||
+        t instanceof RetriesExhaustedException ||
+        (location != null && getConnection().isDeadServer(location.getServerName()))) {
       // if thrown these exceptions, we clear all the cache entries that
       // map to that slow/dead server; otherwise, let cache miss and ask
       // hbase:meta again to find the new location
@@ -174,8 +174,8 @@ public abstract class RegionServerCallable<T> implements RetryingCallable<T> {
   @Override
   public long sleep(long pause, int tries) {
     long sleep = ConnectionUtils.getPauseTime(pause, tries);
-    if (sleep < MIN_WAIT_DEAD_SERVER
-        && (location == null || getConnection().isDeadServer(location.getServerName()))) {
+    if (sleep < MIN_WAIT_DEAD_SERVER &&
+        (location == null || getConnection().isDeadServer(location.getServerName()))) {
       sleep = ConnectionUtils.addJitter(MIN_WAIT_DEAD_SERVER, 0.10f);
     }
     return sleep;
@@ -221,7 +221,7 @@ public abstract class RegionServerCallable<T> implements RetryingCallable<T> {
   public T call(int callTimeout) throws Exception {
     controller.reset();
     controller.setPriority(tableName);
-    controller.setTimeout(callTimeout);
+    controller.setCallTimeout(callTimeout);
     return rpcCall();
   }
 

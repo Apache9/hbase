@@ -15,29 +15,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.hadoop.hbase.exceptions;
 
-option java_package = "org.apache.hadoop.hbase.ipc.protobuf.generated";
-option java_outer_classname = "TestProtos";
-option java_generate_equals_and_hash = true;
+import java.io.IOException;
 
-message EmptyRequestProto {
-}
+import org.apache.hadoop.hbase.classification.InterfaceAudience;
+import org.apache.hadoop.hbase.classification.InterfaceStability;
 
-message EmptyResponseProto {
-}
+/**
+ * Thrown when the client believes that we are trying to communicate to has been repeatedly
+ * unresponsive for a while.
+ * <p>
+ * On receiving such an exception. The HConnectionManager will skip all retries and fast fail the
+ * operation.
+ */
+@InterfaceAudience.Public
+@InterfaceStability.Evolving
+public class ConnectionClosingException extends IOException {
+  public ConnectionClosingException(String string) {
+    super(string);
+  }
 
-message EchoRequestProto {
-  required string message = 1;
-}
-
-message EchoResponseProto {
-  required string message = 1;
-}
-
-message PauseRequestProto {
-  required uint32 ms = 1;
-}
-
-message AddrResponseProto {
-  required string addr = 1;
+  private static final long serialVersionUID = -8980028569652624236L;
 }

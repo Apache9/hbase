@@ -19,6 +19,7 @@ package org.apache.hadoop.hbase.ipc;
 
 import static org.apache.hadoop.hbase.ipc.RpcClient.PING_INTERVAL_NAME;
 import static org.apache.hadoop.hbase.ipc.RpcClient.PING_TIMEOUT;
+import static org.apache.hadoop.hbase.ipc.RpcClient.SOCKET_TIMEOUT_READ;
 import static org.apache.hadoop.hbase.ipc.RpcClientFactory.CUSTOM_RPC_CLIENT_IMPL_CONF_KEY;
 import static org.apache.hadoop.hbase.ipc.protobuf.generated.TestRpcServiceProtos.TestProtobufRpcProto.newBlockingStub;
 import static org.apache.hadoop.hbase.ipc.protobuf.generated.TestRpcServiceProtos.TestProtobufRpcProto.newStub;
@@ -38,8 +39,8 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.ipc.AbstractTestIPC.TestRpcServer;
 import org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.EchoRequestProto;
+import org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.EmptyResponseProto;
 import org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.PauseRequestProto;
-import org.apache.hadoop.hbase.ipc.protobuf.generated.TestProtos.PauseResponseProto;
 import org.apache.hadoop.hbase.ipc.protobuf.generated.TestRpcServiceProtos.TestProtobufRpcProto.BlockingInterface;
 import org.apache.hadoop.hbase.ipc.protobuf.generated.TestRpcServiceProtos.TestProtobufRpcProto.Interface;
 import org.apache.hadoop.hbase.security.User;
@@ -83,7 +84,7 @@ public class TestClientPing {
     }
 
     TestPingRpcServer() throws IOException {
-      super(new FifoRpcScheduler(CONF, 5));
+      super(new FifoRpcScheduler(CONF, 5), CONF);
     }
 
     @Override
@@ -99,13 +100,13 @@ public class TestClientPing {
 
   @Parameters
   public static List<Object[]> params() {
-    // return Collections.singletonList(new Object[] { NettyRpcClient.class });
-    return Arrays.asList(new Object[] { RpcClientImpl.class },
+    return Arrays.asList(new Object[] { BlockingRpcClient.class },
       new Object[] { NettyRpcClient.class });
   }
 
   @BeforeClass
   public static void setUpBeforeClass() throws IOException {
+    CONF.setInt(SOCKET_TIMEOUT_READ, 2000);
     CONF.setInt(PING_INTERVAL_NAME, 2000);
     CONF.setInt(PING_TIMEOUT, 500);
     CONF.setInt("hbase.ipc.client.connection.maxidletime", 60000);
@@ -146,11 +147,11 @@ public class TestClientPing {
     Interface asyncStub = newStub(client.createRpcChannel(
       ServerName.valueOf(addr.getHostName(), addr.getPort(), System.currentTimeMillis()),
       User.getCurrent(), 0));
-    asyncStub.pause(new PayloadCarryingRpcController(),
-      PauseRequestProto.newBuilder().setMs(60000).build(), new RpcCallback<PauseResponseProto>() {
+    asyncStub.pause(new HBaseRpcControllerImpl(),
+      PauseRequestProto.newBuilder().setMs(60000).build(), new RpcCallback<EmptyResponseProto>() {
 
         @Override
-        public void run(PauseResponseProto parameter) {
+        public void run(EmptyResponseProto parameter) {
         }
       });
 

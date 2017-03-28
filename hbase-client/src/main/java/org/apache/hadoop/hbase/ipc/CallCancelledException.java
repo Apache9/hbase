@@ -15,29 +15,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.hadoop.hbase.ipc;
 
-option java_package = "org.apache.hadoop.hbase.ipc.protobuf.generated";
-option java_outer_classname = "TestProtos";
-option java_generate_equals_and_hash = true;
+import org.apache.hadoop.hbase.HBaseIOException;
+import org.apache.hadoop.hbase.classification.InterfaceAudience;
+import org.apache.hadoop.hbase.classification.InterfaceStability;
 
-message EmptyRequestProto {
-}
+/**
+ * Client side call cancelled.
+ */
+@InterfaceAudience.Public
+@InterfaceStability.Evolving
+public class CallCancelledException extends HBaseIOException {
 
-message EmptyResponseProto {
-}
+  private static final long serialVersionUID = 309775809470318208L;
 
-message EchoRequestProto {
-  required string message = 1;
-}
+  public CallCancelledException(String message) {
+    super(message);
+  }
 
-message EchoResponseProto {
-  required string message = 1;
-}
-
-message PauseRequestProto {
-  required uint32 ms = 1;
-}
-
-message AddrResponseProto {
-  required string addr = 1;
 }

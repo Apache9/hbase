@@ -17,38 +17,43 @@
  */
 package org.apache.hadoop.hbase.ipc;
 
+import static org.apache.hadoop.hbase.ipc.IPCUtil.toIOE;
+import static org.apache.hadoop.hbase.ipc.IPCUtil.wrapException;
+
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.google.protobuf.BlockingRpcChannel;
-import com.google.protobuf.Descriptors.MethodDescriptor;
+import com.google.protobuf.Descriptors;
 import com.google.protobuf.Message;
 import com.google.protobuf.RpcCallback;
 import com.google.protobuf.RpcChannel;
 import com.google.protobuf.RpcController;
 import com.google.protobuf.ServiceException;
-
 import com.xiaomi.owl.metric.MetricCounter;
+
 import io.netty.util.HashedWheelTimer;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.CellScanner;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
@@ -62,19 +67,49 @@ import org.apache.hadoop.hbase.security.UserProvider;
 import org.apache.hadoop.hbase.security.token.AuthenticationTokenSelector;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.PoolMap;
-import org.apache.hadoop.hbase.util.PoolMap.PoolType;
+import org.apache.hadoop.hbase.util.Threads;
 import org.apache.hadoop.io.compress.CompressionCodec;
 import org.apache.hadoop.ipc.RemoteException;
 import org.apache.hadoop.security.token.TokenIdentifier;
 import org.apache.hadoop.security.token.TokenSelector;
 
 /**
- * Base class of all RpcClient implementations.
+ * Provides the basics for a RpcClient implementation like configuration and Logging.
+ * <p>
+ * Locking schema of the current IPC implementation
+ * <ul>
+ * <li>There is a lock in {@link AbstractRpcClient} to protect the fetching or creating
+ * connection.</li>
+ * <li>There is a lock in {@link Call} to make sure that we can only finish the call once.</li>
+ * <li>The same for {@link HBaseRpcController} as {@link Call}. And see the comment of
+ * {@link HBaseRpcController#notifyOnCancel(RpcCallback, HBaseRpcController.CancellationCallback)}
+ * of how to deal with cancel.</li>
+ * <li>For connection implementation, the construction of a connection should be as fast as possible
+ * because the creation is protected under a lock. Connect to remote side when needed. There is no
+ * forced locking schema for a connection implementation.</li>
+ * <li>For the locking order, the {@link Call} and {@link HBaseRpcController}'s lock should be held
+ * at last. So the callbacks in {@link Call} and {@link HBaseRpcController} should be execute
+ * outside the lock in {@link Call} and {@link HBaseRpcController} which means the implementations
+ * of the callbacks are free to hold any lock.</li>
+ * </ul>
  */
 @InterfaceAudience.Private
-public abstract class AbstractRpcClient<T extends Connection> implements RpcClient {
+public abstract class AbstractRpcClient<T extends RpcConnection> implements RpcClient {
+  // Log level is being changed in tests
+  public static final Log LOG = LogFactory.getLog(AbstractRpcClient.class);
 
-  private static final Log LOG = LogFactory.getLog(AbstractRpcClient.class);
+  protected static final HashedWheelTimer WHEEL_TIMER = new HashedWheelTimer(
+      Threads.newDaemonThreadFactory("RpcClient-timer"), 10, TimeUnit.MILLISECONDS);
+
+  private static final ScheduledExecutorService IDLE_CONN_SWEEPER =
+      Executors.newScheduledThreadPool(1, Threads.newDaemonThreadFactory("Idle-Rpc-Conn-Sweeper"));
+
+  protected final static Map<Kind, TokenSelector<? extends TokenIdentifier>> TOKEN_HANDLERS =
+      new HashMap<>();
+
+  static {
+    TOKEN_HANDLERS.put(Kind.HBASE_AUTH_TOKEN, new AuthenticationTokenSelector());
+  }
 
   protected boolean running = true; // if client runs
 
@@ -83,27 +118,35 @@ public abstract class AbstractRpcClient<T extends Connection> implements RpcClie
   protected final SocketAddress localAddr;
 
   protected final UserProvider userProvider;
-  protected final IPCUtil ipcUtil;
+  protected final CellBlockBuilder cellBlockBuilder;
 
-  // if the connection is idle for more than this time (in ms), it will be closed at any moment.
-  protected final int maxIdleTime;
+  protected final int minIdleTimeBeforeClose; // if the connection is idle for more than this
+  // time (in ms), it will be closed at any moment.
   protected final int maxRetries; // the max. no. of retries for socket connections
   protected final long failureSleep; // Time to sleep before retry on failure.
   protected final boolean tcpNoDelay; // if T then disable Nagle's Algorithm
   protected final boolean tcpKeepAlive; // if T then use keepalives
   protected final int pingInterval; // how often sends ping to the server in msecs
   protected final int pingTimeout;
-  protected final FailedServers failedServers;
   protected final Codec codec;
   protected final CompressionCodec compressor;
   protected final boolean fallbackAllowed;
 
-  protected final int clientWarnIpcResponseTime;
+  protected final FailedServers failedServers;
 
-  protected int maxConcurrentCallsPerServer;
-  protected boolean isPushOwlMetricEnable;
+  protected final int connectTO;
+  protected final int readTO;
+  protected final int writeTO;
 
-  protected static final LoadingCache<InetSocketAddress, AtomicInteger> concurrentCounterCache =
+  protected final PoolMap<ConnectionId, T> connections;
+
+  private final AtomicInteger callIdCnt = new AtomicInteger(0);
+
+  private final ScheduledFuture<?> cleanupIdleConnectionTask;
+
+  private int maxConcurrentCallsPerServer;
+
+  private static final LoadingCache<InetSocketAddress, AtomicInteger> concurrentCounterCache =
       CacheBuilder.newBuilder().expireAfterAccess(1, TimeUnit.HOURS)
           .build(new CacheLoader<InetSocketAddress, AtomicInteger>() {
             @Override
@@ -112,19 +155,16 @@ public abstract class AbstractRpcClient<T extends Connection> implements RpcClie
             }
           });
 
-  protected final PoolMap<ConnectionId, T> connections;
+  private final int clientWarnIpcResponseTime;
 
-  protected final AtomicInteger callIdCnt = new AtomicInteger(0);
-
-  protected final HashedWheelTimer timeoutTimer = new HashedWheelTimer(
-      new ThreadFactoryBuilder().setDaemon(true).setNameFormat("IPC-Timeout-Timer-%d").build(), 10,
-      TimeUnit.MILLISECONDS);
+  private final boolean isPushOwlMetricEnable;
 
   /**
    * Construct an IPC client for the cluster <code>clusterId</code>
    * @param conf configuration
    * @param clusterId the cluster id
    * @param localAddr client socket bind address.
+   * @param metrics the connection metrics
    */
   public AbstractRpcClient(Configuration conf, String clusterId, SocketAddress localAddr) {
     this.userProvider = UserProvider.instantiate(conf);
@@ -135,79 +175,66 @@ public abstract class AbstractRpcClient<T extends Connection> implements RpcClie
         conf.getLong(HConstants.HBASE_CLIENT_PAUSE, HConstants.DEFAULT_HBASE_CLIENT_PAUSE);
     this.maxRetries = conf.getInt("hbase.ipc.client.connect.max.retries", 0);
     this.tcpNoDelay = conf.getBoolean("hbase.ipc.client.tcpnodelay", true);
+    this.cellBlockBuilder = new CellBlockBuilder(conf);
     this.pingInterval = getPingInterval(conf);
     this.pingTimeout = conf.getInt(PING_TIMEOUT, DEFAULT_PING_TIMEOUT);
     this.failedServers = new FailedServers(conf);
-    this.ipcUtil = new IPCUtil(conf);
 
-    this.maxIdleTime = conf.getInt("hbase.ipc.client.connection.maxidletime", 10000); // 10s
+    this.minIdleTimeBeforeClose = conf.getInt(IDLE_TIME, 120000); // 2 minutes
     this.conf = conf;
     this.codec = getCodec();
     this.compressor = getCompressor(conf);
     this.fallbackAllowed = conf.getBoolean(IPC_CLIENT_FALLBACK_TO_SIMPLE_AUTH_ALLOWED_KEY,
       IPC_CLIENT_FALLBACK_TO_SIMPLE_AUTH_ALLOWED_DEFAULT);
-    this.clientWarnIpcResponseTime =
-        conf.getInt(CLIENT_WARN_IPC_RESPONSE_TIME, DEFAULT_CLIENT_WARN_IPC_RESPONSE_TIME);
-    this.connections = new PoolMap<ConnectionId, T>(getPoolType(conf), getPoolSize(conf));
-    // login the server principal (if using secure Hadoop)
-    if (LOG.isDebugEnabled()) {
-      LOG.debug("Codec=" + this.codec + ", compressor=" + this.compressor + ", tcpKeepAlive="
-          + this.tcpKeepAlive + ", tcpNoDelay=" + this.tcpNoDelay + ", maxIdleTime="
-          + this.maxIdleTime + ", maxRetries=" + this.maxRetries + ", fallbackAllowed="
-          + this.fallbackAllowed + ", clientWarnIpcResponseTime=" + this.clientWarnIpcResponseTime
-          + ", ping interval=" + this.pingInterval + "ms" + ", bind address="
-          + (this.localAddr != null ? this.localAddr : "null"));
-    }
+    this.connectTO = conf.getInt(SOCKET_TIMEOUT_CONNECT, DEFAULT_SOCKET_TIMEOUT_CONNECT);
+    this.readTO = conf.getInt(SOCKET_TIMEOUT_READ, DEFAULT_SOCKET_TIMEOUT_READ);
+    this.writeTO = conf.getInt(SOCKET_TIMEOUT_WRITE, DEFAULT_SOCKET_TIMEOUT_WRITE);
     this.maxConcurrentCallsPerServer =
         conf.getInt(HConstants.HBASE_CLIENT_PERSERVER_REQUESTS_THRESHOLD,
           HConstants.DEFAULT_HBASE_CLIENT_PERSERVER_REQUESTS_THRESHOLD);
+    this.clientWarnIpcResponseTime =
+        conf.getInt(CLIENT_WARN_IPC_RESPONSE_TIME, DEFAULT_CLIENT_WARN_IPC_RESPONSE_TIME);
     this.isPushOwlMetricEnable =
         conf.getBoolean(MetricTool.HBASE_CLIENT_OWL_METRIC_PUSH_ENABLE, false);
-    if(this.isPushOwlMetricEnable){
+
+    this.connections = new PoolMap<>(getPoolType(conf), getPoolSize(conf));
+
+    this.cleanupIdleConnectionTask = IDLE_CONN_SWEEPER.scheduleAtFixedRate(new Runnable() {
+
+      @Override
+      public void run() {
+        cleanupIdleConnections();
+      }
+    }, minIdleTimeBeforeClose, minIdleTimeBeforeClose, TimeUnit.MILLISECONDS);
+
+    if (this.isPushOwlMetricEnable) {
       MetricCounter.startMetricCounterPushTask();
+    }
+
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("Codec=" + this.codec + ", compressor=" + this.compressor + ", tcpKeepAlive=" +
+          this.tcpKeepAlive + ", tcpNoDelay=" + this.tcpNoDelay + ", connectTO=" + this.connectTO +
+          ", readTO=" + this.readTO + ", writeTO=" + this.writeTO + ", minIdleTimeBeforeClose=" +
+          this.minIdleTimeBeforeClose + ", maxRetries=" + this.maxRetries + ", fallbackAllowed=" +
+          this.fallbackAllowed + ", bind address=" +
+          (this.localAddr != null ? this.localAddr : "null"));
     }
   }
 
-  /**
-   * Return the pool type specified in the configuration, which must be set to either
-   * {@link PoolType#RoundRobin} or {@link PoolType#ThreadLocal}, otherwise default to the former.
-   * For applications with many user threads, use a small round-robin pool. For applications with
-   * few user threads, you may want to try using a thread-local pool. In any case, the number of
-   * {@link RpcClientImpl} instances should not exceed the operating system's hard limit on the
-   * number of connections.
-   * @param config configuration
-   * @return either a {@link PoolType#RoundRobin} or {@link PoolType#ThreadLocal}
-   */
-  private static PoolType getPoolType(Configuration config) {
-    return PoolType.valueOf(config.get(HConstants.HBASE_CLIENT_IPC_POOL_TYPE), PoolType.RoundRobin,
-      PoolType.ThreadLocal);
-  }
-
-  /**
-   * Return the pool size specified in the configuration, which is applicable only if the pool type
-   * is {@link PoolType#RoundRobin}.
-   * @param config
-   * @return the maximum pool size
-   */
-  private static int getPoolSize(Configuration config) {
-    return config.getInt(HConstants.HBASE_CLIENT_IPC_POOL_SIZE, 1);
-  }
-
-  /**
-   * Encapsulate the ugly casting and RuntimeException conversion in private method.
-   * <p>
-   * Protected as we want to override this method in UT.
-   * @return Codec to use on this client.
-   */
-  protected Codec getCodec() {
-    // For NO CODEC, "hbase.client.rpc.codec" must be configured with empty string AND
-    // "hbase.client.default.rpc.codec" also -- because default is to do cell block encoding.
-    String className = conf.get(HConstants.RPC_CODEC_CONF_KEY, getDefaultCodec(this.conf));
-    if (className == null || className.length() == 0) return null;
-    try {
-      return Class.forName(className).asSubclass(Codec.class).newInstance();
-    } catch (Exception e) {
-      throw new RuntimeException("Failed getting codec " + className, e);
+  private void cleanupIdleConnections() {
+    long closeBeforeTime = EnvironmentEdgeManager.currentTimeMillis() - minIdleTimeBeforeClose;
+    synchronized (connections) {
+      for (T conn : connections.values()) {
+        // remove connection if it has not been chosen by anyone for more than maxIdleTime, and the
+        // connection itself has already shutdown. The latter check is because that we may still
+        // have some pending calls on connection so we should not shutdown the connection outside.
+        // The connection itself will disconnect if there is no pending call for maxIdleTime.
+        if (conn.getLastTouched() < closeBeforeTime && !conn.isActive()) {
+          LOG.info("Cleanup idle connection to " + conn.remoteId().address);
+          connections.removeValue(conn.remoteId(), conn);
+          conn.cleanupConnection();
+        }
+      }
     }
   }
 
@@ -216,17 +243,48 @@ public abstract class AbstractRpcClient<T extends Connection> implements RpcClie
     // If "hbase.client.default.rpc.codec" is empty string -- you can't set it to null because
     // Configuration will complain -- then no default codec (and we'll pb everything). Else
     // default is KeyValueCodec
-    return c.get("hbase.client.default.rpc.codec", KeyValueCodec.class.getCanonicalName());
+    return c.get(DEFAULT_CODEC_CLASS, KeyValueCodec.class.getCanonicalName());
   }
 
   /**
    * Encapsulate the ugly casting and RuntimeException conversion in private method.
-   * @param conf
+   * @return Codec to use on this client.
+   */
+  Codec getCodec() {
+    // For NO CODEC, "hbase.client.rpc.codec" must be configured with empty string AND
+    // "hbase.client.default.rpc.codec" also -- because default is to do cell block encoding.
+    String className = conf.get(HConstants.RPC_CODEC_CONF_KEY, getDefaultCodec(this.conf));
+    if (className == null || className.length() == 0) {
+      return null;
+    }
+    try {
+      return (Codec) Class.forName(className).newInstance();
+    } catch (Exception e) {
+      throw new RuntimeException("Failed getting codec " + className, e);
+    }
+  }
+
+  @Override
+  public boolean hasCellBlockSupport() {
+    return this.codec != null;
+  }
+
+  // for writing tests that want to throw exception when connecting.
+  @VisibleForTesting
+  boolean isTcpNoDelay() {
+    return tcpNoDelay;
+  }
+
+  /**
+   * Encapsulate the ugly casting and RuntimeException conversion in private method.
+   * @param conf configuration
    * @return The compressor to use on this client.
    */
   private static CompressionCodec getCompressor(final Configuration conf) {
     String className = conf.get("hbase.client.rpc.compressor", null);
-    if (className == null || className.isEmpty()) return null;
+    if (className == null || className.isEmpty()) {
+      return null;
+    }
     try {
       return (CompressionCodec) Class.forName(className).newInstance();
     } catch (Exception e) {
@@ -240,41 +298,69 @@ public abstract class AbstractRpcClient<T extends Connection> implements RpcClie
    * @param conf Configuration
    * @return the ping interval
    */
-  static int getPingInterval(Configuration conf) {
+  private static int getPingInterval(Configuration conf) {
     return conf.getInt(PING_INTERVAL_NAME, conf.getInt("ipc.ping.interval", DEFAULT_PING_INTERVAL));
   }
 
   /**
-   * @return the socket timeout
+   * Return the pool type specified in the configuration, which must be set to either
+   * {@link org.apache.hadoop.hbase.util.PoolMap.PoolType#RoundRobin} or
+   * {@link org.apache.hadoop.hbase.util.PoolMap.PoolType#ThreadLocal}, otherwise default to the
+   * former. For applications with many user threads, use a small round-robin pool. For applications
+   * with few user threads, you may want to try using a thread-local pool. In any case, the number
+   * of {@link org.apache.hadoop.hbase.ipc.RpcClient} instances should not exceed the operating
+   * system's hard limit on the number of connections.
+   * @param config configuration
+   * @return either a {@link org.apache.hadoop.hbase.util.PoolMap.PoolType#RoundRobin} or
+   *         {@link org.apache.hadoop.hbase.util.PoolMap.PoolType#ThreadLocal}
    */
-  static int getSocketTimeout(Configuration conf) {
-    return conf.getInt(SOCKET_TIMEOUT, conf.getInt("ipc.socket.timeout", DEFAULT_SOCKET_TIMEOUT));
+  private static PoolMap.PoolType getPoolType(Configuration config) {
+    return PoolMap.PoolType.valueOf(config.get(HConstants.HBASE_CLIENT_IPC_POOL_TYPE),
+      PoolMap.PoolType.RoundRobin, PoolMap.PoolType.ThreadLocal);
   }
 
   /**
-   * Interrupt the connections to the given ip:port server. This should be called if the server is
-   * known as actually dead. This will not prevent current operation to be retried, and, depending
-   * on their own behavior, they may retry on the same server. This can be a feature, for example at
-   * startup. In any case, they're likely to get connection refused (if the process died) or no
-   * route to host: i.e. there next retries should be faster and with a safe exception.
+   * Return the pool size specified in the configuration, which is applicable only if the pool type
+   * is {@link org.apache.hadoop.hbase.util.PoolMap.PoolType#RoundRobin}.
+   * @param config configuration
+   * @return the maximum pool size
    */
-  @Override
-  public void cancelConnections(ServerName sn, Throwable exc) {
-    List<T> toShutdown = new ArrayList<T>();
-    synchronized (connections) {
-      for (ConnectionId remoteId : connections.keySet()) {
-        if (remoteId.address.getPort() == sn.getPort()
-            && remoteId.address.getHostName().equals(sn.getHostname())) {
-          LOG.info(
-            "The server " + sn.getServerName() + " is dead - stopping the connection " + remoteId);
-          toShutdown.addAll(connections.removeAll(remoteId));
-        }
-      }
+  private static int getPoolSize(Configuration config) {
+    return config.getInt(HConstants.HBASE_CLIENT_IPC_POOL_SIZE, 1);
+  }
+
+  private int nextCallId() {
+    int id, next;
+    do {
+      id = callIdCnt.get();
+      next = id < Integer.MAX_VALUE ? id + 1 : 0;
+    } while (!callIdCnt.compareAndSet(id, next));
+    return id;
+  }
+
+  /**
+   * Make a blocking call. Throws exceptions if there are network problems or if the remote code
+   * threw an exception.
+   * @param ticket Be careful which ticket you pass. A new user will mean a new Connection.
+   *          {@link UserProvider#getCurrent()} makes a new instance of User each time so will be a
+   *          new Connection each time.
+   * @return A pair with the Message response and the Cell data (if any).
+   */
+  private Message callBlockingMethod(Descriptors.MethodDescriptor md, HBaseRpcController hrc,
+      Message param, Message returnType, final User ticket, final InetSocketAddress isa)
+      throws ServiceException {
+    BlockingRpcCallback<Message> done = new BlockingRpcCallback<>();
+    callMethod(md, hrc, param, returnType, ticket, isa, done);
+    Message val;
+    try {
+      val = done.get();
+    } catch (IOException e) {
+      throw new ServiceException(e);
     }
-    if (toShutdown != null) {
-      for (T conn : toShutdown) {
-        conn.shutdown();
-      }
+    if (hrc.failed()) {
+      throw new ServiceException(hrc.getFailed());
+    } else {
+      return val;
     }
   }
 
@@ -286,11 +372,11 @@ public abstract class AbstractRpcClient<T extends Connection> implements RpcClie
     FailedServer failedServer = failedServers.getFailedServer(remoteId.address);
     if (failedServer != null) {
       if (LOG.isDebugEnabled()) {
-        LOG.debug("Not trying to connect to " + remoteId.address
-            + " this server is in the failed servers list");
+        LOG.debug("Not trying to connect to " + remoteId.address +
+            " this server is in the failed servers list");
       }
-      throw new FailedServerException("This server is in the failed servers list"
-          + failedServer.formatFailedTimeStamp() + ": " + remoteId.address, failedServer.cause);
+      throw new FailedServerException("This server is in the failed servers list" +
+          failedServer.formatFailedTimeStamp() + ": " + remoteId.address, failedServer.cause);
     }
     T conn;
     synchronized (connections) {
@@ -312,144 +398,113 @@ public abstract class AbstractRpcClient<T extends Connection> implements RpcClie
    */
   protected abstract T createConnection(ConnectionId remoteId) throws IOException;
 
-  protected int nextCallId() {
-    int id, next;
-    do {
-      id = callIdCnt.get();
-      next = id < Integer.MAX_VALUE ? id + 1 : 0;
-    } while (!callIdCnt.compareAndSet(id, next));
-    return id;
-  }
-
-  @Override
-  public BlockingRpcChannel createBlockingRpcChannel(final ServerName sn, final User ticket,
-      final int rpcTimeout) {
-    return new BlockingRpcChannelImplementation(this, sn, ticket, rpcTimeout);
-  }
-
-  @Override
-  public RpcChannel createRpcChannel(ServerName sn, User ticket, int rpcTimeout) {
-    return new RpcChannelImplementation(this, sn, ticket, rpcTimeout);
-  }
-
-  /**
-   * Make a blocking call. Throws exceptions if there are network problems or if the remote code
-   * threw an exception.
-   * @param md
-   * @param pcrc
-   * @param param
-   * @param returnType
-   * @param addr
-   * @param ticket Be careful which ticket you pass. A new user will mean a new Connection.
-   *          {@link UserProvider#getCurrent()} makes a new instance of User each time so will be a
-   *          new Connection each time.
-   * @return A pair with the Message response and the Cell data (if any).
-   * @throws InterruptedException
-   * @throws IOException
-   */
-  Message callBlockingMethod(MethodDescriptor md, PayloadCarryingRpcController pcrc, Message param,
-      Message returnType, final User ticket, final InetSocketAddress addr) throws ServiceException {
-    BlockingRpcCallback<Message> callback = new BlockingRpcCallback<Message>();
-    callMethod(md, pcrc, param, returnType, ticket, addr, callback);
-    Message ret;
-    try {
-      ret = callback.get();
-    } catch (Exception e) {
-      throw new ServiceException(e);
-    }
-    if (pcrc.failed()) {
-      throw new ServiceException(pcrc.getError());
-    }
-    return ret;
-  }
-
-  void callMethod(MethodDescriptor md, PayloadCarryingRpcController pcrc, Message param,
-      Message returnType, final User ticket, final InetSocketAddress addr,
-      RpcCallback<Message> callback) {
-    CellScanner cells = null;
-    if (pcrc != null) {
-      cells = pcrc.cellScanner();
-      // Clear it here so we don't by mistake try and these cells processing results.
-      pcrc.setCellScanner(null);
-    }
-    call(md, pcrc, param, cells, returnType, ticket, addr, callback);
-  }
-
-  private void onCallFinished(Call call, PayloadCarryingRpcController pcrc, InetSocketAddress addr,
+  private void onCallFinished(Call call, HBaseRpcController hrc, InetSocketAddress addr,
       RpcCallback<Message> callback) {
     long callTime = EnvironmentEdgeManager.currentTimeMillis() - call.startTime;
     if (LOG.isTraceEnabled()) {
-      if (LOG.isTraceEnabled()) {
-        LOG.trace("Call: " + call.md.getName() + ", callTime: " + callTime + "ms");
-      }
+      LOG.trace("Call: " + call.md.getName() + ", callTime: " + callTime + "ms");
     }
     if (callTime > this.clientWarnIpcResponseTime) {
-      LOG.warn("Slow ipc call, MethodName=" + call.md.getName() + ", consume time=" + callTime
-          + ", remote address:" + addr);
+      LOG.warn("Slow ipc call, MethodName=" + call.md.getName() + ", consume time=" + callTime +
+          ", remote address:" + addr);
     }
-    if(this.isPushOwlMetricEnable){
+    if (isPushOwlMetricEnable) {
       MetricTool.update(call.md.getName(), 1L, callTime, MetricTool.addrNormalize(addr));
     }
+
     if (call.error != null) {
-      if(this.isPushOwlMetricEnable){
+      if (isPushOwlMetricEnable) {
         MetricTool.updateFailedCall(call.md.getName(), 1L, MetricTool.addrNormalize(addr));
       }
+
       if (call.error instanceof RemoteException) {
         call.error.fillInStackTrace();
-        pcrc.setFailed(call.error);
+        hrc.setFailed(call.error);
       } else {
-        pcrc.setFailed(IPCUtil.wrapException(addr, call.error));
+        hrc.setFailed(wrapException(addr, call.error));
       }
       callback.run(null);
     } else {
-      if (call.cells != null) {
-        pcrc.setCellScanner(call.cells);
-      }
+      hrc.setDone(call.cells);
       callback.run(call.response);
     }
   }
 
-  /**
-   * Make a call, passing <code>param</code>, to the IPC server running at <code>address</code>
-   * which is servicing the <code>protocol</code> protocol, with the <code>ticket</code>
-   * credentials.
-   * @param md
-   * @param pcrc
-   * @param param
-   * @param addr
-   * @param returnType
-   * @param ticket Be careful which ticket you pass. A new user will mean a new Connection.
-   *          {@link UserProvider#getCurrent()} makes a new instance of User each time so will be a
-   *          new Connection each time.
-   * @return A pair with the Message response and the Cell data (if any).
-   * @throws InterruptedException
-   * @throws IOException
-   */
-  private void call(MethodDescriptor md, final PayloadCarryingRpcController pcrc, Message param,
-      CellScanner cells, Message returnType, User ticket, final InetSocketAddress addr,
+  private void callMethod(final Descriptors.MethodDescriptor md, final HBaseRpcController hrc,
+      final Message param, Message returnType, final User ticket, final InetSocketAddress addr,
       final RpcCallback<Message> callback) {
     final AtomicInteger counter = concurrentCounterCache.getUnchecked(addr);
-    Call call = new Call(nextCallId(), md, param, cells, returnType, pcrc.getTimeout(),
-        pcrc.getPriority(), new RpcCallback<Call>() {
-
+    Call call = new Call(nextCallId(), md, param, hrc.cellScanner(), returnType,
+        hrc.getCallTimeout(), hrc.getPriority(), new RpcCallback<Call>() {
           @Override
           public void run(Call call) {
             counter.decrementAndGet();
-            onCallFinished(call, pcrc, addr, callback);
+            onCallFinished(call, hrc, addr, callback);
           }
         });
     ConnectionId remoteId = new ConnectionId(ticket, md.getService().getName(), addr);
-
     int count = counter.incrementAndGet();
     try {
       if (count > maxConcurrentCallsPerServer) {
-        throw new ServerBusyException(addr, count);
+        throw new ServerTooBusyException(addr, count);
       }
       T connection = getConnection(remoteId);
-      connection.sendRequest(call);
+      connection.sendRequest(call, hrc);
     } catch (Exception e) {
-      call.setException(IPCUtil.toIOE(e));
+      call.setException(toIOE(e));
     }
+  }
+
+  private InetSocketAddress createAddr(ServerName sn) throws UnknownHostException {
+    InetSocketAddress addr = new InetSocketAddress(sn.getHostname(), sn.getPort());
+    if (addr.isUnresolved()) {
+      throw new UnknownHostException("can not resolve " + sn.getServerName());
+    }
+    return addr;
+  }
+
+  /**
+   * Interrupt the connections to the given ip:port server. This should be called if the server is
+   * known as actually dead. This will not prevent current operation to be retried, and, depending
+   * on their own behavior, they may retry on the same server. This can be a feature, for example at
+   * startup. In any case, they're likely to get connection refused (if the process died) or no
+   * route to host: i.e. their next retries should be faster and with a safe exception.
+   */
+  @Override
+  public void cancelConnections(ServerName sn) {
+    List<T> toShutdown = new ArrayList<>();
+    synchronized (connections) {
+      for (ConnectionId remoteId : connections.keySet()) {
+        if (remoteId.address.getPort() == sn.getPort() &&
+            remoteId.address.getHostName().equals(sn.getHostname())) {
+          LOG.info(
+            "The server on " + sn.toString() + " is dead - stopping the connection " + remoteId);
+          toShutdown.addAll(connections.removeAll(remoteId));
+        }
+      }
+    }
+    toShutdown.forEach(c -> c.shutdown());
+  }
+
+  /**
+   * Configure an hbase rpccontroller
+   * @param controller to configure
+   * @param channelOperationTimeout timeout for operation
+   * @return configured controller
+   */
+  static HBaseRpcController configureHBaseRpcController(RpcController controller,
+      int channelOperationTimeout) {
+    HBaseRpcController hrc;
+    if (controller != null && controller instanceof HBaseRpcController) {
+      hrc = (HBaseRpcController) controller;
+      if (!hrc.hasCallTimeout()) {
+        hrc.setCallTimeout(channelOperationTimeout);
+      }
+    } else {
+      hrc = new HBaseRpcControllerImpl();
+      hrc.setCallTimeout(channelOperationTimeout);
+    }
+    return hrc;
   }
 
   protected abstract void closeInternal();
@@ -459,7 +514,6 @@ public abstract class AbstractRpcClient<T extends Connection> implements RpcClie
     if (LOG.isDebugEnabled()) {
       LOG.debug("Stopping rpc client");
     }
-    timeoutTimer.stop();
     Collection<T> connToClose;
     synchronized (connections) {
       if (!running) {
@@ -469,88 +523,107 @@ public abstract class AbstractRpcClient<T extends Connection> implements RpcClie
       connToClose = connections.values();
       connections.clear();
     }
+    cleanupIdleConnectionTask.cancel(true);
     for (T conn : connToClose) {
       conn.shutdown();
     }
     closeInternal();
+    for (T conn : connToClose) {
+      conn.cleanupConnection();
+    }
   }
 
-  private static abstract class HBaseRpcChannel {
+  @Override
+  public BlockingRpcChannel createBlockingRpcChannel(final ServerName sn, final User ticket,
+      int rpcTimeout) throws UnknownHostException {
+    return new BlockingRpcChannelImplementation(this, createAddr(sn), ticket, rpcTimeout);
+  }
+
+  @Override
+  public RpcChannel createRpcChannel(ServerName sn, User user, int rpcTimeout)
+      throws UnknownHostException {
+    return new RpcChannelImplementation(this, createAddr(sn), user, rpcTimeout);
+  }
+
+  private static class AbstractRpcChannel {
 
     protected final InetSocketAddress addr;
+
     protected final AbstractRpcClient<?> rpcClient;
-    protected final int rpcTimeout;
+
     protected final User ticket;
 
-    protected HBaseRpcChannel(AbstractRpcClient<?> rpcClient, final ServerName sn,
-        final User ticket, final int rpcTimeout) {
-      this.addr = new InetSocketAddress(sn.getHostname(), sn.getPort());
+    protected final int rpcTimeout;
+
+    protected AbstractRpcChannel(AbstractRpcClient<?> rpcClient, InetSocketAddress addr,
+        User ticket, int rpcTimeout) {
+      this.addr = addr;
       this.rpcClient = rpcClient;
-      // Set the rpc timeout to be the minimum of configured timeout and whatever the current
-      // thread local setting is.
-      this.rpcTimeout = rpcTimeout;
       this.ticket = ticket;
+      this.rpcTimeout = rpcTimeout;
     }
 
-    protected void setTimeout(PayloadCarryingRpcController controller) {
-      if (controller.getTimeout() < 0) {
-        controller.setTimeout(rpcTimeout);
+    /**
+     * Configure an rpc controller
+     * @param controller to configure
+     * @return configured rpc controller
+     */
+    protected HBaseRpcController configureRpcController(RpcController controller) {
+      HBaseRpcController hrc;
+      // TODO: Ideally we should not use an RpcController other than HBaseRpcController at client
+      // side. And now we may use ServerRpcController.
+      if (controller != null && controller instanceof HBaseRpcController) {
+        hrc = (HBaseRpcController) controller;
+        if (!hrc.hasCallTimeout()) {
+          hrc.setCallTimeout(rpcTimeout);
+        }
+      } else {
+        hrc = new HBaseRpcControllerImpl();
+        hrc.setCallTimeout(rpcTimeout);
       }
+      return hrc;
     }
   }
 
   /**
    * Blocking rpc channel that goes via hbase rpc.
    */
-  // Public so can be subclassed for tests.
-  public static class BlockingRpcChannelImplementation extends HBaseRpcChannel
+  @VisibleForTesting
+  public static class BlockingRpcChannelImplementation extends AbstractRpcChannel
       implements BlockingRpcChannel {
 
-    protected BlockingRpcChannelImplementation(AbstractRpcClient<?> rpcClient, final ServerName sn,
-        final User ticket, final int rpcTimeout) {
-      super(rpcClient, sn, ticket, rpcTimeout);
+    protected BlockingRpcChannelImplementation(AbstractRpcClient<?> rpcClient,
+        InetSocketAddress addr, User ticket, int rpcTimeout) {
+      super(rpcClient, addr, ticket, rpcTimeout);
     }
 
     @Override
-    public Message callBlockingMethod(MethodDescriptor method, RpcController controller,
-        Message request, Message responsePrototype) throws ServiceException {
-      PayloadCarryingRpcController pcrc;
-      if (controller == null) {
-        pcrc = new PayloadCarryingRpcController();
-      } else {
-        pcrc = (PayloadCarryingRpcController) controller;
-      }
-      setTimeout(pcrc);
-      return rpcClient.callBlockingMethod(method, pcrc, request, responsePrototype, ticket, addr);
+    public Message callBlockingMethod(Descriptors.MethodDescriptor md, RpcController controller,
+        Message param, Message returnType) throws ServiceException {
+      return rpcClient.callBlockingMethod(md, configureRpcController(controller), param, returnType,
+        ticket, addr);
     }
   }
 
   /**
-   * Rpc channel that goes via hbase rpc.
+   * Async rpc channel that goes via hbase rpc.
    */
-  // Public so can be subclassed for tests.
-  public static class RpcChannelImplementation extends HBaseRpcChannel implements RpcChannel {
+  public static class RpcChannelImplementation extends AbstractRpcChannel implements RpcChannel {
 
-    protected RpcChannelImplementation(AbstractRpcClient<?> rpcClient, final ServerName sn,
-        final User ticket, final int rpcTimeout) {
-      super(rpcClient, sn, ticket, rpcTimeout);
+    protected RpcChannelImplementation(AbstractRpcClient<?> rpcClient, InetSocketAddress addr,
+        User ticket, int rpcTimeout) throws UnknownHostException {
+      super(rpcClient, addr, ticket, rpcTimeout);
     }
 
     @Override
-    public void callMethod(MethodDescriptor method, RpcController controller, Message request,
-        Message responsePrototype, RpcCallback<Message> done) {
-      PayloadCarryingRpcController pcrc =
-          (PayloadCarryingRpcController) Preconditions.checkNotNull(controller,
-            "must provide a controller because the exception will be passed by it.");
-      setTimeout(pcrc);
-      rpcClient.callMethod(method, pcrc, request, responsePrototype, ticket, addr, done);
+    public void callMethod(Descriptors.MethodDescriptor md, RpcController controller, Message param,
+        Message returnType, RpcCallback<Message> done) {
+      // This method does not throw any exceptions, so the caller must provide a
+      // HBaseRpcController which is used to pass the exceptions.
+      this.rpcClient.callMethod(md,
+        configureRpcController(Preconditions.checkNotNull(controller,
+          "RpcController can not be null for async rpc call")),
+        param, returnType, ticket, addr, done);
     }
-  }
-
-  protected static final Map<Kind, TokenSelector<? extends TokenIdentifier>> TOKEN_HANDLERS =
-      new HashMap<Kind, TokenSelector<? extends TokenIdentifier>>();
-
-  static {
-    TOKEN_HANDLERS.put(Kind.HBASE_AUTH_TOKEN, new AuthenticationTokenSelector());
   }
 }

@@ -178,7 +178,7 @@ public class RpcServer implements RpcServerInterface {
 
   private final int minClientRequestTimeout;
 
-  private final IPCUtil ipcUtil;
+  private final CellBlockBuilder cellBlockBuilder;
 
   private static final String AUTH_FAILED_FOR = "Auth failed for ";
   private static final String AUTH_SUCCESSFUL_FOR = "Auth successful for ";
@@ -394,8 +394,8 @@ public class RpcServer implements RpcServerInterface {
           // Set the exception as the result of the method invocation.
           headerBuilder.setException(exceptionBuilder.build());
         }
-        ByteBuffer cellBlock =
-          ipcUtil.buildCellBlock(this.connection.codec, this.connection.compressionCodec, cells);
+        ByteBuffer cellBlock = cellBlockBuilder.buildCellBlock(this.connection.codec,
+          this.connection.compressionCodec, cells);
         if (cellBlock != null) {
           CellBlockMeta.Builder cellBlockBuilder = CellBlockMeta.newBuilder();
           // Presumes the cellBlock bytebuffer has been flipped so limit has total size in it.
@@ -1738,7 +1738,7 @@ public class RpcServer implements RpcServerInterface {
           offset += paramSize;
         }
         if (header.hasCellBlockMeta()) {
-          cellScanner = ipcUtil.createCellScanner(this.codec, this.compressionCodec,
+          cellScanner = cellBlockBuilder.createCellScanner(this.codec, this.compressionCodec,
             buf, offset, buf.length);
         }
       } catch (Throwable t) {
@@ -1908,7 +1908,7 @@ public class RpcServer implements RpcServerInterface {
     this.tcpKeepAlive = conf.getBoolean("hbase.ipc.server.tcpkeepalive",
       conf.getBoolean("ipc.server.tcpkeepalive", true));
 
-    this.ipcUtil = new IPCUtil(conf);
+    this.cellBlockBuilder = new CellBlockBuilder(conf);
     this.minClientRequestTimeout = conf.getInt(MIN_CLIENT_REQUEST_TIMEOUT,
         DEFAULT_MIN_CLIENT_REQUEST_TIMEOUT);
 
@@ -2055,8 +2055,8 @@ public class RpcServer implements RpcServerInterface {
       status.resume("Servicing call");
       //get an instance of the method arg type
       long startTimeInNs = System.nanoTime();
-      PayloadCarryingRpcController controller = new PayloadCarryingRpcController(cellScanner);
-      controller.setTimeout(timeout);
+      HBaseRpcController controller = new HBaseRpcControllerImpl(cellScanner);
+      controller.setCallTimeout(timeout);
       Message result = service.callBlockingMethod(md, controller, param);
       int processingTimeInUs = (int) ((System.nanoTime() - startTimeInNs) / 1000);
       int processingTime = (int) (System.currentTimeMillis() - startTime);

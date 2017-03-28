@@ -20,6 +20,8 @@ package org.apache.hadoop.hbase.client;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import com.google.protobuf.RpcController;
+
 import java.io.IOException;
 
 import org.apache.commons.logging.Log;
@@ -27,20 +29,18 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HConstants;
-import org.apache.hadoop.hbase.testclassification.SmallTests;
 import org.apache.hadoop.hbase.TableName;
-import org.apache.hadoop.hbase.ipc.PayloadCarryingRpcController;
+import org.apache.hadoop.hbase.ipc.HBaseRpcController;
 import org.apache.hadoop.hbase.ipc.RpcControllerFactory;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.SnapshotDescription;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSnapshotDoneRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsSnapshotDoneResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SnapshotRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SnapshotResponse;
+import org.apache.hadoop.hbase.testclassification.SmallTests;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.mockito.Mockito;
-
-import com.google.protobuf.RpcController;
 
 /**
  * Test snapshot logic from the client
@@ -98,7 +98,7 @@ public class TestSnapshotFromAdmin {
     IsSnapshotDoneResponse.Builder builder = IsSnapshotDoneResponse.newBuilder();
     builder.setDone(false);
     // first five times, we return false, last we get success
-    Mockito.when(mockMaster.isSnapshotDone(Mockito.any(PayloadCarryingRpcController.class),
+    Mockito.when(mockMaster.isSnapshotDone(Mockito.any(HBaseRpcController.class),
       Mockito.any(IsSnapshotDoneRequest.class))).thenReturn(builder.build(), builder.build(),
         builder.build(), builder.build(), builder.build(), builder.setDone(true).build());
 
@@ -151,7 +151,7 @@ public class TestSnapshotFromAdmin {
         .when(master.snapshot((RpcController) Mockito.isNull(), Mockito.any(SnapshotRequest.class)))
         .thenReturn(response);
     IsSnapshotDoneResponse doneResponse = IsSnapshotDoneResponse.newBuilder().setDone(true).build();
-    Mockito.when(master.isSnapshotDone(Mockito.any(PayloadCarryingRpcController.class),
+    Mockito.when(master.isSnapshotDone(Mockito.any(HBaseRpcController.class),
       Mockito.any(IsSnapshotDoneRequest.class))).thenReturn(doneResponse);
 
     // make sure that we can use valid names

@@ -53,13 +53,13 @@ import org.apache.hadoop.ipc.RemoteException;
  * The netty rpc handler.
  */
 @InterfaceAudience.Private
-public class NettyRpcDuplexHandler extends ChannelDuplexHandler {
+class NettyRpcDuplexHandler extends ChannelDuplexHandler {
 
   private static final Log LOG = LogFactory.getLog(NettyRpcDuplexHandler.class);
 
-  private final NettyConnection conn;
+  private final NettyRpcConnection conn;
 
-  private final IPCUtil ipcUtil;
+  private final CellBlockBuilder cellBlockBuilder;
 
   private final Codec codec;
 
@@ -69,10 +69,10 @@ public class NettyRpcDuplexHandler extends ChannelDuplexHandler {
 
   private Timeout pingTimeout;
 
-  public NettyRpcDuplexHandler(NettyConnection conn, IPCUtil ipcUtil, Codec codec,
-      CompressionCodec compressor) {
+  public NettyRpcDuplexHandler(NettyRpcConnection conn, CellBlockBuilder cellBlockBuilder,
+      Codec codec, CompressionCodec compressor) {
     this.conn = conn;
-    this.ipcUtil = ipcUtil;
+    this.cellBlockBuilder = cellBlockBuilder;
     this.codec = codec;
     this.compressor = compressor;
 
@@ -81,7 +81,7 @@ public class NettyRpcDuplexHandler extends ChannelDuplexHandler {
   private void writeRequest(ChannelHandlerContext ctx, Call call, ChannelPromise promise)
       throws IOException {
     id2Call.put(call.id, call);
-    ByteBuf cellBlock = ipcUtil.buildCellBlock(codec, compressor, call.cells, ctx.alloc());
+    ByteBuf cellBlock = cellBlockBuilder.buildCellBlock(codec, compressor, call.cells, ctx.alloc());
     CellBlockMeta cellBlockMeta;
     if (cellBlock != null) {
       CellBlockMeta.Builder cellBlockMetaBuilder = CellBlockMeta.newBuilder();
@@ -130,8 +130,8 @@ public class NettyRpcDuplexHandler extends ChannelDuplexHandler {
     ResponseHeader responseHeader = ResponseHeader.parseDelimitedFrom(in);
     int id = responseHeader.getCallId();
     if (LOG.isTraceEnabled()) {
-      LOG.trace("got response header " + TextFormat.shortDebugString(responseHeader)
-          + ", totalSize: " + totalSize + " bytes");
+      LOG.trace("got response header " + TextFormat.shortDebugString(responseHeader) +
+          ", totalSize: " + totalSize + " bytes");
     }
     if (id == RpcClient.PING_CALL_ID) {
       // ping response, ignore
@@ -162,8 +162,8 @@ public class NettyRpcDuplexHandler extends ChannelDuplexHandler {
       int readSoFar = IPCUtil.getTotalSizeWhenWrittenDelimited(responseHeader);
       int whatIsLeftToRead = totalSize - readSoFar;
       if (LOG.isDebugEnabled()) {
-        LOG.debug("Unknown callId: " + id + ", skipping over this response of " + whatIsLeftToRead
-            + " bytes from " + conn.remoteId);
+        LOG.debug("Unknown callId: " + id + ", skipping over this response of " + whatIsLeftToRead +
+            " bytes from " + conn.remoteId);
       }
       return;
     }
@@ -186,7 +186,7 @@ public class NettyRpcDuplexHandler extends ChannelDuplexHandler {
       // The problem here is that we do not know when to release it.
       byte[] cellBlock = new byte[size];
       buf.readBytes(cellBlock);
-      cellBlockScanner = ipcUtil.createCellScanner(this.codec, this.compressor, cellBlock);
+      cellBlockScanner = cellBlockBuilder.createCellScanner(this.codec, this.compressor, cellBlock);
     } else {
       cellBlockScanner = null;
     }
@@ -222,14 +222,18 @@ public class NettyRpcDuplexHandler extends ChannelDuplexHandler {
 
   @Override
   public void channelInactive(ChannelHandlerContext ctx) throws Exception {
-    cleanupCalls(ctx, new IOException("Connection closed"));
+    if (!id2Call.isEmpty()) {
+      cleanupCalls(ctx, new IOException("Connection closed"));
+    }
     conn.shutdown();
     ctx.fireChannelInactive();
   }
 
   @Override
   public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-    cleanupCalls(ctx, IPCUtil.toIOE(cause));
+    if (!id2Call.isEmpty()) {
+      cleanupCalls(ctx, IPCUtil.toIOE(cause));
+    }
     conn.shutdown();
   }
 
@@ -249,8 +253,8 @@ public class NettyRpcDuplexHandler extends ChannelDuplexHandler {
 
               @Override
               public void run(Timeout timeout) throws Exception {
-                LOG.warn("Haven't got ping response from " + conn.remoteId
-                    + " in time, shutdown connection");
+                LOG.warn("Haven't got ping response from " + conn.remoteId +
+                    " in time, shutdown connection");
                 conn.shutdown();
               }
             }, conn.pingTimeout, TimeUnit.MILLISECONDS);
@@ -262,6 +266,9 @@ public class NettyRpcDuplexHandler extends ChannelDuplexHandler {
               LOG.debug(
                 "shutdown connection to " + conn.remoteId() + " because idle for a long time");
             }
+            // It may happen that there are still some pending calls in the event loop queue and
+            // they will get a closed channel exception. But this is not a big deal as it rarely
+            // rarely happens and the upper layer could retry immediately.
             conn.shutdown();
           }
           break;
@@ -269,8 +276,9 @@ public class NettyRpcDuplexHandler extends ChannelDuplexHandler {
           LOG.warn("Unrecognized idle state " + idleEvt.state());
           break;
       }
-    } else if (evt instanceof CallTimeoutEvent) {
-      id2Call.remove(((CallTimeoutEvent) evt).getCallId());
+    } else if (evt instanceof CallEvent) {
+      // just remove the call for now until we add other call event other than timeout and cancel.
+      id2Call.remove(((CallEvent) evt).call.id);
     } else {
       ctx.fireUserEventTriggered(evt);
     }

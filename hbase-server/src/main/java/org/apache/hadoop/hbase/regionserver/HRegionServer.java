@@ -127,7 +127,7 @@ import org.apache.hadoop.hbase.io.hfile.CacheConfig;
 import org.apache.hadoop.hbase.io.hfile.HFile;
 import org.apache.hadoop.hbase.ipc.CallerDisconnectedException;
 import org.apache.hadoop.hbase.ipc.HBaseRPCErrorHandler;
-import org.apache.hadoop.hbase.ipc.PayloadCarryingRpcController;
+import org.apache.hadoop.hbase.ipc.HBaseRpcController;
 import org.apache.hadoop.hbase.ipc.PriorityFunction;
 import org.apache.hadoop.hbase.ipc.RpcCallContext;
 import org.apache.hadoop.hbase.ipc.RpcClient;
@@ -3354,7 +3354,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
       final MutateRequest request) throws ServiceException {
     // rpc controller is how we bring in data via the back door;  it is unprotobuf'ed data.
     // It is also the conduit via which we pass back data.
-    PayloadCarryingRpcController controller = (PayloadCarryingRpcController)rpcc;
+    HBaseRpcController controller = (HBaseRpcController)rpcc;
     CellScanner cellScanner = controller != null? controller.cellScanner(): null;
     // Clear scanner so we are not holding on to reference across call.
     if (controller != null) controller.setCellScanner(null);
@@ -3467,7 +3467,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
   }
 
   private void addResult(final MutateResponse.Builder builder, final Result result,
-      final PayloadCarryingRpcController rpcc, boolean clientCellBlockSupported) {
+      final HBaseRpcController rpcc, boolean clientCellBlockSupported) {
     if (result == null) return;
     if (clientCellBlockSupported) {
       builder.setResult(ProtobufUtil.toResultNoData(result));
@@ -3597,7 +3597,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     }
   }
 
-  private long getTimeLimit(PayloadCarryingRpcController controller, boolean allowHeartbeatMessages) {
+  private long getTimeLimit(HBaseRpcController controller, boolean allowHeartbeatMessages) {
     // Set the time limit to be half of the more restrictive timeout value (one of the
     // timeout values must be positive). In the event that both values are positive, the
     // more restrictive of the two is used to calculate the limit.
@@ -3608,8 +3608,8 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
       } else {
         timeLimitDelta = scannerLeaseTimeoutPeriod > 0 ? scannerLeaseTimeoutPeriod : rpcTimeout;
       }
-      if (controller != null && controller.getTimeout() > 0) {
-        timeLimitDelta = Math.min(timeLimitDelta, controller.getTimeout());
+      if (controller != null && controller.getCallTimeout() > 0) {
+        timeLimitDelta = Math.min(timeLimitDelta, controller.getCallTimeout());
       }
       // Use half of whichever timeout value was more restrictive... But don't allow
       // the time limit to be less than the allowable minimum (could cause an
@@ -3625,7 +3625,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
   }
 
   // return whether we have more results in region.
-  private boolean scan(PayloadCarryingRpcController controller, ScanRequest request,
+  private boolean scan(HBaseRpcController controller, ScanRequest request,
       RegionScannerHolder rsh, long maxQuotaResultSize, int rows, List<Result> results,
       ScanResponse.Builder builder, RpcCallContext context, long totalKvSize, int resultCells)
       throws IOException {
@@ -3781,9 +3781,9 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
   @Override
   public ScanResponse scan(final RpcController controller, final ScanRequest request)
       throws ServiceException {
-    if (controller != null && !(controller instanceof PayloadCarryingRpcController)) {
+    if (controller != null && !(controller instanceof HBaseRpcController)) {
       throw new UnsupportedOperationException(
-          "We only do PayloadCarryingRpcController! FIX IF A PROBLEM: " + controller);
+          "We only do HBaseRpcController! FIX IF A PROBLEM: " + controller);
     }
     if (!request.hasScannerId() && !request.hasScan()) {
       throw new ServiceException(
@@ -3915,7 +3915,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
           }
         }
         if (!done) {
-          moreResultsInRegion = scan((PayloadCarryingRpcController) controller, request, rsh,
+          moreResultsInRegion = scan((HBaseRpcController) controller, request, rsh,
             maxQuotaResultSize, rows, results, builder, context, totalKvSize, resultCells);
         }
       }
@@ -3935,7 +3935,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
         // if we have reached the limit of rows
         moreResults = false;
       }
-      addResults(builder, results, (PayloadCarryingRpcController) controller,
+      addResults(builder, results, (HBaseRpcController) controller,
         isClientCellBlockSupport(context));
       if (!moreResults || !moreResultsInRegion || closeScanner) {
         scannerClosed = true;
@@ -3973,7 +3973,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
   }
 
   private void addResults(ScanResponse.Builder builder, List<Result> results,
-      PayloadCarryingRpcController controller, boolean clientCellBlockSupported) {
+      HBaseRpcController controller, boolean clientCellBlockSupported) {
     if (results.isEmpty()) return;
     if (clientCellBlockSupported) {
       for (Result res : results) {
@@ -4139,7 +4139,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
 
     // rpc controller is how we bring in data via the back door;  it is unprotobuf'ed data.
     // It is also the conduit via which we pass back data.
-    PayloadCarryingRpcController controller = (PayloadCarryingRpcController)rpcc;
+    HBaseRpcController controller = (HBaseRpcController)rpcc;
     CellScanner cellScanner = controller != null ? controller.cellScanner(): null;
     if (controller != null) controller.setCellScanner(null);
 
@@ -4864,7 +4864,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
         checkOpen();
         requestCount.increment();
         List<WALEntry> entries = request.getEntryList();
-        CellScanner cellScanner = ((PayloadCarryingRpcController)controller).cellScanner();
+        CellScanner cellScanner = ((HBaseRpcController)controller).cellScanner();
         rsHost.preReplicateLogEntries(entries, cellScanner);
         replicationSinkHandler.replicateLogEntries(entries, cellScanner);
         rsHost.postReplicateLogEntries(entries, cellScanner);
@@ -4888,7 +4888,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
   public ReplicateWALEntryResponse replay(final RpcController controller,
       final ReplicateWALEntryRequest request) throws ServiceException {
     long before = EnvironmentEdgeManager.currentTimeMillis();
-    CellScanner cells = ((PayloadCarryingRpcController) controller).cellScanner();
+    CellScanner cells = ((HBaseRpcController) controller).cellScanner();
     try {
       checkOpen();
       List<WALEntry> entries = request.getEntryList();
