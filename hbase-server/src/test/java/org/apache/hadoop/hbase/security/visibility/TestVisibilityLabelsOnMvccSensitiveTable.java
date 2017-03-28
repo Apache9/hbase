@@ -23,7 +23,10 @@ import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.HTable;
+import org.apache.hadoop.hbase.testclassification.MediumTests;
+import org.junit.experimental.categories.Category;
 
+@Category(MediumTests.class)
 public class TestVisibilityLabelsOnMvccSensitiveTable extends TestVisibilityLabelsWithDeletes {
 
   protected HTable createTable(HColumnDescriptor fam) throws IOException {
