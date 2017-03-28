@@ -1447,6 +1447,8 @@ public final class ProtobufUtil {
       builder.addCell(toCell(c));
     }
 
+    builder.setStale(result.isStale());
+    builder.setPartial(result.mayHaveMoreCellsInRow());
     return builder.build();
   }
 

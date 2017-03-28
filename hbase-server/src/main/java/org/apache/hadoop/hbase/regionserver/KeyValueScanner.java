@@ -36,8 +36,10 @@ public interface KeyValueScanner {
   KeyValue peek();
 
   /**
-   * Return the next KeyValue in this scanner, iterating the scanner
-   * @return the next KeyValue
+   * Look at the next Cell in this scanner, but do not iterate scanner.
+   * NOTICE: The returned cell has not been passed into ScanQueryMatcher. So it may not be what the
+   * user need.
+   * @return the next Cell
    */
   KeyValue next() throws IOException;
 

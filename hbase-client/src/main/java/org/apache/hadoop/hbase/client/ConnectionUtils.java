@@ -21,10 +21,14 @@ import static org.apache.hadoop.hbase.HConstants.EMPTY_END_ROW;
 import static org.apache.hadoop.hbase.HConstants.EMPTY_START_ROW;
 
 import java.util.Arrays;
-import java.util.Random;
+import java.util.Comparator;
+import java.util.concurrent.ThreadLocalRandom;
 
 import org.apache.commons.logging.Log;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.Cell;
+import org.apache.hadoop.hbase.CellComparator;
+import org.apache.hadoop.hbase.CellUtil;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
@@ -36,10 +40,8 @@ import org.apache.hadoop.hbase.util.Bytes;
 @InterfaceAudience.Private
 public class ConnectionUtils {
 
-  private static final Random RANDOM = new Random();
   /**
-   * Calculate pause time.
-   * Built on {@link HConstants#RETRY_BACKOFF}.
+   * Calculate pause time. Built on {@link HConstants#RETRY_BACKOFF}.
    * @param pause
    * @param tries
    * @return How long to wait after <code>tries</code> retries
@@ -54,10 +56,10 @@ public class ConnectionUtils {
     }
 
     long normalPause = pause * HConstants.RETRY_BACKOFF[ntries];
-    long jitter =  (long)(normalPause * RANDOM.nextFloat() * 0.01f); // 1% possible jitter
+    // 1% possible jitter
+    long jitter = (long) (normalPause * ThreadLocalRandom.current().nextFloat() * 0.01f);
     return normalPause + jitter;
   }
-
 
   /**
    * Adds / subs a 10% jitter to a pause time. Minimum is 1.
@@ -65,7 +67,7 @@ public class ConnectionUtils {
    * @param jitter the jitter ratio, between 0 and 1, exclusive.
    */
   public static long addJitter(final long pause, final float jitter) {
-    float lag = pause * (RANDOM.nextFloat() - 0.5f) * jitter;
+    float lag = pause * (ThreadLocalRandom.current().nextFloat() - 0.5f) * jitter;
     long newPause = pause + (long) lag;
     if (newPause <= 0) {
       return 1;
@@ -130,6 +132,40 @@ public class ConnectionUtils {
     return Bytes.equals(row, EMPTY_END_ROW);
   }
 
+  private static final Comparator<Cell> COMPARE_WITHOUT_ROW = new Comparator<Cell>() {
+
+    @Override
+    public int compare(Cell o1, Cell o2) {
+      return CellComparator.compareWithoutRow(o1, o2, true);
+    }
+  };
+
+  static Result filterCells(Result result, Cell keepCellsAfter) {
+    if (keepCellsAfter == null) {
+      // do not need to filter
+      return result;
+    }
+    // not the same row
+    if (!CellUtil.matchingRow(keepCellsAfter, result.getRow(), 0, result.getRow().length)) {
+      return result;
+    }
+    Cell[] rawCells = result.rawCells();
+    int index = Arrays.binarySearch(rawCells, keepCellsAfter, COMPARE_WITHOUT_ROW);
+    if (index < 0) {
+      index = -index - 1;
+    } else {
+      index++;
+    }
+    if (index == 0) {
+      return result;
+    }
+    if (index == rawCells.length) {
+      return null;
+    }
+    return Result.create(Arrays.copyOfRange(rawCells, index, rawCells.length), null,
+      result.isStale(), result.mayHaveMoreCellsInRow());
+  }
+
   static boolean noMoreResultsForScan(Scan scan, HRegionInfo info) {
     if (isEmptyStopRow(info.getEndKey())) {
       return true;
@@ -154,5 +190,15 @@ public class ConnectionUtils {
     // no need to test the inclusive of the stop row as the start key of a region is included in
     // the region.
     return Bytes.compareTo(info.getStartKey(), scan.getStopRow()) <= 0;
+  }
+
+  public static ScanResultCache createScanResultCache(Scan scan) {
+    if (scan.getAllowPartialResults()) {
+      return new AllowPartialScanResultCache();
+    } else if (scan.getBatch() > 0) {
+      return new BatchScanResultCache(scan.getBatch());
+    } else {
+      return new CompleteScanResultCache();
+    }
   }
 }

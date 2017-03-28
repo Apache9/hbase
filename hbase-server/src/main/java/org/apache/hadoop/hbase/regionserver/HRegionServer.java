@@ -3260,9 +3260,9 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     return lastBlock;
   }
 
-  private RegionScannerHolder addScanner(String scannerName, RegionScanner s, HRegion r,
-      boolean allowPartial) throws LeaseStillHeldException {
-    RegionScannerHolder rsh = new RegionScannerHolder(scannerName, s, r, allowPartial);
+  private RegionScannerHolder addScanner(String scannerName, RegionScanner s, HRegion r)
+      throws LeaseStillHeldException {
+    RegionScannerHolder rsh = new RegionScannerHolder(scannerName, s, r);
     RegionScannerHolder existing = scanners.putIfAbsent(scannerName, rsh);
     assert existing == null : "scannerId must be unique within regionserver's whole lifecycle!";
 
@@ -3569,8 +3569,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     builder.setMvccReadPoint(scanner.getMvccReadPoint());
     builder.setTtl(scannerLeaseTimeoutPeriod);
     String scannerName = String.valueOf(scannerId);
-    return addScanner(scannerName, scanner, region,
-      !scan.isSmall() && !(request.hasLimitOfRows() && request.getLimitOfRows() > 0));
+    return addScanner(scannerName, scanner, region);
   }
 
   private void checkScanNextCallSeq(ScanRequest request, RegionScannerHolder rsh)
@@ -3624,9 +3623,20 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     return -1L;
   }
 
+  private void checkLimitOfRows(int numOfCompleteRows, int limitOfRows, boolean moreRows,
+      ScannerContext scannerContext, ScanResponse.Builder builder) {
+    if (numOfCompleteRows >= limitOfRows) {
+      if (LOG.isTraceEnabled()) {
+        LOG.trace("Done scanning, limit of rows reached, moreRows: " + moreRows +
+            " scannerContext: " + scannerContext);
+      }
+      builder.setMoreResults(false);
+    }
+  }
+
   // return whether we have more results in region.
-  private boolean scan(HBaseRpcController controller, ScanRequest request,
-      RegionScannerHolder rsh, long maxQuotaResultSize, int rows, List<Result> results,
+  private void scan(HBaseRpcController controller, ScanRequest request, RegionScannerHolder rsh,
+      long maxQuotaResultSize, int maxResults, int limitOfRows, List<Result> results,
       ScanResponse.Builder builder, RpcCallContext context, long totalKvSize, int resultCells)
       throws IOException {
     HRegion region = rsh.r;
@@ -3643,7 +3653,8 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     List<Cell> values = new ArrayList<Cell>(32);
     region.startRegionOperation(Operation.SCAN);
     try {
-      int i = 0;
+      int numOfResults = 0;
+      int numOfCompleteRows = 0;
       synchronized (scanner) {
         boolean clientHandlesPartials =
             request.hasClientHandlesPartials() && request.getClientHandlesPartials();
@@ -3656,8 +3667,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
         // correct ordering of partial results and so we prevent partial results from being
         // formed.
         boolean serverGuaranteesOrderOfPartials = results.isEmpty();
-        boolean allowPartialResults =
-            clientHandlesPartials && serverGuaranteesOrderOfPartials && rsh.allowPartial;
+        boolean allowPartialResults = clientHandlesPartials && serverGuaranteesOrderOfPartials;
         boolean moreRows = false;
 
         // Heartbeat messages occur when the processing of the ScanRequest is exceeds a
@@ -3684,7 +3694,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
         contextBuilder.setTimeLimit(timeScope, timeLimit);
         ScannerContext scannerContext = contextBuilder.build();
         boolean limitReached = false;
-        while (i < rows) {
+        while (numOfResults  < maxResults) {
           // Reset the batch progress to 0 before every call to RegionScanner#nextRaw. The
           // batch limit is a limit on the number of cells per Result. Thus, if progress is
           // being tracked (i.e. scannerContext.keepProgress() is true) then we need to
@@ -3696,21 +3706,49 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
           moreRows = scanner.nextRaw(values, scannerContext);
 
           if (!values.isEmpty()) {
-            for (Cell cell : values) {
-              KeyValue kv = KeyValueUtil.ensureKeyValue(cell);
-              totalKvSize += kv.getLength();
+            if (limitOfRows > 0) {
+              // First we need to check if the last result is partial and we have a row change. If
+              // so then we need to increase the numOfCompleteRows.
+              if (results.isEmpty()) {
+                if (rsh.rowOfLastPartialResult != null &&
+                    !CellUtil.matchingRow(values.get(0), rsh.rowOfLastPartialResult)) {
+                  numOfCompleteRows++;
+                  checkLimitOfRows(numOfCompleteRows, limitOfRows, moreRows, scannerContext,
+                    builder);
+                }
+              } else {
+                Result lastResult = results.get(results.size() - 1);
+                if (lastResult.mayHaveMoreCellsInRow() &&
+                    !CellUtil.matchingRow(values.get(0), lastResult.getRow())) {
+                  numOfCompleteRows++;
+                  checkLimitOfRows(numOfCompleteRows, limitOfRows, moreRows, scannerContext,
+                    builder);
+                }
+              }
+              if (builder.hasMoreResults() && !builder.getMoreResults()) {
+                break;
+              }
             }
+            totalKvSize += values.stream().map(KeyValueUtil::ensureKeyValue)
+                .mapToLong(KeyValue::getLength).sum();
             resultCells += values.size();
-            final boolean partial = scannerContext.partialResultFormed();
-            Result r = Result.create(values, null, false, partial);
+            boolean mayHaveMoreCellsInRow = scannerContext.mayHaveMoreCellsInRow();
+            Result r = Result.create(values, null, false, mayHaveMoreCellsInRow);
             results.add(r);
-            i++;
+            numOfResults++;
+            if (!mayHaveMoreCellsInRow && limitOfRows > 0) {
+              numOfCompleteRows++;
+              checkLimitOfRows(numOfCompleteRows, limitOfRows, moreRows, scannerContext, builder);
+              if (builder.hasMoreResults() && !builder.getMoreResults()) {
+                break;
+              }
+            }
           }
 
           boolean sizeLimitReached = scannerContext.checkSizeLimit(LimitScope.BETWEEN_ROWS);
           boolean timeLimitReached = scannerContext.checkTimeLimit(LimitScope.BETWEEN_ROWS);
-          boolean rowLimitReached = i >= rows;
-          limitReached = sizeLimitReached || timeLimitReached || rowLimitReached;
+          boolean resultsLimitReached = numOfResults  >= maxResults;
+          limitReached = sizeLimitReached || timeLimitReached || resultsLimitReached;
 
           if (limitReached || !moreRows) {
             if (LOG.isTraceEnabled()) {
@@ -3738,20 +3776,19 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
         }
         region.updateReadRawCellMetrics(scannerContext.getReadRawCells());
       }
-      region.updateReadMetrics(i);
+      region.updateReadMetrics(numOfResults);
       region.getMetrics().updateScanNext(totalKvSize);
       region.updateReadCapacityUnitMetrics(totalKvSize);
       region.updateReadCellMetrics(resultCells);
       region.updateScanCountPerSecond(1);
-      region.updateScanRowsPerSecond(i);
+      region.updateScanRowsPerSecond(numOfResults);
     } finally {
       region.closeRegionOperation();
     }
     // coprocessor postNext hook
     if (region.getCoprocessorHost() != null) {
-      region.getCoprocessorHost().postScannerNext(scanner, results, rows, true);
+      region.getCoprocessorHost().postScannerNext(scanner, results, maxResults, true);
     }
-    return builder.getMoreResultsInRegion();
   }
 
   private void closeScanner(HRegion region, RegionScanner scanner, String scannerName,
@@ -3880,14 +3917,11 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     RpcCallContext context = RpcServer.getCurrentCall();
     // now let's do the real scan.
     RegionScanner scanner = rsh.s;
-    boolean moreResults = true;
-    boolean moreResultsInRegion = true;
     // this is the limit of rows for this scan, if we the number of rows reach this value, we will
     // close the scanner.
     int limitOfRows;
     if (request.hasLimitOfRows()) {
       limitOfRows = request.getLimitOfRows();
-      rows = Math.min(rows, limitOfRows);
     } else {
       limitOfRows = -1;
     }
@@ -3904,8 +3938,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
           if (!results.isEmpty()) {
             for (Result r : results) {
               for (Cell cell : r.rawCells()) {
-                KeyValue kv = KeyValueUtil.ensureKeyValue(cell);
-                totalKvSize += kv.getLength();
+                totalKvSize += KeyValueUtil.ensureKeyValue(cell).getLength();
               }
               resultCells += r.rawCells().length;
             }
@@ -3915,33 +3948,46 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
           }
         }
         if (!done) {
-          moreResultsInRegion = scan((HBaseRpcController) controller, request, rsh,
-            maxQuotaResultSize, rows, results, builder, context, totalKvSize, resultCells);
+          scan((HBaseRpcController) controller, request, rsh, maxQuotaResultSize, rows, limitOfRows,
+            results, builder, context, totalKvSize, resultCells);
         }
       }
 
       if (isQuotaEnabled()) {
         rsQuotaManager.grabQuota(region, results);
       }
-
+      addResults(builder, results, (HBaseRpcController) controller,
+        isClientCellBlockSupport(context));
       if (scanner.isFilterDone() && results.isEmpty()) {
         // If the scanner's filter - if any - is done with the scan
         // only set moreResults to false if the results is empty. This is used to keep compatible
         // with the old scan implementation where we just ignore the returned results if moreResults
         // is false. Can remove the isEmpty check after we get rid of the old implementation.
-        moreResults = false;
-      } else if (limitOfRows > 0 && results.size() >= limitOfRows
-          && !results.get(results.size() - 1).isPartial()) {
-        // if we have reached the limit of rows
-        moreResults = false;
+        builder.setMoreResults(false);
       }
-      addResults(builder, results, (HBaseRpcController) controller,
-        isClientCellBlockSupport(context));
-      if (!moreResults || !moreResultsInRegion || closeScanner) {
+      // we only set moreResults to false in the above code, so set it to true if we haven't set it
+      // yet.
+      if (!builder.hasMoreResults()) {
+        builder.setMoreResults(true);
+      }
+      if (builder.getMoreResults() && builder.getMoreResultsInRegion() && !results.isEmpty()) {
+        // Record the last cell of the last result if it is a partial result
+        // We need this to calculate the complete rows we have returned to client as the
+        // mayHaveMoreCellsInRow is true does not mean that there will be extra cells for the
+        // current row. We may filter out all the remaining cells for the current row and just
+        // return the cells of the nextRow when calling RegionScanner.nextRaw. So here we need to
+        // check for row change.
+        Result lastResult = results.get(results.size() - 1);
+        if (lastResult.mayHaveMoreCellsInRow()) {
+          rsh.rowOfLastPartialResult = lastResult.getRow();
+        } else {
+          rsh.rowOfLastPartialResult = null;
+        }
+      }
+      if (!builder.getMoreResults() || !builder.getMoreResultsInRegion() || closeScanner) {
         scannerClosed = true;
         closeScanner(region, scanner, scannerName, context);
       }
-      builder.setMoreResults(moreResults);
       return builder.build();
     } catch (Exception e) {
       try {
@@ -3978,7 +4024,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     if (clientCellBlockSupported) {
       for (Result res : results) {
         builder.addCellsPerResult(res.size());
-        builder.addPartialFlagPerResult(res.isPartial());
+        builder.addPartialFlagPerResult(res.mayHaveMoreCellsInRow());
       }
       controller.setCellScanner(CellUtil.createCellScanner(results));
     } else {
@@ -5513,14 +5559,12 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     private final RegionScanner s;
     private final AtomicLong nextCallSeq = new AtomicLong(0L);
     private final HRegion r;
-    private final boolean allowPartial;
+    private byte[] rowOfLastPartialResult;
 
-    public RegionScannerHolder(String scannerName, RegionScanner s, HRegion r,
-        boolean allowPartial) {
+    public RegionScannerHolder(String scannerName, RegionScanner s, HRegion r) {
       this.scannerName = scannerName;
       this.s = s;
       this.r = r;
-      this.allowPartial = allowPartial;
     }
 
     public long getNextCallSeq() {

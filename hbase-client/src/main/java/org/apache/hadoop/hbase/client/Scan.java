@@ -536,8 +536,13 @@ public class Scan extends Query {
   }
 
   /**
-   * Set the maximum number of values to return for each call to next()
+   * Set the maximum number of cells to return for each call to next(). Callers should be aware
+   * that this is not equivalent to calling {@link #setAllowPartialResults(boolean)}.
+   * If you don't allow partial results, the number of cells in each Result must equal to your
+   * batch setting unless it is the last Result for current row. So this method is helpful in paging
+   * queries. If you just want to prevent OOM at client, use setAllowPartialResults(true) is better.
    * @param batch the maximum number of values
+   * @see Result#mayHaveMoreCellsInRow()
    */
   public Scan setBatch(int batch) {
     if (this.hasFilter() && this.filter.hasFilterRow()) {
@@ -795,11 +800,14 @@ public class Scan extends Query {
   }
 
   /**
-   * Setting whether the caller wants to see the partial results that may be returned from the
-   * server. By default this value is false and the complete results will be assembled client side
+   * Setting whether the caller wants to see the partial results when server returns
+   * less-than-expected cells. It is helpful while scanning a huge row to prevent OOM at client.
+   * By default this value is false and the complete results will be assembled client side
    * before being delivered to the caller.
    * @param allowPartialResults
    * @return this
+   * @see Result#mayHaveMoreCellsInRow()
+   * @see #setBatch(int)
    */
   public Scan setAllowPartialResults(final boolean allowPartialResults) {
     this.allowPartialResults = allowPartialResults;
@@ -1059,8 +1067,6 @@ public class Scan extends Query {
    * reaches this value.
    * <p>
    * This condition will be tested at last, after all other conditions such as stopRow, filter, etc.
-   * <p>
-   * Can not be used together with batch and allowPartial.
    * @param limit the limit of rows for this scan
    * @return this
    */
