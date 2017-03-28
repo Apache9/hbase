@@ -96,7 +96,7 @@ public class DefaultCompactor extends Compactor {
         // Create the writer even if no kv(Empty store file is also ok),
         // because we need record the max seq id for the store file, see HBASE-6059
         writer = store.createWriterInTmp(fd.maxKeyCount, this.compactionCompression, true,
-          fd.maxMVCCReadpoint >= smallestReadPoint, fd.maxTagsLength > 0, store.throttleCompaction(request.getSize()));
+          true, fd.maxTagsLength > 0, store.throttleCompaction(request.getSize()));
 
         boolean finished =
             performCompaction(scanner, writer, smallestReadPoint, throughputController);

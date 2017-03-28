@@ -103,12 +103,10 @@ public abstract class AbstractMultiOutputCompactor<T extends AbstractMultiFileWr
         // NULL scanner returned from coprocessor hooks means skip normal processing.
         return new ArrayList<Path>();
       }
-      // Create the writer factory for compactions.
-      final boolean needMvcc = fd.maxMVCCReadpoint >= smallestReadPoint;
       WriterFactory writerFactory = new WriterFactory() {
         @Override
         public Writer createWriter() throws IOException {
-          return store.createWriterInTmp(fd.maxKeyCount, compactionCompression, true, needMvcc,
+          return store.createWriterInTmp(fd.maxKeyCount, compactionCompression, true, true,
             fd.maxTagsLength > 0, store.throttleCompaction(request.getSize()));
         }
       };

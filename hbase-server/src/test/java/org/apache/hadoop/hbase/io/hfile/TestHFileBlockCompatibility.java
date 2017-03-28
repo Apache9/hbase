@@ -286,6 +286,7 @@ public class TestHFileBlockCompatibility {
           HFileBlock.FSReaderV2 hbr = new HFileBlock.FSReaderV2(new FSDataInputStreamWrapper(is),
               totalSize, fs, path, meta);
           hbr.setDataBlockEncoder(dataBlockEncoder);
+          hbr.setIncludesMemstoreTS(includesMemstoreTS);
 
           HFileBlock b;
           int pos = 0;

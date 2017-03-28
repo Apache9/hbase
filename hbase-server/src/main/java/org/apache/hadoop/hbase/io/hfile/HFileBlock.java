@@ -1685,7 +1685,12 @@ public class HFileBlock implements Cacheable {
 
       b.offset = offset;
       b.fileContext.setIncludesTags(this.fileContext.isIncludesTags());
+      b.fileContext.setIncludesMvcc(this.fileContext.isIncludesMvcc());
       return b;
+    }
+
+    void setIncludesMemstoreTS(boolean includesMemstoreTS) {
+      this.fileContext.setIncludesMvcc(includesMemstoreTS);
     }
 
     void setDataBlockEncoder(HFileDataBlockEncoder encoder) {
