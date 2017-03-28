@@ -258,7 +258,7 @@ public class TestHBaseTestingUtility {
         if (i < clientPortList3.length && clientPortList3[i] > 0) {
           assertEquals(clientPortListInCluster.get(i).intValue(), clientPortList3[i]);
         } else {
-          assertEquals(clientPortListInCluster.get(i).intValue(), defaultClientPort + j);
+          assertTrue(clientPortListInCluster.get(i) >= defaultClientPort + j);
           j++;
         }
       }
@@ -284,7 +284,7 @@ public class TestHBaseTestingUtility {
         if (i < clientPortList4.length && clientPortList4[i] > 0) {
           assertEquals(clientPortListInCluster.get(i).intValue(), clientPortList4[i]);
         } else {
-          assertEquals(clientPortListInCluster.get(i).intValue(), defaultClientPort + j);
+          assertTrue(clientPortListInCluster.get(i) >= defaultClientPort + j);
           j +=2;
         }
       }
