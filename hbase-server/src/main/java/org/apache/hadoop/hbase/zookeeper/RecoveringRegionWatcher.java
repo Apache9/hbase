@@ -53,7 +53,7 @@ public class RecoveringRegionWatcher extends ZooKeeperListener {
     }
 
     String parentPath = path.substring(0, path.lastIndexOf('/'));
-    if (!this.watcher.recoveringRegionsZNode.equalsIgnoreCase(parentPath)) {
+    if (!this.watcher.znodePaths.recoveringRegionsZNode.equalsIgnoreCase(parentPath)) {
       return;
     }
 
@@ -82,7 +82,7 @@ public class RecoveringRegionWatcher extends ZooKeeperListener {
    */
   private void registerWatcher(String path) {
     String parentPath = path.substring(0, path.lastIndexOf('/'));
-    if (!this.watcher.recoveringRegionsZNode.equalsIgnoreCase(parentPath)) {
+    if (!this.watcher.znodePaths.recoveringRegionsZNode.equalsIgnoreCase(parentPath)) {
       return;
     }
 

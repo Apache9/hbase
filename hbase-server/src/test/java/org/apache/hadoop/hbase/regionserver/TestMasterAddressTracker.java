@@ -61,7 +61,7 @@ public class TestMasterAddressTracker {
 
     ZooKeeperWatcher zk = new ZooKeeperWatcher(TEST_UTIL.getConfiguration(),
         "testMasterAddressTrackerFromZK", null);
-    ZKUtil.createAndFailSilent(zk, zk.baseZNode);
+    ZKUtil.createAndFailSilent(zk, zk.znodePaths.baseZNode);
 
     // Should not have a master yet
     MasterAddressTracker addressTracker = new MasterAddressTracker(zk, null);
@@ -70,7 +70,7 @@ public class TestMasterAddressTracker {
     zk.registerListener(addressTracker);
 
     // Use a listener to capture when the node is actually created
-    NodeCreationListener listener = new NodeCreationListener(zk, zk.getMasterAddressZNode());
+    NodeCreationListener listener = new NodeCreationListener(zk, zk.znodePaths.masterAddressZNode);
     zk.registerListener(listener);
 
     // Create the master node with a dummy address
@@ -78,7 +78,7 @@ public class TestMasterAddressTracker {
     int port = 1234;
     ServerName sn = ServerName.valueOf(host, port, System.currentTimeMillis());
     LOG.info("Creating master node");
-    MasterAddressTracker.setMasterAddress(zk, zk.getMasterAddressZNode(), sn);
+    MasterAddressTracker.setMasterAddress(zk, zk.znodePaths.masterAddressZNode, sn);
 
     // Wait for the node to be created
     LOG.info("Waiting for master address manager to be notified");

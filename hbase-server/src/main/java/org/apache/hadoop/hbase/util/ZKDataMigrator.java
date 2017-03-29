@@ -53,18 +53,18 @@ public class ZKDataMigrator extends Configured implements Tool {
     try {
       zkw = new ZooKeeperWatcher(getConf(), "Migrate ZK data to PB.",
         new ZKDataMigratorAbortable());
-      if (ZKUtil.checkExists(zkw, zkw.baseZNode) == -1) {
+      if (ZKUtil.checkExists(zkw, zkw.znodePaths.baseZNode) == -1) {
         LOG.info("No hbase related data available in zookeeper. returning..");
         return 0;
       }
-      List<String> children = ZKUtil.listChildrenNoWatch(zkw, zkw.baseZNode);
+      List<String> children = ZKUtil.listChildrenNoWatch(zkw, zkw.znodePaths.baseZNode);
       if (children == null) {
         LOG.info("No child nodes to mirgrate. returning..");
         return 0;
       }
       String childPath = null;
       for (String child : children) {
-        childPath = ZKUtil.joinZNode(zkw.baseZNode, child);
+        childPath = ZKUtil.joinZNode(zkw.znodePaths.baseZNode, child);
         if (child.equals(conf.get("zookeeper.znode.rootserver", "root-region-server"))) {
           // -ROOT- region no longer present from 0.95.0, so we can remove this
           // znode
@@ -135,13 +135,13 @@ public class ZKDataMigrator extends Configured implements Tool {
   }
 
   private void checkAndMigrateTableStatesToPB(ZooKeeperWatcher zkw) throws KeeperException {
-    List<String> tables = ZKUtil.listChildrenNoWatch(zkw, zkw.tableZNode);
+    List<String> tables = ZKUtil.listChildrenNoWatch(zkw, zkw.znodePaths.tableZNode);
     if (tables == null) {
       LOG.info("No table present to migrate table state to PB. returning..");
       return;
     }
     for (String table : tables) {
-      String znode = ZKUtil.joinZNode(zkw.tableZNode, table);
+      String znode = ZKUtil.joinZNode(zkw.znodePaths.tableZNode, table);
       // Delete -ROOT- table state znode since its no longer present in 0.95.0
       // onwards.
       if (table.equals("-ROOT-") || table.equals(".META.")) {
@@ -159,7 +159,7 @@ public class ZKDataMigrator extends Configured implements Tool {
 
   private void checkAndMigrateReplicationNodesToPB(ZooKeeperWatcher zkw) throws KeeperException {
     String replicationZnodeName = getConf().get("zookeeper.znode.replication", "replication");
-    String replicationPath = ZKUtil.joinZNode(zkw.baseZNode, replicationZnodeName);
+    String replicationPath = ZKUtil.joinZNode(zkw.znodePaths.baseZNode, replicationZnodeName);
     List<String> replicationZnodes = ZKUtil.listChildrenNoWatch(zkw, replicationPath);
     if (replicationZnodes == null) {
       LOG.info("No replication related znodes present to migrate. returning..");

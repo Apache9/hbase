@@ -105,7 +105,7 @@ public class ZKAssign {
    * @return full path node name
    */
   public static String getNodeName(ZooKeeperWatcher zkw, String regionName) {
-    return ZKUtil.joinZNode(zkw.assignmentZNode, regionName);
+    return ZKUtil.joinZNode(zkw.znodePaths.assignmentZNode, regionName);
   }
 
   /**
@@ -114,7 +114,7 @@ public class ZKAssign {
    * @return region name
    */
   public static String getRegionName(ZooKeeperWatcher zkw, String path) {
-    return path.substring(zkw.assignmentZNode.length()+1);
+    return path.substring(zkw.znodePaths.assignmentZNode.length()+1);
   }
 
   // Master methods
@@ -496,7 +496,7 @@ public class ZKAssign {
   public static void deleteAllNodes(ZooKeeperWatcher zkw)
   throws KeeperException {
     LOG.debug(zkw.prefix("Deleting any existing unassigned nodes"));
-    ZKUtil.deleteChildrenRecursively(zkw, zkw.assignmentZNode);
+    ZKUtil.deleteChildrenRecursively(zkw, zkw.znodePaths.assignmentZNode);
   }
 
   /**
@@ -1036,9 +1036,9 @@ public class ZKAssign {
    */
   public static void blockUntilNoRIT(ZooKeeperWatcher zkw)
   throws KeeperException, InterruptedException {
-    while (ZKUtil.nodeHasChildren(zkw, zkw.assignmentZNode)) {
+    while (ZKUtil.nodeHasChildren(zkw, zkw.znodePaths.assignmentZNode)) {
       List<String> znodes =
-        ZKUtil.listChildrenAndWatchForNewChildren(zkw, zkw.assignmentZNode);
+        ZKUtil.listChildrenAndWatchForNewChildren(zkw, zkw.znodePaths.assignmentZNode);
       if (znodes != null && !znodes.isEmpty()) {
         LOG.debug("Waiting on RIT: " + znodes);
       }
@@ -1056,9 +1056,9 @@ public class ZKAssign {
    */
   public static void blockUntilRIT(ZooKeeperWatcher zkw)
   throws KeeperException, InterruptedException {
-    while (!ZKUtil.nodeHasChildren(zkw, zkw.assignmentZNode)) {
+    while (!ZKUtil.nodeHasChildren(zkw, zkw.znodePaths.assignmentZNode)) {
       List<String> znodes =
-        ZKUtil.listChildrenAndWatchForNewChildren(zkw, zkw.assignmentZNode);
+        ZKUtil.listChildrenAndWatchForNewChildren(zkw, zkw.znodePaths.assignmentZNode);
       if (znodes == null || znodes.isEmpty()) {
         LOG.debug("No RIT in ZK");
       }

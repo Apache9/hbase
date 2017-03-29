@@ -59,9 +59,9 @@ public class ZKSplitLog {
   public static String getEncodedNodeName(ZooKeeperWatcher zkw,
       String filename, String location) {
     if (location == null || location.length() == 0) {
-      return ZKUtil.joinZNode(zkw.splitLogZNode, encode(filename));
+      return ZKUtil.joinZNode(zkw.znodePaths.splitLogZNode, encode(filename));
     }
-    return ZKUtil.joinZNode(zkw.splitLogZNode, encode(filename) + "@" + location);
+    return ZKUtil.joinZNode(zkw.znodePaths.splitLogZNode, encode(filename) + "@" + location);
   }
 
   public static boolean isLocalTask(String task, String localhost) {
@@ -120,7 +120,7 @@ public class ZKSplitLog {
   }
 
   public static String getRescanNode(ZooKeeperWatcher zkw) {
-    return ZKUtil.joinZNode(zkw.splitLogZNode, "RESCAN");
+    return ZKUtil.joinZNode(zkw.znodePaths.splitLogZNode, "RESCAN");
   }
 
   public static boolean isRescanNode(ZooKeeperWatcher zkw, String path) {
@@ -138,7 +138,7 @@ public class ZKSplitLog {
 
   public static boolean isTaskPath(ZooKeeperWatcher zkw, String path) {
     String dirname = path.substring(0, path.lastIndexOf('/'));
-    return dirname.equals(zkw.splitLogZNode);
+    return dirname.equals(zkw.znodePaths.splitLogZNode);
   }
 
   public static Path getSplitLogDir(Path rootdir, String tmpname) {

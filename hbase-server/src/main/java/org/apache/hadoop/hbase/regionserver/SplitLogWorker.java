@@ -34,15 +34,14 @@ import org.apache.commons.lang.math.RandomUtils;
 import org.apache.commons.lang.mutable.MutableInt;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.NotServingRegionException;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.SplitLogCounters;
 import org.apache.hadoop.hbase.SplitLogTask;
+import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.client.HConnectionManager;
 import org.apache.hadoop.hbase.client.RetriesExhaustedException;
 import org.apache.hadoop.hbase.exceptions.DeserializationException;
@@ -185,19 +184,20 @@ public class SplitLogWorker extends ZooKeeperListener implements Runnable {
       int res = -1;
       while (res == -1 && !exitWorker) {
         try {
-          res = ZKUtil.checkExists(watcher, watcher.splitLogZNode);
+          res = ZKUtil.checkExists(watcher, watcher.znodePaths.splitLogZNode);
         } catch (KeeperException e) {
           // ignore
-          LOG.warn("Exception when checking for " + watcher.splitLogZNode  + " ... retrying", e);
+          LOG.warn(
+            "Exception when checking for " + watcher.znodePaths.splitLogZNode + " ... retrying", e);
         }
         if (res == -1) {
           try {
-            LOG.info(watcher.splitLogZNode + " znode does not exist, waiting for master to create");
+            LOG.info(watcher.znodePaths.splitLogZNode +
+                " znode does not exist, waiting for master to create");
             Thread.sleep(1000);
           } catch (InterruptedException e) {
-            LOG.debug("Interrupted while waiting for " + watcher.splitLogZNode
-                + (exitWorker ? "" : " (ERROR: exitWorker is not set, " +
-                "exiting anyway)"));
+            LOG.debug("Interrupted while waiting for " + watcher.znodePaths.splitLogZNode +
+                (exitWorker ? "" : " (ERROR: exitWorker is not set, " + "exiting anyway)"));
             exitWorker = true;
             break;
           }
@@ -230,7 +230,7 @@ public class SplitLogWorker extends ZooKeeperListener implements Runnable {
       Queue<String> taskQueue = getTaskQueue();
       if (taskQueue == null) {
         LOG.warn("Could not get tasks, did someone remove " +
-            this.watcher.splitLogZNode + " ... worker thread exiting.");
+            this.watcher.znodePaths.splitLogZNode + " ... worker thread exiting.");
         return;
       }
       
@@ -240,7 +240,7 @@ public class SplitLogWorker extends ZooKeeperListener implements Runnable {
         // don't call ZKSplitLog.getNodeName() because that will lead to
         // double encoding of the path name
         if (this.calculateAvailableSplitters(numTasks) > 0) {
-          grabTask(ZKUtil.joinZNode(watcher.splitLogZNode, task));
+          grabTask(ZKUtil.joinZNode(watcher.znodePaths.splitLogZNode, task));
         } else {
           LOG.debug("Current region server " + this.serverName + " has "
               + this.tasksInProgress.get() + " tasks in progress and can't take more.");
@@ -263,7 +263,8 @@ public class SplitLogWorker extends ZooKeeperListener implements Runnable {
                 // modify recoveringRegions
                 List<String> tmpCopy = new ArrayList<String>(recoveringRegions.keySet());
                 for (String region : tmpCopy) {
-                  String nodePath = ZKUtil.joinZNode(this.watcher.recoveringRegionsZNode, region);
+                  String nodePath =
+                      ZKUtil.joinZNode(this.watcher.znodePaths.recoveringRegionsZNode, region);
                   try {
                     if (ZKUtil.checkExists(this.watcher, nodePath) == -1) {
                       HRegion r = recoveringRegions.remove(region);
@@ -434,7 +435,7 @@ public class SplitLogWorker extends ZooKeeperListener implements Runnable {
     // at lease one RS(itself) available
     int availableRSs = 1;
     try {
-      List<String> regionServers = ZKUtil.listChildrenNoWatch(watcher, watcher.rsZNode);
+      List<String> regionServers = ZKUtil.listChildrenNoWatch(watcher, watcher.znodePaths.rsZNode);
       availableRSs = Math.max(availableRSs, (regionServers == null) ? 0 : regionServers.size());
     } catch (KeeperException e) {
       // do nothing
@@ -560,7 +561,7 @@ public class SplitLogWorker extends ZooKeeperListener implements Runnable {
     while (!exitWorker) {
       try {
         List<String> childrenPaths = ZKUtil.listChildrenAndWatchForNewChildren(this.watcher,
-            this.watcher.splitLogZNode);
+          this.watcher.znodePaths.splitLogZNode);
         if (childrenPaths != null) {
           List<String> metaTasks = new ArrayList<String>();
           List<String> localTasks = new ArrayList<String>();
@@ -590,12 +591,11 @@ public class SplitLogWorker extends ZooKeeperListener implements Runnable {
           return queue;
         }
       } catch (KeeperException e) {
-        LOG.warn("Could not get children of znode "
-            + this.watcher.splitLogZNode, e);
+        LOG.warn("Could not get children of znode " + this.watcher.znodePaths.splitLogZNode, e);
       }
       try {
-        LOG.debug("Retry listChildren of znode " + this.watcher.splitLogZNode
-            + " after sleep for " + sleepTime + "ms!");
+        LOG.debug("Retry listChildren of znode " + this.watcher.znodePaths.splitLogZNode +
+            " after sleep for " + sleepTime + "ms!");
         Thread.sleep(sleepTime);
       } catch (InterruptedException e1) {
         LOG.warn("Interrupted while trying to get task list ...", e1);
@@ -607,7 +607,7 @@ public class SplitLogWorker extends ZooKeeperListener implements Runnable {
 
   @Override
   public void nodeChildrenChanged(String path) {
-    if(path.equals(watcher.splitLogZNode)) {
+    if (path.equals(watcher.znodePaths.splitLogZNode)) {
       LOG.debug("tasks arrived or departed");
       synchronized (taskReadyLock) {
         taskReadySeq++;

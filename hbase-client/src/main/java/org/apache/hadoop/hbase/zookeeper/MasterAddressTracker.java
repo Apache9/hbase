@@ -62,7 +62,7 @@ public class MasterAddressTracker extends ZooKeeperNodeTracker {
    * @param abortable abortable in case of fatal error
    */
   public MasterAddressTracker(ZooKeeperWatcher watcher, Abortable abortable) {
-    super(watcher, watcher.getMasterAddressZNode(), abortable);
+    super(watcher, watcher.znodePaths.masterAddressZNode, abortable);
   }
 
   /**
@@ -103,7 +103,7 @@ public class MasterAddressTracker extends ZooKeeperNodeTracker {
    */
   public static ServerName getMasterAddress(final ZooKeeperWatcher zkw)
   throws KeeperException, IOException {
-    byte [] data = ZKUtil.getData(zkw, zkw.getMasterAddressZNode());
+    byte [] data = ZKUtil.getData(zkw, zkw.znodePaths.masterAddressZNode);
     if (data == null){
       throw new IOException("Can't get master address from ZooKeeper; znode data == null");
     }
@@ -161,16 +161,16 @@ public class MasterAddressTracker extends ZooKeeperNodeTracker {
    * delete the master znode if its content is same as the parameter
    */
   public static boolean deleteIfEquals(ZooKeeperWatcher zkw, final String content) {
-    if (content == null){
+    if (content == null) {
       throw new IllegalArgumentException("Content must not be null");
     }
 
     try {
       Stat stat = new Stat();
-      byte[] data = ZKUtil.getDataNoWatch(zkw, zkw.getMasterAddressZNode(), stat);
+      byte[] data = ZKUtil.getDataNoWatch(zkw, zkw.znodePaths.masterAddressZNode, stat);
       ServerName sn = ServerName.parseFrom(data);
       if (sn != null && content.equals(sn.toString())) {
-        return (ZKUtil.deleteNode(zkw, zkw.getMasterAddressZNode(), stat.getVersion()));
+        return (ZKUtil.deleteNode(zkw, zkw.znodePaths.masterAddressZNode, stat.getVersion()));
       }
     } catch (KeeperException e) {
       LOG.warn("Can't get or delete the master znode", e);

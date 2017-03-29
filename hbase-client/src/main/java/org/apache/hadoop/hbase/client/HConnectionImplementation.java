@@ -509,8 +509,8 @@ public class HConnectionImplementation implements HConnection, Closeable {
   private void checkIfBaseNodeAvailable(ZooKeeperWatcher zkw) throws MasterNotRunningException {
     String errorMsg;
     try {
-      if (ZKUtil.checkExists(zkw, zkw.baseZNode) == -1) {
-        errorMsg = "The node " + zkw.baseZNode + " is not in ZooKeeper. "
+      if (ZKUtil.checkExists(zkw, zkw.znodePaths.baseZNode) == -1) {
+        errorMsg = "The node " + zkw.znodePaths.baseZNode + " is not in ZooKeeper. "
             + "It should have been written by the master. "
             + "Check the value configured in 'zookeeper.znode.parent'. "
             + "There could be a mismatch with the one configured in the master.";

@@ -471,7 +471,7 @@ public class SplitLogManager extends ZooKeeperListener {
     int count = 0;
     try {
       List<String> tasks =
-        ZKUtil.listChildrenNoWatch(watcher, watcher.splitLogZNode);
+        ZKUtil.listChildrenNoWatch(watcher, watcher.znodePaths.splitLogZNode);
       if (tasks != null) {
         for (String t: tasks) {
           if (!ZKSplitLog.isRescanNode(watcher, t)) {
@@ -512,7 +512,7 @@ public class SplitLogManager extends ZooKeeperListener {
     try {
       this.recoveringRegionLock.lock();
 
-      List<String> tasks = ZKUtil.listChildrenNoWatch(watcher, watcher.splitLogZNode);
+      List<String> tasks = ZKUtil.listChildrenNoWatch(watcher, watcher.znodePaths.splitLogZNode);
       if (tasks != null) {
         for (String t : tasks) {
           if (!ZKSplitLog.isRescanNode(watcher, t)) {
@@ -529,7 +529,8 @@ public class SplitLogManager extends ZooKeeperListener {
         lastRecoveringNodeCreationTime = Long.MAX_VALUE;
       } else if (!recoveredServerNameSet.isEmpty()) {
         // remove recovering regions which doesn't have any RS associated with it
-        List<String> regions = ZKUtil.listChildrenNoWatch(watcher, watcher.recoveringRegionsZNode);
+        List<String> regions =
+            ZKUtil.listChildrenNoWatch(watcher, watcher.znodePaths.recoveringRegionsZNode);
         if (regions != null) {
           for (String region : regions) {
             if(isMetaRecovery != null) {
@@ -540,7 +541,7 @@ public class SplitLogManager extends ZooKeeperListener {
                 continue;
               }
             }
-            String nodePath = ZKUtil.joinZNode(watcher.recoveringRegionsZNode, region);
+            String nodePath = ZKUtil.joinZNode(watcher.znodePaths.recoveringRegionsZNode, region);
             List<String> failedServers = ZKUtil.listChildrenNoWatch(watcher, nodePath);
             if (failedServers == null || failedServers.isEmpty()) {
               ZKUtil.deleteNode(watcher, nodePath);
@@ -588,10 +589,11 @@ public class SplitLogManager extends ZooKeeperListener {
 
     this.recoveringRegionLock.lock();
     try {
-      List<String> tasks = ZKUtil.listChildrenNoWatch(watcher, watcher.splitLogZNode);
+      List<String> tasks = ZKUtil.listChildrenNoWatch(watcher, watcher.znodePaths.splitLogZNode);
       if (tasks != null) {
         for (String t : tasks) {
-          byte[] data = ZKUtil.getData(this.watcher, ZKUtil.joinZNode(watcher.splitLogZNode, t));
+          byte[] data =
+              ZKUtil.getData(this.watcher, ZKUtil.joinZNode(watcher.znodePaths.splitLogZNode, t));
           if (data != null) {
             SplitLogTask slt = null;
             try {
@@ -615,10 +617,11 @@ public class SplitLogManager extends ZooKeeperListener {
       }
 
       // remove recovering regions which doesn't have any RS associated with it
-      List<String> regions = ZKUtil.listChildrenNoWatch(watcher, watcher.recoveringRegionsZNode);
+      List<String> regions =
+          ZKUtil.listChildrenNoWatch(watcher, watcher.znodePaths.recoveringRegionsZNode);
       if (regions != null) {
         for (String region : regions) {
-          String nodePath = ZKUtil.joinZNode(watcher.recoveringRegionsZNode, region);
+          String nodePath = ZKUtil.joinZNode(watcher.znodePaths.recoveringRegionsZNode, region);
           List<String> regionFailedServers = ZKUtil.listChildrenNoWatch(watcher, nodePath);
           if (regionFailedServers == null || regionFailedServers.isEmpty()) {
             ZKUtil.deleteNode(watcher, nodePath);
@@ -646,10 +649,10 @@ public class SplitLogManager extends ZooKeeperListener {
       if (regions == null) {
         // remove all children under /home/recovering-regions
         LOG.info("Garbage collecting all recovering regions.");
-        ZKUtil.deleteChildrenRecursively(watcher, watcher.recoveringRegionsZNode);
+        ZKUtil.deleteChildrenRecursively(watcher, watcher.znodePaths.recoveringRegionsZNode);
       } else {
         for (String curRegion : regions) {
-          String nodePath = ZKUtil.joinZNode(watcher.recoveringRegionsZNode, curRegion);
+          String nodePath = ZKUtil.joinZNode(watcher.znodePaths.recoveringRegionsZNode, curRegion);
           ZKUtil.deleteNodeRecursively(watcher, nodePath);
         }
       }
@@ -1081,20 +1084,19 @@ public class SplitLogManager extends ZooKeeperListener {
   private void lookForOrphans() {
     List<String> orphans;
     try {
-       orphans = ZKUtil.listChildrenNoWatch(this.watcher,
-          this.watcher.splitLogZNode);
+      orphans = ZKUtil.listChildrenNoWatch(this.watcher, this.watcher.znodePaths.splitLogZNode);
       if (orphans == null) {
-        LOG.warn("could not get children of " + this.watcher.splitLogZNode);
+        LOG.warn("could not get children of " + this.watcher.znodePaths.splitLogZNode);
         return;
       }
     } catch (KeeperException e) {
-      LOG.warn("could not get children of " + this.watcher.splitLogZNode +
-          " " + StringUtils.stringifyException(e));
+      LOG.warn("could not get children of " + this.watcher.znodePaths.splitLogZNode + " " +
+          StringUtils.stringifyException(e));
       return;
     }
     int rescan_nodes = 0;
     for (String path : orphans) {
-      String nodepath = ZKUtil.joinZNode(watcher.splitLogZNode, path);
+      String nodepath = ZKUtil.joinZNode(watcher.znodePaths.splitLogZNode, path);
       if (ZKSplitLog.isRescanNode(watcher, nodepath)) {
         rescan_nodes++;
         LOG.debug("found orphan rescan node " + path);
@@ -1129,7 +1131,8 @@ public class SplitLogManager extends ZooKeeperListener {
         long retries = this.zkretries;
 
         do {
-          String nodePath = ZKUtil.joinZNode(watcher.recoveringRegionsZNode, regionEncodeName);
+          String nodePath =
+              ZKUtil.joinZNode(watcher.znodePaths.recoveringRegionsZNode, regionEncodeName);
           long lastRecordedFlushedSequenceId = -1;
           try {
             long lastSequenceId = this.master.getServerManager().getLastFlushedSequenceId(
@@ -1209,7 +1212,7 @@ public class SplitLogManager extends ZooKeeperListener {
       isRegionMarkedRecoveringInZK(ZooKeeperWatcher zkw, String regionEncodedName)
           throws KeeperException {
     boolean result = false;
-    String nodePath = ZKUtil.joinZNode(zkw.recoveringRegionsZNode, regionEncodedName);
+    String nodePath = ZKUtil.joinZNode(zkw.znodePaths.recoveringRegionsZNode, regionEncodedName);
 
     byte[] node = ZKUtil.getDataAndWatch(zkw, nodePath);
     if (node != null) {
@@ -1236,7 +1239,7 @@ public class SplitLogManager extends ZooKeeperListener {
     // Therefore, in this mode we need to fetch last sequence Ids from ZK where we keep history of
     // last flushed sequence Id for each failed RS instance.
     RegionStoreSequenceIds result = null;
-    String nodePath = ZKUtil.joinZNode(zkw.recoveringRegionsZNode, encodedRegionName);
+    String nodePath = ZKUtil.joinZNode(zkw.znodePaths.recoveringRegionsZNode, encodedRegionName);
     nodePath = ZKUtil.joinZNode(nodePath, serverName);
     try {
       byte[] data = ZKUtil.getData(zkw, nodePath);
@@ -1278,14 +1281,15 @@ public class SplitLogManager extends ZooKeeperListener {
       RecoveryMode.LOG_REPLAY : RecoveryMode.LOG_SPLITTING;
 
     // Firstly check if there are outstanding recovering regions
-    List<String> regions = ZKUtil.listChildrenNoWatch(watcher, watcher.recoveringRegionsZNode);
+    List<String> regions =
+        ZKUtil.listChildrenNoWatch(watcher, watcher.znodePaths.recoveringRegionsZNode);
     if (regions != null && !regions.isEmpty()) {
       hasRecoveringRegions = true;
       previousRecoveryMode = RecoveryMode.LOG_REPLAY;
     }
     if (previousRecoveryMode == RecoveryMode.UNKNOWN) {
       // Secondly check if there are outstanding split log task
-      List<String> tasks = ZKUtil.listChildrenNoWatch(watcher, watcher.splitLogZNode);
+      List<String> tasks = ZKUtil.listChildrenNoWatch(watcher, watcher.znodePaths.splitLogZNode);
       if (tasks != null && !tasks.isEmpty()) {
         hasSplitLogTask = true;
         if (isForInitialization) {
@@ -1293,7 +1297,7 @@ public class SplitLogManager extends ZooKeeperListener {
           for (String task : tasks) {
             try {
               byte[] data = ZKUtil.getData(this.watcher,
-                ZKUtil.joinZNode(watcher.splitLogZNode, task));
+                ZKUtil.joinZNode(watcher.znodePaths.splitLogZNode, task));
               if (data == null) continue;
               SplitLogTask slt = SplitLogTask.parseFrom(data);
               previousRecoveryMode = slt.getMode();

@@ -48,7 +48,7 @@ public class MetaRegionTracker extends ZooKeeperNodeTracker {
    * @param abortable
    */
   public MetaRegionTracker(ZooKeeperWatcher watcher, Abortable abortable) {
-    super(watcher, watcher.metaServerZNode, abortable);
+    super(watcher, watcher.znodePaths.metaServerZNode, abortable);
   }
 
   /**
@@ -77,7 +77,7 @@ public class MetaRegionTracker extends ZooKeeperNodeTracker {
    * @throws KeeperException
    */
   public static ServerName getMetaRegionLocation(final ZooKeeperWatcher zkw) throws KeeperException {
-    byte[] data = ZKUtil.getData(zkw, zkw.metaServerZNode);
+    byte[] data = ZKUtil.getData(zkw, zkw.znodePaths.metaServerZNode);
     RegionState regionState = getMetaRegionState(data);
     return regionState.isOpened() ? regionState.getServerName() : null;
   }
@@ -130,24 +130,22 @@ public class MetaRegionTracker extends ZooKeeperNodeTracker {
   }
 
   /**
-   * Sets the location of <code>hbase:meta</code> in ZooKeeper to the
-   * specified server address.
+   * Sets the location of <code>hbase:meta</code> in ZooKeeper to the specified server address.
    * @param zookeeper zookeeper reference
    * @param location The server hosting <code>hbase:meta</code>
    * @throws KeeperException unexpected zookeeper exception
    */
-  public static void setMetaLocation(ZooKeeperWatcher zookeeper,
-                                     final ServerName location, final RegionState.State regionState)
-  throws KeeperException {
+  public static void setMetaLocation(ZooKeeperWatcher zookeeper, final ServerName location,
+      final RegionState.State regionState) throws KeeperException {
     LOG.info("Setting hbase:meta region location in ZooKeeper as " + location);
     // Make the MetaRegionServer pb and then get its bytes and save this as
     // the znode content.
-    byte [] data = toByteArray(location, regionState);
+    byte[] data = toByteArray(location, regionState);
     try {
-      ZKUtil.createAndWatch(zookeeper, zookeeper.metaServerZNode, data);
-    } catch(KeeperException.NodeExistsException nee) {
+      ZKUtil.createAndWatch(zookeeper, zookeeper.znodePaths.metaServerZNode, data);
+    } catch (KeeperException.NodeExistsException nee) {
       LOG.debug("META region location already existed, updated location");
-      ZKUtil.setData(zookeeper, zookeeper.metaServerZNode, data);
+      ZKUtil.setData(zookeeper, zookeeper.znodePaths.metaServerZNode, data);
     }
   }
 
@@ -179,13 +177,12 @@ public class MetaRegionTracker extends ZooKeeperNodeTracker {
    * @param zookeeper zookeeper reference
    * @throws KeeperException unexpected zookeeper exception
    */
-  public static void deleteMetaLocation(ZooKeeperWatcher zookeeper)
-  throws KeeperException {
+  public static void deleteMetaLocation(ZooKeeperWatcher zookeeper) throws KeeperException {
     LOG.info("Unsetting hbase:meta region location in ZooKeeper");
     try {
-      // Just delete the node.  Don't need any watches.
-      ZKUtil.deleteNode(zookeeper, zookeeper.metaServerZNode);
-    } catch(KeeperException.NoNodeException nne) {
+      // Just delete the node. Don't need any watches.
+      ZKUtil.deleteNode(zookeeper, zookeeper.znodePaths.metaServerZNode);
+    } catch (KeeperException.NoNodeException nne) {
       // Has already been deleted
     }
   }
@@ -197,15 +194,13 @@ public class MetaRegionTracker extends ZooKeeperNodeTracker {
    * @return ServerName or null if we timed out.
    * @throws InterruptedException
    */
-  public static ServerName blockUntilAvailable(final ZooKeeperWatcher zkw,
-      final long timeout)
-  throws InterruptedException {
-    byte [] data = ZKUtil.blockUntilAvailable(zkw, zkw.metaServerZNode, timeout);
-    RegionState regionState =  getMetaRegionState(data);
+  public static ServerName blockUntilAvailable(final ZooKeeperWatcher zkw, final long timeout)
+      throws InterruptedException {
+    byte[] data = ZKUtil.blockUntilAvailable(zkw, zkw.znodePaths.metaServerZNode, timeout);
+    RegionState regionState = getMetaRegionState(data);
     return regionState.isOpened() ? regionState.getServerName() : null;
   }
-  
-  
+
   private static RegionState getMetaRegionState(byte[] data) {
     RegionState.State state = RegionState.State.OPEN;
     ServerName serverName = null;

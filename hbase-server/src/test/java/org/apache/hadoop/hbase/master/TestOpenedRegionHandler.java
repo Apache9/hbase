@@ -157,7 +157,7 @@ public class TestOpenedRegionHandler {
       assertFalse("The process method should not throw any exception.",
           expectedException);
       List<String> znodes = ZKUtil.listChildrenAndWatchForNewChildren(zkw,
-          zkw.assignmentZNode);
+          zkw.znodePaths.assignmentZNode);
       String regionName = znodes.get(0);
       assertEquals("The region should not be opened successfully.", regionName,
           region.getRegionInfo().getEncodedName());

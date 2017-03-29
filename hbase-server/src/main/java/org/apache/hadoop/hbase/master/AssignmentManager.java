@@ -505,7 +505,7 @@ public class AssignmentManager extends ZooKeeperListener {
 
     if (!useZKForAssignment) {
       // Not use ZK for assignment any more, remove the ZNode
-      ZKUtil.deleteNodeRecursively(watcher, watcher.assignmentZNode);
+      ZKUtil.deleteNodeRecursively(watcher, watcher.znodePaths.assignmentZNode);
     }
     recoverTableInDisablingState();
     recoverTableInEnablingState();
@@ -528,7 +528,7 @@ public class AssignmentManager extends ZooKeeperListener {
       final Map<ServerName, List<HRegionInfo>> deadServers)
           throws KeeperException, IOException, InterruptedException {
     List<String> nodes = ZKUtil.listChildrenNoWatch(watcher,
-      watcher.assignmentZNode);
+      watcher.znodePaths.assignmentZNode);
 
     if (nodes == null && useZKForAssignment) {
       String errorMessage = "Failed to get the children from ZK";
@@ -635,7 +635,7 @@ public class AssignmentManager extends ZooKeeperListener {
     if (!failover && useZKForAssignment) {
       // Cleanup any existing ZK nodes and start watching
       ZKAssign.deleteAllNodes(watcher);
-      ZKUtil.listChildrenAndWatchForNewChildren(this.watcher, this.watcher.assignmentZNode);
+      ZKUtil.listChildrenAndWatchForNewChildren(this.watcher, this.watcher.znodePaths.assignmentZNode);
     }
     // Now we can safely claim failover cleanup completed and enable
     // ServerShutdownHandler for further processing. The nodes (below)
@@ -1290,7 +1290,7 @@ public class AssignmentManager extends ZooKeeperListener {
 
   @Override
   public void nodeDeleted(final String path) {
-    if (path.startsWith(watcher.assignmentZNode)) {
+    if (path.startsWith(watcher.znodePaths.assignmentZNode)) {
       final String regionName = ZKAssign.getRegionName(watcher, path);
       zkEventWorkersSubmit(new RegionRunnable() {
         @Override
@@ -1387,7 +1387,7 @@ public class AssignmentManager extends ZooKeeperListener {
    */
   @Override
   public void nodeChildrenChanged(String path) {
-    if (path.equals(watcher.assignmentZNode)) {
+    if (path.equals(watcher.znodePaths.assignmentZNode)) {
       zkEventWorkers.submit(new Runnable() {
         @Override
         public void run() {
@@ -1395,7 +1395,7 @@ public class AssignmentManager extends ZooKeeperListener {
             // Just make sure we see the changes for the new znodes
             List<String> children =
               ZKUtil.listChildrenAndWatchForNewChildren(
-                watcher, watcher.assignmentZNode);
+                watcher, watcher.znodePaths.assignmentZNode);
             if (children != null) {
               Stat stat = new Stat();
               for (String child : children) {
@@ -1451,7 +1451,7 @@ public class AssignmentManager extends ZooKeeperListener {
    * @param path
    */
   private void handleAssignmentEvent(final String path) {
-    if (path.startsWith(watcher.assignmentZNode)) {
+    if (path.startsWith(watcher.znodePaths.assignmentZNode)) {
       final String regionName = ZKAssign.getRegionName(watcher, path);
 
       zkEventWorkersSubmit(new RegionRunnable() {
@@ -2980,9 +2980,9 @@ public class AssignmentManager extends ZooKeeperListener {
       }
     }
 
-    List<String> nodes = useZKForAssignment ?
-      ZKUtil.listChildrenAndWatchForNewChildren(watcher, watcher.assignmentZNode)
-      : ZKUtil.listChildrenNoWatch(watcher, watcher.assignmentZNode);
+    List<String> nodes = useZKForAssignment
+        ? ZKUtil.listChildrenAndWatchForNewChildren(watcher, watcher.znodePaths.assignmentZNode)
+        : ZKUtil.listChildrenNoWatch(watcher, watcher.znodePaths.assignmentZNode);
     if (nodes != null && !nodes.isEmpty()) {
       for (String encodedRegionName : nodes) {
         processRegionInTransition(encodedRegionName, null);
@@ -3936,7 +3936,7 @@ public class AssignmentManager extends ZooKeeperListener {
         }
       } catch (KeeperException e) {
         if (e instanceof NoNodeException) {
-          String znodePath = ZKUtil.joinZNode(watcher.splitLogZNode, encodedName);
+          String znodePath = ZKUtil.joinZNode(watcher.znodePaths.splitLogZNode, encodedName);
           LOG.debug("The znode " + znodePath + " does not exist.  May be deleted already.");
         } else {
           server.abort("Error deleting MERGED node " + encodedName, e);
@@ -4070,7 +4070,7 @@ public class AssignmentManager extends ZooKeeperListener {
         }
       } catch (KeeperException e) {
         if (e instanceof NoNodeException) {
-          String znodePath = ZKUtil.joinZNode(watcher.splitLogZNode, encodedName);
+          String znodePath = ZKUtil.joinZNode(watcher.znodePaths.splitLogZNode, encodedName);
           LOG.debug("The znode " + znodePath + " does not exist.  May be deleted already.");
         } else {
           server.abort("Error deleting SPLIT node " + encodedName, e);

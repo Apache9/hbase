@@ -56,7 +56,7 @@ public class ZKPermissionWatcher extends ZooKeeperListener {
     super(watcher);
     this.authManager = authManager;
     String aclZnodeParent = conf.get("zookeeper.znode.acl.parent", ACL_NODE);
-    this.aclZNode = ZKUtil.joinZNode(watcher.baseZNode, aclZnodeParent);
+    this.aclZNode = ZKUtil.joinZNode(watcher.znodePaths.baseZNode, aclZnodeParent);
   }
 
   public void start() throws KeeperException {
@@ -181,7 +181,7 @@ public class ZKPermissionWatcher extends ZooKeeperListener {
    */
   public void writeToZookeeper(byte[] entry, byte[] permsData) {
     String entryName = Bytes.toString(entry);
-    String zkNode = ZKUtil.joinZNode(watcher.baseZNode, ACL_NODE);
+    String zkNode = ZKUtil.joinZNode(watcher.znodePaths.baseZNode, ACL_NODE);
     zkNode = ZKUtil.joinZNode(zkNode, entryName);
 
     try {
@@ -199,7 +199,7 @@ public class ZKPermissionWatcher extends ZooKeeperListener {
    * @param tableName
    */
   public void deleteTableACLNode(final TableName tableName) {
-    String zkNode = ZKUtil.joinZNode(watcher.baseZNode, ACL_NODE);
+    String zkNode = ZKUtil.joinZNode(watcher.znodePaths.baseZNode, ACL_NODE);
     zkNode = ZKUtil.joinZNode(zkNode, tableName.getNameAsString());
 
     try {

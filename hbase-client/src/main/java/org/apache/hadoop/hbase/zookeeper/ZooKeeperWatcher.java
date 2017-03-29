@@ -18,6 +18,8 @@
  */
 package org.apache.hadoop.hbase.zookeeper;
 
+import com.google.common.collect.ImmutableList;
+
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -27,11 +29,10 @@ import java.util.concurrent.CountDownLatch;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Abortable;
-import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.ZooKeeperConnectionException;
+import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.util.Threads;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.WatchedEvent;
@@ -40,21 +41,21 @@ import org.apache.zookeeper.ZooDefs;
 import org.apache.zookeeper.data.ACL;
 
 /**
- * Acts as the single ZooKeeper Watcher.  One instance of this is instantiated
- * for each Master, RegionServer, and client process.
- *
- * <p>This is the only class that implements {@link Watcher}.  Other internal
- * classes which need to be notified of ZooKeeper events must register with
- * the local instance of this watcher via {@link #registerListener}.
- *
- * <p>This class also holds and manages the connection to ZooKeeper.  Code to
- * deal with connection related events and exceptions are handled here.
+ * Acts as the single ZooKeeper Watcher. One instance of this is instantiated for each Master,
+ * RegionServer, and client process.
+ * <p>
+ * This is the only class that implements {@link Watcher}. Other internal classes which need to be
+ * notified of ZooKeeper events must register with the local instance of this watcher via
+ * {@link #registerListener}.
+ * <p>
+ * This class also holds and manages the connection to ZooKeeper. Code to deal with connection
+ * related events and exceptions are handled here.
  */
 @InterfaceAudience.Private
 public class ZooKeeperWatcher implements Watcher, Abortable, Closeable {
   private static final Log LOG = LogFactory.getLog(ZooKeeperWatcher.class);
 
-  // Identifier for this watcher (for logging only).  It is made of the prefix
+  // Identifier for this watcher (for logging only). It is made of the prefix
   // passed on construction and the zookeeper sessionid.
   private String prefix;
   private String identifier;
@@ -71,54 +72,18 @@ public class ZooKeeperWatcher implements Watcher, Abortable, Closeable {
   private boolean aborted = false;
 
   // listeners to be notified
-  private final List<ZooKeeperListener> listeners =
-    new CopyOnWriteArrayList<ZooKeeperListener>();
+  private final List<ZooKeeperListener> listeners = new CopyOnWriteArrayList<ZooKeeperListener>();
 
   // Used by ZKUtil:waitForZKConnectionIfAuthenticating to wait for SASL
   // negotiation to complete
   public CountDownLatch saslLatch = new CountDownLatch(1);
 
-  // node names
-
-  // base znode for this cluster
-  public String baseZNode;
-  // znode containing location of server hosting meta region
-  public String metaServerZNode;
-  // znode containing ephemeral nodes of the regionservers
-  public String rsZNode;
-  // znode containing ephemeral nodes of the draining regionservers
-  public String drainingZNode;
-  // znode of currently active master
-  private String masterAddressZNode;
-  // znode of this master in backup master directory, if not the active master
-  public String backupMasterAddressesZNode;
-  // znode containing the current cluster state
-  public String clusterStateZNode;
-  // znode used for region transitioning and assignment
-  public String assignmentZNode;
-  // znode used for table disabling/enabling
-  public String tableZNode;
-  // znode containing the unique cluster ID
-  public String clusterIdZNode;
-  // znode used for log splitting work assignment
-  public String splitLogZNode;
-  // znode containing the state of the load balancer
-  public String balancerZNode;
-  // znode containing the lock for the tables
-  public String tableLockZNode;
-  // znode containing the state of recovering regions
-  public String recoveringRegionsZNode;
-  // znode containing namespace descriptors
-  public String namespaceZNode = "namespace";
-  // znode containing throttle state
-  public String throttleZNode;
+  public final ZNodePaths znodePaths;
 
   // Certain ZooKeeper nodes need to be world-readable
-  public static final ArrayList<ACL> CREATOR_ALL_AND_WORLD_READABLE =
-    new ArrayList<ACL>() { {
-      add(new ACL(ZooDefs.Perms.READ,ZooDefs.Ids.ANYONE_ID_UNSAFE));
-      add(new ACL(ZooDefs.Perms.ALL,ZooDefs.Ids.AUTH_IDS));
-    }};
+  public static final ImmutableList<ACL> CREATOR_ALL_AND_WORLD_READABLE =
+      ImmutableList.of(new ACL(ZooDefs.Perms.READ, ZooDefs.Ids.ANYONE_ID_UNSAFE),
+        new ACL(ZooDefs.Perms.ALL, ZooDefs.Ids.AUTH_IDS));
 
   private final Configuration conf;
 
@@ -126,13 +91,13 @@ public class ZooKeeperWatcher implements Watcher, Abortable, Closeable {
 
   /**
    * Instantiate a ZooKeeper connection and watcher.
-   * @param identifier string that is passed to RecoverableZookeeper to be used as
-   * identifier for this instance. Use null for default.
+   * @param identifier string that is passed to RecoverableZookeeper to be used as identifier for
+   *          this instance. Use null for default.
    * @throws IOException
    * @throws ZooKeeperConnectionException
    */
-  public ZooKeeperWatcher(Configuration conf, String identifier,
-      Abortable abortable) throws ZooKeeperConnectionException, IOException {
+  public ZooKeeperWatcher(Configuration conf, String identifier, Abortable abortable)
+      throws ZooKeeperConnectionException, IOException {
     this(conf, identifier, abortable, false);
   }
 
@@ -147,11 +112,10 @@ public class ZooKeeperWatcher implements Watcher, Abortable, Closeable {
    * @throws IOException
    * @throws ZooKeeperConnectionException
    */
-  public ZooKeeperWatcher(Configuration conf, String identifier,
-      Abortable abortable, boolean canCreateBaseZNode)
-  throws IOException, ZooKeeperConnectionException {
+  public ZooKeeperWatcher(Configuration conf, String identifier, Abortable abortable,
+      boolean canCreateBaseZNode) throws IOException, ZooKeeperConnectionException {
     this.conf = conf;
-    // Capture a stack trace now.  Will print it out later if problem so we can
+    // Capture a stack trace now. Will print it out later if problem so we can
     // distingush amongst the myriad ZKWs.
     try {
       throw new Exception("ZKW CONSTRUCTOR STACK TRACE FOR DEBUGGING");
@@ -164,7 +128,7 @@ public class ZooKeeperWatcher implements Watcher, Abortable, Closeable {
     // handle the syncconnect event.
     this.identifier = identifier + "0x0";
     this.abortable = abortable;
-    setNodeNames(conf);
+    this.znodePaths = new ZNodePaths(conf);
     this.recoverableZooKeeper = ZKUtil.connect(conf, quorum, this, identifier);
     if (canCreateBaseZNode) {
       createBaseZNodes();
@@ -174,17 +138,17 @@ public class ZooKeeperWatcher implements Watcher, Abortable, Closeable {
   private void createBaseZNodes() throws ZooKeeperConnectionException {
     try {
       // Create all the necessary "directories" of znodes
-      ZKUtil.createWithParents(this, baseZNode);
+      ZKUtil.createWithParents(this, znodePaths.baseZNode);
       if (conf.getBoolean("hbase.assignment.usezk", true)) {
-        ZKUtil.createAndFailSilent(this, assignmentZNode);
+        ZKUtil.createAndFailSilent(this, znodePaths.assignmentZNode);
       }
-      ZKUtil.createAndFailSilent(this, rsZNode);
-      ZKUtil.createAndFailSilent(this, drainingZNode);
-      ZKUtil.createAndFailSilent(this, tableZNode);
-      ZKUtil.createAndFailSilent(this, splitLogZNode);
-      ZKUtil.createAndFailSilent(this, backupMasterAddressesZNode);
-      ZKUtil.createAndFailSilent(this, tableLockZNode);
-      ZKUtil.createAndFailSilent(this, recoveringRegionsZNode);
+      ZKUtil.createAndFailSilent(this, znodePaths.rsZNode);
+      ZKUtil.createAndFailSilent(this, znodePaths.drainingZNode);
+      ZKUtil.createAndFailSilent(this, znodePaths.tableZNode);
+      ZKUtil.createAndFailSilent(this, znodePaths.splitLogZNode);
+      ZKUtil.createAndFailSilent(this, znodePaths.backupMasterAddressesZNode);
+      ZKUtil.createAndFailSilent(this, znodePaths.tableLockZNode);
+      ZKUtil.createAndFailSilent(this, znodePaths.recoveringRegionsZNode);
     } catch (KeeperException e) {
       throw new ZooKeeperConnectionException(
           prefix("Unexpected KeeperException creating base node"), e);
@@ -193,55 +157,17 @@ public class ZooKeeperWatcher implements Watcher, Abortable, Closeable {
 
   @Override
   public String toString() {
-    return this.identifier + ", quorum=" + quorum + ", baseZNode=" + baseZNode;
+    return this.identifier + ", quorum=" + quorum + ", baseZNode=" + znodePaths.baseZNode;
   }
 
   /**
    * Adds this instance's identifier as a prefix to the passed <code>str</code>
    * @param str String to amend.
-   * @return A new string with this instance's identifier as prefix: e.g.
-   * if passed 'hello world', the returned string could be
+   * @return A new string with this instance's identifier as prefix: e.g. if passed 'hello world',
+   *         the returned string could be
    */
   public String prefix(final String str) {
     return this.toString() + " " + str;
-  }
-
-  /**
-   * Set the local variable node names using the specified configuration.
-   */
-  private void setNodeNames(Configuration conf) {
-    baseZNode = conf.get(HConstants.ZOOKEEPER_ZNODE_PARENT,
-        HConstants.DEFAULT_ZOOKEEPER_ZNODE_PARENT);
-    metaServerZNode = ZKUtil.joinZNode(baseZNode,
-        conf.get("zookeeper.znode.metaserver", "meta-region-server"));
-    rsZNode = ZKUtil.joinZNode(baseZNode,
-        conf.get("zookeeper.znode.rs", "rs"));
-    drainingZNode = ZKUtil.joinZNode(baseZNode,
-        conf.get("zookeeper.znode.draining.rs", "draining"));
-    masterAddressZNode = ZKUtil.joinZNode(baseZNode,
-        conf.get("zookeeper.znode.master", "master"));
-    backupMasterAddressesZNode = ZKUtil.joinZNode(baseZNode,
-        conf.get("zookeeper.znode.backup.masters", "backup-masters"));
-    clusterStateZNode = ZKUtil.joinZNode(baseZNode,
-        conf.get("zookeeper.znode.state", "running"));
-    assignmentZNode = ZKUtil.joinZNode(baseZNode,
-        conf.get("zookeeper.znode.unassigned", "region-in-transition"));
-    tableZNode = ZKUtil.joinZNode(baseZNode,
-        conf.get("zookeeper.znode.tableEnableDisable", "table"));
-    clusterIdZNode = ZKUtil.joinZNode(baseZNode,
-        conf.get("zookeeper.znode.clusterId", "hbaseid"));
-    splitLogZNode = ZKUtil.joinZNode(baseZNode,
-        conf.get("zookeeper.znode.splitlog", HConstants.SPLIT_LOGDIR_NAME));
-    balancerZNode = ZKUtil.joinZNode(baseZNode,
-        conf.get("zookeeper.znode.balancer", "balancer"));
-    tableLockZNode = ZKUtil.joinZNode(baseZNode,
-        conf.get("zookeeper.znode.tableLock", "table-lock"));
-    recoveringRegionsZNode = ZKUtil.joinZNode(baseZNode,
-        conf.get("zookeeper.znode.recovering.regions", "recovering-regions"));
-    namespaceZNode = ZKUtil.joinZNode(baseZNode,
-        conf.get("zookeeper.znode.namespace", "namespace"));
-    throttleZNode = ZKUtil.joinZNode(baseZNode,
-        conf.get("zookeeper.znode.throttle", "throttle"));
   }
 
   /**
@@ -253,8 +179,8 @@ public class ZooKeeperWatcher implements Watcher, Abortable, Closeable {
   }
 
   /**
-   * Register the specified listener to receive ZooKeeper events and add it as
-   * the first in the list of current listeners.
+   * Register the specified listener to receive ZooKeeper events and add it as the first in the list
+   * of current listeners.
    * @param listener
    */
   public void registerListenerFirst(ZooKeeperListener listener) {
@@ -307,26 +233,16 @@ public class ZooKeeperWatcher implements Watcher, Abortable, Closeable {
   }
 
   /**
-   * @return the base znode of this zookeeper connection instance.
-   */
-  public String getBaseZNode() {
-    return baseZNode;
-  }
-
-  /**
    * Method called from ZooKeeper for events and connection status.
    * <p>
-   * Valid events are passed along to listeners.  Connection status changes
-   * are dealt with locally.
+   * Valid events are passed along to listeners. Connection status changes are dealt with locally.
    */
   @Override
   public void process(WatchedEvent event) {
-    LOG.debug(prefix("Received ZooKeeper Event, " +
-        "type=" + event.getType() + ", " +
-        "state=" + event.getState() + ", " +
-        "path=" + event.getPath()));
+    LOG.debug(prefix("Received ZooKeeper Event, " + "type=" + event.getType() + ", " + "state=" +
+        event.getState() + ", " + "path=" + event.getPath()));
 
-    switch(event.getType()) {
+    switch (event.getType()) {
 
       // If event type is NONE, this is a connection status change
       case None: {
@@ -337,28 +253,28 @@ public class ZooKeeperWatcher implements Watcher, Abortable, Closeable {
       // Otherwise pass along to the listeners
 
       case NodeCreated: {
-        for(ZooKeeperListener listener : listeners) {
+        for (ZooKeeperListener listener : listeners) {
           listener.nodeCreated(event.getPath());
         }
         break;
       }
 
       case NodeDeleted: {
-        for(ZooKeeperListener listener : listeners) {
+        for (ZooKeeperListener listener : listeners) {
           listener.nodeDeleted(event.getPath());
         }
         break;
       }
 
       case NodeDataChanged: {
-        for(ZooKeeperListener listener : listeners) {
+        for (ZooKeeperListener listener : listeners) {
           listener.nodeDataChanged(event.getPath());
         }
         break;
       }
 
       case NodeChildrenChanged: {
-        for(ZooKeeperListener listener : listeners) {
+        for (ZooKeeperListener listener : listeners) {
           listener.nodeChildrenChanged(event.getPath());
         }
         break;
@@ -371,33 +287,34 @@ public class ZooKeeperWatcher implements Watcher, Abortable, Closeable {
   /**
    * Called when there is a connection-related event via the Watcher callback.
    * <p>
-   * If Disconnected or Expired, this should shutdown the cluster. But, since
-   * we send a KeeperException.SessionExpiredException along with the abort
-   * call, it's possible for the Abortable to catch it and try to create a new
-   * session with ZooKeeper. This is what the client does in HCM.
+   * If Disconnected or Expired, this should shutdown the cluster. But, since we send a
+   * KeeperException.SessionExpiredException along with the abort call, it's possible for the
+   * Abortable to catch it and try to create a new session with ZooKeeper. This is what the client
+   * does in HCM.
    * <p>
    * @param event
    */
   private void connectionEvent(WatchedEvent event) {
-    switch(event.getState()) {
+    switch (event.getState()) {
       case SyncConnected:
         // Now, this callback can be invoked before the this.zookeeper is set.
         // Wait a little while.
         long finished = System.currentTimeMillis() +
-          this.conf.getLong("hbase.zookeeper.watcher.sync.connected.wait", 2000);
+            this.conf.getLong("hbase.zookeeper.watcher.sync.connected.wait", 2000);
         while (System.currentTimeMillis() < finished) {
           Threads.sleep(1);
           if (this.recoverableZooKeeper != null) break;
         }
         if (this.recoverableZooKeeper == null) {
-          LOG.error("ZK is null on connection event -- see stack trace " +
-            "for the stack trace when constructor was called on this zkw",
+          LOG.error(
+            "ZK is null on connection event -- see stack trace " +
+                "for the stack trace when constructor was called on this zkw",
             this.constructorCaller);
           throw new NullPointerException("ZK is null");
         }
-        this.identifier = this.prefix + "-0x" +
-          Long.toHexString(this.recoverableZooKeeper.getSessionId());
-        // Update our identifier.  Otherwise ignore.
+        this.identifier =
+            this.prefix + "-0x" + Long.toHexString(this.recoverableZooKeeper.getSessionId());
+        // Update our identifier. Otherwise ignore.
         LOG.debug(this.identifier + " connected");
         break;
 
@@ -407,8 +324,7 @@ public class ZooKeeperWatcher implements Watcher, Abortable, Closeable {
         break;
 
       case Expired:
-        String msg = prefix(this.identifier + " received expired from " +
-          "ZooKeeper, aborting");
+        String msg = prefix(this.identifier + " received expired from " + "ZooKeeper, aborting");
         // TODO: One thought is to add call to ZooKeeperListener so say,
         // ZooKeeperNodeTracker can zero out its data values.
         if (this.abortable != null) {
@@ -420,10 +336,9 @@ public class ZooKeeperWatcher implements Watcher, Abortable, Closeable {
       case SaslAuthenticated:
         break;
       case AuthFailed:
-        msg = prefix(this.identifier + " received auth failed from " +
-            "ZooKeeper, aborting");
-        if (this.abortable != null) this.abortable.abort(msg,
-          new KeeperException.AuthFailedException());
+        msg = prefix(this.identifier + " received auth failed from " + "ZooKeeper, aborting");
+        if (this.abortable != null)
+          this.abortable.abort(msg, new KeeperException.AuthFailedException());
         break;
 
       default:
@@ -434,14 +349,12 @@ public class ZooKeeperWatcher implements Watcher, Abortable, Closeable {
   /**
    * Forces a synchronization of this ZooKeeper client connection.
    * <p>
-   * Executing this method before running other methods will ensure that the
-   * subsequent operations are up-to-date and consistent as of the time that
-   * the sync is complete.
+   * Executing this method before running other methods will ensure that the subsequent operations
+   * are up-to-date and consistent as of the time that the sync is complete.
    * <p>
-   * This is used for compareAndSwap type operations where we need to read the
-   * data of an existing node and delete or transition that node, utilizing the
-   * previously read version and data.  We want to ensure that the version read
-   * is up-to-date from when we begin the operation.
+   * This is used for compareAndSwap type operations where we need to read the data of an existing
+   * node and delete or transition that node, utilizing the previously read version and data. We
+   * want to ensure that the version read is up-to-date from when we begin the operation.
    */
   public void sync(String path) throws KeeperException {
     this.recoverableZooKeeper.sync(path, null, null);
@@ -457,8 +370,7 @@ public class ZooKeeperWatcher implements Watcher, Abortable, Closeable {
    * @param ke
    * @throws KeeperException
    */
-  public void keeperException(KeeperException ke)
-  throws KeeperException {
+  public void keeperException(KeeperException ke) throws KeeperException {
     LOG.error(prefix("Received unexpected KeeperException, re-throwing exception"), ke);
     throw ke;
   }
@@ -468,9 +380,8 @@ public class ZooKeeperWatcher implements Watcher, Abortable, Closeable {
    * <p>
    * This may be temporary but for now this gives one place to deal with these.
    * <p>
-   * TODO: Currently, this method does nothing.
-   *       Is this ever expected to happen?  Do we abort or can we let it run?
-   *       Maybe this should be logged as WARN?  It shouldn't happen?
+   * TODO: Currently, this method does nothing. Is this ever expected to happen? Do we abort or can
+   * we let it run? Maybe this should be logged as WARN? It shouldn't happen?
    * <p>
    * @param ie
    */
@@ -483,7 +394,6 @@ public class ZooKeeperWatcher implements Watcher, Abortable, Closeable {
 
   /**
    * Close the connection to ZooKeeper.
-   *
    * @throws InterruptedException
    */
   public void close() {
@@ -508,14 +418,6 @@ public class ZooKeeperWatcher implements Watcher, Abortable, Closeable {
 
   @Override
   public boolean isAborted() {
-    return this.abortable == null? this.aborted: this.abortable.isAborted();
+    return this.abortable == null ? this.aborted : this.abortable.isAborted();
   }
-
-  /**
-   * @return Path to the currently active master.
-   */
-  public String getMasterAddressZNode() {
-    return this.masterAddressZNode;
-  }
-
 }

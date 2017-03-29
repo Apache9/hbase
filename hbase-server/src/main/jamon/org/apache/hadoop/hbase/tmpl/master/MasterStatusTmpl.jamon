@@ -267,7 +267,7 @@ AssignmentManager assignmentManager = master.getAssignmentManager();
                 </tr>
                 <tr>
                     <td>Zookeeper Base Path</td>
-                    <td> <% master.getZooKeeper().getBaseZNode() %></td>
+                    <td> <% master.getZooKeeper().znodePaths.baseZNode %></td>
                     <td>Root node of this cluster in ZK.</td>
                 </tr>
                 <tr>

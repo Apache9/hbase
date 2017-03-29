@@ -1300,7 +1300,7 @@ MasterServices, Server {
    */
   private Set<ServerName> getPreviouselyFailedMetaServersFromZK() throws KeeperException {
     Set<ServerName> result = new HashSet<ServerName>();
-    String metaRecoveringZNode = ZKUtil.joinZNode(zooKeeper.recoveringRegionsZNode,
+    String metaRecoveringZNode = ZKUtil.joinZNode(zooKeeper.znodePaths.recoveringRegionsZNode,
       HRegionInfo.FIRST_META_REGIONINFO.getEncodedName());
     List<String> regionFailedServers = ZKUtil.listChildrenNoWatch(zooKeeper, metaRecoveringZNode);
     if (regionFailedServers == null) return result;
@@ -2633,7 +2633,7 @@ MasterServices, Server {
     List<String> backupMasterStrings;
     try {
       backupMasterStrings = ZKUtil.listChildrenNoWatch(this.zooKeeper,
-        this.zooKeeper.backupMasterAddressesZNode);
+        this.zooKeeper.znodePaths.backupMasterAddressesZNode);
     } catch (KeeperException e) {
       LOG.warn(this.zooKeeper.prefix("Unable to list backup servers"), e);
       backupMasterStrings = new ArrayList<String>(0);
@@ -2644,7 +2644,7 @@ MasterServices, Server {
       try {
         byte [] bytes =
             ZKUtil.getData(this.zooKeeper, ZKUtil.joinZNode(
-                this.zooKeeper.backupMasterAddressesZNode, s));
+                this.zooKeeper.znodePaths.backupMasterAddressesZNode, s));
         if (bytes != null) {
           ServerName sn;
           try {

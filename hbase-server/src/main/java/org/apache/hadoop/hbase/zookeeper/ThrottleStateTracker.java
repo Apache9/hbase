@@ -43,7 +43,7 @@ public class ThrottleStateTracker extends ZooKeeperNodeTracker {
 
   public ThrottleStateTracker(ZooKeeperWatcher watcher, Abortable abortable,
       RegionServerServices rsServices) {
-    super(watcher, watcher.throttleZNode, abortable);
+    super(watcher, watcher.znodePaths.throttleZNode, abortable);
     this.rsServices = rsServices;
   }
 
@@ -63,11 +63,11 @@ public class ThrottleStateTracker extends ZooKeeperNodeTracker {
   public void setThrottleState(ThrottleState state) throws KeeperException {
     byte[] upData = toByteArray(state);
     try {
-      ZKUtil.setData(watcher, watcher.throttleZNode, upData);
+      ZKUtil.setData(watcher, watcher.znodePaths.throttleZNode, upData);
     } catch (KeeperException.NoNodeException nne) {
-      ZKUtil.createAndWatch(watcher, watcher.throttleZNode, upData);
+      ZKUtil.createAndWatch(watcher, watcher.znodePaths.throttleZNode, upData);
     }
-    super.nodeDataChanged(watcher.throttleZNode);
+    super.nodeDataChanged(watcher.znodePaths.throttleZNode);
   }
 
   @Override

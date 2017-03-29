@@ -50,7 +50,7 @@ public class ReplicationZKCleaner {
     ZooKeeperWatcher zkw = new ZooKeeperWatcher(conf, "ReplicationZKCleaner", null);
     String replicationZNodeName = conf.get("zookeeper.znode.replication", "replication");
     String rsZNodeName = conf.get("zookeeper.znode.replication.rs", "rs");
-    String replicationZNode = ZKUtil.joinZNode(zkw.baseZNode, replicationZNodeName);
+    String replicationZNode = ZKUtil.joinZNode(zkw.znodePaths.baseZNode, replicationZNodeName);
     String rsZNode = ZKUtil.joinZNode(replicationZNode, rsZNodeName);
 
     for (ServerName sn : HBaseReplicationEndpoint.listChildrenAndGetAsServerNames(zkw, rsZNode)) {

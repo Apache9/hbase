@@ -18,6 +18,8 @@
  */
 package org.apache.hadoop.hbase.zookeeper;
 
+import com.google.common.annotations.VisibleForTesting;
+import com.google.protobuf.InvalidProtocolBufferException;
 import com.xiaomi.infra.base.nameservice.NameService;
 
 import java.io.BufferedReader;
@@ -36,19 +38,19 @@ import java.util.Map;
 import javax.security.auth.login.AppConfigurationEntry;
 import javax.security.auth.login.AppConfigurationEntry.LoginModuleControlFlag;
 
-import org.apache.hadoop.hbase.util.ByteStringer;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.ServerName;
+import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.exceptions.DeserializationException;
 import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos;
 import org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.RegionStoreSequenceIds;
+import org.apache.hadoop.hbase.util.ByteStringer;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.Threads;
 import org.apache.hadoop.hbase.zookeeper.ZKUtil.ZKUtilOp.CreateAndFailSilent;
@@ -73,9 +75,6 @@ import org.apache.zookeeper.proto.CreateRequest;
 import org.apache.zookeeper.proto.DeleteRequest;
 import org.apache.zookeeper.proto.SetDataRequest;
 import org.apache.zookeeper.server.ZooKeeperSaslServer;
-
-import com.google.common.annotations.VisibleForTesting;
-import com.google.protobuf.InvalidProtocolBufferException;
 
 /**
  * Internal HBase utility class for ZooKeeper.
@@ -1028,7 +1027,7 @@ public class ZKUtil {
   }
 
   public static ArrayList<ACL> createACL(ZooKeeperWatcher zkw, String node) {
-    if (!node.startsWith(zkw.baseZNode)) {
+    if (!node.startsWith(zkw.znodePaths.baseZNode)) {
       return Ids.OPEN_ACL_UNSAFE;
     }
     if (isSecureZooKeeper(zkw.getConfiguration())) {
@@ -1037,29 +1036,6 @@ public class ZKUtil {
       String superUser = zkw.getConfiguration().get("hbase.superuser", "hbase_admin");
       acls.add(new ACL(Perms.ALL, new Id("sasl", superUser)));
       return acls;
-      
-      /*
-      // add permission to hbase supper user
-      if (superUser != null) {
-        acls.add(new ACL(Perms.ALL, new Id("auth", superUser)));
-      }
-      // Certain znodes are accessed directly by the client,
-      // so they must be readable by non-authenticated clients
-      if ((node.equals(zkw.baseZNode) == true) ||
-          (node.equals(zkw.metaServerZNode) == true) ||
-          (node.equals(zkw.getMasterAddressZNode()) == true) ||
-          (node.equals(zkw.clusterIdZNode) == true) ||
-          (node.equals(zkw.rsZNode) == true) ||
-          (node.equals(zkw.backupMasterAddressesZNode) == true) ||
-          (node.startsWith(zkw.assignmentZNode) == true) ||
-          (node.startsWith(zkw.tableZNode) == true)) {
-        acls.addAll(Ids.CREATOR_ALL_ACL);
-        acls.addAll(Ids.READ_ACL_UNSAFE);
-      } else {
-        acls.addAll(Ids.CREATOR_ALL_ACL);
-      }
-      return acls;
-      */
     } else {
       return Ids.OPEN_ACL_UNSAFE;
     }
@@ -1674,7 +1650,7 @@ public class ZKUtil {
   public static String dump(ZooKeeperWatcher zkw) {
     StringBuilder sb = new StringBuilder();
     try {
-      sb.append("HBase is rooted at ").append(zkw.baseZNode);
+      sb.append("HBase is rooted at ").append(zkw.znodePaths.baseZNode);
       sb.append("\nActive master address: ");
       try {
         sb.append(MasterAddressTracker.getMasterAddress(zkw));
@@ -1682,13 +1658,12 @@ public class ZKUtil {
         sb.append("<<FAILED LOOKUP: " + e.getMessage() + ">>");
       }
       sb.append("\nBackup master addresses:");
-      for (String child : listChildrenNoWatch(zkw,
-                                              zkw.backupMasterAddressesZNode)) {
+      for (String child : listChildrenNoWatch(zkw, zkw.znodePaths.backupMasterAddressesZNode)) {
         sb.append("\n ").append(child);
       }
       sb.append("\nRegion server holding hbase:meta: " + MetaRegionTracker.getMetaRegionLocation(zkw));
       sb.append("\nRegion servers:");
-      for (String child : listChildrenNoWatch(zkw, zkw.rsZNode)) {
+      for (String child : listChildrenNoWatch(zkw, zkw.znodePaths.rsZNode)) {
         sb.append("\n ").append(child);
       }
       try {
@@ -1730,9 +1705,9 @@ public class ZKUtil {
    */
   private static void getReplicationZnodesDump(ZooKeeperWatcher zkw, StringBuilder sb)
       throws KeeperException {
-    String replicationZNodeName = zkw.getConfiguration().get("zookeeper.znode.replication",
-      "replication");
-    String replicationZnode = joinZNode(zkw.baseZNode, replicationZNodeName);
+    String replicationZNodeName =
+        zkw.getConfiguration().get("zookeeper.znode.replication", "replication");
+    String replicationZnode = joinZNode(zkw.znodePaths.baseZNode, replicationZNodeName);
     if (ZKUtil.checkExists(zkw, replicationZnode) == -1) return;
     // do a ls -r on this znode
     sb.append("\n").append(replicationZnode).append(": ");
@@ -1741,8 +1716,7 @@ public class ZKUtil {
       String znode = joinZNode(replicationZnode, child);
       if (child.equals(zkw.getConfiguration().get("zookeeper.znode.replication.peers", "peers"))) {
         appendPeersZnodes(zkw, znode, sb);
-      } else if (child.equals(zkw.getConfiguration().
-          get("zookeeper.znode.replication.rs", "rs"))) {
+      } else if (child.equals(zkw.getConfiguration().get("zookeeper.znode.replication.rs", "rs"))) {
         appendRSZnodes(zkw, znode, sb);
       }
     }
@@ -1858,20 +1832,20 @@ public class ZKUtil {
     return res.toArray(new String[res.size()]);
   }
 
-  private static void logRetrievedMsg(final ZooKeeperWatcher zkw,
-      final String znode, final byte [] data, final boolean watcherSet) {
+  private static void logRetrievedMsg(final ZooKeeperWatcher zkw, final String znode,
+      final byte[] data, final boolean watcherSet) {
     if (!LOG.isTraceEnabled()) return;
-    LOG.trace(zkw.prefix("Retrieved " + ((data == null)? 0: data.length) +
-      " byte(s) of data from znode " + znode +
-      (watcherSet? " and set watcher; ": "; data=") +
-      (data == null? "null": data.length == 0? "empty": (
-          znode.startsWith(zkw.assignmentZNode)?
-            ZKAssign.toString(data): // We should not be doing this reaching into another class
-          znode.startsWith(zkw.metaServerZNode)?
-            getServerNameOrEmptyString(data):
-          znode.startsWith(zkw.backupMasterAddressesZNode)?
-            getServerNameOrEmptyString(data):
-          StringUtils.abbreviate(Bytes.toStringBinary(data), 32)))));
+    // We should not be doing this reaching into another class
+    LOG.trace(zkw.prefix("Retrieved " + ((data == null) ? 0 : data.length) +
+        " byte(s) of data from znode " + znode + (watcherSet ? " and set watcher; " : "; data=") +
+        (data == null ? "null"
+            : data.length == 0 ? "empty"
+                : (znode.startsWith(zkw.znodePaths.assignmentZNode) ? ZKAssign.toString(data)
+                    : znode.startsWith(zkw.znodePaths.metaServerZNode)
+                        ? getServerNameOrEmptyString(data)
+                        : znode.startsWith(zkw.znodePaths.backupMasterAddressesZNode)
+                            ? getServerNameOrEmptyString(data)
+                            : StringUtils.abbreviate(Bytes.toStringBinary(data), 32)))));
   }
 
   private static String getServerNameOrEmptyString(final byte [] data) {

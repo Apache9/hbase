@@ -25,7 +25,11 @@ import static org.apache.hadoop.hbase.SplitLogCounters.tot_wkr_task_acquired;
 import static org.apache.hadoop.hbase.SplitLogCounters.tot_wkr_task_done;
 import static org.apache.hadoop.hbase.SplitLogCounters.tot_wkr_task_err;
 import static org.apache.hadoop.hbase.SplitLogCounters.tot_wkr_task_resigned;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -50,20 +54,18 @@ import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.hbase.HColumnDescriptor;
-import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
+import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.KeyValue;
-import org.apache.hadoop.hbase.client.RetriesExhaustedException;
-import org.apache.hadoop.hbase.testclassification.LargeTests;
 import org.apache.hadoop.hbase.MiniHBaseCluster;
 import org.apache.hadoop.hbase.NamespaceDescriptor;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.SplitLogCounters;
+import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.Waiter;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Get;
@@ -74,8 +76,7 @@ import org.apache.hadoop.hbase.client.NonceGenerator;
 import org.apache.hadoop.hbase.client.PerClientRandomNonceGenerator;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
-import org.apache.hadoop.hbase.client.RetriesExhaustedWithDetailsException;
-import org.apache.hadoop.hbase.exceptions.RegionInRecoveryException;
+import org.apache.hadoop.hbase.client.RetriesExhaustedException;
 import org.apache.hadoop.hbase.master.SplitLogManager.TaskBatch;
 import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.GetRegionInfoResponse.CompactionState;
@@ -85,6 +86,7 @@ import org.apache.hadoop.hbase.regionserver.wal.HLog;
 import org.apache.hadoop.hbase.regionserver.wal.HLogFactory;
 import org.apache.hadoop.hbase.regionserver.wal.HLogUtil;
 import org.apache.hadoop.hbase.regionserver.wal.WALEdit;
+import org.apache.hadoop.hbase.testclassification.LargeTests;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.FSUtils;
@@ -418,7 +420,7 @@ public class TestDistributedLogSplitting {
       @Override
       public boolean evaluate() throws Exception {
         List<String> recoveringRegions = zkw.getRecoverableZooKeeper().getChildren(
-          zkw.recoveringRegionsZNode, false);
+          zkw.znodePaths.recoveringRegionsZNode, false);
         return (recoveringRegions != null && recoveringRegions.size() == 0);
       }
     });
@@ -528,7 +530,7 @@ public class TestDistributedLogSplitting {
       @Override
       public boolean evaluate() throws Exception {
         List<String> recoveringRegions = zkw.getRecoverableZooKeeper().getChildren(
-          zkw.recoveringRegionsZNode, false);
+          zkw.znodePaths.recoveringRegionsZNode, false);
         return (recoveringRegions != null && recoveringRegions.size() == 0);
       }
     });
@@ -613,7 +615,7 @@ public class TestDistributedLogSplitting {
       @Override
       public boolean evaluate() throws Exception {
         List<String> recoveringRegions = zkw.getRecoverableZooKeeper().getChildren(
-          zkw.recoveringRegionsZNode, false);
+          zkw.znodePaths.recoveringRegionsZNode, false);
         return (recoveringRegions != null && recoveringRegions.size() == 0);
       }
     });
@@ -654,7 +656,7 @@ public class TestDistributedLogSplitting {
     slm.markRegionsRecoveringInZK(secondFailedServer, regionSet);
 
     List<String> recoveringRegions = ZKUtil.listChildrenNoWatch(zkw,
-      ZKUtil.joinZNode(zkw.recoveringRegionsZNode, region.getEncodedName()));
+      ZKUtil.joinZNode(zkw.znodePaths.recoveringRegionsZNode, region.getEncodedName()));
 
     assertEquals(recoveringRegions.size(), 2);
 
@@ -806,7 +808,7 @@ public class TestDistributedLogSplitting {
       @Override
       public boolean evaluate() throws Exception {
         List<String> recoveringRegions = zkw.getRecoverableZooKeeper().getChildren(
-          zkw.recoveringRegionsZNode, false);
+          zkw.znodePaths.recoveringRegionsZNode, false);
         ServerManager serverManager = master.getServerManager();
         return (!serverManager.areDeadServersInProgress() &&
             recoveringRegions != null && recoveringRegions.size() == 0);
@@ -1026,7 +1028,7 @@ public class TestDistributedLogSplitting {
       @Override
       public boolean evaluate() throws Exception {
         List<String> recoveringRegions = zkw.getRecoverableZooKeeper().getChildren(
-          zkw.recoveringRegionsZNode, false);
+          zkw.znodePaths.recoveringRegionsZNode, false);
         return (recoveringRegions != null && recoveringRegions.size() == 0);
       }
     });
@@ -1128,7 +1130,7 @@ public class TestDistributedLogSplitting {
     master.getMasterFileSystem().prepareLogReplay(hrs.getServerName(), userRegionSet);
     boolean isMetaRegionInRecovery = false;
     List<String> recoveringRegions =
-        zkw.getRecoverableZooKeeper().getChildren(zkw.recoveringRegionsZNode, false);
+        zkw.getRecoverableZooKeeper().getChildren(zkw.znodePaths.recoveringRegionsZNode, false);
     for (String curEncodedRegionName : recoveringRegions) {
       if (curEncodedRegionName.equals(HRegionInfo.FIRST_META_REGIONINFO.getEncodedName())) {
         isMetaRegionInRecovery = true;
@@ -1141,7 +1143,7 @@ public class TestDistributedLogSplitting {
     
     isMetaRegionInRecovery = false;
     recoveringRegions =
-        zkw.getRecoverableZooKeeper().getChildren(zkw.recoveringRegionsZNode, false);
+        zkw.getRecoverableZooKeeper().getChildren(zkw.znodePaths.recoveringRegionsZNode, false);
     for (String curEncodedRegionName : recoveringRegions) {
       if (curEncodedRegionName.equals(HRegionInfo.FIRST_META_REGIONINFO.getEncodedName())) {
         isMetaRegionInRecovery = true;

@@ -249,7 +249,8 @@ public class TestTableLockManager {
 
     //ensure that znode for the table node has been deleted
     final ZooKeeperWatcher zkWatcher = TEST_UTIL.getZooKeeperWatcher();
-    final String znode = ZKUtil.joinZNode(zkWatcher.tableLockZNode, TABLE_NAME.getNameAsString());
+    final String znode =
+        ZKUtil.joinZNode(zkWatcher.znodePaths.tableLockZNode, TABLE_NAME.getNameAsString());
     
     TEST_UTIL.waitFor(5000, new Waiter.Predicate<Exception>() {
       @Override
@@ -259,7 +260,7 @@ public class TestTableLockManager {
       }
     });
     int ver = ZKUtil.checkExists(zkWatcher,
-      ZKUtil.joinZNode(zkWatcher.tableLockZNode, TABLE_NAME.getNameAsString()));
+      ZKUtil.joinZNode(zkWatcher.znodePaths.tableLockZNode, TABLE_NAME.getNameAsString()));
     assertTrue("Unexpected znode version " + ver, ver < 0);
 
   }

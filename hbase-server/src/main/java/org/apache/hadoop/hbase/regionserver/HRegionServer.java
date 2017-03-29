@@ -5548,7 +5548,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
   }
 
   private String getMyEphemeralNodePath() {
-    return ZKUtil.joinZNode(this.zooKeeper.rsZNode, getServerName().toString());
+    return ZKUtil.joinZNode(this.zooKeeper.znodePaths.rsZNode, getServerName().toString());
   }
 
   /**
@@ -5616,7 +5616,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
 
     try {
       long lastRecordedFlushedSequenceId = -1;
-      String nodePath = ZKUtil.joinZNode(this.zooKeeper.recoveringRegionsZNode,
+      String nodePath = ZKUtil.joinZNode(this.zooKeeper.znodePaths.recoveringRegionsZNode,
         region.getEncodedName());
       // recovering-region level
       byte[] data = ZKUtil.getData(zkw, nodePath);
@@ -5651,7 +5651,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     String result = null;
     long maxZxid = 0;
     ZooKeeperWatcher zkw = this.getZooKeeper();
-    String nodePath = ZKUtil.joinZNode(zkw.recoveringRegionsZNode, encodedRegionName);
+    String nodePath = ZKUtil.joinZNode(zkw.znodePaths.recoveringRegionsZNode, encodedRegionName);
     List<String> failedServers = ZKUtil.listChildrenNoWatch(zkw, nodePath);
     if (failedServers == null || failedServers.isEmpty()) {
       return result;

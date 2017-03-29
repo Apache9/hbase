@@ -225,22 +225,18 @@ public abstract class ZooKeeperNodeTracker extends ZooKeeperListener {
   }
   
   /**
-   * Checks if the baseznode set as per the property 'zookeeper.znode.parent'
-   * exists.
-   * @return true if baseznode exists.
-   *         false if doesnot exists.
+   * Checks if the baseznode set as per the property 'zookeeper.znode.parent' exists.
+   * @return true if baseznode exists. false if doesnot exists.
    */
   public boolean checkIfBaseNodeAvailable() {
     try {
-      if (ZKUtil.checkExists(watcher, watcher.baseZNode) == -1) {
+      if (ZKUtil.checkExists(watcher, watcher.znodePaths.baseZNode) == -1) {
         return false;
       }
     } catch (KeeperException e) {
-      abortable
-          .abort(
-              "Exception while checking if basenode ("+watcher.baseZNode+
-                ") exists in ZooKeeper.",
-              e);
+      abortable.abort("Exception while checking if basenode (" + watcher.znodePaths.baseZNode +
+          ") exists in ZooKeeper.",
+        e);
       return false;
     }
     return true;

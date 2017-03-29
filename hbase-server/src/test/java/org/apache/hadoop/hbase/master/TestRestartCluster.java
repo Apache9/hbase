@@ -65,7 +65,7 @@ public class TestRestartCluster {
       new ZooKeeperWatcher(UTIL.getConfiguration(), "cluster1", null, true);
 
     // create the unassigned region, throw up a region opened state for META
-    String unassignedZNode = zooKeeper.assignmentZNode;
+    String unassignedZNode = zooKeeper.znodePaths.assignmentZNode;
     ZKUtil.createAndFailSilent(zooKeeper, unassignedZNode);
 
     ServerName sn = ServerName.valueOf(HMaster.MASTER, 1, System.currentTimeMillis());

@@ -96,9 +96,10 @@ public class TestMasterFileSystem {
     zkw.getRecoverableZooKeeper().create(ZKSplitLog.getEncodedNodeName(zkw, walPath),
       new SplitLogTask.Owned(inRecoveryServerName, fs.getLogRecoveryMode()).toByteArray(), 
         Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
-    String staleRegionPath = ZKUtil.joinZNode(zkw.recoveringRegionsZNode, staleRegion);
+    String staleRegionPath = ZKUtil.joinZNode(zkw.znodePaths.recoveringRegionsZNode, staleRegion);
     ZKUtil.createWithParents(zkw, staleRegionPath);
-    String inRecoveringRegionPath = ZKUtil.joinZNode(zkw.recoveringRegionsZNode, failedRegion);
+    String inRecoveringRegionPath =
+        ZKUtil.joinZNode(zkw.znodePaths.recoveringRegionsZNode, failedRegion);
     inRecoveringRegionPath = ZKUtil.joinZNode(inRecoveringRegionPath, 
       inRecoveryServerName.getServerName());
     ZKUtil.createWithParents(zkw, inRecoveringRegionPath);
@@ -110,8 +111,8 @@ public class TestMasterFileSystem {
     assertFalse(ZKUtil.checkExists(zkw, staleRegionPath) != -1);
     assertTrue(ZKUtil.checkExists(zkw, inRecoveringRegionPath) != -1);
       
-    ZKUtil.deleteChildrenRecursively(zkw, zkw.recoveringRegionsZNode);
-    ZKUtil.deleteChildrenRecursively(zkw, zkw.splitLogZNode);
+    ZKUtil.deleteChildrenRecursively(zkw, zkw.znodePaths.recoveringRegionsZNode);
+    ZKUtil.deleteChildrenRecursively(zkw, zkw.znodePaths.splitLogZNode);
     zkw.close();
   }
 

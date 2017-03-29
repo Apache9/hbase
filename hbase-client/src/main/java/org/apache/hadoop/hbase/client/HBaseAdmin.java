@@ -2255,7 +2255,7 @@ public class HBaseAdmin implements Abortable, Closeable {
       ZooKeeperKeepAliveConnection zkw = null;
       try {
         zkw = connection.getKeepAliveZooKeeperWatcher();
-        zkw.getRecoverableZooKeeper().getZooKeeper().exists(zkw.baseZNode, false);
+        zkw.getRecoverableZooKeeper().getZooKeeper().exists(zkw.znodePaths.baseZNode, false);
 
       } catch (IOException e) {
         throw new ZooKeeperConnectionException("Can't connect to ZooKeeper", e);

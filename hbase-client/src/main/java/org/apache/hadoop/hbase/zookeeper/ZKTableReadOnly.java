@@ -102,7 +102,7 @@ public class ZKTableReadOnly {
   throws KeeperException {
     Set<TableName> disabledTables = new HashSet<TableName>();
     List<String> children =
-      ZKUtil.listChildrenNoWatch(zkw, zkw.tableZNode);
+      ZKUtil.listChildrenNoWatch(zkw, zkw.znodePaths.tableZNode);
     for (String child: children) {
       TableName tableName =
           TableName.valueOf(child);
@@ -121,7 +121,7 @@ public class ZKTableReadOnly {
   throws KeeperException {
     Set<TableName> disabledTables = new HashSet<TableName>();
     List<String> children =
-      ZKUtil.listChildrenNoWatch(zkw, zkw.tableZNode);
+      ZKUtil.listChildrenNoWatch(zkw, zkw.znodePaths.tableZNode);
     for (String child: children) {
       TableName tableName =
           TableName.valueOf(child);
@@ -145,10 +145,9 @@ public class ZKTableReadOnly {
    * @throws KeeperException
    */
   static ZooKeeperProtos.Table.State getTableState(final ZooKeeperWatcher zkw,
-      final TableName tableName)
-  throws KeeperException {
-    String znode = ZKUtil.joinZNode(zkw.tableZNode, tableName.getNameAsString());
-    byte [] data = ZKUtil.getData(zkw, znode);
+      final TableName tableName) throws KeeperException {
+    String znode = ZKUtil.joinZNode(zkw.znodePaths.tableZNode, tableName.getNameAsString());
+    byte[] data = ZKUtil.getData(zkw, znode);
     if (data == null || data.length <= 0) return null;
     try {
       ProtobufUtil.expectPBMagicPrefix(data);

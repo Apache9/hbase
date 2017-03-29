@@ -73,12 +73,12 @@ public class ZKTable {
    * Gets a list of all the tables set as disabled in zookeeper.
    * @throws KeeperException
    */
-  private void populateTableStates()
-  throws KeeperException {
+  private void populateTableStates() throws KeeperException {
     synchronized (this.cache) {
-      List<String> children = ZKUtil.listChildrenNoWatch(this.watcher, this.watcher.tableZNode);
+      List<String> children =
+          ZKUtil.listChildrenNoWatch(this.watcher, this.watcher.znodePaths.tableZNode);
       if (children == null) return;
-      for (String child: children) {
+      for (String child : children) {
         TableName tableName = TableName.valueOf(child);
         ZooKeeperProtos.Table.State state = ZKTableReadOnly.getTableState(this.watcher, tableName);
         if (state != null) this.cache.put(tableName, state);
@@ -205,15 +205,16 @@ public class ZKTable {
   }
 
   private void setTableState(final TableName tableName, final ZooKeeperProtos.Table.State state)
-  throws KeeperException {
-    String znode = ZKUtil.joinZNode(this.watcher.tableZNode, tableName.getNameAsString());
+      throws KeeperException {
+    String znode =
+        ZKUtil.joinZNode(this.watcher.znodePaths.tableZNode, tableName.getNameAsString());
     if (ZKUtil.checkExists(this.watcher, znode) == -1) {
       ZKUtil.createAndFailSilent(this.watcher, znode);
     }
     synchronized (this.cache) {
       ZooKeeperProtos.Table.Builder builder = ZooKeeperProtos.Table.newBuilder();
       builder.setState(state);
-      byte [] data = ProtobufUtil.prependPBMagic(builder.build().toByteArray());
+      byte[] data = ProtobufUtil.prependPBMagic(builder.build().toByteArray());
       ZKUtil.setData(this.watcher, znode, data);
       this.cache.put(tableName, state);
     }
@@ -267,20 +268,18 @@ public class ZKTable {
   }
 
   /**
-   * Deletes the table in zookeeper.  Fails silently if the
-   * table is not currently disabled in zookeeper.  Sets no watches.
+   * Deletes the table in zookeeper. Fails silently if the table is not currently disabled in
+   * zookeeper. Sets no watches.
    * @param tableName
    * @throws KeeperException unexpected zookeeper exception
    */
-  public void setDeletedTable(final TableName tableName)
-  throws KeeperException {
+  public void setDeletedTable(final TableName tableName) throws KeeperException {
     synchronized (this.cache) {
       if (this.cache.remove(tableName) == null) {
-        LOG.warn("Moving table " + tableName + " state to deleted but was " +
-          "already deleted");
+        LOG.warn("Moving table " + tableName + " state to deleted but was " + "already deleted");
       }
       ZKUtil.deleteNodeFailSilent(this.watcher,
-        ZKUtil.joinZNode(this.watcher.tableZNode, tableName.getNameAsString()));
+        ZKUtil.joinZNode(this.watcher.znodePaths.tableZNode, tableName.getNameAsString()));
     }
   }
   
@@ -365,10 +364,9 @@ public class ZKTable {
   }
   
   /**
-   * If the table is found in ENABLING state the inmemory state is removed. This
-   * helps in cases where CreateTable is to be retried by the client incase of
-   * failures.  If deleteZNode is true - the znode is also deleted
-   * 
+   * If the table is found in ENABLING state the inmemory state is removed. This helps in cases
+   * where CreateTable is to be retried by the client incase of failures. If deleteZNode is true -
+   * the znode is also deleted
    * @param tableName
    * @param deleteZNode
    * @throws KeeperException
@@ -380,12 +378,11 @@ public class ZKTable {
         this.cache.remove(tableName);
         if (deleteZNode) {
           ZKUtil.deleteNodeFailSilent(this.watcher,
-              ZKUtil.joinZNode(this.watcher.tableZNode, tableName.getNameAsString()));
+            ZKUtil.joinZNode(this.watcher.znodePaths.tableZNode, tableName.getNameAsString()));
         }
       }
     }
   }
-
 
   /**
    * Gets a list of all the tables of specified states in zookeeper.
@@ -395,13 +392,12 @@ public class ZKTable {
   static Set<TableName> getAllTables(final ZooKeeperWatcher zkw,
       final ZooKeeperProtos.Table.State... states) throws KeeperException {
     Set<TableName> allTables = new HashSet<TableName>();
-    List<String> children =
-      ZKUtil.listChildrenNoWatch(zkw, zkw.tableZNode);
-    if(children == null) return allTables;
-    for (String child: children) {
+    List<String> children = ZKUtil.listChildrenNoWatch(zkw, zkw.znodePaths.tableZNode);
+    if (children == null) return allTables;
+    for (String child : children) {
       TableName tableName = TableName.valueOf(child);
       ZooKeeperProtos.Table.State state = ZKTableReadOnly.getTableState(zkw, tableName);
-      for (ZooKeeperProtos.Table.State expectedState: states) {
+      for (ZooKeeperProtos.Table.State expectedState : states) {
         if (state == expectedState) {
           allTables.add(tableName);
           break;

@@ -298,8 +298,8 @@ public class TestNamespace {
     assertTrue(fs.mkdirs(fakeNSPath));
 
     ZooKeeperWatcher zkw = TEST_UTIL.getZooKeeperWatcher();
-    String fakeZnode = ZKUtil.joinZNode(zkw.namespaceZNode, "foo");
-    int zkCount = ZKUtil.listChildrenNoWatch(zkw, zkw.namespaceZNode).size();
+    String fakeZnode = ZKUtil.joinZNode(zkw.znodePaths.namespaceZNode, "foo");
+    int zkCount = ZKUtil.listChildrenNoWatch(zkw, zkw.znodePaths.namespaceZNode).size();
     ZKUtil.createWithParents(zkw, fakeZnode);
     Thread.sleep(10000);
 
@@ -309,7 +309,7 @@ public class TestNamespace {
             HConstants.BASE_NAMESPACE_DIR)).length);
 
     assertEquals(-1, ZKUtil.checkExists(zkw, fakeZnode));
-    assertEquals(zkCount, ZKUtil.listChildrenNoWatch(zkw, zkw.namespaceZNode).size());
+    assertEquals(zkCount, ZKUtil.listChildrenNoWatch(zkw, zkw.znodePaths.namespaceZNode).size());
   }
 
   @Test(timeout = 60000)
