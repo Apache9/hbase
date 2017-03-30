@@ -30,6 +30,7 @@ import static org.mockito.Mockito.when;
 
 import java.io.FilterInputStream;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.lang.reflect.Field;
 import java.security.PrivilegedExceptionAction;
 import java.util.ArrayList;
@@ -37,11 +38,14 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.NavigableMap;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -51,7 +55,20 @@ import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.PathFilter;
-import org.apache.hadoop.hbase.*;
+import org.apache.hadoop.hbase.Cell;
+import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.HBaseTestingUtility;
+import org.apache.hadoop.hbase.HColumnDescriptor;
+import org.apache.hadoop.hbase.HConstants;
+import org.apache.hadoop.hbase.HRegionInfo;
+import org.apache.hadoop.hbase.HTableDescriptor;
+import org.apache.hadoop.hbase.KeyValue;
+import org.apache.hadoop.hbase.MasterNotRunningException;
+import org.apache.hadoop.hbase.MemoryCompactionPolicy;
+import org.apache.hadoop.hbase.MiniHBaseCluster;
+import org.apache.hadoop.hbase.ServerName;
+import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.ZooKeeperConnectionException;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Put;
@@ -62,7 +79,6 @@ import org.apache.hadoop.hbase.client.Table;
 import org.apache.hadoop.hbase.master.HMaster;
 import org.apache.hadoop.hbase.monitoring.MonitoredTask;
 import org.apache.hadoop.hbase.regionserver.CompactingMemStore;
-import org.apache.hadoop.hbase.shaded.protobuf.generated.ZooKeeperProtos.SplitLogTask.RecoveryMode;
 import org.apache.hadoop.hbase.regionserver.DefaultStoreEngine;
 import org.apache.hadoop.hbase.regionserver.DefaultStoreFlusher;
 import org.apache.hadoop.hbase.regionserver.FlushRequestListener;
@@ -79,6 +95,7 @@ import org.apache.hadoop.hbase.regionserver.RegionServerServices;
 import org.apache.hadoop.hbase.regionserver.Store;
 import org.apache.hadoop.hbase.regionserver.throttle.ThroughputController;
 import org.apache.hadoop.hbase.security.User;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.ZooKeeperProtos.SplitLogTask.RecoveryMode;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.EnvironmentEdge;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
@@ -362,9 +379,9 @@ public abstract class AbstractTestWALReplay {
     final Configuration newConf = HBaseConfiguration.create(this.conf);
     User user = HBaseTestingUtility.getDifferentUser(newConf,
         tableName.getNameAsString());
-    user.runAs(new PrivilegedExceptionAction() {
+    user.runAs(new PrivilegedExceptionAction<Void>() {
       @Override
-      public Object run() throws Exception {
+      public Void run() throws Exception {
         runWALSplit(newConf);
         WAL wal2 = createWAL(newConf, hbaseRootDir, logName);
 
@@ -433,9 +450,9 @@ public abstract class AbstractTestWALReplay {
     final Configuration newConf = HBaseConfiguration.create(this.conf);
     User user = HBaseTestingUtility.getDifferentUser(newConf,
         tableName.getNameAsString());
-    user.runAs(new PrivilegedExceptionAction() {
+    user.runAs(new PrivilegedExceptionAction<Void>() {
       @Override
-      public Object run() throws Exception {
+      public Void run() throws Exception {
         runWALSplit(newConf);
         WAL wal2 = createWAL(newConf, hbaseRootDir, logName);
 
@@ -785,8 +802,10 @@ public abstract class AbstractTestWALReplay {
     }
 
     // Add a cache flush, shouldn't have any effect
-    wal.startCacheFlush(regionName, familyNames);
-    wal.completeCacheFlush(regionName);
+    wal.startCacheFlush(regionName);
+    wal.completeCacheFlush(regionName,
+      familyNames.stream().map(f -> Pair.newPair(f, mvcc.getReadPoint()))
+          .collect(Collectors.toMap(Pair::getFirst, Pair::getSecond)));
 
     // Add an edit to another family, should be skipped.
     WALEdit edit = new WALEdit();
@@ -861,7 +880,7 @@ public abstract class AbstractTestWALReplay {
 
   @Test
   // the following test is for HBASE-6065
-  public void testSequentialEditLogSeqNum() throws IOException {
+  public void testSequentialEditLogSeqNum() throws IOException, InterruptedException {
     final TableName tableName = TableName.valueOf(currentTest.getMethodName());
     final HRegionInfo hri = createBasic3FamilyHRegionInfo(tableName);
     final Path basedir =
@@ -881,16 +900,24 @@ public abstract class AbstractTestWALReplay {
 
     // Let us flush the region
     // But this time completeflushcache is not yet done
-    region.flush(true);
+    Thread flushThread = new Thread(() -> {
+      try {
+        region.flush(true);
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+    });
+    flushThread.start();
+    wal.enter.await();
     for (HColumnDescriptor hcd : htd.getFamilies()) {
       addRegionEdits(rowName, hcd.getName(), 5, this.ee, region, "x");
     }
-    long lastestSeqNumber = region.getReadPoint(null);
     // get the current seq no
-    wal.doCompleteCacheFlush = true;
+    long lastestSeqNumber = region.getReadPoint(null);
     // allow complete cache flush with the previous seq number got after first
     // set of edits.
-    wal.completeCacheFlush(hri.getEncodedNameAsBytes());
+    wal.run.countDown();
+    flushThread.join();
     wal.shutdown();
     FileStatus[] listStatus = wal.getFiles();
     assertNotNull(listStatus);
@@ -1070,7 +1097,10 @@ public abstract class AbstractTestWALReplay {
   }
 
   static class MockWAL extends FSHLog {
-    boolean doCompleteCacheFlush = false;
+
+    private final CountDownLatch enter = new CountDownLatch(1);
+
+    private final CountDownLatch run = new CountDownLatch(1);
 
     public MockWAL(FileSystem fs, Path rootDir, String logName, Configuration conf)
         throws IOException {
@@ -1078,11 +1108,15 @@ public abstract class AbstractTestWALReplay {
     }
 
     @Override
-    public void completeCacheFlush(byte[] encodedRegionName) {
-      if (!doCompleteCacheFlush) {
-        return;
+    public void completeCacheFlush(byte[] encodedRegionName,
+        Map<byte[], Long> family2LowestUnflushedSequenceId) {
+      enter.countDown();
+      try {
+        run.await();
+      } catch (InterruptedException e) {
+        throw new RuntimeException(e);
       }
-      super.completeCacheFlush(encodedRegionName);
+      super.completeCacheFlush(encodedRegionName, family2LowestUnflushedSequenceId);
     }
   }
 
@@ -1166,8 +1200,9 @@ public abstract class AbstractTestWALReplay {
       final HTableDescriptor htd, final MultiVersionConcurrencyControl mvcc,
       NavigableMap<byte[], Integer> scopes) throws IOException {
     for (int j = 0; j < count; j++) {
-      wal.append(hri, createWALKey(tableName, hri, mvcc, scopes),
-        createWALEdit(rowName, family, ee, j), true);
+      WALKey key = createWALKey(tableName, hri, mvcc, scopes);
+      wal.append(hri, key, createWALEdit(rowName, family, ee, j), true);
+      mvcc.complete(key.getWriteEntry());
     }
     wal.sync();
   }

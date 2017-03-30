@@ -1006,6 +1006,7 @@ public class TestWalAndCompactingMemStoreFlush {
         }
         System.out.print("Thread with start number " + startNumber + " finishes\n");
       } catch (IOException e) {
+        e.printStackTrace();
         assert false;
       }
     }

@@ -119,11 +119,11 @@ public interface MemStore {
   MemstoreSize size();
 
   /**
-   * This method is called before the flush is executed.
-   * @return an estimation (lower bound) of the unflushed sequence id in memstore after the flush
-   * is executed. if memstore will be cleared returns {@code HConstants.NO_SEQNUM}.
+   * The minimum sequence id of cells in the memstore, or -1 if there is no data.
+   * <p>
+   * This method will be called after flush to track the minimum unflushed sequence id for a region.
    */
-  long preFlushSeqIDEstimation();
+  long minSequenceId();
 
   /* Return true if the memstore may use some extra memory space*/
   boolean isSloppy();

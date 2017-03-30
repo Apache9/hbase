@@ -21,7 +21,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -31,10 +30,9 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellUtil;
-import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HRegionInfo;
-
+import org.apache.hadoop.hbase.classification.InterfaceAudience;
 // imports for things that haven't moved from regionserver.wal yet.
 import org.apache.hadoop.hbase.regionserver.wal.WALActionsListener;
 import org.apache.hadoop.hbase.regionserver.wal.WALCoprocessorHost;
@@ -177,9 +175,10 @@ class DisabledWALProvider implements WALProvider {
       return -1;
     }
 
+
     @Override
-    public void updateStore(byte[] encodedRegionName, byte[] familyName,
-        Long sequenceid, boolean onlyIfGreater) { return; }
+    public void updateStore(byte[] encodedRegionName, byte[] familyName, long sequenceId) {
+    }
 
     @Override
     public void sync() {
@@ -195,23 +194,22 @@ class DisabledWALProvider implements WALProvider {
       sync();
     }
 
-    public Long startCacheFlush(final byte[] encodedRegionName, Map<byte[], Long>
-        flushedFamilyNamesToSeq) {
-      return startCacheFlush(encodedRegionName, flushedFamilyNamesToSeq.keySet());
+    @Override
+    public boolean startCacheFlush(byte[] encodedRegionName) {
+      return closed.get();
     }
 
     @Override
-    public Long startCacheFlush(final byte[] encodedRegionName, Set<byte[]> flushedFamilyNames) {
-      if (closed.get()) return null;
-      return HConstants.NO_SEQNUM;
-    }
-
-    @Override
-    public void completeCacheFlush(final byte[] encodedRegionName) {
+    public void completeCacheFlush(byte[] encodedRegionName,
+        Map<byte[], Long> family2LowestUnflushedSequenceId) {
     }
 
     @Override
     public void abortCacheFlush(byte[] encodedRegionName) {
+    }
+
+    @Override
+    public void closeRegion(byte[] encodedRegionName) {
     }
 
     @Override

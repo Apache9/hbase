@@ -19,6 +19,7 @@
 package org.apache.hadoop.hbase.regionserver;
 
 import com.google.common.annotations.VisibleForTesting;
+
 import java.io.IOException;
 import java.util.List;
 import java.util.NavigableSet;
@@ -90,10 +91,8 @@ public abstract class AbstractMemStore implements MemStore {
 
   /**
    * Updates the wal with the lowest sequence id (oldest entry) that is still in memory
-   * @param onlyIfMoreRecent a flag that marks whether to update the sequence id no matter what or
-   *                      only if it is greater than the previous sequence id
    */
-  public abstract void updateLowestUnflushedSequenceIdInWAL(boolean onlyIfMoreRecent);
+  public abstract void updateLowestUnflushedSequenceIdInWAL();
 
   @Override
   public void add(Iterable<Cell> cells, MemstoreSize memstoreSize) {
@@ -324,4 +323,20 @@ public abstract class AbstractMemStore implements MemStore {
    */
   protected abstract List<Segment> getSegments() throws IOException;
 
+  /**
+   * If snapshot exists then return the minimum sequence id of snapshot instead of the minimum
+   * sequence id for non-snapshot segments.
+   * <p>
+   * The only safe way to do this is to get the minimum sequence id of non-snapshot segments first,
+   * and then get the one for snapshot get compare them. If you check snapshot first, and find it is
+   * null, then you will return the minimum sequence id for non-snapshot segments. But between the
+   * existence check and the access to non-snapshot segments, the non-snapshot segments may be
+   * switched to snapshot and a new active segment is created and filled by some new data. This way
+   * you will get a wrong minimum sequence id which is greater than expected and may cause data
+   * loss.
+   */
+  protected final long selectMinSequenceId(long minSequenceIdForNonSnapshotSegments) {
+    ImmutableSegment snapshot = this.snapshot;
+    return snapshot == null ? minSequenceIdForNonSnapshotSegments : snapshot.getMinSequenceId();
+  }
 }

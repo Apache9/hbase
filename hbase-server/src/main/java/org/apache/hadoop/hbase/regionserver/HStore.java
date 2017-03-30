@@ -2509,8 +2509,9 @@ public class HStore implements Store {
     }
   }
 
-  public Long preFlushSeqIDEstimation() {
-    return memstore.preFlushSeqIDEstimation();
+  @Override
+  public long minSequenceIdInMemstore() {
+    return memstore.minSequenceId();
   }
 
   @Override

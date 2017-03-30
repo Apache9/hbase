@@ -26,7 +26,9 @@ import static org.junit.Assert.assertNotEquals;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.NavigableMap;
 import java.util.Set;
 import java.util.TreeMap;
@@ -56,6 +58,7 @@ import org.apache.hadoop.hbase.coprocessor.CoprocessorHost;
 import org.apache.hadoop.hbase.coprocessor.SampleRegionWALObserver;
 import org.apache.hadoop.hbase.regionserver.HRegion;
 import org.apache.hadoop.hbase.regionserver.MultiVersionConcurrencyControl;
+import org.apache.hadoop.hbase.regionserver.MultiVersionConcurrencyControl.WriteEntry;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.EnvironmentEdge;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
@@ -161,18 +164,28 @@ public abstract class AbstractTestFSWAL {
           WALKey.NO_SEQUENCE_ID, timestamp, WALKey.EMPTY_UUIDS, HConstants.NO_NONCE,
           HConstants.NO_NONCE, mvcc, scopes);
       log.append(hri, key, cols, true);
+      mvcc.complete(key.getWriteEntry());
     }
     log.sync();
   }
 
   /**
    * helper method to simulate region flush for a WAL.
-   * @param wal
-   * @param regionEncodedName
    */
-  protected void flushRegion(WAL wal, byte[] regionEncodedName, Set<byte[]> flushedFamilyNames) {
-    wal.startCacheFlush(regionEncodedName, flushedFamilyNames);
-    wal.completeCacheFlush(regionEncodedName);
+  private void flushRegion(WAL wal, byte[] regionEncodedName, Set<byte[]> flushedFamilyNames,
+      MultiVersionConcurrencyControl mvcc, boolean rollDuringFlush)
+      throws FailedLogCloseException, IOException {
+    wal.startCacheFlush(regionEncodedName);
+    WriteEntry we = mvcc.begin();
+    mvcc.completeAndWait(we);
+    long flushOpSeqId = we.getWriteNumber();
+    Map<byte[], Long> familyToLowestUnflushedSequenceId = new HashMap<>();
+    flushedFamilyNames
+        .forEach(family -> familyToLowestUnflushedSequenceId.put(family, flushOpSeqId));
+    if (rollDuringFlush) {
+      wal.rollWriter();
+    }
+    wal.completeCacheFlush(regionEncodedName, familyToLowestUnflushedSequenceId);
   }
 
   /**
@@ -253,9 +266,12 @@ public abstract class AbstractTestFSWAL {
         new HRegionInfo(t1.getTableName(), HConstants.EMPTY_START_ROW, HConstants.EMPTY_END_ROW);
     HRegionInfo hri2 =
         new HRegionInfo(t2.getTableName(), HConstants.EMPTY_START_ROW, HConstants.EMPTY_END_ROW);
+    wal.updateStore(hri1.getEncodedNameAsBytes(), Bytes.toBytes("row"), HConstants.NO_SEQNUM);
+    wal.updateStore(hri2.getEncodedNameAsBytes(), Bytes.toBytes("row"), HConstants.NO_SEQNUM);
     // add edits and roll the wal
-    MultiVersionConcurrencyControl mvcc = new MultiVersionConcurrencyControl();
-    NavigableMap<byte[], Integer> scopes1 = new TreeMap<>(Bytes.BYTES_COMPARATOR);
+    MultiVersionConcurrencyControl mvcc1 = new MultiVersionConcurrencyControl();
+    MultiVersionConcurrencyControl mvcc2 = new MultiVersionConcurrencyControl();
+    NavigableMap<byte[], Integer> scopes1 = new TreeMap<byte[], Integer>(Bytes.BYTES_COMPARATOR);
     for (byte[] fam : t1.getFamiliesKeys()) {
       scopes1.put(fam, 0);
     }
@@ -264,10 +280,10 @@ public abstract class AbstractTestFSWAL {
       scopes2.put(fam, 0);
     }
     try {
-      addEdits(wal, hri1, t1, 2, mvcc, scopes1);
+      addEdits(wal, hri1, t1, 2, mvcc1, scopes1);
       wal.rollWriter();
       // add some more edits and roll the wal. This would reach the log number threshold
-      addEdits(wal, hri1, t1, 2, mvcc, scopes1);
+      addEdits(wal, hri1, t1, 2, mvcc1, scopes1);
       wal.rollWriter();
       // with above rollWriter call, the max logs limit is reached.
       assertTrue(wal.getNumRolledLogFiles() == 2);
@@ -278,45 +294,43 @@ public abstract class AbstractTestFSWAL {
       assertEquals(1, regionsToFlush.length);
       assertEquals(hri1.getEncodedNameAsBytes(), regionsToFlush[0]);
       // insert edits in second region
-      addEdits(wal, hri2, t2, 2, mvcc, scopes2);
+      addEdits(wal, hri2, t2, 2, mvcc2, scopes2);
       // get the regions to flush, it should still read region1.
       regionsToFlush = wal.findRegionsToForceFlush();
       assertEquals(regionsToFlush.length, 1);
       assertEquals(hri1.getEncodedNameAsBytes(), regionsToFlush[0]);
       // flush region 1, and roll the wal file. Only last wal which has entries for region1 should
       // remain.
-      flushRegion(wal, hri1.getEncodedNameAsBytes(), t1.getFamiliesKeys());
+      flushRegion(wal, hri1.getEncodedNameAsBytes(), t1.getFamiliesKeys(), mvcc1, false);
       wal.rollWriter();
       // only one wal should remain now (that is for the second region).
       assertEquals(1, wal.getNumRolledLogFiles());
       // flush the second region
-      flushRegion(wal, hri2.getEncodedNameAsBytes(), t2.getFamiliesKeys());
+      flushRegion(wal, hri2.getEncodedNameAsBytes(), t2.getFamiliesKeys(), mvcc2, false);
       wal.rollWriter(true);
       // no wal should remain now.
       assertEquals(0, wal.getNumRolledLogFiles());
       // add edits both to region 1 and region 2, and roll.
-      addEdits(wal, hri1, t1, 2, mvcc, scopes1);
-      addEdits(wal, hri2, t2, 2, mvcc, scopes2);
+      addEdits(wal, hri1, t1, 2, mvcc1, scopes1);
+      addEdits(wal, hri2, t2, 2, mvcc2, scopes2);
       wal.rollWriter();
       // add edits and roll the writer, to reach the max logs limit.
       assertEquals(1, wal.getNumRolledLogFiles());
-      addEdits(wal, hri1, t1, 2, mvcc, scopes1);
+      addEdits(wal, hri1, t1, 2, mvcc1, scopes1);
       wal.rollWriter();
       // it should return two regions to flush, as the oldest wal file has entries
       // for both regions.
       regionsToFlush = wal.findRegionsToForceFlush();
       assertEquals(2, regionsToFlush.length);
       // flush both regions
-      flushRegion(wal, hri1.getEncodedNameAsBytes(), t1.getFamiliesKeys());
-      flushRegion(wal, hri2.getEncodedNameAsBytes(), t2.getFamiliesKeys());
+      flushRegion(wal, hri1.getEncodedNameAsBytes(), t1.getFamiliesKeys(), mvcc1, false);
+      flushRegion(wal, hri2.getEncodedNameAsBytes(), t2.getFamiliesKeys(), mvcc2, false);
       wal.rollWriter(true);
       assertEquals(0, wal.getNumRolledLogFiles());
       // Add an edit to region1, and roll the wal.
-      addEdits(wal, hri1, t1, 2, mvcc, scopes1);
+      addEdits(wal, hri1, t1, 2, mvcc1, scopes1);
       // tests partial flush: roll on a partial flush, and ensure that wal is not archived.
-      wal.startCacheFlush(hri1.getEncodedNameAsBytes(), t1.getFamiliesKeys());
-      wal.rollWriter();
-      wal.completeCacheFlush(hri1.getEncodedNameAsBytes());
+      flushRegion(wal, hri1.getEncodedNameAsBytes(), t1.getFamiliesKeys(), mvcc1, true);
       assertEquals(1, wal.getNumRolledLogFiles());
     } finally {
       if (wal != null) {

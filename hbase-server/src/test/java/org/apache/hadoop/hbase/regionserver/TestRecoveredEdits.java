@@ -21,7 +21,9 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -49,56 +51,73 @@ import org.apache.hadoop.hbase.wal.WAL;
 import org.apache.hadoop.hbase.wal.WALFactory;
 import org.apache.hadoop.hbase.wal.WALKey;
 import org.apache.hadoop.hbase.wal.WALSplitter;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.rules.TestName;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
+import org.junit.runners.Parameterized.Parameters;
 
 /**
  * Tests around replay of recovered.edits content.
  */
-@Category({MediumTests.class})
+@RunWith(Parameterized.class)
+@Category(MediumTests.class)
 public class TestRecoveredEdits {
   private static final HBaseTestingUtility TEST_UTIL = new HBaseTestingUtility();
-  private static final Log LOG = LogFactory.getLog(TestRecoveredEdits.class);
-  @Rule public TestName testName = new TestName();
 
-  /**
-   * HBASE-12782 ITBLL fails for me if generator does anything but 5M per maptask.
-   * Create a region. Close it. Then copy into place a file to replay, one that is bigger than
-   * configured flush size so we bring on lots of flushes.  Then reopen and confirm all edits
-   * made it in.
-   * @throws IOException
-   */
-  @Test (timeout=180000)
-  public void testReplayWorksThoughLotsOfFlushing() throws
-      IOException {
-    for(MemoryCompactionPolicy policy : MemoryCompactionPolicy.values()) {
-      testReplayWorksWithMemoryCompactionPolicy(policy);
-    }
+  private static final Log LOG = LogFactory.getLog(TestRecoveredEdits.class);
+
+  @Rule
+  public TestName testName = new TestName();
+
+  @Parameter
+  public MemoryCompactionPolicy policy;
+
+  private final String encodedRegionName = "4823016d8fca70b25503ee07f4c6d79f";
+
+  private final String columnFamily = "meta";
+
+  private Configuration conf;
+
+  private HRegionInfo hri;
+
+  private Path hbaseRootDir;
+
+  private FileSystem fs;
+
+  private HRegion region;
+
+  @Parameters(name = "{index}: policy={0}")
+  public static List<Object[]> params() {
+    return Arrays.asList(MemoryCompactionPolicy.values()).stream().map(x -> new Object[] { x })
+        .collect(Collectors.toList());
   }
 
-  private void testReplayWorksWithMemoryCompactionPolicy(MemoryCompactionPolicy policy) throws
-    IOException {
+  @Before
+  public void setUp() throws IOException {
     Configuration conf = new Configuration(TEST_UTIL.getConfiguration());
-    // Set it so we flush every 1M or so.  Thats a lot.
-    conf.setInt(HConstants.HREGION_MEMSTORE_FLUSH_SIZE, 1024*1024);
+    // Set it so we flush every 1M or so. Thats a lot.
+    conf.setInt(HConstants.HREGION_MEMSTORE_FLUSH_SIZE, 1024 * 1024);
     conf.set(CompactingMemStore.COMPACTING_MEMSTORE_TYPE_KEY, String.valueOf(policy));
     // The file of recovered edits has a column family of 'meta'. Also has an encoded regionname
     // of 4823016d8fca70b25503ee07f4c6d79f which needs to match on replay.
-    final String encodedRegionName = "4823016d8fca70b25503ee07f4c6d79f";
-    HTableDescriptor htd = new HTableDescriptor(TableName.valueOf(testName.getMethodName()));
-    final String columnFamily = "meta";
-    byte [][] columnFamilyAsByteArray = new byte [][] {Bytes.toBytes(columnFamily)};
+    HTableDescriptor htd = new HTableDescriptor(
+        TableName.valueOf(testName.getMethodName().replaceAll("[^0-9A-Za-z]", "_")));
     htd.addFamily(new HColumnDescriptor(columnFamily));
-    HRegionInfo hri = new HRegionInfo(htd.getTableName()) {
+    hri = new HRegionInfo(htd.getTableName()) {
       @Override
       public synchronized String getEncodedName() {
         return encodedRegionName;
       }
 
       // Cache the name because lots of lookups.
-      private byte [] encodedRegionNameAsBytes = null;
+      private byte[] encodedRegionNameAsBytes = null;
+
       @Override
       public synchronized byte[] getEncodedNameAsBytes() {
         if (encodedRegionNameAsBytes == null) {
@@ -107,16 +126,35 @@ public class TestRecoveredEdits {
         return this.encodedRegionNameAsBytes;
       }
     };
-    Path hbaseRootDir = TEST_UTIL.getDataTestDir();
-    FileSystem fs = FileSystem.get(TEST_UTIL.getConfiguration());
+    hbaseRootDir = TEST_UTIL.getDataTestDir();
+    fs = FileSystem.get(TEST_UTIL.getConfiguration());
     Path tableDir = FSUtils.getTableDir(hbaseRootDir, htd.getTableName());
-    HRegionFileSystem hrfs =
-        new HRegionFileSystem(TEST_UTIL.getConfiguration(), fs, tableDir, hri);
+    HRegionFileSystem hrfs = new HRegionFileSystem(TEST_UTIL.getConfiguration(), fs, tableDir, hri);
     if (fs.exists(hrfs.getRegionDir())) {
       LOG.info("Region directory already exists. Deleting.");
       fs.delete(hrfs.getRegionDir(), true);
     }
-    HRegion region = HRegion.createHRegion(hri, hbaseRootDir, conf, htd, null);
+    conf.setBoolean("hbase.regionserver.hlog.enabled", false);
+    WALFactory wals =
+        new WALFactory(conf, null, testName.getMethodName().replaceAll("[^0-9A-Za-z]", "_"));
+    region = HRegion.createHRegion(hri, hbaseRootDir, conf, htd, wals.getWAL(null, null));
+  }
+
+  @After
+  public void tearDown() throws IOException {
+    region.close();
+    TEST_UTIL.cleanupTestDir();
+  }
+
+  /**
+   * HBASE-12782 ITBLL fails for me if generator does anything but 5M per maptask. Create a region.
+   * Close it. Then copy into place a file to replay, one that is bigger than configured flush size
+   * so we bring on lots of flushes. Then reopen and confirm all edits made it in.
+   * @throws IOException
+   */
+  @Test
+  public void testReplayWorksWithMemoryCompactionPolicy() throws IOException {
+    byte[][] columnFamilyAsByteArray = new byte[][] { Bytes.toBytes(columnFamily) };
     assertEquals(encodedRegionName, region.getRegionInfo().getEncodedName());
     List<String> storeFiles = region.getStoreFileList(columnFamilyAsByteArray);
     // There should be no store files.
@@ -126,8 +164,7 @@ public class TestRecoveredEdits {
     Path recoveredEditsDir = WALSplitter.getRegionDirRecoveredEditsDir(regionDir);
     // This is a little fragile getting this path to a file of 10M of edits.
     Path recoveredEditsFile = new Path(
-      System.getProperty("test.build.classes", "target/test-classes"),
-        "0000000000000016310");
+        System.getProperty("test.build.classes", "target/test-classes"), "0000000000000016310");
     // Copy this file under the region's recovered.edits dir so it is replayed on reopen.
     Path destination = new Path(recoveredEditsDir, recoveredEditsFile.getName());
     fs.copyToLocalFile(recoveredEditsFile, destination);
@@ -139,7 +176,7 @@ public class TestRecoveredEdits {
     // Our 0000000000000016310 is 10MB. Most of the edits are for one region. Lets assume that if
     // we flush at 1MB, that there are at least 3 flushed files that are there because of the
     // replay of edits.
-    if(policy == MemoryCompactionPolicy.EAGER) {
+    if (policy == MemoryCompactionPolicy.EAGER) {
       assertTrue("Files count=" + storeFiles.size(), storeFiles.size() >= 1);
     } else {
       assertTrue("Files count=" + storeFiles.size(), storeFiles.size() > 10);
@@ -158,8 +195,7 @@ public class TestRecoveredEdits {
    * @throws IOException
    */
   private int verifyAllEditsMadeItIn(final FileSystem fs, final Configuration conf,
-      final Path edits, final HRegion region)
-  throws IOException {
+      final Path edits, final HRegion region) throws IOException {
     int count = 0;
     // Based on HRegion#replayRecoveredEdits
     WAL.Reader reader = null;
@@ -172,11 +208,11 @@ public class TestRecoveredEdits {
         count++;
         // Check this edit is for this region.
         if (!Bytes.equals(key.getEncodedRegionName(),
-            region.getRegionInfo().getEncodedNameAsBytes())) {
+          region.getRegionInfo().getEncodedNameAsBytes())) {
           continue;
         }
         Cell previous = null;
-        for (Cell cell: val.getCells()) {
+        for (Cell cell : val.getCells()) {
           if (CellUtil.matchingFamily(cell, WALEdit.METAFAMILY)) continue;
           if (previous != null && CellComparator.COMPARATOR.compareRows(previous, cell) == 0)
             continue;

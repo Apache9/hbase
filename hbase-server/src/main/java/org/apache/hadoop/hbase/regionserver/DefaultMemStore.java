@@ -30,7 +30,6 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellComparator;
 import org.apache.hadoop.hbase.HBaseConfiguration;
-import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -150,7 +149,8 @@ public class DefaultMemStore extends AbstractMemStore {
         getNextRow(cell, this.snapshot.getCellSet()));
   }
 
-  @Override public void updateLowestUnflushedSequenceIdInWAL(boolean onlyIfMoreRecent) {
+  @Override
+  public void updateLowestUnflushedSequenceIdInWAL() {
   }
 
   @Override
@@ -168,11 +168,12 @@ public class DefaultMemStore extends AbstractMemStore {
   }
 
   @Override
-  public long preFlushSeqIDEstimation() {
-    return HConstants.NO_SEQNUM;
+  public long minSequenceId() {
+    return selectMinSequenceId(this.active.getMinSequenceId());
   }
 
-  @Override public boolean isSloppy() {
+  @Override
+  public boolean isSloppy() {
     return false;
   }
 

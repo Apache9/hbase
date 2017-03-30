@@ -25,10 +25,13 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.NavigableMap;
 import java.util.Random;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.TreeSet;
+import java.util.stream.Collectors;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -51,6 +54,7 @@ import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.apache.hadoop.hbase.testclassification.RegionServerTests;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.FSUtils;
+import org.apache.hadoop.hbase.util.Pair;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -60,7 +64,7 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.rules.TestName;
 
-@Category({RegionServerTests.class, MediumTests.class})
+@Category({ RegionServerTests.class, MediumTests.class })
 public class TestFSHLogProvider {
   private static final Log LOG = LogFactory.getLog(TestFSHLogProvider.class);
 
@@ -95,12 +99,9 @@ public class TestFSHLogProvider {
     TEST_UTIL.getConfiguration().setInt("dfs.client.socket-timeout", 5000);
 
     // faster failover with cluster.shutdown();fs.close() idiom
-    TEST_UTIL.getConfiguration()
-        .setInt("hbase.ipc.client.connect.max.retries", 1);
-    TEST_UTIL.getConfiguration().setInt(
-        "dfs.client.block.recovery.retries", 1);
-    TEST_UTIL.getConfiguration().setInt(
-      "hbase.ipc.client.connection.maxidletime", 500);
+    TEST_UTIL.getConfiguration().setInt("hbase.ipc.client.connect.max.retries", 1);
+    TEST_UTIL.getConfiguration().setInt("dfs.client.block.recovery.retries", 1);
+    TEST_UTIL.getConfiguration().setInt("hbase.ipc.client.connection.maxidletime", 500);
     TEST_UTIL.startMiniDFSCluster(3);
 
     // Set up a working space for our tests.
@@ -121,13 +122,13 @@ public class TestFSHLogProvider {
   @Test
   public void testGetServerNameFromWALDirectoryName() throws IOException {
     ServerName sn = ServerName.valueOf("hn", 450, 1398);
-    String hl = FSUtils.getRootDir(conf) + "/" +
-        AbstractFSWALProvider.getWALDirectoryName(sn.toString());
+    String hl =
+        FSUtils.getRootDir(conf) + "/" + AbstractFSWALProvider.getWALDirectoryName(sn.toString());
 
     // Must not throw exception
     assertNull(AbstractFSWALProvider.getServerNameFromWALDirectoryName(conf, null));
     assertNull(AbstractFSWALProvider.getServerNameFromWALDirectoryName(conf,
-        FSUtils.getRootDir(conf).toUri().toString()));
+      FSUtils.getRootDir(conf).toUri().toString()));
     assertNull(AbstractFSWALProvider.getServerNameFromWALDirectoryName(conf, ""));
     assertNull(AbstractFSWALProvider.getServerNameFromWALDirectoryName(conf, "                  "));
     assertNull(AbstractFSWALProvider.getServerNameFromWALDirectoryName(conf, hl));
@@ -137,30 +138,32 @@ public class TestFSHLogProvider {
     final String wals = "/WALs/";
     ServerName parsed = AbstractFSWALProvider.getServerNameFromWALDirectoryName(conf,
       FSUtils.getRootDir(conf).toUri().toString() + wals + sn +
-      "/localhost%2C32984%2C1343316388997.1343316390417");
-    assertEquals("standard",  sn, parsed);
+          "/localhost%2C32984%2C1343316388997.1343316390417");
+    assertEquals("standard", sn, parsed);
 
     parsed = AbstractFSWALProvider.getServerNameFromWALDirectoryName(conf, hl + "/qdf");
     assertEquals("subdir", sn, parsed);
 
     parsed = AbstractFSWALProvider.getServerNameFromWALDirectoryName(conf,
       FSUtils.getRootDir(conf).toUri().toString() + wals + sn +
-      "-splitting/localhost%3A57020.1340474893931");
+          "-splitting/localhost%3A57020.1340474893931");
     assertEquals("split", sn, parsed);
   }
 
-
-  protected void addEdits(WAL log, HRegionInfo hri, HTableDescriptor htd,
-                        int times, NavigableMap<byte[], Integer> scopes) throws IOException {
+  private long addEdits(WAL log, HRegionInfo hri, HTableDescriptor htd, int times,
+      NavigableMap<byte[], Integer> scopes) throws IOException {
+    long sequenceId = HConstants.NO_SEQNUM;
     final byte[] row = Bytes.toBytes("row");
     for (int i = 0; i < times; i++) {
       long timestamp = System.currentTimeMillis();
       WALEdit cols = new WALEdit();
       cols.add(new KeyValue(row, row, row, timestamp, row));
-      log.append(hri, getWalKey(hri.getEncodedNameAsBytes(), htd.getTableName(), timestamp, scopes),
-          cols, true);
+      WALKey key = getWalKey(hri.getEncodedNameAsBytes(), htd.getTableName(), timestamp, scopes);
+      log.append(hri, key, cols, true);
+      sequenceId = key.getSequenceId();
     }
     log.sync();
+    return sequenceId;
   }
 
   /**
@@ -175,78 +178,82 @@ public class TestFSHLogProvider {
   /**
    * helper method to simulate region flush for a WAL.
    * @param wal
-   * @param regionEncodedName
+   * @param encodedRegionName
    */
-  protected void flushRegion(WAL wal, byte[] regionEncodedName, Set<byte[]> flushedFamilyNames) {
-    wal.startCacheFlush(regionEncodedName, flushedFamilyNames);
-    wal.completeCacheFlush(regionEncodedName);
+  private void flushRegion(WAL wal, byte[] encodedRegionName, Set<byte[]> flushedFamilyNames,
+      long sequenceId) {
+    wal.startCacheFlush(encodedRegionName);
+    Map<byte[], Long> family2LowestUnflushedSequenceId =
+        flushedFamilyNames.stream().map(f -> Pair.newPair(f, sequenceId))
+            .collect(Collectors.toMap(Pair::getFirst, Pair::getSecond, (u, v) -> {
+              throw new IllegalStateException("family should be unique");
+            }, () -> new TreeMap<>(Bytes.BYTES_COMPARATOR)));
+    wal.completeCacheFlush(encodedRegionName, family2LowestUnflushedSequenceId);
   }
 
-  private static final byte[] UNSPECIFIED_REGION = new byte[]{};
+  private static final byte[] UNSPECIFIED_REGION = new byte[] {};
 
   @Test
   public void testLogCleaning() throws Exception {
     LOG.info(currentTest.getMethodName());
     final HTableDescriptor htd =
-        new HTableDescriptor(TableName.valueOf(currentTest.getMethodName())).addFamily(new HColumnDescriptor(
-            "row"));
+        new HTableDescriptor(TableName.valueOf(currentTest.getMethodName()))
+            .addFamily(new HColumnDescriptor("row"));
     final HTableDescriptor htd2 =
         new HTableDescriptor(TableName.valueOf(currentTest.getMethodName() + "2"))
             .addFamily(new HColumnDescriptor("row"));
-    NavigableMap<byte[], Integer> scopes1 = new TreeMap<>(
-        Bytes.BYTES_COMPARATOR);
-    for(byte[] fam : htd.getFamiliesKeys()) {
-      scopes1.put(fam, 0);
+    NavigableMap<byte[], Integer> scopes = new TreeMap<>(Bytes.BYTES_COMPARATOR);
+    for (byte[] fam : htd.getFamiliesKeys()) {
+      scopes.put(fam, 0);
     }
-    NavigableMap<byte[], Integer> scopes2 = new TreeMap<>(
-        Bytes.BYTES_COMPARATOR);
-    for(byte[] fam : htd2.getFamiliesKeys()) {
+    NavigableMap<byte[], Integer> scopes2 = new TreeMap<>(Bytes.BYTES_COMPARATOR);
+    for (byte[] fam : htd2.getFamiliesKeys()) {
       scopes2.put(fam, 0);
     }
     final Configuration localConf = new Configuration(conf);
     localConf.set(WALFactory.WAL_PROVIDER, FSHLogProvider.class.getName());
     final WALFactory wals = new WALFactory(localConf, null, currentTest.getMethodName());
     try {
-      HRegionInfo hri = new HRegionInfo(htd.getTableName(),
-          HConstants.EMPTY_START_ROW, HConstants.EMPTY_END_ROW);
-      HRegionInfo hri2 = new HRegionInfo(htd2.getTableName(),
-          HConstants.EMPTY_START_ROW, HConstants.EMPTY_END_ROW);
+      HRegionInfo hri =
+          new HRegionInfo(htd.getTableName(), HConstants.EMPTY_START_ROW, HConstants.EMPTY_END_ROW);
+      HRegionInfo hri2 = new HRegionInfo(htd2.getTableName(), HConstants.EMPTY_START_ROW,
+          HConstants.EMPTY_END_ROW);
+
       // we want to mix edits from regions, so pick our own identifier.
       final WAL log = wals.getWAL(UNSPECIFIED_REGION, null);
-
+      htd.getFamiliesKeys().forEach(f -> log.updateStore(hri.getEncodedNameAsBytes(), f, 0));
+      htd2.getFamiliesKeys().forEach(f -> log.updateStore(hri2.getEncodedNameAsBytes(), f, 0));
       // Add a single edit and make sure that rolling won't remove the file
       // Before HBASE-3198 it used to delete it
-      addEdits(log, hri, htd, 1, scopes1);
+      long seqId = addEdits(log, hri, htd, 1, scopes);
       log.rollWriter();
       assertEquals(1, AbstractFSWALProvider.getNumRolledLogFiles(log));
 
       // See if there's anything wrong with more than 1 edit
-      addEdits(log, hri, htd, 2, scopes1);
+      seqId = addEdits(log, hri, htd, 2, scopes);
       log.rollWriter();
       assertEquals(2, FSHLogProvider.getNumRolledLogFiles(log));
 
       // Now mix edits from 2 regions, still no flushing
-      addEdits(log, hri, htd, 1, scopes1);
-      addEdits(log, hri2, htd2, 1, scopes2);
-      addEdits(log, hri, htd, 1, scopes1);
-      addEdits(log, hri2, htd2, 1, scopes2);
+      seqId = addEdits(log, hri, htd, 1, scopes);
+      long seqId2 = addEdits(log, hri2, htd2, 1, scopes2);
+      seqId = addEdits(log, hri, htd, 1, scopes);
+      seqId2 = addEdits(log, hri2, htd2, 1, scopes2);
       log.rollWriter();
       assertEquals(3, AbstractFSWALProvider.getNumRolledLogFiles(log));
 
       // Flush the first region, we expect to see the first two files getting
       // archived. We need to append something or writer won't be rolled.
-      addEdits(log, hri2, htd2, 1, scopes2);
-      log.startCacheFlush(hri.getEncodedNameAsBytes(), htd.getFamiliesKeys());
-      log.completeCacheFlush(hri.getEncodedNameAsBytes());
+      seqId2 = addEdits(log, hri2, htd2, 1, scopes2);
+      flushRegion(log, hri.getEncodedNameAsBytes(), htd.getFamiliesKeys(), seqId + 1);
       log.rollWriter();
       assertEquals(2, AbstractFSWALProvider.getNumRolledLogFiles(log));
 
       // Flush the second region, which removes all the remaining output files
       // since the oldest was completely flushed and the two others only contain
       // flush information
-      addEdits(log, hri2, htd2, 1, scopes2);
-      log.startCacheFlush(hri2.getEncodedNameAsBytes(), htd2.getFamiliesKeys());
-      log.completeCacheFlush(hri2.getEncodedNameAsBytes());
+      seqId2 = addEdits(log, hri2, htd2, 1, scopes2);
+      flushRegion(log, hri2.getEncodedNameAsBytes(), htd2.getFamiliesKeys(), seqId2 + 1);
       log.rollWriter();
       assertEquals(0, AbstractFSWALProvider.getNumRolledLogFiles(log));
     } finally {
@@ -257,14 +264,13 @@ public class TestFSHLogProvider {
   }
 
   /**
-   * Tests wal archiving by adding data, doing flushing/rolling and checking we archive old logs
-   * and also don't archive "live logs" (that is, a log with un-flushed entries).
+   * Tests wal archiving by adding data, doing flushing/rolling and checking we archive old logs and
+   * also don't archive "live logs" (that is, a log with un-flushed entries).
    * <p>
-   * This is what it does:
-   * It creates two regions, and does a series of inserts along with log rolling.
-   * Whenever a WAL is rolled, HLogBase checks previous wals for archiving. A wal is eligible for
-   * archiving if for all the regions which have entries in that wal file, have flushed - past
-   * their maximum sequence id in that wal file.
+   * This is what it does: It creates two regions, and does a series of inserts along with log
+   * rolling. Whenever a WAL is rolled, HLogBase checks previous wals for archiving. A wal is
+   * eligible for archiving if for all the regions which have entries in that wal file, have flushed
+   * - past their maximum sequence id in that wal file.
    * <p>
    * @throws IOException
    */
@@ -272,17 +278,17 @@ public class TestFSHLogProvider {
   public void testWALArchiving() throws IOException {
     LOG.debug(currentTest.getMethodName());
     HTableDescriptor table1 =
-        new HTableDescriptor(TableName.valueOf(currentTest.getMethodName() + "1")).addFamily(new HColumnDescriptor("row"));
+        new HTableDescriptor(TableName.valueOf(currentTest.getMethodName() + "1"))
+            .addFamily(new HColumnDescriptor("row"));
     HTableDescriptor table2 =
-        new HTableDescriptor(TableName.valueOf(currentTest.getMethodName() + "2")).addFamily(new HColumnDescriptor("row"));
-    NavigableMap<byte[], Integer> scopes1 = new TreeMap<>(
-        Bytes.BYTES_COMPARATOR);
-    for(byte[] fam : table1.getFamiliesKeys()) {
+        new HTableDescriptor(TableName.valueOf(currentTest.getMethodName() + "2"))
+            .addFamily(new HColumnDescriptor("row"));
+    NavigableMap<byte[], Integer> scopes1 = new TreeMap<>(Bytes.BYTES_COMPARATOR);
+    for (byte[] fam : table1.getFamiliesKeys()) {
       scopes1.put(fam, 0);
     }
-    NavigableMap<byte[], Integer> scopes2 = new TreeMap<>(
-        Bytes.BYTES_COMPARATOR);
-    for(byte[] fam : table2.getFamiliesKeys()) {
+    NavigableMap<byte[], Integer> scopes2 = new TreeMap<>(Bytes.BYTES_COMPARATOR);
+    for (byte[] fam : table2.getFamiliesKeys()) {
       scopes2.put(fam, 0);
     }
     final Configuration localConf = new Configuration(conf);
@@ -291,18 +297,19 @@ public class TestFSHLogProvider {
     try {
       final WAL wal = wals.getWAL(UNSPECIFIED_REGION, null);
       assertEquals(0, AbstractFSWALProvider.getNumRolledLogFiles(wal));
-      HRegionInfo hri1 =
-          new HRegionInfo(table1.getTableName(), HConstants.EMPTY_START_ROW,
-              HConstants.EMPTY_END_ROW);
-      HRegionInfo hri2 =
-          new HRegionInfo(table2.getTableName(), HConstants.EMPTY_START_ROW,
-              HConstants.EMPTY_END_ROW);
+      HRegionInfo hri1 = new HRegionInfo(table1.getTableName(), HConstants.EMPTY_START_ROW,
+          HConstants.EMPTY_END_ROW);
+      HRegionInfo hri2 = new HRegionInfo(table2.getTableName(), HConstants.EMPTY_START_ROW,
+          HConstants.EMPTY_END_ROW);
       // ensure that we don't split the regions.
       hri1.setSplit(false);
       hri2.setSplit(false);
+      // init sequence id accounting
+      table1.getFamiliesKeys().forEach(f -> wal.updateStore(hri1.getEncodedNameAsBytes(), f, 0));
+      table2.getFamiliesKeys().forEach(f -> wal.updateStore(hri2.getEncodedNameAsBytes(), f, 0));
       // variables to mock region sequenceIds.
       // start with the testing logic: insert a waledit, and roll writer
-      addEdits(wal, hri1, table1, 1, scopes1);
+      long seqId1 = addEdits(wal, hri1, table1, 1, scopes1);
       wal.rollWriter();
       // assert that the wal is rolled
       assertEquals(1, AbstractFSWALProvider.getNumRolledLogFiles(wal));
@@ -312,22 +319,22 @@ public class TestFSHLogProvider {
       // assert that the wal is rolled
       assertEquals(2, AbstractFSWALProvider.getNumRolledLogFiles(wal));
       // add a waledit to table1, and flush the region.
-      addEdits(wal, hri1, table1, 3, scopes1);
-      flushRegion(wal, hri1.getEncodedNameAsBytes(), table1.getFamiliesKeys());
+      seqId1 = addEdits(wal, hri1, table1, 3, scopes1);
+      flushRegion(wal, hri1.getEncodedNameAsBytes(), table1.getFamiliesKeys(), seqId1 + 1);
       // roll log; all old logs should be archived.
       wal.rollWriter();
       assertEquals(0, AbstractFSWALProvider.getNumRolledLogFiles(wal));
       // add an edit to table2, and roll writer
-      addEdits(wal, hri2, table2, 1, scopes2);
+      long seqId2 = addEdits(wal, hri2, table2, 1, scopes2);
       wal.rollWriter();
       assertEquals(1, AbstractFSWALProvider.getNumRolledLogFiles(wal));
       // add edits for table1, and roll writer
-      addEdits(wal, hri1, table1, 2, scopes1);
+      seqId1 = addEdits(wal, hri1, table1, 2, scopes1);
       wal.rollWriter();
       assertEquals(2, AbstractFSWALProvider.getNumRolledLogFiles(wal));
       // add edits for table2, and flush hri1.
-      addEdits(wal, hri2, table2, 2, scopes2);
-      flushRegion(wal, hri1.getEncodedNameAsBytes(), table2.getFamiliesKeys());
+      seqId2 = addEdits(wal, hri2, table2, 2, scopes2);
+      flushRegion(wal, hri1.getEncodedNameAsBytes(), table1.getFamiliesKeys(), seqId1 + 1);
       // the log : region-sequenceId map is
       // log1: region2 (unflushed)
       // log2: region1 (flushed)
@@ -336,8 +343,8 @@ public class TestFSHLogProvider {
       wal.rollWriter();
       assertEquals(2, AbstractFSWALProvider.getNumRolledLogFiles(wal));
       // flush region2, and all logs should be archived.
-      addEdits(wal, hri2, table2, 2, scopes2);
-      flushRegion(wal, hri2.getEncodedNameAsBytes(), table2.getFamiliesKeys());
+      seqId2 = addEdits(wal, hri2, table2, 2, scopes2);
+      flushRegion(wal, hri2.getEncodedNameAsBytes(), table2.getFamiliesKeys(), seqId2 + 1);
       wal.rollWriter();
       assertEquals(0, AbstractFSWALProvider.getNumRolledLogFiles(wal));
     } finally {
@@ -355,9 +362,9 @@ public class TestFSHLogProvider {
   public void testConcurrentWrites() throws Exception {
     // Run the WPE tool with three threads writing 3000 edits each concurrently.
     // When done, verify that all edits were written.
-    int errCode = WALPerformanceEvaluation.
-      innerMain(new Configuration(TEST_UTIL.getConfiguration()),
-        new String [] {"-threads", "3", "-verify", "-noclosefs", "-iterations", "3000"});
+    int errCode =
+        WALPerformanceEvaluation.innerMain(new Configuration(TEST_UTIL.getConfiguration()),
+          new String[] { "-threads", "3", "-verify", "-noclosefs", "-iterations", "3000" });
     assertEquals(0, errCode);
   }
 
@@ -373,10 +380,11 @@ public class TestFSHLogProvider {
       final Set<WAL> seen = new HashSet<>(1);
       final Random random = new Random();
       assertTrue("first attempt to add WAL from default provider should work.",
-          seen.add(wals.getWAL(Bytes.toBytes(random.nextInt()), null)));
+        seen.add(wals.getWAL(Bytes.toBytes(random.nextInt()), null)));
       for (int i = 0; i < 1000; i++) {
-        assertFalse("default wal provider is only supposed to return a single wal, which should "
-            + "compare as .equals itself.",
+        assertFalse(
+          "default wal provider is only supposed to return a single wal, which should " +
+              "compare as .equals itself.",
           seen.add(wals.getWAL(Bytes.toBytes(random.nextInt()), null)));
       }
     } finally {
