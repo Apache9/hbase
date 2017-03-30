@@ -2058,11 +2058,7 @@ public class KeyValue implements Cell, HeapSize, Cloneable {
       return (0xff & type) - (0xff & ltype);
     }
 
-    /**
-     * Compares the Key of a cell -- with fields being more significant in this order:
-     * rowkey, colfam/qual, timestamp, type, mvcc
-     */
-    public int compare(final Cell left, final Cell right) {
+    public int compareWithOutMvcc(final Cell left, final Cell right) {
       // compare row
       int compare = compareRowKey(left, right);
       if (compare != 0) {
@@ -2092,8 +2088,8 @@ public class KeyValue implements Cell, HeapSize, Cloneable {
       // If left family size is not equal to right family size, we need not
       // compare the qualifiers.
       compare = Bytes.compareTo(
-        left.getFamilyArray(),  left.getFamilyOffset(),  left.getFamilyLength(),
-        right.getFamilyArray(), right.getFamilyOffset(), right.getFamilyLength());
+          left.getFamilyArray(),  left.getFamilyOffset(),  left.getFamilyLength(),
+          right.getFamilyArray(), right.getFamilyOffset(), right.getFamilyLength());
       if (compare != 0) {
         return compare;
       }
@@ -2137,6 +2133,18 @@ public class KeyValue implements Cell, HeapSize, Cloneable {
         return Longs.compare(RightChangeSeqNum, leftChangeSeqNum);
       }
 
+      return 0;
+    }
+
+    /**
+     * Compares the Key of a cell -- with fields being more significant in this order:
+     * rowkey, colfam/qual, timestamp, type, mvcc
+     */
+    public int compare(final Cell left, final Cell right) {
+      int c = compareWithOutMvcc(left, right);
+      if (c != 0) {
+        return c;
+      }
       // compare Mvcc Version
       return Longs.compare(right.getMvccVersion(), left.getMvccVersion());
     }

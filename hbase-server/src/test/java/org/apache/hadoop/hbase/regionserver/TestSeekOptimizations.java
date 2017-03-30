@@ -19,6 +19,7 @@
 package org.apache.hadoop.hbase.regionserver;
 
 import static org.apache.hadoop.hbase.HBaseTestingUtility.assertKVListsEqual;
+import static org.apache.hadoop.hbase.HBaseTestingUtility.assertKVListsEqualWithoutMvcc;
 import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
@@ -254,7 +255,7 @@ public class TestSeekOptimizations {
     } else {
       totalSeekDiligent += seekCount;
     }
-    assertKVListsEqual(testDesc, filteredKVs, actualKVs);
+    assertKVListsEqualWithoutMvcc(testDesc, filteredKVs, actualKVs);
   }
 
   private List<Cell> filterExpectedResults(Set<String> qualSet,

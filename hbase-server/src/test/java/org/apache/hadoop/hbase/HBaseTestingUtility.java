@@ -3144,6 +3144,34 @@ public class HBaseTestingUtility extends HBaseCommonTestingUtility {
     }
   }
 
+
+  public static void assertKVListsEqualWithoutMvcc(String additionalMsg,
+      final List<? extends Cell> expected,
+      final List<? extends Cell> actual) {
+    final int eLen = expected.size();
+    final int aLen = actual.size();
+    final int minLen = Math.min(eLen, aLen);
+
+    int i;
+    for (i = 0; i < minLen
+        && KeyValue.COMPARATOR.compareWithOutMvcc(expected.get(i), actual.get(i)) == 0;
+         ++i) {}
+
+    if (additionalMsg == null) {
+      additionalMsg = "";
+    }
+    if (!additionalMsg.isEmpty()) {
+      additionalMsg = ". " + additionalMsg;
+    }
+
+    if (eLen != aLen || i != minLen) {
+      throw new AssertionError(
+          "Expected and actual KV arrays differ at position " + i + ": " +
+              safeGetAsStr(expected, i) + " (length " + eLen +") vs. " +
+              safeGetAsStr(actual, i) + " (length " + aLen + ")" + additionalMsg);
+    }
+  }
+
   private static <T> String safeGetAsStr(List<T> lst, int i) {
     if (0 <= i && i < lst.size()) {
       return lst.get(i).toString();
