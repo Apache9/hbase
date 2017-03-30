@@ -337,6 +337,6 @@ public abstract class AbstractMemStore implements MemStore {
    */
   protected final long selectMinSequenceId(long minSequenceIdForNonSnapshotSegments) {
     ImmutableSegment snapshot = this.snapshot;
-    return snapshot == null ? minSequenceIdForNonSnapshotSegments : snapshot.getMinSequenceId();
+    return snapshot.isEmpty() ? minSequenceIdForNonSnapshotSegments : snapshot.getMinSequenceId();
   }
 }

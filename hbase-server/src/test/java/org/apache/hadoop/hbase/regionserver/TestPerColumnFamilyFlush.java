@@ -156,14 +156,6 @@ public class TestPerColumnFamilyFlush {
     MemstoreSize cf2MemstoreSize = region.getStore(FAMILY2).getSizeOfMemStore();
     MemstoreSize cf3MemstoreSize = region.getStore(FAMILY3).getSizeOfMemStore();
 
-    // Get the overall smallest LSN in the region's memstores.
-    long smallestSeqInRegionCurrentMemstore = getWAL(region)
-        .getEarliestMemstoreSeqNum(region.getRegionInfo().getEncodedNameAsBytes());
-
-    // The overall smallest LSN in the region's memstores should be the same as
-    // the LSN of the smallest edit in CF1
-    assertEquals(smallestSeqCF1, smallestSeqInRegionCurrentMemstore);
-
     // Some other sanity checks.
     assertTrue(smallestSeqCF1 < smallestSeqCF2);
     assertTrue(smallestSeqCF2 < smallestSeqCF3);
@@ -188,7 +180,7 @@ public class TestPerColumnFamilyFlush {
     cf2MemstoreSize = region.getStore(FAMILY2).getSizeOfMemStore();
     cf3MemstoreSize = region.getStore(FAMILY3).getSizeOfMemStore();
     totalMemstoreSize = region.getMemstoreSize();
-    smallestSeqInRegionCurrentMemstore = getWAL(region)
+    long smallestSeqInRegionCurrentMemstore = getWAL(region)
         .getEarliestMemstoreSeqNum(region.getRegionInfo().getEncodedNameAsBytes());
 
     // We should have cleared out only CF1, since we chose the flush thresholds

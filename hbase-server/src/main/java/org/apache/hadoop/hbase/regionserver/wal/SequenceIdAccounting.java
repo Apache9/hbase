@@ -17,6 +17,7 @@
  */
 package org.apache.hadoop.hbase.regionserver.wal;
 
+import static org.apache.hadoop.hbase.HConstants.NO_SEQNUM;
 import static org.apache.hadoop.hbase.util.CollectionUtils.computeIfAbsent;
 
 import java.util.ArrayList;
@@ -28,9 +29,12 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang.mutable.MutableLong;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
+import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.HashedBytes;
 import org.apache.hadoop.hbase.util.Pair;
 
@@ -47,6 +51,8 @@ import org.apache.hadoop.hbase.util.Pair;
  */
 @InterfaceAudience.Private
 class SequenceIdAccounting {
+
+  private static final Log LOG = LogFactory.getLog(SequenceIdAccounting.class);
 
   /**
    * Map of encoded region names and family names to their OLDEST -- i.e. their first, the
@@ -87,7 +93,7 @@ class SequenceIdAccounting {
    */
   long getLowestSequenceId(byte[] encodedRegionName) {
     ConcurrentMap<HashedBytes, Long> m = this.lowestUnflushedSequenceIds.get(encodedRegionName);
-    return m != null ? getLowestSequenceId(m) : HConstants.NO_SEQNUM;
+    return m != null ? getLowestSequenceId(m) : NO_SEQNUM;
   }
 
   /**
@@ -100,10 +106,10 @@ class SequenceIdAccounting {
   long getLowestSequenceId(byte[] encodedRegionName, byte[] familyName) {
     ConcurrentMap<HashedBytes, Long> m = this.lowestUnflushedSequenceIds.get(encodedRegionName);
     if (m == null) {
-      return HConstants.NO_SEQNUM;
+      return NO_SEQNUM;
     }
     Long lowest = m.get(new HashedBytes(familyName));
-    return lowest != null ? lowest.longValue() : HConstants.NO_SEQNUM;
+    return lowest != null ? lowest.longValue() : NO_SEQNUM;
   }
 
   /**
@@ -135,17 +141,12 @@ class SequenceIdAccounting {
   }
 
   /**
-   * @param sequenceids Map to search for lowest value.
-   * @return Lowest value found in <code>sequenceids</code>.
+   * @param sequenceIds Map to search for lowest value.
+   * @return Lowest value found in <code>sequenceIds</code>.
    */
-  private static long getLowestSequenceId(Map<?, Long> sequenceids) {
-    long lowest = HConstants.NO_SEQNUM;
-    for (Long sid : sequenceids.values()) {
-      if (lowest == HConstants.NO_SEQNUM || sid.longValue() < lowest) {
-        lowest = sid.longValue();
-      }
-    }
-    return lowest;
+  private static long getLowestSequenceId(Map<?, Long> sequenceIds) {
+    return sequenceIds.values().stream().mapToLong(l -> l.longValue()).filter(l -> l != NO_SEQNUM)
+        .min().orElse(NO_SEQNUM);
   }
 
   void updateLowestUnflushedSequenceIds(byte[] encodedRegionName,
@@ -156,10 +157,12 @@ class SequenceIdAccounting {
           if (oldLowest == null) {
             return lowest;
           }
+          if (oldLowest.longValue() > lowest.longValue()) {
+            LOG.error("lowest unflushed sequence id for region " +
+                Bytes.toString(encodedRegionName) + " go backwards, " + oldLowest + "->" + lowest +
+                ", there should be a critial bug that may cause data loss");
+          }
           // Do not use math.max here as it requires extra boxing/unboxing
-          // TODO: Still not sure if lowest can go backward as I do not know if the call from in
-          // memory compaction could be skew with the normal flush. Add a warning here if we can
-          // confirm that it should never go backward.
           return lowest.longValue() > oldLowest.longValue() ? lowest : oldLowest;
         }));
   }
@@ -178,12 +181,12 @@ class SequenceIdAccounting {
   boolean areAllLower(Map<byte[], Long> sequenceIds) {
     for (Map.Entry<byte[], Long> e : sequenceIds.entrySet()) {
       ConcurrentMap<HashedBytes, Long> m = this.lowestUnflushedSequenceIds.get(e.getKey());
-      if (m != null) {
-        for (Long lowest : m.values()) {
-          if (lowest.longValue() <= e.getValue().longValue()) {
-            return false;
-          }
-        }
+      if (m == null) {
+        continue;
+      }
+      if (m.values().stream().mapToLong(l -> l.longValue()).filter(l -> l != NO_SEQNUM)
+          .anyMatch(l -> l <= e.getValue().longValue())) {
+        return false;
       }
     }
     return true;
@@ -203,11 +206,9 @@ class SequenceIdAccounting {
       if (m == null) {
         return;
       }
-      for (long lowest : m.values()) {
-        if (lowest <= sequenceId.longValue()) {
-          toFlush.add(encodedRegionName);
-          return;
-        }
+      if (m.values().stream().mapToLong(l -> l.longValue()).filter(l -> l != NO_SEQNUM)
+          .anyMatch(l -> l <= sequenceId)) {
+        toFlush.add(encodedRegionName);
       }
     });
     return toFlush.isEmpty() ? null : toFlush.toArray(new byte[0][]);

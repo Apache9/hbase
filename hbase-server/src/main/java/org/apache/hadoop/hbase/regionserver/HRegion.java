@@ -998,10 +998,8 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
           if (wal != null) {
             // store the lowestUnflushedSequenceId into WAL. This is the max sequence id in
             // storefiles, so we need to plus one.
-            // 0 means the store does not have any store files yet so we also use 0. Do not use
-            // NO_SEQNUM as it usually means the value does not exist.
             wal.updateStore(getRegionInfo().getEncodedNameAsBytes(), store.getFamily().getName(),
-              storeMaxSequenceId > 0 ? storeMaxSequenceId + 1 : 0);
+              storeMaxSequenceId > 0 ? storeMaxSequenceId + 1 : HConstants.NO_SEQNUM);
           }
           maxSeqIdInStores.put(store.getColumnFamilyName().getBytes(),
               storeMaxSequenceId);
