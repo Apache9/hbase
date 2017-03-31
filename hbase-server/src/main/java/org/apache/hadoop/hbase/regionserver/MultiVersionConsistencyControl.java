@@ -57,7 +57,10 @@ public class MultiVersionConsistencyControl {
       if (this.memstoreWrite != this.memstoreRead) {
         throw new RuntimeException("Already used this mvcc. Too late to initialize");
       }
-
+      // Do not go backwards
+      if (this.memstoreRead >= startPoint) {
+        return;
+      }
       this.memstoreRead = this.memstoreWrite = startPoint;
     }
   }

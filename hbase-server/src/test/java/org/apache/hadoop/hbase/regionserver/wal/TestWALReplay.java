@@ -518,8 +518,8 @@ public class TestWALReplay {
     final Configuration newConf = HBaseConfiguration.create(this.conf);
     User user = HBaseTestingUtility.getDifferentUser(newConf,
       tableName.getNameAsString());
-    user.runAs(new PrivilegedExceptionAction() {
-      public Object run() throws Exception {
+    user.runAs(new PrivilegedExceptionAction<Void>() {
+      public Void run() throws Exception {
         runWALSplit(newConf);
         FileSystem newFS = FileSystem.get(newConf);
         // Make a new wal for new region open.
