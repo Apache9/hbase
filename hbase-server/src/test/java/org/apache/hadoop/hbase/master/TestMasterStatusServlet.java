@@ -36,6 +36,7 @@ import org.apache.hadoop.hbase.client.replication.ReplicationAdmin;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.zookeeper.MasterAddressTracker;
+import org.apache.hadoop.hbase.zookeeper.ZNodePaths;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
 import org.apache.hadoop.hbase.tmpl.master.AssignmentManagerStatusTmpl;
 import org.apache.hadoop.hbase.tmpl.master.MasterStatusTmpl;
@@ -99,6 +100,7 @@ public class TestMasterStatusServlet {
     Mockito.doReturn("fakequorum").when(zkw).getQuorum();
     Mockito.doReturn(zkw).when(master).getZooKeeperWatcher();
     Mockito.doReturn(zkw).when(master).getZooKeeper();
+    Mockito.doReturn(new ZNodePaths(conf)).when(zkw).getZnodePaths();
 
     // Fake MasterAddressTracker
     MasterAddressTracker tracker = Mockito.mock(MasterAddressTracker.class);

@@ -224,6 +224,10 @@ public class ZooKeeperWatcher implements Watcher, Abortable, Closeable {
     recoverableZooKeeper.reconnectAfterExpiration();
   }
 
+  public ZNodePaths getZnodePaths() {
+    return znodePaths;
+  }
+
   /**
    * Get the quorum address of this instance.
    * @return quorum string of this zookeeper connection instance
