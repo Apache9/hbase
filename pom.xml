@@ -492,6 +492,12 @@
           <configuration>
             <excludes>
               <exclude>**/TestTableLockManager.java</exclude>
+              <exclude>**/TestMergeTable.java</exclude>
+              <exclude>**/TestFSUtils.java</exclude>
+              <exclude>**/TestRegionRebalancing.java</exclude>
+              <exclude>**/TestOfflineMetaRebuildBase.java</exclude>
+              <exclude>**/TestOfflineMetaRebuildHole.java</exclude>
+              <exclude>**/TestSnapshotFileCache.java</exclude>
             </excludes>
             <failIfNoTests>false</failIfNoTests>
             <skip>${surefire.skipFirstPart}</skip>
