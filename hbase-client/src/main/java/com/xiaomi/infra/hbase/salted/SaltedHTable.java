@@ -54,6 +54,7 @@ import org.apache.hadoop.hbase.client.RowMutations;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.client.coprocessor.Batch.Call;
 import org.apache.hadoop.hbase.client.coprocessor.Batch.Callback;
+import org.apache.hadoop.hbase.client.metrics.ScanMetrics;
 import org.apache.hadoop.hbase.filter.CompareFilter.CompareOp;
 import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.filter.FilterList;
@@ -668,6 +669,11 @@ public class SaltedHTable implements HTableInterface{
         System.arraycopy(prefix, 0, newRow, 0, prefix.length);
       }
       return newRow;
+    }
+
+    @Override
+    public ScanMetrics getScanMetrics() {
+      return null;
     }
   }
 

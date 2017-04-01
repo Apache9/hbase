@@ -521,6 +521,30 @@ public final class RequestConverter {
   }
 
   /**
+   * Create a protocol buffer ScanRequest for a scanner id
+   * @param scannerId
+   * @param numberOfRows
+   * @param closeScanner
+   * @param nextCallSeq
+   * @return a scan request
+   */
+  public static ScanRequest buildScanRequest(long scannerId, int numberOfRows, boolean closeScanner,
+      long nextCallSeq, boolean renew, int limitOfRows) {
+    ScanRequest.Builder builder = ScanRequest.newBuilder();
+    builder.setNumberOfRows(numberOfRows);
+    builder.setCloseScanner(closeScanner);
+    builder.setScannerId(scannerId);
+    builder.setNextCallSeq(nextCallSeq);
+    builder.setClientHandlesPartials(true);
+    builder.setClientHandlesHeartbeats(true);
+    builder.setRenew(renew);
+    if (limitOfRows > 0) {
+      builder.setLimitOfRows(limitOfRows);
+    }
+    return builder.build();
+  }
+
+  /**
    * Create a protocol buffer bulk load request
    * @param familyPaths
    * @param regionName
@@ -606,7 +630,7 @@ public final class RequestConverter {
    * @throws IOException
    */
   public static <R> RegionAction.Builder buildNoDataRegionAction(final byte[] regionName,
-      final List<Action<R>> actions, final List<CellScannable> cells,
+      final Iterable<Action<R>> actions, final List<CellScannable> cells,
       final RegionAction.Builder regionActionBuilder,
       final ClientProtos.Action.Builder actionBuilder, final MutationProto.Builder mutationBuilder)
       throws IOException {

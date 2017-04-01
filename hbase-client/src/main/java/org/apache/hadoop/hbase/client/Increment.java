@@ -185,6 +185,11 @@ public class Increment extends Mutation implements Comparable<Row> {
     return this;
   }
 
+  @Override
+  public Increment setDurability(Durability d) {
+    return (Increment) super.setDurability(d);
+  }
+
   /**
    * Method for retrieving the number of families to increment from
    * @return number of families

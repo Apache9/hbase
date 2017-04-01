@@ -17,7 +17,9 @@
  */
 package org.apache.hadoop.hbase.client;
 
+import static org.apache.hadoop.hbase.client.ConnectionUtils.calcEstimatedSize;
 import static org.apache.hadoop.hbase.client.ConnectionUtils.createScanResultCache;
+import static org.apache.hadoop.hbase.client.ConnectionUtils.incRegionCountMetrics;
 
 import com.google.common.annotations.VisibleForTesting;
 
@@ -29,8 +31,6 @@ import org.apache.commons.lang.mutable.MutableBoolean;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.Cell;
-import org.apache.hadoop.hbase.CellUtil;
 import org.apache.hadoop.hbase.DoNotRetryIOException;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HConstants;
@@ -212,9 +212,7 @@ public abstract class ClientScanner extends AbstractClientScanner {
     this.currentRegion = null;
     this.callable = createScannerCallable();
     this.callable.setCaching(this.caching);
-    if (this.scanMetrics != null) {
-      this.scanMetrics.countOfRegions.incrementAndGet();
-    }
+    incRegionCountMetrics(scanMetrics);
     return true;
   }
 
@@ -395,9 +393,7 @@ public abstract class ClientScanner extends AbstractClientScanner {
       if (resultsToAddToCache.length > 0) {
         for (Result rs : resultsToAddToCache) {
           cache.add(rs);
-          for (Cell cell : rs.rawCells()) {
-            remainingResultSize -= CellUtil.estimatedSizeOf(cell);
-          }
+          remainingResultSize -= calcEstimatedSize(rs);
           countdown--;
           this.lastResult = rs;
         }

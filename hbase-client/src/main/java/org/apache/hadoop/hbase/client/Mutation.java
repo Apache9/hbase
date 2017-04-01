@@ -245,8 +245,9 @@ public abstract class Mutation extends OperationWithAttributes implements Row, C
    * Set the durability for this mutation
    * @param d
    */
-  public void setDurability(Durability d) {
+  public Mutation setDurability(Durability d) {
     this.durability = d;
+    return this;
   }
 
   /** Get the current durability */

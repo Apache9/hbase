@@ -30,6 +30,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutorService;
@@ -54,6 +55,7 @@ import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.security.UserProvider;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.ExceptionUtil;
+import org.apache.hadoop.hbase.util.ReflectionUtils;
 import org.apache.hadoop.ipc.RemoteException;
 
 /**
@@ -607,5 +609,78 @@ public class HConnectionManager {
     int retries = hcRetries * serversideMultiplier;
     c.setInt(HConstants.HBASE_CLIENT_RETRIES_NUMBER, retries);
     log.debug(sn + " HConnection server-to-server retries=" + retries);
+  }
+  
+  public static final String HBASE_CLIENT_ASYNC_CONNECTION_IMPL = "hbase.client.async.connection.impl";
+
+
+  /**
+   * Call {@link #createAsyncConnection(Configuration)} using default HBaseConfiguration.
+   * @see #createAsyncConnection(Configuration)
+   * @return AsyncConnection object wrapped by CompletableFuture
+   */
+  public static CompletableFuture<AsyncConnection> createAsyncConnection() {
+    return createAsyncConnection(HBaseConfiguration.create());
+  }
+
+  /**
+   * Call {@link #createAsyncConnection(Configuration, User)} using the given {@code conf} and a
+   * User object created by {@link UserProvider}. The given {@code conf} will also be used to
+   * initialize the {@link UserProvider}.
+   * @param conf configuration
+   * @return AsyncConnection object wrapped by CompletableFuture
+   * @see #createAsyncConnection(Configuration, User)
+   * @see UserProvider
+   */
+  public static CompletableFuture<AsyncConnection> createAsyncConnection(Configuration conf) {
+    User user;
+    try {
+      user = UserProvider.instantiate(conf).getCurrent();
+    } catch (IOException e) {
+      CompletableFuture<AsyncConnection> future = new CompletableFuture<>();
+      future.completeExceptionally(e);
+      return future;
+    }
+    return createAsyncConnection(conf, user);
+  }
+
+  /**
+   * Create a new AsyncConnection instance using the passed {@code conf} and {@code user}.
+   * AsyncConnection encapsulates all housekeeping for a connection to the cluster. All tables and
+   * interfaces created from returned connection share zookeeper connection, meta cache, and
+   * connections to region servers and masters.
+   * <p>
+   * The caller is responsible for calling {@link AsyncConnection#close()} on the returned
+   * connection instance.
+   * <p>
+   * Usually you should only create one AsyncConnection instance in your code and use it everywhere
+   * as it is thread safe.
+   * @param conf configuration
+   * @param user the user the asynchronous connection is for
+   * @return AsyncConnection object wrapped by CompletableFuture
+   * @throws IOException
+   */
+  public static CompletableFuture<AsyncConnection> createAsyncConnection(Configuration conf,
+      User user) {
+    CompletableFuture<AsyncConnection> future = new CompletableFuture<>();
+    AsyncRegistry registry = AsyncRegistryFactory.getRegistry(conf);
+    registry.getClusterId().whenComplete((clusterId, error) -> {
+      if (error != null) {
+        future.completeExceptionally(error);
+        return;
+      }
+      if (clusterId == null) {
+        future.completeExceptionally(new IOException("clusterid came back null"));
+        return;
+      }
+      Class<? extends AsyncConnection> clazz = conf.getClass(HBASE_CLIENT_ASYNC_CONNECTION_IMPL,
+        AsyncConnectionImpl.class, AsyncConnection.class);
+      try {
+        future.complete(ReflectionUtils.newInstance(clazz, conf, registry, clusterId, user));
+      } catch (Exception e) {
+        future.completeExceptionally(e);
+      }
+    });
+    return future;
   }
 }

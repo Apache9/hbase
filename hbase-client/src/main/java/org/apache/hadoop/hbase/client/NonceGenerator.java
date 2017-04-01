@@ -29,6 +29,8 @@ import org.apache.hadoop.hbase.classification.InterfaceAudience;
 @InterfaceAudience.Private
 public interface NonceGenerator {
 
+  String CLIENT_NONCES_ENABLED_KEY = "hbase.client.nonces.enabled";
+  
   /** @return the nonce group (client ID) of this client manager. */
   public long getNonceGroup();
 

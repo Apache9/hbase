@@ -1,5 +1,7 @@
 package org.apache.hadoop.hbase.client;
 
+import static org.apache.hadoop.hbase.client.NonceGenerator.CLIENT_NONCES_ENABLED_KEY;
+
 import com.google.common.hash.Hashing;
 import com.google.protobuf.BlockingRpcChannel;
 import com.google.protobuf.RpcController;
@@ -177,15 +179,7 @@ public class HConnectionImplementation implements HConnection, Closeable {
 
   private static final Log LOG = LogFactory.getLog(HConnectionImplementation.class);
 
-  static final String CLIENT_NONCES_ENABLED_KEY = "hbase.client.nonces.enabled";
-
   static final String REGION_LOCATE_MAX_CONCURRENT = "hbase.client.locate.max.concurrent";
-
-  /**
-   * Global nonceGenerator shared per client.Currently there's no reason to limit its scope. Once
-   * it's set under nonceGeneratorCreateLock, it is never unset or changed.
-   */
-  private static final NonceGenerator GLOBAL_NONCE_GENERATOR = new PerClientRandomNonceGenerator();
 
   private final long pause;
   private final int numTries;
@@ -320,19 +314,6 @@ public class HConnectionImplementation implements HConnection, Closeable {
     }
   }
 
-  /** Dummy nonce generator for disabled nonces. */
-  private static class NoNonceGenerator implements NonceGenerator {
-    @Override
-    public long getNonceGroup() {
-      return HConstants.NO_NONCE;
-    }
-
-    @Override
-    public long newNonce() {
-      return HConstants.NO_NONCE;
-    }
-  }
-
   /**
    * For tests.
    */
@@ -345,9 +326,9 @@ public class HConnectionImplementation implements HConnection, Closeable {
     this.rpcTimeout =
         conf.getInt(HConstants.HBASE_RPC_TIMEOUT_KEY, HConstants.DEFAULT_HBASE_RPC_TIMEOUT);
     if (conf.getBoolean(CLIENT_NONCES_ENABLED_KEY, true)) {
-      this.nonceGenerator = GLOBAL_NONCE_GENERATOR;
+      this.nonceGenerator = PerClientRandomNonceGenerator.get();
     } else {
-      this.nonceGenerator = new NoNonceGenerator();
+      this.nonceGenerator = ConnectionUtils.NO_NONCE_GENERATOR;
     }
 
     this.stats = ServerStatisticTracker.create(conf);

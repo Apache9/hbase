@@ -54,6 +54,7 @@ import org.apache.hadoop.hbase.client.RowMutations;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.client.coprocessor.Batch;
 import org.apache.hadoop.hbase.client.coprocessor.Batch.Callback;
+import org.apache.hadoop.hbase.client.metrics.ScanMetrics;
 import org.apache.hadoop.hbase.filter.CompareFilter.CompareOp;
 import org.apache.hadoop.hbase.io.TimeRange;
 import org.apache.hadoop.hbase.ipc.CoprocessorRpcChannel;
@@ -620,6 +621,11 @@ public class RemoteHTable implements HTableInterface {
       } catch (IOException e) {
         LOG.warn(StringUtils.stringifyException(e));
       }
+    }
+
+    @Override
+    public ScanMetrics getScanMetrics() {
+      return null;
     }
 
   }

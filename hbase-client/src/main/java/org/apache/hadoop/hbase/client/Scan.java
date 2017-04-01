@@ -1110,6 +1110,23 @@ public class Scan extends Query {
   }
 
   /**
+   * Enable collection of {@link ScanMetrics}. For advanced users.
+   * @param enabled Set to true to enable accumulating scan metrics
+   */
+  public Scan setScanMetricsEnabled(final boolean enabled) {
+    setAttribute(Scan.SCAN_ATTRIBUTES_METRICS_ENABLE, Bytes.toBytes(Boolean.valueOf(enabled)));
+    return this;
+  }
+
+  /**
+   * @return True if collection of scan metrics is enabled. For advanced users.
+   */
+  public boolean isScanMetricsEnabled() {
+    byte[] attr = getAttribute(Scan.SCAN_ATTRIBUTES_METRICS_ENABLE);
+    return attr == null ? false : Bytes.toBoolean(attr);
+  }
+
+  /**
    * Get the mvcc read point used to open a scanner.
    */
   long getMvccReadPoint() {

@@ -18,6 +18,7 @@
 
 package org.apache.hadoop.hbase.client;
 
+import static org.apache.hadoop.hbase.client.ConnectionUtils.*;
 import com.google.protobuf.ServiceException;
 import com.google.protobuf.TextFormat;
 
@@ -67,7 +68,6 @@ public class ScannerCallable extends RegionServerCallable<Result[]> {
   protected ScanMetrics scanMetrics;
   private boolean logScannerActivity = false;
   private int logCutOffLatency = 1000;
-  private static String myAddress;
   protected final int timeout;
 
   enum MoreResults {
@@ -82,13 +82,6 @@ public class ScannerCallable extends RegionServerCallable<Result[]> {
    * Heartbeat messages are identified by the flag {@link ScanResponse#getHeartbeatMessage()}
    */
   protected boolean heartbeatMessage = false;
-  static {
-    try {
-      myAddress = DNS.getDefaultHost("default", "default");
-    } catch (UnknownHostException uhe) {
-      LOG.error("cannot determine my address", uhe);
-    }
-  }
 
   // indicate if it is a remote server call
   protected boolean isRegionServerRemote = true;
@@ -128,10 +121,7 @@ public class ScannerCallable extends RegionServerCallable<Result[]> {
     // HConnectionManager will call instantiateServer with reload==true
     // if and only if for retries.
     if (reload && this.scanMetrics != null) {
-      this.scanMetrics.countOfRPCRetries.incrementAndGet();
-      if (isRegionServerRemote) {
-        this.scanMetrics.countOfRemoteRPCRetries.incrementAndGet();
-      }
+      incRPCRetriesMetrics(scanMetrics, isRegionServerRemote);
     }
   }
 
@@ -140,17 +130,13 @@ public class ScannerCallable extends RegionServerCallable<Result[]> {
    * connects to a remote region server
    */
   protected void checkIfRegionServerIsRemote() {
-    if (getLocation().getHostname().equalsIgnoreCase(myAddress)) {
-      isRegionServerRemote = false;
-    } else {
-      isRegionServerRemote = true;
-    }
+    isRegionServerRemote = isRemote(getLocation().getHostname());
   }
 
   private ScanResponse next() throws IOException {
     // Reset the heartbeat flag prior to each RPC in case an exception is thrown by the server
     setHeartbeatMessage(false);
-    incRPCcallsMetrics();
+    incRPCCallsMetrics(scanMetrics, isRegionServerRemote);
     ScanRequest request =
         RequestConverter.buildScanRequest(scannerId, caching, false, nextCallSeq, scan.getLimit());
     try {
@@ -256,7 +242,7 @@ public class ScannerCallable extends RegionServerCallable<Result[]> {
     } else {
       setMoreResultsInRegion(MoreResults.UNKNOWN);
     }
-    updateResultsMetrics(rrs);
+    updateResultsMetrics(scanMetrics, rrs, isRegionServerRemote);
     return rrs;
   }
 
@@ -274,39 +260,12 @@ public class ScannerCallable extends RegionServerCallable<Result[]> {
     this.heartbeatMessage = heartbeatMessage;
   }
 
-  private void incRPCcallsMetrics() {
-    if (this.scanMetrics == null) {
-      return;
-    }
-    this.scanMetrics.countOfRPCcalls.incrementAndGet();
-    if (isRegionServerRemote) {
-      this.scanMetrics.countOfRemoteRPCcalls.incrementAndGet();
-    }
-  }
-
-  private void updateResultsMetrics(Result[] rrs) {
-    if (this.scanMetrics == null || rrs == null || rrs.length == 0) {
-      return;
-    }
-    long resultSize = 0;
-    for (Result rr : rrs) {
-      for (Cell kv : rr.rawCells()) {
-        // TODO add getLength to Cell/use CellUtil#estimatedSizeOf
-        resultSize += KeyValueUtil.ensureKeyValue(kv).getLength();
-      }
-    }
-    this.scanMetrics.countOfBytesInResults.addAndGet(resultSize);
-    if (isRegionServerRemote) {
-      this.scanMetrics.countOfBytesInRemoteResults.addAndGet(resultSize);
-    }
-  }
-
   private void close() {
     if (this.scannerId == -1L) {
       return;
     }
     try {
-      incRPCcallsMetrics();
+      incRPCCallsMetrics(scanMetrics, isRegionServerRemote);
       ScanRequest request = RequestConverter.buildScanRequest(this.scannerId, 0, true);
       try {
         getStub().scan(getController(), request);
@@ -323,7 +282,7 @@ public class ScannerCallable extends RegionServerCallable<Result[]> {
   }
 
   private ScanResponse openScanner() throws IOException {
-    incRPCcallsMetrics();
+    incRPCCallsMetrics(scanMetrics, isRegionServerRemote);
     ScanRequest request = RequestConverter.buildScanRequest(
       getLocation().getRegionInfo().getRegionName(), this.scan, this.caching, false);
     try {

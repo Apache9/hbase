@@ -804,6 +804,11 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     return priority;
   }
 
+  @VisibleForTesting
+  public int getScannersCount() {
+    return scanners.size();
+  }
+
   RegionScanner getScanner(long scannerId) {
     String scannerIdString = Long.toString(scannerId);
     RegionScannerHolder scannerHolder = scanners.get(scannerIdString);

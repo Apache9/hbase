@@ -19,18 +19,18 @@
 
 package org.apache.hadoop.hbase;
 
-import java.text.MessageFormat;
+import static org.junit.Assert.fail;
 
-import junit.framework.Assert;
+import java.text.MessageFormat;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.classification.InterfaceAudience;
 
 /**
- * A class that provides a standard waitFor pattern
- * See details at https://issues.apache.org/jira/browse/HBASE-7384
+ * A class that provides a standard waitFor pattern See details at
+ * https://issues.apache.org/jira/browse/HBASE-7384
  */
 @InterfaceAudience.Private
 public final class Waiter {
@@ -94,6 +94,20 @@ public final class Waiter {
      * @throws Exception thrown if the predicate evaluation could not evaluate.
      */
     boolean evaluate() throws E;
+
+  }
+
+  /**
+   * A mixin interface, can be used with {@link Waiter} to explain failed state.
+   */
+  @InterfaceAudience.Private
+  public interface ExplainingPredicate<E extends Exception> extends Predicate<E> {
+
+    /**
+     * Perform a predicate evaluation.
+     * @return explanation of failed state
+     */
+    String explainFailure() throws E;
 
   }
 
@@ -173,8 +187,8 @@ public final class Waiter {
     try {
       LOG.info(MessageFormat.format("Waiting up to [{0}] milli-secs(wait.for.ratio=[{1}])",
         adjustedTimeout, getWaitForRatio(conf)));
-      while (!(eval = predicate.evaluate())
-              && (remainderWait = mustEnd - System.currentTimeMillis()) > 0) {
+      while (!(eval = predicate.evaluate()) &&
+          (remainderWait = mustEnd - System.currentTimeMillis()) > 0) {
         try {
           // handle tail case when remainder wait is less than one interval
           sleepInterval = (remainderWait > interval) ? interval : remainderWait;
@@ -190,9 +204,12 @@ public final class Waiter {
           LOG.warn(MessageFormat.format("Waiting interrupted after [{0}] msec",
             System.currentTimeMillis() - started));
         } else if (failIfTimeout) {
-          Assert.fail(MessageFormat.format("Waiting timed out after [{0}] msec", adjustedTimeout));
+          String msg = getExplanation(predicate);
+          fail(MessageFormat.format("Waiting timed out after [{0}] msec", adjustedTimeout) + msg);
         } else {
-          LOG.warn(MessageFormat.format("Waiting timed out after [{0}] msec", adjustedTimeout));
+          String msg = getExplanation(predicate);
+          LOG.warn(
+            MessageFormat.format("Waiting timed out after [{0}] msec", adjustedTimeout) + msg);
         }
       }
       return (eval || interrupted) ? (System.currentTimeMillis() - started) : -1;
@@ -201,4 +218,16 @@ public final class Waiter {
     }
   }
 
+  public static String getExplanation(Predicate<?> explain) {
+    if (explain instanceof ExplainingPredicate) {
+      try {
+        return " " + ((ExplainingPredicate<?>) explain).explainFailure();
+      } catch (Exception e) {
+        LOG.error("Failed to get explanation, ", e);
+        return e.getMessage();
+      }
+    } else {
+      return "";
+    }
+  }
 }

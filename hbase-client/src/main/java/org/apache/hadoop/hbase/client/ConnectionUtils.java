@@ -17,28 +17,47 @@
  */
 package org.apache.hadoop.hbase.client;
 
+import static java.util.stream.Collectors.toList;
 import static org.apache.hadoop.hbase.HConstants.EMPTY_END_ROW;
 import static org.apache.hadoop.hbase.HConstants.EMPTY_START_ROW;
 
+import com.google.common.base.Preconditions;
+import com.google.protobuf.ServiceException;
+
+import java.lang.reflect.UndeclaredThrowableException;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellComparator;
 import org.apache.hadoop.hbase.CellUtil;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HRegionInfo;
+import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
+import org.apache.hadoop.hbase.client.metrics.ScanMetrics;
+import org.apache.hadoop.hbase.ipc.HBaseRpcController;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hbase.util.ReflectionUtils;
+import org.apache.hadoop.ipc.RemoteException;
+import org.apache.hadoop.net.DNS;
 
 /**
  * Utility used by client connections.
  */
 @InterfaceAudience.Private
 public class ConnectionUtils {
+
+  private static final Log LOG = LogFactory.getLog(ConnectionUtils.class);
 
   /**
    * Calculate pause time. Built on {@link HConstants#RETRY_BACKOFF}.
@@ -77,23 +96,71 @@ public class ConnectionUtils {
 
   /**
    * Changes the configuration to set the number of retries needed when using HConnection
-   * internally, e.g. for  updating catalog tables, etc.
-   * Call this method before we create any Connections.
+   * internally, e.g. for updating catalog tables, etc. Call this method before we create any
+   * Connections.
    * @param c The Configuration instance to set the retries into.
    * @param log Used to log what we set in here.
    */
-  public static void setServerSideHConnectionRetriesConfig(
-      final Configuration c, final String sn, final Log log) {
+  public static void setServerSideHConnectionRetriesConfig(final Configuration c, final String sn,
+      final Log log) {
     // TODO: Fix this. Not all connections from server side should have 10 times the retries.
     int hcRetries = c.getInt(HConstants.HBASE_CLIENT_RETRIES_NUMBER,
       HConstants.DEFAULT_HBASE_CLIENT_RETRIES_NUMBER);
-    // Go big.  Multiply by 10.  If we can't get to meta after this many retries
+    // Go big. Multiply by 10. If we can't get to meta after this many retries
     // then something seriously wrong.
     int serversideMultiplier = c.getInt("hbase.client.serverside.retries.multiplier", 10);
     int retries = hcRetries * serversideMultiplier;
     c.setInt(HConstants.HBASE_CLIENT_RETRIES_NUMBER, retries);
     log.info(sn + " server-side HConnection retries=" + retries);
   }
+
+  /**
+   * Return retires + 1. The returned value will be in range [1, Integer.MAX_VALUE].
+   */
+  static int retries2Attempts(int retries) {
+    return Math.max(1, retries == Integer.MAX_VALUE ? Integer.MAX_VALUE : retries + 1);
+  }
+
+  /**
+   * Get a unique key for the rpc stub to the given server.
+   */
+  static String getStubKey(String serviceName, ServerName serverName, boolean hostnameCanChange) {
+    // Sometimes, servers go down and they come back up with the same hostname but a different
+    // IP address. Force a resolution of the rsHostname by trying to instantiate an
+    // InetSocketAddress, and this way we will rightfully get a new stubKey.
+    // Also, include the hostname in the key so as to take care of those cases where the
+    // DNS name is different but IP address remains the same.
+    String hostname = serverName.getHostname();
+    int port = serverName.getPort();
+    if (hostnameCanChange) {
+      try {
+        InetAddress ip = InetAddress.getByName(hostname);
+        return serviceName + "@" + hostname + "-" + ip.getHostAddress() + ":" + port;
+      } catch (UnknownHostException e) {
+        LOG.warn("Can not resolve " + hostname + ", please check your network", e);
+      }
+    }
+    return serviceName + "@" + hostname + ":" + port;
+  }
+
+  static void checkHasFamilies(Mutation mutation) {
+    Preconditions.checkArgument(mutation.numFamilies() > 0,
+      "Invalid arguments to %s, zero columns specified", mutation.toString());
+  }
+
+  /** Dummy nonce generator for disabled nonces. */
+  static final NonceGenerator NO_NONCE_GENERATOR = new NonceGenerator() {
+
+    @Override
+    public long newNonce() {
+      return HConstants.NO_NONCE;
+    }
+
+    @Override
+    public long getNonceGroup() {
+      return HConstants.NO_NONCE;
+    }
+  };
 
   // A byte array in which all elements are the max byte, and it is used to
   // construct closest front row
@@ -132,6 +199,27 @@ public class ConnectionUtils {
     return Bytes.equals(row, EMPTY_END_ROW);
   }
 
+  static void resetController(HBaseRpcController controller, long timeoutNs) {
+    controller.reset();
+    if (timeoutNs >= 0) {
+      controller.setCallTimeout(
+        (int) Math.min(Integer.MAX_VALUE, TimeUnit.NANOSECONDS.toMillis(timeoutNs)));
+    }
+  }
+
+  static Throwable translateException(Throwable t) {
+    if (t instanceof UndeclaredThrowableException && t.getCause() != null) {
+      t = t.getCause();
+    }
+    if (t instanceof RemoteException) {
+      t = ((RemoteException) t).unwrapRemoteException();
+    }
+    if (t instanceof ServiceException && t.getCause() != null) {
+      t = translateException(t.getCause());
+    }
+    return t;
+  }
+
   private static final Comparator<Cell> COMPARE_WITHOUT_ROW = new Comparator<Cell>() {
 
     @Override
@@ -139,6 +227,15 @@ public class ConnectionUtils {
       return CellComparator.compareWithoutRow(o1, o2, true);
     }
   };
+
+  static long calcEstimatedSize(Result rs) {
+    long estimatedSizeOfResult = 0;
+    // We don't make Iterator here
+    for (Cell cell : rs.rawCells()) {
+      estimatedSizeOfResult += CellUtil.estimatedSizeOf(cell);
+    }
+    return estimatedSizeOfResult;
+  }
 
   static Result filterCells(Result result, Cell keepCellsAfter) {
     if (keepCellsAfter == null) {
@@ -200,5 +297,95 @@ public class ConnectionUtils {
     } else {
       return new CompleteScanResultCache();
     }
+  }
+
+  static <T> CompletableFuture<List<T>> allOf(List<CompletableFuture<T>> futures) {
+    return CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
+        .thenApply(v -> futures.stream().map(f -> f.getNow(null)).collect(toList()));
+  }
+
+  static Get toCheckExistenceOnly(Get get) {
+    if (get.isCheckExistenceOnly()) {
+      return get;
+    }
+    return ReflectionUtils.newInstance(get.getClass(), get).setCheckExistenceOnly(true);
+  }
+
+  static List<Get> toCheckExistenceOnly(List<Get> gets) {
+    return gets.stream().map(ConnectionUtils::toCheckExistenceOnly).collect(toList());
+  }
+
+  static RegionLocateType getLocateType(Scan scan) {
+    if (scan.isReversed()) {
+      if (isEmptyStartRow(scan.getStartRow())) {
+        return RegionLocateType.BEFORE;
+      } else {
+        return scan.includeStartRow() ? RegionLocateType.CURRENT : RegionLocateType.BEFORE;
+      }
+    } else {
+      return scan.includeStartRow() ? RegionLocateType.CURRENT : RegionLocateType.AFTER;
+    }
+  }
+
+  // Add a delta to avoid timeout immediately after a retry sleeping.
+  static final long SLEEP_DELTA_NS = TimeUnit.MILLISECONDS.toNanos(1);
+
+  private static final String MY_ADDRESS = getMyAddress();
+
+  private static String getMyAddress() {
+    try {
+      return DNS.getDefaultHost("default", "default");
+    } catch (UnknownHostException uhe) {
+      LOG.error("cannot determine my address", uhe);
+      return null;
+    }
+  }
+
+  static boolean isRemote(String host) {
+    return !host.equalsIgnoreCase(MY_ADDRESS);
+  }
+
+  static void incRPCCallsMetrics(ScanMetrics scanMetrics, boolean isRegionServerRemote) {
+    if (scanMetrics == null) {
+      return;
+    }
+    scanMetrics.countOfRPCcalls.incrementAndGet();
+    if (isRegionServerRemote) {
+      scanMetrics.countOfRemoteRPCcalls.incrementAndGet();
+    }
+  }
+
+  static void incRPCRetriesMetrics(ScanMetrics scanMetrics, boolean isRegionServerRemote) {
+    if (scanMetrics == null) {
+      return;
+    }
+    scanMetrics.countOfRPCRetries.incrementAndGet();
+    if (isRegionServerRemote) {
+      scanMetrics.countOfRemoteRPCRetries.incrementAndGet();
+    }
+  }
+
+  static void updateResultsMetrics(ScanMetrics scanMetrics, Result[] rrs,
+      boolean isRegionServerRemote) {
+    if (scanMetrics == null || rrs == null || rrs.length == 0) {
+      return;
+    }
+    long resultSize = 0;
+    for (Result rr : rrs) {
+      for (Cell cell : rr.rawCells()) {
+        resultSize += CellUtil.estimatedSizeOf(cell);
+      }
+    }
+    scanMetrics.countOfBytesInResults.addAndGet(resultSize);
+    if (isRegionServerRemote) {
+      scanMetrics.countOfBytesInRemoteResults.addAndGet(resultSize);
+    }
+  }
+
+  static void incRegionCountMetrics(ScanMetrics scanMetrics) {
+    if (scanMetrics == null) {
+      return;
+    }
+    scanMetrics.countOfRegions.incrementAndGet();
   }
 }

@@ -96,6 +96,7 @@ public class Get extends Query
    * @param get
    */
   public Get(Get get) {
+    this(get.getRow());
     this.filter = get.getFilter();
     this.cacheBlocks = get.getCacheBlocks();
     this.maxVersions = get.getMaxVersions();
@@ -118,8 +119,9 @@ public class Get extends Query
     return checkExistenceOnly;
   }
 
-  public void setCheckExistenceOnly(boolean checkExistenceOnly) {
+  public Get setCheckExistenceOnly(boolean checkExistenceOnly) {
     this.checkExistenceOnly = checkExistenceOnly;
+    return this;
   }
 
   public boolean isClosestRowBefore() {

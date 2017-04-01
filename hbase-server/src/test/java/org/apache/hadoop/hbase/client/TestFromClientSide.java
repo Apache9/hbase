@@ -6768,5 +6768,9 @@ public class TestFromClientSide {
         }
       }
     }
+    @Override
+    public ScanMetrics getScanMetrics() {
+      return scanner.getScanMetrics();
+    }
   }
 }
