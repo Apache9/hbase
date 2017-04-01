@@ -490,6 +490,9 @@
           </dependencies>
           <!-- Generic testing configuration for all packages -->
           <configuration>
+            <excludes>
+              <exclude>**/TestTableLockManager.java</exclude>
+            </excludes>
             <failIfNoTests>false</failIfNoTests>
             <skip>${surefire.skipFirstPart}</skip>
             <forkCount>${surefire.firstPartForkCount}</forkCount>
