@@ -158,9 +158,8 @@ public class TestRegionServerMetrics {
       metricsHelper.assertCounter(prefix + "_mutateCount", 31, agg);
     }
 
-    // 0.98 specific; the loop above does reads. The 0.99 does not
     metricsRegionServer.getRegionServerWrapper().forceRecompute();
-    metricsHelper.assertCounter("totalRequestCount", requests + 40 + 3, serverSource);
+    metricsHelper.assertCounter("totalRequestCount", requests + 40 + 1, serverSource);
     metricsHelper.assertCounter("readRequestCount", readRequests + 10 + 1, serverSource);
     // end of 0.98 specific
 
@@ -171,7 +170,7 @@ public class TestRegionServerMetrics {
     table.get(gets);
 
     metricsRegionServer.getRegionServerWrapper().forceRecompute();
-    metricsHelper.assertCounter("totalRequestCount", requests + 50 + 3, serverSource);
+    metricsHelper.assertCounter("totalRequestCount", requests + 50 + 1, serverSource);
     metricsHelper.assertCounter("readRequestCount", readRequests + 20 + 1, serverSource);
     metricsHelper.assertCounter("writeRequestCount", writeRequests + 30, serverSource);
 
@@ -182,7 +181,7 @@ public class TestRegionServerMetrics {
     table.flushCommits();
 
     metricsRegionServer.getRegionServerWrapper().forceRecompute();
-    metricsHelper.assertCounter("totalRequestCount", requests + 80 + 3, serverSource);
+    metricsHelper.assertCounter("totalRequestCount", requests + 80 + 1, serverSource);
     metricsHelper.assertCounter("readRequestCount", readRequests + 20 + 1, serverSource);
     metricsHelper.assertCounter("writeRequestCount", writeRequests + 60, serverSource);
 
