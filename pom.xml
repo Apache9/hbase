@@ -498,6 +498,20 @@
               <exclude>**/TestOfflineMetaRebuildBase.java</exclude>
               <exclude>**/TestOfflineMetaRebuildHole.java</exclude>
               <exclude>**/TestSnapshotFileCache.java</exclude>
+              <exclude>**/TestMasterBalanceThrottling.java</exclude>
+              <exclude>**/TestMasterFailover.java</exclude>
+              <exclude>**/TestHBaseFsckEncryption.java</exclude>
+              <exclude>**/TestMiniClusterLoadSequential.java</exclude>
+              <exclude>**/TestMasterShutdown.java</exclude>
+              <exclude>**/TestZooKeeper.java</exclude>
+              <exclude>**/TestGlobalMemStoreSize.java</exclude>
+              <exclude>**/TestHFileOutputFormat2.java</exclude>
+              <exclude>**/TestSplitLogManager.java</exclude>
+              <exclude>**/TestZKInterProcessReadWriteLock.java</exclude>
+              <exclude>**/TestRollingRestart.java</exclude>
+              <exclude>**/TestHMasterRPCException.java</exclude>
+              <exclude>**/TestMiniClusterLoadParallel.java</exclude>
+              <exclude>**/TestClientPing.java</exclude>
             </excludes>
             <failIfNoTests>false</failIfNoTests>
             <skip>${surefire.skipFirstPart}</skip>
