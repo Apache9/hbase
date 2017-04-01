@@ -512,6 +512,18 @@
               <exclude>**/TestHMasterRPCException.java</exclude>
               <exclude>**/TestMiniClusterLoadParallel.java</exclude>
               <exclude>**/TestClientPing.java</exclude>
+              <exclude>**/TestOpenedRegionHandler.java</exclude>
+              <exclude>**/TestGetLastFlushedSequenceId.java</exclude>
+              <exclude>**/TestMasterNoCluster.java</exclude>
+              <exclude>**/TestRestartCluster.java</exclude>
+              <exclude>**/TestOfflineMetaRebuildOverlap.java</exclude>
+              <exclude>**/TestHBaseTestingUtility.java</exclude>
+              <exclude>**/TestDefaultLoadBalancer.java</exclude>
+              <exclude>**/TestHFileOutputFormat.java</exclude>
+              <exclude>**/TestCreateTableHandler.java</exclude>
+              <exclude>**/TestDistributedLogSplitting.java</exclude>
+              <exclude>**/TestConnectionCache.java</exclude>
+
             </excludes>
             <failIfNoTests>false</failIfNoTests>
             <skip>${surefire.skipFirstPart}</skip>
