@@ -29,6 +29,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -116,31 +117,24 @@ public class ReplicationAdmin implements Closeable {
    * @throws RuntimeException if replication isn't enabled.
    */
   public ReplicationAdmin(Configuration conf) throws IOException {
-    if (!conf.getBoolean(HConstants.REPLICATION_ENABLE_KEY,
-        HConstants.REPLICATION_ENABLE_DEFAULT)) {
-      throw new RuntimeException("hbase.replication isn't true, please " +
-          "enable it in order to use replication");
+    if (!conf.getBoolean(HConstants.REPLICATION_ENABLE_KEY, HConstants.REPLICATION_ENABLE_DEFAULT)) {
+      throw new RuntimeException("hbase.replication isn't true, please "
+          + "enable it in order to use replication");
     }
-    this.connection = HConnectionManager.getConnection(conf);
+    HConnection connection = null;
+    ZooKeeperWatcher zkw = null;
+    boolean succeed = false;
     try {
-      zkw = createZooKeeperWatcher();
-      try {
-        this.replicationQueuesClient =
-            ReplicationFactory.getReplicationQueuesClient(zkw, conf, this.connection);
-        this.replicationQueuesClient.init();
-        this.replicationPeers = ReplicationFactory.getReplicationPeers(zkw, conf,
-          replicationQueuesClient, this.connection);
-        this.replicationPeers.init();
-      } catch (Exception exception) {
-        if (zkw != null) {
-          zkw.close();
-        }
-        throw exception;
-      }
+      connection = HConnectionManager.getConnection(conf);
+      zkw = createZooKeeperWatcher(connection.getConfiguration());
+      this.replicationQueuesClient = ReplicationFactory.getReplicationQueuesClient(zkw, conf,
+        connection);
+      this.replicationQueuesClient.init();
+      this.replicationPeers = ReplicationFactory.getReplicationPeers(zkw, conf,
+        replicationQueuesClient, connection);
+      this.replicationPeers.init();
+      succeed = true;
     } catch (Exception exception) {
-      if (connection != null) {
-        connection.close();
-      }
       if (exception instanceof IOException) {
         throw (IOException) exception;
       } else if (exception instanceof RuntimeException) {
@@ -148,12 +142,19 @@ public class ReplicationAdmin implements Closeable {
       } else {
         throw new IOException("Error initializing the replication admin client.", exception);
       }
+    } finally {
+      if (!succeed) {
+        IOUtils.closeQuietly(zkw);
+        IOUtils.closeQuietly(connection);
+      }
     }
+    this.connection = connection;
+    this.zkw = zkw;
   }
 
-  private ZooKeeperWatcher createZooKeeperWatcher() throws IOException {
+  private ZooKeeperWatcher createZooKeeperWatcher(Configuration conf) throws IOException {
     // This Abortable doesn't 'abort'... it just logs.
-    return new ZooKeeperWatcher(connection.getConfiguration(), "ReplicationAdmin", new Abortable() {
+    return new ZooKeeperWatcher(conf, "ReplicationAdmin", new Abortable() {
       @Override
       public void abort(String why, Throwable e) {
         LOG.error(why, e);

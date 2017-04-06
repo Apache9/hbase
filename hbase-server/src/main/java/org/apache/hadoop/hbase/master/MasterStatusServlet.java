@@ -53,59 +53,49 @@ public class MasterStatusServlet extends HttpServlet {
 
   @Override
   public void doGet(HttpServletRequest request, HttpServletResponse response)
-    throws IOException
-  {
+    throws IOException {
     HMaster master = (HMaster) getServletContext().getAttribute(HMaster.MASTER);
     assert master != null : "No Master in context!";
 
     Configuration conf = master.getConfiguration();
-    HBaseAdmin admin = new HBaseAdmin(conf);
-
     Configuration repConf = new Configuration(conf);
     repConf.setInt(HConstants.ZK_RECOVERY_RETRY, 0);
-    ReplicationAdmin repAdmin = null;
-    try {
-      repAdmin = new ReplicationAdmin(repConf);
-    } catch (Exception e) {
-      LOG.warn("Failed to initialize replication admin", e);
-    }
 
-    Map<String, Integer> frags = getFragmentationInfo(master, conf);
-    ServerName metaLocation = null;
-    List<ServerName> servers = null;
-    Set<ServerName> deadServers = null;
-    
-    if(master.isActiveMaster()) {
-      if (master.getServerManager() == null) {
-        response.sendError(503, "Master not ready");
-        return;
+    try (HBaseAdmin admin = new HBaseAdmin(conf);
+        ReplicationAdmin repAdmin = new ReplicationAdmin(repConf)) {
+      Map<String, Integer> frags = getFragmentationInfo(master, conf);
+      ServerName metaLocation = null;
+      List<ServerName> servers = null;
+      Set<ServerName> deadServers = null;
+
+      if (master.isActiveMaster()) {
+        if (master.getServerManager() == null) {
+          response.sendError(503, "Master not ready");
+          return;
+        }
+        metaLocation = getMetaLocationOrNull(master);
+        servers = master.getServerManager().getOnlineServersList();
+        deadServers = master.getServerManager().getDeadServers().copyServerNames();
       }
-      metaLocation = getMetaLocationOrNull(master);
-      //ServerName metaLocation = master.getCatalogTracker().getMetaLocation();
-      servers = master.getServerManager().getOnlineServersList();
-      deadServers = master.getServerManager().getDeadServers().copyServerNames();
+
+      response.setContentType("text/html");
+      MasterStatusTmpl tmpl;
+      try {
+        tmpl = new MasterStatusTmpl()
+            .setFrags(frags)
+            .setMetaLocation(metaLocation)
+            .setServers(servers)
+            .setDeadServers(deadServers)
+            .setCatalogJanitorEnabled(
+              master.isCatalogJanitorEnabled(null,
+                RequestConverter.buildIsCatalogJanitorEnabledRequest()).getValue());
+      } catch (ServiceException s) {
+        throw new IOException(s);
+      }
+      if (request.getParameter("filter") != null) tmpl.setFilter(request.getParameter("filter"));
+      if (request.getParameter("format") != null) tmpl.setFormat(request.getParameter("format"));
+      tmpl.render(response.getWriter(), master, admin, repAdmin);
     }
-    
-    response.setContentType("text/html");
-    MasterStatusTmpl tmpl;
-    try {
-       tmpl = new MasterStatusTmpl()
-      .setFrags(frags)
-      .setMetaLocation(metaLocation)
-      .setServers(servers)
-      .setDeadServers(deadServers)
-      .setCatalogJanitorEnabled(master.isCatalogJanitorEnabled(null,
-          RequestConverter.buildIsCatalogJanitorEnabledRequest()).getValue());
-    } catch (ServiceException s) {
-      admin.close();
-      repAdmin.close();
-      throw new IOException(s);
-    }
-    if (request.getParameter("filter") != null)
-      tmpl.setFilter(request.getParameter("filter"));
-    if (request.getParameter("format") != null)
-      tmpl.setFormat(request.getParameter("format"));
-    tmpl.render(response.getWriter(), master, admin, repAdmin);
   }
 
   private ServerName getMetaLocationOrNull(HMaster master) {
