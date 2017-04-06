@@ -45,7 +45,6 @@ import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HConnection;
 import org.apache.hadoop.hbase.client.HConnectionManager;
 import org.apache.hadoop.hbase.client.HTable;
-import org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos;
 import org.apache.hadoop.hbase.replication.ReplicationException;
 import org.apache.hadoop.hbase.replication.ReplicationFactory;
 import org.apache.hadoop.hbase.replication.ReplicationPeer;
@@ -110,23 +109,37 @@ public class ReplicationAdmin implements Closeable {
    */
   private final ZooKeeperWatcher zkw;
 
+  private final boolean cleanupConnectionOnClose; // close the connection in close()
+
   /**
-   * Constructor that creates a connection to the local ZooKeeper ensemble.
+   * Constructor that creates a connection to the local ZooKeeper ensemble. This will close the
+   * connection and zkw when in close()
    * @param conf Configuration to use
    * @throws IOException if an internal replication error occurs
    * @throws RuntimeException if replication isn't enabled.
    */
   public ReplicationAdmin(Configuration conf) throws IOException {
+    this(HConnectionManager.getConnection(conf), conf, true);
+  }
+
+  /**
+   * Constructor that create the local ZooKeeperWatcher.
+   * @param connection
+   * @param conf Configuration to use
+   * @param cleanupConnectionOnClose true means close the connection in close()
+   * @throws IOException if an internal replication error occurs
+   */
+  public ReplicationAdmin(final HConnection connection, final Configuration conf,
+      final boolean cleanupConnectionOnClose)
+      throws IOException {
     if (!conf.getBoolean(HConstants.REPLICATION_ENABLE_KEY, HConstants.REPLICATION_ENABLE_DEFAULT)) {
       throw new RuntimeException("hbase.replication isn't true, please "
           + "enable it in order to use replication");
     }
-    HConnection connection = null;
     ZooKeeperWatcher zkw = null;
     boolean succeed = false;
     try {
-      connection = HConnectionManager.getConnection(conf);
-      zkw = createZooKeeperWatcher(connection.getConfiguration());
+      zkw = createZooKeeperWatcher(conf);
       this.replicationQueuesClient = ReplicationFactory.getReplicationQueuesClient(zkw, conf,
         connection);
       this.replicationQueuesClient.init();
@@ -145,11 +158,14 @@ public class ReplicationAdmin implements Closeable {
     } finally {
       if (!succeed) {
         IOUtils.closeQuietly(zkw);
-        IOUtils.closeQuietly(connection);
+        if (cleanupConnectionOnClose) {
+          IOUtils.closeQuietly(connection);
+        }
       }
     }
     this.connection = connection;
     this.zkw = zkw;
+    this.cleanupConnectionOnClose = cleanupConnectionOnClose;
   }
 
   private ZooKeeperWatcher createZooKeeperWatcher(Configuration conf) throws IOException {
@@ -374,11 +390,9 @@ public class ReplicationAdmin implements Closeable {
 
   @Override
   public void close() throws IOException {
-    if (this.zkw != null) {
-      this.zkw.close();
-    }
-    if (this.connection != null) {
-      this.connection.close();
+    IOUtils.closeQuietly(zkw);
+    if (cleanupConnectionOnClose) {
+      IOUtils.closeQuietly(connection);
     }
   }
 

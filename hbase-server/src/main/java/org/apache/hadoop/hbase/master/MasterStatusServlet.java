@@ -35,6 +35,8 @@ import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
+import org.apache.hadoop.hbase.client.HConnection;
+import org.apache.hadoop.hbase.client.HConnectionManager;
 import org.apache.hadoop.hbase.client.replication.ReplicationAdmin;
 import org.apache.hadoop.hbase.util.FSUtils;
 import org.apache.hadoop.hbase.protobuf.RequestConverter;
@@ -58,11 +60,12 @@ public class MasterStatusServlet extends HttpServlet {
     assert master != null : "No Master in context!";
 
     Configuration conf = master.getConfiguration();
+    HConnection connection = HConnectionManager.getConnection(conf);
     Configuration repConf = new Configuration(conf);
     repConf.setInt(HConstants.ZK_RECOVERY_RETRY, 0);
 
-    try (HBaseAdmin admin = new HBaseAdmin(conf);
-        ReplicationAdmin repAdmin = new ReplicationAdmin(repConf)) {
+    try (HBaseAdmin admin = new HBaseAdmin(connection);
+        ReplicationAdmin repAdmin = new ReplicationAdmin(connection, repConf, false)) {
       Map<String, Integer> frags = getFragmentationInfo(master, conf);
       ServerName metaLocation = null;
       List<ServerName> servers = null;
