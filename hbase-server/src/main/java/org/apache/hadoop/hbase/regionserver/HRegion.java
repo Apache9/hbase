@@ -5643,6 +5643,11 @@ public class HRegion implements HeapSize { // , Writable{
 
       long now = EnvironmentEdgeManager.currentTimeMillis();
       try {
+        if (processor.getConditions() != null && processor.getConditions().size() > 0) {
+          // wait for all prior MVCC transactions to finish - while we hold the row lock
+          // (so that we are guaranteed to see the latest state)
+          mvcc.completeMemstoreInsert(mvcc.beginMemstoreInsert());
+        }
         // 4. Let the processor scan the rows, generate mutations and add
         //    waledits
         doProcessRowWithTimeout(
