@@ -492,6 +492,7 @@
           <configuration>
             <excludes>
               <exclude>**/TestMiniClusterLoadEncoded.java</exclude>
+              <exclude>**/TestMiniClusterLoadParallel.java</exclude>
             </excludes>
             <failIfNoTests>false</failIfNoTests>
             <skip>${surefire.skipFirstPart}</skip>
