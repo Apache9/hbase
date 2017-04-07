@@ -964,6 +964,7 @@ public class HConnectionImplementation implements HConnection, Closeable {
         // from the HTable constructor.
         throw e;
       } catch (IOException e) {
+        lastCause = e;
         ExceptionUtil.rethrowIfInterrupt(e);
 
         if (e instanceof RemoteException) {
