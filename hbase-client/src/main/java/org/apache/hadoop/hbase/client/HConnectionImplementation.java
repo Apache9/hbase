@@ -282,43 +282,11 @@ public class HConnectionImplementation implements HConnection, Closeable {
    */
   HConnectionImplementation(Configuration conf, boolean managed, ExecutorService pool, User user)
       throws IOException {
-    this(conf);
+    this.conf = conf;
     this.user = user;
     this.batchPool = pool;
     this.managed = managed;
-    this.registry = setupRegistry();
-    retrieveClusterId();
 
-    this.rpcClient = RpcClientFactory.createClient(this.conf, this.clusterId);
-
-    // Do we publish the status?
-    boolean shouldListen =
-        conf.getBoolean(HConstants.STATUS_PUBLISHED, HConstants.STATUS_PUBLISHED_DEFAULT);
-    Class<? extends ClusterStatusListener.Listener> listenerClass = conf.getClass(
-      ClusterStatusListener.STATUS_LISTENER_CLASS,
-      ClusterStatusListener.DEFAULT_STATUS_LISTENER_CLASS, ClusterStatusListener.Listener.class);
-    if (shouldListen) {
-      if (listenerClass == null) {
-        LOG.warn(HConstants.STATUS_PUBLISHED + " is true, but "
-            + ClusterStatusListener.STATUS_LISTENER_CLASS + " is not set - not listening status");
-      } else {
-        clusterStatusListener =
-            new ClusterStatusListener(new ClusterStatusListener.DeadServerHandler() {
-              @Override
-              public void newDead(ServerName sn) {
-                clearCaches(sn);
-                rpcClient.cancelConnections(sn);
-              }
-            }, conf, listenerClass);
-      }
-    }
-  }
-
-  /**
-   * For tests.
-   */
-  protected HConnectionImplementation(Configuration conf) {
-    this.conf = conf;
     this.tableConfig = new TableConfiguration(conf);
     this.closed = false;
     this.pause = conf.getLong(HConstants.HBASE_CLIENT_PAUSE, HConstants.DEFAULT_HBASE_CLIENT_PAUSE);
@@ -347,6 +315,40 @@ public class HConnectionImplementation implements HConnection, Closeable {
     locateRegionExecutors = new ExecutorService[regionLocateMaxConcurrent];
     for (int i = 0; i < regionLocateMaxConcurrent; i++) {
       locateRegionExecutors[i] = Executors.newSingleThreadExecutor(locateRegionThreadFactory);
+    }
+
+    // Do we publish the status?
+    boolean shouldListen =
+        conf.getBoolean(HConstants.STATUS_PUBLISHED, HConstants.STATUS_PUBLISHED_DEFAULT);
+    Class<? extends ClusterStatusListener.Listener> listenerClass = conf.getClass(
+      ClusterStatusListener.STATUS_LISTENER_CLASS,
+      ClusterStatusListener.DEFAULT_STATUS_LISTENER_CLASS, ClusterStatusListener.Listener.class);
+
+    try {
+      this.registry = setupRegistry();
+      retrieveClusterId();
+      this.rpcClient = RpcClientFactory.createClient(this.conf, this.clusterId);
+      if (shouldListen) {
+        if (listenerClass == null) {
+          LOG.warn(HConstants.STATUS_PUBLISHED + " is true, but "
+              + ClusterStatusListener.STATUS_LISTENER_CLASS + " is not set - not listening status");
+        } else {
+          clusterStatusListener =
+              new ClusterStatusListener(new ClusterStatusListener.DeadServerHandler() {
+                @Override
+                public void newDead(ServerName sn) {
+                  clearCaches(sn);
+                  rpcClient.cancelConnections(sn);
+                }
+              }, conf, listenerClass);
+        }
+      }
+
+    } catch (Throwable e) {
+      // avoid leaks: registry, rpcClient, ...
+      LOG.debug("connection construction failed", e);
+      close();
+      throw e;
     }
   }
 
@@ -420,19 +422,6 @@ public class HConnectionImplementation implements HConnection, Closeable {
 
   protected ExecutorService getCurrentBatchPool() {
     return batchPool;
-  }
-
-  private void shutdownBatchPool() {
-    if (this.cleanupPool && this.batchPool != null && !this.batchPool.isShutdown()) {
-      this.batchPool.shutdown();
-      try {
-        if (!this.batchPool.awaitTermination(10, TimeUnit.SECONDS)) {
-          this.batchPool.shutdownNow();
-        }
-      } catch (InterruptedException e) {
-        this.batchPool.shutdownNow();
-      }
-    }
   }
 
   /**
@@ -2166,13 +2155,37 @@ public class HConnectionImplementation implements HConnection, Closeable {
     return refCount == 0;
   }
 
+  void shutdownExecutorService(ExecutorService service) {
+    if (service != null && !service.isShutdown()) {
+      service.shutdown();
+      try {
+        if (!service.awaitTermination(10, TimeUnit.SECONDS)) {
+          service.shutdownNow();
+        }
+      } catch (InterruptedException e) {
+        service.shutdownNow();
+      }
+    }
+  }
+
   void internalClose() {
     if (this.closed) {
       return;
     }
     delayedClosing.stop("Closing connection");
     closeMaster();
-    shutdownBatchPool();
+    // close batch pool
+    if (this.cleanupPool) {
+      shutdownExecutorService(this.batchPool);
+    }
+    // close locateMetaExecutor
+    shutdownExecutorService(this.locateMetaExecutor);
+    // close locateRegionExecutors
+    if (this.locateRegionExecutors != null) {
+      for (int i = 0; i < this.locateRegionExecutors.length; i++) {
+        shutdownExecutorService(this.locateRegionExecutors[i]);
+      }
+    }
     this.closed = true;
     closeZooKeeperWatcher();
     this.stubs.clear();

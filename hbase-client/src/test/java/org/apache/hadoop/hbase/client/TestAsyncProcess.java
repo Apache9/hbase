@@ -171,6 +171,33 @@ public class TestAsyncProcess {
    * Returns our async process.
    */
   static class MyConnectionImpl extends HConnectionImplementation {
+    public static class TestRegistry implements Registry {
+
+      @Override
+      public void init(HConnection connection) {
+      }
+
+      @Override
+      public HRegionLocation getMetaRegionLocation() throws IOException {
+        return null;
+      }
+
+      @Override
+      public String getClusterId() {
+        return "testClusterId";
+      }
+
+      @Override
+      public boolean isTableOnlineState(TableName tableName, boolean enabled) throws IOException {
+        return false;
+      }
+
+      @Override
+      public int getCurrentNrHRS() throws IOException {
+        return 1;
+      }
+    }
+
     MyAsyncProcess<?> ap;
     final AtomicInteger nbThreads = new AtomicInteger(0);
     final static Configuration c = new Configuration();
@@ -179,12 +206,17 @@ public class TestAsyncProcess {
       c.setInt(HConstants.HBASE_CLIENT_RETRIES_NUMBER, 2);
     }
 
-    protected MyConnectionImpl() {
-      super(c);
+    protected MyConnectionImpl() throws IOException {
+      this(c);
     }
 
-    protected MyConnectionImpl(Configuration conf) {
-      super(conf);
+    protected MyConnectionImpl(Configuration conf) throws IOException {
+      super(setupConf(conf), false);
+    }
+
+    private static Configuration setupConf(Configuration conf) {
+      conf.setClass("hbase.client.registry.impl", TestRegistry.class, Registry.class);
+      return conf;
     }
 
     @Override
@@ -207,7 +239,7 @@ public class TestAsyncProcess {
     List<HRegionLocation> hrl;
     final boolean usedRegions[];
 
-    protected MyConnectionImpl2(List<HRegionLocation> hrl) {
+    protected MyConnectionImpl2(List<HRegionLocation> hrl) throws IOException {
       super(c);
       this.hrl = hrl;
       this.usedRegions = new boolean[hrl.size()];
@@ -784,17 +816,17 @@ public class TestAsyncProcess {
     if (!success) {
       p = new Put(FAILS);
     } else switch (regCnt) {
-      case 1:
-        p = new Put(DUMMY_BYTES_1);
-        break;
-      case 2:
-        p = new Put(DUMMY_BYTES_2);
-        break;
-      case 3:
-        p = new Put(DUMMY_BYTES_3);
-        break;
-      default:
-        throw new IllegalArgumentException("unknown " + regCnt);
+    case 1:
+      p = new Put(DUMMY_BYTES_1);
+      break;
+    case 2:
+      p = new Put(DUMMY_BYTES_2);
+      break;
+    case 3:
+      p = new Put(DUMMY_BYTES_3);
+      break;
+    default:
+      throw new IllegalArgumentException("unknown " + regCnt);
     }
 
     p.add(DUMMY_BYTES_1, DUMMY_BYTES_1, DUMMY_BYTES_1);
