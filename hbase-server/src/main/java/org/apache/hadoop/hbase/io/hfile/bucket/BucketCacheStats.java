@@ -30,9 +30,13 @@ import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 @InterfaceAudience.Private
 public class BucketCacheStats extends CacheStats {
   private final AtomicLong ioHitCount = new AtomicLong(0);
+  private final AtomicLong ioMissCount = new AtomicLong(0);
   private final AtomicLong ioHitTime = new AtomicLong(0);
   private final static int nanoTime = 1000000;
-  private long lastLogTime = EnvironmentEdgeManager.currentTimeMillis();
+  private long lastLogHitTime = EnvironmentEdgeManager.currentTimeMillis();
+  private long lastLogMissTime = EnvironmentEdgeManager.currentTimeMillis();
+  private long lastLogHitCount = 0;
+  private long lastLogMissCount = 0;
 
   @Override
   public String toString() {
@@ -45,11 +49,26 @@ public class BucketCacheStats extends CacheStats {
     ioHitTime.addAndGet(time);
   }
 
+  public void ioMiss() {
+    ioMissCount.incrementAndGet();
+  }
+
   public long getIOHitsPerSecond() {
     long now = EnvironmentEdgeManager.currentTimeMillis();
-    long took = (now - lastLogTime) / 1000;
-    lastLogTime = now;
-    return took == 0? 0: ioHitCount.get() / took;
+    long took = (now - lastLogHitTime) / 1000;
+    lastLogHitTime = now;
+    long delta = ioHitCount.get() - lastLogHitCount;
+    lastLogHitCount = ioHitCount.get();
+    return took == 0? 0: delta / took;
+  }
+
+  public long getIOMissPerSecond() {
+    long now = EnvironmentEdgeManager.currentTimeMillis();
+    long took = (now - lastLogMissTime) / 1000;
+    lastLogMissTime = now;
+    long delta = ioMissCount.get() - lastLogMissCount;
+    lastLogMissCount = ioMissCount.get();
+    return took == 0? 0: delta / took;
   }
 
   public double getIOTimePerHit() {
@@ -61,5 +80,7 @@ public class BucketCacheStats extends CacheStats {
   public void reset() {
     ioHitCount.set(0);
     ioHitTime.set(0);
+    lastLogHitCount = 0;
+    lastLogMissCount = 0;
   }
 }

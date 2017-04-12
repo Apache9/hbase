@@ -451,6 +451,7 @@ public class BucketCache implements BlockCache, HeapSize {
     }
     if (!repeat && updateCacheMetrics) {
       cacheStats.miss(caching);
+      cacheStats.ioMiss();
     }
     return null;
   }

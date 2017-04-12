@@ -385,6 +385,11 @@ are combined counts. Request count is sum of hits and misses.</p>
         <td>Block gets against this cache per second</td>
     </tr>
     <tr>
+        <td>Misses per Second</td>
+        <td><% bucketCacheStats.getIOMissPerSecond() %></td>
+        <td>Block misses against this cache per second</td>
+    </tr>
+    <tr>
         <td>Time per Hit</td>
         <td><% bucketCacheStats.getIOTimePerHit() %></td>
         <td>Time per cache hit</td>
