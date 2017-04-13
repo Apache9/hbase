@@ -28,6 +28,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -404,18 +405,17 @@ public class StoreFile {
   }
 
   /**
-   * Opens reader on this store file.  Called by Constructor.
-   * @return Reader for the store file.
+   * Opens reader on this store file. Called by Constructor.
    * @throws IOException
    * @see #closeReader(boolean)
    */
-  private StoreFileReader open(boolean canUseDropBehind) throws IOException {
+  private void open() throws IOException {
     if (this.reader != null) {
       throw new IllegalAccessError("Already open");
     }
 
     // Open the StoreFile.Reader
-    this.reader = fileInfo.open(this.fs, this.cacheConf, canUseDropBehind);
+    this.reader = fileInfo.open(this.fs, this.cacheConf, false, 0L);
 
     // Load up indices and fileinfo. This also loads Bloom filter type.
     metadataMap = Collections.unmodifiableMap(this.reader.loadFileInfo());
@@ -513,7 +513,42 @@ public class StoreFile {
     firstKey = reader.getFirstKey();
     lastKey = reader.getLastKey();
     comparator = reader.getComparator();
-    return this.reader;
+  }
+
+  /**
+   * Initialize the reader used for pread.
+   */
+  public void initReader() throws IOException {
+    if (reader == null) {
+      try {
+        open();
+      } catch (Exception e) {
+        try {
+          boolean evictOnClose = cacheConf != null ? cacheConf.shouldEvictOnClose() : true;
+          this.closeReader(evictOnClose);
+        } catch (IOException ee) {
+          LOG.warn("failed to close reader", ee);
+        }
+        throw e;
+      }
+    }
+  }
+
+  public StoreFileReader createStreamReader(boolean canUseDropBehind) throws IOException {
+    StoreFileReader reader = fileInfo.open(this.fs, this.cacheConf, canUseDropBehind, -1L);
+    boolean succ = false;
+    try {
+      succ = true;
+    } finally {
+      if (!succ) {
+        try {
+          reader.close(false);
+        } catch (IOException ee) {
+          LOG.warn("failed to close reader", ee);
+        }
+      }
+    }
+    return reader;
   }
 
   public StoreFileReader createReader() throws IOException {
