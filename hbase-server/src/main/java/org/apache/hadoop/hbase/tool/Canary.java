@@ -169,8 +169,7 @@ public final class Canary implements Tool {
         }
         byte[] rowToCheck = Bytes.randomKey(region.getStartKey(), region.getEndKey());
         for (HColumnDescriptor column : tableDesc.getColumnFamilies()) {
-          Scan scan = new Scan(rowToCheck, rowToCheck);
-          scan.setRaw(true);
+          Scan scan = new Scan(region.getStartKey(), region.getEndKey());
           scan.setCaching(1);
           scan.setFilter(new FirstKeyOnlyFilter());
           scan.addFamily(column.getName());
@@ -181,6 +180,9 @@ public final class Canary implements Tool {
           boolean success = false;
           try {
             Result r = scanner.next();
+            if (r == null || r.isEmpty()) {
+              continue;
+            }
             rowToCheck = r.getRow();
             success = true;
           } catch (Exception e) {
@@ -656,7 +658,7 @@ public final class Canary implements Tool {
     conf.setInt("hbase.client.retries.number",
       conf.getInt("hbase.canary.client.retries.number", 2));
     conf.setInt(HConstants.HBASE_CLIENT_SCANNER_TIMEOUT_PERIOD,
-      conf.getInt("hbase.canary.client.scanner.timeout.period", 500));
+      conf.getInt("hbase.canary.client.scanner.timeout.period", 2000));
 
     int numThreads = conf.getInt("hbase.canary.threads.num", MAX_THREADS_NUM);
     ExecutorService executor = new ScheduledThreadPoolExecutor(numThreads);
