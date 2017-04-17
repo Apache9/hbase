@@ -633,7 +633,7 @@ public class TestAssignmentManager {
     }
 
     final ScanResponse.Builder builder = ScanResponse.newBuilder();
-    builder.setMoreResults(true);
+    builder.setMoreResults(false);
     builder.addCellsPerResult(r.size());
     final List<CellScannable> cellScannables = new ArrayList<CellScannable>(1);
     cellScannables.add(r);
@@ -1142,7 +1142,7 @@ public class TestAssignmentManager {
     // Get a meta row result that has region up on SERVERNAME_A for REGIONINFO
     Result r = MetaMockingUtil.getMetaTableRowResult(REGIONINFO, SERVERNAME_A);
     final ScanResponse.Builder builder = ScanResponse.newBuilder();
-    builder.setMoreResults(true);
+    builder.setMoreResults(false);
     builder.addCellsPerResult(r.size());
     final List<CellScannable> rows = new ArrayList<CellScannable>(1);
     rows.add(r);
