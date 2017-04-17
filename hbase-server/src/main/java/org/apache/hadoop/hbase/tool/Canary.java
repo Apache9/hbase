@@ -48,6 +48,7 @@ import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.TableNotFoundException;
+import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HConnection;
 import org.apache.hadoop.hbase.client.HConnectionManager;
@@ -177,15 +178,29 @@ public final class Canary implements Tool {
           scan.setIgnoreTtl(true);
           scan.setOneRowLimit();
           ResultScanner scanner = table.getScanner(scan);
+          boolean success = false;
           try {
-            long startTime = System.currentTimeMillis();
             Result r = scanner.next();
-            long time = System.currentTimeMillis() - startTime;
-            sink.publishReadTiming(region, column, time);
+            rowToCheck = r.getRow();
+            success = true;
           } catch (Exception e) {
             handleReadException(e, column);
           } finally {
             scanner.close();
+          }
+          if (success) {
+            Get get = new Get(rowToCheck);
+            get.addFamily(column.getName());
+            get.setCacheBlocks(false);
+            get.setFilter(new FirstKeyOnlyFilter());
+            try {
+              long startTime = System.currentTimeMillis();
+              Result r = table.get(get);
+              long time = System.currentTimeMillis() - startTime;
+              sink.publishReadTiming(region, column, time);
+            } catch (Exception e) {
+              handleReadException(e, column);
+            }
           }
         }
         table.close();
@@ -640,6 +655,8 @@ public final class Canary implements Tool {
       conf.getInt("hbase.canary.client.operation.timeout", 500));
     conf.setInt("hbase.client.retries.number",
       conf.getInt("hbase.canary.client.retries.number", 2));
+    conf.setInt(HConstants.HBASE_CLIENT_SCANNER_TIMEOUT_PERIOD,
+      conf.getInt("hbase.canary.client.scanner.timeout.period", 500));
 
     int numThreads = conf.getInt("hbase.canary.threads.num", MAX_THREADS_NUM);
     ExecutorService executor = new ScheduledThreadPoolExecutor(numThreads);
