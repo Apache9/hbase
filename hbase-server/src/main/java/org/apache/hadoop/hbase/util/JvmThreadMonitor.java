@@ -52,17 +52,17 @@ public class JvmThreadMonitor {
   /** dump thread info if we detect current threadWaiting value less than this threshold */
   private final int threadWaitingThresholdMin;
   private static final String THREAD_WAITING_THRESHOLD_KEY = "jvm.threadmonitor.waiting-threshold-min";
-  private static final int THREAD_WAITING_THRESHOLD_DEFAULT = 50;
+  private static final int THREAD_WAITING_THRESHOLD_DEFAULT = 0;
 
   /** dump thread info if we detect current threadBlocked value more than this threshold */
   private final int threadBlockedThresholdMax;
   private static final String THREAD_BLOCKED_THRESHOLD_KEY = "jvm.threadmonitor.blocked-threshold-max";
-  private static final int THREAD_BLOCKED_THRESHOLD_DEFAULT = 50;
+  private static final int THREAD_BLOCKED_THRESHOLD_DEFAULT = 1000;
 
   /** dump thread info if we detect current threadRunnable value more than this threshold */
   private final int threadRunnableThresholdMax;
   private static final String THREAD_RUNNABLE_THRESHOLD_KEY = "jvm.threadmonitor.runnable-threshold-max";
-  private static final int THREAD_RUNNABLE_THRESHOLD_DEFAULT = 50;
+  private static final int THREAD_RUNNABLE_THRESHOLD_DEFAULT = 10000;
 
   private Thread monitorThread;
   private volatile boolean shouldRun = true;
