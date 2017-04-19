@@ -61,6 +61,7 @@ import org.apache.hadoop.hbase.client.Durability;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HConnection;
+import org.apache.hadoop.hbase.client.HConnectionManager;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.client.Put;
@@ -2773,7 +2774,7 @@ public class HBaseTestingUtility extends HBaseCommonTestingUtility {
   }
 
   public void waitTableEnabled(HBaseAdmin admin, byte[] table, long timeoutMillis)
-  throws InterruptedException, IOException {
+      throws InterruptedException, IOException {
     long startWait = System.currentTimeMillis();
     waitTableAvailable(admin, table, timeoutMillis);
     while (!admin.isTableEnabled(table)) {
@@ -2785,12 +2786,21 @@ public class HBaseTestingUtility extends HBaseCommonTestingUtility {
     // Finally make sure all regions are fully open and online out on the cluster. Regions may be
     // in the hbase:meta table and almost open on all regionservers but there setting the region
     // online in the regionserver is the very last thing done and can take a little while to happen.
-    // Below we do a get.  The get will retry if a NotServeringRegionException or a
-    // RegionOpeningException.  It is crass but when done all will be online.
-    try {
-      Canary.sniff(admin, TableName.valueOf(table));
-    } catch (Exception e) {
-      throw new IOException(e);
+    // Below we do a get. The get will retry if a NotServeringRegionException or a
+    // RegionOpeningException. It is crass but when done all will be online.
+    try (HConnection conn = HConnectionManager.createConnection(getConfiguration());
+        HTableInterface htable = conn.getTable(table)) {
+      HTableDescriptor htd = htable.getTableDescriptor();
+      for (HRegionInfo info : admin.getTableRegions(table)) {
+        Scan scan = new Scan().withStartRow(info.getStartKey()).withStopRow(info.getEndKey())
+            .setOneRowLimit().setMaxResultsPerColumnFamily(1).setCacheBlocks(false);
+        for (byte[] family : htd.getFamiliesKeys()) {
+          scan.addFamily(family);
+        }
+        try (ResultScanner scanner = htable.getScanner(scan)) {
+          scanner.next();
+        }
+      }
     }
   }
 

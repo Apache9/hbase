@@ -19,24 +19,26 @@
 
 package org.apache.hadoop.hbase.tool;
 
-import com.xiaomi.infra.hbase.salted.SaltedHTable;
+import static org.apache.hadoop.hbase.HConstants.EMPTY_BYTE_ARRAY;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.Callable;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Future;
-import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
 
+import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.time.StopWatch;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -47,46 +49,46 @@ import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.TableNotEnabledException;
 import org.apache.hadoop.hbase.TableNotFoundException;
-import org.apache.hadoop.hbase.client.Get;
+import org.apache.hadoop.hbase.client.AsyncConnection;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HConnection;
 import org.apache.hadoop.hbase.client.HConnectionManager;
 import org.apache.hadoop.hbase.client.HTable;
-import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.client.MetaScanner;
 import org.apache.hadoop.hbase.client.MetaScanner.MetaScannerVisitor;
 import org.apache.hadoop.hbase.client.MetaScanner.MetaScannerVisitorBase;
 import org.apache.hadoop.hbase.client.Put;
+import org.apache.hadoop.hbase.client.RawAsyncTable;
 import org.apache.hadoop.hbase.client.Result;
-import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.filter.FirstKeyOnlyFilter;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.RegionSplitter;
-import org.apache.hadoop.hbase.util.Strings;
-import org.apache.hadoop.net.DNS;
 import org.apache.hadoop.util.ReflectionUtils;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 
 /**
- * HBase Canary Tool, that that can be used to do
- * "canary monitoring" of a running HBase cluster.
- *
- * For each region tries to get one row per column family
- * and outputs some information about failure or latency.
+ * HBase Canary Tool, that that can be used to do "canary monitoring" of a running HBase cluster.
+ * For each region tries to get one row per column family and outputs some information about failure
+ * or latency.
  */
 public final class Canary implements Tool {
   // Sink interface used by the canary to outputs information
   public interface Sink {
-    public void publishReadFailure(HRegionInfo region, Exception e);
-    public void publishReadFailure(HRegionInfo region, HColumnDescriptor column, Exception e);
+    public void publishReadFailure(HRegionInfo region, Throwable e);
+
+    public void publishReadFailure(HRegionInfo region, HColumnDescriptor column, Throwable e);
+
     public void publishReadTiming(HRegionInfo region, HColumnDescriptor column, long msTime);
 
-    public void publishWriteFailure(HRegionInfo region, Exception e);
-    public void publishWriteFailure(HRegionInfo region, HColumnDescriptor column, Exception e);
+    public void publishWriteFailure(HRegionInfo region, Throwable e);
+
+    public void publishWriteFailure(HRegionInfo region, HColumnDescriptor column, Throwable e);
+
     public void publishWriteTiming(HRegionInfo region, HColumnDescriptor column, long msTime);
 
     public void reportSummary();
@@ -96,28 +98,29 @@ public final class Canary implements Tool {
   // file or standard output timings or failures.
   public static class StdOutSink implements Sink {
     @Override
-    public void publishReadFailure(HRegionInfo region, Exception e) {
+    public void publishReadFailure(HRegionInfo region, Throwable e) {
       LOG.error(String.format("read from region %s failed", region.getRegionNameAsString()), e);
     }
 
     @Override
-    public void publishReadFailure(HRegionInfo region, HColumnDescriptor column, Exception e) {
+    public void publishReadFailure(HRegionInfo region, HColumnDescriptor column, Throwable e) {
       LOG.error(String.format("read from region %s column family %s failed",
-                region.getRegionNameAsString(), column.getNameAsString()), e);
+        region.getRegionNameAsString(), column.getNameAsString()), e);
     }
 
     @Override
     public void publishReadTiming(HRegionInfo region, HColumnDescriptor column, long msTime) {
       LOG.info(String.format("read from region %s column family %s in %dms",
-               region.getRegionNameAsString(), column.getNameAsString(), msTime));
+        region.getRegionNameAsString(), column.getNameAsString(), msTime));
     }
 
     @Override
-    public void publishWriteFailure(HRegionInfo region, Exception e) {
+    public void publishWriteFailure(HRegionInfo region, Throwable e) {
       LOG.error(String.format("write to region %s failed", region.getRegionNameAsString()), e);
     }
+
     @Override
-    public void publishWriteFailure(HRegionInfo region, HColumnDescriptor column, Exception e) {
+    public void publishWriteFailure(HRegionInfo region, HColumnDescriptor column, Throwable e) {
       LOG.error(String.format("write to region %s column family %s failed",
         region.getRegionNameAsString(), column.getNameAsString()), e);
     }
@@ -133,19 +136,28 @@ public final class Canary implements Tool {
     }
   }
 
+  private static byte[] randomKey(byte[] start, byte[] end) {
+    try {
+      return Bytes.randomKey(start, end);
+    } catch (IOException e) {
+      // should not happen
+      throw new UncheckedIOException(e);
+    }
+  }
+
   /**
    * Contact a region server and get all information from it
    */
-  static class RegionTask implements Callable<Void> {
-    private HConnection connection;
-    private HTableDescriptor tableDesc;
-    private HRegionInfo region;
-    private Sink sink;
-    private Canary canary;
+  static class RegionTask {
+    private final RawAsyncTable table;
+    private final HTableDescriptor tableDesc;
+    private final HRegionInfo region;
+    private final Sink sink;
+    private final Canary canary;
 
-    RegionTask(Configuration conf, HConnection connection, HTableDescriptor tableDesc,
+    RegionTask(Configuration conf, RawAsyncTable table, HTableDescriptor tableDesc,
         HRegionInfo region, Sink sink, Canary canary) {
-      this.connection = connection;
+      this.table = table;
       this.tableDesc = tableDesc;
       this.region = region;
       this.sink = sink;
@@ -156,90 +168,43 @@ public final class Canary implements Tool {
      * check read for normal user tables
      * @return
      */
-    private Void read() {
-      /*
-       * For each column family of the region tries to get one row
-       * and outputs the latency, or the failure.
-       */
-      HTableInterface table;
-      try {
-        table = this.connection.getTable(tableDesc.getName());
-        if (table instanceof SaltedHTable) {
-          table = ((SaltedHTable) table).getRawTable();
-        }
-        byte[] rowToCheck = Bytes.randomKey(region.getStartKey(), region.getEndKey());
-        for (HColumnDescriptor column : tableDesc.getColumnFamilies()) {
-          Scan scan = new Scan(region.getStartKey(), region.getEndKey());
-          scan.setCaching(1);
-          scan.setFilter(new FirstKeyOnlyFilter());
-          scan.addFamily(column.getName());
-          scan.setCacheBlocks(false);
-          scan.setIgnoreTtl(true);
-          scan.setOneRowLimit();
-          ResultScanner scanner = table.getScanner(scan);
-          boolean success = false;
-          try {
-            Result r = scanner.next();
-            if (r == null || r.isEmpty()) {
-              continue;
-            }
-            rowToCheck = r.getRow();
-            success = true;
-          } catch (Exception e) {
-            handleReadException(e, column);
-          } finally {
-            scanner.close();
-          }
-          if (success) {
-            Get get = new Get(rowToCheck);
-            get.addFamily(column.getName());
-            get.setCacheBlocks(false);
-            get.setFilter(new FirstKeyOnlyFilter());
-            try {
-              long startTime = System.currentTimeMillis();
-              Result r = table.get(get);
-              long time = System.currentTimeMillis() - startTime;
-              sink.publishReadTiming(region, column, time);
-            } catch (Exception e) {
-              handleReadException(e, column);
-            }
-          }
-        }
-        table.close();
-      } catch (IOException e) {
-        handleReadException(e, null);
-      }
-      return null;
+    private CompletableFuture<Void> read() {
+      List<CompletableFuture<?>> futures = new ArrayList<>();
+      tableDesc.getFamilies().forEach(column -> {
+        StopWatch watch = new StopWatch();
+        watch.start();
+        futures.add(
+          table.scanAll(new Scan().withStartRow(randomKey(region.getStartKey(), region.getEndKey()))
+              .withStopRow(region.getEndKey()).addFamily(column.getName())
+              .setFilter(new FirstKeyOnlyFilter()).setCacheBlocks(false).setIgnoreTtl(true)
+              .setOneRowLimit()).whenComplete((r, e) -> {
+                if (e != null) {
+                  handleReadException(e, column);
+                } else {
+                  watch.stop();
+                  sink.publishReadTiming(region, column, watch.getTime());
+                }
+              }));
+      });
+      return CompletableFuture.allOf(futures.toArray(new CompletableFuture<?>[0]));
     }
-    
-    // check whether the table is enabled by the exception message. The exception
-    // is RetriesExhaustedException, we need to judge from the its message
-    private boolean shouldCheckTable(String message) {
+
+    private void handleReadException(Throwable e, HColumnDescriptor column) {
+      // check whether the table is enabled by the exception message. The exception
+      // is RetriesExhaustedException, we need to judge from the its message
       // table deleted or disabled. galaxy(sds/emq) will run bvt all the time, and will
-      // create/delete table in bvt, this will make the region unavailable. 
-      return message.contains("TableNotFoundException") || message.contains("is disabled");
-    }
-    
-    private void handleReadException(Exception e, HColumnDescriptor column) {
-      try {
-        if (shouldCheckTable(e.getMessage())) {
-          // ignore the failure if the table not enabled
-          if (connection.isTableEnabled(tableDesc.getName())) {
-            clearCacheAndPublishReadFailure(column, e);
-          } else {
-            LOG.warn("read failure from disabled or deleted table, region="
-                + region.getEncodedName() + ", table=" + tableDesc.getNameAsString());
-          }
-        } else {
-          clearCacheAndPublishReadFailure(column, e);
-        }
-      } catch (IOException ex) {
-        LOG.warn("check table enabled failed in read task, will report read failure", e);
-        clearCacheAndPublishReadFailure(column, e);
+      // create/delete table in bvt, this will make the region unavailable.
+      if (e instanceof TableNotFoundException || e instanceof TableNotEnabledException ||
+          e.getMessage().contains("TableNotFoundException") ||
+          e.getMessage().contains("is disabled")) {
+        LOG.warn("read failure from disabled or deleted table, region=" + region.getEncodedName() +
+            ", table=" + tableDesc.getNameAsString());
+        return;
       }
+      clearCacheAndPublishReadFailure(column, e);
     }
-    
-    private void clearCacheAndPublishReadFailure(HColumnDescriptor column, Exception e) {
+
+    private void clearCacheAndPublishReadFailure(HColumnDescriptor column, Throwable e) {
       canary.clearCachedTasks(tableDesc.getNameAsString());
       if (column == null) {
         sink.publishReadFailure(region, e);
@@ -252,41 +217,33 @@ public final class Canary implements Tool {
      * Check writes for the canary table
      * @return
      */
-    private Void write() {
-      HTableInterface table;
-      try {
-        table = this.connection.getTable(tableDesc.getName());
-        if (table instanceof SaltedHTable) {
-          table = ((SaltedHTable) table).getRawTable();
-        }
-        byte[] rowToCheck = Bytes.randomKey(region.getStartKey(), region.getEndKey());
-        for (HColumnDescriptor column : tableDesc.getColumnFamilies()) {
-          Put put = new Put(rowToCheck);
-          put.add(column.getName(), HConstants.EMPTY_BYTE_ARRAY,
-            HConstants.EMPTY_BYTE_ARRAY);
-          try {
-            long startTime = System.currentTimeMillis();
-            table.put(put);
-            long time = System.currentTimeMillis() - startTime;
-            sink.publishWriteTiming(region, column, time);
-          } catch (Exception e) {
-            sink.publishWriteFailure(region, column, e);
-          }
-        }
-        table.close();
-      } catch (IOException e) {
-        sink.publishWriteFailure(region, e);
-      }
-      return null;
+    private CompletableFuture<Void> write() {
+      List<CompletableFuture<?>> futures = new ArrayList<>();
+      tableDesc.getFamilies().forEach(column -> {
+        StopWatch watch = new StopWatch();
+        watch.start();
+        futures
+            .add(table
+                .put(new Put(randomKey(region.getStartKey(), region.getEndKey()))
+                    .add(column.getName(), EMPTY_BYTE_ARRAY, EMPTY_BYTE_ARRAY))
+                .whenComplete((r, e) -> {
+                  if (e != null) {
+                    sink.publishWriteFailure(region, column, e);
+                  } else {
+                    watch.stop();
+                    sink.publishWriteTiming(region, column, watch.getTime());
+                  }
+                }));
+      });
+      return CompletableFuture.allOf(futures.toArray(new CompletableFuture<?>[0]));
     }
 
-    @Override
-    public Void call() {
-     if (tableDesc.getNameAsString().equals(CANARY_TABLE_NAME)) {
-       return write();
-     } else {
-       return read();
-     }
+    public CompletableFuture<Void> call() {
+      if (tableDesc.getNameAsString().equals(CANARY_TABLE_NAME)) {
+        return write();
+      } else {
+        return read();
+      }
     }
   }
 
@@ -294,7 +251,7 @@ public final class Canary implements Tool {
   private static final String CANARY_TABLE_FAMILY_NAME = "Test";
   private static int DEFAULT_REGIONS_PER_SERVER = 2;
 
-  private static final int MAX_THREADS_NUM = 16; // #threads to contact regions
+  private static final int DEFAULT_MAX_CONCURRENCY = 200;
 
   private static final long DEFAULT_INTERVAL = 6000;
 
@@ -302,41 +259,22 @@ public final class Canary implements Tool {
 
   private static final Log LOG = LogFactory.getLog(Canary.class);
 
-  private Configuration conf = null;
-  private HBaseAdmin admin = null;
-  private long interval = 0;
-  private long timeout = DEFAULT_TIMEOUT;
-  private ExecutorService executor; // threads to retrieve data from regionservers
-  private Sink sink = null;
-  private HConnection connection = null;
+  private final Sink sink;
+  private Configuration conf;
+  private HConnection conn;
+  private HBaseAdmin admin;
+  private AsyncConnection asyncConn;
+  private long interval;
+  private long timeout;
+  private int maxConcurrency;
   private List<RegionTask> tasks;
-  private Map<String, List<RegionTask>> cachedTasks;
+  private final ConcurrentMap<String, List<RegionTask>> cachedTasks =
+      new ConcurrentHashMap<String, List<RegionTask>>();
 
-  public Canary(ExecutorService executor, Sink sink) {
-    this.executor = executor;
+  public Canary(Sink sink) {
     this.sink = sink;
-    this.tasks = new LinkedList<RegionTask>();
-    this.cachedTasks = new ConcurrentHashMap<String, List<RegionTask>>();
   }
-  
-  public Canary(Configuration conf) throws Exception {
-    this.conf = conf;
-    this.admin = new HBaseAdmin(conf);
-    this.connection = HConnectionManager.createConnection(conf);
-    this.sink = new StdOutSink();
-    this.cachedTasks = new ConcurrentHashMap<String, List<RegionTask>>();
-  }
-  
-  public void close() throws Exception {
-    if (this.admin != null) {
-      this.admin.close();
-    }
-    
-    if (this.connection != null) {
-      this.connection.close();
-    }
-  }
-  
+
   @Override
   public Configuration getConf() {
     return conf;
@@ -347,16 +285,73 @@ public final class Canary implements Tool {
     this.conf = conf;
   }
 
+  private long lastCheckTime;
+
+  private void runOnce(List<String> tables) throws InterruptedException {
+    long startTime = EnvironmentEdgeManager.currentTimeMillis();
+
+    try {
+      tasks = getSniffTasks(tables);
+    } catch (Exception e) {
+      LOG.error("Update sniff tasks failed. Using previous sniffing tasks", e);
+    }
+    // clear cached tasks and check canary distribution for 10 minutes
+    if (EnvironmentEdgeManager.currentTimeMillis() - lastCheckTime > 10 * 60 * 1000) {
+      clearCachedTasks();
+      try {
+        checkCanaryDistribution();
+      } catch (Exception e) {
+        LOG.error("Check canary distribution failed.", e);
+      }
+      lastCheckTime = EnvironmentEdgeManager.currentTimeMillis();
+    }
+    List<CompletableFuture<?>> futures = new ArrayList<>();
+    List<RegionTask> tasksNotRun = new ArrayList<>();
+    Semaphore concurrencyControl = new Semaphore(maxConcurrency);
+    tasks.forEach(task -> {
+      // check whether we have already timed out
+      long remainingTime = timeout - (EnvironmentEdgeManager.currentTimeMillis() - startTime);
+      if (remainingTime <= 0) {
+        tasksNotRun.add(task);
+      }
+      try {
+        if (!concurrencyControl.tryAcquire(remainingTime, TimeUnit.MILLISECONDS)) {
+          tasksNotRun.add(task);
+          return;
+        }
+      } catch (InterruptedException e) {
+        tasksNotRun.add(task);
+        return;
+      }
+      futures.add(task.call().thenRun(() -> concurrencyControl.release()));
+    });
+    for (CompletableFuture<?> future : futures) {
+      try {
+        future.get();
+      } catch (Exception e) {
+        LOG.error("Sniff region failed", e);
+      }
+    }
+    sink.reportSummary();
+    long finishTime = EnvironmentEdgeManager.currentTimeMillis();
+    LOG.info("Finish one turn sniff, consume(ms)=" + (finishTime - startTime) + ", interval(ms)=" +
+        interval + ", timeout(ms)=" + timeout + ", taskCount=" + tasks.size() +
+        ", taskNotRunCount=" + tasksNotRun.size());
+    if (finishTime < startTime + interval) {
+      Thread.sleep(startTime + interval - finishTime);
+    }
+  }
+
   @Override
   public int run(String[] args) throws Exception {
-    int tables_index = -1;
+    int tablesIndex = -1;
 
     // Process command line args
     for (int i = 0; i < args.length; i++) {
       String cmd = args[i];
 
       if (cmd.startsWith("-")) {
-        if (tables_index >= 0) {
+        if (tablesIndex >= 0) {
           // command line args must be in the form: [opts] [table 1 [table 2 ...]]
           System.err.println("Invalid command line options");
           printUsageAndExit();
@@ -388,76 +383,41 @@ public final class Canary implements Tool {
           System.err.println(cmd + " options is invalid.");
           printUsageAndExit();
         }
-      } else if (tables_index < 0) {
+      } else if (tablesIndex < 0) {
         // keep track of first table name specified by the user
-        tables_index = i;
+        tablesIndex = i;
       }
     }
-    List<String> tables = new LinkedList<String>();
-    if (tables_index >= 0) {
-      for (int i = tables_index; i < args.length; i++) {
+    List<String> tables = new ArrayList<>();
+    if (tablesIndex >= 0) {
+      for (int i = tablesIndex; i < args.length; i++) {
         tables.add(args[i]);
       }
     }
 
     // initialize HBase conf and admin
-    if (conf == null) conf = HBaseConfiguration.create();
-    connection = HConnectionManager.createConnection(this.conf);
-    String hostname =
-        conf.get(
-          "hbase.canary.ipc.address",
-          Strings.domainNamePointerToHostName(DNS.getDefaultHost(
-            conf.get("hbase.regionserver.dns.interface", "default"),
-            conf.get("hbase.regionserver.dns.nameserver", "default"))));
-
-    this.timeout = conf.getLong("hbase.canary.executor.timeout", DEFAULT_TIMEOUT);
-
+    maxConcurrency = conf.getInt("hbase.canary.concurrency.max", DEFAULT_MAX_CONCURRENCY);
+    timeout = conf.getLong("hbase.canary.executor.timeout", DEFAULT_TIMEOUT);
+    conn = HConnectionManager.createConnection(conf);
+    admin = new HBaseAdmin(conn);
+    asyncConn = HConnectionManager.createAsyncConnection(conf).get();
+    lastCheckTime = EnvironmentEdgeManager.currentTimeMillis();
     // initialize server principal (if using secure Hadoop)
     // User.login(conf, "hbase.canary.keytab.file", "hbase.canary.kerberos.principal", hostname);
-
-    admin = new HBaseAdmin(connection);
     // lets the canary monitor the cluster
-    long lastCheckTime = -1;
-
-    do {
-      long startTime = System.currentTimeMillis();
-
-      try {
-        tasks = getSniffTasks(tables);
-      } catch (Exception e) {
-        LOG.error("Update sniff tasks failed. Using previous sniffing tasks", e);
-      }
-      // clear cached tasks and check canary distribution for 10 minutes
-      if (EnvironmentEdgeManager.currentTimeMillis() -lastCheckTime > 10 * 60 * 1000) {
-        clearCachedTasks();
-        try {
-          checkCanaryDistribution();
-        } catch (Exception e) {
-          LOG.error("Check canary distribution failed.", e);
-        }
-        lastCheckTime = EnvironmentEdgeManager.currentTimeMillis();
-      }
-      List<Future<Void>> taskFutures = this.executor.invokeAll(tasks, timeout,
-        TimeUnit.MILLISECONDS);
-      for (Future<Void> future : taskFutures) {
-        try {
-          future.get();
-        } catch (Exception e) {
-          LOG.error("Sniff region failed!", e);
+    try {
+      runOnce(tables);
+      if (interval > 0) {
+        for (;;) {
+          runOnce(tables);
         }
       }
-      sink.reportSummary();
-      long  finishTime = System.currentTimeMillis();
-      LOG.info("finish one turn sniff, consume(ms)=" + (finishTime - startTime) + ", interval(ms)="
-          + interval + ", timeout(ms)=" + timeout + ", taskCount=" + tasks.size());
-      if (finishTime < startTime + interval) {
-        Thread.sleep(startTime + interval - finishTime);
-      }
-    } while (interval > 0);
-
-    admin.close();
-    connection.close();
-    return(0);
+    } finally {
+      IOUtils.closeQuietly(asyncConn);
+      IOUtils.closeQuietly(admin);
+      IOUtils.closeQuietly(conn);
+    }
+    return 0;
   }
 
   /**
@@ -465,7 +425,7 @@ public final class Canary implements Tool {
    * @param tables
    */
   private List<RegionTask> getSniffTasks(List<String> tables) throws Exception {
-    List<RegionTask> tmpTasks = new LinkedList<RegionTask>();
+    List<RegionTask> tmpTasks = new ArrayList<>();
     if (tables.size() > 0) {
       for (String table : tables) {
         tmpTasks.addAll(sniff(table));
@@ -518,59 +478,33 @@ public final class Canary implements Tool {
   protected void clearCachedTasks(String tableName) {
     cachedTasks.remove(tableName);
   }
-  
+
   protected void clearCachedTasks() {
     cachedTasks.clear();
   }
-  
+
   /*
-   * Loops over regions that owns this table,
-   * and output some information abouts the state.
+   * Loops over regions that owns this table, and output some information abouts the state.
    */
   private List<RegionTask> sniff(HTableDescriptor tableDesc) throws Exception {
     List<RegionTask> tasks = cachedTasks.get(tableDesc.getNameAsString());
     if (tasks != null) {
       return tasks;
     }
-    
-    HTableInterface table = null;
-    try {
-      table = this.connection.getTable(tableDesc.getName());
-    } catch (TableNotFoundException e) {
-      return new ArrayList<RegionTask>();
-    }
-    tasks = new ArrayList<RegionTask>();
-    // MetaScanner.allTableRegions will scan meta table directly without create new catalog tracker
-    for (HRegionInfo region : MetaScanner.allTableRegions(conf, connection,
-      tableDesc.getTableName(), false).keySet()) {
-       tasks.add(new RegionTask(conf, connection, tableDesc, region, sink, this));
-    }
-    table.close();
+    RawAsyncTable table = asyncConn.getRawTable(tableDesc.getTableName());
+    tasks = admin.getTableRegions(tableDesc.getName()).stream()
+        .map(region -> new RegionTask(conf, table, tableDesc, region, sink, this))
+        .collect(Collectors.toList());
     cachedTasks.put(tableDesc.getNameAsString(), tasks);
-    LOG.info("get task from meta table, table=" + tableDesc.getNameAsString() + ", taskCount=" + tasks.size());
+    LOG.info("get task from meta table, table=" + tableDesc.getNameAsString() + ", taskCount=" +
+        tasks.size());
     return tasks;
   }
-  
-  public static void sniff(HBaseAdmin admin, TableName tableName) throws Exception {
-    Canary canary = null;
-    try {
-      canary = new Canary(admin.getConfiguration());
-      List<RegionTask> regionTasks = canary.sniff(tableName.getNameAsString());
-      for (RegionTask task : regionTasks) {
-        task.read();
-      }
-    } finally {
-      if (canary != null) {
-        canary.close();
-      }
-    }
-  }
-
 
   // return true if table region exist for in meta table; the logic is the same as
   // HBaseAdmin.tableExists, but won't create new zkw
-  protected boolean isTableExists(final byte[] tableName) throws IOException {
-    final AtomicBoolean exist = new AtomicBoolean(false);
+  private boolean isTableExists(byte[] tableName) throws IOException {
+    AtomicBoolean exist = new AtomicBoolean(false);
     MetaScannerVisitor visitor = new MetaScannerVisitorBase() {
       @Override
       public boolean processRow(Result row) throws IOException {
@@ -579,13 +513,13 @@ public final class Canary implements Tool {
         return false;
       }
     };
-    MetaScanner.metaScan(conf, connection, visitor, TableName.valueOf(tableName));
+    MetaScanner.metaScan(conf, conn, visitor, TableName.valueOf(tableName));
     return exist.get();
   }
-  
+
   // won't create new zkw
-  protected boolean isTableEnabled(byte[] table) throws IOException {
-    return isTableExists(table) && connection.isTableEnabled(table);
+  private boolean isTableEnabled(byte[] table) throws IOException {
+    return isTableExists(table) && admin.isTableEnabled(table);
   }
 
   private void checkCanaryDistribution() throws IOException {
@@ -622,27 +556,25 @@ public final class Canary implements Tool {
 
   private void createCanaryTable(int numberOfServers) throws IOException {
     int totalNumberOfRegions = numberOfServers * DEFAULT_REGIONS_PER_SERVER;
-    LOG.info("Number of live regionservers: " + numberOfServers + ", "
-        + "pre-splitting the canary table into " + totalNumberOfRegions
-        + " regions " + "(default regions per server: "
-        + DEFAULT_REGIONS_PER_SERVER + ")");
+    LOG.info("Number of live regionservers: " + numberOfServers + ", " +
+        "pre-splitting the canary table into " + totalNumberOfRegions + " regions " +
+        "(default regions per server: " + DEFAULT_REGIONS_PER_SERVER + ")");
 
-    HTableDescriptor desc = new HTableDescriptor(CANARY_TABLE_NAME);
+    HTableDescriptor desc = new HTableDescriptor(TableName.valueOf(CANARY_TABLE_NAME));
     HColumnDescriptor family = new HColumnDescriptor(CANARY_TABLE_FAMILY_NAME);
     family.setMaxVersions(1);
     // 1day
-    family.setTimeToLive(24 * 60 * 60 *1000);
+    family.setTimeToLive(24 * 60 * 60 * 1000);
 
     desc.addFamily(family);
-    byte[][] splits =
-        new RegionSplitter.HexStringSplit().split(totalNumberOfRegions);
+    byte[][] splits = new RegionSplitter.HexStringSplit().split(totalNumberOfRegions);
     admin.createTable(desc, splits);
   }
 
   public static void main(String[] args) {
     // TODO : In test, there are security-related errors if these properties are set.
-    //        As a temporary solution, set the properties before starting. Need to
-    //        find out the root cause in future.
+    // As a temporary solution, set the properties before starting. Need to
+    // find out the root cause in future.
     Configuration conf = HBaseConfiguration.create();
     System.setProperty("hadoop.property.hadoop.security.authentication", "kerberos");
     System.setProperty("hadoop.property.hadoop.client.keytab.file",
@@ -660,20 +592,15 @@ public final class Canary implements Tool {
     conf.setInt(HConstants.HBASE_CLIENT_SCANNER_TIMEOUT_PERIOD,
       conf.getInt("hbase.canary.client.scanner.timeout.period", 2000));
 
-    int numThreads = conf.getInt("hbase.canary.threads.num", MAX_THREADS_NUM);
-    ExecutorService executor = new ScheduledThreadPoolExecutor(numThreads);
-
-    Class<? extends Sink> sinkClass =
-        (Class<? extends Sink>) conf.getClass("hbase.canary.sink.class", StdOutSink.class);
-    Sink sink = ReflectionUtils.newInstance(sinkClass, conf);
-
     int exitCode = 0;
+    Class<? extends Sink> sinkClass =
+        conf.getClass("hbase.canary.sink.class", StdOutSink.class, Sink.class);
+    Sink sink = ReflectionUtils.newInstance(sinkClass, conf);
     try {
-      exitCode = ToolRunner.run(conf, new Canary(executor, sink), args);
+      exitCode = ToolRunner.run(conf, new Canary(sink), args);
     } catch (Exception e) {
       LOG.error("Canry tool exited with exception. ", e);
     }
-    executor.shutdown();
     System.exit(exitCode);
   }
 }

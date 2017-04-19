@@ -19,6 +19,9 @@
 
 package com.xiaomi.infra.hbase;
 
+import com.xiaomi.infra.base.nameservice.ClusterInfo;
+import com.xiaomi.infra.base.nameservice.ZkClusterInfo.ClusterType;
+
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -34,9 +37,6 @@ import org.apache.hadoop.hbase.tool.Canary.Sink;
 import org.codehaus.jettison.json.JSONArray;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
-
-import com.xiaomi.infra.base.nameservice.ClusterInfo;
-import com.xiaomi.infra.base.nameservice.ZkClusterInfo.ClusterType;
 
 public class FalconSink implements Sink, Configurable {
   private static final Log LOG = LogFactory.getLog(FalconSink.class);
@@ -55,14 +55,14 @@ public class FalconSink implements Sink, Configurable {
   }
 
   @Override
-  public void publishReadFailure(HRegionInfo region, Exception e) {
+  public void publishReadFailure(HRegionInfo region, Throwable e) {
     failedReadCounter.incrementAndGet();
     totalReadCounter.incrementAndGet();
     LOG.error(String.format("read from region %s failed", region.getRegionNameAsString()), e);
   }
 
   @Override
-  public void publishReadFailure(HRegionInfo region, HColumnDescriptor column, Exception e) {
+  public void publishReadFailure(HRegionInfo region, HColumnDescriptor column, Throwable e) {
     failedReadCounter.incrementAndGet();
     totalReadCounter.incrementAndGet();
     LOG.error(String.format("read from region %s column family %s failed",
@@ -79,7 +79,7 @@ public class FalconSink implements Sink, Configurable {
   }
 
   @Override
-  public void publishWriteFailure(HRegionInfo region, Exception e) {
+  public void publishWriteFailure(HRegionInfo region, Throwable e) {
     failedWriteCounter.incrementAndGet();
     totalWriteCounter.incrementAndGet();
     LOG.error(String.format("write to region %s failed", region.getRegionNameAsString()), e);
@@ -87,7 +87,7 @@ public class FalconSink implements Sink, Configurable {
 
   @Override
   public void publishWriteFailure(HRegionInfo region, HColumnDescriptor column,
-      Exception e) {
+      Throwable e) {
     failedWriteCounter.incrementAndGet();
     totalWriteCounter.incrementAndGet();
     LOG.error(String.format("write to region %s column family %s failed",

@@ -1029,7 +1029,7 @@
     <curator.version>2.11.0</curator.version>
     <!-- Plugin Dependencies -->
     <maven.assembly.version>2.4</maven.assembly.version>
-    <maven.antrun.version>1.6</maven.antrun.version>
+    <maven.antrun.version>1.8</maven.antrun.version>
     <jamon.plugin.version>2.3.4</jamon.plugin.version>
     <findbugs-maven-plugin.version>2.5.2</findbugs-maven-plugin.version>
     <findbugs-annotations>1.3.9-1</findbugs-annotations>
@@ -1074,7 +1074,7 @@
       "-Djava.library.path=${hadoop.library.path};${java.library.path}"
     </hbase-surefire.cygwin-argline>
     <hbase.skip-jacoco>true</hbase.skip-jacoco>
-    <jacoco.version>0.6.2.201302030002</jacoco.version>
+    <jacoco.version>0.7.5.201505241946</jacoco.version>
     <hadoop-security.version>1.0.1-jdk8</hadoop-security.version>
     <additionalparam>-Xdoclint:none</additionalparam>
   </properties>
