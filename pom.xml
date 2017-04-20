@@ -2172,8 +2172,8 @@
       <properties>
         <surefire.firstPartForkMode>once</surefire.firstPartForkMode>
         <surefire.firstPartParallel>none</surefire.firstPartParallel>
-        <surefire.firstPartThreadCount>1</surefire.firstPartThreadCount>
-        <surefire.secondPartThreadCount>5</surefire.secondPartThreadCount>
+        <surefire.firstPartThreadCount>5</surefire.firstPartThreadCount>
+        <surefire.secondPartThreadCount>10</surefire.secondPartThreadCount>
         <surefire.skipFirstPart>false</surefire.skipFirstPart>
         <surefire.skipSecondPart>false</surefire.skipSecondPart>
         <surefire.firstPartGroups>org.apache.hadoop.hbase.testclassification.SmallTests</surefire.firstPartGroups>
