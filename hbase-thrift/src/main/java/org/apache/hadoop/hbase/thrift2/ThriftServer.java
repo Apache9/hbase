@@ -52,7 +52,6 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.filter.ParseFilter;
 import org.apache.hadoop.hbase.security.SecurityUtil;
-import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.security.UserProvider;
 import org.apache.hadoop.hbase.thrift.CallQueue;
 import org.apache.hadoop.hbase.thrift.CallQueue.Call;
@@ -105,6 +104,10 @@ public class ThriftServer {
    */
   static final String THRIFT_QOP_KEY = "hbase.thrift.security.qop";
 
+  // How many worker threads to use.
+  public static final String THRIFT_MAX_WORKER_THREADS = "hbase.thrift.max.worker.threads";
+  public static final int DEFAULT_THRIFT_MAX_WORKER_THREADS = 512;
+
   public static final int DEFAULT_LISTEN_PORT = 9090;
 
   
@@ -127,6 +130,8 @@ public class ThriftServer {
     options.addOption("p", "port", true, "Port to bind to [default: " + DEFAULT_LISTEN_PORT + "]");
     options.addOption("f", "framed", false, "Use framed transport");
     options.addOption("c", "compact", false, "Use the compact protocol");
+    options.addOption("w", "workers", true,
+      "How many worker threads to use. [default: " + DEFAULT_THRIFT_MAX_WORKER_THREADS + "]");
     options.addOption("h", "help", false, "Print help information");
     options.addOption(null, "infoport", true, "Port for web UI");
 
@@ -231,15 +236,16 @@ public class ThriftServer {
     return new TNonblockingServer(serverArgs);
   }
 
-  private static TServer getTHsHaServer(TProtocolFactory protocolFactory,
-      TProcessor processor, TTransportFactory transportFactory,
-      InetSocketAddress inetSocketAddress, ThriftMetrics metrics)
-      throws TTransportException {
+  private static TServer getTHsHaServer(TProtocolFactory protocolFactory, TProcessor processor,
+      TTransportFactory transportFactory, int workerThreads, InetSocketAddress inetSocketAddress,
+      ThriftMetrics metrics) throws TTransportException {
     TNonblockingServerTransport serverTransport = new TNonblockingServerSocket(inetSocketAddress);
     log.info("starting HBase HsHA Thrift server on " + inetSocketAddress.toString());
     THsHaServer.Args serverArgs = new THsHaServer.Args(serverTransport);
-    ExecutorService executorService = createExecutor(
-        serverArgs.getWorkerThreads(), metrics);
+    if (workerThreads > 0) {
+      serverArgs.workerThreads(workerThreads);
+    }
+    ExecutorService executorService = createExecutor(serverArgs.getWorkerThreads(), metrics);
     serverArgs.executorService(executorService);
     serverArgs.processor(processor);
     serverArgs.transportFactory(transportFactory);
@@ -258,14 +264,18 @@ public class ThriftServer {
             Long.MAX_VALUE, TimeUnit.SECONDS, callQueue, tfb.build());
   }
 
-  private static TServer getTThreadPoolServer(TProtocolFactory protocolFactory, TProcessor processor,
-      TTransportFactory transportFactory, InetSocketAddress inetSocketAddress) throws TTransportException {
+  private static TServer getTThreadPoolServer(TProtocolFactory protocolFactory,
+      TProcessor processor, TTransportFactory transportFactory, int wokerThreads,
+      InetSocketAddress inetSocketAddress) throws TTransportException {
     TServerTransport serverTransport = new TServerSocket(inetSocketAddress);
     log.info("starting HBase ThreadPool Thrift server on " + inetSocketAddress.toString());
     TThreadPoolServer.Args serverArgs = new TThreadPoolServer.Args(serverTransport);
     serverArgs.processor(processor);
     serverArgs.transportFactory(transportFactory);
     serverArgs.protocolFactory(protocolFactory);
+    if (wokerThreads > 0) {
+      serverArgs.maxWorkerThreads(wokerThreads);
+    }
     return new TThreadPoolServer(serverArgs);
   }
 
@@ -298,6 +308,7 @@ public class ThriftServer {
     Options options = getOptions();
     Configuration conf = HBaseConfiguration.create();
     CommandLine cmd = parseArguments(conf, options, args);
+    int workerThreads = conf.getInt(THRIFT_MAX_WORKER_THREADS, DEFAULT_THRIFT_MAX_WORKER_THREADS);
 
     /**
      * This is to please both bin/hbase and bin/hbase-daemon. hbase-daemon provides "start" and "stop" arguments hbase
@@ -329,6 +340,16 @@ public class ThriftServer {
     } catch (NumberFormatException e) {
       throw new RuntimeException("Could not parse the value provided for the port option", e);
     }
+
+    // Get worker threads
+    try {
+      if (cmd.hasOption("w")) {
+        workerThreads = Integer.parseInt(cmd.getOptionValue("w"));
+      }
+    } catch (NumberFormatException e) {
+      throw new RuntimeException("Could not parse the value provided for the w option", e);
+    }
+
 
     // Local hostname and user name,
     // used only if QOP is configured.
@@ -438,11 +459,23 @@ public class ThriftServer {
     }
 
     if (nonblocking) {
-      server = getTNonBlockingServer(protocolFactory, processor, transportFactory, inetSocketAddress);
+      server = getTNonBlockingServer(protocolFactory,
+              processor,
+              transportFactory,
+              inetSocketAddress);
     } else if (hsha) {
-      server = getTHsHaServer(protocolFactory, processor, transportFactory, inetSocketAddress, metrics);
+      server = getTHsHaServer(protocolFactory,
+              processor,
+              transportFactory,
+              workerThreads,
+              inetSocketAddress,
+              metrics);
     } else {
-      server = getTThreadPoolServer(protocolFactory, processor, transportFactory, inetSocketAddress);
+      server = getTThreadPoolServer(protocolFactory,
+              processor,
+              transportFactory,
+              workerThreads,
+              inetSocketAddress);
     }
 
     final TServer tserver = server;
