@@ -39,8 +39,6 @@ import org.apache.hadoop.hbase.protobuf.generated.TracingProtos.RPCTInfo;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.ipc.RemoteException;
-import org.apache.htrace.Span;
-import org.apache.htrace.Trace;
 
 /**
  * Utility to help ipc'ing.
@@ -51,10 +49,9 @@ class IPCUtil {
   static RequestHeader buildRequestHeader(Call call, CellBlockMeta cellBlockMeta) {
     RequestHeader.Builder builder = RequestHeader.newBuilder();
     builder.setCallId(call.id);
-    if (Trace.isTracing()) {
-      Span s = Trace.currentSpan();
-      builder.setTraceInfo(
-        RPCTInfo.newBuilder().setParentId(s.getSpanId()).setTraceId(s.getTraceId()));
+    if (call.span != null) {
+      builder.setTraceInfo(RPCTInfo.newBuilder().setParentId(call.span.getSpanId())
+          .setTraceId(call.span.getTraceId()));
     }
     builder.setMethodName(call.md.getName());
     builder.setRequestParam(call.param != null);

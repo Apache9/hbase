@@ -29,6 +29,8 @@ import org.apache.hadoop.hbase.CellScanner;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
+import org.apache.htrace.Span;
+import org.apache.htrace.Trace;
 
 /** A call waiting for a value. */
 @InterfaceAudience.Private
@@ -50,6 +52,7 @@ class Call {
   final int timeout;
   final int priority;
   final RpcCallback<Call> callback;
+  final Span span;
   Timeout timeoutTask;
 
   public Call(int id, final MethodDescriptor md, Message param, final CellScanner cells,
@@ -63,6 +66,7 @@ class Call {
     this.timeout = timeout;
     this.priority = priority;
     this.callback = callback;
+    this.span = Trace.currentSpan();
   }
 
   @Override

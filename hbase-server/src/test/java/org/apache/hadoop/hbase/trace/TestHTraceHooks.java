@@ -17,31 +17,26 @@
  */
 package org.apache.hadoop.hbase.trace;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.Collection;
 
 import org.apache.hadoop.hbase.HBaseTestingUtility;
-import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.apache.hadoop.hbase.Waiter;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Put;
+import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.apache.htrace.Sampler;
 import org.apache.htrace.Span;
 import org.apache.htrace.Trace;
 import org.apache.htrace.TraceScope;
 import org.apache.htrace.TraceTree;
 import org.apache.htrace.impl.POJOSpanReceiver;
-
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-import org.mortbay.log.Log;
-
-import com.google.common.collect.Multimap;
 
 @Category(MediumTests.class)
 public class TestHTraceHooks {
@@ -69,7 +64,6 @@ public class TestHTraceHooks {
     TraceScope tableCreationSpan = Trace.startSpan("creating table", Sampler.ALWAYS);
     HTable table; 
     try {
-
       table = TEST_UTIL.createTable("table".getBytes(),
         FAMILY_BYTES);
     } finally {
