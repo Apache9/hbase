@@ -76,7 +76,7 @@ public class VerifyReplication extends Configured implements Tool {
   public final static String NAME = "verifyrep";
   static long startTime = 0;
   static long endTime = Long.MAX_VALUE;
-  static int versions = -1;
+  static int versions = Integer.MAX_VALUE;
   static String tableName = null;
   static String families = null;
   static String peerId = null;
@@ -96,6 +96,7 @@ public class VerifyReplication extends Configured implements Tool {
       GOODROWS, BADROWS, ONLY_IN_SOURCE_TABLE_ROWS, ONLY_IN_PEER_TABLE_ROWS, CONTENT_DIFFERENT_ROWS}
 
     private ResultScanner replicatedScanner;
+    private Scan scan;
     private Result currentCompareRowInPeerTable;
     private long st = 0;
     private int scanRateLimit = -1;
@@ -128,7 +129,7 @@ public class VerifyReplication extends Configured implements Tool {
         throws IOException {
       if (replicatedScanner == null) {
         Configuration conf = context.getConfiguration();
-        final Scan scan = new Scan();
+        scan = new Scan();
         scan.setCaching(conf.getInt(TableInputFormat.SCAN_CACHEDROWS, 1));
         long startTime = conf.getLong(NAME + ".startTime", 0);
         long endTime = conf.getLong(NAME + ".endTime", Long.MAX_VALUE);
@@ -141,9 +142,7 @@ public class VerifyReplication extends Configured implements Tool {
           }
         }
         scan.setTimeRange(startTime, endTime);
-        if (versions >= 0) {
-          scan.setMaxVersions(versions);
-        }
+        scan.setMaxVersions(versions);
         if (verifyRows != Long.MAX_VALUE) {
           scan.setFilter(new PageFilter(verifyRows));
         }
@@ -198,13 +197,25 @@ public class VerifyReplication extends Configured implements Tool {
       TableMapReduceUtil.limitScanRate(scanRateLimit, rowdone,
         EnvironmentEdgeManager.currentTimeMillis() - st);
     }
+
+    private Get constructGetFromScan(byte[] row) throws IOException {
+      Get get = new Get(row);
+      get.setTimeRange(scan.getTimeRange().getMin(), scan.getTimeRange().getMax())
+          .setFilter(scan.getFilter()).setMaxVersions(scan.getMaxVersions());
+      if (scan.hasFamilies()) {
+        for (byte[] family : scan.getFamilyMap().keySet()) {
+          get.addFamily(family);
+        }
+      }
+      return get;
+    }
     
     private void logFailRowAndIncreaseCounter(Context context, Counters counter, Result row)
         throws IOException {
       if (sleepToReCompare > 0) {
         Threads.sleep(sleepToReCompare);
-        Result sourceResult = sourceTable.get(new Get(row.getRow()));
-        Result peerResult = peerTable.get(new Get(row.getRow()));
+        Result sourceResult = sourceTable.get(constructGetFromScan(row.getRow()));
+        Result peerResult = peerTable.get(constructGetFromScan(row.getRow()));
         try {
           // online replication is eventually consistency, need recompare
           Result.compareResults(sourceResult, peerResult);
@@ -321,9 +332,7 @@ public class VerifyReplication extends Configured implements Tool {
 
     Scan scan = new Scan();
     scan.setTimeRange(startTime, endTime);
-    if (versions >= 0) {
-      scan.setMaxVersions(versions);
-    }
+    scan.setMaxVersions(versions);
     if(families != null) {
       String[] fams = families.split(",");
       for(String fam : fams) {
