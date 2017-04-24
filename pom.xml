@@ -1055,7 +1055,7 @@
     <surefire.skipFirstPart>false</surefire.skipFirstPart>
     <surefire.skipSecondPart>false</surefire.skipSecondPart>
     <surefire.firstPartForkCount>1</surefire.firstPartForkCount>
-    <surefire.secondPartForkCount>2</surefire.secondPartForkCount>
+    <surefire.secondPartForkCount>5</surefire.secondPartForkCount>
     <surefire.firstPartGroups>org.apache.hadoop.hbase.testclassification.SmallTests</surefire.firstPartGroups>
     <surefire.secondPartGroups>org.apache.hadoop.hbase.testclassification.MediumTests</surefire.secondPartGroups>
     <surefire.testFailureIgnore>false</surefire.testFailureIgnore>
