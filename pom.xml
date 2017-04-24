@@ -1054,8 +1054,8 @@
     <!-- default: run small & medium, medium with 2 threads -->
     <surefire.skipFirstPart>false</surefire.skipFirstPart>
     <surefire.skipSecondPart>false</surefire.skipSecondPart>
-    <surefire.firstPartForkCount>1</surefire.firstPartForkCount>
-    <surefire.secondPartForkCount>5</surefire.secondPartForkCount>
+    <surefire.firstPartForkCount>5</surefire.firstPartForkCount>
+    <surefire.secondPartForkCount>10</surefire.secondPartForkCount>
     <surefire.firstPartGroups>org.apache.hadoop.hbase.testclassification.SmallTests</surefire.firstPartGroups>
     <surefire.secondPartGroups>org.apache.hadoop.hbase.testclassification.MediumTests</surefire.secondPartGroups>
     <surefire.testFailureIgnore>false</surefire.testFailureIgnore>
