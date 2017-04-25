@@ -303,7 +303,7 @@ public class TestTableLockManager {
     //now reap all table locks
     lockManager.reapWriteLocks();
 
-    TEST_UTIL.getConfiguration().setInt(TableLockManager.TABLE_WRITE_LOCK_TIMEOUT_MS, -1);
+    TEST_UTIL.getConfiguration().setInt(TableLockManager.TABLE_WRITE_LOCK_TIMEOUT_MS, 0);
     TableLockManager zeroTimeoutLockManager = TableLockManager.createTableLockManager(
           TEST_UTIL.getConfiguration(), TEST_UTIL.getZooKeeperWatcher(), serverName);
 
