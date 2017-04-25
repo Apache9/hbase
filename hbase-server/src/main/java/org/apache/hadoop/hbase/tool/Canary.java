@@ -173,18 +173,18 @@ public final class Canary implements Tool {
       tableDesc.getFamilies().forEach(column -> {
         StopWatch watch = new StopWatch();
         watch.start();
-        futures.add(
-          table.scanAll(new Scan().withStartRow(randomKey(region.getStartKey(), region.getEndKey()))
-              .withStopRow(region.getEndKey()).addFamily(column.getName())
-              .setFilter(new FirstKeyOnlyFilter()).setCacheBlocks(false).setIgnoreTtl(true)
-              .setOneRowLimit()).whenComplete((r, e) -> {
-                if (e != null) {
-                  handleReadException(e, column);
-                } else {
-                  watch.stop();
-                  sink.publishReadTiming(region, column, watch.getTime());
-                }
-              }));
+        futures.add(table
+            .scanAll(new Scan().withStartRow(randomKey(region.getStartKey(), region.getEndKey()))
+                .withStopRow(region.getEndKey()).addFamily(column.getName())
+                .setFilter(new FirstKeyOnlyFilter()).setCacheBlocks(false).setOneRowLimit())
+            .whenComplete((r, e) -> {
+              if (e != null) {
+                handleReadException(e, column);
+              } else {
+                watch.stop();
+                sink.publishReadTiming(region, column, watch.getTime());
+              }
+            }));
       });
       return CompletableFuture.allOf(futures.toArray(new CompletableFuture<?>[0]));
     }

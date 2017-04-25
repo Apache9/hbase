@@ -30,9 +30,9 @@ import java.util.TreeSet;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.classification.InterfaceStability;
-import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.filter.IncompatibleFilterException;
 import org.apache.hadoop.hbase.io.TimeRange;
@@ -87,7 +87,6 @@ public class Scan extends Query {
   private static final Log LOG = LogFactory.getLog(Scan.class);
 
   private static final String RAW_ATTR = "_raw_";
-  private static final String IGNORETTL_ATTR = "_ignorettl_";
   private static final String DEBUG_ATTR = "_debug_";
   
   /**
@@ -109,7 +108,6 @@ public class Scan extends Query {
    */
   @Deprecated
   public static final String HINT_LOOKAHEAD = "_look_ahead_";
-  private static final String RAWLIMIT_ATTR = "_rawlimit_";
 
   private byte[] startRow = HConstants.EMPTY_START_ROW;
   private boolean includeStartRow = true;
@@ -1019,27 +1017,6 @@ public class Scan extends Query {
   @Deprecated
   public boolean isSmall() {
     return small;
-  }
-
-  /**
-   * Enable/disable "ignorettl" mode for this scan.
-   * If "ignorettl" is enabled the scan will return all
-   * KVs that even the timestamp reached the ttl limit
-   * This is mostly useful for scan on column families
-   * that have lots of out-date kvs and prefer to not "timeout":)
-   * @param ignoreTtl True/False to enable/disable "ignorettl" mode.
-   */
-  public Scan setIgnoreTtl(boolean ignoreTtl) {
-    setAttribute(IGNORETTL_ATTR, Bytes.toBytes(ignoreTtl));
-    return this;
-  }
-
-  /**
-   * @return True if this Scan is in "ignorettl" mode.
-   */
-  public boolean isIgnoreTtl() {
-    byte[] attr = getAttribute(IGNORETTL_ATTR);
-    return attr == null ? false : Bytes.toBoolean(attr);
   }
 
   public double getMaxCompleteRowHeapRatio() {

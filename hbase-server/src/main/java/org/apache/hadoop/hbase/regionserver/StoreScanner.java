@@ -19,8 +19,6 @@
 
 package org.apache.hadoop.hbase.regionserver;
 
-import com.google.common.annotations.VisibleForTesting;
-
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.util.ArrayList;
@@ -32,7 +30,6 @@ import java.util.concurrent.locks.ReentrantLock;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellUtil;
 import org.apache.hadoop.hbase.DoNotRetryIOException;
@@ -40,6 +37,7 @@ import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.KeyValue.KVComparator;
 import org.apache.hadoop.hbase.KeyValueUtil;
+import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.client.IsolationLevel;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.executor.ExecutorService;
@@ -47,12 +45,12 @@ import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.regionserver.ScannerContext.LimitScope;
 import org.apache.hadoop.hbase.regionserver.ScannerContext.NextState;
 import org.apache.hadoop.hbase.regionserver.handler.ParallelSeekHandler;
-import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.regionserver.querymatcher.CompactionScanQueryMatcher;
 import org.apache.hadoop.hbase.regionserver.querymatcher.LegacyScanQueryMatcher;
 import org.apache.hadoop.hbase.regionserver.querymatcher.ScanQueryMatcher;
 import org.apache.hadoop.hbase.regionserver.querymatcher.ScanQueryMatcher.MatchCode;
 import org.apache.hadoop.hbase.regionserver.querymatcher.UserScanQueryMatcher;
+import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 
 /**
@@ -152,7 +150,7 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
     this.scan = scan;
     this.columns = columns;
     this.now = EnvironmentEdgeManager.currentTimeMillis();
-    this.oldestUnexpiredTS = now - ttl;
+    this.oldestUnexpiredTS = scan.isRaw() ? 0L : now - ttl;
     this.minVersions = minVersions;
 
     if (store != null && ((HStore) store).getHRegion() != null
