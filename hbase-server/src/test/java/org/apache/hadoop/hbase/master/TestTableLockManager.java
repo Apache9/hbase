@@ -61,6 +61,7 @@ import org.apache.hadoop.hbase.util.Threads;
 import org.apache.hadoop.hbase.zookeeper.ZKUtil;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
 import org.junit.After;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
@@ -267,6 +268,7 @@ public class TestTableLockManager {
 
 
   @Test(timeout = 600000)
+  @Ignore
   public void testReapAllTableLocks() throws Exception {
     prepareMiniZkCluster();
     ServerName serverName = ServerName.valueOf("localhost:10000", 0);
