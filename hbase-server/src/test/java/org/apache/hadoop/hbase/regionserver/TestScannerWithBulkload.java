@@ -21,6 +21,8 @@ import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -48,6 +50,7 @@ import org.junit.experimental.categories.Category;
 
 @Category(MediumTests.class)
 public class TestScannerWithBulkload {
+  private final static Log LOG = LogFactory.getLog(TestScannerWithBulkload.class);
   private final static HBaseTestingUtility TEST_UTIL = new HBaseTestingUtility();
 
   @BeforeClass
@@ -77,7 +80,9 @@ public class TestScannerWithBulkload {
     Configuration conf = TEST_UTIL.getConfiguration();
     conf.setBoolean("hbase.mapreduce.bulkload.assign.sequenceNumbers", true);
     final LoadIncrementalHFiles bulkload = new LoadIncrementalHFiles(conf);
+    LOG.info("before bulk load");
     bulkload.doBulkLoad(hfilePath, table);
+    LOG.info("after bulk load");
     ResultScanner scanner = table.getScanner(scan);
     Result result = scanner.next();
     result = scanAfterBulkLoad(scanner, result, "version2");
@@ -93,9 +98,9 @@ public class TestScannerWithBulkload {
       List<KeyValue> kvs = result.getColumn(Bytes.toBytes("col"), Bytes.toBytes("q"));
       for (KeyValue _kv : kvs) {
         if (Bytes.toString(_kv.getRow()).equals("row1")) {
-          System.out.println(Bytes.toString(_kv.getRow()));
-          System.out.println(Bytes.toString(_kv.getQualifier()));
-          System.out.println(Bytes.toString(_kv.getValue()));
+          LOG.info(Bytes.toString(_kv.getRow()));
+          LOG.info(Bytes.toString(_kv.getQualifier()));
+          LOG.info(Bytes.toString(_kv.getValue()));
           Assert.assertEquals("version3", Bytes.toString(_kv.getValue()));
         }
       }
@@ -111,9 +116,9 @@ public class TestScannerWithBulkload {
       List<KeyValue> kvs = result.getColumn(Bytes.toBytes("col"), Bytes.toBytes("q"));
       for (KeyValue _kv : kvs) {
         if (Bytes.toString(_kv.getRow()).equals("row1")) {
-          System.out.println(Bytes.toString(_kv.getRow()));
-          System.out.println(Bytes.toString(_kv.getQualifier()));
-          System.out.println(Bytes.toString(_kv.getValue()));
+          LOG.info(Bytes.toString(_kv.getRow()));
+          LOG.info(Bytes.toString(_kv.getQualifier()));
+          LOG.info(Bytes.toString(_kv.getValue()));
           Assert.assertEquals(expctedVal, Bytes.toString(_kv.getValue()));
         }
       }
