@@ -85,7 +85,7 @@ public class TestScannerWithBulkload {
     LOG.info("after bulk load");
     ResultScanner scanner = table.getScanner(scan);
     Result result = scanner.next();
-    result = scanAfterBulkLoad(scanner, result, "version2");
+    result = scanAfterBulkLoad(scanner, result, "version1");
     Put put0 = new Put(Bytes.toBytes("row1"));
     put0.add(new KeyValue(Bytes.toBytes("row1"), Bytes.toBytes("col"), Bytes.toBytes("q"), l, Bytes
         .toBytes("version3")));
