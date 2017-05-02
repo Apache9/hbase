@@ -89,6 +89,7 @@ import org.apache.hadoop.hbase.YouAreDeadException;
 import org.apache.hadoop.hbase.catalog.CatalogTracker;
 import org.apache.hadoop.hbase.catalog.MetaReader;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
+import org.apache.hadoop.hbase.client.HConnection;
 import org.apache.hadoop.hbase.client.HConnectionManager;
 import org.apache.hadoop.hbase.client.MetaScanner;
 import org.apache.hadoop.hbase.client.MetaScanner.MetaScannerVisitor;
@@ -1524,8 +1525,9 @@ MasterServices, Server {
     // Register with server manager
     try {
       InetAddress ia = getRemoteInetAddress(request.getPort(), request.getServerStartCode());
-      ServerName rs = this.serverManager.regionServerStartup(ia, request.getPort(),
-        request.getServerStartCode(), request.getServerCurrentTime());
+      ServerName rs;
+      rs = this.serverManager.regionServerStartup(ia, request.getPort(),
+          request.getServerStartCode(), request.getServerCurrentTime());
 
       // Send back some config info
       RegionServerStartupResponse.Builder resp = createConfigurationSubset();
@@ -1729,7 +1731,7 @@ MasterServices, Server {
   protected LoadBalancer getBalancer() {
     return this.balancer;
   }
-  
+
   public boolean balance() throws HBaseIOException {
     // if master not initialized, don't run balancer.
     if (!this.initialized) {
@@ -1741,19 +1743,20 @@ MasterServices, Server {
     boolean balancerRan;
     synchronized (this.balancer) {
       // If balance not true, don't run balancer.
-      if (!this.loadBalancerTracker.isBalancerOn()) return false;
+      if (!this.loadBalancerTracker.isBalancerOn())
+        return false;
       // Only allow one balance run at at time.
       if (this.assignmentManager.getRegionStates().isRegionsInTransition()) {
         Map<String, RegionState> regionsInTransition =
-          this.assignmentManager.getRegionStates().getRegionsInTransition();
+            this.assignmentManager.getRegionStates().getRegionsInTransition();
         LOG.debug("Not running balancer because " + regionsInTransition.size() +
-          " region(s) in transition: " + org.apache.commons.lang.StringUtils.
+            " region(s) in transition: " + org.apache.commons.lang.StringUtils.
             abbreviate(regionsInTransition.toString(), 256));
         return false;
       }
       if (this.serverManager.areDeadServersInProgress()) {
         LOG.debug("Not running balancer because processing dead regionserver(s): " +
-          this.serverManager.getDeadServers());
+            this.serverManager.getDeadServers());
         return false;
       }
 
@@ -1769,17 +1772,20 @@ MasterServices, Server {
         }
       }
 
-      Map<TableName, Map<ServerName, List<HRegionInfo>>> assignmentsByTable =
-        this.assignmentManager.getRegionStates().getAssignmentsByTable();
-
       List<RegionPlan> plans = new ArrayList<RegionPlan>();
+
+      Map<TableName, Map<ServerName, List<HRegionInfo>>> assignmentsByTable =
+          this.assignmentManager.getRegionStates().getAssignmentsByTable();
+
       // Give the balancer the current cluster state.
       this.balancer.setClusterStatus(getClusterStatus());
       this.balancer.setClusterLoad(this.assignmentManager.getRegionStates().getAssignmentsByTable(
-        true));
-      for (Entry<TableName, Map<ServerName, List<HRegionInfo>>> e : assignmentsByTable.entrySet()) {
+          true));
+      for (Entry<TableName, Map<ServerName, List<HRegionInfo>>> e : assignmentsByTable
+          .entrySet()) {
         List<RegionPlan> partialPlans = this.balancer.balanceCluster(e.getKey(), e.getValue());
-        if (partialPlans != null) plans.addAll(partialPlans);
+        if (partialPlans != null)
+          plans.addAll(partialPlans);
       }
 
       long balanceStartTime = System.currentTimeMillis();
@@ -1792,14 +1798,14 @@ MasterServices, Server {
             + balanceInterval + " ms, and the max number regions in transition is "
             + maxRegionsInTransition);
 
-        for (RegionPlan plan: plans) {
+        for (RegionPlan plan : plans) {
           LOG.info("balance " + plan);
           //TODO: bulk assign
           this.assignmentManager.balance(plan);
           rpCount++;
 
           balanceThrottling(balanceStartTime + rpCount * balanceInterval, maxRegionsInTransition,
-            cutoffTime);
+              cutoffTime);
 
           // if performing next balance exceeds cutoff time, exit the loop
           if (rpCount < plans.size() && System.currentTimeMillis() > cutoffTime) {
@@ -1996,7 +2002,7 @@ MasterServices, Server {
   }
 
   void move(final byte[] encodedRegionName,
-      final byte[] destServerName) throws HBaseIOException {
+      byte[] destServerName) throws HBaseIOException {
     RegionState regionState = assignmentManager.getRegionStates().
       getRegionState(Bytes.toString(encodedRegionName));
     if (regionState == null) {
@@ -2005,11 +2011,17 @@ MasterServices, Server {
 
     HRegionInfo hri = regionState.getRegion();
     ServerName dest;
+    List<ServerName> exclude = assignmentManager.getExcludeServers(hri.getTable().isSystemTable());
+    if (exclude.contains(ServerName.valueOf(Bytes.toString(destServerName)))) {
+      LOG.info(Bytes.toString(encodedRegionName)+" can not move to " + Bytes.toString(destServerName)
+          + " because the server is in exclude list");
+      destServerName = null;
+    }
     if (destServerName == null || destServerName.length == 0) {
       LOG.info("Passed destination servername is null/empty so " +
         "choosing a server at random");
-      final List<ServerName> destServers = this.serverManager.createDestinationServersList(
-        regionState.getServerName());
+      exclude.add(regionState.getServerName());
+      final List<ServerName> destServers = this.serverManager.createDestinationServersList(exclude);
       dest = balancer.randomAssignment(hri, destServers);
     } else {
       dest = ServerName.valueOf(Bytes.toString(destServerName));
@@ -2726,7 +2738,7 @@ MasterServices, Server {
     if (info != null && info.hasVersionInfo()) {
       return info.getVersionInfo().getVersion();
     }
-    return "Unknown";
+    return "0.0.0"; //Lowest version
   }
 
   /**

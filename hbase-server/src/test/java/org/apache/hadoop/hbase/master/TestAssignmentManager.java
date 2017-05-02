@@ -23,6 +23,7 @@ import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import com.google.common.collect.Lists;
 import com.google.protobuf.RpcController;
 import com.google.protobuf.ServiceException;
 
@@ -804,7 +805,7 @@ public class TestAssignmentManager {
       List<ServerName> serverList = new ArrayList<ServerName>(2);
       serverList.add(SERVERNAME_B);
       Mockito.when(
-          this.serverManager.createDestinationServersList(SERVERNAME_A))
+          this.serverManager.createDestinationServersList(Lists.newArrayList(SERVERNAME_A)))
           .thenReturn(serverList);
       am.nodeDataChanged(path);
       // here we are waiting until the random assignment in the load balancer is

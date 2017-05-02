@@ -18,9 +18,9 @@
 
 package org.apache.hadoop.hbase.util;
 
-import org.apache.commons.logging.LogFactory;
 import java.io.PrintWriter;
 
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.classification.InterfaceStability;
 import org.apache.hadoop.hbase.VersionAnnotation;
@@ -122,4 +122,69 @@ public class VersionInfo {
   public static void main(String[] args) {
     logVersion();
   }
+
+  public static int compareVersion(String v1, String v2) {
+    //fast compare equals first
+    if (v1.equals(v2)) {
+      return 0;
+    }
+
+    String communityVer1 = "", communityVer2 = "", mdhV1 = "", mdhV2 = "";
+    String[] twoPart = v1.split("-mdh");
+    communityVer1 = twoPart[0];
+    if (twoPart.length > 1) {
+      mdhV1 = twoPart[1];
+    }
+    twoPart = v2.split("-mdh");
+    communityVer2 = twoPart[0];
+    if (twoPart.length > 1) {
+      mdhV2 = twoPart[1];
+    }
+
+    int c = compareSemanticVersion(communityVer1, communityVer2);
+    if (c != 0) {
+      return c;
+    }
+    return compareSemanticVersion(mdhV1, mdhV2);
+  }
+
+  private static int compareSemanticVersion(String v1, String v2) {
+    //fast compare equals first
+    if (v1.equals(v2)) {
+      return 0;
+    }
+
+    String s1[] = v1.split("\\.|-");//1.2.3-hotfix -> [1, 2, 3, hotfix]
+    String s2[] = v2.split("\\.|-");
+    int index = 0;
+    while (index < s1.length && index < s2.length) {
+      int va = 10000, vb = 10000;
+      try {
+        va = Integer.parseInt(s1[index]);
+      } catch (Exception ingore) {
+      }
+      try {
+        vb = Integer.parseInt(s2[index]);
+      } catch (Exception ingore) {
+      }
+      if (va != vb) {
+        return va - vb;
+      }
+      if (va == 10000) {
+        // compare as String
+        int c = s1[index].compareTo(s2[index]);
+        if (c != 0) {
+          return c;
+        }
+      }
+      index++;
+    }
+    if (index < s1.length) {
+      // s1 is longer
+      return 1;
+    }
+    //s2 is longer
+    return -1;
+  }
+
 }

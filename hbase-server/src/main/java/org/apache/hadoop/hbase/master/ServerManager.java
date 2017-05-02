@@ -50,6 +50,8 @@ import org.apache.hadoop.hbase.ZooKeeperConnectionException;
 import org.apache.hadoop.hbase.client.HConnection;
 import org.apache.hadoop.hbase.client.HConnectionManager;
 import org.apache.hadoop.hbase.client.RetriesExhaustedException;
+import org.apache.hadoop.hbase.executor.EventHandler;
+import org.apache.hadoop.hbase.executor.EventType;
 import org.apache.hadoop.hbase.master.handler.MetaServerShutdownHandler;
 import org.apache.hadoop.hbase.master.handler.ServerShutdownHandler;
 import org.apache.hadoop.hbase.monitoring.MonitoredTask;
@@ -60,6 +62,7 @@ import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.AdminService;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.OpenRegionRequest;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.OpenRegionResponse;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.ServerInfo;
+import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos;
 import org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.SplitLogTask.RecoveryMode;
 import org.apache.hadoop.hbase.regionserver.RegionOpeningState;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -297,7 +300,6 @@ public class ServerManager {
     }
     updateLastFlushedSequenceIds(sn, sl);
   }
-
   /**
    * Check is a server of same host and port already exists,
    * if not, or the existed one got a smaller start code, record it.
@@ -510,6 +512,34 @@ public class ServerManager {
         }
       }
     }
+  }
+
+  public void serversListChangedOnZK() throws IOException {
+    // RS register on ZK after reports startup on master
+    List<HRegionInfo> regionsShouldMove = new ArrayList<>();
+    for (ServerName server : services.getAssignmentManager().getExcludeServers(true)) {
+      for (HRegionInfo regionInfo : services.getAssignmentManager().isCarryingSystemTable(server)) {
+        // Should move the region to a server with highest version.
+        regionsShouldMove.add(regionInfo);
+      }
+    }
+    if (!regionsShouldMove.isEmpty()) {
+      AssignmentManager am = services.getAssignmentManager();
+      List<RegionPlan> plans = new ArrayList<>();
+      for (HRegionInfo regionInfo : regionsShouldMove) {
+        RegionPlan plan = am.getRegionPlan(regionInfo, true);
+        if (regionInfo.isMetaRegion()) {
+          // Must move meta region first.
+          am.balance(plan);
+        } else {
+          plans.add(plan);
+        }
+      }
+      for (RegionPlan plan : plans) {
+        am.balance(plan);
+      }
+    }
+
   }
 
   /*
@@ -993,11 +1023,11 @@ public class ServerManager {
    *  the draining or dying servers.
    *  @param serverToExclude can be null if there is no server to exclude
    */
-  public List<ServerName> createDestinationServersList(final ServerName serverToExclude){
+  public List<ServerName> createDestinationServersList(final List<ServerName> serversToExclude){
     final List<ServerName> destServers = getOnlineServersList();
 
-    if (serverToExclude != null){
-      destServers.remove(serverToExclude);
+    if (serversToExclude != null){
+      destServers.removeAll(serversToExclude);
     }
 
     // Loop through the draining server list and remove them from the server list

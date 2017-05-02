@@ -71,10 +71,10 @@ public class RegionServerTracker extends ZooKeeperListener {
     watcher.registerListener(this);
     List<String> servers =
       ZKUtil.listChildrenAndWatchThem(watcher, watcher.znodePaths.rsZNode);
-    add(servers);
+    refresh(servers);
   }
 
-  private void add(final List<String> servers) throws IOException {
+  private void refresh(final List<String> servers) throws IOException {
     NavigableMap<ServerName, RegionServerInfo> tmps =
         new TreeMap<ServerName, RegionServerInfo>();
     for (String n: servers) {
@@ -103,7 +103,12 @@ public class RegionServerTracker extends ZooKeeperListener {
     synchronized(this.regionServers) {
       this.regionServers.clear();
       this.regionServers.putAll(tmps);
+      // Call this after putting RS maps with lock to prevent other threads get RS version.
+      // This is to prevent balancer assign regions to highest version RS before we move all system
+      // table to it.
+      serverManager.serversListChangedOnZK();
     }
+
   }
 
   private void remove(final ServerName sn) {
@@ -135,7 +140,7 @@ public class RegionServerTracker extends ZooKeeperListener {
       try {
         List<String> servers =
           ZKUtil.listChildrenAndWatchThem(watcher, watcher.znodePaths.rsZNode);
-        add(servers);
+        refresh(servers);
       } catch (IOException e) {
         abortable.abort("Unexpected zk exception getting RS nodes", e);
       } catch (KeeperException e) {
@@ -145,7 +150,9 @@ public class RegionServerTracker extends ZooKeeperListener {
   }
 
   public RegionServerInfo getRegionServerInfo(final ServerName sn) {
-    return regionServers.get(sn);
+    synchronized (this.regionServers) {
+      return regionServers.get(sn);
+    }
   }
   
   /**
@@ -176,6 +183,6 @@ public class RegionServerTracker extends ZooKeeperListener {
     for (ServerName sn : servers) {
       names.add(sn.getServerName());
     }
-    tracker.add(names);
+    tracker.refresh(names);
   }
 }

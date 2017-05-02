@@ -26,6 +26,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -43,6 +44,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Collectors;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -53,6 +55,8 @@ import org.apache.hadoop.hbase.Chore;
 import org.apache.hadoop.hbase.HBaseIOException;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HRegionInfo;
+import org.apache.hadoop.hbase.HTableDescriptor;
+import org.apache.hadoop.hbase.NamespaceDescriptor;
 import org.apache.hadoop.hbase.NotServingRegionException;
 import org.apache.hadoop.hbase.RegionTransition;
 import org.apache.hadoop.hbase.Server;
@@ -63,6 +67,7 @@ import org.apache.hadoop.hbase.TableNotFoundException;
 import org.apache.hadoop.hbase.catalog.CatalogTracker;
 import org.apache.hadoop.hbase.catalog.MetaReader;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
+import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.exceptions.DeserializationException;
 import org.apache.hadoop.hbase.executor.EventHandler;
@@ -97,6 +102,7 @@ import org.apache.hadoop.hbase.util.Pair;
 import org.apache.hadoop.hbase.util.PairOfSameType;
 import org.apache.hadoop.hbase.util.Threads;
 import org.apache.hadoop.hbase.util.Triple;
+import org.apache.hadoop.hbase.util.VersionInfo;
 import org.apache.hadoop.hbase.zookeeper.MetaRegionTracker;
 import org.apache.hadoop.hbase.zookeeper.ZKAssign;
 import org.apache.hadoop.hbase.zookeeper.ZKTable;
@@ -2361,14 +2367,44 @@ public class AssignmentManager extends ZooKeeperListener {
    * @return Plan for passed <code>region</code> (If none currently, it creates one or
    * if no servers to assign, it returns null).
    */
-  private RegionPlan getRegionPlan(final HRegionInfo region,
+  public RegionPlan getRegionPlan(final HRegionInfo region,
       final boolean forceNewPlan)  throws HBaseIOException {
     return getRegionPlan(region, null, forceNewPlan);
   }
 
   /**
+   * Get a list of servers that this region can not assign to.
+   * For system table, we must assign them to a server with highest version.
+   * For all table, we can not assign them to servers with not highest version
+   * and the percentage of the version is low.
+   * RS will report to master before register on zk, and only when RS have registered on zk we can
+   * know the version. So in fact we will never assign a region to a RS without registering on zk.
+   * @param isSystemTable
+   * @return
+   */
+  public List<ServerName> getExcludeServers(boolean isSystemTable) {
+    List<Pair<ServerName, String>> serverList = new ArrayList<>();
+    for (ServerName s : serverManager.getOnlineServersList()) {
+      serverList.add(new Pair<>(s, server.getRegionServerVersion(s)));
+    }
+    serverList.sort((o1, o2) -> VersionInfo.compareVersion(o1.getSecond(), o2.getSecond()));
+    if (isSystemTable) {
+      String highestVersion = serverList.get(serverList.size() - 1).getSecond();
+      return serverList.stream()
+          .filter((pair) -> (!pair.getSecond().equals(highestVersion)))
+          .map((pair) -> (pair.getFirst()))
+          .collect(Collectors.toList());
+    }
+    String minVersion = serverList.get(serverList.size() / 10).getSecond();
+    return serverList.stream()
+        .filter((pair) -> (VersionInfo.compareVersion(pair.getSecond(), minVersion) < 0))
+        .map((pair) -> (pair.getFirst()))
+        .collect(Collectors.toList());
+  }
+
+  /**
    * @param region the region to assign
-   * @param serverToExclude Server to exclude (we know its bad). Pass null if
+   * @param serversToExclude Servers to exclude (we know its bad). Pass null if
    * all servers are thought to be assignable.
    * @param forceNewPlan If true, then if an existing plan exists, a new plan
    * will be generated.
@@ -2379,8 +2415,12 @@ public class AssignmentManager extends ZooKeeperListener {
       final ServerName serverToExclude, final boolean forceNewPlan) throws HBaseIOException {
     // Pickup existing plan or make a new one
     final String encodedName = region.getEncodedName();
+    List<ServerName> exclude = getExcludeServers(region.getTable().isSystemTable());
+    if (serverToExclude != null) {
+      exclude.add(serverToExclude);
+    }
     final List<ServerName> destServers =
-      serverManager.createDestinationServersList(serverToExclude);
+      serverManager.createDestinationServersList(exclude);
 
     if (destServers.isEmpty()){
       LOG.warn("Can't move " + encodedName +
@@ -3421,6 +3461,22 @@ public class AssignmentManager extends ZooKeeperListener {
 
   public boolean isCarryingMeta(ServerName serverName) {
     return isCarryingRegion(serverName, HRegionInfo.FIRST_META_REGIONINFO);
+  }
+
+  public List<HRegionInfo> isCarryingSystemTable(ServerName serverName) throws IOException {
+    List<HTableDescriptor> systemTables = server.listTableDescriptorsByNamespace(
+        NamespaceDescriptor.SYSTEM_NAMESPACE_NAME_STR);
+    List<HRegionInfo> res = new ArrayList<>();
+    for(HTableDescriptor tableDescriptor : systemTables) {
+      try(HTable table = new HTable(server.getConfiguration(), tableDescriptor.getTableName())) {
+        for(Map.Entry<HRegionInfo, ServerName> entry : table.getRegionLocations().entrySet()){
+          if (entry.getValue().equals(serverName)){
+            res.add(entry.getKey());
+          }
+        }
+      }
+    }
+    return res;
   }
 
   /**

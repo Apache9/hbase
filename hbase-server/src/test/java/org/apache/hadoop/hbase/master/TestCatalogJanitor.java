@@ -354,6 +354,11 @@ public class TestCatalogJanitor {
     }
 
     @Override
+    public String getRegionServerVersion(ServerName sn) {
+      return null;
+    }
+
+    @Override
     public void deleteTable(TableName tableName) throws IOException { }
 
     @Override

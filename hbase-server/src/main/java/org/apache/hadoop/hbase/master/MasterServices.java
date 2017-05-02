@@ -21,6 +21,8 @@ package org.apache.hadoop.hbase.master;
 import java.io.IOException;
 import java.util.List;
 
+import org.apache.hadoop.hbase.HBaseIOException;
+import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.HColumnDescriptor;
@@ -257,4 +259,7 @@ public interface MasterServices extends Server {
    * @throws IOException
    */
   public List<TableName> listTableNamesByNamespace(String name) throws IOException;
+
+  public String getRegionServerVersion(final ServerName sn);
+
 }
