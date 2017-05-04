@@ -157,6 +157,7 @@ public class TestGet {
 
   @Test
   public void testDynamicFilter() throws Exception {
+    ProtobufUtil.enableDynamicClassLoader();
     Configuration conf = HBaseConfiguration.create();
     String localPath = conf.get("hbase.local.dir")
       + File.separator + "jars" + File.separator;

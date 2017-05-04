@@ -20,6 +20,7 @@ package org.apache.hadoop.hbase.protobuf;
 
 import static org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.RegionSpecifier.RegionSpecifierType.REGION_NAME;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ListMultimap;
 import com.google.common.collect.Lists;
@@ -216,7 +217,7 @@ public final class ProtobufUtil {
   /**
    * Dynamic class loader to load filter/comparators
    */
-  private final static ClassLoader CLASS_LOADER;
+  private static ClassLoader CLASS_LOADER;
 
   static {
     ClassLoader parent = ProtobufUtil.class.getClassLoader();
@@ -232,6 +233,13 @@ public final class ProtobufUtil {
     PRIMITIVES.put(Float.TYPE.getName(), Float.TYPE);
     PRIMITIVES.put(Double.TYPE.getName(), Double.TYPE);
     PRIMITIVES.put(Void.TYPE.getName(), Void.TYPE);
+  }
+
+  @VisibleForTesting
+  public static void enableDynamicClassLoader() {
+    ClassLoader parent = ProtobufUtil.class.getClassLoader();
+    Configuration conf = HBaseConfiguration.create();
+    CLASS_LOADER = new DynamicClassLoader(conf, parent, true);
   }
 
   /**

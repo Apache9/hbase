@@ -89,10 +89,14 @@ public class DynamicClassLoader extends ClassLoaderBase {
    */
   public DynamicClassLoader(
       final Configuration conf, final ClassLoader parent) {
-    super(parent);
+    this(conf, parent, conf.getBoolean(
+            DYNAMIC_JARS_OPTIONAL_CONF_KEY, DYNAMIC_JARS_OPTIONAL_DEFAULT));
+  }
 
-    useDynamicJars = conf.getBoolean(
-        DYNAMIC_JARS_OPTIONAL_CONF_KEY, DYNAMIC_JARS_OPTIONAL_DEFAULT);
+  public DynamicClassLoader(final Configuration conf,
+      final ClassLoader parent, boolean useDynamicJars) {
+    super(parent);
+    this.useDynamicJars = useDynamicJars;
 
     if (useDynamicJars) {
       initTempDir(conf);
