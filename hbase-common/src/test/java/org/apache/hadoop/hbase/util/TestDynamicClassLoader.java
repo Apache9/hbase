@@ -49,6 +49,7 @@ public class TestDynamicClassLoader {
 
   @Before
   public void initializeConfiguration() {
+    TEST_UTIL.getConfiguration().setBoolean("hbase.use.dynamic.jars", true);
     conf = new Configuration(TEST_UTIL.getConfiguration());
   }
 
