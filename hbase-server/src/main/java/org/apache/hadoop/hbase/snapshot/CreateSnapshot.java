@@ -21,7 +21,7 @@ package org.apache.hadoop.hbase.snapshot;
 import org.apache.commons.cli.CommandLine;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
-import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos;
+import org.apache.hadoop.hbase.protobuf.generated.SnapshotProtos;
 import org.apache.hadoop.hbase.util.AbstractHBaseTool;
 
 import java.util.Arrays;
@@ -45,7 +45,7 @@ public class CreateSnapshot extends AbstractHBaseTool {
         this.addRequiredOptWithArg("n", "name", "The name of the created snapshot");
         this.addOptWithArg("s", "snapshot_type",
                 "Snapshot Type. FLUSH is default. Posible values are "
-                + Arrays.toString(HBaseProtos.SnapshotDescription.Type.values()));
+                + Arrays.toString(SnapshotProtos.SnapshotDescription.Type.values()));
     }
 
     @Override
@@ -61,9 +61,9 @@ public class CreateSnapshot extends AbstractHBaseTool {
         HBaseAdmin admin = null;
         try {
             admin = new HBaseAdmin(conf);
-            HBaseProtos.SnapshotDescription.Type type = HBaseProtos.SnapshotDescription.Type.FLUSH;
+            SnapshotProtos.SnapshotDescription.Type type = SnapshotProtos.SnapshotDescription.Type.FLUSH;
             if (snapshotType != null) {
-                type = HBaseProtos.SnapshotDescription.Type.valueOf(snapshotName.toUpperCase());
+                type = SnapshotProtos.SnapshotDescription.Type.valueOf(snapshotName.toUpperCase());
             }
 
             admin.snapshot(snapshotName, TableName.valueOf(tableName), type);

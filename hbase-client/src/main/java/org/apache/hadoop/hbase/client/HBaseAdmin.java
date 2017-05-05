@@ -94,7 +94,6 @@ import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.ScanResponse;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.NameStringPair;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.ProcedureDescription;
-import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.SnapshotDescription;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.TableSchema;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.AddColumnRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.AssignRegionRequest;
@@ -141,6 +140,7 @@ import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleReq
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.TruncateTableRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.UnassignRegionRequest;
+import org.apache.hadoop.hbase.protobuf.generated.SnapshotProtos.SnapshotDescription;
 import org.apache.hadoop.hbase.quotas.QuotaFilter;
 import org.apache.hadoop.hbase.quotas.QuotaRetriever;
 import org.apache.hadoop.hbase.quotas.QuotaSettings;
@@ -1559,7 +1559,7 @@ public class HBaseAdmin implements Abortable, Closeable {
 
   /**
    * Compact all regions on the region server
-   * @param regionserver the region server name
+   * @param sn the region server name
    * @param major if it's major compaction
    * @throws IOException
    */
@@ -2767,6 +2767,25 @@ public class HBaseAdmin implements Abortable, Closeable {
    */
   public void restoreSnapshot(final String snapshotName, boolean takeFailSafeSnapshot)
       throws IOException, RestoreSnapshotException {
+    restoreSnapshot(snapshotName, takeFailSafeSnapshot, false);
+  }
+
+  /**
+   * Restore the specified snapshot on the original table. (The table must be disabled) If
+   * 'takeFailSafeSnapshot' is set to true, a snapshot of the current table is taken before
+   * executing the restore operation. In case of restore failure, the failsafe snapshot will be
+   * restored. If the restore completes without problem the failsafe snapshot is deleted. The
+   * failsafe snapshot name is configurable by using the property
+   * "hbase.snapshot.restore.failsafe.name".
+   * @param snapshotName name of the snapshot to restore
+   * @param takeFailSafeSnapshot true if the failsafe snapshot should be taken
+   * @param restoreAcl true to restore all acl of snapshot into the table.
+   * @throws IOException if a remote or network exception occurs
+   * @throws RestoreSnapshotException if snapshot failed to be restored
+   * @throws IllegalArgumentException if the restore request is formatted incorrectly
+   */
+  public void restoreSnapshot(final String snapshotName, boolean takeFailSafeSnapshot,
+      boolean restoreAcl) throws IOException, RestoreSnapshotException {
     TableName tableName = null;
     for (SnapshotDescription snapshotInfo : listSnapshots()) {
       if (snapshotInfo.getName().equals(snapshotName)) {
@@ -2783,7 +2802,7 @@ public class HBaseAdmin implements Abortable, Closeable {
     // The table does not exists, switch to clone.
     if (!tableExists(tableName)) {
       try {
-        cloneSnapshot(snapshotName, tableName);
+        cloneSnapshot(snapshotName, tableName, restoreAcl);
       } catch (InterruptedException e) {
         throw new InterruptedIOException(
             "Interrupted when restoring a nonexistent table: " + e.getMessage());
@@ -2812,13 +2831,13 @@ public class HBaseAdmin implements Abortable, Closeable {
 
     try {
       // Restore snapshot
-      internalRestoreSnapshot(snapshotName, tableName);
+      internalRestoreSnapshot(snapshotName, tableName, restoreAcl);
     } catch (IOException e) {
       // Somthing went wrong during the restore...
       // if the pre-restore snapshot is available try to rollback
       if (takeFailSafeSnapshot) {
         try {
-          internalRestoreSnapshot(failSafeSnapshotSnapshotName, tableName);
+          internalRestoreSnapshot(failSafeSnapshotSnapshotName, tableName, restoreAcl);
           String msg = "Restore snapshot=" + snapshotName + " failed. Rollback to snapshot=" +
               failSafeSnapshotSnapshotName + " succeeded.";
           LOG.error(msg, e);
@@ -2855,7 +2874,7 @@ public class HBaseAdmin implements Abortable, Closeable {
    */
   public void cloneSnapshot(final byte[] snapshotName, final byte[] tableName)
       throws IOException, TableExistsException, RestoreSnapshotException, InterruptedException {
-    cloneSnapshot(Bytes.toString(snapshotName), TableName.valueOf(tableName));
+    cloneSnapshot(Bytes.toString(snapshotName), TableName.valueOf(tableName), false);
   }
 
   /**
@@ -2869,7 +2888,7 @@ public class HBaseAdmin implements Abortable, Closeable {
    */
   public void cloneSnapshot(final byte[] snapshotName, final TableName tableName)
       throws IOException, TableExistsException, RestoreSnapshotException, InterruptedException {
-    cloneSnapshot(Bytes.toString(snapshotName), tableName);
+    cloneSnapshot(Bytes.toString(snapshotName), tableName, false);
   }
 
   /**
@@ -2883,24 +2902,31 @@ public class HBaseAdmin implements Abortable, Closeable {
    */
   public void cloneSnapshot(final String snapshotName, final String tableName)
       throws IOException, TableExistsException, RestoreSnapshotException, InterruptedException {
-    cloneSnapshot(snapshotName, TableName.valueOf(tableName));
+    cloneSnapshot(snapshotName, TableName.valueOf(tableName), false);
+  }
+
+  public void cloneSnapshot(final String snapshotName, final TableName tableName)
+      throws IOException, TableExistsException, RestoreSnapshotException, InterruptedException {
+    cloneSnapshot(snapshotName, tableName, false);
   }
 
   /**
    * Create a new table by cloning the snapshot content.
    * @param snapshotName name of the snapshot to be cloned
    * @param tableName name of the table where the snapshot will be restored
+   * @param restoreACL true to clone acl into newly created table
    * @throws IOException if a remote or network exception occurs
    * @throws TableExistsException if table to be created already exists
    * @throws RestoreSnapshotException if snapshot failed to be cloned
    * @throws IllegalArgumentException if the specified table has not a valid name
    */
-  public void cloneSnapshot(final String snapshotName, final TableName tableName)
+  public void cloneSnapshot(final String snapshotName, final TableName tableName,
+      boolean restoreACL)
       throws IOException, TableExistsException, RestoreSnapshotException, InterruptedException {
     if (tableExists(tableName)) {
       throw new TableExistsException(tableName);
     }
-    internalRestoreSnapshot(snapshotName, tableName);
+    internalRestoreSnapshot(snapshotName, tableName, restoreACL);
     waitUntilTableIsEnabled(tableName);
   }
 
@@ -3003,12 +3029,12 @@ public class HBaseAdmin implements Abortable, Closeable {
    * @throws RestoreSnapshotException if snapshot failed to be restored
    * @throws IllegalArgumentException if the restore request is formatted incorrectly
    */
-  private void internalRestoreSnapshot(String snapshotName, TableName tableName)
+  private void internalRestoreSnapshot(String snapshotName, TableName tableName, boolean restoreACL)
       throws IOException, RestoreSnapshotException {
     SnapshotDescription snapshot = SnapshotDescription.newBuilder().setName(snapshotName)
         .setTable(tableName.getNameAsString()).build();
     // actually restore the snapshot
-    internalRestoreSnapshotAsync(snapshot);
+    internalRestoreSnapshotAsync(snapshot, restoreACL);
 
     final IsRestoreSnapshotDoneRequest req =
         RequestConverter.buildIsRestoreSnapshotDoneRequest(snapshot);
@@ -3052,10 +3078,11 @@ public class HBaseAdmin implements Abortable, Closeable {
    * @throws RestoreSnapshotException if snapshot failed to be restored
    * @throws IllegalArgumentException if the restore request is formatted incorrectly
    */
-  private RestoreSnapshotResponse internalRestoreSnapshotAsync(SnapshotDescription snapshot)
-      throws IOException, RestoreSnapshotException {
+  private RestoreSnapshotResponse internalRestoreSnapshotAsync(SnapshotDescription snapshot,
+      boolean restoreACL) throws IOException, RestoreSnapshotException {
     ClientSnapshotDescriptionUtils.assertSnapshotRequestIsValid(snapshot);
-    final RestoreSnapshotRequest req = RequestConverter.buildRestoreSnapshotRequest(snapshot);
+    final RestoreSnapshotRequest req =
+        RequestConverter.buildRestoreSnapshotRequest(snapshot, restoreACL);
     // run the snapshot restore on the master
     return executeCallable(new MasterCallable<RestoreSnapshotResponse>(getConnection(),
         TableName.valueOf(snapshot.getTable())) {

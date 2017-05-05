@@ -89,7 +89,6 @@ import org.apache.hadoop.hbase.YouAreDeadException;
 import org.apache.hadoop.hbase.catalog.CatalogTracker;
 import org.apache.hadoop.hbase.catalog.MetaReader;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
-import org.apache.hadoop.hbase.client.HConnection;
 import org.apache.hadoop.hbase.client.HConnectionManager;
 import org.apache.hadoop.hbase.client.MetaScanner;
 import org.apache.hadoop.hbase.client.MetaScanner.MetaScannerVisitor;
@@ -146,7 +145,6 @@ import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.NameStringPair;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.ProcedureDescription;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.RegionServerInfo;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.RegionSpecifier.RegionSpecifierType;
-import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.SnapshotDescription;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.AddColumnRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.AddColumnResponse;
@@ -247,6 +245,7 @@ import org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.Repor
 import org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.ReportRegionStateTransitionRequest;
 import org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.ReportRegionStateTransitionResponse;
 import org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.TableRegionCount;
+import org.apache.hadoop.hbase.protobuf.generated.SnapshotProtos.SnapshotDescription;
 import org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.SplitLogTask.RecoveryMode;
 import org.apache.hadoop.hbase.quotas.MasterQuotaManager;
 import org.apache.hadoop.hbase.quotas.RegionStateListener;
@@ -3439,10 +3438,11 @@ MasterServices, Server {
 
     LOG.info(getClientIdAuditPrefix() + " snapshot request for:" +
         ClientSnapshotDescriptionUtils.toString(request.getSnapshot()));
-    // get the snapshot information
-    SnapshotDescription snapshot = SnapshotDescriptionUtils.validate(request.getSnapshot(),
-      this.conf);
+
+    SnapshotDescription snapshot = null;
     try {
+      // get the snapshot information
+      snapshot = SnapshotDescriptionUtils.validate(request.getSnapshot(), this.conf);
       snapshotManager.takeSnapshot(snapshot);
     } catch (IOException e) {
       throw new ServiceException(e);
@@ -3553,7 +3553,8 @@ MasterServices, Server {
 
     try {
       SnapshotDescription reqSnapshot = request.getSnapshot();
-      snapshotManager.restoreSnapshot(reqSnapshot);
+      snapshotManager.restoreSnapshot(reqSnapshot,
+        request.hasRestoreACL() ? request.getRestoreACL() : false);
       return RestoreSnapshotResponse.newBuilder().build();
     } catch (IOException e) {
       throw new ServiceException(e);

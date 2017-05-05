@@ -42,7 +42,7 @@ import org.apache.hadoop.hbase.master.SnapshotSentinel;
 import org.apache.hadoop.hbase.master.handler.CreateTableHandler;
 import org.apache.hadoop.hbase.monitoring.MonitoredTask;
 import org.apache.hadoop.hbase.monitoring.TaskMonitor;
-import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.SnapshotDescription;
+import org.apache.hadoop.hbase.protobuf.generated.SnapshotProtos.SnapshotDescription;
 import org.apache.hadoop.hbase.snapshot.ClientSnapshotDescriptionUtils;
 import org.apache.hadoop.hbase.snapshot.RestoreSnapshotException;
 import org.apache.hadoop.hbase.snapshot.RestoreSnapshotHelper;
@@ -64,6 +64,7 @@ public class CloneSnapshotHandler extends CreateTableHandler implements Snapshot
   private final static String NAME = "Master CloneSnapshotHandler";
 
   private final SnapshotDescription snapshot;
+  private final boolean restoreACL;
 
   private final ForeignExceptionDispatcher monitor;
   private final MetricsSnapshot metricsSnapshot = new MetricsSnapshot();
@@ -74,12 +75,14 @@ public class CloneSnapshotHandler extends CreateTableHandler implements Snapshot
   private volatile boolean stopped = false;
 
   public CloneSnapshotHandler(final MasterServices masterServices,
-      final SnapshotDescription snapshot, final HTableDescriptor hTableDescriptor) {
+      final SnapshotDescription snapshot, final HTableDescriptor hTableDescriptor,
+      final boolean restoreACL) {
     super(masterServices, masterServices.getMasterFileSystem(), hTableDescriptor,
       masterServices.getConfiguration(), null, masterServices);
 
     // Snapshot information
     this.snapshot = snapshot;
+    this.restoreACL = restoreACL;
 
     // Monitor
     this.monitor = new ForeignExceptionDispatcher();
@@ -119,12 +122,19 @@ public class CloneSnapshotHandler extends CreateTableHandler implements Snapshot
       Preconditions.checkArgument(!metaChanges.hasRegionsToRemove(),
           "A clone should not have regions to remove");
 
+      // 2. Grant acl of snapshot to table.
+      if (restoreACL && snapshot.hasUsersAndPermissions()
+          && snapshot.getUsersAndPermissions() != null
+          && SnapshotDescriptionUtils.isSecurityAvailable(conf)) {
+        RestoreSnapshotHelper.restoreSnapshotACL(snapshot, hTableDescriptor.getTableName(), conf);
+      }
+
       // At this point the clone is complete. Next step is enabling the table.
       String msg = "Clone snapshot="+ snapshot.getName() +" on table=" + tableName + " completed!";
       LOG.info(msg);
       status.setStatus(msg + " Waiting for table to be enabled...");
 
-      // 2. let the CreateTableHandler add the regions to meta
+      // 3. let the CreateTableHandler add the regions to meta.
       return metaChanges.getRegionsToAdd();
     } catch (Exception e) {
       String msg = "clone snapshot=" + ClientSnapshotDescriptionUtils.toString(snapshot) +
@@ -146,13 +156,14 @@ public class CloneSnapshotHandler extends CreateTableHandler implements Snapshot
   }
 
   @Override
-  public void completed(final Throwable exception) {
+  public void completed(Throwable exception) {
     this.stopped = true;
     if (exception != null) {
-      status.abort("Snapshot '" + snapshot.getName() + "' clone failed because " +
-          exception.getMessage());
+      status.abort(
+        "Snapshot '" + snapshot.getName() + "' clone failed because " + exception.getMessage());
     } else {
-      status.markComplete("Snapshot '"+ snapshot.getName() +"' clone completed and table enabled!");
+      status
+          .markComplete("Snapshot '" + snapshot.getName() + "' clone completed and table enabled!");
     }
     metricsSnapshot.addSnapshotClone(status.getCompletionTimestamp() - status.getStartTime());
     super.completed(exception);
