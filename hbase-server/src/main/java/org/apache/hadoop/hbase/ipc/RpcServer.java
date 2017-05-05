@@ -148,7 +148,6 @@ public class RpcServer implements RpcServerInterface {
   // by default.
   public static final Log LOG = LogFactory.getLog("org.apache.hadoop.ipc.RpcServer");
 
-  //just for test
   private final boolean authorize;
   private boolean isSecurityEnabled;
 
