@@ -81,7 +81,6 @@ import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.NameStringPair;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.ProcedureDescription;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.RegionSpecifier;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.RegionSpecifier.RegionSpecifierType;
-import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.SnapshotDescription;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.AddColumnRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.AssignRegionRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.BalanceRequest;
@@ -120,6 +119,7 @@ import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleReq
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.TruncateTableRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.UnassignRegionRequest;
 import org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.GetLastFlushedSequenceIdRequest;
+import org.apache.hadoop.hbase.protobuf.generated.SnapshotProtos.SnapshotDescription;
 import org.apache.hadoop.hbase.quotas.ThrottleState;
 import org.apache.hadoop.hbase.util.ByteStringer;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -1588,8 +1588,10 @@ public final class RequestConverter {
     return IsRestoreSnapshotDoneRequest.newBuilder().setSnapshot(snapshot).build();
   }
 
-  public static RestoreSnapshotRequest buildRestoreSnapshotRequest(SnapshotDescription snapshot) {
-    return RestoreSnapshotRequest.newBuilder().setSnapshot(snapshot).build();
+  public static RestoreSnapshotRequest buildRestoreSnapshotRequest(SnapshotDescription snapshot,
+      boolean restoreACL) {
+    return RestoreSnapshotRequest.newBuilder().setSnapshot(snapshot).setRestoreACL(restoreACL)
+        .build();
   }
 
   public static DeleteSnapshotRequest buildDeleteSnapshotRequest(SnapshotDescription snapshot) {

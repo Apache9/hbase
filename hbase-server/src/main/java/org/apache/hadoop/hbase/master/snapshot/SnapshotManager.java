@@ -62,8 +62,8 @@ import org.apache.hadoop.hbase.procedure.ProcedureCoordinatorRpcs;
 import org.apache.hadoop.hbase.procedure.ZKProcedureCoordinatorRpcs;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.NameStringPair;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.ProcedureDescription;
-import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.SnapshotDescription;
-import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.SnapshotDescription.Type;
+import org.apache.hadoop.hbase.protobuf.generated.SnapshotProtos.SnapshotDescription;
+import org.apache.hadoop.hbase.protobuf.generated.SnapshotProtos.SnapshotDescription.Type;
 import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.snapshot.ClientSnapshotDescriptionUtils;
 import org.apache.hadoop.hbase.snapshot.HBaseSnapshotException;
@@ -645,7 +645,7 @@ public class SnapshotManager extends MasterProcedureManager implements Stoppable
    * @param hTableDescriptor Table Descriptor of the table to create
    */
   synchronized void cloneSnapshot(final SnapshotDescription snapshot,
-      final HTableDescriptor hTableDescriptor) throws HBaseSnapshotException {
+      final HTableDescriptor hTableDescriptor, final boolean restoreACL) throws HBaseSnapshotException {
     TableName tableName = hTableDescriptor.getTableName();
 
     // make sure we aren't running a snapshot on the same table
@@ -660,7 +660,7 @@ public class SnapshotManager extends MasterProcedureManager implements Stoppable
 
     try {
       CloneSnapshotHandler handler =
-        new CloneSnapshotHandler(master, snapshot, hTableDescriptor).prepare();
+          new CloneSnapshotHandler(master, snapshot, hTableDescriptor, restoreACL).prepare();
       this.executorService.submit(handler);
       this.restoreHandlers.put(tableName, handler);
     } catch (Exception e) {
@@ -676,7 +676,8 @@ public class SnapshotManager extends MasterProcedureManager implements Stoppable
    * @param reqSnapshot
    * @throws IOException
    */
-  public void restoreSnapshot(SnapshotDescription reqSnapshot) throws IOException {
+  public void restoreSnapshot(SnapshotDescription reqSnapshot, boolean restoreACL)
+      throws IOException {
     FileSystem fs = master.getMasterFileSystem().getFileSystem();
     Path snapshotDir = SnapshotDescriptionUtils.getCompletedSnapshotDir(reqSnapshot, rootDir);
     MasterCoprocessorHost cpHost = master.getCoprocessorHost();
@@ -717,7 +718,7 @@ public class SnapshotManager extends MasterProcedureManager implements Stoppable
       try {
         // Table already exist. Check and update the region quota for this table namespace
         checkAndUpdateNamespaceRegionQuota(manifest, tableName);
-        restoreSnapshot(fsSnapshot, snapshotTableDesc);
+        restoreSnapshot(fsSnapshot, snapshotTableDesc, restoreACL);
       } catch (IOException e) {
         this.master.getMasterQuotaManager().removeTableFromNamespaceQuota(tableName);
         LOG.error("Exception occurred while restoring the snapshot " + fsSnapshot.getName()
@@ -736,7 +737,7 @@ public class SnapshotManager extends MasterProcedureManager implements Stoppable
       }
       try {
         checkAndUpdateNamespaceQuota(manifest, tableName);
-        cloneSnapshot(fsSnapshot, htd);
+        cloneSnapshot(fsSnapshot, htd, restoreACL);
       } catch (IOException e) {
         this.master.getMasterQuotaManager().removeTableFromNamespaceQuota(tableName);
         LOG.error("Exception occurred while cloning the snapshot " + fsSnapshot.getName()
@@ -775,7 +776,7 @@ public class SnapshotManager extends MasterProcedureManager implements Stoppable
    * @param hTableDescriptor Table Descriptor
    */
   private synchronized void restoreSnapshot(final SnapshotDescription snapshot,
-      final HTableDescriptor hTableDescriptor) throws HBaseSnapshotException {
+      final HTableDescriptor hTableDescriptor, boolean restoreACL) throws HBaseSnapshotException {
     TableName tableName = hTableDescriptor.getTableName();
 
     // make sure we aren't running a snapshot on the same table
@@ -790,7 +791,7 @@ public class SnapshotManager extends MasterProcedureManager implements Stoppable
 
     try {
       RestoreSnapshotHandler handler =
-        new RestoreSnapshotHandler(master, snapshot, hTableDescriptor).prepare();
+          new RestoreSnapshotHandler(master, snapshot, hTableDescriptor, restoreACL).prepare();
       this.executorService.submit(handler);
       restoreHandlers.put(tableName, handler);
     } catch (Exception e) {

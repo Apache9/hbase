@@ -75,6 +75,7 @@ module HBaseConstants
   STATE = 'STATE'
   PROTOCOL = 'PROTOCOL'
   CONFIG = 'CONFIG'
+  RESTORE_ACL = 'RESTORE_ACL'
 
   # Load constants from hbase java API
   def self.promote_constants(constants)

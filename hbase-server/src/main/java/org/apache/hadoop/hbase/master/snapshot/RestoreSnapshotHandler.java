@@ -46,7 +46,7 @@ import org.apache.hadoop.hbase.master.SnapshotSentinel;
 import org.apache.hadoop.hbase.master.handler.TableEventHandler;
 import org.apache.hadoop.hbase.monitoring.MonitoredTask;
 import org.apache.hadoop.hbase.monitoring.TaskMonitor;
-import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.SnapshotDescription;
+import org.apache.hadoop.hbase.protobuf.generated.SnapshotProtos.SnapshotDescription;
 import org.apache.hadoop.hbase.snapshot.ClientSnapshotDescriptionUtils;
 import org.apache.hadoop.hbase.snapshot.RestoreSnapshotException;
 import org.apache.hadoop.hbase.snapshot.RestoreSnapshotHelper;
@@ -65,6 +65,7 @@ public class RestoreSnapshotHandler extends TableEventHandler implements Snapsho
 
   private final HTableDescriptor hTableDescriptor;
   private final SnapshotDescription snapshot;
+  private final boolean restoreACL;
 
   private final ForeignExceptionDispatcher monitor;
   private final MetricsSnapshot metricsSnapshot = new MetricsSnapshot();
@@ -73,7 +74,7 @@ public class RestoreSnapshotHandler extends TableEventHandler implements Snapsho
   private volatile boolean stopped = false;
 
   public RestoreSnapshotHandler(final MasterServices masterServices,
-      final SnapshotDescription snapshot, final HTableDescriptor htd) throws IOException {
+      final SnapshotDescription snapshot, final HTableDescriptor htd, final boolean restoreACL) throws IOException {
     super(EventType.C_M_RESTORE_SNAPSHOT, htd.getTableName(), masterServices, masterServices);
 
     // Snapshot information
@@ -87,6 +88,7 @@ public class RestoreSnapshotHandler extends TableEventHandler implements Snapsho
 
     // This is the new schema we are going to write out as this modification.
     this.hTableDescriptor = htd;
+    this.restoreACL = restoreACL;
 
     this.status = TaskMonitor.get().createStatus(
       "Restoring  snapshot '" + snapshot.getName() + "' to table "
@@ -165,6 +167,14 @@ public class RestoreSnapshotHandler extends TableEventHandler implements Snapsho
       }
       metaChanges.updateMetaParentRegions(catalogTracker, hris);
 
+      // 5. Grant acl to table
+      if (restoreACL && snapshot.hasUsersAndPermissions()
+          && snapshot.getUsersAndPermissions() != null
+          && SnapshotDescriptionUtils.isSecurityAvailable(masterServices.getConfiguration())) {
+        RestoreSnapshotHelper.restoreSnapshotACL(snapshot, hTableDescriptor.getTableName(),
+          masterServices.getConfiguration());
+      }
+
       // At this point the restore is complete. Next step is enabling the table.
       LOG.info("Restore snapshot=" + ClientSnapshotDescriptionUtils.toString(snapshot) +
         " on table=" + tableName + " completed!");
@@ -197,10 +207,10 @@ public class RestoreSnapshotHandler extends TableEventHandler implements Snapsho
   protected void completed(final Throwable exception) {
     this.stopped = true;
     if (exception != null) {
-      status.abort("Restore snapshot '" + snapshot.getName() + "' failed because " +
-          exception.getMessage());
+      status.abort(
+        "Restore snapshot '" + snapshot.getName() + "' failed because " + exception.getMessage());
     } else {
-      status.markComplete("Restore snapshot '"+ snapshot.getName() +"'!");
+      status.markComplete("Restore snapshot '" + snapshot.getName() + "'!");
     }
     metricsSnapshot.addSnapshotRestore(status.getCompletionTimestamp() - status.getStartTime());
     super.completed(exception);

@@ -141,7 +141,7 @@ public class SecureTestUtil {
    * To indicate the action was not allowed, either throw an AccessDeniedException
    * or return an empty list of KeyValues.
    */
-  static interface AccessTestAction extends PrivilegedExceptionAction<Object> { }
+  protected static interface AccessTestAction extends PrivilegedExceptionAction<Object> { }
 
   public static void verifyAllowed(User user, AccessTestAction... actions) throws Exception {
     for (AccessTestAction action : actions) {

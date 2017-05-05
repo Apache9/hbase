@@ -29,6 +29,7 @@ import "HBase.proto";
 import "Client.proto";
 import "ClusterStatus.proto";
 import "Quota.proto";
+import "Snapshot.proto";
 
 /* Column-level protobufs */
 
@@ -270,6 +271,7 @@ message DeleteSnapshotResponse {
 
 message RestoreSnapshotRequest {
   required SnapshotDescription snapshot = 1;
+  optional bool restoreACL = 2 [default = false];
 }
 
 message RestoreSnapshotResponse {
