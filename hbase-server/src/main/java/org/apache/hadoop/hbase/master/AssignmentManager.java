@@ -2387,6 +2387,9 @@ public class AssignmentManager extends ZooKeeperListener {
     for (ServerName s : serverManager.getOnlineServersList()) {
       serverList.add(new Pair<>(s, server.getRegionServerVersion(s)));
     }
+    if (serverList.isEmpty()) {
+      return new ArrayList<>();
+    }
     serverList.sort((o1, o2) -> VersionInfo.compareVersion(o1.getSecond(), o2.getSecond()));
     if (isSystemTable) {
       String highestVersion = serverList.get(serverList.size() - 1).getSecond();
