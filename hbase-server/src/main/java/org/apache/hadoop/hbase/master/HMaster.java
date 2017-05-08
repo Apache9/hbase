@@ -1106,6 +1106,10 @@ MasterServices, Server {
 
     status.markComplete("Initialization successful");
     LOG.info("Master has completed initialization");
+
+    serverManager.checkShouldMoveRegion();
+    regionServerTracker.masterInited();
+
     initialized = true;
     // clear the dead servers with same host name and port of online server because we are not
     // removing dead server with same hostname and port of rs which is trying to check in before
@@ -1125,8 +1129,6 @@ MasterServices, Server {
 
     zombieDetector.interrupt();
 
-    serverManager.checkShouldMoveRegion();
-    regionServerTracker.masterInited();
   }
 
   /**
