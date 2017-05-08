@@ -1125,6 +1125,7 @@ MasterServices, Server {
 
     zombieDetector.interrupt();
 
+    serverManager.checkShouldMoveRegion();
     regionServerTracker.masterInited();
   }
 
