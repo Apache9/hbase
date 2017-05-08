@@ -66,6 +66,7 @@ import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos;
 import org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.SplitLogTask.RecoveryMode;
 import org.apache.hadoop.hbase.regionserver.RegionOpeningState;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hbase.util.Threads;
 import org.apache.hadoop.hbase.util.Triple;
 import org.apache.hadoop.hbase.util.RetryCounter;
 import org.apache.hadoop.hbase.util.RetryCounterFactory;
@@ -518,10 +519,21 @@ public class ServerManager {
     // RS register on ZK after reports startup on master
     List<HRegionInfo> regionsShouldMove = new ArrayList<>();
     for (ServerName server : services.getAssignmentManager().getExcludeServers(true)) {
-      for (HRegionInfo regionInfo : services.getAssignmentManager().isCarryingSystemTable(server)) {
-        // Should move the region to a server with highest version.
-        regionsShouldMove.add(regionInfo);
+      while (true) {
+        try {
+          for (HRegionInfo regionInfo : services.getAssignmentManager()
+              .isCarryingSystemTable(server)) {
+            // Should move the region to a server with highest version.
+            regionsShouldMove.add(regionInfo);
+          }
+          break;
+        } catch (IOException e) {
+          LOG.warn("get system table assignment failed, will retry " + e.getMessage());
+          e.printStackTrace();
+          Threads.sleep(2000);
+        }
       }
+
     }
     if (!regionsShouldMove.isEmpty()) {
       AssignmentManager am = services.getAssignmentManager();

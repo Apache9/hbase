@@ -139,10 +139,15 @@ public class RegionServerTracker extends ZooKeeperListener {
     if (path.equals(watcher.znodePaths.rsZNode)) {
       try {
         List<String> servers =
-          ZKUtil.listChildrenAndWatchThem(watcher, watcher.znodePaths.rsZNode);
-        refresh(servers);
-      } catch (IOException e) {
-        abortable.abort("Unexpected zk exception getting RS nodes", e);
+            ZKUtil.listChildrenAndWatchThem(watcher, watcher.znodePaths.rsZNode);
+        Thread asyncRunner = new Thread(() -> {
+          try {
+            refresh(servers);
+          } catch (IOException e) {
+            abortable.abort("Unexpected zk exception getting RS nodes", e);
+          }
+        });
+        asyncRunner.start();
       } catch (KeeperException e) {
         abortable.abort("Unexpected zk exception getting RS nodes", e);
       }
