@@ -108,12 +108,9 @@ public class RegionServerTracker extends ZooKeeperListener {
     synchronized(this.regionServers) {
       this.regionServers.clear();
       this.regionServers.putAll(tmps);
-      // Call this after putting RS maps with lock to prevent other threads get RS version.
-      // This is to prevent balancer assign regions to highest version RS before we move all system
-      // table to it.
-      if (masterInited) {
-        serverManager.checkShouldMoveRegion();
-      }
+    }
+    if (masterInited) {
+      serverManager.checkShouldMoveRegion();
     }
 
   }
@@ -137,7 +134,9 @@ public class RegionServerTracker extends ZooKeeperListener {
         return;
       }
       remove(sn);
-      this.serverManager.expireServer(sn);
+      new Thread(() -> {
+          this.serverManager.expireServer(sn);
+      }).start();
     }
   }
 
@@ -147,14 +146,13 @@ public class RegionServerTracker extends ZooKeeperListener {
       try {
         List<String> servers =
             ZKUtil.listChildrenAndWatchThem(watcher, watcher.znodePaths.rsZNode);
-        Thread asyncRunner = new Thread(() -> {
+        new Thread(() -> {
           try {
             refresh(servers);
           } catch (IOException e) {
             abortable.abort("Unexpected zk exception getting RS nodes", e);
           }
-        });
-        asyncRunner.start();
+        }).start();
       } catch (KeeperException e) {
         abortable.abort("Unexpected zk exception getting RS nodes", e);
       }
