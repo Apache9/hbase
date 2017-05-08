@@ -110,6 +110,7 @@ public class TestDrainingServer {
     Mockito.when(server.getConfiguration()).thenReturn(conf);
     Mockito.when(server.getServerName()).thenReturn(ServerName.valueOf("masterMock,1,1"));
     Mockito.when(server.getZooKeeper()).thenReturn(zkWatcher);
+    Mockito.when(server.getRegionServerVersion(Mockito.any(ServerName.class))).thenReturn("0.0.0");
 
     Mockito.when(serverManager.getOnlineServers()).thenReturn(onlineServers);
     Mockito.when(serverManager.getOnlineServersList())
@@ -119,7 +120,9 @@ public class TestDrainingServer {
         .thenReturn(new ArrayList<ServerName>(onlineServers.keySet()));
     Mockito.when(serverManager.createDestinationServersList(null))
         .thenReturn(new ArrayList<ServerName>(onlineServers.keySet()));
-    
+    Mockito.when(serverManager.createDestinationServersList(Mockito.anyList())).thenReturn(
+        new ArrayList<ServerName>(onlineServers.keySet()));
+
     for (ServerName sn : onlineServers.keySet()) {
       Mockito.when(serverManager.isServerOnline(sn)).thenReturn(true);
       Mockito.when(serverManager.sendRegionClose(sn, REGIONINFO, -1)).thenReturn(true);
@@ -139,6 +142,7 @@ public class TestDrainingServer {
     Mockito.when(master.getAssignmentManager()).thenReturn(am);
     Mockito.when(master.getZooKeeperWatcher()).thenReturn(zkWatcher);
     Mockito.when(master.getZooKeeper()).thenReturn(zkWatcher);
+
     
     am.addPlan(REGIONINFO.getEncodedName(), new RegionPlan(REGIONINFO, null, SERVERNAME_A));
 
@@ -216,6 +220,8 @@ public class TestDrainingServer {
       new ArrayList<ServerName>(onlineServers.keySet()));
     Mockito.when(serverManager.createDestinationServersList(null)).thenReturn(
       new ArrayList<ServerName>(onlineServers.keySet()));
+    Mockito.when(serverManager.createDestinationServersList(Mockito.anyList())).thenReturn(
+        new ArrayList<ServerName>(onlineServers.keySet()));
     
     for (Entry<HRegionInfo, ServerName> entry : bulk.entrySet()) {
       Mockito.when(serverManager.isServerOnline(entry.getValue())).thenReturn(true);
@@ -276,6 +282,7 @@ public class TestDrainingServer {
     List<ServerName> availableServers = new ArrayList<ServerName>(onlineServers.keySet());
     Mockito.when(serverManager.createDestinationServersList()).thenReturn(availableServers);
     Mockito.when(serverManager.createDestinationServersList(null)).thenReturn(availableServers);
+    Mockito.when(serverManager.createDestinationServersList(Mockito.anyList())).thenReturn(availableServers);
   }
 
   private void setRegionOpenedOnZK(final ZooKeeperWatcher zkWatcher, final ServerName serverName,
