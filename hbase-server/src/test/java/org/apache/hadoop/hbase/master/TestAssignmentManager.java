@@ -171,7 +171,8 @@ public class TestAssignmentManager {
     avServers.addAll(onlineServers.keySet());
     Mockito.when(this.serverManager.createDestinationServersList()).thenReturn(avServers);
     Mockito.when(this.serverManager.createDestinationServersList(null)).thenReturn(avServers);
-
+    Mockito.when(this.serverManager.createDestinationServersList(Mockito.anyList())).thenReturn(avServers);
+    Mockito.when(server.getRegionServerVersion(Mockito.any(ServerName.class))).thenReturn("0.0.0");
     Mockito.when(this.serverManager.sendRegionClose(SERVERNAME_A, REGIONINFO, -1)).
       thenReturn(true);
     Mockito.when(this.serverManager.sendRegionClose(SERVERNAME_B, REGIONINFO, -1)).
@@ -811,7 +812,7 @@ public class TestAssignmentManager {
       // here we are waiting until the random assignment in the load balancer is
       // called.
       while (!gate.get()) {
-        Thread.sleep(10);
+        Thread.sleep(1000);
       }
       // new region plan may take some time to get updated after random
       // assignment is called and
