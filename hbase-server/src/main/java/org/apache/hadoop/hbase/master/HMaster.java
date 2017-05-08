@@ -1124,6 +1124,8 @@ MasterServices, Server {
     }
 
     zombieDetector.interrupt();
+
+    regionServerTracker.masterInited();
   }
 
   /**

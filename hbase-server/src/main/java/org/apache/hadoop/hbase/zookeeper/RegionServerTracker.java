@@ -51,6 +51,7 @@ public class RegionServerTracker extends ZooKeeperListener {
 		  new TreeMap<ServerName, RegionServerInfo>();
   private ServerManager serverManager;
   private Abortable abortable;
+  private volatile boolean masterInited = false;
 
   public RegionServerTracker(ZooKeeperWatcher watcher,
       Abortable abortable, ServerManager serverManager) {
@@ -72,6 +73,10 @@ public class RegionServerTracker extends ZooKeeperListener {
     List<String> servers =
       ZKUtil.listChildrenAndWatchThem(watcher, watcher.znodePaths.rsZNode);
     refresh(servers);
+  }
+
+  public void masterInited() {
+    masterInited = true;
   }
 
   private void refresh(final List<String> servers) throws IOException {
@@ -106,7 +111,9 @@ public class RegionServerTracker extends ZooKeeperListener {
       // Call this after putting RS maps with lock to prevent other threads get RS version.
       // This is to prevent balancer assign regions to highest version RS before we move all system
       // table to it.
-      serverManager.serversListChangedOnZK();
+      if (masterInited) {
+        serverManager.checkShouldMoveRegion();
+      }
     }
 
   }

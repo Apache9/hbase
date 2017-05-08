@@ -515,7 +515,7 @@ public class ServerManager {
     }
   }
 
-  public void serversListChangedOnZK() throws IOException {
+  public void checkShouldMoveRegion() throws IOException {
     // RS register on ZK after reports startup on master
     List<HRegionInfo> regionsShouldMove = new ArrayList<>();
     for (ServerName server : services.getAssignmentManager().getExcludeServers(true)) {
