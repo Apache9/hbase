@@ -2015,7 +2015,7 @@ MasterServices, Server {
     HRegionInfo hri = regionState.getRegion();
     ServerName dest;
     List<ServerName> exclude = assignmentManager.getExcludeServers(hri.getTable().isSystemTable());
-    if (exclude.contains(ServerName.valueOf(Bytes.toString(destServerName)))) {
+    if (destServerName != null && exclude.contains(ServerName.valueOf(Bytes.toString(destServerName)))) {
       LOG.info(Bytes.toString(encodedRegionName)+" can not move to " + Bytes.toString(destServerName)
           + " because the server is in exclude list");
       destServerName = null;
