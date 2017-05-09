@@ -3479,6 +3479,10 @@ public class AssignmentManager extends ZooKeeperListener {
         }
       }
     }
+    // Should add meta in it.
+    if (isCarryingMeta(serverName)) {
+      res.add(HRegionInfo.FIRST_META_REGIONINFO);
+    }
     return res;
   }
 
