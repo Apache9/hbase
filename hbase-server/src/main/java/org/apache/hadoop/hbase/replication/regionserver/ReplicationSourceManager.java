@@ -787,6 +787,7 @@ public class ReplicationSourceManager implements ReplicationListener {
       long pos = MetaEditor.getReplicationPositionForOnePeer(connection, encodedName, peerId);
       if (seq <= pos) {
         // Case 5
+        return;
       }
       if (pos >= 0) {
         // Case 4
