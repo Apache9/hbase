@@ -3466,24 +3466,10 @@ public class AssignmentManager extends ZooKeeperListener {
     return isCarryingRegion(serverName, HRegionInfo.FIRST_META_REGIONINFO);
   }
 
-  public List<HRegionInfo> isCarryingSystemTable(ServerName serverName) throws IOException {
-    List<HTableDescriptor> systemTables = server.listTableDescriptorsByNamespace(
-        NamespaceDescriptor.SYSTEM_NAMESPACE_NAME_STR);
-    List<HRegionInfo> res = new ArrayList<>();
-    for(HTableDescriptor tableDescriptor : systemTables) {
-      try(HTable table = new HTable(server.getConfiguration(), tableDescriptor.getTableName())) {
-        for(Map.Entry<HRegionInfo, ServerName> entry : table.getRegionLocations().entrySet()){
-          if (entry.getValue().equals(serverName)){
-            res.add(entry.getKey());
-          }
-        }
-      }
-    }
-    // Should add meta in it.
-    if (isCarryingMeta(serverName)) {
-      res.add(HRegionInfo.FIRST_META_REGIONINFO);
-    }
-    return res;
+  public List<HRegionInfo> getCarryingSystemTable(ServerName serverName) throws IOException {
+    return this.getRegionStates().getServerRegions(serverName).stream()
+        .filter(HRegionInfo::isSystemTable)
+        .collect(Collectors.toList());
   }
 
   /**

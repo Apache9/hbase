@@ -50,8 +50,6 @@ import org.apache.hadoop.hbase.ZooKeeperConnectionException;
 import org.apache.hadoop.hbase.client.HConnection;
 import org.apache.hadoop.hbase.client.HConnectionManager;
 import org.apache.hadoop.hbase.client.RetriesExhaustedException;
-import org.apache.hadoop.hbase.executor.EventHandler;
-import org.apache.hadoop.hbase.executor.EventType;
 import org.apache.hadoop.hbase.master.handler.MetaServerShutdownHandler;
 import org.apache.hadoop.hbase.master.handler.ServerShutdownHandler;
 import org.apache.hadoop.hbase.monitoring.MonitoredTask;
@@ -62,7 +60,6 @@ import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.AdminService;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.OpenRegionRequest;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.OpenRegionResponse;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.ServerInfo;
-import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos;
 import org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.SplitLogTask.RecoveryMode;
 import org.apache.hadoop.hbase.regionserver.RegionOpeningState;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -521,15 +518,11 @@ public class ServerManager {
     for (ServerName server : services.getAssignmentManager().getExcludeServers(true)) {
       while (true) {
         try {
-          for (HRegionInfo regionInfo : services.getAssignmentManager()
-              .isCarryingSystemTable(server)) {
-            // Should move the region to a server with highest version.
-            regionsShouldMove.add(regionInfo);
-          }
+          // Should move the region to a server with highest version.
+          regionsShouldMove.addAll(services.getAssignmentManager().getCarryingSystemTable(server));
           break;
         } catch (IOException e) {
           LOG.warn("get system table assignment failed, will retry " + e.getMessage());
-          e.printStackTrace();
           Threads.sleep(2000);
         }
       }
