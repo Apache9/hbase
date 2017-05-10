@@ -202,6 +202,11 @@ public class RegionStates {
       && isRegionInState(hri, State.OFFLINE, State.CLOSED));
   }
 
+  public synchronized Set<HRegionInfo> getServerRegions(ServerName serverName) {
+    Set<HRegionInfo> set = serverHoldings.get(serverName);
+    return set == null ? new HashSet<>() : set;
+  }
+
   /**
    * @return True if specified region is in one of the specified states.
    */

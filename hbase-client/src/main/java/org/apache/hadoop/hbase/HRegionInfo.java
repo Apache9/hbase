@@ -596,6 +596,10 @@ public class HRegionInfo implements Comparable<HRegionInfo> {
     return isMetaRegion();
   }
 
+  public boolean isSystemTable() {
+    return tableName.isSystemTable();
+  }
+
   /** @return true if this region is a meta region */
   public boolean isMetaRegion() {
      return tableName.equals(HRegionInfo.FIRST_META_REGIONINFO.getTable());
