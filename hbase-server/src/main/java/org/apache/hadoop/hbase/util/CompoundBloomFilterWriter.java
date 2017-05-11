@@ -32,6 +32,7 @@ import org.apache.hadoop.hbase.KeyValue.KVComparator;
 import org.apache.hadoop.hbase.io.hfile.BlockType;
 import org.apache.hadoop.hbase.io.hfile.HFileBlockIndex;
 import org.apache.hadoop.hbase.io.hfile.InlineBlockWriter;
+import org.apache.hadoop.hbase.regionserver.StoreFileWriter;
 import org.apache.hadoop.io.Writable;
 
 /**
@@ -154,7 +155,7 @@ public class CompoundBloomFilterWriter extends CompoundBloomFilterBase
    * Adds a Bloom filter key. This key must be greater than the previous key,
    * as defined by the comparator this compound Bloom filter is configured
    * with. For efficiency, key monotonicity is not checked here. See
-   * {@link org.apache.hadoop.hbase.regionserver.StoreFile.Writer#append(
+   * {@link org.apache.hadoop.hbase.regionserver.StoreFileWriter#append(
    * org.apache.hadoop.hbase.Cell)} for the details of deduplication.
    */
   @Override

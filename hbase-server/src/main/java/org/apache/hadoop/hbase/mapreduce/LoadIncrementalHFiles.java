@@ -89,8 +89,8 @@ import org.apache.hadoop.hbase.io.hfile.HFileScanner;
 import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.regionserver.BloomType;
 import org.apache.hadoop.hbase.regionserver.HStore;
-import org.apache.hadoop.hbase.regionserver.StoreFile;
 import org.apache.hadoop.hbase.regionserver.StoreFileInfo;
+import org.apache.hadoop.hbase.regionserver.StoreFileWriter;
 import org.apache.hadoop.hbase.security.UserProvider;
 import org.apache.hadoop.hbase.security.access.SecureBulkLoadEndpoint;
 import org.apache.hadoop.hbase.security.token.FsDelegationToken;
@@ -955,7 +955,7 @@ public class LoadIncrementalHFiles extends Configured implements Tool {
     FileSystem fs = inFile.getFileSystem(conf);
     CacheConfig cacheConf = new CacheConfig(conf);
     HalfStoreFileReader halfReader = null;
-    StoreFile.Writer halfWriter = null;
+    StoreFileWriter halfWriter = null;
     try {
       halfReader = new HalfStoreFileReader(fs, inFile, cacheConf, reference, conf);
       Map<byte[], byte[]> fileInfo = halfReader.loadFileInfo();
@@ -971,7 +971,7 @@ public class LoadIncrementalHFiles extends Configured implements Tool {
                                   .withDataBlockEncoding(familyDescriptor.getDataBlockEncoding())
                                   .withIncludesTags(true)
                                   .build();
-      halfWriter = new StoreFile.WriterBuilder(conf, cacheConf,
+      halfWriter = new StoreFileWriter.Builder(conf, cacheConf,
           fs)
               .withFilePath(outFile)
               .withBloomType(bloomFilterType)

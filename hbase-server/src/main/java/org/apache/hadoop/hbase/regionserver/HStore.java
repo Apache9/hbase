@@ -65,6 +65,7 @@ import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.conf.ConfigurationManager;
 import org.apache.hadoop.hbase.io.compress.Compression;
+import org.apache.hadoop.hbase.io.compress.Compression.Algorithm;
 import org.apache.hadoop.hbase.io.crypto.Cipher;
 import org.apache.hadoop.hbase.io.crypto.Encryption;
 import org.apache.hadoop.hbase.io.hfile.CacheConfig;
@@ -78,6 +79,7 @@ import org.apache.hadoop.hbase.io.hfile.InvalidHFileException;
 import org.apache.hadoop.hbase.monitoring.MonitoredTask;
 import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.protobuf.generated.WALProtos.CompactionDescriptor;
+import org.apache.hadoop.hbase.regionserver.StoreFile.Writer;
 import org.apache.hadoop.hbase.regionserver.compactions.CompactionContext;
 import org.apache.hadoop.hbase.regionserver.compactions.CompactionProgress;
 import org.apache.hadoop.hbase.regionserver.compactions.CompactionRequest;
@@ -666,7 +668,7 @@ public class HStore implements Store {
     info.setRegionCoprocessorHost(this.region.getCoprocessorHost());
     StoreFile storeFile = new StoreFile(this.getFileSystem(), info, this.conf, this.cacheConf,
       this.family.getBloomFilterType());
-    StoreFile.Reader r = storeFile.createReader();
+    StoreFileReader r = storeFile.createReader();
     r.setReplicaStoreFile(isPrimaryReplicaStore());
     return storeFile;
   }
@@ -835,7 +837,7 @@ public class HStore implements Store {
   }
 
   private void bulkLoadHFile(StoreFile sf) throws IOException {
-    StoreFile.Reader r = sf.getReader();
+    StoreFileReader r = sf.getReader();
     this.storeSize += r.length();
     this.totalUncompressedBytes += r.getTotalUncompressedBytes();
 
@@ -1005,7 +1007,7 @@ public class HStore implements Store {
     status.setStatus("Flushing " + this + ": reopening flushed file");
     StoreFile sf = createStoreFileAndReader(dstPath);
 
-    StoreFile.Reader r = sf.getReader();
+    StoreFileReader r = sf.getReader();
     this.storeSize += r.length();
     this.totalUncompressedBytes += r.getTotalUncompressedBytes();
 
@@ -1018,44 +1020,62 @@ public class HStore implements Store {
   }
 
   @Override
-  public StoreFile.Writer createWriterInTmp(long maxKeyCount, Compression.Algorithm compression,
-                                            boolean isCompaction, boolean includeMVCCReadpoint,
-                                            boolean includesTag)
+  public StoreFileWriter createWriterInTmpDir(long maxKeyCount, Compression.Algorithm compression,
+      boolean isCompaction, boolean includeMVCCReadpoint, boolean includesTags) throws IOException {
+    return createWriterInTmpDir(maxKeyCount, compression, isCompaction, includeMVCCReadpoint,
+      includesTags, false);
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public StoreFileWriter createWriterInTmpDir(long maxKeyCount, Compression.Algorithm compression,
+      boolean isCompaction, boolean includeMVCCReadpoint, boolean includesTags,
+      boolean shouldDropBehind) throws IOException {
+    return createWriterInTmpDir(maxKeyCount, compression, isCompaction, includeMVCCReadpoint,
+      includesTags, shouldDropBehind, null);
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public StoreFileWriter createWriterInTmpDir(long maxKeyCount, Compression.Algorithm compression,
+      boolean isCompaction, boolean includeMVCCReadpoint, boolean includesTags,
+      boolean shouldDropBehind, final TimeRangeTracker trt) throws IOException {
+    return createWriterInTmp(maxKeyCount, compression, isCompaction, includeMVCCReadpoint,
+      includesTags, shouldDropBehind, trt);
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public Writer createWriterInTmp(long maxKeyCount, Algorithm compression, boolean isCompaction,
+      boolean includeMVCCReadpoint, boolean includesTags) throws IOException {
+    return createWriterInTmp(maxKeyCount, compression, isCompaction, includeMVCCReadpoint,
+      includesTags, false);
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public Writer createWriterInTmp(long maxKeyCount, Algorithm compression, boolean isCompaction,
+      boolean includeMVCCReadpoint, boolean includesTags, boolean shouldDropBehind)
       throws IOException {
     return createWriterInTmp(maxKeyCount, compression, isCompaction, includeMVCCReadpoint,
-        includesTag, false);
+      includesTags, shouldDropBehind, null);
   }
 
-  /*
-   * @param maxKeyCount
-   * @param compression Compression algorithm to use
-   * @param isCompaction whether we are creating a new file in a compaction
-   * @param includesMVCCReadPoint - whether to include MVCC or not
-   * @param includesTag - includesTag or not
-   * @return Writer for a new StoreFile in the tmp dir.
+  /**
+   * {@inheritDoc}
    */
   @Override
-  public StoreFile.Writer createWriterInTmp(long maxKeyCount, Compression.Algorithm compression,
-      boolean isCompaction, boolean includeMVCCReadpoint, boolean includesTag,
-      boolean shouldDropBehind)
-  throws IOException {
-    return createWriterInTmp(maxKeyCount, compression, isCompaction, includeMVCCReadpoint,
-        includesTag, shouldDropBehind, null);
-  }
-
-  /*
-   * @param maxKeyCount
-   * @param compression Compression algorithm to use
-   * @param isCompaction whether we are creating a new file in a compaction
-   * @param includesMVCCReadPoint - whether to include MVCC or not
-   * @param includesTag - includesTag or not
-   * @return Writer for a new StoreFile in the tmp dir.
-   */
-  @Override
-  public StoreFile.Writer createWriterInTmp(long maxKeyCount, Compression.Algorithm compression,
-      boolean isCompaction, boolean includeMVCCReadpoint, boolean includesTag,
-      boolean shouldDropBehind, final TimeRangeTracker trt)
-  throws IOException {
+  public Writer createWriterInTmp(long maxKeyCount, Algorithm compression, boolean isCompaction,
+      boolean includeMVCCReadpoint, boolean includesTags, boolean shouldDropBehind,
+      TimeRangeTracker trt) throws IOException {
     final CacheConfig writerCacheConf;
     if (isCompaction) {
       // Don't cache data on write on compactions.
@@ -1066,19 +1086,16 @@ public class HStore implements Store {
     }
     InetSocketAddress[] favoredNodes = null;
     if (region.getRegionServerServices() != null) {
-      favoredNodes = region.getRegionServerServices().getFavoredNodesForRegion(
-          region.getRegionInfo().getEncodedName());
+      favoredNodes = region.getRegionServerServices()
+          .getFavoredNodesForRegion(region.getRegionInfo().getEncodedName());
     }
-    HFileContext hFileContext = createFileContext(compression, includeMVCCReadpoint, includesTag,
-      cryptoContext);
-    StoreFile.WriterBuilder builder = new StoreFile.WriterBuilder(conf, writerCacheConf,
-        this.getFileSystem())
-            .withFilePath(fs.createTempName())
-            .withComparator(comparator)
-            .withBloomType(family.getBloomFilterType())
-            .withMaxKeyCount(maxKeyCount)
-            .withFavoredNodes(favoredNodes)
-            .withFileContext(hFileContext)
+    HFileContext hFileContext =
+        createFileContext(compression, includeMVCCReadpoint, includesTags, cryptoContext);
+    StoreFileWriter.Builder builder =
+        new StoreFileWriter.Builder(conf, writerCacheConf, this.getFileSystem())
+            .withFilePath(fs.createTempName()).withComparator(comparator)
+            .withBloomType(family.getBloomFilterType()).withMaxKeyCount(maxKeyCount)
+            .withFavoredNodes(favoredNodes).withFileContext(hFileContext)
             .withShouldDropCacheBehind(shouldDropBehind);
     if (trt != null) {
       builder.withTimeRangeTracker(trt);
@@ -1880,7 +1897,7 @@ public class HStore implements Store {
     this.storeSize = 0L;
     this.totalUncompressedBytes = 0L;
     for (StoreFile hsf : this.storeEngine.getStoreFileManager().getStorefiles()) {
-      StoreFile.Reader r = hsf.getReader();
+      StoreFileReader r = hsf.getReader();
       if (r == null) {
         LOG.warn("StoreFile " + hsf + " has a null Reader");
         continue;
@@ -1989,7 +2006,7 @@ public class HStore implements Store {
   private boolean rowAtOrBeforeFromStoreFile(final StoreFile f,
                                           final GetClosestRowBeforeTracker state)
       throws IOException {
-    StoreFile.Reader r = f.getReader();
+    StoreFileReader r = f.getReader();
     if (r == null) {
       LOG.warn("StoreFile " + f + " has a null Reader");
       return false;
@@ -2179,7 +2196,7 @@ public class HStore implements Store {
   public long getMaxStoreFileAge() {
     long earliestTS = Long.MAX_VALUE;
     for (StoreFile s: this.storeEngine.getStoreFileManager().getStorefiles()) {
-      StoreFile.Reader r = s.getReader();
+      StoreFileReader r = s.getReader();
       if (r == null) {
         LOG.warn("StoreFile " + s + " has a null Reader");
         continue;
@@ -2198,7 +2215,7 @@ public class HStore implements Store {
   public long getMinStoreFileAge() {
     long latestTS = 0;
     for (StoreFile s: this.storeEngine.getStoreFileManager().getStorefiles()) {
-      StoreFile.Reader r = s.getReader();
+      StoreFileReader r = s.getReader();
       if (r == null) {
         LOG.warn("StoreFile " + s + " has a null Reader");
         continue;
@@ -2217,7 +2234,7 @@ public class HStore implements Store {
   public long getAvgStoreFileAge() {
     long sum = 0, count = 0;
     for (StoreFile s: this.storeEngine.getStoreFileManager().getStorefiles()) {
-      StoreFile.Reader r = s.getReader();
+      StoreFileReader r = s.getReader();
       if (r == null) {
         LOG.warn("StoreFile " + s + " has a null Reader");
         continue;
@@ -2267,7 +2284,7 @@ public class HStore implements Store {
   public long getStorefilesSize() {
     long size = 0;
     for (StoreFile s: this.storeEngine.getStoreFileManager().getStorefiles()) {
-      StoreFile.Reader r = s.getReader();
+      StoreFileReader r = s.getReader();
       if (r == null) {
         LOG.warn("StoreFile " + s + " has a null Reader");
         continue;
@@ -2281,7 +2298,7 @@ public class HStore implements Store {
   public long getStorefilesIndexSize() {
     long size = 0;
     for (StoreFile s: this.storeEngine.getStoreFileManager().getStorefiles()) {
-      StoreFile.Reader r = s.getReader();
+      StoreFileReader r = s.getReader();
       if (r == null) {
         LOG.warn("StoreFile " + s + " has a null Reader");
         continue;
@@ -2295,7 +2312,7 @@ public class HStore implements Store {
   public long getTotalStaticIndexSize() {
     long size = 0;
     for (StoreFile s : this.storeEngine.getStoreFileManager().getStorefiles()) {
-      StoreFile.Reader r = s.getReader();
+      StoreFileReader r = s.getReader();
       if (r == null) {
         continue;
       }
@@ -2308,7 +2325,7 @@ public class HStore implements Store {
   public long getTotalStaticBloomSize() {
     long size = 0;
     for (StoreFile s : this.storeEngine.getStoreFileManager().getStorefiles()) {
-      StoreFile.Reader r = s.getReader();
+      StoreFileReader r = s.getReader();
       if (r == null) {
         continue;
       }
@@ -2716,7 +2733,7 @@ public class HStore implements Store {
     for (final StoreFile file : compactedfiles) {
       synchronized (file) {
         try {
-          StoreFile.Reader r = file.getReader();
+          StoreFileReader r = file.getReader();
           if (r == null) {
             if (LOG.isDebugEnabled()) {
               LOG.debug("The file " + file + " was closed but still not archived.");

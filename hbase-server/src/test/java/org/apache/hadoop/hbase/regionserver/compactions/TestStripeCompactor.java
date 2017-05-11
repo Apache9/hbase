@@ -201,7 +201,7 @@ public class TestStripeCompactor {
     when(store.areWritesEnabled()).thenReturn(true);
     when(store.getFileSystem()).thenReturn(mock(FileSystem.class));
     when(store.getRegionInfo()).thenReturn(new HRegionInfo(TABLE_NAME));
-    when(store.createWriterInTmp(anyLong(), any(Compression.Algorithm.class), anyBoolean(),
+    when(store.createWriterInTmpDir(anyLong(), any(Compression.Algorithm.class), anyBoolean(),
       anyBoolean(), anyBoolean(), anyBoolean())).thenAnswer(writers);
     when(store.getComparator()).thenReturn(new KVComparator());
 

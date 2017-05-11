@@ -105,7 +105,7 @@ public class TestStoreFile extends HBaseTestCase {
       conf, fs, new Path(this.testDir, hri.getTable().getNameAsString()), hri);
 
     HFileContext meta = new HFileContextBuilder().withBlockSize(2*1024).build();
-    StoreFile.Writer writer = new StoreFile.WriterBuilder(conf, cacheConf, this.fs)
+    StoreFileWriter writer = new StoreFileWriter.Builder(conf, cacheConf, this.fs)
             .withFilePath(regionFs.createTempName())
             .withFileContext(meta)
             .build();
@@ -117,7 +117,7 @@ public class TestStoreFile extends HBaseTestCase {
     checkHalfHFile(regionFs, sf);
   }
 
-  private void writeStoreFile(final StoreFile.Writer writer) throws IOException {
+  private void writeStoreFile(final StoreFileWriter writer) throws IOException {
     writeStoreFile(writer, Bytes.toBytes(getName()), Bytes.toBytes(getName()));
   }
 
@@ -130,7 +130,7 @@ public class TestStoreFile extends HBaseTestCase {
    * @param writer
    * @throws IOException
    */
-  public static void writeStoreFile(final StoreFile.Writer writer, byte[] fam, byte[] qualifier)
+  public static void writeStoreFile(final StoreFileWriter writer, byte[] fam, byte[] qualifier)
   throws IOException {
     long now = System.currentTimeMillis();
     try {
@@ -157,7 +157,7 @@ public class TestStoreFile extends HBaseTestCase {
 
     HFileContext meta = new HFileContextBuilder().withBlockSize(8 * 1024).build();
     // Make a store file and write data to it.
-    StoreFile.Writer writer = new StoreFile.WriterBuilder(conf, cacheConf, this.fs)
+    StoreFileWriter writer = new StoreFileWriter.Builder(conf, cacheConf, this.fs)
             .withFilePath(regionFs.createTempName())
             .withFileContext(meta)
             .build();
@@ -166,7 +166,7 @@ public class TestStoreFile extends HBaseTestCase {
     Path hsfPath = regionFs.commitStoreFile(TEST_FAMILY, writer.getPath());
     StoreFile hsf = new StoreFile(this.fs, hsfPath, conf, cacheConf,
       BloomType.NONE);
-    StoreFile.Reader reader = hsf.createReader();
+    StoreFileReader reader = hsf.createReader();
     // Split on a row, not in middle of row.  Midkey returned by reader
     // may be in middle of row.  Create new one with empty column and
     // timestamp.
@@ -206,7 +206,7 @@ public class TestStoreFile extends HBaseTestCase {
     HFileContext meta = new HFileContextBuilder().withBlockSize(8 * 1024).build();
 
     // Make a store file and write data to it.
-    StoreFile.Writer writer = new StoreFile.WriterBuilder(conf, cacheConf, this.fs)
+    StoreFileWriter writer = new StoreFileWriter.Builder(conf, cacheConf, this.fs)
             .withFilePath(regionFs.createTempName())
             .withFileContext(meta)
             .build();
@@ -236,7 +236,7 @@ public class TestStoreFile extends HBaseTestCase {
 
   @Test
   public void testEmptyStoreFileRestrictKeyRanges() throws Exception {
-    StoreFile.Reader reader = mock(StoreFile.Reader.class);
+    StoreFileReader reader = mock(StoreFileReader.class);
     Store store = mock(Store.class);
     HColumnDescriptor hcd = mock(HColumnDescriptor.class);
     byte[] cf = Bytes.toBytes("ty");
@@ -265,7 +265,7 @@ public class TestStoreFile extends HBaseTestCase {
 
     HFileContext meta = new HFileContextBuilder().withBlockSize(8 * 1024).build();
     // Make a store file and write data to it. <root>/<tablename>/<rgn>/<cf>/<file>
-    StoreFile.Writer writer = new StoreFile.WriterBuilder(testConf, cacheConf, this.fs)
+    StoreFileWriter writer = new StoreFileWriter.Builder(testConf, cacheConf, this.fs)
             .withFilePath(regionFs.createTempName())
             .withFileContext(meta)
             .build();
@@ -343,9 +343,9 @@ public class TestStoreFile extends HBaseTestCase {
         midRow, null);
     Path bottomPath = splitStoreFile(regionFs, bottomHri, TEST_FAMILY, f, midRow, false);
     // Make readers on top and bottom.
-    StoreFile.Reader top = new StoreFile(
+    StoreFileReader top = new StoreFile(
       this.fs, topPath, conf, cacheConf, BloomType.NONE).createReader();
-    StoreFile.Reader bottom = new StoreFile(
+    StoreFileReader bottom = new StoreFile(
       this.fs, bottomPath, conf, cacheConf, BloomType.NONE).createReader();
     ByteBuffer previous = null;
     LOG.info("Midkey: " + midKV.toString());
@@ -471,14 +471,14 @@ public class TestStoreFile extends HBaseTestCase {
     }
   }
 
-  private static StoreFileScanner getStoreFileScanner(StoreFile.Reader reader, boolean cacheBlocks,
+  private static StoreFileScanner getStoreFileScanner(StoreFileReader reader, boolean cacheBlocks,
       boolean pread) {
     return reader.getStoreFileScanner(cacheBlocks, pread, false, 0, 0, false);
   }
 
   private static final String localFormatter = "%010d";
 
-  private void bloomWriteRead(StoreFile.Writer writer, FileSystem fs) throws Exception {
+  private void bloomWriteRead(StoreFileWriter writer, FileSystem fs) throws Exception {
     float err = conf.getFloat(BloomFilterFactory.IO_STOREFILE_BLOOM_ERROR_RATE, 0);
     Path f = writer.getPath();
     long now = System.currentTimeMillis();
@@ -490,7 +490,7 @@ public class TestStoreFile extends HBaseTestCase {
     }
     writer.close();
 
-    StoreFile.Reader reader = new StoreFile.Reader(fs, f, cacheConf, conf);
+    StoreFileReader reader = new StoreFileReader(fs, f, cacheConf, conf);
     reader.loadFileInfo();
     reader.loadBloomfilter();
     StoreFileScanner scanner = getStoreFileScanner(reader, false, false);
@@ -538,7 +538,7 @@ public class TestStoreFile extends HBaseTestCase {
                         .withChecksumType(CKTYPE)
                         .withBytesPerCheckSum(CKBYTES).build();
     // Make a store file and write data to it.
-    StoreFile.Writer writer = new StoreFile.WriterBuilder(conf, cacheConf, this.fs)
+    StoreFileWriter writer = new StoreFileWriter.Builder(conf, cacheConf, this.fs)
             .withFilePath(f)
             .withBloomType(BloomType.ROW)
             .withMaxKeyCount(2000)
@@ -561,7 +561,7 @@ public class TestStoreFile extends HBaseTestCase {
                         .withChecksumType(CKTYPE)
                         .withBytesPerCheckSum(CKBYTES).build();
     // Make a store file and write data to it.
-    StoreFile.Writer writer = new StoreFile.WriterBuilder(conf, cacheConf, this.fs)
+    StoreFileWriter writer = new StoreFileWriter.Builder(conf, cacheConf, this.fs)
             .withFilePath(f)
             .withMaxKeyCount(2000)
             .withFileContext(meta)
@@ -577,7 +577,7 @@ public class TestStoreFile extends HBaseTestCase {
     }
     writer.close();
 
-    StoreFile.Reader reader = new StoreFile.Reader(fs, f, cacheConf, conf);
+    StoreFileReader reader = new StoreFileReader(fs, f, cacheConf, conf);
     reader.loadFileInfo();
     reader.loadBloomfilter();
 
@@ -614,7 +614,7 @@ public class TestStoreFile extends HBaseTestCase {
     Path f = new Path(ROOT_DIR, getName());
     HFileContext meta = new HFileContextBuilder().withBlockSize(8 * 1024).build();
     // Make a store file and write data to it.
-    StoreFile.Writer writer = new StoreFile.WriterBuilder(conf, cacheConf, this.fs)
+    StoreFileWriter writer = new StoreFileWriter.Builder(conf, cacheConf, this.fs)
             .withFilePath(f)
             .withFileContext(meta)
             .build();
@@ -622,7 +622,7 @@ public class TestStoreFile extends HBaseTestCase {
     writeStoreFile(writer);
     writer.close();
 
-    StoreFile.Reader reader = new StoreFile.Reader(fs, f, cacheConf, conf);
+    StoreFileReader reader = new StoreFileReader(fs, f, cacheConf, conf);
 
     // Now do reseek with empty KV to position to the beginning of the file
 
@@ -659,7 +659,7 @@ public class TestStoreFile extends HBaseTestCase {
           .withChecksumType(CKTYPE)
           .withBytesPerCheckSum(CKBYTES).build();
       // Make a store file and write data to it.
-      StoreFile.Writer writer = new StoreFile.WriterBuilder(conf, cacheConf, this.fs)
+      StoreFileWriter writer = new StoreFileWriter.Builder(conf, cacheConf, this.fs)
               .withFilePath(f)
               .withBloomType(bt[x])
               .withMaxKeyCount(expKeys[x])
@@ -681,7 +681,7 @@ public class TestStoreFile extends HBaseTestCase {
       }
       writer.close();
 
-      StoreFile.Reader reader = new StoreFile.Reader(fs, f, cacheConf, conf);
+      StoreFileReader reader = new StoreFileReader(fs, f, cacheConf, conf);
       reader.loadFileInfo();
       reader.loadBloomfilter();
       StoreFileScanner scanner = getStoreFileScanner(reader, false, false);
@@ -756,7 +756,7 @@ public class TestStoreFile extends HBaseTestCase {
                                   long seqId,
                                   String path) {
     StoreFile mock = Mockito.mock(StoreFile.class);
-    StoreFile.Reader reader = Mockito.mock(StoreFile.Reader.class);
+    StoreFileReader reader = Mockito.mock(StoreFileReader.class);
 
     Mockito.doReturn(size).when(reader).length();
 
@@ -812,7 +812,7 @@ public class TestStoreFile extends HBaseTestCase {
     Path dir = new Path(storedir, "1234567890");
     HFileContext meta = new HFileContextBuilder().withBlockSize(8 * 1024).build();
     // Make a store file and write data to it.
-    StoreFile.Writer writer = new StoreFile.WriterBuilder(conf, cacheConf, this.fs)
+    StoreFileWriter writer = new StoreFileWriter.Builder(conf, cacheConf, this.fs)
             .withOutputDir(dir)
             .withFileContext(meta)
             .build();
@@ -832,7 +832,7 @@ public class TestStoreFile extends HBaseTestCase {
     HColumnDescriptor hcd = mock(HColumnDescriptor.class);
     when(hcd.getName()).thenReturn(family);
     when(store.getFamily()).thenReturn(hcd);
-    StoreFile.Reader reader = hsf.createReader();
+    StoreFileReader reader = hsf.createReader();
     StoreFileScanner scanner = getStoreFileScanner(reader, false, false);
     TreeSet<byte[]> columns = new TreeSet<byte[]>(Bytes.BYTES_COMPARATOR);
     columns.add(qualifier);
@@ -882,13 +882,13 @@ public class TestStoreFile extends HBaseTestCase {
     conf.setBoolean(CacheConfig.CACHE_BLOCKS_ON_WRITE_KEY, false);
     CacheConfig cacheConf = new CacheConfig(conf);
     Path pathCowOff = new Path(baseDir, "123456789");
-    StoreFile.Writer writer = writeStoreFile(conf, cacheConf, pathCowOff, 3);
+    StoreFileWriter writer = writeStoreFile(conf, cacheConf, pathCowOff, 3);
     StoreFile hsf = new StoreFile(this.fs, writer.getPath(), conf, cacheConf,
       BloomType.NONE);
     LOG.debug(hsf.getPath().toString());
 
     // Read this file, we should see 3 misses
-    StoreFile.Reader reader = hsf.createReader();
+    StoreFileReader reader = hsf.createReader();
     reader.loadFileInfo();
     StoreFileScanner scanner = getStoreFileScanner(reader, true, true);
     scanner.seek(KeyValue.LOWESTKEY);
@@ -923,13 +923,13 @@ public class TestStoreFile extends HBaseTestCase {
     // Let's read back the two files to ensure the blocks exactly match
     hsf = new StoreFile(this.fs, pathCowOff, conf, cacheConf,
       BloomType.NONE);
-    StoreFile.Reader readerOne = hsf.createReader();
+    StoreFileReader readerOne = hsf.createReader();
     readerOne.loadFileInfo();
     StoreFileScanner scannerOne = getStoreFileScanner(readerOne, true, true);
     scannerOne.seek(KeyValue.LOWESTKEY);
     hsf = new StoreFile(this.fs, pathCowOn, conf, cacheConf,
       BloomType.NONE);
-    StoreFile.Reader readerTwo = hsf.createReader();
+    StoreFileReader readerTwo = hsf.createReader();
     readerTwo.loadFileInfo();
     StoreFileScanner scannerTwo = getStoreFileScanner(readerTwo, true, true);
     scannerTwo.seek(KeyValue.LOWESTKEY);
@@ -997,7 +997,7 @@ public class TestStoreFile extends HBaseTestCase {
     return new Path(new Path(regionDir, family), path.getName());
   }
 
-  private StoreFile.Writer writeStoreFile(Configuration conf,
+  private StoreFileWriter writeStoreFile(Configuration conf,
       CacheConfig cacheConf, Path path, int numBlocks)
   throws IOException {
     // Let's put ~5 small KVs in each block, so let's make 5*numBlocks KVs
@@ -1017,7 +1017,7 @@ public class TestStoreFile extends HBaseTestCase {
                         .withBytesPerCheckSum(CKBYTES)
                         .build();
     // Make a store file and write data to it.
-    StoreFile.Writer writer = new StoreFile.WriterBuilder(conf, cacheConf, this.fs)
+    StoreFileWriter writer = new StoreFileWriter.Builder(conf, cacheConf, this.fs)
             .withFilePath(path)
             .withMaxKeyCount(2000)
             .withFileContext(meta)
@@ -1053,7 +1053,7 @@ public class TestStoreFile extends HBaseTestCase {
         .withDataBlockEncoding(dataBlockEncoderAlgo)
         .build();
     // Make a store file and write data to it.
-    StoreFile.Writer writer = new StoreFile.WriterBuilder(conf, cacheConf, this.fs)
+    StoreFileWriter writer = new StoreFileWriter.Builder(conf, cacheConf, this.fs)
             .withFilePath(path)
             .withMaxKeyCount(2000)
             .withFileContext(meta)
@@ -1062,7 +1062,7 @@ public class TestStoreFile extends HBaseTestCase {
 
     StoreFile storeFile = new StoreFile(fs, writer.getPath(), conf,
       cacheConf, BloomType.NONE);
-    StoreFile.Reader reader = storeFile.createReader();
+    StoreFileReader reader = storeFile.createReader();
 
     Map<byte[], byte[]> fileInfo = reader.loadFileInfo();
     byte[] value = fileInfo.get(HFileDataBlockEncoder.DATA_BLOCK_ENCODING);

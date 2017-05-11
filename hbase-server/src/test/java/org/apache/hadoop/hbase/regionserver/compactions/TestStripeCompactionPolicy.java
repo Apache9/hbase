@@ -36,15 +36,15 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
-
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Lists;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -765,7 +765,7 @@ public class TestStripeCompactionPolicy {
     when(store.getFamily()).thenReturn(col);
     when(store.getRegionInfo()).thenReturn(info);
     when(
-      store.createWriterInTmp(anyLong(), any(Compression.Algorithm.class), anyBoolean(),
+      store.createWriterInTmpDir(anyLong(), any(Compression.Algorithm.class), anyBoolean(),
         anyBoolean(), anyBoolean(), anyBoolean())).thenAnswer(writers);
 
     Configuration conf = HBaseConfiguration.create();

@@ -54,7 +54,7 @@ import org.apache.hadoop.hbase.regionserver.RegionScanner;
 import org.apache.hadoop.hbase.regionserver.ScanType;
 import org.apache.hadoop.hbase.regionserver.Store;
 import org.apache.hadoop.hbase.regionserver.StoreFile;
-import org.apache.hadoop.hbase.regionserver.StoreFile.Reader;
+import org.apache.hadoop.hbase.regionserver.StoreFileReader;
 import org.apache.hadoop.hbase.regionserver.compactions.CompactionRequest;
 import org.apache.hadoop.hbase.regionserver.querymatcher.DeleteTracker;
 import org.apache.hadoop.hbase.regionserver.wal.HLogKey;
@@ -513,17 +513,31 @@ public class BaseRegionObserver implements RegionObserver {
   }
 
   @Override
-  public Reader preStoreFileReaderOpen(ObserverContext<RegionCoprocessorEnvironment> ctx,
+  public StoreFile.Reader preStoreFileReaderOpen(ObserverContext<RegionCoprocessorEnvironment> ctx,
       FileSystem fs, Path p, FSDataInputStreamWrapper in, long size, CacheConfig cacheConf,
-      Reference r, Reader reader) throws IOException {
+      Reference r, StoreFile.Reader reader) throws IOException {
     return reader;
   }
 
   @Override
-  public Reader postStoreFileReaderOpen(ObserverContext<RegionCoprocessorEnvironment> ctx,
+  public StoreFile.Reader postStoreFileReaderOpen(ObserverContext<RegionCoprocessorEnvironment> ctx,
       FileSystem fs, Path p, FSDataInputStreamWrapper in, long size, CacheConfig cacheConf,
-      Reference r, Reader reader) throws IOException {
+      Reference r, StoreFile.Reader reader) throws IOException {
     return reader;
+  }
+
+  @Override
+  public StoreFileReader preStoreFileReaderOpen(ObserverContext<RegionCoprocessorEnvironment> ctx,
+      FileSystem fs, Path p, FSDataInputStreamWrapper in, long size, CacheConfig cacheConf,
+      Reference r, StoreFileReader reader) throws IOException {
+    return preStoreFileReaderOpen(ctx, fs, p, in, size, cacheConf, r, (StoreFile.Reader) reader);
+  }
+
+  @Override
+  public StoreFileReader postStoreFileReaderOpen(ObserverContext<RegionCoprocessorEnvironment> ctx,
+      FileSystem fs, Path p, FSDataInputStreamWrapper in, long size, CacheConfig cacheConf,
+      Reference r, StoreFileReader reader) throws IOException {
+    return postStoreFileReaderOpen(ctx, fs, p, in, size, cacheConf, r, (StoreFile.Reader) reader);
   }
 
   @Override

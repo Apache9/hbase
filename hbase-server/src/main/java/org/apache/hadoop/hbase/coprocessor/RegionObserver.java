@@ -54,6 +54,7 @@ import org.apache.hadoop.hbase.regionserver.RegionScanner;
 import org.apache.hadoop.hbase.regionserver.ScanType;
 import org.apache.hadoop.hbase.regionserver.Store;
 import org.apache.hadoop.hbase.regionserver.StoreFile;
+import org.apache.hadoop.hbase.regionserver.StoreFileReader;
 import org.apache.hadoop.hbase.regionserver.compactions.CompactionRequest;
 import org.apache.hadoop.hbase.regionserver.querymatcher.DeleteTracker;
 import org.apache.hadoop.hbase.regionserver.wal.HLogKey;
@@ -1311,6 +1312,43 @@ public interface RegionObserver extends Coprocessor {
   StoreFile.Reader postStoreFileReaderOpen(final ObserverContext<RegionCoprocessorEnvironment> ctx,
       final FileSystem fs, final Path p, final FSDataInputStreamWrapper in, long size,
       final CacheConfig cacheConf, final Reference r, StoreFile.Reader reader) throws IOException;
+
+  /**
+   * Called before creation of Reader for a store file. Calling
+   * {@link org.apache.hadoop.hbase.coprocessor.ObserverContext#bypass()} has no effect in this
+   * hook.
+   * @param ctx the environment provided by the region server
+   * @param fs fileystem to read from
+   * @param p path to the file
+   * @param in {@link FSDataInputStreamWrapper}
+   * @param size Full size of the file
+   * @param cacheConf
+   * @param r original reference file. This will be not null only when reading a split file.
+   * @param reader the base reader, if not {@code null}, from previous RegionObserver in the chain
+   * @return a Reader instance to use instead of the base reader if overriding default behavior,
+   *         null otherwise
+   * @throws IOException
+   */
+  StoreFileReader preStoreFileReaderOpen(final ObserverContext<RegionCoprocessorEnvironment> ctx,
+      final FileSystem fs, final Path p, final FSDataInputStreamWrapper in, long size,
+      final CacheConfig cacheConf, final Reference r, StoreFileReader reader) throws IOException;
+
+  /**
+   * Called after the creation of Reader for a store file.
+   * @param ctx the environment provided by the region server
+   * @param fs fileystem to read from
+   * @param p path to the file
+   * @param in {@link FSDataInputStreamWrapper}
+   * @param size Full size of the file
+   * @param cacheConf
+   * @param r original reference file. This will be not null only when reading a split file.
+   * @param reader the base reader instance
+   * @return The reader to use
+   * @throws IOException
+   */
+  StoreFileReader postStoreFileReaderOpen(final ObserverContext<RegionCoprocessorEnvironment> ctx,
+      final FileSystem fs, final Path p, final FSDataInputStreamWrapper in, long size,
+      final CacheConfig cacheConf, final Reference r, StoreFileReader reader) throws IOException;
 
   /**
    * Called after a new cell has been created during an increment operation, but before

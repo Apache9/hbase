@@ -65,6 +65,7 @@ import org.apache.hadoop.hbase.io.hfile.HFileContextBuilder;
 import org.apache.hadoop.hbase.regionserver.BloomType;
 import org.apache.hadoop.hbase.regionserver.HStore;
 import org.apache.hadoop.hbase.regionserver.StoreFile;
+import org.apache.hadoop.hbase.regionserver.StoreFileWriter;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.io.SequenceFile;
@@ -311,12 +312,12 @@ public class HFileOutputFormat2
 
         if (null == favoredNodes) {
           wl.writer =
-              new StoreFile.WriterBuilder(conf, new CacheConfig(tempConf), fs)
+              new StoreFileWriter.Builder(conf, new CacheConfig(tempConf), fs)
                   .withOutputDir(familydir).withBloomType(bloomType)
                   .withComparator(KeyValue.COMPARATOR).withFileContext(hFileContext).build();
         } else {
           wl.writer =
-              new StoreFile.WriterBuilder(conf, new CacheConfig(tempConf), new HFileSystem(fs))
+              new StoreFileWriter.Builder(conf, new CacheConfig(tempConf), new HFileSystem(fs))
                   .withOutputDir(familydir).withBloomType(bloomType)
                   .withComparator(KeyValue.COMPARATOR).withFileContext(hFileContext)
                   .withFavoredNodes(favoredNodes).build();
@@ -326,7 +327,7 @@ public class HFileOutputFormat2
         return wl;
       }
 
-      private void close(final StoreFile.Writer w) throws IOException {
+      private void close(final StoreFileWriter w) throws IOException {
         if (w != null) {
           w.appendFileInfo(StoreFile.BULKLOAD_TIME_KEY,
               Bytes.toBytes(System.currentTimeMillis()));
@@ -356,7 +357,7 @@ public class HFileOutputFormat2
    */
   static class WriterLength {
     long written = 0;
-    StoreFile.Writer writer = null;
+    StoreFileWriter writer = null;
   }
 
   /**

@@ -38,7 +38,6 @@ import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.io.TimeRange;
 import org.apache.hadoop.hbase.io.hfile.HFileScanner;
-import org.apache.hadoop.hbase.regionserver.StoreFile.Reader;
 import org.apache.hadoop.hbase.regionserver.querymatcher.ScanQueryMatcher;
 
 /**
@@ -50,7 +49,7 @@ public class StoreFileScanner implements KeyValueScanner {
   private static final Log LOG = LogFactory.getLog(HStore.class);
 
   // the reader it comes from:
-  private final StoreFile.Reader reader;
+  private final StoreFileReader reader;
   private final HFileScanner hfs;
   private Cell cur = null;
   private boolean closed = false;
@@ -85,7 +84,7 @@ public class StoreFileScanner implements KeyValueScanner {
    * @param canOptimizeForNonNullColumn {@code true} if we can make sure there is no null column,
    *          otherwise {@code false}. This is a hint for optimization.
    */
-  public StoreFileScanner(StoreFile.Reader reader, HFileScanner hfs, boolean useMVCC,
+  public StoreFileScanner(StoreFileReader reader, HFileScanner hfs, boolean useMVCC,
       boolean hasMVCC, long readPt, long scannerOrder, boolean canOptimizeForNonNullColumn) {
     this.readPt = readPt;
     this.reader = reader;
@@ -133,7 +132,7 @@ public class StoreFileScanner implements KeyValueScanner {
     List<StoreFile> sorted_files = new ArrayList<>(files);
     Collections.sort(sorted_files, StoreFile.Comparators.SEQ_ID);
     for (int i = 0; i < sorted_files.size(); i++) {
-      StoreFile.Reader r = sorted_files.get(i).createReader(canUseDrop);
+      StoreFileReader r = sorted_files.get(i).createReader(canUseDrop);
       r.setReplicaStoreFile(isPrimaryReplica);
       StoreFileScanner scanner = r.getStoreFileScanner(cacheBlocks, usePread, isCompaction, readPt,
         i, matcher != null ? !matcher.hasNullColumnInQuery() : false);
@@ -405,7 +404,7 @@ public class StoreFileScanner implements KeyValueScanner {
     return true;
   }
 
-  Reader getReader() {
+  StoreFileReader getReader() {
     return reader;
   }
 

@@ -37,7 +37,7 @@ import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.fs.HFileSystem;
 import org.apache.hadoop.hbase.regionserver.BloomType;
-import org.apache.hadoop.hbase.regionserver.StoreFile;
+import org.apache.hadoop.hbase.regionserver.StoreFileWriter;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.apache.hadoop.hbase.util.BloomFilterFactory;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -114,8 +114,8 @@ public class TestSeekBeforeWithInlineBlocks {
                                 .withBlockSize(DATA_BLOCK_SIZE)
                                 .build();
             
-            StoreFile.Writer storeFileWriter = 
-                new StoreFile.WriterBuilder(conf, cacheConf, fs)
+            StoreFileWriter storeFileWriter = 
+                new StoreFileWriter.Builder(conf, cacheConf, fs)
               .withFilePath(hfilePath)
               .withFileContext(meta)
               .withBloomType(bloomType)
