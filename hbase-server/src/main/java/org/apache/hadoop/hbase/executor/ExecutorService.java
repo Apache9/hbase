@@ -183,8 +183,6 @@ public class ExecutorService {
    * Executor instance.
    */
   static class Executor {
-    // how long to retain excess threads
-    static final long keepAliveTimeInMillis = 1000;
     // the thread pool executor that services the requests
     final TrackingThreadPoolExecutor threadPoolExecutor;
     // work queue to use - unbounded queue
@@ -200,9 +198,9 @@ public class ExecutorService {
       this.name = name;
       this.eventHandlerListeners = eventHandlerListeners;
       // create the thread pool executor
-      this.threadPoolExecutor = new TrackingThreadPoolExecutor(
-          maxThreads, maxThreads,
-          keepAliveTimeInMillis, TimeUnit.MILLISECONDS, q);
+      this.threadPoolExecutor = new TrackingThreadPoolExecutor(maxThreads, maxThreads,
+          1, TimeUnit.MINUTES, q);
+      this.threadPoolExecutor.allowCoreThreadTimeOut(true);
       // name the threads for this threadpool
       ThreadFactoryBuilder tfb = new ThreadFactoryBuilder();
       tfb.setNameFormat(this.name + "-%d");
