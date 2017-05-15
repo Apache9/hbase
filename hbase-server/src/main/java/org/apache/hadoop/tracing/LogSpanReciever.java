@@ -20,6 +20,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.htrace.HTraceConfiguration;
 import org.apache.htrace.Span;
 import org.apache.htrace.SpanReceiver;
@@ -65,7 +66,7 @@ public class LogSpanReciever implements SpanReceiver {
       buf.append("KVAnnotations\n");
       for (Map.Entry<byte[], byte[]> entry : span.getKVAnnotations().entrySet()) {
         buf.append("---> ").append(new String(entry.getKey())).append("=")
-            .append(new String(entry.getValue())).append("\n");
+            .append(Bytes.toStringBinary(entry.getValue())).append("\n");
       }
     }
 

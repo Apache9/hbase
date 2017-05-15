@@ -2545,6 +2545,9 @@ public class HRegion implements HeapSize { // , Writable{
     boolean success = false;
     int noOfPuts = 0, noOfDeletes = 0;
     boolean isAtomic = htableDescriptor.isAcrossPrefixRowsAtomic();
+    if (Trace.isTracing() && Trace.currentSpan() != null) {
+      Trace.currentSpan().addTimelineAnnotation("start acquiring row locks");
+    }
     try {
       // ------------------------------------
       // STEP 1. Try to acquire as many locks as we can, and ensure
@@ -2702,6 +2705,10 @@ public class HRegion implements HeapSize { // , Writable{
       // visible to scanners till we update the MVCC. The MVCC is
       // moved only when the sync is complete.
       // ----------------------------------
+      if (Trace.isTracing() && Trace.currentSpan() != null) {
+        Trace.currentSpan().addTimelineAnnotation("start writing back to memstore");
+      }
+
       long addedSize = 0;
       for (int i = firstIndex; i < lastIndexExclusive; i++) {
         if (batchOp.retCodeDetails[i].getOperationStatusCode()
@@ -2715,6 +2722,11 @@ public class HRegion implements HeapSize { // , Writable{
       // ------------------------------------
       // STEP 4. Build WAL edit
       // ----------------------------------
+
+      if (Trace.isTracing() && Trace.currentSpan() != null) {
+        Trace.currentSpan().addTimelineAnnotation("start writing WAL");
+      }
+
       boolean hasWalAppends = false;
       Durability durability = Durability.USE_DEFAULT;
       for (int i = firstIndex; i < lastIndexExclusive; i++) {
@@ -2801,9 +2813,15 @@ public class HRegion implements HeapSize { // , Writable{
         coprocessorHost.postBatchMutate(miniBatchOp);
       }
 
+
       // ------------------------------------------------------------------
       // STEP 8. Advance mvcc. This will make this put visible to scanners and getters.
       // ------------------------------------------------------------------
+
+      if (Trace.isTracing() && Trace.currentSpan() != null) {
+        Trace.currentSpan().addTimelineAnnotation("start dealing with other issues");
+      }
+
       if (w != null) {
         mvcc.completeMemstoreInsert(w);
         w = null;
@@ -5823,6 +5841,9 @@ public class HRegion implements HeapSize { // , Writable{
     updateWriteMetrics(1);
     WriteEntry w = null;
     RowLock rowLock;
+    if (Trace.isTracing() && Trace.currentSpan() != null) {
+      Trace.currentSpan().addTimelineAnnotation("start acquiring row lock");
+    }
     try {
       rowLock = getRowLock(row);
       try {
@@ -5840,6 +5861,9 @@ public class HRegion implements HeapSize { // , Writable{
           // now start my own transaction
           w = mvcc.beginMemstoreInsert();
           long now = EnvironmentEdgeManager.currentTimeMillis();
+          if (Trace.isTracing() && Trace.currentSpan() != null) {
+            Trace.currentSpan().addTimelineAnnotation("start constructing new kv");
+          }
           // Process each family
           for (Map.Entry<byte[], List<Cell>> family : append.getFamilyCellMap().entrySet()) {
 
@@ -5978,7 +6002,9 @@ public class HRegion implements HeapSize { // , Writable{
             //store the kvs to the temporary memstore before writing HLog
             tempMemstore.put(store, kvs);
           }
-
+          if (Trace.isTracing() && Trace.currentSpan() != null) {
+            Trace.currentSpan().addTimelineAnnotation("start writing to WAL");
+          }
           // Actually write to WAL now
           if (writeToWAL) {
             // Using default cluster id, as this can only happen in the orginating
@@ -5992,6 +6018,9 @@ public class HRegion implements HeapSize { // , Writable{
             recordMutationWithoutWal(append.getFamilyCellMap());
           }
 
+          if (Trace.isTracing() && Trace.currentSpan() != null) {
+            Trace.currentSpan().addTimelineAnnotation("start writing to Memstore");
+          }
           //Actually write to Memstore now
           for (Map.Entry<Store, List<Cell>> entry : tempMemstore.entrySet()) {
             Store store = entry.getKey();
@@ -6083,6 +6112,9 @@ public class HRegion implements HeapSize { // , Writable{
     updateWriteMetrics(1);
     updateWriteCapacityUnitMetrics(QuotaUtil.calculateMutationSize(increment));
     WriteEntry w = null;
+    if (Trace.isTracing() && Trace.currentSpan() != null) {
+      Trace.currentSpan().addTimelineAnnotation("start acquiring row lock");
+    }
     try {
       RowLock rowLock = getRowLock(row);
       try {
@@ -6096,6 +6128,9 @@ public class HRegion implements HeapSize { // , Writable{
             if (r != null) {
               return r;
             }
+          }
+          if (Trace.isTracing() && Trace.currentSpan() != null) {
+            Trace.currentSpan().addTimelineAnnotation("start constructing new kv");
           }
           // now start my own transaction
           w = mvcc.beginMemstoreInsert();
@@ -6213,6 +6248,9 @@ public class HRegion implements HeapSize { // , Writable{
             }
           }
 
+          if (Trace.isTracing() && Trace.currentSpan() != null) {
+            Trace.currentSpan().addTimelineAnnotation("start writing to WAL");
+          }
           // Actually write to WAL now
           if (walEdits != null && !walEdits.isEmpty()) {
             if (writeToWAL) {
@@ -6226,6 +6264,10 @@ public class HRegion implements HeapSize { // , Writable{
             } else {
               recordMutationWithoutWal(increment.getFamilyCellMap());
             }
+          }
+
+          if (Trace.isTracing() && Trace.currentSpan() != null) {
+            Trace.currentSpan().addTimelineAnnotation("start writing to Memstore");
           }
           //Actually write to Memstore now
           if (!tempMemstore.isEmpty()) {
