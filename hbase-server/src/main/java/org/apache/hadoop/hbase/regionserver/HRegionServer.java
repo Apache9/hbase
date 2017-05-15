@@ -272,6 +272,8 @@ import org.apache.hadoop.metrics.util.MBeanUtil;
 import org.apache.hadoop.net.DNS;
 import org.apache.hadoop.util.ReflectionUtils;
 import org.apache.hadoop.util.StringUtils;
+import org.apache.htrace.Trace;
+import org.apache.htrace.TraceScope;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.KeeperException.NoNodeException;
 import org.apache.zookeeper.data.Stat;
@@ -3303,6 +3305,12 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
       Boolean existence = null;
       Result r = null;
 
+      if (Trace.isTracing() && Trace.currentSpan() != null) {
+        Trace.currentSpan().addTimelineAnnotation("start processing a  get request");
+        Trace.currentSpan().addKVAnnotation(Bytes.toBytes("region"), Bytes.toBytes(region.toString()));
+        Trace.currentSpan().addKVAnnotation(Bytes.toBytes("key"), get.getRow().toByteArray());
+      }
+
       if (get.hasClosestRowBefore() && get.getClosestRowBefore()) {
         if (get.getColumnCount() != 1) {
           throw new DoNotRetryIOException(
@@ -3831,6 +3839,11 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
       throw new ServiceException(
           new DoNotRetryIOException("Missing required input: scannerId or scan"));
     }
+    if (Trace.isTracing() && Trace.currentSpan() != null) {
+      Trace.currentSpan().addKVAnnotation(Bytes.toBytes("start_row"), request.getScan().getStartRow().toByteArray());
+      Trace.currentSpan().addKVAnnotation(Bytes.toBytes("stop_row"), request.getScan().getStopRow().toByteArray());
+
+    }
     try {
       checkOpen();
     } catch (IOException e) {
@@ -3922,6 +3935,11 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     RpcCallContext context = RpcServer.getCurrentCall();
     // now let's do the real scan.
     RegionScanner scanner = rsh.s;
+
+    //trace the scan operation
+    if (Trace.isTracing() && Trace.currentSpan() != null) {
+      Trace.currentSpan().addKVAnnotation(Bytes.toBytes("region"), Bytes.toBytes(region.toString()));
+    }
     // this is the limit of rows for this scan, if we the number of rows reach this value, we will
     // close the scanner.
     int limitOfRows;
@@ -4213,6 +4231,9 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
         regionActionResultBuilder.setException(ResponseConverter.buildException(e));
         responseBuilder.addRegionActionResult(regionActionResultBuilder.build());
         continue;  // For this region it's a failure.
+      }
+      if (Trace.isTracing() && Trace.currentSpan() != null) {
+        Trace.currentSpan().addTimelineAnnotation("do multi to a specific region " + Bytes.toString(region.getRegionName()));
       }
 
       if (regionAction.hasAtomic() && regionAction.getAtomic()) {
@@ -5099,6 +5120,12 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     if (isQuotaEnabled()) {
       rsQuotaManager.checkQuota(region, append);
     }
+    if (Trace.isTracing() && Trace.currentSpan() != null) {
+      Trace.currentSpan().addTimelineAnnotation("start processing an append request");
+      Trace.currentSpan().addKVAnnotation(Bytes.toBytes("region"), Bytes.toBytes(region.toString()));
+      Trace.currentSpan().addKVAnnotation(Bytes.toBytes("key"), mutation.getRow().toByteArray());
+    }
+
     Result r = null;
     if (region.getCoprocessorHost() != null) {
       r = region.getCoprocessorHost().preAppend(append);
@@ -5145,6 +5172,11 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     if (isQuotaEnabled()) {
       rsQuotaManager.checkQuota(region, OperationType.GET);
       rsQuotaManager.checkQuota(region, increment);
+    }
+    if (Trace.isTracing() && Trace.currentSpan() != null) {
+      Trace.currentSpan().addTimelineAnnotation("start processing an increment request");
+      Trace.currentSpan().addKVAnnotation(Bytes.toBytes("region"), Bytes.toBytes(region.toString()));
+      Trace.currentSpan().addKVAnnotation(Bytes.toBytes("key"), mutation.getRow().toByteArray());
     }
     Result r = null;
     if (region.getCoprocessorHost() != null) {

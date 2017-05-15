@@ -26,6 +26,7 @@ import org.apache.hadoop.hbase.ipc.RpcServer.Call;
 import org.apache.hadoop.hbase.monitoring.MonitoredRPCHandler;
 import org.apache.hadoop.hbase.monitoring.TaskMonitor;
 import org.apache.hadoop.hbase.security.UserProvider;
+import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.Pair;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.util.StringUtils;
@@ -110,6 +111,9 @@ public class CallRunner {
           traceScope = Trace.startSpan(call.toTraceString(), call.tinfo);
         } else if (RpcServer.ALWAYS_TRACE_IN_SERVER_SIDE) {
           traceScope = Trace.startSpan(call.toTraceString(), Sampler.ALWAYS);
+        }
+        if (Trace.isTracing() && Trace.currentSpan() != null) {
+          Trace.currentSpan().addKVAnnotation(Bytes.toBytes("queueTime"), Bytes.toBytes(String.valueOf(call.startTime - call.timestamp)));
         }
         RequestContext.set(userProvider.create(call.connection.user), RpcServer.getRemoteIp(),
           call.connection.service);

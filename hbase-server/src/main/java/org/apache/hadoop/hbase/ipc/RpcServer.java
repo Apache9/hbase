@@ -117,6 +117,7 @@ import org.apache.hadoop.security.token.SecretManager.InvalidToken;
 import org.apache.hadoop.security.token.TokenIdentifier;
 import org.apache.hadoop.util.StringUtils;
 import org.apache.hadoop.util.StringUtils.TraditionalBinaryPrefix;
+import org.apache.htrace.Trace;
 import org.apache.htrace.TraceInfo;
 import org.cliffc.high_scale_lib.Counter;
 import org.codehaus.jackson.map.ObjectMapper;

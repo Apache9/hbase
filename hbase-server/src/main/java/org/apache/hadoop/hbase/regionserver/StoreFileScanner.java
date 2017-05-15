@@ -35,6 +35,7 @@ import org.apache.hadoop.hbase.io.TimeRange;
 import org.apache.hadoop.hbase.io.hfile.HFileScanner;
 import org.apache.hadoop.hbase.regionserver.StoreFile.Reader;
 import org.apache.hadoop.hbase.regionserver.querymatcher.ScanQueryMatcher;
+import org.apache.htrace.Trace;
 
 /**
  * KeyValueScanner adaptor over the Reader.  It also provides hooks into
@@ -128,6 +129,9 @@ public class StoreFileScanner implements KeyValueScanner {
       StoreFileScanner scanner = r.getStoreFileScanner(cacheBlocks, usePread, isCompaction, readPt,
         matcher != null ? !matcher.hasNullColumnInQuery() : false);
       scanners.add(scanner);
+    }
+    if (Trace.isTracing() && Trace.currentSpan() != null) {
+      Trace.currentSpan().addTimelineAnnotation("Creating StoreFile scanners");
     }
     return scanners;
   }
