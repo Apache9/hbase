@@ -48,7 +48,7 @@ import org.apache.hadoop.hbase.classification.InterfaceAudience;
  * Timeout configs.
  */
 @InterfaceAudience.Private
-class AsyncConnectionConfiguration {
+public class AsyncConnectionConfiguration {
 
   private final long metaOperationTimeoutNs;
 
@@ -79,7 +79,7 @@ class AsyncConnectionConfiguration {
   private final long scannerMaxResultSize;
 
   @SuppressWarnings("deprecation")
-  AsyncConnectionConfiguration(Configuration conf) {
+  public AsyncConnectionConfiguration(Configuration conf) {
     this.metaOperationTimeoutNs = TimeUnit.MILLISECONDS.toNanos(
       conf.getLong(HBASE_CLIENT_META_OPERATION_TIMEOUT, DEFAULT_HBASE_CLIENT_OPERATION_TIMEOUT));
     this.operationTimeoutNs = TimeUnit.MILLISECONDS.toNanos(
