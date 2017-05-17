@@ -67,6 +67,7 @@ import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.classification.InterfaceStability;
 import org.apache.hadoop.hbase.client.MetaScanner.MetaScannerVisitor;
 import org.apache.hadoop.hbase.client.MetaScanner.MetaScannerVisitorBase;
+import org.apache.hadoop.hbase.client.replication.ReplicationAdmin;
 import org.apache.hadoop.hbase.ipc.CoprocessorRpcChannel;
 import org.apache.hadoop.hbase.ipc.HBaseRpcController;
 import org.apache.hadoop.hbase.ipc.HBaseRpcControllerImpl;
@@ -572,6 +573,9 @@ public class HBaseAdmin implements Abortable, Closeable {
           tries = -1;
         }
       } else if (isTableEnabled(desc.getTableName())) {
+        // if creating table successfully in source table, then make sure that the table will be
+        // created in sink replicated clusters.
+        ReplicationAdmin.createTableForReplicatedPeers(conf, desc, splitKeys);
         return;
       } else {
         try { // Sleep
