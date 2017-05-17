@@ -34,6 +34,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Abortable;
+import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HTableDescriptor;
@@ -708,6 +709,42 @@ public class ReplicationAdmin implements Closeable {
         throw new ReplicationException(
             "Table-cfs config conflict with namespaces config in peer");
       }
+    }
+  }
+
+  public static void createTableForReplicatedPeers(Configuration conf, final HTableDescriptor desc,
+      byte[][] splitKeys) throws IOException {
+    if (!conf.getBoolean(HConstants.REPLICATION_ENABLE_KEY,
+      HConstants.REPLICATION_ENABLE_DEFAULT)) {
+      return;
+    }
+    ReplicationAdmin replicationAdmin = new ReplicationAdmin(conf);
+    try {
+      for (Entry<String, ReplicationPeerConfig> e : replicationAdmin.listPeerConfigs().entrySet()) {
+        ReplicationPeerConfig rpc = e.getValue();
+        boolean isFoundInPeer = false;
+        if (rpc.getNamespaces() != null
+            && rpc.getNamespaces().contains(desc.getTableName().getNamespaceAsString())) {
+          isFoundInPeer = true;
+        } else if (rpc.getTableCFsMap() != null
+            && rpc.getTableCFsMap().containsKey(desc.getTableName())) {
+          isFoundInPeer = true;
+        }
+        if (isFoundInPeer) {
+          Configuration peerConfig = HBaseConfiguration.create(conf);
+          ZKUtil.applyClusterKeyToConf(peerConfig, rpc.getClusterKey());
+          HBaseAdmin admin = new HBaseAdmin(peerConfig);
+          try {
+            if (!admin.tableExists(desc.getTableName())) {
+              admin.createTable(desc, splitKeys);
+            }
+          } finally {
+            admin.close();
+          }
+        }
+      }
+    } finally {
+      replicationAdmin.close();
     }
   }
 }
