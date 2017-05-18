@@ -689,7 +689,7 @@ public class MetaEditor {
   public static Map<String, Long> getReplicationPositionForAllPeer(HConnection connection,
       byte[] encodedRegionName) throws IOException {
     Get get = new Get(encodedRegionName);
-    get.addFamily(HConstants.REPLICATION_META_FAMILY);
+    get.addFamily(HConstants.REPLICATION_POSITION_FAMILY);
     HTable table = getMetaHTable(connection);
     Result r = table.get(get);
     table.close();
