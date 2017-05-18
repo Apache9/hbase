@@ -53,18 +53,15 @@ public class FixSerialReplicationPositionTool extends Configured implements Tool
       for (Map.Entry<String, Long> posEntry : posMap.entrySet()) {
         String peer = posEntry.getKey();
         long pos = posEntry.getValue();
-        for (int i = 0; i < barriers.size(); i++) {
-          if (pos < barriers.get(i)) {
-            long newPos = barriers.get(i) - 1;
-            if (pos != newPos) {
-              LOG.info(
-                  "Found a mismatch pos, need fix region=" + encodedName + " peer=" + peer
-                      + " from " + pos + " to " + newPos);
-              Map<String, Long> map = new HashMap<>();
-              map.put(encodedName, newPos);
-              MetaEditor.updateReplicationPositions(connection, peer, map);
-            }
-            break;
+        if (barriers.size() > 0) {
+          long newPos = barriers.get(barriers.size() - 1) - 1;
+          if (pos < newPos) {
+            LOG.info(
+                "Found a mismatch pos, need fix region=" + encodedName + " peer=" + peer
+                    + " from " + pos + " to " + newPos);
+            Map<String, Long> map = new HashMap<>();
+            map.put(encodedName, newPos);
+            MetaEditor.updateReplicationPositions(connection, peer, map);
           }
         }
       }
