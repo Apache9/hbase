@@ -694,10 +694,12 @@ public class MetaEditor {
     Result r = table.get(get);
     table.close();
     Map<String, Long> map = new HashMap<String, Long>();
-    for (Cell c : r.listCells()) {
-      map.put(
-          Bytes.toString(c.getQualifierArray(), c.getQualifierOffset(), c.getQualifierLength()),
-          Bytes.toLong(c.getValueArray(), c.getValueOffset(), c.getValueLength()));
+    if (r != null) {
+      for (Cell c : r.listCells()) {
+        map.put(
+            Bytes.toString(c.getQualifierArray(), c.getQualifierOffset(), c.getQualifierLength()),
+            Bytes.toLong(c.getValueArray(), c.getValueOffset(), c.getValueLength()));
+      }
     }
     return map;
   }
