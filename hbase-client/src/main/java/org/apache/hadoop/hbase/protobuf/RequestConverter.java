@@ -202,7 +202,8 @@ public final class RequestConverter {
     columnBuilder.setFamily(ByteStringer.wrap(family));
     QualifierValue.Builder valueBuilder = QualifierValue.newBuilder();
     valueBuilder.setValue(ByteStringer.wrap(Bytes.toBytes(amount)));
-    valueBuilder.setQualifier(ByteStringer.wrap(qualifier));
+    valueBuilder.setQualifier(ByteStringer.wrap(qualifier == null ? HConstants.EMPTY_BYTE_ARRAY
+        : qualifier));
     columnBuilder.addQualifierValue(valueBuilder.build());
     mutateBuilder.addColumnValue(columnBuilder.build());
     if (nonce != HConstants.NO_NONCE) {
@@ -991,7 +992,8 @@ public final class RequestConverter {
     Condition.Builder builder = Condition.newBuilder();
     builder.setRow(ByteStringer.wrap(row));
     builder.setFamily(ByteStringer.wrap(family));
-    builder.setQualifier(ByteStringer.wrap(qualifier));
+    builder.setQualifier(ByteStringer.wrap(qualifier == null ? HConstants.EMPTY_BYTE_ARRAY
+        : qualifier));
     builder.setComparator(ProtobufUtil.toComparator(comparator));
     builder.setCompareType(compareType);
     return builder.build();
