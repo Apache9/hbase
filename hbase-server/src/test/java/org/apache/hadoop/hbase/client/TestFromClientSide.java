@@ -2894,7 +2894,6 @@ public class TestFromClientSide {
   private void getTestNull(HTable ht, byte [] row, byte [] family,
       byte [] value)
   throws Exception {
-
     Get get = new Get(row);
     get.addColumn(family, null);
     Result result = ht.get(get);
@@ -2913,7 +2912,6 @@ public class TestFromClientSide {
     get = new Get(row);
     result = ht.get(get);
     assertSingleResult(result, row, family, HConstants.EMPTY_BYTE_ARRAY, value);
-
   }
 
   private void scanTestNull(HTable ht, byte[] row, byte[] family, byte[] value)
@@ -6577,6 +6575,102 @@ public class TestFromClientSide {
     }
 
     ht.close();
+  }
+
+  @Test
+  public void testNullQualifier() throws Exception {
+    final TableName tableName = TableName.valueOf("testNullQualifier");
+    HTable table = TEST_UTIL.createTable(tableName, FAMILY);
+
+    // Work for Put
+    Put put = new Put(ROW);
+    put.add(FAMILY, null, VALUE);
+    table.put(put);
+
+    // Work for Get, Scan
+    getTestNull(table, ROW, FAMILY, VALUE);
+    scanTestNull(table, ROW, FAMILY, VALUE);
+
+    // Work for Delete
+    Delete delete = new Delete(ROW);
+    delete.deleteColumns(FAMILY, null);
+    table.delete(delete);
+
+    Get get = new Get(ROW);
+    Result result = table.get(get);
+    assertEmptyResult(result);
+
+    // Work for Increment/Append
+    Increment increment = new Increment(ROW);
+    increment.addColumn(FAMILY, null, 1L);
+    table.increment(increment);
+    getTestNull(table, ROW, FAMILY, 1L);
+
+    table.incrementColumnValue(ROW, FAMILY, null, 1L);
+    getTestNull(table, ROW, FAMILY, 2L);
+
+    delete = new Delete(ROW);
+    delete.deleteColumns(FAMILY, null);
+    table.delete(delete);
+
+    Append append = new Append(ROW);
+    append.add(FAMILY, null, VALUE);
+    table.append(append);
+    getTestNull(table, ROW, FAMILY, VALUE);
+
+    // Work for checkAndMutate, checkAndPut, checkAndDelete
+    put = new Put(ROW);
+    put.add(FAMILY, null, Bytes.toBytes("checkAndPut"));
+    table.put(put);
+    table.checkAndPut(ROW, FAMILY, null, VALUE, put);
+
+    RowMutations mutate = new RowMutations(ROW);
+    mutate.add(new Put(ROW).add(FAMILY, null, Bytes.toBytes("checkAndMutate")));
+    table.checkAndMutate(ROW, FAMILY, null, CompareOp.EQUAL, Bytes.toBytes("checkAndPut"), mutate);
+
+    delete = new Delete(ROW);
+    delete.deleteColumn(FAMILY, null);
+    table.checkAndDelete(ROW, FAMILY, null, Bytes.toBytes("checkAndMutate"), delete);
+  }
+
+  private void getTestNull(HTable ht, byte[] row, byte[] family, long value) throws Exception {
+    Get get = new Get(row);
+    get.addColumn(family, null);
+    Result result = ht.get(get);
+    assertSingleResult(result, row, family, null, value);
+
+    get = new Get(row);
+    get.addColumn(family, HConstants.EMPTY_BYTE_ARRAY);
+    result = ht.get(get);
+    assertSingleResult(result, row, family, HConstants.EMPTY_BYTE_ARRAY, value);
+
+    get = new Get(row);
+    get.addFamily(family);
+    result = ht.get(get);
+    assertSingleResult(result, row, family, HConstants.EMPTY_BYTE_ARRAY, value);
+
+    get = new Get(row);
+    result = ht.get(get);
+    assertSingleResult(result, row, family, HConstants.EMPTY_BYTE_ARRAY, value);
+  }
+
+  private void assertSingleResult(Result result, byte[] row, byte[] family, byte[] qualifier,
+      long value) throws Exception {
+    assertTrue(
+      "Expected row [" + Bytes.toString(row) + "] " + "Got row [" + Bytes.toString(result.getRow())
+          + "]", equals(row, result.getRow()));
+    assertTrue("Expected a single key but result contains " + result.size(), result.size() == 1);
+    Cell kv = result.rawCells()[0];
+    assertTrue(
+      "Expected family [" + Bytes.toString(family) + "] " + "Got family ["
+          + Bytes.toString(CellUtil.cloneFamily(kv)) + "]",
+      equals(family, CellUtil.cloneFamily(kv)));
+    assertTrue("Expected qualifier [" + Bytes.toString(qualifier) + "] " + "Got qualifier ["
+        + Bytes.toString(CellUtil.cloneQualifier(kv)) + "]",
+      equals(qualifier, CellUtil.cloneQualifier(kv)));
+    assertTrue(
+      "Expected value [" + value + "] " + "Got value [" + Bytes.toString(CellUtil.cloneValue(kv))
+          + "]", value == Bytes.toLong(CellUtil.cloneValue(kv)));
   }
 
   private void reverseScanTest(HTable table, boolean small) throws IOException {
