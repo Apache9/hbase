@@ -689,15 +689,17 @@ public class MetaEditor {
   public static Map<String, Long> getReplicationPositionForAllPeer(HConnection connection,
       byte[] encodedRegionName) throws IOException {
     Get get = new Get(encodedRegionName);
-    get.addFamily(HConstants.REPLICATION_META_FAMILY);
+    get.addFamily(HConstants.REPLICATION_POSITION_FAMILY);
     HTable table = getMetaHTable(connection);
     Result r = table.get(get);
     table.close();
     Map<String, Long> map = new HashMap<String, Long>();
-    for (Cell c : r.listCells()) {
-      map.put(
-          Bytes.toString(c.getQualifierArray(), c.getQualifierOffset(), c.getQualifierLength()),
-          Bytes.toLong(c.getValueArray(), c.getValueOffset(), c.getValueLength()));
+    if (r != null && r.listCells() != null) {
+      for (Cell c : r.listCells()) {
+        map.put(
+            Bytes.toString(c.getQualifierArray(), c.getQualifierOffset(), c.getQualifierLength()),
+            Bytes.toLong(c.getValueArray(), c.getValueOffset(), c.getValueLength()));
+      }
     }
     return map;
   }
