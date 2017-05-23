@@ -562,12 +562,18 @@ public class ClientScanner extends AbstractClientScanner {
   /**
    * @param remainingResultSize
    * @param remainingRows
+   * @param hasRegionHasMoreResultsContext
    * @param regionHasMoreResults
    * @return true when the current region has been exhausted. When the current region has been
    *         exhausted, the region must be changed before scanning can continue
    */
   private boolean doneWithRegion(long remainingResultSize, int remainingRows,
       boolean regionHasMoreResults) {
+    // if server tell us explicitly that it does not have more results then we should end up here.
+    if (callable != null && callable.hasMoreResultsContext() &&
+        !callable.getServerHasMoreResults()) {
+      return true;
+    }
     return remainingResultSize > 0 && remainingRows > 0 && !regionHasMoreResults;
   }
 
