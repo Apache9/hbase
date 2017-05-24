@@ -19,6 +19,8 @@
 package org.apache.hadoop.hbase.regionserver;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import com.google.common.collect.Maps;
 import com.google.protobuf.BlockingRpcChannel;
 import com.google.protobuf.ByteString;
@@ -62,6 +64,7 @@ import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -273,7 +276,6 @@ import org.apache.hadoop.net.DNS;
 import org.apache.hadoop.util.ReflectionUtils;
 import org.apache.hadoop.util.StringUtils;
 import org.apache.htrace.Trace;
-import org.apache.htrace.TraceScope;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.KeeperException.NoNodeException;
 import org.apache.zookeeper.data.Stat;
@@ -340,6 +342,10 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
 
   final ConcurrentHashMap<String, RegionScannerHolder> scanners =
       new ConcurrentHashMap<String, RegionScannerHolder>();
+  // Hold the name of a closed scanner for a while. This is used to keep compatible for old clients
+  // which may send next or close request to a region scanner which has already been exhausted. The
+  // entries will be removed automatically after scannerLeaseTimeoutPeriod.
+  private final Cache<String, String> closedScanners;
 
   /**
    * Map of regions currently being served by this region server. Key is the
@@ -729,6 +735,9 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     // that port is occupied. Adjust serverInfo if this is the case.
     this.rsInfo.setInfoPort(putUpWebUI());
     this.rsInfo.setVersionInfo(ProtobufUtil.getVersionInfo());
+
+    closedScanners = CacheBuilder.newBuilder()
+        .expireAfterAccess(scannerLeaseTimeoutPeriod, TimeUnit.MILLISECONDS).build();
   }
 
   public static String getHostname(Configuration conf) throws UnknownHostException {
@@ -3513,18 +3522,18 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     String scannerName = Long.toString(request.getScannerId());
     RegionScannerHolder rsh = scanners.get(scannerName);
     if (rsh == null) {
-      // just ignore the close request if scanner does not exists.
-      if (request.hasCloseScanner() && request.getCloseScanner()) {
+      // just ignore the next or close request if scanner does not exists.
+      if (closedScanners.getIfPresent(scannerName) != null) {
         throw SCANNER_ALREADY_CLOSED;
       } else {
         LOG.warn("Client tried to access missing scanner " + scannerName);
         throw new UnknownScannerException(
-            "Unknown scanner '" + scannerName + "'. This can happen due to any of the following "
-                + "reasons: a) Scanner id given is wrong, b) Scanner lease expired because of "
-                + "long wait between consecutive client checkins, c) Server may be closing down, "
-                + "d) RegionServer restart during upgrade.\nIf the issue is due to reason (b), a "
-                + "possible fix would be increasing the value of"
-                + "'hbase.client.scanner.timeout.period' configuration.");
+            "Unknown scanner '" + scannerName + "'. This can happen due to any of the following " +
+                "reasons: a) Scanner id given is wrong, b) Scanner lease expired because of " +
+                "long wait between consecutive client checkins, c) Server may be closing down, " +
+                "d) RegionServer restart during upgrade.\nIf the issue is due to reason (b), a " +
+                "possible fix would be increasing the value of" +
+                "'hbase.client.scanner.timeout.period' configuration.");
       }
     }
     HRegionInfo hri = rsh.s.getRegionInfo();
@@ -3818,6 +3827,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
       if (region.getCoprocessorHost() != null) {
         region.getCoprocessorHost().postScannerClose(scanner);
       }
+      closedScanners.put(scannerName, scannerName);
     }
   }
 
