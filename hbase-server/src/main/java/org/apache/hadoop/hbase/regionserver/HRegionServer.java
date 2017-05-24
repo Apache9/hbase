@@ -3869,6 +3869,9 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     ScanResponse.Builder builder = ScanResponse.newBuilder();
     try {
       if (request.hasScannerId()) {
+        // The downstream projects such as AsyncHBase in OpenTSDB need this value. See HBASE-18000
+        // for more details.
+        builder.setScannerId(request.getScannerId());
         rsh = getRegionScanner(request);
       } else {
         rsh = newRegionScanner(request, builder);
