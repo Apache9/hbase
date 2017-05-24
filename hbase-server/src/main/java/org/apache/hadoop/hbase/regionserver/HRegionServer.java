@@ -3969,7 +3969,11 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
         if (!done) {
           scan((HBaseRpcController) controller, request, rsh, maxQuotaResultSize, rows, limitOfRows,
             results, builder, context, totalKvSize, resultCells);
+        } else {
+          builder.setMoreResultsInRegion(!results.isEmpty());
         }
+      } else {
+        builder.setMoreResultsInRegion(true);
       }
 
       if (isQuotaEnabled()) {
@@ -3989,6 +3993,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
       if (!builder.hasMoreResults()) {
         builder.setMoreResults(true);
       }
+      assert builder.hasMoreResultsInRegion();
       if (builder.getMoreResults() && builder.getMoreResultsInRegion() && !results.isEmpty()) {
         // Record the last cell of the last result if it is a partial result
         // We need this to calculate the complete rows we have returned to client as the
