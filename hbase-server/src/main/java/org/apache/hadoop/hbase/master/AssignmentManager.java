@@ -3828,14 +3828,7 @@ public class AssignmentManager extends ZooKeeperListener {
   }
 
   private boolean isTableDisabledOrDisabling(TableName t) {
-    Set<TableName> disablingOrDisabled = null;
-    try {
-      disablingOrDisabled = ZKTable.getDisablingTables(watcher);
-      disablingOrDisabled.addAll(ZKTable.getDisabledTables(watcher));
-    } catch (KeeperException e) {
-      server.abort("Cannot retrieve info about disabling or disabled tables ", e);
-    }
-    return disablingOrDisabled.contains(t) ? true : false;
+    return this.zkTable.isDisablingOrDisabledTable(t);
   }
 
   private String onRegionMerge(ServerName sn, TransitionCode code,
