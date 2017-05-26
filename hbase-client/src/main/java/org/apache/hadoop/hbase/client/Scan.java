@@ -309,11 +309,8 @@ public class Scan extends Query {
   }
 
   public boolean isGetScan() {
-    return includeStartRow && includeStopRow && areStartRowAndStopRowEqual(startRow, stopRow);
-  }
-
-  private static boolean areStartRowAndStopRowEqual(byte[] startRow, byte[] stopRow) {
-    return startRow != null && startRow.length > 0 && Bytes.equals(startRow, stopRow);
+    return includeStartRow && includeStopRow
+        && ClientUtil.areScanStartRowAndStopRowEqual(this.startRow, this.stopRow);
   }
 
   /**
@@ -409,7 +406,7 @@ public class Scan extends Query {
   @Deprecated
   public Scan setStartRow(byte[] startRow) {
     withStartRow(startRow);
-    if (areStartRowAndStopRowEqual(startRow, stopRow)) {
+    if (ClientUtil.areScanStartRowAndStopRowEqual(this.startRow, this.stopRow)) {
       // for keeping the old behavior that a scan with the same start and stop row is a get scan.
       this.includeStopRow = true;
     }
@@ -456,9 +453,6 @@ public class Scan extends Query {
    * <p>
    * The scan will include rows that are lexicographically less than the provided stopRow.
    * <p>
-   * <b>Note:</b> When doing a filter for a rowKey <u>Prefix</u> use
-   * {@link #setRowPrefixFilter(byte[])}. The 'trailing 0' will not yield the desired result.
-   * </p>
    * @param stopRow row to end at (exclusive)
    * @return this
    * @throws IllegalArgumentException if stopRow does not meet criteria for a row key (when length
@@ -469,7 +463,7 @@ public class Scan extends Query {
   @Deprecated
   public Scan setStopRow(byte[] stopRow) {
     withStopRow(stopRow);
-    if (areStartRowAndStopRowEqual(startRow, stopRow)) {
+    if (ClientUtil.areScanStartRowAndStopRowEqual(this.startRow, this.stopRow)) {
       // for keeping the old behavior that a scan with the same start and stop row is a get scan.
       this.includeStopRow = true;
     }
@@ -481,9 +475,6 @@ public class Scan extends Query {
    * <p>
    * The scan will include rows that are lexicographically less than the provided stopRow.
    * <p>
-   * <b>Note:</b> When doing a filter for a rowKey <u>Prefix</u> use
-   * {@link #setRowPrefixFilter(byte[])}. The 'trailing 0' will not yield the desired result.
-   * </p>
    * @param stopRow row to end at (exclusive)
    * @return this
    * @throws IllegalArgumentException if stopRow does not meet criteria for a row key (when length
