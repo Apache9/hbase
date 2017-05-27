@@ -294,7 +294,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
 
   private final Random rand;
 
-  private final AtomicLong scannerIdGen = new AtomicLong(0L);
+  private ScannerIdGenerator scannerIdGenerator;
 
   /*
    * Strings to be used in forming the exception message for
@@ -711,6 +711,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     this.rpcServer.setErrorHandler(this);
     this.startcode = System.currentTimeMillis();
     serverName = ServerName.valueOf(isa.getHostName(), isa.getPort(), startcode);
+    this.scannerIdGenerator = new ScannerIdGenerator(serverName);
     useZKForAssignment = ConfigUtil.useZKForAssignment(conf);
 
     // login the zookeeper client principal (if using security)
@@ -3579,7 +3580,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     if (region.getCoprocessorHost() != null) {
       scanner = region.getCoprocessorHost().postScannerOpen(scan, scanner);
     }
-    long scannerId = this.scannerIdGen.incrementAndGet();
+    long scannerId = scannerIdGenerator.generateNewScannerId();
     builder.setScannerId(scannerId);
     builder.setMvccReadPoint(scanner.getMvccReadPoint());
     builder.setTtl(scannerLeaseTimeoutPeriod);
