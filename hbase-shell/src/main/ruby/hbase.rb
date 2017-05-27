@@ -76,6 +76,9 @@ module HBaseConstants
   PROTOCOL = 'PROTOCOL'
   CONFIG = 'CONFIG'
   RESTORE_ACL = 'RESTORE_ACL'
+  ENDPOINT_CLASSNAME = 'ENDPOINT_CLASSNAME'
+  CLUSTER_KEY = 'CLUSTER_KEY'
+  DATA = 'DATA'
 
   # Load constants from hbase java API
   def self.promote_constants(constants)
