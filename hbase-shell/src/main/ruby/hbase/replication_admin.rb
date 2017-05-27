@@ -24,6 +24,8 @@ java_import org.apache.hadoop.hbase.replication.ReplicationPeerConfig
 java_import org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos::ReplicationState::State
 java_import org.apache.hadoop.hbase.replication.ReplicationPeer::PeerProtocol
 java_import org.apache.hadoop.hbase.client.replication::ReplicationSerDeHelper
+java_import org.apache.hadoop.hbase.zookeeper.ZKUtil
+java_import org.apache.hadoop.hbase.util.Bytes
 # Wrapper for org.apache.hadoop.hbase.client.HBaseAdmin
 
 module Hbase
@@ -32,15 +34,52 @@ module Hbase
 
     def initialize(configuration, formatter)
       @replication_admin = org.apache.hadoop.hbase.client.replication.ReplicationAdmin.new(configuration)
+      @configuration = configuration
       @formatter = formatter
     end
 
     #----------------------------------------------------------------------------------------------
     # Add a new peer cluster to replicate to
-    def add_peer(id, cluster_key, args = {})
+    def add_peer(id, args = {})
       if args.is_a?(Hash)
+        endpoint_classname = args.fetch(ENDPOINT_CLASSNAME, nil)
+        cluster_key = args.fetch(CLUSTER_KEY, nil)
+
+        # Handle cases where custom replication endpoint and cluster key are either both provided
+        # or neither are provided
+        if endpoint_classname.nil? and cluster_key.nil?
+          raise(ArgumentError, "Either ENDPOINT_CLASSNAME or CLUSTER_KEY must be specified.")
+        elsif !endpoint_classname.nil? and !cluster_key.nil?
+          raise(ArgumentError, "ENDPOINT_CLASSNAME and CLUSTER_KEY cannot both be specified.")
+        end
+
+        # Cluster Key is required for ReplicationPeerConfig for a custom replication endpoint
+        if !endpoint_classname.nil? and cluster_key.nil?
+          cluster_key = ZKUtil.getZooKeeperClusterKey(@configuration)
+        end
+
         replication_peer_config = ReplicationPeerConfig.new
         replication_peer_config.set_cluster_key(cluster_key)
+
+        # Optional parameters
+        config = args.fetch(CONFIG, nil)
+        data = args.fetch(DATA, nil)
+
+        unless endpoint_classname.nil?
+          replication_peer_config.set_replication_endpoint_impl(endpoint_classname)
+        end
+
+        unless config.nil?
+          replication_peer_config.get_configuration.put_all(config)
+        end
+
+        unless data.nil?
+          # Convert Strings to Bytes for peer_data
+          peer_data = replication_peer_config.get_peer_data
+          data.each{|key, val|
+            peer_data.put(Bytes.to_bytes(key), Bytes.to_bytes(val))
+          }
+        end
 
         peer_state = args.fetch(STATE, nil)
         unless peer_state.nil?
@@ -251,6 +290,10 @@ module Hbase
 
     def peer_added(id)
       @replication_admin.peer_added(id)
+    end
+
+    def get_peer_config(id)
+      @replication_admin.getPeerConfig(id)
     end
 
     def update_peer_config(id, args={})

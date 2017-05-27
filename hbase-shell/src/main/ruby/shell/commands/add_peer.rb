@@ -22,10 +22,12 @@ module Shell
     class AddPeer< Command
       def help
         return <<-EOF
-Add a peer cluster to replicate to, the id must be a short and
-the cluster key is composed like this:
+A peer can either be another HBase cluster or a custom replication endpoint. In either case an id
+must be specified to identify the peer.
+
+For a HBase cluster peer, a cluster key must be provided and is composed like this:
 hbase.zookeeper.quorum:hbase.zookeeper.property.clientPort:zookeeper.znode.parent
-This gives a full path for HBase to connect to another cluster.
+This gives a full path for HBase to connect to another HBase cluster.
 
 An optional parameter for namespaces identifies which namespace's tables will be replicated
 to the peer cluster.
@@ -38,31 +40,52 @@ then you can't set this namespace's tables in the peer config again.
 
 Examples:
 
-  hbase> add_peer '1', "server1.cie.com:2181:/hbase"
-  hbase> add_peer '2', "zk1,zk2,zk3:2182:/hbase-prod"
-  hbase> add_peer '3', "zk4,zk5,zk6:11000:/hbase-test", STATE => "ENABLED"
-  hbase> add_peer '4', "zk7,zk8,zk9:11000:/hbase-proc", STATE => "DISABLED"
-  hbase> add_peer '5', "zk4,zk5,zk6:11000:/hbase-test", STATE => "ENABLED",
+  hbase> add_peer '1', CLUSTER_KEY => "server1.cie.com:2181:/hbase"
+  hbase> add_peer '2', CLUSTER_KEY => "zk1,zk2,zk3:2182:/hbase-prod"
+  hbase> add_peer '3', CLUSTER_KEY => "zk4,zk5,zk6:11000:/hbase-test", STATE => "ENABLED"
+  hbase> add_peer '4', CLUSTER_KEY => "zk7,zk8,zk9:11000:/hbase-proc", STATE => "DISABLED"
+  hbase> add_peer '5', CLUSTER_KEY => "zk4,zk5,zk6:11000:/hbase-test", STATE => "ENABLED",
     NAMESPACES => ["ns1", "ns2", "ns3"]
-  hbase> add_peer '6', "zk4,zk5,zk6:11000:/hbase-test", STATE => "ENABLED",
+  hbase> add_peer '6', CLUSTER_KEY => "zk4,zk5,zk6:11000:/hbase-test", STATE => "ENABLED",
     NAMESPACES => ["ns1", "ns2"], TABLE_CFS => { "ns3:table1" => [], "ns3:table2" => ["cf1"] }
-  hbase> add_peer '7', "zk4,zk5,zk6:11000:/hbase-test", STATE => "ENABLED",
+  hbase> add_peer '7', CLUSTER_KEY => "zk4,zk5,zk6:11000:/hbase-test", STATE => "ENABLED",
     TABLE_CFS => { "ns3:table1" => [], "ns3:table2" => ["cf1"] }, PROTOCOL => "THRIFT"
 
+For a custom replication endpoint, the ENDPOINT_CLASSNAME can be provided. Two optional arguments
+are DATA and CONFIG which can be specified to set different either the peer_data or configuration
+for the custom replication endpoint. Others optional parameters are same with use HBase cluster peer.
+
+  hbase> add_peer '1', ENDPOINT_CLASSNAME => 'org.apache.hadoop.hbase.MyReplicationEndpoint'
+  hbase> add_peer '2', ENDPOINT_CLASSNAME => 'org.apache.hadoop.hbase.MyReplicationEndpoint',
+    DATA => { "key1" => 1 }
+  hbase> add_peer '3', ENDPOINT_CLASSNAME => 'org.apache.hadoop.hbase.MyReplicationEndpoint',
+    CONFIG => { "config1" => "value1", "config2" => "value2" }
+  hbase> add_peer '4', ENDPOINT_CLASSNAME => 'org.apache.hadoop.hbase.MyReplicationEndpoint',
+    DATA => { "key1" => 1 }, CONFIG => { "config1" => "value1", "config2" => "value2" },
+  hbase> add_peer '5', ENDPOINT_CLASSNAME => 'org.apache.hadoop.hbase.MyReplicationEndpoint',
+    NAMESPACES => ["ns1", "ns2", "ns3"]
+  hbase> add_peer '6', ENDPOINT_CLASSNAME => 'org.apache.hadoop.hbase.MyReplicationEndpoint',
+    NAMESPACES => ["ns1", "ns2"], TABLE_CFS => { "ns3:table1" => [], "ns3:table2" => ["cf1"] }
+  hbase> add_peer '7', ENDPOINT_CLASSNAME => 'org.apache.hadoop.hbase.MyReplicationEndpoint',
+    DATA => { "key1" => 1 }, CONFIG => { "config1" => "value1", "config2" => "value2" },
+    NAMESPACES => ["ns1", "ns2"], TABLE_CFS => { "ns3:table1" => [], "ns3:table2" => ["cf1"] }
+
   # Xiaomi HBase Cluster
-  hbase> add_peer '1', "hbase://c3tst-pressure98", STATE => "ENABLED"
-  hbase> add_peer '2', 'hbase://c3tst-pressure98', STATE => "ENABLED",
+  hbase> add_peer '1', CLUSTER_KEY => "hbase://c3tst-pressure98", STATE => "ENABLED"
+  hbase> add_peer '2', CLUSTER_KEY => 'hbase://c3tst-pressure98', STATE => "ENABLED",
     NAMESPACES => ["ns1", "ns2"]
-  hbase> add_peer '3', 'hbase://c3tst-pressure98', STATE => "ENABLED", NAMESPACES => ["ns1"],
+  hbase> add_peer '3', CLUSTER_KEY => 'hbase://c3tst-pressure98', STATE => "ENABLED", NAMESPACES => ["ns1"],
     TABLE_CFS => { "ns2:table1" => [], "ns2:table2" => ["cf1"] }
-  hbase> add_peer '4', 'hbase://c3tst-pressure98', STATE => "ENABLED", NAMESPACES => ["ns1"],
+  hbase> add_peer '4', CLUSTER_KEY => 'hbase://c3tst-pressure98', STATE => "ENABLED", NAMESPACES => ["ns1"],
     TABLE_CFS => { "ns2:table1" => [], "ns2:table2" => ["cf1"] }, PROTOCOL => "THRIFT"
+
+Note: Either CLUSTER_KEY or ENDPOINT_CLASSNAME must be specified but not both.
 EOF
       end
 
-      def command(id, cluster_key, args = {})
+      def command(id, args = {})
         format_simple_command do
-          replication_admin.add_peer(id, cluster_key, args)
+          replication_admin.add_peer(id, args)
         end
       end
     end

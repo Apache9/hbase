@@ -60,6 +60,10 @@ module Hbase
       @shell.hbase_security_admin
     end
 
+    def replication_admin
+      @shell.hbase_replication_admin
+    end
+
     def visibility_admin
       @shell.hbase_visibility_labels_admin
     end
