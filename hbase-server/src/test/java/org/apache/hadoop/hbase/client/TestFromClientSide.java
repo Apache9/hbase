@@ -4796,13 +4796,6 @@ public class TestFromClientSide {
     } catch (IOException iox) {
       // success
     }
-    try {
-      // try null qualifier
-      ht.incrementColumnValue(ROW, FAMILY, null, 5);
-      fail("Should have thrown IOException");
-    } catch (IOException iox) {
-      // success
-    }
     // try null row
     try {
       Increment incNoRow = new Increment((byte [])null);
@@ -4817,14 +4810,6 @@ public class TestFromClientSide {
     try {
       Increment incNoFamily = new Increment(ROW);
       incNoFamily.addColumn(null, COLUMN, 5);
-      fail("Should have thrown IllegalArgumentException");
-    } catch (IllegalArgumentException iax) {
-      // success
-    }
-    // try null qualifier
-    try {
-      Increment incNoQualifier = new Increment(ROW);
-      incNoQualifier.addColumn(FAMILY, null, 5);
       fail("Should have thrown IllegalArgumentException");
     } catch (IllegalArgumentException iax) {
       // success
