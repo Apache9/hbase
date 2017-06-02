@@ -22,6 +22,8 @@ import java.io.IOException;
 import java.net.ConnectException;
 import java.net.SocketTimeoutException;
 import java.util.List;
+
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -131,6 +133,19 @@ public class HBaseInterClusterReplicationEndpoint extends HBaseReplicationEndpoi
     return sleepMultiplier < maxRetriesMultiplier;
   }
 
+  private void reconnectToPeerCluster() {
+    HConnection connection = null;
+    try {
+      connection = HConnectionManager.createConnection(this.conf);
+    } catch (IOException ioe) {
+      LOG.warn("Failed to create connection for peer cluster", ioe);
+      IOUtils.closeQuietly(connection);
+    }
+    if (connection != null) {
+      this.conn = connection;
+    }
+  }
+
   /**
    * Do the shipping logic
    */
@@ -150,6 +165,11 @@ public class HBaseInterClusterReplicationEndpoint extends HBaseReplicationEndpoi
         }
         continue;
       }
+
+      if (conn == null || conn.isClosed()) {
+        reconnectToPeerCluster();
+      }
+
       SinkPeer sinkPeer = null;
       try {
         sinkPeer = replicationSinkMgr.getReplicationSink();
