@@ -884,9 +884,8 @@ public class RegionCoprocessorHost
   public boolean prePut(final Put put, final WALEdit edit, final Durability durability)
       throws IOException {
     return execOperation(coprocessors.isEmpty() ? null : new RegionOperation() {
-      @Override
-      public void call(RegionObserver oserver, ObserverContext<RegionCoprocessorEnvironment> ctx)
-          throws IOException {
+      @Override public void call(RegionObserver oserver,
+          ObserverContext<RegionCoprocessorEnvironment> ctx) throws IOException {
         oserver.prePut(ctx, put, edit, durability);
       }
     });
@@ -1053,8 +1052,8 @@ public class RegionCoprocessorHost
       @Override
       public void call(RegionObserver oserver, ObserverContext<RegionCoprocessorEnvironment> ctx)
           throws IOException {
-        setResult(oserver.preCheckAndPutAfterRowLock(ctx, row, family, qualifier,
-          compareOp, comparator, put, getResult()));
+        setResult(oserver.preCheckAndPutAfterRowLock(ctx, row, family, qualifier, compareOp,
+            comparator, put, getResult()));
       }
     });
   }
@@ -1077,8 +1076,8 @@ public class RegionCoprocessorHost
       @Override
       public void call(RegionObserver oserver, ObserverContext<RegionCoprocessorEnvironment> ctx)
           throws IOException {
-        setResult(oserver.postCheckAndPut(ctx, row, family, qualifier,
-          compareOp, comparator, put, getResult()));
+        setResult(oserver.postCheckAndPut(ctx, row, family, qualifier, compareOp, comparator, put,
+            getResult()));
       }
     });
   }
@@ -1103,8 +1102,8 @@ public class RegionCoprocessorHost
       @Override
       public void call(RegionObserver oserver, ObserverContext<RegionCoprocessorEnvironment> ctx)
           throws IOException {
-        setResult(oserver.preCheckAndDelete(ctx, row, family,
-            qualifier, compareOp, comparator, delete, getResult()));
+        setResult(oserver.preCheckAndDelete(ctx, row, family, qualifier, compareOp, comparator,
+            delete, getResult()));
       }
     });
   }
@@ -1128,8 +1127,8 @@ public class RegionCoprocessorHost
       @Override
       public void call(RegionObserver oserver, ObserverContext<RegionCoprocessorEnvironment> ctx)
           throws IOException {
-        setResult(oserver.preCheckAndDeleteAfterRowLock(ctx, row,
-              family, qualifier, compareOp, comparator, delete, getResult()));
+        setResult(oserver.preCheckAndDeleteAfterRowLock(ctx, row, family, qualifier, compareOp,
+            comparator, delete, getResult()));
       }
     });
   }
@@ -1152,8 +1151,8 @@ public class RegionCoprocessorHost
       @Override
       public void call(RegionObserver oserver, ObserverContext<RegionCoprocessorEnvironment> ctx)
           throws IOException {
-        setResult(oserver.postCheckAndDelete(ctx, row, family,
-            qualifier, compareOp, comparator, delete, getResult()));
+        setResult(oserver.postCheckAndDelete(ctx, row, family, qualifier, compareOp, comparator,
+            delete, getResult()));
       }
     });
   }
@@ -1224,6 +1223,36 @@ public class RegionCoprocessorHost
         setResult(oserver.preIncrementAfterRowLock(ctx, increment));
       }
     });
+  }
+
+  /**
+   * @param increment increment object
+   * @param incrementedState column values after incremented
+   * @param walEdits edits to write to HLog
+   * @param mvccWriteNumber mvcc number of increment
+   * @throws IOException if an error occurred on the coprocessor
+   */
+  public boolean preIncrementWriteHLog(final Increment increment,
+      final Map<Store, List<Cell>> incrementedState, final WALEdit walEdits, long mvccWriteNumber)
+      throws IOException {
+    boolean bypass = false;
+    ObserverContext<RegionCoprocessorEnvironment> ctx = null;
+    for (RegionEnvironment env : coprocessors) {
+      if (env.getInstance() instanceof RegionObserver) {
+        ctx = ObserverContext.createAndPrepare(env, ctx);
+        try {
+          ((RegionObserver) env.getInstance()).preIncrementWriteHLog(ctx, increment,
+              incrementedState, walEdits, mvccWriteNumber);
+        } catch (Throwable e) {
+          handleCoprocessorThrowable(env, e);
+        }
+        bypass |= ctx.shouldBypass();
+        if (ctx.shouldComplete()) {
+          break;
+        }
+      }
+    }
+    return bypass;
   }
 
   /**

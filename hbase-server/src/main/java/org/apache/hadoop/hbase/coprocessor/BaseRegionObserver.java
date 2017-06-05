@@ -20,6 +20,7 @@ import com.google.common.collect.ImmutableList;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.NavigableSet;
 
 import org.apache.hadoop.fs.FileSystem;
@@ -430,6 +431,12 @@ public abstract class BaseRegionObserver implements RegionObserver {
   public Result preIncrementAfterRowLock(final ObserverContext<RegionCoprocessorEnvironment> e,
       final Increment increment) throws IOException {
     return null;
+  }
+
+  @Override
+  public void preIncrementWriteHLog(final ObserverContext<RegionCoprocessorEnvironment> c,
+      final Increment increment, final Map<Store, List<Cell>> incrementedState,
+      final WALEdit walEdits, final long mvccWriteNumber) throws IOException {
   }
 
   @Override
