@@ -6248,6 +6248,10 @@ public class HRegion implements HeapSize { // , Writable{
             }
           }
 
+          if (coprocessorHost != null) {
+            coprocessorHost.preIncrementWriteHLog(increment, tempMemstore, walEdits, w.getWriteNumber());
+          }
+
           if (Trace.isTracing() && Trace.currentSpan() != null) {
             Trace.currentSpan().addTimelineAnnotation("start writing to WAL");
           }

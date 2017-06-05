@@ -19,6 +19,7 @@ import com.google.common.collect.ImmutableList;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.NavigableSet;
 
 import org.apache.hadoop.fs.FileSystem;
@@ -954,6 +955,25 @@ public interface RegionObserver extends Coprocessor {
    */
   Result preIncrementAfterRowLock(final ObserverContext<RegionCoprocessorEnvironment> c,
       final Increment increment) throws IOException;
+
+  /**
+   * Called after HRegion#increment computed increment result but before write
+   * to HLog.
+   * <p>
+   * Call CoprocessorEnvironment#bypass to skip default actions
+   * <p>
+   * Call CoprocessorEnvironment#complete to skip any subsequent chained
+   * coprocessors
+   * @param c the environment provided by the region server
+   * @param increment increment object
+   * @param incrementedState column values after incremented
+   * @param walEdits edits to write to HLog
+   * @param mvccWriteNumber mvcc number of increment
+   * @throws IOException if an error occurred on the coprocessor
+   */
+  void preIncrementWriteHLog(final ObserverContext<RegionCoprocessorEnvironment> c,
+      final Increment increment, final Map<Store, List<Cell>> incrementedState,
+      final WALEdit walEdits, final long mvccWriteNumber) throws IOException;
 
   /**
    * Called after increment
