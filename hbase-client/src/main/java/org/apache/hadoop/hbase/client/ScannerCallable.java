@@ -83,6 +83,8 @@ public class ScannerCallable extends RegionServerCallable<Result[]> {
    */
   protected boolean heartbeatMessage = false;
 
+  protected Cursor cursor;
+
   // indicate if it is a remote server call
   protected boolean isRegionServerRemote = true;
   private long nextCallSeq = 0;
@@ -117,6 +119,7 @@ public class ScannerCallable extends RegionServerCallable<Result[]> {
       checkIfRegionServerIsRemote();
       instantiated = true;
     }
+    cursor = null;
     // check how often we retry.
     // HConnectionManager will call instantiateServer with reload==true
     // if and only if for retries.
@@ -211,7 +214,11 @@ public class ScannerCallable extends RegionServerCallable<Result[]> {
       response = next();
     }
     long timestamp = System.currentTimeMillis();
-    setHeartbeatMessage(response.hasHeartbeatMessage() && response.getHeartbeatMessage());
+    boolean isHeartBeat = response.hasHeartbeatMessage() && response.getHeartbeatMessage();
+    setHeartbeatMessage(isHeartBeat);
+    if (isHeartBeat && scan.isNeedCursorResult() && response.hasCursor()) {
+      cursor = ProtobufUtil.toCursor(response.getCursor());
+    }
     Result[] rrs = ResponseConverter.getResults(controller.cellScanner(), response);
     if (logScannerActivity) {
       long now = System.currentTimeMillis();
@@ -254,6 +261,10 @@ public class ScannerCallable extends RegionServerCallable<Result[]> {
    */
   boolean isHeartbeatMessage() {
     return heartbeatMessage;
+  }
+
+  public Cursor getCursor() {
+    return cursor;
   }
 
   private void setHeartbeatMessage(boolean heartbeatMessage) {
