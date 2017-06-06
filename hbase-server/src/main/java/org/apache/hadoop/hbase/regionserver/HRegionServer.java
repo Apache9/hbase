@@ -3276,9 +3276,9 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     return lastBlock;
   }
 
-  private RegionScannerHolder addScanner(String scannerName, RegionScanner s, HRegion r)
-      throws LeaseStillHeldException {
-    RegionScannerHolder rsh = new RegionScannerHolder(scannerName, s, r);
+  private RegionScannerHolder addScanner(String scannerName, RegionScanner s, HRegion r,
+      boolean needCursor) throws LeaseStillHeldException {
+    RegionScannerHolder rsh = new RegionScannerHolder(scannerName, s, r, needCursor);
     RegionScannerHolder existing = scanners.putIfAbsent(scannerName, rsh);
     assert existing == null : "scannerId must be unique within regionserver's whole lifecycle!";
 
@@ -3585,7 +3585,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     builder.setMvccReadPoint(scanner.getMvccReadPoint());
     builder.setTtl(scannerLeaseTimeoutPeriod);
     String scannerName = String.valueOf(scannerId);
-    return addScanner(scannerName, scanner, region);
+    return addScanner(scannerName, scanner, region, scan.isNeedCursorResult());
   }
 
   private void checkScanNextCallSeq(ScanRequest request, RegionScannerHolder rsh)
@@ -3778,6 +3778,12 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
             if (moreRows) {
               // Heartbeat messages occur when the time limit has been reached.
               builder.setHeartbeatMessage(timeLimitReached);
+              if (timeLimitReached && rsh.needCursor) {
+                Cell readingCell = scannerContext.getPeekedCellInHeartbeat();
+                if (readingCell != null) {
+                  builder.setCursor(ProtobufUtil.toCursor(readingCell));
+                }
+              }
             }
             break;
           }
@@ -5587,11 +5593,13 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     private final AtomicLong nextCallSeq = new AtomicLong(0L);
     private final HRegion r;
     private byte[] rowOfLastPartialResult;
+    private boolean needCursor;
 
-    public RegionScannerHolder(String scannerName, RegionScanner s, HRegion r) {
+    public RegionScannerHolder(String scannerName, RegionScanner s, HRegion r, boolean needCursor) {
       this.scannerName = scannerName;
       this.s = s;
       this.r = r;
+      this.needCursor = needCursor;
     }
 
     public long getNextCallSeq() {

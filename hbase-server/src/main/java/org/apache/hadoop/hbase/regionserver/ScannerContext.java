@@ -21,6 +21,7 @@ import java.util.List;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.HBaseInterfaceAudience;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.classification.InterfaceStability;
@@ -107,6 +108,8 @@ public class ScannerContext {
     this.keepProgress = keepProgress;
     this.scannerState = DEFAULT_STATE;
   }
+
+  private Cell peekedCellInHeartbeat = null;
 
   /**
    * @return true if the progress tracked so far in this instance will be considered during an
@@ -312,6 +315,14 @@ public class ScannerContext {
   boolean checkAnyLimitReached(LimitScope checkerScope) {
     return checkSizeLimit(checkerScope) || checkBatchLimit(checkerScope)
         || checkTimeLimit(checkerScope);
+  }
+
+  public Cell getPeekedCellInHeartbeat() {
+    return peekedCellInHeartbeat;
+  }
+
+  public void setPeekedCellInHeartbeat(Cell peekedCellInHeartbeat) {
+    this.peekedCellInHeartbeat = peekedCellInHeartbeat;
   }
 
   @Override
