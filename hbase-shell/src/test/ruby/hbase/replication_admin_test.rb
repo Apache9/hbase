@@ -342,6 +342,9 @@ module Hbase
       cluster_key = "localhost:2181:/hbase-test"
       args = { CLUSTER_KEY => cluster_key }
       replication_admin.add_peer(@peer_id, args)
+      # Normally the ReplicationSourceManager will call ReplicationPeer#peer_added
+      # but here we have to do it ourselves
+      replication_admin.peer_added(@peer_id)
 
       peer_config = replication_admin.get_peer_config(@peer_id)
       assert_equal(0, peer_config.get_bandwidth)
