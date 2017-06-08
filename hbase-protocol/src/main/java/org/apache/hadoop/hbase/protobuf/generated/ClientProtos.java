@@ -14259,6 +14259,16 @@ public final class ClientProtos {
      * <code>optional .Scan.ReadType readType = 23 [default = DEFAULT];</code>
      */
     org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Scan.ReadType getReadType();
+
+    // optional bool need_cursor_result = 24 [default = false];
+    /**
+     * <code>optional bool need_cursor_result = 24 [default = false];</code>
+     */
+    boolean hasNeedCursorResult();
+    /**
+     * <code>optional bool need_cursor_result = 24 [default = false];</code>
+     */
+    boolean getNeedCursorResult();
   }
   /**
    * Protobuf type {@code Scan}
@@ -14461,6 +14471,11 @@ public final class ClientProtos {
                 bitField0_ |= 0x00040000;
                 readType_ = value;
               }
+              break;
+            }
+            case 192: {
+              bitField0_ |= 0x00080000;
+              needCursorResult_ = input.readBool();
               break;
             }
           }
@@ -15035,6 +15050,22 @@ public final class ClientProtos {
       return readType_;
     }
 
+    // optional bool need_cursor_result = 24 [default = false];
+    public static final int NEED_CURSOR_RESULT_FIELD_NUMBER = 24;
+    private boolean needCursorResult_;
+    /**
+     * <code>optional bool need_cursor_result = 24 [default = false];</code>
+     */
+    public boolean hasNeedCursorResult() {
+      return ((bitField0_ & 0x00080000) == 0x00080000);
+    }
+    /**
+     * <code>optional bool need_cursor_result = 24 [default = false];</code>
+     */
+    public boolean getNeedCursorResult() {
+      return needCursorResult_;
+    }
+
     private void initFields() {
       column_ = java.util.Collections.emptyList();
       attribute_ = java.util.Collections.emptyList();
@@ -15058,6 +15089,7 @@ public final class ClientProtos {
       includeStartRow_ = true;
       includeStopRow_ = false;
       readType_ = org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Scan.ReadType.DEFAULT;
+      needCursorResult_ = false;
     }
     private byte memoizedIsInitialized = -1;
     public final boolean isInitialized() {
@@ -15161,6 +15193,9 @@ public final class ClientProtos {
       if (((bitField0_ & 0x00040000) == 0x00040000)) {
         output.writeEnum(23, readType_.getNumber());
       }
+      if (((bitField0_ & 0x00080000) == 0x00080000)) {
+        output.writeBool(24, needCursorResult_);
+      }
       getUnknownFields().writeTo(output);
     }
 
@@ -15257,6 +15292,10 @@ public final class ClientProtos {
       if (((bitField0_ & 0x00040000) == 0x00040000)) {
         size += com.google.protobuf.CodedOutputStream
           .computeEnumSize(23, readType_.getNumber());
+      }
+      if (((bitField0_ & 0x00080000) == 0x00080000)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeBoolSize(24, needCursorResult_);
       }
       size += getUnknownFields().getSerializedSize();
       memoizedSerializedSize = size;
@@ -15382,6 +15421,11 @@ public final class ClientProtos {
         result = result &&
             (getReadType() == other.getReadType());
       }
+      result = result && (hasNeedCursorResult() == other.hasNeedCursorResult());
+      if (hasNeedCursorResult()) {
+        result = result && (getNeedCursorResult()
+            == other.getNeedCursorResult());
+      }
       result = result &&
           getUnknownFields().equals(other.getUnknownFields());
       return result;
@@ -15482,6 +15526,10 @@ public final class ClientProtos {
       if (hasReadType()) {
         hash = (37 * hash) + READTYPE_FIELD_NUMBER;
         hash = (53 * hash) + hashEnum(getReadType());
+      }
+      if (hasNeedCursorResult()) {
+        hash = (37 * hash) + NEED_CURSOR_RESULT_FIELD_NUMBER;
+        hash = (53 * hash) + hashBoolean(getNeedCursorResult());
       }
       hash = (29 * hash) + getUnknownFields().hashCode();
       memoizedHashCode = hash;
@@ -15672,6 +15720,8 @@ public final class ClientProtos {
         bitField0_ = (bitField0_ & ~0x00100000);
         readType_ = org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Scan.ReadType.DEFAULT;
         bitField0_ = (bitField0_ & ~0x00200000);
+        needCursorResult_ = false;
+        bitField0_ = (bitField0_ & ~0x00400000);
         return this;
       }
 
@@ -15811,6 +15861,10 @@ public final class ClientProtos {
           to_bitField0_ |= 0x00040000;
         }
         result.readType_ = readType_;
+        if (((from_bitField0_ & 0x00400000) == 0x00400000)) {
+          to_bitField0_ |= 0x00080000;
+        }
+        result.needCursorResult_ = needCursorResult_;
         result.bitField0_ = to_bitField0_;
         onBuilt();
         return result;
@@ -15961,6 +16015,9 @@ public final class ClientProtos {
         }
         if (other.hasReadType()) {
           setReadType(other.getReadType());
+        }
+        if (other.hasNeedCursorResult()) {
+          setNeedCursorResult(other.getNeedCursorResult());
         }
         this.mergeUnknownFields(other.getUnknownFields());
         return this;
@@ -17549,6 +17606,39 @@ public final class ClientProtos {
       public Builder clearReadType() {
         bitField0_ = (bitField0_ & ~0x00200000);
         readType_ = org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Scan.ReadType.DEFAULT;
+        onChanged();
+        return this;
+      }
+
+      // optional bool need_cursor_result = 24 [default = false];
+      private boolean needCursorResult_ ;
+      /**
+       * <code>optional bool need_cursor_result = 24 [default = false];</code>
+       */
+      public boolean hasNeedCursorResult() {
+        return ((bitField0_ & 0x00400000) == 0x00400000);
+      }
+      /**
+       * <code>optional bool need_cursor_result = 24 [default = false];</code>
+       */
+      public boolean getNeedCursorResult() {
+        return needCursorResult_;
+      }
+      /**
+       * <code>optional bool need_cursor_result = 24 [default = false];</code>
+       */
+      public Builder setNeedCursorResult(boolean value) {
+        bitField0_ |= 0x00400000;
+        needCursorResult_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>optional bool need_cursor_result = 24 [default = false];</code>
+       */
+      public Builder clearNeedCursorResult() {
+        bitField0_ = (bitField0_ & ~0x00400000);
+        needCursorResult_ = false;
         onChanged();
         return this;
       }
@@ -19202,6 +19292,453 @@ public final class ClientProtos {
     // @@protoc_insertion_point(class_scope:ScanRequest)
   }
 
+  public interface CursorOrBuilder
+      extends com.google.protobuf.MessageOrBuilder {
+
+    // optional bytes row = 1;
+    /**
+     * <code>optional bytes row = 1;</code>
+     */
+    boolean hasRow();
+    /**
+     * <code>optional bytes row = 1;</code>
+     */
+    com.google.protobuf.ByteString getRow();
+  }
+  /**
+   * Protobuf type {@code Cursor}
+   *
+   * <pre>
+   **
+   * Scan cursor to tell client where we are scanning.
+   * </pre>
+   */
+  public static final class Cursor extends
+      com.google.protobuf.GeneratedMessage
+      implements CursorOrBuilder {
+    // Use Cursor.newBuilder() to construct.
+    private Cursor(com.google.protobuf.GeneratedMessage.Builder<?> builder) {
+      super(builder);
+      this.unknownFields = builder.getUnknownFields();
+    }
+    private Cursor(boolean noInit) { this.unknownFields = com.google.protobuf.UnknownFieldSet.getDefaultInstance(); }
+
+    private static final Cursor defaultInstance;
+    public static Cursor getDefaultInstance() {
+      return defaultInstance;
+    }
+
+    public Cursor getDefaultInstanceForType() {
+      return defaultInstance;
+    }
+
+    private final com.google.protobuf.UnknownFieldSet unknownFields;
+    @java.lang.Override
+    public final com.google.protobuf.UnknownFieldSet
+        getUnknownFields() {
+      return this.unknownFields;
+    }
+    private Cursor(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      initFields();
+      int mutable_bitField0_ = 0;
+      com.google.protobuf.UnknownFieldSet.Builder unknownFields =
+          com.google.protobuf.UnknownFieldSet.newBuilder();
+      try {
+        boolean done = false;
+        while (!done) {
+          int tag = input.readTag();
+          switch (tag) {
+            case 0:
+              done = true;
+              break;
+            default: {
+              if (!parseUnknownField(input, unknownFields,
+                                     extensionRegistry, tag)) {
+                done = true;
+              }
+              break;
+            }
+            case 10: {
+              bitField0_ |= 0x00000001;
+              row_ = input.readBytes();
+              break;
+            }
+          }
+        }
+      } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+        throw e.setUnfinishedMessage(this);
+      } catch (java.io.IOException e) {
+        throw new com.google.protobuf.InvalidProtocolBufferException(
+            e.getMessage()).setUnfinishedMessage(this);
+      } finally {
+        this.unknownFields = unknownFields.build();
+        makeExtensionsImmutable();
+      }
+    }
+    public static final com.google.protobuf.Descriptors.Descriptor
+        getDescriptor() {
+      return org.apache.hadoop.hbase.protobuf.generated.ClientProtos.internal_static_Cursor_descriptor;
+    }
+
+    protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+        internalGetFieldAccessorTable() {
+      return org.apache.hadoop.hbase.protobuf.generated.ClientProtos.internal_static_Cursor_fieldAccessorTable
+          .ensureFieldAccessorsInitialized(
+              org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Cursor.class, org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Cursor.Builder.class);
+    }
+
+    public static com.google.protobuf.Parser<Cursor> PARSER =
+        new com.google.protobuf.AbstractParser<Cursor>() {
+      public Cursor parsePartialFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws com.google.protobuf.InvalidProtocolBufferException {
+        return new Cursor(input, extensionRegistry);
+      }
+    };
+
+    @java.lang.Override
+    public com.google.protobuf.Parser<Cursor> getParserForType() {
+      return PARSER;
+    }
+
+    private int bitField0_;
+    // optional bytes row = 1;
+    public static final int ROW_FIELD_NUMBER = 1;
+    private com.google.protobuf.ByteString row_;
+    /**
+     * <code>optional bytes row = 1;</code>
+     */
+    public boolean hasRow() {
+      return ((bitField0_ & 0x00000001) == 0x00000001);
+    }
+    /**
+     * <code>optional bytes row = 1;</code>
+     */
+    public com.google.protobuf.ByteString getRow() {
+      return row_;
+    }
+
+    private void initFields() {
+      row_ = com.google.protobuf.ByteString.EMPTY;
+    }
+    private byte memoizedIsInitialized = -1;
+    public final boolean isInitialized() {
+      byte isInitialized = memoizedIsInitialized;
+      if (isInitialized != -1) return isInitialized == 1;
+
+      memoizedIsInitialized = 1;
+      return true;
+    }
+
+    public void writeTo(com.google.protobuf.CodedOutputStream output)
+                        throws java.io.IOException {
+      getSerializedSize();
+      if (((bitField0_ & 0x00000001) == 0x00000001)) {
+        output.writeBytes(1, row_);
+      }
+      getUnknownFields().writeTo(output);
+    }
+
+    private int memoizedSerializedSize = -1;
+    public int getSerializedSize() {
+      int size = memoizedSerializedSize;
+      if (size != -1) return size;
+
+      size = 0;
+      if (((bitField0_ & 0x00000001) == 0x00000001)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeBytesSize(1, row_);
+      }
+      size += getUnknownFields().getSerializedSize();
+      memoizedSerializedSize = size;
+      return size;
+    }
+
+    private static final long serialVersionUID = 0L;
+    @java.lang.Override
+    protected java.lang.Object writeReplace()
+        throws java.io.ObjectStreamException {
+      return super.writeReplace();
+    }
+
+    @java.lang.Override
+    public boolean equals(final java.lang.Object obj) {
+      if (obj == this) {
+       return true;
+      }
+      if (!(obj instanceof org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Cursor)) {
+        return super.equals(obj);
+      }
+      org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Cursor other = (org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Cursor) obj;
+
+      boolean result = true;
+      result = result && (hasRow() == other.hasRow());
+      if (hasRow()) {
+        result = result && getRow()
+            .equals(other.getRow());
+      }
+      result = result &&
+          getUnknownFields().equals(other.getUnknownFields());
+      return result;
+    }
+
+    private int memoizedHashCode = 0;
+    @java.lang.Override
+    public int hashCode() {
+      if (memoizedHashCode != 0) {
+        return memoizedHashCode;
+      }
+      int hash = 41;
+      hash = (19 * hash) + getDescriptorForType().hashCode();
+      if (hasRow()) {
+        hash = (37 * hash) + ROW_FIELD_NUMBER;
+        hash = (53 * hash) + getRow().hashCode();
+      }
+      hash = (29 * hash) + getUnknownFields().hashCode();
+      memoizedHashCode = hash;
+      return hash;
+    }
+
+    public static org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Cursor parseFrom(
+        com.google.protobuf.ByteString data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Cursor parseFrom(
+        com.google.protobuf.ByteString data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Cursor parseFrom(byte[] data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Cursor parseFrom(
+        byte[] data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Cursor parseFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Cursor parseFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Cursor parseDelimitedFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return PARSER.parseDelimitedFrom(input);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Cursor parseDelimitedFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseDelimitedFrom(input, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Cursor parseFrom(
+        com.google.protobuf.CodedInputStream input)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Cursor parseFrom(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input, extensionRegistry);
+    }
+
+    public static Builder newBuilder() { return Builder.create(); }
+    public Builder newBuilderForType() { return newBuilder(); }
+    public static Builder newBuilder(org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Cursor prototype) {
+      return newBuilder().mergeFrom(prototype);
+    }
+    public Builder toBuilder() { return newBuilder(this); }
+
+    @java.lang.Override
+    protected Builder newBuilderForType(
+        com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+      Builder builder = new Builder(parent);
+      return builder;
+    }
+    /**
+     * Protobuf type {@code Cursor}
+     *
+     * <pre>
+     **
+     * Scan cursor to tell client where we are scanning.
+     * </pre>
+     */
+    public static final class Builder extends
+        com.google.protobuf.GeneratedMessage.Builder<Builder>
+       implements org.apache.hadoop.hbase.protobuf.generated.ClientProtos.CursorOrBuilder {
+      public static final com.google.protobuf.Descriptors.Descriptor
+          getDescriptor() {
+        return org.apache.hadoop.hbase.protobuf.generated.ClientProtos.internal_static_Cursor_descriptor;
+      }
+
+      protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+          internalGetFieldAccessorTable() {
+        return org.apache.hadoop.hbase.protobuf.generated.ClientProtos.internal_static_Cursor_fieldAccessorTable
+            .ensureFieldAccessorsInitialized(
+                org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Cursor.class, org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Cursor.Builder.class);
+      }
+
+      // Construct using org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Cursor.newBuilder()
+      private Builder() {
+        maybeForceBuilderInitialization();
+      }
+
+      private Builder(
+          com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+        super(parent);
+        maybeForceBuilderInitialization();
+      }
+      private void maybeForceBuilderInitialization() {
+        if (com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders) {
+        }
+      }
+      private static Builder create() {
+        return new Builder();
+      }
+
+      public Builder clear() {
+        super.clear();
+        row_ = com.google.protobuf.ByteString.EMPTY;
+        bitField0_ = (bitField0_ & ~0x00000001);
+        return this;
+      }
+
+      public Builder clone() {
+        return create().mergeFrom(buildPartial());
+      }
+
+      public com.google.protobuf.Descriptors.Descriptor
+          getDescriptorForType() {
+        return org.apache.hadoop.hbase.protobuf.generated.ClientProtos.internal_static_Cursor_descriptor;
+      }
+
+      public org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Cursor getDefaultInstanceForType() {
+        return org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Cursor.getDefaultInstance();
+      }
+
+      public org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Cursor build() {
+        org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Cursor result = buildPartial();
+        if (!result.isInitialized()) {
+          throw newUninitializedMessageException(result);
+        }
+        return result;
+      }
+
+      public org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Cursor buildPartial() {
+        org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Cursor result = new org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Cursor(this);
+        int from_bitField0_ = bitField0_;
+        int to_bitField0_ = 0;
+        if (((from_bitField0_ & 0x00000001) == 0x00000001)) {
+          to_bitField0_ |= 0x00000001;
+        }
+        result.row_ = row_;
+        result.bitField0_ = to_bitField0_;
+        onBuilt();
+        return result;
+      }
+
+      public Builder mergeFrom(com.google.protobuf.Message other) {
+        if (other instanceof org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Cursor) {
+          return mergeFrom((org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Cursor)other);
+        } else {
+          super.mergeFrom(other);
+          return this;
+        }
+      }
+
+      public Builder mergeFrom(org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Cursor other) {
+        if (other == org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Cursor.getDefaultInstance()) return this;
+        if (other.hasRow()) {
+          setRow(other.getRow());
+        }
+        this.mergeUnknownFields(other.getUnknownFields());
+        return this;
+      }
+
+      public final boolean isInitialized() {
+        return true;
+      }
+
+      public Builder mergeFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws java.io.IOException {
+        org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Cursor parsedMessage = null;
+        try {
+          parsedMessage = PARSER.parsePartialFrom(input, extensionRegistry);
+        } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+          parsedMessage = (org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Cursor) e.getUnfinishedMessage();
+          throw e;
+        } finally {
+          if (parsedMessage != null) {
+            mergeFrom(parsedMessage);
+          }
+        }
+        return this;
+      }
+      private int bitField0_;
+
+      // optional bytes row = 1;
+      private com.google.protobuf.ByteString row_ = com.google.protobuf.ByteString.EMPTY;
+      /**
+       * <code>optional bytes row = 1;</code>
+       */
+      public boolean hasRow() {
+        return ((bitField0_ & 0x00000001) == 0x00000001);
+      }
+      /**
+       * <code>optional bytes row = 1;</code>
+       */
+      public com.google.protobuf.ByteString getRow() {
+        return row_;
+      }
+      /**
+       * <code>optional bytes row = 1;</code>
+       */
+      public Builder setRow(com.google.protobuf.ByteString value) {
+        if (value == null) {
+    throw new NullPointerException();
+  }
+  bitField0_ |= 0x00000001;
+        row_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>optional bytes row = 1;</code>
+       */
+      public Builder clearRow() {
+        bitField0_ = (bitField0_ & ~0x00000001);
+        row_ = getDefaultInstance().getRow();
+        onChanged();
+        return this;
+      }
+
+      // @@protoc_insertion_point(builder_scope:Cursor)
+    }
+
+    static {
+      defaultInstance = new Cursor(true);
+      defaultInstance.initFields();
+    }
+
+    // @@protoc_insertion_point(class_scope:Cursor)
+  }
+
   public interface ScanResponseOrBuilder
       extends com.google.protobuf.MessageOrBuilder {
 
@@ -19487,6 +20024,35 @@ public final class ClientProtos {
      * </pre>
      */
     long getMvccReadPoint();
+
+    // optional .Cursor cursor = 12;
+    /**
+     * <code>optional .Cursor cursor = 12;</code>
+     *
+     * <pre>
+     * If the Scan need cursor, return the row key we are scanning in heartbeat message.
+     * If the Scan doesn't need a cursor, don't set this field to reduce network IO.
+     * </pre>
+     */
+    boolean hasCursor();
+    /**
+     * <code>optional .Cursor cursor = 12;</code>
+     *
+     * <pre>
+     * If the Scan need cursor, return the row key we are scanning in heartbeat message.
+     * If the Scan doesn't need a cursor, don't set this field to reduce network IO.
+     * </pre>
+     */
+    org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Cursor getCursor();
+    /**
+     * <code>optional .Cursor cursor = 12;</code>
+     *
+     * <pre>
+     * If the Scan need cursor, return the row key we are scanning in heartbeat message.
+     * If the Scan doesn't need a cursor, don't set this field to reduce network IO.
+     * </pre>
+     */
+    org.apache.hadoop.hbase.protobuf.generated.ClientProtos.CursorOrBuilder getCursorOrBuilder();
   }
   /**
    * Protobuf type {@code ScanResponse}
@@ -19641,6 +20207,19 @@ public final class ClientProtos {
             case 88: {
               bitField0_ |= 0x00000080;
               mvccReadPoint_ = input.readUInt64();
+              break;
+            }
+            case 98: {
+              org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Cursor.Builder subBuilder = null;
+              if (((bitField0_ & 0x00000100) == 0x00000100)) {
+                subBuilder = cursor_.toBuilder();
+              }
+              cursor_ = input.readMessage(org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Cursor.PARSER, extensionRegistry);
+              if (subBuilder != null) {
+                subBuilder.mergeFrom(cursor_);
+                cursor_ = subBuilder.buildPartial();
+              }
+              bitField0_ |= 0x00000100;
               break;
             }
           }
@@ -20054,6 +20633,43 @@ public final class ClientProtos {
       return mvccReadPoint_;
     }
 
+    // optional .Cursor cursor = 12;
+    public static final int CURSOR_FIELD_NUMBER = 12;
+    private org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Cursor cursor_;
+    /**
+     * <code>optional .Cursor cursor = 12;</code>
+     *
+     * <pre>
+     * If the Scan need cursor, return the row key we are scanning in heartbeat message.
+     * If the Scan doesn't need a cursor, don't set this field to reduce network IO.
+     * </pre>
+     */
+    public boolean hasCursor() {
+      return ((bitField0_ & 0x00000100) == 0x00000100);
+    }
+    /**
+     * <code>optional .Cursor cursor = 12;</code>
+     *
+     * <pre>
+     * If the Scan need cursor, return the row key we are scanning in heartbeat message.
+     * If the Scan doesn't need a cursor, don't set this field to reduce network IO.
+     * </pre>
+     */
+    public org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Cursor getCursor() {
+      return cursor_;
+    }
+    /**
+     * <code>optional .Cursor cursor = 12;</code>
+     *
+     * <pre>
+     * If the Scan need cursor, return the row key we are scanning in heartbeat message.
+     * If the Scan doesn't need a cursor, don't set this field to reduce network IO.
+     * </pre>
+     */
+    public org.apache.hadoop.hbase.protobuf.generated.ClientProtos.CursorOrBuilder getCursorOrBuilder() {
+      return cursor_;
+    }
+
     private void initFields() {
       cellsPerResult_ = java.util.Collections.emptyList();
       scannerId_ = 0L;
@@ -20066,6 +20682,7 @@ public final class ClientProtos {
       heartbeatMessage_ = false;
       scanMetrics_ = org.apache.hadoop.hbase.protobuf.generated.MapReduceProtos.ScanMetrics.getDefaultInstance();
       mvccReadPoint_ = 0L;
+      cursor_ = org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Cursor.getDefaultInstance();
     }
     private byte memoizedIsInitialized = -1;
     public final boolean isInitialized() {
@@ -20111,6 +20728,9 @@ public final class ClientProtos {
       }
       if (((bitField0_ & 0x00000080) == 0x00000080)) {
         output.writeUInt64(11, mvccReadPoint_);
+      }
+      if (((bitField0_ & 0x00000100) == 0x00000100)) {
+        output.writeMessage(12, cursor_);
       }
       getUnknownFields().writeTo(output);
     }
@@ -20171,6 +20791,10 @@ public final class ClientProtos {
       if (((bitField0_ & 0x00000080) == 0x00000080)) {
         size += com.google.protobuf.CodedOutputStream
           .computeUInt64Size(11, mvccReadPoint_);
+      }
+      if (((bitField0_ & 0x00000100) == 0x00000100)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeMessageSize(12, cursor_);
       }
       size += getUnknownFields().getSerializedSize();
       memoizedSerializedSize = size;
@@ -20241,6 +20865,11 @@ public final class ClientProtos {
         result = result && (getMvccReadPoint()
             == other.getMvccReadPoint());
       }
+      result = result && (hasCursor() == other.hasCursor());
+      if (hasCursor()) {
+        result = result && getCursor()
+            .equals(other.getCursor());
+      }
       result = result &&
           getUnknownFields().equals(other.getUnknownFields());
       return result;
@@ -20297,6 +20926,10 @@ public final class ClientProtos {
       if (hasMvccReadPoint()) {
         hash = (37 * hash) + MVCC_READ_POINT_FIELD_NUMBER;
         hash = (53 * hash) + hashLong(getMvccReadPoint());
+      }
+      if (hasCursor()) {
+        hash = (37 * hash) + CURSOR_FIELD_NUMBER;
+        hash = (53 * hash) + getCursor().hashCode();
       }
       hash = (29 * hash) + getUnknownFields().hashCode();
       memoizedHashCode = hash;
@@ -20407,6 +21040,7 @@ public final class ClientProtos {
         if (com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders) {
           getResultsFieldBuilder();
           getScanMetricsFieldBuilder();
+          getCursorFieldBuilder();
         }
       }
       private static Builder create() {
@@ -20445,6 +21079,12 @@ public final class ClientProtos {
         bitField0_ = (bitField0_ & ~0x00000200);
         mvccReadPoint_ = 0L;
         bitField0_ = (bitField0_ & ~0x00000400);
+        if (cursorBuilder_ == null) {
+          cursor_ = org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Cursor.getDefaultInstance();
+        } else {
+          cursorBuilder_.clear();
+        }
+        bitField0_ = (bitField0_ & ~0x00000800);
         return this;
       }
 
@@ -20528,6 +21168,14 @@ public final class ClientProtos {
           to_bitField0_ |= 0x00000080;
         }
         result.mvccReadPoint_ = mvccReadPoint_;
+        if (((from_bitField0_ & 0x00000800) == 0x00000800)) {
+          to_bitField0_ |= 0x00000100;
+        }
+        if (cursorBuilder_ == null) {
+          result.cursor_ = cursor_;
+        } else {
+          result.cursor_ = cursorBuilder_.build();
+        }
         result.bitField0_ = to_bitField0_;
         onBuilt();
         return result;
@@ -20613,6 +21261,9 @@ public final class ClientProtos {
         }
         if (other.hasMvccReadPoint()) {
           setMvccReadPoint(other.getMvccReadPoint());
+        }
+        if (other.hasCursor()) {
+          mergeCursor(other.getCursor());
         }
         this.mergeUnknownFields(other.getUnknownFields());
         return this;
@@ -21737,6 +22388,168 @@ public final class ClientProtos {
         mvccReadPoint_ = 0L;
         onChanged();
         return this;
+      }
+
+      // optional .Cursor cursor = 12;
+      private org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Cursor cursor_ = org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Cursor.getDefaultInstance();
+      private com.google.protobuf.SingleFieldBuilder<
+          org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Cursor, org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Cursor.Builder, org.apache.hadoop.hbase.protobuf.generated.ClientProtos.CursorOrBuilder> cursorBuilder_;
+      /**
+       * <code>optional .Cursor cursor = 12;</code>
+       *
+       * <pre>
+       * If the Scan need cursor, return the row key we are scanning in heartbeat message.
+       * If the Scan doesn't need a cursor, don't set this field to reduce network IO.
+       * </pre>
+       */
+      public boolean hasCursor() {
+        return ((bitField0_ & 0x00000800) == 0x00000800);
+      }
+      /**
+       * <code>optional .Cursor cursor = 12;</code>
+       *
+       * <pre>
+       * If the Scan need cursor, return the row key we are scanning in heartbeat message.
+       * If the Scan doesn't need a cursor, don't set this field to reduce network IO.
+       * </pre>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Cursor getCursor() {
+        if (cursorBuilder_ == null) {
+          return cursor_;
+        } else {
+          return cursorBuilder_.getMessage();
+        }
+      }
+      /**
+       * <code>optional .Cursor cursor = 12;</code>
+       *
+       * <pre>
+       * If the Scan need cursor, return the row key we are scanning in heartbeat message.
+       * If the Scan doesn't need a cursor, don't set this field to reduce network IO.
+       * </pre>
+       */
+      public Builder setCursor(org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Cursor value) {
+        if (cursorBuilder_ == null) {
+          if (value == null) {
+            throw new NullPointerException();
+          }
+          cursor_ = value;
+          onChanged();
+        } else {
+          cursorBuilder_.setMessage(value);
+        }
+        bitField0_ |= 0x00000800;
+        return this;
+      }
+      /**
+       * <code>optional .Cursor cursor = 12;</code>
+       *
+       * <pre>
+       * If the Scan need cursor, return the row key we are scanning in heartbeat message.
+       * If the Scan doesn't need a cursor, don't set this field to reduce network IO.
+       * </pre>
+       */
+      public Builder setCursor(
+          org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Cursor.Builder builderForValue) {
+        if (cursorBuilder_ == null) {
+          cursor_ = builderForValue.build();
+          onChanged();
+        } else {
+          cursorBuilder_.setMessage(builderForValue.build());
+        }
+        bitField0_ |= 0x00000800;
+        return this;
+      }
+      /**
+       * <code>optional .Cursor cursor = 12;</code>
+       *
+       * <pre>
+       * If the Scan need cursor, return the row key we are scanning in heartbeat message.
+       * If the Scan doesn't need a cursor, don't set this field to reduce network IO.
+       * </pre>
+       */
+      public Builder mergeCursor(org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Cursor value) {
+        if (cursorBuilder_ == null) {
+          if (((bitField0_ & 0x00000800) == 0x00000800) &&
+              cursor_ != org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Cursor.getDefaultInstance()) {
+            cursor_ =
+              org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Cursor.newBuilder(cursor_).mergeFrom(value).buildPartial();
+          } else {
+            cursor_ = value;
+          }
+          onChanged();
+        } else {
+          cursorBuilder_.mergeFrom(value);
+        }
+        bitField0_ |= 0x00000800;
+        return this;
+      }
+      /**
+       * <code>optional .Cursor cursor = 12;</code>
+       *
+       * <pre>
+       * If the Scan need cursor, return the row key we are scanning in heartbeat message.
+       * If the Scan doesn't need a cursor, don't set this field to reduce network IO.
+       * </pre>
+       */
+      public Builder clearCursor() {
+        if (cursorBuilder_ == null) {
+          cursor_ = org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Cursor.getDefaultInstance();
+          onChanged();
+        } else {
+          cursorBuilder_.clear();
+        }
+        bitField0_ = (bitField0_ & ~0x00000800);
+        return this;
+      }
+      /**
+       * <code>optional .Cursor cursor = 12;</code>
+       *
+       * <pre>
+       * If the Scan need cursor, return the row key we are scanning in heartbeat message.
+       * If the Scan doesn't need a cursor, don't set this field to reduce network IO.
+       * </pre>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Cursor.Builder getCursorBuilder() {
+        bitField0_ |= 0x00000800;
+        onChanged();
+        return getCursorFieldBuilder().getBuilder();
+      }
+      /**
+       * <code>optional .Cursor cursor = 12;</code>
+       *
+       * <pre>
+       * If the Scan need cursor, return the row key we are scanning in heartbeat message.
+       * If the Scan doesn't need a cursor, don't set this field to reduce network IO.
+       * </pre>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.ClientProtos.CursorOrBuilder getCursorOrBuilder() {
+        if (cursorBuilder_ != null) {
+          return cursorBuilder_.getMessageOrBuilder();
+        } else {
+          return cursor_;
+        }
+      }
+      /**
+       * <code>optional .Cursor cursor = 12;</code>
+       *
+       * <pre>
+       * If the Scan need cursor, return the row key we are scanning in heartbeat message.
+       * If the Scan doesn't need a cursor, don't set this field to reduce network IO.
+       * </pre>
+       */
+      private com.google.protobuf.SingleFieldBuilder<
+          org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Cursor, org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Cursor.Builder, org.apache.hadoop.hbase.protobuf.generated.ClientProtos.CursorOrBuilder> 
+          getCursorFieldBuilder() {
+        if (cursorBuilder_ == null) {
+          cursorBuilder_ = new com.google.protobuf.SingleFieldBuilder<
+              org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Cursor, org.apache.hadoop.hbase.protobuf.generated.ClientProtos.Cursor.Builder, org.apache.hadoop.hbase.protobuf.generated.ClientProtos.CursorOrBuilder>(
+                  cursor_,
+                  getParentForChildren(),
+                  isClean());
+          cursor_ = null;
+        }
+        return cursorBuilder_;
       }
 
       // @@protoc_insertion_point(builder_scope:ScanResponse)
@@ -34726,6 +35539,11 @@ public final class ClientProtos {
     com.google.protobuf.GeneratedMessage.FieldAccessorTable
       internal_static_ScanRequest_fieldAccessorTable;
   private static com.google.protobuf.Descriptors.Descriptor
+    internal_static_Cursor_descriptor;
+  private static
+    com.google.protobuf.GeneratedMessage.FieldAccessorTable
+      internal_static_Cursor_fieldAccessorTable;
+  private static com.google.protobuf.Descriptors.Descriptor
     internal_static_ScanResponse_descriptor;
   private static
     com.google.protobuf.GeneratedMessage.FieldAccessorTable
@@ -34858,7 +35676,7 @@ public final class ClientProtos {
       "tion\030\002 \002(\0132\016.MutationProto\022\035\n\tcondition\030" +
       "\003 \001(\0132\n.Condition\022\023\n\013nonce_group\030\004 \001(\004\"<" +
       "\n\016MutateResponse\022\027\n\006result\030\001 \001(\0132\007.Resul" +
-      "t\022\021\n\tprocessed\030\002 \001(\010\"\225\005\n\004Scan\022\027\n\006column\030",
+      "t\022\021\n\tprocessed\030\002 \001(\010\"\270\005\n\004Scan\022\027\n\006column\030",
       "\001 \003(\0132\007.Column\022!\n\tattribute\030\002 \003(\0132\016.Name" +
       "BytesPair\022\021\n\tstart_row\030\003 \001(\014\022\020\n\010stop_row" +
       "\030\004 \001(\014\022\027\n\006filter\030\005 \001(\0132\007.Filter\022\036\n\ntime_" +
@@ -34873,70 +35691,72 @@ public final class ClientProtos {
       "lumnFamilyTimeRange\022\032\n\017mvcc_read_point\030\024" +
       " \001(\004:\0010\022\037\n\021include_start_row\030\025 \001(\010:\004true" +
       "\022\037\n\020include_stop_row\030\026 \001(\010:\005false\022)\n\010rea" +
-      "dType\030\027 \001(\0162\016.Scan.ReadType:\007DEFAULT\".\n\010" +
-      "ReadType\022\013\n\007DEFAULT\020\000\022\n\n\006STREAM\020\001\022\t\n\005PRE" +
-      "AD\020\002\"\256\002\n\013ScanRequest\022 \n\006region\030\001 \001(\0132\020.R" +
-      "egionSpecifier\022\023\n\004scan\030\002 \001(\0132\005.Scan\022\022\n\ns" +
-      "canner_id\030\003 \001(\004\022\026\n\016number_of_rows\030\004 \001(\r\022" +
-      "\025\n\rclose_scanner\030\005 \001(\010\022\025\n\rnext_call_seq\030",
-      "\006 \001(\004\022\037\n\027client_handles_partials\030\007 \001(\010\022!" +
-      "\n\031client_handles_heartbeats\030\010 \001(\010\022\032\n\022tra" +
-      "ck_scan_metrics\030\t \001(\010\022\024\n\005renew\030\n \001(\010:\005fa" +
-      "lse\022\030\n\rlimit_of_rows\030\013 \001(\r:\0010\"\244\002\n\014ScanRe" +
-      "sponse\022\030\n\020cells_per_result\030\001 \003(\r\022\022\n\nscan" +
-      "ner_id\030\002 \001(\004\022\024\n\014more_results\030\003 \001(\010\022\013\n\003tt" +
-      "l\030\004 \001(\r\022\030\n\007results\030\005 \003(\0132\007.Result\022\r\n\005sta" +
-      "le\030\006 \001(\010\022\037\n\027partial_flag_per_result\030\007 \003(" +
-      "\010\022\036\n\026more_results_in_region\030\010 \001(\010\022\031\n\021hea" +
-      "rtbeat_message\030\t \001(\010\022\"\n\014scan_metrics\030\n \001",
-      "(\0132\014.ScanMetrics\022\032\n\017mvcc_read_point\030\013 \001(" +
-      "\004:\0010\"\263\001\n\024BulkLoadHFileRequest\022 \n\006region\030" +
-      "\001 \002(\0132\020.RegionSpecifier\0225\n\013family_path\030\002" +
-      " \003(\0132 .BulkLoadHFileRequest.FamilyPath\022\026" +
-      "\n\016assign_seq_num\030\003 \001(\010\032*\n\nFamilyPath\022\016\n\006" +
-      "family\030\001 \002(\014\022\014\n\004path\030\002 \002(\t\"\'\n\025BulkLoadHF" +
-      "ileResponse\022\016\n\006loaded\030\001 \002(\010\"a\n\026Coprocess" +
-      "orServiceCall\022\013\n\003row\030\001 \002(\014\022\024\n\014service_na" +
-      "me\030\002 \002(\t\022\023\n\013method_name\030\003 \002(\t\022\017\n\007request" +
-      "\030\004 \002(\014\"9\n\030CoprocessorServiceResult\022\035\n\005va",
-      "lue\030\001 \001(\0132\016.NameBytesPair\"d\n\031Coprocessor" +
-      "ServiceRequest\022 \n\006region\030\001 \002(\0132\020.RegionS" +
-      "pecifier\022%\n\004call\030\002 \002(\0132\027.CoprocessorServ" +
-      "iceCall\"]\n\032CoprocessorServiceResponse\022 \n" +
-      "\006region\030\001 \002(\0132\020.RegionSpecifier\022\035\n\005value" +
-      "\030\002 \002(\0132\016.NameBytesPair\"{\n\006Action\022\r\n\005inde" +
-      "x\030\001 \001(\r\022 \n\010mutation\030\002 \001(\0132\016.MutationProt" +
-      "o\022\021\n\003get\030\003 \001(\0132\004.Get\022-\n\014service_call\030\004 \001" +
-      "(\0132\027.CoprocessorServiceCall\"Y\n\014RegionAct" +
-      "ion\022 \n\006region\030\001 \002(\0132\020.RegionSpecifier\022\016\n",
-      "\006atomic\030\002 \001(\010\022\027\n\006action\030\003 \003(\0132\007.Action\"D" +
-      "\n\017RegionLoadStats\022\027\n\014memstoreLoad\030\001 \001(\005:" +
-      "\0010\022\030\n\rheapOccupancy\030\002 \001(\005:\0010\"\266\001\n\021ResultO" +
-      "rException\022\r\n\005index\030\001 \001(\r\022\027\n\006result\030\002 \001(" +
-      "\0132\007.Result\022!\n\texception\030\003 \001(\0132\016.NameByte" +
-      "sPair\0221\n\016service_result\030\004 \001(\0132\031.Coproces" +
-      "sorServiceResult\022#\n\tloadStats\030\005 \001(\0132\020.Re" +
-      "gionLoadStats\"f\n\022RegionActionResult\022-\n\021r" +
-      "esultOrException\030\001 \003(\0132\022.ResultOrExcepti" +
-      "on\022!\n\texception\030\002 \001(\0132\016.NameBytesPair\"f\n",
-      "\014MultiRequest\022#\n\014regionAction\030\001 \003(\0132\r.Re" +
-      "gionAction\022\022\n\nnonceGroup\030\002 \001(\004\022\035\n\tcondit" +
-      "ion\030\003 \001(\0132\n.Condition\"S\n\rMultiResponse\022/" +
-      "\n\022regionActionResult\030\001 \003(\0132\023.RegionActio" +
-      "nResult\022\021\n\tprocessed\030\002 \001(\010*\'\n\013Consistenc" +
-      "y\022\n\n\006STRONG\020\000\022\014\n\010TIMELINE\020\0012\205\003\n\rClientSe" +
-      "rvice\022 \n\003Get\022\013.GetRequest\032\014.GetResponse\022" +
-      ")\n\006Mutate\022\016.MutateRequest\032\017.MutateRespon" +
-      "se\022#\n\004Scan\022\014.ScanRequest\032\r.ScanResponse\022" +
-      ">\n\rBulkLoadHFile\022\025.BulkLoadHFileRequest\032",
-      "\026.BulkLoadHFileResponse\022F\n\013ExecService\022\032" +
-      ".CoprocessorServiceRequest\032\033.Coprocessor" +
-      "ServiceResponse\022R\n\027ExecRegionServerServi" +
-      "ce\022\032.CoprocessorServiceRequest\032\033.Coproce" +
-      "ssorServiceResponse\022&\n\005Multi\022\r.MultiRequ" +
-      "est\032\016.MultiResponseBB\n*org.apache.hadoop" +
-      ".hbase.protobuf.generatedB\014ClientProtosH" +
-      "\001\210\001\001\240\001\001"
+      "dType\030\027 \001(\0162\016.Scan.ReadType:\007DEFAULT\022!\n\022" +
+      "need_cursor_result\030\030 \001(\010:\005false\".\n\010ReadT" +
+      "ype\022\013\n\007DEFAULT\020\000\022\n\n\006STREAM\020\001\022\t\n\005PREAD\020\002\"" +
+      "\256\002\n\013ScanRequest\022 \n\006region\030\001 \001(\0132\020.Region" +
+      "Specifier\022\023\n\004scan\030\002 \001(\0132\005.Scan\022\022\n\nscanne" +
+      "r_id\030\003 \001(\004\022\026\n\016number_of_rows\030\004 \001(\r\022\025\n\rcl",
+      "ose_scanner\030\005 \001(\010\022\025\n\rnext_call_seq\030\006 \001(\004" +
+      "\022\037\n\027client_handles_partials\030\007 \001(\010\022!\n\031cli" +
+      "ent_handles_heartbeats\030\010 \001(\010\022\032\n\022track_sc" +
+      "an_metrics\030\t \001(\010\022\024\n\005renew\030\n \001(\010:\005false\022\030" +
+      "\n\rlimit_of_rows\030\013 \001(\r:\0010\"\025\n\006Cursor\022\013\n\003ro" +
+      "w\030\001 \001(\014\"\275\002\n\014ScanResponse\022\030\n\020cells_per_re" +
+      "sult\030\001 \003(\r\022\022\n\nscanner_id\030\002 \001(\004\022\024\n\014more_r" +
+      "esults\030\003 \001(\010\022\013\n\003ttl\030\004 \001(\r\022\030\n\007results\030\005 \003" +
+      "(\0132\007.Result\022\r\n\005stale\030\006 \001(\010\022\037\n\027partial_fl" +
+      "ag_per_result\030\007 \003(\010\022\036\n\026more_results_in_r",
+      "egion\030\010 \001(\010\022\031\n\021heartbeat_message\030\t \001(\010\022\"" +
+      "\n\014scan_metrics\030\n \001(\0132\014.ScanMetrics\022\032\n\017mv" +
+      "cc_read_point\030\013 \001(\004:\0010\022\027\n\006cursor\030\014 \001(\0132\007" +
+      ".Cursor\"\263\001\n\024BulkLoadHFileRequest\022 \n\006regi" +
+      "on\030\001 \002(\0132\020.RegionSpecifier\0225\n\013family_pat" +
+      "h\030\002 \003(\0132 .BulkLoadHFileRequest.FamilyPat" +
+      "h\022\026\n\016assign_seq_num\030\003 \001(\010\032*\n\nFamilyPath\022" +
+      "\016\n\006family\030\001 \002(\014\022\014\n\004path\030\002 \002(\t\"\'\n\025BulkLoa" +
+      "dHFileResponse\022\016\n\006loaded\030\001 \002(\010\"a\n\026Coproc" +
+      "essorServiceCall\022\013\n\003row\030\001 \002(\014\022\024\n\014service",
+      "_name\030\002 \002(\t\022\023\n\013method_name\030\003 \002(\t\022\017\n\007requ" +
+      "est\030\004 \002(\014\"9\n\030CoprocessorServiceResult\022\035\n" +
+      "\005value\030\001 \001(\0132\016.NameBytesPair\"d\n\031Coproces" +
+      "sorServiceRequest\022 \n\006region\030\001 \002(\0132\020.Regi" +
+      "onSpecifier\022%\n\004call\030\002 \002(\0132\027.CoprocessorS" +
+      "erviceCall\"]\n\032CoprocessorServiceResponse" +
+      "\022 \n\006region\030\001 \002(\0132\020.RegionSpecifier\022\035\n\005va" +
+      "lue\030\002 \002(\0132\016.NameBytesPair\"{\n\006Action\022\r\n\005i" +
+      "ndex\030\001 \001(\r\022 \n\010mutation\030\002 \001(\0132\016.MutationP" +
+      "roto\022\021\n\003get\030\003 \001(\0132\004.Get\022-\n\014service_call\030",
+      "\004 \001(\0132\027.CoprocessorServiceCall\"Y\n\014Region" +
+      "Action\022 \n\006region\030\001 \002(\0132\020.RegionSpecifier" +
+      "\022\016\n\006atomic\030\002 \001(\010\022\027\n\006action\030\003 \003(\0132\007.Actio" +
+      "n\"D\n\017RegionLoadStats\022\027\n\014memstoreLoad\030\001 \001" +
+      "(\005:\0010\022\030\n\rheapOccupancy\030\002 \001(\005:\0010\"\266\001\n\021Resu" +
+      "ltOrException\022\r\n\005index\030\001 \001(\r\022\027\n\006result\030\002" +
+      " \001(\0132\007.Result\022!\n\texception\030\003 \001(\0132\016.NameB" +
+      "ytesPair\0221\n\016service_result\030\004 \001(\0132\031.Copro" +
+      "cessorServiceResult\022#\n\tloadStats\030\005 \001(\0132\020" +
+      ".RegionLoadStats\"f\n\022RegionActionResult\022-",
+      "\n\021resultOrException\030\001 \003(\0132\022.ResultOrExce" +
+      "ption\022!\n\texception\030\002 \001(\0132\016.NameBytesPair" +
+      "\"f\n\014MultiRequest\022#\n\014regionAction\030\001 \003(\0132\r" +
+      ".RegionAction\022\022\n\nnonceGroup\030\002 \001(\004\022\035\n\tcon" +
+      "dition\030\003 \001(\0132\n.Condition\"S\n\rMultiRespons" +
+      "e\022/\n\022regionActionResult\030\001 \003(\0132\023.RegionAc" +
+      "tionResult\022\021\n\tprocessed\030\002 \001(\010*\'\n\013Consist" +
+      "ency\022\n\n\006STRONG\020\000\022\014\n\010TIMELINE\020\0012\205\003\n\rClien" +
+      "tService\022 \n\003Get\022\013.GetRequest\032\014.GetRespon" +
+      "se\022)\n\006Mutate\022\016.MutateRequest\032\017.MutateRes",
+      "ponse\022#\n\004Scan\022\014.ScanRequest\032\r.ScanRespon" +
+      "se\022>\n\rBulkLoadHFile\022\025.BulkLoadHFileReque" +
+      "st\032\026.BulkLoadHFileResponse\022F\n\013ExecServic" +
+      "e\022\032.CoprocessorServiceRequest\032\033.Coproces" +
+      "sorServiceResponse\022R\n\027ExecRegionServerSe" +
+      "rvice\022\032.CoprocessorServiceRequest\032\033.Copr" +
+      "ocessorServiceResponse\022&\n\005Multi\022\r.MultiR" +
+      "equest\032\016.MultiResponseBB\n*org.apache.had" +
+      "oop.hbase.protobuf.generatedB\014ClientProt" +
+      "osH\001\210\001\001\240\001\001"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
       new com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner() {
@@ -35026,21 +35846,27 @@ public final class ClientProtos {
           internal_static_Scan_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_Scan_descriptor,
-              new java.lang.String[] { "Column", "Attribute", "StartRow", "StopRow", "Filter", "TimeRange", "MaxVersions", "CacheBlocks", "BatchSize", "MaxResultSize", "StoreLimit", "StoreOffset", "LoadColumnFamiliesOnDemand", "Small", "Reversed", "Caching", "AllowPartialResults", "CfTimeRange", "MvccReadPoint", "IncludeStartRow", "IncludeStopRow", "ReadType", });
+              new java.lang.String[] { "Column", "Attribute", "StartRow", "StopRow", "Filter", "TimeRange", "MaxVersions", "CacheBlocks", "BatchSize", "MaxResultSize", "StoreLimit", "StoreOffset", "LoadColumnFamiliesOnDemand", "Small", "Reversed", "Caching", "AllowPartialResults", "CfTimeRange", "MvccReadPoint", "IncludeStartRow", "IncludeStopRow", "ReadType", "NeedCursorResult", });
           internal_static_ScanRequest_descriptor =
             getDescriptor().getMessageTypes().get(12);
           internal_static_ScanRequest_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_ScanRequest_descriptor,
               new java.lang.String[] { "Region", "Scan", "ScannerId", "NumberOfRows", "CloseScanner", "NextCallSeq", "ClientHandlesPartials", "ClientHandlesHeartbeats", "TrackScanMetrics", "Renew", "LimitOfRows", });
-          internal_static_ScanResponse_descriptor =
+          internal_static_Cursor_descriptor =
             getDescriptor().getMessageTypes().get(13);
+          internal_static_Cursor_fieldAccessorTable = new
+            com.google.protobuf.GeneratedMessage.FieldAccessorTable(
+              internal_static_Cursor_descriptor,
+              new java.lang.String[] { "Row", });
+          internal_static_ScanResponse_descriptor =
+            getDescriptor().getMessageTypes().get(14);
           internal_static_ScanResponse_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_ScanResponse_descriptor,
-              new java.lang.String[] { "CellsPerResult", "ScannerId", "MoreResults", "Ttl", "Results", "Stale", "PartialFlagPerResult", "MoreResultsInRegion", "HeartbeatMessage", "ScanMetrics", "MvccReadPoint", });
+              new java.lang.String[] { "CellsPerResult", "ScannerId", "MoreResults", "Ttl", "Results", "Stale", "PartialFlagPerResult", "MoreResultsInRegion", "HeartbeatMessage", "ScanMetrics", "MvccReadPoint", "Cursor", });
           internal_static_BulkLoadHFileRequest_descriptor =
-            getDescriptor().getMessageTypes().get(14);
+            getDescriptor().getMessageTypes().get(15);
           internal_static_BulkLoadHFileRequest_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_BulkLoadHFileRequest_descriptor,
@@ -35052,73 +35878,73 @@ public final class ClientProtos {
               internal_static_BulkLoadHFileRequest_FamilyPath_descriptor,
               new java.lang.String[] { "Family", "Path", });
           internal_static_BulkLoadHFileResponse_descriptor =
-            getDescriptor().getMessageTypes().get(15);
+            getDescriptor().getMessageTypes().get(16);
           internal_static_BulkLoadHFileResponse_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_BulkLoadHFileResponse_descriptor,
               new java.lang.String[] { "Loaded", });
           internal_static_CoprocessorServiceCall_descriptor =
-            getDescriptor().getMessageTypes().get(16);
+            getDescriptor().getMessageTypes().get(17);
           internal_static_CoprocessorServiceCall_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_CoprocessorServiceCall_descriptor,
               new java.lang.String[] { "Row", "ServiceName", "MethodName", "Request", });
           internal_static_CoprocessorServiceResult_descriptor =
-            getDescriptor().getMessageTypes().get(17);
+            getDescriptor().getMessageTypes().get(18);
           internal_static_CoprocessorServiceResult_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_CoprocessorServiceResult_descriptor,
               new java.lang.String[] { "Value", });
           internal_static_CoprocessorServiceRequest_descriptor =
-            getDescriptor().getMessageTypes().get(18);
+            getDescriptor().getMessageTypes().get(19);
           internal_static_CoprocessorServiceRequest_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_CoprocessorServiceRequest_descriptor,
               new java.lang.String[] { "Region", "Call", });
           internal_static_CoprocessorServiceResponse_descriptor =
-            getDescriptor().getMessageTypes().get(19);
+            getDescriptor().getMessageTypes().get(20);
           internal_static_CoprocessorServiceResponse_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_CoprocessorServiceResponse_descriptor,
               new java.lang.String[] { "Region", "Value", });
           internal_static_Action_descriptor =
-            getDescriptor().getMessageTypes().get(20);
+            getDescriptor().getMessageTypes().get(21);
           internal_static_Action_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_Action_descriptor,
               new java.lang.String[] { "Index", "Mutation", "Get", "ServiceCall", });
           internal_static_RegionAction_descriptor =
-            getDescriptor().getMessageTypes().get(21);
+            getDescriptor().getMessageTypes().get(22);
           internal_static_RegionAction_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_RegionAction_descriptor,
               new java.lang.String[] { "Region", "Atomic", "Action", });
           internal_static_RegionLoadStats_descriptor =
-            getDescriptor().getMessageTypes().get(22);
+            getDescriptor().getMessageTypes().get(23);
           internal_static_RegionLoadStats_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_RegionLoadStats_descriptor,
               new java.lang.String[] { "MemstoreLoad", "HeapOccupancy", });
           internal_static_ResultOrException_descriptor =
-            getDescriptor().getMessageTypes().get(23);
+            getDescriptor().getMessageTypes().get(24);
           internal_static_ResultOrException_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_ResultOrException_descriptor,
               new java.lang.String[] { "Index", "Result", "Exception", "ServiceResult", "LoadStats", });
           internal_static_RegionActionResult_descriptor =
-            getDescriptor().getMessageTypes().get(24);
+            getDescriptor().getMessageTypes().get(25);
           internal_static_RegionActionResult_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_RegionActionResult_descriptor,
               new java.lang.String[] { "ResultOrException", "Exception", });
           internal_static_MultiRequest_descriptor =
-            getDescriptor().getMessageTypes().get(25);
+            getDescriptor().getMessageTypes().get(26);
           internal_static_MultiRequest_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_MultiRequest_descriptor,
               new java.lang.String[] { "RegionAction", "NonceGroup", "Condition", });
           internal_static_MultiResponse_descriptor =
-            getDescriptor().getMessageTypes().get(26);
+            getDescriptor().getMessageTypes().get(27);
           internal_static_MultiResponse_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_MultiResponse_descriptor,
