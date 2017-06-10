@@ -247,6 +247,21 @@ class NettyRpcConnection extends RpcConnection {
         }).channel();
   }
 
+  private void write(Channel ch, final Call call) {
+    ch.writeAndFlush(call).addListener(new ChannelFutureListener() {
+
+      @Override
+      public void operationComplete(ChannelFuture future) throws Exception {
+        // Fail the call if we failed to write it out. This usually because the channel is
+        // closed. This is needed because we may shutdown the channel inside event loop and
+        // there may still be some pending calls in the event loop queue after us.
+        if (!future.isSuccess()) {
+          call.setException(toIOE(future.cause()));
+        }
+      }
+    });
+  }
+
   @Override
   public synchronized void sendRequest(final Call call, HBaseRpcController hrc) throws IOException {
     if (reloginInProgress) {
@@ -274,18 +289,29 @@ class NettyRpcConnection extends RpcConnection {
             connect();
           }
           scheduleTimeoutTask(call);
-          channel.writeAndFlush(call).addListener(new ChannelFutureListener() {
+          final Channel ch = channel;
+          // We must move the whole writeAndFlush call inside event loop otherwise there will be a
+          // race condition.
+          // In netty's DefaultChannelPipeline, it will find the first outbound handler in the
+          // current thread and then schedule a task to event loop which will start the process from
+          // that outbound handler. It is possible that the first handler is
+          // BufferCallBeforeInitHandler when we call writeAndFlush here, but the connection is set
+          // up at the same time so in the event loop thread we remove the
+          // BufferCallBeforeInitHandler, and then our writeAndFlush task comes, still calls the
+          // write method of BufferCallBeforeInitHandler.
+          // This may be considered as a bug of netty, but anyway there is a work around so let's
+          // fix it by ourselves first.
+          if (ch.eventLoop().inEventLoop()) {
+            write(ch, call);
+          } else {
+            ch.eventLoop().execute(new Runnable() {
 
-            @Override
-            public void operationComplete(ChannelFuture future) throws Exception {
-              // Fail the call if we failed to write it out. This usually because the channel is
-              // closed. This is needed because we may shutdown the channel inside event loop and
-              // there may still be some pending calls in the event loop queue after us.
-              if (!future.isSuccess()) {
-                call.setException(toIOE(future.cause()));
+              @Override
+              public void run() {
+                write(ch, call);
               }
-            }
-          });
+            });
+          }
         }
       }
     });
