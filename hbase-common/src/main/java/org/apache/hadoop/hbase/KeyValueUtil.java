@@ -20,8 +20,10 @@ package org.apache.hadoop.hbase;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
+import org.apache.hadoop.hbase.KeyValue.Type;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.util.ByteBufferUtils;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -119,6 +121,18 @@ public class KeyValueUtil {
     ByteBuffer buffer = ByteBuffer.wrap(bytes);
     buffer.position(buffer.limit());//make it look as if each field were appended
     return buffer;
+  }
+
+  /**
+   * Copies the key to a new KeyValue
+   * @param cell
+   * @return the KeyValue that consists only the key part of the incoming cell
+   */
+  public static KeyValue toNewKeyCell(final Cell cell) {
+    return new KeyValue(cell.getRowArray(), cell.getRowOffset(), cell.getRowLength(),
+        cell.getFamilyArray(), cell.getFamilyOffset(), cell.getFamilyLength(),
+        cell.getQualifierArray(), cell.getQualifierOffset(), cell.getQualifierLength(),
+        cell.getTimestamp(), Type.codeToType(cell.getTypeByte()), null, 0, 0, null);
   }
 
   public static byte[] copyToNewByteArray(final Cell cell) {
