@@ -35,7 +35,7 @@ import org.apache.hadoop.hbase.util.Bytes;
  * reversed scanning.
  */
 @InterfaceAudience.Private
-class ReversedStoreScanner extends StoreScanner implements KeyValueScanner {
+public class ReversedStoreScanner extends StoreScanner implements KeyValueScanner {
 
   /**
    * Opens a scanner across memstore, snapshot, and all StoreFiles. Assumes we
@@ -47,14 +47,13 @@ class ReversedStoreScanner extends StoreScanner implements KeyValueScanner {
    * @param columns which columns we are scanning
    * @throws IOException
    */
-  ReversedStoreScanner(Store store, ScanInfo scanInfo, Scan scan,
-      NavigableSet<byte[]> columns, long readPt)
-      throws IOException {
+  public ReversedStoreScanner(Store store, ScanInfo scanInfo, Scan scan,
+      NavigableSet<byte[]> columns, long readPt) throws IOException {
     super(store, scanInfo, scan, columns, readPt);
   }
 
   /** Constructor for testing. */
-  ReversedStoreScanner(final Scan scan, ScanInfo scanInfo, ScanType scanType,
+  public ReversedStoreScanner(final Scan scan, ScanInfo scanInfo, ScanType scanType,
       final NavigableSet<byte[]> columns, final List<KeyValueScanner> scanners)
       throws IOException {
     super(scan, scanInfo, scanType, columns, scanners,

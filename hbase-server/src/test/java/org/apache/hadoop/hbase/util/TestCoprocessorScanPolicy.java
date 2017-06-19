@@ -40,6 +40,7 @@ import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.KeyValueUtil;
+import org.apache.hadoop.hbase.regionserver.ReversedStoreScanner;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.HTable;
@@ -289,9 +290,13 @@ public class TestCoprocessorScanPolicy {
           newVersions == null ? family.getMaxVersions() : newVersions,
           newTtl == null ? oldSI.getTtl() : newTtl, family.getKeepDeletedCells(),
           oldSI.getTimeToPurgeDeletes(), oldSI.getComparator());
-      return new StoreScanner(store, scanInfo, scan, targetCols,
-        ((HStore)store).getHRegion().getReadpoint(IsolationLevel.READ_COMMITTED));
+
+      long readPt = ((HStore) store).getHRegion().getReadpoint(IsolationLevel.READ_COMMITTED);
+      if (scan.isReversed()) {
+        return new ReversedStoreScanner(store, scanInfo, scan, targetCols, readPt);
+      } else {
+        return new StoreScanner(store, scanInfo, scan, targetCols, readPt);
+      }
     }
   }
-
 }
