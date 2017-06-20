@@ -105,8 +105,8 @@ MultiRowMutationProcessorResponse> {
       List<Cell> cells = region.get(get, true);
       if (!c.isMatch(Result.create(cells))) { // no match
         unmetConditions.add(i);
-        ++i;
       }
+      ++i;
     }
     if (!unmetConditions.isEmpty()) {
       return;
