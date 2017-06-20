@@ -30,7 +30,7 @@ import org.junit.experimental.categories.Category;
 public class TestVisibilityLabelsOnMvccSensitiveTable extends TestVisibilityLabelsWithDeletes {
 
   protected HTable createTable(HColumnDescriptor fam) throws IOException {
-    fam.setMvccSensitive(true);
+    fam.setNewVersionBehavior(true);
     TableName tableName = TableName.valueOf(TEST_NAME.getMethodName());
     HTableDescriptor table = new HTableDescriptor(tableName);
     table.addFamily(fam);

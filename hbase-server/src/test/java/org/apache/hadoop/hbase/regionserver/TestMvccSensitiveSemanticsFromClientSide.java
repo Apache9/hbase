@@ -73,7 +73,7 @@ public class TestMvccSensitiveSemanticsFromClientSide {
     TableName tableName = TableName.valueOf(name.getMethodName());
     HTableDescriptor table = new HTableDescriptor(tableName);
     HColumnDescriptor fam = new HColumnDescriptor(FAMILY);
-    fam.setMvccSensitive(true);
+    fam.setNewVersionBehavior(true);
     fam.setMaxVersions(3);
     table.addFamily(fam);
     TEST_UTIL.getHBaseAdmin().createTable(table);

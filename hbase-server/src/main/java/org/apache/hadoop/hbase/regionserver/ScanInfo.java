@@ -53,7 +53,7 @@ public class ScanInfo {
   public ScanInfo(final HColumnDescriptor family, final long ttl, final long timeToPurgeDeletes,
       final KVComparator comparator) {
     this(family.getName(), family.getMinVersions(), family.getMaxVersions(), ttl, family
-        .getKeepDeletedCells(), timeToPurgeDeletes, comparator, family.isMvccSensitive());
+        .getKeepDeletedCells(), timeToPurgeDeletes, comparator, family.isNewVersionBehavior());
   }
 
   public ScanInfo(final byte[] family, final int minVersions, final int maxVersions,
