@@ -296,6 +296,27 @@ public final class ReplicationSerDeHelper {
       }
       peerConfig.setNamespaces(namespaces);
     }
+
+    if (peer.hasAll()) {
+      peerConfig.setReplicateAllUserTables(peer.getAll());
+    }
+
+    Map<TableName, ? extends Collection<String>> excludeTableCFsMap = convert2Map(
+      peer.getExcludeTableCFs().getTableCfsList()
+        .toArray(new ZooKeeperProtos.TableCF[peer.getExcludeTableCFs().getTableCfsCount()]));
+    if (excludeTableCFsMap != null) {
+      peerConfig.setExcludeTableCFsMap(excludeTableCFsMap);
+    }
+
+    List<ByteString> excludeNamespacesList = peer.getExcludeNamespacesList();
+    if (excludeNamespacesList != null && excludeNamespacesList.size() != 0) {
+      Set<String> excludeNamespaces = new HashSet<String>();
+      for (ByteString namespace : excludeNamespacesList) {
+        excludeNamespaces.add(namespace.toStringUtf8());
+      }
+      peerConfig.setExcludeNamespaces(excludeNamespaces);
+    }
+
     return peerConfig;
   }
 
@@ -341,6 +362,24 @@ public final class ReplicationSerDeHelper {
       }
     }
 
+    builder.setAll(peerConfig.replicateAllUserTables());
+
+    ZooKeeperProtos.TableCF[] excludeTableCFs = convert(peerConfig.getExcludeTableCFsMap());
+    if (excludeTableCFs != null) {
+      ZooKeeperProtos.TableCFs.Builder excludeTableCFsBuilder = ZooKeeperProtos.TableCFs
+          .newBuilder();
+      for (int i = 0; i < excludeTableCFs.length; i++) {
+        excludeTableCFsBuilder.addTableCfs(excludeTableCFs[i]);
+      }
+      builder.setExcludeTableCFs(excludeTableCFsBuilder.build());
+    }
+
+    Set<String> excludeNamespaces = peerConfig.getExcludeNamespaces();
+    if (excludeNamespaces != null) {
+      for (String namespace : excludeNamespaces) {
+        builder.addExcludeNamespaces(ByteString.copyFromUtf8(namespace));
+      }
+    }
     return builder.build();
   }
 

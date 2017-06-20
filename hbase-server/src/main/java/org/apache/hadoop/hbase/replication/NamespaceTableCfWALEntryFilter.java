@@ -44,45 +44,76 @@ public class NamespaceTableCfWALEntryFilter implements WALEntryFilter {
     TableName tabName = entry.getKey().getTablename();
     ArrayList<KeyValue> kvs = entry.getEdit().getKeyValues();
     String namespace = tabName.getNamespaceAsString();
-    Set<String> namespaces = this.peer.getNamespaces();
-    Map<TableName, List<String>> tableCFs = null;
 
-    try {
-      tableCFs = this.peer.getTableCFs();
-    } catch (IllegalArgumentException e) {
-      LOG.error("should not happen: can't get tableCFs for peer " + peer.getId() +
-          ", degenerate as if it's not configured by keeping tableCFs==null");
-    }
+    ReplicationPeerConfig peerConfig = this.peer.getPeerConfig();
     int size = kvs.size();
 
-    // If null means user has explicitly not configured any namespaces and table CFs
-    // so all the tables data are applicable for replication
-    if (namespaces == null && tableCFs == null) {
-      return entry;
-    }
+    if (peerConfig.replicateAllUserTables()) {
+      // Replicate all user tables unless there are exclude-namespaces or exclude-table-cfs
+      // config
+      Set<String> excludeNamespaces = peerConfig.getExcludeNamespaces();
+      Map<TableName, List<String>> excludeTableCFs = peerConfig.getExcludeTableCFsMap();
 
-    // First filter by namespaces config
-    // If table's namespace in peer config, all the tables data are applicable for replication
-    if (namespaces != null && namespaces.contains(namespace)) {
-      return entry;
-    }
+      // If null means user has explicitly not configured any exclude-namespaces and
+      // exclude-table-cfs, so all user tables data are replicated to peer cluster
+      if (excludeNamespaces == null && excludeTableCFs == null) {
+        return entry;
+      }
 
-    // Then filter by table-cfs config
-    // return null(prevent replicating) if logKey's table isn't in this peer's
-    // replicaable namespace list and table list
-    if (tableCFs == null || !tableCFs.containsKey(tabName)) {
-      return null;
+      // First filter by the exclude-namespaces config
+      if (excludeNamespaces != null && excludeNamespaces.contains(namespace)) {
+        return null;
+      }
+
+      if (excludeTableCFs == null || !excludeTableCFs.containsKey(tabName)) {
+        return entry;
+      } else {
+        List<String> cfs = excludeTableCFs.get(tabName);
+        // empty cfs means all cfs of this table are exclude
+        if (cfs == null) {
+          return null;
+        }
+        for (int i = size - 1; i >= 0; i--) {
+          KeyValue kv = kvs.get(i);
+          // ignore(remove) kv if its cf is in the exclude cf list
+          if (cfs.contains(Bytes.toString(kv.getFamily()))) {
+            kvs.remove(i);
+          }
+        }
+      }
     } else {
-      List<String> cfs = (tableCFs == null) ? null : tableCFs.get(tabName);
-      for (int i = size - 1; i >= 0; i--) {
-        KeyValue kv = kvs.get(i);
-        // ignore(remove) kv if its cf isn't in the replicable cf list
-        // (empty cfs means all cfs of this table are replicable)
-        if ((cfs != null && !cfs.contains(Bytes.toString(kv.getFamily())))) {
-          kvs.remove(i);
+      // Replicate nothing unless there are namespaces or table-cfs config
+      Set<String> namespaces = peerConfig.getNamespaces();
+      Map<TableName, List<String>> tableCFs = peerConfig.getTableCFsMap();
+
+      if (namespaces == null && tableCFs == null) {
+        return null;
+      }
+
+      // First filter by namespaces config
+      // If table's namespace in peer config, all the tables data are applicable for replication
+      if (namespaces != null && namespaces.contains(namespace)) {
+        return entry;
+      }
+
+      // Then filter by table-cfs config
+      // return null(prevent replicating) if logKey's table isn't in this peer's
+      // replicaable namespace list and table list
+      if (tableCFs == null || !tableCFs.containsKey(tabName)) {
+        return null;
+      } else {
+        List<String> cfs = (tableCFs == null) ? null : tableCFs.get(tabName);
+        for (int i = size - 1; i >= 0; i--) {
+          KeyValue kv = kvs.get(i);
+          // ignore(remove) kv if its cf isn't in the replicable cf list
+          // (empty cfs means all cfs of this table are replicable)
+          if ((cfs != null && !cfs.contains(Bytes.toString(kv.getFamily())))) {
+            kvs.remove(i);
+          }
         }
       }
     }
+
     if (kvs.size() < size/2) {
       kvs.trimToSize();
     }

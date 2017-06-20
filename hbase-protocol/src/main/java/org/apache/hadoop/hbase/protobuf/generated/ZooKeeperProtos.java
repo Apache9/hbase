@@ -6506,6 +6506,44 @@ public final class ZooKeeperProtos {
      * <code>repeated bytes namespaces = 8;</code>
      */
     com.google.protobuf.ByteString getNamespaces(int index);
+
+    // optional bool all = 9;
+    /**
+     * <code>optional bool all = 9;</code>
+     */
+    boolean hasAll();
+    /**
+     * <code>optional bool all = 9;</code>
+     */
+    boolean getAll();
+
+    // optional .TableCFs excludeTableCFs = 10;
+    /**
+     * <code>optional .TableCFs excludeTableCFs = 10;</code>
+     */
+    boolean hasExcludeTableCFs();
+    /**
+     * <code>optional .TableCFs excludeTableCFs = 10;</code>
+     */
+    org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs getExcludeTableCFs();
+    /**
+     * <code>optional .TableCFs excludeTableCFs = 10;</code>
+     */
+    org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFsOrBuilder getExcludeTableCFsOrBuilder();
+
+    // repeated bytes excludeNamespaces = 11;
+    /**
+     * <code>repeated bytes excludeNamespaces = 11;</code>
+     */
+    java.util.List<com.google.protobuf.ByteString> getExcludeNamespacesList();
+    /**
+     * <code>repeated bytes excludeNamespaces = 11;</code>
+     */
+    int getExcludeNamespacesCount();
+    /**
+     * <code>repeated bytes excludeNamespaces = 11;</code>
+     */
+    com.google.protobuf.ByteString getExcludeNamespaces(int index);
   }
   /**
    * Protobuf type {@code ReplicationPeer}
@@ -6626,6 +6664,32 @@ public final class ZooKeeperProtos {
               namespaces_.add(input.readBytes());
               break;
             }
+            case 72: {
+              bitField0_ |= 0x00000020;
+              all_ = input.readBool();
+              break;
+            }
+            case 82: {
+              org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs.Builder subBuilder = null;
+              if (((bitField0_ & 0x00000040) == 0x00000040)) {
+                subBuilder = excludeTableCFs_.toBuilder();
+              }
+              excludeTableCFs_ = input.readMessage(org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs.PARSER, extensionRegistry);
+              if (subBuilder != null) {
+                subBuilder.mergeFrom(excludeTableCFs_);
+                excludeTableCFs_ = subBuilder.buildPartial();
+              }
+              bitField0_ |= 0x00000040;
+              break;
+            }
+            case 90: {
+              if (!((mutable_bitField0_ & 0x00000400) == 0x00000400)) {
+                excludeNamespaces_ = new java.util.ArrayList<com.google.protobuf.ByteString>();
+                mutable_bitField0_ |= 0x00000400;
+              }
+              excludeNamespaces_.add(input.readBytes());
+              break;
+            }
           }
         }
       } catch (com.google.protobuf.InvalidProtocolBufferException e) {
@@ -6642,6 +6706,9 @@ public final class ZooKeeperProtos {
         }
         if (((mutable_bitField0_ & 0x00000080) == 0x00000080)) {
           namespaces_ = java.util.Collections.unmodifiableList(namespaces_);
+        }
+        if (((mutable_bitField0_ & 0x00000400) == 0x00000400)) {
+          excludeNamespaces_ = java.util.Collections.unmodifiableList(excludeNamespaces_);
         }
         this.unknownFields = unknownFields.build();
         makeExtensionsImmutable();
@@ -7007,6 +7074,67 @@ public final class ZooKeeperProtos {
       return namespaces_.get(index);
     }
 
+    // optional bool all = 9;
+    public static final int ALL_FIELD_NUMBER = 9;
+    private boolean all_;
+    /**
+     * <code>optional bool all = 9;</code>
+     */
+    public boolean hasAll() {
+      return ((bitField0_ & 0x00000020) == 0x00000020);
+    }
+    /**
+     * <code>optional bool all = 9;</code>
+     */
+    public boolean getAll() {
+      return all_;
+    }
+
+    // optional .TableCFs excludeTableCFs = 10;
+    public static final int EXCLUDETABLECFS_FIELD_NUMBER = 10;
+    private org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs excludeTableCFs_;
+    /**
+     * <code>optional .TableCFs excludeTableCFs = 10;</code>
+     */
+    public boolean hasExcludeTableCFs() {
+      return ((bitField0_ & 0x00000040) == 0x00000040);
+    }
+    /**
+     * <code>optional .TableCFs excludeTableCFs = 10;</code>
+     */
+    public org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs getExcludeTableCFs() {
+      return excludeTableCFs_;
+    }
+    /**
+     * <code>optional .TableCFs excludeTableCFs = 10;</code>
+     */
+    public org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFsOrBuilder getExcludeTableCFsOrBuilder() {
+      return excludeTableCFs_;
+    }
+
+    // repeated bytes excludeNamespaces = 11;
+    public static final int EXCLUDENAMESPACES_FIELD_NUMBER = 11;
+    private java.util.List<com.google.protobuf.ByteString> excludeNamespaces_;
+    /**
+     * <code>repeated bytes excludeNamespaces = 11;</code>
+     */
+    public java.util.List<com.google.protobuf.ByteString>
+        getExcludeNamespacesList() {
+      return excludeNamespaces_;
+    }
+    /**
+     * <code>repeated bytes excludeNamespaces = 11;</code>
+     */
+    public int getExcludeNamespacesCount() {
+      return excludeNamespaces_.size();
+    }
+    /**
+     * <code>repeated bytes excludeNamespaces = 11;</code>
+     */
+    public com.google.protobuf.ByteString getExcludeNamespaces(int index) {
+      return excludeNamespaces_.get(index);
+    }
+
     private void initFields() {
       clusterkey_ = "";
       replicationEndpointImpl_ = "";
@@ -7016,6 +7144,9 @@ public final class ZooKeeperProtos {
       tableCFs_ = org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs.getDefaultInstance();
       bandwidth_ = 0L;
       namespaces_ = java.util.Collections.emptyList();
+      all_ = false;
+      excludeTableCFs_ = org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs.getDefaultInstance();
+      excludeNamespaces_ = java.util.Collections.emptyList();
     }
     private byte memoizedIsInitialized = -1;
     public final boolean isInitialized() {
@@ -7040,6 +7171,12 @@ public final class ZooKeeperProtos {
       }
       if (hasTableCFs()) {
         if (!getTableCFs().isInitialized()) {
+          memoizedIsInitialized = 0;
+          return false;
+        }
+      }
+      if (hasExcludeTableCFs()) {
+        if (!getExcludeTableCFs().isInitialized()) {
           memoizedIsInitialized = 0;
           return false;
         }
@@ -7074,6 +7211,15 @@ public final class ZooKeeperProtos {
       }
       for (int i = 0; i < namespaces_.size(); i++) {
         output.writeBytes(8, namespaces_.get(i));
+      }
+      if (((bitField0_ & 0x00000020) == 0x00000020)) {
+        output.writeBool(9, all_);
+      }
+      if (((bitField0_ & 0x00000040) == 0x00000040)) {
+        output.writeMessage(10, excludeTableCFs_);
+      }
+      for (int i = 0; i < excludeNamespaces_.size(); i++) {
+        output.writeBytes(11, excludeNamespaces_.get(i));
       }
       getUnknownFields().writeTo(output);
     }
@@ -7120,6 +7266,23 @@ public final class ZooKeeperProtos {
         }
         size += dataSize;
         size += 1 * getNamespacesList().size();
+      }
+      if (((bitField0_ & 0x00000020) == 0x00000020)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeBoolSize(9, all_);
+      }
+      if (((bitField0_ & 0x00000040) == 0x00000040)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeMessageSize(10, excludeTableCFs_);
+      }
+      {
+        int dataSize = 0;
+        for (int i = 0; i < excludeNamespaces_.size(); i++) {
+          dataSize += com.google.protobuf.CodedOutputStream
+            .computeBytesSizeNoTag(excludeNamespaces_.get(i));
+        }
+        size += dataSize;
+        size += 1 * getExcludeNamespacesList().size();
       }
       size += getUnknownFields().getSerializedSize();
       memoizedSerializedSize = size;
@@ -7175,6 +7338,18 @@ public final class ZooKeeperProtos {
       }
       result = result && getNamespacesList()
           .equals(other.getNamespacesList());
+      result = result && (hasAll() == other.hasAll());
+      if (hasAll()) {
+        result = result && (getAll()
+            == other.getAll());
+      }
+      result = result && (hasExcludeTableCFs() == other.hasExcludeTableCFs());
+      if (hasExcludeTableCFs()) {
+        result = result && getExcludeTableCFs()
+            .equals(other.getExcludeTableCFs());
+      }
+      result = result && getExcludeNamespacesList()
+          .equals(other.getExcludeNamespacesList());
       result = result &&
           getUnknownFields().equals(other.getUnknownFields());
       return result;
@@ -7219,6 +7394,18 @@ public final class ZooKeeperProtos {
       if (getNamespacesCount() > 0) {
         hash = (37 * hash) + NAMESPACES_FIELD_NUMBER;
         hash = (53 * hash) + getNamespacesList().hashCode();
+      }
+      if (hasAll()) {
+        hash = (37 * hash) + ALL_FIELD_NUMBER;
+        hash = (53 * hash) + hashBoolean(getAll());
+      }
+      if (hasExcludeTableCFs()) {
+        hash = (37 * hash) + EXCLUDETABLECFS_FIELD_NUMBER;
+        hash = (53 * hash) + getExcludeTableCFs().hashCode();
+      }
+      if (getExcludeNamespacesCount() > 0) {
+        hash = (37 * hash) + EXCLUDENAMESPACES_FIELD_NUMBER;
+        hash = (53 * hash) + getExcludeNamespacesList().hashCode();
       }
       hash = (29 * hash) + getUnknownFields().hashCode();
       memoizedHashCode = hash;
@@ -7329,6 +7516,7 @@ public final class ZooKeeperProtos {
           getDataFieldBuilder();
           getConfigurationFieldBuilder();
           getTableCFsFieldBuilder();
+          getExcludeTableCFsFieldBuilder();
         }
       }
       private static Builder create() {
@@ -7365,6 +7553,16 @@ public final class ZooKeeperProtos {
         bitField0_ = (bitField0_ & ~0x00000040);
         namespaces_ = java.util.Collections.emptyList();
         bitField0_ = (bitField0_ & ~0x00000080);
+        all_ = false;
+        bitField0_ = (bitField0_ & ~0x00000100);
+        if (excludeTableCFsBuilder_ == null) {
+          excludeTableCFs_ = org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs.getDefaultInstance();
+        } else {
+          excludeTableCFsBuilder_.clear();
+        }
+        bitField0_ = (bitField0_ & ~0x00000200);
+        excludeNamespaces_ = java.util.Collections.emptyList();
+        bitField0_ = (bitField0_ & ~0x00000400);
         return this;
       }
 
@@ -7440,6 +7638,23 @@ public final class ZooKeeperProtos {
           bitField0_ = (bitField0_ & ~0x00000080);
         }
         result.namespaces_ = namespaces_;
+        if (((from_bitField0_ & 0x00000100) == 0x00000100)) {
+          to_bitField0_ |= 0x00000020;
+        }
+        result.all_ = all_;
+        if (((from_bitField0_ & 0x00000200) == 0x00000200)) {
+          to_bitField0_ |= 0x00000040;
+        }
+        if (excludeTableCFsBuilder_ == null) {
+          result.excludeTableCFs_ = excludeTableCFs_;
+        } else {
+          result.excludeTableCFs_ = excludeTableCFsBuilder_.build();
+        }
+        if (((bitField0_ & 0x00000400) == 0x00000400)) {
+          excludeNamespaces_ = java.util.Collections.unmodifiableList(excludeNamespaces_);
+          bitField0_ = (bitField0_ & ~0x00000400);
+        }
+        result.excludeNamespaces_ = excludeNamespaces_;
         result.bitField0_ = to_bitField0_;
         onBuilt();
         return result;
@@ -7537,6 +7752,22 @@ public final class ZooKeeperProtos {
           }
           onChanged();
         }
+        if (other.hasAll()) {
+          setAll(other.getAll());
+        }
+        if (other.hasExcludeTableCFs()) {
+          mergeExcludeTableCFs(other.getExcludeTableCFs());
+        }
+        if (!other.excludeNamespaces_.isEmpty()) {
+          if (excludeNamespaces_.isEmpty()) {
+            excludeNamespaces_ = other.excludeNamespaces_;
+            bitField0_ = (bitField0_ & ~0x00000400);
+          } else {
+            ensureExcludeNamespacesIsMutable();
+            excludeNamespaces_.addAll(other.excludeNamespaces_);
+          }
+          onChanged();
+        }
         this.mergeUnknownFields(other.getUnknownFields());
         return this;
       }
@@ -7560,6 +7791,12 @@ public final class ZooKeeperProtos {
         }
         if (hasTableCFs()) {
           if (!getTableCFs().isInitialized()) {
+            
+            return false;
+          }
+        }
+        if (hasExcludeTableCFs()) {
+          if (!getExcludeTableCFs().isInitialized()) {
             
             return false;
           }
@@ -8498,6 +8735,228 @@ public final class ZooKeeperProtos {
       public Builder clearNamespaces() {
         namespaces_ = java.util.Collections.emptyList();
         bitField0_ = (bitField0_ & ~0x00000080);
+        onChanged();
+        return this;
+      }
+
+      // optional bool all = 9;
+      private boolean all_ ;
+      /**
+       * <code>optional bool all = 9;</code>
+       */
+      public boolean hasAll() {
+        return ((bitField0_ & 0x00000100) == 0x00000100);
+      }
+      /**
+       * <code>optional bool all = 9;</code>
+       */
+      public boolean getAll() {
+        return all_;
+      }
+      /**
+       * <code>optional bool all = 9;</code>
+       */
+      public Builder setAll(boolean value) {
+        bitField0_ |= 0x00000100;
+        all_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>optional bool all = 9;</code>
+       */
+      public Builder clearAll() {
+        bitField0_ = (bitField0_ & ~0x00000100);
+        all_ = false;
+        onChanged();
+        return this;
+      }
+
+      // optional .TableCFs excludeTableCFs = 10;
+      private org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs excludeTableCFs_ = org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs.getDefaultInstance();
+      private com.google.protobuf.SingleFieldBuilder<
+          org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs, org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs.Builder, org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFsOrBuilder> excludeTableCFsBuilder_;
+      /**
+       * <code>optional .TableCFs excludeTableCFs = 10;</code>
+       */
+      public boolean hasExcludeTableCFs() {
+        return ((bitField0_ & 0x00000200) == 0x00000200);
+      }
+      /**
+       * <code>optional .TableCFs excludeTableCFs = 10;</code>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs getExcludeTableCFs() {
+        if (excludeTableCFsBuilder_ == null) {
+          return excludeTableCFs_;
+        } else {
+          return excludeTableCFsBuilder_.getMessage();
+        }
+      }
+      /**
+       * <code>optional .TableCFs excludeTableCFs = 10;</code>
+       */
+      public Builder setExcludeTableCFs(org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs value) {
+        if (excludeTableCFsBuilder_ == null) {
+          if (value == null) {
+            throw new NullPointerException();
+          }
+          excludeTableCFs_ = value;
+          onChanged();
+        } else {
+          excludeTableCFsBuilder_.setMessage(value);
+        }
+        bitField0_ |= 0x00000200;
+        return this;
+      }
+      /**
+       * <code>optional .TableCFs excludeTableCFs = 10;</code>
+       */
+      public Builder setExcludeTableCFs(
+          org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs.Builder builderForValue) {
+        if (excludeTableCFsBuilder_ == null) {
+          excludeTableCFs_ = builderForValue.build();
+          onChanged();
+        } else {
+          excludeTableCFsBuilder_.setMessage(builderForValue.build());
+        }
+        bitField0_ |= 0x00000200;
+        return this;
+      }
+      /**
+       * <code>optional .TableCFs excludeTableCFs = 10;</code>
+       */
+      public Builder mergeExcludeTableCFs(org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs value) {
+        if (excludeTableCFsBuilder_ == null) {
+          if (((bitField0_ & 0x00000200) == 0x00000200) &&
+              excludeTableCFs_ != org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs.getDefaultInstance()) {
+            excludeTableCFs_ =
+              org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs.newBuilder(excludeTableCFs_).mergeFrom(value).buildPartial();
+          } else {
+            excludeTableCFs_ = value;
+          }
+          onChanged();
+        } else {
+          excludeTableCFsBuilder_.mergeFrom(value);
+        }
+        bitField0_ |= 0x00000200;
+        return this;
+      }
+      /**
+       * <code>optional .TableCFs excludeTableCFs = 10;</code>
+       */
+      public Builder clearExcludeTableCFs() {
+        if (excludeTableCFsBuilder_ == null) {
+          excludeTableCFs_ = org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs.getDefaultInstance();
+          onChanged();
+        } else {
+          excludeTableCFsBuilder_.clear();
+        }
+        bitField0_ = (bitField0_ & ~0x00000200);
+        return this;
+      }
+      /**
+       * <code>optional .TableCFs excludeTableCFs = 10;</code>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs.Builder getExcludeTableCFsBuilder() {
+        bitField0_ |= 0x00000200;
+        onChanged();
+        return getExcludeTableCFsFieldBuilder().getBuilder();
+      }
+      /**
+       * <code>optional .TableCFs excludeTableCFs = 10;</code>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFsOrBuilder getExcludeTableCFsOrBuilder() {
+        if (excludeTableCFsBuilder_ != null) {
+          return excludeTableCFsBuilder_.getMessageOrBuilder();
+        } else {
+          return excludeTableCFs_;
+        }
+      }
+      /**
+       * <code>optional .TableCFs excludeTableCFs = 10;</code>
+       */
+      private com.google.protobuf.SingleFieldBuilder<
+          org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs, org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs.Builder, org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFsOrBuilder> 
+          getExcludeTableCFsFieldBuilder() {
+        if (excludeTableCFsBuilder_ == null) {
+          excludeTableCFsBuilder_ = new com.google.protobuf.SingleFieldBuilder<
+              org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs, org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFs.Builder, org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.TableCFsOrBuilder>(
+                  excludeTableCFs_,
+                  getParentForChildren(),
+                  isClean());
+          excludeTableCFs_ = null;
+        }
+        return excludeTableCFsBuilder_;
+      }
+
+      // repeated bytes excludeNamespaces = 11;
+      private java.util.List<com.google.protobuf.ByteString> excludeNamespaces_ = java.util.Collections.emptyList();
+      private void ensureExcludeNamespacesIsMutable() {
+        if (!((bitField0_ & 0x00000400) == 0x00000400)) {
+          excludeNamespaces_ = new java.util.ArrayList<com.google.protobuf.ByteString>(excludeNamespaces_);
+          bitField0_ |= 0x00000400;
+         }
+      }
+      /**
+       * <code>repeated bytes excludeNamespaces = 11;</code>
+       */
+      public java.util.List<com.google.protobuf.ByteString>
+          getExcludeNamespacesList() {
+        return java.util.Collections.unmodifiableList(excludeNamespaces_);
+      }
+      /**
+       * <code>repeated bytes excludeNamespaces = 11;</code>
+       */
+      public int getExcludeNamespacesCount() {
+        return excludeNamespaces_.size();
+      }
+      /**
+       * <code>repeated bytes excludeNamespaces = 11;</code>
+       */
+      public com.google.protobuf.ByteString getExcludeNamespaces(int index) {
+        return excludeNamespaces_.get(index);
+      }
+      /**
+       * <code>repeated bytes excludeNamespaces = 11;</code>
+       */
+      public Builder setExcludeNamespaces(
+          int index, com.google.protobuf.ByteString value) {
+        if (value == null) {
+    throw new NullPointerException();
+  }
+  ensureExcludeNamespacesIsMutable();
+        excludeNamespaces_.set(index, value);
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>repeated bytes excludeNamespaces = 11;</code>
+       */
+      public Builder addExcludeNamespaces(com.google.protobuf.ByteString value) {
+        if (value == null) {
+    throw new NullPointerException();
+  }
+  ensureExcludeNamespacesIsMutable();
+        excludeNamespaces_.add(value);
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>repeated bytes excludeNamespaces = 11;</code>
+       */
+      public Builder addAllExcludeNamespaces(
+          java.lang.Iterable<? extends com.google.protobuf.ByteString> values) {
+        ensureExcludeNamespacesIsMutable();
+        super.addAll(values, excludeNamespaces_);
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>repeated bytes excludeNamespaces = 11;</code>
+       */
+      public Builder clearExcludeNamespaces() {
+        excludeNamespaces_ = java.util.Collections.emptyList();
+        bitField0_ = (bitField0_ & ~0x00000400);
         onChanged();
         return this;
       }
@@ -12742,29 +13201,31 @@ public final class ZooKeeperProtos {
       "NABLED\020\000\022\014\n\010DISABLED\020\001\022\r\n\tDISABLING\020\002\022\014\n" +
       "\010ENABLING\020\003\";\n\007TableCF\022\036\n\ntable_name\030\001 \001",
       "(\0132\n.TableName\022\020\n\010families\030\002 \003(\014\"\'\n\010Tabl" +
-      "eCFs\022\033\n\ttable_cfs\030\001 \003(\0132\010.TableCF\"\256\002\n\017Re" +
+      "eCFs\022\033\n\ttable_cfs\030\001 \003(\0132\010.TableCF\"\372\002\n\017Re" +
       "plicationPeer\022\022\n\nclusterkey\030\001 \002(\t\022\037\n\027rep" +
       "licationEndpointImpl\030\002 \001(\t\022\035\n\004data\030\003 \003(\013" +
       "2\017.BytesBytesPair\022&\n\rconfiguration\030\004 \003(\013" +
       "2\017.NameStringPair\0227\n\014peerProtocol\030\005 \001(\0162" +
       "\031.ReplicationPeer.Protocol:\006NATIVE\022\033\n\010ta" +
       "bleCFs\030\006 \001(\0132\t.TableCFs\022\021\n\tbandwidth\030\007 \001" +
-      "(\003\022\022\n\nnamespaces\030\010 \003(\014\"\"\n\010Protocol\022\n\n\006NA" +
-      "TIVE\020\000\022\n\n\006THRIFT\020\001\"^\n\020ReplicationState\022&",
-      "\n\005state\030\001 \002(\0162\027.ReplicationState.State\"\"" +
-      "\n\005State\022\013\n\007ENABLED\020\000\022\014\n\010DISABLED\020\001\"+\n\027Re" +
-      "plicationHLogPosition\022\020\n\010position\030\001 \002(\003\"" +
-      "%\n\017ReplicationLock\022\022\n\nlock_owner\030\001 \002(\t\"\230" +
-      "\001\n\tTableLock\022\036\n\ntable_name\030\001 \001(\0132\n.Table" +
-      "Name\022\037\n\nlock_owner\030\002 \001(\0132\013.ServerName\022\021\n" +
-      "\tthread_id\030\003 \001(\003\022\021\n\tis_shared\030\004 \001(\010\022\017\n\007p" +
-      "urpose\030\005 \001(\t\022\023\n\013create_time\030\006 \001(\003\";\n\017Sto" +
-      "reSequenceId\022\023\n\013family_name\030\001 \002(\014\022\023\n\013seq" +
-      "uence_id\030\002 \002(\004\"g\n\026RegionStoreSequenceIds",
-      "\022 \n\030last_flushed_sequence_id\030\001 \002(\004\022+\n\021st" +
-      "ore_sequence_id\030\002 \003(\0132\020.StoreSequenceIdB" +
-      "E\n*org.apache.hadoop.hbase.protobuf.gene" +
-      "ratedB\017ZooKeeperProtosH\001\210\001\001\240\001\001"
+      "(\003\022\022\n\nnamespaces\030\010 \003(\014\022\013\n\003all\030\t \001(\010\022\"\n\017e" +
+      "xcludeTableCFs\030\n \001(\0132\t.TableCFs\022\031\n\021exclu",
+      "deNamespaces\030\013 \003(\014\"\"\n\010Protocol\022\n\n\006NATIVE" +
+      "\020\000\022\n\n\006THRIFT\020\001\"^\n\020ReplicationState\022&\n\005st" +
+      "ate\030\001 \002(\0162\027.ReplicationState.State\"\"\n\005St" +
+      "ate\022\013\n\007ENABLED\020\000\022\014\n\010DISABLED\020\001\"+\n\027Replic" +
+      "ationHLogPosition\022\020\n\010position\030\001 \002(\003\"%\n\017R" +
+      "eplicationLock\022\022\n\nlock_owner\030\001 \002(\t\"\230\001\n\tT" +
+      "ableLock\022\036\n\ntable_name\030\001 \001(\0132\n.TableName" +
+      "\022\037\n\nlock_owner\030\002 \001(\0132\013.ServerName\022\021\n\tthr" +
+      "ead_id\030\003 \001(\003\022\021\n\tis_shared\030\004 \001(\010\022\017\n\007purpo" +
+      "se\030\005 \001(\t\022\023\n\013create_time\030\006 \001(\003\";\n\017StoreSe",
+      "quenceId\022\023\n\013family_name\030\001 \002(\014\022\023\n\013sequenc" +
+      "e_id\030\002 \002(\004\"g\n\026RegionStoreSequenceIds\022 \n\030" +
+      "last_flushed_sequence_id\030\001 \002(\004\022+\n\021store_" +
+      "sequence_id\030\002 \003(\0132\020.StoreSequenceIdBE\n*o" +
+      "rg.apache.hadoop.hbase.protobuf.generate" +
+      "dB\017ZooKeeperProtosH\001\210\001\001\240\001\001"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
       new com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner() {
@@ -12824,7 +13285,7 @@ public final class ZooKeeperProtos {
           internal_static_ReplicationPeer_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_ReplicationPeer_descriptor,
-              new java.lang.String[] { "Clusterkey", "ReplicationEndpointImpl", "Data", "Configuration", "PeerProtocol", "TableCFs", "Bandwidth", "Namespaces", });
+              new java.lang.String[] { "Clusterkey", "ReplicationEndpointImpl", "Data", "Configuration", "PeerProtocol", "TableCFs", "Bandwidth", "Namespaces", "All", "ExcludeTableCFs", "ExcludeNamespaces", });
           internal_static_ReplicationState_descriptor =
             getDescriptor().getMessageTypes().get(9);
           internal_static_ReplicationState_fieldAccessorTable = new

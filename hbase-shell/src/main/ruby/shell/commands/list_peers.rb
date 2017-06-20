@@ -33,16 +33,22 @@ EOF
         now = Time.now
         peers = replication_admin.list_peers
 
-        formatter.header(["PEER_ID", "CLUSTER_KEY", "STATE", "NAMESPACES",
+        formatter.header(["PEER_ID", "CLUSTER_KEY", "STATE", "REPLICATE_ALL", "NAMESPACES",
           "TABLE_CFS", "PROTOCOL", "BANDWIDTH"])
 
         peers.entrySet().each do |e|
           state = replication_admin.get_peer_state(e.key)
-          namespaces = replication_admin.show_peer_namespaces(e.value)
-          tableCFs = replication_admin.show_peer_tableCFs(e.key)
+          replicate_all = e.value.replicateAllUserTables
+          if replicate_all
+            namespaces = replication_admin.show_peer_exclude_namespaces(e.value)
+            tableCFs = replication_admin.show_peer_exclude_tableCFs(e.value)
+          else
+            namespaces = replication_admin.show_peer_namespaces(e.value)
+            tableCFs = replication_admin.show_peer_tableCFs(e.value)
+          end
           protocol = e.value.getProtocol().getProtocol()
           bandwidth = e.value.getBandwidth()
-          formatter.row([ e.key, e.value.getClusterKey, state, namespaces,
+          formatter.row([ e.key, e.value.getClusterKey, state, replicate_all, namespaces,
             tableCFs, protocol, bandwidth ])
         end
 

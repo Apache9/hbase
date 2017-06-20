@@ -201,6 +201,10 @@ public class TestReplicationAdmin {
 
     // Add a valid peer
     admin.addPeer(ID_ONE, rpc1, null);
+    admin.peerAdded(ID_ONE);
+    ReplicationPeerConfig peerConfig = admin.getPeerConfig(ID_ONE);
+    peerConfig.setReplicateAllUserTables(false);
+    admin.updatePeerConfig(ID_ONE, peerConfig);
 
     Map<TableName, List<String>> tableCFs = new HashMap<TableName, List<String>>();
     tableCFs.put(tab1, null);
@@ -297,6 +301,11 @@ public class TestReplicationAdmin {
 
     // Add a valid peer
     admin.addPeer(ID_ONE, rpc1, null);
+    admin.peerAdded(ID_ONE);
+    ReplicationPeerConfig peerConfig = admin.getPeerConfig(ID_ONE);
+    peerConfig.setReplicateAllUserTables(false);
+    admin.updatePeerConfig(ID_ONE, peerConfig);
+
     Map<TableName, List<String>> tableCFs = new HashMap<TableName, List<String>>();
     try {
       tableCFs.put(tab3, null);
@@ -365,6 +374,62 @@ public class TestReplicationAdmin {
   }
 
   @Test
+  public void testSetPeerExcludeTableCFs() throws Exception {
+    ReplicationPeerConfig rpc = new ReplicationPeerConfig();
+    rpc.setClusterKey(KEY_ONE);
+    TableName tab1 = TableName.valueOf("t1");
+    TableName tab2 = TableName.valueOf("t2");
+    TableName tab3 = TableName.valueOf("t3");
+    TableName tab4 = TableName.valueOf("t4");
+
+    // Add a valid peer
+    admin.addPeer(ID_ONE, rpc, null);
+    admin.peerAdded(ID_ONE);
+    rpc = admin.getPeerConfig(ID_ONE);
+    assertTrue(rpc.replicateAllUserTables());
+
+    Map<TableName, List<String>> tableCFs = new HashMap<TableName, List<String>>();
+    tableCFs.put(tab1, null);
+    rpc.setExcludeTableCFsMap(tableCFs);
+    admin.updatePeerConfig(ID_ONE, rpc);
+    Map<TableName, List<String>> result = admin.getPeerConfig(ID_ONE).getExcludeTableCFsMap();
+    assertEquals(1, result.size());
+    assertEquals(true, result.containsKey(tab1));
+    assertNull(result.get(tab1));
+
+    tableCFs.put(tab2, new ArrayList<String>());
+    tableCFs.get(tab2).add("f1");
+    rpc.setExcludeTableCFsMap(tableCFs);
+    admin.updatePeerConfig(ID_ONE, rpc);
+    result = admin.getPeerConfig(ID_ONE).getExcludeTableCFsMap();
+    assertEquals(2, result.size());
+    assertTrue("Should contain t1", result.containsKey(tab1));
+    assertTrue("Should contain t2", result.containsKey(tab2));
+    assertNull(result.get(tab1));
+    assertEquals(1, result.get(tab2).size());
+    assertEquals("f1", result.get(tab2).get(0));
+
+    tableCFs.clear();
+    tableCFs.put(tab3, new ArrayList<String>());
+    tableCFs.put(tab4, new ArrayList<String>());
+    tableCFs.get(tab4).add("f1");
+    tableCFs.get(tab4).add("f2");
+    rpc.setExcludeTableCFsMap(tableCFs);
+    admin.updatePeerConfig(ID_ONE, rpc);
+
+    result = admin.getPeerConfig(ID_ONE).getExcludeTableCFsMap();
+    assertEquals(2, result.size());
+    assertTrue("Should contain t3", result.containsKey(tab3));
+    assertTrue("Should contain t4", result.containsKey(tab4));
+    assertNull(result.get(tab3));
+    assertEquals(2, result.get(tab4).size());
+    assertEquals("f1", result.get(tab4).get(0));
+    assertEquals("f2", result.get(tab4).get(1));
+
+    admin.removePeer(ID_ONE);
+  }
+
+  @Test
   public void testSetPeerBandwidth() throws Exception {
     ReplicationPeerConfig rpc = new ReplicationPeerConfig();
     rpc.setClusterKey(KEY_ONE);
@@ -392,6 +457,9 @@ public class TestReplicationAdmin {
     rpc.setClusterKey(KEY_ONE);
     admin.addPeer(ID_ONE, rpc);
     admin.peerAdded(ID_ONE);
+    rpc = admin.getPeerConfig(ID_ONE);
+    rpc.setReplicateAllUserTables(false);
+    admin.updatePeerConfig(ID_ONE, rpc);
 
     rpc = admin.getPeerConfig(ID_ONE);
     Set<String> namespaces = new HashSet<String>();
@@ -417,6 +485,122 @@ public class TestReplicationAdmin {
   }
 
   @Test
+  public void testSetPeerExcludeNamespaces() throws Exception {
+    String ns1 = "ns1";
+    String ns2 = "ns2";
+
+    ReplicationPeerConfig rpc = new ReplicationPeerConfig();
+    rpc.setClusterKey(KEY_ONE);
+    admin.addPeer(ID_ONE, rpc);
+    admin.peerAdded(ID_ONE);
+
+    rpc = admin.getPeerConfig(ID_ONE);
+    assertTrue(rpc.replicateAllUserTables());
+
+    Set<String> namespaces = new HashSet<String>();
+    namespaces.add(ns1);
+    namespaces.add(ns2);
+    rpc.setExcludeNamespaces(namespaces);
+    admin.updatePeerConfig(ID_ONE, rpc);
+    namespaces = admin.getPeerConfig(ID_ONE).getExcludeNamespaces();
+    assertEquals(2, namespaces.size());
+    assertTrue(namespaces.contains(ns1));
+    assertTrue(namespaces.contains(ns2));
+
+    rpc = admin.getPeerConfig(ID_ONE);
+    namespaces.clear();
+    namespaces.add(ns1);
+    rpc.setExcludeNamespaces(namespaces);
+    admin.updatePeerConfig(ID_ONE, rpc);
+    namespaces = admin.getPeerConfig(ID_ONE).getExcludeNamespaces();
+    assertEquals(1, namespaces.size());
+    assertTrue(namespaces.contains(ns1));
+
+    admin.removePeer(ID_ONE);
+  }
+
+  @Test
+  public void testSetReplicateAllUserTables() throws Exception {
+    ReplicationPeerConfig rpc = new ReplicationPeerConfig();
+    rpc.setClusterKey(KEY_ONE);
+    admin.addPeer(ID_ONE, rpc);
+    admin.peerAdded(ID_ONE);
+
+    rpc = admin.getPeerConfig(ID_ONE);
+    assertTrue(rpc.replicateAllUserTables());
+
+    rpc.setReplicateAllUserTables(false);
+    admin.updatePeerConfig(ID_ONE, rpc);
+    rpc = admin.getPeerConfig(ID_ONE);
+    assertFalse(rpc.replicateAllUserTables());
+
+    rpc.setReplicateAllUserTables(true);
+    admin.updatePeerConfig(ID_ONE, rpc);
+    rpc = admin.getPeerConfig(ID_ONE);
+    assertTrue(rpc.replicateAllUserTables());
+
+    admin.removePeer(ID_ONE);
+  }
+
+  @Test
+  public void testPeerConfigConflict() throws Exception {
+    ReplicationPeerConfig rpc = new ReplicationPeerConfig();
+    rpc.setClusterKey(KEY_ONE);
+
+    String ns1 = "ns1";
+    Set<String> namespaces = new HashSet<String>();
+    namespaces.add(ns1);
+
+    TableName tab1 = TableName.valueOf("ns1:tabl");
+    Map<TableName, List<String>> tableCfs = new HashMap<TableName, List<String>>();
+    tableCfs.put(tab1, new ArrayList<String>());
+
+    try {
+      rpc.setExcludeNamespaces(namespaces);
+      rpc.setTableCFsMap(tableCfs);
+      admin.addPeer(ID_ONE, rpc);
+      fail("Should throw ReplicationException, because exclude namespaces are conflict with table-cfs config");
+    } catch (ReplicationException e) {
+      // OK
+      rpc.setExcludeNamespaces(null);
+      rpc.setTableCFsMap(null);
+    }
+
+    try {
+      rpc.setExcludeNamespaces(namespaces);
+      rpc.setNamespaces(namespaces);
+      admin.addPeer(ID_ONE, rpc);
+      fail("Should throw ReplicationException, because exclude namespaces are conflict with namespaces config");
+    } catch (ReplicationException e) {
+      // OK
+      rpc.setExcludeNamespaces(null);
+      rpc.setNamespaces(null);
+    }
+
+    try {
+      rpc.setNamespaces(namespaces);
+      rpc.setExcludeTableCFsMap(tableCfs);
+      admin.addPeer(ID_ONE, rpc);
+      fail("Should throw ReplicationException, because namespaces are conflict with exclude table-cfs config");
+    } catch (ReplicationException e) {
+      // OK
+      rpc.setNamespaces(null);
+      rpc.setExcludeTableCFsMap(null);
+    }
+
+    try {
+      rpc.setTableCFsMap(tableCfs);
+      rpc.setExcludeTableCFsMap(tableCfs);
+      admin.addPeer(ID_ONE, rpc);
+      fail("Should throw ReplicationException, because table-cfs are conflict with exclude table-cfs config");
+    } catch (ReplicationException e) {
+      // OK
+      rpc.setTableCFsMap(null);
+      rpc.setExcludeTableCFsMap(null);
+    }
+  }
+
+  @Test
   public void testNamespacesAndTableCfsConfigConflict() throws ReplicationException {
     String ns1 = "ns1";
     String ns2 = "ns2";
@@ -427,6 +611,9 @@ public class TestReplicationAdmin {
     rpc.setClusterKey(KEY_ONE);
     admin.addPeer(ID_ONE, rpc);
     admin.peerAdded(ID_ONE);
+    rpc = admin.getPeerConfig(ID_ONE);
+    rpc.setReplicateAllUserTables(false);
+    admin.updatePeerConfig(ID_ONE, rpc);
 
     rpc = admin.getPeerConfig(ID_ONE);
     Set<String> namespaces = new HashSet<String>();

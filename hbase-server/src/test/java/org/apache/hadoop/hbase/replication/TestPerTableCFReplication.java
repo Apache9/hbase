@@ -51,6 +51,8 @@ import org.apache.hadoop.hbase.testclassification.LargeTests;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.zookeeper.MiniZooKeeperCluster;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
+import org.aspectj.lang.annotation.Before;
+import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -168,6 +170,19 @@ public class TestPerTableCFReplication {
     utility1.startMiniCluster();
     utility2.startMiniCluster();
     utility3.startMiniCluster();
+
+    HBaseAdmin admin1 = new HBaseAdmin(conf1);
+    admin1.createTable(tabA);
+    admin1.createTable(tabB);
+    admin1.createTable(tabC);
+    HBaseAdmin admin2 = new HBaseAdmin(conf2);
+    admin2.createTable(tabA);
+    admin2.createTable(tabB);
+    admin2.createTable(tabC);
+    HBaseAdmin admin3 = new HBaseAdmin(conf3);
+    admin3.createTable(tabA);
+    admin3.createTable(tabB);
+    admin3.createTable(tabC);
   }
 
   @AfterClass
@@ -366,16 +381,6 @@ public class TestPerTableCFReplication {
     LOG.info("testPerTableCFReplication");
     ReplicationAdmin admin1 = new ReplicationAdmin(conf1);
 
-    new HBaseAdmin(conf1).createTable(tabA);
-    new HBaseAdmin(conf1).createTable(tabB);
-    new HBaseAdmin(conf1).createTable(tabC);
-    new HBaseAdmin(conf2).createTable(tabA);
-    new HBaseAdmin(conf2).createTable(tabB);
-    new HBaseAdmin(conf2).createTable(tabC);
-    new HBaseAdmin(conf3).createTable(tabA);
-    new HBaseAdmin(conf3).createTable(tabB);
-    new HBaseAdmin(conf3).createTable(tabC);
-
     HTable htab1A = new HTable(conf1, tabAName);
     HTable htab2A = new HTable(conf2, tabAName);
     HTable htab3A = new HTable(conf3, tabAName);
@@ -391,21 +396,25 @@ public class TestPerTableCFReplication {
     // A. add cluster2/cluster3 as peers to cluster1
     ReplicationPeerConfig rpc2 = new ReplicationPeerConfig();
     rpc2.setClusterKey(utility2.getClusterKey());
+    rpc2.setReplicateAllUserTables(false);
     Map<TableName, List<String>> tableCFs = new HashMap<TableName, List<String>>();
     tableCFs.put(tabCName, null);
     tableCFs.put(tabBName, new ArrayList<String>());
     tableCFs.get(tabBName).add("f1");
     tableCFs.get(tabBName).add("f3");
-    admin1.addPeer("2", rpc2, tableCFs);
+    rpc2.setTableCFsMap(tableCFs);
+    admin1.addPeer("2", rpc2);
 
     ReplicationPeerConfig rpc3 = new ReplicationPeerConfig();
     rpc3.setClusterKey(utility3.getClusterKey());
+    rpc3.setReplicateAllUserTables(false);
     tableCFs.clear();
     tableCFs.put(tabAName, null);
     tableCFs.put(tabBName, new ArrayList<String>());
     tableCFs.get(tabBName).add("f1");
     tableCFs.get(tabBName).add("f2");
-    admin1.addPeer("3", rpc3, tableCFs);
+    rpc3.setTableCFsMap(tableCFs);
+    admin1.addPeer("3", rpc3);
 
     // A1. tableA can only replicated to cluster3
     putAndWaitWithFamily(row1, f1Name, htab1A, htab3A);
@@ -500,7 +509,75 @@ public class TestPerTableCFReplication {
     //     cf 'f3' of tableC can replicated to cluster2 and cluster3
     putAndWaitWithFamily(row2, f3Name, htab1C, htab2C, htab3C);
     deleteAndWaitWithFamily(row2, f3Name, htab1C, htab2C, htab3C);
- }
+
+    admin1.removePeer("2");
+    admin1.removePeer("3");
+  }
+
+  @Test(timeout = 300000)
+  public void testExcludeTableCFsReplication() throws Exception {
+    LOG.info("testPerTableCFReplication");
+    ReplicationAdmin repAdmin = new ReplicationAdmin(conf1);
+
+    HTable htab1A = new HTable(conf1, tabAName);
+    HTable htab2A = new HTable(conf2, tabAName);
+
+    HTable htab1B = new HTable(conf1, tabBName);
+    HTable htab2B = new HTable(conf2, tabBName);
+
+    HTable htab1C = new HTable(conf1, tabCName);
+    HTable htab2C = new HTable(conf2, tabCName);
+
+    // A. add cluster2 as peers to cluster1
+    ReplicationPeerConfig rpc2 = new ReplicationPeerConfig();
+    rpc2.setClusterKey(utility2.getClusterKey());
+    rpc2.setReplicateAllUserTables(true);
+    // exclude tableC and tableB:f1,f3
+    Map<TableName, List<String>> tableCFs = new HashMap<TableName, List<String>>();
+    tableCFs.put(tabCName, null);
+    tableCFs.put(tabBName, new ArrayList<String>());
+    tableCFs.get(tabBName).add("f1");
+    tableCFs.get(tabBName).add("f3");
+    rpc2.setExcludeTableCFsMap(tableCFs);
+    repAdmin.addPeer("2", rpc2);
+
+    // A1. tableA can replicate to cluster2
+    putAndWaitWithFamily(row1, f1Name, htab1A, htab2A);
+    deleteAndWaitWithFamily(row1, f1Name, htab1A, htab2A);
+
+    putAndWaitWithFamily(row1, f2Name, htab1A, htab2A);
+    deleteAndWaitWithFamily(row1, f2Name, htab1A, htab2A);
+
+    putAndWaitWithFamily(row1, f3Name, htab1A, htab2A);
+    deleteAndWaitWithFamily(row1, f3Name, htab1A, htab2A);
+
+    // A2. tableB:f2 can replicate to cluster2
+    putAndWaitWithFamily(row1, f1Name, htab1B);
+    ensureRowNotReplicated(row1, f1Name, htab2B);
+    deleteAndWaitWithFamily(row1, f1Name, htab1B);
+
+    putAndWaitWithFamily(row1, f2Name, htab1B, htab2B);
+    deleteAndWaitWithFamily(row1, f2Name, htab1B, htab2B);
+
+    putAndWaitWithFamily(row1, f3Name, htab1B);
+    ensureRowNotReplicated(row1, f3Name, htab2B);
+    deleteAndWaitWithFamily(row1, f3Name, htab1B);
+
+    // A3. tableC cannot replicate to cluster2
+    putAndWaitWithFamily(row1, f1Name, htab1C);
+    ensureRowNotReplicated(row1, f1Name, htab2C);
+    deleteAndWaitWithFamily(row1, f1Name, htab1C);
+
+    putAndWaitWithFamily(row1, f2Name, htab1C);
+    ensureRowNotReplicated(row1, f2Name, htab2C);
+    deleteAndWaitWithFamily(row1, f2Name, htab1C);
+
+    putAndWaitWithFamily(row1, f3Name, htab1C);
+    ensureRowNotReplicated(row1, f3Name, htab2C);
+    deleteAndWaitWithFamily(row1, f3Name, htab1C);
+
+    repAdmin.removePeer("2");
+  }
 
   private void ensureRowNotReplicated(byte[] row, byte[] fam, HTable... tables) throws IOException {
     Get get = new Get(row);

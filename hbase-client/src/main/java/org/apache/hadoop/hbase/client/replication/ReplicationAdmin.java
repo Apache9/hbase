@@ -209,8 +209,7 @@ public class ReplicationAdmin implements Closeable {
    * @param peerConfig configuration for the replication slave cluster
    */
   public void addPeer(String id, ReplicationPeerConfig peerConfig) throws ReplicationException {
-    checkNamespacesAndTableCfsConfigConflict(peerConfig.getNamespaces(),
-      peerConfig.getTableCFsMap());
+    checkPeerConfigConflict(peerConfig);
     this.replicationPeers.addPeer(id, peerConfig);
   }
 
@@ -256,8 +255,7 @@ public class ReplicationAdmin implements Closeable {
 
   public void updatePeerConfig(String id, ReplicationPeerConfig peerConfig)
       throws ReplicationException {
-    checkNamespacesAndTableCfsConfigConflict(peerConfig.getNamespaces(),
-      peerConfig.getTableCFsMap());
+    checkPeerConfigConflict(peerConfig);
     this.replicationPeers.updatePeerConfig(id, peerConfig);
   }
 
@@ -365,8 +363,9 @@ public class ReplicationAdmin implements Closeable {
    */
   public void setPeerTableCFs(String id, Map<TableName, ? extends Collection<String>> tableCfs)
       throws ReplicationException {
-    checkNamespacesAndTableCfsConfigConflict(
-      this.replicationPeers.getReplicationPeerConfig(id).getNamespaces(), tableCfs);
+    ReplicationPeerConfig peerConfig = this.replicationPeers.getReplicationPeerConfig(id);
+    peerConfig.setTableCFsMap(tableCfs);
+    checkPeerConfigConflict(peerConfig);
     this.replicationPeers.setPeerTableCFsConfig(id, tableCfs);
   }
 
@@ -676,10 +675,34 @@ public class ReplicationAdmin implements Closeable {
     }
     return true;
   }
-  
+
   public void upgradeTableCFs() {
-    TableCFsUpdater tableCFsUpdater = new TableCFsUpdater(zkw, connection.getConfiguration(), connection);
-    tableCFsUpdater.update();
+    ReplicationPeerConfigUpgrader tableCFsUpdater = new ReplicationPeerConfigUpgrader(zkw,
+        connection.getConfiguration(), connection);
+    tableCFsUpdater.copyTableCFs();
+  }
+
+  private void checkPeerConfigConflict(ReplicationPeerConfig peerConfig)
+      throws ReplicationException {
+    if (peerConfig.replicateAllUserTables()) {
+      if ((peerConfig.getNamespaces() != null && !peerConfig.getNamespaces().isEmpty())
+          || (peerConfig.getTableCFsMap() != null && !peerConfig.getTableCFsMap().isEmpty())) {
+        throw new ReplicationException(
+            "Need clean namespaces or table-cfs config fisrtly when you want replicate all cluster");
+      }
+      checkNamespacesAndTableCfsConfigConflict(peerConfig.getExcludeNamespaces(),
+        peerConfig.getExcludeTableCFsMap());
+    } else {
+      if ((peerConfig.getExcludeNamespaces() != null && !peerConfig.getExcludeNamespaces()
+          .isEmpty())
+          || (peerConfig.getExcludeTableCFsMap() != null && !peerConfig.getExcludeTableCFsMap()
+              .isEmpty())) {
+        throw new ReplicationException(
+            "Need clean exclude-namespaces or exclude-table-cfs config firstly when you want not replicate all cluster");
+      }
+      checkNamespacesAndTableCfsConfigConflict(peerConfig.getNamespaces(),
+        peerConfig.getTableCFsMap());
+    }
   }
 
   /**

@@ -87,22 +87,47 @@ module Hbase
         end
 
         namespaces = args.fetch(NAMESPACES, nil)
+        exclude_namespaces = args.fetch(EXCLUDE_NAMESPACES, nil)
+        table_cfs = args.fetch(TABLE_CFS, nil)
+        exclude_table_cfs = args.fetch(EXCLUDE_TABLE_CFS, nil)
+        if (!namespaces.nil? or !table_cfs.nil?) and (!exclude_namespaces.nil? or !exclude_table_cfs.nil?)
+          raise(ArgumentError, "NAMESPACES/TABLE_CFS and EXCLUDE_NAMESPACES/EXCLUDE_TABLE_CFS cannot both be specified.")
+        end
+
         unless namespaces.nil?
           ns_set = java.util.HashSet.new
           namespaces.each do |n|
             ns_set.add(n)
           end
+          replication_peer_config.setReplicateAllUserTables(false)
           replication_peer_config.set_namespaces(ns_set)
         end
 
-        table_cfs = args.fetch(TABLE_CFS, nil)
+        unless exclude_namespaces.nil?
+          exclude_ns_set = java.util.HashSet.new
+          exclude_namespaces.each do |n|
+            exclude_ns_set.add(n)
+          end
+          replication_peer_config.set_exclude_namespaces(exclude_ns_set)
+        end
+
         unless table_cfs.nil?
           # convert table_cfs to TableName
           map = java.util.HashMap.new
           table_cfs.each{|key, val|
             map.put(org.apache.hadoop.hbase.TableName.valueOf(key), val)
           }
+          replication_peer_config.setReplicateAllUserTables(false)
           replication_peer_config.set_table_cfs_map(map)
+        end
+
+        unless exclude_table_cfs.nil?
+          # convert table_cfs to TableName
+          map = java.util.HashMap.new
+          exclude_table_cfs.each{|key, val|
+            map.put(org.apache.hadoop.hbase.TableName.valueOf(key), val)
+          }
+          replication_peer_config.set_exclude_table_cfs_map(map)
         end
 
         protocol = args.fetch(PROTOCOL, nil)
@@ -157,8 +182,8 @@ module Hbase
 
     #----------------------------------------------------------------------------------------------
     # Show the current tableCFs config for the specified peer
-    def show_peer_tableCFs(id)
-      ReplicationSerDeHelper.convertToString(@replication_admin.getPeerTableCFs(id))
+    def show_peer_tableCFs(peer_config)
+      ReplicationSerDeHelper.convertToString(peer_config.getTableCFsMap())
     end
 
     #----------------------------------------------------------------------------------------------
@@ -259,6 +284,67 @@ module Hbase
         return namespaces.join(';')
       else
         return nil
+      end
+    end
+
+    # Set exclude namespaces config for the specified peer
+    def set_peer_exclude_namespaces(id, exclude_namespaces)
+      unless exclude_namespaces.nil?
+        exclude_ns_set = java.util.HashSet.new
+        exclude_namespaces.each do |n|
+          exclude_ns_set.add(n)
+        end
+        rpc = @replication_admin.getPeerConfig(id)
+        unless rpc.nil?
+          rpc.setExcludeNamespaces(exclude_ns_set)
+          @replication_admin.updatePeerConfig(id, rpc)
+        end
+      end
+    end
+
+    # Show the exclude namespaces config for the specified peer
+    def show_peer_exclude_namespaces(peer_config)
+      namespaces = peer_config.getExcludeNamespaces()
+      if !namespaces.nil?
+        namespaces = java.util.ArrayList.new(namespaces)
+        java.util.Collections.sort(namespaces)
+        return '!' + namespaces.join(';')
+      else
+        return nil
+      end
+    end
+
+    # Set exclude tableCFs config for the specified peer
+    def set_peer_exclude_tableCFs(id, exclude_tableCFs)
+      unless exclude_tableCFs.nil?
+        # convert tableCFs to TableName
+        map = java.util.HashMap.new
+        exclude_tableCFs.each{|key, val|
+          map.put(org.apache.hadoop.hbase.TableName.valueOf(key), val)
+        }
+        rpc = @replication_admin.getPeerConfig(id)
+        unless rpc.nil?
+          rpc.setExcludeTableCFsMap(map)
+          @replication_admin.updatePeerConfig(id, rpc)
+        end
+      end
+    end
+
+    # Show the exclude tableCFs config for the specified peer
+    def show_peer_exclude_tableCFs(peer_config)
+      tableCFs = peer_config.getExcludeTableCFsMap()
+      if !tableCFs.nil?
+        return '!' + ReplicationSerDeHelper.convertToString(tableCFs)
+      else
+        return nil
+      end
+    end
+
+    def set_peer_replicate_all(id, replicate_all)
+      rpc = @replication_admin.getPeerConfig(id)
+      unless rpc.nil?
+        rpc.setReplicateAllUserTables(replicate_all)
+        @replication_admin.updatePeerConfig(id, rpc)
       end
     end
 

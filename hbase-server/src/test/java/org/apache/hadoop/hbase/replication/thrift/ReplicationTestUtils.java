@@ -109,7 +109,7 @@ public class ReplicationTestUtils {
     ReplicationPeerConfig config =
         new ReplicationPeerConfig().setClusterKey(destination.getClusterKey())
             .setProtocol(protocol).setReplicationEndpointImpl(endpoint);
-    admin.addPeer(peerId,config, null);
+    admin.addPeer(peerId, config);
   }
 
   public static Result putAndWait(Put put, String value, HTable source, HTable target) throws Exception {

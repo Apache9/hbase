@@ -43,14 +43,14 @@ import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
-import org.apache.hadoop.hbase.testclassification.MediumTests;
+import org.apache.hadoop.hbase.testclassification.LargeTests;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
-@Category({MediumTests.class})
+@Category({LargeTests.class})
 public class TestNamespaceReplication extends TestReplicationBase {
 
   private static final Log LOG = LogFactory.getLog(TestNamespaceReplication.class);
@@ -132,13 +132,16 @@ public class TestNamespaceReplication extends TestReplicationBase {
     HTable htab1B = new HTable(conf1, tabBName);
     HTable htab2B = new HTable(conf2, tabBName);
 
-    admin.peerAdded("2");
+    admin.peerAdded(PEER_ID);
+
     // add ns1 to peer config which replicate to cluster2
-    ReplicationPeerConfig rpc = admin.getPeerConfig("2");
+    ReplicationPeerConfig rpc = new ReplicationPeerConfig();
+    rpc.setClusterKey(utility2.getClusterKey());
+    rpc.setReplicateAllUserTables(false);
     Set<String> namespaces = new HashSet<String>();
     namespaces.add(ns1);
     rpc.setNamespaces(namespaces);
-    admin.updatePeerConfig("2", rpc);
+    admin.updatePeerConfig(PEER_ID, rpc);
     LOG.info("update peer config");
 
     // Table A can be replicated to cluster2
@@ -152,7 +155,7 @@ public class TestNamespaceReplication extends TestReplicationBase {
     ensureRowNotExisted(htab2B, row, f1Name, f2Name);
 
     // add ns1:TA => 'f1' and ns2 to peer config which replicate to cluster2
-    rpc = admin.getPeerConfig("2");
+    rpc = admin.getPeerConfig(PEER_ID);
     namespaces = new HashSet<String>();
     namespaces.add(ns2);
     rpc.setNamespaces(namespaces);
@@ -160,7 +163,7 @@ public class TestNamespaceReplication extends TestReplicationBase {
     tableCfs.put(tabAName, new ArrayList<String>());
     tableCfs.get(tabAName).add("f1");
     rpc.setTableCFsMap(tableCfs);
-    admin.updatePeerConfig("2", rpc);
+    admin.updatePeerConfig(PEER_ID, rpc);
     LOG.info("update peer config");
 
     // Only family f1 of Table A can replicated to cluster2
@@ -174,8 +177,56 @@ public class TestNamespaceReplication extends TestReplicationBase {
     ensureRowExisted(htab2B, row, f1Name, f2Name);
     delete(htab1B, row, f1Name, f2Name);
     ensureRowNotExisted(htab2B, row, f1Name, f2Name);
+  }
 
-    admin.removePeer("2");
+  @Test
+  public void testExcludeNamespacesReplication() throws Exception {
+    HTable htab1A = new HTable(conf1, tabAName);
+    HTable htab2A = new HTable(conf2, tabAName);
+
+    HTable htab1B = new HTable(conf1, tabBName);
+    HTable htab2B = new HTable(conf2, tabBName);
+
+    admin.peerAdded(PEER_ID);
+
+    // exclude ns1
+    ReplicationPeerConfig rpc = new ReplicationPeerConfig();
+    rpc.setClusterKey(utility2.getClusterKey());
+    Set<String> namespaces = new HashSet<String>();
+    namespaces.add(ns1);
+    rpc.setExcludeNamespaces(namespaces);
+    admin.updatePeerConfig(PEER_ID, rpc);
+    LOG.info("update peer config");
+
+    // Table A can not be replicated to cluster2
+    put(htab1A, row, f1Name, f2Name);
+    ensureRowNotExisted(htab2A, row, f1Name, f2Name);
+
+    // Table B can be replicated to cluster2
+    put(htab1B, row, f1Name, f2Name);
+    ensureRowExisted(htab2B, row, f1Name, f2Name);
+    delete(htab1B, row, f1Name, f2Name);
+    ensureRowNotExisted(htab2B, row, f1Name, f2Name);
+
+    // exclude ns1 and tableB:f1
+    rpc = admin.getPeerConfig(PEER_ID);
+    Map<TableName, List<String>> tableCfs = new HashMap<TableName, List<String>>();
+    tableCfs.put(tabBName, new ArrayList<String>());
+    tableCfs.get(tabBName).add("f1");
+    rpc.setExcludeTableCFsMap(tableCfs);
+    admin.updatePeerConfig(PEER_ID, rpc);
+    LOG.info("update peer config");
+
+    // Table A can not be replicated to cluster2
+    put(htab1A, row, f1Name, f2Name);
+    ensureRowNotExisted(htab2A, row, f1Name, f2Name);
+
+    // Table B:f2 can be replicated to cluster2
+    put(htab1B, row, f1Name, f2Name);
+    ensureRowNotExisted(htab2A, row, f1Name);
+    ensureRowExisted(htab2B, row, f2Name);
+    delete(htab1B, row, f2Name);
+    ensureRowNotExisted(htab2B, row, f1Name, f2Name);
   }
 
   private void put(HTable source, byte[] row, byte[]... families)

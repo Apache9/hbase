@@ -50,6 +50,12 @@ Examples:
     NAMESPACES => ["ns1", "ns2"], TABLE_CFS => { "ns3:table1" => [], "ns3:table2" => ["cf1"] }
   hbase> add_peer '7', CLUSTER_KEY => "zk4,zk5,zk6:11000:/hbase-test", STATE => "ENABLED",
     TABLE_CFS => { "ns3:table1" => [], "ns3:table2" => ["cf1"] }, PROTOCOL => "THRIFT"
+  hbase> add_peer '8', CLUSTER_KEY => "zk4,zk5,zk6:11000:/hbase-test", STATE => "ENABLED",
+    EXCLUDE_NAMESPACES => ["ns1", "ns2", "ns3"]
+  hbase> add_peer '9', CLUSTER_KEY => "zk4,zk5,zk6:11000:/hbase-test", STATE => "ENABLED",
+    EXCLUDE_NAMESPACES => ["ns1", "ns2"], EXCLUDE_TABLE_CFS => { "ns3:table1" => [], "ns3:table2" => ["cf1"] }
+  hbase> add_peer '10', CLUSTER_KEY => "zk4,zk5,zk6:11000:/hbase-test", STATE => "ENABLED",
+    EXCLUDE_TABLE_CFS => { "ns3:table1" => [], "ns3:table2" => ["cf1"] }, PROTOCOL => "THRIFT"
 
 For a custom replication endpoint, the ENDPOINT_CLASSNAME can be provided. Two optional arguments
 are DATA and CONFIG which can be specified to set different either the peer_data or configuration

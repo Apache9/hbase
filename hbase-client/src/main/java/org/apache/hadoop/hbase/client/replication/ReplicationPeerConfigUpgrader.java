@@ -22,6 +22,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Abortable;
+import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.classification.InterfaceStability;
 import org.apache.hadoop.hbase.exceptions.DeserializationException;
@@ -34,22 +35,40 @@ import org.apache.zookeeper.KeeperException;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
 /**
  * This class is used to upgrade TableCFs from HBase 1.x to HBase 2.x
  */
 @InterfaceAudience.Private
 @InterfaceStability.Unstable
-public class TableCFsUpdater extends ReplicationStateZKBase {
+public class ReplicationPeerConfigUpgrader extends ReplicationStateZKBase {
 
-  private static final Log LOG = LogFactory.getLog(TableCFsUpdater.class);
+  private static final Log LOG = LogFactory.getLog(ReplicationPeerConfigUpgrader.class);
 
-  public TableCFsUpdater(ZooKeeperWatcher zookeeper,
+  public ReplicationPeerConfigUpgrader(ZooKeeperWatcher zookeeper,
                          Configuration conf, Abortable abortable) {
     super(zookeeper, conf, abortable);
   }
 
-  public void update() {
+  public void upgrade() throws Exception {
+    try (ReplicationAdmin admin = new ReplicationAdmin(conf)) {
+      Map<String, ReplicationPeerConfig> peers = admin.listPeerConfigs();
+      peers.forEach((peerId, peerConfig) -> {
+        if ((peerConfig.getNamespaces() != null && !peerConfig.getNamespaces().isEmpty())
+            || (peerConfig.getTableCFsMap() != null && !peerConfig.getTableCFsMap().isEmpty())) {
+          peerConfig.setReplicateAllUserTables(false);
+          try {
+            admin.updatePeerConfig(peerId, peerConfig);
+          } catch (Exception e) {
+            LOG.error("Failed to upgrade replication peer config for peerId=" + peerId, e);
+          }
+        }
+      });
+    }
+  }
+
+  public void copyTableCFs() {
     List<String> znodes = null;
     try {
       znodes = ZKUtil.listChildrenNoWatch(this.zookeeper, this.peersZNode);
@@ -58,14 +77,14 @@ public class TableCFsUpdater extends ReplicationStateZKBase {
     }
     if (znodes != null) {
       for (String peerId : znodes) {
-        if (!update(peerId)) {
+        if (!copyTableCFs(peerId)) {
           LOG.error("upgrade tableCFs failed for peerId=" + peerId);
         }
       }
     }
   }
 
-  public boolean update(String peerId) {
+  public boolean copyTableCFs(String peerId) {
     String tableCFsNode = getTableCFsNode(peerId);
     try {
       if (ZKUtil.checkExists(zookeeper, tableCFsNode) != -1) {
@@ -114,4 +133,36 @@ public class TableCFsUpdater extends ReplicationStateZKBase {
     }
   }
 
+  private static void printUsageAndExit() {
+    System.err
+        .printf("Usage: bin/hbase org.apache.hadoop.hbase.replication.master.ReplicationPeerConfigUpgrader [options]");
+    System.err.println(" where [options] are:");
+    System.err.println("  -h|-help    Show this help and exit.");
+    System.err.println("  copyTableCFs      Copy table-cfs to replication peer config");
+    System.err.println("  upgrade           Upgrade replication peer config to new format");
+    System.err.println();
+    System.exit(1);
+  }
+
+  public static void main(String[] args) throws Exception {
+    if (args.length != 1) {
+      printUsageAndExit();
+    }
+    if (args[0].equals("-help") || args[0].equals("-h")) {
+      printUsageAndExit();
+    } else if (args[0].equals("copyTableCFs")) {
+      Configuration conf = HBaseConfiguration.create();
+      ZooKeeperWatcher zkw = new ZooKeeperWatcher(conf, "ReplicationPeerConfigUpgrader", null);
+      ReplicationPeerConfigUpgrader tableCFsUpdater = new ReplicationPeerConfigUpgrader(zkw, conf,
+          null);
+      tableCFsUpdater.copyTableCFs();
+    } else if (args[0].equals("upgrade")) {
+      Configuration conf = HBaseConfiguration.create();
+      ZooKeeperWatcher zkw = new ZooKeeperWatcher(conf, "ReplicationPeerConfigUpgrader", null);
+      ReplicationPeerConfigUpgrader upgrader = new ReplicationPeerConfigUpgrader(zkw, conf, null);
+      upgrader.upgrade();
+    } else {
+      printUsageAndExit();
+    }
+  }
 }

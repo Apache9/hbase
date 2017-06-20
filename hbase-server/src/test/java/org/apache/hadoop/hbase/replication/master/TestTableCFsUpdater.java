@@ -26,8 +26,8 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Abortable;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.client.replication.ReplicationPeerConfigUpgrader;
 import org.apache.hadoop.hbase.client.replication.ReplicationSerDeHelper;
-import org.apache.hadoop.hbase.client.replication.TableCFsUpdater;
 import org.apache.hadoop.hbase.exceptions.DeserializationException;
 import org.apache.hadoop.hbase.replication.ReplicationPeerConfig;
 import org.apache.hadoop.hbase.testclassification.SmallTests;
@@ -48,7 +48,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 @Category({SmallTests.class})
-public class TestTableCFsUpdater extends TableCFsUpdater {
+public class TestTableCFsUpdater extends ReplicationPeerConfigUpgrader {
 
   private static final Log LOG = LogFactory.getLog(TestTableCFsUpdater.class);
   private final static HBaseTestingUtility TEST_UTIL = new HBaseTestingUtility();
@@ -127,7 +127,7 @@ public class TestTableCFsUpdater extends TableCFsUpdater {
     assertEquals(tableCFs, actualTableCfs);
 
 
-    update();
+    copyTableCFs();
 
     peerId = "1";
     peerNode = getPeerNode(peerId);

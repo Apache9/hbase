@@ -48,6 +48,10 @@ public class ReplicationPeerConfig {
   private Map<TableName, ? extends Collection<String>> tableCFsMap = null;
   private long bandwidth = 0;
   private Set<String> namespaces = null;
+  // Default value is true, means replicate all user tables to peer cluster.
+  private boolean replicateAllUserTables = true;
+  private Map<TableName, ? extends Collection<String>> excludeTableCFsMap = null;
+  private Set<String> excludeNamespaces = null;
 
   public ReplicationPeerConfig() {
     this.peerData = new TreeMap<byte[], byte[]>(Bytes.BYTES_COMPARATOR);
@@ -140,15 +144,52 @@ public class ReplicationPeerConfig {
     this.bandwidth = bandwidth;
   }
 
+  public boolean replicateAllUserTables() {
+    return this.replicateAllUserTables;
+  }
+
+  public void setReplicateAllUserTables(boolean replicateAllUserTables) {
+    this.replicateAllUserTables = replicateAllUserTables;
+  }
+
+  public Map<TableName, List<String>> getExcludeTableCFsMap() {
+    return (Map<TableName, List<String>>) excludeTableCFsMap;
+  }
+
+  public ReplicationPeerConfig setExcludeTableCFsMap(
+      Map<TableName, ? extends Collection<String>> tableCFsMap) {
+    this.excludeTableCFsMap = tableCFsMap;
+    return this;
+  }
+
+  public Set<String> getExcludeNamespaces() {
+    return excludeNamespaces;
+  }
+
+  public ReplicationPeerConfig setExcludeNamespaces(Set<String> namespaces) {
+    this.excludeNamespaces = namespaces;
+    return this;
+  }
+
   @Override
   public String toString() {
     StringBuilder builder = new StringBuilder("clusterKey=").append(clusterKey).append(",");
     builder.append("state=").append(state).append(",");
-    if (namespaces != null) {
-      builder.append("namespaces=").append(namespaces.toString()).append(",");
-    }
-    if (tableCFsMap != null) {
-      builder.append("tableCFs=").append(tableCFsMap.toString());
+    builder.append("replicateAllUserTables=").append(replicateAllUserTables).append(",");
+    if (this.replicateAllUserTables) {
+      if (excludeNamespaces != null) {
+        builder.append("excludeNamespaces=").append(excludeNamespaces.toString()).append(",");
+      }
+      if (excludeTableCFsMap != null) {
+        builder.append("excludeTableCFsMap=").append(excludeTableCFsMap.toString()).append(",");
+      }
+    } else {
+      if (namespaces != null) {
+        builder.append("namespaces=").append(namespaces.toString()).append(",");
+      }
+      if (tableCFsMap != null) {
+        builder.append("tableCFs=").append(tableCFsMap.toString()).append(",");
+      }
     }
     builder.append("rpcProtocol=").append(protocol.name()).append(",");
     builder.append("bandwidth=").append(bandwidth);

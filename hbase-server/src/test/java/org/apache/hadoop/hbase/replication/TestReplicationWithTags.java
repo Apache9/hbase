@@ -125,7 +125,7 @@ public class TestReplicationWithTags {
 
     ReplicationPeerConfig rpc = new ReplicationPeerConfig();
     rpc.setClusterKey(utility2.getClusterKey());
-    replicationAdmin.addPeer("2", rpc, null);
+    replicationAdmin.addPeer("2", rpc);
 
     LOG.info("Setup second Zk");
     utility1.startMiniCluster(2);
