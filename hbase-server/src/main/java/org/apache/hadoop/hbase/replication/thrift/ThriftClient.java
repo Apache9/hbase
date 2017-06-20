@@ -150,7 +150,7 @@ public class ThriftClient {
         throw ce;
       }
       throw new IOException("Failed to open transport connection to : " + host + ":" + port +
-          ", isSecure: " + isSecure);
+          ", isSecure: " + isSecure, e);
     }
 
     TProtocol protocol;
