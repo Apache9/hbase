@@ -215,8 +215,8 @@ public class HColumnDescriptor implements WritableComparable<HColumnDescriptor> 
    */
   public static final boolean DEFAULT_PREFETCH_BLOCKS_ON_OPEN = false;
 
-  public static final String MVCC_SENSITIVE = "MVCC_SENSITIVE";
-  public static final boolean DEFAULT_MVCC_SENSITIVE = false;
+  public static final String NEW_VERSION_BEHAVIOR = "NEW_VERSION_BEHAVIOR";
+  public static final boolean DEFAULT_NEW_VERSION_BEHAVIOR = false;
 
   private final static Map<String, String> DEFAULT_VALUES
     = new HashMap<String, String>();
@@ -239,7 +239,7 @@ public class HColumnDescriptor implements WritableComparable<HColumnDescriptor> 
       DEFAULT_VALUES.put(CACHE_BLOOMS_ON_WRITE, String.valueOf(DEFAULT_CACHE_BLOOMS_ON_WRITE));
       DEFAULT_VALUES.put(EVICT_BLOCKS_ON_CLOSE, String.valueOf(DEFAULT_EVICT_BLOCKS_ON_CLOSE));
       DEFAULT_VALUES.put(PREFETCH_BLOCKS_ON_OPEN, String.valueOf(DEFAULT_PREFETCH_BLOCKS_ON_OPEN));
-      DEFAULT_VALUES.put(MVCC_SENSITIVE, String.valueOf(DEFAULT_MVCC_SENSITIVE));
+      DEFAULT_VALUES.put(NEW_VERSION_BEHAVIOR, String.valueOf(DEFAULT_NEW_VERSION_BEHAVIOR));
       for (String s : DEFAULT_VALUES.keySet()) {
         RESERVED_KEYWORDS.add(new ImmutableBytesWritable(Bytes.toBytes(s)));
       }
@@ -795,16 +795,16 @@ public class HColumnDescriptor implements WritableComparable<HColumnDescriptor> 
    * mask a later Put with lower ts. Set this to true to open MVCC_SENSITIVE semantics of versions.
    * We also consider mvcc in versions. See HBASE-15968 for details.
    */
-  public boolean isMvccSensitive() {
-    String value = getValue(MVCC_SENSITIVE);
+  public boolean isNewVersionBehavior() {
+    String value = getValue(NEW_VERSION_BEHAVIOR);
     if (value != null) {
       return Boolean.parseBoolean(value);
     }
-    return DEFAULT_MVCC_SENSITIVE;
+    return DEFAULT_NEW_VERSION_BEHAVIOR;
   }
 
-  public HColumnDescriptor setMvccSensitive(boolean sensitive) {
-    return setValue(MVCC_SENSITIVE, Boolean.toString(sensitive));
+  public HColumnDescriptor setNewVersionBehavior(boolean oldVersionBehavior) {
+    return setValue(NEW_VERSION_BEHAVIOR, Boolean.toString(oldVersionBehavior));
   }
 
   /**
