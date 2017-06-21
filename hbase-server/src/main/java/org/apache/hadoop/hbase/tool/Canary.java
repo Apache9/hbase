@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -305,33 +306,37 @@ public final class Canary implements Tool {
       }
       lastCheckTime = EnvironmentEdgeManager.currentTimeMillis();
     }
-    List<CompletableFuture<?>> futures = new ArrayList<>();
     List<RegionTask> tasksNotRun = new ArrayList<>();
     Semaphore concurrencyControl = new Semaphore(maxConcurrency);
+    CountDownLatch unfinishedTasks = new CountDownLatch(tasks.size());
     tasks.forEach(task -> {
       // check whether we have already timed out
       long remainingTime = timeout - (EnvironmentEdgeManager.currentTimeMillis() - startTime);
       if (remainingTime <= 0) {
         tasksNotRun.add(task);
+        unfinishedTasks.countDown();
+        return;
       }
       try {
         if (!concurrencyControl.tryAcquire(remainingTime, TimeUnit.MILLISECONDS)) {
           tasksNotRun.add(task);
+          unfinishedTasks.countDown();
           return;
         }
       } catch (InterruptedException e) {
         tasksNotRun.add(task);
+        unfinishedTasks.countDown();
         return;
       }
-      futures.add(task.call().thenRun(() -> concurrencyControl.release()));
+      task.call().whenComplete((r, e) -> {
+        concurrencyControl.release();
+        if (e != null) {
+          LOG.error("Sniff region failed", e);
+        }
+        unfinishedTasks.countDown();
+      });
     });
-    for (CompletableFuture<?> future : futures) {
-      try {
-        future.get();
-      } catch (Exception e) {
-        LOG.error("Sniff region failed", e);
-      }
-    }
+    unfinishedTasks.await();
     sink.reportSummary();
     long finishTime = EnvironmentEdgeManager.currentTimeMillis();
     LOG.info("Finish one turn sniff, consume(ms)=" + (finishTime - startTime) + ", interval(ms)=" +
