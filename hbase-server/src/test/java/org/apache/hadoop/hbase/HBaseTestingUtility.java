@@ -1300,6 +1300,24 @@ public class HBaseTestingUtility extends HBaseCommonTestingUtility {
   }
 
   /**
+   * Create a table with multiple regions.
+   * @param tableName
+   * @param family
+   * @param numRegions
+   * @return An HTable instance for the created table.
+   * @throws IOException
+   */
+  public HTable createMultiRegionTable(TableName tableName, byte[] family, int numRegions)
+      throws IOException {
+    if (numRegions < 3) throw new IOException("Must create at least 3 regions");
+    byte[] startKey = Bytes.toBytes("aaaaa");
+    byte[] endKey = Bytes.toBytes("zzzzz");
+    byte[][] splitKeys = Bytes.split(startKey, endKey, numRegions - 3);
+
+    return createTable(tableName.getName(),family,splitKeys);
+  }
+
+  /**
    * Create a table.
    * @param tableName
    * @param families
@@ -2057,6 +2075,9 @@ public class HBaseTestingUtility extends HBaseCommonTestingUtility {
     byte [][] regionStartKeys = new byte[splitKeys.length+1][];
     System.arraycopy(splitKeys, 0, regionStartKeys, 1, splitKeys.length);
     regionStartKeys[0] = HConstants.EMPTY_BYTE_ARRAY;
+    for(int i = 0; i < regionStartKeys.length; i++){
+      LOG.info("split key: " + Bytes.toStringBinary(regionStartKeys[i]));
+    }
     return createMultiRegions(c, table, family, regionStartKeys);
   }
 
@@ -2100,6 +2121,7 @@ public class HBaseTestingUtility extends HBaseCommonTestingUtility {
     Path tableDir = new Path(getDefaultRootDirPath().toString()
         + System.getProperty("file.separator") + htd.getTableName()
         + System.getProperty("file.separator") + regionToDeleteInFS);
+    LOG.info("delete the old region " + tableDir.toString());
     FileSystem.get(c).delete(tableDir);
     // flush cache of regions
     HConnection conn = table.getConnection();

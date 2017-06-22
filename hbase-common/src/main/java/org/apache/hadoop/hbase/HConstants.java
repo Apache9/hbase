@@ -126,6 +126,14 @@ public final class HConstants {
   /** Config for balancing the cluster by table */
   public static final String HBASE_MASTER_LOADBALANCE_BYTABLE = "hbase.master.loadbalance.bytable";
 
+  /** Config for pluggable region normalizer */
+  public static final String HBASE_MASTER_NORMALIZER_CLASS =
+    "hbase.master.normalizer.class";
+
+  /** Config for enabling/disabling pluggable region normalizer */
+  public static final String HBASE_NORMALIZER_ENABLED =
+    "hbase.normalizer.enabled";
+
   /** Config for the max percent of regions in transition */
   public static final String HBASE_MASTER_BALANCER_MAX_RIT_PERCENT =
       "hbase.master.balancer.maxRitPercent";

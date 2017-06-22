@@ -323,6 +323,15 @@ public class ZKTable {
   }
 
   /**
+   * Gets a list of all the tables set as enabled in zookeeper.
+   * @return set of enabled tables, empty Set if none
+   * @throws KeeperException
+   */
+  public static Set<TableName> getEnabledTables(ZooKeeperWatcher zkw)
+      throws KeeperException {
+    return getAllTables(zkw, ZooKeeperProtos.Table.State.ENABLED);
+  }
+  /**
    * Gets a list of all the tables set as disabled in zookeeper.
    * @return Set of disabled tables, empty Set if none
    * @throws KeeperException

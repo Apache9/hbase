@@ -198,6 +198,16 @@ public class HTableDescriptor implements WritableComparable<HTableDescriptor> {
   /** Default durability for HTD is USE_DEFAULT, which defaults to HBase-global default value */
   private static final Durability DEFAULT_DURABLITY = Durability.USE_DEFAULT;
 
+  /**
+   * <em>INTERNAL</em> Used by shell/rest interface to access this metadata
+   * attribute which denotes if the table should be treated by region normalizer.
+   *
+   * @see #isNormalizationEnabled()
+  */
+  public static final String NORMALIZATION_ENABLED = "NORMALIZATION_ENABLED";
+  private static final ImmutableBytesWritable NORMALIZATION_ENABLED_KEY =
+      new ImmutableBytesWritable(Bytes.toBytes(NORMALIZATION_ENABLED));
+
   /*
    *  The below are ugly but better than creating them each time till we
    *  replace booleans being saved as Strings with plain booleans.  Need a
@@ -220,6 +230,11 @@ public class HTableDescriptor implements WritableComparable<HTableDescriptor> {
    * Constant that denotes whether the table is compaction enabled by default
    */
   public static final boolean DEFAULT_COMPACTION_ENABLED = true;
+
+  /**
+   * Constant that denotes whether the table is normalized by default.
+   */
+  public static final boolean DEFAULT_NORMALIZATION_ENABLED = false;
 
   /**
    * Constant that denotes the maximum default size of the memstore after which
@@ -637,6 +652,26 @@ public class HTableDescriptor implements WritableComparable<HTableDescriptor> {
   @Deprecated
   public synchronized void setDeferredLogFlush(final boolean isAsyncLogFlush) {
     this.setDurability(isAsyncLogFlush ? Durability.ASYNC_WAL : DEFAULT_DURABLITY);
+  }
+
+  /**
+   * Check if normalization enable flag of the table is true. If flag is
+   * false then no region normalizer won't attempt to normalize this table.
+   *
+   * @return true if region normalization is enabled for this table
+   */
+  public boolean isNormalizationEnabled() {
+    return isSomething(NORMALIZATION_ENABLED_KEY, DEFAULT_NORMALIZATION_ENABLED);
+  }
+
+  /**
+   * Setting the table normalization enable flag.
+   *
+   * @param isEnable True if enable normalization.
+   */
+  public HTableDescriptor setNormalizationEnabled(final boolean isEnable) {
+    setValue(NORMALIZATION_ENABLED_KEY, isEnable ? TRUE : FALSE);
+    return this;
   }
 
   /**
