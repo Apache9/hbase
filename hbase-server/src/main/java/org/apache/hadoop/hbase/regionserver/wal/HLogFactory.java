@@ -196,8 +196,12 @@ public class HLogFactory {
           logWriterClass = conf.getClass("hbase.regionserver.hlog.writer.impl",
               ProtobufLogWriter.class, Writer.class);
         }
-        //HLog.Writer writer = (HLog.Writer)logWriterClass.newInstance();
-        HLog.Writer writer = logWriterClass.getConstructor(boolean.class).newInstance(isRecoveredEdits);
+        HLog.Writer writer;
+        if(logWriterClass == ProtobufLogWriter.class) {
+          writer = logWriterClass.getConstructor(boolean.class).newInstance(isRecoveredEdits);
+        }else {
+          writer = (HLog.Writer)logWriterClass.newInstance();
+        }
         writer.init(fs, path, conf, overwritable);
         return writer;
       } catch (Exception e) {
