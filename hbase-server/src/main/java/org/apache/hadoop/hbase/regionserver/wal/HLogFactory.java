@@ -180,23 +180,24 @@ public class HLogFactory {
      */
     public static HLog.Writer createWALWriter(final FileSystem fs,
         final Path path, Configuration conf) throws IOException {
-      return createWriter(fs, path, conf, false);
+      return createWriter(fs, path, conf, false, false);
     }
 
     public static HLog.Writer createRecoveredEditsWriter(final FileSystem fs,
         final Path path, Configuration conf) throws IOException {
-      return createWriter(fs, path, conf, true);
+      return createWriter(fs, path, conf, true, true);
     }
 
     private static HLog.Writer createWriter(final FileSystem fs,
-        final Path path, Configuration conf, boolean overwritable)
+        final Path path, Configuration conf, boolean overwritable, boolean isRecoveredEdits)
     throws IOException {
       try {
         if (logWriterClass == null) {
           logWriterClass = conf.getClass("hbase.regionserver.hlog.writer.impl",
               ProtobufLogWriter.class, Writer.class);
         }
-        HLog.Writer writer = (HLog.Writer)logWriterClass.newInstance();
+        //HLog.Writer writer = (HLog.Writer)logWriterClass.newInstance();
+        HLog.Writer writer = logWriterClass.getConstructor(boolean.class).newInstance(isRecoveredEdits);
         writer.init(fs, path, conf, overwritable);
         return writer;
       } catch (Exception e) {
