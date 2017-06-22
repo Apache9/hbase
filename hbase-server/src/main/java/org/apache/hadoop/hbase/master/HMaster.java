@@ -90,6 +90,7 @@ import org.apache.hadoop.hbase.catalog.CatalogTracker;
 import org.apache.hadoop.hbase.catalog.MetaReader;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.client.HConnectionManager;
+import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.MetaScanner;
 import org.apache.hadoop.hbase.client.MetaScanner.MetaScannerVisitor;
 import org.apache.hadoop.hbase.client.MetaScanner.MetaScannerVisitorBase;
@@ -128,6 +129,9 @@ import org.apache.hadoop.hbase.master.handler.TableAddFamilyHandler;
 import org.apache.hadoop.hbase.master.handler.TableDeleteFamilyHandler;
 import org.apache.hadoop.hbase.master.handler.TableModifyFamilyHandler;
 import org.apache.hadoop.hbase.master.handler.TruncateTableHandler;
+import org.apache.hadoop.hbase.master.normalizer.RegionNormalizer;
+import org.apache.hadoop.hbase.master.normalizer.RegionNormalizerChore;
+import org.apache.hadoop.hbase.master.normalizer.RegionNormalizerFactory;
 import org.apache.hadoop.hbase.master.snapshot.SnapshotManager;
 import org.apache.hadoop.hbase.metrics.MBeanSource;
 import org.apache.hadoop.hbase.monitoring.MemoryBoundedLogMessageBuffer;
@@ -285,6 +289,7 @@ import org.apache.hadoop.hbase.zookeeper.MasterAddressTracker;
 import org.apache.hadoop.hbase.zookeeper.RegionServerTracker;
 import org.apache.hadoop.hbase.zookeeper.ThrottleStateTracker;
 import org.apache.hadoop.hbase.zookeeper.ZKClusterId;
+import org.apache.hadoop.hbase.zookeeper.ZKTable;
 import org.apache.hadoop.hbase.zookeeper.ZKUtil;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperListener;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
@@ -452,8 +457,11 @@ MasterServices, Server {
   private final double maxRitPercent;
 
   private LoadBalancer balancer;
+  RegionNormalizer normalizer;
+  private boolean normalizerEnabled = false;
   private Thread balancerChore;
   private Thread clusterStatusChore;
+  private Thread normalizerChore;
   private ClusterStatusPublisher clusterStatusPublisherChore = null;
 
   private CatalogJanitor catalogJanitorChore;
@@ -828,6 +836,9 @@ MasterServices, Server {
     this.catalogTracker.start();
 
     this.balancer = LoadBalancerFactory.getLoadBalancer(conf);
+    this.normalizer = RegionNormalizerFactory.getRegionNormalizer(conf);
+    this.normalizer.setMasterServices(this);
+    this.normalizerEnabled = conf.getBoolean(HConstants.HBASE_NORMALIZER_ENABLED, false);
     this.loadBalancerTracker = new LoadBalancerTracker(zooKeeper, this);
     this.loadBalancerTracker.start();
     this.assignmentManager = new AssignmentManager(this, serverManager,
@@ -1084,6 +1095,7 @@ MasterServices, Server {
       status.setStatus("Starting balancer and catalog janitor");
       this.clusterStatusChore = getAndStartClusterStatusChore(this);
       this.balancerChore = getAndStartBalancerChore(this);
+      this.normalizerChore = getAndStartNormalizerChore(this);
       this.catalogJanitorChore = new CatalogJanitor(this, this);
       startCatalogJanitorChore();
       registerMBean();
@@ -1508,6 +1520,12 @@ MasterServices, Server {
     return Threads.setDaemonThreadRunning(chore.getThread());
   }
 
+  private static Thread getAndStartNormalizerChore(final HMaster master) {
+    Chore chore = new RegionNormalizerChore(master);
+    LOG.info("About to start the normalize thread!!!");
+    return Threads.setDaemonThreadRunning(chore.getThread());
+  }
+
   private void stopChores() {
     if (this.balancerChore != null) {
       this.balancerChore.interrupt();
@@ -1520,6 +1538,9 @@ MasterServices, Server {
     }
     if (this.clusterStatusPublisherChore != null){
       clusterStatusPublisherChore.interrupt();
+    }
+    if (this.normalizerChore != null){
+      this.normalizerChore.interrupt();
     }
   }
 
@@ -1908,6 +1929,46 @@ MasterServices, Server {
     } catch (IOException ioe) {
       throw new ServiceException(ioe);
     }
+  }
+
+  /**
+   * Perform normalization of cluster (invoked by {@link RegionNormalizerChore}).
+   *
+   * @return true if normalization step was performed successfully, false otherwise
+   *   (specifically, if HMaster hasn't been initialized properly or normalization
+   *   is globally disabled)
+   * @throws IOException, CoordinatedStateException
+   */
+  public boolean normalizeRegions() throws IOException,KeeperException {
+    if (!this.initialized) {
+      LOG.debug("Master has not been initialized, don't run region normalizer.");
+      return false;
+    }
+
+    if (!this.normalizerEnabled) {
+      LOG.debug("Region normalization is disabled, don't run region normalizer.");
+      return false;
+    }
+
+
+    synchronized (this.normalizer) {
+      // Don't run the normalizer concurrently
+      List<TableName> allEnabledTables = new ArrayList<>(ZKTable.getEnabledTables(zooKeeper));
+      Collections.shuffle(allEnabledTables);
+
+      HBaseAdmin admin = new HBaseAdmin(conf);
+      for(TableName table : allEnabledTables) {
+        if (table.isSystemTable() || !getTableDescriptors().get(table).isNormalizationEnabled()) {
+          LOG.debug("Skipping normalization for table: " + table + ", as it's either system"
+              + " table or doesn't have auto normalization turned on");
+          continue;
+        }
+        this.normalizer.computePlanForTable(table).execute(admin);
+      }
+    }
+    // If Region did not generate any plans, it means the cluster is already balanced.
+    // Return true indicating a success.
+    return true;
   }
 
   /**
