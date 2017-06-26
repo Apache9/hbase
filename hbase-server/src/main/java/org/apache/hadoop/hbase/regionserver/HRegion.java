@@ -5615,6 +5615,19 @@ public class HRegion implements HeapSize { // , Writable{
     processRowsWithLocks(processor, rowProcessorTimeout, nonceGroup, nonce);
   }
 
+  private String rowLocksToString(RowProcessor<?, ?> processor) {
+    StringBuilder sb = new StringBuilder();
+    if (processor != null && processor.getRowsToLock() != null) {
+      for (byte[] row : processor.getRowsToLock()) {
+        if (sb.length() > 0) {
+          sb.append(",");
+        }
+        sb.append(Bytes.toStringBinary(row));
+      }
+    }
+    return sb.toString();
+  }
+
   /**
    * Performs atomic multiple reads and writes on a given row.
    *
@@ -5738,9 +5751,8 @@ public class HRegion implements HeapSize { // , Writable{
         }
       } finally {
         if (!mutations.isEmpty() && !walSyncSuccessful) {
-          LOG.warn("Wal sync failed. Roll back " + mutations.size() +
-              " memstore keyvalues for row(s):" +
-              processor.getRowsToLock().iterator().next() + "...");
+          LOG.warn("Wal sync failed. Roll back " + mutations.size()
+              + " memstore keyvalues for row(s):" + rowLocksToString(processor));
           for (Mutation m : mutations) {
             for (CellScanner cellScanner = m.cellScanner(); cellScanner.advance();) {
               KeyValue kv = KeyValueUtil.ensureKeyValue(cellScanner.current());
@@ -5786,10 +5798,9 @@ public class HRegion implements HeapSize { // , Writable{
       try {
         processor.process(now, region, mutations, walEdit);
       } catch (IOException e) {
-        LOG.warn("RowProcessor:" + processor.getClass().getName() +
-            " throws Exception on row(s):" +
-            Bytes.toStringBinary(
-              processor.getRowsToLock().iterator().next()) + "...", e);
+        LOG.warn("RowProcessor:" + processor.getClass().getName() + " throws Exception on row(s):"
+            + rowLocksToString(processor),
+          e);
         throw e;
       }
       return;
@@ -5804,10 +5815,9 @@ public class HRegion implements HeapSize { // , Writable{
             processor.process(now, region, mutations, walEdit);
             return null;
           } catch (IOException e) {
-            LOG.warn("RowProcessor:" + processor.getClass().getName() +
-                " throws Exception on row(s):" +
-                Bytes.toStringBinary(
-                    processor.getRowsToLock().iterator().next()) + "...", e);
+              LOG.warn("RowProcessor:" + processor.getClass().getName()
+                  + " throws Exception on row(s):" + rowLocksToString(processor),
+                e);
             throw e;
           }
         }
@@ -5816,9 +5826,7 @@ public class HRegion implements HeapSize { // , Writable{
     try {
       task.get(timeout, TimeUnit.MILLISECONDS);
     } catch (TimeoutException te) {
-      LOG.error("RowProcessor timeout:" + timeout + " ms on row(s):" +
-          Bytes.toStringBinary(processor.getRowsToLock().iterator().next()) +
-          "...");
+      LOG.error("RowProcessor timeout:" + timeout + " ms on row(s):" + rowLocksToString(processor));
       throw new IOException(te);
     } catch (Exception e) {
       throw new IOException(e);
