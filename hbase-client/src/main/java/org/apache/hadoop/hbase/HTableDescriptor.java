@@ -32,6 +32,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.NavigableMap;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
@@ -57,6 +58,8 @@ import org.apache.hadoop.hbase.util.ByteStringer;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.Writables;
 import org.apache.hadoop.io.WritableComparable;
+
+import static org.apache.hadoop.hbase.HConstants.REPLICATION_SCOPE_LOCAL;
 
 /**
  * HTableDescriptor contains the details about an HBase table  such as the descriptors of
@@ -281,6 +284,11 @@ public class HTableDescriptor implements WritableComparable<HTableDescriptor> {
    */
   private final Map<byte [], HColumnDescriptor> families =
     new TreeMap<byte [], HColumnDescriptor>(Bytes.BYTES_RAWCOMPARATOR);
+
+  // 0 means don't know yet, 1 means yes, -1 means no.
+  private int hasSerialReplicationScope = 0;
+
+  NavigableMap<byte[], Integer> scopes = new TreeMap<>(Bytes.BYTES_COMPARATOR);
 
   /**
    * <em> INTERNAL </em> Private constructor used internally creating table descriptors for
@@ -1666,12 +1674,25 @@ public class HTableDescriptor implements WritableComparable<HTableDescriptor> {
   }
 
   public boolean hasSerialReplicationScope() {
-    for (HColumnDescriptor column : getFamilies()) {
-      if (column.getScope() == HConstants.REPLICATION_SCOPE_SERIAL) {
-        return true;
+    if (hasSerialReplicationScope == 0) {
+      for (HColumnDescriptor column : getFamilies()) {
+        if (column.getScope() != REPLICATION_SCOPE_LOCAL) {
+          scopes.put(column.getName(), column.getScope());
+        }
+        if (column.getScope() == HConstants.REPLICATION_SCOPE_SERIAL) {
+          hasSerialReplicationScope = 1;
+        }
+      }
+      if (hasSerialReplicationScope == 0) {
+        hasSerialReplicationScope = -1;
       }
     }
-    return false;
+    return hasSerialReplicationScope > 0;
   }
 
+  public NavigableMap<byte[], Integer> getNonLocalScopes() {
+    // Make sure we have built this map.
+    hasSerialReplicationScope();
+    return scopes;
+  }
 }

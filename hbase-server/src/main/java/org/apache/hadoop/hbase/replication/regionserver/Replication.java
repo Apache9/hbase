@@ -36,8 +36,6 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.CellScanner;
-import org.apache.hadoop.hbase.CellUtil;
-import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HTableDescriptor;
@@ -255,6 +253,10 @@ public class Replication implements WALActionsListener,
    */
   public static void scopeWALEdits(HTableDescriptor htd, HLogKey logKey,
                                    WALEdit logEdit) throws IOException {
+    if (htd.hasSerialReplicationScope()) {
+      logKey.setScopes(htd.getNonLocalScopes());
+      return;
+    }
     NavigableMap<byte[], Integer> scopes =
         new TreeMap<byte[], Integer>(Bytes.BYTES_COMPARATOR);
     byte[] family;
@@ -262,17 +264,6 @@ public class Replication implements WALActionsListener,
       family = kv.getFamily();
       // This is expected and the KV should not be replicated
       if (kv.matchingFamily(WALEdit.METAFAMILY)) {
-        WALProtos.RegionEventDescriptor maybeEvent = WALEdit.getRegionEventDescriptor(kv);
-        if (maybeEvent != null && (maybeEvent.getEventType() ==
-            WALProtos.RegionEventDescriptor.EventType.REGION_CLOSE)) {
-          // In serially replication, we use scopes when reading close marker.
-          for (HColumnDescriptor cf : htd.getFamilies()) {
-            if (cf.getScope() != REPLICATION_SCOPE_LOCAL) {
-              scopes.put(cf.getName(), cf.getScope());
-            }
-          }
-        }
-        // Skip the flush/compaction
         continue;
       }
       // Unexpected, has a tendency to happen in unit tests
@@ -284,6 +275,7 @@ public class Replication implements WALActionsListener,
         scopes.put(family, scope);
       }
     }
+
     if (!scopes.isEmpty()) {
       logKey.setScopes(scopes);
     }
