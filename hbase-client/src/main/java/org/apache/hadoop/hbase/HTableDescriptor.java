@@ -862,6 +862,8 @@ public class HTableDescriptor implements WritableComparable<HTableDescriptor> {
       throw new NullPointerException("Family name cannot be null or empty");
     }
     this.families.put(family.getName(), family);
+    // refresh the replication scope
+    hasSerialReplicationScope = 0;
   }
 
   /**
@@ -1222,7 +1224,10 @@ public class HTableDescriptor implements WritableComparable<HTableDescriptor> {
    * passed in column.
    */
   public HColumnDescriptor removeFamily(final byte [] column) {
-    return this.families.remove(column);
+    HColumnDescriptor res = this.families.remove(column);
+    // refresh the replication scope
+    hasSerialReplicationScope = 0;
+    return res;
   }
 
 
