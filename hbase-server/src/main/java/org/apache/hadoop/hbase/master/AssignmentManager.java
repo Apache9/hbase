@@ -2728,7 +2728,7 @@ public class AssignmentManager extends ZooKeeperListener {
     if (regions == null || regions.isEmpty()) {
       return;
     }
-    List<ServerName> servers = serverManager.createDestinationServersList();
+    List<ServerName> servers = serverManager.createDestinationServersList(getExcludeServers(false));
     if (servers == null || servers.isEmpty()) {
       throw new IOException("Found no destination server to assign region(s)");
     }
@@ -2755,7 +2755,7 @@ public class AssignmentManager extends ZooKeeperListener {
       return;
     }
 
-    List<ServerName> servers = serverManager.createDestinationServersList();
+    List<ServerName> servers = serverManager.createDestinationServersList(getExcludeServers(false));
     if (servers == null || servers.isEmpty()) {
       throw new IOException("Found no destination server to assign region(s)");
     }
