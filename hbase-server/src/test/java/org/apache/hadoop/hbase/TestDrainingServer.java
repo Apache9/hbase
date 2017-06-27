@@ -211,7 +211,8 @@ public class TestDrainingServer {
     Mockito.when(server.getConfiguration()).thenReturn(conf);
     Mockito.when(server.getServerName()).thenReturn(ServerName.valueOf("masterMock,1,1"));
     Mockito.when(server.getZooKeeper()).thenReturn(zkWatcher);
-
+    Mockito.when(server.getRegionServerVersion(Mockito.any(ServerName.class))).thenReturn("0.0.0");
+    
     Mockito.when(serverManager.getOnlineServers()).thenReturn(onlineServers);
     Mockito.when(serverManager.getOnlineServersList()).thenReturn(
       new ArrayList<ServerName>(onlineServers.keySet()));
