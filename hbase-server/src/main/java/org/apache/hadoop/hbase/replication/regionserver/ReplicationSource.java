@@ -50,6 +50,7 @@ import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.Stoppable;
 import org.apache.hadoop.hbase.catalog.MetaEditor;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
+import org.apache.hadoop.hbase.client.HConnection;
 import org.apache.hadoop.hbase.fs.HFileSystem;
 import org.apache.hadoop.hbase.protobuf.generated.WALProtos;
 import org.apache.hadoop.hbase.regionserver.HRegionServer;
@@ -407,14 +408,7 @@ public class ReplicationSource extends Thread
             for (Map.Entry<String, Long> entry : lastPositionsForSerialScope.entrySet()) {
               waitingUntilCanPush(entry);
             }
-            try {
-              MetaEditor
-                  .updateReplicationPositions(manager.getConnection(), actualPeerId,
-                      lastPositionsForSerialScope);
-            } catch (IOException e) {
-              LOG.error("updateReplicationPositions fail", e);
-              stopper.stop("updateReplicationPositions fail");
-            }
+            updateReplicationPositions(manager.getConnection(), actualPeerId, lastPositionsForSerialScope);
             continue;
           }
         } catch (IOException ioe) {
@@ -461,13 +455,7 @@ public class ReplicationSource extends Thread
 
           // Save positions to meta table before zk.
           if (!gotIOE) {
-            try {
-              MetaEditor.updateReplicationPositions(manager.getConnection(), actualPeerId,
-                  lastPositionsForSerialScope);
-            } catch (IOException e) {
-              LOG.error("updateReplicationPositions fail", e);
-              stopper.stop("updateReplicationPositions fail");
-            }
+            updateReplicationPositions(manager.getConnection(), actualPeerId, lastPositionsForSerialScope);
           }
 
           if (shouldLogPosition(this.repLogReader.getPosition())) {
@@ -512,14 +500,18 @@ public class ReplicationSource extends Thread
     }
 
     if (!canSkipWaitingSet.getUnchecked(key)) {
-      try {
-        manager.waitUntilCanBePushed(Bytes.toBytes(key), seq, actualPeerId);
-      } catch (IOException e) {
-        LOG.error("waitUntilCanBePushed fail", e);
-        stopper.stop("waitUntilCanBePushed fail");
-      } catch (InterruptedException e) {
-        LOG.warn("thread interrupted, stop wating", e);
-        Thread.currentThread().interrupt();
+      while (true) {
+        try {
+          manager.waitUntilCanBePushed(Bytes.toBytes(key), seq, actualPeerId);
+          break;
+        } catch (IOException e) {
+          LOG.error("waitUntilCanBePushed fail", e);
+        } catch (InterruptedException e) {
+          LOG.warn("thread interrupted, stop wating", e);
+          Thread.currentThread().interrupt();
+          break;
+        }
+        Threads.sleep(sleepForRetries);
       }
       canSkipWaitingSet.put(key, true);
     }
@@ -912,13 +904,7 @@ public class ReplicationSource extends Thread
         this.unLoggedPositionEdits += entries.size();
 
         // Save positions to meta table before zk.
-        try {
-          MetaEditor.updateReplicationPositions(manager.getConnection(), actualPeerId,
-              lastPositionsForSerialScope);
-        } catch (IOException e) {
-          LOG.error("updateReplicationPositions fail", e);
-          stopper.stop("updateReplicationPositions fail");
-        }
+        updateReplicationPositions(manager.getConnection(), actualPeerId, lastPositionsForSerialScope);
 
         if (shouldLogPosition(this.repLogReader.getPosition())) {
           this.manager.logPositionAndCleanOldLogs(this.currentPath,
@@ -968,13 +954,7 @@ public class ReplicationSource extends Thread
     if (this.queue.size() != 0) {
       // at the end of the log
 
-      try {
-        MetaEditor.updateReplicationPositions(manager.getConnection(), actualPeerId,
-                lastPositionsForSerialScope);
-      } catch (IOException e) {
-        LOG.error("updateReplicationPositions fail", e);
-        stopper.stop("updateReplicationPositions fail");
-      }
+      updateReplicationPositions(manager.getConnection(), actualPeerId, lastPositionsForSerialScope);
 
       if (this.lastLoggedPosition != this.repLogReader.getPosition()) {
         this.manager.logPositionAndCleanOldLogs(currentPath, this.peerClusterZnode,
@@ -1059,6 +1039,19 @@ public class ReplicationSource extends Thread
             e);
         }
       }
+    }
+  }
+
+  private void updateReplicationPositions(HConnection connection, String peerId,
+      Map<String, Long> positions) {
+    while (true) {
+      try {
+        MetaEditor.updateReplicationPositions(connection, peerId, positions);
+        break;
+      } catch (IOException e) {
+        LOG.error("updateReplicationPositions fail", e);
+      }
+      Threads.sleep(sleepForRetries);
     }
   }
 
