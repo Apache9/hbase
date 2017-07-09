@@ -90,10 +90,11 @@ public class NettyHBaseRpcConnectionHeaderHandler extends SimpleChannelInboundHa
    * Remove handlers for sasl encryption and add handlers for Crypto AES encryption
    */
   private void setupCryptoAESHandler(ChannelPipeline p, CryptoAES cryptoAES) {
-    p.remove(SaslWrapHandler.class);
-    p.remove(SaslUnwrapHandler.class);
+    p.remove(WrapHandler.class);
+    p.remove(UnwrapHandler.class);
     String lengthDecoder = p.context(LengthFieldBasedFrameDecoder.class).name();
-    p.addAfter(lengthDecoder, null, new CryptoAESUnwrapHandler(cryptoAES));
-    p.addAfter(lengthDecoder, null, new CryptoAESWrapHandler(cryptoAES));
+    p.addAfter(lengthDecoder, null, new UnwrapHandler(cryptoAES::unwrap, () -> {
+    }));
+    p.addAfter(lengthDecoder, null, new WrapHandler(cryptoAES::wrap));
   }
 }

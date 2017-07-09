@@ -15,33 +15,45 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.apache.hadoop.hbase.security;
+
+import org.apache.hadoop.hbase.classification.InterfaceAudience;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
-import org.apache.hadoop.hbase.classification.InterfaceAudience;
-import org.apache.hadoop.hbase.io.crypto.aes.CryptoAES;
 
 /**
- * Unwrap messages with Crypto AES. Should be placed after a
+ * Unwrap messages. Should be placed after a
  * {@link io.netty.handler.codec.LengthFieldBasedFrameDecoder}
  */
 @InterfaceAudience.Private
-public class CryptoAESUnwrapHandler extends SimpleChannelInboundHandler<ByteBuf> {
+public class UnwrapHandler extends SimpleChannelInboundHandler<ByteBuf> {
 
-  private final CryptoAES cryptoAES;
+  public static interface Unwrapper {
+    byte[] unwrap(byte[] buf, int off, int len) throws Exception;
+  }
 
-  public CryptoAESUnwrapHandler(CryptoAES cryptoAES) {
-    this.cryptoAES = cryptoAES;
+  private final Unwrapper unwrapper;
+
+  private final Runnable disposer;
+
+  public UnwrapHandler(Unwrapper unwrapper, Runnable disposer) {
+    this.unwrapper = unwrapper;
+    this.disposer = disposer;
+  }
+
+  @Override
+  public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+    disposer.run();
+    ctx.fireChannelInactive();
   }
 
   @Override
   protected void channelRead0(ChannelHandlerContext ctx, ByteBuf msg) throws Exception {
     byte[] bytes = new byte[msg.readableBytes()];
     msg.readBytes(bytes);
-    ctx.fireChannelRead(Unpooled.wrappedBuffer(cryptoAES.unwrap(bytes, 0, bytes.length)));
+    ctx.fireChannelRead(Unpooled.wrappedBuffer(unwrapper.unwrap(bytes, 0, bytes.length)));
   }
 }

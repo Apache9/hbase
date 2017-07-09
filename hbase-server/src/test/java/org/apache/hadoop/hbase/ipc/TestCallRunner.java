@@ -33,7 +33,7 @@ public class TestCallRunner {
   public void testSimpleCall() {
     RpcServerInterface mockRpcServer = Mockito.mock(RpcServerInterface.class);
     Mockito.when(mockRpcServer.isStarted()).thenReturn(true);
-    ServerCall mockCall = Mockito.mock(ServerCall.class);
+    ServerCall<?> mockCall = Mockito.mock(ServerCall.class);
     CallRunner cr = new CallRunner(mockRpcServer, mockCall);
     cr.setStatus(new MonitoredRPCHandlerImpl());
     cr.run();

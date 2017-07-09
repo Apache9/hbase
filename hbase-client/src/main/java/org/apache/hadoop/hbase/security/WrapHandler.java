@@ -17,6 +17,10 @@
  */
 package org.apache.hadoop.hbase.security;
 
+import java.io.IOException;
+
+import org.apache.hadoop.hbase.classification.InterfaceAudience;
+
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
@@ -26,24 +30,23 @@ import io.netty.channel.CoalescingBufferQueue;
 import io.netty.util.ReferenceCountUtil;
 import io.netty.util.concurrent.PromiseCombiner;
 
-import java.io.IOException;
-
-import javax.security.sasl.SaslClient;
-
-import org.apache.hadoop.hbase.classification.InterfaceAudience;
-
 /**
- * wrap sasl messages.
+ * Wrap messages.
  */
 @InterfaceAudience.Private
-public class SaslWrapHandler extends ChannelOutboundHandlerAdapter {
+public class WrapHandler extends ChannelOutboundHandlerAdapter {
 
-  private final SaslClient saslClient;
+  @FunctionalInterface
+  public static interface Wrapper {
+    byte[] wrap(byte[] buf, int off, int len) throws Exception;
+  }
+
+  private final Wrapper wrapper;
 
   private CoalescingBufferQueue queue;
 
-  public SaslWrapHandler(SaslClient saslClient) {
-    this.saslClient = saslClient;
+  public WrapHandler(Wrapper wrapper) {
+    this.wrapper = wrapper;
   }
 
   @Override
@@ -73,7 +76,7 @@ public class SaslWrapHandler extends ChannelOutboundHandlerAdapter {
       buf = queue.remove(readableBytes, promise);
       byte[] bytes = new byte[readableBytes];
       buf.readBytes(bytes);
-      byte[] wrapperBytes = saslClient.wrap(bytes, 0, bytes.length);
+      byte[] wrapperBytes = wrapper.wrap(bytes, 0, bytes.length);
       ChannelPromise lenPromise = ctx.newPromise();
       ctx.write(ctx.alloc().buffer(4).writeInt(wrapperBytes.length), lenPromise);
       ChannelPromise contentPromise = ctx.newPromise();
