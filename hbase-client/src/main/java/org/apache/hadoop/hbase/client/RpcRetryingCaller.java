@@ -135,7 +135,8 @@ public class RpcRetryingCaller<T> {
         long duration = singleCallDuration(globalStartTime, expectedSleep);
         if (duration > callTimeout) {
           String msg = "callTimeout=" + callTimeout + ", callDuration="
-              + (EnvironmentEdgeManager.currentTimeMillis() - globalStartTime) + ", tries=" + tries
+              + (EnvironmentEdgeManager.currentTimeMillis() - globalStartTime) + ", expectedSleep="
+              + expectedSleep + ", tries=" + tries
               + ": " + callable.getExceptionMessageAdditionalDetail();
           throw new CallTimeoutException(msg, new RetriesExhaustedException(tries, exceptions));
         }
