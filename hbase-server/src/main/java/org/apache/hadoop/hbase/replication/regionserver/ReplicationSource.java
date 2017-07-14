@@ -926,7 +926,7 @@ public class ReplicationSource extends Thread
         }
         break;
       } catch (Exception ex) {
-        LOG.warn(replicationEndpoint.getClass().getName() + " threw unknown exception:" + ex);
+        LOG.warn(replicationEndpoint.getClass().getName() + " threw unknown exception", ex);
         if (sleepForRetries("ReplicationEndpoint threw exception", sleepMultiplier)) {
           sleepMultiplier++;
         }
