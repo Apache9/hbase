@@ -171,7 +171,7 @@ public class ThriftClient {
       transport.open();
       LOG.debug("Connected to " + host + ":" + port);
     } catch (TTransportException e) {
-      if (e.getMessage().contains("GSS initiate failed")) {
+      if (e.getMessage() != null && e.getMessage().contains("GSS initiate failed")) {
         if (UserGroupInformation.isLoginKerberosKeyBased()) {
           UserGroupInformation.getLoginUser().reloginFromKerberosKey();
         } else {
