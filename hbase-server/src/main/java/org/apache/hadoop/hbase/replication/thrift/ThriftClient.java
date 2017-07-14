@@ -21,12 +21,18 @@ package org.apache.hadoop.hbase.replication.thrift;
 
 import java.io.IOException;
 import java.net.ConnectException;
+import java.util.ArrayDeque;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import javax.security.sasl.Sasl;
 
@@ -41,6 +47,7 @@ import org.apache.hadoop.hbase.replication.thrift.generated.TEdit;
 import org.apache.hadoop.hbase.replication.thrift.generated.THBaseService;
 import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hbase.util.Threads;
 import org.apache.hadoop.security.SaslRpcServer;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.thrift.TException;
@@ -63,16 +70,43 @@ public class ThriftClient {
       "hbase.replication.thrift.tablename.map";
   private static Object tableNameMapLock = new Object();
   public static Map<String, String> tableNameMap = null;
-  private Configuration conf;
+  private final Configuration conf;
   private final String peerId;
-  private boolean isSecure;
-  private ConcurrentMap<String, THBaseService.Client> clients =
+  private final boolean isSecure;
+  private final ConcurrentMap<String, THBaseService.Client> clients =
       new ConcurrentHashMap<String, THBaseService.Client>();
+
+  private final ScheduledExecutorService executor = Executors.newScheduledThreadPool(1,
+    Threads.newDaemonThreadFactory("Replication-ThriftClient-Cleanup"));
+
+  private final Queue<THBaseService.Client> pendingCloseClient = new ArrayDeque<>();
+
+  private void reopenClient() {
+    for (THBaseService.Client client; (client = pendingCloseClient.poll()) != null;) {
+      safeClose(client);
+    }
+    for (Iterator<THBaseService.Client> iter = clients.values().iterator(); iter.hasNext();) {
+      pendingCloseClient.add(iter.next());
+      iter.remove();
+    }
+  }
 
   public ThriftClient(Configuration conf, String peerId) throws IOException {
     this.conf = conf;
     this.peerId = peerId;
     this.isSecure = ThriftUtilities.useSecure(conf);
+    // reopen the connections with a interval of rpc timeout to prevent blocking on a socket.write
+    // infinitely.
+    int timeout =
+        conf.getInt(HConstants.HBASE_RPC_TIMEOUT_KEY, HConstants.DEFAULT_HBASE_RPC_TIMEOUT);
+    int interval = (int) Long.max(timeout, TimeUnit.MINUTES.toMillis(1));
+    executor.scheduleAtFixedRate(new Runnable() {
+
+      @Override
+      public void run() {
+        reopenClient();
+      }
+    }, interval, interval, TimeUnit.MILLISECONDS);
   }
 
   protected static void loadTableNameMap(String mappingString) throws IOException {
