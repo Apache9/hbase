@@ -82,6 +82,8 @@ public class ThriftClient {
   private final Queue<THBaseService.Client> pendingCloseClient = new ArrayDeque<>();
 
   private void reopenClient() {
+    LOG.info("Cleanup old thrift connections, to be closed: " + pendingCloseClient.size() +
+        ", current active: " + clients.values());
     for (THBaseService.Client client; (client = pendingCloseClient.poll()) != null;) {
       safeClose(client);
     }
