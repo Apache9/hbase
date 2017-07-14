@@ -83,7 +83,7 @@ public class ThriftClient {
 
   private void reopenClient() {
     LOG.info("Cleanup old thrift connections, to be closed: " + pendingCloseClient.size() +
-        ", current active: " + clients.values());
+        ", current active: " + clients.size());
     for (THBaseService.Client client; (client = pendingCloseClient.poll()) != null;) {
       safeClose(client);
     }
