@@ -25,6 +25,8 @@ import org.apache.hadoop.hbase.CompatibilityFactory;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
+import org.apache.hadoop.hbase.client.HTable;
+import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.Get;
@@ -378,6 +380,137 @@ public class TestThriftHBaseServiceHandler {
 
     get = new TGet(wrap(rowName));
     result = handler.get(table, get);
+    assertArrayEquals(rowName, result.getRow());
+    assertEquals(1, result.getColumnValuesSize());
+    // the older timestamp should remain.
+    assertEquals(timestamp1, result.getColumnValues().get(0).getTimestamp());
+  }
+
+  @Test
+  public void testDeleteFamily() throws Exception {
+    ThriftHBaseServiceHandler handler = createHandler();
+    byte[] rowName = "testDeleteFamily".getBytes();
+    ByteBuffer table = wrap(tableAname);
+
+    long timestamp1 = System.currentTimeMillis() - 10;
+    long timestamp2 = System.currentTimeMillis();
+
+    List<TColumnValue> columnValues = new ArrayList<TColumnValue>();
+    TColumnValue columnValueA =
+        new TColumnValue(wrap(familyAname), wrap(qualifierAname), wrap(valueAname));
+    columnValueA.setTimestamp(timestamp1);
+    columnValues.add(columnValueA);
+    TPut put = new TPut(wrap(rowName), columnValues);
+
+    put.setColumnValues(columnValues);
+
+    handler.put(table, put);
+    columnValueA.setTimestamp(timestamp2);
+    handler.put(table, put);
+
+    TGet get = new TGet(wrap(rowName));
+    get.setMaxVersions(2);
+    TResult result = handler.get(table, get);
+    assertEquals(2, result.getColumnValuesSize());
+
+    TDelete delete = new TDelete(wrap(rowName));
+    List<TColumn> deleteColumns = new ArrayList<TColumn>();
+    TColumn deleteColumn = new TColumn(wrap(familyAname));
+    deleteColumns.add(deleteColumn);
+    delete.setColumns(deleteColumns);
+    delete.setDeleteType(TDeleteType.DELETE_FAMILY);
+
+    handler.deleteSingle(table, delete);
+
+    get = new TGet(wrap(rowName));
+    result = handler.get(table, get);
+    assertArrayEquals(null, result.getRow());
+    assertEquals(0, result.getColumnValuesSize());
+  }
+
+  @Test
+  public void testDeleteFamilyVersion() throws Exception {
+    ThriftHBaseServiceHandler handler = createHandler();
+    byte[] rowName = "testDeleteFamilyVersion".getBytes();
+    ByteBuffer table = wrap(tableAname);
+
+    long timestamp1 = System.currentTimeMillis() - 10;
+    long timestamp2 = System.currentTimeMillis();
+
+    List<TColumnValue> columnValues = new ArrayList<TColumnValue>();
+    TColumnValue columnValueA =
+        new TColumnValue(wrap(familyAname), wrap(qualifierAname), wrap(valueAname));
+    columnValueA.setTimestamp(timestamp1);
+    columnValues.add(columnValueA);
+    TPut put = new TPut(wrap(rowName), columnValues);
+
+    put.setColumnValues(columnValues);
+
+    handler.put(table, put);
+    columnValueA.setTimestamp(timestamp2);
+    handler.put(table, put);
+
+    TGet get = new TGet(wrap(rowName));
+    get.setMaxVersions(2);
+    TResult result = handler.get(table, get);
+    assertEquals(2, result.getColumnValuesSize());
+
+    TDelete delete = new TDelete(wrap(rowName));
+    List<TColumn> deleteColumns = new ArrayList<TColumn>();
+    TColumn deleteColumn = new TColumn(wrap(familyAname));
+    deleteColumn.setTimestamp(timestamp1);
+    deleteColumns.add(deleteColumn);
+    delete.setColumns(deleteColumns);
+    delete.setDeleteType(TDeleteType.DELETE_FAMILY_VERSION);
+
+    handler.deleteSingle(table, delete);
+
+    get = new TGet(wrap(rowName));
+    result = handler.get(table, get);
+    assertArrayEquals(rowName, result.getRow());
+    assertEquals(1, result.getColumnValuesSize());
+    assertEquals(timestamp2, result.getColumnValues().get(0).getTimestamp());
+  }
+
+  @Test
+  public void testDeleteSingleWithNullableQualifier() throws Exception {
+    ThriftHBaseServiceHandler handler = createHandler();
+    byte[] rowName = "testDeleteSingleWithNullableQualifier".getBytes();
+    ByteBuffer table = wrap(tableAname);
+
+    long timestamp1 = System.currentTimeMillis() - 10;
+    long timestamp2 = System.currentTimeMillis();
+
+    HTable ht = new HTable(UTIL.getConfiguration(), tableAname);
+    try {
+      Put put = new Put(rowName, timestamp1).add(familyAname, null, valueAname);
+      ht.put(put);
+
+      put = new Put(rowName, timestamp2).add(familyAname, null, valueAname);
+      ht.put(put);
+
+      Get get = new Get(rowName);
+      get.setMaxVersions(2);
+      Result result = ht.get(get);
+      assertEquals(result.listCells().size(), 2);
+      assertNotNull(result.listCells().get(0).getQualifier());
+      assertEquals(result.listCells().get(0).getQualifierLength(), 0);
+    } finally {
+      ht.close();
+    }
+
+    TDelete delete = new TDelete(wrap(rowName));
+    List<TColumn> deleteColumns = new ArrayList<TColumn>();
+    TColumn deleteColumn = new TColumn(wrap(familyAname));
+    deleteColumn.setQualifier(new byte[0]);
+    deleteColumns.add(deleteColumn);
+    delete.setColumns(deleteColumns);
+    delete.setDeleteType(TDeleteType.DELETE_COLUMN);
+
+    handler.deleteSingle(table, delete);
+
+    TGet get = new TGet(wrap(rowName));
+    TResult result = handler.get(table, get);
     assertArrayEquals(rowName, result.getRow());
     assertEquals(1, result.getColumnValuesSize());
     // the older timestamp should remain.

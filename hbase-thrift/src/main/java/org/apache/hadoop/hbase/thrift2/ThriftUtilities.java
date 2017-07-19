@@ -274,7 +274,23 @@ public class ThriftUtilities {
               out.deleteColumn(column.getFamily(), column.getQualifier());
           }
 
+        } else if (in.isSetDeleteType()) {
+          // TDelete without qualifier will be regarded as DELETE_FAMILY or DELETE_FAMILY_VERSION.
+          if (in.getDeleteType().equals(TDeleteType.DELETE_FAMILY)) {
+            if (column.isSetTimestamp()) {
+              out.deleteFamily(column.getFamily(), column.getTimestamp());
+            } else {
+              out.deleteFamily(column.getFamily());
+            }
+          } else if (in.getDeleteType().equals(TDeleteType.DELETE_FAMILY_VERSION)
+              && column.isSetTimestamp()) {
+            out.deleteFamilyVersion(column.getFamily(), column.getTimestamp());
+          } else {
+            throw new IllegalArgumentException("Invalid delete type: " + in.getDeleteType());
+          }
         } else {
+          // For compatibility, if TDelete without qualifier set, we regard the delete as a
+          // DeleteFamily.
           if (column.isSetTimestamp()) {
             out.deleteFamily(column.getFamily(), column.getTimestamp());
           } else {
