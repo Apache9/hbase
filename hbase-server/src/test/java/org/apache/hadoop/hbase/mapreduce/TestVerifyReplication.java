@@ -177,7 +177,7 @@ public class TestVerifyReplication {
   public void testStartStopRow() throws Exception {
     insertTestData();
     String[] args = new String[] {"--startrow=row-3", "--stoprow=row-7", "1", Bytes.toString(tableName)};
-    Job job = VerifyReplication.createSubmittableJob(utility1.getConfiguration(), args);
+    Job job = new VerifyReplication().createSubmittableJob(utility1.getConfiguration(), args);
     
     if (job == null) {
       fail("Job wasn't created, see the log");
@@ -193,7 +193,7 @@ public class TestVerifyReplication {
     // delete row-1, GOODROWS will not change
     Delete delete = new Delete(Bytes.toBytes("row-1"));
     htable2.delete(delete);
-    job = VerifyReplication.createSubmittableJob(utility1.getConfiguration(), args);
+    job = new VerifyReplication().createSubmittableJob(utility1.getConfiguration(), args);
     if (job == null) {
       fail("Job wasn't created, see the log");
     }
@@ -209,7 +209,7 @@ public class TestVerifyReplication {
     delete = new Delete(Bytes.toBytes("row-5"));
     htable2.delete(delete);
     
-    job = VerifyReplication.createSubmittableJob(utility1.getConfiguration(), args);
+    job = new VerifyReplication().createSubmittableJob(utility1.getConfiguration(), args);
     if (job == null) {
       fail("Job wasn't created, see the log");
     }
@@ -232,8 +232,8 @@ public class TestVerifyReplication {
     insertTestData();
     String[] args1 = new String[] {"1", Bytes.toString(tableName)};
     String[] args2 = new String[] {"--scanrate=1", "1", Bytes.toString(tableName)};
-    Job job1 = VerifyReplication.createSubmittableJob(utility1.getConfiguration(), args1);
-    Job job2 = VerifyReplication.createSubmittableJob(utility1.getConfiguration(), args2);
+    Job job1 = new VerifyReplication().createSubmittableJob(utility1.getConfiguration(), args1);
+    Job job2 = new VerifyReplication().createSubmittableJob(utility1.getConfiguration(), args2);
     
     assertNotNull(job1);
     long st = System.currentTimeMillis();

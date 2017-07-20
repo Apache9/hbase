@@ -35,6 +35,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -181,9 +182,9 @@ public abstract class ModifyRegionUtils {
       final Path tableDir, final HTableDescriptor hTableDescriptor, final HRegionInfo newRegion,
       final RegionFillTask task) throws IOException {
     // 1. Create HRegion
-    HRegion region = HRegion.createHRegion(newRegion,
-      rootDir, tableDir, conf, hTableDescriptor, null,
-      false, true);
+    FileSystem fs = rootDir.getFileSystem(conf);
+    HRegion region = HRegion.createHRegion(newRegion, rootDir, tableDir, conf, hTableDescriptor,
+      null, false, true, fs);
     try {
       // 2. Custom user code to interact with the created region
       if (task != null) {
