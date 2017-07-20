@@ -4959,12 +4959,11 @@ public class HRegion implements HeapSize { // , Writable{
                                       final Configuration conf,
                                       final HTableDescriptor hTableDescriptor,
                                       final HLog hlog,
-                                      final boolean initialize, final boolean ignoreHLog)
+                                      final boolean initialize, final boolean ignoreHLog, final FileSystem fs)
       throws IOException {
     LOG.info("creating HRegion " + info.getTable().getNameAsString()
         + " HTD == " + hTableDescriptor + " RootDir = " + rootDir +
         " Table name == " + info.getTable().getNameAsString());
-    FileSystem fs = FileSystem.get(conf);
     HRegionFileSystem rfs = HRegionFileSystem.createRegionOnFileSystem(conf, fs, tableDir, info);
     HLog effectiveHLog = hlog;
     if (hlog == null && !ignoreHLog) {
@@ -4979,6 +4978,14 @@ public class HRegion implements HeapSize { // , Writable{
       region.setSequenceId(region.initialize());
     }
     return region;
+  }
+
+  public static HRegion createHRegion(final HRegionInfo info, final Path rootDir,
+      final Path tableDir, final Configuration conf, final HTableDescriptor hTableDescriptor,
+      final HLog hlog, final boolean initialize, final boolean ignoreHLog) throws IOException {
+    FileSystem fs = FileSystem.get(conf);
+    return createHRegion(info, rootDir, tableDir, conf, hTableDescriptor, hlog, initialize,
+      ignoreHLog, fs);
   }
 
   public static HRegion createHRegion(final HRegionInfo info, final Path rootDir,

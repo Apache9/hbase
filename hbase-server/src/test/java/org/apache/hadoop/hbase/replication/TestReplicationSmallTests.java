@@ -30,13 +30,10 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellUtil;
-import org.apache.hadoop.hbase.ClusterStatus;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HTableDescriptor;
-import org.apache.hadoop.hbase.ServerLoad;
-import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Get;
@@ -454,7 +451,7 @@ public class TestReplicationSmallTests extends TestReplicationBase {
     testSmallBatch();
 
     String[] args = new String[] {"2", Bytes.toString(tableName)};
-    Job job = VerifyReplication.createSubmittableJob(CONF_WITH_LOCALFS, args);
+    Job job = new VerifyReplication().createSubmittableJob(CONF_WITH_LOCALFS, args);
     if (job == null) {
       fail("Job wasn't created, see the log");
     }
@@ -478,7 +475,7 @@ public class TestReplicationSmallTests extends TestReplicationBase {
     }
     Delete delete = new Delete(put.getRow());
     htable2.delete(delete);
-    job = VerifyReplication.createSubmittableJob(CONF_WITH_LOCALFS, args);
+    job = new VerifyReplication().createSubmittableJob(CONF_WITH_LOCALFS, args);
     if (job == null) {
       fail("Job wasn't created, see the log");
     }
@@ -559,5 +556,4 @@ public class TestReplicationSmallTests extends TestReplicationBase {
 
     hadmin.close();
   }
-
 }
