@@ -524,7 +524,7 @@ public final class Canary implements Tool {
 
   // won't create new zkw
   private boolean isTableEnabled(byte[] table) throws IOException {
-    return isTableExists(table) && admin.isTableEnabled(table);
+    return isTableExists(table) && conn.isTableEnabled(TableName.valueOf(table));
   }
 
   private void checkCanaryDistribution() throws IOException {
