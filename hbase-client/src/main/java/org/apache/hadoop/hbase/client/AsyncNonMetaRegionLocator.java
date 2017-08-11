@@ -29,11 +29,12 @@ import static org.apache.hadoop.hbase.util.CollectionUtils.computeIfAbsent;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -106,7 +107,7 @@ class AsyncNonMetaRegionLocator {
     public final Set<LocateRequest> pendingRequests = new HashSet<>();
 
     public final Map<LocateRequest, CompletableFuture<HRegionLocation>> allRequests =
-        new HashMap<>();
+        new LinkedHashMap<>();
 
     public boolean hasQuota(int max) {
       return pendingRequests.size() < max;
@@ -118,6 +119,10 @@ class AsyncNonMetaRegionLocator {
 
     public void send(LocateRequest req) {
       pendingRequests.add(req);
+    }
+
+    public Optional<LocateRequest> getCandidate() {
+      return allRequests.keySet().stream().filter(r -> !isPending(r)).findFirst();
     }
   }
 
@@ -219,14 +224,19 @@ class AsyncNonMetaRegionLocator {
           error);
       }
     }
-    LocateRequest toSend = null;
+    Optional<LocateRequest> toSend = Optional.empty();
     TableCache tableCache = getTableCache(tableName);
     if (loc != null) {
       if (!addToCache(tableCache, loc)) {
         // someone is ahead of us.
         synchronized (tableCache) {
           tableCache.pendingRequests.remove(req);
+          // Remove a complete locate request in a synchronized block, so the table cache must have
+          // quota to send a candidate request.
+          toSend = tableCache.getCandidate();
+          toSend.ifPresent(r -> tableCache.send(r));
         }
+        toSend.ifPresent(r -> locateInMeta(tableName, r));
         return;
       }
     }
@@ -247,21 +257,12 @@ class AsyncNonMetaRegionLocator {
           }
         }
       }
-      if (!tableCache.allRequests.isEmpty() &&
-          tableCache.hasQuota(maxConcurrentLocateRequestPerTable)) {
-        LocateRequest[] candidates = tableCache.allRequests.keySet().stream()
-            .filter(r -> !tableCache.isPending(r)).toArray(LocateRequest[]::new);
-        if (candidates.length > 0) {
-          // TODO: use a better algorithm to send a request which is more likely to fetch a new
-          // location.
-          toSend = candidates[ThreadLocalRandom.current().nextInt(candidates.length)];
-          tableCache.send(toSend);
-        }
-      }
+      // Remove a complete locate request in a synchronized block, so the table cache must have
+      // quota to send a candidate request.
+      toSend = tableCache.getCandidate();
+      toSend.ifPresent(r -> tableCache.send(r));
     }
-    if (toSend != null) {
-      locateInMeta(tableName, toSend);
-    }
+    toSend.ifPresent(r -> locateInMeta(tableName, r));
   }
 
   private void onScanComplete(TableName tableName, LocateRequest req, List<Result> results,
