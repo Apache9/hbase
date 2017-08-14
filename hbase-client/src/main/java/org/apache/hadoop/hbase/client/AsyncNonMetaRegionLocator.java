@@ -124,6 +124,45 @@ class AsyncNonMetaRegionLocator {
     public Optional<LocateRequest> getCandidate() {
       return allRequests.keySet().stream().filter(r -> !isPending(r)).findFirst();
     }
+
+    public void clearCompletedRequests(Optional<HRegionLocation> location) {
+      for (Iterator<Map.Entry<LocateRequest, CompletableFuture<HRegionLocation>>> iter = allRequests
+          .entrySet().iterator(); iter.hasNext();) {
+        Map.Entry<LocateRequest, CompletableFuture<HRegionLocation>> entry = iter.next();
+        if (tryComplete(entry.getKey(), entry.getValue(), location)) {
+          iter.remove();
+        }
+      }
+    }
+
+    private boolean tryComplete(LocateRequest req, CompletableFuture<HRegionLocation> future,
+        Optional<HRegionLocation> location) {
+      if (future.isDone()) {
+        return true;
+      }
+      if (!location.isPresent()) {
+        return false;
+      }
+      HRegionLocation loc = location.get();
+      boolean completed;
+      if (req.locateType.equals(RegionLocateType.BEFORE)) {
+        // for locating the row before current row, the common case is to find the previous region in
+        // reverse scan, so we check the endKey first. In general, the condition should be startKey <
+        // req.row and endKey >= req.row. Here we split it to endKey == req.row || (endKey > req.row
+        // && startKey < req.row). The two conditions are equal since startKey < endKey.
+        int c = Bytes.compareTo(loc.getRegionInfo().getEndKey(), req.row);
+        completed =
+            c == 0 || (c > 0 && Bytes.compareTo(loc.getRegionInfo().getStartKey(), req.row) < 0);
+      } else {
+        completed = loc.getRegionInfo().containsRow(req.row);
+      }
+      if (completed) {
+        future.complete(loc);
+        return true;
+      } else {
+        return false;
+      }
+    }
   }
 
   AsyncNonMetaRegionLocator(AsyncConnectionImpl conn) {
@@ -190,39 +229,14 @@ class AsyncNonMetaRegionLocator {
     }
   }
 
-  private boolean tryComplete(LocateRequest req, CompletableFuture<HRegionLocation> future,
-      HRegionLocation loc) {
-    if (future.isDone()) {
-      return true;
-    }
-    boolean completed;
-    if (req.locateType.equals(RegionLocateType.BEFORE)) {
-      // for locating the row before current row, the common case is to find the previous region in
-      // reverse scan, so we check the endKey first. In general, the condition should be startKey <
-      // req.row and endKey >= req.row. Here we split it to endKey == req.row || (endKey > req.row
-      // && startKey < req.row). The two conditions are equal since startKey < endKey.
-      int c = Bytes.compareTo(loc.getRegionInfo().getEndKey(), req.row);
-      completed =
-          c == 0 || (c > 0 && Bytes.compareTo(loc.getRegionInfo().getStartKey(), req.row) < 0);
-    } else {
-      completed = loc.getRegionInfo().containsRow(req.row);
-    }
-    if (completed) {
-      future.complete(loc);
-      return true;
-    } else {
-      return false;
-    }
-  }
+
 
   private void complete(TableName tableName, LocateRequest req, HRegionLocation loc,
       Throwable error) {
     if (error != null) {
-      if (LOG.isDebugEnabled()) {
-        LOG.debug("Failed to locate region in '" + tableName + "', row='" +
-            Bytes.toStringBinary(req.row) + "', locateType=" + req.locateType,
-          error);
-      }
+      LOG.warn(
+        "Failed to locate region in '" + tableName + "', row='" + Bytes.toStringBinary(req.row)
+            + "', locateType=" + req.locateType, error);
     }
     Optional<LocateRequest> toSend = Optional.empty();
     TableCache tableCache = getTableCache(tableName);
@@ -231,6 +245,7 @@ class AsyncNonMetaRegionLocator {
         // someone is ahead of us.
         synchronized (tableCache) {
           tableCache.pendingRequests.remove(req);
+          tableCache.clearCompletedRequests(Optional.empty());
           // Remove a complete locate request in a synchronized block, so the table cache must have
           // quota to send a candidate request.
           toSend = tableCache.getCandidate();
@@ -248,15 +263,7 @@ class AsyncNonMetaRegionLocator {
           future.completeExceptionally(error);
         }
       }
-      if (loc != null) {
-        for (Iterator<Map.Entry<LocateRequest, CompletableFuture<HRegionLocation>>> iter =
-            tableCache.allRequests.entrySet().iterator(); iter.hasNext();) {
-          Map.Entry<LocateRequest, CompletableFuture<HRegionLocation>> entry = iter.next();
-          if (tryComplete(entry.getKey(), entry.getValue(), loc)) {
-            iter.remove();
-          }
-        }
-      }
+      tableCache.clearCompletedRequests(Optional.ofNullable(loc));
       // Remove a complete locate request in a synchronized block, so the table cache must have
       // quota to send a candidate request.
       toSend = tableCache.getCandidate();
