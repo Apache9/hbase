@@ -3962,7 +3962,11 @@ public class AssignmentManager extends ZooKeeperListener {
     if (et == EventType.RS_ZK_REGION_MERGED) {
       LOG.debug("Handling MERGED event for " + encodedName + "; deleting node");
       try {
-        regionStateListener.onRegionMerged(p);
+        if (regionStateListener != null) {
+          regionStateListener.onRegionMerged(p);
+        } else {
+          LOG.warn("RegionStateListener is not ready!");
+        }
       } catch (IOException e) {
         LOG.error("Fail to check and update region quota when merge", e);
       }
@@ -4048,7 +4052,12 @@ public class AssignmentManager extends ZooKeeperListener {
     if (et == EventType.RS_ZK_REQUEST_REGION_SPLIT) {
       try {
         try {
-          regionStateListener.onRegionSplit(p);
+          if (regionStateListener != null) {
+            regionStateListener.onRegionSplit(p);
+          } else {
+            LOG.error("RegionStateListener is not ready when split");
+            return false;
+          }
         } catch (IOException e) {
           // return false will delete the splitting zk node
           LOG.error("Fail to check and update region quota when split", e);
@@ -4258,7 +4267,11 @@ public class AssignmentManager extends ZooKeeperListener {
 
     case READY_TO_SPLIT:
       try {
-        regionStateListener.onRegionSplit(hri);
+        if (regionStateListener != null) {
+          regionStateListener.onRegionSplit(hri);
+        } else {
+          throw new IOException("RegionStateListener is not ready when split");
+        }
       } catch (IOException exp) {
         errorMsg = StringUtils.stringifyException(exp);
         break;
@@ -4271,7 +4284,11 @@ public class AssignmentManager extends ZooKeeperListener {
             HRegionInfo.convert(transition.getRegionInfo(2)));
       if (code == TransitionCode.SPLIT_REVERTED) {
         try {
-          regionStateListener.onRegionSplitReverted(hri);
+          if (regionStateListener != null) {
+            regionStateListener.onRegionSplitReverted(hri);
+          } else {
+            throw new IOException("RegionStateListener is not ready when split reverted");
+          }
         } catch (IOException exp) {
           LOG.warn(StringUtils.stringifyException(exp));
         }
@@ -4282,7 +4299,11 @@ public class AssignmentManager extends ZooKeeperListener {
     case MERGED:
       if (code == TransitionCode.MERGED) {
         try {
-          regionStateListener.onRegionMerged(hri);
+          if (regionStateListener != null) {
+            regionStateListener.onRegionMerged(hri);
+          } else {
+            throw new IOException("RegionStateListener is not ready when merge");
+          }
         } catch (IOException exp) {
           errorMsg = StringUtils.stringifyException(exp);
         }
