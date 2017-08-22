@@ -256,4 +256,12 @@ public class TestTableSnapshotInputFormat extends TableSnapshotInputFormatTestBa
       }
     }
   }
+
+  @Override
+  public void testRestoreSnapshotDoesNotCreateBackRefLinksInit(TableName tableName,
+      String snapshotName, Path tmpTableDir) throws Exception {
+    JobConf jobConf = new JobConf(UTIL.getConfiguration());
+    TableMapReduceUtil.initTableSnapshotMapJob(snapshotName, COLUMNS, TestTableSnapshotMapper.class,
+      ImmutableBytesWritable.class, NullWritable.class, jobConf, false, tmpTableDir);
+  }
 }
