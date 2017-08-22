@@ -19,8 +19,6 @@ package org.apache.hadoop.hbase.regionserver;
 
 import java.util.List;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.HBaseInterfaceAudience;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
@@ -51,7 +49,6 @@ import org.apache.hadoop.hbase.classification.InterfaceStability;
 @InterfaceAudience.LimitedPrivate(HBaseInterfaceAudience.COPROC)
 @InterfaceStability.Evolving
 public class ScannerContext {
-  private final Log LOG = LogFactory.getLog(this.getClass());
 
   /**
    * Two sets of the same fields. One for the limits, another for the progress towards those limits
@@ -98,6 +95,8 @@ public class ScannerContext {
   private static boolean DEFAULT_KEEP_PROGRESS = false;
   private int readRawCells = 0;
 
+  private Cell lastPeekedCell = null;
+
   ScannerContext(boolean keepProgress, LimitFields limitsToCopy) {
     this.limits = new LimitFields();
     if (limitsToCopy != null) this.limits.copy(limitsToCopy);
@@ -108,8 +107,6 @@ public class ScannerContext {
     this.keepProgress = keepProgress;
     this.scannerState = DEFAULT_STATE;
   }
-
-  private Cell peekedCellInHeartbeat = null;
 
   /**
    * @return true if the progress tracked so far in this instance will be considered during an
@@ -317,12 +314,12 @@ public class ScannerContext {
         || checkTimeLimit(checkerScope);
   }
 
-  public Cell getPeekedCellInHeartbeat() {
-    return peekedCellInHeartbeat;
+  Cell getLastPeekedCell() {
+    return lastPeekedCell;
   }
 
-  public void setPeekedCellInHeartbeat(Cell peekedCellInHeartbeat) {
-    this.peekedCellInHeartbeat = peekedCellInHeartbeat;
+  void setLastPeekedCell(Cell lastPeekedCell) {
+    this.lastPeekedCell = lastPeekedCell;
   }
 
   @Override

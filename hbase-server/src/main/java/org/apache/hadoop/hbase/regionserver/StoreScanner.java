@@ -51,6 +51,7 @@ import org.apache.hadoop.hbase.regionserver.querymatcher.ScanQueryMatcher;
 import org.apache.hadoop.hbase.regionserver.querymatcher.ScanQueryMatcher.MatchCode;
 import org.apache.hadoop.hbase.regionserver.querymatcher.UserScanQueryMatcher;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hbase.util.CollectionUtils;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 
 /**
@@ -578,7 +579,6 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
         if ((kvsScanned % cellsPerHeartbeatCheck == 0)) {
           scannerContext.updateTimeProgress();
           if (scannerContext.checkTimeLimit(LimitScope.BETWEEN_CELLS)) {
-            scannerContext.setPeekedCellInHeartbeat(prevKV);
             return scannerContext.setScannerState(NextState.TIME_LIMIT_REACHED).hasMoreValues();
           }
         }
@@ -587,6 +587,7 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
         }
         checkScanOrder(prevKV, kv, comparator);
         prevKV = kv;
+        scannerContext.setLastPeekedCell(prevKV);
         scannerContext.incReadRawCells();
         ScanQueryMatcher.MatchCode qcode = matcher.match(kv);
         qcode = optimize(qcode, kv);
