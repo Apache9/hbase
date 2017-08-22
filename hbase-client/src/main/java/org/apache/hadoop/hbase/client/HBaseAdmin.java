@@ -2641,7 +2641,7 @@ public class HBaseAdmin implements Abortable, Closeable {
     if (!done) {
       throw new SnapshotCreationException(
           "Snapshot '" + snapshot.getName() + "' wasn't completed in expectedTime:" + max + " ms",
-          snapshot);
+          ProtobufUtil.createSnapshotDesc(snapshot));
     }
   }
 

@@ -35,14 +35,17 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.ClusterId;
 import org.apache.hadoop.hbase.HRegionLocation;
 import org.apache.hadoop.hbase.ServerName;
+import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.exceptions.DeserializationException;
 import org.apache.hadoop.hbase.master.RegionState;
+import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos;
 import org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos;
 import org.apache.hadoop.hbase.util.Pair;
 import org.apache.hadoop.hbase.util.Threads;
 import org.apache.hadoop.hbase.zookeeper.ZKConfig;
+import org.apache.hadoop.hbase.zookeeper.ZKUtil;
 import org.apache.hadoop.hbase.zookeeper.ZNodePaths;
 import org.apache.zookeeper.data.Stat;
 
@@ -186,6 +189,37 @@ class ZKAsyncRegistry implements AsyncRegistry {
           return ServerName.valueOf(snProto.getHostName(), snProto.getPort(),
             snProto.getStartCode());
         });
+  }
+
+  private static ZooKeeperProtos.Table.State getTableState(CuratorEvent event) throws IOException {
+    byte[] data = event.getData();
+    if (data == null || data.length <= 0) return null;
+    try {
+      data = removeMetaData(data);
+      ProtobufUtil.expectPBMagicPrefix(data);
+      ZooKeeperProtos.Table.Builder builder = ZooKeeperProtos.Table.newBuilder();
+      int magicLen = ProtobufUtil.lengthOfPBMagic();
+      ZooKeeperProtos.Table t = builder.mergeFrom(data, magicLen, data.length - magicLen).build();
+      return t.getState();
+    } catch (DeserializationException e) {
+      throw new IOException(e);
+    }
+  }
+
+  @Override
+  public CompletableFuture<Boolean> isTableEnabled(TableName tableName) {
+    return exec(zk.getData(), ZKUtil.joinZNode(znodePaths.tableZNode, tableName.getNameAsString()),
+      ZKAsyncRegistry::getTableState).thenApply(state -> {
+      return state == ZooKeeperProtos.Table.State.ENABLED;
+    });
+  }
+
+  @Override
+  public CompletableFuture<Boolean> isTableDisabled(TableName tableName) {
+    return exec(zk.getData(), ZKUtil.joinZNode(znodePaths.tableZNode, tableName.getNameAsString()),
+      ZKAsyncRegistry::getTableState).thenApply(state -> {
+      return state == ZooKeeperProtos.Table.State.DISABLED;
+    });
   }
 
   @Override

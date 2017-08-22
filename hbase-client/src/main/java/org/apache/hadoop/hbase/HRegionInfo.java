@@ -46,6 +46,7 @@ import org.apache.hadoop.hbase.util.MD5Hash;
 import org.apache.hadoop.hbase.util.Pair;
 import org.apache.hadoop.hbase.util.PairOfSameType;
 import org.apache.hadoop.io.DataInputBuffer;
+import org.apache.hadoop.util.StringUtils;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 
@@ -117,6 +118,8 @@ public class HRegionInfo implements Comparable<HRegionInfo> {
 
   /** A non-capture group so that this can be embedded. */
   public static final String ENCODED_REGION_NAME_REGEX = "(?:[a-f0-9]+)";
+
+  public static final String INVALID_REGION_NAME_FORMAT_MESSAGE = "Invalid regionName format";
 
   /**
    * Does region name contain its encoded name?
@@ -454,7 +457,8 @@ public class HRegionInfo implements Comparable<HRegionInfo> {
         break;
       }
     }
-    if(offset == -1) throw new IOException("Invalid regionName format");
+    if (offset == -1) throw new IOException(INVALID_REGION_NAME_FORMAT_MESSAGE + " : "
+        + Bytes.toStringBinary(regionName));
     byte[] tableName = new byte[offset];
     System.arraycopy(regionName, 0, tableName, 0, offset);
     offset = -1;
@@ -464,7 +468,8 @@ public class HRegionInfo implements Comparable<HRegionInfo> {
         break;
       }
     }
-    if(offset == -1) throw new IOException("Invalid regionName format");
+    if (offset == -1) throw new IOException(INVALID_REGION_NAME_FORMAT_MESSAGE + " : "
+        + Bytes.toStringBinary(regionName));
     byte [] startKey = HConstants.EMPTY_BYTE_ARRAY;
     if(offset != tableName.length + 1) {
       startKey = new byte[offset - tableName.length - 1];
@@ -479,6 +484,19 @@ public class HRegionInfo implements Comparable<HRegionInfo> {
     elements[1] = startKey;
     elements[2] = id;
     return elements;
+  }
+
+  public static boolean isEncodedRegionName(byte[] regionName) throws IOException {
+    try {
+      HRegionInfo.parseRegionName(regionName);
+      return false;
+    } catch (IOException e) {
+      if (StringUtils.stringifyException(e)
+          .contains(HRegionInfo.INVALID_REGION_NAME_FORMAT_MESSAGE)) {
+        return true;
+      }
+      throw e;
+    }
   }
 
   /** @return the regionId */

@@ -15,31 +15,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.hadoop.hbase.snapshot;
-
+package org.apache.hadoop.hbase.client;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
-import org.apache.hadoop.hbase.classification.InterfaceStability;
-import org.apache.hadoop.hbase.client.SnapshotDescription;
-import org.apache.hadoop.hbase.protobuf.generated.SnapshotProtos;
 
 /**
- * Thrown when a snapshot exists but should not
+ * POJO representing the snapshot type
  */
-@SuppressWarnings("serial")
 @InterfaceAudience.Public
-@InterfaceStability.Evolving
-public class SnapshotExistsException extends HBaseSnapshotException {
-
-  /**
-   * Failure due to the snapshot already existing
-   * @param msg full description of the failure
-   * @param desc snapshot that was attempted
-   */
-  public SnapshotExistsException(String msg, SnapshotDescription desc) {
-    super(msg, desc);
-  }
-
-  public SnapshotExistsException(String message, SnapshotProtos.SnapshotDescription snapshotDesc) {
-    super(message, snapshotDesc);
-  }
+public enum SnapshotType {
+  DISABLED, FLUSH, SKIPFLUSH;
 }

@@ -22,6 +22,8 @@ import com.google.protobuf.ByteString;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.regex.Pattern;
 
 import org.apache.hadoop.hbase.CellScannable;
 import org.apache.hadoop.hbase.DoNotRetryIOException;
@@ -911,13 +913,16 @@ public final class RequestConverter {
    */
   public static CompactRegionRequest buildCompactRegionRequest(final byte[] regionName,
       final boolean major, final byte[] family) {
+    return buildCompactRegionRequest(regionName, major, Optional.ofNullable(family));
+  }
+
+  public static CompactRegionRequest buildCompactRegionRequest(final byte[] regionName,
+      final boolean major, final Optional<byte[]> family) {
     CompactRegionRequest.Builder builder = CompactRegionRequest.newBuilder();
     RegionSpecifier region = buildRegionSpecifier(RegionSpecifierType.REGION_NAME, regionName);
     builder.setRegion(region);
     builder.setMajor(major);
-    if (family != null) {
-      builder.setFamily(ByteStringer.wrap(family));
-    }
+    family.ifPresent(f -> builder.setFamily(ByteStringer.wrap(f)));
     return builder.build();
   }
 
@@ -1051,12 +1056,21 @@ public final class RequestConverter {
   public static MoveRegionRequest buildMoveRegionRequest(final byte[] encodedRegionName,
       final byte[] destServerName) {
     MoveRegionRequest.Builder builder = MoveRegionRequest.newBuilder();
-    builder.setRegion(
-      buildRegionSpecifier(RegionSpecifierType.ENCODED_REGION_NAME, encodedRegionName));
+    builder.setRegion(buildRegionSpecifier(RegionSpecifierType.ENCODED_REGION_NAME,
+      encodedRegionName));
     if (destServerName != null) {
-      builder.setDestServerName(
-        ProtobufUtil.toServerName(ServerName.valueOf(Bytes.toString(destServerName))));
+      builder.setDestServerName(ProtobufUtil.toServerName(ServerName
+        .valueOf(Bytes.toString(destServerName))));
     }
+    return builder.build();
+  }
+
+  public static MoveRegionRequest buildMoveRegionRequest(final byte[] encodedRegionName,
+      final Optional<ServerName> destServerName) {
+    MoveRegionRequest.Builder builder = MoveRegionRequest.newBuilder();
+    builder.setRegion(buildRegionSpecifier(RegionSpecifierType.ENCODED_REGION_NAME,
+      encodedRegionName));
+    destServerName.ifPresent(dest -> builder.setDestServerName(ProtobufUtil.toServerName(dest)));
     return builder.build();
   }
 
@@ -1163,13 +1177,24 @@ public final class RequestConverter {
    */
   public static CreateTableRequest buildCreateTableRequest(final HTableDescriptor hTableDesc,
       final byte[][] splitKeys) {
+    return buildCreateTableRequest(hTableDesc, Optional.ofNullable(splitKeys));
+  }
+
+  /**
+   * Creates a protocol buffer CreateTableRequest
+   * @param hTableDesc
+   * @param splitKeys
+   * @return a CreateTableRequest
+   */
+  public static CreateTableRequest buildCreateTableRequest(final HTableDescriptor hTableDesc,
+      final Optional<byte[][]> splitKeys) {
     CreateTableRequest.Builder builder = CreateTableRequest.newBuilder();
     builder.setTableSchema(hTableDesc.convert());
-    if (splitKeys != null) {
-      for (byte[] splitKey : splitKeys) {
-        builder.addSplitKeys(ByteStringer.wrap(splitKey));
+    splitKeys.ifPresent(keys -> {
+      for (byte[] key : keys) {
+        builder.addSplitKeys(ByteStringer.wrap(key));
       }
-    }
+    });
     return builder.build();
   }
 
@@ -1233,6 +1258,16 @@ public final class RequestConverter {
   public static GetTableDescriptorsRequest buildGetTableDescriptorsRequest(final String pattern) {
     GetTableDescriptorsRequest.Builder builder = GetTableDescriptorsRequest.newBuilder();
     builder.setRegex(pattern);
+    return builder.build();
+  }
+
+  /**
+   * Creates a protocol buffer GetTableDescriptorsRequest
+   * @return a GetTableDescriptorsRequest
+   */
+  public static GetTableDescriptorsRequest buildGetTableDescriptorsRequest(Optional<Pattern> pattern) {
+    GetTableDescriptorsRequest.Builder builder = GetTableDescriptorsRequest.newBuilder();
+    pattern.ifPresent(p -> builder.setRegex(p.pattern()));
     return builder.build();
   }
 

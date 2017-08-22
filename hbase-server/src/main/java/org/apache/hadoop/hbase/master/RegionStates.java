@@ -850,7 +850,7 @@ public class RegionStates {
     return result;
   }
 
-  protected RegionState getRegionState(final HRegionInfo hri) {
+  public RegionState getRegionState(final HRegionInfo hri) {
     return getRegionState(hri.getEncodedName());
   }
 

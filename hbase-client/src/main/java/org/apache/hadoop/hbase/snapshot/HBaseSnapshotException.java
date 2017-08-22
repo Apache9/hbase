@@ -19,8 +19,10 @@ package org.apache.hadoop.hbase.snapshot;
 
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.classification.InterfaceStability;
+import org.apache.hadoop.hbase.client.SnapshotDescription;
+import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
+import org.apache.hadoop.hbase.protobuf.generated.SnapshotProtos;
 import org.apache.hadoop.hbase.DoNotRetryIOException;
-import org.apache.hadoop.hbase.protobuf.generated.SnapshotProtos.SnapshotDescription;
 
 /**
  * General exception base class for when a snapshot fails
@@ -61,6 +63,10 @@ public class HBaseSnapshotException extends DoNotRetryIOException {
     this.description = desc;
   }
 
+  public HBaseSnapshotException(String msg, Throwable cause, SnapshotProtos.SnapshotDescription snapshotDesc) {
+    this(msg, cause, ProtobufUtil.createSnapshotDesc(snapshotDesc));
+  }
+
   /**
    * Exception when the description of the snapshot cannot be determined, due to some root other
    * root cause
@@ -69,6 +75,10 @@ public class HBaseSnapshotException extends DoNotRetryIOException {
    */
   public HBaseSnapshotException(String message, Exception e) {
     super(message, e);
+  }
+
+  public HBaseSnapshotException(String message, SnapshotProtos.SnapshotDescription snapshotDesc) {
+    this(message, ProtobufUtil.createSnapshotDesc(snapshotDesc));
   }
 
   public SnapshotDescription getSnapshotDescription() {

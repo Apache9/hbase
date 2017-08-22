@@ -19,7 +19,8 @@ package org.apache.hadoop.hbase.snapshot;
 
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.classification.InterfaceStability;
-import org.apache.hadoop.hbase.protobuf.generated.SnapshotProtos.SnapshotDescription;
+import org.apache.hadoop.hbase.client.SnapshotDescription;
+import org.apache.hadoop.hbase.protobuf.generated.SnapshotProtos;
 
 
 /**
@@ -41,5 +42,12 @@ public class SnapshotDoesNotExistException extends HBaseSnapshotException {
    */
   public SnapshotDoesNotExistException(SnapshotDescription desc) {
     super("Snapshot '" + desc.getName() +"' doesn't exist on the filesystem", desc);
+  }
+
+  /**
+   * @param desc expected snapshot to find
+   */
+  public SnapshotDoesNotExistException(SnapshotProtos.SnapshotDescription snapshotDesc) {
+    super("Snapshot '" + snapshotDesc.getName() +"' doesn't exist on the filesystem", snapshotDesc);
   }
 }

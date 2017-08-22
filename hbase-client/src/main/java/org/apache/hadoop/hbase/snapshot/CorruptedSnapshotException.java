@@ -19,7 +19,8 @@ package org.apache.hadoop.hbase.snapshot;
 
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.classification.InterfaceStability;
-import org.apache.hadoop.hbase.protobuf.generated.SnapshotProtos.SnapshotDescription;
+import org.apache.hadoop.hbase.client.SnapshotDescription;
+import org.apache.hadoop.hbase.protobuf.generated.SnapshotProtos;
 
 
 /**
@@ -45,6 +46,15 @@ public class CorruptedSnapshotException extends HBaseSnapshotException {
    */
   public CorruptedSnapshotException(String message, SnapshotDescription snapshot) {
     super(message, snapshot);
+  }
+
+  /**
+   * Snapshot was corrupt for some reason
+   * @param message full description of the failure
+   * @param snapshot snapshot that was expected
+   */
+  public CorruptedSnapshotException(String message, SnapshotProtos.SnapshotDescription snapshotDesc) {
+    super(message, snapshotDesc);
   }
 
   /**

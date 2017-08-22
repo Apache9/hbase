@@ -45,12 +45,15 @@ import java.lang.reflect.Type;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.NavigableSet;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -82,6 +85,8 @@ import org.apache.hadoop.hbase.client.PackagePrivateFieldAccessor;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.Scan;
+import org.apache.hadoop.hbase.client.SnapshotDescription;
+import org.apache.hadoop.hbase.client.SnapshotType;
 import org.apache.hadoop.hbase.client.metrics.ScanMetrics;
 import org.apache.hadoop.hbase.exceptions.DeserializationException;
 import org.apache.hadoop.hbase.filter.ByteArrayComparable;
@@ -140,10 +145,12 @@ import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.RegionSpecifier.Re
 import org.apache.hadoop.hbase.protobuf.generated.MapReduceProtos;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.CreateTableRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.GetTableDescriptorsResponse;
+import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.ListNamespaceDescriptorsResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.MasterService;
 import org.apache.hadoop.hbase.protobuf.generated.QuotaProtos;
 import org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.RegionServerReportRequest;
 import org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.RegionServerStartupRequest;
+import org.apache.hadoop.hbase.protobuf.generated.SnapshotProtos;
 import org.apache.hadoop.hbase.protobuf.generated.WALProtos.CompactionDescriptor;
 import org.apache.hadoop.hbase.protobuf.generated.WALProtos.RegionEventDescriptor;
 import org.apache.hadoop.hbase.protobuf.generated.WALProtos.RegionEventDescriptor.EventType;
@@ -391,6 +398,14 @@ public final class ProtobufUtil {
       ret[i] = HTableDescriptor.convert(proto.getTableSchema(i));
     }
     return ret;
+  }
+
+  public static List<HTableDescriptor> toTableDescriptorList(GetTableDescriptorsResponse proto) {
+    if (proto == null) {
+      return Collections.emptyList();
+    }
+    return proto.getTableSchemaList().stream().map(HTableDescriptor::convert)
+        .collect(Collectors.toList());
   }
 
   /**
@@ -2036,7 +2051,7 @@ public final class ProtobufUtil {
    * @param proto the GetOnlineRegionResponse
    * @return the list of region info or null if <code>proto</code> is null
    */
-  static List<HRegionInfo> getRegionInfos(final GetOnlineRegionResponse proto) {
+  public static List<HRegionInfo> getRegionInfos(final GetOnlineRegionResponse proto) {
     if (proto == null) return null;
     List<HRegionInfo> regionInfos = new ArrayList<HRegionInfo>();
     for (RegionInfo regionInfo: proto.getRegionInfoList()) {
@@ -2780,7 +2795,7 @@ public final class ProtobufUtil {
   }
 
   public static NamespaceDescriptor toNamespaceDescriptor(
-      HBaseProtos.NamespaceDescriptor desc) throws IOException {
+      HBaseProtos.NamespaceDescriptor desc) {
     NamespaceDescriptor.Builder b =
       NamespaceDescriptor.create(desc.getName().toStringUtf8());
     for(HBaseProtos.NameStringPair prop : desc.getConfigurationList()) {
@@ -2923,6 +2938,13 @@ public final class ProtobufUtil {
       tableNames[i] = toTableName(tableNamesList.get(i));
     }
     return tableNames;
+  }
+
+  public static List<TableName> toTableNameList(List<HBaseProtos.TableName> tableNamesList) {
+    if (tableNamesList == null) {
+      return Collections.emptyList();
+    }
+    return tableNamesList.stream().map(ProtobufUtil::toTableName).collect(Collectors.toList());
   }
 
   /**
@@ -3435,5 +3457,89 @@ public final class ProtobufUtil {
         maxStamp = timeRange.getTo();
       }
     return new TimeRange(minStamp, maxStamp);
+  }
+
+  public static List<NamespaceDescriptor> toNamespaceDescriptorList(ListNamespaceDescriptorsResponse resp) {
+    if (resp == null) {
+      return Collections.emptyList();
+    }
+    return resp.getNamespaceDescriptorList().stream().map(ProtobufUtil::toNamespaceDescriptor)
+        .collect(Collectors.toList());
+  }
+
+  /**
+   * Creates {@link org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.SnapshotDescription.Type}
+   * from {@link SnapshotType}
+   * @param type the SnapshotDescription type
+   * @return the protobuf SnapshotDescription type
+   */
+  public static SnapshotProtos.SnapshotDescription.Type
+      createProtosSnapShotDescType(SnapshotType type) {
+    return SnapshotProtos.SnapshotDescription.Type.valueOf(type.name());
+  }
+
+  /**
+   * Creates {@link org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.SnapshotDescription.Type}
+   * from the type of SnapshotDescription string
+   * @param snapshotDesc string representing the snapshot description type
+   * @return the protobuf SnapshotDescription type
+   */
+  public static SnapshotProtos.SnapshotDescription.Type
+      createProtosSnapShotDescType(String snapshotDesc) {
+    return SnapshotProtos.SnapshotDescription.Type.valueOf(snapshotDesc.toUpperCase(Locale.ROOT));
+  }
+
+  /**
+   * Creates {@link SnapshotType} from the type of
+   * {@link org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.SnapshotDescription}
+   * @param type the snapshot description type
+   * @return the protobuf SnapshotDescription type
+   */
+  public static SnapshotType createSnapshotType(SnapshotProtos.SnapshotDescription.Type type) {
+    return SnapshotType.valueOf(type.toString());
+  }
+
+  /**
+   * Convert from {@link SnapshotDescription} to
+   * {@link org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.SnapshotDescription}
+   * @param snapshotDesc the POJO SnapshotDescription
+   * @return the protobuf SnapshotDescription
+   */
+  public static SnapshotProtos.SnapshotDescription
+      createHBaseProtosSnapshotDesc(SnapshotDescription snapshotDesc) {
+    SnapshotProtos.SnapshotDescription.Builder builder = SnapshotProtos.SnapshotDescription.newBuilder();
+    if (snapshotDesc.getTableName() != null) {
+      builder.setTable(snapshotDesc.getTableNameAsString());
+    }
+    if (snapshotDesc.getName() != null) {
+      builder.setName(snapshotDesc.getName());
+    }
+    if (snapshotDesc.getOwner() != null) {
+      builder.setOwner(snapshotDesc.getOwner());
+    }
+    if (snapshotDesc.getCreationTime() != -1L) {
+      builder.setCreationTime(snapshotDesc.getCreationTime());
+    }
+    if (snapshotDesc.getVersion() != -1) {
+      builder.setVersion(snapshotDesc.getVersion());
+    }
+    builder.setType(ProtobufUtil.createProtosSnapShotDescType(snapshotDesc.getType()));
+    SnapshotProtos.SnapshotDescription snapshot = builder.build();
+    return snapshot;
+  }
+
+  /**
+   * Convert from
+   * {@link org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.SnapshotDescription} to
+   * {@link SnapshotDescription}
+   * @param snapshotDesc the protobuf SnapshotDescription
+   * @return the POJO SnapshotDescription
+   */
+  public static SnapshotDescription
+      createSnapshotDesc(SnapshotProtos.SnapshotDescription snapshotDesc) {
+    return new SnapshotDescription(snapshotDesc.getName(),
+        snapshotDesc.hasTable() ? TableName.valueOf(snapshotDesc.getTable()) : null,
+        createSnapshotType(snapshotDesc.getType()), snapshotDesc.getOwner(),
+        snapshotDesc.getCreationTime(), snapshotDesc.getVersion());
   }
 }

@@ -19,7 +19,8 @@ package org.apache.hadoop.hbase.snapshot;
 
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.classification.InterfaceStability;
-import org.apache.hadoop.hbase.protobuf.generated.SnapshotProtos.SnapshotDescription;
+import org.apache.hadoop.hbase.client.SnapshotDescription;
+import org.apache.hadoop.hbase.protobuf.generated.SnapshotProtos;
 
 /**
  * Thrown when a snapshot could not be created due to a server-side error when
@@ -55,5 +56,13 @@ public class SnapshotCreationException extends HBaseSnapshotException {
    */
   public SnapshotCreationException(String msg, Throwable cause, SnapshotDescription desc) {
     super(msg, cause, desc);
+  }
+
+  public SnapshotCreationException(String message, SnapshotProtos.SnapshotDescription snapshotDesc) {
+    super(message, snapshotDesc);
+  }
+
+  public SnapshotCreationException(String msg, Throwable cause, SnapshotProtos.SnapshotDescription snapshotDesc) {
+    super(msg, cause, snapshotDesc);
   }
 }

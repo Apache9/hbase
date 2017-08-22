@@ -47,6 +47,7 @@ import org.apache.hadoop.hbase.ipc.RpcClient;
 import org.apache.hadoop.hbase.ipc.RpcClientFactory;
 import org.apache.hadoop.hbase.ipc.RpcControllerFactory;
 import org.apache.hadoop.hbase.protobuf.RequestConverter;
+import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.AdminService;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.ClientService;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.IsMasterRunningResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.MasterService;
@@ -91,6 +92,8 @@ class AsyncConnectionImpl implements AsyncConnection {
   private final NonceGenerator nonceGenerator;
 
   private final ConcurrentMap<String, ClientService.Interface> rsStubs = new ConcurrentHashMap<>();
+
+  private final ConcurrentMap<String, AdminService.Interface> adminSubs = new ConcurrentHashMap<>();
 
   private final AtomicReference<MasterService.Interface> masterStub = new AtomicReference<>();
 
@@ -235,6 +238,16 @@ class AsyncConnectionImpl implements AsyncConnection {
     }
   }
 
+  private AdminService.Interface createAdminServerStub(ServerName serverName) throws IOException{
+    return AdminService.newStub(rpcClient.createRpcChannel(serverName, user, rpcTimeout));
+  }
+
+  AdminService.Interface getAdminStub(ServerName serverName) throws IOException {
+    return CollectionUtils.computeIfAbsentEx(adminSubs,
+      getStubKey(AdminService.Interface.class.getSimpleName(), serverName, hostnameCanChange),
+      () -> createAdminServerStub(serverName));
+  }
+
   private HBaseRpcController getRpcController() {
     HBaseRpcController controller = this.rpcControllerFactory.newController();
     controller.setCallTimeout((int) TimeUnit.NANOSECONDS.toMillis(connConf.getRpcTimeoutNs()));
@@ -261,6 +274,27 @@ class AsyncConnectionImpl implements AsyncConnection {
         RawAsyncTableImpl rawTable = new RawAsyncTableImpl(AsyncConnectionImpl.this, this);
         return new AsyncTableImpl(AsyncConnectionImpl.this, rawTable, pool);
       }
+    };
+  }
+
+  @Override
+  public AsyncAdminBuilder<RawAsyncHBaseAdmin> getAdminBuilder() {
+    return new AsyncAdminBuilderBase<RawAsyncHBaseAdmin>(connConf) {
+      @Override
+      public RawAsyncHBaseAdmin build() {
+        return new RawAsyncHBaseAdmin(AsyncConnectionImpl.this, this);
+      }   
+    };
+  }
+
+  @Override
+  public AsyncAdminBuilder<AsyncHBaseAdmin> getAdminBuilder(ExecutorService pool) {
+    return new AsyncAdminBuilderBase<AsyncHBaseAdmin>(connConf) {
+      @Override
+      public AsyncHBaseAdmin build() {
+        RawAsyncHBaseAdmin rawAdmin = new RawAsyncHBaseAdmin(AsyncConnectionImpl.this, this);
+        return new AsyncHBaseAdmin(rawAdmin, pool);
+      }   
     };
   }
 }

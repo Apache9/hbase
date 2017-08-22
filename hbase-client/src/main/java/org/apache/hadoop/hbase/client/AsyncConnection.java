@@ -96,4 +96,46 @@ public interface AsyncConnection extends Closeable {
    * @param pool the thread pool to use for executing callback
    */
   AsyncTableBuilder<AsyncTable> getTableBuilder(TableName tableName, ExecutorService pool);
+
+  /** 
+   * Retrieve an {@link AsyncAdmin} implementation to administer an HBase cluster.
+   * <p>
+   * The returned instance will use default configs. Use {@link #getAdminBuilder()} if you want to
+   * customize some configs.
+   * <p>
+   * The admin operation's returned {@code CompletableFuture} will be finished directly in the rpc
+   * framework's callback thread, so typically you should not do any time consuming work inside
+   * these methods.
+   * @return an {@link AsyncAdmin} instance for cluster administration
+   */
+  default AsyncAdmin getAdmin() {
+    return getAdminBuilder().build();
+  }
+
+  /** 
+   * Returns an {@link AsyncAdminBuilder} for creating {@link AsyncAdmin}.
+   * <p>
+   * The admin operation's returned {@code CompletableFuture} will be finished directly in the rpc
+   * framework's callback thread, so typically you should not do any time consuming work inside
+   * these methods.
+   */
+  AsyncAdminBuilder<RawAsyncHBaseAdmin> getAdminBuilder();
+
+  /** 
+   * Retrieve an {@link AsyncAdmin} implementation to administer an HBase cluster.
+   * <p>
+   * The returned instance will use default configs. Use {@link #getAdminBuilder(ExecutorService)}
+   * if you want to customize some configs.
+   * @param pool the thread pool to use for executing callback
+   * @return an {@link AsyncAdmin} instance for cluster administration
+   */
+  default AsyncAdmin getAdmin(ExecutorService pool) {
+    return getAdminBuilder(pool).build();
+  }
+
+  /** 
+   * Returns an {@link AsyncAdminBuilder} for creating {@link AsyncAdmin}.
+   * @param pool the thread pool to use for executing callback
+   */
+  AsyncAdminBuilder<AsyncHBaseAdmin> getAdminBuilder(ExecutorService pool);
 }

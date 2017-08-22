@@ -21,7 +21,7 @@ package org.apache.hadoop.hbase.quotas;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
@@ -422,5 +422,36 @@ public class QuotaTableUtil {
 
   protected static String getUserFromRowKey(final byte[] key) {
     return Bytes.toString(key, QUOTA_USER_ROW_KEY_PREFIX.length);
+  }
+
+  public static void parseResultToCollection(final Result result,
+      Collection<QuotaSettings> quotaSettings) throws IOException {
+
+    QuotaTableUtil.parseResult(result, new QuotaTableUtil.QuotasVisitor() {
+      @Override
+      public void visitUserQuotas(String userName, Quotas quotas) {
+        quotaSettings.addAll(QuotaSettingsFactory.fromUserQuotas(userName, quotas));
+      }   
+
+      @Override
+      public void visitUserQuotas(String userName, TableName table, Quotas quotas) {
+        quotaSettings.addAll(QuotaSettingsFactory.fromUserQuotas(userName, table, quotas));
+      }   
+
+      @Override
+      public void visitUserQuotas(String userName, String namespace, Quotas quotas) {
+        quotaSettings.addAll(QuotaSettingsFactory.fromUserQuotas(userName, namespace, quotas));
+      }   
+
+      @Override
+      public void visitTableQuotas(TableName tableName, Quotas quotas) {
+        quotaSettings.addAll(QuotaSettingsFactory.fromTableQuotas(tableName, quotas));
+      }   
+
+      @Override
+      public void visitNamespaceQuotas(String namespace, Quotas quotas) {
+        quotaSettings.addAll(QuotaSettingsFactory.fromNamespaceQuotas(namespace, quotas));
+      }   
+    });
   }
 }
