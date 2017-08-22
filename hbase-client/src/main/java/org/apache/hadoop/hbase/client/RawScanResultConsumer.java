@@ -17,6 +17,8 @@
  */
 package org.apache.hadoop.hbase.client;
 
+import java.util.Optional;
+
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.classification.InterfaceStability;
 import org.apache.hadoop.hbase.client.Result;
@@ -50,14 +52,14 @@ public interface RawScanResultConsumer {
   }
 
   /**
-   * Used to suspend or stop a scan.
+   * Used to suspend or stop a scan, or get a scan cursor if available.
    * <p>
-   * Notice that, you should only call the methods below inside onNext or onHeartbeat method. A
-   * IllegalStateException will be thrown if you call them at other places.
+   * Notice that, you should only call the {@link #suspend()} or {@link #terminate()} inside onNext
+   * or onHeartbeat method. A IllegalStateException will be thrown if you call them at other places.
    * <p>
-   * You can only call one of the methods below, i.e., call suspend or terminate(of course you are
-   * free to not call them both), and the methods are not reentrant. A IllegalStateException will be
-   * thrown if you have already called one of the methods.
+   * You can only call one of the {@link #suspend()} and {@link #terminate()} methods(of course you
+   * are free to not call them both), and the methods are not reentrant. An IllegalStateException
+   * will be thrown if you have already called one of the methods.
    */
   @InterfaceAudience.Public
   @InterfaceStability.Unstable
@@ -79,6 +81,12 @@ public interface RawScanResultConsumer {
      * or you want to stop the scan in onHeartbeat method because it has spent too many time.
      */
     void terminate();
+
+    /**
+     * Get the scan cursor if available.
+     * @return The scan cursor.
+     */
+    Optional<Cursor> cursor();
   }
 
   /**
@@ -91,8 +99,15 @@ public interface RawScanResultConsumer {
   void onNext(Result[] results, ScanController controller);
 
   /**
-   * Indicate that there is an heartbeat message but we have not cumulated enough cells to call
-   * onNext.
+   * Indicate that there is a heartbeat message but we have not cumulated enough cells to call
+   * {@link #onNext(Result[], ScanController)}.
+   * <p>
+   * Note that this method will always be called when RS returns something to us but we do not have
+   * enough cells to call {@link #onNext(Result[], ScanController)}. Sometimes it may not be a
+   * 'heartbeat' message for RS, for example, we have a large row with many cells and size limit is
+   * exceeded before sending all the cells for this row. For RS it does send some data to us and the
+   * time limit has not been reached, but we can not return the data to client so here we call this
+   * method to tell client we have already received something.
    * <p>
    * This method give you a chance to terminate a slow scan operation.
    * @param controller used to suspend or terminate the scan. Notice that the {@code controller}
