@@ -191,11 +191,12 @@ public class MetaServerShutdownHandler extends ServerShutdownHandler {
           throw new IOException("Aborting", e);
         }
         try {
+          LOG.warn("Sleep " + waitTime + " ms to verify and assign meta, because got exception", e);
           Thread.sleep(waitTime);
         } catch (InterruptedException e1) {
           LOG.warn("Interrupted when is the thread sleep", e1);
           Thread.currentThread().interrupt();
-          throw (InterruptedIOException)new InterruptedIOException().initCause(e1);
+          throw (InterruptedIOException) new InterruptedIOException().initCause(e1);
         }
         iFlag++;
       }

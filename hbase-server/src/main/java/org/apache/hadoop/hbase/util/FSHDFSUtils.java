@@ -198,10 +198,13 @@ public class FSHDFSUtils extends FSUtils {
       try {
         // On the first time through wait the short 'firstPause'.
         if (nbAttempt == 0) {
+          LOG.warn("Sleep " + firstPause + " ms to recovery lease on dfs file " + p + " again");
           Thread.sleep(firstPause);
         } else {
-          // Cycle here until  (subsequentPause * nbAttempt) elapses.  While spinning, check
+          // Cycle here until (subsequentPause * nbAttempt) elapses. While spinning, check
           // isFileClosed if available (should be in hadoop 2.0.5... not in hadoop 1 though.
+          LOG.warn("Try sleep " + (subsequentPauseBase * nbAttempt)
+              + " ms to recovery lease on dfs file " + p + " again");
           long localStartWaiting = EnvironmentEdgeManager.currentTimeMillis();
           while ((EnvironmentEdgeManager.currentTimeMillis() - localStartWaiting) <
               subsequentPauseBase * nbAttempt) {

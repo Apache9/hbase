@@ -526,9 +526,11 @@ public class ServerManager {
           Threads.sleep(2000);
         }
       }
-
     }
+
     if (!regionsShouldMove.isEmpty()) {
+      LOG.info("Should move " + regionsShouldMove.size()
+          + " regions of system table to a server with highest version");
       AssignmentManager am = services.getAssignmentManager();
       List<RegionPlan> plans = new ArrayList<>();
       for (HRegionInfo regionInfo : regionsShouldMove) {
@@ -595,7 +597,7 @@ public class ServerManager {
       this.services.getExecutorService().submit(new ServerShutdownHandler(this.master,
         this.services, this.deadservers, serverName, true));
     }
-    LOG.debug("Added=" + serverName +
+    LOG.info("Added=" + serverName +
       " to dead servers, submitted shutdown handler to be executed meta=" + carryingMeta);
 
     // Tell our listeners that a server was removed
