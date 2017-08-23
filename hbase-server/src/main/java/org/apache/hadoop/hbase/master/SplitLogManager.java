@@ -321,7 +321,7 @@ public class SplitLogManager extends ZooKeeperListener {
           "Doing distributed log split in " + logDirs);
     FileStatus[] logfiles = getFileList(logDirs, filter);
     status.setStatus("Checking directory contents...");
-    LOG.debug("Scheduling batch of logs to split");
+    LOG.info("Scheduling batch of logs to split");
     SplitLogCounters.tot_mgr_log_split_batch_start.incrementAndGet();
     LOG.info("started splitting " + logfiles.length + " logs in " + logDirs);
     long t = EnvironmentEdgeManager.currentTimeMillis();

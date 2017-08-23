@@ -566,9 +566,16 @@ public class HLogSplitter {
       LOG.warn("File " + path + " might be still open, length is 0");
     }
 
+    long startRecoverTS = EnvironmentEdgeManager.currentTimeMillis();
+    long afterRecoverTS = startRecoverTS;
     try {
+      status.setStatus("Recovering lease");
       FSUtils.getInstance(fs, conf).recoverFileLease(fs, path, conf, reporter);
+      afterRecoverTS = EnvironmentEdgeManager.currentTimeMillis();
+      LOG.info("Recover lease for file: " + file.getPath().getName() + " cost: "
+          + (afterRecoverTS - startRecoverTS) + " ms");
       try {
+        status.setStatus("Create reader");
         in = getReader(fs, path, conf, reporter);
       } catch (EOFException e) {
         if (length <= 0) {
@@ -599,6 +606,8 @@ public class HLogSplitter {
       t.initCause(e);
       throw t;
     }
+    LOG.info("Create reader for file: " + file.getPath().getName() + " cost: "
+        + (EnvironmentEdgeManager.currentTimeMillis() - afterRecoverTS) + " ms");
     return in;
   }
 

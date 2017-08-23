@@ -162,6 +162,7 @@ public class ServerShutdownHandler extends EventHandler {
       // {@link SplitTransaction}.  We'd also have to be figure another way for
       // doing the below hbase:meta daughters fixup.
       Set<HRegionInfo> hris = null;
+      LOG.info("Wait on meta to come online; we need it to progress.");
       while (!this.server.isStopped()) {
         try {
           this.server.getCatalogTracker().waitForMeta();

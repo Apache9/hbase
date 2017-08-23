@@ -326,7 +326,7 @@ public class MasterFileSystem {
             throw new IOException("Failed fs.rename for log split: " + logDir);
           }
           logDir = splitDir;
-          LOG.debug("Renamed region directory: " + splitDir);
+          LOG.info("Renamed region directory: " + splitDir);
         } else if (!fs.exists(splitDir)) {
           LOG.info("Log dir for server " + serverName + " does not exist");
           continue;
