@@ -176,7 +176,7 @@ public final class Canary implements Tool {
         watch.start();
         futures.add(table
             .scanAll(new Scan().withStartRow(randomKey(region.getStartKey(), region.getEndKey()))
-                .withStopRow(region.getEndKey()).addFamily(column.getName())
+                .withStopRow(region.getEndKey()).addFamily(column.getName()).setRaw(true)
                 .setFilter(new FirstKeyOnlyFilter()).setCacheBlocks(false).setOneRowLimit())
             .whenComplete((r, e) -> {
               if (e != null) {
