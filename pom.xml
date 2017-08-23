@@ -1012,7 +1012,7 @@
     <thrift.path>thrift</thrift.path>
     <thrift.version>0.9.0</thrift.version>
     <zookeeper-mdh.version>3.4.5-mdh1.2.0</zookeeper-mdh.version>
-    <hadoop-mdh.version>2.4.0-mdh2.3.27</hadoop-mdh.version>
+    <hadoop-mdh.version>2.4.0-mdh2.3.22</hadoop-mdh.version>
     <htrace-mdh.version>3.1.1-mdh1.0-SNAPSHOT</htrace-mdh.version>
     <minikdc.version>${hadoop-mdh.version}</minikdc.version>
     <rrd-on-hbase.version>1.0.3</rrd-on-hbase.version>
