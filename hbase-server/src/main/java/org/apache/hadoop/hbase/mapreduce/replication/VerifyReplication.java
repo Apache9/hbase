@@ -19,6 +19,7 @@
 package org.apache.hadoop.hbase.mapreduce.replication;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 import com.google.common.annotations.VisibleForTesting;
 import org.apache.commons.logging.Log;
@@ -92,6 +93,7 @@ public class VerifyReplication extends Configured implements Tool {
   String stopRow = null;
   int scanRateLimit = -1;
   long verifyRows = Long.MAX_VALUE;
+  String logTable = null;
   int sleepToReCompare = 0;
 
   // Source table snapshot name
@@ -125,6 +127,10 @@ public class VerifyReplication extends Configured implements Tool {
     private HTable sourceTable;
     private HTable peerTable;
     private int sleepToReCompare;
+
+    private HTable logTable;
+    private String peerId;
+    private String tableName;
     
     @Override
     public void setup(Context context) {
@@ -168,7 +174,14 @@ public class VerifyReplication extends Configured implements Tool {
         if (verifyRows != Long.MAX_VALUE) {
           scan.setFilter(new PageFilter(verifyRows));
         }
-        sourceTable = new HTable(conf, conf.get(NAME + ".tableName"));
+
+        peerId = conf.get(NAME + ".peerId");
+        tableName = conf.get(NAME + ".tableName");
+        String logTableName = conf.get(NAME + ".logTable");
+        if (logTableName != null) {
+          logTable = new HTable(conf, logTableName);
+        }
+        sourceTable = new HTable(conf, tableName);
 
         final InputSplit tableSplit = context.getInputSplit();
         byte[] endRow;
@@ -272,6 +285,27 @@ public class VerifyReplication extends Configured implements Tool {
       context.getCounter(counter).increment(1);
       context.getCounter(Counters.BADROWS).increment(1);
       LOG.error(counter.toString() + ", rowkey=" + Bytes.toString(row.getRow()));
+      recordError(row.getRow(), counter);
+    }
+
+    private void recordError(byte[] row, Counters type) throws IOException {
+      if (logTable != null) {
+        byte[] peerIdBytes = peerId.getBytes();
+        byte[] tableNameBytes = tableName.getBytes();
+        // rowkey format: [salt][peerId-length][peerId][table-name-length][table-name][row-len][row]
+        int bufflen = 1 + 2 + peerIdBytes.length + 2 + tableNameBytes.length + 2 + row.length;
+        ByteBuffer buff = ByteBuffer.allocate(bufflen);
+        buff.put((byte) (Bytes.hashCode(row) % 256)); // append salt
+        buff.putShort((short) peerIdBytes.length);
+        buff.put(peerIdBytes);
+        buff.putShort((short) tableNameBytes.length);
+        buff.put(tableNameBytes);
+        buff.putShort((short) row.length);
+        buff.put(row);
+        Put put = new Put(buff.array());
+        put.add("A".getBytes(), "e".getBytes(), type.name().getBytes());
+        logTable.put(put);
+      }
     }
     
     @Override
@@ -363,6 +397,9 @@ public class VerifyReplication extends Configured implements Tool {
     conf.setInt(NAME + ".versions", versions);
     if (families != null) {
       conf.set(NAME+".families", families);
+    }
+    if (logTable != null) {
+      conf.set(NAME + ".logTable", logTable);
     }
 
     String peerQuorumAddress = getPeerQuorumAddress(conf);
@@ -485,6 +522,12 @@ public class VerifyReplication extends Configured implements Tool {
           verifyRows = Long.parseLong(cmd.substring(verifyRowKey.length()));
           continue;
         }
+
+        final String logTableKey = "--logtable=";
+        if (cmd.startsWith(logTableKey)) {
+          logTable = cmd.substring(logTableKey.length());
+          continue;
+        }
         
         final String sleepToReCompareKey = "--recomparesleep=";
         if (cmd.startsWith(sleepToReCompareKey)) {
@@ -582,7 +625,8 @@ public class VerifyReplication extends Configured implements Tool {
       System.err.println("ERROR: " + errorMsg);
     }
     System.err.println("Usage: verifyrep [--starttime=X] \n"
-        + " [--endtime=Y] [--families=A] [--sourceSnapshotName=P] [--sourceSnapshotTmpDir=Q] [--peerSnapshotName=R] \n"
+        + " [--endtime=Y] [--families=A] [--logtable=TB] \n"
+        + " [--sourceSnapshotName=P] [--sourceSnapshotTmpDir=Q] [--peerSnapshotName=R] \n"
         + " [--peerSnapshotTmpDir=S] [--peerFSAddress=T] [--peerHBaseRootAddress=U] <peerid> <tablename>");
     System.err.println();
     System.err.println("Options:");
@@ -596,6 +640,7 @@ public class VerifyReplication extends Configured implements Tool {
     System.err.println(" scanrate               the scan rate limit: rows per second for each region.");
     System.err.println(" verifyrows             number of rows each region in source table to verify.");
     System.err.println(" recomparesleep         milliseconds to sleep before recompare row.");
+    System.err.println(" logtable               table to log the errors/differences (with column family A).");
     System.err.println(" sourceSnapshotName     Source Snapshot Name");
     System.err.println(" sourceSnapshotTmpDir   Tmp location to restore source table snapshot");
     System.err.println(" peerSnapshotName       Peer Snapshot Name");

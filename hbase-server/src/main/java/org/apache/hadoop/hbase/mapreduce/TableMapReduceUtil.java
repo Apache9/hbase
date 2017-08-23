@@ -36,6 +36,7 @@ import java.util.zip.ZipFile;
 
 import com.xiaomi.infra.base.nameservice.NameService;
 
+import io.netty.buffer.ByteBuf;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
@@ -45,11 +46,9 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HConstants;
-import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.catalog.MetaReader;
 import org.apache.hadoop.hbase.client.HConnection;
 import org.apache.hadoop.hbase.client.HConnectionManager;
-import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
@@ -336,8 +335,8 @@ public class TableMapReduceUtil {
   throws IOException {
     TableSnapshotInputFormat.setInput(job, snapshotName, tmpRestoreDir);
     initTableMapperJob(snapshotName, scan, mapper, outputKeyClass,
-        outputValueClass, job, addDependencyJars, false, TableSnapshotInputFormat.class);
-    addDependencyJars(job.getConfiguration(), MetricsRegistry.class);
+        outputValueClass, job, addDependencyJars, true, TableSnapshotInputFormat.class);
+    addDependencyJars(job.getConfiguration(), MetricsRegistry.class, ByteBuf.class);
     resetCacheConfig(job.getConfiguration());
   }
 
@@ -786,7 +785,8 @@ public class TableMapReduceUtil {
       com.google.protobuf.Message.class,
       com.google.common.collect.Lists.class,
       org.apache.htrace.Trace.class,
-      org.cliffc.high_scale_lib.Counter.class); // needed for mapred over snapshots
+      org.cliffc.high_scale_lib.Counter.class,
+      io.netty.buffer.ByteBuf.class); // needed for mapred over snapshots
   }
 
   /**
