@@ -278,7 +278,8 @@ public class TestVerifyReplication {
     admin1.createTable(htd);
 
     String[] args = new String[] { "--logtable=" + logTableName, "1", Bytes.toString(tableName) };
-    Job job = new VerifyReplication().createSubmittableJob(utility1.getConfiguration(), args);
+    Configuration conf = HBaseConfiguration.create(utility1.getConfiguration());
+    Job job = new VerifyReplication().createSubmittableJob(conf, args);
 
     if (job == null) {
       fail("Job wasn't created, see the log");
@@ -294,7 +295,7 @@ public class TestVerifyReplication {
     // delete row-1, GOODROWS will change
     Delete delete = new Delete(Bytes.toBytes("row-1"));
     htable2.delete(delete);
-    job = new VerifyReplication().createSubmittableJob(utility1.getConfiguration(), args);
+    job = new VerifyReplication().createSubmittableJob(conf, args);
     if (job == null) {
       fail("Job wasn't created, see the log");
     }
@@ -307,7 +308,7 @@ public class TestVerifyReplication {
       job.getCounters().findCounter(VerifyReplication.Verifier.Counters.BADROWS).getValue());
 
     Result[] rs = null;
-    try (HTable ht = new HTable(utility1.getConfiguration(), logTable)) {
+    try (HTable ht = new HTable(conf, logTable)) {
       try (ResultScanner scanner = ht.getScanner(new Scan())) {
         rs = scanner.next(10);
       }
