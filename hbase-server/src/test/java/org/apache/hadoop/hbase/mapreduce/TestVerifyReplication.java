@@ -23,7 +23,9 @@ import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HTableDescriptor;
+import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.Delete;
+import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
@@ -38,6 +40,7 @@ import org.apache.hadoop.hbase.zookeeper.MiniZooKeeperCluster;
 import org.apache.hadoop.mapreduce.Job;
 import org.junit.After;
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -259,5 +262,59 @@ public class TestVerifyReplication {
     
     // it takes more time for job with scan rate
     assertTrue(cost2 > cost1);
+  }
+
+  @Test(timeout = 300000)
+  public void testLogTable() throws Exception {
+    insertTestData();
+    String logTableName = "LogTable";
+    TableName logTable = TableName.valueOf(logTableName);
+
+    // create log table
+    HBaseAdmin admin1 = utility1.getHBaseAdmin();
+    HTableDescriptor htd = new HTableDescriptor(logTable);
+    HColumnDescriptor hcd = new HColumnDescriptor(Bytes.toBytes("A"));
+    htd.addFamily(hcd);
+    admin1.createTable(htd);
+
+    String[] args = new String[] { "--logtable=" + logTableName, "1", Bytes.toString(tableName) };
+    Job job = new VerifyReplication().createSubmittableJob(utility1.getConfiguration(), args);
+
+    if (job == null) {
+      fail("Job wasn't created, see the log");
+    }
+    if (!job.waitForCompletion(true)) {
+      fail("Job failed, see the log");
+    }
+    assertEquals(10,
+      job.getCounters().findCounter(VerifyReplication.Verifier.Counters.GOODROWS).getValue());
+    assertEquals(0,
+      job.getCounters().findCounter(VerifyReplication.Verifier.Counters.BADROWS).getValue());
+
+    // delete row-1, GOODROWS will change
+    Delete delete = new Delete(Bytes.toBytes("row-1"));
+    htable2.delete(delete);
+    job = new VerifyReplication().createSubmittableJob(utility1.getConfiguration(), args);
+    if (job == null) {
+      fail("Job wasn't created, see the log");
+    }
+    if (!job.waitForCompletion(true)) {
+      fail("Job failed, see the log");
+    }
+    assertEquals(9,
+      job.getCounters().findCounter(VerifyReplication.Verifier.Counters.GOODROWS).getValue());
+    assertEquals(1,
+      job.getCounters().findCounter(VerifyReplication.Verifier.Counters.BADROWS).getValue());
+
+    Result[] rs = null;
+    try (HTable ht = new HTable(utility1.getConfiguration(), logTable)) {
+      try (ResultScanner scanner = ht.getScanner(new Scan())) {
+        rs = scanner.next(10);
+      }
+    }
+    Assert.assertEquals(rs.length, 1);
+
+    admin1.disableTable(logTable);
+    admin1.deleteTable(logTable);
   }
 }

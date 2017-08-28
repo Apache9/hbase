@@ -37,6 +37,7 @@ import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
 import org.apache.hadoop.hbase.mapreduce.TableSnapshotInputFormat.TableSnapshotRegionSplit;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.io.NullWritable;
+import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.RecordReader;
@@ -63,6 +64,15 @@ public class TestTableSnapshotInputFormat extends TableSnapshotInputFormatTestBa
   @Override
   protected byte[] getEndRow() {
     return yyy;
+  }
+
+  @Override
+  public void testRestoreSnapshotDoesNotCreateBackRefLinksInit(TableName tableName,
+      String snapshotName, Path tmpTableDir) throws Exception {
+    Job job = new Job(UTIL.getConfiguration());
+    TableMapReduceUtil.initTableSnapshotMapperJob(snapshotName, new Scan(),
+      TestTableSnapshotMapper.class, ImmutableBytesWritable.class, NullWritable.class, job, false,
+      tmpTableDir);
   }
 
   @Test
