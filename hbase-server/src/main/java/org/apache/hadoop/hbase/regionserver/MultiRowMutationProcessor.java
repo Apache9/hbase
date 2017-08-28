@@ -129,16 +129,6 @@ MultiRowMutationProcessorResponse> {
       }
       mutationsToApply.add(m);
     }
-    // Apply edits to a single WALEdit
-    for (Mutation m : mutations) {
-      for (List<Cell> cells : m.getFamilyCellMap().values()) {
-        boolean writeToWAL = m.getDurability() != Durability.SKIP_WAL;
-        for (Cell cell : cells) {
-          KeyValue kv = KeyValueUtil.ensureKeyValue(cell);
-          if (writeToWAL) walEdit.add(kv);
-        }
-      }
-    }
   }
 
   @Override
@@ -178,6 +168,16 @@ MultiRowMutationProcessorResponse> {
       coprocessorHost.preBatchMutate(miniBatch);
     }
     // Apply edits to a single WALEdit
+    for (Mutation m : mutations) {
+      for (List<Cell> cells : m.getFamilyCellMap().values()) {
+        boolean writeToWAL = m.getDurability() != Durability.SKIP_WAL;
+        for (Cell cell : cells) {
+          KeyValue kv = KeyValueUtil.ensureKeyValue(cell);
+          if (writeToWAL) walEdit.add(kv);
+        }
+      }
+    }
+    // Apply edits from cp to a single WALEdit
     for (int i = 0; i < mutations.size(); i++) {
       if (opStatus[i] == OperationStatus.NOT_RUN) {
         // Other OperationStatusCode means that Mutation is already succeeded or failed in CP hook
