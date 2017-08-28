@@ -5705,8 +5705,7 @@ public class HRegion implements HeapSize { // , Writable{
           // (so that we are guaranteed to see the latest state)
           mvcc.completeMemstoreInsert(mvcc.beginMemstoreInsert());
         }
-        // 4. Let the processor scan the rows, generate mutations and add
-        //    waledits
+        // 4. Let the processor scan the rows, generate mutations
         doProcessRowWithTimeout(
             processor, now, this, mutations, walEdit, timeout);
         if (processor.getUnmetConditions() != null && !processor.getUnmetConditions().isEmpty()) {
@@ -5716,7 +5715,7 @@ public class HRegion implements HeapSize { // , Writable{
         if (!mutations.isEmpty()) {
           // 5. Get a mvcc write number
           writeEntry = mvcc.beginMemstoreInsert();
-          // 6. Call the preBatchMutate hook
+          // 6. Call the preBatchMutate hook and build waledit
           processor.preBatchMutate(this, walEdit);
           // 7. Apply to memstore
           for (Mutation m : mutations) {
