@@ -49,9 +49,14 @@ public class FalconSink implements Sink, Configurable {
   private AtomicLong totalReadCounter = new AtomicLong(0);
   private AtomicLong failedWriteCounter = new AtomicLong(0);
   private AtomicLong totalWriteCounter = new AtomicLong(0);
+  private long oldWalsFilesCount = 0;
   private boolean ignoreFushToNet;
   
   private FalconSink() {
+  }
+
+  public void publishOldWalsFilesCount(long count){
+    oldWalsFilesCount = count;
   }
 
   @Override
@@ -183,6 +188,7 @@ public class FalconSink implements Sink, Configurable {
       data.put(buildFalconMetric(clusterName, "cluster-availability", avail));
       data.put(buildFalconMetric(clusterName, "cluster-read-availability", readAvail));
       data.put(buildFalconMetric(clusterName, "cluster-write-availability", writeAvail));
+      data.put(buildFalconMetric(clusterName, "cluster-oldWals-files-count", oldWalsFilesCount));
     } catch (Exception e) {
       LOG.error("Create json error.", e);
     }
