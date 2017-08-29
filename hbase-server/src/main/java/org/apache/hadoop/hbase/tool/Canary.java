@@ -43,6 +43,9 @@ import org.apache.commons.lang3.time.StopWatch;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.ContentSummary;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HConstants;
@@ -67,6 +70,7 @@ import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.filter.FirstKeyOnlyFilter;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
+import org.apache.hadoop.hbase.util.FSUtils;
 import org.apache.hadoop.hbase.util.RegionSplitter;
 import org.apache.hadoop.util.ReflectionUtils;
 import org.apache.hadoop.util.Tool;
@@ -80,6 +84,8 @@ import org.apache.hadoop.util.ToolRunner;
 public final class Canary implements Tool {
   // Sink interface used by the canary to outputs information
   public interface Sink {
+    public void publishOldWalsFilesCount(long count);
+
     public void publishReadFailure(HRegionInfo region, Throwable e);
 
     public void publishReadFailure(HRegionInfo region, HColumnDescriptor column, Throwable e);
@@ -98,6 +104,11 @@ public final class Canary implements Tool {
   // Simple implementation of canary sink that allows to plot on
   // file or standard output timings or failures.
   public static class StdOutSink implements Sink {
+    @Override 
+    public void publishOldWalsFilesCount(long count) {
+      LOG.error("OldWals files count current not support in StdOutSink");
+    }
+
     @Override
     public void publishReadFailure(HRegionInfo region, Throwable e) {
       LOG.error(String.format("read from region %s failed", region.getRegionNameAsString()), e);
@@ -271,6 +282,8 @@ public final class Canary implements Tool {
   private List<RegionTask> tasks;
   private final ConcurrentMap<String, List<RegionTask>> cachedTasks =
       new ConcurrentHashMap<String, List<RegionTask>>();
+  private FileSystem fs;
+  private Path rootdir;
 
   public Canary(Sink sink) {
     this.sink = sink;
@@ -336,6 +349,7 @@ public final class Canary implements Tool {
         unfinishedTasks.countDown();
       });
     });
+    checkOldWalsFilesCount();
     unfinishedTasks.await();
     sink.reportSummary();
     long finishTime = EnvironmentEdgeManager.currentTimeMillis();
@@ -344,6 +358,16 @@ public final class Canary implements Tool {
         ", taskNotRunCount=" + tasksNotRun.size());
     if (finishTime < startTime + interval) {
       Thread.sleep(startTime + interval - finishTime);
+    }
+  }
+
+  private void checkOldWalsFilesCount() {
+    try {
+      Path oldWalPath = new Path(rootdir, HConstants.HREGION_OLDLOGDIR_NAME);
+      ContentSummary contentSummary = fs.getContentSummary(oldWalPath);
+      sink.publishOldWalsFilesCount(contentSummary.getFileCount());
+    } catch (IOException e) {
+      LOG.info("check oldWal directory failed, " ,e);
     }
   }
 
@@ -407,6 +431,8 @@ public final class Canary implements Tool {
     admin = new HBaseAdmin(conn);
     asyncConn = HConnectionManager.createAsyncConnection(conf).get();
     lastCheckTime = EnvironmentEdgeManager.currentTimeMillis();
+    rootdir = FSUtils.getRootDir(conf);
+    fs = rootdir.getFileSystem(conf);
     // initialize server principal (if using secure Hadoop)
     // User.login(conf, "hbase.canary.keytab.file", "hbase.canary.kerberos.principal", hostname);
     // lets the canary monitor the cluster
@@ -421,6 +447,7 @@ public final class Canary implements Tool {
       IOUtils.closeQuietly(asyncConn);
       IOUtils.closeQuietly(admin);
       IOUtils.closeQuietly(conn);
+      IOUtils.closeQuietly(fs);
     }
     return 0;
   }
