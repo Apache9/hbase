@@ -38,6 +38,7 @@ import org.apache.hadoop.hbase.testclassification.LargeTests;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.zookeeper.MiniZooKeeperCluster;
 import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.MRJobConfig;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -72,8 +73,9 @@ public class TestVerifyReplication {
     conf1.setBoolean(HConstants.REPLICATION_ENABLE_KEY, true);
 
     utility1 = new HBaseTestingUtility(conf1);
+    conf1.set(MRJobConfig.MR_AM_STAGING_DIR, utility1.getDataTestDir("staging").toString());
     utility1.startMiniZKCluster();
-    
+
     MiniZooKeeperCluster miniZK = utility1.getZkCluster();
     utility1.startMiniMapReduceCluster();
 
@@ -89,7 +91,7 @@ public class TestVerifyReplication {
 
     utility1.startMiniCluster(2);
     utility2.startMiniCluster(2);
-   
+
     admin = new ReplicationAdmin(conf1);
   }
 
