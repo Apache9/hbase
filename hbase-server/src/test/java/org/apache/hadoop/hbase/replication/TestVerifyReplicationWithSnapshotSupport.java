@@ -197,8 +197,11 @@ public class TestVerifyReplicationWithSnapshotSupport {
   }
 
 
-  @Test(timeout = 300000)
-  public void testVerifyReplicationSnapshotArguments() {
+  @Test
+  public void testVerifyReplicationSnapshotArguments() throws InterruptedException {
+    // sleep 5 seconds to wait peer added. otherwise if we remove a peer
+    // before peer finished adding, the rs will be stopped.
+    Thread.sleep(5 * 1000L);
     String[] args =
         new String[] { "--sourceSnapshotName=snapshot1", "2", Bytes.toString(tableName) };
     assertFalse(Lists.newArrayList(args).toString(), new VerifyReplication().doCommandLine(args));
