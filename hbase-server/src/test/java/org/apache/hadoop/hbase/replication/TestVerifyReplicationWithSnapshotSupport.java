@@ -44,6 +44,7 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.FSUtils;
 import org.apache.hadoop.hbase.zookeeper.MiniZooKeeperCluster;
 import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.MRJobConfig;
 import org.apache.log4j.Logger;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -94,6 +95,7 @@ public class TestVerifyReplicationWithSnapshotSupport {
     conf1.setInt(HConstants.MASTER_INFO_PORT, 60011);
 
     utility1 = new HBaseTestingUtility(conf1);
+    conf1.set(MRJobConfig.MR_AM_STAGING_DIR, utility1.getDataTestDir("staging").toString());
     utility1.startMiniZKCluster();
 
     MiniZooKeeperCluster miniZK = utility1.getZkCluster();
