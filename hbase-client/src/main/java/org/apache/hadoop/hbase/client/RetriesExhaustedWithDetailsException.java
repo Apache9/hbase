@@ -52,12 +52,12 @@ extends RetriesExhaustedException {
   List<String> hostnameAndPort;
 
   public RetriesExhaustedWithDetailsException(List<Throwable> exceptions,
-                                              List<? extends Row> actions,
-                                              List<String> hostnameAndPort) {
-    super("Failed " + exceptions.size() + " action" +
-        pluralize(exceptions) + ": " +
-        getDesc(exceptions, actions, hostnameAndPort));
-    
+      List<? extends Row> actions, List<String> hostnameAndPort) {
+    super(
+        "Failed " + exceptions.size() + " action" + pluralize(exceptions) + ": "
+            + getDesc(exceptions, actions, hostnameAndPort),
+        exceptions != null && !exceptions.isEmpty() ? exceptions.get(0) : null);
+
     this.exceptions = exceptions;
     this.actions = actions;
     this.hostnameAndPort = hostnameAndPort;
@@ -104,19 +104,25 @@ extends RetriesExhaustedException {
     return c > 1 ? "s" : "";
   }
 
-  public static String getDesc(List<Throwable> exceptions,
-                               List<? extends Row> actions,
-                               List<String> hostnamePort) {
+  public static String getDesc(List<Throwable> exceptions, List<? extends Row> actions,
+      List<String> hostNameAndPorts) {
     String s = getDesc(classifyExs(exceptions));
     StringBuilder addrs = new StringBuilder(s);
-    addrs.append("servers with issues: ");
+    addrs.append(" servers with issues: ");
     Set<String> uniqAddr = new HashSet<String>();
-    uniqAddr.addAll(hostnamePort);
+    uniqAddr.addAll(hostNameAndPorts);
 
-    for(String addr : uniqAddr) {
-      addrs.append(addr).append(", ");
+    // Join addresses into a string with a comma.
+    boolean firstAddr = true;
+    for (String addr : uniqAddr) {
+      if (firstAddr) {
+        addrs.append(addr);
+        firstAddr = false;
+      } else {
+        addrs.append(", ").append(addr);
+      }
     }
-    return s;
+    return addrs.toString();
   }
 
   public String getExhaustiveDescription() {
@@ -146,7 +152,7 @@ extends RetriesExhaustedException {
     Map<String, Integer> cls = new HashMap<String, Integer>();
     for (Throwable t : ths) {
       if (t == null) continue;
-      String name = "";
+      String name;
       if (t instanceof DoNotRetryIOException) {
         name = t.getMessage();
       } else {
@@ -162,17 +168,17 @@ extends RetriesExhaustedException {
     return cls;
   }
 
-  public static String getDesc(Map<String,Integer> classificaton) {
-    StringBuilder classificatons =new StringBuilder(11);
+  public static String getDesc(Map<String, Integer> classificaton) {
+    StringBuilder sb = new StringBuilder();
     for (Map.Entry<String, Integer> e : classificaton.entrySet()) {
-      classificatons.append(e.getKey());
-      classificatons.append(": ");
-      classificatons.append(e.getValue());
-      classificatons.append(" time");
-      classificatons.append(pluralize(e.getValue()));
-      classificatons.append(", ");
+      sb.append(e.getKey());
+      sb.append(": ");
+      sb.append(e.getValue());
+      sb.append(" time");
+      sb.append(pluralize(e.getValue()));
+      sb.append(", ");
     }
-    return classificatons.toString();
+    return sb.toString();
   }
 
 }

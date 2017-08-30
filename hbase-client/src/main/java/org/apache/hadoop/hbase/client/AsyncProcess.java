@@ -369,6 +369,34 @@ class AsyncProcess<CResult> {
     multiAction.add(regionName, action);
   }
 
+  private HRegionLocation locateMetaRegionWithRetries(HConnection hconn, byte[] row)
+      throws IOException {
+    IOException t = null;
+    for (int tries = 0; tries < this.numTries; tries++) {
+      try {
+        HRegionLocation loc = hconn.relocateRegion(TableName.META_TABLE_NAME, row);
+        if (loc != null) {
+          return loc;
+        }
+      } catch (IOException e) {
+        LOG.warn(
+          "locate meta region, tries: " + (tries + 1) + ", row: " + Bytes.toStringBinary(row), e);
+        t = e;
+      }
+      long sleepTime = ConnectionUtils.getPauseTime(this.pause, tries);
+      try {
+        Thread.sleep(sleepTime);
+      } catch (InterruptedException e) {
+        throw new InterruptedIOException(
+            "Giving up trying to location meta region: thread is interrupted.");
+      }
+    }
+    if (t != null) {
+      throw t;
+    }
+    return null;
+  }
+
   /**
    * Find the destination.
    *
@@ -381,7 +409,11 @@ class AsyncProcess<CResult> {
     HRegionLocation loc = null;
     IOException locationException = null;
     try {
-      loc = hConnection.locateRegion(this.tableName, row.getRow());
+      if (TableName.META_TABLE_NAME.equals(this.tableName)) {
+        loc = locateMetaRegionWithRetries(hConnection, row.getRow());
+      } else {
+        loc = hConnection.locateRegion(this.tableName, row.getRow());
+      }
       if (loc == null) {
         locationException = new IOException("#" + id + ", no location found, aborting submit for" +
             " tableName=" + tableName +
