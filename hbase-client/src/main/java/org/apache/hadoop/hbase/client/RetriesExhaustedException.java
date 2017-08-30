@@ -34,8 +34,8 @@ public class RetriesExhaustedException extends IOException {
     super(msg);
   }
 
-  public RetriesExhaustedException(final String msg, final IOException e) {
-    super(msg, e);
+  public RetriesExhaustedException(final String msg, final Throwable t) {
+    super(msg, t);
   }
 
   /**
