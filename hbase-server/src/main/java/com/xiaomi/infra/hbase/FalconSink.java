@@ -51,7 +51,10 @@ public class FalconSink implements Sink, Configurable {
   private AtomicLong totalWriteCounter = new AtomicLong(0);
   private long oldWalsFilesCount = 0;
   private boolean ignoreFushToNet;
-  
+  private double readAvailability = 100.0;
+  private double writeAvailability = 100.0;
+  private double availability = 100.0;
+
   private FalconSink() {
   }
 
@@ -109,6 +112,21 @@ public class FalconSink implements Sink, Configurable {
     }
   }
 
+  @Override
+  public double getReadAvailability() {
+    return this.readAvailability;
+  }
+
+  @Override
+  public double getWriteAvailability() {
+    return this.writeAvailability;
+  }
+
+  @Override
+  public double getAvailability() {
+    return this.availability;
+  }
+
   private double calc(AtomicLong failCounter, AtomicLong totalCounter) {
     if (totalCounter.get() == 0) return 100.0;
     double avail = 1.0 - 1.0 * failCounter.get() / totalCounter.get();
@@ -125,15 +143,15 @@ public class FalconSink implements Sink, Configurable {
     String sniffCountStr = "failedReadCount=" + failedReadCounter.get() + ", totalReadCount="
             + totalReadCounter.get() + ", failedWriteCounter=" + failedWriteCounter.get()
             + ", totalWriterCount=" + totalWriteCounter.get();
-    double readAvail = calc(failedReadCounter, totalReadCounter);
-    double writeAvail = calc(failedWriteCounter, totalWriteCounter);
-    double avail = (readAvail + writeAvail) /2;
+    readAvailability = calc(failedReadCounter, totalReadCounter);
+    writeAvailability = calc(failedWriteCounter, totalWriteCounter);
+    availability = (readAvailability + writeAvailability) /2;
     LOG.info("Try to push metrics to falcon and collector. Cluster: " + clusterName
-        + " availability is " + avail + ", read availability is " + readAvail
-        + ", write availability is " + writeAvail + ", " + sniffCountStr);
+        + " availability is " + availability + ", read availability is " + readAvailability
+        + ", write availability is " + writeAvailability + ", " + sniffCountStr);
     if (!ignoreFushToNet) {
-      pushToCollector(clusterName, avail, readAvail, writeAvail);
-      pushToFalcon(clusterName, avail, readAvail, writeAvail);
+      pushToCollector(clusterName, availability, readAvailability, writeAvailability);
+      pushToFalcon(clusterName, availability, readAvailability, writeAvailability);
     }
   }
 
