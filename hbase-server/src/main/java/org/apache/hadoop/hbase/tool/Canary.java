@@ -23,12 +23,15 @@ import static org.apache.hadoop.hbase.HConstants.EMPTY_BYTE_ARRAY;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.net.BindException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -55,6 +58,7 @@ import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.TableNotEnabledException;
 import org.apache.hadoop.hbase.TableNotFoundException;
+import org.apache.hadoop.hbase.canary.CanaryStatusServlet;
 import org.apache.hadoop.hbase.client.AsyncConnection;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HConnection;
@@ -71,6 +75,7 @@ import org.apache.hadoop.hbase.filter.FirstKeyOnlyFilter;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.FSUtils;
+import org.apache.hadoop.hbase.util.InfoServer;
 import org.apache.hadoop.hbase.util.RegionSplitter;
 import org.apache.hadoop.util.ReflectionUtils;
 import org.apache.hadoop.util.Tool;
@@ -99,6 +104,18 @@ public final class Canary implements Tool {
     public void publishWriteTiming(HRegionInfo region, HColumnDescriptor column, long msTime);
 
     public void reportSummary();
+
+    default public double getReadAvailability() {
+      return 100.0;
+    }
+
+    default public double getWriteAvailability() {
+      return 100.0;
+    }
+
+    default public double getAvailability() {
+      return 100.0;
+    }
   }
 
   // Simple implementation of canary sink that allows to plot on
@@ -164,14 +181,16 @@ public final class Canary implements Tool {
     private final RawAsyncTable table;
     private final HTableDescriptor tableDesc;
     private final HRegionInfo region;
+    private final ServerName server;
     private final Sink sink;
     private final Canary canary;
 
     RegionTask(Configuration conf, RawAsyncTable table, HTableDescriptor tableDesc,
-        HRegionInfo region, Sink sink, Canary canary) {
+        HRegionInfo region, ServerName server, Sink sink, Canary canary) {
       this.table = table;
       this.tableDesc = tableDesc;
       this.region = region;
+      this.server = server;
       this.sink = sink;
       this.canary = canary;
     }
@@ -218,6 +237,7 @@ public final class Canary implements Tool {
 
     private void clearCacheAndPublishReadFailure(HColumnDescriptor column, Throwable e) {
       canary.clearCachedTasks(tableDesc.getNameAsString());
+      canary.recordFailure(server, tableDesc.getTableName());
       if (column == null) {
         sink.publishReadFailure(region, e);
       } else {
@@ -241,6 +261,7 @@ public final class Canary implements Tool {
                 .whenComplete((r, e) -> {
                   if (e != null) {
                     sink.publishWriteFailure(region, column, e);
+                    canary.recordFailure(server, tableDesc.getTableName());
                   } else {
                     watch.stop();
                     sink.publishWriteTiming(region, column, watch.getTime());
@@ -259,6 +280,8 @@ public final class Canary implements Tool {
     }
   }
 
+  public static final String CANARY = "canary";
+  public static final String CANARY_CONF = "canary_conf";
   private static final String CANARY_TABLE_NAME = "_canary_";
   private static final String CANARY_TABLE_FAMILY_NAME = "Test";
   private static int DEFAULT_REGIONS_PER_SERVER = 2;
@@ -284,9 +307,14 @@ public final class Canary implements Tool {
       new ConcurrentHashMap<String, List<RegionTask>>();
   private FileSystem fs;
   private Path rootdir;
+  private Map<ServerName, Integer> failuresByServer;
+  private Map<TableName, Integer> failuresByTable;
+  private InfoServer infoServer;
 
   public Canary(Sink sink) {
     this.sink = sink;
+    this.failuresByServer = new ConcurrentHashMap<>();
+    this.failuresByTable = new ConcurrentHashMap<>();
   }
 
   @Override
@@ -299,6 +327,23 @@ public final class Canary implements Tool {
     this.conf = conf;
   }
 
+  private void putUpWebUI() throws IOException {
+    int port = this.conf.getInt("hbase.canary.info.port", 60050);
+    // -1 is for disabling info server
+    if (port < 0) return;
+    String addr = this.conf.get("hbase.canary.info.bindAddress", "0.0.0.0");
+    try {
+      this.infoServer = new InfoServer("canary", addr, port, false, this.conf);
+      this.infoServer.addServlet("status", "/canary-status", CanaryStatusServlet.class);
+      this.infoServer.setAttribute(CANARY, this);
+      this.infoServer.setAttribute(CANARY_CONF, conf);
+      this.infoServer.start();
+      LOG.info("Bind http info server to port: " + port);
+    } catch (BindException e) {
+      LOG.info("Failed binding http info server to port: " + port);
+    }
+  }
+
   private long lastCheckTime;
 
   private void runOnce(List<String> tables) throws InterruptedException {
@@ -309,6 +354,7 @@ public final class Canary implements Tool {
     } catch (Exception e) {
       LOG.error("Update sniff tasks failed. Using previous sniffing tasks", e);
     }
+
     // clear cached tasks and check canary distribution for 10 minutes
     if (EnvironmentEdgeManager.currentTimeMillis() - lastCheckTime > 10 * 60 * 1000) {
       clearCachedTasks();
@@ -319,6 +365,11 @@ public final class Canary implements Tool {
       }
       lastCheckTime = EnvironmentEdgeManager.currentTimeMillis();
     }
+
+    // clear the previous failures
+    this.failuresByServer.clear();
+    this.failuresByTable.clear();
+
     List<RegionTask> tasksNotRun = new ArrayList<>();
     Semaphore concurrencyControl = new Semaphore(maxConcurrency);
     CountDownLatch unfinishedTasks = new CountDownLatch(tasks.size());
@@ -356,18 +407,9 @@ public final class Canary implements Tool {
     LOG.info("Finish one turn sniff, consume(ms)=" + (finishTime - startTime) + ", interval(ms)=" +
         interval + ", timeout(ms)=" + timeout + ", taskCount=" + tasks.size() +
         ", taskNotRunCount=" + tasksNotRun.size());
+    logFailedServerAndTable();
     if (finishTime < startTime + interval) {
       Thread.sleep(startTime + interval - finishTime);
-    }
-  }
-
-  private void checkOldWalsFilesCount() {
-    try {
-      Path oldWalPath = new Path(rootdir, HConstants.HREGION_OLDLOGDIR_NAME);
-      ContentSummary contentSummary = fs.getContentSummary(oldWalPath);
-      sink.publishOldWalsFilesCount(contentSummary.getFileCount());
-    } catch (IOException e) {
-      LOG.info("check oldWal directory failed, " ,e);
     }
   }
 
@@ -437,6 +479,7 @@ public final class Canary implements Tool {
     // User.login(conf, "hbase.canary.keytab.file", "hbase.canary.kerberos.principal", hostname);
     // lets the canary monitor the cluster
     try {
+      putUpWebUI();
       runOnce(tables);
       if (interval > 0) {
         for (;;) {
@@ -450,6 +493,49 @@ public final class Canary implements Tool {
       IOUtils.closeQuietly(fs);
     }
     return 0;
+  }
+
+  public List<Entry<ServerName, Integer>> getFailuresByServer() {
+    return failuresByServer.entrySet().stream()
+        .sorted((o1, o2) -> o2.getValue().compareTo(o1.getValue())).collect(Collectors.toList());
+  }
+
+  public List<Entry<TableName, Integer>> getFailuresByTable() {
+    return failuresByTable.entrySet().stream()
+        .sorted((o1, o2) -> o2.getValue().compareTo(o1.getValue())).collect(Collectors.toList());
+  }
+
+  public double getReadAvailability() {
+    return sink.getReadAvailability();
+  }
+
+  public double getWriteAvailability() {
+    return sink.getWriteAvailability();
+  }
+
+  public double getAvailability() {
+    return sink.getAvailability();
+  }
+
+  private void logFailedServerAndTable() {
+    failuresByServer.entrySet().stream().sorted((o1, o2) -> o2.getValue().compareTo(o1.getValue()))
+        .forEach(entry -> {
+          LOG.warn("Failed server and count: " + entry.getKey() + " , " + entry.getValue());
+        });
+    failuresByTable.entrySet().stream().sorted((o1, o2) -> o2.getValue().compareTo(o1.getValue()))
+        .forEach(entry -> {
+          LOG.warn("Failed table and count: " + entry.getKey() + " , " + entry.getValue());
+        });
+  }
+
+  private void checkOldWalsFilesCount() {
+    try {
+      Path oldWalPath = new Path(rootdir, HConstants.HREGION_OLDLOGDIR_NAME);
+      ContentSummary contentSummary = fs.getContentSummary(oldWalPath);
+      sink.publishOldWalsFilesCount(contentSummary.getFileCount());
+    } catch (IOException e) {
+      LOG.info("check oldWal directory failed, " ,e);
+    }
   }
 
   /**
@@ -476,6 +562,11 @@ public final class Canary implements Tool {
     System.err.println("   -daemon        Continuous check at defined intervals.");
     System.err.println("   -interval <N>  Interval between checks, default is 6 (sec)");
     System.exit(1);
+  }
+
+  protected void recordFailure(ServerName server, TableName table) {
+    failuresByServer.compute(server, (k, v) -> v == null ? 1 : v + 1);
+    failuresByTable.compute(table, (k, v) -> v == null ? 1 : v + 1);
   }
 
   /*
@@ -524,12 +615,16 @@ public final class Canary implements Tool {
       return tasks;
     }
     RawAsyncTable table = asyncConn.getRawTable(tableDesc.getTableName());
-    tasks = MetaScanner.allTableRegions(conf, conn, tableDesc.getTableName(), false).keySet()
-        .stream().map(region -> new RegionTask(conf, table, tableDesc, region, sink, this))
-        .collect(Collectors.toList());
+    tasks = MetaScanner
+        .allTableRegions(conf, conn, tableDesc.getTableName(), false)
+        .entrySet()
+        .stream()
+        .map(
+          entry -> new RegionTask(conf, table, tableDesc, entry.getKey(), entry.getValue(), sink,
+              this)).collect(Collectors.toList());
     cachedTasks.put(tableDesc.getNameAsString(), tasks);
-    LOG.info("get task from meta table, table=" + tableDesc.getNameAsString() + ", taskCount=" +
-        tasks.size());
+    LOG.info("get task from meta table, table=" + tableDesc.getNameAsString() + ", taskCount="
+        + tasks.size());
     return tasks;
   }
 
