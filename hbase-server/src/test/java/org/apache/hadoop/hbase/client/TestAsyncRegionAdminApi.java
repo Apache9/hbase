@@ -71,21 +71,21 @@ public class TestAsyncRegionAdminApi extends TestAsyncAdminBase {
     createTableWithDefaultConf(tableName);
 
     HRegionInfo info = null;
-    HRegionServer rs = TEST_UTIL.getRSForFirstRegionInTable(tableName);
-    List<HRegionInfo> onlineRegions = ProtobufUtil.getOnlineRegions(rs);
+    ServerName server = admin.getRegionServers().get().stream().findFirst().get();
+    List<HRegionInfo> onlineRegions = admin.getOnlineRegions(server).get();
     for (HRegionInfo regionInfo : onlineRegions) {
-      if (!regionInfo.getTable().isSystemTable()) {
+      if (regionInfo.getTable().equals(tableName)) {
         info = regionInfo;
-        boolean closed = admin.closeRegion(regionInfo.getRegionName(),
-          Optional.of(rs.getServerName())).get();
+        boolean closed = admin.closeRegion(regionInfo.getRegionName(), Optional.of(server)).get();
         assertTrue(closed);
+        break;
       }
     }
-    boolean isInList = ProtobufUtil.getOnlineRegions(rs).contains(info);
+    boolean isInList = admin.getOnlineRegions(server).get().contains(info);
     long timeout = System.currentTimeMillis() + 10000;
     while ((System.currentTimeMillis() < timeout) && (isInList)) {
       Thread.sleep(100);
-      isInList = ProtobufUtil.getOnlineRegions(rs).contains(info);
+      isInList = admin.getOnlineRegions(server).get().contains(info);
     }
 
     assertFalse("The region should not be present in online regions list.", isInList);
@@ -366,18 +366,36 @@ public class TestAsyncRegionAdminApi extends TestAsyncAdminBase {
     createTableWithDefaultConf(tableName, Optional.of(splitRows));
 
     RawAsyncTable metaTable = ASYNC_CONN.getRawTable(META_TABLE_NAME);
+    long startWait = System.currentTimeMillis();
+    while (AsyncMetaTableAccessor.getTableHRegionLocations(metaTable, Optional.of(tableName))
+        .get().size() < 3) {
+      assertTrue("Timed out waiting for table " + tableName + " regions online",
+        System.currentTimeMillis() - startWait < 10000);
+      Thread.sleep(1000);
+    }
+
     List<HRegionLocation> regionLocations =
         AsyncMetaTableAccessor.getTableHRegionLocations(metaTable, Optional.of(tableName)).get();
     HRegionInfo regionA;
     HRegionInfo regionB;
-
     // merge with full name
     assertEquals(3, regionLocations.size());
     regionA = regionLocations.get(0).getRegionInfo();
     regionB = regionLocations.get(1).getRegionInfo();
+
+    startWait = System.currentTimeMillis();
+    RegionStates regionStates = TEST_UTIL.getHBaseCluster().getMaster().getAssignmentManager()
+        .getRegionStates();
+    while (!regionStates.isRegionOnline(regionA) || !regionStates.isRegionOnline(regionB)) {
+      assertTrue("Timed out waiting for table " + tableName + " regions online, regionA : "
+          + regionA + ", regionB : " + regionB, System.currentTimeMillis() - startWait < 10000);
+      Thread.sleep(1000);
+      regionStates = TEST_UTIL.getHBaseCluster().getMaster().getAssignmentManager()
+          .getRegionStates();
+    }
     admin.mergeRegions(regionA.getRegionName(), regionB.getRegionName(), false).get();
 
-    long startWait = System.currentTimeMillis();
+    startWait = System.currentTimeMillis();
     while (AsyncMetaTableAccessor.getTableHRegionLocations(metaTable, Optional.of(tableName))
         .get().size() >= 3) {
       assertTrue("Timed out waiting for table merge regions " + tableName,
@@ -391,6 +409,16 @@ public class TestAsyncRegionAdminApi extends TestAsyncAdminBase {
     // merge with encoded name
     regionA = regionLocations.get(0).getRegionInfo();
     regionB = regionLocations.get(1).getRegionInfo();
+
+    startWait = System.currentTimeMillis();
+    regionStates = TEST_UTIL.getHBaseCluster().getMaster().getAssignmentManager().getRegionStates();
+    while (!regionStates.isRegionOnline(regionA) || !regionStates.isRegionOnline(regionB)) {
+      assertTrue("Timed out waiting for table " + tableName + " regions online, regionA : "
+          + regionA + ", regionB : " + regionB, System.currentTimeMillis() - startWait < 10000);
+      Thread.sleep(1000);
+      regionStates = TEST_UTIL.getHBaseCluster().getMaster().getAssignmentManager()
+          .getRegionStates();
+    }
     admin.mergeRegions(regionA.getRegionName(), regionB.getRegionName(), false).get();
 
     startWait = System.currentTimeMillis();

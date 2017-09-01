@@ -73,16 +73,7 @@ public interface AsyncAdmin {
    * @return a list of table names wrapped by a {@link CompletableFuture}.
    * @see #listTableNames(Optional, boolean)
    */
-  default CompletableFuture<List<TableName>> listTableNames() {
-    return listTableNames(Optional.empty());
-  }
-
-  /**
-   * List all of the names of userspace tables.
-   * @param pattern The regular expression to match against
-   * @return a list of table names wrapped by a {@link CompletableFuture}.
-   */
-  CompletableFuture<List<TableName>> listTableNames(Optional<Pattern> pattern);
+  CompletableFuture<List<TableName>> listTableNames();
 
   /**
    * Method for getting the tableDescriptor

@@ -123,7 +123,7 @@ public class TestAsyncTableAdminApi extends TestAsyncAdminBase {
 
     tableDescs = admin.listTables(Optional.empty()).get();
     assertTrue("Not found system tables", tableDescs.size() > 0);
-    tableNames = admin.listTableNames(Optional.empty()).get();
+    tableNames = admin.listTableNames().get();
     assertTrue("Not found system tables", tableNames.size() > 0);
   }
 
@@ -142,11 +142,15 @@ public class TestAsyncTableAdminApi extends TestAsyncAdminBase {
 
   @Test
   public void testCreateTable() throws Exception {
-    List<HTableDescriptor> tables = admin.listTables().get();
-    int numTables = tables.size();
     createTableWithDefaultConf(tableName);
-    tables = admin.listTables().get();
-    assertEquals(numTables + 1, tables.size());
+    boolean created = false;
+    List<HTableDescriptor> tables = admin.listTables().get();
+    for (HTableDescriptor table : tables) {
+      if (table.getTableName().equals(tableName)) {
+        created = true;
+      }
+    }
+    assertTrue("Table must be created.", created);
     assertTrue("Table must be enabled.", admin.isTableEnabled(tableName).get());
   }
 
@@ -216,15 +220,11 @@ public class TestAsyncTableAdminApi extends TestAsyncAdminBase {
 
     RawAsyncTable metaTable = ASYNC_CONN.getRawTable(META_TABLE_NAME);
     long startWait = System.currentTimeMillis();
-    while (AsyncMetaTableAccessor.getTableHRegionLocations(metaTable, Optional.of(tableName))
-        .get().size() < expectedRegions) {
+    while (!admin.isTableAvailable(tableName, splitKeys).get()) {
       assertTrue("Timed out waiting for table all regions online " + tableName,
         System.currentTimeMillis() - startWait < 10000);
       Thread.sleep(1000);
     }
-
-    boolean tableAvailable = admin.isTableAvailable(tableName, splitKeys).get();
-    assertTrue("Table should be created with splitKyes + 1 rows in META", tableAvailable);
 
     List<HRegionLocation> regions =
         AsyncMetaTableAccessor.getTableHRegionLocations(metaTable, Optional.of(tableName)).get();

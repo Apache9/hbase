@@ -76,8 +76,8 @@ public class AsyncHBaseAdmin implements AsyncAdmin {
   }
 
   @Override
-  public CompletableFuture<List<TableName>> listTableNames(Optional<Pattern> pattern) {
-    return wrap(rawAdmin.listTableNames(pattern));
+  public CompletableFuture<List<TableName>> listTableNames() {
+    return wrap(rawAdmin.listTableNames());
   }
 
   @Override
