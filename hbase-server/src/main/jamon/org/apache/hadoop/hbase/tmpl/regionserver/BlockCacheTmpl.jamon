@@ -272,7 +272,7 @@ are combined counts. Request count is sum of hits and misses.</p>
   String bcName = bc.getClass().getSimpleName();
   org.apache.hadoop.hbase.io.hfile.BlockCacheUtil.CachedBlocksByFile cbsbf =
     org.apache.hadoop.hbase.io.hfile.BlockCacheUtil.getLoadedCachedBlocksByFile(config, bc);
-  AgeSnapshot snapshot = cbsbf.getAgeSnapshot();
+  AgeSnapshot snapshot = cbsbf.getAgeInCacheSnapshot();
 
   boolean slabCache = bc.getClass().getSimpleName().equals("SlabCache");
   Map<Integer, SingleSizeCache> sizer = null;
@@ -351,11 +351,6 @@ are combined counts. Request count is sum of hits and misses.</p>
         <td>Mean</td>
         <td><% String.format("%,d", (long)(snapshot.getMean()/nanosPerSecond)) %></td>
         <td>Mean age of Blocks in cache (seconds)</td>
-    </tr>
-    <tr>
-        <td>StdDev</td>
-        <td><% String.format("%,d", (long)(snapshot.getStdDev()/nanosPerSecond)) %></td>
-        <td>Age standard deviation of Blocks in cache</td>
     </tr>
     <tr>
         <td>Min</td>

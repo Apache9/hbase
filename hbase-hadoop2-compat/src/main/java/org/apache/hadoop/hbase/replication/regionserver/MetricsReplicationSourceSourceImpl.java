@@ -18,7 +18,7 @@
 
 package org.apache.hadoop.hbase.replication.regionserver;
 
-import org.apache.hadoop.metrics2.lib.MutableCounterLong;
+import org.apache.hadoop.metrics2.lib.MutableFastCounter;
 import org.apache.hadoop.metrics2.lib.MutableGaugeLong;
 
 public class MetricsReplicationSourceSourceImpl implements MetricsReplicationSourceSource {
@@ -37,13 +37,13 @@ public class MetricsReplicationSourceSourceImpl implements MetricsReplicationSou
 
   private final MutableGaugeLong ageOfLastShippedOpGauge;
   private final MutableGaugeLong sizeOfLogQueueGauge;
-  private final MutableCounterLong logReadInEditsCounter;
-  private final MutableCounterLong logEditsFilteredCounter;
-  private final MutableCounterLong shippedBatchesCounter;
-  private final MutableCounterLong shippedOpsCounter;
-  private final MutableCounterLong shippedKBsCounter;
-  private final MutableCounterLong logReadInBytesCounter;
-  private final MutableCounterLong openReaderIOECounter;
+  private final MutableFastCounter logReadInEditsCounter;
+  private final MutableFastCounter logEditsFilteredCounter;
+  private final MutableFastCounter shippedBatchesCounter;
+  private final MutableFastCounter shippedOpsCounter;
+  private final MutableFastCounter shippedKBsCounter;
+  private final MutableFastCounter logReadInBytesCounter;
+  private final MutableFastCounter openReaderIOECounter;
   
   public MetricsReplicationSourceSourceImpl(MetricsReplicationSourceImpl rms, String id,
       String clusterKey) {
@@ -52,31 +52,31 @@ public class MetricsReplicationSourceSourceImpl implements MetricsReplicationSou
     rms.addPeer(id, clusterKey);
     
     ageOfLastShippedOpKey = "source." + id + ".ageOfLastShippedOp";
-    ageOfLastShippedOpGauge = rms.getMetricsRegistry().getLongGauge(ageOfLastShippedOpKey, 0L);
+    ageOfLastShippedOpGauge = rms.getMetricsRegistry().getGauge(ageOfLastShippedOpKey, 0L);
 
     sizeOfLogQueueKey = "source." + id + ".sizeOfLogQueue";
-    sizeOfLogQueueGauge = rms.getMetricsRegistry().getLongGauge(sizeOfLogQueueKey, 0L);
+    sizeOfLogQueueGauge = rms.getMetricsRegistry().getGauge(sizeOfLogQueueKey, 0L);
 
     shippedBatchesKey = "source." + this.id + ".shippedBatches";
-    shippedBatchesCounter = rms.getMetricsRegistry().getLongCounter(shippedBatchesKey, 0L);
+    shippedBatchesCounter = rms.getMetricsRegistry().getCounter(shippedBatchesKey, 0L);
 
     shippedOpsKey = "source." + this.id + ".shippedOps";
-    shippedOpsCounter = rms.getMetricsRegistry().getLongCounter(shippedOpsKey, 0L);
+    shippedOpsCounter = rms.getMetricsRegistry().getCounter(shippedOpsKey, 0L);
 
     shippedKBsKey = "source." + this.id + ".shippedKBs";
-    shippedKBsCounter = rms.getMetricsRegistry().getLongCounter(shippedKBsKey, 0L);
+    shippedKBsCounter = rms.getMetricsRegistry().getCounter(shippedKBsKey, 0L);
 
     logReadInBytesKey = "source." + this.id + ".logReadInBytes";
-    logReadInBytesCounter = rms.getMetricsRegistry().getLongCounter(logReadInBytesKey, 0L);
+    logReadInBytesCounter = rms.getMetricsRegistry().getCounter(logReadInBytesKey, 0L);
 
     logReadInEditsKey = "source." + id + ".logEditsRead";
-    logReadInEditsCounter = rms.getMetricsRegistry().getLongCounter(logReadInEditsKey, 0L);
+    logReadInEditsCounter = rms.getMetricsRegistry().getCounter(logReadInEditsKey, 0L);
 
     logEditsFilteredKey = "source." + id + ".logEditsFiltered";
-    logEditsFilteredCounter = rms.getMetricsRegistry().getLongCounter(logEditsFilteredKey, 0L);
+    logEditsFilteredCounter = rms.getMetricsRegistry().getCounter(logEditsFilteredKey, 0L);
     
     openReaderIOEKey = "source." + id + ".openReaderIOE";
-    openReaderIOECounter = rms.getMetricsRegistry().getLongCounter(openReaderIOEKey, 0L);
+    openReaderIOECounter = rms.getMetricsRegistry().getCounter(openReaderIOEKey, 0L);
   }
 
   @Override public void setLastShippedAge(long age) {

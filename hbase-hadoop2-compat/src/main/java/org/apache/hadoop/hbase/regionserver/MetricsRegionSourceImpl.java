@@ -25,11 +25,11 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.commons.math.stat.descriptive.DescriptiveStatistics;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.metrics.Interns;
+import org.apache.hadoop.metrics2.MetricHistogram;
 import org.apache.hadoop.metrics2.MetricsRecordBuilder;
 import org.apache.hadoop.metrics2.impl.JmxCacheBuster;
 import org.apache.hadoop.metrics2.lib.DynamicMetricsRegistry;
-import org.apache.hadoop.metrics2.lib.MutableCounterLong;
-import org.apache.hadoop.metrics2.lib.MutableHistogram;
+import org.apache.hadoop.metrics2.lib.MutableFastCounter;
 
 @InterfaceAudience.Private
 public class MetricsRegionSourceImpl implements MetricsRegionSource {
@@ -53,20 +53,20 @@ public class MetricsRegionSourceImpl implements MetricsRegionSource {
   private String regionWriteKey;
   private String regionThrottledReadKey;
   private String regionThrottledWriteKey;
-  private MutableCounterLong regionPut;
-  private MutableCounterLong regionDelete;
+  private MutableFastCounter regionPut;
+  private MutableFastCounter regionDelete;
 
-  private MutableCounterLong regionIncrement;
-  private MutableCounterLong regionAppend;
+  private MutableFastCounter regionIncrement;
+  private MutableFastCounter regionAppend;
 
-  private MutableHistogram regionGet;
-  private MutableHistogram regionScanNext;
+  private MetricHistogram regionGet;
+  private MetricHistogram regionScanNext;
 
-  private MutableHistogram regionRead;
-  private MutableHistogram regionWrite;
+  private MetricHistogram regionRead;
+  private MetricHistogram regionWrite;
 
-  private MutableCounterLong regionThrottledRead;
-  private MutableCounterLong regionThrottledWrite;
+  private MutableFastCounter regionThrottledRead;
+  private MutableFastCounter regionThrottledWrite;
 
   private boolean metricsStringInited;
   private String STORE_COUNT;
@@ -97,34 +97,34 @@ public class MetricsRegionSourceImpl implements MetricsRegionSource {
     String suffix = "Count";
 
     regionPutKey = regionNamePrefix + MetricsRegionServerSource.MUTATE_KEY + suffix;
-    regionPut = registry.getLongCounter(regionPutKey, 0l);
+    regionPut = registry.getCounter(regionPutKey, 0l);
 
     regionDeleteKey = regionNamePrefix + MetricsRegionServerSource.DELETE_KEY + suffix;
-    regionDelete = registry.getLongCounter(regionDeleteKey, 0l);
+    regionDelete = registry.getCounter(regionDeleteKey, 0l);
 
     regionIncrementKey = regionNamePrefix + MetricsRegionServerSource.INCREMENT_KEY + suffix;
-    regionIncrement = registry.getLongCounter(regionIncrementKey, 0l);
+    regionIncrement = registry.getCounter(regionIncrementKey, 0l);
 
     regionAppendKey = regionNamePrefix + MetricsRegionServerSource.APPEND_KEY + suffix;
-    regionAppend = registry.getLongCounter(regionAppendKey, 0l);
+    regionAppend = registry.getCounter(regionAppendKey, 0l);
 
     regionGetKey = regionNamePrefix + MetricsRegionServerSource.GET_KEY;
-    regionGet = registry.newHistogram(regionGetKey);
+    regionGet = registry.newSizeHistogram(regionGetKey);
 
     regionScanNextKey = regionNamePrefix + MetricsRegionServerSource.SCAN_NEXT_KEY;
-    regionScanNext = registry.newHistogram(regionScanNextKey);
+    regionScanNext = registry.newSizeHistogram(regionScanNextKey);
 
     regionReadKey = regionNamePrefix + MetricsRegionServerSource.READ_KEY;
-    regionRead = registry.newHistogram(regionReadKey);
+    regionRead = registry.newSizeHistogram(regionReadKey);
 
     regionWriteKey = regionNamePrefix + MetricsRegionServerSource.WRITE_KEY;
-    regionWrite = registry.newHistogram(regionWriteKey);
+    regionWrite = registry.newSizeHistogram(regionWriteKey);
 
     regionThrottledReadKey = regionNamePrefix + MetricsRegionServerSource.THROTTLE_READ_KEY;
-    regionThrottledRead = registry.getLongCounter(regionThrottledReadKey, 0l);
+    regionThrottledRead = registry.getCounter(regionThrottledReadKey, 0l);
 
     regionThrottledWriteKey = regionNamePrefix + MetricsRegionServerSource.THROTTLE_WRITE_KEY;
-    regionThrottledWrite = registry.getLongCounter(regionThrottledWriteKey, 0l);
+    regionThrottledWrite = registry.getCounter(regionThrottledWriteKey, 0l);
   }
 
   @Override

@@ -376,7 +376,7 @@ public class HFileReaderV2 extends AbstractHFileReader {
             }
             assert cachedBlock.isUnpacked() : "Packed block leak.";
             if (cachedBlock.getBlockType().isData()) {
-              HFile.dataBlockReadCnt.incrementAndGet();
+              HFile.DATABLOCK_READ_COUNT.increment();
 
               // Validate encoding type for data blocks. We include encoding
               // type in the cache key, and we expect it to match on a cache hit.
@@ -417,7 +417,7 @@ public class HFileReaderV2 extends AbstractHFileReader {
         }
 
         if (updateCacheMetrics && hfileBlock.getBlockType().isData()) {
-          HFile.dataBlockReadCnt.incrementAndGet();
+          HFile.DATABLOCK_READ_COUNT.increment();
         }
 
         return unpacked;
