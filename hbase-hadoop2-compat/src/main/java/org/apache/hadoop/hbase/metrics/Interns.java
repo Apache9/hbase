@@ -18,6 +18,10 @@
 
 package org.apache.hadoop.hbase.metrics;
 
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
+
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -27,16 +31,12 @@ import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.metrics2.MetricsInfo;
 import org.apache.hadoop.metrics2.MetricsTag;
 
-import com.google.common.cache.CacheBuilder;
-import com.google.common.cache.CacheLoader;
-import com.google.common.cache.LoadingCache;
-
 /**
  * Helpers to create interned metrics info
  */
-@InterfaceAudience.Public
+@InterfaceAudience.Private
 @InterfaceStability.Evolving
-public class Interns {
+public final class Interns {
 
   private static LoadingCache<String, ConcurrentHashMap<String, MetricsInfo>> infoCache =
       CacheBuilder.newBuilder().expireAfterAccess(1, TimeUnit.DAYS)
@@ -53,11 +53,11 @@ public class Interns {
             }
           });
 
+  private Interns() {
+  }
+
   /**
    * Get a metric info object
-   *
-   * @param name
-   * @param description
    * @return an interned metric info object
    */
   public static MetricsInfo info(String name, String description) {
@@ -72,8 +72,7 @@ public class Interns {
 
   /**
    * Get a metrics tag
-   *
-   * @param info  of the tag
+   * @param info of the tag
    * @param value of the tag
    * @return an interned metrics tag
    */
@@ -89,10 +88,9 @@ public class Interns {
 
   /**
    * Get a metrics tag
-   *
-   * @param name        of the tag
+   * @param name of the tag
    * @param description of the tag
-   * @param value       of the tag
+   * @param value of the tag
    * @return an interned metrics tag
    */
   public static MetricsTag tag(String name, String description, String value) {

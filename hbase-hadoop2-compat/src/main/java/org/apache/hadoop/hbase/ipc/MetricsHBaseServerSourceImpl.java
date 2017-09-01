@@ -22,27 +22,27 @@ package org.apache.hadoop.hbase.ipc;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.metrics.BaseSourceImpl;
 import org.apache.hadoop.hbase.metrics.Interns;
+import org.apache.hadoop.metrics2.MetricHistogram;
 import org.apache.hadoop.metrics2.MetricsCollector;
 import org.apache.hadoop.metrics2.MetricsRecordBuilder;
-import org.apache.hadoop.metrics2.lib.MutableCounterLong;
-import org.apache.hadoop.metrics2.lib.MutableHistogram;
+import org.apache.hadoop.metrics2.lib.MutableFastCounter;
 
 @InterfaceAudience.Private
 public class MetricsHBaseServerSourceImpl extends BaseSourceImpl
     implements MetricsHBaseServerSource {
 
   private final MetricsHBaseServerWrapper wrapper;
-  private final MutableCounterLong authorizationSuccesses;
-  private final MutableCounterLong authorizationFailures;
-  private final MutableCounterLong authenticationSuccesses;
-  private final MutableCounterLong authenticationFailures;
-  private final MutableCounterLong sentBytes;
-  private final MutableCounterLong receivedBytes;
-  private final MutableCounterLong failedCalls;
-  private MutableHistogram queueCallTime;
-  private MutableHistogram processCallTime;
-  private final MutableCounterLong exceptions;
-  private final MutableCounterLong exceptionsMultiTooLarge;
+  private final MutableFastCounter authorizationSuccesses;
+  private final MutableFastCounter authorizationFailures;
+  private final MutableFastCounter authenticationSuccesses;
+  private final MutableFastCounter authenticationFailures;
+  private final MutableFastCounter sentBytes;
+  private final MutableFastCounter receivedBytes;
+  private final MutableFastCounter failedCalls;
+  private MetricHistogram queueCallTime;
+  private MetricHistogram processCallTime;
+  private final MutableFastCounter exceptions;
+  private final MutableFastCounter exceptionsMultiTooLarge;
 
   public MetricsHBaseServerSourceImpl(String metricsName,
                                       String metricsDescription,
@@ -67,9 +67,9 @@ public class MetricsHBaseServerSourceImpl extends BaseSourceImpl
         RECEIVED_BYTES_DESC, 0l);
     this.failedCalls = this.getMetricsRegistry().newCounter(FAILED_CALLS_NAME, FAILED_CALLS_DESC,
       0l);
-    this.queueCallTime = this.getMetricsRegistry().newHistogram(QUEUE_CALL_TIME_NAME,
+    this.queueCallTime = this.getMetricsRegistry().newTimeHistogram(QUEUE_CALL_TIME_NAME,
         QUEUE_CALL_TIME_DESC);
-    this.processCallTime = this.getMetricsRegistry().newHistogram(PROCESS_CALL_TIME_NAME,
+    this.processCallTime = this.getMetricsRegistry().newTimeHistogram(PROCESS_CALL_TIME_NAME,
         PROCESS_CALL_TIME_DESC);
     this.exceptions = this.getMetricsRegistry().newCounter(EXCEPTIONS_NAME, EXCEPTIONS_DESC, 0L);
     this.exceptionsMultiTooLarge = this.getMetricsRegistry().newCounter(

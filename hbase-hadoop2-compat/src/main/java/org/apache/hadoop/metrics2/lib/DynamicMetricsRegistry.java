@@ -21,6 +21,8 @@ package org.apache.hadoop.metrics2.lib;
 import java.util.Collection;
 import java.util.concurrent.ConcurrentMap;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.metrics.Interns;
 import org.apache.hadoop.metrics2.MetricsException;
@@ -45,18 +47,31 @@ import com.google.common.collect.Maps;
  */
 @InterfaceAudience.Private
 public class DynamicMetricsRegistry {
+  @SuppressWarnings("unused")
+  private static final Log LOG = LogFactory.getLog(DynamicMetricsRegistry.class);
+
   private final ConcurrentMap<String, MutableMetric> metricsMap =
-          Maps.newConcurrentMap();
+      Maps.newConcurrentMap();
   private final ConcurrentMap<String, MetricsTag> tagsMap =
-          Maps.newConcurrentMap();
+      Maps.newConcurrentMap();
   private final MetricsInfo metricsInfo;
+  private final DefaultMetricsSystemHelper helper = new DefaultMetricsSystemHelper();
+  private final static String[] histogramSuffixes = new String[]{
+      "_num_ops",
+      "_min",
+      "_max",
+      "_median",
+      "_75th_percentile",
+      "_90th_percentile",
+      "_95th_percentile",
+      "_99th_percentile"};
 
   /**
    * Construct the registry with a record name
    * @param name  of the record of the metrics
    */
   public DynamicMetricsRegistry(String name) {
-    metricsInfo = Interns.info(name, name);
+    this(Interns.info(name,name));
   }
 
   /**
@@ -93,35 +108,13 @@ public class DynamicMetricsRegistry {
   }
 
   /**
-   * Create a mutable integer counter
-   * @param name  of the metric
-   * @param desc  metric description
-   * @param iVal  initial value
-   * @return a new counter object
-   */
-  public MutableCounterInt newCounter(String name, String desc, int iVal) {
-    return newCounter(new MetricsInfoImpl(name, desc), iVal);
-  }
-
-  /**
-   * Create a mutable integer counter
-   * @param info  metadata of the metric
-   * @param iVal  initial value
-   * @return a new counter object
-   */
-  public MutableCounterInt newCounter(MetricsInfo info, int iVal) {
-    MutableCounterInt ret = new MutableCounterInt(info, iVal);
-    return addNewMetricIfAbsent(info.name(), ret, MutableCounterInt.class);
-  }
-
-  /**
    * Create a mutable long integer counter
    * @param name  of the metric
    * @param desc  metric description
    * @param iVal  initial value
    * @return a new counter object
    */
-  public MutableCounterLong newCounter(String name, String desc, long iVal) {
+  public MutableFastCounter newCounter(String name, String desc, long iVal) {
     return newCounter(new MetricsInfoImpl(name, desc), iVal);
   }
 
@@ -131,30 +124,9 @@ public class DynamicMetricsRegistry {
    * @param iVal  initial value
    * @return a new counter object
    */
-  public MutableCounterLong newCounter(MetricsInfo info, long iVal) {
-    MutableCounterLong ret = new MutableCounterLong(info, iVal);
-    return addNewMetricIfAbsent(info.name(), ret, MutableCounterLong.class);
-  }
-
-  /**
-   * Create a mutable integer gauge
-   * @param name  of the metric
-   * @param desc  metric description
-   * @param iVal  initial value
-   * @return a new gauge object
-   */
-  public MutableGaugeInt newGauge(String name, String desc, int iVal) {
-    return newGauge(new MetricsInfoImpl(name, desc), iVal);
-  }
-  /**
-   * Create a mutable integer gauge
-   * @param info  metadata of the metric
-   * @param iVal  initial value
-   * @return a new gauge object
-   */
-  public MutableGaugeInt newGauge(MetricsInfo info, int iVal) {
-    MutableGaugeInt ret = new MutableGaugeInt(info, iVal);
-    return addNewMetricIfAbsent(info.name(), ret, MutableGaugeInt.class);
+  public MutableFastCounter newCounter(MetricsInfo info, long iVal) {
+    MutableFastCounter ret = new MutableFastCounter(info, iVal);
+    return addNewMetricIfAbsent(info.name(), ret, MutableFastCounter.class);
   }
 
   /**
@@ -272,20 +244,47 @@ public class DynamicMetricsRegistry {
     MutableHistogram histo = new MutableHistogram(name, desc);
     return addNewMetricIfAbsent(name, histo, MutableHistogram.class);
   }
+  
+  /**
+   * Create a new histogram with time range counts.
+   * @param name Name of the histogram.
+   * @return A new MutableTimeHistogram
+   */
+  public MutableTimeHistogram newTimeHistogram(String name) {
+     return newTimeHistogram(name, "");
+  }
 
   /**
-   * Create a new MutableQuantile(A more accurate histogram).
+   * Create a new histogram with time range counts.
    * @param name The name of the histogram
-   * @return a new MutableQuantile
+   * @param desc The description of the data in the histogram.
+   * @return A new MutableTimeHistogram
    */
-  public MetricMutableQuantiles newQuantile(String name) {
-    return newQuantile(name, "");
+  public MutableTimeHistogram newTimeHistogram(String name, String desc) {
+    MutableTimeHistogram histo = new MutableTimeHistogram(name, desc);
+    return addNewMetricIfAbsent(name, histo, MutableTimeHistogram.class);
+  }
+  
+  /**
+   * Create a new histogram with size range counts.
+   * @param name Name of the histogram.
+   * @return A new MutableSizeHistogram
+   */
+  public MutableSizeHistogram newSizeHistogram(String name) {
+     return newSizeHistogram(name, "");
   }
 
-  public MetricMutableQuantiles newQuantile(String name, String desc) {
-    MetricMutableQuantiles histo = new MetricMutableQuantiles(name, desc, "Ops", "", 60);
-    return addNewMetricIfAbsent(name, histo, MetricMutableQuantiles.class);
+  /**
+   * Create a new histogram with size range counts.
+   * @param name The name of the histogram
+   * @param desc The description of the data in the histogram.
+   * @return A new MutableSizeHistogram
+   */
+  public MutableSizeHistogram newSizeHistogram(String name, String desc) {
+    MutableSizeHistogram histo = new MutableSizeHistogram(name, desc);
+    return addNewMetricIfAbsent(name, histo, MutableSizeHistogram.class);
   }
+
 
   synchronized void add(String name, MutableMetric metric) {
     addNewMetricIfAbsent(name, metric, MutableMetric.class);
@@ -406,7 +405,14 @@ public class DynamicMetricsRegistry {
    * @param name name of the metric to remove
    */
   public void removeMetric(String name) {
+    helper.removeObjectName(name);
     metricsMap.remove(name);
+  }
+
+  public void removeHistogramMetrics(String baseName) {
+    for (String suffix:histogramSuffixes) {
+      removeMetric(baseName+suffix);
+    }
   }
 
   /**
@@ -415,7 +421,7 @@ public class DynamicMetricsRegistry {
    * @param gaugeName              name of the gauge to create or get.
    * @param potentialStartingValue value of the new gauge if we have to create it.
    */
-  public MutableGaugeLong getLongGauge(String gaugeName, long potentialStartingValue) {
+  public MutableGaugeLong getGauge(String gaugeName, long potentialStartingValue) {
     //Try and get the guage.
     MutableMetric metric = metricsMap.get(gaugeName);
 
@@ -450,12 +456,12 @@ public class DynamicMetricsRegistry {
    * @param counterName            Name of the counter to get
    * @param potentialStartingValue starting value if we have to create a new counter
    */
-  public MutableCounterLong getLongCounter(String counterName, long potentialStartingValue) {
-    //See getLongGauge for description on how this works.
+  public MutableFastCounter getCounter(String counterName, long potentialStartingValue) {
+    //See getGauge for description on how this works.
     MutableMetric counter = metricsMap.get(counterName);
     if (counter == null) {
-      MutableCounterLong newCounter =
-              new MutableCounterLong(new MetricsInfoImpl(counterName, ""), potentialStartingValue);
+      MutableFastCounter newCounter =
+              new MutableFastCounter(new MetricsInfoImpl(counterName, ""), potentialStartingValue);
       counter = metricsMap.putIfAbsent(counterName, newCounter);
       if (counter == null) {
         return newCounter;
@@ -463,16 +469,16 @@ public class DynamicMetricsRegistry {
     }
 
 
-    if (!(counter instanceof MutableCounterLong)) {
+    if (!(counter instanceof MutableCounter)) {
       throw new MetricsException("Metric already exists in registry for metric name: " +
-              counterName + " and not of type MetricMutableCounterLong");
+              counterName + " and not of type MutableCounter");
     }
 
-    return (MutableCounterLong) counter;
+    return (MutableFastCounter) counter;
   }
 
   public MutableHistogram getHistogram(String histoName) {
-    //See getLongGauge for description on how this works.
+    //See getGauge for description on how this works.
     MutableMetric histo = metricsMap.get(histoName);
     if (histo == null) {
       MutableHistogram newCounter =
@@ -490,27 +496,6 @@ public class DynamicMetricsRegistry {
     }
 
     return (MutableHistogram) histo;
-  }
-
-  public MetricMutableQuantiles getQuantile(String histoName) {
-    //See getLongGauge for description on how this works.
-    MutableMetric histo = metricsMap.get(histoName);
-    if (histo == null) {
-      MetricMutableQuantiles newCounter =
-          new MetricMutableQuantiles(histoName, "", "Ops", "", 60);
-      histo = metricsMap.putIfAbsent(histoName, newCounter);
-      if (histo == null) {
-        return newCounter;
-      }
-    }
-
-
-    if (!(histo instanceof MetricMutableQuantiles)) {
-      throw new MetricsException("Metric already exists in registry for metric name: " +
-          histoName + " and not of type MutableHistogram");
-    }
-
-    return (MetricMutableQuantiles) histo;
   }
 
   private<T extends MutableMetric> T
@@ -541,6 +526,9 @@ public class DynamicMetricsRegistry {
   }
 
   public void clearMetrics() {
+    for (String name:metricsMap.keySet()) {
+      helper.removeObjectName(name);
+    }
     metricsMap.clear();
   }
 }

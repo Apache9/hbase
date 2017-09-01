@@ -18,7 +18,7 @@
  */
 package org.apache.hadoop.hbase.io.hfile;
 
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.LongAdder;
 
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 
@@ -33,7 +33,7 @@ public class CacheStats {
   static final int DEFAULT_WINDOW_PERIODS = 5;
 
   /** The number of getBlock requests that were cache hits */
-  private final AtomicLong hitCount = new AtomicLong(0);
+  private final LongAdder hitCount = new LongAdder();
 
   /**
    * The number of getBlock requests that were cache hits, but only from
@@ -41,22 +41,22 @@ public class CacheStats {
    * attempt to read from the block cache even if they will not put new blocks
    * into the block cache.  See HBASE-2253 for more information.
    */
-  private final AtomicLong hitCachingCount = new AtomicLong(0);
+  private final LongAdder hitCachingCount = new LongAdder();
 
   /** The number of getBlock requests that were cache misses */
-  private final AtomicLong missCount = new AtomicLong(0);
+  private final LongAdder missCount = new LongAdder();
 
   /**
    * The number of getBlock requests that were cache misses, but only from
    * requests that were set to use the block cache.
    */
-  private final AtomicLong missCachingCount = new AtomicLong(0);
+  private final LongAdder missCachingCount = new LongAdder();
 
   /** The number of times an eviction has occurred */
-  private final AtomicLong evictionCount = new AtomicLong(0);
+  private final LongAdder evictionCount = new LongAdder();
 
   /** The total number of blocks that have been evicted */
-  private final AtomicLong evictedBlockCount = new AtomicLong(0);
+  private final LongAdder evictedBlockCount = new LongAdder();
 
   /** The number of metrics periods to include in window */
   private final int numPeriodsInWindow;
@@ -92,8 +92,8 @@ public class CacheStats {
   }
 
   public void miss(boolean caching) {
-    missCount.incrementAndGet();
-    if (caching) missCachingCount.incrementAndGet();
+    missCount.increment();
+    if (caching) missCachingCount.increment();
   }
 
   @Override
@@ -105,16 +105,16 @@ public class CacheStats {
   }
 
   public void hit(boolean caching) {
-    hitCount.incrementAndGet();
-    if (caching) hitCachingCount.incrementAndGet();
+    hitCount.increment();
+    if (caching) hitCachingCount.increment();
   }
 
   public void evict() {
-    evictionCount.incrementAndGet();
+    evictionCount.increment();
   }
 
   public void evicted() {
-    evictedBlockCount.incrementAndGet();
+    evictedBlockCount.increment();
   }
 
   public long getRequestCount() {
@@ -126,27 +126,27 @@ public class CacheStats {
   }
 
   public long getMissCount() {
-    return missCount.get();
+    return missCount.sum();
   }
 
   public long getMissCachingCount() {
-    return missCachingCount.get();
+    return missCachingCount.sum();
   }
 
   public long getHitCount() {
-    return hitCount.get();
+    return hitCount.sum();
   }
 
   public long getHitCachingCount() {
-    return hitCachingCount.get();
+    return hitCachingCount.sum();
   }
 
   public long getEvictionCount() {
-    return evictionCount.get();
+    return evictionCount.sum();
   }
 
   public long getEvictedCount() {
-    return evictedBlockCount.get();
+    return evictedBlockCount.sum();
   }
 
   public double getHitRatio() {

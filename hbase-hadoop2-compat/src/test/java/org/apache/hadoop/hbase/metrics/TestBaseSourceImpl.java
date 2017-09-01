@@ -18,13 +18,13 @@
 
 package org.apache.hadoop.hbase.metrics;
 
-import org.apache.hadoop.metrics2.lib.MutableCounterLong;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+
+import org.apache.hadoop.metrics2.lib.MutableFastCounter;
 import org.apache.hadoop.metrics2.lib.MutableGaugeLong;
 import org.junit.BeforeClass;
 import org.junit.Test;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
 
 /**
  *  Test of default BaseSource for hadoop 2
@@ -68,9 +68,9 @@ public class TestBaseSourceImpl {
   @Test
   public void testIncCounters() throws Exception {
     bmsi.incCounters("testinccounter", 100);
-    assertEquals(100, ((MutableCounterLong) bmsi.metricsRegistry.get("testinccounter")).value());
+    assertEquals(100, ((MutableFastCounter) bmsi.metricsRegistry.get("testinccounter")).value());
     bmsi.incCounters("testinccounter", 100);
-    assertEquals(200, ((MutableCounterLong) bmsi.metricsRegistry.get("testinccounter")).value());
+    assertEquals(200, ((MutableFastCounter) bmsi.metricsRegistry.get("testinccounter")).value());
 
   }
 

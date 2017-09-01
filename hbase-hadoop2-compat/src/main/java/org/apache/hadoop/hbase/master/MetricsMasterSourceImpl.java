@@ -24,7 +24,7 @@ import org.apache.hadoop.hbase.metrics.Interns;
 import org.apache.hadoop.metrics2.MetricHistogram;
 import org.apache.hadoop.metrics2.MetricsCollector;
 import org.apache.hadoop.metrics2.MetricsRecordBuilder;
-import org.apache.hadoop.metrics2.lib.MutableCounterLong;
+import org.apache.hadoop.metrics2.lib.MutableFastCounter;
 
 /**
  * Hadoop2 implementation of MetricsMasterSource.
@@ -36,11 +36,11 @@ public class MetricsMasterSourceImpl
     extends BaseSourceImpl implements MetricsMasterSource {
 
   private final MetricsMasterWrapper masterWrapper;
-  private MutableCounterLong clusterRequestsCounter;
+  private MutableFastCounter clusterRequestsCounter;
 
   // pause monitor metrics
-  private final MutableCounterLong infoPauseThresholdExceeded;
-  private final MutableCounterLong warnPauseThresholdExceeded;
+  private final MutableFastCounter infoPauseThresholdExceeded;
+  private final MutableFastCounter warnPauseThresholdExceeded;
   private final MetricHistogram pausesWithGc;
   private final MetricHistogram pausesWithoutGc;
 
@@ -65,8 +65,8 @@ public class MetricsMasterSourceImpl
       INFO_THRESHOLD_COUNT_DESC, 0L);
     warnPauseThresholdExceeded = getMetricsRegistry().newCounter(WARN_THRESHOLD_COUNT_KEY,
       WARN_THRESHOLD_COUNT_DESC, 0L);
-    pausesWithGc = getMetricsRegistry().newHistogram(PAUSE_TIME_WITH_GC_KEY);
-    pausesWithoutGc = getMetricsRegistry().newHistogram(PAUSE_TIME_WITHOUT_GC_KEY);
+    pausesWithGc = getMetricsRegistry().newTimeHistogram(PAUSE_TIME_WITH_GC_KEY);
+    pausesWithoutGc = getMetricsRegistry().newTimeHistogram(PAUSE_TIME_WITHOUT_GC_KEY);
   }
 
   @Override

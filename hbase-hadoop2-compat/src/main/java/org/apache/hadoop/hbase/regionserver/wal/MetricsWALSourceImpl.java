@@ -21,7 +21,7 @@ package org.apache.hadoop.hbase.regionserver.wal;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.metrics.BaseSourceImpl;
 import org.apache.hadoop.metrics2.MetricHistogram;
-import org.apache.hadoop.metrics2.lib.MutableCounterLong;
+import org.apache.hadoop.metrics2.lib.MutableFastCounter;
 
 
 /**
@@ -35,10 +35,10 @@ public class MetricsWALSourceImpl extends BaseSourceImpl implements MetricsWALSo
   private final MetricHistogram appendSizeHisto;
   private final MetricHistogram appendTimeHisto;
   private final MetricHistogram syncTimeHisto;
-  private final MutableCounterLong appendCount;
-  private final MutableCounterLong slowAppendCount;
-  private final MutableCounterLong logRollRequested;
-  private final MutableCounterLong lowReplicationLogRollRequested;
+  private final MutableFastCounter appendCount;
+  private final MutableFastCounter slowAppendCount;
+  private final MutableFastCounter logRollRequested;
+  private final MutableFastCounter lowReplicationLogRollRequested;
 
   public MetricsWALSourceImpl() {
     this(METRICS_NAME, METRICS_DESCRIPTION, METRICS_CONTEXT, METRICS_JMX_CONTEXT);
@@ -51,12 +51,12 @@ public class MetricsWALSourceImpl extends BaseSourceImpl implements MetricsWALSo
     super(metricsName, metricsDescription, metricsContext, metricsJmxContext);
 
     //Create and store the metrics that will be used.
-    appendTimeHisto = this.getMetricsRegistry().newHistogram(APPEND_TIME, APPEND_TIME_DESC);
-    appendSizeHisto = this.getMetricsRegistry().newHistogram(APPEND_SIZE, APPEND_SIZE_DESC);
+    appendTimeHisto = this.getMetricsRegistry().newTimeHistogram(APPEND_TIME, APPEND_TIME_DESC);
+    appendSizeHisto = this.getMetricsRegistry().newSizeHistogram(APPEND_SIZE, APPEND_SIZE_DESC);
     appendCount = this.getMetricsRegistry().newCounter(APPEND_COUNT, APPEND_COUNT_DESC, 0l);
     slowAppendCount =
         this.getMetricsRegistry().newCounter(SLOW_APPEND_COUNT, SLOW_APPEND_COUNT_DESC, 0l);
-    syncTimeHisto = this.getMetricsRegistry().newHistogram(SYNC_TIME, SYNC_TIME_DESC);
+    syncTimeHisto = this.getMetricsRegistry().newTimeHistogram(SYNC_TIME, SYNC_TIME_DESC);
     logRollRequested =
         this.getMetricsRegistry().newCounter(ROLL_REQUESTED, ROLL_REQUESTED_DESC, 0L);
     lowReplicationLogRollRequested = this.getMetricsRegistry()

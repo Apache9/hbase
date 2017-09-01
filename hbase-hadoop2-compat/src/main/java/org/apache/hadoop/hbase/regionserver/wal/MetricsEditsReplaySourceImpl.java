@@ -29,9 +29,10 @@ import org.apache.hadoop.metrics2.MetricHistogram;
  * following the pattern
  */
 @InterfaceAudience.Private
-public class MetricsEditsReplaySourceImpl extends BaseSourceImpl implements
-    MetricsEditsReplaySource {
+public class MetricsEditsReplaySourceImpl extends BaseSourceImpl
+    implements MetricsEditsReplaySource {
 
+  @SuppressWarnings("unused")
   private static final Log LOG = LogFactory.getLog(MetricsEditsReplaySourceImpl.class.getName());
 
   private MetricHistogram replayTimeHisto;
@@ -42,21 +43,19 @@ public class MetricsEditsReplaySourceImpl extends BaseSourceImpl implements
     this(METRICS_NAME, METRICS_DESCRIPTION, METRICS_CONTEXT, METRICS_JMX_CONTEXT);
   }
 
-  public MetricsEditsReplaySourceImpl(String metricsName,
-                                      String metricsDescription,
-                                      String metricsContext,
-                                      String metricsJmxContext) {
+  public MetricsEditsReplaySourceImpl(String metricsName, String metricsDescription,
+      String metricsContext, String metricsJmxContext) {
     super(metricsName, metricsDescription, metricsContext, metricsJmxContext);
   }
 
   @Override
   public void init() {
     super.init();
-    replayTimeHisto = metricsRegistry.newHistogram(REPLAY_TIME_NAME, REPLAY_TIME_DESC);
-    replayBatchSizeHisto = metricsRegistry.newHistogram(REPLAY_BATCH_SIZE_NAME,
-      REPLAY_BATCH_SIZE_DESC);
-    replayDataSizeHisto = metricsRegistry
-        .newHistogram(REPLAY_DATA_SIZE_NAME, REPLAY_DATA_SIZE_DESC);
+    replayTimeHisto = metricsRegistry.newTimeHistogram(REPLAY_TIME_NAME, REPLAY_TIME_DESC);
+    replayBatchSizeHisto =
+        metricsRegistry.newSizeHistogram(REPLAY_BATCH_SIZE_NAME, REPLAY_BATCH_SIZE_DESC);
+    replayDataSizeHisto =
+        metricsRegistry.newSizeHistogram(REPLAY_DATA_SIZE_NAME, REPLAY_DATA_SIZE_DESC);
   }
 
   @Override

@@ -24,8 +24,7 @@ import org.apache.hadoop.metrics2.MetricsSource;
 import org.apache.hadoop.metrics2.impl.JmxCacheBuster;
 import org.apache.hadoop.metrics2.lib.DefaultMetricsSystem;
 import org.apache.hadoop.metrics2.lib.DynamicMetricsRegistry;
-import org.apache.hadoop.metrics2.lib.MetricMutableQuantiles;
-import org.apache.hadoop.metrics2.lib.MutableCounterLong;
+import org.apache.hadoop.metrics2.lib.MutableFastCounter;
 import org.apache.hadoop.metrics2.lib.MutableGaugeLong;
 import org.apache.hadoop.metrics2.lib.MutableHistogram;
 import org.apache.hadoop.metrics2.source.JvmMetrics;
@@ -42,14 +41,12 @@ public class BaseSourceImpl implements BaseSource, MetricsSource {
   private static enum DefaultMetricsSystemInitializer {
     INSTANCE;
     private boolean inited = false;
-    private JvmMetrics jvmMetricsSource;
 
     synchronized void init(String name) {
       if (inited) return;
       inited = true;
       DefaultMetricsSystem.initialize(HBASE_METRICS_SYSTEM_NAME);
-      jvmMetricsSource = JvmMetrics.initSingleton(name, "");
-
+      JvmMetrics.initSingleton(name, "");
     }
   }
 
@@ -90,7 +87,7 @@ public class BaseSourceImpl implements BaseSource, MetricsSource {
    * @param value     the new value of the gauge.
    */
   public void setGauge(String gaugeName, long value) {
-    MutableGaugeLong gaugeInt = metricsRegistry.getLongGauge(gaugeName, value);
+    MutableGaugeLong gaugeInt = metricsRegistry.getGauge(gaugeName, value);
     gaugeInt.set(value);
   }
 
@@ -101,7 +98,7 @@ public class BaseSourceImpl implements BaseSource, MetricsSource {
    * @param delta     The amount to increment the gauge by.
    */
   public void incGauge(String gaugeName, long delta) {
-    MutableGaugeLong gaugeInt = metricsRegistry.getLongGauge(gaugeName, 0l);
+    MutableGaugeLong gaugeInt = metricsRegistry.getGauge(gaugeName, 0l);
     gaugeInt.incr(delta);
   }
 
@@ -112,7 +109,7 @@ public class BaseSourceImpl implements BaseSource, MetricsSource {
    * @param delta     the ammount to subtract from a gauge value.
    */
   public void decGauge(String gaugeName, long delta) {
-    MutableGaugeLong gaugeInt = metricsRegistry.getLongGauge(gaugeName, 0l);
+    MutableGaugeLong gaugeInt = metricsRegistry.getGauge(gaugeName, 0l);
     gaugeInt.decr(delta);
   }
 
@@ -123,7 +120,7 @@ public class BaseSourceImpl implements BaseSource, MetricsSource {
    * @param delta the ammount to increment
    */
   public void incCounters(String key, long delta) {
-    MutableCounterLong counter = metricsRegistry.getLongCounter(key, 0l);
+    MutableFastCounter counter = metricsRegistry.getCounter(key, 0l);
     counter.incr(delta);
 
   }
@@ -131,12 +128,6 @@ public class BaseSourceImpl implements BaseSource, MetricsSource {
   @Override
   public void updateHistogram(String name, long value) {
     MutableHistogram histo = metricsRegistry.getHistogram(name);
-    histo.add(value);
-  }
-
-  @Override
-  public void updateQuantile(String name, long value) {
-    MetricMutableQuantiles histo = metricsRegistry.getQuantile(name);
     histo.add(value);
   }
 

@@ -23,7 +23,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.LongAdder;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -60,7 +60,7 @@ public class StoreFileScanner implements KeyValueScanner {
   // if have encountered the next row. Only used for reversed scan
   private boolean stopSkippingKVsIfNextRow = false;
 
-  private static AtomicLong seekCount;
+  private static LongAdder seekCount;
 
   private final boolean canOptimizeForNonNullColumn;
 
@@ -162,7 +162,7 @@ public class StoreFileScanner implements KeyValueScanner {
   }
 
   public boolean seek(KeyValue key) throws IOException {
-    if (seekCount != null) seekCount.incrementAndGet();
+    if (seekCount != null) seekCount.increment();
 
     try {
       try {
@@ -183,7 +183,7 @@ public class StoreFileScanner implements KeyValueScanner {
   }
 
   public boolean reseek(KeyValue key) throws IOException {
-    if (seekCount != null) seekCount.incrementAndGet();
+    if (seekCount != null) seekCount.increment();
 
     try {
       try {
@@ -396,10 +396,10 @@ public class StoreFileScanner implements KeyValueScanner {
   // Test methods
 
   static final long getSeekCount() {
-    return seekCount.get();
+    return seekCount.sum();
   }
   static final void instrument() {
-    seekCount = new AtomicLong();
+    seekCount = new LongAdder();
   }
 
   @Override
@@ -419,7 +419,7 @@ public class StoreFileScanner implements KeyValueScanner {
     try {
       try {
         KeyValue seekKey = KeyValue.createFirstOnRow(key.getRow());
-        if (seekCount != null) seekCount.incrementAndGet();
+        if (seekCount != null) seekCount.increment();
         if (!hfs.seekBefore(seekKey.getBuffer(), seekKey.getKeyOffset(),
             seekKey.getKeyLength())) {
           close();
@@ -428,7 +428,7 @@ public class StoreFileScanner implements KeyValueScanner {
         KeyValue firstKeyOfPreviousRow = KeyValue.createFirstOnRow(hfs
             .getKeyValue().getRow());
 
-        if (seekCount != null) seekCount.incrementAndGet();
+        if (seekCount != null) seekCount.increment();
         if (!seekAtOrAfter(hfs, firstKeyOfPreviousRow)) {
           close();
           return false;
