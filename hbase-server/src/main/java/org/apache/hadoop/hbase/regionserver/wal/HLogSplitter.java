@@ -268,6 +268,7 @@ public class HLogSplitter {
     status =
         TaskMonitor.get().createStatus(
           "Splitting log file " + logfile.getPath() + "into a temporary staging area.");
+    long startTS = EnvironmentEdgeManager.currentTimeMillis();
     try {
       long logLength = logfile.getLen();
       LOG.info("Splitting hlog: " + logPath + ", length=" + logLength);
@@ -278,7 +279,6 @@ public class HLogSplitter {
         return false;
       }
       Reader in = null;
-      long startTS = EnvironmentEdgeManager.currentTimeMillis();
       try {
         in = getReader(fs, logfile, conf, skipErrors, reporter);
       } catch (CorruptedLogFileException e) {
@@ -308,6 +308,7 @@ public class HLogSplitter {
       Long lastFlushedSequenceId = -1L;
       ServerName serverName = HLogUtil.getServerNameFromHLogDirectoryName(logPath);
       failedServerName = (serverName == null) ? "" : serverName.getServerName();
+      startTS = EnvironmentEdgeManager.currentTimeMillis();
       while ((entry = getNextLogLine(in, logPath, skipErrors)) != null) {
         byte[] region = entry.getKey().getEncodedRegionName();
         String key = Bytes.toString(region);
@@ -327,12 +328,12 @@ public class HLogSplitter {
           }
           lastFlushedSequenceIds.put(key, lastFlushedSequenceId);
         }
+        editsCount++;
         if (lastFlushedSequenceId >= entry.getKey().getLogSeqNum()) {
           editsSkipped++;
           continue;
         }
         entryBuffers.appendEntry(entry);
-        editsCount++;
         int moreWritersFromLastCheck = this.getNumOpenWriters() - numOpenedFilesLastCheck;
         // If sufficient edits have passed, check if we should report progress.
         if (editsCount % interval == 0
@@ -368,10 +369,11 @@ public class HLogSplitter {
           progress_failed = outputSink.finishWritingAndClose() == null;
         }
       } finally {
-        String msg =
-            "Processed " + editsCount + " edits across " + outputSink.getNumberOfRecoveredRegions()
-                + " regions; log file=" + logPath + " is corrupted = " + isCorrupted
-                + " progress failed = " + progress_failed;
+        long processCost = EnvironmentEdgeManager.currentTimeMillis() - startTS;
+        String msg = "Processed " + editsCount + " edits across "
+            + outputSink.getNumberOfRecoveredRegions() + " regions in " + processCost
+            + " ms ; log file=" + logPath + " is corrupted = " + isCorrupted
+            + " progress failed = " + progress_failed;
         LOG.info(msg);
         status.markComplete(msg);
       }
@@ -1115,7 +1117,7 @@ public class HLogSplitter {
                 if (!fs.rename(wap.p, dst)) {
                   throw new IOException("Failed renaming " + wap.p + " to " + dst);
                 }
-                LOG.debug("Rename " + wap.p + " to " + dst);
+                LOG.info("Rename " + wap.p + " to " + dst);
               }
             } catch (IOException ioe) {
               LOG.error("Couldn't rename " + wap.p + " to " + dst, ioe);
