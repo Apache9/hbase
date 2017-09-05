@@ -29,6 +29,7 @@ import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.master.MasterServices;
 import org.apache.hadoop.hbase.util.Pair;
 
+import java.io.IOException;
 import java.util.List;
 
 /**
@@ -66,8 +67,7 @@ public class SimpleRegionNormalizer implements RegionNormalizer {
    * @return normalization plan to execute
    */
   @Override
-  public NormalizationPlan computePlanForTable(TableName table)
-      throws HBaseIOException {
+  public NormalizationPlan computePlanForTable(TableName table) {
     if (table == null || table.isSystemTable()) {
       LOG.debug("Normalization of table " + table + " isn't allowed");
       return EmptyNormalizationPlan.getInstance();
@@ -139,14 +139,34 @@ public class SimpleRegionNormalizer implements RegionNormalizer {
       }
     }
 
-    double avgRegionSize = totalSizeMb / (double) tableRegions.size();
+    double avgRegionSize;
+    int targetRegionCount = -1;
+    long targetRegionSize = -1;
+    try {
+      targetRegionCount = masterServices.getTableDescriptors().get(table).getNormalizeTargetRegionCount();
+      targetRegionSize   = masterServices.getTableDescriptors().get(table).getNormalizeTargetRegionSize();
+      LOG.debug("we get the target region number " + targetRegionCount +  " and target region size " + targetRegionSize + " for table " + table);
+    } catch (IOException e) {
+      LOG.debug("cannot get the target number and target size of table " + table  + ", they will equal to -1.");
+    }
+
+
+    if(targetRegionSize > 0){
+      avgRegionSize = targetRegionSize;
+    }else {
+      if (targetRegionCount > 0) {
+        avgRegionSize = totalSizeMb / (double) targetRegionCount;
+      } else {
+        avgRegionSize = totalSizeMb / (double) tableRegions.size();
+      }
+    }
 
     LOG.debug("Table " + table + ", total aggregated regions size: " + totalSizeMb);
     LOG.debug("Table " + table + ", average region size: " + avgRegionSize);
 
-    // now; if the largest region is >2 times large than average, we split it, split
+    // now; if the largest region is >=2 times large than average, we split it, split
     // is more high priority normalization action than merge.
-    if (largestRegion.getSecond() > 2 * avgRegionSize) {
+    if (largestRegion.getSecond() >= 2 * avgRegionSize) {
       LOG.debug("Table " + table + ", largest region "
         + largestRegion.getFirst().getRegionName() + " has size "
         + largestRegion.getSecond() + ", more than 2 times than avg size, splitting");

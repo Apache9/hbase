@@ -285,11 +285,13 @@ module Hbase
         end
         
         # Done with splits; apply formerly-table_att parameters.
-        htd.setOwnerString(arg.delete(OWNER)) if arg[OWNER] 
+        htd.setOwnerString(arg.delete(OWNER)) if arg[OWNER]
         htd.setMaxFileSize(JLong.valueOf(arg.delete(MAX_FILESIZE))) if arg[MAX_FILESIZE]
         htd.setReadOnly(JBoolean.valueOf(arg.delete(READONLY))) if arg[READONLY]
         htd.setCompactionEnabled(JBoolean.valueOf(arg[COMPACTION_ENABLED])) if arg[COMPACTION_ENABLED]
         htd.setNormalizationEnabled(JBoolean.valueOf(arg.delete(NORMALIZATION_ENABLED))) if arg[NORMALIZATION_ENABLED]
+        htd.setNormalizationTargetRegionCount(JInteger.valueOf(arg.delete(NORMALIZATION_TARGET_REGION_COUNT))) if arg[NORMALIZATION_TARGET_REGION_COUNT]
+        htd.setNormalizationTargetRegionSize(JLong.valueOf(arg.delete(NORMALIZATION_TARGET_REGION_SIZE))) if arg[NORMALIZATION_TARGET_REGION_SIZE]
         htd.setMemStoreFlushSize(JLong.valueOf(arg.delete(MEMSTORE_FLUSHSIZE))) if arg[MEMSTORE_FLUSHSIZE]
         # DEFERRED_LOG_FLUSH is deprecated and was replaced by DURABILITY.  To keep backward compatible, it still exists.
         # However, it has to be set before DURABILITY so that DURABILITY could overwrite if both args are set
@@ -614,6 +616,8 @@ module Hbase
         htd.setReadOnly(JBoolean.valueOf(arg.delete(READONLY))) if arg[READONLY]
         htd.setCompactionEnabled(JBoolean.valueOf(arg[COMPACTION_ENABLED])) if arg[COMPACTION_ENABLED]
         htd.setNormalizationEnabled(JBoolean.valueOf(arg.delete(NORMALIZATION_ENABLED))) if arg[NORMALIZATION_ENABLED]
+        htd.setNormalizationTargetRegionCount(JInteger.valueOf(arg.delete(NORMALIZATION_TARGET_REGION_COUNT))) if arg[NORMALIZATION_TARGET_REGION_COUNT]
+        htd.setNormalizationTargetRegionSize(JLong.valueOf(arg.delete(NORMALIZATION_TARGET_REGION_SIZE))) if arg[NORMALIZATION_TARGET_REGION_SIZE]
         htd.setMemStoreFlushSize(JLong.valueOf(arg.delete(MEMSTORE_FLUSHSIZE))) if arg[MEMSTORE_FLUSHSIZE]
         # DEFERRED_LOG_FLUSH is deprecated and was replaced by DURABILITY.  To keep backward compatible, it still exists.
         # However, it has to be set before DURABILITY so that DURABILITY could overwrite if both args are set

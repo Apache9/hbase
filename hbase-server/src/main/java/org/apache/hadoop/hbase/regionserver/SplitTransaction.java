@@ -515,16 +515,18 @@ public class SplitTransaction {
           if (useZKForAssignment) {
             // add 2nd daughter first (see HBASE-4335)
             services.postOpenDeployTasks(b, server.getCatalogTracker());
-          } else if (!services.reportRegionStateTransition(TransitionCode.SPLIT,
+          } else {
+            if (!services.reportRegionStateTransition(TransitionCode.SPLIT,
               parent.getRegionInfo(), hri_a, hri_b)) {
-            throw new IOException("Failed to report split region to master: "
-              + parent.getRegionInfo().getShortNameToLog());
+            throw new IOException(
+                "Failed to report split region to master: " + parent.getRegionInfo().getShortNameToLog());
+            } else {
+              services.postOpenDeployTasks(b, server.getCatalogTracker());
+            }
           }
           // Should add it to OnlineRegions
           services.addToOnlineRegions(b);
-          if (useZKForAssignment) {
-            services.postOpenDeployTasks(a, server.getCatalogTracker());
-          }
+          services.postOpenDeployTasks(a, server.getCatalogTracker());
           services.addToOnlineRegions(a);
         } catch (KeeperException ke) {
           throw new IOException(ke);

@@ -44,7 +44,7 @@ To delete the 'f1' column family in table 'ns1:t1', use one of:
   hbase> alter 'ns1:t1', 'delete' => 'f1'
 
 You can also change table-scope attributes like MAX_FILESIZE, READONLY, 
-MEMSTORE_FLUSHSIZE, DEFERRED_LOG_FLUSH, NORMALIZATION_ENABLED, etc. These can be put at the end;
+MEMSTORE_FLUSHSIZE, DEFERRED_LOG_FLUSH, NORMALIZATION_ENABLED, NORMALIZATION_TARGET_REGION_COUNT, NORMALIZATION_TARGET_REGION_SIZE(MB), etc. These can be put at the end;
 for example, to change the max size of a region to 128MB, do:
 
   hbase> alter 't1', MAX_FILESIZE => '134217728'
