@@ -85,9 +85,9 @@ public class ZkClusterInfo {
   }
 
   public String toDnsName() {
-    return clusterName + ".zk.hadoop.srv";
+    return clusterName + ".observer.zk.hadoop.srv";
   }
-  
+
   /**
    * Resolve the dns name of zookeeper cluster to a comma-separate ip list.
    * If failed to resolve but it's a "well-known" name (the cluster we have
