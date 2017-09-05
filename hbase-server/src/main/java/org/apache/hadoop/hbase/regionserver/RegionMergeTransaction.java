@@ -571,10 +571,13 @@ public class RegionMergeTransaction {
       try {
         if (useZKForAssignment) {
           services.postOpenDeployTasks(merged, server.getCatalogTracker());
-        } else if (!services.reportRegionStateTransition(TransitionCode.MERGED,
+        } else {
+          if (!services.reportRegionStateTransition(TransitionCode.MERGED,
             mergedRegionInfo, region_a.getRegionInfo(), region_b.getRegionInfo())) {
-          throw new IOException("Failed to report merged region to master: "
-            + mergedRegionInfo.getShortNameToLog());
+          throw new IOException("Failed to report merged region to master: " + mergedRegionInfo.getShortNameToLog());
+          } else {
+            services.postOpenDeployTasks(merged, server.getCatalogTracker());
+          }
         }
         services.addToOnlineRegions(merged);
       } catch (KeeperException ke) {

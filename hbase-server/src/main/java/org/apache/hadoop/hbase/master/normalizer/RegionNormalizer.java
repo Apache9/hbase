@@ -47,5 +47,5 @@ public interface RegionNormalizer {
    * @param table table to normalize
    * @return Next (perhaps most urgent) normalization action to perform
    */
-  NormalizationPlan computePlanForTable(TableName table) throws HBaseIOException;
+  NormalizationPlan computePlanForTable(TableName table);
 }

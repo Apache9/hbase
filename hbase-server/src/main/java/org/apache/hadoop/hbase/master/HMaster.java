@@ -1956,14 +1956,14 @@ MasterServices, Server {
       List<TableName> allEnabledTables = new ArrayList<>(ZKTable.getEnabledTables(zooKeeper));
       Collections.shuffle(allEnabledTables);
 
-      HBaseAdmin admin = new HBaseAdmin(conf);
-      for(TableName table : allEnabledTables) {
-        if (table.isSystemTable() || !getTableDescriptors().get(table).isNormalizationEnabled()) {
-          LOG.debug("Skipping normalization for table: " + table + ", as it's either system"
-              + " table or doesn't have auto normalization turned on");
-          continue;
+      try (HBaseAdmin admin = new HBaseAdmin(HConnectionManager.getConnection(conf))) {
+        for (TableName table : allEnabledTables) {
+          if (table.isSystemTable() || !getTableDescriptors().get(table).isNormalizationEnabled()) {
+            LOG.debug("Skipping normalization for table: " + table + ", as it's either system" + " table or doesn't have auto normalization turned on");
+            continue;
+          }
+          this.normalizer.computePlanForTable(table).execute(admin);
         }
-        this.normalizer.computePlanForTable(table).execute(admin);
       }
     }
     // If Region did not generate any plans, it means the cluster is already balanced.

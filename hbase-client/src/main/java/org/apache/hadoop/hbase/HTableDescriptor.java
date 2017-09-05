@@ -211,6 +211,14 @@ public class HTableDescriptor implements WritableComparable<HTableDescriptor> {
   private static final ImmutableBytesWritable NORMALIZATION_ENABLED_KEY =
       new ImmutableBytesWritable(Bytes.toBytes(NORMALIZATION_ENABLED));
 
+  public static final String NORMALIZATION_TARGET_REGION_COUNT =  "NORMALIZATION_TARGET_REGION_COUNT";
+  private static final ImmutableBytesWritable NORMALIZATION_TARGET_REGION_COUNT_KEY =
+      new ImmutableBytesWritable(Bytes.toBytes(NORMALIZATION_TARGET_REGION_COUNT));
+
+  public static final String NORMALIZATION_TARGET_REGION_SIZE =  "NORMALIZATION_TARGET_REGION_SIZE";
+  private static final ImmutableBytesWritable NORMALIZATION_TARGET_REGION_SIZE_KEY =
+      new ImmutableBytesWritable(Bytes.toBytes(NORMALIZATION_TARGET_REGION_SIZE));
+
   /*
    *  The below are ugly but better than creating them each time till we
    *  replace booleans being saved as Strings with plain booleans.  Need a
@@ -679,6 +687,34 @@ public class HTableDescriptor implements WritableComparable<HTableDescriptor> {
    */
   public HTableDescriptor setNormalizationEnabled(final boolean isEnable) {
     setValue(NORMALIZATION_ENABLED_KEY, isEnable ? TRUE : FALSE);
+    return this;
+  }
+
+  public int getNormalizeTargetRegionCount(){
+    byte[] target = getValue(NORMALIZATION_TARGET_REGION_COUNT_KEY);
+    if(target == null){
+      return -1;
+    }else {
+      return Bytes.toInt(target);
+    }
+  }
+
+  public HTableDescriptor setNormalizationTargetRegionCount(final int target) {
+    setValue(NORMALIZATION_TARGET_REGION_COUNT_KEY, new ImmutableBytesWritable(Bytes.toBytes(target)));
+    return this;
+  }
+
+  public long getNormalizeTargetRegionSize(){
+    byte[] target = getValue(NORMALIZATION_TARGET_REGION_SIZE_KEY);
+    if(target == null){
+      return -1;
+    }else {
+      return Bytes.toLong(target);
+    }
+  }
+
+  public HTableDescriptor setNormalizationTargetRegionSize(final long target) {
+    setValue(NORMALIZATION_TARGET_REGION_SIZE_KEY, new ImmutableBytesWritable(Bytes.toBytes(target)));
     return this;
   }
 
