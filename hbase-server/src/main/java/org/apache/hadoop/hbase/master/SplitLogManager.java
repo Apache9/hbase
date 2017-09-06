@@ -117,6 +117,8 @@ public class SplitLogManager extends ZooKeeperListener {
   public static final int DEFAULT_ZK_RETRIES = 3;
   public static final int DEFAULT_MAX_RESUBMIT = 3;
   public static final int DEFAULT_UNASSIGNED_TIMEOUT = (3 * 60 * 1000); //3 min
+  private static final int DEFAULT_TIMEOUTMONITOR_PERIOD = 1000;
+  private static final int DEFAULT_TIMEOUTMONITOR_LOG_PERIOD = 60000;
 
   private final Stoppable stopper;
   private final MasterServices master;
@@ -125,6 +127,7 @@ public class SplitLogManager extends ZooKeeperListener {
   private FileSystem fs;
   private Configuration conf;
 
+  private final int timeoutMonitorLogPeriod;
   private long zkretries;
   private long resubmit_threshold;
   private long timeout;
@@ -226,8 +229,10 @@ public class SplitLogManager extends ZooKeeperListener {
       ", distributedLogReplay=" + (this.recoveryMode == RecoveryMode.LOG_REPLAY));
 
     this.serverName = serverName;
-    this.timeoutMonitor = new TimeoutMonitor(
-      conf.getInt("hbase.splitlog.manager.timeoutmonitor.period", 1000), stopper);
+    this.timeoutMonitor = new TimeoutMonitor(conf.getInt(
+      "hbase.splitlog.manager.timeoutmonitor.period", DEFAULT_TIMEOUTMONITOR_PERIOD), stopper);
+    this.timeoutMonitorLogPeriod = conf.getInt("hbase.splitlog.manager.timeoutmonitor.log.period",
+      DEFAULT_TIMEOUTMONITOR_LOG_PERIOD);
 
     this.failedDeletions = Collections.synchronizedSet(new HashSet<String>());
 
@@ -822,7 +827,7 @@ public class SplitLogManager extends ZooKeeperListener {
 
   private void heartbeat(String path, int new_version, ServerName workerName) {
     Task task = findOrCreateOrphanTask(path);
-    if (new_version != task.last_version) {
+    if (new_version != task.lastVersion) {
       if (task.isUnassigned()) {
         LOG.info("task " + path + " acquired by " + workerName);
       }
@@ -849,12 +854,12 @@ public class SplitLogManager extends ZooKeeperListener {
       //  2) after a configurable timeout if the server is not marked as dead but has still not
       //       finished the task. This allows to continue if the worker cannot actually handle it,
       //       for any reason.
-      final long time = EnvironmentEdgeManager.currentTimeMillis() - task.last_update;
+      final long time = EnvironmentEdgeManager.currentTimeMillis() - task.lastUpdate;
       final boolean alive = master.getServerManager() != null ?
-          master.getServerManager().isServerOnline(task.cur_worker_name) : true;
+          master.getServerManager().isServerOnline(task.curWorkerName) : true;
       if (alive && time < timeout) {
         LOG.trace("Skipping the resubmit of " + task.toString() + "  because the server " +
-            task.cur_worker_name + " is not marked as dead, we waited for " + time +
+            task.curWorkerName + " is not marked as dead, we waited for " + time +
             " while the timeout is " + timeout);
         return false;
       }
@@ -868,7 +873,7 @@ public class SplitLogManager extends ZooKeeperListener {
         return false;
       }
       // race with heartbeat() that might be changing last_version
-      version = task.last_version;
+      version = task.lastVersion;
     } else {
       SplitLogCounters.tot_mgr_resubmit_force.incrementAndGet();
       version = -1;
@@ -1380,9 +1385,9 @@ public class SplitLogManager extends ZooKeeperListener {
    * in memory state of an active task.
    */
   static class Task {
-    volatile long last_update;
-    volatile int last_version;
-    volatile ServerName cur_worker_name;
+    volatile long lastUpdate;
+    volatile int lastVersion;
+    volatile ServerName curWorkerName;
     volatile TaskBatch batch;
     volatile TerminationStatus status;
     volatile int incarnation;
@@ -1392,9 +1397,9 @@ public class SplitLogManager extends ZooKeeperListener {
     
     @Override
     public String toString() {
-      return ("last_update = " + last_update +
-          " last_version = " + last_version +
-          " cur_worker_name = " + cur_worker_name +
+      return ("last_update = " + lastUpdate +
+          " last_version = " + lastVersion +
+          " cur_worker_name = " + curWorkerName +
           " status = " + status +
           " incarnation = " + incarnation +
           " resubmits = " + unforcedResubmits.get() +
@@ -1403,7 +1408,7 @@ public class SplitLogManager extends ZooKeeperListener {
 
     Task() {
       incarnation = 0;
-      last_version = -1;
+      lastVersion = -1;
       status = IN_PROGRESS;
       setUnassigned();
       startTS = EnvironmentEdgeManager.currentTimeMillis();
@@ -1414,22 +1419,22 @@ public class SplitLogManager extends ZooKeeperListener {
     }
 
     public boolean isUnassigned() {
-      return (cur_worker_name == null);
+      return (curWorkerName == null);
     }
 
     public void heartbeatNoDetails(long time) {
-      last_update = time;
+      lastUpdate = time;
     }
 
     public void heartbeat(long time, int version, ServerName worker) {
-      last_version = version;
-      last_update = time;
-      cur_worker_name = worker;
+      lastVersion = version;
+      lastUpdate = time;
+      curWorkerName = worker;
     }
 
     public void setUnassigned() {
-      cur_worker_name = null;
-      last_update = -1;
+      curWorkerName = null;
+      lastUpdate = -1;
     }
     
     public long getRunningTime() {
@@ -1475,7 +1480,7 @@ public class SplitLogManager extends ZooKeeperListener {
       int resubmitted = 0;
       int unassigned = 0;
       int tot = 0;
-      boolean found_assigned_task = false;
+      boolean foundAssignedTask = false;
       Set<ServerName> localDeadWorkers;
 
       synchronized (deadWorkersLock) {
@@ -1486,7 +1491,7 @@ public class SplitLogManager extends ZooKeeperListener {
       for (Map.Entry<String, Task> e : tasks.entrySet()) {
         String path = e.getKey();
         Task task = e.getValue();
-        ServerName cur_worker = task.cur_worker_name;
+        ServerName curWorker = task.curWorkerName;
         tot++;
         // don't easily resubmit a task which hasn't been picked up yet. It
         // might be a long while before a SplitLogWorker is free to pick up a
@@ -1497,15 +1502,15 @@ public class SplitLogManager extends ZooKeeperListener {
           unassigned++;
           continue;
         }
-        found_assigned_task = true;
-        if (localDeadWorkers != null && localDeadWorkers.contains(cur_worker)) {
+        foundAssignedTask = true;
+        if (localDeadWorkers != null && localDeadWorkers.contains(curWorker)) {
           SplitLogCounters.tot_mgr_resubmit_dead_server_task.incrementAndGet();
           if (resubmit(path, task, FORCE)) {
             resubmitted++;
           } else {
-            handleDeadWorker(cur_worker);
+            handleDeadWorker(curWorker);
             LOG.warn("Failed to resubmit task " + path + " owned by dead " +
-                cur_worker + ", will retry.");
+                curWorker + ", will retry.");
           }
         } else if (resubmit(path, task, CHECK)) {
           resubmitted++;
@@ -1513,9 +1518,12 @@ public class SplitLogManager extends ZooKeeperListener {
       }
       if (tot > 0) {
         long now = EnvironmentEdgeManager.currentTimeMillis();
-        if (now > lastLog + 5000) {
+        if (now > lastLog + timeoutMonitorLogPeriod) {
           lastLog = now;
-          LOG.info("total tasks = " + tot + " unassigned = " + unassigned + " tasks=" + tasks);
+          LOG.info("total tasks = " + tot + " unassigned = " + unassigned);
+          tasks.forEach((path, task) -> {
+            LOG.info("unfinished task: " + path + " state: " + task);
+          });
         }
       }
       if (resubmitted > 0) {
@@ -1530,7 +1538,7 @@ public class SplitLogManager extends ZooKeeperListener {
       // manager will be indefinitely creating RESCAN nodes. TODO may be the
       // master should spawn both a manager and a worker thread to guarantee
       // that there is always one worker in the system
-      if (tot > 0 && !found_assigned_task &&
+      if (tot > 0 && !foundAssignedTask &&
           ((EnvironmentEdgeManager.currentTimeMillis() - lastTaskCreateTime) >
           unassignedTimeout)) {
         for (Map.Entry<String, Task> e : tasks.entrySet()) {
