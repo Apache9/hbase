@@ -231,8 +231,8 @@ public class TestSplitLogManager {
     waitForCounter(tot_mgr_heartbeat, 0, 1, to/2);
     assertFalse(task.isUnassigned());
     long curt = System.currentTimeMillis();
-    assertTrue((task.last_update <= curt) &&
-        (task.last_update > (curt - 1000)));
+    assertTrue((task.lastUpdate <= curt) &&
+        (task.lastUpdate > (curt - 1000)));
     LOG.info("waiting for manager to resubmit the orphan task");
     waitForCounter(tot_mgr_resubmit, 0, 1, to + to/2);
     assertTrue(task.isUnassigned());
