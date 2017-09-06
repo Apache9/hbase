@@ -19,6 +19,7 @@
 package org.apache.hadoop.hbase.io.hfile.bucket;
 
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.LongAdder;
 
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.io.hfile.CacheStats;
@@ -29,9 +30,9 @@ import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
  */
 @InterfaceAudience.Private
 public class BucketCacheStats extends CacheStats {
-  private final AtomicLong ioHitCount = new AtomicLong(0);
-  private final AtomicLong ioMissCount = new AtomicLong(0);
-  private final AtomicLong ioHitTime = new AtomicLong(0);
+  private final LongAdder ioHitCount = new LongAdder();
+  private final LongAdder ioMissCount = new LongAdder();
+  private final LongAdder ioHitTime = new LongAdder();
   private final static int nanoTime = 1000000;
   private long lastLogHitTime = EnvironmentEdgeManager.currentTimeMillis();
   private long lastLogMissTime = EnvironmentEdgeManager.currentTimeMillis();
@@ -45,20 +46,20 @@ public class BucketCacheStats extends CacheStats {
   }
 
   public void ioHit(long time) {
-    ioHitCount.incrementAndGet();
-    ioHitTime.addAndGet(time);
+    ioHitCount.increment();
+    ioHitTime.add(time);
   }
 
   public void ioMiss() {
-    ioMissCount.incrementAndGet();
+    ioMissCount.increment();
   }
 
   public long getIOHitsPerSecond() {
     long now = EnvironmentEdgeManager.currentTimeMillis();
     long took = (now - lastLogHitTime) / 1000;
     lastLogHitTime = now;
-    long delta = ioHitCount.get() - lastLogHitCount;
-    lastLogHitCount = ioHitCount.get();
+    long delta = ioHitCount.sum() - lastLogHitCount;
+    lastLogHitCount = ioHitCount.sum();
     return took == 0? 0: delta / took;
   }
 
@@ -66,20 +67,21 @@ public class BucketCacheStats extends CacheStats {
     long now = EnvironmentEdgeManager.currentTimeMillis();
     long took = (now - lastLogMissTime) / 1000;
     lastLogMissTime = now;
-    long delta = ioMissCount.get() - lastLogMissCount;
-    lastLogMissCount = ioMissCount.get();
+    long delta = ioMissCount.sum() - lastLogMissCount;
+    lastLogMissCount = ioMissCount.sum();
     return took == 0? 0: delta / took;
   }
 
   public double getIOTimePerHit() {
-    long time = ioHitTime.get() / nanoTime;
-    long count = ioHitCount.get();
+    long time = ioHitTime.sum() / nanoTime;
+    long count = ioHitCount.sum();
     return ((float) time / (float) count);
   }
 
   public void reset() {
-    ioHitCount.set(0);
-    ioHitTime.set(0);
+    ioHitCount.reset();
+    ioHitTime.reset();
+    ioMissCount.reset();
     lastLogHitCount = 0;
     lastLogMissCount = 0;
   }

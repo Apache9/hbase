@@ -87,19 +87,22 @@ public class ReplicationSource extends Thread
 
   public static final Log LOG = LogFactory.getLog(ReplicationSource.class);
   // Queue of logs to process
-  private PriorityBlockingQueue<Path> queue;
-  private ReplicationQueues replicationQueues;
+  protected PriorityBlockingQueue<Path> queue;
+  protected ReplicationQueues replicationQueues;
   private ReplicationPeers replicationPeers;
 
   private Configuration conf;
-  private ReplicationQueueInfo replicationQueueInfo;
+  protected ReplicationQueueInfo replicationQueueInfo;
   // id of the peer cluster this source replicates to
   private String peerId;
-  private String actualPeerId;
+  // The znode we currently play with
+  // For normal replication source, it is same with peerId
+  // For recovered replication source, it is in the form of peerId-servername-*
+  protected String peerClusterZnode;
   // The manager of all sources to which we ping back our progress
-  private ReplicationSourceManager manager;
+  protected ReplicationSourceManager manager;
   // Should we stop everything?
-  private Stoppable stopper;
+  protected Stoppable stopper;
   // How long should we sleep for each retry
   private long sleepForRetries;
   // Max size in bytes of entriesArray
@@ -111,14 +114,14 @@ public class ReplicationSource extends Thread
   // Max number of entries whose position in WAL have not been persistent
   private int logPositionNbLimit;
   // Our reader for the current log
-  private HLog.Reader reader;
+  protected HLog.Reader reader;
   // Last position in the log that we sent to ZooKeeper
   private long lastLoggedPosition = -1;
   private long unLoggedPositionEdits = 0;
 
   // Path of the current log
-  private volatile Path currentPath;
-  private FileSystem fs;
+  protected volatile Path currentPath;
+  protected FileSystem fs;
   // id of this cluster
   private UUID clusterId;
   // id of the other cluster
@@ -127,20 +130,18 @@ public class ReplicationSource extends Thread
   private long totalReplicatedEdits = 0;
   // total number of edits we replicated
   private long totalReplicatedOperations = 0;
-  // The znode we currently play with
-  private String peerClusterZnode;
   // Maximum number of retries before taking bold actions
-  private int maxRetriesMultiplier;
+  protected int maxRetriesMultiplier;
   // Current number of operations (Put/Delete) that we need to replicate
   private int currentNbOperations = 0;
   // Current size of data we need to replicate
   private int currentSize = 0;
   // Indicates if this particular source is running
-  private volatile boolean running = true;
+  protected volatile boolean running = true;
   // Metrics for this source
-  private MetricsSource metrics;
+  protected MetricsSource metrics;
   // Handle on the log reader helper
-  private ReplicationHLogReaderManager repLogReader;
+  protected ReplicationHLogReaderManager repLogReader;
   //WARN threshold for the number of queued logs, defaults to 2
   private int logQueueWarnThreshold;
   // ReplicationEndpoint which will handle the actual replication
@@ -154,7 +155,7 @@ public class ReplicationSource extends Thread
   private long defaultBandwidth;
   private long currentBandwidth;
 
-  private int ioeSleepBeforeRetry = 0;
+  protected int ioeSleepBeforeRetry = 0;
 
   Map<String, Long> lastPositionsForSerialScope = new HashMap<String, Long>();
 
@@ -212,8 +213,6 @@ public class ReplicationSource extends Thread
     this.replicationQueueInfo = new ReplicationQueueInfo(peerClusterZnode);
     // ReplicationQueueInfo parses the peerId out of the znode for us
     this.peerId = this.replicationQueueInfo.getPeerId();
-    ReplicationQueueInfo replicationQueueInfo = new ReplicationQueueInfo(peerId);
-    this.actualPeerId = replicationQueueInfo.getPeerId();
     this.logQueueWarnThreshold = this.conf.getInt("replication.source.log.queue.warn", 2);
     this.replicationEndpoint = replicationEndpoint;
 
@@ -227,10 +226,11 @@ public class ReplicationSource extends Thread
     this.totalBufferQuota = conf.getLong(HConstants.REPLICATION_SOURCE_TOTAL_BUFFER_KEY,
         HConstants.REPLICATION_SOURCE_TOTAL_BUFFER_DFAULT);
     this.entries = new ArrayList<HLog.Entry>();
-    LOG.info("peerClusterZnode=" + peerClusterZnode + ", ReplicationSource : " + peerId
+    LOG.info("peerClusterZnode=" + peerClusterZnode + ", peerId=" + peerId
         + " inited, replicationQueueSizeCapacity=" + replicationQueueSizeCapacity
-        + ", replicationQueueNbCapacity=" + replicationQueueNbCapacity + ", curerntBandwidth="
-        + this.currentBandwidth);
+        + ", replicationQueueNbCapacity=" + replicationQueueNbCapacity + ", logPositionSizeLimit="
+        + logPositionSizeLimit + ", logPositionNbLimit=" + logPositionNbLimit
+        + ", curerntBandwidth=" + this.currentBandwidth);
   }
 
   // Use guava cache to set ttl for each key
@@ -318,9 +318,6 @@ public class ReplicationSource extends Thread
       return;
     }
 
-    // resetting to 1 to reuse later
-    sleepMultiplier = 1;
-
     // In rare case, zookeeper setting may be messed up. That leads to the incorrect
     // peerClusterId value, which is the same as the source clusterId
     if (clusterId.equals(peerClusterId) && !replicationEndpoint.canReplicateToSameCluster()) {
@@ -330,157 +327,15 @@ public class ReplicationSource extends Thread
     }
     LOG.info("Replicating "+clusterId + " -> " + peerClusterId);
 
-    // If this is recovered, the queue is already full and the first log
-    // normally has a position (unless the RS failed between 2 logs)
-    if (this.replicationQueueInfo.isQueueRecovered()) {
-      try {
-        this.repLogReader.setPosition(this.replicationQueues.getLogPosition(this.peerClusterZnode,
-          this.queue.peek().getName()));
-        if (LOG.isTraceEnabled()) {
-          LOG.trace("Recovered queue started with log " + this.queue.peek() +
-              " at position " + this.repLogReader.getPosition());
-        }
-      } catch (ReplicationException e) {
-        this.terminate("Couldn't get the position of this recovered queue " +
-            this.peerClusterZnode, e);
-      }
-    }
-    
     try {
-      // Loop until we close down
-      while (isActive()) {
-        // Sleep until replication is enabled again
-        if (!isPeerEnabled()) {
-          if (sleepForRetries("Replication is disabled", sleepMultiplier)) {
-            sleepMultiplier++;
-          }
-          continue;
-        }
-        Path oldPath = getCurrentPath(); // note that in the current scenario,
-                                         // oldPath will be null when a log roll
-                                         // happens.
-        // Get a new path
-        boolean hasCurrentPath = getNextPath();
-        if (getCurrentPath() != null && oldPath == null) {
-          sleepMultiplier = 1; // reset the sleepMultiplier on a path change
-        }
-        if (!hasCurrentPath) {
-          if (sleepForRetries("No log to process", sleepMultiplier)) {
-            sleepMultiplier++;
-          }
-          continue;
-        }
-        boolean currentWALisBeingWrittenTo = false;
-        // For WAL files we own (rather than recovered), take a snapshot of whether the
-        // current WAL file (this.currentPath) is in use (for writing) NOW!
-        // Since the new WAL paths are enqueued only after the prev WAL file
-        // is 'closed', presence of an element in the queue means that
-        // the previous WAL file was closed, else the file is in use (currentPath)
-        // We take the snapshot now so that we are protected against races
-        // where a new file gets enqueued while the current file is being processed
-        // (and where we just finished reading the current file).
-        if (!this.replicationQueueInfo.isQueueRecovered() && queue.size() == 0) {
-          currentWALisBeingWrittenTo = true;
-        }
-        // Open a reader on it
-        if (!openReader(sleepMultiplier)) {
-          // Reset the sleep multiplier, else it'd be reused for the next file
-          sleepMultiplier = 1;
-          continue;
-        }
+      this.repLogReader.setPosition(getStartPosition());
+    } catch (ReplicationException e) {
+      this.terminate("Couldn't get the position of this recovered queue " + this.peerClusterZnode,
+        e);
+    }
 
-        // If we got a null reader but didn't continue, then sleep and continue
-        if (this.reader == null) {
-          if (sleepForRetries("Unable to open a reader", sleepMultiplier)) {
-            sleepMultiplier++;
-          }
-          continue;
-        }
-
-        boolean gotIOE = false;
-        currentNbOperations = 0;
-        lastPositionsForSerialScope.clear();
-        entries.clear();
-        currentSize = 0;
-        try {
-          if (readAllEntriesToReplicateOrNextFile(currentWALisBeingWrittenTo, entries,
-              lastPositionsForSerialScope)) {
-            for (Map.Entry<String, Long> entry : lastPositionsForSerialScope.entrySet()) {
-              waitingUntilCanPush(entry);
-            }
-            updateReplicationPositions(manager.getConnection(), actualPeerId, lastPositionsForSerialScope);
-            continue;
-          }
-        } catch (IOException ioe) {
-          LOG.warn(this.peerClusterZnode + " Got: ", ioe);
-          gotIOE = true;
-          if (ioe.getCause() instanceof EOFException) {
-
-            boolean considerDumping = false;
-            if (this.replicationQueueInfo.isQueueRecovered()) {
-              try {
-                FileStatus stat = this.fs.getFileStatus(this.currentPath);
-                if (stat.getLen() == 0) {
-                  LOG.warn(this.peerClusterZnode + " Got EOF and the file was empty");
-                }
-                considerDumping = true;
-              } catch (IOException e) {
-                LOG.warn(this.peerClusterZnode + " Got while getting file size: ", e);
-              }
-            }
-
-            if (considerDumping && sleepMultiplier == this.maxRetriesMultiplier
-                && processEndOfFile()) {
-              continue;
-            }
-          }
-        } finally {
-          try {
-            this.reader = null;
-            this.repLogReader.closeReader();
-          } catch (IOException e) {
-            gotIOE = true;
-            LOG.warn("Unable to finalize the tailing of a file", e);
-          }
-        }
-
-        for (Map.Entry<String, Long> entry : lastPositionsForSerialScope.entrySet()) {
-          waitingUntilCanPush(entry);
-        }
-
-        // If we didn't get anything to replicate, or if we hit a IOE,
-        // wait a bit and retry.
-        // But if we need to stop, don't bother sleeping
-        if (this.isActive() && (gotIOE || entries.isEmpty())) {
-
-          // Save positions to meta table before zk.
-          if (!gotIOE) {
-            updateReplicationPositions(manager.getConnection(), actualPeerId, lastPositionsForSerialScope);
-          }
-
-          if (shouldLogPosition(this.repLogReader.getPosition())) {
-            this.manager.logPositionAndCleanOldLogs(this.currentPath, this.peerClusterZnode,
-              this.repLogReader.getPosition(), this.replicationQueueInfo.isQueueRecovered(),
-              currentWALisBeingWrittenTo);
-            this.lastLoggedPosition = this.repLogReader.getPosition();
-            this.unLoggedPositionEdits = 0;
-          }
-          // Reset the sleep multiplier if nothing has actually gone wrong
-          if (!gotIOE) {
-            sleepMultiplier = 1;
-            // if there was nothing to ship and it's not an error
-            // set "ageOfLastShippedOp" to <now> to indicate that we're current
-            this.metrics.setAgeOfLastShippedOp(System.currentTimeMillis());
-          }
-          if (sleepForRetries("Nothing to replicate", sleepMultiplier)) {
-            sleepMultiplier++;
-          }
-          continue;
-        }
-        sleepMultiplier = 1;
-        shipEdits(currentWALisBeingWrittenTo, entries, lastPositionsForSerialScope);
-        releaseBufferQuota();
-      }
+    try {
+      runLoop();
     } catch (Throwable e) {
       if (this.isActive()) {
         LOG.fatal("Replication source exited unexpectedly", e);
@@ -489,7 +344,141 @@ public class ReplicationSource extends Thread
     uninitialize();
   }
 
-  private void waitingUntilCanPush(Map.Entry<String, Long> entry) {
+  protected long getStartPosition() throws ReplicationException {
+    return 0;
+  }
+
+  protected void runLoop() {
+    int sleepMultiplier = 1;
+    // Loop until we close down
+    while (isActive()) {
+      // Sleep until replication is enabled again
+      if (!isPeerEnabled()) {
+        if (sleepForRetries("Replication is disabled", sleepMultiplier)) {
+          sleepMultiplier++;
+        }
+        continue;
+      }
+      Path oldPath = getCurrentPath(); // note that in the current scenario,
+                                       // oldPath will be null when a log roll
+                                       // happens.
+      // Get a new path
+      boolean hasCurrentPath = getNextPath();
+      if (getCurrentPath() != null && oldPath == null) {
+        sleepMultiplier = 1; // reset the sleepMultiplier on a path change
+      }
+      if (!hasCurrentPath) {
+        if (sleepForRetries("No log to process", sleepMultiplier)) {
+          sleepMultiplier++;
+        }
+        continue;
+      }
+      boolean currentWALisBeingWrittenTo = isCurrentWALisBeingWrittenTo();
+      // Open a reader on it
+      if (!openReader(sleepMultiplier)) {
+        // Reset the sleep multiplier, else it'd be reused for the next file
+        sleepMultiplier = 1;
+        continue;
+      }
+
+      // If we got a null reader but didn't continue, then sleep and continue
+      if (this.reader == null) {
+        if (sleepForRetries("Unable to open a reader", sleepMultiplier)) {
+          sleepMultiplier++;
+        }
+        continue;
+      }
+
+      boolean gotIOE = false;
+      currentNbOperations = 0;
+      lastPositionsForSerialScope.clear();
+      entries.clear();
+      currentSize = 0;
+      try {
+        if (readAllEntriesToReplicateOrNextFile(currentWALisBeingWrittenTo, entries,
+            lastPositionsForSerialScope)) {
+          for (Map.Entry<String, Long> entry : lastPositionsForSerialScope.entrySet()) {
+            waitingUntilCanPush(entry);
+          }
+          updateReplicationPositions(manager.getConnection(), peerId, lastPositionsForSerialScope);
+          continue;
+        }
+      } catch (IOException ioe) {
+        LOG.warn(this.peerClusterZnode + " Got: ", ioe);
+        gotIOE = true;
+        if (ioe.getCause() instanceof EOFException && handleEOFException(sleepMultiplier)) {
+          continue;
+        }
+      } finally {
+        try {
+          this.reader = null;
+          this.repLogReader.closeReader();
+        } catch (IOException e) {
+          gotIOE = true;
+          LOG.warn("Unable to finalize the tailing of a file", e);
+        }
+      }
+
+      for (Map.Entry<String, Long> entry : lastPositionsForSerialScope.entrySet()) {
+        waitingUntilCanPush(entry);
+      }
+
+      // If we didn't get anything to replicate, or if we hit a IOE,
+      // wait a bit and retry.
+      // But if we need to stop, don't bother sleeping
+      if (this.isActive() && (gotIOE || entries.isEmpty())) {
+
+        // Save positions to meta table before zk.
+        if (!gotIOE) {
+          updateReplicationPositions(manager.getConnection(), peerId, lastPositionsForSerialScope);
+        }
+
+        if (shouldLogPosition(this.repLogReader.getPosition())) {
+          this.manager.logPosition(this.currentPath, this.peerClusterZnode,
+            this.repLogReader.getPosition());
+          if (!currentWALisBeingWrittenTo) {
+            tryCleanOldLogs();
+          }
+          this.lastLoggedPosition = this.repLogReader.getPosition();
+          this.unLoggedPositionEdits = 0;
+        }
+        // Reset the sleep multiplier if nothing has actually gone wrong
+        if (!gotIOE) {
+          sleepMultiplier = 1;
+          // if there was nothing to ship and it's not an error
+          // set "ageOfLastShippedOp" to <now> to indicate that we're current
+          this.metrics.setAgeOfLastShippedOp(System.currentTimeMillis());
+        }
+        if (sleepForRetries("Nothing to replicate", sleepMultiplier)) {
+          sleepMultiplier++;
+        }
+        LOG.debug("Nothing to replicate for current log: " + this.currentPath + ", position: "
+            + this.repLogReader.getPosition());
+        continue;
+      }
+      sleepMultiplier = 1;
+      shipEdits(currentWALisBeingWrittenTo, entries, lastPositionsForSerialScope);
+      releaseBufferQuota();
+    }
+  }
+
+  protected boolean handleEOFException(int sleepMultiplier) {
+    return false;
+  }
+
+  // For WAL files we own (rather than recovered), take a snapshot of whether the
+  // current WAL file (this.currentPath) is in use (for writing) NOW!
+  // Since the new WAL paths are enqueued only after the prev WAL file
+  // is 'closed', presence of an element in the queue means that
+  // the previous WAL file was closed, else the file is in use (currentPath)
+  // We take the snapshot now so that we are protected against races
+  // where a new file gets enqueued while the current file is being processed
+  // (and where we just finished reading the current file).
+  protected boolean isCurrentWALisBeingWrittenTo() {
+    return queue.size() == 0;
+  }
+
+  protected void waitingUntilCanPush(Map.Entry<String, Long> entry) {
     String key = entry.getKey();
     long seq = entry.getValue();
     boolean deleteKey = false;
@@ -502,7 +491,7 @@ public class ReplicationSource extends Thread
     if (!canSkipWaitingSet.getUnchecked(key)) {
       while (true) {
         try {
-          manager.waitUntilCanBePushed(Bytes.toBytes(key), seq, actualPeerId);
+          manager.waitUntilCanBePushed(Bytes.toBytes(key), seq, peerId);
           break;
         } catch (IOException e) {
           LOG.error("waitUntilCanBePushed fail", e);
@@ -523,7 +512,7 @@ public class ReplicationSource extends Thread
   /**
    * Check if log position is needed to avoid too many write operations to zookeeper
    */
-  private boolean shouldLogPosition(long logPostion) {
+  protected boolean shouldLogPosition(long logPostion) {
     if ((logPostion - this.lastLoggedPosition) >= this.logPositionSizeLimit) {
       return true;
     }
@@ -534,7 +523,7 @@ public class ReplicationSource extends Thread
   }
   
   public static void recoverFileLease(FileSystem fs, Path filePath, Configuration conf) throws IOException {
-    LOG.info("recoverFileLease fs: " + fs.getClass().getName() + " path: "+filePath.toString());
+    LOG.info("recoverFileLease fs: " + fs.getClass().getName() + " path: " + filePath.toString());
     if(fs instanceof HFileSystem) {
       HFileSystem hFileSystem = (HFileSystem) fs;
       FileSystem backingFs = hFileSystem.getBackingFs();
@@ -556,22 +545,18 @@ public class ReplicationSource extends Thread
   protected boolean readAllEntriesToReplicateOrNextFile(boolean currentWALisBeingWrittenTo,
       List<HLog.Entry> entries, Map<String, Long> lastPosition) throws IOException{
     long seenEntries = 0;
-    if (LOG.isTraceEnabled()) {
-      LOG.trace("Seeking in " + this.currentPath + " at position "
-          + this.repLogReader.getPosition());
-    }
+    LOG.debug("Seeking in " + this.currentPath + " at position " + this.repLogReader.getPosition());
     this.repLogReader.seek();
     long positionBeforeRead = this.repLogReader.getPosition();
     HLog.Entry entry = null;
-    
     try {
       entry = this.repLogReader.readNextAndSetPosition();
     } catch (EOFException e) {
       if (!currentWALisBeingWrittenTo) {
         recoverFileLease(this.fs, this.currentPath, this.conf);
         FileStatus stat = this.fs.getFileStatus(this.currentPath);
-        LOG.info("readerPosition: " + this.repLogReader.getReaderPosition() + " len: "
-            + stat.getLen());
+        LOG.info("Current log: " + this.currentPath + ", readerPosition: "
+            + this.repLogReader.getReaderPosition() + ", len: " + stat.getLen());
         if (this.repLogReader.getReaderPosition() >= 0
             && this.repLogReader.getReaderPosition() == stat.getLen()) {
           return processEndOfFile();
@@ -637,7 +622,7 @@ public class ReplicationSource extends Thread
       try {
         entry = this.repLogReader.readNextAndSetPosition();
       } catch (IOException ie) {
-        LOG.debug("Break on IOE: " + ie.getMessage());
+        LOG.info("Current log: " + this.currentPath + ", break on IOE: " + ie.getMessage());
         break;
       }
     }
@@ -660,18 +645,18 @@ public class ReplicationSource extends Thread
         this.currentPath = queue.poll(this.sleepForRetries, TimeUnit.MILLISECONDS);
         this.metrics.setSizeOfLogQueue(queue.size());
         if (this.currentPath != null) {
-          this.manager.cleanOldLogs(this.currentPath.getName(),
-              this.peerId,
-              this.replicationQueueInfo.isQueueRecovered());
-          if (LOG.isTraceEnabled()) {
-            LOG.trace("New log: " + this.currentPath);
-          }
+          tryCleanOldLogs();
+          LOG.info("Poll a new log from queue: " + this.currentPath);
         }
       }
     } catch (InterruptedException e) {
       LOG.warn("Interrupted while reading edits", e);
     }
     return this.currentPath != null;
+  }
+
+  protected void tryCleanOldLogs() {
+    this.manager.cleanOldLogs(this.currentPath.getName(), this.peerId, false);
   }
 
   /**
@@ -683,79 +668,17 @@ public class ReplicationSource extends Thread
   protected boolean openReader(int sleepMultiplier) {
     try {
       try {
-        if (LOG.isTraceEnabled()) {
-          LOG.trace("Opening log " + this.currentPath);
-        }
         this.reader = repLogReader.openReader(this.currentPath);
       } catch (FileNotFoundException fnfe) {
-        if (this.replicationQueueInfo.isQueueRecovered()) {
-          // We didn't find the log in the archive directory, look if it still
-          // exists in the dead RS folder (there could be a chain of failures
-          // to look at)
-          List<String> deadRegionServers = this.replicationQueueInfo.getDeadRegionServers();
-          LOG.info("NB dead servers : " + deadRegionServers.size());
-          for (String curDeadServerName : deadRegionServers) {
-            Path deadRsDirectory =
-                new Path(manager.getLogDir().getParent(), curDeadServerName);
-            Path[] locs = new Path[] {
-                new Path(deadRsDirectory, currentPath.getName()),
-                new Path(deadRsDirectory.suffix(HLog.SPLITTING_EXT),
-                                          currentPath.getName()),
-            };
-            for (Path possibleLogLocation : locs) {
-              LOG.info("Possible location " + possibleLogLocation.toUri().toString());
-              if (this.manager.getFs().exists(possibleLogLocation)) {
-                // We found the right new location
-                LOG.info("Log " + this.currentPath + " still exists at " +
-                    possibleLogLocation);
-                // Breaking here will make us sleep since reader is null
-                return true;
-              }
-            }
-          }
-          // In the case of disaster/recovery, HMaster may be shutdown/crashed before flush data
-          // from .logs to .oldlogs. Loop into .logs folders and check whether a match exists
-          if (stopper instanceof ReplicationSyncUp.DummyServer) {
-            FileStatus[] rss = fs.listStatus(manager.getLogDir());
-            for (FileStatus rs : rss) {
-              Path p = rs.getPath();
-              FileStatus[] logs = fs.listStatus(p);
-              for (FileStatus log : logs) {
-                p = new Path(p, log.getPath().getName());
-                if (p.getName().equals(currentPath.getName())) {
-                  currentPath = p;
-                  LOG.info("Log " + this.currentPath + " exists under " + manager.getLogDir());
-                  // Open the log at the new location
-                  this.openReader(sleepMultiplier);
-                  return true;
-                }
-              }
-            }
-          }
-
-          // TODO What happens if the log was missing from every single location?
-          // Although we need to check a couple of times as the log could have
-          // been moved by the master between the checks
-          // It can also happen if a recovered queue wasn't properly cleaned,
-          // such that the znode pointing to a log exists but the log was
-          // deleted a long time ago.
-          // For the moment, we'll throw the IO and processEndOfFile
-          throw new IOException("File from recovered queue is " +
-              "nowhere to be found", fnfe);
-        } else {
-          // If the log was archived, continue reading from there
-          Path archivedLogLocation =
-              new Path(manager.getOldLogDir(), currentPath.getName());
-          if (this.manager.getFs().exists(archivedLogLocation)) {
-            currentPath = archivedLogLocation;
-            LOG.info("Log " + this.currentPath + " was moved to " +
-                archivedLogLocation);
-            // Open the log at the new location
-            this.openReader(sleepMultiplier);
-
-          }
-          // TODO What happens the log is missing in both places?
+        // If the log was archived, continue reading from there
+        Path archivedLogLocation = new Path(manager.getOldLogDir(), currentPath.getName());
+        if (this.manager.getFs().exists(archivedLogLocation)) {
+          currentPath = archivedLogLocation;
+          LOG.info("Log " + this.currentPath + " was moved to " + archivedLogLocation);
+          // Open the log at the new location
+          this.openReader(sleepMultiplier);
         }
+        // TODO What happens the log is missing in both places?
       }
     } catch (IOException ioe) {
       if (ioe instanceof EOFException) {
@@ -763,7 +686,7 @@ public class ReplicationSource extends Thread
           return true;
         } else {
           boolean atTail = this.queue.size() == 0;
-          LOG.warn("EOF in recover queue:" + this.peerClusterZnode + ", atTail=" + atTail
+          LOG.warn("EOF in queue:" + this.peerClusterZnode + ", atTail=" + atTail
               + ", file path:" + this.currentPath, ioe);
           processEndOfFile();
           return false;
@@ -778,7 +701,6 @@ public class ReplicationSource extends Thread
         // Just sleep and retry. Will require re-reading compressed HLogs for compressionContext.
         LOG.warn("Got NPE opening reader, will retry.");
       }
-      
       
       this.metrics.incrOpenReaderIOE();
       // Throttle the failure logs
@@ -800,8 +722,7 @@ public class ReplicationSource extends Thread
    * file may be empty, and we don't want to retry that.
    */
   private boolean isCurrentLogEmpty() {
-    return (this.repLogReader.getPosition() == 0 &&
-        !this.replicationQueueInfo.isQueueRecovered() && queue.size() == 0);
+    return (this.repLogReader.getPosition() == 0 && queue.size() == 0);
   }
 
   /**
@@ -877,9 +798,7 @@ public class ReplicationSource extends Thread
           long sleepTicks = this.throttler.getNextSleepInterval(currentSize);
           if (sleepTicks > 0) {
             try {
-              if (LOG.isTraceEnabled()) {
-                LOG.trace("To sleep " + sleepTicks + "ms for throttling control");
-              }
+              LOG.debug("To sleep " + sleepTicks + "ms for throttling control");
               Thread.sleep(sleepTicks);
             } catch (InterruptedException e) {
               LOG.debug("Interrupted while sleeping for throttling control");
@@ -904,12 +823,14 @@ public class ReplicationSource extends Thread
         this.unLoggedPositionEdits += entries.size();
 
         // Save positions to meta table before zk.
-        updateReplicationPositions(manager.getConnection(), actualPeerId, lastPositionsForSerialScope);
+        updateReplicationPositions(manager.getConnection(), peerId, lastPositionsForSerialScope);
 
         if (shouldLogPosition(this.repLogReader.getPosition())) {
-          this.manager.logPositionAndCleanOldLogs(this.currentPath,
-              this.peerClusterZnode, this.repLogReader.getPosition(),
-              this.replicationQueueInfo.isQueueRecovered(), currentWALisBeingWrittenTo);
+          this.manager.logPosition(this.currentPath, this.peerClusterZnode,
+            this.repLogReader.getPosition());
+          if (!currentWALisBeingWrittenTo) {
+            tryCleanOldLogs();
+          }
           this.lastLoggedPosition = this.repLogReader.getPosition();
           this.unLoggedPositionEdits = 0;
         }
@@ -920,13 +841,11 @@ public class ReplicationSource extends Thread
         this.totalReplicatedOperations += currentNbOperations;
         this.metrics.shipBatch(this.currentNbOperations, this.currentSize/1024);
         this.metrics.setAgeOfLastShippedOp(entries.get(entries.size()-1).getKey().getWriteTime());
-        if (LOG.isTraceEnabled()) {
-          LOG.trace("Replicated " + this.totalReplicatedEdits + " entries in total, or "
-              + this.totalReplicatedOperations + " operations");
-        }
+        LOG.debug("Replicated " + this.totalReplicatedEdits + " entries in total, or "
+            + this.totalReplicatedOperations + " operations");
         break;
       } catch (Exception ex) {
-        LOG.warn(replicationEndpoint.getClass().getName() + " threw unknown exception", ex);
+        LOG.warn(replicationEndpoint.getClass().getName() + " threw unknown exception: ", ex);
         if (sleepForRetries("ReplicationEndpoint threw exception", sleepMultiplier)) {
           sleepMultiplier++;
         }
@@ -953,16 +872,16 @@ public class ReplicationSource extends Thread
   protected boolean processEndOfFile() {
     if (this.queue.size() != 0) {
       // at the end of the log
-
-      updateReplicationPositions(manager.getConnection(), actualPeerId, lastPositionsForSerialScope);
+      updateReplicationPositions(manager.getConnection(), peerId, lastPositionsForSerialScope);
 
       if (this.lastLoggedPosition != this.repLogReader.getPosition()) {
-        this.manager.logPositionAndCleanOldLogs(currentPath, this.peerClusterZnode,
-          this.repLogReader.getPosition(), this.replicationQueueInfo.isQueueRecovered(), false);
+        this.manager.logPosition(this.currentPath, this.peerClusterZnode,
+          this.repLogReader.getPosition());
+        tryCleanOldLogs();
         this.lastLoggedPosition = 0;
         this.unLoggedPositionEdits = 0;
       }
-      
+
       if (LOG.isTraceEnabled()) {
         String filesize = "N/A";
         try {
@@ -972,14 +891,11 @@ public class ReplicationSource extends Thread
         LOG.trace("Reached the end of a log, stats: " + getStats() +
             ", and the length of the file is " + filesize);
       }
+
+      LOG.info("Finished replicate the current log " + this.currentPath);
       this.currentPath = null;
       this.repLogReader.finishCurrentFile();
       this.reader = null;
-      return true;
-    } else if (this.replicationQueueInfo.isQueueRecovered()) {
-      this.manager.closeRecoveredQueue(this);
-      LOG.info("Finished recovering the queue with the following stats " + getStats());
-      this.running = false;
       return true;
     }
     return false;
@@ -1042,7 +958,7 @@ public class ReplicationSource extends Thread
     }
   }
 
-  private void updateReplicationPositions(HConnection connection, String peerId,
+  protected void updateReplicationPositions(HConnection connection, String peerId,
       Map<String, Long> positions) {
     while (true) {
       try {
@@ -1061,7 +977,7 @@ public class ReplicationSource extends Thread
   }
 
   @Override
-  public String getPeerClusterId() {
+  public String getPeerId() {
     return this.peerId;
   }
 
@@ -1070,7 +986,7 @@ public class ReplicationSource extends Thread
     return this.currentPath;
   }
 
-  private boolean isActive() {
+  protected boolean isActive() {
     return !this.stopper.isStopped() && this.running && !isInterrupted();
   }
 
@@ -1112,7 +1028,7 @@ public class ReplicationSource extends Thread
     return totalBufferUsed.addAndGet(size) >= totalBufferQuota;
   }
 
-  private void releaseBufferQuota() {
+  protected void releaseBufferQuota() {
     totalBufferUsed.addAndGet(-currentSize);
     currentSize = 0;
     entries.clear();

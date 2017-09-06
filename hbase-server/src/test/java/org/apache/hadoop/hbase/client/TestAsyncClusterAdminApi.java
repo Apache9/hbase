@@ -27,7 +27,7 @@ import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.master.HMaster;
 import org.apache.hadoop.hbase.regionserver.HRegionServer;
-import org.apache.hadoop.hbase.testclassification.MediumTests;
+import org.apache.hadoop.hbase.testclassification.LargeTests;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -38,7 +38,7 @@ import org.junit.experimental.categories.Category;
 /**
  * Only used to test stopMaster/stopRegionServer/shutdown methods.
  */
-@Category({ MediumTests.class })
+@Category({ LargeTests.class })
 public class TestAsyncClusterAdminApi extends TestAsyncAdminBase {
 
   @BeforeClass

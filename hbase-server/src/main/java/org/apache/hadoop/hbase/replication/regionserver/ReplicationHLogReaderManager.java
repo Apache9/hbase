@@ -65,6 +65,7 @@ public class ReplicationHLogReaderManager {
     // reset the current reader so that we see the new data
     if (this.reader == null || !this.lastPath.equals(path)) {
       this.closeReader();
+      LOG.info("Opening log " + path);
       this.reader = HLogFactory.createReader(this.fs, path, this.conf);
       this.lastPath = path;
     } else {

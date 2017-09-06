@@ -38,6 +38,7 @@ import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.client.replication.ReplicationAdmin;
 import org.apache.hadoop.hbase.mapreduce.replication.VerifyReplication;
+import org.apache.hadoop.hbase.mapreduce.replication.VerifyReplication.Verifier.Counters;
 import org.apache.hadoop.hbase.snapshot.SnapshotTestingUtils;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -63,7 +64,8 @@ import static org.junit.Assert.fail;
 @Category(MediumTests.class)
 public class TestVerifyReplicationWithSnapshotSupport {
 
-  private static final Logger LOG = Logger.getLogger(TestVerifyReplicationWithSnapshotSupport.class);
+  private static final Logger LOG =
+      Logger.getLogger(TestVerifyReplicationWithSnapshotSupport.class);
   private static final byte[] tableName = Bytes.toBytes("test_verify");
   private static final byte[] famName = Bytes.toBytes("f");
   protected static final byte[] row = Bytes.toBytes("row");
@@ -126,7 +128,7 @@ public class TestVerifyReplicationWithSnapshotSupport {
   }
 
   public static void createTable(final HBaseTestingUtility util, final TableName tableName,
-                                 final byte[]... families) throws IOException, InterruptedException {
+      final byte[]... families) throws IOException, InterruptedException {
     HTableDescriptor htd = new HTableDescriptor(tableName);
     for (byte[] family : families) {
       HColumnDescriptor hcd = new HColumnDescriptor(family);
@@ -195,7 +197,6 @@ public class TestVerifyReplicationWithSnapshotSupport {
     utility1.deleteTable(tableName);
     utility2.deleteTable(tableName);
   }
-
 
   @Test
   public void testVerifyReplicationSnapshotArguments() throws InterruptedException {
@@ -311,5 +312,111 @@ public class TestVerifyReplicationWithSnapshotSupport {
       job.getCounters().findCounter(VerifyReplication.Verifier.Counters.GOODROWS).getValue());
     assertEquals(NB_ROWS_IN_BATCH,
       job.getCounters().findCounter(VerifyReplication.Verifier.Counters.BADROWS).getValue());
+  }
+
+  @Test
+  public void testRepair() throws Exception {
+    testSmallBatch();
+    // Take source and target tables snapshot
+    Path rootDir = FSUtils.getRootDir(conf1);
+    FileSystem fs = rootDir.getFileSystem(conf1);
+    String sourceSnapshotName = "sourceSnapshot-" + System.currentTimeMillis();
+    SnapshotTestingUtils.createSnapshotAndValidate(utility1.getHBaseAdmin(),
+      TableName.valueOf(tableName), new String(famName), sourceSnapshotName, rootDir, fs, true);
+    // Take target snapshot
+    Path peerRootDir = FSUtils.getRootDir(conf2);
+    FileSystem peerFs = peerRootDir.getFileSystem(conf2);
+    String peerSnapshotName = "peerSnapshot-" + System.currentTimeMillis();
+    SnapshotTestingUtils.createSnapshotAndValidate(utility2.getHBaseAdmin(),
+      TableName.valueOf(tableName), new String(famName), peerSnapshotName, peerRootDir, peerFs,
+      true);
+
+    String peerFSAddress = peerFs.getUri().toString();
+    String temPath1 = utility1.getDataTestDir().toString();
+    String temPath2 = "/tmp2";
+
+    /*************************** Initial Verify **********************************************/
+    String[] args = new String[] { "--sourceSnapshotName=" + sourceSnapshotName,
+        "--sourceSnapshotTmpDir=" + temPath1, "--peerSnapshotName=" + peerSnapshotName,
+        "--peerSnapshotTmpDir=" + temPath2, "--peerFSAddress=" + peerFSAddress,
+        "--peerHBaseRootAddress=" + FSUtils.getRootDir(conf2), "1", Bytes.toString(tableName) };
+
+    Job job = new VerifyReplication().createSubmittableJob(conf1, args);
+    if (job == null) {
+      fail("Job wasn't created, see the log");
+    }
+    if (!job.waitForCompletion(true)) {
+      fail("Job failed, see the log");
+    }
+    assertEquals(NB_ROWS_IN_BATCH,
+      job.getCounters().findCounter(VerifyReplication.Verifier.Counters.GOODROWS).getValue());
+    assertEquals(0,
+      job.getCounters().findCounter(VerifyReplication.Verifier.Counters.BADROWS).getValue());
+
+    /************************* Delete rows and flush & major compaction ***********************/
+    ResultScanner rs = htable2.getScanner(new Scan());
+    for (Result r : rs) {
+      htable2.delete(new Delete(r.getRow()));
+    }
+    utility2.getHBaseAdmin().flush(tableName);
+    utility2.getHBaseAdmin().majorCompact(Bytes.toString(tableName));
+    Thread.sleep(30000);
+
+    /************************** Verify After deleting peer table ****************************/
+    // Create new snapshot for the deletes.
+    sourceSnapshotName = "sourceSnapshot-" + System.currentTimeMillis();
+    SnapshotTestingUtils.createSnapshotAndValidate(utility1.getHBaseAdmin(),
+      TableName.valueOf(tableName), new String(famName), sourceSnapshotName, rootDir, fs, true);
+
+    peerSnapshotName = "peerSnapshot-" + System.currentTimeMillis();
+    SnapshotTestingUtils.createSnapshotAndValidate(utility2.getHBaseAdmin(),
+      TableName.valueOf(tableName), new String(famName), peerSnapshotName, peerRootDir, peerFs,
+      true);
+
+    args = new String[] { "--sourceSnapshotName=" + sourceSnapshotName,
+        "--sourceSnapshotTmpDir=" + temPath1, "--peerSnapshotName=" + peerSnapshotName,
+        "--peerSnapshotTmpDir=" + temPath2, "--peerFSAddress=" + peerFSAddress,
+        "--peerHBaseRootAddress=" + FSUtils.getRootDir(conf2), "--repairPeer", "1",
+        Bytes.toString(tableName) };
+    job = new VerifyReplication().createSubmittableJob(conf1, args);
+    if (job == null) {
+      fail("Job wasn't created, see the log");
+    }
+    if (!job.waitForCompletion(true)) {
+      fail("Job failed, see the log");
+    }
+    assertEquals(0, job.getCounters().findCounter(Counters.GOODROWS).getValue());
+    assertEquals(NB_ROWS_IN_BATCH, job.getCounters().findCounter(Counters.BADROWS).getValue());
+    assertEquals(NB_ROWS_IN_BATCH,
+      job.getCounters().findCounter(Counters.ONLY_IN_SOURCE_TABLE_ROWS).getValue());
+    assertEquals(NB_ROWS_IN_BATCH,
+      job.getCounters().findCounter(Counters.REPAIR_PEER_ROWS).getValue());
+
+    /***************************** Verify again after repair *********************************/
+    // Create new snapshot for the repair.
+    sourceSnapshotName = "sourceSnapshot-" + System.currentTimeMillis();
+    SnapshotTestingUtils.createSnapshotAndValidate(utility1.getHBaseAdmin(),
+      TableName.valueOf(tableName), new String(famName), sourceSnapshotName, rootDir, fs, true);
+
+    peerSnapshotName = "peerSnapshot-" + System.currentTimeMillis();
+    SnapshotTestingUtils.createSnapshotAndValidate(utility2.getHBaseAdmin(),
+      TableName.valueOf(tableName), new String(famName), peerSnapshotName, peerRootDir, peerFs,
+      true);
+
+    args = new String[] { "--sourceSnapshotName=" + sourceSnapshotName,
+        "--sourceSnapshotTmpDir=" + temPath1, "--peerSnapshotName=" + peerSnapshotName,
+        "--peerSnapshotTmpDir=" + temPath2, "--peerFSAddress=" + peerFSAddress,
+        "--peerHBaseRootAddress=" + FSUtils.getRootDir(conf2), "1", Bytes.toString(tableName) };
+
+    // verify again.
+    job = new VerifyReplication().createSubmittableJob(conf1, args);
+    if (job == null) {
+      fail("Job wasn't created, see the log");
+    }
+    if (!job.waitForCompletion(true)) {
+      fail("Job failed, see the log");
+    }
+    assertEquals(NB_ROWS_IN_BATCH, job.getCounters().findCounter(Counters.GOODROWS).getValue());
+    assertEquals(0, job.getCounters().findCounter(Counters.BADROWS).getValue());
   }
 }

@@ -110,18 +110,18 @@ public abstract class TestAsyncAdminBase {
   @After
   public void tearDown() throws Exception {
     admin
-        .listTableNames(Optional.of(Pattern.compile(tableName.getNameAsString() + ".*")))
+        .listTables(Optional.of(Pattern.compile(tableName.getNameAsString() + ".*")))
         .whenCompleteAsync(
           (tables, err) -> {
             if (tables != null) {
               tables.forEach(table -> {
                 try {
-                  admin.disableTable(table).join();
+                  admin.disableTable(table.getTableName()).join();
                 } catch (Exception e) {
                   LOG.debug("Table: " + tableName + " already disabled, so just deleting it.");
                 }
                 try {
-                  admin.deleteTable(table).join();
+                  admin.deleteTable(table.getTableName()).join();
                 } catch (Exception e) {
                   LOG.debug("Table: " + tableName
                       + " may be already deleted, got exception when delete it!", e);

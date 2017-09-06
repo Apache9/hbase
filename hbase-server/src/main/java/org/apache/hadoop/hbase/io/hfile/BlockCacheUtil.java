@@ -23,17 +23,14 @@ import java.util.NavigableSet;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.ConcurrentSkipListSet;
 
-import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.classification.InterfaceAudience;
+import org.apache.hadoop.hbase.util.FastLongHistogram;
 import org.codehaus.jackson.JsonGenerationException;
 import org.codehaus.jackson.annotate.JsonIgnoreProperties;
 import org.codehaus.jackson.map.JsonMappingException;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.map.SerializationConfig;
-
-import com.yammer.metrics.core.Histogram;
-import com.yammer.metrics.core.MetricsRegistry;
-import com.yammer.metrics.stats.Snapshot;
 
 /**
  * Utilty for aggregating counts in CachedBlocks and toString/toJSON CachedBlocks and BlockCaches.
@@ -41,10 +38,6 @@ import com.yammer.metrics.stats.Snapshot;
  */
 @InterfaceAudience.Private
 public class BlockCacheUtil {
-  /**
-   * Needed making histograms.
-   */
-  private static final MetricsRegistry METRICS = new MetricsRegistry();
 
   /**
    * Needed generating JSON.
@@ -165,48 +158,44 @@ public class BlockCacheUtil {
    */
   @JsonIgnoreProperties({"ageHistogram", "snapshot"})
   public static class AgeSnapshot {
-    private final Histogram ageHistogram;
-    private final Snapshot snapshot;
+    private final FastLongHistogram ageHistogram;
+    private final long[] quantiles;
 
-    AgeSnapshot(final Histogram ageHistogram) {
+    AgeSnapshot(final FastLongHistogram ageHistogram) {
       this.ageHistogram = ageHistogram;
-      this.snapshot = ageHistogram.getSnapshot();
+      this.quantiles = ageHistogram.getQuantiles(new double[]{0.75, 0.95, 0.98, 0.99, 0.999});
     }
 
     public double get75thPercentile() {
-      return snapshot.get75thPercentile();
+      return quantiles[0];
     }
 
     public double get95thPercentile() {
-      return snapshot.get95thPercentile();
+      return quantiles[1];
     }
 
     public double get98thPercentile() {
-      return snapshot.get98thPercentile();
+      return quantiles[2];
     }
 
     public double get999thPercentile() {
-      return snapshot.get999thPercentile();
+      return quantiles[3];
     }
 
     public double get99thPercentile() {
-      return snapshot.get99thPercentile();
+      return quantiles[4];
     }
 
     public double getMean() {
-      return this.ageHistogram.mean();
+      return this.ageHistogram.getMean();
     }
 
     public double getMax() {
-      return ageHistogram.max();
+      return this.ageHistogram.getMax();
     }
 
     public double getMin() {
-      return ageHistogram.min();
-    }
-
-    public double getStdDev() {
-      return ageHistogram.stdDev();
+      return this.ageHistogram.getMin();
     }
   }
 
@@ -255,7 +244,7 @@ public class BlockCacheUtil {
      */
     private NavigableMap<String, NavigableSet<CachedBlock>> cachedBlockByFile =
       new ConcurrentSkipListMap<String, NavigableSet<CachedBlock>>();
-    Histogram age = METRICS.newHistogram(CachedBlocksByFile.class, "age");
+    FastLongHistogram hist = new FastLongHistogram();
 
     /**
      * @param cb
@@ -277,7 +266,7 @@ public class BlockCacheUtil {
         this.dataSize += cb.getSize();
       }
       long age = this.now - cb.getCachedTime();
-      this.age.update(age);
+      this.hist.add(age, 1);
       return false;
     }
 
@@ -319,19 +308,23 @@ public class BlockCacheUtil {
       return dataSize;
     }
 
-    public AgeSnapshot getAgeSnapshot() {
-      return new AgeSnapshot(this.age);
+    public AgeSnapshot getAgeInCacheSnapshot() {
+      return new AgeSnapshot(this.hist);
     }
 
     @Override
     public String toString() {
-      Snapshot snapshot = this.age.getSnapshot();
+      AgeSnapshot snapshot = getAgeInCacheSnapshot();
       return "count=" + count + ", dataBlockCount=" + this.dataBlockCount + ", size=" + size +
           ", dataSize=" + getDataSize() +
-          ", mean age=" + this.age.mean() + ", stddev age=" + this.age.stdDev() +
-          ", min age=" + this.age.min() + ", max age=" + this.age.max() +
-          ", 95th percentile age=" + snapshot.get95thPercentile() +
-          ", 99th percentile age=" + snapshot.get99thPercentile();
+          ", mean age=" + snapshot.getMean() + 
+          ", min age=" + snapshot.getMin() +
+          ", max age=" + snapshot.getMax() +
+          ", 75th percentile age="   + snapshot.get75thPercentile() +
+          ", 95th percentile age="   + snapshot.get95thPercentile() +
+          ", 98th percentile age="   + snapshot.get98thPercentile() +
+          ", 99th percentile age=" + snapshot.get99thPercentile() +
+          ", 99.9th percentile age=" + snapshot.get99thPercentile();
     }
   }
 }

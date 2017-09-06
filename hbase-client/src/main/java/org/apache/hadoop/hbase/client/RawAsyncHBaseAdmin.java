@@ -347,7 +347,7 @@ public class RawAsyncHBaseAdmin implements AsyncAdmin {
   }
 
   @Override
-  public CompletableFuture<List<TableName>> listTableNames(Optional<Pattern> pattern) {
+  public CompletableFuture<List<TableName>> listTableNames() {
     return this.<List<TableName>> newMasterCaller()
         .action((controller, stub) -> this
             .<GetTableNamesRequest, GetTableNamesResponse, List<TableName>> call(controller, stub,
@@ -1498,16 +1498,18 @@ public class RawAsyncHBaseAdmin implements AsyncAdmin {
   public CompletableFuture<List<SnapshotDescription>> listTableSnapshots(Pattern tableNamePattern,
       Pattern snapshotNamePattern) {
     CompletableFuture<List<SnapshotDescription>> future = new CompletableFuture<>();
-    listTableNames(Optional.ofNullable(tableNamePattern)).whenComplete(
-      (tableNames, err) -> {
+    listTables(Optional.ofNullable(tableNamePattern)).whenComplete(
+      (tables, err) -> {
         if (err != null) {
           future.completeExceptionally(err);
           return;
         }
-        if (tableNames == null || tableNames.size() <= 0) {
+        if (tables == null || tables.size() <= 0) {
           future.complete(Collections.emptyList());
           return;
         }
+        List<TableName> tableNames = tables.stream().map(t -> t.getTableName())
+            .collect(Collectors.toList());
         listSnapshots(Optional.ofNullable(snapshotNamePattern)).whenComplete(
           (snapshotDescList, err2) -> {
             if (err2 != null) {

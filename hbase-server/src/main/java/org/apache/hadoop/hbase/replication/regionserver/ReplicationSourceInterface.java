@@ -94,9 +94,9 @@ public interface ReplicationSourceInterface {
   /**
    * Get the id that the source is replicating to.
    *
-   * @return peer cluster id
+   * @return peer id
    */
-  String getPeerClusterId();
+  String getPeerId();
 
   /**
    * Get a string representation of the current statistics

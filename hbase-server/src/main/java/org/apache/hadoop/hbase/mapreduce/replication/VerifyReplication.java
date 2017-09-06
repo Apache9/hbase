@@ -20,6 +20,8 @@ package org.apache.hadoop.hbase.mapreduce.replication;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 
 import com.google.common.annotations.VisibleForTesting;
 import org.apache.commons.logging.Log;
@@ -29,10 +31,10 @@ import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.Abortable;
+import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HRegionInfo;
-import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.HConnectable;
 import org.apache.hadoop.hbase.client.HConnection;
 import org.apache.hadoop.hbase.client.HConnectionManager;
@@ -95,6 +97,7 @@ public class VerifyReplication extends Configured implements Tool {
   long verifyRows = Long.MAX_VALUE;
   String logTable = null;
   int sleepToReCompare = 0;
+  boolean repairPeer = false;
 
   // Source table snapshot name
   String sourceSnapshotName = null;
@@ -116,7 +119,7 @@ public class VerifyReplication extends Configured implements Tool {
       extends TableMapper<ImmutableBytesWritable, Put> {
 
     public static enum Counters {
-      GOODROWS, BADROWS, ONLY_IN_SOURCE_TABLE_ROWS, ONLY_IN_PEER_TABLE_ROWS, CONTENT_DIFFERENT_ROWS}
+      GOODROWS, BADROWS, ONLY_IN_SOURCE_TABLE_ROWS, ONLY_IN_PEER_TABLE_ROWS, CONTENT_DIFFERENT_ROWS, REPAIR_PEER_ROWS}
 
     private ResultScanner replicatedScanner;
     private Scan scan;
@@ -127,6 +130,7 @@ public class VerifyReplication extends Configured implements Tool {
     private HTable sourceTable;
     private HTable peerTable;
     private int sleepToReCompare;
+    private boolean repairPeer = false;
 
     private HTable logTable;
     private String peerId;
@@ -138,6 +142,7 @@ public class VerifyReplication extends Configured implements Tool {
       st = EnvironmentEdgeManager.currentTimeMillis();
       scanRateLimit = conf.getInt(TableMapper.SCAN_RATE_LIMIT, -1);
       sleepToReCompare = conf.getInt(NAME +".sleepToReCompare", 0);
+      repairPeer = conf.getBoolean(NAME + ".repairPeer", false);
       LOG.info("The scan rate limit for verify is " + scanRateLimit
           + " rows per second, sleepToReCompare=" + sleepToReCompare);
     }
@@ -209,6 +214,7 @@ public class VerifyReplication extends Configured implements Tool {
               + peerSnapshotTmpDir + " peer root uri:" + FSUtils.getRootDir(peerConf)
               + " peerFSAddress:" + peerFSAddress);
 
+          peerTable = new HTable(peerConf, tableName);
           replicatedScanner = new TableSnapshotScanner(peerConf,
               new Path(peerFSAddress, peerSnapshotTmpDir), peerSnapshotName, scan);
         } else {
@@ -226,7 +232,7 @@ public class VerifyReplication extends Configured implements Tool {
       while (true) {
         if (currentCompareRowInPeerTable == null) {
           // reach the region end of peer table, row only in source table
-          logFailRowAndIncreaseCounter(context, Counters.ONLY_IN_SOURCE_TABLE_ROWS, value);
+          handleBadRow(context, Counters.ONLY_IN_SOURCE_TABLE_ROWS, value);
           break;
         }
         int rowCmpRet = Bytes.compareTo(value.getRow(), currentCompareRowInPeerTable.getRow());
@@ -236,17 +242,17 @@ public class VerifyReplication extends Configured implements Tool {
             Result.compareResults(value, currentCompareRowInPeerTable);
             context.getCounter(Counters.GOODROWS).increment(1);
           } catch (Exception e) {
-            logFailRowAndIncreaseCounter(context, Counters.CONTENT_DIFFERENT_ROWS, value);
+            handleBadRow(context, Counters.CONTENT_DIFFERENT_ROWS, value);
           }
           currentCompareRowInPeerTable = replicatedScanner.next();
           break;
         } else if (rowCmpRet < 0) {
           // row only exists in source table
-          logFailRowAndIncreaseCounter(context, Counters.ONLY_IN_SOURCE_TABLE_ROWS, value);
+          handleBadRow(context, Counters.ONLY_IN_SOURCE_TABLE_ROWS, value);
           break;
         } else {
           // row only exists in peer table
-          logFailRowAndIncreaseCounter(context, Counters.ONLY_IN_PEER_TABLE_ROWS,
+          handleBadRow(context, Counters.ONLY_IN_PEER_TABLE_ROWS,
             currentCompareRowInPeerTable);
           currentCompareRowInPeerTable = replicatedScanner.next();
         }
@@ -256,36 +262,106 @@ public class VerifyReplication extends Configured implements Tool {
         EnvironmentEdgeManager.currentTimeMillis() - st);
     }
 
-    private Get constructGetFromScan(byte[] row) throws IOException {
-      Get get = new Get(row);
-      get.setTimeRange(scan.getTimeRange().getMin(), scan.getTimeRange().getMax())
-          .setFilter(scan.getFilter()).setMaxVersions(scan.getMaxVersions());
-      if (scan.hasFamilies()) {
-        for (byte[] family : scan.getFamilyMap().keySet()) {
-          get.addFamily(family);
+    // Return true to indicate results are the same.
+    private boolean verifyResultByGet(byte[] row) throws IOException {
+      Scan verifyScan =
+          new Scan(scan).setAllowPartialResults(true).withStartRow(row).withStopRow(row, true);
+      ResultScanner srcScanner = sourceTable.getScanner(verifyScan);
+      ResultScanner dstScanner = peerTable.getScanner(verifyScan);
+      int idx = 0;
+      Result r, d;
+      List<Cell> srcCells = new ArrayList<>();
+      List<Cell> dstCells = new ArrayList<>();
+      for (r = srcScanner.next(), d = dstScanner.next(); r != null; r = srcScanner.next()) {
+        srcCells = r.listCells();
+        // fill the dstCells until its length reach the length of srcCells.
+        do {
+          if (d == null) return false;
+          while (idx < d.rawCells().length && dstCells.size() < srcCells.size()) {
+            dstCells.add(d.rawCells()[idx++]);
+          }
+          if (dstCells.size() == srcCells.size()) {
+            break;
+          }
+          d = dstScanner.next();
+          idx = 0;
+        } while (d != null && d.mayHaveMoreCellsInRow());
+
+        try {
+          Result.compareResults(Result.create(srcCells), Result.create(dstCells));
+        } catch (Exception e) {
+          return false;
+        }
+        dstCells.clear();
+      }
+      if (d != null) {
+        if (idx < d.rawCells().length) {
+          return false;
+        }
+        d = dstScanner.next();
+        if (d != null && !d.isEmpty()) {
+          return false;
         }
       }
-      return get;
+      return true;
+    }
+
+    private boolean isVerifySnapshot(Context context) {
+      Configuration conf = context.getConfiguration();
+      String peerSnapshotName = conf.get(NAME + ".peerSnapshotName", null);
+      return peerSnapshotName != null && peerSnapshotName.length() > 0;
     }
     
-    private void logFailRowAndIncreaseCounter(Context context, Counters counter, Result row)
+    private void handleBadRow(Context context, Counters counter, Result row)
         throws IOException {
-      if (sleepToReCompare > 0) {
-        Threads.sleep(sleepToReCompare);
-        Result sourceResult = sourceTable.get(constructGetFromScan(row.getRow()));
-        Result peerResult = peerTable.get(constructGetFromScan(row.getRow()));
-        try {
-          // online replication is eventually consistency, need recompare
-          Result.compareResults(sourceResult, peerResult);
-          return;
-        } catch (Exception e) {
-          LOG.error("recompare fail!", e);
+      boolean isResultDiff = true;
+      if (isVerifySnapshot(context)) {
+        // verify replication by scanning the snapshot.
+        isResultDiff = !verifyResultByGet(row.getRow());
+      } else {
+        // verify replication by scanning the region server.
+        if (sleepToReCompare > 0) {
+          Threads.sleep(sleepToReCompare);
+          isResultDiff = !verifyResultByGet(row.getRow());
         }
       }
-      context.getCounter(counter).increment(1);
-      context.getCounter(Counters.BADROWS).increment(1);
-      LOG.error(counter.toString() + ", rowkey=" + Bytes.toString(row.getRow()));
-      recordError(row.getRow(), counter);
+
+      if (isResultDiff) {
+        context.getCounter(counter).increment(1);
+        context.getCounter(Counters.BADROWS).increment(1);
+        LOG.error(counter.toString() + ", rowKey=" + Bytes.toStringBinary(row.getRow()));
+
+        // repair peer table
+        repair(context, row.getRow(), counter);
+
+        // log the row into HBase Table.
+        recordError(row.getRow(), counter);
+      } else {
+        context.getCounter(Counters.GOODROWS).increment(1);
+      }
+    }
+
+    private void repair(Context context, byte[] row, Counters counter) throws IOException {
+      if (repairPeer && !Counters.ONLY_IN_PEER_TABLE_ROWS.equals(counter)) {
+        // use allow partial for avoiding OOM here.
+        Scan repairScan = new Scan(scan).withStartRow(row).withStopRow(row, true).setRaw(true)
+            .setAllowPartialResults(true);
+        ResultScanner rs = sourceTable.getScanner(repairScan);
+        boolean isEmptyRow = true;
+        for (Result r = rs.next(); r != null; r = rs.next()) {
+          if (!r.isEmpty()) {
+            isEmptyRow = false;
+            Put put = new Put(row);
+            for (Cell kv : r.rawCells()) {
+              put.add(kv);
+            }
+            peerTable.put(put);
+          }
+        }
+        if (!isEmptyRow) {
+          context.getCounter(Counters.REPAIR_PEER_ROWS).increment(1);
+        }
+      }
     }
 
     private void recordError(byte[] row, Counters type) throws IOException {
@@ -313,7 +389,7 @@ public class VerifyReplication extends Configured implements Tool {
       if (replicatedScanner != null) {
         try {
           while (currentCompareRowInPeerTable != null) {
-            logFailRowAndIncreaseCounter(context, Counters.ONLY_IN_PEER_TABLE_ROWS,
+            handleBadRow(context, Counters.ONLY_IN_PEER_TABLE_ROWS,
               currentCompareRowInPeerTable);
             currentCompareRowInPeerTable = replicatedScanner.next();
           }
@@ -401,6 +477,7 @@ public class VerifyReplication extends Configured implements Tool {
     if (logTable != null) {
       conf.set(NAME + ".logTable", logTable);
     }
+    conf.setBoolean(NAME + ".repairPeer", repairPeer);
 
     String peerQuorumAddress = getPeerQuorumAddress(conf);
     conf.set(NAME + ".peerQuorumAddress", peerQuorumAddress);
@@ -535,6 +612,12 @@ public class VerifyReplication extends Configured implements Tool {
           continue;
         }
 
+        final String repairPeerKey  = "--repairPeer";
+        if (cmd.startsWith(repairPeerKey)) {
+          repairPeer = true;
+          continue;
+        }
+
         final String sourceSnapshotNameArgKey = "--sourceSnapshotName=";
         if (cmd.startsWith(sourceSnapshotNameArgKey)) {
           sourceSnapshotName = cmd.substring(sourceSnapshotNameArgKey.length());
@@ -625,7 +708,7 @@ public class VerifyReplication extends Configured implements Tool {
       System.err.println("ERROR: " + errorMsg);
     }
     System.err.println("Usage: verifyrep [--starttime=X] \n"
-        + " [--endtime=Y] [--families=A] [--logtable=TB] \n"
+        + " [--endtime=Y] [--families=A] [--logtable=TB] [--repairPeer] \n"
         + " [--sourceSnapshotName=P] [--sourceSnapshotTmpDir=Q] [--peerSnapshotName=R] \n"
         + " [--peerSnapshotTmpDir=S] [--peerFSAddress=T] [--peerHBaseRootAddress=U] <peerid> <tablename>");
     System.err.println();
@@ -641,6 +724,7 @@ public class VerifyReplication extends Configured implements Tool {
     System.err.println(" verifyrows             number of rows each region in source table to verify.");
     System.err.println(" recomparesleep         milliseconds to sleep before recompare row.");
     System.err.println(" logtable               table to log the errors/differences (with column family A).");
+    System.err.println(" repairPeer             repair the peer cluster's data by copy raw rows from source cluster.");
     System.err.println(" sourceSnapshotName     Source Snapshot Name");
     System.err.println(" sourceSnapshotTmpDir   Tmp location to restore source table snapshot");
     System.err.println(" peerSnapshotName       Peer Snapshot Name");

@@ -24,7 +24,7 @@ import org.apache.hadoop.hbase.metrics.Interns;
 import org.apache.hadoop.metrics2.MetricHistogram;
 import org.apache.hadoop.metrics2.MetricsCollector;
 import org.apache.hadoop.metrics2.MetricsRecordBuilder;
-import org.apache.hadoop.metrics2.lib.MutableCounterLong;
+import org.apache.hadoop.metrics2.lib.MutableFastCounter;
 
 /**
  * Hadoop2 implementation of MetricsRegionServerSource.
@@ -48,20 +48,20 @@ public class MetricsRegionServerSourceImpl
   private final MetricHistogram fsPread;
   private final MetricHistogram fsWrite;
   
-  private final MutableCounterLong slowPut;
-  private final MutableCounterLong slowDelete;
-  private final MutableCounterLong slowGet;
-  private final MutableCounterLong slowIncrement;
-  private final MutableCounterLong slowAppend;
-  private final MutableCounterLong splitRequest;
-  private final MutableCounterLong splitSuccess;
+  private final MutableFastCounter slowPut;
+  private final MutableFastCounter slowDelete;
+  private final MutableFastCounter slowGet;
+  private final MutableFastCounter slowIncrement;
+  private final MutableFastCounter slowAppend;
+  private final MutableFastCounter splitRequest;
+  private final MutableFastCounter splitSuccess;
 
   private final MetricHistogram splitTimeHisto;
   private final MetricHistogram flushTimeHisto;
 
   // pause monitor metrics
-  private final MutableCounterLong infoPauseThresholdExceeded;
-  private final MutableCounterLong warnPauseThresholdExceeded;
+  private final MutableFastCounter infoPauseThresholdExceeded;
+  private final MutableFastCounter warnPauseThresholdExceeded;
   private final MetricHistogram pausesWithGc;
   private final MetricHistogram pausesWithoutGc;
 
@@ -77,25 +77,25 @@ public class MetricsRegionServerSourceImpl
     super(metricsName, metricsDescription, metricsContext, metricsJmxContext);
     this.rsWrap = rsWrap;
 
-    putHisto = getMetricsRegistry().newHistogram(MUTATE_KEY);
+    putHisto = getMetricsRegistry().newTimeHistogram(MUTATE_KEY);
     slowPut = getMetricsRegistry().newCounter(SLOW_MUTATE_KEY, SLOW_MUTATE_DESC, 0l);
 
-    deleteHisto = getMetricsRegistry().newHistogram(DELETE_KEY);
+    deleteHisto = getMetricsRegistry().newTimeHistogram(DELETE_KEY);
     slowDelete = getMetricsRegistry().newCounter(SLOW_DELETE_KEY, SLOW_DELETE_DESC, 0l);
 
-    getHisto = getMetricsRegistry().newHistogram(GET_KEY);
+    getHisto = getMetricsRegistry().newTimeHistogram(GET_KEY);
     slowGet = getMetricsRegistry().newCounter(SLOW_GET_KEY, SLOW_GET_DESC, 0l);
 
-    incrementHisto = getMetricsRegistry().newHistogram(INCREMENT_KEY);
+    incrementHisto = getMetricsRegistry().newTimeHistogram(INCREMENT_KEY);
     slowIncrement = getMetricsRegistry().newCounter(SLOW_INCREMENT_KEY, SLOW_INCREMENT_DESC, 0l);
 
-    appendHisto = getMetricsRegistry().newHistogram(APPEND_KEY);
+    appendHisto = getMetricsRegistry().newTimeHistogram(APPEND_KEY);
     slowAppend = getMetricsRegistry().newCounter(SLOW_APPEND_KEY, SLOW_APPEND_DESC, 0l);
     
-    replayHisto = getMetricsRegistry().newHistogram(REPLAY_KEY);
+    replayHisto = getMetricsRegistry().newTimeHistogram(REPLAY_KEY);
 
-    splitTimeHisto = getMetricsRegistry().newHistogram(SPLIT_KEY);
-    flushTimeHisto = getMetricsRegistry().newHistogram(FLUSH_KEY);
+    splitTimeHisto = getMetricsRegistry().newTimeHistogram(SPLIT_KEY);
+    flushTimeHisto = getMetricsRegistry().newTimeHistogram(FLUSH_KEY);
 
     splitRequest = getMetricsRegistry().newCounter(SPLIT_REQUEST_KEY, SPLIT_REQUEST_DESC, 0l);
     splitSuccess = getMetricsRegistry().newCounter(SPLIT_SUCCESS_KEY, SPLIT_SUCCESS_DESC, 0l);
@@ -108,9 +108,9 @@ public class MetricsRegionServerSourceImpl
     pausesWithGc = getMetricsRegistry().newHistogram(PAUSE_TIME_WITH_GC_KEY);
     pausesWithoutGc = getMetricsRegistry().newHistogram(PAUSE_TIME_WITHOUT_GC_KEY);
 
-    fsRead = getMetricsRegistry().newHistogram(FS_READ_KEY);
-    fsPread = getMetricsRegistry().newHistogram(FS_PREAD_KEY);
-    fsWrite = getMetricsRegistry().newHistogram(FS_WRITE_KEY);
+    fsRead = getMetricsRegistry().newTimeHistogram(FS_READ_KEY);
+    fsPread = getMetricsRegistry().newTimeHistogram(FS_PREAD_KEY);
+    fsWrite = getMetricsRegistry().newTimeHistogram(FS_WRITE_KEY);
     if (rsWrap != null) {
       rsWrap.initialFSMetrics(fsRead, fsPread, fsWrite);
     }

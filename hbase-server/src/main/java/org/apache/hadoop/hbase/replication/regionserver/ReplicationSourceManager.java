@@ -184,17 +184,27 @@ public class ReplicationSourceManager implements ReplicationListener {
    */
   public void logPositionAndCleanOldLogs(Path log, String id, long position,
       boolean queueRecovered, boolean holdLogInZK) {
-    String fileName = log.getName();
-    this.replicationQueues.setLogPosition(id, fileName, position);
+    logPosition(log, id, position);
     if (holdLogInZK) {
      return;
     }
-    cleanOldLogs(fileName, id, queueRecovered);
+    cleanOldLogs(log.getName(), id, queueRecovered);
   }
 
   /**
-   * Cleans a log file and all older files from ZK. Called when we are sure that a
-   * log file is closed and has no more entries.
+   * Figure which hlog it belongs to and will log, for this region server, the current position.
+   * @param log
+   * @param id
+   * @param position
+   */
+  public void logPosition(Path log, String id, long position) {
+    String fileName = log.getName();
+    this.replicationQueues.setLogPosition(id, fileName, position);
+  }
+
+  /**
+   * Cleans a log file and all older files from ZK. Called when we are sure that a log file is
+   * closed and has no more entries.
    * @param key Path to the log
    * @param id id of the peer cluster
    * @param queueRecovered Whether this is a recovered queue
@@ -213,8 +223,8 @@ public class ReplicationSourceManager implements ReplicationListener {
         }
       }
     }
- }
-  
+  }
+
   private void cleanOldLogs(SortedSet<String> hlogs, String key, String id) {
     SortedSet<String> hlogSet = hlogs.headSet(key);
     LOG.debug("Removing " + hlogSet.size() + " logs in the list: " + hlogSet);
@@ -412,17 +422,8 @@ public class ReplicationSourceManager implements ReplicationListener {
     if (server instanceof HRegionServer) {
       rsServerHost = ((HRegionServer) server).getCoprocessorHost();
     }
-    ReplicationSourceInterface src;
-    try {
-      @SuppressWarnings("rawtypes")
-      Class c = Class.forName(conf.get("replication.replicationsource.implementation",
-          ReplicationSource.class.getCanonicalName()));
-      src = (ReplicationSourceInterface) c.newInstance();
-    } catch (Exception e) {
-      LOG.warn("Passed replication source implementation throws errors, " +
-          "defaulting to ReplicationSource", e);
-      src = new ReplicationSource();
-    }
+
+    ReplicationSourceInterface src = ReplicationSourceFactory.create(conf, peerId);
 
     ReplicationEndpoint replicationEndpoint = null;
     try {
@@ -511,7 +512,7 @@ public class ReplicationSourceManager implements ReplicationListener {
     synchronized (oldsources) {
       // First close all the recovered sources for this peer
       for (ReplicationSourceInterface src : oldsources) {
-        if (id.equals(src.getPeerClusterId())) {
+        if (id.equals(src.getPeerId())) {
           oldSourcesToDelete.add(src);
         }
       }
@@ -527,7 +528,7 @@ public class ReplicationSourceManager implements ReplicationListener {
     // synchronize on replicationPeers to avoid adding source for the to-be-removed peer
     synchronized (replicationPeers) {
       for (ReplicationSourceInterface src : this.sources) {
-        if (id.equals(src.getPeerClusterId())) {
+        if (id.equals(src.getPeerId())) {
           srcToRemove.add(src);
         }
       }
@@ -672,7 +673,7 @@ public class ReplicationSourceManager implements ReplicationListener {
           // synchronized on oldsources to avoid adding recovered source for the to-be-removed peer
           // see removePeer
           synchronized (oldsources) {
-            if (!this.rp.getPeerIds().contains(src.getPeerClusterId())) {
+            if (!this.rp.getPeerIds().contains(src.getPeerId())) {
               src.terminate("Recovered queue doesn't belong to any current peer");
               closeRecoveredQueue(src);
               continue;
@@ -722,11 +723,11 @@ public class ReplicationSourceManager implements ReplicationListener {
   public String getStats() {
     StringBuffer stats = new StringBuffer();
     for (ReplicationSourceInterface source : sources) {
-      stats.append("Normal source for cluster " + source.getPeerClusterId() + ": ");
+      stats.append("Normal source for cluster " + source.getPeerId() + ": ");
       stats.append(source.getStats() + "\n");
     }
     for (ReplicationSourceInterface oldSource : oldsources) {
-      stats.append("Recovered source for cluster/machine(s) " + oldSource.getPeerClusterId()+": ");
+      stats.append("Recovered source for cluster/machine(s) " + oldSource.getPeerId()+": ");
       stats.append(oldSource.getStats()+ "\n");
     }
     return stats.toString();
