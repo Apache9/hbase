@@ -167,6 +167,12 @@ AssignmentManager assignmentManager = master.getAssignmentManager();
           </div>
         </%if>
 
+		<section>
+            <& ../common/TaskMonitorTmpl; filter = filter &>
+        </section>
+
+		<& AssignmentManagerStatusTmpl; assignmentManager=master.getAssignmentManager()&>
+
         <section>
             <h2>Region Servers</h2>
             <& RegionServerListTmpl; master= master; servers = servers &>
@@ -215,7 +221,6 @@ AssignmentManager assignmentManager = master.getAssignmentManager();
                 </div>
             </div>
         </section>
-        <& AssignmentManagerStatusTmpl; assignmentManager=master.getAssignmentManager()&>
 
 		<section>
 			<h2>Peers</h2>
@@ -225,12 +230,11 @@ AssignmentManager assignmentManager = master.getAssignmentManager();
         <section>
             <& BackupMasterStatusTmpl; master = master &>
         </section>
-	</%if>    
-
 
         <section>
             <& ../common/TaskMonitorTmpl; filter = filter &>
         </section>
+	</%if>
 
         <section>
             <h2>Software Attributes</h2>
