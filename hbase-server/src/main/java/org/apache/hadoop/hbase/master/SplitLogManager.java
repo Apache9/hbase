@@ -386,9 +386,10 @@ public class SplitLogManager extends ZooKeeperListener {
       }
       SplitLogCounters.tot_mgr_log_split_batch_success.incrementAndGet();
     }
-    String msg = "finished splitting (more than or equal to) " + totalSize +
-        " bytes in " + batch.installed + " log files in " + logDirs + " in " +
-        (EnvironmentEdgeManager.currentTimeMillis() - t) + "ms";
+    String msg = "finished splitting (more than or equal to) "
+        + StringUtils.humanReadableInt(totalSize) + " (" + totalSize + " bytes) in "
+        + batch.installed + " log files in " + logDirs + " in "
+        + (EnvironmentEdgeManager.currentTimeMillis() - t) + "ms";
     status.markComplete(msg);
     LOG.info(msg);
     return totalSize;
