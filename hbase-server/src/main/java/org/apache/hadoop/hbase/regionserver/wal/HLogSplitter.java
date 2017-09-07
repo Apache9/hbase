@@ -108,6 +108,7 @@ import org.apache.hadoop.hbase.zookeeper.ZKSplitLog;
 import org.apache.hadoop.hbase.zookeeper.ZKTable;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
 import org.apache.hadoop.io.MultipleIOException;
+import org.apache.hadoop.util.StringUtils;
 import org.apache.zookeeper.KeeperException;
 
 import com.google.common.base.Preconditions;
@@ -271,8 +272,8 @@ public class HLogSplitter {
     long startTS = EnvironmentEdgeManager.currentTimeMillis();
     try {
       long logLength = logfile.getLen();
-      LOG.info("Splitting hlog: " + logPath + ", length=" + logLength);
-      LOG.info("DistributedLogReplay = " + this.distributedLogReplay);
+      LOG.info("Splitting hlog: " + logPath + ", size=" + StringUtils.humanReadableInt(logLength)
+          + " (" + logLength + " bytes), DistributedLogReplay=" + this.distributedLogReplay);
       status.setStatus("Opening log file");
       if (reporter != null && !reporter.progress()) {
         progress_failed = true;
