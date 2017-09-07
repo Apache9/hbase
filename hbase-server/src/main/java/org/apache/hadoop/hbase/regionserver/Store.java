@@ -49,7 +49,7 @@ import org.apache.hadoop.hbase.security.User;
  */
 @InterfaceAudience.LimitedPrivate(HBaseInterfaceAudience.COPROC)
 @InterfaceStability.Evolving
-public interface Store extends HeapSize, StoreConfigInformation, PropagatingConfigurationObserver {
+public interface Store<SF extends StoreFile> extends HeapSize, StoreConfigInformation, PropagatingConfigurationObserver {
 
   /* The default priority for user-specified compaction requests.
    * The user gets top priority unless we have blocking compactions. (Pri <= 0)
@@ -59,9 +59,9 @@ public interface Store extends HeapSize, StoreConfigInformation, PropagatingConf
   // General Accessors
   CellComparator getComparator();
 
-  Collection<StoreFile> getStorefiles();
+  Collection<SF> getStorefiles();
 
-  Collection<StoreFile> getCompactedFiles();
+  Collection<SF> getCompactedFiles();
 
   /**
    * Close all the readers We don't need to worry about subsequent requests because the Region
@@ -69,7 +69,7 @@ public interface Store extends HeapSize, StoreConfigInformation, PropagatingConf
    * @return the {@link StoreFile StoreFiles} that were previously being used.
    * @throws IOException on failure
    */
-  Collection<StoreFile> close() throws IOException;
+  Collection<SF> close() throws IOException;
 
   /**
    * Return a scanner for both the memstore and the HStore files. Assumes we are not in a
@@ -93,7 +93,7 @@ public interface Store extends HeapSize, StoreConfigInformation, PropagatingConf
    * @param readPt the read point of the current scan
    * @return all scanners for this store
    */
-  default List<KeyValueScanner> getScanners(boolean cacheBlocks, boolean isGet, boolean usePread,
+  default List<? extends KeyValueScanner> getScanners(boolean cacheBlocks, boolean isGet, boolean usePread,
       boolean isCompaction, ScanQueryMatcher matcher, byte[] startRow, byte[] stopRow, long readPt)
       throws IOException {
     return getScanners(cacheBlocks, usePread, isCompaction, matcher, startRow, true, stopRow, false,
@@ -113,7 +113,7 @@ public interface Store extends HeapSize, StoreConfigInformation, PropagatingConf
    * @param readPt the read point of the current scan
    * @return all scanners for this store
    */
-  List<KeyValueScanner> getScanners(boolean cacheBlocks, boolean usePread, boolean isCompaction,
+  List<? extends KeyValueScanner> getScanners(boolean cacheBlocks, boolean usePread, boolean isCompaction,
       ScanQueryMatcher matcher, byte[] startRow, boolean includeStartRow, byte[] stopRow,
       boolean includeStopRow, long readPt) throws IOException;
 
@@ -133,7 +133,7 @@ public interface Store extends HeapSize, StoreConfigInformation, PropagatingConf
    * @return list of scanners recreated on the current Scanners
    * @throws IOException
    */
-  List<KeyValueScanner> recreateScanners(List<KeyValueScanner> currentFileScanners,
+  List<? extends KeyValueScanner> recreateScanners(List<? extends KeyValueScanner> currentFileScanners,
       boolean cacheBlocks, boolean usePread, boolean isCompaction, ScanQueryMatcher matcher,
       byte[] startRow, boolean includeStartRow, byte[] stopRow, boolean includeStopRow, long readPt,
       boolean includeMemstoreScanner) throws IOException;
@@ -152,7 +152,7 @@ public interface Store extends HeapSize, StoreConfigInformation, PropagatingConf
    * @param includeMemstoreScanner true if memstore has to be included
    * @return scanners on the given files and on the memstore if specified
    */
-  default List<KeyValueScanner> getScanners(List<StoreFile> files, boolean cacheBlocks,
+  default List<? extends KeyValueScanner> getScanners(List<SF> files, boolean cacheBlocks,
       boolean isGet, boolean usePread, boolean isCompaction, ScanQueryMatcher matcher,
       byte[] startRow, byte[] stopRow, long readPt, boolean includeMemstoreScanner)
       throws IOException {
@@ -176,7 +176,7 @@ public interface Store extends HeapSize, StoreConfigInformation, PropagatingConf
    * @param includeMemstoreScanner true if memstore has to be included
    * @return scanners on the given files and on the memstore if specified
    */
-  List<KeyValueScanner> getScanners(List<StoreFile> files, boolean cacheBlocks, boolean usePread,
+  List<? extends KeyValueScanner> getScanners(List<SF> files, boolean cacheBlocks, boolean usePread,
       boolean isCompaction, ScanQueryMatcher matcher, byte[] startRow, boolean includeStartRow,
       byte[] stopRow, boolean includeStopRow, long readPt, boolean includeMemstoreScanner)
       throws IOException;
@@ -270,10 +270,10 @@ public interface Store extends HeapSize, StoreConfigInformation, PropagatingConf
    * @deprecated see compact(CompactionContext, ThroughputController, User)
    */
   @Deprecated
-  List<StoreFile> compact(CompactionContext compaction,
+  List<SF> compact(CompactionContext compaction,
       ThroughputController throughputController) throws IOException;
 
-  List<StoreFile> compact(CompactionContext compaction,
+  List<SF> compact(CompactionContext compaction,
     ThroughputController throughputController, User user) throws IOException;
 
   /**

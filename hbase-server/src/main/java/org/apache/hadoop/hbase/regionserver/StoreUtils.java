@@ -77,7 +77,7 @@ public class StoreUtils {
    * @param candidates The files to choose from.
    * @return The largest file; null if no file has a reader.
    */
-  static Optional<StoreFile> getLargestFile(Collection<StoreFile> candidates) {
+  static Optional<HStoreFile> getLargestFile(Collection<HStoreFile> candidates) {
     return candidates.stream().filter(f -> f.getReader() != null)
         .max((f1, f2) -> Long.compare(f1.getReader().length(), f2.getReader().length()));
   }
@@ -89,9 +89,9 @@ public class StoreUtils {
    * @return 0 if no non-bulk-load files are provided or, this is Store that does not yet have any
    *         store files.
    */
-  public static long getMaxMemstoreTSInList(Collection<StoreFile> sfs) {
+  public static long getMaxMemstoreTSInList(Collection<HStoreFile> sfs) {
     long max = 0;
-    for (StoreFile sf : sfs) {
+    for (HStoreFile sf : sfs) {
       if (!sf.isBulkLoadResult()) {
         max = Math.max(max, sf.getMaxMemstoreTS());
       }
@@ -106,9 +106,9 @@ public class StoreUtils {
    * @return 0 if no non-bulk-load files are provided or, this is Store that
    * does not yet have any store files.
    */
-  public static long getMaxSequenceIdInList(Collection<StoreFile> sfs) {
+  public static long getMaxSequenceIdInList(Collection<HStoreFile> sfs) {
     long max = 0;
-    for (StoreFile sf : sfs) {
+    for (HStoreFile sf : sfs) {
       max = Math.max(max, sf.getMaxSequenceId());
     }
     return max;
@@ -120,7 +120,7 @@ public class StoreUtils {
    * @param comparator Comparator used to compare KVs.
    * @return The split point row, or null if splitting is not possible, or reader is null.
    */
-  static Optional<byte[]> getFileSplitPoint(StoreFile file, CellComparator comparator)
+  static Optional<byte[]> getFileSplitPoint(HStoreFile file, CellComparator comparator)
       throws IOException {
     StoreFileReader reader = file.getReader();
     if (reader == null) {

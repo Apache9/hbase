@@ -99,7 +99,7 @@ public class StoreFileScanner implements KeyValueScanner {
   /**
    * Return an array of scanners corresponding to the given set of store files.
    */
-  public static List<StoreFileScanner> getScannersForStoreFiles(Collection<StoreFile> files,
+  public static List<StoreFileScanner> getScannersForStoreFiles(Collection<HStoreFile> files,
       boolean cacheBlocks, boolean usePread, long readPt) throws IOException {
     return getScannersForStoreFiles(files, cacheBlocks, usePread, false, false, readPt);
   }
@@ -107,7 +107,7 @@ public class StoreFileScanner implements KeyValueScanner {
   /**
    * Return an array of scanners corresponding to the given set of store files.
    */
-  public static List<StoreFileScanner> getScannersForStoreFiles(Collection<StoreFile> files,
+  public static List<StoreFileScanner> getScannersForStoreFiles(Collection<HStoreFile> files,
       boolean cacheBlocks, boolean usePread, boolean isCompaction, boolean useDropBehind,
       long readPt) throws IOException {
     return getScannersForStoreFiles(files, cacheBlocks, usePread, isCompaction, useDropBehind, null,
@@ -118,7 +118,7 @@ public class StoreFileScanner implements KeyValueScanner {
    * Return an array of scanners corresponding to the given set of store files, And set the
    * ScanQueryMatcher for each store file scanner for further optimization
    */
-  public static List<StoreFileScanner> getScannersForStoreFiles(Collection<StoreFile> files,
+  public static List<StoreFileScanner> getScannersForStoreFiles(Collection<HStoreFile> files,
       boolean cacheBlocks, boolean usePread, boolean isCompaction, boolean canUseDrop,
       ScanQueryMatcher matcher, long readPt) throws IOException {
     if (files.isEmpty()) {
@@ -151,7 +151,7 @@ public class StoreFileScanner implements KeyValueScanner {
    * Get scanners for compaction. We will create a separated reader for each store file to avoid
    * contention with normal read request.
    */
-  public static List<StoreFileScanner> getScannersForCompaction(Collection<StoreFile> files,
+  public static List<StoreFileScanner> getScannersForCompaction(Collection<HStoreFile> files,
       boolean canUseDropBehind, long readPt) throws IOException {
     List<StoreFileScanner> scanners = new ArrayList<>(files.size());
     List<StoreFile> sortedFiles = new ArrayList<>(files);

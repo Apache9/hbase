@@ -22,9 +22,9 @@ package org.apache.hadoop.hbase.regionserver;
 import java.io.IOException;
 import java.util.List;
 
-import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.CellComparator;
+import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.regionserver.compactions.CompactionContext;
 import org.apache.hadoop.hbase.regionserver.compactions.CompactionPolicy;
 import org.apache.hadoop.hbase.regionserver.compactions.Compactor;
@@ -37,7 +37,8 @@ import org.apache.hadoop.hbase.util.ReflectionUtils;
  */
 @InterfaceAudience.Private
 public abstract class StoreEngine<SF extends StoreFlusher,
-    CP extends CompactionPolicy, C extends Compactor, SFM extends StoreFileManager> {
+    CP extends CompactionPolicy, C extends Compactor<? extends CellSink>,
+    SFM extends StoreFileManager> {
   protected SF storeFlusher;
   protected CP compactionPolicy;
   protected C compactor;
@@ -55,28 +56,28 @@ public abstract class StoreEngine<SF extends StoreFlusher,
   /**
    * @return Compaction policy to use.
    */
-  public CompactionPolicy getCompactionPolicy() {
+  public CP getCompactionPolicy() {
     return this.compactionPolicy;
   }
 
   /**
    * @return Compactor to use.
    */
-  public Compactor getCompactor() {
+  public C getCompactor() {
     return this.compactor;
   }
 
   /**
    * @return Store file manager to use.
    */
-  public StoreFileManager getStoreFileManager() {
+  public SFM getStoreFileManager() {
     return this.storeFileManager;
   }
 
   /**
    * @return Store flusher to use.
    */
-  public StoreFlusher getStoreFlusher() {
+  public SF getStoreFlusher() {
     return this.storeFlusher;
   }
 
@@ -110,18 +111,18 @@ public abstract class StoreEngine<SF extends StoreFlusher,
 
   /**
    * Create the StoreEngine configured for the given Store.
-   * @param store The store. An unfortunate dependency needed due to it
-   *              being passed to coprocessors via the compactor.
+   * @param store The store. An unfortunate dependency needed due to it being passed to coprocessors
+   *          via the compactor.
    * @param conf Store configuration.
    * @param kvComparator KVComparator for storeFileManager.
    * @return StoreEngine to use.
    */
-  public static StoreEngine<?, ?, ?, ?> create(
+  public static StoreEngine<StoreFlusher, CompactionPolicy, Compactor<? extends CellSink>, StoreFileManager> create(
       Store store, Configuration conf, CellComparator kvComparator) throws IOException {
     String className = conf.get(STORE_ENGINE_CLASS_KEY, DEFAULT_STORE_ENGINE_CLASS.getName());
     try {
-      StoreEngine<?,?,?,?> se = ReflectionUtils.instantiateWithCustomCtor(
-          className, new Class[] { }, new Object[] { });
+      StoreEngine<StoreFlusher, CompactionPolicy, Compactor<? extends CellSink>, StoreFileManager> se =
+          ReflectionUtils.instantiateWithCustomCtor(className, new Class[] {}, new Object[] {});
       se.createComponentsOnce(conf, store, kvComparator);
       return se;
     } catch (Exception e) {
