@@ -691,30 +691,30 @@ public class HTableDescriptor implements WritableComparable<HTableDescriptor> {
   }
 
   public int getNormalizeTargetRegionCount(){
-    byte[] target = getValue(NORMALIZATION_TARGET_REGION_COUNT_KEY);
-    if(target == null){
+    byte[] targetRegionCount = getValue(NORMALIZATION_TARGET_REGION_COUNT_KEY);
+    if(targetRegionCount == null){
       return -1;
     }else {
-      return Bytes.toInt(target);
+      return Integer.parseInt(Bytes.toString(targetRegionCount));
     }
   }
 
-  public HTableDescriptor setNormalizationTargetRegionCount(final int target) {
-    setValue(NORMALIZATION_TARGET_REGION_COUNT_KEY, new ImmutableBytesWritable(Bytes.toBytes(target)));
+  public HTableDescriptor setNormalizationTargetRegionCount(final int targetRegionCount) {
+    setValue(NORMALIZATION_TARGET_REGION_COUNT_KEY, Integer.toString(targetRegionCount));
     return this;
   }
 
   public long getNormalizeTargetRegionSize(){
-    byte[] target = getValue(NORMALIZATION_TARGET_REGION_SIZE_KEY);
-    if(target == null){
+    byte[] targetRegionSize = getValue(NORMALIZATION_TARGET_REGION_SIZE_KEY);
+    if(targetRegionSize == null){
       return -1;
     }else {
-      return Bytes.toLong(target);
+      return Long.parseLong(Bytes.toString(targetRegionSize));
     }
   }
 
-  public HTableDescriptor setNormalizationTargetRegionSize(final long target) {
-    setValue(NORMALIZATION_TARGET_REGION_SIZE_KEY, new ImmutableBytesWritable(Bytes.toBytes(target)));
+  public HTableDescriptor setNormalizationTargetRegionSize(final long targetRegionSize) {
+    setValue(NORMALIZATION_TARGET_REGION_SIZE_KEY, Long.toString(targetRegionSize));
     return this;
   }
 
