@@ -31,6 +31,7 @@ import org.apache.hadoop.hbase.Chore;
 import org.apache.hadoop.hbase.RemoteExceptionHandler;
 import org.apache.hadoop.hbase.Stoppable;
 import org.apache.hadoop.hbase.util.FSUtils;
+import org.apache.hadoop.util.StringUtils;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableSet;
@@ -49,6 +50,7 @@ public abstract class CleanerChore<T extends FileCleanerDelegate> extends Chore 
   private final Path oldFileDir;
   private final Configuration conf;
   protected List<T> cleanersChain;
+  private long totalSize = 0L;
 
   /**
    * @param name name of the chore being run
@@ -117,12 +119,13 @@ public abstract class CleanerChore<T extends FileCleanerDelegate> extends Chore 
     }
   }
 
-  private void checkDirectorySizeForTimeToLiveCleaner() throws IOException {
-    FileStatus status = this.fs.getFileStatus(this.oldFileDir);
+  private void tryUpdateTTLByDirSize() {
+    LOG.info("Directory " + this.oldFileDir + " size is " + StringUtils.humanReadableInt(totalSize)
+        + " (" + totalSize + " bytes), try update TimeToLiveCleaner's ttl for next round clean");
     for (T cleaner : this.cleanersChain) {
       if (cleaner instanceof TimeToLiveCleanable) {
         TimeToLiveCleanable ttlCleaner = (TimeToLiveCleanable) cleaner;
-        if (ttlCleaner.isExceedSizeLimit(status.getLen())) {
+        if (ttlCleaner.isExceedSizeLimit(totalSize)) {
           ttlCleaner.decreaseTTL();
         } else {
           ttlCleaner.increaseTTL();
@@ -134,9 +137,10 @@ public abstract class CleanerChore<T extends FileCleanerDelegate> extends Chore 
   @Override
   protected void chore() {
     try {
-      checkDirectorySizeForTimeToLiveCleaner();
+      totalSize = 0L;
       FileStatus[] files = FSUtils.listStatus(this.fs, this.oldFileDir);
       checkAndDeleteEntries(files);
+      tryUpdateTTLByDirSize();
     } catch (IOException e) {
       e = RemoteExceptionHandler.checkIOException(e);
       LOG.warn("Error while cleaning the logs", e);
@@ -167,6 +171,7 @@ public abstract class CleanerChore<T extends FileCleanerDelegate> extends Chore 
       } else {
         // collect all files to attempt to delete in one batch
         files.add(child);
+        totalSize += child.getLen();
       }
     }
     if (!checkAndDeleteFiles(files)) {
@@ -271,6 +276,7 @@ public abstract class CleanerChore<T extends FileCleanerDelegate> extends Chore 
         boolean success = this.fs.delete(filePath, false);
         if (success) {
           deletedFileCount++;
+          totalSize -= file.getLen();
         } else {
           LOG.warn("Attempted to delete:" + filePath
               + ", but couldn't. Run cleaner chain and attempt to delete on next pass.");
