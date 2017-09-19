@@ -526,9 +526,8 @@ public class TestSaltedHTable {
 
     utility1 = new HBaseTestingUtility(conf1);
     utility1.setZkCluster(TEST_UTIL.getZkCluster());
-//    utility1.startMiniZKCluster();
     utility1.startMiniCluster(2);
-    
+
     TEST_UTIL.deleteTable(TEST_TABLE);
     HTableDescriptor tableDesc = getSaltedHTableDescriptor(10);
     tableDesc.getFamily(TEST_FAMILY).setScope(1);
@@ -539,6 +538,7 @@ public class TestSaltedHTable {
     ReplicationAdmin repAdmin = new ReplicationAdmin(TEST_UTIL.getConfiguration());
     ReplicationPeerConfig pc = new ReplicationPeerConfig();
     pc.setClusterKey(utility1.getClusterKey());
+    pc.setReplicateAllUserTables(false);
     Map<TableName, List<String>> tableCf = new HashMap<TableName, List<String>>();
     tableCf.put(TableName.valueOf(TEST_TABLE), null);
     repAdmin.addPeer("10", pc, tableCf);
@@ -562,7 +562,7 @@ public class TestSaltedHTable {
     get = new Get(ROW_A);
     result = table1.get(get);
     Assert.assertTrue(result.isEmpty());    
-    
+
     table.close();
     table1.close();
     admin1.close();

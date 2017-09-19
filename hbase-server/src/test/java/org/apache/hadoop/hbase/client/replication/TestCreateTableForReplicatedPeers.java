@@ -86,6 +86,7 @@ public class TestCreateTableForReplicatedPeers extends TestReplicationBase {
 
     ReplicationPeerConfig rpc = new ReplicationPeerConfig();
     rpc.setClusterKey(utility2.getClusterKey());
+    rpc.setReplicateAllUserTables(false);
     Map<TableName, List<String>> tableNames = new HashMap<TableName, List<String>>();
     tableNames.put(TEST_TABLE_NAME1, Collections.emptyList());
     rpc.setTableCFsMap(tableNames);
@@ -108,6 +109,7 @@ public class TestCreateTableForReplicatedPeers extends TestReplicationBase {
 
     ReplicationPeerConfig rpc2 = new ReplicationPeerConfig();
     rpc2.setClusterKey(utility2.getClusterKey());
+    rpc2.setReplicateAllUserTables(false);
     rpc2.setNamespaces(Collections.singleton(TEST_NAMESPACE_STR));
     rpc2.setState(State.ENABLED);
 
@@ -156,6 +158,7 @@ public class TestCreateTableForReplicatedPeers extends TestReplicationBase {
 
     ReplicationPeerConfig rpc = new ReplicationPeerConfig();
     rpc.setClusterKey(utility2.getClusterKey());
+    rpc.setReplicateAllUserTables(false);
     Map<TableName, List<String>> tableNames = new HashMap<TableName, List<String>>();
     tableNames.put(TEST_TABLE_NAME1, Collections.emptyList());
     rpc.setTableCFsMap(tableNames);
@@ -180,6 +183,7 @@ public class TestCreateTableForReplicatedPeers extends TestReplicationBase {
 
     ReplicationPeerConfig rpc2 = new ReplicationPeerConfig();
     rpc2.setClusterKey(utility2.getClusterKey());
+    rpc2.setReplicateAllUserTables(false);
     rpc2.setNamespaces(Collections.singleton(TEST_NAMESPACE_STR));
     rpc2.setState(State.ENABLED);
 

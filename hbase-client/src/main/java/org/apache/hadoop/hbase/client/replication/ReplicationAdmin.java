@@ -729,8 +729,8 @@ public class ReplicationAdmin implements Closeable {
     for (Map.Entry<TableName, ? extends Collection<String>> entry : tableCfs.entrySet()) {
       TableName table = entry.getKey();
       if (namespaces.contains(table.getNamespaceAsString())) {
-        throw new ReplicationException(
-            "Table-cfs config conflict with namespaces config in peer");
+        throw new ReplicationException("Table " + table + " 's namespace "
+            + table.getNamespaceAsString() + " was already in namespaces config in peer");
       }
     }
   }
