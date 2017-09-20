@@ -882,17 +882,15 @@ public class ReplicationSource extends Thread
         this.unLoggedPositionEdits = 0;
       }
 
-      if (LOG.isTraceEnabled()) {
-        String filesize = "N/A";
-        try {
-          FileStatus stat = this.fs.getFileStatus(this.currentPath);
-          filesize = stat.getLen()+"";
-        } catch (IOException ex) {}
-        LOG.trace("Reached the end of a log, stats: " + getStats() +
-            ", and the length of the file is " + filesize);
+      String filesize = "N/A";
+      try {
+        FileStatus stat = this.fs.getFileStatus(this.currentPath);
+        filesize = stat.getLen() + "";
+      } catch (IOException ex) {
       }
+      LOG.info("Reached the end of a log, stats: " + getStats()
+          + ", and the length of the file is " + filesize);
 
-      LOG.info("Finished replicate the current log " + this.currentPath);
       this.currentPath = null;
       this.repLogReader.finishCurrentFile();
       this.reader = null;
