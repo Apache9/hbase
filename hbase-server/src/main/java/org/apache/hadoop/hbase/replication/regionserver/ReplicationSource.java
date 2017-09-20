@@ -256,6 +256,7 @@ public class ReplicationSource extends Thread
     this.queue.put(log);
     int queueSize = queue.size();
     this.metrics.setSizeOfLogQueue(queueSize);
+    LOG.info("Enqueue a new log: " + log);
     // This will log a warning for each new log that gets created above the warn threshold
     if (queueSize > this.logQueueWarnThreshold) {
       LOG.warn("Queue size: " + queueSize +
