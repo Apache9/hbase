@@ -17,9 +17,11 @@ package org.apache.hadoop.hbase.ipc;
  * limitations under the License.
  */
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.nio.channels.ClosedChannelException;
 
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
+import org.apache.hadoop.hbase.CallDroppedException;
 import org.apache.hadoop.hbase.CellScanner;
 import org.apache.hadoop.hbase.exceptions.TimeoutIOException;
 import org.apache.hadoop.hbase.ipc.RpcServer.Call;
@@ -43,10 +45,12 @@ import com.google.protobuf.Message;
  */
 @InterfaceAudience.Private
 public class CallRunner {
+  private static final CallDroppedException CALL_DROPPED_EXCEPTION = new CallDroppedException();
   private Call call;
   private RpcServerInterface rpcServer;
   private MonitoredRPCHandler status;
   private UserProvider userProvider;
+  private volatile boolean sucessful;
 
   /**
    * On construction, adds the size of this call to the running count of outstanding call sizes.
@@ -140,6 +144,10 @@ public class CallRunner {
         RequestContext.clear();
       }
       RpcServer.CurCall.set(null);
+      if (resultPair != null) {
+        this.rpcServer.addCallSize(call.getSize() * -1);
+        sucessful = true;
+      }
       doRespond(resultPair, errorThrowable, error);
     } catch (OutOfMemoryError e) {
       if (this.rpcServer.getErrorHandler() != null) {
@@ -160,8 +168,9 @@ public class CallRunner {
       RpcServer.LOG.warn(Thread.currentThread().getName()
           + ": caught: " + StringUtils.stringifyException(e));
     } finally {
-      // regardless if succesful or not we need to reset the callQueueSize
-      resetCallQueueSize();
+      if (!sucessful) {
+        this.rpcServer.addCallSize(call.getSize() * -1);
+      }
       cleanup();
     }
   }
@@ -191,5 +200,40 @@ public class CallRunner {
     status.pause("Waiting for a call");
     RpcServer.MONITORED_RPC.set(status);
     return status;
+  }
+
+  /**
+   * When we want to drop this call because of server is overloaded.
+   */
+  public void drop() {
+    try {
+      if (!call.connection.channel.isOpen()) {
+        if (RpcServer.LOG.isDebugEnabled()) {
+          RpcServer.LOG.debug(Thread.currentThread().getName() + ": skipped " + call);
+        }
+        return;
+      }
+
+      // Set the response
+      InetSocketAddress address = rpcServer.getListenerAddress();
+      call.setResponse(null, null, CALL_DROPPED_EXCEPTION, "Call dropped, server "
+        + (address != null ? address : "(channel closed)") + " is overloaded, please retry.");
+      call.sendResponseIfReady();
+      RpcServer.LOG.warn("Drop the call: " + call + " and response exception to client");
+    } catch (ClosedChannelException cce) {
+      InetSocketAddress address = rpcServer.getListenerAddress();
+      RpcServer.LOG.warn(Thread.currentThread().getName() + ": caught a ClosedChannelException, " +
+        "this means that the server " + (address != null ? address : "(channel closed)") +
+        " was processing a request but the client went away. The error message was: " +
+        cce.getMessage());
+    } catch (Exception e) {
+      RpcServer.LOG.warn(Thread.currentThread().getName()
+        + ": caught: " + StringUtils.stringifyException(e));
+    } finally {
+      if (!sucessful) {
+        this.rpcServer.addCallSize(call.getSize() * -1);
+      }
+      cleanup();
+    }
   }
 }
