@@ -236,13 +236,13 @@ public class TableSnapshotInputFormatImpl {
 
     Path snapshotDir = SnapshotDescriptionUtils.getCompletedSnapshotDir(snapshotName, rootDir);
     SnapshotProtos.SnapshotDescription snapshotDesc =
-      SnapshotDescriptionUtils.readSnapshotInfo(fs, snapshotDir);
+        SnapshotDescriptionUtils.readSnapshotInfo(fs, snapshotDir);
     SnapshotManifest manifest = SnapshotManifest.open(conf, fs, snapshotDir, snapshotDesc);
 
     List<SnapshotRegionManifest> regionManifests = manifest.getRegionManifests();
 
     if (regionManifests == null) {
-	throw new IllegalArgumentException("Snapshot seems empty");
+      throw new IllegalArgumentException("Snapshot seems empty");
     }
 
     // load table descriptor
@@ -254,7 +254,7 @@ public class TableSnapshotInputFormatImpl {
       scan = TableMapReduceUtil.convertStringToScan(conf.get(TableInputFormat.SCAN));
     } else if (conf.get(org.apache.hadoop.hbase.mapred.TableInputFormat.COLUMN_LIST) != null) {
       String[] columns =
-        conf.get(org.apache.hadoop.hbase.mapred.TableInputFormat.COLUMN_LIST).split(" ");
+          conf.get(org.apache.hadoop.hbase.mapred.TableInputFormat.COLUMN_LIST).split(" ");
       scan = new Scan();
       for (String col : columns) {
         scan.addFamily(Bytes.toBytes(col));
@@ -270,17 +270,20 @@ public class TableSnapshotInputFormatImpl {
     for (SnapshotRegionManifest regionManifest : regionManifests) {
       // load region descriptor
       HRegionInfo hri = HRegionInfo.convert(regionManifest.getRegionInfo());
+      if (hri.isOffline() && (hri.isSplit() || hri.isSplitParent())) {
+        continue;
+      }
 
-      if (CellUtil.overlappingKeys(scan.getStartRow(), scan.getStopRow(),
-        hri.getStartKey(), hri.getEndKey())) {
+      if (CellUtil.overlappingKeys(scan.getStartRow(), scan.getStopRow(), hri.getStartKey(),
+        hri.getEndKey())) {
         // compute HDFS locations from snapshot files (which will get the locations for
         // referred hfiles)
-        List<String> hosts = getBestLocations(conf,
-          HRegion.computeHDFSBlocksDistribution(conf, htd, hri, tableDir));
+        List<String> hosts =
+            getBestLocations(conf, HRegion.computeHDFSBlocksDistribution(conf, htd, hri, tableDir));
 
         int len = Math.min(3, hosts.size());
         hosts = hosts.subList(0, len);
-	splits.add(new InputSplit(htd, hri, hosts));
+        splits.add(new InputSplit(htd, hri, hosts));
       }
     }
 
