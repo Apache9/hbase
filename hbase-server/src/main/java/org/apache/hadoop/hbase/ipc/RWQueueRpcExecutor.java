@@ -18,7 +18,6 @@
 
 package org.apache.hadoop.hbase.ipc;
 
-import com.google.common.collect.Lists;
 import com.google.protobuf.Message;
 
 import java.io.IOException;
@@ -44,7 +43,6 @@ import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.RegionAction;
 import org.apache.hadoop.hbase.protobuf.generated.RPCProtos.RequestHeader;
 import org.apache.hadoop.hbase.util.QueueCounter;
 import org.apache.hadoop.hbase.util.ReflectionUtils;
-import org.apache.hadoop.hbase.util.ThreadInfoUtils;
 
 /**
  * RPC Executor that uses different queues for reads and writes.
@@ -89,6 +87,15 @@ public class RWQueueRpcExecutor extends RpcExecutor {
       conf, abortable,
       LinkedBlockingQueue.class, new Object[] {maxQueueLength},
       readQueueClass, ArrayUtils.addAll(new Object[] {maxQueueLength}, readQueueInitArgs));
+  }
+
+  public RWQueueRpcExecutor(final String name, final int handlerCount, final int numQueues,
+      final float readShare, final Configuration conf, final Abortable abortable,
+      final Class<? extends BlockingQueue> writeQueueClass, Object[] writeQueueInitArgs,
+      final Class<? extends BlockingQueue> readQueueClass, Object[] readQueueInitArgs) {
+    this(name, calcNumWriters(handlerCount, readShare), calcNumReaders(handlerCount, readShare),
+        calcNumWriters(numQueues, readShare), calcNumReaders(numQueues, readShare), conf,
+        abortable, writeQueueClass, writeQueueInitArgs, readQueueClass, readQueueInitArgs);
   }
 
   public RWQueueRpcExecutor(final String name, final int writeHandlers, final int readHandlers,

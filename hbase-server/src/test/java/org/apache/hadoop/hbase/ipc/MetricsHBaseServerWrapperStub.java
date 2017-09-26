@@ -68,4 +68,14 @@ public class MetricsHBaseServerWrapperStub implements MetricsHBaseServerWrapper{
   public int getActiveReadRpcHandlerCount() {
     return 53;
   }
+
+  @Override
+  public long getNumGeneralCallsDropped() {
+    return 1;
+  }
+
+  @Override
+  public long getNumLifoModeSwitches() {
+    return 2;
+  }
 }
