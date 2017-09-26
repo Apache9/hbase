@@ -154,7 +154,11 @@ public class MetricsHBaseServerSourceImpl extends BaseSourceImpl
           .addGauge(Interns.info(NUM_ACTIVE_WRITE_HANDLER_NAME, NUM_ACTIVE_WRITE_HANDLER_DESC),
             wrapper.getActiveWriteRpcHandlerCount())
           .addGauge(Interns.info(NUM_ACTIVE_READ_HANDLER_NAME, NUM_ACTIVE_READ_HANDLER_DESC),
-            wrapper.getActiveReadRpcHandlerCount());
+            wrapper.getActiveReadRpcHandlerCount())
+          .addCounter(Interns.info(NUM_GENERAL_CALLS_DROPPED_NAME, NUM_GENERAL_CALLS_DROPPED_DESC),
+            wrapper.getNumGeneralCallsDropped())
+          .addCounter(Interns.info(NUM_LIFO_MODE_SWITCHES_NAME, NUM_LIFO_MODE_SWITCHES_DESC),
+            wrapper.getNumLifoModeSwitches());
     }
 
     metricsRegistry.snapshot(mrb, all);
