@@ -1,17 +1,19 @@
 package org.apache.hadoop.hbase.util;
 
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.LongAdder;
 
 public class QueueCounter {
   private final AtomicBoolean queueFull;
-  private final AtomicLong incomeRequestCount;
-  private final AtomicLong rejectedRequestCount;
+  private final LongAdder incomeRequestCount;
+  private final LongAdder rejectedRequestCount;
+  private String name;
 
-  public QueueCounter() {
+  public QueueCounter(String name) {
+    this.name = name;
     this.queueFull = new AtomicBoolean(false);
-    this.incomeRequestCount = new AtomicLong(0);
-    this.rejectedRequestCount = new AtomicLong(0);
+    this.incomeRequestCount = new LongAdder();
+    this.rejectedRequestCount = new LongAdder();
   }
 
   public void setQueueFull(boolean full) {
@@ -23,18 +25,23 @@ public class QueueCounter {
   }
 
   public void incIncomeRequestCount() {
-    incomeRequestCount.incrementAndGet();
+    incomeRequestCount.add(1L);
   }
 
   public long getIncomeRequestCount() {
-    return incomeRequestCount.get();
+    return incomeRequestCount.sum();
   }
 
   public void incRejectedRequestCount() {
-    rejectedRequestCount.incrementAndGet();
+    rejectedRequestCount.add(1L);
   }
 
   public long getRejectedRequestCount() {
-    return rejectedRequestCount.get();
+    return rejectedRequestCount.sum();
+  }
+
+  @Override
+  public String toString() {
+    return name + ".QueueCounter";
   }
 }

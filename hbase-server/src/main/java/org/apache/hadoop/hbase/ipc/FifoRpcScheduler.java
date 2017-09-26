@@ -25,6 +25,8 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.Collections;
+import java.util.List;
 
 import org.apache.hadoop.hbase.ipc.CallRunner;
 import org.apache.hadoop.hbase.util.QueueCounter;
@@ -46,7 +48,7 @@ public class FifoRpcScheduler extends RpcScheduler {
     this.maxQueueLength = conf.getInt("hbase.ipc.server.max.callqueue.length",
       conf.getInt("ipc.server.max.callqueue.length",
         handlerCount * RpcServer.DEFAULT_MAX_CALLQUEUE_LENGTH_PER_HANDLER));
-    this.queueCounter = new QueueCounter();
+    this.queueCounter = new QueueCounter("Fifo");
   }
 
   @Override
@@ -134,7 +136,7 @@ public class FifoRpcScheduler extends RpcScheduler {
   }
 
   @Override
-  public QueueCounter getQueueCounter() {
-    return queueCounter;
+  public List<QueueCounter> getQueueCounters() {
+    return Collections.singletonList(queueCounter);
   }
 }
