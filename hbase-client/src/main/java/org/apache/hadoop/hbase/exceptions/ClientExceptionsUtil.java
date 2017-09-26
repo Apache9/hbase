@@ -28,6 +28,7 @@ import java.net.SocketTimeoutException;
 import java.nio.channels.ClosedChannelException;
 import java.util.concurrent.TimeoutException;
 
+import org.apache.hadoop.hbase.CallDroppedException;
 import org.apache.hadoop.hbase.DoNotRetryIOException;
 import org.apache.hadoop.hbase.MultiActionResultTooLarge;
 import org.apache.hadoop.hbase.NotServingRegionException;
@@ -60,9 +61,8 @@ public final class ClientExceptionsUtil {
     return (cur instanceof RegionMovedException || cur instanceof RegionOpeningException
         || cur instanceof RegionTooBusyException || cur instanceof ThrottlingException
         || cur instanceof MultiActionResultTooLarge || cur instanceof RetryImmediatelyException
-        || cur instanceof NotServingRegionException);
+        || cur instanceof NotServingRegionException || cur instanceof CallDroppedException);
   }
-
 
   /**
    * Look for an exception we know in the remote exception:
