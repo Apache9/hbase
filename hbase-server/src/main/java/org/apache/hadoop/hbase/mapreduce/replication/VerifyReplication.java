@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 import com.google.common.annotations.VisibleForTesting;
 import org.apache.commons.logging.Log;
@@ -55,6 +56,7 @@ import org.apache.hadoop.hbase.replication.ReplicationException;
 import org.apache.hadoop.hbase.replication.ReplicationFactory;
 import org.apache.hadoop.hbase.replication.ReplicationPeerConfig;
 import org.apache.hadoop.hbase.replication.ReplicationPeers;
+import org.apache.hadoop.hbase.snapshot.RestoreSnapshotHelper;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.FSUtils;
@@ -215,8 +217,8 @@ public class VerifyReplication extends Configured implements Tool {
               + " peerFSAddress:" + peerFSAddress);
 
           peerTable = new HTable(peerConf, tableName);
-          replicatedScanner = new TableSnapshotScanner(peerConf,
-              new Path(peerFSAddress, peerSnapshotTmpDir), peerSnapshotName, scan);
+          replicatedScanner = new TableSnapshotScanner(peerConf, FSUtils.getRootDir(peerConf),
+              new Path(peerFSAddress, peerSnapshotTmpDir), peerSnapshotName, scan, true);
         } else {
           HConnectionManager.execute(new HConnectable<Void>(conf) {
             @Override
@@ -447,6 +449,17 @@ public class VerifyReplication extends Configured implements Tool {
     }
   }
 
+  private void restoreSnapshotForPeerCluster(Configuration conf, String peerQuorumAddress)
+      throws IOException {
+    Configuration peerConf = HBaseConfiguration.create(conf);
+    ZKUtil.applyClusterKeyToConf(peerConf, peerQuorumAddress);
+    FileSystem.setDefaultUri(peerConf, peerFSAddress);
+    FSUtils.setRootDir(peerConf, new Path(peerFSAddress, peerHBaseRootAddress));
+    FileSystem fs = FileSystem.get(peerConf);
+    RestoreSnapshotHelper.copySnapshotForScanner(peerConf, fs, FSUtils.getRootDir(peerConf),
+      new Path(peerFSAddress, peerSnapshotTmpDir), peerSnapshotName);
+  }
+
   /**
    * Sets up the actual job.
    *
@@ -486,7 +499,13 @@ public class VerifyReplication extends Configured implements Tool {
     // Set Snapshot specific parameters
     if (peerSnapshotName != null) {
       conf.set(NAME + ".peerSnapshotName", peerSnapshotName);
+
+      // for verifyRep by snapshot, choose a unique sub-directory under peerSnapshotTmpDir to
+      // restore snapshot.
+      Path restoreDir = new Path(peerSnapshotTmpDir, UUID.randomUUID().toString());
+      peerSnapshotTmpDir = restoreDir.toString();
       conf.set(NAME + ".peerSnapshotTmpDir", peerSnapshotTmpDir);
+
       conf.set(NAME + ".peerFSAddress", peerFSAddress);
       conf.set(NAME + ".peerHBaseRootAddress", peerHBaseRootAddress);
       conf.setStrings(MRJobConfig.JOB_NAMENODES, peerSnapshotTmpDir, sourceSnapshotTmpDir);
@@ -526,6 +545,7 @@ public class VerifyReplication extends Configured implements Tool {
         "Using source snapshot-" + sourceSnapshotName + " with temp dir:" + sourceSnapshotTmpDir);
       TableMapReduceUtil.initTableSnapshotMapperJob(sourceSnapshotName, scan, Verifier.class, null,
         null, job, true, snapshotTempPath);
+      restoreSnapshotForPeerCluster(conf, peerQuorumAddress);
     } else {
       TableMapReduceUtil.initTableMapperJob(tableName, scan, Verifier.class, null, null, job);
     }

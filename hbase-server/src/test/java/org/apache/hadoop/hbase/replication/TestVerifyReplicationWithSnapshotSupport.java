@@ -20,6 +20,7 @@ package org.apache.hadoop.hbase.replication;
 
 import com.google.common.collect.Lists;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.Cell;
@@ -55,9 +56,11 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
 import java.io.IOException;
+import java.util.UUID;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -232,6 +235,30 @@ public class TestVerifyReplicationWithSnapshotSupport {
     assertTrue(Lists.newArrayList(args).toString(), new VerifyReplication().doCommandLine(args));
   }
 
+  private boolean isUUIDString(String uuid) {
+    try {
+      UUID.fromString(uuid);
+      return true;
+    } catch (Exception e) {
+      return false;
+    }
+  }
+
+  private void checkRestoreTmpDir(Configuration conf, String restoreTmpDir, int expectedCount)
+      throws IOException {
+    FileSystem fs = FileSystem.get(conf);
+    FileStatus[] subDirectories = fs.listStatus(new Path(restoreTmpDir));
+    assertNotNull(subDirectories);
+    int count = 0;
+    for (int i = 0; i < expectedCount; i++) {
+      if (isUUIDString(subDirectories[i].getPath().getName())) {
+        assertTrue(subDirectories[i].isDirectory());
+        count++;
+      }
+    }
+    assertEquals(expectedCount, count);
+  }
+
   @Test
   public void testVerifyReplicationWithSnapshotSupport() throws Exception {
     // Populate the tables, at the same time it guarantees that the tables are
@@ -273,6 +300,8 @@ public class TestVerifyReplicationWithSnapshotSupport {
       job.getCounters().findCounter(VerifyReplication.Verifier.Counters.GOODROWS).getValue());
     assertEquals(0,
       job.getCounters().findCounter(VerifyReplication.Verifier.Counters.BADROWS).getValue());
+    checkRestoreTmpDir(conf1, temPath1, 1);
+    checkRestoreTmpDir(conf2, temPath2, 1);
 
     Scan scan = new Scan();
     ResultScanner rs = htable2.getScanner(scan);
@@ -312,6 +341,9 @@ public class TestVerifyReplicationWithSnapshotSupport {
       job.getCounters().findCounter(VerifyReplication.Verifier.Counters.GOODROWS).getValue());
     assertEquals(NB_ROWS_IN_BATCH,
       job.getCounters().findCounter(VerifyReplication.Verifier.Counters.BADROWS).getValue());
+
+    checkRestoreTmpDir(conf1, temPath1, 2);
+    checkRestoreTmpDir(conf2, temPath2, 2);
   }
 
   @Test
