@@ -20,6 +20,8 @@ package org.apache.hadoop.hbase;
 
 import static org.junit.Assert.assertTrue;
 
+import java.util.List;
+
 import org.apache.hadoop.hbase.regionserver.HRegionServer;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
@@ -58,7 +60,8 @@ public class TestQueueFullDetector {
   @Test
   public void testOccasionalQueueFull() throws Exception {
     HRegionServer regionServer = cluster.getRegionServer(0);
-    final QueueCounter queueCounter = regionServer.getRpcServer().getScheduler().getQueueCounter();
+    List<QueueCounter> queueCounters = regionServer.getRpcServer().getScheduler().getQueueCounters();
+    QueueCounter queueCounter = queueCounters.get(0);
     class ChangeRunnable implements Runnable {
       private volatile boolean shouldStop = false;
 
@@ -95,7 +98,8 @@ public class TestQueueFullDetector {
   @Test
   public void testFrequentQueueFull() throws Exception {
     HRegionServer regionServer = cluster.getRegionServer(0);
-    final QueueCounter queueCounter = regionServer.getRpcServer().getScheduler().getQueueCounter();
+    List<QueueCounter> queueCounters = regionServer.getRpcServer().getScheduler().getQueueCounters();
+    QueueCounter queueCounter = queueCounters.get(0);
     class ChangeRunnable implements Runnable {
       private volatile boolean shouldStop = false;
 

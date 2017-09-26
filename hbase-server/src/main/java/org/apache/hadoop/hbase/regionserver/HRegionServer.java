@@ -1761,7 +1761,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     private int denseCheckNum;
     private int sampleThreshold;
     private int rejectThreshold;
-    private final QueueCounter queueCounter;
+    private List<QueueCounter> queueCounters;
 
     public QueueFullDetector(HRegionServer server, Configuration conf) {
       super("QueueFullDetector", conf.getInt("hbase.regionserver.queuefull.detector.sparseperiod",
@@ -1783,17 +1783,19 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
             + rejectThreshold + ", will use 95 instead");
         rejectThreshold = 95;
       }
-      queueCounter = server.rpcServer.getScheduler().getQueueCounter();
 
-      LOG.info("QueueFullDetector is started");
+      this.queueCounters = server.getRpcServer().getScheduler().getQueueCounters();
+
+      LOG.info("QueueFullDetector is started, denseCheckNum=" + denseCheckNum + ", densePeriod="
+          + densePeriod + ", sampleThreshold=" + sampleThreshold + ", rejectThreshold="
+          + rejectThreshold);
     }
 
-    @Override
-    protected void chore() {
+    private void checkQueueFull(QueueCounter queueCounter) {
       boolean queueFull = queueCounter.getQueueFull();
       if (queueFull) {
         // Found "queue full" events, start dense detecting
-        LOG.warn("Detected queue full events,  start dense checking");
+        LOG.warn("Detected queue full events for " + queueCounter + ",  start dense checking");
         int queueFullNum = 0;
         int maxNotHit = Math.max((int) (denseCheckNum * (100 - sampleThreshold) / 100.0), 1);
         long beforeCheckRequestCount = queueCounter.getIncomeRequestCount();
@@ -1803,45 +1805,60 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
           try {
             Thread.sleep(densePeriod);
           } catch (InterruptedException e) {
-              // Check if we should stop after the try-catch block
-            }
-          if (isStopping() || isStopped()){
-            break;
+            // Check if we should stop after the try-catch block
+          }
+          if (isStopping() || isStopped()) {
+            LOG.info("Exit queue full dense checking for " + queueCounter
+                + ", because region server is stopping or stopped!");
+            return;
           }
           if (queueCounter.getQueueFull()) {
             queueFullNum++;
           }
           int notHit = i + 1 - queueFullNum;
           if (notHit > maxNotHit) {
+            LOG.info("Exit queue full dense checking for " + queueCounter + ", queueFullNum= "
+                + queueFullNum + ", notHit=" + notHit + ", maxNotHit=" + maxNotHit);
             return;
           }
         }
 
         long afterCheckRequestCount = queueCounter.getIncomeRequestCount();
         long afterCheckRejectedRequestCount = queueCounter.getRejectedRequestCount();
+        long newRequestCount = afterCheckRequestCount - beforeCheckRequestCount;
+        long newRejectedRequestCount = afterCheckRejectedRequestCount
+            - beforeCheckRejectedRequestCount;
+        StringBuilder sb = new StringBuilder();
+        sb.append("After dense checking for ").append(queueCounter).append(", queueFullNum is ")
+            .append(queueFullNum);
+        sb.append(", new incoming requests count is ").append(newRequestCount)
+            .append(", rejected requests count is ").append(newRejectedRequestCount);
         // If the following conditions are detected, we should exit gracefully:
         // a. the percentage of queueFullNum has reached the configured threshold
         // b. the region server is not idle (i.e. there are new incoming rpc)
-        // c. the percentage of rejected new incoming request in this period (due to queue full) has reached the configured threshold
+        // c. the percentage of rejected new incoming request in this period (due to queue full) has
+        // reached the configured threshold
+        boolean shouldExit = false;
         if (queueFullNum * 100 > sampleThreshold * denseCheckNum) {
-          // Percentage of readFullNum or writeFullNum has reached the configured threshold
-          long newRequestCount = afterCheckRequestCount - beforeCheckRequestCount;
-          long newRejectedRequestCount = afterCheckRejectedRequestCount - beforeCheckRejectedRequestCount;
-          boolean shouldExit = false;
-          StringBuilder sb = new StringBuilder();
-          sb.append("Number of new incoming requests count is ").append(newRequestCount)
-              .append(" rejected requests count is ").append(newRejectedRequestCount);
-          LOG.warn(sb.toString());
-
-          if (newRequestCount > 0 && (newRejectedRequestCount * 100 > rejectThreshold * newRequestCount)) {
+          if (newRequestCount > 0
+              && (newRejectedRequestCount * 100 > rejectThreshold * newRequestCount)) {
             shouldExit = true;
           }
-          if (shouldExit) {
-            ThreadInfoUtils.logThreadInfo("Thread dump from QueueFullDetector", true);
-            queueFullDetected = true;
-            abort("Detected queue full and canot come back to normal state in a long duration");
-          }
         }
+        sb.append(", shouldExit is ").append(shouldExit);
+        LOG.info(sb.toString());
+        if (shouldExit) {
+          ThreadInfoUtils.logThreadInfo("Thread dump from QueueFullDetector", true);
+          queueFullDetected = true;
+          abort("Detected queue full and canot come back to normal state in a long duration");
+        }
+      }
+    }
+
+    @Override
+    protected void chore() {
+      for (QueueCounter queueCounter : queueCounters) {
+        checkQueueFull(queueCounter);
       }
     }
   }

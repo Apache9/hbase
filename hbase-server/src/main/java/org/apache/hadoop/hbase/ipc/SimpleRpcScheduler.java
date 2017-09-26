@@ -18,6 +18,7 @@
 package org.apache.hadoop.hbase.ipc;
 
 import java.io.IOException;
+import java.util.List;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -183,8 +184,8 @@ public class SimpleRpcScheduler extends RpcScheduler {
   }
 
   @Override
-  public QueueCounter getQueueCounter() {
-    return callExecutor.getQueueCounter();
+  public List<QueueCounter> getQueueCounters() {
+    return callExecutor.getQueueCounters();
   }
 }
 

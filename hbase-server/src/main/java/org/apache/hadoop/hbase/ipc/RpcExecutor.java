@@ -49,8 +49,6 @@ public abstract class RpcExecutor {
   private final String name;
   private final AtomicInteger failedHandlerCount = new AtomicInteger(0);
 
-  protected final QueueCounter queueCounter;
-
   private boolean running;
 
   private Configuration conf = null;
@@ -60,7 +58,6 @@ public abstract class RpcExecutor {
     this.handlers = new ArrayList<Thread>(handlerCount);
     this.handlerCount = handlerCount;
     this.name = Strings.nullToEmpty(name);
-    this.queueCounter = new QueueCounter();
   }
 
   public RpcExecutor(final String name, final int handlerCount, final Configuration conf,
@@ -233,7 +230,5 @@ public abstract class RpcExecutor {
     return 0;
   }
 
-  public QueueCounter getQueueCounter() {
-    return this.queueCounter;
-  }
+  public abstract List<QueueCounter> getQueueCounters();
 }

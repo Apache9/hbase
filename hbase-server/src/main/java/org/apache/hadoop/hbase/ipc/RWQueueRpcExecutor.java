@@ -18,10 +18,12 @@
 
 package org.apache.hadoop.hbase.ipc;
 
+import com.google.common.collect.Lists;
 import com.google.protobuf.Message;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -40,6 +42,7 @@ import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.MultiRequest;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.MutateRequest;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.RegionAction;
 import org.apache.hadoop.hbase.protobuf.generated.RPCProtos.RequestHeader;
+import org.apache.hadoop.hbase.util.QueueCounter;
 import org.apache.hadoop.hbase.util.ReflectionUtils;
 import org.apache.hadoop.hbase.util.ThreadInfoUtils;
 
@@ -62,6 +65,9 @@ public class RWQueueRpcExecutor extends RpcExecutor {
 
   private final AtomicInteger activeWriteHandlerCount = new AtomicInteger(0);
   private final AtomicInteger activeReadHandlerCount = new AtomicInteger(0);
+
+  private final QueueCounter readQueueCounter;
+  private final QueueCounter writeQueueCounter;
 
   public RWQueueRpcExecutor(final String name, final int handlerCount, final int numQueues,
       final float readShare, final int maxQueueLength) {
@@ -99,6 +105,9 @@ public class RWQueueRpcExecutor extends RpcExecutor {
     this.writeBalancer = getBalancer(numWriteQueues);
     this.readBalancer = getBalancer(numReadQueues);
 
+    this.readQueueCounter = new QueueCounter("Read");
+    this.writeQueueCounter = new QueueCounter("Write");
+
     queues = new ArrayList<BlockingQueue<CallRunner>>(numWriteQueues + numReadQueues);
     LOG.debug(name + " writeQueues=" + numWriteQueues + " writeHandlers=" + writeHandlersCount +
               " readQueues=" + numReadQueues + " readHandlers=" + readHandlersCount);
@@ -126,18 +135,21 @@ public class RWQueueRpcExecutor extends RpcExecutor {
   public void dispatch(final CallRunner callTask) throws IOException, InterruptedException {
     RpcServer.Call call = callTask.getCall();
     int queueIndex;
+    QueueCounter queueCounter;
     if (isWriteRequest(call.getHeader(), call.param)) {
       queueIndex = writeBalancer.getNextQueue();
+      queueCounter = writeQueueCounter;
     } else {
       queueIndex = numWriteQueues + readBalancer.getNextQueue();
+      queueCounter = readQueueCounter;
     }
     queueCounter.incIncomeRequestCount();
     if (!queues.get(queueIndex).offer(callTask)) {
       callTask.resetCallQueueSize();
       String queueType = queueIndex < numWriteQueues ? "write" : "read";
       LOG.error("Could not insert into " + queueType + "Queue!");
-      callTask.doRespond(null, new IOException(),
-        "IPC server unable to " + queueType + " call method");
+      callTask.doRespond(null, new IOException(), "IPC server unable to " + queueType
+          + " call method");
       queueCounter.setQueueFull(true);
       queueCounter.incRejectedRequestCount();
     } else {
@@ -224,5 +236,10 @@ public class RWQueueRpcExecutor extends RpcExecutor {
    */
   private static int calcNumReaders(final int count, final float readShare) {
     return count - calcNumWriters(count, readShare);
+  }
+
+  @Override
+  public List<QueueCounter> getQueueCounters() {
+    return Arrays.asList(readQueueCounter, writeQueueCounter);
   }
 }

@@ -19,6 +19,7 @@ package org.apache.hadoop.hbase.ipc;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -30,6 +31,7 @@ import org.apache.hadoop.hbase.Abortable;
 import org.apache.hadoop.hbase.HBaseInterfaceAudience;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.classification.InterfaceStability;
+import org.apache.hadoop.hbase.util.QueueCounter;
 import org.apache.hadoop.hbase.util.ReflectionUtils;
 import org.apache.hadoop.hbase.util.ThreadInfoUtils;
 
@@ -44,6 +46,7 @@ public class BalancedQueueRpcExecutor extends RpcExecutor {
   
   protected final List<BlockingQueue<CallRunner>> queues;
   private final QueueBalancer balancer;
+  private final QueueCounter queueCounter;
 
   public BalancedQueueRpcExecutor(final String name, final int handlerCount, final int numQueues,
       final int maxQueueLength) {
@@ -61,6 +64,7 @@ public class BalancedQueueRpcExecutor extends RpcExecutor {
     super(name, Math.max(handlerCount, numQueues), conf, abortable);
     queues = new ArrayList<BlockingQueue<CallRunner>>(numQueues);
     this.balancer = getBalancer(numQueues);
+    this.queueCounter = new QueueCounter("Balanced");
     initializeQueues(numQueues, queueClass, initargs);
   }
 
@@ -98,5 +102,10 @@ public class BalancedQueueRpcExecutor extends RpcExecutor {
   @Override
   public List<BlockingQueue<CallRunner>> getQueues() {
     return queues;
+  }
+
+  @Override
+  public List<QueueCounter> getQueueCounters() {
+    return Collections.singletonList(queueCounter);
   }
 }
