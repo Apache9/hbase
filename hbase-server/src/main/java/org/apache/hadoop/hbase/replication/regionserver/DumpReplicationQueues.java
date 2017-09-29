@@ -29,7 +29,7 @@ import org.apache.hadoop.hbase.client.HConnection;
 import org.apache.hadoop.hbase.client.HConnectionManager;
 import org.apache.hadoop.hbase.client.replication.ReplicationAdmin;
 import org.apache.hadoop.hbase.io.FileLink;
-import org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.ReplicationState;
+import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ReplicationState;
 import org.apache.hadoop.hbase.replication.*;
 import org.apache.hadoop.hbase.util.FSUtils;
 import org.apache.hadoop.hbase.zookeeper.ZKUtil;

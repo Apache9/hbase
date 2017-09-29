@@ -176,15 +176,11 @@ public class TestReplicationSyncUpTool extends TestReplicationBase {
     ReplicationAdmin admin1 = new ReplicationAdmin(conf1);
     ReplicationAdmin admin2 = new ReplicationAdmin(conf2);
 
-    HBaseAdmin ha = new HBaseAdmin(conf1);
-    ha.createTable(t1_syncupSource);
-    ha.createTable(t2_syncupSource);
-    ha.close();
-
-    ha = new HBaseAdmin(conf2);
-    ha.createTable(t1_syncupTarget);
-    ha.createTable(t2_syncupTarget);
-    ha.close();
+    try (HBaseAdmin ha = new HBaseAdmin(conf1)) {
+      ha.createTable(t1_syncupSource);
+      ha.createTable(t2_syncupSource);
+      // Table will be created in peer cluster, too
+    }
 
     // Get HTable from Master
     ht1Source = new HTable(conf1, t1_su);

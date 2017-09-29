@@ -24,13 +24,12 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Abortable;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
-import org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos;
+import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos;
 import org.apache.hadoop.hbase.zookeeper.ZKUtil;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
 import org.apache.zookeeper.KeeperException;
 
 import com.google.common.annotations.VisibleForTesting;
-
 
 /**
  * This is a base class for maintaining replication state in zookeeper.
@@ -59,9 +58,9 @@ public abstract class ReplicationStateZKBase {
 
   // Public for testing
   public static final byte[] ENABLED_ZNODE_BYTES =
-      toByteArray(ZooKeeperProtos.ReplicationState.State.ENABLED);
+      toByteArray(ReplicationProtos.ReplicationState.State.ENABLED);
   public static final byte[] DISABLED_ZNODE_BYTES =
-      toByteArray(ZooKeeperProtos.ReplicationState.State.DISABLED);
+      toByteArray(ReplicationProtos.ReplicationState.State.DISABLED);
 
   public ReplicationStateZKBase(ZooKeeperWatcher zookeeper, Configuration conf,
       Abortable abortable) {
@@ -97,9 +96,9 @@ public abstract class ReplicationStateZKBase {
    *         use as content of a peer-state znode under a peer cluster id as in
    *         /hbase/replication/peers/PEER_ID/peer-state.
    */
-  protected static byte[] toByteArray(final ZooKeeperProtos.ReplicationState.State state) {
+  protected static byte[] toByteArray(final ReplicationProtos.ReplicationState.State state) {
     byte[] bytes =
-        ZooKeeperProtos.ReplicationState.newBuilder().setState(state).build().toByteArray();
+        ReplicationProtos.ReplicationState.newBuilder().setState(state).build().toByteArray();
     return ProtobufUtil.prependPBMagic(bytes);
   }
 

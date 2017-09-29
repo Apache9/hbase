@@ -31,9 +31,13 @@ import java.net.SocketTimeoutException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.Map.Entry;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
@@ -43,6 +47,7 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Abortable;
 import org.apache.hadoop.hbase.ClusterStatus;
+import org.apache.hadoop.hbase.CompoundConfiguration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HConstants;
@@ -68,6 +73,8 @@ import org.apache.hadoop.hbase.classification.InterfaceStability;
 import org.apache.hadoop.hbase.client.MetaScanner.MetaScannerVisitor;
 import org.apache.hadoop.hbase.client.MetaScanner.MetaScannerVisitorBase;
 import org.apache.hadoop.hbase.client.replication.ReplicationAdmin;
+import org.apache.hadoop.hbase.client.replication.ReplicationSerDeHelper;
+import org.apache.hadoop.hbase.client.replication.TableCFs;
 import org.apache.hadoop.hbase.ipc.CoprocessorRpcChannel;
 import org.apache.hadoop.hbase.ipc.HBaseRpcController;
 import org.apache.hadoop.hbase.ipc.HBaseRpcControllerImpl;
@@ -141,12 +148,18 @@ import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleReq
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.TruncateTableRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.UnassignRegionRequest;
+import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos;
+import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetReplicationPeerConfigResponse;
 import org.apache.hadoop.hbase.protobuf.generated.SnapshotProtos.SnapshotDescription;
 import org.apache.hadoop.hbase.quotas.QuotaFilter;
 import org.apache.hadoop.hbase.quotas.QuotaRetriever;
 import org.apache.hadoop.hbase.quotas.QuotaSettings;
 import org.apache.hadoop.hbase.quotas.ThrottleState;
 import org.apache.hadoop.hbase.regionserver.wal.FailedLogCloseException;
+import org.apache.hadoop.hbase.replication.ReplicationException;
+import org.apache.hadoop.hbase.replication.ReplicationPeer;
+import org.apache.hadoop.hbase.replication.ReplicationPeerConfig;
+import org.apache.hadoop.hbase.replication.ReplicationPeerDescription;
 import org.apache.hadoop.hbase.snapshot.ClientSnapshotDescriptionUtils;
 import org.apache.hadoop.hbase.snapshot.HBaseSnapshotException;
 import org.apache.hadoop.hbase.snapshot.RestoreSnapshotException;
@@ -156,6 +169,7 @@ import org.apache.hadoop.hbase.util.Addressing;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.Pair;
+import org.apache.hadoop.hbase.zookeeper.ZKUtil;
 import org.apache.hadoop.ipc.RemoteException;
 import org.apache.hadoop.util.StringUtils;
 import org.apache.zookeeper.KeeperException;
@@ -575,7 +589,7 @@ public class HBaseAdmin implements Abortable, Closeable {
       } else if (isTableEnabled(desc.getTableName())) {
         // if creating table successfully in source table, then make sure that the table will be
         // created in sink replicated clusters.
-        ReplicationAdmin.createTableForReplicatedPeers(conf, desc, splitKeys);
+        createTableForReplicatedPeers(conf, desc, splitKeys);
         return;
       } else {
         try { // Sleep
@@ -588,6 +602,26 @@ public class HBaseAdmin implements Abortable, Closeable {
     }
     throw new TableNotEnabledException("Retries exhausted while still waiting for table: " +
         desc.getTableName() + " to be enabled");
+  }
+
+  private void createTableForReplicatedPeers(Configuration conf, final HTableDescriptor desc,
+      byte[][] splitKeys) throws IOException {
+    if (!conf.getBoolean(HConstants.REPLICATION_ENABLE_KEY, HConstants.REPLICATION_ENABLE_DEFAULT)) {
+      return;
+    }
+    List<ReplicationPeerDescription> peers = listReplicationPeers();
+    TableName tableName = desc.getTableName();
+    for (ReplicationPeerDescription peerDesc : peers) {
+      if (needToReplicate(tableName, peerDesc)) {
+        Configuration peerConf = getPeerClusterConfiguration(peerDesc);
+        try (HConnection connection = HConnectionManager.createConnection(peerConf);
+            HBaseAdmin repHBaseAdmin = new HBaseAdmin(connection)) {
+          if (!repHBaseAdmin.tableExists(tableName)) {
+            repHBaseAdmin.createTable(desc, splitKeys);
+          }
+        }
+      }
+    }
   }
 
   /**
@@ -3326,5 +3360,424 @@ public class HBaseAdmin implements Abortable, Closeable {
             ? ProtobufUtil.toThrottleState(resp.getPrevThrottleState()) : null;
       }
     });
+  }
+
+  public void addReplicationPeer(String peerId, ReplicationPeerConfig peerConfig)
+      throws IOException {
+    executeCallable(new MasterCallable<Void>(getConnection()) {
+      @Override
+      protected Void rpcCall(BlockingInterface master, HBaseRpcController controller) throws Exception {
+        master.addReplicationPeer(controller,
+          RequestConverter.buildAddReplicationPeerRequest(peerId, peerConfig));
+        return null;
+      }
+    });
+  }
+
+  public void removeReplicationPeer(String peerId) throws IOException {
+    executeCallable(new MasterCallable<Void>(getConnection()) {
+      @Override
+      protected Void rpcCall(BlockingInterface master, HBaseRpcController controller) throws Exception {
+        master.removeReplicationPeer(controller,
+          RequestConverter.buildRemoveReplicationPeerRequest(peerId));
+        return null;
+      }
+    });
+  }
+
+  public void enableReplicationPeer(final String peerId) throws IOException {
+    executeCallable(new MasterCallable<Void>(getConnection()) {
+      @Override
+      protected Void rpcCall(BlockingInterface master, HBaseRpcController controller) throws Exception {
+        master.enableReplicationPeer(controller,
+          RequestConverter.buildEnableReplicationPeerRequest(peerId));
+        return null;
+      }
+    });
+  }
+
+  public void disableReplicationPeer(final String peerId) throws IOException {
+    executeCallable(new MasterCallable<Void>(getConnection()) {
+      @Override
+      protected Void rpcCall(BlockingInterface master, HBaseRpcController controller) throws Exception {
+        master.disableReplicationPeer(controller,
+          RequestConverter.buildDisableReplicationPeerRequest(peerId));
+        return null;
+      }
+    });
+  }
+
+  public ReplicationPeerConfig getReplicationPeerConfig(final String peerId) throws IOException {
+    return executeCallable(new MasterCallable<ReplicationPeerConfig>(getConnection()) {
+      @Override
+      protected ReplicationPeerConfig rpcCall(BlockingInterface master, HBaseRpcController controller) throws Exception {
+        GetReplicationPeerConfigResponse response = master.getReplicationPeerConfig(
+          controller, RequestConverter.buildGetReplicationPeerConfigRequest(peerId));
+        return ReplicationSerDeHelper.convert(response.getPeerConfig());
+      }
+    });
+  }
+
+  public void updateReplicationPeerConfig(final String peerId,
+      final ReplicationPeerConfig peerConfig) throws IOException {
+    executeCallable(new MasterCallable<Void>(getConnection()) {
+      @Override
+      protected Void rpcCall(BlockingInterface master, HBaseRpcController controller) throws Exception {
+        master.updateReplicationPeerConfig(controller,
+          RequestConverter.buildUpdateReplicationPeerConfigRequest(peerId, peerConfig));
+        return null;
+      }
+    });
+  }
+
+  public void appendReplicationPeerTableCFs(String id,
+      Map<TableName, ? extends Collection<String>> tableCfs) throws ReplicationException,
+      IOException {
+    if (tableCfs == null) {
+      throw new ReplicationException("tableCfs is null");
+    }
+    ReplicationPeerConfig peerConfig = getReplicationPeerConfig(id);
+    ReplicationSerDeHelper.appendTableCFsToReplicationPeerConfig(tableCfs, peerConfig);
+    updateReplicationPeerConfig(id, peerConfig);
+  }
+
+  public void removeReplicationPeerTableCFs(String id,
+      Map<TableName, ? extends Collection<String>> tableCfs) throws ReplicationException,
+      IOException {
+    if (tableCfs == null) {
+      throw new ReplicationException("tableCfs is null");
+    }
+    ReplicationPeerConfig peerConfig = getReplicationPeerConfig(id);
+    ReplicationSerDeHelper.removeTableCFsFromReplicationPeerConfig(tableCfs, peerConfig, id);
+    updateReplicationPeerConfig(id, peerConfig);
+  }
+
+  public List<ReplicationPeerDescription> listReplicationPeers() throws IOException {
+    return listReplicationPeers((Pattern)null);
+  }
+
+  public List<ReplicationPeerDescription> listReplicationPeers(String regex) throws IOException {
+    return listReplicationPeers(Pattern.compile(regex));
+  }
+
+  public List<ReplicationPeerDescription> listReplicationPeers(Pattern pattern)
+      throws IOException {
+    return executeCallable(new MasterCallable<List<ReplicationPeerDescription>>(getConnection()) {
+      @Override
+      protected List<ReplicationPeerDescription> rpcCall(BlockingInterface master, HBaseRpcController controller) throws Exception {
+        List<ReplicationProtos.ReplicationPeerDescription> peersList = master.listReplicationPeers(
+          controller, RequestConverter.buildListReplicationPeersRequest(pattern))
+            .getPeerDescList();
+        List<ReplicationPeerDescription> result = new ArrayList<>(peersList.size());
+        for (ReplicationProtos.ReplicationPeerDescription peer : peersList) {
+          result.add(ReplicationSerDeHelper.toReplicationPeerDescription(peer));
+        }
+        return result;
+      }
+    });
+  }
+
+  public List<TableCFs> listReplicatedTableCFs() throws IOException {
+    List<TableCFs> replicatedTableCFs = new ArrayList<>();
+    HTableDescriptor[] tables = listTables();
+    for (HTableDescriptor table : tables) {
+      HColumnDescriptor[] columns = table.getColumnFamilies();
+      Map<String, Integer> cfs = new HashMap<>();
+      for (HColumnDescriptor column : columns) {
+        if (column.getScope() != HConstants.REPLICATION_SCOPE_LOCAL) {
+          cfs.put(column.getNameAsString(), column.getScope());
+        }
+      }
+      if (!cfs.isEmpty()) {
+        replicatedTableCFs.add(new TableCFs(table.getTableName(), cfs));
+      }
+    }
+    return replicatedTableCFs;
+  }
+
+  public void enableTableReplication(final TableName tableName) throws IOException {
+    if (tableName == null) {
+      throw new IllegalArgumentException("Table name cannot be null");
+    }
+    if (!tableExists(tableName)) {
+      throw new TableNotFoundException("Table '" + tableName.getNameAsString()
+          + "' does not exists.");
+    }
+    byte[][] splits = getTableSplitRowKeys(tableName);
+    checkAndSyncTableDescToPeers(tableName, splits);
+    setTableRep(tableName, true);
+  }
+
+  public void disableTableReplication(final TableName tableName) throws IOException {
+    if (tableName == null) {
+      throw new IllegalArgumentException("Table name is null");
+    }
+    if (!tableExists(tableName)) {
+      throw new TableNotFoundException("Table '" + tableName.getNamespaceAsString()
+          + "' does not exists.");
+    }
+    setTableRep(tableName, false);
+  }
+
+  /**
+   * Set the table's replication switch if the table's replication switch is already not set.
+   * @param tableName name of the table
+   * @param enableRep is replication switch enable or disable
+   * @throws IOException if a remote or network exception occurs
+   */
+  private void setTableRep(final TableName tableName, boolean enableRep) throws IOException {
+    HTableDescriptor htd = new HTableDescriptor(getTableDescriptor(tableName));
+    ReplicationState currentReplicationState = getTableReplicationState(htd);
+    if (enableRep && currentReplicationState != ReplicationState.ENABLED
+        || !enableRep && currentReplicationState != ReplicationState.DISABLED) {
+      for (HColumnDescriptor hcd : htd.getFamilies()) {
+        hcd.setScope(enableRep ? HConstants.REPLICATION_SCOPE_GLOBAL
+            : HConstants.REPLICATION_SCOPE_LOCAL);
+      }
+      modifyTable(tableName, htd);
+    }
+  }
+
+  /**
+   * This enum indicates the current state of the replication for a given table.
+   */
+  private enum ReplicationState {
+    ENABLED, // all column families enabled
+    MIXED, // some column families enabled, some disabled
+    DISABLED // all column families disabled
+  }
+
+  /**
+   * @param htd table descriptor details for the table to check
+   * @return ReplicationState the current state of the table.
+   */
+  private ReplicationState getTableReplicationState(HTableDescriptor htd) {
+    boolean hasEnabled = false;
+    boolean hasDisabled = false;
+
+    for (HColumnDescriptor hcd : htd.getFamilies()) {
+      if (hcd.getScope() != HConstants.REPLICATION_SCOPE_GLOBAL
+          && hcd.getScope() != HConstants.REPLICATION_SCOPE_SERIAL) {
+        hasDisabled = true;
+      } else {
+        hasEnabled = true;
+      }
+    }
+
+    if (hasEnabled && hasDisabled) return ReplicationState.MIXED;
+    if (hasEnabled) return ReplicationState.ENABLED;
+    return ReplicationState.DISABLED;
+  }
+
+  /**
+   * Get the split row keys of table
+   * @param tableName table name
+   * @return array of split row keys
+   * @throws IOException
+   */
+  private byte[][] getTableSplitRowKeys(TableName tableName) throws IOException {
+    HTable table = null;
+    try {
+      table = new HTable(this.connection.getConfiguration(), tableName);
+      byte[][] startKeys = table.getStartKeys();
+      if (startKeys.length == 1) {
+        return null;
+      }
+      byte[][] splits = new byte[startKeys.length - 1][];
+      for (int i = 1; i < startKeys.length; i++) {
+        splits[i - 1] = startKeys[i];
+      }
+      return splits;
+    } finally {
+      if (table != null) {
+        try {
+          table.close();
+        } catch (IOException e) {
+          LOG.warn("Unable to close table");
+        }
+      }
+    }
+  }
+
+  /**
+   * Connect to peer and check the table descriptor on peer:
+   * <ol>
+   * <li>Create the same table on peer when not exist.</li>
+   * <li>Throw exception if the table exists on peer cluster but descriptors are not same.</li>
+   * </ol>
+   * @param tableName name of the table to sync to the peer
+   * @param splits table split keys
+   * @throws IOException
+   */
+  private void checkAndSyncTableDescToPeers(final TableName tableName, final byte[][] splits)
+      throws IOException {
+    List<ReplicationPeerDescription> peers = listReplicationPeers();
+    if (peers == null || peers.size() <= 0) {
+      throw new IllegalArgumentException("Found no peer cluster for replication.");
+    }
+    for (ReplicationPeerDescription peerDesc : peers) {
+      if (needToReplicate(tableName, peerDesc)) {
+        Configuration peerConf = getPeerClusterConfiguration(peerDesc);
+        try (HConnection connection = HConnectionManager.createConnection(peerConf);
+            HBaseAdmin repHBaseAdmin = new HBaseAdmin(connection)) {
+          HTableDescriptor localHtd = getTableDescriptor(tableName);
+          HTableDescriptor peerHtd = null;
+          if (!repHBaseAdmin.tableExists(tableName)) {
+            repHBaseAdmin.createTable(localHtd, splits);
+          } else {
+            peerHtd = repHBaseAdmin.getTableDescriptor(tableName);
+            if (peerHtd == null) {
+              throw new IllegalArgumentException("Failed to get table descriptor for table "
+                  + tableName.getNameAsString() + " from peer cluster " + peerDesc.getPeerId());
+            }
+            if (!compareForReplication(peerHtd, localHtd)) {
+              throw new IllegalArgumentException("Table " + tableName.getNameAsString()
+                  + " exists in peer cluster " + peerDesc.getPeerId()
+                  + ", but the table descriptors are not same when compared with source cluster."
+                  + " Thus can not enable the table's replication switch.");
+            }
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Decide whether the table need replicate to the peer cluster according to the peer config
+   * @param table name of the table
+   * @param peer config for the peer
+   * @return true if the table need replicate to the peer cluster
+   */
+  private boolean needToReplicate(TableName table, ReplicationPeerDescription peer) {
+    ReplicationPeerConfig peerConfig = peer.getPeerConfig();
+    if (peerConfig.replicateAllUserTables()) {
+      Set<String> excludeNamespaces = peerConfig.getExcludeNamespaces();
+      Map<TableName, List<String>> excludeTableCFsMap = peerConfig.getExcludeTableCFsMap();
+      if (excludeNamespaces == null && excludeTableCFsMap == null) {
+        return true;
+      }
+      if (excludeNamespaces != null && !excludeNamespaces.contains(table.getNamespaceAsString())) {
+        return true;
+      }
+      if (excludeTableCFsMap != null && !excludeTableCFsMap.containsKey(table)) {
+        return true;
+      }
+    } else {
+      Set<String> namespaces = peerConfig.getNamespaces();
+      Map<TableName, List<String>> tableCFsMap = peerConfig.getTableCFsMap();
+      // If null means user has explicitly not configured any namespaces and table CFs
+      // so all the tables data are applicable for replication
+      if (namespaces == null && tableCFsMap == null) {
+        return true;
+      }
+      if (namespaces != null && namespaces.contains(table.getNamespaceAsString())) {
+        return true;
+      }
+      if (tableCFsMap != null && tableCFsMap.containsKey(table)) {
+        return true;
+      }
+    }
+    LOG.info("Table " + table.getNameAsString()
+        + " doesn't need replicate to peer cluster, peerId=" + peer.getPeerId() + ", clusterKey="
+        + peerConfig.getClusterKey());
+    return false;
+  }
+
+  /**
+   * Returns the configuration needed to talk to the remote slave cluster.
+   * @param peer the description of replication peer
+   * @return the configuration for the peer cluster, null if it was unable to get the configuration
+   * @throws IOException
+   */
+  private Configuration getPeerClusterConfiguration(ReplicationPeerDescription peer)
+      throws IOException {
+    ReplicationPeerConfig peerConfig = peer.getPeerConfig();
+    Configuration otherConf;
+    try {
+      otherConf = HBaseConfiguration.create(this.connection.getConfiguration());
+      ZKUtil.applyClusterKeyToConf(otherConf, peerConfig.getClusterKey());
+    } catch (IOException e) {
+      throw new IOException("Can't get peer configuration for peerId=" + peer.getPeerId(), e);
+    }
+
+    if (!peerConfig.getConfiguration().isEmpty()) {
+      CompoundConfiguration compound = new CompoundConfiguration();
+      compound.add(otherConf);
+      compound.addStringMap(peerConfig.getConfiguration());
+      return compound;
+    }
+
+    return otherConf;
+  }
+
+  /**
+   * Compare the contents of the descriptor with another one passed as a parameter for replication
+   * purpose. The REPLICATION_SCOPE field is ignored during comparison.
+   * @param peerHtd descriptor on peer cluster
+   * @param localHtd descriptor on source cluster which needs to be replicated.
+   * @return true if the contents of the two descriptors match (ignoring just REPLICATION_SCOPE).
+   * @see java.lang.Object#equals(java.lang.Object)
+   */
+  private boolean compareForReplication(HTableDescriptor peerHtd, HTableDescriptor localHtd) {
+    if (peerHtd == localHtd) {
+      return true;
+    }
+    if (peerHtd == null) {
+      return false;
+    }
+    boolean result = false;
+
+    // Create a copy of peer HTD as we need to change its replication
+    // scope to match with the local HTD.
+    HTableDescriptor peerHtdCopy = new HTableDescriptor(peerHtd);
+
+    result = copyReplicationScope(peerHtdCopy, localHtd);
+
+    // If copy was successful, compare the two tables now.
+    if (result) {
+      result = (peerHtdCopy.compareTo(localHtd) == 0);
+    }
+
+    return result;
+  }
+
+  /**
+   * Copies the REPLICATION_SCOPE of table descriptor passed as an argument. Before copy, the method
+   * ensures that the name of table and column-families should match.
+   * @param peerHtd descriptor on peer cluster
+   * @param localHtd - The HTableDescriptor of table from source cluster.
+   * @return true If the name of table and column families match and REPLICATION_SCOPE copied
+   *         successfully. false If there is any mismatch in the names.
+   */
+  private boolean copyReplicationScope(final HTableDescriptor peerHtd,
+      final HTableDescriptor localHtd) {
+    // Copy the REPLICATION_SCOPE only when table names and the names of
+    // Column-Families are same.
+    int result = peerHtd.getTableName().compareTo(localHtd.getTableName());
+
+    if (result == 0) {
+      Iterator<HColumnDescriptor> remoteHCDIter = peerHtd.getFamilies().iterator();
+      Iterator<HColumnDescriptor> localHCDIter = localHtd.getFamilies().iterator();
+
+      while (remoteHCDIter.hasNext() && localHCDIter.hasNext()) {
+        HColumnDescriptor remoteHCD = remoteHCDIter.next();
+        HColumnDescriptor localHCD = localHCDIter.next();
+
+        String remoteHCDName = remoteHCD.getNameAsString();
+        String localHCDName = localHCD.getNameAsString();
+
+        if (remoteHCDName.equals(localHCDName)) {
+          remoteHCD.setScope(localHCD.getScope());
+        } else {
+          result = -1;
+          break;
+        }
+      }
+      if (remoteHCDIter.hasNext() || localHCDIter.hasNext()) {
+        return false;
+      }
+    }
+
+    return result == 0;
   }
 }

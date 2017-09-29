@@ -37,21 +37,14 @@ import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.client.replication.ReplicationSerDeHelper;
 import org.apache.hadoop.hbase.exceptions.DeserializationException;
-import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
-import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.BytesBytesPair;
-import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.NameStringPair;
-import org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.ReplicationState;
-import org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos;
+import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos;
+import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ReplicationState;
 import org.apache.hadoop.hbase.replication.ReplicationPeer.PeerState;
-import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.Pair;
 import org.apache.hadoop.hbase.zookeeper.ZKUtil;
 import org.apache.hadoop.hbase.zookeeper.ZKUtil.ZKUtilOp;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
 import org.apache.zookeeper.KeeperException;
-
-import com.google.protobuf.ByteString;
-import com.google.protobuf.InvalidProtocolBufferException;
 
 /**
  * This class provides an implementation of the ReplicationPeers interface using Zookeeper. The
@@ -158,13 +151,13 @@ public class ReplicationPeersZKImpl extends ReplicationStateZKBase implements Re
 
   @Override
   public void enablePeer(String id) throws ReplicationException {
-    changePeerState(id, ZooKeeperProtos.ReplicationState.State.ENABLED);
+    changePeerState(id, ReplicationProtos.ReplicationState.State.ENABLED);
     LOG.info("peer " + id + " is enabled");
   }
 
   @Override
   public void disablePeer(String id) throws ReplicationException {
-    changePeerState(id, ZooKeeperProtos.ReplicationState.State.DISABLED);
+    changePeerState(id, ReplicationProtos.ReplicationState.State.DISABLED);
     LOG.info("peer " + id + " is disabled");
   }
 
@@ -377,6 +370,7 @@ public class ReplicationPeersZKImpl extends ReplicationStateZKBase implements Re
     existingConfig.setReplicateAllUserTables(newConfig.replicateAllUserTables());
     existingConfig.setExcludeNamespaces(newConfig.getExcludeNamespaces());
     existingConfig.setExcludeTableCFsMap(newConfig.getExcludeTableCFsMap());
+    existingConfig.setBandwidth(newConfig.getBandwidth());
 
     try {
       ZKUtil.setData(this.zookeeper, getPeerNode(id),
@@ -470,7 +464,7 @@ public class ReplicationPeersZKImpl extends ReplicationStateZKBase implements Re
    * @param id
    * @param state
    */
-  private void changePeerState(String id, ZooKeeperProtos.ReplicationState.State state)
+  private void changePeerState(String id, ReplicationProtos.ReplicationState.State state)
       throws ReplicationException {
     try {
       if (!peerExists(id)) {
@@ -479,7 +473,7 @@ public class ReplicationPeersZKImpl extends ReplicationStateZKBase implements Re
       }
       String peerStateZNode = getPeerStateNode(id);
       byte[] stateBytes =
-          (state == ZooKeeperProtos.ReplicationState.State.ENABLED) ? ENABLED_ZNODE_BYTES
+          (state == ReplicationProtos.ReplicationState.State.ENABLED) ? ENABLED_ZNODE_BYTES
               : DISABLED_ZNODE_BYTES;
       if (ZKUtil.checkExists(this.zookeeper, peerStateZNode) != -1) {
         ZKUtil.setData(this.zookeeper, peerStateZNode, stateBytes);

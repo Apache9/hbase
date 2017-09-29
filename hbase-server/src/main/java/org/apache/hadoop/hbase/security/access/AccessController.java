@@ -97,6 +97,7 @@ import org.apache.hadoop.hbase.regionserver.ScannerContext;
 import org.apache.hadoop.hbase.regionserver.Store;
 import org.apache.hadoop.hbase.regionserver.wal.WALEdit;
 import org.apache.hadoop.hbase.replication.ReplicationEndpoint;
+import org.apache.hadoop.hbase.replication.ReplicationPeerConfig;
 import org.apache.hadoop.hbase.security.AccessDeniedException;
 import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.security.UserProvider;
@@ -2435,5 +2436,48 @@ public class AccessController extends BaseMasterAndRegionObserver
   public void preSetNamespaceQuota(final ObserverContext<MasterCoprocessorEnvironment> ctx,
       final String namespace, final Quotas quotas) throws IOException {
     requirePermission("setNamespaceQuota", Action.ADMIN);
+  }
+
+  @Override
+  public void preAddReplicationPeer(final ObserverContext<MasterCoprocessorEnvironment> ctx,
+      String peerId, ReplicationPeerConfig peerConfig) throws IOException {
+    requirePermission("addReplicationPeer", Action.ADMIN);
+  }
+
+  @Override
+  public void preRemoveReplicationPeer(final ObserverContext<MasterCoprocessorEnvironment> ctx,
+      String peerId) throws IOException {
+    requirePermission("removeReplicationPeer", Action.ADMIN);
+  }
+
+  @Override
+  public void preEnableReplicationPeer(final ObserverContext<MasterCoprocessorEnvironment> ctx,
+      String peerId) throws IOException {
+    requirePermission("enableReplicationPeer", Action.ADMIN);
+  }
+
+  @Override
+  public void preDisableReplicationPeer(final ObserverContext<MasterCoprocessorEnvironment> ctx,
+      String peerId) throws IOException {
+    requirePermission("disableReplicationPeer", Action.ADMIN);
+  }
+
+  @Override
+  public void preGetReplicationPeerConfig(final ObserverContext<MasterCoprocessorEnvironment> ctx,
+      String peerId) throws IOException {
+    requirePermission("getReplicationPeerConfig", Action.ADMIN);
+  }
+
+  @Override
+  public void preUpdateReplicationPeerConfig(
+      final ObserverContext<MasterCoprocessorEnvironment> ctx, String peerId,
+      ReplicationPeerConfig peerConfig) throws IOException {
+    requirePermission("updateReplicationPeerConfig", Action.ADMIN);
+  }
+
+  @Override
+  public void preListReplicationPeers(final ObserverContext<MasterCoprocessorEnvironment> ctx,
+      String regex) throws IOException {
+    requirePermission("listReplicationPeers", Action.ADMIN);
   }
 }

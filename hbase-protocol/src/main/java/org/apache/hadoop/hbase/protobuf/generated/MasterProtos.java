@@ -44033,6 +44033,90 @@ public final class MasterProtos {
           org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleRequest request,
           com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleResponse> done);
 
+      /**
+       * <code>rpc AddReplicationPeer(.AddReplicationPeerRequest) returns (.AddReplicationPeerResponse);</code>
+       *
+       * <pre>
+       ** Add a replication peer 
+       * </pre>
+       */
+      public abstract void addReplicationPeer(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.AddReplicationPeerRequest request,
+          com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.AddReplicationPeerResponse> done);
+
+      /**
+       * <code>rpc RemoveReplicationPeer(.RemoveReplicationPeerRequest) returns (.RemoveReplicationPeerResponse);</code>
+       *
+       * <pre>
+       ** Remove a replication peer 
+       * </pre>
+       */
+      public abstract void removeReplicationPeer(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.RemoveReplicationPeerRequest request,
+          com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.RemoveReplicationPeerResponse> done);
+
+      /**
+       * <code>rpc EnableReplicationPeer(.EnableReplicationPeerRequest) returns (.EnableReplicationPeerResponse);</code>
+       *
+       * <pre>
+       ** Enable a replication peer 
+       * </pre>
+       */
+      public abstract void enableReplicationPeer(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.EnableReplicationPeerRequest request,
+          com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.EnableReplicationPeerResponse> done);
+
+      /**
+       * <code>rpc DisableReplicationPeer(.DisableReplicationPeerRequest) returns (.DisableReplicationPeerResponse);</code>
+       *
+       * <pre>
+       ** Disable a replication peer 
+       * </pre>
+       */
+      public abstract void disableReplicationPeer(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.DisableReplicationPeerRequest request,
+          com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.DisableReplicationPeerResponse> done);
+
+      /**
+       * <code>rpc GetReplicationPeerConfig(.GetReplicationPeerConfigRequest) returns (.GetReplicationPeerConfigResponse);</code>
+       *
+       * <pre>
+       ** Return peer config for a replication peer 
+       * </pre>
+       */
+      public abstract void getReplicationPeerConfig(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetReplicationPeerConfigRequest request,
+          com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetReplicationPeerConfigResponse> done);
+
+      /**
+       * <code>rpc UpdateReplicationPeerConfig(.UpdateReplicationPeerConfigRequest) returns (.UpdateReplicationPeerConfigResponse);</code>
+       *
+       * <pre>
+       ** Update peer config for a replication peer 
+       * </pre>
+       */
+      public abstract void updateReplicationPeerConfig(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.UpdateReplicationPeerConfigRequest request,
+          com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.UpdateReplicationPeerConfigResponse> done);
+
+      /**
+       * <code>rpc ListReplicationPeers(.ListReplicationPeersRequest) returns (.ListReplicationPeersResponse);</code>
+       *
+       * <pre>
+       ** Returns a list of replication peers 
+       * </pre>
+       */
+      public abstract void listReplicationPeers(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ListReplicationPeersRequest request,
+          com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ListReplicationPeersResponse> done);
+
     }
 
     public static com.google.protobuf.Service newReflectiveService(
@@ -44390,6 +44474,62 @@ public final class MasterProtos {
           impl.switchThrottle(controller, request, done);
         }
 
+        @java.lang.Override
+        public  void addReplicationPeer(
+            com.google.protobuf.RpcController controller,
+            org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.AddReplicationPeerRequest request,
+            com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.AddReplicationPeerResponse> done) {
+          impl.addReplicationPeer(controller, request, done);
+        }
+
+        @java.lang.Override
+        public  void removeReplicationPeer(
+            com.google.protobuf.RpcController controller,
+            org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.RemoveReplicationPeerRequest request,
+            com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.RemoveReplicationPeerResponse> done) {
+          impl.removeReplicationPeer(controller, request, done);
+        }
+
+        @java.lang.Override
+        public  void enableReplicationPeer(
+            com.google.protobuf.RpcController controller,
+            org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.EnableReplicationPeerRequest request,
+            com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.EnableReplicationPeerResponse> done) {
+          impl.enableReplicationPeer(controller, request, done);
+        }
+
+        @java.lang.Override
+        public  void disableReplicationPeer(
+            com.google.protobuf.RpcController controller,
+            org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.DisableReplicationPeerRequest request,
+            com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.DisableReplicationPeerResponse> done) {
+          impl.disableReplicationPeer(controller, request, done);
+        }
+
+        @java.lang.Override
+        public  void getReplicationPeerConfig(
+            com.google.protobuf.RpcController controller,
+            org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetReplicationPeerConfigRequest request,
+            com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetReplicationPeerConfigResponse> done) {
+          impl.getReplicationPeerConfig(controller, request, done);
+        }
+
+        @java.lang.Override
+        public  void updateReplicationPeerConfig(
+            com.google.protobuf.RpcController controller,
+            org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.UpdateReplicationPeerConfigRequest request,
+            com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.UpdateReplicationPeerConfigResponse> done) {
+          impl.updateReplicationPeerConfig(controller, request, done);
+        }
+
+        @java.lang.Override
+        public  void listReplicationPeers(
+            com.google.protobuf.RpcController controller,
+            org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ListReplicationPeersRequest request,
+            com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ListReplicationPeersResponse> done) {
+          impl.listReplicationPeers(controller, request, done);
+        }
+
       };
     }
 
@@ -44500,6 +44640,20 @@ public final class MasterProtos {
               return impl.setQuota(controller, (org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetQuotaRequest)request);
             case 43:
               return impl.switchThrottle(controller, (org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleRequest)request);
+            case 44:
+              return impl.addReplicationPeer(controller, (org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.AddReplicationPeerRequest)request);
+            case 45:
+              return impl.removeReplicationPeer(controller, (org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.RemoveReplicationPeerRequest)request);
+            case 46:
+              return impl.enableReplicationPeer(controller, (org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.EnableReplicationPeerRequest)request);
+            case 47:
+              return impl.disableReplicationPeer(controller, (org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.DisableReplicationPeerRequest)request);
+            case 48:
+              return impl.getReplicationPeerConfig(controller, (org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetReplicationPeerConfigRequest)request);
+            case 49:
+              return impl.updateReplicationPeerConfig(controller, (org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.UpdateReplicationPeerConfigRequest)request);
+            case 50:
+              return impl.listReplicationPeers(controller, (org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ListReplicationPeersRequest)request);
             default:
               throw new java.lang.AssertionError("Can't get here.");
           }
@@ -44602,6 +44756,20 @@ public final class MasterProtos {
               return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetQuotaRequest.getDefaultInstance();
             case 43:
               return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleRequest.getDefaultInstance();
+            case 44:
+              return org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.AddReplicationPeerRequest.getDefaultInstance();
+            case 45:
+              return org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.RemoveReplicationPeerRequest.getDefaultInstance();
+            case 46:
+              return org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.EnableReplicationPeerRequest.getDefaultInstance();
+            case 47:
+              return org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.DisableReplicationPeerRequest.getDefaultInstance();
+            case 48:
+              return org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetReplicationPeerConfigRequest.getDefaultInstance();
+            case 49:
+              return org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.UpdateReplicationPeerConfigRequest.getDefaultInstance();
+            case 50:
+              return org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ListReplicationPeersRequest.getDefaultInstance();
             default:
               throw new java.lang.AssertionError("Can't get here.");
           }
@@ -44704,6 +44872,20 @@ public final class MasterProtos {
               return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetQuotaResponse.getDefaultInstance();
             case 43:
               return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleResponse.getDefaultInstance();
+            case 44:
+              return org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.AddReplicationPeerResponse.getDefaultInstance();
+            case 45:
+              return org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.RemoveReplicationPeerResponse.getDefaultInstance();
+            case 46:
+              return org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.EnableReplicationPeerResponse.getDefaultInstance();
+            case 47:
+              return org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.DisableReplicationPeerResponse.getDefaultInstance();
+            case 48:
+              return org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetReplicationPeerConfigResponse.getDefaultInstance();
+            case 49:
+              return org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.UpdateReplicationPeerConfigResponse.getDefaultInstance();
+            case 50:
+              return org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ListReplicationPeersResponse.getDefaultInstance();
             default:
               throw new java.lang.AssertionError("Can't get here.");
           }
@@ -45261,6 +45443,90 @@ public final class MasterProtos {
         org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleRequest request,
         com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleResponse> done);
 
+    /**
+     * <code>rpc AddReplicationPeer(.AddReplicationPeerRequest) returns (.AddReplicationPeerResponse);</code>
+     *
+     * <pre>
+     ** Add a replication peer 
+     * </pre>
+     */
+    public abstract void addReplicationPeer(
+        com.google.protobuf.RpcController controller,
+        org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.AddReplicationPeerRequest request,
+        com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.AddReplicationPeerResponse> done);
+
+    /**
+     * <code>rpc RemoveReplicationPeer(.RemoveReplicationPeerRequest) returns (.RemoveReplicationPeerResponse);</code>
+     *
+     * <pre>
+     ** Remove a replication peer 
+     * </pre>
+     */
+    public abstract void removeReplicationPeer(
+        com.google.protobuf.RpcController controller,
+        org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.RemoveReplicationPeerRequest request,
+        com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.RemoveReplicationPeerResponse> done);
+
+    /**
+     * <code>rpc EnableReplicationPeer(.EnableReplicationPeerRequest) returns (.EnableReplicationPeerResponse);</code>
+     *
+     * <pre>
+     ** Enable a replication peer 
+     * </pre>
+     */
+    public abstract void enableReplicationPeer(
+        com.google.protobuf.RpcController controller,
+        org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.EnableReplicationPeerRequest request,
+        com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.EnableReplicationPeerResponse> done);
+
+    /**
+     * <code>rpc DisableReplicationPeer(.DisableReplicationPeerRequest) returns (.DisableReplicationPeerResponse);</code>
+     *
+     * <pre>
+     ** Disable a replication peer 
+     * </pre>
+     */
+    public abstract void disableReplicationPeer(
+        com.google.protobuf.RpcController controller,
+        org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.DisableReplicationPeerRequest request,
+        com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.DisableReplicationPeerResponse> done);
+
+    /**
+     * <code>rpc GetReplicationPeerConfig(.GetReplicationPeerConfigRequest) returns (.GetReplicationPeerConfigResponse);</code>
+     *
+     * <pre>
+     ** Return peer config for a replication peer 
+     * </pre>
+     */
+    public abstract void getReplicationPeerConfig(
+        com.google.protobuf.RpcController controller,
+        org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetReplicationPeerConfigRequest request,
+        com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetReplicationPeerConfigResponse> done);
+
+    /**
+     * <code>rpc UpdateReplicationPeerConfig(.UpdateReplicationPeerConfigRequest) returns (.UpdateReplicationPeerConfigResponse);</code>
+     *
+     * <pre>
+     ** Update peer config for a replication peer 
+     * </pre>
+     */
+    public abstract void updateReplicationPeerConfig(
+        com.google.protobuf.RpcController controller,
+        org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.UpdateReplicationPeerConfigRequest request,
+        com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.UpdateReplicationPeerConfigResponse> done);
+
+    /**
+     * <code>rpc ListReplicationPeers(.ListReplicationPeersRequest) returns (.ListReplicationPeersResponse);</code>
+     *
+     * <pre>
+     ** Returns a list of replication peers 
+     * </pre>
+     */
+    public abstract void listReplicationPeers(
+        com.google.protobuf.RpcController controller,
+        org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ListReplicationPeersRequest request,
+        com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ListReplicationPeersResponse> done);
+
     public static final
         com.google.protobuf.Descriptors.ServiceDescriptor
         getDescriptor() {
@@ -45503,6 +45769,41 @@ public final class MasterProtos {
             com.google.protobuf.RpcUtil.<org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleResponse>specializeCallback(
               done));
           return;
+        case 44:
+          this.addReplicationPeer(controller, (org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.AddReplicationPeerRequest)request,
+            com.google.protobuf.RpcUtil.<org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.AddReplicationPeerResponse>specializeCallback(
+              done));
+          return;
+        case 45:
+          this.removeReplicationPeer(controller, (org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.RemoveReplicationPeerRequest)request,
+            com.google.protobuf.RpcUtil.<org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.RemoveReplicationPeerResponse>specializeCallback(
+              done));
+          return;
+        case 46:
+          this.enableReplicationPeer(controller, (org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.EnableReplicationPeerRequest)request,
+            com.google.protobuf.RpcUtil.<org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.EnableReplicationPeerResponse>specializeCallback(
+              done));
+          return;
+        case 47:
+          this.disableReplicationPeer(controller, (org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.DisableReplicationPeerRequest)request,
+            com.google.protobuf.RpcUtil.<org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.DisableReplicationPeerResponse>specializeCallback(
+              done));
+          return;
+        case 48:
+          this.getReplicationPeerConfig(controller, (org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetReplicationPeerConfigRequest)request,
+            com.google.protobuf.RpcUtil.<org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetReplicationPeerConfigResponse>specializeCallback(
+              done));
+          return;
+        case 49:
+          this.updateReplicationPeerConfig(controller, (org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.UpdateReplicationPeerConfigRequest)request,
+            com.google.protobuf.RpcUtil.<org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.UpdateReplicationPeerConfigResponse>specializeCallback(
+              done));
+          return;
+        case 50:
+          this.listReplicationPeers(controller, (org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ListReplicationPeersRequest)request,
+            com.google.protobuf.RpcUtil.<org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ListReplicationPeersResponse>specializeCallback(
+              done));
+          return;
         default:
           throw new java.lang.AssertionError("Can't get here.");
       }
@@ -45605,6 +45906,20 @@ public final class MasterProtos {
           return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetQuotaRequest.getDefaultInstance();
         case 43:
           return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleRequest.getDefaultInstance();
+        case 44:
+          return org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.AddReplicationPeerRequest.getDefaultInstance();
+        case 45:
+          return org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.RemoveReplicationPeerRequest.getDefaultInstance();
+        case 46:
+          return org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.EnableReplicationPeerRequest.getDefaultInstance();
+        case 47:
+          return org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.DisableReplicationPeerRequest.getDefaultInstance();
+        case 48:
+          return org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetReplicationPeerConfigRequest.getDefaultInstance();
+        case 49:
+          return org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.UpdateReplicationPeerConfigRequest.getDefaultInstance();
+        case 50:
+          return org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ListReplicationPeersRequest.getDefaultInstance();
         default:
           throw new java.lang.AssertionError("Can't get here.");
       }
@@ -45707,6 +46022,20 @@ public final class MasterProtos {
           return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SetQuotaResponse.getDefaultInstance();
         case 43:
           return org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleResponse.getDefaultInstance();
+        case 44:
+          return org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.AddReplicationPeerResponse.getDefaultInstance();
+        case 45:
+          return org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.RemoveReplicationPeerResponse.getDefaultInstance();
+        case 46:
+          return org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.EnableReplicationPeerResponse.getDefaultInstance();
+        case 47:
+          return org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.DisableReplicationPeerResponse.getDefaultInstance();
+        case 48:
+          return org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetReplicationPeerConfigResponse.getDefaultInstance();
+        case 49:
+          return org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.UpdateReplicationPeerConfigResponse.getDefaultInstance();
+        case 50:
+          return org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ListReplicationPeersResponse.getDefaultInstance();
         default:
           throw new java.lang.AssertionError("Can't get here.");
       }
@@ -46387,6 +46716,111 @@ public final class MasterProtos {
             org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleResponse.class,
             org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleResponse.getDefaultInstance()));
       }
+
+      public  void addReplicationPeer(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.AddReplicationPeerRequest request,
+          com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.AddReplicationPeerResponse> done) {
+        channel.callMethod(
+          getDescriptor().getMethods().get(44),
+          controller,
+          request,
+          org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.AddReplicationPeerResponse.getDefaultInstance(),
+          com.google.protobuf.RpcUtil.generalizeCallback(
+            done,
+            org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.AddReplicationPeerResponse.class,
+            org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.AddReplicationPeerResponse.getDefaultInstance()));
+      }
+
+      public  void removeReplicationPeer(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.RemoveReplicationPeerRequest request,
+          com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.RemoveReplicationPeerResponse> done) {
+        channel.callMethod(
+          getDescriptor().getMethods().get(45),
+          controller,
+          request,
+          org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.RemoveReplicationPeerResponse.getDefaultInstance(),
+          com.google.protobuf.RpcUtil.generalizeCallback(
+            done,
+            org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.RemoveReplicationPeerResponse.class,
+            org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.RemoveReplicationPeerResponse.getDefaultInstance()));
+      }
+
+      public  void enableReplicationPeer(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.EnableReplicationPeerRequest request,
+          com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.EnableReplicationPeerResponse> done) {
+        channel.callMethod(
+          getDescriptor().getMethods().get(46),
+          controller,
+          request,
+          org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.EnableReplicationPeerResponse.getDefaultInstance(),
+          com.google.protobuf.RpcUtil.generalizeCallback(
+            done,
+            org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.EnableReplicationPeerResponse.class,
+            org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.EnableReplicationPeerResponse.getDefaultInstance()));
+      }
+
+      public  void disableReplicationPeer(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.DisableReplicationPeerRequest request,
+          com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.DisableReplicationPeerResponse> done) {
+        channel.callMethod(
+          getDescriptor().getMethods().get(47),
+          controller,
+          request,
+          org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.DisableReplicationPeerResponse.getDefaultInstance(),
+          com.google.protobuf.RpcUtil.generalizeCallback(
+            done,
+            org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.DisableReplicationPeerResponse.class,
+            org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.DisableReplicationPeerResponse.getDefaultInstance()));
+      }
+
+      public  void getReplicationPeerConfig(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetReplicationPeerConfigRequest request,
+          com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetReplicationPeerConfigResponse> done) {
+        channel.callMethod(
+          getDescriptor().getMethods().get(48),
+          controller,
+          request,
+          org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetReplicationPeerConfigResponse.getDefaultInstance(),
+          com.google.protobuf.RpcUtil.generalizeCallback(
+            done,
+            org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetReplicationPeerConfigResponse.class,
+            org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetReplicationPeerConfigResponse.getDefaultInstance()));
+      }
+
+      public  void updateReplicationPeerConfig(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.UpdateReplicationPeerConfigRequest request,
+          com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.UpdateReplicationPeerConfigResponse> done) {
+        channel.callMethod(
+          getDescriptor().getMethods().get(49),
+          controller,
+          request,
+          org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.UpdateReplicationPeerConfigResponse.getDefaultInstance(),
+          com.google.protobuf.RpcUtil.generalizeCallback(
+            done,
+            org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.UpdateReplicationPeerConfigResponse.class,
+            org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.UpdateReplicationPeerConfigResponse.getDefaultInstance()));
+      }
+
+      public  void listReplicationPeers(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ListReplicationPeersRequest request,
+          com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ListReplicationPeersResponse> done) {
+        channel.callMethod(
+          getDescriptor().getMethods().get(50),
+          controller,
+          request,
+          org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ListReplicationPeersResponse.getDefaultInstance(),
+          com.google.protobuf.RpcUtil.generalizeCallback(
+            done,
+            org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ListReplicationPeersResponse.class,
+            org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ListReplicationPeersResponse.getDefaultInstance()));
+      }
     }
 
     public static BlockingInterface newBlockingStub(
@@ -46613,6 +47047,41 @@ public final class MasterProtos {
       public org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleResponse switchThrottle(
           com.google.protobuf.RpcController controller,
           org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleRequest request)
+          throws com.google.protobuf.ServiceException;
+
+      public org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.AddReplicationPeerResponse addReplicationPeer(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.AddReplicationPeerRequest request)
+          throws com.google.protobuf.ServiceException;
+
+      public org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.RemoveReplicationPeerResponse removeReplicationPeer(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.RemoveReplicationPeerRequest request)
+          throws com.google.protobuf.ServiceException;
+
+      public org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.EnableReplicationPeerResponse enableReplicationPeer(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.EnableReplicationPeerRequest request)
+          throws com.google.protobuf.ServiceException;
+
+      public org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.DisableReplicationPeerResponse disableReplicationPeer(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.DisableReplicationPeerRequest request)
+          throws com.google.protobuf.ServiceException;
+
+      public org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetReplicationPeerConfigResponse getReplicationPeerConfig(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetReplicationPeerConfigRequest request)
+          throws com.google.protobuf.ServiceException;
+
+      public org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.UpdateReplicationPeerConfigResponse updateReplicationPeerConfig(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.UpdateReplicationPeerConfigRequest request)
+          throws com.google.protobuf.ServiceException;
+
+      public org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ListReplicationPeersResponse listReplicationPeers(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ListReplicationPeersRequest request)
           throws com.google.protobuf.ServiceException;
     }
 
@@ -47150,6 +47619,90 @@ public final class MasterProtos {
           org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleResponse.getDefaultInstance());
       }
 
+
+      public org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.AddReplicationPeerResponse addReplicationPeer(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.AddReplicationPeerRequest request)
+          throws com.google.protobuf.ServiceException {
+        return (org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.AddReplicationPeerResponse) channel.callBlockingMethod(
+          getDescriptor().getMethods().get(44),
+          controller,
+          request,
+          org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.AddReplicationPeerResponse.getDefaultInstance());
+      }
+
+
+      public org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.RemoveReplicationPeerResponse removeReplicationPeer(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.RemoveReplicationPeerRequest request)
+          throws com.google.protobuf.ServiceException {
+        return (org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.RemoveReplicationPeerResponse) channel.callBlockingMethod(
+          getDescriptor().getMethods().get(45),
+          controller,
+          request,
+          org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.RemoveReplicationPeerResponse.getDefaultInstance());
+      }
+
+
+      public org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.EnableReplicationPeerResponse enableReplicationPeer(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.EnableReplicationPeerRequest request)
+          throws com.google.protobuf.ServiceException {
+        return (org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.EnableReplicationPeerResponse) channel.callBlockingMethod(
+          getDescriptor().getMethods().get(46),
+          controller,
+          request,
+          org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.EnableReplicationPeerResponse.getDefaultInstance());
+      }
+
+
+      public org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.DisableReplicationPeerResponse disableReplicationPeer(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.DisableReplicationPeerRequest request)
+          throws com.google.protobuf.ServiceException {
+        return (org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.DisableReplicationPeerResponse) channel.callBlockingMethod(
+          getDescriptor().getMethods().get(47),
+          controller,
+          request,
+          org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.DisableReplicationPeerResponse.getDefaultInstance());
+      }
+
+
+      public org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetReplicationPeerConfigResponse getReplicationPeerConfig(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetReplicationPeerConfigRequest request)
+          throws com.google.protobuf.ServiceException {
+        return (org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetReplicationPeerConfigResponse) channel.callBlockingMethod(
+          getDescriptor().getMethods().get(48),
+          controller,
+          request,
+          org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetReplicationPeerConfigResponse.getDefaultInstance());
+      }
+
+
+      public org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.UpdateReplicationPeerConfigResponse updateReplicationPeerConfig(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.UpdateReplicationPeerConfigRequest request)
+          throws com.google.protobuf.ServiceException {
+        return (org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.UpdateReplicationPeerConfigResponse) channel.callBlockingMethod(
+          getDescriptor().getMethods().get(49),
+          controller,
+          request,
+          org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.UpdateReplicationPeerConfigResponse.getDefaultInstance());
+      }
+
+
+      public org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ListReplicationPeersResponse listReplicationPeers(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ListReplicationPeersRequest request)
+          throws com.google.protobuf.ServiceException {
+        return (org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ListReplicationPeersResponse) channel.callBlockingMethod(
+          getDescriptor().getMethods().get(50),
+          controller,
+          request,
+          org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ListReplicationPeersResponse.getDefaultInstance());
+      }
+
     }
 
     // @@protoc_insertion_point(class_scope:MasterService)
@@ -47596,203 +48149,219 @@ public final class MasterProtos {
     java.lang.String[] descriptorData = {
       "\n\014Master.proto\032\013HBase.proto\032\014Client.prot" +
       "o\032\023ClusterStatus.proto\032\013Quota.proto\032\016Sna" +
-      "pshot.proto\"`\n\020AddColumnRequest\022\036\n\ntable" +
-      "_name\030\001 \002(\0132\n.TableName\022,\n\017column_famili" +
-      "es\030\002 \002(\0132\023.ColumnFamilySchema\"\023\n\021AddColu" +
-      "mnResponse\"J\n\023DeleteColumnRequest\022\036\n\ntab" +
-      "le_name\030\001 \002(\0132\n.TableName\022\023\n\013column_name" +
-      "\030\002 \002(\014\"\026\n\024DeleteColumnResponse\"c\n\023Modify" +
-      "ColumnRequest\022\036\n\ntable_name\030\001 \002(\0132\n.Tabl" +
-      "eName\022,\n\017column_families\030\002 \002(\0132\023.ColumnF",
-      "amilySchema\"\026\n\024ModifyColumnResponse\"\\\n\021M" +
-      "oveRegionRequest\022 \n\006region\030\001 \002(\0132\020.Regio" +
-      "nSpecifier\022%\n\020dest_server_name\030\002 \001(\0132\013.S" +
-      "erverName\"\024\n\022MoveRegionResponse\"\200\001\n\035Disp" +
-      "atchMergingRegionsRequest\022\"\n\010region_a\030\001 " +
-      "\002(\0132\020.RegionSpecifier\022\"\n\010region_b\030\002 \002(\0132" +
-      "\020.RegionSpecifier\022\027\n\010forcible\030\003 \001(\010:\005fal" +
-      "se\" \n\036DispatchMergingRegionsResponse\"7\n\023" +
-      "AssignRegionRequest\022 \n\006region\030\001 \002(\0132\020.Re" +
-      "gionSpecifier\"\026\n\024AssignRegionResponse\"O\n",
-      "\025UnassignRegionRequest\022 \n\006region\030\001 \002(\0132\020" +
-      ".RegionSpecifier\022\024\n\005force\030\002 \001(\010:\005false\"\030" +
-      "\n\026UnassignRegionResponse\"8\n\024OfflineRegio" +
-      "nRequest\022 \n\006region\030\001 \002(\0132\020.RegionSpecifi" +
-      "er\"\027\n\025OfflineRegionResponse\"L\n\022CreateTab" +
-      "leRequest\022\"\n\014table_schema\030\001 \002(\0132\014.TableS" +
-      "chema\022\022\n\nsplit_keys\030\002 \003(\014\"\025\n\023CreateTable" +
-      "Response\"4\n\022DeleteTableRequest\022\036\n\ntable_" +
-      "name\030\001 \002(\0132\n.TableName\"\025\n\023DeleteTableRes" +
-      "ponse\"4\n\022EnableTableRequest\022\036\n\ntable_nam",
-      "e\030\001 \002(\0132\n.TableName\"\025\n\023EnableTableRespon" +
-      "se\"5\n\023DisableTableRequest\022\036\n\ntable_name\030" +
-      "\001 \002(\0132\n.TableName\"\026\n\024DisableTableRespons" +
-      "e\"X\n\022ModifyTableRequest\022\036\n\ntable_name\030\001 " +
-      "\002(\0132\n.TableName\022\"\n\014table_schema\030\002 \002(\0132\014." +
-      "TableSchema\"\025\n\023ModifyTableResponse\"K\n\026Cr" +
-      "eateNamespaceRequest\0221\n\023namespaceDescrip" +
-      "tor\030\001 \002(\0132\024.NamespaceDescriptor\"\031\n\027Creat" +
-      "eNamespaceResponse\"/\n\026DeleteNamespaceReq" +
-      "uest\022\025\n\rnamespaceName\030\001 \002(\t\"\031\n\027DeleteNam",
-      "espaceResponse\"K\n\026ModifyNamespaceRequest" +
-      "\0221\n\023namespaceDescriptor\030\001 \002(\0132\024.Namespac" +
-      "eDescriptor\"\031\n\027ModifyNamespaceResponse\"6" +
-      "\n\035GetNamespaceDescriptorRequest\022\025\n\rnames" +
-      "paceName\030\001 \002(\t\"S\n\036GetNamespaceDescriptor" +
-      "Response\0221\n\023namespaceDescriptor\030\001 \002(\0132\024." +
-      "NamespaceDescriptor\"!\n\037ListNamespaceDesc" +
-      "riptorsRequest\"U\n ListNamespaceDescripto" +
-      "rsResponse\0221\n\023namespaceDescriptor\030\001 \003(\0132" +
-      "\024.NamespaceDescriptor\"?\n&ListTableDescri",
-      "ptorsByNamespaceRequest\022\025\n\rnamespaceName" +
-      "\030\001 \002(\t\"L\n\'ListTableDescriptorsByNamespac" +
-      "eResponse\022!\n\013tableSchema\030\001 \003(\0132\014.TableSc" +
-      "hema\"9\n ListTableNamesByNamespaceRequest" +
-      "\022\025\n\rnamespaceName\030\001 \002(\t\"B\n!ListTableName" +
-      "sByNamespaceResponse\022\035\n\ttableName\030\001 \003(\0132" +
-      "\n.TableName\"\021\n\017ShutdownRequest\"\022\n\020Shutdo" +
-      "wnResponse\"\023\n\021StopMasterRequest\"\024\n\022StopM" +
-      "asterResponse\"\020\n\016BalanceRequest\"\'\n\017Balan" +
-      "ceResponse\022\024\n\014balancer_ran\030\001 \002(\010\"<\n\031SetB",
-      "alancerRunningRequest\022\n\n\002on\030\001 \002(\010\022\023\n\013syn" +
-      "chronous\030\002 \001(\010\"8\n\032SetBalancerRunningResp" +
-      "onse\022\032\n\022prev_balance_value\030\001 \001(\010\"\027\n\025RunC" +
-      "atalogScanRequest\"-\n\026RunCatalogScanRespo" +
-      "nse\022\023\n\013scan_result\030\001 \001(\005\"-\n\033EnableCatalo" +
-      "gJanitorRequest\022\016\n\006enable\030\001 \002(\010\"2\n\034Enabl" +
-      "eCatalogJanitorResponse\022\022\n\nprev_value\030\001 " +
-      "\001(\010\" \n\036IsCatalogJanitorEnabledRequest\"0\n" +
-      "\037IsCatalogJanitorEnabledResponse\022\r\n\005valu" +
-      "e\030\001 \002(\010\"9\n\017SnapshotRequest\022&\n\010snapshot\030\001",
-      " \002(\0132\024.SnapshotDescription\",\n\020SnapshotRe" +
-      "sponse\022\030\n\020expected_timeout\030\001 \002(\003\"\036\n\034GetC" +
-      "ompletedSnapshotsRequest\"H\n\035GetCompleted" +
-      "SnapshotsResponse\022\'\n\tsnapshots\030\001 \003(\0132\024.S" +
-      "napshotDescription\"?\n\025DeleteSnapshotRequ" +
-      "est\022&\n\010snapshot\030\001 \002(\0132\024.SnapshotDescript" +
-      "ion\"\030\n\026DeleteSnapshotResponse\"[\n\026Restore" +
-      "SnapshotRequest\022&\n\010snapshot\030\001 \002(\0132\024.Snap" +
-      "shotDescription\022\031\n\nrestoreACL\030\002 \001(\010:\005fal" +
-      "se\"\031\n\027RestoreSnapshotResponse\"?\n\025IsSnaps",
-      "hotDoneRequest\022&\n\010snapshot\030\001 \001(\0132\024.Snaps" +
-      "hotDescription\"U\n\026IsSnapshotDoneResponse" +
-      "\022\023\n\004done\030\001 \001(\010:\005false\022&\n\010snapshot\030\002 \001(\0132" +
-      "\024.SnapshotDescription\"F\n\034IsRestoreSnapsh" +
-      "otDoneRequest\022&\n\010snapshot\030\001 \001(\0132\024.Snapsh" +
-      "otDescription\"4\n\035IsRestoreSnapshotDoneRe" +
-      "sponse\022\023\n\004done\030\001 \001(\010:\005false\"=\n\033GetSchema" +
-      "AlterStatusRequest\022\036\n\ntable_name\030\001 \002(\0132\n" +
-      ".TableName\"T\n\034GetSchemaAlterStatusRespon" +
-      "se\022\035\n\025yet_to_update_regions\030\001 \001(\r\022\025\n\rtot",
-      "al_regions\030\002 \001(\r\"L\n\032GetTableDescriptorsR" +
-      "equest\022\037\n\013table_names\030\001 \003(\0132\n.TableName\022" +
-      "\r\n\005regex\030\002 \001(\t\"A\n\033GetTableDescriptorsRes" +
-      "ponse\022\"\n\014table_schema\030\001 \003(\0132\014.TableSchem" +
-      "a\"\026\n\024GetTableNamesRequest\"8\n\025GetTableNam" +
-      "esResponse\022\037\n\013table_names\030\001 \003(\0132\n.TableN" +
-      "ame\"\031\n\027GetClusterStatusRequest\"B\n\030GetClu" +
-      "sterStatusResponse\022&\n\016cluster_status\030\001 \002" +
-      "(\0132\016.ClusterStatus\"\030\n\026IsMasterRunningReq" +
-      "uest\"4\n\027IsMasterRunningResponse\022\031\n\021is_ma",
-      "ster_running\030\001 \002(\010\"@\n\024ExecProcedureReque" +
-      "st\022(\n\tprocedure\030\001 \002(\0132\025.ProcedureDescrip" +
-      "tion\"1\n\025ExecProcedureResponse\022\030\n\020expecte" +
-      "d_timeout\030\001 \002(\003\"B\n\026IsProcedureDoneReques" +
-      "t\022(\n\tprocedure\030\001 \001(\0132\025.ProcedureDescript" +
-      "ion\"W\n\027IsProcedureDoneResponse\022\023\n\004done\030\001" +
-      " \001(\010:\005false\022\'\n\010snapshot\030\002 \001(\0132\025.Procedur" +
-      "eDescription\"T\n\024TruncateTableRequest\022\035\n\t" +
-      "tableName\030\001 \002(\0132\n.TableName\022\035\n\016preserveS" +
-      "plits\030\002 \001(\010:\005false\"\027\n\025TruncateTableRespo",
-      "nse\"\273\001\n\017SetQuotaRequest\022\021\n\tuser_name\030\001 \001" +
-      "(\t\022\022\n\nuser_group\030\002 \001(\t\022\021\n\tnamespace\030\003 \001(" +
-      "\t\022\036\n\ntable_name\030\004 \001(\0132\n.TableName\022\022\n\nrem" +
-      "ove_all\030\005 \001(\010\022\026\n\016bypass_globals\030\006 \001(\010\022\"\n" +
-      "\010throttle\030\007 \001(\0132\020.ThrottleRequest\"\022\n\020Set" +
-      "QuotaResponse\"?\n\025SwitchThrottleRequest\022&" +
-      "\n\016throttle_state\030\001 \002(\0162\016.ThrottleState\"E" +
-      "\n\026SwitchThrottleResponse\022+\n\023prev_throttl" +
-      "e_state\030\001 \001(\0162\016.ThrottleState2\242\030\n\rMaster" +
-      "Service\022S\n\024GetSchemaAlterStatus\022\034.GetSch",
-      "emaAlterStatusRequest\032\035.GetSchemaAlterSt" +
-      "atusResponse\022P\n\023GetTableDescriptors\022\033.Ge" +
-      "tTableDescriptorsRequest\032\034.GetTableDescr" +
-      "iptorsResponse\022>\n\rGetTableNames\022\025.GetTab" +
-      "leNamesRequest\032\026.GetTableNamesResponse\022G" +
-      "\n\020GetClusterStatus\022\030.GetClusterStatusReq" +
-      "uest\032\031.GetClusterStatusResponse\022D\n\017IsMas" +
-      "terRunning\022\027.IsMasterRunningRequest\032\030.Is" +
-      "MasterRunningResponse\0222\n\tAddColumn\022\021.Add" +
-      "ColumnRequest\032\022.AddColumnResponse\022;\n\014Del",
-      "eteColumn\022\024.DeleteColumnRequest\032\025.Delete" +
-      "ColumnResponse\022;\n\014ModifyColumn\022\024.ModifyC" +
-      "olumnRequest\032\025.ModifyColumnResponse\0225\n\nM" +
-      "oveRegion\022\022.MoveRegionRequest\032\023.MoveRegi" +
-      "onResponse\022Y\n\026DispatchMergingRegions\022\036.D" +
-      "ispatchMergingRegionsRequest\032\037.DispatchM" +
-      "ergingRegionsResponse\022;\n\014AssignRegion\022\024." +
-      "AssignRegionRequest\032\025.AssignRegionRespon" +
-      "se\022A\n\016UnassignRegion\022\026.UnassignRegionReq" +
-      "uest\032\027.UnassignRegionResponse\022>\n\rOffline",
-      "Region\022\025.OfflineRegionRequest\032\026.OfflineR" +
-      "egionResponse\0228\n\013DeleteTable\022\023.DeleteTab" +
-      "leRequest\032\024.DeleteTableResponse\0228\n\013Enabl" +
-      "eTable\022\023.EnableTableRequest\032\024.EnableTabl" +
-      "eResponse\022;\n\014DisableTable\022\024.DisableTable" +
-      "Request\032\025.DisableTableResponse\0228\n\013Modify" +
-      "Table\022\023.ModifyTableRequest\032\024.ModifyTable" +
-      "Response\0228\n\013CreateTable\022\023.CreateTableReq" +
-      "uest\032\024.CreateTableResponse\022/\n\010Shutdown\022\020" +
-      ".ShutdownRequest\032\021.ShutdownResponse\0225\n\nS",
-      "topMaster\022\022.StopMasterRequest\032\023.StopMast" +
-      "erResponse\022,\n\007Balance\022\017.BalanceRequest\032\020" +
-      ".BalanceResponse\022M\n\022SetBalancerRunning\022\032" +
-      ".SetBalancerRunningRequest\032\033.SetBalancer" +
-      "RunningResponse\022A\n\016RunCatalogScan\022\026.RunC" +
-      "atalogScanRequest\032\027.RunCatalogScanRespon" +
-      "se\022S\n\024EnableCatalogJanitor\022\034.EnableCatal" +
-      "ogJanitorRequest\032\035.EnableCatalogJanitorR" +
-      "esponse\022\\\n\027IsCatalogJanitorEnabled\022\037.IsC" +
-      "atalogJanitorEnabledRequest\032 .IsCatalogJ",
-      "anitorEnabledResponse\022L\n\021ExecMasterServi" +
-      "ce\022\032.CoprocessorServiceRequest\032\033.Coproce" +
-      "ssorServiceResponse\022/\n\010Snapshot\022\020.Snapsh" +
-      "otRequest\032\021.SnapshotResponse\022V\n\025GetCompl" +
-      "etedSnapshots\022\035.GetCompletedSnapshotsReq" +
-      "uest\032\036.GetCompletedSnapshotsResponse\022A\n\016" +
-      "DeleteSnapshot\022\026.DeleteSnapshotRequest\032\027" +
-      ".DeleteSnapshotResponse\022A\n\016IsSnapshotDon" +
-      "e\022\026.IsSnapshotDoneRequest\032\027.IsSnapshotDo" +
-      "neResponse\022D\n\017RestoreSnapshot\022\027.RestoreS",
-      "napshotRequest\032\030.RestoreSnapshotResponse" +
-      "\022V\n\025IsRestoreSnapshotDone\022\035.IsRestoreSna" +
-      "pshotDoneRequest\032\036.IsRestoreSnapshotDone" +
-      "Response\022>\n\rExecProcedure\022\025.ExecProcedur" +
-      "eRequest\032\026.ExecProcedureResponse\022D\n\017IsPr" +
-      "ocedureDone\022\027.IsProcedureDoneRequest\032\030.I" +
-      "sProcedureDoneResponse\022D\n\017ModifyNamespac" +
-      "e\022\027.ModifyNamespaceRequest\032\030.ModifyNames" +
-      "paceResponse\022D\n\017CreateNamespace\022\027.Create" +
-      "NamespaceRequest\032\030.CreateNamespaceRespon",
-      "se\022D\n\017DeleteNamespace\022\027.DeleteNamespaceR" +
-      "equest\032\030.DeleteNamespaceResponse\022Y\n\026GetN" +
-      "amespaceDescriptor\022\036.GetNamespaceDescrip" +
-      "torRequest\032\037.GetNamespaceDescriptorRespo" +
-      "nse\022_\n\030ListNamespaceDescriptors\022 .ListNa" +
-      "mespaceDescriptorsRequest\032!.ListNamespac" +
-      "eDescriptorsResponse\022t\n\037ListTableDescrip" +
-      "torsByNamespace\022\'.ListTableDescriptorsBy" +
-      "NamespaceRequest\032(.ListTableDescriptorsB" +
-      "yNamespaceResponse\022b\n\031ListTableNamesByNa",
-      "mespace\022!.ListTableNamesByNamespaceReque" +
-      "st\032\".ListTableNamesByNamespaceResponse\022>" +
-      "\n\rtruncateTable\022\025.TruncateTableRequest\032\026" +
-      ".TruncateTableResponse\022/\n\010SetQuota\022\020.Set" +
-      "QuotaRequest\032\021.SetQuotaResponse\022A\n\016Switc" +
-      "hThrottle\022\026.SwitchThrottleRequest\032\027.Swit" +
-      "chThrottleResponseBB\n*org.apache.hadoop." +
-      "hbase.protobuf.generatedB\014MasterProtosH\001" +
-      "\210\001\001\240\001\001"
+      "pshot.proto\032\021Replication.proto\"`\n\020AddCol" +
+      "umnRequest\022\036\n\ntable_name\030\001 \002(\0132\n.TableNa" +
+      "me\022,\n\017column_families\030\002 \002(\0132\023.ColumnFami" +
+      "lySchema\"\023\n\021AddColumnResponse\"J\n\023DeleteC" +
+      "olumnRequest\022\036\n\ntable_name\030\001 \002(\0132\n.Table" +
+      "Name\022\023\n\013column_name\030\002 \002(\014\"\026\n\024DeleteColum" +
+      "nResponse\"c\n\023ModifyColumnRequest\022\036\n\ntabl" +
+      "e_name\030\001 \002(\0132\n.TableName\022,\n\017column_famil",
+      "ies\030\002 \002(\0132\023.ColumnFamilySchema\"\026\n\024Modify" +
+      "ColumnResponse\"\\\n\021MoveRegionRequest\022 \n\006r" +
+      "egion\030\001 \002(\0132\020.RegionSpecifier\022%\n\020dest_se" +
+      "rver_name\030\002 \001(\0132\013.ServerName\"\024\n\022MoveRegi" +
+      "onResponse\"\200\001\n\035DispatchMergingRegionsReq" +
+      "uest\022\"\n\010region_a\030\001 \002(\0132\020.RegionSpecifier" +
+      "\022\"\n\010region_b\030\002 \002(\0132\020.RegionSpecifier\022\027\n\010" +
+      "forcible\030\003 \001(\010:\005false\" \n\036DispatchMerging" +
+      "RegionsResponse\"7\n\023AssignRegionRequest\022 " +
+      "\n\006region\030\001 \002(\0132\020.RegionSpecifier\"\026\n\024Assi",
+      "gnRegionResponse\"O\n\025UnassignRegionReques" +
+      "t\022 \n\006region\030\001 \002(\0132\020.RegionSpecifier\022\024\n\005f" +
+      "orce\030\002 \001(\010:\005false\"\030\n\026UnassignRegionRespo" +
+      "nse\"8\n\024OfflineRegionRequest\022 \n\006region\030\001 " +
+      "\002(\0132\020.RegionSpecifier\"\027\n\025OfflineRegionRe" +
+      "sponse\"L\n\022CreateTableRequest\022\"\n\014table_sc" +
+      "hema\030\001 \002(\0132\014.TableSchema\022\022\n\nsplit_keys\030\002" +
+      " \003(\014\"\025\n\023CreateTableResponse\"4\n\022DeleteTab" +
+      "leRequest\022\036\n\ntable_name\030\001 \002(\0132\n.TableNam" +
+      "e\"\025\n\023DeleteTableResponse\"4\n\022EnableTableR",
+      "equest\022\036\n\ntable_name\030\001 \002(\0132\n.TableName\"\025" +
+      "\n\023EnableTableResponse\"5\n\023DisableTableReq" +
+      "uest\022\036\n\ntable_name\030\001 \002(\0132\n.TableName\"\026\n\024" +
+      "DisableTableResponse\"X\n\022ModifyTableReque" +
+      "st\022\036\n\ntable_name\030\001 \002(\0132\n.TableName\022\"\n\014ta" +
+      "ble_schema\030\002 \002(\0132\014.TableSchema\"\025\n\023Modify" +
+      "TableResponse\"K\n\026CreateNamespaceRequest\022" +
+      "1\n\023namespaceDescriptor\030\001 \002(\0132\024.Namespace" +
+      "Descriptor\"\031\n\027CreateNamespaceResponse\"/\n" +
+      "\026DeleteNamespaceRequest\022\025\n\rnamespaceName",
+      "\030\001 \002(\t\"\031\n\027DeleteNamespaceResponse\"K\n\026Mod" +
+      "ifyNamespaceRequest\0221\n\023namespaceDescript" +
+      "or\030\001 \002(\0132\024.NamespaceDescriptor\"\031\n\027Modify" +
+      "NamespaceResponse\"6\n\035GetNamespaceDescrip" +
+      "torRequest\022\025\n\rnamespaceName\030\001 \002(\t\"S\n\036Get" +
+      "NamespaceDescriptorResponse\0221\n\023namespace" +
+      "Descriptor\030\001 \002(\0132\024.NamespaceDescriptor\"!" +
+      "\n\037ListNamespaceDescriptorsRequest\"U\n Lis" +
+      "tNamespaceDescriptorsResponse\0221\n\023namespa" +
+      "ceDescriptor\030\001 \003(\0132\024.NamespaceDescriptor",
+      "\"?\n&ListTableDescriptorsByNamespaceReque" +
+      "st\022\025\n\rnamespaceName\030\001 \002(\t\"L\n\'ListTableDe" +
+      "scriptorsByNamespaceResponse\022!\n\013tableSch" +
+      "ema\030\001 \003(\0132\014.TableSchema\"9\n ListTableName" +
+      "sByNamespaceRequest\022\025\n\rnamespaceName\030\001 \002" +
+      "(\t\"B\n!ListTableNamesByNamespaceResponse\022" +
+      "\035\n\ttableName\030\001 \003(\0132\n.TableName\"\021\n\017Shutdo" +
+      "wnRequest\"\022\n\020ShutdownResponse\"\023\n\021StopMas" +
+      "terRequest\"\024\n\022StopMasterResponse\"\020\n\016Bala" +
+      "nceRequest\"\'\n\017BalanceResponse\022\024\n\014balance",
+      "r_ran\030\001 \002(\010\"<\n\031SetBalancerRunningRequest" +
+      "\022\n\n\002on\030\001 \002(\010\022\023\n\013synchronous\030\002 \001(\010\"8\n\032Set" +
+      "BalancerRunningResponse\022\032\n\022prev_balance_" +
+      "value\030\001 \001(\010\"\027\n\025RunCatalogScanRequest\"-\n\026" +
+      "RunCatalogScanResponse\022\023\n\013scan_result\030\001 " +
+      "\001(\005\"-\n\033EnableCatalogJanitorRequest\022\016\n\006en" +
+      "able\030\001 \002(\010\"2\n\034EnableCatalogJanitorRespon" +
+      "se\022\022\n\nprev_value\030\001 \001(\010\" \n\036IsCatalogJanit" +
+      "orEnabledRequest\"0\n\037IsCatalogJanitorEnab" +
+      "ledResponse\022\r\n\005value\030\001 \002(\010\"9\n\017SnapshotRe",
+      "quest\022&\n\010snapshot\030\001 \002(\0132\024.SnapshotDescri" +
+      "ption\",\n\020SnapshotResponse\022\030\n\020expected_ti" +
+      "meout\030\001 \002(\003\"\036\n\034GetCompletedSnapshotsRequ" +
+      "est\"H\n\035GetCompletedSnapshotsResponse\022\'\n\t" +
+      "snapshots\030\001 \003(\0132\024.SnapshotDescription\"?\n" +
+      "\025DeleteSnapshotRequest\022&\n\010snapshot\030\001 \002(\013" +
+      "2\024.SnapshotDescription\"\030\n\026DeleteSnapshot" +
+      "Response\"[\n\026RestoreSnapshotRequest\022&\n\010sn" +
+      "apshot\030\001 \002(\0132\024.SnapshotDescription\022\031\n\nre" +
+      "storeACL\030\002 \001(\010:\005false\"\031\n\027RestoreSnapshot",
+      "Response\"?\n\025IsSnapshotDoneRequest\022&\n\010sna" +
+      "pshot\030\001 \001(\0132\024.SnapshotDescription\"U\n\026IsS" +
+      "napshotDoneResponse\022\023\n\004done\030\001 \001(\010:\005false" +
+      "\022&\n\010snapshot\030\002 \001(\0132\024.SnapshotDescription" +
+      "\"F\n\034IsRestoreSnapshotDoneRequest\022&\n\010snap" +
+      "shot\030\001 \001(\0132\024.SnapshotDescription\"4\n\035IsRe" +
+      "storeSnapshotDoneResponse\022\023\n\004done\030\001 \001(\010:" +
+      "\005false\"=\n\033GetSchemaAlterStatusRequest\022\036\n" +
+      "\ntable_name\030\001 \002(\0132\n.TableName\"T\n\034GetSche" +
+      "maAlterStatusResponse\022\035\n\025yet_to_update_r",
+      "egions\030\001 \001(\r\022\025\n\rtotal_regions\030\002 \001(\r\"L\n\032G" +
+      "etTableDescriptorsRequest\022\037\n\013table_names" +
+      "\030\001 \003(\0132\n.TableName\022\r\n\005regex\030\002 \001(\t\"A\n\033Get" +
+      "TableDescriptorsResponse\022\"\n\014table_schema" +
+      "\030\001 \003(\0132\014.TableSchema\"\026\n\024GetTableNamesReq" +
+      "uest\"8\n\025GetTableNamesResponse\022\037\n\013table_n" +
+      "ames\030\001 \003(\0132\n.TableName\"\031\n\027GetClusterStat" +
+      "usRequest\"B\n\030GetClusterStatusResponse\022&\n" +
+      "\016cluster_status\030\001 \002(\0132\016.ClusterStatus\"\030\n" +
+      "\026IsMasterRunningRequest\"4\n\027IsMasterRunni",
+      "ngResponse\022\031\n\021is_master_running\030\001 \002(\010\"@\n" +
+      "\024ExecProcedureRequest\022(\n\tprocedure\030\001 \002(\013" +
+      "2\025.ProcedureDescription\"1\n\025ExecProcedure" +
+      "Response\022\030\n\020expected_timeout\030\001 \002(\003\"B\n\026Is" +
+      "ProcedureDoneRequest\022(\n\tprocedure\030\001 \001(\0132" +
+      "\025.ProcedureDescription\"W\n\027IsProcedureDon" +
+      "eResponse\022\023\n\004done\030\001 \001(\010:\005false\022\'\n\010snapsh" +
+      "ot\030\002 \001(\0132\025.ProcedureDescription\"T\n\024Trunc" +
+      "ateTableRequest\022\035\n\ttableName\030\001 \002(\0132\n.Tab" +
+      "leName\022\035\n\016preserveSplits\030\002 \001(\010:\005false\"\027\n",
+      "\025TruncateTableResponse\"\273\001\n\017SetQuotaReque" +
+      "st\022\021\n\tuser_name\030\001 \001(\t\022\022\n\nuser_group\030\002 \001(" +
+      "\t\022\021\n\tnamespace\030\003 \001(\t\022\036\n\ntable_name\030\004 \001(\013" +
+      "2\n.TableName\022\022\n\nremove_all\030\005 \001(\010\022\026\n\016bypa" +
+      "ss_globals\030\006 \001(\010\022\"\n\010throttle\030\007 \001(\0132\020.Thr" +
+      "ottleRequest\"\022\n\020SetQuotaResponse\"?\n\025Swit" +
+      "chThrottleRequest\022&\n\016throttle_state\030\001 \002(" +
+      "\0162\016.ThrottleState\"E\n\026SwitchThrottleRespo" +
+      "nse\022+\n\023prev_throttle_state\030\001 \001(\0162\016.Throt" +
+      "tleState2\234\035\n\rMasterService\022S\n\024GetSchemaA",
+      "lterStatus\022\034.GetSchemaAlterStatusRequest" +
+      "\032\035.GetSchemaAlterStatusResponse\022P\n\023GetTa" +
+      "bleDescriptors\022\033.GetTableDescriptorsRequ" +
+      "est\032\034.GetTableDescriptorsResponse\022>\n\rGet" +
+      "TableNames\022\025.GetTableNamesRequest\032\026.GetT" +
+      "ableNamesResponse\022G\n\020GetClusterStatus\022\030." +
+      "GetClusterStatusRequest\032\031.GetClusterStat" +
+      "usResponse\022D\n\017IsMasterRunning\022\027.IsMaster" +
+      "RunningRequest\032\030.IsMasterRunningResponse" +
+      "\0222\n\tAddColumn\022\021.AddColumnRequest\032\022.AddCo",
+      "lumnResponse\022;\n\014DeleteColumn\022\024.DeleteCol" +
+      "umnRequest\032\025.DeleteColumnResponse\022;\n\014Mod" +
+      "ifyColumn\022\024.ModifyColumnRequest\032\025.Modify" +
+      "ColumnResponse\0225\n\nMoveRegion\022\022.MoveRegio" +
+      "nRequest\032\023.MoveRegionResponse\022Y\n\026Dispatc" +
+      "hMergingRegions\022\036.DispatchMergingRegions" +
+      "Request\032\037.DispatchMergingRegionsResponse" +
+      "\022;\n\014AssignRegion\022\024.AssignRegionRequest\032\025" +
+      ".AssignRegionResponse\022A\n\016UnassignRegion\022" +
+      "\026.UnassignRegionRequest\032\027.UnassignRegion",
+      "Response\022>\n\rOfflineRegion\022\025.OfflineRegio" +
+      "nRequest\032\026.OfflineRegionResponse\0228\n\013Dele" +
+      "teTable\022\023.DeleteTableRequest\032\024.DeleteTab" +
+      "leResponse\0228\n\013EnableTable\022\023.EnableTableR" +
+      "equest\032\024.EnableTableResponse\022;\n\014DisableT" +
+      "able\022\024.DisableTableRequest\032\025.DisableTabl" +
+      "eResponse\0228\n\013ModifyTable\022\023.ModifyTableRe" +
+      "quest\032\024.ModifyTableResponse\0228\n\013CreateTab" +
+      "le\022\023.CreateTableRequest\032\024.CreateTableRes" +
+      "ponse\022/\n\010Shutdown\022\020.ShutdownRequest\032\021.Sh",
+      "utdownResponse\0225\n\nStopMaster\022\022.StopMaste" +
+      "rRequest\032\023.StopMasterResponse\022,\n\007Balance" +
+      "\022\017.BalanceRequest\032\020.BalanceResponse\022M\n\022S" +
+      "etBalancerRunning\022\032.SetBalancerRunningRe" +
+      "quest\032\033.SetBalancerRunningResponse\022A\n\016Ru" +
+      "nCatalogScan\022\026.RunCatalogScanRequest\032\027.R" +
+      "unCatalogScanResponse\022S\n\024EnableCatalogJa" +
+      "nitor\022\034.EnableCatalogJanitorRequest\032\035.En" +
+      "ableCatalogJanitorResponse\022\\\n\027IsCatalogJ" +
+      "anitorEnabled\022\037.IsCatalogJanitorEnabledR",
+      "equest\032 .IsCatalogJanitorEnabledResponse" +
+      "\022L\n\021ExecMasterService\022\032.CoprocessorServi" +
+      "ceRequest\032\033.CoprocessorServiceResponse\022/" +
+      "\n\010Snapshot\022\020.SnapshotRequest\032\021.SnapshotR" +
+      "esponse\022V\n\025GetCompletedSnapshots\022\035.GetCo" +
+      "mpletedSnapshotsRequest\032\036.GetCompletedSn" +
+      "apshotsResponse\022A\n\016DeleteSnapshot\022\026.Dele" +
+      "teSnapshotRequest\032\027.DeleteSnapshotRespon" +
+      "se\022A\n\016IsSnapshotDone\022\026.IsSnapshotDoneReq" +
+      "uest\032\027.IsSnapshotDoneResponse\022D\n\017Restore",
+      "Snapshot\022\027.RestoreSnapshotRequest\032\030.Rest" +
+      "oreSnapshotResponse\022V\n\025IsRestoreSnapshot" +
+      "Done\022\035.IsRestoreSnapshotDoneRequest\032\036.Is" +
+      "RestoreSnapshotDoneResponse\022>\n\rExecProce" +
+      "dure\022\025.ExecProcedureRequest\032\026.ExecProced" +
+      "ureResponse\022D\n\017IsProcedureDone\022\027.IsProce" +
+      "dureDoneRequest\032\030.IsProcedureDoneRespons" +
+      "e\022D\n\017ModifyNamespace\022\027.ModifyNamespaceRe" +
+      "quest\032\030.ModifyNamespaceResponse\022D\n\017Creat" +
+      "eNamespace\022\027.CreateNamespaceRequest\032\030.Cr",
+      "eateNamespaceResponse\022D\n\017DeleteNamespace" +
+      "\022\027.DeleteNamespaceRequest\032\030.DeleteNamesp" +
+      "aceResponse\022Y\n\026GetNamespaceDescriptor\022\036." +
+      "GetNamespaceDescriptorRequest\032\037.GetNames" +
+      "paceDescriptorResponse\022_\n\030ListNamespaceD" +
+      "escriptors\022 .ListNamespaceDescriptorsReq" +
+      "uest\032!.ListNamespaceDescriptorsResponse\022" +
+      "t\n\037ListTableDescriptorsByNamespace\022\'.Lis" +
+      "tTableDescriptorsByNamespaceRequest\032(.Li" +
+      "stTableDescriptorsByNamespaceResponse\022b\n",
+      "\031ListTableNamesByNamespace\022!.ListTableNa" +
+      "mesByNamespaceRequest\032\".ListTableNamesBy" +
+      "NamespaceResponse\022>\n\rtruncateTable\022\025.Tru" +
+      "ncateTableRequest\032\026.TruncateTableRespons" +
+      "e\022/\n\010SetQuota\022\020.SetQuotaRequest\032\021.SetQuo" +
+      "taResponse\022A\n\016SwitchThrottle\022\026.SwitchThr" +
+      "ottleRequest\032\027.SwitchThrottleResponse\022M\n" +
+      "\022AddReplicationPeer\022\032.AddReplicationPeer" +
+      "Request\032\033.AddReplicationPeerResponse\022V\n\025" +
+      "RemoveReplicationPeer\022\035.RemoveReplicatio",
+      "nPeerRequest\032\036.RemoveReplicationPeerResp" +
+      "onse\022V\n\025EnableReplicationPeer\022\035.EnableRe" +
+      "plicationPeerRequest\032\036.EnableReplication" +
+      "PeerResponse\022Y\n\026DisableReplicationPeer\022\036" +
+      ".DisableReplicationPeerRequest\032\037.Disable" +
+      "ReplicationPeerResponse\022_\n\030GetReplicatio" +
+      "nPeerConfig\022 .GetReplicationPeerConfigRe" +
+      "quest\032!.GetReplicationPeerConfigResponse" +
+      "\022h\n\033UpdateReplicationPeerConfig\022#.Update" +
+      "ReplicationPeerConfigRequest\032$.UpdateRep",
+      "licationPeerConfigResponse\022S\n\024ListReplic" +
+      "ationPeers\022\034.ListReplicationPeersRequest" +
+      "\032\035.ListReplicationPeersResponseBB\n*org.a" +
+      "pache.hadoop.hbase.protobuf.generatedB\014M" +
+      "asterProtosH\001\210\001\001\240\001\001"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
       new com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner() {
@@ -48326,6 +48895,7 @@ public final class MasterProtos {
           org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.getDescriptor(),
           org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.getDescriptor(),
           org.apache.hadoop.hbase.protobuf.generated.SnapshotProtos.getDescriptor(),
+          org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.getDescriptor(),
         }, assigner);
   }
 

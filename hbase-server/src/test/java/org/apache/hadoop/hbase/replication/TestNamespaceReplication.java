@@ -92,7 +92,7 @@ public class TestNamespaceReplication extends TestReplicationBase {
     fam.setScope(HConstants.REPLICATION_SCOPE_GLOBAL);
     tabA.addFamily(fam);
     admin1.createTable(tabA);
-    admin2.createTable(tabA);
+    // Table should be created on peer cluster, too
 
     tabB = new HTableDescriptor(tabBName);
     fam = new HColumnDescriptor(f1Name);
@@ -102,7 +102,7 @@ public class TestNamespaceReplication extends TestReplicationBase {
     fam.setScope(HConstants.REPLICATION_SCOPE_GLOBAL);
     tabB.addFamily(fam);
     admin1.createTable(tabB);
-    admin2.createTable(tabB);
+    // Table should be created on peer cluster, too
   }
 
   @AfterClass
@@ -131,8 +131,6 @@ public class TestNamespaceReplication extends TestReplicationBase {
 
     HTable htab1B = new HTable(conf1, tabBName);
     HTable htab2B = new HTable(conf2, tabBName);
-
-    admin.peerAdded(PEER_ID);
 
     // add ns1 to peer config which replicate to cluster2
     ReplicationPeerConfig rpc = new ReplicationPeerConfig();
@@ -186,8 +184,6 @@ public class TestNamespaceReplication extends TestReplicationBase {
 
     HTable htab1B = new HTable(conf1, tabBName);
     HTable htab2B = new HTable(conf2, tabBName);
-
-    admin.peerAdded(PEER_ID);
 
     // exclude ns1
     ReplicationPeerConfig rpc = new ReplicationPeerConfig();

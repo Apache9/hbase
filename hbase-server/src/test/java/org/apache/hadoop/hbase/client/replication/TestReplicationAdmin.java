@@ -72,8 +72,9 @@ public class TestReplicationAdmin {
    */
   @BeforeClass
   public static void setUpBeforeClass() throws Exception {
-    TEST_UTIL.startMiniZKCluster();
+    TEST_UTIL.startMiniCluster();
     Configuration conf = TEST_UTIL.getConfiguration();
+    conf.setInt(HConstants.HBASE_CLIENT_RETRIES_NUMBER, 1);
     conf.setBoolean(HConstants.REPLICATION_ENABLE_KEY, HConstants.REPLICATION_ENABLE_DEFAULT);
     admin = new ReplicationAdmin(conf);
   }
@@ -94,7 +95,7 @@ public class TestReplicationAdmin {
     // try adding the same (fails)
     try {
       admin.addPeer(ID_ONE, rpc1, null);
-    } catch (IllegalArgumentException iae) {
+    } catch (Exception e) {
       // OK!
     }
     assertEquals(1, admin.getPeersCount());
@@ -102,14 +103,14 @@ public class TestReplicationAdmin {
     try {
       admin.removePeer(ID_SECOND);
       fail();
-    } catch (IllegalArgumentException iae) {
+    } catch (Exception e) {
       // OK!
     }
     assertEquals(1, admin.getPeersCount());
     // Add a second since multi-slave is supported
     try {
       admin.addPeer(ID_SECOND, rpc2, null);
-    } catch (IllegalStateException iae) {
+    } catch (Exception e) {
       fail();
     }
     assertEquals(2, admin.getPeersCount());
@@ -137,7 +138,7 @@ public class TestReplicationAdmin {
     try {
       admin.addPeer(ID_ONE, rpc1, null);
       fail();
-    } catch (ReplicationException e) {
+    } catch (Exception e) {
       // OK!
     }
     repQueues.removeQueue(ID_ONE);
@@ -148,7 +149,7 @@ public class TestReplicationAdmin {
     try {
       admin.addPeer(ID_ONE, rpc2, null);
       fail();
-    } catch (ReplicationException e) {
+    } catch (Exception e) {
       // OK!
     }
     repQueues.removeAllQueues();
@@ -171,7 +172,7 @@ public class TestReplicationAdmin {
     assertFalse(admin.getPeerState(ID_ONE));
     try {
       admin.getPeerState(ID_SECOND);
-    } catch (IllegalArgumentException iae) {
+    } catch (Exception e) {
       // OK!
     }
     admin.removePeer(ID_ONE);
@@ -201,7 +202,6 @@ public class TestReplicationAdmin {
 
     // Add a valid peer
     admin.addPeer(ID_ONE, rpc1, null);
-    admin.peerAdded(ID_ONE);
     ReplicationPeerConfig peerConfig = admin.getPeerConfig(ID_ONE);
     peerConfig.setReplicateAllUserTables(false);
     admin.updatePeerConfig(ID_ONE, peerConfig);
@@ -301,7 +301,6 @@ public class TestReplicationAdmin {
 
     // Add a valid peer
     admin.addPeer(ID_ONE, rpc1, null);
-    admin.peerAdded(ID_ONE);
     ReplicationPeerConfig peerConfig = admin.getPeerConfig(ID_ONE);
     peerConfig.setReplicateAllUserTables(false);
     admin.updatePeerConfig(ID_ONE, peerConfig);
@@ -310,8 +309,8 @@ public class TestReplicationAdmin {
     try {
       tableCFs.put(tab3, null);
       admin.removePeerTableCFs(ID_ONE, tableCFs);
-      assertTrue(false);
-    } catch (ReplicationException e) {
+      fail();
+    } catch (Exception e) {
     }
     assertNull(admin.getPeerTableCFs(ID_ONE));
 
@@ -324,8 +323,8 @@ public class TestReplicationAdmin {
       tableCFs.clear();
       tableCFs.put(tab3, null);
       admin.removePeerTableCFs(ID_ONE, tableCFs);
-      assertTrue(false);
-    } catch (ReplicationException e) {
+      fail();
+    } catch (Exception e) {
     }
     Map<TableName, List<String>> result = admin.getPeerTableCFs(ID_ONE);
     assertEquals(2, result.size());
@@ -340,8 +339,8 @@ public class TestReplicationAdmin {
       tableCFs.put(tab1, new ArrayList<String>());
       tableCFs.get(tab1).add("f1");
       admin.removePeerTableCFs(ID_ONE, tableCFs);
-      assertTrue(false);
-    } catch (ReplicationException e) {
+      fail();
+    } catch (Exception e) {
     }
     tableCFs.clear();
     tableCFs.put(tab1, null);
@@ -355,8 +354,8 @@ public class TestReplicationAdmin {
       tableCFs.clear();
       tableCFs.put(tab2, null);
       admin.removePeerTableCFs(ID_ONE, tableCFs);
-      assertTrue(false);
-    } catch (ReplicationException e) {
+      fail();
+    } catch (Exception e) {
     }
     tableCFs.clear();
     tableCFs.put(tab2, new ArrayList<String>());
@@ -384,7 +383,6 @@ public class TestReplicationAdmin {
 
     // Add a valid peer
     admin.addPeer(ID_ONE, rpc, null);
-    admin.peerAdded(ID_ONE);
     rpc = admin.getPeerConfig(ID_ONE);
     assertTrue(rpc.replicateAllUserTables());
 
@@ -456,7 +454,6 @@ public class TestReplicationAdmin {
     ReplicationPeerConfig rpc = new ReplicationPeerConfig();
     rpc.setClusterKey(KEY_ONE);
     admin.addPeer(ID_ONE, rpc);
-    admin.peerAdded(ID_ONE);
     rpc = admin.getPeerConfig(ID_ONE);
     rpc.setReplicateAllUserTables(false);
     admin.updatePeerConfig(ID_ONE, rpc);
@@ -492,7 +489,6 @@ public class TestReplicationAdmin {
     ReplicationPeerConfig rpc = new ReplicationPeerConfig();
     rpc.setClusterKey(KEY_ONE);
     admin.addPeer(ID_ONE, rpc);
-    admin.peerAdded(ID_ONE);
 
     rpc = admin.getPeerConfig(ID_ONE);
     assertTrue(rpc.replicateAllUserTables());
@@ -524,7 +520,6 @@ public class TestReplicationAdmin {
     ReplicationPeerConfig rpc = new ReplicationPeerConfig();
     rpc.setClusterKey(KEY_ONE);
     admin.addPeer(ID_ONE, rpc);
-    admin.peerAdded(ID_ONE);
 
     rpc = admin.getPeerConfig(ID_ONE);
     assertTrue(rpc.replicateAllUserTables());
@@ -559,8 +554,8 @@ public class TestReplicationAdmin {
       rpc.setExcludeNamespaces(namespaces);
       rpc.setTableCFsMap(tableCfs);
       admin.addPeer(ID_ONE, rpc);
-      fail("Should throw ReplicationException, because exclude namespaces are conflict with table-cfs config");
-    } catch (ReplicationException e) {
+      fail("Should throw Exception, because exclude namespaces are conflict with table-cfs config");
+    } catch (Exception e) {
       // OK
       rpc.setExcludeNamespaces(null);
       rpc.setTableCFsMap(null);
@@ -570,8 +565,8 @@ public class TestReplicationAdmin {
       rpc.setExcludeNamespaces(namespaces);
       rpc.setNamespaces(namespaces);
       admin.addPeer(ID_ONE, rpc);
-      fail("Should throw ReplicationException, because exclude namespaces are conflict with namespaces config");
-    } catch (ReplicationException e) {
+      fail("Should throw Exception, because exclude namespaces are conflict with namespaces config");
+    } catch (Exception e) {
       // OK
       rpc.setExcludeNamespaces(null);
       rpc.setNamespaces(null);
@@ -581,8 +576,8 @@ public class TestReplicationAdmin {
       rpc.setNamespaces(namespaces);
       rpc.setExcludeTableCFsMap(tableCfs);
       admin.addPeer(ID_ONE, rpc);
-      fail("Should throw ReplicationException, because namespaces are conflict with exclude table-cfs config");
-    } catch (ReplicationException e) {
+      fail("Should throw Exception, because namespaces are conflict with exclude table-cfs config");
+    } catch (Exception e) {
       // OK
       rpc.setNamespaces(null);
       rpc.setExcludeTableCFsMap(null);
@@ -592,8 +587,8 @@ public class TestReplicationAdmin {
       rpc.setTableCFsMap(tableCfs);
       rpc.setExcludeTableCFsMap(tableCfs);
       admin.addPeer(ID_ONE, rpc);
-      fail("Should throw ReplicationException, because table-cfs are conflict with exclude table-cfs config");
-    } catch (ReplicationException e) {
+      fail("Should throw Exception, because table-cfs are conflict with exclude table-cfs config");
+    } catch (Exception e) {
       // OK
       rpc.setTableCFsMap(null);
       rpc.setExcludeTableCFsMap(null);
@@ -601,7 +596,7 @@ public class TestReplicationAdmin {
   }
 
   @Test
-  public void testNamespacesAndTableCfsConfigConflict() throws ReplicationException {
+  public void testNamespacesAndTableCfsConfigConflict() throws Exception {
     String ns1 = "ns1";
     String ns2 = "ns2";
     TableName tab1 = TableName.valueOf("ns1:tabl");
@@ -610,7 +605,6 @@ public class TestReplicationAdmin {
     ReplicationPeerConfig rpc = new ReplicationPeerConfig();
     rpc.setClusterKey(KEY_ONE);
     admin.addPeer(ID_ONE, rpc);
-    admin.peerAdded(ID_ONE);
     rpc = admin.getPeerConfig(ID_ONE);
     rpc.setReplicateAllUserTables(false);
     admin.updatePeerConfig(ID_ONE, rpc);
@@ -624,9 +618,9 @@ public class TestReplicationAdmin {
     tableCfs.put(tab1, new ArrayList<String>());
     try {
       admin.setPeerTableCFs(ID_ONE, tableCfs);
-      fail("Should throw ReplicationException, because table " + tab1 + " conflict with namespace "
+      fail("Should throw Exception, because table " + tab1 + " conflict with namespace "
           + ns1);
-    } catch (ReplicationException e) {
+    } catch (Exception e) {
       // OK
     }
 
@@ -641,9 +635,9 @@ public class TestReplicationAdmin {
     rpc.setNamespaces(namespaces);
     try {
       admin.updatePeerConfig(ID_ONE, rpc);
-      fail("Should throw ReplicationException, because namespace " + ns2 + " conflict with table "
+      fail("Should throw Exception, because namespace " + ns2 + " conflict with table "
           + tab2);
-    } catch (ReplicationException e) {
+    } catch (Exception e) {
       // OK
     }
 

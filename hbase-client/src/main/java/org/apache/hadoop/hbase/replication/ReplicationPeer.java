@@ -29,7 +29,7 @@ import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseInterfaceAudience;
 import org.apache.hadoop.hbase.TableName;
-import org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos;
+import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos;
 
 /**
  * ReplicationPeer manages enabled / disabled state for the peer.
@@ -51,31 +51,31 @@ public interface ReplicationPeer {
    */
   @InterfaceAudience.LimitedPrivate(HBaseInterfaceAudience.REPLICATION)
   enum PeerProtocol {
-    NATIVE(ZooKeeperProtos.ReplicationPeer.Protocol.NATIVE, null),
-    THRIFT(ZooKeeperProtos.ReplicationPeer.Protocol.THRIFT,
+    NATIVE(ReplicationProtos.ReplicationPeer.Protocol.NATIVE, null),
+    THRIFT(ReplicationProtos.ReplicationPeer.Protocol.THRIFT,
         "org.apache.hadoop.hbase.replication.thrift.ThriftHBaseReplicationEndpoint");
 
-    private static final Map<ZooKeeperProtos.ReplicationPeer.Protocol, PeerProtocol> map =
+    private static final Map<ReplicationProtos.ReplicationPeer.Protocol, PeerProtocol> map =
         Maps.uniqueIndex(Arrays.asList(PeerProtocol.values()),
-            new Function<PeerProtocol, ZooKeeperProtos.ReplicationPeer.Protocol>() {
-          @Override public ZooKeeperProtos.ReplicationPeer.Protocol apply(PeerProtocol input) {
+            new Function<PeerProtocol, ReplicationProtos.ReplicationPeer.Protocol>() {
+          @Override public ReplicationProtos.ReplicationPeer.Protocol apply(PeerProtocol input) {
             return input.getProtocol();
           }
         });
 
-    private final ZooKeeperProtos.ReplicationPeer.Protocol protocol;
+    private final ReplicationProtos.ReplicationPeer.Protocol protocol;
     private final String replicationEndpointImpl;
 
-    PeerProtocol(ZooKeeperProtos.ReplicationPeer.Protocol protocol, String replicationEndpointImpl) {
+    PeerProtocol(ReplicationProtos.ReplicationPeer.Protocol protocol, String replicationEndpointImpl) {
       this.protocol = protocol;
       this.replicationEndpointImpl = replicationEndpointImpl;
     }
 
-    public ZooKeeperProtos.ReplicationPeer.Protocol getProtocol() {
+    public ReplicationProtos.ReplicationPeer.Protocol getProtocol() {
       return protocol;
     }
 
-    public static PeerProtocol fromProtobuf(ZooKeeperProtos.ReplicationPeer.Protocol protocol) {
+    public static PeerProtocol fromProtobuf(ReplicationProtos.ReplicationPeer.Protocol protocol) {
       return map.get(protocol);
     }
 

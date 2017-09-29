@@ -173,7 +173,6 @@ public class TestReplicationAdminWithClusters extends TestReplicationBase {
     rpc.getConfiguration().put("key1", "value1");
 
     admin.addPeer(peerId, rpc);
-    admin.peerAdded(peerId);
 
     rpc.getConfiguration().put("key1", "value2");
     admin.updatePeerConfig(peerId, rpc);

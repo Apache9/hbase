@@ -157,6 +157,20 @@ import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.TruncateTableRequ
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.TruncateTableResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.UnassignRegionRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.UnassignRegionResponse;
+import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.AddReplicationPeerRequest;
+import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.AddReplicationPeerResponse;
+import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.DisableReplicationPeerRequest;
+import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.DisableReplicationPeerResponse;
+import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.EnableReplicationPeerRequest;
+import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.EnableReplicationPeerResponse;
+import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetReplicationPeerConfigRequest;
+import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetReplicationPeerConfigResponse;
+import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ListReplicationPeersRequest;
+import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ListReplicationPeersResponse;
+import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.RemoveReplicationPeerRequest;
+import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.RemoveReplicationPeerResponse;
+import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.UpdateReplicationPeerConfigRequest;
+import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.UpdateReplicationPeerConfigResponse;
 import org.apache.hadoop.hbase.quotas.ThrottlingException;
 import org.apache.hadoop.hbase.regionserver.RegionServerStoppedException;
 import org.apache.hadoop.hbase.security.User;
@@ -1785,6 +1799,49 @@ public class HConnectionImplementation implements HConnection, Closeable {
       public SwitchThrottleResponse switchThrottle(RpcController controller,
           SwitchThrottleRequest request) throws ServiceException {
         return stub.switchThrottle(controller, request);
+      }
+
+      @Override
+      public AddReplicationPeerResponse addReplicationPeer(RpcController controller,
+          AddReplicationPeerRequest request) throws ServiceException {
+        return stub.addReplicationPeer(controller, request);
+      }
+
+      @Override
+      public RemoveReplicationPeerResponse removeReplicationPeer(RpcController controller,
+          RemoveReplicationPeerRequest request) throws ServiceException {
+        return stub.removeReplicationPeer(controller, request);
+      }
+
+      @Override
+      public EnableReplicationPeerResponse enableReplicationPeer(RpcController controller,
+          EnableReplicationPeerRequest request) throws ServiceException {
+        return stub.enableReplicationPeer(controller, request);
+      }
+
+      @Override
+      public DisableReplicationPeerResponse disableReplicationPeer(RpcController controller,
+          DisableReplicationPeerRequest request) throws ServiceException {
+        return stub.disableReplicationPeer(controller, request);
+      }
+
+      @Override
+      public GetReplicationPeerConfigResponse getReplicationPeerConfig(RpcController controller,
+          GetReplicationPeerConfigRequest request) throws ServiceException {
+        return stub.getReplicationPeerConfig(controller, request);
+      }
+
+      @Override
+      public UpdateReplicationPeerConfigResponse updateReplicationPeerConfig(
+          RpcController controller, UpdateReplicationPeerConfigRequest request)
+          throws ServiceException {
+        return stub.updateReplicationPeerConfig(controller, request);
+      }
+
+      @Override
+      public ListReplicationPeersResponse listReplicationPeers(RpcController controller,
+          ListReplicationPeersRequest request) throws ServiceException {
+        return stub.listReplicationPeers(controller, request);
       }
     };
   }

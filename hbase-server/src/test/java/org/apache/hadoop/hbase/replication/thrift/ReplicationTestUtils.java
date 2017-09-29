@@ -28,7 +28,7 @@ import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.client.*;
 import org.apache.hadoop.hbase.client.replication.ReplicationAdmin;
-import org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos;
+import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos;
 import org.apache.hadoop.hbase.replication.ReplicationException;
 import org.apache.hadoop.hbase.replication.ReplicationPeer;
 import org.apache.hadoop.hbase.replication.ReplicationPeerConfig;
@@ -103,7 +103,7 @@ public class ReplicationTestUtils {
 
     ReplicationAdmin admin = new ReplicationAdmin(configuration);
     String endpoint = HBaseInterClusterReplicationEndpoint.class.getName();
-    if (protocol.getProtocol() == ZooKeeperProtos.ReplicationPeer.Protocol.THRIFT) {
+    if (protocol.getProtocol() == ReplicationProtos.ReplicationPeer.Protocol.THRIFT) {
       endpoint = ThriftHBaseReplicationEndpoint.class.getName();
     }
     ReplicationPeerConfig config =

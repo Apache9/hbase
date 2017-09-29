@@ -47,6 +47,7 @@ import org.apache.hadoop.hbase.client.RegionCoprocessorServiceExec;
 import org.apache.hadoop.hbase.client.Row;
 import org.apache.hadoop.hbase.client.RowMutations;
 import org.apache.hadoop.hbase.client.Scan;
+import org.apache.hadoop.hbase.client.replication.ReplicationSerDeHelper;
 import org.apache.hadoop.hbase.exceptions.DeserializationException;
 import org.apache.hadoop.hbase.filter.ByteArrayComparable;
 import org.apache.hadoop.hbase.protobuf.generated.AccessControlProtos;
@@ -121,8 +122,17 @@ import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.SwitchThrottleReq
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.TruncateTableRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.UnassignRegionRequest;
 import org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.GetLastFlushedSequenceIdRequest;
+import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos;
+import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.AddReplicationPeerRequest;
+import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.DisableReplicationPeerRequest;
+import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.EnableReplicationPeerRequest;
+import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetReplicationPeerConfigRequest;
+import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ListReplicationPeersRequest;
+import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.RemoveReplicationPeerRequest;
+import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.UpdateReplicationPeerConfigRequest;
 import org.apache.hadoop.hbase.protobuf.generated.SnapshotProtos.SnapshotDescription;
 import org.apache.hadoop.hbase.quotas.ThrottleState;
+import org.apache.hadoop.hbase.replication.ReplicationPeerConfig;
 import org.apache.hadoop.hbase.util.ByteStringer;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.Pair;
@@ -1633,5 +1643,64 @@ public final class RequestConverter {
 
   public static DeleteSnapshotRequest buildDeleteSnapshotRequest(SnapshotDescription snapshot) {
     return DeleteSnapshotRequest.newBuilder().setSnapshot(snapshot).build();
+  }
+
+  public static ReplicationProtos.AddReplicationPeerRequest buildAddReplicationPeerRequest(
+      String peerId, ReplicationPeerConfig peerConfig) {
+    AddReplicationPeerRequest.Builder builder = AddReplicationPeerRequest.newBuilder();
+    builder.setPeerId(peerId);
+    builder.setPeerConfig(ReplicationSerDeHelper.convert(peerConfig));
+    return builder.build();
+  }
+
+  public static ReplicationProtos.RemoveReplicationPeerRequest buildRemoveReplicationPeerRequest(
+      String peerId) {
+    RemoveReplicationPeerRequest.Builder builder = RemoveReplicationPeerRequest.newBuilder();
+    builder.setPeerId(peerId);
+    return builder.build();
+  }
+
+  public static ReplicationProtos.EnableReplicationPeerRequest buildEnableReplicationPeerRequest(
+      String peerId) {
+    EnableReplicationPeerRequest.Builder builder = EnableReplicationPeerRequest.newBuilder();
+    builder.setPeerId(peerId);
+    return builder.build();
+  }
+
+  public static ReplicationProtos.DisableReplicationPeerRequest buildDisableReplicationPeerRequest(
+      String peerId) {
+    DisableReplicationPeerRequest.Builder builder = DisableReplicationPeerRequest.newBuilder();
+    builder.setPeerId(peerId);
+    return builder.build();
+  }
+
+  public static GetReplicationPeerConfigRequest buildGetReplicationPeerConfigRequest(String peerId) {
+    GetReplicationPeerConfigRequest.Builder builder = GetReplicationPeerConfigRequest.newBuilder();
+    builder.setPeerId(peerId);
+    return builder.build();
+  }
+
+  public static UpdateReplicationPeerConfigRequest buildUpdateReplicationPeerConfigRequest(
+      String peerId, ReplicationPeerConfig peerConfig) {
+    UpdateReplicationPeerConfigRequest.Builder builder = UpdateReplicationPeerConfigRequest
+        .newBuilder();
+    builder.setPeerId(peerId);
+    builder.setPeerConfig(ReplicationSerDeHelper.convert(peerConfig));
+    return builder.build();
+  }
+
+  /**
+   * @deprecated Use {@link #buildListReplicationPeersRequest(Optional)} instead.
+   */
+  @Deprecated
+  public static ListReplicationPeersRequest buildListReplicationPeersRequest(Pattern pattern) {
+    return buildListReplicationPeersRequest(Optional.ofNullable(pattern));
+  }
+
+  public static ListReplicationPeersRequest buildListReplicationPeersRequest(
+      Optional<Pattern> pattern) {
+    ListReplicationPeersRequest.Builder builder = ListReplicationPeersRequest.newBuilder();
+    pattern.ifPresent(p -> builder.setRegex(p.toString()));
+    return builder.build();
   }
 }

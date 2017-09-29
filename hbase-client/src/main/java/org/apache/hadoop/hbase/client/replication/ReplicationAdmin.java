@@ -23,44 +23,27 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
+import java.util.TreeMap;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Abortable;
-import org.apache.hadoop.hbase.HBaseConfiguration;
-import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HConstants;
-import org.apache.hadoop.hbase.HTableDescriptor;
+import org.apache.hadoop.hbase.ReplicationPeerNotFoundException;
 import org.apache.hadoop.hbase.TableName;
-import org.apache.hadoop.hbase.TableNotFoundException;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.classification.InterfaceStability;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HConnection;
 import org.apache.hadoop.hbase.client.HConnectionManager;
-import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.replication.ReplicationException;
-import org.apache.hadoop.hbase.replication.ReplicationFactory;
-import org.apache.hadoop.hbase.replication.ReplicationPeer;
 import org.apache.hadoop.hbase.replication.ReplicationPeerConfig;
-import org.apache.hadoop.hbase.replication.ReplicationPeerZKImpl;
-import org.apache.hadoop.hbase.replication.ReplicationPeers;
-import org.apache.hadoop.hbase.replication.ReplicationQueuesClient;
-import org.apache.hadoop.hbase.util.Pair;
-import org.apache.hadoop.hbase.zookeeper.ZKUtil;
+import org.apache.hadoop.hbase.replication.ReplicationPeerDescription;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
-import org.apache.zookeeper.KeeperException;
-import org.apache.zookeeper.data.Stat;
-
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.Lists;
 
 /**
  * <p>
@@ -100,10 +83,7 @@ public class ReplicationAdmin implements Closeable {
   public static final String REPLICATIONSERIAL = Integer.toString(HConstants.REPLICATION_SCOPE_SERIAL);
 
   private final HConnection connection;
-  // TODO: replication should be managed by master. All the classes except ReplicationAdmin should
-  // be moved to hbase-server. Resolve it in HBASE-11392.
-  private final ReplicationQueuesClient replicationQueuesClient;
-  private final ReplicationPeers replicationPeers;
+
   /**
    * A watcher used by replicationPeers and replicationQueuesClient. Keep reference so can dispose
    * on {@link #close()}.
@@ -111,6 +91,8 @@ public class ReplicationAdmin implements Closeable {
   private final ZooKeeperWatcher zkw;
 
   private final boolean cleanupConnectionOnClose; // close the connection in close()
+
+  private final HBaseAdmin admin;
 
   /**
    * Constructor that creates a connection to the local ZooKeeper ensemble. This will close the
@@ -139,14 +121,10 @@ public class ReplicationAdmin implements Closeable {
     }
     ZooKeeperWatcher zkw = null;
     boolean succeed = false;
+    HBaseAdmin admin = null;
     try {
+      admin = new HBaseAdmin(connection);
       zkw = createZooKeeperWatcher(conf);
-      this.replicationQueuesClient = ReplicationFactory.getReplicationQueuesClient(zkw, conf,
-        connection);
-      this.replicationQueuesClient.init();
-      this.replicationPeers = ReplicationFactory.getReplicationPeers(zkw, conf,
-        replicationQueuesClient, connection);
-      this.replicationPeers.init();
       succeed = true;
     } catch (Exception exception) {
       if (exception instanceof IOException) {
@@ -158,6 +136,7 @@ public class ReplicationAdmin implements Closeable {
       }
     } finally {
       if (!succeed) {
+        IOUtils.closeQuietly(admin);
         IOUtils.closeQuietly(zkw);
         if (cleanupConnectionOnClose) {
           IOUtils.closeQuietly(connection);
@@ -167,6 +146,7 @@ public class ReplicationAdmin implements Closeable {
     this.connection = connection;
     this.zkw = zkw;
     this.cleanupConnectionOnClose = cleanupConnectionOnClose;
+    this.admin = admin;
   }
 
   private ZooKeeperWatcher createZooKeeperWatcher(Configuration conf) throws IOException {
@@ -194,9 +174,12 @@ public class ReplicationAdmin implements Closeable {
    * A map from tableName to column family names. An empty collection can be passed
    * to indicate replicating all column families. Pass null for replicating all table and column
    * families
+   * @throws IOException 
    */
+  @Deprecated
   public void addPeer(String id, ReplicationPeerConfig peerConfig,
-      Map<TableName, ? extends Collection<String>> tableCfs) throws ReplicationException {
+      Map<TableName, ? extends Collection<String>> tableCfs) throws ReplicationException,
+      IOException {
     if (tableCfs != null) {
       peerConfig.setTableCFsMap(tableCfs);
     }
@@ -207,65 +190,84 @@ public class ReplicationAdmin implements Closeable {
    * Add a new remote slave cluster for replication.
    * @param id a short name that identifies the cluster
    * @param peerConfig configuration for the replication slave cluster
+   * @throws IOException 
    */
-  public void addPeer(String id, ReplicationPeerConfig peerConfig) throws ReplicationException {
-    checkPeerConfigConflict(peerConfig);
-    this.replicationPeers.addPeer(id, peerConfig);
+  @Deprecated
+  public void addPeer(String id, ReplicationPeerConfig peerConfig) throws ReplicationException,
+      IOException {
+    admin.addReplicationPeer(id, peerConfig);
   }
 
   /**
    * Removes a peer cluster and stops the replication to it.
    * @param id a short name that identifies the cluster
+   * @throws IOException 
    */
-  public void removePeer(String id) throws ReplicationException {
-    this.replicationPeers.removePeer(id);
+  @Deprecated
+  public void removePeer(String id) throws ReplicationException, IOException {
+    admin.removeReplicationPeer(id);
   }
 
   /**
    * Restart the replication stream to the specified peer.
    * @param id a short name that identifies the cluster
+   * @throws IOException 
    */
-  public void enablePeer(String id) throws ReplicationException {
-    this.replicationPeers.enablePeer(id);
+  @Deprecated
+  public void enablePeer(String id) throws ReplicationException, IOException {
+    admin.enableReplicationPeer(id);
   }
 
   /**
    * Stop the replication stream to the specified peer.
    * @param id a short name that identifies the cluster
+   * @throws IOException 
    */
-  public void disablePeer(String id) throws ReplicationException {
-    this.replicationPeers.disablePeer(id);
+  @Deprecated
+  public void disablePeer(String id) throws ReplicationException, IOException {
+    admin.disableReplicationPeer(id);
   }
 
   /**
    * Get the number of slave clusters the local cluster has.
    * @return number of slave clusters
+   * @throws IOException 
    */
-  public int getPeersCount() {
-    return this.replicationPeers.getAllPeerIds().size();
+  @Deprecated
+  public int getPeersCount() throws IOException {
+    return admin.listReplicationPeers().size();
   }
 
-  public Map<String, ReplicationPeerConfig> listPeerConfigs() {
-    return this.replicationPeers.getAllPeerConfigs();
+  @Deprecated
+  public Map<String, ReplicationPeerConfig> listPeerConfigs() throws IOException {
+    List<ReplicationPeerDescription> peers = admin.listReplicationPeers();
+    Map<String, ReplicationPeerConfig> result = new TreeMap<>();
+    for (ReplicationPeerDescription peer : peers) {
+      result.put(peer.getPeerId(), peer.getPeerConfig());
+    }
+    return result;
   }
 
-  public ReplicationPeerConfig getPeerConfig(String id) throws ReplicationException {
-    return this.replicationPeers.getReplicationPeerConfig(id);
+  @Deprecated
+  public ReplicationPeerConfig getPeerConfig(String id) throws ReplicationException, IOException {
+    return admin.getReplicationPeerConfig(id);
   }
 
+  @Deprecated
   public void updatePeerConfig(String id, ReplicationPeerConfig peerConfig)
-      throws ReplicationException {
-    checkPeerConfigConflict(peerConfig);
-    this.replicationPeers.updatePeerConfig(id, peerConfig);
+      throws ReplicationException, IOException {
+    admin.updateReplicationPeerConfig(id, peerConfig);
   }
 
   /**
    * Get the replicable table-cf config of the specified peer.
    * @param id a short name that identifies the cluster
+   * @throws IOException 
    */
+  @Deprecated
   public Map<TableName, List<String>> getPeerTableCFs(String id)
-      throws ReplicationException {
-    return this.replicationPeers.getPeerTableCFsConfig(id);
+      throws ReplicationException, IOException {
+    return getPeerConfig(id).getTableCFsMap();
   }
 
   /**
@@ -273,39 +275,12 @@ public class ReplicationAdmin implements Closeable {
    * @param id a short that identifies the cluster
    * @param tableCfs A map from tableName to column family names
    * @throws ReplicationException
+   * @throws IOException 
    */
+  @Deprecated
   public void appendPeerTableCFs(String id, Map<TableName, ? extends Collection<String>> tableCfs)
-      throws ReplicationException {
-    if (tableCfs == null) {
-      throw new ReplicationException("tableCfs is null");
-    }
-    Map<TableName, List<String>> preTableCfs = this.replicationPeers.getPeerTableCFsConfig(id);
-    if (preTableCfs == null) {
-      setPeerTableCFs(id, tableCfs);
-      return;
-    }
-
-    for (Map.Entry<TableName, ? extends Collection<String>> entry : tableCfs.entrySet()) {
-      TableName table = entry.getKey();
-      Collection<String> appendCfs = entry.getValue();
-      if (preTableCfs.containsKey(table)) {
-        List<String> cfs = preTableCfs.get(table);
-        if (cfs == null || appendCfs == null || appendCfs.isEmpty()) {
-          preTableCfs.put(table, null);
-        } else {
-          Set<String> cfSet = new HashSet<String>(cfs);
-          cfSet.addAll(appendCfs);
-          preTableCfs.put(table, Lists.newArrayList(cfSet));
-        }
-      } else {
-        if (appendCfs == null || appendCfs.isEmpty()) {
-          preTableCfs.put(table, null);
-        } else {
-          preTableCfs.put(table, Lists.newArrayList(appendCfs));
-        }
-      }
-    }
-    setPeerTableCFs(id, preTableCfs);
+      throws ReplicationException, IOException {
+    admin.appendReplicationPeerTableCFs(id, tableCfs);
   }
 
   /**
@@ -313,44 +288,12 @@ public class ReplicationAdmin implements Closeable {
    * @param id a short name that identifies the cluster
    * @param cfs A map from tableName to column family names
    * @throws ReplicationException
+   * @throws IOException 
    */
+  @Deprecated
   public void removePeerTableCFs(String id, Map<TableName, ? extends Collection<String>> tableCfs)
-      throws ReplicationException {
-    if (tableCfs == null) {
-      throw new ReplicationException("tableCfs is null");
-    }
-
-    Map<TableName, List<String>> preTableCfs = this.replicationPeers.getPeerTableCFsConfig(id);
-    if (preTableCfs == null) {
-      throw new ReplicationException("Table-Cfs for peer" + id + " is null");
-    }
-    for (Map.Entry<TableName, ? extends Collection<String>> entry: tableCfs.entrySet()) {
-      TableName table = entry.getKey();
-      Collection<String> removeCfs = entry.getValue();
-      if (preTableCfs.containsKey(table)) {
-        List<String> cfs = preTableCfs.get(table);
-        if (cfs == null && (removeCfs == null || removeCfs.isEmpty())) {
-          preTableCfs.remove(table);
-        } else if (cfs != null && (removeCfs != null && !removeCfs.isEmpty())) {
-          Set<String> cfSet = new HashSet<String>(cfs);
-          cfSet.removeAll(removeCfs);
-          if (cfSet.isEmpty()) {
-            preTableCfs.remove(table);
-          } else {
-            preTableCfs.put(table, Lists.newArrayList(cfSet));
-          }
-        } else if (cfs == null && (removeCfs != null && !removeCfs.isEmpty())) {
-          throw new ReplicationException("Cannot remove cf of table: " + table
-              + " which doesn't specify cfs from table-cfs config in peer: " + id);
-        } else if (cfs != null && (removeCfs == null || removeCfs.isEmpty())) {
-          throw new ReplicationException("Cannot remove table: " + table
-              + " which has specified cfs from table-cfs config in peer: " + id);
-        }
-      } else {
-        throw new ReplicationException("No table: " + table + " in table-cfs config of peer: " + id);
-      }
-    }
-    setPeerTableCFs(id, preTableCfs);
+      throws ReplicationException, IOException {
+    admin.removeReplicationPeerTableCFs(id, tableCfs);
   }
 
   /**
@@ -360,22 +303,27 @@ public class ReplicationAdmin implements Closeable {
    * A map from tableName to column family names. An empty collection can be passed
    * to indicate replicating all column families. Pass null for replicating all table and column
    * families
+   * @throws IOException 
    */
+  @Deprecated
   public void setPeerTableCFs(String id, Map<TableName, ? extends Collection<String>> tableCfs)
-      throws ReplicationException {
-    ReplicationPeerConfig peerConfig = this.replicationPeers.getReplicationPeerConfig(id);
+      throws ReplicationException, IOException {
+    ReplicationPeerConfig peerConfig = getPeerConfig(id);
     peerConfig.setTableCFsMap(tableCfs);
-    checkPeerConfigConflict(peerConfig);
-    this.replicationPeers.setPeerTableCFsConfig(id, tableCfs);
+    admin.updateReplicationPeerConfig(id, peerConfig);
   }
 
   /**
    * Set the replication source per node bandwidth for the specified peer
    * @param id a short name that identifies the cluster
    * @param bandwidth the replication source per node bandwidth
+   * @throws IOException 
    */
-  public void setPeerBandwidth(String id, long bandwidth) throws ReplicationException {
-    this.replicationPeers.setPeerBandwidth(id, bandwidth);
+  @Deprecated
+  public void setPeerBandwidth(String id, long bandwidth) throws ReplicationException, IOException {
+    ReplicationPeerConfig peerConfig = getPeerConfig(id);
+    peerConfig.setBandwidth(bandwidth);
+    admin.updateReplicationPeerConfig(id, peerConfig);
   }
 
   /**
@@ -383,19 +331,25 @@ public class ReplicationAdmin implements Closeable {
    * @param id String format of the Short name that identifies the peer,
    * an IllegalArgumentException is thrown if it doesn't exist
    * @return true if replication is enabled to that peer, false if it isn't
+   * @throws IOException 
    */
-  public boolean getPeerState(String id) throws ReplicationException {
-    return this.replicationPeers.getStatusOfPeerFromBackingStore(id);
+  @Deprecated
+  public boolean getPeerState(String id) throws ReplicationException, IOException {
+    List<ReplicationPeerDescription> peers = admin.listReplicationPeers(id);
+    if (peers.isEmpty() || !id.equals(peers.get(0).getPeerId())) {
+      throw new ReplicationPeerNotFoundException(id);
+    }
+    return peers.get(0).isEnabled();
   }
 
   @Override
   public void close() throws IOException {
+    IOUtils.closeQuietly(admin);
     IOUtils.closeQuietly(zkw);
     if (cleanupConnectionOnClose) {
       IOUtils.closeQuietly(connection);
     }
   }
-
 
   /**
    * Find all column families that are replicated from this cluster
@@ -408,27 +362,24 @@ public class ReplicationAdmin implements Closeable {
    *  2) the replicationType may indicate the host Cluster servers as Slave
    *     for the table:columnFam.
    */
+  @Deprecated
   public List<HashMap<String, String>> listReplicated() throws IOException {
-    List<HashMap<String, String>> replicationColFams = new ArrayList<HashMap<String, String>>();
-    HTableDescriptor[] tables = this.connection.listTables();
-
-    for (HTableDescriptor table : tables) {
-      HColumnDescriptor[] columns = table.getColumnFamilies();
-      String tableName = table.getNameAsString();
-      for (HColumnDescriptor column : columns) {
-        if (column.getScope() != HConstants.REPLICATION_SCOPE_LOCAL) {
-          // At this moment, the columfam is replicated to all peers
-          HashMap<String, String> replicationEntry = new HashMap<String, String>();
-          replicationEntry.put(TNAME, tableName);
-          replicationEntry.put(CFNAME, column.getNameAsString());
-          replicationEntry.put(REPLICATIONTYPE,
-              column.getScope() == HConstants.REPLICATION_SCOPE_GLOBAL ?
-                  REPLICATIONGLOBAL : REPLICATIONSERIAL);
-          replicationColFams.add(replicationEntry);
-        }
-      }
-    }
-
+    List<HashMap<String, String>> replicationColFams = new ArrayList<>();
+    admin.listReplicatedTableCFs().forEach(
+      (tableCFs) -> {
+        String table = tableCFs.getTable().getNameAsString();
+        tableCFs.getColumnFamilyMap()
+            .forEach(
+              (cf, scope) -> {
+                HashMap<String, String> replicationEntry = new HashMap<>();
+                replicationEntry.put(TNAME, table);
+                replicationEntry.put(CFNAME, cf);
+                replicationEntry.put(REPLICATIONTYPE,
+                  scope == HConstants.REPLICATION_SCOPE_GLOBAL ? REPLICATIONGLOBAL
+                      : REPLICATIONSERIAL);
+                replicationColFams.add(replicationEntry);
+              });
+      });
     return replicationColFams;
   }
 
@@ -437,28 +388,9 @@ public class ReplicationAdmin implements Closeable {
    * @param tableName name of the table
    * @throws IOException if a remote or network exception occurs
    */
+  @Deprecated
   public void enableTableRep(final TableName tableName) throws IOException {
-    if (tableName == null) {
-      throw new IllegalArgumentException("Table name cannot be null");
-    }
-    HBaseAdmin admin = null;
-    try {
-      admin = new HBaseAdmin(this.connection.getConfiguration());
-      if (!admin.tableExists(tableName)) {
-        throw new TableNotFoundException("Table '" + tableName.getNamespaceAsString()
-            + "' does not exists.");
-      }
-    } finally {
-      try {
-        admin.close();
-      } catch (IOException e) {
-        LOG.warn("Failed to close admin connection.");
-        LOG.debug("Details on failure to close admin connection.", e);
-      }
-    }
-    byte[][] splits = getTableSplitRowKeys(tableName);
-    checkAndSyncTableDescToPeers(tableName, splits);
-    setTableRep(tableName, true);
+    admin.enableTableReplication(tableName);
   }
 
   /**
@@ -466,308 +398,15 @@ public class ReplicationAdmin implements Closeable {
    * @param tableName name of the table
    * @throws IOException if a remote or network exception occurs
    */
+  @Deprecated
   public void disableTableRep(final TableName tableName) throws IOException {
-    if (tableName == null) {
-      throw new IllegalArgumentException("Table name is null");
-    }
-
-    HBaseAdmin admin = null;
-    try {
-      admin = new HBaseAdmin(this.connection.getConfiguration());
-      if (!admin.tableExists(tableName)) {
-        throw new TableNotFoundException("Table '" + tableName.getNamespaceAsString()
-            + "' does not exists.");
-      }
-    } finally {
-      try {
-        admin.close();
-      } catch (IOException e) {
-        LOG.warn("Failed to close admin connection.");
-        LOG.debug("Details on failure to close admin connection.", e);
-      }
-    }
-    setTableRep(tableName, false);
+    admin.disableTableReplication(tableName);
   }
 
-  /**
-   * Get the split row keys of table
-   * @param tableName table name
-   * @return array of split row keys
-   * @throws IOException
-   */
-  private byte[][] getTableSplitRowKeys(TableName tableName) throws IOException {
-    HTable table = null;
-    try {
-      table = new HTable(this.connection.getConfiguration(), tableName);
-      byte[][] startKeys = table.getStartKeys();
-      if (startKeys.length == 1) {
-        return null;
-      }
-      byte[][] splits = new byte[startKeys.length - 1][];
-      for (int i = 1; i < startKeys.length; i++) {
-        splits[i - 1] = startKeys[i];
-      }
-      return splits;
-    } finally {
-      if (table != null) {
-        try {
-          table.close();
-        } catch (IOException e) {
-          LOG.warn("Unable to close table");
-        }
-      }
-    }
-  }
-
-  /**
-   * Connect to peer and check the table descriptor on peer:
-   * <ol>
-   * <li>Create the same table on peer when not exist.</li>
-   * <li>Throw exception if the table exists on peer cluster but descriptors are not same.</li>
-   * </ol>
-   * @param tableName name of the table to sync to the peer
-   * @param splits table split keys
-   * @throws IOException
-   */
-  private void checkAndSyncTableDescToPeers(final TableName tableName, final byte[][] splits)
-      throws IOException {
-    List<ReplicationPeer> repPeers = listValidReplicationPeers();
-    if (repPeers == null || repPeers.size() <= 0) {
-      throw new IllegalArgumentException("Found no peer cluster for replication.");
-    }
-    for (ReplicationPeer repPeer : repPeers) {
-      Configuration peerConf = repPeer.getConfiguration();
-      HTableDescriptor htd = null;
-      HBaseAdmin repHBaseAdmin = null;
-      try {
-        repHBaseAdmin = new HBaseAdmin(peerConf);
-        htd = this.connection.getHTableDescriptor(tableName);
-        HTableDescriptor peerHtd = null;
-        if (!repHBaseAdmin.tableExists(tableName)) {
-          repHBaseAdmin.createTable(htd, splits);
-        } else {
-          peerHtd = repHBaseAdmin.getTableDescriptor(tableName);
-          if (peerHtd == null) {
-            throw new IllegalArgumentException("Failed to get table descriptor for table "
-                + tableName.getNameAsString() + " from peer cluster " + repPeer.getId());
-          } else if (!peerHtd.equals(htd)) {
-            throw new IllegalArgumentException("Table " + tableName.getNameAsString()
-                + " exists in peer cluster " + repPeer.getId()
-                + ", but the table descriptors are not same when comapred with source cluster."
-                + " Thus can not enable the table's replication switch.");
-          }
-        }
-      } finally {
-        if (repHBaseAdmin != null) {
-          try {
-            repHBaseAdmin.close();
-          } catch (IOException e) {
-            LOG.warn("Failed to close admin connection.");
-            LOG.debug("Details on failure to close admin connection.", e);
-          }
-        }
-      }
-    }
-  }
-
-  @VisibleForTesting
-  public void peerAdded(String id) throws ReplicationException {
-    this.replicationPeers.peerAdded(id);
-  }
-
-  @VisibleForTesting
-  private List<ReplicationPeer> listValidReplicationPeers() {
-    Map<String, ReplicationPeerConfig> peers = listPeerConfigs();
-    if (peers == null || peers.size() <= 0) {
-      return null;
-    }
-    List<ReplicationPeer> validPeers = new ArrayList<ReplicationPeer>(peers.size());
-    for (Entry<String, ReplicationPeerConfig> peerEntry : peers.entrySet()) {
-      String peerId = peerEntry.getKey();
-      String clusterKey = peerEntry.getValue().getClusterKey();
-      Configuration peerConf = new Configuration(this.connection.getConfiguration());
-      Stat s = null;
-      try {
-        ZKUtil.applyClusterKeyToConf(peerConf, clusterKey);
-        Pair<ReplicationPeerConfig, Configuration> pair = this.replicationPeers.getPeerConf(peerId);
-        ReplicationPeer peer = new ReplicationPeerZKImpl(zkw, peerConf, peerId, pair.getFirst(),
-            this.connection);
-        s = zkw.getRecoverableZooKeeper().exists(peerConf.get(HConstants.ZOOKEEPER_ZNODE_PARENT),
-              null);
-        if (null == s) {
-          LOG.info(peerId + ' ' + clusterKey + " is invalid now.");
-          continue;
-        }
-        validPeers.add(peer);
-      } catch (ReplicationException e) {
-        LOG.warn("Failed to get valid replication peers. "
-            + "Error connecting to peer cluster with peerId=" + peerId);
-        LOG.debug("Failure details to get valid replication peers.", e);
-        continue;
-      } catch (KeeperException e) {
-        LOG.warn("Failed to get valid replication peers. KeeperException code="
-            + e.code().intValue());
-        LOG.debug("Failure details to get valid replication peers.", e);
-        continue;
-      } catch (InterruptedException e) {
-        LOG.warn("Failed to get valid replication peers due to InterruptedException.");
-        LOG.debug("Failure details to get valid replication peers.", e);
-        Thread.currentThread().interrupt();
-        continue;
-      } catch (IOException e) {
-        LOG.warn("Failed to get valid replication peers due to IOException.");
-        LOG.debug("Failure details to get valid replication peers.", e);
-        continue;
-      }
-    }
-    return validPeers;
-  }
-
-  /**
-   * Set the table's replication switch if the table's replication switch is already not set.
-   * @param tableName name of the table
-   * @param isRepEnabled is replication switch enable or disable
-   * @throws IOException if a remote or network exception occurs
-   */
-  private void setTableRep(final TableName tableName, boolean isRepEnabled) throws IOException {
-    HBaseAdmin admin = null;
-    try {
-      admin = new HBaseAdmin(this.connection.getConfiguration());
-      HTableDescriptor htd = admin.getTableDescriptor(tableName);
-      if (isTableRepEnabled(htd) ^ isRepEnabled) {
-        boolean isOnlineSchemaUpdateEnabled =
-            this.connection.getConfiguration()
-                .getBoolean("hbase.online.schema.update.enable", true);
-        if (!isOnlineSchemaUpdateEnabled) {
-          admin.disableTable(tableName);
-        }
-        for (HColumnDescriptor hcd : htd.getFamilies()) {
-          hcd.setScope(isRepEnabled ? HConstants.REPLICATION_SCOPE_GLOBAL
-              : HConstants.REPLICATION_SCOPE_LOCAL);
-        }
-        admin.modifyTable(tableName, htd);
-        if (!isOnlineSchemaUpdateEnabled) {
-          admin.enableTable(tableName);
-        }
-      }
-    } finally {
-      if (admin != null) {
-        try {
-          admin.close();
-        } catch (IOException e) {
-          LOG.warn("Failed to close admin connection.");
-          LOG.debug("Details on failure to close admin connection.", e);
-        }
-      }
-    }
-  }
-
-  /**
-   * @param htd table descriptor details for the table to check
-   * @return true if table's replication switch is enabled
-   */
-  private boolean isTableRepEnabled(HTableDescriptor htd) {
-    for (HColumnDescriptor hcd : htd.getFamilies()) {
-      if (hcd.getScope() != HConstants.REPLICATION_SCOPE_GLOBAL
-          && hcd.getScope() != HConstants.REPLICATION_SCOPE_SERIAL) {
-        return false;
-      }
-    }
-    return true;
-  }
-
+  @Deprecated
   public void upgradeTableCFs() {
     ReplicationPeerConfigUpgrader tableCFsUpdater = new ReplicationPeerConfigUpgrader(zkw,
         connection.getConfiguration(), connection);
     tableCFsUpdater.copyTableCFs();
-  }
-
-  private void checkPeerConfigConflict(ReplicationPeerConfig peerConfig)
-      throws ReplicationException {
-    if (peerConfig.replicateAllUserTables()) {
-      if ((peerConfig.getNamespaces() != null && !peerConfig.getNamespaces().isEmpty())
-          || (peerConfig.getTableCFsMap() != null && !peerConfig.getTableCFsMap().isEmpty())) {
-        throw new ReplicationException(
-            "Need clean namespaces or table-cfs config fisrtly when you want replicate all cluster");
-      }
-      checkNamespacesAndTableCfsConfigConflict(peerConfig.getExcludeNamespaces(),
-        peerConfig.getExcludeTableCFsMap());
-    } else {
-      if ((peerConfig.getExcludeNamespaces() != null && !peerConfig.getExcludeNamespaces()
-          .isEmpty())
-          || (peerConfig.getExcludeTableCFsMap() != null && !peerConfig.getExcludeTableCFsMap()
-              .isEmpty())) {
-        throw new ReplicationException(
-            "Need clean exclude-namespaces or exclude-table-cfs config firstly when you want not replicate all cluster");
-      }
-      checkNamespacesAndTableCfsConfigConflict(peerConfig.getNamespaces(),
-        peerConfig.getTableCFsMap());
-    }
-  }
-
-  /**
-   * Set a namespace in the peer config means that all tables in this namespace
-   * will be replicated to the peer cluster.
-   *
-   * 1. If you already have set a namespace in the peer config, then you can't set any table
-   *    of this namespace to the peer config.
-   * 2. If you already have set a table in the peer config, then you can't set this table's
-   *    namespace to the peer config.
-   *
-   * @param namespaces
-   * @param tableCfs
-   * @throws ReplicationException
-   */
-  private void checkNamespacesAndTableCfsConfigConflict(Set<String> namespaces,
-      Map<TableName, ? extends Collection<String>> tableCfs) throws ReplicationException {
-    if (namespaces == null || namespaces.isEmpty()) {
-      return;
-    }
-    if (tableCfs == null || tableCfs.isEmpty()) {
-      return;
-    }
-    for (Map.Entry<TableName, ? extends Collection<String>> entry : tableCfs.entrySet()) {
-      TableName table = entry.getKey();
-      if (namespaces.contains(table.getNamespaceAsString())) {
-        throw new ReplicationException("Table " + table + " 's namespace "
-            + table.getNamespaceAsString() + " was already in namespaces config in peer");
-      }
-    }
-  }
-
-  public static void createTableForReplicatedPeers(Configuration conf, final HTableDescriptor desc,
-      byte[][] splitKeys) throws IOException {
-    if (!conf.getBoolean(HConstants.REPLICATION_ENABLE_KEY,
-      HConstants.REPLICATION_ENABLE_DEFAULT)) {
-      return;
-    }
-    ReplicationAdmin replicationAdmin = new ReplicationAdmin(conf);
-    try {
-      for (Entry<String, ReplicationPeerConfig> e : replicationAdmin.listPeerConfigs().entrySet()) {
-        ReplicationPeerConfig rpc = e.getValue();
-        boolean isFoundInPeer = false;
-        if (rpc.getNamespaces() != null
-            && rpc.getNamespaces().contains(desc.getTableName().getNamespaceAsString())) {
-          isFoundInPeer = true;
-        } else if (rpc.getTableCFsMap() != null
-            && rpc.getTableCFsMap().containsKey(desc.getTableName())) {
-          isFoundInPeer = true;
-        }
-        if (isFoundInPeer) {
-          Configuration peerConfig = HBaseConfiguration.create(conf);
-          ZKUtil.applyClusterKeyToConf(peerConfig, rpc.getClusterKey());
-          HBaseAdmin admin = new HBaseAdmin(peerConfig);
-          try {
-            if (!admin.tableExists(desc.getTableName())) {
-              admin.createTable(desc, splitKeys);
-            }
-          } finally {
-            admin.close();
-          }
-        }
-      }
-    } finally {
-      replicationAdmin.close();
-    }
   }
 }

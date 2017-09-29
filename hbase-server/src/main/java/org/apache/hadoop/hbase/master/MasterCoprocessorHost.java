@@ -36,6 +36,7 @@ import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.coprocessor.*;
 import org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.Quotas;
 import org.apache.hadoop.hbase.protobuf.generated.SnapshotProtos.SnapshotDescription;
+import org.apache.hadoop.hbase.replication.ReplicationPeerConfig;
 
 import java.io.IOException;
 import java.util.List;
@@ -960,6 +961,150 @@ public class MasterCoprocessorHost
       public void call(MasterObserver oserver, ObserverContext<MasterCoprocessorEnvironment> ctx)
           throws IOException {
         oserver.postSetNamespaceQuota(ctx, namespace, quotas);
+      }
+    });
+  }
+
+  public void preAddReplicationPeer(final String peerId, final ReplicationPeerConfig peerConfig)                                                                                                             
+      throws IOException {
+    execOperation(coprocessors.isEmpty() ? null : new CoprocessorOperation() {
+      @Override
+      public void call(MasterObserver observer, ObserverContext<MasterCoprocessorEnvironment> ctx) 
+          throws IOException {
+        observer.preAddReplicationPeer(ctx, peerId, peerConfig);
+      }
+    });
+  }
+
+  public void postAddReplicationPeer(final String peerId, final ReplicationPeerConfig peerConfig)
+      throws IOException {
+    execOperation(coprocessors.isEmpty() ? null : new CoprocessorOperation() {
+      @Override
+      public void call(MasterObserver observer, ObserverContext<MasterCoprocessorEnvironment> ctx) 
+          throws IOException {
+        observer.postAddReplicationPeer(ctx, peerId, peerConfig);
+      }
+    });
+  }
+
+  public void preRemoveReplicationPeer(final String peerId) throws IOException {
+    execOperation(coprocessors.isEmpty() ? null : new CoprocessorOperation() {
+      @Override
+      public void call(MasterObserver observer, ObserverContext<MasterCoprocessorEnvironment> ctx) 
+          throws IOException {
+        observer.preRemoveReplicationPeer(ctx, peerId);
+      }
+    });
+  }
+
+  public void postRemoveReplicationPeer(final String peerId) throws IOException {
+    execOperation(coprocessors.isEmpty() ? null : new CoprocessorOperation() {
+      @Override
+      public void call(MasterObserver observer, ObserverContext<MasterCoprocessorEnvironment> ctx) 
+          throws IOException {
+        observer.postRemoveReplicationPeer(ctx, peerId);
+      }
+    });
+  }
+
+  public void preEnableReplicationPeer(final String peerId) throws IOException {
+    execOperation(coprocessors.isEmpty() ? null : new CoprocessorOperation() {
+      @Override
+      public void call(MasterObserver observer, ObserverContext<MasterCoprocessorEnvironment> ctx)
+          throws IOException {
+        observer.preEnableReplicationPeer(ctx, peerId);
+      }
+    });
+  }
+
+  public void postEnableReplicationPeer(final String peerId) throws IOException {
+    execOperation(coprocessors.isEmpty() ? null : new CoprocessorOperation() {
+      @Override
+      public void call(MasterObserver observer, ObserverContext<MasterCoprocessorEnvironment> ctx)
+          throws IOException {
+        observer.postEnableReplicationPeer(ctx, peerId);
+      }
+    });
+  }
+
+  public void preDisableReplicationPeer(final String peerId) throws IOException {
+    execOperation(coprocessors.isEmpty() ? null : new CoprocessorOperation() {
+      @Override
+      public void call(MasterObserver observer, ObserverContext<MasterCoprocessorEnvironment> ctx)
+          throws IOException {
+        observer.preDisableReplicationPeer(ctx, peerId);
+      }
+    });
+  }
+
+  public void postDisableReplicationPeer(final String peerId) throws IOException {
+    execOperation(coprocessors.isEmpty() ? null : new CoprocessorOperation() {
+      @Override
+      public void call(MasterObserver observer, ObserverContext<MasterCoprocessorEnvironment> ctx)
+          throws IOException {
+        observer.postDisableReplicationPeer(ctx, peerId);
+      }
+    });
+  }
+
+  public void preGetReplicationPeerConfig(final String peerId) throws IOException {
+    execOperation(coprocessors.isEmpty() ? null : new CoprocessorOperation() {
+      @Override
+      public void call(MasterObserver observer, ObserverContext<MasterCoprocessorEnvironment> ctx)
+          throws IOException {
+        observer.preGetReplicationPeerConfig(ctx, peerId);
+      }
+    });
+  }
+
+  public void postGetReplicationPeerConfig(final String peerId) throws IOException {
+    execOperation(coprocessors.isEmpty() ? null : new CoprocessorOperation() {
+      @Override
+      public void call(MasterObserver observer, ObserverContext<MasterCoprocessorEnvironment> ctx)
+          throws IOException {
+        observer.postGetReplicationPeerConfig(ctx, peerId);
+      }
+    });
+  }
+
+  public void preUpdateReplicationPeerConfig(final String peerId,
+      final ReplicationPeerConfig peerConfig) throws IOException {
+    execOperation(coprocessors.isEmpty() ? null : new CoprocessorOperation() {
+      @Override
+      public void call(MasterObserver observer, ObserverContext<MasterCoprocessorEnvironment> ctx)
+          throws IOException {
+        observer.preUpdateReplicationPeerConfig(ctx, peerId, peerConfig);
+      }
+    });
+  }
+
+  public void postUpdateReplicationPeerConfig(final String peerId,
+      final ReplicationPeerConfig peerConfig) throws IOException {
+    execOperation(coprocessors.isEmpty() ? null : new CoprocessorOperation() {
+      @Override
+      public void call(MasterObserver observer, ObserverContext<MasterCoprocessorEnvironment> ctx)
+          throws IOException {
+        observer.postUpdateReplicationPeerConfig(ctx, peerId, peerConfig);
+      }
+    });
+  }
+
+  public void preListReplicationPeers(final String regex) throws IOException {
+    execOperation(coprocessors.isEmpty() ? null : new CoprocessorOperation() {
+      @Override
+      public void call(MasterObserver observer, ObserverContext<MasterCoprocessorEnvironment> ctx)
+          throws IOException {
+        observer.preListReplicationPeers(ctx, regex);
+      }
+    });
+  }
+
+  public void postListReplicationPeers(final String regex) throws IOException {
+    execOperation(coprocessors.isEmpty() ? null : new CoprocessorOperation() {
+      @Override
+      public void call(MasterObserver observer, ObserverContext<MasterCoprocessorEnvironment> ctx)
+          throws IOException {
+        observer.postListReplicationPeers(ctx, regex);
       }
     });
   }

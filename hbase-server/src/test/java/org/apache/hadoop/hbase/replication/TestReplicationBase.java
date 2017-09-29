@@ -108,7 +108,6 @@ public class TestReplicationBase {
     // than default
     conf1 = utility1.getConfiguration();  
     zkw1 = new ZooKeeperWatcher(conf1, "cluster1", null, true);
-    admin = new ReplicationAdmin(conf1);
     LOG.info("Setup first Zk");
 
     // Base conf2 on conf1 so it gets the right zk cluster.
@@ -123,14 +122,15 @@ public class TestReplicationBase {
     utility2.setZkCluster(miniZK);
     zkw2 = new ZooKeeperWatcher(conf2, "cluster2", null, true);
 
-    ReplicationPeerConfig rpc = new ReplicationPeerConfig();
-    rpc.setClusterKey(utility2.getClusterKey());
-    admin.addPeer(PEER_ID, rpc, null);
-
     LOG.info("Setup second Zk");
     CONF_WITH_LOCALFS = HBaseConfiguration.create(conf1);
     utility1.startMiniCluster(numRegionServers);
     utility2.startMiniCluster(numRegionServers);
+
+    admin = new ReplicationAdmin(conf1);
+    ReplicationPeerConfig rpc = new ReplicationPeerConfig();
+    rpc.setClusterKey(utility2.getClusterKey());
+    admin.addPeer(PEER_ID, rpc, null);
 
     HTableDescriptor table = new HTableDescriptor(TableName.valueOf(tableName));
     HColumnDescriptor fam = new HColumnDescriptor(famName);
@@ -139,15 +139,15 @@ public class TestReplicationBase {
     table.addFamily(fam);
     fam = new HColumnDescriptor(noRepfamName);
     table.addFamily(fam);
-    HBaseAdmin admin1 = new HBaseAdmin(conf1);
-    HBaseAdmin admin2 = new HBaseAdmin(conf2);
-    admin1.createTable(table, HBaseTestingUtility.KEYS_FOR_HBA_CREATE_TABLE);
-    utility1.waitUntilAllRegionsAssigned(TableName.valueOf(tableName));
-    admin2.createTable(table, HBaseTestingUtility.KEYS_FOR_HBA_CREATE_TABLE);
-    utility2.waitUntilAllRegionsAssigned(TableName.valueOf(tableName));
-    htable1 = new HTable(conf1, tableName);
-    htable1.setWriteBufferSize(1024);
-    htable2 = new HTable(conf2, tableName);
+    try (HBaseAdmin admin1 = new HBaseAdmin(conf1)) {
+      admin1.createTable(table, HBaseTestingUtility.KEYS_FOR_HBA_CREATE_TABLE);
+      utility1.waitUntilAllRegionsAssigned(TableName.valueOf(tableName));
+      // Table should be created on peer cluster, too
+      utility2.waitUntilAllRegionsAssigned(TableName.valueOf(tableName));
+      htable1 = new HTable(conf1, tableName);
+      htable1.setWriteBufferSize(1024);
+      htable2 = new HTable(conf2, tableName);
+    }
   }
 
   /**

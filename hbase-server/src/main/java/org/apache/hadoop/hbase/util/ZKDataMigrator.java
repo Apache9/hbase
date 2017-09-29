@@ -29,8 +29,9 @@ import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.master.snapshot.SnapshotManager;
 import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
+import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos;
 import org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos;
-import org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.ReplicationPeer;
+import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ReplicationPeer;
 import org.apache.hadoop.hbase.replication.ReplicationStateZKBase;
 import org.apache.hadoop.hbase.zookeeper.ZKUtil;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
@@ -229,7 +230,7 @@ public class ZKDataMigrator extends Configured implements Tool {
 
   private void migrateClusterKeyToPB(ZooKeeperWatcher zkw, String peerZnode, byte[] data)
       throws KeeperException, NoNodeException {
-    ReplicationPeer peer = ZooKeeperProtos.ReplicationPeer.newBuilder()
+    ReplicationPeer peer = ReplicationProtos.ReplicationPeer.newBuilder()
         .setClusterkey(Bytes.toString(data)).build();
     ZKUtil.setData(zkw, peerZnode, ProtobufUtil.prependPBMagic(peer.toByteArray()));
   }
@@ -238,9 +239,9 @@ public class ZKDataMigrator extends Configured implements Tool {
  String peerStatePath)
       throws KeeperException, NoNodeException {
     String state = Bytes.toString(data);
-    if (ZooKeeperProtos.ReplicationState.State.ENABLED.name().equals(state)) {
+    if (ReplicationProtos.ReplicationState.State.ENABLED.name().equals(state)) {
       ZKUtil.setData(zkw, peerStatePath, ReplicationStateZKBase.ENABLED_ZNODE_BYTES);
-    } else if (ZooKeeperProtos.ReplicationState.State.DISABLED.name().equals(state)) {
+    } else if (ReplicationProtos.ReplicationState.State.DISABLED.name().equals(state)) {
       ZKUtil.setData(zkw, peerStatePath, ReplicationStateZKBase.DISABLED_ZNODE_BYTES);
     }
   }

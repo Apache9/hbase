@@ -463,6 +463,60 @@ public class RecoverableZooKeeper {
     }
   }
 
+  public Stat setACL(String path, List<ACL> acls, int version) throws KeeperException,
+      InterruptedException {
+    TraceScope traceScope = null;
+    try {
+      traceScope = Trace.startSpan("RecoverableZookeeper.setACL");
+      RetryCounter retryCounter = retryCounterFactory.create();
+      boolean isRetry = false;
+      while (true) {
+        try {
+          return checkZk().setACL(path, acls, version);
+        } catch (KeeperException e) {
+          switch (e.code()) {
+            case CONNECTIONLOSS:
+            case SESSIONEXPIRED:
+            case OPERATIONTIMEOUT:
+              retryOrThrow(retryCounter, e, "setACL");
+              break;
+            case BADVERSION:
+              if (isRetry) {
+                // try to verify whether the previous setACL success or not
+                try {
+                  Stat stat = new Stat();
+                  List<ACL> revAcls = checkZk().getACL(path, stat);
+                  boolean success = true;
+                  if (acls.size() != revAcls.size()) {
+                    success = false;
+                  } else {
+                    for (ACL acl : acls) {
+                      if (!revAcls.contains(acl)) {
+                        success = false;
+                      }
+                    }
+                  }
+                  if (success) {
+                    return stat;
+                  }
+                } catch (KeeperException keeperException) {
+                  // the ZK is not reliable at this moment. just throwing exception
+                  throw keeperException;
+                }
+              }
+              // throw other exceptions and verified bad version exceptions
+            default:
+              throw e;
+          }
+        }
+        retryCounter.sleepUntilNextRetry();
+        isRetry = true;
+      }
+    } finally {
+      if (traceScope != null) traceScope.close();
+    }
+  }
+
   /**
    * <p>
    * NONSEQUENTIAL create is idempotent operation.

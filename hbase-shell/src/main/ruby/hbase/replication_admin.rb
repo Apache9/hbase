@@ -21,7 +21,7 @@ include Java
 
 java_import org.apache.hadoop.hbase.TableName
 java_import org.apache.hadoop.hbase.replication.ReplicationPeerConfig
-java_import org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos::ReplicationState::State
+java_import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos::ReplicationState::State
 java_import org.apache.hadoop.hbase.replication.ReplicationPeer::PeerProtocol
 java_import org.apache.hadoop.hbase.client.replication::ReplicationSerDeHelper
 java_import org.apache.hadoop.hbase.zookeeper.ZKUtil
@@ -388,7 +388,7 @@ module Hbase
       data = args.fetch(DATA, nil)
 
       # Create and populate a ReplicationPeerConfig
-      replication_peer_config = ReplicationPeerConfig.new
+      replication_peer_config = get_peer_config(id)
       unless config.nil?
         replication_peer_config.get_configuration.put_all(config)
       end

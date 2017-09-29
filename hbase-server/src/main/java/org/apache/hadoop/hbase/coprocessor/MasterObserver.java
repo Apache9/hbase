@@ -35,6 +35,7 @@ import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.master.RegionPlan;
 import org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.Quotas;
 import org.apache.hadoop.hbase.protobuf.generated.SnapshotProtos.SnapshotDescription;
+import org.apache.hadoop.hbase.replication.ReplicationPeerConfig;
 
 /**
  * Defines coprocessor hooks for interacting with operations on the
@@ -858,5 +859,120 @@ public interface MasterObserver extends Coprocessor {
    */
   void postSetNamespaceQuota(final ObserverContext<MasterCoprocessorEnvironment> ctx,
       final String namespace, final Quotas quotas) throws IOException;
-      
+
+  /**  
+   * Called before add a replication peer
+   * @param ctx the environment to interact with the framework and master
+   * @param peerId a short name that identifies the peer
+   * @param peerConfig configuration for the replication peer
+   */
+  default void preAddReplicationPeer(final ObserverContext<MasterCoprocessorEnvironment> ctx, 
+      String peerId, ReplicationPeerConfig peerConfig) throws IOException {}
+
+  /**  
+   * Called after add a replication peer
+   * @param ctx the environment to interact with the framework and master
+   * @param peerId a short name that identifies the peer
+   * @param peerConfig configuration for the replication peer
+   */
+  default void postAddReplicationPeer(final ObserverContext<MasterCoprocessorEnvironment> ctx, 
+      String peerId, ReplicationPeerConfig peerConfig) throws IOException {}
+
+  /**  
+   * Called before remove a replication peer
+   * @param ctx
+   * @param peerId a short name that identifies the peer
+   */
+  default void preRemoveReplicationPeer(final ObserverContext<MasterCoprocessorEnvironment> ctx, 
+      String peerId) throws IOException {}
+
+  /**  
+   * Called after remove a replication peer
+   * @param ctx
+   * @param peerId a short name that identifies the peer
+   */
+  default void postRemoveReplicationPeer(final ObserverContext<MasterCoprocessorEnvironment> ctx, 
+      String peerId) throws IOException {}
+
+  /**  
+   * Called before enable a replication peer
+   * @param ctx
+   * @param peerId a short name that identifies the peer
+   */
+  default void preEnableReplicationPeer(final ObserverContext<MasterCoprocessorEnvironment> ctx, 
+      String peerId) throws IOException {}
+
+  /**  
+   * Called after enable a replication peer
+   * @param ctx
+   * @param peerId a short name that identifies the peer
+   */
+  default void postEnableReplicationPeer(final ObserverContext<MasterCoprocessorEnvironment> ctx, 
+      String peerId) throws IOException {}
+
+  /**
+   * Called before disable a replication peer
+   * @param ctx
+   * @param peerId a short name that identifies the peer
+   */
+  default void preDisableReplicationPeer(final ObserverContext<MasterCoprocessorEnvironment> ctx,
+      String peerId) throws IOException {}
+
+  /**
+   * Called after disable a replication peer
+   * @param ctx
+   * @param peerId a short name that identifies the peer
+   */
+  default void postDisableReplicationPeer(final ObserverContext<MasterCoprocessorEnvironment> ctx,
+      String peerId) throws IOException {}
+
+  /**
+   * Called before get the configured ReplicationPeerConfig for the specified peer
+   * @param ctx
+   * @param peerId a short name that identifies the peer
+   */
+  default void preGetReplicationPeerConfig(final ObserverContext<MasterCoprocessorEnvironment> ctx,
+      String peerId) throws IOException {}
+
+  /**
+   * Called after get the configured ReplicationPeerConfig for the specified peer
+   * @param ctx
+   * @param peerId a short name that identifies the peer
+   */
+  default void postGetReplicationPeerConfig(
+      final ObserverContext<MasterCoprocessorEnvironment> ctx, String peerId) throws IOException {}
+
+  /**
+   * Called before update peerConfig for the specified peer
+   * @param ctx
+   * @param peerId a short name that identifies the peer
+   */
+  default void preUpdateReplicationPeerConfig(
+      final ObserverContext<MasterCoprocessorEnvironment> ctx, String peerId,
+      ReplicationPeerConfig peerConfig) throws IOException {}
+
+  /**
+   * Called after update peerConfig for the specified peer
+   * @param ctx the environment to interact with the framework and master
+   * @param peerId a short name that identifies the peer
+   */
+  default void postUpdateReplicationPeerConfig(
+      final ObserverContext<MasterCoprocessorEnvironment> ctx, String peerId,
+      ReplicationPeerConfig peerConfig) throws IOException {}
+
+  /**
+   * Called before list replication peers.
+   * @param ctx the environment to interact with the framework and master
+   * @param regex The regular expression to match peer id
+   */
+  default void preListReplicationPeers(final ObserverContext<MasterCoprocessorEnvironment> ctx,
+      String regex) throws IOException {}
+
+  /**
+   * Called after list replication peers.
+   * @param ctx the environment to interact with the framework and master
+   * @param regex The regular expression to match peer id
+   */
+  default void postListReplicationPeers(final ObserverContext<MasterCoprocessorEnvironment> ctx,
+      String regex) throws IOException {}
 }

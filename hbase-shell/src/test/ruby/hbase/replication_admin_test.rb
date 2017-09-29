@@ -260,9 +260,6 @@ module Hbase
       args = { CLUSTER_KEY => cluster_key}
       replication_admin.add_peer(@peer_id, args)
 
-      # Normally the ReplicationSourceManager will call ReplicationPeer#peer_added
-      # but here we have to do it ourselves
-      replication_admin.peer_added(@peer_id)
       replication_admin.set_peer_replicate_all(@peer_id, false)
 
       assert_equal(1, replication_admin.list_peers().length)
@@ -281,9 +278,6 @@ module Hbase
       args = { CLUSTER_KEY => cluster_key}
       replication_admin.add_peer(@peer_id, args)
 
-      # Normally the ReplicationSourceManager will call ReplicationPeer#peer_added
-      # but here we have to do it ourselves
-      replication_admin.peer_added(@peer_id)
       replication_admin.set_peer_replicate_all(@peer_id, false)
 
       assert_equal(1, replication_admin.list_peers().length)
@@ -323,10 +317,6 @@ module Hbase
       args = { CLUSTER_KEY => cluster_key}
       replication_admin.add_peer(@peer_id, args)
 
-      # Normally the ReplicationSourceManager will call ReplicationPeer#peer_added
-      # but here we have to do it ourselves
-      replication_admin.peer_added(@peer_id)
-
       assert_equal(1, replication_admin.list_peers().length)
       assert_equal(cluster_key, replication_admin.list_peers().fetch(@peer_id).getClusterKey)
 
@@ -348,9 +338,6 @@ module Hbase
       args = { CLUSTER_KEY => cluster_key }
       replication_admin.add_peer(@peer_id, args)
 
-      # Normally the ReplicationSourceManager will call ReplicationPeer#peer_added
-      # but here we have to do it ourselves
-      replication_admin.peer_added(@peer_id)
       replication_admin.set_peer_replicate_all(@peer_id, false)
 
       replication_admin.set_peer_namespaces(@peer_id, namespaces)
@@ -372,9 +359,6 @@ module Hbase
       args = { CLUSTER_KEY => cluster_key }
       replication_admin.add_peer(@peer_id, args)
 
-      # Normally the ReplicationSourceManager will call ReplicationPeer#peer_added
-      # but here we have to do it ourselves
-      replication_admin.peer_added(@peer_id)
       replication_admin.set_peer_replicate_all(@peer_id, false)
 
       replication_admin.append_peer_namespaces(@peer_id, namespaces)
@@ -412,9 +396,6 @@ module Hbase
       args = { CLUSTER_KEY => cluster_key, NAMESPACES => namespaces }
       replication_admin.add_peer(@peer_id, args)
 
-      # Normally the ReplicationSourceManager will call ReplicationPeer#peer_added
-      # but here we have to do it ourselves
-      replication_admin.peer_added(@peer_id)
       replication_admin.set_peer_replicate_all(@peer_id, false)
 
       namespaces = ["ns1", "ns2"]
@@ -455,10 +436,6 @@ module Hbase
       args = { CLUSTER_KEY => cluster_key }
       replication_admin.add_peer(@peer_id, args)
 
-      # Normally the ReplicationSourceManager will call ReplicationPeer#peer_added
-      # but here we have to do it ourselves
-      replication_admin.peer_added(@peer_id)
-
       replication_admin.set_peer_exclude_namespaces(@peer_id, namespaces)
 
       assert_equal(1, replication_admin.list_peers().length)
@@ -476,9 +453,6 @@ module Hbase
 
       args = { CLUSTER_KEY => cluster_key }
       replication_admin.add_peer(@peer_id, args)
-      # Normally the ReplicationSourceManager will call ReplicationPeer#peer_added
-      # but here we have to do it ourselves
-      replication_admin.peer_added(@peer_id)
 
       assert_equal(1, replication_admin.list_peers().length)
       peer_config = replication_admin.list_peers().fetch(@peer_id)
@@ -500,9 +474,6 @@ module Hbase
       cluster_key = "localhost:2181:/hbase-test"
       args = { CLUSTER_KEY => cluster_key }
       replication_admin.add_peer(@peer_id, args)
-      # Normally the ReplicationSourceManager will call ReplicationPeer#peer_added
-      # but here we have to do it ourselves
-      replication_admin.peer_added(@peer_id)
 
       peer_config = replication_admin.get_peer_config(@peer_id)
       assert_equal(0, peer_config.get_bandwidth)
@@ -564,9 +535,6 @@ module Hbase
       data_params = {"data1" => "value1", "data2" => "value2"}
       args = { ENDPOINT_CLASSNAME => repl_impl, CONFIG => config_params, DATA => data_params}
       replication_admin.add_peer(@peer_id, args)
-      # Normally the ReplicationSourceManager will call ReplicationPeer#peer_added
-      # but here we have to do it ourselves
-      replication_admin.peer_added(@peer_id)
 
       new_config_params = { "config1" => "new_value1" }
       new_data_params = {"data1" => "new_value1"}

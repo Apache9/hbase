@@ -96,6 +96,7 @@ import org.apache.hadoop.hbase.client.MetaScanner.MetaScannerVisitor;
 import org.apache.hadoop.hbase.client.MetaScanner.MetaScannerVisitorBase;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.UnmodifyableHTableDescriptor;
+import org.apache.hadoop.hbase.client.replication.ReplicationSerDeHelper;
 import org.apache.hadoop.hbase.coprocessor.CoprocessorHost;
 import org.apache.hadoop.hbase.exceptions.DeserializationException;
 import org.apache.hadoop.hbase.exceptions.MergeRegionException;
@@ -142,14 +143,11 @@ import org.apache.hadoop.hbase.procedure.MasterProcedureManagerHost;
 import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.protobuf.RequestConverter;
 import org.apache.hadoop.hbase.protobuf.ResponseConverter;
-import org.apache.hadoop.hbase.protobuf.generated.ClientProtos;
-import org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos;
-import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos;
+import org.apache.hadoop.hbase.protobuf.generated.*;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.NameStringPair;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.ProcedureDescription;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.RegionServerInfo;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.RegionSpecifier.RegionSpecifierType;
-import org.apache.hadoop.hbase.protobuf.generated.MasterProtos;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.AddColumnRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.AddColumnResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.AssignRegionRequest;
@@ -236,7 +234,6 @@ import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.TruncateTableRequ
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.TruncateTableResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.UnassignRegionRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.UnassignRegionResponse;
-import org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos;
 import org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.GetLastFlushedSequenceIdRequest;
 import org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.GetLastFlushedSequenceIdResponse;
 import org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.RegionServerReportRequest;
@@ -249,6 +246,20 @@ import org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.Repor
 import org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.ReportRegionStateTransitionRequest;
 import org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.ReportRegionStateTransitionResponse;
 import org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.TableRegionCount;
+import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.AddReplicationPeerRequest;
+import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.AddReplicationPeerResponse;
+import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.DisableReplicationPeerRequest;
+import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.DisableReplicationPeerResponse;
+import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.EnableReplicationPeerRequest;
+import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.EnableReplicationPeerResponse;
+import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetReplicationPeerConfigRequest;
+import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetReplicationPeerConfigResponse;
+import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ListReplicationPeersRequest;
+import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ListReplicationPeersResponse;
+import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.RemoveReplicationPeerRequest;
+import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.RemoveReplicationPeerResponse;
+import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.UpdateReplicationPeerConfigRequest;
+import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.UpdateReplicationPeerConfigResponse;
 import org.apache.hadoop.hbase.protobuf.generated.SnapshotProtos.SnapshotDescription;
 import org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.SplitLogTask.RecoveryMode;
 import org.apache.hadoop.hbase.quotas.MasterQuotaManager;
@@ -260,6 +271,10 @@ import org.apache.hadoop.hbase.regionserver.RegionCoprocessorHost;
 import org.apache.hadoop.hbase.regionserver.RegionSplitPolicy;
 import org.apache.hadoop.hbase.regionserver.compactions.ExploringCompactionPolicy;
 import org.apache.hadoop.hbase.regionserver.compactions.FIFOCompactionPolicy;
+import org.apache.hadoop.hbase.replication.ReplicationException;
+import org.apache.hadoop.hbase.replication.ReplicationPeerConfig;
+import org.apache.hadoop.hbase.replication.ReplicationPeerDescription;
+import org.apache.hadoop.hbase.replication.master.ReplicationManager;
 import org.apache.hadoop.hbase.replication.regionserver.Replication;
 import org.apache.hadoop.hbase.security.UserProvider;
 import org.apache.hadoop.hbase.snapshot.ClientSnapshotDescriptionUtils;
@@ -423,6 +438,10 @@ MasterServices, Server {
 
   // manager of assignment nodes in zookeeper
   AssignmentManager assignmentManager;
+
+  // manager of replication
+  private ReplicationManager replicationManager;
+
   // manager of catalog regions
   private CatalogTracker catalogTracker;
   // Cluster status zk tracker and local setter
@@ -845,6 +864,8 @@ MasterServices, Server {
       this.catalogTracker, this.balancer, this.executorService, this.metricsMaster,
       this.tableLockManager);
     zooKeeper.registerListenerFirst(assignmentManager);
+
+    this.replicationManager = new ReplicationManager(conf, zooKeeper, this);
 
     this.regionServerTracker = new RegionServerTracker(zooKeeper, this,
         this.serverManager);
@@ -3930,7 +3951,6 @@ MasterServices, Server {
     }
   }
 
-
   @Override
   public TruncateTableResponse truncateTable(RpcController controller, TruncateTableRequest request)
       throws ServiceException {
@@ -3991,5 +4011,153 @@ MasterServices, Server {
 
   private boolean isQuotaEnabled() {
     return (this.quotaManager != null) && (this.quotaManager.isQuotaEnabled());
+  }
+
+  @Override
+  public AddReplicationPeerResponse addReplicationPeer(RpcController controller,
+      AddReplicationPeerRequest request) throws ServiceException {
+    String peerId = request.getPeerId();
+    ReplicationPeerConfig peerConfig = ReplicationSerDeHelper.convert(request.getPeerConfig());
+    try {
+      if (cpHost != null) {
+        cpHost.preAddReplicationPeer(peerId, peerConfig);
+      }
+      LOG.info(getClientIdAuditPrefix() + " creating replication peer, id=" + peerId + ", config="
+          + peerConfig);
+      this.replicationManager.addReplicationPeer(peerId, peerConfig);
+      if (cpHost != null) {
+        cpHost.postAddReplicationPeer(peerId, peerConfig);
+      }
+    } catch (ReplicationException | IOException e) {
+      throw new ServiceException(e);
+    }
+    return AddReplicationPeerResponse.newBuilder().build();
+  }
+
+  @Override
+  public RemoveReplicationPeerResponse removeReplicationPeer(RpcController controller,
+      RemoveReplicationPeerRequest request) throws ServiceException {
+    String peerId = request.getPeerId();
+    try {
+      if (cpHost != null) {
+        cpHost.preRemoveReplicationPeer(peerId);
+      }
+      LOG.info(getClientIdAuditPrefix() + " removing replication peer, id=" + peerId);
+      this.replicationManager.removeReplicationPeer(peerId);
+      if (cpHost != null) {
+        cpHost.postRemoveReplicationPeer(peerId);
+      }
+    } catch (ReplicationException | IOException e) {
+      throw new ServiceException(e);
+    }
+    return RemoveReplicationPeerResponse.newBuilder().build();
+  }
+
+  @Override
+  public EnableReplicationPeerResponse enableReplicationPeer(RpcController controller,
+      EnableReplicationPeerRequest request) throws ServiceException {
+    String peerId = request.getPeerId();
+    try {
+      if (cpHost != null) {
+        cpHost.preEnableReplicationPeer(peerId);
+      }
+      LOG.info(getClientIdAuditPrefix() + " enable replication peer, id=" + peerId);
+      this.replicationManager.enableReplicationPeer(peerId);
+      if (cpHost != null) {
+        cpHost.postEnableReplicationPeer(peerId);
+      }
+    } catch (ReplicationException | IOException e) {
+      throw new ServiceException(e);
+    }
+    return EnableReplicationPeerResponse.newBuilder().build();
+  }
+
+  @Override
+  public DisableReplicationPeerResponse disableReplicationPeer(RpcController controller,
+      DisableReplicationPeerRequest request) throws ServiceException {
+    String peerId = request.getPeerId();
+    try {
+      if (cpHost != null) {
+        cpHost.preDisableReplicationPeer(peerId);
+      }
+      LOG.info(getClientIdAuditPrefix() + " disable replication peer, id=" + peerId);
+      this.replicationManager.disableReplicationPeer(peerId);
+      if (cpHost != null) {
+        cpHost.postDisableReplicationPeer(peerId);
+      }
+    } catch (ReplicationException | IOException e) {
+      throw new ServiceException(e);
+    }
+    return DisableReplicationPeerResponse.newBuilder().build();
+  }
+
+  @Override
+  public GetReplicationPeerConfigResponse getReplicationPeerConfig(RpcController controller,
+      GetReplicationPeerConfigRequest request) throws ServiceException {
+    GetReplicationPeerConfigResponse.Builder response = GetReplicationPeerConfigResponse
+        .newBuilder();
+    String peerId = request.getPeerId();
+    try {
+      if (cpHost != null) {
+        cpHost.preGetReplicationPeerConfig(peerId);
+      }
+      final ReplicationPeerConfig peerConfig = this.replicationManager.getPeerConfig(peerId);
+      response.setPeerId(peerId);
+      response.setPeerConfig(ReplicationSerDeHelper.convert(peerConfig));
+      LOG.info(getClientIdAuditPrefix() + " get replication peer config, id=" + peerId
+          + ", config=" + peerConfig);
+      if (cpHost != null) {
+        cpHost.postGetReplicationPeerConfig(peerId);
+      }
+    } catch (ReplicationException | IOException e) {
+      throw new ServiceException(e);
+    }
+    return response.build();
+  }
+
+  @Override
+  public UpdateReplicationPeerConfigResponse updateReplicationPeerConfig(RpcController controller,
+      UpdateReplicationPeerConfigRequest request) throws ServiceException {
+    String peerId = request.getPeerId();
+    ReplicationPeerConfig peerConfig = ReplicationSerDeHelper.convert(request.getPeerConfig());
+    try {
+      if (cpHost != null) {
+        cpHost.preUpdateReplicationPeerConfig(peerId, peerConfig);
+      }
+      LOG.info(getClientIdAuditPrefix() + " update replication peer config, id=" + peerId
+          + ", config=" + peerConfig);
+      this.replicationManager.updatePeerConfig(peerId, peerConfig);
+      if (cpHost != null) {
+        cpHost.postUpdateReplicationPeerConfig(peerId, peerConfig);
+      }
+    } catch (ReplicationException | IOException e) {
+      throw new ServiceException(e);
+    }
+    return UpdateReplicationPeerConfigResponse.newBuilder().build();
+  }
+
+  @Override
+  public ListReplicationPeersResponse listReplicationPeers(RpcController controller,
+      ListReplicationPeersRequest request) throws ServiceException {
+    ListReplicationPeersResponse.Builder response = ListReplicationPeersResponse.newBuilder();
+    String regex = request.hasRegex() ? request.getRegex() : null;
+    try {
+      if (cpHost != null) {
+        cpHost.preListReplicationPeers(regex);
+      }
+      LOG.info(getClientIdAuditPrefix() + " list replication peers, regex=" + regex);
+      Pattern pattern = regex == null ? null : Pattern.compile(regex);
+      List<ReplicationPeerDescription> peers = this.replicationManager
+          .listReplicationPeers(pattern);
+      for (ReplicationPeerDescription peer : peers) {
+        response.addPeerDesc(ReplicationSerDeHelper.toProtoReplicationPeerDescription(peer));
+      }
+      if (cpHost != null) {
+        cpHost.postListReplicationPeers(regex);
+      }
+    } catch (ReplicationException | IOException e) {
+      throw new ServiceException(e);
+    }
+    return response.build();
   }
 }

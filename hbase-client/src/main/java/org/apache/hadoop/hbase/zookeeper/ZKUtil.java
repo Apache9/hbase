@@ -48,6 +48,7 @@ import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.exceptions.DeserializationException;
 import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
+import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos;
 import org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos;
 import org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos.RegionStoreSequenceIds;
 import org.apache.hadoop.hbase.util.ByteStringer;
@@ -952,6 +953,16 @@ public class ZKUtil {
     }
   }
 
+  public static boolean setACL(ZooKeeperWatcher zkw, String znode, List<ACL> acls,
+      int expectedVersion) throws KeeperException, KeeperException.NoNodeException {
+    try {
+      return zkw.getRecoverableZooKeeper().setACL(znode, acls, expectedVersion) != null;
+    } catch (InterruptedException e) {
+      zkw.interruptedException(e);
+      return false;
+    }
+  }
+
   /**
    * Set data into node creating node if it doesn't yet exist.
    * Does not set watch.
@@ -1764,7 +1775,7 @@ public class ZKUtil {
       byte[] data = ZKUtil.getData(zkw, znodeToProcess);
       // parse the data of the above peer znode.
       try {
-      String clusterKey = ZooKeeperProtos.ReplicationPeer.newBuilder().
+      String clusterKey = ReplicationProtos.ReplicationPeer.newBuilder().
         mergeFrom(data, pblen, data.length - pblen).getClusterkey();
       sb.append("\n").append(znodeToProcess).append(": ").append(clusterKey);
       // add the peer-state.
@@ -1785,7 +1796,7 @@ public class ZKUtil {
       String peerStateZnode = ZKUtil.joinZNode(znodeToProcess, child);
       sb.append("\n").append(peerStateZnode).append(": ");
       byte[] peerStateData = ZKUtil.getData(zkw, peerStateZnode);
-      sb.append(ZooKeeperProtos.ReplicationState.newBuilder()
+      sb.append(ReplicationProtos.ReplicationState.newBuilder()
           .mergeFrom(peerStateData, pblen, peerStateData.length - pblen).getState().name());
     }
   }
@@ -1984,7 +1995,7 @@ public class ZKUtil {
    *         for use as content of an hlog position in a replication queue.
    */
   public static byte[] positionToByteArray(final long position) {
-    byte[] bytes = ZooKeeperProtos.ReplicationHLogPosition.newBuilder().setPosition(position)
+    byte[] bytes = ReplicationProtos.ReplicationHLogPosition.newBuilder().setPosition(position)
         .build().toByteArray();
     return ProtobufUtil.prependPBMagic(bytes);
   }
@@ -2000,9 +2011,9 @@ public class ZKUtil {
     }
     if (ProtobufUtil.isPBMagicPrefix(bytes)) {
       int pblen = ProtobufUtil.lengthOfPBMagic();
-      ZooKeeperProtos.ReplicationHLogPosition.Builder builder =
-          ZooKeeperProtos.ReplicationHLogPosition.newBuilder();
-      ZooKeeperProtos.ReplicationHLogPosition position;
+      ReplicationProtos.ReplicationHLogPosition.Builder builder =
+          ReplicationProtos.ReplicationHLogPosition.newBuilder();
+      ReplicationProtos.ReplicationHLogPosition position;
       try {
         position = builder.mergeFrom(bytes, pblen, bytes.length - pblen).build();
       } catch (InvalidProtocolBufferException e) {

@@ -182,6 +182,7 @@
                           <include>VisibilityLabels.proto</include>
                           <include>WAL.proto</include>
                           <include>ZooKeeper.proto</include>
+                          <include>Replication.proto</include>
                         </includes>
                       </source>
                       <!--<output>${project.build.directory}/generated-sources/java</output>-->

@@ -105,13 +105,13 @@ public class TestSerialReplication {
     utility2.setZkCluster(miniZK);
     new ZooKeeperWatcher(conf2, "cluster2", null, true);
 
+    utility1.startMiniCluster(1, 3);
+    utility2.startMiniCluster(1, 1);
+
     ReplicationAdmin admin1 = new ReplicationAdmin(conf1);
     ReplicationPeerConfig rpc = new ReplicationPeerConfig();
     rpc.setClusterKey(utility2.getClusterKey());
     admin1.addPeer("1", rpc, null);
-
-    utility1.startMiniCluster(1, 3);
-    utility2.startMiniCluster(1, 1);
 
     utility1.getHBaseAdmin().setBalancerRunning(false, true);
   }
@@ -124,7 +124,7 @@ public class TestSerialReplication {
     fam.setScope(HConstants.REPLICATION_SCOPE_SERIAL);
     table.addFamily(fam);
     utility1.getHBaseAdmin().createTable(table);
-    utility2.getHBaseAdmin().createTable(table);
+    // Table should be created on peer cluster, too
 
     HTable t1 = new HTable(conf1, tableName);
     HTable t2 = new HTable(conf2, tableName);
@@ -188,7 +188,7 @@ public class TestSerialReplication {
     fam.setScope(HConstants.REPLICATION_SCOPE_SERIAL);
     table.addFamily(fam);
     utility1.getHBaseAdmin().createTable(table);
-    utility2.getHBaseAdmin().createTable(table);
+    // Table should be created on peer cluster, too
 
     HTable t1 = new HTable(conf1, tableName);
     HTable t2 = new HTable(conf2, tableName);
@@ -282,7 +282,8 @@ public class TestSerialReplication {
     fam.setScope(HConstants.REPLICATION_SCOPE_SERIAL);
     table.addFamily(fam);
     utility1.getHBaseAdmin().createTable(table);
-    utility2.getHBaseAdmin().createTable(table);
+    // Table should be created on peer cluster, too
+
     HTable t1 = new HTable(conf1, tableName);
     HTable t2 = new HTable(conf2, tableName);
 
@@ -366,7 +367,8 @@ public class TestSerialReplication {
     fam.setScope(HConstants.REPLICATION_SCOPE_SERIAL);
     table.addFamily(fam);
     utility1.getHBaseAdmin().createTable(table);
-    utility2.getHBaseAdmin().createTable(table);
+    // Table should be created on peer cluster, too
+
     utility1.getHBaseAdmin().split(tableName.getName(), ROWS[50]);
     Thread.sleep(5000L);
 

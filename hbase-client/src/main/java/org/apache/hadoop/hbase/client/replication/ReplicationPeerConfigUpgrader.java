@@ -26,14 +26,19 @@ import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.classification.InterfaceStability;
 import org.apache.hadoop.hbase.exceptions.DeserializationException;
-import org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos;
+import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos;
 import org.apache.hadoop.hbase.replication.ReplicationPeerConfig;
 import org.apache.hadoop.hbase.replication.ReplicationStateZKBase;
 import org.apache.hadoop.hbase.zookeeper.ZKUtil;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
 import org.apache.zookeeper.KeeperException;
+import org.apache.zookeeper.ZooDefs;
+import org.apache.zookeeper.ZooDefs.Perms;
+import org.apache.zookeeper.data.ACL;
+import org.apache.zookeeper.data.Id;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -51,20 +56,57 @@ public class ReplicationPeerConfigUpgrader extends ReplicationStateZKBase {
     super(zookeeper, conf, abortable);
   }
 
+  public void setOwner(String owner) throws Exception {
+    if (!ZKUtil.isSecureZooKeeper(conf)) {
+      return;
+    }
+    List<ACL> acls = createACL(owner);
+    try {
+      ZKUtil.setACL(zookeeper, peersZNode, acls, -1);
+      LOG.info("Successfully set owner: " + owner + " for replication peers znode " + peersZNode);
+      List<String> znodes = ZKUtil.listChildrenNoWatch(this.zookeeper, this.peersZNode);
+      for (String peerId : znodes) {
+        String peerNode = getPeerNode(peerId);
+        ZKUtil.setACL(zookeeper, peerNode, acls, -1);
+        LOG.info("Successfully set owner: " + owner + " for replication peer: " + peerId
+            + " znode " + peerNode);
+        String peerStateNode = getPeerStateNode(peerId);
+        ZKUtil.setACL(zookeeper, peerStateNode, acls, -1);
+        LOG.info("Successfully set owner: " + owner + " for replication peer: " + peerId
+            + " state znode " + peerStateNode);
+      }
+    } catch (KeeperException e) {
+      LOG.warn("Failed to set owner for replication peers znode", e);
+    }
+  }
+
+  private ArrayList<ACL> createACL(String owner) {
+    ArrayList<ACL> acls = new ArrayList<ACL>();
+    acls.add(new ACL(ZooDefs.Perms.READ, ZooDefs.Ids.ANYONE_ID_UNSAFE));
+    acls.add(new ACL(Perms.ALL, new Id("sasl", owner)));
+    StringBuilder sb = new StringBuilder("Created ACLs: ");
+    acls.forEach(acl -> sb.append(acl));
+    LOG.info(sb.toString());
+    return acls;
+  }
+
   public void upgrade() throws Exception {
     try (ReplicationAdmin admin = new ReplicationAdmin(conf)) {
       Map<String, ReplicationPeerConfig> peers = admin.listPeerConfigs();
-      peers.forEach((peerId, peerConfig) -> {
-        if ((peerConfig.getNamespaces() != null && !peerConfig.getNamespaces().isEmpty())
-            || (peerConfig.getTableCFsMap() != null && !peerConfig.getTableCFsMap().isEmpty())) {
-          peerConfig.setReplicateAllUserTables(false);
-          try {
-            admin.updatePeerConfig(peerId, peerConfig);
-          } catch (Exception e) {
-            LOG.error("Failed to upgrade replication peer config for peerId=" + peerId, e);
-          }
-        }
-      });
+      peers
+          .forEach((peerId, peerConfig) -> {
+            if ((peerConfig.getNamespaces() != null && !peerConfig.getNamespaces().isEmpty())
+                || (peerConfig.getTableCFsMap() != null && !peerConfig.getTableCFsMap().isEmpty())) {
+              peerConfig.setReplicateAllUserTables(false);
+              try {
+                admin.updatePeerConfig(peerId, peerConfig);
+                LOG.info("Successfully upgrade replication peer " + peerId + " config to "
+                    + peerConfig);
+              } catch (Exception e) {
+                LOG.error("Failed to upgrade replication peer config for peerId=" + peerId, e);
+              }
+            }
+          });
     }
   }
 
@@ -93,7 +135,7 @@ public class ReplicationPeerConfigUpgrader extends ReplicationStateZKBase {
         if (rpc.getTableCFsMap() == null || rpc.getTableCFsMap().size() == 0) {
           // we copy TableCFs node into PeerNode
           LOG.info("copy tableCFs into peerNode:" + peerId);
-          ZooKeeperProtos.TableCF[] tableCFs = ReplicationSerDeHelper.parseTableCFs(
+          ReplicationProtos.TableCF[] tableCFs = ReplicationSerDeHelper.parseTableCFs(
             ZKUtil.getData(this.zookeeper, tableCFsNode));
           if (tableCFs != null && tableCFs.length > 0) {
             rpc.setTableCFsMap(ReplicationSerDeHelper.convert2Map(tableCFs));
@@ -138,31 +180,35 @@ public class ReplicationPeerConfigUpgrader extends ReplicationStateZKBase {
         .printf("Usage: bin/hbase org.apache.hadoop.hbase.replication.master.ReplicationPeerConfigUpgrader [options]");
     System.err.println(" where [options] are:");
     System.err.println("  -h|-help    Show this help and exit.");
-    System.err.println("  copyTableCFs      Copy table-cfs to replication peer config");
-    System.err.println("  upgrade           Upgrade replication peer config to new format");
+    System.err.println("  copyTableCFs        Copy table-cfs to replication peer config");
+    System.err.println("  upgrade             Upgrade replication peer config to new format");
+    System.err.println("  setOwner [owner]    Update replication peers znode's owner");
     System.err.println();
     System.exit(1);
   }
 
   public static void main(String[] args) throws Exception {
-    if (args.length != 1) {
+    if (args.length < 1) {
       printUsageAndExit();
     }
     if (args[0].equals("-help") || args[0].equals("-h")) {
       printUsageAndExit();
-    } else if (args[0].equals("copyTableCFs")) {
-      Configuration conf = HBaseConfiguration.create();
-      ZooKeeperWatcher zkw = new ZooKeeperWatcher(conf, "ReplicationPeerConfigUpgrader", null);
-      ReplicationPeerConfigUpgrader tableCFsUpdater = new ReplicationPeerConfigUpgrader(zkw, conf,
-          null);
-      tableCFsUpdater.copyTableCFs();
-    } else if (args[0].equals("upgrade")) {
-      Configuration conf = HBaseConfiguration.create();
-      ZooKeeperWatcher zkw = new ZooKeeperWatcher(conf, "ReplicationPeerConfigUpgrader", null);
+    }
+    Configuration conf = HBaseConfiguration.create();
+    try (ZooKeeperWatcher zkw = new ZooKeeperWatcher(conf, "ReplicationPeerConfigUpgrader", null)) {
       ReplicationPeerConfigUpgrader upgrader = new ReplicationPeerConfigUpgrader(zkw, conf, null);
-      upgrader.upgrade();
-    } else {
-      printUsageAndExit();
+      if (args[0].equals("copyTableCFs")) {
+        upgrader.copyTableCFs();
+      } else if (args[0].equals("upgrade")) {
+        upgrader.upgrade();
+      } else if (args[0].equals("setOwner")) {
+        if (args.length != 2) {
+          printUsageAndExit();
+        }
+        upgrader.setOwner(args[1]);
+      } else {
+        printUsageAndExit();
+      }
     }
   }
 }
