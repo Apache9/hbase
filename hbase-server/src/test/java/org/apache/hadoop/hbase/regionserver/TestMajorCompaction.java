@@ -33,6 +33,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Map.Entry;
 
 import org.apache.commons.logging.Log;
@@ -437,8 +438,8 @@ public class TestMajorCompaction {
     }
     store.triggerMajorCompaction();
     CompactionRequest request =
-        store.requestCompaction(PRIORITY_USER, CompactionLifeCycleTracker.DUMMY, null).get()
-            .getRequest();
+        store.requestCompaction(PRIORITY_USER, CompactionLifeCycleTracker.DUMMY, Optional.empty())
+            .get().getRequest();
     assertNotNull("Expected to receive a compaction request", request);
     assertEquals(
       "User-requested major compaction should always occur, even if there are too many store files",

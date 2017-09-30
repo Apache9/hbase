@@ -42,6 +42,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Optional;
 import java.util.OptionalLong;
 
 import org.apache.hadoop.conf.Configuration;
@@ -74,6 +75,7 @@ import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.testclassification.RegionServerTests;
 import org.apache.hadoop.hbase.testclassification.SmallTests;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hbase.util.Classes;
 import org.apache.hadoop.hbase.util.ConcatenatedLists;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.ManualEnvironmentEdge;
@@ -231,10 +233,10 @@ public class TestStripeCompactionPolicy {
     assertTrue(policy.needsCompactions(si, al()));
     StripeCompactionPolicy.StripeCompactionRequest scr = policy.selectCompaction(si, al(), false);
     assertEquals(si.getStorefiles(), scr.getRequest().getFiles());
-    scr.execute(sc, NoLimitThroughputController.INSTANCE, null);
+    scr.execute(sc, NoLimitThroughputController.INSTANCE, Optional.empty());
     verify(sc, only()).compact(eq(scr.getRequest()), anyInt(), anyLong(), aryEq(OPEN_KEY),
-      aryEq(OPEN_KEY), aryEq(OPEN_KEY), aryEq(OPEN_KEY),
-      any(NoLimitThroughputController.class), any(User.class));
+      aryEq(OPEN_KEY), aryEq(OPEN_KEY), aryEq(OPEN_KEY), any(NoLimitThroughputController.class),
+      any(Classes.<Optional<User>> cast(Optional.class)));
   }
 
   @Test
@@ -486,7 +488,7 @@ public class TestStripeCompactionPolicy {
     // All the Stripes are expired, so the Compactor will not create any Writers. We need to create
     // an empty file to preserve metadata
     StripeCompactor sc = createCompactor();
-    List<Path> paths = scr.execute(sc, NoLimitThroughputController.INSTANCE, null);
+    List<Path> paths = scr.execute(sc, NoLimitThroughputController.INSTANCE, Optional.empty());
     assertEquals(1, paths.size());
   }
 
@@ -545,7 +547,7 @@ public class TestStripeCompactionPolicy {
     assertTrue(policy.needsCompactions(si, al()));
     StripeCompactionPolicy.StripeCompactionRequest scr = policy.selectCompaction(si, al(), false);
     verifyCollectionsEqual(sfs, scr.getRequest().getFiles());
-    scr.execute(sc, NoLimitThroughputController.INSTANCE, null);
+    scr.execute(sc, NoLimitThroughputController.INSTANCE, Optional.empty());
     verify(sc, times(1)).compact(eq(scr.getRequest()), argThat(new ArgumentMatcher<List<byte[]>>() {
       @Override
       public boolean matches(Object argument) {
@@ -559,7 +561,7 @@ public class TestStripeCompactionPolicy {
       }
     }), dropDeletesFrom == null ? isNull(byte[].class) : aryEq(dropDeletesFrom),
       dropDeletesTo == null ? isNull(byte[].class) : aryEq(dropDeletesTo),
-      any(NoLimitThroughputController.class), any(User.class));
+      any(NoLimitThroughputController.class), any(Classes.<Optional<User>> cast(Optional.class)));
   }
 
   /**
@@ -580,12 +582,12 @@ public class TestStripeCompactionPolicy {
     assertTrue(!needsCompaction || policy.needsCompactions(si, al()));
     StripeCompactionPolicy.StripeCompactionRequest scr = policy.selectCompaction(si, al(), false);
     verifyCollectionsEqual(sfs, scr.getRequest().getFiles());
-    scr.execute(sc, NoLimitThroughputController.INSTANCE, null);
+    scr.execute(sc, NoLimitThroughputController.INSTANCE, Optional.empty());
     verify(sc, times(1)).compact(eq(scr.getRequest()),
       count == null ? anyInt() : eq(count.intValue()),
       size == null ? anyLong() : eq(size.longValue()), aryEq(start), aryEq(end),
       dropDeletesMatcher(dropDeletes, start), dropDeletesMatcher(dropDeletes, end),
-      any(NoLimitThroughputController.class), any(User.class));
+      any(NoLimitThroughputController.class), any(Classes.<Optional<User>> cast(Optional.class)));
   }
 
   /** Verify arbitrary flush. */

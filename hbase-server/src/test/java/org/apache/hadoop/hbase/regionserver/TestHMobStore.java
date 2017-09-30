@@ -540,9 +540,10 @@ public class TestHMobStore {
 
     // Trigger major compaction
     this.store.triggerMajorCompaction();
-    Optional<CompactionContext> requestCompaction =
-        this.store.requestCompaction(PRIORITY_USER, CompactionLifeCycleTracker.DUMMY, null);
-    this.store.compact(requestCompaction.get(), NoLimitThroughputController.INSTANCE, null);
+    Optional<CompactionContext> requestCompaction = this.store.requestCompaction(PRIORITY_USER,
+      CompactionLifeCycleTracker.DUMMY, Optional.empty());
+    this.store.compact(requestCompaction.get(), NoLimitThroughputController.INSTANCE,
+      Optional.empty());
     Assert.assertEquals(1, this.store.getStorefiles().size());
 
     //Check encryption after compaction

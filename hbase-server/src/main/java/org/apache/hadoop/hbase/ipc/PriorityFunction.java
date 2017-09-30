@@ -17,12 +17,15 @@
  */
 package org.apache.hadoop.hbase.ipc;
 
-import org.apache.hadoop.hbase.shaded.com.google.protobuf.Message;
+import java.util.Optional;
+
+import org.apache.hadoop.hbase.HBaseInterfaceAudience;
+import org.apache.hadoop.hbase.security.User;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.apache.yetus.audience.InterfaceStability;
-import org.apache.hadoop.hbase.HBaseInterfaceAudience;
+
+import org.apache.hadoop.hbase.shaded.com.google.protobuf.Message;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.RPCProtos.RequestHeader;
-import org.apache.hadoop.hbase.security.User;
 
 /**
  * Function to figure priority of incoming request.
@@ -38,7 +41,7 @@ public interface PriorityFunction {
    * @param user
    * @return Priority of this request.
    */
-  int getPriority(RequestHeader header, Message param, User user);
+  int getPriority(RequestHeader header, Message param, Optional<User> user);
 
   /**
    * Returns the deadline of the specified request.

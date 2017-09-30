@@ -41,6 +41,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CountDownLatch;
@@ -63,6 +64,7 @@ import org.apache.hadoop.hbase.shaded.protobuf.generated.RPCProtos.RequestHeader
 import org.apache.hadoop.hbase.testclassification.RPCTests;
 import org.apache.hadoop.hbase.testclassification.SmallTests;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hbase.util.Classes;
 import org.apache.hadoop.hbase.util.EnvironmentEdge;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.Threads;
@@ -150,9 +152,8 @@ public class TestSimpleRpcScheduler {
     scheduler.init(CONTEXT);
     scheduler.start();
     for (CallRunner task : tasks) {
-      when(qosFunction.getPriority((RPCProtos.RequestHeader) anyObject(),
-        (Message) anyObject(), (User) anyObject()))
-          .thenReturn(qos.get(task));
+      when(qosFunction.getPriority(any(RPCProtos.RequestHeader.class), (Message) any(Message.class),
+        any(Classes.<Optional<User>> cast(Optional.class)))).thenReturn(qos.get(task));
       scheduler.dispatch(task);
     }
     for (CallRunner task : tasks) {
@@ -184,9 +185,8 @@ public class TestSimpleRpcScheduler {
     schedConf.set(RpcExecutor.CALL_QUEUE_TYPE_CONF_KEY, queueType);
 
     PriorityFunction priority = mock(PriorityFunction.class);
-    when(priority.getPriority(any(RequestHeader.class),
-      any(Message.class), any(User.class)))
-      .thenReturn(HConstants.NORMAL_QOS);
+    when(priority.getPriority(any(RequestHeader.class), any(Message.class),
+      any(Classes.<Optional<User>> cast(Optional.class)))).thenReturn(HConstants.NORMAL_QOS);
 
     RpcScheduler scheduler = new SimpleRpcScheduler(schedConf, 1, 1, 1, priority,
                                                     HConstants.QOS_THRESHOLD);
@@ -265,7 +265,7 @@ public class TestSimpleRpcScheduler {
 
     PriorityFunction priority = mock(PriorityFunction.class);
     when(priority.getPriority(any(RequestHeader.class), any(Message.class),
-      any(User.class))).thenReturn(HConstants.NORMAL_QOS);
+      any(Classes.<Optional<User>> cast(Optional.class)))).thenReturn(HConstants.NORMAL_QOS);
 
     RpcScheduler scheduler = new SimpleRpcScheduler(schedConf, 2, 1, 1, priority,
                                                     HConstants.QOS_THRESHOLD);
@@ -281,7 +281,7 @@ public class TestSimpleRpcScheduler {
 
     PriorityFunction priority = mock(PriorityFunction.class);
     when(priority.getPriority(any(RPCProtos.RequestHeader.class), any(Message.class),
-      any(User.class))).thenReturn(HConstants.NORMAL_QOS);
+      any(Classes.<Optional<User>> cast(Optional.class)))).thenReturn(HConstants.NORMAL_QOS);
 
     RpcScheduler scheduler = new SimpleRpcScheduler(schedConf, 3, 1, 1, priority,
                                                     HConstants.QOS_THRESHOLD);
@@ -374,7 +374,7 @@ public class TestSimpleRpcScheduler {
 
     PriorityFunction priority = mock(PriorityFunction.class);
     when(priority.getPriority(any(RequestHeader.class), any(Message.class),
-      any(User.class))).thenReturn(HConstants.NORMAL_QOS);
+      any(Classes.<Optional<User>> cast(Optional.class)))).thenReturn(HConstants.NORMAL_QOS);
     SimpleRpcScheduler scheduler = new SimpleRpcScheduler(schedConf, 0, 0, 0, priority,
       HConstants.QOS_THRESHOLD);
     try {
@@ -440,7 +440,7 @@ public class TestSimpleRpcScheduler {
       RpcExecutor.CALL_QUEUE_TYPE_CODEL_CONF_VALUE);
     PriorityFunction priority = mock(PriorityFunction.class);
     when(priority.getPriority(any(RPCProtos.RequestHeader.class), any(Message.class),
-      any(User.class))).thenReturn(HConstants.NORMAL_QOS);
+      any(Classes.<Optional<User>> cast(Optional.class)))).thenReturn(HConstants.NORMAL_QOS);
     SimpleRpcScheduler scheduler =
         new SimpleRpcScheduler(schedConf, 1, 1, 1, priority, HConstants.QOS_THRESHOLD);
     try {

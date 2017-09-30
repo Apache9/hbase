@@ -17,16 +17,19 @@
  */
 package org.apache.hadoop.hbase.master;
 
-import org.apache.hadoop.hbase.shaded.com.google.protobuf.Message;
+import java.util.Optional;
+
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.regionserver.AnnotationReadingPriorityFunction;
+import org.apache.hadoop.hbase.regionserver.RSRpcServices;
+import org.apache.hadoop.hbase.security.User;
+
+import org.apache.hadoop.hbase.shaded.com.google.protobuf.Message;
 import org.apache.hadoop.hbase.shaded.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.HBaseProtos;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.RPCProtos;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.RegionServerStatusProtos;
-import org.apache.hadoop.hbase.regionserver.AnnotationReadingPriorityFunction;
-import org.apache.hadoop.hbase.regionserver.RSRpcServices;
-import org.apache.hadoop.hbase.security.User;
 
 /**
  * Priority function specifically for the master.
@@ -52,7 +55,8 @@ public class MasterAnnotationReadingPriorityFunction extends AnnotationReadingPr
     super(rpcServices, clz);
   }
 
-  public int getPriority(RPCProtos.RequestHeader header, Message param, User user) {
+  @Override
+  public int getPriority(RPCProtos.RequestHeader header, Message param, Optional<User> user) {
     // Yes this is copy pasted from the base class but it keeps from having to look in the
     // annotatedQos table twice something that could get costly since this is called for
     // every single RPC request.

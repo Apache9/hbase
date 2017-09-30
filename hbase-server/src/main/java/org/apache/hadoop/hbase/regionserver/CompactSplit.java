@@ -236,17 +236,18 @@ public class CompactSplit implements PropagatingConfigurationObserver {
   }
 
   public synchronized void requestCompaction(HRegion region, String why, int priority,
-      CompactionLifeCycleTracker tracker, User user) throws IOException {
+      CompactionLifeCycleTracker tracker, Optional<User> user) throws IOException {
     requestCompactionInternal(region, why, priority, true, tracker, user);
   }
 
   public synchronized void requestCompaction(HRegion region, HStore store, String why, int priority,
-      CompactionLifeCycleTracker tracker, User user) throws IOException {
+      CompactionLifeCycleTracker tracker, Optional<User> user) throws IOException {
     requestCompactionInternal(region, store, why, priority, true, tracker, user);
   }
 
   private void requestCompactionInternal(HRegion region, String why, int priority,
-      boolean selectNow, CompactionLifeCycleTracker tracker, User user) throws IOException {
+      boolean selectNow, CompactionLifeCycleTracker tracker, Optional<User> user)
+      throws IOException {
     // request compaction on all stores
     for (HStore store : region.stores.values()) {
       requestCompactionInternal(region, store, why, priority, selectNow, tracker, user);
@@ -254,7 +255,7 @@ public class CompactSplit implements PropagatingConfigurationObserver {
   }
 
   private void requestCompactionInternal(HRegion region, HStore store, String why, int priority,
-      boolean selectNow, CompactionLifeCycleTracker tracker, User user) throws IOException {
+      boolean selectNow, CompactionLifeCycleTracker tracker, Optional<User> user) throws IOException {
     if (this.server.isStopped() || (region.getTableDescriptor() != null &&
         !region.getTableDescriptor().isCompactionEnabled())) {
       return;
@@ -313,7 +314,7 @@ public class CompactSplit implements PropagatingConfigurationObserver {
   }
 
   private Optional<CompactionContext> selectCompaction(HRegion region, HStore store, int priority,
-      CompactionLifeCycleTracker tracker, User user) throws IOException {
+      CompactionLifeCycleTracker tracker, Optional<User> user) throws IOException {
     Optional<CompactionContext> compaction = store.requestCompaction(priority, tracker, user);
     if (!compaction.isPresent() && LOG.isDebugEnabled() && region.getRegionInfo() != null) {
       LOG.debug("Not compacting " + region.getRegionInfo().getRegionNameAsString() +
@@ -449,11 +450,11 @@ public class CompactSplit implements PropagatingConfigurationObserver {
     private final Optional<CompactionContext> compaction;
     private int queuedPriority;
     private ThreadPoolExecutor parent;
-    private User user;
+    private Optional<User> user;
     private long time;
 
     public CompactionRunner(HStore store, HRegion region, Optional<CompactionContext> compaction,
-        ThreadPoolExecutor parent, User user) {
+        ThreadPoolExecutor parent, Optional<User> user) {
       super();
       this.store = store;
       this.region = region;
@@ -472,7 +473,7 @@ public class CompactSplit implements PropagatingConfigurationObserver {
               ", priority = " + queuedPriority + ", time = " + time);
     }
 
-    private void doCompaction(User user) {
+    private void doCompaction(Optional<User> user) {
       CompactionContext c;
       // Common case - system compaction without a file selection. Select now.
       if (!compaction.isPresent()) {

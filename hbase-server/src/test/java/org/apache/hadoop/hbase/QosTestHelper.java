@@ -17,13 +17,16 @@
  */
 package org.apache.hadoop.hbase;
 
-import org.apache.hadoop.hbase.shaded.com.google.protobuf.Message;
+import static org.junit.Assert.assertEquals;
+
+import java.util.Optional;
+
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.shaded.protobuf.generated.RPCProtos;
 import org.apache.hadoop.hbase.regionserver.AnnotationReadingPriorityFunction;
 import org.apache.hadoop.hbase.security.User;
 
-import static org.junit.Assert.assertEquals;
+import org.apache.hadoop.hbase.shaded.com.google.protobuf.Message;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.RPCProtos;
 
 public class QosTestHelper {
   protected void checkMethod(Configuration conf, final String methodName, final int expected,
@@ -36,6 +39,6 @@ public class QosTestHelper {
     RPCProtos.RequestHeader.Builder builder = RPCProtos.RequestHeader.newBuilder();
     builder.setMethodName(methodName);
     assertEquals(methodName, expected, qosf.getPriority(builder.build(), param,
-      User.createUserForTesting(conf, "someuser", new String[]{"somegroup"})));
+      Optional.of(User.createUserForTesting(conf, "someuser", new String[]{"somegroup"}))));
   }
 }

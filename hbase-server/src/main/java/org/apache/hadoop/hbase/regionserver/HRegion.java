@@ -135,7 +135,6 @@ import org.apache.hadoop.hbase.io.hfile.HFile;
 import org.apache.hadoop.hbase.ipc.CallerDisconnectedException;
 import org.apache.hadoop.hbase.ipc.CoprocessorRpcUtils;
 import org.apache.hadoop.hbase.ipc.RpcCall;
-import org.apache.hadoop.hbase.ipc.RpcCallContext;
 import org.apache.hadoop.hbase.ipc.RpcServer;
 import org.apache.hadoop.hbase.monitoring.MonitoredTask;
 import org.apache.hadoop.hbase.monitoring.TaskMonitor;
@@ -2008,11 +2007,11 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
    */
   public boolean compact(CompactionContext compaction, HStore store,
       ThroughputController throughputController) throws IOException {
-    return compact(compaction, store, throughputController, null);
+    return compact(compaction, store, throughputController, Optional.empty());
   }
 
   public boolean compact(CompactionContext compaction, HStore store,
-      ThroughputController throughputController, User user) throws IOException {
+      ThroughputController throughputController, Optional<User> user) throws IOException {
     assert compaction != null && compaction.hasSelection();
     assert !compaction.getRequest().getFiles().isEmpty();
     if (this.closing.get() || this.closed.get()) {
@@ -5375,12 +5374,15 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
 
       int timeout = rowLockWaitDuration;
       boolean reachDeadlineFirst = false;
-      RpcCall call = RpcServer.getCurrentCall();
-      if (call != null && call.getDeadline() < Long.MAX_VALUE) {
-        int timeToDeadline = (int)(call.getDeadline() - System.currentTimeMillis());
-        if (timeToDeadline <= this.rowLockWaitDuration) {
-          reachDeadlineFirst = true;
-          timeout = timeToDeadline;
+      Optional<RpcCall> call = RpcServer.getCurrentCall();
+      if (call.isPresent()) {
+        long deadline = call.get().getDeadline();
+        if (deadline < Long.MAX_VALUE) {
+          int timeToDeadline = (int) (deadline - System.currentTimeMillis());
+          if (timeToDeadline <= this.rowLockWaitDuration) {
+            reachDeadlineFirst = true;
+            timeout = timeToDeadline;
+          }
         }
       }
 
@@ -6085,7 +6087,7 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
       if (scannerContext == null) {
         throw new IllegalArgumentException("Scanner context cannot be null");
       }
-      RpcCallContext rpcCall = RpcServer.getCurrentCall();
+      Optional<RpcCall> rpcCall = RpcServer.getCurrentCall();
 
       // Save the initial progress from the Scanner context in these local variables. The progress
       // may need to be reset a few times if rows are being filtered out so we save the initial
@@ -6110,13 +6112,12 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
         } else {
           scannerContext.clearProgress();
         }
-
-        if (rpcCall != null) {
+        if (rpcCall.isPresent()) {
           // If a user specifies a too-restrictive or too-slow scanner, the
           // client might time out and disconnect while the server side
           // is still processing the request. We should abort aggressively
           // in that case.
-          long afterTime = rpcCall.disconnectSince();
+          long afterTime = rpcCall.get().disconnectSince();
           if (afterTime >= 0) {
             throw new CallerDisconnectedException(
                 "Aborting on region " + getRegionInfo().getRegionNameAsString() + ", call " +
@@ -8087,14 +8088,14 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
 
   @Override
   public void requestCompaction(String why, int priority, CompactionLifeCycleTracker tracker,
-      User user) throws IOException {
+      Optional<User> user) throws IOException {
     ((HRegionServer) rsServices).compactSplitThread.requestCompaction(this, why, priority, tracker,
       user);
   }
 
   @Override
   public void requestCompaction(byte[] family, String why, int priority,
-      CompactionLifeCycleTracker tracker, User user) throws IOException {
+      CompactionLifeCycleTracker tracker, Optional<User> user) throws IOException {
     ((HRegionServer) rsServices).compactSplitThread.requestCompaction(this,
       Preconditions.checkNotNull(stores.get(family)), why, priority, tracker, user);
   }

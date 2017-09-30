@@ -22,6 +22,7 @@ import java.io.InterruptedIOException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Optional;
 import java.util.OptionalInt;
 
 import org.apache.commons.logging.Log;
@@ -106,7 +107,7 @@ public class DefaultMobStoreCompactor extends DefaultCompactor {
 
   @Override
   public List<Path> compact(CompactionRequest request, ThroughputController throughputController,
-      User user) throws IOException {
+      Optional<User> user) throws IOException {
     return compact(request, scannerFactory, writerFactory, throughputController, user);
   }
 

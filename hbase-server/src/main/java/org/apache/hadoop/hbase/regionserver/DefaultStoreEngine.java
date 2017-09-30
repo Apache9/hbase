@@ -20,6 +20,7 @@ package org.apache.hadoop.hbase.regionserver;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Optional;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -121,7 +122,7 @@ public class DefaultStoreEngine extends StoreEngine<
     }
 
     @Override
-    public List<Path> compact(ThroughputController throughputController, User user)
+    public List<Path> compact(ThroughputController throughputController, Optional<User> user)
         throws IOException {
       return compactor.compact(request, throughputController, user);
     }

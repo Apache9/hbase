@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableSet;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -438,14 +439,14 @@ public class RegionCoprocessorHost
       super(regionObserverGetter);
     }
 
-    public RegionObserverOperation(User user) {
+    public RegionObserverOperation(Optional<User> user) {
       super(regionObserverGetter, user);
     }
   }
 
   abstract class BulkLoadObserverOperation extends
       ObserverOperationWithoutResult<BulkLoadObserver> {
-    public BulkLoadObserverOperation(User user) {
+    public BulkLoadObserverOperation(Optional<User> user) {
       super(RegionCoprocessor::getBulkLoadObserver, user);
     }
   }
@@ -546,19 +547,19 @@ public class RegionCoprocessorHost
    * {@link RegionObserver#preCompactScannerOpen(ObserverContext, Store, List, ScanType, long,
    *   InternalScanner, CompactionLifeCycleTracker, long)}
    */
-  public InternalScanner preCompactScannerOpen(final HStore store,
-      final List<StoreFileScanner> scanners, final ScanType scanType, final long earliestPutTs,
-      final CompactionLifeCycleTracker tracker, final User user, final long readPoint)
-      throws IOException {
-    return execOperationWithResult(null, coprocEnvironments.isEmpty() ? null :
-        new ObserverOperationWithResult<RegionObserver, InternalScanner>(
-            regionObserverGetter, user) {
-          @Override
-          public InternalScanner call(RegionObserver observer) throws IOException {
-            return observer.preCompactScannerOpen(this, store, scanners, scanType,
-                earliestPutTs, getResult(), tracker, readPoint);
-          }
-        });
+  public InternalScanner preCompactScannerOpen(HStore store, List<StoreFileScanner> scanners,
+      ScanType scanType, long earliestPutTs, CompactionLifeCycleTracker tracker,
+      Optional<User> user, long readPoint) throws IOException {
+    return execOperationWithResult(null,
+      coprocEnvironments.isEmpty() ? null
+          : new ObserverOperationWithResult<RegionObserver, InternalScanner>(regionObserverGetter,
+              user) {
+            @Override
+            public InternalScanner call(RegionObserver observer) throws IOException {
+              return observer.preCompactScannerOpen(this, store, scanners, scanType, earliestPutTs,
+                getResult(), tracker, readPoint);
+            }
+          });
   }
 
   /**
@@ -570,8 +571,8 @@ public class RegionCoprocessorHost
    * @return If {@code true}, skip the normal selection process and use the current list
    * @throws IOException
    */
-  public boolean preCompactSelection(final HStore store, final List<HStoreFile> candidates,
-      final CompactionLifeCycleTracker tracker, final User user) throws IOException {
+  public boolean preCompactSelection(HStore store, List<HStoreFile> candidates,
+      CompactionLifeCycleTracker tracker, Optional<User> user) throws IOException {
     return execOperation(coprocEnvironments.isEmpty() ? null : new RegionObserverOperation(user) {
       @Override
       public void call(RegionObserver observer) throws IOException {
@@ -587,8 +588,8 @@ public class RegionCoprocessorHost
    * @param selected The store files selected to compact
    * @param tracker used to track the life cycle of a compaction
    */
-  public void postCompactSelection(final HStore store, final ImmutableList<HStoreFile> selected,
-      final CompactionLifeCycleTracker tracker, final User user) throws IOException {
+  public void postCompactSelection(HStore store, ImmutableList<HStoreFile> selected,
+      CompactionLifeCycleTracker tracker, Optional<User> user) throws IOException {
     execOperation(coprocEnvironments.isEmpty() ? null : new RegionObserverOperation(user) {
       @Override
       public void call(RegionObserver observer) throws IOException {
@@ -605,17 +606,17 @@ public class RegionCoprocessorHost
    * @param tracker used to track the life cycle of a compaction
    * @throws IOException
    */
-  public InternalScanner preCompact(final HStore store, final InternalScanner scanner,
-      final ScanType scanType, final CompactionLifeCycleTracker tracker, final User user)
-      throws IOException {
-    return execOperationWithResult(false, scanner, coprocEnvironments.isEmpty() ? null :
-        new ObserverOperationWithResult<RegionObserver, InternalScanner>(
-            regionObserverGetter, user) {
-          @Override
-          public InternalScanner call(RegionObserver observer) throws IOException {
-            return observer.preCompact(this, store, getResult(), scanType, tracker);
-          }
-        });
+  public InternalScanner preCompact(HStore store, InternalScanner scanner, ScanType scanType,
+      CompactionLifeCycleTracker tracker, Optional<User> user) throws IOException {
+    return execOperationWithResult(false, scanner,
+      coprocEnvironments.isEmpty() ? null
+          : new ObserverOperationWithResult<RegionObserver, InternalScanner>(regionObserverGetter,
+              user) {
+            @Override
+            public InternalScanner call(RegionObserver observer) throws IOException {
+              return observer.preCompact(this, store, getResult(), scanType, tracker);
+            }
+          });
   }
 
   /**
@@ -625,8 +626,8 @@ public class RegionCoprocessorHost
    * @param tracker used to track the life cycle of a compaction
    * @throws IOException
    */
-  public void postCompact(final HStore store, final HStoreFile resultFile,
-      final CompactionLifeCycleTracker tracker, final User user) throws IOException {
+  public void postCompact(HStore store, HStoreFile resultFile, CompactionLifeCycleTracker tracker,
+      Optional<User> user) throws IOException {
     execOperation(coprocEnvironments.isEmpty() ? null : new RegionObserverOperation(user) {
       @Override
       public void call(RegionObserver observer) throws IOException {
@@ -1488,7 +1489,7 @@ public class RegionCoprocessorHost
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // BulkLoadObserver hooks
   /////////////////////////////////////////////////////////////////////////////////////////////////
-  public void prePrepareBulkLoad(User user) throws IOException {
+  public void prePrepareBulkLoad(Optional<User> user) throws IOException {
     execOperation(coprocEnvironments.isEmpty() ? null :
         new BulkLoadObserverOperation(user) {
           @Override protected void call(BulkLoadObserver observer) throws IOException {
@@ -1497,7 +1498,7 @@ public class RegionCoprocessorHost
         });
   }
 
-  public void preCleanupBulkLoad(User user) throws IOException {
+  public void preCleanupBulkLoad(Optional<User> user) throws IOException {
     execOperation(coprocEnvironments.isEmpty() ? null :
         new BulkLoadObserverOperation(user) {
           @Override protected void call(BulkLoadObserver observer) throws IOException {

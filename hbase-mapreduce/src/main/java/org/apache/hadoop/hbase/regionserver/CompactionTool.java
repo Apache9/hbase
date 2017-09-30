@@ -161,13 +161,13 @@ public class CompactionTool extends Configured implements Tool {
         store.triggerMajorCompaction();
       }
       do {
-        Optional<CompactionContext> compaction =
-            store.requestCompaction(PRIORITY_USER, CompactionLifeCycleTracker.DUMMY, null);
+        Optional<CompactionContext> compaction = store.requestCompaction(PRIORITY_USER,
+          CompactionLifeCycleTracker.DUMMY, Optional.empty());
         if (!compaction.isPresent()) {
           break;
         }
         List<HStoreFile> storeFiles =
-            store.compact(compaction.get(), NoLimitThroughputController.INSTANCE, null);
+            store.compact(compaction.get(), NoLimitThroughputController.INSTANCE, Optional.empty());
         if (storeFiles != null && !storeFiles.isEmpty()) {
           if (keepCompactedFiles && deleteCompacted) {
             for (HStoreFile storeFile: storeFiles) {

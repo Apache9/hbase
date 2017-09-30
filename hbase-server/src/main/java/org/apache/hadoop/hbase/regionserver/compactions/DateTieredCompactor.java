@@ -19,6 +19,7 @@ package org.apache.hadoop.hbase.regionserver.compactions;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Optional;
 import java.util.OptionalLong;
 
 import org.apache.commons.logging.Log;
@@ -55,7 +56,7 @@ public class DateTieredCompactor extends AbstractMultiOutputCompactor<DateTiered
   }
 
   public List<Path> compact(final CompactionRequest request, final List<Long> lowerBoundaries,
-      ThroughputController throughputController, User user) throws IOException {
+      ThroughputController throughputController, Optional<User> user) throws IOException {
     if (LOG.isDebugEnabled()) {
       LOG.debug("Executing compaction with " + lowerBoundaries.size()
           + "windows, lower boundaries: " + lowerBoundaries);

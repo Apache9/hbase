@@ -29,6 +29,7 @@ import java.util.Optional;
 import org.apache.hadoop.hbase.regionserver.compactions.CompactionContext;
 import org.apache.hadoop.hbase.regionserver.compactions.CompactionLifeCycleTracker;
 import org.apache.hadoop.hbase.security.User;
+import org.apache.hadoop.hbase.util.Classes;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
@@ -68,8 +69,8 @@ public class StatefulStoreMockMaker {
 
   public HStore createStoreMock(String name) throws Exception {
     HStore store = mock(HStore.class, name);
-    when(store.requestCompaction(anyInt(), any(CompactionLifeCycleTracker.class), any(User.class)))
-        .then(new SelectAnswer());
+    when(store.requestCompaction(anyInt(), any(CompactionLifeCycleTracker.class),
+      any(Classes.<Optional<User>> cast(Optional.class)))).then(new SelectAnswer());
     when(store.getCompactPriority()).then(new PriorityAnswer());
     doAnswer(new CancelAnswer()).when(store)
         .cancelRequestedCompaction(any(CompactionContext.class));

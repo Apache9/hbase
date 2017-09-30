@@ -20,6 +20,7 @@ package org.apache.hadoop.hbase.regionserver.compactions;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -38,7 +39,7 @@ import org.apache.hadoop.hbase.shaded.com.google.common.collect.Lists;
 
 /**
  * Compact passed set of files. Create an instance and then call
- * {@link #compact(CompactionRequest, ThroughputController, User)}
+ * {@link #compact(CompactionRequest, ThroughputController, Optional)}
  */
 @InterfaceAudience.Private
 public class DefaultCompactor extends Compactor<StoreFileWriter> {
@@ -62,13 +63,13 @@ public class DefaultCompactor extends Compactor<StoreFileWriter> {
    * Do a minor/major compaction on an explicit set of storefiles from a Store.
    */
   public List<Path> compact(final CompactionRequest request,
-      ThroughputController throughputController, User user) throws IOException {
+      ThroughputController throughputController, Optional<User> user) throws IOException {
     return compact(request, defaultScannerFactory, writerFactory, throughputController, user);
   }
 
   /**
    * Compact a list of files for testing. Creates a fake {@link CompactionRequest} to pass to
-   * {@link #compact(CompactionRequest, ThroughputController, User)};
+   * {@link #compact(CompactionRequest, ThroughputController, Optional)};
    * @param filesToCompact the files to compact. These are used as the compactionSelection for the
    *          generated {@link CompactionRequest}.
    * @param isMajor true to major compact (prune all deletes, max versions, etc)
@@ -80,7 +81,7 @@ public class DefaultCompactor extends Compactor<StoreFileWriter> {
       throws IOException {
     CompactionRequest cr = new CompactionRequest(filesToCompact);
     cr.setIsMajor(isMajor, isMajor);
-    return compact(cr, NoLimitThroughputController.INSTANCE, null);
+    return compact(cr, NoLimitThroughputController.INSTANCE, Optional.empty());
   }
 
   @Override

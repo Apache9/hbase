@@ -1346,7 +1346,7 @@ public class HStore implements Store, HeapSize, StoreConfigInformation, Propagat
    * @return Storefile we compacted into or null if we failed or opted out early.
    */
   public List<HStoreFile> compact(CompactionContext compaction,
-    ThroughputController throughputController, User user) throws IOException {
+    ThroughputController throughputController, Optional<User> user) throws IOException {
     assert compaction != null;
     List<HStoreFile> sfs = null;
     CompactionRequest cr = compaction.getRequest();
@@ -1418,7 +1418,7 @@ public class HStore implements Store, HeapSize, StoreConfigInformation, Propagat
   }
 
   private List<HStoreFile> moveCompatedFilesIntoPlace(CompactionRequest cr, List<Path> newFiles,
-      User user) throws IOException {
+      Optional<User> user) throws IOException {
     List<HStoreFile> sfs = new ArrayList<>(newFiles.size());
     for (Path newFile : newFiles) {
       assert newFile != null;
@@ -1661,11 +1661,11 @@ public class HStore implements Store, HeapSize, StoreConfigInformation, Propagat
   }
 
   public Optional<CompactionContext> requestCompaction() throws IOException {
-    return requestCompaction(NO_PRIORITY, CompactionLifeCycleTracker.DUMMY, null);
+    return requestCompaction(NO_PRIORITY, CompactionLifeCycleTracker.DUMMY, Optional.empty());
   }
 
   public Optional<CompactionContext> requestCompaction(int priority,
-      CompactionLifeCycleTracker tracker, User user) throws IOException {
+      CompactionLifeCycleTracker tracker, Optional<User> user) throws IOException {
     // don't even select for compaction if writes are disabled
     if (!this.areWritesEnabled()) {
       return Optional.empty();

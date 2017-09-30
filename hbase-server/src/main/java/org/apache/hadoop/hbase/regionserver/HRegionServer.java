@@ -41,6 +41,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
@@ -1793,11 +1794,11 @@ public class HRegionServer extends HasThread implements
                   majorCompactPriority > hr.getCompactPriority()) {
                 this.instance.compactSplitThread.requestCompaction(hr, s,
                   getName() + " requests major compaction; use default priority", Store.NO_PRIORITY,
-                  CompactionLifeCycleTracker.DUMMY, null);
+                  CompactionLifeCycleTracker.DUMMY, Optional.empty());
               } else {
                 this.instance.compactSplitThread.requestCompaction(hr, s,
                   getName() + " requests major compaction; use configured priority",
-                  this.majorCompactPriority, CompactionLifeCycleTracker.DUMMY, null);
+                  this.majorCompactPriority, CompactionLifeCycleTracker.DUMMY, Optional.empty());
               }
             }
           } catch (IOException e) {
@@ -2111,7 +2112,7 @@ public class HRegionServer extends HasThread implements
   }
 
   @Override
-  public void stop(final String msg) {
+  public void stop(String msg) {
     stop(msg, false, RpcServer.getRequestUser());
   }
 
@@ -2121,7 +2122,7 @@ public class HRegionServer extends HasThread implements
    * @param force True if this is a regionserver abort
    * @param user The user executing the stop request, or null if no user is associated
    */
-  public void stop(final String msg, final boolean force, final User user) {
+  public void stop(String msg, boolean force, Optional<User> user) {
     if (!this.stopped) {
       LOG.info("***** STOPPING region server '" + this + "' *****");
       if (this.rsHost != null) {
@@ -2388,7 +2389,7 @@ public class HRegionServer extends HasThread implements
       LOG.warn("Unable to report fatal error to master", t);
     }
     // shutdown should be run as the internal user
-    stop(reason, true, null);
+    stop(reason, true, Optional.empty());
   }
 
   /**

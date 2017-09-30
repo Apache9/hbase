@@ -1,4 +1,4 @@
-/*
+/**
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -15,8 +15,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.apache.hadoop.hbase.regionserver;
+
+import java.io.IOException;
+import java.math.BigInteger;
+import java.security.PrivilegedAction;
+import java.security.SecureRandom;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -29,19 +38,8 @@ import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.hbase.DoNotRetryIOException;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.TableName;
-import org.apache.hadoop.hbase.shaded.protobuf.ProtobufUtil;
-import org.apache.yetus.audience.InterfaceAudience;
 import org.apache.hadoop.hbase.client.Connection;
-import org.apache.hadoop.hbase.coprocessor.BulkLoadObserver;
-import org.apache.hadoop.hbase.coprocessor.CoprocessorHost;
-import org.apache.hadoop.hbase.coprocessor.ObserverContext;
-import org.apache.hadoop.hbase.coprocessor.RegionCoprocessor;
-import org.apache.hadoop.hbase.coprocessor.RegionCoprocessorEnvironment;
 import org.apache.hadoop.hbase.ipc.RpcServer;
-import org.apache.hadoop.hbase.shaded.protobuf.generated.ClientProtos;
-import org.apache.hadoop.hbase.shaded.protobuf.generated.ClientProtos.BulkLoadHFileRequest;
-import org.apache.hadoop.hbase.shaded.protobuf.generated.ClientProtos.CleanupBulkLoadRequest;
-import org.apache.hadoop.hbase.shaded.protobuf.generated.ClientProtos.PrepareBulkLoadRequest;
 import org.apache.hadoop.hbase.regionserver.Region.BulkLoadListener;
 import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.security.UserProvider;
@@ -55,15 +53,12 @@ import org.apache.hadoop.hbase.util.Pair;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.security.token.Token;
+import org.apache.yetus.audience.InterfaceAudience;
 
-import java.io.IOException;
-import java.math.BigInteger;
-import java.security.PrivilegedAction;
-import java.security.SecureRandom;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.ClientProtos;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.ClientProtos.BulkLoadHFileRequest;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.ClientProtos.CleanupBulkLoadRequest;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.ClientProtos.PrepareBulkLoadRequest;
 
 /**
  * Bulk loads in secure mode.
@@ -140,17 +135,19 @@ public class SecureBulkLoadManager {
 
   public String prepareBulkLoad(final Region region, final PrepareBulkLoadRequest request)
       throws IOException {
-    region.getCoprocessorHost().prePrepareBulkLoad(getActiveUser());
+    User user = getActiveUser();
+    region.getCoprocessorHost().prePrepareBulkLoad(Optional.of(user));
 
-    String bulkToken = createStagingDir(baseStagingDir, getActiveUser(),
-        region.getTableDescriptor().getTableName()).toString();
+    String bulkToken =
+        createStagingDir(baseStagingDir, user, region.getTableDescriptor().getTableName())
+            .toString();
 
     return bulkToken;
   }
 
   public void cleanupBulkLoad(final Region region, final CleanupBulkLoadRequest request)
       throws IOException {
-    region.getCoprocessorHost().preCleanupBulkLoad(getActiveUser());
+    region.getCoprocessorHost().preCleanupBulkLoad(Optional.of(getActiveUser()));
 
     Path path = new Path(request.getBulkToken());
     if (!fs.delete(path, true)) {
@@ -275,16 +272,12 @@ public class SecureBulkLoadManager {
   }
 
   private User getActiveUser() throws IOException {
-    User user = RpcServer.getRequestUser();
-    if (user == null) {
-      // for non-rpc handling, fallback to system user
-      user = userProvider.getCurrent();
-    }
-
-    //this is for testing
-    if (userProvider.isHadoopSecurityEnabled()
-        && "simple".equalsIgnoreCase(conf.get(User.HBASE_SECURITY_CONF_KEY))) {
-      return User.createUserForTesting(conf, user.getShortName(), new String[]{});
+    // for non-rpc handling, fallback to system user
+    User user = RpcServer.getRequestUser().orElse(userProvider.getCurrent());
+    // this is for testing
+    if (userProvider.isHadoopSecurityEnabled() &&
+        "simple".equalsIgnoreCase(conf.get(User.HBASE_SECURITY_CONF_KEY))) {
+      return User.createUserForTesting(conf, user.getShortName(), new String[] {});
     }
 
     return user;

@@ -1,5 +1,4 @@
-/*
- *
+/**
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -16,7 +15,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.apache.hadoop.hbase.coprocessor;
 
 import java.io.IOException;
@@ -35,8 +33,6 @@ import java.util.function.Function;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.yetus.audience.InterfaceAudience;
-import org.apache.yetus.audience.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.Abortable;
@@ -47,9 +43,12 @@ import org.apache.hadoop.hbase.HBaseInterfaceAudience;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.ipc.RpcServer;
 import org.apache.hadoop.hbase.security.User;
-import org.apache.hadoop.hbase.shaded.com.google.common.annotations.VisibleForTesting;
 import org.apache.hadoop.hbase.util.CoprocessorClassLoader;
 import org.apache.hadoop.hbase.util.SortedList;
+import org.apache.yetus.audience.InterfaceAudience;
+import org.apache.yetus.audience.InterfaceStability;
+
+import org.apache.hadoop.hbase.shaded.com.google.common.annotations.VisibleForTesting;
 
 /**
  * Provides the common setup framework and runtime services for coprocessor
@@ -552,7 +551,7 @@ public abstract class CoprocessorHost<C extends Coprocessor, E extends Coprocess
       this(observerGetter, RpcServer.getRequestUser());
     }
 
-    ObserverOperation(ObserverGetter<C, O> observerGetter, User user) {
+    ObserverOperation(ObserverGetter<C, O> observerGetter, Optional<User> user) {
       super(user);
       this.observerGetter = observerGetter;
     }
@@ -571,7 +570,8 @@ public abstract class CoprocessorHost<C extends Coprocessor, E extends Coprocess
       super(observerGetter);
     }
 
-    public ObserverOperationWithoutResult(ObserverGetter<C, O> observerGetter, User user) {
+    public ObserverOperationWithoutResult(ObserverGetter<C, O> observerGetter,
+        Optional<User> user) {
       super(observerGetter, user);
     }
 
@@ -599,7 +599,7 @@ public abstract class CoprocessorHost<C extends Coprocessor, E extends Coprocess
       super(observerGetter);
     }
 
-    public ObserverOperationWithResult(ObserverGetter<C, O> observerGetter, User user) {
+    public ObserverOperationWithResult(ObserverGetter<C, O> observerGetter, Optional<User> user) {
       super(observerGetter, user);
     }
 

@@ -23,6 +23,7 @@ import static org.junit.Assert.assertTrue;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 
 import org.apache.commons.logging.Log;
@@ -136,7 +137,7 @@ public class TestIOFencing {
 
     @Override
     public boolean compact(CompactionContext compaction, HStore store,
-        ThroughputController throughputController, User user) throws IOException {
+        ThroughputController throughputController, Optional<User> user) throws IOException {
       try {
         return super.compact(compaction, store, throughputController, user);
       } finally {

@@ -68,6 +68,7 @@ import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.apache.hadoop.hbase.testclassification.RegionServerTests;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hbase.util.Classes;
 import org.apache.hadoop.hbase.util.Threads;
 import org.apache.hadoop.hbase.wal.WAL;
 import org.junit.After;
@@ -308,7 +309,7 @@ public class TestCompaction {
     CountDownLatch latch = new CountDownLatch(1);
     Tracker tracker = new Tracker(latch);
     thread.requestCompaction(r, store, "test custom comapction", PRIORITY_USER, tracker,
-      null);
+      Optional.empty());
     // wait for the latch to complete.
     latch.await();
 
@@ -341,7 +342,7 @@ public class TestCompaction {
     CountDownLatch latch = new CountDownLatch(1);
     Tracker tracker = new Tracker(latch);
     thread.requestCompaction(mockRegion, store, "test custom comapction", PRIORITY_USER,
-      tracker, null);
+      tracker, Optional.empty());
     // wait for the latch to complete.
     latch.await(120, TimeUnit.SECONDS);
 
@@ -381,7 +382,7 @@ public class TestCompaction {
       createStoreFile(r, store.getColumnFamilyName());
       createStoreFile(r, store.getColumnFamilyName());
       thread.requestCompaction(r, store, "test mulitple custom comapctions", PRIORITY_USER,
-        tracker, null);
+        tracker, Optional.empty());
     }
     // wait for the latch to complete.
     latch.await();
@@ -421,7 +422,7 @@ public class TestCompaction {
       }
 
       @Override
-      public List<Path> compact(ThroughputController throughputController, User user)
+      public List<Path> compact(ThroughputController throughputController, Optional<User> user)
           throws IOException {
         finishCompaction(this.selectedFiles);
         return new ArrayList<>();
@@ -475,7 +476,7 @@ public class TestCompaction {
       }
 
       @Override
-      public List<Path> compact(ThroughputController throughputController, User user)
+      public List<Path> compact(ThroughputController throughputController, Optional<User> user)
           throws IOException {
         try {
           isInCompact = true;
@@ -557,16 +558,16 @@ public class TestCompaction {
     cst.shutdownLongCompactions();
     // Set up the region mock that redirects compactions.
     HRegion r = mock(HRegion.class);
-    when(
-      r.compact(any(CompactionContext.class), any(HStore.class),
-        any(ThroughputController.class), any(User.class))).then(new Answer<Boolean>() {
-      @Override
-      public Boolean answer(InvocationOnMock invocation) throws Throwable {
-        invocation.getArgumentAt(0, CompactionContext.class).compact(
-          invocation.getArgumentAt(2, ThroughputController.class), null);
-        return true;
-      }
-    });
+    when(r.compact(any(CompactionContext.class), any(HStore.class), any(ThroughputController.class),
+      any(Classes.<Optional<User>> cast(Optional.class)))).then(new Answer<Boolean>() {
+        @Override
+        public Boolean answer(InvocationOnMock invocation) throws Throwable {
+          invocation.getArgumentAt(0, CompactionContext.class).compact(
+            invocation.getArgumentAt(2, ThroughputController.class),
+            invocation.getArgumentAt(3, Classes.<Optional<User>> cast(Optional.class)));
+          return true;
+        }
+      });
 
     // Set up store mocks for 2 "real" stores and the one we use for blocking CST.
     ArrayList<Integer> results = new ArrayList<>();

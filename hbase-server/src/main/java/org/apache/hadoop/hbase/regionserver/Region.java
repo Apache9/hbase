@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.Cell;
@@ -762,14 +763,14 @@ public interface Region extends ConfigurationObserver {
   /**
    * Request compaction on this region.
    */
-  void requestCompaction(String why, int priority, CompactionLifeCycleTracker tracker, User user)
-      throws IOException;
+  void requestCompaction(String why, int priority, CompactionLifeCycleTracker tracker,
+      Optional<User> user) throws IOException;
 
   /**
    * Request compaction for the given family
    */
   void requestCompaction(byte[] family, String why, int priority,
-      CompactionLifeCycleTracker tracker, User user) throws IOException;
+      CompactionLifeCycleTracker tracker, Optional<User> user) throws IOException;
 
   /** Wait for all current flushes and compactions of the region to complete */
   void waitForFlushesAndCompactions();

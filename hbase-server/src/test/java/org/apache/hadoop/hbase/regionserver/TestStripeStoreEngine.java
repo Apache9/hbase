@@ -30,6 +30,7 @@ import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Optional;
 import java.util.OptionalLong;
 
 import org.apache.hadoop.conf.Configuration;
@@ -45,6 +46,7 @@ import org.apache.hadoop.hbase.regionserver.throttle.ThroughputController;
 import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.testclassification.RegionServerTests;
 import org.apache.hadoop.hbase.testclassification.SmallTests;
+import org.apache.hadoop.hbase.util.Classes;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
@@ -77,9 +79,8 @@ public class TestStripeStoreEngine {
     se.setCompactorOverride(mockCompactor);
     when(
       mockCompactor.compact(any(CompactionRequest.class), anyInt(), anyLong(), any(byte[].class),
-        any(byte[].class), any(byte[].class), any(byte[].class),
-        any(ThroughputController.class), any(User.class)))
-        .thenReturn(new ArrayList<>());
+        any(byte[].class), any(byte[].class), any(byte[].class), any(ThroughputController.class),
+        any(Classes.<Optional<User>> cast(Optional.class)))).thenReturn(new ArrayList<>());
 
     // Produce 3 L0 files.
     HStoreFile sf = createFile();
@@ -97,10 +98,10 @@ public class TestStripeStoreEngine {
     assertEquals(2, compaction.getRequest().getFiles().size());
     assertFalse(compaction.getRequest().getFiles().contains(sf));
     // Make sure the correct method it called on compactor.
-    compaction.compact(NoLimitThroughputController.INSTANCE, null);
+    compaction.compact(NoLimitThroughputController.INSTANCE, Optional.empty());
     verify(mockCompactor, times(1)).compact(compaction.getRequest(), targetCount, 0L,
       StripeStoreFileManager.OPEN_KEY, StripeStoreFileManager.OPEN_KEY, null, null,
-      NoLimitThroughputController.INSTANCE, null);
+      NoLimitThroughputController.INSTANCE, Optional.empty());
   }
 
   private static HStoreFile createFile() throws Exception {

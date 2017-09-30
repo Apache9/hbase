@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.OptionalInt;
 
 import org.apache.commons.logging.Log;
@@ -267,9 +268,9 @@ public abstract class Compactor<T extends CellSink> {
     /* includesTags = */fd.maxTagsLength > 0, shouldDropBehind);
   }
 
-  protected List<Path> compact(final CompactionRequest request,
-      InternalScannerFactory scannerFactory, CellSinkFactory<T> sinkFactory,
-      ThroughputController throughputController, User user) throws IOException {
+  protected List<Path> compact(CompactionRequest request, InternalScannerFactory scannerFactory,
+      CellSinkFactory<T> sinkFactory, ThroughputController throughputController,
+      Optional<User> user) throws IOException {
     FileDetails fd = getFileDetails(request.getFiles(), request.isAllFiles());
     this.progress = new CompactionProgress(fd.maxKeyCount);
 
@@ -341,7 +342,7 @@ public abstract class Compactor<T extends CellSink> {
    * @return Scanner override by coprocessor; null if not overriding.
    */
   protected InternalScanner preCreateCoprocScanner(CompactionRequest request, ScanType scanType,
-      long earliestPutTs, List<StoreFileScanner> scanners, User user, long readPoint)
+      long earliestPutTs, List<StoreFileScanner> scanners, Optional<User> user, long readPoint)
       throws IOException {
     if (store.getCoprocessorHost() == null) {
       return null;
@@ -358,7 +359,7 @@ public abstract class Compactor<T extends CellSink> {
    * @return Scanner scanner to use (usually the default); null if compaction should not proceed.
    */
   protected InternalScanner postCreateCoprocScanner(CompactionRequest request, ScanType scanType,
-      InternalScanner scanner, User user) throws IOException {
+      InternalScanner scanner, Optional<User> user) throws IOException {
     if (store.getCoprocessorHost() == null) {
       return scanner;
     }

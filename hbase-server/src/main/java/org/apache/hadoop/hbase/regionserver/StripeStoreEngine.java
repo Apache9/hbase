@@ -20,6 +20,7 @@ package org.apache.hadoop.hbase.regionserver;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -100,7 +101,7 @@ public class StripeStoreEngine extends StoreEngine<StripeStoreFlusher,
     }
 
     @Override
-    public List<Path> compact(ThroughputController throughputController, User user)
+    public List<Path> compact(ThroughputController throughputController, Optional<User> user)
         throws IOException {
       Preconditions.checkArgument(this.stripeRequest != null, "Cannot compact without selection");
       return this.stripeRequest.execute(compactor, throughputController, user);

@@ -1,4 +1,4 @@
-/*
+/**
  * Copyright The Apache Software Foundation
  *
  * Licensed to the Apache Software Foundation (ASF) under one
@@ -17,7 +17,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.apache.hadoop.hbase.util;
 
 import org.apache.yetus.audience.InterfaceAudience;
@@ -64,10 +63,10 @@ public class Classes {
     return valueType;
   }
 
-  public static String stringify(Class[] classes) {
+  public static String stringify(Class<?>[] classes) {
     StringBuilder buf = new StringBuilder();
     if (classes != null) {
-      for (Class c : classes) {
+      for (Class<?> c : classes) {
         if (buf.length() > 0) {
           buf.append(",");
         }
@@ -77,5 +76,10 @@ public class Classes {
       buf.append("NULL");
     }
     return buf.toString();
+  }
+
+  @SuppressWarnings("unchecked")
+  public static <T> Class<T> cast(Class<?> clazz) {
+    return (Class<T>) clazz;
   }
 }

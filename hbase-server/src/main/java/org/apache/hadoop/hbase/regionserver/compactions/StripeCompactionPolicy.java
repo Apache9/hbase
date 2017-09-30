@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -381,7 +382,7 @@ public class StripeCompactionPolicy extends CompactionPolicy {
 
     public List<Path> execute(StripeCompactor compactor,
       ThroughputController throughputController) throws IOException {
-      return execute(compactor, throughputController, null);
+      return execute(compactor, throughputController, Optional.empty());
     }
     /**
      * Executes the request against compactor (essentially, just calls correct overload of
@@ -390,7 +391,7 @@ public class StripeCompactionPolicy extends CompactionPolicy {
      * @return result of compact(...)
      */
     public abstract List<Path> execute(StripeCompactor compactor,
-        ThroughputController throughputController, User user) throws IOException;
+        ThroughputController throughputController, Optional<User> user) throws IOException;
 
     public StripeCompactionRequest(CompactionRequest request) {
       this.request = request;
@@ -441,8 +442,8 @@ public class StripeCompactionPolicy extends CompactionPolicy {
     }
 
     @Override
-    public List<Path> execute(StripeCompactor compactor,
-        ThroughputController throughputController, User user) throws IOException {
+    public List<Path> execute(StripeCompactor compactor, ThroughputController throughputController,
+        Optional<User> user) throws IOException {
       return compactor.compact(this.request, this.targetBoundaries, this.majorRangeFromRow,
         this.majorRangeToRow, throughputController, user);
     }
@@ -488,7 +489,7 @@ public class StripeCompactionPolicy extends CompactionPolicy {
 
     @Override
     public List<Path> execute(StripeCompactor compactor,
-        ThroughputController throughputController, User user) throws IOException {
+        ThroughputController throughputController, Optional<User> user) throws IOException {
       return compactor.compact(this.request, this.targetCount, this.targetKvs, this.startRow,
         this.endRow, this.majorRangeFromRow, this.majorRangeToRow, throughputController, user);
     }

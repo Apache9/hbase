@@ -19,6 +19,7 @@ package org.apache.hadoop.hbase.regionserver.compactions;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Optional;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -76,9 +77,9 @@ public class StripeCompactor extends AbstractMultiOutputCompactor<StripeMultiFil
     }
   }
 
-  public List<Path> compact(CompactionRequest request, final List<byte[]> targetBoundaries,
-      final byte[] majorRangeFromRow, final byte[] majorRangeToRow,
-      ThroughputController throughputController, User user) throws IOException {
+  public List<Path> compact(CompactionRequest request, List<byte[]> targetBoundaries,
+      byte[] majorRangeFromRow, byte[] majorRangeToRow, ThroughputController throughputController,
+      Optional<User> user) throws IOException {
     if (LOG.isDebugEnabled()) {
       StringBuilder sb = new StringBuilder();
       sb.append("Executing compaction with " + targetBoundaries.size() + " boundaries:");
@@ -103,7 +104,7 @@ public class StripeCompactor extends AbstractMultiOutputCompactor<StripeMultiFil
 
   public List<Path> compact(CompactionRequest request, final int targetCount, final long targetSize,
       final byte[] left, final byte[] right, byte[] majorRangeFromRow, byte[] majorRangeToRow,
-      ThroughputController throughputController, User user) throws IOException {
+      ThroughputController throughputController, Optional<User> user) throws IOException {
     if (LOG.isDebugEnabled()) {
       LOG.debug(
         "Executing compaction with " + targetSize + " target file size, no more than " + targetCount

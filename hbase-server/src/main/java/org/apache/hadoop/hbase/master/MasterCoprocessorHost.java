@@ -21,6 +21,7 @@ package org.apache.hadoop.hbase.master;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 import com.google.protobuf.Service;
@@ -161,7 +162,7 @@ public class MasterCoprocessorHost
     }
 
     public MasterObserverOperation(User user) {
-      super(masterObserverGetter, user);
+      super(masterObserverGetter, Optional.ofNullable(user));
     }
   }
 

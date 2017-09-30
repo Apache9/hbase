@@ -19,6 +19,7 @@
 package org.apache.hadoop.hbase.regionserver;
 
 import java.io.IOException;
+import java.util.Optional;
 
 import com.google.protobuf.Service;
 import org.apache.commons.logging.Log;
@@ -98,7 +99,7 @@ public class RegionServerCoprocessorHost extends
       super(rsObserverGetter);
     }
 
-    public RegionServerObserverOperation(User user) {
+    public RegionServerObserverOperation(Optional<User> user) {
       super(rsObserverGetter, user);
     }
   }
@@ -106,8 +107,7 @@ public class RegionServerCoprocessorHost extends
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // RegionServerObserver operations
   //////////////////////////////////////////////////////////////////////////////////////////////////
-
-  public void preStop(String message, User user) throws IOException {
+  public void preStop(String message, Optional<User> user) throws IOException {
     // While stopping the region server all coprocessors method should be executed first then the
     // coprocessor should be cleaned up.
     execShutdown(coprocEnvironments.isEmpty() ? null : new RegionServerObserverOperation(user) {

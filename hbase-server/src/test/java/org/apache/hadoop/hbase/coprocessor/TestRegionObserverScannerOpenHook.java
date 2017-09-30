@@ -283,7 +283,7 @@ public class TestRegionObserverScannerOpenHook {
 
     @Override
     public boolean compact(CompactionContext compaction, HStore store,
-        ThroughputController throughputController, User user) throws IOException {
+        ThroughputController throughputController, Optional<User> user) throws IOException {
       boolean ret = super.compact(compaction, store, throughputController, user);
       if (ret) compactionStateChangeLatch.countDown();
       return ret;

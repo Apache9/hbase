@@ -30,6 +30,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
@@ -138,7 +139,7 @@ public class TestStripeCompactor {
     StoreFileWritersCapture writers = new StoreFileWritersCapture();
     StripeCompactor sc = createCompactor(writers, input);
     List<Path> paths = sc.compact(createDummyRequest(), Arrays.asList(boundaries), majorFrom,
-      majorTo, NoLimitThroughputController.INSTANCE, null);
+      majorTo, NoLimitThroughputController.INSTANCE, Optional.empty());
     writers.verifyKvs(output, allFiles, true);
     if (allFiles) {
       assertEquals(output.length, paths.size());
@@ -174,7 +175,7 @@ public class TestStripeCompactor {
     StoreFileWritersCapture writers = new StoreFileWritersCapture();
     StripeCompactor sc = createCompactor(writers, input);
     List<Path> paths = sc.compact(createDummyRequest(), targetCount, targetSize, left, right, null,
-      null, NoLimitThroughputController.INSTANCE, null);
+      null, NoLimitThroughputController.INSTANCE, Optional.empty());
     assertEquals(output.length, paths.size());
     writers.verifyKvs(output, true, true);
     List<byte[]> boundaries = new ArrayList<>(output.length + 2);

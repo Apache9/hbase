@@ -19,6 +19,7 @@ package org.apache.hadoop.hbase.regionserver;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Optional;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -89,7 +90,8 @@ public class DateTieredStoreEngine extends StoreEngine<DefaultStoreFlusher,
       super.forceSelect(request);
     }
 
-    public List<Path> compact(ThroughputController throughputController, User user)
+    @Override
+    public List<Path> compact(ThroughputController throughputController, Optional<User> user)
         throws IOException {
       if (request instanceof DateTieredCompactionRequest) {
         return compactor.compact(request, ((DateTieredCompactionRequest) request).getBoundaries(),

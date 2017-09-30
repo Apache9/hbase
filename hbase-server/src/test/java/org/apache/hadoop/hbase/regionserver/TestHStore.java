@@ -39,6 +39,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.NavigableSet;
+import java.util.Optional;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.CountDownLatch;
@@ -419,7 +420,8 @@ public class TestHStore {
     assertEquals(lowestTimeStampFromManager,lowestTimeStampFromFS);
 
     // after compact; check the lowest time stamp
-    store.compact(store.requestCompaction().get(), NoLimitThroughputController.INSTANCE, null);
+    store.compact(store.requestCompaction().get(), NoLimitThroughputController.INSTANCE,
+      Optional.empty());
     lowestTimeStampFromManager = StoreUtils.getLowestTimestamp(store.getStorefiles());
     lowestTimeStampFromFS = getLowestTimeStampFromFS(fs, store.getStorefiles());
     assertEquals(lowestTimeStampFromManager, lowestTimeStampFromFS);

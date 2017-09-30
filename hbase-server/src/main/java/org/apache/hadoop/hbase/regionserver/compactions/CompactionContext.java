@@ -20,6 +20,7 @@ package org.apache.hadoop.hbase.regionserver.compactions;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Optional;
 
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.regionserver.HStoreFile;
@@ -65,7 +66,7 @@ public abstract class CompactionContext {
     this.request = request;
   }
 
-  public abstract List<Path> compact(ThroughputController throughputController, User user)
+  public abstract List<Path> compact(ThroughputController throughputController, Optional<User> user)
       throws IOException;
 
   public CompactionRequest getRequest() {

@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.NavigableMap;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
@@ -1448,7 +1449,7 @@ public class RSRpcServices implements HBaseRPCErrorHandler,
   }
 
   @Override
-  public int getPriority(RequestHeader header, Message param, User user) {
+  public int getPriority(RequestHeader header, Message param, Optional<User> user) {
     return priority.getPriority(header, param, user);
   }
 
@@ -1547,11 +1548,11 @@ public class RSRpcServices implements HBaseRPCErrorHandler,
       // Quota support is enabled, the requesting user is not system/super user
       // and a quota policy is enforced that disables compactions.
       if (QuotaUtil.isQuotaEnabled(getConfiguration()) &&
-          !Superusers.isSuperUser(RpcServer.getRequestUser()) &&
-          this.regionServer.getRegionServerSpaceQuotaManager().areCompactionsDisabled(
-              region.getTableDescriptor().getTableName())) {
-        throw new DoNotRetryIOException("Compactions on this region are "
-            + "disabled due to a space quota violation.");
+          !Superusers.isSuperUser(RpcServer.getRequestUser().orElse(null)) &&
+          this.regionServer.getRegionServerSpaceQuotaManager()
+              .areCompactionsDisabled(region.getTableDescriptor().getTableName())) {
+        throw new DoNotRetryIOException(
+            "Compactions on this region are " + "disabled due to a space quota violation.");
       }
       region.startRegionOperation(Operation.COMPACT_REGION);
       LOG.info("Compacting " + region.getRegionInfo().getRegionNameAsString());
@@ -2407,7 +2408,7 @@ public class RSRpcServices implements HBaseRPCErrorHandler,
       ClientProtos.Get get = request.getGet();
       Boolean existence = null;
       Result r = null;
-      RpcCallContext context = RpcServer.getCurrentCall();
+      RpcCallContext context = RpcServer.getCurrentCall().orElse(null);
       quota = getRpcQuotaManager().checkQuota(region, OperationQuota.OperationType.GET);
 
       Get clientGet = ProtobufUtil.toGet(get);
@@ -2558,7 +2559,7 @@ public class RSRpcServices implements HBaseRPCErrorHandler,
     RegionActionResult.Builder regionActionResultBuilder = RegionActionResult.newBuilder();
     Boolean processed = null;
     RegionScannersCloseCallBack closeCallBack = null;
-    RpcCallContext context = RpcServer.getCurrentCall();
+    RpcCallContext context = RpcServer.getCurrentCall().orElse(null);
     this.rpcMultiRequestCount.increment();
     this.requestCount.increment();
     Map<RegionSpecifier, ClientProtos.RegionLoadStats> regionStats = new HashMap<>(request
@@ -2689,7 +2690,7 @@ public class RSRpcServices implements HBaseRPCErrorHandler,
     HBaseRpcController controller = (HBaseRpcController)rpcc;
     CellScanner cellScanner = controller != null ? controller.cellScanner() : null;
     OperationQuota quota = null;
-    RpcCallContext context = RpcServer.getCurrentCall();
+    RpcCallContext context = RpcServer.getCurrentCall().orElse(null);
     ActivePolicyEnforcement spaceQuotaEnforcement = null;
     MutationType type = null;
     long before = EnvironmentEdgeManager.currentTime();
@@ -3269,7 +3270,7 @@ public class RSRpcServices implements HBaseRPCErrorHandler,
     } else {
       rows = closeScanner ? 0 : 1;
     }
-    RpcCallContext context = RpcServer.getCurrentCall();
+    RpcCallContext context = RpcServer.getCurrentCall().orElse(null);
     // now let's do the real scan.
     long maxQuotaResultSize = Math.min(maxScannerResultSize, quota.getReadAvailable());
     RegionScanner scanner = rsh.s;
@@ -3281,7 +3282,7 @@ public class RSRpcServices implements HBaseRPCErrorHandler,
     } else {
       limitOfRows = -1;
     }
-    MutableObject lastBlock = new MutableObject();
+    MutableObject<Object> lastBlock = new MutableObject<>();
     boolean scannerClosed = false;
     try {
       List<Result> results = new ArrayList<>();
