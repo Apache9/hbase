@@ -1015,7 +1015,7 @@
     <hadoop-mdh.version>2.4.0-mdh2.3.27</hadoop-mdh.version>
     <htrace-mdh.version>3.1.1-mdh1.0-SNAPSHOT</htrace-mdh.version>
     <minikdc.version>${hadoop-mdh.version}</minikdc.version>
-    <rrd-on-hbase.version>1.0.9</rrd-on-hbase.version>
+    <rrd-on-hbase.version>1.0.10</rrd-on-hbase.version>
     <galaxy-sds-core.version>2.0.7</galaxy-sds-core.version>
     <themis-coprocessor.version>2.3.0</themis-coprocessor.version>
     <slf4j.version>1.6.4</slf4j.version>
