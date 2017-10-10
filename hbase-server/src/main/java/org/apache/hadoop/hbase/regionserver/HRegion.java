@@ -2463,8 +2463,8 @@ public class HRegion implements HeapSize { // , Writable{
           }
           initialized = true;
         }
-        long addedSize = doMiniBatchMutation(batchOp);
-        long newSize = this.addAndGetGlobalMemstoreSize(addedSize);
+        doMiniBatchMutation(batchOp);
+        long newSize = this.getMemstoreSize().get();
         if (isFlushSize(newSize)) {
           requestFlush();
         }
@@ -2804,6 +2804,8 @@ public class HRegion implements HeapSize { // , Writable{
         syncOrDefer(txid, durability);
       }
       doRollBackMemstore = false;
+      // update memstore size
+      this.addAndGetGlobalMemstoreSize(addedSize);
       // calling the post CP hook for batch mutation
       if (!isInReplay && coprocessorHost != null) {
         MiniBatchOperationInProgress<Mutation> miniBatchOp =
@@ -5646,7 +5648,6 @@ public class HRegion implements HeapSize { // , Writable{
    */
   public void processRowsWithLocks(RowProcessor<?,?> processor, long timeout,
       long nonceGroup, long nonce) throws IOException {
-
     for (byte[] row : processor.getRowsToLock()) {
       checkRow(row, "processRowsWithLocks");
     }
@@ -5685,6 +5686,7 @@ public class HRegion implements HeapSize { // , Writable{
     boolean walSyncSuccessful = false;
     List<RowLock> acquiredRowLocks = null;
     long addedSize = 0;
+    long newSize = 0;
     List<Mutation> mutations = new ArrayList<Mutation>();
     Collection<byte[]> rowsToLock = processor.getRowsToLock();
     try {
@@ -5752,6 +5754,7 @@ public class HRegion implements HeapSize { // , Writable{
             syncOrDefer(txid, getEffectiveDurability(processor.useDurability()));
           }
           walSyncSuccessful = true;
+          newSize = this.addAndGetGlobalMemstoreSize(addedSize);
           // 12. call postBatchMutate hook
           processor.postBatchMutate(this);
         }
@@ -5786,8 +5789,7 @@ public class HRegion implements HeapSize { // , Writable{
       throw e;
     } finally {
       closeRegionOperation();
-      if (!mutations.isEmpty() &&
-          isFlushSize(this.addAndGetGlobalMemstoreSize(addedSize))) {
+      if (!mutations.isEmpty() && isFlushSize(newSize)) {
         requestFlush();
       }
     }
