@@ -327,8 +327,12 @@ public class CompactSplitThread implements CompactionRequestor {
 
     // We assume that most compactions are small. So, put system compactions into small
     // pool; we will do selection there, and move to large pool if necessary.
-    ThreadPoolExecutor pool = (selectNow && s.throttleCompaction(compaction.getRequest().getSize()))
-      ? largeCompactions : smallCompactions;
+    // If need major compaction, move to large pool directly
+    ThreadPoolExecutor pool = smallCompactions;
+    if ((selectNow && s.throttleCompaction(compaction.getRequest().getSize()))
+        || s.isMajorCompaction()) {
+      pool = largeCompactions;
+    }
     pool.execute(new CompactionRunner(s, r, compaction, pool));
     if (LOG.isDebugEnabled()) {
       String type = (pool == smallCompactions) ? "Small " : "Large ";
