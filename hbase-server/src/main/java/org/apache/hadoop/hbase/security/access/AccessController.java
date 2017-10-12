@@ -2478,6 +2478,5 @@ public class AccessController extends BaseMasterAndRegionObserver
   @Override
   public void preListReplicationPeers(final ObserverContext<MasterCoprocessorEnvironment> ctx,
       String regex) throws IOException {
-    requirePermission("listReplicationPeers", Action.ADMIN);
   }
 }
