@@ -4406,7 +4406,9 @@ public class HRegion implements HeapSize { // , Writable{
 
       updateReadRawCellMetrics(scannerContext.getReadRawCells());
       updateReadMetrics(1);
-      getMetrics().updateScanNext(totalKvSize);
+      if (metricsRegion != null) {
+        metricsRegion.updateScanNext(totalKvSize);
+      }
       updateReadCapacityUnitMetrics(totalKvSize);
       updateReadCellMetrics(resultCells);
       updateScanRowsPerSecond(1);
