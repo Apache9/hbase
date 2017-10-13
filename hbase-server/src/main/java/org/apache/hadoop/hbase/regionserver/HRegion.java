@@ -4386,15 +4386,30 @@ public class HRegion implements HeapSize { // , Writable{
         throw new UnknownScannerException("Scanner was closed");
       }
       boolean moreValues;
+      long totalKvSize = 0;
+      int resultCells = 0;
       if (outResults.isEmpty()) {
         // Usually outResults is empty. This is true when next is called
         // to handle scan or get operation.
         moreValues = nextInternal(outResults, scannerContext);
+        totalKvSize += outResults.stream().map(KeyValueUtil::ensureKeyValue)
+            .mapToLong(KeyValue::getLength).sum();
+        resultCells += outResults.size();
       } else {
         List<Cell> tmpList = new ArrayList<Cell>();
         moreValues = nextInternal(tmpList, scannerContext);
         outResults.addAll(tmpList);
+        totalKvSize += tmpList.stream().map(KeyValueUtil::ensureKeyValue)
+            .mapToLong(KeyValue::getLength).sum();
+        resultCells += tmpList.size();
       }
+
+      updateReadRawCellMetrics(scannerContext.getReadRawCells());
+      updateReadMetrics(1);
+      getMetrics().updateScanNext(totalKvSize);
+      updateReadCapacityUnitMetrics(totalKvSize);
+      updateReadCellMetrics(resultCells);
+      updateScanRowsPerSecond(1);
 
       // If the size limit was reached it means a partial Result is being returned. Returning a
       // partial Result means that we should not reset the filters; filters should only be reset in

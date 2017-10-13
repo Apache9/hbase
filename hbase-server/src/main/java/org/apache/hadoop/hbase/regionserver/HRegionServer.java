@@ -3677,7 +3677,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
   // return whether we have more results in region.
   private void scan(HBaseRpcController controller, ScanRequest request, RegionScannerHolder rsh,
       long maxQuotaResultSize, int maxResults, int limitOfRows, List<Result> results,
-      ScanResponse.Builder builder, RpcCallContext context, long totalKvSize, int resultCells)
+      ScanResponse.Builder builder, RpcCallContext context)
       throws IOException {
     HRegion region = rsh.r;
     RegionScanner scanner = rsh.s;
@@ -3769,9 +3769,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
                 break;
               }
             }
-            totalKvSize += values.stream().map(KeyValueUtil::ensureKeyValue)
-                .mapToLong(KeyValue::getLength).sum();
-            resultCells += values.size();
+
             boolean mayHaveMoreCellsInRow = scannerContext.mayHaveMoreCellsInRow();
             Result r = Result.create(values, null, false, mayHaveMoreCellsInRow);
             results.add(r);
@@ -3820,14 +3818,8 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
           // We didn't get a single batch
           builder.setMoreResultsInRegion(false);
         }
-        region.updateReadRawCellMetrics(scannerContext.getReadRawCells());
       }
-      region.updateReadMetrics(numOfResults);
-      region.getMetrics().updateScanNext(totalKvSize);
-      region.updateReadCapacityUnitMetrics(totalKvSize);
-      region.updateReadCellMetrics(resultCells);
       region.updateScanCountPerSecond(1);
-      region.updateScanRowsPerSecond(numOfResults);
     } finally {
       region.closeRegionOperation();
     }
@@ -4008,8 +4000,12 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
           }
         }
         if (!done) {
+          // Update the scan metrics from coprocessor
+          region.getMetrics().updateScanNext(totalKvSize);
+          region.updateReadCapacityUnitMetrics(totalKvSize);
+          region.updateReadCellMetrics(resultCells);
           scan((HBaseRpcController) controller, request, rsh, maxQuotaResultSize, rows, limitOfRows,
-            results, builder, context, totalKvSize, resultCells);
+            results, builder, context);
         } else {
           builder.setMoreResultsInRegion(!results.isEmpty());
         }
