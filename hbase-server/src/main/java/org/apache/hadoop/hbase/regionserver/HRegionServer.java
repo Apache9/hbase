@@ -4002,8 +4002,10 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
         }
         if (!done) {
           // Update the scan metrics from coprocessor
-          region.getMetrics().updateScanNext(totalKvSize);
-          region.updateReadCapacityUnitMetrics(totalKvSize);
+          if (totalKvSize != 0) {
+            region.getMetrics().updateScanNext(totalKvSize);
+            region.updateReadCapacityUnitMetrics(totalKvSize);
+          }
           region.updateReadCellMetrics(resultCells);
           scan((HBaseRpcController) controller, request, rsh, maxQuotaResultSize, rows, limitOfRows,
             results, builder, context);
