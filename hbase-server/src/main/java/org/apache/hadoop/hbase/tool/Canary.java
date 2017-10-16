@@ -635,12 +635,21 @@ public final class Canary implements Tool {
     MetaScannerVisitor visitor = new MetaScannerVisitorBase() {
       @Override
       public boolean processRow(Result row) throws IOException {
-        exist.set(true);
-        // break the meta scan once region hit
-        return false;
+        try {
+          byte[] tableNameInMeta = HRegionInfo.parseRegionName(row.getRow())[0];
+          if (Bytes.compareTo(tableName, tableNameInMeta) == 0) {
+            exist.set(true);
+            // break the meta scan once region hit
+            return false;
+          }
+        } catch (Exception e) {
+          // Parse table name failed. ignore.
+        }
+        return true;
       }
     };
-    MetaScanner.metaScan(conf, conn, visitor, TableName.valueOf(tableName));
+    MetaScanner.metaScan(conf, conn, visitor, TableName.valueOf(tableName), null, 1,
+      TableName.META_TABLE_NAME);
     return exist.get();
   }
 
