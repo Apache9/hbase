@@ -34,7 +34,7 @@ import com.google.protobuf.RpcController;
 import com.google.protobuf.ServiceException;
 import com.xiaomi.owl.metric.MetricCounter;
 
-import io.netty.util.HashedWheelTimer;
+import org.apache.hadoop.hbase.shaded.io.netty.util.HashedWheelTimer;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;

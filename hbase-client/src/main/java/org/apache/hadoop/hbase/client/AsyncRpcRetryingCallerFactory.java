@@ -20,7 +20,7 @@ package org.apache.hadoop.hbase.client;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static org.apache.hadoop.hbase.client.ConnectionUtils.retries2Attempts;
-import io.netty.util.HashedWheelTimer;
+import org.apache.hadoop.hbase.shaded.io.netty.util.HashedWheelTimer;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;

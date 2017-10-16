@@ -21,7 +21,7 @@ import com.google.protobuf.Descriptors.MethodDescriptor;
 import com.google.protobuf.Message;
 import com.google.protobuf.RpcCallback;
 
-import io.netty.util.Timeout;
+import org.apache.hadoop.hbase.shaded.io.netty.util.Timeout;
 
 import java.io.IOException;
 

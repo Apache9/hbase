@@ -34,7 +34,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
-import io.netty.util.internal.ThreadLocalRandom;
+import org.apache.hadoop.hbase.shaded.io.netty.util.internal.ThreadLocalRandom;
 
 import java.util.ArrayList;
 import java.util.List;

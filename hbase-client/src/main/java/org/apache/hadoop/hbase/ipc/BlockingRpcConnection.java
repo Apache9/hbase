@@ -29,8 +29,8 @@ import com.google.protobuf.Message.Builder;
 import com.google.protobuf.RpcCallback;
 import com.google.protobuf.TextFormat;
 
-import io.netty.util.Timeout;
-import io.netty.util.TimerTask;
+import org.apache.hadoop.hbase.shaded.io.netty.util.Timeout;
+import org.apache.hadoop.hbase.shaded.io.netty.util.TimerTask;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;

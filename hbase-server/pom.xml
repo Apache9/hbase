@@ -387,8 +387,8 @@
       <artifactId>commons-math</artifactId>
     </dependency>
     <dependency>
-      <groupId>io.netty</groupId>
-      <artifactId>netty-all</artifactId>
+      <groupId>org.apache.hbase.thirdparty</groupId>
+      <artifactId>hbase-shaded-netty</artifactId>
     </dependency>
     <dependency>
       <groupId>log4j</groupId>

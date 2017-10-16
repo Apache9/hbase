@@ -36,7 +36,7 @@ import java.util.zip.ZipFile;
 
 import com.xiaomi.infra.base.nameservice.NameService;
 
-import io.netty.buffer.ByteBuf;
+import org.apache.hadoop.hbase.shaded.io.netty.buffer.ByteBuf;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
@@ -786,7 +786,7 @@ public class TableMapReduceUtil {
       com.google.common.collect.Lists.class,
       org.apache.htrace.Trace.class,
       org.cliffc.high_scale_lib.Counter.class,
-      io.netty.buffer.ByteBuf.class); // needed for mapred over snapshots
+      org.apache.hadoop.hbase.shaded.io.netty.buffer.ByteBuf.class); // mapred over snapshots
   }
 
   /**
