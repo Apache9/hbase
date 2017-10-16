@@ -110,7 +110,6 @@ public class TestRegionServerMetrics {
     byte[] initValue = Bytes.toBytes("Value");
     byte[] nextValue = Bytes.toBytes("NEXT VAL");
 
-
     TEST_UTIL.createTable(tName, cfName);
 
     new HTable(conf, tName).close(); //wait for the table to come up.

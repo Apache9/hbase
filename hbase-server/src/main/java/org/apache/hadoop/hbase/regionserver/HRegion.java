@@ -4193,6 +4193,7 @@ public class HRegion implements HeapSize { // , Writable{
     private long readPt;
     private long maxResultSize;
     protected HRegion region;
+    private boolean isGet;
 
     @Override
     public HRegionInfo getRegionInfo() {
@@ -4206,6 +4207,7 @@ public class HRegion implements HeapSize { // , Writable{
 
     RegionScannerImpl(Scan scan, List<KeyValueScanner> additionalScanners, HRegion region,
         long nonceGroup, long nonce) throws IOException {
+      this.isGet = scan.isGetScan();
       this.region = region;
       if (scan.doLoadColumnFamiliesOnDemand()) {
         boolean hasUnenssentialFamily = checkFilterHavingUnenssentialFamily(scan,
@@ -4404,14 +4406,16 @@ public class HRegion implements HeapSize { // , Writable{
         resultCells += tmpList.size();
       }
 
-      updateReadRawCellMetrics(scannerContext.getReadRawCells());
-      updateReadMetrics(1);
-      if (metricsRegion != null) {
-        metricsRegion.updateScanNext(totalKvSize);
+      if (!isGet) {
+        updateReadRawCellMetrics(scannerContext.getReadRawCells());
+        updateReadMetrics(1);
+        if (metricsRegion != null) {
+          metricsRegion.updateScanNext(totalKvSize);
+        }
+        updateReadCapacityUnitMetrics(totalKvSize);
+        updateReadCellMetrics(resultCells);
+        updateScanRowsPerSecond(1);
       }
-      updateReadCapacityUnitMetrics(totalKvSize);
-      updateReadCellMetrics(resultCells);
-      updateScanRowsPerSecond(1);
 
       // If the size limit was reached it means a partial Result is being returned. Returning a
       // partial Result means that we should not reset the filters; filters should only be reset in
