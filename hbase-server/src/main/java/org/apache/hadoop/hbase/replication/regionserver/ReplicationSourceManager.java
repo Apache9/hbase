@@ -810,4 +810,8 @@ public class ReplicationSourceManager implements ReplicationListener {
       Thread.sleep(replicationWaitTime);
     }
   }
+
+  public Server getServer() {
+    return this.server;
+  }
 }

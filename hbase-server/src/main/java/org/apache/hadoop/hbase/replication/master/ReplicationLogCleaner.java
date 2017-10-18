@@ -30,7 +30,9 @@ import org.apache.hadoop.hbase.master.cleaner.BaseLogCleanerDelegate;
 import org.apache.hadoop.hbase.replication.ReplicationException;
 import org.apache.hadoop.hbase.replication.ReplicationFactory;
 import org.apache.hadoop.hbase.replication.ReplicationQueuesClient;
+import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
+
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
@@ -40,6 +42,7 @@ import com.google.common.base.Predicate;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Sets;
+
 import org.apache.zookeeper.KeeperException;
 
 /**
@@ -53,25 +56,34 @@ public class ReplicationLogCleaner extends BaseLogCleanerDelegate implements Abo
   private ReplicationQueuesClient replicationQueues;
   private boolean stopped = false;
   private boolean aborted;
-
+  private Set<String> wals = null;
+  private long readZKTimestamp = 0;
 
   @Override
-  public Iterable<FileStatus> getDeletableFiles(Iterable<FileStatus> files) {
-   // all members of this class are null if replication is disabled,
-   // so we cannot filter the files
-    if (this.getConf() == null) {
-      return files;
-    }
-
-    final Set<String> wals;
+  public void preClean() {
+    readZKTimestamp = EnvironmentEdgeManager.currentTimeMillis();
     try {
       // The concurrently created new WALs may not be included in the return list,
       // but they won't be deleted because they're not in the checking set.
       wals = loadWALsFromQueues();
     } catch (KeeperException e) {
       LOG.warn("Failed to read zookeeper, skipping checking deletable files");
+      wals = null;
+    }
+  }
+
+  @Override
+  public Iterable<FileStatus> getDeletableFiles(Iterable<FileStatus> files) {
+    // all members of this class are null if replication is disabled,
+    // so we cannot filter the files
+    if (this.getConf() == null) {
+      return files;
+    }
+
+    if (wals == null) {
       return Collections.emptyList();
     }
+
     return Iterables.filter(files, new Predicate<FileStatus>() {
       @Override
       public boolean apply(FileStatus file) {
@@ -81,11 +93,16 @@ public class ReplicationLogCleaner extends BaseLogCleanerDelegate implements Abo
           if (logInReplicationQueue) {
             LOG.debug("Found log in ZK, keeping: " + hlog);
           } else {
-            LOG.debug("Didn't find this log in ZK, deleting: " + hlog);
+            if (file.getModificationTime() < readZKTimestamp) {
+              LOG.debug("Didn't find this log in ZK and archived before read zk, deleting: " + hlog);
+            } else {
+              LOG.debug("Didn't find this log in ZK, but archived after read zk, keeping: " + hlog);
+            }
           }
         }
-       return !logInReplicationQueue;
-      }});
+        return !logInReplicationQueue && (file.getModificationTime() < readZKTimestamp);
+      }
+    });
   }
 
   /**

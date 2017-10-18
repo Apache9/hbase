@@ -318,6 +318,10 @@ public final class HConstants {
   /** Default HBase client operation timeout, which is tantamount to a blocking call */
   public static final int DEFAULT_HBASE_CLIENT_OPERATION_TIMEOUT = Integer.MAX_VALUE;
 
+  /** Separate old log into different dir by regionserver name **/
+  public static final String SEPARATE_OLDLOGDIR = "hbase.separate.oldlogdir.by.regionserver";
+  public static final boolean DEFAULT_SEPARATE_OLDLOGDIR = false;
+
   /** Used to construct the name of the log directory for a region server */
   public static final String HREGION_LOGDIR_NAME = "WALs";
 

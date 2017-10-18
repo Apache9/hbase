@@ -44,7 +44,7 @@ public class HFileCleaner extends CleanerChore<BaseHFileCleanerDelegate> {
    */
   public HFileCleaner(final int period, final Stoppable stopper, Configuration conf, FileSystem fs,
       Path directory) {
-    super("HFileCleaner", period, stopper, conf, fs, directory, MASTER_HFILE_CLEANER_PLUGINS);
+    super("HFileCleaner", period, stopper, conf, fs, directory, MASTER_HFILE_CLEANER_PLUGINS, true);
   }
 
   @Override

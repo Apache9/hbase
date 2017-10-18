@@ -46,7 +46,7 @@ public class TestReplicationKillRS extends TestReplicationBase {
    *
    * @throws Exception
    */
-  public void loadTableAndKillRS(HBaseTestingUtility util) throws Exception {
+  public int loadTableAndKillRS(HBaseTestingUtility util) throws Exception {
     // killing the RS with hbase:meta can result into failed puts until we solve
     // IO fencing
     int rsToKill1 =
@@ -66,6 +66,10 @@ public class TestReplicationKillRS extends TestReplicationBase {
     Thread.sleep(5000);
     LOG.info("Done waiting for threads");
 
+    return initialCount;
+  }
+
+  public void verifyReplication(int initialCount) throws Exception {
     Result[] res;
     while (true) {
       try {

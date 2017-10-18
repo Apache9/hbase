@@ -292,7 +292,7 @@ public class TestCleanerChore {
 
     public AllValidPaths(String name, Stoppable s, Configuration conf, FileSystem fs,
         Path oldFileDir, String confkey) {
-      super(name, Integer.MAX_VALUE, s, conf, fs, oldFileDir, confkey);
+      super(name, Integer.MAX_VALUE, s, conf, fs, oldFileDir, confkey, true);
     }
 
     // all paths are valid

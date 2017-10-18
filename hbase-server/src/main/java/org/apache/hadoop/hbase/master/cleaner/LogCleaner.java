@@ -46,7 +46,7 @@ public class LogCleaner extends CleanerChore<BaseLogCleanerDelegate> {
    */
   public LogCleaner(final int p, final Stoppable s, Configuration conf, FileSystem fs,
       Path oldLogDir) {
-    super("LogsCleaner", p, s, conf, fs, oldLogDir, HBASE_MASTER_LOGCLEANER_PLUGINS);
+    super("LogsCleaner", p, s, conf, fs, oldLogDir, HBASE_MASTER_LOGCLEANER_PLUGINS, false);
   }
 
   @Override

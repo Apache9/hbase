@@ -672,12 +672,25 @@ public class ReplicationSource extends Thread
         this.reader = repLogReader.openReader(this.currentPath);
       } catch (FileNotFoundException fnfe) {
         // If the log was archived, continue reading from there
+        // Search in old archive directory
         Path archivedLogLocation = new Path(manager.getOldLogDir(), currentPath.getName());
         if (this.manager.getFs().exists(archivedLogLocation)) {
           currentPath = archivedLogLocation;
           LOG.info("Log " + this.currentPath + " was moved to " + archivedLogLocation);
           // Open the log at the new location
           this.openReader(sleepMultiplier);
+          return true;
+        }
+
+        // Search in separate regionserver archive directory
+        archivedLogLocation = new Path(manager.getLogDir(), manager.getServer().getServerName()
+            + Path.SEPARATOR + currentPath.getName());
+        if (this.manager.getFs().exists(archivedLogLocation)) {
+          currentPath = archivedLogLocation;
+          LOG.info("Log " + this.currentPath + " was moved to " + archivedLogLocation);
+          // Open the log at the new location
+          this.openReader(sleepMultiplier);
+          return true;
         }
         // TODO What happens the log is missing in both places?
       }
@@ -693,7 +706,7 @@ public class ReplicationSource extends Thread
           return false;
         }
       }
-      
+
       LOG.warn(this.peerClusterZnode + " Got: ", ioe);
       this.reader = null;
       if (ioe.getCause() instanceof NullPointerException) {
@@ -702,7 +715,7 @@ public class ReplicationSource extends Thread
         // Just sleep and retry. Will require re-reading compressed HLogs for compressionContext.
         LOG.warn("Got NPE opening reader, will retry.");
       }
-      
+
       this.metrics.incrOpenReaderIOE();
       // Throttle the failure logs
       try {

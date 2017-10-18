@@ -17,28 +17,20 @@
  */
 package org.apache.hadoop.hbase.replication;
 
+import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.testclassification.LargeTests;
-import org.junit.Test;
+import org.junit.BeforeClass;
 import org.junit.experimental.categories.Category;
 
 /**
- * Runs the TestReplicationKillRS test and selects the RS to kill in the master cluster
- * Do not add other tests in this class.
+ * Run the same test as TestReplicationKillMasterRS but with seperate old dir enabled
  */
 @Category(LargeTests.class)
-public class TestReplicationKillMasterRS extends TestReplicationKillRS {
+public class TestReplicationKillMasterRSSeparatedOldWALs extends TestReplicationKillMasterRS {
 
-  @Test(timeout=300000)
-  public void killOneMasterRS() throws Exception {
-    int initialCount = loadTableAndKillRS(utility1);
-    verifyReplication(initialCount);
-  }
-
-  @Test(timeout=300000)
-  public void killOneMasterRSWithDisablePeer() throws Exception {
-    admin.disablePeer(PEER_ID);
-    int initialCount = loadTableAndKillRS(utility1);
-    admin.enablePeer(PEER_ID);
-    verifyReplication(initialCount);
+  @BeforeClass
+  public static void setUpBeforeClass() throws Exception {
+    conf1.setBoolean(HConstants.SEPARATE_OLDLOGDIR, true);
+    TestReplicationBase.setUpBeforeClass();
   }
 }

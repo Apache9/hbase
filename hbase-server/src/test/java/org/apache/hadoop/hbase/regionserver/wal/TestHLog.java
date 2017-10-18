@@ -1075,6 +1075,56 @@ public class TestHLog  {
     }
   }
 
+  @Test
+  public void testArchiveWALToSeperateOldLogDir() throws IOException {
+    LOG.debug("testArchiveWALToSeperateOldLogDir");
+    TableName table1 = TableName.valueOf("t1");
+    TableName table2 = TableName.valueOf("t2");
+    conf.setBoolean(HConstants.SEPARATE_OLDLOGDIR, true);
+    HLog hlog = HLogFactory.createHLog(fs, FSUtils.getRootDir(conf), dir.toString(), conf);
+    Path seperateOldLogDir = new Path(
+        new Path(FSUtils.getRootDir(conf), HConstants.HREGION_OLDLOGDIR_NAME), dir.getName());
+    try {
+      HRegionInfo hri1 = new HRegionInfo(table1, HConstants.EMPTY_START_ROW,
+          HConstants.EMPTY_END_ROW);
+      HRegionInfo hri2 = new HRegionInfo(table2, HConstants.EMPTY_START_ROW,
+          HConstants.EMPTY_END_ROW);
+      // ensure that we don't split the regions.
+      hri1.setSplit(false);
+      hri2.setSplit(false);
+      // variables to mock region sequenceIds.
+      final AtomicLong sequenceId1 = new AtomicLong(1);
+      final AtomicLong sequenceId2 = new AtomicLong(1);
+      assertEquals(0, fs.listStatus(seperateOldLogDir).length);
+      // start with the testing logic: insert a waledit, flush region, and roll writer
+      addEdits(hlog, hri1, table1, 1, sequenceId1);
+      flushRegion(hlog, hri1.getEncodedNameAsBytes());
+      hlog.rollWriter();
+      // assert that the wal is archived
+      assertEquals(1, fs.listStatus(seperateOldLogDir).length);
+      // add edits in the second wal file, not flush region and roll writer.
+      addEdits(hlog, hri1, table1, 1, sequenceId1);
+      hlog.rollWriter();
+      // assert that the wal is not archived
+      assertEquals(1, fs.listStatus(seperateOldLogDir).length);
+      // add edits in the third wal file, flush region and roll writer.
+      addEdits(hlog, hri1, table1, 1, sequenceId1);
+      flushRegion(hlog, hri1.getEncodedNameAsBytes());
+      hlog.rollWriter();
+      // assert that the wal is archived
+      assertEquals(3, fs.listStatus(seperateOldLogDir).length);
+      // add an edit to table2, flush region, and roll writer
+      addEdits(hlog, hri2, table2, 1, sequenceId2);
+      flushRegion(hlog, hri2.getEncodedNameAsBytes());
+      hlog.rollWriter();
+      // assert that the wal is archived
+      assertEquals(4, fs.listStatus(seperateOldLogDir).length);
+    } finally {
+      conf.setBoolean(HConstants.SEPARATE_OLDLOGDIR, false);
+      if (hlog != null) hlog.close();
+    }
+  }
+
   /**
    * On rolling a wal after reaching the threshold, {@link HLog#rollWriter()} returns the list of
    * regions which should be flushed in order to archive the oldest wal file.

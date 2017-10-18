@@ -36,6 +36,7 @@ import org.apache.hadoop.hbase.replication.ReplicationQueuesClient;
 import org.apache.hadoop.hbase.replication.master.ReplicationLogCleaner;
 import org.apache.hadoop.hbase.replication.regionserver.Replication;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
+import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -90,8 +91,6 @@ public class TestLogsCleaner {
     // Case 1: 2 invalid files, which would be deleted directly
     fs.createNewFile(new Path(oldLogDir, "a"));
     fs.createNewFile(new Path(oldLogDir, fakeMachineName + "." + "a"));
-    // Case 2: 1 "recent" file, not even deletable for the first log cleaner
-    // (TimeToLiveLogCleaner), so we are not going down the chain
     System.out.println("Now is: " + now);
     for (int i = 1; i < 31; i++) {
       // Case 3: old files which would be deletable for the first log cleaner
@@ -127,7 +126,7 @@ public class TestLogsCleaner {
 
     // We end up with the current log file, a newer one and the 3 old log
     // files which are scheduled for replication
-    TEST_UTIL.waitFor(1000, new Waiter.Predicate<Exception>() {
+    TEST_UTIL.waitFor(5000, new Waiter.Predicate<Exception>() {
       @Override
       public boolean evaluate() throws Exception {
         return 5 == fs.listStatus(oldLogDir).length;
@@ -135,6 +134,80 @@ public class TestLogsCleaner {
     });
 
     for (FileStatus file : fs.listStatus(oldLogDir)) {
+      System.out.println("Kept log files: " + file.getPath().getName());
+    }
+  }
+
+  @Test
+  public void testLogCleaningWithSeperateOldLogDir() throws Exception{
+    Configuration conf = TEST_UTIL.getConfiguration();
+    // set TTL
+    long ttl = TimeToLiveLogCleaner.MIN_TTL;
+    conf.setLong("hbase.master.logcleaner.ttl", ttl);
+    conf.setBoolean(HConstants.REPLICATION_ENABLE_KEY, HConstants.REPLICATION_ENABLE_DEFAULT);
+    Replication.decorateMasterConfiguration(conf);
+    Server server = new DummyServer();
+    ReplicationQueues repQueues =
+        ReplicationFactory.getReplicationQueues(server.getZooKeeper(), conf, server);
+    repQueues.init(server.getServerName().toString());
+    final Path oldLogDir = new Path(TEST_UTIL.getDataTestDir(),
+        HConstants.HREGION_OLDLOGDIR_NAME);
+    final Path serverOldLogDir = new Path(oldLogDir, server.getServerName().toString());
+    String fakeMachineName =
+      URLEncoder.encode(server.getServerName().toString(), "UTF8");
+
+    final FileSystem fs = FileSystem.get(conf);
+
+    // Create 2 invalid files, 1 "recent" file, 1 very new file and 30 old files
+    long now = EnvironmentEdgeManager.currentTimeMillis();
+    fs.delete(serverOldLogDir, true);
+    fs.mkdirs(serverOldLogDir);
+    // Case 1: 2 invalid files, which would be deleted directly
+    fs.createNewFile(new Path(serverOldLogDir, "a"));
+    fs.createNewFile(new Path(serverOldLogDir, fakeMachineName + "." + "a"));
+    System.out.println("Now is: " + now);
+    for (int i = 1; i < 31; i++) {
+      // Case 3: old files which would be deletable for the first log cleaner
+      // (TimeToLiveLogCleaner), and also for the second (ReplicationLogCleaner)
+      Path fileName = new Path(serverOldLogDir, fakeMachineName + "." + (now - i) );
+      fs.createNewFile(fileName);
+      // Case 4: put 3 old log files in ZK indicating that they are scheduled
+      // for replication so these files would pass the first log cleaner
+      // (TimeToLiveLogCleaner) but would be rejected by the second
+      // (ReplicationLogCleaner)
+      if (i % (30/3) == 1) {
+        repQueues.addLog(fakeMachineName, fileName.getName());
+        System.out.println("Replication log file: " + fileName);
+      }
+    }
+
+    // sleep for sometime to get newer modifcation time
+    Thread.sleep(ttl);
+
+    // Case 2: 2 newer file, not even deletable for the first log cleaner
+    // (TimeToLiveLogCleaner), so we are not going down the chain
+    fs.createNewFile(new Path(serverOldLogDir, fakeMachineName + "." + now));
+    fs.createNewFile(new Path(serverOldLogDir, fakeMachineName + "." + (now + 10000) ));
+
+    for (FileStatus stat : fs.listStatus(serverOldLogDir)) {
+      System.out.println(stat.getPath().toString());
+    }
+
+    assertEquals(34, fs.listStatus(serverOldLogDir).length);
+
+    LogCleaner cleaner  = new LogCleaner(1000, server, conf, fs, oldLogDir);
+    cleaner.chore();
+
+    // We end up with the current log file, 2 newer one and the 3 old log
+    // files which are scheduled for replication
+    TEST_UTIL.waitFor(5000, new Waiter.Predicate<Exception>() {
+      @Override
+      public boolean evaluate() throws Exception {
+        return 5 == fs.listStatus(serverOldLogDir).length;
+      }
+    });
+
+    for (FileStatus file : fs.listStatus(serverOldLogDir)) {
       System.out.println("Kept log files: " + file.getPath().getName());
     }
   }

@@ -395,7 +395,11 @@ class FSHLog implements HLog, Syncable {
     this.fs = fs;
     this.rootDir = root;
     this.dir = new Path(this.rootDir, logDir);
-    this.oldLogDir = new Path(this.rootDir, oldLogDir);
+    if (conf.getBoolean(HConstants.SEPARATE_OLDLOGDIR, HConstants.DEFAULT_SEPARATE_OLDLOGDIR)) {
+      this.oldLogDir = new Path(new Path(this.rootDir, oldLogDir), this.dir.getName());
+    } else {
+      this.oldLogDir = new Path(this.rootDir, oldLogDir);
+    }
     this.forMeta = forMeta;
     this.conf = conf;
 
@@ -879,6 +883,7 @@ class FSHLog implements HLog, Syncable {
         i.postLogArchive(p, newPath);
       }
     }
+    LOG.debug("Archive log " + p + " to " + newPath);
   }
 
   /**
@@ -1768,7 +1773,10 @@ class FSHLog implements HLog, Syncable {
     }
 
     final Path baseDir = FSUtils.getRootDir(conf);
-    final Path oldLogDir = new Path(baseDir, HConstants.HREGION_OLDLOGDIR_NAME);
+    Path oldLogDir = new Path(baseDir, HConstants.HREGION_OLDLOGDIR_NAME);
+    if (conf.getBoolean(HConstants.SEPARATE_OLDLOGDIR, HConstants.DEFAULT_SEPARATE_OLDLOGDIR)) {
+      oldLogDir = new Path(oldLogDir, p.getName());
+    }
     HLogSplitter.split(baseDir, p, oldLogDir, fs, conf);
   }
 

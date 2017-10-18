@@ -91,10 +91,34 @@ public class RecoveredReplicationSource extends ReplicationSource {
       try {
         this.reader = repLogReader.openReader(this.currentPath);
       } catch (FileNotFoundException fnfe) {
+        // Search in old archive directory
+        Path archivedLogLocation = new Path(manager.getOldLogDir(), currentPath.getName());
+        if (this.manager.getFs().exists(archivedLogLocation)) {
+          currentPath = archivedLogLocation;
+          LOG.info("Log " + this.currentPath + " was moved to " + archivedLogLocation);
+          // Open the log at the new location
+          this.openReader(sleepMultiplier);
+          return true;
+        }
+
+        // Search in separate regionserver archive directory
+        List<String> deadRegionServers = this.replicationQueueInfo.getDeadRegionServers();
+        LOG.info("NB dead servers : " + deadRegionServers.size());
+        for (String curDeadServerName : deadRegionServers) {
+          archivedLogLocation = new Path(manager.getOldLogDir(), curDeadServerName + Path.SEPARATOR
+              + currentPath.getName());
+          if (this.manager.getFs().exists(archivedLogLocation)) {
+            currentPath = archivedLogLocation;
+            LOG.info("Log " + this.currentPath + " was moved to " + archivedLogLocation);
+            // Open the log at the new location
+            this.openReader(sleepMultiplier);
+            return true;
+          }
+        }
+
         // We didn't find the log in the archive directory, look if it still
         // exists in the dead RS folder (there could be a chain of failures
         // to look at)
-        List<String> deadRegionServers = this.replicationQueueInfo.getDeadRegionServers();
         LOG.info("NB dead servers : " + deadRegionServers.size());
         for (String curDeadServerName : deadRegionServers) {
           Path deadRsDirectory = new Path(manager.getLogDir().getParent(), curDeadServerName);
@@ -110,6 +134,7 @@ public class RecoveredReplicationSource extends ReplicationSource {
             }
           }
         }
+
         // In the case of disaster/recovery, HMaster may be shutdown/crashed before flush data
         // from .logs to .oldlogs. Loop into .logs folders and check whether a match exists
         if (stopper instanceof ReplicationSyncUp.DummyServer) {

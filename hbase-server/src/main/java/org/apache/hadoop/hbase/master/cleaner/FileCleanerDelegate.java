@@ -36,4 +36,10 @@ public interface FileCleanerDelegate extends Configurable, Stoppable {
    * @return files that are ok to delete according to this cleaner
    */
   Iterable<FileStatus> getDeletableFiles(Iterable<FileStatus> files);
+
+  /**
+   * Used to do some initialize work before every period clean
+   */
+  default void preClean() {
+  }
 }

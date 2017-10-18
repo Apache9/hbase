@@ -51,6 +51,7 @@ public abstract class CleanerChore<T extends FileCleanerDelegate> extends Chore 
   private final Configuration conf;
   protected List<T> cleanersChain;
   private long totalSize = 0L;
+  private final boolean deleteDir;
 
   /**
    * @param name name of the chore being run
@@ -62,11 +63,12 @@ public abstract class CleanerChore<T extends FileCleanerDelegate> extends Chore 
    * @param confKey configuration key for the classes to instantiate
    */
   public CleanerChore(String name, final int sleepPeriod, final Stoppable s, Configuration conf,
-      FileSystem fs, Path oldFileDir, String confKey) {
+      FileSystem fs, Path oldFileDir, String confKey, boolean deleteDir) {
     super(name, sleepPeriod, s);
     this.fs = fs;
     this.oldFileDir = oldFileDir;
     this.conf = conf;
+    this.deleteDir = deleteDir;
 
     initCleanerChain(confKey);
   }
@@ -134,9 +136,14 @@ public abstract class CleanerChore<T extends FileCleanerDelegate> extends Chore 
     }
   }
 
+  private void preRunCleaner() {
+    cleanersChain.forEach(FileCleanerDelegate::preClean);
+  }
+
   @Override
   protected void chore() {
     try {
+      preRunCleaner();
       totalSize = 0L;
       FileStatus[] files = FSUtils.listStatus(this.fs, this.oldFileDir);
       checkAndDeleteEntries(files);
@@ -208,18 +215,19 @@ public abstract class CleanerChore<T extends FileCleanerDelegate> extends Chore 
       return false;
     }
 
-    // otherwise, all the children (that we know about) have been deleted, so we should try to
-    // delete this directory. However, don't do so recursively so we don't delete files that have
-    // been added since we last checked.
-    try {
-      return fs.delete(dir, false);
-    } catch (IOException e) {
-      if (LOG.isTraceEnabled()) {
-        LOG.trace("Couldn't delete directory: " + dir, e);
+    if (this.deleteDir) {
+      // otherwise, all the children (that we know about) have been deleted, so we should try to
+      // delete this directory. However, don't do so recursively so we don't delete files that have
+      // been added since we last checked.
+      try {
+        return fs.delete(dir, false);
+      } catch (IOException e) {
+        if (LOG.isTraceEnabled()) {
+          LOG.trace("Couldn't delete directory: " + dir, e);
+        }
       }
-      // couldn't delete w/o exception, so we can't return success.
-      return false;
     }
+    return false;
   }
 
   /**
@@ -251,7 +259,7 @@ public abstract class CleanerChore<T extends FileCleanerDelegate> extends Chore 
       }
 
       Iterable<FileStatus> filteredFiles = cleaner.getDeletableFiles(deletableValidFiles);
-      
+
       // trace which cleaner is holding on to each file
       if (LOG.isTraceEnabled()) {
         ImmutableSet<FileStatus> filteredFileSet = ImmutableSet.copyOf(filteredFiles);
@@ -269,8 +277,8 @@ public abstract class CleanerChore<T extends FileCleanerDelegate> extends Chore 
     int deletedFileCount = 0;
     for (FileStatus file : filesToDelete) {
       Path filePath = file.getPath();
-      if (LOG.isTraceEnabled()) {
-        LOG.trace("Removing: " + filePath + " from archive");
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("Removing: " + filePath + " from archive");
       }
       try {
         boolean success = this.fs.delete(filePath, false);

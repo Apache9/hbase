@@ -30,6 +30,7 @@ public class TestReplicationKillSlaveRS extends TestReplicationKillRS {
 
   @Test(timeout=300000)
   public void killOneSlaveRS() throws Exception {
-    loadTableAndKillRS(utility2);
+    int initialCount = loadTableAndKillRS(utility2);
+    verifyReplication(initialCount);
   }
 }
