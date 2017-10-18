@@ -137,6 +137,8 @@ public class VerifyReplication extends Configured implements Tool {
     private HTable logTable;
     private String peerId;
     private String tableName;
+    private long startTime = 0;
+    private long endTime = Long.MAX_VALUE;
     
     @Override
     public void setup(Context context) {
@@ -165,8 +167,8 @@ public class VerifyReplication extends Configured implements Tool {
         Configuration conf = context.getConfiguration();
         scan = new Scan();
         scan.setCaching(conf.getInt(TableInputFormat.SCAN_CACHEDROWS, 1));
-        long startTime = conf.getLong(NAME + ".startTime", 0);
-        long endTime = conf.getLong(NAME + ".endTime", Long.MAX_VALUE);
+        startTime = conf.getLong(NAME + ".startTime", 0);
+        endTime = conf.getLong(NAME + ".endTime", Long.MAX_VALUE);
         String families = conf.get(NAME + ".families", null);
         long verifyRows = conf.getLong(NAME + ".verifyrows", Long.MAX_VALUE);
         int versions = conf.getInt(NAME + ".versions", Integer.MAX_VALUE);
@@ -176,7 +178,6 @@ public class VerifyReplication extends Configured implements Tool {
             scan.addFamily(Bytes.toBytes(fam));
           }
         }
-        scan.setTimeRange(startTime, endTime);
         scan.setMaxVersions(versions);
         if (verifyRows != Long.MAX_VALUE) {
           scan.setFilter(new PageFilter(verifyRows));
@@ -217,9 +218,12 @@ public class VerifyReplication extends Configured implements Tool {
               + " peerFSAddress:" + peerFSAddress);
 
           peerTable = new HTable(peerConf, tableName);
+          // scan snapshot with start time but without end time.
+          scan.setTimeRange(startTime, Long.MAX_VALUE);
           replicatedScanner = new TableSnapshotScanner(peerConf, FSUtils.getRootDir(peerConf),
               new Path(peerFSAddress, peerSnapshotTmpDir), peerSnapshotName, scan, true);
         } else {
+          scan.setTimeRange(startTime, endTime);
           HConnectionManager.execute(new HConnectable<Void>(conf) {
             @Override
             public Void connect(HConnection conn) throws IOException {
@@ -239,12 +243,13 @@ public class VerifyReplication extends Configured implements Tool {
         }
         int rowCmpRet = Bytes.compareTo(value.getRow(), currentCompareRowInPeerTable.getRow());
         if (rowCmpRet == 0) {
-          // rowkey is same, need to compare the content of the row
           try {
             Result.compareResults(value, currentCompareRowInPeerTable);
             context.getCounter(Counters.GOODROWS).increment(1);
           } catch (Exception e) {
-            handleBadRow(context, Counters.CONTENT_DIFFERENT_ROWS, value);
+            if (!shouldSkipCompareWhenScanSnapshot(context, value, currentCompareRowInPeerTable)) {
+              handleBadRow(context, Counters.CONTENT_DIFFERENT_ROWS, value);
+            }
           }
           currentCompareRowInPeerTable = replicatedScanner.next();
           break;
@@ -254,8 +259,7 @@ public class VerifyReplication extends Configured implements Tool {
           break;
         } else {
           // row only exists in peer table
-          handleBadRow(context, Counters.ONLY_IN_PEER_TABLE_ROWS,
-            currentCompareRowInPeerTable);
+          handleBadRow(context, Counters.ONLY_IN_PEER_TABLE_ROWS, currentCompareRowInPeerTable);
           currentCompareRowInPeerTable = replicatedScanner.next();
         }
       }
@@ -264,10 +268,33 @@ public class VerifyReplication extends Configured implements Tool {
         EnvironmentEdgeManager.currentTimeMillis() - st);
     }
 
+    boolean shouldSkipCompareWhenScanSnapshot(Context context, Result source, Result peer) {
+      boolean isScanSnapshot =
+          context.getConfiguration().get(NAME + ".peerSnapshotName", null) != null;
+      if (!isScanSnapshot) {
+        return false;
+      }
+      // when there exist a cell whose timestamp >= endTime, we should skip to compare this row.
+      if (source != null && !allCellTsLessThanEndTime(endTime, source.listCells())) {
+        return true;
+      }
+      if (peer != null && !allCellTsLessThanEndTime(endTime, peer.listCells())) {
+        return true;
+      }
+      return false;
+    }
+
+    boolean allCellTsLessThanEndTime(long endTime, List<Cell> cells) {
+      return cells != null && cells.stream().allMatch(c -> c.getTimestamp() < endTime);
+    }
+
     // Return true to indicate results are the same.
-    private boolean verifyResultByGet(byte[] row) throws IOException {
+    private boolean verifyResultByGet(byte[] row, boolean isScanSnapshot) throws IOException {
       Scan verifyScan =
           new Scan(scan).setAllowPartialResults(true).withStartRow(row).withStopRow(row, true);
+      if (isScanSnapshot) {
+        verifyScan.setTimeRange(startTime, Long.MAX_VALUE);
+      }
       ResultScanner srcScanner = sourceTable.getScanner(verifyScan);
       ResultScanner dstScanner = peerTable.getScanner(verifyScan);
       int idx = 0;
@@ -288,6 +315,11 @@ public class VerifyReplication extends Configured implements Tool {
           d = dstScanner.next();
           idx = 0;
         } while (d != null && d.mayHaveMoreCellsInRow());
+
+        // The row has a cell whose ts >= endTime. we skip this row for repair.
+        if (isScanSnapshot && !(allCellTsLessThanEndTime(endTime, srcCells)
+            && allCellTsLessThanEndTime(endTime, dstCells)))
+          return true;
 
         try {
           Result.compareResults(Result.create(srcCells), Result.create(dstCells));
@@ -317,14 +349,15 @@ public class VerifyReplication extends Configured implements Tool {
     private void handleBadRow(Context context, Counters counter, Result row)
         throws IOException {
       boolean isResultDiff = true;
-      if (isVerifySnapshot(context)) {
+      boolean isScanSnapshot = isVerifySnapshot(context);
+      if (isScanSnapshot) {
         // verify replication by scanning the snapshot.
-        isResultDiff = !verifyResultByGet(row.getRow());
+        isResultDiff = !verifyResultByGet(row.getRow(), true);
       } else {
         // verify replication by scanning the region server.
         if (sleepToReCompare > 0) {
           Threads.sleep(sleepToReCompare);
-          isResultDiff = !verifyResultByGet(row.getRow());
+          isResultDiff = !verifyResultByGet(row.getRow(), false);
         }
       }
 
@@ -515,11 +548,10 @@ public class VerifyReplication extends Configured implements Tool {
     job.setJarByClass(VerifyReplication.class);
 
     Scan scan = new Scan();
-    scan.setTimeRange(startTime, endTime);
     scan.setMaxVersions(versions);
-    if(families != null) {
+    if (families != null) {
       String[] fams = families.split(",");
-      for(String fam : fams) {
+      for (String fam : fams) {
         scan.addFamily(Bytes.toBytes(fam));
       }
     }
@@ -543,10 +575,13 @@ public class VerifyReplication extends Configured implements Tool {
       Path snapshotTempPath = new Path(sourceSnapshotTmpDir);
       LOG.info(
         "Using source snapshot-" + sourceSnapshotName + " with temp dir:" + sourceSnapshotTmpDir);
+      // scan snapshot with start time but without end time.
+      scan.setTimeRange(startTime, Long.MAX_VALUE);
       TableMapReduceUtil.initTableSnapshotMapperJob(sourceSnapshotName, scan, Verifier.class, null,
         null, job, true, snapshotTempPath);
       restoreSnapshotForPeerCluster(conf, peerQuorumAddress);
     } else {
+      scan.setTimeRange(startTime, endTime);
       TableMapReduceUtil.initTableMapperJob(tableName, scan, Verifier.class, null, null, job);
     }
 
