@@ -295,46 +295,48 @@ public class VerifyReplication extends Configured implements Tool {
       if (isScanSnapshot) {
         verifyScan.setTimeRange(startTime, Long.MAX_VALUE);
       }
-      ResultScanner srcScanner = sourceTable.getScanner(verifyScan);
-      ResultScanner dstScanner = peerTable.getScanner(verifyScan);
-      int idx = 0;
-      Result r, d;
-      List<Cell> srcCells = new ArrayList<>();
-      List<Cell> dstCells = new ArrayList<>();
-      for (r = srcScanner.next(), d = dstScanner.next(); r != null; r = srcScanner.next()) {
-        srcCells = r.listCells();
-        // fill the dstCells until its length reach the length of srcCells.
-        do {
-          if (d == null) return false;
-          while (idx < d.rawCells().length && dstCells.size() < srcCells.size()) {
-            dstCells.add(d.rawCells()[idx++]);
-          }
-          if (dstCells.size() == srcCells.size()) {
-            break;
-          }
-          d = dstScanner.next();
-          idx = 0;
-        } while (d != null && d.mayHaveMoreCellsInRow());
+      try (ResultScanner srcScanner = sourceTable.getScanner(verifyScan)) {
+        try (ResultScanner dstScanner = peerTable.getScanner(verifyScan)) {
+          int idx = 0;
+          Result r, d;
+          List<Cell> srcCells = new ArrayList<>();
+          List<Cell> dstCells = new ArrayList<>();
+          for (r = srcScanner.next(), d = dstScanner.next(); r != null; r = srcScanner.next()) {
+            srcCells = r.listCells();
+            // fill the dstCells until its length reach the length of srcCells.
+            do {
+              if (d == null) return false;
+              while (idx < d.rawCells().length && dstCells.size() < srcCells.size()) {
+                dstCells.add(d.rawCells()[idx++]);
+              }
+              if (dstCells.size() == srcCells.size()) {
+                break;
+              }
+              d = dstScanner.next();
+              idx = 0;
+            } while (d != null && d.mayHaveMoreCellsInRow());
 
-        // The row has a cell whose ts >= endTime. we skip this row for repair.
-        if (isScanSnapshot && !(allCellTsLessThanEndTime(endTime, srcCells)
-            && allCellTsLessThanEndTime(endTime, dstCells)))
-          return true;
+            // The row has a cell whose ts >= endTime. we skip this row for repair.
+            if (isScanSnapshot && !(allCellTsLessThanEndTime(endTime, srcCells)
+                && allCellTsLessThanEndTime(endTime, dstCells)))
+              return true;
 
-        try {
-          Result.compareResults(Result.create(srcCells), Result.create(dstCells));
-        } catch (Exception e) {
-          return false;
-        }
-        dstCells.clear();
-      }
-      if (d != null) {
-        if (idx < d.rawCells().length) {
-          return false;
-        }
-        d = dstScanner.next();
-        if (d != null && !d.isEmpty()) {
-          return false;
+            try {
+              Result.compareResults(Result.create(srcCells), Result.create(dstCells));
+            } catch (Exception e) {
+              return false;
+            }
+            dstCells.clear();
+          }
+          if (d != null) {
+            if (idx < d.rawCells().length) {
+              return false;
+            }
+            d = dstScanner.next();
+            if (d != null && !d.isEmpty()) {
+              return false;
+            }
+          }
         }
       }
       return true;
@@ -381,16 +383,17 @@ public class VerifyReplication extends Configured implements Tool {
         // use allow partial for avoiding OOM here.
         Scan repairScan = new Scan(scan).withStartRow(row).withStopRow(row, true).setRaw(true)
             .setAllowPartialResults(true);
-        ResultScanner rs = sourceTable.getScanner(repairScan);
         boolean isEmptyRow = true;
-        for (Result r = rs.next(); r != null; r = rs.next()) {
-          if (!r.isEmpty()) {
-            isEmptyRow = false;
-            Put put = new Put(row);
-            for (Cell kv : r.rawCells()) {
-              put.add(kv);
+        try (ResultScanner rs = sourceTable.getScanner(repairScan)) {
+          for (Result r = rs.next(); r != null; r = rs.next()) {
+            if (!r.isEmpty()) {
+              isEmptyRow = false;
+              Put put = new Put(row);
+              for (Cell kv : r.rawCells()) {
+                put.add(kv);
+              }
+              peerTable.put(put);
             }
-            peerTable.put(put);
           }
         }
         if (!isEmptyRow) {
@@ -449,6 +452,14 @@ public class VerifyReplication extends Configured implements Tool {
           sourceTable.close();
         } catch (IOException e) {
           LOG.error("close source HTable fail", e);
+        }
+      }
+
+      if (logTable != null) {
+        try {
+          logTable.close();
+        } catch (IOException e) {
+          LOG.error("close logTable failed.", e);
         }
       }
     }
