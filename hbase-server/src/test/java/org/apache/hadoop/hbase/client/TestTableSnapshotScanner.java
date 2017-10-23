@@ -28,6 +28,7 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellScanner;
+import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.snapshot.RestoreSnapshotHelper;
 import org.apache.hadoop.hbase.testclassification.LargeTests;
@@ -229,6 +230,35 @@ public class TestTableSnapshotScanner {
       scanner = new TableSnapshotScanner(conf, rootDir, restoreDir, snapshotName, scan, true);
       verifyScanner(scanner, bbb, yyy);
       scanner.close();
+    } finally {
+      UTIL.getHBaseAdmin().deleteSnapshot(snapshotName);
+      UTIL.deleteTable(tableName);
+      tearDownCluster();
+    }
+  }
+
+  @Test
+  public void testScannerWithThrottle() throws Exception {
+    setupCluster();
+    TableName tableName = TableName.valueOf("testScanner");
+    String snapshotName = "testScannerWithThrottle";
+    try {
+      createTableAndSnapshot(UTIL, tableName, snapshotName, 50);
+      Path restoreDir = UTIL.getDataTestDirOnTestFS(snapshotName);
+      Scan scan = new Scan(bbb, yyy); // limit the scan
+
+      Configuration conf = HBaseConfiguration.create(UTIL.getConfiguration());
+      conf.setLong(TableSnapshotScanner.TABLE_SNAPSHOT_SCANNER_BANDWIDTH, 100L);
+
+      TableSnapshotScanner scanner0 =
+          new TableSnapshotScanner(conf, restoreDir, snapshotName, scan);
+      long startTime = System.currentTimeMillis();
+      verifyScanner(scanner0, bbb, yyy);
+      scanner0.close();
+      long realDuration = System.currentTimeMillis() - startTime;
+      long expectedDuration = scanner0.getBytesRead() / (100 * 1024);
+
+      Assert.assertTrue(realDuration > expectedDuration);
     } finally {
       UTIL.getHBaseAdmin().deleteSnapshot(snapshotName);
       UTIL.deleteTable(tableName);

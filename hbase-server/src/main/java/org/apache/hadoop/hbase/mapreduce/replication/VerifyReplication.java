@@ -113,6 +113,8 @@ public class VerifyReplication extends Configured implements Tool {
   String peerFSAddress = null;
   // Peer cluster HBase root dir location
   String peerHBaseRootAddress = null;
+  // Max BandWidth for scan HFile of snapshot.
+  long bandwidthKB = 10 * 1024; // default is 10MB.
   
   /**
    * Map-only comparator for 2 tables
@@ -553,6 +555,7 @@ public class VerifyReplication extends Configured implements Tool {
       conf.set(NAME + ".peerFSAddress", peerFSAddress);
       conf.set(NAME + ".peerHBaseRootAddress", peerHBaseRootAddress);
       conf.setStrings(MRJobConfig.JOB_NAMENODES, peerSnapshotTmpDir, sourceSnapshotTmpDir);
+      conf.setLong(TableSnapshotScanner.TABLE_SNAPSHOT_SCANNER_BANDWIDTH, bandwidthKB);
     }
 
     Job job = new Job(conf, NAME + "_" + tableName + "_" + peerId);
@@ -720,6 +723,12 @@ public class VerifyReplication extends Configured implements Tool {
           continue;
         }
 
+        final String bandwidthKey = "--bandwidth=";
+        if (cmd.startsWith(bandwidthKey)) {
+          bandwidthKB = Long.parseLong(cmd.substring(bandwidthKey.length()));
+          continue;
+        }
+
         if (cmd.startsWith("--")) {
           printUsage("Invalid argument '" + cmd + "'");
           return false;
@@ -797,6 +806,7 @@ public class VerifyReplication extends Configured implements Tool {
     System.err.println(" peerSnapshotTmpDir     Tmp location to restore peer table snapshot");
     System.err.println(" peerFSAddress          Peer cluster Hadoop FS address");
     System.err.println(" peerHBaseRootAddress   Peer cluster HBase root location");
+    System.err.println(" bandwidth              Max bandwidth for scan hfile of snapshot, unit: KB");
     System.err.println();
     System.err.println("Args:");
     System.err.println(" peerid                 Id of the peer used for verification, must match the one given for replication");
