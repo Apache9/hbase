@@ -19,14 +19,15 @@
 package org.apache.hadoop.hbase.client;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
+import java.io.InterruptedIOException;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.hbase.Cell;
+import org.apache.hadoop.hbase.KeyValueUtil;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
@@ -37,7 +38,6 @@ import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.mapreduce.TableSnapshotInputFormat;
 import org.apache.hadoop.hbase.protobuf.generated.SnapshotProtos;
-import org.apache.hadoop.hbase.protobuf.generated.SnapshotProtos.SnapshotDescription;
 import org.apache.hadoop.hbase.protobuf.generated.SnapshotProtos.SnapshotRegionManifest;
 import org.apache.hadoop.hbase.snapshot.ExportSnapshot;
 import org.apache.hadoop.hbase.snapshot.RestoreSnapshotHelper;
@@ -76,6 +76,9 @@ import org.apache.hadoop.hbase.util.FSUtils;
 public class TableSnapshotScanner extends AbstractClientScanner {
 
   private static final Log LOG = LogFactory.getLog(TableSnapshotScanner.class);
+  public static final String TABLE_SNAPSHOT_SCANNER_BANDWIDTH =
+      "table.snapshot.scanner.bandwidth.kb";
+  public static final long SLEEP_DURATION_MS = 1000;
 
   private Configuration conf;
   private String snapshotName;
@@ -86,6 +89,9 @@ public class TableSnapshotScanner extends AbstractClientScanner {
   private List<HRegionInfo> regions;
   private HTableDescriptor htd;
   private boolean snapshotAlreadyRestored = false;
+  private long maxBytesPerSec = 0;
+  private long bytesRead = 0;
+  private long startTime = System.currentTimeMillis();
 
   private ClientSideRegionScanner currentRegionScanner = null;
   private int currentRegion = -1;
@@ -141,6 +147,7 @@ public class TableSnapshotScanner extends AbstractClientScanner {
     this.scan = scan;
     this.fs = rootDir.getFileSystem(conf);
     this.snapshotAlreadyRestored = snapshotAlreadyRestored;
+    this.maxBytesPerSec = conf.getLong(TABLE_SNAPSHOT_SCANNER_BANDWIDTH, -1) * 1024;
 
     if (snapshotAlreadyRestored) {
       this.restoreDir = restoreDir;
@@ -201,8 +208,11 @@ public class TableSnapshotScanner extends AbstractClientScanner {
         }
       }
 
+      throttle();
+
       try {
         result = currentRegionScanner.next();
+        updateBytesRead(result);
         if (result != null) {
           return result;
         }
@@ -212,6 +222,37 @@ public class TableSnapshotScanner extends AbstractClientScanner {
           currentRegionScanner = null;
         }
       }
+    }
+  }
+
+  private void updateBytesRead(Result result) {
+    if (result == null || maxBytesPerSec <= 0) return;
+    for (Cell c : result.listCells()) {
+      bytesRead += KeyValueUtil.length(c);
+    }
+  }
+
+  private void throttle() throws IOException {
+    if (maxBytesPerSec <= 0) return;
+    while (getBytesPerSec() > maxBytesPerSec) {
+      try {
+        Thread.sleep(SLEEP_DURATION_MS);
+      } catch (InterruptedException e) {
+        throw new InterruptedIOException("Thread aborted");
+      }
+    }
+  }
+
+  public long getBytesRead() {
+    return bytesRead;
+  }
+
+  private long getBytesPerSec() {
+    long elapsed = (System.currentTimeMillis() - startTime) / 1000;
+    if (elapsed == 0) {
+      return bytesRead;
+    } else {
+      return bytesRead / elapsed;
     }
   }
 
