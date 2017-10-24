@@ -1612,13 +1612,6 @@ MasterServices, Server {
     try {
       ClusterStatusProtos.ServerLoad sl = request.getLoad();
       ServerName serverName = ProtobufUtil.toServerName(request.getServer());
-      if (!regionServerTracker.checkIfAlive(serverName)) {
-        String message = "Server report rejected; No ephemeral node on zookeeper for regionserver: "
-            + serverName;
-        LOG.warn(message);
-        throw new YouAreDeadException(message);
-      }
-      
       ServerLoad oldLoad = serverManager.getLoad(serverName);
       this.serverManager.regionServerReport(serverName, new ServerLoad(sl));
       if (sl != null && this.metricsMaster != null) {

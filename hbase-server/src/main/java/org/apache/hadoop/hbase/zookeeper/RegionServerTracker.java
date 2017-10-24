@@ -34,6 +34,8 @@ import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.RegionServerInfo;
 import org.apache.zookeeper.KeeperException;
 
+import com.google.common.annotations.VisibleForTesting;
+
 /**
  * Tracks the online region servers via ZK.
  *
@@ -164,7 +166,7 @@ public class RegionServerTracker extends ZooKeeperListener {
       return regionServers.get(sn);
     }
   }
-  
+
   /**
    * Gets the online servers.
    * @return list of online servers
@@ -174,19 +176,8 @@ public class RegionServerTracker extends ZooKeeperListener {
       return new ArrayList<ServerName>(this.regionServers.keySet());
     }
   }
-  
-  /**
-   * Check if the regionserver has the ephemeral node on zookeeper
-   * @param sn
-   * @return
-   */
-  public boolean checkIfAlive(final ServerName sn) {
-    synchronized(this.regionServers) {
-      return regionServers.containsKey(sn);
-    }
-  }
-  
-  // for test
+
+  @VisibleForTesting
   public static void setRegionServers(RegionServerTracker tracker, ServerName[] servers)
       throws IOException {
     List<String> names = new ArrayList<String>();
