@@ -30,6 +30,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.Chore;
 import org.apache.hadoop.hbase.RemoteExceptionHandler;
 import org.apache.hadoop.hbase.Stoppable;
+import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.FSUtils;
 import org.apache.hadoop.util.StringUtils;
 
@@ -51,7 +52,7 @@ public abstract class CleanerChore<T extends FileCleanerDelegate> extends Chore 
   private final Configuration conf;
   protected List<T> cleanersChain;
   private long totalSize = 0L;
-  private final boolean deleteDir;
+  private final long ttlDir;
 
   /**
    * @param name name of the chore being run
@@ -61,14 +62,15 @@ public abstract class CleanerChore<T extends FileCleanerDelegate> extends Chore 
    * @param fs handle to the FS
    * @param oldFileDir the path to the archived files
    * @param confKey configuration key for the classes to instantiate
+   * @param ttlDir TTL for directory. -1 means we don't use ttl to decide whether delete a dirctory
    */
   public CleanerChore(String name, final int sleepPeriod, final Stoppable s, Configuration conf,
-      FileSystem fs, Path oldFileDir, String confKey, boolean deleteDir) {
+      FileSystem fs, Path oldFileDir, String confKey, long ttlDir) {
     super(name, sleepPeriod, s);
     this.fs = fs;
     this.oldFileDir = oldFileDir;
     this.conf = conf;
-    this.deleteDir = deleteDir;
+    this.ttlDir = ttlDir;
 
     initCleanerChain(confKey);
   }
@@ -172,7 +174,7 @@ public abstract class CleanerChore<T extends FileCleanerDelegate> extends Chore 
       Path path = child.getPath();
       if (child.isDir()) {
         // for each subdirectory delete it and all entries if possible
-        if (!checkAndDeleteDirectory(path)) {
+        if (!checkAndDeleteDirectory(path, child)) {
           allEntriesDeleted = false;
         }
       } else {
@@ -186,7 +188,7 @@ public abstract class CleanerChore<T extends FileCleanerDelegate> extends Chore 
     }
     return allEntriesDeleted;
   }
-  
+
   /**
    * Attempt to delete a directory and all files under that directory. Each child file is passed
    * through the delegates to see if it can be deleted. If the directory has no children when the
@@ -195,9 +197,10 @@ public abstract class CleanerChore<T extends FileCleanerDelegate> extends Chore 
    * If new children files are added between checks of the directory, the directory will <b>not</b>
    * be deleted.
    * @param dir directory to check
+   * @param dirStatus file status for this directory
    * @return <tt>true</tt> if the directory was deleted, <tt>false</tt> otherwise.
    */
-  @VisibleForTesting boolean checkAndDeleteDirectory(Path dir) {
+  @VisibleForTesting boolean checkAndDeleteDirectory(Path dir, FileStatus dirStatus) {
     if (LOG.isTraceEnabled()) {
       LOG.trace("Checking directory: " + dir);
     }
@@ -215,11 +218,23 @@ public abstract class CleanerChore<T extends FileCleanerDelegate> extends Chore 
       return false;
     }
 
-    if (this.deleteDir) {
+    boolean deleteDir = true;
+    if (ttlDir >= 0) {
+      long currentTime = EnvironmentEdgeManager.currentTimeMillis();
+      long lastModificationTime = dirStatus != null ? dirStatus.getModificationTime() : -1;
+      if (lastModificationTime > 0) {
+        deleteDir = (currentTime - lastModificationTime) > ttlDir;
+      }
+    }
+
+    if (deleteDir) {
       // otherwise, all the children (that we know about) have been deleted, so we should try to
       // delete this directory. However, don't do so recursively so we don't delete files that have
       // been added since we last checked.
       try {
+        if (LOG.isDebugEnabled()) {
+          LOG.debug("Removing directory: " + dir + " from archive");
+        }
         return fs.delete(dir, false);
       } catch (IOException e) {
         if (LOG.isTraceEnabled()) {

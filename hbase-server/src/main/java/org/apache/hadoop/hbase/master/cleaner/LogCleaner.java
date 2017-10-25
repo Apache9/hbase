@@ -37,6 +37,9 @@ import org.apache.hadoop.hbase.regionserver.wal.HLogUtil;
 public class LogCleaner extends CleanerChore<BaseLogCleanerDelegate> {
   static final Log LOG = LogFactory.getLog(LogCleaner.class.getName());
 
+  public static final String LOG_DIRECTORY_TTL_CONFIG_KEY = "hbase.master.logcleaner.directory.ttl";
+  public static final long DEFAULT_LOG_DIRECTORY_TTL = 7 * 24 * 3600 * 1000; // 1 week
+
   /**
    * @param p the period of time to sleep between each run
    * @param s the stopper
@@ -46,7 +49,8 @@ public class LogCleaner extends CleanerChore<BaseLogCleanerDelegate> {
    */
   public LogCleaner(final int p, final Stoppable s, Configuration conf, FileSystem fs,
       Path oldLogDir) {
-    super("LogsCleaner", p, s, conf, fs, oldLogDir, HBASE_MASTER_LOGCLEANER_PLUGINS, false);
+    super("LogsCleaner", p, s, conf, fs, oldLogDir, HBASE_MASTER_LOGCLEANER_PLUGINS, conf.getLong(
+      LOG_DIRECTORY_TTL_CONFIG_KEY, DEFAULT_LOG_DIRECTORY_TTL));
   }
 
   @Override

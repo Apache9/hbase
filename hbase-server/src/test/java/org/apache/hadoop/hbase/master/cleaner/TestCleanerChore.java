@@ -50,8 +50,7 @@ public class TestCleanerChore {
   public void cleanup() throws Exception {
     // delete and recreate the test directory, ensuring a clean test dir between tests
     UTIL.cleanupTestDir();
-}
-
+  }
 
   @Test
   public void testSavesFilesOnRequest() throws Exception {
@@ -276,7 +275,7 @@ public class TestCleanerChore {
     }).when(spy).isFileDeletable(Mockito.any(FileStatus.class));
 
     // attempt to delete the directory, which
-    if (chore.checkAndDeleteDirectory(parent)) {
+    if (chore.checkAndDeleteDirectory(parent, null)) {
       throw new Exception(
           "Reported success deleting directory, should have failed when adding file mid-iteration");
     }
@@ -292,7 +291,7 @@ public class TestCleanerChore {
 
     public AllValidPaths(String name, Stoppable s, Configuration conf, FileSystem fs,
         Path oldFileDir, String confkey) {
-      super(name, Integer.MAX_VALUE, s, conf, fs, oldFileDir, confkey, true);
+      super(name, Integer.MAX_VALUE, s, conf, fs, oldFileDir, confkey, -1);
     }
 
     // all paths are valid

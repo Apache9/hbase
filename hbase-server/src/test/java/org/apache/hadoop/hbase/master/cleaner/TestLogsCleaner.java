@@ -18,6 +18,7 @@
 package org.apache.hadoop.hbase.master.cleaner;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
@@ -165,7 +166,6 @@ public class TestLogsCleaner {
     // Case 1: 2 invalid files, which would be deleted directly
     fs.createNewFile(new Path(serverOldLogDir, "a"));
     fs.createNewFile(new Path(serverOldLogDir, fakeMachineName + "." + "a"));
-    System.out.println("Now is: " + now);
     for (int i = 1; i < 31; i++) {
       // Case 3: old files which would be deletable for the first log cleaner
       // (TimeToLiveLogCleaner), and also for the second (ReplicationLogCleaner)
@@ -210,6 +210,56 @@ public class TestLogsCleaner {
     for (FileStatus file : fs.listStatus(serverOldLogDir)) {
       System.out.println("Kept log files: " + file.getPath().getName());
     }
+  }
+
+  @Test
+  public void testLogCleaningForDeadServerOldLogDir() throws Exception {
+    Configuration conf = TEST_UTIL.getConfiguration();
+    // set TTL
+    long ttl = TimeToLiveLogCleaner.MIN_TTL;
+    conf.setLong("hbase.master.logcleaner.ttl", ttl);
+    // set 2 * ttl for old log dir
+    conf.setLong(LogCleaner.LOG_DIRECTORY_TTL_CONFIG_KEY, 2 * ttl);
+    Server server = new DummyServer();
+    final Path oldLogDir = new Path(TEST_UTIL.getDataTestDir(), HConstants.HREGION_OLDLOGDIR_NAME);
+    final Path serverOldLogDir = new Path(oldLogDir, server.getServerName().toString());
+    String fakeMachineName = URLEncoder.encode(server.getServerName().toString(), "UTF8");
+
+    final FileSystem fs = FileSystem.get(conf);
+    fs.delete(serverOldLogDir, true);
+    fs.mkdirs(serverOldLogDir);
+    long now = EnvironmentEdgeManager.currentTimeMillis();
+    for (int i = 0; i < 10; i++) {
+      Path fileName = new Path(serverOldLogDir, fakeMachineName + "." + (now - i) );
+      fs.createNewFile(fileName);
+    }
+
+    // sleep ttl to delete old log
+    Thread.sleep(ttl);
+    assertEquals(10, fs.listStatus(serverOldLogDir).length);
+
+    LogCleaner cleaner  = new LogCleaner(1000, server, conf, fs, oldLogDir);
+    cleaner.chore();
+
+    TEST_UTIL.waitFor(5000, new Waiter.Predicate<Exception>() {
+      @Override
+      public boolean evaluate() throws Exception {
+        // all old log were deleted but the old log dir was not deleted
+        assertTrue(fs.exists(serverOldLogDir));
+        return 0 == fs.listStatus(serverOldLogDir).length;
+      }
+    });
+
+    // sleep 2 * ttl to delete old log dir
+    Thread.sleep(2 * ttl);
+    cleaner.chore();
+    TEST_UTIL.waitFor(5000, new Waiter.Predicate<Exception>() {
+      @Override
+      public boolean evaluate() throws Exception {
+        // the old log dir was deleted
+        return !fs.exists(serverOldLogDir);
+      }
+    });
   }
 
   @Test(timeout = 5000)

@@ -868,15 +868,27 @@ class FSHLog implements HLog, Syncable {
 
   private void archiveLogFile(final Path p) throws IOException {
     Path newPath = getHLogArchivePath(this.oldLogDir, p);
+
     // Tell our listeners that a log is going to be archived.
     if (!this.listeners.isEmpty()) {
       for (WALActionsListener i : this.listeners) {
         i.preLogArchive(p, newPath);
       }
     }
+
     if (!FSUtils.renameAndSetModifyTime(this.fs, p, newPath)) {
-      throw new IOException("Unable to rename " + p + " to " + newPath);
+      // If oldLogDir not exist, create it first
+      if (!fs.exists(this.oldLogDir)) {
+        if (!fs.mkdirs(this.oldLogDir)) {
+          throw new IOException("Unable to mkdir " + this.oldLogDir);
+        }
+      }
+      // Then try rename again
+      if (!FSUtils.renameAndSetModifyTime(this.fs, p, newPath)) {
+        throw new IOException("Unable to rename " + p + " to " + newPath);
+      }
     }
+
     // Tell our listeners that a log has been archived.
     if (!this.listeners.isEmpty()) {
       for (WALActionsListener i : this.listeners) {
