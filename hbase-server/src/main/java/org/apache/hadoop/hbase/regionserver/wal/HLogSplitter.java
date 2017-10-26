@@ -25,6 +25,7 @@ import java.io.InterruptedIOException;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -153,6 +154,8 @@ public class HLogSplitter {
 
   protected boolean distributedLogReplay;
 
+  private boolean splitCreateWriterLimited;
+
   // Map encodedRegionName -> lastFlushedSequenceId
   protected Map<String, Long> lastFlushedSequenceIds = new ConcurrentHashMap<String, Long>();
 
@@ -168,6 +171,8 @@ public class HLogSplitter {
 
   // Min batch size when replay WAL edits
   private final int minBatchSize;
+
+  public final static String SPLIT_CREATE_WRITER_LIMITED = "hbase.split.create.writer.limited";
 
   HLogSplitter(Configuration conf, Path rootDir,
       FileSystem fs, LastSequenceId idChecker, ZooKeeperWatcher zkw, RecoveryMode mode) {
@@ -197,7 +202,12 @@ public class HLogSplitter {
         LOG.info("ZooKeeperWatcher is passed in as NULL so disable distrubitedLogRepaly.");
       }
       this.distributedLogReplay = false;
-      outputSink = new LogRecoveredEditsOutputSink(numWriterThreads);
+      this.splitCreateWriterLimited = conf.getBoolean(SPLIT_CREATE_WRITER_LIMITED, false);
+      if(splitCreateWriterLimited){
+        outputSink = new LogCreateWriterLimitedOutputSink(numWriterThreads);
+      }else {
+        outputSink = new LogRecoveredEditsOutputSink(numWriterThreads);
+      }
     }
 
   }
@@ -703,7 +713,7 @@ public class HLogSplitter {
     Set<byte[]> currentlyWriting = new TreeSet<byte[]>(Bytes.BYTES_COMPARATOR);
 
     long totalBuffered = 0;
-    long maxHeapUsage;
+    final long maxHeapUsage;
 
     EntryBuffers(long maxHeapUsage) {
       this.maxHeapUsage = maxHeapUsage;
@@ -745,7 +755,16 @@ public class HLogSplitter {
     /**
      * @return RegionEntryBuffer a buffer of edits to be written or replayed.
      */
-    synchronized RegionEntryBuffer getChunkToWrite() {
+     synchronized RegionEntryBuffer getChunkToWrite() {
+
+      // The core part of limiting opening writers is it doesn't return chunk only if the heap size is over maxHeapUsage.
+      // Thus it doesn't need to create a writer for each region during splitting.
+      // It will flush all the logs in the buffer after splitting through a threadpool, which means the number of writers it created
+      // is under control (hbase.regionserver.hlog.splitlog.writer.threads for each HLogSplitter).
+      if(totalBuffered < maxHeapUsage && splitCreateWriterLimited){
+        return null;
+      }
+        
       long biggestSize = 0;
       byte[] biggestBufferKey = null;
 
@@ -774,7 +793,6 @@ public class HLogSplitter {
 
       synchronized (dataAvailable) {
         totalBuffered -= size;
-        // We may unblock writers
         dataAvailable.notifyAll();
       }
     }
@@ -890,7 +908,7 @@ public class HLogSplitter {
    abstract class OutputSink {
 
     protected Map<byte[], SinkWriter> writers = Collections
-        .synchronizedMap(new TreeMap<byte[], SinkWriter>(Bytes.BYTES_COMPARATOR));;
+        .synchronizedMap(new TreeMap<byte[], SinkWriter>(Bytes.BYTES_COMPARATOR));
 
     protected final Map<byte[], Long> regionMaximumEditLogSeqNum = Collections
         .synchronizedMap(new TreeMap<byte[], Long>(Bytes.BYTES_COMPARATOR));
@@ -1303,6 +1321,247 @@ public class HLogSplitter {
     }
   }
 
+  /**
+   * Class that will limit the number of hdfs writers we create to split the logs
+   */
+  class LogCreateWriterLimitedOutputSink extends OutputSink{
+
+    ConcurrentHashMap<String, Long> regionRecoverStatMap = new ConcurrentHashMap<>();
+
+
+    public LogCreateWriterLimitedOutputSink(int numThreads){
+      super(numThreads);
+    }
+
+    @Override List<Path> finishWritingAndClose() throws IOException {
+      boolean isSuccessful;
+      List<Path> result;
+      try {
+        isSuccessful = finishWriting();
+      } finally {
+        result = close();
+      }
+      if (isSuccessful) {
+        splits = result;
+      }
+      return splits;
+    }
+
+
+    /**
+     * Close all of the output streams.
+     * @return the list of paths written.
+     */
+    private List<Path> close() throws IOException {
+      Preconditions.checkState(!closeAndCleanCompleted);
+
+      final List<Path> paths = new ArrayList<Path>();
+      ThreadPoolExecutor closeThreadPool = Threads.getBoundedCachedThreadPool(numThreads, 30L,
+          TimeUnit.SECONDS, new ThreadFactory() {
+            private int count = 1;
+
+            public Thread newThread(Runnable r) {
+              Thread t = new Thread(r, "split-log-closeStream-" + count++);
+              return t;
+            }
+          });
+      CompletionService<Void> closeCompletionService =
+          new ExecutorCompletionService<Void>(closeThreadPool);
+
+      for (final Map.Entry<byte[], RegionEntryBuffer> buffer : entryBuffers.buffers.entrySet()) {
+        LOG.info("Submitting write then close of " + buffer.getValue().encodedRegionName);
+        closeCompletionService.submit(new Callable<Void>() {
+          public Void call() throws Exception {
+            Path dst = ((LogCreateWriterLimitedOutputSink)outputSink).writeThenClose(buffer.getValue());
+            paths.add(dst);
+            return null;
+          }
+        });
+      }
+
+      boolean progress_failed = false;
+      try {
+        for (int i = 0, n = entryBuffers.buffers.size(); i < n; i++) {
+          Future<Void> future = closeCompletionService.take();
+          future.get();
+          if (!progress_failed && reporter != null && !reporter.progress()) {
+            progress_failed = true;
+          }
+        }
+      } catch (InterruptedException e) {
+        IOException iie = new InterruptedIOException();
+        iie.initCause(e);
+        throw iie;
+      } catch (ExecutionException e) {
+        throw new IOException(e.getCause());
+      } finally {
+        closeThreadPool.shutdownNow();
+      }
+
+      writersClosed = true;
+      closeAndCleanCompleted = true;
+      if (progress_failed) {
+        return null;
+      }
+      return paths;
+    }
+
+    @Override
+    Map<byte[], Long> getOutputCounts() {
+      Map<byte[], Long> regionRecoverStatMapResult = new HashMap<>();
+      for(Map.Entry<String, Long> entry: regionRecoverStatMap.entrySet()){
+        regionRecoverStatMapResult.put(Bytes.toBytes(entry.getKey()), entry.getValue());
+      }
+      return regionRecoverStatMapResult;
+    }
+
+    @Override
+    int getNumberOfRecoveredRegions() {
+      return regionRecoverStatMap.size();
+    }
+
+    @Override
+    void append(RegionEntryBuffer buffer) throws IOException {
+      writeThenClose(buffer);
+    }
+
+    private Pair<WriterAndPath,Long> sinkBuffer(RegionEntryBuffer buffer) throws IOException {
+      List<Entry> entries = buffer.entryBuffer;
+      if (entries.isEmpty()) {
+        LOG.warn("got an empty buffer, skipping");
+        return null;
+      }
+
+      WriterAndPath wap = null;
+      long maxSeqNum = -1;
+      long startTime = System.nanoTime();
+      try {
+        int editsCount = 0;
+
+        wap = getWriterAndPath(entries.get(0));
+
+        if (wap == null) {
+          // getWriterAndPath decided we don't need to write these edits
+          return null;
+        }
+        for (Entry logEntry : entries) {
+          wap.w.append(logEntry);
+          editsCount++;
+          if(logEntry.getKey().getLogSeqNum() > maxSeqNum){
+            maxSeqNum = logEntry.getKey().getLogSeqNum();
+          }
+        }
+        // Pass along summary statistics
+        wap.incrementEdits(editsCount);
+        wap.incrementNanoTime(System.nanoTime() - startTime);
+        String encodedRegionName = Bytes.toString(buffer.encodedRegionName);
+        Long value = regionRecoverStatMap.putIfAbsent(encodedRegionName, wap.editsWritten);
+        if(value != null){
+          Long newValue = regionRecoverStatMap.get(encodedRegionName) + wap.editsWritten;
+          regionRecoverStatMap.put(encodedRegionName, newValue);
+        }
+
+      } catch (IOException e) {
+        e = RemoteExceptionHandler.checkIOException(e);
+        LOG.fatal(" Got while writing log entry to log", e);
+        throw e;
+      }
+      return new Pair<>(wap, maxSeqNum);
+    }
+
+    private WriterAndPath createWAP(byte[] region, Entry entry, Path rootdir, FileSystem fs,
+        Configuration conf) throws IOException {
+      Path regionedits = getRegionSplitEditsPath(fs, entry, rootdir, true);
+      LOG.info("create a recovered edit file " + regionedits);
+      if (regionedits == null) {
+        return null;
+      }
+      if (fs.exists(regionedits)) {
+        LOG.warn("Found old edits file. It could be the "
+            + "result of a previous failed split attempt. Deleting " + regionedits + ", length="
+            + fs.getFileStatus(regionedits).getLen());
+        if (!fs.delete(regionedits, false)) {
+          LOG.warn("Failed delete of old " + regionedits);
+        }
+      }
+      Writer w = createWriter(fs, regionedits, conf);
+      LOG.debug("Creating writer path=" + regionedits + " region=" + Bytes.toStringBinary(region));
+      return (new WriterAndPath(regionedits, w));
+    }
+
+    private WriterAndPath getWriterAndPath(Entry entry) throws IOException {
+      byte region[] = entry.getKey().getEncodedRegionName();
+      WriterAndPath ret;
+      // If we already decided that this region doesn't get any output
+      // we don't need to check again.
+      if (blacklistedRegions.contains(region)) {
+        return null;
+      }
+      ret = createWAP(region, entry, rootDir, fs, conf);
+      if (ret == null) {
+        blacklistedRegions.add(region);
+        return null;
+      }
+      return ret;
+    }
+
+    private Path writeThenClose(RegionEntryBuffer buffer) throws IOException {
+      Pair<WriterAndPath, Long> wap = sinkBuffer(buffer);
+      Path dst = null;
+      if(wap != null){
+        dst = closeWriter(buffer.encodedRegionName, wap.getFirst(), wap.getSecond());
+      }
+      return dst;
+    }
+
+    private Path closeWriter(byte[] encodedRegionName, WriterAndPath wap, long maxSeqNum) throws IOException{
+      LOG.debug("Closing " + wap.p);
+      try {
+        wap.w.close();
+      } catch (IOException ioe) {
+        LOG.error("Couldn't close log at " + wap.p, ioe);
+        throw ioe;
+      }
+      LOG.info("Closed wap " + wap.p + " (wrote " + wap.editsWritten + " edits in "
+          + (wap.nanosSpent / 1000 / 1000) + "ms)");
+
+      if (wap.editsWritten == 0) {
+        // just remove the empty recovered.edits file
+        if (fs.exists(wap.p) && !fs.delete(wap.p, false)) {
+          LOG.warn("Failed deleting empty " + wap.p);
+          throw new IOException("Failed deleting empty  " + wap.p);
+        }
+      }
+
+      Path dst = getCompletedRecoveredEditsFilePath(wap.p, maxSeqNum);
+      try {
+        if (!dst.equals(wap.p) && fs.exists(dst)) {
+          LOG.warn("Found existing old edits file. It could be the "
+              + "result of a previous failed split attempt. Deleting " + dst + ", length="
+              + fs.getFileStatus(dst).getLen());
+          if (!fs.delete(dst, false)) {
+            LOG.warn("Failed deleting of old " + dst);
+            throw new IOException("Failed deleting of old " + dst);
+          }
+        }
+        // Skip the unit tests which create a splitter that reads and
+        // writes the data without touching disk.
+        // TestHLogSplit#testThreading is an example.
+        if (fs.exists(wap.p)) {
+          if (!fs.rename(wap.p, dst)) {
+            throw new IOException("Failed renaming " + wap.p + " to " + dst);
+          }
+          LOG.info("Rename " + wap.p + " to " + dst);
+        }
+      } catch (IOException ioe) {
+        LOG.error("Couldn't rename " + wap.p + " to " + dst, ioe);
+        throw ioe;
+      }
+      return dst;
+    }
+
+
+  }
   /**
    * Class wraps the actual writer which writes data out and related statistics
    */
