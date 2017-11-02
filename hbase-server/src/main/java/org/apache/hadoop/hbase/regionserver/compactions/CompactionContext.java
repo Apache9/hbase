@@ -65,8 +65,16 @@ public abstract class CompactionContext {
     this.request = request;
   }
 
-  public abstract List<Path> compact(ThroughputController throughputController, User user)
-      throws IOException;
+  /**
+   * 
+   * @param keepAllCells
+   * @param throughputController
+   * @param user
+   * @return
+   * @throws IOException
+   */
+  public abstract List<Path> compact(boolean keepAllCells,
+      ThroughputController throughputController, User user) throws IOException;
 
   public CompactionRequestImpl getRequest() {
     assert hasSelection();

@@ -2026,26 +2026,23 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
     }
   }
 
-  /**
-   * Called by compaction thread and after region is opened to compact the
-   * HStores if necessary.
-   *
-   * <p>This operation could block for a long time, so don't call it from a
-   * time-sensitive thread.
-   *
-   * Note that no locking is necessary at this level because compaction only
-   * conflicts with a region split, and that cannot happen because the region
-   * server does them sequentially and not in parallel.
-   *
-   * @param compaction Compaction details, obtained by requestCompaction()
-   * @param throughputController
-   * @return whether the compaction completed
-   */
+  @VisibleForTesting
   public boolean compact(CompactionContext compaction, HStore store,
       ThroughputController throughputController) throws IOException {
     return compact(compaction, store, throughputController, null);
   }
 
+  /**
+   * Called by compaction thread and after region is opened to compact the HStores if necessary.
+   * <p>
+   * This operation could block for a long time, so don't call it from a time-sensitive thread.
+   * <p>
+   * Note that no locking is necessary at this level because compaction only conflicts with a region
+   * split, and that cannot happen because the region server does them sequentially and not in
+   * parallel.
+   * @param compaction Compaction details, obtained by requestCompaction()
+   * @return whether the compaction completed
+   */
   public boolean compact(CompactionContext compaction, HStore store,
       ThroughputController throughputController, User user) throws IOException {
     assert compaction != null && compaction.hasSelection();

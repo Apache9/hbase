@@ -1288,50 +1288,51 @@ public class HStore implements Store, HeapSize, StoreConfigInformation, Propagat
   //////////////////////////////////////////////////////////////////////////////
 
   /**
-   * Compact the StoreFiles.  This method may take some time, so the calling
-   * thread must be able to block for long periods.
-   *
-   * <p>During this time, the Store can work as usual, getting values from
-   * StoreFiles and writing new StoreFiles from the memstore.
-   *
-   * Existing StoreFiles are not destroyed until the new compacted StoreFile is
-   * completely written-out to disk.
-   *
-   * <p>The compactLock prevents multiple simultaneous compactions.
-   * The structureLock prevents us from interfering with other write operations.
-   *
-   * <p>We don't want to hold the structureLock for the whole time, as a compact()
-   * can be lengthy and we want to allow cache-flushes during this period.
-   *
-   * <p> Compaction event should be idempotent, since there is no IO Fencing for
-   * the region directory in hdfs. A region server might still try to complete the
-   * compaction after it lost the region. That is why the following events are carefully
-   * ordered for a compaction:
-   *  1. Compaction writes new files under region/.tmp directory (compaction output)
-   *  2. Compaction atomically moves the temporary file under region directory
-   *  3. Compaction appends a WAL edit containing the compaction input and output files.
-   *  Forces sync on WAL.
-   *  4. Compaction deletes the input files from the region directory.
-   *
+   * Compact the StoreFiles. This method may take some time, so the calling thread must be able to
+   * block for long periods.
+   * <p>
+   * During this time, the Store can work as usual, getting values from StoreFiles and writing new
+   * StoreFiles from the memstore.
+   * <p>
+   * Existing StoreFiles are not destroyed until the new compacted StoreFile is completely
+   * written-out to disk.
+   * <p>
+   * The compactLock prevents multiple simultaneous compactions. The structureLock prevents us from
+   * interfering with other write operations.
+   * <p>
+   * We don't want to hold the structureLock for the whole time, as a compact() can be lengthy and
+   * we want to allow cache-flushes during this period.
+   * <p>
+   * Compaction event should be idempotent, since there is no IO Fencing for the region directory in
+   * hdfs. A region server might still try to complete the compaction after it lost the region. That
+   * is why the following events are carefully ordered for a compaction:
+   * <ol>
+   * <li>Compaction writes new files under region/.tmp directory (compaction output)</li>
+   * <li>Compaction atomically moves the temporary file under region directory</li>
+   * <li>Compaction appends a WAL edit containing the compaction input and output files. Forces sync
+   * on WAL.</li>
+   * <li>Compaction deletes the input files from the region directory.</li>
+   * </ol>
    * Failure conditions are handled like this:
-   *  - If RS fails before 2, compaction wont complete. Even if RS lives on and finishes
-   *  the compaction later, it will only write the new data file to the region directory.
-   *  Since we already have this data, this will be idempotent but we will have a redundant
-   *  copy of the data.
-   *  - If RS fails between 2 and 3, the region will have a redundant copy of the data. The
-   *  RS that failed won't be able to finish snyc() for WAL because of lease recovery in WAL.
-   *  - If RS fails after 3, the region region server who opens the region will pick up the
-   *  the compaction marker from the WAL and replay it by removing the compaction input files.
-   *  Failed RS can also attempt to delete those files, but the operation will be idempotent
-   *
+   * <ul>
+   * <li>If RS fails before 2, compaction wont complete. Even if RS lives on and finishes the
+   * compaction later, it will only write the new data file to the region directory. Since we
+   * already have this data, this will be idempotent but we will have a redundant copy of the
+   * data.</li>
+   * <li>If RS fails between 2 and 3, the region will have a redundant copy of the data. The RS that
+   * failed won't be able to finish snyc() for WAL because of lease recovery in WAL.</li>
+   * <li>If RS fails after 3, the region region server who opens the region will pick up the the
+   * compaction marker from the WAL and replay it by removing the compaction input files. Failed RS
+   * can also attempt to delete those files, but the operation will be idempotent</li>
+   * </ul>
    * See HBASE-2231 for details.
-   *
    * @param compaction compaction details obtained from requestCompaction()
-   * @throws IOException
+   * @param keepAllCells whether we should keep all cells, i.e., do not drop any cells when
+   *          compaction. See HBASE-17177 for more details on why we need this flag.
    * @return Storefile we compacted into or null if we failed or opted out early.
    */
-  public List<HStoreFile> compact(CompactionContext compaction,
-    ThroughputController throughputController, User user) throws IOException {
+  public List<HStoreFile> compact(CompactionContext compaction, boolean keepAllCells,
+      ThroughputController throughputController, User user) throws IOException {
     assert compaction != null;
     List<HStoreFile> sfs = null;
     CompactionRequestImpl cr = compaction.getRequest();
@@ -1355,7 +1356,7 @@ public class HStore implements Store, HeapSize, StoreConfigInformation, Propagat
           TraditionalBinaryPrefix.long2String(cr.getSize(), "", 1));
 
       // Commence the compaction.
-      List<Path> newFiles = compaction.compact(throughputController, user);
+      List<Path> newFiles = compaction.compact(keepAllCells, throughputController, user);
 
       // TODO: get rid of this!
       if (!this.conf.getBoolean("hbase.hstore.compaction.complete", true)) {
