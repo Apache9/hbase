@@ -84,10 +84,10 @@ public class DefaultCompactor extends Compactor<StoreFileWriter> {
   }
 
   @Override
-  protected List<Path> commitWriter(StoreFileWriter writer, FileDetails fd,
+  protected List<Path> commitWriter(StoreFileWriter writer, FileDetails fd, long smallestReadPoint,
       CompactionRequestImpl request) throws IOException {
     List<Path> newFiles = Lists.newArrayList(writer.getPath());
-    writer.appendMetadata(fd.maxSeqId, request.isAllFiles());
+    writer.appendMetadata(fd.maxSeqId, request.isAllFiles(), smallestReadPoint);
     writer.close();
     return newFiles;
   }

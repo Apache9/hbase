@@ -22,7 +22,6 @@ import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.OptionalInt;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -60,13 +59,13 @@ abstract class StoreFlusher {
       MonitoredTask status, ThroughputController throughputController,
       FlushLifeCycleTracker tracker) throws IOException;
 
-  protected void finalizeWriter(StoreFileWriter writer, long cacheFlushSeqNum,
-      MonitoredTask status) throws IOException {
+  protected final void finalizeWriter(StoreFileWriter writer, long cacheFlushSeqNum,
+      long smallestReadPoint, MonitoredTask status) throws IOException {
     // Write out the log sequence number that corresponds to this output
     // hfile. Also write current time in metadata as minFlushTime.
     // The hfile is current up to and including cacheFlushSeqNum.
     status.setStatus("Flushing " + store + ": appending metadata");
-    writer.appendMetadata(cacheFlushSeqNum, false);
+    writer.appendMetadata(cacheFlushSeqNum, false, smallestReadPoint);
     status.setStatus("Flushing " + store + ": closing flushed file");
     writer.close();
   }

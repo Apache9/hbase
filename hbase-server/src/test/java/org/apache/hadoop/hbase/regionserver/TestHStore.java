@@ -481,7 +481,7 @@ public class TestHStore {
             .withOutputDir(storedir)
             .withFileContext(meta)
             .build();
-    w.appendMetadata(seqid + 1, false);
+    w.appendMetadata(seqid + 1, false, 0);
     w.close();
     this.store.close();
     // Reopen it... should pick up two files
@@ -930,7 +930,7 @@ public class TestHStore {
             .withOutputDir(storedir)
             .withFileContext(fileContext)
             .build();
-    w.appendMetadata(seqid + 1, false);
+    w.appendMetadata(seqid + 1, false, 0);
     w.close();
     LOG.info("Added store file:" + w.getPath());
   }

@@ -345,10 +345,10 @@ public abstract class Compactor<T extends CellSink> {
     }
     assert finished : "We should have exited the method on all error paths";
     assert writer != null : "Writer should be non-null if no error";
-    return commitWriter(writer, fd, request);
+    return commitWriter(writer, fd, smallestReadPoint, request);
   }
 
-  protected abstract List<Path> commitWriter(T writer, FileDetails fd,
+  protected abstract List<Path> commitWriter(T writer, FileDetails fd, long smallestReadPoint,
       CompactionRequestImpl request) throws IOException;
 
   protected abstract void abortWriter(T writer) throws IOException;

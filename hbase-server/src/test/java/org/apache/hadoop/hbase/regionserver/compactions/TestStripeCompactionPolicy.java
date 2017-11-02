@@ -23,13 +23,13 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.AdditionalMatchers.aryEq;
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.anyBoolean;
-import static org.mockito.Matchers.anyInt;
-import static org.mockito.Matchers.anyLong;
-import static org.mockito.Matchers.argThat;
-import static org.mockito.Matchers.eq;
-import static org.mockito.Matchers.isNull;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.only;
 import static org.mockito.Mockito.times;
@@ -557,8 +557,8 @@ public class TestStripeCompactionPolicy {
         }
         return true;
       }
-    }), dropDeletesFrom == null ? isNull(byte[].class) : aryEq(dropDeletesFrom),
-      dropDeletesTo == null ? isNull(byte[].class) : aryEq(dropDeletesTo),
+    }), dropDeletesFrom == null ? isNull() : aryEq(dropDeletesFrom),
+      dropDeletesTo == null ? isNull() : aryEq(dropDeletesTo),
       any(), any());
   }
 
@@ -600,7 +600,7 @@ public class TestStripeCompactionPolicy {
       mw.append(kv);
     }
     boolean hasMetadata = boundaries != null;
-    mw.commitWriters(0, false);
+    mw.commitWriters(0, false, 0);
     writers.verifyKvs(expected, true, hasMetadata);
     if (hasMetadata) {
       writers.verifyBoundaries(boundaries);
@@ -610,7 +610,7 @@ public class TestStripeCompactionPolicy {
 
   private byte[] dropDeletesMatcher(Boolean dropDeletes, byte[] value) {
     return dropDeletes == null ? any()
-            : (dropDeletes.booleanValue() ? aryEq(value) : isNull(byte[].class));
+            : (dropDeletes.booleanValue() ? aryEq(value) : isNull());
   }
 
   private void verifyCollectionsEqual(Collection<HStoreFile> sfs, Collection<HStoreFile> scr) {

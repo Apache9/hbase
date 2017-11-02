@@ -108,7 +108,7 @@ public class TestCompactor {
           realWriter.hasMetadata = true;
           return null;
         }
-      }).when(writer).appendMetadata(anyLong(), anyBoolean());
+      }).when(writer).appendMetadata(anyLong(), anyBoolean(), anyLong());
       doAnswer(new Answer<Path>() {
         @Override
         public Path answer(InvocationOnMock invocation) throws Throwable {

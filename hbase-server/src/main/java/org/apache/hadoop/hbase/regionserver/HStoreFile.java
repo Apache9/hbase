@@ -106,6 +106,13 @@ public class HStoreFile implements StoreFile {
    */
   public static final byte[] SKIP_RESET_SEQ_ID = Bytes.toBytes("SKIP_RESET_SEQ_ID");
 
+  /**
+   * Key for the sequence id used to determine whether we are safe to drop cells. Cells which mvcc
+   * are greater than this value will always be kept during flush/compaction.
+   */
+  public static final byte[] CAN_DROP_CELLS_BEFORE_READ_POINT =
+      Bytes.toBytes("CAN_DROP_CELLS_BEFORE_READ_POINT");
+
   private final StoreFileInfo fileInfo;
   private final FileSystem fs;
 
@@ -139,30 +146,6 @@ public class HStoreFile implements StoreFile {
 
   private CellComparator comparator;
 
-  public CacheConfig getCacheConf() {
-    return cacheConf;
-  }
-
-  @Override
-  public Optional<Cell> getFirstKey() {
-    return firstKey;
-  }
-
-  @Override
-  public Optional<Cell> getLastKey() {
-    return lastKey;
-  }
-
-  @Override
-  public CellComparator getComparator() {
-    return comparator;
-  }
-
-  @Override
-  public long getMaxMemStoreTS() {
-    return maxMemstoreTS;
-  }
-
   // If true, this file was product of a major compaction.  Its then set
   // whenever you get a Reader.
   private AtomicBoolean majorCompaction = null;
@@ -185,6 +168,8 @@ public class HStoreFile implements StoreFile {
    * necessarily correspond to the Bloom filter type present in the HFile.
    */
   private final BloomType cfBloomType;
+
+  private OptionalLong canDropCellsBeforeReadPoint;
 
   /**
    * Constructor, loads a reader and it's indices, etc. May allocate a substantial amount of ram
@@ -233,6 +218,30 @@ public class HStoreFile implements StoreFile {
       this.cfBloomType = BloomType.NONE;
     }
     this.primaryReplica = primaryReplica;
+  }
+
+  public CacheConfig getCacheConf() {
+    return cacheConf;
+  }
+
+  @Override
+  public Optional<Cell> getFirstKey() {
+    return firstKey;
+  }
+
+  @Override
+  public Optional<Cell> getLastKey() {
+    return lastKey;
+  }
+
+  @Override
+  public CellComparator getComparator() {
+    return comparator;
+  }
+
+  @Override
+  public long getMaxMemStoreTS() {
+    return maxMemstoreTS;
   }
 
   /**
@@ -446,6 +455,13 @@ public class HStoreFile implements StoreFile {
           "proceeding without", e);
       this.reader.timeRange = null;
     }
+
+    b = metadataMap.get(CAN_DROP_CELLS_BEFORE_READ_POINT);
+    if (b != null) {
+      canDropCellsBeforeReadPoint = OptionalLong.of(Bytes.toLong(b));
+    } else {
+      canDropCellsBeforeReadPoint = OptionalLong.empty();
+    }
     // initialize so we can reuse them after reader closed.
     firstKey = reader.getFirstKey();
     lastKey = reader.getLastKey();
@@ -584,5 +600,9 @@ public class HStoreFile implements StoreFile {
   public OptionalLong getMaximumTimestamp() {
     TimeRange tr = getReader().timeRange;
     return tr != null ? OptionalLong.of(tr.getMax()) : OptionalLong.empty();
+  }
+
+  public OptionalLong getCanDropCellsBeforeReadPoint() {
+    return canDropCellsBeforeReadPoint;
   }
 }

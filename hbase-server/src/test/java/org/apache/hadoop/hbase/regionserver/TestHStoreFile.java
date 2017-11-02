@@ -850,7 +850,7 @@ public class TestHStoreFile extends HBaseTestCase {
     for (KeyValue kv : kvList) {
       writer.append(kv);
     }
-    writer.appendMetadata(0, false);
+    writer.appendMetadata(0, false, 0);
     writer.close();
 
     HStoreFile hsf = new HStoreFile(this.fs, writer.getPath(), conf, cacheConf,
@@ -1055,7 +1055,7 @@ public class TestHStoreFile extends HBaseTestCase {
     for (KeyValue kv : kvs) {
       writer.append(kv);
     }
-    writer.appendMetadata(0, false);
+    writer.appendMetadata(0, false, 0);
     writer.close();
     return writer;
   }

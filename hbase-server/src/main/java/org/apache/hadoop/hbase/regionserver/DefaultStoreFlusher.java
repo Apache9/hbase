@@ -81,7 +81,7 @@ public class DefaultStoreFlusher extends StoreFlusher {
           if (e != null) {
             writer.close();
           } else {
-            finalizeWriter(writer, cacheFlushId, status);
+            finalizeWriter(writer, cacheFlushId,smallestReadPoint, status);
           }
         }
       }

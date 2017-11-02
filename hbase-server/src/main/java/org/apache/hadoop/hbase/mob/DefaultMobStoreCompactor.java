@@ -341,7 +341,7 @@ public class DefaultMobStoreCompactor extends DefaultCompactor {
       if (deleteMarkersCount > 0) {
         // If the del file is not empty, commit it.
         // If the commit fails, the compaction is re-performed again.
-        delFileWriter.appendMetadata(fd.maxSeqId, major, deleteMarkersCount);
+        delFileWriter.appendMetadata(fd.maxSeqId, major, smallestReadPoint, deleteMarkersCount);
         delFileWriter.close();
         mobStore.commitFile(delFileWriter.getPath(), path);
       } else {
@@ -352,7 +352,7 @@ public class DefaultMobStoreCompactor extends DefaultCompactor {
     if (mobFileWriter != null) {
       if (mobCells > 0) {
         // If the mob file is not empty, commit it.
-        mobFileWriter.appendMetadata(fd.maxSeqId, major, mobCells);
+        mobFileWriter.appendMetadata(fd.maxSeqId, major, smallestReadPoint, mobCells);
         mobFileWriter.close();
         mobStore.commitFile(mobFileWriter.getPath(), path);
       } else {

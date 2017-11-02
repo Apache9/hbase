@@ -120,13 +120,14 @@ public class DefaultMobStoreFlusher extends DefaultStoreFlusher {
       synchronized (flushLock) {
         status.setStatus("Flushing " + store + ": creating writer");
         // Write the map out to the disk
-        writer = store.createWriterInTmp(cellsCount, store.getColumnFamilyDescriptor().getCompressionType(),
-            false, true, true, false);
+        writer = store.createWriterInTmp(cellsCount,
+          store.getColumnFamilyDescriptor().getCompressionType(), false, true, true, false);
         IOException e = null;
         try {
           // It's a mob store, flush the cells in a mob way. This is the difference of flushing
           // between a normal and a mob store.
-          performMobFlush(snapshot, cacheFlushId, scanner, writer, status, throughputController);
+          performMobFlush(snapshot, cacheFlushId, smallestReadPoint, scanner, writer, status,
+            throughputController);
         } catch (IOException ioe) {
           e = ioe;
           // throw the exception out
@@ -135,7 +136,7 @@ public class DefaultMobStoreFlusher extends DefaultStoreFlusher {
           if (e != null) {
             writer.close();
           } else {
-            finalizeWriter(writer, cacheFlushId, status);
+            finalizeWriter(writer, cacheFlushId, smallestReadPoint, status);
           }
         }
       }
@@ -168,7 +169,7 @@ public class DefaultMobStoreFlusher extends DefaultStoreFlusher {
    * @param throughputController A controller to avoid flush too fast.
    * @throws IOException
    */
-  protected void performMobFlush(MemStoreSnapshot snapshot, long cacheFlushId,
+  private void performMobFlush(MemStoreSnapshot snapshot, long cacheFlushId, long smallestReadPoint,
       InternalScanner scanner, StoreFileWriter writer, MonitoredTask status,
       ThroughputController throughputController) throws IOException {
     StoreFileWriter mobFileWriter = null;
@@ -245,7 +246,7 @@ public class DefaultMobStoreFlusher extends DefaultStoreFlusher {
       // the committed mob file will be handled by the sweep tool as an unused
       // file.
       status.setStatus("Flushing mob file " + store + ": appending metadata");
-      mobFileWriter.appendMetadata(cacheFlushId, false, mobCount);
+      mobFileWriter.appendMetadata(cacheFlushId, false, smallestReadPoint, mobCount);
       status.setStatus("Flushing mob file " + store + ": closing flushed file");
       mobFileWriter.close();
       mobStore.commitFile(mobFileWriter.getPath(), targetPath);

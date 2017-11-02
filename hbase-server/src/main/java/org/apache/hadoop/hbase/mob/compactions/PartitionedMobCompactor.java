@@ -867,7 +867,7 @@ public class PartitionedMobCompactor extends MobCompactor {
   private void closeRefFileWriter(StoreFileWriter writer, long maxSeqId, long bulkloadTime)
     throws IOException {
     if (writer != null) {
-      writer.appendMetadata(maxSeqId, false);
+      writer.appendMetadata(maxSeqId, false, -1);
       writer.appendFileInfo(BULKLOAD_TIME_KEY, Bytes.toBytes(bulkloadTime));
       writer.appendFileInfo(SKIP_RESET_SEQ_ID, Bytes.toBytes(true));
       try {

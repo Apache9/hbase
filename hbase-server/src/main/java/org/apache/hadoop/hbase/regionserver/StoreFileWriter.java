@@ -18,6 +18,7 @@
 package org.apache.hadoop.hbase.regionserver;
 
 import static org.apache.hadoop.hbase.regionserver.HStoreFile.BLOOM_FILTER_TYPE_KEY;
+import static org.apache.hadoop.hbase.regionserver.HStoreFile.CAN_DROP_CELLS_BEFORE_READ_POINT;
 import static org.apache.hadoop.hbase.regionserver.HStoreFile.DELETE_FAMILY_COUNT;
 import static org.apache.hadoop.hbase.regionserver.HStoreFile.EARLIEST_PUT_TS;
 import static org.apache.hadoop.hbase.regionserver.HStoreFile.MAJOR_COMPACTION_KEY;
@@ -38,10 +39,9 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellComparator;
 import org.apache.hadoop.hbase.CellComparatorImpl;
-import org.apache.hadoop.hbase.CellUtil;
 import org.apache.hadoop.hbase.HConstants;
-import org.apache.hadoop.hbase.PrivateCellUtil;
 import org.apache.hadoop.hbase.KeyValue;
+import org.apache.hadoop.hbase.PrivateCellUtil;
 import org.apache.hadoop.hbase.client.ColumnFamilyDescriptorBuilder;
 import org.apache.hadoop.hbase.io.hfile.CacheConfig;
 import org.apache.hadoop.hbase.io.hfile.HFile;
@@ -157,26 +157,28 @@ public class StoreFileWriter implements CellSink, ShipperListener {
    * @param majorCompaction True if this file is product of a major compaction
    * @throws IOException problem writing to FS
    */
-  public void appendMetadata(final long maxSequenceId, final boolean majorCompaction)
+  public void appendMetadata(long maxSequenceId, boolean majorCompaction, long smallestReadPoint)
       throws IOException {
-    writer.appendFileInfo(MAX_SEQ_ID_KEY, Bytes.toBytes(maxSequenceId));
-    writer.appendFileInfo(MAJOR_COMPACTION_KEY, Bytes.toBytes(majorCompaction));
-    appendTrackedTimestampsToMetadata();
+    appendMetadata(maxSequenceId, majorCompaction, smallestReadPoint, -1);
   }
 
   /**
-   * Writes meta data.
-   * Call before {@link #close()} since its written as meta data to this file.
+   * Writes meta data. Call before {@link #close()} since its written as meta data to this file.
    * @param maxSequenceId Maximum sequence id.
    * @param majorCompaction True if this file is product of a major compaction
    * @param mobCellsCount The number of mob cells.
    * @throws IOException problem writing to FS
    */
-  public void appendMetadata(final long maxSequenceId, final boolean majorCompaction,
-      final long mobCellsCount) throws IOException {
+  public void appendMetadata(long maxSequenceId, boolean majorCompaction, long smallestReadPoint,
+      long mobCellsCount) throws IOException {
     writer.appendFileInfo(MAX_SEQ_ID_KEY, Bytes.toBytes(maxSequenceId));
     writer.appendFileInfo(MAJOR_COMPACTION_KEY, Bytes.toBytes(majorCompaction));
-    writer.appendFileInfo(MOB_CELLS_COUNT, Bytes.toBytes(mobCellsCount));
+    if (smallestReadPoint > 0) {
+      writer.appendFileInfo(CAN_DROP_CELLS_BEFORE_READ_POINT, Bytes.toBytes(smallestReadPoint));
+    }
+    if (mobCellsCount >= 0) {
+      writer.appendFileInfo(MOB_CELLS_COUNT, Bytes.toBytes(mobCellsCount));
+    }
     appendTrackedTimestampsToMetadata();
   }
 

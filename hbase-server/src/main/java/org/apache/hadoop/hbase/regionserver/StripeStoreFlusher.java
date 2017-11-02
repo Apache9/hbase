@@ -82,7 +82,7 @@ public class StripeStoreFlusher extends StoreFlusher {
 
       synchronized (flushLock) {
         performFlush(scanner, mw, smallestReadPoint, throughputController);
-        result = mw.commitWriters(cacheFlushSeqNum, false);
+        result = mw.commitWriters(cacheFlushSeqNum, false, smallestReadPoint);
         success = true;
       }
     } finally {

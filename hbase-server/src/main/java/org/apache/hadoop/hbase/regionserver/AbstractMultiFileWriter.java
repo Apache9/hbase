@@ -63,19 +63,20 @@ public abstract class AbstractMultiFileWriter implements CellSink, ShipperListen
    * find an easy to find enough sequence ids for different output files in some corner cases. See
    * comments in HBASE-15400 for more details.
    */
-  public List<Path> commitWriters(long maxSeqId, boolean majorCompaction) throws IOException {
+  public List<Path> commitWriters(long maxSeqId, boolean majorCompaction, long smallestReadPoint)
+      throws IOException {
     preCommitWriters();
     Collection<StoreFileWriter> writers = this.writers();
     if (LOG.isDebugEnabled()) {
-      LOG.debug("Commit " + writers.size() + " writers, maxSeqId=" + maxSeqId
-          + ", majorCompaction=" + majorCompaction);
+      LOG.debug("Commit " + writers.size() + " writers, maxSeqId=" + maxSeqId +
+          ", majorCompaction=" + majorCompaction);
     }
     List<Path> paths = new ArrayList<>();
     for (StoreFileWriter writer : writers) {
       if (writer == null) {
         continue;
       }
-      writer.appendMetadata(maxSeqId, majorCompaction);
+      writer.appendMetadata(maxSeqId, majorCompaction, smallestReadPoint);
       preCloseWriter(writer);
       paths.add(writer.getPath());
       writer.close();

@@ -130,4 +130,10 @@ public interface StoreFile {
    * Get the max timestamp of all the cells in the store file.
    */
   OptionalLong getMaximumTimestamp();
+
+  /**
+   * Get the read point which is used to determine whether we are safe to remove cells which mvcc
+   * are less than this value.
+   */
+  OptionalLong getCanDropCellsBeforeReadPoint();
 }
