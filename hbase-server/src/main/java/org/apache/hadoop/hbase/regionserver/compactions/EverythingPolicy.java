@@ -15,36 +15,34 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.apache.hadoop.hbase.regionserver.compactions;
-
 
 import java.io.IOException;
 import java.util.ArrayList;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.regionserver.StoreConfigInformation;
 import org.apache.hadoop.hbase.regionserver.StoreFile;
 
 /**
- * Test Policy to compact everything every time.
+ * A policy to compact everything every time.
  */
+@InterfaceAudience.Private
 public class EverythingPolicy extends RatioBasedCompactionPolicy {
+
   /**
    * Constructor.
-   *
-   * @param conf            The Conf.
+   * @param conf The Conf.
    * @param storeConfigInfo Info about the store.
    */
-  public EverythingPolicy(final Configuration conf,
-                          final StoreConfigInformation storeConfigInfo) {
+  public EverythingPolicy(Configuration conf, StoreConfigInformation storeConfigInfo) {
     super(conf, storeConfigInfo);
   }
 
   @Override
-  protected final ArrayList<StoreFile> applyCompactionPolicy(final ArrayList<StoreFile> candidates,
-    final boolean mayUseOffPeak, final boolean mayBeStuck) throws IOException {
-
+  protected final ArrayList<StoreFile> applyCompactionPolicy(ArrayList<StoreFile> candidates,
+      boolean mayUseOffPeak, boolean mayBeStuck) throws IOException {
     if (candidates.size() < comConf.getMinFilesToCompact()) {
       return new ArrayList<StoreFile>(0);
     }
