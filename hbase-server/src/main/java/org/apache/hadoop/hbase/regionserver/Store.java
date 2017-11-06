@@ -24,6 +24,7 @@ import java.util.NavigableSet;
 
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HDFSBlocksDistribution;
@@ -42,6 +43,7 @@ import org.apache.hadoop.hbase.regionserver.compactions.CompactionContext;
 import org.apache.hadoop.hbase.regionserver.compactions.CompactionProgress;
 import org.apache.hadoop.hbase.regionserver.compactions.CompactionRequest;
 import org.apache.hadoop.hbase.regionserver.compactions.CompactionThroughputController;
+import org.apache.hadoop.hbase.regionserver.compactions.OffPeakHours;
 import org.apache.hadoop.hbase.regionserver.querymatcher.ScanQueryMatcher;
 
 /**
@@ -440,4 +442,14 @@ public interface Store extends HeapSize, StoreConfigInformation {
    * @return The HDFS blocks distribution for the region.
    */
   public HDFSBlocksDistribution getHDFSBlocksDistribution();
+
+  /**
+   * @return the configuration of this column family
+   */
+  Configuration getConfiguration();
+
+  /**
+   * @return the offpeak hours instance by this column family's config
+   */
+  OffPeakHours getOffPeakHours();
 }
