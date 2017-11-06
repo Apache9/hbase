@@ -1609,16 +1609,16 @@ public class HRegion implements HeapSize { // , Writable{
       store.cancelRequestedCompaction(compaction);
       return false;
     }
-    
+
     if (compaction.getRequest().isMajor()
-        && conf.getBoolean(HConstants.MAJOR_COMPACTION_OFFPEAK, false)
-        && (!OffPeakHours.getInstance(conf).isOffPeakHour())) {
+        && store.getConfiguration().getBoolean(HConstants.MAJOR_COMPACTION_OFFPEAK, false)
+        && (!store.getOffPeakHours().isOffPeakHour())) {
       LOG.info("Skipping a major compaction on " + this
           + ". The major compaction is restricted to be performed in an off-peak by config: "
           + HConstants.MAJOR_COMPACTION_OFFPEAK);
       return false;
     }
-    
+
     MonitoredTask status = null;
     boolean requestNeedsCancellation = true;
     // block waiting for the lock for compaction

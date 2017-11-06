@@ -2210,4 +2210,14 @@ public class HStore implements Store {
     }
     return hdfsBlocksDistribution;
   }
+
+  @Override
+  public Configuration getConfiguration() {
+    return this.conf;
+  }
+
+  @Override
+  public OffPeakHours getOffPeakHours() {
+    return this.offPeakHours;
+  }
 }
