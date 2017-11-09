@@ -27,6 +27,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
@@ -37,7 +38,6 @@ import org.apache.hadoop.hbase.io.hfile.Cacheable;
 import org.apache.hadoop.hbase.io.hfile.bucket.BucketAllocator.BucketSizeInfo;
 import org.apache.hadoop.hbase.io.hfile.bucket.BucketAllocator.IndexStatistics;
 import org.apache.hadoop.hbase.testclassification.SmallTests;
-import org.apache.hadoop.hbase.util.IdLock;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -201,7 +201,8 @@ public class TestBucketCache {
     cacheAndWaitUntilFlushedToBucket(cache, cacheKey, new CacheTestUtils.ByteArrayCacheable(
         new byte[10]));
     long lockId = cache.backingMap.get(cacheKey).offset();
-    IdLock.Entry lockEntry = cache.offsetLock.getLockEntry(lockId);
+    ReentrantReadWriteLock lock = cache.offsetLock.getLock(lockId);
+    lock.writeLock().lock();
     Thread evictThread = new Thread("evict-block") {
 
       @Override
@@ -215,7 +216,7 @@ public class TestBucketCache {
     cache.blockEvicted(cacheKey, cache.backingMap.remove(cacheKey), true);
     cacheAndWaitUntilFlushedToBucket(cache, cacheKey, new CacheTestUtils.ByteArrayCacheable(
         new byte[10]));
-    cache.offsetLock.releaseLockEntry(lockEntry);
+    lock.writeLock().unlock();
     evictThread.join();
     assertEquals(1L, cache.getBlockCount());
     assertTrue(cache.getCurrentSize() > 0L);
