@@ -48,7 +48,7 @@ public class TestAsyncTableScanRenewLease {
 
   private static AsyncConnection CONN;
 
-  private static RawAsyncTable TABLE;
+  private static AsyncTable<AdvancedScanResultConsumer> TABLE;
 
   private static int SCANNER_LEASE_TIMEOUT_PERIOD_MS = 5000;
 
@@ -59,7 +59,7 @@ public class TestAsyncTableScanRenewLease {
     TEST_UTIL.startMiniCluster(1);
     TEST_UTIL.createTable(TABLE_NAME, FAMILY);
     CONN = HConnectionManager.createAsyncConnection(TEST_UTIL.getConfiguration()).get();
-    TABLE = CONN.getRawTable(TABLE_NAME);
+    TABLE = CONN.getTable(TABLE_NAME);
     TABLE.putAll(IntStream.range(0, 10)
         .mapToObj(
           i -> new Put(Bytes.toBytes(String.format("%02d", i))).add(FAMILY, CQ, Bytes.toBytes(i)))
@@ -72,7 +72,7 @@ public class TestAsyncTableScanRenewLease {
     TEST_UTIL.shutdownMiniCluster();
   }
 
-  private static final class RenewLeaseConsumer implements RawScanResultConsumer {
+  private static final class RenewLeaseConsumer implements AdvancedScanResultConsumer {
 
     private final List<Result> results = new ArrayList<>();
 

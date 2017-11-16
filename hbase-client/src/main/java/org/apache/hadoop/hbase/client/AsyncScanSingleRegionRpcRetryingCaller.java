@@ -32,9 +32,9 @@ import com.google.common.base.Preconditions;
 import org.apache.hadoop.hbase.shaded.io.netty.util.HashedWheelTimer;
 import org.apache.hadoop.hbase.shaded.io.netty.util.Timeout;
 
+
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -47,7 +47,7 @@ import org.apache.hadoop.hbase.HRegionLocation;
 import org.apache.hadoop.hbase.NotServingRegionException;
 import org.apache.hadoop.hbase.UnknownScannerException;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
-import org.apache.hadoop.hbase.client.RawScanResultConsumer.ScanResumer;
+import org.apache.hadoop.hbase.client.AdvancedScanResultConsumer.ScanResumer;
 import org.apache.hadoop.hbase.client.metrics.ScanMetrics;
 import org.apache.hadoop.hbase.exceptions.OutOfOrderScannerNextException;
 import org.apache.hadoop.hbase.ipc.HBaseRpcController;
@@ -82,7 +82,7 @@ class AsyncScanSingleRegionRpcRetryingCaller {
 
   private final ScanResultCache resultCache;
 
-  private final RawScanResultConsumer consumer;
+  private final AdvancedScanResultConsumer consumer;
 
   private final ClientService.Interface stub;
 
@@ -141,7 +141,7 @@ class AsyncScanSingleRegionRpcRetryingCaller {
   // Notice that, the public methods of this class is supposed to be called by upper layer only, and
   // package private methods can only be called within the implementation of
   // AsyncScanSingleRegionRpcRetryingCaller.
-  private final class ScanControllerImpl implements RawScanResultConsumer.ScanController {
+  private final class ScanControllerImpl implements AdvancedScanResultConsumer.ScanController {
 
     // Make sure the methods are only called in this thread.
     private final Thread callerThread;
@@ -215,7 +215,7 @@ class AsyncScanSingleRegionRpcRetryingCaller {
   // Notice that, the public methods of this class is supposed to be called by upper layer only, and
   // package private methods can only be called within the implementation of
   // AsyncScanSingleRegionRpcRetryingCaller.
-  private final class ScanResumerImpl implements RawScanResultConsumer.ScanResumer {
+  private final class ScanResumerImpl implements AdvancedScanResultConsumer.ScanResumer {
 
     // INITIALIZED -> SUSPENDED -> RESUMED
     // INITIALIZED -> RESUMED
@@ -299,7 +299,7 @@ class AsyncScanSingleRegionRpcRetryingCaller {
 
   public AsyncScanSingleRegionRpcRetryingCaller(HashedWheelTimer retryTimer,
       AsyncConnectionImpl conn, Scan scan, ScanMetrics scanMetrics, long scannerId,
-      ScanResultCache resultCache, RawScanResultConsumer consumer, Interface stub,
+      ScanResultCache resultCache, AdvancedScanResultConsumer consumer, Interface stub,
       HRegionLocation loc, boolean isRegionServerRemote, long scannerLeaseTimeoutPeriodNs,
       long pauseNs, int maxAttempts, long scanTimeoutNs, long rpcTimeoutNs, int startLogErrorsCnt) {
     this.retryTimer = retryTimer;

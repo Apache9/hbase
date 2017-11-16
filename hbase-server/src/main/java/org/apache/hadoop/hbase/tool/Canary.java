@@ -60,6 +60,7 @@ import org.apache.hadoop.hbase.TableNotEnabledException;
 import org.apache.hadoop.hbase.TableNotFoundException;
 import org.apache.hadoop.hbase.canary.CanaryStatusServlet;
 import org.apache.hadoop.hbase.client.AsyncConnection;
+import org.apache.hadoop.hbase.client.AsyncTable;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HConnection;
 import org.apache.hadoop.hbase.client.HConnectionManager;
@@ -68,7 +69,6 @@ import org.apache.hadoop.hbase.client.MetaScanner;
 import org.apache.hadoop.hbase.client.MetaScanner.MetaScannerVisitor;
 import org.apache.hadoop.hbase.client.MetaScanner.MetaScannerVisitorBase;
 import org.apache.hadoop.hbase.client.Put;
-import org.apache.hadoop.hbase.client.RawAsyncTable;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.filter.FirstKeyOnlyFilter;
@@ -178,14 +178,14 @@ public final class Canary implements Tool {
    * Contact a region server and get all information from it
    */
   static class RegionTask {
-    private final RawAsyncTable table;
+    private final AsyncTable<?> table;
     private final HTableDescriptor tableDesc;
     private final HRegionInfo region;
     private final ServerName server;
     private final Sink sink;
     private final Canary canary;
 
-    RegionTask(Configuration conf, RawAsyncTable table, HTableDescriptor tableDesc,
+    RegionTask(Configuration conf, AsyncTable<?> table, HTableDescriptor tableDesc,
         HRegionInfo region, ServerName server, Sink sink, Canary canary) {
       this.table = table;
       this.tableDesc = tableDesc;
@@ -614,7 +614,7 @@ public final class Canary implements Tool {
     if (tasks != null) {
       return tasks;
     }
-    RawAsyncTable table = asyncConn.getRawTable(tableDesc.getTableName());
+    AsyncTable<?> table = asyncConn.getTable(tableDesc.getTableName());
     tasks = MetaScanner
         .allTableRegions(conf, conn, tableDesc.getTableName(), false)
         .entrySet()

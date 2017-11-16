@@ -17,35 +17,40 @@
  */
 package org.apache.hadoop.hbase.client;
 
+import static java.util.stream.Collectors.toList;
+
+import com.google.protobuf.RpcChannel;
+
 import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
-import static java.util.stream.Collectors.*;
+import java.util.function.Function;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.filter.CompareFilter.CompareOp;
-import org.apache.hadoop.hbase.util.ReflectionUtils;
 
 /**
- * The implementation of AsyncTable. Based on {@link RawAsyncTable}.
+ * Just a wrapper of {@link RawAsyncTableImpl}. The difference is that users need to provide a
+ * thread pool when constructing this class, and the callback methods registered to the returned
+ * {@link CompletableFuture} will be executed in this thread pool. So usually it is safe for users
+ * to do anything they want in the callbacks without breaking the rpc framework.
  */
 @InterfaceAudience.Private
-class AsyncTableImpl implements AsyncTable {
+class AsyncTableImpl implements AsyncTable<ScanResultConsumer> {
 
-  private final RawAsyncTable rawTable;
+  private final AsyncTable<AdvancedScanResultConsumer> rawTable;
 
   private final ExecutorService pool;
 
-  private final long defaultScannerMaxResultSize;
-
-  AsyncTableImpl(AsyncConnectionImpl conn, RawAsyncTable rawTable, ExecutorService pool) {
+  AsyncTableImpl(AsyncConnectionImpl conn, AsyncTable<AdvancedScanResultConsumer> rawTable,
+      ExecutorService pool) {
     this.rawTable = rawTable;
     this.pool = pool;
-    this.defaultScannerMaxResultSize = conn.connConf.getScannerMaxResultSize();
   }
 
   @Override
@@ -116,20 +121,49 @@ class AsyncTableImpl implements AsyncTable {
   }
 
   @Override
+  public CheckAndMutateBuilder checkAndMutate(byte[] row, byte[] family) {
+    return new CheckAndMutateBuilder() {
+
+      private final CheckAndMutateBuilder builder = rawTable.checkAndMutate(row, family);
+
+      @Override
+      public CompletableFuture<Boolean> thenPut(Put put) {
+        return wrap(builder.thenPut(put));
+      }
+
+      @Override
+      public CompletableFuture<Boolean> thenMutate(RowMutations mutation) {
+        return wrap(builder.thenMutate(mutation));
+      }
+
+      @Override
+      public CompletableFuture<Boolean> thenDelete(Delete delete) {
+        return wrap(builder.thenDelete(delete));
+      }
+
+      @Override
+      public CheckAndMutateBuilder qualifier(byte[] qualifier) {
+        builder.qualifier(qualifier);
+        return this;
+      }
+
+      @Override
+      public CheckAndMutateBuilder ifNotExists() {
+        builder.ifNotExists();
+        return this;
+      }
+
+      @Override
+      public CheckAndMutateBuilder ifMatches(CompareOp compareOp, byte[] value) {
+        builder.ifMatches(compareOp, value);
+        return this;
+      }
+    };
+  }
+
+  @Override
   public CompletableFuture<Result> increment(Increment increment) {
     return wrap(rawTable.increment(increment));
-  }
-
-  @Override
-  public CompletableFuture<Boolean> checkAndPut(byte[] row, byte[] family, byte[] qualifier,
-      CompareOp compareOp, byte[] value, Put put) {
-    return wrap(rawTable.checkAndPut(row, family, qualifier, compareOp, value, put));
-  }
-
-  @Override
-  public CompletableFuture<Boolean> checkAndDelete(byte[] row, byte[] family, byte[] qualifier,
-      CompareOp compareOp, byte[] value, Delete delete) {
-    return wrap(rawTable.checkAndDelete(row, family, qualifier, compareOp, value, delete));
   }
 
   @Override
@@ -138,26 +172,13 @@ class AsyncTableImpl implements AsyncTable {
   }
 
   @Override
-  public CompletableFuture<Boolean> checkAndMutate(byte[] row, byte[] family, byte[] qualifier,
-      CompareOp compareOp, byte[] value, RowMutations mutation) {
-    return wrap(rawTable.checkAndMutate(row, family, qualifier, compareOp, value, mutation));
-  }
-
-  @Override
   public CompletableFuture<List<Result>> scanAll(Scan scan) {
     return wrap(rawTable.scanAll(scan));
   }
 
-  private long resultSize2CacheSize(long maxResultSize) {
-    // * 2 if possible
-    return maxResultSize > Long.MAX_VALUE / 2 ? maxResultSize : maxResultSize * 2;
-  }
-
   @Override
   public ResultScanner getScanner(Scan scan) {
-    return new AsyncTableResultScanner(rawTable, ReflectionUtils.newInstance(scan.getClass(), scan),
-        resultSize2CacheSize(
-          scan.getMaxResultSize() > 0 ? scan.getMaxResultSize() : defaultScannerMaxResultSize));
+    return rawTable.getScanner(scan);
   }
 
   private void scan0(Scan scan, ScanResultConsumer consumer) {
@@ -199,4 +220,58 @@ class AsyncTableImpl implements AsyncTable {
     return rawTable.<T> batch(actions).stream().map(this::wrap).collect(toList());
   }
 
+  @Override
+  public <S, R> CompletableFuture<R> coprocessorService(Function<RpcChannel, S> stubMaker,
+      ServiceCaller<S, R> callable, byte[] row) {
+    return wrap(rawTable.coprocessorService(stubMaker, callable, row));
+  }
+
+  @Override
+  public <S, R> CoprocessorServiceBuilder<S, R> coprocessorService(
+      Function<RpcChannel, S> stubMaker, ServiceCaller<S, R> callable,
+      CoprocessorCallback<R> callback) {
+    CoprocessorCallback<R> wrappedCallback = new CoprocessorCallback<R>() {
+
+      @Override
+      public void onRegionComplete(HRegionInfo region, R resp) {
+        pool.execute(() -> callback.onRegionComplete(region, resp));
+      }
+
+      @Override
+      public void onRegionError(HRegionInfo region, Throwable error) {
+        pool.execute(() -> callback.onRegionError(region, error));
+      }
+
+      @Override
+      public void onComplete() {
+        pool.execute(() -> callback.onComplete());
+      }
+
+      @Override
+      public void onError(Throwable error) {
+        pool.execute(() -> callback.onError(error));
+      }
+    };
+    CoprocessorServiceBuilder<S, R> builder =
+      rawTable.coprocessorService(stubMaker, callable, wrappedCallback);
+    return new CoprocessorServiceBuilder<S, R>() {
+
+      @Override
+      public CoprocessorServiceBuilder<S, R> fromRow(byte[] startKey, boolean inclusive) {
+        builder.fromRow(startKey, inclusive);
+        return this;
+      }
+
+      @Override
+      public CoprocessorServiceBuilder<S, R> toRow(byte[] endKey, boolean inclusive) {
+        builder.toRow(endKey, inclusive);
+        return this;
+      }
+
+      @Override
+      public void execute() {
+        builder.execute();
+      }
+    };
+  }
 }

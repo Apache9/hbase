@@ -61,7 +61,7 @@ import org.apache.hadoop.hbase.client.HConnectionManager;
 import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.client.Increment;
 import org.apache.hadoop.hbase.client.Put;
-import org.apache.hadoop.hbase.client.RawAsyncTable;
+import org.apache.hadoop.hbase.client.AsyncTable;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.RowMutations;
@@ -581,7 +581,7 @@ public class PerformanceEvaluation extends Configured implements Tool {
     protected HTableInterface table;
 
     protected AsyncConnection asyncConnection;
-    protected RawAsyncTable asyncTable;
+    protected AsyncTable<?> asyncTable;
 
     private String testName;
     private Histogram latencyHistogram;
@@ -620,7 +620,7 @@ public class PerformanceEvaluation extends Configured implements Tool {
       }
       this.asyncConnection = HConnectionManager.createAsyncConnection(conf).get();
       this.table = connection.getTable(opts.tableName);
-      this.asyncTable = asyncConnection.getRawTable(TableName.valueOf(opts.tableName));
+      this.asyncTable = asyncConnection.getTable(TableName.valueOf(opts.tableName));
       this.table.setAutoFlush(opts.autoFlush, true);
       latencyHistogram = YammerHistogramUtils.newHistogram(new UniformSample(1024 * 500));
     }

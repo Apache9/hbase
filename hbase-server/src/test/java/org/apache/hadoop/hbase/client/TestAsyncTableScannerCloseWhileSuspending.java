@@ -46,7 +46,7 @@ public class TestAsyncTableScannerCloseWhileSuspending {
 
   private static AsyncConnection CONN;
 
-  private static AsyncTable TABLE;
+  private static AsyncTable<?> TABLE;
 
   @BeforeClass
   public static void setUp() throws Exception {

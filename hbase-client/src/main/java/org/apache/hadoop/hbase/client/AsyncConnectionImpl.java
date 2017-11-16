@@ -24,8 +24,6 @@ import static org.apache.hadoop.hbase.client.NonceGenerator.CLIENT_NONCES_ENABLE
 import com.google.common.annotations.VisibleForTesting;
 import com.google.protobuf.RpcCallback;
 
-import org.apache.hadoop.hbase.shaded.io.netty.util.HashedWheelTimer;
-
 import java.io.IOException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -54,6 +52,8 @@ import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.MasterService;
 import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.util.CollectionUtils;
 import org.apache.hadoop.hbase.util.Threads;
+
+import org.apache.hadoop.hbase.shaded.io.netty.util.HashedWheelTimer;
 
 /**
  * The implementation of AsyncConnection.
@@ -98,7 +98,7 @@ class AsyncConnectionImpl implements AsyncConnection {
   private final AtomicReference<MasterService.Interface> masterStub = new AtomicReference<>();
 
   private final AtomicReference<CompletableFuture<MasterService.Interface>> masterStubMakeFuture =
-      new AtomicReference<>();
+    new AtomicReference<>();
 
   public AsyncConnectionImpl(Configuration conf, AsyncRegistry registry, String clusterId,
       User user) {
@@ -109,8 +109,8 @@ class AsyncConnectionImpl implements AsyncConnection {
     this.rpcClient = RpcClientFactory.createClient(conf, clusterId);
     this.rpcControllerFactory = RpcControllerFactory.instantiate(conf);
     this.hostnameCanChange = conf.getBoolean(RESOLVE_HOSTNAME_ON_FAIL_KEY, true);
-    this.rpcTimeout = (int) Math.min(Integer.MAX_VALUE,
-      TimeUnit.NANOSECONDS.toMillis(connConf.getRpcTimeoutNs()));
+    this.rpcTimeout =
+      (int) Math.min(Integer.MAX_VALUE, TimeUnit.NANOSECONDS.toMillis(connConf.getRpcTimeoutNs()));
     this.locator = new AsyncRegionLocator(this, RETRY_TIMER);
     this.callerFactory = new AsyncRpcRetryingCallerFactory(this, RETRY_TIMER);
     if (conf.getBoolean(CLIENT_NONCES_ENABLED_KEY, true)) {
@@ -179,7 +179,7 @@ class AsyncConnectionImpl implements AsyncConnection {
             @Override
             public void run(IsMasterRunningResponse resp) {
               if (controller.failed() || resp == null ||
-                  (resp != null && !resp.getIsMasterRunning())) {
+                (resp != null && !resp.getIsMasterRunning())) {
                 masterStubMakeFuture.getAndSet(null).completeExceptionally(
                   new MasterNotRunningException("Master connection is not running anymore"));
               } else {
@@ -222,7 +222,7 @@ class AsyncConnectionImpl implements AsyncConnection {
             @Override
             public void run(IsMasterRunningResponse resp) {
               if (controller.failed() || resp == null ||
-                  (resp != null && !resp.getIsMasterRunning())) {
+                (resp != null && !resp.getIsMasterRunning())) {
                 makeMasterStub(future);
               } else {
                 future.complete(masterStub);
@@ -255,22 +255,23 @@ class AsyncConnectionImpl implements AsyncConnection {
   }
 
   @Override
-  public AsyncTableBuilder<RawAsyncTable> getRawTableBuilder(TableName tableName) {
-    return new AsyncTableBuilderBase<RawAsyncTable>(tableName, connConf) {
+  public AsyncTableBuilder<AdvancedScanResultConsumer> getTableBuilder(TableName tableName) {
+    return new AsyncTableBuilderBase<AdvancedScanResultConsumer>(tableName, connConf) {
 
       @Override
-      public RawAsyncTable build() {
+      public AsyncTable<AdvancedScanResultConsumer> build() {
         return new RawAsyncTableImpl(AsyncConnectionImpl.this, this);
       }
     };
   }
 
   @Override
-  public AsyncTableBuilder<AsyncTable> getTableBuilder(TableName tableName, ExecutorService pool) {
-    return new AsyncTableBuilderBase<AsyncTable>(tableName, connConf) {
+  public AsyncTableBuilder<ScanResultConsumer> getTableBuilder(TableName tableName,
+      ExecutorService pool) {
+    return new AsyncTableBuilderBase<ScanResultConsumer>(tableName, connConf) {
 
       @Override
-      public AsyncTable build() {
+      public AsyncTable<ScanResultConsumer> build() {
         RawAsyncTableImpl rawTable = new RawAsyncTableImpl(AsyncConnectionImpl.this, this);
         return new AsyncTableImpl(AsyncConnectionImpl.this, rawTable, pool);
       }
@@ -278,23 +279,23 @@ class AsyncConnectionImpl implements AsyncConnection {
   }
 
   @Override
-  public AsyncAdminBuilder<RawAsyncHBaseAdmin> getAdminBuilder() {
-    return new AsyncAdminBuilderBase<RawAsyncHBaseAdmin>(connConf) {
+  public AsyncAdminBuilder getAdminBuilder() {
+    return new AsyncAdminBuilderBase(connConf) {
       @Override
-      public RawAsyncHBaseAdmin build() {
+      public AsyncAdmin build() {
         return new RawAsyncHBaseAdmin(AsyncConnectionImpl.this, this);
       }   
     };
   }
 
   @Override
-  public AsyncAdminBuilder<AsyncHBaseAdmin> getAdminBuilder(ExecutorService pool) {
-    return new AsyncAdminBuilderBase<AsyncHBaseAdmin>(connConf) {
+  public AsyncAdminBuilder getAdminBuilder(ExecutorService pool) {
+    return new AsyncAdminBuilderBase(connConf) {
       @Override
       public AsyncHBaseAdmin build() {
         RawAsyncHBaseAdmin rawAdmin = new RawAsyncHBaseAdmin(AsyncConnectionImpl.this, this);
         return new AsyncHBaseAdmin(rawAdmin, pool);
-      }   
+      }
     };
   }
 }

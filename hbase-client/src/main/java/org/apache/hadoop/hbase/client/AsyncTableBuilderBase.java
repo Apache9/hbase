@@ -28,7 +28,8 @@ import org.apache.hadoop.hbase.classification.InterfaceAudience;
  * Base class for all asynchronous table builders.
  */
 @InterfaceAudience.Private
-public abstract class AsyncTableBuilderBase<T extends AsyncTableBase> implements AsyncTableBuilder<T> {
+abstract class AsyncTableBuilderBase<C extends ScanResultConsumerBase>
+    implements AsyncTableBuilder<C> {
 
   protected TableName tableName;
 
@@ -47,7 +48,7 @@ public abstract class AsyncTableBuilderBase<T extends AsyncTableBase> implements
   public AsyncTableBuilderBase(TableName tableName, AsyncConnectionConfiguration connConf) {
     this.tableName = tableName;
     this.operationTimeoutNs = tableName.isSystemTable() ? connConf.getMetaOperationTimeoutNs()
-        : connConf.getOperationTimeoutNs();
+      : connConf.getOperationTimeoutNs();
     this.scanTimeoutNs = connConf.getScanTimeoutNs();
     this.rpcTimeoutNs = connConf.getRpcTimeoutNs();
     this.pauseNs = connConf.getPauseNs();
@@ -56,37 +57,37 @@ public abstract class AsyncTableBuilderBase<T extends AsyncTableBase> implements
   }
 
   @Override
-  public AsyncTableBuilderBase<T> setOperationTimeout(long timeout, TimeUnit unit) {
+  public AsyncTableBuilderBase<C> setOperationTimeout(long timeout, TimeUnit unit) {
     this.operationTimeoutNs = unit.toNanos(timeout);
     return this;
   }
 
   @Override
-  public AsyncTableBuilderBase<T> setScanTimeout(long timeout, TimeUnit unit) {
+  public AsyncTableBuilderBase<C> setScanTimeout(long timeout, TimeUnit unit) {
     this.scanTimeoutNs = unit.toNanos(timeout);
     return this;
   }
 
   @Override
-  public AsyncTableBuilderBase<T> setRpcTimeout(long timeout, TimeUnit unit) {
+  public AsyncTableBuilderBase<C> setRpcTimeout(long timeout, TimeUnit unit) {
     this.rpcTimeoutNs = unit.toNanos(timeout);
     return this;
   }
 
   @Override
-  public AsyncTableBuilderBase<T> setRetryPause(long pause, TimeUnit unit) {
+  public AsyncTableBuilderBase<C> setRetryPause(long pause, TimeUnit unit) {
     this.pauseNs = unit.toNanos(pause);
     return this;
   }
 
   @Override
-  public AsyncTableBuilderBase<T> setMaxAttempts(int maxAttempts) {
+  public AsyncTableBuilderBase<C> setMaxAttempts(int maxAttempts) {
     this.maxAttempts = maxAttempts;
     return this;
   }
 
   @Override
-  public AsyncTableBuilderBase<T> setStartLogErrorsCnt(int startLogErrorsCnt) {
+  public AsyncTableBuilderBase<C> setStartLogErrorsCnt(int startLogErrorsCnt) {
     this.startLogErrorsCnt = startLogErrorsCnt;
     return this;
   }

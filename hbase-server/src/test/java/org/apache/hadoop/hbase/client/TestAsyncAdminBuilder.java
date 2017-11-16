@@ -29,8 +29,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
 
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HTableDescriptor;
@@ -54,18 +52,17 @@ import org.junit.runners.Parameterized.Parameters;
 @Category({ LargeTests.class })
 public class TestAsyncAdminBuilder {
 
-  private static final Log LOG = LogFactory.getLog(TestAsyncAdminBuilder.class);
   private final static HBaseTestingUtility TEST_UTIL = new HBaseTestingUtility();
   private static AsyncConnection ASYNC_CONN;
 
   @Parameter
-  public Supplier<AsyncAdminBuilder<?>> getAdminBuilder;
+  public Supplier<AsyncAdminBuilder> getAdminBuilder;
 
-  private static AsyncAdminBuilder<RawAsyncHBaseAdmin> getRawAsyncAdminBuilder() {
+  private static AsyncAdminBuilder getRawAsyncAdminBuilder() {
     return ASYNC_CONN.getAdminBuilder();
   }
 
-  private static AsyncAdminBuilder<AsyncHBaseAdmin> getAsyncAdminBuilder() {
+  private static AsyncAdminBuilder getAsyncAdminBuilder() {
     return ASYNC_CONN.getAdminBuilder(ForkJoinPool.commonPool());
   }
 

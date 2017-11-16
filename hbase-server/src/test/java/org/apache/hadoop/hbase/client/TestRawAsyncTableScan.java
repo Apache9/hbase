@@ -20,7 +20,6 @@ package org.apache.hadoop.hbase.client;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
 
 import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.junit.experimental.categories.Category;
@@ -41,8 +40,7 @@ public class TestRawAsyncTableScan extends AbstractTestAsyncTableScan {
 
   @Parameters(name = "{index}: type={0}")
   public static List<Object[]> params() {
-    return getScanCreater().stream().map(p -> new Object[] { p.getFirst(), p.getSecond() })
-        .collect(Collectors.toList());
+    return getScanCreatorParams();
   }
 
   @Override
@@ -52,8 +50,8 @@ public class TestRawAsyncTableScan extends AbstractTestAsyncTableScan {
 
   @Override
   protected List<Result> doScan(Scan scan) throws Exception {
-    SimpleRawScanResultConsumer scanConsumer = new SimpleRawScanResultConsumer();
-    ASYNC_CONN.getRawTable(TABLE_NAME).scan(scan, scanConsumer);
+    BufferingScanResultConsumer scanConsumer = new BufferingScanResultConsumer();
+    ASYNC_CONN.getTable(TABLE_NAME).scan(scan, scanConsumer);
     List<Result> results = new ArrayList<>();
     for (Result result; (result = scanConsumer.take()) != null;) {
       results.add(result);

@@ -191,7 +191,7 @@ public class TestAsyncSnapshotAdminApi extends TestAsyncAdminBase {
 
   private void createTableAndLoadData() throws Exception {
     createTableWithDefaultConf(tableName, Optional.empty(), FAMILY);
-    RawAsyncTable table = ASYNC_CONN.getRawTable(tableName);
+    AsyncTable<?> table = ASYNC_CONN.getTable(tableName);
     for (int i = 0; i < COUNT; i++) {
       table.put(new Put(Bytes.toBytes(i)).add(FAMILY, Bytes.toBytes("cq"),
         Bytes.toBytes(i))).join();
@@ -199,7 +199,7 @@ public class TestAsyncSnapshotAdminApi extends TestAsyncAdminBase {
   }
 
   private void assertLoadData() throws Exception {
-    RawAsyncTable table = ASYNC_CONN.getRawTable(tableName);
+    AsyncTable<?> table = ASYNC_CONN.getTable(tableName);
     assertEquals(table.scanAll(new Scan()).get().size(), COUNT);
   }
 }

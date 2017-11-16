@@ -76,20 +76,20 @@ public class TestAsyncTableBatch {
   public String tableType;
 
   @Parameter(1)
-  public Function<TableName, AsyncTableBase> tableGetter;
+  public Function<TableName, AsyncTable<?>> tableGetter;
 
-  private static RawAsyncTable getRawTable(TableName tableName) {
-    return CONN.getRawTable(tableName);
+  private static AsyncTable<?> getRawTable(TableName tableName) {
+    return CONN.getTable(tableName);
   }
 
-  private static AsyncTable getTable(TableName tableName) {
+  private static AsyncTable<?> getTable(TableName tableName) {
     return CONN.getTable(tableName, ForkJoinPool.commonPool());
   }
 
   @Parameters(name = "{index}: type={0}")
   public static List<Object[]> params() {
-    Function<TableName, AsyncTableBase> rawTableGetter = TestAsyncTableBatch::getRawTable;
-    Function<TableName, AsyncTableBase> tableGetter = TestAsyncTableBatch::getTable;
+    Function<TableName, AsyncTable<?>> rawTableGetter = TestAsyncTableBatch::getRawTable;
+    Function<TableName, AsyncTable<?>> tableGetter = TestAsyncTableBatch::getTable;
     return Arrays.asList(new Object[] { "raw", rawTableGetter },
       new Object[] { "normal", tableGetter });
   }
@@ -131,7 +131,7 @@ public class TestAsyncTableBatch {
 
   @Test
   public void test() throws InterruptedException, ExecutionException, IOException {
-    AsyncTableBase table = tableGetter.apply(TABLE_NAME);
+    AsyncTable<?> table = tableGetter.apply(TABLE_NAME);
     table.putAll(
       IntStream.range(0, COUNT).mapToObj(i -> new Put(getRow(i)).add(FAMILY, CQ, Bytes.toBytes(i)))
           .collect(Collectors.toList()))
@@ -172,7 +172,7 @@ public class TestAsyncTableBatch {
 
   @Test
   public void testMixed() throws InterruptedException, ExecutionException {
-    AsyncTableBase table = tableGetter.apply(TABLE_NAME);
+    AsyncTable<?> table = tableGetter.apply(TABLE_NAME);
     table.putAll(IntStream.range(0, 5)
         .mapToObj(i -> new Put(Bytes.toBytes(i)).add(FAMILY, CQ, Bytes.toBytes((long) i)))
         .collect(Collectors.toList())).get();
@@ -214,7 +214,7 @@ public class TestAsyncTableBatch {
     HTableDescriptor htd = admin.getTableDescriptor(TABLE_NAME);
     htd.addCoprocessor(ErrorInjectObserver.class.getName());
     admin.modifyTable(TABLE_NAME, htd);
-    AsyncTableBase table = tableGetter.apply(TABLE_NAME);
+    AsyncTable<?> table = tableGetter.apply(TABLE_NAME);
     table.putAll(Arrays.asList(SPLIT_KEYS).stream().map(k -> new Put(k).add(FAMILY, CQ, k))
         .collect(Collectors.toList())).get();
     List<CompletableFuture<Result>> futures = table

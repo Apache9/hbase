@@ -55,7 +55,6 @@ import org.apache.hadoop.hbase.catalog.AsyncMetaTableAccessor;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.client.AsyncRpcRetryingCallerFactory.AdminRequestCallerBuilder;
 import org.apache.hadoop.hbase.client.AsyncRpcRetryingCallerFactory.MasterRequestCallerBuilder;
-import org.apache.hadoop.hbase.client.AsyncRpcRetryingCallerFactory.ServerRequestCallerBuilder;
 import org.apache.hadoop.hbase.ipc.HBaseRpcController;
 import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.protobuf.RequestConverter;
@@ -167,14 +166,14 @@ import org.apache.hadoop.hbase.shaded.io.netty.util.TimerTask;
  * The implementation of AsyncAdmin.
  */
 @InterfaceAudience.Private
-public class RawAsyncHBaseAdmin implements AsyncAdmin {
+class RawAsyncHBaseAdmin implements AsyncAdmin {
   public static final String FLUSH_TABLE_PROCEDURE_SIGNATURE = "flush-table-proc";
 
   private static final Log LOG = LogFactory.getLog(AsyncHBaseAdmin.class);
 
   private final AsyncConnectionImpl connection;
 
-  private final RawAsyncTable metaTable;
+  private final AsyncTable<AdvancedScanResultConsumer> metaTable;
 
   private final long rpcTimeoutNs;
 
@@ -186,19 +185,16 @@ public class RawAsyncHBaseAdmin implements AsyncAdmin {
 
   private final int startLogErrorsCnt;
 
-  private final NonceGenerator ng;
-
   private final AsyncRegistry registry;
 
-  RawAsyncHBaseAdmin(AsyncConnectionImpl connection, AsyncAdminBuilderBase<?> builder) {
+  RawAsyncHBaseAdmin(AsyncConnectionImpl connection, AsyncAdminBuilderBase builder) {
     this.connection = connection;
-    this.metaTable = connection.getRawTable(META_TABLE_NAME);
+    this.metaTable = connection.getTable(META_TABLE_NAME);
     this.rpcTimeoutNs = builder.rpcTimeoutNs;
     this.operationTimeoutNs = builder.operationTimeoutNs;
     this.pauseNs = builder.pauseNs;
     this.maxAttempts = builder.maxAttempts;
     this.startLogErrorsCnt = builder.startLogErrorsCnt;
-    this.ng = connection.getNonceGenerator();
     this.registry = AsyncRegistryFactory.getRegistry(connection.getConfiguration());
   }
 
@@ -295,13 +291,13 @@ public class RawAsyncHBaseAdmin implements AsyncAdmin {
           future.completeExceptionally(error);
           return;
         }
-        CompletableFuture[] futures = tables.stream()
+        CompletableFuture<?>[] futures = tables.stream()
             .map((table) -> operator.operate(table.getTableName()).whenComplete((v, ex) -> {
               if (ex != null) {
                 LOG.info("Failed to " + operationType + " table " + table.getTableName(), ex);
                 failed.add(table);
               }
-            })).<CompletableFuture> toArray(size -> new CompletableFuture[size]);
+            })).<CompletableFuture<?>> toArray(CompletableFuture[]::new);
         CompletableFuture.allOf(futures).thenAccept((v) -> {
           future.complete(failed);
         });
@@ -1096,7 +1092,6 @@ public class RawAsyncHBaseAdmin implements AsyncAdmin {
       return failedFuture(new IllegalArgumentException(
           "should not give a splitkey which equals to startkey!"));
     }
-    TableName tableName = hri.getTable();
     return this
         .<Void> newAdminCaller()
         .action(
@@ -1221,8 +1216,8 @@ public class RawAsyncHBaseAdmin implements AsyncAdmin {
   public CompletableFuture<List<QuotaSettings>> getQuota(QuotaFilter filter) {
     CompletableFuture<List<QuotaSettings>> future = new CompletableFuture<>();
     Scan scan = QuotaTableUtil.makeScan(filter);
-    this.connection.getRawTableBuilder(QuotaTableUtil.QUOTA_TABLE_NAME).build()
-        .scan(scan, new RawScanResultConsumer() {
+    this.connection.getTableBuilder(QuotaTableUtil.QUOTA_TABLE_NAME).build()
+        .scan(scan, new AdvancedScanResultConsumer() {
           List<QuotaSettings> settings = new ArrayList<>();
 
           @Override
@@ -1689,14 +1684,6 @@ public class RawAsyncHBaseAdmin implements AsyncAdmin {
     return future;
   }
 
-  private <T> boolean completeExceptionally(CompletableFuture<T> future, Throwable error) {
-    if (error != null) {
-      future.completeExceptionally(error);
-      return true;
-    }
-    return false;
-  }
-
   @Override
   public CompletableFuture<ClusterStatus> getClusterStatus() {
     return this
@@ -1907,13 +1894,5 @@ public class RawAsyncHBaseAdmin implements AsyncAdmin {
             controller, stub, RequestConverter.buildCatalogScanRequest(),
             (s, c, req, done) -> s.runCatalogScan(c, req, done), (resp) -> resp.getScanResult()))
         .call();
-  }
-
-  private <T> ServerRequestCallerBuilder<T> newServerCaller() {
-    return this.connection.callerFactory.<T> serverRequest()
-        .rpcTimeout(rpcTimeoutNs, TimeUnit.NANOSECONDS)
-        .operationTimeout(operationTimeoutNs, TimeUnit.NANOSECONDS)
-        .pause(pauseNs, TimeUnit.NANOSECONDS).maxAttempts(maxAttempts)
-        .startLogErrorsCnt(startLogErrorsCnt);
   }
 }

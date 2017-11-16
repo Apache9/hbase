@@ -139,7 +139,7 @@ public class TestAsyncRegionAdminApi extends TestAsyncAdminBase {
     RawAsyncHBaseAdmin rawAdmin = (RawAsyncHBaseAdmin) ASYNC_CONN.getAdmin();
     TEST_UTIL.createMultiRegionTable(tableName, HConstants.CATALOG_FAMILY, 10);
 
-    RawAsyncTable metaTable = ASYNC_CONN.getRawTable(META_TABLE_NAME);
+    AsyncTable<AdvancedScanResultConsumer> metaTable = ASYNC_CONN.getTable(META_TABLE_NAME);
     long startWait = System.currentTimeMillis();
     while (AsyncMetaTableAccessor.getTableHRegionLocations(metaTable, Optional.of(tableName)).get()
         .size() < 10) {
@@ -331,7 +331,7 @@ public class TestAsyncRegionAdminApi extends TestAsyncAdminBase {
             .filter(rs -> rs.getServerName().equals(serverName)).findFirst().get();
 
     // write a put into the specific region
-    ASYNC_CONN.getRawTable(tableName)
+    ASYNC_CONN.getTable(tableName)
         .put(new Put(hri.getStartKey()).add(FAMILY, FAMILY_0, Bytes.toBytes("value-1")))
         .join();
     Assert.assertTrue(regionServer.getOnlineRegion(hri.getRegionName()).getMemstoreSize().get() > 0);
@@ -347,7 +347,7 @@ public class TestAsyncRegionAdminApi extends TestAsyncAdminBase {
     Assert.assertEquals(regionServer.getOnlineRegion(hri.getRegionName()).getMemstoreSize().get(), 0);
 
     // write another put into the specific region
-    ASYNC_CONN.getRawTable(tableName)
+    ASYNC_CONN.getTable(tableName)
         .put(new Put(hri.getStartKey()).add(FAMILY, FAMILY_0, Bytes.toBytes("value-2")))
         .join();
     Assert.assertTrue(regionServer.getOnlineRegion(hri.getRegionName()).getMemstoreSize().get() > 0);
@@ -365,7 +365,7 @@ public class TestAsyncRegionAdminApi extends TestAsyncAdminBase {
     byte[][] splitRows = new byte[][] { Bytes.toBytes("3"), Bytes.toBytes("6") };
     createTableWithDefaultConf(tableName, Optional.of(splitRows));
 
-    RawAsyncTable metaTable = ASYNC_CONN.getRawTable(META_TABLE_NAME);
+    AsyncTable<AdvancedScanResultConsumer> metaTable = ASYNC_CONN.getTable(META_TABLE_NAME);
     long startWait = System.currentTimeMillis();
     while (AsyncMetaTableAccessor.getTableHRegionLocations(metaTable, Optional.of(tableName))
         .get().size() < 3) {
@@ -448,12 +448,12 @@ public class TestAsyncRegionAdminApi extends TestAsyncAdminBase {
     // create table
     createTableWithDefaultConf(tableName);
 
-    RawAsyncTable metaTable = ASYNC_CONN.getRawTable(META_TABLE_NAME);
+    AsyncTable<AdvancedScanResultConsumer> metaTable = ASYNC_CONN.getTable(META_TABLE_NAME);
     List<HRegionLocation> regionLocations =
         AsyncMetaTableAccessor.getTableHRegionLocations(metaTable, Optional.of(tableName)).get();
     assertEquals(1, regionLocations.size());
 
-    RawAsyncTable table = ASYNC_CONN.getRawTable(tableName);
+    AsyncTable<?> table = ASYNC_CONN.getTable(tableName);
     List<Put> puts = new ArrayList<>();
     for (int i = 0; i < rowCount; i++) {
       Put put = new Put(Bytes.toBytes(i));
@@ -626,7 +626,7 @@ public class TestAsyncRegionAdminApi extends TestAsyncAdminBase {
 
   private static void loadData(final TableName tableName, final byte[][] families, final int rows,
       final int flushes) throws IOException {
-    RawAsyncTable table = ASYNC_CONN.getRawTable(tableName);
+    AsyncTable<?> table = ASYNC_CONN.getTable(tableName);
     List<Put> puts = new ArrayList<>(rows);
     byte[] qualifier = Bytes.toBytes("val");
     for (int i = 0; i < flushes; i++) {

@@ -59,7 +59,7 @@ import org.junit.runners.Parameterized;
  * Class to test asynchronous table admin operations.
  */
 @RunWith(Parameterized.class)
-@Category({LargeTests.class})
+@Category({ LargeTests.class })
 public class TestAsyncTableAdminApi extends TestAsyncAdminBase {
 
   @Test
@@ -154,17 +154,17 @@ public class TestAsyncTableAdminApi extends TestAsyncAdminBase {
 
   @Test
   public void testCreateTableNumberOfRegions() throws Exception {
-    RawAsyncTable metaTable = ASYNC_CONN.getRawTable(META_TABLE_NAME);
+    AsyncTable<AdvancedScanResultConsumer> metaTable = ASYNC_CONN.getTable(META_TABLE_NAME);
 
     createTableWithDefaultConf(tableName);
     List<HRegionLocation> regionLocations =
-        AsyncMetaTableAccessor.getTableHRegionLocations(metaTable, Optional.of(tableName)).get();
+      AsyncMetaTableAccessor.getTableHRegionLocations(metaTable, Optional.of(tableName)).get();
     assertEquals("Table should have only 1 region", 1, regionLocations.size());
 
     final TableName tableName2 = TableName.valueOf(tableName.getNameAsString() + "_2");
     createTableWithDefaultConf(tableName2, Optional.of(new byte[][] { new byte[] { 42 } }));
     regionLocations =
-        AsyncMetaTableAccessor.getTableHRegionLocations(metaTable, Optional.of(tableName2)).get();
+      AsyncMetaTableAccessor.getTableHRegionLocations(metaTable, Optional.of(tableName2)).get();
     assertEquals("Table should have only 2 region", 2, regionLocations.size());
 
     final TableName tableName3 = TableName.valueOf(tableName.getNameAsString() + "_3");
@@ -180,7 +180,7 @@ public class TestAsyncTableAdminApi extends TestAsyncAdminBase {
       Thread.sleep(1000);
     }
     regionLocations =
-        AsyncMetaTableAccessor.getTableHRegionLocations(metaTable, Optional.of(tableName3)).get();
+      AsyncMetaTableAccessor.getTableHRegionLocations(metaTable, Optional.of(tableName3)).get();
     assertEquals("Table should have only 3 region", 3, regionLocations.size());
 
     final TableName tableName4 = TableName.valueOf(tableName.getNameAsString() + "_4");
@@ -211,12 +211,12 @@ public class TestAsyncTableAdminApi extends TestAsyncAdminBase {
   @Test
   public void testCreateTableWithRegions() throws Exception {
     byte[][] splitKeys = { new byte[] { 1, 1, 1 }, new byte[] { 2, 2, 2 }, new byte[] { 3, 3, 3 },
-        new byte[] { 4, 4, 4 }, new byte[] { 5, 5, 5 }, new byte[] { 6, 6, 6 },
-        new byte[] { 7, 7, 7 }, new byte[] { 8, 8, 8 }, new byte[] { 9, 9, 9 }, };
+      new byte[] { 4, 4, 4 }, new byte[] { 5, 5, 5 }, new byte[] { 6, 6, 6 },
+      new byte[] { 7, 7, 7 }, new byte[] { 8, 8, 8 }, new byte[] { 9, 9, 9 }, };
     int expectedRegions = splitKeys.length + 1;
     createTableWithDefaultConf(tableName, Optional.of(splitKeys));
 
-    RawAsyncTable metaTable = ASYNC_CONN.getRawTable(META_TABLE_NAME);
+   AsyncTable<AdvancedScanResultConsumer> metaTable = ASYNC_CONN.getTable(META_TABLE_NAME);
     long startWait = System.currentTimeMillis();
     while (!admin.isTableAvailable(tableName, splitKeys).get()) {
       assertTrue("Timed out waiting for table all regions online " + tableName,
@@ -225,7 +225,7 @@ public class TestAsyncTableAdminApi extends TestAsyncAdminBase {
     }
 
     List<HRegionLocation> regions =
-        AsyncMetaTableAccessor.getTableHRegionLocations(metaTable, Optional.of(tableName)).get();
+      AsyncMetaTableAccessor.getTableHRegionLocations(metaTable, Optional.of(tableName)).get();
     Iterator<HRegionLocation> hris = regions.iterator();
 
     assertEquals(
@@ -350,7 +350,7 @@ public class TestAsyncTableAdminApi extends TestAsyncAdminBase {
     }
 
     regions =
-        AsyncMetaTableAccessor.getTableHRegionLocations(metaTable, Optional.of(tableName3)).get();
+      AsyncMetaTableAccessor.getTableHRegionLocations(metaTable, Optional.of(tableName3)).get();
     assertEquals(
       "Tried to create " + expectedRegions + " regions " + "but only found " + regions.size(),
       expectedRegions, regions.size());
@@ -359,8 +359,8 @@ public class TestAsyncTableAdminApi extends TestAsyncAdminBase {
 
     // Try an invalid case where there are duplicate split keys
     splitKeys = new byte[][] { new byte[] { 1, 1, 1 }, new byte[] { 2, 2, 2 },
-        new byte[] { 3, 3, 3 }, new byte[] { 2, 2, 2 } };
-    final TableName tableName4 = TableName.valueOf(tableName.getNameAsString() + "_4");;
+      new byte[] { 3, 3, 3 }, new byte[] { 2, 2, 2 } };
+    final TableName tableName4 = TableName.valueOf(tableName.getNameAsString() + "_4");
     try {
       createTableWithDefaultConf(tableName4, Optional.of(splitKeys));
       fail("Should not be able to create this table because of " + "duplicate split keys");
@@ -467,7 +467,7 @@ public class TestAsyncTableAdminApi extends TestAsyncAdminBase {
 
     // Create & Fill the table
     createTableWithDefaultConf(tableName, Optional.of(splitKeys));
-    RawAsyncTable table = ASYNC_CONN.getRawTable(tableName);
+    AsyncTable<?> table = ASYNC_CONN.getTable(tableName);
     int expectedRows = 10;
     for (int i = 0; i < expectedRows; i++) {
       byte[] data = Bytes.toBytes(String.valueOf(i));
@@ -492,7 +492,7 @@ public class TestAsyncTableAdminApi extends TestAsyncAdminBase {
   @Test
   public void testDisableAndEnableTable() throws Exception {
     createTableWithDefaultConf(tableName);
-    RawAsyncTable table = ASYNC_CONN.getRawTable(tableName);
+    AsyncTable<?> table = ASYNC_CONN.getTable(tableName);
     final byte[] row = Bytes.toBytes("row");
     final byte[] qualifier = Bytes.toBytes("qualifier");
     final byte[] value = Bytes.toBytes("value");
@@ -543,8 +543,8 @@ public class TestAsyncTableAdminApi extends TestAsyncAdminBase {
     final TableName tableName2 = TableName.valueOf(tableName.getNameAsString() + "2");
     createTableWithDefaultConf(tableName1);
     createTableWithDefaultConf(tableName2);
-    RawAsyncTable table1 = ASYNC_CONN.getRawTable(tableName1);
-    RawAsyncTable table2 = ASYNC_CONN.getRawTable(tableName1);
+    AsyncTable<?> table1 = ASYNC_CONN.getTable(tableName1);
+    AsyncTable<?> table2 = ASYNC_CONN.getTable(tableName1);
 
     final byte[] row = Bytes.toBytes("row");
     final byte[] qualifier = Bytes.toBytes("qualifier");
@@ -605,14 +605,13 @@ public class TestAsyncTableAdminApi extends TestAsyncAdminBase {
 
   @Test
   public void testEnableTableRetainAssignment() throws Exception {
-    byte[][] splitKeys =
-        { new byte[] { 1, 1, 1 }, new byte[] { 2, 2, 2 }, new byte[] { 3, 3, 3 },
-            new byte[] { 4, 4, 4 }, new byte[] { 5, 5, 5 }, new byte[] { 6, 6, 6 },
-            new byte[] { 7, 7, 7 }, new byte[] { 8, 8, 8 }, new byte[] { 9, 9, 9 } };
+    byte[][] splitKeys = { new byte[] { 1, 1, 1 }, new byte[] { 2, 2, 2 }, new byte[] { 3, 3, 3 },
+      new byte[] { 4, 4, 4 }, new byte[] { 5, 5, 5 }, new byte[] { 6, 6, 6 },
+      new byte[] { 7, 7, 7 }, new byte[] { 8, 8, 8 }, new byte[] { 9, 9, 9 } };
     int expectedRegions = splitKeys.length + 1;
     createTableWithDefaultConf(tableName, Optional.of(splitKeys));
 
-    RawAsyncTable metaTable = ASYNC_CONN.getRawTable(META_TABLE_NAME);
+    AsyncTable<AdvancedScanResultConsumer> metaTable = ASYNC_CONN.getTable(META_TABLE_NAME);
     long startWait = System.currentTimeMillis();
     while (AsyncMetaTableAccessor.getTableHRegionLocations(metaTable, Optional.of(tableName)).get()
         .size() < expectedRegions) {
@@ -622,7 +621,7 @@ public class TestAsyncTableAdminApi extends TestAsyncAdminBase {
     }
 
     List<HRegionLocation> regions =
-        AsyncMetaTableAccessor.getTableHRegionLocations(metaTable, Optional.of(tableName)).get();
+      AsyncMetaTableAccessor.getTableHRegionLocations(metaTable, Optional.of(tableName)).get();
     assertEquals(
       "Tried to create " + expectedRegions + " regions " + "but only found " + regions.size(),
       expectedRegions, regions.size());
@@ -633,7 +632,7 @@ public class TestAsyncTableAdminApi extends TestAsyncAdminBase {
     admin.enableTable(tableName).join();
 
     List<HRegionLocation> regions2 =
-        AsyncMetaTableAccessor.getTableHRegionLocations(metaTable, Optional.of(tableName)).get();
+      AsyncMetaTableAccessor.getTableHRegionLocations(metaTable, Optional.of(tableName)).get();
     // Check the assignment.
     assertEquals(regions.size(), regions2.size());
     assertTrue(regions2.containsAll(regions));

@@ -58,7 +58,7 @@ class AsyncClientScanner {
 
   private final ScanMetrics scanMetrics;
 
-  private final RawScanResultConsumer consumer;
+  private final AdvancedScanResultConsumer consumer;
 
   private final TableName tableName;
 
@@ -76,7 +76,7 @@ class AsyncClientScanner {
 
   private final ScanResultCache resultCache;
 
-  public AsyncClientScanner(Scan scan, RawScanResultConsumer consumer, TableName tableName,
+  public AsyncClientScanner(Scan scan, AdvancedScanResultConsumer consumer, TableName tableName,
       AsyncConnectionImpl conn, long pauseNs, int maxAttempts, long scanTimeoutNs,
       long rpcTimeoutNs, int startLogErrorsCnt) {
     if (scan.getStartRow() == null) {
