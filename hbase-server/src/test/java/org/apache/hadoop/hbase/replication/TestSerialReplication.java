@@ -19,6 +19,9 @@
  */
 package org.apache.hadoop.hbase.replication;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -37,7 +40,6 @@ import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.HTestConst;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.TableName;
-import org.apache.hadoop.hbase.catalog.MetaReader;
 import org.apache.hadoop.hbase.client.Durability;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Put;
@@ -55,9 +57,6 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
 @Category(LargeTests.class)
 public class TestSerialReplication {
@@ -380,9 +379,8 @@ public class TestSerialReplication {
         put.add(famName, VALUE, VALUE);
         t1.put(put);
       }
-      List<Pair<HRegionInfo, ServerName>> regions =
-          MetaReader.getTableRegionsAndLocations(
-              utility1.getMiniHBaseCluster().getMaster().getCatalogTracker(), tableName);
+    List<Pair<HRegionInfo, ServerName>> regions = utility1.getMiniHBaseCluster().getMaster()
+        .getCatalogTracker().getTableRegionsAndLocations(tableName);
       assertEquals(2, regions.size());
       utility1.getHBaseAdmin().mergeRegions(regions.get(0).getFirst().getEncodedNameAsBytes(),
           regions.get(1).getFirst().getEncodedNameAsBytes(), true);
@@ -446,9 +444,8 @@ public class TestSerialReplication {
   }
 
   private void moveRegion(HTable table, int index) throws IOException, InterruptedException {
-    List<Pair<HRegionInfo, ServerName>> regions =
-        MetaReader.getTableRegionsAndLocations(
-            utility1.getMiniHBaseCluster().getMaster().getCatalogTracker(), table.getName());
+    List<Pair<HRegionInfo, ServerName>> regions = utility1.getMiniHBaseCluster().getMaster()
+        .getCatalogTracker().getTableRegionsAndLocations(table.getName());
     assertEquals(1, regions.size());
     HRegionInfo regionInfo = regions.get(0).getFirst();
     ServerName name = utility1.getHBaseCluster().getRegionServer(index).getServerName();
@@ -462,9 +459,8 @@ public class TestSerialReplication {
   }
 
   private void balanceTwoRegions(HTable table) throws Exception {
-    List<Pair<HRegionInfo, ServerName>> regions =
-        MetaReader.getTableRegionsAndLocations(
-            utility1.getMiniHBaseCluster().getMaster().getCatalogTracker(), table.getName());
+    List<Pair<HRegionInfo, ServerName>> regions = utility1.getMiniHBaseCluster().getMaster()
+        .getCatalogTracker().getTableRegionsAndLocations(table.getName());
     assertEquals(2, regions.size());
     HRegionInfo regionInfo1 = regions.get(0).getFirst();
     ServerName name1 = utility1.getHBaseCluster().getRegionServer(0).getServerName();

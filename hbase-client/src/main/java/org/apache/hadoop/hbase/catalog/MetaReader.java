@@ -17,30 +17,30 @@
  */
 package org.apache.hadoop.hbase.catalog;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.hbase.classification.InterfaceAudience;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.TableName;
-import org.apache.hadoop.hbase.HConstants;
-import org.apache.hadoop.hbase.HRegionInfo;
-import org.apache.hadoop.hbase.ServerName;
-import org.apache.hadoop.hbase.client.Get;
-import org.apache.hadoop.hbase.client.HTable;
-import org.apache.hadoop.hbase.client.Result;
-import org.apache.hadoop.hbase.client.ResultScanner;
-import org.apache.hadoop.hbase.client.Scan;
-import org.apache.hadoop.hbase.util.Bytes;
-import org.apache.hadoop.hbase.util.Pair;
-
 import java.io.IOException;
-import java.io.InterruptedIOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
 import java.util.Set;
 import java.util.TreeMap;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.HConstants;
+import org.apache.hadoop.hbase.HRegionInfo;
+import org.apache.hadoop.hbase.ServerName;
+import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.classification.InterfaceAudience;
+import org.apache.hadoop.hbase.client.Get;
+import org.apache.hadoop.hbase.client.HConnection;
+import org.apache.hadoop.hbase.client.HTable;
+import org.apache.hadoop.hbase.client.Result;
+import org.apache.hadoop.hbase.client.ResultScanner;
+import org.apache.hadoop.hbase.client.Scan;
+import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hbase.util.Pair;
 
 /**
  * Reads region and assignment information from <code>hbase:meta</code>.
@@ -50,7 +50,7 @@ public class MetaReader {
   // TODO: Strip CatalogTracker from this class.  Its all over and in the end
   // its only used to get its Configuration so we can get associated
   // Connection.
-  private static final Log LOG = LogFactory.getLog(MetaReader.class);
+  static final Log LOG = LogFactory.getLog(MetaReader.class);
 
   static final byte [] META_REGION_PREFIX;
   static {
@@ -65,23 +65,22 @@ public class MetaReader {
   /**
    * Performs a full scan of <code>hbase:meta</code>, skipping regions from any
    * tables in the specified set of disabled tables.
-   * @param catalogTracker
+   * @param conn
    * @param disabledTables set of disabled tables that will not be returned
    * @return Returns a map of every region to it's currently assigned server,
    * according to META.  If the region does not have an assignment it will have
    * a null value in the map.
    * @throws IOException
    */
-  public static Map<HRegionInfo, ServerName> fullScan(
-      CatalogTracker catalogTracker, final Set<TableName> disabledTables)
-  throws IOException {
-    return fullScan(catalogTracker, disabledTables, false);
+  public static Map<HRegionInfo, ServerName> fullScan(HConnection conn,
+      Set<TableName> disabledTables) throws IOException {
+    return fullScan(conn, disabledTables, false);
   }
 
   /**
    * Performs a full scan of <code>hbase:meta</code>, skipping regions from any
    * tables in the specified set of disabled tables.
-   * @param catalogTracker
+   * @param conn
    * @param disabledTables set of disabled tables that will not be returned
    * @param excludeOfflinedSplitParents If true, do not include offlined split
    * parents in the return.
@@ -90,29 +89,25 @@ public class MetaReader {
    * a null value in the map.
    * @throws IOException
    */
-  public static Map<HRegionInfo, ServerName> fullScan(
-      CatalogTracker catalogTracker, final Set<TableName> disabledTables,
-      final boolean excludeOfflinedSplitParents)
-  throws IOException {
-    final Map<HRegionInfo, ServerName> regions =
-      new TreeMap<HRegionInfo, ServerName>();
+  public static Map<HRegionInfo, ServerName> fullScan(HConnection conn,
+      Set<TableName> disabledTables, boolean excludeOfflinedSplitParents) throws IOException {
+    final Map<HRegionInfo, ServerName> regions = new TreeMap<HRegionInfo, ServerName>();
     Visitor v = new Visitor() {
       @Override
       public boolean visit(Result r) throws IOException {
-        if (r ==  null || r.isEmpty()) return true;
+        if (r == null || r.isEmpty()) return true;
         Pair<HRegionInfo, ServerName> region = HRegionInfo.getHRegionInfoAndServerName(r);
         HRegionInfo hri = region.getFirst();
-        if (hri  == null) return true;
+        if (hri == null) return true;
         if (hri.getTable() == null) return true;
-        if (disabledTables.contains(
-            hri.getTable())) return true;
+        if (disabledTables.contains(hri.getTable())) return true;
         // Are we to include split parents in the list?
         if (excludeOfflinedSplitParents && hri.isSplitParent()) return true;
         regions.put(hri, region.getSecond());
         return true;
       }
     };
-    fullScan(catalogTracker, v);
+    fullScan(conn, v);
     return regions;
   }
 
@@ -121,10 +116,9 @@ public class MetaReader {
    * @return List of {@link Result}
    * @throws IOException
    */
-  public static List<Result> fullScan(CatalogTracker catalogTracker)
-  throws IOException {
+  public static List<Result> fullScan(HConnection conn) throws IOException {
     CollectAllVisitor v = new CollectAllVisitor();
-    fullScan(catalogTracker, v, null);
+    fullScan(conn, v, null);
     return v.getResults();
   }
 
@@ -133,52 +127,46 @@ public class MetaReader {
    * @return List of {@link Result}
    * @throws IOException
    */
-  public static List<Result> fullScanOfMeta(CatalogTracker catalogTracker)
-  throws IOException {
+  public static List<Result> fullScanOfMeta(HConnection conn) throws IOException {
     CollectAllVisitor v = new CollectAllVisitor();
-    fullScan(catalogTracker, v, null);
+    fullScan(conn, v, null);
     return v.getResults();
   }
 
   /**
    * Performs a full scan of <code>hbase:meta</code>.
-   * @param catalogTracker
+   * @param conn
    * @param visitor Visitor invoked against each row.
    * @throws IOException
    */
-  public static void fullScan(CatalogTracker catalogTracker,
-      final Visitor visitor)
-  throws IOException {
-    fullScan(catalogTracker, visitor, null);
+  public static void fullScan(HConnection conn, final Visitor visitor) throws IOException {
+    fullScan(conn, visitor, null);
   }
 
   /**
    * Callers should call close on the returned {@link HTable} instance.
-   * @param catalogTracker We'll use this catalogtracker's connection
+   * @param conn
    * @param tableName Table to get an {@link HTable} against.
    * @return An {@link HTable} for <code>tableName</code>
    * @throws IOException
    */
-  @SuppressWarnings("deprecation")
-  private static HTable getHTable(final CatalogTracker catalogTracker,
-      final TableName tableName)
-  throws IOException {
+  private static HTable getHTable(HConnection conn, TableName tableName) throws IOException {
     // Passing the CatalogTracker's connection ensures this
     // HTable instance uses the CatalogTracker's connection.
-    org.apache.hadoop.hbase.client.HConnection c = catalogTracker.getConnection();
-    if (c == null) throw new NullPointerException("No connection");
-    return new HTable(tableName, c);
+    if (conn == null) {
+      throw new NullPointerException("No connection");
+    }
+    return new HTable(tableName, conn);
   }
 
   /**
    * Callers should call close on the returned {@link HTable} instance.
-   * @param catalogTracker
+   * @param conn
    * @return An {@link HTable} for <code>hbase:meta</code>
    * @throws IOException
    */
-  public static HTable getCatalogHTable(final CatalogTracker catalogTracker)
-  throws IOException {
-    return getMetaHTable(catalogTracker);
+  public static HTable getCatalogHTable(HConnection conn) throws IOException {
+    return getMetaHTable(conn);
   }
 
   /**
@@ -187,9 +175,8 @@ public class MetaReader {
    * @return An {@link HTable} for <code>hbase:meta</code>
    * @throws IOException
    */
-  public static HTable getMetaHTable(final CatalogTracker ct)
-  throws IOException {
-    return getHTable(ct, TableName.META_TABLE_NAME);
+  public static HTable getMetaHTable(HConnection conn) throws IOException {
+    return getHTable(conn, TableName.META_TABLE_NAME);
   }
 
   /**
@@ -207,46 +194,42 @@ public class MetaReader {
 
   /**
    * Reads the location of the specified region
-   * @param catalogTracker
+   * @param conn
    * @param regionName region whose location we are after
    * @return location of region as a {@link ServerName} or null if not found
    * @throws IOException
    */
-  static ServerName readRegionLocation(CatalogTracker catalogTracker,
-      byte [] regionName)
-  throws IOException {
-    Pair<HRegionInfo, ServerName> pair = getRegion(catalogTracker, regionName);
-    return (pair == null || pair.getSecond() == null)? null: pair.getSecond();
+  static ServerName readRegionLocation(HConnection conn, byte[] regionName) throws IOException {
+    Pair<HRegionInfo, ServerName> pair = getRegion(conn, regionName);
+    return (pair == null || pair.getSecond() == null) ? null : pair.getSecond();
   }
 
   /**
    * Gets the region info and assignment for the specified region.
-   * @param catalogTracker
+   * @param conn
    * @param regionName Region to lookup.
    * @return Location and HRegionInfo for <code>regionName</code>
    * @throws IOException
    */
-  public static Pair<HRegionInfo, ServerName> getRegion(
-      CatalogTracker catalogTracker, byte [] regionName)
-  throws IOException {
+  public static Pair<HRegionInfo, ServerName> getRegion(HConnection conn, byte[] regionName)
+      throws IOException {
     Get get = new Get(regionName);
     get.addFamily(HConstants.CATALOG_FAMILY);
-    Result r = get(getCatalogHTable(catalogTracker), get);
-    return (r == null || r.isEmpty())? null: HRegionInfo.getHRegionInfoAndServerName(r);
+    Result r = get(getCatalogHTable(conn), get);
+    return (r == null || r.isEmpty()) ? null : HRegionInfo.getHRegionInfoAndServerName(r);
   }
 
   /**
    * Gets the result in hbase:meta for the specified region.
-   * @param catalogTracker
+   * @param conn
    * @param regionName
    * @return result of the specified region
    * @throws IOException
    */
-  public static Result getRegionResult(CatalogTracker catalogTracker,
-      byte[] regionName) throws IOException {
+  public static Result getRegionResult(HConnection conn, byte[] regionName) throws IOException {
     Get get = new Get(regionName);
     get.addFamily(HConstants.CATALOG_FAMILY);
-    return get(getCatalogHTable(catalogTracker), get);
+    return get(getCatalogHTable(conn), get);
   }
 
   /**
@@ -254,30 +237,26 @@ public class MetaReader {
    * @return null if it doesn't contain merge qualifier, else two merge regions
    * @throws IOException
    */
-  public static Pair<HRegionInfo, HRegionInfo> getRegionsFromMergeQualifier(
-      CatalogTracker catalogTracker, byte[] regionName) throws IOException {
-    Result result = getRegionResult(catalogTracker, regionName);
-    HRegionInfo mergeA = HRegionInfo.getHRegionInfo(result,
-        HConstants.MERGEA_QUALIFIER);
-    HRegionInfo mergeB = HRegionInfo.getHRegionInfo(result,
-        HConstants.MERGEB_QUALIFIER);
+  public static Pair<HRegionInfo, HRegionInfo> getRegionsFromMergeQualifier(HConnection conn,
+      byte[] regionName) throws IOException {
+    Result result = getRegionResult(conn, regionName);
+    HRegionInfo mergeA = HRegionInfo.getHRegionInfo(result, HConstants.MERGEA_QUALIFIER);
+    HRegionInfo mergeB = HRegionInfo.getHRegionInfo(result, HConstants.MERGEB_QUALIFIER);
     if (mergeA == null && mergeB == null) {
       return null;
     }
     return new Pair<HRegionInfo, HRegionInfo>(mergeA, mergeB);
- }
+  }
 
   /**
    * Checks if the specified table exists.  Looks at the hbase:meta table hosted on
    * the specified server.
-   * @param catalogTracker
+   * @param conn
    * @param tableName table to check
    * @return true if the table exists in meta, false if not
    * @throws IOException
    */
-  public static boolean tableExists(CatalogTracker catalogTracker,
-      final TableName tableName)
-  throws IOException {
+  public static boolean tableExists(HConnection conn, TableName tableName) throws IOException {
     if (tableName.equals(TableName.META_TABLE_NAME)) {
       // Catalog tables always exist.
       return true;
@@ -288,8 +267,7 @@ public class MetaReader {
 
       @Override
       public boolean visit(Result r) throws IOException {
-        this.current =
-          HRegionInfo.getHRegionInfo(r, HConstants.REGIONINFO_QUALIFIER);
+        this.current = HRegionInfo.getHRegionInfo(r, HConstants.REGIONINFO_QUALIFIER);
         if (this.current == null) {
           LOG.warn("No serialized HRegionInfo in " + r);
           return true;
@@ -307,53 +285,9 @@ public class MetaReader {
         this.results.add(this.current);
       }
     };
-    fullScan(catalogTracker, visitor, getTableStartRowForMeta(tableName));
+    fullScan(conn, visitor, getTableStartRowForMeta(tableName));
     // If visitor has results >= 1 then table exists.
     return visitor.getResults().size() >= 1;
-  }
-
-  /**
-   * Gets all of the regions of the specified table.
-   * @param catalogTracker
-   * @param tableName
-   * @return Ordered list of {@link HRegionInfo}.
-   * @throws IOException
-   */
-  public static List<HRegionInfo> getTableRegions(CatalogTracker catalogTracker,
-      TableName tableName)
-  throws IOException {
-    return getTableRegions(catalogTracker, tableName, false);
-  }
-
-  /**
-   * Gets all of the regions of the specified table.
-   * @param catalogTracker
-   * @param tableName
-   * @param excludeOfflinedSplitParents If true, do not include offlined split
-   * parents in the return.
-   * @return Ordered list of {@link HRegionInfo}.
-   * @throws IOException
-   */
-  public static List<HRegionInfo> getTableRegions(CatalogTracker catalogTracker,
-      TableName tableName, final boolean excludeOfflinedSplitParents)
-  throws IOException {
-    List<Pair<HRegionInfo, ServerName>> result = null;
-    try {
-      result = getTableRegionsAndLocations(catalogTracker, tableName,
-        excludeOfflinedSplitParents);
-    } catch (InterruptedException e) {
-      throw (InterruptedIOException)new InterruptedIOException().initCause(e);
-    }
-    return getListOfHRegionInfos(result);
-  }
-
-  static List<HRegionInfo> getListOfHRegionInfos(final List<Pair<HRegionInfo, ServerName>> pairs) {
-    if (pairs == null || pairs.isEmpty()) return null;
-    List<HRegionInfo> result = new ArrayList<HRegionInfo>(pairs.size());
-    for (Pair<HRegionInfo, ServerName> pair: pairs) {
-      result.add(pair.getFirst());
-    }
-    return result;
   }
 
   /**
@@ -394,87 +328,18 @@ public class MetaReader {
     byte[] startKey = Bytes.toBytes(strName + ",,");
     // Stop key appends the smallest possible char to the table name
     byte[] stopKey = Bytes.toBytes(strName + " ,,");
-
-    Scan scan = new Scan(startKey);
-    scan.setStopRow(stopKey);
-    return scan;
+    return new Scan().withStartRow(startKey).withStopRow(stopKey);
   }
 
   /**
-   * @param catalogTracker
-   * @param tableName
-   * @return Return list of regioninfos and server.
-   * @throws IOException
-   * @throws InterruptedException
-   */
-  public static List<Pair<HRegionInfo, ServerName>>
-  getTableRegionsAndLocations(CatalogTracker catalogTracker, TableName tableName)
-  throws IOException, InterruptedException {
-    return getTableRegionsAndLocations(catalogTracker, tableName,
-      true);
-  }
-
-  /**
-   * @param catalogTracker
-   * @param tableName
-   * @return Return list of regioninfos and server addresses.
-   * @throws IOException
-   * @throws InterruptedException
-   */
-  public static List<Pair<HRegionInfo, ServerName>>
-  getTableRegionsAndLocations(final CatalogTracker catalogTracker,
-      final TableName tableName, final boolean excludeOfflinedSplitParents)
-  throws IOException, InterruptedException {
-    if (tableName.equals(TableName.META_TABLE_NAME)) {
-      // If meta, do a bit of special handling.
-      ServerName serverName = catalogTracker.getMetaLocation();
-      List<Pair<HRegionInfo, ServerName>> list =
-          new ArrayList<Pair<HRegionInfo, ServerName>>();
-      list.add(new Pair<HRegionInfo, ServerName>(HRegionInfo.FIRST_META_REGIONINFO,
-          serverName));
-      return list;
-    }
-    // Make a version of CollectingVisitor that collects HRegionInfo and ServerAddress
-    CollectingVisitor<Pair<HRegionInfo, ServerName>> visitor =
-        new CollectingVisitor<Pair<HRegionInfo, ServerName>>() {
-      private Pair<HRegionInfo, ServerName> current = null;
-
-      @Override
-      public boolean visit(Result r) throws IOException {
-        HRegionInfo hri =
-          HRegionInfo.getHRegionInfo(r, HConstants.REGIONINFO_QUALIFIER);
-        if (hri == null) {
-          LOG.warn("No serialized HRegionInfo in " + r);
-          return true;
-        }
-        if (!isInsideTable(hri, tableName)) return false;
-        if (excludeOfflinedSplitParents && hri.isSplitParent()) return true;
-        ServerName sn = HRegionInfo.getServerName(r);
-        // Populate this.current so available when we call #add
-        this.current = new Pair<HRegionInfo, ServerName>(hri, sn);
-        // Else call super and add this Result to the collection.
-        return super.visit(r);
-      }
-
-      @Override
-      void add(Result r) {
-        this.results.add(this.current);
-      }
-    };
-    fullScan(catalogTracker, visitor, getTableStartRowForMeta(tableName));
-    return visitor.getResults();
-  }
-
-  /**
-   * @param catalogTracker
+   * @param conn
    * @param serverName
    * @return List of user regions installed on this server (does not include
    * catalog regions).
    * @throws IOException
    */
-  public static NavigableMap<HRegionInfo, Result>
-  getServerUserRegions(CatalogTracker catalogTracker, final ServerName serverName)
-  throws IOException {
+  public static NavigableMap<HRegionInfo, Result> getServerUserRegions(HConnection conn,
+      final ServerName serverName) throws IOException {
     final NavigableMap<HRegionInfo, Result> hris = new TreeMap<HRegionInfo, Result>();
     // Fill the above hris map with entries from hbase:meta that have the passed
     // servername.
@@ -489,11 +354,11 @@ public class MetaReader {
         }
       }
     };
-    fullScan(catalogTracker, v);
+    fullScan(conn, v);
     List<Result> results = v.getResults();
     if (results != null && !results.isEmpty()) {
       // Convert results to Map keyed by HRI
-      for (Result r: results) {
+      for (Result r : results) {
         HRegionInfo hri = HRegionInfo.getHRegionInfo(r);
         if (hri != null) hris.put(hri, r);
       }
@@ -501,47 +366,46 @@ public class MetaReader {
     return hris;
   }
 
-  public static void fullScanMetaAndPrint(final CatalogTracker catalogTracker)
-  throws IOException {
+  public static void fullScanMetaAndPrint(HConnection conn) throws IOException {
     Visitor v = new Visitor() {
       @Override
       public boolean visit(Result r) throws IOException {
-        if (r ==  null || r.isEmpty()) return true;
+        if (r == null || r.isEmpty()) return true;
         LOG.info("fullScanMetaAndPrint.Current Meta Row: " + r);
         HRegionInfo hrim = HRegionInfo.getHRegionInfo(r);
         LOG.info("fullScanMetaAndPrint.HRI Print= " + hrim);
         return true;
       }
     };
-    fullScan(catalogTracker, v);
+    fullScan(conn, v);
   }
 
   /**
    * Performs a full scan of a catalog table.
-   * @param catalogTracker
+   * @param conn
    * @param visitor Visitor invoked against each row.
    * @param startrow Where to start the scan. Pass null if want to begin scan
    * at first row.
    * <code>hbase:meta</code>, the default (pass false to scan hbase:meta)
    * @throws IOException
    */
-  public static void fullScan(CatalogTracker catalogTracker,
-    final Visitor visitor, final byte [] startrow)
-  throws IOException {
+  public static void fullScan(HConnection conn, Visitor visitor, byte[] startrow)
+      throws IOException {
     Scan scan = new Scan();
-    if (startrow != null) scan.setStartRow(startrow);
+    if (startrow != null) {
+      scan.withStartRow(startrow);
+    }
     if (startrow == null) {
-      int caching = catalogTracker.getConnection().getConfiguration()
-          .getInt(HConstants.HBASE_META_SCANNER_CACHING, 100);
+      int caching = conn.getConfiguration().getInt(HConstants.HBASE_META_SCANNER_CACHING, 100);
       scan.setCaching(caching);
     }
     scan.addFamily(HConstants.CATALOG_FAMILY);
-    HTable metaTable = getMetaHTable(catalogTracker);
+    HTable metaTable = getMetaHTable(conn);
     ResultScanner scanner = null;
     try {
       scanner = metaTable.getScanner(scan);
       Result data;
-      while((data = scanner.next()) != null) {
+      while ((data = scanner.next()) != null) {
         if (data.isEmpty()) continue;
         // Break if visit returns false.
         if (!visitor.visit(data)) break;

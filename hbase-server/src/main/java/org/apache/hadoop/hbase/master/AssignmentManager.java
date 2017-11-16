@@ -26,7 +26,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -55,11 +54,8 @@ import org.apache.hadoop.hbase.Chore;
 import org.apache.hadoop.hbase.HBaseIOException;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HRegionInfo;
-import org.apache.hadoop.hbase.HTableDescriptor;
-import org.apache.hadoop.hbase.NamespaceDescriptor;
 import org.apache.hadoop.hbase.NotServingRegionException;
 import org.apache.hadoop.hbase.RegionTransition;
-import org.apache.hadoop.hbase.Server;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.Stoppable;
 import org.apache.hadoop.hbase.TableName;
@@ -67,13 +63,11 @@ import org.apache.hadoop.hbase.TableNotFoundException;
 import org.apache.hadoop.hbase.catalog.CatalogTracker;
 import org.apache.hadoop.hbase.catalog.MetaReader;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
-import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.exceptions.DeserializationException;
 import org.apache.hadoop.hbase.executor.EventHandler;
 import org.apache.hadoop.hbase.executor.EventType;
 import org.apache.hadoop.hbase.executor.ExecutorService;
-import org.apache.hadoop.hbase.ipc.RpcClient;
 import org.apache.hadoop.hbase.ipc.FailedServerException;
 import org.apache.hadoop.hbase.ipc.FailedServers;
 import org.apache.hadoop.hbase.ipc.ServerNotRunningYetException;
@@ -442,8 +436,7 @@ public class AssignmentManager extends ZooKeeperListener {
    */
   public Pair<Integer, Integer> getReopenStatus(TableName tableName)
       throws IOException {
-    List <HRegionInfo> hris =
-      MetaReader.getTableRegions(this.server.getCatalogTracker(), tableName, true);
+    List<HRegionInfo> hris = this.server.getCatalogTracker().getTableRegions(tableName, true);
     Integer pending = 0;
     for (HRegionInfo hri : hris) {
       String name = hri.getEncodedName();
@@ -1173,7 +1166,8 @@ public class AssignmentManager extends ZooKeeperListener {
         } else {
           try {
             byte [] name = rt.getRegionName();
-            Pair<HRegionInfo, ServerName> p = MetaReader.getRegion(catalogTracker, name);
+            Pair<HRegionInfo, ServerName> p =
+              MetaReader.getRegion(catalogTracker.getConnection(), name);
             regionInfo = p.getFirst();
           } catch (IOException e) {
             LOG.info("Exception reading hbase:meta doing HBCK repair operation", e);
@@ -2020,7 +2014,8 @@ public class AssignmentManager extends ZooKeeperListener {
       while (!server.isStopped()) {
         try {
           catalogTracker.waitForMeta();
-          Result r = MetaReader.getRegionResult(catalogTracker, region.getRegionName());
+          Result r =
+            MetaReader.getRegionResult(catalogTracker.getConnection(), region.getRegionName());
           if (r == null || r.isEmpty()) return false;
           ServerName server = HRegionInfo.getServerName(r);
           return regionStates.isServerDeadAndNotProcessed(server);
@@ -2889,7 +2884,7 @@ public class AssignmentManager extends ZooKeeperListener {
     disabledOrDisablingOrEnabling.addAll(disabledOrEnablingTables);
 
     // Region assignment from META
-    List<Result> results = MetaReader.fullScan(this.catalogTracker);
+    List<Result> results = MetaReader.fullScan(this.catalogTracker.getConnection());
     // Get any new but slow to checkin region server that joined the cluster
     Set<ServerName> onlineServers = serverManager.getOnlineServers().keySet();
     // Map of offline servers and their regions to be returned

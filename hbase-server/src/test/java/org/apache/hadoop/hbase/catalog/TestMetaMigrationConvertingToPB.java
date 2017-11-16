@@ -206,12 +206,12 @@ public class TestMetaMigrationConvertingToPB {
       TEST_UTIL.getMiniHBaseCluster().getMaster().getCatalogTracker();
     // Erase the current version of root meta for this test.
     undoVersionInRoot(ct);
-    MetaReader.fullScanMetaAndPrint(ct);
+    MetaReader.fullScanMetaAndPrint(ct.getConnection());
     LOG.info("Meta Print completed.testMetaMigration");
 
     long numMigratedRows = MetaMigrationConvertingToPB.updateMeta(
         TEST_UTIL.getHBaseCluster().getMaster());
-    MetaReader.fullScanMetaAndPrint(ct);
+    MetaReader.fullScanMetaAndPrint(ct.getConnection());
 
     // Should be one entry only and it should be for the table we just added.
     assertEquals(regionNames.length, numMigratedRows);
@@ -254,7 +254,7 @@ public class TestMetaMigrationConvertingToPB {
     // Erase the current version of root meta for this test.
     undoVersionInRoot(ct);
 
-    MetaReader.fullScanMetaAndPrint(ct);
+    MetaReader.fullScanMetaAndPrint(ct.getConnection());
     LOG.info("Meta Print completed.testUpdatesOnMetaWithLegacyHRI");
 
     long numMigratedRows =
@@ -277,7 +277,7 @@ public class TestMetaMigrationConvertingToPB {
    */
   void verifyMetaRowsAreUpdated(CatalogTracker catalogTracker)
       throws IOException {
-    List<Result> results = MetaReader.fullScan(catalogTracker);
+    List<Result> results = MetaReader.fullScan(catalogTracker.getConnection());
     assertTrue(results.size() >= REGION_COUNT);
 
     for (Result result : results) {

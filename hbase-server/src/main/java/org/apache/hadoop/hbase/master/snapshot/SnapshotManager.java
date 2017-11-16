@@ -702,7 +702,7 @@ public class SnapshotManager extends MasterProcedureManager implements Stoppable
     SnapshotReferenceUtil.verifySnapshot(master.getConfiguration(), fs, manifest);
 
     // Execute the restore/clone operation
-    if (MetaReader.tableExists(master.getCatalogTracker(), tableName)) {
+    if (MetaReader.tableExists(master.getCatalogTracker().getConnection(), tableName)) {
       if (master.getAssignmentManager().getZKTable().isEnabledTable(
           TableName.valueOf(fsSnapshot.getTable()))) {
         throw new UnsupportedOperationException("Table '" +

@@ -60,7 +60,7 @@ public class NamespaceAuditor {
   public void checkQuotaToCreateTable(TableName tName, int regions) throws IOException {
     if (isInitialized()) {
       // We do this check to fail fast.
-      if (MetaReader.tableExists(masterServices.getCatalogTracker(), tName)) {
+      if (MetaReader.tableExists(masterServices.getCatalogTracker().getConnection(), tName)) {
         throw new TableExistsException(tName);
       }
       stateManager.checkAndUpdateNamespaceTableCount(tName, regions);

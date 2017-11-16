@@ -214,7 +214,8 @@ public class TestMetaReaderEditorNoCluster {
       ct = new CatalogTracker(zkw, null, connection, ABORTABLE);
       ct.start();
       // Scan meta for user tables and verify we got back expected answer.
-      NavigableMap<HRegionInfo, Result> hris = MetaReader.getServerUserRegions(ct, sn);
+      NavigableMap<HRegionInfo, Result> hris =
+        MetaReader.getServerUserRegions(ct.getConnection(), sn);
       assertEquals(1, hris.size());
       assertTrue(hris.firstEntry().getKey().equals(HRegionInfo.FIRST_META_REGIONINFO));
       assertTrue(Bytes.equals(rowToVerify, hris.firstEntry().getValue().getRow()));

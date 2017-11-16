@@ -963,7 +963,7 @@ public class RegionMergeTransaction {
     // Get merge regions if it is a merged region and already has merge
     // qualifier
     Pair<HRegionInfo, HRegionInfo> mergeRegions = MetaReader
-        .getRegionsFromMergeQualifier(services.getCatalogTracker(), regionName);
+        .getRegionsFromMergeQualifier(services.getCatalogTracker().getConnection(), regionName);
     if (mergeRegions != null &&
         (mergeRegions.getFirst() != null || mergeRegions.getSecond() != null)) {
       // It has merge qualifier

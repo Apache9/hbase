@@ -57,7 +57,8 @@ public class AccessCounter extends Chore {
       if (isCounterEnabled()) {
         return true;
       }
-      if (MetaReader.tableExists(server.getCatalogTracker(), TableName.valueOf(ACCOUNT_TABLE_NAME))) {
+      if (MetaReader.tableExists(server.getCatalogTracker().getConnection(),
+        TableName.valueOf(ACCOUNT_TABLE_NAME))) {
         if (table == null) {
           table = new HTable(this.conf, ACCOUNT_TABLE_NAME);
         }

@@ -403,9 +403,8 @@ public class CatalogJanitor extends Chore {
       throws IOException {
     // Get merge regions if it is a merged region and already has merge
     // qualifier
-    Pair<HRegionInfo, HRegionInfo> mergeRegions = MetaReader
-        .getRegionsFromMergeQualifier(this.services.getCatalogTracker(),
-            region.getRegionName());
+    Pair<HRegionInfo, HRegionInfo> mergeRegions = MetaReader.getRegionsFromMergeQualifier(
+      this.services.getCatalogTracker().getConnection(), region.getRegionName());
     if (mergeRegions == null
         || (mergeRegions.getFirst() == null && mergeRegions.getSecond() == null)) {
       // It doesn't have merge qualifier, no need to clean

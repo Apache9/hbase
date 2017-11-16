@@ -996,8 +996,8 @@ public class TestAssignmentManagerOnCluster {
         tableNameList.add(TableName.valueOf(name + "_" + i));
       }
     }
-    List<Result> metaRows =
-        MetaReader.fullScan(TEST_UTIL.getMiniHBaseCluster().getMaster().getCatalogTracker());
+    List<Result> metaRows = MetaReader
+        .fullScan(TEST_UTIL.getMiniHBaseCluster().getMaster().getCatalogTracker().getConnection());
     int count = 0;
     // Check all 100 rows are in meta
     for (Result result : metaRows) {

@@ -15,6 +15,7 @@ import java.io.InterruptedIOException;
 import java.lang.reflect.UndeclaredThrowableException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -704,13 +705,17 @@ public class HConnectionImplementation implements HConnection, Closeable {
   @Override
   public List<HRegionLocation> locateRegions(final TableName tableName, final boolean useCache,
       final boolean offlined) throws IOException {
-    NavigableMap<HRegionInfo, ServerName> regions =
+    if (TableName.META_TABLE_NAME.equals(tableName)) {
+      return Collections.singletonList(registry.getMetaRegionLocation());
+    } else {
+      NavigableMap<HRegionInfo, ServerName> regions =
         MetaScanner.allTableRegions(conf, this, tableName, offlined);
-    final List<HRegionLocation> locations = new ArrayList<HRegionLocation>();
-    for (HRegionInfo regionInfo : regions.keySet()) {
-      locations.add(locateRegion(tableName, regionInfo.getStartKey(), useCache, true));
+      final List<HRegionLocation> locations = new ArrayList<HRegionLocation>();
+      for (HRegionInfo regionInfo : regions.keySet()) {
+        locations.add(locateRegion(tableName, regionInfo.getStartKey(), useCache, true));
+      }
+      return locations;
     }
-    return locations;
   }
 
   @Override

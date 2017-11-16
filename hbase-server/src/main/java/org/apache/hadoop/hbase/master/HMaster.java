@@ -2698,7 +2698,7 @@ MasterServices, Server {
     if (isCatalogTable(tableName)) {
       throw new IOException("Can't modify catalog tables");
     }
-    if (!MetaReader.tableExists(getCatalogTracker(), tableName)) {
+    if (!MetaReader.tableExists(getCatalogTracker().getConnection(), tableName)) {
       throw new TableNotFoundException(tableName);
     }
     if (!getAssignmentManager().getZKTable().
@@ -3183,7 +3183,7 @@ MasterServices, Server {
           + " actual: " + type);
       }
       Pair<HRegionInfo, ServerName> pair =
-        MetaReader.getRegion(this.catalogTracker, regionName);
+        MetaReader.getRegion(this.catalogTracker.getConnection(), regionName);
       if (pair == null) throw new UnknownRegionException(Bytes.toString(regionName));
       HRegionInfo hri = pair.getFirst();
       if (cpHost != null) {
@@ -3353,7 +3353,7 @@ MasterServices, Server {
 
     try {
       Pair<HRegionInfo, ServerName> pair =
-        MetaReader.getRegion(this.catalogTracker, regionName);
+        MetaReader.getRegion(this.catalogTracker.getConnection(), regionName);
       if (pair == null) throw new UnknownRegionException(Bytes.toStringBinary(regionName));
       HRegionInfo hri = pair.getFirst();
       if (cpHost != null) {

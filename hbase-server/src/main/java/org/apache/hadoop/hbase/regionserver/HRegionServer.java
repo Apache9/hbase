@@ -4604,8 +4604,8 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
           }
           // See HBASE-5094. Cross check with hbase:meta if still this RS is owning
           // the region.
-          Pair<HRegionInfo, ServerName> p = MetaReader.getRegion(
-              this.catalogTracker, region.getRegionName());
+          Pair<HRegionInfo, ServerName> p =
+            MetaReader.getRegion(this.catalogTracker.getConnection(), region.getRegionName());
           if (this.getServerName().equals(p.getSecond())) {
             Boolean closing = regionsInTransitionInRS.get(region.getEncodedNameAsBytes());
             // Map regionsInTransitionInRSOnly has an entry for a region only if the region

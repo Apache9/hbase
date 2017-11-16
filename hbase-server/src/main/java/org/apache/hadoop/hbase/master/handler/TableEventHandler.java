@@ -37,7 +37,7 @@ import org.apache.hadoop.hbase.Server;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.TableExistsException;
 import org.apache.hadoop.hbase.TableNotDisabledException;
-import org.apache.hadoop.hbase.catalog.MetaReader;
+import org.apache.hadoop.hbase.catalog.CatalogTracker;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.executor.EventHandler;
 import org.apache.hadoop.hbase.executor.EventType;
@@ -123,9 +123,7 @@ public abstract class TableEventHandler extends EventHandler {
       LOG.info("Handling table operation " + eventType + " on table " +
           tableName);
 
-      List<HRegionInfo> hris =
-        MetaReader.getTableRegions(this.server.getCatalogTracker(),
-          tableName);
+      List<HRegionInfo> hris = this.server.getCatalogTracker().getTableRegions(tableName);
       handleTableOperation(hris);
       if (eventType.isOnlineSchemaChangeSupported() && this.masterServices.
           getAssignmentManager().getZKTable().

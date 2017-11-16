@@ -216,26 +216,24 @@ public class TestMetaReaderEditor {
     abstract void metaTask() throws Throwable;
   }
 
-  @Test public void testGetRegionsCatalogTables()
-  throws IOException, InterruptedException {
-    List<HRegionInfo> regions =
-      MetaReader.getTableRegions(CT, TableName.META_TABLE_NAME);
+  @Test
+  public void testGetRegionsCatalogTables() throws IOException, InterruptedException {
+    List<HRegionInfo> regions = CT.getTableRegions(TableName.META_TABLE_NAME);
     assertTrue(regions.size() >= 1);
-    assertTrue(MetaReader.getTableRegionsAndLocations(CT,
-      TableName.META_TABLE_NAME).size() >= 1);
+    assertTrue(CT.getTableRegionsAndLocations(TableName.META_TABLE_NAME).size() >= 1);
   }
 
   @Test public void testTableExists() throws IOException {
     final TableName name =
         TableName.valueOf("testTableExists");
-    assertFalse(MetaReader.tableExists(CT, name));
+    assertFalse(MetaReader.tableExists(CT.getConnection(), name));
     UTIL.createTable(name, HConstants.CATALOG_FAMILY);
-    assertTrue(MetaReader.tableExists(CT, name));
+    assertTrue(MetaReader.tableExists(CT.getConnection(), name));
     HBaseAdmin admin = UTIL.getHBaseAdmin();
     admin.disableTable(name);
     admin.deleteTable(name);
-    assertFalse(MetaReader.tableExists(CT, name));
-    assertTrue(MetaReader.tableExists(CT,
+    assertFalse(MetaReader.tableExists(CT.getConnection(), name));
+    assertTrue(MetaReader.tableExists(CT.getConnection(),
       TableName.META_TABLE_NAME));
   }
 
@@ -244,7 +242,7 @@ public class TestMetaReaderEditor {
     LOG.info("Started " + name);
     // Test get on non-existent region.
     Pair<HRegionInfo, ServerName> pair =
-      MetaReader.getRegion(CT, Bytes.toBytes("nonexistent-region"));
+      MetaReader.getRegion(CT.getConnection(), Bytes.toBytes("nonexistent-region"));
     assertNull(pair);
     LOG.info("Finished " + name);
   }
@@ -269,19 +267,17 @@ public class TestMetaReaderEditor {
 
     // Now make sure we only get the regions from 1 of the tables at a time
 
-    assertEquals(1, MetaReader.getTableRegions(CT, name).size());
-    assertEquals(1, MetaReader.getTableRegions(CT, greaterName).size());
+    assertEquals(1, CT.getTableRegions(name).size());
+    assertEquals(1, CT.getTableRegions(greaterName).size());
   }
 
   private static List<HRegionInfo> testGettingTableRegions(final CatalogTracker ct,
-      final TableName name, final int regionCount)
-  throws IOException, InterruptedException {
-    List<HRegionInfo> regions = MetaReader.getTableRegions(ct, name);
+      final TableName name, final int regionCount) throws IOException, InterruptedException {
+    List<HRegionInfo> regions = ct.getTableRegions(name);
     assertEquals(regionCount, regions.size());
     Pair<HRegionInfo, ServerName> pair =
-      MetaReader.getRegion(ct, regions.get(0).getRegionName());
-    assertEquals(regions.get(0).getEncodedName(),
-      pair.getFirst().getEncodedName());
+      MetaReader.getRegion(ct.getConnection(), regions.get(0).getRegionName());
+    assertEquals(regions.get(0).getEncodedName(), pair.getFirst().getEncodedName());
     return regions;
   }
 
@@ -289,7 +285,7 @@ public class TestMetaReaderEditor {
       final HRegionInfo region)
   throws IOException, InterruptedException {
     Pair<HRegionInfo, ServerName> pair =
-      MetaReader.getRegion(ct, region.getRegionName());
+      MetaReader.getRegion(ct.getConnection(), region.getRegionName());
     assertEquals(region.getEncodedName(),
       pair.getFirst().getEncodedName());
   }

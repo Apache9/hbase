@@ -118,7 +118,7 @@ public class CreateTableHandler extends EventHandler {
     boolean success = false;
     try {
       TableName tableName = this.hTableDescriptor.getTableName();
-      if (MetaReader.tableExists(catalogTracker, tableName)) {
+      if (MetaReader.tableExists(catalogTracker.getConnection(), tableName)) {
         throw new TableExistsException(tableName);
       }
 

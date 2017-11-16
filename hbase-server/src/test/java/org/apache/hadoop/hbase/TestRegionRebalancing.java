@@ -102,7 +102,7 @@ public class TestRegionRebalancing {
     CatalogTracker ct = new CatalogTracker(UTIL.getConfiguration());
     ct.start();
     try {
-      MetaReader.fullScanMetaAndPrint(ct);
+      MetaReader.fullScanMetaAndPrint(ct.getConnection());
     } finally {
       ct.stop();
     }

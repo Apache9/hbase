@@ -118,7 +118,7 @@ public class MetaEditor {
    */
   static void putToMetaTable(final CatalogTracker ct, final Put p)
   throws IOException {
-    put(MetaReader.getMetaHTable(ct), p);
+    put(MetaReader.getMetaHTable(ct.getConnection()), p);
   }
 
   /**
@@ -129,7 +129,7 @@ public class MetaEditor {
    */
   static void putToCatalogTable(final CatalogTracker ct, final Put p)
   throws IOException {
-    put(MetaReader.getCatalogHTable(ct), p);
+    put(MetaReader.getCatalogHTable(ct.getConnection()), p);
   }
 
   /**
@@ -153,7 +153,7 @@ public class MetaEditor {
    */
   public static void putsToMetaTable(final CatalogTracker ct, final List<Put> ps)
   throws IOException {
-    HTable t = MetaReader.getMetaHTable(ct);
+    HTable t = MetaReader.getMetaHTable(ct.getConnection());
     try {
       t.put(ps);
     } finally {
@@ -182,7 +182,7 @@ public class MetaEditor {
    */
   public static void deleteFromMetaTable(final CatalogTracker ct, final List<Delete> deletes)
       throws IOException {
-    HTable t = MetaReader.getMetaHTable(ct);
+    HTable t = MetaReader.getMetaHTable(ct.getConnection());
     try {
       t.delete(deletes);
     } finally {
@@ -198,7 +198,7 @@ public class MetaEditor {
    */
   public static void mutateMetaTable(final CatalogTracker ct, final List<Mutation> mutations)
       throws IOException {
-    HTable t = MetaReader.getMetaHTable(ct);
+    HTable t = MetaReader.getMetaHTable(ct.getConnection());
     try {
       t.batch(mutations);
     } catch (InterruptedException e) {
@@ -269,7 +269,7 @@ public class MetaEditor {
    */
   public static void addRegionToMeta(CatalogTracker catalogTracker, HRegionInfo regionInfo,
       HRegionInfo splitA, HRegionInfo splitB) throws IOException {
-    HTable meta = MetaReader.getMetaHTable(catalogTracker);
+    HTable meta = MetaReader.getMetaHTable(catalogTracker.getConnection());
     try {
       addRegionToMeta(meta, regionInfo, splitA, splitB);
     } finally {
@@ -327,7 +327,7 @@ public class MetaEditor {
   public static void mergeRegions(final CatalogTracker catalogTracker,
       HRegionInfo mergedRegion, HRegionInfo regionA, HRegionInfo regionB,
       ServerName sn, boolean saveBarrier) throws IOException {
-    HTable meta = MetaReader.getMetaHTable(catalogTracker);
+    HTable meta = MetaReader.getMetaHTable(catalogTracker.getConnection());
     try {
       HRegionInfo copyOfMerged = new HRegionInfo(mergedRegion);
 
@@ -377,7 +377,7 @@ public class MetaEditor {
   public static void splitRegion(final CatalogTracker catalogTracker,
       HRegionInfo parent, HRegionInfo splitA, HRegionInfo splitB,
       ServerName sn, boolean saveBarrier) throws IOException {
-    HTable meta = MetaReader.getMetaHTable(catalogTracker);
+    HTable meta = MetaReader.getMetaHTable(catalogTracker.getConnection());
     try {
       HRegionInfo copyOfParent = new HRegionInfo(parent);
       copyOfParent.setOffline(true);

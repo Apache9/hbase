@@ -24,6 +24,8 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import com.google.protobuf.ServiceException;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -38,7 +40,6 @@ import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HRegionLocation;
 import org.apache.hadoop.hbase.HTableDescriptor;
-import org.apache.hadoop.hbase.testclassification.LargeTests;
 import org.apache.hadoop.hbase.MasterNotRunningException;
 import org.apache.hadoop.hbase.MiniHBaseCluster;
 import org.apache.hadoop.hbase.NotServingRegionException;
@@ -49,15 +50,14 @@ import org.apache.hadoop.hbase.TableNotDisabledException;
 import org.apache.hadoop.hbase.TableNotEnabledException;
 import org.apache.hadoop.hbase.TableNotFoundException;
 import org.apache.hadoop.hbase.ZooKeeperConnectionException;
-import org.apache.hadoop.hbase.catalog.CatalogTracker;
 import org.apache.hadoop.hbase.constraint.ConstraintException;
-import org.apache.hadoop.hbase.ipc.RpcClient;
 import org.apache.hadoop.hbase.master.AssignmentManager;
 import org.apache.hadoop.hbase.master.HMaster;
 import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.regionserver.HRegion;
 import org.apache.hadoop.hbase.regionserver.HRegionServer;
 import org.apache.hadoop.hbase.regionserver.wal.HLogUtilsForTests;
+import org.apache.hadoop.hbase.testclassification.LargeTests;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.Pair;
 import org.junit.After;
@@ -67,8 +67,6 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-
-import com.google.protobuf.ServiceException;
 
 
 /**
@@ -717,25 +715,19 @@ public class TestAdmin2 {
     }
   }
 
-  @Test (timeout=300000)
+  @Test(timeout = 300000)
   public void testGetRegion() throws Exception {
     final String name = "testGetRegion";
     LOG.info("Started " + name);
-    final byte [] nameBytes = Bytes.toBytes(name);
+    final byte[] nameBytes = Bytes.toBytes(name);
     HTable t = TEST_UTIL.createTable(nameBytes, HConstants.CATALOG_FAMILY);
     TEST_UTIL.createMultiRegions(t, HConstants.CATALOG_FAMILY);
-    CatalogTracker ct = new CatalogTracker(TEST_UTIL.getConfiguration());
-    ct.start();
-    try {
-      HRegionLocation regionLocation = t.getRegionLocation("mmm");
-      HRegionInfo region = regionLocation.getRegionInfo();
-      byte[] regionName = region.getRegionName();
-      Pair<HRegionInfo, ServerName> pair = admin.getRegion(regionName, ct);
-      assertTrue(Bytes.equals(regionName, pair.getFirst().getRegionName()));
-      pair = admin.getRegion(region.getEncodedNameAsBytes(), ct);
-      assertTrue(Bytes.equals(regionName, pair.getFirst().getRegionName()));
-    } finally {
-      ct.stop();
-    }
+    HRegionLocation regionLocation = t.getRegionLocation("mmm");
+    HRegionInfo region = regionLocation.getRegionInfo();
+    byte[] regionName = region.getRegionName();
+    Pair<HRegionInfo, ServerName> pair = admin.getRegion(regionName);
+    assertTrue(Bytes.equals(regionName, pair.getFirst().getRegionName()));
+    pair = admin.getRegion(region.getEncodedNameAsBytes());
+    assertTrue(Bytes.equals(regionName, pair.getFirst().getRegionName()));
   }
 }

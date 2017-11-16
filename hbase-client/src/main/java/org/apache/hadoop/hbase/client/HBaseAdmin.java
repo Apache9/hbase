@@ -18,7 +18,6 @@
  */
 package org.apache.hadoop.hbase.client;
 
-import com.google.common.annotations.VisibleForTesting;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.ServiceException;
 import com.xiaomi.infra.hbase.salted.KeySalter;
@@ -37,10 +36,10 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.Map.Entry;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -66,13 +65,11 @@ import org.apache.hadoop.hbase.TableNotEnabledException;
 import org.apache.hadoop.hbase.TableNotFoundException;
 import org.apache.hadoop.hbase.UnknownRegionException;
 import org.apache.hadoop.hbase.ZooKeeperConnectionException;
-import org.apache.hadoop.hbase.catalog.CatalogTracker;
 import org.apache.hadoop.hbase.catalog.MetaReader;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.classification.InterfaceStability;
 import org.apache.hadoop.hbase.client.MetaScanner.MetaScannerVisitor;
 import org.apache.hadoop.hbase.client.MetaScanner.MetaScannerVisitorBase;
-import org.apache.hadoop.hbase.client.replication.ReplicationAdmin;
 import org.apache.hadoop.hbase.client.replication.ReplicationSerDeHelper;
 import org.apache.hadoop.hbase.client.replication.TableCFs;
 import org.apache.hadoop.hbase.ipc.CoprocessorRpcChannel;
@@ -157,7 +154,6 @@ import org.apache.hadoop.hbase.quotas.QuotaSettings;
 import org.apache.hadoop.hbase.quotas.ThrottleState;
 import org.apache.hadoop.hbase.regionserver.wal.FailedLogCloseException;
 import org.apache.hadoop.hbase.replication.ReplicationException;
-import org.apache.hadoop.hbase.replication.ReplicationPeer;
 import org.apache.hadoop.hbase.replication.ReplicationPeerConfig;
 import org.apache.hadoop.hbase.replication.ReplicationPeerDescription;
 import org.apache.hadoop.hbase.snapshot.ClientSnapshotDescriptionUtils;
@@ -237,57 +233,6 @@ public class HBaseAdmin implements Abortable, Closeable {
     this.rpcCallerFactory = connection.getRpcRetryingCallerFactory();
   }
 
-  /**
-   * @return A new CatalogTracker instance; call {@link #cleanupCatalogTracker(CatalogTracker)} to
-   *         cleanup the returned catalog tracker.
-   * @throws org.apache.hadoop.hbase.ZooKeeperConnectionException
-   * @throws IOException
-   * @see #cleanupCatalogTracker(CatalogTracker)
-   */
-  @VisibleForTesting
-  synchronized CatalogTracker getCatalogTracker() throws ZooKeeperConnectionException, IOException {
-    boolean succeeded = false;
-    CatalogTracker ct = null;
-    try {
-      ct = new CatalogTracker(this.conf);
-      startCatalogTracker(ct);
-      succeeded = true;
-    } catch (InterruptedException e) {
-      // Let it out as an IOE for now until we redo all so tolerate IEs
-      throw (InterruptedIOException) new InterruptedIOException("Interrupted").initCause(e);
-    } finally {
-      // If we did not succeed but created a catalogtracker, clean it up. CT has a ZK instance
-      // in it and we'll leak if we don't do the 'stop'.
-      if (!succeeded && ct != null) {
-        try {
-          ct.stop();
-        } catch (RuntimeException re) {
-          LOG.error(
-            "Failed to clean up HBase's internal catalog tracker after a failed initialization. " +
-                "We may have leaked network connections to ZooKeeper; they won't be cleaned up until " +
-                "the JVM exits. If you see a large number of stale connections to ZooKeeper this is likely " +
-                "the cause. The following exception details will be needed for assistance from the " +
-                "HBase community.",
-            re);
-        }
-        ct = null;
-      }
-    }
-    return ct;
-  }
-
-  @VisibleForTesting
-  CatalogTracker startCatalogTracker(final CatalogTracker ct)
-      throws IOException, InterruptedException {
-    ct.start();
-    return ct;
-  }
-
-  @VisibleForTesting
-  void cleanupCatalogTracker(final CatalogTracker ct) {
-    ct.stop();
-  }
-
   @Override
   public void abort(String why, Throwable e) {
     // Currently does nothing but throw the passed message and exception
@@ -319,15 +264,8 @@ public class HBaseAdmin implements Abortable, Closeable {
    * @return True if table exists already.
    * @throws IOException
    */
-  public boolean tableExists(final TableName tableName) throws IOException {
-    boolean b = false;
-    CatalogTracker ct = getCatalogTracker();
-    try {
-      b = MetaReader.tableExists(ct, tableName);
-    } finally {
-      cleanupCatalogTracker(ct);
-    }
-    return b;
+  public boolean tableExists(TableName tableName) throws IOException {
+    return MetaReader.tableExists(connection, tableName);
   }
 
   public boolean tableExists(final byte[] tableName) throws IOException {
@@ -1312,27 +1250,22 @@ public class HBaseAdmin implements Abortable, Closeable {
    * @throws IOException if a remote or network exception occurs
    */
   public void closeRegion(final byte[] regionname, final String serverName) throws IOException {
-    CatalogTracker ct = getCatalogTracker();
-    try {
-      if (serverName != null) {
-        Pair<HRegionInfo, ServerName> pair = MetaReader.getRegion(ct, regionname);
-        if (pair == null || pair.getFirst() == null) {
-          throw new UnknownRegionException(Bytes.toStringBinary(regionname));
-        } else {
-          closeRegion(ServerName.valueOf(serverName), pair.getFirst());
-        }
+    if (serverName != null) {
+      Pair<HRegionInfo, ServerName> pair = MetaReader.getRegion(connection, regionname);
+      if (pair == null || pair.getFirst() == null) {
+        throw new UnknownRegionException(Bytes.toStringBinary(regionname));
       } else {
-        Pair<HRegionInfo, ServerName> pair = MetaReader.getRegion(ct, regionname);
-        if (pair == null) {
-          throw new UnknownRegionException(Bytes.toStringBinary(regionname));
-        } else if (pair.getSecond() == null) {
-          throw new NoServerForRegionException(Bytes.toStringBinary(regionname));
-        } else {
-          closeRegion(pair.getSecond(), pair.getFirst());
-        }
+        closeRegion(ServerName.valueOf(serverName), pair.getFirst());
       }
-    } finally {
-      cleanupCatalogTracker(ct);
+    } else {
+      Pair<HRegionInfo, ServerName> pair = MetaReader.getRegion(connection, regionname);
+      if (pair == null) {
+        throw new UnknownRegionException(Bytes.toStringBinary(regionname));
+      } else if (pair.getSecond() == null) {
+        throw new NoServerForRegionException(Bytes.toStringBinary(regionname));
+      } else {
+        closeRegion(pair.getSecond(), pair.getFirst());
+      }
     }
   }
 
@@ -1411,34 +1344,28 @@ public class HBaseAdmin implements Abortable, Closeable {
    * @throws InterruptedException
    */
   public void flush(final byte[] tableNameOrRegionName) throws IOException, InterruptedException {
-    CatalogTracker ct = getCatalogTracker();
-    try {
-      Pair<HRegionInfo, ServerName> regionServerPair = getRegion(tableNameOrRegionName, ct);
-      if (regionServerPair != null) {
-        if (regionServerPair.getSecond() == null) {
-          throw new NoServerForRegionException(Bytes.toStringBinary(tableNameOrRegionName));
-        } else {
-          flush(regionServerPair.getSecond(), regionServerPair.getFirst());
-        }
+    Pair<HRegionInfo, ServerName> regionServerPair = getRegion(tableNameOrRegionName);
+    if (regionServerPair != null) {
+      if (regionServerPair.getSecond() == null) {
+        throw new NoServerForRegionException(Bytes.toStringBinary(tableNameOrRegionName));
       } else {
-        final TableName tableName = checkTableExists(TableName.valueOf(tableNameOrRegionName), ct);
-        List<Pair<HRegionInfo, ServerName>> pairs =
-            MetaReader.getTableRegionsAndLocations(ct, tableName);
-        for (Pair<HRegionInfo, ServerName> pair : pairs) {
-          if (pair.getFirst().isOffline()) continue;
-          if (pair.getSecond() == null) continue;
-          try {
-            flush(pair.getSecond(), pair.getFirst());
-          } catch (NotServingRegionException e) {
-            if (LOG.isDebugEnabled()) {
-              LOG.debug(
-                "Trying to flush " + pair.getFirst() + ": " + StringUtils.stringifyException(e));
-            }
+        flush(regionServerPair.getSecond(), regionServerPair.getFirst());
+      }
+    } else {
+      TableName tableName = checkTableExists(TableName.valueOf(tableNameOrRegionName));
+      for (HRegionLocation loc : connection.locateRegions(tableName, false, false)) {
+        if (loc.getServerName() == null || loc.getRegionInfo().isOffline()) {
+          continue;
+        }
+        try {
+          flush(loc.getServerName(), loc.getRegionInfo());
+        } catch (NotServingRegionException e) {
+          if (LOG.isDebugEnabled()) {
+            LOG.debug(
+              "Trying to flush " + loc.getRegionInfo() + ": " + StringUtils.stringifyException(e));
           }
         }
       }
-    } finally {
-      cleanupCatalogTracker(ct);
     }
   }
 
@@ -1552,34 +1479,28 @@ public class HBaseAdmin implements Abortable, Closeable {
    */
   private void compact(final byte[] tableNameOrRegionName, final byte[] columnFamily,
       final boolean major) throws IOException, InterruptedException {
-    CatalogTracker ct = getCatalogTracker();
-    try {
-      Pair<HRegionInfo, ServerName> regionServerPair = getRegion(tableNameOrRegionName, ct);
-      if (regionServerPair != null) {
-        if (regionServerPair.getSecond() == null) {
-          throw new NoServerForRegionException(Bytes.toStringBinary(tableNameOrRegionName));
-        } else {
-          compact(regionServerPair.getSecond(), regionServerPair.getFirst(), major, columnFamily);
-        }
+    Pair<HRegionInfo, ServerName> regionServerPair = getRegion(tableNameOrRegionName);
+    if (regionServerPair != null) {
+      if (regionServerPair.getSecond() == null) {
+        throw new NoServerForRegionException(Bytes.toStringBinary(tableNameOrRegionName));
       } else {
-        final TableName tableName = checkTableExists(TableName.valueOf(tableNameOrRegionName), ct);
-        List<Pair<HRegionInfo, ServerName>> pairs =
-            MetaReader.getTableRegionsAndLocations(ct, tableName);
-        for (Pair<HRegionInfo, ServerName> pair : pairs) {
-          if (pair.getFirst().isOffline()) continue;
-          if (pair.getSecond() == null) continue;
-          try {
-            compact(pair.getSecond(), pair.getFirst(), major, columnFamily);
-          } catch (NotServingRegionException e) {
-            if (LOG.isDebugEnabled()) {
-              LOG.debug("Trying to" + (major ? " major" : "") + " compact " + pair.getFirst() +
-                  ": " + StringUtils.stringifyException(e));
-            }
+        compact(regionServerPair.getSecond(), regionServerPair.getFirst(), major, columnFamily);
+      }
+    } else {
+      final TableName tableName = checkTableExists(TableName.valueOf(tableNameOrRegionName));
+      for (HRegionLocation loc : connection.locateRegions(tableName, false, false)) {
+        if (loc.getServerName() == null || loc.getRegionInfo().isOffline()) {
+          continue;
+        }
+        try {
+          compact(loc.getServerName(), loc.getRegionInfo(), major, columnFamily);
+        } catch (NotServingRegionException e) {
+          if (LOG.isDebugEnabled()) {
+            LOG.debug("Trying to" + (major ? " major" : "") + " compact " + loc.getRegionInfo() +
+              ": " + StringUtils.stringifyException(e));
           }
         }
       }
-    } finally {
-      cleanupCatalogTracker(ct);
     }
   }
 
@@ -1862,35 +1783,30 @@ public class HBaseAdmin implements Abortable, Closeable {
    * @throws IOException if a remote or network exception occurs
    * @throws InterruptedException interrupt exception occurred
    */
-  public void split(final byte[] tableNameOrRegionName, final byte[] splitPoint)
+  public void split(byte[] tableNameOrRegionName, byte[] splitPoint)
       throws IOException, InterruptedException {
-    CatalogTracker ct = getCatalogTracker();
-    try {
-      Pair<HRegionInfo, ServerName> regionServerPair = getRegion(tableNameOrRegionName, ct);
-      if (regionServerPair != null) {
-        if (regionServerPair.getSecond() == null) {
-          throw new NoServerForRegionException(Bytes.toStringBinary(tableNameOrRegionName));
-        } else {
-          split(regionServerPair.getSecond(), regionServerPair.getFirst(), splitPoint);
-        }
+    Pair<HRegionInfo, ServerName> regionServerPair = getRegion(tableNameOrRegionName);
+    if (regionServerPair != null) {
+      if (regionServerPair.getSecond() == null) {
+        throw new NoServerForRegionException(Bytes.toStringBinary(tableNameOrRegionName));
       } else {
-        final TableName tableName = checkTableExists(TableName.valueOf(tableNameOrRegionName), ct);
-        List<Pair<HRegionInfo, ServerName>> pairs =
-            MetaReader.getTableRegionsAndLocations(ct, tableName);
-        for (Pair<HRegionInfo, ServerName> pair : pairs) {
-          // May not be a server for a particular row
-          if (pair.getSecond() == null) continue;
-          HRegionInfo r = pair.getFirst();
-          // check for parents
-          if (r.isSplitParent()) continue;
-          // if a split point given, only split that particular region
-          if (splitPoint != null && !r.containsRow(splitPoint)) continue;
-          // call out to region server to do split now
-          split(pair.getSecond(), pair.getFirst(), splitPoint);
-        }
+        split(regionServerPair.getSecond(), regionServerPair.getFirst(), splitPoint);
       }
-    } finally {
-      cleanupCatalogTracker(ct);
+    } else {
+      TableName tableName = checkTableExists(TableName.valueOf(tableNameOrRegionName));
+      for (HRegionLocation loc : connection.locateRegions(tableName, false, false)) {
+        if (loc.getServerName() == null) {
+          continue;
+        }
+        HRegionInfo r = loc.getRegionInfo();
+        if (r.isOffline() || r.isSplitParent()) {
+          continue;
+        }
+        if (splitPoint != null && !r.containsRow(splitPoint)) {
+          continue;
+        }
+        split(loc.getServerName(),loc.getRegionInfo(), splitPoint);
+      }
     }
   }
 
@@ -1959,21 +1875,19 @@ public class HBaseAdmin implements Abortable, Closeable {
 
   /**
    * @param tableNameOrRegionName Name of a table or name of a region.
-   * @param ct A {@link CatalogTracker} instance (caller of this method usually has one).
    * @return a pair of HRegionInfo and ServerName if <code>tableNameOrRegionName</code> is a
-   *         verified region name (we call {@link MetaReader#getRegion( CatalogTracker, byte[])}
-   *         else null. Throw an exception if <code>tableNameOrRegionName</code> is null.
+   *         verified region name (we call {@link MetaReader#getRegion(byte[])} else null. Throw an
+   *         exception if <code>tableNameOrRegionName</code> is null.
    * @throws IOException
    */
-  Pair<HRegionInfo, ServerName> getRegion(final byte[] tableNameOrRegionName,
-      final CatalogTracker ct) throws IOException {
+  Pair<HRegionInfo, ServerName> getRegion(byte[] tableNameOrRegionName) throws IOException {
     if (tableNameOrRegionName == null) {
       throw new IllegalArgumentException("Pass a table name or region name");
     }
-    Pair<HRegionInfo, ServerName> pair = MetaReader.getRegion(ct, tableNameOrRegionName);
+    Pair<HRegionInfo, ServerName> pair = MetaReader.getRegion(connection, tableNameOrRegionName);
     if (pair == null) {
       final AtomicReference<Pair<HRegionInfo, ServerName>> result =
-          new AtomicReference<Pair<HRegionInfo, ServerName>>(null);
+        new AtomicReference<Pair<HRegionInfo, ServerName>>(null);
       final String encodedName = Bytes.toString(tableNameOrRegionName);
       MetaScannerVisitor visitor = new MetaScannerVisitorBase() {
         @Override
@@ -2003,21 +1917,16 @@ public class HBaseAdmin implements Abortable, Closeable {
    * returned as is. We don't throw unknown region exception.
    */
   private byte[] getRegionName(final byte[] regionNameOrEncodedRegionName) throws IOException {
-    if (Bytes
-        .equals(regionNameOrEncodedRegionName, HRegionInfo.FIRST_META_REGIONINFO.getRegionName()) ||
-        Bytes.equals(regionNameOrEncodedRegionName,
-          HRegionInfo.FIRST_META_REGIONINFO.getEncodedNameAsBytes())) {
+    if (Bytes.equals(regionNameOrEncodedRegionName,
+      HRegionInfo.FIRST_META_REGIONINFO.getRegionName()) ||
+      Bytes.equals(regionNameOrEncodedRegionName,
+        HRegionInfo.FIRST_META_REGIONINFO.getEncodedNameAsBytes())) {
       return HRegionInfo.FIRST_META_REGIONINFO.getRegionName();
     }
-    CatalogTracker ct = getCatalogTracker();
     byte[] tmp = regionNameOrEncodedRegionName;
-    try {
-      Pair<HRegionInfo, ServerName> regionServerPair = getRegion(regionNameOrEncodedRegionName, ct);
-      if (regionServerPair != null && regionServerPair.getFirst() != null) {
-        tmp = regionServerPair.getFirst().getRegionName();
-      }
-    } finally {
-      cleanupCatalogTracker(ct);
+    Pair<HRegionInfo, ServerName> regionServerPair = getRegion(regionNameOrEncodedRegionName);
+    if (regionServerPair != null && regionServerPair.getFirst() != null) {
+      tmp = regionServerPair.getFirst().getRegionName();
     }
     return tmp;
   }
@@ -2025,15 +1934,13 @@ public class HBaseAdmin implements Abortable, Closeable {
   /**
    * Check if table exists or not
    * @param tableName Name of a table.
-   * @param ct A {@link CatalogTracker} instance (caller of this method usually has one).
    * @return tableName instance
    * @throws IOException if a remote or network exception occurs.
    * @throws TableNotFoundException if table does not exist.
    */
   // TODO rename this method
-  private TableName checkTableExists(final TableName tableName, CatalogTracker ct)
-      throws IOException {
-    if (!MetaReader.tableExists(ct, tableName)) {
+  private TableName checkTableExists(final TableName tableName) throws IOException {
+    if (!MetaReader.tableExists(connection, tableName)) {
       throw new TableNotFoundException(tableName);
     }
     return tableName;
@@ -2323,14 +2230,8 @@ public class HBaseAdmin implements Abortable, Closeable {
    * @throws IOException
    */
   public List<HRegionInfo> getTableRegions(final TableName tableName) throws IOException {
-    CatalogTracker ct = getCatalogTracker();
-    List<HRegionInfo> Regions = null;
-    try {
-      Regions = MetaReader.getTableRegions(ct, tableName, true);
-    } finally {
-      cleanupCatalogTracker(ct);
-    }
-    return Regions;
+    return connection.locateRegions(tableName).stream().map(HRegionLocation::getRegionInfo)
+        .collect(Collectors.toList());
   }
 
   public List<HRegionInfo> getTableRegions(final byte[] tableName) throws IOException {
@@ -2433,9 +2334,8 @@ public class HBaseAdmin implements Abortable, Closeable {
   public CompactionState getCompactionState(final byte[] tableNameOrRegionName)
       throws IOException, InterruptedException {
     CompactionState state = CompactionState.NONE;
-    CatalogTracker ct = getCatalogTracker();
     try {
-      Pair<HRegionInfo, ServerName> regionServerPair = getRegion(tableNameOrRegionName, ct);
+      Pair<HRegionInfo, ServerName> regionServerPair = getRegion(tableNameOrRegionName);
       if (regionServerPair != null) {
         if (regionServerPair.getSecond() == null) {
           throw new NoServerForRegionException(Bytes.toStringBinary(tableNameOrRegionName));
@@ -2448,17 +2348,16 @@ public class HBaseAdmin implements Abortable, Closeable {
           return response.getCompactionState();
         }
       } else {
-        final TableName tableName = checkTableExists(TableName.valueOf(tableNameOrRegionName), ct);
-        List<Pair<HRegionInfo, ServerName>> pairs =
-            MetaReader.getTableRegionsAndLocations(ct, tableName);
-        for (Pair<HRegionInfo, ServerName> pair : pairs) {
-          if (pair.getFirst().isOffline()) continue;
-          if (pair.getSecond() == null) continue;
+        TableName tableName = checkTableExists(TableName.valueOf(tableNameOrRegionName));
+        for (HRegionLocation loc : connection.locateRegions(tableName, false, false)) {
+          if (loc.getServerName() == null || loc.getRegionInfo().isOffline()) {
+            continue;
+          }
           try {
-            ServerName sn = pair.getSecond();
+            ServerName sn = loc.getServerName();
             AdminService.BlockingInterface admin = this.connection.getAdmin(sn);
             GetRegionInfoRequest request =
-                RequestConverter.buildGetRegionInfoRequest(pair.getFirst().getRegionName(), true);
+              RequestConverter.buildGetRegionInfoRequest(loc.getRegionInfo().getRegionName(), true);
             GetRegionInfoResponse response = admin.getRegionInfo(null, request);
             switch (response.getCompactionState()) {
               case MAJOR_AND_MINOR:
@@ -2480,14 +2379,14 @@ public class HBaseAdmin implements Abortable, Closeable {
             }
           } catch (NotServingRegionException e) {
             if (LOG.isDebugEnabled()) {
-              LOG.debug("Trying to get compaction state of " + pair.getFirst() + ": " +
-                  StringUtils.stringifyException(e));
+              LOG.debug("Trying to get compaction state of " + loc.getRegionInfo() + ": " +
+                StringUtils.stringifyException(e));
             }
           } catch (RemoteException e) {
             if (e.getMessage().indexOf(NotServingRegionException.class.getName()) >= 0) {
               if (LOG.isDebugEnabled()) {
-                LOG.debug("Trying to get compaction state of " + pair.getFirst() + ": " +
-                    StringUtils.stringifyException(e));
+                LOG.debug("Trying to get compaction state of " + loc.getRegionInfo() + ": " +
+                  StringUtils.stringifyException(e));
               }
             } else {
               throw e;
@@ -2497,8 +2396,6 @@ public class HBaseAdmin implements Abortable, Closeable {
       }
     } catch (ServiceException se) {
       throw ProtobufUtil.getRemoteException(se);
-    } finally {
-      cleanupCatalogTracker(ct);
     }
     return state;
   }

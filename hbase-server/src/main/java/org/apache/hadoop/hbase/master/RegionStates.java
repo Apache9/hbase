@@ -595,8 +595,8 @@ public class RegionStates {
         // This is RPC to meta table. It is done while we have a synchronize on
         // regionstates. No progress will be made if meta is not available at this time.
         // This is a cleanup task. Not critical.
-        if (MetaReader.getRegion(server.getCatalogTracker(), hri.getEncodedNameAsBytes()) ==
-            null) {
+        if (MetaReader.getRegion(server.getCatalogTracker().getConnection(),
+          hri.getEncodedNameAsBytes()) == null) {
           regionOffline(hri);
           FSUtils.deleteRegionDir(server.getConfiguration(), hri);
         }
@@ -873,7 +873,7 @@ public class RegionStates {
 
     try {
       Pair<HRegionInfo, ServerName> p =
-        MetaReader.getRegion(server.getCatalogTracker(), regionName);
+        MetaReader.getRegion(server.getCatalogTracker().getConnection(), regionName);
       HRegionInfo hri = p == null ? null : p.getFirst();
       if (hri != null) {
         createRegionState(hri);

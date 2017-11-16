@@ -91,7 +91,8 @@ public class MasterQuotaManager implements RegionStateListener {
     // Create the quota table if missing
     //if (!MetaTableAccessor.tableExists(masterServices.getShortCircuitConnection(),
     //      QuotaUtil.QUOTA_TABLE_NAME)) {
-    if (!MetaReader.tableExists(masterServices.getCatalogTracker(), QuotaUtil.QUOTA_TABLE_NAME)) {   
+    if (!MetaReader.tableExists(masterServices.getCatalogTracker().getConnection(),
+      QuotaUtil.QUOTA_TABLE_NAME)) {
       LOG.info("Quota table not found. Creating...");
       createQuotaTable();
     }

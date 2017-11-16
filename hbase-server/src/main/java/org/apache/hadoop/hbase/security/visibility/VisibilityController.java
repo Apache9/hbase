@@ -182,7 +182,7 @@ public class VisibilityController extends BaseMasterAndRegionObserver implements
   public void postStartMaster(ObserverContext<MasterCoprocessorEnvironment> ctx) throws IOException {
     // Need to create the new system table for labels here
     MasterServices master = ctx.getEnvironment().getMasterServices();
-    if (!MetaReader.tableExists(master.getCatalogTracker(), LABELS_TABLE_NAME)) {
+    if (!MetaReader.tableExists(master.getCatalogTracker().getConnection(), LABELS_TABLE_NAME)) {
       HTableDescriptor labelsTable = new HTableDescriptor(LABELS_TABLE_NAME);
       HColumnDescriptor labelsColumn = new HColumnDescriptor(LABELS_TABLE_FAMILY);
       labelsColumn.setBloomFilterType(BloomType.NONE);

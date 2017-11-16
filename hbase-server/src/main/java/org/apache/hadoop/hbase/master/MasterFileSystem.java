@@ -685,9 +685,10 @@ public class MasterFileSystem {
     if (!this.master.isStopped()) {
       try {
         this.master.getCatalogTracker().waitForMeta();
-        return MetaReader.getServerUserRegions(this.master.getCatalogTracker(), serverName);
+        return MetaReader.getServerUserRegions(this.master.getCatalogTracker().getConnection(),
+          serverName);
       } catch (InterruptedException e) {
-        throw (InterruptedIOException)new InterruptedIOException().initCause(e);
+        throw (InterruptedIOException) new InterruptedIOException().initCause(e);
       }
     }
     return null;

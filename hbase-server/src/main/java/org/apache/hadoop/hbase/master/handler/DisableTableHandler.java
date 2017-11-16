@@ -83,7 +83,7 @@ public class DisableTableHandler extends EventHandler {
     boolean success = false;
     try {
       // Check if table exists
-      if (!MetaReader.tableExists(catalogTracker, tableName)) {
+      if (!MetaReader.tableExists(catalogTracker.getConnection(), tableName)) {
         throw new TableNotFoundException(tableName);
       }
 

@@ -31,7 +31,6 @@ import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.MasterNotRunningException;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.TableName;
-import org.apache.hadoop.hbase.catalog.CatalogTracker;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.classification.InterfaceStability;
 import org.apache.hadoop.hbase.client.backoff.ClientBackoffPolicy;
@@ -50,12 +49,12 @@ import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.MasterService;
  * This is NOT a connection to a particular server but to ALL servers in the cluster. Individual
  * connections are managed at a lower level.
  * <p>
- * HConnections are used by {@link HTable} mostly but also by {@link HBaseAdmin}, and
- * {@link CatalogTracker}. HConnection instances can be shared. Sharing is usually what you want
- * because rather than each HConnection instance having to do its own discovery of regions out on
- * the cluster, instead, all clients get to share the one cache of locations.
- * {@link HConnectionManager} does the sharing for you if you go by it getting connections. Sharing
- * makes cleanup of HConnections awkward. See {@link HConnectionManager} for cleanup discussion.
+ * HConnections are used by {@link HTable} mostly but also by {@link HBaseAdmin}. HConnection
+ * instances can be shared. Sharing is usually what you want because rather than each HConnection
+ * instance having to do its own discovery of regions out on the cluster, instead, all clients get
+ * to share the one cache of locations. {@link HConnectionManager} does the sharing for you if you
+ * go by it getting connections. Sharing makes cleanup of HConnections awkward. See
+ * {@link HConnectionManager} for cleanup discussion.
  * @see HConnectionManager
  */
 @InterfaceAudience.Public

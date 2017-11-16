@@ -132,7 +132,8 @@ public class TestScannerTimeout {
     Scan scan = new Scan();
     scan.setCaching(SCANNER_CACHING);
     LOG.info("************ TEST3686A");
-    MetaReader.fullScanMetaAndPrint(TEST_UTIL.getHBaseCluster().getMaster().getCatalogTracker());
+    MetaReader.fullScanMetaAndPrint(
+      TEST_UTIL.getHBaseCluster().getMaster().getCatalogTracker().getConnection());
     // Set a very high timeout, we want to test what happens when a RS
     // fails but the region is recovered before the lease times out.
     // Since the RS is already created, this conf is client-side only for

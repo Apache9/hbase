@@ -30,7 +30,6 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.*;
 import org.apache.hadoop.hbase.catalog.CatalogTracker;
-import org.apache.hadoop.hbase.catalog.MetaReader;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Durability;
@@ -114,15 +113,13 @@ public class TestMergeTable {
       Configuration c = new Configuration(UTIL.getConfiguration());
       CatalogTracker ct = new CatalogTracker(c);
       ct.start();
-      List<HRegionInfo> originalTableRegions =
-        MetaReader.getTableRegions(ct, desc.getTableName());
-      LOG.info("originalTableRegions size=" + originalTableRegions.size() +
-        "; " + originalTableRegions);
+      List<HRegionInfo> originalTableRegions = ct.getTableRegions(desc.getTableName());
+      LOG.info(
+        "originalTableRegions size=" + originalTableRegions.size() + "; " + originalTableRegions);
       HBaseAdmin admin = new HBaseAdmin(c);
       admin.disableTable(desc.getTableName());
       HMerge.merge(c, FileSystem.get(c), desc.getTableName());
-      List<HRegionInfo> postMergeTableRegions =
-        MetaReader.getTableRegions(ct, desc.getTableName());
+      List<HRegionInfo> postMergeTableRegions = ct.getTableRegions(desc.getTableName());
       LOG.info("postMergeTableRegions size=" + postMergeTableRegions.size() +
         "; " + postMergeTableRegions);
       assertTrue("originalTableRegions=" + originalTableRegions.size() +

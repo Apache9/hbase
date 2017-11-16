@@ -47,7 +47,6 @@ import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.TableExistsException;
 import org.apache.hadoop.hbase.catalog.CatalogTracker;
 import org.apache.hadoop.hbase.catalog.MetaEditor;
-import org.apache.hadoop.hbase.catalog.MetaReader;
 import org.apache.hadoop.hbase.client.HConnection;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Result;
@@ -478,7 +477,7 @@ public class TestLoadIncrementalHFilesSplitRecovery {
 
     // Mess it up by leaving a hole in the hbase:meta
     CatalogTracker ct = new CatalogTracker(util.getConfiguration());
-    List<HRegionInfo> regionInfos = MetaReader.getTableRegions(ct, TableName.valueOf(tableName));
+    List<HRegionInfo> regionInfos = ct.getTableRegions(TableName.valueOf(tableName));
     for (HRegionInfo regionInfo : regionInfos) {
       if (Bytes.equals(regionInfo.getStartKey(), HConstants.EMPTY_BYTE_ARRAY)) {
         MetaEditor.deleteRegion(ct, regionInfo);

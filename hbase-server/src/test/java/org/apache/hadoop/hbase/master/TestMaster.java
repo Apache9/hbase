@@ -21,6 +21,7 @@ package org.apache.hadoop.hbase.master;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.*;
+import org.apache.hadoop.hbase.catalog.CatalogTracker;
 import org.apache.hadoop.hbase.catalog.MetaReader;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HTable;
@@ -77,7 +78,7 @@ public class TestMaster {
     ht.close();
 
     List<Pair<HRegionInfo, ServerName>> tableRegions =
-      MetaReader.getTableRegionsAndLocations(m.getCatalogTracker(), TABLENAME);
+      m.getCatalogTracker().getTableRegionsAndLocations(TABLENAME);
     LOG.info("Regions after load: " + Joiner.on(',').join(tableRegions));
     assertEquals(1, tableRegions.size());
     assertArrayEquals(HConstants.EMPTY_START_ROW,
@@ -94,8 +95,7 @@ public class TestMaster {
       Thread.sleep(100);
     }
     LOG.info("Making sure we can call getTableRegions while opening");
-    tableRegions = MetaReader.getTableRegionsAndLocations(m.getCatalogTracker(),
-        TABLENAME, false);
+    tableRegions = m.getCatalogTracker().getTableRegionsAndLocations(TABLENAME, false);
 
     LOG.info("Regions: " + Joiner.on(',').join(tableRegions));
     // We have three regions because one is split-in-progress
@@ -105,8 +105,7 @@ public class TestMaster {
         m.getTableRegionForRow(TABLENAME, Bytes.toBytes("cde"));
     LOG.info("Result is: " + pair);
     Pair<HRegionInfo, ServerName> tableRegionFromName =
-        MetaReader.getRegion(m.getCatalogTracker(),
-            pair.getFirst().getRegionName());
+      MetaReader.getRegion(m.getCatalogTracker().getConnection(), pair.getFirst().getRegionName());
     assertEquals(tableRegionFromName.getFirst(), pair.getFirst());
   }
 

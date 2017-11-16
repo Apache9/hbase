@@ -22,23 +22,29 @@ import com.google.common.base.Stopwatch;
 
 import java.io.EOFException;
 import java.io.IOException;
+import java.io.InterruptedIOException;
 import java.net.ConnectException;
 import java.net.NoRouteToHostException;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Abortable;
+import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.NotAllMetaRegionsOnlineException;
 import org.apache.hadoop.hbase.ServerName;
+import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.client.HConnection;
 import org.apache.hadoop.hbase.client.HConnectionManager;
 import org.apache.hadoop.hbase.client.HTable;
+import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.RetriesExhaustedException;
 import org.apache.hadoop.hbase.ipc.FailedServerException;
 import org.apache.hadoop.hbase.ipc.ServerNotRunningYetException;
@@ -47,6 +53,7 @@ import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.AdminService;
 import org.apache.hadoop.hbase.regionserver.RegionServerStoppedException;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hbase.util.Pair;
 import org.apache.hadoop.hbase.zookeeper.MetaRegionTracker;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
 import org.apache.hadoop.ipc.RemoteException;
@@ -471,5 +478,104 @@ public class CatalogTracker {
 
   public HConnection getConnection() {
     return this.connection;
+  }
+
+  /**
+   * @param conn
+   * @param tableName
+   * @return Return list of regioninfos and server addresses.
+   * @throws IOException
+   * @throws InterruptedException
+   */
+  public List<Pair<HRegionInfo, ServerName>> getTableRegionsAndLocations(TableName tableName,
+      boolean excludeOfflinedSplitParents) throws IOException, InterruptedException {
+    if (tableName.equals(TableName.META_TABLE_NAME)) {
+      // If meta, do a bit of special handling.
+      ServerName serverName = this.getMetaLocation();
+      List<Pair<HRegionInfo, ServerName>> list = new ArrayList<Pair<HRegionInfo, ServerName>>();
+      list.add(new Pair<HRegionInfo, ServerName>(HRegionInfo.FIRST_META_REGIONINFO, serverName));
+      return list;
+    }
+    // Make a version of CollectingVisitor that collects HRegionInfo and ServerAddress
+    MetaReader.CollectingVisitor<Pair<HRegionInfo, ServerName>> visitor =
+      new MetaReader.CollectingVisitor<Pair<HRegionInfo, ServerName>>() {
+        private Pair<HRegionInfo, ServerName> current = null;
+
+        @Override
+        public boolean visit(Result r) throws IOException {
+          HRegionInfo hri = HRegionInfo.getHRegionInfo(r, HConstants.REGIONINFO_QUALIFIER);
+          if (hri == null) {
+            MetaReader.LOG.warn("No serialized HRegionInfo in " + r);
+            return true;
+          }
+          if (!MetaReader.isInsideTable(hri, tableName)) return false;
+          if (excludeOfflinedSplitParents && hri.isSplitParent()) return true;
+          ServerName sn = HRegionInfo.getServerName(r);
+          // Populate this.current so available when we call #add
+          this.current = new Pair<HRegionInfo, ServerName>(hri, sn);
+          // Else call super and add this Result to the collection.
+          return super.visit(r);
+        }
+
+        @Override
+        void add(Result r) {
+          this.results.add(this.current);
+        }
+      };
+    MetaReader.fullScan(getConnection(), visitor, MetaReader.getTableStartRowForMeta(tableName));
+    return visitor.getResults();
+  }
+
+  /**
+   * @param conn
+   * @param tableName
+   * @return Return list of regioninfos and server.
+   * @throws IOException
+   * @throws InterruptedException
+   */
+  public List<Pair<HRegionInfo, ServerName>> getTableRegionsAndLocations(TableName tableName)
+      throws IOException, InterruptedException {
+    return getTableRegionsAndLocations(tableName, true);
+  }
+
+  /**
+   * Gets all of the regions of the specified table.
+   * @param conn
+   * @param tableName
+   * @param excludeOfflinedSplitParents If true, do not include offlined split parents in the
+   *          return.
+   * @return Ordered list of {@link HRegionInfo}.
+   * @throws IOException
+   */
+  public List<HRegionInfo> getTableRegions(TableName tableName, boolean excludeOfflinedSplitParents)
+      throws IOException {
+    List<Pair<HRegionInfo, ServerName>> result = null;
+    try {
+      result = getTableRegionsAndLocations(tableName, excludeOfflinedSplitParents);
+    } catch (InterruptedException e) {
+      throw (InterruptedIOException) new InterruptedIOException().initCause(e);
+    }
+    return getListOfHRegionInfos(result);
+  }
+
+  /**
+   * Gets all of the regions of the specified table.
+   * @param conn
+   * @param tableName
+   * @return Ordered list of {@link HRegionInfo}.
+   * @throws IOException
+   */
+  public List<HRegionInfo> getTableRegions(TableName tableName) throws IOException {
+    return getTableRegions(tableName, false);
+  }
+
+  private static List<HRegionInfo> getListOfHRegionInfos(
+      List<Pair<HRegionInfo, ServerName>> pairs) {
+    if (pairs == null || pairs.isEmpty()) return null;
+    List<HRegionInfo> result = new ArrayList<HRegionInfo>(pairs.size());
+    for (Pair<HRegionInfo, ServerName> pair : pairs) {
+      result.add(pair.getFirst());
+    }
+    return result;
   }
 }

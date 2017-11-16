@@ -22,19 +22,18 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ExecutorService;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.hbase.classification.InterfaceAudience;
-import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.Server;
 import org.apache.hadoop.hbase.ServerName;
+import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.TableNotDisabledException;
 import org.apache.hadoop.hbase.TableNotFoundException;
 import org.apache.hadoop.hbase.catalog.CatalogTracker;
 import org.apache.hadoop.hbase.catalog.MetaReader;
+import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.executor.EventHandler;
 import org.apache.hadoop.hbase.executor.EventType;
 import org.apache.hadoop.hbase.master.AssignmentManager;
@@ -47,7 +46,6 @@ import org.apache.hadoop.hbase.master.ServerManager;
 import org.apache.hadoop.hbase.master.TableLockManager;
 import org.apache.hadoop.hbase.master.TableLockManager.TableLock;
 import org.apache.hadoop.hbase.util.Pair;
-import org.apache.htrace.Trace;
 import org.apache.zookeeper.KeeperException;
 
 
@@ -85,7 +83,7 @@ public class EnableTableHandler extends EventHandler {
     boolean success = false;
     try {
       // Check if table exists
-      if (!MetaReader.tableExists(catalogTracker, tableName)) {
+      if (!MetaReader.tableExists(catalogTracker.getConnection(), tableName)) {
         // retainAssignment is true only during recovery.  In normal case it is false
         if (!this.skipTableStateCheck) {
           throw new TableNotFoundException(tableName);
@@ -179,8 +177,8 @@ public class EnableTableHandler extends EventHandler {
     ServerManager serverManager = ((HMaster)this.server).getServerManager();
     // Get the regions of this table. We're done when all listed
     // tables are onlined.
-    List<Pair<HRegionInfo, ServerName>> tableRegionsAndLocations = MetaReader
-        .getTableRegionsAndLocations(this.catalogTracker, tableName, true);
+    List<Pair<HRegionInfo, ServerName>> tableRegionsAndLocations =
+      this.catalogTracker.getTableRegionsAndLocations(tableName, true);
     int countOfRegionsInTable = tableRegionsAndLocations.size();
     Map<HRegionInfo, ServerName> regionsToAssign =
         regionsToAssignWithServerName(tableRegionsAndLocations);
