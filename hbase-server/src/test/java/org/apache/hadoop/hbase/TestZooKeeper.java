@@ -108,7 +108,7 @@ public class TestZooKeeper {
    */
   @Before
   public void setUp() throws Exception {
-    TEST_UTIL.startMiniHBaseCluster(1, 2);
+    TEST_UTIL.startMiniHBaseCluster(2, 2);
   }
 
   @After
@@ -222,22 +222,6 @@ public class TestZooKeeper {
     LOG.info("Starting testMasterSessionExpired");
     TEST_UTIL.expireMasterSession();
     testSanity("testMasterSessionExpired");
-  }
-
-  /**
-   * Master recovery when the znode already exists. Internally, this
-   *  test differs from {@link #testMasterSessionExpired} because here
-   *  the master znode will exist in ZK.
-   */
-  @Test(timeout = 60000)
-  public void testMasterZKSessionRecoveryFailure() throws Exception {
-    LOG.info("Starting testMasterZKSessionRecoveryFailure");
-    MiniHBaseCluster cluster = TEST_UTIL.getHBaseCluster();
-    HMaster m = cluster.getMaster();
-    m.abort("Test recovery from zk session expired",
-      new KeeperException.SessionExpiredException());
-    assertFalse(m.isStopped());
-    testSanity("testMasterZKSessionRecoveryFailure");
   }
 
   /**
@@ -542,9 +526,8 @@ public class TestZooKeeper {
       ZKAssign.blockUntilNoRIT(zooKeeperWatcher);
       m.getZooKeeperWatcher().close();
       MockLoadBalancer.retainAssignCalled = false;
-      m.abort("Test recovery from zk session expired",
-        new KeeperException.SessionExpiredException());
-      assertFalse(m.isStopped());
+      m.stop("Test recovery from zk session expired");
+      assertTrue(m.isStopped());
       // The recovered master should not call retainAssignment, as it is not a
       // clean startup.
       assertFalse("Retain assignment should not be called", MockLoadBalancer.retainAssignCalled);
@@ -590,9 +573,8 @@ public class TestZooKeeper {
         table.put(p);
       }
       m.getZooKeeperWatcher().close();
-      m.abort("Test recovery from zk session expired",
-        new KeeperException.SessionExpiredException());
-      assertFalse(m.isStopped());
+      m.stop("Test recovery from zk session expired");
+      assertTrue(m.isStopped());
       cluster.getRegionServer(0).abort("Aborting");
       // Without patch for HBASE-6046 this test case will always timeout
       // with patch the test case should pass.
