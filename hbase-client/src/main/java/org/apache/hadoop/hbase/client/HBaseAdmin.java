@@ -168,7 +168,6 @@ import org.apache.hadoop.hbase.util.Pair;
 import org.apache.hadoop.hbase.zookeeper.ZKUtil;
 import org.apache.hadoop.ipc.RemoteException;
 import org.apache.hadoop.util.StringUtils;
-import org.apache.zookeeper.KeeperException;
 
 /**
  * Provides an interface to manage HBase database table metadata + general administrative functions.
@@ -2191,33 +2190,11 @@ public class HBaseAdmin implements Abortable, Closeable {
     copyOfConf.setInt(HConstants.ZK_RECOVERY_RETRY, 0);
 
     HConnectionImplementation connection =
-        (HConnectionImplementation) HConnectionManager.getConnection(copyOfConf);
+      (HConnectionImplementation) HConnectionManager.getConnection(copyOfConf);
 
     try {
-      // Check ZK first.
-      // If the connection exists, we may have a connection to ZK that does
-      // not work anymore
-      ZooKeeperKeepAliveConnection zkw = null;
-      try {
-        zkw = connection.getKeepAliveZooKeeperWatcher();
-        zkw.getRecoverableZooKeeper().getZooKeeper().exists(zkw.znodePaths.baseZNode, false);
-
-      } catch (IOException e) {
-        throw new ZooKeeperConnectionException("Can't connect to ZooKeeper", e);
-      } catch (InterruptedException e) {
-        throw (InterruptedIOException) new InterruptedIOException("Can't connect to ZooKeeper")
-            .initCause(e);
-      } catch (KeeperException e) {
-        throw new ZooKeeperConnectionException("Can't connect to ZooKeeper", e);
-      } finally {
-        if (zkw != null) {
-          zkw.close();
-        }
-      }
-
       // Check Master
       connection.isMasterRunning();
-
     } finally {
       connection.close();
     }

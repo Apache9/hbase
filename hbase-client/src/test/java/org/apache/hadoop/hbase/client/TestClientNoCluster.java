@@ -20,6 +20,11 @@ package org.apache.hadoop.hbase.client;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import com.google.common.base.Stopwatch;
+import com.google.protobuf.ByteString;
+import com.google.protobuf.RpcController;
+import com.google.protobuf.ServiceException;
+
 import java.io.IOException;
 import java.net.SocketTimeoutException;
 import java.util.Comparator;
@@ -27,13 +32,13 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
 import java.util.SortedMap;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-import org.apache.hadoop.hbase.util.ByteStringer;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -46,7 +51,6 @@ import org.apache.hadoop.hbase.HRegionLocation;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.RegionTooBusyException;
 import org.apache.hadoop.hbase.ServerName;
-import org.apache.hadoop.hbase.testclassification.SmallTests;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.ipc.CallTimeoutException;
 import org.apache.hadoop.hbase.protobuf.generated.CellProtos;
@@ -71,6 +75,8 @@ import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.ScanResponse;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.RegionSpecifier.RegionSpecifierType;
 import org.apache.hadoop.hbase.regionserver.RegionServerStoppedException;
 import org.apache.hadoop.hbase.security.User;
+import org.apache.hadoop.hbase.testclassification.SmallTests;
+import org.apache.hadoop.hbase.util.ByteStringer;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.Pair;
 import org.apache.hadoop.hbase.util.Threads;
@@ -81,11 +87,6 @@ import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.mockito.Mockito;
-
-import com.google.common.base.Stopwatch;
-import com.google.protobuf.ByteString;
-import com.google.protobuf.RpcController;
-import com.google.protobuf.ServiceException;
 
 /**
  * Test client behavior w/o setting up a cluster.
@@ -110,32 +111,22 @@ public class TestClientNoCluster extends Configured implements Tool {
   /**
    * Simple cluster registry inserted in place of our usual zookeeper based one.
    */
-  static class SimpleRegistry implements Registry {
+  static class SimpleRegistry extends DummyAsyncRegistry {
     final ServerName META_HOST = META_SERVERNAME;
 
-    @Override
-    public void init(HConnection connection) {
+    public SimpleRegistry(Configuration conf) {
+      super(conf);
     }
 
     @Override
-    public HRegionLocation getMetaRegionLocation() throws IOException {
-      return new HRegionLocation(HRegionInfo.FIRST_META_REGIONINFO, META_HOST);
+    public CompletableFuture<HRegionLocation> getMetaRegionLocation() {
+      return CompletableFuture
+          .completedFuture(new HRegionLocation(HRegionInfo.FIRST_META_REGIONINFO, META_HOST));
     }
 
     @Override
-    public String getClusterId() {
-      return HConstants.CLUSTER_ID_DEFAULT;
-    }
-
-    @Override
-    public boolean isTableOnlineState(TableName tableName, boolean enabled)
-    throws IOException {
-      return enabled;
-    }
-
-    @Override
-    public int getCurrentNrHRS() throws IOException {
-      return 1;
+    public CompletableFuture<String> getClusterId() {
+      return CompletableFuture.completedFuture(HConstants.CLUSTER_ID_DEFAULT);
     }
   }
 

@@ -19,27 +19,13 @@
 
 package org.apache.hadoop.hbase.client;
 
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.TableName;
-import org.apache.hadoop.hbase.HConstants;
-import org.apache.hadoop.hbase.HRegionInfo;
-import org.apache.hadoop.hbase.HRegionLocation;
-import org.apache.hadoop.hbase.testclassification.MediumTests;
-import org.apache.hadoop.hbase.ServerName;
-import org.apache.hadoop.hbase.ipc.RpcControllerFactory;
-import org.apache.hadoop.hbase.util.Bytes;
-import org.apache.hadoop.hbase.util.Threads;
-import org.junit.Assert;
-import org.junit.Test;
-import org.junit.experimental.categories.Category;
-import org.mockito.Mockito;
-
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadFactory;
@@ -47,6 +33,21 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.HConstants;
+import org.apache.hadoop.hbase.HRegionInfo;
+import org.apache.hadoop.hbase.HRegionLocation;
+import org.apache.hadoop.hbase.ServerName;
+import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.ipc.RpcControllerFactory;
+import org.apache.hadoop.hbase.testclassification.MediumTests;
+import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hbase.util.Threads;
+import org.junit.Assert;
+import org.junit.Test;
+import org.junit.experimental.categories.Category;
+import org.mockito.Mockito;
 
 @Category(MediumTests.class)
 public class TestAsyncProcess {
@@ -171,30 +172,15 @@ public class TestAsyncProcess {
    * Returns our async process.
    */
   static class MyConnectionImpl extends HConnectionImplementation {
-    public static class TestRegistry implements Registry {
+    public static class TestRegistry extends DummyAsyncRegistry {
 
-      @Override
-      public void init(HConnection connection) {
+      public TestRegistry(Configuration conf) {
+        super(conf);
       }
 
       @Override
-      public HRegionLocation getMetaRegionLocation() throws IOException {
-        return null;
-      }
-
-      @Override
-      public String getClusterId() {
-        return "testClusterId";
-      }
-
-      @Override
-      public boolean isTableOnlineState(TableName tableName, boolean enabled) throws IOException {
-        return false;
-      }
-
-      @Override
-      public int getCurrentNrHRS() throws IOException {
-        return 1;
+      public CompletableFuture<String> getClusterId() {
+        return CompletableFuture.completedFuture("testClusterId");
       }
     }
 
@@ -215,7 +201,8 @@ public class TestAsyncProcess {
     }
 
     private static Configuration setupConf(Configuration conf) {
-      conf.setClass("hbase.client.registry.impl", TestRegistry.class, Registry.class);
+      conf.setClass(AsyncRegistryFactory.REGISTRY_IMPL_CONF_KEY, TestRegistry.class,
+        AsyncRegistry.class);
       return conf;
     }
 

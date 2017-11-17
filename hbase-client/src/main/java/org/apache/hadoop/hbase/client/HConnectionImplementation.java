@@ -2,6 +2,7 @@ package org.apache.hadoop.hbase.client;
 
 import static org.apache.hadoop.hbase.client.NonceGenerator.CLIENT_NONCES_ENABLED_KEY;
 
+import com.google.common.base.Throwables;
 import com.google.common.hash.Hashing;
 import com.google.protobuf.BlockingRpcChannel;
 import com.google.protobuf.RpcController;
@@ -21,11 +22,13 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.NavigableMap;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -196,6 +199,8 @@ public class HConnectionImplementation implements HConnection, Closeable {
 
   static final String REGION_LOCATE_MAX_CONCURRENT = "hbase.client.locate.max.concurrent";
 
+  private static final long keepAlive = 5 * 60 * 1000;
+
   private final long pause;
   private final int numTries;
   final int rpcTimeout;
@@ -218,9 +223,8 @@ public class HConnectionImplementation implements HConnection, Closeable {
   // When creating a connection to master, we need a connection to ZK to get
   // its address. But another thread could have taken the ZK lock, and could
   // be waiting for the master lock => deadlock.
-  private final Object masterAndZKLock = new Object();
+  private final Object masterLock = new Object();
 
-  private long keepZooKeeperWatcherAliveUntil = Long.MAX_VALUE;
   private final HConnectionImplementation.DelayedClosing delayedClosing =
       DelayedClosing.createAndStart(this);
 
@@ -274,7 +278,7 @@ public class HConnectionImplementation implements HConnection, Closeable {
   /**
    * Cluster registry of basic info such as clusterid and meta region location.
    */
-  Registry registry;
+  AsyncRegistry registry;
 
   private final ExecutorService locateMetaExecutor;
 
@@ -340,7 +344,7 @@ public class HConnectionImplementation implements HConnection, Closeable {
       ClusterStatusListener.DEFAULT_STATUS_LISTENER_CLASS, ClusterStatusListener.Listener.class);
 
     try {
-      this.registry = setupRegistry();
+      this.registry = AsyncRegistryFactory.getRegistry(conf);
       retrieveClusterId();
       this.rpcClient = RpcClientFactory.createClient(this.conf, this.clusterId);
       if (shouldListen) {
@@ -440,23 +444,6 @@ public class HConnectionImplementation implements HConnection, Closeable {
   }
 
   /**
-   * @return The cluster registry implementation to use.
-   * @throws IOException
-   */
-  private Registry setupRegistry() throws IOException {
-    String registryClass =
-        this.conf.get("hbase.client.registry.impl", ZooKeeperRegistry.class.getName());
-    Registry registry = null;
-    try {
-      registry = (Registry) Class.forName(registryClass).newInstance();
-    } catch (Throwable t) {
-      throw new IOException(t);
-    }
-    registry.init(this);
-    return registry;
-  }
-
-  /**
    * For tests only.
    * @param rpcClient Client we should use instead.
    * @return Previous rpcClient
@@ -478,8 +465,14 @@ public class HConnectionImplementation implements HConnection, Closeable {
   protected String clusterId = null;
 
   void retrieveClusterId() {
-    if (clusterId != null) return;
-    this.clusterId = this.registry.getClusterId();
+    if (clusterId != null) {
+      return;
+    }
+    try {
+      this.clusterId = this.registry.getClusterId().get();
+    } catch (Exception e) {
+      LOG.warn("Retrieve cluster id failed", e);
+    }
     if (clusterId == null) {
       clusterId = HConstants.CLUSTER_ID_DEFAULT;
       LOG.debug("clusterid came back null, using default " + clusterId);
@@ -489,24 +482,6 @@ public class HConnectionImplementation implements HConnection, Closeable {
   @Override
   public Configuration getConfiguration() {
     return this.conf;
-  }
-
-  private void checkIfBaseNodeAvailable(ZooKeeperWatcher zkw) throws MasterNotRunningException {
-    String errorMsg;
-    try {
-      if (ZKUtil.checkExists(zkw, zkw.znodePaths.baseZNode) == -1) {
-        errorMsg = "The node " + zkw.znodePaths.baseZNode + " is not in ZooKeeper. "
-            + "It should have been written by the master. "
-            + "Check the value configured in 'zookeeper.znode.parent'. "
-            + "There could be a mismatch with the one configured in the master.";
-        LOG.error(errorMsg);
-        throw new MasterNotRunningException(errorMsg);
-      }
-    } catch (KeeperException e) {
-      errorMsg = "Can't get connection to ZooKeeper: " + e.getMessage();
-      LOG.error(errorMsg);
-      throw new MasterNotRunningException(errorMsg, e);
-    }
   }
 
   /**
@@ -577,9 +552,21 @@ public class HConnectionImplementation implements HConnection, Closeable {
     }
   }
 
+  private static <T> T get(CompletableFuture<T> future) throws IOException {
+    try {
+      return future.get();
+    } catch (InterruptedException e) {
+      throw (IOException) new InterruptedIOException().initCause(e);
+    } catch (ExecutionException e) {
+      Throwable cause = e.getCause();
+      Throwables.propagateIfPossible(cause, IOException.class);
+      throw new IOException(cause);
+    }
+  }
+
   @Override
   public boolean isTableEnabled(TableName tableName) throws IOException {
-    return this.registry.isTableOnlineState(tableName, true);
+    return get(this.registry.isTableEnabled(tableName));
   }
 
   @Override
@@ -589,7 +576,7 @@ public class HConnectionImplementation implements HConnection, Closeable {
 
   @Override
   public boolean isTableDisabled(TableName tableName) throws IOException {
-    return this.registry.isTableOnlineState(tableName, false);
+    return get(this.registry.isTableDisabled(tableName));
   }
 
   @Override
@@ -706,7 +693,7 @@ public class HConnectionImplementation implements HConnection, Closeable {
   public List<HRegionLocation> locateRegions(final TableName tableName, final boolean useCache,
       final boolean offlined) throws IOException {
     if (TableName.META_TABLE_NAME.equals(tableName)) {
-      return Collections.singletonList(registry.getMetaRegionLocation());
+      return Collections.singletonList(get(registry.getMetaRegionLocation()));
     } else {
       NavigableMap<HRegionInfo, ServerName> regions =
         MetaScanner.allTableRegions(conf, this, tableName, offlined);
@@ -848,7 +835,7 @@ public class HConnectionImplementation implements HConnection, Closeable {
         }
       }
       // Look up from zookeeper
-      location = this.registry.getMetaRegionLocation();
+      location = get(this.registry.getMetaRegionLocation());
       if (location != null) {
         cacheLocation(TableName.META_TABLE_NAME, null, location);
       }
@@ -882,8 +869,7 @@ public class HConnectionImplementation implements HConnection, Closeable {
     s.setReversed(true);
     s.withStartRow(metaKey);
     s.addFamily(HConstants.CATALOG_FAMILY);
-    s.setSmall(true);
-    s.setCaching(1);
+    s.setOneRowLimit();
     for (int tries = 0;; tries++) {
       if (tries >= maxAttempts) {
         throw new NoServerForRegionException("Unable to find region for "
@@ -1236,41 +1222,29 @@ public class HConnectionImplementation implements HConnection, Closeable {
      * @throws ServiceException
      */
     private Object makeStubNoRetries() throws IOException, KeeperException {
-      ZooKeeperKeepAliveConnection zkw;
-      try {
-        zkw = getKeepAliveZooKeeperWatcher();
-      } catch (IOException e) {
-        ExceptionUtil.rethrowIfInterrupt(e);
-        throw new ZooKeeperConnectionException("Can't connect to ZooKeeper", e);
+      ServerName sn = get(registry.getMasterAddress());
+      if (sn == null) {
+        String msg = "ZooKeeper available but no active master location found";
+        LOG.info(msg);
+        throw new MasterNotRunningException(msg);
       }
-      try {
-        checkIfBaseNodeAvailable(zkw);
-        ServerName sn = MasterAddressTracker.getMasterAddress(zkw);
-        if (sn == null) {
-          String msg = "ZooKeeper available but no active master location found";
-          LOG.info(msg);
-          throw new MasterNotRunningException(msg);
-        }
-        if (isDeadServer(sn)) {
-          throw new MasterNotRunningException(sn + " is dead.");
-        }
-        // Use the security info interface name as our stub key
-        String key = getStubKey(getServiceName(), sn.getHostAndPort());
-        connectionLock.putIfAbsent(key, key);
-        Object stub = null;
-        synchronized (connectionLock.get(key)) {
-          stub = stubs.get(key);
-          if (stub == null) {
-            BlockingRpcChannel channel = rpcClient.createBlockingRpcChannel(sn, user, rpcTimeout);
-            stub = makeStub(channel);
-            isMasterRunning();
-            stubs.put(key, stub);
-          }
-        }
-        return stub;
-      } finally {
-        zkw.close();
+      if (isDeadServer(sn)) {
+        throw new MasterNotRunningException(sn + " is dead.");
       }
+      // Use the security info interface name as our stub key
+      String key = getStubKey(getServiceName(), sn.getHostAndPort());
+      connectionLock.putIfAbsent(key, key);
+      Object stub = null;
+      synchronized (connectionLock.get(key)) {
+        stub = stubs.get(key);
+        if (stub == null) {
+          BlockingRpcChannel channel = rpcClient.createBlockingRpcChannel(sn, user, rpcTimeout);
+          stub = makeStub(channel);
+          isMasterRunning();
+          stubs.put(key, stub);
+        }
+      }
+      return stub;
     }
 
     /**
@@ -1281,7 +1255,7 @@ public class HConnectionImplementation implements HConnection, Closeable {
     Object makeStub() throws IOException {
       // The lock must be at the beginning to prevent multiple master creations
       // (and leaks) in a multithread context
-      synchronized (masterAndZKLock) {
+      synchronized (masterLock) {
         Exception exceptionCaught = null;
         if (!closed) {
           try {
@@ -1388,44 +1362,6 @@ public class HConnectionImplementation implements HConnection, Closeable {
     return serviceName + "@" + rsHostnamePort;
   }
 
-  private ZooKeeperKeepAliveConnection keepAliveZookeeper;
-  private AtomicInteger keepAliveZookeeperUserCount = new AtomicInteger(0);
-  private boolean canCloseZKW = true;
-
-  // keepAlive time, in ms. No reason to make it configurable.
-  private static final long keepAlive = 5 * 60 * 1000;
-
-  /**
-   * Retrieve a shared ZooKeeperWatcher. You must close it it once you've have finished with it.
-   * @return The shared instance. Never returns null.
-   */
-  ZooKeeperKeepAliveConnection getKeepAliveZooKeeperWatcher() throws IOException {
-    synchronized (masterAndZKLock) {
-      if (keepAliveZookeeper == null) {
-        if (this.closed) {
-          throw new IOException(toString() + " closed");
-        }
-        // We don't check that our link to ZooKeeper is still valid
-        // But there is a retry mechanism in the ZooKeeperWatcher itself
-        keepAliveZookeeper = new ZooKeeperKeepAliveConnection(conf, this.toString(), this);
-      }
-      keepAliveZookeeperUserCount.incrementAndGet();
-      keepZooKeeperWatcherAliveUntil = Long.MAX_VALUE;
-      return keepAliveZookeeper;
-    }
-  }
-
-  void releaseZooKeeperWatcher(final ZooKeeperWatcher zkw) {
-    if (zkw == null) {
-      return;
-    }
-    synchronized (masterAndZKLock) {
-      if (keepAliveZookeeperUserCount.decrementAndGet() <= 0) {
-        keepZooKeeperWatcherAliveUntil = System.currentTimeMillis() + keepAlive;
-      }
-    }
-  }
-
   /**
    * Creates a Chore thread to check the connections to master & zookeeper and close them when they
    * reach their closing time ( {@link MasterServiceState#keepAliveUntil} and
@@ -1473,14 +1409,7 @@ public class HConnectionImplementation implements HConnection, Closeable {
 
     @Override
     protected void chore() {
-      synchronized (hci.masterAndZKLock) {
-        if (hci.canCloseZKW) {
-          if (System.currentTimeMillis() > hci.keepZooKeeperWatcherAliveUntil) {
-
-            hci.closeZooKeeperWatcher();
-            hci.keepZooKeeperWatcherAliveUntil = Long.MAX_VALUE;
-          }
-        }
+      synchronized (hci.masterLock) {
         closeMasterProtocol(hci.masterServiceState);
         closeMasterProtocol(hci.masterServiceState);
       }
@@ -1494,18 +1423,6 @@ public class HConnectionImplementation implements HConnection, Closeable {
     @Override
     public boolean isStopped() {
       return stoppable.isStopped();
-    }
-  }
-
-  private void closeZooKeeperWatcher() {
-    synchronized (masterAndZKLock) {
-      if (keepAliveZookeeper != null) {
-        LOG.info("Closing zookeeper sessionid=0x"
-            + Long.toHexString(keepAliveZookeeper.getRecoverableZooKeeper().getSessionId()));
-        keepAliveZookeeper.internalClose();
-        keepAliveZookeeper = null;
-      }
-      keepAliveZookeeperUserCount.set(0);
     }
   }
 
@@ -1524,7 +1441,7 @@ public class HConnectionImplementation implements HConnection, Closeable {
 
   @Override
   public MasterKeepAliveConnection getKeepAliveMasterService() throws IOException {
-    synchronized (masterAndZKLock) {
+    synchronized (masterLock) {
       if (!isKeepAliveMasterConnectedAndRunning(this.masterServiceState)) {
         MasterServiceStubMaker stubMaker = new MasterServiceStubMaker();
         this.masterServiceState.stub = stubMaker.makeStub();
@@ -1877,7 +1794,7 @@ public class HConnectionImplementation implements HConnection, Closeable {
 
   void releaseMaster(HConnectionImplementation.MasterServiceState mss) {
     if (mss.getStub() == null) return;
-    synchronized (masterAndZKLock) {
+    synchronized (masterLock) {
       --mss.userCount;
       if (mss.userCount <= 0) {
         mss.keepAliveUntil = System.currentTimeMillis() + keepAlive;
@@ -1898,7 +1815,7 @@ public class HConnectionImplementation implements HConnection, Closeable {
    * connection itself.
    */
   private void closeMaster() {
-    synchronized (masterAndZKLock) {
+    synchronized (masterLock) {
       closeMasterService(masterServiceState);
     }
   }
@@ -2157,25 +2074,14 @@ public class HConnectionImplementation implements HConnection, Closeable {
 
   @Override
   public void abort(final String msg, Throwable t) {
-    if (t instanceof KeeperException.SessionExpiredException && keepAliveZookeeper != null) {
-      synchronized (masterAndZKLock) {
-        if (keepAliveZookeeper != null) {
-          LOG.warn("This client just lost it's session with ZooKeeper," + " closing it."
-              + " It will be recreated next time someone needs it",
-            t);
-          closeZooKeeperWatcher();
-        }
-      }
+    if (t != null) {
+      LOG.fatal(msg, t);
     } else {
-      if (t != null) {
-        LOG.fatal(msg, t);
-      } else {
-        LOG.fatal(msg);
-      }
-      this.aborted = true;
-      close();
-      this.closed = true;
+      LOG.fatal(msg);
     }
+    this.aborted = true;
+    close();
+    this.closed = true;
   }
 
   @Override
@@ -2190,7 +2096,7 @@ public class HConnectionImplementation implements HConnection, Closeable {
 
   @Override
   public int getCurrentNrHRS() throws IOException {
-    return this.registry.getCurrentNrHRS();
+    return get(this.registry.getCurrentNrHRS());
   }
 
   /**
@@ -2249,7 +2155,7 @@ public class HConnectionImplementation implements HConnection, Closeable {
       }
     }
     this.closed = true;
-    closeZooKeeperWatcher();
+    registry.close();
     this.stubs.clear();
     if (clusterStatusListener != null) {
       clusterStatusListener.close();
