@@ -262,8 +262,7 @@ public class DumpReplicationQueues extends Configured implements Tool {
       ReplicationPeerConfig peerConfig = peer.getValue();
       sb.append("Peer: " + peer.getKey() + "\n");
       sb.append("    " + "State: "
-          + (peerConfig.getState() == ReplicationState.State.ENABLED ? "ENABLED" : "DISABLED")
-          + "\n");
+          + (replicationAdmin.getPeerState(peer.getKey()) ? "ENABLED" : "DISABLED") + "\n");
       sb.append("    " + "Cluster Name: " + peerConfig.getClusterKey() + "\n");
       sb.append("    " + "Replication Endpoint: " + peerConfig.getReplicationEndpointImpl() + "\n");
       currentConf = peerConfig.getConfiguration();

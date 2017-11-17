@@ -57,7 +57,6 @@ public class TestMasterStatusServlet {
   private HMaster master;
   private Configuration conf;
   private HBaseAdmin admin;
-  private ReplicationAdmin repAdmin;
 
   static final ServerName FAKE_HOST =
       ServerName.valueOf("fakehost", 12345, 1234567890);
@@ -109,7 +108,6 @@ public class TestMasterStatusServlet {
 
     // Mock admin
     admin = Mockito.mock(HBaseAdmin.class);
-    repAdmin = Mockito.mock(ReplicationAdmin.class);
   }
 
   private void setupMockTables() throws IOException {
@@ -122,18 +120,15 @@ public class TestMasterStatusServlet {
   
   @Test
   public void testStatusTemplateNoTables() throws IOException {
-    new MasterStatusTmpl().render(new StringWriter(),
-        master, admin, repAdmin);
+    new MasterStatusTmpl().render(new StringWriter(), master, admin);
   }
 
   @Test
   public void testStatusTemplateMetaAvailable() throws IOException {
     setupMockTables();
-    
-    new MasterStatusTmpl()
-      .setMetaLocation(ServerName.valueOf("metaserver:123,12345"))
-      .render(new StringWriter(),
-        master, admin, repAdmin);
+
+    new MasterStatusTmpl().setMetaLocation(ServerName.valueOf("metaserver:123,12345")).render(
+      new StringWriter(), master, admin);
   }
 
   @Test
@@ -149,12 +144,8 @@ public class TestMasterStatusServlet {
             ServerName.valueOf("uglyserver:123,12345"))
     );
 
-    new MasterStatusTmpl()
-      .setMetaLocation(ServerName.valueOf("metaserver:123,12345"))
-      .setServers(servers)
-      .setDeadServers(deadServers)
-      .render(new StringWriter(),
-        master, admin, repAdmin);
+    new MasterStatusTmpl().setMetaLocation(ServerName.valueOf("metaserver:123,12345"))
+        .setServers(servers).setDeadServers(deadServers).render(new StringWriter(), master, admin);
   }
   
   @Test

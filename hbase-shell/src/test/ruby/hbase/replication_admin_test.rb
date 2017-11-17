@@ -117,6 +117,37 @@ module Hbase
       replication_admin.remove_peer(@peer_id)
     end
 
+    define_test "add_peer: with enabled/disabled state" do
+      cluster_key = "server1.cie.com:2181:/hbase"
+
+      args = { CLUSTER_KEY => cluster_key }
+      replication_admin.add_peer(@peer_id, args)
+
+      assert_equal(1, replication_admin.list_peers().length)
+      assert_equal(cluster_key, replication_admin.list_peers().fetch(@peer_id).getClusterKey)
+      assert_equal("ENABLED", replication_admin.get_peer_state(@peer_id))
+
+      replication_admin.remove_peer(@peer_id)
+
+      enable_args = { CLUSTER_KEY => cluster_key, STATE => "ENABLED"}
+      replication_admin.add_peer(@peer_id, enable_args)
+
+      assert_equal(1, replication_admin.list_peers().length)
+      assert_equal(cluster_key, replication_admin.list_peers().fetch(@peer_id).getClusterKey)
+      assert_equal("ENABLED", replication_admin.get_peer_state(@peer_id))
+
+      replication_admin.remove_peer(@peer_id)
+
+      disable_args = { CLUSTER_KEY => cluster_key, STATE => "DISABLED"}
+      replication_admin.add_peer(@peer_id, disable_args)
+
+      assert_equal(1, replication_admin.list_peers().length)
+      assert_equal(cluster_key, replication_admin.list_peers().fetch(@peer_id).getClusterKey)
+      assert_equal("DISABLED", replication_admin.get_peer_state(@peer_id))
+
+      replication_admin.remove_peer(@peer_id)
+    end
+
     define_test "add_peer: multiple zk cluster key and namespaces" do
       cluster_key = "zk4,zk5,zk6:11000:/hbase-test"
       namespaces = ["ns1", "ns2", "ns3"]

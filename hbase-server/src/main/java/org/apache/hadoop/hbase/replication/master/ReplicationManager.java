@@ -66,10 +66,10 @@ public class ReplicationManager {
     }
   }
 
-  public void addReplicationPeer(String peerId, ReplicationPeerConfig peerConfig)
+  public void addReplicationPeer(String peerId, ReplicationPeerConfig peerConfig, boolean enabled)
       throws ReplicationException, IOException {
     checkPeerConfigConflict(peerConfig);
-    replicationPeers.addPeer(peerId, peerConfig);
+    replicationPeers.addPeer(peerId, peerConfig, enabled);
     replicationPeers.peerAdded(peerId);
   }
 

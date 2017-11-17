@@ -3294,11 +3294,17 @@ public class HBaseAdmin implements Abortable, Closeable {
 
   public void addReplicationPeer(String peerId, ReplicationPeerConfig peerConfig)
       throws IOException {
+    this.addReplicationPeer(peerId, peerConfig, true);
+  }
+
+  public void addReplicationPeer(String peerId, ReplicationPeerConfig peerConfig, boolean enabled)
+      throws IOException {
     executeCallable(new MasterCallable<Void>(getConnection()) {
       @Override
-      protected Void rpcCall(BlockingInterface master, HBaseRpcController controller) throws Exception {
+      protected Void rpcCall(BlockingInterface master, HBaseRpcController controller)
+          throws Exception {
         master.addReplicationPeer(controller,
-          RequestConverter.buildAddReplicationPeerRequest(peerId, peerConfig));
+          RequestConverter.buildAddReplicationPeerRequest(peerId, peerConfig, enabled));
         return null;
       }
     });

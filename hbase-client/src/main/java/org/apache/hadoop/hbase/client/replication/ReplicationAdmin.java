@@ -198,6 +198,11 @@ public class ReplicationAdmin implements Closeable {
     admin.addReplicationPeer(id, peerConfig);
   }
 
+  public void addPeer(String id, ReplicationPeerConfig peerConfig, boolean enabled)
+      throws ReplicationException, IOException {
+    admin.addReplicationPeer(id, peerConfig, enabled);
+  }
+
   /**
    * Removes a peer cluster and stops the replication to it.
    * @param id a short name that identifies the cluster

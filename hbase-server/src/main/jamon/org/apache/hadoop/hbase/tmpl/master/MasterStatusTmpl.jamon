@@ -19,7 +19,6 @@ limitations under the License.
 <%args>
 HMaster master;
 HBaseAdmin admin;
-ReplicationAdmin repAdmin;
 Map<String, Integer> frags = null;
 ServerName metaLocation = null;
 List<ServerName> servers = null;
@@ -47,7 +46,8 @@ org.apache.hadoop.hbase.TableLoad;
 org.apache.hadoop.hbase.TableName;
 org.apache.hadoop.hbase.client.HBaseAdmin;
 org.apache.hadoop.hbase.client.HConnectionManager;
-org.apache.hadoop.hbase.client.replication.ReplicationAdmin;
+org.apache.hadoop.hbase.replication.ReplicationPeerDescription;
+org.apache.hadoop.hbase.replication.ReplicationException;
 org.apache.hadoop.hbase.client.replication.ReplicationSerDeHelper;
 org.apache.hadoop.hbase.replication.ReplicationPeerConfig;
 org.apache.hadoop.hbase.HRegionInfo;
@@ -533,7 +533,13 @@ AssignmentManager assignmentManager = master.getAssignmentManager();
 
 <%def peerConfigs>
 <%java>
-    Map<String, ReplicationPeerConfig> allPeerConfigs = repAdmin == null ? new HashMap<String, ReplicationPeerConfig>() : repAdmin.listPeerConfigs();
+	List<ReplicationPeerDescription> peers = null;
+	try {
+		if (master.getReplicationManager() != null) {
+			peers = master.getReplicationManager().listReplicationPeers(null);
+		}
+    } catch (ReplicationException e) {
+    }
 </%java>
 <table class="table table-striped">
     <tr>
@@ -545,16 +551,16 @@ AssignmentManager assignmentManager = master.getAssignmentManager();
         <th>Namespaces</th>
         <th>Table Cfs</th>
     </tr>
-<%if (allPeerConfigs != null && allPeerConfigs.size() > 0)%>
-    <%for Map.Entry<String, ReplicationPeerConfig> entry : allPeerConfigs.entrySet() %>
+<%if (peers != null && peers.size() > 0)%>
+    <%for ReplicationPeerDescription peer : peers %>
     <%java>
-		String peerId = entry.getKey();
-		ReplicationPeerConfig peerConfig = entry.getValue();
+		String peerId = peer.getPeerId();
+		ReplicationPeerConfig peerConfig = peer.getPeerConfig();
     </%java>
     <tr>
         <td><% peerId %></td>
         <td><% peerConfig.getClusterKey() %></td>
-        <td><% peerConfig.getState() %></td>
+        <td><% peer.isEnabled() ? "ENABLED" : "DISABLED" %></td>
         <td><% peerConfig.getProtocol() %></td>
         <td><% peerConfig.getBandwidth() %></td>
         <td>
@@ -570,6 +576,6 @@ AssignmentManager assignmentManager = master.getAssignmentManager();
     </tr>
     </%for>
 </%if>
-<tr><td>Total: <% (allPeerConfigs != null) ? allPeerConfigs.size() : 0 %></td></tr>
+<tr><td>Total: <% (peers != null) ? peers.size() : 0 %></td></tr>
 </table>
 </%def>

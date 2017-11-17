@@ -146,7 +146,8 @@ public class TestReplicationTrackerZKImpl {
 
   @Test(timeout = 30000)
   public void testPeerRemovedEvent() throws Exception {
-    rp.addPeer("testPeerRemovedEvent", new ReplicationPeerConfig().setClusterKey(utility.getClusterKey()));
+    rp.addPeer("testPeerRemovedEvent",
+      new ReplicationPeerConfig().setClusterKey(utility.getClusterKey()), true);
     rt.registerListener(new DummyReplicationListener());
     rp.removePeer("testPeerRemovedEvent");
     // wait for event
@@ -159,7 +160,7 @@ public class TestReplicationTrackerZKImpl {
   @Test(timeout = 30000)
   public void testPeerListChangedEvent() throws Exception {
     // add a peer
-    rp.addPeer("5", new ReplicationPeerConfig().setClusterKey(utility.getClusterKey()));
+    rp.addPeer("5", new ReplicationPeerConfig().setClusterKey(utility.getClusterKey()), true);
     zkw.getRecoverableZooKeeper().getZooKeeper().getChildren("/hbase/replication/peers/5", true);
     rt.registerListener(new DummyReplicationListener());
     rp.disablePeer("5");
@@ -181,16 +182,16 @@ public class TestReplicationTrackerZKImpl {
   public void testPeerNameControl() throws Exception {
     int exists = 0;
     int hyphen = 0;
-    rp.addPeer("6", new ReplicationPeerConfig().setClusterKey(utility.getClusterKey()));
+    rp.addPeer("6", new ReplicationPeerConfig().setClusterKey(utility.getClusterKey()), true);
     
     try{
-      rp.addPeer("6", new ReplicationPeerConfig().setClusterKey(utility.getClusterKey()));
+      rp.addPeer("6", new ReplicationPeerConfig().setClusterKey(utility.getClusterKey()), true);
     }catch(IllegalArgumentException e){
       exists++;
     }
 
     try{
-      rp.addPeer("6-ec2", new ReplicationPeerConfig().setClusterKey(utility.getClusterKey()));
+      rp.addPeer("6-ec2", new ReplicationPeerConfig().setClusterKey(utility.getClusterKey()), true);
     }catch(IllegalArgumentException e){
       hyphen++;
     }

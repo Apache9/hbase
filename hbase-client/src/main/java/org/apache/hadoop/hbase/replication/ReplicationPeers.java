@@ -51,8 +51,9 @@ public interface ReplicationPeers {
    * Add a new remote slave cluster for replication.
    * @param peerId a short that identifies the cluster
    * @param peerConfig configuration for the replication slave cluster
+   * @param enabled peer state, true mean Eanbled and false mean Disabled
    */
-  void addPeer(String peerId, ReplicationPeerConfig peerConfig)
+  void addPeer(String peerId, ReplicationPeerConfig peerConfig, boolean enabled)
       throws ReplicationException;
 
   /**

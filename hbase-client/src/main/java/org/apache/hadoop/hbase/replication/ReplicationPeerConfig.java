@@ -41,7 +41,6 @@ public class ReplicationPeerConfig {
   private String clusterKey;
   private String replicationEndpointImpl;
   private ReplicationPeer.PeerProtocol protocol = ReplicationPeer.PeerProtocol.NATIVE;
-  private ReplicationState.State state = ReplicationState.State.ENABLED;
   private final Map<byte[], byte[]> peerData;
   private final Map<String, String> configuration;
   private Map<TableName, ? extends Collection<String>> tableCFsMap = null;
@@ -86,11 +85,6 @@ public class ReplicationPeerConfig {
     }
     return this;
   }
-  
-  public ReplicationPeerConfig setState(ReplicationState.State state) {
-    this.state = state;
-    return this;
-  }
 
   public String getClusterKey() {
     return clusterKey;
@@ -110,10 +104,6 @@ public class ReplicationPeerConfig {
 
   public ReplicationPeer.PeerProtocol getProtocol() {
     return protocol;
-  }
-  
-  public ReplicationState.State getState() {
-    return state;
   }
 
   public Map<TableName, List<String>> getTableCFsMap() {
@@ -173,7 +163,6 @@ public class ReplicationPeerConfig {
   @Override
   public String toString() {
     StringBuilder builder = new StringBuilder("clusterKey=").append(clusterKey).append(",");
-    builder.append("state=").append(state).append(",");
     builder.append("replicateAllUserTables=").append(replicateAllUserTables).append(",");
     if (this.replicateAllUserTables) {
       if (excludeNamespaces != null) {

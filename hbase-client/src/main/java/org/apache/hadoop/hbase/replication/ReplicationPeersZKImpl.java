@@ -103,7 +103,7 @@ public class ReplicationPeersZKImpl extends ReplicationStateZKBase implements Re
   }
 
   @Override
-  public void addPeer(String id, ReplicationPeerConfig peerConfig)
+  public void addPeer(String id, ReplicationPeerConfig peerConfig, boolean enabled)
       throws ReplicationException {
     try {
       if (peerExists(id)) {
@@ -124,9 +124,8 @@ public class ReplicationPeersZKImpl extends ReplicationStateZKBase implements Re
       // There is a race (if hbase.zookeeper.useMulti is false)
       // b/w PeerWatcher and ReplicationZookeeper#add method to create the
       // peer-state znode. This happens while adding a peer
-      byte[] stateBytes = peerConfig.getState().equals(ReplicationState.State.ENABLED) ? ENABLED_ZNODE_BYTES
-          : DISABLED_ZNODE_BYTES;
-      ZKUtilOp op2 = ZKUtilOp.createAndFailSilent(getPeerStateNode(id), stateBytes);
+      ZKUtilOp op2 = ZKUtilOp.createAndFailSilent(getPeerStateNode(id),
+        enabled ? ENABLED_ZNODE_BYTES : DISABLED_ZNODE_BYTES);
       listOfOps.add(op1);
       listOfOps.add(op2);
       ZKUtil.multiOrSequential(this.zookeeper, listOfOps, false);

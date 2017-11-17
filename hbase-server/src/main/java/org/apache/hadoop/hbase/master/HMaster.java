@@ -260,6 +260,7 @@ import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ListReplicat
 import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ListReplicationPeersResponse;
 import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.RemoveReplicationPeerRequest;
 import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.RemoveReplicationPeerResponse;
+import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ReplicationState;
 import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.UpdateReplicationPeerConfigRequest;
 import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.UpdateReplicationPeerConfigResponse;
 import org.apache.hadoop.hbase.protobuf.generated.SnapshotProtos.SnapshotDescription;
@@ -4029,13 +4030,14 @@ MasterServices, Server {
       AddReplicationPeerRequest request) throws ServiceException {
     String peerId = request.getPeerId();
     ReplicationPeerConfig peerConfig = ReplicationSerDeHelper.convert(request.getPeerConfig());
+    boolean enabled = request.getPeerState().getState().equals(ReplicationState.State.ENABLED);
     try {
       if (cpHost != null) {
         cpHost.preAddReplicationPeer(peerId, peerConfig);
       }
       LOG.info(getClientIdAuditPrefix() + " creating replication peer, id=" + peerId + ", config="
-          + peerConfig);
-      this.replicationManager.addReplicationPeer(peerId, peerConfig);
+          + peerConfig + ", state=" + (enabled ? "ENABLED" : "DISABLED"));
+      this.replicationManager.addReplicationPeer(peerId, peerConfig, enabled);
       if (cpHost != null) {
         cpHost.postAddReplicationPeer(peerId, peerConfig);
       }
@@ -4170,5 +4172,10 @@ MasterServices, Server {
       throw new ServiceException(e);
     }
     return response.build();
+  }
+
+  @Override
+  public ReplicationManager getReplicationManager() {
+    return this.replicationManager;
   }
 }

@@ -31,13 +31,11 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HConnection;
 import org.apache.hadoop.hbase.client.HConnectionManager;
-import org.apache.hadoop.hbase.client.replication.ReplicationAdmin;
 import org.apache.hadoop.hbase.util.FSUtils;
 import org.apache.hadoop.hbase.protobuf.RequestConverter;
 import org.apache.hadoop.hbase.tmpl.master.MasterStatusTmpl;
@@ -64,8 +62,7 @@ public class MasterStatusServlet extends HttpServlet {
     Configuration repConf = new Configuration(conf);
     repConf.setInt(HConstants.ZK_RECOVERY_RETRY, 0);
 
-    try (HBaseAdmin admin = new HBaseAdmin(connection);
-        ReplicationAdmin repAdmin = new ReplicationAdmin(connection, repConf, false)) {
+    try (HBaseAdmin admin = new HBaseAdmin(connection)) {
       Map<String, Integer> frags = getFragmentationInfo(master, conf);
       ServerName metaLocation = null;
       List<ServerName> servers = null;
@@ -97,7 +94,7 @@ public class MasterStatusServlet extends HttpServlet {
       }
       if (request.getParameter("filter") != null) tmpl.setFilter(request.getParameter("filter"));
       if (request.getParameter("format") != null) tmpl.setFormat(request.getParameter("format"));
-      tmpl.render(response.getWriter(), master, admin, repAdmin);
+      tmpl.render(response.getWriter(), master, admin);
     }
   }
 

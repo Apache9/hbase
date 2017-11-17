@@ -129,6 +129,7 @@ import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.EnableReplic
 import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetReplicationPeerConfigRequest;
 import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ListReplicationPeersRequest;
 import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.RemoveReplicationPeerRequest;
+import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ReplicationState;
 import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.UpdateReplicationPeerConfigRequest;
 import org.apache.hadoop.hbase.protobuf.generated.SnapshotProtos.SnapshotDescription;
 import org.apache.hadoop.hbase.quotas.ThrottleState;
@@ -1646,10 +1647,15 @@ public final class RequestConverter {
   }
 
   public static ReplicationProtos.AddReplicationPeerRequest buildAddReplicationPeerRequest(
-      String peerId, ReplicationPeerConfig peerConfig) {
+      String peerId, ReplicationPeerConfig peerConfig, boolean enabled) {
     AddReplicationPeerRequest.Builder builder = AddReplicationPeerRequest.newBuilder();
     builder.setPeerId(peerId);
     builder.setPeerConfig(ReplicationSerDeHelper.convert(peerConfig));
+    ReplicationProtos.ReplicationState.Builder stateBuilder = ReplicationProtos.ReplicationState
+        .newBuilder();
+    stateBuilder.setState(enabled ? ReplicationState.State.ENABLED
+        : ReplicationState.State.DISABLED);
+    builder.setPeerState(stateBuilder.build());
     return builder.build();
   }
 

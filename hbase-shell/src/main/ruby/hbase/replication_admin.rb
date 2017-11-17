@@ -81,11 +81,6 @@ module Hbase
           }
         end
 
-        peer_state = args.fetch(STATE, nil)
-        unless peer_state.nil?
-          replication_peer_config.set_state(State.valueOf(peer_state))
-        end
-
         namespaces = args.fetch(NAMESPACES, nil)
         exclude_namespaces = args.fetch(EXCLUDE_NAMESPACES, nil)
         table_cfs = args.fetch(TABLE_CFS, nil)
@@ -135,7 +130,15 @@ module Hbase
           replication_peer_config.set_protocol(PeerProtocol.valueOf(protocol))
         end
 
-        @replication_admin.add_peer(id, replication_peer_config)
+        enabled = true
+        peer_state = args.fetch(STATE, nil)
+        unless peer_state.nil?
+          if peer_state == "DISABLED"
+            enabled = false
+          end
+        end
+
+        @replication_admin.add_peer(id, replication_peer_config, enabled)
       else
         raise(ArgumentError, "args must be a Hash")
       end

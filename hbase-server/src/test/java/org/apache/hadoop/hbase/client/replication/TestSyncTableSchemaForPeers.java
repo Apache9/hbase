@@ -92,7 +92,6 @@ public class TestSyncTableSchemaForPeers extends TestReplicationBase {
     Map<TableName, List<String>> tableNames = new HashMap<TableName, List<String>>();
     tableNames.put(TEST_TABLE_NAME1, Collections.emptyList());
     rpc.setTableCFsMap(tableNames);
-    rpc.setState(State.ENABLED);
 
     // add_peer '1', 'hbase://<cluster2>', TABLE_CFS => {"test_ns:test_table2"=>[]},
     // STATE=>'enabled'
@@ -151,7 +150,6 @@ public class TestSyncTableSchemaForPeers extends TestReplicationBase {
     rpc2.setClusterKey(utility2.getClusterKey());
     rpc2.setReplicateAllUserTables(false);
     rpc2.setNamespaces(Collections.singleton(TEST_NAMESPACE_STR));
-    rpc2.setState(State.ENABLED);
 
     // add_peer '3', 'hbase://<cluster2>', NAMESPACE=>['test_ns'], STATE=>'enabled'
     replAdmin.addPeer(ID_THIRD, rpc2);
@@ -240,7 +238,6 @@ public class TestSyncTableSchemaForPeers extends TestReplicationBase {
     Map<TableName, List<String>> tableNames = new HashMap<TableName, List<String>>();
     tableNames.put(TEST_TABLE_NAME1, Collections.emptyList());
     rpc.setTableCFsMap(tableNames);
-    rpc.setState(State.ENABLED);
 
     // add_peer '1', 'hbase://<cluster2>', TABLE_CFS => {"test_ns:test_table2"=>[]},
     // STATE=>'enabled'
@@ -301,7 +298,6 @@ public class TestSyncTableSchemaForPeers extends TestReplicationBase {
     rpc2.setClusterKey(utility2.getClusterKey());
     rpc2.setReplicateAllUserTables(false);
     rpc2.setNamespaces(Collections.singleton(TEST_NAMESPACE_STR));
-    rpc2.setState(State.ENABLED);
 
     // add_peer '3', 'hbase://<cluster2>', NAMESPACE=>['test_ns'], STATE=>'enabled'
     replAdmin1.addPeer(ID_THIRD, rpc2);

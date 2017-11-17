@@ -6567,6 +6567,20 @@ public final class ReplicationProtos {
      * <code>required .ReplicationPeer peer_config = 2;</code>
      */
     org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ReplicationPeerOrBuilder getPeerConfigOrBuilder();
+
+    // required .ReplicationState peer_state = 3;
+    /**
+     * <code>required .ReplicationState peer_state = 3;</code>
+     */
+    boolean hasPeerState();
+    /**
+     * <code>required .ReplicationState peer_state = 3;</code>
+     */
+    org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ReplicationState getPeerState();
+    /**
+     * <code>required .ReplicationState peer_state = 3;</code>
+     */
+    org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ReplicationStateOrBuilder getPeerStateOrBuilder();
   }
   /**
    * Protobuf type {@code AddReplicationPeerRequest}
@@ -6635,6 +6649,19 @@ public final class ReplicationProtos {
                 peerConfig_ = subBuilder.buildPartial();
               }
               bitField0_ |= 0x00000002;
+              break;
+            }
+            case 26: {
+              org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ReplicationState.Builder subBuilder = null;
+              if (((bitField0_ & 0x00000004) == 0x00000004)) {
+                subBuilder = peerState_.toBuilder();
+              }
+              peerState_ = input.readMessage(org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ReplicationState.PARSER, extensionRegistry);
+              if (subBuilder != null) {
+                subBuilder.mergeFrom(peerState_);
+                peerState_ = subBuilder.buildPartial();
+              }
+              bitField0_ |= 0x00000004;
               break;
             }
           }
@@ -6742,9 +6769,32 @@ public final class ReplicationProtos {
       return peerConfig_;
     }
 
+    // required .ReplicationState peer_state = 3;
+    public static final int PEER_STATE_FIELD_NUMBER = 3;
+    private org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ReplicationState peerState_;
+    /**
+     * <code>required .ReplicationState peer_state = 3;</code>
+     */
+    public boolean hasPeerState() {
+      return ((bitField0_ & 0x00000004) == 0x00000004);
+    }
+    /**
+     * <code>required .ReplicationState peer_state = 3;</code>
+     */
+    public org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ReplicationState getPeerState() {
+      return peerState_;
+    }
+    /**
+     * <code>required .ReplicationState peer_state = 3;</code>
+     */
+    public org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ReplicationStateOrBuilder getPeerStateOrBuilder() {
+      return peerState_;
+    }
+
     private void initFields() {
       peerId_ = "";
       peerConfig_ = org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ReplicationPeer.getDefaultInstance();
+      peerState_ = org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ReplicationState.getDefaultInstance();
     }
     private byte memoizedIsInitialized = -1;
     public final boolean isInitialized() {
@@ -6759,7 +6809,15 @@ public final class ReplicationProtos {
         memoizedIsInitialized = 0;
         return false;
       }
+      if (!hasPeerState()) {
+        memoizedIsInitialized = 0;
+        return false;
+      }
       if (!getPeerConfig().isInitialized()) {
+        memoizedIsInitialized = 0;
+        return false;
+      }
+      if (!getPeerState().isInitialized()) {
         memoizedIsInitialized = 0;
         return false;
       }
@@ -6775,6 +6833,9 @@ public final class ReplicationProtos {
       }
       if (((bitField0_ & 0x00000002) == 0x00000002)) {
         output.writeMessage(2, peerConfig_);
+      }
+      if (((bitField0_ & 0x00000004) == 0x00000004)) {
+        output.writeMessage(3, peerState_);
       }
       getUnknownFields().writeTo(output);
     }
@@ -6792,6 +6853,10 @@ public final class ReplicationProtos {
       if (((bitField0_ & 0x00000002) == 0x00000002)) {
         size += com.google.protobuf.CodedOutputStream
           .computeMessageSize(2, peerConfig_);
+      }
+      if (((bitField0_ & 0x00000004) == 0x00000004)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeMessageSize(3, peerState_);
       }
       size += getUnknownFields().getSerializedSize();
       memoizedSerializedSize = size;
@@ -6826,6 +6891,11 @@ public final class ReplicationProtos {
         result = result && getPeerConfig()
             .equals(other.getPeerConfig());
       }
+      result = result && (hasPeerState() == other.hasPeerState());
+      if (hasPeerState()) {
+        result = result && getPeerState()
+            .equals(other.getPeerState());
+      }
       result = result &&
           getUnknownFields().equals(other.getUnknownFields());
       return result;
@@ -6846,6 +6916,10 @@ public final class ReplicationProtos {
       if (hasPeerConfig()) {
         hash = (37 * hash) + PEER_CONFIG_FIELD_NUMBER;
         hash = (53 * hash) + getPeerConfig().hashCode();
+      }
+      if (hasPeerState()) {
+        hash = (37 * hash) + PEER_STATE_FIELD_NUMBER;
+        hash = (53 * hash) + getPeerState().hashCode();
       }
       hash = (29 * hash) + getUnknownFields().hashCode();
       memoizedHashCode = hash;
@@ -6949,6 +7023,7 @@ public final class ReplicationProtos {
       private void maybeForceBuilderInitialization() {
         if (com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders) {
           getPeerConfigFieldBuilder();
+          getPeerStateFieldBuilder();
         }
       }
       private static Builder create() {
@@ -6965,6 +7040,12 @@ public final class ReplicationProtos {
           peerConfigBuilder_.clear();
         }
         bitField0_ = (bitField0_ & ~0x00000002);
+        if (peerStateBuilder_ == null) {
+          peerState_ = org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ReplicationState.getDefaultInstance();
+        } else {
+          peerStateBuilder_.clear();
+        }
+        bitField0_ = (bitField0_ & ~0x00000004);
         return this;
       }
 
@@ -7005,6 +7086,14 @@ public final class ReplicationProtos {
         } else {
           result.peerConfig_ = peerConfigBuilder_.build();
         }
+        if (((from_bitField0_ & 0x00000004) == 0x00000004)) {
+          to_bitField0_ |= 0x00000004;
+        }
+        if (peerStateBuilder_ == null) {
+          result.peerState_ = peerState_;
+        } else {
+          result.peerState_ = peerStateBuilder_.build();
+        }
         result.bitField0_ = to_bitField0_;
         onBuilt();
         return result;
@@ -7029,6 +7118,9 @@ public final class ReplicationProtos {
         if (other.hasPeerConfig()) {
           mergePeerConfig(other.getPeerConfig());
         }
+        if (other.hasPeerState()) {
+          mergePeerState(other.getPeerState());
+        }
         this.mergeUnknownFields(other.getUnknownFields());
         return this;
       }
@@ -7042,7 +7134,15 @@ public final class ReplicationProtos {
           
           return false;
         }
+        if (!hasPeerState()) {
+          
+          return false;
+        }
         if (!getPeerConfig().isInitialized()) {
+          
+          return false;
+        }
+        if (!getPeerState().isInitialized()) {
           
           return false;
         }
@@ -7257,6 +7357,123 @@ public final class ReplicationProtos {
           peerConfig_ = null;
         }
         return peerConfigBuilder_;
+      }
+
+      // required .ReplicationState peer_state = 3;
+      private org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ReplicationState peerState_ = org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ReplicationState.getDefaultInstance();
+      private com.google.protobuf.SingleFieldBuilder<
+          org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ReplicationState, org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ReplicationState.Builder, org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ReplicationStateOrBuilder> peerStateBuilder_;
+      /**
+       * <code>required .ReplicationState peer_state = 3;</code>
+       */
+      public boolean hasPeerState() {
+        return ((bitField0_ & 0x00000004) == 0x00000004);
+      }
+      /**
+       * <code>required .ReplicationState peer_state = 3;</code>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ReplicationState getPeerState() {
+        if (peerStateBuilder_ == null) {
+          return peerState_;
+        } else {
+          return peerStateBuilder_.getMessage();
+        }
+      }
+      /**
+       * <code>required .ReplicationState peer_state = 3;</code>
+       */
+      public Builder setPeerState(org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ReplicationState value) {
+        if (peerStateBuilder_ == null) {
+          if (value == null) {
+            throw new NullPointerException();
+          }
+          peerState_ = value;
+          onChanged();
+        } else {
+          peerStateBuilder_.setMessage(value);
+        }
+        bitField0_ |= 0x00000004;
+        return this;
+      }
+      /**
+       * <code>required .ReplicationState peer_state = 3;</code>
+       */
+      public Builder setPeerState(
+          org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ReplicationState.Builder builderForValue) {
+        if (peerStateBuilder_ == null) {
+          peerState_ = builderForValue.build();
+          onChanged();
+        } else {
+          peerStateBuilder_.setMessage(builderForValue.build());
+        }
+        bitField0_ |= 0x00000004;
+        return this;
+      }
+      /**
+       * <code>required .ReplicationState peer_state = 3;</code>
+       */
+      public Builder mergePeerState(org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ReplicationState value) {
+        if (peerStateBuilder_ == null) {
+          if (((bitField0_ & 0x00000004) == 0x00000004) &&
+              peerState_ != org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ReplicationState.getDefaultInstance()) {
+            peerState_ =
+              org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ReplicationState.newBuilder(peerState_).mergeFrom(value).buildPartial();
+          } else {
+            peerState_ = value;
+          }
+          onChanged();
+        } else {
+          peerStateBuilder_.mergeFrom(value);
+        }
+        bitField0_ |= 0x00000004;
+        return this;
+      }
+      /**
+       * <code>required .ReplicationState peer_state = 3;</code>
+       */
+      public Builder clearPeerState() {
+        if (peerStateBuilder_ == null) {
+          peerState_ = org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ReplicationState.getDefaultInstance();
+          onChanged();
+        } else {
+          peerStateBuilder_.clear();
+        }
+        bitField0_ = (bitField0_ & ~0x00000004);
+        return this;
+      }
+      /**
+       * <code>required .ReplicationState peer_state = 3;</code>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ReplicationState.Builder getPeerStateBuilder() {
+        bitField0_ |= 0x00000004;
+        onChanged();
+        return getPeerStateFieldBuilder().getBuilder();
+      }
+      /**
+       * <code>required .ReplicationState peer_state = 3;</code>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ReplicationStateOrBuilder getPeerStateOrBuilder() {
+        if (peerStateBuilder_ != null) {
+          return peerStateBuilder_.getMessageOrBuilder();
+        } else {
+          return peerState_;
+        }
+      }
+      /**
+       * <code>required .ReplicationState peer_state = 3;</code>
+       */
+      private com.google.protobuf.SingleFieldBuilder<
+          org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ReplicationState, org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ReplicationState.Builder, org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ReplicationStateOrBuilder> 
+          getPeerStateFieldBuilder() {
+        if (peerStateBuilder_ == null) {
+          peerStateBuilder_ = new com.google.protobuf.SingleFieldBuilder<
+              org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ReplicationState, org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ReplicationState.Builder, org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ReplicationStateOrBuilder>(
+                  peerState_,
+                  getParentForChildren(),
+                  isClean());
+          peerState_ = null;
+        }
+        return peerStateBuilder_;
       }
 
       // @@protoc_insertion_point(builder_scope:AddReplicationPeerRequest)
@@ -13860,28 +14077,29 @@ public final class ReplicationProtos {
       "ock_owner\030\001 \002(\t\"l\n\032ReplicationPeerDescri" +
       "ption\022\n\n\002id\030\001 \002(\t\022 \n\005state\030\002 \002(\0132\021.Repli" +
       "cationState\022 \n\006config\030\003 \002(\0132\020.Replicatio",
-      "nPeer\"S\n\031AddReplicationPeerRequest\022\017\n\007pe" +
+      "nPeer\"z\n\031AddReplicationPeerRequest\022\017\n\007pe" +
       "er_id\030\001 \002(\t\022%\n\013peer_config\030\002 \002(\0132\020.Repli" +
-      "cationPeer\"\034\n\032AddReplicationPeerResponse" +
-      "\"/\n\034RemoveReplicationPeerRequest\022\017\n\007peer" +
-      "_id\030\001 \002(\t\"\037\n\035RemoveReplicationPeerRespon" +
-      "se\"/\n\034EnableReplicationPeerRequest\022\017\n\007pe" +
-      "er_id\030\001 \002(\t\"\037\n\035EnableReplicationPeerResp" +
-      "onse\"0\n\035DisableReplicationPeerRequest\022\017\n" +
-      "\007peer_id\030\001 \002(\t\" \n\036DisableReplicationPeer" +
-      "Response\"2\n\037GetReplicationPeerConfigRequ",
-      "est\022\017\n\007peer_id\030\001 \002(\t\"Z\n GetReplicationPe" +
-      "erConfigResponse\022\017\n\007peer_id\030\001 \002(\t\022%\n\013pee" +
-      "r_config\030\002 \002(\0132\020.ReplicationPeer\"\\\n\"Upda" +
-      "teReplicationPeerConfigRequest\022\017\n\007peer_i" +
-      "d\030\001 \002(\t\022%\n\013peer_config\030\002 \002(\0132\020.Replicati" +
-      "onPeer\"%\n#UpdateReplicationPeerConfigRes" +
-      "ponse\",\n\033ListReplicationPeersRequest\022\r\n\005" +
-      "regex\030\001 \001(\t\"N\n\034ListReplicationPeersRespo" +
-      "nse\022.\n\tpeer_desc\030\001 \003(\0132\033.ReplicationPeer" +
-      "DescriptionBG\n*org.apache.hadoop.hbase.p",
-      "rotobuf.generatedB\021ReplicationProtosH\001\210\001" +
-      "\001\240\001\001"
+      "cationPeer\022%\n\npeer_state\030\003 \002(\0132\021.Replica" +
+      "tionState\"\034\n\032AddReplicationPeerResponse\"" +
+      "/\n\034RemoveReplicationPeerRequest\022\017\n\007peer_" +
+      "id\030\001 \002(\t\"\037\n\035RemoveReplicationPeerRespons" +
+      "e\"/\n\034EnableReplicationPeerRequest\022\017\n\007pee" +
+      "r_id\030\001 \002(\t\"\037\n\035EnableReplicationPeerRespo" +
+      "nse\"0\n\035DisableReplicationPeerRequest\022\017\n\007" +
+      "peer_id\030\001 \002(\t\" \n\036DisableReplicationPeerR",
+      "esponse\"2\n\037GetReplicationPeerConfigReque" +
+      "st\022\017\n\007peer_id\030\001 \002(\t\"Z\n GetReplicationPee" +
+      "rConfigResponse\022\017\n\007peer_id\030\001 \002(\t\022%\n\013peer" +
+      "_config\030\002 \002(\0132\020.ReplicationPeer\"\\\n\"Updat" +
+      "eReplicationPeerConfigRequest\022\017\n\007peer_id" +
+      "\030\001 \002(\t\022%\n\013peer_config\030\002 \002(\0132\020.Replicatio" +
+      "nPeer\"%\n#UpdateReplicationPeerConfigResp" +
+      "onse\",\n\033ListReplicationPeersRequest\022\r\n\005r" +
+      "egex\030\001 \001(\t\"N\n\034ListReplicationPeersRespon" +
+      "se\022.\n\tpeer_desc\030\001 \003(\0132\033.ReplicationPeerD",
+      "escriptionBG\n*org.apache.hadoop.hbase.pr" +
+      "otobuf.generatedB\021ReplicationProtosH\001\210\001\001" +
+      "\240\001\001"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
       new com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner() {
@@ -13935,7 +14153,7 @@ public final class ReplicationProtos {
           internal_static_AddReplicationPeerRequest_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_AddReplicationPeerRequest_descriptor,
-              new java.lang.String[] { "PeerId", "PeerConfig", });
+              new java.lang.String[] { "PeerId", "PeerConfig", "PeerState", });
           internal_static_AddReplicationPeerResponse_descriptor =
             getDescriptor().getMessageTypes().get(8);
           internal_static_AddReplicationPeerResponse_fieldAccessorTable = new
