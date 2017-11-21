@@ -895,8 +895,6 @@ MasterServices, Server {
     this.throttleStateTracker = new ThrottleStateTracker(zooKeeper, this);
     this.throttleStateTracker.start();
 
-    fixTableStatesInMeta();
-    
     // Set the cluster as up.  If new RSs, they'll be waiting on this before
     // going ahead with their startup.
     boolean wasUp = this.clusterStatusTracker.isClusterUp();
@@ -1107,6 +1105,7 @@ MasterServices, Server {
     // check if master is shutting down because above assignMeta could return even hbase:meta isn't
     // assigned when master is shutting down
     if(this.stopped) return;
+    fixTableStatesInMeta();
 
     status.setStatus("Submitting log splitting work for previously failed region servers");
     // Master has recovered hbase:meta region server and we put
