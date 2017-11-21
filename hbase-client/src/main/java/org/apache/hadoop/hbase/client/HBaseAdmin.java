@@ -526,7 +526,7 @@ public class HBaseAdmin implements Abortable, Closeable {
       } else if (isTableEnabled(desc.getTableName())) {
         // if creating table successfully in source table, then make sure that the table will be
         // created in sink replicated clusters.
-        createTableForReplicatedPeers(conf, desc, splitKeys);
+        createTableForPeers(conf, desc, splitKeys);
         return;
       } else {
         try { // Sleep
@@ -541,9 +541,16 @@ public class HBaseAdmin implements Abortable, Closeable {
         desc.getTableName() + " to be enabled");
   }
 
-  private void createTableForReplicatedPeers(Configuration conf, final HTableDescriptor desc,
+  private boolean shouldSyncTableSchema(Configuration conf) {
+    return conf.getBoolean(HConstants.REPLICATION_SYNC_TABLE_SCHEMA,
+      HConstants.REPLICATION_SYNC_TABLE_SCHEMA_DEFAULT)
+        && conf.getBoolean(HConstants.REPLICATION_ENABLE_KEY,
+          HConstants.REPLICATION_ENABLE_DEFAULT);
+  }
+
+  private void createTableForPeers(Configuration conf, final HTableDescriptor desc,
       byte[][] splitKeys) throws IOException {
-    if (!conf.getBoolean(HConstants.REPLICATION_ENABLE_KEY, HConstants.REPLICATION_ENABLE_DEFAULT)) {
+    if (!shouldSyncTableSchema(conf)) {
       return;
     }
     List<ReplicationPeerDescription> peers = listReplicationPeers();
@@ -1145,6 +1152,31 @@ public class HBaseAdmin implements Abortable, Closeable {
         return null;
       }
     });
+    // sync table table to peer cluster.
+    addColumnForPeers(conf, tableName, column);
+  }
+
+  private void addColumnForPeers(Configuration conf, TableName tableName, HColumnDescriptor column)
+      throws IOException {
+    if (!shouldSyncTableSchema(conf)) {
+      return;
+    }
+    List<ReplicationPeerDescription> peers = listReplicationPeers();
+    for (ReplicationPeerDescription peerDesc : peers) {
+      if (needToReplicate(tableName, peerDesc)) {
+        Configuration peerConf = getPeerClusterConfiguration(peerDesc);
+        try (HConnection connection = HConnectionManager.createConnection(peerConf);
+            HBaseAdmin repHBaseAdmin = new HBaseAdmin(connection)) {
+          if (repHBaseAdmin.tableExists(tableName)) {
+            HTableDescriptor htd = repHBaseAdmin.getTableDescriptor(tableName);
+            // to avoid replication loop.
+            if (htd.getFamily(column.getName()) == null) {
+              repHBaseAdmin.addColumn(tableName, column);
+            }
+          }
+        }
+      }
+    }
   }
 
   /**
@@ -1185,6 +1217,30 @@ public class HBaseAdmin implements Abortable, Closeable {
         return null;
       }
     });
+    deleteColumnForPeers(conf, tableName, columnName);
+  }
+
+  private void deleteColumnForPeers(Configuration conf, TableName tableName, byte[] column)
+      throws IOException {
+    if (!shouldSyncTableSchema(conf)) {
+      return;
+    }
+    List<ReplicationPeerDescription> peers = listReplicationPeers();
+    for (ReplicationPeerDescription peerDesc : peers) {
+      if (needToReplicate(tableName, peerDesc)) {
+        Configuration peerConf = getPeerClusterConfiguration(peerDesc);
+        try (HConnection connection = HConnectionManager.createConnection(peerConf);
+            HBaseAdmin repHBaseAdmin = new HBaseAdmin(connection)) {
+          if (repHBaseAdmin.tableExists(tableName)) {
+            HTableDescriptor htd = repHBaseAdmin.getTableDescriptor(tableName);
+            // to avoid replication loop.
+            if (htd.getFamily(column) != null) {
+              repHBaseAdmin.deleteColumn(tableName, column);
+            }
+          }
+        }
+      }
+    }
   }
 
   /**

@@ -923,7 +923,9 @@ public final class HConstants {
   public static final String
       REPLICATION_SINK_SERVICE_CLASSNAME = "hbase.replication.sink.service";
   public static final String REPLICATION_SERVICE_CLASSNAME_DEFAULT =
-    "org.apache.hadoop.hbase.replication.regionserver.Replication";
+      "org.apache.hadoop.hbase.replication.regionserver.Replication";
+  public static final String REPLICATION_SYNC_TABLE_SCHEMA = "hbase.replication.sync.table.schema";
+  public static final boolean REPLICATION_SYNC_TABLE_SCHEMA_DEFAULT = true;
 
   /** HBCK special code name used as server name when manipulating ZK nodes */
   public static final String HBCK_CODE_NAME = "HBCKServerName";

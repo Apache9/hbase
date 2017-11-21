@@ -30,6 +30,7 @@ import org.apache.hadoop.hbase.replication.ReplicationException;
 import org.apache.hadoop.hbase.replication.ReplicationPeerConfig;
 import org.apache.hadoop.hbase.replication.TestReplicationBase;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
+import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -43,7 +44,7 @@ import java.util.List;
 import java.util.Map;
 
 @Category({ MediumTests.class })
-public class TestCreateTableForReplicatedPeers extends TestReplicationBase {
+public class TestSyncTableSchemaForPeers extends TestReplicationBase {
   static HConnection connection1;
   static HConnection connection2;
   static HBaseAdmin admin1;
@@ -58,6 +59,7 @@ public class TestCreateTableForReplicatedPeers extends TestReplicationBase {
   static final TableName TEST_TABLE_NAME2 = TableName.valueOf(TEST_NAMESPACE_STR, "test_table2");
   static final TableName TEST_TABLE_NAME3 = TableName.valueOf(TEST_NAMESPACE_STR, "test_table3");
   static final String COLUMN_FAMILY = "f1";
+  static final String NEW_COLUMN_FAMILY = "new_f2";
 
   @BeforeClass
   public static void setUpBeforeClass() throws Exception {
@@ -107,6 +109,44 @@ public class TestCreateTableForReplicatedPeers extends TestReplicationBase {
     Assert.assertEquals(admin1.tableExists(TEST_TABLE_NAME1), true);
     Assert.assertEquals(admin2.tableExists(TEST_TABLE_NAME1), true);
 
+    // alter 't1', NAME => 'new_f2', VERSIONS => 5 (TEST_TABLE_NAME1)
+    HColumnDescriptor hcd =
+        new HColumnDescriptor(NEW_COLUMN_FAMILY).setMaxVersions(5).setMinVersions(5);
+    Assert.assertTrue(admin1.getTableDescriptor(TEST_TABLE_NAME1)
+        .getFamily(Bytes.toBytes(NEW_COLUMN_FAMILY)) == null);
+    Assert.assertTrue(admin2.getTableDescriptor(TEST_TABLE_NAME1)
+        .getFamily(Bytes.toBytes(NEW_COLUMN_FAMILY)) == null);
+    admin1.addColumn(TEST_TABLE_NAME1, hcd);
+    HColumnDescriptor hcdSource =
+        admin1.getTableDescriptor(TEST_TABLE_NAME1).getFamily(Bytes.toBytes(NEW_COLUMN_FAMILY));
+    HColumnDescriptor hcdPeer =
+        admin2.getTableDescriptor(TEST_TABLE_NAME1).getFamily(Bytes.toBytes(NEW_COLUMN_FAMILY));
+    Assert.assertNotNull(hcdSource);
+    Assert.assertNotNull(hcdPeer);
+    Assert.assertEquals(hcdSource, hcdPeer);
+
+    // Modify the same column. and column change will not sync to peer cluster.
+    hcd.setMinVersions(1).setMaxVersions(2);
+    admin1.modifyColumn(TEST_TABLE_NAME1, hcd);
+    hcdSource =
+        admin1.getTableDescriptor(TEST_TABLE_NAME1).getFamily(Bytes.toBytes(NEW_COLUMN_FAMILY));
+    hcdPeer =
+        admin2.getTableDescriptor(TEST_TABLE_NAME1).getFamily(Bytes.toBytes(NEW_COLUMN_FAMILY));
+    Assert.assertNotNull(hcdSource);
+    Assert.assertNotNull(hcdPeer);
+    Assert.assertEquals(1, hcdSource.getMinVersions());
+    Assert.assertEquals(2, hcdSource.getMaxVersions());
+    Assert.assertEquals(5, hcdPeer.getMaxVersions());
+    Assert.assertEquals(5, hcdPeer.getMaxVersions());
+    Assert.assertNotEquals(hcdSource, hcdPeer);
+
+    // delete the column.
+    admin1.deleteColumn(TEST_TABLE_NAME1, Bytes.toBytes(NEW_COLUMN_FAMILY));
+    Assert.assertNull(
+      admin1.getTableDescriptor(TEST_TABLE_NAME1).getFamily(Bytes.toBytes(NEW_COLUMN_FAMILY)));
+    Assert.assertNull(
+      admin2.getTableDescriptor(TEST_TABLE_NAME1).getFamily(Bytes.toBytes(NEW_COLUMN_FAMILY)));
+
     ReplicationPeerConfig rpc2 = new ReplicationPeerConfig();
     rpc2.setClusterKey(utility2.getClusterKey());
     rpc2.setReplicateAllUserTables(false);
@@ -126,6 +166,44 @@ public class TestCreateTableForReplicatedPeers extends TestReplicationBase {
     admin1.createTable(htd2);
     Assert.assertEquals(admin1.tableExists(TEST_TABLE_NAME2), true);
     Assert.assertEquals(admin2.tableExists(TEST_TABLE_NAME2), true);
+
+    // alter 't2', NAME => 'new_f2', VERSIONS => 5 (TEST_TABLE_NAME2)
+    hcd = new HColumnDescriptor(NEW_COLUMN_FAMILY).setMaxVersions(5).setMinVersions(5);
+    Assert.assertTrue(admin1.getTableDescriptor(TEST_TABLE_NAME2)
+        .getFamily(Bytes.toBytes(NEW_COLUMN_FAMILY)) == null);
+    Assert.assertTrue(admin2.getTableDescriptor(TEST_TABLE_NAME2)
+        .getFamily(Bytes.toBytes(NEW_COLUMN_FAMILY)) == null);
+    admin1.addColumn(TEST_TABLE_NAME2, hcd);
+    hcdSource =
+        admin1.getTableDescriptor(TEST_TABLE_NAME2).getFamily(Bytes.toBytes(NEW_COLUMN_FAMILY));
+    hcdPeer =
+        admin2.getTableDescriptor(TEST_TABLE_NAME2).getFamily(Bytes.toBytes(NEW_COLUMN_FAMILY));
+    Assert.assertNotNull(hcdSource);
+    Assert.assertNotNull(hcdPeer);
+    Assert.assertEquals(hcdSource, hcdPeer);
+
+    // Modify the same column. and column change will not sync to peer cluster.
+    hcd.setMinVersions(1).setMaxVersions(2);
+    admin1.modifyColumn(TEST_TABLE_NAME2, hcd);
+    hcdSource =
+        admin1.getTableDescriptor(TEST_TABLE_NAME2).getFamily(Bytes.toBytes(NEW_COLUMN_FAMILY));
+    hcdPeer =
+        admin2.getTableDescriptor(TEST_TABLE_NAME2).getFamily(Bytes.toBytes(NEW_COLUMN_FAMILY));
+    Assert.assertNotNull(hcdSource);
+    Assert.assertNotNull(hcdPeer);
+    Assert.assertEquals(1, hcdSource.getMinVersions());
+    Assert.assertEquals(2, hcdSource.getMaxVersions());
+    Assert.assertEquals(5, hcdPeer.getMinVersions());
+    Assert.assertEquals(5, hcdPeer.getMaxVersions());
+    Assert.assertNotEquals(hcdSource, hcdPeer);
+
+    // delete the column.
+    admin1.deleteColumn(TEST_TABLE_NAME2, Bytes.toBytes(NEW_COLUMN_FAMILY));
+    Assert.assertNull(
+      admin1.getTableDescriptor(TEST_TABLE_NAME2).getFamily(Bytes.toBytes(NEW_COLUMN_FAMILY)));
+    Assert.assertNull(
+      admin2.getTableDescriptor(TEST_TABLE_NAME2).getFamily(Bytes.toBytes(NEW_COLUMN_FAMILY)));
+
 
     // create TEST_TABLE_NAME3 in sink cluster, source cluster will not create table.
     HTableDescriptor htd3 = new HTableDescriptor(TEST_TABLE_NAME3);
@@ -181,6 +259,44 @@ public class TestCreateTableForReplicatedPeers extends TestReplicationBase {
     Assert.assertEquals(admin1.tableExists(TEST_TABLE_NAME1), true);
     Assert.assertEquals(admin2.tableExists(TEST_TABLE_NAME1), true);
 
+    // alter 't1', NAME => 'new_f2', VERSIONS => 5 (TEST_TABLE_NAME1)
+    HColumnDescriptor hcd =
+        new HColumnDescriptor(NEW_COLUMN_FAMILY).setMaxVersions(5).setMinVersions(5);
+    Assert.assertTrue(admin1.getTableDescriptor(TEST_TABLE_NAME1)
+        .getFamily(Bytes.toBytes(NEW_COLUMN_FAMILY)) == null);
+    Assert.assertTrue(admin2.getTableDescriptor(TEST_TABLE_NAME1)
+        .getFamily(Bytes.toBytes(NEW_COLUMN_FAMILY)) == null);
+    admin1.addColumn(TEST_TABLE_NAME1, hcd);
+    HColumnDescriptor hcdSource =
+        admin1.getTableDescriptor(TEST_TABLE_NAME1).getFamily(Bytes.toBytes(NEW_COLUMN_FAMILY));
+    HColumnDescriptor hcdPeer =
+        admin2.getTableDescriptor(TEST_TABLE_NAME1).getFamily(Bytes.toBytes(NEW_COLUMN_FAMILY));
+    Assert.assertNotNull(hcdSource);
+    Assert.assertNotNull(hcdPeer);
+    Assert.assertEquals(hcdSource, hcdPeer);
+
+    // Modify the same column. and column change will not sync to peer cluster.
+    hcd.setMinVersions(1).setMaxVersions(2);
+    admin1.modifyColumn(TEST_TABLE_NAME1, hcd);
+    hcdSource =
+        admin1.getTableDescriptor(TEST_TABLE_NAME1).getFamily(Bytes.toBytes(NEW_COLUMN_FAMILY));
+    hcdPeer =
+        admin2.getTableDescriptor(TEST_TABLE_NAME1).getFamily(Bytes.toBytes(NEW_COLUMN_FAMILY));
+    Assert.assertNotNull(hcdSource);
+    Assert.assertNotNull(hcdPeer);
+    Assert.assertEquals(1, hcdSource.getMinVersions());
+    Assert.assertEquals(2, hcdSource.getMaxVersions());
+    Assert.assertEquals(5, hcdPeer.getMinVersions());
+    Assert.assertEquals(5, hcdPeer.getMaxVersions());
+    Assert.assertNotEquals(hcdSource, hcdPeer);
+
+    // delete the column.
+    admin1.deleteColumn(TEST_TABLE_NAME1, Bytes.toBytes(NEW_COLUMN_FAMILY));
+    Assert.assertNull(
+      admin1.getTableDescriptor(TEST_TABLE_NAME1).getFamily(Bytes.toBytes(NEW_COLUMN_FAMILY)));
+    Assert.assertNull(
+      admin2.getTableDescriptor(TEST_TABLE_NAME1).getFamily(Bytes.toBytes(NEW_COLUMN_FAMILY)));
+
     ReplicationPeerConfig rpc2 = new ReplicationPeerConfig();
     rpc2.setClusterKey(utility2.getClusterKey());
     rpc2.setReplicateAllUserTables(false);
@@ -202,6 +318,43 @@ public class TestCreateTableForReplicatedPeers extends TestReplicationBase {
     admin1.createTable(htd2);
     Assert.assertEquals(admin1.tableExists(TEST_TABLE_NAME2), true);
     Assert.assertEquals(admin2.tableExists(TEST_TABLE_NAME2), true);
+
+    // alter 't2', NAME => 'new_f2', VERSIONS => 5 (TEST_TABLE_NAME2)
+    hcd = new HColumnDescriptor(NEW_COLUMN_FAMILY).setMaxVersions(5).setMinVersions(5);
+    Assert.assertTrue(admin1.getTableDescriptor(TEST_TABLE_NAME2)
+        .getFamily(Bytes.toBytes(NEW_COLUMN_FAMILY)) == null);
+    Assert.assertTrue(admin2.getTableDescriptor(TEST_TABLE_NAME2)
+        .getFamily(Bytes.toBytes(NEW_COLUMN_FAMILY)) == null);
+    admin1.addColumn(TEST_TABLE_NAME2, hcd);
+    hcdSource =
+        admin1.getTableDescriptor(TEST_TABLE_NAME2).getFamily(Bytes.toBytes(NEW_COLUMN_FAMILY));
+    hcdPeer =
+        admin2.getTableDescriptor(TEST_TABLE_NAME2).getFamily(Bytes.toBytes(NEW_COLUMN_FAMILY));
+    Assert.assertNotNull(hcdSource);
+    Assert.assertNotNull(hcdPeer);
+    Assert.assertEquals(hcdSource, hcdPeer);
+
+    // Modify the same column. and column change will not sync to peer cluster.
+    hcd.setMinVersions(1).setMaxVersions(2);
+    admin1.modifyColumn(TEST_TABLE_NAME2, hcd);
+    hcdSource =
+        admin1.getTableDescriptor(TEST_TABLE_NAME2).getFamily(Bytes.toBytes(NEW_COLUMN_FAMILY));
+    hcdPeer =
+        admin2.getTableDescriptor(TEST_TABLE_NAME2).getFamily(Bytes.toBytes(NEW_COLUMN_FAMILY));
+    Assert.assertNotNull(hcdSource);
+    Assert.assertNotNull(hcdPeer);
+    Assert.assertEquals(1, hcdSource.getMinVersions());
+    Assert.assertEquals(2, hcdSource.getMaxVersions());
+    Assert.assertEquals(5, hcdPeer.getMinVersions());
+    Assert.assertEquals(5, hcdPeer.getMaxVersions());
+    Assert.assertNotEquals(hcdSource, hcdPeer);
+
+    // delete the column.
+    admin1.deleteColumn(TEST_TABLE_NAME2, Bytes.toBytes(NEW_COLUMN_FAMILY));
+    Assert.assertNull(
+      admin1.getTableDescriptor(TEST_TABLE_NAME2).getFamily(Bytes.toBytes(NEW_COLUMN_FAMILY)));
+    Assert.assertNull(
+      admin2.getTableDescriptor(TEST_TABLE_NAME2).getFamily(Bytes.toBytes(NEW_COLUMN_FAMILY)));
 
     // create TEST_TABLE_NAME3 in sink cluster, source cluster will not create table.
     HTableDescriptor htd3 = new HTableDescriptor(TEST_TABLE_NAME3);
