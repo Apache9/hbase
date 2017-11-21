@@ -22,7 +22,6 @@ import java.util.concurrent.CompletableFuture;
 
 import org.apache.hadoop.hbase.HRegionLocation;
 import org.apache.hadoop.hbase.ServerName;
-import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 
 /**
@@ -61,8 +60,4 @@ interface AsyncRegistry extends Closeable {
    */
   @Override
   void close();
-
-  CompletableFuture<Boolean> isTableEnabled(TableName tableName);
-
-  CompletableFuture<Boolean> isTableDisabled(TableName tableName);
 }

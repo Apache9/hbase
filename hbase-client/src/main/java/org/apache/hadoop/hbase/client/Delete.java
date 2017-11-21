@@ -252,7 +252,6 @@ public class Delete extends Mutation implements Comparable<Row> {
    * @param timestamp maximum version timestamp
    * @return this for invocation chaining
    */
-  @SuppressWarnings("unchecked")
   public Delete deleteColumns(byte [] family, byte [] qualifier, long timestamp) {
     if (timestamp < 0) {
       throw new IllegalArgumentException("Timestamp cannot be negative. ts=" + timestamp);

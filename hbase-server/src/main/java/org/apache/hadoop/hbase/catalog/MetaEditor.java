@@ -46,6 +46,7 @@ import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
+import org.apache.hadoop.hbase.client.TableState;
 import org.apache.hadoop.hbase.ipc.CoprocessorRpcChannel;
 import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.MutationProto.MutationType;
@@ -116,8 +117,7 @@ public class MetaEditor {
    * @param p Put to add to hbase:meta
    * @throws IOException
    */
-  static void putToMetaTable(final CatalogTracker ct, final Put p)
-  throws IOException {
+  static void putToMetaTable(final CatalogTracker ct, final Put p) throws IOException {
     put(MetaReader.getMetaHTable(ct.getConnection()), p);
   }
 
@@ -127,8 +127,7 @@ public class MetaEditor {
    * @param p Put to add
    * @throws IOException
    */
-  static void putToCatalogTable(final CatalogTracker ct, final Put p)
-  throws IOException {
+  static void putToCatalogTable(final CatalogTracker ct, final Put p) throws IOException {
     put(MetaReader.getCatalogHTable(ct.getConnection()), p);
   }
 
@@ -786,4 +785,35 @@ public class MetaEditor {
     return null;
   }
 
+  /**
+   * Construct PUT for given state
+   * @param state new state
+   */
+  public static Put makePutFromTableState(TableState state) {
+    long time = EnvironmentEdgeManager.currentTimeMillis();
+    Put put = new Put(state.getTableName().getName(), time);
+    put.add(HConstants.TABLE_FAMILY, HConstants.TABLE_STATE_QUALIFIER,
+      state.convert().toByteArray());
+    return put;
+  }
+
+  public static void updateTableState(CatalogTracker ct, TableState state) throws IOException {
+    Put put = makePutFromTableState(state);
+    putToMetaTable(ct, put);
+    LOG.info(
+      "Updated table " + state.getTableName() + " state to " + state.getState() + " in META");
+  }
+
+  /**
+   * Remove state for table from meta
+   * @param connection to use for deletion
+   * @param table to delete state for
+   */
+  public static void deleteTableState(CatalogTracker ct, TableName table) throws IOException {
+    long time = EnvironmentEdgeManager.currentTimeMillis();
+    Delete delete = new Delete(table.getName());
+    delete.deleteColumns(HConstants.TABLE_FAMILY, HConstants.TABLE_STATE_QUALIFIER, time);
+    deleteFromMetaTable(ct, delete);
+    LOG.info("Deleted table " + table + " state from META");
+  }
 }

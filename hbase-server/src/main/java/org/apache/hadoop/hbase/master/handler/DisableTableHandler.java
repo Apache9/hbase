@@ -25,12 +25,14 @@ import java.util.concurrent.ExecutorService;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
+import org.apache.hadoop.hbase.client.TableState;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.Server;
 import org.apache.hadoop.hbase.TableNotEnabledException;
 import org.apache.hadoop.hbase.TableNotFoundException;
 import org.apache.hadoop.hbase.catalog.CatalogTracker;
+import org.apache.hadoop.hbase.catalog.MetaEditor;
 import org.apache.hadoop.hbase.catalog.MetaReader;
 import org.apache.hadoop.hbase.constraint.ConstraintException;
 import org.apache.hadoop.hbase.executor.EventHandler;
@@ -186,7 +188,11 @@ public class DisableTableHandler extends EventHandler {
       }
     }
     // Flip the table to disabled if success.
-    if (done) this.assignmentManager.getZKTable().setDisabledTable(this.tableName);
+    if (done) {
+      this.assignmentManager.getZKTable().setDisabledTable(this.tableName);
+      MetaEditor.updateTableState(catalogTracker,
+        new TableState(tableName, TableState.State.DISABLED));
+    }
     LOG.info("Disabled table, " + this.tableName + ", is done=" + done);
   }
 

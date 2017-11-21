@@ -87,6 +87,7 @@ import org.apache.hadoop.hbase.TableNotFoundException;
 import org.apache.hadoop.hbase.UnknownRegionException;
 import org.apache.hadoop.hbase.YouAreDeadException;
 import org.apache.hadoop.hbase.catalog.CatalogTracker;
+import org.apache.hadoop.hbase.catalog.MetaEditor;
 import org.apache.hadoop.hbase.catalog.MetaReader;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.client.HConnectionManager;
@@ -95,6 +96,7 @@ import org.apache.hadoop.hbase.client.MetaScanner;
 import org.apache.hadoop.hbase.client.MetaScanner.MetaScannerVisitor;
 import org.apache.hadoop.hbase.client.MetaScanner.MetaScannerVisitorBase;
 import org.apache.hadoop.hbase.client.Result;
+import org.apache.hadoop.hbase.client.TableState;
 import org.apache.hadoop.hbase.client.UnmodifyableHTableDescriptor;
 import org.apache.hadoop.hbase.client.replication.ReplicationSerDeHelper;
 import org.apache.hadoop.hbase.coprocessor.CoprocessorHost;
@@ -844,6 +846,21 @@ MasterServices, Server {
     return this.activeMasterManager.blockUntilBecomingActiveMaster(startupStatus);
   }
 
+  private void fixTableStatesInMeta() throws KeeperException, IOException {
+    Set<TableName> disabledOnZk = ZKTable.getDisabledTables(zooKeeper);
+    Set<TableName> disabledInMeta = MetaReader.getDisabledTables(catalogTracker.getConnection());
+    for (TableName tn : disabledOnZk) {
+      if (!disabledInMeta.remove(tn)) {
+        LOG.info("Table " + tn + " is disabled but not recorded in meta, fixing");
+        MetaEditor.updateTableState(catalogTracker, new TableState(tn, TableState.State.DISABLED));
+      }
+    }
+    for (TableName tn : disabledInMeta) {
+      LOG.info("Table " + tn + " is not disabled but recorded in meta, fixing");
+      MetaEditor.deleteTableState(catalogTracker, tn);
+    }
+  }
+
   /**
    * Initialize all ZK based system trackers.
    * @throws IOException
@@ -877,6 +894,8 @@ MasterServices, Server {
 
     this.throttleStateTracker = new ThrottleStateTracker(zooKeeper, this);
     this.throttleStateTracker.start();
+
+    fixTableStatesInMeta();
     
     // Set the cluster as up.  If new RSs, they'll be waiting on this before
     // going ahead with their startup.

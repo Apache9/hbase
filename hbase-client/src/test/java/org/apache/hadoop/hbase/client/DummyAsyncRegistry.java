@@ -22,7 +22,6 @@ import java.util.concurrent.CompletableFuture;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HRegionLocation;
 import org.apache.hadoop.hbase.ServerName;
-import org.apache.hadoop.hbase.TableName;
 
 class DummyAsyncRegistry implements AsyncRegistry {
 
@@ -51,15 +50,5 @@ class DummyAsyncRegistry implements AsyncRegistry {
 
   @Override
   public void close() {
-  }
-
-  @Override
-  public CompletableFuture<Boolean> isTableEnabled(TableName tableName) {
-    return CompletableFuture.completedFuture(false);
-  }
-
-  @Override
-  public CompletableFuture<Boolean> isTableDisabled(TableName tableName) {
-    return CompletableFuture.completedFuture(false);
   }
 }

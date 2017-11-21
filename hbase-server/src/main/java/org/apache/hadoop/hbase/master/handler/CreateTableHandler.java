@@ -26,6 +26,7 @@ import java.util.List;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
+import org.apache.hadoop.hbase.client.TableState;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -290,6 +291,8 @@ public class CreateTableHandler extends EventHandler {
       throw new IOException("Unable to ensure that " + tableName + " will be" +
         " enabled because of a ZooKeeper issue", e);
     }
+    MetaEditor.updateTableState(catalogTracker,
+      new TableState(tableName, TableState.State.ENABLED));
 
     // 7. Update the tabledescriptor cache.
     ((HMaster) this.server).getTableDescriptors().get(tableName);

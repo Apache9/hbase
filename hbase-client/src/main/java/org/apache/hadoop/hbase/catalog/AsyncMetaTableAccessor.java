@@ -20,6 +20,7 @@ package org.apache.hadoop.hbase.catalog;
 import static org.apache.hadoop.hbase.TableName.META_TABLE_NAME;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -28,6 +29,7 @@ import java.util.stream.Collectors;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HRegionLocation;
@@ -42,7 +44,10 @@ import org.apache.hadoop.hbase.client.RawScanResultConsumer;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.client.Scan.ReadType;
+import org.apache.hadoop.hbase.client.TableState;
+import org.apache.hadoop.hbase.exceptions.DeserializationException;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.Pair;
 
 /**
@@ -369,5 +374,44 @@ public class AsyncMetaTableAccessor {
       stopRow[stopRow.length - 1] = HConstants.DELIMITER;
       return stopRow;
     });
+  }
+
+  public static CompletableFuture<Optional<TableState>> getTableState(RawAsyncTable metaTable,
+      TableName tableName) {
+    CompletableFuture<Optional<TableState>> future = new CompletableFuture<>();
+    Get get = new Get(tableName.getName()).addColumn(HConstants.TABLE_FAMILY,
+      HConstants.TABLE_STATE_QUALIFIER);
+    long time = EnvironmentEdgeManager.currentTimeMillis();
+    try {
+      get.setTimeRange(0, time);
+      metaTable.get(get).whenComplete((result, error) -> {
+        if (error != null) {
+          future.completeExceptionally(error);
+          return;
+        }
+        try {
+          future.complete(getTableState(result));
+        } catch (IOException e) {
+          future.completeExceptionally(e);
+        }
+      });
+    } catch (IOException ioe) {
+      future.completeExceptionally(ioe);
+    }
+    return future;
+  }
+
+  private static Optional<TableState> getTableState(Result r) throws IOException {
+    Cell cell = r.getColumnLatestCell(HConstants.TABLE_FAMILY, HConstants.TABLE_STATE_QUALIFIER);
+    if (cell == null) {
+      return Optional.empty();
+    }
+    try {
+      return Optional.of(
+        TableState.parseFrom(TableName.valueOf(r.getRow()), Arrays.copyOfRange(cell.getValueArray(),
+          cell.getValueOffset(), cell.getValueOffset() + cell.getValueLength())));
+    } catch (DeserializationException e) {
+      throw new IOException("Failed to parse table state from result: " + r, e);
+    }
   }
 }

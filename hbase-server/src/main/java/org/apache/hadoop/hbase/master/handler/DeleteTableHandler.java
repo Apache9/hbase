@@ -131,6 +131,7 @@ public class DeleteTableHandler extends TableEventHandler {
       // 8. If entry for this table in zk, and up in AssignmentManager, remove it.
       LOG.debug("Marking '" + tableName + "' as deleted.");
       am.getZKTable().setDeletedTable(tableName);
+      MetaEditor.deleteTableState(masterServices.getCatalogTracker(), tableName);
 
       // 9. Clean up any remaining rows for this table
       cleanAnyRemainingRows();

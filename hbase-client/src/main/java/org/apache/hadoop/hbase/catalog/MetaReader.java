@@ -17,8 +17,12 @@
  */
 package org.apache.hadoop.hbase.catalog;
 
+import edu.umd.cs.findbugs.annotations.Nullable;
+
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
@@ -28,6 +32,7 @@ import java.util.TreeMap;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.ServerName;
@@ -39,7 +44,10 @@ import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
+import org.apache.hadoop.hbase.client.TableState;
+import org.apache.hadoop.hbase.exceptions.DeserializationException;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.Pair;
 
 /**
@@ -477,5 +485,55 @@ public class MetaReader {
     } finally {
       t.close();
     }
+  }
+
+  /**
+   * Decode table state from META Result. Should contain cell from HConstants.TABLE_FAMILY
+   * @param r result
+   * @return null if not found
+   * @throws IOException
+   */
+  @Nullable
+  public static TableState getTableState(Result r) throws IOException {
+    Cell cell = r.getColumnLatestCell(HConstants.TABLE_FAMILY, HConstants.TABLE_STATE_QUALIFIER);
+    if (cell == null) {
+      return null;
+    }
+    try {
+      return TableState.parseFrom(TableName.valueOf(r.getRow()),
+        Arrays.copyOfRange(cell.getValueArray(), cell.getValueOffset(),
+          cell.getValueOffset() + cell.getValueLength()));
+    } catch (DeserializationException e) {
+      throw new IOException(e);
+    }
+  }
+
+  @Nullable
+  public static TableState getTableState(HConnection conn, TableName tableName) throws IOException {
+    try (HTable metaHTable = getMetaHTable(conn)) {
+      Get get = new Get(tableName.getName()).addColumn(HConstants.TABLE_FAMILY,
+        HConstants.TABLE_STATE_QUALIFIER);
+      long time = EnvironmentEdgeManager.currentTimeMillis();
+      get.setTimeRange(0, time);
+      Result result = metaHTable.get(get);
+      return getTableState(result);
+    }
+  }
+
+  public static Set<TableName> getDisabledTables(HConnection conn) throws IOException {
+    Scan scan = new Scan().addColumn(HConstants.TABLE_FAMILY, HConstants.TABLE_STATE_QUALIFIER);
+    long time = EnvironmentEdgeManager.currentTimeMillis();
+    scan.setTimeRange(0, time);
+    Set<TableName> disabledTables = new HashSet<>();
+    try (HTable metaHTable = getMetaHTable(conn);
+      ResultScanner scanner = metaHTable.getScanner(scan)) {
+      for (Result result; (result = scanner.next()) != null;) {
+        TableState state = getTableState(result);
+        if (state != null && state.inStates(TableState.State.DISABLED)) {
+          disabledTables.add(state.getTableName());
+        }
+      }
+    }
+    return disabledTables;
   }
 }

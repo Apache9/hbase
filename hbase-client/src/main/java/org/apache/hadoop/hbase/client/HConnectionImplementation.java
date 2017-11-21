@@ -57,6 +57,7 @@ import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.TableNotEnabledException;
 import org.apache.hadoop.hbase.TableNotFoundException;
 import org.apache.hadoop.hbase.ZooKeeperConnectionException;
+import org.apache.hadoop.hbase.catalog.MetaReader;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.client.MetaScanner.MetaScannerVisitor;
 import org.apache.hadoop.hbase.client.MetaScanner.MetaScannerVisitorBase;
@@ -564,9 +565,15 @@ public class HConnectionImplementation implements HConnection, Closeable {
     }
   }
 
+  private TableState getTableState(TableName tableName) throws IOException {
+    TableState state = MetaReader.getTableState(this, tableName);
+    // assume enabled if not exists
+    return state != null ? state : new TableState(tableName, TableState.State.ENABLED);
+  }
+
   @Override
   public boolean isTableEnabled(TableName tableName) throws IOException {
-    return get(this.registry.isTableEnabled(tableName));
+    return getTableState(tableName).inStates(TableState.State.ENABLED);
   }
 
   @Override
@@ -576,7 +583,7 @@ public class HConnectionImplementation implements HConnection, Closeable {
 
   @Override
   public boolean isTableDisabled(TableName tableName) throws IOException {
-    return get(this.registry.isTableDisabled(tableName));
+    return getTableState(tableName).inStates(TableState.State.DISABLED);
   }
 
   @Override
