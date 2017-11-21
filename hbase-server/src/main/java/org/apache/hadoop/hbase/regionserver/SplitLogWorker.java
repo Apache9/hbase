@@ -224,7 +224,7 @@ public class SplitLogWorker extends ZooKeeperListener implements Runnable {
    * Synchronization using {@link #taskReadyLock} ensures that it will
    * try to grab every task that has been put up
    */
-  private void taskLoop() {
+  private void taskLoop() throws InterruptedException {
     while (!exitWorker) {
       int seq_start = taskReadySeq;
       Queue<String> taskQueue = getTaskQueue();
@@ -235,20 +235,38 @@ public class SplitLogWorker extends ZooKeeperListener implements Runnable {
       }
       
       int numTasks = taskQueue.size();
+      // Reduce request to rsZNode, every time calculateAvailableSplitters will get rsZNode's children from zookeeper, 
+      // when cluster is huge, this is heavy. This patch reduce the request.
+      int availableRSs = getAvailableRSs();
+      int taskGrabbed = 0;
       while(!taskQueue.isEmpty()) {
         String task = taskQueue.poll();
+
+        while(!exitWorker) {
+          if (this.calculateAvailableSplitters(availableRSs, numTasks) > 0) {
+            LOG.debug("Current region server " + server.getServerName()
+                + " is ready to take more tasks, will get task list and try grab tasks again.");
+            break;
+          } else {
+            // When the regionserver has max split tasks running, it may still trying to grab task and 
+            // issue zookeeper request, we should sleep and wait until we can grab tasks again.
+            LOG.debug(
+                "Current region server " + this.serverName + " has " + this.tasksInProgress.get() + " tasks in progress and can't take more.");
+
+            Thread.sleep(100);
+          }
+        }
         // don't call ZKSplitLog.getNodeName() because that will lead to
         // double encoding of the path name
-        if (this.calculateAvailableSplitters(numTasks) > 0) {
-          grabTask(ZKUtil.joinZNode(watcher.znodePaths.splitLogZNode, task));
-        } else {
-          LOG.debug("Current region server " + this.serverName + " has "
-              + this.tasksInProgress.get() + " tasks in progress and can't take more.");
-          break;
-        }
+        taskGrabbed +=
+            grabTask(ZKUtil.joinZNode(watcher.znodePaths.splitLogZNode, task)) ? 1 : 0;
         if (exitWorker) {
           return;
         }
+      }
+      if (taskGrabbed == 0 && !exitWorker) {
+        // sleep a little bit to reduce zk request.
+        Thread.sleep(1000);
       }
       SplitLogCounters.tot_wkr_task_grabing.incrementAndGet();
       synchronized (taskReadyLock) {
@@ -306,26 +324,26 @@ public class SplitLogWorker extends ZooKeeperListener implements Runnable {
    * <p>
    * @param path zk node for the task
    */
-  private void grabTask(String path) {
+  private boolean grabTask(String path) {
     Stat stat = new Stat();
     byte[] data;
     synchronized (grabTaskLock) {
       currentTask = path;
       workerInGrabTask = true;
       if (Thread.interrupted()) {
-        return;
+        return false;
       }
     }
     try {
       try {
         if ((data = ZKUtil.getDataNoWatch(this.watcher, path, stat)) == null) {
           SplitLogCounters.tot_wkr_failed_to_grab_task_no_data.incrementAndGet();
-          return;
+          return false;
         }
       } catch (KeeperException e) {
         LOG.warn("Failed to get data for znode " + path, e);
         SplitLogCounters.tot_wkr_failed_to_grab_task_exception.incrementAndGet();
-        return;
+        return false;
       }
       SplitLogTask slt;
       try {
@@ -333,24 +351,24 @@ public class SplitLogWorker extends ZooKeeperListener implements Runnable {
       } catch (DeserializationException e) {
         LOG.warn("Failed parse data for znode " + path, e);
         SplitLogCounters.tot_wkr_failed_to_grab_task_exception.incrementAndGet();
-        return;
+        return false;
       }
       if (!slt.isUnassigned()) {
         SplitLogCounters.tot_wkr_failed_to_grab_task_owned.incrementAndGet();
-        return;
+        return false;
       }
 
       currentVersion = attemptToOwnTask(true, watcher, serverName, path, slt.getMode(), 
         stat.getVersion());
       if (currentVersion < 0) {
         SplitLogCounters.tot_wkr_failed_to_grab_task_lost_race.incrementAndGet();
-        return;
+        return false;
       }
 
       if (ZKSplitLog.isRescanNode(watcher, currentTask)) {
         HLogSplitterHandler.endTask(watcher, new SplitLogTask.Done(this.serverName, slt.getMode()),
           SplitLogCounters.tot_wkr_task_acquired_rescan, currentTask, currentVersion);
-        return;
+        return false;
       }
 
       LOG.info("worker " + serverName + " acquired task " + path);
@@ -367,6 +385,7 @@ public class SplitLogWorker extends ZooKeeperListener implements Runnable {
         LOG.warn("Interrupted while yielding for other region servers", e);
         Thread.currentThread().interrupt();
       }
+      return true;
     } finally {
       synchronized (grabTaskLock) {
         workerInGrabTask = false;
@@ -424,14 +443,8 @@ public class SplitLogWorker extends ZooKeeperListener implements Runnable {
     return FAILED_TO_OWN_TASK;
   }
 
-  /**
-   * This function calculates how many splitters it could create based on expected average tasks per
-   * RS and the hard limit upper bound(maxConcurrentTasks) set by configuration. <br>
-   * At any given time, a RS allows spawn MIN(Expected Tasks/RS, Hard Upper Bound)
-   * @param numTasks current total number of available tasks
-   * @return
-   */
-  private int calculateAvailableSplitters(int numTasks) {
+
+  private int getAvailableRSs(){
     // at lease one RS(itself) available
     int availableRSs = 1;
     try {
@@ -441,7 +454,17 @@ public class SplitLogWorker extends ZooKeeperListener implements Runnable {
       // do nothing
       LOG.debug("getAvailableRegionServers got ZooKeeper exception", e);
     }
+    return availableRSs;
+  }
 
+  /**
+   * This function calculates how many splitters it could create based on expected average tasks per
+   * RS and the hard limit upper bound(maxConcurrentTasks) set by configuration. <br>
+   * At any given time, a RS allows spawn MIN(Expected Tasks/RS, Hard Upper Bound)
+   * @param numTasks current total number of available tasks
+   * @return
+   */
+  private int calculateAvailableSplitters(int availableRSs, int numTasks) {
     int expectedTasksPerRS = (numTasks / availableRSs) + ((numTasks % availableRSs == 0) ? 0 : 1);
     expectedTasksPerRS = Math.max(1, expectedTasksPerRS); // at least be one
     // calculate how many more splitters we could spawn
