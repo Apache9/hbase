@@ -76,7 +76,9 @@ public class AsyncMetaTableAccessor {
           LOG.warn("No serialized HRegionInfo in " + r);
           return true;
         }
-        if (!MetaReader.isInsideTable(this.current, tableName)) return false;
+        if (!MetaReader.isInsideTable(this.current, tableName)) {
+          return false;
+        }
         // Else call super and add this Result to the collection.
         super.visit(r);
         // Stop collecting regions from table after we get one.
@@ -277,8 +279,8 @@ public class AsyncMetaTableAccessor {
     Scan scan = getMetaScan(metaTable, rowUpperLimit).addFamily(HConstants.CATALOG_FAMILY);
     startRow.ifPresent(scan::withStartRow);
     stopRow.ifPresent(scan::withStopRow);
-    if (LOG.isTraceEnabled()) {
-      LOG.trace("Scanning META" + " starting at row=" + Bytes.toStringBinary(scan.getStartRow())
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("Scanning META" + " starting at row=" + Bytes.toStringBinary(scan.getStartRow())
           + " stopping at row=" + Bytes.toStringBinary(scan.getStopRow()) + " for max="
           + rowUpperLimit + " with caching=" + scan.getCaching());
     }
@@ -319,18 +321,25 @@ public class AsyncMetaTableAccessor {
 
     @Override
     public void onNext(Result[] results, ScanController controller) {
+      boolean terminateScan = false;
       for (Result result : results) {
         try {
           if (!visitor.visit(result)) {
-            controller.terminate();
+            terminateScan = true;
+            break;
           }
-        } catch (IOException e) {
+        } catch (Exception e) {
           future.completeExceptionally(e);
-          controller.terminate();
+          terminateScan = true;
+          break;
         }
         if (++currentRowCount >= rowUpperLimit) {
-          controller.terminate();
+          terminateScan = true;
+          break;
         }
+      }
+      if (terminateScan) {
+        controller.terminate();
       }
     }
   }

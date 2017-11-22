@@ -105,26 +105,29 @@ public abstract class TestAsyncAdminBase {
 
   @After
   public void tearDown() throws Exception {
-    admin
-        .listTables(Optional.of(Pattern.compile(tableName.getNameAsString() + ".*")))
-        .whenCompleteAsync(
-          (tables, err) -> {
-            if (tables != null) {
-              tables.forEach(table -> {
-                try {
-                  admin.disableTable(table.getTableName()).join();
-                } catch (Exception e) {
-                  LOG.debug("Table: " + tableName + " already disabled, so just deleting it.");
-                }
-                try {
+    admin.listTables(Optional.of(Pattern.compile(tableName.getNameAsString() + ".*")))
+        .whenCompleteAsync((tables, err) -> {
+          if (tables != null) {
+            tables.forEach(table -> {
+              try {
+                admin.disableTable(table.getTableName()).join();
+              } catch (Exception e) {
+                LOG.debug("Table: " + tableName + " already disabled, so just deleting it.");
+              }
+              try {
+                while (admin.tableExists(table.getTableName()).get()) {
                   admin.deleteTable(table.getTableName()).join();
-                } catch (Exception e) {
-                  LOG.debug("Table: " + tableName
-                      + " may be already deleted, got exception when delete it!", e);
+                  // Sleep 1 second to wait the delete finished
+                  Thread.sleep(1000);
                 }
-              });
-            }
-          }, ForkJoinPool.commonPool()).join();
+              } catch (Exception e) {
+                LOG.debug(
+                  "Table: " + tableName + " may be already deleted, got exception when delete it!",
+                  e);
+              }
+            });
+          }
+        }, ForkJoinPool.commonPool()).join();
   }
 
   protected void createTableWithDefaultConf(TableName tableName) throws IOException {
