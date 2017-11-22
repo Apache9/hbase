@@ -21,13 +21,13 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
-import java.io.InterruptedIOException;
 import java.text.SimpleDateFormat;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.HColumnDescriptor;
+import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.MiniHBaseCluster;
 import org.apache.hadoop.hbase.TableName;
@@ -37,7 +37,6 @@ import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
-import org.apache.hadoop.hbase.client.RetriesExhaustedWithDetailsException;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.regionserver.AccessCounter;
 import org.apache.hadoop.hbase.regionserver.TestAccessCounter;
@@ -71,11 +70,12 @@ public class TestAccessCountCoprocessor {
   private static HTable accountTable;
   private static HTable table;
   
-  private static int period = 1000;
+  private static int period = 10000;
   
   @BeforeClass
   public static void setUpBeforeClass() throws Exception {
     TEST_UTIL.getConfiguration().setInt(AccessCounter.FLUSH_ACCESS_COUNTER_PERIOD, period);
+    TEST_UTIL.getConfiguration().setInt(HConstants.HBASE_CLIENT_RETRIES_NUMBER, 3);
     cluster = TEST_UTIL.startMiniCluster(1);
     
     accountTable = TEST_UTIL.createTable(AccessCounter.ACCOUNT_TABLE_NAME, new byte[][] {

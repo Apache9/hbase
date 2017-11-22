@@ -513,8 +513,6 @@ public class MetaReader {
     try (HTable metaHTable = getMetaHTable(conn)) {
       Get get = new Get(tableName.getName()).addColumn(HConstants.TABLE_FAMILY,
         HConstants.TABLE_STATE_QUALIFIER);
-      long time = EnvironmentEdgeManager.currentTimeMillis();
-      get.setTimeRange(0, time);
       Result result = metaHTable.get(get);
       return getTableState(result);
     }
@@ -522,8 +520,6 @@ public class MetaReader {
 
   public static Set<TableName> getDisabledTables(HConnection conn) throws IOException {
     Scan scan = new Scan().addColumn(HConstants.TABLE_FAMILY, HConstants.TABLE_STATE_QUALIFIER);
-    long time = EnvironmentEdgeManager.currentTimeMillis();
-    scan.setTimeRange(0, time);
     Set<TableName> disabledTables = new HashSet<>();
     try (HTable metaHTable = getMetaHTable(conn);
       ResultScanner scanner = metaHTable.getScanner(scan)) {

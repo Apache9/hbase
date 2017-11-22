@@ -137,6 +137,7 @@ public class TruncateTableHandler extends DeleteTableHandler {
       // 6. Set table enabled flag up in zk.
       try {
         assignmentManager.getZKTable().setEnabledTable(tableName);
+        MetaEditor.deleteTableState(masterServices.getCatalogTracker(), tableName);
       } catch (KeeperException e) {
         throw new IOException("Unable to ensure that " + tableName + " will be" +
           " enabled because of a ZooKeeper issue", e);
