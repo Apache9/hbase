@@ -510,6 +510,9 @@ public class MetaReader {
 
   @Nullable
   public static TableState getTableState(HConnection conn, TableName tableName) throws IOException {
+    if (tableName.equals(TableName.META_TABLE_NAME)) {
+      return new TableState(tableName, TableState.State.ENABLED);
+    }
     try (HTable metaHTable = getMetaHTable(conn)) {
       Get get = new Get(tableName.getName()).addColumn(HConstants.TABLE_FAMILY,
         HConstants.TABLE_STATE_QUALIFIER);

@@ -16,3 +16,4 @@ hbase-*/test
 *.ipr
 patchprocess/
 /.metadata/
+.recommenders/
