@@ -121,92 +121,6 @@ public class TestZooKeeper {
     }
   }
 
-  private ZooKeeperWatcher getZooKeeperWatcher(HConnection c)
-  throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
-    Method getterZK = c.getClass().getDeclaredMethod("getKeepAliveZooKeeperWatcher");
-    getterZK.setAccessible(true);
-    return (ZooKeeperWatcher) getterZK.invoke(c);
-  }
-
-
-  /**
-   * See HBASE-1232 and http://wiki.apache.org/hadoop/ZooKeeper/FAQ#4.
-   * @throws IOException
-   * @throws InterruptedException
-   */
-  // fails frequently, disabled for now, see HBASE-6406
-  //@Test
-  public void testClientSessionExpired() throws Exception {
-    Configuration c = new Configuration(TEST_UTIL.getConfiguration());
-
-    // We don't want to share the connection as we will check its state
-    c.set(HConstants.HBASE_CLIENT_INSTANCE_ID, "1111");
-
-    HConnection connection = HConnectionManager.getConnection(c);
-
-    ZooKeeperWatcher connectionZK = getZooKeeperWatcher(connection);
-    LOG.info("ZooKeeperWatcher= 0x"+ Integer.toHexString(
-      connectionZK.hashCode()));
-    LOG.info("getRecoverableZooKeeper= 0x"+ Integer.toHexString(
-      connectionZK.getRecoverableZooKeeper().hashCode()));
-    LOG.info("session="+Long.toHexString(
-      connectionZK.getRecoverableZooKeeper().getSessionId()));
-
-    TEST_UTIL.expireSession(connectionZK);
-
-    LOG.info("Before using zkw state=" +
-      connectionZK.getRecoverableZooKeeper().getState());
-    // provoke session expiration by doing something with ZK
-    try {
-      connectionZK.getRecoverableZooKeeper().getZooKeeper().exists(
-        "/1/1", false);
-    } catch (KeeperException ignored) {
-    }
-
-    // Check that the old ZK connection is closed, means we did expire
-    States state = connectionZK.getRecoverableZooKeeper().getState();
-    LOG.info("After using zkw state=" + state);
-    LOG.info("session="+Long.toHexString(
-      connectionZK.getRecoverableZooKeeper().getSessionId()));
-
-    // It's asynchronous, so we may have to wait a little...
-    final long limit1 = System.currentTimeMillis() + 3000;
-    while (System.currentTimeMillis() < limit1 && state != States.CLOSED){
-      state = connectionZK.getRecoverableZooKeeper().getState();
-    }
-    LOG.info("After using zkw loop=" + state);
-    LOG.info("ZooKeeper should have timed out");
-    LOG.info("session="+Long.toHexString(
-      connectionZK.getRecoverableZooKeeper().getSessionId()));
-
-    // It's surprising but sometimes we can still be in connected state.
-    // As it's known (even if not understood) we don't make the the test fail
-    // for this reason.)
-    // Assert.assertTrue("state=" + state, state == States.CLOSED);
-
-    // Check that the client recovered
-    ZooKeeperWatcher newConnectionZK = getZooKeeperWatcher(connection);
-
-    States state2 = newConnectionZK.getRecoverableZooKeeper().getState();
-    LOG.info("After new get state=" +state2);
-
-    // As it's an asynchronous event we may got the same ZKW, if it's not
-    //  yet invalidated. Hence this loop.
-    final long limit2 = System.currentTimeMillis() + 3000;
-    while (System.currentTimeMillis() < limit2 &&
-      state2 != States.CONNECTED && state2 != States.CONNECTING) {
-
-      newConnectionZK = getZooKeeperWatcher(connection);
-      state2 = newConnectionZK.getRecoverableZooKeeper().getState();
-    }
-    LOG.info("After new get state loop=" + state2);
-
-    Assert.assertTrue(
-      state2 == States.CONNECTED || state2 == States.CONNECTING);
-
-    connection.close();
-  }
-
   @Test (timeout = 60000)
   public void testRegionServerSessionExpired() throws Exception {
     LOG.info("Starting testRegionServerSessionExpired");
@@ -249,32 +163,6 @@ public class TestZooKeeper {
     LOG.info("Putting table " + tableName);
     table.put(put);
     table.close();
-  }
-
-  @Test
-  public void testMultipleZK()
-  throws IOException, NoSuchMethodException, InvocationTargetException, IllegalAccessException {
-    HTable localMeta =
-      new HTable(new Configuration(TEST_UTIL.getConfiguration()), TableName.META_TABLE_NAME);
-    Configuration otherConf = new Configuration(TEST_UTIL.getConfiguration());
-    otherConf.set(HConstants.ZOOKEEPER_QUORUM, "127.0.0.1");
-    HTable ipMeta = new HTable(otherConf, TableName.META_TABLE_NAME);
-
-    // dummy, just to open the connection
-    final byte [] row = new byte [] {'r'};
-    localMeta.exists(new Get(row));
-    ipMeta.exists(new Get(row));
-
-    // make sure they aren't the same
-    ZooKeeperWatcher z1 =
-      getZooKeeperWatcher(HConnectionManager.getConnection(localMeta.getConfiguration()));
-    ZooKeeperWatcher z2 =
-      getZooKeeperWatcher(HConnectionManager.getConnection(otherConf));
-    assertFalse(z1 == z2);
-    assertFalse(z1.getQuorum().equals(z2.getQuorum()));
-
-    localMeta.close();
-    ipMeta.close();
   }
 
   /**

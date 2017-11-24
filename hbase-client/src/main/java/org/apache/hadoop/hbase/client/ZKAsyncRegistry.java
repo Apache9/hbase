@@ -46,6 +46,8 @@ import org.apache.hadoop.hbase.zookeeper.ZKConfig;
 import org.apache.hadoop.hbase.zookeeper.ZNodePaths;
 import org.apache.zookeeper.data.Stat;
 
+import com.google.common.annotations.VisibleForTesting;
+
 /**
  * Fetch the registry data from zookeeper.
  */
@@ -105,6 +107,11 @@ class ZKAsyncRegistry implements AsyncRegistry {
     return exec(zk.getData(), znodePaths.clusterIdZNode, ZKAsyncRegistry::getClusterId);
   }
 
+  @VisibleForTesting
+  CuratorFramework getCuratorFramework() {
+    return zk;
+  }
+
   private static ZooKeeperProtos.MetaRegionServer getMetaProto(CuratorEvent event)
       throws IOException {
     byte[] data = event.getData();
@@ -140,7 +147,7 @@ class ZKAsyncRegistry implements AsyncRegistry {
             return;
           }
           if (proto == null) {
-            future.completeExceptionally(new IOException("Meta znode is null"));
+            future.complete(null);
             return;
           }
           Pair<RegionState.State, ServerName> stateAndServerName = getStateAndServerName(proto);
