@@ -783,6 +783,8 @@ public final class HConstants {
    */
   public static final int DEFAULT_HBASE_CLIENT_RETRIES_NUMBER = 31;
 
+  public static final String HBASE_CLIENT_SERVERSIDE_RETRIES_MULTIPLIER = "hbase.client.serverside.retries.multiplier";
+
   /**
    * Parameter name for client region location prefetch toggle.
    */

@@ -2055,7 +2055,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
       conf.getInt("hbase.log.replay.retries.number", 8)); // 8 retries take about 23 seconds
     sinkConf.setInt(HConstants.HBASE_RPC_TIMEOUT_KEY,
       conf.getInt("hbase.log.replay.rpc.timeout", 30000)); // default 30 seconds
-    sinkConf.setInt("hbase.client.serverside.retries.multiplier", 1);
+    sinkConf.setInt(HConstants.HBASE_CLIENT_SERVERSIDE_RETRIES_MULTIPLIER, 1);
     this.splitLogWorker = new SplitLogWorker(this.zooKeeper, sinkConf, this, this);
     splitLogWorker.start();
   }

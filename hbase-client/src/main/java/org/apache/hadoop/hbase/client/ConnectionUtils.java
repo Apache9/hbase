@@ -108,7 +108,7 @@ public class ConnectionUtils {
       HConstants.DEFAULT_HBASE_CLIENT_RETRIES_NUMBER);
     // Go big. Multiply by 10. If we can't get to meta after this many retries
     // then something seriously wrong.
-    int serversideMultiplier = c.getInt("hbase.client.serverside.retries.multiplier", 10);
+    int serversideMultiplier = c.getInt(HConstants.HBASE_CLIENT_SERVERSIDE_RETRIES_MULTIPLIER, 10);
     int retries = hcRetries * serversideMultiplier;
     c.setInt(HConstants.HBASE_CLIENT_RETRIES_NUMBER, retries);
     log.info(sn + " server-side HConnection retries=" + retries);
