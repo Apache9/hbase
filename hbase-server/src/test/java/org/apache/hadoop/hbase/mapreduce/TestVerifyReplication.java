@@ -178,7 +178,7 @@ public class TestVerifyReplication {
    * Test the startrow/stoprow options in VerifyReplication
    * @throws Exception
    */
-  @Test(timeout = 300000)
+  @Test
   public void testStartStopRow() throws Exception {
     insertTestData();
     String[] args = new String[] {"--startrow=row-3", "--stoprow=row-7", "1", Bytes.toString(tableName)};
@@ -232,41 +232,36 @@ public class TestVerifyReplication {
    * of replication verify
    * @throws Exception
    */
-  @Test(timeout = 300000)
+  @Test
   public void testScanLimit() throws Exception {
     insertTestData();
     String[] args1 = new String[] {"1", Bytes.toString(tableName)};
-    String[] args2 = new String[] {"--scanrate=1", "1", Bytes.toString(tableName)};
+    String[] args2 = new String[] {"--scanrate=100", "1", Bytes.toString(tableName)};
     Job job1 = new VerifyReplication().createSubmittableJob(utility1.getConfiguration(), args1);
     Job job2 = new VerifyReplication().createSubmittableJob(utility1.getConfiguration(), args2);
     
     assertNotNull(job1);
-    long st = System.currentTimeMillis();
+    assertEquals(-1, job1.getConfiguration().getInt(TableMapper.SCAN_RATE_LIMIT, -1));
     if (!job1.waitForCompletion(true)) {
       fail("Job failed, see the log");
     }
-    long cost1 = System.currentTimeMillis() -st;
     assertEquals(NB_ROWS_IN_BATCH, job1.getCounters().
         findCounter(VerifyReplication.Verifier.Counters.GOODROWS).getValue());
     assertEquals(0, job1.getCounters().
         findCounter(VerifyReplication.Verifier.Counters.BADROWS).getValue());
     
     assertNotNull(job2);
-    st = System.currentTimeMillis();
+    assertEquals(100, job2.getConfiguration().getInt(TableMapper.SCAN_RATE_LIMIT, -1));
     if (!job2.waitForCompletion(true)) {
       fail("Job failed, see the log");
     }
-    long cost2 = System.currentTimeMillis() -st;
     assertEquals(NB_ROWS_IN_BATCH, job2.getCounters().
         findCounter(VerifyReplication.Verifier.Counters.GOODROWS).getValue());
     assertEquals(0, job2.getCounters().
         findCounter(VerifyReplication.Verifier.Counters.BADROWS).getValue());
-    
-    // it takes more time for job with scan rate
-    assertTrue(cost2 > cost1);
   }
 
-  @Test(timeout = 300000)
+  @Test
   public void testLogTable() throws Exception {
     insertTestData();
     String logTableName = "LogTable";
