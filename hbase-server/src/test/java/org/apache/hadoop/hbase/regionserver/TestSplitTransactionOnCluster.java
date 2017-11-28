@@ -1270,7 +1270,6 @@ public class TestSplitTransactionOnCluster {
       });
       regions = TESTING_UTIL.getHBaseAdmin().getTableRegions(tableName);
       assertTrue(regions.size() == 1);
-      assertTrue(admin.balancer());
     } finally {
       table.close();
       TESTING_UTIL.deleteTable(tableName);
