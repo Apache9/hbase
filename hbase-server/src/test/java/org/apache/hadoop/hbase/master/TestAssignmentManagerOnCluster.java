@@ -95,6 +95,7 @@ public class TestAssignmentManagerOnCluster {
     conf.setInt("hbase.assignment.maximum.attempts", 3);
     conf.setInt("hbase.master.maximum.ping.server.attempts", 3);
     conf.setInt("hbase.master.ping.server.retry.sleep.interval", 1);
+    conf.setInt(HConstants.HBASE_CLIENT_RETRIES_NUMBER, 10);
 
     TEST_UTIL.startMiniCluster(1, 4, null, MyMaster.class, MyRegionServer.class);
     admin = TEST_UTIL.getHBaseAdmin();
@@ -211,7 +212,12 @@ public class TestAssignmentManagerOnCluster {
     TEST_UTIL.getMiniHBaseCluster().getConf().setInt("hbase.assignment.maximum.attempts", 20);
     TEST_UTIL.getMiniHBaseCluster().stopMaster(0);
     TEST_UTIL.getMiniHBaseCluster().startMaster(); //restart the master so that conf take into affect
-   
+    // Wait till master is active and is initialized
+    while (TEST_UTIL.getMiniHBaseCluster().getMaster() == null
+        || !TEST_UTIL.getMiniHBaseCluster().getMaster().isInitialized()) {
+      Threads.sleep(100);
+    }
+
     ServerName deadServer = null;
     HMaster master = null;
     try {
@@ -269,7 +275,7 @@ public class TestAssignmentManagerOnCluster {
       // Wait till master is active and is initialized
       while (TEST_UTIL.getMiniHBaseCluster().getMaster() == null
           || !TEST_UTIL.getMiniHBaseCluster().getMaster().isInitialized()) {
-        Threads.sleep(1);
+        Threads.sleep(100);
       }
     }
   }
@@ -665,7 +671,7 @@ public class TestAssignmentManagerOnCluster {
 
       am.getZKTable().setDisablingTable(table);
       List<HRegionInfo> toAssignRegions = am.processServerShutdown(destServerName);
-      assertTrue("Regions to be assigned should be empty.", toAssignRegions.isEmpty());
+      assertEquals("Regions to be assigned should be empty.", 0, toAssignRegions.size());
       assertTrue("Regions to be assigned should be empty.", am.getRegionStates()
           .getRegionState(hri).isOffline());
     } finally {
