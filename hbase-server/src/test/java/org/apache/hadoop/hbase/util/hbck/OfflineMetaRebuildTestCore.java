@@ -99,7 +99,7 @@ public class OfflineMetaRebuildTestCore {
     tableIdx++;
     htbl = setupTable(table);
     populateTable(htbl);
-    assertEquals(5, scanMeta());
+    assertEquals(7, scanMeta());
     LOG.info("Table " + table + " has " + tableRowCount(conf, table)
         + " entries.");
     assertEquals(16, tableRowCount(conf, table));

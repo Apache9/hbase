@@ -45,7 +45,7 @@ public class TestOfflineMetaRebuildBase extends OfflineMetaRebuildTestCore {
     wipeOutMeta();
 
     // is meta really messed up?
-    assertEquals(1, scanMeta());
+    assertEquals(3, scanMeta());
     assertErrors(doFsck(conf, false),
         new ERROR_CODE[] {
             ERROR_CODE.NOT_IN_META_OR_DEPLOYED,
