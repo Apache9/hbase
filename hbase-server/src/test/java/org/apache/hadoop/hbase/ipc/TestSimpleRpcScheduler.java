@@ -33,6 +33,7 @@ import org.apache.hadoop.hbase.protobuf.generated.RPCProtos;
 import org.apache.hadoop.hbase.testclassification.SmallTests;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.mockito.invocation.InvocationOnMock;
@@ -141,6 +142,7 @@ public class TestSimpleRpcScheduler {
     return task;
   }
 
+  @Ignore
   @Test
   public void testCoDelScheduling() throws Exception {
     Configuration schedConf = HBaseConfiguration.create();

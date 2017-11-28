@@ -6478,6 +6478,7 @@ public class TestFromClientSide {
     ht.close();
   }
 
+  @Ignore
   @Test
   public void testNullQualifier() throws Exception {
     final TableName tableName = TableName.valueOf("testNullQualifier");
