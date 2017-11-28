@@ -964,8 +964,8 @@ public class TestAssignmentManager {
     HTU.getConfiguration().setInt(HConstants.MASTER_PORT, 0);
     MasterServices server = new HMaster(HTU.getConfiguration());
     Whitebox.setInternalState(server, "serverManager", this.serverManager);
-    AssignmentManagerWithExtrasForTesting am = setUpMockedAssignmentManager(server,
-        this.serverManager);
+    AssignmentManagerWithExtrasForTesting am = setUpMockedAssignmentManagerWithNewCatalogTracker(
+      server, this.serverManager);
     try {
       // set table in enabling state.
       am.getZKTable().setEnablingTable(REGIONINFO.getTable());
@@ -1121,8 +1121,72 @@ public class TestAssignmentManager {
   }
 
   /**
+   * Create an {@link AssignmentManagerWithExtrasForTesting} with a new CatalogTracker.
+   * @param server
+   * @param manager
+   * @return An AssignmentManagerWithExtras with mock connections, etc.
+   * @throws IOException
+   * @throws KeeperException
+   */
+  private AssignmentManagerWithExtrasForTesting setUpMockedAssignmentManagerWithNewCatalogTracker(
+      final MasterServices server, final ServerManager manager)
+      throws IOException, KeeperException, ServiceException {
+    // Make an RS Interface implementation. Make it so a scanner can go against
+    // it and a get to return the single region, REGIONINFO, this test is
+    // messing with. Needed when "new master" joins cluster. AM will try and
+    // rebuild its list of user regions and it will also get the HRI that goes
+    // with an encoded name by doing a Get on hbase:meta
+    ClientProtos.ClientService.BlockingInterface ri =
+      Mockito.mock(ClientProtos.ClientService.BlockingInterface.class);
+    // Get a meta row result that has region up on SERVERNAME_A for REGIONINFO
+    Result r = MetaMockingUtil.getMetaTableRowResult(REGIONINFO, SERVERNAME_A);
+    final ScanResponse.Builder builder = ScanResponse.newBuilder();
+    builder.setMoreResults(false);
+    builder.addCellsPerResult(r.size());
+    final List<CellScannable> rows = new ArrayList<CellScannable>(1);
+    rows.add(r);
+    Answer<ScanResponse> ans = new Answer<ClientProtos.ScanResponse>() {
+      @Override
+      public ScanResponse answer(InvocationOnMock invocation) throws Throwable {
+        HBaseRpcController controller = (HBaseRpcController) invocation
+            .getArguments()[0];
+        if (controller != null) {
+          controller.setCellScanner(CellUtil.createCellScanner(rows));
+        }
+        return builder.build();
+      }
+    };
+    if (enabling) {
+      Mockito.when(ri.scan((RpcController) Mockito.any(), (ScanRequest) Mockito.any()))
+          .thenAnswer(ans).thenAnswer(ans).thenAnswer(ans).thenAnswer(ans).thenAnswer(ans)
+          .thenReturn(ScanResponse.newBuilder().setMoreResults(false).build());
+    } else {
+      Mockito.when(ri.scan((RpcController) Mockito.any(), (ScanRequest) Mockito.any())).thenAnswer(
+          ans);
+    }
+    // If a get, return the above result too for REGIONINFO
+    GetResponse.Builder getBuilder = GetResponse.newBuilder();
+    getBuilder.setResult(ProtobufUtil.toResult(r));
+    Mockito.when(ri.get((RpcController)Mockito.any(), (GetRequest) Mockito.any())).
+      thenReturn(getBuilder.build());
+    // Get a connection w/ mocked up common methods.
+    HConnection connection = HConnectionTestingUtility.
+      getMockedConnectionAndDecorate(HTU.getConfiguration(), null,
+        ri, SERVERNAME_B, REGIONINFO);
+    CatalogTracker ct = new CatalogTracker(
+        new ZooKeeperWatcher(connection.getConfiguration(), "TestAssignmentManager", connection),
+        connection.getConfiguration(), connection, connection);
+    // Create and startup an executor. Used by AM handling zk callbacks.
+    ExecutorService executor = startupMasterExecutor("mockedAMExecutor");
+    this.balancer = LoadBalancerFactory.getLoadBalancer(server.getConfiguration());
+    AssignmentManagerWithExtrasForTesting am = new AssignmentManagerWithExtrasForTesting(
+      server, manager, ct, this.balancer, executor, new NullTableLockManager());
+    return am;
+  }
+
+  /**
    * Create an {@link AssignmentManagerWithExtrasForTesting} that has mocked
-   * {@link CatalogTracker} etc.
+   * {@link CatalogTracker} etc. And the mocked CatalogTracker only has getConnection method.
    * @param server
    * @param manager
    * @return An AssignmentManagerWithExtras with mock connections, etc.
