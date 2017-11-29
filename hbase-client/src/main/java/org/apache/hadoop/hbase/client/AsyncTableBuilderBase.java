@@ -28,7 +28,7 @@ import org.apache.hadoop.hbase.classification.InterfaceAudience;
  * Base class for all asynchronous table builders.
  */
 @InterfaceAudience.Private
-abstract class AsyncTableBuilderBase<C extends ScanResultConsumerBase>
+public abstract class AsyncTableBuilderBase<C extends ScanResultConsumerBase>
     implements AsyncTableBuilder<C> {
 
   protected TableName tableName;
