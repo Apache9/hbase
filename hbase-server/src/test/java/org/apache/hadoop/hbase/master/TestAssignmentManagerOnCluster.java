@@ -211,6 +211,9 @@ public class TestAssignmentManagerOnCluster {
   public void testAssignRegionOnRestartedServer() throws Exception {
     String table = "testAssignRegionOnRestartedServer";
     TEST_UTIL.getMiniHBaseCluster().getConf().setInt("hbase.assignment.maximum.attempts", 20);
+    // testAssignRacingWithSSH/testAssignRegionBySSH may stop rs, so reduce the rs mintostart to 3
+    TEST_UTIL.getMiniHBaseCluster().getConf().setInt(ServerManager.WAIT_ON_REGIONSERVERS_MINTOSTART,
+      3);
     TEST_UTIL.getMiniHBaseCluster().stopMaster(0);
     TEST_UTIL.getMiniHBaseCluster().startMaster(); //restart the master so that conf take into affect
     // Wait till master is active and is initialized
