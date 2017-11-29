@@ -28,13 +28,31 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hbase.regionserver.HRegionServer;
 import org.apache.hadoop.hbase.regionserver.wal.HLog;
 import org.apache.hadoop.hbase.replication.ReplicationException;
+import org.apache.hadoop.hbase.util.Threads;
 
 public class RecoveredReplicationSource extends ReplicationSource {
 
   private static final Log LOG =
       LogFactory.getLog(RecoveredReplicationSource.class);
+
+  @Override
+  public void startup() {
+    String n = Thread.currentThread().getName();
+    Thread.UncaughtExceptionHandler handler = new Thread.UncaughtExceptionHandler() {
+      @Override
+      public void uncaughtException(final Thread t, final Throwable e) {
+        HRegionServer.exitIfOOME(e);
+        LOG.error(
+          "Unexpected exception in RecoveredReplicationSource," + " currentPath=" + currentPath, e);
+        stopper.stop("Unexpected exception in RecoveredReplicationSource");
+      }
+    };
+    Threads.setDaemonThreadRunning(this, n + ".recoveredReplicationSource," + this.peerClusterZnode,
+      handler);
+  }
 
   @Override
   protected long getStartPosition() throws ReplicationException {
