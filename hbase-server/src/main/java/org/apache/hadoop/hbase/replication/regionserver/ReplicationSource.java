@@ -683,7 +683,7 @@ public class ReplicationSource extends Thread
         }
 
         // Search in separate regionserver archive directory
-        archivedLogLocation = new Path(manager.getLogDir(), manager.getServer().getServerName()
+        archivedLogLocation = new Path(manager.getOldLogDir(), manager.getServer().getServerName()
             + Path.SEPARATOR + currentPath.getName());
         if (this.manager.getFs().exists(archivedLogLocation)) {
           currentPath = archivedLogLocation;
