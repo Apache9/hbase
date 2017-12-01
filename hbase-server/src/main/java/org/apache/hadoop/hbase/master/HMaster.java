@@ -541,9 +541,6 @@ MasterServices, Server {
   /** flag used in test cases in order to simulate RS failures during master initialization */
   private volatile boolean initializationBeforeMetaAssignment = false;
 
-  /** The following is used in master recovery scenario to re-register listeners */
-  private List<ZooKeeperListener> registeredZKListenersBeforeRecovery;
-
   private boolean ignoreSplitsWhenCreatingTable = false;
   
   /**
@@ -763,7 +760,6 @@ MasterServices, Server {
         this.infoServer.start();
       }
 
-      this.registeredZKListenersBeforeRecovery = this.zooKeeper.getListeners();
       /*
        * Block on becoming the active master.
        *
@@ -778,7 +774,7 @@ MasterServices, Server {
 
       // We are either the active master or we were asked to shutdown
       if (!this.stopped) {
-        finishInitialization(startupStatus, false);
+        finishInitialization(startupStatus);
         loop();
       }
     } catch (Throwable t) {
@@ -975,14 +971,12 @@ MasterServices, Server {
    * <li>Handle either fresh cluster start or master failover</li>
    * </ol>
    *
-   * @param masterRecovery
-   *
    * @throws IOException
    * @throws InterruptedException
    * @throws KeeperException
    */
-  private void finishInitialization(MonitoredTask status, boolean masterRecovery)
-  throws IOException, InterruptedException, KeeperException {
+  private void finishInitialization(MonitoredTask status)
+      throws IOException, InterruptedException, KeeperException {
 
     isActiveMaster = true;
     Thread zombieDetector = new Thread(new InitializationMonitor(this));
@@ -998,7 +992,7 @@ MasterServices, Server {
 
     this.masterActiveTime = System.currentTimeMillis();
     // TODO: Do this using Dependency Injection, using PicoContainer, Guice or Spring.
-    this.fileSystemManager = new MasterFileSystem(this, this, masterRecovery);
+    this.fileSystemManager = new MasterFileSystem(this, this);
 
     this.tableDescriptors =
       new FSTableDescriptors(this.conf, this.fileSystemManager.getFileSystem(),
@@ -1017,39 +1011,26 @@ MasterServices, Server {
     status.setStatus("Publishing Cluster ID in ZooKeeper");
     ZKClusterId.setClusterId(this.zooKeeper, fileSystemManager.getClusterId());
 
-    if (!masterRecovery) {
-      this.executorService = new ExecutorService(getServerName().toShortString());
-      this.serverManager = createServerManager(this, this);
-    }
+    this.executorService = new ExecutorService(getServerName().toShortString());
+    this.serverManager = createServerManager(this, this);
 
     //Initialize table lock manager, and ensure that all write locks held previously
     //are invalidated
     this.tableLockManager = TableLockManager.createTableLockManager(conf, zooKeeper, serverName);
-    if (!masterRecovery) {
-      this.tableLockManager.reapWriteLocks();
-    }
+    this.tableLockManager.reapWriteLocks();
 
     status.setStatus("Initializing ZK system trackers");
     initializeZKBasedSystemTrackers();
 
-    if (masterRecovery) {
-      if (this.replicationZKLockCleanerChore != null) {
-        this.replicationZKLockCleanerChore.updateReplicationTracker(this, this, this.zooKeeper,
-          this.conf);
-      }
-    }
+    // initialize master side coprocessors before we start handling requests
+    status.setStatus("Initializing master coprocessors");
+    this.cpHost = new MasterCoprocessorHost(this, this.conf);
 
-    if (!masterRecovery) {
-      // initialize master side coprocessors before we start handling requests
-      status.setStatus("Initializing master coprocessors");
-      this.cpHost = new MasterCoprocessorHost(this, this.conf);
+    spanReceiverHost = SpanReceiverHost.getInstance(getConfiguration());
 
-      spanReceiverHost = SpanReceiverHost.getInstance(getConfiguration());
-
-      // start up all service threads.
-      status.setStatus("Initializing master service threads");
-      startServiceThreads();
-    }
+    // start up all service threads.
+    status.setStatus("Initializing master service threads");
+    startServiceThreads();
 
     // Wait for region servers to report in.
     this.serverManager.waitForRegionServers(status);
@@ -1062,9 +1043,7 @@ MasterServices, Server {
       }
     }
 
-    if (!masterRecovery) {
-      this.assignmentManager.startTimeOutMonitor();
-    }
+    this.assignmentManager.startTimeOutMonitor();
 
     // get a list for previously failed RS which need log splitting work
     // we recover hbase:meta region servers inside master initialization and
@@ -1129,17 +1108,15 @@ MasterServices, Server {
     //set cluster status again after user regions are assigned
     this.balancer.setClusterStatus(getClusterStatus());
 
-    if (!masterRecovery) {
-      // Start balancer and meta catalog janitor after meta and regions have
-      // been assigned.
-      status.setStatus("Starting balancer and catalog janitor");
-      this.clusterStatusChore = getAndStartClusterStatusChore(this);
-      this.balancerChore = getAndStartBalancerChore(this);
-      this.normalizerChore = getAndStartNormalizerChore(this);
-      this.catalogJanitorChore = new CatalogJanitor(this, this);
-      startCatalogJanitorChore();
-      registerMBean();
-    }
+    // Start balancer and meta catalog janitor after meta and regions have
+    // been assigned.
+    status.setStatus("Starting balancer and catalog janitor");
+    this.clusterStatusChore = getAndStartClusterStatusChore(this);
+    this.balancerChore = getAndStartBalancerChore(this);
+    this.normalizerChore = getAndStartNormalizerChore(this);
+    this.catalogJanitorChore = new CatalogJanitor(this, this);
+    startCatalogJanitorChore();
+    registerMBean();
 
     status.setStatus("Starting namespace manager");
     initNamespace();
@@ -1167,19 +1144,16 @@ MasterServices, Server {
     // master initialization. See HBASE-5916.
     this.serverManager.clearDeadServersWithSameHostNameAndPortOfOnlineServer();
 
-    if (!masterRecovery) {
-      if (this.cpHost != null) {
-        // don't let cp initialization errors kill the master
-        try {
-          this.cpHost.postStartMaster();
-        } catch (IOException ioe) {
-          LOG.error("Coprocessor postStartMaster() hook failed", ioe);
-        }
+    if (this.cpHost != null) {
+      // don't let cp initialization errors kill the master
+      try {
+        this.cpHost.postStartMaster();
+      } catch (IOException ioe) {
+        LOG.error("Coprocessor postStartMaster() hook failed", ioe);
       }
     }
 
     zombieDetector.interrupt();
-
   }
 
   /**
@@ -2856,109 +2830,13 @@ MasterServices, Server {
           getLoadedCoprocessors());
     }
 
-    if (abortNow(msg, t)) {
-      if (t != null) LOG.fatal(msg, t);
-      else LOG.fatal(msg);
-      this.abort = true;
-      stop("Aborting");
+    if (t != null) {
+      LOG.fatal(msg, t);
+    } else {
+      LOG.fatal(msg);
     }
-  }
-
-  /**
-   * We do the following in a different thread.  If it is not completed
-   * in time, we will time it out and assume it is not easy to recover.
-   *
-   * 1. Create a new ZK session. (since our current one is expired)
-   * 2. Try to become a primary master again
-   * 3. Initialize all ZK based system trackers.
-   * 4. Assign meta. (they are already assigned, but we need to update our
-   * internal memory state to reflect it)
-   * 5. Process any RIT if any during the process of our recovery.
-   *
-   * @return True if we could successfully recover from ZK session expiry.
-   * @throws InterruptedException
-   * @throws IOException
-   * @throws KeeperException
-   * @throws ExecutionException
-   */
-  private boolean tryRecoveringExpiredZKSession() throws InterruptedException,
-      IOException, KeeperException, ExecutionException {
-
-    this.zooKeeper.unregisterAllListeners();
-    // add back listeners which were registered before master initialization
-    // because they won't be added back in below Master re-initialization code
-    if (this.registeredZKListenersBeforeRecovery != null) {
-      for (ZooKeeperListener curListener : this.registeredZKListenersBeforeRecovery) {
-        this.zooKeeper.registerListener(curListener);
-      }
-    }
-
-    this.zooKeeper.reconnectAfterExpiration();
-
-    Callable<Boolean> callable = new Callable<Boolean> () {
-      @Override
-      public Boolean call() throws InterruptedException,
-          IOException, KeeperException {
-        MonitoredTask status =
-          TaskMonitor.get().createStatus("Recovering expired ZK session");
-        try {
-          if (!becomeActiveMaster(status)) {
-            return Boolean.FALSE;
-          }
-          serverShutdownHandlerEnabled = false;
-          initialized = false;
-          finishInitialization(status, true);
-          return !stopped;
-        } finally {
-          status.cleanup();
-        }
-      }
-    };
-
-    long timeout =
-      conf.getLong("hbase.master.zksession.recover.timeout", 300000);
-    java.util.concurrent.ExecutorService executor =
-      Executors.newSingleThreadExecutor();
-    Future<Boolean> result = executor.submit(callable);
-    executor.shutdown();
-    if (executor.awaitTermination(timeout, TimeUnit.MILLISECONDS)
-        && result.isDone()) {
-      Boolean recovered = result.get();
-      if (recovered != null) {
-        return recovered.booleanValue();
-      }
-    }
-    executor.shutdownNow();
-    return false;
-  }
-
-  /**
-   * Check to see if the current trigger for abort is due to ZooKeeper session
-   * expiry, and If yes, whether we can recover from ZK session expiry.
-   *
-   * @param msg Original abort message
-   * @param t   The cause for current abort request
-   * @return true if we should proceed with abort operation, false other wise.
-   */
-  private boolean abortNow(final String msg, final Throwable t) {
-    if (!this.isActiveMaster || this.stopped) {
-      return true;
-    }
-
-    boolean failFast = conf.getBoolean("fail.fast.expired.active.master", false);
-    if (t != null && t instanceof KeeperException.SessionExpiredException
-        && !failFast) {
-      try {
-        LOG.info("Primary Master trying to recover from ZooKeeper session " +
-            "expiry.");
-        return !tryRecoveringExpiredZKSession();
-      } catch (Throwable newT) {
-        LOG.error("Primary master encountered unexpected exception while " +
-            "trying to recover from ZooKeeper session" +
-            " expiry. Proceeding with server abort.", newT);
-      }
-    }
-    return true;
+    this.abort = true;
+    stop("Aborting");
   }
 
   @Override

@@ -19,7 +19,6 @@
 package org.apache.hadoop.hbase;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -35,10 +34,6 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Put;
-import org.apache.hadoop.hbase.client.Result;
-import org.apache.hadoop.hbase.client.ResultScanner;
-import org.apache.hadoop.hbase.client.Scan;
-import org.apache.hadoop.hbase.master.HMaster;
 import org.apache.hadoop.hbase.master.LoadBalancer;
 import org.apache.hadoop.hbase.master.balancer.SimpleLoadBalancer;
 import org.apache.hadoop.hbase.testclassification.LargeTests;
@@ -122,15 +117,6 @@ public class TestZooKeeper {
     int metaIndex = TEST_UTIL.getMiniHBaseCluster().getServerWithMeta();
     TEST_UTIL.expireRegionServerSession(metaIndex);
     testSanity("testRegionServerSessionExpired");
-  }
-
-  // @Test Disabled because seems to make no sense expiring master session
-  // and then trying to create table (down in testSanity); on master side
-  // it will fail because the master's session has expired -- St.Ack 07/24/2012
-  public void testMasterSessionExpired() throws Exception {
-    LOG.info("Starting testMasterSessionExpired");
-    TEST_UTIL.expireMasterSession();
-    testSanity("testMasterSessionExpired");
   }
 
   /**
@@ -380,101 +366,6 @@ public class TestZooKeeper {
     ZooKeeperWatcher zkw = new ZooKeeperWatcher(TEST_UTIL.getConfiguration(),
         "testGetChildDataAndWatchForNewChildrenShouldNotThrowNPE", null);
     ZKUtil.getChildDataAndWatchForNewChildren(zkw, "/wrongNode");
-  }
-
-  /**
-   * Tests that the master does not call retainAssignment after recovery from expired zookeeper
-   * session. Without the HBASE-6046 fix master always tries to assign all the user regions by
-   * calling retainAssignment.
-   */
-  @Test
-  public void testRegionAssignmentAfterMasterRecoveryDueToZKExpiry() throws Exception {
-    MiniHBaseCluster cluster = TEST_UTIL.getHBaseCluster();
-    cluster.startRegionServer();
-    cluster.waitForActiveAndReadyMaster(10000);
-    HMaster m = cluster.getMaster();
-    ZooKeeperWatcher zkw = m.getZooKeeperWatcher();
-    int expectedNumOfListeners = zkw.getNumberOfListeners();
-    // now the cluster is up. So assign some regions.
-    HBaseAdmin admin = new HBaseAdmin(TEST_UTIL.getConfiguration());
-    try {
-      byte[][] SPLIT_KEYS = new byte[][] { Bytes.toBytes("a"), Bytes.toBytes("b"),
-        Bytes.toBytes("c"), Bytes.toBytes("d"), Bytes.toBytes("e"), Bytes.toBytes("f"),
-        Bytes.toBytes("g"), Bytes.toBytes("h"), Bytes.toBytes("i"), Bytes.toBytes("j") };
-      String tableName = "testRegionAssignmentAfterMasterRecoveryDueToZKExpiry";
-      HTableDescriptor htd = new HTableDescriptor(TableName.valueOf(tableName));
-      htd.addFamily(new HColumnDescriptor(HConstants.CATALOG_FAMILY));
-      admin.createTable(htd, SPLIT_KEYS);
-      ZooKeeperWatcher zooKeeperWatcher = HBaseTestingUtility.getZooKeeperWatcher(TEST_UTIL);
-      ZKAssign.blockUntilNoRIT(zooKeeperWatcher);
-      m.getZooKeeperWatcher().close();
-      MockLoadBalancer.retainAssignCalled = false;
-      m.stop("Test recovery from zk session expired");
-      assertTrue(m.isStopped());
-      // The recovered master should not call retainAssignment, as it is not a
-      // clean startup.
-      assertFalse("Retain assignment should not be called", MockLoadBalancer.retainAssignCalled);
-      // number of listeners should be same as the value before master aborted
-      // wait for new master is initialized
-      cluster.waitForActiveAndReadyMaster(10000);
-      assertEquals(expectedNumOfListeners, zkw.getNumberOfListeners());
-    } finally {
-      admin.close();
-    }
-  }
-
-  /**
-   * Tests whether the logs are split when master recovers from a expired zookeeper session and an
-   * RS goes down.
-   */
-  @Test(timeout = 240000)
-  public void testLogSplittingAfterMasterRecoveryDueToZKExpiry() throws IOException,
-      KeeperException, InterruptedException {
-    MiniHBaseCluster cluster = TEST_UTIL.getHBaseCluster();
-    cluster.startRegionServer();
-    HMaster m = cluster.getMaster();
-    // now the cluster is up. So assign some regions.
-    HBaseAdmin admin = new HBaseAdmin(TEST_UTIL.getConfiguration());
-    HTable table = null;
-    try {
-      byte[][] SPLIT_KEYS = new byte[][] { Bytes.toBytes("1"), Bytes.toBytes("2"),
-        Bytes.toBytes("3"), Bytes.toBytes("4"), Bytes.toBytes("5") };
-
-      String tableName = "testLogSplittingAfterMasterRecoveryDueToZKExpiry";
-      HTableDescriptor htd = new HTableDescriptor(TableName.valueOf(tableName));
-      HColumnDescriptor hcd = new HColumnDescriptor("col");
-      htd.addFamily(hcd);
-      admin.createTable(htd, SPLIT_KEYS);
-      ZooKeeperWatcher zooKeeperWatcher = HBaseTestingUtility.getZooKeeperWatcher(TEST_UTIL);
-      ZKAssign.blockUntilNoRIT(zooKeeperWatcher);
-      table = new HTable(TEST_UTIL.getConfiguration(), tableName);
-      Put p;
-      int numberOfPuts;
-      for (numberOfPuts = 0; numberOfPuts < 6; numberOfPuts++) {
-        p = new Put(Bytes.toBytes(numberOfPuts));
-        p.add(Bytes.toBytes("col"), Bytes.toBytes("ql"), Bytes.toBytes("value" + numberOfPuts));
-        table.put(p);
-      }
-      m.getZooKeeperWatcher().close();
-      m.stop("Test recovery from zk session expired");
-      assertTrue(m.isStopped());
-      cluster.getRegionServer(0).abort("Aborting");
-      // Without patch for HBASE-6046 this test case will always timeout
-      // with patch the test case should pass.
-      Scan scan = new Scan();
-      int numberOfRows = 0;
-      ResultScanner scanner = table.getScanner(scan);
-      Result[] result = scanner.next(1);
-      while (result != null && result.length > 0) {
-        numberOfRows++;
-        result = scanner.next(1);
-      }
-      assertEquals("Number of rows should be equal to number of puts.", numberOfPuts,
-        numberOfRows);
-    } finally {
-      if (table != null) table.close();
-      admin.close();
-    }
   }
 
   static class MockLoadBalancer extends SimpleLoadBalancer {
