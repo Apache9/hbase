@@ -148,20 +148,6 @@ public class RecoverableZooKeeper {
     return zk;
   }
 
-  public synchronized void reconnectAfterExpiration()
-        throws IOException, KeeperException, InterruptedException {
-    if (zk != null) {
-      LOG.info("Closing dead ZooKeeper connection, session" +
-        " was: 0x"+Long.toHexString(zk.getSessionId()));
-      zk.close();
-      // reset the Zookeeper connection
-      zk = null;
-    }
-    checkZk();
-    LOG.info("Recreated a ZooKeeper, session" +
-      " is: 0x"+Long.toHexString(zk.getSessionId()));
-  }
-
   /**
    * delete is an idempotent operation. Retry before throwing exception.
    * This function will not throw NoNodeException if the path does not

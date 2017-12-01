@@ -107,8 +107,12 @@ public class MasterFileSystem {
     }
   };
 
+  public MasterFileSystem(Server master, MasterServices services) throws IOException {
+    this(master, services, false);
+  }
+
   public MasterFileSystem(Server master, MasterServices services, boolean masterRecovery)
-  throws IOException {
+      throws IOException {
     this.conf = master.getConfiguration();
     this.master = master;
     this.services = services;

@@ -220,10 +220,6 @@ public class ZooKeeperWatcher implements Watcher, Abortable, Closeable {
     return recoverableZooKeeper;
   }
 
-  public void reconnectAfterExpiration() throws IOException, KeeperException, InterruptedException {
-    recoverableZooKeeper.reconnectAfterExpiration();
-  }
-
   public ZNodePaths getZnodePaths() {
     return znodePaths;
   }
