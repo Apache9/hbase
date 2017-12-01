@@ -36,18 +36,18 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.TableName;
-import org.apache.hadoop.hbase.replication.ReplicationException;
 import org.apache.hadoop.hbase.replication.ReplicationFactory;
 import org.apache.hadoop.hbase.replication.ReplicationPeer;
 import org.apache.hadoop.hbase.replication.ReplicationPeerConfig;
 import org.apache.hadoop.hbase.replication.ReplicationQueues;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
+import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-
-
+import org.junit.rules.TestName;
 
 /**
  * Unit testing of ReplicationAdmin
@@ -60,12 +60,15 @@ public class TestReplicationAdmin {
   private final static HBaseTestingUtility TEST_UTIL =
       new HBaseTestingUtility();
 
-  private final String ID_ONE = "1";
+  private String ID_ONE = "1";
   private final String KEY_ONE = "127.0.0.1:2181:/hbase";
-  private final String ID_SECOND = "2";
+  private String ID_SECOND = "2";
   private final String KEY_SECOND = "127.0.0.1:2181:/hbase2";
 
   private static ReplicationAdmin admin;
+
+  @Rule
+  public TestName testName = new TestName();
 
   /**
    * @throws java.lang.Exception
@@ -77,6 +80,12 @@ public class TestReplicationAdmin {
     conf.setInt(HConstants.HBASE_CLIENT_RETRIES_NUMBER, 1);
     conf.setBoolean(HConstants.REPLICATION_ENABLE_KEY, HConstants.REPLICATION_ENABLE_DEFAULT);
     admin = new ReplicationAdmin(conf);
+  }
+
+  @Before
+  public void setUpPeerId() {
+    ID_ONE = testName.getMethodName() + "1";
+    ID_SECOND = testName.getMethodName() + "2";
   }
 
   /**
@@ -187,6 +196,7 @@ public class TestReplicationAdmin {
     assertEquals(1, admin.getPeersCount());
     assertTrue(admin.getPeerState(ID_ONE));
     assertEquals(ReplicationPeer.PeerProtocol.THRIFT, admin.getPeerConfig(ID_ONE).getProtocol());
+    admin.removePeer(ID_ONE);
   }
 
   @Test
