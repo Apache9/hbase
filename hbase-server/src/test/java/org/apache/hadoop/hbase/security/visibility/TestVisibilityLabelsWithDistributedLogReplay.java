@@ -23,12 +23,14 @@ import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.apache.hadoop.hbase.security.User;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.experimental.categories.Category;
 
 /**
  * Test class that tests the visibility labels with distributed log replay feature ON.
  */
 @Category(MediumTests.class)
+@Ignore
 public class TestVisibilityLabelsWithDistributedLogReplay extends
     TestVisibilityLabelsWithDefaultVisLabelService {
 
