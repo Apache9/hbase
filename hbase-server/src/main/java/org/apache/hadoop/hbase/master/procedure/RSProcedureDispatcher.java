@@ -50,6 +50,7 @@ import org.apache.hadoop.hbase.shaded.protobuf.generated.AdminProtos.ExecuteProc
 import org.apache.hadoop.hbase.shaded.protobuf.generated.AdminProtos.ExecuteProceduresResponse;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.AdminProtos.OpenRegionRequest;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.AdminProtos.OpenRegionResponse;
+import org.apache.hadoop.hbase.shaded.protobuf.generated.AdminProtos.RefreshPeerConfigRequest;
 
 /**
  * A remote procecdure dispatcher for regionservers.
@@ -223,7 +224,11 @@ public class RSProcedureDispatcher
 
   private interface RemoteProcedureResolver {
     void dispatchOpenRequests(MasterProcedureEnv env, List<RegionOpenOperation> operations);
+
     void dispatchCloseRequests(MasterProcedureEnv env, List<RegionCloseOperation> operations);
+
+    void dispatchRefreshPeerConfigRequests(MasterProcedureEnv env,
+        List<RefreshPeerConfigOperation> operations);
   }
 
   /**
@@ -235,19 +240,26 @@ public class RSProcedureDispatcher
    * @param remoteProcedures Remote procedures which are dispatched to the given server
    * @param resolver Used to dispatch remote procedures to given server.
    */
-  public void splitAndResolveOperation(final ServerName serverName,
-      final Set<RemoteProcedure> remoteProcedures, final RemoteProcedureResolver resolver) {
-    final ArrayListMultimap<Class<?>, RemoteOperation> reqsByType =
-      buildAndGroupRequestByType(procedureEnv, serverName, remoteProcedures);
+  public void splitAndResolveOperation(ServerName serverName, Set<RemoteProcedure> operations,
+      RemoteProcedureResolver resolver) {
+    MasterProcedureEnv env = master.getMasterProcedureExecutor().getEnvironment();
+    ArrayListMultimap<Class<?>, RemoteOperation> reqsByType =
+      buildAndGroupRequestByType(env, serverName, operations);
 
-    final List<RegionOpenOperation> openOps = fetchType(reqsByType, RegionOpenOperation.class);
+    List<RegionOpenOperation> openOps = fetchType(reqsByType, RegionOpenOperation.class);
     if (!openOps.isEmpty()) {
-      resolver.dispatchOpenRequests(procedureEnv, openOps);
+      resolver.dispatchOpenRequests(env, openOps);
     }
 
-    final List<RegionCloseOperation> closeOps = fetchType(reqsByType, RegionCloseOperation.class);
+    List<RegionCloseOperation> closeOps = fetchType(reqsByType, RegionCloseOperation.class);
     if (!closeOps.isEmpty()) {
-      resolver.dispatchCloseRequests(procedureEnv, closeOps);
+      resolver.dispatchCloseRequests(env, closeOps);
+    }
+
+    List<RefreshPeerConfigOperation> refreshOps =
+      fetchType(reqsByType, RefreshPeerConfigOperation.class);
+    if (!refreshOps.isEmpty()) {
+      resolver.dispatchRefreshPeerConfigRequests(env, refreshOps);
     }
 
     if (!reqsByType.isEmpty()) {
@@ -278,8 +290,7 @@ public class RSProcedureDispatcher
       splitAndResolveOperation(getServerName(), remoteProcedures, this);
 
       try {
-        final ExecuteProceduresResponse response = sendRequest(getServerName(), request.build());
-        remoteCallCompleted(procedureEnv, response);
+        sendRequest(getServerName(), request.build());
       } catch (IOException e) {
         e = unwrapException(e);
         // TODO: In the future some operation may want to bail out early.
@@ -303,6 +314,12 @@ public class RSProcedureDispatcher
       }
     }
 
+    @Override
+    public void dispatchRefreshPeerConfigRequests(MasterProcedureEnv env,
+        List<RefreshPeerConfigOperation> operations) {
+      operations.stream().map(o -> o.buildRequest()).forEachOrdered(request::addRefreshPeerConfig);
+    }
+
     protected ExecuteProceduresResponse sendRequest(final ServerName serverName,
         final ExecuteProceduresRequest request) throws IOException {
       try {
@@ -310,15 +327,6 @@ public class RSProcedureDispatcher
       } catch (ServiceException se) {
         throw ProtobufUtil.getRemoteException(se);
       }
-    }
-
-
-    private void remoteCallCompleted(final MasterProcedureEnv env,
-        final ExecuteProceduresResponse response) {
-      /*
-      for (RemoteProcedure proc: operations) {
-        proc.remoteCallCompleted(env, getServerName(), response);
-      }*/
     }
 
     private void remoteCallFailed(final MasterProcedureEnv env, final IOException e) {
@@ -483,6 +491,12 @@ public class RSProcedureDispatcher
         submitTask(new CloseRegionRemoteCall(serverName, op));
       }
     }
+
+    @Override
+    public void dispatchRefreshPeerConfigRequests(MasterProcedureEnv env,
+        List<RefreshPeerConfigOperation> operations) {
+      throw new UnsupportedOperationException();
+    }
   }
 
   // ==========================================================================
@@ -490,13 +504,37 @@ public class RSProcedureDispatcher
   //  - ServerOperation: refreshConfig, grant, revoke, ... (TODO)
   //  - RegionOperation: open, close, flush, snapshot, ...
   // ==========================================================================
-  /* Currently unused
+
   public static abstract class ServerOperation extends RemoteOperation {
     protected ServerOperation(final RemoteProcedure remoteProcedure) {
       super(remoteProcedure);
     }
   }
-  */
+
+  public static class RefreshPeerConfigOperation extends ServerOperation {
+
+    private final String peerId;
+
+    private final RefreshPeerConfigRequest.Type type;
+
+    private final ServerName destinationServer;
+
+    public RefreshPeerConfigOperation(RemoteProcedure remoteProcedure, String peerId,
+        RefreshPeerConfigRequest.Type type, ServerName destinationServer) {
+      super(remoteProcedure);
+      this.peerId = peerId;
+      this.type = type;
+      this.destinationServer = destinationServer;
+    }
+
+    public ServerName getDestinationServer() {
+      return destinationServer;
+    }
+
+    public RefreshPeerConfigRequest buildRequest() {
+      return RefreshPeerConfigRequest.newBuilder().setPeerId(peerId).setType(type).build();
+    }
+  }
 
   public static abstract class RegionOperation extends RemoteOperation {
     private final RegionInfo regionInfo;

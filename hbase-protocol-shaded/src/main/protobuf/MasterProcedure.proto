@@ -27,6 +27,7 @@ option optimize_for = SPEED;
 import "HBase.proto";
 import "RPC.proto";
 import "Snapshot.proto";
+import "Admin.proto";
 
 // ============================================================================
 //  WARNING - Compatibility rules
@@ -364,4 +365,16 @@ message GCMergedRegionsStateData {
   required RegionInfo parent_a = 1;
   required RegionInfo parent_b = 2;
   required RegionInfo merged_child = 3;
+}
+
+enum ReplicationPeerModificationState {
+  UPDATE_PEER_CONFIG = 1;
+  REFRESH_PEER_CONFIG = 2;
+  POST_REFRESH_PEER_CONFIG = 3;
+}
+
+message RefreshPeerConfigStateData {
+  required string peer_id = 1;
+  required RefreshPeerConfigRequest.Type type = 2;
+  required ServerName destination_server = 3;
 }
