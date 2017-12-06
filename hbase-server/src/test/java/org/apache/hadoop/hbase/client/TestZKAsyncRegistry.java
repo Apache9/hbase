@@ -26,13 +26,13 @@ import java.io.IOException;
 import java.util.concurrent.ExecutionException;
 
 import org.apache.commons.io.IOUtils;
-import org.apache.curator.CuratorZookeeperClient;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HRegionLocation;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
+import org.apache.hadoop.hbase.zookeeper.ReadOnlyZKClient;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -73,19 +73,19 @@ public class TestZKAsyncRegistry {
 
   @Test
   public void testIndependentZKConnections() throws IOException {
-    final CuratorZookeeperClient zk1 = REGISTRY.getCuratorFramework().getZookeeperClient();
+    final ReadOnlyZKClient zk1 = REGISTRY.getZKClient();
 
     final Configuration otherConf = new Configuration(TEST_UTIL.getConfiguration());
     otherConf.set(HConstants.ZOOKEEPER_QUORUM, "127.0.0.1");
     try (final ZKAsyncRegistry otherRegistry = new ZKAsyncRegistry(otherConf)) {
-      final CuratorZookeeperClient zk2 = otherRegistry.getCuratorFramework().getZookeeperClient();
+      final ReadOnlyZKClient zk2 = otherRegistry.getZKClient();
 
-      assertNotSame("Using a different configuration / quorum should result in different backing "
-          + "zk connection.",
+      assertNotSame("Using a different configuration / quorum should result in different backing " +
+          "zk connection.",
         zk1, zk2);
       assertNotEquals(
         "Using a different configrution / quorum should be reflected in the " + "zk connection.",
-        zk1.getCurrentConnectionString(), zk2.getCurrentConnectionString());
+        zk1.getConnectString(), zk2.getConnectString());
     }
   }
 }
