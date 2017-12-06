@@ -36,6 +36,8 @@ import org.apache.hadoop.hbase.protobuf.generated.ZooKeeperProtos;
 import org.apache.hadoop.hbase.util.Pair;
 import org.apache.hadoop.hbase.zookeeper.ReadOnlyZKClient;
 import org.apache.hadoop.hbase.zookeeper.ZNodePaths;
+import org.apache.zookeeper.KeeperException;
+import org.apache.zookeeper.KeeperException.Code;
 
 import com.google.common.annotations.VisibleForTesting;
 
@@ -62,8 +64,11 @@ class ZKAsyncRegistry implements AsyncRegistry {
     CompletableFuture<T> future = new CompletableFuture<>();
     zk.get(path).whenComplete((data, error) -> {
       if (error != null) {
-        future.completeExceptionally(error);
-        return;
+        if (!(error instanceof KeeperException) ||
+          ((KeeperException) error).code() != Code.NONODE) {
+          future.completeExceptionally(error);
+          return;
+        }
       }
       try {
         future.complete(converter.convert(data));
