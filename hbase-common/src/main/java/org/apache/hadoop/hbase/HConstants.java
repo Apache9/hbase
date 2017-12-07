@@ -299,6 +299,12 @@ public final class HConstants {
   public static final String COMPACTION_KV_MAX = "hbase.hstore.compaction.kv.max";
   public static final int COMPACTION_KV_MAX_DEFAULT = 10;
 
+  /** Parameter name for the delete ratio threshold used in compaction*/
+  public static final String DELETE_RATIO_THRESHOLD_KEY =
+    "hbase.hstore.compaction.deleteratio.compaction.threshold";
+  public static final String DELETE_RATIO_COMPACTION_ENABLE =
+    "hbase.hstore.compaction.deleteratio.compaction.enable";
+
   /** Parameter name for HBase instance root directory */
   public static final String HBASE_DIR = "hbase.rootdir";
 

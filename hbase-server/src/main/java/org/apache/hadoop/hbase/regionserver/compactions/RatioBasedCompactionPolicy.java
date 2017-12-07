@@ -52,8 +52,17 @@ public class RatioBasedCompactionPolicy extends SortedCompactionPolicy {
   public boolean shouldPerformMajorCompaction(final Collection<StoreFile> filesToCompact)
       throws IOException {
     boolean result = false;
+    if (filesToCompact == null || filesToCompact.isEmpty()) {
+      return result;
+    }
+
+    result = shouldPerformDeleteRatioCompaction(filesToCompact);
+    if(result) {
+      return result;
+    }
+
     long mcTime = getNextMajorCompactTime(filesToCompact);
-    if (filesToCompact == null || filesToCompact.isEmpty() || mcTime == 0) {
+    if (mcTime == 0) {
       return result;
     }
 
@@ -197,5 +206,42 @@ public class RatioBasedCompactionPolicy extends SortedCompactionPolicy {
    */
   public void setMinThreshold(int minThreshold) {
     comConf.setMinFilesToCompact(minThreshold);
+  }
+
+  private boolean shouldPerformDeleteRatioCompaction(final Collection<StoreFile> filesToCompact) throws IOException{
+    boolean result = false;
+    if (!comConf.isDeleteRatioCompactionEnable()){
+      return result;
+    }
+
+    long totalKvCnt = 0;
+    long totalRowCnt = 0;
+    long totalDeleteKvCnt = 0;
+    long totalDeleteFamilyCnt = 0;
+
+    for(StoreFile storeFile: filesToCompact) {
+      StoreFile.Reader reader = storeFile.createReader();
+      if(reader.getKvCnt() == -1 || reader.getRowCnt() == -1 ||
+        reader.getDeleteKvCnt() == -1 ||reader.getDeleteFamilyCnt() == -1){
+        return result;
+      }
+      totalKvCnt += reader.getKvCnt();
+      totalRowCnt += reader.getRowCnt();
+      totalDeleteKvCnt += reader.getDeleteKvCnt();
+      totalDeleteFamilyCnt += reader.getDeleteFamilyCnt();
+      reader.close(false);
+    }
+    if(totalRowCnt == 0 || totalKvCnt == 0){
+      return result;
+    }
+    double deleteRatio = totalDeleteFamilyCnt/(double)totalRowCnt + totalDeleteKvCnt/(double)totalKvCnt;
+    if(deleteRatio >= comConf.getDeleteRatioCompactionThreshold()) {
+      result = true;
+      if(LOG.isDebugEnabled()){
+        LOG.debug("Major compaction triggered on store " + this + "; because delete ratio is "
+          + deleteRatio + " > threshold: "+comConf.getDeleteRatioCompactionThreshold());
+      }
+    }
+    return result;
   }
 }
