@@ -83,6 +83,8 @@ public class CompactionConfiguration {
   long majorCompactionPeriod;
   float majorCompactionJitter;
   final float minLocalityToForceCompact;
+  boolean deleteRatioCompactionEnable;
+  double deleteRatioCompactionThreshold;
   private final long maxStoreFileAgeMillis;
   private final long baseWindowMillis;
   private final int windowsPerTier;
@@ -118,6 +120,8 @@ public class CompactionConfiguration {
         DEFAULT_TIER_COMPACTION_POLICY_CLASS.getName());
     singleOutputForMinorCompaction = conf.getBoolean(SINGLE_OUTPUT_FOR_MINOR_COMPACTION_KEY,
       true);
+    deleteRatioCompactionEnable = conf.getBoolean(HConstants.DELETE_RATIO_COMPACTION_ENABLE, false);
+    deleteRatioCompactionThreshold = conf.getDouble(HConstants.DELETE_RATIO_THRESHOLD_KEY, 0.45F);
     LOG.info(this);
   }
 
@@ -127,7 +131,7 @@ public class CompactionConfiguration {
       "size [%d, %d); files [%d, %d); ratio %f; off-peak ratio %f; throttle point %d;"
       + " major period %d, major jitter %f, min locality to compact %f;"
       + " tiered compaction: max_age %d, base window in milliseconds %d, windows per tier %d, "
-      + "incoming window threshold %d",
+      + "incoming window threshold %d; delete ratio compaction enable:%b, threshold:%f",
       minCompactSize,
       maxCompactSize,
       minFilesToCompact,
@@ -141,7 +145,9 @@ public class CompactionConfiguration {
       maxStoreFileAgeMillis,
       baseWindowMillis,
       windowsPerTier,
-      incomingWindowMin);
+      incomingWindowMin,
+      deleteRatioCompactionEnable,
+      deleteRatioCompactionThreshold);
   }
 
   /**
@@ -248,5 +254,13 @@ public class CompactionConfiguration {
   
   public boolean useSingleOutputForMinorCompaction() {
     return singleOutputForMinorCompaction;
+  }
+
+  public boolean isDeleteRatioCompactionEnable() {
+    return deleteRatioCompactionEnable;
+  }
+
+  public double getDeleteRatioCompactionThreshold() {
+    return deleteRatioCompactionThreshold;
   }
 }

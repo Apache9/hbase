@@ -1553,6 +1553,13 @@ public class KeyValue implements Cell, HeapSize, Cloneable {
   }
 
   /**
+   * @return True if this KV is a delete column type.
+   */
+  public boolean isDeleteColumn() {
+    return getTypeByte() == Type.DeleteColumn.getCode();
+  }
+
+  /**
    * Primarily for use client-side.  Returns the family of this KeyValue in a
    * new byte array.<p>
    *

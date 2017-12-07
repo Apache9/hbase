@@ -102,6 +102,15 @@ public class StoreFile {
   public static final byte[] DELETE_FAMILY_COUNT =
       Bytes.toBytes("DELETE_FAMILY_COUNT");
 
+  /** Row Count in FileInfo */
+  public static final byte[] ROW_COUNT = Bytes.toBytes("ROW_COUNT");
+
+  /** KeyValue Count in FileInfo */
+  public static final byte[] KV_COUNT = Bytes.toBytes("KV_COUNT");
+
+  /** Delete KeyValue Count in FileInfo */
+  public static final byte[] DELETE_KV_COUNT = Bytes.toBytes("DELETE_KV_COUNT");
+
   /** Last Bloom filter key in FileInfo */
   private static final byte[] LAST_BLOOM_KEY = Bytes.toBytes("LAST_BLOOM_KEY");
 
@@ -742,7 +751,10 @@ public class StoreFile {
     private long earliestPutTs = HConstants.LATEST_TIMESTAMP;
     private KeyValue lastDeleteFamilyKV = null;
     private long deleteFamilyCnt = 0;
-
+    private long kvCnt = 0;
+    private long deleteKvCnt = 0;
+    private long rowCnt = 0;
+    private byte[] lastRow = null;
 
     /** Checksum type */
     protected ChecksumType checksumType;
@@ -958,6 +970,18 @@ public class StoreFile {
     }
 
     public void append(final KeyValue kv) throws IOException {
+      if(kv.isDeleteType() || kv.isDeleteColumn()){
+        deleteKvCnt++;
+      }
+
+      if(!KeyValue.isDelete(kv.getTypeByte())) {
+        kvCnt++;
+        if (lastRow == null || kvComparator.compareRows(kv, lastRow) != 0) {
+          rowCnt++;
+          lastRow = kv.getRow();
+        }
+      }
+
       appendGeneralBloomfilter(kv);
       appendDeleteFamilyBloomFilter(kv);
       writer.append(kv);
@@ -1003,6 +1027,8 @@ public class StoreFile {
                   + lastBloomKeyLen));
         }
       }
+      writer.appendFileInfo(KV_COUNT, Bytes.toBytes(this.kvCnt));
+      writer.appendFileInfo(ROW_COUNT, Bytes.toBytes(this.rowCnt));
       return hasGeneralBloom;
     }
 
@@ -1018,6 +1044,7 @@ public class StoreFile {
       // even if there is no delete family Bloom.
       writer.appendFileInfo(DELETE_FAMILY_COUNT,
           Bytes.toBytes(this.deleteFamilyCnt));
+      writer.appendFileInfo(DELETE_KV_COUNT, Bytes.toBytes(this.deleteKvCnt));
 
       return hasDeleteFamilyBloom;
     }
@@ -1064,6 +1091,9 @@ public class StoreFile {
     private byte[] lastBloomKey;
     private long deleteFamilyCnt = -1;
     private boolean bulkLoadResult = false;
+    private long rowCnt = -1;
+    private long kvCnt = -1;
+    private long deleteKvCnt = -1;
 
     public Reader(FileSystem fs, Path path, CacheConfig cacheConf, Configuration conf)
         throws IOException {
@@ -1385,6 +1415,20 @@ public class StoreFile {
         deleteFamilyCnt = Bytes.toLong(cnt);
       }
 
+      cnt = fi.get(ROW_COUNT);
+      if(cnt != null){
+        rowCnt = Bytes.toLong(cnt);
+      }
+
+      cnt = fi.get(KV_COUNT);
+      if(cnt != null){
+        kvCnt = Bytes.toLong(cnt);
+      }
+
+      cnt = fi.get(DELETE_KV_COUNT);
+      if(cnt != null){
+        deleteKvCnt = Bytes.toLong(cnt);
+      }
       return fi;
     }
 
@@ -1496,6 +1540,18 @@ public class StoreFile {
 
     public long getDeleteFamilyCnt() {
       return deleteFamilyCnt;
+    }
+
+    public long getRowCnt() {
+      return rowCnt;
+    }
+
+    public long getKvCnt() {
+      return kvCnt;
+    }
+
+    public long getDeleteKvCnt() {
+      return deleteKvCnt;
     }
 
     public byte[] getFirstKey() {
