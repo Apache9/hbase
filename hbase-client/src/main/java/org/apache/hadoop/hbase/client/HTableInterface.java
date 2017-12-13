@@ -18,6 +18,7 @@
  */
 package org.apache.hadoop.hbase.client;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.protobuf.Descriptors;
 import com.google.protobuf.Message;
 import com.google.protobuf.Service;
@@ -689,4 +690,9 @@ public interface HTableInterface extends Closeable {
    */
   boolean checkAndMutate(byte[] row, byte[] family, byte[] qualifier, CompareOp compareOp,
       byte[] value, RowMutations mutation) throws IOException;
+
+  @VisibleForTesting
+  default boolean isSharedConnection() {
+    return true;
+  }
 }

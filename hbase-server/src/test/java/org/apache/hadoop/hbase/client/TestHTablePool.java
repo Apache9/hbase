@@ -18,6 +18,8 @@
  */
 package org.apache.hadoop.hbase.client;
 
+import static org.junit.Assert.assertTrue;
+
 import java.io.IOException;
 
 import org.apache.hadoop.hbase.*;
@@ -204,11 +206,21 @@ public class TestHTablePool {
       } finally {
         pool.close();
       }
-
     }
 
-   
-
+    @Test
+    public void testSharedConnection() throws Exception {
+      final int MAX_SIZE = 5;
+      try (HConnection conn = HConnectionManager.createConnection(TEST_UTIL.getConfiguration());
+          HTablePool pool = new HTablePool(TEST_UTIL.getConfiguration(), MAX_SIZE,
+              new SharedConnectionHTableFactory(conn), getPoolType())) {
+        HTableInterface[] tables = new HTableInterface[MAX_SIZE];
+        for (int i = 0; i < MAX_SIZE; ++i) {
+          tables[i] = pool.getTable(TABLENAME);
+          assertTrue(tables[i].isSharedConnection());
+        }
+      }
+    }
   }
 
   @Category(MediumTests.class)
@@ -284,6 +296,20 @@ public class TestHTablePool {
 			Assert.assertEquals(0,
 					pool.getCurrentPoolSize(Bytes.toString(TABLENAME)));
 		}
+
+    @Test
+    public void testSharedConnection() throws Exception {
+      final int MAX_SIZE = 5;
+      try (HConnection conn = HConnectionManager.createConnection(TEST_UTIL.getConfiguration());
+          HTablePool pool = new HTablePool(TEST_UTIL.getConfiguration(), MAX_SIZE,
+            new SharedConnectionHTableFactory(conn), getPoolType())) {
+        HTableInterface[] tables = new HTableInterface[MAX_SIZE];
+        for (int i = 0; i < MAX_SIZE; ++i) {
+          tables[i] = pool.getTable(TABLENAME);
+          assertTrue(tables[i].isSharedConnection());
+        }
+      }
+    }
 	}
 
   @Category(MediumTests.class)
@@ -360,6 +386,20 @@ public class TestHTablePool {
 			Assert.assertEquals(0,
 					pool.getCurrentPoolSize(Bytes.toString(TABLENAME)));
 		}
+
+    @Test
+    public void testSharedConnection() throws Exception {
+      final int MAX_SIZE = 5;
+      try (HConnection conn = HConnectionManager.createConnection(TEST_UTIL.getConfiguration());
+          HTablePool pool = new HTablePool(TEST_UTIL.getConfiguration(), MAX_SIZE,
+            new SharedConnectionHTableFactory(conn), getPoolType())) {
+        HTableInterface[] tables = new HTableInterface[MAX_SIZE];
+        for (int i = 0; i < MAX_SIZE; ++i) {
+          tables[i] = pool.getTable(TABLENAME);
+          assertTrue(tables[i].isSharedConnection());
+        }
+      }
+    }
 	}
 
 }
