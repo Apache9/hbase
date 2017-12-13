@@ -873,7 +873,12 @@ public class SaltedHTable implements HTableInterface{
       byte[] value, RowMutations mutation) throws IOException {
     throw new UnsupportedOperationException("not implemented");
   }
-  
+
+  @Override
+  public boolean isSharedConnection() {
+    return table.isSharedConnection();
+  }
+
   public static class SlotsWritable implements Writable {
     private byte[][] slots;
     

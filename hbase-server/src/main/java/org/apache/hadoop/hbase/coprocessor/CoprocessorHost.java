@@ -679,6 +679,11 @@ public abstract class CoprocessorHost<E extends CoprocessorEnvironment> {
           CompareOp compareOp, byte[] value, RowMutations mutation) throws IOException {
         return table.checkAndMutate(row, family, qualifier, compareOp, value, mutation);
       }
+
+      @Override
+      public boolean isSharedConnection() {
+        return table.isSharedConnection();
+      }
     }
 
     /** The coprocessor */

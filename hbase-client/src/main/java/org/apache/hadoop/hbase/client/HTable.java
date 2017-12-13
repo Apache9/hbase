@@ -1787,4 +1787,9 @@ public class HTable implements HTableInterface {
           callbackErrorServers);
     }
   }
+
+  @Override
+  public boolean isSharedConnection() {
+    return !cleanupConnectionOnClose;
+  }
 }
