@@ -131,9 +131,9 @@ public class ReplicationManager {
       checkNamespacesAndTableCfsConfigConflict(peerConfig.getExcludeNamespaces(),
         peerConfig.getExcludeTableCFsMap());
     } else {
-      if ((peerConfig.getExcludeNamespaces() != null && !peerConfig.getNamespaces().isEmpty())
+      if ((peerConfig.getExcludeNamespaces() != null && !peerConfig.getExcludeNamespaces().isEmpty())
           || (peerConfig.getExcludeTableCFsMap() != null
-              && !peerConfig.getTableCFsMap().isEmpty())) {
+              && !peerConfig.getExcludeTableCFsMap().isEmpty())) {
         throw new IllegalArgumentException(
             "Need clean exclude-namespaces or exclude-table-cfs config firstly"
                 + " when replicate_all flag is false");
