@@ -53,10 +53,9 @@ public class TestTableBasedReplicationSourceManagerImpl extends TestReplicationS
       TableBasedReplicationQueuesClientImpl.class, ReplicationQueuesClient.class);
     utility = new HBaseTestingUtility(conf);
     utility.startMiniCluster();
-    Waiter.waitFor(conf, 3 * 1000,
-      () -> utility.getMiniHBaseCluster().getMaster().isInitialized());
-    utility.waitUntilAllRegionsAssigned(TableName.valueOf(
-        NamespaceDescriptor.SYSTEM_NAMESPACE_NAME_STR, "replication"));
+    Waiter.waitFor(conf, 3 * 1000, () -> utility.getMiniHBaseCluster().getMaster().isInitialized());
+    utility.waitUntilAllRegionsAssigned(
+      TableName.valueOf(NamespaceDescriptor.SYSTEM_NAMESPACE_NAME_STR, "replication"));
     setupZkAndReplication();
   }
 
