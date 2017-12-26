@@ -224,7 +224,7 @@ public class ReplicationSource extends Thread implements ReplicationSourceInterf
       // A peerId will not have "-" in its name, see HBASE-11394
       peerId = peerClusterZnode.split("-")[0];
     }
-    Map<TableName, List<String>> tableCFMap = replicationPeers.getConnectedPeer(peerId).getTableCFs();
+    Map<TableName, List<String>> tableCFMap = replicationPeers.getPeer(peerId).getTableCFs();
     if (tableCFMap != null) {
       List<String> tableCfs = tableCFMap.get(tableName);
       if (tableCFMap.containsKey(tableName)
@@ -372,7 +372,7 @@ public class ReplicationSource extends Thread implements ReplicationSourceInterf
   }
 
   private long getCurrentBandwidth() {
-    ReplicationPeer replicationPeer = this.replicationPeers.getConnectedPeer(peerId);
+    ReplicationPeer replicationPeer = this.replicationPeers.getPeer(peerId);
     long peerBandwidth = replicationPeer != null ? replicationPeer.getPeerBandwidth() : 0;
     // user can set peer bandwidth to 0 to use default bandwidth
     return peerBandwidth != 0 ? peerBandwidth : defaultBandwidth;
@@ -417,7 +417,7 @@ public class ReplicationSource extends Thread implements ReplicationSourceInterf
    */
   @Override
   public boolean isPeerEnabled() {
-    return this.replicationPeers.getStatusOfPeer(this.peerId);
+    return this.replicationPeers.isPeerEnabled(this.peerId);
   }
 
   @Override
