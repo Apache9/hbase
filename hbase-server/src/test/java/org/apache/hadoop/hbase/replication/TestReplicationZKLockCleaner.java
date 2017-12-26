@@ -72,7 +72,7 @@ public class TestReplicationZKLockCleaner {
     new HBaseAdmin(conf1).createTable(table);
     ReplicationAdmin replicationAdmin = new ReplicationAdmin(conf1);
     ReplicationPeerConfig rpc = new ReplicationPeerConfig();
-    rpc.setClusterKey("cluster2");
+    rpc.setClusterKey("127.0.0.1:2181:/hbase2");
     replicationAdmin.addPeer("cluster2", rpc, null);
     HRegionServer rs = cluster.getRegionServer(0);
     ReplicationQueuesZKImpl zk = new ReplicationQueuesZKImpl(rs.getZooKeeper(), conf1, rs);

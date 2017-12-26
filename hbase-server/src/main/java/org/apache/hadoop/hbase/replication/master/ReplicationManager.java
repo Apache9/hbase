@@ -27,6 +27,7 @@ import java.util.regex.Pattern;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Abortable;
+import org.apache.hadoop.hbase.DoNotRetryIOException;
 import org.apache.hadoop.hbase.ReplicationPeerNotFoundException;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
@@ -36,6 +37,7 @@ import org.apache.hadoop.hbase.replication.ReplicationPeerConfig;
 import org.apache.hadoop.hbase.replication.ReplicationPeerDescription;
 import org.apache.hadoop.hbase.replication.ReplicationPeers;
 import org.apache.hadoop.hbase.replication.ReplicationQueuesClient;
+import org.apache.hadoop.hbase.zookeeper.ZKUtil;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
 
 /**
@@ -68,6 +70,7 @@ public class ReplicationManager {
 
   public void addReplicationPeer(String peerId, ReplicationPeerConfig peerConfig, boolean enabled)
       throws ReplicationException, IOException {
+    checkClusterKey(peerConfig.getClusterKey());
     checkPeerConfigConflict(peerConfig);
     replicationPeers.addPeer(peerId, peerConfig, enabled);
     replicationPeers.peerAdded(peerId);
@@ -115,11 +118,11 @@ public class ReplicationManager {
   }
 
   private void checkPeerConfigConflict(ReplicationPeerConfig peerConfig)
-      throws ReplicationException {
+      throws DoNotRetryIOException {
     if (peerConfig.replicateAllUserTables()) {
       if ((peerConfig.getNamespaces() != null && !peerConfig.getNamespaces().isEmpty())
           || (peerConfig.getTableCFsMap() != null && !peerConfig.getTableCFsMap().isEmpty())) {
-        throw new ReplicationException(
+        throw new DoNotRetryIOException(
             "Need clean namespaces or table-cfs config fisrtly when you want replicate all cluster");
       }
       checkNamespacesAndTableCfsConfigConflict(peerConfig.getExcludeNamespaces(),
@@ -129,7 +132,7 @@ public class ReplicationManager {
           .isEmpty())
           || (peerConfig.getExcludeTableCFsMap() != null && !peerConfig.getExcludeTableCFsMap()
               .isEmpty())) {
-        throw new ReplicationException(
+        throw new DoNotRetryIOException(
             "Need clean exclude-namespaces or exclude-table-cfs config firstly when you want not replicate all cluster");
       }
       checkNamespacesAndTableCfsConfigConflict(peerConfig.getNamespaces(),
@@ -148,10 +151,10 @@ public class ReplicationManager {
    *
    * @param namespaces
    * @param tableCfs
-   * @throws ReplicationException
+   * @throws DoNotRetryIOException
    */
   private void checkNamespacesAndTableCfsConfigConflict(Set<String> namespaces,
-      Map<TableName, ? extends Collection<String>> tableCfs) throws ReplicationException {
+      Map<TableName, ? extends Collection<String>> tableCfs) throws DoNotRetryIOException {
     if (namespaces == null || namespaces.isEmpty()) {
       return;
     }
@@ -161,9 +164,18 @@ public class ReplicationManager {
     for (Map.Entry<TableName, ? extends Collection<String>> entry : tableCfs.entrySet()) {
       TableName table = entry.getKey();
       if (namespaces.contains(table.getNamespaceAsString())) {
-        throw new ReplicationException("Table " + table + " 's namespace "
+        throw new DoNotRetryIOException("Table " + table + " 's namespace "
             + table.getNamespaceAsString() + " was already in namespaces config in peer");
       }
+    }
+  }
+
+  private void checkClusterKey(String clusterKey) throws DoNotRetryIOException {
+    Configuration otherConf = new Configuration(this.conf);
+    try {
+      ZKUtil.applyClusterKeyToConf(otherConf, clusterKey);
+    } catch (IOException e) {
+      throw new DoNotRetryIOException("Invalid cluster key: " + clusterKey, e);
     }
   }
 }

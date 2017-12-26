@@ -88,6 +88,28 @@ public class TestReplicationAdmin {
     ID_SECOND = testName.getMethodName() + "2";
   }
 
+  @Test
+  public void testAddInvalidPeer() {
+    ReplicationPeerConfig rpc = new ReplicationPeerConfig();
+    rpc.setClusterKey(KEY_ONE);
+    try {
+      String invalidPeerId = "1-2";
+      admin.addPeer(invalidPeerId, rpc);
+      fail("Should fail as the peer id: " + invalidPeerId + " is invalid");
+    } catch (Exception e) {
+      // OK
+    }
+
+    try {
+      String invalidClusterKey = "2181:/hbase";
+      rpc.setClusterKey(invalidClusterKey);
+      admin.addPeer(ID_ONE, rpc);
+      fail("Should fail as the peer cluster key: " + invalidClusterKey + " is invalid");
+    } catch (Exception e) {
+      // OK
+    }
+  }
+
   /**
    * Simple testing of adding and removing peers, basically shows that
    * all interactions with ZK work
