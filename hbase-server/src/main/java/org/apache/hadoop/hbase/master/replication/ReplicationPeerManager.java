@@ -54,7 +54,7 @@ import org.apache.yetus.audience.InterfaceAudience;
  * Used to add/remove a replication peer.
  */
 @InterfaceAudience.Private
-public final class ReplicationPeerManager {
+public class ReplicationPeerManager {
 
   private final ReplicationPeerStorage peerStorage;
 
@@ -62,8 +62,7 @@ public final class ReplicationPeerManager {
 
   private final ConcurrentMap<String, ReplicationPeerDescription> peers;
 
-  private ReplicationPeerManager(ReplicationPeerStorage peerStorage,
-      ReplicationQueueStorage queueStorage,
+  ReplicationPeerManager(ReplicationPeerStorage peerStorage, ReplicationQueueStorage queueStorage,
       ConcurrentMap<String, ReplicationPeerDescription> peers) {
     this.peerStorage = peerStorage;
     this.queueStorage = queueStorage;
@@ -149,21 +148,6 @@ public final class ReplicationPeerManager {
         oldPeerConfig.getReplicationEndpointImpl() + "' for peer " + peerId +
         " does not match new class '" + peerConfig.getReplicationEndpointImpl() + "'");
     }
-  }
-
-  private ReplicationPeerConfig copy(ReplicationPeerConfig peerConfig) {
-    ReplicationPeerConfig copiedPeerConfig = new ReplicationPeerConfig();
-    copiedPeerConfig.getConfiguration().putAll(peerConfig.getConfiguration());
-    copiedPeerConfig.getPeerData().putAll(peerConfig.getPeerData());
-    copiedPeerConfig.setTableCFsMap(peerConfig.getTableCFsMap());
-    copiedPeerConfig.setNamespaces(peerConfig.getNamespaces());
-    copiedPeerConfig.setExcludeTableCFsMap(peerConfig.getExcludeTableCFsMap());
-    copiedPeerConfig.setExcludeNamespaces(peerConfig.getExcludeNamespaces());
-    copiedPeerConfig.setBandwidth(peerConfig.getBandwidth());
-    copiedPeerConfig.setReplicateAllUserTables(peerConfig.replicateAllUserTables());
-    copiedPeerConfig.setClusterKey(peerConfig.getClusterKey());
-    copiedPeerConfig.setReplicationEndpointImpl(peerConfig.getReplicationEndpointImpl());
-    return copiedPeerConfig;
   }
 
   public void addPeer(String peerId, ReplicationPeerConfig peerConfig, boolean enabled)
