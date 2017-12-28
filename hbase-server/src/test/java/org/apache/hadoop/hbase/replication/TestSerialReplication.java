@@ -55,10 +55,12 @@ import org.apache.hadoop.hbase.zookeeper.MiniZooKeeperCluster;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
 @Category(LargeTests.class)
+@Ignore
 public class TestSerialReplication {
   private static final Log LOG = LogFactory.getLog(TestSerialReplication.class);
 
