@@ -87,7 +87,7 @@ public class ReplicationTestUtils {
   public static HTable getTestTable(HBaseTestingUtility cluster, HTableDescriptor table)
       throws IOException {
     HTable result = new HTable(cluster.getConfiguration(), table.getName());
-    result.setWriteBufferSize(1024);
+    result.getConfiguration().setLong(TableConfiguration.WRITE_BUFFER_SIZE_KEY, 1024);
     return result;
   }
 

@@ -689,14 +689,6 @@ public class SaltedHTable implements HTableInterface{
    * {@inheritDoc}
    */
   @Override
-  public void setWriteBufferSize(long writeBufferSize) throws IOException {
-    table.setWriteBufferSize(writeBufferSize);
-  }
-
-  /**
-   * {@inheritDoc}
-   */
-  @Override
   public long getWriteBufferSize() {
     return table.getWriteBufferSize();
   }

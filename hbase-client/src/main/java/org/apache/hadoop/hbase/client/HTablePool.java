@@ -615,12 +615,6 @@ public class HTablePool implements Closeable {
       return table.getWriteBufferSize();
     }
 
-    @Override
-    public void setWriteBufferSize(long writeBufferSize) throws IOException {
-      checkState();
-      table.setWriteBufferSize(writeBufferSize);
-    }
-
     boolean isOpen() {
       return open;
     }

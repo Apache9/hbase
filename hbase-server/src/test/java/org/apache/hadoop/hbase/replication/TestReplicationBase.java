@@ -30,6 +30,7 @@ import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HTable;
+import org.apache.hadoop.hbase.client.TableConfiguration;
 import org.apache.hadoop.hbase.client.replication.ReplicationAdmin;
 import org.apache.hadoop.hbase.replication.regionserver.ReplicationSource;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -145,7 +146,7 @@ public class TestReplicationBase {
       // Table should be created on peer cluster, too
       utility2.waitUntilAllRegionsAssigned(TableName.valueOf(tableName));
       htable1 = new HTable(conf1, tableName);
-      htable1.setWriteBufferSize(1024);
+      htable1.getConfiguration().setLong(TableConfiguration.WRITE_BUFFER_SIZE_KEY, 1024);
       htable2 = new HTable(conf2, tableName);
     }
   }
