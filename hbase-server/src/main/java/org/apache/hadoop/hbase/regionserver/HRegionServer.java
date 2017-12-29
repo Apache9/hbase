@@ -1592,6 +1592,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     int totalStaticBloomSizeKB = 0;
     long totalCompactingKVs = 0;
     long currentCompactedKVs = 0;
+    List<ClusterStatusProtos.FamilyInfo> familyInfos = new ArrayList<>();
     synchronized (r.stores) {
       stores += r.stores.size();
       for (Store store : r.stores.values()) {
@@ -1614,6 +1615,26 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
 
         totalStaticBloomSizeKB +=
           (int) (store.getTotalStaticBloomSize() / 1024);
+
+        long rowCnt = 0;
+        long kvCnt = 0;
+        long delFamilyCnt = 0;
+        long delKvCnt = 0;
+        for (StoreFile storeFile : store.getStorefiles()) {
+          rowCnt += storeFile.getReader().getRowCnt();
+          kvCnt += storeFile.getReader().getKvCnt();
+          delFamilyCnt += storeFile.getReader().getDeleteFamilyCnt();
+          delKvCnt += storeFile.getReader().getDeleteKvCnt();
+        }
+
+        ClusterStatusProtos.FamilyInfo familyInfo = ClusterStatusProtos.FamilyInfo.newBuilder()
+                .setFamilyname(store.getColumnFamilyName())
+                .setRowCount(rowCnt)
+                .setKvCount(kvCnt)
+                .setDelFamilyCount(delFamilyCnt)
+                .setDelKvCount(delKvCnt)
+                .build();
+        familyInfos.add(familyInfo);
       }
     }
     float dataLocality =
@@ -1653,6 +1674,8 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
       .setThrottledWriteRequestsCount(r.getThrottledWriteCount())
       .setScanCountPerSecond(r.getScanCountPerSecond())
       .setScanRowsPerSecond(r.getScanRowsPerSecond());
+    regionLoadBldr.clearFamilyInfo();
+    regionLoadBldr.addAllFamilyInfo(familyInfos);
 
     return regionLoadBldr.build();
   }

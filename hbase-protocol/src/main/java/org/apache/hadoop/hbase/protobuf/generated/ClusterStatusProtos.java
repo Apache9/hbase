@@ -1865,6 +1865,1091 @@ public final class ClusterStatusProtos {
     // @@protoc_insertion_point(class_scope:RegionInTransition)
   }
 
+  public interface FamilyInfoOrBuilder
+      extends com.google.protobuf.MessageOrBuilder {
+
+    // required string familyname = 1;
+    /**
+     * <code>required string familyname = 1;</code>
+     *
+     * <pre>
+     ** family name 
+     * </pre>
+     */
+    boolean hasFamilyname();
+    /**
+     * <code>required string familyname = 1;</code>
+     *
+     * <pre>
+     ** family name 
+     * </pre>
+     */
+    java.lang.String getFamilyname();
+    /**
+     * <code>required string familyname = 1;</code>
+     *
+     * <pre>
+     ** family name 
+     * </pre>
+     */
+    com.google.protobuf.ByteString
+        getFamilynameBytes();
+
+    // required uint64 row_count = 2;
+    /**
+     * <code>required uint64 row_count = 2;</code>
+     *
+     * <pre>
+     ** total row count 
+     * </pre>
+     */
+    boolean hasRowCount();
+    /**
+     * <code>required uint64 row_count = 2;</code>
+     *
+     * <pre>
+     ** total row count 
+     * </pre>
+     */
+    long getRowCount();
+
+    // required uint64 kv_count = 3;
+    /**
+     * <code>required uint64 kv_count = 3;</code>
+     *
+     * <pre>
+     ** total kv count 
+     * </pre>
+     */
+    boolean hasKvCount();
+    /**
+     * <code>required uint64 kv_count = 3;</code>
+     *
+     * <pre>
+     ** total kv count 
+     * </pre>
+     */
+    long getKvCount();
+
+    // required uint64 del_kv_count = 4;
+    /**
+     * <code>required uint64 del_kv_count = 4;</code>
+     *
+     * <pre>
+     ** total delete kv count 
+     * </pre>
+     */
+    boolean hasDelKvCount();
+    /**
+     * <code>required uint64 del_kv_count = 4;</code>
+     *
+     * <pre>
+     ** total delete kv count 
+     * </pre>
+     */
+    long getDelKvCount();
+
+    // required uint64 del_family_count = 5;
+    /**
+     * <code>required uint64 del_family_count = 5;</code>
+     *
+     * <pre>
+     ** total del family count 
+     * </pre>
+     */
+    boolean hasDelFamilyCount();
+    /**
+     * <code>required uint64 del_family_count = 5;</code>
+     *
+     * <pre>
+     ** total del family count 
+     * </pre>
+     */
+    long getDelFamilyCount();
+  }
+  /**
+   * Protobuf type {@code FamilyInfo}
+   */
+  public static final class FamilyInfo extends
+      com.google.protobuf.GeneratedMessage
+      implements FamilyInfoOrBuilder {
+    // Use FamilyInfo.newBuilder() to construct.
+    private FamilyInfo(com.google.protobuf.GeneratedMessage.Builder<?> builder) {
+      super(builder);
+      this.unknownFields = builder.getUnknownFields();
+    }
+    private FamilyInfo(boolean noInit) { this.unknownFields = com.google.protobuf.UnknownFieldSet.getDefaultInstance(); }
+
+    private static final FamilyInfo defaultInstance;
+    public static FamilyInfo getDefaultInstance() {
+      return defaultInstance;
+    }
+
+    public FamilyInfo getDefaultInstanceForType() {
+      return defaultInstance;
+    }
+
+    private final com.google.protobuf.UnknownFieldSet unknownFields;
+    @java.lang.Override
+    public final com.google.protobuf.UnknownFieldSet
+        getUnknownFields() {
+      return this.unknownFields;
+    }
+    private FamilyInfo(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      initFields();
+      int mutable_bitField0_ = 0;
+      com.google.protobuf.UnknownFieldSet.Builder unknownFields =
+          com.google.protobuf.UnknownFieldSet.newBuilder();
+      try {
+        boolean done = false;
+        while (!done) {
+          int tag = input.readTag();
+          switch (tag) {
+            case 0:
+              done = true;
+              break;
+            default: {
+              if (!parseUnknownField(input, unknownFields,
+                                     extensionRegistry, tag)) {
+                done = true;
+              }
+              break;
+            }
+            case 10: {
+              bitField0_ |= 0x00000001;
+              familyname_ = input.readBytes();
+              break;
+            }
+            case 16: {
+              bitField0_ |= 0x00000002;
+              rowCount_ = input.readUInt64();
+              break;
+            }
+            case 24: {
+              bitField0_ |= 0x00000004;
+              kvCount_ = input.readUInt64();
+              break;
+            }
+            case 32: {
+              bitField0_ |= 0x00000008;
+              delKvCount_ = input.readUInt64();
+              break;
+            }
+            case 40: {
+              bitField0_ |= 0x00000010;
+              delFamilyCount_ = input.readUInt64();
+              break;
+            }
+          }
+        }
+      } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+        throw e.setUnfinishedMessage(this);
+      } catch (java.io.IOException e) {
+        throw new com.google.protobuf.InvalidProtocolBufferException(
+            e.getMessage()).setUnfinishedMessage(this);
+      } finally {
+        this.unknownFields = unknownFields.build();
+        makeExtensionsImmutable();
+      }
+    }
+    public static final com.google.protobuf.Descriptors.Descriptor
+        getDescriptor() {
+      return org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.internal_static_FamilyInfo_descriptor;
+    }
+
+    protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+        internalGetFieldAccessorTable() {
+      return org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.internal_static_FamilyInfo_fieldAccessorTable
+          .ensureFieldAccessorsInitialized(
+              org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.FamilyInfo.class, org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.FamilyInfo.Builder.class);
+    }
+
+    public static com.google.protobuf.Parser<FamilyInfo> PARSER =
+        new com.google.protobuf.AbstractParser<FamilyInfo>() {
+      public FamilyInfo parsePartialFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws com.google.protobuf.InvalidProtocolBufferException {
+        return new FamilyInfo(input, extensionRegistry);
+      }
+    };
+
+    @java.lang.Override
+    public com.google.protobuf.Parser<FamilyInfo> getParserForType() {
+      return PARSER;
+    }
+
+    private int bitField0_;
+    // required string familyname = 1;
+    public static final int FAMILYNAME_FIELD_NUMBER = 1;
+    private java.lang.Object familyname_;
+    /**
+     * <code>required string familyname = 1;</code>
+     *
+     * <pre>
+     ** family name 
+     * </pre>
+     */
+    public boolean hasFamilyname() {
+      return ((bitField0_ & 0x00000001) == 0x00000001);
+    }
+    /**
+     * <code>required string familyname = 1;</code>
+     *
+     * <pre>
+     ** family name 
+     * </pre>
+     */
+    public java.lang.String getFamilyname() {
+      java.lang.Object ref = familyname_;
+      if (ref instanceof java.lang.String) {
+        return (java.lang.String) ref;
+      } else {
+        com.google.protobuf.ByteString bs = 
+            (com.google.protobuf.ByteString) ref;
+        java.lang.String s = bs.toStringUtf8();
+        if (bs.isValidUtf8()) {
+          familyname_ = s;
+        }
+        return s;
+      }
+    }
+    /**
+     * <code>required string familyname = 1;</code>
+     *
+     * <pre>
+     ** family name 
+     * </pre>
+     */
+    public com.google.protobuf.ByteString
+        getFamilynameBytes() {
+      java.lang.Object ref = familyname_;
+      if (ref instanceof java.lang.String) {
+        com.google.protobuf.ByteString b = 
+            com.google.protobuf.ByteString.copyFromUtf8(
+                (java.lang.String) ref);
+        familyname_ = b;
+        return b;
+      } else {
+        return (com.google.protobuf.ByteString) ref;
+      }
+    }
+
+    // required uint64 row_count = 2;
+    public static final int ROW_COUNT_FIELD_NUMBER = 2;
+    private long rowCount_;
+    /**
+     * <code>required uint64 row_count = 2;</code>
+     *
+     * <pre>
+     ** total row count 
+     * </pre>
+     */
+    public boolean hasRowCount() {
+      return ((bitField0_ & 0x00000002) == 0x00000002);
+    }
+    /**
+     * <code>required uint64 row_count = 2;</code>
+     *
+     * <pre>
+     ** total row count 
+     * </pre>
+     */
+    public long getRowCount() {
+      return rowCount_;
+    }
+
+    // required uint64 kv_count = 3;
+    public static final int KV_COUNT_FIELD_NUMBER = 3;
+    private long kvCount_;
+    /**
+     * <code>required uint64 kv_count = 3;</code>
+     *
+     * <pre>
+     ** total kv count 
+     * </pre>
+     */
+    public boolean hasKvCount() {
+      return ((bitField0_ & 0x00000004) == 0x00000004);
+    }
+    /**
+     * <code>required uint64 kv_count = 3;</code>
+     *
+     * <pre>
+     ** total kv count 
+     * </pre>
+     */
+    public long getKvCount() {
+      return kvCount_;
+    }
+
+    // required uint64 del_kv_count = 4;
+    public static final int DEL_KV_COUNT_FIELD_NUMBER = 4;
+    private long delKvCount_;
+    /**
+     * <code>required uint64 del_kv_count = 4;</code>
+     *
+     * <pre>
+     ** total delete kv count 
+     * </pre>
+     */
+    public boolean hasDelKvCount() {
+      return ((bitField0_ & 0x00000008) == 0x00000008);
+    }
+    /**
+     * <code>required uint64 del_kv_count = 4;</code>
+     *
+     * <pre>
+     ** total delete kv count 
+     * </pre>
+     */
+    public long getDelKvCount() {
+      return delKvCount_;
+    }
+
+    // required uint64 del_family_count = 5;
+    public static final int DEL_FAMILY_COUNT_FIELD_NUMBER = 5;
+    private long delFamilyCount_;
+    /**
+     * <code>required uint64 del_family_count = 5;</code>
+     *
+     * <pre>
+     ** total del family count 
+     * </pre>
+     */
+    public boolean hasDelFamilyCount() {
+      return ((bitField0_ & 0x00000010) == 0x00000010);
+    }
+    /**
+     * <code>required uint64 del_family_count = 5;</code>
+     *
+     * <pre>
+     ** total del family count 
+     * </pre>
+     */
+    public long getDelFamilyCount() {
+      return delFamilyCount_;
+    }
+
+    private void initFields() {
+      familyname_ = "";
+      rowCount_ = 0L;
+      kvCount_ = 0L;
+      delKvCount_ = 0L;
+      delFamilyCount_ = 0L;
+    }
+    private byte memoizedIsInitialized = -1;
+    public final boolean isInitialized() {
+      byte isInitialized = memoizedIsInitialized;
+      if (isInitialized != -1) return isInitialized == 1;
+
+      if (!hasFamilyname()) {
+        memoizedIsInitialized = 0;
+        return false;
+      }
+      if (!hasRowCount()) {
+        memoizedIsInitialized = 0;
+        return false;
+      }
+      if (!hasKvCount()) {
+        memoizedIsInitialized = 0;
+        return false;
+      }
+      if (!hasDelKvCount()) {
+        memoizedIsInitialized = 0;
+        return false;
+      }
+      if (!hasDelFamilyCount()) {
+        memoizedIsInitialized = 0;
+        return false;
+      }
+      memoizedIsInitialized = 1;
+      return true;
+    }
+
+    public void writeTo(com.google.protobuf.CodedOutputStream output)
+                        throws java.io.IOException {
+      getSerializedSize();
+      if (((bitField0_ & 0x00000001) == 0x00000001)) {
+        output.writeBytes(1, getFamilynameBytes());
+      }
+      if (((bitField0_ & 0x00000002) == 0x00000002)) {
+        output.writeUInt64(2, rowCount_);
+      }
+      if (((bitField0_ & 0x00000004) == 0x00000004)) {
+        output.writeUInt64(3, kvCount_);
+      }
+      if (((bitField0_ & 0x00000008) == 0x00000008)) {
+        output.writeUInt64(4, delKvCount_);
+      }
+      if (((bitField0_ & 0x00000010) == 0x00000010)) {
+        output.writeUInt64(5, delFamilyCount_);
+      }
+      getUnknownFields().writeTo(output);
+    }
+
+    private int memoizedSerializedSize = -1;
+    public int getSerializedSize() {
+      int size = memoizedSerializedSize;
+      if (size != -1) return size;
+
+      size = 0;
+      if (((bitField0_ & 0x00000001) == 0x00000001)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeBytesSize(1, getFamilynameBytes());
+      }
+      if (((bitField0_ & 0x00000002) == 0x00000002)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeUInt64Size(2, rowCount_);
+      }
+      if (((bitField0_ & 0x00000004) == 0x00000004)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeUInt64Size(3, kvCount_);
+      }
+      if (((bitField0_ & 0x00000008) == 0x00000008)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeUInt64Size(4, delKvCount_);
+      }
+      if (((bitField0_ & 0x00000010) == 0x00000010)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeUInt64Size(5, delFamilyCount_);
+      }
+      size += getUnknownFields().getSerializedSize();
+      memoizedSerializedSize = size;
+      return size;
+    }
+
+    private static final long serialVersionUID = 0L;
+    @java.lang.Override
+    protected java.lang.Object writeReplace()
+        throws java.io.ObjectStreamException {
+      return super.writeReplace();
+    }
+
+    @java.lang.Override
+    public boolean equals(final java.lang.Object obj) {
+      if (obj == this) {
+       return true;
+      }
+      if (!(obj instanceof org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.FamilyInfo)) {
+        return super.equals(obj);
+      }
+      org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.FamilyInfo other = (org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.FamilyInfo) obj;
+
+      boolean result = true;
+      result = result && (hasFamilyname() == other.hasFamilyname());
+      if (hasFamilyname()) {
+        result = result && getFamilyname()
+            .equals(other.getFamilyname());
+      }
+      result = result && (hasRowCount() == other.hasRowCount());
+      if (hasRowCount()) {
+        result = result && (getRowCount()
+            == other.getRowCount());
+      }
+      result = result && (hasKvCount() == other.hasKvCount());
+      if (hasKvCount()) {
+        result = result && (getKvCount()
+            == other.getKvCount());
+      }
+      result = result && (hasDelKvCount() == other.hasDelKvCount());
+      if (hasDelKvCount()) {
+        result = result && (getDelKvCount()
+            == other.getDelKvCount());
+      }
+      result = result && (hasDelFamilyCount() == other.hasDelFamilyCount());
+      if (hasDelFamilyCount()) {
+        result = result && (getDelFamilyCount()
+            == other.getDelFamilyCount());
+      }
+      result = result &&
+          getUnknownFields().equals(other.getUnknownFields());
+      return result;
+    }
+
+    private int memoizedHashCode = 0;
+    @java.lang.Override
+    public int hashCode() {
+      if (memoizedHashCode != 0) {
+        return memoizedHashCode;
+      }
+      int hash = 41;
+      hash = (19 * hash) + getDescriptorForType().hashCode();
+      if (hasFamilyname()) {
+        hash = (37 * hash) + FAMILYNAME_FIELD_NUMBER;
+        hash = (53 * hash) + getFamilyname().hashCode();
+      }
+      if (hasRowCount()) {
+        hash = (37 * hash) + ROW_COUNT_FIELD_NUMBER;
+        hash = (53 * hash) + hashLong(getRowCount());
+      }
+      if (hasKvCount()) {
+        hash = (37 * hash) + KV_COUNT_FIELD_NUMBER;
+        hash = (53 * hash) + hashLong(getKvCount());
+      }
+      if (hasDelKvCount()) {
+        hash = (37 * hash) + DEL_KV_COUNT_FIELD_NUMBER;
+        hash = (53 * hash) + hashLong(getDelKvCount());
+      }
+      if (hasDelFamilyCount()) {
+        hash = (37 * hash) + DEL_FAMILY_COUNT_FIELD_NUMBER;
+        hash = (53 * hash) + hashLong(getDelFamilyCount());
+      }
+      hash = (29 * hash) + getUnknownFields().hashCode();
+      memoizedHashCode = hash;
+      return hash;
+    }
+
+    public static org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.FamilyInfo parseFrom(
+        com.google.protobuf.ByteString data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.FamilyInfo parseFrom(
+        com.google.protobuf.ByteString data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.FamilyInfo parseFrom(byte[] data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.FamilyInfo parseFrom(
+        byte[] data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.FamilyInfo parseFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.FamilyInfo parseFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.FamilyInfo parseDelimitedFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return PARSER.parseDelimitedFrom(input);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.FamilyInfo parseDelimitedFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseDelimitedFrom(input, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.FamilyInfo parseFrom(
+        com.google.protobuf.CodedInputStream input)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.FamilyInfo parseFrom(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input, extensionRegistry);
+    }
+
+    public static Builder newBuilder() { return Builder.create(); }
+    public Builder newBuilderForType() { return newBuilder(); }
+    public static Builder newBuilder(org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.FamilyInfo prototype) {
+      return newBuilder().mergeFrom(prototype);
+    }
+    public Builder toBuilder() { return newBuilder(this); }
+
+    @java.lang.Override
+    protected Builder newBuilderForType(
+        com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+      Builder builder = new Builder(parent);
+      return builder;
+    }
+    /**
+     * Protobuf type {@code FamilyInfo}
+     */
+    public static final class Builder extends
+        com.google.protobuf.GeneratedMessage.Builder<Builder>
+       implements org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.FamilyInfoOrBuilder {
+      public static final com.google.protobuf.Descriptors.Descriptor
+          getDescriptor() {
+        return org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.internal_static_FamilyInfo_descriptor;
+      }
+
+      protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+          internalGetFieldAccessorTable() {
+        return org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.internal_static_FamilyInfo_fieldAccessorTable
+            .ensureFieldAccessorsInitialized(
+                org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.FamilyInfo.class, org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.FamilyInfo.Builder.class);
+      }
+
+      // Construct using org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.FamilyInfo.newBuilder()
+      private Builder() {
+        maybeForceBuilderInitialization();
+      }
+
+      private Builder(
+          com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+        super(parent);
+        maybeForceBuilderInitialization();
+      }
+      private void maybeForceBuilderInitialization() {
+        if (com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders) {
+        }
+      }
+      private static Builder create() {
+        return new Builder();
+      }
+
+      public Builder clear() {
+        super.clear();
+        familyname_ = "";
+        bitField0_ = (bitField0_ & ~0x00000001);
+        rowCount_ = 0L;
+        bitField0_ = (bitField0_ & ~0x00000002);
+        kvCount_ = 0L;
+        bitField0_ = (bitField0_ & ~0x00000004);
+        delKvCount_ = 0L;
+        bitField0_ = (bitField0_ & ~0x00000008);
+        delFamilyCount_ = 0L;
+        bitField0_ = (bitField0_ & ~0x00000010);
+        return this;
+      }
+
+      public Builder clone() {
+        return create().mergeFrom(buildPartial());
+      }
+
+      public com.google.protobuf.Descriptors.Descriptor
+          getDescriptorForType() {
+        return org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.internal_static_FamilyInfo_descriptor;
+      }
+
+      public org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.FamilyInfo getDefaultInstanceForType() {
+        return org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.FamilyInfo.getDefaultInstance();
+      }
+
+      public org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.FamilyInfo build() {
+        org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.FamilyInfo result = buildPartial();
+        if (!result.isInitialized()) {
+          throw newUninitializedMessageException(result);
+        }
+        return result;
+      }
+
+      public org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.FamilyInfo buildPartial() {
+        org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.FamilyInfo result = new org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.FamilyInfo(this);
+        int from_bitField0_ = bitField0_;
+        int to_bitField0_ = 0;
+        if (((from_bitField0_ & 0x00000001) == 0x00000001)) {
+          to_bitField0_ |= 0x00000001;
+        }
+        result.familyname_ = familyname_;
+        if (((from_bitField0_ & 0x00000002) == 0x00000002)) {
+          to_bitField0_ |= 0x00000002;
+        }
+        result.rowCount_ = rowCount_;
+        if (((from_bitField0_ & 0x00000004) == 0x00000004)) {
+          to_bitField0_ |= 0x00000004;
+        }
+        result.kvCount_ = kvCount_;
+        if (((from_bitField0_ & 0x00000008) == 0x00000008)) {
+          to_bitField0_ |= 0x00000008;
+        }
+        result.delKvCount_ = delKvCount_;
+        if (((from_bitField0_ & 0x00000010) == 0x00000010)) {
+          to_bitField0_ |= 0x00000010;
+        }
+        result.delFamilyCount_ = delFamilyCount_;
+        result.bitField0_ = to_bitField0_;
+        onBuilt();
+        return result;
+      }
+
+      public Builder mergeFrom(com.google.protobuf.Message other) {
+        if (other instanceof org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.FamilyInfo) {
+          return mergeFrom((org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.FamilyInfo)other);
+        } else {
+          super.mergeFrom(other);
+          return this;
+        }
+      }
+
+      public Builder mergeFrom(org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.FamilyInfo other) {
+        if (other == org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.FamilyInfo.getDefaultInstance()) return this;
+        if (other.hasFamilyname()) {
+          bitField0_ |= 0x00000001;
+          familyname_ = other.familyname_;
+          onChanged();
+        }
+        if (other.hasRowCount()) {
+          setRowCount(other.getRowCount());
+        }
+        if (other.hasKvCount()) {
+          setKvCount(other.getKvCount());
+        }
+        if (other.hasDelKvCount()) {
+          setDelKvCount(other.getDelKvCount());
+        }
+        if (other.hasDelFamilyCount()) {
+          setDelFamilyCount(other.getDelFamilyCount());
+        }
+        this.mergeUnknownFields(other.getUnknownFields());
+        return this;
+      }
+
+      public final boolean isInitialized() {
+        if (!hasFamilyname()) {
+          
+          return false;
+        }
+        if (!hasRowCount()) {
+          
+          return false;
+        }
+        if (!hasKvCount()) {
+          
+          return false;
+        }
+        if (!hasDelKvCount()) {
+          
+          return false;
+        }
+        if (!hasDelFamilyCount()) {
+          
+          return false;
+        }
+        return true;
+      }
+
+      public Builder mergeFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws java.io.IOException {
+        org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.FamilyInfo parsedMessage = null;
+        try {
+          parsedMessage = PARSER.parsePartialFrom(input, extensionRegistry);
+        } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+          parsedMessage = (org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.FamilyInfo) e.getUnfinishedMessage();
+          throw e;
+        } finally {
+          if (parsedMessage != null) {
+            mergeFrom(parsedMessage);
+          }
+        }
+        return this;
+      }
+      private int bitField0_;
+
+      // required string familyname = 1;
+      private java.lang.Object familyname_ = "";
+      /**
+       * <code>required string familyname = 1;</code>
+       *
+       * <pre>
+       ** family name 
+       * </pre>
+       */
+      public boolean hasFamilyname() {
+        return ((bitField0_ & 0x00000001) == 0x00000001);
+      }
+      /**
+       * <code>required string familyname = 1;</code>
+       *
+       * <pre>
+       ** family name 
+       * </pre>
+       */
+      public java.lang.String getFamilyname() {
+        java.lang.Object ref = familyname_;
+        if (!(ref instanceof java.lang.String)) {
+          java.lang.String s = ((com.google.protobuf.ByteString) ref)
+              .toStringUtf8();
+          familyname_ = s;
+          return s;
+        } else {
+          return (java.lang.String) ref;
+        }
+      }
+      /**
+       * <code>required string familyname = 1;</code>
+       *
+       * <pre>
+       ** family name 
+       * </pre>
+       */
+      public com.google.protobuf.ByteString
+          getFamilynameBytes() {
+        java.lang.Object ref = familyname_;
+        if (ref instanceof String) {
+          com.google.protobuf.ByteString b = 
+              com.google.protobuf.ByteString.copyFromUtf8(
+                  (java.lang.String) ref);
+          familyname_ = b;
+          return b;
+        } else {
+          return (com.google.protobuf.ByteString) ref;
+        }
+      }
+      /**
+       * <code>required string familyname = 1;</code>
+       *
+       * <pre>
+       ** family name 
+       * </pre>
+       */
+      public Builder setFamilyname(
+          java.lang.String value) {
+        if (value == null) {
+    throw new NullPointerException();
+  }
+  bitField0_ |= 0x00000001;
+        familyname_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>required string familyname = 1;</code>
+       *
+       * <pre>
+       ** family name 
+       * </pre>
+       */
+      public Builder clearFamilyname() {
+        bitField0_ = (bitField0_ & ~0x00000001);
+        familyname_ = getDefaultInstance().getFamilyname();
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>required string familyname = 1;</code>
+       *
+       * <pre>
+       ** family name 
+       * </pre>
+       */
+      public Builder setFamilynameBytes(
+          com.google.protobuf.ByteString value) {
+        if (value == null) {
+    throw new NullPointerException();
+  }
+  bitField0_ |= 0x00000001;
+        familyname_ = value;
+        onChanged();
+        return this;
+      }
+
+      // required uint64 row_count = 2;
+      private long rowCount_ ;
+      /**
+       * <code>required uint64 row_count = 2;</code>
+       *
+       * <pre>
+       ** total row count 
+       * </pre>
+       */
+      public boolean hasRowCount() {
+        return ((bitField0_ & 0x00000002) == 0x00000002);
+      }
+      /**
+       * <code>required uint64 row_count = 2;</code>
+       *
+       * <pre>
+       ** total row count 
+       * </pre>
+       */
+      public long getRowCount() {
+        return rowCount_;
+      }
+      /**
+       * <code>required uint64 row_count = 2;</code>
+       *
+       * <pre>
+       ** total row count 
+       * </pre>
+       */
+      public Builder setRowCount(long value) {
+        bitField0_ |= 0x00000002;
+        rowCount_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>required uint64 row_count = 2;</code>
+       *
+       * <pre>
+       ** total row count 
+       * </pre>
+       */
+      public Builder clearRowCount() {
+        bitField0_ = (bitField0_ & ~0x00000002);
+        rowCount_ = 0L;
+        onChanged();
+        return this;
+      }
+
+      // required uint64 kv_count = 3;
+      private long kvCount_ ;
+      /**
+       * <code>required uint64 kv_count = 3;</code>
+       *
+       * <pre>
+       ** total kv count 
+       * </pre>
+       */
+      public boolean hasKvCount() {
+        return ((bitField0_ & 0x00000004) == 0x00000004);
+      }
+      /**
+       * <code>required uint64 kv_count = 3;</code>
+       *
+       * <pre>
+       ** total kv count 
+       * </pre>
+       */
+      public long getKvCount() {
+        return kvCount_;
+      }
+      /**
+       * <code>required uint64 kv_count = 3;</code>
+       *
+       * <pre>
+       ** total kv count 
+       * </pre>
+       */
+      public Builder setKvCount(long value) {
+        bitField0_ |= 0x00000004;
+        kvCount_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>required uint64 kv_count = 3;</code>
+       *
+       * <pre>
+       ** total kv count 
+       * </pre>
+       */
+      public Builder clearKvCount() {
+        bitField0_ = (bitField0_ & ~0x00000004);
+        kvCount_ = 0L;
+        onChanged();
+        return this;
+      }
+
+      // required uint64 del_kv_count = 4;
+      private long delKvCount_ ;
+      /**
+       * <code>required uint64 del_kv_count = 4;</code>
+       *
+       * <pre>
+       ** total delete kv count 
+       * </pre>
+       */
+      public boolean hasDelKvCount() {
+        return ((bitField0_ & 0x00000008) == 0x00000008);
+      }
+      /**
+       * <code>required uint64 del_kv_count = 4;</code>
+       *
+       * <pre>
+       ** total delete kv count 
+       * </pre>
+       */
+      public long getDelKvCount() {
+        return delKvCount_;
+      }
+      /**
+       * <code>required uint64 del_kv_count = 4;</code>
+       *
+       * <pre>
+       ** total delete kv count 
+       * </pre>
+       */
+      public Builder setDelKvCount(long value) {
+        bitField0_ |= 0x00000008;
+        delKvCount_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>required uint64 del_kv_count = 4;</code>
+       *
+       * <pre>
+       ** total delete kv count 
+       * </pre>
+       */
+      public Builder clearDelKvCount() {
+        bitField0_ = (bitField0_ & ~0x00000008);
+        delKvCount_ = 0L;
+        onChanged();
+        return this;
+      }
+
+      // required uint64 del_family_count = 5;
+      private long delFamilyCount_ ;
+      /**
+       * <code>required uint64 del_family_count = 5;</code>
+       *
+       * <pre>
+       ** total del family count 
+       * </pre>
+       */
+      public boolean hasDelFamilyCount() {
+        return ((bitField0_ & 0x00000010) == 0x00000010);
+      }
+      /**
+       * <code>required uint64 del_family_count = 5;</code>
+       *
+       * <pre>
+       ** total del family count 
+       * </pre>
+       */
+      public long getDelFamilyCount() {
+        return delFamilyCount_;
+      }
+      /**
+       * <code>required uint64 del_family_count = 5;</code>
+       *
+       * <pre>
+       ** total del family count 
+       * </pre>
+       */
+      public Builder setDelFamilyCount(long value) {
+        bitField0_ |= 0x00000010;
+        delFamilyCount_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>required uint64 del_family_count = 5;</code>
+       *
+       * <pre>
+       ** total del family count 
+       * </pre>
+       */
+      public Builder clearDelFamilyCount() {
+        bitField0_ = (bitField0_ & ~0x00000010);
+        delFamilyCount_ = 0L;
+        onChanged();
+        return this;
+      }
+
+      // @@protoc_insertion_point(builder_scope:FamilyInfo)
+    }
+
+    static {
+      defaultInstance = new FamilyInfo(true);
+      defaultInstance.initFields();
+    }
+
+    // @@protoc_insertion_point(class_scope:FamilyInfo)
+  }
+
   public interface RegionLoadOrBuilder
       extends com.google.protobuf.MessageOrBuilder {
 
@@ -2339,7 +3424,7 @@ public final class ClusterStatusProtos {
      * <code>optional uint64 scan_count_per_second = 26;</code>
      *
      * <pre>
-     * scan count per second made to region 
+     ** scan count per second made to region 
      * </pre>
      */
     boolean hasScanCountPerSecond();
@@ -2347,7 +3432,7 @@ public final class ClusterStatusProtos {
      * <code>optional uint64 scan_count_per_second = 26;</code>
      *
      * <pre>
-     * scan count per second made to region 
+     ** scan count per second made to region 
      * </pre>
      */
     long getScanCountPerSecond();
@@ -2357,7 +3442,7 @@ public final class ClusterStatusProtos {
      * <code>optional uint64 scan_rows_per_second = 27;</code>
      *
      * <pre>
-     * scan rows per second made to region 
+     ** scan rows per second made to region 
      * </pre>
      */
     boolean hasScanRowsPerSecond();
@@ -2365,10 +3450,55 @@ public final class ClusterStatusProtos {
      * <code>optional uint64 scan_rows_per_second = 27;</code>
      *
      * <pre>
-     * scan rows per second made to region 
+     ** scan rows per second made to region 
      * </pre>
      */
     long getScanRowsPerSecond();
+
+    // repeated .FamilyInfo family_info = 28;
+    /**
+     * <code>repeated .FamilyInfo family_info = 28;</code>
+     *
+     * <pre>
+     ** family info 
+     * </pre>
+     */
+    java.util.List<org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.FamilyInfo> 
+        getFamilyInfoList();
+    /**
+     * <code>repeated .FamilyInfo family_info = 28;</code>
+     *
+     * <pre>
+     ** family info 
+     * </pre>
+     */
+    org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.FamilyInfo getFamilyInfo(int index);
+    /**
+     * <code>repeated .FamilyInfo family_info = 28;</code>
+     *
+     * <pre>
+     ** family info 
+     * </pre>
+     */
+    int getFamilyInfoCount();
+    /**
+     * <code>repeated .FamilyInfo family_info = 28;</code>
+     *
+     * <pre>
+     ** family info 
+     * </pre>
+     */
+    java.util.List<? extends org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.FamilyInfoOrBuilder> 
+        getFamilyInfoOrBuilderList();
+    /**
+     * <code>repeated .FamilyInfo family_info = 28;</code>
+     *
+     * <pre>
+     ** family info 
+     * </pre>
+     */
+    org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.FamilyInfoOrBuilder getFamilyInfoOrBuilder(
+        int index);
   }
   /**
    * Protobuf type {@code RegionLoad}
@@ -2564,6 +3694,14 @@ public final class ClusterStatusProtos {
               scanRowsPerSecond_ = input.readUInt64();
               break;
             }
+            case 226: {
+              if (!((mutable_bitField0_ & 0x08000000) == 0x08000000)) {
+                familyInfo_ = new java.util.ArrayList<org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.FamilyInfo>();
+                mutable_bitField0_ |= 0x08000000;
+              }
+              familyInfo_.add(input.readMessage(org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.FamilyInfo.PARSER, extensionRegistry));
+              break;
+            }
           }
         }
       } catch (com.google.protobuf.InvalidProtocolBufferException e) {
@@ -2572,6 +3710,9 @@ public final class ClusterStatusProtos {
         throw new com.google.protobuf.InvalidProtocolBufferException(
             e.getMessage()).setUnfinishedMessage(this);
       } finally {
+        if (((mutable_bitField0_ & 0x08000000) == 0x08000000)) {
+          familyInfo_ = java.util.Collections.unmodifiableList(familyInfo_);
+        }
         this.unknownFields = unknownFields.build();
         makeExtensionsImmutable();
       }
@@ -3229,7 +4370,7 @@ public final class ClusterStatusProtos {
      * <code>optional uint64 scan_count_per_second = 26;</code>
      *
      * <pre>
-     * scan count per second made to region 
+     ** scan count per second made to region 
      * </pre>
      */
     public boolean hasScanCountPerSecond() {
@@ -3239,7 +4380,7 @@ public final class ClusterStatusProtos {
      * <code>optional uint64 scan_count_per_second = 26;</code>
      *
      * <pre>
-     * scan count per second made to region 
+     ** scan count per second made to region 
      * </pre>
      */
     public long getScanCountPerSecond() {
@@ -3253,7 +4394,7 @@ public final class ClusterStatusProtos {
      * <code>optional uint64 scan_rows_per_second = 27;</code>
      *
      * <pre>
-     * scan rows per second made to region 
+     ** scan rows per second made to region 
      * </pre>
      */
     public boolean hasScanRowsPerSecond() {
@@ -3263,11 +4404,67 @@ public final class ClusterStatusProtos {
      * <code>optional uint64 scan_rows_per_second = 27;</code>
      *
      * <pre>
-     * scan rows per second made to region 
+     ** scan rows per second made to region 
      * </pre>
      */
     public long getScanRowsPerSecond() {
       return scanRowsPerSecond_;
+    }
+
+    // repeated .FamilyInfo family_info = 28;
+    public static final int FAMILY_INFO_FIELD_NUMBER = 28;
+    private java.util.List<org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.FamilyInfo> familyInfo_;
+    /**
+     * <code>repeated .FamilyInfo family_info = 28;</code>
+     *
+     * <pre>
+     ** family info 
+     * </pre>
+     */
+    public java.util.List<org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.FamilyInfo> getFamilyInfoList() {
+      return familyInfo_;
+    }
+    /**
+     * <code>repeated .FamilyInfo family_info = 28;</code>
+     *
+     * <pre>
+     ** family info 
+     * </pre>
+     */
+    public java.util.List<? extends org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.FamilyInfoOrBuilder> 
+        getFamilyInfoOrBuilderList() {
+      return familyInfo_;
+    }
+    /**
+     * <code>repeated .FamilyInfo family_info = 28;</code>
+     *
+     * <pre>
+     ** family info 
+     * </pre>
+     */
+    public int getFamilyInfoCount() {
+      return familyInfo_.size();
+    }
+    /**
+     * <code>repeated .FamilyInfo family_info = 28;</code>
+     *
+     * <pre>
+     ** family info 
+     * </pre>
+     */
+    public org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.FamilyInfo getFamilyInfo(int index) {
+      return familyInfo_.get(index);
+    }
+    /**
+     * <code>repeated .FamilyInfo family_info = 28;</code>
+     *
+     * <pre>
+     ** family info 
+     * </pre>
+     */
+    public org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.FamilyInfoOrBuilder getFamilyInfoOrBuilder(
+        int index) {
+      return familyInfo_.get(index);
     }
 
     private void initFields() {
@@ -3298,6 +4495,7 @@ public final class ClusterStatusProtos {
       readRawCellCountPerSecond_ = 0L;
       scanCountPerSecond_ = 0L;
       scanRowsPerSecond_ = 0L;
+      familyInfo_ = java.util.Collections.emptyList();
     }
     private byte memoizedIsInitialized = -1;
     public final boolean isInitialized() {
@@ -3311,6 +4509,12 @@ public final class ClusterStatusProtos {
       if (!getRegionSpecifier().isInitialized()) {
         memoizedIsInitialized = 0;
         return false;
+      }
+      for (int i = 0; i < getFamilyInfoCount(); i++) {
+        if (!getFamilyInfo(i).isInitialized()) {
+          memoizedIsInitialized = 0;
+          return false;
+        }
       }
       memoizedIsInitialized = 1;
       return true;
@@ -3399,6 +4603,9 @@ public final class ClusterStatusProtos {
       }
       if (((bitField0_ & 0x04000000) == 0x04000000)) {
         output.writeUInt64(27, scanRowsPerSecond_);
+      }
+      for (int i = 0; i < familyInfo_.size(); i++) {
+        output.writeMessage(28, familyInfo_.get(i));
       }
       getUnknownFields().writeTo(output);
     }
@@ -3516,6 +4723,10 @@ public final class ClusterStatusProtos {
       if (((bitField0_ & 0x04000000) == 0x04000000)) {
         size += com.google.protobuf.CodedOutputStream
           .computeUInt64Size(27, scanRowsPerSecond_);
+      }
+      for (int i = 0; i < familyInfo_.size(); i++) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeMessageSize(28, familyInfo_.get(i));
       }
       size += getUnknownFields().getSerializedSize();
       memoizedSerializedSize = size;
@@ -3674,6 +4885,8 @@ public final class ClusterStatusProtos {
         result = result && (getScanRowsPerSecond()
             == other.getScanRowsPerSecond());
       }
+      result = result && getFamilyInfoList()
+          .equals(other.getFamilyInfoList());
       result = result &&
           getUnknownFields().equals(other.getUnknownFields());
       return result;
@@ -3796,6 +5009,10 @@ public final class ClusterStatusProtos {
         hash = (37 * hash) + SCAN_ROWS_PER_SECOND_FIELD_NUMBER;
         hash = (53 * hash) + hashLong(getScanRowsPerSecond());
       }
+      if (getFamilyInfoCount() > 0) {
+        hash = (37 * hash) + FAMILY_INFO_FIELD_NUMBER;
+        hash = (53 * hash) + getFamilyInfoList().hashCode();
+      }
       hash = (29 * hash) + getUnknownFields().hashCode();
       memoizedHashCode = hash;
       return hash;
@@ -3898,6 +5115,7 @@ public final class ClusterStatusProtos {
       private void maybeForceBuilderInitialization() {
         if (com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders) {
           getRegionSpecifierFieldBuilder();
+          getFamilyInfoFieldBuilder();
         }
       }
       private static Builder create() {
@@ -3964,6 +5182,12 @@ public final class ClusterStatusProtos {
         bitField0_ = (bitField0_ & ~0x02000000);
         scanRowsPerSecond_ = 0L;
         bitField0_ = (bitField0_ & ~0x04000000);
+        if (familyInfoBuilder_ == null) {
+          familyInfo_ = java.util.Collections.emptyList();
+          bitField0_ = (bitField0_ & ~0x08000000);
+        } else {
+          familyInfoBuilder_.clear();
+        }
         return this;
       }
 
@@ -4104,6 +5328,15 @@ public final class ClusterStatusProtos {
           to_bitField0_ |= 0x04000000;
         }
         result.scanRowsPerSecond_ = scanRowsPerSecond_;
+        if (familyInfoBuilder_ == null) {
+          if (((bitField0_ & 0x08000000) == 0x08000000)) {
+            familyInfo_ = java.util.Collections.unmodifiableList(familyInfo_);
+            bitField0_ = (bitField0_ & ~0x08000000);
+          }
+          result.familyInfo_ = familyInfo_;
+        } else {
+          result.familyInfo_ = familyInfoBuilder_.build();
+        }
         result.bitField0_ = to_bitField0_;
         onBuilt();
         return result;
@@ -4201,6 +5434,32 @@ public final class ClusterStatusProtos {
         if (other.hasScanRowsPerSecond()) {
           setScanRowsPerSecond(other.getScanRowsPerSecond());
         }
+        if (familyInfoBuilder_ == null) {
+          if (!other.familyInfo_.isEmpty()) {
+            if (familyInfo_.isEmpty()) {
+              familyInfo_ = other.familyInfo_;
+              bitField0_ = (bitField0_ & ~0x08000000);
+            } else {
+              ensureFamilyInfoIsMutable();
+              familyInfo_.addAll(other.familyInfo_);
+            }
+            onChanged();
+          }
+        } else {
+          if (!other.familyInfo_.isEmpty()) {
+            if (familyInfoBuilder_.isEmpty()) {
+              familyInfoBuilder_.dispose();
+              familyInfoBuilder_ = null;
+              familyInfo_ = other.familyInfo_;
+              bitField0_ = (bitField0_ & ~0x08000000);
+              familyInfoBuilder_ = 
+                com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders ?
+                   getFamilyInfoFieldBuilder() : null;
+            } else {
+              familyInfoBuilder_.addAllMessages(other.familyInfo_);
+            }
+          }
+        }
         this.mergeUnknownFields(other.getUnknownFields());
         return this;
       }
@@ -4213,6 +5472,12 @@ public final class ClusterStatusProtos {
         if (!getRegionSpecifier().isInitialized()) {
           
           return false;
+        }
+        for (int i = 0; i < getFamilyInfoCount(); i++) {
+          if (!getFamilyInfo(i).isInitialized()) {
+            
+            return false;
+          }
         }
         return true;
       }
@@ -5587,7 +6852,7 @@ public final class ClusterStatusProtos {
        * <code>optional uint64 scan_count_per_second = 26;</code>
        *
        * <pre>
-       * scan count per second made to region 
+       ** scan count per second made to region 
        * </pre>
        */
       public boolean hasScanCountPerSecond() {
@@ -5597,7 +6862,7 @@ public final class ClusterStatusProtos {
        * <code>optional uint64 scan_count_per_second = 26;</code>
        *
        * <pre>
-       * scan count per second made to region 
+       ** scan count per second made to region 
        * </pre>
        */
       public long getScanCountPerSecond() {
@@ -5607,7 +6872,7 @@ public final class ClusterStatusProtos {
        * <code>optional uint64 scan_count_per_second = 26;</code>
        *
        * <pre>
-       * scan count per second made to region 
+       ** scan count per second made to region 
        * </pre>
        */
       public Builder setScanCountPerSecond(long value) {
@@ -5620,7 +6885,7 @@ public final class ClusterStatusProtos {
        * <code>optional uint64 scan_count_per_second = 26;</code>
        *
        * <pre>
-       * scan count per second made to region 
+       ** scan count per second made to region 
        * </pre>
        */
       public Builder clearScanCountPerSecond() {
@@ -5636,7 +6901,7 @@ public final class ClusterStatusProtos {
        * <code>optional uint64 scan_rows_per_second = 27;</code>
        *
        * <pre>
-       * scan rows per second made to region 
+       ** scan rows per second made to region 
        * </pre>
        */
       public boolean hasScanRowsPerSecond() {
@@ -5646,7 +6911,7 @@ public final class ClusterStatusProtos {
        * <code>optional uint64 scan_rows_per_second = 27;</code>
        *
        * <pre>
-       * scan rows per second made to region 
+       ** scan rows per second made to region 
        * </pre>
        */
       public long getScanRowsPerSecond() {
@@ -5656,7 +6921,7 @@ public final class ClusterStatusProtos {
        * <code>optional uint64 scan_rows_per_second = 27;</code>
        *
        * <pre>
-       * scan rows per second made to region 
+       ** scan rows per second made to region 
        * </pre>
        */
       public Builder setScanRowsPerSecond(long value) {
@@ -5669,7 +6934,7 @@ public final class ClusterStatusProtos {
        * <code>optional uint64 scan_rows_per_second = 27;</code>
        *
        * <pre>
-       * scan rows per second made to region 
+       ** scan rows per second made to region 
        * </pre>
        */
       public Builder clearScanRowsPerSecond() {
@@ -5677,6 +6942,318 @@ public final class ClusterStatusProtos {
         scanRowsPerSecond_ = 0L;
         onChanged();
         return this;
+      }
+
+      // repeated .FamilyInfo family_info = 28;
+      private java.util.List<org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.FamilyInfo> familyInfo_ =
+        java.util.Collections.emptyList();
+      private void ensureFamilyInfoIsMutable() {
+        if (!((bitField0_ & 0x08000000) == 0x08000000)) {
+          familyInfo_ = new java.util.ArrayList<org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.FamilyInfo>(familyInfo_);
+          bitField0_ |= 0x08000000;
+         }
+      }
+
+      private com.google.protobuf.RepeatedFieldBuilder<
+          org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.FamilyInfo, org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.FamilyInfo.Builder, org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.FamilyInfoOrBuilder> familyInfoBuilder_;
+
+      /**
+       * <code>repeated .FamilyInfo family_info = 28;</code>
+       *
+       * <pre>
+       ** family info 
+       * </pre>
+       */
+      public java.util.List<org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.FamilyInfo> getFamilyInfoList() {
+        if (familyInfoBuilder_ == null) {
+          return java.util.Collections.unmodifiableList(familyInfo_);
+        } else {
+          return familyInfoBuilder_.getMessageList();
+        }
+      }
+      /**
+       * <code>repeated .FamilyInfo family_info = 28;</code>
+       *
+       * <pre>
+       ** family info 
+       * </pre>
+       */
+      public int getFamilyInfoCount() {
+        if (familyInfoBuilder_ == null) {
+          return familyInfo_.size();
+        } else {
+          return familyInfoBuilder_.getCount();
+        }
+      }
+      /**
+       * <code>repeated .FamilyInfo family_info = 28;</code>
+       *
+       * <pre>
+       ** family info 
+       * </pre>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.FamilyInfo getFamilyInfo(int index) {
+        if (familyInfoBuilder_ == null) {
+          return familyInfo_.get(index);
+        } else {
+          return familyInfoBuilder_.getMessage(index);
+        }
+      }
+      /**
+       * <code>repeated .FamilyInfo family_info = 28;</code>
+       *
+       * <pre>
+       ** family info 
+       * </pre>
+       */
+      public Builder setFamilyInfo(
+          int index, org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.FamilyInfo value) {
+        if (familyInfoBuilder_ == null) {
+          if (value == null) {
+            throw new NullPointerException();
+          }
+          ensureFamilyInfoIsMutable();
+          familyInfo_.set(index, value);
+          onChanged();
+        } else {
+          familyInfoBuilder_.setMessage(index, value);
+        }
+        return this;
+      }
+      /**
+       * <code>repeated .FamilyInfo family_info = 28;</code>
+       *
+       * <pre>
+       ** family info 
+       * </pre>
+       */
+      public Builder setFamilyInfo(
+          int index, org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.FamilyInfo.Builder builderForValue) {
+        if (familyInfoBuilder_ == null) {
+          ensureFamilyInfoIsMutable();
+          familyInfo_.set(index, builderForValue.build());
+          onChanged();
+        } else {
+          familyInfoBuilder_.setMessage(index, builderForValue.build());
+        }
+        return this;
+      }
+      /**
+       * <code>repeated .FamilyInfo family_info = 28;</code>
+       *
+       * <pre>
+       ** family info 
+       * </pre>
+       */
+      public Builder addFamilyInfo(org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.FamilyInfo value) {
+        if (familyInfoBuilder_ == null) {
+          if (value == null) {
+            throw new NullPointerException();
+          }
+          ensureFamilyInfoIsMutable();
+          familyInfo_.add(value);
+          onChanged();
+        } else {
+          familyInfoBuilder_.addMessage(value);
+        }
+        return this;
+      }
+      /**
+       * <code>repeated .FamilyInfo family_info = 28;</code>
+       *
+       * <pre>
+       ** family info 
+       * </pre>
+       */
+      public Builder addFamilyInfo(
+          int index, org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.FamilyInfo value) {
+        if (familyInfoBuilder_ == null) {
+          if (value == null) {
+            throw new NullPointerException();
+          }
+          ensureFamilyInfoIsMutable();
+          familyInfo_.add(index, value);
+          onChanged();
+        } else {
+          familyInfoBuilder_.addMessage(index, value);
+        }
+        return this;
+      }
+      /**
+       * <code>repeated .FamilyInfo family_info = 28;</code>
+       *
+       * <pre>
+       ** family info 
+       * </pre>
+       */
+      public Builder addFamilyInfo(
+          org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.FamilyInfo.Builder builderForValue) {
+        if (familyInfoBuilder_ == null) {
+          ensureFamilyInfoIsMutable();
+          familyInfo_.add(builderForValue.build());
+          onChanged();
+        } else {
+          familyInfoBuilder_.addMessage(builderForValue.build());
+        }
+        return this;
+      }
+      /**
+       * <code>repeated .FamilyInfo family_info = 28;</code>
+       *
+       * <pre>
+       ** family info 
+       * </pre>
+       */
+      public Builder addFamilyInfo(
+          int index, org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.FamilyInfo.Builder builderForValue) {
+        if (familyInfoBuilder_ == null) {
+          ensureFamilyInfoIsMutable();
+          familyInfo_.add(index, builderForValue.build());
+          onChanged();
+        } else {
+          familyInfoBuilder_.addMessage(index, builderForValue.build());
+        }
+        return this;
+      }
+      /**
+       * <code>repeated .FamilyInfo family_info = 28;</code>
+       *
+       * <pre>
+       ** family info 
+       * </pre>
+       */
+      public Builder addAllFamilyInfo(
+          java.lang.Iterable<? extends org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.FamilyInfo> values) {
+        if (familyInfoBuilder_ == null) {
+          ensureFamilyInfoIsMutable();
+          super.addAll(values, familyInfo_);
+          onChanged();
+        } else {
+          familyInfoBuilder_.addAllMessages(values);
+        }
+        return this;
+      }
+      /**
+       * <code>repeated .FamilyInfo family_info = 28;</code>
+       *
+       * <pre>
+       ** family info 
+       * </pre>
+       */
+      public Builder clearFamilyInfo() {
+        if (familyInfoBuilder_ == null) {
+          familyInfo_ = java.util.Collections.emptyList();
+          bitField0_ = (bitField0_ & ~0x08000000);
+          onChanged();
+        } else {
+          familyInfoBuilder_.clear();
+        }
+        return this;
+      }
+      /**
+       * <code>repeated .FamilyInfo family_info = 28;</code>
+       *
+       * <pre>
+       ** family info 
+       * </pre>
+       */
+      public Builder removeFamilyInfo(int index) {
+        if (familyInfoBuilder_ == null) {
+          ensureFamilyInfoIsMutable();
+          familyInfo_.remove(index);
+          onChanged();
+        } else {
+          familyInfoBuilder_.remove(index);
+        }
+        return this;
+      }
+      /**
+       * <code>repeated .FamilyInfo family_info = 28;</code>
+       *
+       * <pre>
+       ** family info 
+       * </pre>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.FamilyInfo.Builder getFamilyInfoBuilder(
+          int index) {
+        return getFamilyInfoFieldBuilder().getBuilder(index);
+      }
+      /**
+       * <code>repeated .FamilyInfo family_info = 28;</code>
+       *
+       * <pre>
+       ** family info 
+       * </pre>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.FamilyInfoOrBuilder getFamilyInfoOrBuilder(
+          int index) {
+        if (familyInfoBuilder_ == null) {
+          return familyInfo_.get(index);  } else {
+          return familyInfoBuilder_.getMessageOrBuilder(index);
+        }
+      }
+      /**
+       * <code>repeated .FamilyInfo family_info = 28;</code>
+       *
+       * <pre>
+       ** family info 
+       * </pre>
+       */
+      public java.util.List<? extends org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.FamilyInfoOrBuilder> 
+           getFamilyInfoOrBuilderList() {
+        if (familyInfoBuilder_ != null) {
+          return familyInfoBuilder_.getMessageOrBuilderList();
+        } else {
+          return java.util.Collections.unmodifiableList(familyInfo_);
+        }
+      }
+      /**
+       * <code>repeated .FamilyInfo family_info = 28;</code>
+       *
+       * <pre>
+       ** family info 
+       * </pre>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.FamilyInfo.Builder addFamilyInfoBuilder() {
+        return getFamilyInfoFieldBuilder().addBuilder(
+            org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.FamilyInfo.getDefaultInstance());
+      }
+      /**
+       * <code>repeated .FamilyInfo family_info = 28;</code>
+       *
+       * <pre>
+       ** family info 
+       * </pre>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.FamilyInfo.Builder addFamilyInfoBuilder(
+          int index) {
+        return getFamilyInfoFieldBuilder().addBuilder(
+            index, org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.FamilyInfo.getDefaultInstance());
+      }
+      /**
+       * <code>repeated .FamilyInfo family_info = 28;</code>
+       *
+       * <pre>
+       ** family info 
+       * </pre>
+       */
+      public java.util.List<org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.FamilyInfo.Builder> 
+           getFamilyInfoBuilderList() {
+        return getFamilyInfoFieldBuilder().getBuilderList();
+      }
+      private com.google.protobuf.RepeatedFieldBuilder<
+          org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.FamilyInfo, org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.FamilyInfo.Builder, org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.FamilyInfoOrBuilder> 
+          getFamilyInfoFieldBuilder() {
+        if (familyInfoBuilder_ == null) {
+          familyInfoBuilder_ = new com.google.protobuf.RepeatedFieldBuilder<
+              org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.FamilyInfo, org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.FamilyInfo.Builder, org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.FamilyInfoOrBuilder>(
+                  familyInfo_,
+                  ((bitField0_ & 0x08000000) == 0x08000000),
+                  getParentForChildren(),
+                  isClean());
+          familyInfo_ = null;
+        }
+        return familyInfoBuilder_;
       }
 
       // @@protoc_insertion_point(builder_scope:RegionLoad)
@@ -14699,6 +16276,11 @@ public final class ClusterStatusProtos {
     com.google.protobuf.GeneratedMessage.FieldAccessorTable
       internal_static_RegionInTransition_fieldAccessorTable;
   private static com.google.protobuf.Descriptors.Descriptor
+    internal_static_FamilyInfo_descriptor;
+  private static
+    com.google.protobuf.GeneratedMessage.FieldAccessorTable
+      internal_static_FamilyInfo_fieldAccessorTable;
+  private static com.google.protobuf.Descriptors.Descriptor
     internal_static_RegionLoad_descriptor;
   private static
     com.google.protobuf.GeneratedMessage.FieldAccessorTable
@@ -14749,62 +16331,66 @@ public final class ClusterStatusProtos {
       "PLITTING_NEW\020\r\022\017\n\013MERGING_NEW\020\016\"X\n\022Regio",
       "nInTransition\022\036\n\004spec\030\001 \002(\0132\020.RegionSpec" +
       "ifier\022\"\n\014region_state\030\002 \002(\0132\014.RegionStat" +
-      "e\"\207\007\n\nRegionLoad\022*\n\020region_specifier\030\001 \002" +
-      "(\0132\020.RegionSpecifier\022\016\n\006stores\030\002 \001(\r\022\022\n\n" +
-      "storefiles\030\003 \001(\r\022\"\n\032store_uncompressed_s" +
-      "ize_MB\030\004 \001(\r\022\031\n\021storefile_size_MB\030\005 \001(\r\022" +
-      "\030\n\020memstore_size_MB\030\006 \001(\r\022\037\n\027storefile_i" +
-      "ndex_size_MB\030\007 \001(\r\022\033\n\023read_requests_coun" +
-      "t\030\010 \001(\004\022\034\n\024write_requests_count\030\t \001(\004\022\034\n" +
-      "\024total_compacting_KVs\030\n \001(\004\022\035\n\025current_c",
-      "ompacted_KVs\030\013 \001(\004\022\032\n\022root_index_size_KB" +
-      "\030\014 \001(\r\022\"\n\032total_static_index_size_KB\030\r \001" +
-      "(\r\022\"\n\032total_static_bloom_size_KB\030\016 \001(\r\022\034" +
-      "\n\024complete_sequence_id\030\017 \001(\004\022\025\n\rdata_loc" +
-      "ality\030\020 \001(\002\022 \n\030read_requests_per_second\030" +
-      "\021 \001(\004\022!\n\031write_requests_per_second\030\022 \001(\004" +
-      "\0221\n)read_requests_by_capacity_unit_per_s" +
-      "econd\030\023 \001(\004\0222\n*write_requests_by_capacit" +
-      "y_unit_per_second\030\024 \001(\004\022%\n\035throttled_rea" +
-      "d_requests_count\030\025 \001(\004\022&\n\036throttled_writ",
-      "e_requests_count\030\026 \001(\004\022\032\n\022get_requests_c" +
-      "ount\030\027 \001(\004\022\"\n\032read_cell_count_per_second" +
-      "\030\030 \001(\004\022&\n\036read_raw_cell_count_per_second" +
-      "\030\031 \001(\004\022\035\n\025scan_count_per_second\030\032 \001(\004\022\034\n" +
-      "\024scan_rows_per_second\030\033 \001(\004\"T\n\023Replicati" +
-      "onLoadSink\022\032\n\022ageOfLastAppliedOp\030\001 \002(\004\022!" +
-      "\n\031timeStampsOfLastAppliedOp\030\002 \002(\004\"\225\001\n\025Re" +
-      "plicationLoadSource\022\016\n\006peerID\030\001 \002(\t\022\032\n\022a" +
-      "geOfLastShippedOp\030\002 \002(\004\022\026\n\016sizeOfLogQueu" +
-      "e\030\003 \002(\r\022 \n\030timeStampOfLastShippedOp\030\004 \002(",
-      "\004\022\026\n\016replicationLag\030\005 \002(\004\"\264\004\n\nServerLoad" +
-      "\022\032\n\022number_of_requests\030\001 \001(\r\022 \n\030total_nu" +
-      "mber_of_requests\030\002 \001(\r\022\024\n\014used_heap_MB\030\003" +
-      " \001(\r\022\023\n\013max_heap_MB\030\004 \001(\r\022!\n\014region_load" +
-      "s\030\005 \003(\0132\013.RegionLoad\022\"\n\014coprocessors\030\006 \003" +
-      "(\0132\014.Coprocessor\022\031\n\021report_start_time\030\007 " +
-      "\001(\004\022\027\n\017report_end_time\030\010 \001(\004\022\030\n\020info_ser" +
-      "ver_port\030\t \001(\r\022.\n\016replLoadSource\030\n \003(\0132\026" +
-      ".ReplicationLoadSource\022*\n\014replLoadSink\030\013" +
-      " \001(\0132\024.ReplicationLoadSink\022 \n\030read_reque",
-      "sts_per_second\030\014 \001(\004\022!\n\031write_requests_p" +
-      "er_second\030\r \001(\004\022\"\n\032read_cell_count_per_s" +
-      "econd\030\016 \001(\004\022&\n\036read_raw_cell_count_per_s" +
-      "econd\030\017 \001(\004\022\035\n\025scan_count_per_second\030\020 \001" +
-      "(\004\022\034\n\024scan_rows_per_second\030\021 \001(\004\"O\n\016Live" +
-      "ServerInfo\022\033\n\006server\030\001 \002(\0132\013.ServerName\022" +
-      " \n\013server_load\030\002 \002(\0132\013.ServerLoad\"\340\002\n\rCl" +
-      "usterStatus\022/\n\rhbase_version\030\001 \001(\0132\030.HBa" +
-      "seVersionFileContent\022%\n\014live_servers\030\002 \003" +
-      "(\0132\017.LiveServerInfo\022!\n\014dead_servers\030\003 \003(",
-      "\0132\013.ServerName\0222\n\025regions_in_transition\030" +
-      "\004 \003(\0132\023.RegionInTransition\022\036\n\ncluster_id" +
-      "\030\005 \001(\0132\n.ClusterId\022)\n\023master_coprocessor" +
-      "s\030\006 \003(\0132\014.Coprocessor\022\033\n\006master\030\007 \001(\0132\013." +
-      "ServerName\022#\n\016backup_masters\030\010 \003(\0132\013.Ser" +
-      "verName\022\023\n\013balancer_on\030\t \001(\010BF\n*org.apac" +
-      "he.hadoop.hbase.protobuf.generatedB\023Clus" +
-      "terStatusProtosH\001\240\001\001"
+      "e\"u\n\nFamilyInfo\022\022\n\nfamilyname\030\001 \002(\t\022\021\n\tr" +
+      "ow_count\030\002 \002(\004\022\020\n\010kv_count\030\003 \002(\004\022\024\n\014del_" +
+      "kv_count\030\004 \002(\004\022\030\n\020del_family_count\030\005 \002(\004" +
+      "\"\251\007\n\nRegionLoad\022*\n\020region_specifier\030\001 \002(" +
+      "\0132\020.RegionSpecifier\022\016\n\006stores\030\002 \001(\r\022\022\n\ns" +
+      "torefiles\030\003 \001(\r\022\"\n\032store_uncompressed_si" +
+      "ze_MB\030\004 \001(\r\022\031\n\021storefile_size_MB\030\005 \001(\r\022\030" +
+      "\n\020memstore_size_MB\030\006 \001(\r\022\037\n\027storefile_in",
+      "dex_size_MB\030\007 \001(\r\022\033\n\023read_requests_count" +
+      "\030\010 \001(\004\022\034\n\024write_requests_count\030\t \001(\004\022\034\n\024" +
+      "total_compacting_KVs\030\n \001(\004\022\035\n\025current_co" +
+      "mpacted_KVs\030\013 \001(\004\022\032\n\022root_index_size_KB\030" +
+      "\014 \001(\r\022\"\n\032total_static_index_size_KB\030\r \001(" +
+      "\r\022\"\n\032total_static_bloom_size_KB\030\016 \001(\r\022\034\n" +
+      "\024complete_sequence_id\030\017 \001(\004\022\025\n\rdata_loca" +
+      "lity\030\020 \001(\002\022 \n\030read_requests_per_second\030\021" +
+      " \001(\004\022!\n\031write_requests_per_second\030\022 \001(\004\022" +
+      "1\n)read_requests_by_capacity_unit_per_se",
+      "cond\030\023 \001(\004\0222\n*write_requests_by_capacity" +
+      "_unit_per_second\030\024 \001(\004\022%\n\035throttled_read" +
+      "_requests_count\030\025 \001(\004\022&\n\036throttled_write" +
+      "_requests_count\030\026 \001(\004\022\032\n\022get_requests_co" +
+      "unt\030\027 \001(\004\022\"\n\032read_cell_count_per_second\030" +
+      "\030 \001(\004\022&\n\036read_raw_cell_count_per_second\030" +
+      "\031 \001(\004\022\035\n\025scan_count_per_second\030\032 \001(\004\022\034\n\024" +
+      "scan_rows_per_second\030\033 \001(\004\022 \n\013family_inf" +
+      "o\030\034 \003(\0132\013.FamilyInfo\"T\n\023ReplicationLoadS" +
+      "ink\022\032\n\022ageOfLastAppliedOp\030\001 \002(\004\022!\n\031timeS",
+      "tampsOfLastAppliedOp\030\002 \002(\004\"\225\001\n\025Replicati" +
+      "onLoadSource\022\016\n\006peerID\030\001 \002(\t\022\032\n\022ageOfLas" +
+      "tShippedOp\030\002 \002(\004\022\026\n\016sizeOfLogQueue\030\003 \002(\r" +
+      "\022 \n\030timeStampOfLastShippedOp\030\004 \002(\004\022\026\n\016re" +
+      "plicationLag\030\005 \002(\004\"\264\004\n\nServerLoad\022\032\n\022num" +
+      "ber_of_requests\030\001 \001(\r\022 \n\030total_number_of" +
+      "_requests\030\002 \001(\r\022\024\n\014used_heap_MB\030\003 \001(\r\022\023\n" +
+      "\013max_heap_MB\030\004 \001(\r\022!\n\014region_loads\030\005 \003(\013" +
+      "2\013.RegionLoad\022\"\n\014coprocessors\030\006 \003(\0132\014.Co" +
+      "processor\022\031\n\021report_start_time\030\007 \001(\004\022\027\n\017",
+      "report_end_time\030\010 \001(\004\022\030\n\020info_server_por" +
+      "t\030\t \001(\r\022.\n\016replLoadSource\030\n \003(\0132\026.Replic" +
+      "ationLoadSource\022*\n\014replLoadSink\030\013 \001(\0132\024." +
+      "ReplicationLoadSink\022 \n\030read_requests_per" +
+      "_second\030\014 \001(\004\022!\n\031write_requests_per_seco" +
+      "nd\030\r \001(\004\022\"\n\032read_cell_count_per_second\030\016" +
+      " \001(\004\022&\n\036read_raw_cell_count_per_second\030\017" +
+      " \001(\004\022\035\n\025scan_count_per_second\030\020 \001(\004\022\034\n\024s" +
+      "can_rows_per_second\030\021 \001(\004\"O\n\016LiveServerI" +
+      "nfo\022\033\n\006server\030\001 \002(\0132\013.ServerName\022 \n\013serv",
+      "er_load\030\002 \002(\0132\013.ServerLoad\"\340\002\n\rClusterSt" +
+      "atus\022/\n\rhbase_version\030\001 \001(\0132\030.HBaseVersi" +
+      "onFileContent\022%\n\014live_servers\030\002 \003(\0132\017.Li" +
+      "veServerInfo\022!\n\014dead_servers\030\003 \003(\0132\013.Ser" +
+      "verName\0222\n\025regions_in_transition\030\004 \003(\0132\023" +
+      ".RegionInTransition\022\036\n\ncluster_id\030\005 \001(\0132" +
+      "\n.ClusterId\022)\n\023master_coprocessors\030\006 \003(\013" +
+      "2\014.Coprocessor\022\033\n\006master\030\007 \001(\0132\013.ServerN" +
+      "ame\022#\n\016backup_masters\030\010 \003(\0132\013.ServerName" +
+      "\022\023\n\013balancer_on\030\t \001(\010BF\n*org.apache.hado",
+      "op.hbase.protobuf.generatedB\023ClusterStat" +
+      "usProtosH\001\240\001\001"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
       new com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner() {
@@ -14823,38 +16409,44 @@ public final class ClusterStatusProtos {
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_RegionInTransition_descriptor,
               new java.lang.String[] { "Spec", "RegionState", });
-          internal_static_RegionLoad_descriptor =
+          internal_static_FamilyInfo_descriptor =
             getDescriptor().getMessageTypes().get(2);
+          internal_static_FamilyInfo_fieldAccessorTable = new
+            com.google.protobuf.GeneratedMessage.FieldAccessorTable(
+              internal_static_FamilyInfo_descriptor,
+              new java.lang.String[] { "Familyname", "RowCount", "KvCount", "DelKvCount", "DelFamilyCount", });
+          internal_static_RegionLoad_descriptor =
+            getDescriptor().getMessageTypes().get(3);
           internal_static_RegionLoad_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_RegionLoad_descriptor,
-              new java.lang.String[] { "RegionSpecifier", "Stores", "Storefiles", "StoreUncompressedSizeMB", "StorefileSizeMB", "MemstoreSizeMB", "StorefileIndexSizeMB", "ReadRequestsCount", "WriteRequestsCount", "TotalCompactingKVs", "CurrentCompactedKVs", "RootIndexSizeKB", "TotalStaticIndexSizeKB", "TotalStaticBloomSizeKB", "CompleteSequenceId", "DataLocality", "ReadRequestsPerSecond", "WriteRequestsPerSecond", "ReadRequestsByCapacityUnitPerSecond", "WriteRequestsByCapacityUnitPerSecond", "ThrottledReadRequestsCount", "ThrottledWriteRequestsCount", "GetRequestsCount", "ReadCellCountPerSecond", "ReadRawCellCountPerSecond", "ScanCountPerSecond", "ScanRowsPerSecond", });
+              new java.lang.String[] { "RegionSpecifier", "Stores", "Storefiles", "StoreUncompressedSizeMB", "StorefileSizeMB", "MemstoreSizeMB", "StorefileIndexSizeMB", "ReadRequestsCount", "WriteRequestsCount", "TotalCompactingKVs", "CurrentCompactedKVs", "RootIndexSizeKB", "TotalStaticIndexSizeKB", "TotalStaticBloomSizeKB", "CompleteSequenceId", "DataLocality", "ReadRequestsPerSecond", "WriteRequestsPerSecond", "ReadRequestsByCapacityUnitPerSecond", "WriteRequestsByCapacityUnitPerSecond", "ThrottledReadRequestsCount", "ThrottledWriteRequestsCount", "GetRequestsCount", "ReadCellCountPerSecond", "ReadRawCellCountPerSecond", "ScanCountPerSecond", "ScanRowsPerSecond", "FamilyInfo", });
           internal_static_ReplicationLoadSink_descriptor =
-            getDescriptor().getMessageTypes().get(3);
+            getDescriptor().getMessageTypes().get(4);
           internal_static_ReplicationLoadSink_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_ReplicationLoadSink_descriptor,
               new java.lang.String[] { "AgeOfLastAppliedOp", "TimeStampsOfLastAppliedOp", });
           internal_static_ReplicationLoadSource_descriptor =
-            getDescriptor().getMessageTypes().get(4);
+            getDescriptor().getMessageTypes().get(5);
           internal_static_ReplicationLoadSource_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_ReplicationLoadSource_descriptor,
               new java.lang.String[] { "PeerID", "AgeOfLastShippedOp", "SizeOfLogQueue", "TimeStampOfLastShippedOp", "ReplicationLag", });
           internal_static_ServerLoad_descriptor =
-            getDescriptor().getMessageTypes().get(5);
+            getDescriptor().getMessageTypes().get(6);
           internal_static_ServerLoad_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_ServerLoad_descriptor,
               new java.lang.String[] { "NumberOfRequests", "TotalNumberOfRequests", "UsedHeapMB", "MaxHeapMB", "RegionLoads", "Coprocessors", "ReportStartTime", "ReportEndTime", "InfoServerPort", "ReplLoadSource", "ReplLoadSink", "ReadRequestsPerSecond", "WriteRequestsPerSecond", "ReadCellCountPerSecond", "ReadRawCellCountPerSecond", "ScanCountPerSecond", "ScanRowsPerSecond", });
           internal_static_LiveServerInfo_descriptor =
-            getDescriptor().getMessageTypes().get(6);
+            getDescriptor().getMessageTypes().get(7);
           internal_static_LiveServerInfo_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_LiveServerInfo_descriptor,
               new java.lang.String[] { "Server", "ServerLoad", });
           internal_static_ClusterStatus_descriptor =
-            getDescriptor().getMessageTypes().get(7);
+            getDescriptor().getMessageTypes().get(8);
           internal_static_ClusterStatus_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_ClusterStatus_descriptor,

@@ -20,6 +20,9 @@ package org.apache.hadoop.hbase;
 
 import org.apache.hadoop.hbase.util.Strings;
 
+import java.util.HashMap;
+import java.util.Map;
+
 /**
  * This class is used exporting current state of load on a table.
  */
@@ -91,6 +94,11 @@ public class TableLoad {
   private long scanCountPerSecond;
   private long scanRowsPerSecond;
 
+  /**
+   * family info
+   */
+  private Map<String, Map<String, Long>> familyStastics;
+
   public TableLoad(final String name) {
     this.name = name;
     this.region = 0;
@@ -118,6 +126,7 @@ public class TableLoad {
     this.throttledWriteRequestsCount = 0;
     this.scanCountPerSecond = 0;
     this.scanRowsPerSecond = 0;
+    this.familyStastics = new HashMap<>();
   }
 
   public TableLoad(TableName table) {
@@ -159,6 +168,19 @@ public class TableLoad {
     this.writeRequestsByCapacityUnitPerSecond += regionLoad.getWriteRequestsByCapacityUnitPerSecond();
     this.throttledReadRequestsCount += regionLoad.getThrottledReadRequestsCount();
     this.throttledWriteRequestsCount += regionLoad.getThrottledWriteRequestsCount();
+
+    Map<String, Map<String, Long>> regionFamilyInfo = regionLoad.getFamilyInfo();
+    if (familyStastics.size() == 0) {
+      familyStastics = regionFamilyInfo;
+    } else {
+      for(Map.Entry<String, Map<String, Long>> entry: familyStastics.entrySet()){
+        String family = entry.getKey();
+        for(Map.Entry<String, Long> familyEntry: entry.getValue().entrySet()){
+          String statisticKey = familyEntry.getKey();
+          familyEntry.setValue(familyEntry.getValue() + regionFamilyInfo.get(family).get(statisticKey));
+        }
+      }
+    }
   }
 
   public String getName() {
@@ -265,6 +287,10 @@ public class TableLoad {
     return throttledWriteRequestsCount;
   }
 
+  public Map<String, Map<String, Long>> getFamilyStastics() {
+    return familyStastics;
+  }
+
   @Override
   public String toString() {
     StringBuilder sb = Strings.appendKeyValue(new StringBuilder(), "Table name:", name);
@@ -326,6 +352,8 @@ public class TableLoad {
       this.throttledReadRequestsCount);
     sb = Strings.appendKeyValue(sb, "throttledWriteRequestsCount",
       this.throttledWriteRequestsCount);
+    sb = Strings.appendKeyValue(sb, "familyStastics",
+            this.getFamilyStastics().toString());
     return sb.toString();
   }
 }
