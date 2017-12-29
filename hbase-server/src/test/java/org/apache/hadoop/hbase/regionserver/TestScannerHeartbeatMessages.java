@@ -175,7 +175,6 @@ public class TestScannerHeartbeatMessages {
 
   @AfterClass
   public static void tearDownAfterClass() throws Exception {
-    TEST_UTIL.deleteTable(TABLE_NAME);
     TEST_UTIL.shutdownMiniCluster();
   }
 
