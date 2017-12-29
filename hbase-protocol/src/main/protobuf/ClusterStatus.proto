@@ -59,6 +59,23 @@ message RegionInTransition {
   required RegionState region_state = 2;
 }
 
+message FamilyInfo {
+  /** family name */
+  required string familyname = 1;
+
+  /** total row count */
+  required uint64 row_count = 2;
+
+  /** total kv count */
+  required uint64 kv_count = 3;
+
+  /** total delete kv count */
+  required uint64 del_kv_count = 4;
+
+  /** total del family count */
+  required uint64 del_family_count = 5;
+}
+
 message RegionLoad {
   /** the region specifier */
   required RegionSpecifier region_specifier = 1;
@@ -141,11 +158,14 @@ message RegionLoad {
   /** raw cell read per second made to region */
   optional uint64 read_raw_cell_count_per_second = 25;
 
-  /* scan count per second made to region */
+  /** scan count per second made to region */
   optional uint64 scan_count_per_second = 26;
 
-  /* scan rows per second made to region */
+  /** scan rows per second made to region */
   optional uint64 scan_rows_per_second = 27;
+
+  /** family info */
+  repeated FamilyInfo family_info = 28;
 }
 
 /* Server-level protobufs */
