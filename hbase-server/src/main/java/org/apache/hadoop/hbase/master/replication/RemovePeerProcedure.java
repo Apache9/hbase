@@ -61,8 +61,10 @@ public class RemovePeerProcedure extends ModifyPeerProcedure {
   }
 
   @Override
-  protected void postPeerModification(MasterProcedureEnv env) throws IOException {
-    LOG.info("Successfully removed peer " + peerId);
+  protected void postPeerModification(MasterProcedureEnv env)
+      throws IOException, ReplicationException {
+    env.getReplicationPeerManager().removeAllQueuesAndHFileRefs(peerId);
+    LOG.info("Successfully removed peer {}", peerId);
     MasterCoprocessorHost cpHost = env.getMasterCoprocessorHost();
     if (cpHost != null) {
       cpHost.postRemoveReplicationPeer(peerId);

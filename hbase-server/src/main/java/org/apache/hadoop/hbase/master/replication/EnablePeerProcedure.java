@@ -62,7 +62,7 @@ public class EnablePeerProcedure extends ModifyPeerProcedure {
 
   @Override
   protected void postPeerModification(MasterProcedureEnv env) throws IOException {
-    LOG.info("Successfully enabled peer " + peerId);
+    LOG.info("Successfully enabled peer {}", peerId);
     MasterCoprocessorHost cpHost = env.getMasterCoprocessorHost();
     if (cpHost != null) {
       cpHost.postEnableReplicationPeer(peerId);

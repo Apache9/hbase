@@ -70,7 +70,7 @@ public class UpdatePeerConfigProcedure extends ModifyPeerProcedure {
 
   @Override
   protected void postPeerModification(MasterProcedureEnv env) throws IOException {
-    LOG.info("Successfully updated peer config of " + peerId + " to " + peerConfig);
+    LOG.info("Successfully updated peer config of {} to {}", peerId, peerConfig);
     MasterCoprocessorHost cpHost = env.getMasterCoprocessorHost();
     if (cpHost != null) {
       cpHost.postUpdateReplicationPeerConfig(peerId, peerConfig);
