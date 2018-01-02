@@ -20,7 +20,6 @@ package org.apache.hadoop.hbase.mapreduce.replication;
 
 import java.io.IOException;
 import java.util.Arrays;
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.FileSystem;
@@ -43,13 +42,14 @@ import org.apache.hadoop.hbase.filter.PrefixFilter;
 import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
 import org.apache.hadoop.hbase.mapreduce.TableInputFormat;
 import org.apache.hadoop.hbase.mapreduce.TableMapReduceUtil;
-import org.apache.hadoop.hbase.mapreduce.TableSnapshotInputFormat;
 import org.apache.hadoop.hbase.mapreduce.TableMapper;
+import org.apache.hadoop.hbase.mapreduce.TableSnapshotInputFormat;
 import org.apache.hadoop.hbase.mapreduce.TableSplit;
 import org.apache.hadoop.hbase.replication.ReplicationException;
-import org.apache.hadoop.hbase.replication.ReplicationFactory;
 import org.apache.hadoop.hbase.replication.ReplicationPeerConfig;
+import org.apache.hadoop.hbase.replication.ReplicationPeerStorage;
 import org.apache.hadoop.hbase.replication.ReplicationPeers;
+import org.apache.hadoop.hbase.replication.ReplicationStorageFactory;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.FSUtils;
 import org.apache.hadoop.hbase.util.Pair;
@@ -63,6 +63,7 @@ import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import org.apache.hbase.thirdparty.com.google.common.annotations.VisibleForTesting;
 
 /**
@@ -330,19 +331,24 @@ public class VerifyReplication extends Configured implements Tool {
       final Configuration conf, String peerId) throws IOException {
     ZKWatcher localZKW = null;
     try {
-      localZKW = new ZKWatcher(conf, "VerifyReplication",
-          new Abortable() {
-            @Override public void abort(String why, Throwable e) {}
-            @Override public boolean isAborted() {return false;}
-          });
+      localZKW = new ZKWatcher(conf, "VerifyReplication", new Abortable() {
+        @Override
+        public void abort(String why, Throwable e) {
+        }
 
-      ReplicationPeers rp = ReplicationFactory.getReplicationPeers(localZKW, conf);
-      rp.init();
-
-      return Pair.newPair(rp.getPeerConfig(peerId), rp.getPeerClusterConfiguration(peerId));
+        @Override
+        public boolean isAborted() {
+          return false;
+        }
+      });
+      ReplicationPeerStorage storage =
+          ReplicationStorageFactory.getReplicationPeerStorage(localZKW, conf);
+      ReplicationPeerConfig peerConfig = storage.getPeerConfig(peerId);
+      return Pair.newPair(peerConfig,
+        ReplicationPeers.getPeerClusterConfiguration(peerConfig, conf));
     } catch (ReplicationException e) {
-      throw new IOException(
-          "An error occurred while trying to connect to the remove peer cluster", e);
+      throw new IOException("An error occurred while trying to connect to the remove peer cluster",
+          e);
     } finally {
       if (localZKW != null) {
         localZKW.close();
