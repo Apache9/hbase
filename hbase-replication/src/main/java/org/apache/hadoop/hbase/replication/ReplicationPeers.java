@@ -21,17 +21,14 @@ import java.io.IOException;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.CompoundConfiguration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.replication.ReplicationPeer.PeerState;
 import org.apache.hadoop.hbase.zookeeper.ZKWatcher;
 import org.apache.yetus.audience.InterfaceAudience;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import org.apache.hadoop.hbase.shaded.com.google.common.annotations.VisibleForTesting;
+import org.apache.hbase.thirdparty.com.google.common.annotations.VisibleForTesting;
 
 /**
  * This provides an class for maintaining a set of peer clusters. These peers are remote slave
@@ -40,18 +37,20 @@ import org.apache.hadoop.hbase.shaded.com.google.common.annotations.VisibleForTe
 @InterfaceAudience.Private
 public class ReplicationPeers {
 
-  private static final Logger LOG = LoggerFactory.getLogger(ReplicationPeers.class);
-
   private final Configuration conf;
 
   // Map of peer clusters keyed by their id
   private final ConcurrentMap<String, ReplicationPeerImpl> peerCache;
   private final ReplicationPeerStorage peerStorage;
 
-  protected ReplicationPeers(ZKWatcher zookeeper, Configuration conf) {
+  ReplicationPeers(ZKWatcher zookeeper, Configuration conf) {
     this.conf = conf;
     this.peerCache = new ConcurrentHashMap<>();
     this.peerStorage = ReplicationStorageFactory.getReplicationPeerStorage(zookeeper, conf);
+  }
+
+  public Configuration getConf() {
+    return conf;
   }
 
   public void init() throws ReplicationException {
@@ -121,22 +120,13 @@ public class ReplicationPeers {
     return peerCache.keySet();
   }
 
-  public ReplicationPeerConfig getPeerConfig(String peerId) {
-    ReplicationPeer replicationPeer = this.peerCache.get(peerId);
-    if (replicationPeer == null) {
-      throw new IllegalArgumentException("Peer with id= " + peerId + " is not cached");
-    }
-    return replicationPeer.getPeerConfig();
-  }
-
-  public Configuration getPeerClusterConfiguration(String peerId) throws ReplicationException {
-    ReplicationPeerConfig peerConfig = peerStorage.getPeerConfig(peerId);
-
+  public static Configuration getPeerClusterConfiguration(ReplicationPeerConfig peerConfig,
+      Configuration baseConf) throws ReplicationException {
     Configuration otherConf;
     try {
-      otherConf = HBaseConfiguration.createClusterConf(this.conf, peerConfig.getClusterKey());
+      otherConf = HBaseConfiguration.createClusterConf(baseConf, peerConfig.getClusterKey());
     } catch (IOException e) {
-      throw new ReplicationException("Can't get peer configuration for peerId=" + peerId, e);
+      throw new ReplicationException("Can't get peer configuration for peer " + peerConfig, e);
     }
 
     if (!peerConfig.getConfiguration().isEmpty()) {
@@ -174,8 +164,9 @@ public class ReplicationPeers {
    * @throws ReplicationException
    */
   private ReplicationPeerImpl createPeer(String peerId) throws ReplicationException {
-    ReplicationPeerConfig peerConf = peerStorage.getPeerConfig(peerId);
+    ReplicationPeerConfig peerConfig = peerStorage.getPeerConfig(peerId);
     boolean enabled = peerStorage.isPeerEnabled(peerId);
-    return new ReplicationPeerImpl(getPeerClusterConfiguration(peerId), peerId, enabled, peerConf);
+    return new ReplicationPeerImpl(getPeerClusterConfiguration(peerConfig, conf), peerId, enabled,
+        peerConfig);
   }
 }
