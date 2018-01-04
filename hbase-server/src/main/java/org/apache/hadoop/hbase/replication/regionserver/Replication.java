@@ -218,11 +218,7 @@ public class Replication implements
    * @throws IOException
    */
   public void startReplicationService() throws IOException {
-    try {
-      this.replicationManager.init();
-    } catch (ReplicationException e) {
-      throw new IOException(e);
-    }
+    this.replicationManager.init();
     this.replicationSink = new ReplicationSink(this.conf, this.server);
     this.scheduleThreadPool.scheduleAtFixedRate(
       new ReplicationStatisticsThread(this.replicationSink, this.replicationManager),
@@ -280,9 +276,9 @@ public class Replication implements
       throws IOException {
     try {
       this.replicationManager.addHFileRefs(tableName, family, pairs);
-    } catch (ReplicationException e) {
+    } catch (IOException e) {
       LOG.error("Failed to add hfile references in the replication queue.", e);
-      throw new IOException(e);
+      throw e;
     }
   }
 
