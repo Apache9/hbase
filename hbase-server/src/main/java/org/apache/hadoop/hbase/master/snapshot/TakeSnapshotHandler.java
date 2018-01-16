@@ -29,6 +29,7 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.ServerName;
@@ -197,6 +198,12 @@ public abstract class TakeSnapshotHandler extends EventHandler implements Snapsh
       status.markComplete(msg);
       LOG.info(msg);
       metricsSnapshot.addSnapshot(status.getCompletionTimestamp() - status.getStartTime());
+
+      // set snapshot hfile acl
+      if (conf.getBoolean(HConstants.HDFS_ACL_ENABLE, false) &&
+        this.master.getHdfsAclManager() != null) {
+        this.master.getHdfsAclManager().snapshotAcl(snapshot);
+      }
     } catch (Exception e) {
       status.abort("Failed to complete snapshot " + snapshot.getName() + " on table " +
           snapshotTable + " because " + e.getMessage());

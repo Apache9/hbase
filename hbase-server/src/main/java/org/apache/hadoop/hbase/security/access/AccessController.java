@@ -225,6 +225,10 @@ public class AccessController extends BaseMasterAndRegionObserver
       this.authManager.getZKPermissionWatcher().writeToZookeeper(entry, serialized);
     }
     initialized = true;
+    if (conf.getBoolean(HConstants.HDFS_ACL_ENABLE, false)) {
+      hdfsAclManager = new HdfsAclManager(conf);
+      hdfsAclManager.start();
+    }
   }
 
   private static final HashSet<String> TRACE_OPERATIONS = new HashSet<String>();
@@ -858,6 +862,8 @@ public class AccessController extends BaseMasterAndRegionObserver
 
   /* ---- MasterObserver implementation ---- */
 
+  HdfsAclManager hdfsAclManager = null;
+
   public void start(CoprocessorEnvironment env) throws IOException {
     CompoundConfiguration conf = new CompoundConfiguration();
     conf.add(env.getConfiguration());
@@ -1184,9 +1190,9 @@ public class AccessController extends BaseMasterAndRegionObserver
       throws IOException {
     if (hTableDescriptor == null) {
       // for test
-      requirePermission("snapshot", Action.ADMIN);
+      requirePermission("snapshot", Action.CREATE);
     } else {
-      requirePermission("snapshot", hTableDescriptor.getTableName(), null, null, Action.ADMIN);
+      requirePermission("snapshot", hTableDescriptor.getTableName(), null, null, Action.CREATE);
     }
   }
 
@@ -1215,7 +1221,7 @@ public class AccessController extends BaseMasterAndRegionObserver
     if (snapshot != null && SnapshotDescriptionUtils.isSnapshotOwner(snapshot, getActiveUser())) {
       return;
     }
-    requirePermission("deleteSnapshot", Action.ADMIN);
+    requirePermission("deleteSnapshot", Action.CREATE);
   }
 
   @Override
@@ -2058,6 +2064,11 @@ public class AccessController extends BaseMasterAndRegionObserver
           }
         });
 
+        if (regionEnv.getConfiguration().getBoolean(HConstants.HDFS_ACL_ENABLE, false)
+          && hdfsAclManager != null) {
+          hdfsAclManager.grantAcl(perm, request.getUserPermission().getPermission().getType());
+        }
+
         if (AUDITLOG.isTraceEnabled()) {
           // audit log should store permission changes in addition to auth results
           AUDITLOG.trace("Granted permission " + perm.toString());
@@ -2109,6 +2120,11 @@ public class AccessController extends BaseMasterAndRegionObserver
             return null;
           }
         });
+
+        if (regionEnv.getConfiguration().getBoolean(HConstants.HDFS_ACL_ENABLE, false)
+          && hdfsAclManager != null) {
+          hdfsAclManager.revokeAcl(perm, request.getUserPermission().getPermission().getType());
+        }
 
         if (AUDITLOG.isTraceEnabled()) {
           // audit log should record all permission changes

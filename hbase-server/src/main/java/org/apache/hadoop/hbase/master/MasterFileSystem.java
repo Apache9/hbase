@@ -30,6 +30,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
@@ -92,6 +93,7 @@ public class MasterFileSystem {
   final boolean distributedLogReplay;
   final SplitLogManager splitLogManager;
   private final MasterServices services;
+  private static final FsPermission DEFAULT_PUBLIC_HFILE_PERMISSION = new FsPermission((short)0755);
 
   final static PathFilter META_FILTER = new PathFilter() {
     @Override
@@ -158,6 +160,26 @@ public class MasterFileSystem {
 
     // check if temp directory exists and clean it
     checkTempDir(this.tempdir, conf, this.fs);
+
+    //check data directory and set permission
+    Path dataPath = new Path(this.rootdir, HConstants.BASE_NAMESPACE_DIR);
+    checkDirAndSetPermission(dataPath);
+
+    //check temp data directory and set permission
+    Path tempDataPath = new Path(this.tempdir, HConstants.BASE_NAMESPACE_DIR);
+    checkDirAndSetPermission(tempDataPath);
+
+    //check snapshot directory and set permission
+    Path snapshotPath = new Path(this.rootdir, HConstants.SNAPSHOT_DIR_NAME);
+    checkDirAndSetPermission(snapshotPath);
+
+    //check archive directory and set permission
+    Path archivePath = new Path(this.rootdir, HConstants.HFILE_ARCHIVE_DIRECTORY);
+    checkDirAndSetPermission(archivePath);
+
+    //check archive data directory and set permission
+    Path archiveDataPath = new Path(archivePath, HConstants.BASE_NAMESPACE_DIR);
+    checkDirAndSetPermission(archiveDataPath);
 
     Path oldLogDir = new Path(this.rootdir, HConstants.HREGION_OLDLOGDIR_NAME);
 
@@ -467,6 +489,9 @@ public class MasterFileSystem {
           10 * 1000), c.getInt(HConstants.VERSION_FILE_WRITE_ATTEMPTS,
             HConstants.DEFAULT_VERSION_FILE_WRITE_ATTEMPTS));
       }
+      if (conf.getBoolean(HConstants.HDFS_ACL_ENABLE, false)) {
+        fs.setPermission(rd, DEFAULT_PUBLIC_HFILE_PERMISSION);
+      }
     } catch (DeserializationException de) {
       LOG.fatal("Please fix invalid configuration for " + HConstants.HBASE_DIR, de);
       IOException ioe = new IOException();
@@ -527,6 +552,9 @@ public class MasterFileSystem {
     // Create the temp directory
     if (!fs.mkdirs(tmpdir)) {
       throw new IOException("HBase temp directory '" + tmpdir + "' creation failure.");
+    }
+    if (conf.getBoolean(HConstants.HDFS_ACL_ENABLE, false)) {
+      fs.setPermission(tmpdir, DEFAULT_PUBLIC_HFILE_PERMISSION);
     }
   }
 
@@ -714,5 +742,16 @@ public class MasterFileSystem {
 
   public RecoveryMode getLogRecoveryMode() {
     return this.splitLogManager.getRecoveryMode();
+  }
+
+  private void checkDirAndSetPermission(Path path) throws IOException{
+    if (conf.getBoolean(HConstants.HDFS_ACL_ENABLE, false)) {
+      if (this.fs.exists(path)) {
+        fs.setPermission(path, DEFAULT_PUBLIC_HFILE_PERMISSION);
+      } else {
+        fs.mkdirs(path);
+        fs.setPermission(path, DEFAULT_PUBLIC_HFILE_PERMISSION);
+      }
+    }
   }
 }
