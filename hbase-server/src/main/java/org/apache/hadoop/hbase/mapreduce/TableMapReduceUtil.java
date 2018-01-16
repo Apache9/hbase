@@ -39,6 +39,7 @@ import com.xiaomi.infra.base.nameservice.NameService;
 import org.apache.hadoop.hbase.shaded.io.netty.buffer.ByteBuf;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
@@ -47,6 +48,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.catalog.MetaReader;
+import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HConnection;
 import org.apache.hadoop.hbase.client.HConnectionManager;
 import org.apache.hadoop.hbase.client.Put;
@@ -338,6 +340,45 @@ public class TableMapReduceUtil {
         outputValueClass, job, addDependencyJars, true, TableSnapshotInputFormat.class);
     addDependencyJars(job.getConfiguration(), MetricsRegistry.class, ByteBuf.class);
     resetCacheConfig(job.getConfiguration());
+  }
+
+  public static String initTableSnapshotMapperJob(TableName table, Scan scan,
+      Class<? extends TableMapper> mapper, Class<?> outputKeyClass, Class<?> outputValueClass,
+      Job job, boolean addDependencyJars) throws IOException {
+    Configuration conf = job.getConfiguration();
+    Path tmpRestoreDir = new Path(
+        conf.get(HConstants.SNAPSHOT_RESTORE_TMP_DIR, HConstants.SNAPSHOT_RESTORE_TMP_DIR_DEFAULT));
+    FileSystem fs = FileSystem.get(conf);
+    if (!fs.exists(tmpRestoreDir)) {
+      throw new IOException("tmp directory to restore snapshot does not exist. " + tmpRestoreDir);
+    }
+    return initTableSnapshotMapperJob(table, scan, mapper, outputKeyClass, outputValueClass, job,
+      addDependencyJars, tmpRestoreDir);
+  }
+
+  public static String initTableSnapshotMapperJob(TableName table, Scan scan,
+      Class<? extends TableMapper> mapper, Class<?> outputKeyClass, Class<?> outputValueClass,
+      Job job, boolean addDependencyJars, Path tmpRestoreDir) throws IOException {
+    // Generate a snapshot name, based on namespace, table name, local timestamp.
+    String snapshotName = String.format("SnapshotInputFormat-%s-%s-%d",
+      table.getNamespaceAsString(), table.getNameAsString(), System.currentTimeMillis());
+
+    // Create a snapshot.
+    try (HBaseAdmin admin = new HBaseAdmin(job.getConfiguration())) {
+      admin.snapshot(snapshotName, table);
+    }
+
+    // Initialize the snapshot mapper job.
+    initTableSnapshotMapperJob(snapshotName, scan, mapper, outputKeyClass, outputValueClass, job,
+      addDependencyJars, tmpRestoreDir);
+    return snapshotName;
+  }
+
+  public static void cleanupTableSnapshotMapperJob(Job job, String snapshotName)
+      throws IOException {
+    try (HBaseAdmin admin = new HBaseAdmin(job.getConfiguration())) {
+      admin.deleteSnapshot(snapshotName);
+    }
   }
 
   /**
