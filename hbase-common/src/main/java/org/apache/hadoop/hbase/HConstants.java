@@ -1237,6 +1237,9 @@ public final class HConstants {
 
   public static final String SNAPSHOT_BEFORE_DELETE = "hbase.master.snapshot.before.delete";
 
+  public static final String HDFS_ACL_ENABLE = "hbase.hdfs.acl.enable";
+  public static final String HDFS_ACL_THREAD_NUMBER = "hbase.hdfs.acl.thread.number";
+
   public static final String SNAPSHOT_RESTORE_TAKE_FAILSAFE_SNAPSHOT = "hbase.snapshot.restore.take.failsafe.snapshot";
 
   public static final boolean DEFAULT_SNAPSHOT_RESTORE_TAKE_FAILSAFE_SNAPSHOT = false;

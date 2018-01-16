@@ -26,6 +26,7 @@ import java.util.NavigableSet;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
@@ -150,7 +151,13 @@ public class TableNamespaceManager {
     validateTableAndRegionCount(ns);
     FileSystem fs = masterServices.getMasterFileSystem().getFileSystem();
     fs.mkdirs(FSUtils.getNamespaceDir(
+      masterServices.getMasterFileSystem().getRootDir(), ns.getName()));
+    if (conf.getBoolean(HConstants.HDFS_ACL_ENABLE, false)) {
+      fs.mkdirs(FSUtils.getTempNamespaceDir(
         masterServices.getMasterFileSystem().getRootDir(), ns.getName()));
+      fs.mkdirs(FSUtils.getArchiveNamespaceDir(
+        masterServices.getMasterFileSystem().getRootDir(), ns.getName()));
+    }
     upsert(table, ns);
     if (this.masterServices.isInitialized()) {
       this.masterServices.getMasterQuotaManager().setNamespaceQuota(ns);
@@ -208,6 +215,13 @@ public class TableNamespaceManager {
       throw new IOException("Failed to remove namespace: "+name);
     }
     this.masterServices.getMasterQuotaManager().removeNamespaceQuota(name);
+    if (conf.getBoolean(HConstants.HDFS_ACL_ENABLE, false)) {
+      Path tmpNsPath = FSUtils.getTempNamespaceDir(
+        masterServices.getMasterFileSystem().getRootDir(), name);
+      if (fs.exists(tmpNsPath)) {
+        fs.delete(tmpNsPath, true);
+      }
+    }
   }
 
   public synchronized NavigableSet<NamespaceDescriptor> list() throws IOException {

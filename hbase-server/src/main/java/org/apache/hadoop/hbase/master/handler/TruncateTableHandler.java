@@ -24,6 +24,7 @@ import java.util.List;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -106,6 +107,11 @@ public class TruncateTableHandler extends DeleteTableHandler {
       new FSTableDescriptors(server.getConfiguration())
         .createTableDescriptorForTableDirectory(tempTableDir, getTableDescriptor(), false);
       Path tableDir = FSUtils.getTableDir(mfs.getRootDir(), this.tableName);
+
+      if (this.masterServices.getConfiguration().getBoolean(HConstants.HDFS_ACL_ENABLE, false)
+        && this.masterServices.getHdfsAclManager() != null) {
+        this.masterServices.getHdfsAclManager().resetAcl(tableName);
+      }
 
       HRegionInfo[] newRegions;
       if (this.preserveSplits) {

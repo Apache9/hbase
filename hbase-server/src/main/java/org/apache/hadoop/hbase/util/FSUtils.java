@@ -1132,6 +1132,11 @@ public abstract class FSUtils {
         tableName.getQualifierAsString());
   }
 
+  public static Path getArchiveTableDir(Path rootdir, final TableName tableName) {
+    return new Path(getArchiveNamespaceDir(rootdir, tableName.getNamespaceAsString()),
+      tableName.getQualifierAsString());
+  }
+
   /**
    * Returns the {@link org.apache.hadoop.hbase.TableName} object representing
    * the table directory under
@@ -1155,6 +1160,16 @@ public abstract class FSUtils {
   public static Path getNamespaceDir(Path rootdir, final String namespace) {
     return new Path(rootdir, new Path(HConstants.BASE_NAMESPACE_DIR,
         new Path(namespace)));
+  }
+
+  public static Path getTempNamespaceDir(Path rootdir, final String namespace) {
+    return new Path(rootdir, new Path(HConstants.HBASE_TEMP_DIRECTORY, new Path(HConstants.BASE_NAMESPACE_DIR,
+      new Path(namespace))));
+  }
+
+  public static Path getArchiveNamespaceDir(Path rootdir, final String namespace) {
+    return new Path(rootdir, new Path(HConstants.HFILE_ARCHIVE_DIRECTORY, new Path(HConstants.BASE_NAMESPACE_DIR,
+      new Path(namespace))));
   }
 
   /**

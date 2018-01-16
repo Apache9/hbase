@@ -268,6 +268,10 @@ public class CreateTableHandler extends EventHandler {
         " to hbase root=" + tableDir);
     }
 
+    if (conf.getBoolean(HConstants.HDFS_ACL_ENABLE, false)) {
+      fs.mkdirs(FSUtils.getArchiveTableDir(fileSystemManager.getRootDir(), tableName));
+    }
+
     if (regionInfos != null && regionInfos.size() > 0) {
       // 4. Add regions to META
       addRegionsToMeta(this.catalogTracker, regionInfos);

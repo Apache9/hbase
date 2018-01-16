@@ -200,9 +200,13 @@ public class SnapshotManager extends MasterProcedureManager implements Stoppable
    * @throws IOException File system exception
    */
   private List<SnapshotDescription> getCompletedSnapshots(Path snapshotDir) throws IOException {
-    List<SnapshotDescription> snapshotDescs = new ArrayList<SnapshotDescription>();
     // first create the snapshot root path and check to see if it exists
     FileSystem fs = master.getMasterFileSystem().getFileSystem();
+    return getCompletedSnapshots(fs, rootDir, snapshotDir);
+  }
+
+  public static List<SnapshotDescription> getCompletedSnapshots(FileSystem fs, Path rootDir, Path snapshotDir) throws IOException{
+    List<SnapshotDescription> snapshotDescs = new ArrayList<SnapshotDescription>();
     if (snapshotDir == null) snapshotDir = SnapshotDescriptionUtils.getSnapshotsDir(rootDir);
 
     // if there are no snapshots, return an empty list

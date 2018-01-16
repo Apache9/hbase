@@ -280,6 +280,7 @@ import org.apache.hadoop.hbase.replication.ReplicationPeerDescription;
 import org.apache.hadoop.hbase.replication.master.ReplicationManager;
 import org.apache.hadoop.hbase.replication.regionserver.Replication;
 import org.apache.hadoop.hbase.security.UserProvider;
+import org.apache.hadoop.hbase.security.access.HdfsAclManager;
 import org.apache.hadoop.hbase.snapshot.ClientSnapshotDescriptionUtils;
 import org.apache.hadoop.hbase.snapshot.SnapshotDescriptionUtils;
 import org.apache.hadoop.hbase.trace.SpanReceiverHost;
@@ -425,6 +426,8 @@ MasterServices, Server {
 
   /** Namespace stuff */
   private TableNamespaceManager tableNamespaceManager;
+
+  private HdfsAclManager hdfsAclManager;
 
   /**
    * This servers address.
@@ -1022,6 +1025,9 @@ MasterServices, Server {
     status.setStatus("Initializing ZK system trackers");
     initializeZKBasedSystemTrackers();
 
+    status.setStatus("Starting hdfs acl manager");
+    initHdfsAclManager();
+
     // initialize master side coprocessors before we start handling requests
     status.setStatus("Initializing master coprocessors");
     this.cpHost = new MasterCoprocessorHost(this, this.conf);
@@ -1279,6 +1285,13 @@ MasterServices, Server {
     tableNamespaceManager.start();
   }
 
+  void initHdfsAclManager() {
+    if (conf.getBoolean(HConstants.HDFS_ACL_ENABLE, false)) {
+      hdfsAclManager = new HdfsAclManager(conf);
+      hdfsAclManager.start();
+    }
+  }
+
   void initQuotaManager() throws IOException {
     MasterQuotaManager quotaManager = new MasterQuotaManager(this); 
     this.assignmentManager.setRegionStateListener((RegionStateListener) quotaManager);
@@ -1371,6 +1384,11 @@ MasterServices, Server {
   @Override
   public MasterFileSystem getMasterFileSystem() {
     return this.fileSystemManager;
+  }
+
+  @Override
+  public HdfsAclManager getHdfsAclManager() {
+    return this.hdfsAclManager;
   }
 
   /**
@@ -2966,6 +2984,10 @@ MasterServices, Server {
     // See HBASE-8422.
     if (this.catalogTracker != null && this.serverManager.getOnlineServers().isEmpty()) {
       this.catalogTracker.stop();
+    }
+
+    if(conf.getBoolean(HConstants.HDFS_ACL_ENABLE, false) && this.hdfsAclManager != null) {
+      this.hdfsAclManager.stop();
     }
   }
 

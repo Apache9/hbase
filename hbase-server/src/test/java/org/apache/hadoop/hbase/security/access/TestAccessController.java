@@ -63,6 +63,8 @@ import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
+import org.apache.hadoop.hbase.client.SnapshotDescription;
+import org.apache.hadoop.hbase.client.SnapshotType;
 import org.apache.hadoop.hbase.coprocessor.CoprocessorHost;
 import org.apache.hadoop.hbase.coprocessor.CoprocessorService;
 import org.apache.hadoop.hbase.coprocessor.MasterCoprocessorEnvironment;
@@ -92,6 +94,7 @@ import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.protobuf.generated.AccessControlProtos;
 import org.apache.hadoop.hbase.protobuf.generated.AccessControlProtos.AccessControlService;
 import org.apache.hadoop.hbase.protobuf.generated.AccessControlProtos.CheckPermissionsRequest;
+import org.apache.hadoop.hbase.protobuf.generated.SnapshotProtos;
 import org.apache.hadoop.hbase.regionserver.HRegion;
 import org.apache.hadoop.hbase.regionserver.HRegionServer;
 import org.apache.hadoop.hbase.regionserver.RegionCoprocessorHost;
@@ -1932,6 +1935,27 @@ public class TestAccessController extends SecureTestUtil {
       }
     };
 
+    AccessTestAction snapshotTableAction = new AccessTestAction() {
+      @Override
+      public Object run() throws Exception {
+        ACCESS_CONTROLLER.preSnapshot(ObserverContext.createAndPrepare(CP_ENV, null),
+          null, new HTableDescriptor(TEST_TABLE.getTableName()));
+        return null;
+      }
+    };
+
+    AccessTestAction deleteSnapshotAction = new AccessTestAction() {
+      @Override
+      public Object run() throws Exception {
+        SnapshotDescription sd = new SnapshotDescription("snapshot_name", TEST_TABLE.getTableName()
+          , SnapshotType.FLUSH, USER_CREATE.getName());
+        SnapshotProtos.SnapshotDescription sdp = ProtobufUtil.createHBaseProtosSnapshotDesc(sd);
+        ACCESS_CONTROLLER.preDeleteSnapshot(ObserverContext.createAndPrepare(CP_ENV, null),
+          sdp);
+        return null;
+      }
+    };
+
     verifyAllowed(snapshotAction, SUPERUSER, USER_ADMIN);
     verifyDenied(snapshotAction, USER_CREATE, USER_RW, USER_RO, USER_NONE, USER_OWNER);
 
@@ -1943,6 +1967,12 @@ public class TestAccessController extends SecureTestUtil {
 
     verifyAllowed(deleteAction, SUPERUSER, USER_ADMIN);
     verifyDenied(cloneAction, USER_CREATE, USER_RW, USER_RO, USER_NONE, USER_OWNER);
+
+    verifyAllowed(snapshotTableAction, SUPERUSER, USER_ADMIN, USER_CREATE, USER_OWNER);
+    verifyDenied(snapshotTableAction, USER_RW, USER_RO, USER_NONE);
+
+    verifyAllowed(deleteSnapshotAction, SUPERUSER, USER_ADMIN, USER_CREATE);
+    verifyDenied(deleteSnapshotAction, USER_OWNER, USER_RW, USER_RO, USER_NONE);
   }
 
   @Test

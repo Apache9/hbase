@@ -39,6 +39,7 @@ import org.apache.hadoop.hbase.quotas.MasterQuotaManager;
 import org.apache.hadoop.hbase.replication.master.ReplicationManager;
 
 import com.google.protobuf.Service;
+import org.apache.hadoop.hbase.security.access.HdfsAclManager;
 
 /**
  * Services Master supplies
@@ -79,6 +80,8 @@ public interface MasterServices extends Server {
    * @return Master's instance of {@link MasterQuotaManager}
    */
   MasterQuotaManager getMasterQuotaManager();
+
+  HdfsAclManager getHdfsAclManager();
 
   /**
    * @return Master's instance of {@link ReplicationManager}
