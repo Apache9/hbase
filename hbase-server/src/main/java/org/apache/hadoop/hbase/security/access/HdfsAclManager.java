@@ -23,14 +23,16 @@ import static org.apache.hadoop.fs.permission.AclEntryScope.DEFAULT;
 import static org.apache.hadoop.fs.permission.AclEntryType.USER;
 import static org.apache.hadoop.fs.permission.FsAction.READ_EXECUTE;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Queue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.stream.Collectors;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -82,8 +84,8 @@ public class HdfsAclManager {
         if (action == Permission.Action.READ) {
           List<PathAcl> pathAcls =
               getGrantOrRevokePathAcls(userPerm, AclType.MODIFY, type);
-          setAcl(pathAcls);
-          setAcl(pathAcls); // set acl twice in case of file move
+          traverseAndSetAcl(pathAcls);
+          traverseAndSetAcl(pathAcls); // set acl twice in case of file move
           LOG.info("set acl when grant: " + userPerm.toString());
           break;
         }
@@ -97,8 +99,8 @@ public class HdfsAclManager {
     try {
       // revoke command does not contain permission
       List<PathAcl> pathAcls = getGrantOrRevokePathAcls(userPerm, AclType.REMOVE, type);
-      setAcl(pathAcls);
-      setAcl(pathAcls); // set acl twice in case of file move
+      traverseAndSetAcl(pathAcls);
+      traverseAndSetAcl(pathAcls); // set acl twice in case of file move
       LOG.info("set acl when revoke: " + userPerm.toString());
     } catch (Exception e) {
       LOG.error("set acl error when revoke: " + (userPerm != null ? userPerm.toString() : null), e);
@@ -115,8 +117,8 @@ public class HdfsAclManager {
 
       List<Path> pathList = Lists.newArrayList(pathHelper.getSnapshotDir(snapshot.getName()));
       List<PathAcl> pathAcls = getDefaultPathAcls(pathList, users, AclType.MODIFY);
-      setAcl(pathAcls);
-      setAcl(pathAcls); // set acl twice in case of file move
+      traverseAndSetAcl(pathAcls);
+      traverseAndSetAcl(pathAcls); // set acl twice in case of file move
       LOG.info("set acl when snapshot: " + snapshot.getName());
     } catch (Exception e) {
       LOG.error("set acl error when snapshot: " + (snapshot != null ? snapshot.getName() : null),
@@ -139,8 +141,8 @@ public class HdfsAclManager {
       List<Path> defaultPathList = Lists.newArrayList(pathHelper.getTmpTableDir(namespace, table));
       List<PathAcl> pathAcls = getDefaultPathAcls(defaultPathList, users, AclType.MODIFY);
 
-      setAcl(pathAcls);
-      setAcl(pathAcls); // set acl twice in case of file move
+      traverseAndSetAcl(pathAcls);
+      traverseAndSetAcl(pathAcls); // set acl twice in case of file move
       LOG.info("set acl when truncate table: " + tableName.getNameAsString());
     } catch (Exception e) {
       LOG.error("set acl error when truncate table: "
@@ -163,9 +165,8 @@ public class HdfsAclManager {
       String namespace = userPerm.getNamespace();
       List<Path> defaultNsPathList = Lists.newArrayList(pathHelper.getTmpNsDir(namespace),
         pathHelper.getNsDir(namespace), pathHelper.getArchiveNsDir(namespace));
-      for (String snapshot : getSnapshots(namespace, false)) {
-        defaultNsPathList.add(pathHelper.getSnapshotDir(snapshot));
-      }
+      defaultNsPathList.addAll(getSnapshots(namespace, false).stream()
+          .map(snap -> pathHelper.getSnapshotDir(snap)).collect(Collectors.toList()));
       pathAcls = getDefaultPathAcls(defaultNsPathList, users, op);
       break;
     case Table:
@@ -181,10 +182,8 @@ public class HdfsAclManager {
           Lists.newArrayList(pathHelper.getTmpTableDir(tableNamespace, table),
             pathHelper.getTableDir(tableNamespace, table),
             pathHelper.getArchiveTableDir(tableNamespace, table));
-
-      for (String snapshot : getSnapshots(tableName.getNameAsString(), true)) {
-        defaultTablePathList.add(pathHelper.getSnapshotDir(snapshot));
-      }
+      defaultTablePathList.addAll(getSnapshots(tableName.getNameAsString(), true).stream()
+          .map(snap -> pathHelper.getSnapshotDir(snap)).collect(Collectors.toList()));
       pathAcls.addAll(getDefaultPathAcls(defaultTablePathList, users, op));
       break;
     }
@@ -228,14 +227,14 @@ public class HdfsAclManager {
     }
     HdfsAclManager.AclOperation aclOperation = null;
     switch (op) {
-    case MODIFY:
-      aclOperation = (fileSystem, modifyPath, aclList) -> fileSystem
-          .modifyAclEntries(modifyPath, aclList);
-      break;
-    case REMOVE:
-      aclOperation = (fileSystem, removePath, aclList) -> fileSystem
-          .removeAclEntries(removePath, aclList);
-      break;
+      case MODIFY:
+        aclOperation = (fileSystem, modifyPath, aclList) -> fileSystem
+                .modifyAclEntries(modifyPath, aclList);
+        break;
+      case REMOVE:
+        aclOperation = (fileSystem, removePath, aclList) -> fileSystem
+                .removeAclEntries(removePath, aclList);
+        break;
     }
 
     List<PathAcl> pathAcls = new ArrayList<>();
@@ -245,37 +244,25 @@ public class HdfsAclManager {
     return pathAcls;
   }
 
-  private boolean setAcl(List<PathAcl> pathAcls) throws ExecutionException, InterruptedException{
-    List<Future<List<PathAcl>>> futureList = new ArrayList<>();
-    for (PathAcl pathAcl : pathAcls) {
-      futureList.add(setAclInternal(pathAcl));
-    }
-    do {
-      List<Future<List<PathAcl>>> undone = new ArrayList<>();
-      for (Future<List<PathAcl>> future : futureList) {
-        if (future.isDone()) {
-          List<PathAcl> pathAclList = future.get();
-          for (PathAcl pathAcl : pathAclList) {
-            undone.add(setAclInternal(pathAcl));
-          }
-        } else {
-          undone.add(future);
-        }
-      }
-      futureList = undone;
-    } while (futureList.size() > 0);
-    return true;
-  }
+  private void traverseAndSetAcl(List<PathAcl> pathAcls)
+      throws IOException, InterruptedException, ExecutionException {
+    Queue<PathAcl> queue = new LinkedList<>();
+    List<Future<Void>> tasks = new ArrayList<>();
 
-  private Future<List<PathAcl>> setAclInternal(PathAcl pathAcl) {
-    return pool.submit(() -> {
-      try {
+    pathAcls.forEach(queue::add);
+
+    while (!queue.isEmpty()) {
+      PathAcl pathAcl = queue.poll();
+      tasks.add(pool.submit(() -> {
         pathAcl.setAcl();
-        return pathAcl.getChildPathAcls();
-      } catch (FileNotFoundException e){ // ignore file move
-        return new ArrayList<>();
-      }
-    });
+        return null;
+      }));
+      queue.addAll(pathAcl.getChildPathAcls());
+    }
+
+    for (Future<Void> task : tasks) {
+      task.get();
+    }
   }
 
   private AclEntry aclEntry(AclEntryScope scope, String name) {
