@@ -50,11 +50,13 @@ import org.apache.hadoop.hbase.classification.InterfaceStability;
 @InterfaceStability.Evolving
 public class ScannerContext {
 
-  /**
-   * Two sets of the same fields. One for the limits, another for the progress towards those limits
-   */
   LimitFields limits;
-  LimitFields progress;
+  /**
+   * A different set of progress fields. Only include batch, dataSize and heapSize. Compare to
+   * LimitFields, ProgressFields doesn't contain time field. As we save a deadline in LimitFields,
+   * so use {@link System#currentTimeMillis()} directly when check time limit.
+   */
+  ProgressFields progress;
 
   /**
    * The state of the scanner after the invocation of {@link InternalScanner#next(java.util.List)}
@@ -102,7 +104,7 @@ public class ScannerContext {
     if (limitsToCopy != null) this.limits.copy(limitsToCopy);
 
     // Progress fields are initialized to 0
-    progress = new LimitFields(0, LimitFields.DEFAULT_SCOPE, 0, LimitFields.DEFAULT_SCOPE, 0);
+    progress = new ProgressFields(0, 0);
 
     this.keepProgress = keepProgress;
     this.scannerState = DEFAULT_STATE;
@@ -149,12 +151,6 @@ public class ScannerContext {
     long currentSize = progress.getSize();
     progress.setSize(currentSize + size);
   }
-  /**
-   * Update the time progress with {@link System#currentTimeMillis()}
-   */
-  void updateTimeProgress() {
-    progress.setTime(System.currentTimeMillis());
-  }
 
   int getBatchProgress() {
     return progress.getBatch();
@@ -164,14 +160,9 @@ public class ScannerContext {
     return progress.getSize();
   }
 
-  long getTimeProgress() {
-    return progress.getTime();
-  }
-
-  void setProgress(int batchProgress, long sizeProgress, long timeProgress) {
+  void setProgress(int batchProgress, long sizeProgress) {
     setBatchProgress(batchProgress);
     setSizeProgress(sizeProgress);
-    setTimeProgress(timeProgress);
   }
 
   void setSizeProgress(long sizeProgress) {
@@ -182,16 +173,13 @@ public class ScannerContext {
     progress.setBatch(batchProgress);
   }
 
-  void setTimeProgress(long timeProgress) {
-    progress.setTime(timeProgress);
-  }
-
   /**
    * Clear away any progress that has been made so far. All progress fields are reset to initial
    * values
    */
   void clearProgress() {
-    progress.setFields(0, LimitFields.DEFAULT_SCOPE, 0, LimitFields.DEFAULT_SCOPE, 0);
+    progress.setBatch(0);
+    progress.setSize(0);
     this.readRawCells = 0;
   }
 
@@ -302,7 +290,7 @@ public class ScannerContext {
    * @return true when the limit is enforceable from the checker's scope and it has been reached
    */
   boolean checkTimeLimit(LimitScope checkerScope) {
-    return hasTimeLimit(checkerScope) && progress.getTime() >= limits.getTime();
+    return hasTimeLimit(checkerScope) && (System.currentTimeMillis() >= limits.getTime());
   }
 
   /**
@@ -643,6 +631,65 @@ public class ScannerContext {
 
       sb.append(", timeScope:");
       sb.append(timeScope);
+
+      sb.append("}");
+      return sb.toString();
+    }
+  }
+
+  private static class ProgressFields {
+
+    private static int DEFAULT_BATCH = -1;
+    private static long DEFAULT_SIZE = -1L;
+
+    int batch = DEFAULT_BATCH;
+    long size = DEFAULT_SIZE;
+
+    /**
+     * Fields keep their default values.
+     */
+    ProgressFields() {
+    }
+
+    ProgressFields(int batch, long size) {
+      setFields(batch, size);
+    }
+
+    /**
+     * Set all fields together.
+     * @param batch
+     * @param size
+     */
+    void setFields(int batch, long size) {
+      setBatch(batch);
+      setSize(size);
+    }
+
+    int getBatch() {
+      return this.batch;
+    }
+
+    void setBatch(int batch) {
+      this.batch = batch;
+    }
+
+    long getSize() {
+      return this.size;
+    }
+
+    void setSize(long size) {
+      this.size = size;
+    }
+
+    @Override public String toString() {
+      StringBuilder sb = new StringBuilder();
+      sb.append("{");
+
+      sb.append("batch:");
+      sb.append(batch);
+
+      sb.append(", size:");
+      sb.append(size);
 
       sb.append("}");
       return sb.toString();

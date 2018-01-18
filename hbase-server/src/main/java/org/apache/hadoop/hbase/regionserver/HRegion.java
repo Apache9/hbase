@@ -4558,8 +4558,8 @@ public class HRegion implements HeapSize { // , Writable{
       // progress.
       int initialBatchProgress = scannerContext.getBatchProgress();
       long initialSizeProgress = scannerContext.getSizeProgress();
-      long initialTimeProgress = scannerContext.getTimeProgress();
 
+      LimitScope limitScope = LimitScope.BETWEEN_CELLS;
 
       // The loop here is used only when at some point during the next we determine
       // that due to effects of filters or otherwise, we have an empty row in the result.
@@ -4572,7 +4572,7 @@ public class HRegion implements HeapSize { // , Writable{
         // progress should be kept.
         if (scannerContext.getKeepProgress()) {
           // Progress should be kept. Reset to initial values seen at start of method invocation.
-          scannerContext.setProgress(initialBatchProgress, initialSizeProgress, initialTimeProgress);
+          scannerContext.setProgress(initialBatchProgress, initialSizeProgress);
         } else {
           scannerContext.clearProgress();
         }
@@ -4608,6 +4608,7 @@ public class HRegion implements HeapSize { // , Writable{
           }
           scannerContext.setSizeLimitScope(LimitScope.BETWEEN_ROWS);
           scannerContext.setTimeLimitScope(LimitScope.BETWEEN_ROWS);
+          limitScope = LimitScope.BETWEEN_ROWS;
         }
 
         // We have two heaps here, storeHeap that should be filtered and joinedHeap that should not.
@@ -4630,8 +4631,6 @@ public class HRegion implements HeapSize { // , Writable{
         Cell currentStoreHeapTop = this.storeHeap.peek();
         Cell currentJoinedHeapTop = this.joinedHeap != null ? this.joinedHeap.peek() : null;
 
-
-
         boolean shouldStop = shouldStop();
         if (shouldStop) {
           return scannerContext.setScannerState(NextState.NO_MORE_VALUES).hasMoreValues();
@@ -4650,12 +4649,17 @@ public class HRegion implements HeapSize { // , Writable{
             if (!moreRows) {
               return scannerContext.setScannerState(NextState.NO_MORE_VALUES).hasMoreValues();
             }
+            // Read nothing as the rowkey was filtered, but still need to check time limit
+            if (scannerContext.checkTimeLimit(limitScope)) {
+              return true;
+            }
             continue;
           }
 
           // Ok, we are good, let's try to get some results from the main heap.
           populateRowFromHeap(results, this.storeHeap, scannerContext, currentStoreHeapTop,
               this.joinedHeap == null);
+
           if (scannerContext.checkAnyLimitReached(LimitScope.BETWEEN_CELLS)) {
             if (hasFilterRow) {
               throw new IncompatibleFilterException(
@@ -4671,16 +4675,12 @@ public class HRegion implements HeapSize { // , Writable{
           if (hasFilterRow) {
             ret = filter.filterRowCellsWithRet(results);
             // We don't know how the results have changed after being filtered. Must set progress
-            // according to contents of results now. However, a change in the results should not
-            // affect the time progress. Thus preserve whatever time progress has been made
-            long timeProgress = scannerContext.getTimeProgress();
+            // according to contents of results now.
             if (scannerContext.getKeepProgress()) {
-              scannerContext
-                  .setProgress(initialBatchProgress, initialSizeProgress, initialTimeProgress);
+              scannerContext.setProgress(initialBatchProgress, initialSizeProgress);
             } else {
               scannerContext.clearProgress();
             }
-            scannerContext.setTimeProgress(timeProgress);
             scannerContext.incrementBatchProgress(results.size());
             for (Cell cell : results) {
               scannerContext.incrementSizeProgress(CellUtil.estimatedSizeOf(cell));
@@ -4693,6 +4693,10 @@ public class HRegion implements HeapSize { // , Writable{
               return scannerContext.setScannerState(NextState.NO_MORE_VALUES).hasMoreValues();
             }
             results.clear();
+            // Read nothing as the cells was filtered, but still need to check time limit
+            if (scannerContext.checkTimeLimit(limitScope)) {
+              return true;
+            }
             continue;
           }
         }

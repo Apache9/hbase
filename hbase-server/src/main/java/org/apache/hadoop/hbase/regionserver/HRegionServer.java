@@ -541,6 +541,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
    * Chore to clean periodically the moved region list
    */
   private MovedRegionsCleaner movedRegionsCleaner;
+
   /**
    * Minimum allowable time limit delta (in milliseconds) that can be enforced during scans. This
    * configuration exists to prevent the scenario where a time limit is specified to be so
@@ -549,14 +550,27 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
   private static final String REGION_SERVER_RPC_MINIMUM_SCAN_TIME_LIMIT_DELTA =
             "hbase.region.server.rpc.minimum.scan.time.limit.delta";
   /**
-   * Default value of {@link RSRpcServices#REGION_SERVER_RPC_MINIMUM_SCAN_TIME_LIMIT_DELTA}
+   * Default value of {@link HRegionServer#REGION_SERVER_RPC_MINIMUM_SCAN_TIME_LIMIT_DELTA}
    */
   private static final long DEFAULT_REGION_SERVER_RPC_MINIMUM_SCAN_TIME_LIMIT_DELTA = 10;
+
+  /**
+   * Minimum allowable time limit delta (in milliseconds) that can be enforced during scans. This
+   * configuration exists to prevent the scenario where a time limit is specified to be so
+   * restrictive that the time limit is reached immediately (before any cells are scanned).
+   */
+  static final String REGION_SERVER_RPC_MAXIMUM_SCAN_TIME_LIMIT_DELTA =
+            "hbase.region.server.rpc.maximum.scan.time.limit.delta";
+  /**
+   * Default value of {@link HRegionServer#REGION_SERVER_RPC_MINIMUM_SCAN_TIME_LIMIT_DELTA}
+   */
+  private static final long DEFAULT_REGION_SERVER_RPC_MAXIMUM_SCAN_TIME_LIMIT_DELTA = -1L;
 
   /**
    * The lease timeout period for client scanners (milliseconds).
    */
   private final int scannerLeaseTimeoutPeriod;
+
   /**
    * The RPC timeout period (milliseconds)
    */
@@ -566,6 +580,11 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
    * The minimum allowable delta to use for the scan limit
    */
   private final long minimumScanTimeLimitDelta;
+
+  /**
+   * The maximum allowable delta to use for the scan limit
+   */
+  private final long maximumScanTimeLimitDelta;
 
   /**
    * The reference to the priority extraction function
@@ -653,9 +672,10 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
       HConstants.HBASE_RPC_SHORTOPERATION_TIMEOUT_KEY,
       HConstants.DEFAULT_HBASE_RPC_SHORTOPERATION_TIMEOUT);
 
-    minimumScanTimeLimitDelta = conf.getLong(
-        REGION_SERVER_RPC_MINIMUM_SCAN_TIME_LIMIT_DELTA,
-        DEFAULT_REGION_SERVER_RPC_MINIMUM_SCAN_TIME_LIMIT_DELTA);
+    minimumScanTimeLimitDelta = conf.getLong(REGION_SERVER_RPC_MINIMUM_SCAN_TIME_LIMIT_DELTA,
+      DEFAULT_REGION_SERVER_RPC_MINIMUM_SCAN_TIME_LIMIT_DELTA);
+    maximumScanTimeLimitDelta = conf.getLong(REGION_SERVER_RPC_MAXIMUM_SCAN_TIME_LIMIT_DELTA,
+      DEFAULT_REGION_SERVER_RPC_MAXIMUM_SCAN_TIME_LIMIT_DELTA);
     this.abortRequested = false;
     this.stopped = false;
 
@@ -3677,6 +3697,11 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
       // the time limit to be less than the allowable minimum (could cause an
       // immediatate timeout before scanning any data).
       timeLimitDelta = Math.max(timeLimitDelta / 2, minimumScanTimeLimitDelta);
+      // Do NOT allow the delta to be greater than maximumScanTimeLimitDelta. We want to prevent a
+      // scan to hold a rpc handler too long.
+      if (maximumScanTimeLimitDelta > 0) {
+        timeLimitDelta = Math.min(timeLimitDelta, maximumScanTimeLimitDelta);
+      }
       // XXX: Can not use EnvironmentEdge here because TestIncrementTimeRange use a
       // ManualEnvironmentEdge. Consider using System.nanoTime instead.
       return System.currentTimeMillis() + timeLimitDelta;
@@ -3891,7 +3916,6 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     if (Trace.isTracing() && Trace.currentSpan() != null) {
       Trace.currentSpan().addKVAnnotation(Bytes.toBytes("start_row"), request.getScan().getStartRow().toByteArray());
       Trace.currentSpan().addKVAnnotation(Bytes.toBytes("stop_row"), request.getScan().getStopRow().toByteArray());
-
     }
     try {
       checkOpen();

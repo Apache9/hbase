@@ -577,7 +577,6 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
       LOOP:
       while ((kv = this.heap.peek()) != null) {
         if ((kvsScanned % cellsPerHeartbeatCheck == 0)) {
-          scannerContext.updateTimeProgress();
           if (scannerContext.checkTimeLimit(LimitScope.BETWEEN_CELLS)) {
             return scannerContext.setScannerState(NextState.TIME_LIMIT_REACHED).hasMoreValues();
           }
