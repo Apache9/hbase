@@ -28,7 +28,9 @@ import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
 import org.apache.hadoop.hbase.mapreduce.RowCounter.ScanMapper.COUNTER;
+import org.apache.hadoop.hbase.util.FSUtils;
 import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.MRJobConfig;
 import org.apache.hadoop.mapreduce.lib.output.NullOutputFormat;
 
 public class RowCounter {
@@ -53,13 +55,16 @@ public class RowCounter {
   }
 
   public long runJob() throws Exception {
+    // obtain token from namenode.
+    conf.setStrings(MRJobConfig.JOB_NAMENODES, FSUtils.getRootDir(conf).toString());
+
     Job job = Job.getInstance(conf);
     job.setJarByClass(RowCounter.class);
 
     Scan scan = new Scan();
 
-    String snapshotName = TableMapReduceUtil.initTableSnapshotMapperJob(tableName, scan, ScanMapper.class,
-            null, null, job, true);
+    String snapshotName = TableMapReduceUtil.initTableSnapshotMapperJob(tableName, scan,
+      ScanMapper.class, null, null, job, true);
 
     try {
       job.setOutputFormatClass(NullOutputFormat.class);
