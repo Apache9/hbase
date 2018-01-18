@@ -30,6 +30,8 @@ import java.util.List;
 import java.util.concurrent.Callable;
 
 import org.apache.commons.lang.exception.ExceptionUtils;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.commons.logging.impl.Log4JLogger;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
@@ -75,6 +77,8 @@ import org.junit.experimental.categories.Category;
  */
 @Category(LargeTests.class)
 public class TestScannerHeartbeatMessages {
+
+  private static final Log LOG = LogFactory.getLog(TestScannerHeartbeatMessages.class);
 
   private final static HBaseTestingUtility TEST_UTIL = new HBaseTestingUtility();
 
@@ -126,6 +130,7 @@ public class TestScannerHeartbeatMessages {
     conf.setInt(HConstants.HBASE_CLIENT_SCANNER_TIMEOUT_PERIOD, SERVER_TIMEOUT);
     conf.setInt(HConstants.HBASE_RPC_TIMEOUT_KEY, SERVER_TIMEOUT);
     conf.setInt(HConstants.HBASE_CLIENT_PAUSE, 1);
+    conf.setInt(HConstants.HBASE_CLIENT_RETRIES_NUMBER, 3);
 
     // Check the timeout condition after every cell
     conf.setLong(StoreScanner.HBASE_CELLS_SCANNED_PER_HEARTBEAT_CHECK, 1);
@@ -266,7 +271,7 @@ public class TestScannerHeartbeatMessages {
     });
   }
 
-  public static class SparseFilter extends FilterBase {
+  public static class SparseKeyValueFilter extends FilterBase {
 
     @Override
     public ReturnCode filterKeyValue(Cell v) throws IOException {
@@ -280,7 +285,30 @@ public class TestScannerHeartbeatMessages {
     }
 
     public static Filter parseFrom(final byte[] pbBytes) {
-      return new SparseFilter();
+      return new SparseKeyValueFilter();
+    }
+  }
+
+  public static class SparseRowFilter extends FilterBase {
+
+    @Override
+    public boolean filterRowKey(byte[] buffer, int offset, int length) throws IOException {
+      try {
+        Thread.sleep(CLIENT_TIMEOUT / 2 - 100);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+      }
+      if (buffer == null) {
+        return super.filterRowKey(buffer, offset, length);
+      } else {
+        int cmp = Bytes.compareTo(buffer, offset, length, ROWS[NUM_ROWS - 1], 0,
+          ROWS[NUM_ROWS - 1].length);
+        return cmp != 0;
+      }
+    }
+
+    public static Filter parseFrom(final byte[] pbBytes) {
+      return new SparseRowFilter();
     }
   }
 
@@ -289,14 +317,14 @@ public class TestScannerHeartbeatMessages {
    * @throws Exception
    */
   @Test
-  public void testHeartbeatWithSparseFilter() throws Exception {
+  public void testHeartbeatWithSparseKeyValueFilter() throws Exception {
     testImportanceOfHeartbeats(new Callable<Void>() {
       @Override
       public Void call() throws Exception {
         Scan scan = new Scan();
         scan.setMaxResultSize(Long.MAX_VALUE);
         scan.setCaching(Integer.MAX_VALUE);
-        scan.setFilter(new SparseFilter());
+        scan.setFilter(new SparseKeyValueFilter());
         ResultScanner scanner = TABLE.getScanner(scan);
         int num = 0;
         while (scanner.next() != null) {
@@ -308,7 +336,7 @@ public class TestScannerHeartbeatMessages {
         scan = new Scan();
         scan.setMaxResultSize(Long.MAX_VALUE);
         scan.setCaching(Integer.MAX_VALUE);
-        scan.setFilter(new SparseFilter());
+        scan.setFilter(new SparseKeyValueFilter());
         scan.setAllowPartialResults(true);
         scanner = TABLE.getScanner(scan);
         num = 0;
@@ -316,6 +344,32 @@ public class TestScannerHeartbeatMessages {
           num++;
         }
         assertEquals(NUM_FAMILIES * NUM_QUALIFIERS, num);
+        scanner.close();
+
+        return null;
+      }
+    });
+  }
+
+  /**
+   * Test the case that there is a filter which filters most of cells
+   * @throws Exception
+   */
+  @Test
+  public void testHeartbeatWithSparseRowFilter() throws Exception {
+    testImportanceOfHeartbeats(new Callable<Void>() {
+      @Override
+      public Void call() throws Exception {
+        Scan scan = new Scan();
+        scan.setMaxResultSize(Long.MAX_VALUE);
+        scan.setCaching(Integer.MAX_VALUE);
+        scan.setFilter(new SparseRowFilter());
+        ResultScanner scanner = TABLE.getScanner(scan);
+        int num = 0;
+        while (scanner.next() != null) {
+          num++;
+        }
+        assertEquals(1, num);
         scanner.close();
 
         return null;
