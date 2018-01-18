@@ -376,16 +376,38 @@ public class TestHdfsAclManager {
     Assert.assertFalse(canUserScanSnapshot(grantUser, snapshot2));
   }
 
+  @Test
+  public void testSnapshotScannerReadRestoredTable() throws Exception {
+    String tableName = "testSnapshotScannerReadRestoredTable";
+    try (HTable table = createTable(tableName)) {
+      put(table);
+    }
+    String snapshotName = "snapshot-" + tableName;
+    admin.snapshot(snapshotName, tableName);
+    admin.disableTable(tableName);
+    admin.deleteTable(tableName);
+    Assert.assertEquals(false, admin.tableExists(TableName.valueOf(tableName)));
+    Assert.assertFalse(canUserScanSnapshot(grantUser, snapshotName));
+
+    admin.restoreSnapshot(snapshotName);
+    Assert.assertEquals(true, admin.tableExists(TableName.valueOf(tableName)));
+
+    SecureTestUtil.grantOnTable(TEST_UTIL, GRANT_USER, TableName.valueOf(tableName), null, null,
+      Permission.Action.READ);
+
+    Assert.assertTrue(canUserScanSnapshot(grantUser, snapshotName));
+  }
+
   private boolean canUserScanSnapshot(User user, String snapshot)
-    throws IOException, InterruptedException {
+      throws IOException, InterruptedException {
     PrivilegedExceptionAction<Boolean> action = getScanSnapshotAction(conf, snapshot);
     return user.runAs(action);
   }
 
   private PrivilegedExceptionAction<Boolean> getScanSnapshotAction(Configuration conf,
-                                                                   String snapshotName) throws IOException {
+      String snapshotName) throws IOException {
     Random random = new Random();
-    Path restoreDir = TEST_UTIL.getDataTestDirOnTestFS(snapshotName+random.nextInt(100));
+    Path restoreDir = TEST_UTIL.getDataTestDirOnTestFS(snapshotName + random.nextInt(100));
     if (!fs.exists(restoreDir)) {
       fs.mkdirs(restoreDir);
     }
@@ -399,7 +421,7 @@ public class TestHdfsAclManager {
       try {
         Scan scan = new Scan();
         TableSnapshotScanner scanner =
-          new TableSnapshotScanner(conf, restoreDir, snapshotName, scan);
+            new TableSnapshotScanner(conf, restoreDir, snapshotName, scan);
         while (true) {
           Result result = scanner.next();
           if (result == null) {
@@ -423,12 +445,12 @@ public class TestHdfsAclManager {
       CellScanner scanner = result.cellScanner();
       while (scanner.advance()) {
         Cell cell = scanner.current();
-        if(cell != null) {
-          cnt ++;
+        if (cell != null) {
+          cnt++;
         }
       }
       return cnt;
-    }catch (Exception e){
+    } catch (Exception e) {
       e.printStackTrace();
     }
     return 0;
@@ -463,6 +485,7 @@ public class TestHdfsAclManager {
     }
     hTable.put(puts);
   }
+
   // put and put2 row cnt is 16
   private void put2(HTable hTable) throws Exception { // row cnt is 14
     List<Put> puts = new ArrayList<>();
