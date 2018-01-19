@@ -130,18 +130,20 @@ public class RegionGroupingProvider implements WALProvider {
 
   private final KeyLocker<String> createLock = new KeyLocker<>();
 
-  private RegionGroupingStrategy strategy = null;
-  private WALFactory factory = null;
-  private List<WALActionsListener> listeners = null;
-  private String providerId = null;
+  private RegionGroupingStrategy strategy;
+  private WALFactory factory;
+  private Configuration conf;
+  private List<WALActionsListener> listeners;
+  private String providerId;
   private Class<? extends WALProvider> providerClass;
 
   @Override
-  public void init(final WALFactory factory, final Configuration conf,
-      final List<WALActionsListener> listeners, final String providerId) throws IOException {
+  public void init(WALFactory factory, Configuration conf, List<WALActionsListener> listeners,
+      String providerId) throws IOException {
     if (null != strategy) {
       throw new IllegalStateException("WALProvider.init should only be called once.");
     }
+    this.conf = conf;
     this.factory = factory;
     this.listeners = null == listeners ? null : Collections.unmodifiableList(listeners);
     StringBuilder sb = new StringBuilder().append(factory.factoryId);
@@ -158,11 +160,10 @@ public class RegionGroupingProvider implements WALProvider {
   }
 
   private WALProvider createProvider(String group) throws IOException {
-    if (META_WAL_PROVIDER_ID.equals(providerId)) {
-      return factory.createProvider(providerClass, listeners, META_WAL_PROVIDER_ID);
-    } else {
-      return factory.createProvider(providerClass, listeners, group);
-    }
+    WALProvider provider = WALFactory.createProvider(providerClass);
+    provider.init(factory, conf, listeners,
+      META_WAL_PROVIDER_ID.equals(providerId) ? META_WAL_PROVIDER_ID : group);
+    return provider;
   }
 
   @Override
