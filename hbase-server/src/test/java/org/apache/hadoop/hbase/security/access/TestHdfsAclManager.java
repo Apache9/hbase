@@ -22,14 +22,12 @@ import java.io.IOException;
 import java.security.PrivilegedExceptionAction;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.fs.permission.FsAction;
 import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellScanner;
@@ -107,24 +105,24 @@ public class TestHdfsAclManager {
     String snapshot = "testGrantNamespace" + SNAPSHOT_POSTFIX;
     String snapshot2 = "testGrantNamespace2" + SNAPSHOT_POSTFIX;
 
-    createNamespace(namespace);
+    createNamespace(admin, namespace);
 
     // create table -> grant ns
-    HTable hTable = createTable(table);
+    HTable hTable = createTable(TEST_UTIL, table);
     put(hTable);
     admin.snapshot(snapshot, table);
     SecureTestUtil.grantOnNamespace(TEST_UTIL, GRANT_USER, namespace, Permission.Action.READ);
 
     // grant ns -> create table
-    HTable hTable2 = createTable(table2);
+    HTable hTable2 = createTable(TEST_UTIL, table2);
     put(hTable2);
     admin.snapshot(snapshot2, table2);
 
-    Assert.assertTrue(canUserScanSnapshot(grantUser, snapshot));
-    Assert.assertFalse(canUserScanSnapshot(unGrantUser, snapshot));
+    Assert.assertTrue(canUserScanSnapshot(conf, fs, grantUser, snapshot));
+    Assert.assertFalse(canUserScanSnapshot(conf, fs, unGrantUser, snapshot));
 
-    Assert.assertTrue(canUserScanSnapshot(grantUser, snapshot2));
-    Assert.assertFalse(canUserScanSnapshot(unGrantUser, snapshot2));
+    Assert.assertTrue(canUserScanSnapshot(conf, fs, grantUser, snapshot2));
+    Assert.assertFalse(canUserScanSnapshot(conf, fs, unGrantUser, snapshot2));
   }
 
   @Test
@@ -137,26 +135,26 @@ public class TestHdfsAclManager {
     String snapshot3 = "testRevokeNamespace3" + SNAPSHOT_POSTFIX;
 
     // snapshot -> revoke ns
-    createNamespace(namespace);
-    HTable hTable = createTable(table);
+    createNamespace(admin, namespace);
+    HTable hTable = createTable(TEST_UTIL, table);
     put(hTable);
     admin.snapshot(snapshot, table);
     SecureTestUtil.grantOnNamespace(TEST_UTIL, GRANT_USER, namespace, Permission.Action.READ);
     SecureTestUtil.revokeFromNamespace(TEST_UTIL, GRANT_USER, namespace, Permission.Action.READ);
 
     // revoke ns -> snapshot
-    HTable hTable2 = createTable(table2);
+    HTable hTable2 = createTable(TEST_UTIL, table2);
     put(hTable2);
     admin.snapshot(snapshot2, table2);
     admin.snapshot(snapshot3, table);
 
-    Assert.assertFalse(canUserScanSnapshot(grantUser, snapshot));
-    Assert.assertFalse(canUserScanSnapshot(unGrantUser, snapshot));
+    Assert.assertFalse(canUserScanSnapshot(conf, fs, grantUser, snapshot));
+    Assert.assertFalse(canUserScanSnapshot(conf, fs, unGrantUser, snapshot));
 
-    Assert.assertFalse(canUserScanSnapshot(grantUser, snapshot2));
-    Assert.assertFalse(canUserScanSnapshot(unGrantUser, snapshot2));
+    Assert.assertFalse(canUserScanSnapshot(conf, fs, grantUser, snapshot2));
+    Assert.assertFalse(canUserScanSnapshot(conf, fs, unGrantUser, snapshot2));
 
-    Assert.assertFalse(canUserScanSnapshot(grantUser, snapshot3));
+    Assert.assertFalse(canUserScanSnapshot(conf, fs, grantUser, snapshot3));
   }
 
   @Test
@@ -167,8 +165,8 @@ public class TestHdfsAclManager {
     String snapshot2 = "testGrantTable2" + SNAPSHOT_POSTFIX;
 
     // snapshot -> grant table
-    createNamespace(namespace);
-    HTable hTable = createTable(table);
+    createNamespace(admin, namespace);
+    HTable hTable = createTable(TEST_UTIL, table);
     put(hTable);
     admin.snapshot(snapshot, table);
     SecureTestUtil.grantOnTable(TEST_UTIL, GRANT_USER, TableName.valueOf(table), null, null,
@@ -178,11 +176,11 @@ public class TestHdfsAclManager {
     put(hTable);
     admin.snapshot(snapshot2, table);
 
-    Assert.assertTrue(canUserScanSnapshot(grantUser, snapshot));
-    Assert.assertFalse(canUserScanSnapshot(unGrantUser, snapshot));
+    Assert.assertTrue(canUserScanSnapshot(conf, fs, grantUser, snapshot));
+    Assert.assertFalse(canUserScanSnapshot(conf, fs, unGrantUser, snapshot));
 
-    Assert.assertTrue(canUserScanSnapshot(grantUser, snapshot2));
-    Assert.assertFalse(canUserScanSnapshot(unGrantUser, snapshot2));
+    Assert.assertTrue(canUserScanSnapshot(conf, fs, grantUser, snapshot2));
+    Assert.assertFalse(canUserScanSnapshot(conf, fs, unGrantUser, snapshot2));
   }
 
   @Test
@@ -193,8 +191,8 @@ public class TestHdfsAclManager {
     String snapshot2 = "testRevokeTable2" + SNAPSHOT_POSTFIX;
 
     // snapshot -> revoke table
-    createNamespace(namespace);
-    HTable hTable = createTable(table);
+    createNamespace(admin, namespace);
+    HTable hTable = createTable(TEST_UTIL, table);
     SecureTestUtil.grantOnTable(TEST_UTIL, GRANT_USER, TableName.valueOf(table), null, null,
       Permission.Action.READ);
     put(hTable);
@@ -205,8 +203,8 @@ public class TestHdfsAclManager {
     // revoke table -> snapshot
     admin.snapshot(snapshot2, table);
 
-    Assert.assertFalse(canUserScanSnapshot(grantUser, snapshot));
-    Assert.assertFalse(canUserScanSnapshot(grantUser, snapshot2));
+    Assert.assertFalse(canUserScanSnapshot(conf, fs, grantUser, snapshot));
+    Assert.assertFalse(canUserScanSnapshot(conf, fs, grantUser, snapshot2));
   }
 
   @Test
@@ -219,25 +217,25 @@ public class TestHdfsAclManager {
     User userUser2 = User.createUserForTesting(conf, user2, new String[] {});
 
     // create table, grant table, snapshot -> delete table => can scan snapshot
-    HTable hTable = createTable(table);
+    HTable hTable = createTable(TEST_UTIL, table);
     put(hTable);
     SecureTestUtil.grantOnTable(TEST_UTIL, GRANT_USER, TableName.valueOf(table), null, null,
       Permission.Action.READ);
     admin.snapshot(snapshot, table);
     admin.disableTable(table);
     admin.deleteTable(table);
-    Assert.assertTrue(canUserScanSnapshot(grantUser, snapshot));
+    Assert.assertTrue(canUserScanSnapshot(conf, fs, grantUser, snapshot));
 
     // create same name table, snapshot => can not scan new snapshot
-    hTable = createTable(table);
+    hTable = createTable(TEST_UTIL, table);
     put2(hTable);
     admin.snapshot(snapshot2, table);
     SecureTestUtil.grantOnTable(TEST_UTIL, user2, TableName.valueOf(table), null, null,
       Permission.Action.READ);
 
-    Assert.assertTrue(canUserScanSnapshot(grantUser, snapshot));
-    Assert.assertFalse(canUserScanSnapshot(grantUser, snapshot2));
-    Assert.assertTrue(canUserScanSnapshot(userUser2, snapshot2));
+    Assert.assertTrue(canUserScanSnapshot(conf, fs, grantUser, snapshot));
+    Assert.assertFalse(canUserScanSnapshot(conf, fs, grantUser, snapshot2));
+    Assert.assertTrue(canUserScanSnapshot(conf, fs, userUser2, snapshot2));
     //Assert.assertFalse(canUserScanSnapshot(userUser2, snapshot)); //TODO return true
   }
 
@@ -250,23 +248,23 @@ public class TestHdfsAclManager {
     String snapshot2 = "testDeleteNamespace2" + SNAPSHOT_POSTFIX;
 
     // create ns, grant ns, snapshot -> ns table => can scan snapshot
-    createNamespace(namespace);
-    HTable hTable = createTable(table);
+    createNamespace(admin, namespace);
+    HTable hTable = createTable(TEST_UTIL, table);
     put(hTable);
     SecureTestUtil.grantOnNamespace(TEST_UTIL, GRANT_USER, namespace, Permission.Action.READ);
     admin.snapshot(snapshot, table);
     admin.disableTable(table);
     admin.deleteTable(table);
     admin.deleteNamespace(namespace);
-    Assert.assertTrue(canUserScanSnapshot(grantUser, snapshot));
+    Assert.assertTrue(canUserScanSnapshot(conf, fs, grantUser, snapshot));
 
     // create same name ns, snapshot => can not scan new snapshot
-    createNamespace(namespace);
-    createTable(table2);
+    createNamespace(admin, namespace);
+    createTable(TEST_UTIL, table2);
     admin.snapshot(snapshot2, table2);
 
-    Assert.assertTrue(canUserScanSnapshot(grantUser, snapshot));
-    Assert.assertFalse(canUserScanSnapshot(grantUser, snapshot2));
+    Assert.assertTrue(canUserScanSnapshot(conf, fs, grantUser, snapshot));
+    Assert.assertFalse(canUserScanSnapshot(conf, fs, grantUser, snapshot2));
   }
 
   @Test
@@ -278,8 +276,8 @@ public class TestHdfsAclManager {
     String grantUser2 = "grantUser2";
     User user2 = User.createUserForTesting(conf, grantUser2, new String[] {});
 
-    createNamespace(namespace);
-    HTable htable = createTable(table);
+    createNamespace(admin, namespace);
+    HTable htable = createTable(TEST_UTIL, table);
     put(htable);
     admin.snapshot(snapshot, table);
 
@@ -288,18 +286,18 @@ public class TestHdfsAclManager {
       Permission.Action.READ);
     admin.disableTable(table);
     admin.truncateTable(TableName.valueOf(table), true);
-    Assert.assertTrue(canUserScanSnapshot(grantUser, snapshot));
-    Assert.assertTrue(canUserScanSnapshot(user2, snapshot));
+    Assert.assertTrue(canUserScanSnapshot(conf, fs, grantUser, snapshot));
+    Assert.assertTrue(canUserScanSnapshot(conf, fs, user2, snapshot));
 
     put(htable);
     put2(htable);
     admin.snapshot(snapshot2, table);
     admin.flush(table);
     admin.majorCompact(table);
-    Assert.assertTrue(canUserScanSnapshot(grantUser, snapshot));
-    Assert.assertTrue(canUserScanSnapshot(grantUser, snapshot2));
-    Assert.assertTrue(canUserScanSnapshot(user2, snapshot));
-    Assert.assertTrue(canUserScanSnapshot(user2, snapshot2));
+    Assert.assertTrue(canUserScanSnapshot(conf, fs, grantUser, snapshot));
+    Assert.assertTrue(canUserScanSnapshot(conf, fs, grantUser, snapshot2));
+    Assert.assertTrue(canUserScanSnapshot(conf, fs, user2, snapshot));
+    Assert.assertTrue(canUserScanSnapshot(conf, fs, user2, snapshot2));
   }
 
   @Test
@@ -308,7 +306,7 @@ public class TestHdfsAclManager {
     String snapshot = "testCompactTable" + SNAPSHOT_POSTFIX;
     String snapshot2 = "testCompactTable2" + SNAPSHOT_POSTFIX;
 
-    HTable htable = createTable(table);
+    HTable htable = createTable(TEST_UTIL, table);
     put(htable);
     admin.snapshot(snapshot, table);
     SecureTestUtil.grantOnTable(TEST_UTIL, GRANT_USER, TableName.valueOf(table), null, null,
@@ -319,8 +317,8 @@ public class TestHdfsAclManager {
     admin.flush(table);
     admin.majorCompact(table);
 
-    Assert.assertTrue(canUserScanSnapshot(grantUser, snapshot));
-    Assert.assertTrue(canUserScanSnapshot(grantUser, snapshot2));
+    Assert.assertTrue(canUserScanSnapshot(conf, fs, grantUser, snapshot));
+    Assert.assertTrue(canUserScanSnapshot(conf, fs, grantUser, snapshot2));
   }
 
   @Test
@@ -329,7 +327,7 @@ public class TestHdfsAclManager {
     String snapshot = "testSplitTable" + SNAPSHOT_POSTFIX;
     String snapshot2 = "testSplitTable2" + SNAPSHOT_POSTFIX;
 
-    HTable htable = createTable(table);
+    HTable htable = createTable(TEST_UTIL, table);
     put(htable);
     admin.snapshot(snapshot, table);
     SecureTestUtil.grantOnTable(TEST_UTIL, GRANT_USER, TableName.valueOf(table), null, null,
@@ -342,8 +340,8 @@ public class TestHdfsAclManager {
     admin.flush(table);
     admin.majorCompact(table);
 
-    Assert.assertTrue(canUserScanSnapshot(grantUser, snapshot));
-    Assert.assertTrue(canUserScanSnapshot(grantUser, snapshot2));
+    Assert.assertTrue(canUserScanSnapshot(conf, fs, grantUser, snapshot));
+    Assert.assertTrue(canUserScanSnapshot(conf, fs, grantUser, snapshot2));
   }
 
   @Test
@@ -355,31 +353,31 @@ public class TestHdfsAclManager {
     String snapshot = "testGrantAndRevokeGlobal" + SNAPSHOT_POSTFIX;
     String snapshot2 = "testGrantAndRevokeGlobal2" + SNAPSHOT_POSTFIX;
 
-    createNamespace(namespace);
-    HTable hTable = createTable(table);
+    createNamespace(admin, namespace);
+    HTable hTable = createTable(TEST_UTIL, table);
     SecureTestUtil.grantGlobal(TEST_UTIL, GRANT_USER, Permission.Action.READ);
     put(hTable);
     admin.snapshot(snapshot, table);
 
-    createNamespace(namespace2);
-    HTable hTable2 = createTable(table2);
+    createNamespace(admin, namespace2);
+    HTable hTable2 = createTable(TEST_UTIL, table2);
     put2(hTable2);
     admin.snapshot(snapshot2, table2);
 
-    Assert.assertTrue(canUserScanSnapshot(grantUser, snapshot));
-    Assert.assertFalse(canUserScanSnapshot(unGrantUser, snapshot));
-    Assert.assertTrue(canUserScanSnapshot(grantUser, snapshot2));
-    Assert.assertFalse(canUserScanSnapshot(unGrantUser, snapshot2));
+    Assert.assertTrue(canUserScanSnapshot(conf, fs, grantUser, snapshot));
+    Assert.assertFalse(canUserScanSnapshot(conf, fs, unGrantUser, snapshot));
+    Assert.assertTrue(canUserScanSnapshot(conf, fs, grantUser, snapshot2));
+    Assert.assertFalse(canUserScanSnapshot(conf, fs, unGrantUser, snapshot2));
 
     SecureTestUtil.revokeGlobal(TEST_UTIL, GRANT_USER, Permission.Action.READ);
-    Assert.assertFalse(canUserScanSnapshot(grantUser, snapshot));
-    Assert.assertFalse(canUserScanSnapshot(grantUser, snapshot2));
+    Assert.assertFalse(canUserScanSnapshot(conf, fs, grantUser, snapshot));
+    Assert.assertFalse(canUserScanSnapshot(conf, fs, grantUser, snapshot2));
   }
 
   @Test
   public void testSnapshotScannerReadRestoredTable() throws Exception {
     String tableName = "testSnapshotScannerReadRestoredTable";
-    try (HTable table = createTable(tableName)) {
+    try (HTable table = createTable(TEST_UTIL, tableName)) {
       put(table);
     }
     String snapshotName = "snapshot-" + tableName;
@@ -387,7 +385,7 @@ public class TestHdfsAclManager {
     admin.disableTable(tableName);
     admin.deleteTable(tableName);
     Assert.assertEquals(false, admin.tableExists(TableName.valueOf(tableName)));
-    Assert.assertFalse(canUserScanSnapshot(grantUser, snapshotName));
+    Assert.assertFalse(canUserScanSnapshot(conf, fs, grantUser, snapshotName));
 
     admin.restoreSnapshot(snapshotName);
     Assert.assertEquals(true, admin.tableExists(TableName.valueOf(tableName)));
@@ -395,25 +393,22 @@ public class TestHdfsAclManager {
     SecureTestUtil.grantOnTable(TEST_UTIL, GRANT_USER, TableName.valueOf(tableName), null, null,
       Permission.Action.READ);
 
-    Assert.assertTrue(canUserScanSnapshot(grantUser, snapshotName));
+    Assert.assertTrue(canUserScanSnapshot(conf, fs, grantUser, snapshotName));
   }
 
-  private boolean canUserScanSnapshot(User user, String snapshot)
-      throws IOException, InterruptedException {
-    PrivilegedExceptionAction<Boolean> action = getScanSnapshotAction(conf, snapshot);
+  public static boolean canUserScanSnapshot(Configuration conf, FileSystem fs, User user, String snapshot)
+    throws IOException, InterruptedException {
+    PrivilegedExceptionAction<Boolean> action = getScanSnapshotAction(conf, fs, snapshot);
     return user.runAs(action);
   }
 
-  private PrivilegedExceptionAction<Boolean> getScanSnapshotAction(Configuration conf,
-      String snapshotName) throws IOException {
-    Random random = new Random();
-    Path restoreDir = TEST_UTIL.getDataTestDirOnTestFS(snapshotName + random.nextInt(100));
-    if (!fs.exists(restoreDir)) {
-      fs.mkdirs(restoreDir);
-    }
+  private static PrivilegedExceptionAction<Boolean> getScanSnapshotAction(Configuration conf, FileSystem fs,
+                                                                          String snapshotName) throws IOException {
+    Path restoreDir = new Path(HConstants.SNAPSHOT_RESTORE_TMP_DIR_DEFAULT, snapshotName);
+    fs.mkdirs(restoreDir);
     Path path = restoreDir;
     while (path != null) {
-      fs.setPermission(path, new FsPermission(FsAction.ALL, FsAction.READ_EXECUTE, FsAction.ALL));
+      fs.setPermission(path, new FsPermission((short) 0757));
       path = path.getParent();
     }
 
@@ -421,7 +416,7 @@ public class TestHdfsAclManager {
       try {
         Scan scan = new Scan();
         TableSnapshotScanner scanner =
-            new TableSnapshotScanner(conf, restoreDir, snapshotName, scan);
+          new TableSnapshotScanner(conf, restoreDir, snapshotName, scan);
         while (true) {
           Result result = scanner.next();
           if (result == null) {
@@ -439,7 +434,7 @@ public class TestHdfsAclManager {
     return action;
   }
 
-  private int getRowCnt(Result result) throws IOException {
+  private static int getRowCnt(Result result) throws IOException {
     try {
       int cnt = 0;
       CellScanner scanner = result.cellScanner();
@@ -456,7 +451,7 @@ public class TestHdfsAclManager {
     return 0;
   }
 
-  private void createNamespace(String namespace) throws IOException {
+  public static void createNamespace(HBaseAdmin admin, String namespace) throws IOException {
     NamespaceDescriptor namespaceDescriptor = NamespaceDescriptor.create(namespace).build();
     admin.createNamespace(namespaceDescriptor);
   }
@@ -464,7 +459,7 @@ public class TestHdfsAclManager {
   private static final String COLUMN1 = "A";
   private static final String COLUMN2 = "B";
 
-  private HTable createTable(String table) throws IOException {
+  public static HTable createTable(HBaseTestingUtility testingUtility, String table) throws IOException {
     TableName tableName = TableName.valueOf(table);
     HTableDescriptor desc = new HTableDescriptor(tableName);
     desc.addFamily(new HColumnDescriptor(COLUMN1));
@@ -472,10 +467,10 @@ public class TestHdfsAclManager {
     byte[][] splits = new byte[2][];
     splits[0] = Bytes.toBytes("1");
     splits[1] = Bytes.toBytes("2");
-    return TEST_UTIL.createTable(desc, splits);
+    return testingUtility.createTable(desc, splits);
   }
 
-  private void put(HTable hTable) throws Exception { // row cnt is 12
+  public static void put(HTable hTable) throws Exception { // row cnt is 12
     List<Put> puts = new ArrayList<>();
     for (int i = 0; i < 6; i++) {
       Put put = new Put(Bytes.toBytes(i));
@@ -487,7 +482,7 @@ public class TestHdfsAclManager {
   }
 
   // put and put2 row cnt is 16
-  private void put2(HTable hTable) throws Exception { // row cnt is 14
+  public static void put2(HTable hTable) throws Exception { // row cnt is 14
     List<Put> puts = new ArrayList<>();
     for (int i = 0; i < 8; i++) {
       if (i == 5) {

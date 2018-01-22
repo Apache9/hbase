@@ -18,6 +18,7 @@
 package org.apache.hadoop.hbase.master.cleaner;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -28,8 +29,12 @@ import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.Chore;
+import org.apache.hadoop.hbase.HConstants;
+import org.apache.hadoop.hbase.NamespaceDescriptor;
 import org.apache.hadoop.hbase.RemoteExceptionHandler;
 import org.apache.hadoop.hbase.Stoppable;
+import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.FSUtils;
 import org.apache.hadoop.util.StringUtils;
@@ -53,6 +58,7 @@ public abstract class CleanerChore<T extends FileCleanerDelegate> extends Chore 
   protected List<T> cleanersChain;
   private long totalSize = 0L;
   private final long ttlDir;
+  private HBaseAdmin admin;
 
   /**
    * @param name name of the chore being run
@@ -218,6 +224,18 @@ public abstract class CleanerChore<T extends FileCleanerDelegate> extends Chore 
       return false;
     }
 
+    // when hbase.hdfs.acl.enable is true, archive/data/ns/table dir should not be deleted
+    if (conf.getBoolean(HConstants.HDFS_ACL_ENABLE, false)) {
+      if (isArchiveDataDir(dir)) {
+        return false;
+      } else if (isArchiveNamespaceDir(dir) && namespaceExist(dir.getName())) {
+        return false;
+      } else if (isArchiveTableDir(dir)
+        && tableExist(TableName.valueOf(dir.getParent().getName(), dir.getName()))) {
+        return false;
+      }
+    }
+
     boolean deleteDir = true;
     if (ttlDir >= 0) {
       long currentTime = EnvironmentEdgeManager.currentTimeMillis();
@@ -315,6 +333,7 @@ public abstract class CleanerChore<T extends FileCleanerDelegate> extends Chore 
 
   @Override
   public void cleanup() {
+    closeAdmin();
     for (T lc : this.cleanersChain) {
       try {
         lc.stop("Exiting");
@@ -322,5 +341,65 @@ public abstract class CleanerChore<T extends FileCleanerDelegate> extends Chore 
         LOG.warn("Stopping", t);
       }
     }
+  }
+
+  private void checkAdmin() throws IOException{
+    if (admin == null) {
+      admin = new HBaseAdmin(conf);
+    }
+  }
+
+  private void closeAdmin() {
+    try {
+      if (admin != null) {
+        admin.close();
+      }
+    } catch (IOException e) {
+      LOG.error(e);
+    }
+  }
+
+  private boolean tableExist(TableName tableName) {
+    try {
+      checkAdmin();
+      return admin.tableExists(tableName);
+    } catch (Exception e){
+      LOG.error(e);
+      return true;
+    }
+  }
+
+  private boolean namespaceExist(String namespace) {
+    try {
+      checkAdmin();
+      return Arrays.stream(admin.listNamespaceDescriptors()).anyMatch(ns -> ns.getName().equals(namespace));
+    } catch (IOException e){
+      LOG.error(e);
+      return true;
+    }
+  }
+
+  private boolean isArchiveDataDir(Path path) {
+    if (path != null) {
+      Path parent = path.getParent();
+      if (parent != null && parent.getName().equals(HConstants.HFILE_ARCHIVE_DIRECTORY)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private boolean isArchiveNamespaceDir(Path path) {
+    if (path != null) {
+      return isArchiveDataDir(path.getParent());
+    }
+    return false;
+  }
+
+  private boolean isArchiveTableDir(Path path) {
+    if (path != null) {
+      return isArchiveNamespaceDir(path.getParent());
+    }
+    return false;
   }
 }
