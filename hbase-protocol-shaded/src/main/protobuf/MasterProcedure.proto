@@ -445,3 +445,7 @@ enum ReopenTableRegionsState {
 message ReopenTableRegionsStateData {
   required TableName table_name = 1;
 }
+
+message TransitPeerSyncReplicationStateStateData {
+  required SyncReplicationState syncReplicationState = 1;
+}
