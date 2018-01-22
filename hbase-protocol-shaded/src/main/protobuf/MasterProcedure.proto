@@ -431,3 +431,7 @@ message EnablePeerStateData {
 
 message DisablePeerStateData {
 }
+
+message TransitPeerSyncReplicationStateStateData {
+  required SyncReplicationState syncReplicationState = 1;
+}
