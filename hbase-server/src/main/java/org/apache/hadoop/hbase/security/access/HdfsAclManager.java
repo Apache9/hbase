@@ -134,11 +134,7 @@ public class HdfsAclManager {
     try {
       List<String> users =
         Lists.newArrayList(AccessControlLists.getTablePermissions(conf, tableName).keySet());
-
-      String namespace = tableName.getNamespaceAsString();
-      String table = tableName.getQualifierAsString();
-
-      List<Path> defaultPathList = Lists.newArrayList(pathHelper.getTmpTableDir(namespace, table));
+      List<Path> defaultPathList = Lists.newArrayList(pathHelper.getTmpTableDir(tableName));
       List<PathAcl> pathAcls = getDefaultPathAcls(defaultPathList, users, AclType.MODIFY);
 
       traverseAndSetAcl(pathAcls);
@@ -172,16 +168,15 @@ public class HdfsAclManager {
     case Table:
       TableName tableName = userPerm.getTableName();
       String tableNamespace = tableName.getNamespaceAsString();
-      String table = tableName.getQualifierAsString();
 
       List<Path> tablePathList = Lists.newArrayList(pathHelper.getTmpNsDir(tableNamespace),
         pathHelper.getNsDir(tableNamespace), pathHelper.getArchiveNsDir(tableNamespace));
       pathAcls = getPathAcls(tablePathList, users, op);
 
       List<Path> defaultTablePathList =
-          Lists.newArrayList(pathHelper.getTmpTableDir(tableNamespace, table),
-            pathHelper.getTableDir(tableNamespace, table),
-            pathHelper.getArchiveTableDir(tableNamespace, table));
+          Lists.newArrayList(pathHelper.getTmpTableDir(tableName),
+            pathHelper.getTableDir(tableName),
+            pathHelper.getArchiveTableDir(tableName));
       defaultTablePathList.addAll(getSnapshots(tableName.getNameAsString(), true).stream()
           .map(snap -> pathHelper.getSnapshotDir(snap)).collect(Collectors.toList()));
       pathAcls.addAll(getDefaultPathAcls(defaultTablePathList, users, op));
@@ -288,6 +283,15 @@ public class HdfsAclManager {
     return snapshots;
   }
 
+  //used for PresetHdfsAclTool
+  FileSystem getFileSystem() {
+    return fs;
+  }
+
+  PathHelper getPathHelper() {
+    return pathHelper;
+  }
+
   private enum AclType {
     MODIFY, REMOVE
   }
@@ -345,7 +349,7 @@ public class HdfsAclManager {
     }
   }
 
-  private class PathHelper {
+  class PathHelper {
     Configuration conf;
     Path rootDir;
     Path tmpDataDir;
@@ -384,24 +388,24 @@ public class HdfsAclManager {
       return new Path(dataDir, namespace);
     }
 
-    Path getTableDir(String namespace, String table) {
-      return new Path(getNsDir(namespace), table);
+    Path getTableDir(TableName tableName) {
+      return new Path(getNsDir(tableName.getNamespaceAsString()), tableName.getQualifierAsString());
     }
 
     Path getArchiveNsDir(String namespace) {
       return new Path(archiveDataDir, namespace);
     }
 
-    Path getArchiveTableDir(String namespace, String table) {
-      return new Path(getArchiveNsDir(namespace), table);
+    Path getArchiveTableDir(TableName tableName) {
+      return new Path(getArchiveNsDir(tableName.getNamespaceAsString()), tableName.getQualifierAsString());
     }
 
     Path getTmpNsDir(String namespace) {
       return new Path(tmpDataDir, namespace);
     }
 
-    Path getTmpTableDir(String namespace, String table) {
-      return new Path(getTmpNsDir(namespace), table);
+    Path getTmpTableDir(TableName tableName) {
+      return new Path(getTmpNsDir(tableName.getNamespaceAsString()), tableName.getQualifierAsString());
     }
 
     Path getSnapshotRootDir() {
