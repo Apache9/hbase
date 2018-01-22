@@ -410,3 +410,7 @@ message AddPeerStateData {
 message UpdatePeerConfigStateData {
   required ReplicationPeer peer_config = 1;
 }
+
+message TransitPeerSyncReplicationStateStateData {
+  required SyncReplicationState syncReplicationState = 1;
+}
