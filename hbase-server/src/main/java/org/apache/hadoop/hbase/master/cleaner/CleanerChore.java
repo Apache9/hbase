@@ -390,14 +390,14 @@ public abstract class CleanerChore<T extends FileCleanerDelegate> extends Chore 
   }
 
   private boolean isArchiveNamespaceDir(Path path) {
-    if (path != null) {
+    if (path != null && path.getParent() != null) {
       return isArchiveDataDir(path.getParent());
     }
     return false;
   }
 
   private boolean isArchiveTableDir(Path path) {
-    if (path != null) {
+    if (path != null && path.getParent() != null) {
       return isArchiveNamespaceDir(path.getParent());
     }
     return false;
