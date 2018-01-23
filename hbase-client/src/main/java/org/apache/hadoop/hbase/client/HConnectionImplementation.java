@@ -56,6 +56,7 @@ import org.apache.hadoop.hbase.Stoppable;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.TableNotEnabledException;
 import org.apache.hadoop.hbase.TableNotFoundException;
+import org.apache.hadoop.hbase.TooManyRegionScannersException;
 import org.apache.hadoop.hbase.ZooKeeperConnectionException;
 import org.apache.hadoop.hbase.catalog.MetaReader;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
@@ -1893,7 +1894,8 @@ public class HConnectionImplementation implements HConnection, Closeable {
     Throwable cause = HConnectionManager.findException(exception);
     if (cause != null) {
       if (cause instanceof RegionTooBusyException || cause instanceof RegionOpeningException
-          || cause instanceof ThrottlingException || cause instanceof MultiActionResultTooLarge) {
+          || cause instanceof ThrottlingException || cause instanceof MultiActionResultTooLarge
+          || cause instanceof TooManyRegionScannersException) {
         // We know that the region is still on this region server
         return;
       }

@@ -33,6 +33,7 @@ import org.apache.hadoop.hbase.DoNotRetryIOException;
 import org.apache.hadoop.hbase.MultiActionResultTooLarge;
 import org.apache.hadoop.hbase.NotServingRegionException;
 import org.apache.hadoop.hbase.RegionTooBusyException;
+import org.apache.hadoop.hbase.TooManyRegionScannersException;
 import org.apache.hadoop.hbase.RetryImmediatelyException;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.classification.InterfaceStability;
@@ -61,7 +62,8 @@ public final class ClientExceptionsUtil {
     return (cur instanceof RegionMovedException || cur instanceof RegionOpeningException
         || cur instanceof RegionTooBusyException || cur instanceof ThrottlingException
         || cur instanceof MultiActionResultTooLarge || cur instanceof RetryImmediatelyException
-        || cur instanceof NotServingRegionException || cur instanceof CallDroppedException);
+        || cur instanceof NotServingRegionException || cur instanceof CallDroppedException
+        || cur instanceof TooManyRegionScannersException);
   }
 
   /**

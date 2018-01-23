@@ -67,7 +67,6 @@ import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-
 import javax.management.ObjectName;
 
 import org.apache.commons.logging.Log;
@@ -89,7 +88,6 @@ import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.HealthCheckChore;
-import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.KeyValueUtil;
 import org.apache.hadoop.hbase.MultiActionResultTooLarge;
 import org.apache.hadoop.hbase.NotServingRegionException;
@@ -98,6 +96,7 @@ import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.Stoppable;
 import org.apache.hadoop.hbase.TableDescriptors;
 import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.TooManyRegionScannersException;
 import org.apache.hadoop.hbase.UnknownScannerException;
 import org.apache.hadoop.hbase.YouAreDeadException;
 import org.apache.hadoop.hbase.ZNodeClearer;
@@ -565,6 +564,16 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
    * Default value of {@link HRegionServer#REGION_SERVER_RPC_MINIMUM_SCAN_TIME_LIMIT_DELTA}
    */
   private static final long DEFAULT_REGION_SERVER_RPC_MAXIMUM_SCAN_TIME_LIMIT_DELTA = -1L;
+  
+  /**
+   * Conf key that specifies the maximum number of opened region scanners on a region server
+   */
+  private static final String REGION_SERVER_MAXIMUM_OPENED_REGION_SCANNER_LIMIT =
+      "hbase.regionserver.maximum.opened.region.scanner.limit";
+  /**
+   * default value of{@link REGION_SERVER_MAXIMUM_OPENED_REGION_SCANNER_LIMIT}
+   */
+  private static final int DEFAULT_REGION_SERVER_MAXIMUM_OPENED_REGION_SCANNER_LIMIT = -1;
 
   /**
    * The lease timeout period for client scanners (milliseconds).
@@ -585,6 +594,11 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
    * The maximum allowable delta to use for the scan limit
    */
   private final long maximumScanTimeLimitDelta;
+  
+  /**
+   * The maximum opened region scanner limit on a regionserver
+   */
+  private final int maxOpenedRegionScannerLimit;
 
   /**
    * The reference to the priority extraction function
@@ -676,6 +690,11 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
       DEFAULT_REGION_SERVER_RPC_MINIMUM_SCAN_TIME_LIMIT_DELTA);
     maximumScanTimeLimitDelta = conf.getLong(REGION_SERVER_RPC_MAXIMUM_SCAN_TIME_LIMIT_DELTA,
       DEFAULT_REGION_SERVER_RPC_MAXIMUM_SCAN_TIME_LIMIT_DELTA);
+
+    this.maxOpenedRegionScannerLimit = conf.getInt(
+        REGION_SERVER_MAXIMUM_OPENED_REGION_SCANNER_LIMIT,
+        DEFAULT_REGION_SERVER_MAXIMUM_OPENED_REGION_SCANNER_LIMIT);
+
     this.abortRequested = false;
     this.stopped = false;
 
@@ -3622,6 +3641,16 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
 
   private RegionScannerHolder newRegionScanner(ScanRequest request, ScanResponse.Builder builder)
       throws IOException {
+    // Check the count of opened region scanners when it has set the limit.
+    // It's a soft limit, and to be more efficiency, we avoid using locks here.
+    int openedRegionScanners = getScannersCount();
+    if (maxOpenedRegionScannerLimit > 0 &&
+        openedRegionScanners >= maxOpenedRegionScannerLimit) {
+      LOG.warn("Currently opened " + openedRegionScanners +
+          " region scanners, up to limit: " + maxOpenedRegionScannerLimit);
+      throw new TooManyRegionScannersException("Too many region scanners");
+    }
+
     HRegion region = getRegion(request.getRegion());
     ClientProtos.Scan protoScan = request.getScan();
     boolean isLoadingCfsOnDemandSet = protoScan.hasLoadColumnFamiliesOnDemand();
