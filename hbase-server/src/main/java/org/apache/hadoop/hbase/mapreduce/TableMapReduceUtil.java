@@ -34,6 +34,7 @@ import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.xiaomi.infra.base.nameservice.NameService;
 
 import org.apache.hadoop.hbase.shaded.io.netty.buffer.ByteBuf;
@@ -343,17 +344,23 @@ public class TableMapReduceUtil {
     resetCacheConfig(job.getConfiguration());
   }
 
+  @VisibleForTesting
+  static Path getAndCheckTmpRestoreDir(Configuration conf) throws IOException {
+    Path rootDir = FSUtils.getRootDir(conf);
+    FileSystem fs = rootDir.getFileSystem(conf);
+    Path tmpRestoreDir = new Path(rootDir.toUri().getScheme(), rootDir.toUri().getAuthority(),
+        conf.get(HConstants.SNAPSHOT_RESTORE_TMP_DIR, HConstants.SNAPSHOT_RESTORE_TMP_DIR_DEFAULT));
+    if (!fs.exists(tmpRestoreDir)) {
+      throw new IOException("tmp directory to restore snapshot does not exist. " + tmpRestoreDir);
+    }
+    return tmpRestoreDir;
+  }
+
   public static String initTableSnapshotMapperJob(TableName table, Scan scan,
       Class<? extends TableMapper> mapper, Class<?> outputKeyClass, Class<?> outputValueClass,
       Job job, boolean addDependencyJars) throws IOException {
     Configuration conf = job.getConfiguration();
-    Path tmpRestoreDir = new Path(
-        conf.get(HConstants.SNAPSHOT_RESTORE_TMP_DIR, HConstants.SNAPSHOT_RESTORE_TMP_DIR_DEFAULT));
-    Path rootDir = FSUtils.getRootDir(conf);
-    FileSystem fs = rootDir.getFileSystem(conf);
-    if (!fs.exists(tmpRestoreDir)) {
-      throw new IOException("tmp directory to restore snapshot does not exist. " + tmpRestoreDir);
-    }
+    Path tmpRestoreDir = getAndCheckTmpRestoreDir(conf);
     return initTableSnapshotMapperJob(table, scan, mapper, outputKeyClass, outputValueClass, job,
       addDependencyJars, tmpRestoreDir);
   }
@@ -363,7 +370,7 @@ public class TableMapReduceUtil {
       Job job, boolean addDependencyJars, Path tmpRestoreDir) throws IOException {
     // Generate a snapshot name, based on namespace, table name, local timestamp.
     String snapshotName = String.format("SnapshotInputFormat-%s-%s-%d",
-      table.getNamespaceAsString(), table.getNameAsString(), System.currentTimeMillis());
+      table.getNamespaceAsString(), table.getQualifierAsString(), System.currentTimeMillis());
 
     // Create a snapshot.
     try (HBaseAdmin admin = new HBaseAdmin(job.getConfiguration())) {

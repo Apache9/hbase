@@ -26,6 +26,7 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.HConstants;
+import org.apache.hadoop.hbase.NamespaceDescriptor;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HTable;
@@ -42,7 +43,8 @@ import org.junit.experimental.categories.Category;
 
 @Category(LargeTests.class)
 public class TestRowCounter {
-  private static final TableName TABLE_NAME = TableName.valueOf("testTable");
+  private static final String NAMESPACE = "test_ns";
+  private static final TableName TABLE_NAME = TableName.valueOf(NAMESPACE, "testTable");
   private static final byte[] FAMILY = Bytes.toBytes("f");
   private static final byte[] QUALIFLY = Bytes.toBytes("q");
   private static final byte[] ROW = Bytes.toBytes("row");
@@ -60,6 +62,11 @@ public class TestRowCounter {
     UTIL.startMiniZKCluster();
     UTIL.startMiniMapReduceCluster();
     UTIL.startMiniCluster();
+
+    try (HBaseAdmin admin = new HBaseAdmin(CONF)) {
+      NamespaceDescriptor nd = NamespaceDescriptor.create(NAMESPACE).build();
+      admin.createNamespace(nd);
+    }
 
     TABLE = UTIL.createTable(TABLE_NAME.getName(), FAMILY);
   }
