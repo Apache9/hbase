@@ -37,6 +37,7 @@ import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.NamespaceDescriptor;
 import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.Waiter;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Put;
@@ -390,10 +391,31 @@ public class TestHdfsAclManager {
     admin.restoreSnapshot(snapshotName);
     Assert.assertEquals(true, admin.tableExists(TableName.valueOf(tableName)));
 
+    waitTableRegionsOnline(TEST_UTIL, TableName.valueOf(tableName));
     SecureTestUtil.grantOnTable(TEST_UTIL, GRANT_USER, TableName.valueOf(tableName), null, null,
       Permission.Action.READ);
 
     Assert.assertTrue(canUserScanSnapshot(conf, fs, grantUser, snapshotName));
+  }
+
+  private static final int WAIT_TIME = 10000;
+  private void waitTableRegionsOnline(final HBaseTestingUtility util, TableName tableName)
+      throws IOException {
+    int regionNum = admin.getTableRegions(tableName).size();
+    util.waitFor(WAIT_TIME, 100, new Waiter.Predicate<IOException>() {
+      @Override
+      public boolean evaluate() throws IOException {
+        int onlineRegionNum = util.getHBaseCluster().getLiveRegionServerThreads().stream()
+            .mapToInt(t -> t.getRegionServer().getOnlineRegions(tableName).size()).sum();
+        if (regionNum == onlineRegionNum) {
+          return true;
+        } else {
+          LOG.info("Table:" + tableName.getNameAsString() + ", region num:" + regionNum
+              + ", online region num:" + onlineRegionNum);
+          return false;
+        }
+      }
+    });
   }
 
   public static boolean canUserScanSnapshot(Configuration conf, FileSystem fs, User user, String snapshot)
