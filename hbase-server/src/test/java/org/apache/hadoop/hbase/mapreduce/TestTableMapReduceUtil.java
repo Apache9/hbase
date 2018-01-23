@@ -18,11 +18,18 @@ package org.apache.hadoop.hbase.mapreduce;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
+import java.io.IOException;
+
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
+import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hbase.util.FSUtils;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
@@ -100,5 +107,19 @@ public class TestTableMapReduceUtil {
     assertEquals(Text.class, job.getOutputValueClass());
     assertNull(job.getCombinerClass());
     assertEquals("Table", job.getConfiguration().get(TableInputFormat.INPUT_TABLE));
+  }
+
+  @Test
+  public void testGetAndCheckTmpRestoreDir() throws IOException {
+    Configuration conf = UTIL.getConfiguration();
+    Path rootDir = FSUtils.getRootDir(conf);
+    FileSystem fs = rootDir.getFileSystem(conf);
+    Path tmpRestoreDir = new Path(
+        conf.get(HConstants.SNAPSHOT_RESTORE_TMP_DIR, HConstants.SNAPSHOT_RESTORE_TMP_DIR_DEFAULT));
+    if (!fs.exists(tmpRestoreDir)) {
+      fs.mkdirs(tmpRestoreDir);
+    }
+    Path path = TableMapReduceUtil.getAndCheckTmpRestoreDir(conf);
+    assertEquals(path.getFileSystem(conf).getUri(), rootDir.getFileSystem(conf).getUri());
   }
 }
