@@ -28,11 +28,11 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -77,13 +77,23 @@ public class HdfsAclManager {
     }
   }
 
-  public void grantAcl(UserPermission userPerm, AccessControlProtos.Permission.Type type) {
-    // TODO check if is new grant or modify grant
+  public void grantAcl(UserPermission userPerm, AccessControlProtos.Permission.Type type,
+      List<UserPermission> previousPerms) {
     try {
+      // if user already has read perm, skip set acl
+      if (previousPerms != null
+          && previousPerms.stream().filter(p -> Bytes.equals(p.getUser(), userPerm.getUser()))
+              .anyMatch(p -> Stream.of(p.actions).anyMatch(a -> a == Permission.Action.READ))) {
+        return;
+      }
+      // if grant to cf or cq, skip set acl
+      if (type == AccessControlProtos.Permission.Type.Table
+          && (userPerm.hasFamily() || userPerm.hasQualifier())) {
+        return;
+      }
       for (Permission.Action action : userPerm.getActions()) {
         if (action == Permission.Action.READ) {
-          List<PathAcl> pathAcls =
-              getGrantOrRevokePathAcls(userPerm, AclType.MODIFY, type);
+          List<PathAcl> pathAcls = getGrantOrRevokePathAcls(userPerm, AclType.MODIFY, type);
           traverseAndSetAcl(pathAcls);
           traverseAndSetAcl(pathAcls); // set acl twice in case of file move
           LOG.info("set acl when grant: " + userPerm.toString());
@@ -239,8 +249,7 @@ public class HdfsAclManager {
     return pathAcls;
   }
 
-  private void traverseAndSetAcl(List<PathAcl> pathAcls)
-      throws IOException, InterruptedException, ExecutionException {
+  private void traverseAndSetAcl(List<PathAcl> pathAcls) throws Exception {
     Queue<PathAcl> queue = new LinkedList<>();
     List<Future<Void>> tasks = new ArrayList<>();
 
@@ -338,13 +347,18 @@ public class HdfsAclManager {
       return pathAcls;
     }
 
-    void setAcl() throws IOException{
-      if (fs.exists(path)) {
-        if (fs.isDirectory(path)) {
-          aclOperation.apply(fs, path, dirAcl);
-        } else {
-          aclOperation.apply(fs, path, fileAcl);
+    void setAcl() throws Exception{
+      try {
+        if (fs.exists(path)) {
+          if (fs.isDirectory(path)) {
+            aclOperation.apply(fs, path, dirAcl);
+          } else {
+            aclOperation.apply(fs, path, fileAcl);
+          }
         }
+      } catch (Exception e) {
+        LOG.error("set acl error for path: " + path + ", " + e);
+        throw new Exception(e);
       }
     }
   }
