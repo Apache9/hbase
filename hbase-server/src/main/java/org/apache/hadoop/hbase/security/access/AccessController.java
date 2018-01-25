@@ -2045,14 +2045,19 @@ public class AccessController extends BaseMasterAndRegionObserver
               + " to grant access permission " + perm.toString());
         }
 
+        List<UserPermission> userPermissions = null;
         switch(request.getUserPermission().getPermission().getType()) {
           case Global :
           case Table :
             requirePermission("grant", perm.getTableName(), perm.getFamily(),
                 perm.getQualifier(), Action.ADMIN);
+            userPermissions = AccessControlLists.getUserTablePermissions(regionEnv.getConfiguration(),
+                perm.getTableName());
             break;
           case Namespace :
             requireGlobalPermission("grant", Action.ADMIN, perm.getNamespace());
+            userPermissions = AccessControlLists
+                .getUserNamespacePermissions(regionEnv.getConfiguration(), perm.getNamespace());
             break;
         }
 
@@ -2065,8 +2070,9 @@ public class AccessController extends BaseMasterAndRegionObserver
         });
 
         if (regionEnv.getConfiguration().getBoolean(HConstants.HDFS_ACL_ENABLE, false)
-          && hdfsAclManager != null) {
-          hdfsAclManager.grantAcl(perm, request.getUserPermission().getPermission().getType());
+            && hdfsAclManager != null) {
+          hdfsAclManager.grantAcl(perm, request.getUserPermission().getPermission().getType(),
+              userPermissions);
         }
 
         if (AUDITLOG.isTraceEnabled()) {

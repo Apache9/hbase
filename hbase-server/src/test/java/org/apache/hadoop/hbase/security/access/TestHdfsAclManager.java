@@ -185,6 +185,34 @@ public class TestHdfsAclManager {
   }
 
   @Test
+  public void testGrantTableFamily() throws Exception {
+    String table = "testGrantTableFamily";
+    String snapshot = "testGrantTableFamily" + SNAPSHOT_POSTFIX;
+
+    HTable hTable = createTable(TEST_UTIL, table);
+    put(hTable);
+    admin.snapshot(snapshot, table);
+    SecureTestUtil.grantOnTable(TEST_UTIL, GRANT_USER, TableName.valueOf(table), Bytes.toBytes("f"),
+      null, Permission.Action.READ);
+
+    Assert.assertFalse(canUserScanSnapshot(conf, fs, grantUser, snapshot));
+  }
+
+  @Test
+  public void testGrantTableQualifier() throws Exception {
+    String table = "testGrantTableQualifier";
+    String snapshot = "testGrantTableQualifier" + SNAPSHOT_POSTFIX;
+
+    HTable hTable = createTable(TEST_UTIL, table);
+    put(hTable);
+    admin.snapshot(snapshot, table);
+    SecureTestUtil.grantOnTable(TEST_UTIL, GRANT_USER, TableName.valueOf(table), null,
+      Bytes.toBytes("q"), Permission.Action.READ);
+
+    Assert.assertFalse(canUserScanSnapshot(conf, fs, grantUser, snapshot));
+  }
+
+  @Test
   public void testRevokeTable() throws Exception {
     String namespace = NAMESPACE_PREFIX + "testRevokeTable";
     String table = namespace + ":" + "testRevokeTable";

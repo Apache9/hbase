@@ -109,7 +109,7 @@ public class PresetHdfsAclTool {
             LOG.info(String.format("set table:%s, user:%s acl", tableName.getNameAsString(), user));
             // check archive/data/ns/table dir
             checkDir(pathHelper.getArchiveTableDir(tableName));
-            hdfsAclManager.grantAcl(userPermission, AccessControlProtos.Permission.Type.Table);
+            hdfsAclManager.grantAcl(userPermission, AccessControlProtos.Permission.Type.Table, null);
             break;
           }
         }
@@ -133,7 +133,7 @@ public class PresetHdfsAclTool {
             // check archive/data/ns and .tmp/data/ns dir
             checkDir(pathHelper.getArchiveNsDir(namespace));
             checkDir(pathHelper.getTmpNsDir(namespace));
-            hdfsAclManager.grantAcl(userPermission, AccessControlProtos.Permission.Type.Namespace);
+            hdfsAclManager.grantAcl(userPermission, AccessControlProtos.Permission.Type.Namespace, null);
             break;
           }
         }
@@ -151,7 +151,7 @@ public class PresetHdfsAclTool {
       for (Permission.Action action : userPermission.getActions()) {
         if (action == Permission.Action.READ) {
           LOG.info(String.format("set global user:%s acl", user));
-          hdfsAclManager.grantAcl(userPermission, AccessControlProtos.Permission.Type.Global);
+          hdfsAclManager.grantAcl(userPermission, AccessControlProtos.Permission.Type.Global, null);
           break;
         }
       }
