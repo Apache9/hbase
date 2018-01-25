@@ -1,10 +1,19 @@
 package org.apache.hadoop.hbase.security.access;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
+import java.util.TreeMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.ListMultimap;
 import com.google.common.collect.Sets;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -18,6 +27,7 @@ import org.apache.hadoop.hbase.NamespaceDescriptor;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.protobuf.generated.AccessControlProtos;
+import org.apache.hadoop.hbase.security.access.Permission.Action;
 import org.apache.hadoop.hbase.util.Bytes;
 
 public class PresetHdfsAclTool {
@@ -41,9 +51,6 @@ public class PresetHdfsAclTool {
   private Set<String> ignoreTableSets = Sets.newHashSet(CANARY_TABLE);
   private Set<String> ignoreUserSets = Sets.newHashSet(HBASE_ADMIN, HBASE_TST_ADMIN);
 
-  public PresetHdfsAclTool(){}
-
-  // used by TestPresetHdfsAclTool
   public PresetHdfsAclTool(Configuration conf) {
     this.conf = conf;
   }
@@ -169,12 +176,120 @@ public class PresetHdfsAclTool {
     }
   }
 
-  public void run() {
+  private boolean isGlobalPerm(TablePermission perm) {
+    return !perm.hasNamespace() && !perm.hasTable();
+  }
+
+  private boolean isNamespacePerm(TablePermission perm) {
+    return perm.hasNamespace() && !perm.hasTable();
+  }
+
+  private boolean isTablePerm(TablePermission perm) {
+    return perm.hasTable() && !perm.hasFamily();
+  }
+
+  private boolean isFamilyPerm(TablePermission perm) {
+    return perm.hasTable() && perm.hasFamily() && !perm.hasQualifier();
+  }
+
+  private boolean isColumnPerm(TablePermission perm) {
+    return perm.hasTable() && perm.hasFamily() && perm.hasQualifier();
+  }
+
+  private boolean subsetOfAction(TablePermission perm, TablePermission subPerm) {
+    for (int i = 0; i < subPerm.getActions().length; i++) {
+      final Action action = subPerm.getActions()[i];
+      boolean found = Arrays.stream(perm.getActions()).anyMatch(a -> a == action);
+      if (!found) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  @VisibleForTesting
+  int checkDuplicateGrantInHBaseACL() throws IOException {
+    Map<byte[], ListMultimap<String, TablePermission>> allPerms = AccessControlLists.loadAll(conf);
+    // Map <user> to TablePermission
+    Map<String, ArrayList<TablePermission>> allPermsByUsername = new TreeMap<>();
+    for (Entry<byte[], ListMultimap<String, TablePermission>> entry : allPerms.entrySet()) {
+      ListMultimap<String, TablePermission> perms = entry.getValue();
+      for (String user : perms.keySet()) {
+        allPermsByUsername.computeIfAbsent(user, userName -> new ArrayList<>())
+            .addAll(perms.get(user));
+      }
+    }
+
+    AtomicInteger dupSize = new AtomicInteger(0);
+    for (Entry<String, ArrayList<TablePermission>> entry : allPermsByUsername.entrySet()) {
+      final String user = entry.getKey();
+      List<TablePermission> perms = entry.getValue();
+      for (int i = 0; i < perms.size(); i++) {
+        final TablePermission perm = perms.get(i);
+        if (isGlobalPerm(perm)) {
+          LOG.warn("Found a user with global acl, please check: " + user);
+          continue;
+        }
+        if (isNamespacePerm(perm)) {
+          perms.stream().filter(this::isTablePerm).filter(p -> subsetOfAction(perm, p))
+              .forEach(p -> {
+                LOG.error(String.format("%s is duplicated with %s ACL in HBase. ", perm, p));
+                dupSize.incrementAndGet();
+              });
+          perms.stream().filter(this::isFamilyPerm).filter(p -> subsetOfAction(perm, p))
+              .forEach(p -> {
+                LOG.error(String.format("%s is duplicated with %s ACL in HBase. ", perm, p));
+                dupSize.incrementAndGet();
+              });
+          perms.stream().filter(this::isColumnPerm).filter(p -> subsetOfAction(perm, p))
+              .forEach(p -> {
+                LOG.error(String.format("%s is duplicated with %s ACL in HBase. ", perm, p));
+                dupSize.incrementAndGet();
+              });
+        } else if (isTablePerm(perm)) {
+          perms.stream().filter(this::isFamilyPerm).filter(p -> subsetOfAction(perm, p))
+              .forEach(p -> {
+                LOG.error(String.format("%s is duplicated with %s ACL in HBase. ", perm, p));
+                dupSize.incrementAndGet();
+              });
+          perms.stream().filter(this::isColumnPerm).filter(p -> subsetOfAction(perm, p))
+              .forEach(p -> {
+                LOG.error(String.format("%s is duplicated with %s ACL in HBase. ", perm, p));
+                dupSize.incrementAndGet();
+              });
+        } else if (isFamilyPerm(perm)) {
+          perms.stream().filter(this::isColumnPerm).filter(p -> subsetOfAction(perm, p))
+              .forEach(p -> {
+                LOG.error(String.format("%s is duplicated with %s ACL in HBase. ", perm, p));
+                dupSize.incrementAndGet();
+              });
+        }
+      }
+    }
+    return dupSize.get();
+  }
+
+  public void execute() {
     try {
       init();
       checkDirsAndSetPermission();
       presetAcl();
-      LOG.info("finish preset hdfs acl");
+      LOG.info("Finished to pre-set HDFS ACL.");
+    } catch (Exception e) {
+      LOG.error(e);
+    } finally {
+      try {
+        cleanup();
+      } catch (IOException e) {
+        LOG.error(e);
+      }
+    }
+  }
+
+  public void check() {
+    try {
+      init();
+      checkDuplicateGrantInHBaseACL();
     } catch (Exception e) {
       LOG.error(e);
     } finally {
@@ -187,7 +302,15 @@ public class PresetHdfsAclTool {
   }
 
   public static void main(String[] args) {
-    PresetHdfsAclTool tool = new PresetHdfsAclTool();
-    tool.run();
+    Configuration conf = HBaseConfiguration.create();
+    PresetHdfsAclTool tool = new PresetHdfsAclTool(conf);
+    if (args.length == 1 && args[0].equals("check")) {
+      tool.check();
+    } else if (args.length == 1 && args[0].equals("execute")) {
+      tool.execute();
+    } else {
+      System.err.println("Usage: PresetHdfsAclTool [check|execute]");
+      System.exit(1);
+    }
   }
 }
