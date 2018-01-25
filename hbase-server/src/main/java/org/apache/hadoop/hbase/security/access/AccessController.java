@@ -174,7 +174,6 @@ public class AccessController extends BaseMasterAndRegionObserver
   // defined only for Endpoint implementation, so it can have way to
   // access region services.
   private RegionCoprocessorEnvironment regionEnv;
-
   /** Mapping of scanner instances to the user who created them */
   private Map<InternalScanner,String> scannerOwners =
       new MapMaker().weakKeys().makeMap();

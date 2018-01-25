@@ -30,7 +30,9 @@ import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.security.User;
+import org.apache.hadoop.hbase.security.access.Permission.Action;
 import org.apache.hadoop.hbase.testclassification.SmallTests;
+import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -39,138 +41,163 @@ import org.junit.experimental.categories.Category;
 
 @Category({ SmallTests.class })
 public class TestPresetHdfsAclTool {
-	private static Log LOG = LogFactory.getLog(TestHdfsAclManager.class);
+  private static Log LOG = LogFactory.getLog(TestHdfsAclManager.class);
 
-	private static HBaseTestingUtility TEST_UTIL = new HBaseTestingUtility();
-	private static Configuration conf = TEST_UTIL.getConfiguration();
-	private static HBaseAdmin admin = null;
-	private static FileSystem fs = null;
-	private static Path rootDir = null;
-	private static User grantUser = null;
+  private static HBaseTestingUtility TEST_UTIL = new HBaseTestingUtility();
+  private static Configuration conf = TEST_UTIL.getConfiguration();
+  private static HBaseAdmin admin = null;
+  private static FileSystem fs = null;
+  private static Path rootDir = null;
+  private static User grantUser = null;
 
-	private static final String NAMESPACE_PREFIX = "ns_";
-	private static final String SNAPSHOT_POSTFIX = "_snapshot";
-	private static final String GRANT_USER = "grant_user";
+  private static final String NAMESPACE_PREFIX = "ns_";
+  private static final String SNAPSHOT_POSTFIX = "_snapshot";
+  private static final String GRANT_USER = "grant_user";
 
-	@BeforeClass
-	public static void setupBeforeClass() throws Exception {
-		conf.setBoolean("dfs.namenode.acls.enabled", true);
-		conf.set("fs.permissions.umask-mode", "027");
-		conf.setBoolean(HConstants.ENABLE_DATA_FILE_UMASK, true);
-		conf.set(User.HBASE_SECURITY_CONF_KEY, "simple");
-		SecureTestUtil.enableSecurity(conf);
-		TEST_UTIL.startMiniCluster();
+  @BeforeClass
+  public static void setupBeforeClass() throws Exception {
+    conf.setBoolean("dfs.namenode.acls.enabled", true);
+    conf.set("fs.permissions.umask-mode", "027");
+    conf.setBoolean(HConstants.ENABLE_DATA_FILE_UMASK, true);
+    conf.set(User.HBASE_SECURITY_CONF_KEY, "simple");
+    SecureTestUtil.enableSecurity(conf);
+    TEST_UTIL.startMiniCluster();
 
-		admin = TEST_UTIL.getHBaseAdmin();
-		rootDir = TEST_UTIL.getHBaseCluster().getMaster().getMasterFileSystem().getRootDir();
-		fs = rootDir.getFileSystem(conf);
-		grantUser = User.createUserForTesting(conf, GRANT_USER, new String[] {});
+    admin = TEST_UTIL.getHBaseAdmin();
+    rootDir = TEST_UTIL.getHBaseCluster().getMaster().getMasterFileSystem().getRootDir();
+    fs = rootDir.getFileSystem(conf);
+    grantUser = User.createUserForTesting(conf, GRANT_USER, new String[] {});
 
-		Path path = rootDir;
-		while (path != null) {
-			fs.setPermission(path, new FsPermission((short) 0755));
-			path = path.getParent();
-		}
-	}
+    Path path = rootDir;
+    while (path != null) {
+      fs.setPermission(path, new FsPermission((short) 0755));
+      path = path.getParent();
+    }
+  }
 
-	@AfterClass
-	public static void tearDownAfterClass() throws Exception {
-		TEST_UTIL.shutdownMiniCluster();
-	}
+  @AfterClass
+  public static void tearDownAfterClass() throws Exception {
+    TEST_UTIL.shutdownMiniCluster();
+  }
 
-	@Test
-	public void testGrantNamespace() throws Exception {
-		String namespace = NAMESPACE_PREFIX + "testGrantNamespace";
-		String table = namespace + ":" + "testGrantNamespace";
-		String snapshot = "testGrantNamespace" + SNAPSHOT_POSTFIX;
-		String snapshot2 = "testGrantNamespace2" + SNAPSHOT_POSTFIX;
+  @Test
+  public void testGrantNamespace() throws Exception {
+    String namespace = NAMESPACE_PREFIX + "testGrantNamespace";
+    String table = namespace + ":" + "testGrantNamespace";
+    String snapshot = "testGrantNamespace" + SNAPSHOT_POSTFIX;
+    String snapshot2 = "testGrantNamespace2" + SNAPSHOT_POSTFIX;
 
-		TestHdfsAclManager.createNamespace(admin, namespace);
-		HTable hTable = TestHdfsAclManager.createTable(TEST_UTIL, table);
-		TestHdfsAclManager.put(hTable);
-		admin.snapshot(snapshot, table);
-		SecureTestUtil.grantOnNamespace(TEST_UTIL, GRANT_USER, namespace, Permission.Action.READ);
-		admin.snapshot(snapshot2, table);
+    TestHdfsAclManager.createNamespace(admin, namespace);
+    HTable hTable = TestHdfsAclManager.createTable(TEST_UTIL, table);
+    TestHdfsAclManager.put(hTable);
+    admin.snapshot(snapshot, table);
+    SecureTestUtil.grantOnNamespace(TEST_UTIL, GRANT_USER, namespace, Permission.Action.READ);
+    admin.snapshot(snapshot2, table);
 
-		presetHdfsAcl();
+    presetHdfsAcl();
 
-		Assert.assertTrue(TestHdfsAclManager.canUserScanSnapshot(conf, fs, grantUser, snapshot));
-		Assert.assertTrue(TestHdfsAclManager.canUserScanSnapshot(conf, fs, grantUser, snapshot2));
-	}
+    Assert.assertTrue(TestHdfsAclManager.canUserScanSnapshot(conf, fs, grantUser, snapshot));
+    Assert.assertTrue(TestHdfsAclManager.canUserScanSnapshot(conf, fs, grantUser, snapshot2));
+  }
 
-	@Test
-	public void testGrantTable() throws Exception {
-		String namespace = NAMESPACE_PREFIX + "testGrantTable";
-		String table = namespace + ":" + "testGrantTable";
-		String snapshot = "testGrantTable" + SNAPSHOT_POSTFIX;
-		String snapshot2 = "testGrantTable2" + SNAPSHOT_POSTFIX;
+  @Test
+  public void testGrantTable() throws Exception {
+    String namespace = NAMESPACE_PREFIX + "testGrantTable";
+    String table = namespace + ":" + "testGrantTable";
+    String snapshot = "testGrantTable" + SNAPSHOT_POSTFIX;
+    String snapshot2 = "testGrantTable2" + SNAPSHOT_POSTFIX;
 
-		TestHdfsAclManager.createNamespace(admin, namespace);
-		HTable hTable = TestHdfsAclManager.createTable(TEST_UTIL, table);
-		TestHdfsAclManager.put(hTable);
-		admin.snapshot(snapshot, table);
-		SecureTestUtil.grantOnTable(TEST_UTIL, GRANT_USER, TableName.valueOf(table), null, null,
-			Permission.Action.READ);
-		TestHdfsAclManager.put2(hTable);
-		admin.snapshot(snapshot2, table);
+    TestHdfsAclManager.createNamespace(admin, namespace);
+    HTable hTable = TestHdfsAclManager.createTable(TEST_UTIL, table);
+    TestHdfsAclManager.put(hTable);
+    admin.snapshot(snapshot, table);
+    SecureTestUtil.grantOnTable(TEST_UTIL, GRANT_USER, TableName.valueOf(table), null, null,
+      Permission.Action.READ);
+    TestHdfsAclManager.put2(hTable);
+    admin.snapshot(snapshot2, table);
 
-		presetHdfsAcl();
+    presetHdfsAcl();
 
-		Assert.assertTrue(TestHdfsAclManager.canUserScanSnapshot(conf, fs, grantUser, snapshot));
-		Assert.assertTrue(TestHdfsAclManager.canUserScanSnapshot(conf, fs, grantUser, snapshot2));
-	}
+    Assert.assertTrue(TestHdfsAclManager.canUserScanSnapshot(conf, fs, grantUser, snapshot));
+    Assert.assertTrue(TestHdfsAclManager.canUserScanSnapshot(conf, fs, grantUser, snapshot2));
+  }
 
-	@Test
-	public void testCompactTable() throws Exception {
-		String table = "testCompactTable";
-		String snapshot = "testCompactTable" + SNAPSHOT_POSTFIX;
-		String snapshot2 = "testCompactTable2" + SNAPSHOT_POSTFIX;
+  @Test
+  public void testCompactTable() throws Exception {
+    String table = "testCompactTable";
+    String snapshot = "testCompactTable" + SNAPSHOT_POSTFIX;
+    String snapshot2 = "testCompactTable2" + SNAPSHOT_POSTFIX;
 
-		HTable htable = TestHdfsAclManager.createTable(TEST_UTIL, table);
-		TestHdfsAclManager.put(htable);
-		admin.snapshot(snapshot, table);
-		SecureTestUtil.grantOnTable(TEST_UTIL, GRANT_USER, TableName.valueOf(table), null, null,
-			Permission.Action.READ);
+    HTable htable = TestHdfsAclManager.createTable(TEST_UTIL, table);
+    TestHdfsAclManager.put(htable);
+    admin.snapshot(snapshot, table);
+    SecureTestUtil.grantOnTable(TEST_UTIL, GRANT_USER, TableName.valueOf(table), null, null,
+      Permission.Action.READ);
 
-		TestHdfsAclManager.put2(htable);
-		admin.snapshot(snapshot2, table);
-		admin.flush(table);
-		admin.majorCompact(table);
+    TestHdfsAclManager.put2(htable);
+    admin.snapshot(snapshot2, table);
+    admin.flush(table);
+    admin.majorCompact(table);
 
-		presetHdfsAcl();
+    presetHdfsAcl();
 
-		Assert.assertTrue(TestHdfsAclManager.canUserScanSnapshot(conf, fs, grantUser, snapshot));
-		Assert.assertTrue(TestHdfsAclManager.canUserScanSnapshot(conf, fs, grantUser, snapshot2));
-	}
+    Assert.assertTrue(TestHdfsAclManager.canUserScanSnapshot(conf, fs, grantUser, snapshot));
+    Assert.assertTrue(TestHdfsAclManager.canUserScanSnapshot(conf, fs, grantUser, snapshot2));
+  }
 
-	@Test
-	public void testSplitTable() throws Exception {
-		String table = "testSplitTable";
-		String snapshot = "testSplitTable" + SNAPSHOT_POSTFIX;
-		String snapshot2 = "testSplitTable2" + SNAPSHOT_POSTFIX;
+  @Test
+  public void testSplitTable() throws Exception {
+    String table = "testSplitTable";
+    String snapshot = "testSplitTable" + SNAPSHOT_POSTFIX;
+    String snapshot2 = "testSplitTable2" + SNAPSHOT_POSTFIX;
 
-		HTable htable = TestHdfsAclManager.createTable(TEST_UTIL, table);
-		TestHdfsAclManager.put(htable);
-		admin.snapshot(snapshot, table);
-		SecureTestUtil.grantOnTable(TEST_UTIL, GRANT_USER, TableName.valueOf(table), null, null,
-			Permission.Action.READ);
+    HTable htable = TestHdfsAclManager.createTable(TEST_UTIL, table);
+    TestHdfsAclManager.put(htable);
+    admin.snapshot(snapshot, table);
+    SecureTestUtil.grantOnTable(TEST_UTIL, GRANT_USER, TableName.valueOf(table), null, null,
+      Permission.Action.READ);
 
-		TestHdfsAclManager.put2(htable);
-		admin.snapshot(snapshot2, table);
-		admin.split(table, "3");
-		admin.split(table, "4");
-		admin.flush(table);
-		admin.majorCompact(table);
+    TestHdfsAclManager.put2(htable);
+    admin.snapshot(snapshot2, table);
+    admin.split(table, "3");
+    admin.split(table, "4");
+    admin.flush(table);
+    admin.majorCompact(table);
 
-		presetHdfsAcl();
+    presetHdfsAcl();
 
-		Assert.assertTrue(TestHdfsAclManager.canUserScanSnapshot(conf, fs, grantUser, snapshot));
-		Assert.assertTrue(TestHdfsAclManager.canUserScanSnapshot(conf, fs, grantUser, snapshot2));
-	}
+    Assert.assertTrue(TestHdfsAclManager.canUserScanSnapshot(conf, fs, grantUser, snapshot));
+    Assert.assertTrue(TestHdfsAclManager.canUserScanSnapshot(conf, fs, grantUser, snapshot2));
+  }
 
-	private void presetHdfsAcl(){
-		conf.setBoolean(HConstants.HDFS_ACL_ENABLE, true);
-		PresetHdfsAclTool tool = new PresetHdfsAclTool(conf);
-		tool.run();
-	}
+  @Test
+  public void testCheckDuplicateHBaseGrants() throws Exception {
+    String ns = "ns_testCheckDuplicateHBaseGrants";
+    TableName tbName = TableName.valueOf(ns, "testCheckDuplicateHBaseGrants");
+    TestHdfsAclManager.createNamespace(admin, ns);
+    try (HTable table = TestHdfsAclManager.createTable(TEST_UTIL, tbName.toString())) {
+      PresetHdfsAclTool tool = new PresetHdfsAclTool(conf);
+      Assert.assertEquals(0, tool.checkDuplicateGrantInHBaseACL());
+
+      SecureTestUtil.grantOnNamespace(TEST_UTIL, GRANT_USER, ns, Permission.Action.READ,
+        Permission.Action.WRITE);
+      SecureTestUtil.grantOnTable(TEST_UTIL, GRANT_USER, tbName, null, null, Action.READ,
+        Action.WRITE);
+      Assert.assertEquals(1, tool.checkDuplicateGrantInHBaseACL());
+
+      SecureTestUtil.grantOnTable(TEST_UTIL, GRANT_USER, tbName, Bytes.toBytes("A"), null,
+        Action.WRITE);
+      Assert.assertEquals(3, tool.checkDuplicateGrantInHBaseACL());
+
+      SecureTestUtil.grantOnTable(TEST_UTIL, GRANT_USER, tbName, Bytes.toBytes("A"),
+        Bytes.toBytes("Q"), Action.WRITE);
+      Assert.assertEquals(6, tool.checkDuplicateGrantInHBaseACL());
+    }
+  }
+
+  private void presetHdfsAcl() {
+    conf.setBoolean(HConstants.HDFS_ACL_ENABLE, true);
+    PresetHdfsAclTool tool = new PresetHdfsAclTool(conf);
+    tool.execute();
+  }
 }
