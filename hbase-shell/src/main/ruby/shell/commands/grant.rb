@@ -61,18 +61,21 @@ EOF
           if not table_name.nil?
             raise(ArgumentError, "Table name is not of String type") unless table_name.kind_of?(
               String)
+            table_name = table_name.strip
             family = args[3]     # will be nil if unset
             if not family.nil?
               raise(ArgumentError, "Family is not of String type") unless family.kind_of?(String)
+              family = family.strip
               qualifier = args[4]  # will be nil if unset
               if not qualifier.nil?
                 raise(ArgumentError, "Qualifier is not of String type") unless qualifier.kind_of?(
                   String)
+                qualifier = qualifier.strip
               end
             end
           end
           format_simple_command do
-            security_admin.grant(user, permissions, table_name, family, qualifier)
+            security_admin.grant(user.strip, permissions.strip, table_name, family, qualifier)
           end
 
         elsif args[1].kind_of?(Hash)
