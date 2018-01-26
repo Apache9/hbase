@@ -207,6 +207,34 @@ public class PresetHdfsAclTool {
     return true;
   }
 
+  private String toRevokeCommand(String user, TablePermission perm) {
+    if (isGlobalPerm(perm)) {
+      return String.format("revoke '%s'", user);
+    }
+    if (isNamespacePerm(perm)) {
+      return String.format("revoke '%s', '@%s'", user, perm.getNamespace());
+    }
+    if (isTablePerm(perm)) {
+      return String.format("revoke '%s', '%s'", user, perm.getTableName());
+    }
+    if (isFamilyPerm(perm)) {
+      return String.format("revoke '%s', '%s', '%s'", user, perm.getTableName(),
+        Bytes.toString(perm.getFamily()));
+    }
+    if (isColumnPerm(perm)) {
+      return String.format("revoke '%s', '%s', '%s', '%s'", user, perm.getTableName(),
+        Bytes.toString(perm.getFamily()), Bytes.toString(perm.getQualifier()));
+    }
+    return null;
+  }
+
+  private void updateDuplicateCounter(String user, TablePermission perm, TablePermission subPerm,
+      AtomicInteger dupSize) {
+    dupSize.incrementAndGet();
+    LOG.error(String.format("%s is duplicated with %s ACL in HBase. \n%s", perm, subPerm,
+      toRevokeCommand(user, subPerm)));
+  }
+
   @VisibleForTesting
   int checkDuplicateGrantInHBaseACL() throws IOException {
     Map<byte[], ListMultimap<String, TablePermission>> allPerms = AccessControlLists.loadAll(conf);
@@ -227,42 +255,38 @@ public class PresetHdfsAclTool {
       for (int i = 0; i < perms.size(); i++) {
         final TablePermission perm = perms.get(i);
         if (isGlobalPerm(perm)) {
-          LOG.warn("Found a user with global acl, please check: " + user);
+          LOG.warn("Found a user with global acl, please check: " + user + ", %s"
+              + toRevokeCommand(user, perm));
           continue;
         }
         if (isNamespacePerm(perm)) {
-          perms.stream().filter(this::isTablePerm).filter(p -> subsetOfAction(perm, p))
-              .forEach(p -> {
-                LOG.error(String.format("%s is duplicated with %s ACL in HBase. ", perm, p));
-                dupSize.incrementAndGet();
-              });
-          perms.stream().filter(this::isFamilyPerm).filter(p -> subsetOfAction(perm, p))
-              .forEach(p -> {
-                LOG.error(String.format("%s is duplicated with %s ACL in HBase. ", perm, p));
-                dupSize.incrementAndGet();
-              });
-          perms.stream().filter(this::isColumnPerm).filter(p -> subsetOfAction(perm, p))
-              .forEach(p -> {
-                LOG.error(String.format("%s is duplicated with %s ACL in HBase. ", perm, p));
-                dupSize.incrementAndGet();
-              });
+          perms.stream().filter(this::isTablePerm)
+              .filter(p -> perm.getNamespace().equals(p.getTableName().getNamespaceAsString()))
+              .filter(p -> subsetOfAction(perm, p))
+              .forEach(p -> updateDuplicateCounter(user, perm, p, dupSize));
+          perms.stream().filter(this::isFamilyPerm)
+              .filter(p -> perm.getNamespace().equals(p.getTableName().getNamespaceAsString()))
+              .filter(p -> subsetOfAction(perm, p))
+              .forEach(p -> updateDuplicateCounter(user, perm, p, dupSize));
+          perms.stream().filter(this::isColumnPerm)
+              .filter(p -> perm.getNamespace().equals(p.getTableName().getNamespaceAsString()))
+              .filter(p -> subsetOfAction(perm, p))
+              .forEach(p -> updateDuplicateCounter(user, perm, p, dupSize));
         } else if (isTablePerm(perm)) {
-          perms.stream().filter(this::isFamilyPerm).filter(p -> subsetOfAction(perm, p))
-              .forEach(p -> {
-                LOG.error(String.format("%s is duplicated with %s ACL in HBase. ", perm, p));
-                dupSize.incrementAndGet();
-              });
-          perms.stream().filter(this::isColumnPerm).filter(p -> subsetOfAction(perm, p))
-              .forEach(p -> {
-                LOG.error(String.format("%s is duplicated with %s ACL in HBase. ", perm, p));
-                dupSize.incrementAndGet();
-              });
+          perms.stream().filter(this::isFamilyPerm)
+              .filter(p -> perm.getTableName().equals(p.getTableName()))
+              .filter(p -> subsetOfAction(perm, p))
+              .forEach(p -> updateDuplicateCounter(user, perm, p, dupSize));
+          perms.stream().filter(this::isColumnPerm)
+              .filter(p -> perm.getTableName().equals(p.getTableName()))
+              .filter(p -> subsetOfAction(perm, p))
+              .forEach(p -> updateDuplicateCounter(user, perm, p, dupSize));
         } else if (isFamilyPerm(perm)) {
-          perms.stream().filter(this::isColumnPerm).filter(p -> subsetOfAction(perm, p))
-              .forEach(p -> {
-                LOG.error(String.format("%s is duplicated with %s ACL in HBase. ", perm, p));
-                dupSize.incrementAndGet();
-              });
+          perms.stream().filter(this::isColumnPerm)
+              .filter(p -> perm.getTableName().equals(p.getTableName()))
+              .filter(p -> Bytes.equals(perm.getFamily(), p.getFamily()))
+              .filter(p -> subsetOfAction(perm, p))
+              .forEach(p -> updateDuplicateCounter(user, perm, p, dupSize));
         }
       }
     }
