@@ -4346,6 +4346,9 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
       } catch (IOException e) {
         regionActionResultBuilder.setException(ResponseConverter.buildException(e));
         responseBuilder.addRegionActionResult(regionActionResultBuilder.build());
+        if(cellScanner != null){
+          skipCellsForMutations(regionAction.getActionList(), cellScanner);
+        }
         continue;  // For this region it's a failure.
       }
       if (Trace.isTracing() && Trace.currentSpan() != null) {
@@ -4397,6 +4400,30 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     }
     if (processed != null) responseBuilder.setProcessed(processed);
     return responseBuilder.build();
+  }
+
+  private void skipCellsForMutations(List<ClientProtos.Action> actions, CellScanner cellScanner) {
+    for (ClientProtos.Action action : actions) {
+      skipCellsForMutation(action, cellScanner);
+    }
+  }
+
+  private void skipCellsForMutation(ClientProtos.Action action, CellScanner cellScanner) {
+    try {
+      if (action.hasMutation()) {
+        MutationProto m = action.getMutation();
+        if (m.hasAssociatedCellCount()) {
+          for (int i = 0; i < m.getAssociatedCellCount(); i++) {
+            cellScanner.advance();
+          }
+        }
+      }
+    } catch (IOException e) {
+      // No need to handle these Individual Muatation level issue. Any way this entire RegionAction
+      // marked as failed as we could not see the Region here. At client side the top level
+      // RegionAction exception will be considered first.
+      LOG.error("Error while skipping Cells in CellScanner for invalid Region Mutations", e);
+    }
   }
 
   /**
