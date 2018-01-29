@@ -25,6 +25,7 @@ import static org.apache.hadoop.fs.permission.FsAction.READ_EXECUTE;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
@@ -91,14 +92,11 @@ public class HdfsAclManager {
           && (userPerm.hasFamily() || userPerm.hasQualifier())) {
         return;
       }
-      for (Permission.Action action : userPerm.getActions()) {
-        if (action == Permission.Action.READ) {
-          List<PathAcl> pathAcls = getGrantOrRevokePathAcls(userPerm, AclType.MODIFY, type);
-          traverseAndSetAcl(pathAcls);
-          traverseAndSetAcl(pathAcls); // set acl twice in case of file move
-          LOG.info("set acl when grant: " + userPerm.toString());
-          break;
-        }
+      if (Arrays.stream(userPerm.getActions()).anyMatch(a -> a == Permission.Action.READ)) {
+        List<PathAcl> pathAcls = getGrantOrRevokePathAcls(userPerm, AclType.MODIFY, type);
+        traverseAndSetAcl(pathAcls);
+        traverseAndSetAcl(pathAcls); // set acl twice in case of file move
+        LOG.info("set acl when grant: " + userPerm.toString());
       }
     } catch (Exception e) {
       LOG.error("set acl error when grant: " + (userPerm != null ? userPerm.toString() : null), e);

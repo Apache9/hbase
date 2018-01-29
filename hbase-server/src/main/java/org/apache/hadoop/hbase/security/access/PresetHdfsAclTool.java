@@ -3,6 +3,8 @@ package org.apache.hadoop.hbase.security.access;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -22,8 +24,6 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HConstants;
-import org.apache.hadoop.hbase.HTableDescriptor;
-import org.apache.hadoop.hbase.NamespaceDescriptor;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.protobuf.generated.AccessControlProtos;
@@ -36,8 +36,12 @@ public class PresetHdfsAclTool {
 
   private static final String HBASE_ADMIN = "hbase_admin";
   private static final String HBASE_TST_ADMIN = "hbase_tst_admin";
+  private static final String HBASE_NAMESPACE = "hbase";
   private static final String ACL_TABLE = "hbase:acl";
   private static final String CANARY_TABLE = "_canary_";
+  // Total support 16 users(32 ACLs). 5 fixed users: owner, group, other, mask and hbase_admin.
+  private static final int TABLE_USER_NUM_THRESHOLD = 10;
+  private static final int NAMESPACE_USER_NUM_THRESHOLD = 5;
 
   private static final FsPermission PUBLIC_DIR_PERMISSION = new FsPermission((short) 0755);
   private static final FsPermission RESTORE_DIR_PERMISSION = new FsPermission((short) 0757);
@@ -48,6 +52,7 @@ public class PresetHdfsAclTool {
   private FileSystem fs;
   private HdfsAclManager.PathHelper pathHelper;
 
+  private Set<String> ignoreNamespaceSets = Sets.newHashSet(HBASE_NAMESPACE);
   private Set<String> ignoreTableSets = Sets.newHashSet(CANARY_TABLE);
   private Set<String> ignoreUserSets = Sets.newHashSet(HBASE_ADMIN, HBASE_TST_ADMIN);
 
@@ -68,6 +73,20 @@ public class PresetHdfsAclTool {
     // variables get from hdfsAclManager
     fs = hdfsAclManager.getFileSystem();
     pathHelper = hdfsAclManager.getPathHelper();
+  }
+
+  private Map<String, ArrayList<TablePermission>> loadAllPerms() throws IOException{
+    Map<String, ArrayList<TablePermission>> allPermsByUsername = new TreeMap<>();
+    Map<byte[], ListMultimap<String, TablePermission>> allPerms = AccessControlLists.loadAll(conf);
+    // Map <user> to TablePermission
+    for (Entry<byte[], ListMultimap<String, TablePermission>> entry : allPerms.entrySet()) {
+      ListMultimap<String, TablePermission> perms = entry.getValue();
+      for (String user : perms.keySet()) {
+        allPermsByUsername.computeIfAbsent(user, userName -> new ArrayList<>())
+          .addAll(perms.get(user));
+      }
+    }
+    return allPermsByUsername;
   }
 
   private void cleanup() throws IOException {
@@ -96,70 +115,32 @@ public class PresetHdfsAclTool {
     fs.setPermission(restoreDir, RESTORE_DIR_PERMISSION);
   }
 
-  private void presetAcl() throws IOException {
-    // set table acl
-    HTableDescriptor[] hTableDescriptors = admin.listTables();
-    for (HTableDescriptor hTableDescriptor : hTableDescriptors) {
-      TableName tableName = hTableDescriptor.getTableName();
-      if (ignoreTableSets.contains(tableName.getNameAsString())) {
-        continue;
-      }
-      List<UserPermission> userPermissions =
-          AccessControlLists.getUserTablePermissions(conf, tableName);
-      for (UserPermission userPermission : userPermissions) {
-        String user = Bytes.toString(userPermission.getUser());
-        if (ignoreUserSets.contains(user)) {
-          continue;
-        }
-        for (Permission.Action action : userPermission.getActions()) {
-          if (action == Permission.Action.READ) {
-            LOG.info(String.format("set table:%s, user:%s acl", tableName.getNameAsString(), user));
-            // check archive/data/ns/table dir
-            checkDir(pathHelper.getArchiveTableDir(tableName));
-            hdfsAclManager.grantAcl(userPermission, AccessControlProtos.Permission.Type.Table, null);
-            break;
-          }
-        }
-      }
-    }
-
-    // set namespace acl
-    NamespaceDescriptor[] namespaceDescriptors = admin.listNamespaceDescriptors();
-    for (NamespaceDescriptor namespaceDescriptor : namespaceDescriptors) {
-      String namespace = namespaceDescriptor.getName();
-      List<UserPermission> userPermissions =
-          AccessControlLists.getUserNamespacePermissions(conf, namespace);
-      for (UserPermission userPermission : userPermissions) {
-        String user = Bytes.toString(userPermission.getUser());
-        if (ignoreUserSets.contains(user)) {
-          continue;
-        }
-        for (Permission.Action action : userPermission.getActions()) {
-          if (action == Permission.Action.READ) {
-            LOG.info(String.format("set ns:%s, user:%s acl", namespace, user));
-            // check archive/data/ns and .tmp/data/ns dir
-            checkDir(pathHelper.getArchiveNsDir(namespace));
-            checkDir(pathHelper.getTmpNsDir(namespace));
-            hdfsAclManager.grantAcl(userPermission, AccessControlProtos.Permission.Type.Namespace, null);
-            break;
-          }
-        }
-      }
-    }
-
-    // set global acl
-    List<UserPermission> userPermissions =
-        AccessControlLists.getUserTablePermissions(conf, TableName.valueOf(ACL_TABLE));
-    for (UserPermission userPermission : userPermissions) {
-      String user = Bytes.toString(userPermission.getUser());
+  private void presetHdfsAclInternal() throws IOException {
+    Map<String, ArrayList<TablePermission>> allPermsByUsername = loadAllPerms();
+    for (Entry<String, ArrayList<TablePermission>> entry : allPermsByUsername.entrySet()) {
+      String user = entry.getKey();
       if (ignoreUserSets.contains(user)) {
         continue;
       }
-      for (Permission.Action action : userPermission.getActions()) {
-        if (action == Permission.Action.READ) {
+      for (final TablePermission perm : entry.getValue()) {
+        UserPermission userPerm = new UserPermission(Bytes.toBytes(user), perm);
+        if (isGlobalPerm(perm)) {
           LOG.info(String.format("set global user:%s acl", user));
-          hdfsAclManager.grantAcl(userPermission, AccessControlProtos.Permission.Type.Global, null);
-          break;
+          hdfsAclManager.grantAcl(userPerm, AccessControlProtos.Permission.Type.Global, null);
+        } else if (isNamespacePerm(perm) && !ignoreNamespaceSets.contains(perm.getNamespace())) {
+          String namespace = perm.getNamespace();
+          LOG.info(String.format("set ns:%s, user:%s acl", namespace, user));
+          // check archive/data/ns and .tmp/data/ns dir
+          checkDir(pathHelper.getArchiveNsDir(namespace));
+          checkDir(pathHelper.getTmpNsDir(namespace));
+          hdfsAclManager.grantAcl(userPerm, AccessControlProtos.Permission.Type.Namespace, null);
+        } else if (isTablePerm(perm)
+            && !ignoreTableSets.contains(perm.getTableName().getNameAsString())) {
+          TableName tableName = perm.getTableName();
+          LOG.info(String.format("set table:%s, user:%s acl", tableName.getNameAsString(), user));
+          // check archive/data/ns/table dir
+          checkDir(pathHelper.getArchiveTableDir(tableName));
+          hdfsAclManager.grantAcl(userPerm, AccessControlProtos.Permission.Type.Table, null);
         }
       }
     }
@@ -177,7 +158,7 @@ public class PresetHdfsAclTool {
   }
 
   private boolean isGlobalPerm(TablePermission perm) {
-    return !perm.hasNamespace() && !perm.hasTable();
+    return isTablePerm(perm) && Bytes.equals(perm.getTableName().getName(), Bytes.toBytes(ACL_TABLE));
   }
 
   private boolean isNamespacePerm(TablePermission perm) {
@@ -237,17 +218,7 @@ public class PresetHdfsAclTool {
 
   @VisibleForTesting
   int checkDuplicateGrantInHBaseACL() throws IOException {
-    Map<byte[], ListMultimap<String, TablePermission>> allPerms = AccessControlLists.loadAll(conf);
-    // Map <user> to TablePermission
-    Map<String, ArrayList<TablePermission>> allPermsByUsername = new TreeMap<>();
-    for (Entry<byte[], ListMultimap<String, TablePermission>> entry : allPerms.entrySet()) {
-      ListMultimap<String, TablePermission> perms = entry.getValue();
-      for (String user : perms.keySet()) {
-        allPermsByUsername.computeIfAbsent(user, userName -> new ArrayList<>())
-            .addAll(perms.get(user));
-      }
-    }
-
+    Map<String, ArrayList<TablePermission>> allPermsByUsername = loadAllPerms();
     AtomicInteger dupSize = new AtomicInteger(0);
     for (Entry<String, ArrayList<TablePermission>> entry : allPermsByUsername.entrySet()) {
       final String user = entry.getKey();
@@ -293,11 +264,75 @@ public class PresetHdfsAclTool {
     return dupSize.get();
   }
 
-  public void execute() {
+  private Map<String, Integer> checkHdfsAclEntryExceededInternal() throws IOException {
+    Set<String> globalUserSet = new HashSet<>();
+    Map<String, Set<String>> nsUserMap = new HashMap<>();
+    Map<TableName, Set<String>> tableUserMap = new HashMap<>();
+
+    Map<String, ArrayList<TablePermission>> allPermsByUsername = loadAllPerms();
+    for (Entry<String, ArrayList<TablePermission>> entry : allPermsByUsername.entrySet()) {
+      String user = entry.getKey();
+      if (ignoreUserSets.contains(user)) {
+        continue;
+      }
+      for (final TablePermission perm : entry.getValue()) {
+        if (isGlobalPerm(perm)) {
+          globalUserSet.add(user);
+        } else if (isNamespacePerm(perm) && !ignoreNamespaceSets.contains(perm.getNamespace())) {
+          nsUserMap.computeIfAbsent(perm.getNamespace(), ns -> new HashSet<>()).add(user);
+        } else if (isTablePerm(perm)
+            && !ignoreTableSets.contains(perm.getTableName().getNameAsString())) {
+          tableUserMap.computeIfAbsent(perm.getTableName(), table -> new HashSet<>()).add(user);
+        }
+      }
+    }
+
+    nsUserMap.entrySet().forEach(en -> {
+      en.getValue().addAll(globalUserSet);
+      if (en.getValue().size() > NAMESPACE_USER_NUM_THRESHOLD) {
+        LOG.warn("Namespace: " + en.getKey() + " has " + en.getValue().size() + " users.");
+      }
+    });
+    tableUserMap.entrySet().forEach(e -> {
+      String ns = e.getKey().getNamespaceAsString();
+      e.getValue().addAll(nsUserMap.containsKey(ns) ? nsUserMap.get(ns) : globalUserSet);
+      if (e.getValue().size() > TABLE_USER_NUM_THRESHOLD) {
+        LOG.error(
+          "Table: " + e.getKey().getNameAsString() + " has " + e.getValue().size() + " users.");
+      }
+    });
+
+    // return value used by test
+    Map<String, Integer> userNumMap = new HashMap<>();
+    nsUserMap.entrySet().forEach(e -> userNumMap.put(e.getKey(), e.getValue().size()));
+    tableUserMap.entrySet()
+        .forEach(e -> userNumMap.put(e.getKey().getNameAsString(), e.getValue().size()));
+    return userNumMap;
+  }
+
+  public Map<String, Integer> checkHdfsAclEntryExceeded() {
+    try {
+      init();
+      Map<String, Integer> result = checkHdfsAclEntryExceededInternal();
+      LOG.info("Finished to check HDFS entry exceeded.");
+      return result;
+    } catch (Exception e) {
+      LOG.error(e);
+    } finally {
+      try {
+        cleanup();
+      } catch (IOException e) {
+        LOG.error(e);
+      }
+    }
+    return null;
+  }
+
+  public void presetHdfsAcl() {
     try {
       init();
       checkDirsAndSetPermission();
-      presetAcl();
+      presetHdfsAclInternal();
       LOG.info("Finished to pre-set HDFS ACL.");
     } catch (Exception e) {
       LOG.error(e);
@@ -310,7 +345,7 @@ public class PresetHdfsAclTool {
     }
   }
 
-  public void check() {
+  public void checkDuplicateHBaseACL() {
     try {
       init();
       checkDuplicateGrantInHBaseACL();
@@ -328,12 +363,14 @@ public class PresetHdfsAclTool {
   public static void main(String[] args) {
     Configuration conf = HBaseConfiguration.create();
     PresetHdfsAclTool tool = new PresetHdfsAclTool(conf);
-    if (args.length == 1 && args[0].equals("check")) {
-      tool.check();
-    } else if (args.length == 1 && args[0].equals("execute")) {
-      tool.execute();
+    if (args.length == 1 && args[0].equals("checkDuplicateHBaseACL")) {
+      tool.checkDuplicateHBaseACL();
+    } else if (args.length == 1 && args[0].equals("presetHDFSAcl")) {
+      tool.presetHdfsAcl();
+    } else if (args.length == 1 && args[0].equals("checkHDFSAclExceeded")) {
+      tool.checkHdfsAclEntryExceeded();
     } else {
-      System.err.println("Usage: PresetHdfsAclTool [check|execute]");
+      System.err.println("Usage: PresetHdfsAclTool [checkDuplicateHBaseACL|checkHDFSAclExceeded|presetHDFSAcl]");
       System.exit(1);
     }
   }
