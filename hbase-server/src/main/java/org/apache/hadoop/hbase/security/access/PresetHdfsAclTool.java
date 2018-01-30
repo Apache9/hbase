@@ -226,7 +226,7 @@ public class PresetHdfsAclTool {
       for (int i = 0; i < perms.size(); i++) {
         final TablePermission perm = perms.get(i);
         if (isGlobalPerm(perm)) {
-          LOG.warn("Found a user with global acl, please check: " + user + ", %s"
+          LOG.warn("Found a user with global acl, please check: " + user + ", "
               + toRevokeCommand(user, perm));
           continue;
         }
