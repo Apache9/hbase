@@ -31,6 +31,7 @@ AssignmentManager assignmentManager = null;
 </%args>
 <%import>
 java.util.*;
+java.io.IOException;
 org.apache.hadoop.util.StringUtils;
 org.apache.hadoop.hbase.util.Bytes;
 org.apache.hadoop.hbase.util.JvmVersion;
@@ -96,6 +97,26 @@ AssignmentManager assignmentManager = master.getAssignmentManager();
 
     quorums.setLength(quorums.length() - 1);
     return quorums.toString();
+  }
+</%class>
+
+<%class>
+  public static String getUserTables(HMaster master, List<HTableDescriptor> tables){
+    if (master.isInitialized()){
+      try {
+        Map<String, HTableDescriptor> descriptorMap = master.getTableDescriptors().getAll();
+        if (descriptorMap != null) {
+          for (HTableDescriptor desc : descriptorMap.values()) {
+            if (!desc.getTableName().isSystemTable()) {
+             tables.add(desc);
+            }
+          }
+        }
+      } catch (IOException e) {
+        return "Got user tables error, " + e.getMessage();
+      }
+    }
+    return null;
   }
 </%class>
 
@@ -326,8 +347,8 @@ AssignmentManager assignmentManager = master.getAssignmentManager();
 
 <%def catalogTables>
 <%java>
- HTableDescriptor[] sysTables = admin.listTableDescriptorsByNamespace(NamespaceDescriptor
- .SYSTEM_NAMESPACE_NAME_STR);
+ List<HTableDescriptor> sysTables = master.isInitialized() ?
+    master.listTableDescriptorsByNamespace(NamespaceDescriptor.SYSTEM_NAMESPACE_NAME_STR) : null;
 </%java>
 
 <table class="table table-striped">
@@ -365,9 +386,15 @@ AssignmentManager assignmentManager = master.getAssignmentManager();
 
 <%def userTables>
 <%java>
-   HTableDescriptor[] tables = admin.listTables();
+   List<HTableDescriptor> tables = new ArrayList<HTableDescriptor>();
+   String errorMessage = getUserTables(master, tables);
+   int totalTablesCount = tables.size();
 </%java>
-<%if (tables != null && tables.length > 0)%>
+<%if (tables.size() == 0 && errorMessage != null)%>
+<p> <% errorMessage %> </p>
+</%if>
+
+<%if (tables != null && tables.size() > 0)%>
 <table class="table table-striped">
     <tr>
         <th>Namespace</th>
@@ -382,6 +409,10 @@ AssignmentManager assignmentManager = master.getAssignmentManager();
         <th>Other Regions</th>
         <th>Description</th>
     </tr>
+    <%java>
+      int endIndex = Math.min(totalTablesCount, 20);
+      tables = tables.subList(0, endIndex);
+    </%java>
     <%for HTableDescriptor htDesc : tables%>
     <%java>
       Map<RegionState.State, List<HRegionInfo>> tableRegions =
@@ -423,7 +454,7 @@ AssignmentManager assignmentManager = master.getAssignmentManager();
         </td>
     </tr>
     </%for>
-    <p><% tables.length %> table(s) in set. [<a href=tablesDetailed.jsp>Details</a>]</p>
+    <p><% tables.size() %>/<% totalTablesCount %> table(s) in set. [<a href=tablesDetailed.jsp>More tables and details</a>]</p>
 </table>
 </%if>
 </%def>
