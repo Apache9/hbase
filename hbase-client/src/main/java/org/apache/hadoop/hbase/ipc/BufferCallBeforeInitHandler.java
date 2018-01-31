@@ -17,15 +17,14 @@
  */
 package org.apache.hadoop.hbase.ipc;
 
-import org.apache.hadoop.hbase.shaded.io.netty.channel.ChannelDuplexHandler;
-import org.apache.hadoop.hbase.shaded.io.netty.channel.ChannelHandlerContext;
-import org.apache.hadoop.hbase.shaded.io.netty.channel.ChannelPromise;
-
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
-
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
+
+import com.xiaomi.infra.thirdparty.io.netty.channel.ChannelDuplexHandler;
+import com.xiaomi.infra.thirdparty.io.netty.channel.ChannelHandlerContext;
+import com.xiaomi.infra.thirdparty.io.netty.channel.ChannelPromise;
 
 /**
  * We will expose the connection to upper layer before initialized, so we need to buffer the calls

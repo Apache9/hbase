@@ -4321,7 +4321,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     } catch (IOException ie) {
       throw new ServiceException(ie);
     }
-
+    LOG.debug("Received request " + request);
     // rpc controller is how we bring in data via the back door;  it is unprotobuf'ed data.
     // It is also the conduit via which we pass back data.
     HBaseRpcController controller = (HBaseRpcController)rpcc;
@@ -4351,7 +4351,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
       if (Trace.isTracing() && Trace.currentSpan() != null) {
         Trace.currentSpan().addTimelineAnnotation("do multi to a specific region " + Bytes.toString(region.getRegionName()));
       }
-
+      LOG.debug("Get region " + region + " for " + regionAction);
       if (regionAction.hasAtomic() && regionAction.getAtomic()) {
         // How does this call happen?  It may need some work to play well w/ the surroundings.
         // Need to return an item per Action along w/ Action index.  TODO.

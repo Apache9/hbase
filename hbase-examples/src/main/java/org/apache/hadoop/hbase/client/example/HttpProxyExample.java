@@ -19,13 +19,11 @@ package org.apache.hadoop.hbase.client.example;
 
 import com.google.common.base.Preconditions;
 import com.google.common.base.Throwables;
-
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.TableName;
@@ -36,28 +34,28 @@ import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.ipc.NettyRpcClientConfigHelper;
 import org.apache.hadoop.hbase.util.Bytes;
 
-import org.apache.hadoop.hbase.shaded.io.netty.bootstrap.ServerBootstrap;
-import org.apache.hadoop.hbase.shaded.io.netty.buffer.ByteBuf;
-import org.apache.hadoop.hbase.shaded.io.netty.channel.Channel;
-import org.apache.hadoop.hbase.shaded.io.netty.channel.ChannelHandlerContext;
-import org.apache.hadoop.hbase.shaded.io.netty.channel.ChannelInitializer;
-import org.apache.hadoop.hbase.shaded.io.netty.channel.ChannelOption;
-import org.apache.hadoop.hbase.shaded.io.netty.channel.EventLoopGroup;
-import org.apache.hadoop.hbase.shaded.io.netty.channel.SimpleChannelInboundHandler;
-import org.apache.hadoop.hbase.shaded.io.netty.channel.group.ChannelGroup;
-import org.apache.hadoop.hbase.shaded.io.netty.channel.group.DefaultChannelGroup;
-import org.apache.hadoop.hbase.shaded.io.netty.channel.nio.NioEventLoopGroup;
-import org.apache.hadoop.hbase.shaded.io.netty.channel.socket.nio.NioServerSocketChannel;
-import org.apache.hadoop.hbase.shaded.io.netty.channel.socket.nio.NioSocketChannel;
-import org.apache.hadoop.hbase.shaded.io.netty.handler.codec.http.DefaultFullHttpResponse;
-import org.apache.hadoop.hbase.shaded.io.netty.handler.codec.http.FullHttpRequest;
-import org.apache.hadoop.hbase.shaded.io.netty.handler.codec.http.HttpHeaderNames;
-import org.apache.hadoop.hbase.shaded.io.netty.handler.codec.http.HttpObjectAggregator;
-import org.apache.hadoop.hbase.shaded.io.netty.handler.codec.http.HttpResponseStatus;
-import org.apache.hadoop.hbase.shaded.io.netty.handler.codec.http.HttpServerCodec;
-import org.apache.hadoop.hbase.shaded.io.netty.handler.codec.http.HttpVersion;
-import org.apache.hadoop.hbase.shaded.io.netty.handler.codec.http.QueryStringDecoder;
-import org.apache.hadoop.hbase.shaded.io.netty.util.concurrent.GlobalEventExecutor;
+import com.xiaomi.infra.thirdparty.io.netty.bootstrap.ServerBootstrap;
+import com.xiaomi.infra.thirdparty.io.netty.buffer.ByteBuf;
+import com.xiaomi.infra.thirdparty.io.netty.channel.Channel;
+import com.xiaomi.infra.thirdparty.io.netty.channel.ChannelHandlerContext;
+import com.xiaomi.infra.thirdparty.io.netty.channel.ChannelInitializer;
+import com.xiaomi.infra.thirdparty.io.netty.channel.ChannelOption;
+import com.xiaomi.infra.thirdparty.io.netty.channel.EventLoopGroup;
+import com.xiaomi.infra.thirdparty.io.netty.channel.SimpleChannelInboundHandler;
+import com.xiaomi.infra.thirdparty.io.netty.channel.group.ChannelGroup;
+import com.xiaomi.infra.thirdparty.io.netty.channel.group.DefaultChannelGroup;
+import com.xiaomi.infra.thirdparty.io.netty.channel.nio.NioEventLoopGroup;
+import com.xiaomi.infra.thirdparty.io.netty.channel.socket.nio.NioServerSocketChannel;
+import com.xiaomi.infra.thirdparty.io.netty.channel.socket.nio.NioSocketChannel;
+import com.xiaomi.infra.thirdparty.io.netty.handler.codec.http.DefaultFullHttpResponse;
+import com.xiaomi.infra.thirdparty.io.netty.handler.codec.http.FullHttpRequest;
+import com.xiaomi.infra.thirdparty.io.netty.handler.codec.http.HttpHeaderNames;
+import com.xiaomi.infra.thirdparty.io.netty.handler.codec.http.HttpObjectAggregator;
+import com.xiaomi.infra.thirdparty.io.netty.handler.codec.http.HttpResponseStatus;
+import com.xiaomi.infra.thirdparty.io.netty.handler.codec.http.HttpServerCodec;
+import com.xiaomi.infra.thirdparty.io.netty.handler.codec.http.HttpVersion;
+import com.xiaomi.infra.thirdparty.io.netty.handler.codec.http.QueryStringDecoder;
+import com.xiaomi.infra.thirdparty.io.netty.util.concurrent.GlobalEventExecutor;
 
 /**
  * A simple example on how to use {@link org.apache.hadoop.hbase.client.AsyncTable} to write a fully

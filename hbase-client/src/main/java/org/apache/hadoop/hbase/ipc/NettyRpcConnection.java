@@ -23,30 +23,11 @@ import static org.apache.hadoop.hbase.ipc.IPCUtil.setCancelled;
 import static org.apache.hadoop.hbase.ipc.IPCUtil.toIOE;
 
 import com.google.protobuf.RpcCallback;
-
-import org.apache.hadoop.hbase.shaded.io.netty.bootstrap.Bootstrap;
-import org.apache.hadoop.hbase.shaded.io.netty.buffer.ByteBuf;
-import org.apache.hadoop.hbase.shaded.io.netty.buffer.ByteBufOutputStream;
-import org.apache.hadoop.hbase.shaded.io.netty.buffer.Unpooled;
-import org.apache.hadoop.hbase.shaded.io.netty.channel.Channel;
-import org.apache.hadoop.hbase.shaded.io.netty.channel.ChannelFuture;
-import org.apache.hadoop.hbase.shaded.io.netty.channel.ChannelFutureListener;
-import org.apache.hadoop.hbase.shaded.io.netty.channel.ChannelHandler;
-import org.apache.hadoop.hbase.shaded.io.netty.channel.ChannelOption;
-import org.apache.hadoop.hbase.shaded.io.netty.channel.ChannelPipeline;
-import org.apache.hadoop.hbase.shaded.io.netty.handler.codec.LengthFieldBasedFrameDecoder;
-import org.apache.hadoop.hbase.shaded.io.netty.handler.timeout.IdleStateHandler;
-import org.apache.hadoop.hbase.shaded.io.netty.util.ReferenceCountUtil;
-import org.apache.hadoop.hbase.shaded.io.netty.util.concurrent.Future;
-import org.apache.hadoop.hbase.shaded.io.netty.util.concurrent.FutureListener;
-import org.apache.hadoop.hbase.shaded.io.netty.util.concurrent.Promise;
-
 import java.io.IOException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
@@ -58,6 +39,23 @@ import org.apache.hadoop.hbase.security.SaslChallengeDecoder;
 import org.apache.hadoop.hbase.security.SaslUtil.QualityOfProtection;
 import org.apache.hadoop.hbase.util.Threads;
 import org.apache.hadoop.security.UserGroupInformation;
+
+import com.xiaomi.infra.thirdparty.io.netty.bootstrap.Bootstrap;
+import com.xiaomi.infra.thirdparty.io.netty.buffer.ByteBuf;
+import com.xiaomi.infra.thirdparty.io.netty.buffer.ByteBufOutputStream;
+import com.xiaomi.infra.thirdparty.io.netty.buffer.Unpooled;
+import com.xiaomi.infra.thirdparty.io.netty.channel.Channel;
+import com.xiaomi.infra.thirdparty.io.netty.channel.ChannelFuture;
+import com.xiaomi.infra.thirdparty.io.netty.channel.ChannelFutureListener;
+import com.xiaomi.infra.thirdparty.io.netty.channel.ChannelHandler;
+import com.xiaomi.infra.thirdparty.io.netty.channel.ChannelOption;
+import com.xiaomi.infra.thirdparty.io.netty.channel.ChannelPipeline;
+import com.xiaomi.infra.thirdparty.io.netty.handler.codec.LengthFieldBasedFrameDecoder;
+import com.xiaomi.infra.thirdparty.io.netty.handler.timeout.IdleStateHandler;
+import com.xiaomi.infra.thirdparty.io.netty.util.ReferenceCountUtil;
+import com.xiaomi.infra.thirdparty.io.netty.util.concurrent.Future;
+import com.xiaomi.infra.thirdparty.io.netty.util.concurrent.FutureListener;
+import com.xiaomi.infra.thirdparty.io.netty.util.concurrent.Promise;
 
 /**
  * RPC connection implementation based on netty.

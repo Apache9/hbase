@@ -18,6 +18,10 @@
  */
 package org.apache.hadoop.hbase.mapreduce;
 
+import com.google.common.annotations.VisibleForTesting;
+import com.google.protobuf.InvalidProtocolBufferException;
+import com.xiaomi.infra.base.nameservice.NameService;
+import com.yammer.metrics.core.MetricsRegistry;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
@@ -33,22 +37,17 @@ import java.util.Map;
 import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
-
-import com.google.common.annotations.VisibleForTesting;
-import com.xiaomi.infra.base.nameservice.NameService;
-
-import org.apache.hadoop.hbase.shaded.io.netty.buffer.ByteBuf;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.hbase.TableName;
-import org.apache.hadoop.hbase.classification.InterfaceAudience;
-import org.apache.hadoop.hbase.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HConstants;
+import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.catalog.MetaReader;
+import org.apache.hadoop.hbase.classification.InterfaceAudience;
+import org.apache.hadoop.hbase.classification.InterfaceStability;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HConnection;
 import org.apache.hadoop.hbase.client.HConnectionManager;
@@ -73,8 +72,8 @@ import org.apache.hadoop.io.WritableComparable;
 import org.apache.hadoop.mapreduce.InputFormat;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.util.StringUtils;
-import com.google.protobuf.InvalidProtocolBufferException;
-import com.yammer.metrics.core.MetricsRegistry;
+
+import com.xiaomi.infra.thirdparty.io.netty.buffer.ByteBuf;
 
 /**
  * Utility for {@link TableMapper} and {@link TableReducer}
@@ -836,7 +835,7 @@ public class TableMapReduceUtil {
       com.google.common.collect.Lists.class,
       org.apache.htrace.Trace.class,
       org.cliffc.high_scale_lib.Counter.class,
-      org.apache.hadoop.hbase.shaded.io.netty.buffer.ByteBuf.class); // mapred over snapshots
+      com.xiaomi.infra.thirdparty.io.netty.buffer.ByteBuf.class); // mapred over snapshots
   }
 
   /**
