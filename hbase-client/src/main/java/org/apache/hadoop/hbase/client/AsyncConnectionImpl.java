@@ -23,7 +23,6 @@ import static org.apache.hadoop.hbase.client.NonceGenerator.CLIENT_NONCES_ENABLE
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.protobuf.RpcCallback;
-
 import java.io.IOException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -31,7 +30,6 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
-
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -53,7 +51,7 @@ import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.util.CollectionUtils;
 import org.apache.hadoop.hbase.util.Threads;
 
-import org.apache.hadoop.hbase.shaded.io.netty.util.HashedWheelTimer;
+import com.xiaomi.infra.thirdparty.io.netty.util.HashedWheelTimer;
 
 /**
  * The implementation of AsyncConnection.

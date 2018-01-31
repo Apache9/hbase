@@ -17,15 +17,9 @@
  */
 package org.apache.hadoop.hbase.ipc;
 
-import org.apache.hadoop.hbase.shaded.io.netty.channel.epoll.EpollEventLoopGroup;
-import org.apache.hadoop.hbase.shaded.io.netty.channel.epoll.EpollSocketChannel;
-import org.apache.hadoop.hbase.shaded.io.netty.channel.nio.NioEventLoopGroup;
-import org.apache.hadoop.hbase.shaded.io.netty.channel.socket.nio.NioSocketChannel;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.codec.Codec;
 import org.apache.hadoop.hbase.testclassification.SmallTests;
@@ -37,6 +31,11 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
+
+import com.xiaomi.infra.thirdparty.io.netty.channel.epoll.EpollEventLoopGroup;
+import com.xiaomi.infra.thirdparty.io.netty.channel.epoll.EpollSocketChannel;
+import com.xiaomi.infra.thirdparty.io.netty.channel.nio.NioEventLoopGroup;
+import com.xiaomi.infra.thirdparty.io.netty.channel.socket.nio.NioSocketChannel;
 
 @RunWith(Parameterized.class)
 @Category(SmallTests.class)

@@ -17,17 +17,16 @@
  */
 package org.apache.hadoop.hbase.client;
 
-import org.apache.hadoop.hbase.shaded.io.netty.util.HashedWheelTimer;
-
 import java.io.IOException;
 import java.util.concurrent.CompletableFuture;
-
 import org.apache.hadoop.hbase.HRegionLocation;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.ipc.HBaseRpcController;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.ClientService;
 import org.apache.hadoop.hbase.util.Bytes;
+
+import com.xiaomi.infra.thirdparty.io.netty.util.HashedWheelTimer;
 
 /**
  * Retry caller for a single request, such as get, put, delete, etc.

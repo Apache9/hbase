@@ -20,17 +20,15 @@ package org.apache.hadoop.hbase.ipc;
 import com.google.protobuf.Descriptors.MethodDescriptor;
 import com.google.protobuf.Message;
 import com.google.protobuf.RpcCallback;
-
-import org.apache.hadoop.hbase.shaded.io.netty.util.Timeout;
-
 import java.io.IOException;
-
 import org.apache.hadoop.hbase.CellScanner;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.htrace.Span;
 import org.apache.htrace.Trace;
+
+import com.xiaomi.infra.thirdparty.io.netty.util.Timeout;
 
 /** A call waiting for a value. */
 @InterfaceAudience.Private

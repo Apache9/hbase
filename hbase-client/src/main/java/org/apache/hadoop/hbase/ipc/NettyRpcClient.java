@@ -17,20 +17,19 @@
  */
 package org.apache.hadoop.hbase.ipc;
 
-import org.apache.hadoop.hbase.shaded.io.netty.channel.Channel;
-import org.apache.hadoop.hbase.shaded.io.netty.channel.EventLoopGroup;
-import org.apache.hadoop.hbase.shaded.io.netty.channel.nio.NioEventLoopGroup;
-import org.apache.hadoop.hbase.shaded.io.netty.channel.socket.nio.NioSocketChannel;
-import org.apache.hadoop.hbase.shaded.io.netty.util.concurrent.DefaultThreadFactory;
-
 import java.io.IOException;
 import java.net.SocketAddress;
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseInterfaceAudience;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.util.Pair;
+
+import com.xiaomi.infra.thirdparty.io.netty.channel.Channel;
+import com.xiaomi.infra.thirdparty.io.netty.channel.EventLoopGroup;
+import com.xiaomi.infra.thirdparty.io.netty.channel.nio.NioEventLoopGroup;
+import com.xiaomi.infra.thirdparty.io.netty.channel.socket.nio.NioSocketChannel;
+import com.xiaomi.infra.thirdparty.io.netty.util.concurrent.DefaultThreadFactory;
 
 /**
  * Netty client for the requests and responses.

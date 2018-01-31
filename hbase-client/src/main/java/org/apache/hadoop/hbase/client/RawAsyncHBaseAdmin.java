@@ -21,7 +21,6 @@ import static org.apache.hadoop.hbase.TableName.META_TABLE_NAME;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.protobuf.RpcCallback;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -34,7 +33,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.ClusterStatus;
@@ -159,8 +157,8 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.Pair;
 
-import org.apache.hadoop.hbase.shaded.io.netty.util.Timeout;
-import org.apache.hadoop.hbase.shaded.io.netty.util.TimerTask;
+import com.xiaomi.infra.thirdparty.io.netty.util.Timeout;
+import com.xiaomi.infra.thirdparty.io.netty.util.TimerTask;
 
 /**
  * The implementation of AsyncAdmin.

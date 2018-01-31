@@ -33,9 +33,6 @@ import com.google.protobuf.RpcChannel;
 import com.google.protobuf.RpcController;
 import com.google.protobuf.ServiceException;
 import com.xiaomi.owl.metric.MetricCounter;
-
-import org.apache.hadoop.hbase.shaded.io.netty.util.HashedWheelTimer;
-
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
@@ -50,7 +47,6 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -72,6 +68,8 @@ import org.apache.hadoop.io.compress.CompressionCodec;
 import org.apache.hadoop.ipc.RemoteException;
 import org.apache.hadoop.security.token.TokenIdentifier;
 import org.apache.hadoop.security.token.TokenSelector;
+
+import com.xiaomi.infra.thirdparty.io.netty.util.HashedWheelTimer;
 
 /**
  * Provides the basics for a RpcClient implementation like configuration and Logging.

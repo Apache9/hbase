@@ -20,23 +20,10 @@ package org.apache.hadoop.hbase.ipc;
 import com.google.protobuf.Message;
 import com.google.protobuf.Message.Builder;
 import com.google.protobuf.TextFormat;
-
-import org.apache.hadoop.hbase.shaded.io.netty.buffer.ByteBuf;
-import org.apache.hadoop.hbase.shaded.io.netty.buffer.ByteBufInputStream;
-import org.apache.hadoop.hbase.shaded.io.netty.buffer.ByteBufOutputStream;
-import org.apache.hadoop.hbase.shaded.io.netty.channel.ChannelDuplexHandler;
-import org.apache.hadoop.hbase.shaded.io.netty.channel.ChannelHandlerContext;
-import org.apache.hadoop.hbase.shaded.io.netty.channel.ChannelPromise;
-import org.apache.hadoop.hbase.shaded.io.netty.handler.timeout.IdleStateEvent;
-import org.apache.hadoop.hbase.shaded.io.netty.util.Timeout;
-import org.apache.hadoop.hbase.shaded.io.netty.util.TimerTask;
-import org.apache.hadoop.hbase.shaded.io.netty.util.concurrent.PromiseCombiner;
-
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.CellScanner;
@@ -48,6 +35,17 @@ import org.apache.hadoop.hbase.protobuf.generated.RPCProtos.RequestHeader;
 import org.apache.hadoop.hbase.protobuf.generated.RPCProtos.ResponseHeader;
 import org.apache.hadoop.io.compress.CompressionCodec;
 import org.apache.hadoop.ipc.RemoteException;
+
+import com.xiaomi.infra.thirdparty.io.netty.buffer.ByteBuf;
+import com.xiaomi.infra.thirdparty.io.netty.buffer.ByteBufInputStream;
+import com.xiaomi.infra.thirdparty.io.netty.buffer.ByteBufOutputStream;
+import com.xiaomi.infra.thirdparty.io.netty.channel.ChannelDuplexHandler;
+import com.xiaomi.infra.thirdparty.io.netty.channel.ChannelHandlerContext;
+import com.xiaomi.infra.thirdparty.io.netty.channel.ChannelPromise;
+import com.xiaomi.infra.thirdparty.io.netty.handler.timeout.IdleStateEvent;
+import com.xiaomi.infra.thirdparty.io.netty.util.Timeout;
+import com.xiaomi.infra.thirdparty.io.netty.util.TimerTask;
+import com.xiaomi.infra.thirdparty.io.netty.util.concurrent.PromiseCombiner;
 
 /**
  * The netty rpc handler.

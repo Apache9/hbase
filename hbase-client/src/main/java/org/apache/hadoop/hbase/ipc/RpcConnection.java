@@ -17,14 +17,9 @@
  */
 package org.apache.hadoop.hbase.ipc;
 
-import org.apache.hadoop.hbase.shaded.io.netty.util.HashedWheelTimer;
-import org.apache.hadoop.hbase.shaded.io.netty.util.Timeout;
-import org.apache.hadoop.hbase.shaded.io.netty.util.TimerTask;
-
 import java.io.IOException;
 import java.net.UnknownHostException;
 import java.util.concurrent.TimeUnit;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -45,6 +40,10 @@ import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.security.token.Token;
 import org.apache.hadoop.security.token.TokenIdentifier;
 import org.apache.hadoop.security.token.TokenSelector;
+
+import com.xiaomi.infra.thirdparty.io.netty.util.HashedWheelTimer;
+import com.xiaomi.infra.thirdparty.io.netty.util.Timeout;
+import com.xiaomi.infra.thirdparty.io.netty.util.TimerTask;
 
 /**
  * Base class for ipc connection.
