@@ -106,9 +106,8 @@ public class HBaseConfiguration extends Configuration {
 
     checkDefaultsVersion(conf);
     checkForClusterFreeMemoryLimit(conf);
- 
-    String clusterKey = System.getProperties()
-                               .getProperty("hadoop.cmdline.hbase.cluster");
+
+    String clusterKey = System.getProperties().getProperty("hadoop.cmdline.hbase.cluster");
     if (clusterKey != null) {
       try {
         LOG.info("Apply cluster:" + clusterKey + "to configuration");
@@ -118,7 +117,7 @@ public class HBaseConfiguration extends Configuration {
           throw new IOException("Unrecognized Cluster Key: " + clusterKey);
         }
       } catch (IOException e) {
-        LOG.error("Apply cluster: " + clusterKey + " to configuration failed!");
+        LOG.error("Apply cluster: " + clusterKey + " to configuration failed!", e);
       }
     }
 
