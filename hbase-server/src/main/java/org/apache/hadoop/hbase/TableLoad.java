@@ -18,9 +18,12 @@
  */
 package org.apache.hadoop.hbase;
 
+import org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos;
 import org.apache.hadoop.hbase.util.Strings;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -97,7 +100,7 @@ public class TableLoad {
   /**
    * family info
    */
-  private Map<String, Map<String, Long>> familyStastics;
+  private List<FamilyLoad> familyLoads;
 
   public TableLoad(final String name) {
     this.name = name;
@@ -126,7 +129,7 @@ public class TableLoad {
     this.throttledWriteRequestsCount = 0;
     this.scanCountPerSecond = 0;
     this.scanRowsPerSecond = 0;
-    this.familyStastics = new HashMap<>();
+    this.familyLoads = new ArrayList<>();
   }
 
   public TableLoad(TableName table) {
@@ -169,21 +172,20 @@ public class TableLoad {
     this.throttledReadRequestsCount += regionLoad.getThrottledReadRequestsCount();
     this.throttledWriteRequestsCount += regionLoad.getThrottledWriteRequestsCount();
 
-    Map<String, Map<String, Long>> regionFamilyInfo = regionLoad.getFamilyInfo();
-    if(regionFamilyInfo == null || regionFamilyInfo.size() == 0){
-      return;
-    }
-    if (familyStastics.size() == 0) {
-      familyStastics = regionFamilyInfo;
-    } else {
-      for(Map.Entry<String, Map<String, Long>> entry: familyStastics.entrySet()){
-        String family = entry.getKey();
-        for(Map.Entry<String, Long> familyEntry: entry.getValue().entrySet()){
-          if(regionFamilyInfo.containsKey(family)) {
-            String statisticKey = familyEntry.getKey();
-            familyEntry.setValue(familyEntry.getValue() + regionFamilyInfo.get(family).get(statisticKey));
-          }
+    for (FamilyLoad load : regionLoad.getFamilyLoads()) {
+      boolean exist = false;
+      for (FamilyLoad existLoad : familyLoads) {
+        if (existLoad.getName().equals(load.getName())) {
+          existLoad.incrementRowCount(load.getRowCount());
+          existLoad.incrementKeyValueCount(load.getKeyValueCount());
+          existLoad.incrementDeleteFamilyCount(load.getDeleteFamilyCount());
+          existLoad.incrementDeleteKeyValueCount(load.getDeleteKeyValueCount());
+          exist = true;
+          break;
         }
+      }
+      if (!exist) {
+        familyLoads.add(load);
       }
     }
   }
@@ -292,8 +294,8 @@ public class TableLoad {
     return throttledWriteRequestsCount;
   }
 
-  public Map<String, Map<String, Long>> getFamilyStastics() {
-    return familyStastics;
+  public List<FamilyLoad> getFamilyLoads() {
+    return familyLoads;
   }
 
   @Override
@@ -357,8 +359,8 @@ public class TableLoad {
       this.throttledReadRequestsCount);
     sb = Strings.appendKeyValue(sb, "throttledWriteRequestsCount",
       this.throttledWriteRequestsCount);
-    sb = Strings.appendKeyValue(sb, "familyStastics",
-            this.getFamilyStastics().toString());
+    sb = Strings.appendKeyValue(sb, "familyLoads",
+            this.getFamilyLoads().toString());
     return sb.toString();
   }
 }

@@ -20,15 +20,14 @@
 
 package org.apache.hadoop.hbase;
 
-import com.google.common.collect.Maps;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.classification.InterfaceStability;
 import org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.Strings;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
   * Encapsulates per-region load metrics.
@@ -37,19 +36,16 @@ import java.util.Map;
 @InterfaceStability.Evolving
 public class RegionLoad {
 
-  /** row count of this region */
-  private static final String rowCount = "rowCount";
-  /** kv Count of this region  */
-  private static final String kvCount = "kvCount";
-  /** delete family count of this region */
-  private static final String deleteFamilyCount = "deleteFamilyCount";
-  /** delete kv count of this region */
-  private static final String deleteKvCount = "deleteKvCount";
-
   protected ClusterStatusProtos.RegionLoad regionLoadPB;
+
+  private List<FamilyLoad> familyLoads;
 
   public RegionLoad(ClusterStatusProtos.RegionLoad regionLoadPB) {
     this.regionLoadPB = regionLoadPB;
+    this.familyLoads = new ArrayList<>();
+    for (ClusterStatusProtos.FamilyInfo info : regionLoadPB.getFamilyInfoList()) {
+      this.familyLoads.add(new FamilyLoad(info));
+    }
   }
 
   /**
@@ -258,18 +254,8 @@ public class RegionLoad {
   /**
    * @return family info of this region
    */
-  public Map<String, Map<String, Long>> getFamilyInfo(){
-    Map<String, Map<String, Long>> familyStastics = Maps.newHashMap();
-    for (ClusterStatusProtos.FamilyInfo familyInfo : regionLoadPB.getFamilyInfoList()) {
-      String familyName = familyInfo.getFamilyname();
-      Map<String, Long> entry = familyStastics.get(familyName) != null ? familyStastics.get(familyName) : new HashMap<>();
-      entry.compute(rowCount, (key, val) -> entry.get(key) == null ? familyInfo.getRowCount() : val + familyInfo.getRowCount());
-      entry.compute(kvCount, (key, val) -> entry.get(key) == null ? familyInfo.getKvCount() : val + familyInfo.getKvCount());
-      entry.compute(deleteFamilyCount, (key, val) -> entry.get(key) == null ? familyInfo.getDelFamilyCount() : val + familyInfo.getDelFamilyCount());
-      entry.compute(deleteKvCount, (key, val) -> entry.get(key) == null ? familyInfo.getDelKvCount() : val + familyInfo.getDelKvCount());
-      familyStastics.put(familyName, entry);
-    }
-    return familyStastics;
+  public List<FamilyLoad> getFamilyLoads() {
+    return familyLoads;
   }
 
   /**

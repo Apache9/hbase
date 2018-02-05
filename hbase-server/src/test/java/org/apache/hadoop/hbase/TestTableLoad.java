@@ -21,7 +21,6 @@
 
 package org.apache.hadoop.hbase;
 
-import com.google.protobuf.ByteString;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HTable;
@@ -35,8 +34,10 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
+import com.google.protobuf.ByteString;
+
 import java.io.IOException;
-import java.util.Map;
+import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 
@@ -73,11 +74,14 @@ public class TestTableLoad {
     Thread.sleep(5000);
 
     TableLoad tableLoad = testUtil.getMiniHBaseCluster().getMaster().getTableLoads().get(TableName.valueOf(tableName));
-    Map<String, Long> familyStatistic = tableLoad.getFamilyStastics().get(new String(familyName));
-    assertEquals(rowCount, (long)familyStatistic.get("rowCount"));
-    assertEquals(kvCount, (long)familyStatistic.get("kvCount"));
-    assertEquals(deleteFamilyCount, (long)familyStatistic.get("deleteFamilyCount"));
-    assertEquals(deleteKvCount, (long)familyStatistic.get("deleteKvCount"));
+    List<FamilyLoad> familyLoads = tableLoad.getFamilyLoads();
+    assertEquals(1, familyLoads.size());
+    FamilyLoad load = familyLoads.get(0);
+    assertEquals(Bytes.toString(familyName), load.getName());
+    assertEquals(rowCount, load.getRowCount());
+    assertEquals(kvCount, load.getKeyValueCount());
+    assertEquals(deleteFamilyCount, load.getDeleteFamilyCount());
+    assertEquals(deleteKvCount, load.getDeleteKeyValueCount());
   }
 
   @Test
@@ -92,20 +96,19 @@ public class TestTableLoad {
     tableLoad.updateTableLoad(rl2);
   }
 
-  private ClusterStatusProtos.RegionLoad createRegionLoad(boolean familyInfoIsNull){
-    HBaseProtos.RegionSpecifier rSpec =
-            HBaseProtos.RegionSpecifier.newBuilder()
-                    .setType(HBaseProtos.RegionSpecifier.RegionSpecifierType.ENCODED_REGION_NAME)
-                    .setValue(ByteString.copyFromUtf8("QWERTYUIOP")).build();
+  private ClusterStatusProtos.RegionLoad createRegionLoad(boolean familyInfoIsNull) {
+    HBaseProtos.RegionSpecifier rSpec = HBaseProtos.RegionSpecifier.newBuilder()
+        .setType(HBaseProtos.RegionSpecifier.RegionSpecifierType.ENCODED_REGION_NAME)
+        .setValue(ByteString.copyFromUtf8("QWERTYUIOP")).build();
     ClusterStatusProtos.RegionLoad.Builder builder = ClusterStatusProtos.RegionLoad.newBuilder();
-    ClusterStatusProtos.RegionLoad rl =
-            builder.setRegionSpecifier(rSpec).setStores(3)
-                    .setStorefiles(13).setStoreUncompressedSizeMB(23).setStorefileSizeMB(300)
-                    .setStorefileIndexSizeMB(40).setRootIndexSizeKB(303).setReadRequestsCount(Integer.MAX_VALUE).setWriteRequestsCount(Integer.MAX_VALUE).build();
-    if(familyInfoIsNull == false){
-      ClusterStatusProtos.FamilyInfo familyInfo=
-              ClusterStatusProtos.FamilyInfo.newBuilder().setFamilyname("f1").setRowCount(123).setKvCount(456)
-              .setDelFamilyCount(12).setDelKvCount(45).build();
+    ClusterStatusProtos.RegionLoad rl = builder.setRegionSpecifier(rSpec).setStores(3)
+        .setStorefiles(13).setStoreUncompressedSizeMB(23).setStorefileSizeMB(300)
+        .setStorefileIndexSizeMB(40).setRootIndexSizeKB(303).setReadRequestsCount(Integer.MAX_VALUE)
+        .setWriteRequestsCount(Integer.MAX_VALUE).build();
+    if (familyInfoIsNull == false) {
+      ClusterStatusProtos.FamilyInfo familyInfo = ClusterStatusProtos.FamilyInfo.newBuilder()
+          .setFamilyname("f1").setRowCount(123).setKvCount(456).setDelFamilyCount(12)
+          .setDelKvCount(45).build();
       builder.addFamilyInfo(0, familyInfo);
       rl = builder.build();
     }
