@@ -21,8 +21,13 @@
 
 package org.apache.hadoop.hbase;
 
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.client.*;
+import com.google.protobuf.ByteString;
+import org.apache.hadoop.hbase.client.Delete;
+import org.apache.hadoop.hbase.client.HBaseAdmin;
+import org.apache.hadoop.hbase.client.HTable;
+import org.apache.hadoop.hbase.client.Put;
+import org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos;
+import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.After;
@@ -75,11 +80,43 @@ public class TestTableLoad {
     assertEquals(deleteKvCount, (long)familyStatistic.get("deleteKvCount"));
   }
 
+  @Test
+  public void testUpdateFamilyInfo(){
+    TableLoad tableLoad = new TableLoad("testUpdateTableLoad");
+
+    RegionLoad rl1 = new RegionLoad(createRegionLoad(false));
+    RegionLoad rl2 = new RegionLoad(createRegionLoad(true));
+
+    tableLoad.updateTableLoad(rl1);
+    // test when family info is null
+    tableLoad.updateTableLoad(rl2);
+  }
+
+  private ClusterStatusProtos.RegionLoad createRegionLoad(boolean familyInfoIsNull){
+    HBaseProtos.RegionSpecifier rSpec =
+            HBaseProtos.RegionSpecifier.newBuilder()
+                    .setType(HBaseProtos.RegionSpecifier.RegionSpecifierType.ENCODED_REGION_NAME)
+                    .setValue(ByteString.copyFromUtf8("QWERTYUIOP")).build();
+    ClusterStatusProtos.RegionLoad.Builder builder = ClusterStatusProtos.RegionLoad.newBuilder();
+    ClusterStatusProtos.RegionLoad rl =
+            builder.setRegionSpecifier(rSpec).setStores(3)
+                    .setStorefiles(13).setStoreUncompressedSizeMB(23).setStorefileSizeMB(300)
+                    .setStorefileIndexSizeMB(40).setRootIndexSizeKB(303).setReadRequestsCount(Integer.MAX_VALUE).setWriteRequestsCount(Integer.MAX_VALUE).build();
+    if(familyInfoIsNull == false){
+      ClusterStatusProtos.FamilyInfo familyInfo=
+              ClusterStatusProtos.FamilyInfo.newBuilder().setFamilyname("f1").setRowCount(123).setKvCount(456)
+              .setDelFamilyCount(12).setDelKvCount(45).build();
+      builder.addFamilyInfo(0, familyInfo);
+      rl = builder.build();
+    }
+    return rl;
+  }
+
   private void makeSomeData() throws IOException, InterruptedException {
     HBaseAdmin ha = testUtil.getHBaseAdmin();
     byte[][] families = new byte[1][];
     families[0] = familyName;
-    HTable ht = testUtil.createTable(tableName, families,1,"rowKey5".getBytes(), "rowKey9".getBytes(), 3);
+    HTable ht = testUtil.createTable(tableName, families,1, "rowKey5".getBytes(), "rowKey9".getBytes(), 3);
     // insert rows
     for (int i = 0; i < rowCount; i++) {
       Put put = new Put((rowKeyPrefix + i).getBytes());

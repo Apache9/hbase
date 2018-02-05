@@ -170,14 +170,19 @@ public class TableLoad {
     this.throttledWriteRequestsCount += regionLoad.getThrottledWriteRequestsCount();
 
     Map<String, Map<String, Long>> regionFamilyInfo = regionLoad.getFamilyInfo();
+    if(regionFamilyInfo == null || regionFamilyInfo.size() == 0){
+      return;
+    }
     if (familyStastics.size() == 0) {
       familyStastics = regionFamilyInfo;
     } else {
       for(Map.Entry<String, Map<String, Long>> entry: familyStastics.entrySet()){
         String family = entry.getKey();
         for(Map.Entry<String, Long> familyEntry: entry.getValue().entrySet()){
-          String statisticKey = familyEntry.getKey();
-          familyEntry.setValue(familyEntry.getValue() + regionFamilyInfo.get(family).get(statisticKey));
+          if(regionFamilyInfo.containsKey(family)) {
+            String statisticKey = familyEntry.getKey();
+            familyEntry.setValue(familyEntry.getValue() + regionFamilyInfo.get(family).get(statisticKey));
+          }
         }
       }
     }
