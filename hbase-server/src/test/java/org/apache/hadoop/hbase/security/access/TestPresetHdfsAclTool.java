@@ -269,10 +269,50 @@ public class TestPresetHdfsAclTool {
     revokeFromTable(tableUser1, ns2T1, READ);
   }
 
+  @Test
+  public void testPresetHdfsAclWithInclude() throws Exception{
+    String table1 = "testPresetHdfsAclWithInclude1";
+    String table2 = "testPresetHdfsAclWithInclude2";
+    String snapshot1 = "testPresetHdfsAclWithInclude1" + SNAPSHOT_POSTFIX;
+    String snapshot2 = "testPresetHdfsAclWithInclude2" + SNAPSHOT_POSTFIX;
+    createTable(table1);
+    createTable(table2);
+    grantOnTable(GRANT_USER, table1, READ);
+    grantOnTable(GRANT_USER, table2, READ);
+    admin.snapshot(snapshot1, table1);
+    admin.snapshot(snapshot2, table2);
+    conf.setBoolean(HConstants.HDFS_ACL_ENABLE, true);
+    PresetHdfsAclTool tool = new PresetHdfsAclTool(conf);
+    tool.presetHdfsAcl(new String[]{"", "include", table1});
+
+    Assert.assertTrue(canUserScanSnapshot(grantUser, snapshot1));
+    Assert.assertFalse(canUserScanSnapshot(grantUser, snapshot2));
+  }
+
+  @Test
+  public void testPresetHdfsAclWithExclude() throws Exception{
+    String table1 = "testPresetHdfsAclWithExclude1";
+    String table2 = "testPresetHdfsAclWithExclude2";
+    String snapshot1 = "testPresetHdfsAclWithExclude1" + SNAPSHOT_POSTFIX;
+    String snapshot2 = "testPresetHdfsAclWithExclude2" + SNAPSHOT_POSTFIX;
+    createTable(table1);
+    createTable(table2);
+    grantOnTable(GRANT_USER, table1, READ);
+    grantOnTable(GRANT_USER, table2, READ);
+    admin.snapshot(snapshot1, table1);
+    admin.snapshot(snapshot2, table2);
+    conf.setBoolean(HConstants.HDFS_ACL_ENABLE, true);
+    PresetHdfsAclTool tool = new PresetHdfsAclTool(conf);
+    tool.presetHdfsAcl(new String[]{"", "exclude", table1});
+
+    Assert.assertFalse(canUserScanSnapshot(grantUser, snapshot1));
+    Assert.assertTrue(canUserScanSnapshot(grantUser, snapshot2));
+  }
+
   private void presetHdfsAcl() {
     conf.setBoolean(HConstants.HDFS_ACL_ENABLE, true);
     PresetHdfsAclTool tool = new PresetHdfsAclTool(conf);
-    tool.presetHdfsAcl();
+    tool.presetHdfsAcl(null);
   }
 
   private void revokeFromTable(String user, String table, Permission.Action... actions) throws Exception{
