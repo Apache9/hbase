@@ -282,7 +282,7 @@ public final class Canary implements Tool {
 
   public static final String CANARY = "canary";
   public static final String CANARY_CONF = "canary_conf";
-  private static final String CANARY_TABLE_NAME = "_canary_";
+  public static final String CANARY_TABLE_NAME = "_canary_";
   private static final String CANARY_TABLE_FAMILY_NAME = "Test";
   private static int DEFAULT_REGIONS_PER_SERVER = 2;
 

@@ -283,6 +283,7 @@ import org.apache.hadoop.hbase.security.UserProvider;
 import org.apache.hadoop.hbase.security.access.HdfsAclManager;
 import org.apache.hadoop.hbase.snapshot.ClientSnapshotDescriptionUtils;
 import org.apache.hadoop.hbase.snapshot.SnapshotDescriptionUtils;
+import org.apache.hadoop.hbase.tool.Canary;
 import org.apache.hadoop.hbase.trace.SpanReceiverHost;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.CompressionTest;
@@ -2153,8 +2154,8 @@ MasterServices, Server {
       throw new MasterNotRunningException();
     }
 
-    if (!(hTableDescriptor instanceof UnmodifyableHTableDescriptor)
-        && ignoreSplitsWhenCreatingTable) {
+    if (!(hTableDescriptor instanceof UnmodifyableHTableDescriptor) && ignoreSplitsWhenCreatingTable
+        && !hTableDescriptor.getNameAsString().equals(Canary.CANARY_TABLE_NAME)) {
       boolean isSalted = hTableDescriptor.isSalted();
       if (isSalted) {
         hTableDescriptor.setSlotsCount(1);
@@ -2162,10 +2163,10 @@ MasterServices, Server {
       splitKeys = null;
       hTableDescriptor.setValue(Bytes.toBytes(HTableDescriptor.IGNORE_SPLITS_WHEN_CREATING),
         Bytes.toBytes("true"));
-      LOG.info("ignore splits for table " + hTableDescriptor.getNameAsString() + ", isSalted="
-          + isSalted);
+      LOG.info(
+        "ignore splits for table " + hTableDescriptor.getNameAsString() + ", isSalted=" + isSalted);
     }
-    
+
     String namespace = hTableDescriptor.getTableName().getNamespaceAsString();
     getNamespaceDescriptor(namespace); // ensure namespace exists
 
