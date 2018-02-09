@@ -19,22 +19,32 @@ package org.apache.hadoop.hbase.replication.regionserver;
 
 import java.io.IOException;
 import java.util.concurrent.locks.Lock;
+import org.apache.hadoop.hbase.regionserver.HRegionServer;
 import org.apache.hadoop.hbase.replication.ReplicationException;
 import org.apache.hadoop.hbase.replication.ReplicationPeer.PeerState;
 import org.apache.hadoop.hbase.replication.ReplicationPeerConfig;
 import org.apache.hadoop.hbase.replication.ReplicationPeerImpl;
+import org.apache.hadoop.hbase.replication.ReplicationPeers;
 import org.apache.hadoop.hbase.replication.ReplicationUtils;
+import org.apache.hadoop.hbase.replication.SyncReplicationState;
 import org.apache.hadoop.hbase.util.KeyLocker;
 import org.apache.yetus.audience.InterfaceAudience;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @InterfaceAudience.Private
 public class PeerProcedureHandlerImpl implements PeerProcedureHandler {
 
+  private static final Logger LOG = LoggerFactory.getLogger(PeerProcedureHandlerImpl.class);
+
   private final ReplicationSourceManager replicationSourceManager;
+  private final PeerActionListener peerActionListener;
   private final KeyLocker<String> peersLock = new KeyLocker<>();
 
-  public PeerProcedureHandlerImpl(ReplicationSourceManager replicationSourceManager) {
+  public PeerProcedureHandlerImpl(ReplicationSourceManager replicationSourceManager,
+      PeerActionListener peerActionListener) {
     this.replicationSourceManager = replicationSourceManager;
+    this.peerActionListener = peerActionListener;
   }
 
   @Override
@@ -60,7 +70,6 @@ public class PeerProcedureHandlerImpl implements PeerProcedureHandler {
   }
 
   private void refreshPeerState(String peerId) throws ReplicationException, IOException {
-    PeerState newState;
     Lock peerLock = peersLock.acquireLock(peerId);
     ReplicationPeerImpl peer = null;
     PeerState oldState = null;
@@ -71,7 +80,7 @@ public class PeerProcedureHandlerImpl implements PeerProcedureHandler {
         throw new ReplicationException("Peer with id=" + peerId + " is not cached.");
       }
       oldState = peer.getPeerState();
-      newState = replicationSourceManager.getReplicationPeers().refreshPeerState(peerId);
+      PeerState newState = replicationSourceManager.getReplicationPeers().refreshPeerState(peerId);
       // RS need to start work with the new replication state change
       if (oldState.equals(PeerState.ENABLED) && newState.equals(PeerState.DISABLED)) {
         replicationSourceManager.refreshSources(peerId);
@@ -109,7 +118,7 @@ public class PeerProcedureHandlerImpl implements PeerProcedureHandler {
       }
       oldConfig = peer.getPeerConfig();
       ReplicationPeerConfig newConfig =
-          replicationSourceManager.getReplicationPeers().refreshPeerConfig(peerId);
+        replicationSourceManager.getReplicationPeers().refreshPeerConfig(peerId);
       // RS need to start work with the new replication config change
       if (!ReplicationUtils.isKeyConfigEqual(oldConfig, newConfig)) {
         replicationSourceManager.refreshSources(peerId);
@@ -120,6 +129,44 @@ public class PeerProcedureHandlerImpl implements PeerProcedureHandler {
         // Reset peer config if refresh source failed
         peer.setPeerConfig(oldConfig);
       }
+      peerLock.unlock();
+    }
+  }
+
+  @Override
+  public void transitSyncReplicationPeerState(String peerId, int stage, HRegionServer rs)
+      throws ReplicationException, IOException {
+    ReplicationPeers replicationPeers = replicationSourceManager.getReplicationPeers();
+    Lock peerLock = peersLock.acquireLock(peerId);
+    try {
+      ReplicationPeerImpl peer = replicationPeers.getPeer(peerId);
+      if (peer == null) {
+        throw new ReplicationException("Peer with id=" + peerId + " is not cached.");
+      }
+      if (!peer.getPeerConfig().isSyncReplication()) {
+        throw new ReplicationException("Peer with id=" + peerId + " is not synchronous.");
+      }
+      SyncReplicationState newState = peer.getNewSyncReplicationState();
+      if (stage == 0) {
+        if (newState != SyncReplicationState.NONE) {
+          LOG.warn("The new sync replication state for peer {} has already been set to {}, " +
+            "this should be a retry, give up", peerId, newState);
+          return;
+        }
+        newState = replicationPeers.refreshPeerNewSyncReplicationState(peerId);
+        SyncReplicationState oldState = peer.getSyncReplicationState();
+        peerActionListener.peerSyncReplicationStateChange(peerId, oldState, newState, stage);
+      } else {
+        if (newState == SyncReplicationState.NONE) {
+          LOG.warn("The new sync replication state for peer {} has already been clear, and the " +
+            "current state is {}, this should be a retry, give up", peerId, newState);
+          return;
+        }
+        SyncReplicationState oldState = peer.getSyncReplicationState();
+        peerActionListener.peerSyncReplicationStateChange(peerId, oldState, newState, stage);
+        peer.transitSyncReplicationState();
+      }
+    } finally {
       peerLock.unlock();
     }
   }
