@@ -105,8 +105,8 @@ public abstract class ModifyPeerProcedure extends AbstractPeerProcedure<PeerModi
         return Flow.HAS_MORE_STATE;
       case REFRESH_PEER_ON_RS:
         addChildProcedure(env.getMasterServices().getServerManager().getOnlineServersList().stream()
-            .map(sn -> new RefreshPeerProcedure(peerId, getPeerOperationType(), sn))
-            .toArray(RefreshPeerProcedure[]::new));
+          .map(sn -> new RefreshPeerProcedure(peerId, getPeerOperationType(), sn))
+          .toArray(RefreshPeerProcedure[]::new));
         setNextState(PeerModificationState.POST_PEER_MODIFICATION);
         return Flow.HAS_MORE_STATE;
       case POST_PEER_MODIFICATION:
@@ -125,17 +125,6 @@ public abstract class ModifyPeerProcedure extends AbstractPeerProcedure<PeerModi
       default:
         throw new UnsupportedOperationException("unhandled state=" + state);
     }
-  }
-
-  @Override
-  protected void rollbackState(MasterProcedureEnv env, PeerModificationState state)
-      throws IOException, InterruptedException {
-    if (state == PeerModificationState.PRE_PEER_MODIFICATION) {
-      // actually the peer related operations has no rollback, but if we haven't done any
-      // modifications on the peer storage yet, we can just return.
-      return;
-    }
-    throw new UnsupportedOperationException();
   }
 
   @Override
