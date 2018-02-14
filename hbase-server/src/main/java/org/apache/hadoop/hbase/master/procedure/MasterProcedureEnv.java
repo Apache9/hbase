@@ -27,6 +27,7 @@ import org.apache.hadoop.hbase.conf.ConfigurationObserver;
 import org.apache.hadoop.hbase.ipc.RpcServer;
 import org.apache.hadoop.hbase.master.HMaster;
 import org.apache.hadoop.hbase.master.MasterCoprocessorHost;
+import org.apache.hadoop.hbase.master.MasterFileSystem;
 import org.apache.hadoop.hbase.master.MasterServices;
 import org.apache.hadoop.hbase.master.assignment.AssignmentManager;
 import org.apache.hadoop.hbase.master.replication.ReplicationPeerManager;
@@ -140,6 +141,10 @@ public class MasterProcedureEnv implements ConfigurationObserver {
 
   public ReplicationPeerManager getReplicationPeerManager() {
     return master.getReplicationPeerManager();
+  }
+
+  public MasterFileSystem getMasterFileSystem() {
+    return master.getMasterFileSystem();
   }
 
   public boolean isRunning() {
