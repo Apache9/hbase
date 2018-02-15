@@ -15,14 +15,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.apache.hadoop.hbase.procedure2;
 
 import java.util.Iterator;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.concurrent.TimeUnit;
-
 import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -78,20 +76,20 @@ public abstract class AbstractProcedureScheduler implements ProcedureScheduler {
    * @param procedure the Procedure to add
    * @param addFront true if the item should be added to the front of the queue
    */
-  protected abstract void enqueue(Procedure procedure, boolean addFront);
+  protected abstract void enqueue(Procedure<?> procedure, boolean addFront);
 
   @Override
-  public void addFront(final Procedure procedure) {
+  public void addFront(final Procedure<?> procedure) {
     push(procedure, true, true);
   }
 
   @Override
-  public void addFront(Iterator<Procedure> procedureIterator) {
+  public void addFront(Iterator<Procedure<?>> procedureIterator) {
     schedLock();
     try {
       int count = 0;
       while (procedureIterator.hasNext()) {
-        Procedure procedure = procedureIterator.next();
+        Procedure<?> procedure = procedureIterator.next();
         if (LOG.isTraceEnabled()) {
           LOG.trace("Wake " + procedure);
         }
@@ -105,11 +103,11 @@ public abstract class AbstractProcedureScheduler implements ProcedureScheduler {
   }
 
   @Override
-  public void addBack(final Procedure procedure) {
+  public void addBack(final Procedure<?> procedure) {
     push(procedure, false, true);
   }
 
-  protected void push(final Procedure procedure, final boolean addFront, final boolean notify) {
+  protected void push(final Procedure<?> procedure, final boolean addFront, final boolean notify) {
     schedLock();
     try {
       enqueue(procedure, addFront);
@@ -129,46 +127,63 @@ public abstract class AbstractProcedureScheduler implements ProcedureScheduler {
    * NOTE: this method is called with the sched lock held.
    * @return the Procedure to execute, or null if nothing is available.
    */
-  protected abstract Procedure dequeue();
+  protected abstract Procedure<?> dequeue(int priority);
 
   @Override
-  public Procedure poll() {
-    return poll(-1);
+  public Procedure<?> poll(int priority) {
+    return doPoll(priority, -1);
   }
 
   @Override
-  public Procedure poll(long timeout, TimeUnit unit) {
-    return poll(unit.toNanos(timeout));
+  public Procedure<?> poll(int priority, long timeout, TimeUnit unit) {
+    return doPoll(priority, unit.toNanos(timeout));
   }
 
-  @edu.umd.cs.findbugs.annotations.SuppressWarnings("WA_AWAIT_NOT_IN_LOOP")
-  public Procedure poll(final long nanos) {
+  // return whether we have already timed out before await
+  private boolean doPollWait(long endTime) throws InterruptedException {
+    if (endTime < 0) {
+      schedWaitCond.await();
+    } else {
+      long awaitTime = endTime - System.nanoTime();
+      if (awaitTime <= 0) {
+        return false;
+      }
+      schedWaitCond.awaitNanos(awaitTime);
+    }
+    return true;
+  }
+
+  private Procedure<?> doPoll(int priority, long nanos) {
+    long endTime = nanos >= 0 ? System.nanoTime() + nanos : -1;
     schedLock();
     try {
       if (!running) {
         LOG.debug("the scheduler is not running");
         return null;
       }
-
-      if (!queueHasRunnables()) {
-        // WA_AWAIT_NOT_IN_LOOP: we are not in a loop because we want the caller
-        // to take decisions after a wake/interruption.
-        if (nanos < 0) {
-          schedWaitCond.await();
-        } else {
-          schedWaitCond.awaitNanos(nanos);
-        }
+      for (;;) {
         if (!queueHasRunnables()) {
-          nullPollCalls++;
+          if (!doPollWait(endTime)) {
+            return null;
+          }
+          continue;
+        }
+        Procedure<?> pollResult = dequeue(priority);
+        pollCalls++;
+        if (pollResult != null) {
+          return pollResult;
+        }
+        nullPollCalls++;
+        // This could happen since now we have priority, maybe all the available procedures are low
+        // priority. And that's also why here we must use a loop, otherwise the worker thread which
+        // only polls high priority procedures will do dead loop if there are no high priority
+        // procedures.
+        if (!doPollWait(endTime)) {
           return null;
         }
       }
-
-      final Procedure pollResult = dequeue();
-      pollCalls++;
-      nullPollCalls += (pollResult == null) ? 1 : 0;
-      return pollResult;
     } catch (InterruptedException e) {
+      // This usually means we want to quit, so give up and return null.
       Thread.currentThread().interrupt();
       nullPollCalls++;
       return null;
@@ -253,22 +268,24 @@ public abstract class AbstractProcedureScheduler implements ProcedureScheduler {
    * Wakes up given waiting procedures by pushing them back into scheduler queues.
    * @return size of given {@code waitQueue}.
    */
-  protected int wakeWaitingProcedures(final ProcedureDeque waitQueue) {
+  protected int wakeWaitingProcedures(final ProcedureDeque<?> waitQueue) {
     int count = waitQueue.size();
     // wakeProcedure adds to the front of queue, so we start from last in the
     // waitQueue' queue, so that the procedure which was added first goes in the front for
     // the scheduler queue.
-    addFront(waitQueue.descendingIterator());
+    addFront((Iterator) waitQueue.descendingIterator());
     waitQueue.clear();
     return count;
   }
 
-  protected void waitProcedure(final ProcedureDeque waitQueue, final Procedure proc) {
-    waitQueue.addLast(proc);
+  protected void waitProcedure(final ProcedureDeque<?> waitQueue, final Procedure<?> proc) {
+    waitQueue.addLast((Procedure) proc);
   }
 
-  protected void wakeProcedure(final Procedure procedure) {
-    if (LOG.isTraceEnabled()) LOG.trace("Wake " + procedure);
+  protected void wakeProcedure(final Procedure<?> procedure) {
+    if (LOG.isTraceEnabled()) {
+      LOG.trace("Wake " + procedure);
+    }
     push(procedure, /* addFront= */ true, /* notify= */false);
   }
 

@@ -16,7 +16,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.apache.hadoop.hbase.procedure2;
 
 import org.apache.yetus.audience.InterfaceAudience;
@@ -30,5 +29,5 @@ import java.util.ArrayDeque;
  * more understanding that it's a queue of waiting procedures.
  */
 @InterfaceAudience.Private
-public class ProcedureDeque extends ArrayDeque<Procedure> {
+public class ProcedureDeque<TEnvironment> extends ArrayDeque<Procedure<TEnvironment>> {
 }

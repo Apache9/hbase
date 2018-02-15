@@ -15,7 +15,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.apache.hadoop.hbase.procedure2;
 
 import java.util.Iterator;
@@ -50,32 +49,32 @@ public interface ProcedureScheduler {
    * Inserts the specified element at the front of this queue.
    * @param proc the Procedure to add
    */
-  void addFront(Procedure proc);
+  void addFront(Procedure<?> proc);
 
   /**
    * Inserts all elements in the iterator at the front of this queue.
    */
-  void addFront(Iterator<Procedure> procedureIterator);
+  void addFront(Iterator<Procedure<?>> procedureIterator);
 
   /**
    * Inserts the specified element at the end of this queue.
    * @param proc the Procedure to add
    */
-  void addBack(Procedure proc);
+  void addBack(Procedure<?> proc);
 
   /**
    * The procedure can't run at the moment.
    * add it back to the queue, giving priority to someone else.
    * @param proc the Procedure to add back to the list
    */
-  void yield(Procedure proc);
+  void yield(Procedure<?> proc);
 
   /**
    * The procedure in execution completed.
    * This can be implemented to perform cleanups.
    * @param proc the Procedure that completed the execution.
    */
-  void completionCleanup(Procedure proc);
+  void completionCleanup(Procedure<?> proc);
 
   /**
    * @return true if there are procedures available to process, otherwise false.
@@ -83,10 +82,33 @@ public interface ProcedureScheduler {
   boolean hasRunnables();
 
   /**
+   * <p>
+   * Returns the number of priority levels. The priority will be started from 1 to this value,
+   * greater value means higher priority.
+   * </p>
+   * <p>
+   * Default 1 level, which means all the procedures will have the same priority.
+   * </p>
+   */
+  default int priorityLevels() {
+    return 1;
+  }
+
+  /**
    * Fetch one Procedure from the queue
    * @return the Procedure to execute, or null if nothing present.
    */
-  Procedure poll();
+  default Procedure<?> poll() {
+    return poll(1);
+  }
+
+  /**
+   * Fetch one Procedure from the queue
+   * @param priority the priority of the return procedure should be greater than or equal to this
+   *          value.
+   * @return the Procedure to execute, or null if nothing present.
+   */
+  Procedure<?> poll(int priority);
 
   /**
    * Fetch one Procedure from the queue
@@ -94,7 +116,19 @@ public interface ProcedureScheduler {
    * @param unit a TimeUnit determining how to interpret the timeout parameter
    * @return the Procedure to execute, or null if nothing present.
    */
-  Procedure poll(long timeout, TimeUnit unit);
+  default Procedure<?> poll(long timeout, TimeUnit unit) {
+    return poll(1, timeout, unit);
+  }
+
+  /**
+   * Fetch one Procedure from the queue
+   * @param priority the priority of the return procedure should be greater than or equal to this
+   *          value.
+   * @param timeout how long to wait before giving up, in units of unit
+   * @param unit a TimeUnit determining how to interpret the timeout parameter
+   * @return the Procedure to execute, or null if nothing present.
+   */
+  Procedure<?> poll(int priority, long timeout, TimeUnit unit);
 
   /**
    * List lock queues.

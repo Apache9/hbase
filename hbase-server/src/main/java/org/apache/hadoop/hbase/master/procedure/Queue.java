@@ -33,7 +33,7 @@ abstract class Queue<TKey extends Comparable<TKey>> extends AvlLinkedNode<Queue<
 
   private final TKey key;
   private final int priority;
-  private final ProcedureDeque runnables = new ProcedureDeque();
+  private final ProcedureDeque<?> runnables = new ProcedureDeque<>();
   // Reference to status of lock on entity this queue represents.
   private final LockStatus lockStatus;
 
@@ -71,9 +71,9 @@ abstract class Queue<TKey extends Comparable<TKey>> extends AvlLinkedNode<Queue<
   // ======================================================================
   public void add(Procedure<?> proc, boolean addToFront) {
     if (addToFront) {
-      runnables.addFirst(proc);
+      runnables.addFirst((Procedure) proc);
     } else {
-      runnables.addLast(proc);
+      runnables.addLast((Procedure) proc);
     }
   }
 

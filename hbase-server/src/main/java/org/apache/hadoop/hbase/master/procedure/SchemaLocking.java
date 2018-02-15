@@ -43,56 +43,56 @@ import org.apache.yetus.audience.InterfaceAudience;
  */
 @InterfaceAudience.Private
 class SchemaLocking {
-  private final Map<ServerName, LockAndQueue> serverLocks = new HashMap<>();
-  private final Map<String, LockAndQueue> namespaceLocks = new HashMap<>();
-  private final Map<TableName, LockAndQueue> tableLocks = new HashMap<>();
+  private final Map<ServerName, LockAndQueue<?>> serverLocks = new HashMap<>();
+  private final Map<String, LockAndQueue<?>> namespaceLocks = new HashMap<>();
+  private final Map<TableName, LockAndQueue<?>> tableLocks = new HashMap<>();
   // Single map for all regions irrespective of tables. Key is encoded region name.
-  private final Map<String, LockAndQueue> regionLocks = new HashMap<>();
-  private final Map<String, LockAndQueue> peerLocks = new HashMap<>();
+  private final Map<String, LockAndQueue<?>> regionLocks = new HashMap<>();
+  private final Map<String, LockAndQueue<?>> peerLocks = new HashMap<>();
 
-  private <T> LockAndQueue getLock(Map<T, LockAndQueue> map, T key) {
-    LockAndQueue lock = map.get(key);
+  private <T> LockAndQueue<?> getLock(Map<T, LockAndQueue<?>> map, T key) {
+    LockAndQueue<?> lock = map.get(key);
     if (lock == null) {
-      lock = new LockAndQueue();
+      lock = new LockAndQueue<>();
       map.put(key, lock);
     }
     return lock;
   }
 
-  LockAndQueue getTableLock(TableName tableName) {
+  LockAndQueue<?> getTableLock(TableName tableName) {
     return getLock(tableLocks, tableName);
   }
 
-  LockAndQueue removeTableLock(TableName tableName) {
+  LockAndQueue<?> removeTableLock(TableName tableName) {
     return tableLocks.remove(tableName);
   }
 
-  LockAndQueue getNamespaceLock(String namespace) {
+  LockAndQueue<?> getNamespaceLock(String namespace) {
     return getLock(namespaceLocks, namespace);
   }
 
-  LockAndQueue getRegionLock(String encodedRegionName) {
+  LockAndQueue<?> getRegionLock(String encodedRegionName) {
     return getLock(regionLocks, encodedRegionName);
   }
 
-  LockAndQueue removeRegionLock(String encodedRegionName) {
+  LockAndQueue<?> removeRegionLock(String encodedRegionName) {
     return regionLocks.remove(encodedRegionName);
   }
 
-  LockAndQueue getServerLock(ServerName serverName) {
+  LockAndQueue<?> getServerLock(ServerName serverName) {
     return getLock(serverLocks, serverName);
   }
 
-  LockAndQueue getPeerLock(String peerId) {
+  LockAndQueue<?> getPeerLock(String peerId) {
     return getLock(peerLocks, peerId);
   }
 
-  LockAndQueue removePeerLock(String peerId) {
+  LockAndQueue<?> removePeerLock(String peerId) {
     return peerLocks.remove(peerId);
   }
 
   private LockedResource createLockedResource(LockedResourceType resourceType, String resourceName,
-      LockAndQueue queue) {
+      LockAndQueue<?> queue) {
     LockType lockType;
     Procedure<?> exclusiveLockOwnerProcedure;
     int sharedLockCount;
@@ -122,7 +122,7 @@ class SchemaLocking {
   }
 
   private <T> void addToLockedResources(List<LockedResource> lockedResources,
-      Map<T, LockAndQueue> locks, Function<T, String> keyTransformer,
+      Map<T, LockAndQueue<?>> locks, Function<T, String> keyTransformer,
       LockedResourceType resourcesType) {
     locks.entrySet().stream().filter(e -> e.getValue().isLocked())
       .map(e -> createLockedResource(resourcesType, keyTransformer.apply(e.getKey()), e.getValue()))
@@ -152,7 +152,7 @@ class SchemaLocking {
    *         locked.
    */
   LockedResource getLockResource(LockedResourceType resourceType, String resourceName) {
-    LockAndQueue queue;
+    LockAndQueue<?> queue;
     switch (resourceType) {
       case SERVER:
         queue = serverLocks.get(ServerName.valueOf(resourceName));
@@ -196,10 +196,10 @@ class SchemaLocking {
       filterUnlocked(this.peerLocks);
   }
 
-  private String filterUnlocked(Map<?, LockAndQueue> locks) {
+  private String filterUnlocked(Map<?, LockAndQueue<?>> locks) {
     StringBuilder sb = new StringBuilder("{");
     int initialLength = sb.length();
-    for (Map.Entry<?, LockAndQueue> entry : locks.entrySet()) {
+    for (Map.Entry<?, LockAndQueue<?>> entry : locks.entrySet()) {
       if (!entry.getValue().isLocked()) {
         continue;
       }

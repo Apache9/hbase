@@ -45,7 +45,8 @@ import org.apache.yetus.audience.InterfaceAudience;
  * We do not use ReentrantReadWriteLock directly because of its high memory overhead.
  */
 @InterfaceAudience.Private
-public class LockAndQueue extends ProcedureDeque implements LockStatus {
+public class LockAndQueue<TEnvironment> extends ProcedureDeque<TEnvironment> implements LockStatus {
+
   private Procedure<?> exclusiveLockOwnerProcedure = null;
   private int sharedLock = 0;
 
@@ -69,12 +70,13 @@ public class LockAndQueue extends ProcedureDeque implements LockStatus {
   }
 
   @Override
-  public boolean hasParentLock(final Procedure proc) {
-    return proc.hasParent() && (isLockOwner(proc.getParentProcId()) || isLockOwner(proc.getRootProcId()));
+  public boolean hasParentLock(Procedure<?> proc) {
+    return proc.hasParent() &&
+      (isLockOwner(proc.getParentProcId()) || isLockOwner(proc.getRootProcId()));
   }
 
   @Override
-  public boolean hasLockAccess(final Procedure proc) {
+  public boolean hasLockAccess(Procedure<?> proc) {
     return isLockOwner(proc.getProcId()) || hasParentLock(proc);
   }
 
@@ -100,9 +102,10 @@ public class LockAndQueue extends ProcedureDeque implements LockStatus {
   // ======================================================================
   //  try/release Shared/Exclusive lock
   // ======================================================================
-
   public boolean trySharedLock() {
-    if (hasExclusiveLock()) return false;
+    if (hasExclusiveLock()) {
+      return false;
+    }
     sharedLock++;
     return true;
   }
@@ -111,7 +114,7 @@ public class LockAndQueue extends ProcedureDeque implements LockStatus {
     return --sharedLock == 0;
   }
 
-  public boolean tryExclusiveLock(final Procedure proc) {
+  public boolean tryExclusiveLock(Procedure<?> proc) {
     if (isLocked()) return hasLockAccess(proc);
     exclusiveLockOwnerProcedure = proc;
     return true;
@@ -120,7 +123,7 @@ public class LockAndQueue extends ProcedureDeque implements LockStatus {
   /**
    * @return True if we released a lock.
    */
-  public boolean releaseExclusiveLock(final Procedure proc) {
+  public boolean releaseExclusiveLock(Procedure<?> proc) {
     if (isLockOwner(proc.getProcId())) {
       exclusiveLockOwnerProcedure = null;
       return true;

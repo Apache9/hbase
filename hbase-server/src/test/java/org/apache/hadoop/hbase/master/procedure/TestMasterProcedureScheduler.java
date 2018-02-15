@@ -27,6 +27,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import org.apache.hadoop.hbase.HBaseClassTestRule;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.ServerName;
@@ -219,7 +220,7 @@ public class TestMasterProcedureScheduler {
     assertEquals(false, queue.waitTableExclusiveLock(proc, tableName));
 
     // Fetch the 2nd item and verify that the lock can't be acquired
-    assertEquals(null, queue.poll(0));
+    assertEquals(null, queue.poll(0, TimeUnit.NANOSECONDS));
 
     // Release the write lock and acquire the read lock
     queue.wakeTableExclusiveLock(proc, tableName);
@@ -230,7 +231,7 @@ public class TestMasterProcedureScheduler {
     assertEquals(false, queue.waitTableSharedLock(rdProc, tableName));
 
     // Fetch the 3rd item and verify that the lock can't be acquired
-    assertEquals(null, queue.poll(0));
+    assertEquals(null, queue.poll(0, TimeUnit.NANOSECONDS));
 
     // release the rdlock of item 2 and take the wrlock for the 3d item
     queue.wakeTableSharedLock(rdProc, tableName);
@@ -240,7 +241,7 @@ public class TestMasterProcedureScheduler {
     assertEquals(false, queue.waitTableExclusiveLock(wrProc, tableName));
 
     // Fetch 4th item and verify that the lock can't be acquired
-    assertEquals(null, queue.poll(0));
+    assertEquals(null, queue.poll(0, TimeUnit.NANOSECONDS));
 
     // Release the write lock and acquire the read lock
     queue.wakeTableExclusiveLock(wrProc, tableName);
@@ -299,7 +300,7 @@ public class TestMasterProcedureScheduler {
     assertFalse(queue.waitNamespaceExclusiveLock(procNs2, nsName2));
 
     // ns1 and ns2 are both locked so we get nothing
-    assertNull(queue.poll());
+    assertNull(queue.poll(0, TimeUnit.NANOSECONDS));
 
     // release the ns1 lock
     queue.wakeNamespaceExclusiveLock(procNs1, nsName1);
@@ -331,7 +332,7 @@ public class TestMasterProcedureScheduler {
     assertEquals(false, queue.waitNamespaceExclusiveLock(proc, nsName));
 
     // the table operation can't be executed because the ns is locked
-    assertEquals(null, queue.poll(0));
+    assertEquals(null, queue.poll(0, TimeUnit.NANOSECONDS));
 
     // release the ns lock
     queue.wakeNamespaceExclusiveLock(proc, nsName);
@@ -360,7 +361,7 @@ public class TestMasterProcedureScheduler {
     assertEquals(false, queue.waitRegion(proc, regionA));
 
     // the xlock operation in the queue can't be executed
-    assertEquals(null, queue.poll(0));
+    assertEquals(null, queue.poll(0, TimeUnit.NANOSECONDS));
 
     // release the shared lock
     queue.wakeRegion(proc, regionA);
@@ -371,7 +372,7 @@ public class TestMasterProcedureScheduler {
     assertEquals(false, queue.waitTableExclusiveLock(proc, tableName));
 
     // everything is locked by the table operation
-    assertEquals(null, queue.poll(0));
+    assertEquals(null, queue.poll(0, TimeUnit.NANOSECONDS));
 
     // release the table xlock
     queue.wakeTableExclusiveLock(proc, tableName);
@@ -382,7 +383,7 @@ public class TestMasterProcedureScheduler {
 
     // lock and unlock the region
     assertEquals(false, queue.waitRegion(proc, regionA));
-    assertEquals(null, queue.poll(0));
+    assertEquals(null, queue.poll(0, TimeUnit.NANOSECONDS));
     queue.wakeRegion(proc, regionA);
   }
 
@@ -410,7 +411,7 @@ public class TestMasterProcedureScheduler {
     assertEquals(false, queue.waitTableExclusiveLock(proc, tableName));
 
     // everything is locked by the table operation
-    assertEquals(null, queue.poll(0));
+    assertEquals(null, queue.poll(0, TimeUnit.NANOSECONDS));
 
     // release the table lock
     queue.wakeTableExclusiveLock(proc, tableName);
@@ -438,7 +439,7 @@ public class TestMasterProcedureScheduler {
     assertEquals(false, queue.waitRegions(procC, tableName, regionC));
 
     // 3rd and 4th are in the region suspended queue
-    assertEquals(null, queue.poll(0));
+    assertEquals(null, queue.poll(0, TimeUnit.NANOSECONDS));
 
     // Release region A-B from merge operation (procId=2)
     queue.wakeRegions(mergeProc, tableName, regionA, regionB);
@@ -473,7 +474,7 @@ public class TestMasterProcedureScheduler {
     Procedure rootProc = queue.poll();
     assertEquals(1, rootProc.getProcId());
     assertEquals(false, queue.waitTableExclusiveLock(rootProc, tableName));
-    assertEquals(null, queue.poll(0));
+    assertEquals(null, queue.poll(0, TimeUnit.NANOSECONDS));
 
     // Execute the 1st step of the root-proc.
     // we should get 3 sub-proc back, one for each region.
@@ -498,13 +499,13 @@ public class TestMasterProcedureScheduler {
     // we should be able to fetch and execute all the sub-procs,
     // since they are operating on different regions
     for (int i = 0; i < subProcs.length; ++i) {
-      TestRegionProcedure regionProc = (TestRegionProcedure)queue.poll(0);
+      TestRegionProcedure regionProc = (TestRegionProcedure) queue.poll(0, TimeUnit.NANOSECONDS);
       assertEquals(subProcs[i].getProcId(), regionProc.getProcId());
       assertEquals(false, queue.waitRegions(regionProc, tableName, regionProc.getRegionInfo()));
     }
 
     // nothing else in the queue
-    assertEquals(null, queue.poll(0));
+    assertEquals(null, queue.poll(0, TimeUnit.NANOSECONDS));
 
     // release all the region locks
     for (int i = 0; i < subProcs.length; ++i) {
@@ -513,7 +514,7 @@ public class TestMasterProcedureScheduler {
     }
 
     // nothing else in the queue
-    assertEquals(null, queue.poll(0));
+    assertEquals(null, queue.poll(0, TimeUnit.NANOSECONDS));
 
     // release the table lock (for the root procedure)
     queue.wakeTableExclusiveLock(rootProc, tableName);
@@ -550,7 +551,7 @@ public class TestMasterProcedureScheduler {
     queue.wakeRegion(childProc, region);
 
     // nothing in the queue (proc-3 is suspended)
-    assertEquals(null, queue.poll(0));
+    assertEquals(null, queue.poll(0, TimeUnit.NANOSECONDS));
 
     // release the root lock
     queue.wakeRegion(rootProc, region);
@@ -580,14 +581,14 @@ public class TestMasterProcedureScheduler {
 
     proc = queue.poll();
     assertEquals(2, proc.getProcId());
-    assertEquals(null, queue.poll(0));
+    assertEquals(null, queue.poll(0, TimeUnit.NANOSECONDS));
 
     // resume
     event.wake(queue);
 
     proc = queue.poll();
     assertEquals(1, proc.getProcId());
-    assertEquals(null, queue.poll(0));
+    assertEquals(null, queue.poll(0, TimeUnit.NANOSECONDS));
   }
 
   private static HRegionInfo[] generateRegionInfo(final TableName tableName) {
@@ -656,7 +657,7 @@ public class TestMasterProcedureScheduler {
     }
 
     // nothing available, until xlock release
-    assertEquals(null, queue.poll(0));
+    assertEquals(null, queue.poll(0, TimeUnit.NANOSECONDS));
 
     // release xlock
     queue.wakeTableExclusiveLock(parentProc, tableName);
@@ -724,7 +725,7 @@ public class TestMasterProcedureScheduler {
     assertEquals(false, queue.waitTableExclusiveLock(proc, tableName));
 
     // nothing available, until xlock release
-    assertEquals(null, queue.poll(0));
+    assertEquals(null, queue.poll(0, TimeUnit.NANOSECONDS));
 
     // put the proc in the queue
     queue.yield(proc);
@@ -762,7 +763,7 @@ public class TestMasterProcedureScheduler {
     assertEquals(false, queue.waitTableSharedLock(proc2, tableName));
 
     // nothing available, until xlock release
-    assertEquals(null, queue.poll(0));
+    assertEquals(null, queue.poll(0, TimeUnit.NANOSECONDS));
 
     // put the procs back in the queue
     queue.yield(proc2);

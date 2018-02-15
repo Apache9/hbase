@@ -269,6 +269,8 @@ public class ProcedureExecutor<TEnvironment> {
 
   private Configuration conf;
   private ThreadGroup threadGroup;
+  // for high priority
+  private List<WorkerThread> reservedWorkerThreads;
   private CopyOnWriteArrayList<WorkerThread> workerThreads;
   private TimeoutExecutorThread timeoutExecutor;
   private int corePoolSize;
@@ -506,10 +508,12 @@ public class ProcedureExecutor<TEnvironment> {
       return;
     }
 
-    // We have numThreads executor + one timer thread used for timing out
+    int priorityLevels = scheduler.priorityLevels();
+    // We have numThreads + priorityLevels - 1 executor + one timer thread used for timing out
     // procedures and triggering periodic procedures.
-    this.corePoolSize = numThreads;
-    LOG.info("Starting {} Workers (bigger of cpus/4 or 16)", corePoolSize);
+    this.corePoolSize = numThreads + priorityLevels - 1;
+    LOG.info("Starting {} Workers (bigger of cpus/4 or 16, plus priority levels minus 1)",
+      corePoolSize);
 
     // Create the Thread Group for the executors
     threadGroup = new ThreadGroup("PEWorkerGroup");
@@ -520,8 +524,12 @@ public class ProcedureExecutor<TEnvironment> {
     // Create the workers
     workerId.set(0);
     workerThreads = new CopyOnWriteArrayList<>();
+    int priority = priorityLevels;
     for (int i = 0; i < corePoolSize; ++i) {
-      workerThreads.add(new WorkerThread(threadGroup));
+      workerThreads.add(new WorkerThread(threadGroup, priority));
+      if (priority > 1) {
+        priority--;
+      }
     }
 
     long st, et;
@@ -1703,17 +1711,21 @@ public class ProcedureExecutor<TEnvironment> {
   //  Worker Thread
   // ==========================================================================
   private final class WorkerThread extends StoppableThread {
+
+    private final int priority;
     private final AtomicLong executionStartTime = new AtomicLong(Long.MAX_VALUE);
     private Procedure activeProcedure;
 
-    public WorkerThread(final ThreadGroup group) {
-      super(group, "PEWorker-" + workerId.incrementAndGet());
+    public WorkerThread(ThreadGroup group, int priority) {
+      super(group, "PEWorker-" + workerId.incrementAndGet() + "-pri-" + priority);
       setDaemon(true);
+      this.priority = priority;
     }
 
     @Override
     public void sendStopSignal() {
-      scheduler.signalAll();
+      // TODO: find a way to wake up all the threads without interrupting them, now we rely on the
+      // one second poll timeout
     }
 
     @Override
@@ -1721,8 +1733,10 @@ public class ProcedureExecutor<TEnvironment> {
       long lastUpdate = EnvironmentEdgeManager.currentTime();
       try {
         while (isRunning() && keepAlive(lastUpdate)) {
-          this.activeProcedure = scheduler.poll(keepAliveTime, TimeUnit.MILLISECONDS);
-          if (this.activeProcedure == null) continue;
+          this.activeProcedure = scheduler.poll(priority, 1, TimeUnit.SECONDS);
+          if (this.activeProcedure == null) {
+            continue;
+          }
           int activeCount = activeExecutorCount.incrementAndGet();
           int runningCount = store.setRunningProcedureCount(activeCount);
           if (LOG.isTraceEnabled()) {
@@ -1768,9 +1782,9 @@ public class ProcedureExecutor<TEnvironment> {
       return EnvironmentEdgeManager.currentTime() - executionStartTime.get();
     }
 
-    private boolean keepAlive(final long lastUpdate) {
-      if (workerThreads.size() <= corePoolSize) return true;
-      return (EnvironmentEdgeManager.currentTime() - lastUpdate) < keepAliveTime;
+    private boolean keepAlive(long lastUpdate) {
+      return workerThreads.size() <= corePoolSize || priority > 1 ||
+        EnvironmentEdgeManager.currentTime() - lastUpdate < keepAliveTime;
     }
   }
 
@@ -1994,10 +2008,10 @@ public class ProcedureExecutor<TEnvironment> {
 
       // add a new thread if the worker stuck percentage exceed the threshold limit
       // and every handler is active.
-      final float stuckPerc = ((float)stuckCount) / workerThreads.size();
+      final float stuckPerc = ((float) stuckCount) / workerThreads.size();
       if (stuckPerc >= addWorkerStuckPercentage &&
-          activeExecutorCount.get() == workerThreads.size()) {
-        final WorkerThread worker = new WorkerThread(threadGroup);
+        activeExecutorCount.get() == workerThreads.size()) {
+        final WorkerThread worker = new WorkerThread(threadGroup, 1);
         workerThreads.add(worker);
         worker.start();
         LOG.debug("Added new worker thread " + worker);

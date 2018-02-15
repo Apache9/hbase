@@ -59,18 +59,13 @@ public class FairQueue<T extends Comparable<T>> {
     size--;
   }
 
-  public Queue<T> poll() {
+  public Queue<T> peek() {
     if (queueHead == null) {
       return null;
     }
     Queue<T> q = queueHead;
     do {
       if (q.isAvailable()) {
-        if (q.getPriority() == 1) {
-          // for the normal priority queue, remove it and append it to the tail
-          queueHead = AvlIterableList.remove(queueHead, q);
-          queueHead = AvlIterableList.append(queueHead, q);
-        }
         return q;
       }
       q = AvlIterableList.readNext(q);

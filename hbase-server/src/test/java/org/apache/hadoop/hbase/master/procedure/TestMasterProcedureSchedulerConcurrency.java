@@ -23,6 +23,7 @@ import static org.junit.Assert.assertTrue;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.hadoop.hbase.HBaseClassTestRule;
 import org.apache.hadoop.hbase.TableName;
@@ -261,7 +262,7 @@ public class TestMasterProcedureSchedulerConcurrency {
       Procedure proc = null;
       boolean waiting = true;
       while (waiting && queue.size() > 0) {
-        proc = queue.poll(100000000L);
+        proc = queue.poll(1, TimeUnit.MILLISECONDS);
         if (proc == null) continue;
         switch (getTableOperationType(proc)) {
           case CREATE:
@@ -318,7 +319,7 @@ public class TestMasterProcedureSchedulerConcurrency {
       TestPeerProcedure proc = null;
       boolean waiting = true;
       while (waiting && queue.size() > 0) {
-        proc = (TestPeerProcedure) queue.poll(100000000L);
+        proc = (TestPeerProcedure) queue.poll(1, TimeUnit.MILLISECONDS);
         if (proc == null) {
           continue;
         }

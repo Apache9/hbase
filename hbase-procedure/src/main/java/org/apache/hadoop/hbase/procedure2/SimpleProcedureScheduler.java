@@ -31,19 +31,19 @@ import org.apache.hbase.thirdparty.com.google.common.annotations.VisibleForTesti
 @InterfaceAudience.Private
 @InterfaceStability.Evolving
 public class SimpleProcedureScheduler extends AbstractProcedureScheduler {
-  private final ProcedureDeque runnables = new ProcedureDeque();
+  private final ProcedureDeque<?> runnables = new ProcedureDeque<>();
 
   @Override
-  protected void enqueue(final Procedure procedure, final boolean addFront) {
+  protected void enqueue(Procedure<?> procedure, boolean addFront) {
     if (addFront) {
-      runnables.addFirst(procedure);
+      runnables.addFirst((Procedure) procedure);
     } else {
-      runnables.addLast(procedure);
+      runnables.addLast((Procedure) procedure);
     }
   }
 
   @Override
-  protected Procedure dequeue() {
+  protected Procedure<?> dequeue(int priority) {
     return runnables.poll();
   }
 
@@ -59,7 +59,7 @@ public class SimpleProcedureScheduler extends AbstractProcedureScheduler {
   }
 
   @Override
-  public void yield(final Procedure proc) {
+  public void yield(Procedure<?> proc) {
     addBack(proc);
   }
 
@@ -74,7 +74,7 @@ public class SimpleProcedureScheduler extends AbstractProcedureScheduler {
   }
 
   @Override
-  public void completionCleanup(Procedure proc) {
+  public void completionCleanup(Procedure<?> proc) {
   }
 
   @Override

@@ -19,6 +19,7 @@
 package org.apache.hadoop.hbase.master.procedure;
 
 import java.io.IOException;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.Random;
 
@@ -216,7 +217,7 @@ public class MasterProcedureSchedulerPerformanceEvaluation extends AbstractHBase
     public void run() {
       while (completed.get() < numOps) {
         // With lock/unlock being ~100ns, and no other workload, 1000ns wait seams reasonable.
-        TestProcedure proc = (TestProcedure)procedureScheduler.poll(1000);
+        TestProcedure proc = (TestProcedure) procedureScheduler.poll(1, TimeUnit.MICROSECONDS);
         if (proc == null) {
           yield.incrementAndGet();
           continue;

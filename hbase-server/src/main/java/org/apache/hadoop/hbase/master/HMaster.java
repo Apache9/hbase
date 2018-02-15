@@ -1213,13 +1213,12 @@ public class HMaster extends HRegionServer implements MasterServices {
     configurationManager.registerObserver(procEnv);
 
     int cpus = Runtime.getRuntime().availableProcessors();
-    final int numThreads = conf.getInt(MasterProcedureConstants.MASTER_PROCEDURE_THREADS,
-        Math.max((cpus > 0? cpus/4: 0),
-            MasterProcedureConstants.DEFAULT_MIN_MASTER_PROCEDURE_THREADS));
+    final int numThreads = conf.getInt(MasterProcedureConstants.MASTER_PROCEDURE_THREADS, Math.max(
+      (cpus > 0 ? cpus / 4 : 0), MasterProcedureConstants.DEFAULT_MIN_MASTER_PROCEDURE_THREADS));
     final boolean abortOnCorruption = conf.getBoolean(
         MasterProcedureConstants.EXECUTOR_ABORT_ON_CORRUPTION,
         MasterProcedureConstants.DEFAULT_EXECUTOR_ABORT_ON_CORRUPTION);
-    procedureStore.start(numThreads);
+    procedureStore.start(numThreads + MasterProcedureUtil.getTablePriorityLevels() - 1);
     procedureExecutor.start(numThreads, abortOnCorruption);
     procEnv.getRemoteDispatcher().start();
   }
