@@ -1813,12 +1813,10 @@ public class MetaTableAccessor {
    * @param openSeqNum the latest sequence number obtained when the region was open
    * @param sn Server name
    * @param masterSystemTime wall clock time from master if passed in the open region RPC or -1
-   * @throws IOException
    */
-  public static void updateRegionLocation(Connection connection,
-                                          RegionInfo regionInfo, ServerName sn, long openSeqNum,
-                                          long masterSystemTime)
-    throws IOException {
+  @VisibleForTesting
+  public static void updateRegionLocation(Connection connection, RegionInfo regionInfo,
+      ServerName sn, long openSeqNum, long masterSystemTime) throws IOException {
     updateLocation(connection, regionInfo, sn, openSeqNum, masterSystemTime);
   }
 
@@ -1836,11 +1834,8 @@ public class MetaTableAccessor {
    * @throws IOException In particular could throw {@link java.net.ConnectException}
    * if the server is down on other end.
    */
-  private static void updateLocation(final Connection connection,
-                                     RegionInfo regionInfo, ServerName sn, long openSeqNum,
-                                     long masterSystemTime)
-    throws IOException {
-
+  private static void updateLocation(Connection connection, RegionInfo regionInfo,
+      ServerName sn, long openSeqNum, long masterSystemTime) throws IOException {
     // use the maximum of what master passed us vs local time.
     long time = Math.max(EnvironmentEdgeManager.currentTime(), masterSystemTime);
 
@@ -1859,9 +1854,7 @@ public class MetaTableAccessor {
    * @param regionInfo region to be deleted from META
    * @throws IOException
    */
-  public static void deleteRegion(Connection connection,
-                                  RegionInfo regionInfo)
-    throws IOException {
+  public static void deleteRegion(Connection connection, RegionInfo regionInfo) throws IOException {
     long time = EnvironmentEdgeManager.currentTime();
     Delete delete = new Delete(regionInfo.getRegionName());
     delete.addFamily(getCatalogFamily(), time);

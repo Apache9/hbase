@@ -21,13 +21,13 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 import static org.mockito.Mockito.when;
 
 import java.io.IOException;
 import java.util.NavigableMap;
-import java.util.NoSuchElementException;
 import java.util.OptionalLong;
 import java.util.TreeMap;
 import java.util.concurrent.PriorityBlockingQueue;
@@ -180,15 +180,12 @@ public class TestWALEntryStream {
         new WALEntryStream(walQueue, fs, conf, 0, log, null, new MetricsSource("1"))) {
       // There's one edit in the log, read it. Reading past it needs to throw exception
       assertTrue(entryStream.hasNext());
-      WAL.Entry entry = entryStream.next();
+      WAL.Entry entry = entryStream.peek();
+      assertSame(entry, entryStream.next());
       assertNotNull(entry);
       assertFalse(entryStream.hasNext());
-      try {
-        entry = entryStream.next();
-        fail();
-      } catch (NoSuchElementException e) {
-        // expected
-      }
+      assertNull(entryStream.peek());
+      assertNull(entryStream.next());
       oldPos = entryStream.getPosition();
     }
 
