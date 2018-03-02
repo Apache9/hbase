@@ -18,9 +18,9 @@
 package org.apache.hadoop.hbase.replication;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
-
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.util.Pair;
@@ -64,8 +64,8 @@ public interface ReplicationQueueStorage {
    * @param fileName name of the WAL
    * @param position the current position in the file
    */
-  void setWALPosition(ServerName serverName, String queueId, String fileName, long position)
-      throws ReplicationException;
+  void setWALPosition(ServerName serverName, String queueId, String fileName, long position,
+      Map<String, Long> lastSeqIds) throws ReplicationException;
 
   /**
    * Get the current position for a specific WAL in a given queue for a given regionserver.
@@ -76,6 +76,8 @@ public interface ReplicationQueueStorage {
    */
   long getWALPosition(ServerName serverName, String queueId, String fileName)
       throws ReplicationException;
+
+  long getLastSequenceId(String encodedRegionName) throws ReplicationException;
 
   /**
    * Get a list of all WALs in the given queue on the given region server.

@@ -20,7 +20,6 @@ package org.apache.hadoop.hbase.replication.regionserver;
 
 import java.io.EOFException;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -33,6 +32,7 @@ import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellUtil;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.replication.WALEntryFilter;
+import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.Pair;
 import org.apache.hadoop.hbase.util.Threads;
 import org.apache.hadoop.hbase.wal.WAL.Entry;
@@ -46,8 +46,8 @@ import org.apache.hadoop.hbase.shaded.protobuf.generated.WALProtos.BulkLoadDescr
 import org.apache.hadoop.hbase.shaded.protobuf.generated.WALProtos.StoreDescriptor;
 
 /**
- * Reads and filters WAL entries, groups the filtered entries into batches, and puts the batches onto a queue
- *
+ * Reads and filters WAL entries, groups the filtered entries into batches, and puts the batches
+ * onto a queue
  */
 @InterfaceAudience.Private
 @InterfaceStability.Evolving
@@ -76,6 +76,8 @@ public class ReplicationSourceWALReader extends Thread {
 
   private AtomicLong totalBufferUsed;
   private long totalBufferQuota;
+
+  private final SerialReplicationChecker serialReplicationChecker;
 
   /**
    * Creates a reader worker for a given WAL queue. Reads WAL entries off a given queue, batches the
@@ -111,6 +113,7 @@ public class ReplicationSourceWALReader extends Thread {
         this.conf.getInt("replication.source.maxretriesmultiplier", 300); // 5 minutes @ 1 sec per
     this.eofAutoRecovery = conf.getBoolean("replication.source.eof.autorecovery", false);
     this.entryBatchQueue = new LinkedBlockingQueue<>(batchCount);
+    this.serialReplicationChecker = new SerialReplicationChecker(conf, source);
     LOG.info("peerClusterZnode=" + source.getQueueId()
         + ", ReplicationSourceWALReaderThread : " + source.getPeerId()
         + " inited, replicationBatchSizeCapacity=" + replicationBatchSizeCapacity
@@ -160,27 +163,61 @@ public class ReplicationSourceWALReader extends Thread {
     }
   }
 
-  private WALEntryBatch readWALEntries(WALEntryStream entryStream) throws IOException {
+  private WALEntryBatch readWALEntries(WALEntryStream entryStream)
+      throws IOException, InterruptedException {
     WALEntryBatch batch = null;
     while (entryStream.hasNext()) {
-      if (batch == null) {
-        batch = new WALEntryBatch(replicationBatchCountCapacity, entryStream.getCurrentPath());
+      Entry entry = entryStream.peek();
+      boolean hasSerialReplicationScope = entry.getKey().hasSerialReplicationScope();
+      // Used to locate the region record in meta table. In WAL we only have the table name and
+      // encoded region name which can not be mapping to region name without scanning all the
+      // records for a table, so we need a start key, just like what we have done at client side
+      // when locating a region. For the markers, we will use the start key of the region as the row
+      // key for the edit. And we need to do this before filtering since all the cells may be
+      // filtered out, especially that for the markers.
+      Cell firstCellInEdit = null;
+      if (hasSerialReplicationScope) {
+        assert !entry.getEdit().isEmpty() : "should not write empty edits";
+        firstCellInEdit = entry.getEdit().getCells().get(0);
       }
-      Entry entry = entryStream.next();
       entry = filterEntry(entry);
       if (entry != null) {
+        if (entry.getKey().hasSerialReplicationScope()) {
+          if (!serialReplicationChecker.canPush(entry, firstCellInEdit)) {
+            if (batch != null) {
+              // we have something that can push, break
+              break;
+            } else {
+              serialReplicationChecker.waitUntilCanPush(entry, firstCellInEdit);
+            }
+          }
+          if (batch == null) {
+            batch = new WALEntryBatch(replicationBatchCountCapacity, entryStream.getCurrentPath());
+          }
+          // arrive here means we can push the entry, record the last sequence id
+          batch.setLastSeqId(Bytes.toString(entry.getKey().getEncodedRegionName()),
+            entry.getKey().getSequenceId());
+        }
+        // actually remove the entry.
+        entryStream.next();
         WALEdit edit = entry.getEdit();
         if (edit != null && !edit.isEmpty()) {
           long entrySize = getEntrySize(entry);
+          if (batch == null) {
+            batch = new WALEntryBatch(replicationBatchCountCapacity, entryStream.getCurrentPath());
+          }
           batch.addEntry(entry);
           updateBatchStats(batch, entry, entryStream.getPosition(), entrySize);
           boolean totalBufferTooLarge = acquireBufferQuota(entrySize);
           // Stop if too many entries or too big
-          if (totalBufferTooLarge || batch.getHeapSize() >= replicationBatchSizeCapacity
-              || batch.getNbEntries() >= replicationBatchCountCapacity) {
+          if (totalBufferTooLarge || batch.getHeapSize() >= replicationBatchSizeCapacity ||
+            batch.getNbEntries() >= replicationBatchCountCapacity) {
             break;
           }
         }
+      } else {
+        // actually remove the entry.
+        entryStream.next();
       }
     }
     return batch;
@@ -214,7 +251,7 @@ public class ReplicationSourceWALReader extends Thread {
     // if we've read some WAL entries, get the Path we read from
     WALEntryBatch batchQueueHead = entryBatchQueue.peek();
     if (batchQueueHead != null) {
-      return batchQueueHead.lastWalPath;
+      return batchQueueHead.getLastWalPath();
     }
     // otherwise, we must be currently reading from the head of the log queue
     return logQueue.peek();
@@ -261,7 +298,7 @@ public class ReplicationSourceWALReader extends Thread {
       batch.incrementNbRowKeys(nbRowsAndHFiles.getFirst());
       batch.incrementNbHFiles(nbRowsAndHFiles.getSecond());
     }
-    batch.lastWalPosition = entryPosition;
+    batch.setLastWalPosition(entryPosition);
   }
 
   /**
@@ -354,102 +391,5 @@ public class ReplicationSourceWALReader extends Thread {
    */
   public void setReaderRunning(boolean readerRunning) {
     this.isReaderRunning = readerRunning;
-  }
-
-  /**
-   * Holds a batch of WAL entries to replicate, along with some statistics
-   *
-   */
-  static class WALEntryBatch {
-    private List<Entry> walEntries;
-    // last WAL that was read
-    private Path lastWalPath;
-    // position in WAL of last entry in this batch
-    private long lastWalPosition = 0;
-    // number of distinct row keys in this batch
-    private int nbRowKeys = 0;
-    // number of HFiles
-    private int nbHFiles = 0;
-    // heap size of data we need to replicate
-    private long heapSize = 0;
-
-    /**
-     * @param walEntries
-     * @param lastWalPath Path of the WAL the last entry in this batch was read from
-     * @param lastWalPosition Position in the WAL the last entry in this batch was read from
-     */
-    WALEntryBatch(int maxNbEntries, Path lastWalPath) {
-      this.walEntries = new ArrayList<>(maxNbEntries);
-      this.lastWalPath = lastWalPath;
-    }
-
-    public void addEntry(Entry entry) {
-      walEntries.add(entry);
-    }
-
-    /**
-     * @return the WAL Entries.
-     */
-    public List<Entry> getWalEntries() {
-      return walEntries;
-    }
-
-    /**
-     * @return the path of the last WAL that was read.
-     */
-    public Path getLastWalPath() {
-      return lastWalPath;
-    }
-
-    /**
-     * @return the position in the last WAL that was read.
-     */
-    public long getLastWalPosition() {
-      return lastWalPosition;
-    }
-
-    public int getNbEntries() {
-      return walEntries.size();
-    }
-
-    /**
-     * @return the number of distinct row keys in this batch
-     */
-    public int getNbRowKeys() {
-      return nbRowKeys;
-    }
-
-    /**
-     * @return the number of HFiles in this batch
-     */
-    public int getNbHFiles() {
-      return nbHFiles;
-    }
-
-    /**
-     * @return total number of operations in this batch
-     */
-    public int getNbOperations() {
-      return getNbRowKeys() + getNbHFiles();
-    }
-
-    /**
-     * @return the heap size of this batch
-     */
-    public long getHeapSize() {
-      return heapSize;
-    }
-
-    private void incrementNbRowKeys(int increment) {
-      nbRowKeys += increment;
-    }
-
-    private void incrementNbHFiles(int increment) {
-      nbHFiles += increment;
-    }
-
-    private void incrementHeapSize(long increment) {
-      heapSize += increment;
-    }
   }
 }

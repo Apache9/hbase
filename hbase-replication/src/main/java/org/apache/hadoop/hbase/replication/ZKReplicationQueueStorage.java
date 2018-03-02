@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
@@ -158,8 +159,8 @@ class ZKReplicationQueueStorage extends ZKReplicationStorageBase
   }
 
   @Override
-  public void setWALPosition(ServerName serverName, String queueId, String fileName, long position)
-      throws ReplicationException {
+  public void setWALPosition(ServerName serverName, String queueId, String fileName, long position,
+      Map<String, Long> lastSeqIds) throws ReplicationException {
     try {
       ZKUtil.setData(zookeeper, getFileNode(serverName, queueId, fileName),
         ZKUtil.positionToByteArray(position));
@@ -492,5 +493,11 @@ class ZKReplicationQueueStorage extends ZKReplicationStorageBase
     } catch (KeeperException e) {
       throw new ReplicationException("Failed to get all hfile refs", e);
     }
+  }
+
+  @Override
+  public long getLastSequenceId(String encodedRegionName) throws ReplicationException {
+    // TODO Implement ReplicationQueueStorage.getLastSequenceId
+    return 0;
   }
 }

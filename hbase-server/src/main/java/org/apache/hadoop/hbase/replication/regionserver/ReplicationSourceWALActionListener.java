@@ -68,31 +68,23 @@ class ReplicationSourceWALActionListener implements WALActionsListener {
    * compaction WAL edits and if the scope is local.
    * @param logKey Key that may get scoped according to its edits
    * @param logEdit Edits used to lookup the scopes
-   * @throws IOException If failed to parse the WALEdit
    */
   @VisibleForTesting
-  static void scopeWALEdits(WALKey logKey, WALEdit logEdit, Configuration conf) throws IOException {
-    boolean replicationForBulkLoadEnabled =
-        ReplicationUtils.isReplicationForBulkLoadDataEnabled(conf);
-    boolean foundOtherEdits = false;
-    for (Cell cell : logEdit.getCells()) {
-      if (!CellUtil.matchingFamily(cell, WALEdit.METAFAMILY)) {
-        foundOtherEdits = true;
-        break;
-      }
+  static void scopeWALEdits(WALKey logKey, WALEdit logEdit, Configuration conf) {
+    // For buld load replication we need meta family to know the file we want to replicate.
+    if (ReplicationUtils.isReplicationForBulkLoadDataEnabled(conf)) {
+      return;
     }
-
-    if (!foundOtherEdits && logEdit.getCells().size() > 0) {
-      WALProtos.RegionEventDescriptor maybeEvent =
-          WALEdit.getRegionEventDescriptor(logEdit.getCells().get(0));
-      if (maybeEvent != null &&
-        (maybeEvent.getEventType() == WALProtos.RegionEventDescriptor.EventType.REGION_CLOSE)) {
-        // In serially replication, we use scopes when reading close marker.
-        foundOtherEdits = true;
-      }
+    WALKeyImpl keyImpl = (WALKeyImpl) logKey;
+    // For serial replication we need to count all the sequence ids even for markers, otherwise the
+    // replication maybe blocked.
+    if (keyImpl.hasSerialReplicationScope()) {
+      return;
     }
-    if ((!replicationForBulkLoadEnabled && !foundOtherEdits) || logEdit.isReplay()) {
-      ((WALKeyImpl) logKey).serializeReplicationScope(false);
+    // For replay, or if all the cells are markers, do not need to store replication scope.
+    if (logEdit.isReplay() ||
+      logEdit.getCells().stream().allMatch(c -> CellUtil.matchingFamily(c, WALEdit.METAFAMILY))) {
+      keyImpl.clearReplicationScope();
     }
   }
 }
