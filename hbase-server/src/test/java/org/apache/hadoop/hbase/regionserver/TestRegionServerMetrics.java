@@ -26,19 +26,26 @@ import org.apache.hadoop.hbase.test.MetricsAssertHelper;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.Threads;
+import org.apache.hadoop.metrics2.MetricHistogram;
+import org.apache.hadoop.metrics2.lib.MutableTimeHistogram;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.BeforeClass;
+import org.junit.FixMethodOrder;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.runners.MethodSorters;
+
 import static org.junit.Assert.*;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
-
+@FixMethodOrder(MethodSorters.NAME_ASCENDING)
 @Category(MediumTests.class)
 public class TestRegionServerMetrics {
   private static final Log LOG = LogFactory.getLog(TestRegionServerMetrics.class);
@@ -63,6 +70,8 @@ public class TestRegionServerMetrics {
     conf.getLong("hbase.splitlog.max.resubmit", 0);
     // Make the failure test faster
     conf.setInt("zookeeper.recovery.retry", 0);
+    // make sure that RS will not reset the table latency metrics
+    conf.setInt("hbase.regionserver.msginterval", Integer.MAX_VALUE);
     conf.setInt(HConstants.REGIONSERVER_INFO_PORT, -1);
 
     TEST_UTIL.startMiniCluster(1, 1);
@@ -386,5 +395,129 @@ public class TestRegionServerMetrics {
           "_metric";
       metricsHelper.assertCounter(prefix + "_scanNextNumOps", 30, agg);
     }
+  }
+
+  @Test
+  public void testTableLatency() throws Exception {
+    String tableNameString = "testTableLatency";
+    byte[] tableName = Bytes.toBytes(tableNameString);
+    byte[][] splits = new byte[][] { Bytes.toBytes("1"), Bytes.toBytes("2"), Bytes.toBytes("3") };
+    byte[] family = Bytes.toBytes("f");
+    byte[] row = Bytes.toBytes(30);
+    byte[] qualifier = Bytes.toBytes("q");
+    byte[] qualifier2 = Bytes.toBytes("q2");
+    byte[] value = Bytes.toBytes(30);
+
+    TEST_UTIL.createTable(tableName, family, splits);
+    new HTable(conf, tableName).close();
+    HTable table = new HTable(conf, tableName);
+
+    // put
+    Put put = new Put(row);
+    put.add(family, qualifier, value);
+    table.put(put);
+    table.flushCommits();
+    MetricsTableLatenciesImpl.TableHistograms histograms = getTableHistograms(tableNameString);
+    Assert.assertEquals(1, getOperationCount(histograms.putTimeHisto));
+
+    // put 30
+    for (int i = 0; i < 30; i++) {
+      Put putTmp = new Put(Bytes.toBytes(i));
+      putTmp.add(family, qualifier, Bytes.toBytes(i));
+      table.put(putTmp);
+    }
+    table.flushCommits();
+    Assert.assertEquals(30, getOperationCount(histograms.putTimeHisto));
+
+    // get 10
+    Get get = new Get(row);
+    for (int i = 0; i < 10; i++) {
+      table.get(get);
+    }
+    table.flushCommits();
+    Assert.assertEquals(10, getOperationCount(histograms.getTimeHisto));
+
+    // scan
+    Scan scan = new Scan();
+    scan.setStartRow(Bytes.toBytes(0));
+    scan.setStopRow(Bytes.toBytes(30));
+    Iterator<Result> iterable = table.getScanner(scan).iterator();
+    while (iterable.hasNext()) {
+      iterable.next();
+    }
+    table.flushCommits();
+    Assert.assertEquals(1, getOperationCount(histograms.scanTimeHisto));
+
+    // append
+    Append append = new Append(row);
+    append.add(family, qualifier2, Bytes.toBytes(1));
+    table.append(append);
+    table.flushCommits();
+    Assert.assertEquals(1, getOperationCount(histograms.appendTimeHisto));
+
+    // delete
+    Delete delete = new Delete(row);
+    table.delete(delete);
+    table.flushCommits();
+    Assert.assertEquals(1, getOperationCount(histograms.deleteTimeHisto));
+
+    // increment
+    Increment increment = new Increment(row);
+    increment.addColumn(family, qualifier2, 10);
+    table.increment(increment);
+    table.flushCommits();
+    Assert.assertEquals(1, getOperationCount(histograms.incrementTimeHisto));
+
+    // batch
+    List<Get> gets = new ArrayList<Get>();
+    for (int i = 0; i < 10; i++) {
+      gets.add(new Get(row));
+    }
+    table.get(gets);
+    table.flushCommits();
+    Assert.assertEquals(1, getOperationCount(histograms.batchTimeHisto));
+
+    // batch
+    RowMutations mutations = new RowMutations(row);
+    mutations.add(new Delete(row));
+    mutations.add(put);
+    table.mutateRow(mutations);
+    table.flushCommits();
+    Assert.assertEquals(1, getOperationCount(histograms.batchTimeHisto));
+
+    // batch
+    table.setAutoFlushTo(false);
+    for (int i = 0; i < 30; i++) {
+      table.put(put);
+    }
+    table.flushCommits();
+    Assert.assertEquals(1, getOperationCount(histograms.batchTimeHisto));
+
+    table.close();
+  }
+
+  private MetricsTableLatenciesImpl.TableHistograms getTableHistograms(String tableName) {
+    if (metricsRegionServer.getTableMetrics() != null
+      && metricsRegionServer.getTableMetrics().getMetricsTableLatency() != null) {
+      MetricsTableLatencies tableLatency =
+        metricsRegionServer.getTableMetrics().getMetricsTableLatency();
+      if (tableLatency instanceof MetricsTableLatenciesImpl) {
+        MetricsTableLatenciesImpl tableLatencies = (MetricsTableLatenciesImpl) tableLatency;
+        return tableLatencies.getHistogramsByTable().get(TableName.valueOf(tableName));
+      }
+    }
+    return null;
+  }
+
+  private long getOperationCount(MetricHistogram metricHistogram) {
+    if (metricHistogram instanceof MutableTimeHistogram) {
+      MutableTimeHistogram histogram = (MutableTimeHistogram) metricHistogram;
+      long[] value = histogram.getCountAndMean();
+      if (value != null && value.length > 0) {
+        histogram.reset();
+        return value[0];
+      }
+    }
+    return 0;
   }
 }

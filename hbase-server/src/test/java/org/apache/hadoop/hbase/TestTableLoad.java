@@ -21,59 +21,80 @@
 
 package org.apache.hadoop.hbase;
 
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.client.Append;
 import org.apache.hadoop.hbase.client.Delete;
+import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HTable;
+import org.apache.hadoop.hbase.client.Increment;
 import org.apache.hadoop.hbase.client.Put;
+import org.apache.hadoop.hbase.client.Result;
+import org.apache.hadoop.hbase.client.RowMutations;
+import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.apache.hadoop.hbase.util.Bytes;
-import org.junit.After;
-import org.junit.Before;
+import org.apache.hadoop.hbase.util.Threads;
+import org.junit.AfterClass;
+import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
 import com.google.protobuf.ByteString;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
 
 @Category(MediumTests.class)
 public class TestTableLoad {
 
-  private HBaseTestingUtility testUtil = new HBaseTestingUtility();;
+  private static HBaseTestingUtility testUtil = new HBaseTestingUtility();;
+  private static Configuration conf;
+  private static Map<TableName, TableLoad> tableLoadMap;
 
-  private static final byte[] tableName = "TestFmailyInfo".getBytes();
+  private static String testTableLatencyTableName = "TestTableLatency";
+  private static final byte[] tableName = "TestFamilyInfo".getBytes();
   private static final byte[] familyName = "f1".getBytes();
-  private static final byte[] qualifier1 = "col1".getBytes();
-  private static final byte[] qualifier2 = "col2".getBytes();
-  private static final String rowKeyPrefix = "rowKey";
-
   private static final long rowCount = 10;
   private static final long kvCount = 15;
   private static final long deleteFamilyCount = 1;
   private static final long deleteKvCount = 1;
 
-  @Before
-  public void start() throws Exception {
+  @BeforeClass
+  public static void start() throws Exception {
+    conf = testUtil.getConfiguration();
+    conf.setInt("hbase.regionserver.msginterval", Integer.MAX_VALUE);
     testUtil.startMiniCluster(1, 1);
+
+    MiniHBaseCluster cluster = testUtil.getHBaseCluster();
+    cluster.waitForActiveAndReadyMaster();
+    while (cluster.getLiveRegionServerThreads().size() < 1) {
+      Threads.sleep(100);
+    }
+    long start = System.currentTimeMillis();
+    makeDataForTestTableLatency();
+    makeDataForTestFamilyInfo();
+    cluster.getRegionServer(0).tryRegionServerReport(start, System.currentTimeMillis());
+    Thread.sleep(2000);
+    tableLoadMap = testUtil.getMiniHBaseCluster().getMaster().getTableLoads();
   }
 
-  @After
-  public void shutdown() throws Exception {
+  @AfterClass
+  public static void shutdown() throws Exception {
     testUtil.shutdownMiniCluster();
   }
 
   @Test
   public void testFamilyStatistic() throws IOException, InterruptedException {
-    makeSomeData();
-    //make sure metrics has been update
-    Thread.sleep(5000);
-
-    TableLoad tableLoad = testUtil.getMiniHBaseCluster().getMaster().getTableLoads().get(TableName.valueOf(tableName));
+    TableLoad tableLoad = tableLoadMap.get(TableName.valueOf(tableName));
     List<FamilyLoad> familyLoads = tableLoad.getFamilyLoads();
     assertEquals(1, familyLoads.size());
     FamilyLoad load = familyLoads.get(0);
@@ -96,6 +117,18 @@ public class TestTableLoad {
     tableLoad.updateTableLoad(rl2);
   }
 
+  @Test
+  public void testTableLatency() throws Exception {
+    TableLoad tableLoad = tableLoadMap.get(TableName.valueOf(testTableLatencyTableName));
+    Assert.assertEquals(10, tableLoad.getGetCount());
+    Assert.assertEquals(31, tableLoad.getPutCount());
+    Assert.assertEquals(1, tableLoad.getScanCount());
+    Assert.assertEquals(3, tableLoad.getBatchCount());
+    Assert.assertEquals(1, tableLoad.getDeleteCount());
+    Assert.assertEquals(1, tableLoad.getAppendCount());
+    Assert.assertEquals(1, tableLoad.getIncrementCount());
+  }
+
   private ClusterStatusProtos.RegionLoad createRegionLoad(boolean familyInfoIsNull) {
     HBaseProtos.RegionSpecifier rSpec = HBaseProtos.RegionSpecifier.newBuilder()
         .setType(HBaseProtos.RegionSpecifier.RegionSpecifierType.ENCODED_REGION_NAME)
@@ -115,7 +148,11 @@ public class TestTableLoad {
     return rl;
   }
 
-  private void makeSomeData() throws IOException, InterruptedException {
+  private static void makeDataForTestFamilyInfo() throws IOException, InterruptedException {
+    final byte[] qualifier1 = "col1".getBytes();
+    final byte[] qualifier2 = "col2".getBytes();
+    final String rowKeyPrefix = "rowKey";
+
     HBaseAdmin ha = testUtil.getHBaseAdmin();
     byte[][] families = new byte[1][];
     families[0] = familyName;
@@ -151,4 +188,88 @@ public class TestTableLoad {
     ha.flush(tableName);
   }
 
+  private static void makeDataForTestTableLatency() throws Exception {
+    byte[] tableName = Bytes.toBytes(testTableLatencyTableName);
+    byte[][] splits = new byte[][] { Bytes.toBytes("1"), Bytes.toBytes("2"), Bytes.toBytes("3") };
+    byte[] family = Bytes.toBytes("f");
+    byte[] row = Bytes.toBytes(30);
+    byte[] qualifier = Bytes.toBytes("q");
+    byte[] qualifier2 = Bytes.toBytes("q2");
+    byte[] value = Bytes.toBytes(30);
+
+    testUtil.createTable(tableName, family, splits);
+    new HTable(conf, tableName).close(); // wait for the table to come up.
+
+    // put
+    HTable table = new HTable(conf, tableName);
+    Put put = new Put(row);
+    put.add(family, qualifier, value);
+    table.put(put);
+    table.flushCommits();
+
+    // put 30
+    for (int i = 0; i < 30; i++) {
+      Put putTmp = new Put(Bytes.toBytes(i));
+      putTmp.add(family, qualifier, Bytes.toBytes(i));
+      table.put(putTmp);
+    }
+    table.flushCommits();
+
+    // get 10
+    Get get = new Get(row);
+    for (int i = 0; i < 10; i++) {
+      table.get(get);
+    }
+    table.flushCommits();
+
+    // scan
+    Scan scan = new Scan();
+    scan.setStartRow(Bytes.toBytes(0));
+    scan.setStopRow(Bytes.toBytes(30));
+    Iterator<Result> iterable = table.getScanner(scan).iterator();
+    while (iterable.hasNext()) {
+      iterable.next();
+    }
+    table.flushCommits();
+
+    // append
+    Append append = new Append(row);
+    append.add(family, qualifier2, Bytes.toBytes(1));
+    table.append(append);
+    table.flushCommits();
+
+    // delete
+    Delete delete = new Delete(row);
+    table.delete(delete);
+    table.flushCommits();
+
+    // increment
+    Increment increment = new Increment(row);
+    increment.addColumn(family, qualifier2, 10);
+    table.increment(increment);
+    table.flushCommits();
+
+    // batch
+    List<Get> gets = new ArrayList<Get>();
+    for (int i = 0; i < 10; i++) {
+      gets.add(new Get(row));
+    }
+    table.get(gets);
+    table.flushCommits();
+
+    RowMutations mutations = new RowMutations(row);
+    mutations.add(new Delete(row));
+    mutations.add(put);
+    table.mutateRow(mutations);
+    table.flushCommits();
+
+    // batch
+    table.setAutoFlushTo(false);
+    for (int i = 0; i < 30; i++) {
+      table.put(put);
+    }
+    table.flushCommits();
+
+    table.close();
+  }
 }
