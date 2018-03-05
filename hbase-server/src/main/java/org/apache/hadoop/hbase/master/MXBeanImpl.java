@@ -34,6 +34,7 @@ import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.TableLoad;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.namespace.NamespaceLoad;
+import org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos;
 import org.apache.hadoop.hbase.replication.ReplicationLoadSource;
 
 /**
@@ -211,6 +212,12 @@ public class MXBeanImpl implements MXBean {
           data.put(table, load);
         }
         load.updateTableLoad(regionEntry.getValue());
+      }
+      if (entry.getValue().obtainServerLoadPB() != null
+        && entry.getValue().obtainServerLoadPB().getRegionServerTableLatencyList() != null) {
+        entry.getValue().obtainServerLoadPB().getRegionServerTableLatencyList()
+          .forEach(tl -> data.computeIfAbsent(tl.getTableName(),
+            t -> new TableLoad(tl.getTableName())).updateTableLatency(tl));
       }
     }
     return new LinkedList<TableLoad>(data.values());

@@ -49,7 +49,7 @@ public class TestMetricsRegionServer {
   @Before
   public void setUp() {
     wrapper = new MetricsRegionServerWrapperStub();
-    rsm = new MetricsRegionServer(wrapper);
+    rsm = new MetricsRegionServer(wrapper, new Configuration(false));
     serverSource = rsm.getMetricsSource();
   }
 
@@ -99,24 +99,24 @@ public class TestMetricsRegionServer {
   @Test
   public void testSlowCount() {
     for (int i=0; i < 12; i ++) {
-      rsm.updateAppend(12);
-      rsm.updateAppend(1002);
+      rsm.updateAppend(null, 12);
+      rsm.updateAppend(null, 1002);
     }
     for (int i=0; i < 13; i ++) {
-      rsm.updateDelete(13);
-      rsm.updateDelete(1003);
+      rsm.updateDelete(null, 13);
+      rsm.updateDelete(null, 1003);
     }
     for (int i=0; i < 14; i ++) {
-      rsm.updateGet(14);
-      rsm.updateGet(1004);
+      rsm.updateGet(null, 14);
+      rsm.updateGet(null, 1004);
     }
     for (int i=0; i < 15; i ++) {
-      rsm.updateIncrement(15);
-      rsm.updateIncrement(1005);
+      rsm.updateIncrement(null, 15);
+      rsm.updateIncrement(null, 1005);
     }
     for (int i=0; i < 16; i ++) {
-      rsm.updatePut(16);
-      rsm.updatePut(1006);
+      rsm.updatePut(null, 16);
+      rsm.updatePut(null, 1006);
     }
 
     HELPER.assertCounter("appendNumOps", 24, serverSource);

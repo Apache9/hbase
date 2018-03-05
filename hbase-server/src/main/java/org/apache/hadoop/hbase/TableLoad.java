@@ -18,13 +18,12 @@
  */
 package org.apache.hadoop.hbase;
 
+import com.google.common.annotations.VisibleForTesting;
 import org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos;
 import org.apache.hadoop.hbase.util.Strings;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
  * This class is used exporting current state of load on a table.
@@ -97,6 +96,22 @@ public class TableLoad {
   private long scanCountPerSecond;
   private long scanRowsPerSecond;
 
+  // table latency
+  private long getCount;
+  private long putCount;
+  private long scanCount;
+  private long batchCount;
+  private long deleteCount;
+  private long appendCount;
+  private long incrementCount;
+  private long getTimeTotal;
+  private long putTimeTotal;
+  private long scanTimeTotal;
+  private long batchTimeTotal;
+  private long deleteTimeTotal;
+  private long appendTimeTotal;
+  private long incrementTimeTotal;
+
   /**
    * family info
    */
@@ -130,10 +145,55 @@ public class TableLoad {
     this.scanCountPerSecond = 0;
     this.scanRowsPerSecond = 0;
     this.familyLoads = new ArrayList<>();
+    this.getCount = 0;
+    this.putCount = 0;
+    this.scanCount = 0;
+    this.batchCount = 0;
+    this.deleteCount = 0;
+    this.appendCount = 0;
+    this.incrementCount = 0;
+    this.getTimeTotal = 0;
+    this.putTimeTotal = 0;
+    this.scanTimeTotal = 0;
+    this.batchTimeTotal = 0;
+    this.deleteTimeTotal = 0;
+    this.appendTimeTotal = 0;
+    this.incrementTimeTotal = 0;
   }
 
   public TableLoad(TableName table) {
     this(table.getNameAsString());
+  }
+
+  public void updateTableLatency(final ClusterStatusProtos.RegionServerTableLatency tl) {
+    if (tl.hasGetTimeMean()) {
+      getTimeTotal += tl.getGetTimeMean() * tl.getGetOperationCount();
+      getCount += tl.getGetOperationCount();
+    }
+    if (tl.hasPutTimeMean()) {
+      putTimeTotal += tl.getPutTimeMean() * tl.getPutOperationCount();
+      putCount += tl.getPutOperationCount();
+    }
+    if (tl.hasScanTimeMean()) {
+      scanTimeTotal += tl.getScanTimeMean() * tl.getScanOperationCount();
+      scanCount += tl.getScanOperationCount();
+    }
+    if (tl.hasBatchTimeMean()) {
+      batchTimeTotal += tl.getBatchTimeMean() * tl.getBatchOperationCount();
+      batchCount += tl.getBatchOperationCount();
+    }
+    if (tl.hasDeleteTimeMean()) {
+      deleteTimeTotal += tl.getDeleteTimeMean() * tl.getDeleteOperationCount();
+      deleteCount += tl.getDeleteOperationCount();
+    }
+    if (tl.hasAppendTimeMean()) {
+      appendTimeTotal += tl.getAppendTimeMean() * tl.getAppendOperationCount();
+      appendCount += tl.getAppendOperationCount();
+    }
+    if (tl.hasIncrementTimeMean()) {
+      incrementTimeTotal += tl.getIncrementTimeMean() * tl.getIncrementOperationCount();
+      incrementCount += tl.getIncrementOperationCount();
+    }
   }
 
   public void updateTableLoad(final RegionLoad regionLoad) {
@@ -298,6 +358,69 @@ public class TableLoad {
     return familyLoads;
   }
 
+  public long getGetTimeMean() {
+    return getCount > 0 ? getTimeTotal / getCount : 0;
+  }
+
+  public long getPutTimeMean() {
+    return putCount > 0 ? putTimeTotal / putCount : 0;
+  }
+
+  public long getScanTimeMean() {
+    return scanCount > 0 ? scanTimeTotal / scanCount : 0;
+  }
+
+  public long getBatchTimeMean() {
+    return batchCount > 0 ? batchTimeTotal / batchCount : 0;
+  }
+
+  public long getAppendTimeMean() {
+    return appendCount > 0 ? appendTimeTotal / appendCount : 0;
+  }
+
+  public long getDeleteTimeMean() {
+    return deleteCount > 0 ? deleteTimeTotal / deleteCount : 0;
+  }
+
+  public long getIncrementTimeMean() {
+    return incrementCount > 0 ? incrementTimeTotal / incrementCount : 0;
+  }
+
+  @VisibleForTesting
+  protected long getGetCount() {
+    return getCount;
+  }
+
+  @VisibleForTesting
+  protected long getPutCount() {
+    return putCount;
+  }
+
+  @VisibleForTesting
+  protected long getScanCount() {
+    return scanCount;
+  }
+
+  @VisibleForTesting
+  protected long getBatchCount() {
+    return batchCount;
+  }
+
+  @VisibleForTesting
+  protected long getDeleteCount() {
+    return deleteCount;
+  }
+
+  @VisibleForTesting
+  protected long getAppendCount() {
+    return appendCount;
+  }
+
+  @VisibleForTesting
+  protected long getIncrementCount() {
+    return incrementCount;
+  }
+
   @Override
   public String toString() {
     StringBuilder sb = Strings.appendKeyValue(new StringBuilder(), "Table name:", name);
@@ -361,6 +484,13 @@ public class TableLoad {
       this.throttledWriteRequestsCount);
     sb = Strings.appendKeyValue(sb, "familyLoads",
             this.getFamilyLoads().toString());
+    sb = Strings.appendKeyValue(sb, "getTimeMean", this.getGetTimeMean());
+    sb = Strings.appendKeyValue(sb, "putTimeMean", this.getPutTimeMean());
+    sb = Strings.appendKeyValue(sb, "scanTimeMean", this.getScanTimeMean());
+    sb = Strings.appendKeyValue(sb, "batchTimeMean", this.getBatchTimeMean());
+    sb = Strings.appendKeyValue(sb, "deleteTimeMean", this.getDeleteTimeMean());
+    sb = Strings.appendKeyValue(sb, "appendTimeMean", this.getAppendTimeMean());
+    sb = Strings.appendKeyValue(sb, "incrementTimeMean", this.getIncrementTimeMean());
     return sb.toString();
   }
 }

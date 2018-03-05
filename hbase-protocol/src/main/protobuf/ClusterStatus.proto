@@ -249,6 +249,25 @@ message ServerLoad {
 
   optional uint64 scan_count_per_second = 16;
   optional uint64 scan_rows_per_second = 17;
+  repeated RegionServerTableLatency region_server_table_latency = 18;
+}
+
+message RegionServerTableLatency {
+  required string table_name = 1;
+  optional uint64 get_time_mean = 2;
+  optional uint64 put_time_mean = 3;
+  optional uint64 scan_time_mean = 4;
+  optional uint64 batch_time_mean = 5;
+  optional uint64 append_time_mean = 6;
+  optional uint64 delete_time_mean = 7;
+  optional uint64 increment_time_mean = 8;
+  optional uint64 get_operation_count = 9;
+  optional uint64 put_operation_count = 10;
+  optional uint64 scan_operation_count = 11;
+  optional uint64 batch_operation_count = 12;
+  optional uint64 append_operation_count = 13;
+  optional uint64 delete_operation_count = 14;
+  optional uint64 increment_operation_count = 15;
 }
 
 message LiveServerInfo {
