@@ -23,6 +23,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -33,7 +34,6 @@ import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.classification.InterfaceStability;
 import org.apache.hadoop.hbase.util.QueueCounter;
 import org.apache.hadoop.hbase.util.ReflectionUtils;
-import org.apache.hadoop.hbase.util.ThreadInfoUtils;
 
 /**
  * An {@link RpcExecutor} that will balance requests evenly across all its queues, but still remains
@@ -43,7 +43,7 @@ import org.apache.hadoop.hbase.util.ThreadInfoUtils;
 @InterfaceStability.Evolving
 public class BalancedQueueRpcExecutor extends RpcExecutor {
   private static final Log LOG = LogFactory.getLog(BalancedQueueRpcExecutor.class);
-  
+
   protected final List<BlockingQueue<CallRunner>> queues;
   private final QueueBalancer balancer;
   private final QueueCounter queueCounter;
@@ -81,13 +81,30 @@ public class BalancedQueueRpcExecutor extends RpcExecutor {
     queueCounter.incIncomeRequestCount();
     if (!queues.get(queueIndex).offer(callTask)) {
       callTask.resetCallQueueSize();
-      LOG.error("Could not insert into Queue!");
       callTask.doRespond(null, new IOException(), "IPC server unable to call method");
       queueCounter.setQueueFull(true);
       queueCounter.incRejectedRequestCount();
     } else {
       queueCounter.setQueueFull(false);
     }
+  }
+
+  @Override
+  protected void startQueueFullErrorLogger() {
+    Thread t = new Thread(() -> {
+      long lastRejectedCount = 0;
+      while (true) {
+        try {
+          lastRejectedCount = logQueueFullError(queueCounter, lastRejectedCount, "Balanced");
+          TimeUnit.SECONDS.sleep(logInterval);
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+        }
+      }
+    });
+    t.setDaemon(true);
+    t.setName("BalancedQueue-QueueFullLogger");
+    t.start();
   }
 
   @Override

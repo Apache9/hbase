@@ -15,7 +15,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.apache.hadoop.hbase.ipc;
 
 import java.io.IOException;
@@ -48,6 +47,7 @@ public abstract class RpcExecutor {
   private final int handlerCount;
   private final String name;
   private final AtomicInteger failedHandlerCount = new AtomicInteger(0);
+  protected int logInterval = 30;
 
   private boolean running;
 
@@ -65,11 +65,24 @@ public abstract class RpcExecutor {
     this(name, handlerCount);
     this.conf = conf;
     this.abortable = abortable;
+    this.logInterval = conf.getInt("hbase.queue.full.log.interval", 30);
   }
-  
+
   public void start(final int port) {
     running = true;
     startHandlers(port);
+    startQueueFullErrorLogger();
+  }
+
+  protected abstract void startQueueFullErrorLogger();
+
+  protected long logQueueFullError(QueueCounter queueCounter, long lastRejectedCount, String type) {
+    long rejectedCount = queueCounter.getRejectedRequestCount();
+    if (rejectedCount > lastRejectedCount) {
+      LOG.error("Could not insert into " + type + " queue with "
+          + (rejectedCount - lastRejectedCount) + " during last " + logInterval + " seconds");
+    }
+    return rejectedCount;
   }
 
   public void stop() {
@@ -83,13 +96,19 @@ public abstract class RpcExecutor {
     return activeHandlerCount.get();
   }
 
-  /** Returns the length of the pending queue */
+  /**
+   * Returns the length of the pending queue
+   */
   public abstract int getQueueLength();
 
-  /** Add the request to the executor queue */
+  /**
+   * Add the request to the executor queue
+   */
   public abstract void dispatch(final CallRunner callTask) throws IOException, InterruptedException;
 
-  /** Returns the list of request queues */
+  /**
+   * Returns the list of request queues
+   */
   protected abstract List<BlockingQueue<CallRunner>> getQueues();
 
   protected void startHandlers(final int port) {
@@ -110,8 +129,8 @@ public abstract class RpcExecutor {
         }
       });
       t.setDaemon(true);
-      t.setName(threadPrefix + "RpcServer.handler=" + handlers.size() + ",queue=" + index
-          + ",port=" + port);
+      t.setName(threadPrefix + "RpcServer.handler=" + handlers.size() + ",queue=" + index + ",port="
+          + port);
       t.start();
       LOG.debug(threadPrefix + " Start Handler index=" + handlers.size() + " queue=" + index);
       handlers.add(t);
@@ -121,8 +140,8 @@ public abstract class RpcExecutor {
   protected void consumerLoop(final BlockingQueue<CallRunner> myQueue,
       final AtomicInteger activeHandlerCount) {
     boolean interrupted = false;
-    double handlerFailureThreshhold =
-        conf == null ? 1.0 : conf.getFloat(HConstants.REGION_SERVER_HANDLER_ABORT_ON_ERROR_PERCENT,
+    double handlerFailureThreshhold = conf == null ? 1.0
+        : conf.getFloat(HConstants.REGION_SERVER_HANDLER_ABORT_ON_ERROR_PERCENT,
           HConstants.DEFAULT_REGION_SERVER_HANDLER_ABORT_ON_ERROR_PERCENT);
     try {
       while (running) {
@@ -135,15 +154,14 @@ public abstract class RpcExecutor {
             int failedCount = failedHandlerCount.incrementAndGet();
             if (handlerFailureThreshhold >= 0
                 && failedCount > handlerCount * handlerFailureThreshhold) {
-              String message =
-                  "Number of failed RpcServer handler exceeded threshhold "
-                      + handlerFailureThreshhold + "  with failed reason: "
-                      + StringUtils.stringifyException(e);
+              String message = "Number of failed RpcServer handler exceeded threshhold "
+                  + handlerFailureThreshhold + "  with failed reason: "
+                  + StringUtils.stringifyException(e);
               if (abortable != null) {
                 abortable.abort(message, e);
               } else {
                 LOG.error("Received " + StringUtils.stringifyException(e)
-                  + " but not aborting due to abortable being null");
+                    + " but not aborting due to abortable being null");
                 throw e;
               }
             } else {
@@ -197,13 +215,12 @@ public abstract class RpcExecutor {
   private static class RandomQueueBalancer extends QueueBalancer {
     private final int queueSize;
 
-    private final ThreadLocal<Random> threadRandom =
-      new ThreadLocal<Random>() {
-        @Override
-        protected Random initialValue() {
-          return new Random();
-        }
-      };
+    private final ThreadLocal<Random> threadRandom = new ThreadLocal<Random>() {
+      @Override
+      protected Random initialValue() {
+        return new Random();
+      }
+    };
 
     public RandomQueueBalancer(int queueSize) {
       this.queueSize = queueSize;
