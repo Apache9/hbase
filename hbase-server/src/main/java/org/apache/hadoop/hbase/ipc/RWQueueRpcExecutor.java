@@ -15,7 +15,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.apache.hadoop.hbase.ipc;
 
 import com.google.protobuf.Message;
@@ -26,6 +25,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.commons.lang.ArrayUtils;
@@ -45,10 +45,10 @@ import org.apache.hadoop.hbase.util.QueueCounter;
 import org.apache.hadoop.hbase.util.ReflectionUtils;
 
 /**
- * RPC Executor that uses different queues for reads and writes.
- * Each handler has its own queue and there is no stealing.
+ * RPC Executor that uses different queues for reads and writes. Each handler has its own queue and
+ * there is no stealing.
  */
-@InterfaceAudience.LimitedPrivate({HBaseInterfaceAudience.COPROC, HBaseInterfaceAudience.PHOENIX})
+@InterfaceAudience.LimitedPrivate({ HBaseInterfaceAudience.COPROC, HBaseInterfaceAudience.PHOENIX })
 @InterfaceStability.Evolving
 public class RWQueueRpcExecutor extends RpcExecutor {
   private static final Log LOG = LogFactory.getLog(RWQueueRpcExecutor.class);
@@ -73,20 +73,20 @@ public class RWQueueRpcExecutor extends RpcExecutor {
   }
 
   public RWQueueRpcExecutor(final String name, final int handlerCount, final int numQueues,
-      final float readShare, final int maxQueueLength, final Configuration conf, final Abortable abortable) {
-    this(name, handlerCount, numQueues, readShare, maxQueueLength, conf, abortable, 
-      LinkedBlockingQueue.class);
+      final float readShare, final int maxQueueLength, final Configuration conf,
+      final Abortable abortable) {
+    this(name, handlerCount, numQueues, readShare, maxQueueLength, conf, abortable,
+        LinkedBlockingQueue.class);
   }
 
   public RWQueueRpcExecutor(final String name, final int handlerCount, final int numQueues,
-      final float readShare, final int maxQueueLength,
-      final Configuration conf, final Abortable abortable,
-      final Class<? extends BlockingQueue> readQueueClass, Object... readQueueInitArgs) {
+      final float readShare, final int maxQueueLength, final Configuration conf,
+      final Abortable abortable, final Class<? extends BlockingQueue> readQueueClass,
+      Object... readQueueInitArgs) {
     this(name, calcNumWriters(handlerCount, readShare), calcNumReaders(handlerCount, readShare),
-      calcNumWriters(numQueues, readShare), calcNumReaders(numQueues, readShare),
-      conf, abortable,
-      LinkedBlockingQueue.class, new Object[] {maxQueueLength},
-      readQueueClass, ArrayUtils.addAll(new Object[] {maxQueueLength}, readQueueInitArgs));
+        calcNumWriters(numQueues, readShare), calcNumReaders(numQueues, readShare), conf, abortable,
+        LinkedBlockingQueue.class, new Object[] { maxQueueLength }, readQueueClass,
+        ArrayUtils.addAll(new Object[] { maxQueueLength }, readQueueInitArgs));
   }
 
   public RWQueueRpcExecutor(final String name, final int handlerCount, final int numQueues,
@@ -94,16 +94,17 @@ public class RWQueueRpcExecutor extends RpcExecutor {
       final Class<? extends BlockingQueue> writeQueueClass, Object[] writeQueueInitArgs,
       final Class<? extends BlockingQueue> readQueueClass, Object[] readQueueInitArgs) {
     this(name, calcNumWriters(handlerCount, readShare), calcNumReaders(handlerCount, readShare),
-        calcNumWriters(numQueues, readShare), calcNumReaders(numQueues, readShare), conf,
-        abortable, writeQueueClass, writeQueueInitArgs, readQueueClass, readQueueInitArgs);
+        calcNumWriters(numQueues, readShare), calcNumReaders(numQueues, readShare), conf, abortable,
+        writeQueueClass, writeQueueInitArgs, readQueueClass, readQueueInitArgs);
   }
 
   public RWQueueRpcExecutor(final String name, final int writeHandlers, final int readHandlers,
-      final int numWriteQueues, final int numReadQueues,
-      final Configuration conf, final Abortable abortable,
-      final Class<? extends BlockingQueue> writeQueueClass, Object[] writeQueueInitArgs,
-      final Class<? extends BlockingQueue> readQueueClass, Object[] readQueueInitArgs) {
-    super(name, Math.max(writeHandlers + readHandlers, numWriteQueues + numReadQueues), conf, abortable);
+      final int numWriteQueues, final int numReadQueues, final Configuration conf,
+      final Abortable abortable, final Class<? extends BlockingQueue> writeQueueClass,
+      Object[] writeQueueInitArgs, final Class<? extends BlockingQueue> readQueueClass,
+      Object[] readQueueInitArgs) {
+    super(name, Math.max(writeHandlers + readHandlers, numWriteQueues + numReadQueues), conf,
+        abortable);
 
     this.writeHandlersCount = Math.max(writeHandlers, numWriteQueues);
     this.readHandlersCount = Math.max(readHandlers, numReadQueues);
@@ -116,17 +117,17 @@ public class RWQueueRpcExecutor extends RpcExecutor {
     this.writeQueueCounter = new QueueCounter("Write");
 
     queues = new ArrayList<BlockingQueue<CallRunner>>(numWriteQueues + numReadQueues);
-    LOG.debug(name + " writeQueues=" + numWriteQueues + " writeHandlers=" + writeHandlersCount +
-              " readQueues=" + numReadQueues + " readHandlers=" + readHandlersCount);
+    LOG.debug(name + " writeQueues=" + numWriteQueues + " writeHandlers=" + writeHandlersCount
+        + " readQueues=" + numReadQueues + " readHandlers=" + readHandlersCount);
 
     for (int i = 0; i < numWriteQueues; ++i) {
-      queues.add((BlockingQueue<CallRunner>)
-        ReflectionUtils.newInstance(writeQueueClass, writeQueueInitArgs));
+      queues.add((BlockingQueue<CallRunner>) ReflectionUtils.newInstance(writeQueueClass,
+        writeQueueInitArgs));
     }
 
     for (int i = 0; i < numReadQueues; ++i) {
-      queues.add((BlockingQueue<CallRunner>)
-        ReflectionUtils.newInstance(readQueueClass, readQueueInitArgs));
+      queues.add(
+        (BlockingQueue<CallRunner>) ReflectionUtils.newInstance(readQueueClass, readQueueInitArgs));
     }
   }
 
@@ -154,9 +155,8 @@ public class RWQueueRpcExecutor extends RpcExecutor {
     if (!queues.get(queueIndex).offer(callTask)) {
       callTask.resetCallQueueSize();
       String queueType = queueIndex < numWriteQueues ? "write" : "read";
-      LOG.error("Could not insert into " + queueType + "Queue!");
-      callTask.doRespond(null, new IOException(), "IPC server unable to " + queueType
-          + " call method");
+      callTask.doRespond(null, new IOException(),
+        "IPC server unable to " + queueType + " call method");
       queueCounter.setQueueFull(true);
       queueCounter.incRejectedRequestCount();
     } else {
@@ -164,12 +164,31 @@ public class RWQueueRpcExecutor extends RpcExecutor {
     }
   }
 
+  @Override
+  protected void startQueueFullErrorLogger() {
+    Thread t = new Thread(() -> {
+      long lastRejectedWriteCount = 0, lastRejectedReadCount = 0;
+      while (true) {
+        try {
+          lastRejectedReadCount = logQueueFullError(readQueueCounter, lastRejectedReadCount, "read");
+          lastRejectedWriteCount = logQueueFullError(writeQueueCounter, lastRejectedWriteCount, "write");
+          TimeUnit.SECONDS.sleep(logInterval);
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+        }
+      }
+    });
+    t.setDaemon(true);
+    t.setName("RWQueue-QueueFullLogger");
+    t.start();
+  }
+
   private boolean isWriteRequest(final RequestHeader header, final Message param) {
     // TODO: Is there a better way to do this?
     if (param instanceof MultiRequest) {
-      MultiRequest multi = (MultiRequest)param;
+      MultiRequest multi = (MultiRequest) param;
       for (RegionAction regionAction : multi.getRegionActionList()) {
-        for (Action action: regionAction.getActionList()) {
+        for (Action action : regionAction.getActionList()) {
           if (action.hasMutation()) {
             return true;
           }
@@ -185,7 +204,7 @@ public class RWQueueRpcExecutor extends RpcExecutor {
   @Override
   public int getQueueLength() {
     int length = 0;
-    for (final BlockingQueue<CallRunner> queue: queues) {
+    for (final BlockingQueue<CallRunner> queue : queues) {
       length += queue.size();
     }
     return length;
@@ -230,16 +249,16 @@ public class RWQueueRpcExecutor extends RpcExecutor {
   }
 
   /*
-   * Calculate the number of writers based on the "total count" and the read share.
-   * You'll get at least one writer.
+   * Calculate the number of writers based on the "total count" and the read share. You'll get at
+   * least one writer.
    */
   private static int calcNumWriters(final int count, final float readShare) {
-    return Math.max(1, count - Math.max(1, (int)Math.round(count * readShare)));
+    return Math.max(1, count - Math.max(1, (int) Math.round(count * readShare)));
   }
 
   /*
-   * Calculate the number of readers based on the "total count" and the read share.
-   * You'll get at least one reader.
+   * Calculate the number of readers based on the "total count" and the read share. You'll get at
+   * least one reader.
    */
   private static int calcNumReaders(final int count, final float readShare) {
     return count - calcNumWriters(count, readShare);
