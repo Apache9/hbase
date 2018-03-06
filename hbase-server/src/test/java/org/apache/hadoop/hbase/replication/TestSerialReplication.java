@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.HBaseClassTestRule;
@@ -315,6 +316,69 @@ public class TestSerialReplication {
             region.getEncodedName(), encodedName);
         } else {
           assertNotEquals(region.getEncodedName(), encodedName);
+        }
+        count++;
+      }
+      assertEquals(200, count);
+    }
+  }
+
+  @Test
+  public void testRegionMerge() throws Exception {
+    byte[] splitKey = Bytes.toBytes(50);
+    TableName tableName = TableName.valueOf(name.getMethodName());
+    UTIL.getAdmin().createTable(
+      TableDescriptorBuilder.newBuilder(tableName)
+        .addColumnFamily(ColumnFamilyDescriptorBuilder.newBuilder(CF)
+          .setScope(HConstants.REPLICATION_SCOPE_SERIAL).build())
+        .build(),
+      new byte[][] { splitKey });
+    UTIL.waitTableAvailable(tableName);
+    try (Table table = UTIL.getConnection().getTable(tableName)) {
+      for (int i = 0; i < 100; i++) {
+        table.put(new Put(Bytes.toBytes(i)).addColumn(CF, CQ, Bytes.toBytes(i)));
+      }
+    }
+    List<RegionInfo> regions = UTIL.getAdmin().getRegions(tableName);
+    UTIL.getAdmin()
+      .mergeRegionsAsync(
+        regions.stream().map(RegionInfo::getEncodedNameAsBytes).toArray(byte[][]::new), false)
+      .get(30, TimeUnit.SECONDS);
+    UTIL.waitUntilNoRegionsInTransition(30000);
+    List<RegionInfo> regionsAfterMerge = UTIL.getAdmin().getRegions(tableName);
+    assertEquals(1, regionsAfterMerge.size());
+    try (Table table = UTIL.getConnection().getTable(tableName)) {
+      for (int i = 0; i < 100; i++) {
+        table.put(new Put(Bytes.toBytes(i)).addColumn(CF, CQ, Bytes.toBytes(i)));
+      }
+    }
+    enablePeerAndWaitUntilReplicationDone(200);
+    Map<String, Long> regionsToSeqId = new HashMap<>();
+    RegionInfo region = regionsAfterMerge.get(0);
+    regionsToSeqId.put(region.getEncodedName(), -1L);
+    regions.stream().map(RegionInfo::getEncodedName).forEach(n -> regionsToSeqId.put(n, -1L));
+    try (WAL.Reader reader =
+      WALFactory.createReader(UTIL.getTestFileSystem(), logPath, UTIL.getConfiguration())) {
+      int count = 0;
+      for (Entry entry;;) {
+        entry = reader.next();
+        if (entry == null) {
+          break;
+        }
+        String encodedName = Bytes.toString(entry.getKey().getEncodedRegionName());
+        Long seqId = regionsToSeqId.get(encodedName);
+        assertNotNull(
+          "Unexcepted entry " + entry + ", expected regions " + region + ", or " + regions, seqId);
+        assertTrue("Sequence id go backwards from " + seqId + " to " +
+          entry.getKey().getSequenceId() + " for " + encodedName,
+          entry.getKey().getSequenceId() >= seqId.longValue());
+        if (count < 100) {
+          assertNotEquals(
+            encodedName + " is pushed before parents " +
+              regions.stream().map(RegionInfo::getEncodedName).collect(Collectors.joining(" and ")),
+            region.getEncodedName(), encodedName);
+        } else {
+          assertEquals(region.getEncodedName(), encodedName);
         }
         count++;
       }
