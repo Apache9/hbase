@@ -56,8 +56,12 @@ class WALEntryStream implements Closeable {
   private Path currentPath;
   // cache of next entry for hasNext()
   private Entry currentEntry;
+  // position for the current entry. As now we support peek, which means that the upper layer may
+  // choose to return before reading the current entry, so it is not safe to return the value below
+  // in getPosition.
+  private long currentPositionOfEntry = 0;
   // position after reading current entry
-  private long currentPosition = 0;
+  private long currentPositionOfReader = 0;
   private final PriorityBlockingQueue<Path> logQueue;
   private final FileSystem fs;
   private final Configuration conf;
@@ -82,7 +86,7 @@ class WALEntryStream implements Closeable {
     this.logQueue = logQueue;
     this.fs = fs;
     this.conf = conf;
-    this.currentPosition = startPosition;
+    this.currentPositionOfEntry = startPosition;
     this.walFileLengthProvider = walFileLengthProvider;
     this.serverName = serverName;
     this.metrics = metrics;
@@ -109,6 +113,7 @@ class WALEntryStream implements Closeable {
    * Returns the next WAL entry in this stream and advance the stream.
    */
   public Entry next() throws IOException {
+    currentPositionOfEntry = currentPositionOfReader;
     Entry save = peek();
     currentEntry = null;
     return save;
@@ -126,7 +131,7 @@ class WALEntryStream implements Closeable {
    * @return the position of the last Entry returned by next()
    */
   public long getPosition() {
-    return currentPosition;
+    return currentPositionOfEntry;
   }
 
   /**
@@ -140,7 +145,7 @@ class WALEntryStream implements Closeable {
     StringBuilder sb = new StringBuilder();
     if (currentPath != null) {
       sb.append("currently replicating from: ").append(currentPath).append(" at position: ")
-          .append(currentPosition).append("\n");
+          .append(currentPositionOfEntry).append("\n");
     } else {
       sb.append("no replication ongoing, waiting for new log");
     }
@@ -159,7 +164,7 @@ class WALEntryStream implements Closeable {
   }
 
   private void setPosition(long position) {
-    currentPosition = position;
+    currentPositionOfEntry = position;
   }
 
   private void setCurrentPath(Path path) {
@@ -168,19 +173,19 @@ class WALEntryStream implements Closeable {
 
   private void tryAdvanceEntry() throws IOException {
     if (checkReader()) {
-      boolean beingWritten = readNextEntryAndSetPosition();
+      boolean beingWritten = readNextEntryAndRecordReaderPosition();
       if (currentEntry == null && !beingWritten) {
         // no more entries in this log file, and the file is already closed, i.e, rolled
         // Before dequeueing, we should always get one more attempt at reading.
         // This is in case more entries came in after we opened the reader, and the log is rolled
         // while we were reading. See HBASE-6758
         resetReader();
-        readNextEntryAndSetPosition();
+        readNextEntryAndRecordReaderPosition();
         if (currentEntry == null) {
           if (checkAllBytesParsed()) { // now we're certain we're done with this log file
             dequeueCurrentLog();
             if (openNextLog()) {
-              readNextEntryAndSetPosition();
+              readNextEntryAndRecordReaderPosition();
             }
           }
         }
@@ -207,8 +212,8 @@ class WALEntryStream implements Closeable {
     }
     if (stat != null) {
       if (trailerSize < 0) {
-        if (currentPosition < stat.getLen()) {
-          final long skippedBytes = stat.getLen() - currentPosition;
+        if (currentPositionOfEntry < stat.getLen()) {
+          final long skippedBytes = stat.getLen() - currentPositionOfEntry;
           if (LOG.isDebugEnabled()) {
             LOG.debug("Reached the end of WAL file '" + currentPath
                 + "'. It was not closed cleanly, so we did not parse " + skippedBytes
@@ -217,14 +222,14 @@ class WALEntryStream implements Closeable {
           metrics.incrUncleanlyClosedWALs();
           metrics.incrBytesSkippedInUncleanlyClosedWALs(skippedBytes);
         }
-      } else if (currentPosition + trailerSize < stat.getLen()) {
-        LOG.warn("Processing end of WAL file '" + currentPath + "'. At position " + currentPosition
+      } else if (currentPositionOfEntry + trailerSize < stat.getLen()) {
+        LOG.warn("Processing end of WAL file '" + currentPath + "'. At position " + currentPositionOfEntry
             + ", which is too far away from reported file length " + stat.getLen()
             + ". Restarting WAL reading (see HBASE-15983 for details). " + getCurrentPathStat());
         setPosition(0);
         resetReader();
         metrics.incrRestartedWALReading();
-        metrics.incrRepeatedFileBytes(currentPosition);
+        metrics.incrRepeatedFileBytes(currentPositionOfEntry);
         return false;
       }
     }
@@ -249,7 +254,7 @@ class WALEntryStream implements Closeable {
   /**
    * Returns whether the file is opened for writing.
    */
-  private boolean readNextEntryAndSetPosition() throws IOException {
+  private boolean readNextEntryAndRecordReaderPosition() throws IOException {
     Entry readEntry = reader.next();
     long readerPos = reader.getPosition();
     OptionalLong fileLength = walFileLengthProvider.getLogFileSizeIfBeingWritten(currentPath);
@@ -265,10 +270,10 @@ class WALEntryStream implements Closeable {
     }
     if (readEntry != null) {
       metrics.incrLogEditsRead();
-      metrics.incrLogReadInBytes(readerPos - currentPosition);
+      metrics.incrLogReadInBytes(readerPos - currentPositionOfEntry);
     }
     currentEntry = readEntry; // could be null
-    setPosition(readerPos);
+    this.currentPositionOfReader = readerPos;
     return fileLength.isPresent();
   }
 
@@ -401,8 +406,8 @@ class WALEntryStream implements Closeable {
   }
 
   private void seek() throws IOException {
-    if (currentPosition != 0) {
-      reader.seek(currentPosition);
+    if (currentPositionOfEntry != 0) {
+      reader.seek(currentPositionOfEntry);
     }
   }
 
