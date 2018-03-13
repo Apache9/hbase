@@ -18,8 +18,11 @@
  */
 package org.apache.hadoop.hbase.regionserver;
 
+import java.util.List;
+
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.regionserver.wal.WALActionsListener;
+import org.apache.hadoop.hbase.replication.regionserver.MetricsSource;
 
 /**
  * A source for a replication stream has to expose this service.
@@ -33,4 +36,9 @@ public interface ReplicationSourceService extends ReplicationService {
    * observe log rolls and log archival events.
    */
   WALActionsListener getWALActionsListener();
+
+  /**
+   * Get metrics
+   */
+  List<MetricsSource> getSourceMetrics();
 }

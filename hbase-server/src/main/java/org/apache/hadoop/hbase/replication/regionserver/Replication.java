@@ -165,6 +165,12 @@ public class Replication implements WALActionsListener,
   public WALActionsListener getWALActionsListener() {
     return this;
   }
+
+  @Override
+  public List<MetricsSource> getSourceMetrics() {
+    return this.getReplicationSourceMetrics();
+  }
+
   /**
    * Stops replication service.
    */
@@ -355,17 +361,11 @@ public class Replication implements WALActionsListener,
     }
   }
 
-  @Override
-  public ReplicationLoad refreshAndGetReplicationLoad() {
+  private List<MetricsSource> getReplicationSourceMetrics() {
     if (this.replicationLoad == null) {
       return null;
     }
-    // always build for latest data
-    buildReplicationLoad();
-    return this.replicationLoad;
-  }
 
-  private void buildReplicationLoad() {
     List<MetricsSource> sourceMetricsList = new ArrayList<MetricsSource>();
 
     // get source
@@ -383,6 +383,21 @@ public class Replication implements WALActionsListener,
         sourceMetricsList.add(((ReplicationSource) source).getSourceMetrics());
       }
     }
+    return sourceMetricsList;
+  }
+
+  @Override
+  public ReplicationLoad refreshAndGetReplicationLoad() {
+    if (this.replicationLoad == null) {
+      return null;
+    }
+    // always build for latest data
+    buildReplicationLoad();
+    return this.replicationLoad;
+  }
+
+  private void buildReplicationLoad() {
+    List<MetricsSource> sourceMetricsList = getReplicationSourceMetrics();
 
     // get sink
     MetricsSink sinkMetrics = this.replicationSink.getSinkMetrics();

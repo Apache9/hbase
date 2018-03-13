@@ -74,19 +74,8 @@ public class ReplicationLoad {
       long ageOfLastShippedOp = sm.getAgeOfLastShippedOp();
       int sizeOfLogQueue = sm.getSizeOfLogQueue();
       long timeStampOfLastShippedOp = sm.getTimeStampOfLastShippedOp();
-      long replicationLag;
-      long timePassedAfterLastShippedOp =
-          EnvironmentEdgeManager.currentTimeMillis() - timeStampOfLastShippedOp;
-      if (sizeOfLogQueue != 0) {
-        // err on the large side
-        replicationLag = Math.max(ageOfLastShippedOp, timePassedAfterLastShippedOp);
-      } else if (timePassedAfterLastShippedOp < 2 * ageOfLastShippedOp) {
-        replicationLag = ageOfLastShippedOp; // last shipped happen recently
-      } else {
-        // last shipped may happen last night,
-        // so NO real lag although ageOfLastShippedOp is non-zero
-        replicationLag = 0;
-      }
+      long replicationLag = MetricsSource.calculateReplicationDelay(ageOfLastShippedOp,
+        timeStampOfLastShippedOp, sizeOfLogQueue);
 
       ClusterStatusProtos.ReplicationLoadSource rLoadSource = replicationLoadSourceMap.get(peerId);
       if (rLoadSource != null) {
@@ -108,6 +97,8 @@ public class ReplicationLoad {
     this.replicationLoadSourceList = new ArrayList<ClusterStatusProtos.ReplicationLoadSource>(
         replicationLoadSourceMap.values());
   }
+  
+
 
   /**
    * sourceToString

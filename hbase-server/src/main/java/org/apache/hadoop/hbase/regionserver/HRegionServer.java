@@ -240,6 +240,7 @@ import org.apache.hadoop.hbase.regionserver.wal.HLogSplitter;
 import org.apache.hadoop.hbase.regionserver.wal.HLogUtil;
 import org.apache.hadoop.hbase.regionserver.wal.WALActionsListener;
 import org.apache.hadoop.hbase.regionserver.wal.WALEdit;
+import org.apache.hadoop.hbase.replication.regionserver.MetricsSource;
 import org.apache.hadoop.hbase.replication.regionserver.ReplicationLoad;
 import org.apache.hadoop.hbase.security.UserProvider;
 import org.apache.hadoop.hbase.trace.SpanReceiverHost;
@@ -1406,6 +1407,10 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     }
     serverLoad.addAllRegionServerTableLatency(buildRegionServerTableLatency());
     return serverLoad.build();
+  }
+
+  public List<MetricsSource> getReplicationSourceMetrics(){
+    return replicationSourceHandler == null? null : replicationSourceHandler.getSourceMetrics();
   }
   
   private List<ClusterStatusProtos.RegionServerTableLatency> buildRegionServerTableLatency() {

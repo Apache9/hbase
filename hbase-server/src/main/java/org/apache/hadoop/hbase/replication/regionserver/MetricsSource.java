@@ -20,10 +20,12 @@ package org.apache.hadoop.hbase.replication.regionserver;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.CompatibilitySingletonFactory;
 import org.apache.hadoop.hbase.HBaseInterfaceAudience;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
+import org.apache.hadoop.hbase.util.Pair;
 
 /**
  * This class is for maintaining the various replication statistics for a source and publishing them
@@ -54,6 +56,8 @@ public class MetricsSource {
   private long lastTimestamp = 0;
   private int lastQueueSize = 0;
   private String id;
+  private Pair<Path,Long> currentLog;
+  private long offset;
 
   private final MetricsReplicationSourceSource singleSourceSource;
   private final MetricsReplicationSourceSource globalSourceSource;
@@ -200,5 +204,47 @@ public class MetricsSource {
    */
   public String getPeerID() {
     return id;
+  }
+
+  public void setCurrentReplicatingLog(Pair currentLog) {
+    this.currentLog = currentLog;
+  }
+
+  /**
+   * Get current replicating log
+   * @return log
+   */
+  public Pair<Path, Long> getCurrentLog() {
+    return currentLog;
+  }
+
+  public void setCurrentOffset(long offset) {
+    this.offset = offset;
+  }
+
+  /**
+   * get current replication reader offset
+   * @return offset
+   */
+  public long getCurrentOffset() {
+    return offset;
+  }
+
+  public static long calculateReplicationDelay(long ageOfLastShippedOp,
+      long timeStampOfLastShippedOp, int sizeOfLogQueue) {
+    long replicationLag;
+    long timePassedAfterLastShippedOp =
+        EnvironmentEdgeManager.currentTimeMillis() - timeStampOfLastShippedOp;
+    if (sizeOfLogQueue != 0) {
+      // err on the large side
+      replicationLag = Math.max(ageOfLastShippedOp, timePassedAfterLastShippedOp);
+    } else if (timePassedAfterLastShippedOp < 2 * ageOfLastShippedOp) {
+      replicationLag = ageOfLastShippedOp; // last shipped happen recently
+    } else {
+      // last shipped may happen last night,
+      // so NO real lag although ageOfLastShippedOp is non-zero
+      replicationLag = 0;
+    }
+    return replicationLag;
   }
 }
