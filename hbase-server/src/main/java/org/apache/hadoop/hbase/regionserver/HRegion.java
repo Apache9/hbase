@@ -4194,6 +4194,7 @@ public class HRegion implements HeapSize { // , Writable{
     private long maxResultSize;
     protected HRegion region;
     private boolean isGet;
+    private long totalScanSize = 0;
 
     @Override
     public HRegionInfo getRegionInfo() {
@@ -4407,12 +4408,12 @@ public class HRegion implements HeapSize { // , Writable{
       }
 
       if (!isGet) {
+        totalScanSize += totalKvSize;
         updateReadRawCellMetrics(scannerContext.getReadRawCells());
         updateReadMetrics(1);
         if (metricsRegion != null) {
           metricsRegion.updateScanNext(totalKvSize);
         }
-        updateReadCapacityUnitMetrics(totalKvSize);
         updateReadCellMetrics(resultCells);
         updateScanRowsPerSecond(1);
       }
@@ -4779,6 +4780,14 @@ public class HRegion implements HeapSize { // , Writable{
 
     @Override
     public synchronized void close() {
+      close(true);
+    }
+
+    @Override
+    public synchronized void close(boolean updateReadCapacityUnitMetrics) {
+      if (updateReadCapacityUnitMetrics) {
+        updateReadCapacityUnitMetrics(totalScanSize);
+      }
       if (storeHeap != null) {
         storeHeap.close();
         storeHeap = null;

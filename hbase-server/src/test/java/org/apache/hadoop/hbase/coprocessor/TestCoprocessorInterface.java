@@ -139,6 +139,11 @@ public class TestCoprocessorInterface {
     public long getMvccReadPoint() {
       return delegate.getMvccReadPoint();
     }
+
+    @Override
+    public void close(boolean updateReadCapacityUnitMetrics) throws IOException {
+      delegate.close(updateReadCapacityUnitMetrics);
+    }
   }
 
   public static class CoprocessorImpl extends BaseRegionObserver {
