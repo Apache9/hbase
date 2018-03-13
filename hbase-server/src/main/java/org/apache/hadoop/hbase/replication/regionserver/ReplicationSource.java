@@ -67,6 +67,7 @@ import org.apache.hadoop.hbase.replication.SystemTableWALEntryFilter;
 import org.apache.hadoop.hbase.replication.WALEntryFilter;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.FSUtils;
+import org.apache.hadoop.hbase.util.Pair;
 import org.apache.hadoop.hbase.util.Threads;
 
 /**
@@ -396,6 +397,7 @@ public class ReplicationSource extends Thread
       entries.clear();
       currentSize = 0;
       try {
+        updateCurrentLogMetrics();
         if (readAllEntriesToReplicateOrNextFile(currentWALisBeingWrittenTo, entries,
             lastPositionsForSerialScope)) {
           for (Map.Entry<String, Long> entry : lastPositionsForSerialScope.entrySet()) {
@@ -434,15 +436,7 @@ public class ReplicationSource extends Thread
           updateReplicationPositions(manager.getConnection(), peerId, lastPositionsForSerialScope);
         }
 
-        if (shouldLogPosition(this.repLogReader.getPosition())) {
-          this.manager.logPosition(this.currentPath, this.peerClusterZnode,
-            this.repLogReader.getPosition());
-          if (!currentWALisBeingWrittenTo) {
-            tryCleanOldLogs();
-          }
-          this.lastLoggedPosition = this.repLogReader.getPosition();
-          this.unLoggedPositionEdits = 0;
-        }
+        logPosition(currentWALisBeingWrittenTo);
         // Reset the sleep multiplier if nothing has actually gone wrong
         if (!gotIOE) {
           sleepMultiplier = 1;
@@ -460,6 +454,31 @@ public class ReplicationSource extends Thread
       sleepMultiplier = 1;
       shipEdits(currentWALisBeingWrittenTo, entries, lastPositionsForSerialScope);
       releaseBufferQuota();
+    }
+  }
+
+  private void logPosition(boolean currentWALisBeingWrittenTo){
+    if (shouldLogPosition(this.repLogReader.getPosition())) {
+      this.manager.logPosition(this.currentPath, this.peerClusterZnode,
+          this.repLogReader.getPosition());
+      if (!currentWALisBeingWrittenTo) {
+        tryCleanOldLogs();
+      }
+      this.lastLoggedPosition = this.repLogReader.getPosition();
+      this.unLoggedPositionEdits = 0;
+      this.metrics.setCurrentOffset(lastLoggedPosition);
+    }
+  }
+
+  private void updateCurrentLogMetrics() throws IOException {
+    Path prevLog = null;
+    if (getSourceMetrics().getCurrentLog() != null) {
+      prevLog = getSourceMetrics().getCurrentLog().getFirst();
+    }
+    getSourceMetrics().setCurrentReplicatingLog(
+      new Pair<>(getCurrentPath(), fs.getContentSummary(getCurrentPath()).getLength()));
+    if (prevLog != null && !prevLog.getName().equals(currentPath.getName())) {
+      getSourceMetrics().setCurrentOffset(0);
     }
   }
 
@@ -839,15 +858,7 @@ public class ReplicationSource extends Thread
         // Save positions to meta table before zk.
         updateReplicationPositions(manager.getConnection(), peerId, lastPositionsForSerialScope);
 
-        if (shouldLogPosition(this.repLogReader.getPosition())) {
-          this.manager.logPosition(this.currentPath, this.peerClusterZnode,
-            this.repLogReader.getPosition());
-          if (!currentWALisBeingWrittenTo) {
-            tryCleanOldLogs();
-          }
-          this.lastLoggedPosition = this.repLogReader.getPosition();
-          this.unLoggedPositionEdits = 0;
-        }
+        logPosition(currentWALisBeingWrittenTo);
         if (this.throttler.isEnabled()) {
           this.throttler.addPushSize(currentSize);
         }
