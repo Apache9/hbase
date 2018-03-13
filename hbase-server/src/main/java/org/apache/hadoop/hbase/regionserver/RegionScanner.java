@@ -115,4 +115,13 @@ public interface RegionScanner extends InternalScanner {
    */
   boolean nextRaw(List<Cell> result, ScannerContext scannerContext)
       throws IOException;
+
+  /**
+   * For normal case, the scanner was opened by RegionServer. So the region server is responsible
+   * for updating read capacity unit metrics. But for coprocessor which open a region scanner to
+   * scan, it will update read capacity unit metrics when close scanner.
+   * @param updateReadCapacityUnitMetrics true if update read capacity unit metrics when close
+   *          scanner, otherwise false.
+   */
+  void close(boolean updateReadCapacityUnitMetrics) throws IOException;
 }

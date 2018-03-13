@@ -1568,7 +1568,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     // exception next time they come in.
     for (Map.Entry<String, RegionScannerHolder> e : this.scanners.entrySet()) {
       try {
-        e.getValue().s.close();
+        e.getValue().s.close(false);
       } catch (IOException ioe) {
         LOG.warn("Closing scanner " + e.getKey(), ioe);
       }
@@ -3088,7 +3088,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
           LOG.error("Closing scanner for " + s.getRegionInfo().getRegionNameAsString(), e);
         } finally {
           try {
-            s.close();
+            s.close(false);
             if (region != null && region.getCoprocessorHost() != null) {
               region.getCoprocessorHost().postScannerClose(s);
             }
@@ -3705,7 +3705,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
       LOG.warn(msg + ", closing...");
       scanners.remove(scannerName);
       try {
-        rsh.s.close();
+        rsh.s.close(false);
       } catch (IOException e) {
         LOG.warn("Getting exception closing " + scannerName, e);
       } finally {
@@ -3977,6 +3977,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
           // We didn't get a single batch
           builder.setMoreResultsInRegion(false);
         }
+        region.updateReadCapacityUnitMetrics(scannerContext.getSizeProgress());
       }
       region.updateScanCountPerSecond(1);
     } finally {
@@ -3999,7 +4000,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     }
     RegionScannerHolder rsh = scanners.remove(scannerName);
     if (rsh != null) {
-      rsh.s.close();
+      rsh.s.close(false);
       if (region.getCoprocessorHost() != null) {
         region.getCoprocessorHost().postScannerClose(scanner);
       }
