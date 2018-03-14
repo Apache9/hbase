@@ -3918,12 +3918,6 @@ MasterServices, Server {
         }
         load.updateTableLoad(regionEntry.getValue());
       }
-      if (entry.getValue().obtainServerLoadPB() != null
-          && entry.getValue().obtainServerLoadPB().getRegionServerTableLatencyList() != null) {
-        entry.getValue().obtainServerLoadPB().getRegionServerTableLatencyList()
-            .forEach(tl -> tableLoads.computeIfAbsent(TableName.valueOf(tl.getTableName()),
-              t -> new TableLoad(tl.getTableName())).updateTableLatency(tl));
-      }
     }
     return tableLoads;
   }

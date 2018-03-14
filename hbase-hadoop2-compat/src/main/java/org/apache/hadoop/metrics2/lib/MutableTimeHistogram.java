@@ -51,16 +51,4 @@ public class MutableTimeHistogram extends MutableRangeHistogram {
   public long[] getRanges() {
     return RANGES;
   }
-
-  public void reset() {
-    histogram.reset();
-    counter.reset();
-  }
-
-  public long[] getCountAndMean() {
-    if (histogram.getCount() > 0) {
-      return new long[]{histogram.getCount(), histogram.getMean()};
-    }
-    return null;
-  }
 }

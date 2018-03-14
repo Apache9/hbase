@@ -271,8 +271,6 @@ import org.apache.hadoop.hbase.zookeeper.ZooKeeperNodeTracker;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
 import org.apache.hadoop.ipc.RemoteException;
 import org.apache.hadoop.metrics.util.MBeanUtil;
-import org.apache.hadoop.metrics2.MetricHistogram;
-import org.apache.hadoop.metrics2.lib.MutableTimeHistogram;
 import org.apache.hadoop.net.DNS;
 import org.apache.hadoop.util.ReflectionUtils;
 import org.apache.hadoop.util.StringUtils;
@@ -1303,7 +1301,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
   }
 
   @VisibleForTesting
-  public void tryRegionServerReport(long reportStartTime, long reportEndTime)
+  protected void tryRegionServerReport(long reportStartTime, long reportEndTime)
   throws IOException {
     RegionServerStatusService.BlockingInterface rss = rssStub;
     if (rss == null) {
@@ -1404,69 +1402,8 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
         }
       }
     }
-    serverLoad.addAllRegionServerTableLatency(buildRegionServerTableLatency());
-    return serverLoad.build();
-  }
-  
-  private List<ClusterStatusProtos.RegionServerTableLatency> buildRegionServerTableLatency() {
-    List<ClusterStatusProtos.RegionServerTableLatency> regionServerTableLatencies =
-        new ArrayList<>();
-    if (metricsRegionServer.getTableMetrics() != null
-        && metricsRegionServer.getTableMetrics().getMetricsTableLatency() != null) {
-      MetricsTableLatencies metricsTableLatencies =
-          metricsRegionServer.getTableMetrics().getMetricsTableLatency();
-      if (metricsTableLatencies instanceof MetricsTableLatenciesImpl) {
-        MetricsTableLatenciesImpl tableLatenciesImpl =
-            (MetricsTableLatenciesImpl) metricsTableLatencies;
-        tableLatenciesImpl.getHistogramsByTable().entrySet().forEach(entry -> {
-          ClusterStatusProtos.RegionServerTableLatency.Builder builder =
-              ClusterStatusProtos.RegionServerTableLatency.newBuilder();
-          builder.setTableName(entry.getKey().getNameAsString());
-          MetricsTableLatenciesImpl.TableHistograms histograms = entry.getValue();
-          long[] value = null;
-          if ((value = getOperationCountAndMeanTime(histograms.getTimeHisto)) != null) {
-            builder.setGetOperationCount(value[0]);
-            builder.setGetTimeMean(value[1]);
-          }
-          if ((value = getOperationCountAndMeanTime(histograms.putTimeHisto)) != null) {
-            builder.setPutOperationCount(value[0]);
-            builder.setPutTimeMean(value[1]);
-          }
-          if ((value = getOperationCountAndMeanTime(histograms.scanTimeHisto)) != null) {
-            builder.setScanOperationCount(value[0]);
-            builder.setScanTimeMean(value[1]);
-          }
-          if ((value = getOperationCountAndMeanTime(histograms.batchTimeHisto)) != null) {
-            builder.setBatchOperationCount(value[0]);
-            builder.setBatchTimeMean(value[1]);
-          }
-          if ((value = getOperationCountAndMeanTime(histograms.deleteTimeHisto)) != null) {
-            builder.setDeleteOperationCount(value[0]);
-            builder.setDeleteTimeMean(value[1]);
-          }
-          if ((value = getOperationCountAndMeanTime(histograms.appendTimeHisto)) != null) {
-            builder.setAppendOperationCount(value[0]);
-            builder.setAppendTimeMean(value[1]);
-          }
-          if ((value = getOperationCountAndMeanTime(histograms.incrementTimeHisto)) != null) {
-            builder.setIncrementOperationCount(value[0]);
-            builder.setIncrementTimeMean(value[1]);
-          }
-          regionServerTableLatencies.add(builder.build());
-        });
-      }
-    }
-    return regionServerTableLatencies;
-  }
 
-  private long[] getOperationCountAndMeanTime(MetricHistogram metricHistogram) {
-    if (metricHistogram instanceof MutableTimeHistogram) {
-      MutableTimeHistogram histogram = (MutableTimeHistogram) metricHistogram;
-      long[] value = histogram.getCountAndMean();
-      histogram.reset();
-      return value;
-    }
-    return null;
+    return serverLoad.build();
   }
 
   String getOnlineRegionsAsPrintableString() {
@@ -1621,7 +1558,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
       this.tableDescriptors = new FSTableDescriptors(this.conf, this.fs, this.rootDir, true, false);
       this.hlog = setupWALAndReplication();
       // Init in here rather than in constructor after thread name has been set
-      this.metricsRegionServer = new MetricsRegionServer(new MetricsRegionServerWrapperImpl(this), conf);
+      this.metricsRegionServer = new MetricsRegionServer(new MetricsRegionServerWrapperImpl(this));
       // Metrics are up, now we can init the pause monitor
       this.pauseMonitor = new JvmPauseMonitor(conf, metricsRegionServer.getMetricsSource());
       pauseMonitor.start();
@@ -3444,12 +3381,10 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
   public GetResponse get(final RpcController controller,
       final GetRequest request) throws ServiceException {
     long before = EnvironmentEdgeManager.currentTimeMillis();
-    TableName tableName = null;
     try {
       checkOpen();
       requestCount.increment();
       HRegion region = getRegion(request.getRegion());
-      tableName = region.getTableDesc().getTableName();
       if (isQuotaEnabled()) {
         rsQuotaManager.checkQuota(region, OperationQuota.OperationType.GET);
       }
@@ -3504,7 +3439,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     } catch (IOException ie) {
       throw new ServiceException(ie);
     } finally {
-      metricsRegionServer.updateGet(tableName, EnvironmentEdgeManager.currentTimeMillis() - before);
+      metricsRegionServer.updateGet(EnvironmentEdgeManager.currentTimeMillis() - before);
     }
   }
 
@@ -3540,7 +3475,6 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
       Boolean processed = null;
       MutationType type = mutation.getMutateType();
       long mutationSize = 0;
-      long before = EnvironmentEdgeManager.currentTimeMillis();
 
       switch (type) {
       case APPEND:
@@ -3581,7 +3515,6 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
           region.put(put);
           processed = Boolean.TRUE;
         }
-        metricsRegionServer.updatePut(region.getTableDesc().getTableName(), EnvironmentEdgeManager.currentTimeMillis() - before);
         break;
       case DELETE:
         Delete delete = ProtobufUtil.toDelete(mutation, cellScanner);
@@ -3613,8 +3546,6 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
           region.delete(delete);
           processed = Boolean.TRUE;
         }
-        metricsRegionServer.updateDelete(region.getTableDesc().getTableName(),
-          EnvironmentEdgeManager.currentTimeMillis() - before);
         break;
         default:
           throw new DoNotRetryIOException(
@@ -3825,7 +3756,6 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
       long maxQuotaResultSize, int maxResults, int limitOfRows, List<Result> results,
       ScanResponse.Builder builder, RpcCallContext context)
       throws IOException {
-    long before = EnvironmentEdgeManager.currentTimeMillis();
     HRegion region = rsh.r;
     RegionScanner scanner = rsh.s;
     long maxResultSize;
@@ -3974,7 +3904,6 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     if (region.getCoprocessorHost() != null) {
       region.getCoprocessorHost().postScannerNext(scanner, results, maxResults, true);
     }
-    metricsRegionServer.updateScan(region.getTableDesc().getTableName(), EnvironmentEdgeManager.currentTimeMillis() - before);
   }
 
   private void closeScanner(HRegion region, RegionScanner scanner, String scannerName,
@@ -4513,7 +4442,6 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
       final RegionActionResult.Builder builder, List<CellScannable> cellsToReturn, long nonceGroup,
       RpcCallContext context)
       throws ServiceException {
-    long before = EnvironmentEdgeManager.currentTimeMillis();
     // Gather up CONTIGUOUS Puts and Deletes in this mutations List.  Idea is that rather than do
     // one at a time, we instead pass them in batch.  Be aware that the corresponding
     // ResultOrException instance that matches each Put or Delete is then added down in the
@@ -4641,8 +4569,6 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     if (mutations != null && !mutations.isEmpty()) {
       doBatchOp(builder, region, mutations, cellScanner);
     }
-    metricsRegionServer.updateBatch(region.getTableDesc().getTableName(),
-      EnvironmentEdgeManager.currentTimeMillis() - before);
     return cellsToReturn;
   }
 
@@ -5324,7 +5250,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
    * Execute an append mutation.
    *
    * @param region
-   * @param mutation
+   * @param m
    * @param cellScanner
    * @return result to return to client if default operation should be
    * bypassed as indicated by RegionObserver, null otherwise
@@ -5370,7 +5296,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
         region.getCoprocessorHost().postAppend(append, r);
       }
     }
-    metricsRegionServer.updateAppend(region.getTableDesc().getTableName(), EnvironmentEdgeManager.currentTimeMillis() - before);
+    metricsRegionServer.updateAppend(EnvironmentEdgeManager.currentTimeMillis() - before);
     return r;
   }
 
@@ -5422,7 +5348,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
         r = region.getCoprocessorHost().postIncrement(increment, r);
       }
     }
-    metricsRegionServer.updateIncrement(region.getTableDesc().getTableName(), EnvironmentEdgeManager.currentTimeMillis() - before);
+    metricsRegionServer.updateIncrement(EnvironmentEdgeManager.currentTimeMillis() - before);
     return r;
   }
 
@@ -5471,6 +5397,8 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
   protected void doBatchOp(final RegionActionResult.Builder builder, final HRegion region,
       final List<ClientProtos.Action> mutations, final CellScanner cells) {
     Mutation[] mArray = new Mutation[mutations.size()];
+    long before = EnvironmentEdgeManager.currentTimeMillis();
+    boolean batchContainsPuts = false, batchContainsDelete = false;
     try {
       if (isQuotaEnabled()) {
         this.rsQuotaManager.checkQuota(region, mutations);
@@ -5481,8 +5409,10 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
         Mutation mutation;
         if (m.getMutateType() == MutationType.PUT) {
           mutation = ProtobufUtil.toPut(m, cells);
+          batchContainsPuts = true;
         } else {
           mutation = ProtobufUtil.toDelete(m, cells);
+          batchContainsDelete = true;
         }
         mArray[i++] = mutation;
       }
@@ -5522,6 +5452,13 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
         builder.addResultOrException(getResultOrException(ie, mutations.get(i).getIndex()));
       }
     }
+    long after = EnvironmentEdgeManager.currentTimeMillis();
+    if (batchContainsPuts) {
+      metricsRegionServer.updatePut(after - before);
+    }
+    if (batchContainsDelete) {
+      metricsRegionServer.updateDelete(after - before);
+    }
   }
 
   private static ResultOrException getResultOrException(final ClientProtos.Result r,
@@ -5551,9 +5488,15 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
       final List<HLogSplitter.MutationReplay> mutations) throws IOException {
 
     long before = EnvironmentEdgeManager.currentTimeMillis();
+    boolean batchContainsPuts = false, batchContainsDelete = false;
     try {
       for (Iterator<HLogSplitter.MutationReplay> it = mutations.iterator(); it.hasNext();) {
         HLogSplitter.MutationReplay m = it.next();
+        if (m.type == MutationType.PUT) {
+          batchContainsPuts = true;
+        } else {
+          batchContainsDelete = true;
+        }
         NavigableMap<byte[], List<Cell>> map = m.mutation.getFamilyCellMap();
         List<Cell> metaCells = map.get(WALEdit.METAFAMILY);
         if (metaCells != null && !metaCells.isEmpty()) {
@@ -5574,7 +5517,12 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
         new HLogSplitter.MutationReplay[mutations.size()]));
     } finally {
       long after = EnvironmentEdgeManager.currentTimeMillis();
-      metricsRegionServer.updateBatch(region.getTableDesc().getTableName(), after - before);
+      if (batchContainsPuts) {
+        metricsRegionServer.updatePut(after - before);
+      }
+      if (batchContainsDelete) {
+        metricsRegionServer.updateDelete(after - before);
+      }
     }
   }
 
@@ -5589,7 +5537,6 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
   protected ClientProtos.RegionLoadStats mutateRows(final HRegion region,
       final List<ClientProtos.Action> actions, final CellScanner cellScanner)
       throws IOException {
-    long before = EnvironmentEdgeManager.currentTimeMillis();
     if (!region.getRegionInfo().isMetaTable()) {
       cacheFlusher.reclaimMemStoreMemory();
     }
@@ -5618,10 +5565,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
       rsQuotaManager.checkQuota(region, rm);
     }
     region.mutateRow(rm);
-    ClientProtos.RegionLoadStats regionLoadStats = region.getRegionStats();
-    metricsRegionServer.updateBatch(region.getTableDesc().getTableName(),
-      EnvironmentEdgeManager.currentTimeMillis() - before);
-    return regionLoadStats;
+    return region.getRegionStats();
   }
 
   /**
@@ -5640,7 +5584,6 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
   private boolean checkAndRowMutate(final HRegion region, final List<ClientProtos.Action> actions,
       final CellScanner cellScanner, byte[] row, byte[] family, byte[] qualifier,
       CompareOp compareOp, ByteArrayComparable comparator) throws IOException {
-    long before = EnvironmentEdgeManager.currentTimeMillis();
     if (!region.getRegionInfo().isMetaTable()) {
       cacheFlusher.reclaimMemStoreMemory();
     }
@@ -5665,10 +5608,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
         throw new DoNotRetryIOException("Atomic put and/or delete only, not " + type.name());
       }
     }
-    boolean result = region.checkAndRowMutate(row, family, qualifier, compareOp, comparator, rm, Boolean.TRUE);
-    metricsRegionServer.updateBatch(region.getTableDesc().getTableName(),
-      EnvironmentEdgeManager.currentTimeMillis() - before);
-    return result;
+    return region.checkAndRowMutate(row, family, qualifier, compareOp, comparator, rm, Boolean.TRUE);
   }
 
   private static class MovedRegionInfo {

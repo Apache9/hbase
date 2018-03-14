@@ -55,7 +55,7 @@ public class TestMasterMetrics {
      }
 
     @Override
-    public void tryRegionServerReport(
+    protected void tryRegionServerReport(
         long reportStartTime, long reportEndTime) {
       // do nothing
     }
