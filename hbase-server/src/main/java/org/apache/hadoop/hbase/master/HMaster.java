@@ -272,6 +272,7 @@ import org.apache.hadoop.hbase.regionserver.DefaultStoreEngine;
 import org.apache.hadoop.hbase.regionserver.HStore;
 import org.apache.hadoop.hbase.regionserver.RegionCoprocessorHost;
 import org.apache.hadoop.hbase.regionserver.RegionSplitPolicy;
+import org.apache.hadoop.hbase.replication.ReplicationLoadSource;
 import org.apache.hadoop.hbase.regionserver.compactions.ExploringCompactionPolicy;
 import org.apache.hadoop.hbase.regionserver.compactions.FIFOCompactionPolicy;
 import org.apache.hadoop.hbase.replication.ReplicationException;
@@ -1718,6 +1719,38 @@ MasterServices, Server {
     boolean isEnabled = catalogJanitorChore != null ? catalogJanitorChore.getEnabled() : false;
     return IsCatalogJanitorEnabledResponse.newBuilder().setValue(isEnabled).build();
   }
+
+  
+  public HashMap<String, List<Pair<ServerName, ReplicationLoadSource>>>
+      getReplicationLoad(ServerName[] serverNames) {
+    List<ReplicationPeerDescription> peerList = null;
+    try {
+      peerList = this.getReplicationManager().listReplicationPeers(null);
+    } catch (ReplicationException e) {
+      LOG.error("get peer list failed", e);
+    }
+    if (peerList == null) {
+      return null;
+    }
+    HashMap<String, List<Pair<ServerName, ReplicationLoadSource>>> replicationLoadSourceMap =
+        new HashMap<>(peerList.size());
+    peerList.stream().forEach(peer -> replicationLoadSourceMap.put(peer.getPeerId(), new ArrayList()));
+    for (ServerName serverName : serverNames) {
+      List<ReplicationLoadSource> replicationLoadSources =
+          this.getServerManager().getLoad(serverName).getReplicationLoadSourceList();
+      for (ReplicationLoadSource replicationLoadSource : replicationLoadSources) {
+        replicationLoadSourceMap.get(replicationLoadSource.getPeerID())
+            .add(new Pair<>(serverName, replicationLoadSource));
+      }
+    }
+    for(List<Pair<ServerName, ReplicationLoadSource>> loads : replicationLoadSourceMap.values()){
+      if(loads.size() > 0){
+        loads.sort(Comparator.comparingLong(load -> (-1) * load.getSecond().getReplicationLag()));
+      }
+    }
+    return replicationLoadSourceMap;
+  }
+
 
   /**
    * @return Maximum time we should run balancer for
