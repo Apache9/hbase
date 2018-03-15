@@ -87,23 +87,15 @@ public class MXBeanImpl implements MXBean {
   }
 
   @Override
-  public Map<String, ServerLoad> getRegionServers() {
-    Map<String, ServerLoad> data = new HashMap<String, ServerLoad>();
-    for (final Entry<ServerName, ServerLoad> entry :
-      master.getServerManager().getOnlineServers().entrySet()) {
-      data.put(entry.getKey().getServerName(),
-          entry.getValue());
-    }
-    return data;
+  public String[] getRegionServers() {
+    return master.getServerManager().getOnlineServers().keySet().stream()
+        .map(ServerName::getHostAndPort).toArray(String[]::new);
   }
 
   @Override
   public String[] getDeadRegionServers() {
-    List<String> deadServers = new ArrayList<String>();
-    for (ServerName name : master.getServerManager().getDeadServers().copyServerNames()) {
-      deadServers.add(name.getHostAndPort());
-    }
-    return deadServers.toArray(new String[0]);
+    return master.getServerManager().getDeadServers().copyServerNames().stream()
+        .map(ServerName::getHostAndPort).toArray(String[]::new);
   }
 
   @Override

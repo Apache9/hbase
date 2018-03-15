@@ -18,14 +18,11 @@
 package org.apache.hadoop.hbase.master;
 
 import java.util.List;
-import java.util.Map;
 
 import org.apache.hadoop.hbase.ClusterLoad;
-import org.apache.hadoop.hbase.ServerLoad;
 import org.apache.hadoop.hbase.TableLoad;
 import org.apache.hadoop.hbase.namespace.NamespaceLoad;
 import org.apache.hadoop.hbase.replication.ReplicationLoadSource;
-import org.apache.hadoop.hbase.replication.regionserver.Replication;
 
 /**
  * This is the JMX management interface for Hbase master information
@@ -105,7 +102,7 @@ public interface MXBean {
    * Get the live region servers
    * @return Live region servers
    */
-  public Map<String, ServerLoad> getRegionServers();
+  public String[] getRegionServers();
 
   /**
    * Get the dead region servers
