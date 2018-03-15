@@ -1411,50 +1411,57 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
   private List<ClusterStatusProtos.RegionServerTableLatency> buildRegionServerTableLatency() {
     List<ClusterStatusProtos.RegionServerTableLatency> regionServerTableLatencies =
         new ArrayList<>();
-    if (metricsRegionServer.getTableMetrics() != null
-        && metricsRegionServer.getTableMetrics().getMetricsTableLatency() != null) {
-      MetricsTableLatencies metricsTableLatencies =
-          metricsRegionServer.getTableMetrics().getMetricsTableLatency();
-      if (metricsTableLatencies instanceof MetricsTableLatenciesImpl) {
-        MetricsTableLatenciesImpl tableLatenciesImpl =
-            (MetricsTableLatenciesImpl) metricsTableLatencies;
-        tableLatenciesImpl.getHistogramsByTable().entrySet().forEach(entry -> {
-          ClusterStatusProtos.RegionServerTableLatency.Builder builder =
-              ClusterStatusProtos.RegionServerTableLatency.newBuilder();
-          builder.setTableName(entry.getKey().getNameAsString());
-          MetricsTableLatenciesImpl.TableHistograms histograms = entry.getValue();
-          long[] value = null;
-          if ((value = getOperationCountAndMeanTime(histograms.getTimeHisto)) != null) {
-            builder.setGetOperationCount(value[0]);
-            builder.setGetTimeMean(value[1]);
+    try {
+      if (metricsRegionServer.getTableMetrics() != null
+              && metricsRegionServer.getTableMetrics().getMetricsTableLatency() != null) {
+        MetricsTableLatencies metricsTableLatencies =
+                metricsRegionServer.getTableMetrics().getMetricsTableLatency();
+        if (metricsTableLatencies instanceof MetricsTableLatenciesImpl) {
+          MetricsTableLatenciesImpl tableLatenciesImpl =
+                  (MetricsTableLatenciesImpl) metricsTableLatencies;
+          Iterator<Entry<TableName, MetricsTableLatenciesImpl.TableHistograms>> iterator =
+                  tableLatenciesImpl.getHistogramsByTable().entrySet().iterator();
+          while (iterator.hasNext()) {
+            Entry<TableName, MetricsTableLatenciesImpl.TableHistograms> entry = iterator.next();
+            ClusterStatusProtos.RegionServerTableLatency.Builder builder =
+                    ClusterStatusProtos.RegionServerTableLatency.newBuilder();
+            builder.setTableName(entry.getKey().getNameAsString());
+            MetricsTableLatenciesImpl.TableHistograms histograms = entry.getValue();
+            long[] value = null;
+            if ((value = getOperationCountAndMeanTime(histograms.getTimeHisto)) != null) {
+              builder.setGetOperationCount(value[0]);
+              builder.setGetTimeMean(value[1]);
+            }
+            if ((value = getOperationCountAndMeanTime(histograms.putTimeHisto)) != null) {
+              builder.setPutOperationCount(value[0]);
+              builder.setPutTimeMean(value[1]);
+            }
+            if ((value = getOperationCountAndMeanTime(histograms.scanTimeHisto)) != null) {
+              builder.setScanOperationCount(value[0]);
+              builder.setScanTimeMean(value[1]);
+            }
+            if ((value = getOperationCountAndMeanTime(histograms.batchTimeHisto)) != null) {
+              builder.setBatchOperationCount(value[0]);
+              builder.setBatchTimeMean(value[1]);
+            }
+            if ((value = getOperationCountAndMeanTime(histograms.deleteTimeHisto)) != null) {
+              builder.setDeleteOperationCount(value[0]);
+              builder.setDeleteTimeMean(value[1]);
+            }
+            if ((value = getOperationCountAndMeanTime(histograms.appendTimeHisto)) != null) {
+              builder.setAppendOperationCount(value[0]);
+              builder.setAppendTimeMean(value[1]);
+            }
+            if ((value = getOperationCountAndMeanTime(histograms.incrementTimeHisto)) != null) {
+              builder.setIncrementOperationCount(value[0]);
+              builder.setIncrementTimeMean(value[1]);
+            }
+            regionServerTableLatencies.add(builder.build());
           }
-          if ((value = getOperationCountAndMeanTime(histograms.putTimeHisto)) != null) {
-            builder.setPutOperationCount(value[0]);
-            builder.setPutTimeMean(value[1]);
-          }
-          if ((value = getOperationCountAndMeanTime(histograms.scanTimeHisto)) != null) {
-            builder.setScanOperationCount(value[0]);
-            builder.setScanTimeMean(value[1]);
-          }
-          if ((value = getOperationCountAndMeanTime(histograms.batchTimeHisto)) != null) {
-            builder.setBatchOperationCount(value[0]);
-            builder.setBatchTimeMean(value[1]);
-          }
-          if ((value = getOperationCountAndMeanTime(histograms.deleteTimeHisto)) != null) {
-            builder.setDeleteOperationCount(value[0]);
-            builder.setDeleteTimeMean(value[1]);
-          }
-          if ((value = getOperationCountAndMeanTime(histograms.appendTimeHisto)) != null) {
-            builder.setAppendOperationCount(value[0]);
-            builder.setAppendTimeMean(value[1]);
-          }
-          if ((value = getOperationCountAndMeanTime(histograms.incrementTimeHisto)) != null) {
-            builder.setIncrementOperationCount(value[0]);
-            builder.setIncrementTimeMean(value[1]);
-          }
-          regionServerTableLatencies.add(builder.build());
-        });
+        }
       }
+    } catch (Exception  e) {
+      LOG.error("buildRegionServerTableLatency exception", e);
     }
     return regionServerTableLatencies;
   }

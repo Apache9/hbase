@@ -16,7 +16,7 @@
  */
 package org.apache.hadoop.hbase.regionserver;
 
-import java.util.HashMap;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
@@ -31,9 +31,9 @@ import org.apache.hadoop.metrics2.lib.DynamicMetricsRegistry;
 @InterfaceAudience.Private
 public class MetricsTableLatenciesImpl extends BaseSourceImpl implements MetricsTableLatencies {
 
-  private final HashMap<TableName,TableHistograms> histogramsByTable = new HashMap<>();
+  private final ConcurrentHashMap<TableName,TableHistograms> histogramsByTable = new ConcurrentHashMap<>();
 
-  public HashMap<TableName,TableHistograms> getHistogramsByTable() {
+  public ConcurrentHashMap<TableName,TableHistograms> getHistogramsByTable() {
     return histogramsByTable;
   }
 
