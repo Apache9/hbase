@@ -80,6 +80,7 @@ import org.apache.hadoop.hbase.CellScanner;
 import org.apache.hadoop.hbase.CellUtil;
 import org.apache.hadoop.hbase.Chore;
 import org.apache.hadoop.hbase.ClockOutOfSyncException;
+import org.apache.hadoop.hbase.CompatibilitySingletonFactory;
 import org.apache.hadoop.hbase.DoNotRetryIOException;
 import org.apache.hadoop.hbase.DroppedSnapshotException;
 import org.apache.hadoop.hbase.HBaseConfiguration;
@@ -92,6 +93,7 @@ import org.apache.hadoop.hbase.KeyValueUtil;
 import org.apache.hadoop.hbase.MultiActionResultTooLarge;
 import org.apache.hadoop.hbase.NotServingRegionException;
 import org.apache.hadoop.hbase.RemoteExceptionHandler;
+import org.apache.hadoop.hbase.ServerLoad;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.Stoppable;
 import org.apache.hadoop.hbase.TableDescriptors;
@@ -142,6 +144,7 @@ import org.apache.hadoop.hbase.ipc.ServerRpcController;
 import org.apache.hadoop.hbase.master.RegionState.State;
 import org.apache.hadoop.hbase.master.SplitLogManager;
 import org.apache.hadoop.hbase.master.TableLockManager;
+import org.apache.hadoop.hbase.metrics.MBeanSource;
 import org.apache.hadoop.hbase.procedure.RegionServerProcedureManagerHost;
 import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.protobuf.RequestConverter;
@@ -448,6 +451,9 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
   public static final String REGIONSERVER_CONF = "regionserver_conf";
 
   private MetricsRegionServer metricsRegionServer;
+
+  private ServerLoad serverLoad;
+
   private SpanReceiverHost spanReceiverHost;
 
   private AccessCounter accessCounter;
@@ -882,6 +888,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     try {
       initializeZooKeeper();
       initializeThreads();
+      registerMBean();
     } catch (Throwable t) {
       // Call stop if error or process will stick around for ever since server
       // puts up non-daemon threads.
@@ -1311,13 +1318,14 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
       // the current server could be stopping.
       return;
     }
-    ClusterStatusProtos.ServerLoad sl = buildServerLoad(reportStartTime, reportEndTime);
+    ClusterStatusProtos.ServerLoad serverLoadPB = buildServerLoad(reportStartTime, reportEndTime);
+    this.serverLoad = new ServerLoad(serverLoadPB);
     try {
       RegionServerReportRequest.Builder request = RegionServerReportRequest.newBuilder();
       ServerName sn = ServerName.parseVersionedServerName(
         this.serverNameFromMasterPOV.getVersionedBytes());
       request.setServer(ProtobufUtil.toServerName(sn));
-      request.setLoad(sl);
+      request.setLoad(serverLoadPB);
       reportResponse = rss.regionServerReport(null, request.build());
     } catch (ServiceException se) {
       LOG.warn("Try to report to hmaster failed", se);
@@ -6023,5 +6031,19 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
   private boolean isQuotaEnabled() {
     return (this.rsQuotaManager != null) && (this.rsQuotaManager.isQuotaEnabled())
         && (!this.rsQuotaManager.isStopped());
+  }
+
+  /**
+   * Register bean with platform management server
+   */
+  void registerMBean() {
+    MXBeanImpl mxBeanInfo = MXBeanImpl.init(this);
+    mxBean = CompatibilitySingletonFactory.getInstance(MBeanSource.class).register("hbase",
+      "RegionServer,sub=ServerLoad", mxBeanInfo);
+    LOG.info("Registered HRegionServer MXBean for ServerLoad");
+  }
+
+  ServerLoad getServerLoad() {
+    return this.serverLoad;
   }
 }
