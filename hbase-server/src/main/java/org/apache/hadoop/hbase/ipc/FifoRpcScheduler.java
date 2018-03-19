@@ -38,10 +38,10 @@ import org.apache.hadoop.hbase.util.QueueCounter;
  */
 public class FifoRpcScheduler extends RpcScheduler {
 
-  private final int handlerCount;
-  private final int maxQueueLength;
-  private ThreadPoolExecutor executor;
-  private final QueueCounter queueCounter;
+  protected int handlerCount;
+  protected final int maxQueueLength;
+  protected ThreadPoolExecutor executor;
+  protected final QueueCounter queueCounter;
 
   public FifoRpcScheduler(Configuration conf, int handlerCount) {
     this.handlerCount = handlerCount;
@@ -113,25 +113,21 @@ public class FifoRpcScheduler extends RpcScheduler {
 
   @Override
   public int getWriteQueueLength() {
-    // TODO Auto-generated method stub
     return 0;
   }
 
   @Override
   public int getReadQueueLength() {
-    // TODO Auto-generated method stub
     return 0;
   }
 
   @Override
   public int getActiveWriteRpcHandlerCount() {
-    // TODO Auto-generated method stub
     return 0;
   }
 
   @Override
   public int getActiveReadRpcHandlerCount() {
-    // TODO Auto-generated method stub
     return 0;
   }
 
