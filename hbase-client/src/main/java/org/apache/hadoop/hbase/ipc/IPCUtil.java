@@ -137,8 +137,6 @@ class IPCUtil {
   }
 
   /**
-   * @param header
-   * @param body
    * @return Size on the wire when the two messages are written with writeDelimitedTo
    */
   static int getTotalSizeWhenWrittenDelimited(Message... messages) {
@@ -201,6 +199,9 @@ class IPCUtil {
     } else if (exception instanceof DoNotRetryIOException) {
       return (IOException) new DoNotRetryIOException(
           "Call to " + addr + " failed on local exception: " + exception).initCause(exception);
+    } else if (exception instanceof FailedServerException) {
+      // we already have address in the exception message
+      return (IOException) exception;
     } else {
       return (IOException) new IOException(
           "Call to " + addr + " failed on local exception: " + exception).initCause(exception);
