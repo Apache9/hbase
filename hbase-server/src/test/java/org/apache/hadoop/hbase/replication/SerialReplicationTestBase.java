@@ -113,6 +113,7 @@ public class SerialReplicationTestBase {
   @BeforeClass
   public static void setUpBeforeClass() throws Exception {
     UTIL.getConfiguration().setInt("replication.source.nb.capacity", 10);
+    UTIL.getConfiguration().setLong("replication.sleep.before.failover", 1000);
     UTIL.startMiniCluster(3);
     // disable balancer
     UTIL.getAdmin().balancerSwitch(false, true);
@@ -198,6 +199,11 @@ public class SerialReplicationTestBase {
         return "Not enough entries replicated";
       }
     });
+  }
+
+  protected final void enablePeerAndWaitUntilReplicationDone(int expectedEntries) throws Exception {
+    UTIL.getAdmin().enableReplicationPeer(PEER_ID);
+    waitUntilReplicationDone(expectedEntries);
   }
 
   protected final void addPeer(boolean enabled) throws IOException {
