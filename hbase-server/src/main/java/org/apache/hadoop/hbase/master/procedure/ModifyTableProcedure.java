@@ -27,6 +27,7 @@ import org.apache.hadoop.hbase.DoNotRetryIOException;
 import org.apache.hadoop.hbase.HBaseIOException;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.MetaTableAccessor;
+import org.apache.hadoop.hbase.MetaTableAccessor.QueryType;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.TableNotFoundException;
 import org.apache.hadoop.hbase.client.Connection;
@@ -39,6 +40,7 @@ import org.apache.hadoop.hbase.client.TableDescriptor;
 import org.apache.hadoop.hbase.client.TableState;
 import org.apache.hadoop.hbase.master.MasterCoprocessorHost;
 import org.apache.hadoop.hbase.procedure2.ProcedureStateSerializer;
+import org.apache.hadoop.hbase.replication.ReplicationException;
 import org.apache.hadoop.hbase.util.ServerRegionReplicaUtil;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
@@ -94,44 +96,51 @@ public class ModifyTableProcedure
 
     try {
       switch (state) {
-      case MODIFY_TABLE_PREPARE:
-        prepareModify(env);
-        setNextState(ModifyTableState.MODIFY_TABLE_PRE_OPERATION);
-        break;
-      case MODIFY_TABLE_PRE_OPERATION:
-        preModify(env, state);
-        setNextState(ModifyTableState.MODIFY_TABLE_UPDATE_TABLE_DESCRIPTOR);
-        break;
-      case MODIFY_TABLE_UPDATE_TABLE_DESCRIPTOR:
-        updateTableDescriptor(env);
-        setNextState(ModifyTableState.MODIFY_TABLE_REMOVE_REPLICA_COLUMN);
-        break;
-      case MODIFY_TABLE_REMOVE_REPLICA_COLUMN:
-        updateReplicaColumnsIfNeeded(env, unmodifiedTableDescriptor, modifiedTableDescriptor);
-        if (deleteColumnFamilyInModify) {
-          setNextState(ModifyTableState.MODIFY_TABLE_DELETE_FS_LAYOUT);
-        } else {
+        case MODIFY_TABLE_PREPARE:
+          prepareModify(env);
+          setNextState(ModifyTableState.MODIFY_TABLE_PRE_OPERATION);
+          break;
+        case MODIFY_TABLE_PRE_OPERATION:
+          preModify(env, state);
+          setNextState(ModifyTableState.MODIFY_TABLE_UPDATE_TABLE_DESCRIPTOR);
+          break;
+        case MODIFY_TABLE_UPDATE_TABLE_DESCRIPTOR:
+          updateTableDescriptor(env);
+          setNextState(ModifyTableState.MODIFY_TABLE_REMOVE_REPLICA_COLUMN);
+          break;
+        case MODIFY_TABLE_REMOVE_REPLICA_COLUMN:
+          updateReplicaColumnsIfNeeded(env, unmodifiedTableDescriptor, modifiedTableDescriptor);
+          if (deleteColumnFamilyInModify) {
+            setNextState(ModifyTableState.MODIFY_TABLE_DELETE_FS_LAYOUT);
+          } else {
+            setNextState(ModifyTableState.MODIFY_TABLE_CLEANUP_REPLICATION_STUFFS);
+          }
+          break;
+        case MODIFY_TABLE_DELETE_FS_LAYOUT:
+          deleteFromFs(env, unmodifiedTableDescriptor, modifiedTableDescriptor);
+          setNextState(ModifyTableState.MODIFY_TABLE_CLEANUP_REPLICATION_STUFFS);
+          break;
+        case MODIFY_TABLE_CLEANUP_REPLICATION_STUFFS:
+          if (unmodifiedTableDescriptor.hasGlobalReplicationScope() &&
+            !modifiedTableDescriptor.hasGlobalReplicationScope()) {
+            DeleteTableProcedure.deleteReplicationBarriersAndLastPushedSeqIds(env, getTableName(), getRegionInfoList(env));
+          }
           setNextState(ModifyTableState.MODIFY_TABLE_POST_OPERATION);
-        }
-        break;
-      case MODIFY_TABLE_DELETE_FS_LAYOUT:
-        deleteFromFs(env, unmodifiedTableDescriptor, modifiedTableDescriptor);
-        setNextState(ModifyTableState.MODIFY_TABLE_POST_OPERATION);
-        break;
-      case MODIFY_TABLE_POST_OPERATION:
-        postModify(env, state);
-        setNextState(ModifyTableState.MODIFY_TABLE_REOPEN_ALL_REGIONS);
-        break;
-      case MODIFY_TABLE_REOPEN_ALL_REGIONS:
-        if (env.getAssignmentManager().isTableEnabled(getTableName())) {
-          addChildProcedure(env.getAssignmentManager()
-            .createReopenProcedures(getRegionInfoList(env)));
-        }
-        return Flow.NO_MORE_STATE;
-      default:
-        throw new UnsupportedOperationException("unhandled state=" + state);
+          break;
+        case MODIFY_TABLE_POST_OPERATION:
+          postModify(env, state);
+          setNextState(ModifyTableState.MODIFY_TABLE_REOPEN_ALL_REGIONS);
+          break;
+        case MODIFY_TABLE_REOPEN_ALL_REGIONS:
+          if (env.getAssignmentManager().isTableEnabled(getTableName())) {
+            addChildProcedure(
+              env.getAssignmentManager().createReopenProcedures(getRegionInfoList(env)));
+          }
+          return Flow.NO_MORE_STATE;
+        default:
+          throw new UnsupportedOperationException("unhandled state=" + state);
       }
-    } catch (IOException e) {
+    } catch (IOException | ReplicationException e) {
       if (isRollbackSupported(state)) {
         setFailure("master-modify-table", e);
       } else {
@@ -174,7 +183,7 @@ public class ModifyTableProcedure
 
   @Override
   protected ModifyTableState getState(final int stateId) {
-    return ModifyTableState.valueOf(stateId);
+    return ModifyTableState.forNumber(stateId);
   }
 
   @Override
@@ -347,7 +356,7 @@ public class ModifyTableProcedure
     if (newReplicaCount < oldReplicaCount) {
       Set<byte[]> tableRows = new HashSet<>();
       Connection connection = env.getMasterServices().getConnection();
-      Scan scan = MetaTableAccessor.getScanForTableName(connection, getTableName());
+      Scan scan = MetaTableAccessor.getScanForTable(connection, getTableName(), QueryType.REGION);
       scan.addColumn(HConstants.CATALOG_FAMILY, HConstants.REGIONINFO_QUALIFIER);
 
       try (Table metaTable = connection.getTable(TableName.META_TABLE_NAME)) {
@@ -355,11 +364,8 @@ public class ModifyTableProcedure
         for (Result result : resScanner) {
           tableRows.add(result.getRow());
         }
-        MetaTableAccessor.removeRegionReplicasFromMeta(
-          tableRows,
-          newReplicaCount,
-          oldReplicaCount - newReplicaCount,
-          connection);
+        MetaTableAccessor.removeRegionReplicasFromMeta(tableRows, newReplicaCount,
+          oldReplicaCount - newReplicaCount, connection);
       }
     }
     if (newReplicaCount > oldReplicaCount) {

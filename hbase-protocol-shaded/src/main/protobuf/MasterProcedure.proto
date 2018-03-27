@@ -71,6 +71,7 @@ enum ModifyTableState {
   MODIFY_TABLE_DELETE_FS_LAYOUT = 5;
   MODIFY_TABLE_POST_OPERATION = 6;
   MODIFY_TABLE_REOPEN_ALL_REGIONS = 7;
+  MODIFY_TABLE_CLEANUP_REPLICATION_STUFFS = 8;
 }
 
 message ModifyTableStateData {
@@ -88,6 +89,7 @@ enum TruncateTableState {
   TRUNCATE_TABLE_ADD_TO_META = 5;
   TRUNCATE_TABLE_ASSIGN_REGIONS = 6;
   TRUNCATE_TABLE_POST_OPERATION = 7;
+  TRUNCATE_TABLE_CLEANUP_REPLICATION_STUFFS = 8;
 }
 
 message TruncateTableStateData {
@@ -105,12 +107,14 @@ enum DeleteTableState {
   DELETE_TABLE_UPDATE_DESC_CACHE = 4;
   DELETE_TABLE_UNASSIGN_REGIONS = 5;
   DELETE_TABLE_POST_OPERATION = 6;
+  DELETE_TABLE_CLEANUP_REPLICATION_STUFFS = 7;
 }
 
 message DeleteTableStateData {
   required UserInformation user_info = 1;
   required TableName table_name = 2;
   repeated RegionInfo region_info = 3;
+  optional TableSchema table_descriptor = 4;
 }
 
 enum CreateNamespaceState {

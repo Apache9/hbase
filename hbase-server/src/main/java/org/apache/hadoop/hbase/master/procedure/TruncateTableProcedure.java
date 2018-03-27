@@ -32,6 +32,7 @@ import org.apache.hadoop.hbase.client.RegionInfoBuilder;
 import org.apache.hadoop.hbase.client.TableDescriptor;
 import org.apache.hadoop.hbase.master.MasterCoprocessorHost;
 import org.apache.hadoop.hbase.procedure2.ProcedureStateSerializer;
+import org.apache.hadoop.hbase.replication.ReplicationException;
 import org.apache.hadoop.hbase.util.ModifyRegionUtils;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
@@ -47,6 +48,7 @@ public class TruncateTableProcedure
   private static final Logger LOG = LoggerFactory.getLogger(TruncateTableProcedure.class);
 
   private boolean preserveSplits;
+  private List<RegionInfo> oldRegions;
   private List<RegionInfo> regions;
   private TableDescriptor tableDescriptor;
   private TableName tableName;
@@ -102,6 +104,13 @@ public class TruncateTableProcedure
               .get(tableName);
           DeleteTableProcedure.deleteFromMeta(env, getTableName(), regions);
           DeleteTableProcedure.deleteAssignmentState(env, getTableName());
+          setNextState(TruncateTableState.TRUNCATE_TABLE_CLEANUP_REPLICATION_STUFFS);
+          break;
+        case TRUNCATE_TABLE_CLEANUP_REPLICATION_STUFFS:
+          if (tableDescriptor.hasGlobalReplicationScope()) {
+            DeleteTableProcedure.deleteReplicationBarriersAndLastPushedSeqIds(env, getTableName(),
+              regions);
+          }
           setNextState(TruncateTableState.TRUNCATE_TABLE_CLEAR_FS_LAYOUT);
           break;
         case TRUNCATE_TABLE_CLEAR_FS_LAYOUT:
@@ -144,7 +153,7 @@ public class TruncateTableProcedure
         default:
           throw new UnsupportedOperationException("unhandled state=" + state);
       }
-    } catch (IOException e) {
+    } catch (IOException | ReplicationException e) {
       if (isRollbackSupported(state)) {
         setFailure("master-truncate-table", e);
       } else {
@@ -184,7 +193,7 @@ public class TruncateTableProcedure
 
   @Override
   protected TruncateTableState getState(final int stateId) {
-    return TruncateTableState.valueOf(stateId);
+    return TruncateTableState.forNumber(stateId);
   }
 
   @Override

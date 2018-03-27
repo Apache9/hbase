@@ -35,6 +35,7 @@ import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.MetaTableAccessor;
 import org.apache.hadoop.hbase.MiniHBaseCluster;
 import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.MetaTableAccessor.QueryType;
 import org.apache.hadoop.hbase.coprocessor.CoprocessorHost;
 import org.apache.hadoop.hbase.coprocessor.MasterCoprocessor;
 import org.apache.hadoop.hbase.coprocessor.MasterCoprocessorEnvironment;
@@ -166,7 +167,8 @@ public class TestEnableTable {
     // content from a few of the rows.
     try (Table metaTable = TEST_UTIL.getConnection().getTable(TableName.META_TABLE_NAME)) {
       try (ResultScanner scanner = metaTable.getScanner(
-        MetaTableAccessor.getScanForTableName(TEST_UTIL.getConnection(), tableName))) {
+        MetaTableAccessor.getScanForTable(TEST_UTIL.getConnection(), tableName,
+          QueryType.REGION))) {
         for (Result result : scanner) {
           // Just delete one row.
           Delete d = new Delete(result.getRow());
@@ -186,8 +188,8 @@ public class TestEnableTable {
         fail("Got an exception while deleting " + tableName);
       }
       int rowCount = 0;
-      try (ResultScanner scanner =
-          metaTable.getScanner(MetaTableAccessor.getScanForTableName(TEST_UTIL.getConnection(), tableName))) {
+      try (ResultScanner scanner = metaTable.getScanner(MetaTableAccessor
+        .getScanForTable(TEST_UTIL.getConnection(), tableName, QueryType.REGION))) {
         for (Result result : scanner) {
           LOG.info("Found when none expected: " + result);
           rowCount++;

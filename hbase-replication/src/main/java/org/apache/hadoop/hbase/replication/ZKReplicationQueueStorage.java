@@ -26,6 +26,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.stream.Collectors;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
@@ -344,6 +345,20 @@ class ZKReplicationQueueStorage extends ZKReplicationStorageBase
       }
     } catch (KeeperException e) {
       throw new ReplicationException("Failed to remove all last sequence ids, peerId=" + peerId, e);
+    }
+  }
+
+  @Override
+  public void removeLastSequenceIds(String peerId, List<String> encodedRegionNames)
+      throws ReplicationException {
+    try {
+      List<ZKUtilOp> listOfOps =
+        encodedRegionNames.stream().map(n -> getSerialReplicationRegionPeerNode(n, peerId))
+          .map(ZKUtilOp::deleteNodeFailSilent).collect(Collectors.toList());
+      ZKUtil.multiOrSequential(zookeeper, listOfOps, true);
+    } catch (KeeperException e) {
+      throw new ReplicationException("Failed to remove last sequence ids, peerId=" + peerId +
+        ", encodedRegionNames.size=" + encodedRegionNames.size(), e);
     }
   }
 

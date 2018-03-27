@@ -21,11 +21,12 @@ package org.apache.hadoop.hbase.master.procedure;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.MetaTableAccessor;
+import org.apache.hadoop.hbase.MetaTableAccessor.QueryType;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.TableNotDisabledException;
 import org.apache.hadoop.hbase.TableNotFoundException;
@@ -37,17 +38,23 @@ import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.client.Table;
+import org.apache.hadoop.hbase.client.TableDescriptor;
 import org.apache.hadoop.hbase.favored.FavoredNodesManager;
+import org.apache.hadoop.hbase.filter.FirstKeyOnlyFilter;
 import org.apache.hadoop.hbase.master.MasterCoprocessorHost;
 import org.apache.hadoop.hbase.master.MasterFileSystem;
 import org.apache.hadoop.hbase.mob.MobConstants;
 import org.apache.hadoop.hbase.mob.MobUtils;
 import org.apache.hadoop.hbase.procedure2.ProcedureStateSerializer;
 import org.apache.hadoop.hbase.regionserver.HRegion;
+import org.apache.hadoop.hbase.replication.ReplicationException;
+import org.apache.hadoop.hbase.replication.ReplicationQueueStorage;
+import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.FSUtils;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import org.apache.hadoop.hbase.shaded.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.HBaseProtos;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProcedureProtos;
@@ -58,8 +65,11 @@ public class DeleteTableProcedure
     extends AbstractStateMachineTableProcedure<DeleteTableState> {
   private static final Logger LOG = LoggerFactory.getLogger(DeleteTableProcedure.class);
 
+  private static final int REMOVE_LAST_SEQ_ID_BATCH_SIZE = 1000;
+
   private List<RegionInfo> regions;
   private TableName tableName;
+  private TableDescriptor tableDesc;
 
   public DeleteTableProcedure() {
     // Required by the Procedure framework to create the procedure on replay
@@ -79,9 +89,7 @@ public class DeleteTableProcedure
   @Override
   protected Flow executeFromState(final MasterProcedureEnv env, DeleteTableState state)
       throws InterruptedException {
-    if (LOG.isTraceEnabled()) {
-      LOG.trace(this + " execute state=" + state);
-    }
+    LOG.trace("{} execute state={}", this, state);
     try {
       switch (state) {
         case DELETE_TABLE_PRE_OPERATION:
@@ -94,45 +102,52 @@ public class DeleteTableProcedure
           }
 
           // TODO: Move out... in the acquireLock()
-          LOG.debug("Waiting for '" + getTableName() + "' regions in transition");
+          LOG.debug("Waiting for '{}' regions in transition", getTableName());
           regions = env.getAssignmentManager().getRegionStates().getRegionsOfTable(getTableName());
           assert regions != null && !regions.isEmpty() : "unexpected 0 regions";
           ProcedureSyncWait.waitRegionInTransition(env, regions);
-
           // Call coprocessors
           preDelete(env);
 
           setNextState(DeleteTableState.DELETE_TABLE_REMOVE_FROM_META);
           break;
         case DELETE_TABLE_REMOVE_FROM_META:
-          LOG.debug("delete '" + getTableName() + "' regions from META");
-          DeleteTableProcedure.deleteFromMeta(env, getTableName(), regions);
+          LOG.debug("delete '{}' regions from META", getTableName());
+          tableDesc = env.getMasterServices().getTableDescriptors().get(tableName);
+          deleteFromMeta(env, getTableName(), regions);
+          setNextState(DeleteTableState.DELETE_TABLE_CLEANUP_REPLICATION_STUFFS);
+          break;
+        case DELETE_TABLE_CLEANUP_REPLICATION_STUFFS:
+          LOG.debug("delete '{}' replication stuffs", getTableName());
+          if (tableDesc.hasGlobalReplicationScope()) {
+            deleteReplicationBarriersAndLastPushedSeqIds(env, getTableName(), regions);
+          }
           setNextState(DeleteTableState.DELETE_TABLE_CLEAR_FS_LAYOUT);
           break;
         case DELETE_TABLE_CLEAR_FS_LAYOUT:
-          LOG.debug("delete '" + getTableName() + "' from filesystem");
-          DeleteTableProcedure.deleteFromFs(env, getTableName(), regions, true);
-          setNextState(DeleteTableState.DELETE_TABLE_UPDATE_DESC_CACHE);
+          LOG.debug("delete '{}' from filesystem", getTableName());
+          deleteFromFs(env, getTableName(), regions, true);
           regions = null;
+          setNextState(DeleteTableState.DELETE_TABLE_UPDATE_DESC_CACHE);
           break;
         case DELETE_TABLE_UPDATE_DESC_CACHE:
-          LOG.debug("delete '" + getTableName() + "' descriptor");
-          DeleteTableProcedure.deleteTableDescriptorCache(env, getTableName());
+          LOG.debug("delete '{}' descriptor", getTableName());
+          deleteTableDescriptorCache(env, getTableName());
           setNextState(DeleteTableState.DELETE_TABLE_UNASSIGN_REGIONS);
           break;
         case DELETE_TABLE_UNASSIGN_REGIONS:
-          LOG.debug("delete '" + getTableName() + "' assignment state");
-          DeleteTableProcedure.deleteAssignmentState(env, getTableName());
+          LOG.debug("delete '{}' assignment state", getTableName());
+          deleteAssignmentState(env, getTableName());
           setNextState(DeleteTableState.DELETE_TABLE_POST_OPERATION);
           break;
         case DELETE_TABLE_POST_OPERATION:
           postDelete(env);
-          LOG.debug("delete '" + getTableName() + "' completed");
+          LOG.debug("delete '{}' completed", getTableName());
           return Flow.NO_MORE_STATE;
         default:
           throw new UnsupportedOperationException("unhandled state=" + state);
       }
-    } catch (IOException e) {
+    } catch (IOException | ReplicationException e) {
       if (isRollbackSupported(state)) {
         setFailure("master-delete-table", e);
       } else {
@@ -177,7 +192,7 @@ public class DeleteTableProcedure
 
   @Override
   protected DeleteTableState getState(final int stateId) {
-    return DeleteTableState.valueOf(stateId);
+    return DeleteTableState.forNumber(stateId);
   }
 
   @Override
@@ -214,6 +229,9 @@ public class DeleteTableProcedure
         state.addRegionInfo(ProtobufUtil.toRegionInfo(hri));
       }
     }
+    if (tableDesc != null) {
+      state.setTableDescriptor(ProtobufUtil.toTableSchema(tableDesc));
+    }
     serializer.serialize(state.build());
   }
 
@@ -233,6 +251,9 @@ public class DeleteTableProcedure
       for (HBaseProtos.RegionInfo hri: state.getRegionInfoList()) {
         regions.add(ProtobufUtil.toRegionInfo(hri));
       }
+    }
+    if (state.hasTableDescriptor()) {
+      tableDesc = ProtobufUtil.toTableDescriptor(state.getTableDescriptor());
     }
   }
 
@@ -267,7 +288,7 @@ public class DeleteTableProcedure
     }
   }
 
-  protected static void deleteFromFs(final MasterProcedureEnv env,
+  static void deleteFromFs(final MasterProcedureEnv env,
       final TableName tableName, final List<RegionInfo> regions,
       final boolean archive) throws IOException {
     final MasterFileSystem mfs = env.getMasterServices().getMasterFileSystem();
@@ -297,7 +318,9 @@ public class DeleteTableProcedure
           FileStatus[] files = fs.listStatus(tempdir);
           if (files != null && files.length > 0) {
             for (int i = 0; i < files.length; ++i) {
-              if (!files[i].isDir()) continue;
+              if (!files[i].isDirectory()) {
+                continue;
+              }
               HFileArchiver.archiveRegion(fs, mfs.getRootDir(), tempTableDir, files[i].getPath());
             }
           }
@@ -310,18 +333,17 @@ public class DeleteTableProcedure
     // Archive regions from FS (temp directory)
     if (archive) {
       for (RegionInfo hri : regions) {
-        LOG.debug("Archiving region " + hri.getRegionNameAsString() + " from FS");
+        LOG.debug("Archiving region {} from FS", hri.getRegionNameAsString());
         HFileArchiver.archiveRegion(fs, mfs.getRootDir(),
             tempTableDir, HRegion.getRegionDir(tempTableDir, hri.getEncodedName()));
       }
-      LOG.debug("Table '" + tableName + "' archived!");
+      LOG.debug("Table '{}' archived!", tableName);
     }
 
     // Archive mob data
-    Path mobTableDir = FSUtils.getTableDir(new Path(mfs.getRootDir(), MobConstants.MOB_DIR_NAME),
-            tableName);
-    Path regionDir =
-            new Path(mobTableDir, MobUtils.getMobRegionInfo(tableName).getEncodedName());
+    Path mobTableDir =
+      FSUtils.getTableDir(new Path(mfs.getRootDir(), MobConstants.MOB_DIR_NAME), tableName);
+    Path regionDir = new Path(mobTableDir, MobUtils.getMobRegionInfo(tableName).getEncodedName());
     if (fs.exists(regionDir)) {
       HFileArchiver.archiveRegion(fs, mfs.getRootDir(), mobTableDir, regionDir);
     }
@@ -340,15 +362,15 @@ public class DeleteTableProcedure
   }
 
   /**
-   * There may be items for this table still up in hbase:meta in the case where the
-   * info:regioninfo column was empty because of some write error. Remove ALL rows from hbase:meta
-   * that have to do with this table. See HBASE-12980.
-   * @throws IOException
+   * There may be items for this table still up in hbase:meta in the case where the info:regioninfo
+   * column was empty because of some write error. Remove ALL rows from hbase:meta that have to do
+   * with this table. See HBASE-12980.
    */
-  private static void cleanAnyRemainingRows(final MasterProcedureEnv env,
-      final TableName tableName) throws IOException {
+  private static void cleanAnyRemainingRows(final MasterProcedureEnv env, final TableName tableName)
+      throws IOException {
     Connection connection = env.getMasterServices().getConnection();
-    Scan tableScan = MetaTableAccessor.getScanForTableName(connection, tableName);
+    Scan tableScan = MetaTableAccessor.getScanForTable(connection, tableName, QueryType.REGION)
+      .addFamily(HConstants.CATALOG_FAMILY).addFamily(HConstants.TABLE_FAMILY);
     try (Table metaTable = connection.getTable(TableName.META_TABLE_NAME)) {
       List<Delete> deletes = new ArrayList<>();
       try (ResultScanner resScanner = metaTable.getScanner(tableScan)) {
@@ -357,14 +379,14 @@ public class DeleteTableProcedure
         }
       }
       if (!deletes.isEmpty()) {
-        LOG.warn("Deleting some vestigial " + deletes.size() + " rows of " + tableName +
-          " from " + TableName.META_TABLE_NAME);
+        LOG.warn("Deleting some vestigial {} rows of {} from {}", deletes.size(), tableName,
+          TableName.META_TABLE_NAME);
         metaTable.delete(deletes);
       }
     }
   }
 
-  protected static void deleteFromMeta(final MasterProcedureEnv env,
+  static void deleteFromMeta(final MasterProcedureEnv env,
       final TableName tableName, List<RegionInfo> regions) throws IOException {
     MetaTableAccessor.deleteRegions(env.getMasterServices().getConnection(), regions);
 
@@ -381,27 +403,75 @@ public class DeleteTableProcedure
     }
   }
 
-  protected static void deleteAssignmentState(final MasterProcedureEnv env,
+  static void deleteAssignmentState(final MasterProcedureEnv env,
       final TableName tableName) throws IOException {
     // Clean up regions of the table in RegionStates.
-    LOG.debug("Removing '" + tableName + "' from region states.");
+    LOG.debug("Removing '{}' from region states.", tableName);
     env.getMasterServices().getAssignmentManager().deleteTable(tableName);
 
     // If entry for this table states, remove it.
-    LOG.debug("Marking '" + tableName + "' as deleted.");
+    LOG.debug("Marking '{}' as deleted.", tableName);
     env.getMasterServices().getTableStateManager().setDeletedTable(tableName);
   }
 
-  protected static void deleteTableDescriptorCache(final MasterProcedureEnv env,
+  private static void deleteTableDescriptorCache(final MasterProcedureEnv env,
       final TableName tableName) throws IOException {
-    LOG.debug("Removing '" + tableName + "' descriptor.");
+    LOG.debug("Removing '{}' descriptor.", tableName);
     env.getMasterServices().getTableDescriptors().remove(tableName);
   }
 
-  protected static void deleteTableStates(final MasterProcedureEnv env, final TableName tableName)
+  static void deleteTableStates(final MasterProcedureEnv env, final TableName tableName)
       throws IOException {
     if (!tableName.isSystemTable()) {
       ProcedureSyncWait.getMasterQuotaManager(env).removeTableFromNamespaceQuota(tableName);
+    }
+  }
+
+  private static void addToList(List<String> encodedRegionNames, String encodedRegionName,
+      List<String> peerIds, ReplicationQueueStorage queueStorage) throws ReplicationException {
+    encodedRegionNames.add(encodedRegionName);
+    if (encodedRegionNames.size() >= REMOVE_LAST_SEQ_ID_BATCH_SIZE) {
+      for (String peerId : peerIds) {
+        queueStorage.removeLastSequenceIds(peerId, encodedRegionNames);
+      }
+      encodedRegionNames.clear();
+    }
+  }
+
+  static void deleteReplicationBarriersAndLastPushedSeqIds(MasterProcedureEnv env,
+      TableName tableName, List<RegionInfo> regions) throws IOException, ReplicationException {
+    Connection conn = env.getMasterServices().getConnection();
+    MetaTableAccessor.deleteReplicationBarriers(conn, regions);
+    ReplicationQueueStorage queueStorage = env.getReplicationPeerManager().getQueueStorage();
+    List<String> peerIds = env.getReplicationPeerManager().getSerialPeerIdsBelongsTo(tableName);
+    List<String> encodedRegionNames = new ArrayList<>();
+    for (RegionInfo region : regions) {
+      addToList(encodedRegionNames, region.getEncodedName(), peerIds, queueStorage);
+    }
+    // There could be some records left since we may still have barriers for split/merged regions
+    Scan scan = MetaTableAccessor.getScanForTable(conn, tableName, QueryType.REPLICATION)
+      .addFamily(HConstants.REPLICATION_BARRIER_FAMILY).setFilter(new FirstKeyOnlyFilter());
+    long ts = EnvironmentEdgeManager.currentTime();
+    try (Table table = MetaTableAccessor.getMetaHTable(conn);
+        ResultScanner scanner = table.getScanner(scan)) {
+      List<Delete> deletes = new ArrayList<>();
+      for (;;) {
+        Result result = scanner.next();
+        if (result == null) {
+          break;
+        }
+        byte[] row = result.getRow();
+        deletes.add(new Delete(row).addFamily(HConstants.REPLICATION_BARRIER_FAMILY, ts));
+        addToList(encodedRegionNames, RegionInfo.encodeRegionName(row), peerIds, queueStorage);
+      }
+      if (!deletes.isEmpty()) {
+        table.delete(deletes);
+      }
+    }
+    if (!encodedRegionNames.isEmpty()) {
+      for (String peerId : peerIds) {
+        queueStorage.removeLastSequenceIds(peerId, encodedRegionNames);
+      }
     }
   }
 }

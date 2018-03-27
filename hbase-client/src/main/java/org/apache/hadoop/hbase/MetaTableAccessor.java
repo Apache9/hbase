@@ -523,25 +523,24 @@ public class MetaTableAccessor {
   }
 
   /**
-   * This method creates a Scan object that will only scan catalog rows that
-   * belong to the specified table. It doesn't specify any columns.
-   * This is a better alternative to just using a start row and scan until
-   * it hits a new table since that requires parsing the HRI to get the table
-   * name.
+   * <p>
+   * This method creates a Scan object that will only scan catalog rows that belong to the specified
+   * table. It doesn't specify any columns.
+   * </p>
+   * <p>
+   * This is a better alternative to just using a start row and scan until it hits a new table since
+   * that requires parsing the HRI to get the table name.
+   * </p>
    * @param tableName bytes of table's name
    * @return configured Scan object
    */
-  @Deprecated
-  public static Scan getScanForTableName(Connection connection, TableName tableName) {
+  public static Scan getScanForTable(Connection connection, TableName tableName,
+      QueryType queryType) {
     // Start key is just the table name with delimiters
-    byte[] startKey = getTableStartRowForMeta(tableName, QueryType.REGION);
+    byte[] startKey = getTableStartRowForMeta(tableName, queryType);
     // Stop key appends the smallest possible char to the table name
-    byte[] stopKey = getTableStopRowForMeta(tableName, QueryType.REGION);
-
-    Scan scan = getMetaScan(connection, -1);
-    scan.setStartRow(startKey);
-    scan.setStopRow(stopKey);
-    return scan;
+    byte[] stopKey = getTableStopRowForMeta(tableName, queryType);
+    return getMetaScan(connection, -1).withStartRow(startKey).withStopRow(stopKey);
   }
 
   private static Scan getMetaScan(Connection connection, int rowUpperLimit) {
@@ -1831,7 +1830,7 @@ public class MetaTableAccessor {
    * @param connection connection we're using
    * @param regionsInfo list of regions to be deleted from META
    */
-  public static void deleteRegions(Connection connection, List<RegionInfo> regionsInfo, long ts)
+  private static void deleteRegions(Connection connection, List<RegionInfo> regionsInfo, long ts)
       throws IOException {
     List<Delete> deletes = new ArrayList<>(regionsInfo.size());
     for (RegionInfo hri : regionsInfo) {
@@ -1973,7 +1972,7 @@ public class MetaTableAccessor {
     byte[] value = getParentsBytes(parents);
     put.add(CellBuilderFactory.create(CellBuilderType.SHALLOW_COPY).setRow(put.getRow())
       .setFamily(HConstants.REPLICATION_BARRIER_FAMILY).setQualifier(REPLICATION_PARENT_QUALIFIER)
-      .setTimestamp(put.getTimeStamp()).setType(Type.Put).setValue(value).build());
+      .setTimestamp(put.getTimestamp()).setType(Type.Put).setValue(value).build());
   }
 
   private static Put makePutForReplicationBarrier(RegionInfo regionInfo, long openSeqNum, long ts)
@@ -1988,7 +1987,7 @@ public class MetaTableAccessor {
       .setRow(put.getRow())
       .setFamily(HConstants.REPLICATION_BARRIER_FAMILY)
       .setQualifier(HConstants.SEQNUM_QUALIFIER)
-      .setTimestamp(put.getTimeStamp())
+      .setTimestamp(put.getTimestamp())
       .setType(Type.Put)
       .setValue(Bytes.toBytes(openSeqNum))
       .build());
@@ -2126,6 +2125,15 @@ public class MetaTableAccessor {
         return true;
       });
     return list;
+  }
+
+  public static void deleteReplicationBarriers(Connection conn, List<RegionInfo> regions)
+      throws IOException {
+    long ts = EnvironmentEdgeManager.currentTime();
+    List<Delete> deletes = regions.stream().map(r -> r.getRegionName()).map(Delete::new)
+      .map(d -> d.addFamily(HConstants.REPLICATION_BARRIER_FAMILY, ts))
+      .collect(Collectors.toList());
+    deleteFromMetaTable(conn, deletes);
   }
 
   private static void debugLogMutations(List<? extends Mutation> mutations) throws IOException {
