@@ -17,6 +17,8 @@
  */
 package org.apache.hadoop.hbase.master;
 
+import com.google.protobuf.ServiceException;
+
 import java.io.IOException;
 
 import org.apache.commons.logging.Log;
@@ -33,6 +35,7 @@ import org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos;
 import org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos;
 import org.apache.hadoop.hbase.test.MetricsAssertHelper;
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -110,6 +113,30 @@ public class TestMasterMetrics {
 
     metricsHelper.assertCounter("cluster_requests", 15000, masterSource);
     master.stopMaster();
+  }
+
+  @Test(timeout = 300000)
+  public void testReplicationStatusRequests() throws Exception {
+    RegionServerStatusProtos.RegionServerReportRequest.Builder request =
+        RegionServerStatusProtos.RegionServerReportRequest.newBuilder();
+    ServerName serverName = cluster.getRegionServer(0).getServerName();
+    request.setServer(ProtobufUtil.toServerName(serverName));
+
+    ClusterStatusProtos.ReplicationLoadSource rload1 = ClusterStatusProtos.ReplicationLoadSource
+        .newBuilder().setPeerID("test").setAgeOfLastShippedOp(1).setReplicationLag(2)
+        .setTimeStampOfLastShippedOp(10).setSizeOfLogQueue(2).build();
+    ClusterStatusProtos.ReplicationLoadSource rload2 = ClusterStatusProtos.ReplicationLoadSource
+        .newBuilder().setPeerID("test1").setAgeOfLastShippedOp(1).setReplicationLag(3)
+        .setTimeStampOfLastShippedOp(10).setSizeOfLogQueue(1).build();
+
+    ClusterStatusProtos.ServerLoad sl = ClusterStatusProtos.ServerLoad.newBuilder()
+        .addReplLoadSource(0, rload1).addReplLoadSource(1, rload2).build();
+    request.setLoad(sl);
+    master.regionServerReport(null, request.build());
+    Assert.assertEquals("get the replication lag",
+      master.getPeerMaxReplicationLoad("test").getReplicationLag(), 2);
+    Assert.assertEquals("get the size of log queue",
+      master.getPeerMaxReplicationLoad("test1").getSizeOfLogQueue(), 1);
   }
 
   @Test

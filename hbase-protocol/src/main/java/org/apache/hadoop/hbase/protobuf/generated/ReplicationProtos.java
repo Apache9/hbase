@@ -13943,6 +13943,1072 @@ public final class ReplicationProtos {
     // @@protoc_insertion_point(class_scope:ListReplicationPeersResponse)
   }
 
+  public interface GetPeerMaxReplicationLoadRequestOrBuilder
+      extends com.google.protobuf.MessageOrBuilder {
+
+    // optional string peer_id = 1;
+    /**
+     * <code>optional string peer_id = 1;</code>
+     */
+    boolean hasPeerId();
+    /**
+     * <code>optional string peer_id = 1;</code>
+     */
+    java.lang.String getPeerId();
+    /**
+     * <code>optional string peer_id = 1;</code>
+     */
+    com.google.protobuf.ByteString
+        getPeerIdBytes();
+  }
+  /**
+   * Protobuf type {@code GetPeerMaxReplicationLoadRequest}
+   */
+  public static final class GetPeerMaxReplicationLoadRequest extends
+      com.google.protobuf.GeneratedMessage
+      implements GetPeerMaxReplicationLoadRequestOrBuilder {
+    // Use GetPeerMaxReplicationLoadRequest.newBuilder() to construct.
+    private GetPeerMaxReplicationLoadRequest(com.google.protobuf.GeneratedMessage.Builder<?> builder) {
+      super(builder);
+      this.unknownFields = builder.getUnknownFields();
+    }
+    private GetPeerMaxReplicationLoadRequest(boolean noInit) { this.unknownFields = com.google.protobuf.UnknownFieldSet.getDefaultInstance(); }
+
+    private static final GetPeerMaxReplicationLoadRequest defaultInstance;
+    public static GetPeerMaxReplicationLoadRequest getDefaultInstance() {
+      return defaultInstance;
+    }
+
+    public GetPeerMaxReplicationLoadRequest getDefaultInstanceForType() {
+      return defaultInstance;
+    }
+
+    private final com.google.protobuf.UnknownFieldSet unknownFields;
+    @java.lang.Override
+    public final com.google.protobuf.UnknownFieldSet
+        getUnknownFields() {
+      return this.unknownFields;
+    }
+    private GetPeerMaxReplicationLoadRequest(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      initFields();
+      int mutable_bitField0_ = 0;
+      com.google.protobuf.UnknownFieldSet.Builder unknownFields =
+          com.google.protobuf.UnknownFieldSet.newBuilder();
+      try {
+        boolean done = false;
+        while (!done) {
+          int tag = input.readTag();
+          switch (tag) {
+            case 0:
+              done = true;
+              break;
+            default: {
+              if (!parseUnknownField(input, unknownFields,
+                                     extensionRegistry, tag)) {
+                done = true;
+              }
+              break;
+            }
+            case 10: {
+              bitField0_ |= 0x00000001;
+              peerId_ = input.readBytes();
+              break;
+            }
+          }
+        }
+      } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+        throw e.setUnfinishedMessage(this);
+      } catch (java.io.IOException e) {
+        throw new com.google.protobuf.InvalidProtocolBufferException(
+            e.getMessage()).setUnfinishedMessage(this);
+      } finally {
+        this.unknownFields = unknownFields.build();
+        makeExtensionsImmutable();
+      }
+    }
+    public static final com.google.protobuf.Descriptors.Descriptor
+        getDescriptor() {
+      return org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.internal_static_GetPeerMaxReplicationLoadRequest_descriptor;
+    }
+
+    protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+        internalGetFieldAccessorTable() {
+      return org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.internal_static_GetPeerMaxReplicationLoadRequest_fieldAccessorTable
+          .ensureFieldAccessorsInitialized(
+              org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadRequest.class, org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadRequest.Builder.class);
+    }
+
+    public static com.google.protobuf.Parser<GetPeerMaxReplicationLoadRequest> PARSER =
+        new com.google.protobuf.AbstractParser<GetPeerMaxReplicationLoadRequest>() {
+      public GetPeerMaxReplicationLoadRequest parsePartialFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws com.google.protobuf.InvalidProtocolBufferException {
+        return new GetPeerMaxReplicationLoadRequest(input, extensionRegistry);
+      }
+    };
+
+    @java.lang.Override
+    public com.google.protobuf.Parser<GetPeerMaxReplicationLoadRequest> getParserForType() {
+      return PARSER;
+    }
+
+    private int bitField0_;
+    // optional string peer_id = 1;
+    public static final int PEER_ID_FIELD_NUMBER = 1;
+    private java.lang.Object peerId_;
+    /**
+     * <code>optional string peer_id = 1;</code>
+     */
+    public boolean hasPeerId() {
+      return ((bitField0_ & 0x00000001) == 0x00000001);
+    }
+    /**
+     * <code>optional string peer_id = 1;</code>
+     */
+    public java.lang.String getPeerId() {
+      java.lang.Object ref = peerId_;
+      if (ref instanceof java.lang.String) {
+        return (java.lang.String) ref;
+      } else {
+        com.google.protobuf.ByteString bs = 
+            (com.google.protobuf.ByteString) ref;
+        java.lang.String s = bs.toStringUtf8();
+        if (bs.isValidUtf8()) {
+          peerId_ = s;
+        }
+        return s;
+      }
+    }
+    /**
+     * <code>optional string peer_id = 1;</code>
+     */
+    public com.google.protobuf.ByteString
+        getPeerIdBytes() {
+      java.lang.Object ref = peerId_;
+      if (ref instanceof java.lang.String) {
+        com.google.protobuf.ByteString b = 
+            com.google.protobuf.ByteString.copyFromUtf8(
+                (java.lang.String) ref);
+        peerId_ = b;
+        return b;
+      } else {
+        return (com.google.protobuf.ByteString) ref;
+      }
+    }
+
+    private void initFields() {
+      peerId_ = "";
+    }
+    private byte memoizedIsInitialized = -1;
+    public final boolean isInitialized() {
+      byte isInitialized = memoizedIsInitialized;
+      if (isInitialized != -1) return isInitialized == 1;
+
+      memoizedIsInitialized = 1;
+      return true;
+    }
+
+    public void writeTo(com.google.protobuf.CodedOutputStream output)
+                        throws java.io.IOException {
+      getSerializedSize();
+      if (((bitField0_ & 0x00000001) == 0x00000001)) {
+        output.writeBytes(1, getPeerIdBytes());
+      }
+      getUnknownFields().writeTo(output);
+    }
+
+    private int memoizedSerializedSize = -1;
+    public int getSerializedSize() {
+      int size = memoizedSerializedSize;
+      if (size != -1) return size;
+
+      size = 0;
+      if (((bitField0_ & 0x00000001) == 0x00000001)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeBytesSize(1, getPeerIdBytes());
+      }
+      size += getUnknownFields().getSerializedSize();
+      memoizedSerializedSize = size;
+      return size;
+    }
+
+    private static final long serialVersionUID = 0L;
+    @java.lang.Override
+    protected java.lang.Object writeReplace()
+        throws java.io.ObjectStreamException {
+      return super.writeReplace();
+    }
+
+    @java.lang.Override
+    public boolean equals(final java.lang.Object obj) {
+      if (obj == this) {
+       return true;
+      }
+      if (!(obj instanceof org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadRequest)) {
+        return super.equals(obj);
+      }
+      org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadRequest other = (org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadRequest) obj;
+
+      boolean result = true;
+      result = result && (hasPeerId() == other.hasPeerId());
+      if (hasPeerId()) {
+        result = result && getPeerId()
+            .equals(other.getPeerId());
+      }
+      result = result &&
+          getUnknownFields().equals(other.getUnknownFields());
+      return result;
+    }
+
+    private int memoizedHashCode = 0;
+    @java.lang.Override
+    public int hashCode() {
+      if (memoizedHashCode != 0) {
+        return memoizedHashCode;
+      }
+      int hash = 41;
+      hash = (19 * hash) + getDescriptorForType().hashCode();
+      if (hasPeerId()) {
+        hash = (37 * hash) + PEER_ID_FIELD_NUMBER;
+        hash = (53 * hash) + getPeerId().hashCode();
+      }
+      hash = (29 * hash) + getUnknownFields().hashCode();
+      memoizedHashCode = hash;
+      return hash;
+    }
+
+    public static org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadRequest parseFrom(
+        com.google.protobuf.ByteString data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadRequest parseFrom(
+        com.google.protobuf.ByteString data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadRequest parseFrom(byte[] data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadRequest parseFrom(
+        byte[] data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadRequest parseFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadRequest parseFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadRequest parseDelimitedFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return PARSER.parseDelimitedFrom(input);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadRequest parseDelimitedFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseDelimitedFrom(input, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadRequest parseFrom(
+        com.google.protobuf.CodedInputStream input)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadRequest parseFrom(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input, extensionRegistry);
+    }
+
+    public static Builder newBuilder() { return Builder.create(); }
+    public Builder newBuilderForType() { return newBuilder(); }
+    public static Builder newBuilder(org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadRequest prototype) {
+      return newBuilder().mergeFrom(prototype);
+    }
+    public Builder toBuilder() { return newBuilder(this); }
+
+    @java.lang.Override
+    protected Builder newBuilderForType(
+        com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+      Builder builder = new Builder(parent);
+      return builder;
+    }
+    /**
+     * Protobuf type {@code GetPeerMaxReplicationLoadRequest}
+     */
+    public static final class Builder extends
+        com.google.protobuf.GeneratedMessage.Builder<Builder>
+       implements org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadRequestOrBuilder {
+      public static final com.google.protobuf.Descriptors.Descriptor
+          getDescriptor() {
+        return org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.internal_static_GetPeerMaxReplicationLoadRequest_descriptor;
+      }
+
+      protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+          internalGetFieldAccessorTable() {
+        return org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.internal_static_GetPeerMaxReplicationLoadRequest_fieldAccessorTable
+            .ensureFieldAccessorsInitialized(
+                org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadRequest.class, org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadRequest.Builder.class);
+      }
+
+      // Construct using org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadRequest.newBuilder()
+      private Builder() {
+        maybeForceBuilderInitialization();
+      }
+
+      private Builder(
+          com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+        super(parent);
+        maybeForceBuilderInitialization();
+      }
+      private void maybeForceBuilderInitialization() {
+        if (com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders) {
+        }
+      }
+      private static Builder create() {
+        return new Builder();
+      }
+
+      public Builder clear() {
+        super.clear();
+        peerId_ = "";
+        bitField0_ = (bitField0_ & ~0x00000001);
+        return this;
+      }
+
+      public Builder clone() {
+        return create().mergeFrom(buildPartial());
+      }
+
+      public com.google.protobuf.Descriptors.Descriptor
+          getDescriptorForType() {
+        return org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.internal_static_GetPeerMaxReplicationLoadRequest_descriptor;
+      }
+
+      public org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadRequest getDefaultInstanceForType() {
+        return org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadRequest.getDefaultInstance();
+      }
+
+      public org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadRequest build() {
+        org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadRequest result = buildPartial();
+        if (!result.isInitialized()) {
+          throw newUninitializedMessageException(result);
+        }
+        return result;
+      }
+
+      public org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadRequest buildPartial() {
+        org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadRequest result = new org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadRequest(this);
+        int from_bitField0_ = bitField0_;
+        int to_bitField0_ = 0;
+        if (((from_bitField0_ & 0x00000001) == 0x00000001)) {
+          to_bitField0_ |= 0x00000001;
+        }
+        result.peerId_ = peerId_;
+        result.bitField0_ = to_bitField0_;
+        onBuilt();
+        return result;
+      }
+
+      public Builder mergeFrom(com.google.protobuf.Message other) {
+        if (other instanceof org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadRequest) {
+          return mergeFrom((org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadRequest)other);
+        } else {
+          super.mergeFrom(other);
+          return this;
+        }
+      }
+
+      public Builder mergeFrom(org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadRequest other) {
+        if (other == org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadRequest.getDefaultInstance()) return this;
+        if (other.hasPeerId()) {
+          bitField0_ |= 0x00000001;
+          peerId_ = other.peerId_;
+          onChanged();
+        }
+        this.mergeUnknownFields(other.getUnknownFields());
+        return this;
+      }
+
+      public final boolean isInitialized() {
+        return true;
+      }
+
+      public Builder mergeFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws java.io.IOException {
+        org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadRequest parsedMessage = null;
+        try {
+          parsedMessage = PARSER.parsePartialFrom(input, extensionRegistry);
+        } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+          parsedMessage = (org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadRequest) e.getUnfinishedMessage();
+          throw e;
+        } finally {
+          if (parsedMessage != null) {
+            mergeFrom(parsedMessage);
+          }
+        }
+        return this;
+      }
+      private int bitField0_;
+
+      // optional string peer_id = 1;
+      private java.lang.Object peerId_ = "";
+      /**
+       * <code>optional string peer_id = 1;</code>
+       */
+      public boolean hasPeerId() {
+        return ((bitField0_ & 0x00000001) == 0x00000001);
+      }
+      /**
+       * <code>optional string peer_id = 1;</code>
+       */
+      public java.lang.String getPeerId() {
+        java.lang.Object ref = peerId_;
+        if (!(ref instanceof java.lang.String)) {
+          java.lang.String s = ((com.google.protobuf.ByteString) ref)
+              .toStringUtf8();
+          peerId_ = s;
+          return s;
+        } else {
+          return (java.lang.String) ref;
+        }
+      }
+      /**
+       * <code>optional string peer_id = 1;</code>
+       */
+      public com.google.protobuf.ByteString
+          getPeerIdBytes() {
+        java.lang.Object ref = peerId_;
+        if (ref instanceof String) {
+          com.google.protobuf.ByteString b = 
+              com.google.protobuf.ByteString.copyFromUtf8(
+                  (java.lang.String) ref);
+          peerId_ = b;
+          return b;
+        } else {
+          return (com.google.protobuf.ByteString) ref;
+        }
+      }
+      /**
+       * <code>optional string peer_id = 1;</code>
+       */
+      public Builder setPeerId(
+          java.lang.String value) {
+        if (value == null) {
+    throw new NullPointerException();
+  }
+  bitField0_ |= 0x00000001;
+        peerId_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>optional string peer_id = 1;</code>
+       */
+      public Builder clearPeerId() {
+        bitField0_ = (bitField0_ & ~0x00000001);
+        peerId_ = getDefaultInstance().getPeerId();
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>optional string peer_id = 1;</code>
+       */
+      public Builder setPeerIdBytes(
+          com.google.protobuf.ByteString value) {
+        if (value == null) {
+    throw new NullPointerException();
+  }
+  bitField0_ |= 0x00000001;
+        peerId_ = value;
+        onChanged();
+        return this;
+      }
+
+      // @@protoc_insertion_point(builder_scope:GetPeerMaxReplicationLoadRequest)
+    }
+
+    static {
+      defaultInstance = new GetPeerMaxReplicationLoadRequest(true);
+      defaultInstance.initFields();
+    }
+
+    // @@protoc_insertion_point(class_scope:GetPeerMaxReplicationLoadRequest)
+  }
+
+  public interface GetPeerMaxReplicationLoadResponseOrBuilder
+      extends com.google.protobuf.MessageOrBuilder {
+
+    // optional .ReplicationLoadSource replicationLoadSource = 1;
+    /**
+     * <code>optional .ReplicationLoadSource replicationLoadSource = 1;</code>
+     */
+    boolean hasReplicationLoadSource();
+    /**
+     * <code>optional .ReplicationLoadSource replicationLoadSource = 1;</code>
+     */
+    org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.ReplicationLoadSource getReplicationLoadSource();
+    /**
+     * <code>optional .ReplicationLoadSource replicationLoadSource = 1;</code>
+     */
+    org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.ReplicationLoadSourceOrBuilder getReplicationLoadSourceOrBuilder();
+  }
+  /**
+   * Protobuf type {@code GetPeerMaxReplicationLoadResponse}
+   */
+  public static final class GetPeerMaxReplicationLoadResponse extends
+      com.google.protobuf.GeneratedMessage
+      implements GetPeerMaxReplicationLoadResponseOrBuilder {
+    // Use GetPeerMaxReplicationLoadResponse.newBuilder() to construct.
+    private GetPeerMaxReplicationLoadResponse(com.google.protobuf.GeneratedMessage.Builder<?> builder) {
+      super(builder);
+      this.unknownFields = builder.getUnknownFields();
+    }
+    private GetPeerMaxReplicationLoadResponse(boolean noInit) { this.unknownFields = com.google.protobuf.UnknownFieldSet.getDefaultInstance(); }
+
+    private static final GetPeerMaxReplicationLoadResponse defaultInstance;
+    public static GetPeerMaxReplicationLoadResponse getDefaultInstance() {
+      return defaultInstance;
+    }
+
+    public GetPeerMaxReplicationLoadResponse getDefaultInstanceForType() {
+      return defaultInstance;
+    }
+
+    private final com.google.protobuf.UnknownFieldSet unknownFields;
+    @java.lang.Override
+    public final com.google.protobuf.UnknownFieldSet
+        getUnknownFields() {
+      return this.unknownFields;
+    }
+    private GetPeerMaxReplicationLoadResponse(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      initFields();
+      int mutable_bitField0_ = 0;
+      com.google.protobuf.UnknownFieldSet.Builder unknownFields =
+          com.google.protobuf.UnknownFieldSet.newBuilder();
+      try {
+        boolean done = false;
+        while (!done) {
+          int tag = input.readTag();
+          switch (tag) {
+            case 0:
+              done = true;
+              break;
+            default: {
+              if (!parseUnknownField(input, unknownFields,
+                                     extensionRegistry, tag)) {
+                done = true;
+              }
+              break;
+            }
+            case 10: {
+              org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.ReplicationLoadSource.Builder subBuilder = null;
+              if (((bitField0_ & 0x00000001) == 0x00000001)) {
+                subBuilder = replicationLoadSource_.toBuilder();
+              }
+              replicationLoadSource_ = input.readMessage(org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.ReplicationLoadSource.PARSER, extensionRegistry);
+              if (subBuilder != null) {
+                subBuilder.mergeFrom(replicationLoadSource_);
+                replicationLoadSource_ = subBuilder.buildPartial();
+              }
+              bitField0_ |= 0x00000001;
+              break;
+            }
+          }
+        }
+      } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+        throw e.setUnfinishedMessage(this);
+      } catch (java.io.IOException e) {
+        throw new com.google.protobuf.InvalidProtocolBufferException(
+            e.getMessage()).setUnfinishedMessage(this);
+      } finally {
+        this.unknownFields = unknownFields.build();
+        makeExtensionsImmutable();
+      }
+    }
+    public static final com.google.protobuf.Descriptors.Descriptor
+        getDescriptor() {
+      return org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.internal_static_GetPeerMaxReplicationLoadResponse_descriptor;
+    }
+
+    protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+        internalGetFieldAccessorTable() {
+      return org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.internal_static_GetPeerMaxReplicationLoadResponse_fieldAccessorTable
+          .ensureFieldAccessorsInitialized(
+              org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadResponse.class, org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadResponse.Builder.class);
+    }
+
+    public static com.google.protobuf.Parser<GetPeerMaxReplicationLoadResponse> PARSER =
+        new com.google.protobuf.AbstractParser<GetPeerMaxReplicationLoadResponse>() {
+      public GetPeerMaxReplicationLoadResponse parsePartialFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws com.google.protobuf.InvalidProtocolBufferException {
+        return new GetPeerMaxReplicationLoadResponse(input, extensionRegistry);
+      }
+    };
+
+    @java.lang.Override
+    public com.google.protobuf.Parser<GetPeerMaxReplicationLoadResponse> getParserForType() {
+      return PARSER;
+    }
+
+    private int bitField0_;
+    // optional .ReplicationLoadSource replicationLoadSource = 1;
+    public static final int REPLICATIONLOADSOURCE_FIELD_NUMBER = 1;
+    private org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.ReplicationLoadSource replicationLoadSource_;
+    /**
+     * <code>optional .ReplicationLoadSource replicationLoadSource = 1;</code>
+     */
+    public boolean hasReplicationLoadSource() {
+      return ((bitField0_ & 0x00000001) == 0x00000001);
+    }
+    /**
+     * <code>optional .ReplicationLoadSource replicationLoadSource = 1;</code>
+     */
+    public org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.ReplicationLoadSource getReplicationLoadSource() {
+      return replicationLoadSource_;
+    }
+    /**
+     * <code>optional .ReplicationLoadSource replicationLoadSource = 1;</code>
+     */
+    public org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.ReplicationLoadSourceOrBuilder getReplicationLoadSourceOrBuilder() {
+      return replicationLoadSource_;
+    }
+
+    private void initFields() {
+      replicationLoadSource_ = org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.ReplicationLoadSource.getDefaultInstance();
+    }
+    private byte memoizedIsInitialized = -1;
+    public final boolean isInitialized() {
+      byte isInitialized = memoizedIsInitialized;
+      if (isInitialized != -1) return isInitialized == 1;
+
+      if (hasReplicationLoadSource()) {
+        if (!getReplicationLoadSource().isInitialized()) {
+          memoizedIsInitialized = 0;
+          return false;
+        }
+      }
+      memoizedIsInitialized = 1;
+      return true;
+    }
+
+    public void writeTo(com.google.protobuf.CodedOutputStream output)
+                        throws java.io.IOException {
+      getSerializedSize();
+      if (((bitField0_ & 0x00000001) == 0x00000001)) {
+        output.writeMessage(1, replicationLoadSource_);
+      }
+      getUnknownFields().writeTo(output);
+    }
+
+    private int memoizedSerializedSize = -1;
+    public int getSerializedSize() {
+      int size = memoizedSerializedSize;
+      if (size != -1) return size;
+
+      size = 0;
+      if (((bitField0_ & 0x00000001) == 0x00000001)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeMessageSize(1, replicationLoadSource_);
+      }
+      size += getUnknownFields().getSerializedSize();
+      memoizedSerializedSize = size;
+      return size;
+    }
+
+    private static final long serialVersionUID = 0L;
+    @java.lang.Override
+    protected java.lang.Object writeReplace()
+        throws java.io.ObjectStreamException {
+      return super.writeReplace();
+    }
+
+    @java.lang.Override
+    public boolean equals(final java.lang.Object obj) {
+      if (obj == this) {
+       return true;
+      }
+      if (!(obj instanceof org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadResponse)) {
+        return super.equals(obj);
+      }
+      org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadResponse other = (org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadResponse) obj;
+
+      boolean result = true;
+      result = result && (hasReplicationLoadSource() == other.hasReplicationLoadSource());
+      if (hasReplicationLoadSource()) {
+        result = result && getReplicationLoadSource()
+            .equals(other.getReplicationLoadSource());
+      }
+      result = result &&
+          getUnknownFields().equals(other.getUnknownFields());
+      return result;
+    }
+
+    private int memoizedHashCode = 0;
+    @java.lang.Override
+    public int hashCode() {
+      if (memoizedHashCode != 0) {
+        return memoizedHashCode;
+      }
+      int hash = 41;
+      hash = (19 * hash) + getDescriptorForType().hashCode();
+      if (hasReplicationLoadSource()) {
+        hash = (37 * hash) + REPLICATIONLOADSOURCE_FIELD_NUMBER;
+        hash = (53 * hash) + getReplicationLoadSource().hashCode();
+      }
+      hash = (29 * hash) + getUnknownFields().hashCode();
+      memoizedHashCode = hash;
+      return hash;
+    }
+
+    public static org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadResponse parseFrom(
+        com.google.protobuf.ByteString data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadResponse parseFrom(
+        com.google.protobuf.ByteString data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadResponse parseFrom(byte[] data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadResponse parseFrom(
+        byte[] data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return PARSER.parseFrom(data, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadResponse parseFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadResponse parseFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadResponse parseDelimitedFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return PARSER.parseDelimitedFrom(input);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadResponse parseDelimitedFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseDelimitedFrom(input, extensionRegistry);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadResponse parseFrom(
+        com.google.protobuf.CodedInputStream input)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input);
+    }
+    public static org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadResponse parseFrom(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return PARSER.parseFrom(input, extensionRegistry);
+    }
+
+    public static Builder newBuilder() { return Builder.create(); }
+    public Builder newBuilderForType() { return newBuilder(); }
+    public static Builder newBuilder(org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadResponse prototype) {
+      return newBuilder().mergeFrom(prototype);
+    }
+    public Builder toBuilder() { return newBuilder(this); }
+
+    @java.lang.Override
+    protected Builder newBuilderForType(
+        com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+      Builder builder = new Builder(parent);
+      return builder;
+    }
+    /**
+     * Protobuf type {@code GetPeerMaxReplicationLoadResponse}
+     */
+    public static final class Builder extends
+        com.google.protobuf.GeneratedMessage.Builder<Builder>
+       implements org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadResponseOrBuilder {
+      public static final com.google.protobuf.Descriptors.Descriptor
+          getDescriptor() {
+        return org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.internal_static_GetPeerMaxReplicationLoadResponse_descriptor;
+      }
+
+      protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+          internalGetFieldAccessorTable() {
+        return org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.internal_static_GetPeerMaxReplicationLoadResponse_fieldAccessorTable
+            .ensureFieldAccessorsInitialized(
+                org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadResponse.class, org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadResponse.Builder.class);
+      }
+
+      // Construct using org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadResponse.newBuilder()
+      private Builder() {
+        maybeForceBuilderInitialization();
+      }
+
+      private Builder(
+          com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+        super(parent);
+        maybeForceBuilderInitialization();
+      }
+      private void maybeForceBuilderInitialization() {
+        if (com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders) {
+          getReplicationLoadSourceFieldBuilder();
+        }
+      }
+      private static Builder create() {
+        return new Builder();
+      }
+
+      public Builder clear() {
+        super.clear();
+        if (replicationLoadSourceBuilder_ == null) {
+          replicationLoadSource_ = org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.ReplicationLoadSource.getDefaultInstance();
+        } else {
+          replicationLoadSourceBuilder_.clear();
+        }
+        bitField0_ = (bitField0_ & ~0x00000001);
+        return this;
+      }
+
+      public Builder clone() {
+        return create().mergeFrom(buildPartial());
+      }
+
+      public com.google.protobuf.Descriptors.Descriptor
+          getDescriptorForType() {
+        return org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.internal_static_GetPeerMaxReplicationLoadResponse_descriptor;
+      }
+
+      public org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadResponse getDefaultInstanceForType() {
+        return org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadResponse.getDefaultInstance();
+      }
+
+      public org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadResponse build() {
+        org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadResponse result = buildPartial();
+        if (!result.isInitialized()) {
+          throw newUninitializedMessageException(result);
+        }
+        return result;
+      }
+
+      public org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadResponse buildPartial() {
+        org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadResponse result = new org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadResponse(this);
+        int from_bitField0_ = bitField0_;
+        int to_bitField0_ = 0;
+        if (((from_bitField0_ & 0x00000001) == 0x00000001)) {
+          to_bitField0_ |= 0x00000001;
+        }
+        if (replicationLoadSourceBuilder_ == null) {
+          result.replicationLoadSource_ = replicationLoadSource_;
+        } else {
+          result.replicationLoadSource_ = replicationLoadSourceBuilder_.build();
+        }
+        result.bitField0_ = to_bitField0_;
+        onBuilt();
+        return result;
+      }
+
+      public Builder mergeFrom(com.google.protobuf.Message other) {
+        if (other instanceof org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadResponse) {
+          return mergeFrom((org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadResponse)other);
+        } else {
+          super.mergeFrom(other);
+          return this;
+        }
+      }
+
+      public Builder mergeFrom(org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadResponse other) {
+        if (other == org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadResponse.getDefaultInstance()) return this;
+        if (other.hasReplicationLoadSource()) {
+          mergeReplicationLoadSource(other.getReplicationLoadSource());
+        }
+        this.mergeUnknownFields(other.getUnknownFields());
+        return this;
+      }
+
+      public final boolean isInitialized() {
+        if (hasReplicationLoadSource()) {
+          if (!getReplicationLoadSource().isInitialized()) {
+            
+            return false;
+          }
+        }
+        return true;
+      }
+
+      public Builder mergeFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws java.io.IOException {
+        org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadResponse parsedMessage = null;
+        try {
+          parsedMessage = PARSER.parsePartialFrom(input, extensionRegistry);
+        } catch (com.google.protobuf.InvalidProtocolBufferException e) {
+          parsedMessage = (org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadResponse) e.getUnfinishedMessage();
+          throw e;
+        } finally {
+          if (parsedMessage != null) {
+            mergeFrom(parsedMessage);
+          }
+        }
+        return this;
+      }
+      private int bitField0_;
+
+      // optional .ReplicationLoadSource replicationLoadSource = 1;
+      private org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.ReplicationLoadSource replicationLoadSource_ = org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.ReplicationLoadSource.getDefaultInstance();
+      private com.google.protobuf.SingleFieldBuilder<
+          org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.ReplicationLoadSource, org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.ReplicationLoadSource.Builder, org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.ReplicationLoadSourceOrBuilder> replicationLoadSourceBuilder_;
+      /**
+       * <code>optional .ReplicationLoadSource replicationLoadSource = 1;</code>
+       */
+      public boolean hasReplicationLoadSource() {
+        return ((bitField0_ & 0x00000001) == 0x00000001);
+      }
+      /**
+       * <code>optional .ReplicationLoadSource replicationLoadSource = 1;</code>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.ReplicationLoadSource getReplicationLoadSource() {
+        if (replicationLoadSourceBuilder_ == null) {
+          return replicationLoadSource_;
+        } else {
+          return replicationLoadSourceBuilder_.getMessage();
+        }
+      }
+      /**
+       * <code>optional .ReplicationLoadSource replicationLoadSource = 1;</code>
+       */
+      public Builder setReplicationLoadSource(org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.ReplicationLoadSource value) {
+        if (replicationLoadSourceBuilder_ == null) {
+          if (value == null) {
+            throw new NullPointerException();
+          }
+          replicationLoadSource_ = value;
+          onChanged();
+        } else {
+          replicationLoadSourceBuilder_.setMessage(value);
+        }
+        bitField0_ |= 0x00000001;
+        return this;
+      }
+      /**
+       * <code>optional .ReplicationLoadSource replicationLoadSource = 1;</code>
+       */
+      public Builder setReplicationLoadSource(
+          org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.ReplicationLoadSource.Builder builderForValue) {
+        if (replicationLoadSourceBuilder_ == null) {
+          replicationLoadSource_ = builderForValue.build();
+          onChanged();
+        } else {
+          replicationLoadSourceBuilder_.setMessage(builderForValue.build());
+        }
+        bitField0_ |= 0x00000001;
+        return this;
+      }
+      /**
+       * <code>optional .ReplicationLoadSource replicationLoadSource = 1;</code>
+       */
+      public Builder mergeReplicationLoadSource(org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.ReplicationLoadSource value) {
+        if (replicationLoadSourceBuilder_ == null) {
+          if (((bitField0_ & 0x00000001) == 0x00000001) &&
+              replicationLoadSource_ != org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.ReplicationLoadSource.getDefaultInstance()) {
+            replicationLoadSource_ =
+              org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.ReplicationLoadSource.newBuilder(replicationLoadSource_).mergeFrom(value).buildPartial();
+          } else {
+            replicationLoadSource_ = value;
+          }
+          onChanged();
+        } else {
+          replicationLoadSourceBuilder_.mergeFrom(value);
+        }
+        bitField0_ |= 0x00000001;
+        return this;
+      }
+      /**
+       * <code>optional .ReplicationLoadSource replicationLoadSource = 1;</code>
+       */
+      public Builder clearReplicationLoadSource() {
+        if (replicationLoadSourceBuilder_ == null) {
+          replicationLoadSource_ = org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.ReplicationLoadSource.getDefaultInstance();
+          onChanged();
+        } else {
+          replicationLoadSourceBuilder_.clear();
+        }
+        bitField0_ = (bitField0_ & ~0x00000001);
+        return this;
+      }
+      /**
+       * <code>optional .ReplicationLoadSource replicationLoadSource = 1;</code>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.ReplicationLoadSource.Builder getReplicationLoadSourceBuilder() {
+        bitField0_ |= 0x00000001;
+        onChanged();
+        return getReplicationLoadSourceFieldBuilder().getBuilder();
+      }
+      /**
+       * <code>optional .ReplicationLoadSource replicationLoadSource = 1;</code>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.ReplicationLoadSourceOrBuilder getReplicationLoadSourceOrBuilder() {
+        if (replicationLoadSourceBuilder_ != null) {
+          return replicationLoadSourceBuilder_.getMessageOrBuilder();
+        } else {
+          return replicationLoadSource_;
+        }
+      }
+      /**
+       * <code>optional .ReplicationLoadSource replicationLoadSource = 1;</code>
+       */
+      private com.google.protobuf.SingleFieldBuilder<
+          org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.ReplicationLoadSource, org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.ReplicationLoadSource.Builder, org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.ReplicationLoadSourceOrBuilder> 
+          getReplicationLoadSourceFieldBuilder() {
+        if (replicationLoadSourceBuilder_ == null) {
+          replicationLoadSourceBuilder_ = new com.google.protobuf.SingleFieldBuilder<
+              org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.ReplicationLoadSource, org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.ReplicationLoadSource.Builder, org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.ReplicationLoadSourceOrBuilder>(
+                  replicationLoadSource_,
+                  getParentForChildren(),
+                  isClean());
+          replicationLoadSource_ = null;
+        }
+        return replicationLoadSourceBuilder_;
+      }
+
+      // @@protoc_insertion_point(builder_scope:GetPeerMaxReplicationLoadResponse)
+    }
+
+    static {
+      defaultInstance = new GetPeerMaxReplicationLoadResponse(true);
+      defaultInstance.initFields();
+    }
+
+    // @@protoc_insertion_point(class_scope:GetPeerMaxReplicationLoadResponse)
+  }
+
   private static com.google.protobuf.Descriptors.Descriptor
     internal_static_TableCF_descriptor;
   private static
@@ -14048,6 +15114,16 @@ public final class ReplicationProtos {
   private static
     com.google.protobuf.GeneratedMessage.FieldAccessorTable
       internal_static_ListReplicationPeersResponse_fieldAccessorTable;
+  private static com.google.protobuf.Descriptors.Descriptor
+    internal_static_GetPeerMaxReplicationLoadRequest_descriptor;
+  private static
+    com.google.protobuf.GeneratedMessage.FieldAccessorTable
+      internal_static_GetPeerMaxReplicationLoadRequest_fieldAccessorTable;
+  private static com.google.protobuf.Descriptors.Descriptor
+    internal_static_GetPeerMaxReplicationLoadResponse_descriptor;
+  private static
+    com.google.protobuf.GeneratedMessage.FieldAccessorTable
+      internal_static_GetPeerMaxReplicationLoadResponse_fieldAccessorTable;
 
   public static com.google.protobuf.Descriptors.FileDescriptor
       getDescriptor() {
@@ -14057,49 +15133,53 @@ public final class ReplicationProtos {
       descriptor;
   static {
     java.lang.String[] descriptorData = {
-      "\n\021Replication.proto\032\013HBase.proto\";\n\007Tabl" +
-      "eCF\022\036\n\ntable_name\030\001 \001(\0132\n.TableName\022\020\n\010f" +
-      "amilies\030\002 \003(\014\"\'\n\010TableCFs\022\033\n\ttable_cfs\030\001" +
-      " \003(\0132\010.TableCF\"\372\002\n\017ReplicationPeer\022\022\n\ncl" +
-      "usterkey\030\001 \002(\t\022\037\n\027replicationEndpointImp" +
-      "l\030\002 \001(\t\022\035\n\004data\030\003 \003(\0132\017.BytesBytesPair\022&" +
-      "\n\rconfiguration\030\004 \003(\0132\017.NameStringPair\0227" +
-      "\n\014peerProtocol\030\005 \001(\0162\031.ReplicationPeer.P" +
-      "rotocol:\006NATIVE\022\033\n\010tableCFs\030\006 \001(\0132\t.Tabl" +
-      "eCFs\022\021\n\tbandwidth\030\007 \001(\003\022\022\n\nnamespaces\030\010 ",
-      "\003(\014\022\013\n\003all\030\t \001(\010\022\"\n\017excludeTableCFs\030\n \001(" +
-      "\0132\t.TableCFs\022\031\n\021excludeNamespaces\030\013 \003(\014\"" +
-      "\"\n\010Protocol\022\n\n\006NATIVE\020\000\022\n\n\006THRIFT\020\001\"^\n\020R" +
-      "eplicationState\022&\n\005state\030\001 \002(\0162\027.Replica" +
-      "tionState.State\"\"\n\005State\022\013\n\007ENABLED\020\000\022\014\n" +
-      "\010DISABLED\020\001\"+\n\027ReplicationHLogPosition\022\020" +
-      "\n\010position\030\001 \002(\003\"%\n\017ReplicationLock\022\022\n\nl" +
-      "ock_owner\030\001 \002(\t\"l\n\032ReplicationPeerDescri" +
-      "ption\022\n\n\002id\030\001 \002(\t\022 \n\005state\030\002 \002(\0132\021.Repli" +
-      "cationState\022 \n\006config\030\003 \002(\0132\020.Replicatio",
-      "nPeer\"z\n\031AddReplicationPeerRequest\022\017\n\007pe" +
-      "er_id\030\001 \002(\t\022%\n\013peer_config\030\002 \002(\0132\020.Repli" +
-      "cationPeer\022%\n\npeer_state\030\003 \002(\0132\021.Replica" +
-      "tionState\"\034\n\032AddReplicationPeerResponse\"" +
-      "/\n\034RemoveReplicationPeerRequest\022\017\n\007peer_" +
-      "id\030\001 \002(\t\"\037\n\035RemoveReplicationPeerRespons" +
-      "e\"/\n\034EnableReplicationPeerRequest\022\017\n\007pee" +
-      "r_id\030\001 \002(\t\"\037\n\035EnableReplicationPeerRespo" +
-      "nse\"0\n\035DisableReplicationPeerRequest\022\017\n\007" +
-      "peer_id\030\001 \002(\t\" \n\036DisableReplicationPeerR",
-      "esponse\"2\n\037GetReplicationPeerConfigReque" +
-      "st\022\017\n\007peer_id\030\001 \002(\t\"Z\n GetReplicationPee" +
-      "rConfigResponse\022\017\n\007peer_id\030\001 \002(\t\022%\n\013peer" +
-      "_config\030\002 \002(\0132\020.ReplicationPeer\"\\\n\"Updat" +
-      "eReplicationPeerConfigRequest\022\017\n\007peer_id" +
-      "\030\001 \002(\t\022%\n\013peer_config\030\002 \002(\0132\020.Replicatio" +
-      "nPeer\"%\n#UpdateReplicationPeerConfigResp" +
-      "onse\",\n\033ListReplicationPeersRequest\022\r\n\005r" +
-      "egex\030\001 \001(\t\"N\n\034ListReplicationPeersRespon" +
-      "se\022.\n\tpeer_desc\030\001 \003(\0132\033.ReplicationPeerD",
-      "escriptionBG\n*org.apache.hadoop.hbase.pr" +
-      "otobuf.generatedB\021ReplicationProtosH\001\210\001\001" +
-      "\240\001\001"
+      "\n\021Replication.proto\032\013HBase.proto\032\023Cluste" +
+      "rStatus.proto\";\n\007TableCF\022\036\n\ntable_name\030\001" +
+      " \001(\0132\n.TableName\022\020\n\010families\030\002 \003(\014\"\'\n\010Ta" +
+      "bleCFs\022\033\n\ttable_cfs\030\001 \003(\0132\010.TableCF\"\372\002\n\017" +
+      "ReplicationPeer\022\022\n\nclusterkey\030\001 \002(\t\022\037\n\027r" +
+      "eplicationEndpointImpl\030\002 \001(\t\022\035\n\004data\030\003 \003" +
+      "(\0132\017.BytesBytesPair\022&\n\rconfiguration\030\004 \003" +
+      "(\0132\017.NameStringPair\0227\n\014peerProtocol\030\005 \001(" +
+      "\0162\031.ReplicationPeer.Protocol:\006NATIVE\022\033\n\010" +
+      "tableCFs\030\006 \001(\0132\t.TableCFs\022\021\n\tbandwidth\030\007",
+      " \001(\003\022\022\n\nnamespaces\030\010 \003(\014\022\013\n\003all\030\t \001(\010\022\"\n" +
+      "\017excludeTableCFs\030\n \001(\0132\t.TableCFs\022\031\n\021exc" +
+      "ludeNamespaces\030\013 \003(\014\"\"\n\010Protocol\022\n\n\006NATI" +
+      "VE\020\000\022\n\n\006THRIFT\020\001\"^\n\020ReplicationState\022&\n\005" +
+      "state\030\001 \002(\0162\027.ReplicationState.State\"\"\n\005" +
+      "State\022\013\n\007ENABLED\020\000\022\014\n\010DISABLED\020\001\"+\n\027Repl" +
+      "icationHLogPosition\022\020\n\010position\030\001 \002(\003\"%\n" +
+      "\017ReplicationLock\022\022\n\nlock_owner\030\001 \002(\t\"l\n\032" +
+      "ReplicationPeerDescription\022\n\n\002id\030\001 \002(\t\022 " +
+      "\n\005state\030\002 \002(\0132\021.ReplicationState\022 \n\006conf",
+      "ig\030\003 \002(\0132\020.ReplicationPeer\"z\n\031AddReplica" +
+      "tionPeerRequest\022\017\n\007peer_id\030\001 \002(\t\022%\n\013peer" +
+      "_config\030\002 \002(\0132\020.ReplicationPeer\022%\n\npeer_" +
+      "state\030\003 \002(\0132\021.ReplicationState\"\034\n\032AddRep" +
+      "licationPeerResponse\"/\n\034RemoveReplicatio" +
+      "nPeerRequest\022\017\n\007peer_id\030\001 \002(\t\"\037\n\035RemoveR" +
+      "eplicationPeerResponse\"/\n\034EnableReplicat" +
+      "ionPeerRequest\022\017\n\007peer_id\030\001 \002(\t\"\037\n\035Enabl" +
+      "eReplicationPeerResponse\"0\n\035DisableRepli" +
+      "cationPeerRequest\022\017\n\007peer_id\030\001 \002(\t\" \n\036Di",
+      "sableReplicationPeerResponse\"2\n\037GetRepli" +
+      "cationPeerConfigRequest\022\017\n\007peer_id\030\001 \002(\t" +
+      "\"Z\n GetReplicationPeerConfigResponse\022\017\n\007" +
+      "peer_id\030\001 \002(\t\022%\n\013peer_config\030\002 \002(\0132\020.Rep" +
+      "licationPeer\"\\\n\"UpdateReplicationPeerCon" +
+      "figRequest\022\017\n\007peer_id\030\001 \002(\t\022%\n\013peer_conf" +
+      "ig\030\002 \002(\0132\020.ReplicationPeer\"%\n#UpdateRepl" +
+      "icationPeerConfigResponse\",\n\033ListReplica" +
+      "tionPeersRequest\022\r\n\005regex\030\001 \001(\t\"N\n\034ListR" +
+      "eplicationPeersResponse\022.\n\tpeer_desc\030\001 \003",
+      "(\0132\033.ReplicationPeerDescription\"3\n GetPe" +
+      "erMaxReplicationLoadRequest\022\017\n\007peer_id\030\001" +
+      " \001(\t\"Z\n!GetPeerMaxReplicationLoadRespons" +
+      "e\0225\n\025replicationLoadSource\030\001 \001(\0132\026.Repli" +
+      "cationLoadSourceBG\n*org.apache.hadoop.hb" +
+      "ase.protobuf.generatedB\021ReplicationProto" +
+      "sH\001\210\001\001\240\001\001"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
       new com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner() {
@@ -14232,6 +15312,18 @@ public final class ReplicationProtos {
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_ListReplicationPeersResponse_descriptor,
               new java.lang.String[] { "PeerDesc", });
+          internal_static_GetPeerMaxReplicationLoadRequest_descriptor =
+            getDescriptor().getMessageTypes().get(21);
+          internal_static_GetPeerMaxReplicationLoadRequest_fieldAccessorTable = new
+            com.google.protobuf.GeneratedMessage.FieldAccessorTable(
+              internal_static_GetPeerMaxReplicationLoadRequest_descriptor,
+              new java.lang.String[] { "PeerId", });
+          internal_static_GetPeerMaxReplicationLoadResponse_descriptor =
+            getDescriptor().getMessageTypes().get(22);
+          internal_static_GetPeerMaxReplicationLoadResponse_fieldAccessorTable = new
+            com.google.protobuf.GeneratedMessage.FieldAccessorTable(
+              internal_static_GetPeerMaxReplicationLoadResponse_descriptor,
+              new java.lang.String[] { "ReplicationLoadSource", });
           return null;
         }
       };
@@ -14239,6 +15331,7 @@ public final class ReplicationProtos {
       .internalBuildGeneratedFileFrom(descriptorData,
         new com.google.protobuf.Descriptors.FileDescriptor[] {
           org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.getDescriptor(),
+          org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.getDescriptor(),
         }, assigner);
   }
 

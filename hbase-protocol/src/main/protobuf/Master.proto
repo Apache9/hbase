@@ -620,4 +620,8 @@ service MasterService {
   /** Returns a list of replication peers */
   rpc ListReplicationPeers(ListReplicationPeersRequest)
     returns(ListReplicationPeersResponse);
+
+  /** Returns a list of replication loads */
+  rpc GetPeerMaxReplicationLoad(GetPeerMaxReplicationLoadRequest)
+    returns(GetPeerMaxReplicationLoadResponse);
 }

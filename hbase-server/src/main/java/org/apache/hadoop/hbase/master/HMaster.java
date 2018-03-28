@@ -237,6 +237,7 @@ import org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.Repor
 import org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.ReportRegionStateTransitionRequest;
 import org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.ReportRegionStateTransitionResponse;
 import org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.TableRegionCount;
+import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos;
 import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.AddReplicationPeerRequest;
 import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.AddReplicationPeerResponse;
 import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.DisableReplicationPeerRequest;
@@ -1718,6 +1719,29 @@ MasterServices, Server {
     return IsCatalogJanitorEnabledResponse.newBuilder().setValue(isEnabled).build();
   }
 
+  public ReplicationLoadSource getPeerMaxReplicationLoad(String peerId)
+      throws DoNotRetryIOException {
+    LOG.info("start to get load of " + peerId);
+    if (peerId == null) {
+      throw new DoNotRetryIOException("peerId is required!");
+    }
+    ReplicationLoadSource heaviestLoad = null;
+    for (Map.Entry<ServerName, ServerLoad> sl : this.getServerManager().getOnlineServers()
+        .entrySet()) {
+
+      for (ReplicationLoadSource rload : sl.getValue().getReplicationLoadSourceList()) {
+        if (rload.getPeerID().equals(peerId)) {
+          if (heaviestLoad == null) {
+            heaviestLoad = rload;
+          } else if (rload.getReplicationLag() > heaviestLoad.getReplicationLag()) {
+            heaviestLoad = rload;
+          }
+        }
+      }
+
+    }
+    return heaviestLoad;
+  }
   
   public HashMap<String, List<Pair<ServerName, ReplicationLoadSource>>>
       getReplicationLoad(ServerName[] serverNames) {
@@ -4109,6 +4133,33 @@ MasterServices, Server {
     } catch (ReplicationException | IOException e) {
       throw new ServiceException(e);
     }
+    return response.build();
+  }
+
+  @Override public ReplicationProtos.GetPeerMaxReplicationLoadResponse getPeerMaxReplicationLoad(
+      RpcController controller, ReplicationProtos.GetPeerMaxReplicationLoadRequest request)
+      throws ServiceException {
+    ReplicationProtos.GetPeerMaxReplicationLoadResponse.Builder response =
+        ReplicationProtos.GetPeerMaxReplicationLoadResponse.newBuilder();
+
+    ReplicationLoadSource heaviestLoad = null;
+    try {
+      heaviestLoad = getPeerMaxReplicationLoad(request.getPeerId());
+    } catch (DoNotRetryIOException e) {
+      throw new ServiceException(e);
+    }
+    if(heaviestLoad == null){
+      return response.build();
+    }
+    ClusterStatusProtos.ReplicationLoadSource.Builder rLoadSourceBuild;
+    rLoadSourceBuild = ClusterStatusProtos.ReplicationLoadSource
+        .newBuilder();
+    rLoadSourceBuild.setPeerID(heaviestLoad.getPeerID());
+    rLoadSourceBuild.setAgeOfLastShippedOp(heaviestLoad.getAgeOfLastShippedOp());
+    rLoadSourceBuild.setSizeOfLogQueue(heaviestLoad.getSizeOfLogQueue());
+    rLoadSourceBuild.setTimeStampOfLastShippedOp(heaviestLoad.getTimeStampOfLastShippedOp());
+    rLoadSourceBuild.setReplicationLag(heaviestLoad.getReplicationLag());
+    response.setReplicationLoadSource(rLoadSourceBuild.build());
     return response.build();
   }
 
