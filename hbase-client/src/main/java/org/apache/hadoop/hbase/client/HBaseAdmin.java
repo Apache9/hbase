@@ -35,6 +35,7 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -96,6 +97,7 @@ import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.StopServerRequest;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.ClientService;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.ScanRequest;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.ScanResponse;
+import org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.NameStringPair;
 import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.ProcedureDescription;
@@ -154,6 +156,7 @@ import org.apache.hadoop.hbase.quotas.QuotaSettings;
 import org.apache.hadoop.hbase.quotas.ThrottleState;
 import org.apache.hadoop.hbase.regionserver.wal.FailedLogCloseException;
 import org.apache.hadoop.hbase.replication.ReplicationException;
+import org.apache.hadoop.hbase.replication.ReplicationLoadSource;
 import org.apache.hadoop.hbase.replication.ReplicationPeerConfig;
 import org.apache.hadoop.hbase.replication.ReplicationPeerDescription;
 import org.apache.hadoop.hbase.snapshot.ClientSnapshotDescriptionUtils;
@@ -3715,5 +3718,22 @@ public class HBaseAdmin implements Abortable, Closeable {
     }
 
     return result == 0;
+  }
+
+  public ReplicationLoadSource getPeerMaxReplicationLoad(String peerId) throws IOException {
+    return executeCallable(new MasterCallable<ReplicationLoadSource>(getConnection()) {
+      @Override
+      protected ReplicationLoadSource rpcCall(BlockingInterface master,
+          HBaseRpcController controller) throws Exception {
+        ClusterStatusProtos.ReplicationLoadSource heaviestLoad =
+            master
+                .getPeerMaxReplicationLoad(controller,
+                  RequestConverter
+                      .buildGetPeerMaxReplicationLoadRequest(Optional.ofNullable(peerId)))
+                .getReplicationLoadSource();
+        ReplicationLoadSource result = ProtobufUtil.toReplicationLoadSource(heaviestLoad);
+        return result;
+      }
+    });
   }
 }

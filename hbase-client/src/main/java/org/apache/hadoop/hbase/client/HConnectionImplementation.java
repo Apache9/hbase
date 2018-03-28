@@ -163,6 +163,7 @@ import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.TruncateTableRequ
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.TruncateTableResponse;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.UnassignRegionRequest;
 import org.apache.hadoop.hbase.protobuf.generated.MasterProtos.UnassignRegionResponse;
+import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos;
 import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.AddReplicationPeerRequest;
 import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.AddReplicationPeerResponse;
 import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.DisableReplicationPeerRequest;
@@ -1772,6 +1773,13 @@ public class HConnectionImplementation implements HConnection, Closeable {
       public ListReplicationPeersResponse listReplicationPeers(RpcController controller,
           ListReplicationPeersRequest request) throws ServiceException {
         return stub.listReplicationPeers(controller, request);
+      }
+
+      @Override
+      public ReplicationProtos.GetPeerMaxReplicationLoadResponse getPeerMaxReplicationLoad(
+          RpcController controller, ReplicationProtos.GetPeerMaxReplicationLoadRequest request)
+          throws ServiceException {
+        return stub.getPeerMaxReplicationLoad(controller, request);
       }
     };
   }

@@ -126,6 +126,7 @@ import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos;
 import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.AddReplicationPeerRequest;
 import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.DisableReplicationPeerRequest;
 import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.EnableReplicationPeerRequest;
+import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadRequest;
 import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetReplicationPeerConfigRequest;
 import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ListReplicationPeersRequest;
 import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.RemoveReplicationPeerRequest;
@@ -1707,6 +1708,14 @@ public final class RequestConverter {
       Optional<Pattern> pattern) {
     ListReplicationPeersRequest.Builder builder = ListReplicationPeersRequest.newBuilder();
     pattern.ifPresent(p -> builder.setRegex(p.toString()));
+    return builder.build();
+  }
+
+  public static GetPeerMaxReplicationLoadRequest
+      buildGetPeerMaxReplicationLoadRequest(Optional<String> peerId) {
+    GetPeerMaxReplicationLoadRequest.Builder builder =
+        GetPeerMaxReplicationLoadRequest.newBuilder();
+    peerId.ifPresent(id -> builder.setPeerId(id));
     return builder.build();
   }
 }

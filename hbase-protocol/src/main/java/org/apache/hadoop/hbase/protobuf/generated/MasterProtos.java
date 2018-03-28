@@ -44117,6 +44117,18 @@ public final class MasterProtos {
           org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ListReplicationPeersRequest request,
           com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ListReplicationPeersResponse> done);
 
+      /**
+       * <code>rpc GetPeerMaxReplicationLoad(.GetPeerMaxReplicationLoadRequest) returns (.GetPeerMaxReplicationLoadResponse);</code>
+       *
+       * <pre>
+       ** Returns a list of replication loads 
+       * </pre>
+       */
+      public abstract void getPeerMaxReplicationLoad(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadRequest request,
+          com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadResponse> done);
+
     }
 
     public static com.google.protobuf.Service newReflectiveService(
@@ -44530,6 +44542,14 @@ public final class MasterProtos {
           impl.listReplicationPeers(controller, request, done);
         }
 
+        @java.lang.Override
+        public  void getPeerMaxReplicationLoad(
+            com.google.protobuf.RpcController controller,
+            org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadRequest request,
+            com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadResponse> done) {
+          impl.getPeerMaxReplicationLoad(controller, request, done);
+        }
+
       };
     }
 
@@ -44654,6 +44674,8 @@ public final class MasterProtos {
               return impl.updateReplicationPeerConfig(controller, (org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.UpdateReplicationPeerConfigRequest)request);
             case 50:
               return impl.listReplicationPeers(controller, (org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ListReplicationPeersRequest)request);
+            case 51:
+              return impl.getPeerMaxReplicationLoad(controller, (org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadRequest)request);
             default:
               throw new java.lang.AssertionError("Can't get here.");
           }
@@ -44770,6 +44792,8 @@ public final class MasterProtos {
               return org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.UpdateReplicationPeerConfigRequest.getDefaultInstance();
             case 50:
               return org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ListReplicationPeersRequest.getDefaultInstance();
+            case 51:
+              return org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadRequest.getDefaultInstance();
             default:
               throw new java.lang.AssertionError("Can't get here.");
           }
@@ -44886,6 +44910,8 @@ public final class MasterProtos {
               return org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.UpdateReplicationPeerConfigResponse.getDefaultInstance();
             case 50:
               return org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ListReplicationPeersResponse.getDefaultInstance();
+            case 51:
+              return org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadResponse.getDefaultInstance();
             default:
               throw new java.lang.AssertionError("Can't get here.");
           }
@@ -45527,6 +45553,18 @@ public final class MasterProtos {
         org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ListReplicationPeersRequest request,
         com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ListReplicationPeersResponse> done);
 
+    /**
+     * <code>rpc GetPeerMaxReplicationLoad(.GetPeerMaxReplicationLoadRequest) returns (.GetPeerMaxReplicationLoadResponse);</code>
+     *
+     * <pre>
+     ** Returns a list of replication loads 
+     * </pre>
+     */
+    public abstract void getPeerMaxReplicationLoad(
+        com.google.protobuf.RpcController controller,
+        org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadRequest request,
+        com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadResponse> done);
+
     public static final
         com.google.protobuf.Descriptors.ServiceDescriptor
         getDescriptor() {
@@ -45804,6 +45842,11 @@ public final class MasterProtos {
             com.google.protobuf.RpcUtil.<org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ListReplicationPeersResponse>specializeCallback(
               done));
           return;
+        case 51:
+          this.getPeerMaxReplicationLoad(controller, (org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadRequest)request,
+            com.google.protobuf.RpcUtil.<org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadResponse>specializeCallback(
+              done));
+          return;
         default:
           throw new java.lang.AssertionError("Can't get here.");
       }
@@ -45920,6 +45963,8 @@ public final class MasterProtos {
           return org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.UpdateReplicationPeerConfigRequest.getDefaultInstance();
         case 50:
           return org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ListReplicationPeersRequest.getDefaultInstance();
+        case 51:
+          return org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadRequest.getDefaultInstance();
         default:
           throw new java.lang.AssertionError("Can't get here.");
       }
@@ -46036,6 +46081,8 @@ public final class MasterProtos {
           return org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.UpdateReplicationPeerConfigResponse.getDefaultInstance();
         case 50:
           return org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ListReplicationPeersResponse.getDefaultInstance();
+        case 51:
+          return org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadResponse.getDefaultInstance();
         default:
           throw new java.lang.AssertionError("Can't get here.");
       }
@@ -46821,6 +46868,21 @@ public final class MasterProtos {
             org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ListReplicationPeersResponse.class,
             org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ListReplicationPeersResponse.getDefaultInstance()));
       }
+
+      public  void getPeerMaxReplicationLoad(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadRequest request,
+          com.google.protobuf.RpcCallback<org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadResponse> done) {
+        channel.callMethod(
+          getDescriptor().getMethods().get(51),
+          controller,
+          request,
+          org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadResponse.getDefaultInstance(),
+          com.google.protobuf.RpcUtil.generalizeCallback(
+            done,
+            org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadResponse.class,
+            org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadResponse.getDefaultInstance()));
+      }
     }
 
     public static BlockingInterface newBlockingStub(
@@ -47082,6 +47144,11 @@ public final class MasterProtos {
       public org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ListReplicationPeersResponse listReplicationPeers(
           com.google.protobuf.RpcController controller,
           org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ListReplicationPeersRequest request)
+          throws com.google.protobuf.ServiceException;
+
+      public org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadResponse getPeerMaxReplicationLoad(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadRequest request)
           throws com.google.protobuf.ServiceException;
     }
 
@@ -47703,6 +47770,18 @@ public final class MasterProtos {
           org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ListReplicationPeersResponse.getDefaultInstance());
       }
 
+
+      public org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadResponse getPeerMaxReplicationLoad(
+          com.google.protobuf.RpcController controller,
+          org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadRequest request)
+          throws com.google.protobuf.ServiceException {
+        return (org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadResponse) channel.callBlockingMethod(
+          getDescriptor().getMethods().get(51),
+          controller,
+          request,
+          org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.GetPeerMaxReplicationLoadResponse.getDefaultInstance());
+      }
+
     }
 
     // @@protoc_insertion_point(class_scope:MasterService)
@@ -48266,7 +48345,7 @@ public final class MasterProtos {
       "chThrottleRequest\022&\n\016throttle_state\030\001 \002(" +
       "\0162\016.ThrottleState\"E\n\026SwitchThrottleRespo" +
       "nse\022+\n\023prev_throttle_state\030\001 \001(\0162\016.Throt" +
-      "tleState2\234\035\n\rMasterService\022S\n\024GetSchemaA",
+      "tleState2\200\036\n\rMasterService\022S\n\024GetSchemaA",
       "lterStatus\022\034.GetSchemaAlterStatusRequest" +
       "\032\035.GetSchemaAlterStatusResponse\022P\n\023GetTa" +
       "bleDescriptors\022\033.GetTableDescriptorsRequ" +
@@ -48359,9 +48438,11 @@ public final class MasterProtos {
       "ReplicationPeerConfigRequest\032$.UpdateRep",
       "licationPeerConfigResponse\022S\n\024ListReplic" +
       "ationPeers\022\034.ListReplicationPeersRequest" +
-      "\032\035.ListReplicationPeersResponseBB\n*org.a" +
-      "pache.hadoop.hbase.protobuf.generatedB\014M" +
-      "asterProtosH\001\210\001\001\240\001\001"
+      "\032\035.ListReplicationPeersResponse\022b\n\031GetPe" +
+      "erMaxReplicationLoad\022!.GetPeerMaxReplica" +
+      "tionLoadRequest\032\".GetPeerMaxReplicationL" +
+      "oadResponseBB\n*org.apache.hadoop.hbase.p" +
+      "rotobuf.generatedB\014MasterProtosH\001\210\001\001\240\001\001"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
       new com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner() {
