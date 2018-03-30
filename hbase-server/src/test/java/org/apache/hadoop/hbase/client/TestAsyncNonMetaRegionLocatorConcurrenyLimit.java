@@ -41,7 +41,6 @@ import org.apache.hadoop.hbase.coprocessor.BaseRegionObserver;
 import org.apache.hadoop.hbase.coprocessor.ObserverContext;
 import org.apache.hadoop.hbase.coprocessor.RegionCoprocessorEnvironment;
 import org.apache.hadoop.hbase.regionserver.InternalScanner;
-import org.apache.hadoop.hbase.regionserver.RegionScanner;
 import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -75,9 +74,9 @@ public class TestAsyncNonMetaRegionLocatorConcurrenyLimit {
   public static final class CountingRegionObserver extends BaseRegionObserver {
 
     @Override
-    public RegionScanner preScannerOpen(ObserverContext<RegionCoprocessorEnvironment> e, Scan scan,
-        RegionScanner s) throws IOException {
-      if (e.getEnvironment().getRegionInfo().isMetaTable()) {
+    public boolean preScannerNext(ObserverContext<RegionCoprocessorEnvironment> c,
+        InternalScanner s, List<Result> result, int limit, boolean hasNext) throws IOException {
+      if (c.getEnvironment().getRegionInfo().isMetaRegion()) {
         int concurrency = CONCURRENCY.incrementAndGet();
         for (;;) {
           int max = MAX_CONCURRENCY.get();
@@ -90,15 +89,16 @@ public class TestAsyncNonMetaRegionLocatorConcurrenyLimit {
         }
         Threads.sleepWithoutInterrupt(10);
       }
-      return s;
+      return hasNext;
     }
 
     @Override
-    public void postScannerClose(ObserverContext<RegionCoprocessorEnvironment> e, InternalScanner s)
-        throws IOException {
-      if (e.getEnvironment().getRegionInfo().isMetaTable()) {
+    public boolean postScannerNext(ObserverContext<RegionCoprocessorEnvironment> c,
+        InternalScanner s, List<Result> result, int limit, boolean hasNext) throws IOException {
+      if (c.getEnvironment().getRegionInfo().isMetaRegion()) {
         CONCURRENCY.decrementAndGet();
       }
+      return hasNext;
     }
   }
 
@@ -150,6 +150,7 @@ public class TestAsyncNonMetaRegionLocatorConcurrenyLimit {
             .map(r -> LOCATOR.getRegionLocation(TABLE_NAME, r, RegionLocateType.CURRENT))
             .collect(toList());
     assertLocs(futures);
-    assertTrue(MAX_CONCURRENCY.get() <= MAX_ALLOWED);
+    assertTrue("max allowed is " + MAX_ALLOWED + " but actual is " + MAX_CONCURRENCY.get(),
+      MAX_CONCURRENCY.get() <= MAX_ALLOWED);
   }
 }

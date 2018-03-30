@@ -23,10 +23,10 @@ import static org.junit.Assert.assertNotNull;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.hadoop.hbase.Waiter.ExplainingPredicate;
+import org.apache.hadoop.hbase.client.AsyncConnection;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HConnection;
 import org.apache.hadoop.hbase.client.HConnectionManager;
-import org.apache.hadoop.hbase.protobuf.generated.HBaseProtos;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.AfterClass;
@@ -104,5 +104,11 @@ public class TestSplitMerge {
     ServerName expected = UTIL.getMiniHBaseCluster().getRegionServer(0).getServerName();
     assertEquals(expected, connection.getRegionLocation(tableName, Bytes.toBytes(1), true)
         .getServerName());
+
+    AsyncConnection asyncConn =
+        HConnectionManager.createAsyncConnection(UTIL.getConfiguration()).get();
+    HRegionLocation loc =
+        asyncConn.getRegionLocator(tableName).getRegionLocation(Bytes.toBytes(1), true).get();
+    assertEquals(expected, loc.getServerName());
   }
 }
