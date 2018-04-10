@@ -26,9 +26,11 @@ import static org.apache.hadoop.fs.permission.FsAction.READ_EXECUTE;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -118,10 +120,11 @@ public class HdfsAclManager {
   public void snapshotAcl(SnapshotProtos.SnapshotDescription snapshot) {
     try {
       TableName tableName = TableName.valueOf(snapshot.getTable());
-      List<String> users = new ArrayList<>();
-      users.addAll(AccessControlLists.getTablePermissions(conf, tableName).keySet());
-      users.addAll(AccessControlLists
-          .getNamespacePermissions(conf, tableName.getNamespaceAsString()).keySet());
+      Set<String> userSet = new HashSet<>();
+      userSet.addAll(AccessControlLists.getTablePermissions(conf, tableName).keySet());
+      userSet.addAll(AccessControlLists
+              .getNamespacePermissions(conf, tableName.getNamespaceAsString()).keySet());
+      List<String> users = Lists.newArrayList(userSet);
 
       List<Path> pathList = Lists.newArrayList(pathHelper.getSnapshotDir(snapshot.getName()));
       List<PathAcl> pathAcls = getDefaultPathAcls(pathList, users, AclType.MODIFY);
