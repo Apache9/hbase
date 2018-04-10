@@ -436,6 +436,22 @@ public class TestHdfsAclManager {
     Assert.assertTrue(canUserScanSnapshot(grantUser, snapshotName));
   }
 
+  @Test
+  public void testSameUserForNsAndTable() throws Exception {
+    String namespace = NAMESPACE_PREFIX + "testSameUser";
+    String table = namespace + ":" + "testSameUser";
+    String snapshot = "testSameUser" + SNAPSHOT_POSTFIX;
+
+    createNamespace(namespace);
+    try (HTable hTable = createTable(table)) {
+      put(hTable);
+    }
+    SecureTestUtil.grantOnNamespace(TEST_UTIL, GRANT_USER, namespace, READ);
+    grantOnTable(GRANT_USER, table, READ);
+    admin.snapshot(snapshot, table);
+    Assert.assertTrue(canUserScanSnapshot(grantUser, snapshot));
+  }
+
   private static final int WAIT_TIME = 10000;
   private void waitTableRegionsOnline(final HBaseTestingUtility util, TableName tableName)
       throws IOException {
