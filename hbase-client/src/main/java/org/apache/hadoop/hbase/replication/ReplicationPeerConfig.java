@@ -160,6 +160,38 @@ public class ReplicationPeerConfig {
     return this;
   }
 
+  /**
+   * Decide whether the table need replicate to the peer cluster
+   * @param table name of the table
+   * @return true if the table need replicate to the peer cluster
+   */
+  public boolean needToReplicate(TableName table) {
+    if (replicateAllUserTables) {
+      if (excludeNamespaces == null && excludeTableCFsMap == null) {
+        return true;
+      }
+      if (excludeNamespaces != null && !excludeNamespaces.contains(table.getNamespaceAsString())) {
+        return true;
+      }
+      if (excludeTableCFsMap != null && !excludeTableCFsMap.containsKey(table)) {
+        return true;
+      }
+    } else {
+      // If null means user has explicitly not configured any namespaces and table CFs
+      // so all the tables data are applicable for replication
+      if (namespaces == null && tableCFsMap == null) {
+        return true;
+      }
+      if (namespaces != null && namespaces.contains(table.getNamespaceAsString())) {
+        return true;
+      }
+      if (tableCFsMap != null && tableCFsMap.containsKey(table)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   @Override
   public String toString() {
     StringBuilder builder = new StringBuilder("clusterKey=").append(clusterKey).append(",");
