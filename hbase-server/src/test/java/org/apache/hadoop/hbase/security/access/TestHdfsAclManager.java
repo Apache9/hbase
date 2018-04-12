@@ -19,6 +19,7 @@
 package org.apache.hadoop.hbase.security.access;
 
 import static org.apache.hadoop.hbase.security.access.Permission.Action.READ;
+import static org.apache.hadoop.hbase.security.access.Permission.Action.WRITE;
 
 import java.io.IOException;
 import java.security.PrivilegedExceptionAction;
@@ -47,7 +48,7 @@ import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.client.TableSnapshotScanner;
 import org.apache.hadoop.hbase.security.User;
-import org.apache.hadoop.hbase.testclassification.SmallTests;
+import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -55,7 +56,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
-@Category({ SmallTests.class })
+@Category({ MediumTests.class })
 public class TestHdfsAclManager {
   private static Log LOG = LogFactory.getLog(TestHdfsAclManager.class);
 
@@ -176,6 +177,7 @@ public class TestHdfsAclManager {
     HTable hTable = createTable(table);
     put(hTable);
     admin.snapshot(snapshot, table);
+    SecureTestUtil.grantOnTable(TEST_UTIL, GRANT_USER, TableName.valueOf(table), Bytes.toBytes("f"), Bytes.toBytes("q"), READ);
     grantOnTable(GRANT_USER, table, READ);
 
     // grant table -> snapshot
@@ -410,6 +412,69 @@ public class TestHdfsAclManager {
 
     SecureTestUtil.revokeGlobal(TEST_UTIL, GRANT_USER, READ);
     Assert.assertFalse(canUserScanSnapshot(grantUser, snapshot));
+    Assert.assertFalse(canUserScanSnapshot(grantUser, snapshot2));
+  }
+
+  @Test
+  public void testGranNsAndGrantTable() throws Exception {
+    String namespace = NAMESPACE_PREFIX + "testGranNsAndGrantNs";
+    String table = namespace + ":" + "testGranNsAndGrantNs";
+    String snapshot = "testGranNsAndGrantTable" + SNAPSHOT_POSTFIX;
+
+    createNamespace(namespace);
+    HTable hTable = createTable(table);
+    put(hTable);
+    admin.snapshot(snapshot, table);
+    SecureTestUtil.grantOnNamespace(TEST_UTIL, GRANT_USER, namespace, WRITE);
+    grantOnTable(GRANT_USER, table, READ); // skip set acl because already set ns acl
+    hTable.close();
+
+    Assert.assertTrue(canUserScanSnapshot(grantUser, snapshot));
+  }
+
+  @Test
+  public void testGranNsAndRevokeTable() throws Exception {
+    String namespace = NAMESPACE_PREFIX + "testGranNsAndRevokeTable";
+    String table = namespace + ":" + "testGranNsAndRevokeTable";
+    String snapshot = "testGranNsAndRevokeTable" + SNAPSHOT_POSTFIX;
+
+    createNamespace(namespace);
+    HTable hTable = createTable(table);
+    put(hTable);
+    admin.snapshot(snapshot, table);
+    grantOnTable(GRANT_USER, table, READ);
+    SecureTestUtil.grantOnNamespace(TEST_UTIL, GRANT_USER, namespace, READ);
+    SecureTestUtil.revokeFromTable(TEST_UTIL, GRANT_USER, TableName.valueOf(table), null, null,
+            READ); // skip remove acl because ns read perm
+    hTable.close();
+
+    Assert.assertTrue(canUserScanSnapshot(grantUser, snapshot));
+  }
+
+  @Test
+  public void testGrantTableAndRevokeNs() throws Exception {
+    String namespace = NAMESPACE_PREFIX + "testGrantTableAndRevokeNs";
+    String table = namespace + ":" + "testGrantTableAndRevokeNs";
+    String table2 = namespace + ":" + "testGrantTableAndRevokeNs2";
+    String snapshot = "testGrantTableAndRevokeNs" + SNAPSHOT_POSTFIX;
+    String snapshot2 = "testGrantTableAndRevokeNs2" + SNAPSHOT_POSTFIX;
+
+    createNamespace(namespace);
+    HTable hTable = createTable(table);
+    put(hTable);
+    admin.snapshot(snapshot, table);
+
+    HTable hTable2 = createTable(table2);
+    put(hTable2);
+    admin.snapshot(snapshot2, table2);
+
+    SecureTestUtil.grantOnNamespace(TEST_UTIL, GRANT_USER, namespace, READ);
+    grantOnTable(GRANT_USER, table, READ);
+
+    SecureTestUtil.revokeFromNamespace(TEST_UTIL, GRANT_USER, namespace, READ);
+    hTable.close();
+
+    Assert.assertTrue(canUserScanSnapshot(grantUser, snapshot));
     Assert.assertFalse(canUserScanSnapshot(grantUser, snapshot2));
   }
 

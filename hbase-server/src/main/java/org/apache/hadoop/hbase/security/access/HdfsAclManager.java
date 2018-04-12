@@ -37,6 +37,7 @@ import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.google.common.collect.ListMultimap;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -86,7 +87,7 @@ public class HdfsAclManager {
       // if user already has read perm, skip set acl
       if (previousPerms != null
           && previousPerms.stream().filter(p -> Bytes.equals(p.getUser(), userPerm.getUser()))
-              .anyMatch(p -> Stream.of(p.actions).anyMatch(a -> a == Permission.Action.READ))) {
+              .anyMatch(p -> !p.hasFamily() && hasReadPerm(p))) {
         return;
       }
       // if grant to cf or cq, skip set acl
@@ -94,11 +95,12 @@ public class HdfsAclManager {
           && (userPerm.hasFamily() || userPerm.hasQualifier())) {
         return;
       }
-      if (Arrays.stream(userPerm.getActions()).anyMatch(a -> a == Permission.Action.READ)) {
+      if (hasReadPerm(userPerm)) {
+        long start = System.currentTimeMillis();
         List<PathAcl> pathAcls = getGrantOrRevokePathAcls(userPerm, AclType.MODIFY, type);
         traverseAndSetAcl(pathAcls);
         traverseAndSetAcl(pathAcls); // set acl twice in case of file move
-        LOG.info("set acl when grant: " + userPerm.toString());
+        LOG.info("set acl when grant: " + userPerm.toString() + ", cost " + (System.currentTimeMillis() - start) + " ms.");
       }
     } catch (Exception e) {
       LOG.error("set acl error when grant: " + (userPerm != null ? userPerm.toString() : null), e);
@@ -107,11 +109,21 @@ public class HdfsAclManager {
 
   public void revokeAcl(UserPermission userPerm, AccessControlProtos.Permission.Type type) {
     try {
+      // if user has ns read perm, skip revoke table
+      if (type == AccessControlProtos.Permission.Type.Table
+              && userHasNamespaceReadPermission(Bytes.toString(userPerm.getUser()), userPerm.getTableName().getNamespaceAsString())) {
+          return;
+      }
       // revoke command does not contain permission
+      long start = System.currentTimeMillis();
       List<PathAcl> pathAcls = getGrantOrRevokePathAcls(userPerm, AclType.REMOVE, type);
       traverseAndSetAcl(pathAcls);
       traverseAndSetAcl(pathAcls); // set acl twice in case of file move
-      LOG.info("set acl when revoke: " + userPerm.toString());
+      LOG.info("set acl when revoke: " + userPerm.toString() + ", cost" + (System.currentTimeMillis() - start) + " ms.");
+      // if user has table read perm when revoke ns perm, then reset table acl
+      if (type == AccessControlProtos.Permission.Type.Namespace) {
+        resetNamespaceTableAcl(Bytes.toString(userPerm.getUser()), userPerm.getNamespace());
+      }
     } catch (Exception e) {
       LOG.error("set acl error when revoke: " + (userPerm != null ? userPerm.toString() : null), e);
     }
@@ -119,6 +131,7 @@ public class HdfsAclManager {
 
   public void snapshotAcl(SnapshotProtos.SnapshotDescription snapshot) {
     try {
+      long start = System.currentTimeMillis();
       TableName tableName = TableName.valueOf(snapshot.getTable());
       Set<String> userSet = new HashSet<>();
       userSet.addAll(AccessControlLists.getTablePermissions(conf, tableName).keySet());
@@ -130,7 +143,7 @@ public class HdfsAclManager {
       List<PathAcl> pathAcls = getDefaultPathAcls(pathList, users, AclType.MODIFY);
       traverseAndSetAcl(pathAcls);
       traverseAndSetAcl(pathAcls); // set acl twice in case of file move
-      LOG.info("set acl when snapshot: " + snapshot.getName());
+      LOG.info("set acl when snapshot: " + snapshot.getName() + ", cost " + (System.currentTimeMillis() - start) + " ms.");
     } catch (Exception e) {
       LOG.error("set acl error when snapshot: " + (snapshot != null ? snapshot.getName() : null),
         e);
@@ -143,6 +156,7 @@ public class HdfsAclManager {
    */
   public void resetAcl(TableName tableName) {
     try {
+      long start = System.currentTimeMillis();
       List<String> users =
         Lists.newArrayList(AccessControlLists.getTablePermissions(conf, tableName).keySet());
       List<Path> defaultPathList = Lists.newArrayList(pathHelper.getTmpTableDir(tableName));
@@ -150,12 +164,34 @@ public class HdfsAclManager {
 
       traverseAndSetAcl(pathAcls);
       traverseAndSetAcl(pathAcls); // set acl twice in case of file move
-      LOG.info("set acl when truncate table: " + tableName.getNameAsString());
+      LOG.info("set acl when truncate table: " + tableName.getNameAsString() + ", cost " + (System.currentTimeMillis() - start) + " ms.");
     } catch (Exception e) {
       LOG.error("set acl error when truncate table: "
           + (tableName != null ? tableName.getNameAsString() : null),
         e);
     }
+  }
+
+  private boolean userHasNamespaceReadPermission(String user, String namespace) throws IOException {
+    ListMultimap<String, TablePermission> permissions = AccessControlLists
+            .getNamespacePermissions(conf, namespace);
+    return permissions.entries().stream().anyMatch(entry ->
+            entry.getKey().equals(user) && hasReadPerm(entry.getValue()));
+  }
+
+  // when user has read perm on tables of ns, then reset table user acl.
+  private void resetNamespaceTableAcl(String user, String namespace) throws IOException {
+    AccessControlLists.loadAll(conf).values().forEach(userTablePermMap -> userTablePermMap.entries().forEach(userTablePermEntry -> {
+      if (userTablePermEntry.getKey().equals(user)) {
+        TablePermission tablePermission = userTablePermEntry.getValue();
+        if (tablePermission.hasTable() && !tablePermission.hasFamily()
+                && tablePermission.getTableName().getNamespaceAsString().equals(namespace)
+                && hasReadPerm(tablePermission)) {
+          grantAcl(new UserPermission(Bytes.toBytes(user), tablePermission), AccessControlProtos.Permission.Type.Table, null);
+          LOG.info("reset table acl because revoke ns: " +namespace+", table: "+tablePermission.getTableName().getNameAsString());
+        }
+      }})
+    );
   }
 
   private List<PathAcl> getGrantOrRevokePathAcls(UserPermission userPerm, AclType op,
@@ -196,8 +232,7 @@ public class HdfsAclManager {
     return pathAcls;
   }
 
-  private List<PathAcl> getPathAcls(List<Path> pathList, List<String> users, AclType op)
-      throws IOException {
+  private List<PathAcl> getPathAcls(List<Path> pathList, List<String> users, AclType op) {
     List<AclEntry> aclList = new ArrayList<>();
     for (String user : users) {
       aclList.add(aclEntry(ACCESS, user));
@@ -223,7 +258,7 @@ public class HdfsAclManager {
   }
 
   private List<PathAcl> getDefaultPathAcls(List<Path> pathList, List<String> users,
-      AclType op) throws IOException {
+      AclType op) {
     List<AclEntry> dirAclList = new ArrayList<>();
     List<AclEntry> fileAclList = new ArrayList<>();
     for (String user : users) {
@@ -362,6 +397,10 @@ public class HdfsAclManager {
         throw new Exception(e);
       }
     }
+  }
+
+  private boolean hasReadPerm(TablePermission permission) {
+    return Stream.of(permission.actions).anyMatch(a -> a == Permission.Action.READ);
   }
 
   class PathHelper {
