@@ -144,6 +144,7 @@ import org.apache.hadoop.hbase.regionserver.ScannerContext.LimitScope;
 import org.apache.hadoop.hbase.regionserver.ScannerContext.NextState;
 import org.apache.hadoop.hbase.regionserver.compactions.CompactionContext;
 import org.apache.hadoop.hbase.regionserver.compactions.CompactionLifeCycleTracker;
+import org.apache.hadoop.hbase.regionserver.compactions.ForbidMajorCompactionChecker;
 import org.apache.hadoop.hbase.regionserver.throttle.CompactionThroughputControllerFactory;
 import org.apache.hadoop.hbase.regionserver.throttle.NoLimitThroughputController;
 import org.apache.hadoop.hbase.regionserver.throttle.StoreHotnessProtector;
@@ -1980,6 +1981,14 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
     return compact(compaction, store, throughputController, null);
   }
 
+  private boolean shouldForbidMajorCompaction() {
+    if (rsServices != null && rsServices.getReplicationSourceService() != null) {
+      return rsServices.getReplicationSourceService().getSyncReplicationPeerInfoProvider()
+          .checkState(getRegionInfo(), ForbidMajorCompactionChecker.get());
+    }
+    return false;
+  }
+
   public boolean compact(CompactionContext compaction, HStore store,
       ThroughputController throughputController, User user) throws IOException {
     assert compaction != null && compaction.hasSelection();
@@ -1989,6 +1998,15 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
       store.cancelRequestedCompaction(compaction);
       return false;
     }
+
+    if (compaction.getRequest().isAllFiles() && shouldForbidMajorCompaction()) {
+      LOG.warn("Skipping major compaction on " + this
+          + " because this cluster is transiting sync replication state"
+          + " from STANDBY to DOWNGRADE_ACTIVE");
+      store.cancelRequestedCompaction(compaction);
+      return false;
+    }
+
     MonitoredTask status = null;
     boolean requestNeedsCancellation = true;
     /*
