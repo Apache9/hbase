@@ -72,6 +72,7 @@ import org.apache.hadoop.hbase.classification.InterfaceStability;
 import org.apache.hadoop.hbase.client.MetaScanner.MetaScannerVisitor;
 import org.apache.hadoop.hbase.client.MetaScanner.MetaScannerVisitorBase;
 import org.apache.hadoop.hbase.client.replication.ReplicationSerDeHelper;
+import org.apache.hadoop.hbase.client.replication.ReplicationUtils;
 import org.apache.hadoop.hbase.client.replication.TableCFs;
 import org.apache.hadoop.hbase.ipc.CoprocessorRpcChannel;
 import org.apache.hadoop.hbase.ipc.HBaseRpcController;
@@ -559,8 +560,8 @@ public class HBaseAdmin implements Abortable, Closeable {
     List<ReplicationPeerDescription> peers = listReplicationPeers();
     TableName tableName = desc.getTableName();
     for (ReplicationPeerDescription peerDesc : peers) {
-      if (needToReplicate(tableName, peerDesc)) {
-        Configuration peerConf = getPeerClusterConfiguration(peerDesc);
+      if (peerDesc.getPeerConfig().needToReplicate(tableName)) {
+        Configuration peerConf = ReplicationUtils.getPeerClusterConfiguration(peerDesc, conf);
         try (HConnection connection = HConnectionManager.createConnection(peerConf);
             HBaseAdmin repHBaseAdmin = new HBaseAdmin(connection)) {
           if (!repHBaseAdmin.tableExists(tableName)) {
@@ -1166,8 +1167,8 @@ public class HBaseAdmin implements Abortable, Closeable {
     }
     List<ReplicationPeerDescription> peers = listReplicationPeers();
     for (ReplicationPeerDescription peerDesc : peers) {
-      if (needToReplicate(tableName, peerDesc)) {
-        Configuration peerConf = getPeerClusterConfiguration(peerDesc);
+      if (peerDesc.getPeerConfig().needToReplicate(tableName)) {
+        Configuration peerConf = ReplicationUtils.getPeerClusterConfiguration(peerDesc, conf);
         try (HConnection connection = HConnectionManager.createConnection(peerConf);
             HBaseAdmin repHBaseAdmin = new HBaseAdmin(connection)) {
           if (repHBaseAdmin.tableExists(tableName)) {
@@ -1230,8 +1231,8 @@ public class HBaseAdmin implements Abortable, Closeable {
     }
     List<ReplicationPeerDescription> peers = listReplicationPeers();
     for (ReplicationPeerDescription peerDesc : peers) {
-      if (needToReplicate(tableName, peerDesc)) {
-        Configuration peerConf = getPeerClusterConfiguration(peerDesc);
+      if (peerDesc.getPeerConfig().needToReplicate(tableName)) {
+        Configuration peerConf = ReplicationUtils.getPeerClusterConfiguration(peerDesc, conf);
         try (HConnection connection = HConnectionManager.createConnection(peerConf);
             HBaseAdmin repHBaseAdmin = new HBaseAdmin(connection)) {
           if (repHBaseAdmin.tableExists(tableName)) {
@@ -3555,8 +3556,8 @@ public class HBaseAdmin implements Abortable, Closeable {
       throw new IllegalArgumentException("Found no peer cluster for replication.");
     }
     for (ReplicationPeerDescription peerDesc : peers) {
-      if (needToReplicate(tableName, peerDesc)) {
-        Configuration peerConf = getPeerClusterConfiguration(peerDesc);
+      if (peerDesc.getPeerConfig().needToReplicate(tableName)) {
+        Configuration peerConf = ReplicationUtils.getPeerClusterConfiguration(peerDesc, conf);
         try (HConnection connection = HConnectionManager.createConnection(peerConf);
             HBaseAdmin repHBaseAdmin = new HBaseAdmin(connection)) {
           HTableDescriptor localHtd = getTableDescriptor(tableName);
@@ -3579,74 +3580,6 @@ public class HBaseAdmin implements Abortable, Closeable {
         }
       }
     }
-  }
-
-  /**
-   * Decide whether the table need replicate to the peer cluster according to the peer config
-   * @param table name of the table
-   * @param peer config for the peer
-   * @return true if the table need replicate to the peer cluster
-   */
-  private boolean needToReplicate(TableName table, ReplicationPeerDescription peer) {
-    ReplicationPeerConfig peerConfig = peer.getPeerConfig();
-    if (peerConfig.replicateAllUserTables()) {
-      Set<String> excludeNamespaces = peerConfig.getExcludeNamespaces();
-      Map<TableName, List<String>> excludeTableCFsMap = peerConfig.getExcludeTableCFsMap();
-      if (excludeNamespaces == null && excludeTableCFsMap == null) {
-        return true;
-      }
-      if (excludeNamespaces != null && !excludeNamespaces.contains(table.getNamespaceAsString())) {
-        return true;
-      }
-      if (excludeTableCFsMap != null && !excludeTableCFsMap.containsKey(table)) {
-        return true;
-      }
-    } else {
-      Set<String> namespaces = peerConfig.getNamespaces();
-      Map<TableName, List<String>> tableCFsMap = peerConfig.getTableCFsMap();
-      // If null means user has explicitly not configured any namespaces and table CFs
-      // so all the tables data are applicable for replication
-      if (namespaces == null && tableCFsMap == null) {
-        return true;
-      }
-      if (namespaces != null && namespaces.contains(table.getNamespaceAsString())) {
-        return true;
-      }
-      if (tableCFsMap != null && tableCFsMap.containsKey(table)) {
-        return true;
-      }
-    }
-    LOG.info("Table " + table.getNameAsString()
-        + " doesn't need replicate to peer cluster, peerId=" + peer.getPeerId() + ", clusterKey="
-        + peerConfig.getClusterKey());
-    return false;
-  }
-
-  /**
-   * Returns the configuration needed to talk to the remote slave cluster.
-   * @param peer the description of replication peer
-   * @return the configuration for the peer cluster, null if it was unable to get the configuration
-   * @throws IOException
-   */
-  private Configuration getPeerClusterConfiguration(ReplicationPeerDescription peer)
-      throws IOException {
-    ReplicationPeerConfig peerConfig = peer.getPeerConfig();
-    Configuration otherConf;
-    try {
-      otherConf = HBaseConfiguration.create(this.connection.getConfiguration());
-      ZKUtil.applyClusterKeyToConf(otherConf, peerConfig.getClusterKey());
-    } catch (IOException e) {
-      throw new IOException("Can't get peer configuration for peerId=" + peer.getPeerId(), e);
-    }
-
-    if (!peerConfig.getConfiguration().isEmpty()) {
-      CompoundConfiguration compound = new CompoundConfiguration();
-      compound.add(otherConf);
-      compound.addStringMap(peerConfig.getConfiguration());
-      return compound;
-    }
-
-    return otherConf;
   }
 
   /**
