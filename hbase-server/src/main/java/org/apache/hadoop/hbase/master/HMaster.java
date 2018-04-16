@@ -1660,7 +1660,7 @@ MasterServices, Server {
           continue;
         }
         int regionNum = this.assignmentManager.getRegionStates()
-            .getRegionByStateOfTable(descriptor.getTableName()).get(RegionState.State.OPEN).size();
+            .getTableOpenRegionsNum(descriptor.getTableName());
         TableRegionCount.Builder count = TableRegionCount.newBuilder()
             .setTableName(ProtobufUtil.toProtoTableName(descriptor.getTableName()))
             .setRegionNum(regionNum);
