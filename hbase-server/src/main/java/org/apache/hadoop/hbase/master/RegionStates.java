@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 
 import org.apache.commons.logging.Log;
@@ -74,8 +75,8 @@ public class RegionStates {
   /**
    * Holds mapping of table -> region state
    */
-  private final Map<TableName, Map<String, RegionState>> regionStatesTableIndex =
-      new HashMap<TableName, Map<String, RegionState>>();
+  private final ConcurrentMap<TableName, Map<String, RegionState>> regionStatesTableIndex =
+      new ConcurrentHashMap<TableName, Map<String, RegionState>>();
 
   /**
    * Server to regions assignment map.
@@ -651,6 +652,20 @@ public class RegionStates {
       tableRegions.get(regionState.getState()).add(regionState.getRegion());
     }
     return tableRegions;
+  }
+
+  /**
+   * Get the current open regions number of table.
+   * @param tableName
+   */
+  int getTableOpenRegionsNum(TableName tableName) {
+    Map<String, RegionState> indexMap = regionStatesTableIndex.get(tableName);
+    if (indexMap == null) {
+      return 0;
+    } else {
+      return (int) indexMap.values().stream()
+          .filter(s -> s.getState().equals(RegionState.State.OPEN)).count();
+    }
   }
 
   /**
