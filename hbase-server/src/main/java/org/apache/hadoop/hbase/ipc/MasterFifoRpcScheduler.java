@@ -42,11 +42,11 @@ public class MasterFifoRpcScheduler extends FifoRpcScheduler {
   public void start() {
     this.executor = new ThreadPoolExecutor(handlerCount, handlerCount, 60, TimeUnit.SECONDS,
         new ArrayBlockingQueue<Runnable>(maxQueueLength),
-        new DaemonThreadFactory("MasterRpcScheduler.call.handler"),
+        new DaemonThreadFactory("MasterFifoRpcScheduler.call.handler"),
         new ThreadPoolExecutor.CallerRunsPolicy());
     this.rsReportExecutor = new ThreadPoolExecutor(handlerCount, handlerCount, 60, TimeUnit.SECONDS,
         new ArrayBlockingQueue<Runnable>(maxQueueLength),
-        new DaemonThreadFactory("MasterRpcScheduler.RSReport.handler"),
+        new DaemonThreadFactory("MasterFifoRpcScheduler.RSReport.handler"),
         new ThreadPoolExecutor.CallerRunsPolicy());
   }
 
@@ -62,7 +62,7 @@ public class MasterFifoRpcScheduler extends FifoRpcScheduler {
       queueCounter.incIncomeRequestCount();
       RpcServer.Call call = task.getCall();
       if (rsReportExecutor != null
-          && call.getHeader().getMethodName().equals("regionServerReport")) {
+          && call.getHeader().getMethodName().equals("RegionServerReport")) {
         rsReportExecutor.submit(() -> task.run());
       } else {
         executor.submit(() -> task.run());
