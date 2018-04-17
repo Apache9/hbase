@@ -17,6 +17,8 @@
  */
 package org.apache.hadoop.hbase.replication.regionserver;
 
+import static org.apache.hadoop.hbase.replication.ReplicationUtils.sleepForRetries;
+
 import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.PriorityBlockingQueue;
@@ -90,7 +92,8 @@ public class ReplicationSourceShipper extends Thread {
       int sleepMultiplier = 1;
       // Sleep until replication is enabled again
       if (!source.isPeerEnabled()) {
-        if (sleepForRetries("Replication is disabled", sleepMultiplier)) {
+        if (sleepForRetries("Replication is disabled", sleepForRetries, sleepMultiplier,
+          maxRetriesMultiplier)) {
           sleepMultiplier++;
         }
         continue;
@@ -190,7 +193,8 @@ public class ReplicationSourceShipper extends Thread {
       } catch (Exception ex) {
         LOG.warn(source.getReplicationEndpoint().getClass().getName() + " threw unknown exception:"
             + org.apache.hadoop.util.StringUtils.stringifyException(ex));
-        if (sleepForRetries("ReplicationEndpoint threw exception", sleepMultiplier)) {
+        if (sleepForRetries("ReplicationEndpoint threw exception", sleepForRetries, sleepMultiplier,
+          maxRetriesMultiplier)) {
           sleepMultiplier++;
         }
       }
@@ -229,8 +233,7 @@ public class ReplicationSourceShipper extends Thread {
     // position and the file will be removed soon in cleanOldLogs.
     if (batch.isEndOfFile() || !batch.getLastWalPath().equals(currentPath) ||
       batch.getLastWalPosition() != currentPosition) {
-      source.getSourceManager().logPositionAndCleanOldLogs(source.getQueueId(),
-        source.isRecovered(), batch);
+      source.getSourceManager().logPositionAndCleanOldLogs(source, batch);
       updated = true;
     }
     // if end of file is true, then we can just skip to the next file in queue.
@@ -282,24 +285,5 @@ public class ReplicationSourceShipper extends Thread {
 
   public boolean isFinished() {
     return state == WorkerState.FINISHED;
-  }
-
-  /**
-   * Do the sleeping logic
-   * @param msg Why we sleep
-   * @param sleepMultiplier by how many times the default sleeping time is augmented
-   * @return True if <code>sleepMultiplier</code> is &lt; <code>maxRetriesMultiplier</code>
-   */
-  public boolean sleepForRetries(String msg, int sleepMultiplier) {
-    try {
-      if (LOG.isTraceEnabled()) {
-        LOG.trace(msg + ", sleeping " + sleepForRetries + " times " + sleepMultiplier);
-      }
-      Thread.sleep(this.sleepForRetries * sleepMultiplier);
-    } catch (InterruptedException e) {
-      LOG.debug("Interrupted while sleeping between retries");
-      Thread.currentThread().interrupt();
-    }
-    return sleepMultiplier < maxRetriesMultiplier;
   }
 }
