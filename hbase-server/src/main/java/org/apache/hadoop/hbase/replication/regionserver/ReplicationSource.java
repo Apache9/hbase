@@ -93,8 +93,6 @@ public class ReplicationSource implements ReplicationSourceInterface {
 
   protected Configuration conf;
   protected ReplicationQueueInfo replicationQueueInfo;
-  // id of the peer cluster this source replicates to
-  private String peerId;
 
   // The manager of all sources to which we ping back our progress
   protected ReplicationSourceManager manager;
@@ -172,8 +170,6 @@ public class ReplicationSource implements ReplicationSourceInterface {
 
     this.queueId = queueId;
     this.replicationQueueInfo = new ReplicationQueueInfo(queueId);
-    // ReplicationQueueInfo parses the peerId out of the znode for us
-    this.peerId = this.replicationQueueInfo.getPeerId();
     this.logQueueWarnThreshold = this.conf.getInt("replication.source.log.queue.warn", 2);
 
     defaultBandwidth = this.conf.getLong("replication.source.per.peer.node.bandwidth", 0);
@@ -181,8 +177,8 @@ public class ReplicationSource implements ReplicationSourceInterface {
     this.throttler = new ReplicationThrottler((double) currentBandwidth / 10.0);
     this.totalBufferUsed = manager.getTotalBufferUsed();
     this.walFileLengthProvider = walFileLengthProvider;
-    LOG.info("queueId=" + queueId + ", ReplicationSource : " + peerId
-        + ", currentBandwidth=" + this.currentBandwidth);
+    LOG.info("queueId={}, ReplicationSource : {}, currentBandwidth={}", queueId,
+      replicationPeer.getId(), this.currentBandwidth);
   }
 
   private void decorateConf() {
@@ -219,6 +215,7 @@ public class ReplicationSource implements ReplicationSourceInterface {
   @Override
   public void addHFileRefs(TableName tableName, byte[] family, List<Pair<Path, Path>> pairs)
       throws ReplicationException {
+    String peerId = replicationPeer.getId();
     Map<TableName, List<String>> tableCFMap = replicationPeer.getTableCFs();
     if (tableCFMap != null) {
       List<String> tableCfs = tableCFMap.get(tableName);
@@ -278,8 +275,8 @@ public class ReplicationSource implements ReplicationSourceInterface {
       tableDescriptors = ((HRegionServer) server).getTableDescriptors();
     }
     replicationEndpoint
-        .init(new ReplicationEndpoint.Context(conf, replicationPeer.getConfiguration(), fs, peerId,
-            clusterId, replicationPeer, metrics, tableDescriptors, server));
+      .init(new ReplicationEndpoint.Context(conf, replicationPeer.getConfiguration(), fs,
+        replicationPeer.getId(), clusterId, replicationPeer, metrics, tableDescriptors, server));
     replicationEndpoint.start();
     replicationEndpoint.awaitRunning(waitOnEndpointSeconds, TimeUnit.SECONDS);
   }
@@ -405,8 +402,8 @@ public class ReplicationSource implements ReplicationSourceInterface {
     if (peerBandwidth != currentBandwidth) {
       currentBandwidth = peerBandwidth;
       throttler.setBandwidth((double) currentBandwidth / 10.0);
-      LOG.info("ReplicationSource : " + peerId
-          + " bandwidth throttling changed, currentBandWidth=" + currentBandwidth);
+      LOG.info("ReplicationSource : {} bandwidth throttling changed, currentBandWidth={}",
+        replicationPeer.getId(), currentBandwidth);
     }
   }
 
@@ -433,15 +430,6 @@ public class ReplicationSource implements ReplicationSourceInterface {
       Thread.currentThread().interrupt();
     }
     return sleepMultiplier < maxRetriesMultiplier;
-  }
-
-  /**
-   * check whether the peer is enabled or not
-   * @return true if the peer is enabled, otherwise false
-   */
-  @Override
-  public boolean isPeerEnabled() {
-    return replicationPeer.isPeerEnabled();
   }
 
   private void initialize() {
@@ -597,11 +585,6 @@ public class ReplicationSource implements ReplicationSourceInterface {
   }
 
   @Override
-  public String getPeerId() {
-    return this.peerId;
-  }
-
-  @Override
   public Path getCurrentPath() {
     // only for testing
     for (ReplicationSourceShipper worker : workerThreads.values()) {
@@ -685,6 +668,11 @@ public class ReplicationSource implements ReplicationSourceInterface {
     return server.getServerName();
   }
 
+  @Override
+  public ReplicationPeer getPeer() {
+    return replicationPeer;
+  }
+
   Server getServer() {
     return server;
   }
@@ -692,4 +680,6 @@ public class ReplicationSource implements ReplicationSourceInterface {
   ReplicationQueueStorage getQueueStorage() {
     return queueStorage;
   }
+
+
 }
