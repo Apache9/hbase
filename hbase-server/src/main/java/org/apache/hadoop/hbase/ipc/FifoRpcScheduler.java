@@ -154,6 +154,21 @@ public class FifoRpcScheduler extends RpcScheduler {
   }
 
   @Override
+  public int getActiveGeneralRpcHandlerCount() {
+    return getActiveRpcHandlerCount();
+  }
+
+  @Override
+  public int getActivePriorityRpcHandlerCount() {
+    return 0;
+  }
+
+  @Override
+  public int getActiveReplicationRpcHandlerCount() {
+    return 0;
+  }
+
+  @Override
   public long getNumGeneralCallsDropped() {
     return 0;
   }
@@ -239,5 +254,4 @@ public class FifoRpcScheduler extends RpcScheduler {
     }
     return null;
   }
-
 }
