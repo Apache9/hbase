@@ -66,6 +66,7 @@ import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.apache.hbase.thirdparty.com.google.common.annotations.VisibleForTesting;
 import org.apache.hbase.thirdparty.com.google.common.collect.Lists;
 
 /**
@@ -124,6 +125,7 @@ public class ReplicationSource implements ReplicationSourceInterface {
   private long defaultBandwidth;
   private long currentBandwidth;
   private WALFileLengthProvider walFileLengthProvider;
+  @VisibleForTesting
   protected final ConcurrentHashMap<String, ReplicationSourceShipper> workerThreads =
       new ConcurrentHashMap<>();
 
@@ -194,6 +196,9 @@ public class ReplicationSource implements ReplicationSourceInterface {
     PriorityBlockingQueue<Path> queue = queues.get(logPrefix);
     if (queue == null) {
       queue = new PriorityBlockingQueue<>(queueSizePerGroup, new LogsComparator());
+      // make sure that we do not use an empty queue when setting up a ReplicationSource, otherwise
+      // the shipper may quit immediately
+      queue.put(log);
       queues.put(logPrefix, queue);
       if (this.isSourceActive() && this.walEntryFilter != null) {
         // new wal group observed after source startup, start a new worker thread to track it
@@ -201,8 +206,10 @@ public class ReplicationSource implements ReplicationSourceInterface {
         // still not launched, so it's necessary to check workerThreads before start the worker
         tryStartNewShipper(logPrefix, queue);
       }
+    } else {
+      queue.put(log);
     }
-    queue.put(log);
+
     this.metrics.incrSizeOfLogQueue();
     // This will log a warning for each new log that gets created above the warn threshold
     int queueSize = queue.size();
@@ -681,5 +688,7 @@ public class ReplicationSource implements ReplicationSourceInterface {
     return queueStorage;
   }
 
-
+  void removeWorker(ReplicationSourceShipper worker) {
+    workerThreads.remove(worker.walGroupId, worker);
+  }
 }
