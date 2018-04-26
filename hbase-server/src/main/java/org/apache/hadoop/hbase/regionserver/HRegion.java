@@ -6767,7 +6767,7 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
       Cell next;
       while ((next = this.storeHeap.peek()) != null &&
              CellUtil.matchingRows(next, curRowCell)) {
-        this.storeHeap.next(MOCKED_LIST);
+        this.storeHeap.next(MOCKED_LIST, scannerContext);
       }
       resetFilters();
 
