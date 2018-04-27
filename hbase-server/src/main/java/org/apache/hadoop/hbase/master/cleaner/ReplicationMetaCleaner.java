@@ -36,12 +36,12 @@ import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.catalog.MetaEditor;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.client.Delete;
+import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HConnection;
 import org.apache.hadoop.hbase.client.HConnectionManager;
-import org.apache.hadoop.hbase.client.HTable;
-import org.apache.hadoop.hbase.client.replication.ReplicationAdmin;
+import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.master.MasterServices;
-import org.apache.hadoop.hbase.replication.ReplicationPeerConfig;
+import org.apache.hadoop.hbase.replication.ReplicationPeerDescription;
 import org.apache.hadoop.hbase.util.Bytes;
 
 /**
@@ -52,7 +52,6 @@ public class ReplicationMetaCleaner extends Chore {
 
   private static final Log LOG = LogFactory.getLog(ReplicationMetaCleaner.class);
 
-  private ReplicationAdmin replicationAdmin;
   private MasterServices master;
   private HConnection connection;
 
@@ -60,12 +59,14 @@ public class ReplicationMetaCleaner extends Chore {
       throws IOException {
     super("ReplicationMetaCleaner", period, stoppable);
     this.master = master;
-    replicationAdmin = new ReplicationAdmin(master.getConfiguration());
-    connection = HConnectionManager.createConnection(master.getConfiguration());
+    this.connection = HConnectionManager.createConnection(master.getConfiguration());
   }
 
   @Override
   protected void chore() {
+    long totalRows = 0;
+    long cleanedRows = 0;
+    long cleanedBarriers = 0;
     try {
       Map<String, HTableDescriptor> tables = master.getTableDescriptors().getAll();
       Map<String, Set<String>> serialTables = new HashMap<String, Set<String>>();
@@ -78,28 +79,28 @@ public class ReplicationMetaCleaner extends Chore {
           }
         }
         if (hasSerialScope) {
-          serialTables
-              .put(entry.getValue().getTableName().getNameAsString(), new HashSet<String>());
+          serialTables.put(entry.getValue().getTableName().getNameAsString(),
+            new HashSet<String>());
         }
       }
       if (serialTables.isEmpty()) {
         return;
       }
 
-      Map<String, ReplicationPeerConfig> peers = replicationAdmin.listPeerConfigs();
-      for (Map.Entry<String, ReplicationPeerConfig> entry : peers.entrySet()) {
-        for (Map.Entry<byte[], byte[]> map : entry.getValue().getPeerData()
-            .entrySet()) {
-          String tableName = Bytes.toString(map.getKey());
-          if (serialTables.containsKey(tableName)) {
-            serialTables.get(tableName).add(entry.getKey());
-            break;
+      try (HBaseAdmin admin = new HBaseAdmin(connection)) {
+        List<ReplicationPeerDescription> peers = admin.listReplicationPeers();
+        for (String serialTable : serialTables.keySet()) {
+          for (ReplicationPeerDescription peer : peers) {
+            if (peer.getPeerConfig().needToReplicate(TableName.valueOf(serialTable))) {
+              serialTables.get(serialTable).add(peer.getPeerId());
+            }
           }
         }
       }
 
       Map<String, List<Long>> barrierMap = MetaEditor.getAllBarriers(connection);
       for (Map.Entry<String, List<Long>> entry : barrierMap.entrySet()) {
+        totalRows++;
         String encodedName = entry.getKey();
         byte[] encodedBytes = Bytes.toBytes(encodedName);
         boolean canClearRegion = false;
@@ -142,20 +143,19 @@ public class ReplicationMetaCleaner extends Chore {
             }
           }
         }
+
         if (canClearRegion) {
-          Delete delete = new Delete(encodedBytes);
-          delete.deleteFamily(HConstants.REPLICATION_POSITION_FAMILY);
-          delete.deleteFamily(HConstants.REPLICATION_BARRIER_FAMILY);
-          delete.deleteFamily(HConstants.REPLICATION_META_FAMILY);
-          HTable metaTable = new HTable(TableName.META_TABLE_NAME, connection);
-          metaTable.delete(delete);
-          metaTable.close();
-
+          try (HTableInterface metaTable = connection.getTable(TableName.META_TABLE_NAME)) {
+            cleanedRows++;
+            Delete delete = new Delete(encodedBytes);
+            delete.deleteFamily(HConstants.REPLICATION_POSITION_FAMILY);
+            delete.deleteFamily(HConstants.REPLICATION_BARRIER_FAMILY);
+            delete.deleteFamily(HConstants.REPLICATION_META_FAMILY);
+            metaTable.delete(delete);
+          }
         } else {
-
           // Barriers whose seq is larger than min pos of all peers, and the last barrier whose seq
           // is smaller than min pos should be kept. All other barriers can be deleted.
-
           long minPos = Long.MAX_VALUE;
           for (Map.Entry<String, Long> pos : posMap.entrySet()) {
             minPos = Math.min(minPos, pos.getValue());
@@ -165,21 +165,26 @@ public class ReplicationMetaCleaner extends Chore {
           if (index < 0) {
             index = -index - 1;
           }
-          Delete delete = new Delete(encodedBytes);
-          for (int i = 0; i < index - 1; i++) {
-            delete.deleteColumn(HConstants.REPLICATION_BARRIER_FAMILY,
-                Bytes.toBytes(barriers.get(i)));
+          if (index - 1 > 0) {
+            try (HTableInterface metaTable = connection.getTable(TableName.META_TABLE_NAME)) {
+              Delete delete = new Delete(encodedBytes);
+              for (int i = 0; i < index - 1; i++) {
+                cleanedBarriers++;
+                delete.deleteColumn(HConstants.REPLICATION_BARRIER_FAMILY,
+                    Bytes.toBytes(barriers.get(i)));
+              }
+              metaTable.delete(delete);
+            }
           }
-          HTable metaTable = new HTable(TableName.META_TABLE_NAME, connection);
-          metaTable.delete(delete);
-          metaTable.close();
-
         }
+      }
+      if (totalRows > 0) {
+        LOG.info("Cleanup serial replication meta info: totalRows=" + totalRows + ", cleanedRows="
+            + cleanedRows + ", cleanedBarriers=" + cleanedBarriers);
       }
     } catch (IOException e) {
       LOG.error("Exception during cleaning up.", e);
     }
-
   }
 
   private boolean allPeersHavePosition(Set<String> peers, Map<String, Long> posMap)
