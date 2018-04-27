@@ -285,12 +285,13 @@ public class AssignProcedure extends RegionTransitionProcedure {
         if (openSeqNum < regionNode.getOpenSeqNum()) {
           LOG.warn("Skipping update of open seqnum with " + openSeqNum +
               " because current seqnum=" + regionNode.getOpenSeqNum());
+        } else {
+          regionNode.setOpenSeqNum(openSeqNum);
+          // Leave the state here as OPENING for now. We set it to OPEN in
+          // REGION_TRANSITION_FINISH section where we do a bunch of checks.
+          // regionNode.setState(RegionState.State.OPEN, RegionState.State.OPENING);
+          setTransitionState(RegionTransitionState.REGION_TRANSITION_FINISH);
         }
-        regionNode.setOpenSeqNum(openSeqNum);
-        // Leave the state here as OPENING for now. We set it to OPEN in
-        // REGION_TRANSITION_FINISH section where we do a bunch of checks.
-        // regionNode.setState(RegionState.State.OPEN, RegionState.State.OPENING);
-        setTransitionState(RegionTransitionState.REGION_TRANSITION_FINISH);
         break;
       case FAILED_OPEN:
         handleFailure(env, regionNode);
