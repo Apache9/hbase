@@ -25,19 +25,19 @@ import static org.apache.hadoop.fs.permission.FsAction.READ_EXECUTE;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
-import java.util.Queue;
 import java.util.Set;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import com.google.common.collect.ListMultimap;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -70,7 +70,8 @@ public class HdfsAclManager {
   }
 
   public void start() {
-    pool = Executors.newFixedThreadPool(conf.getInt(HConstants.HDFS_ACL_THREAD_NUMBER, 10));
+    pool = Executors.newFixedThreadPool(conf.getInt(HConstants.HDFS_ACL_THREAD_NUMBER, 10),
+            new ThreadFactoryBuilder().setNameFormat("hdfs-acl-manager-thread-%d").build());
     pathHelper = new PathHelper(conf);
     fs = pathHelper.getFileSystem();
   }
@@ -119,7 +120,7 @@ public class HdfsAclManager {
       List<PathAcl> pathAcls = getGrantOrRevokePathAcls(userPerm, AclType.REMOVE, type);
       traverseAndSetAcl(pathAcls);
       traverseAndSetAcl(pathAcls); // set acl twice in case of file move
-      LOG.info("set acl when revoke: " + userPerm.toString() + ", cost" + (System.currentTimeMillis() - start) + " ms.");
+      LOG.info("set acl when revoke: " + userPerm.toString() + ", cost " + (System.currentTimeMillis() - start) + " ms.");
       // if user has table read perm when revoke ns perm, then reset table acl
       if (type == AccessControlProtos.Permission.Type.Namespace) {
         resetNamespaceTableAcl(Bytes.toString(userPerm.getUser()), userPerm.getNamespace());
@@ -285,23 +286,26 @@ public class HdfsAclManager {
     return pathAcls;
   }
 
-  private void traverseAndSetAcl(List<PathAcl> pathAcls) throws Exception {
-    Queue<PathAcl> queue = new LinkedList<>();
-    List<Future<Void>> tasks = new ArrayList<>();
-
+  private void traverseAndSetAcl(List<PathAcl> pathAcls) {
+    final BlockingQueue<PathAcl> queue = new LinkedBlockingQueue<>();
+    AtomicLong pathCount = new AtomicLong(pathAcls.size());
     pathAcls.forEach(queue::add);
 
-    while (!queue.isEmpty()) {
+    while (pathCount.get() > 0) {
       PathAcl pathAcl = queue.poll();
-      tasks.add(pool.submit(() -> {
-        pathAcl.setAcl();
-        return null;
-      }));
-      queue.addAll(pathAcl.getChildPathAcls());
-    }
-
-    for (Future<Void> task : tasks) {
-      task.get();
+      if (pathAcl != null) {
+        pool.submit(() -> {
+          try {
+            pathAcl.setAcl();
+            List<PathAcl> paths = pathAcl.getChildPathAcls();
+            queue.addAll(paths);
+            pathCount.addAndGet(paths.size());
+          } finally {
+            pathCount.decrementAndGet();
+          }
+          return null;
+        });
+      }
     }
   }
 
