@@ -103,6 +103,7 @@ public class TestTableLoad {
     assertEquals(kvCount, load.getKeyValueCount());
     assertEquals(deleteFamilyCount, load.getDeleteFamilyCount());
     assertEquals(deleteKvCount, load.getDeleteKeyValueCount());
+    assertEquals(rowCount - deleteFamilyCount, tableLoad.getApproximateRowCount());
   }
 
   @Test
