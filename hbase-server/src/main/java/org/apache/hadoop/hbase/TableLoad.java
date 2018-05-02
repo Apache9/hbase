@@ -112,6 +112,9 @@ public class TableLoad {
   private long appendTimeTotal;
   private long incrementTimeTotal;
 
+  // approximate row count
+  private long approximateRowCount;
+
   /**
    * family info
    */
@@ -159,6 +162,7 @@ public class TableLoad {
     this.deleteTimeTotal = 0;
     this.appendTimeTotal = 0;
     this.incrementTimeTotal = 0;
+    this.approximateRowCount = 0;
   }
 
   public TableLoad(TableName table) {
@@ -246,6 +250,13 @@ public class TableLoad {
       }
       if (!exist) {
         familyLoads.add(load);
+      }
+    }
+
+    for (FamilyLoad load: familyLoads) {
+      long rowCount = load.getRowCount() - load.getDeleteFamilyCount();
+      if (rowCount > approximateRowCount) {
+        approximateRowCount = rowCount;
       }
     }
   }
@@ -386,6 +397,10 @@ public class TableLoad {
     return incrementCount > 0 ? incrementTimeTotal / incrementCount : 0;
   }
 
+  public long getApproximateRowCount() {
+    return approximateRowCount;
+  }
+
   @VisibleForTesting
   protected long getGetCount() {
     return getCount;
@@ -491,6 +506,7 @@ public class TableLoad {
     sb = Strings.appendKeyValue(sb, "deleteTimeMean", this.getDeleteTimeMean());
     sb = Strings.appendKeyValue(sb, "appendTimeMean", this.getAppendTimeMean());
     sb = Strings.appendKeyValue(sb, "incrementTimeMean", this.getIncrementTimeMean());
+    sb = Strings.appendKeyValue(sb, "approximateRowCount", this.getApproximateRowCount());
     return sb.toString();
   }
 }

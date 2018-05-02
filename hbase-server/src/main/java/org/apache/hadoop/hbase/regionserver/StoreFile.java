@@ -1091,9 +1091,9 @@ public class StoreFile {
     private byte[] lastBloomKey;
     private long deleteFamilyCnt = -1;
     private boolean bulkLoadResult = false;
-    private long rowCnt = -1;
-    private long kvCnt = -1;
-    private long deleteKvCnt = -1;
+    private long rowCnt = 0;
+    private long kvCnt = 0;
+    private long deleteKvCnt = 0;
 
     public Reader(FileSystem fs, Path path, CacheConfig cacheConf, Configuration conf)
         throws IOException {
