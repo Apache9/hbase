@@ -124,10 +124,21 @@ public class Get extends Query
     return this;
   }
 
+  /**
+   * This will always return the default value which is false as client cannot set the value to this
+   * property any more.
+   * @deprecated since 0.98 and will be removed in 2.0.0
+   */
+  @Deprecated
   public boolean isClosestRowBefore() {
     return closestRowBefore;
   }
 
+  /**
+   * This is not used any more and does nothing. Use reverse scan or getRowOrBefore instead.
+   * @deprecated since 0.98 and will be removed in 2.0.0
+   */
+  @Deprecated
   public void setClosestRowBefore(boolean closestRowBefore) {
     this.closestRowBefore = closestRowBefore;
   }

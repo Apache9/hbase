@@ -104,9 +104,8 @@ public class TestFromClientGetWithClosestRowBefore {
     try {
       t.start();
       for (int i = 0; i < 10000; i++) {
-        Get get = new Get(Bytes.toBytes(TEST_TABLE + ",,:")).addFamily(Bytes.toBytes("info"));
-        get.setClosestRowBefore(true);
-        Result result = table.get(get);
+        Result result = table.getRowOrBefore(Bytes.toBytes(TEST_TABLE + ",,:"),
+            Bytes.toBytes("info"));
         if (Result.getTotalSizeOfCells(result) == 0) {
           Assert.fail("Get with closestRowBefore return NONE result.");
         }
@@ -159,9 +158,7 @@ public class TestFromClientGetWithClosestRowBefore {
       t.start();
       byte[] rowKey = Bytes.toBytes(String.format("%026d", initialRowkeys[1] - 1));
       for (int i = 0; i < 1000; i++) {
-        Get get = new Get(rowKey).addFamily(COLUMN_FAMILY);
-        get.setClosestRowBefore(true);
-        Result result = table.get(get);
+        Result result = table.getRowOrBefore(rowKey, COLUMN_FAMILY);
         if (Result.getTotalSizeOfCells(result) == 0) {
           Assert.fail("Get with closestRowBefore return NONE result.");
         }

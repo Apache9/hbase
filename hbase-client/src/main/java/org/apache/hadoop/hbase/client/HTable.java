@@ -719,18 +719,14 @@ public class HTable implements HTableInterface {
    */
   @Override
   public Result getRowOrBefore(byte[] row, final byte[] family) throws IOException {
-    return connection.getRpcRetryingCallerFactory().<Result> newCaller()
-        .callWithRetries(new RegionServerCallable<Result>(this.connection, tableName, row) {
-
-          @Override
-          protected Result rpcCall() throws IOException {
-            if (Trace.isTracing()) {
-              Trace.addTimelineAnnotation("getRowOrBefore to " + location);
-            }
-            return ProtobufUtil.getRowOrBefore(getStub(),
-              getLocation().getRegionInfo().getRegionName(), row, family, getController());
-          }
-        }, this.operationTimeout);
+    Scan scan = new Scan();
+    scan.setReversed(true);
+    scan.withStartRow(row);
+    scan.addFamily(family);
+    scan.setOneRowLimit();
+    try (ResultScanner scanner = getScanner(scan)) {
+      return scanner.next();
+    }
   }
 
   /**
@@ -781,6 +777,14 @@ public class HTable implements HTableInterface {
    */
   @Override
   public Result get(final Get get) throws IOException {
+    if(get.isClosestRowBefore()){
+      if (get.getFamilyMap().size() != 1) {
+        throw new DoNotRetryIOException(
+            "get ClosestRowBefore supports one and only one family now, not "
+                + get.getFamilyMap().size() + " families");
+      }
+      return getRowOrBefore(get.getRow(), get.getFamilyMap().keySet().iterator().next());
+    }
     return connection.getRpcRetryingCallerFactory().<Result> newCaller().callWithRetries(
       new RegionServerCallable<Result>(this.connection, getName(), get.getRow()) {
 

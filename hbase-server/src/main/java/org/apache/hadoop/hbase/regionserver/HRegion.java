@@ -2065,8 +2065,12 @@ public class HRegion implements HeapSize { // , Writable{
       Result result = null;
       Get get = new Get(row);
       get.addFamily(family);
-      get.setClosestRowBefore(true);
-      result = get(get);
+      checkRow(get.getRow(), "Get");
+      checkFamily(family);
+      List<Cell> results = get(get, true, HConstants.NO_NONCE, HConstants.NO_NONCE,
+          true);
+      result = Result.create(results, get.isCheckExistenceOnly() ? !results.isEmpty() : null);
+
       // for compatibility
       result = result.isEmpty() ? null : result;
       if (coprocessorHost != null) {
@@ -5521,7 +5525,8 @@ public class HRegion implements HeapSize { // , Writable{
     return scan;
   }
 
-  public List<Cell> get(Get get, boolean withCoprocessor, long nonceGroup, long nonce)
+  private List<Cell> get(Get get, boolean withCoprocessor, long nonceGroup, long nonce,
+      boolean getClosestRowBefore)
       throws IOException {
     List<Cell> results = new ArrayList<Cell>();
 
@@ -5534,7 +5539,7 @@ public class HRegion implements HeapSize { // , Writable{
 
     updateReadMetrics(1);
     Scan scan;
-    if (get.isClosestRowBefore()) {
+    if (getClosestRowBefore) {
       scan = buildScanForGetWithClosestRowBefore(get);
     } else {
       scan = new Scan(get);
@@ -5572,6 +5577,11 @@ public class HRegion implements HeapSize { // , Writable{
     }
 
     return results;
+  }
+
+  public List<Cell> get(Get get, boolean withCoprocessor, long nonceGroup, long nonce)
+      throws IOException {
+    return get(get, withCoprocessor, nonceGroup, nonce, false);
   }
 
   public void mutateRow(RowMutations rm) throws IOException {
