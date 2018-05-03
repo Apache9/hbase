@@ -280,6 +280,9 @@ public final class Canary implements Tool {
     }
   }
 
+  private static final String EXCLUDE_NAMESPACE = "hbase.canary.exclude.namespace";
+  private String excludeNamespace;
+
   public static final String CANARY = "canary";
   public static final String CANARY_CONF = "canary_conf";
   public static final String CANARY_TABLE_NAME = "_canary_";
@@ -475,6 +478,7 @@ public final class Canary implements Tool {
     lastCheckTime = EnvironmentEdgeManager.currentTimeMillis();
     rootdir = FSUtils.getRootDir(conf);
     fs = rootdir.getFileSystem(conf);
+    excludeNamespace = conf.get(EXCLUDE_NAMESPACE, "");
     // initialize server principal (if using secure Hadoop)
     // User.login(conf, "hbase.canary.keytab.file", "hbase.canary.kerberos.principal", hostname);
     // lets the canary monitor the cluster
@@ -610,6 +614,9 @@ public final class Canary implements Tool {
    * Loops over regions that owns this table, and output some information abouts the state.
    */
   private List<RegionTask> sniff(HTableDescriptor tableDesc) throws Exception {
+    if(tableDesc.getTableName().getNamespaceAsString().equals(excludeNamespace)) {
+      return new ArrayList<>();
+    }
     List<RegionTask> tasks = cachedTasks.get(tableDesc.getNameAsString());
     if (tasks != null) {
       return tasks;
