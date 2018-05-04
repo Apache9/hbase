@@ -91,6 +91,7 @@ public class TestSnapshotFromMaster {
       TableName.valueOf("test");
   // refresh the cache every 1/2 second
   private static final long cacheRefreshPeriod = 500;
+  private static final int minCompactionFiles = 3;
 
   /**
    * Setup the config for the cluster
@@ -113,8 +114,8 @@ public class TestSnapshotFromMaster {
     conf.setInt("hbase.hregion.memstore.flush.size", 25000);
     // so make sure we get a compaction when doing a load, but keep around some
     // files in the store
-    conf.setInt("hbase.hstore.compaction.min", 3);
-    conf.setInt("hbase.hstore.compactionThreshold", 5);
+    conf.setInt("hbase.hstore.compaction.min", minCompactionFiles);
+    conf.setInt("hbase.hstore.compactionThreshold", minCompactionFiles);
     // block writes if we get to 12 store files
     conf.setInt("hbase.hstore.blockingStoreFiles", 12);
     // Ensure no extra cleaners on by default (e.g. TimeToLiveHFileCleaner)
@@ -288,11 +289,13 @@ public class TestSnapshotFromMaster {
     HTableDescriptor htd = new HTableDescriptor(TABLE_NAME);
     htd.setCompactionEnabled(false);
     UTIL.createTable(htd, new byte[][] { TEST_FAM }, UTIL.getConfiguration());
-    // load the table (creates 4 hfiles)
-    UTIL.loadTable(new HTable(UTIL.getConfiguration(), TABLE_NAME), TEST_FAM);
-    UTIL.flush(TABLE_NAME);
-    // Put some more data into the table so for sure we get more storefiles.
-    UTIL.loadTable(new HTable(UTIL.getConfiguration(), TABLE_NAME), TEST_FAM);
+
+    // load the table (creates more than minCompactionFiles hfiles)
+    for (int i = 0; i <= minCompactionFiles; i ++) {
+      LOG.info("Start load table and flush, i=" + i);
+      UTIL.loadTable(new HTable(UTIL.getConfiguration(), TABLE_NAME), TEST_FAM);
+      UTIL.flush(TABLE_NAME);
+    }
 
     // disable the table so we can take a snapshot
     admin.disableTable(TABLE_NAME);
