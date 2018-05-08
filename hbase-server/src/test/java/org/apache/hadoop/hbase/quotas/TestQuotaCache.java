@@ -31,8 +31,6 @@ import static org.junit.Assert.assertTrue;
 public class TestQuotaCache {
   final Log LOG = LogFactory.getLog(getClass());
 
-  private final static int REFRESH_TIME = 5 * 3600;
-
   private final static HBaseTestingUtility TEST_UTIL = new HBaseTestingUtility();
 
   public static final byte[] ROW = Bytes.toBytes("row");
@@ -51,7 +49,6 @@ public class TestQuotaCache {
   @BeforeClass
   public static void setUpBeforeClass() throws Exception {
     TEST_UTIL.getConfiguration().setBoolean(QuotaUtil.QUOTA_CONF_KEY, true);
-    TEST_UTIL.getConfiguration().setInt(QuotaCache.REFRESH_CONF_KEY, REFRESH_TIME);
     TEST_UTIL.getConfiguration().setInt("hbase.hstore.compactionThreshold", 10);
     TEST_UTIL.getConfiguration().setInt("hbase.regionserver.msginterval", 100);
     TEST_UTIL.getConfiguration().setInt("hbase.client.pause", 250);
