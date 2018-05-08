@@ -21,8 +21,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.metrics.BaseSourceImpl;
-import org.apache.hadoop.metrics2.MetricHistogram;
 import org.apache.hadoop.metrics2.lib.DynamicMetricsRegistry;
+import org.apache.hadoop.metrics2.lib.MutableTimeHistogram;
 
 /**
  * Implementation of {@link MetricsTableLatencies} to track latencies for one table in a
@@ -38,13 +38,13 @@ public class MetricsTableLatenciesImpl extends BaseSourceImpl implements Metrics
   }
 
   public static class TableHistograms {
-    final MetricHistogram getTimeHisto;
-    final MetricHistogram putTimeHisto;
-    final MetricHistogram scanTimeHisto;
-    final MetricHistogram batchTimeHisto;
-    final MetricHistogram appendTimeHisto;
-    final MetricHistogram deleteTimeHisto;
-    final MetricHistogram incrementTimeHisto;
+    final MutableTimeHistogram getTimeHisto;
+    final MutableTimeHistogram putTimeHisto;
+    final MutableTimeHistogram scanTimeHisto;
+    final MutableTimeHistogram batchTimeHisto;
+    final MutableTimeHistogram appendTimeHisto;
+    final MutableTimeHistogram deleteTimeHisto;
+    final MutableTimeHistogram incrementTimeHisto;
 
     TableHistograms(DynamicMetricsRegistry registry, TableName tn) {
       getTimeHisto = registry.newTimeHistogram(qualifyMetricsName(tn, GET_TIME));

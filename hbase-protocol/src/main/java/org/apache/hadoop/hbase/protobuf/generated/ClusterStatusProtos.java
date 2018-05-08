@@ -13051,6 +13051,46 @@ public final class ClusterStatusProtos {
      * <code>optional uint64 increment_operation_count = 15;</code>
      */
     long getIncrementOperationCount();
+
+    // optional uint64 get_time_99_percentile = 16;
+    /**
+     * <code>optional uint64 get_time_99_percentile = 16;</code>
+     */
+    boolean hasGetTime99Percentile();
+    /**
+     * <code>optional uint64 get_time_99_percentile = 16;</code>
+     */
+    long getGetTime99Percentile();
+
+    // optional uint64 put_time_99_percentile = 17;
+    /**
+     * <code>optional uint64 put_time_99_percentile = 17;</code>
+     */
+    boolean hasPutTime99Percentile();
+    /**
+     * <code>optional uint64 put_time_99_percentile = 17;</code>
+     */
+    long getPutTime99Percentile();
+
+    // optional uint64 scan_time_99_percentile = 18;
+    /**
+     * <code>optional uint64 scan_time_99_percentile = 18;</code>
+     */
+    boolean hasScanTime99Percentile();
+    /**
+     * <code>optional uint64 scan_time_99_percentile = 18;</code>
+     */
+    long getScanTime99Percentile();
+
+    // optional uint64 batch_time_99_percentile = 19;
+    /**
+     * <code>optional uint64 batch_time_99_percentile = 19;</code>
+     */
+    boolean hasBatchTime99Percentile();
+    /**
+     * <code>optional uint64 batch_time_99_percentile = 19;</code>
+     */
+    long getBatchTime99Percentile();
   }
   /**
    * Protobuf type {@code RegionServerTableLatency}
@@ -13176,6 +13216,26 @@ public final class ClusterStatusProtos {
             case 120: {
               bitField0_ |= 0x00004000;
               incrementOperationCount_ = input.readUInt64();
+              break;
+            }
+            case 128: {
+              bitField0_ |= 0x00008000;
+              getTime99Percentile_ = input.readUInt64();
+              break;
+            }
+            case 136: {
+              bitField0_ |= 0x00010000;
+              putTime99Percentile_ = input.readUInt64();
+              break;
+            }
+            case 144: {
+              bitField0_ |= 0x00020000;
+              scanTime99Percentile_ = input.readUInt64();
+              break;
+            }
+            case 152: {
+              bitField0_ |= 0x00040000;
+              batchTime99Percentile_ = input.readUInt64();
               break;
             }
           }
@@ -13485,6 +13545,70 @@ public final class ClusterStatusProtos {
       return incrementOperationCount_;
     }
 
+    // optional uint64 get_time_99_percentile = 16;
+    public static final int GET_TIME_99_PERCENTILE_FIELD_NUMBER = 16;
+    private long getTime99Percentile_;
+    /**
+     * <code>optional uint64 get_time_99_percentile = 16;</code>
+     */
+    public boolean hasGetTime99Percentile() {
+      return ((bitField0_ & 0x00008000) == 0x00008000);
+    }
+    /**
+     * <code>optional uint64 get_time_99_percentile = 16;</code>
+     */
+    public long getGetTime99Percentile() {
+      return getTime99Percentile_;
+    }
+
+    // optional uint64 put_time_99_percentile = 17;
+    public static final int PUT_TIME_99_PERCENTILE_FIELD_NUMBER = 17;
+    private long putTime99Percentile_;
+    /**
+     * <code>optional uint64 put_time_99_percentile = 17;</code>
+     */
+    public boolean hasPutTime99Percentile() {
+      return ((bitField0_ & 0x00010000) == 0x00010000);
+    }
+    /**
+     * <code>optional uint64 put_time_99_percentile = 17;</code>
+     */
+    public long getPutTime99Percentile() {
+      return putTime99Percentile_;
+    }
+
+    // optional uint64 scan_time_99_percentile = 18;
+    public static final int SCAN_TIME_99_PERCENTILE_FIELD_NUMBER = 18;
+    private long scanTime99Percentile_;
+    /**
+     * <code>optional uint64 scan_time_99_percentile = 18;</code>
+     */
+    public boolean hasScanTime99Percentile() {
+      return ((bitField0_ & 0x00020000) == 0x00020000);
+    }
+    /**
+     * <code>optional uint64 scan_time_99_percentile = 18;</code>
+     */
+    public long getScanTime99Percentile() {
+      return scanTime99Percentile_;
+    }
+
+    // optional uint64 batch_time_99_percentile = 19;
+    public static final int BATCH_TIME_99_PERCENTILE_FIELD_NUMBER = 19;
+    private long batchTime99Percentile_;
+    /**
+     * <code>optional uint64 batch_time_99_percentile = 19;</code>
+     */
+    public boolean hasBatchTime99Percentile() {
+      return ((bitField0_ & 0x00040000) == 0x00040000);
+    }
+    /**
+     * <code>optional uint64 batch_time_99_percentile = 19;</code>
+     */
+    public long getBatchTime99Percentile() {
+      return batchTime99Percentile_;
+    }
+
     private void initFields() {
       tableName_ = "";
       getTimeMean_ = 0L;
@@ -13501,6 +13625,10 @@ public final class ClusterStatusProtos {
       appendOperationCount_ = 0L;
       deleteOperationCount_ = 0L;
       incrementOperationCount_ = 0L;
+      getTime99Percentile_ = 0L;
+      putTime99Percentile_ = 0L;
+      scanTime99Percentile_ = 0L;
+      batchTime99Percentile_ = 0L;
     }
     private byte memoizedIsInitialized = -1;
     public final boolean isInitialized() {
@@ -13562,6 +13690,18 @@ public final class ClusterStatusProtos {
       }
       if (((bitField0_ & 0x00004000) == 0x00004000)) {
         output.writeUInt64(15, incrementOperationCount_);
+      }
+      if (((bitField0_ & 0x00008000) == 0x00008000)) {
+        output.writeUInt64(16, getTime99Percentile_);
+      }
+      if (((bitField0_ & 0x00010000) == 0x00010000)) {
+        output.writeUInt64(17, putTime99Percentile_);
+      }
+      if (((bitField0_ & 0x00020000) == 0x00020000)) {
+        output.writeUInt64(18, scanTime99Percentile_);
+      }
+      if (((bitField0_ & 0x00040000) == 0x00040000)) {
+        output.writeUInt64(19, batchTime99Percentile_);
       }
       getUnknownFields().writeTo(output);
     }
@@ -13631,6 +13771,22 @@ public final class ClusterStatusProtos {
       if (((bitField0_ & 0x00004000) == 0x00004000)) {
         size += com.google.protobuf.CodedOutputStream
           .computeUInt64Size(15, incrementOperationCount_);
+      }
+      if (((bitField0_ & 0x00008000) == 0x00008000)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeUInt64Size(16, getTime99Percentile_);
+      }
+      if (((bitField0_ & 0x00010000) == 0x00010000)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeUInt64Size(17, putTime99Percentile_);
+      }
+      if (((bitField0_ & 0x00020000) == 0x00020000)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeUInt64Size(18, scanTime99Percentile_);
+      }
+      if (((bitField0_ & 0x00040000) == 0x00040000)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeUInt64Size(19, batchTime99Percentile_);
       }
       size += getUnknownFields().getSerializedSize();
       memoizedSerializedSize = size;
@@ -13730,6 +13886,26 @@ public final class ClusterStatusProtos {
         result = result && (getIncrementOperationCount()
             == other.getIncrementOperationCount());
       }
+      result = result && (hasGetTime99Percentile() == other.hasGetTime99Percentile());
+      if (hasGetTime99Percentile()) {
+        result = result && (getGetTime99Percentile()
+            == other.getGetTime99Percentile());
+      }
+      result = result && (hasPutTime99Percentile() == other.hasPutTime99Percentile());
+      if (hasPutTime99Percentile()) {
+        result = result && (getPutTime99Percentile()
+            == other.getPutTime99Percentile());
+      }
+      result = result && (hasScanTime99Percentile() == other.hasScanTime99Percentile());
+      if (hasScanTime99Percentile()) {
+        result = result && (getScanTime99Percentile()
+            == other.getScanTime99Percentile());
+      }
+      result = result && (hasBatchTime99Percentile() == other.hasBatchTime99Percentile());
+      if (hasBatchTime99Percentile()) {
+        result = result && (getBatchTime99Percentile()
+            == other.getBatchTime99Percentile());
+      }
       result = result &&
           getUnknownFields().equals(other.getUnknownFields());
       return result;
@@ -13802,6 +13978,22 @@ public final class ClusterStatusProtos {
       if (hasIncrementOperationCount()) {
         hash = (37 * hash) + INCREMENT_OPERATION_COUNT_FIELD_NUMBER;
         hash = (53 * hash) + hashLong(getIncrementOperationCount());
+      }
+      if (hasGetTime99Percentile()) {
+        hash = (37 * hash) + GET_TIME_99_PERCENTILE_FIELD_NUMBER;
+        hash = (53 * hash) + hashLong(getGetTime99Percentile());
+      }
+      if (hasPutTime99Percentile()) {
+        hash = (37 * hash) + PUT_TIME_99_PERCENTILE_FIELD_NUMBER;
+        hash = (53 * hash) + hashLong(getPutTime99Percentile());
+      }
+      if (hasScanTime99Percentile()) {
+        hash = (37 * hash) + SCAN_TIME_99_PERCENTILE_FIELD_NUMBER;
+        hash = (53 * hash) + hashLong(getScanTime99Percentile());
+      }
+      if (hasBatchTime99Percentile()) {
+        hash = (37 * hash) + BATCH_TIME_99_PERCENTILE_FIELD_NUMBER;
+        hash = (53 * hash) + hashLong(getBatchTime99Percentile());
       }
       hash = (29 * hash) + getUnknownFields().hashCode();
       memoizedHashCode = hash;
@@ -13942,6 +14134,14 @@ public final class ClusterStatusProtos {
         bitField0_ = (bitField0_ & ~0x00002000);
         incrementOperationCount_ = 0L;
         bitField0_ = (bitField0_ & ~0x00004000);
+        getTime99Percentile_ = 0L;
+        bitField0_ = (bitField0_ & ~0x00008000);
+        putTime99Percentile_ = 0L;
+        bitField0_ = (bitField0_ & ~0x00010000);
+        scanTime99Percentile_ = 0L;
+        bitField0_ = (bitField0_ & ~0x00020000);
+        batchTime99Percentile_ = 0L;
+        bitField0_ = (bitField0_ & ~0x00040000);
         return this;
       }
 
@@ -14030,6 +14230,22 @@ public final class ClusterStatusProtos {
           to_bitField0_ |= 0x00004000;
         }
         result.incrementOperationCount_ = incrementOperationCount_;
+        if (((from_bitField0_ & 0x00008000) == 0x00008000)) {
+          to_bitField0_ |= 0x00008000;
+        }
+        result.getTime99Percentile_ = getTime99Percentile_;
+        if (((from_bitField0_ & 0x00010000) == 0x00010000)) {
+          to_bitField0_ |= 0x00010000;
+        }
+        result.putTime99Percentile_ = putTime99Percentile_;
+        if (((from_bitField0_ & 0x00020000) == 0x00020000)) {
+          to_bitField0_ |= 0x00020000;
+        }
+        result.scanTime99Percentile_ = scanTime99Percentile_;
+        if (((from_bitField0_ & 0x00040000) == 0x00040000)) {
+          to_bitField0_ |= 0x00040000;
+        }
+        result.batchTime99Percentile_ = batchTime99Percentile_;
         result.bitField0_ = to_bitField0_;
         onBuilt();
         return result;
@@ -14092,6 +14308,18 @@ public final class ClusterStatusProtos {
         }
         if (other.hasIncrementOperationCount()) {
           setIncrementOperationCount(other.getIncrementOperationCount());
+        }
+        if (other.hasGetTime99Percentile()) {
+          setGetTime99Percentile(other.getGetTime99Percentile());
+        }
+        if (other.hasPutTime99Percentile()) {
+          setPutTime99Percentile(other.getPutTime99Percentile());
+        }
+        if (other.hasScanTime99Percentile()) {
+          setScanTime99Percentile(other.getScanTime99Percentile());
+        }
+        if (other.hasBatchTime99Percentile()) {
+          setBatchTime99Percentile(other.getBatchTime99Percentile());
         }
         this.mergeUnknownFields(other.getUnknownFields());
         return this;
@@ -14656,6 +14884,138 @@ public final class ClusterStatusProtos {
       public Builder clearIncrementOperationCount() {
         bitField0_ = (bitField0_ & ~0x00004000);
         incrementOperationCount_ = 0L;
+        onChanged();
+        return this;
+      }
+
+      // optional uint64 get_time_99_percentile = 16;
+      private long getTime99Percentile_ ;
+      /**
+       * <code>optional uint64 get_time_99_percentile = 16;</code>
+       */
+      public boolean hasGetTime99Percentile() {
+        return ((bitField0_ & 0x00008000) == 0x00008000);
+      }
+      /**
+       * <code>optional uint64 get_time_99_percentile = 16;</code>
+       */
+      public long getGetTime99Percentile() {
+        return getTime99Percentile_;
+      }
+      /**
+       * <code>optional uint64 get_time_99_percentile = 16;</code>
+       */
+      public Builder setGetTime99Percentile(long value) {
+        bitField0_ |= 0x00008000;
+        getTime99Percentile_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>optional uint64 get_time_99_percentile = 16;</code>
+       */
+      public Builder clearGetTime99Percentile() {
+        bitField0_ = (bitField0_ & ~0x00008000);
+        getTime99Percentile_ = 0L;
+        onChanged();
+        return this;
+      }
+
+      // optional uint64 put_time_99_percentile = 17;
+      private long putTime99Percentile_ ;
+      /**
+       * <code>optional uint64 put_time_99_percentile = 17;</code>
+       */
+      public boolean hasPutTime99Percentile() {
+        return ((bitField0_ & 0x00010000) == 0x00010000);
+      }
+      /**
+       * <code>optional uint64 put_time_99_percentile = 17;</code>
+       */
+      public long getPutTime99Percentile() {
+        return putTime99Percentile_;
+      }
+      /**
+       * <code>optional uint64 put_time_99_percentile = 17;</code>
+       */
+      public Builder setPutTime99Percentile(long value) {
+        bitField0_ |= 0x00010000;
+        putTime99Percentile_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>optional uint64 put_time_99_percentile = 17;</code>
+       */
+      public Builder clearPutTime99Percentile() {
+        bitField0_ = (bitField0_ & ~0x00010000);
+        putTime99Percentile_ = 0L;
+        onChanged();
+        return this;
+      }
+
+      // optional uint64 scan_time_99_percentile = 18;
+      private long scanTime99Percentile_ ;
+      /**
+       * <code>optional uint64 scan_time_99_percentile = 18;</code>
+       */
+      public boolean hasScanTime99Percentile() {
+        return ((bitField0_ & 0x00020000) == 0x00020000);
+      }
+      /**
+       * <code>optional uint64 scan_time_99_percentile = 18;</code>
+       */
+      public long getScanTime99Percentile() {
+        return scanTime99Percentile_;
+      }
+      /**
+       * <code>optional uint64 scan_time_99_percentile = 18;</code>
+       */
+      public Builder setScanTime99Percentile(long value) {
+        bitField0_ |= 0x00020000;
+        scanTime99Percentile_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>optional uint64 scan_time_99_percentile = 18;</code>
+       */
+      public Builder clearScanTime99Percentile() {
+        bitField0_ = (bitField0_ & ~0x00020000);
+        scanTime99Percentile_ = 0L;
+        onChanged();
+        return this;
+      }
+
+      // optional uint64 batch_time_99_percentile = 19;
+      private long batchTime99Percentile_ ;
+      /**
+       * <code>optional uint64 batch_time_99_percentile = 19;</code>
+       */
+      public boolean hasBatchTime99Percentile() {
+        return ((bitField0_ & 0x00040000) == 0x00040000);
+      }
+      /**
+       * <code>optional uint64 batch_time_99_percentile = 19;</code>
+       */
+      public long getBatchTime99Percentile() {
+        return batchTime99Percentile_;
+      }
+      /**
+       * <code>optional uint64 batch_time_99_percentile = 19;</code>
+       */
+      public Builder setBatchTime99Percentile(long value) {
+        bitField0_ |= 0x00040000;
+        batchTime99Percentile_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>optional uint64 batch_time_99_percentile = 19;</code>
+       */
+      public Builder clearBatchTime99Percentile() {
+        bitField0_ = (bitField0_ & ~0x00040000);
+        batchTime99Percentile_ = 0L;
         onChanged();
         return this;
       }
@@ -18541,7 +18901,7 @@ public final class ClusterStatusProtos {
       " \001(\004\022\035\n\025scan_count_per_second\030\020 \001(\004\022\034\n\024s" +
       "can_rows_per_second\030\021 \001(\004\022>\n\033region_serv" +
       "er_table_latency\030\022 \003(\0132\031.RegionServerTab",
-      "leLatency\"\270\003\n\030RegionServerTableLatency\022\022" +
+      "leLatency\"\273\004\n\030RegionServerTableLatency\022\022" +
       "\n\ntable_name\030\001 \002(\t\022\025\n\rget_time_mean\030\002 \001(" +
       "\004\022\025\n\rput_time_mean\030\003 \001(\004\022\026\n\016scan_time_me" +
       "an\030\004 \001(\004\022\027\n\017batch_time_mean\030\005 \001(\004\022\030\n\020app" +
@@ -18552,19 +18912,23 @@ public final class ClusterStatusProtos {
       "(\004\022\035\n\025batch_operation_count\030\014 \001(\004\022\036\n\026app" +
       "end_operation_count\030\r \001(\004\022\036\n\026delete_oper",
       "ation_count\030\016 \001(\004\022!\n\031increment_operation" +
-      "_count\030\017 \001(\004\"O\n\016LiveServerInfo\022\033\n\006server" +
-      "\030\001 \002(\0132\013.ServerName\022 \n\013server_load\030\002 \002(\013" +
-      "2\013.ServerLoad\"\340\002\n\rClusterStatus\022/\n\rhbase" +
-      "_version\030\001 \001(\0132\030.HBaseVersionFileContent" +
-      "\022%\n\014live_servers\030\002 \003(\0132\017.LiveServerInfo\022" +
-      "!\n\014dead_servers\030\003 \003(\0132\013.ServerName\0222\n\025re" +
-      "gions_in_transition\030\004 \003(\0132\023.RegionInTran" +
-      "sition\022\036\n\ncluster_id\030\005 \001(\0132\n.ClusterId\022)" +
-      "\n\023master_coprocessors\030\006 \003(\0132\014.Coprocesso",
-      "r\022\033\n\006master\030\007 \001(\0132\013.ServerName\022#\n\016backup" +
-      "_masters\030\010 \003(\0132\013.ServerName\022\023\n\013balancer_" +
-      "on\030\t \001(\010BF\n*org.apache.hadoop.hbase.prot" +
-      "obuf.generatedB\023ClusterStatusProtosH\001\240\001\001"
+      "_count\030\017 \001(\004\022\036\n\026get_time_99_percentile\030\020" +
+      " \001(\004\022\036\n\026put_time_99_percentile\030\021 \001(\004\022\037\n\027" +
+      "scan_time_99_percentile\030\022 \001(\004\022 \n\030batch_t" +
+      "ime_99_percentile\030\023 \001(\004\"O\n\016LiveServerInf" +
+      "o\022\033\n\006server\030\001 \002(\0132\013.ServerName\022 \n\013server" +
+      "_load\030\002 \002(\0132\013.ServerLoad\"\340\002\n\rClusterStat" +
+      "us\022/\n\rhbase_version\030\001 \001(\0132\030.HBaseVersion" +
+      "FileContent\022%\n\014live_servers\030\002 \003(\0132\017.Live" +
+      "ServerInfo\022!\n\014dead_servers\030\003 \003(\0132\013.Serve",
+      "rName\0222\n\025regions_in_transition\030\004 \003(\0132\023.R" +
+      "egionInTransition\022\036\n\ncluster_id\030\005 \001(\0132\n." +
+      "ClusterId\022)\n\023master_coprocessors\030\006 \003(\0132\014" +
+      ".Coprocessor\022\033\n\006master\030\007 \001(\0132\013.ServerNam" +
+      "e\022#\n\016backup_masters\030\010 \003(\0132\013.ServerName\022\023" +
+      "\n\013balancer_on\030\t \001(\010BF\n*org.apache.hadoop" +
+      ".hbase.protobuf.generatedB\023ClusterStatus" +
+      "ProtosH\001\240\001\001"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
       new com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner() {
@@ -18618,7 +18982,7 @@ public final class ClusterStatusProtos {
           internal_static_RegionServerTableLatency_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_RegionServerTableLatency_descriptor,
-              new java.lang.String[] { "TableName", "GetTimeMean", "PutTimeMean", "ScanTimeMean", "BatchTimeMean", "AppendTimeMean", "DeleteTimeMean", "IncrementTimeMean", "GetOperationCount", "PutOperationCount", "ScanOperationCount", "BatchOperationCount", "AppendOperationCount", "DeleteOperationCount", "IncrementOperationCount", });
+              new java.lang.String[] { "TableName", "GetTimeMean", "PutTimeMean", "ScanTimeMean", "BatchTimeMean", "AppendTimeMean", "DeleteTimeMean", "IncrementTimeMean", "GetOperationCount", "PutOperationCount", "ScanOperationCount", "BatchOperationCount", "AppendOperationCount", "DeleteOperationCount", "IncrementOperationCount", "GetTime99Percentile", "PutTime99Percentile", "ScanTime99Percentile", "BatchTime99Percentile", });
           internal_static_LiveServerInfo_descriptor =
             getDescriptor().getMessageTypes().get(8);
           internal_static_LiveServerInfo_fieldAccessorTable = new

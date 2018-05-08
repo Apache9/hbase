@@ -1440,35 +1440,31 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
                     ClusterStatusProtos.RegionServerTableLatency.newBuilder();
             builder.setTableName(entry.getKey().getNameAsString());
             MetricsTableLatenciesImpl.TableHistograms histograms = entry.getValue();
-            long[] value = null;
-            if ((value = getOperationCountAndMeanTime(histograms.getTimeHisto)) != null) {
-              builder.setGetOperationCount(value[0]);
-              builder.setGetTimeMean(value[1]);
-            }
-            if ((value = getOperationCountAndMeanTime(histograms.putTimeHisto)) != null) {
-              builder.setPutOperationCount(value[0]);
-              builder.setPutTimeMean(value[1]);
-            }
-            if ((value = getOperationCountAndMeanTime(histograms.scanTimeHisto)) != null) {
-              builder.setScanOperationCount(value[0]);
-              builder.setScanTimeMean(value[1]);
-            }
-            if ((value = getOperationCountAndMeanTime(histograms.batchTimeHisto)) != null) {
-              builder.setBatchOperationCount(value[0]);
-              builder.setBatchTimeMean(value[1]);
-            }
-            if ((value = getOperationCountAndMeanTime(histograms.deleteTimeHisto)) != null) {
-              builder.setDeleteOperationCount(value[0]);
-              builder.setDeleteTimeMean(value[1]);
-            }
-            if ((value = getOperationCountAndMeanTime(histograms.appendTimeHisto)) != null) {
-              builder.setAppendOperationCount(value[0]);
-              builder.setAppendTimeMean(value[1]);
-            }
-            if ((value = getOperationCountAndMeanTime(histograms.incrementTimeHisto)) != null) {
-              builder.setIncrementOperationCount(value[0]);
-              builder.setIncrementTimeMean(value[1]);
-            }
+            long[] value = histograms.getTimeHisto.getOperationCountAndMeanAnd99PercentileTime();
+            builder.setGetOperationCount(value[0]);
+            builder.setGetTimeMean(value[1]);
+            builder.setGetTime99Percentile(value[2]);
+            value = histograms.putTimeHisto.getOperationCountAndMeanAnd99PercentileTime();
+            builder.setPutOperationCount(value[0]);
+            builder.setPutTimeMean(value[1]);
+            builder.setPutTime99Percentile(value[2]);
+            value = histograms.scanTimeHisto.getOperationCountAndMeanAnd99PercentileTime();
+            builder.setScanOperationCount(value[0]);
+            builder.setScanTimeMean(value[1]);
+            builder.setScanTime99Percentile(value[2]);
+            value = histograms.batchTimeHisto.getOperationCountAndMeanAnd99PercentileTime();
+            builder.setBatchOperationCount(value[0]);
+            builder.setBatchTimeMean(value[1]);
+            builder.setBatchTime99Percentile(value[2]);
+            value = histograms.deleteTimeHisto.getOperationCountAndMeanAnd99PercentileTime();
+            builder.setDeleteOperationCount(value[0]);
+            builder.setDeleteTimeMean(value[1]);
+            value = histograms.appendTimeHisto.getOperationCountAndMeanAnd99PercentileTime();
+            builder.setAppendOperationCount(value[0]);
+            builder.setAppendTimeMean(value[1]);
+            value = histograms.incrementTimeHisto.getOperationCountAndMeanAnd99PercentileTime();
+            builder.setIncrementOperationCount(value[0]);
+            builder.setIncrementTimeMean(value[1]);
             regionServerTableLatencies.add(builder.build());
           }
         }
@@ -1477,16 +1473,6 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
       LOG.error("buildRegionServerTableLatency exception", e);
     }
     return regionServerTableLatencies;
-  }
-
-  private long[] getOperationCountAndMeanTime(MetricHistogram metricHistogram) {
-    if (metricHistogram instanceof MutableTimeHistogram) {
-      MutableTimeHistogram histogram = (MutableTimeHistogram) metricHistogram;
-      long[] value = histogram.getCountAndMean();
-      histogram.reset();
-      return value;
-    }
-    return null;
   }
 
   String getOnlineRegionsAsPrintableString() {

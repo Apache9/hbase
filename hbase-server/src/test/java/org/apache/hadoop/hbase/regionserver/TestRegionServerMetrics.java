@@ -418,7 +418,7 @@ public class TestRegionServerMetrics {
     table.put(put);
     table.flushCommits();
     MetricsTableLatenciesImpl.TableHistograms histograms = getTableHistograms(tableNameString);
-    Assert.assertEquals(1, getOperationCount(histograms.putTimeHisto));
+    Assert.assertEquals(1, histograms.putTimeHisto.getOperationCountAndMeanAnd99PercentileTime()[0]);
 
     // put 30
     for (int i = 0; i < 30; i++) {
@@ -427,7 +427,7 @@ public class TestRegionServerMetrics {
       table.put(putTmp);
     }
     table.flushCommits();
-    Assert.assertEquals(30, getOperationCount(histograms.putTimeHisto));
+    Assert.assertEquals(30, histograms.putTimeHisto.getOperationCountAndMeanAnd99PercentileTime()[0]);
 
     // get 10
     Get get = new Get(row);
@@ -435,7 +435,7 @@ public class TestRegionServerMetrics {
       table.get(get);
     }
     table.flushCommits();
-    Assert.assertEquals(10, getOperationCount(histograms.getTimeHisto));
+    Assert.assertEquals(10, histograms.getTimeHisto.getOperationCountAndMeanAnd99PercentileTime()[0]);
 
     // scan
     Scan scan = new Scan();
@@ -446,27 +446,27 @@ public class TestRegionServerMetrics {
       iterable.next();
     }
     table.flushCommits();
-    Assert.assertEquals(1, getOperationCount(histograms.scanTimeHisto));
+    Assert.assertEquals(1, histograms.scanTimeHisto.getOperationCountAndMeanAnd99PercentileTime()[0]);
 
     // append
     Append append = new Append(row);
     append.add(family, qualifier2, Bytes.toBytes(1));
     table.append(append);
     table.flushCommits();
-    Assert.assertEquals(1, getOperationCount(histograms.appendTimeHisto));
+    Assert.assertEquals(1, histograms.appendTimeHisto.getOperationCountAndMeanAnd99PercentileTime()[0]);
 
     // delete
     Delete delete = new Delete(row);
     table.delete(delete);
     table.flushCommits();
-    Assert.assertEquals(1, getOperationCount(histograms.deleteTimeHisto));
+    Assert.assertEquals(1, histograms.deleteTimeHisto.getOperationCountAndMeanAnd99PercentileTime()[0]);
 
     // increment
     Increment increment = new Increment(row);
     increment.addColumn(family, qualifier2, 10);
     table.increment(increment);
     table.flushCommits();
-    Assert.assertEquals(1, getOperationCount(histograms.incrementTimeHisto));
+    Assert.assertEquals(1, histograms.incrementTimeHisto.getOperationCountAndMeanAnd99PercentileTime()[0]);
 
     // batch
     List<Get> gets = new ArrayList<Get>();
@@ -475,7 +475,7 @@ public class TestRegionServerMetrics {
     }
     table.get(gets);
     table.flushCommits();
-    Assert.assertEquals(1, getOperationCount(histograms.batchTimeHisto));
+    Assert.assertEquals(1, histograms.batchTimeHisto.getOperationCountAndMeanAnd99PercentileTime()[0]);
 
     // batch
     RowMutations mutations = new RowMutations(row);
@@ -483,7 +483,7 @@ public class TestRegionServerMetrics {
     mutations.add(put);
     table.mutateRow(mutations);
     table.flushCommits();
-    Assert.assertEquals(1, getOperationCount(histograms.batchTimeHisto));
+    Assert.assertEquals(1, histograms.batchTimeHisto.getOperationCountAndMeanAnd99PercentileTime()[0]);
 
     // batch
     table.setAutoFlushTo(false);
@@ -491,7 +491,7 @@ public class TestRegionServerMetrics {
       table.put(put);
     }
     table.flushCommits();
-    Assert.assertEquals(1, getOperationCount(histograms.batchTimeHisto));
+    Assert.assertEquals(1, histograms.batchTimeHisto.getOperationCountAndMeanAnd99PercentileTime()[0]);
 
     table.close();
   }
@@ -507,17 +507,5 @@ public class TestRegionServerMetrics {
       }
     }
     return null;
-  }
-
-  private long getOperationCount(MetricHistogram metricHistogram) {
-    if (metricHistogram instanceof MutableTimeHistogram) {
-      MutableTimeHistogram histogram = (MutableTimeHistogram) metricHistogram;
-      long[] value = histogram.getCountAndMean();
-      if (value != null && value.length > 0) {
-        histogram.reset();
-        return value[0];
-      }
-    }
-    return 0;
   }
 }

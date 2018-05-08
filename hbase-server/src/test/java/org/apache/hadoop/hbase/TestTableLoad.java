@@ -119,7 +119,7 @@ public class TestTableLoad {
   }
 
   @Test
-  public void testTableLatency() throws Exception {
+  public void testTableLatency() {
     TableLoad tableLoad = tableLoadMap.get(TableName.valueOf(testTableLatencyTableName));
     Assert.assertEquals(10, tableLoad.getGetCount());
     Assert.assertEquals(31, tableLoad.getPutCount());

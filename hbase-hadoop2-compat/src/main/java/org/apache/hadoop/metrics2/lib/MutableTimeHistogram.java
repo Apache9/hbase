@@ -19,6 +19,7 @@
 package org.apache.hadoop.metrics2.lib;
 
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
+import org.apache.hadoop.hbase.util.FastLongHistogram;
 import org.apache.hadoop.metrics2.MetricsInfo;
 
 /**
@@ -52,15 +53,8 @@ public class MutableTimeHistogram extends MutableRangeHistogram {
     return RANGES;
   }
 
-  public void reset() {
-    histogram.reset();
-    counter.reset();
-  }
-
-  public long[] getCountAndMean() {
-    if (histogram.getCount() > 0) {
-      return new long[]{histogram.getCount(), histogram.getMean()};
-    }
-    return null;
+  public long[] getOperationCountAndMeanAnd99PercentileTime() {
+    FastLongHistogram oldHistogram = histogram.reset();
+    return new long[]{oldHistogram.getCount(), oldHistogram.getMean(), oldHistogram.getQuantiles(new double[]{0.99})[0]};
   }
 }
