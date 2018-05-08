@@ -111,6 +111,10 @@ public class TableLoad {
   private long deleteTimeTotal;
   private long appendTimeTotal;
   private long incrementTimeTotal;
+  private long getTimeMax99Percentile;
+  private long putTimeMax99Percentile;
+  private long scanTimeMax99Percentile;
+  private long batchTimeMax99Percentile;
 
   // approximate row count
   private long approximateRowCount;
@@ -163,6 +167,10 @@ public class TableLoad {
     this.appendTimeTotal = 0;
     this.incrementTimeTotal = 0;
     this.approximateRowCount = 0;
+    this.getTimeMax99Percentile = 0;
+    this.putTimeMax99Percentile = 0;
+    this.scanTimeMax99Percentile = 0;
+    this.batchTimeMax99Percentile = 0;
   }
 
   public TableLoad(TableName table) {
@@ -197,6 +205,18 @@ public class TableLoad {
     if (tl.hasIncrementTimeMean()) {
       incrementTimeTotal += tl.getIncrementTimeMean() * tl.getIncrementOperationCount();
       incrementCount += tl.getIncrementOperationCount();
+    }
+    if (tl.hasGetTime99Percentile() && tl.getGetTime99Percentile() > getTimeMax99Percentile) {
+      getTimeMax99Percentile = tl.getGetTime99Percentile();
+    }
+    if (tl.hasPutTime99Percentile() && tl.getPutTime99Percentile() > putTimeMax99Percentile) {
+      putTimeMax99Percentile = tl.getPutTime99Percentile();
+    }
+    if (tl.hasScanTime99Percentile() && tl.getScanTime99Percentile() > scanTimeMax99Percentile) {
+      scanTimeMax99Percentile = tl.getScanTime99Percentile();
+    }
+    if (tl.hasBatchTime99Percentile() && tl.getBatchTime99Percentile() > batchTimeMax99Percentile) {
+      batchTimeMax99Percentile = tl.getBatchTime99Percentile();
     }
   }
 
@@ -397,6 +417,22 @@ public class TableLoad {
     return incrementCount > 0 ? incrementTimeTotal / incrementCount : 0;
   }
 
+  public long getGetTimeMax99Percentile() {
+    return getTimeMax99Percentile;
+  }
+
+  public long getPutTimeMax99Percentile() {
+    return putTimeMax99Percentile;
+  }
+
+  public long getScanTimeMax99Percentile() {
+    return scanTimeMax99Percentile;
+  }
+
+  public long getBatchTimeMax99Percentile() {
+    return batchTimeMax99Percentile;
+  }
+
   public long getApproximateRowCount() {
     return approximateRowCount;
   }
@@ -506,6 +542,10 @@ public class TableLoad {
     sb = Strings.appendKeyValue(sb, "deleteTimeMean", this.getDeleteTimeMean());
     sb = Strings.appendKeyValue(sb, "appendTimeMean", this.getAppendTimeMean());
     sb = Strings.appendKeyValue(sb, "incrementTimeMean", this.getIncrementTimeMean());
+    sb = Strings.appendKeyValue(sb, "getTimeMax99Percentile", this.getGetTimeMax99Percentile());
+    sb = Strings.appendKeyValue(sb, "putTimeMax99Percentile", this.getPutTimeMax99Percentile());
+    sb = Strings.appendKeyValue(sb, "scanTimeMax99Percentile", this.getScanTimeMax99Percentile());
+    sb = Strings.appendKeyValue(sb, "batchTimeMax99Percentile", this.getBatchTimeMax99Percentile());
     sb = Strings.appendKeyValue(sb, "approximateRowCount", this.getApproximateRowCount());
     return sb.toString();
   }
