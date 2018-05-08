@@ -244,8 +244,12 @@ public class Scan extends Query {
   public Scan(Scan scan) throws IOException {
     startRow = scan.getStartRow();
     includeStartRow = scan.includeStartRow();
-    stopRow  = scan.getStopRow();
+    checkStartRow(startRow);
+
+    stopRow = scan.getStopRow();
     includeStopRow = scan.includeStopRow();
+    checkStopRow(stopRow);
+
     maxVersions = scan.getMaxVersions();
     batch = scan.getBatch();
     storeLimit = scan.getMaxResultsPerColumnFamily();
@@ -290,6 +294,7 @@ public class Scan extends Query {
    * @param get get to model scan after
    */
   public Scan(Get get) {
+    checkStartRow(get.getRow());
     this.startRow = get.getRow();
     this.includeStartRow = true;
     this.stopRow = get.getRow();
@@ -430,6 +435,26 @@ public class Scan extends Query {
     return withStartRow(startRow, true);
   }
 
+  private void checkStartRow(byte[] startRow) {
+    if (startRow == null) {
+      throw new IllegalArgumentException("startRow can not be null");
+    }
+    if (Bytes.len(startRow) > HConstants.MAX_ROW_LENGTH) {
+      throw new IllegalArgumentException("startRow's length must be less than or equal to "
+          + HConstants.MAX_ROW_LENGTH + " to meet the criteria" + " for a row key.");
+    }
+  }
+
+  private void checkStopRow(byte[] stopRow) {
+    if (stopRow == null) {
+      throw new IllegalArgumentException("stopRow can not be null");
+    }
+    if (Bytes.len(stopRow) > HConstants.MAX_ROW_LENGTH) {
+      throw new IllegalArgumentException("stopRow's length must be less than or equal to "
+          + HConstants.MAX_ROW_LENGTH + " to meet the criteria" + " for a row key.");
+    }
+  }
+
   /**
    * Set the start row of the scan.
    * <p>
@@ -442,10 +467,7 @@ public class Scan extends Query {
    *           exceeds {@link HConstants#MAX_ROW_LENGTH})
    */
   public Scan withStartRow(byte[] startRow, boolean inclusive) {
-    if (Bytes.len(startRow) > HConstants.MAX_ROW_LENGTH) {
-      throw new IllegalArgumentException("startRow's length must be less than or equal to "
-          + HConstants.MAX_ROW_LENGTH + " to meet the criteria" + " for a row key.");
-    }
+    checkStartRow(startRow);
     this.startRow = startRow;
     this.includeStartRow = inclusive;
     return this;
@@ -499,10 +521,7 @@ public class Scan extends Query {
    *           exceeds {@link HConstants#MAX_ROW_LENGTH})
    */
   public Scan withStopRow(byte[] stopRow, boolean inclusive) {
-    if (Bytes.len(stopRow) > HConstants.MAX_ROW_LENGTH) {
-      throw new IllegalArgumentException("stopRow's length must be less than or equal to "
-          + HConstants.MAX_ROW_LENGTH + " to meet the criteria" + " for a row key.");
-    }
+    checkStopRow(stopRow);
     this.stopRow = stopRow;
     this.includeStopRow = inclusive;
     return this;
