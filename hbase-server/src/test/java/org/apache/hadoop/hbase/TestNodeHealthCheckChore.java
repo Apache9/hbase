@@ -100,7 +100,7 @@ public class TestNodeHealthCheckChore {
     Configuration conf = getConfForNodeHealthScript();
     String errorScript = "echo ERROR" + eol + " echo \"Server not healthy\"";
     createScript(errorScript, true);
-    HealthCheckChore rsChore = new HealthCheckChore(100, stop, conf);
+    HealthCheckChore rsChore = new HealthCheckChore(5000, stop, conf);
     try {
       //Default threshold is three.
       rsChore.chore();
