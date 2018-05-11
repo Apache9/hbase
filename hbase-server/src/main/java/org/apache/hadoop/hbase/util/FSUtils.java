@@ -37,13 +37,19 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.fs.FileUtil;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.BlockLocation;
@@ -2032,5 +2038,48 @@ public abstract class FSUtils {
           e.getMessage());
       return null;
     }
+  }
+
+  public static List<Path> copyFilesParallel(FileSystem srcFS, Path src, FileSystem dstFS,
+      Path dst, Configuration conf, int threads) throws IOException {
+    ExecutorService pool = Executors
+        .newFixedThreadPool(threads);
+    List<Future<Void>> futures = new ArrayList<>();
+    List<Path> traversedPaths;
+    try {
+      traversedPaths = copyFiles(srcFS, src, dstFS, dst, conf, pool, futures);
+      for (Future<Void> future : futures) {
+        future.get();
+      }
+    } catch (ExecutionException | InterruptedException | IOException e) {
+      throw new IOException("copy snapshot reference files failed", e);
+    } finally {
+      pool.shutdownNow();
+    }
+    return traversedPaths;
+  }
+
+  private static List<Path> copyFiles(FileSystem srcFS, Path src, FileSystem dstFS, Path dst,
+      Configuration conf, ExecutorService pool, List<Future<Void>> futures) throws IOException {
+    List<Path> traversedPaths = new ArrayList<>();
+    traversedPaths.add(dst);
+    FileStatus currentFileStatus = srcFS.getFileStatus(src);
+    if (currentFileStatus.isDirectory()) {
+      if (!dstFS.mkdirs(dst)) {
+        throw new IOException("create dir failed: " + dst);
+      }
+      FileStatus[] subPaths = srcFS.listStatus(src);
+      for (FileStatus subPath : subPaths) {
+        traversedPaths.addAll(copyFiles(srcFS, subPath.getPath(), dstFS,
+            new Path(dst, subPath.getPath().getName()), conf, pool, futures));
+      }
+    } else {
+      Future<Void> future = pool.submit(() -> {
+        FileUtil.copy(srcFS, src, dstFS, dst, false, false, conf);
+        return null;
+      });
+      futures.add(future);
+    }
+    return traversedPaths;
   }
 }

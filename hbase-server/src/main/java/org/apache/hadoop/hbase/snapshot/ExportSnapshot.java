@@ -30,6 +30,11 @@ import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -42,7 +47,6 @@ import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileChecksum;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.FileUtil;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.hbase.TableName;
@@ -109,6 +113,9 @@ public class ExportSnapshot extends Configured implements Tool {
       "snapshot.export.output.dfs.secondary.namenode.kerberos.principal";
   private static final String CONF_OUTPUT_DN_USER =
       "snapshot.export.output.dfs.datanode.kerberos.principal";
+  private static final String CONF_COPY_MANIFEST_THREADS =
+      "snapshot.export.copy.references.threads";
+  private static final int DEFAULT_COPY_MANIFEST_THREADS = 8;
 
   static final String CONF_TEST_FAILURE = "test.snapshot.export.failure";
   static final String CONF_TEST_RETRY = "test.snapshot.export.failure.retry";
@@ -836,17 +843,6 @@ public class ExportSnapshot extends Configured implements Tool {
     SnapshotReferenceUtil.verifySnapshot(conf, fs, snapshotDir, snapshotDesc);
   }
 
-  private static void setOwner(final FileSystem fs, final Path path, final String user,
-                               final String group, final boolean recursive) throws IOException {
-    if (user != null || group != null) {
-      if (recursive && fs.isDirectory(path)) {
-        for (FileStatus child : fs.listStatus(path)) {
-          setOwner(fs, child.getPath(), user, group, recursive);
-        }
-      }
-      fs.setOwner(path, user, group);
-    }
-  }
 
   /**
    * Execute the export snapshot by copying the snapshot metadata, hfiles and hlogs.
@@ -945,18 +941,6 @@ public class ExportSnapshot extends Configured implements Tool {
     Path outputSnapshotDir = SnapshotDescriptionUtils.getCompletedSnapshotDir(targetName, outputRoot);
     Path initialOutputSnapshotDir = skipTmp ? outputSnapshotDir : snapshotTmpDir;
 
-    Path needSetOwnerDir = SnapshotDescriptionUtils.getSnapshotRootDir(outputRoot);
-    if (outputFs.exists(needSetOwnerDir)) {
-      if(skipTmp){
-        needSetOwnerDir = outputSnapshotDir;
-      }else{
-        needSetOwnerDir = SnapshotDescriptionUtils.getWorkingSnapshotDir(outputRoot);
-        if (outputFs.exists(needSetOwnerDir)) {
-          needSetOwnerDir = snapshotTmpDir;
-        }
-      }
-    }
-
     // Check if the snapshot already exists
     if (outputFs.exists(outputSnapshotDir)) {
       if (overwrite) {
@@ -991,17 +975,21 @@ public class ExportSnapshot extends Configured implements Tool {
     // Step 1 - Copy fs1:/.snapshot/<snapshot> to  fs2:/.snapshot/.tmp/<snapshot>
     // The snapshot references must be copied before the hfiles otherwise the cleaner
     // will remove them because they are unreferenced.
+    List<Path> travesedPaths = new ArrayList<>();
     try {
       LOG.info("Copy Snapshot Manifest");
-      FileUtil.copy(inputFs, snapshotDir, outputFs, initialOutputSnapshotDir, false, false, conf);
+      travesedPaths =
+          FSUtils.copyFilesParallel(inputFs, snapshotDir, outputFs, initialOutputSnapshotDir, conf,
+            conf.getInt(CONF_COPY_MANIFEST_THREADS, DEFAULT_COPY_MANIFEST_THREADS));
     } catch (IOException e) {
-      throw new ExportSnapshotException("Failed to copy the snapshot directory: from=" +
-        snapshotDir + " to=" + initialOutputSnapshotDir, e);
+      throw new ExportSnapshotException("Failed to copy the snapshot directory: from=" + snapshotDir
+          + " to=" + initialOutputSnapshotDir, e);
     } finally {
       // set owner for references
-      if(filesUser != null || filesGroup != null){
-        setOwner(outputFs, needSetOwnerDir, filesUser, filesGroup, true);
+      if (filesUser != null || filesGroup != null) {
+        setOwnerParallel(outputFs, filesUser, filesGroup, conf, travesedPaths);
       }
+      travesedPaths.clear();
     }
 
     // Write a new .snapshotinfo if the target name is different from the source name
@@ -1048,6 +1036,29 @@ public class ExportSnapshot extends Configured implements Tool {
     } finally {
       IOUtils.closeStream(inputFs);
       IOUtils.closeStream(outputFs);
+    }
+  }
+
+  private void setOwnerParallel(FileSystem outputFs, String filesUser, String filesGroup,
+      Configuration conf, List<Path> traversedPath) throws IOException {
+    ExecutorService pool = Executors
+        .newFixedThreadPool(conf.getInt(CONF_COPY_MANIFEST_THREADS, DEFAULT_COPY_MANIFEST_THREADS));
+    List<Future<Void>> futures = new ArrayList<>();
+    for (Path dstPath : traversedPath) {
+      Future<Void> future = pool.submit(() -> {
+        outputFs.setOwner(dstPath, filesUser, filesGroup);
+        return null;
+      });
+      futures.add(future);
+    }
+    try {
+      for (Future<Void> future : futures) {
+        future.get();
+      }
+    } catch (InterruptedException | ExecutionException e) {
+      throw new IOException("set owner failed");
+    } finally {
+      pool.shutdownNow();
     }
   }
 
