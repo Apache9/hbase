@@ -1015,6 +1015,7 @@
     <hadoop-mdh.version>2.4.0-mdh2.3.34</hadoop-mdh.version>
     <htrace-mdh.version>3.1.1-mdh1.0-SNAPSHOT</htrace-mdh.version>
     <minikdc.version>${hadoop-mdh.version}</minikdc.version>
+    <keycenter.version>2.1.10</keycenter.version>
     <rrd-on-hbase.version>1.0.11</rrd-on-hbase.version>
     <galaxy-sds-core.version>2.1.6</galaxy-sds-core.version>
     <themis-coprocessor.version>2.3.0</themis-coprocessor.version>
@@ -2035,6 +2036,11 @@
             <groupId>com.xiaomi.infra</groupId>
             <artifactId>themis-coprocessor</artifactId>
             <version>${themis-coprocessor.version}</version>
+          </dependency>
+          <dependency>
+            <groupId>com.xiaomi</groupId>
+            <artifactId>keycenter-agent-client</artifactId>
+            <version>${keycenter.version}</version>
           </dependency>
         </dependencies>
       </dependencyManagement>

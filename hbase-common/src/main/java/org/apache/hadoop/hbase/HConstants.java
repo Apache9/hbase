@@ -1172,6 +1172,12 @@ public final class HConstants {
 
   public static final long NO_NONCE = 0;
 
+  public static final String KEYCENTER_PROVIDER_ID = "hbase.crypto.keycenter.provider.id";
+
+  public static final String CRYPTO_KEYCENTER_KEY = "hbase.crypto.keycenter.key";
+
+  public static final String CRYPTO_KEYCENTER_OLD_KEY = "hbase.crypto.keycenter.oldkey";
+
   /** Default cipher for encryption */
   public static final String CIPHER_AES = "AES";
 

@@ -69,6 +69,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import javax.management.ObjectName;
 
+import com.xiaomi.infra.crypto.KeyCenterKeyProvider;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -1636,6 +1637,11 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
 
       startServiceThreads();
       startHeapMemoryManager();
+
+      if (conf.get(HConstants.CRYPTO_KEYCENTER_KEY) != null) {
+        KeyCenterKeyProvider.loadCacheFromKeyCenter(conf);
+      }
+
       LOG.info("Serving as " + this.serverNameFromMasterPOV +
         ", RpcServer on " + this.isa +
         ", sessionid=0x" +

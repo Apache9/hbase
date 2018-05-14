@@ -22,7 +22,11 @@ package org.apache.hadoop.hbase.util;
 import static org.junit.Assert.fail;
 
 import java.security.Key;
+import java.security.SecureRandom;
 
+import com.xiaomi.infra.crypto.KeyCenterKeyProvider;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HConstants;
@@ -31,12 +35,38 @@ import org.apache.hadoop.hbase.io.crypto.CipherProvider;
 import org.apache.hadoop.hbase.io.crypto.DefaultCipherProvider;
 import org.apache.hadoop.hbase.io.crypto.KeyProvider;
 import org.apache.hadoop.hbase.io.crypto.KeyProviderForTesting;
+import org.apache.hadoop.hbase.io.crypto.aes.AES;
+import org.apache.hadoop.hbase.regionserver.TestEncryptionKeyRotation;
 import org.apache.hadoop.hbase.testclassification.SmallTests;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
 @Category(SmallTests.class)
 public class TestEncryptionTest {
+
+  private static final Log LOG = LogFactory.getLog(TestEncryptionKeyRotation.class);
+
+  @Test
+  public void testKeyCenterKeyProvider() {
+    Configuration conf = HBaseConfiguration.create();
+    SecureRandom rng = new SecureRandom();
+    byte[] keyBytes = new byte[AES.KEY_LENGTH];
+    byte[] wrappedKeyBytes = new byte[256];
+    rng.nextBytes(keyBytes);
+    String initialKey = Bytes.toStringBinary(keyBytes);
+    rng.nextBytes(wrappedKeyBytes);
+    String initialWrappedKey = Bytes.toStringBinary(wrappedKeyBytes);
+    KeyCenterKeyProvider.addToCache(initialKey, initialWrappedKey);
+    conf.set(HConstants.CRYPTO_KEYCENTER_KEY, initialWrappedKey);
+    conf.setBoolean(KeyCenterKeyProvider.SKIP_ACCESS_KEYCENTER, true);
+    String algorithm = conf.get(HConstants.CRYPTO_KEY_ALGORITHM_CONF_KEY, HConstants.CIPHER_AES);
+    try {
+      EncryptionTest.testEncryption(conf, algorithm, null);
+    } catch (Exception e) {
+      LOG.error("Got exception when testEncryption", e);
+      fail("Test for encryption with keycenter should have succeeded");
+    }
+  }
 
   @Test
   public void testTestKeyProvider() {

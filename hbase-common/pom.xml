@@ -189,6 +189,10 @@
     </dependency>
     <!-- General dependencies -->
     <dependency>
+      <groupId>com.xiaomi</groupId>
+      <artifactId>keycenter-agent-client</artifactId>
+    </dependency>
+    <dependency>
       <groupId>com.google.guava</groupId>
       <artifactId>guava</artifactId>
     </dependency>
