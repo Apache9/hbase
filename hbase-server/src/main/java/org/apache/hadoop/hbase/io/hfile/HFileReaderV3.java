@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.security.Key;
 import java.security.KeyException;
 
+import com.xiaomi.infra.crypto.KeyCenterKeyProvider;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
@@ -95,27 +96,31 @@ public class HFileReaderV3 extends HFileReaderV2 {
     if (keyBytes != null) {
       Encryption.Context cryptoContext = Encryption.newContext(conf);
       Key key;
-      String masterKeyName = conf.get(HConstants.CRYPTO_MASTERKEY_NAME_CONF_KEY,
-        User.getCurrent().getShortName());
-      try {
-        // First try the master key
-        key = EncryptionUtil.unwrapKey(conf, masterKeyName, keyBytes);
-      } catch (KeyException e) {
-        // If the current master key fails to unwrap, try the alternate, if
-        // one is configured
-        if (LOG.isDebugEnabled()) {
-          LOG.debug("Unable to unwrap key with current master key '" + masterKeyName + "'");
-        }
-        String alternateKeyName =
-          conf.get(HConstants.CRYPTO_MASTERKEY_ALTERNATE_NAME_CONF_KEY);
-        if (alternateKeyName != null) {
-          try {
-            key = EncryptionUtil.unwrapKey(conf, alternateKeyName, keyBytes);
-          } catch (KeyException ex) {
-            throw new IOException(ex);
+      if (conf.get(HConstants.CRYPTO_KEYCENTER_KEY) != null) {
+        key = KeyCenterKeyProvider.unwrapKey(keyBytes);
+      } else {
+        String masterKeyName = conf.get(HConstants.CRYPTO_MASTERKEY_NAME_CONF_KEY,
+            User.getCurrent().getShortName());
+        try {
+          // First try the master key
+          key = EncryptionUtil.unwrapKey(conf, masterKeyName, keyBytes);
+        } catch (KeyException e) {
+          // If the current master key fails to unwrap, try the alternate, if
+          // one is configured
+          if (LOG.isDebugEnabled()) {
+            LOG.debug("Unable to unwrap key with current master key '" + masterKeyName + "'");
           }
-        } else {
-          throw new IOException(e);
+          String alternateKeyName =
+              conf.get(HConstants.CRYPTO_MASTERKEY_ALTERNATE_NAME_CONF_KEY);
+          if (alternateKeyName != null) {
+            try {
+              key = EncryptionUtil.unwrapKey(conf, alternateKeyName, keyBytes);
+            } catch (KeyException ex) {
+              throw new IOException(ex);
+            }
+          } else {
+            throw new IOException(e);
+          }
         }
       }
       // Use the algorithm the key wants

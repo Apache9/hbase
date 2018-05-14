@@ -41,6 +41,8 @@ import java.util.regex.Pattern;
 
 import javax.management.ObjectName;
 
+import com.xiaomi.infra.crypto.KeyCenterKeyProvider;
+import com.xiaomi.keycenter.common.iface.DataProtectionException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -980,7 +982,7 @@ MasterServices, Server {
    * @throws KeeperException
    */
   private void finishInitialization(MonitoredTask status)
-      throws IOException, InterruptedException, KeeperException {
+      throws IOException, InterruptedException, KeeperException, DataProtectionException {
 
     isActiveMaster = true;
     Thread zombieDetector = new Thread(new InitializationMonitor(this));
@@ -1130,6 +1132,10 @@ MasterServices, Server {
 
     status.setStatus("Starting quota manager");
     initQuotaManager();
+
+    if (conf.get(HConstants.CRYPTO_KEYCENTER_KEY) != null) {
+      KeyCenterKeyProvider.loadCacheFromKeyCenter(conf);
+    }
 
     if (this.cpHost != null) {
       try {

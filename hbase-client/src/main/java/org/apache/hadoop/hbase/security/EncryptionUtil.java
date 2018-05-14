@@ -49,22 +49,6 @@ public class EncryptionUtil {
    * Protect a key by encrypting it with the secret key of the given subject.
    * The configuration must be set up correctly for key alias resolution.
    * @param conf configuration
-   * @param key the raw key bytes
-   * @param algorithm the algorithm to use with this key material
-   * @return the encrypted key bytes
-   * @throws IOException
-   */
-  public static byte[] wrapKey(Configuration conf, byte[] key, String algorithm)
-      throws IOException {
-    return wrapKey(conf,
-      conf.get(HConstants.CRYPTO_MASTERKEY_NAME_CONF_KEY, User.getCurrent().getShortName()),
-      new SecretKeySpec(key, algorithm));
-  }
-
-  /**
-   * Protect a key by encrypting it with the secret key of the given subject.
-   * The configuration must be set up correctly for key alias resolution.
-   * @param conf configuration
    * @param subject subject key alias
    * @param key the key
    * @return the encrypted key bytes

@@ -20,6 +20,7 @@ package org.apache.hadoop.hbase.io.hfile;
 import java.io.DataOutputStream;
 import java.io.IOException;
 
+import com.xiaomi.infra.crypto.KeyCenterKeyProvider;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
@@ -219,10 +220,14 @@ public class HFileWriterV3 extends HFileWriterV2 {
     if (cryptoContext != Encryption.Context.NONE) {
       // Wrap the context's key and write it as the encryption metadata, the wrapper includes
       // all information needed for decryption
-      trailer.setEncryptionKey(EncryptionUtil.wrapKey(cryptoContext.getConf(),
-        cryptoContext.getConf().get(HConstants.CRYPTO_MASTERKEY_NAME_CONF_KEY,
-          User.getCurrent().getShortName()),
-        cryptoContext.getKey()));
+      if (cryptoContext.getConf().get(HConstants.CRYPTO_KEYCENTER_KEY) != null) {
+        trailer.setEncryptionKey(KeyCenterKeyProvider.wrapKey(cryptoContext.getKey().getEncoded()));
+      } else {
+        trailer.setEncryptionKey(EncryptionUtil.wrapKey(cryptoContext.getConf(),
+            cryptoContext.getConf().get(HConstants.CRYPTO_MASTERKEY_NAME_CONF_KEY,
+                User.getCurrent().getShortName()),
+            cryptoContext.getKey()));
+      }
     }
     // Now we can finish the close
     super.finishClose(trailer);
