@@ -25,6 +25,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -75,8 +76,8 @@ public class RegionStates {
   /**
    * Holds mapping of table -> region state
    */
-  private final ConcurrentMap<TableName, Map<String, RegionState>> regionStatesTableIndex =
-      new ConcurrentHashMap<TableName, Map<String, RegionState>>();
+  private final ConcurrentMap<TableName, ConcurrentMap<String, RegionState>>
+      regionStatesTableIndex = new ConcurrentHashMap<>();
 
   /**
    * Server to regions assignment map.
@@ -313,9 +314,9 @@ public class RegionStates {
     String encodedName = hri.getEncodedName();
     TableName table = hri.getTable();
     RegionState oldState = regionStates.put(encodedName, regionState);
-    Map<String, RegionState> map = regionStatesTableIndex.get(table);
+    ConcurrentMap<String, RegionState> map = regionStatesTableIndex.get(table);
     if (map == null) {
-      map = new HashMap<String, RegionState>();
+      map = new ConcurrentHashMap<>();
       regionStatesTableIndex.put(table, map);
     }
     map.put(encodedName, regionState);
@@ -663,8 +664,8 @@ public class RegionStates {
     if (indexMap == null) {
       return 0;
     } else {
-      return (int) indexMap.values().stream()
-          .filter(s -> s.getState().equals(RegionState.State.OPEN)).count();
+      List<RegionState> states = new LinkedList<>(indexMap.values());
+      return (int) states.stream().filter(s -> s.getState().equals(RegionState.State.OPEN)).count();
     }
   }
 
