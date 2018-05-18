@@ -360,6 +360,8 @@ Shell.load_command_group(
     upgrade_tablecfs
     set_peer_bandwidth
     update_peer_config
+    set_peer_exclude_tableCFs
+    set_peer_exclude_namespaces
   ]
 )
 
