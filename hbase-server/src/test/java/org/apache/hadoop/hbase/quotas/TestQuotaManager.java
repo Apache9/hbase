@@ -184,7 +184,7 @@ public class TestQuotaManager {
   }
 
   @Test
-  public void testGrabQuota() throws IOException, InterruptedException {
+  public void testGrabQuota() throws Exception {
     final UserGroupInformation ugi = User.getCurrent().getUGI();
     // update cache need one get first
     quotaManager.getQuotaCache().getUserLimiter(ugi, table.getName());
