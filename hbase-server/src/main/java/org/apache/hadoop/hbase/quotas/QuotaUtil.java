@@ -43,15 +43,12 @@ import org.apache.hadoop.hbase.client.Mutation;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.RowMutations;
-import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.Quotas;
 import org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.Throttle;
-import org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.ThrottleOrBuilder;
 import org.apache.hadoop.hbase.protobuf.generated.QuotaProtos.TimedQuota;
 import org.apache.hadoop.hbase.regionserver.BloomType;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
-import org.apache.hadoop.security.UserGroupInformation;
 
 /**
  * Helper class to interact with the quota table
@@ -70,6 +67,10 @@ public class QuotaUtil extends QuotaTableUtil {
   public static final int DEFAULT_WRITE_CAPACITY_UNIT = 1024;
   public static final String SCAN_CAPACITY_UNIT_CONF_KEY = "hbase.scan.capacity.unit";
   public static final int DEFAULT_SCAN_CAPACITY_UNIT = 1024 * 16;
+
+  public static final long HUGE_MUTATION_SIZE = 256 * 1024;
+  public static final int HUGE_MUTATIONS_NUMBER = 100;
+  public static final int HUGE_MUTATION_QUOTA_MULTIPLIER = 2;
 
   public static final String THROTTLING_MIN_WAIT_INTERVAL = "hbase.throttling.min.wait.interval";
   public static final long DEFAULT_THROTTLING_MIN_WAIT_INTERVAL = 10;
