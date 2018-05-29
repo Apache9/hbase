@@ -45,6 +45,7 @@ import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.io.compress.Compression;
 import org.apache.hadoop.hbase.io.encoding.DataBlockEncoding;
+import org.apache.hadoop.hbase.util.BloomFilterUtil;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Test;
 import org.junit.runners.Parameterized.Parameter;
@@ -135,6 +136,8 @@ public abstract class TestMultiColumnScanner {
 
   @Test
   public void testMultiColumnScanner() throws IOException {
+    TEST_UTIL.getConfiguration().setInt(BloomFilterUtil.PREFIX_LENGTH_KEY, 10);
+    TEST_UTIL.getConfiguration().set(BloomFilterUtil.DELIMITER_KEY, "#");
     HRegion region = TEST_UTIL.createTestRegion(TABLE_NAME,
         new HColumnDescriptor(FAMILY)
             .setCompressionType(comprAlgo)
