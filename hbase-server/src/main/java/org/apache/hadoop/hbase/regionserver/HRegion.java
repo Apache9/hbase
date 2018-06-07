@@ -8574,7 +8574,7 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
         break;
     }
     if (op == Operation.MERGE_REGION || op == Operation.SPLIT_REGION
-        || op == Operation.COMPACT_REGION) {
+        || op == Operation.COMPACT_REGION || op == Operation.COMPACT_SWITCH) {
       // split, merge or compact region doesn't need to check the closing/closed state or lock the
       // region
       return;
@@ -8895,7 +8895,7 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
       stores.values().forEach(HStore::triggerMajorCompaction);
     }
     rsServices.getCompactionRequestor().requestCompaction(this, why, priority, tracker,
-      RpcServer.getRequestUser().orElse(null));
+        RpcServer.getRequestUser().orElse(null));
   }
 
   @Override
@@ -8910,7 +8910,7 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
       store.triggerMajorCompaction();
     }
     rsServices.getCompactionRequestor().requestCompaction(this, store, why, priority, tracker,
-      RpcServer.getRequestUser().orElse(null));
+        RpcServer.getRequestUser().orElse(null));
   }
 
   private void requestFlushIfNeeded() throws RegionTooBusyException {
