@@ -81,8 +81,10 @@ public class SerialReplicationTool extends Configured implements Tool {
   private void fixStuckPeer(String peerId) throws Exception {
     Map<String, List<Long>> barrierMap = MetaEditor.getAllBarriers(connection);
     Map<String, Long> stuckRegions = getStuckRegions(barrierMap, peerId);
+    LOG.info("Totally found " + stuckRegions.size() + " regions maybe stuck peer " + peerId);
 
     // Sleep again when try to fix
+    LOG.info("Will sleep " + SLEEP_TIME + " ms to see whether position in meta was updated");
     Thread.sleep(SLEEP_TIME);
     for (Map.Entry<String, Long> entry : stuckRegions.entrySet()) {
       String encodedRegionName = entry.getKey();
@@ -94,11 +96,8 @@ public class SerialReplicationTool extends Configured implements Tool {
             + posInMeta + ", barriers=" + Arrays.toString(barriers.toArray())
             + ". Will try to fix it!");
         if (barriers.size() > 0) {
-          int index = Collections.binarySearch(barriers, posInMeta);
-          if (index < 0) {
-            index = -index - 1;
-          }
-          long newPos = barriers.get(index) - 1;
+          // update new pos to last barrier - 1
+          long newPos = barriers.get(barriers.size() - 1) - 1;
           if (posInMeta < newPos) {
             Map<String, Long> map = new HashMap<>();
             map.put(encodedRegionName, newPos);
@@ -106,6 +105,11 @@ public class SerialReplicationTool extends Configured implements Tool {
             LOG.info("Update region=" + encodedRegionName + " posInMeta from " + posInMeta + " to "
                 + newPos + ", barriers=" + Arrays.toString(barriers.toArray()) + ", peerId="
                 + peerId);
+          } else {
+            LOG.info(
+                "No need to fix for region=" + encodedRegionName + " because posInMeta=" + posInMeta
+                    + " is equal or bigger than newPos=" + newPos + ", barriers=" + Arrays
+                    .toString(barriers.toArray()) + ", peerId=" + peerId);
           }
         } else {
           LOG.info(
@@ -118,19 +122,22 @@ public class SerialReplicationTool extends Configured implements Tool {
   private void checkStuckPeer(String peerId) throws Exception {
     Map<String, List<Long>> barrierMap = MetaEditor.getAllBarriers(connection);
     Map<String, Long> stuckRegions = getStuckRegions(barrierMap, peerId);
-    LOG.info("Totally found " + stuckRegions.size() + " maybe stuck peer " + peerId);
+    LOG.info("Totally found " + stuckRegions.size() + " regions maybe stuck peer " + peerId);
   }
 
   private Map<String, Long> getStuckRegions(Map<String, List<Long>> barrierMap, String peerId)
       throws Exception {
     Map<String, Long> posInMetaMap = new HashMap<>();
     for (String encodedRegionName : barrierMap.keySet()) {
-      long posInMeta = MetaEditor.getReplicationPositionForOnePeer(connection,
-        Bytes.toBytes(encodedRegionName), peerId);
+      long posInMeta = MetaEditor
+          .getReplicationPositionForOnePeer(connection, Bytes.toBytes(encodedRegionName), peerId);
       posInMetaMap.put(encodedRegionName, posInMeta);
+      LOG.info(
+          "Get posInMeta=" + posInMeta + " for region=" + encodedRegionName + ", peerId=" + peerId);
     }
 
     // Sleep to see whether position in meta was updated
+    LOG.info("Will sleep " + SLEEP_TIME + " ms to see whether position in meta was updated");
     Thread.sleep(SLEEP_TIME);
     Map<String, Long> stuckRegions = new HashMap<>();
     for (Map.Entry<String, List<Long>> entry : barrierMap.entrySet()) {
