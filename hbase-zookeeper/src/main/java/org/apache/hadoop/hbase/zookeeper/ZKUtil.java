@@ -47,6 +47,7 @@ import org.apache.hadoop.hbase.exceptions.DeserializationException;
 import org.apache.hadoop.hbase.security.Superusers;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.Threads;
+import org.apache.hadoop.hbase.zookeeper.ZKConfig.ZKClusterKey;
 import org.apache.hadoop.hbase.zookeeper.ZKUtil.ZKUtilOp.CreateAndFailSilent;
 import org.apache.hadoop.hbase.zookeeper.ZKUtil.ZKUtilOp.DeleteNodeFailSilent;
 import org.apache.hadoop.hbase.zookeeper.ZKUtil.ZKUtilOp.SetData;
@@ -73,6 +74,8 @@ import org.apache.zookeeper.proto.SetDataRequest;
 import org.apache.zookeeper.server.ZooKeeperSaslServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.xiaomi.infra.base.nameservice.NameService;
 
 import org.apache.hbase.thirdparty.com.google.protobuf.InvalidProtocolBufferException;
 import org.apache.hadoop.hbase.shaded.protobuf.ProtobufUtil;
@@ -2135,6 +2138,25 @@ public final class ZKUtil {
         return Bytes.toLong(bytes);
       }
       return 0;
+    }
+  }
+
+  /**
+   * Apply the settings in the given key to the given configuration, this is used to communicate
+   * with distant clusters
+   * @param conf configuration object to configure
+   * @param key string that contains the 3 required configuratins
+   * @throws IOException
+   */
+  public static void applyClusterKeyToConf(Configuration conf, String key) throws IOException {
+    if (key.startsWith(NameService.HBASE_URI_PREFIX)) {
+      // it just copy configuration and change it, the old configuration do not change
+      HBaseConfiguration.merge(conf, NameService.createConfigurationByClusterKey(key, conf));
+    } else {
+      ZKClusterKey zkClusterKey = ZKConfig.transformClusterKey(key);
+      conf.set(HConstants.ZOOKEEPER_QUORUM, zkClusterKey.getQuorumString());
+      conf.setInt(HConstants.ZOOKEEPER_CLIENT_PORT, zkClusterKey.getClientPort());
+      conf.set(HConstants.ZOOKEEPER_ZNODE_PARENT, zkClusterKey.getZnodeParent());
     }
   }
 }

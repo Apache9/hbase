@@ -71,6 +71,15 @@ the key TABLE_CFS.
   hbase> add_peer '12', ENDPOINT_CLASSNAME => 'org.apache.hadoop.hbase.MyReplicationEndpoint',
         CLUSTER_KEY => "server2.cie.com:2181:/hbase"
 
+  # Xiaomi HBase Cluster
+  hbase> add_peer '1', CLUSTER_KEY => "hbase://c3tst-pressure98", STATE => "ENABLED"
+  hbase> add_peer '2', CLUSTER_KEY => 'hbase://c3tst-pressure98', STATE => "ENABLED",
+    NAMESPACES => ["ns1", "ns2"]
+  hbase> add_peer '3', CLUSTER_KEY => 'hbase://c3tst-pressure98', STATE => "ENABLED", NAMESPACES => ["ns1"],
+    TABLE_CFS => { "ns2:table1" => [], "ns2:table2" => ["cf1"] }
+  hbase> add_peer '4', CLUSTER_KEY => 'hbase://c3tst-pressure98', STATE => "ENABLED", NAMESPACES => ["ns1"],
+    TABLE_CFS => { "ns2:table1" => [], "ns2:table2" => ["cf1"] }, PROTOCOL => "THRIFT"
+
 Note: Either CLUSTER_KEY or ENDPOINT_CLASSNAME must be specified. If ENDPOINT_CLASSNAME is specified, CLUSTER_KEY is
 optional and should only be specified if a particular custom endpoint requires it.
 

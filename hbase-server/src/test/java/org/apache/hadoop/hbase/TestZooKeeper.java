@@ -21,6 +21,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import org.apache.hadoop.conf.Configuration;
@@ -41,6 +42,8 @@ import org.apache.hadoop.hbase.testclassification.LargeTests;
 import org.apache.hadoop.hbase.testclassification.MiscTests;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.FSUtils;
+import org.apache.hadoop.hbase.zookeeper.ZKConfig;
+import org.apache.hadoop.hbase.zookeeper.ZKConfig.ZKClusterKey;
 import org.apache.hadoop.hbase.zookeeper.ZKUtil;
 import org.apache.hadoop.hbase.zookeeper.ZKWatcher;
 import org.apache.zookeeper.KeeperException;
@@ -55,6 +58,8 @@ import org.junit.experimental.categories.Category;
 import org.junit.rules.TestName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.xiaomi.infra.base.nameservice.ZkClusterInfo;
 
 @Category({MiscTests.class, LargeTests.class})
 public class TestZooKeeper {
@@ -281,5 +286,41 @@ public class TestZooKeeper {
     }
   }
 
+  @Test
+  public void testClusterKeyWithNameService() throws Exception {
+    System.setProperty("hadoop.property.hadoop.security.authentication", "kerberos");
+    ZKClusterKey key = ZKConfig.transformClusterKey("hbase://lgprc-xiaomi");
+
+    ZkClusterInfo info = new ZkClusterInfo("lgprc");
+    assertEquals(key.getQuorumString(), info.resolve());
+    assertEquals(key.getClientPort(), info.getPort());
+    assertEquals(key.getZnodeParent(), "/hbase/lgprc-xiaomi");
+    try {
+      ZKConfig.transformClusterKey("hbase://lgunkown-xiaomi");
+      assertTrue(false);
+    } catch (IOException ex) {
+      // OK
+    }
+  }
+
+  @Test
+  public void testApplyClusterKeyToConf() throws IOException {
+    Configuration conf = HBaseConfiguration.create();
+    ZKUtil.applyClusterKeyToConf(conf, "server1,server2,server3:2181:/hbase");
+    assertEquals(conf.get(HConstants.ZOOKEEPER_QUORUM), "server1,server2,server3");
+    assertEquals(conf.get(HConstants.ZOOKEEPER_CLIENT_PORT), "2181");
+    assertEquals(conf.get(HConstants.ZOOKEEPER_ZNODE_PARENT), "/hbase");
+  }
+
+  @Test
+  public void testApplyClusterKeyToConfWithNameService() throws IOException {
+    Configuration conf = HBaseConfiguration.create();
+    conf.set("hadoop.security.authentication", "kerberos");
+    ZKUtil.applyClusterKeyToConf(conf, "hbase://lgprc-xiaomi");
+    ZkClusterInfo info = new ZkClusterInfo("lgprc");
+    assertEquals(conf.get(HConstants.ZOOKEEPER_QUORUM), info.resolve());
+    assertEquals(conf.get(HConstants.ZOOKEEPER_CLIENT_PORT), Integer.toString(info.getPort()));
+    assertEquals(conf.get(HConstants.ZOOKEEPER_ZNODE_PARENT), "/hbase/lgprc-xiaomi");
+  }
 }
 

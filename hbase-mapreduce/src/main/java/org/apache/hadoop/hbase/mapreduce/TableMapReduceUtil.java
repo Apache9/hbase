@@ -40,6 +40,7 @@ import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.MetaTableAccessor;
 import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.zookeeper.ZKUtil;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -63,6 +64,7 @@ import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.util.StringUtils;
 
 import com.codahale.metrics.MetricRegistry;
+import com.xiaomi.infra.base.nameservice.NameService;
 
 /**
  * Utility for {@link TableMapper} and {@link TableReducer}
@@ -503,36 +505,39 @@ public class TableMapReduceUtil {
   }
 
   public static void initCredentials(Job job) throws IOException {
-    UserProvider userProvider = UserProvider.instantiate(job.getConfiguration());
+    Configuration jobConf = job.getConfiguration();
+    UserProvider userProvider = UserProvider.instantiate(jobConf);
     if (userProvider.isHadoopSecurityEnabled()) {
       // propagate delegation related props from launcher job to MR job
       if (System.getenv("HADOOP_TOKEN_FILE_LOCATION") != null) {
-        job.getConfiguration().set("mapreduce.job.credentials.binary",
-                                   System.getenv("HADOOP_TOKEN_FILE_LOCATION"));
+        jobConf.set("mapreduce.job.credentials.binary",
+          System.getenv("HADOOP_TOKEN_FILE_LOCATION"));
       }
     }
 
     if (userProvider.isHBaseSecurityEnabled()) {
       try {
+        String peerClusterKey = null;
         // init credentials for remote cluster
-        String quorumAddress = job.getConfiguration().get(TableOutputFormat.QUORUM_ADDRESS);
+        String quorumAddress = jobConf.get(TableOutputFormat.QUORUM_ADDRESS);
         User user = userProvider.getCurrent();
-        if (quorumAddress != null) {
-          Configuration peerConf = HBaseConfiguration.createClusterConf(job.getConfiguration(),
-              quorumAddress, TableOutputFormat.OUTPUT_CONF_PREFIX);
-          Connection peerConn = ConnectionFactory.createConnection(peerConf);
-          try {
+        Configuration peerConf = HBaseConfiguration.createClusterConf(jobConf, quorumAddress,
+          TableOutputFormat.OUTPUT_CONF_PREFIX);
+        String outputTable = jobConf.get(TableOutputFormat.OUTPUT_TABLE);
+        // Maybe use name service or just the quorum address.
+        if (outputTable != null && outputTable.startsWith(NameService.HBASE_URI_PREFIX)) {
+          peerClusterKey = outputTable;
+        } else if (quorumAddress != null) {
+          peerClusterKey = quorumAddress;
+        }
+        if (peerClusterKey != null) {
+          ZKUtil.applyClusterKeyToConf(peerConf, peerClusterKey);
+          try (Connection peerConn = ConnectionFactory.createConnection(peerConf)) {
             TokenUtil.addTokenForJob(peerConn, user, job);
-          } finally {
-            peerConn.close();
           }
         }
-
-        Connection conn = ConnectionFactory.createConnection(job.getConfiguration());
-        try {
+        try (Connection conn = ConnectionFactory.createConnection(job.getConfiguration())) {
           TokenUtil.addTokenForJob(conn, user, job);
-        } finally {
-          conn.close();
         }
       } catch (InterruptedException ie) {
         LOG.info("Interrupted obtaining user authentication token");

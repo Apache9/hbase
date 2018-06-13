@@ -30,6 +30,9 @@ import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.security.UserProvider;
 import org.apache.hadoop.hbase.util.ReflectionUtils;
 
+import com.xiaomi.infra.base.nameservice.NameService;
+import com.xiaomi.infra.base.nameservice.NameServiceEntry;
+
 /**
  * A non-instantiable class that manages creation of {@link Connection}s. Managing the lifecycle of
  * the {@link Connection}s to the cluster is the responsibility of the caller. From a
@@ -84,7 +87,7 @@ public class ConnectionFactory {
    * @return Connection object for <code>conf</code>
    */
   public static Connection createConnection() throws IOException {
-    return createConnection(HBaseConfiguration.create(), null, null);
+    return createConnection(HBaseConfiguration.create(), (ExecutorService) null, null);
   }
 
   /**
@@ -111,7 +114,22 @@ public class ConnectionFactory {
    * @return Connection object for <code>conf</code>
    */
   public static Connection createConnection(Configuration conf) throws IOException {
-    return createConnection(conf, null, null);
+    return createConnection(conf, (ExecutorService) null, null);
+  }
+
+  public static Connection createConnection(Configuration conf, String clusterUri)
+      throws IOException {
+    return createConnection(conf, clusterUri, null);
+  }
+
+  public static Connection createConnection(Configuration conf, String clusterUri,
+      ExecutorService pool) throws IOException {
+    NameServiceEntry entry = NameService.resolve(clusterUri, conf);
+    if (entry.getScheme() == null || !entry.getScheme().equals("hbase")) {
+      throw new IOException("Unrecognized scheme: " + entry.getScheme() + ", scheme must be hbase");
+    }
+    conf = entry.createClusterConf(conf);
+    return createConnection(conf, pool);
   }
 
   /**
@@ -250,6 +268,19 @@ public class ConnectionFactory {
       return future;
     }
     return createAsyncConnection(conf, user);
+  }
+
+  public static CompletableFuture<AsyncConnection> createAsyncConnection(Configuration conf,
+      String clusterURI) {
+    CompletableFuture<AsyncConnection> future = new CompletableFuture<>();
+    try {
+      NameServiceEntry entry = NameService.resolve(clusterURI, conf);
+      conf = entry.createClusterConf(conf);
+    } catch (IOException e) {
+      future.completeExceptionally(e);
+      return future;
+    }
+    return createAsyncConnection(conf);
   }
 
   /**

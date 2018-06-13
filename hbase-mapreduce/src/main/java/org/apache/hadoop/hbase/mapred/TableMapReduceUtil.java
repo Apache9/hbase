@@ -22,6 +22,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.MetaTableAccessor;
 import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.zookeeper.ZKUtil;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.apache.hadoop.hbase.client.Connection;
 import org.apache.hadoop.hbase.client.ConnectionFactory;
@@ -44,6 +45,8 @@ import org.apache.hadoop.mapred.TextOutputFormat;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Map;
+
+import com.xiaomi.infra.base.nameservice.NameService;
 
 /**
  * Utility for {@link TableMap} and {@link TableReduce}
@@ -295,6 +298,11 @@ public class TableMapReduceUtil {
   }
 
   public static void initCredentials(JobConf job) throws IOException {
+    // for input table name service
+    String inputTable = job.get("hbase.mapreduce.inputtable");
+    if (inputTable != null && inputTable.startsWith(NameService.HBASE_URI_PREFIX)) {
+      ZKUtil.applyClusterKeyToConf(job, inputTable);
+    }
     UserProvider userProvider = UserProvider.instantiate(job);
     if (userProvider.isHadoopSecurityEnabled()) {
       // propagate delegation related props from launcher job to MR job

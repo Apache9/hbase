@@ -29,6 +29,8 @@ import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.xiaomi.infra.base.nameservice.NameService;
+
 /**
  * Adds HBase configuration files to a Configuration
  */
@@ -78,6 +80,19 @@ public class HBaseConfiguration extends Configuration {
     conf.addResource("hbase-site.xml");
 
     checkDefaultsVersion(conf);
+    String clusterKey = System.getProperties().getProperty("hadoop.cmdline.hbase.cluster");
+    if (clusterKey != null) {
+      try {
+        LOG.info("Apply cluster:" + clusterKey + "to configuration");
+        if (clusterKey.startsWith(NameService.HBASE_URI_PREFIX)) {
+          merge(conf, NameService.createConfigurationByClusterKey(clusterKey, conf));
+        } else {
+          throw new IOException("Unrecognized Cluster Key: " + clusterKey);
+        }
+      } catch (IOException e) {
+        LOG.error("Apply cluster: " + clusterKey + " to configuration failed!", e);
+      }
+    }
     return conf;
   }
 

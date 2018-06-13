@@ -27,6 +27,8 @@ import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.util.StringUtils;
 import org.apache.yetus.audience.InterfaceAudience;
 
+import com.xiaomi.infra.base.nameservice.NameService;
+
 import org.apache.hbase.thirdparty.com.google.common.annotations.VisibleForTesting;
 
 /**
@@ -181,14 +183,17 @@ public final class ZKConfig {
   }
 
   /**
-   * Separate the given key into the three configurations it should contain:
-   * hbase.zookeeper.quorum, hbase.zookeeper.client.port
-   * and zookeeper.znode.parent
+   * Separate the given key into the three configurations it should contain: hbase.zookeeper.quorum,
+   * hbase.zookeeper.client.port and zookeeper.znode.parent
    * @param key
    * @return the three configuration in the described order
    * @throws IOException
    */
   public static ZKClusterKey transformClusterKey(String key) throws IOException {
+    if (key.startsWith(NameService.HBASE_URI_PREFIX)) {
+      Configuration conf = NameService.createConfigurationByClusterKey(key);
+      key = getZooKeeperClusterKey(conf);
+    }
     String[] parts = key.split(":");
 
     if (parts.length == 3) {
