@@ -259,3 +259,18 @@ message RegionLocation {
   optional ServerName server_name = 2;
   required int64 seq_num = 3;
 }
+
+message FlushedStoreSequenceId {
+  required bytes family = 1;
+  required uint64 seqId = 2;
+}
+
+message FlushedRegionSequenceId {
+  required bytes regionEncodedName = 1;
+  required uint64 seqId = 2;
+  repeated FlushedStoreSequenceId stores = 3;
+}
+
+message FlushedSequenceId {
+  repeated FlushedRegionSequenceId regionSequenceId = 1;
+}

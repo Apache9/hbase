@@ -1010,6 +1010,13 @@ public class HMaster extends HRegionServer implements MasterServices {
 
     status.setStatus("Initializing ZK system trackers");
     initializeZKBasedSystemTrackers();
+    status.setStatus("Loading last flushed sequence id of regions");
+    try {
+      this.serverManager.loadLastFlushedSequenceIds();
+    } catch (IOException e) {
+      LOG.debug("Failed to load last flushed sequence id of regions"
+          + " from file system", e);
+    }
     // Set ourselves as active Master now our claim has succeeded up in zk.
     this.activeMaster = true;
 
@@ -1119,6 +1126,7 @@ public class HMaster extends HRegionServer implements MasterServices {
     getChoreService().scheduleChore(normalizerChore);
     this.catalogJanitorChore = new CatalogJanitor(this);
     getChoreService().scheduleChore(catalogJanitorChore);
+    this.serverManager.startChore();
 
     // Only for rolling upgrade, where we need to migrate the data in namespace table to meta table.
     if (!waitForNamespaceOnline()) {

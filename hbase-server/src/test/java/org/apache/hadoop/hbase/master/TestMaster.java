@@ -52,6 +52,7 @@ import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.HBaseFsck;
 import org.apache.hadoop.hbase.util.Pair;
+import org.apache.hadoop.hbase.util.Threads;
 import org.apache.hadoop.util.StringUtils;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -263,6 +264,34 @@ public class TestMaster {
         TEST_UTIL.getMiniHBaseCluster().getMaster().isInitialized());
     // Assert lock gets put in place again.
     assertTrue(fs.exists(hbckLockPath));
+  }
+
+  @Test
+  public void testFlushedSequenceIdPersistLoad() throws Exception {
+    Configuration conf = TEST_UTIL.getConfiguration();
+    int msgInterval = conf.getInt("hbase.regionserver.msginterval", 100);
+    // insert some data into META
+    TableName tableName = TableName.valueOf("testFlushSeqId");
+    HTableDescriptor desc = new HTableDescriptor(tableName);
+    desc.addFamily(new HColumnDescriptor(Bytes.toBytes("cf")));
+    Table table = TEST_UTIL.createTable(desc, null);
+    // flush META region
+    TEST_UTIL.flush(TableName.META_TABLE_NAME);
+    // wait for regionserver report
+    Threads.sleep(msgInterval * 2);
+    // record flush seqid before cluster shutdown
+    Map<byte[], Long> regionMapBefore =
+        TEST_UTIL.getHBaseCluster().getMaster().getServerManager()
+            .getFlushedSequenceIdByRegion();
+    // restart hbase cluster which will cause flushed sequence id persist and reload
+    TEST_UTIL.getMiniHBaseCluster().shutdown();
+    TEST_UTIL.restartHBaseCluster(2);
+    TEST_UTIL.waitUntilNoRegionsInTransition();
+    // check equality after reloading flushed sequence id map
+    Map<byte[], Long> regionMapAfter =
+        TEST_UTIL.getHBaseCluster().getMaster().getServerManager()
+            .getFlushedSequenceIdByRegion();
+    assertTrue(regionMapBefore.equals(regionMapAfter));
   }
 }
 
