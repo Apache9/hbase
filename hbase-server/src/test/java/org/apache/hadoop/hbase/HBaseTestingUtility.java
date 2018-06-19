@@ -134,6 +134,7 @@ import org.apache.hadoop.hbase.zookeeper.EmptyWatcher;
 import org.apache.hadoop.hbase.zookeeper.ZKConfig;
 import org.apache.hadoop.hbase.zookeeper.ZKWatcher;
 import org.apache.hadoop.hdfs.DFSClient;
+import org.apache.hadoop.hdfs.DFSConfigKeys;
 import org.apache.hadoop.hdfs.DistributedFileSystem;
 import org.apache.hadoop.hdfs.MiniDFSCluster;
 import org.apache.hadoop.hdfs.server.namenode.EditLogFileOutputStream;
@@ -654,7 +655,7 @@ public class HBaseTestingUtility extends HBaseZKTestingUtility {
         setLevel(org.apache.log4j.Level.ERROR);
 
     TraceUtil.initTracer(conf);
-
+    conf.unset(DFSConfigKeys.DFS_NAMENODE_HTTP_ADDRESS_KEY);
     this.dfsCluster = new MiniDFSCluster(0, this.conf, servers, true, true,
         true, null, racks, hosts, null);
 
