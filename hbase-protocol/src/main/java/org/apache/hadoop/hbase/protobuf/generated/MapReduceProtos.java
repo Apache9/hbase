@@ -767,6 +767,21 @@ public final class MapReduceProtos {
      * <code>optional .RegionInfo region = 4;</code>
      */
     org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.RegionInfoOrBuilder getRegionOrBuilder();
+
+    // optional string scan = 5;
+    /**
+     * <code>optional string scan = 5;</code>
+     */
+    boolean hasScan();
+    /**
+     * <code>optional string scan = 5;</code>
+     */
+    java.lang.String getScan();
+    /**
+     * <code>optional string scan = 5;</code>
+     */
+    com.google.protobuf.ByteString
+        getScanBytes();
   }
   /**
    * Protobuf type {@code TableSnapshotRegionSplit}
@@ -851,6 +866,11 @@ public final class MapReduceProtos {
                 region_ = subBuilder.buildPartial();
               }
               bitField0_ |= 0x00000002;
+              break;
+            }
+            case 42: {
+              bitField0_ |= 0x00000004;
+              scan_ = input.readBytes();
               break;
             }
           }
@@ -970,10 +990,54 @@ public final class MapReduceProtos {
       return region_;
     }
 
+    // optional string scan = 5;
+    public static final int SCAN_FIELD_NUMBER = 5;
+    private java.lang.Object scan_;
+    /**
+     * <code>optional string scan = 5;</code>
+     */
+    public boolean hasScan() {
+      return ((bitField0_ & 0x00000004) == 0x00000004);
+    }
+    /**
+     * <code>optional string scan = 5;</code>
+     */
+    public java.lang.String getScan() {
+      java.lang.Object ref = scan_;
+      if (ref instanceof java.lang.String) {
+        return (java.lang.String) ref;
+      } else {
+        com.google.protobuf.ByteString bs = 
+            (com.google.protobuf.ByteString) ref;
+        java.lang.String s = bs.toStringUtf8();
+        if (bs.isValidUtf8()) {
+          scan_ = s;
+        }
+        return s;
+      }
+    }
+    /**
+     * <code>optional string scan = 5;</code>
+     */
+    public com.google.protobuf.ByteString
+        getScanBytes() {
+      java.lang.Object ref = scan_;
+      if (ref instanceof java.lang.String) {
+        com.google.protobuf.ByteString b = 
+            com.google.protobuf.ByteString.copyFromUtf8(
+                (java.lang.String) ref);
+        scan_ = b;
+        return b;
+      } else {
+        return (com.google.protobuf.ByteString) ref;
+      }
+    }
+
     private void initFields() {
       locations_ = com.google.protobuf.LazyStringArrayList.EMPTY;
       table_ = org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.TableSchema.getDefaultInstance();
       region_ = org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.RegionInfo.getDefaultInstance();
+      scan_ = "";
     }
     private byte memoizedIsInitialized = -1;
     public final boolean isInitialized() {
@@ -1008,6 +1072,9 @@ public final class MapReduceProtos {
       if (((bitField0_ & 0x00000002) == 0x00000002)) {
         output.writeMessage(4, region_);
       }
+      if (((bitField0_ & 0x00000004) == 0x00000004)) {
+        output.writeBytes(5, getScanBytes());
+      }
       getUnknownFields().writeTo(output);
     }
 
@@ -1033,6 +1100,10 @@ public final class MapReduceProtos {
       if (((bitField0_ & 0x00000002) == 0x00000002)) {
         size += com.google.protobuf.CodedOutputStream
           .computeMessageSize(4, region_);
+      }
+      if (((bitField0_ & 0x00000004) == 0x00000004)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeBytesSize(5, getScanBytes());
       }
       size += getUnknownFields().getSerializedSize();
       memoizedSerializedSize = size;
@@ -1069,6 +1140,11 @@ public final class MapReduceProtos {
         result = result && getRegion()
             .equals(other.getRegion());
       }
+      result = result && (hasScan() == other.hasScan());
+      if (hasScan()) {
+        result = result && getScan()
+            .equals(other.getScan());
+      }
       result = result &&
           getUnknownFields().equals(other.getUnknownFields());
       return result;
@@ -1093,6 +1169,10 @@ public final class MapReduceProtos {
       if (hasRegion()) {
         hash = (37 * hash) + REGION_FIELD_NUMBER;
         hash = (53 * hash) + getRegion().hashCode();
+      }
+      if (hasScan()) {
+        hash = (37 * hash) + SCAN_FIELD_NUMBER;
+        hash = (53 * hash) + getScan().hashCode();
       }
       hash = (29 * hash) + getUnknownFields().hashCode();
       memoizedHashCode = hash;
@@ -1219,6 +1299,8 @@ public final class MapReduceProtos {
           regionBuilder_.clear();
         }
         bitField0_ = (bitField0_ & ~0x00000004);
+        scan_ = "";
+        bitField0_ = (bitField0_ & ~0x00000008);
         return this;
       }
 
@@ -1269,6 +1351,10 @@ public final class MapReduceProtos {
         } else {
           result.region_ = regionBuilder_.build();
         }
+        if (((from_bitField0_ & 0x00000008) == 0x00000008)) {
+          to_bitField0_ |= 0x00000004;
+        }
+        result.scan_ = scan_;
         result.bitField0_ = to_bitField0_;
         onBuilt();
         return result;
@@ -1300,6 +1386,11 @@ public final class MapReduceProtos {
         }
         if (other.hasRegion()) {
           mergeRegion(other.getRegion());
+        }
+        if (other.hasScan()) {
+          bitField0_ |= 0x00000008;
+          scan_ = other.scan_;
+          onChanged();
         }
         this.mergeUnknownFields(other.getUnknownFields());
         return this;
@@ -1667,6 +1758,80 @@ public final class MapReduceProtos {
         return regionBuilder_;
       }
 
+      // optional string scan = 5;
+      private java.lang.Object scan_ = "";
+      /**
+       * <code>optional string scan = 5;</code>
+       */
+      public boolean hasScan() {
+        return ((bitField0_ & 0x00000008) == 0x00000008);
+      }
+      /**
+       * <code>optional string scan = 5;</code>
+       */
+      public java.lang.String getScan() {
+        java.lang.Object ref = scan_;
+        if (!(ref instanceof java.lang.String)) {
+          java.lang.String s = ((com.google.protobuf.ByteString) ref)
+              .toStringUtf8();
+          scan_ = s;
+          return s;
+        } else {
+          return (java.lang.String) ref;
+        }
+      }
+      /**
+       * <code>optional string scan = 5;</code>
+       */
+      public com.google.protobuf.ByteString
+          getScanBytes() {
+        java.lang.Object ref = scan_;
+        if (ref instanceof String) {
+          com.google.protobuf.ByteString b = 
+              com.google.protobuf.ByteString.copyFromUtf8(
+                  (java.lang.String) ref);
+          scan_ = b;
+          return b;
+        } else {
+          return (com.google.protobuf.ByteString) ref;
+        }
+      }
+      /**
+       * <code>optional string scan = 5;</code>
+       */
+      public Builder setScan(
+          java.lang.String value) {
+        if (value == null) {
+    throw new NullPointerException();
+  }
+  bitField0_ |= 0x00000008;
+        scan_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>optional string scan = 5;</code>
+       */
+      public Builder clearScan() {
+        bitField0_ = (bitField0_ & ~0x00000008);
+        scan_ = getDefaultInstance().getScan();
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>optional string scan = 5;</code>
+       */
+      public Builder setScanBytes(
+          com.google.protobuf.ByteString value) {
+        if (value == null) {
+    throw new NullPointerException();
+  }
+  bitField0_ |= 0x00000008;
+        scan_ = value;
+        onChanged();
+        return this;
+      }
+
       // @@protoc_insertion_point(builder_scope:TableSnapshotRegionSplit)
     }
 
@@ -1698,12 +1863,12 @@ public final class MapReduceProtos {
   static {
     java.lang.String[] descriptorData = {
       "\n\017MapReduce.proto\032\013HBase.proto\".\n\013ScanMe" +
-      "trics\022\037\n\007metrics\030\001 \003(\0132\016.NameInt64Pair\"g" +
+      "trics\022\037\n\007metrics\030\001 \003(\0132\016.NameInt64Pair\"u" +
       "\n\030TableSnapshotRegionSplit\022\021\n\tlocations\030" +
       "\002 \003(\t\022\033\n\005table\030\003 \001(\0132\014.TableSchema\022\033\n\006re" +
-      "gion\030\004 \001(\0132\013.RegionInfoBB\n*org.apache.ha" +
-      "doop.hbase.protobuf.generatedB\017MapReduce" +
-      "ProtosH\001\240\001\001"
+      "gion\030\004 \001(\0132\013.RegionInfo\022\014\n\004scan\030\005 \001(\tBB\n" +
+      "*org.apache.hadoop.hbase.protobuf.genera" +
+      "tedB\017MapReduceProtosH\001\240\001\001"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
       new com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner() {
@@ -1721,7 +1886,7 @@ public final class MapReduceProtos {
           internal_static_TableSnapshotRegionSplit_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_TableSnapshotRegionSplit_descriptor,
-              new java.lang.String[] { "Locations", "Table", "Region", });
+              new java.lang.String[] { "Locations", "Table", "Region", "Scan", });
           return null;
         }
       };

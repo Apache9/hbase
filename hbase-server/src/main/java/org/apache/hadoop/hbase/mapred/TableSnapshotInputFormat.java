@@ -23,8 +23,10 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.client.Result;
+import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
 import org.apache.hadoop.hbase.mapreduce.TableSnapshotInputFormatImpl;
+import org.apache.hadoop.hbase.util.RegionSplitter;
 import org.apache.hadoop.mapred.InputFormat;
 import org.apache.hadoop.mapred.InputSplit;
 import org.apache.hadoop.mapred.JobConf;
@@ -59,8 +61,9 @@ public class TableSnapshotInputFormat implements InputFormat<ImmutableBytesWrita
     }
 
     public TableSnapshotRegionSplit(HTableDescriptor htd, HRegionInfo regionInfo,
-        List<String> locations) {
-      this.delegate = new TableSnapshotInputFormatImpl.InputSplit(htd, regionInfo, locations);
+        List<String> locations, Scan scan, Path restoreDir) {
+      this.delegate =
+          new TableSnapshotInputFormatImpl.InputSplit(htd, regionInfo, locations, scan, restoreDir);
     }
 
     @Override
@@ -161,4 +164,23 @@ public class TableSnapshotInputFormat implements InputFormat<ImmutableBytesWrita
   public static void setInput(JobConf job, String snapshotName, Path restoreDir) throws IOException {
     TableSnapshotInputFormatImpl.setInput(job, snapshotName, restoreDir);
   }
+
+   /**
+   * Configures the job to use TableSnapshotInputFormat to read from a snapshot.
+   * @param job the job to configure
+   * @param snapshotName the name of the snapshot to read from
+   * @param restoreDir a temporary directory to restore the snapshot into. Current user should
+   * have write permissions to this directory, and this should not be a subdirectory of rootdir.
+   * After the job is finished, restoreDir can be deleted.
+   * @param splitAlgo split algorithm to generate splits from region
+   * @param numSplitsPerRegion how many input splits to generate per one region
+   * @throws IOException if an error occurs
+   */
+  public static void setInput(JobConf job, String snapshotName, Path restoreDir,
+                              RegionSplitter.SplitAlgorithm splitAlgo, int numSplitsPerRegion) throws IOException {
+    TableSnapshotInputFormatImpl.setInput(job, snapshotName, restoreDir, splitAlgo, numSplitsPerRegion);
+  }
+
+
+
 }

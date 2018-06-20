@@ -33,4 +33,5 @@ message TableSnapshotRegionSplit {
   repeated string locations = 2;
   optional TableSchema table = 3;
   optional RegionInfo region = 4;
+  optional string scan = 5;
 }

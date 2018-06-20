@@ -18,6 +18,11 @@
 
 package org.apache.hadoop.hbase.mapreduce;
 
+import com.google.common.collect.Lists;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.hbase.ServerName;
+import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
@@ -30,7 +35,9 @@ import org.apache.hadoop.hbase.HDFSBlocksDistribution.HostAndWeight;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.client.ClientSideRegionScanner;
+import org.apache.hadoop.hbase.client.HConnectionManager;
 import org.apache.hadoop.hbase.client.IsolationLevel;
+import org.apache.hadoop.hbase.client.MetaScanner;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
@@ -44,6 +51,7 @@ import org.apache.hadoop.hbase.snapshot.SnapshotDescriptionUtils;
 import org.apache.hadoop.hbase.snapshot.SnapshotManifest;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.FSUtils;
+import org.apache.hadoop.hbase.util.RegionSplitter;
 import org.apache.hadoop.io.Writable;
 
 import java.io.ByteArrayOutputStream;
@@ -52,7 +60,11 @@ import java.io.DataOutput;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.NavigableMap;
 import java.util.UUID;
+
+import static org.apache.hadoop.hbase.mapreduce.ImportSnapshot.IS_REPARTITION_PROCESS;
+import static org.apache.hadoop.hbase.mapreduce.ImportSnapshot.TABLE_NAME;
 
 /**
  * API-agnostic implementation for mapreduce over table snapshots.
@@ -63,6 +75,9 @@ public class TableSnapshotInputFormatImpl {
   // TODO: Snapshots files are owned in fs by the hbase user. There is no
   // easy way to delegate access.
 
+  public static final Log LOG = LogFactory.getLog(TableSnapshotInputFormatImpl.class);
+
+
   private static final String SNAPSHOT_NAME_KEY = "hbase.TableSnapshotInputFormat.snapshot.name";
   // key for specifying the root dir of the restored snapshot
   private static final String RESTORE_DIR_KEY = "hbase.TableSnapshotInputFormat.restore.dir";
@@ -72,17 +87,31 @@ public class TableSnapshotInputFormatImpl {
   private static final float DEFAULT_LOCALITY_CUTOFF_MULTIPLIER = 0.8f;
 
   /**
+   * For MapReduce jobs running multiple mappers per region, determines
+   * what split algorithm we should be using to find split points for scanners.
+   */
+  public static final String SPLIT_ALGO = "hbase.mapreduce.split.algorithm";
+  /**
+   * For MapReduce jobs running multiple mappers per region, determines
+   * number of splits to generate per region.
+   */
+  public static final String NUM_SPLITS_PER_REGION = "hbase.mapreduce.splits.per.region";
+
+  /**
    * Implementation class for InputSplit logic common between mapred and mapreduce.
    */
   public static class InputSplit implements Writable {
     private HTableDescriptor htd;
     private HRegionInfo regionInfo;
     private String[] locations;
+    private String scan;
+    private String restoreDir;
 
     // constructor for mapreduce framework / Writable
     public InputSplit() { }
 
-    public InputSplit(HTableDescriptor htd, HRegionInfo regionInfo, List<String> locations) {
+    public InputSplit(HTableDescriptor htd, HRegionInfo regionInfo, List<String> locations,
+        Scan scan, Path restoreDir) {
       this.htd = htd;
       this.regionInfo = regionInfo;
       if (locations == null || locations.isEmpty()) {
@@ -90,6 +119,14 @@ public class TableSnapshotInputFormatImpl {
       } else {
         this.locations = locations.toArray(new String[locations.size()]);
       }
+
+      try {
+        this.scan = scan != null ? TableMapReduceUtil.convertScanToString(scan) : "";
+      } catch (IOException e) {
+        LOG.warn("Failed to convert Scan to String", e);
+      }
+
+      this.restoreDir = restoreDir.toString();
     }
 
     public long getLength() {
@@ -115,7 +152,8 @@ public class TableSnapshotInputFormatImpl {
     public void write(DataOutput out) throws IOException {
       MapReduceProtos.TableSnapshotRegionSplit.Builder builder = MapReduceProtos.TableSnapshotRegionSplit.newBuilder()
 	  .setTable(htd.convert())
-	  .setRegion(HRegionInfo.convert(regionInfo));
+	  .setRegion(HRegionInfo.convert(regionInfo))
+    .setScan(scan);
 
       for (String location : locations) {
         builder.addLocations(location);
@@ -139,6 +177,7 @@ public class TableSnapshotInputFormatImpl {
       TableSnapshotRegionSplit split = TableSnapshotRegionSplit.PARSER.parseFrom(buf);
       this.htd = HTableDescriptor.convert(split.getTable());
       this.regionInfo = HRegionInfo.convert(split.getRegion());
+      this.scan = split.getScan();
       List<String> locationsList = split.getLocationsList();
       this.locations = locationsList.toArray(new String[locationsList.size()]);
     }
@@ -159,6 +198,7 @@ public class TableSnapshotInputFormatImpl {
     }
 
     public void initialize(InputSplit split, Configuration conf) throws IOException {
+      this.scan = TableMapReduceUtil.convertStringToScan(split.scan);
       this.split = split;
       HTableDescriptor htd = split.htd;
       HRegionInfo hri = this.split.getRegionInfo();
@@ -166,20 +206,11 @@ public class TableSnapshotInputFormatImpl {
 
       Path tmpRootDir = new Path(conf.get(RESTORE_DIR_KEY)); // This is the user specified root
       // directory where snapshot was restored
-
-      // create scan
-      // TODO: mapred does not support scan as input API. Work around for now.
-      if (conf.get(TableInputFormat.SCAN) != null) {
-        scan = TableMapReduceUtil.convertStringToScan(conf.get(TableInputFormat.SCAN));
-      } else if (conf.get(org.apache.hadoop.hbase.mapred.TableInputFormat.COLUMN_LIST) != null) {
-        String[] columns =
-          conf.get(org.apache.hadoop.hbase.mapred.TableInputFormat.COLUMN_LIST).split(" ");
-        scan = new Scan();
-        for (String col : columns) {
-          scan.addFamily(Bytes.toBytes(col));
-        }
+      if(scan == null){
+        LOG.info("input split lost the scan object");
       } else {
-        throw new IllegalArgumentException("A Scan is not configured for this job");
+        LOG.info("scan start: " + Bytes.toString(scan.getStartRow()) + "; stop: " +
+            Bytes.toString(scan.getStopRow()));
       }
 
       // region is immutable, this should be fine,
@@ -227,28 +258,33 @@ public class TableSnapshotInputFormatImpl {
       }
     }
   }
-
-  public static List<InputSplit> getSplits(Configuration conf) throws IOException {
-    String snapshotName = getSnapshotName(conf);
-
-    Path rootDir = new Path(conf.get(HConstants.HBASE_DIR));
-    FileSystem fs = rootDir.getFileSystem(conf);
-
-    Path snapshotDir = SnapshotDescriptionUtils.getCompletedSnapshotDir(snapshotName, rootDir);
-    SnapshotProtos.SnapshotDescription snapshotDesc =
-        SnapshotDescriptionUtils.readSnapshotInfo(fs, snapshotDir);
-    SnapshotManifest manifest = SnapshotManifest.open(conf, fs, snapshotDir, snapshotDesc);
-
+  public static List<HRegionInfo> getRegionInfosFromManifest(SnapshotManifest manifest) {
     List<SnapshotRegionManifest> regionManifests = manifest.getRegionManifests();
-
     if (regionManifests == null) {
       throw new IllegalArgumentException("Snapshot seems empty");
     }
 
-    // load table descriptor
-    HTableDescriptor htd = manifest.getTableDescriptor();
+    List<HRegionInfo> regionInfos = Lists.newArrayListWithCapacity(regionManifests.size());
 
-    // TODO: mapred does not support scan as input API. Work around for now.
+    for (SnapshotRegionManifest regionManifest : regionManifests) {
+      HRegionInfo hri = HRegionInfo.convert(regionManifest.getRegionInfo());
+      if (hri.isOffline() && (hri.isSplit() || hri.isSplitParent())) {
+        continue;
+      }
+      regionInfos.add(hri);
+    }
+    return regionInfos;
+  }
+
+  public static SnapshotManifest getSnapshotManifest(Configuration conf, String snapshotName,
+      Path rootDir, FileSystem fs) throws IOException {
+    Path snapshotDir = SnapshotDescriptionUtils.getCompletedSnapshotDir(snapshotName, rootDir);
+    SnapshotProtos.SnapshotDescription
+        snapshotDesc = SnapshotDescriptionUtils.readSnapshotInfo(fs, snapshotDir);
+    return SnapshotManifest.open(conf, fs, snapshotDir, snapshotDesc);
+  }
+
+  public static Scan extractScanFromConf(Configuration conf) throws IOException {
     Scan scan = null;
     if (conf.get(TableInputFormat.SCAN) != null) {
       scan = TableMapReduceUtil.convertStringToScan(conf.get(TableInputFormat.SCAN));
@@ -262,32 +298,114 @@ public class TableSnapshotInputFormatImpl {
     } else {
       throw new IllegalArgumentException("Unable to create scan");
     }
+    return scan;
+  }
+
+  public static List<InputSplit> getSplits(Configuration conf) throws IOException {
+    String snapshotName = getSnapshotName(conf);
+
+    Path rootDir = FSUtils.getRootDir(conf);
+    FileSystem fs = rootDir.getFileSystem(conf);
+    SnapshotManifest manifest = getSnapshotManifest(conf, snapshotName, rootDir, fs);
+    List<HRegionInfo> regionInfos = new ArrayList<>();
+
+    if (conf.getBoolean(IS_REPARTITION_PROCESS, false)) {
+      String tableName = conf.get(TABLE_NAME);
+      if(tableName == null){
+        throw new IOException("tableName must be set for repartition process");
+      }
+      TableName.isLegalFullyQualifiedTableName(Bytes.toBytes(tableName));
+      NavigableMap<HRegionInfo, ServerName> regions = MetaScanner.allTableRegions(conf,
+        HConnectionManager.createConnection(conf), TableName.valueOf(tableName), true);
+      regionInfos.addAll(regions.keySet());
+    } else {
+      regionInfos = getRegionInfosFromManifest(manifest);
+    }
+
+
+    // TODO: mapred does not support scan as input API. Work around for now.
+    Scan scan = extractScanFromConf(conf);
     // the temp dir where the snapshot is restored
     Path restoreDir = new Path(conf.get(RESTORE_DIR_KEY));
+
+    RegionSplitter.SplitAlgorithm splitAlgo = getSplitAlgo(conf);
+
+    int numSplits = conf.getInt(NUM_SPLITS_PER_REGION, 1);
+
+    return getSplits(scan, manifest, regionInfos, restoreDir, conf, splitAlgo, numSplits);
+  }
+
+  public static List<InputSplit> getSplits(Scan scan, SnapshotManifest manifest,
+      List<HRegionInfo> regionManifests, Path restoreDir, Configuration conf) throws IOException {
+    return getSplits(scan, manifest, regionManifests, restoreDir, conf, null, 1);
+  }
+
+  public static List<InputSplit> getSplits(Scan scan, SnapshotManifest manifest,
+      List<HRegionInfo> regionManifests, Path restoreDir,
+      Configuration conf, RegionSplitter.SplitAlgorithm sa, int numSplits) throws IOException {
+    // load table descriptor
+    HTableDescriptor htd = manifest.getTableDescriptor();
+
     Path tableDir = FSUtils.getTableDir(restoreDir, htd.getTableName());
 
     List<InputSplit> splits = new ArrayList<InputSplit>();
-    for (SnapshotRegionManifest regionManifest : regionManifests) {
+    for (HRegionInfo hri : regionManifests) {
       // load region descriptor
-      HRegionInfo hri = HRegionInfo.convert(regionManifest.getRegionInfo());
-      if (hri.isOffline() && (hri.isSplit() || hri.isSplitParent())) {
-        continue;
-      }
 
-      if (CellUtil.overlappingKeys(scan.getStartRow(), scan.getStopRow(), hri.getStartKey(),
-        hri.getEndKey())) {
-        // compute HDFS locations from snapshot files (which will get the locations for
-        // referred hfiles)
-        List<String> hosts =
-            getBestLocations(conf, HRegion.computeHDFSBlocksDistribution(conf, htd, hri, tableDir));
+      if (numSplits > 1) {
+        byte[][] sp = sa.split(hri.getStartKey(), hri.getEndKey(), numSplits, true);
+        for (int i = 0; i < sp.length - 1; i++) {
+          if (CellUtil.overlappingKeys(scan.getStartRow(), scan.getStopRow(), sp[i],
+              sp[i + 1])) {
+            // compute HDFS locations from snapshot files (which will get the locations for
+            // referred hfiles)
+            List<String> hosts = getBestLocations(conf,
+                HRegion.computeHDFSBlocksDistribution(conf, htd, hri, tableDir));
 
-        int len = Math.min(3, hosts.size());
-        hosts = hosts.subList(0, len);
-        splits.add(new InputSplit(htd, hri, hosts));
+            int len = Math.min(3, hosts.size());
+            hosts = hosts.subList(0, len);
+            Scan boundedScan = new Scan(scan);
+            boundedScan.setStartRow(sp[i]);
+            boundedScan.setStopRow(sp[i + 1]);
+            splits.add(new InputSplit(htd, hri, hosts, boundedScan, restoreDir));
+          }
+        }
+      } else {
+        if (CellUtil.overlappingKeys(scan.getStartRow(), scan.getStopRow(), hri.getStartKey(),
+            hri.getEndKey())) {
+          // compute HDFS locations from snapshot files (which will get the locations for
+          // referred hfiles)
+          List<String> hosts = getBestLocations(conf,
+              HRegion.computeHDFSBlocksDistribution(conf, htd, hri, tableDir));
+
+          int len = Math.min(3, hosts.size());
+          hosts = hosts.subList(0, len);
+          splits.add(new InputSplit(htd, hri, hosts, scan, restoreDir));
+        }
       }
     }
 
     return splits;
+
+  }
+
+  public static RegionSplitter.SplitAlgorithm getSplitAlgo(Configuration conf) throws IOException{
+    String splitAlgoClassName = conf.get(SPLIT_ALGO);
+    if (splitAlgoClassName == null)
+      return null;
+    try {
+      return ((Class<? extends RegionSplitter.SplitAlgorithm>)
+          Class.forName(splitAlgoClassName)).newInstance();
+    } catch (ClassNotFoundException e) {
+      throw new IOException("SplitAlgo class " + splitAlgoClassName +
+          " is not found", e);
+    } catch (InstantiationException e) {
+      throw new IOException("SplitAlgo class " + splitAlgoClassName +
+          " is not instantiable", e);
+    } catch (IllegalAccessException e) {
+      throw new IOException("SplitAlgo class " + splitAlgoClassName +
+          " is not instantiable", e);
+    }
   }
 
   /**
@@ -353,6 +471,45 @@ public class TableSnapshotInputFormatImpl {
     conf.set(SNAPSHOT_NAME_KEY, snapshotName);
 
     Path rootDir = new Path(conf.get(HConstants.HBASE_DIR));
+    FileSystem fs = rootDir.getFileSystem(conf);
+
+    restoreDir = new Path(restoreDir, UUID.randomUUID().toString());
+
+    // TODO: restore from record readers to parallelize.
+    RestoreSnapshotHelper.copySnapshotForScanner(conf, fs, rootDir, restoreDir, snapshotName);
+
+    conf.set(RESTORE_DIR_KEY, restoreDir.toString());
+  }
+
+  /**
+   * Configures the job to use TableSnapshotInputFormat to read from a snapshot.
+   * @param conf the job to configure
+   * @param snapshotName the name of the snapshot to read from
+   * @param restoreDir a temporary directory to restore the snapshot into. Current user should
+   * have write permissions to this directory, and this should not be a subdirectory of rootdir.
+   * After the job is finished, restoreDir can be deleted.
+   * @param numSplitsPerRegion how many input splits to generate per one region
+   * @param splitAlgo SplitAlgorithm to be used when generating InputSplits
+   * @throws IOException if an error occurs
+   */
+  public static void setInput(Configuration conf, String snapshotName, Path restoreDir,
+      RegionSplitter.SplitAlgorithm splitAlgo, int numSplitsPerRegion)
+      throws IOException {
+    conf.set(SNAPSHOT_NAME_KEY, snapshotName);
+    if (numSplitsPerRegion < 1) {
+      throw new IllegalArgumentException("numSplits must be >= 1, " +
+          "illegal numSplits : " + numSplitsPerRegion);
+    }
+    if (splitAlgo == null && numSplitsPerRegion > 1) {
+      throw new IllegalArgumentException("Split algo can't be null when numSplits > 1");
+    }
+    if (splitAlgo != null) {
+      conf.set(SPLIT_ALGO, splitAlgo.getClass().getName());
+    }
+    conf.setInt(NUM_SPLITS_PER_REGION, numSplitsPerRegion);
+    conf.set(SNAPSHOT_NAME_KEY, snapshotName);
+
+    Path rootDir = FSUtils.getRootDir(conf);
     FileSystem fs = rootDir.getFileSystem(conf);
 
     restoreDir = new Path(restoreDir, UUID.randomUUID().toString());
