@@ -265,37 +265,7 @@ public class MetaReader {
    * @throws IOException
    */
   public static boolean tableExists(HConnection conn, TableName tableName) throws IOException {
-    if (tableName.equals(TableName.META_TABLE_NAME)) {
-      // Catalog tables always exist.
-      return true;
-    }
-    // Make a version of ResultCollectingVisitor that only collects the first
-    CollectingVisitor<HRegionInfo> visitor = new CollectingVisitor<HRegionInfo>() {
-      private HRegionInfo current = null;
-
-      @Override
-      public boolean visit(Result r) throws IOException {
-        this.current = HRegionInfo.getHRegionInfo(r, HConstants.REGIONINFO_QUALIFIER);
-        if (this.current == null) {
-          LOG.warn("No serialized HRegionInfo in " + r);
-          return true;
-        }
-        if (!isInsideTable(this.current, tableName)) return false;
-        // Else call super and add this Result to the collection.
-        super.visit(r);
-        // Stop collecting regions from table after we get one.
-        return false;
-      }
-
-      @Override
-      void add(Result r) {
-        // Add the current HRI.
-        this.results.add(this.current);
-      }
-    };
-    fullScan(conn, visitor, getTableStartRowForMeta(tableName));
-    // If visitor has results >= 1 then table exists.
-    return visitor.getResults().size() >= 1;
+    return tableName.equals(TableName.META_TABLE_NAME) || getTableState(conn, tableName) != null;
   }
 
   /**
