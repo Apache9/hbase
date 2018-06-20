@@ -21,22 +21,26 @@ package org.apache.hadoop.hbase.replication.regionserver;
 import java.io.IOException;
 import java.net.ConnectException;
 import java.net.SocketTimeoutException;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.TableNotFoundException;
+import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HConnection;
 import org.apache.hadoop.hbase.client.HConnectionManager;
 import org.apache.hadoop.hbase.protobuf.ReplicationProtbufUtil;
-import org.apache.hadoop.hbase.protobuf.generated.AdminProtos.AdminService.BlockingInterface;
-import org.apache.hadoop.hbase.regionserver.wal.HLog;
+import org.apache.hadoop.hbase.regionserver.wal.HLog.Entry;
 import org.apache.hadoop.hbase.replication.HBaseReplicationEndpoint;
 import org.apache.hadoop.hbase.replication.ReplicationEndpoint;
 import org.apache.hadoop.hbase.replication.ReplicationPeer.PeerState;
@@ -72,6 +76,7 @@ public class HBaseInterClusterReplicationEndpoint extends HBaseReplicationEndpoi
   // Handles connecting to peer region servers
   protected ReplicationSinkManager replicationSinkMgr;
   private boolean peersSelected = false;
+  private boolean dropOnDeletedTables;
 
   @Override
   public void init(Context context) throws IOException {
@@ -87,6 +92,8 @@ public class HBaseInterClusterReplicationEndpoint extends HBaseReplicationEndpoi
     this.conn = HConnectionManager.createConnection(this.conf);
     this.sleepForRetries =
         this.conf.getLong("replication.source.sleepforretries", 1000);
+    this.dropOnDeletedTables =
+        this.conf.getBoolean(HBaseReplicationEndpoint.REPLICATION_DROP_ON_DELETED_TABLE_KEY, false);
     this.metrics = context.getMetrics();
     // ReplicationQueueInfo parses the peerId out of the znode for us
     this.replicationSinkMgr = new ReplicationSinkManager(conn, ctx.getPeerId(), this, this.conf);
@@ -146,12 +153,48 @@ public class HBaseInterClusterReplicationEndpoint extends HBaseReplicationEndpoi
     }
   }
 
+  private List<Entry> filterNotExistTableEdits(final List<Entry> oldEntries) {
+    List<Entry> entries = new ArrayList<>();
+    Map<TableName, Boolean> existMap = new HashMap<>();
+    try (HConnection localConn = HConnectionManager.createConnection(ctx.getLocalConfiguration());
+        HBaseAdmin localAdmin = new HBaseAdmin(localConn)) {
+      for (Entry e : oldEntries) {
+        TableName tableName = e.getKey().getTablename();
+        boolean exist = true;
+        if (existMap.containsKey(tableName)) {
+          exist = existMap.get(tableName);
+        } else {
+          try {
+            exist = localAdmin.tableExists(tableName);
+            existMap.put(tableName, exist);
+          } catch (IOException iox) {
+            LOG.warn("Exception checking for local table " + tableName, iox);
+          }
+        }
+        if (exist) {
+          entries.add(e);
+        } else {
+          // Would potentially be better to retry in one of the outer loops
+          // and add a table filter there; but that would break the encapsulation,
+          // so we're doing the filtering here.
+          LOG.warn(
+              "Missing table detected at sink, local table also does not exist, filtering edits for table '"
+                  + tableName + "'");
+        }
+      }
+    } catch (IOException iox) {
+      LOG.warn("Exception when creating connection to check local table", iox);
+      return oldEntries;
+    }
+    return entries;
+  }
+
   /**
    * Do the shipping logic
    */
   @Override
   public boolean replicate(ReplicateContext replicateContext) {
-    List<HLog.Entry> entries = replicateContext.getEntries();
+    List<Entry> entries = replicateContext.getEntries();
     int sleepMultiplier = 1;
     while (this.isRunning()) {
       if (!peersSelected) {
@@ -187,15 +230,19 @@ public class HBaseInterClusterReplicationEndpoint extends HBaseReplicationEndpoi
         LOG.warn("Replicate edites to peer cluster failed.", ioe);
         // Didn't ship anything, but must still age the last time we did
         this.metrics.refreshAgeOfLastShippedOp();
-        if (ioe instanceof RemoteException) {
-          ioe = ((RemoteException) ioe).unwrapRemoteException();
-          LOG.warn("Can't replicate because of an error on the remote cluster: ", ioe);
-          if (ioe instanceof TableNotFoundException) {
-            if (sleepForRetries("A table is missing in the peer cluster. "
-                + "Replication cannot proceed without losing data.", sleepMultiplier)) {
-              sleepMultiplier++;
+        if ((ioe instanceof RemoteException && ((RemoteException) ioe)
+            .unwrapRemoteException() instanceof TableNotFoundException)
+            || ioe instanceof TableNotFoundException) {
+          if (dropOnDeletedTables) {
+            // Only filter the edits to replicate and don't change the entries in replicateContext
+            // as the upper layer rely on it.
+            entries = filterNotExistTableEdits(entries);
+            if (entries.isEmpty()) {
+              LOG.warn("After filter not exist table's edits, 0 edits to replicate, just return");
+              return true;
             }
           }
+          // fall through and sleep below
         } else {
           if (ioe instanceof SocketTimeoutException) {
             // This exception means we waited for more than 60s and nothing
@@ -224,10 +271,10 @@ public class HBaseInterClusterReplicationEndpoint extends HBaseReplicationEndpoi
     return false; // in case we exited before replicating
   }
 
-  protected void replicateWALEntry(List<HLog.Entry> entries,
+  protected void replicateWALEntry(List<Entry> entries,
       SinkPeer sinkPeer) throws IOException {
     ReplicationProtbufUtil.replicateWALEntry(sinkPeer.getRegionServer(),
-        entries.toArray(new HLog.Entry[entries.size()]));
+        entries.toArray(new Entry[entries.size()]));
   }
 
   protected boolean isPeerEnabled() {

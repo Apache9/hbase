@@ -49,6 +49,7 @@ public interface ReplicationEndpoint extends Service, ReplicationPeerConfigListe
 
   @InterfaceAudience.LimitedPrivate(HBaseInterfaceAudience.REPLICATION)
   class Context {
+    private final Configuration localConf;
     private final Configuration conf;
     private final FileSystem fs;
     private final ReplicationPeer replicationPeer;
@@ -58,12 +59,14 @@ public interface ReplicationEndpoint extends Service, ReplicationPeerConfigListe
 
     @InterfaceAudience.Private
     public Context(
+        final Configuration localConf,
         final Configuration conf,
         final FileSystem fs,
         final String peerId,
         final UUID clusterId,
         final ReplicationPeer replicationPeer,
         final MetricsSource metrics) {
+      this.localConf = localConf;
       this.conf = conf;
       this.fs = fs;
       this.clusterId = clusterId;
@@ -71,24 +74,35 @@ public interface ReplicationEndpoint extends Service, ReplicationPeerConfigListe
       this.replicationPeer = replicationPeer;
       this.metrics = metrics;
     }
+
+    public Configuration getLocalConfiguration() {
+      return localConf;
+    }
+
     public Configuration getConfiguration() {
       return conf;
     }
+
     public FileSystem getFilesystem() {
       return fs;
     }
+
     public UUID getClusterId() {
       return clusterId;
     }
+
     public String getPeerId() {
       return peerId;
     }
+
     public ReplicationPeerConfig getPeerConfig() {
       return replicationPeer.getPeerConfig();
     }
+
     public ReplicationPeer getReplicationPeer() {
       return replicationPeer;
     }
+
     public MetricsSource getMetrics() {
       return metrics;
     }

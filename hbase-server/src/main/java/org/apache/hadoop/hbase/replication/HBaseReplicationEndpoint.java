@@ -48,6 +48,9 @@ public abstract class HBaseReplicationEndpoint extends BaseReplicationEndpoint
 
   private static final Log LOG = LogFactory.getLog(HBaseReplicationEndpoint.class);
 
+  public static final String REPLICATION_DROP_ON_DELETED_TABLE_KEY =
+      "hbase.replication.drop.on.deleted.table";
+
   private ZooKeeperWatcher zkw = null;
 
   private List<ServerName> regionServers = new ArrayList<ServerName>(0);
