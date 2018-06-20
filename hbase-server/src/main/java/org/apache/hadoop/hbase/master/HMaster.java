@@ -41,6 +41,7 @@ import java.util.regex.Pattern;
 
 import javax.management.ObjectName;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.xiaomi.infra.crypto.KeyCenterKeyProvider;
 import com.xiaomi.keycenter.common.iface.DataProtectionException;
 import org.apache.commons.logging.Log;
@@ -4172,5 +4173,10 @@ MasterServices, Server {
   @Override
   public ReplicationManager getReplicationManager() {
     return this.replicationManager;
+  }
+
+  @VisibleForTesting
+  public ReplicationZKNodeCleanerChore getReplicationZKNodeCleanerChore() {
+    return this.replicationZKNodeCleanerChore;
   }
 }
