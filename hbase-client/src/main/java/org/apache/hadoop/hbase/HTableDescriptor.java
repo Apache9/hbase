@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import com.xiaomi.infra.hbase.salted.NBytePrefixKeySalter;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.client.ColumnFamilyDescriptor;
 import org.apache.hadoop.hbase.client.ColumnFamilyDescriptorBuilder.ModifyableColumnFamilyDescriptor;
@@ -887,5 +888,35 @@ public class HTableDescriptor implements TableDescriptor, Comparable<HTableDescr
 
   protected ModifyableTableDescriptor getDelegateeForModification() {
     return delegatee;
+  }
+
+  public void setSalted(String keySalter, int slotsCount) {
+    setValue(TableDescriptorBuilder.KEY_SALTER, keySalter);
+    setValue(TableDescriptorBuilder.SLOTS_COUNT, String.valueOf(slotsCount));
+  }
+
+  public void setSlotsCount(int slotsCount) {
+    setValue(TableDescriptorBuilder.SLOTS_COUNT, String.valueOf(slotsCount));
+  }
+
+  @Override
+  public boolean isSalted() {
+    // slotsCount must be set, while keySalter has default value
+    return getSlotsCount() != null;
+  }
+
+  @Override
+  public String getKeySalter() {
+    String cls = getValue(TableDescriptorBuilder.KEY_SALTER);
+    if (cls == null) {
+      return getSlotsCount() == null ? null : NBytePrefixKeySalter.class.getName();
+    }
+    return cls;
+  }
+
+  @Override
+  public Integer getSlotsCount() {
+    String slotsCountStr = getValue(TableDescriptorBuilder.SLOTS_COUNT);
+    return slotsCountStr == null ? null : Integer.parseInt(slotsCountStr);
   }
 }

@@ -52,6 +52,9 @@ Examples:
   hbase> create 't1', 'f1', {NUMREGIONS => 15, SPLITALGO => 'HexStringSplit'}
   hbase> create 't1', 'f1', {NUMREGIONS => 15, SPLITALGO => 'HexStringSplit', REGION_REPLICATION => 2, CONFIGURATION => {'hbase.hregion.scan.loadColumnFamiliesOnDemand' => 'true'}}
   hbase> create 't1', {NAME => 'f1', DFS_REPLICATION => 1}
+  hbase> # create salted table
+  hbase> create 'ns1:t1', {METADATA => {'SLOTS_COUNT' => '256'}}, {NAME=>'f1'}
+  hbase> create 'ns1:t1', {SLOTS_COUNT=>'256'}, {NAME=>'f1'}
 
 You can also keep around a reference to the created table:
 

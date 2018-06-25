@@ -35,6 +35,7 @@ import java.util.TreeSet;
 import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import com.xiaomi.infra.hbase.salted.NBytePrefixKeySalter;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.Coprocessor;
 import org.apache.hadoop.hbase.HConstants;
@@ -161,6 +162,11 @@ public class TableDescriptorBuilder {
   public static final String PRIORITY = "PRIORITY";
   private static final Bytes PRIORITY_KEY
           = new Bytes(Bytes.toBytes(PRIORITY));
+
+  // salted
+  @InterfaceAudience.Private
+  public static final String KEY_SALTER = "KEY_SALTER";
+  public static final String SLOTS_COUNT = "SLOTS_COUNT";
 
   /**
    * Relative priority of the table used for rpc scheduling
@@ -501,6 +507,17 @@ public class TableDescriptorBuilder {
     return this;
   }
 
+  public TableDescriptorBuilder setSalted(String keySalter, int slotsCount) {
+    setValue(KEY_SALTER, keySalter);
+    setValue(SLOTS_COUNT, String.valueOf(slotsCount));
+    return this;
+  }
+
+  public TableDescriptorBuilder setSlotsCount(int slotsCount) {
+    setValue(SLOTS_COUNT, String.valueOf(slotsCount));
+    return this;
+  }
+
   public TableDescriptor build() {
     return new ModifyableTableDescriptor(desc);
   }
@@ -707,6 +724,27 @@ public class TableDescriptorBuilder {
     @Override
     public boolean isReadOnly() {
       return getOrDefault(READONLY_KEY, Boolean::valueOf, DEFAULT_READONLY);
+    }
+
+    @Override
+    public boolean isSalted() {
+      // slotsCount must be set, while keySalter has default value
+      return getSlotsCount() != null;
+    }
+
+    @Override
+    public String getKeySalter() {
+      String cls = getValue(KEY_SALTER);
+      if (cls == null) {
+        return getSlotsCount() == null ? null : NBytePrefixKeySalter.class.getName();
+      }
+      return cls;
+    }
+
+    @Override
+    public Integer getSlotsCount() {
+      String slotsCountStr = getValue(SLOTS_COUNT);
+      return slotsCountStr == null ? null : Integer.parseInt(slotsCountStr);
     }
 
     /**

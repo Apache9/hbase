@@ -18,6 +18,8 @@
  */
 package org.apache.hadoop.hbase.replication.regionserver;
 
+import com.xiaomi.infra.hbase.salted.SaltedHTable;
+
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.util.ArrayList;
@@ -403,7 +405,11 @@ public class ReplicationSink {
       Connection connection = getConnection();
       table = connection.getTable(tableName);
       for (List<Row> rows : allRows) {
-        table.batch(rows, null);
+        if (table instanceof SaltedHTable) {
+          ((SaltedHTable)table).getRawTable().batch(rows, null);
+        } else {
+          table.batch(rows, null);
+        }
       }
     } catch (RetriesExhaustedWithDetailsException rewde) {
       for (Throwable ex : rewde.getCauses()) {

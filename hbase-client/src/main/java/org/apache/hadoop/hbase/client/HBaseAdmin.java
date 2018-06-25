@@ -43,6 +43,8 @@ import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import com.xiaomi.infra.hbase.salted.KeySalter;
+import com.xiaomi.infra.hbase.salted.SaltedHTable;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Abortable;
 import org.apache.hadoop.hbase.CacheEvictionStats;
@@ -617,6 +619,22 @@ public class HBaseAdmin implements Admin {
   @Override
   public void createTable(final TableDescriptor desc, byte [][] splitKeys)
       throws IOException {
+    // use slots to pre-split table if splitKeys is not set and the table is salted
+    // there is no change to set splitKeys in coprocessor of server-side so that we reset here
+    if (desc.getSlotsCount() == null && desc.getKeySalter() != null) {
+      throw new IOException("must specify SLOTS_COUNT when KEY_SALTER is set");
+    }
+    if (splitKeys == null && desc.isSalted()) {
+      KeySalter salter = SaltedHTable.createKeySalter(desc.getKeySalter(), desc.getSlotsCount());
+      if (salter.getAllSalts().length > 1) {
+        splitKeys = new byte[salter.getAllSalts().length - 1][];
+        // there won't be rowkey smaller than the first slot after salted
+        for (int i = 0; i < splitKeys.length; ++i) {
+          splitKeys[i] = salter.getAllSalts()[i + 1];
+        }
+      }
+    }
+
     get(createTableAsync(desc, splitKeys), syncWaitTimeout, TimeUnit.MILLISECONDS);
   }
 
@@ -1929,7 +1947,29 @@ public class HBaseAdmin implements Admin {
       throw new IllegalArgumentException("the specified table name '" + tableName +
         "' doesn't match with the HTD one: " + td.getTableName());
     }
+    // check KeySalter not modified
+    checkSaltedAttributeUnModified(tableName, td);
+
     return modifyTableAsync(td);
+  }
+
+  private void checkSaltedAttributeUnModified(TableName tableName, TableDescriptor modifiedHtd)
+      throws IOException {
+    TableDescriptor htd = this.getTableDescriptor(tableName);
+    boolean saltedAttributeUnModified = false;
+    if (htd.isSalted() != modifiedHtd.isSalted()) {
+      saltedAttributeUnModified = true;
+    }
+    if (htd.isSalted()) {
+      if (!htd.getSlotsCount().equals(modifiedHtd.getSlotsCount()) ||
+          !htd.getKeySalter().equals(modifiedHtd.getKeySalter())) {
+        saltedAttributeUnModified = true;
+      }
+    }
+
+    if (saltedAttributeUnModified) {
+      throw new IOException("can not modify the salted attribute of table : " + tableName);
+    }
   }
 
   private static class ModifyTableFuture extends TableFuture<Void> {

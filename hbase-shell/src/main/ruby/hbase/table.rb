@@ -116,6 +116,10 @@ EOF
 
     def initialize(table, shell)
       @table = table
+        if @table.class == com.xiaomi.infra.hbase.salted.SaltedHTable
+          @table = table.getRawTable()
+        end
+
       @name = @table.getName.getNameAsString
       @shell = shell
       @converters = {}

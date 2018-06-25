@@ -251,6 +251,18 @@ module Hbase
       assert_equal(['a:', 'b:'], table(@create_test_name).get_all_columns.sort)
     end
 
+    define_test "create should work with METADATA SLOTS_COUNT" do
+      drop_test_table(@create_test_name)
+      command(:create, @create_test_name, {METADATA => {'SLOTS_COUNT' => '123'}}, {NAME => 'a'})
+      assert_match(/123/, admin.describe(@create_test_name))
+    end
+
+    define_test "create should work with SLOTS_COUNT" do
+      drop_test_table(@create_test_name)
+      command(:create, @create_test_name, {SLOTS_COUNT => '123'}, {NAME => 'a'})
+      assert_match(/123/, admin.describe(@create_test_name))
+    end
+
     define_test "create should work when attributes value 'false' is not enclosed in single quotation marks" do
       drop_test_table(@create_test_name)
       command(:create, @create_test_name,{NAME => 'a', BLOCKCACHE => false}, {COMPACTION_ENABLED => false})

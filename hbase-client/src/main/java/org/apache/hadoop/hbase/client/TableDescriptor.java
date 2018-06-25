@@ -283,6 +283,12 @@ public interface TableDescriptor {
    */
   boolean isReadOnly();
 
+  boolean isSalted();
+
+  String getKeySalter();
+
+  Integer getSlotsCount();
+
   /**
    * Check if any of the table's cfs' replication scope are set to
    * {@link HConstants#REPLICATION_SCOPE_GLOBAL}.
