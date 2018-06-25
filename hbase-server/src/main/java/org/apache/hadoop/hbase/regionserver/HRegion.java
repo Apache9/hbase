@@ -887,27 +887,29 @@ public class HRegion implements HeapSize { // , Writable{
   }
 
   private void writeRegionOpenMarker(HLog log, long openSeqId) throws IOException {
-    Map<byte[], List<Path>> storeFiles
-        = new TreeMap<byte[], List<Path>>(Bytes.BYTES_COMPARATOR);
-    for (Map.Entry<byte[], Store> entry : getStores().entrySet()) {
-      Store store = entry.getValue();
-      ArrayList<Path> storeFileNames = new ArrayList<Path>();
-      for (StoreFile storeFile : store.getStorefiles()) {
-        storeFileNames.add(storeFile.getPath());
-      }
-      storeFiles.put(entry.getKey(), storeFileNames);
-    }
-
     RegionEventDescriptor regionOpenDesc = ProtobufUtil.toRegionEventDescriptor(
         RegionEventDescriptor.EventType.REGION_OPEN, getRegionInfo(), openSeqId,
-        getRegionServerServices().getServerName(), storeFiles);
+        getRegionServerServices().getServerName(), getStoreFilesMap());
     HLogUtil.writeRegionEventMarker(log, getTableDesc(), getRegionInfo(), regionOpenDesc,
         getSequenceId());
+    LOG.info("Write a region open marker with openSeqId=" + openSeqId + ", sequenceId="
+        + getSequenceId() + " for region " + this.getRegionNameAsString() + ", table " + this
+        .getTableDesc().getTableName());
   }
 
   private void writeRegionCloseMarker(HLog log) throws IOException {
-    Map<byte[], List<Path>> storeFiles
-        = new TreeMap<byte[], List<Path>>(Bytes.BYTES_COMPARATOR);
+    RegionEventDescriptor regionEventDesc = ProtobufUtil.toRegionEventDescriptor(
+        RegionEventDescriptor.EventType.REGION_CLOSE, getRegionInfo(), getSequenceId().get(),
+        getRegionServerServices().getServerName(), getStoreFilesMap());
+    HLogUtil.writeRegionEventMarker(log, getTableDesc(), getRegionInfo(), regionEventDesc,
+        getSequenceId());
+    LOG.info(
+        "Write a region close marker with sequenceId=" + getSequenceId() + " for region " + this
+            .getRegionNameAsString() + ", table " + this.getTableDesc().getTableName());
+  }
+
+  private Map<byte[], List<Path>> getStoreFilesMap() {
+    Map<byte[], List<Path>> storeFiles = new TreeMap<byte[], List<Path>>(Bytes.BYTES_COMPARATOR);
     for (Map.Entry<byte[], Store> entry : getStores().entrySet()) {
       Store store = entry.getValue();
       ArrayList<Path> storeFileNames = new ArrayList<Path>();
@@ -916,12 +918,7 @@ public class HRegion implements HeapSize { // , Writable{
       }
       storeFiles.put(entry.getKey(), storeFileNames);
     }
-
-    RegionEventDescriptor regionEventDesc = ProtobufUtil.toRegionEventDescriptor(
-        RegionEventDescriptor.EventType.REGION_CLOSE, getRegionInfo(), getSequenceId().get(),
-        getRegionServerServices().getServerName(), storeFiles);
-    HLogUtil.writeRegionEventMarker(log, getTableDesc(), getRegionInfo(), regionEventDesc,
-        getSequenceId());
+    return storeFiles;
   }
 
   /**
