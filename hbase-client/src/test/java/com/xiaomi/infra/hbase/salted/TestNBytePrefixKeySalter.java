@@ -2,15 +2,23 @@ package com.xiaomi.infra.hbase.salted;
 
 import java.util.Map.Entry;
 import java.util.TreeMap;
+
+import org.apache.hadoop.hbase.HBaseClassTestRule;
 import org.apache.hadoop.hbase.testclassification.MiscTests;
 import org.apache.hadoop.hbase.testclassification.SmallTests;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Assert;
+import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
-@Category({MiscTests.class, SmallTests.class})
+@Category({ MiscTests.class, SmallTests.class })
 public class TestNBytePrefixKeySalter {
+
+  @ClassRule
+  public static final HBaseClassTestRule CLASS_RULE =
+      HBaseClassTestRule.forClass(TestNBytePrefixKeySalter.class);
+
   @Test
   public void testConstruction() {
     try {

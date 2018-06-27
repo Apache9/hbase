@@ -890,13 +890,13 @@ public class HTableDescriptor implements TableDescriptor, Comparable<HTableDescr
     return delegatee;
   }
 
-  public void setSalted(String keySalter, int slotsCount) {
-    setValue(TableDescriptorBuilder.KEY_SALTER, keySalter);
-    setValue(TableDescriptorBuilder.SLOTS_COUNT, String.valueOf(slotsCount));
+  public HTableDescriptor setSalted(String keySalter, int slotsCount) {
+    return setValue(TableDescriptorBuilder.KEY_SALTER, keySalter)
+        .setValue(TableDescriptorBuilder.SLOTS_COUNT, String.valueOf(slotsCount));
   }
 
-  public void setSlotsCount(int slotsCount) {
-    setValue(TableDescriptorBuilder.SLOTS_COUNT, String.valueOf(slotsCount));
+  public HTableDescriptor setSlotsCount(int slotsCount) {
+    return setValue(TableDescriptorBuilder.SLOTS_COUNT, String.valueOf(slotsCount));
   }
 
   @Override

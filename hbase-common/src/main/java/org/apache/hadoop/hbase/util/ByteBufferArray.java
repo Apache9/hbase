@@ -284,8 +284,7 @@ public class ByteBufferArray {
       endBufferOffset = bufferSize;
     }
     assert startBuffer >= 0 && startBuffer < bufferCount;
-    assert (endBuffer >= 0 && endBuffer < bufferCount)
-        || (endBuffer == bufferCount && endBufferOffset == 0);
+    assert endBuffer >= 0 && endBuffer < bufferCount;
     if (startBuffer >= buffers.length || startBuffer < 0) {
       String msg = "Failed subArray, start=" + offset + ",startBuffer=" + startBuffer
           + ",bufferSize=" + bufferSize;

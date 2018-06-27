@@ -2,23 +2,29 @@ package com.xiaomi.infra.hbase.salted;
 
 import junit.framework.Assert;
 
+import org.apache.hadoop.hbase.HBaseClassTestRule;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.testclassification.MiscTests;
 import org.apache.hadoop.hbase.testclassification.SmallTests;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.junit.ClassRule;
 import org.junit.Test;
 
 import com.xiaomi.infra.hbase.salted.MergeSortScanner.IgnorePrefixComparator;
 import org.junit.experimental.categories.Category;
 
-@Category({MiscTests.class, SmallTests.class})
+@Category({ MiscTests.class, SmallTests.class })
 public class TestMergeSortScanner {
-  
+
+  @ClassRule
+  public static final HBaseClassTestRule CLASS_RULE =
+      HBaseClassTestRule.forClass(TestMergeSortScanner.class);
+
   protected Result getResult(String rowkey) {
     KeyValue kv = new KeyValue(Bytes.toBytes(rowkey), HConstants.LATEST_TIMESTAMP);
-    return Result.create(new KeyValue[]{kv});
+    return Result.create(new KeyValue[] { kv });
   }
   
   @Test
