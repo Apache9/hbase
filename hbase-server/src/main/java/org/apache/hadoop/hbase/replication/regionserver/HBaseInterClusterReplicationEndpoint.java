@@ -78,6 +78,10 @@ public class HBaseInterClusterReplicationEndpoint extends HBaseReplicationEndpoi
   private boolean peersSelected = false;
   private boolean dropOnDeletedTables;
 
+  private static final String REPLICATION_ENDPOINT_RPC_TIMEOUT =
+      "hbase.replication.endpoint.rpc.timeout";
+  private static final int DEFAULT_REPLICATION_ENDPOINT_RPC_TIMEOUT = 300000;
+
   @Override
   public void init(Context context) throws IOException {
     super.init(context);
@@ -100,10 +104,12 @@ public class HBaseInterClusterReplicationEndpoint extends HBaseReplicationEndpoi
   }
 
   private void decorateConf() {
-    String replicationCodec = this.conf.get(HConstants.REPLICATION_CODEC_CONF_KEY);
+    String replicationCodec = conf.get(HConstants.REPLICATION_CODEC_CONF_KEY);
     if (StringUtils.isNotEmpty(replicationCodec)) {
-      this.conf.set(HConstants.RPC_CODEC_CONF_KEY, replicationCodec);
+      conf.set(HConstants.RPC_CODEC_CONF_KEY, replicationCodec);
     }
+    conf.setInt(HConstants.HBASE_RPC_TIMEOUT_KEY,
+        conf.getInt(REPLICATION_ENDPOINT_RPC_TIMEOUT, DEFAULT_REPLICATION_ENDPOINT_RPC_TIMEOUT));
   }
 
   private void connectToPeers() {
