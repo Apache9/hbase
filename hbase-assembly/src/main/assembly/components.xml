@@ -160,5 +160,14 @@
       </includes>
       <fileMode>0644</fileMode>
     </fileSet>
+    <fileSet>
+      <directory>${project.basedir}/../hbase-common/target/nativelib</directory>
+      <outputDirectory>lib/native/${build.platform}</outputDirectory>
+      <fileMode>0755</fileMode>
+      <directoryMode>0755</directoryMode>
+      <includes>
+        <include>lib*</include>
+      </includes>
+    </fileSet>
   </fileSets>
 </component>
