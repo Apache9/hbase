@@ -24,9 +24,10 @@ import java.util.List;
 import java.util.Objects;
 import java.util.SortedSet;
 import java.util.concurrent.atomic.AtomicReference;
-
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellComparator;
+import org.apache.hadoop.hbase.ExtendedCell;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.KeyValueUtil;
 import org.apache.hadoop.hbase.io.TimeRange;
@@ -34,6 +35,7 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.ClassSize;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
+
 import com.xiaomi.infra.thirdparty.com.google.common.annotations.VisibleForTesting;
 
 /**
@@ -47,15 +49,17 @@ import com.xiaomi.infra.thirdparty.com.google.common.annotations.VisibleForTesti
 public abstract class Segment implements MemStoreSizing {
 
   public final static long FIXED_OVERHEAD = ClassSize.align(ClassSize.OBJECT
-      + 5 * ClassSize.REFERENCE // cellSet, comparator, memStoreLAB, memStoreSizing,
+      + 6 * ClassSize.REFERENCE // cellSet, comparator, updatesLock, memStoreLAB, memStoreSizing,
                                 // and timeRangeTracker
       + Bytes.SIZEOF_LONG // minSequenceId
       + Bytes.SIZEOF_BOOLEAN); // tagsPresent
   public final static long DEEP_OVERHEAD = FIXED_OVERHEAD + ClassSize.ATOMIC_REFERENCE
-      + ClassSize.CELL_SET + 2 * ClassSize.ATOMIC_LONG;
+      + ClassSize.CELL_SET + 2 * ClassSize.ATOMIC_LONG
+      + ClassSize.REENTRANT_LOCK;
 
   private AtomicReference<CellSet> cellSet= new AtomicReference<>();
   private final CellComparator comparator;
+  private ReentrantReadWriteLock updatesLock;
   protected long minSequenceId;
   private MemStoreLAB memStoreLAB;
   // Sum of sizes of all Cells added to this Segment. Cell's HeapSize is considered. This is not
@@ -86,6 +90,7 @@ public abstract class Segment implements MemStoreSizing {
       OffHeapSize += memStoreSize.getOffHeapSize();
     }
     this.comparator = comparator;
+    this.updatesLock = new ReentrantReadWriteLock();
     // Do we need to be thread safe always? What if ImmutableSegment?
     // DITTO for the TimeRangeTracker below.
     this.memStoreSizing = new ThreadSafeMemStoreSizing(dataSize, heapSize, OffHeapSize);
@@ -96,6 +101,7 @@ public abstract class Segment implements MemStoreSizing {
   protected Segment(CellSet cellSet, CellComparator comparator, MemStoreLAB memStoreLAB, TimeRangeTracker trt) {
     this.cellSet.set(cellSet);
     this.comparator = comparator;
+    this.updatesLock = new ReentrantReadWriteLock();
     this.minSequenceId = Long.MAX_VALUE;
     this.memStoreLAB = memStoreLAB;
     // Do we need to be thread safe always? What if ImmutableSegment?
@@ -108,9 +114,10 @@ public abstract class Segment implements MemStoreSizing {
   protected Segment(Segment segment) {
     this.cellSet.set(segment.getCellSet());
     this.comparator = segment.getComparator();
+    this.updatesLock = segment.getUpdatesLock();
     this.minSequenceId = segment.getMinSequenceId();
     this.memStoreLAB = segment.getMemStoreLAB();
-    this.memStoreSizing = new ThreadSafeMemStoreSizing(segment.memStoreSizing.getMemStoreSize());
+    this.memStoreSizing = segment.memStoreSizing;
     this.tagsPresent = segment.isTagsPresent();
     this.timeRangeTracker = segment.getTimeRangeTracker();
   }
@@ -182,7 +189,8 @@ public abstract class Segment implements MemStoreSizing {
    */
   @VisibleForTesting
   static int getCellLength(Cell cell) {
-    return KeyValueUtil.length(cell);
+    return cell instanceof ExtendedCell ? ((ExtendedCell)cell).getSerializedSize():
+        KeyValueUtil.length(cell);
   }
 
   public boolean shouldSeek(TimeRange tr, long oldestUnexpiredTS) {
@@ -243,6 +251,25 @@ public abstract class Segment implements MemStoreSizing {
     return this.memStoreSizing.incMemStoreSize(delta, heapOverhead, offHeapOverhead);
   }
 
+  public boolean sharedLock() {
+    return updatesLock.readLock().tryLock();
+  }
+
+  public void sharedUnlock() {
+    updatesLock.readLock().unlock();
+  }
+
+  public void waitForUpdates() {
+    if(!updatesLock.isWriteLocked()) {
+      updatesLock.writeLock().lock();
+    }
+  }
+
+  @Override
+  public boolean compareAndSetDataSize(long expected, long updated) {
+    return memStoreSizing.compareAndSetDataSize(expected, updated);
+  }
+
   public long getMinSequenceId() {
     return minSequenceId;
   }
@@ -287,29 +314,30 @@ public abstract class Segment implements MemStoreSizing {
     return comparator;
   }
 
-  protected void internalAdd(Cell cell, boolean mslabUsed, MemStoreSizing memstoreSizing) {
+  protected void internalAdd(Cell cell, boolean mslabUsed, MemStoreSizing memstoreSizing,
+      boolean sizeAddedPreOperation) {
     boolean succ = getCellSet().add(cell);
-    updateMetaInfo(cell, succ, mslabUsed, memstoreSizing);
+    updateMetaInfo(cell, succ, mslabUsed, memstoreSizing, sizeAddedPreOperation);
   }
 
   protected void updateMetaInfo(Cell cellToAdd, boolean succ, boolean mslabUsed,
-      MemStoreSizing memstoreSizing) {
-    long cellSize = 0;
+      MemStoreSizing memstoreSizing, boolean sizeAddedPreOperation) {
+    long delta = 0;
+    long cellSize = getCellLength(cellToAdd);
     // If there's already a same cell in the CellSet and we are using MSLAB, we must count in the
     // MSLAB allocation size as well, or else there will be memory leak (occupied heap size larger
     // than the counted number)
-    boolean sizeChanged = succ || mslabUsed;
-    if (sizeChanged) {
-      cellSize = getCellLength(cellToAdd);
+    if (succ || mslabUsed) {
+      delta = cellSize;
     }
-    // same as above, if MSLAB is used, we need to inc the heap/offheap size, otherwise there will
-    // be a memory miscount. Since we are now use heapSize + offHeapSize to decide whether a flush
-    // is needed.
-    long heapSize = heapSizeChange(cellToAdd, sizeChanged);
-    long offHeapSize = offHeapSizeChange(cellToAdd, sizeChanged);
-    incMemStoreSize(cellSize, heapSize, offHeapSize);
+    if(sizeAddedPreOperation) {
+      delta -= cellSize;
+    }
+    long heapSize = heapSizeChange(cellToAdd, succ || mslabUsed);
+    long offHeapSize = offHeapSizeChange(cellToAdd, succ || mslabUsed);
+    incMemStoreSize(delta, heapSize, offHeapSize);
     if (memstoreSizing != null) {
-      memstoreSizing.incMemStoreSize(cellSize, heapSize, offHeapSize);
+      memstoreSizing.incMemStoreSize(delta, heapSize, offHeapSize);
     }
     getTimeRangeTracker().includeTimestamp(cellToAdd);
     minSequenceId = Math.min(minSequenceId, cellToAdd.getSequenceId());
@@ -323,16 +351,16 @@ public abstract class Segment implements MemStoreSizing {
   }
 
   protected void updateMetaInfo(Cell cellToAdd, boolean succ, MemStoreSizing memstoreSizing) {
-    updateMetaInfo(cellToAdd, succ, (getMemStoreLAB()!=null), memstoreSizing);
+    updateMetaInfo(cellToAdd, succ, (getMemStoreLAB()!=null), memstoreSizing, false);
   }
 
   /**
    * @return The increase in heap size because of this cell addition. This includes this cell POJO's
    *         heap size itself and additional overhead because of addition on to CSLM.
    */
-  protected long heapSizeChange(Cell cell, boolean succ) {
+  protected long heapSizeChange(Cell cell, boolean allocated) {
     long res = 0;
-    if (succ) {
+    if (allocated) {
       boolean onHeap = true;
       MemStoreLAB memStoreLAB = getMemStoreLAB();
       if(memStoreLAB != null) {
@@ -347,9 +375,9 @@ public abstract class Segment implements MemStoreSizing {
     return res;
   }
 
-  protected long offHeapSizeChange(Cell cell, boolean succ) {
+  protected long offHeapSizeChange(Cell cell, boolean allocated) {
     long res = 0;
-    if (succ) {
+    if (allocated) {
       boolean offHeap = false;
       MemStoreLAB memStoreLAB = getMemStoreLAB();
       if(memStoreLAB != null) {
@@ -412,5 +440,9 @@ public abstract class Segment implements MemStoreSizing {
     res += "min timestamp=" + timeRangeTracker.getMin() + ", ";
     res += "max timestamp=" + timeRangeTracker.getMax();
     return res;
+  }
+
+  private ReentrantReadWriteLock getUpdatesLock() {
+    return updatesLock;
   }
 }

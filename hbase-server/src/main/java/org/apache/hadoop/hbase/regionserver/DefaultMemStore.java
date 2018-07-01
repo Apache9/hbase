@@ -96,11 +96,11 @@ public class DefaultMemStore extends AbstractMemStore {
           "Doing nothing. Another ongoing flush or did we fail last attempt?");
     } else {
       this.snapshotId = EnvironmentEdgeManager.currentTime();
-      if (!this.active.isEmpty()) {
+      if (!getActive().isEmpty()) {
         // Record the ImmutableSegment' heap overhead when initialing
         MemStoreSizing memstoreAccounting = new NonThreadSafeMemStoreSizing();
         ImmutableSegment immutableSegment = SegmentFactory.instance().
-            createImmutableSegment(this.active, memstoreAccounting);
+            createImmutableSegment(getActive(), memstoreAccounting);
         // regionServices can be null when testing
         if (regionServices != null) {
           regionServices.addMemStoreSize(memstoreAccounting.getDataSize(),
@@ -117,17 +117,17 @@ public class DefaultMemStore extends AbstractMemStore {
   @Override
   public MemStoreSize getFlushableSize() {
     MemStoreSize mss = getSnapshotSize();
-    return mss.getDataSize() > 0? mss: this.active.getMemStoreSize();
+    return mss.getDataSize() > 0? mss: getActive().getMemStoreSize();
   }
 
   @Override
   protected long keySize() {
-    return this.active.getDataSize();
+    return getActive().getDataSize();
   }
 
   @Override
   protected long heapSize() {
-    return this.active.getHeapSize();
+    return getActive().getHeapSize();
   }
 
   @Override
@@ -136,7 +136,7 @@ public class DefaultMemStore extends AbstractMemStore {
    */
   public List<KeyValueScanner> getScanners(long readPt) throws IOException {
     List<KeyValueScanner> list = new ArrayList<>();
-    addToScanners(active, readPt, list);
+    addToScanners(getActive(), readPt, list);
     addToScanners(snapshot.getAllSegments(), readPt, list);
     return list;
   }
@@ -144,8 +144,8 @@ public class DefaultMemStore extends AbstractMemStore {
   @Override
   protected List<Segment> getSegments() throws IOException {
     List<Segment> list = new ArrayList<>(2);
-    list.add(this.active);
-    list.add(this.snapshot);
+    list.add(getActive());
+    list.add(snapshot);
     return list;
   }
 
@@ -156,25 +156,29 @@ public class DefaultMemStore extends AbstractMemStore {
    */
   Cell getNextRow(final Cell cell) {
     return getLowest(
-        getNextRow(cell, this.active.getCellSet()),
+        getNextRow(cell, this.getActive().getCellSet()),
         getNextRow(cell, this.snapshot.getCellSet()));
   }
 
   @Override public void updateLowestUnflushedSequenceIdInWAL(boolean onlyIfMoreRecent) {
   }
 
-  @Override
-  public MemStoreSize size() {
-    return active.getMemStoreSize();
+  @Override protected boolean preUpdate(MutableSegment currentActive, Cell cell,
+      MemStoreSizing memstoreSizing) {
+    return true;
   }
 
-  /**
-   * Check whether anything need to be done based on the current active set size
-   * Nothing need to be done for the DefaultMemStore
-   */
-  @Override
-  protected void checkActiveSize() {
+  @Override protected void postUpdate(MutableSegment currentActive) {
     return;
+  }
+
+  @Override protected boolean sizeAddedPreOperation() {
+    return false;
+  }
+
+  @Override
+  public MemStoreSize size() {
+    return getActive().getMemStoreSize();
   }
 
   @Override

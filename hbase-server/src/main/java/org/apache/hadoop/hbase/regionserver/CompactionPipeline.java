@@ -22,8 +22,6 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
-
-import com.xiaomi.infra.thirdparty.com.google.common.base.Preconditions;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.ClassSize;
 import org.apache.yetus.audience.InterfaceAudience;
@@ -158,15 +156,10 @@ public class CompactionPipeline {
       long offHeapSizeDelta = suffixOffHeapSize - newOffHeapSize;
       long heapSizeDelta = suffixHeapSize - newHeapSize;
       region.addMemStoreSize(-dataSizeDelta, -heapSizeDelta, -offHeapSizeDelta);
-      LOG.debug("Suffix data size={}, new segment data size={}, "
-              + "suffix heap size={}," + "new segment heap size={}"
-              + "suffix off heap size={}," + "new segment off heap size={}"
-          , suffixDataSize
-          , newDataSize
-          , suffixHeapSize
-          , newHeapSize
-          , suffixOffHeapSize
-          , newOffHeapSize);
+      LOG.debug("Suffix data size={}, new segment data size={}, " + "suffix heap size={},"
+              + "new segment heap size={}" + "suffix off heap size={},"
+              + "new segment off heap size={}", suffixDataSize, newDataSize, suffixHeapSize,
+          newHeapSize, suffixOffHeapSize, newOffHeapSize);
     }
     return true;
   }
@@ -221,6 +214,7 @@ public class CompactionPipeline {
       int i = 0;
       for (ImmutableSegment s : pipeline) {
         if ( s.canBeFlattened() ) {
+          s.waitForUpdates(); // to ensure all updates preceding s in-memory flush have completed
           // size to be updated
           MemStoreSizing newMemstoreAccounting = new NonThreadSafeMemStoreSizing();
           ImmutableSegment newS = SegmentFactory.instance().createImmutableSegmentByFlattening(
@@ -230,7 +224,6 @@ public class CompactionPipeline {
             // Update the global memstore size counter upon flattening there is no change in the
             // data size
             MemStoreSize mss = newMemstoreAccounting.getMemStoreSize();
-            Preconditions.checkArgument(mss.getDataSize() == 0, "Not zero!");
             region.addMemStoreSize(mss.getDataSize(), mss.getHeapSize(), mss.getOffHeapSize());
           }
           LOG.debug("Compaction pipeline segment {} flattened", s);
