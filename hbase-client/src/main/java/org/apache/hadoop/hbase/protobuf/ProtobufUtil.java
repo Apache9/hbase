@@ -152,6 +152,8 @@ import org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.Regio
 import org.apache.hadoop.hbase.protobuf.generated.RegionServerStatusProtos.RegionServerStartupRequest;
 import org.apache.hadoop.hbase.protobuf.generated.SnapshotProtos;
 import org.apache.hadoop.hbase.protobuf.generated.WALProtos.CompactionDescriptor;
+import org.apache.hadoop.hbase.protobuf.generated.WALProtos.FlushDescriptor;
+import org.apache.hadoop.hbase.protobuf.generated.WALProtos.FlushDescriptor.FlushAction;
 import org.apache.hadoop.hbase.protobuf.generated.WALProtos.RegionEventDescriptor;
 import org.apache.hadoop.hbase.protobuf.generated.WALProtos.RegionEventDescriptor.EventType;
 import org.apache.hadoop.hbase.quotas.QuotaScope;
@@ -2853,6 +2855,28 @@ public final class ProtobufUtil {
     }
     builder.setRegionName(ByteStringer.wrap(info.getRegionName()));
     return builder.build();
+  }
+
+  public static FlushDescriptor toFlushDescriptor(FlushAction action, HRegionInfo hri,
+      long flushSeqId, Map<byte[], List<Path>> committedFiles) {
+    FlushDescriptor.Builder desc = FlushDescriptor.newBuilder().setAction(action)
+        .setEncodedRegionName(ByteStringer.wrap(hri.getEncodedNameAsBytes()))
+        .setFlushSequenceNumber(flushSeqId)
+        .setTableName(ByteStringer.wrap(hri.getTable().getName()));
+
+    for (Map.Entry<byte[], List<Path>> entry : committedFiles.entrySet()) {
+      FlushDescriptor.StoreFlushDescriptor.Builder builder =
+          FlushDescriptor.StoreFlushDescriptor.newBuilder()
+              .setFamilyName(ByteStringer.wrap(entry.getKey()))
+              .setStoreHomeDir(Bytes.toString(entry.getKey())); //relative to region
+      if (entry.getValue() != null) {
+        for (Path path : entry.getValue()) {
+          builder.addFlushOutput(path.getName());
+        }
+      }
+      desc.addStoreFlushes(builder);
+    }
+    return desc.build();
   }
 
   /**

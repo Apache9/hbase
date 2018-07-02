@@ -18,7 +18,6 @@
  */
 package org.apache.hadoop.hbase.regionserver;
 
-
 import static org.apache.hadoop.hbase.HBaseTestingUtility.COLUMNS;
 import static org.apache.hadoop.hbase.HBaseTestingUtility.FIRST_CHAR;
 import static org.apache.hadoop.hbase.HBaseTestingUtility.LAST_CHAR;
@@ -37,6 +36,7 @@ import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyBoolean;
 import static org.mockito.Matchers.anyList;
 import static org.mockito.Matchers.anyLong;
+import static org.mockito.Matchers.argThat;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -86,6 +86,9 @@ import org.apache.hadoop.hbase.HDFSBlocksDistribution;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.KeyValue;
+import org.apache.hadoop.hbase.protobuf.generated.WALProtos.FlushDescriptor;
+import org.apache.hadoop.hbase.protobuf.generated.WALProtos.FlushDescriptor.FlushAction;
+import org.apache.hadoop.hbase.protobuf.generated.WALProtos.FlushDescriptor.StoreFlushDescriptor;
 import org.apache.hadoop.hbase.protobuf.generated.WALProtos.RegionEventDescriptor;
 import org.apache.hadoop.hbase.protobuf.generated.WALProtos.RegionEventDescriptor.StoreDescriptor;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
@@ -150,6 +153,7 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.rules.TestName;
 import org.mockito.ArgumentCaptor;
+import org.mockito.ArgumentMatcher;
 import org.mockito.Mockito;
 
 import com.google.common.collect.ImmutableList;
@@ -741,6 +745,227 @@ public class TestHRegion {
         byte[] value = result.getValue(family, Bytes.toBytes(i));
         assertArrayEquals(Bytes.toBytes(i), value);
       }
+    } finally {
+      HRegion.closeHRegion(this.region);
+      this.region = null;
+    }
+  }
+
+  @Test
+  public void testFlushMarkers() throws Exception {
+    // tests that flush markers are written to WAL and handled at recovered edits
+    String method = name.getMethodName();
+    TableName tableName = TableName.valueOf(method);
+    byte[] family = Bytes.toBytes("family");
+    Path logDir = TEST_UTIL.getDataTestDirOnTestFS(method + ".log");
+    HLog hlog = HLogFactory.createHLog(FILESYSTEM, logDir, "logs", TEST_UTIL.getConfiguration());
+
+    this.region = initHRegion(tableName.getName(), HConstants.EMPTY_START_ROW,
+        HConstants.EMPTY_END_ROW, method, CONF, false, Durability.USE_DEFAULT, hlog, family);
+    try {
+      Path regiondir = region.getRegionFileSystem().getRegionDir();
+      FileSystem fs = region.getRegionFileSystem().getFileSystem();
+      byte[] regionName = region.getRegionInfo().getEncodedNameAsBytes();
+
+      long maxSeqId = 3;
+      long minSeqId = 0;
+
+      for (long i = minSeqId; i < maxSeqId; i++) {
+        Put put = new Put(Bytes.toBytes(i));
+        put.add(family, Bytes.toBytes(i), Bytes.toBytes(i));
+        region.put(put);
+        region.flushcache();
+      }
+
+      // this will create a region with 3 files from flush
+      assertEquals(3, region.getStore(family).getStorefilesCount());
+      List<String> storeFiles = new ArrayList<String>(3);
+      for (StoreFile sf : region.getStore(family).getStorefiles()) {
+        storeFiles.add(sf.getPath().getName());
+      }
+
+      // now verify that the flush markers are written
+      hlog.close();
+      HLog.Reader reader = HLogFactory.createReader(fs,
+          fs.listStatus(new Path(logDir, "logs"))[0].getPath(),
+          TEST_UTIL.getConfiguration());
+
+      List<HLog.Entry> flushDescriptors = new ArrayList<HLog.Entry>();
+      long lastFlushSeqId = -1;
+      while (true) {
+        HLog.Entry entry = reader.next();
+        if (entry == null) {
+          break;
+        }
+        Cell cell = entry.getEdit().getKeyValues().get(0);
+        if (WALEdit.isMetaEditFamily(cell)) {
+          FlushDescriptor flushDesc = WALEdit.getFlushDescriptor(cell);
+          assertNotNull(flushDesc);
+          assertArrayEquals(tableName.getName(), flushDesc.getTableName().toByteArray());
+          if (flushDesc.getAction() == FlushAction.START_FLUSH) {
+            assertTrue(flushDesc.getFlushSequenceNumber() > lastFlushSeqId);
+          } else if (flushDesc.getAction() == FlushAction.COMMIT_FLUSH) {
+            assertTrue(flushDesc.getFlushSequenceNumber() == lastFlushSeqId);
+          }
+          lastFlushSeqId = flushDesc.getFlushSequenceNumber();
+          assertArrayEquals(regionName, flushDesc.getEncodedRegionName().toByteArray());
+          assertEquals(1, flushDesc.getStoreFlushesCount()); //only one store
+          StoreFlushDescriptor storeFlushDesc = flushDesc.getStoreFlushes(0);
+          assertArrayEquals(family, storeFlushDesc.getFamilyName().toByteArray());
+          assertEquals("family", storeFlushDesc.getStoreHomeDir());
+          if (flushDesc.getAction() == FlushAction.START_FLUSH) {
+            assertEquals(0, storeFlushDesc.getFlushOutputCount());
+          } else {
+            assertEquals(1, storeFlushDesc.getFlushOutputCount()); //only one file from flush
+            assertTrue(storeFiles.contains(storeFlushDesc.getFlushOutput(0)));
+          }
+
+          flushDescriptors.add(entry);
+        }
+      }
+
+      assertEquals(3 * 2, flushDescriptors.size()); // START_FLUSH and COMMIT_FLUSH per flush
+
+      // now write those markers to the recovered edits again.
+
+      Path recoveredEditsDir = HLogUtil.getRegionDirRecoveredEditsDir(regiondir);
+
+      Path recoveredEdits = new Path(recoveredEditsDir, String.format("%019d", 1000));
+      fs.create(recoveredEdits);
+      HLog.Writer writer = HLogFactory.createRecoveredEditsWriter(fs, recoveredEdits, CONF);
+
+      for (HLog.Entry entry : flushDescriptors) {
+        writer.append(entry);
+      }
+      writer.close();
+
+      // close the region now, and reopen again
+      region.close();
+      region = HRegion.openHRegion(region, null);
+
+      // now check whether we have can read back the data from region
+      for (long i = minSeqId; i < maxSeqId; i++) {
+        Get get = new Get(Bytes.toBytes(i));
+        Result result = region.get(get);
+        byte[] value = result.getValue(family, Bytes.toBytes(i));
+        assertArrayEquals(Bytes.toBytes(i), value);
+      }
+    } finally {
+      HRegion.closeHRegion(this.region);
+      this.region = null;
+    }
+  }
+
+  class IsFlushWALMarker extends ArgumentMatcher<WALEdit> {
+    volatile FlushAction[] actions;
+    public IsFlushWALMarker(FlushAction... actions) {
+      this.actions = actions;
+    }
+    @Override
+    public boolean matches(Object edit) {
+      List<KeyValue> kvs = ((WALEdit)edit).getKeyValues();
+      if (kvs.isEmpty()) {
+        return false;
+      }
+      if (WALEdit.isMetaEditFamily(kvs.get(0))) {
+        FlushDescriptor desc = null;
+        try {
+          desc = WALEdit.getFlushDescriptor(kvs.get(0));
+        } catch (IOException e) {
+          LOG.warn(e);
+          return false;
+        }
+        if (desc != null) {
+          for (FlushAction action : actions) {
+            if (desc.getAction() == action) {
+              return true;
+            }
+          }
+        }
+      }
+      return false;
+    }
+    public IsFlushWALMarker set(FlushAction... actions) {
+      this.actions = actions;
+      return this;
+    }
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  public void testFlushMarkersWALFail() throws Exception {
+    // test the cases where the WAL append for flush markers fail.
+    String method = name.getMethodName();
+    TableName tableName = TableName.valueOf(method);
+    byte[] family = Bytes.toBytes("family");
+
+    // spy an actual WAL implementation to throw exception (was not able to mock)
+    Path logDir = TEST_UTIL.getDataTestDirOnTestFS(method + "log");
+    HLog hlog =
+        spy(HLogFactory.createHLog(FILESYSTEM, logDir, "logs", TEST_UTIL.getConfiguration()));
+
+    this.region = initHRegion(tableName.getName(), HConstants.EMPTY_START_ROW,
+        HConstants.EMPTY_END_ROW, method, CONF, false, Durability.USE_DEFAULT, hlog, family);
+    try {
+      int i = 0;
+      Put put = new Put(Bytes.toBytes(i));
+      put.setDurability(Durability.SKIP_WAL); // have to skip mocked wal
+      put.add(family, Bytes.toBytes(i), Bytes.toBytes(i));
+      region.put(put);
+
+      // 1. Test case where START_FLUSH throws exception
+      IsFlushWALMarker isFlushWALMarker = new IsFlushWALMarker(FlushAction.START_FLUSH);
+
+      // throw exceptions if the WalEdit is a start flush action
+      when(hlog.appendNoSync((HRegionInfo) any(), eq(tableName),
+          (WALEdit) argThat(isFlushWALMarker), (List<UUID>) anyList(), anyLong(), (HTableDescriptor) any(),
+          (AtomicLong) any(), anyBoolean(), anyLong(), anyLong()))
+          .thenThrow(new IOException("Fail to append flush marker"));
+
+      // start cache flush will throw exception
+      try {
+        region.flushcache();
+        fail("This should have thrown exception");
+      } catch (DroppedSnapshotException unexpected) {
+        // this should not be a dropped snapshot exception. Meaning that RS will not abort
+        throw unexpected;
+      } catch (IOException expected) {
+        // expected
+      }
+
+      // 2. Test case where START_FLUSH succeeds but COMMIT_FLUSH will throw exception
+      isFlushWALMarker.set(FlushAction.COMMIT_FLUSH);
+
+      try {
+        region.flushcache();
+        fail("This should have thrown exception");
+      } catch (DroppedSnapshotException expected) {
+        // we expect this exception, since we were able to write the snapshot, but failed to
+        // write the flush marker to WAL
+      } catch (IOException unexpected) {
+        throw unexpected;
+      }
+
+      region.close();
+      this.region = initHRegion(tableName.getName(), HConstants.EMPTY_START_ROW,
+          HConstants.EMPTY_END_ROW, method, CONF, false, Durability.USE_DEFAULT, hlog, family);
+      region.put(put);
+
+      // 3. Test case where ABORT_FLUSH will throw exception.
+      // Even if ABORT_FLUSH throws exception, we should not fail with IOE, but continue with
+      // DroppedSnapshotException. Below COMMMIT_FLUSH will cause flush to abort
+      isFlushWALMarker.set(FlushAction.COMMIT_FLUSH, FlushAction.ABORT_FLUSH);
+
+      try {
+        region.flushcache();
+        fail("This should have thrown exception");
+      } catch (DroppedSnapshotException expected) {
+        // we expect this exception, since we were able to write the snapshot, but failed to
+        // write the flush marker to WAL
+      } catch (IOException unexpected) {
+        throw unexpected;
+      }
+
     } finally {
       HRegion.closeHRegion(this.region);
       this.region = null;

@@ -45,6 +45,7 @@ import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.protobuf.generated.WALProtos.RegionEventDescriptor;
 import org.apache.hadoop.hbase.protobuf.generated.WALProtos.CompactionDescriptor;
+import org.apache.hadoop.hbase.protobuf.generated.WALProtos.FlushDescriptor;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.FSUtils;
 
@@ -269,13 +270,32 @@ public class HLogUtil {
     WALEdit e = WALEdit.createCompaction(info, c);
     long now = EnvironmentEdgeManager.currentTimeMillis();
     TableName tn = TableName.valueOf(c.getTableName().toByteArray());
-    long txid = log.appendNoSync(info, tn, e, new ArrayList<UUID>(), now, htd, sequenceId,
-        false, HConstants.NO_NONCE, HConstants.NO_NONCE);
+    long txid = log.appendNoSync(info, tn, e, new ArrayList<>(), now, htd, sequenceId, false,
+        HConstants.NO_NONCE, HConstants.NO_NONCE);
     log.sync(txid);
 
     if (LOG.isTraceEnabled()) {
       LOG.trace("Appended compaction marker " + TextFormat.shortDebugString(c));
     }
+  }
+
+  /**
+   * Write a flush marker indicating a start / abort or a complete of a region flush
+   */
+  public static long writeFlushMarker(HLog log, HTableDescriptor htd, HRegionInfo info,
+      final FlushDescriptor f, AtomicLong sequenceId, boolean sync) throws IOException {
+    WALEdit e = WALEdit.createFlushWALEdit(info, f);
+    long now = EnvironmentEdgeManager.currentTimeMillis();
+    TableName tn = TableName.valueOf(f.getTableName().toByteArray());
+    long trx = log.appendNoSync(info, tn, e, new ArrayList<>(), now, htd, sequenceId, false,
+        HConstants.NO_NONCE, HConstants.NO_NONCE);
+    if (sync) {
+      log.sync(trx);
+    }
+    if (LOG.isTraceEnabled()) {
+      LOG.trace("Appended flush marker " + TextFormat.shortDebugString(f));
+    }
+    return trx;
   }
 
   /**

@@ -145,6 +145,8 @@ import org.apache.hadoop.hbase.protobuf.generated.ClientProtos;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.CoprocessorServiceCall;
 import org.apache.hadoop.hbase.protobuf.generated.SnapshotProtos.SnapshotDescription;
 import org.apache.hadoop.hbase.protobuf.generated.WALProtos.CompactionDescriptor;
+import org.apache.hadoop.hbase.protobuf.generated.WALProtos.FlushDescriptor;
+import org.apache.hadoop.hbase.protobuf.generated.WALProtos.FlushDescriptor.FlushAction;
 import org.apache.hadoop.hbase.protobuf.generated.WALProtos.RegionEventDescriptor;
 import org.apache.hadoop.hbase.quotas.OperationQuota.OperationType;
 import org.apache.hadoop.hbase.quotas.QuotaUtil;
@@ -156,7 +158,6 @@ import org.apache.hadoop.hbase.regionserver.ScannerContext.NextState;
 import org.apache.hadoop.hbase.regionserver.compactions.CompactionContext;
 import org.apache.hadoop.hbase.regionserver.compactions.CompactionThroughputController;
 import org.apache.hadoop.hbase.regionserver.compactions.NoLimitCompactionThroughputController;
-import org.apache.hadoop.hbase.regionserver.compactions.OffPeakHours;
 import org.apache.hadoop.hbase.regionserver.wal.HLog;
 import org.apache.hadoop.hbase.regionserver.wal.HLogFactory;
 import org.apache.hadoop.hbase.regionserver.wal.HLogKey;
@@ -1887,8 +1888,10 @@ public class HRegion implements HeapSize { // , Writable{
     this.updatesLock.writeLock().lock();
     long totalFlushableSize = 0;
     status.setStatus("Preparing to flush by snapshotting stores");
-    List<StoreFlushContext> storeFlushCtxs = new ArrayList<StoreFlushContext>(stores.size());
+    List<StoreFlushContext> storeFlushCtxs = new ArrayList<>(stores.size());
+    TreeMap<byte[], List<Path>> committedFiles = new TreeMap<>(Bytes.BYTES_COMPARATOR);
     long flushSeqId = -1L;
+    long trxId = 0;
     try {
       // Record the mvcc for all transactions in progress.
       w = mvcc.beginMemstoreInsert();
@@ -1910,25 +1913,54 @@ public class HRegion implements HeapSize { // , Writable{
       for (Store s : stores.values()) {
         totalFlushableSize += s.getFlushableSize();
         storeFlushCtxs.add(s.createFlushContext(flushSeqId));
+        committedFiles.put(s.getFamily().getName(), null); // for writing stores to WAL
+      }
+
+      // write the snapshot start to WAL
+      if (wal != null) {
+        FlushDescriptor desc = ProtobufUtil
+            .toFlushDescriptor(FlushAction.START_FLUSH, getRegionInfo(), flushSeqId,
+                committedFiles);
+        // no sync. Sync is below where we do not hold the updates lock
+        trxId = HLogUtil
+            .writeFlushMarker(wal, this.htableDescriptor, getRegionInfo(), desc, sequenceId, false);
       }
 
       // prepare flush (take a snapshot)
       for (StoreFlushContext flush : storeFlushCtxs) {
         flush.prepare();
       }
+    } catch (IOException ex) {
+      if (wal != null) {
+        if (trxId > 0) { // check whether we have already written START_FLUSH to WAL
+          try {
+            FlushDescriptor desc = ProtobufUtil
+                .toFlushDescriptor(FlushAction.ABORT_FLUSH, getRegionInfo(), flushSeqId,
+                    committedFiles);
+            HLogUtil.writeFlushMarker(wal, this.htableDescriptor, getRegionInfo(), desc, sequenceId,
+                false);
+          } catch (Throwable t) {
+            LOG.warn("Received unexpected exception trying to write ABORT_FLUSH marker to WAL:"
+                + StringUtils.stringifyException(t));
+            // ignore this since we will be aborting the RS with DSE.
+          }
+        }
+        // we have called wal.startCacheFlush(), now we have to abort it
+        wal.abortCacheFlush(this.getRegionInfo().getEncodedNameAsBytes());
+        throw ex; // let upper layers deal with it.
+      }
     } finally {
       this.updatesLock.writeLock().unlock();
     }
+
     String s = "Finished memstore snapshotting " + this +
       ", syncing WAL and waiting on mvcc, flushsize=" + totalFlushableSize;
     status.setStatus(s);
-    if (LOG.isTraceEnabled()) LOG.trace(s);
-
-    // sync unflushed WAL changes when deferred log sync is enabled
-    // see HBASE-8208 for details
-    if (wal != null && !shouldSyncLog()) {
-      wal.sync();
+    if (LOG.isTraceEnabled()) {
+      LOG.trace(s);
     }
+
+    doSyncOfUnflushedWALChanges(wal, getRegionInfo(), status);
 
     // wait for all in-progress transactions to commit to HLog before
     // we can start the flush. This prevents
@@ -1956,18 +1988,30 @@ public class HRegion implements HeapSize { // , Writable{
         flush.flushCache(status);
       }
 
+
       // Switch snapshot (in memstore) -> new hfile (thus causing
       // all the store scanners to reset/reseek).
+      // stores.values() and storeFlushCtxs have same order
+      Iterator<Store> it = stores.values().iterator();
       for (StoreFlushContext flush : storeFlushCtxs) {
         boolean needsCompaction = flush.commit(status);
         if (needsCompaction) {
           compactionRequested = true;
         }
+        committedFiles.put(it.next().getFamily().getName(), flush.getCommittedFiles());
       }
       storeFlushCtxs.clear();
 
       // Set down the memstore size by amount of flush.
       this.addAndGetGlobalMemstoreSize(-totalFlushableSize);
+
+      if (wal != null) {
+        // write flush marker to WAL. If fail, we should throw DroppedSnapshotException
+        FlushDescriptor desc = ProtobufUtil.toFlushDescriptor(FlushAction.COMMIT_FLUSH,
+            getRegionInfo(), flushSeqId, committedFiles);
+        HLogUtil.writeFlushMarker(wal, this.htableDescriptor, getRegionInfo(),
+            desc, sequenceId, true);
+      }
     } catch (Throwable t) {
       // An exception here means that the snapshot was not persisted.
       // The hlog needs to be replayed so its content is restored to memstore.
@@ -1976,6 +2020,16 @@ public class HRegion implements HeapSize { // , Writable{
       // exceptions -- e.g. HBASE-659 was about an NPE -- so now we catch
       // all and sundry.
       if (wal != null) {
+        try {
+          FlushDescriptor desc = ProtobufUtil.toFlushDescriptor(FlushAction.ABORT_FLUSH,
+              getRegionInfo(), flushSeqId, committedFiles);
+          HLogUtil.writeFlushMarker(wal, this.htableDescriptor, getRegionInfo(),
+              desc, sequenceId, false);
+        } catch (Throwable ex) {
+          LOG.warn("Received unexpected exception trying to write ABORT_FLUSH marker to WAL:" +
+              StringUtils.stringifyException(ex));
+          // ignore this since we will be aborting the RS with DSE.
+        }
         wal.abortCacheFlush(this.getRegionInfo().getEncodedNameAsBytes());
       }
       DroppedSnapshotException dse = new DroppedSnapshotException("region: " +
@@ -2017,6 +2071,26 @@ public class HRegion implements HeapSize { // , Writable{
 
     return new FlushResult(compactionRequested ? FlushResult.Result.FLUSHED_COMPACTION_NEEDED :
         FlushResult.Result.FLUSHED_NO_COMPACTION_NEEDED, flushSeqId);
+  }
+
+  /**
+   * Sync unflushed WAL changes. See HBASE-8208 for details
+   */
+  private static void doSyncOfUnflushedWALChanges(final HLog wal, final HRegionInfo hri,
+      MonitoredTask status) throws DroppedSnapshotException {
+    if (wal == null) {
+      return;
+    }
+    try {
+      wal.sync(); // ensure that flush marker is sync'ed
+    } catch (IOException ioe) {
+      wal.abortCacheFlush(hri.getEncodedNameAsBytes());
+      DroppedSnapshotException dse = new DroppedSnapshotException(
+          "region: " + Bytes.toStringBinary(hri.getEncodedNameAsBytes()));
+      dse.initCause(ioe);
+      status.abort("Flush failed: " + StringUtils.stringifyException(ioe));
+      throw dse;
+    }
   }
 
   //////////////////////////////////////////////////////////////////////////////

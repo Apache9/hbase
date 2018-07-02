@@ -1088,7 +1088,9 @@ class FSHLog implements HLog, Syncable {
   private long append(HRegionInfo info, TableName tableName, WALEdit edits, List<UUID> clusterIds,
       final long now, HTableDescriptor htd, boolean doSync, boolean isInMemstore, 
       AtomicLong sequenceId, long nonceGroup, long nonce) throws IOException {
-      if (edits.isEmpty()) return this.unflushedEntries.get();
+      if (edits == null || edits.isEmpty()) {
+        return this.unflushedEntries.get();
+      }
       if (this.closed) {
         throw new IOException("Cannot append; log is closed");
       }
