@@ -32,7 +32,7 @@ import com.google.protobuf.RpcCallback;
 import com.google.protobuf.RpcChannel;
 import com.google.protobuf.RpcController;
 import com.google.protobuf.ServiceException;
-import com.xiaomi.owl.metric.MetricCounter;
+
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
@@ -56,7 +56,6 @@ import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.codec.Codec;
 import org.apache.hadoop.hbase.codec.KeyValueCodec;
 import org.apache.hadoop.hbase.ipc.FailedServers.FailedServer;
-import org.apache.hadoop.hbase.metric.MetricTool;
 import org.apache.hadoop.hbase.protobuf.generated.AuthenticationProtos.TokenIdentifier.Kind;
 import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.security.UserProvider;
@@ -141,7 +140,6 @@ public abstract class AbstractRpcClient<T extends RpcConnection> implements RpcC
   private final AtomicInteger callIdCnt = new AtomicInteger(0);
 
   private final ScheduledFuture<?> cleanupIdleConnectionTask;
-
   private int maxConcurrentCallsPerServer;
 
   private static final LoadingCache<InetSocketAddress, AtomicInteger> concurrentCounterCache =
@@ -155,14 +153,11 @@ public abstract class AbstractRpcClient<T extends RpcConnection> implements RpcC
 
   private final int clientWarnIpcResponseTime;
 
-  private final boolean isPushOwlMetricEnable;
-
   /**
    * Construct an IPC client for the cluster <code>clusterId</code>
    * @param conf configuration
    * @param clusterId the cluster id
    * @param localAddr client socket bind address.
-   * @param metrics the connection metrics
    */
   public AbstractRpcClient(Configuration conf, String clusterId, SocketAddress localAddr) {
     this.userProvider = UserProvider.instantiate(conf);
@@ -192,23 +187,14 @@ public abstract class AbstractRpcClient<T extends RpcConnection> implements RpcC
           HConstants.DEFAULT_HBASE_CLIENT_PERSERVER_REQUESTS_THRESHOLD);
     this.clientWarnIpcResponseTime =
         conf.getInt(CLIENT_WARN_IPC_RESPONSE_TIME, DEFAULT_CLIENT_WARN_IPC_RESPONSE_TIME);
-    this.isPushOwlMetricEnable =
-        conf.getBoolean(MetricTool.HBASE_CLIENT_OWL_METRIC_PUSH_ENABLE, false);
-
     this.connections = new PoolMap<>(getPoolType(conf), getPoolSize(conf));
 
     this.cleanupIdleConnectionTask = IDLE_CONN_SWEEPER.scheduleAtFixedRate(new Runnable() {
-
       @Override
       public void run() {
         cleanupIdleConnections();
       }
     }, minIdleTimeBeforeClose, minIdleTimeBeforeClose, TimeUnit.MILLISECONDS);
-
-    if (this.isPushOwlMetricEnable) {
-      MetricCounter.startMetricCounterPushTask();
-    }
-
     if (LOG.isDebugEnabled()) {
       LOG.debug("Codec=" + this.codec + ", compressor=" + this.compressor + ", tcpKeepAlive=" +
           this.tcpKeepAlive + ", tcpNoDelay=" + this.tcpNoDelay + ", connectTO=" + this.connectTO +
@@ -406,15 +392,7 @@ public abstract class AbstractRpcClient<T extends RpcConnection> implements RpcC
       LOG.warn("Slow ipc call, MethodName=" + call.md.getName() + ", consume time=" + callTime +
           ", remote address:" + addr);
     }
-    if (isPushOwlMetricEnable) {
-      MetricTool.update(call.md.getName(), 1L, callTime, MetricTool.addrNormalize(addr));
-    }
-
     if (call.error != null) {
-      if (isPushOwlMetricEnable) {
-        MetricTool.updateFailedCall(call.md.getName(), 1L, MetricTool.addrNormalize(addr));
-      }
-
       if (call.error instanceof RemoteException) {
         call.error.fillInStackTrace();
         hrc.setFailed(call.error);
