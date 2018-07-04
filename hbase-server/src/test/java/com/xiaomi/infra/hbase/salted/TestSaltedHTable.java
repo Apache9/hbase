@@ -179,7 +179,7 @@ public class TestSaltedHTable {
 
   protected SaltedHTable createSaltedTable(Integer slotCounts) throws IOException {
     admin.createTable(getSaltedTableDescriptor(slotCounts));
-    return new SaltedHTable(connection.getTable(TEST_TABLE));
+    return (SaltedHTable)(connection.getTable(TEST_TABLE));
   }
 
   protected Table createUnSaltedTable() throws IOException {
@@ -310,7 +310,7 @@ public class TestSaltedHTable {
     TEST_UTIL.deleteTable(TEST_TABLE);
     createUnSaltedTable();
     Table table = connection.getTable(TEST_TABLE);
-    Assert.assertTrue(table instanceof HTable);
+    Assert.assertTrue(table instanceof SaltedHTable);
   }
 
   /**

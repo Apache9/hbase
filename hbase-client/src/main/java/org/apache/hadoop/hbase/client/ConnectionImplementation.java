@@ -25,6 +25,8 @@ import static org.apache.hadoop.hbase.client.MetricsConnection.CLIENT_SIDE_METRI
 import static org.apache.hadoop.hbase.util.CollectionUtils.computeIfAbsent;
 import static org.apache.hadoop.hbase.util.CollectionUtils.computeIfAbsentEx;
 
+import com.xiaomi.infra.hbase.salted.KeySalter;
+import com.xiaomi.infra.hbase.salted.SaltedHTable;
 import edu.umd.cs.findbugs.annotations.Nullable;
 import java.io.Closeable;
 import java.io.IOException;
@@ -347,8 +349,19 @@ class ConnectionImplementation implements ClusterConnection, Closeable {
 
       @Override
       public Table build() {
-        return new HTable(ConnectionImplementation.this, this, rpcCallerFactory,
+        Table table = new HTable(ConnectionImplementation.this, this, rpcCallerFactory,
             rpcControllerFactory, pool);
+        if(!tableName.isSystemTable()) {
+          try {
+            KeySalter salter = SaltedHTable.getKeySalter(table);
+            if (salter != null) {
+              return new SaltedHTable(table, salter);
+            }
+          } catch (IOException e) {
+            throw new RuntimeException("Get key salter failed", e);
+          }
+        }
+        return table;
       }
     };
   }
