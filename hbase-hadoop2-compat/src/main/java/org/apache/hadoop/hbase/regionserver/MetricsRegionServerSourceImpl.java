@@ -344,6 +344,28 @@ public class MetricsRegionServerSourceImpl
                       FILTERED_READ_REQUEST_COUNT_DESC), rsWrap.getFilteredReadRequestsCount())
               .addCounter(Interns.info(WRITE_REQUEST_COUNT, WRITE_REQUEST_COUNT_DESC),
                       rsWrap.getWriteRequestsCount())
+              .addCounter(Interns.info(READ_REQUEST_PER_SECOND, READ_REQUEST_PER_SECOND_DESC),
+                      rsWrap.getReadRequestsCountPerSecond())
+              .addCounter(Interns.info(WRITE_REQUEST_PER_SECOND, WRITE_REQUEST_PER_SECOND_DESC),
+                      rsWrap.getWriteRequestsCountPerSecond())
+              .addCounter(Interns.info(GET_REQEUST_PER_SECOND, GET_REQUEST_PER_SECOND_DESC),
+                      rsWrap.getGetRequestsCountPerSecond())
+              .addCounter(Interns.info(SCAN_REQUEST_PER_SECOND, SCAN_REQUEST_PER_SECOND_DESC),
+                      rsWrap.getScanRequestsCountPerSecond())
+              .addCounter(Interns.info(SCAN_ROWS_COUNT_PER_SECOND, SCAN_ROWS_COUNT_PER_SECOND_DESC),
+                      rsWrap.getScanRowsCountPerSecond())
+              .addCounter(Interns.info(READ_REQUEST_BY_CAPACITY_UNIT_PER_SECOND,
+                      READ_REQUEST_BY_CAPACITY_UNIT_PER_SECOND_DESC),
+                      rsWrap.getReadRequestsByCapacityUnitPerSecond())
+              .addCounter(Interns.info(WRITE_REQUEST_BY_CAPACITY_UNIT_PER_SECOND,
+                      WRITE_REQUEST_BY_CAPACITY_UNIT_PER_SECOND_DESC),
+                      rsWrap.getWriteRequestsByCapacityUnitPerSecond())
+              .addCounter(Interns.info(READ_CELLS_PER_SECOND,
+                      READ_CELLS_PER_SECOND_DESC),
+                      rsWrap.getReadCellsPerSecond())
+              .addCounter(Interns.info(READ_RAW_CELLS_PER_SECOND,
+                      READ_RAW_CELLS_PER_SECOND_DESC),
+                      rsWrap.getReadRawCellsPerSecond())
               .addCounter(Interns.info(RPC_GET_REQUEST_COUNT, RPC_GET_REQUEST_COUNT_DESC),
                       rsWrap.getRpcGetRequestsCount())
               .addCounter(Interns.info(RPC_SCAN_REQUEST_COUNT, RPC_SCAN_REQUEST_COUNT_DESC),

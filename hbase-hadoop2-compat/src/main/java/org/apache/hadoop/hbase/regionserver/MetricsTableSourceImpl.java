@@ -140,6 +140,44 @@ public class MetricsTableSourceImpl implements MetricsTableSource {
         mrb.addGauge(Interns.info(tableNamePrefix + MetricsTableSource.TABLE_SIZE,
           MetricsTableSource.TABLE_SIZE_DESC),
           tableWrapperAgg.getTableSize(tableName.getNameAsString()));
+        mrb.addGauge(
+          Interns.info(tableNamePrefix + MetricsTableSource.READ_REQUEST_PER_SECOND,
+            MetricsTableSource.READ_REQUEST_PER_SECOND_DESC),
+          tableWrapperAgg.getReadRequestsCountPerSecond(tableName.getNameAsString()));
+        mrb.addGauge(
+          Interns.info(tableNamePrefix + MetricsTableSource.WRITE_REQUEST_PER_SECOND,
+            MetricsTableSource.WRITE_REQUEST_PER_SECOND_DESC),
+          tableWrapperAgg.getWriteRequestsCountPerSecond(tableName.getNameAsString()));
+        mrb.addGauge(
+          Interns.info(tableNamePrefix + MetricsTableSource.GET_REQEUST_PER_SECOND,
+            MetricsTableSource.GET_REQUEST_PER_SECOND_DESC),
+          tableWrapperAgg.getGetRequestsCountPerSecond(tableName.getNameAsString()));
+        mrb.addGauge(
+          Interns.info(tableNamePrefix + MetricsTableSource.SCAN_REQUEST_PER_SECOND,
+            MetricsTableSource.SCAN_REQUEST_PER_SECOND_DESC),
+          tableWrapperAgg.getScanRequestsCountPerSecond(tableName.getNameAsString()));
+        mrb.addGauge(
+          Interns.info(tableNamePrefix + MetricsTableSource.SCAN_ROWS_COUNT_PER_SECOND,
+            MetricsTableSource.SCAN_ROWS_COUNT_PER_SECOND_DESC),
+          tableWrapperAgg.getScanRowsCountPerSecond(tableName.getNameAsString()));
+        mrb.addGauge(
+          Interns.info(
+            tableNamePrefix + MetricsTableSource.READ_REQUEST_BY_CAPACITY_UNIT_PER_SECOND,
+            MetricsTableSource.READ_REQUEST_BY_CAPACITY_UNIT_PER_SECOND_DESC),
+          tableWrapperAgg.getReadRequestsByCapacityUnitPerSecond(tableName.getNameAsString()));
+        mrb.addGauge(
+          Interns.info(
+            tableNamePrefix + MetricsTableSource.WRITE_REQUEST_BY_CAPACITY_UNIT_PER_SECOND,
+            MetricsTableSource.WRITE_REQUEST_BY_CAPACITY_UNIT_PER_SECOND_DESC),
+          tableWrapperAgg.getWriteRequestsByCapacityUnitPerSecond(tableName.getNameAsString()));
+        mrb.addGauge(
+          Interns.info(tableNamePrefix + MetricsTableSource.READ_CELLS_PER_SECOND,
+            MetricsTableSource.READ_CELLS_PER_SECOND_DESC),
+          tableWrapperAgg.getReadCellsPerSecond(tableName.getNameAsString()));
+        mrb.addGauge(
+          Interns.info(tableNamePrefix + MetricsTableSource.READ_RAW_CELLS_PER_SECOND,
+            MetricsTableSource.READ_RAW_CELLS_PER_SECOND_DESC),
+          tableWrapperAgg.getReadRawCellsPerSecond(tableName.getNameAsString()));
       }
     }
   }

@@ -105,6 +105,8 @@ public class ScannerContext {
   // returned.
   private boolean returnImmediately;
 
+  private int readRawCells = 0;
+
   /**
    * Tracks the relevant server side metrics during scans. null when metrics should not be tracked
    */
@@ -364,6 +366,14 @@ public class ScannerContext {
 
   void setLastPeekedCell(Cell lastPeekedCell) {
     this.lastPeekedCell = lastPeekedCell;
+  }
+
+  public int getReadRawCells() {
+    return readRawCells;
+  }
+
+  public void incReadRawCells() {
+    this.readRawCells++;
   }
 
   void returnImmediately() {

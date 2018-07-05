@@ -56,4 +56,22 @@ public interface MetricsTableWrapperAggregate {
    * Get the table region size against this table
    */
   long getTableSize(String table);
+
+  long getReadRequestsCountPerSecond(String table);
+
+  long getWriteRequestsCountPerSecond(String table);
+
+  long getGetRequestsCountPerSecond(String table);
+
+  long getScanRequestsCountPerSecond(String table);
+
+  long getScanRowsCountPerSecond(String table);
+
+  long getReadRequestsByCapacityUnitPerSecond(String table);
+
+  long getWriteRequestsByCapacityUnitPerSecond(String table);
+
+  long getReadCellsPerSecond(String table);
+
+  long getReadRawCellsPerSecond(String table);
 }

@@ -67,8 +67,35 @@ public class TestMetricsRegion {
         "filteredReadRequestCount",
       107, agg);
     HELPER.assertCounter(
-      "namespace_TestNS_table_MetricsRegionWrapperStub_region_DEADBEEF001_metric_replicaid",
-      0, agg);
+      "namespace_TestNS_table_MetricsRegionWrapperStub_region_DEADBEEF001_metric_replicaid", 0,
+      agg);
+    HELPER.assertCounter(
+      "namespace_TestNS_table_MetricsRegionWrapperStub_region_DEADBEEF001_metric_readRequestsCountPerSecond",
+      1, agg);
+    HELPER.assertCounter(
+      "namespace_TestNS_table_MetricsRegionWrapperStub_region_DEADBEEF001_metric_writeRequestsCountPerSecond",
+      2, agg);
+    HELPER.assertCounter(
+      "namespace_TestNS_table_MetricsRegionWrapperStub_region_DEADBEEF001_metric_getRequestsCountPerSecond",
+      3, agg);
+    HELPER.assertCounter(
+      "namespace_TestNS_table_MetricsRegionWrapperStub_region_DEADBEEF001_metric_scanRequestsCountPerSecond",
+      4, agg);
+    HELPER.assertCounter(
+      "namespace_TestNS_table_MetricsRegionWrapperStub_region_DEADBEEF001_metric_scanRowsCountPerSecond",
+      5, agg);
+    HELPER.assertCounter(
+      "namespace_TestNS_table_MetricsRegionWrapperStub_region_DEADBEEF001_metric_readRequestsByCapacityUnitPerSecond",
+      6, agg);
+    HELPER.assertCounter(
+      "namespace_TestNS_table_MetricsRegionWrapperStub_region_DEADBEEF001_metric_writeRequestsByCapacityUnitPerSecond",
+      7, agg);
+    HELPER.assertCounter(
+      "namespace_TestNS_table_MetricsRegionWrapperStub_region_DEADBEEF001_metric_readCellsPerSecond",
+      8, agg);
+    HELPER.assertCounter(
+      "namespace_TestNS_table_MetricsRegionWrapperStub_region_DEADBEEF001_metric_readRawCellsPerSecond",
+      9, agg);
     mr.close();
 
     // test region with replica id > 0

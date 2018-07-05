@@ -139,6 +139,21 @@ message RegionLoad {
 
   /** the current total filtered read requests made to region */
   optional uint64 filtered_read_requests_count = 19;
+
+  /** Requests per second **/
+  optional uint64 read_requests_per_second = 20;
+  optional uint64 write_requests_per_second = 21;
+  optional uint64 get_requests_per_second = 22;
+  optional uint64 scan_requests_per_second = 23;
+  optional uint64 scan_rows_per_second = 24;
+
+  /** read/write bytes per second **/
+  optional uint64 read_requests_by_capacity_unit_per_second = 25;
+  optional uint64 write_requests_by_capacity_unit_per_second = 26;
+
+  /** read cells & read raw cells per second **/
+  optional uint64 read_cell_count_per_second = 27;
+  optional uint64 read_raw_cell_count_perSecond = 28;
 }
 
 /* Server-level protobufs */

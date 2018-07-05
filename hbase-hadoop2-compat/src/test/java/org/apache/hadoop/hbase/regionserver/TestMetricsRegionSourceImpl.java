@@ -178,6 +178,51 @@ public class TestMetricsRegionSourceImpl {
     }
 
     @Override
+    public long getReadRequestsCountPerSecond() {
+      return 0;
+    }
+
+    @Override
+    public long getWriteRequestsCountPerSecond() {
+      return 0;
+    }
+
+    @Override
+    public long getGetRequestsCountPerSecond() {
+      return 0;
+    }
+
+    @Override
+    public long getScanRequestsCountPerSecond() {
+      return 0;
+    }
+
+    @Override
+    public long getScanRowsCountPerSecond() {
+      return 0;
+    }
+
+    @Override
+    public long getReadRequestsByCapacityUnitPerSecond() {
+      return 0;
+    }
+
+    @Override
+    public long getWriteRequestsByCapacityUnitPerSecond() {
+      return 0;
+    }
+
+    @Override
+    public long getReadCellsPerSecond() {
+      return 0;
+    }
+
+    @Override
+    public long getReadRawCellsPerSecond() {
+      return 0;
+    }
+
+    @Override
     public long getNumCompactionsQueued() {
       return 0;
     }

@@ -78,6 +78,21 @@ public class MetricsTableWrapperAggregateImpl implements MetricsTableWrapperAggr
         metricsTable.setReadRequestsCount(metricsTable.getReadRequestsCount() + r.getReadRequestsCount());
         metricsTable.setWriteRequestsCount(metricsTable.getWriteRequestsCount() + r.getWriteRequestsCount());
         metricsTable.setTotalRequestsCount(metricsTable.getReadRequestsCount() + metricsTable.getWriteRequestsCount());
+        metricsTable.setReadRequestsCountPerSecond(metricsTable.getReadRequestsCountPerSecond() + r.getReadRequestsCountPerSecond());
+        metricsTable.setWriteRequestsCountPerSecond(metricsTable.getWriteRequestsCountPerSecond() + r.getWriteRequestsCountPerSecond());
+        metricsTable.setGetRequestsCountPerSecond(metricsTable.getGetRequestsCountPerSecond() + r.getGetRequestsCountPerSecond());
+        metricsTable.setScanRequestsCountPerSecond(metricsTable.getScanRequestsCountPerSecond() + r.getScanRequestsCountPerSecond());
+        metricsTable.setScanRowsCountPerSecond(metricsTable.getScanRowsCountPerSecond() + r.getScanRowsCountPerSecond());
+        metricsTable.setReadRequestsByCapacityUnitPerSecond(
+          metricsTable.getReadRequestsByCapacityUnitPerSecond()
+              + r.getReadRequestsByCapacityUnitPerSecond());
+        metricsTable.setWriteRequestsByCapacityUnitPerSecond(
+          metricsTable.getWriteRequestsByCapacityUnitPerSecond()
+              + r.getWriteRequestsByCapacityUnitPerSecond());
+        metricsTable.setReadCellsPerSecond(
+          metricsTable.getReadCellsPerSecond() + r.getReadCellsPerSecond());
+        metricsTable.setReadRawCellsPerSecond(
+          metricsTable.getReadRawCellsPerSecond() + r.getReadRawCellsPerSecond());
       }
 
       for(Map.Entry<TableName, MetricsTableValues> entry : localMetricsTableMap.entrySet()) {
@@ -160,6 +175,96 @@ public class MetricsTableWrapperAggregateImpl implements MetricsTableWrapperAggr
   }
 
   @Override
+  public long getReadRequestsCountPerSecond(String table) {
+    MetricsTableValues metricsTable = metricsTableMap.get(TableName.valueOf(table));
+    if (metricsTable == null) {
+      return 0;
+    } else {
+      return metricsTable.getReadRequestsCountPerSecond();
+    }
+  }
+
+  @Override
+  public long getWriteRequestsCountPerSecond(String table) {
+    MetricsTableValues metricsTable = metricsTableMap.get(TableName.valueOf(table));
+    if (metricsTable == null) {
+      return 0;
+    } else {
+      return metricsTable.getWriteRequestsCountPerSecond();
+    }
+  }
+
+  @Override
+  public long getGetRequestsCountPerSecond(String table) {
+    MetricsTableValues metricsTable = metricsTableMap.get(TableName.valueOf(table));
+    if (metricsTable == null) {
+      return 0;
+    } else {
+      return metricsTable.getGetRequestsCountPerSecond();
+    }
+  }
+
+  @Override
+  public long getScanRequestsCountPerSecond(String table) {
+    MetricsTableValues metricsTable = metricsTableMap.get(TableName.valueOf(table));
+    if (metricsTable == null) {
+      return 0;
+    } else {
+      return metricsTable.getScanRequestsCountPerSecond();
+    }
+  }
+
+  @Override
+  public long getScanRowsCountPerSecond(String table) {
+    MetricsTableValues metricsTable = metricsTableMap.get(TableName.valueOf(table));
+    if (metricsTable == null) {
+      return 0;
+    } else {
+      return metricsTable.getScanRowsCountPerSecond();
+    }
+  }
+
+  @Override
+  public long getReadRequestsByCapacityUnitPerSecond(String table) {
+    MetricsTableValues metricsTable = metricsTableMap.get(TableName.valueOf(table));
+    if (metricsTable == null) {
+      return 0;
+    } else {
+      return metricsTable.getReadRequestsByCapacityUnitPerSecond();
+    }
+  }
+
+  @Override
+  public long getWriteRequestsByCapacityUnitPerSecond(String table) {
+    MetricsTableValues metricsTable = metricsTableMap.get(TableName.valueOf(table));
+    if (metricsTable == null) {
+      return 0;
+    } else {
+      return metricsTable.getWriteRequestsByCapacityUnitPerSecond();
+    }
+  }
+
+  @Override
+  public long getReadCellsPerSecond(String table) {
+    MetricsTableValues metricsTable = metricsTableMap.get(TableName.valueOf(table));
+    if (metricsTable == null) {
+      return 0;
+    } else {
+      return metricsTable.getReadCellsPerSecond();
+    }
+  }
+
+  @Override
+  public long getReadRawCellsPerSecond(String table) {
+    MetricsTableValues metricsTable = metricsTableMap.get(TableName.valueOf(table));
+    if (metricsTable == null) {
+      return 0;
+    } else {
+      return metricsTable.getReadRawCellsPerSecond();
+    }
+  }
+
+  @Override
   public void close() throws IOException {
     tableMetricsUpdateTask.cancel(true);
   }
@@ -172,6 +277,15 @@ public class MetricsTableWrapperAggregateImpl implements MetricsTableWrapperAggr
     private long memstoresSize;
     private long storeFilesSize;
     private long tableSize;
+    private long readRequestsCountPerSecond;
+    private long writeRequestsCountPerSecond;
+    private long getRequestsCountPerSecond;
+    private long scanRequestsCountPerSecond;
+    private long scanRowsCountPerSecond;
+    private long readRequestsByCapacityUnitPerSecond;
+    private long writeRequestsByCapacityUnitPerSecond;
+    private long readCellsPerSecond;
+    private long readRawCellsPerSecond;
 
     public long getTotalRequestsCount() {
       return totalRequestsCount;
@@ -219,6 +333,78 @@ public class MetricsTableWrapperAggregateImpl implements MetricsTableWrapperAggr
 
     public void setTableSize(long tableSize) {
       this.tableSize = tableSize;
+    }
+
+    public long getReadRequestsCountPerSecond() {
+      return readRequestsCountPerSecond;
+    }
+
+    public void setReadRequestsCountPerSecond(long readRequestsCountPerSecond) {
+      this.readRequestsCountPerSecond = readRequestsCountPerSecond;
+    }
+
+    public long getWriteRequestsCountPerSecond() {
+      return writeRequestsCountPerSecond;
+    }
+
+    public void setWriteRequestsCountPerSecond(long writeRequestsCountPerSecond) {
+      this.writeRequestsCountPerSecond = writeRequestsCountPerSecond;
+    }
+
+    public long getGetRequestsCountPerSecond() {
+      return getRequestsCountPerSecond;
+    }
+
+    public void setGetRequestsCountPerSecond(long getRequestsCountPerSecond) {
+      this.getRequestsCountPerSecond = getRequestsCountPerSecond;
+    }
+
+    public long getScanRequestsCountPerSecond() {
+      return scanRequestsCountPerSecond;
+    }
+
+    public void setScanRequestsCountPerSecond(long scanRequestsCountPerSecond) {
+      this.scanRequestsCountPerSecond = scanRequestsCountPerSecond;
+    }
+
+    public long getScanRowsCountPerSecond() {
+      return scanRowsCountPerSecond;
+    }
+
+    public void setScanRowsCountPerSecond(long scanRowsCountPerSecond) {
+      this.scanRowsCountPerSecond = scanRowsCountPerSecond;
+    }
+
+    public long getReadRequestsByCapacityUnitPerSecond() {
+      return readRequestsByCapacityUnitPerSecond;
+    }
+
+    public void setReadRequestsByCapacityUnitPerSecond(long readRequestsByCapacityUnitPerSecond) {
+      this.readRequestsByCapacityUnitPerSecond = readRequestsByCapacityUnitPerSecond;
+    }
+
+    public long getWriteRequestsByCapacityUnitPerSecond() {
+      return writeRequestsByCapacityUnitPerSecond;
+    }
+
+    public void setWriteRequestsByCapacityUnitPerSecond(long writeRequestsByCapacityUnitPerSecond) {
+      this.writeRequestsByCapacityUnitPerSecond = writeRequestsByCapacityUnitPerSecond;
+    }
+
+    public long getReadCellsPerSecond() {
+      return readCellsPerSecond;
+    }
+
+    public void setReadCellsPerSecond(long readCellsPerSecond) {
+      this.readCellsPerSecond = readCellsPerSecond;
+    }
+
+    public long getReadRawCellsPerSecond() {
+      return readRawCellsPerSecond;
+    }
+
+    public void setReadRawCellsPerSecond(long readRawCellsPerSecond) {
+      this.readRawCellsPerSecond = readRawCellsPerSecond;
     }
   }
 

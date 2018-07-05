@@ -39,6 +39,24 @@ public interface MetricsTableSource extends Comparable<MetricsTableSource> {
   String STORE_FILE_SIZE_DESC = "The size of store files size";
   String TABLE_SIZE = "tableSize";
   String TABLE_SIZE_DESC = "Total size of the table in the region server";
+  String READ_REQUEST_PER_SECOND = "readRequestsCountPerSecond";
+  String READ_REQUEST_PER_SECOND_DESC = "Number of read requests per second";
+  String WRITE_REQUEST_PER_SECOND = "writeRequestsCountPerSecond";
+  String WRITE_REQUEST_PER_SECOND_DESC = "Number of write requests per second";
+  String GET_REQEUST_PER_SECOND = "getRequestsCountPerSecond";
+  String GET_REQUEST_PER_SECOND_DESC = "Number of get requests per second";
+  String SCAN_REQUEST_PER_SECOND = "scanRequestsCountPerSecond";
+  String SCAN_REQUEST_PER_SECOND_DESC = "Number of scan requests per second";
+  String SCAN_ROWS_COUNT_PER_SECOND = "scanRowsCountPerSecond";
+  String SCAN_ROWS_COUNT_PER_SECOND_DESC = "Number of scan request rows per second";
+  String READ_REQUEST_BY_CAPACITY_UNIT_PER_SECOND = "readRequestsByCapacityUnitPerSecond";
+  String READ_REQUEST_BY_CAPACITY_UNIT_PER_SECOND_DESC = "Read bytes per second, unit: 1KB";
+  String WRITE_REQUEST_BY_CAPACITY_UNIT_PER_SECOND = "writeRequestsByCapacityUnitPerSecond";
+  String WRITE_REQUEST_BY_CAPACITY_UNIT_PER_SECOND_DESC = "Write bytes per second, unit: 1KB";
+  String READ_CELLS_PER_SECOND = "readCellsPerSecond";
+  String READ_CELLS_PER_SECOND_DESC = "Number of read cells per second";
+  String READ_RAW_CELLS_PER_SECOND = "readRawCellsPerSecond";
+  String READ_RAW_CELLS_PER_SECOND_DESC = "Number of raw cell read per second";
 
   String getTableName();
 

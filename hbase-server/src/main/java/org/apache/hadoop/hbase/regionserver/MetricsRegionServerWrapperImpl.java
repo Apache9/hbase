@@ -74,6 +74,15 @@ class MetricsRegionServerWrapperImpl
   private volatile long numReferenceFiles = 0;
   private volatile double requestsPerSecond = 0.0;
   private volatile long readRequestsCount = 0;
+  private volatile long readRequestsCountPerSecond = 0;
+  private volatile long writeRequestsCountPerSecond = 0;
+  private volatile long getRequestsCountPerSecond = 0;
+  private volatile long scanRequestsCountPerSecond = 0;
+  private volatile long scanRowsCountPerSecond = 0;
+  private volatile long readRequestsByCapacityUnitPerSecond = 0;
+  private volatile long writeRequestsByCapacityUnitPerSecond = 0;
+  private volatile long readCellsPerSecond = 0;
+  private volatile long readRawCellsPerSecond = 0;
   private volatile long filteredReadRequestsCount = 0;
   private volatile long writeRequestsCount = 0;
   private volatile long checkAndMutateChecksFailed = 0;
@@ -727,7 +736,16 @@ class MetricsRegionServerWrapperImpl
         long avgAgeNumerator = 0, numHFiles = 0;
         long tempMinStoreFileAge = Long.MAX_VALUE;
         long tempReadRequestsCount = 0, tempFilteredReadRequestsCount = 0,
-          tempWriteRequestsCount = 0;
+            tempWriteRequestsCount = 0;
+        long tempReadRequestsCountPerSecond = 0;
+        long tempWriteRequestsCountPerSecond = 0;
+        long tempGetRequestsCountPerSecond = 0;
+        long tempScanRequestsCountPerSecond = 0;
+        long tempScanRowsCountPerSecond = 0;
+        long tempReadRequestsByCapacityUnitPerSecond = 0;
+        long tempWriteRequestsByCapacityUnitPerSecond = 0;
+        long tempReadCellsPerSecond = 0;
+        long tempReadRawCellsPerSecond = 0;
         long tempCheckAndMutateChecksFailed = 0;
         long tempCheckAndMutateChecksPassed = 0;
         long tempStorefileIndexSize = 0;
@@ -758,6 +776,15 @@ class MetricsRegionServerWrapperImpl
           tempNumMutationsWithoutWAL += r.getNumMutationsWithoutWAL();
           tempDataInMemoryWithoutWAL += r.getDataInMemoryWithoutWAL();
           tempReadRequestsCount += r.getReadRequestsCount();
+          tempReadRequestsCountPerSecond += r.getReadRequestsCountPerSecond();
+          tempWriteRequestsCountPerSecond += r.getWriteRequestsCountPerSecond();
+          tempGetRequestsCountPerSecond += r.getGetRequestsCountPerSecond();
+          tempScanRequestsCountPerSecond += r.getScanRequestsCountPerSecond();
+          tempScanRowsCountPerSecond += r.getScanRowsCountPerSecond();
+          tempReadRequestsByCapacityUnitPerSecond += r.getReadRequestsByCapacityUnitPerSecond();
+          tempWriteRequestsByCapacityUnitPerSecond += r.getWriteRequestsByCapacityUnitPerSecond();
+          tempReadCellsPerSecond += r.getReadCellsPerSecond();
+          tempReadRawCellsPerSecond += r.getReadRawCellsPerSecond();
           tempFilteredReadRequestsCount += r.getFilteredReadRequestsCount();
           tempWriteRequestsCount += r.getWriteRequestsCount();
           tempCheckAndMutateChecksFailed += r.getCheckAndMutateChecksFailed();
@@ -875,6 +902,15 @@ class MetricsRegionServerWrapperImpl
         readRequestsCount = tempReadRequestsCount;
         filteredReadRequestsCount = tempFilteredReadRequestsCount;
         writeRequestsCount = tempWriteRequestsCount;
+        readRequestsCountPerSecond = tempReadRequestsCountPerSecond;
+        writeRequestsCountPerSecond = tempWriteRequestsCountPerSecond;
+        getRequestsCountPerSecond = tempGetRequestsCountPerSecond;
+        scanRequestsCountPerSecond = tempScanRequestsCountPerSecond;
+        scanRowsCountPerSecond = tempScanRowsCountPerSecond;
+        readRequestsByCapacityUnitPerSecond = tempReadRequestsByCapacityUnitPerSecond;
+        writeRequestsByCapacityUnitPerSecond = tempWriteRequestsByCapacityUnitPerSecond;
+        readCellsPerSecond = tempReadCellsPerSecond;
+        readRawCellsPerSecond = tempReadRawCellsPerSecond;
         checkAndMutateChecksFailed = tempCheckAndMutateChecksFailed;
         checkAndMutateChecksPassed = tempCheckAndMutateChecksPassed;
         storefileIndexSize = tempStorefileIndexSize;
@@ -1090,5 +1126,50 @@ class MetricsRegionServerWrapperImpl
       return 0;
     }
     return cacheStats.getTrailerHitCount();
+  }
+
+  @Override
+  public long getReadRequestsCountPerSecond() {
+    return this.readRequestsCountPerSecond;
+  }
+
+  @Override
+  public long getWriteRequestsCountPerSecond() {
+    return this.writeRequestsCountPerSecond;
+  }
+
+  @Override
+  public long getGetRequestsCountPerSecond() {
+    return this.getRequestsCountPerSecond;
+  }
+
+  @Override
+  public long getScanRequestsCountPerSecond() {
+    return this.scanRequestsCountPerSecond;
+  }
+
+  @Override
+  public long getScanRowsCountPerSecond() {
+    return this.scanRowsCountPerSecond;
+  }
+
+  @Override
+  public long getReadRequestsByCapacityUnitPerSecond() {
+    return this.readRequestsByCapacityUnitPerSecond;
+  }
+
+  @Override
+  public long getWriteRequestsByCapacityUnitPerSecond() {
+    return this.writeRequestsByCapacityUnitPerSecond;
+  }
+
+  @Override
+  public long getReadCellsPerSecond() {
+    return this.readCellsPerSecond;
+  }
+
+  @Override
+  public long getReadRawCellsPerSecond() {
+    return this.readRawCellsPerSecond;
   }
 }

@@ -262,6 +262,42 @@ public class MetricsRegionSourceImpl implements MetricsRegionSource {
               MetricsRegionServerSource.READ_REQUEST_COUNT_DESC),
           this.regionWrapper.getReadRequestCount());
       mrb.addCounter(Interns.info(
+              regionNamePrefix + MetricsRegionServerSource.READ_REQUEST_PER_SECOND,
+              MetricsRegionServerSource.READ_REQUEST_PER_SECOND_DESC),
+           this.regionWrapper.getReadRequestsCountPerSecond());
+      mrb.addCounter(Interns.info(
+              regionNamePrefix + MetricsRegionServerSource.WRITE_REQUEST_PER_SECOND,
+              MetricsRegionServerSource.WRITE_REQUEST_PER_SECOND_DESC),
+              this.regionWrapper.getWriteRequestsCountPerSecond());
+      mrb.addCounter(Interns.info(
+              regionNamePrefix + MetricsRegionServerSource.GET_REQEUST_PER_SECOND,
+              MetricsRegionServerSource.GET_REQUEST_PER_SECOND_DESC),
+              this.regionWrapper.getGetRequestsCountPerSecond());
+      mrb.addCounter(Interns.info(
+              regionNamePrefix + MetricsRegionServerSource.SCAN_REQUEST_PER_SECOND,
+              MetricsRegionServerSource.SCAN_REQUEST_PER_SECOND_DESC),
+              this.regionWrapper.getScanRequestsCountPerSecond());
+      mrb.addCounter(Interns.info(
+              regionNamePrefix + MetricsRegionServerSource.SCAN_ROWS_COUNT_PER_SECOND,
+              MetricsRegionServerSource.SCAN_ROWS_COUNT_PER_SECOND_DESC),
+              this.regionWrapper.getScanRowsCountPerSecond());
+      mrb.addCounter(Interns.info(
+              regionNamePrefix + MetricsRegionServerSource.READ_REQUEST_BY_CAPACITY_UNIT_PER_SECOND,
+              MetricsRegionServerSource.READ_REQUEST_BY_CAPACITY_UNIT_PER_SECOND_DESC),
+              this.regionWrapper.getReadRequestsByCapacityUnitPerSecond());
+      mrb.addCounter(Interns.info(
+              regionNamePrefix + MetricsRegionServerSource.WRITE_REQUEST_BY_CAPACITY_UNIT_PER_SECOND,
+              MetricsRegionServerSource.WRITE_REQUEST_BY_CAPACITY_UNIT_PER_SECOND_DESC),
+              this.regionWrapper.getWriteRequestsByCapacityUnitPerSecond());
+      mrb.addCounter(Interns.info(
+              regionNamePrefix + MetricsRegionServerSource.READ_CELLS_PER_SECOND,
+              MetricsRegionServerSource.READ_CELLS_PER_SECOND_DESC),
+              this.regionWrapper.getReadCellsPerSecond());
+      mrb.addCounter(Interns.info(
+              regionNamePrefix + MetricsRegionServerSource.READ_RAW_CELLS_PER_SECOND,
+              MetricsRegionServerSource.READ_RAW_CELLS_PER_SECOND_DESC),
+              this.regionWrapper.getReadRawCellsPerSecond());
+      mrb.addCounter(Interns.info(
               regionNamePrefix + MetricsRegionServerSource.FILTERED_READ_REQUEST_COUNT,
               MetricsRegionServerSource.FILTERED_READ_REQUEST_COUNT_DESC),
           this.regionWrapper.getFilteredReadRequestCount());

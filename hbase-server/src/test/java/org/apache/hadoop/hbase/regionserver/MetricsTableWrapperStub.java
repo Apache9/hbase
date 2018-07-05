@@ -56,6 +56,51 @@ public class MetricsTableWrapperStub implements MetricsTableWrapperAggregate {
     return 3000;
   }
 
+  @Override
+  public long getReadRequestsCountPerSecond(String table) {
+    return 0;
+  }
+
+  @Override
+  public long getWriteRequestsCountPerSecond(String table) {
+    return 0;
+  }
+
+  @Override
+  public long getGetRequestsCountPerSecond(String table) {
+    return 0;
+  }
+
+  @Override
+  public long getScanRequestsCountPerSecond(String table) {
+    return 0;
+  }
+
+  @Override
+  public long getScanRowsCountPerSecond(String table) {
+    return 0;
+  }
+
+  @Override
+  public long getReadRequestsByCapacityUnitPerSecond(String table) {
+    return 0;
+  }
+
+  @Override
+  public long getWriteRequestsByCapacityUnitPerSecond(String table) {
+    return 0;
+  }
+
+  @Override
+  public long getReadCellsPerSecond(String table) {
+    return 0;
+  }
+
+  @Override
+  public long getReadRawCellsPerSecond(String table) {
+    return 0;
+  }
+
   public String getTableName() {
     return tableName;
   }

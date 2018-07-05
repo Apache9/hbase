@@ -144,6 +144,51 @@ public class MetricsRegionWrapperStub implements MetricsRegionWrapper {
   }
 
   @Override
+  public long getReadRequestsCountPerSecond() {
+    return 1;
+  }
+
+  @Override
+  public long getWriteRequestsCountPerSecond() {
+    return 2;
+  }
+
+  @Override
+  public long getGetRequestsCountPerSecond() {
+    return 3;
+  }
+
+  @Override
+  public long getScanRequestsCountPerSecond() {
+    return 4;
+  }
+
+  @Override
+  public long getScanRowsCountPerSecond() {
+    return 5;
+  }
+
+  @Override
+  public long getReadRequestsByCapacityUnitPerSecond() {
+    return 6;
+  }
+
+  @Override
+  public long getWriteRequestsByCapacityUnitPerSecond() {
+    return 7;
+  }
+
+  @Override
+  public long getReadCellsPerSecond() {
+    return 8;
+  }
+
+  @Override
+  public long getReadRawCellsPerSecond() {
+    return 9;
+  }
+
+  @Override
   public long getNumCompactionsQueued() {
     return 4;
   }

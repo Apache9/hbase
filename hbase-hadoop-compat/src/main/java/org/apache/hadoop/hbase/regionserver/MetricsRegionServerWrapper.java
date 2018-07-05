@@ -503,4 +503,22 @@ public interface MetricsRegionServerWrapper {
   long getTrailerHitCount();
 
   long getTotalRowActionRequestCount();
+
+  long getReadRequestsCountPerSecond();
+
+  long getWriteRequestsCountPerSecond();
+
+  long getGetRequestsCountPerSecond();
+
+  long getScanRequestsCountPerSecond();
+
+  long getScanRowsCountPerSecond();
+
+  long getReadRequestsByCapacityUnitPerSecond();
+
+  long getWriteRequestsByCapacityUnitPerSecond();
+
+  long getReadCellsPerSecond();
+
+  long getReadRawCellsPerSecond();
 }

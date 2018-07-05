@@ -146,6 +146,24 @@ public interface Region extends ConfigurationObserver {
   /** @return write request count for this region */
   long getWriteRequestsCount();
 
+  long getReadRequestsCountPerSecond();
+
+  long getWriteRequestsCountPerSecond();
+
+  long getGetRequestsCountPerSecond();
+
+  long getScanRequestsCountPerSecond();
+
+  long getScanRowsCountPerSecond();
+
+  long getReadRequestsByCapacityUnitPerSecond();
+
+  long getWriteRequestsByCapacityUnitPerSecond();
+
+  long getReadCellsPerSecond();
+
+  long getReadRawCellsPerSecond();
+
   /**
    * @return memstore size for this region, in bytes. It just accounts data size of cells added to
    *         the memstores of this Region. Means size in bytes for key, value and tags within Cells.

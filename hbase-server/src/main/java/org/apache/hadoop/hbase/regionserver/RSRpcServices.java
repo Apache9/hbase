@@ -3294,6 +3294,7 @@ public class RSRpcServices implements HBaseRPCErrorHandler,
             region.getTableDescriptor().getTableName(), end - before);
       }
     } finally {
+      region.scanRequestsCountPerSecond.inc();
       region.closeRegionOperation();
     }
     // coprocessor postNext hook

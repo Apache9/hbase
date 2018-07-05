@@ -348,6 +348,51 @@ public class RegionLoad implements RegionMetrics {
     return metrics.getLastMajorCompactionTimestamp();
   }
 
+  @Override
+  public long getReadRequestsCountPerSecond() {
+    return metrics.getReadRequestsCountPerSecond();
+  }
+
+  @Override
+  public long getWriteRequestsCountPerSecond() {
+    return metrics.getWriteRequestsCountPerSecond();
+  }
+
+  @Override
+  public long getGetRequestsCountPerSecond() {
+    return metrics.getGetRequestsCountPerSecond();
+  }
+
+  @Override
+  public long getScanRequestsCountPerSecond() {
+    return metrics.getScanRequestsCountPerSecond();
+  }
+
+  @Override
+  public long getScanRowsCountPerSecond() {
+    return metrics.getScanRowsCountPerSecond();
+  }
+
+  @Override
+  public long getReadRequestsByCapacityUnitPerSecond() {
+    return metrics.getReadRequestsByCapacityUnitPerSecond();
+  }
+
+  @Override
+  public long getWriteRequestsByCapacityUnitPerSecond() {
+    return metrics.getWriteRequestsByCapacityUnitPerSecond();
+  }
+
+  @Override
+  public long getReadCellsPerSecond() {
+    return metrics.getReadCellsPerSecond();
+  }
+
+  @Override
+  public long getReadRawCellsPerSecond() {
+    return metrics.getReadRawCellsPerSecond();
+  }
+
   /**
    * @return the timestamp of the oldest hfile for any store of this region.
    * @deprecated As of release 2.0.0, this will be removed in HBase 3.0.0

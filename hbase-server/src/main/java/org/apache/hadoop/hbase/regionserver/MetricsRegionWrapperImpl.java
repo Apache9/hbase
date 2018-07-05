@@ -291,4 +291,48 @@ public class MetricsRegionWrapperImpl implements MetricsRegionWrapper, Closeable
     return region.getRegionInfo().getReplicaId();
   }
 
+  @Override
+  public long getReadRequestsCountPerSecond() {
+    return region.getReadRequestsCountPerSecond();
+  }
+
+  @Override
+  public long getWriteRequestsCountPerSecond() {
+    return region.getWriteRequestsCountPerSecond();
+  }
+
+  @Override
+  public long getGetRequestsCountPerSecond() {
+    return region.getGetRequestsCountPerSecond();
+  }
+
+  @Override
+  public long getScanRequestsCountPerSecond() {
+    return region.getScanRequestsCountPerSecond();
+  }
+
+  @Override
+  public long getScanRowsCountPerSecond() {
+    return region.getScanRowsCountPerSecond();
+  }
+
+  @Override
+  public long getReadRequestsByCapacityUnitPerSecond() {
+    return region.getReadRequestsByCapacityUnitPerSecond();
+  }
+
+  @Override
+  public long getWriteRequestsByCapacityUnitPerSecond() {
+    return region.getWriteRequestsByCapacityUnitPerSecond();
+  }
+
+  @Override
+  public long getReadCellsPerSecond() {
+    return region.getReadCellsPerSecond();
+  }
+
+  @Override
+  public long getReadRawCellsPerSecond() {
+    return region.getReadRawCellsPerSecond();
+  }
 }

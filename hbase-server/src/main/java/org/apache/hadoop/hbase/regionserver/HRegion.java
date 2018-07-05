@@ -136,6 +136,7 @@ import org.apache.hadoop.hbase.ipc.CallerDisconnectedException;
 import org.apache.hadoop.hbase.ipc.CoprocessorRpcUtils;
 import org.apache.hadoop.hbase.ipc.RpcCall;
 import org.apache.hadoop.hbase.ipc.RpcServer;
+import org.apache.hadoop.hbase.metrics.impl.MetricsRate;
 import org.apache.hadoop.hbase.monitoring.MonitoredTask;
 import org.apache.hadoop.hbase.monitoring.TaskMonitor;
 import org.apache.hadoop.hbase.regionserver.MultiVersionConcurrencyControl.WriteEntry;
@@ -309,6 +310,18 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
   final LongAdder filteredReadRequestsCount = new LongAdder();
   // Count rows for multi row mutations
   final LongAdder writeRequestsCount = new LongAdder();
+
+  final MetricsRate readRequestsCountPerSecond = new MetricsRate();
+  final MetricsRate writeRequestsCountPerSecond = new MetricsRate();
+  final MetricsRate getRequestsCountPerSecond = new MetricsRate();
+  final MetricsRate scanRequestsCountPerSecond = new MetricsRate();
+  final MetricsRate scanRowsCountPerSecond = new MetricsRate();
+
+  final MetricsRate readRequestsByCapacityUnitPerSecond = new MetricsRate();
+  final MetricsRate writeRequestsByCapacityUnitPerSecond = new MetricsRate();
+
+  final MetricsRate readCellsPerSecond = new MetricsRate();
+  final MetricsRate readRawCellsPerSecond = new MetricsRate();
 
   // Number of requests blocked by memstore size.
   private final LongAdder blockedRequestsCount = new LongAdder();
@@ -1276,6 +1289,61 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
   @Override
   public long getWriteRequestsCount() {
     return writeRequestsCount.sum();
+  }
+
+  @Override
+  public long getReadRequestsCountPerSecond() {
+    readRequestsCountPerSecond.intervalHeartBeat();
+    return (long) readRequestsCountPerSecond.getPreviousIntervalValue();
+  }
+
+  @Override
+  public long getWriteRequestsCountPerSecond() {
+    writeRequestsCountPerSecond.intervalHeartBeat();
+    return (long) writeRequestsCountPerSecond.getPreviousIntervalValue();
+  }
+
+  @Override
+  public long getGetRequestsCountPerSecond() {
+    getRequestsCountPerSecond.intervalHeartBeat();
+    return (long) getRequestsCountPerSecond.getPreviousIntervalValue();
+  }
+
+  @Override
+  public long getScanRequestsCountPerSecond() {
+    scanRequestsCountPerSecond.intervalHeartBeat();
+    return (long) scanRequestsCountPerSecond.getPreviousIntervalValue();
+  }
+
+  @Override
+  public long getScanRowsCountPerSecond() {
+    scanRowsCountPerSecond.intervalHeartBeat();
+    return (long) scanRowsCountPerSecond.getPreviousIntervalValue();
+  }
+
+  @Override
+  public long getReadRequestsByCapacityUnitPerSecond() {
+    readRequestsByCapacityUnitPerSecond.intervalHeartBeat();
+    long val = (long) readRequestsByCapacityUnitPerSecond.getPreviousIntervalValue();
+    return val >>> 10;
+  }
+
+  @Override
+  public long getWriteRequestsByCapacityUnitPerSecond() {
+    writeRequestsByCapacityUnitPerSecond.intervalHeartBeat();
+    long val = (long) writeRequestsByCapacityUnitPerSecond.getPreviousIntervalValue();
+    return val >>> 10;
+  }
+
+  @Override
+  public long getReadCellsPerSecond() {
+    readCellsPerSecond.intervalHeartBeat();
+    return (long) readCellsPerSecond.getPreviousIntervalValue();
+  }
+
+  public long getReadRawCellsPerSecond() {
+    readRawCellsPerSecond.intervalHeartBeat();
+    return (long) readRawCellsPerSecond.getPreviousIntervalValue();
   }
 
   @Override
@@ -3112,6 +3180,7 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
         applyFamilyMapToMemStore(familyCellMaps[index], memStoreAccounting);
         return true;
       });
+      region.writeRequestsByCapacityUnitPerSecond.inc(memStoreAccounting.getDataSize());
       // update memStore size
       region.incMemStoreSize(memStoreAccounting.getDataSize(), memStoreAccounting.getHeapSize(),
           memStoreAccounting.getOffHeapSize());
@@ -3924,6 +3993,7 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
 
         if (!initialized) {
           this.writeRequestsCount.add(batchOp.size());
+          this.writeRequestsCountPerSecond.inc(batchOp.size());
           // validate and prepare batch for write, for MutationBatchOperation it also calls CP
           // prePut()/ preDelete() hooks
           batchOp.checkAndPrepare();
@@ -6208,6 +6278,7 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
     protected final HRegion region;
     protected final CellComparator comparator;
 
+    private final Scan scan;
     private final long readPt;
     private final long maxResultSize;
     private final ScannerContext defaultScannerContext;
@@ -6225,6 +6296,7 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
 
     RegionScannerImpl(Scan scan, List<KeyValueScanner> additionalScanners, HRegion region,
         long nonceGroup, long nonce) throws IOException {
+      this.scan = scan;
       this.region = region;
       this.maxResultSize = scan.getMaxResultSize();
       if (scan.hasFilter()) {
@@ -6384,19 +6456,20 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
         // scanner is closed
         throw new UnknownScannerException("Scanner was closed");
       }
-      boolean moreValues = false;
-      if (outResults.isEmpty()) {
-        // Usually outResults is empty. This is true when next is called
-        // to handle scan or get operation.
-        moreValues = nextInternal(outResults, scannerContext);
-      } else {
-        List<Cell> tmpList = new ArrayList<>();
-        moreValues = nextInternal(tmpList, scannerContext);
-        outResults.addAll(tmpList);
-      }
+      int initialCells = outResults.size();
+      List<Cell> tmpList = new ArrayList<>();
+      boolean moreValues = nextInternal(tmpList, scannerContext);
+      outResults.addAll(tmpList);
 
       if (!outResults.isEmpty()) {
         readRequestsCount.increment();
+        readRequestsCountPerSecond.inc();
+        readCellsPerSecond.inc(outResults.size() - initialCells);
+        readRawCellsPerSecond.inc(scannerContext.getReadRawCells());
+        updateReadRequestsByCapacityUnitPerSecond(tmpList);
+        if (!scan.isGetScan()) {
+          scanRowsCountPerSecond.inc();
+        }
       }
 
       // If the size limit was reached it means a partial Result is being returned. Returning a
@@ -7326,10 +7399,16 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
     return results;
   }
 
+  void updateReadRequestsByCapacityUnitPerSecond(List<Cell> cells) {
+    long val = cells.stream().mapToLong(CellUtil::estimatedSerializedSizeOf).sum();
+    readRequestsByCapacityUnitPerSecond.inc(val);
+  }
+
   void metricsUpdateForGet(List<Cell> results, long before) {
     if (this.metricsRegion != null) {
       this.metricsRegion.updateGet(EnvironmentEdgeManager.currentTime() - before);
     }
+    getRequestsCountPerSecond.inc();
   }
 
   @Override

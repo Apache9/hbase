@@ -581,6 +581,7 @@ public class StoreScanner extends NonReversedNonLazyKeyValueScanner
         scannerContext.returnImmediately();
       }
       prevCell = cell;
+      scannerContext.incReadRawCells();
       scannerContext.setLastPeekedCell(cell);
       topChanged = false;
       ScanQueryMatcher.MatchCode qcode = matcher.match(cell);
