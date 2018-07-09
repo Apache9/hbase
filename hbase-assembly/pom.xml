@@ -75,7 +75,7 @@
           <!--Else will use hbase-assembly as final name.-->
           <finalName>hbase-${project.version}</finalName>
           <skipAssembly>false</skipAssembly>
-          <appendAssemblyId>true</appendAssemblyId>
+          <appendAssemblyId>false</appendAssemblyId>
           <tarLongFileMode>gnu</tarLongFileMode>
           <descriptors>
             <descriptor>${assembly.file}</descriptor>
