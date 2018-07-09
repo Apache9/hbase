@@ -93,7 +93,6 @@ public class MasterFileSystem {
   final boolean distributedLogReplay;
   final SplitLogManager splitLogManager;
   private final MasterServices services;
-  private static final FsPermission DEFAULT_PUBLIC_HFILE_PERMISSION = new FsPermission((short)0755);
 
   final static PathFilter META_FILTER = new PathFilter() {
     @Override
@@ -490,7 +489,7 @@ public class MasterFileSystem {
             HConstants.DEFAULT_VERSION_FILE_WRITE_ATTEMPTS));
       }
       if (conf.getBoolean(HConstants.HDFS_ACL_ENABLE, false)) {
-        fs.setPermission(rd, DEFAULT_PUBLIC_HFILE_PERMISSION);
+        fs.setPermission(rd, HConstants.ACL_ENABLE_PUBLIC_HFILE_PERMISSION);
       }
     } catch (DeserializationException de) {
       LOG.fatal("Please fix invalid configuration for " + HConstants.HBASE_DIR, de);
@@ -554,7 +553,7 @@ public class MasterFileSystem {
       throw new IOException("HBase temp directory '" + tmpdir + "' creation failure.");
     }
     if (conf.getBoolean(HConstants.HDFS_ACL_ENABLE, false)) {
-      fs.setPermission(tmpdir, DEFAULT_PUBLIC_HFILE_PERMISSION);
+      fs.setPermission(tmpdir, HConstants.ACL_ENABLE_PUBLIC_HFILE_PERMISSION);
     }
   }
 
@@ -746,12 +745,10 @@ public class MasterFileSystem {
 
   private void checkDirAndSetPermission(Path path) throws IOException{
     if (conf.getBoolean(HConstants.HDFS_ACL_ENABLE, false)) {
-      if (this.fs.exists(path)) {
-        fs.setPermission(path, DEFAULT_PUBLIC_HFILE_PERMISSION);
-      } else {
+      if (!this.fs.exists(path)) {
         fs.mkdirs(path);
-        fs.setPermission(path, DEFAULT_PUBLIC_HFILE_PERMISSION);
       }
+      fs.setPermission(path, HConstants.ACL_ENABLE_PUBLIC_HFILE_PERMISSION);
     }
   }
 }

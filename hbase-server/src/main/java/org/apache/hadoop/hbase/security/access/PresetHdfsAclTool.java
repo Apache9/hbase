@@ -23,7 +23,6 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.TableName;
@@ -44,9 +43,6 @@ public class PresetHdfsAclTool {
   private static final int TABLE_USER_NUM_THRESHOLD = 11;
   private static final int NAMESPACE_USER_NUM_THRESHOLD = 5;
   private static final String PRESET_INCLUDE_PARAM = "include";
-
-  private static final FsPermission PUBLIC_DIR_PERMISSION = new FsPermission((short) 0755);
-  private static final FsPermission RESTORE_DIR_PERMISSION = new FsPermission((short) 0757);
 
   private Configuration conf;
   private HdfsAclManager hdfsAclManager;
@@ -109,7 +105,7 @@ public class PresetHdfsAclTool {
     Path restoreDir = new Path(
       conf.get(HConstants.SNAPSHOT_RESTORE_TMP_DIR, HConstants.SNAPSHOT_RESTORE_TMP_DIR_DEFAULT));
     checkDir(restoreDir);
-    fs.setPermission(restoreDir, RESTORE_DIR_PERMISSION);
+    fs.setPermission(restoreDir, HConstants.ACL_ENABLE_RESTORE_HFILE_PERMISSION);
   }
 
   private void presetHdfsAclInternal(String[] args) throws IOException {
@@ -197,7 +193,7 @@ public class PresetHdfsAclTool {
 
   private void checkDirAndSetPermission(Path path) throws IOException {
     checkDir(path);
-    fs.setPermission(path, PUBLIC_DIR_PERMISSION);
+    fs.setPermission(path, HConstants.ACL_ENABLE_PUBLIC_HFILE_PERMISSION);
   }
 
   private void checkDir(Path path) throws IOException {

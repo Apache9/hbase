@@ -31,7 +31,6 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellScanner;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
@@ -77,7 +76,6 @@ public class TestHdfsAclManager {
   public static void setupBeforeClass() throws Exception {
     conf.setBoolean("dfs.namenode.acls.enabled", true);
     conf.set("fs.permissions.umask-mode", "027");
-    conf.setBoolean(HConstants.ENABLE_DATA_FILE_UMASK, true);
     conf.setBoolean(HConstants.HDFS_ACL_ENABLE, true);
     conf.set(User.HBASE_SECURITY_CONF_KEY, "simple");
     SecureTestUtil.enableSecurity(conf);
@@ -91,7 +89,18 @@ public class TestHdfsAclManager {
 
     Path path = rootDir;
     while (path != null) {
-      fs.setPermission(path, new FsPermission((short) 0755));
+      fs.setPermission(path, HConstants.ACL_ENABLE_PUBLIC_HFILE_PERMISSION);
+      path = path.getParent();
+    }
+
+    Path restoreDir = new Path(HConstants.SNAPSHOT_RESTORE_TMP_DIR_DEFAULT);
+    if (!fs.exists(restoreDir)) {
+      fs.mkdirs(restoreDir);
+      fs.setPermission(restoreDir, HConstants.ACL_ENABLE_RESTORE_HFILE_PERMISSION);
+    }
+    path = restoreDir.getParent();
+    while (path != null) {
+      fs.setPermission(path, HConstants.ACL_ENABLE_PUBLIC_HFILE_PERMISSION);
       path = path.getParent();
     }
   }
@@ -555,22 +564,18 @@ public class TestHdfsAclManager {
 
   public static boolean canUserScanSnapshot(Configuration conf, FileSystem fs, User user, String snapshot)
     throws IOException, InterruptedException {
-    PrivilegedExceptionAction<Boolean> action = getScanSnapshotAction(conf, fs, snapshot);
+    PrivilegedExceptionAction<Boolean> action = getScanSnapshotAction(conf, fs, snapshot, user.getName());
     return user.runAs(action);
   }
 
   private static PrivilegedExceptionAction<Boolean> getScanSnapshotAction(Configuration conf, FileSystem fs,
-                                                                          String snapshotName) throws IOException {
-    Path restoreDir = new Path(HConstants.SNAPSHOT_RESTORE_TMP_DIR_DEFAULT, snapshotName);
-    fs.mkdirs(restoreDir);
-    Path path = restoreDir;
-    while (path != null) {
-      fs.setPermission(path, new FsPermission((short) 0757));
-      path = path.getParent();
-    }
-
+                                                                          String snapshotName, String userName) {
     PrivilegedExceptionAction<Boolean> action = () -> {
       try {
+        Path restoreDir = new Path(HConstants.SNAPSHOT_RESTORE_TMP_DIR_DEFAULT, snapshotName);
+        fs.mkdirs(restoreDir);
+        fs.setOwner(restoreDir, userName, fs.getFileStatus(restoreDir).getGroup());
+
         Scan scan = new Scan();
         TableSnapshotScanner scanner =
           new TableSnapshotScanner(conf, restoreDir, snapshotName, scan);
@@ -591,7 +596,7 @@ public class TestHdfsAclManager {
     return action;
   }
 
-  private static int getRowCnt(Result result) throws IOException {
+  private static int getRowCnt(Result result) {
     try {
       int cnt = 0;
       CellScanner scanner = result.cellScanner();

@@ -26,7 +26,6 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.TableName;
@@ -75,7 +74,18 @@ public class TestPresetHdfsAclTool {
 
     Path path = rootDir;
     while (path != null) {
-      fs.setPermission(path, new FsPermission((short) 0755));
+      fs.setPermission(path, HConstants.ACL_ENABLE_PUBLIC_HFILE_PERMISSION);
+      path = path.getParent();
+    }
+
+    Path restoreDir = new Path(HConstants.SNAPSHOT_RESTORE_TMP_DIR_DEFAULT);
+    if (!fs.exists(restoreDir)) {
+      fs.mkdirs(restoreDir);
+      fs.setPermission(restoreDir, HConstants.ACL_ENABLE_RESTORE_HFILE_PERMISSION);
+    }
+    path = restoreDir.getParent();
+    while (path != null) {
+      fs.setPermission(path, HConstants.ACL_ENABLE_PUBLIC_HFILE_PERMISSION);
       path = path.getParent();
     }
   }

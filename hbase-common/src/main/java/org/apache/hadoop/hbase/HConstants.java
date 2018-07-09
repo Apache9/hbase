@@ -26,6 +26,7 @@ import java.util.UUID;
 import java.util.regex.Pattern;
 
 import org.apache.commons.lang.ArrayUtils;
+import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.classification.InterfaceStability;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -1258,6 +1259,8 @@ public final class HConstants {
   public static final String SNAPSHOT_RESTORE_TMP_DIR = "hbase.snapshot.restore.tmp.dir";
   public static final String SNAPSHOT_RESTORE_TMP_DIR_DEFAULT =
       "/hbase/.tmpdir-to-restore-snapshot";
+  public static final FsPermission ACL_ENABLE_PUBLIC_HFILE_PERMISSION = new FsPermission((short)0701);
+  public static final FsPermission ACL_ENABLE_RESTORE_HFILE_PERMISSION = new FsPermission((short)0703);
 
   private HConstants() {
     // Can't be instantiated with this ctor.
