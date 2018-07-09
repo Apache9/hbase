@@ -203,8 +203,7 @@ public class SyncReplicationReplayWALManager {
 
   public void finishReplayWAL(String wal) throws IOException {
     Path walPath = new Path(walRootDir, wal);
-    // TODO: implement truncate
-    //fs.truncate(walPath, 0);
+    FSUtils.truncateFile(services.getConfiguration(), fs, walPath);
   }
 
   public boolean isReplayWALFinished(String wal) throws IOException {

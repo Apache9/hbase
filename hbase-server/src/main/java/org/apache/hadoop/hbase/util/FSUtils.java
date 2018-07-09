@@ -56,6 +56,7 @@ import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.FileUtil;
+import org.apache.hadoop.fs.Options.Rename;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.PathFilter;
 import org.apache.hadoop.fs.permission.FsAction;
@@ -849,6 +850,19 @@ public abstract class FSUtils extends CommonFSUtils {
     }
     if (!fs.rename(src, dst)) {
       throw new IOException("Can not rename from " + src + " to " + dst);
+    }
+  }
+
+  public static void truncateFile(Configuration conf, FileSystem fs, Path file) throws IOException {
+    if (fs instanceof DistributedFileSystem) {
+      DistributedFileSystem dfs = (DistributedFileSystem) fs;
+      Path tmpDir = new Path(FSUtils.getWALRootDir(conf), HConstants.HBASE_TEMP_DIRECTORY);
+      Path tmpEmptyFile = new Path(tmpDir, file.getName());
+      dfs.create(tmpEmptyFile, true).close();
+      dfs.rename(tmpEmptyFile, file, Rename.OVERWRITE);
+    } else {
+      // overwrite the file
+      fs.create(file, true).close();
     }
   }
 
