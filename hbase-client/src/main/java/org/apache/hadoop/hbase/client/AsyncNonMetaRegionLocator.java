@@ -338,14 +338,15 @@ class AsyncNonMetaRegionLocator {
 
   private HRegionLocation locateRowBeforeInCache(TableCache tableCache, TableName tableName,
       byte[] row) {
+    boolean isEmptyStopRow = isEmptyStopRow(row);
     Map.Entry<byte[], HRegionLocation> entry =
-      isEmptyStopRow(row) ? tableCache.cache.lastEntry() : tableCache.cache.lowerEntry(row);
+        isEmptyStopRow ? tableCache.cache.lastEntry() : tableCache.cache.lowerEntry(row);
     if (entry == null) {
       return null;
     }
     HRegionLocation loc = entry.getValue();
     if (isEmptyStopRow(loc.getRegionInfo().getEndKey()) ||
-      Bytes.compareTo(loc.getRegionInfo().getEndKey(), row) >= 0) {
+        (!isEmptyStopRow && Bytes.compareTo(loc.getRegionInfo().getEndKey(), row) >= 0)) {
       if (LOG.isTraceEnabled()) {
         LOG.trace("Found " + loc + " in cache for '" + tableName + "', row='" +
           Bytes.toStringBinary(row) + "', locateType=" + RegionLocateType.BEFORE);

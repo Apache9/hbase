@@ -293,4 +293,16 @@ public class TestAsyncNonMetaRegionLocator {
       }
     }
   }
+
+  // Testcase for HBASE-20822
+  @Test
+  public void testLocateBeforeLastRegion()
+      throws IOException, InterruptedException, ExecutionException {
+    createMultiRegionTable();
+    LOCATOR.getRegionLocation(TABLE_NAME, SPLIT_KEYS[0], RegionLocateType.CURRENT).join();
+    HRegionLocation loc =
+        LOCATOR.getRegionLocation(TABLE_NAME, EMPTY_END_ROW, RegionLocateType.BEFORE).get();
+    // should locate to the last region
+    assertArrayEquals(loc.getRegionInfo().getEndKey(), EMPTY_END_ROW);
+  }
 }
