@@ -292,9 +292,8 @@ public class HLogUtil {
     if (sync) {
       log.sync(trx);
     }
-    if (LOG.isTraceEnabled()) {
-      LOG.trace("Appended flush marker " + TextFormat.shortDebugString(f));
-    }
+    LOG.info("Write a region flush marker " + f.getAction() + " with sequenceId=" + sequenceId
+        + " for region " + info.getRegionNameAsString() + ", table " + htd.getTableName());
     return trx;
   }
 
