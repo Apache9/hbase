@@ -667,7 +667,7 @@ public class SaltedHTable implements Table {
 
     @Override
     public ScanMetrics getScanMetrics() {
-      throw new UnsupportedOperationException("not implemented");
+      return null;
     }
   }
 

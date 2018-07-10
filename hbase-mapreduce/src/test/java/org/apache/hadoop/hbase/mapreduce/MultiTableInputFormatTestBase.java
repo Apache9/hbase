@@ -57,12 +57,12 @@ import org.apache.hbase.thirdparty.com.google.common.collect.Lists;
 public abstract class MultiTableInputFormatTestBase {
   static final Logger LOG = LoggerFactory.getLogger(TestMultiTableInputFormat.class);
   public static final HBaseTestingUtility TEST_UTIL = new HBaseTestingUtility();
-  static final String TABLE_NAME = "scantest";
-  static final byte[] INPUT_FAMILY = Bytes.toBytes("contents");
-  static final String KEY_STARTROW = "startRow";
-  static final String KEY_LASTROW = "stpRow";
+  protected static final String TABLE_NAME = "scantest";
+  protected static final byte[] INPUT_FAMILY = Bytes.toBytes("contents");
+  protected static final String KEY_STARTROW = "startRow";
+  protected static final String KEY_LASTROW = "stpRow";
 
-  static List<String> TABLES = Lists.newArrayList();
+  protected static List<String> TABLES = Lists.newArrayList();
 
   static {
     for (int i = 0; i < 3; i++) {

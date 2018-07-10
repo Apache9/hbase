@@ -15,40 +15,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.hadoop.hbase.mapreduce;
+package org.apache.hadoop.hbase.mapreduce.salted;
 
-import java.io.IOException;
-import java.util.List;
 import org.apache.hadoop.hbase.HBaseClassTestRule;
-import org.apache.hadoop.hbase.client.Scan;
-import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
+import org.apache.hadoop.hbase.mapreduce.TestTableInputFormatScan2;
 import org.apache.hadoop.hbase.testclassification.LargeTests;
 import org.apache.hadoop.hbase.testclassification.VerySlowMapReduceTests;
-import org.apache.hadoop.mapreduce.Job;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.experimental.categories.Category;
 
-/**
- * Tests various scan start and stop row scenarios. This is set in a scan and
- * tested in a MapReduce job to see if that is handed over and done properly
- * too.
- */
 @Category({VerySlowMapReduceTests.class, LargeTests.class})
-public class TestMultiTableInputFormat extends MultiTableInputFormatTestBase {
+public class TestSaltedTableInputFormatScan2 extends TestTableInputFormatScan2 {
 
   @ClassRule
   public static final HBaseClassTestRule CLASS_RULE =
-      HBaseClassTestRule.forClass(TestMultiTableInputFormat.class);
+      HBaseClassTestRule.forClass(TestSaltedTableInputFormatScan2.class);
 
   @BeforeClass
-  public static void setupLogging() {
-    TEST_UTIL.enableDebug(MultiTableInputFormat.class);
-  }
-
-  @Override
-  protected void initJob(List<Scan> scans, Job job) throws IOException {
-    TableMapReduceUtil.initTableMapperJob(scans, ScanMapper.class,
-        ImmutableBytesWritable.class, ImmutableBytesWritable.class, job);
+  public static void setUpBeforeClass() throws Exception {
+    TestSaltedTableInputFormatScan1.setUpBeforeClass();
   }
 }

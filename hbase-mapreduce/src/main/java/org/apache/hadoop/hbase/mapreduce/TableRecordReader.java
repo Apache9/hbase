@@ -39,6 +39,16 @@ extends RecordReader<ImmutableBytesWritable, Result> {
 
   private TableRecordReaderImpl recordReaderImpl = new TableRecordReaderImpl();
 
+  public TableRecordReader(){}
+
+  public TableRecordReader(TableRecordReaderImpl recordReaderImpl){
+    this.recordReaderImpl = recordReaderImpl;
+  }
+
+  public TableRecordReaderImpl getRecordReaderImpl(){
+    return this.recordReaderImpl;
+  }
+
   /**
    * Restart from survivable exceptions by creating a new scanner.
    *

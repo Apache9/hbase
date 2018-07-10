@@ -61,16 +61,15 @@ import org.slf4j.LoggerFactory;
  * </p>
  */
 public abstract class TestTableInputFormatScanBase {
-
   private static final Logger LOG = LoggerFactory.getLogger(TestTableInputFormatScanBase.class);
-  static final HBaseTestingUtility TEST_UTIL = new HBaseTestingUtility();
+  protected static final HBaseTestingUtility TEST_UTIL = new HBaseTestingUtility();
 
-  static final TableName TABLE_NAME = TableName.valueOf("scantest");
-  static final byte[][] INPUT_FAMILYS = {Bytes.toBytes("content1"), Bytes.toBytes("content2")};
+  protected static final TableName TABLE_NAME = TableName.valueOf("scantest");
+  protected static final byte[][] INPUT_FAMILYS = {Bytes.toBytes("content1"), Bytes.toBytes("content2")};
   static final String KEY_STARTROW = "startRow";
   static final String KEY_LASTROW = "stpRow";
 
-  private static Table table = null;
+  protected static Table table = null;
 
   @BeforeClass
   public static void setUpBeforeClass() throws Exception {
@@ -202,7 +201,8 @@ public abstract class TestTableInputFormatScanBase {
     job.setReducerClass(ScanReducer.class);
     job.setMapOutputKeyClass(ImmutableBytesWritable.class);
     job.setMapOutputValueClass(ImmutableBytesWritable.class);
-    job.setInputFormatClass(TableInputFormat.class);
+    job.setInputFormatClass(TableMapReduceUtil.getTableInputFormatCls(job.getConfiguration(),
+        TABLE_NAME.getName()));
     job.setNumReduceTasks(1);
     FileOutputFormat.setOutputPath(job, new Path(job.getJobName()));
     TableMapReduceUtil.addDependencyJars(job);

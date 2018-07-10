@@ -19,6 +19,7 @@ package org.apache.hadoop.hbase.mapreduce;
 
 import java.io.IOException;
 import org.apache.hadoop.hbase.HBaseClassTestRule;
+import org.apache.hadoop.hbase.mapreduce.salted.TestSaltedTableInputFormatScan1;
 import org.apache.hadoop.hbase.testclassification.LargeTests;
 import org.apache.hadoop.hbase.testclassification.VerySlowMapReduceTests;
 import org.junit.ClassRule;
@@ -109,10 +110,12 @@ public class TestTableInputFormatScan1 extends TestTableInputFormatScanBase {
    * @throws InterruptedException
    */
   @Test
-    public void testGetSplits() throws IOException, InterruptedException, ClassNotFoundException {
-      testNumOfSplits(1, 26);
+  public void testGetSplits() throws IOException, InterruptedException, ClassNotFoundException {
+    testNumOfSplits(1, 26);
+    if (!(this instanceof TestSaltedTableInputFormatScan1)) {
       testNumOfSplits(3, 78);
     }
+  }
 
   /**
    * Runs a MR to test TIF using specific number of mappers. The test table has 26 regions,
@@ -123,8 +126,10 @@ public class TestTableInputFormatScan1 extends TestTableInputFormatScanBase {
   @Test
   public void testSpecifiedNumOfMappersMR()
       throws InterruptedException, IOException, ClassNotFoundException {
-    testNumOfSplitsMR(2, 52);
-    testNumOfSplitsMR(4, 104);
+    if(! (this instanceof TestSaltedTableInputFormatScan1)) {
+      testNumOfSplitsMR(2, 52);
+      testNumOfSplitsMR(4, 104);
+    }
   }
 
   /**

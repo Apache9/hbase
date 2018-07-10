@@ -21,6 +21,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import com.xiaomi.infra.hbase.salted.SaltedHTable;
 import edu.umd.cs.findbugs.annotations.Nullable;
 import java.io.File;
 import java.io.IOException;
@@ -1603,6 +1604,20 @@ public class HBaseTestingUtility extends HBaseZKTestingUtility {
    */
   public Table createMultiRegionTable(TableName tableName, byte[] family) throws IOException {
     return createTable(tableName, family, KEYS_FOR_HBA_CREATE_TABLE);
+  }
+
+
+  public SaltedHTable createSaltedTable(TableName tableName, byte[] family, int slotsCount)
+      throws IOException {
+    return createSaltedTable(tableName, new byte[][] { family }, slotsCount);
+  }
+
+  public SaltedHTable createSaltedTable(TableName tableName, byte[][] family, int slotsCount)
+      throws IOException {
+    TableDescriptorBuilder builder = TableDescriptorBuilder.newBuilder(tableName);
+    builder.setSlotsCount(slotsCount);
+    TableDescriptor desc = builder.build();
+    return (SaltedHTable) (createTable(desc, family, new Configuration(getConfiguration())));
   }
 
   /**

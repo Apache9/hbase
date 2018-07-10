@@ -623,6 +623,10 @@ public abstract class TableInputFormatBase
     this.tableRecordReader = tableRecordReader;
   }
 
+  protected TableRecordReader getTableRecordReader() {
+    return this.tableRecordReader;
+  }
+
   /**
    * Handle subclass specific set up.
    * Each of the entry points used by the MapReduce framework,
