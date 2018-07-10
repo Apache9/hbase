@@ -51,6 +51,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.CallQueueTooBigException;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.HBaseClassTestRule;
+import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HRegionLocation;
@@ -90,7 +91,7 @@ public class TestAsyncProcess {
   private static final byte[] DUMMY_BYTES_2 = Bytes.toBytes("DUMMY_BYTES_2");
   private static final byte[] DUMMY_BYTES_3 = Bytes.toBytes("DUMMY_BYTES_3");
   private static final byte[] FAILS = Bytes.toBytes("FAILS");
-  private static final Configuration CONF = new Configuration();
+  private static final Configuration CONF = HBaseConfiguration.create();
   private static final ConnectionConfiguration CONNECTION_CONFIG =
       new ConnectionConfiguration(CONF);
   private static final ServerName sn = ServerName.valueOf("s1,1,1");
@@ -1266,8 +1267,8 @@ public class TestAsyncProcess {
 
   @Test
   public void testBatch() throws IOException, InterruptedException {
-    ClusterConnection conn = new MyConnectionImpl(CONF);
-    HTable ht = (HTable) conn.getTable(DUMMY_TABLE);
+    MyConnectionImpl conn = new MyConnectionImpl(new Configuration(CONF));
+    HTable ht = (HTable) conn.getRawTable(DUMMY_TABLE);
     ht.multiAp = new MyAsyncProcess(conn, CONF);
 
     List<Put> puts = new ArrayList<>(7);
@@ -1328,9 +1329,9 @@ public class TestAsyncProcess {
     Configuration copyConf = new Configuration(CONF);
     copyConf.setLong(HConstants.HBASE_RPC_READ_TIMEOUT_KEY, readTimeout);
     copyConf.setLong(HConstants.HBASE_RPC_WRITE_TIMEOUT_KEY, writeTimeout);
-    ClusterConnection conn = new MyConnectionImpl(copyConf);
+    MyConnectionImpl conn = new MyConnectionImpl(copyConf);
     MyAsyncProcess ap = new MyAsyncProcess(conn, copyConf);
-    try (HTable ht = (HTable) conn.getTable(DUMMY_TABLE)) {
+    try (HTable ht = (HTable) conn.getRawTable(DUMMY_TABLE)) {
       ht.multiAp = ap;
       List<Get> gets = new LinkedList<>();
       gets.add(new Get(DUMMY_BYTES_1));
@@ -1425,7 +1426,7 @@ public class TestAsyncProcess {
 
     MyConnectionImpl2 con = new MyConnectionImpl2(hrls);
     MyAsyncProcess ap = new MyAsyncProcess(con, CONF, con.nbThreads);
-    HTable ht = (HTable) con.getTable(DUMMY_TABLE, ap.service);
+    HTable ht = (HTable) con.getRawTable(DUMMY_TABLE, ap.service);
     ht.multiAp = ap;
     ht.batch(gets, null);
 

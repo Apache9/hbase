@@ -345,6 +345,27 @@ class ConnectionImplementation implements ClusterConnection, Closeable {
     return getTable(tableName, getBatchPool());
   }
 
+  @VisibleForTesting
+  public Table getRawTable(TableName tableName){
+    return getRawTable(tableName, getBatchPool());
+  }
+
+  /**
+   * Only return HTable.
+   * @param tableName
+   * @param pool
+   * @return
+   */
+  @VisibleForTesting
+  public Table getRawTable(TableName tableName, ExecutorService pool){
+    return new TableBuilderBase(tableName, connectionConfig) {
+      @Override public Table build() {
+        return new HTable(ConnectionImplementation.this, this, rpcCallerFactory,
+            rpcControllerFactory, pool);
+      }
+    }.build();
+  }
+
   @Override
   public TableBuilder getTableBuilder(TableName tableName, ExecutorService pool) {
     return new TableBuilderBase(tableName, connectionConfig) {
