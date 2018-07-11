@@ -20,6 +20,8 @@ package org.apache.hadoop.hbase.master;
 
 import java.util.Map;
 import java.util.Map.Entry;
+
+import org.apache.hadoop.metrics2.MetricsRecordBuilder;
 import org.apache.yetus.audience.InterfaceAudience;
 
 /**
@@ -141,4 +143,6 @@ public interface MetricsMasterWrapper {
    * Get the time in Millis when the master finished initializing/becoming the active master
    */
   long getMasterInitializationTime();
+
+  void addClusterMetrics(MetricsRecordBuilder builder);
 }

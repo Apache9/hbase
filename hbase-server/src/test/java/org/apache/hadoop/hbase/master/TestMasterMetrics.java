@@ -20,16 +20,19 @@ package org.apache.hadoop.hbase.master;
 import java.io.IOException;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.CompatibilityFactory;
-import org.apache.hadoop.hbase.CoordinatedStateManager;
 import org.apache.hadoop.hbase.HBaseClassTestRule;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.MiniHBaseCluster;
 import org.apache.hadoop.hbase.ServerName;
+import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.client.RegionInfo;
 import org.apache.hadoop.hbase.test.MetricsAssertHelper;
 import org.apache.hadoop.hbase.testclassification.MasterTests;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
+import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.zookeeper.KeeperException;
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Test;
@@ -108,7 +111,6 @@ public class TestMasterMetrics {
       metricsHelper.assertCounter("cluster_requests", expectedRequestNumber, masterSource);
     } else {
       metricsHelper.assertCounterGt("cluster_requests", expectedRequestNumber, masterSource);
-
     }
 
     expectedRequestNumber = 15000;
@@ -149,5 +151,16 @@ public class TestMasterMetrics {
   public void testDefaultMasterProcMetrics() throws Exception {
     MetricsMasterProcSource masterSource = master.getMasterMetrics().getMetricsProcSource();
     metricsHelper.assertGauge("numMasterWALs", master.getNumWALFiles(), masterSource);
+  }
+
+  @Test
+  public void testParseRegionInfo() throws IOException {
+    byte[] region = Bytes.toBytes(
+      "TestTable,00000000000000000000299441,1531140556835.75e9155b58b2931a4656a40f7918fd60.");
+    RegionInfo ri = MetricsMasterWrapperImpl.parseRegionInfo(region);
+    Assert.assertNotNull(ri);
+    Assert.assertEquals(ri.getTable(), TableName.valueOf("TestTable"));
+    Assert.assertEquals(ri.getEncodedName(), "75e9155b58b2931a4656a40f7918fd60");
+    Assert.assertEquals(ri.getTable().getNamespaceAsString(), "default");
   }
 }

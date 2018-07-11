@@ -40,24 +40,31 @@ import org.apache.hadoop.hbase.procedure2.ProcedureMetrics;
 public class MetricsMaster {
   private static final Logger LOG = LoggerFactory.getLogger(MetricsMaster.class);
   private MetricsMasterSource masterSource;
+  private MetricsClusterSource metricsClusterSource;
   private MetricsMasterProcSource masterProcSource;
   private MetricsMasterQuotaSource masterQuotaSource;
 
   private ProcedureMetrics serverCrashProcMetrics;
 
   public MetricsMaster(MetricsMasterWrapper masterWrapper) {
-    masterSource = CompatibilitySingletonFactory.getInstance(MetricsMasterSourceFactory.class).create(masterWrapper);
-    masterProcSource =
-            CompatibilitySingletonFactory.getInstance(MetricsMasterProcSourceFactory.class).create(masterWrapper);
-    masterQuotaSource =
-            CompatibilitySingletonFactory.getInstance(MetricsMasterQuotaSourceFactory.class).create(masterWrapper);
-
+    masterSource = CompatibilitySingletonFactory.getInstance(MetricsMasterSourceFactory.class)
+        .create(masterWrapper);
+    metricsClusterSource = CompatibilitySingletonFactory
+        .getInstance(MetricsClusterSourceFactory.class).create(masterWrapper);
+    masterProcSource = CompatibilitySingletonFactory
+        .getInstance(MetricsMasterProcSourceFactory.class).create(masterWrapper);
+    masterQuotaSource = CompatibilitySingletonFactory
+        .getInstance(MetricsMasterQuotaSourceFactory.class).create(masterWrapper);
     serverCrashProcMetrics = convertToProcedureMetrics(masterSource.getServerCrashMetrics());
   }
 
   // for unit-test usage
   public MetricsMasterSource getMetricsSource() {
     return masterSource;
+  }
+
+  public MetricsClusterSource getMetricsClusterSource() {
+    return metricsClusterSource;
   }
 
   public MetricsMasterProcSource getMetricsProcSource() {
