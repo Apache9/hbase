@@ -17,6 +17,8 @@
  */
 package org.apache.hadoop.hbase.ipc;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.BlockingQueue;
 
 import org.apache.hadoop.conf.Configuration;
@@ -35,6 +37,7 @@ import org.apache.yetus.audience.InterfaceStability;
 public class BalancedQueueRpcExecutor extends RpcExecutor {
 
   private final QueueBalancer balancer;
+  private final QueueCounter queueCounter;
 
   public BalancedQueueRpcExecutor(final String name, final int handlerCount,
       final int maxQueueLength, final PriorityFunction priority, final Configuration conf,
@@ -48,17 +51,28 @@ public class BalancedQueueRpcExecutor extends RpcExecutor {
       final Configuration conf, final Abortable abortable) {
     super(name, handlerCount, callQueueType, maxQueueLength, priority, conf, abortable);
     this.balancer = getBalancer(this.numCallQueues);
+    this.queueCounter = new QueueCounter("Balanced");
     initializeQueues(this.numCallQueues);
   }
 
   @Override
   public boolean dispatch(final CallRunner callTask) throws InterruptedException {
+    queueCounter.incIncomeRequestCount();
     int queueIndex = balancer.getNextQueue();
     BlockingQueue<CallRunner> queue = queues.get(queueIndex);
     // that means we can overflow by at most <num reader> size (5), that's ok
-    if (queue.size() >= currentQueueLimit) {
+    if (queue.size() >= currentQueueLimit || !queue.offer(callTask)) {
+      queueCounter.setQueueFull(true);
+      queueCounter.incRejectedRequestCount();
       return false;
+    } else {
+      queueCounter.setQueueFull(false);
+      return true;
     }
-    return queue.offer(callTask);
+  }
+
+  @Override
+  public List<QueueCounter> getQueueCounters() {
+    return Collections.singletonList(this.queueCounter);
   }
 }

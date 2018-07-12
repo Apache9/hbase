@@ -18,8 +18,11 @@
 package org.apache.hadoop.hbase.ipc;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -43,6 +46,7 @@ public class FifoRpcScheduler extends RpcScheduler {
   private final int maxQueueLength;
   private final AtomicInteger queueSize = new AtomicInteger(0);
   private ThreadPoolExecutor executor;
+  private final QueueCounter queueCounter;
 
   public FifoRpcScheduler(Configuration conf, int handlerCount) {
     this.handlerCount = handlerCount;
@@ -50,6 +54,7 @@ public class FifoRpcScheduler extends RpcScheduler {
         handlerCount * RpcServer.DEFAULT_MAX_CALLQUEUE_LENGTH_PER_HANDLER);
     LOG.info("Using " + this.getClass().getSimpleName() + " as user call queue; handlerCount=" +
         handlerCount + "; maxQueueLength=" + maxQueueLength);
+    this.queueCounter = new QueueCounter("Fifo");
   }
 
   @Override
@@ -96,20 +101,29 @@ public class FifoRpcScheduler extends RpcScheduler {
   public boolean dispatch(final CallRunner task) throws IOException, InterruptedException {
     // Executors provide no offer, so make our own.
     int queued = queueSize.getAndIncrement();
+    queueCounter.incIncomeRequestCount();
     if (maxQueueLength > 0 && queued >= maxQueueLength) {
       queueSize.decrementAndGet();
+      queueCounter.incRejectedRequestCount();
+      queueCounter.setQueueFull(true);
       return false;
     }
 
-    executor.execute(new FifoCallRunner(task){
-      @Override
-      public void run() {
-        task.setStatus(RpcServer.getStatus());
-        task.run();
-        queueSize.decrementAndGet();
-      }
-    });
-
+    try {
+      executor.execute(new FifoCallRunner(task) {
+        @Override
+        public void run() {
+          task.setStatus(RpcServer.getStatus());
+          task.run();
+          queueSize.decrementAndGet();
+        }
+      });
+      queueCounter.setQueueFull(false);
+    } catch (RejectedExecutionException e) {
+      queueCounter.setQueueFull(true);
+      queueCounter.incRejectedRequestCount();
+      throw e;
+    }
     return true;
   }
 
@@ -171,6 +185,11 @@ public class FifoRpcScheduler extends RpcScheduler {
   @Override
   public int getActiveScanRpcHandlerCount() {
     return 0;
+  }
+
+  @Override
+  public List<QueueCounter> getQueueCounters() {
+    return Collections.singletonList(queueCounter);
   }
 
   @Override

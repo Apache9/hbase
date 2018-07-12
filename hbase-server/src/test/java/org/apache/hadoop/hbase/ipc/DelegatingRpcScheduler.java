@@ -19,6 +19,7 @@
 package org.apache.hadoop.hbase.ipc;
 
 import java.io.IOException;
+import java.util.List;
 
 public class DelegatingRpcScheduler extends RpcScheduler {
   protected RpcScheduler delegate;
@@ -102,6 +103,11 @@ public class DelegatingRpcScheduler extends RpcScheduler {
   @Override
   public int getActiveScanRpcHandlerCount() {
     return 0;
+  }
+
+  @Override
+  public List<QueueCounter> getQueueCounters() {
+    return delegate.getQueueCounters();
   }
 
   @Override

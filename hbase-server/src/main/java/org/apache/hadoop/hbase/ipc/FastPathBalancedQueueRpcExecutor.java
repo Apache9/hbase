@@ -56,9 +56,9 @@ public class FastPathBalancedQueueRpcExecutor extends BalancedQueueRpcExecutor {
   }
 
   @Override
-  protected Handler getHandler(String name, double handlerFailureThreshhold,
+  protected Handler getHandler(String name, double handlerFailureThreshold,
       BlockingQueue<CallRunner> q, AtomicInteger activeHandlerCount) {
-    return new FastPathHandler(name, handlerFailureThreshhold, q, activeHandlerCount,
+    return new FastPathHandler(name, handlerFailureThreshold, q, activeHandlerCount,
         fastPathHandlerStack);
   }
 
@@ -85,10 +85,10 @@ public class FastPathBalancedQueueRpcExecutor extends BalancedQueueRpcExecutor {
     // The task we get when fast-pathing.
     private CallRunner loadedCallRunner;
 
-    FastPathHandler(String name, double handlerFailureThreshhold, BlockingQueue<CallRunner> q,
+    FastPathHandler(String name, double handlerFailureThreshold, BlockingQueue<CallRunner> q,
         final AtomicInteger activeHandlerCount,
         final Deque<FastPathHandler> fastPathHandlerStack) {
-      super(name, handlerFailureThreshhold, q, activeHandlerCount);
+      super(name, handlerFailureThreshold, q, activeHandlerCount);
       this.fastPathHandlerStack = fastPathHandlerStack;
     }
 

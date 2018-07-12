@@ -480,6 +480,8 @@ public abstract class RpcExecutor {
     return this.name;
   }
 
+  public abstract List<QueueCounter> getQueueCounters();
+
   /**
    * Update current soft limit for executor's call queues
    * @param conf updated configuration

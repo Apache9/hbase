@@ -101,6 +101,7 @@ import org.apache.hadoop.hbase.io.hfile.HFile;
 import org.apache.hadoop.hbase.io.util.MemorySizeUtil;
 import org.apache.hadoop.hbase.ipc.CoprocessorRpcUtils;
 import org.apache.hadoop.hbase.ipc.NettyRpcClientConfigHelper;
+import org.apache.hadoop.hbase.ipc.QueueFullDetector;
 import org.apache.hadoop.hbase.ipc.RpcClient;
 import org.apache.hadoop.hbase.ipc.RpcClientFactory;
 import org.apache.hadoop.hbase.ipc.RpcControllerFactory;
@@ -375,6 +376,9 @@ public class HRegionServer extends HasThread implements
    * Check for flushes
    */
   ScheduledChore periodicFlusher;
+
+  // Queueu full detector
+  ScheduledChore queueFullDetector;
 
   protected volatile WALFactory walFactory;
 
@@ -1932,6 +1936,7 @@ public class HRegionServer extends HasThread implements
     if (this.storefileRefresher != null) choreService.scheduleChore(storefileRefresher);
     if (this.movedRegionsCleaner != null) choreService.scheduleChore(movedRegionsCleaner);
     if (this.fsUtilizationChore != null) choreService.scheduleChore(fsUtilizationChore);
+    if (this.queueFullDetector != null) choreService.scheduleChore(queueFullDetector);
 
     // Leases is not a Thread. Internally it runs a daemon thread. If it gets
     // an unhandled exception, it will just exit.
@@ -1973,6 +1978,9 @@ public class HRegionServer extends HasThread implements
     // in a while. It will take care of not checking too frequently on store-by-store basis.
     this.compactionChecker = new CompactionChecker(this, this.threadWakeFrequency, this);
     this.periodicFlusher = new PeriodicMemStoreFlusher(this.threadWakeFrequency, this);
+    if (QueueFullDetector.isEnabled(conf)) {
+      this.queueFullDetector = new QueueFullDetector(this, conf);
+    }
     this.leases = new Leases(this.threadWakeFrequency);
 
     // Create the thread to clean the moved regions list
@@ -2085,7 +2093,8 @@ public class HRegionServer extends HasThread implements
         && (this.cacheFlusher == null || this.cacheFlusher.isAlive())
         && (this.walRoller == null || this.walRoller.isAlive())
         && (this.compactionChecker == null || this.compactionChecker.isScheduled())
-        && (this.periodicFlusher == null || this.periodicFlusher.isScheduled());
+        && (this.periodicFlusher == null || this.periodicFlusher.isScheduled())
+        && (this.queueFullDetector == null || this.queueFullDetector.isScheduled());
     if (!healthy) {
       stop("One or more threads are no longer alive -- stop");
     }
@@ -2429,6 +2438,7 @@ public class HRegionServer extends HasThread implements
       choreService.cancelChore(storefileRefresher);
       choreService.cancelChore(movedRegionsCleaner);
       choreService.cancelChore(fsUtilizationChore);
+      choreService.cancelChore(queueFullDetector);
       // clean up the remaining scheduled chores (in case we missed out any)
       choreService.shutdown();
     }

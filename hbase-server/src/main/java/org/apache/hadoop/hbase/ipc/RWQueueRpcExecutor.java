@@ -19,6 +19,8 @@
 
 package org.apache.hadoop.hbase.ipc;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -68,6 +70,10 @@ public class RWQueueRpcExecutor extends RpcExecutor {
   private final AtomicInteger activeReadHandlerCount = new AtomicInteger(0);
   private final AtomicInteger activeScanHandlerCount = new AtomicInteger(0);
 
+  private final QueueCounter writeQueueCounter;
+  private final QueueCounter readQueueCounter;
+  private final QueueCounter scanQueueCounter;
+
   public RWQueueRpcExecutor(final String name, final int handlerCount, final int maxQueueLength,
       final PriorityFunction priority, final Configuration conf, final Abortable abortable) {
     super(name, handlerCount, maxQueueLength, priority, conf, abortable);
@@ -101,6 +107,10 @@ public class RWQueueRpcExecutor extends RpcExecutor {
     this.readBalancer = getBalancer(numReadQueues);
     this.scanBalancer = numScanQueues > 0 ? getBalancer(numScanQueues) : null;
 
+    writeQueueCounter = new QueueCounter("Write");
+    readQueueCounter = new QueueCounter("Read");
+    scanQueueCounter = new QueueCounter("Scan");
+
     initializeQueues(numWriteQueues);
     initializeQueues(numReadQueues);
     initializeQueues(numScanQueues);
@@ -113,7 +123,7 @@ public class RWQueueRpcExecutor extends RpcExecutor {
   @Override
   protected int computeNumCallQueues(final int handlerCount, final float callQueuesHandlersFactor) {
     // at least 1 read queue and 1 write queue
-    return Math.max(2, (int) Math.round(handlerCount * callQueuesHandlersFactor));
+    return Math.max(2, Math.round(handlerCount * callQueuesHandlersFactor));
   }
 
   @Override
@@ -132,19 +142,27 @@ public class RWQueueRpcExecutor extends RpcExecutor {
   public boolean dispatch(final CallRunner callTask) throws InterruptedException {
     RpcCall call = callTask.getRpcCall();
     int queueIndex;
+    QueueCounter queueCounter;
     if (isWriteRequest(call.getHeader(), call.getParam())) {
       queueIndex = writeBalancer.getNextQueue();
+      queueCounter = writeQueueCounter;
     } else if (numScanQueues > 0 && isScanRequest(call.getHeader(), call.getParam())) {
       queueIndex = numWriteQueues + numReadQueues + scanBalancer.getNextQueue();
+      queueCounter = scanQueueCounter;
     } else {
       queueIndex = numWriteQueues + readBalancer.getNextQueue();
+      queueCounter = readQueueCounter;
     }
 
     BlockingQueue<CallRunner> queue = queues.get(queueIndex);
-    if (queue.size() >= currentQueueLimit) {
+    if (queue.size() >= currentQueueLimit || !queue.offer(callTask)) {
+      queueCounter.setQueueFull(true);
+      queueCounter.incRejectedRequestCount();
       return false;
+    } else {
+      queueCounter.setQueueFull(false);
+      return true;
     }
-    return queue.offer(callTask);
   }
 
   @Override
@@ -154,6 +172,11 @@ public class RWQueueRpcExecutor extends RpcExecutor {
       length += queues.get(i).size();
     }
     return length;
+  }
+
+  @Override
+  public List<QueueCounter> getQueueCounters() {
+    return Arrays.asList(writeQueueCounter, readQueueCounter, scanQueueCounter);
   }
 
   @Override

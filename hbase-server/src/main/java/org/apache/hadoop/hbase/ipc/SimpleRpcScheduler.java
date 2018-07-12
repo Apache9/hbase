@@ -17,6 +17,8 @@
  */
 package org.apache.hadoop.hbase.ipc;
 
+import java.util.List;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Abortable;
 import org.apache.hadoop.hbase.HBaseInterfaceAudience;
@@ -228,6 +230,11 @@ public class SimpleRpcScheduler extends RpcScheduler implements ConfigurationObs
   @Override
   public int getActiveScanRpcHandlerCount() {
     return callExecutor.getActiveScanHandlerCount();
+  }
+
+  @Override
+  public List<QueueCounter> getQueueCounters() {
+    return callExecutor.getQueueCounters();
   }
 
   @Override

@@ -23,6 +23,7 @@ import org.apache.hadoop.hbase.HBaseInterfaceAudience;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.util.List;
 
 /**
  * An interface for RPC request scheduling algorithm.
@@ -110,4 +111,6 @@ public abstract class RpcScheduler {
 
   /** Retrieves the number of active write rpc handler when use RWQueueRpcExecutor. */
   public abstract int getActiveScanRpcHandlerCount();
+
+  public abstract List<QueueCounter> getQueueCounters();
 }
