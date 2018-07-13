@@ -732,7 +732,7 @@ public class SaltedHTable implements Table {
       tableSalters = new ConcurrentHashMap<String, KeySalter>();
       Map<String, KeySalter> previous = saltedTables.putIfAbsent(znodeParent, tableSalters);
       if (previous != null) {
-        tableSalters= previous;
+        tableSalters = previous;
       }
     }
     String tableName = hTable.getName().getNameAsString();

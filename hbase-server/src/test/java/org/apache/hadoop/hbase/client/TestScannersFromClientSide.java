@@ -253,7 +253,8 @@ public class TestScannersFromClientSide {
     String[] tableNames = {"A", "Z", "A:A", "Z:Z"};
     for(String tableName : tableNames) {
       try {
-        Table table = TEST_UTIL.getConnection().getTable(TableName.valueOf(tableName));
+        Table table = ConnectionUtils.getRawTable(TEST_UTIL.getConnection(),
+            TableName.valueOf(tableName));
         testSmallScan(table, true, 1, 5);
         fail("TableNotFoundException was not thrown");
       } catch (TableNotFoundException e) {

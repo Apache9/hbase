@@ -98,7 +98,7 @@ public class TestSeparateClientZKCluster {
     // create table
     Connection conn = TEST_UTIL.getConnection();
     Admin admin = conn.getAdmin();
-    HTable table = (HTable) conn.getTable(tn);
+    HTable table = (HTable) ConnectionUtils.getRawTable(conn, tn);
     try {
       ColumnFamilyDescriptorBuilder cfDescBuilder =
           ColumnFamilyDescriptorBuilder.newBuilder(family);
@@ -149,7 +149,7 @@ public class TestSeparateClientZKCluster {
     // create table
     Connection conn = TEST_UTIL.getConnection();
     Admin admin = conn.getAdmin();
-    HTable table = (HTable) conn.getTable(tn);
+    HTable table = (HTable) ConnectionUtils.getRawTable(conn, tn);
     try {
       MiniHBaseCluster cluster = TEST_UTIL.getHBaseCluster();
       ColumnFamilyDescriptorBuilder cfDescBuilder =
@@ -205,7 +205,7 @@ public class TestSeparateClientZKCluster {
     // create table
     ClusterConnection conn = (ClusterConnection) TEST_UTIL.getConnection();
     Admin admin = conn.getAdmin();
-    HTable table = (HTable) conn.getTable(tn);
+    HTable table = (HTable) ConnectionUtils.getRawTable(conn, tn);
     try {
       ColumnFamilyDescriptorBuilder cfDescBuilder =
           ColumnFamilyDescriptorBuilder.newBuilder(family);

@@ -489,4 +489,8 @@ public final class ConnectionUtils {
     }
     scanMetrics.countOfRegions.incrementAndGet();
   }
+
+  public static Table getRawTable(Connection connection, TableName tableName){
+    return ((ConnectionImplementation) connection).getRawTable(tableName);
+  }
 }

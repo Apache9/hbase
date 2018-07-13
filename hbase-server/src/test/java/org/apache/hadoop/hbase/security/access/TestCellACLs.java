@@ -36,6 +36,7 @@ import org.apache.hadoop.hbase.TestTableName;
 import org.apache.hadoop.hbase.client.Admin;
 import org.apache.hadoop.hbase.client.Connection;
 import org.apache.hadoop.hbase.client.ConnectionFactory;
+import org.apache.hadoop.hbase.client.ConnectionUtils;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Increment;
@@ -395,8 +396,8 @@ public class TestCellACLs extends SecureTestUtil {
     verifyAllowed(new AccessTestAction() {
       @Override
       public Object run() throws Exception {
-        try(Connection connection = ConnectionFactory.createConnection(conf);
-            Table t = connection.getTable(TEST_TABLE.getTableName())) {
+        try (Connection connection = ConnectionFactory.createConnection(conf);
+            Table t = ConnectionUtils.getRawTable(connection, TEST_TABLE.getTableName())) {
           Put p;
           p = new Put(TEST_ROW).addColumn(TEST_FAMILY, TEST_Q1, ZERO);
           t.put(p);
@@ -421,7 +422,7 @@ public class TestCellACLs extends SecureTestUtil {
       @Override
       public Object run() throws Exception {
         try (Connection connection = ConnectionFactory.createConnection(conf);
-            Table t = connection.getTable(TEST_TABLE.getTableName())) {
+            Table t = ConnectionUtils.getRawTable(connection, TEST_TABLE.getTableName())) {
           Put p;
           p = new Put(TEST_ROW).addColumn(TEST_FAMILY, TEST_Q1, value);
           t.put(p);
@@ -436,7 +437,7 @@ public class TestCellACLs extends SecureTestUtil {
       @Override
       public Object run() throws Exception {
         try (Connection connection = ConnectionFactory.createConnection(conf);
-            Table t = connection.getTable(TEST_TABLE.getTableName())) {
+            Table t = ConnectionUtils.getRawTable(connection, TEST_TABLE.getTableName())) {
           return t.get(new Get(TEST_ROW).addColumn(TEST_FAMILY, TEST_Q1));
         }
       }

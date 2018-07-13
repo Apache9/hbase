@@ -307,7 +307,7 @@ public class TestAdmin2 {
   public void testTableNotFoundExceptionWithoutAnyTables() throws IOException {
     TableName tableName = TableName
         .valueOf("testTableNotFoundExceptionWithoutAnyTables");
-    Table ht = TEST_UTIL.getConnection().getTable(tableName);
+    Table ht = ConnectionUtils.getRawTable(TEST_UTIL.getConnection(), tableName);
     ht.get(new Get(Bytes.toBytes("e")));
   }
 

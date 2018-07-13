@@ -45,6 +45,7 @@ import org.apache.hadoop.hbase.MetaTableAccessor;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.ColumnFamilyDescriptor;
+import org.apache.hadoop.hbase.client.ConnectionUtils;
 import org.apache.hadoop.hbase.client.TableDescriptor;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
@@ -468,7 +469,7 @@ public class RegionSplitter {
 
       // Get a list of daughter regions to create
       LinkedList<Pair<byte[], byte[]>> tmpRegionSet = null;
-      try (Table table = connection.getTable(tableName)) {
+      try (Table table = ConnectionUtils.getRawTable(connection, tableName)) {
         tmpRegionSet = getSplits(connection, tableName, splitAlgo);
       }
       LinkedList<Pair<byte[], byte[]>> outstanding = Lists.newLinkedList();

@@ -416,6 +416,11 @@ public class ReplicationSink {
         }
       }
       throw rewde;
+    } catch (RuntimeException re){
+      if (re.getCause() instanceof TableNotFoundException) {
+        throw new TableNotFoundException("'" + tableName + "'");
+      }
+      throw re;
     } catch (InterruptedException ix) {
       throw (InterruptedIOException) new InterruptedIOException().initCause(ix);
     }

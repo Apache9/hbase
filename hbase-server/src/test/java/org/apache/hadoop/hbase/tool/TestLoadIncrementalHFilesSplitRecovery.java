@@ -50,6 +50,7 @@ import org.apache.hadoop.hbase.client.ClusterConnection;
 import org.apache.hadoop.hbase.client.ColumnFamilyDescriptorBuilder;
 import org.apache.hadoop.hbase.client.Connection;
 import org.apache.hadoop.hbase.client.ConnectionFactory;
+import org.apache.hadoop.hbase.client.ConnectionUtils;
 import org.apache.hadoop.hbase.client.RegionInfo;
 import org.apache.hadoop.hbase.client.RegionInfoBuilder;
 import org.apache.hadoop.hbase.client.RegionLocator;
@@ -554,7 +555,7 @@ public class TestLoadIncrementalHFilesSplitRecovery {
     // looks for first region, not any region -- that is how it works now. The below removes first
     // region in test. Was reliant on the Connection caching having first region.
     Connection connection = ConnectionFactory.createConnection(util.getConfiguration());
-    Table table = connection.getTable(tableName);
+    Table table = ConnectionUtils.getRawTable(connection, tableName);
 
     setupTableWithSplitkeys(tableName, 10, SPLIT_KEYS);
     Path dir = buildBulkFiles(tableName, 2);
@@ -576,7 +577,7 @@ public class TestLoadIncrementalHFilesSplitRecovery {
     };
 
     // do bulkload when there is no region hole in hbase:meta.
-    try (Table t = connection.getTable(tableName);
+    try (Table t = ConnectionUtils.getRawTable(connection, tableName);
         RegionLocator locator = connection.getRegionLocator(tableName);
         Admin admin = connection.getAdmin()) {
       loader.doBulkLoad(dir, admin, t, locator);
@@ -597,7 +598,7 @@ public class TestLoadIncrementalHFilesSplitRecovery {
       }
     }
 
-    try (Table t = connection.getTable(tableName);
+    try (Table t = ConnectionUtils.getRawTable(connection, tableName);
         RegionLocator locator = connection.getRegionLocator(tableName);
         Admin admin = connection.getAdmin()) {
       loader.doBulkLoad(dir, admin, t, locator);

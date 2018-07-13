@@ -428,7 +428,8 @@ public class TestMetaWithReplicas {
   public void testAccessingUnknownTables() throws Exception {
     Configuration conf = new Configuration(TEST_UTIL.getConfiguration());
     conf.setBoolean(HConstants.USE_META_REPLICAS, true);
-    Table table = TEST_UTIL.getConnection().getTable(TableName.valueOf(name.getMethodName()));
+    Table table = ConnectionUtils.getRawTable(TEST_UTIL.getConnection(),
+        TableName.valueOf(name.getMethodName()));
     Get get = new Get(Bytes.toBytes("foo"));
     try {
       table.get(get);

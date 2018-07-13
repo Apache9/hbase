@@ -62,6 +62,7 @@ import org.apache.hadoop.hbase.client.Admin;
 import org.apache.hadoop.hbase.client.Append;
 import org.apache.hadoop.hbase.client.Connection;
 import org.apache.hadoop.hbase.client.ConnectionFactory;
+import org.apache.hadoop.hbase.client.ConnectionUtils;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Increment;
@@ -1223,7 +1224,7 @@ public class TestAccessController extends SecureTestUtil {
           p.addColumn(family2, qualifier, Bytes.toBytes("v2"));
 
           try (Connection conn = ConnectionFactory.createConnection(conf);
-              Table t = conn.getTable(tableName);) {
+              Table t = ConnectionUtils.getRawTable(conn, tableName)) {
             t.put(p);
           }
           return null;
@@ -1237,7 +1238,7 @@ public class TestAccessController extends SecureTestUtil {
           p.addColumn(family1, qualifier, Bytes.toBytes("v1"));
 
           try (Connection conn = ConnectionFactory.createConnection(conf);
-              Table t = conn.getTable(tableName)) {
+              Table t = ConnectionUtils.getRawTable(conn, tableName)) {
             t.put(p);
           }
           return null;
@@ -1250,7 +1251,7 @@ public class TestAccessController extends SecureTestUtil {
           Put p = new Put(Bytes.toBytes("a"));
           p.addColumn(family2, qualifier, Bytes.toBytes("v2"));
           try (Connection conn = ConnectionFactory.createConnection(conf);
-              Table t = conn.getTable(tableName);) {
+              Table t = ConnectionUtils.getRawTable(conn, tableName)) {
             t.put(p);
           }
           return null;
@@ -1264,7 +1265,7 @@ public class TestAccessController extends SecureTestUtil {
           g.addFamily(family1);
           g.addFamily(family2);
           try (Connection conn = ConnectionFactory.createConnection(conf);
-              Table t = conn.getTable(tableName);) {
+              Table t = ConnectionUtils.getRawTable(conn, tableName)) {
             t.get(g);
           }
           return null;
@@ -1277,7 +1278,7 @@ public class TestAccessController extends SecureTestUtil {
           Get g = new Get(TEST_ROW);
           g.addFamily(family1);
           try (Connection conn = ConnectionFactory.createConnection(conf);
-              Table t = conn.getTable(tableName)) {
+              Table t = ConnectionUtils.getRawTable(conn, tableName)) {
             t.get(g);
           }
           return null;
@@ -1290,7 +1291,7 @@ public class TestAccessController extends SecureTestUtil {
           Get g = new Get(TEST_ROW);
           g.addFamily(family2);
           try (Connection conn = ConnectionFactory.createConnection(conf);
-              Table t = conn.getTable(tableName)) {
+              Table t = ConnectionUtils.getRawTable(conn, tableName)) {
             t.get(g);
           }
           return null;
@@ -1304,7 +1305,7 @@ public class TestAccessController extends SecureTestUtil {
           d.addFamily(family1);
           d.addFamily(family2);
           try (Connection conn = ConnectionFactory.createConnection(conf);
-              Table t = conn.getTable(tableName)) {
+              Table t = ConnectionUtils.getRawTable(conn, tableName)) {
             t.delete(d);
           }
           return null;
@@ -1317,7 +1318,7 @@ public class TestAccessController extends SecureTestUtil {
           Delete d = new Delete(TEST_ROW);
           d.addFamily(family1);
           try (Connection conn = ConnectionFactory.createConnection(conf);
-              Table t = conn.getTable(tableName)) {
+              Table t = ConnectionUtils.getRawTable(conn, tableName)) {
             t.delete(d);
           }
           return null;
@@ -1330,7 +1331,7 @@ public class TestAccessController extends SecureTestUtil {
           Delete d = new Delete(TEST_ROW);
           d.addFamily(family2);
           try (Connection conn = ConnectionFactory.createConnection(conf);
-              Table t = conn.getTable(tableName)) {
+              Table t = ConnectionUtils.getRawTable(conn, tableName)) {
             t.delete(d);
           }
           return null;
@@ -1471,7 +1472,7 @@ public class TestAccessController extends SecureTestUtil {
           Get g = new Get(TEST_ROW);
           g.addColumn(family1, qualifier);
           try (Connection conn = ConnectionFactory.createConnection(conf);
-              Table t = conn.getTable(tableName)) {
+              Table t = ConnectionUtils.getRawTable(conn, tableName)) {
             t.get(g);
           }
           return null;
@@ -1484,7 +1485,7 @@ public class TestAccessController extends SecureTestUtil {
           Put p = new Put(TEST_ROW);
           p.addColumn(family1, qualifier, Bytes.toBytes("v1"));
           try (Connection conn = ConnectionFactory.createConnection(conf);
-              Table t = conn.getTable(tableName)) {
+              Table t = ConnectionUtils.getRawTable(conn, tableName)) {
             t.put(p);
           }
           return null;
@@ -1498,7 +1499,7 @@ public class TestAccessController extends SecureTestUtil {
           d.addColumn(family1, qualifier);
           // d.deleteFamily(family1);
           try (Connection conn = ConnectionFactory.createConnection(conf);
-              Table t = conn.getTable(tableName)) {
+              Table t = ConnectionUtils.getRawTable(conn, tableName)) {
             t.delete(d);
           }
           return null;
@@ -2253,7 +2254,7 @@ public class TestAccessController extends SecureTestUtil {
       @Override
       public Object run() throws Exception {
         try(Connection conn = ConnectionFactory.createConnection(conf);
-            Table t = conn.getTable(TEST_TABLE);) {
+            Table t = ConnectionUtils.getRawTable(conn, TEST_TABLE)) {
           return t.get(new Get(TEST_ROW));
         }
       }
@@ -2350,7 +2351,7 @@ public class TestAccessController extends SecureTestUtil {
         Put p = new Put(TEST_ROW);
         p.addColumn(TEST_FAMILY, TEST_QUALIFIER, Bytes.toBytes(1));
         try(Connection conn = ConnectionFactory.createConnection(conf);
-            Table t = conn.getTable(TEST_TABLE)) {
+            Table t = ConnectionUtils.getRawTable(conn, TEST_TABLE)) {
           t.put(p);
           return null;
         }

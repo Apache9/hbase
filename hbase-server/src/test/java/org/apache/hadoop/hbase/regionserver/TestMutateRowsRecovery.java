@@ -31,6 +31,7 @@ import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.Admin;
 import org.apache.hadoop.hbase.client.Connection;
 import org.apache.hadoop.hbase.client.ConnectionFactory;
+import org.apache.hadoop.hbase.client.ConnectionUtils;
 import org.apache.hadoop.hbase.client.Durability;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Put;
@@ -100,7 +101,7 @@ public class TestMutateRowsRecovery {
     Table hTable = null;
     try {
       admin = connection.getAdmin();
-      hTable = connection.getTable(tableName);
+      hTable = ConnectionUtils.getRawTable(connection, tableName);
       HTableDescriptor desc = new HTableDescriptor(tableName);
       desc.addFamily(new HColumnDescriptor(fam1));
       admin.createTable(desc);

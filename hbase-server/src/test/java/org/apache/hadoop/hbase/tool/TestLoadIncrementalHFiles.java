@@ -42,6 +42,7 @@ import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.TableNotFoundException;
 import org.apache.hadoop.hbase.client.ColumnFamilyDescriptor;
 import org.apache.hadoop.hbase.client.ColumnFamilyDescriptorBuilder;
+import org.apache.hadoop.hbase.client.ConnectionUtils;
 import org.apache.hadoop.hbase.client.Table;
 import org.apache.hadoop.hbase.client.TableDescriptor;
 import org.apache.hadoop.hbase.client.TableDescriptorBuilder;
@@ -516,7 +517,7 @@ public class TestLoadIncrementalHFiles {
       if (preCreateTable) {
         table = util.createTable(TableName.valueOf(tableName), FAMILY);
       } else {
-        table = util.getConnection().getTable(TableName.valueOf(tableName));
+        table = ConnectionUtils.getRawTable(util.getConnection(), TableName.valueOf(tableName));
       }
 
       final String[] args = { dir.toString(), tableName };

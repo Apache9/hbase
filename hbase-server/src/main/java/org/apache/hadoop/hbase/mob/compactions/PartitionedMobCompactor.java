@@ -56,6 +56,7 @@ import org.apache.hadoop.hbase.TagUtil;
 import org.apache.hadoop.hbase.client.ColumnFamilyDescriptor;
 import org.apache.hadoop.hbase.client.Connection;
 import org.apache.hadoop.hbase.client.ConnectionFactory;
+import org.apache.hadoop.hbase.client.ConnectionUtils;
 import org.apache.hadoop.hbase.client.MobCompactPartitionPolicy;
 import org.apache.hadoop.hbase.client.Table;
 import org.apache.hadoop.hbase.io.HFileLink;
@@ -466,7 +467,7 @@ public class PartitionedMobCompactor extends MobCompactor {
     }
     List<Path> paths = new ArrayList<>();
     final Connection c = ConnectionFactory.createConnection(conf);
-    final Table table = c.getTable(tableName);
+    final Table table = ConnectionUtils.getRawTable(c, tableName);
 
     try {
       Map<CompactionPartitionId, Future<List<Path>>> results = new HashMap<>();

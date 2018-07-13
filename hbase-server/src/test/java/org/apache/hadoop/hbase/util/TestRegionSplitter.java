@@ -32,6 +32,7 @@ import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HRegionLocation;
 import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.client.ConnectionUtils;
 import org.apache.hadoop.hbase.client.RegionLocator;
 import org.apache.hadoop.hbase.client.Table;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
@@ -401,7 +402,7 @@ public class TestRegionSplitter {
             throws Exception {
       // Get region boundaries from the cluster and verify their endpoints
       final int numRegions = expectedBounds.size()-1;
-      try (Table table = UTIL.getConnection().getTable(tableName);
+      try (Table table = ConnectionUtils.getRawTable(UTIL.getConnection(), tableName);
           RegionLocator locator = UTIL.getConnection().getRegionLocator(tableName)) {
         final List<HRegionLocation> regionInfoMap = locator.getAllRegionLocations();
         assertEquals(numRegions, regionInfoMap.size());
