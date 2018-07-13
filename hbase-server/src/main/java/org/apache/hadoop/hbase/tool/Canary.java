@@ -19,589 +19,309 @@
 
 package org.apache.hadoop.hbase.tool;
 
-import static org.apache.hadoop.hbase.HConstants.DEFAULT_ZOOKEEPER_ZNODE_PARENT;
-import static org.apache.hadoop.hbase.HConstants.ZOOKEEPER_ZNODE_PARENT;
+import static org.apache.hadoop.hbase.HConstants.EMPTY_BYTE_ARRAY;
 
-import java.io.Closeable;
 import java.io.IOException;
-import java.net.InetSocketAddress;
+import java.io.UncheckedIOException;
+import java.net.BindException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
-import java.util.EnumSet;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
-import java.util.Set;
-import java.util.TreeSet;
-import java.util.concurrent.Callable;
+import java.util.Map.Entry;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Future;
-import java.util.concurrent.ScheduledThreadPoolExecutor;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.LongAdder;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
+
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.time.StopWatch;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.AuthUtil;
-import org.apache.hadoop.hbase.ChoreService;
-import org.apache.hadoop.hbase.ClusterMetrics;
-import org.apache.hadoop.hbase.ClusterMetrics.Option;
-import org.apache.hadoop.hbase.DoNotRetryIOException;
+import org.apache.hadoop.fs.ContentSummary;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.HBaseConfiguration;
-import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HConstants;
-import org.apache.hadoop.hbase.HRegionLocation;
-import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.MetaTableAccessor;
-import org.apache.hadoop.hbase.NamespaceDescriptor;
-import org.apache.hadoop.hbase.ScheduledChore;
+import org.apache.hadoop.hbase.MetaTableAccessor.Visitor;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.TableNotEnabledException;
 import org.apache.hadoop.hbase.TableNotFoundException;
 import org.apache.hadoop.hbase.client.Admin;
+import org.apache.hadoop.hbase.client.AsyncConnection;
+import org.apache.hadoop.hbase.client.AsyncTable;
 import org.apache.hadoop.hbase.client.ColumnFamilyDescriptor;
+import org.apache.hadoop.hbase.client.ColumnFamilyDescriptorBuilder;
 import org.apache.hadoop.hbase.client.Connection;
 import org.apache.hadoop.hbase.client.ConnectionFactory;
-import org.apache.hadoop.hbase.client.Get;
+import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.RegionInfo;
-import org.apache.hadoop.hbase.client.RegionLocator;
-import org.apache.hadoop.hbase.client.ResultScanner;
+import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.client.Table;
 import org.apache.hadoop.hbase.client.TableDescriptor;
+import org.apache.hadoop.hbase.client.TableDescriptorBuilder;
 import org.apache.hadoop.hbase.filter.FirstKeyOnlyFilter;
-import org.apache.hadoop.hbase.tool.Canary.RegionTask.TaskType;
+import org.apache.hadoop.hbase.http.InfoServer;
 import org.apache.hadoop.hbase.util.Bytes;
-import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
-import org.apache.hadoop.hbase.util.Pair;
-import org.apache.hadoop.hbase.util.ReflectionUtils;
+import org.apache.hadoop.hbase.util.FSUtils;
 import org.apache.hadoop.hbase.util.RegionSplitter;
-import org.apache.hadoop.hbase.zookeeper.EmptyWatcher;
-import org.apache.hadoop.hbase.zookeeper.ZKConfig;
-import org.apache.hadoop.util.GenericOptionsParser;
+import org.apache.hadoop.util.ReflectionUtils;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 import org.apache.yetus.audience.InterfaceAudience;
-import org.apache.zookeeper.KeeperException;
-import org.apache.zookeeper.ZooKeeper;
-import org.apache.zookeeper.client.ConnectStringParser;
-import org.apache.zookeeper.data.Stat;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import org.apache.hbase.thirdparty.com.google.common.collect.Lists;
+import com.xiaomi.infra.hbase.CanaryStatusServlet;
 
 /**
- * HBase Canary Tool, that that can be used to do
- * "canary monitoring" of a running HBase cluster.
- *
- * Here are three modes
- * 1. region mode - Foreach region tries to get one row per column family
- * and outputs some information about failure or latency.
- *
- * 2. regionserver mode - Foreach regionserver tries to get one row from one table
- * selected randomly and outputs some information about failure or latency.
- *
- * 3. zookeeper mode - for each zookeeper instance, selects a zNode and
- * outputs some information about failure or latency.
+ * HBase Canary Tool, that that can be used to do "canary monitoring" of a running HBase cluster.
+ * For each region tries to get one row per column family and outputs some information about failure
+ * or latency.
  */
 @InterfaceAudience.Private
 public final class Canary implements Tool {
   // Sink interface used by the canary to outputs information
   public interface Sink {
-    public long getReadFailureCount();
-    public long incReadFailureCount();
-    public Map<String,String> getReadFailures();
-    public void updateReadFailures(String regionName, String serverName);
-    public long getWriteFailureCount();
-    public long incWriteFailureCount();
-    public Map<String,String> getWriteFailures();
-    public void updateWriteFailures(String regionName, String serverName);
+    void publishOldWalsFilesCount(long count);
+
+    void publishReadFailure(RegionInfo region, Throwable e);
+
+    void publishReadFailure(RegionInfo region, ColumnFamilyDescriptor column, Throwable e);
+
+    void publishReadTiming(RegionInfo region, ColumnFamilyDescriptor column, long msTime);
+
+    void publishWriteFailure(RegionInfo region, Throwable e);
+
+    void publishWriteFailure(RegionInfo region, ColumnFamilyDescriptor column, Throwable e);
+
+    void publishWriteTiming(RegionInfo region, ColumnFamilyDescriptor column, long msTime);
+
+    void reportSummary();
+
+    default double getReadAvailability() {
+      return 100.0;
+    }
+
+    default double getWriteAvailability() {
+      return 100.0;
+    }
+
+    default double getAvailability() {
+      return 100.0;
+    }
   }
 
   // Simple implementation of canary sink that allows to plot on
   // file or standard output timings or failures.
   public static class StdOutSink implements Sink {
-    private AtomicLong readFailureCount = new AtomicLong(0),
-        writeFailureCount = new AtomicLong(0);
-
-    private Map<String, String> readFailures = new ConcurrentHashMap<>();
-    private Map<String, String> writeFailures = new ConcurrentHashMap<>();
-
     @Override
-    public long getReadFailureCount() {
-      return readFailureCount.get();
+    public void publishOldWalsFilesCount(long count) {
+      LOG.error("OldWals files count current not support in StdOutSink");
     }
 
     @Override
-    public long incReadFailureCount() {
-      return readFailureCount.incrementAndGet();
+    public void publishReadFailure(RegionInfo region, Throwable e) {
+      LOG.error(String.format("read from region %s failed", region.getRegionNameAsString()), e);
     }
 
     @Override
-    public Map<String, String> getReadFailures() {
-      return readFailures;
+    public void publishReadFailure(RegionInfo region, ColumnFamilyDescriptor column, Throwable e) {
+      LOG.error(String.format("read from region %s column family %s failed",
+        region.getRegionNameAsString(), column.getNameAsString()), e);
     }
 
     @Override
-    public void updateReadFailures(String regionName, String serverName) {
-      readFailures.put(regionName, serverName);
+    public void publishReadTiming(RegionInfo region, ColumnFamilyDescriptor column, long msTime) {
+      LOG.info(String.format("read from region %s column family %s in %dms",
+        region.getRegionNameAsString(), column.getNameAsString(), msTime));
     }
 
     @Override
-    public long getWriteFailureCount() {
-      return writeFailureCount.get();
+    public void publishWriteFailure(RegionInfo region, Throwable e) {
+      LOG.error(String.format("write to region %s failed", region.getRegionNameAsString()), e);
     }
 
     @Override
-    public long incWriteFailureCount() {
-      return writeFailureCount.incrementAndGet();
+    public void publishWriteFailure(RegionInfo region, ColumnFamilyDescriptor column, Throwable e) {
+      LOG.error(String.format("write to region %s column family %s failed",
+        region.getRegionNameAsString(), column.getNameAsString()), e);
     }
 
     @Override
-    public Map<String, String> getWriteFailures() {
-      return writeFailures;
+    public void publishWriteTiming(RegionInfo region, ColumnFamilyDescriptor column, long msTime) {
+      LOG.info(String.format("write to region %s column family %s in %dms",
+        region.getRegionNameAsString(), column.getNameAsString(), msTime));
     }
 
     @Override
-    public void updateWriteFailures(String regionName, String serverName) {
-      writeFailures.put(regionName, serverName);
+    public void reportSummary() {
     }
   }
 
-  public static class RegionServerStdOutSink extends StdOutSink {
-
-    public void publishReadFailure(String table, String server) {
-      incReadFailureCount();
-      LOG.error(String.format("Read from table:%s on region server:%s", table, server));
-    }
-
-    public void publishReadTiming(String table, String server, long msTime) {
-      LOG.info(String.format("Read from table:%s on region server:%s in %dms",
-          table, server, msTime));
-    }
-  }
-
-  public static class ZookeeperStdOutSink extends StdOutSink {
-
-    public void publishReadFailure(String zNode, String server) {
-      incReadFailureCount();
-      LOG.error(String.format("Read from zNode:%s on zookeeper instance:%s", zNode, server));
-    }
-
-    public void publishReadTiming(String znode, String server, long msTime) {
-      LOG.info(String.format("Read from zNode:%s on zookeeper instance:%s in %dms",
-          znode, server, msTime));
-    }
-  }
-
-  public static class RegionStdOutSink extends StdOutSink {
-
-    private Map<String, LongAdder> perTableReadLatency = new HashMap<>();
-    private LongAdder writeLatency = new LongAdder();
-
-    public void publishReadFailure(ServerName serverName, RegionInfo region, Exception e) {
-      incReadFailureCount();
-      LOG.error(String.format("read from region %s on regionserver %s failed", region.getRegionNameAsString(), serverName), e);
-    }
-
-    public void publishReadFailure(ServerName serverName, RegionInfo region, ColumnFamilyDescriptor column, Exception e) {
-      incReadFailureCount();
-      LOG.error(String.format("read from region %s on regionserver %s column family %s failed",
-        region.getRegionNameAsString(), serverName, column.getNameAsString()), e);
-    }
-
-    public void publishReadTiming(ServerName serverName, RegionInfo region, ColumnFamilyDescriptor column, long msTime) {
-      LOG.info(String.format("read from region %s on regionserver %s column family %s in %dms",
-        region.getRegionNameAsString(), serverName, column.getNameAsString(), msTime));
-    }
-
-    public void publishWriteFailure(ServerName serverName, RegionInfo region, Exception e) {
-      incWriteFailureCount();
-      LOG.error(String.format("write to region %s on regionserver %s failed", region.getRegionNameAsString(), serverName), e);
-    }
-
-    public void publishWriteFailure(ServerName serverName, RegionInfo region, ColumnFamilyDescriptor column, Exception e) {
-      incWriteFailureCount();
-      LOG.error(String.format("write to region %s on regionserver %s column family %s failed",
-        region.getRegionNameAsString(), serverName, column.getNameAsString()), e);
-    }
-
-    public void publishWriteTiming(ServerName serverName, RegionInfo region, ColumnFamilyDescriptor column, long msTime) {
-      LOG.info(String.format("write to region %s on regionserver %s column family %s in %dms",
-        region.getRegionNameAsString(), serverName, column.getNameAsString(), msTime));
-    }
-
-    public Map<String, LongAdder> getReadLatencyMap() {
-      return this.perTableReadLatency;
-    }
-
-    public LongAdder initializeAndGetReadLatencyForTable(String tableName) {
-      LongAdder initLatency = new LongAdder();
-      this.perTableReadLatency.put(tableName, initLatency);
-      return initLatency;
-    }
-
-    public void initializeWriteLatency() {
-      this.writeLatency.reset();
-    }
-
-    public LongAdder getWriteLatency() {
-      return this.writeLatency;
-    }
-  }
-
-  static class ZookeeperTask implements Callable<Void> {
-    private final Connection connection;
-    private final String host;
-    private String znode;
-    private final int timeout;
-    private ZookeeperStdOutSink sink;
-
-    public ZookeeperTask(Connection connection, String host, String znode, int timeout,
-        ZookeeperStdOutSink sink) {
-      this.connection = connection;
-      this.host = host;
-      this.znode = znode;
-      this.timeout = timeout;
-      this.sink = sink;
-    }
-
-    @Override public Void call() throws Exception {
-      ZooKeeper zooKeeper = null;
-      try {
-        zooKeeper = new ZooKeeper(host, timeout, EmptyWatcher.instance);
-        Stat exists = zooKeeper.exists(znode, false);
-        StopWatch stopwatch = new StopWatch();
-        stopwatch.start();
-        zooKeeper.getData(znode, false, exists);
-        stopwatch.stop();
-        sink.publishReadTiming(znode, host, stopwatch.getTime());
-      } catch (KeeperException | InterruptedException e) {
-        sink.publishReadFailure(znode, host);
-      } finally {
-        if (zooKeeper != null) {
-          zooKeeper.close();
-        }
-      }
-      return null;
+  private static byte[] randomKey(byte[] start, byte[] end) {
+    try {
+      return Bytes.randomKey(start, end);
+    } catch (IOException e) {
+      // should not happen
+      throw new UncheckedIOException(e);
     }
   }
 
   /**
-   * For each column family of the region tries to get one row and outputs the latency, or the
-   * failure.
+   * Contact a region server and get all information from it
    */
-  static class RegionTask implements Callable<Void> {
-    public enum TaskType{
-      READ, WRITE
-    }
-    private Connection connection;
-    private RegionInfo region;
-    private RegionStdOutSink sink;
-    private TaskType taskType;
-    private boolean rawScanEnabled;
-    private ServerName serverName;
-    private LongAdder readWriteLatency;
+  static class RegionTask {
+    private final AsyncTable<?> table;
+    private final TableDescriptor tableDesc;
+    private final RegionInfo region;
+    private final ServerName server;
+    private final Sink sink;
+    private final Canary canary;
 
-    RegionTask(Connection connection, RegionInfo region, ServerName serverName, RegionStdOutSink sink,
-        TaskType taskType, boolean rawScanEnabled, LongAdder rwLatency) {
-      this.connection = connection;
+    RegionTask(AsyncTable<?> table, TableDescriptor tableDesc, RegionInfo region, ServerName server,
+        Sink sink, Canary canary) {
+      this.table = table;
+      this.tableDesc = tableDesc;
       this.region = region;
-      this.serverName = serverName;
+      this.server = server;
       this.sink = sink;
-      this.taskType = taskType;
-      this.rawScanEnabled = rawScanEnabled;
-      this.readWriteLatency = rwLatency;
+      this.canary = canary;
     }
 
-    @Override
-    public Void call() {
-      switch (taskType) {
-      case READ:
-        return read();
-      case WRITE:
-        return write();
-      default:
-        return read();
-      }
+    /**
+     * check read for normal user tables
+     * @return
+     */
+    private CompletableFuture<Void> read() {
+      List<CompletableFuture<?>> futures = new ArrayList<>();
+      Arrays.stream(tableDesc.getColumnFamilies()).forEach(column -> {
+        StopWatch watch = new StopWatch();
+        watch.start();
+        futures.add(table
+            .scanAll(new Scan().withStartRow(randomKey(region.getStartKey(), region.getEndKey()))
+                .withStopRow(region.getEndKey()).addFamily(column.getName()).setRaw(true)
+                .setFilter(new FirstKeyOnlyFilter()).setCacheBlocks(false).setOneRowLimit())
+            .whenComplete((r, e) -> {
+              if (e != null) {
+                handleReadException(e, column);
+              } else {
+                watch.stop();
+                sink.publishReadTiming(region, column, watch.getTime());
+              }
+            }));
+      });
+      return CompletableFuture.allOf(futures.toArray(new CompletableFuture<?>[0]));
     }
 
-    public Void read() {
-      Table table = null;
-      TableDescriptor tableDesc = null;
-      try {
-        if (LOG.isDebugEnabled()) {
-          LOG.debug(String.format("reading table descriptor for table %s",
-            region.getTable()));
-        }
-        table = connection.getTable(region.getTable());
-        tableDesc = table.getDescriptor();
-      } catch (IOException e) {
-        LOG.debug("sniffRegion failed", e);
-        sink.publishReadFailure(serverName, region, e);
-        if (table != null) {
-          try {
-            table.close();
-          } catch (IOException ioe) {
-            LOG.error("Close table failed", e);
-          }
-        }
-        return null;
+    private void handleReadException(Throwable e, ColumnFamilyDescriptor column) {
+      // check whether the table is enabled by the exception message. The exception
+      // is RetriesExhaustedException, we need to judge from the its message
+      // table deleted or disabled. galaxy(sds/emq) will run bvt all the time, and will
+      // create/delete table in bvt, this will make the region unavailable.
+      if (e instanceof TableNotFoundException || e instanceof TableNotEnabledException
+          || e.getMessage().contains("TableNotFoundException")
+          || e.getMessage().contains("is disabled")) {
+        LOG.warn("read failure from disabled or deleted table, region=" + region.getEncodedName()
+            + ", table=" + tableDesc.getTableName().getNameAsString());
+        return;
       }
+      clearCacheAndPublishReadFailure(column, e);
+    }
 
-      byte[] startKey = null;
-      Get get = null;
-      Scan scan = null;
-      ResultScanner rs = null;
-      StopWatch stopWatch = new StopWatch();
-      for (ColumnFamilyDescriptor column : tableDesc.getColumnFamilies()) {
-        stopWatch.reset();
-        startKey = region.getStartKey();
-        // Can't do a get on empty start row so do a Scan of first element if any instead.
-        if (startKey.length > 0) {
-          get = new Get(startKey);
-          get.setCacheBlocks(false);
-          get.setFilter(new FirstKeyOnlyFilter());
-          get.addFamily(column.getName());
-        } else {
-          scan = new Scan();
-          if (LOG.isDebugEnabled()) {
-            LOG.debug(String.format("rawScan : %s for table: %s", rawScanEnabled,
-              tableDesc.getTableName()));
-          }
-          scan.setRaw(rawScanEnabled);
-          scan.setCaching(1);
-          scan.setCacheBlocks(false);
-          scan.setFilter(new FirstKeyOnlyFilter());
-          scan.addFamily(column.getName());
-          scan.setMaxResultSize(1L);
-          scan.setOneRowLimit();
-        }
-
-        if (LOG.isDebugEnabled()) {
-          LOG.debug(String.format("reading from table %s region %s column family %s and key %s",
-            tableDesc.getTableName(), region.getRegionNameAsString(), column.getNameAsString(),
-            Bytes.toStringBinary(startKey)));
-        }
-        try {
-          stopWatch.start();
-          if (startKey.length > 0) {
-            table.get(get);
-          } else {
-            rs = table.getScanner(scan);
-            rs.next();
-          }
-          stopWatch.stop();
-          this.readWriteLatency.add(stopWatch.getTime());
-          sink.publishReadTiming(serverName, region, column, stopWatch.getTime());
-        } catch (Exception e) {
-          sink.publishReadFailure(serverName, region, column, e);
-          sink.updateReadFailures(region.getRegionNameAsString(), serverName.getHostname());
-        } finally {
-          if (rs != null) {
-            rs.close();
-          }
-          scan = null;
-          get = null;
-        }
+    private void clearCacheAndPublishReadFailure(ColumnFamilyDescriptor column, Throwable e) {
+      canary.clearCachedTasks(tableDesc.getTableName().getNameAsString());
+      canary.recordFailure(server, tableDesc.getTableName());
+      if (column == null) {
+        sink.publishReadFailure(region, e);
+      } else {
+        sink.publishReadFailure(region, column, e);
       }
-      try {
-        table.close();
-      } catch (IOException e) {
-        LOG.error("Close table failed", e);
-      }
-      return null;
     }
 
     /**
      * Check writes for the canary table
      * @return
      */
-    private Void write() {
-      Table table = null;
-      TableDescriptor tableDesc = null;
-      try {
-        table = connection.getTable(region.getTable());
-        tableDesc = table.getDescriptor();
-        byte[] rowToCheck = region.getStartKey();
-        if (rowToCheck.length == 0) {
-          rowToCheck = new byte[]{0x0};
-        }
-        int writeValueSize =
-            connection.getConfiguration().getInt(HConstants.HBASE_CANARY_WRITE_VALUE_SIZE_KEY, 10);
-        for (ColumnFamilyDescriptor column : tableDesc.getColumnFamilies()) {
-          Put put = new Put(rowToCheck);
-          byte[] value = new byte[writeValueSize];
-          Bytes.random(value);
-          put.addColumn(column.getName(), HConstants.EMPTY_BYTE_ARRAY, value);
+    private CompletableFuture<Void> write() {
+      List<CompletableFuture<?>> futures = new ArrayList<>();
+      Arrays.stream(tableDesc.getColumnFamilies()).forEach(column -> {
+        StopWatch watch = new StopWatch();
+        watch.start();
+        futures.add(table
+            .put(new Put(randomKey(region.getStartKey(), region.getEndKey()))
+                .addColumn(column.getName(), EMPTY_BYTE_ARRAY, EMPTY_BYTE_ARRAY))
+            .whenComplete((r, e) -> {
+              if (e != null) {
+                sink.publishWriteFailure(region, column, e);
+                canary.recordFailure(server, tableDesc.getTableName());
+              } else {
+                watch.stop();
+                sink.publishWriteTiming(region, column, watch.getTime());
+              }
+            }));
+      });
+      return CompletableFuture.allOf(futures.toArray(new CompletableFuture<?>[0]));
+    }
 
-          if (LOG.isDebugEnabled()) {
-            LOG.debug(String.format("writing to table %s region %s column family %s and key %s",
-              tableDesc.getTableName(), region.getRegionNameAsString(), column.getNameAsString(),
-              Bytes.toStringBinary(rowToCheck)));
-          }
-          try {
-            long startTime = System.currentTimeMillis();
-            table.put(put);
-            long time = System.currentTimeMillis() - startTime;
-            this.readWriteLatency.add(time);
-            sink.publishWriteTiming(serverName, region, column, time);
-          } catch (Exception e) {
-            sink.publishWriteFailure(serverName, region, column, e);
-          }
-        }
-        table.close();
-      } catch (IOException e) {
-        sink.publishWriteFailure(serverName, region, e);
-        sink.updateWriteFailures(region.getRegionNameAsString(), serverName.getHostname() );
+    public CompletableFuture<Void> call() {
+      if (DEFAULT_WRITE_TABLE_NAME.equals(tableDesc.getTableName())) {
+        return write();
+      } else {
+        return read();
       }
-      return null;
     }
   }
 
-  /**
-   * Get one row from a region on the regionserver and outputs the latency, or the failure.
-   */
-  static class RegionServerTask implements Callable<Void> {
-    private Connection connection;
-    private String serverName;
-    private RegionInfo region;
-    private RegionServerStdOutSink sink;
-    private AtomicLong successes;
+  private static final String EXCLUDE_NAMESPACE = "hbase.canary.exclude.namespace";
+  private String excludeNamespace;
 
-    RegionServerTask(Connection connection, String serverName, RegionInfo region,
-        RegionServerStdOutSink sink, AtomicLong successes) {
-      this.connection = connection;
-      this.serverName = serverName;
-      this.region = region;
-      this.sink = sink;
-      this.successes = successes;
-    }
+  public static final String CANARY = "canary";
+  public static final String CANARY_CONF = "canary_conf";
+  public static final TableName DEFAULT_WRITE_TABLE_NAME = TableName.valueOf("hbase:canary");
+  private static final byte[] CANARY_TABLE_FAMILY_NAME = Bytes.toBytes("Test");
+  private static int DEFAULT_REGIONS_PER_SERVER = 2;
 
-    @Override
-    public Void call() {
-      TableName tableName = null;
-      Table table = null;
-      Get get = null;
-      byte[] startKey = null;
-      Scan scan = null;
-      StopWatch stopWatch = new StopWatch();
-      // monitor one region on every region server
-      stopWatch.reset();
-      try {
-        tableName = region.getTable();
-        table = connection.getTable(tableName);
-        startKey = region.getStartKey();
-        // Can't do a get on empty start row so do a Scan of first element if any instead.
-        if (LOG.isDebugEnabled()) {
-          LOG.debug(String.format("reading from region server %s table %s region %s and key %s",
-            serverName, region.getTable(), region.getRegionNameAsString(),
-            Bytes.toStringBinary(startKey)));
-        }
-        if (startKey.length > 0) {
-          get = new Get(startKey);
-          get.setCacheBlocks(false);
-          get.setFilter(new FirstKeyOnlyFilter());
-          stopWatch.start();
-          table.get(get);
-          stopWatch.stop();
-        } else {
-          scan = new Scan();
-          scan.setCacheBlocks(false);
-          scan.setFilter(new FirstKeyOnlyFilter());
-          scan.setCaching(1);
-          scan.setMaxResultSize(1L);
-          scan.setOneRowLimit();
-          stopWatch.start();
-          ResultScanner s = table.getScanner(scan);
-          s.next();
-          s.close();
-          stopWatch.stop();
-        }
-        successes.incrementAndGet();
-        sink.publishReadTiming(tableName.getNameAsString(), serverName, stopWatch.getTime());
-      } catch (TableNotFoundException tnfe) {
-        LOG.error("Table may be deleted", tnfe);
-        // This is ignored because it doesn't imply that the regionserver is dead
-      } catch (TableNotEnabledException tnee) {
-        // This is considered a success since we got a response.
-        successes.incrementAndGet();
-        LOG.debug("The targeted table was disabled.  Assuming success.");
-      } catch (DoNotRetryIOException dnrioe) {
-        sink.publishReadFailure(tableName.getNameAsString(), serverName);
-        LOG.error(dnrioe.toString(), dnrioe);
-      } catch (IOException e) {
-        sink.publishReadFailure(tableName.getNameAsString(), serverName);
-        LOG.error(e.toString(), e);
-      } finally {
-        if (table != null) {
-          try {
-            table.close();
-          } catch (IOException e) {/* DO NOTHING */
-            LOG.error("Close table failed", e);
-          }
-        }
-        scan = null;
-        get = null;
-        startKey = null;
-      }
-      return null;
-    }
-  }
+  private static final int DEFAULT_MAX_CONCURRENCY = 200;
 
-  private static final int USAGE_EXIT_CODE = 1;
-  private static final int INIT_ERROR_EXIT_CODE = 2;
-  private static final int TIMEOUT_ERROR_EXIT_CODE = 3;
-  private static final int ERROR_EXIT_CODE = 4;
-  private static final int FAILURE_EXIT_CODE = 5;
-
-  private static final long DEFAULT_INTERVAL = 60000;
+  private static final long DEFAULT_INTERVAL = 6000;
 
   private static final long DEFAULT_TIMEOUT = 600000; // 10 mins
-  private static final int MAX_THREADS_NUM = 16; // #threads to contact regions
 
-  private static final Logger LOG = LoggerFactory.getLogger(Canary.class);
+  private static final Log LOG = LogFactory.getLog(Canary.class);
 
-  public static final TableName DEFAULT_WRITE_TABLE_NAME = TableName.valueOf(
-    NamespaceDescriptor.SYSTEM_NAMESPACE_NAME_STR, "canary");
+  private final Sink sink;
+  private Configuration conf;
+  private Connection conn;
+  private Admin admin;
+  private AsyncConnection asyncConn;
+  private long interval;
+  private long timeout;
+  private int maxConcurrency;
+  private List<RegionTask> tasks;
+  private final ConcurrentMap<String, List<RegionTask>> cachedTasks =
+      new ConcurrentHashMap<String, List<RegionTask>>();
+  private FileSystem fs;
+  private Path rootdir;
+  private Map<ServerName, Integer> failuresByServer;
+  private Map<TableName, Integer> failuresByTable;
+  private InfoServer infoServer;
 
-  private static final String CANARY_TABLE_FAMILY_NAME = "Test";
-
-  private Configuration conf = null;
-  private long interval = 0;
-  private Sink sink = null;
-
-  private boolean useRegExp;
-  private long timeout = DEFAULT_TIMEOUT;
-  private boolean failOnError = true;
-  private boolean regionServerMode = false;
-  private boolean zookeeperMode = false;
-  private boolean regionServerAllRegions = false;
-  private boolean writeSniffing = false;
-  private long configuredWriteTableTimeout = DEFAULT_TIMEOUT;
-  private boolean treatFailureAsError = false;
-  private TableName writeTableName = DEFAULT_WRITE_TABLE_NAME;
-  private HashMap<String, Long> configuredReadTableTimeouts = new HashMap<>();
-
-  private ExecutorService executor; // threads to retrieve data from regionservers
-
-  public Canary() {
-    this(new ScheduledThreadPoolExecutor(1), new RegionServerStdOutSink());
-  }
-
-  public Canary(ExecutorService executor, Sink sink) {
-    this.executor = executor;
+  public Canary(Sink sink) {
     this.sink = sink;
+    this.failuresByServer = new ConcurrentHashMap<>();
+    this.failuresByTable = new ConcurrentHashMap<>();
   }
 
   @Override
@@ -614,14 +334,102 @@ public final class Canary implements Tool {
     this.conf = conf;
   }
 
-  private int parseArgs(String[] args) {
-    int index = -1;
+  private void putUpWebUI() throws IOException {
+    int port = this.conf.getInt("hbase.canary.info.port", 60050);
+    // -1 is for disabling info server
+    if (port < 0) return;
+    String addr = this.conf.get("hbase.canary.info.bindAddress", "0.0.0.0");
+    try {
+      this.infoServer = new InfoServer("canary", addr, port, false, this.conf);
+      this.infoServer.addServlet("status", "/canary-status", CanaryStatusServlet.class);
+      this.infoServer.setAttribute(CANARY, this);
+      this.infoServer.setAttribute(CANARY_CONF, conf);
+      this.infoServer.start();
+      LOG.info("Bind http info server to port: " + port);
+    } catch (BindException e) {
+      LOG.info("Failed binding http info server to port: " + port);
+    }
+  }
+
+  private long lastCheckTime;
+
+  private void runOnce(List<String> tables) throws InterruptedException {
+    long startTime = System.currentTimeMillis();
+
+    try {
+      tasks = getSniffTasks(tables);
+    } catch (Exception e) {
+      LOG.error("Update sniff tasks failed. Using previous sniffing tasks", e);
+    }
+
+    // clear cached tasks and check canary distribution for 10 minutes
+    if (System.currentTimeMillis() - lastCheckTime > 10 * 60 * 1000) {
+      clearCachedTasks();
+      try {
+        checkCanaryDistribution();
+      } catch (Exception e) {
+        LOG.error("Check canary distribution failed.", e);
+      }
+      lastCheckTime = System.currentTimeMillis();
+    }
+
+    // clear the previous failures
+    this.failuresByServer.clear();
+    this.failuresByTable.clear();
+
+    List<RegionTask> tasksNotRun = new ArrayList<>();
+    Semaphore concurrencyControl = new Semaphore(maxConcurrency);
+    CountDownLatch unfinishedTasks = new CountDownLatch(tasks.size());
+    tasks.forEach(task -> {
+      // check whether we have already timed out
+      long remainingTime = timeout - (System.currentTimeMillis() - startTime);
+      if (remainingTime <= 0) {
+        tasksNotRun.add(task);
+        unfinishedTasks.countDown();
+        return;
+      }
+      try {
+        if (!concurrencyControl.tryAcquire(remainingTime, TimeUnit.MILLISECONDS)) {
+          tasksNotRun.add(task);
+          unfinishedTasks.countDown();
+          return;
+        }
+      } catch (InterruptedException e) {
+        tasksNotRun.add(task);
+        unfinishedTasks.countDown();
+        return;
+      }
+      task.call().whenComplete((r, e) -> {
+        concurrencyControl.release();
+        if (e != null) {
+          LOG.error("Sniff region failed", e);
+        }
+        unfinishedTasks.countDown();
+      });
+    });
+    checkOldWalsFilesCount();
+    unfinishedTasks.await();
+    sink.reportSummary();
+    long finishTime = System.currentTimeMillis();
+    LOG.info("Finish one turn sniff, consume(ms)=" + (finishTime - startTime) + ", interval(ms)="
+        + interval + ", timeout(ms)=" + timeout + ", taskCount=" + tasks.size()
+        + ", taskNotRunCount=" + tasksNotRun.size());
+    logFailedServerAndTable();
+    if (finishTime < startTime + interval) {
+      Thread.sleep(startTime + interval - finishTime);
+    }
+  }
+
+  @Override
+  public int run(String[] args) throws Exception {
+    int tablesIndex = -1;
+
     // Process command line args
     for (int i = 0; i < args.length; i++) {
       String cmd = args[i];
 
       if (cmd.startsWith("-")) {
-        if (index >= 0) {
+        if (tablesIndex >= 0) {
           // command line args must be in the form: [opts] [table 1 [table 2 ...]]
           System.err.println("Invalid command line options");
           printUsageAndExit();
@@ -648,938 +456,261 @@ public final class Canary implements Tool {
             System.err.println("-interval needs a numeric value argument.");
             printUsageAndExit();
           }
-        } else if (cmd.equals("-zookeeper")) {
-          this.zookeeperMode = true;
-        } else if(cmd.equals("-regionserver")) {
-          this.regionServerMode = true;
-        } else if(cmd.equals("-allRegions")) {
-          this.regionServerAllRegions = true;
-        } else if(cmd.equals("-writeSniffing")) {
-          this.writeSniffing = true;
-        } else if(cmd.equals("-treatFailureAsError")) {
-          this.treatFailureAsError = true;
-        } else if (cmd.equals("-e")) {
-          this.useRegExp = true;
-        } else if (cmd.equals("-t")) {
-          i++;
-
-          if (i == args.length) {
-            System.err.println("-t needs a numeric value argument.");
-            printUsageAndExit();
-          }
-
-          try {
-            this.timeout = Long.parseLong(args[i]);
-          } catch (NumberFormatException e) {
-            System.err.println("-t needs a numeric value argument.");
-            printUsageAndExit();
-          }
-        } else if(cmd.equals("-writeTableTimeout")) {
-          i++;
-
-          if (i == args.length) {
-            System.err.println("-writeTableTimeout needs a numeric value argument.");
-            printUsageAndExit();
-          }
-
-          try {
-            this.configuredWriteTableTimeout = Long.parseLong(args[i]);
-          } catch (NumberFormatException e) {
-            System.err.println("-writeTableTimeout needs a numeric value argument.");
-            printUsageAndExit();
-          }
-        } else if (cmd.equals("-writeTable")) {
-          i++;
-
-          if (i == args.length) {
-            System.err.println("-writeTable needs a string value argument.");
-            printUsageAndExit();
-          }
-          this.writeTableName = TableName.valueOf(args[i]);
-        } else if (cmd.equals("-f")) {
-          i++;
-
-          if (i == args.length) {
-            System.err
-                .println("-f needs a boolean value argument (true|false).");
-            printUsageAndExit();
-          }
-
-          this.failOnError = Boolean.parseBoolean(args[i]);
-        } else if (cmd.equals("-readTableTimeouts")) {
-          i++;
-
-          if (i == args.length) {
-            System.err.println("-readTableTimeouts needs a comma-separated list of read timeouts per table (without spaces).");
-            printUsageAndExit();
-          }
-          String [] tableTimeouts = args[i].split(",");
-          for (String tT: tableTimeouts) {
-            String [] nameTimeout = tT.split("=");
-            if (nameTimeout.length < 2) {
-              System.err.println("Each -readTableTimeouts argument must be of the form <tableName>=<read timeout>.");
-              printUsageAndExit();
-            }
-            long timeoutVal = 0L;
-            try {
-              timeoutVal = Long.parseLong(nameTimeout[1]);
-            } catch (NumberFormatException e) {
-              System.err.println("-readTableTimeouts read timeout for each table must be a numeric value argument.");
-              printUsageAndExit();
-            }
-            this.configuredReadTableTimeouts.put(nameTimeout[0], timeoutVal);
-          }
         } else {
           // no options match
           System.err.println(cmd + " options is invalid.");
           printUsageAndExit();
         }
-      } else if (index < 0) {
+      } else if (tablesIndex < 0) {
         // keep track of first table name specified by the user
-        index = i;
+        tablesIndex = i;
       }
     }
-    if (this.regionServerAllRegions && !this.regionServerMode) {
-      System.err.println("-allRegions can only be specified in regionserver mode.");
-      printUsageAndExit();
-    }
-    if (this.zookeeperMode) {
-      if (this.regionServerMode || this.regionServerAllRegions || this.writeSniffing) {
-        System.err.println("-zookeeper is exclusive and cannot be combined with "
-            + "other modes.");
-        printUsageAndExit();
+    List<String> tables = new ArrayList<>();
+    if (tablesIndex >= 0) {
+      for (int i = tablesIndex; i < args.length; i++) {
+        tables.add(args[i]);
       }
     }
-    if (!this.configuredReadTableTimeouts.isEmpty() && (this.regionServerMode || this.zookeeperMode)) {
-      System.err.println("-readTableTimeouts can only be configured in region mode.");
-      printUsageAndExit();
-    }
-    return index;
-  }
 
-  @Override
-  public int run(String[] args) throws Exception {
-    int index = parseArgs(args);
-    ChoreService choreService = null;
-
-    // Launches chore for refreshing kerberos credentials if security is enabled.
-    // Please see http://hbase.apache.org/book.html#_running_canary_in_a_kerberos_enabled_cluster
-    // for more details.
-    final ScheduledChore authChore = AuthUtil.getAuthChore(conf);
-    if (authChore != null) {
-      choreService = new ChoreService("CANARY_TOOL");
-      choreService.scheduleChore(authChore);
-    }
-
-    // Start to prepare the stuffs
-    Monitor monitor = null;
-    Thread monitorThread = null;
-    long startTime = 0;
-    long currentTimeLength = 0;
-    // Get a connection to use in below.
-    try (Connection connection = ConnectionFactory.createConnection(this.conf)) {
-      do {
-        // Do monitor !!
-        try {
-          monitor = this.newMonitor(connection, index, args);
-          monitorThread = new Thread(monitor, "CanaryMonitor-" + System.currentTimeMillis());
-          startTime = System.currentTimeMillis();
-          monitorThread.start();
-          while (!monitor.isDone()) {
-            // wait for 1 sec
-            Thread.sleep(1000);
-            // exit if any error occurs
-            if (this.failOnError && monitor.hasError()) {
-              monitorThread.interrupt();
-              if (monitor.initialized) {
-                return monitor.errorCode;
-              } else {
-                return INIT_ERROR_EXIT_CODE;
-              }
-            }
-            currentTimeLength = System.currentTimeMillis() - startTime;
-            if (currentTimeLength > this.timeout) {
-              LOG.error("The monitor is running too long (" + currentTimeLength
-                  + ") after timeout limit:" + this.timeout
-                  + " will be killed itself !!");
-              if (monitor.initialized) {
-                return TIMEOUT_ERROR_EXIT_CODE;
-              } else {
-                return INIT_ERROR_EXIT_CODE;
-              }
-            }
-          }
-
-          if (this.failOnError && monitor.finalCheckForErrors()) {
-            monitorThread.interrupt();
-            return monitor.errorCode;
-          }
-        } finally {
-          if (monitor != null) monitor.close();
+    // initialize HBase conf and admin
+    maxConcurrency = conf.getInt("hbase.canary.concurrency.max", DEFAULT_MAX_CONCURRENCY);
+    timeout = conf.getLong("hbase.canary.executor.timeout", DEFAULT_TIMEOUT);
+    conn = ConnectionFactory.createConnection(conf);
+    admin = conn.getAdmin();
+    asyncConn = ConnectionFactory.createAsyncConnection(conf).get();
+    lastCheckTime = System.currentTimeMillis();
+    rootdir = FSUtils.getRootDir(conf);
+    fs = rootdir.getFileSystem(conf);
+    excludeNamespace = conf.get(EXCLUDE_NAMESPACE, "");
+    // initialize server principal (if using secure Hadoop)
+    // User.login(conf, "hbase.canary.keytab.file", "hbase.canary.kerberos.principal", hostname);
+    // lets the canary monitor the cluster
+    try {
+      putUpWebUI();
+      runOnce(tables);
+      if (interval > 0) {
+        for (;;) {
+          runOnce(tables);
         }
-
-        Thread.sleep(interval);
-      } while (interval > 0);
-    } // try-with-resources close
-
-    if (choreService != null) {
-      choreService.shutdown();
+      }
+    } finally {
+      IOUtils.closeQuietly(asyncConn);
+      IOUtils.closeQuietly(admin);
+      IOUtils.closeQuietly(conn);
+      IOUtils.closeQuietly(fs);
     }
-    return monitor.errorCode;
+    return 0;
   }
 
-  public Map<String, String> getReadFailures()  {
-    return sink.getReadFailures();
+  public List<Entry<ServerName, Integer>> getFailuresByServer() {
+    return failuresByServer.entrySet().stream()
+        .sorted((o1, o2) -> o2.getValue().compareTo(o1.getValue())).collect(Collectors.toList());
   }
 
-  public Map<String, String> getWriteFailures()  {
-    return sink.getWriteFailures();
+  public List<Entry<TableName, Integer>> getFailuresByTable() {
+    return failuresByTable.entrySet().stream()
+        .sorted((o1, o2) -> o2.getValue().compareTo(o1.getValue())).collect(Collectors.toList());
+  }
+
+  public double getReadAvailability() {
+    return sink.getReadAvailability();
+  }
+
+  public double getWriteAvailability() {
+    return sink.getWriteAvailability();
+  }
+
+  public double getAvailability() {
+    return sink.getAvailability();
+  }
+
+  private void logFailedServerAndTable() {
+    failuresByServer.entrySet().stream().sorted((o1, o2) -> o2.getValue().compareTo(o1.getValue()))
+        .forEach(entry -> {
+          LOG.warn("Failed server and count: " + entry.getKey() + " , " + entry.getValue());
+        });
+    failuresByTable.entrySet().stream().sorted((o1, o2) -> o2.getValue().compareTo(o1.getValue()))
+        .forEach(entry -> {
+          LOG.warn("Failed table and count: " + entry.getKey() + " , " + entry.getValue());
+        });
+  }
+
+  private void checkOldWalsFilesCount() {
+    try {
+      Path oldWalPath = new Path(rootdir, HConstants.HREGION_OLDLOGDIR_NAME);
+      ContentSummary contentSummary = fs.getContentSummary(oldWalPath);
+      sink.publishOldWalsFilesCount(contentSummary.getFileCount());
+    } catch (IOException e) {
+      LOG.info("check oldWal directory failed, ", e);
+    }
+  }
+
+  /**
+   * Update sniff tasks
+   * @param tables
+   */
+  private List<RegionTask> getSniffTasks(List<String> tables) throws Exception {
+    List<RegionTask> tmpTasks = new ArrayList<>();
+    if (tables.size() > 0) {
+      for (String table : tables) {
+        tmpTasks.addAll(sniff(table));
+      }
+    } else {
+      tmpTasks = sniff();
+    }
+    Collections.shuffle(tmpTasks);
+    return tmpTasks;
   }
 
   private void printUsageAndExit() {
-    System.err.println(
-      "Usage: hbase canary [opts] [table1 [table2]...] | [regionserver1 [regionserver2]..]");
+    System.err.printf("Usage: bin/hbase %s [opts] [table 1 [table 2...]]\n", getClass().getName());
     System.err.println(" where [opts] are:");
     System.err.println("   -help          Show this help and exit.");
-    System.err.println("   -regionserver  replace the table argument to regionserver,");
-    System.err.println("      which means to enable regionserver mode");
-    System.err.println("   -allRegions    Tries all regions on a regionserver,");
-    System.err.println("      only works in regionserver mode.");
-    System.err.println("   -zookeeper    Tries to grab zookeeper.znode.parent ");
-    System.err.println("      on each zookeeper instance");
     System.err.println("   -daemon        Continuous check at defined intervals.");
-    System.err.println("   -interval <N>  Interval between checks (sec)");
-    System.err.println("   -e             Use table/regionserver as regular expression");
-    System.err.println("      which means the table/regionserver is regular expression pattern");
-    System.err.println("   -f <B>         stop whole program if first error occurs," +
-        " default is true");
-    System.err.println("   -t <N>         timeout for a check, default is 600000 (millisecs)");
-    System.err.println("   -writeTableTimeout <N>         write timeout for the writeTable, default is 600000 (millisecs)");
-    System.err.println("   -readTableTimeouts <tableName>=<read timeout>,<tableName>=<read timeout>, ...    "
-        + "comma-separated list of read timeouts per table (no spaces), default is 600000 (millisecs)");
-    System.err.println("   -writeSniffing enable the write sniffing in canary");
-    System.err.println("   -treatFailureAsError treats read / write failure as error");
-    System.err.println("   -writeTable    The table used for write sniffing."
-        + " Default is hbase:canary");
-    System.err.println("   -Dhbase.canary.read.raw.enabled=<true/false> Use this flag to enable or disable raw scan during read canary test"
-        + " Default is false and raw is not enabled during scan");
-    System.err
-        .println("   -D<configProperty>=<value> assigning or override the configuration params");
-    System.exit(USAGE_EXIT_CODE);
+    System.err.println("   -interval <N>  Interval between checks, default is 6 (sec)");
+    System.exit(1);
   }
 
-  /**
-   * A Factory method for {@link Monitor}.
-   * Can be overridden by user.
-   * @param index a start index for monitor target
-   * @param args args passed from user
-   * @return a Monitor instance
-   */
-  public Monitor newMonitor(final Connection connection, int index, String[] args) {
-    Monitor monitor = null;
-    String[] monitorTargets = null;
-
-    if(index >= 0) {
-      int length = args.length - index;
-      monitorTargets = new String[length];
-      System.arraycopy(args, index, monitorTargets, 0, length);
-    }
-
-    if (this.sink instanceof RegionServerStdOutSink || this.regionServerMode) {
-      monitor =
-          new RegionServerMonitor(connection, monitorTargets, this.useRegExp,
-              (StdOutSink) this.sink, this.executor, this.regionServerAllRegions,
-              this.treatFailureAsError);
-    } else if (this.sink instanceof ZookeeperStdOutSink || this.zookeeperMode) {
-      monitor =
-          new ZookeeperMonitor(connection, monitorTargets, this.useRegExp,
-              (StdOutSink) this.sink, this.executor, this.treatFailureAsError);
-    } else {
-      monitor =
-          new RegionMonitor(connection, monitorTargets, this.useRegExp,
-              (StdOutSink) this.sink, this.executor, this.writeSniffing,
-              this.writeTableName, this.treatFailureAsError, this.configuredReadTableTimeouts,
-              this.configuredWriteTableTimeout);
-    }
-    return monitor;
-  }
-
-  // a Monitor super-class can be extended by users
-  public static abstract class Monitor implements Runnable, Closeable {
-
-    protected Connection connection;
-    protected Admin admin;
-    protected String[] targets;
-    protected boolean useRegExp;
-    protected boolean treatFailureAsError;
-    protected boolean initialized = false;
-
-    protected boolean done = false;
-    protected int errorCode = 0;
-    protected Sink sink;
-    protected ExecutorService executor;
-
-    public boolean isDone() {
-      return done;
-    }
-
-    public boolean hasError() {
-      return errorCode != 0;
-    }
-
-    public boolean finalCheckForErrors() {
-      if (errorCode != 0) {
-        return true;
-      }
-      if (treatFailureAsError &&
-          (sink.getReadFailureCount() > 0 || sink.getWriteFailureCount() > 0)) {
-        errorCode = FAILURE_EXIT_CODE;
-        return true;
-      }
-      return false;
-    }
-
-    @Override
-    public void close() throws IOException {
-      if (this.admin != null) this.admin.close();
-    }
-
-    protected Monitor(Connection connection, String[] monitorTargets, boolean useRegExp, Sink sink,
-        ExecutorService executor, boolean treatFailureAsError) {
-      if (null == connection) throw new IllegalArgumentException("connection shall not be null");
-
-      this.connection = connection;
-      this.targets = monitorTargets;
-      this.useRegExp = useRegExp;
-      this.treatFailureAsError = treatFailureAsError;
-      this.sink = sink;
-      this.executor = executor;
-    }
-
-    @Override
-    public abstract void run();
-
-    protected boolean initAdmin() {
-      if (null == this.admin) {
-        try {
-          this.admin = this.connection.getAdmin();
-        } catch (Exception e) {
-          LOG.error("Initial HBaseAdmin failed...", e);
-          this.errorCode = INIT_ERROR_EXIT_CODE;
-        }
-      } else if (admin.isAborted()) {
-        LOG.error("HBaseAdmin aborted");
-        this.errorCode = INIT_ERROR_EXIT_CODE;
-      }
-      return !this.hasError();
-    }
-  }
-
-  // a monitor for region mode
-  private static class RegionMonitor extends Monitor {
-    // 10 minutes
-    private static final int DEFAULT_WRITE_TABLE_CHECK_PERIOD = 10 * 60 * 1000;
-    // 1 days
-    private static final int DEFAULT_WRITE_DATA_TTL = 24 * 60 * 60;
-
-    private long lastCheckTime = -1;
-    private boolean writeSniffing;
-    private TableName writeTableName;
-    private int writeDataTTL;
-    private float regionsLowerLimit;
-    private float regionsUpperLimit;
-    private int checkPeriod;
-    private boolean rawScanEnabled;
-    private HashMap<String, Long> configuredReadTableTimeouts;
-    private long configuredWriteTableTimeout;
-
-    public RegionMonitor(Connection connection, String[] monitorTargets, boolean useRegExp,
-        StdOutSink sink, ExecutorService executor, boolean writeSniffing, TableName writeTableName,
-        boolean treatFailureAsError, HashMap<String, Long> configuredReadTableTimeouts, long configuredWriteTableTimeout) {
-      super(connection, monitorTargets, useRegExp, sink, executor, treatFailureAsError);
-      Configuration conf = connection.getConfiguration();
-      this.writeSniffing = writeSniffing;
-      this.writeTableName = writeTableName;
-      this.writeDataTTL =
-          conf.getInt(HConstants.HBASE_CANARY_WRITE_DATA_TTL_KEY, DEFAULT_WRITE_DATA_TTL);
-      this.regionsLowerLimit =
-          conf.getFloat(HConstants.HBASE_CANARY_WRITE_PERSERVER_REGIONS_LOWERLIMIT_KEY, 1.0f);
-      this.regionsUpperLimit =
-          conf.getFloat(HConstants.HBASE_CANARY_WRITE_PERSERVER_REGIONS_UPPERLIMIT_KEY, 1.5f);
-      this.checkPeriod =
-          conf.getInt(HConstants.HBASE_CANARY_WRITE_TABLE_CHECK_PERIOD_KEY,
-            DEFAULT_WRITE_TABLE_CHECK_PERIOD);
-      this.rawScanEnabled = conf.getBoolean(HConstants.HBASE_CANARY_READ_RAW_SCAN_KEY, false);
-      this.configuredReadTableTimeouts = new HashMap<>(configuredReadTableTimeouts);
-      this.configuredWriteTableTimeout = configuredWriteTableTimeout;
-    }
-
-    private RegionStdOutSink getSink() {
-      if (!(sink instanceof RegionStdOutSink)) {
-        throw new RuntimeException("Can only write to Region sink");
-      }
-      return ((RegionStdOutSink) sink);
-    }
-
-    @Override
-    public void run() {
-      if (this.initAdmin()) {
-        try {
-          List<Future<Void>> taskFutures = new LinkedList<>();
-          RegionStdOutSink regionSink = this.getSink();
-          if (this.targets != null && this.targets.length > 0) {
-            String[] tables = generateMonitorTables(this.targets);
-            // Check to see that each table name passed in the -readTableTimeouts argument is also passed as a monitor target.
-            if (! new HashSet<>(Arrays.asList(tables)).containsAll(this.configuredReadTableTimeouts.keySet())) {
-              LOG.error("-readTableTimeouts can only specify read timeouts for monitor targets passed via command line.");
-              this.errorCode = USAGE_EXIT_CODE;
-              return;
-            }
-            this.initialized = true;
-            for (String table : tables) {
-              LongAdder readLatency = regionSink.initializeAndGetReadLatencyForTable(table);
-              taskFutures.addAll(Canary.sniff(admin, regionSink, table, executor, TaskType.READ,
-                this.rawScanEnabled, readLatency));
-            }
-          } else {
-            taskFutures.addAll(sniff(TaskType.READ, regionSink));
-          }
-
-          if (writeSniffing) {
-            if (EnvironmentEdgeManager.currentTime() - lastCheckTime > checkPeriod) {
-              try {
-                checkWriteTableDistribution();
-              } catch (IOException e) {
-                LOG.error("Check canary table distribution failed!", e);
-              }
-              lastCheckTime = EnvironmentEdgeManager.currentTime();
-            }
-            // sniff canary table with write operation
-            regionSink.initializeWriteLatency();
-            LongAdder writeTableLatency = regionSink.getWriteLatency();
-            taskFutures.addAll(Canary.sniff(admin, regionSink, admin.getTableDescriptor(writeTableName),
-              executor, TaskType.WRITE, this.rawScanEnabled, writeTableLatency));
-          }
-
-          for (Future<Void> future : taskFutures) {
-            try {
-              future.get();
-            } catch (ExecutionException e) {
-              LOG.error("Sniff region failed!", e);
-            }
-          }
-          Map<String, LongAdder> actualReadTableLatency = regionSink.getReadLatencyMap();
-          for (Map.Entry<String, Long> entry : configuredReadTableTimeouts.entrySet()) {
-            String tableName = entry.getKey();
-            if (actualReadTableLatency.containsKey(tableName)) {
-              Long actual = actualReadTableLatency.get(tableName).longValue();
-              Long configured = entry.getValue();
-              LOG.info("Read operation for " + tableName + " took " + actual +
-                " ms. The configured read timeout was " + configured + " ms.");
-              if (actual > configured) {
-                LOG.error("Read operation for " + tableName + " exceeded the configured read timeout.");
-              }
-            } else {
-              LOG.error("Read operation for " + tableName + " failed!");
-            }
-          }
-          if (this.writeSniffing) {
-            String writeTableStringName = this.writeTableName.getNameAsString();
-            long actualWriteLatency = regionSink.getWriteLatency().longValue();
-            LOG.info("Write operation for " + writeTableStringName + " took " + actualWriteLatency + " ms. The configured write timeout was " +
-              this.configuredWriteTableTimeout + " ms.");
-            // Check that the writeTable write operation latency does not exceed the configured timeout.
-            if (actualWriteLatency > this.configuredWriteTableTimeout) {
-              LOG.error("Write operation for " + writeTableStringName + " exceeded the configured write timeout.");
-            }
-          }
-        } catch (Exception e) {
-          LOG.error("Run regionMonitor failed", e);
-          this.errorCode = ERROR_EXIT_CODE;
-        } finally {
-          this.done = true;
-	}
-      }
-      this.done = true;
-    }
-
-    private String[] generateMonitorTables(String[] monitorTargets) throws IOException {
-      String[] returnTables = null;
-
-      if (this.useRegExp) {
-        Pattern pattern = null;
-        HTableDescriptor[] tds = null;
-        Set<String> tmpTables = new TreeSet<>();
-        try {
-          if (LOG.isDebugEnabled()) {
-            LOG.debug(String.format("reading list of tables"));
-          }
-          tds = this.admin.listTables(pattern);
-          if (tds == null) {
-            tds = new HTableDescriptor[0];
-          }
-          for (String monitorTarget : monitorTargets) {
-            pattern = Pattern.compile(monitorTarget);
-            for (HTableDescriptor td : tds) {
-              if (pattern.matcher(td.getNameAsString()).matches()) {
-                tmpTables.add(td.getNameAsString());
-              }
-            }
-          }
-        } catch (IOException e) {
-          LOG.error("Communicate with admin failed", e);
-          throw e;
-        }
-
-        if (tmpTables.size() > 0) {
-          returnTables = tmpTables.toArray(new String[tmpTables.size()]);
-        } else {
-          String msg = "No HTable found, tablePattern:" + Arrays.toString(monitorTargets);
-          LOG.error(msg);
-          this.errorCode = INIT_ERROR_EXIT_CODE;
-          throw new TableNotFoundException(msg);
-        }
-      } else {
-        returnTables = monitorTargets;
-      }
-
-      return returnTables;
-    }
-
-    /*
-     * canary entry point to monitor all the tables.
-     */
-    private List<Future<Void>> sniff(TaskType taskType, RegionStdOutSink regionSink) throws Exception {
-      if (LOG.isDebugEnabled()) {
-        LOG.debug(String.format("reading list of tables"));
-      }
-      List<Future<Void>> taskFutures = new LinkedList<>();
-      for (HTableDescriptor table : admin.listTables()) {
-        if (admin.isTableEnabled(table.getTableName())
-            && (!table.getTableName().equals(writeTableName))) {
-          LongAdder readLatency = regionSink.initializeAndGetReadLatencyForTable(table.getNameAsString());
-          taskFutures.addAll(Canary.sniff(admin, sink, table, executor, taskType, this.rawScanEnabled, readLatency));
-        }
-      }
-      return taskFutures;
-    }
-
-    private void checkWriteTableDistribution() throws IOException {
-      if (!admin.tableExists(writeTableName)) {
-        int numberOfServers =
-            admin.getClusterMetrics(EnumSet.of(Option.LIVE_SERVERS)).getLiveServerMetrics().size();
-        if (numberOfServers == 0) {
-          throw new IllegalStateException("No live regionservers");
-        }
-        createWriteTable(numberOfServers);
-      }
-
-      if (!admin.isTableEnabled(writeTableName)) {
-        admin.enableTable(writeTableName);
-      }
-
-      ClusterMetrics status =
-          admin.getClusterMetrics(EnumSet.of(Option.LIVE_SERVERS, Option.MASTER));
-      int numberOfServers = status.getLiveServerMetrics().size();
-      if (status.getLiveServerMetrics().containsKey(status.getMasterName())) {
-        numberOfServers -= 1;
-      }
-
-      List<Pair<RegionInfo, ServerName>> pairs =
-          MetaTableAccessor.getTableRegionsAndLocations(connection, writeTableName);
-      int numberOfRegions = pairs.size();
-      if (numberOfRegions < numberOfServers * regionsLowerLimit
-          || numberOfRegions > numberOfServers * regionsUpperLimit) {
-        admin.disableTable(writeTableName);
-        admin.deleteTable(writeTableName);
-        createWriteTable(numberOfServers);
-      }
-      HashSet<ServerName> serverSet = new HashSet<>();
-      for (Pair<RegionInfo, ServerName> pair : pairs) {
-        serverSet.add(pair.getSecond());
-      }
-      int numberOfCoveredServers = serverSet.size();
-      if (numberOfCoveredServers < numberOfServers) {
-        admin.balancer();
-      }
-    }
-
-    private void createWriteTable(int numberOfServers) throws IOException {
-      int numberOfRegions = (int)(numberOfServers * regionsLowerLimit);
-      LOG.info("Number of live regionservers: " + numberOfServers + ", "
-          + "pre-splitting the canary table into " + numberOfRegions + " regions "
-          + "(current lower limit of regions per server is " + regionsLowerLimit
-          + " and you can change it by config: "
-          + HConstants.HBASE_CANARY_WRITE_PERSERVER_REGIONS_LOWERLIMIT_KEY + " )");
-      HTableDescriptor desc = new HTableDescriptor(writeTableName);
-      HColumnDescriptor family = new HColumnDescriptor(CANARY_TABLE_FAMILY_NAME);
-      family.setMaxVersions(1);
-      family.setTimeToLive(writeDataTTL);
-
-      desc.addFamily(family);
-      byte[][] splits = new RegionSplitter.HexStringSplit().split(numberOfRegions);
-      admin.createTable(desc, splits);
-    }
-  }
-
-  /**
-   * Canary entry point for specified table.
-   * @throws Exception
-   */
-  private static List<Future<Void>> sniff(final Admin admin, final Sink sink, String tableName,
-      ExecutorService executor, TaskType taskType, boolean rawScanEnabled, LongAdder readLatency) throws Exception {
-    if (LOG.isDebugEnabled()) {
-      LOG.debug(String.format("checking table is enabled and getting table descriptor for table %s",
-        tableName));
-    }
-    if (admin.isTableEnabled(TableName.valueOf(tableName))) {
-      return Canary.sniff(admin, sink, admin.getTableDescriptor(TableName.valueOf(tableName)),
-        executor, taskType, rawScanEnabled, readLatency);
-    } else {
-      LOG.warn(String.format("Table %s is not enabled", tableName));
-    }
-    return new LinkedList<>();
+  protected void recordFailure(ServerName server, TableName table) {
+    failuresByServer.compute(server, (k, v) -> v == null ? 1 : v + 1);
+    failuresByTable.compute(table, (k, v) -> v == null ? 1 : v + 1);
   }
 
   /*
-   * Loops over regions that owns this table, and output some information about the state.
+   * canary entry point to monitor all the tables.
    */
-  private static List<Future<Void>> sniff(final Admin admin, final Sink sink,
-      HTableDescriptor tableDesc, ExecutorService executor, TaskType taskType,
-      boolean rawScanEnabled, LongAdder rwLatency) throws Exception {
-
-    if (LOG.isDebugEnabled()) {
-      LOG.debug(String.format("reading list of regions for table %s", tableDesc.getTableName()));
+  private List<RegionTask> sniff() throws Exception {
+    List<RegionTask> tasks = new LinkedList<>();
+    // admin.listTables invoke connection.listTables directly, won't create zkw
+    for (TableDescriptor table : admin.listTableDescriptors()) {
+      if (admin.isTableEnabled(table.getTableName())) {
+        tasks.addAll(sniff(table));
+      }
     }
+    return tasks;
+  }
 
-    Table table = null;
-    try {
-      table = admin.getConnection().getTable(tableDesc.getTableName());
-    } catch (TableNotFoundException e) {
+  /*
+   * canary entry point to monitor specified table.
+   */
+  private List<RegionTask> sniff(String tableName) throws Exception {
+    List<RegionTask> tasks = new LinkedList<>();
+    // admin.isTableAvailable invoke connection.isTableAvailable directly, won't create zkw
+    if (admin.isTableAvailable(TableName.valueOf(tableName))) {
+      // admin.getTableDescriptor invoke connection.getTableDescriptor dirctly, won't create zkw
+      tasks.addAll(sniff(admin.getDescriptor(TableName.valueOf(tableName))));
+    } else {
+      LOG.warn(String.format("Table %s is not available", tableName));
+    }
+    return tasks;
+  }
+
+  protected void clearCachedTasks(String tableName) {
+    cachedTasks.remove(tableName);
+  }
+
+  protected void clearCachedTasks() {
+    cachedTasks.clear();
+  }
+
+  /*
+   * Loops over regions that owns this table, and output some information abouts the state.
+   */
+  private List<RegionTask> sniff(TableDescriptor tableDesc) throws Exception {
+    if (tableDesc.getTableName().getNamespaceAsString().equals(excludeNamespace)) {
       return new ArrayList<>();
     }
-    finally {
-      if (table !=null) {
-        table.close();
-      }
+    List<RegionTask> tasks = cachedTasks.get(tableDesc.getTableName().getNameAsString());
+    if (tasks != null) {
+      return tasks;
     }
-
-    List<RegionTask> tasks = new ArrayList<>();
-    RegionLocator regionLocator = null;
-    try {
-      regionLocator = admin.getConnection().getRegionLocator(tableDesc.getTableName());
-      for (HRegionLocation location : regionLocator.getAllRegionLocations()) {
-        ServerName rs = location.getServerName();
-        RegionInfo region = location.getRegionInfo();
-        tasks.add(new RegionTask(admin.getConnection(), region, rs, (RegionStdOutSink) sink, taskType, rawScanEnabled,
-          rwLatency));
-      }
-    } finally {
-      if (regionLocator != null) {
-        regionLocator.close();
-      }
-    }
-    return executor.invokeAll(tasks);
+    AsyncTable<?> table = asyncConn.getTable(tableDesc.getTableName());
+    tasks = MetaTableAccessor.getTableRegionsAndLocations(conn, tableDesc.getTableName(), false)
+        .stream()
+        .map(r -> new RegionTask(table, tableDesc, r.getFirst(), r.getSecond(), sink, this))
+        .collect(Collectors.toList());
+    cachedTasks.put(tableDesc.getTableName().getNameAsString(), tasks);
+    LOG.info("get task from meta table, table=" + tableDesc.getTableName().getNameAsString()
+        + ", taskCount=" + tasks.size());
+    return tasks;
   }
 
-  //  monitor for zookeeper mode
-  private static class ZookeeperMonitor extends Monitor {
-    private List<String> hosts;
-    private final String znode;
-    private final int timeout;
-
-    protected ZookeeperMonitor(Connection connection, String[] monitorTargets, boolean useRegExp,
-        StdOutSink sink, ExecutorService executor, boolean treatFailureAsError)  {
-      super(connection, monitorTargets, useRegExp, sink, executor, treatFailureAsError);
-      Configuration configuration = connection.getConfiguration();
-      znode =
-          configuration.get(ZOOKEEPER_ZNODE_PARENT,
-              DEFAULT_ZOOKEEPER_ZNODE_PARENT);
-      timeout = configuration
-          .getInt(HConstants.ZK_SESSION_TIMEOUT, HConstants.DEFAULT_ZK_SESSION_TIMEOUT);
-      ConnectStringParser parser =
-          new ConnectStringParser(ZKConfig.getZKQuorumServersString(configuration));
-      hosts = Lists.newArrayList();
-      for (InetSocketAddress server : parser.getServerAddresses()) {
-        hosts.add(server.toString());
+  private void checkCanaryDistribution() throws IOException {
+    if (!admin.tableExists(DEFAULT_WRITE_TABLE_NAME)) {
+      int numberOfServers = admin.getClusterStatus().getServers().size();
+      if (numberOfServers == 0) {
+        throw new IllegalStateException("No live regionservers");
       }
+      createCanaryTable(numberOfServers);
     }
 
-    @Override public void run() {
-      List<ZookeeperTask> tasks = Lists.newArrayList();
-      ZookeeperStdOutSink zkSink = null;
-      try {
-        zkSink = this.getSink();
-      } catch (RuntimeException e) {
-        LOG.error("Run ZooKeeperMonitor failed!", e);
-        this.errorCode = ERROR_EXIT_CODE;
-      }
-      this.initialized = true;
-      for (final String host : hosts) {
-        tasks.add(new ZookeeperTask(connection, host, znode, timeout, zkSink));
-      }
-      try {
-        for (Future<Void> future : this.executor.invokeAll(tasks)) {
-          try {
-            future.get();
-          } catch (ExecutionException e) {
-            LOG.error("Sniff zookeeper failed!", e);
-            this.errorCode = ERROR_EXIT_CODE;
-          }
-        }
-      } catch (InterruptedException e) {
-        this.errorCode = ERROR_EXIT_CODE;
-        Thread.currentThread().interrupt();
-        LOG.error("Sniff zookeeper interrupted!", e);
-      }
-      this.done = true;
+    if (!admin.isTableEnabled(DEFAULT_WRITE_TABLE_NAME)) {
+      admin.enableTable(DEFAULT_WRITE_TABLE_NAME);
     }
 
-    private ZookeeperStdOutSink getSink() {
-      if (!(sink instanceof ZookeeperStdOutSink)) {
-        throw new RuntimeException("Can only write to zookeeper sink");
+    Collection<ServerName> regionsevers;
+    try (Connection conn = ConnectionFactory.createConnection(conf)) {
+      try (Table table = conn.getTable(DEFAULT_WRITE_TABLE_NAME)) {
+        regionsevers = ((HTable) table).getRegionLocator().getAllRegionLocations().stream()
+            .map(r -> r.getServerName()).collect(Collectors.toSet());
       }
-      return ((ZookeeperStdOutSink) sink);
+    }
+    int numberOfServers = admin.getClusterStatus().getServers().size();
+    int numberOfRegions = regionsevers.size();
+    double rate = 1.0 * numberOfRegions / numberOfServers;
+    if ((rate < DEFAULT_REGIONS_PER_SERVER * 0.7) || (rate > DEFAULT_REGIONS_PER_SERVER * 1.5)) {
+      LOG.info("Current canary region num: " + numberOfRegions + " server num: " + numberOfServers);
+      admin.disableTable(DEFAULT_WRITE_TABLE_NAME);
+      admin.deleteTable(DEFAULT_WRITE_TABLE_NAME);
+      createCanaryTable(numberOfServers);
     }
   }
 
+  private void createCanaryTable(int numberOfServers) throws IOException {
+    int totalNumberOfRegions = numberOfServers * DEFAULT_REGIONS_PER_SERVER;
+    LOG.info("Number of live regionservers: " + numberOfServers + ", "
+        + "pre-splitting the canary table into " + totalNumberOfRegions + " regions "
+        + "(default regions per server: " + DEFAULT_REGIONS_PER_SERVER + ")");
 
-  // a monitor for regionserver mode
-  private static class RegionServerMonitor extends Monitor {
-
-    private boolean allRegions;
-
-    public RegionServerMonitor(Connection connection, String[] monitorTargets, boolean useRegExp,
-        StdOutSink sink, ExecutorService executor, boolean allRegions,
-        boolean treatFailureAsError) {
-      super(connection, monitorTargets, useRegExp, sink, executor, treatFailureAsError);
-      this.allRegions = allRegions;
-    }
-
-    private RegionServerStdOutSink getSink() {
-      if (!(sink instanceof RegionServerStdOutSink)) {
-        throw new RuntimeException("Can only write to regionserver sink");
-      }
-      return ((RegionServerStdOutSink) sink);
-    }
-
-    @Override
-    public void run() {
-      if (this.initAdmin() && this.checkNoTableNames()) {
-        RegionServerStdOutSink regionServerSink = null;
-        try {
-          regionServerSink = this.getSink();
-        } catch (RuntimeException e) {
-          LOG.error("Run RegionServerMonitor failed!", e);
-          this.errorCode = ERROR_EXIT_CODE;
-        }
-        Map<String, List<RegionInfo>> rsAndRMap = this.filterRegionServerByName();
-        this.initialized = true;
-        this.monitorRegionServers(rsAndRMap, regionServerSink);
-      }
-      this.done = true;
-    }
-
-    private boolean checkNoTableNames() {
-      List<String> foundTableNames = new ArrayList<>();
-      TableName[] tableNames = null;
-
-      if (LOG.isDebugEnabled()) {
-        LOG.debug(String.format("reading list of tables"));
-      }
-      try {
-        tableNames = this.admin.listTableNames();
-      } catch (IOException e) {
-        LOG.error("Get listTableNames failed", e);
-        this.errorCode = INIT_ERROR_EXIT_CODE;
-        return false;
-      }
-
-      if (this.targets == null || this.targets.length == 0) return true;
-
-      for (String target : this.targets) {
-        for (TableName tableName : tableNames) {
-          if (target.equals(tableName.getNameAsString())) {
-            foundTableNames.add(target);
-          }
-        }
-      }
-
-      if (foundTableNames.size() > 0) {
-        System.err.println("Cannot pass a tablename when using the -regionserver " +
-            "option, tablenames:" + foundTableNames.toString());
-        this.errorCode = USAGE_EXIT_CODE;
-      }
-      return foundTableNames.isEmpty();
-    }
-
-    private void monitorRegionServers(Map<String, List<RegionInfo>> rsAndRMap, RegionServerStdOutSink regionServerSink) {
-      List<RegionServerTask> tasks = new ArrayList<>();
-      Map<String, AtomicLong> successMap = new HashMap<>();
-      Random rand = new Random();
-      for (Map.Entry<String, List<RegionInfo>> entry : rsAndRMap.entrySet()) {
-        String serverName = entry.getKey();
-        AtomicLong successes = new AtomicLong(0);
-        successMap.put(serverName, successes);
-        if (entry.getValue().isEmpty()) {
-          LOG.error(String.format("Regionserver not serving any regions - %s", serverName));
-        } else if (this.allRegions) {
-          for (RegionInfo region : entry.getValue()) {
-            tasks.add(new RegionServerTask(this.connection,
-                serverName,
-                region,
-                regionServerSink,
-                successes));
-          }
-        } else {
-          // random select a region if flag not set
-          RegionInfo region = entry.getValue().get(rand.nextInt(entry.getValue().size()));
-          tasks.add(new RegionServerTask(this.connection,
-              serverName,
-              region,
-              regionServerSink,
-              successes));
-        }
-      }
-      try {
-        for (Future<Void> future : this.executor.invokeAll(tasks)) {
-          try {
-            future.get();
-          } catch (ExecutionException e) {
-            LOG.error("Sniff regionserver failed!", e);
-            this.errorCode = ERROR_EXIT_CODE;
-          }
-        }
-        if (this.allRegions) {
-          for (Map.Entry<String, List<RegionInfo>> entry : rsAndRMap.entrySet()) {
-            String serverName = entry.getKey();
-            LOG.info("Successfully read " + successMap.get(serverName) + " regions out of "
-                    + entry.getValue().size() + " on regionserver:" + serverName);
-          }
-        }
-      } catch (InterruptedException e) {
-        this.errorCode = ERROR_EXIT_CODE;
-        LOG.error("Sniff regionserver interrupted!", e);
-      }
-    }
-
-    private Map<String, List<RegionInfo>> filterRegionServerByName() {
-      Map<String, List<RegionInfo>> regionServerAndRegionsMap = this.getAllRegionServerByName();
-      regionServerAndRegionsMap = this.doFilterRegionServerByName(regionServerAndRegionsMap);
-      return regionServerAndRegionsMap;
-    }
-
-    private Map<String, List<RegionInfo>> getAllRegionServerByName() {
-      Map<String, List<RegionInfo>> rsAndRMap = new HashMap<>();
-      Table table = null;
-      RegionLocator regionLocator = null;
-      try {
-        if (LOG.isDebugEnabled()) {
-          LOG.debug(String.format("reading list of tables and locations"));
-        }
-        HTableDescriptor[] tableDescs = this.admin.listTables();
-        List<RegionInfo> regions = null;
-        for (HTableDescriptor tableDesc : tableDescs) {
-          table = this.admin.getConnection().getTable(tableDesc.getTableName());
-          regionLocator = this.admin.getConnection().getRegionLocator(tableDesc.getTableName());
-
-          for (HRegionLocation location : regionLocator.getAllRegionLocations()) {
-            ServerName rs = location.getServerName();
-            String rsName = rs.getHostname();
-            RegionInfo r = location.getRegionInfo();
-
-            if (rsAndRMap.containsKey(rsName)) {
-              regions = rsAndRMap.get(rsName);
-            } else {
-              regions = new ArrayList<>();
-              rsAndRMap.put(rsName, regions);
-            }
-            regions.add(r);
-          }
-          table.close();
-        }
-
-        // get any live regionservers not serving any regions
-        for (ServerName rs : this.admin.getClusterMetrics(EnumSet.of(Option.LIVE_SERVERS))
-          .getLiveServerMetrics().keySet()) {
-          String rsName = rs.getHostname();
-          if (!rsAndRMap.containsKey(rsName)) {
-            rsAndRMap.put(rsName, Collections.<RegionInfo> emptyList());
-          }
-        }
-      } catch (IOException e) {
-        String msg = "Get HTables info failed";
-        LOG.error(msg, e);
-        this.errorCode = INIT_ERROR_EXIT_CODE;
-      } finally {
-        if (table != null) {
-          try {
-            table.close();
-          } catch (IOException e) {
-            LOG.warn("Close table failed", e);
-          }
-        }
-      }
-
-      return rsAndRMap;
-    }
-
-    private Map<String, List<RegionInfo>> doFilterRegionServerByName(
-        Map<String, List<RegionInfo>> fullRsAndRMap) {
-
-      Map<String, List<RegionInfo>> filteredRsAndRMap = null;
-
-      if (this.targets != null && this.targets.length > 0) {
-        filteredRsAndRMap = new HashMap<>();
-        Pattern pattern = null;
-        Matcher matcher = null;
-        boolean regExpFound = false;
-        for (String rsName : this.targets) {
-          if (this.useRegExp) {
-            regExpFound = false;
-            pattern = Pattern.compile(rsName);
-            for (Map.Entry<String, List<RegionInfo>> entry : fullRsAndRMap.entrySet()) {
-              matcher = pattern.matcher(entry.getKey());
-              if (matcher.matches()) {
-                filteredRsAndRMap.put(entry.getKey(), entry.getValue());
-                regExpFound = true;
-              }
-            }
-            if (!regExpFound) {
-              LOG.info("No RegionServerInfo found, regionServerPattern:" + rsName);
-            }
-          } else {
-            if (fullRsAndRMap.containsKey(rsName)) {
-              filteredRsAndRMap.put(rsName, fullRsAndRMap.get(rsName));
-            } else {
-              LOG.info("No RegionServerInfo found, regionServerName:" + rsName);
-            }
-          }
-        }
-      } else {
-        filteredRsAndRMap = fullRsAndRMap;
-      }
-      return filteredRsAndRMap;
-    }
+    TableDescriptor desc = TableDescriptorBuilder.newBuilder(DEFAULT_WRITE_TABLE_NAME)
+        .setColumnFamily(ColumnFamilyDescriptorBuilder.newBuilder(CANARY_TABLE_FAMILY_NAME)
+            .setMaxVersions(1).setTimeToLive(24 * 60 * 60 * 1000).build())
+        .build();
+    byte[][] splits = new RegionSplitter.HexStringSplit().split(totalNumberOfRegions);
+    admin.createTable(desc, splits);
   }
 
-  public static void main(String[] args) throws Exception {
-    final Configuration conf = HBaseConfiguration.create();
+  public static void main(String[] args) {
+    // TODO : In test, there are security-related errors if these properties are set.
+    // As a temporary solution, set the properties before starting. Need to
+    // find out the root cause in future.
+    Configuration conf = HBaseConfiguration.create();
+    System.setProperty("hadoop.property.hadoop.security.authentication", "kerberos");
+    System.setProperty("hadoop.property.hadoop.client.keytab.file",
+      conf.get("hbase.canary.keytab.file"));
+    System.setProperty("hadoop.property.hadoop.client.kerberos.principal",
+      conf.get("hbase.canary.kerberos.principal"));
+    conf = HBaseConfiguration.create();
 
-    // loading the generic options to conf
-    new GenericOptionsParser(conf, args);
+    conf.setInt("hbase.rpc.timeout", conf.getInt("hbase.canary.rpc.timeout", 200));
+    conf.setInt("hbase.client.pause", conf.getInt("hbase.canary.client.pause", 100));
+    conf.setInt("hbase.client.operation.timeout",
+      conf.getInt("hbase.canary.client.operation.timeout", 500));
+    conf.setInt("hbase.client.retries.number",
+      conf.getInt("hbase.canary.client.retries.number", 2));
+    conf.setInt(HConstants.HBASE_CLIENT_SCANNER_TIMEOUT_PERIOD,
+      conf.getInt("hbase.canary.client.scanner.timeout.period", 2000));
 
-    int numThreads = conf.getInt("hbase.canary.threads.num", MAX_THREADS_NUM);
-    LOG.info("Number of execution threads " + numThreads);
-
-    ExecutorService executor = new ScheduledThreadPoolExecutor(numThreads);
-
+    int exitCode = 0;
     Class<? extends Sink> sinkClass =
-        conf.getClass("hbase.canary.sink.class", RegionServerStdOutSink.class, Sink.class);
-    Sink sink = ReflectionUtils.newInstance(sinkClass);
-
-    int exitCode = ToolRunner.run(conf, new Canary(executor, sink), args);
-    executor.shutdown();
+        conf.getClass("hbase.canary.sink.class", StdOutSink.class, Sink.class);
+    Sink sink = ReflectionUtils.newInstance(sinkClass, conf);
+    try {
+      exitCode = ToolRunner.run(conf, new Canary(sink), args);
+    } catch (Exception e) {
+      LOG.error("Canry tool exited with exception. ", e);
+    }
     System.exit(exitCode);
   }
 }

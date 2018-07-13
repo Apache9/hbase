@@ -37,9 +37,11 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Random;
 
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellComparator;
+import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.io.RawComparator;
 import org.apache.hadoop.io.WritableComparator;
@@ -2613,5 +2615,68 @@ public class Bytes implements Comparable<Bytes> {
       result++;
     }
     return result;
+  }
+
+  /**
+   * Get the previous row key with max length limitation
+   * @param rowkey
+   * @param maxRowKeyLen
+   * @return
+   * @throws IOException
+   */
+  public static byte[] prevRowkey(byte[] rowkey, int maxRowKeyLen) throws IOException {
+    if (rowkey == null || rowkey.length == 0) {
+      return null;
+    }
+    if (rowkey.length > maxRowKeyLen) {
+      throw new IOException("row key length is larger than max row key length");
+    }
+    if (rowkey[rowkey.length - 1] == (byte) 0x00) {
+      return Bytes.head(rowkey, rowkey.length - 1);
+    } else {
+      byte[] prev = new byte[maxRowKeyLen];
+      Arrays.fill(prev, (byte) 0xff);
+      System.arraycopy(rowkey, 0, prev, 0, rowkey.length - 1);
+      prev[rowkey.length - 1] = (byte) (rowkey[rowkey.length - 1] - 1);
+      return prev;
+    }
+  }
+
+  /**
+   * Get a random byte array in the range(start key inclusive, end key exclusive).
+   * @param start
+   * @param end
+   * @return
+   * @throws IOException
+   */
+  public static byte[] randomKey(final byte[] start, final byte[] end) throws IOException {
+    boolean moreThanLeft = (start.length == 0) ? true : false;
+    boolean lessThanRight = (end.length == 0) ? true : false;
+    if (end.length > 0 && Bytes.compareTo(start, end) >= 0) {
+      throw new IOException("Start key is larger or equal than the end key");
+    }
+    int length = Math.max(start.length, end.length);
+    if (length == 0) length = 10;
+    byte[] key = new byte[length];
+    byte[] prev = HConstants.EMPTY_BYTE_ARRAY;
+    if (end.length > 0) {
+      prev = prevRowkey(end, length);
+    }
+    Random rand = new Random();
+    for (int i = 0; i < length; i++) {
+      int from = 0;
+      if (i < start.length && (!moreThanLeft)) from = start[i] & 0xff;
+      int to = 255;
+      if (i < prev.length && (!lessThanRight)) to = prev[i] & 0xff;
+      key[i] = (byte) (from + rand.nextInt(to - from + 1));
+      if (i < start.length && (key[i] & 0xff) > (start[i] & 0xff)) {
+        moreThanLeft = true;
+      }
+      if (i < prev.length && (key[i] & 0xff) < (prev[i] & 0xff)) {
+        lessThanRight = true;
+      }
+    }
+    if (!lessThanRight) return prev;
+    return key;
   }
 }
