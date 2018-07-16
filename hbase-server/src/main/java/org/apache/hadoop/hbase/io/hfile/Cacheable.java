@@ -24,7 +24,7 @@ import java.nio.ByteBuffer;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.apache.hadoop.hbase.io.HeapSize;
 
-import org.apache.hbase.thirdparty.io.netty.util.ReferenceCounted;
+import com.xiaomi.infra.thirdparty.io.netty.util.ReferenceCounted;
 
 /**
  * Cacheable is an interface that allows for an object to be cached. If using an
