@@ -22,13 +22,18 @@ import java.io.IOException;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.DoNotRetryIOException;
+import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HBaseIOException;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.MetaTableAccessor;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.TableNotFoundException;
+import org.apache.hadoop.hbase.client.Admin;
 import org.apache.hadoop.hbase.client.Connection;
+import org.apache.hadoop.hbase.client.ConnectionFactory;
 import org.apache.hadoop.hbase.client.RegionInfo;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
@@ -37,8 +42,12 @@ import org.apache.hadoop.hbase.client.Table;
 import org.apache.hadoop.hbase.client.TableDescriptor;
 import org.apache.hadoop.hbase.client.TableState;
 import org.apache.hadoop.hbase.master.MasterCoprocessorHost;
+import org.apache.hadoop.hbase.master.replication.ReplicationPeerManager;
 import org.apache.hadoop.hbase.procedure2.ProcedureStateSerializer;
+import org.apache.hadoop.hbase.replication.ReplicationPeerDescription;
+import org.apache.hadoop.hbase.replication.ReplicationUtils;
 import org.apache.hadoop.hbase.util.ServerRegionReplicaUtil;
+import org.apache.hadoop.hbase.zookeeper.ZKUtil;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -118,6 +127,10 @@ public class ModifyTableProcedure
           if (env.getAssignmentManager().isTableEnabled(getTableName())) {
             addChildProcedure(new ReopenTableRegionsProcedure(getTableName()));
           }
+          setNextState(ModifyTableState.MODIFY_TABLE_SYNC_SCHEMA_TO_PEER);
+          break;
+        case MODIFY_TABLE_SYNC_SCHEMA_TO_PEER:
+          syncSchemaModificationToPeer(env, getTableName(), modifiedTableDescriptor);
           return Flow.NO_MORE_STATE;
         default:
           throw new UnsupportedOperationException("unhandled state=" + state);
@@ -402,5 +415,29 @@ public class ModifyTableProcedure
    */
   private List<RegionInfo> getRegionInfoList(final MasterProcedureEnv env) throws IOException {
     return env.getAssignmentManager().getRegionStates().getRegionsOfTable(getTableName());
+  }
+
+  private void syncSchemaModificationToPeer(MasterProcedureEnv env, TableName tableName,
+      TableDescriptor newTD) throws IOException {
+    Configuration conf = env.getMasterConfiguration();
+    if (!ReplicationUtils.shouldSyncTableSchema(conf)) {
+      return;
+    }
+    ReplicationPeerManager rpm = env.getReplicationPeerManager();
+    for (ReplicationPeerDescription rpd : rpm.listPeers(null)) {
+      if (ReplicationUtils.contains(rpd.getPeerConfig(), tableName)) {
+        Configuration peerConf = HBaseConfiguration.create(conf);
+        ZKUtil.applyClusterKeyToConf(peerConf, rpd.getPeerConfig().getClusterKey());
+        try (Connection peerConn = ConnectionFactory.createConnection(peerConf);
+            Admin admin = peerConn.getAdmin()) {
+          TableDescriptor existingTD = admin.getDescriptor(tableName);
+          // Only when add column or delete column, we will sync to peer cluster.
+          if (existingTD != null
+              && existingTD.getColumnFamilyCount() != newTD.getColumnFamilyCount()) {
+            admin.modifyTable(newTD);
+          }
+        }
+      }
+    }
   }
 }

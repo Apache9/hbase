@@ -236,4 +236,9 @@ public final class ReplicationUtils {
     }
     return sleepMultiplier < maxRetriesMultiplier;
   }
+
+  public static boolean shouldSyncTableSchema(Configuration conf) {
+    return conf.getBoolean(HConstants.REPLICATION_SYNC_TABLE_SCHEMA,
+      HConstants.REPLICATION_SYNC_TABLE_SCHEMA_DEFAULT);
+  }
 }

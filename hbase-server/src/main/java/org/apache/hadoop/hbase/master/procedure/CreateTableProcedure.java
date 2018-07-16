@@ -22,23 +22,32 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.DoNotRetryIOException;
+import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.MetaTableAccessor;
 import org.apache.hadoop.hbase.TableExistsException;
 import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.client.Admin;
+import org.apache.hadoop.hbase.client.Connection;
+import org.apache.hadoop.hbase.client.ConnectionFactory;
 import org.apache.hadoop.hbase.client.RegionInfo;
 import org.apache.hadoop.hbase.client.RegionReplicaUtil;
 import org.apache.hadoop.hbase.client.TableDescriptor;
 import org.apache.hadoop.hbase.client.TableState;
 import org.apache.hadoop.hbase.master.MasterCoprocessorHost;
 import org.apache.hadoop.hbase.master.MasterFileSystem;
+import org.apache.hadoop.hbase.master.replication.ReplicationPeerManager;
 import org.apache.hadoop.hbase.procedure2.ProcedureStateSerializer;
+import org.apache.hadoop.hbase.replication.ReplicationPeerDescription;
+import org.apache.hadoop.hbase.replication.ReplicationUtils;
 import org.apache.hadoop.hbase.util.FSTableDescriptors;
 import org.apache.hadoop.hbase.util.FSUtils;
 import org.apache.hadoop.hbase.util.ModifyRegionUtils;
 import org.apache.hadoop.hbase.util.ServerRegionReplicaUtil;
+import org.apache.hadoop.hbase.zookeeper.ZKUtil;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -111,6 +120,10 @@ public class CreateTableProcedure
         case CREATE_TABLE_UPDATE_DESC_CACHE:
           setEnabledState(env, getTableName());
           updateTableDescCache(env, getTableName());
+          setNextState(CreateTableState.CREATE_TABLE_SYNC_SCHEMA_TO_PEER);
+          break;
+        case CREATE_TABLE_SYNC_SCHEMA_TO_PEER:
+          syncSchemaToPeer(env, getTableName(), tableDescriptor);
           setNextState(CreateTableState.CREATE_TABLE_POST_OPERATION);
           break;
         case CREATE_TABLE_POST_OPERATION:
@@ -387,5 +400,26 @@ public class CreateTableProcedure
     // system tables are created on bootstrap internally by the system
     // the client does not know about this procedures.
     return !getTableName().isSystemTable();
+  }
+
+  private void syncSchemaToPeer(MasterProcedureEnv env, TableName tableName,
+      TableDescriptor tableDescriptor) throws IOException {
+    Configuration conf = env.getMasterConfiguration();
+    if (!ReplicationUtils.shouldSyncTableSchema(conf)) {
+      return;
+    }
+    ReplicationPeerManager rpm = env.getReplicationPeerManager();
+    for (ReplicationPeerDescription rpd : rpm.listPeers(null)) {
+      if (ReplicationUtils.contains(rpd.getPeerConfig(), tableName)) {
+        Configuration peerConf = HBaseConfiguration.create(conf);
+        ZKUtil.applyClusterKeyToConf(peerConf, rpd.getPeerConfig().getClusterKey());
+        try (Connection peerConn = ConnectionFactory.createConnection(peerConf);
+            Admin admin = peerConn.getAdmin()) {
+          if (!admin.tableExists(tableName)) {
+            admin.createTable(tableDescriptor);
+          }
+        }
+      }
+    }
   }
 }
