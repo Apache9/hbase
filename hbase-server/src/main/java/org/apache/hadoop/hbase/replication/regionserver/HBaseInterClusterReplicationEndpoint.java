@@ -128,23 +128,6 @@ public class HBaseInterClusterReplicationEndpoint extends HBaseReplicationEndpoi
     }
   }
 
-  /**
-   * Do the sleeping logic
-   * @param msg Why we sleep
-   * @param sleepMultiplier by how many times the default sleeping time is augmented
-   * @return True if <code>sleepMultiplier</code> is &lt; <code>maxRetriesMultiplier</code>
-   */
-  protected boolean sleepForRetries(String msg, int sleepMultiplier) {
-    try {
-      if (LOG.isTraceEnabled()) {
-        LOG.trace(msg + ", sleeping " + sleepForRetries + " times " + sleepMultiplier);
-      }
-      Thread.sleep(this.sleepForRetries * sleepMultiplier);
-    } catch (InterruptedException e) {
-      LOG.debug("Interrupted while sleeping between retries");
-    }
-    return sleepMultiplier < maxRetriesMultiplier;
-  }
 
   private void reconnectToPeerCluster() {
     HConnection connection = null;
@@ -283,9 +266,6 @@ public class HBaseInterClusterReplicationEndpoint extends HBaseReplicationEndpoi
         entries.toArray(new Entry[entries.size()]));
   }
 
-  protected boolean isPeerEnabled() {
-    return ctx.getReplicationPeer().getPeerState() == PeerState.ENABLED;
-  }
 
   @Override
   protected void doStop() {

@@ -171,4 +171,6 @@ public interface ReplicationEndpoint extends Service, ReplicationPeerConfigListe
    */
   boolean replicate(ReplicateContext replicateContext);
 
+  default void close() {}
+
 }

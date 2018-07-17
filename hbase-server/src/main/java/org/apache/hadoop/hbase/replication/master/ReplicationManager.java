@@ -37,6 +37,8 @@ import org.apache.hadoop.hbase.replication.ReplicationPeerConfig;
 import org.apache.hadoop.hbase.replication.ReplicationPeerDescription;
 import org.apache.hadoop.hbase.replication.ReplicationPeers;
 import org.apache.hadoop.hbase.replication.ReplicationQueuesClient;
+import org.apache.hadoop.hbase.replication.TalosReplicationEndpoint;
+import org.apache.hadoop.hbase.util.TalosUtil;
 import org.apache.hadoop.hbase.zookeeper.ZKUtil;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
 
@@ -70,10 +72,27 @@ public class ReplicationManager {
 
   public void addReplicationPeer(String peerId, ReplicationPeerConfig peerConfig, boolean enabled)
       throws ReplicationException, IOException {
-    checkClusterKey(peerConfig.getClusterKey());
+    if(peerConfig.getReplicationEndpointImpl() != null) {
+      checkReplicationEndpoint(peerConfig);
+    } else {
+      checkClusterKey(peerConfig.getClusterKey());
+    }
     checkPeerConfigConflict(peerConfig);
     replicationPeers.addPeer(peerId, peerConfig, enabled);
     replicationPeers.peerAdded(peerId);
+  }
+
+  private void checkReplicationEndpoint(ReplicationPeerConfig peerConfig)
+      throws DoNotRetryIOException {
+    try {
+      Class endpointImpl = Class.forName(peerConfig.getReplicationEndpointImpl());
+      if(endpointImpl == TalosReplicationEndpoint.class) {
+        TalosUtil.checkConfig(peerConfig);
+      }
+    } catch (ClassNotFoundException e) {
+      throw new DoNotRetryIOException(
+          "Replication endpoint implemented class not found, please check class name, ", e);
+    }
   }
 
   public void removeReplicationPeer(String peerId) throws ReplicationException {
@@ -100,6 +119,9 @@ public class ReplicationManager {
   public void updatePeerConfig(String peerId, ReplicationPeerConfig peerConfig)
       throws ReplicationException, IOException {
     checkPeerConfigConflict(peerConfig);
+    if (peerConfig.getReplicationEndpointImpl() != null) {
+      checkReplicationEndpoint(peerConfig);
+    }
     replicationPeers.updatePeerConfig(peerId, peerConfig);
   }
 

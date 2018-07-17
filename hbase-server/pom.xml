@@ -465,6 +465,26 @@
       <artifactId>hadoop-minikdc</artifactId>
       <scope>test</scope>
     </dependency>
+    <dependency>
+      <groupId>com.xiaomi.infra.galaxy</groupId>
+      <artifactId>galaxy-fds-sdk-java</artifactId>
+      <version>${fds.sdk.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.xiaomi.infra.galaxy</groupId>
+      <artifactId>galaxy-talos-sdk</artifactId>
+      <version>${talos.sdk.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.httpcomponents</groupId>
+      <artifactId>httpclient</artifactId>
+      <version>${http.client.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.httpcomponents</groupId>
+      <artifactId>httpcore</artifactId>
+      <version>${http.core.version}</version>
+    </dependency>
   </dependencies>
   <profiles>
     <!-- Skip the tests in this module -->

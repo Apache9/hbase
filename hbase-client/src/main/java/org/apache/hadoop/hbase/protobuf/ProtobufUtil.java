@@ -2780,6 +2780,15 @@ public final class ProtobufUtil {
       cell.getValue().toByteArray());
   }
 
+  public static Cell toCell(final CellProtos.Cell cell, long mvcc) {
+    return CellUtil.createCell(cell.getRow().toByteArray(),
+        cell.getFamily().toByteArray(),
+        cell.getQualifier().toByteArray(),
+        cell.getTimestamp(),
+        (byte)cell.getCellType().getNumber(),
+        cell.getValue().toByteArray(), mvcc);
+  }
+
   public static HBaseProtos.NamespaceDescriptor toProtoNamespaceDescriptor(NamespaceDescriptor ns) {
     HBaseProtos.NamespaceDescriptor.Builder b =
         HBaseProtos.NamespaceDescriptor.newBuilder()

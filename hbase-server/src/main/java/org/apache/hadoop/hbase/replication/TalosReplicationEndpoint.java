@@ -1,0 +1,256 @@
+/**
+ * Copyright The Apache Software Foundation
+ *
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.apache.hadoop.hbase.replication;
+
+import com.xiaomi.infra.galaxy.rpc.thrift.Credential;
+import com.xiaomi.infra.galaxy.rpc.thrift.UserType;
+import com.xiaomi.infra.galaxy.talos.admin.TalosAdmin;
+import com.xiaomi.infra.galaxy.talos.client.TalosClientConfig;
+import com.xiaomi.infra.galaxy.talos.producer.SimpleProducer;
+import com.xiaomi.infra.galaxy.talos.producer.TalosProducerConfig;
+import com.xiaomi.infra.galaxy.talos.thrift.DescribeTopicRequest;
+import com.xiaomi.infra.galaxy.talos.thrift.GalaxyTalosException;
+import com.xiaomi.infra.galaxy.talos.thrift.Message;
+import com.xiaomi.infra.galaxy.talos.thrift.Topic;
+import com.xiaomi.infra.galaxy.talos.thrift.TopicAndPartition;
+import com.xiaomi.infra.galaxy.talos.thrift.TopicTalosResourceName;
+import libthrift091.TException;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.UUID;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.classification.InterfaceAudience;
+import org.apache.hadoop.hbase.regionserver.wal.HLog;
+import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hbase.util.Hash;
+import org.apache.hadoop.hbase.util.MurmurHash;
+import org.apache.hadoop.hbase.util.TalosUtil;
+
+import static com.xiaomi.infra.galaxy.talos.thrift.ErrorCode.TOPIC_NOT_EXIST;
+import static org.apache.hadoop.hbase.HConstants.TALOS_ACCESS_ENDPOINT;
+import static org.apache.hadoop.hbase.HConstants.TALOS_ACCESS_KEY;
+import static org.apache.hadoop.hbase.HConstants.TALOS_ACCESS_SECRET;
+
+@InterfaceAudience.Private
+public class TalosReplicationEndpoint extends BaseReplicationEndpoint {
+  private static final Log LOG = LogFactory.getLog(TalosReplicationEndpoint.class);
+  private String accessKey;
+  private String accessSecret;
+  private String endpoint;
+  private Credential credential;
+  private TalosProducerConfig producerConfig;
+  private TalosClientConfig clientConfig;
+  private Map<String, SimpleProducer> producers = new HashMap<>();
+  private Map<TableName, Topic> topics = new HashMap<>();
+  private TalosAdmin talosAdmin;
+  private final Hash hashTool = MurmurHash.getInstance();
+
+  @Override
+  public void init(Context context) throws IOException {
+    super.init(context);
+    Configuration conf = HBaseConfiguration.create(ctx.getConfiguration());
+    endpoint = conf.get(TALOS_ACCESS_ENDPOINT);
+    accessKey = conf.get(TALOS_ACCESS_KEY);
+    accessSecret = conf.get(TALOS_ACCESS_SECRET);
+    if (endpoint == null || accessKey == null || accessSecret == null) {
+      throw new IOException("endpoint, accessKey and accessSecret must be set to talos replication");
+    }
+    initialTalosConfigs();
+    this.maxRetriesMultiplier = conf.getInt("replication.source.maxretriesmultiplier", 10);
+    this.sleepForRetriesCount = conf.getLong("replication.source.sleepforretries", 1000);
+  }
+
+  private void initialTalosConfigs() {
+    Properties properties = new Properties();
+    properties.setProperty(TALOS_ACCESS_ENDPOINT, endpoint);
+    clientConfig = new TalosClientConfig(properties);
+    producerConfig = new TalosProducerConfig(properties);
+    credential = new Credential();
+    credential.setSecretKeyId(accessKey).setSecretKey(accessSecret).setType(UserType.APP_SECRET);
+    talosAdmin = new TalosAdmin(clientConfig, credential);
+  }
+
+  @Override
+  public synchronized void peerConfigUpdated(ReplicationPeerConfig rpc) {
+    Map<String, String> newConfig = rpc.getConfiguration();
+    if (!(accessKey.equals(newConfig.get(TALOS_ACCESS_KEY))
+        && accessSecret.equals(newConfig.get(TALOS_ACCESS_SECRET))
+        && endpoint.equals(newConfig.get(TALOS_ACCESS_ENDPOINT)))) {
+      LOG.info("talos config change detected, reinitialize endpoint...");
+      endpoint = newConfig.get(TALOS_ACCESS_ENDPOINT);
+      accessKey = newConfig.get(TALOS_ACCESS_KEY);
+      accessSecret = newConfig.get(TALOS_ACCESS_SECRET);
+      initialTalosConfigs();
+      cleanTopicsAndProducers();
+      LOG.info("talos replication endpoint reinitialize finished");
+    }
+  }
+
+  @Override
+  protected void doStart() {
+    try {
+      notifyStarted();
+    } catch (Throwable e) {
+      notifyFailed(e);
+    }
+  }
+
+
+  private synchronized SimpleProducer getSimpleProducer(TableName tableName,
+      String encodedRegionName) throws TException {
+    SimpleProducer producer = producers.get(encodedRegionName);
+    if (producer != null) {
+      return producer;
+    }
+    Topic topic = topics.get(tableName);
+    String topicName = TalosUtil.encodeTableName(tableName.getNameAsString());
+    if (topic == null) {
+      topic = talosAdmin.describeTopic(new DescribeTopicRequest(topicName));
+      topics.put(tableName, topic);
+    }
+    producer = createSimpleProducer(topic, topicName, encodedRegionName);
+    producers.put(encodedRegionName, producer);
+    return producer;
+  }
+
+  private SimpleProducer createSimpleProducer(Topic topic, String topicName,
+      String encodedRegionName) {
+    int totalPartition = topic.getTopicAttribute().getPartitionNumber();
+    int hash = (hashTool.hash(Bytes.toBytesBinary(encodedRegionName)) & Integer.MAX_VALUE)
+        % totalPartition;
+    LOG.info("talos partition: topic =>" + topicName + "; Get the partition of "
+        + encodedRegionName + " => " + hash);
+    TopicTalosResourceName topicTalosResourceName =
+        topic.getTopicInfo().getTopicTalosResourceName();
+    TopicAndPartition topicAndPartition =
+        new TopicAndPartition(topicName, topicTalosResourceName, hash);
+    return new SimpleProducer(producerConfig, topicAndPartition, credential);
+  }
+
+  public Map<TableName, Topic> getTopics() {
+    return this.topics;
+  }
+
+  public Map<String, SimpleProducer> getProducers() {
+    return this.producers;
+  }
+
+  @Override
+  public UUID getPeerUUID() {
+    return UUID.randomUUID();
+  }
+
+  @Override
+  public boolean replicate(ReplicateContext replicateContext) {
+    List<HLog.Entry> entries = replicateContext.getEntries();
+    int sleepMultiplier = 1;
+    while (this.isRunning()) {
+      if (!isPeerEnabled()) {
+        if (sleepForRetries("Replication is disabled", sleepMultiplier)) {
+          sleepMultiplier++;
+        }
+        continue;
+      }
+      try {
+        Map<TableName, Map<String, List<Message>>> messages = constructTalosMessages(entries);
+        sendMessagesToTalos(messages);
+        ctx.getMetrics()
+            .setAgeOfLastShippedOp(entries.get(entries.size() - 1).getKey().getWriteTime());
+        return true;
+      } catch (IOException | TException e) {
+        if (e instanceof TException) {
+          LOG.warn("TException may due to change of topic, so we clean the cache of topics");
+          cleanTopicsAndProducers();
+        }
+        LOG.warn("Replicate edites to talos failed.", e);
+        // Didn't ship anything, but must still age the last time we did
+        ctx.getMetrics().refreshAgeOfLastShippedOp();
+        if (sleepForRetries("Failed to replicate", sleepMultiplier)) {
+          sleepMultiplier++;
+        }
+      }
+    }
+    return false;
+  }
+
+  private void sendMessagesToTalos(Map<TableName, Map<String, List<Message>>> messages)
+      throws TException, IOException {
+    TableName tableName;
+    boolean skip = false;
+    for (Map.Entry<TableName, Map<String, List<Message>>> messageEntry : messages.entrySet()) {
+      tableName = messageEntry.getKey();
+      for (Map.Entry<String, List<Message>> regionMessages : messageEntry.getValue().entrySet()) {
+        try {
+          if (skip) {
+            skip = false;
+            break;
+          }
+          SimpleProducer simpleProducer =
+              this.getSimpleProducer(tableName, regionMessages.getKey());
+          simpleProducer.putMessageList(regionMessages.getValue());
+        } catch (TException | IOException e) {
+          if (e instanceof GalaxyTalosException
+              && ((GalaxyTalosException) e).getErrorCode() == TOPIC_NOT_EXIST) {
+            if (this.ctx.getPeerConfig().needToReplicate(tableName)) {
+              throw e;
+            } else {
+              LOG.warn("This table " + tableName.getNameAsString()
+                  + " is not in the replication peer " + this.ctx.getPeerId() + " anymore, we can skip its entries");
+            }
+          } else {
+            throw e;
+          }
+        }
+
+      }
+    }
+  }
+
+  private Map<TableName, Map<String, List<Message>>>
+      constructTalosMessages(List<HLog.Entry> entries) throws IOException {
+    Map<TableName, Map<String, List<Message>>> messages = new HashMap<>();
+    for (HLog.Entry entry : entries) {
+      Message message = TalosUtil.constructSingleMessage(entry);
+      TableName tableName = entry.getKey().getTablename();
+      Map<String, List<Message>> regionMessages =
+          messages.computeIfAbsent(tableName, key -> new HashMap<>());
+      String encodedRegionName = Bytes.toStringBinary(entry.getKey().getEncodedRegionName());
+      List<Message> messageList =
+          regionMessages.computeIfAbsent(encodedRegionName, key -> new ArrayList<>());
+      messageList.add(message);
+    }
+    return messages;
+  }
+
+  private void cleanTopicsAndProducers() {
+    this.producers = new HashMap<>();
+    this.topics = new HashMap<>();
+  }
+}

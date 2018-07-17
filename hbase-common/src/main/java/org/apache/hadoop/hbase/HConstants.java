@@ -1262,6 +1262,10 @@ public final class HConstants {
   public static final FsPermission ACL_ENABLE_PUBLIC_HFILE_PERMISSION = new FsPermission((short)0701);
   public static final FsPermission ACL_ENABLE_RESTORE_HFILE_PERMISSION = new FsPermission((short)0703);
 
+  public static final String TALOS_ACCESS_KEY = "galaxy.talos.access.key";
+  public static final String TALOS_ACCESS_SECRET = "galaxy.talos.access.secret";
+  public static final String TALOS_ACCESS_ENDPOINT = "galaxy.talos.service.endpoint";
+
   private HConstants() {
     // Can't be instantiated with this ctor.
   }

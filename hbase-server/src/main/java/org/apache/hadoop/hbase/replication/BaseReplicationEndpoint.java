@@ -40,6 +40,29 @@ public abstract class BaseReplicationEndpoint extends AbstractService
 
   private static final Log LOG = LogFactory.getLog(BaseReplicationEndpoint.class);
   protected Context ctx;
+  // How long should we sleep for each retry
+  protected long sleepForRetriesCount;
+
+  // Maximum number of retries before taking bold actions
+  protected int maxRetriesMultiplier;
+
+  /**
+   * Do the sleeping logic
+   * @param msg Why we sleep
+   * @param sleepMultiplier by how many times the default sleeping time is augmented
+   * @return True if <code>sleepMultiplier</code> is &lt; <code>maxRetriesMultiplier</code>
+   */
+  protected boolean sleepForRetries(String msg, int sleepMultiplier) {
+    try {
+      if (LOG.isTraceEnabled()) {
+        LOG.trace(msg + ", sleeping " + sleepForRetriesCount + " times " + sleepMultiplier);
+      }
+      Thread.sleep(this.sleepForRetriesCount * sleepMultiplier);
+    } catch (InterruptedException e) {
+      LOG.debug("Interrupted while sleeping between retries");
+    }
+    return sleepMultiplier < maxRetriesMultiplier;
+  }
 
   @Override
   public void init(Context context) throws IOException {
@@ -57,11 +80,21 @@ public abstract class BaseReplicationEndpoint extends AbstractService
   }
 
   @Override
+  protected void doStop() {
+    close();
+    notifyStopped();
+  }
+
+  @Override
   /**
    * No-op implementation for subclasses to override if they wish to execute logic if their config changes
    */
   public void peerConfigUpdated(ReplicationPeerConfig rpc) {
 
+  }
+
+  protected boolean isPeerEnabled() {
+    return ctx.getReplicationPeer().getPeerState() == ReplicationPeer.PeerState.ENABLED;
   }
 
   /** Returns a default set of filters */
@@ -89,6 +122,15 @@ public abstract class BaseReplicationEndpoint extends AbstractService
    * return null if they don't want this filter */
   protected WALEntryFilter getNamespaceTableCfWALEntryFilter() {
     return new NamespaceTableCfWALEntryFilter(ctx.getReplicationPeer());
+  }
+
+  @Override
+  public void close(){
+    if(this.ctx != null) {
+      ReplicationPeer peer = this.ctx.getReplicationPeer();
+      peer.removePeerConfigTracker(this);
+
+    }
   }
 
   @Override

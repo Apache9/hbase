@@ -132,4 +132,6 @@ public interface ReplicationPeer {
   public long getPeerBandwidth();
 
   void trackPeerConfigChanges(ReplicationPeerConfigListener listener);
+
+  void removePeerConfigTracker(ReplicationPeerConfigListener listener);
 }

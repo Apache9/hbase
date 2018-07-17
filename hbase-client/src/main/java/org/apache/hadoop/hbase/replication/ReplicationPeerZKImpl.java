@@ -22,6 +22,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -234,7 +235,14 @@ public class ReplicationPeerZKImpl extends ReplicationStateZKBase
   @Override
   public void trackPeerConfigChanges(ReplicationPeerConfigListener listener) {
     if (this.peerConfigTracker != null){
-      this.peerConfigTracker.setListener(listener);
+      this.peerConfigTracker.addListener(listener);
+    }
+  }
+
+  @Override
+  public void removePeerConfigTracker(ReplicationPeerConfigListener listener) {
+    if (this.peerConfigTracker != null){
+      this.peerConfigTracker.removeListener(listener);
     }
   }
 
@@ -335,15 +343,20 @@ public class ReplicationPeerZKImpl extends ReplicationStateZKBase
    */
   public class PeerConfigTracker extends ZooKeeperNodeTracker {
 
-    ReplicationPeerConfigListener listener;
+    private Set<ReplicationPeerConfigListener> listeners;
 
     public PeerConfigTracker(String peerConfigNode, ZooKeeperWatcher watcher,
         Abortable abortable) {
       super(watcher, peerConfigNode, abortable);
+      listeners = new HashSet<>();
     }
 
-    public void setListener(ReplicationPeerConfigListener listener){
-      this.listener = listener;
+    public synchronized void addListener(ReplicationPeerConfigListener listener){
+      this.listeners.add(listener);
+    }
+
+    public synchronized void removeListener(ReplicationPeerConfigListener removeListener) {
+      this.listeners.remove(removeListener);
     }
 
     @Override
@@ -351,7 +364,7 @@ public class ReplicationPeerZKImpl extends ReplicationStateZKBase
       if (path.equals(node)) {
         super.nodeCreated(path);
         ReplicationPeerConfig config = readPeerConfig();
-        if (listener != null){
+        for (ReplicationPeerConfigListener listener : listeners) {
           listener.peerConfigUpdated(config);
         }
       }

@@ -1027,6 +1027,11 @@
     <netty.version>1.0.1</netty.version>
     <joni.version>2.1.2</joni.version>
     <jcodings.version>1.0.8</jcodings.version>
+    <!-- TalosReplication Dependencies -->
+    <fds.sdk.version>3.0.23</fds.sdk.version>
+    <talos.sdk.version>2.3.1</talos.sdk.version>
+    <http.client.version>4.3.4</http.client.version>
+    <http.core.version>4.3.2</http.core.version>
     <!-- Plugin Dependencies -->
     <maven.assembly.version>2.4</maven.assembly.version>
     <maven.antrun.version>1.8</maven.antrun.version>
