@@ -1404,7 +1404,7 @@ public final class HConstants {
   public static final String NOT_IMPLEMENTED = "Not implemented";
 
   public static final String REPLICATION_SYNC_TABLE_SCHEMA = "hbase.replication.sync.table.schema";
-  public static final boolean REPLICATION_SYNC_TABLE_SCHEMA_DEFAULT = true;
+  public static final boolean REPLICATION_SYNC_TABLE_SCHEMA_DEFAULT = false;
 
   private HConstants() {
     // Can't be instantiated with this ctor.

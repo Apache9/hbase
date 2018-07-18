@@ -18,6 +18,8 @@
 
 package org.apache.hadoop.hbase.client.replication;
 
+import org.apache.hadoop.hbase.HBaseClassTestRule;
+import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.NamespaceDescriptor;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.Admin;
@@ -35,6 +37,7 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
+import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
@@ -46,6 +49,11 @@ import java.util.Map;
 
 @Category({ MediumTests.class })
 public class TestSyncTableSchemaForPeers extends TestReplicationBase {
+
+  @ClassRule
+  public static final HBaseClassTestRule CLASS_RULE =
+      HBaseClassTestRule.forClass(TestSyncTableSchemaForPeers.class);
+
   static Connection connection1;
   static Connection connection2;
   static Admin admin1;
@@ -64,6 +72,7 @@ public class TestSyncTableSchemaForPeers extends TestReplicationBase {
 
   @BeforeClass
   public static void setUpBeforeClass() throws Exception {
+    conf1.setBoolean(HConstants.REPLICATION_SYNC_TABLE_SCHEMA, true);
     TestReplicationBase.setUpBeforeClass();
     connection1 = ConnectionFactory.createConnection(conf1);
     connection2 = ConnectionFactory.createConnection(conf2);

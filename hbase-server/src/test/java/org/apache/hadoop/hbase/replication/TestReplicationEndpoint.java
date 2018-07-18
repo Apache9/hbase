@@ -33,6 +33,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.HBaseClassTestRule;
+import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.Waiter;
 import org.apache.hadoop.hbase.client.Connection;
 import org.apache.hadoop.hbase.client.ConnectionFactory;
@@ -401,7 +402,7 @@ public class TestReplicationEndpoint extends TestReplicationBase {
   }
 
   public static class ReplicationEndpointForTest extends BaseReplicationEndpoint {
-    static UUID uuid = utility1.getRandomUUID();
+    static UUID uuid = HBaseTestingUtility.getRandomUUID();
     static AtomicInteger contructedCount = new AtomicInteger();
     static AtomicInteger startedCount = new AtomicInteger();
     static AtomicInteger stoppedCount = new AtomicInteger();
