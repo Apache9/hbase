@@ -64,6 +64,7 @@ import org.apache.hadoop.hbase.RegionTooBusyException;
 import org.apache.hadoop.hbase.Server;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.TooManyRegionScannersException;
 import org.apache.hadoop.hbase.UnknownScannerException;
 import org.apache.hadoop.hbase.client.Append;
 import org.apache.hadoop.hbase.client.ConnectionUtils;
@@ -278,6 +279,16 @@ public class RSRpcServices implements HBaseRPCErrorHandler,
 
   protected static final String RESERVOIR_ENABLED_KEY = "hbase.ipc.server.reservoir.enabled";
 
+  /**
+   * Conf key that specifies the maximum number of opened region scanners on a region server
+   */
+  private static final String REGION_SERVER_MAXIMUM_OPENED_REGION_SCANNER_LIMIT =
+      "hbase.regionserver.maximum.opened.region.scanner.limit";
+  /**
+   * default value of{@link RSRpcServices#REGION_SERVER_MAXIMUM_OPENED_REGION_SCANNER_LIMIT}
+   */
+  private static final int DEFAULT_REGION_SERVER_MAXIMUM_OPENED_REGION_SCANNER_LIMIT = -1;
+
   // Request counter. (Includes requests that are not serviced by regions.)
   // Count only once for requests with multiple actions like multi/caching-scan/replayBatch
   final LongAdder requestCount = new LongAdder();
@@ -329,6 +340,11 @@ public class RSRpcServices implements HBaseRPCErrorHandler,
    * Row size threshold for multi requests above which a warning is logged
    */
   private final int rowSizeWarnThreshold;
+
+  /**
+   * The maximum opened region scanner limit on a regionserver
+   */
+  private final int maxOpenedRegionScannerLimit;
 
   final AtomicBoolean clearCompactionQueues = new AtomicBoolean(false);
 
@@ -1252,6 +1268,9 @@ public class RSRpcServices implements HBaseRPCErrorHandler,
     minimumScanTimeLimitDelta = rs.conf.getLong(
       REGION_SERVER_RPC_MINIMUM_SCAN_TIME_LIMIT_DELTA,
       DEFAULT_REGION_SERVER_RPC_MINIMUM_SCAN_TIME_LIMIT_DELTA);
+    this.maxOpenedRegionScannerLimit = rs.conf.getInt(
+        REGION_SERVER_MAXIMUM_OPENED_REGION_SCANNER_LIMIT,
+        DEFAULT_REGION_SERVER_MAXIMUM_OPENED_REGION_SCANNER_LIMIT);
 
     InetSocketAddress address = rpcServer.getListenerAddress();
     if (address == null) {
@@ -3027,6 +3046,16 @@ public class RSRpcServices implements HBaseRPCErrorHandler,
 
   private RegionScannerHolder newRegionScanner(ScanRequest request, ScanResponse.Builder builder)
       throws IOException {
+    // Check the count of opened region scanners when it has set the limit.
+    // It's a soft limit, and to be more efficiency, we avoid using locks here.
+    int openedRegionScanners = getScannersCount();
+    if (maxOpenedRegionScannerLimit > 0 &&
+        openedRegionScanners >= maxOpenedRegionScannerLimit) {
+      LOG.warn("Currently opened " + openedRegionScanners +
+          " region scanners, up to limit: " + maxOpenedRegionScannerLimit);
+      throw new TooManyRegionScannersException("Too many region scanners");
+    }
+
     HRegion region = getRegion(request.getRegion());
     rejectIfInStandByState(region);
     ClientProtos.Scan protoScan = request.getScan();

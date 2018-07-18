@@ -41,6 +41,8 @@ public interface ExceptionTrackingSource extends BaseSource {
       "rest of the requests will have to be retried.";
   String EXCEPTIONS_CALL_QUEUE_TOO_BIG = "exceptions.callQueueTooBig";
   String EXCEPTIONS_CALL_QUEUE_TOO_BIG_DESC = "Call queue is full";
+  String EXCEPTIONS_TOO_MANY_REGION_SCANNERS_NAME = "exceptions.TooManyRegionScannersException";
+  String EXCEPTIONS_TOO_MANY_REGION_SCANNERS_DESC = "Too many region scanners";
 
   void exception();
 
@@ -56,4 +58,5 @@ public interface ExceptionTrackingSource extends BaseSource {
   void tooBusyException();
   void multiActionTooLargeException();
   void callQueueTooBigException();
+  void tooManyRegionScannersException();
 }

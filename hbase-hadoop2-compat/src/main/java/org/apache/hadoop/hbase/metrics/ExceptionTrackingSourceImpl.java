@@ -38,6 +38,7 @@ public class ExceptionTrackingSourceImpl extends BaseSourceImpl
   protected MutableFastCounter exceptionsMoved;
   protected MutableFastCounter exceptionsMultiTooLarge;
   protected MutableFastCounter exceptionsCallQueueTooBig;
+  protected MutableFastCounter exceptionsTooManyRegionScanners;
 
   public ExceptionTrackingSourceImpl(String metricsName, String metricsDescription,
                                      String metricsContext, String metricsJmxContext) {
@@ -66,6 +67,9 @@ public class ExceptionTrackingSourceImpl extends BaseSourceImpl
         .newCounter(EXCEPTIONS_MULTI_TOO_LARGE_NAME, EXCEPTIONS_MULTI_TOO_LARGE_DESC, 0L);
     this.exceptionsCallQueueTooBig = this.getMetricsRegistry()
         .newCounter(EXCEPTIONS_CALL_QUEUE_TOO_BIG, EXCEPTIONS_CALL_QUEUE_TOO_BIG_DESC, 0L);
+    this.exceptionsTooManyRegionScanners = this.getMetricsRegistry()
+        .newCounter(EXCEPTIONS_TOO_MANY_REGION_SCANNERS_NAME,
+            EXCEPTIONS_TOO_MANY_REGION_SCANNERS_DESC, 0L);
   }
 
   @Override
@@ -116,5 +120,10 @@ public class ExceptionTrackingSourceImpl extends BaseSourceImpl
   @Override
   public void callQueueTooBigException() {
     exceptionsCallQueueTooBig.incr();
+  }
+
+  @Override
+  public void tooManyRegionScannersException() {
+    exceptionsTooManyRegionScanners.incr();
   }
 }

@@ -28,6 +28,7 @@ import org.apache.hadoop.hbase.DoNotRetryIOException;
 import org.apache.hadoop.hbase.MultiActionResultTooLarge;
 import org.apache.hadoop.hbase.NotServingRegionException;
 import org.apache.hadoop.hbase.RegionTooBusyException;
+import org.apache.hadoop.hbase.TooManyRegionScannersException;
 import org.apache.hadoop.hbase.UnknownScannerException;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.coprocessor.CoreCoprocessor;
@@ -79,6 +80,8 @@ public class ErrorThrowingGetObserver implements RegionCoprocessor, RegionObserv
           throw new RegionTooBusyException("Failing for test");
         case OUT_OF_ORDER_SCANNER_NEXT:
           throw new OutOfOrderScannerNextException("Failing for test");
+        case TOO_MANY_REGION_SCANNERS:
+          throw new TooManyRegionScannersException("Failing for test");
         default:
           throw new DoNotRetryIOException("Failing for test");
       }
@@ -94,7 +97,9 @@ public class ErrorThrowingGetObserver implements RegionCoprocessor, RegionObserv
     SCANNER_RESET(ExceptionTrackingSource.EXCEPTIONS_SCANNER_RESET_NAME),
     UNKNOWN_SCANNER(ExceptionTrackingSource.EXCEPTIONS_UNKNOWN_NAME),
     REGION_TOO_BUSY(ExceptionTrackingSource.EXCEPTIONS_BUSY_NAME),
-    OUT_OF_ORDER_SCANNER_NEXT(ExceptionTrackingSource.EXCEPTIONS_OOO_NAME);
+    OUT_OF_ORDER_SCANNER_NEXT(ExceptionTrackingSource.EXCEPTIONS_OOO_NAME),
+    TOO_MANY_REGION_SCANNERS(ExceptionTrackingSource.EXCEPTIONS_TOO_MANY_REGION_SCANNERS_NAME);
+
 
     private final String metricName;
 

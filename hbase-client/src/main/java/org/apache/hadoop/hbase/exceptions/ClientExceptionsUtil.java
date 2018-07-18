@@ -35,6 +35,7 @@ import org.apache.hadoop.hbase.MultiActionResultTooLarge;
 import org.apache.hadoop.hbase.NotServingRegionException;
 import org.apache.hadoop.hbase.RegionTooBusyException;
 import org.apache.hadoop.hbase.RetryImmediatelyException;
+import org.apache.hadoop.hbase.TooManyRegionScannersException;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.apache.yetus.audience.InterfaceStability;
 import org.apache.hadoop.hbase.ipc.CallTimeoutException;
@@ -63,7 +64,8 @@ public final class ClientExceptionsUtil {
         || cur instanceof RegionTooBusyException || cur instanceof RpcThrottlingException
         || cur instanceof MultiActionResultTooLarge || cur instanceof RetryImmediatelyException
         || cur instanceof CallQueueTooBigException || cur instanceof CallDroppedException
-        || cur instanceof NotServingRegionException || cur instanceof RequestTooBigException);
+        || cur instanceof NotServingRegionException || cur instanceof RequestTooBigException
+        || cur instanceof TooManyRegionScannersException);
   }
 
 
