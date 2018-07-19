@@ -28,6 +28,7 @@ import org.apache.hadoop.hbase.CompareOperator;
 import org.apache.hadoop.hbase.HBaseInterfaceAudience;
 import org.apache.hadoop.hbase.client.Append;
 import org.apache.hadoop.hbase.client.CompactionState;
+import org.apache.hadoop.hbase.client.Condition;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Increment;
@@ -472,6 +473,24 @@ public interface Region extends ConfigurationObserver {
   // Changing processRowsWithLocks and RowProcessor
   void mutateRowsWithLocks(Collection<Mutation> mutations, Collection<byte[]> rowsToLock,
       long nonceGroup, long nonce) throws IOException;
+
+  /**
+   * Perform atomic mutations within the region.
+   * @param mutations The list of mutations to perform.
+   * <code>mutations</code> can contain operations for multiple rows.
+   * Caller has to ensure that all rows are contained in this region.
+   * @param conditions The list of conditions to check.
+   * @param rowsToLock Rows to lock
+   * @param nonceGroup Optional nonce group of the operation (client Id)
+   * @param nonce Optional nonce of the operation (unique random id to ensure "more idempotence")
+   * If multiple rows are locked care should be taken that
+   * <code>rowsToLock</code> is sorted in order to avoid deadlocks.
+   * @return The collection of failed conditions indexes
+   * @throws IOException
+   */
+  Collection<Integer> mutateRowsWithLocks(Collection<Mutation> mutations,
+      Collection<Condition> conditions, Collection<byte[]> rowsToLock, long nonceGroup, long nonce)
+      throws IOException;
 
   /**
    * Performs atomic multiple reads and writes on a given row.

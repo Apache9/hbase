@@ -102,6 +102,7 @@ import org.apache.hadoop.hbase.UnknownScannerException;
 import org.apache.hadoop.hbase.client.Append;
 import org.apache.hadoop.hbase.client.ColumnFamilyDescriptor;
 import org.apache.hadoop.hbase.client.CompactionState;
+import org.apache.hadoop.hbase.client.Condition;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Durability;
 import org.apache.hadoop.hbase.client.Get;
@@ -3129,6 +3130,10 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
 
     public abstract long getNonce(int index);
 
+    public abstract Collection<Condition> getConditions();
+
+    public abstract Collection<Integer> getUnmetConditions();
+
     /**
      * This method is potentially expensive and useful mostly for non-replay CP path.
      */
@@ -3506,12 +3511,21 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
   static class MutationBatchOperation extends BatchOperation<Mutation> {
     private long nonceGroup;
     private long nonce;
+    Collection<Condition> conditions;
+    List<Integer> unmetConditions;
     public MutationBatchOperation(final HRegion region, Mutation[] operations, boolean atomic,
         long nonceGroup, long nonce) {
+      this(region, operations, atomic, nonceGroup, nonce, null);
+    }
+
+    public MutationBatchOperation(final HRegion region, Mutation[] operations, boolean atomic,
+        long nonceGroup, long nonce, Collection<Condition> conditions) {
       super(region, operations);
       this.atomic = atomic;
       this.nonceGroup = nonceGroup;
       this.nonce = nonce;
+      this.conditions = conditions;
+      this.unmetConditions = new ArrayList<Integer>();
     }
 
     @Override
@@ -3527,6 +3541,16 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
     @Override
     public long getNonce(int index) {
       return nonce;
+    }
+
+    @Override
+    public Collection<Condition> getConditions() {
+      return conditions;
+    }
+
+    @Override
+    public Collection<Integer> getUnmetConditions() {
+      return unmetConditions;
     }
 
     @Override
@@ -3607,6 +3631,22 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
     @Override
     public void prepareMiniBatchOperations(MiniBatchOperationInProgress<Mutation> miniBatchOp,
         long timestamp, final List<RowLock> acquiredRowLocks) throws IOException {
+      if(conditions != null) {
+        // check the conditions
+        int i = 0;
+        for (Condition c : conditions) {
+          Get get = new Get(c.getRow());
+          get.addColumn(c.getFamily(), c.getQualifier());
+          List<Cell> cells = region.get(get, true);
+          if (!c.isMatch(Result.create(cells))) { // no match
+            unmetConditions.add(i);
+          }
+          ++i;
+        }
+        if (!unmetConditions.isEmpty()) {
+          return;
+        }
+      }
       byte[] byteTS = Bytes.toBytes(timestamp);
       visitBatchOperations(true, miniBatchOp.getLastIndexExclusive(), (int index) -> {
         Mutation mutation = getMutation(index);
@@ -3837,6 +3877,16 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
     }
 
     @Override
+    public Collection<Condition> getConditions() {
+      return null;
+    }
+
+    @Override
+    public Collection<Integer> getUnmetConditions() {
+      return null;
+    }
+
+    @Override
     public Mutation[] getMutationsForCoprocs() {
       return null;
     }
@@ -4047,8 +4097,15 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
       // We should record the timestamp only after we have acquired the rowLock,
       // otherwise, newer puts/deletes are not guaranteed to have a newer timestamp
       long now = EnvironmentEdgeManager.currentTime();
+      if (batchOp.getConditions() != null && batchOp.getConditions().size() > 0) {
+        // wait for all prior MVCC transactions to finish - while we hold the row lock
+        // (so that we are guaranteed to see the latest state)
+        mvcc.complete(mvcc.begin());
+      }
       batchOp.prepareMiniBatchOperations(miniBatchOp, now, acquiredRowLocks);
-
+      if (batchOp.getUnmetConditions() != null && !batchOp.getUnmetConditions().isEmpty()) {
+        return; // some conditions unmet
+      }
       // STEP 3. Build WAL edit
       List<Pair<NonceKey, WALEdit>> walEdits = batchOp.buildWALEdits(miniBatchOp);
 
@@ -7440,28 +7497,53 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
   @Override
   public void mutateRowsWithLocks(Collection<Mutation> mutations,
       Collection<byte[]> rowsToLock, long nonceGroup, long nonce) throws IOException {
-    batchMutate(new MutationBatchOperation(this, mutations.toArray(new Mutation[mutations.size()]),
-        true, nonceGroup, nonce) {
-      @Override
-      public MiniBatchOperationInProgress<Mutation> lockRowsAndBuildMiniBatch(
-          List<RowLock> acquiredRowLocks) throws IOException {
-        RowLock prevRowLock = null;
-        for (byte[] row : rowsToLock) {
-          try {
-            RowLock rowLock = region.getRowLockInternal(row, false, prevRowLock); // write lock
-            if (rowLock != prevRowLock) {
-              acquiredRowLocks.add(rowLock);
-              prevRowLock = rowLock;
-            }
-          } catch (IOException ioe) {
-            LOG.warn("Failed getting lock, row=" + Bytes.toStringBinary(row), ioe);
-            throw ioe;
-          }
-        }
-        return createMiniBatch(size(), size());
-      }
-    });
+    this.mutateRowsWithLocks(mutations, null, rowsToLock, nonceGroup, nonce);
   }
+
+  /**
+   * Perform atomic mutations within the region.
+   * @param mutations The list of mutations to perform.
+   * <code>mutations</code> can contain operations for multiple rows.
+   * Caller has to ensure that all rows are contained in this region.
+   * @param conditions The list of conditions to check.
+   * @param rowsToLock Rows to lock
+   * @param nonceGroup Optional nonce group of the operation (client Id)
+   * @param nonce Optional nonce of the operation (unique random id to ensure "more idempotence")
+   * If multiple rows are locked care should be taken that
+   * <code>rowsToLock</code> is sorted in order to avoid deadlocks.
+   * @return The collection of failed conditions indexes
+   * @throws IOException
+   */
+  @Override
+  public Collection<Integer> mutateRowsWithLocks(Collection<Mutation> mutations,
+      Collection<Condition> conditions, Collection<byte[]> rowsToLock, long nonceGroup, long nonce)
+      throws IOException {
+    MutationBatchOperation mutationBatchOperation =
+        new MutationBatchOperation(this, mutations.toArray(new Mutation[mutations.size()]),
+            true, nonceGroup, nonce, conditions) {
+          @Override
+          public MiniBatchOperationInProgress<Mutation> lockRowsAndBuildMiniBatch(
+              List<RowLock> acquiredRowLocks) throws IOException {
+            RowLock prevRowLock = null;
+            for (byte[] row : rowsToLock) {
+              try {
+                RowLock rowLock = region.getRowLockInternal(row, false, prevRowLock); // write lock
+                if (rowLock != prevRowLock) {
+                  acquiredRowLocks.add(rowLock);
+                  prevRowLock = rowLock;
+                }
+              } catch (IOException ioe) {
+                LOG.warn("Failed getting lock, row=" + Bytes.toStringBinary(row), ioe);
+                throw ioe;
+              }
+            }
+            return createMiniBatch(size(), size());
+          }
+        };
+    batchMutate(mutationBatchOperation);
+    return mutationBatchOperation.getUnmetConditions();
+  }
+
 
   /**
    * @return statistics about the current load of the region

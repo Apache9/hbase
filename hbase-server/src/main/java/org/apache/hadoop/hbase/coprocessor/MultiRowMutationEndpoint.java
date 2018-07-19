@@ -26,12 +26,15 @@ import java.util.SortedSet;
 import java.util.TreeSet;
 
 import org.apache.hadoop.hbase.CoprocessorEnvironment;
+import org.apache.hadoop.hbase.DoNotRetryIOException;
 import org.apache.hadoop.hbase.HBaseInterfaceAudience;
 import org.apache.hadoop.hbase.HConstants;
+import org.apache.hadoop.hbase.client.Condition;
 import org.apache.hadoop.hbase.client.Mutation;
 import org.apache.hadoop.hbase.client.RegionInfo;
 import org.apache.hadoop.hbase.ipc.CoprocessorRpcUtils;
 import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
+import org.apache.hadoop.hbase.protobuf.generated.ClientProtos;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.MutationProto;
 import org.apache.hadoop.hbase.protobuf.generated.MultiRowMutationProtos.MultiRowMutationService;
 import org.apache.hadoop.hbase.protobuf.generated.MultiRowMutationProtos.MutateRowsRequest;
@@ -83,7 +86,7 @@ public class MultiRowMutationEndpoint extends MultiRowMutationService implements
   @Override
   public void mutateRows(RpcController controller, MutateRowsRequest request,
       RpcCallback<MutateRowsResponse> done) {
-    MutateRowsResponse response = MutateRowsResponse.getDefaultInstance();
+    MutateRowsResponse.Builder responseBuilder = MutateRowsResponse.newBuilder();
     try {
       // set of rows to lock, sorted to avoid deadlocks
       SortedSet<byte[]> rowsToLock = new TreeSet<>(Bytes.BYTES_COMPARATOR);
@@ -110,14 +113,43 @@ public class MultiRowMutationEndpoint extends MultiRowMutationService implements
         }
         rowsToLock.add(m.getRow());
       }
+
+      List<Condition> conditions = new ArrayList<Condition>(request.getConditionCount());
+      if (request.getConditionCount() > 0) {
+        for (ClientProtos.Condition c : request.getConditionList()) {
+          byte[] row = c.getRow().toByteArray();
+          // check whether rows are in range for this region
+          if (!HRegion.rowIsInRange(regionInfo, row)) {
+            String msg = "Condition row out of range '"
+                + Bytes.toStringBinary(c.getRow().toByteArray()) + "'";
+            if (rowsToLock.isEmpty()) {
+              // if this is the first row, region might have moved,
+              // allow client to retry
+              throw new WrongRegionException(msg);
+            } else {
+              // rows are split between regions, do not retry
+              throw new DoNotRetryIOException(msg);
+            }
+          }
+          rowsToLock.add(row);
+          conditions.add(ProtobufUtil.toCondition(c));
+        }
+      }
+
       // call utility method on region
       long nonceGroup = request.hasNonceGroup() ? request.getNonceGroup() : HConstants.NO_NONCE;
       long nonce = request.hasNonce() ? request.getNonce() : HConstants.NO_NONCE;
-      env.getRegion().mutateRowsWithLocks(mutations, rowsToLock, nonceGroup, nonce);
+      if (request.getConditionCount() > 0) {
+        Collection<Integer> unmet = env.getRegion().mutateRowsWithLocks(mutations,
+            conditions, rowsToLock, nonceGroup, nonce);
+        responseBuilder.addAllUnmetConditions(unmet);
+      } else {
+        env.getRegion().mutateRowsWithLocks(mutations, rowsToLock, nonceGroup, nonce);
+      }
     } catch (IOException e) {
       CoprocessorRpcUtils.setControllerException(controller, e);
     }
-    done.run(response);
+    done.run(responseBuilder.build());
   }
 
   @Override
