@@ -2339,7 +2339,7 @@ public class TestAccessController extends SecureTestUtil {
       @Override
       public Object run() throws Exception {
         try(Connection conn = ConnectionFactory.createConnection(conf);
-            Table t = conn.getTable(TEST_TABLE)) {
+            Table t = ConnectionUtils.getRawTable(conn, TEST_TABLE)) {
           return t.get(new Get(TEST_ROW));
         }
       }
