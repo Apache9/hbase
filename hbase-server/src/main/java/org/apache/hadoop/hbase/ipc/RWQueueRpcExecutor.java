@@ -156,6 +156,7 @@ public class RWQueueRpcExecutor extends RpcExecutor {
 
     BlockingQueue<CallRunner> queue = queues.get(queueIndex);
     if (queue.size() >= currentQueueLimit || !queue.offer(callTask)) {
+      callTask.resetCallQueueSize();
       queueCounter.setQueueFull(true);
       queueCounter.incRejectedRequestCount();
       return false;
