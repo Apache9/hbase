@@ -212,6 +212,21 @@ public interface Table extends Closeable {
   }
 
   /**
+   * Extracts certain cells from the given rows, in parallel.
+   * @param gets The objects that specify what data to fetch and from which rows.
+   * @return The data coming from the specified rows, if it exists. If the row specified doesn't
+   *         exist, the {@link Result} instance returned won't contain any
+   *         {@link org.apache.hadoop.hbase.Cell}s, as indicated by {@link Result#isEmpty()}. If
+   *         there are any failures even after retries, there will be a null in the results array
+   *         for those Gets, AND an exception will be thrown.
+   * @throws IOException if a remote or network exception occurs.
+   * @since 0.90.0
+   */
+  default Result[] parallelGet(List<Get> gets) throws IOException{
+   throw new UnsupportedOperationException("parallelGet is not supported by this implementation");
+  }
+
+  /**
    * Returns a scanner on the current table as specified by the {@link Scan}
    * object.
    * Note that the passed {@link Scan}'s start row and caching properties

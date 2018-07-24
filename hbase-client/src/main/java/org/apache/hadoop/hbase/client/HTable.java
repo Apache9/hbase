@@ -416,6 +416,28 @@ public class HTable implements Table {
     }
   }
 
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public Result[] parallelGet(List<Get> gets) throws IOException {
+    Result[] results = new Result[gets.size()];
+    List<Future<Result>> futures = new ArrayList<>();
+    for (final Get get : gets) {
+      futures.add(pool.submit(() -> get(get)));
+    }
+    for (int i = 0; i < results.length; i++) {
+      try {
+        results[i] = futures.get(i).get();
+      } catch (InterruptedException e) {
+        throw new IOException(e);
+      } catch (ExecutionException e) {
+        throw new IOException(e);
+      }
+    }
+    return results;
+  }
+
   @Override
   public void batch(final List<? extends Row> actions, final Object[] results)
       throws InterruptedException, IOException {
