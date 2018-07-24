@@ -142,6 +142,9 @@ public final class SnapshotDescriptionUtils {
   @Deprecated
   public static final String SNAPSHOT_TIMEOUT_MILLIS_KEY = "hbase.snapshot.master.timeoutMillis";
 
+  // prefix for snapshot of deleted table
+  public static final String SNAPSHOT_FOR_DELETED_TABLE_PREFIX = "__delete_";
+
   private SnapshotDescriptionUtils() {
     // private constructor for utility class
   }
@@ -259,6 +262,11 @@ public final class SnapshotDescriptionUtils {
     if (!snapshot.hasTable()) {
       throw new IllegalArgumentException(
           "Descriptor doesn't apply to a table, so we can't build it.");
+    }
+
+    if (snapshot.getName().startsWith(SNAPSHOT_FOR_DELETED_TABLE_PREFIX)) {
+      throw new IllegalArgumentException(
+          "The prefix " + SNAPSHOT_FOR_DELETED_TABLE_PREFIX + " should not be used.");
     }
 
     // set the creation time, if one hasn't been set
@@ -386,6 +394,19 @@ public final class SnapshotDescriptionUtils {
         return admin.tableExists(AccessControlLists.ACL_TABLE_NAME);
       }
     }
+  }
+
+  public static SnapshotDescription getSnapshotNameForDeletedTable(TableName tableName) {
+    long time = EnvironmentEdgeManager.currentTime();
+    String snapshotName = SNAPSHOT_FOR_DELETED_TABLE_PREFIX + tableName.getNamespaceAsString() +
+        "_" + tableName.getQualifierAsString() + "_" + time;
+    return SnapshotDescription.newBuilder().setTable(tableName.getNameAsString())
+        .setName(snapshotName).setType(SnapshotDescription.Type.DISABLED).setCreationTime(time)
+        .build();
+  }
+
+  public static boolean isSnapshotForDeletedTable(SnapshotDescription snapshot) {
+    return snapshot.getName().startsWith(SNAPSHOT_FOR_DELETED_TABLE_PREFIX);
   }
 
   private static SnapshotDescription writeAclToSnapshotDescription(SnapshotDescription snapshot,

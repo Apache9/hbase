@@ -1406,6 +1406,8 @@ public final class HConstants {
   public static final String REPLICATION_SYNC_TABLE_SCHEMA = "hbase.replication.sync.table.schema";
   public static final boolean REPLICATION_SYNC_TABLE_SCHEMA_DEFAULT = false;
 
+  public static final String SNAPSHOT_BEFORE_DELETE = "hbase.master.snapshot.before.delete";
+
   private HConstants() {
     // Can't be instantiated with this ctor.
   }

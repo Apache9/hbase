@@ -112,6 +112,7 @@ import org.apache.hadoop.hbase.master.cleaner.CleanerChore;
 import org.apache.hadoop.hbase.master.cleaner.HFileCleaner;
 import org.apache.hadoop.hbase.master.cleaner.LogCleaner;
 import org.apache.hadoop.hbase.master.cleaner.ReplicationBarrierCleaner;
+import org.apache.hadoop.hbase.master.cleaner.SnapshotForDeletedTableCleaner;
 import org.apache.hadoop.hbase.master.locking.LockManager;
 import org.apache.hadoop.hbase.master.normalizer.NormalizationPlan;
 import org.apache.hadoop.hbase.master.normalizer.NormalizationPlan.PlanType;
@@ -183,6 +184,7 @@ import org.apache.hadoop.hbase.replication.master.ReplicationLogCleaner;
 import org.apache.hadoop.hbase.replication.master.ReplicationPeerConfigUpgrader;
 import org.apache.hadoop.hbase.security.AccessDeniedException;
 import org.apache.hadoop.hbase.security.UserProvider;
+import org.apache.hadoop.hbase.snapshot.SnapshotDescriptionUtils;
 import org.apache.hadoop.hbase.trace.TraceUtil;
 import org.apache.hadoop.hbase.util.Addressing;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -378,6 +380,7 @@ public class HMaster extends HRegionServer implements MasterServices {
   private HFileCleaner hfileCleaner;
   private ReplicationBarrierCleaner replicationBarrierCleaner;
   private ExpiredMobFileCleanerChore expiredMobFileCleanerChore;
+  private SnapshotForDeletedTableCleaner snapshotForDeletedTableCleaner;
   private MobCompactionChore mobCompactChore;
   private MasterMobCompactionThread mobCompactThread;
   // used to synchronize the mobCompactionStates
@@ -406,6 +409,8 @@ public class HMaster extends HRegionServer implements MasterServices {
 
   // monitor for snapshot of hbase tables
   SnapshotManager snapshotManager;
+  // take a snapshot before deleting a table
+  private final boolean snapshotBeforeDelete;
   // monitor for distributed procedures
   private MasterProcedureManagerHost mpmHost;
 
@@ -539,6 +544,8 @@ public class HMaster extends HRegionServer implements MasterServices {
           getChoreService().scheduleChore(clusterStatusPublisherChore);
         }
       }
+
+      this.snapshotBeforeDelete = conf.getBoolean(HConstants.SNAPSHOT_BEFORE_DELETE, false);
 
       // Some unit tests don't need a cluster, so no zookeeper at all
       if (!conf.getBoolean("hbase.testing.nocluster", false)) {
@@ -1242,6 +1249,12 @@ public class HMaster extends HRegionServer implements MasterServices {
          getMasterWalManager().getOldLogDir());
     getChoreService().scheduleChore(logCleaner);
 
+    if (snapshotBeforeDelete) {
+      this.snapshotForDeletedTableCleaner =
+          new SnapshotForDeletedTableCleaner(cleanerInterval, this, snapshotManager, conf);
+      getChoreService().scheduleChore(snapshotForDeletedTableCleaner);
+    }
+
     // start the hfile archive cleaner thread
     Path archiveDir = HFileArchiveUtil.getArchivePath(conf);
     Map<String, Object> params = new HashMap<>();
@@ -1365,6 +1378,7 @@ public class HMaster extends HRegionServer implements MasterServices {
       choreService.cancelChore(this.logCleaner);
       choreService.cancelChore(this.hfileCleaner);
       choreService.cancelChore(this.replicationBarrierCleaner);
+      choreService.cancelChore(this.snapshotForDeletedTableCleaner);
     }
   }
 
@@ -2183,6 +2197,12 @@ public class HMaster extends HRegionServer implements MasterServices {
       @Override
       protected void run() throws IOException {
         getMaster().getMasterCoprocessorHost().preDeleteTable(tableName);
+
+        if (snapshotBeforeDelete) {
+          LOG.info("Take snaposhot for " + tableName + " before deleting");
+          snapshotManager
+              .takeSnapshot(SnapshotDescriptionUtils.getSnapshotNameForDeletedTable(tableName));
+        }
 
         LOG.info(getClientIdAuditPrefix() + " delete " + tableName);
 
