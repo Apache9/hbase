@@ -17,8 +17,10 @@
  */
 package org.apache.hadoop.hbase;
 
+import static org.apache.hadoop.hbase.client.TableDescriptorBuilder.ACROSS_PREFIX_ROWS_ATOMIC;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -26,6 +28,8 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.regex.Pattern;
 import org.apache.hadoop.hbase.client.Durability;
+import org.apache.hadoop.hbase.client.TableDescriptor;
+import org.apache.hadoop.hbase.client.TableDescriptorBuilder;
 import org.apache.hadoop.hbase.exceptions.DeserializationException;
 import org.apache.hadoop.hbase.testclassification.MiscTests;
 import org.apache.hadoop.hbase.testclassification.SmallTests;
@@ -341,5 +345,24 @@ public class TestHTableDescriptor {
     HTableDescriptor htd = new HTableDescriptor(TableName.valueOf(name.getMethodName()));
     htd.setPriority(42);
     assertEquals(42, htd.getPriority());
+  }
+
+  /**
+   * Test that we set acros prefix row atomic
+   */
+  @Test
+  public void testAcrossPrefixRowsAtomic() {
+    TableDescriptorBuilder builder = TableDescriptorBuilder.newBuilder(TableName.valueOf("table"));
+    TableDescriptor descriptor = builder.build();
+    assertFalse(descriptor.isAcrossPrefixRowsAtomic());
+    assertNull(descriptor.getRegionSplitPolicyClassName());
+
+    builder.setValue(ACROSS_PREFIX_ROWS_ATOMIC, "true");
+    descriptor = builder.build();
+
+
+    assertTrue(descriptor.isAcrossPrefixRowsAtomic());
+    assertEquals("org.apache.hadoop.hbase.regionserver.KeyDelimiterPrefixRegionSplitPolicy",
+        descriptor.getRegionSplitPolicyClassName());
   }
 }

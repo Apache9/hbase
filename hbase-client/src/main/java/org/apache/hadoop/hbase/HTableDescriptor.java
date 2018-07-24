@@ -349,6 +349,10 @@ public class HTableDescriptor implements TableDescriptor, Comparable<HTableDescr
     return delegatee.getRegionSplitPolicyClassName();
   }
 
+  public boolean isAcrossPrefixRowsAtomic(){
+    return delegatee.isAcrossPrefixRowsAtomic();
+  }
+
   /**
    * Returns the maximum size upto which a region can grow to after which a region
    * split is triggered. The region size is represented by the size of the biggest

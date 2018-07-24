@@ -58,6 +58,11 @@ public class TableDescriptorBuilder {
   public static final Logger LOG = LoggerFactory.getLogger(TableDescriptorBuilder.class);
   @InterfaceAudience.Private
   public static final String SPLIT_POLICY = "SPLIT_POLICY";
+  public static final String ACROSS_PREFIX_ROWS_ATOMIC = "ACROSS_PREFIX_ROWS_ATOMIC";
+
+  public static final String DEFAULT_SPLIT_POLICY_FOR_ACROSS_PREFIX_ROWS_ATOMIC =
+      "org.apache.hadoop.hbase.regionserver.KeyDelimiterPrefixRegionSplitPolicy";
+
   private static final Bytes SPLIT_POLICY_KEY = new Bytes(Bytes.toBytes(SPLIT_POLICY));
   /**
    * Used by HBase Shell interface to access this metadata
@@ -856,7 +861,21 @@ public class TableDescriptorBuilder {
      */
     @Override
     public String getRegionSplitPolicyClassName() {
-      return getOrDefault(SPLIT_POLICY_KEY, Function.identity(), null);
+      String splitPolicy = getOrDefault(SPLIT_POLICY_KEY, Function.identity(), null);
+      if (splitPolicy == null && isAcrossPrefixRowsAtomic()) {
+        splitPolicy = DEFAULT_SPLIT_POLICY_FOR_ACROSS_PREFIX_ROWS_ATOMIC;
+      }
+      return splitPolicy;
+    }
+
+    /**
+     * Is this table support the atomic of different rows of same prefix in a region
+     * @return
+     */
+    public boolean isAcrossPrefixRowsAtomic() {
+      String value = getValue(ACROSS_PREFIX_ROWS_ATOMIC);
+      if (value == null) return false;
+      return Boolean.parseBoolean(value);
     }
 
     /**

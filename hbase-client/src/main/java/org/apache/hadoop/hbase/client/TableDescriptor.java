@@ -285,6 +285,8 @@ public interface TableDescriptor {
 
   boolean isSalted();
 
+  boolean isAcrossPrefixRowsAtomic();
+
   String getKeySalter();
 
   Integer getSlotsCount();
