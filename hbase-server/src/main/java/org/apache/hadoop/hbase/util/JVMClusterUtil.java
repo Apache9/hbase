@@ -24,13 +24,12 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.List;
 
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.master.HMaster;
+import org.apache.hadoop.hbase.regionserver.HRegionServer;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.CoordinatedStateManager;
-import org.apache.hadoop.hbase.master.HMaster;
-import org.apache.hadoop.hbase.regionserver.HRegionServer;
 
 /**
  * Utility used running a cluster all in the one JVM.
@@ -188,7 +187,7 @@ public class JVMClusterUtil {
         configuration.get("hbase.master.start.timeout.localHBaseCluster", "30000")) : 30000;
       if (System.currentTimeMillis() > startTime + startTimeout) {
         String msg = "Master not active after " + startTimeout + "ms";
-        Threads.printThreadInfo(System.out, "Thread dump because: " + msg);
+        ThreadInfoUtils.printThreadInfo(System.out, "Thread dump because: " + msg);
         throw new RuntimeException(msg);
       }
     }
@@ -218,7 +217,7 @@ public class JVMClusterUtil {
       }
       if (System.currentTimeMillis() > startTime + maxwait) {
         String msg = "Master not initialized after " + maxwait + "ms seconds";
-        Threads.printThreadInfo(System.out, "Thread dump because: " + msg);
+        ThreadInfoUtils.printThreadInfo(System.out, "Thread dump because: " + msg);
         throw new RuntimeException(msg);
       }
       try {
@@ -299,7 +298,7 @@ public class JVMClusterUtil {
             LOG.warn("RegionServerThreads taking too long to stop, interrupting; thread dump "  +
               "if > 3 attempts: i=" + i);
             if (i > 3) {
-              Threads.printThreadInfo(System.out, "Thread dump " + t.getName());
+              ThreadInfoUtils.printThreadInfo(System.out, "Thread dump " + t.getName());
             }
             t.interrupt();
           }

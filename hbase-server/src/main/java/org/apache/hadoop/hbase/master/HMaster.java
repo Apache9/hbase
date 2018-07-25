@@ -195,6 +195,7 @@ import org.apache.hadoop.hbase.util.HasThread;
 import org.apache.hadoop.hbase.util.IdLock;
 import org.apache.hadoop.hbase.util.ModifyRegionUtils;
 import org.apache.hadoop.hbase.util.Pair;
+import org.apache.hadoop.hbase.util.ThreadInfoUtils;
 import org.apache.hadoop.hbase.util.Threads;
 import org.apache.hadoop.hbase.util.VersionInfo;
 import org.apache.hadoop.hbase.zookeeper.LoadBalancerTracker;
@@ -286,7 +287,7 @@ public class HMaster extends HRegionServer implements MasterServices {
                 + " consider submitting a bug report including a thread dump of this process.");
             if (haltOnTimeout) {
               LOG.error("Zombie Master exiting. Thread dump to stdout");
-              Threads.printThreadInfo(System.out, "Zombie HMaster");
+              ThreadInfoUtils.printThreadInfo(System.out, "Zombie HMaster");
               System.exit(-1);
             }
           }

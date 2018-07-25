@@ -25,12 +25,12 @@ import java.util.concurrent.atomic.LongAdder;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.ScheduledChore;
 import org.apache.hadoop.hbase.regionserver.HRegionServer;
-import org.apache.hadoop.hbase.util.ReflectionUtils;
+import org.apache.hadoop.hbase.util.ThreadInfoUtils;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-
+@InterfaceAudience.Private
 class QueueCounter {
   private final AtomicBoolean queueFull;
   private final LongAdder incomeRequestCount;
@@ -196,7 +196,7 @@ public class QueueFullDetector extends ScheduledChore {
       sb.append(", shouldExit is ").append(shouldExit);
       LOG.info(sb.toString());
       if (shouldExit) {
-        ReflectionUtils.logThreadInfo(LOG, "Thread dump from QueueFullDetector", 0L);
+        ThreadInfoUtils.logThreadInfo("Thread dump from QueueFullDetector", true);
         // queueFullDetected = true;
         server.abort("Detected queue full and cann't come back to normal state in a long duration");
       }

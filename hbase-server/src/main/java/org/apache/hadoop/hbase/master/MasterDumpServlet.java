@@ -35,7 +35,7 @@ import org.apache.hadoop.hbase.monitoring.LogMonitoring;
 import org.apache.hadoop.hbase.monitoring.StateDumpServlet;
 import org.apache.hadoop.hbase.monitoring.TaskMonitor;
 import org.apache.hadoop.hbase.regionserver.RSDumpServlet;
-import org.apache.hadoop.hbase.util.Threads;
+import org.apache.hadoop.hbase.util.ThreadInfoUtils;
 import org.apache.yetus.audience.InterfaceAudience;
 
 @InterfaceAudience.Private
@@ -81,7 +81,7 @@ public class MasterDumpServlet extends StateDumpServlet {
       out.println(LINE);
       out.flush();
       PrintStream ps = new PrintStream(response.getOutputStream(), false, "UTF-8");
-      Threads.printThreadInfo(ps, "");
+      ThreadInfoUtils.printThreadInfo(ps, "");
       ps.flush();
 
       out.println("\n\nMaster configuration:");

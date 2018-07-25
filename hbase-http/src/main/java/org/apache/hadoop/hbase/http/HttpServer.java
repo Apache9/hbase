@@ -52,7 +52,7 @@ import org.apache.hadoop.hbase.http.conf.ConfServlet;
 import org.apache.hadoop.hbase.http.jmx.JMXJsonServlet;
 import org.apache.hadoop.hbase.http.log.LogLevel;
 import org.apache.hadoop.hbase.util.ReflectionUtils;
-import org.apache.hadoop.hbase.util.Threads;
+import org.apache.hadoop.hbase.util.ThreadInfoUtils;
 import org.apache.hadoop.security.SecurityUtil;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.security.authentication.server.AuthenticationFilter;
@@ -1240,10 +1240,10 @@ public class HttpServer implements FilterContainer {
       response.setContentType("text/plain; charset=UTF-8");
       try (PrintStream out = new PrintStream(
         response.getOutputStream(), false, "UTF-8")) {
-        Threads.printThreadInfo(out, "");
+        ThreadInfoUtils.printThreadInfo(out, "");
         out.flush();
       }
-      ReflectionUtils.logThreadInfo(LOG, "jsp requested", 1);
+      ThreadInfoUtils.logThreadInfo("jsp requested", false);
     }
   }
 
