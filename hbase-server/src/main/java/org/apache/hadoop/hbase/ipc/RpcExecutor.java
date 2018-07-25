@@ -95,6 +95,7 @@ public abstract class RpcExecutor {
   private final List<Handler> handlers;
   private final int handlerCount;
   private final AtomicInteger failedHandlerCount = new AtomicInteger(0);
+  protected int logInterval = 30;
 
   private String name;
   private boolean running;
@@ -123,6 +124,7 @@ public abstract class RpcExecutor {
     this.handlers = new ArrayList<>(this.handlerCount);
 
     this.priority = priority;
+    this.logInterval = conf.getInt("hbase.queue.full.log.interval", 30);
 
     if (isDeadlineQueueType(callQueueType)) {
       this.name += ".Deadline";
@@ -211,6 +213,18 @@ public abstract class RpcExecutor {
   public void start(final int port) {
     running = true;
     startHandlers(port);
+    startQueueFullErrorLogger();
+  }
+
+  protected abstract void startQueueFullErrorLogger();
+
+  protected long logQueueFullError(QueueCounter queueCounter, long lastRejectedCount, String type) {
+    long rejectedCount = queueCounter.getRejectedRequestCount();
+    if (rejectedCount > lastRejectedCount) {
+      LOG.error("Could not insert into " + type + " queue with "
+          + (rejectedCount - lastRejectedCount) + " during last " + logInterval + " seconds");
+    }
+    return rejectedCount;
   }
 
   public void stop() {

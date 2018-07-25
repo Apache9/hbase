@@ -20,6 +20,7 @@ package org.apache.hadoop.hbase.ipc;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Abortable;
@@ -70,6 +71,24 @@ public class BalancedQueueRpcExecutor extends RpcExecutor {
       queueCounter.setQueueFull(false);
       return true;
     }
+  }
+
+  @Override
+  protected void startQueueFullErrorLogger() {
+    Thread t = new Thread(() -> {
+      long lastRejectedCount = 0;
+      while (true) {
+        try {
+          lastRejectedCount = logQueueFullError(queueCounter, lastRejectedCount, "Balanced");
+          TimeUnit.SECONDS.sleep(logInterval);
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+        }
+      }
+    });
+    t.setDaemon(true);
+    t.setName("BalancedQueue-QueueFullLogger");
+    t.start();
   }
 
   @Override

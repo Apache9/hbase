@@ -22,6 +22,7 @@ package org.apache.hadoop.hbase.ipc;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.hadoop.conf.Configuration;
@@ -217,6 +218,25 @@ public class RWQueueRpcExecutor extends RpcExecutor {
   @Override
   public int getActiveScanHandlerCount() {
     return activeScanHandlerCount.get();
+  }
+
+  @Override
+  protected void startQueueFullErrorLogger() {
+    Thread t = new Thread(() -> {
+      long lastRejectedWriteCount = 0, lastRejectedReadCount = 0;
+      while (true) {
+        try {
+          lastRejectedReadCount = logQueueFullError(readQueueCounter, lastRejectedReadCount, "read");
+          lastRejectedWriteCount = logQueueFullError(writeQueueCounter, lastRejectedWriteCount, "write");
+          TimeUnit.SECONDS.sleep(logInterval);
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+        }
+      }
+    });
+    t.setDaemon(true);
+    t.setName("RWQueue-QueueFullLogger");
+    t.start();
   }
 
   private boolean isWriteRequest(final RequestHeader header, final Message param) {
