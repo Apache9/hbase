@@ -32,6 +32,7 @@ import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.TableNotEnabledException;
 import org.apache.hadoop.hbase.TableNotFoundException;
 import org.apache.hadoop.hbase.client.Admin;
+import org.apache.hadoop.hbase.client.ConnectionUtils;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.Scan;
@@ -44,6 +45,7 @@ import org.apache.hadoop.mapreduce.Counter;
 import org.apache.hadoop.mapreduce.Counters;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+import org.junit.Assert;
 import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -168,12 +170,19 @@ public class TestTableMapReduce extends TestTableMapReduceBase {
     }
   }
 
-  @Test(expected = TableNotFoundException.class)
+  @Test
   public void testWritingToNonExistentTable() throws IOException {
-
-    try (Table table = UTIL.getConnection().getTable(TableName.valueOf("table-does-not-exist"))) {
+    boolean cachedTableNotFoundException = false;
+    try (Table table = ConnectionUtils.getRawTable(UTIL.getConnection(),
+      TableName.valueOf("table-does-not-exist"))) {
       runTestOnTable(table);
       fail("Should not have reached here, should have thrown an exception");
+    } catch (RuntimeException re) {
+      Throwable t = re.getCause();
+      if (t instanceof TableNotFoundException) {
+        cachedTableNotFoundException = true;
+      }
     }
+    Assert.assertTrue(cachedTableNotFoundException);
   }
 }
