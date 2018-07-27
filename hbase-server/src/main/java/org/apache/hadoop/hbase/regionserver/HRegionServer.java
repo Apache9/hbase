@@ -4405,7 +4405,9 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
     } catch (IOException ie) {
       throw new ServiceException(ie);
     }
-    LOG.debug("Received request " + request);
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("Received request " + request);
+    }
     // rpc controller is how we bring in data via the back door;  it is unprotobuf'ed data.
     // It is also the conduit via which we pass back data.
     HBaseRpcController controller = (HBaseRpcController)rpcc;
