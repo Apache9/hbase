@@ -512,6 +512,7 @@ public class TableMapReduceUtil {
 
     for (Scan scan : scans) {
       scanStrings.add(convertScanToString(scan));
+      initCredentials(scan, job);
     }
     job.getConfiguration().setStrings(MultiTableInputFormat.SCANS,
       scanStrings.toArray(new String[scanStrings.size()]));
@@ -525,6 +526,25 @@ public class TableMapReduceUtil {
     }
   }
 
+  private static void initCredentials(Scan scan, Job job) throws IOException {
+    byte[] tableNameBytes = scan.getAttribute(Scan.SCAN_ATTRIBUTES_TABLE_NAME);
+    if (tableNameBytes == null) {
+      throw new IOException("A scan object did not have a table name");
+    }
+
+    String tableName = new String(tableNameBytes);
+    UserProvider userProvider = UserProvider.instantiate(job.getConfiguration());
+
+    if (userProvider.isHBaseSecurityEnabled()) {
+      try {
+        initCredentialsToTable(job, tableName, userProvider.getCurrent());
+      } catch (InterruptedException e) {
+        LOG.info("Interrupted obtaining remote user authentication token");
+        Thread.interrupted();
+      }
+    }
+  }
+  
   public static void initCredentials(Job job) throws IOException {
     Configuration jobConf = job.getConfiguration();
     UserProvider userProvider = UserProvider.instantiate(jobConf);
@@ -538,34 +558,40 @@ public class TableMapReduceUtil {
 
     if (userProvider.isHBaseSecurityEnabled()) {
       try {
-        String peerClusterKey = null;
-        // init credentials for remote cluster
-        String quorumAddress = jobConf.get(TableOutputFormat.QUORUM_ADDRESS);
-        User user = userProvider.getCurrent();
-        Configuration peerConf = HBaseConfiguration.createClusterConf(jobConf, quorumAddress,
-          TableOutputFormat.OUTPUT_CONF_PREFIX);
         String outputTable = jobConf.get(TableOutputFormat.OUTPUT_TABLE);
-        // Maybe use name service or just the quorum address.
-        if (outputTable != null && outputTable.startsWith(NameService.HBASE_URI_PREFIX)) {
-          peerClusterKey = outputTable;
-        } else if (quorumAddress != null) {
-          peerClusterKey = quorumAddress;
-        }
-        if (peerClusterKey != null) {
-          ZKUtil.applyClusterKeyToConf(peerConf, peerClusterKey);
-          try (Connection peerConn = ConnectionFactory.createConnection(peerConf)) {
-            TokenUtil.addTokenForJob(peerConn, user, job);
-          }
-        }
-        try (Connection conn = ConnectionFactory.createConnection(job.getConfiguration())) {
-          TokenUtil.addTokenForJob(conn, user, job);
-        }
+        initCredentialsToTable(job, outputTable, userProvider.getCurrent());
       } catch (InterruptedException ie) {
         LOG.info("Interrupted obtaining user authentication token");
         Thread.currentThread().interrupt();
       }
     }
   }
+
+  private static void initCredentialsToTable(Job job, String table, User user)
+      throws IOException, InterruptedException {
+    Configuration jobConf = job.getConfiguration();
+    String peerClusterKey = null;
+    // init credentials for remote cluster
+    String quorumAddress = jobConf.get(TableOutputFormat.QUORUM_ADDRESS);
+    Configuration peerConf = HBaseConfiguration.createClusterConf(jobConf, quorumAddress,
+      TableOutputFormat.OUTPUT_CONF_PREFIX);
+    // Maybe use name service or just the quorum address.
+    if (table != null && table.startsWith(NameService.HBASE_URI_PREFIX)) {
+      peerClusterKey = table;
+    } else if (quorumAddress != null) {
+      peerClusterKey = quorumAddress;
+    }
+    if (peerClusterKey != null) {
+      ZKUtil.applyClusterKeyToConf(peerConf, peerClusterKey);
+      try (Connection peerConn = ConnectionFactory.createConnection(peerConf)) {
+        TokenUtil.addTokenForJob(peerConn, user, job);
+      }
+    }
+    try (Connection conn = ConnectionFactory.createConnection(job.getConfiguration())) {
+      TokenUtil.addTokenForJob(conn, user, job);
+    }
+  }
+
 
   /**
    * Obtain an authentication token, for the specified cluster, on behalf of the current user
