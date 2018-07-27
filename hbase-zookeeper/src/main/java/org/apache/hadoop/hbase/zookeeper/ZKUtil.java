@@ -884,6 +884,11 @@ public final class ZKUtil {
       return false;
     }
 
+    // xiaomi use jaas file to config secure zk access
+    if (System.getProperty("java.security.auth.login.config") != null) {
+      return true;
+    }
+
     // Master & RSs uses hbase.zookeeper.client.*
     return "kerberos".equalsIgnoreCase(conf.get("hbase.security.authentication"));
   }
@@ -899,8 +904,10 @@ public final class ZKUtil {
     }
     if (isSecureZooKeeper) {
       ArrayList<ACL> acls = new ArrayList<>();
+      acls.addAll(ZKWatcher.CREATOR_ALL_AND_WORLD_READABLE);
       // add permission to hbase supper user
-      String[] superUsers = zkw.getConfiguration().getStrings(Superusers.SUPERUSER_CONF_KEY);
+      String[] superUsers =
+          zkw.getConfiguration().getStrings(Superusers.SUPERUSER_CONF_KEY, "hbase_admin");
       String hbaseUser = null;
       try {
         hbaseUser = UserGroupInformation.getCurrentUser().getShortUserName();
@@ -923,14 +930,6 @@ public final class ZKUtil {
           LOG.warn("Znode ACL setting for group " + groups
               + " is skipped, ZooKeeper doesn't support this feature presently.");
         }
-      }
-      // Certain znodes are accessed directly by the client,
-      // so they must be readable by non-authenticated clients
-      if (zkw.getZNodePaths().isClientReadable(node)) {
-        acls.addAll(Ids.CREATOR_ALL_ACL);
-        acls.addAll(Ids.READ_ACL_UNSAFE);
-      } else {
-        acls.addAll(Ids.CREATOR_ALL_ACL);
       }
       return acls;
     } else {

@@ -18,6 +18,8 @@
  */
 package org.apache.hadoop.hbase.zookeeper;
 
+import com.google.common.collect.ImmutableList;
+
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -89,6 +91,11 @@ public class ZKWatcher implements Watcher, Abortable, Closeable {
 
   /* A pattern that matches a Kerberos name, borrowed from Hadoop's KerberosName */
   private static final Pattern NAME_PATTERN = Pattern.compile("([^/@]*)(/([^/@]*))?@([^/@]*)");
+
+  // Certain ZooKeeper nodes need to be world-readable
+  public static final ImmutableList<ACL> CREATOR_ALL_AND_WORLD_READABLE =
+      ImmutableList.of(new ACL(Perms.READ, Ids.ANYONE_ID_UNSAFE),
+          new ACL(Perms.ALL, Ids.AUTH_IDS));
 
   /**
    * Instantiate a ZooKeeper connection and watcher.
