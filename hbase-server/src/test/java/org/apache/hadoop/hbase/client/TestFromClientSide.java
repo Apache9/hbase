@@ -38,6 +38,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
+import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -104,6 +105,7 @@ import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.NonRepeatedEnvironmentEdge;
 import org.apache.hadoop.hbase.util.Pair;
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Ignore;
@@ -6775,4 +6777,91 @@ public class TestFromClientSide {
       assertNull(scanner.next());
     }
   }
+
+  private RowMutations constructRowMutations(Put put) throws IOException {
+    RowMutations mutation = new RowMutations(put.getRow());
+    mutation.add(put);
+    return mutation;
+  }
+
+  @Test
+  public void testCheckAndMutateWithCompareOp() throws IOException {
+    final byte[] value1 = Bytes.toBytes("aaaa");
+    final byte[] value2 = Bytes.toBytes("bbbb");
+    final byte[] value3 = Bytes.toBytes("cccc");
+
+    Table table = TEST_UTIL.createTable(
+      TableName.valueOf(Bytes.toBytes("testCheckAndPutWithCompareOp" + UUID.randomUUID())),
+      new byte[][] { FAMILY });
+
+    Put put2 = new Put(ROW);
+    put2.addColumn(FAMILY, QUALIFIER, value2);
+
+    Put put3 = new Put(ROW);
+    put3.addColumn(FAMILY, QUALIFIER, value3);
+
+    // row doesn't exist, so using "null" to check for existence should be considered "match".
+    boolean ok = table.checkAndMutate(ROW, FAMILY).qualifier(QUALIFIER).ifNotExists().thenPut(put2);
+    assertEquals(ok, true);
+
+    // cell != null and value = null, only CompareOperator is NOT_EQUAL turns out "match"
+    for (CompareOperator compareOp : CompareOperator.values()) {
+      if (compareOp.equals(CompareOperator.NOT_EQUAL)) {
+        assertTrue(table.checkAndMutate(ROW, FAMILY, QUALIFIER, compareOp, null, constructRowMutations(put3)));
+      } else if (compareOp.equals(CompareOperator.NO_OP)) {
+        try {
+          table.checkAndMutate(ROW, FAMILY, QUALIFIER, compareOp, null, constructRowMutations(put3));
+          Assert.fail();
+        } catch (Exception e) {
+        }
+      } else {
+        assertFalse(table.checkAndMutate(ROW, FAMILY, QUALIFIER, compareOp, null, constructRowMutations(put3)));
+      }
+    }
+
+    // cell = null and value = null, only CompareOperator is EQUAL turns out "match"
+    byte[] nullRow = Bytes.toBytes("oneNullRow");
+    Put nullRowPutValue1 = new Put(nullRow);
+    nullRowPutValue1.addColumn(FAMILY, QUALIFIER, value1);
+    for (CompareOperator compareOp : CompareOperator.values()) {
+      if (compareOp.equals(CompareOperator.EQUAL)) {
+        assertTrue(table.checkAndMutate(nullRow, FAMILY, QUALIFIER, compareOp, null, constructRowMutations(nullRowPutValue1)));
+        // delete nullRow to keep cell = null
+        table.delete(new Delete(nullRow).addFamily(FAMILY));
+      } else if (compareOp.equals(CompareOperator.NO_OP)) {
+        try {
+          table.checkAndMutate(nullRow, FAMILY, QUALIFIER, compareOp, null, constructRowMutations(nullRowPutValue1));
+          Assert.fail();
+        } catch (Exception e) {
+        }
+      } else {
+        assertFalse(table
+            .checkAndMutate(nullRow, FAMILY, QUALIFIER, compareOp, null, constructRowMutations(nullRowPutValue1)));
+      }
+    }
+
+    // cell = null and value != null, only CompareOperator is NOT_EQUAL turns out "match"
+    nullRow = Bytes.toBytes("AnotherNullRow");
+    nullRowPutValue1 = new Put(nullRow);
+    nullRowPutValue1.addColumn(FAMILY, QUALIFIER, value1);
+    for (CompareOperator compareOp : CompareOperator.values()) {
+      if (compareOp.equals(CompareOperator.NOT_EQUAL)) {
+        assertTrue(table.checkAndMutate(nullRow, FAMILY).qualifier(QUALIFIER)
+            .ifMatches(compareOp, value1).thenMutate(constructRowMutations(nullRowPutValue1)));
+        // delete nullRow to keep cell = null
+        table.delete(new Delete(nullRow).addFamily(FAMILY));
+      } else if (compareOp.equals(CompareOperator.NO_OP)) {
+        try {
+          table.checkAndMutate(nullRow, FAMILY).qualifier(QUALIFIER)
+              .ifMatches(compareOp, value1).thenMutate(constructRowMutations(nullRowPutValue1));
+          Assert.fail();
+        } catch (Exception e) {
+        }
+      } else {
+        assertFalse(table.checkAndMutate(nullRow, FAMILY).qualifier(QUALIFIER)
+            .ifMatches(compareOp, value1).thenMutate(constructRowMutations(nullRowPutValue1)));
+      }
+    }
+  }
+
 }

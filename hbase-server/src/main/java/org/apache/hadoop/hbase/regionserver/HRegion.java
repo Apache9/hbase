@@ -4227,15 +4227,34 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
         // Supposition is that now all changes are done under row locks, then when we go to read,
         // we'll get the latest on this row.
         List<Cell> result = get(get, false);
+
+        // result.size() must be 0 or 1, except that the default max version
+        // setting logic of Get changed.
+        if (result.size() > 1) {
+          throw new RuntimeException(
+              "Result size of get in checkAndMutate must be 0 or 1, actual size:" + result.size());
+        }
         boolean valueIsNull = comparator.getValue() == null || comparator.getValue().length == 0;
+        boolean rowIsNull = result.size() == 0 || result.get(0).getValueLength() == 0;
         boolean matches = false;
         long cellTs = 0;
-        if (result.isEmpty() && valueIsNull) {
-          matches = true;
-        } else if (result.size() > 0 && result.get(0).getValueLength() == 0 && valueIsNull) {
-          matches = true;
-          cellTs = result.get(0).getTimestamp();
-        } else if (result.size() == 1 && !valueIsNull) {
+        if (rowIsNull || valueIsNull) {
+          if (op.equals(CompareOperator.EQUAL)) {
+            matches = (rowIsNull == valueIsNull);
+          } else if (op.equals(CompareOperator.NOT_EQUAL)) {
+            matches = (rowIsNull != valueIsNull);
+          } else if (op.equals(CompareOperator.LESS) ||
+              op.equals(CompareOperator.LESS_OR_EQUAL) ||
+              op.equals(CompareOperator.GREATER) ||
+              op.equals(CompareOperator.GREATER_OR_EQUAL)) {
+            LOG.warn("CompareOp : "
+                + op
+                + " is not supportted when cell value or comparator value is null, actual rowIsNull : "
+                + rowIsNull + ", valueIsNull : " + valueIsNull);
+          } else {
+            throw new DoNotRetryIOException("Unknown Compare op " + op.name());
+          }
+        } else {
           Cell kv = result.get(0);
           cellTs = kv.getTimestamp();
           int compareResult = PrivateCellUtil.compareValue(kv, comparator);
