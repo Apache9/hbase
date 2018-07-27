@@ -66,8 +66,9 @@ public class TestZKUtilNoServer {
     String node = "/hbase/testSecuritySingleSuperuser";
     ZKWatcher watcher = new ZKWatcher(conf, node, null, false);
     List<ACL> aclList = ZKUtil.createACL(watcher, node, true);
-    assertEquals(2, aclList.size()); // 1+1, since ACL will be set for the creator by default
+    assertEquals(3, aclList.size()); // 1+1, since ACL will be set for the creator by default
     assertTrue(aclList.contains(new ACL(Perms.ALL, new Id("sasl", "user1"))));
+    assertTrue(aclList.contains(new ACL(Perms.READ, new Id("world", "anyone"))));
     assertTrue(aclList.contains(Ids.CREATOR_ALL_ACL.iterator().next()));
   }
 
@@ -78,12 +79,14 @@ public class TestZKUtilNoServer {
     String node = "/hbase/testCreateACL";
     ZKWatcher watcher = new ZKWatcher(conf, node, null, false);
     List<ACL> aclList = ZKUtil.createACL(watcher, node, true);
-    assertEquals(4, aclList.size()); // 3+1, since ACL will be set for the creator by default
+    assertEquals(5, aclList.size()); // 3+1, since ACL will be set for the creator by default
+    aclList.stream().forEach(System.out::print);
     assertFalse(aclList.contains(new ACL(Perms.ALL, new Id("sasl", "@group1"))));
     assertFalse(aclList.contains(new ACL(Perms.ALL, new Id("sasl", "@group2"))));
     assertTrue(aclList.contains(new ACL(Perms.ALL, new Id("sasl", "user1"))));
     assertTrue(aclList.contains(new ACL(Perms.ALL, new Id("sasl", "user2"))));
     assertTrue(aclList.contains(new ACL(Perms.ALL, new Id("sasl", "user3"))));
+    assertTrue(aclList.contains(new ACL(Perms.READ, new Id("world", "anyone"))));
   }
 
   @Test
@@ -94,11 +97,12 @@ public class TestZKUtilNoServer {
     String node = "/hbase/testCreateACL";
     ZKWatcher watcher = new ZKWatcher(conf, node, null, false);
     List<ACL> aclList = ZKUtil.createACL(watcher, node, true);
-    assertEquals(3, aclList.size()); // 3, since service user the same as one of superuser
+    assertEquals(4, aclList.size()); // 3, since service user the same as one of superuser
     assertFalse(aclList.contains(new ACL(Perms.ALL, new Id("sasl", "@group1"))));
     assertTrue(aclList.contains(new ACL(Perms.ALL, new Id("auth", ""))));
     assertTrue(aclList.contains(new ACL(Perms.ALL, new Id("sasl", "user5"))));
     assertTrue(aclList.contains(new ACL(Perms.ALL, new Id("sasl", "user6"))));
+    assertTrue(aclList.contains(new ACL(Perms.READ, new Id("world", "anyone"))));
   }
 
   @Test(expected = KeeperException.SystemErrorException.class)
