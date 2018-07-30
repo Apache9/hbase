@@ -54,10 +54,17 @@ public class ReplicationManager {
   private final ReplicationQueuesClient replicationQueuesClient;
   private final ReplicationPeers replicationPeers;
 
+  private static final String REPLICATION_ENALBE_PEER_MODIFICATION =
+      "hbase.replication.enable.peer.modification";
+  private static final boolean DEFAULT_REPLICATION_ENALBE_PEER_MODIFICATION = true;
+  private final boolean peerModificationEnabled;
+
   public ReplicationManager(Configuration conf, ZooKeeperWatcher zkw, Abortable abortable)
       throws IOException {
     this.conf = conf;
     this.zkw = zkw;
+    this.peerModificationEnabled = conf.getBoolean(REPLICATION_ENALBE_PEER_MODIFICATION,
+        DEFAULT_REPLICATION_ENALBE_PEER_MODIFICATION);
     try {
       this.replicationQueuesClient = ReplicationFactory.getReplicationQueuesClient(zkw, conf,
         abortable);
@@ -72,6 +79,9 @@ public class ReplicationManager {
 
   public void addReplicationPeer(String peerId, ReplicationPeerConfig peerConfig, boolean enabled)
       throws ReplicationException, IOException {
+    if (!peerModificationEnabled) {
+      throw new ReplicationException("Replication peer modification is disabled");
+    }
     if(peerConfig.getReplicationEndpointImpl() != null) {
       checkReplicationEndpoint(peerConfig);
     } else {
@@ -96,6 +106,9 @@ public class ReplicationManager {
   }
 
   public void removeReplicationPeer(String peerId) throws ReplicationException {
+    if (!peerModificationEnabled) {
+      throw new ReplicationException("Replication peer modification is disabled");
+    }
     replicationPeers.removePeer(peerId);
   }
 
@@ -118,6 +131,9 @@ public class ReplicationManager {
 
   public void updatePeerConfig(String peerId, ReplicationPeerConfig peerConfig)
       throws ReplicationException, IOException {
+    if (!peerModificationEnabled) {
+      throw new ReplicationException("Replication peer modification is disabled");
+    }
     checkPeerConfigConflict(peerConfig);
     if (peerConfig.getReplicationEndpointImpl() != null) {
       checkReplicationEndpoint(peerConfig);

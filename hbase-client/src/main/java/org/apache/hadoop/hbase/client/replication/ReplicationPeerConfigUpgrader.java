@@ -90,6 +90,22 @@ public class ReplicationPeerConfigUpgrader extends ReplicationStateZKBase {
     return acls;
   }
 
+  public void upgradeToBranch2() throws Exception {
+    try (ReplicationAdmin admin = new ReplicationAdmin(conf)) {
+      Map<String, ReplicationPeerConfig> peers = admin.listPeerConfigs();
+      peers.forEach((peerId, peerConfig) -> {
+        try {
+          ZKUtil.setData(this.zookeeper, getPeerNode(peerId),
+              ReplicationSerDeHelper.toNewByteArray(peerConfig));
+          LOG.info(
+              "Successfully upgrade replication peer " + peerId + " config to new branch-2 format");
+        } catch (KeeperException e) {
+          LOG.info("Failed upgrade replication peer " + peerId + " config to new branch-2 format");
+        }
+      });
+    }
+  }
+
   public void upgrade() throws Exception {
     try (ReplicationAdmin admin = new ReplicationAdmin(conf)) {
       Map<String, ReplicationPeerConfig> peers = admin.listPeerConfigs();
@@ -183,6 +199,7 @@ public class ReplicationPeerConfigUpgrader extends ReplicationStateZKBase {
     System.err.println("  copyTableCFs        Copy table-cfs to replication peer config");
     System.err.println("  upgrade             Upgrade replication peer config to new format");
     System.err.println("  setOwner [owner]    Update replication peers znode's owner");
+    System.err.println("  upgradeToBranch2    Upgrade replication peer config to new branch-2 format");
     System.err.println();
     System.exit(1);
   }
@@ -206,6 +223,8 @@ public class ReplicationPeerConfigUpgrader extends ReplicationStateZKBase {
           printUsageAndExit();
         }
         upgrader.setOwner(args[1]);
+      } else if (args[0].equals("upgradeToBranch2")) {
+        upgrader.upgradeToBranch2();
       } else {
         printUsageAndExit();
       }

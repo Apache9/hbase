@@ -183,6 +183,7 @@
                           <include>WAL.proto</include>
                           <include>ZooKeeper.proto</include>
                           <include>Replication.proto</include>
+                          <include>NewReplication.proto</include>
                         </includes>
                       </source>
                       <!--<output>${project.build.directory}/generated-sources/java</output>-->
