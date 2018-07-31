@@ -77,10 +77,20 @@ public class TestRestoreSnapshotHelper {
 
   @Test
   public void testRestore() throws IOException {
+    restoreAndVerify("snapshot", "testRestore");
+  }
+
+  @Test
+  public void testRestoreWithNamespace() throws IOException {
+    restoreAndVerify("snapshot", "namespace1:testRestoreWithNamespace");
+  }
+
+  public void restoreAndVerify(final String snapshotName, final String tableName)
+      throws IOException {
     // Test Rolling-Upgrade like Snapshot.
     // half machines writing using v1 and the others using v2 format.
     SnapshotMock snapshotMock = new SnapshotMock(TEST_UTIL.getConfiguration(), fs, rootDir);
-    SnapshotMock.SnapshotBuilder builder = snapshotMock.createSnapshotV2("snapshot");
+    SnapshotMock.SnapshotBuilder builder = snapshotMock.createSnapshotV2(snapshotName, tableName);
     builder.addRegionV1();
     builder.addRegionV2();
     builder.addRegionV2();
@@ -95,10 +105,8 @@ public class TestRestoreSnapshotHelper {
     verifyRestore(rootDir, htd, htdClone);
 
     // Test clone a clone ("link to link")
-    SnapshotDescription cloneDesc = SnapshotDescription.newBuilder()
-        .setName("cloneSnapshot")
-        .setTable("testtb-clone")
-        .build();
+    SnapshotDescription cloneDesc =
+        SnapshotDescription.newBuilder().setName("cloneSnapshot").setTable("testtb-clone").build();
     Path cloneDir = FSUtils.getTableDir(rootDir, htdClone.getTableName());
     HTableDescriptor htdClone2 = snapshotMock.createHtd("testtb-clone2");
     testRestore(cloneDir, cloneDesc, htdClone2);
