@@ -19,6 +19,7 @@
 package org.apache.hadoop.hbase.master;
 
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.net.BindException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -80,6 +81,7 @@ import org.apache.hadoop.hbase.quotas.MasterQuotaManager;
 import org.apache.hadoop.hbase.quotas.QuotaObserverChore;
 import org.apache.hadoop.hbase.quotas.QuotaUtil;
 import org.apache.hadoop.hbase.quotas.SpaceQuotaSnapshot;
+import org.apache.hadoop.hbase.regionserver.MasterFifoRpcSchedulerFactory;
 import org.apache.hadoop.hbase.regionserver.RSRpcServices;
 import org.apache.hadoop.hbase.regionserver.RpcSchedulerFactory;
 import org.apache.hadoop.hbase.replication.ReplicationException;
@@ -331,6 +333,11 @@ public class MasterRpcServices extends RSRpcServices
   public MasterRpcServices(HMaster m) throws IOException {
     super(m);
     master = m;
+  }
+
+  @Override
+  protected Class<?> getRpcSchedulerFactoryClass() {
+    return MasterFifoRpcSchedulerFactory.class;
   }
 
   @Override

@@ -22,6 +22,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -42,11 +43,11 @@ import org.apache.hbase.thirdparty.io.netty.util.internal.StringUtil;
 @InterfaceAudience.Private
 public class FifoRpcScheduler extends RpcScheduler {
   private static final Logger LOG = LoggerFactory.getLogger(FifoRpcScheduler.class);
-  private final int handlerCount;
-  private final int maxQueueLength;
-  private final AtomicInteger queueSize = new AtomicInteger(0);
-  private ThreadPoolExecutor executor;
-  private final QueueCounter queueCounter;
+  protected int handlerCount;
+  protected int maxQueueLength;
+  protected AtomicInteger queueSize = new AtomicInteger(0);
+  protected ThreadPoolExecutor executor;
+  protected final QueueCounter queueCounter;
 
   public FifoRpcScheduler(Configuration conf, int handlerCount) {
     this.handlerCount = handlerCount;
@@ -110,21 +111,30 @@ public class FifoRpcScheduler extends RpcScheduler {
     }
 
     try {
-      executor.execute(new FifoCallRunner(task) {
-        @Override
-        public void run() {
-          task.setStatus(RpcServer.getStatus());
-          task.run();
-          queueSize.decrementAndGet();
-        }
-      });
+      executeRpcCall(task);
       queueCounter.setQueueFull(false);
     } catch (RejectedExecutionException e) {
       queueCounter.setQueueFull(true);
       queueCounter.incRejectedRequestCount();
+      queueSize.decrementAndGet();
       throw e;
     }
     return true;
+  }
+
+  protected void executeRpcCall(final CallRunner task) {
+    executor.execute(getFifoCallRunner(task));
+  }
+
+  protected FifoCallRunner getFifoCallRunner(final CallRunner task) {
+    return new FifoCallRunner(task) {
+      @Override
+      public void run() {
+        task.setStatus(RpcServer.getStatus());
+        task.run();
+        queueSize.decrementAndGet();
+      }
+    };
   }
 
   @Override
@@ -202,16 +212,19 @@ public class FifoRpcScheduler extends RpcScheduler {
     CallQueueInfo callQueueInfo = new CallQueueInfo();
     callQueueInfo.setCallMethodCount(queueName, methodCount);
     callQueueInfo.setCallMethodSize(queueName, methodSize);
+    getCallQueueMethodInfo(executor.getQueue(), methodCount, methodSize);
 
+    return callQueueInfo;
+  }
 
-    for (Runnable r:executor.getQueue()) {
+  protected void getCallQueueMethodInfo(BlockingQueue<Runnable> queue,
+      HashMap<String, Long> methodCount, HashMap<String, Long> methodSize) {
+    for (Runnable r : queue) {
       FifoCallRunner mcr = (FifoCallRunner) r;
       RpcCall rpcCall = mcr.getCallRunner().getRpcCall();
 
-      String method;
-
-      if (null==rpcCall.getMethod() ||
-            StringUtil.isNullOrEmpty(method = rpcCall.getMethod().getName())) {
+      String method = getCallMethod(mcr.getCallRunner());
+      if (StringUtil.isNullOrEmpty(method)) {
         method = "Unknown";
       }
 
@@ -220,8 +233,13 @@ public class FifoRpcScheduler extends RpcScheduler {
       methodCount.put(method, 1 + methodCount.getOrDefault(method, 0L));
       methodSize.put(method, size + methodSize.getOrDefault(method, 0L));
     }
-
-    return callQueueInfo;
   }
 
+  protected String getCallMethod(final CallRunner task) {
+    RpcCall call = task.getRpcCall();
+    if (call != null && call.getMethod() != null) {
+      return call.getMethod().getName();
+    }
+    return null;
+  }
 }
