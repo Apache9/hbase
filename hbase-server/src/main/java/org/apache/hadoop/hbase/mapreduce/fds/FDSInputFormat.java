@@ -19,13 +19,13 @@
  */
 package org.apache.hadoop.hbase.mapreduce.fds;
 
-import com.xiaomi.infra.galaxy.fds.client.FDSClientConfiguration;
-import com.xiaomi.infra.galaxy.fds.client.GalaxyFDSClient;
-import com.xiaomi.infra.galaxy.fds.client.credential.BasicFDSCredential;
-import com.xiaomi.infra.galaxy.fds.client.credential.GalaxyFDSCredential;
-import com.xiaomi.infra.galaxy.fds.client.exception.GalaxyFDSClientException;
-import com.xiaomi.infra.galaxy.fds.client.model.FDSObjectListing;
-import com.xiaomi.infra.galaxy.fds.client.model.FDSObjectSummary;
+import com.xiaomi.infra.thirdparty.galaxy.fds.client.FDSClientConfiguration;
+import com.xiaomi.infra.thirdparty.galaxy.fds.client.GalaxyFDSClient;
+import com.xiaomi.infra.thirdparty.galaxy.fds.client.credential.BasicFDSCredential;
+import com.xiaomi.infra.thirdparty.galaxy.fds.client.credential.GalaxyFDSCredential;
+import com.xiaomi.infra.thirdparty.galaxy.fds.client.exception.GalaxyFDSClientException;
+import com.xiaomi.infra.thirdparty.galaxy.fds.client.model.FDSObjectListing;
+import com.xiaomi.infra.thirdparty.galaxy.fds.client.model.FDSObjectSummary;
 
 import java.io.IOException;
 import java.util.ArrayList;

@@ -19,12 +19,12 @@
  */
 package org.apache.hadoop.hbase.replication;
 
-import com.xiaomi.infra.galaxy.talos.consumer.SimpleConsumer;
-import com.xiaomi.infra.galaxy.talos.producer.SimpleProducer;
-import com.xiaomi.infra.galaxy.talos.thrift.Message;
-import com.xiaomi.infra.galaxy.talos.thrift.MessageAndOffset;
-import com.xiaomi.infra.galaxy.talos.thrift.Topic;
-import com.xiaomi.infra.galaxy.talos.thrift.TopicAttribute;
+import com.xiaomi.infra.thirdparty.galaxy.talos.consumer.SimpleConsumer;
+import com.xiaomi.infra.thirdparty.galaxy.talos.producer.SimpleProducer;
+import com.xiaomi.infra.thirdparty.galaxy.talos.thrift.Message;
+import com.xiaomi.infra.thirdparty.galaxy.talos.thrift.MessageAndOffset;
+import com.xiaomi.infra.thirdparty.galaxy.talos.thrift.Topic;
+import com.xiaomi.infra.thirdparty.galaxy.talos.thrift.TopicAttribute;
 
 import java.util.ArrayList;
 import java.util.List;

@@ -466,14 +466,14 @@
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>com.xiaomi.infra.galaxy</groupId>
-      <artifactId>galaxy-fds-sdk-java</artifactId>
-      <version>${fds.sdk.version}</version>
+      <groupId>com.xiaomi.infra.thirdparty</groupId>
+      <artifactId>infra-shaded-fds-sdk</artifactId>
+      <version>${shaded-thirdparty.version}</version>
     </dependency>
     <dependency>
-      <groupId>com.xiaomi.infra.galaxy</groupId>
-      <artifactId>galaxy-talos-sdk</artifactId>
-      <version>${talos.sdk.version}</version>
+      <groupId>com.xiaomi.infra.thirdparty</groupId>
+      <artifactId>infra-shaded-talos-sdk</artifactId>
+      <version>${shaded-thirdparty.version}</version>
     </dependency>
     <dependency>
       <groupId>org.apache.httpcomponents</groupId>

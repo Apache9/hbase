@@ -19,18 +19,18 @@
  */
 package org.apache.hadoop.hbase.replication;
 
-import com.xiaomi.infra.galaxy.rpc.thrift.Credential;
-import com.xiaomi.infra.galaxy.rpc.thrift.UserType;
-import com.xiaomi.infra.galaxy.talos.admin.TalosAdmin;
-import com.xiaomi.infra.galaxy.talos.client.TalosClientConfig;
-import com.xiaomi.infra.galaxy.talos.producer.SimpleProducer;
-import com.xiaomi.infra.galaxy.talos.producer.TalosProducerConfig;
-import com.xiaomi.infra.galaxy.talos.thrift.DescribeTopicRequest;
-import com.xiaomi.infra.galaxy.talos.thrift.GalaxyTalosException;
-import com.xiaomi.infra.galaxy.talos.thrift.Message;
-import com.xiaomi.infra.galaxy.talos.thrift.Topic;
-import com.xiaomi.infra.galaxy.talos.thrift.TopicAndPartition;
-import com.xiaomi.infra.galaxy.talos.thrift.TopicTalosResourceName;
+import com.xiaomi.infra.thirdparty.galaxy.rpc.thrift.Credential;
+import com.xiaomi.infra.thirdparty.galaxy.rpc.thrift.UserType;
+import com.xiaomi.infra.thirdparty.galaxy.talos.admin.TalosAdmin;
+import com.xiaomi.infra.thirdparty.galaxy.talos.client.TalosClientConfig;
+import com.xiaomi.infra.thirdparty.galaxy.talos.producer.SimpleProducer;
+import com.xiaomi.infra.thirdparty.galaxy.talos.producer.TalosProducerConfig;
+import com.xiaomi.infra.thirdparty.galaxy.talos.thrift.DescribeTopicRequest;
+import com.xiaomi.infra.thirdparty.galaxy.talos.thrift.GalaxyTalosException;
+import com.xiaomi.infra.thirdparty.galaxy.talos.thrift.Message;
+import com.xiaomi.infra.thirdparty.galaxy.talos.thrift.Topic;
+import com.xiaomi.infra.thirdparty.galaxy.talos.thrift.TopicAndPartition;
+import com.xiaomi.infra.thirdparty.galaxy.talos.thrift.TopicTalosResourceName;
 import libthrift091.TException;
 
 import java.io.IOException;
@@ -53,7 +53,7 @@ import org.apache.hadoop.hbase.util.Hash;
 import org.apache.hadoop.hbase.util.MurmurHash;
 import org.apache.hadoop.hbase.util.TalosUtil;
 
-import static com.xiaomi.infra.galaxy.talos.thrift.ErrorCode.TOPIC_NOT_EXIST;
+import static com.xiaomi.infra.thirdparty.galaxy.talos.thrift.ErrorCode.TOPIC_NOT_EXIST;
 import static org.apache.hadoop.hbase.HConstants.TALOS_ACCESS_ENDPOINT;
 import static org.apache.hadoop.hbase.HConstants.TALOS_ACCESS_KEY;
 import static org.apache.hadoop.hbase.HConstants.TALOS_ACCESS_SECRET;

@@ -19,8 +19,8 @@
  */
 package org.apache.hadoop.hbase.mapreduce.fds;
 
-import com.xiaomi.infra.galaxy.client.authentication.signature.SignAlgorithm;
-import com.xiaomi.infra.galaxy.fds.client.exception.GalaxyFDSClientException;
+import com.xiaomi.infra.thirdparty.galaxy.client.authentication.signature.SignAlgorithm;
+import com.xiaomi.infra.thirdparty.galaxy.fds.client.exception.GalaxyFDSClientException;
 
 import java.io.IOException;
 import java.util.HashSet;

@@ -46,11 +46,11 @@ import org.apache.hadoop.hbase.replication.ReplicationPeerConfig;
 
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
-import com.xiaomi.infra.galaxy.rpc.thrift.Credential;
-import com.xiaomi.infra.galaxy.rpc.thrift.UserType;
-import com.xiaomi.infra.galaxy.talos.admin.TalosAdmin;
-import com.xiaomi.infra.galaxy.talos.client.TalosClientConfig;
-import com.xiaomi.infra.galaxy.talos.thrift.Message;
+import com.xiaomi.infra.thirdparty.galaxy.rpc.thrift.Credential;
+import com.xiaomi.infra.thirdparty.galaxy.rpc.thrift.UserType;
+import com.xiaomi.infra.thirdparty.galaxy.talos.admin.TalosAdmin;
+import com.xiaomi.infra.thirdparty.galaxy.talos.client.TalosClientConfig;
+import com.xiaomi.infra.thirdparty.galaxy.talos.thrift.Message;
 import libthrift091.TException;
 
 @InterfaceAudience.Private

@@ -19,10 +19,10 @@
  */
 package org.apache.hadoop.hbase.replication;
 
-import com.xiaomi.infra.galaxy.talos.consumer.SimpleConsumer;
-import com.xiaomi.infra.galaxy.talos.producer.SimpleProducer;
-import com.xiaomi.infra.galaxy.talos.thrift.Message;
-import com.xiaomi.infra.galaxy.talos.thrift.MessageAndOffset;
+import com.xiaomi.infra.thirdparty.galaxy.talos.consumer.SimpleConsumer;
+import com.xiaomi.infra.thirdparty.galaxy.talos.producer.SimpleProducer;
+import com.xiaomi.infra.thirdparty.galaxy.talos.thrift.Message;
+import com.xiaomi.infra.thirdparty.galaxy.talos.thrift.MessageAndOffset;
 import libthrift091.TException;
 
 import java.io.IOException;

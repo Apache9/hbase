@@ -19,7 +19,7 @@
  */
 package org.apache.hadoop.hbase.util;
 
-import com.xiaomi.infra.galaxy.talos.thrift.Message;
+import com.xiaomi.infra.thirdparty.galaxy.talos.thrift.Message;
 
 import java.io.IOException;
 import java.util.List;
