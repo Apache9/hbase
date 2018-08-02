@@ -1056,7 +1056,7 @@ public class ExportSnapshot extends Configured implements Tool {
         future.get();
       }
     } catch (InterruptedException | ExecutionException e) {
-      throw new IOException("set owner failed");
+      throw new IOException("set owner failed", e);
     } finally {
       pool.shutdownNow();
     }
