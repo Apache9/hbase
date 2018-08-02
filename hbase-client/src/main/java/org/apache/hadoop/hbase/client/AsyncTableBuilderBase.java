@@ -27,8 +27,8 @@ import org.apache.yetus.audience.InterfaceAudience;
 /**
  * Base class for all asynchronous table builders.
  */
-@InterfaceAudience.Private
-abstract class AsyncTableBuilderBase<C extends ScanResultConsumerBase>
+@InterfaceAudience.Public
+public abstract class AsyncTableBuilderBase<C extends ScanResultConsumerBase>
     implements AsyncTableBuilder<C> {
 
   protected TableName tableName;
@@ -49,7 +49,7 @@ abstract class AsyncTableBuilderBase<C extends ScanResultConsumerBase>
 
   protected int startLogErrorsCnt;
 
-  AsyncTableBuilderBase(TableName tableName, AsyncConnectionConfiguration connConf) {
+  public AsyncTableBuilderBase(TableName tableName, AsyncConnectionConfiguration connConf) {
     this.tableName = tableName;
     this.operationTimeoutNs = tableName.isSystemTable() ? connConf.getMetaOperationTimeoutNs()
       : connConf.getOperationTimeoutNs();

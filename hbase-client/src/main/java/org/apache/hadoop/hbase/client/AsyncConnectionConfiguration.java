@@ -51,8 +51,8 @@ import org.apache.yetus.audience.InterfaceAudience;
 /**
  * Timeout configs.
  */
-@InterfaceAudience.Private
-class AsyncConnectionConfiguration {
+@InterfaceAudience.Public
+public class AsyncConnectionConfiguration {
 
   private final long metaOperationTimeoutNs;
 
@@ -92,7 +92,7 @@ class AsyncConnectionConfiguration {
   private final long writeBufferSize;
 
   @SuppressWarnings("deprecation")
-  AsyncConnectionConfiguration(Configuration conf) {
+  public AsyncConnectionConfiguration(Configuration conf) {
     this.metaOperationTimeoutNs = TimeUnit.MILLISECONDS.toNanos(
       conf.getLong(HBASE_CLIENT_META_OPERATION_TIMEOUT, DEFAULT_HBASE_CLIENT_OPERATION_TIMEOUT));
     this.operationTimeoutNs = TimeUnit.MILLISECONDS.toNanos(
