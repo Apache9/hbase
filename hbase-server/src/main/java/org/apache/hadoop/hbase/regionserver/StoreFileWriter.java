@@ -19,10 +19,13 @@ package org.apache.hadoop.hbase.regionserver;
 
 import static org.apache.hadoop.hbase.regionserver.HStoreFile.BLOOM_FILTER_TYPE_KEY;
 import static org.apache.hadoop.hbase.regionserver.HStoreFile.DELETE_FAMILY_COUNT;
+import static org.apache.hadoop.hbase.regionserver.HStoreFile.DELETE_KV_COUNT;
 import static org.apache.hadoop.hbase.regionserver.HStoreFile.EARLIEST_PUT_TS;
+import static org.apache.hadoop.hbase.regionserver.HStoreFile.KV_COUNT;
 import static org.apache.hadoop.hbase.regionserver.HStoreFile.MAJOR_COMPACTION_KEY;
 import static org.apache.hadoop.hbase.regionserver.HStoreFile.MAX_SEQ_ID_KEY;
 import static org.apache.hadoop.hbase.regionserver.HStoreFile.MOB_CELLS_COUNT;
+import static org.apache.hadoop.hbase.regionserver.HStoreFile.ROW_COUNT;
 import static org.apache.hadoop.hbase.regionserver.HStoreFile.TIMERANGE_KEY;
 
 import java.io.IOException;
@@ -67,6 +70,10 @@ public class StoreFileWriter implements CellSink, ShipperListener {
   private final BloomType bloomType;
   private long earliestPutTs = HConstants.LATEST_TIMESTAMP;
   private long deleteFamilyCnt = 0;
+  private long kvCnt = 0;
+  private long deleteKvCnt = 0;
+  private long rowCnt = 0;
+  private byte[] lastRow = null;
   private BloomContext bloomContext = null;
   private BloomContext deleteFamilyBloomContext = null;
   private final TimeRangeTracker timeRangeTracker;
@@ -229,10 +236,24 @@ public class StoreFileWriter implements CellSink, ShipperListener {
 
   @Override
   public void append(final Cell cell) throws IOException {
+    appendDeleteAndRowCount(cell);
     appendGeneralBloomfilter(cell);
     appendDeleteFamilyBloomFilter(cell);
     writer.append(cell);
     trackTimestamps(cell);
+  }
+
+  private void appendDeleteAndRowCount(final Cell cell) {
+    if (PrivateCellUtil.isDeleteType(cell) || PrivateCellUtil.isDeleteColumns(cell)) {
+      deleteKvCnt++;
+    }
+    if (!PrivateCellUtil.isDelete(cell.getTypeByte())) {
+      kvCnt++;
+      if (lastRow == null || Bytes.compareTo(cell.getRowArray(), lastRow) != 0) {
+        rowCnt++;
+        lastRow = cell.getRowArray();
+      }
+    }
   }
 
   @Override
@@ -282,6 +303,8 @@ public class StoreFileWriter implements CellSink, ShipperListener {
       writer.appendFileInfo(BLOOM_FILTER_TYPE_KEY, Bytes.toBytes(bloomType.toString()));
       bloomContext.addLastBloomKey(writer);
     }
+    writer.appendFileInfo(KV_COUNT, Bytes.toBytes(this.kvCnt));
+    writer.appendFileInfo(ROW_COUNT, Bytes.toBytes(this.rowCnt));
     return hasGeneralBloom;
   }
 
@@ -296,6 +319,7 @@ public class StoreFileWriter implements CellSink, ShipperListener {
     // append file info about the number of delete family kvs
     // even if there is no delete family Bloom.
     writer.appendFileInfo(DELETE_FAMILY_COUNT, Bytes.toBytes(this.deleteFamilyCnt));
+    writer.appendFileInfo(DELETE_KV_COUNT, Bytes.toBytes(this.deleteKvCnt));
 
     return hasDeleteFamilyBloom;
   }

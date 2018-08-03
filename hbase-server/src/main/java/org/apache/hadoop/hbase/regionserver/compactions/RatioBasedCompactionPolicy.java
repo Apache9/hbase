@@ -30,6 +30,7 @@ import org.apache.hadoop.hbase.regionserver.HStore;
 import org.apache.hadoop.hbase.regionserver.HStoreFile;
 import org.apache.hadoop.hbase.regionserver.RSRpcServices;
 import org.apache.hadoop.hbase.regionserver.StoreConfigInformation;
+import org.apache.hadoop.hbase.regionserver.StoreFileReader;
 import org.apache.hadoop.hbase.regionserver.StoreUtils;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.yetus.audience.InterfaceAudience;
@@ -58,20 +59,24 @@ public class RatioBasedCompactionPolicy extends SortedCompactionPolicy {
   public boolean shouldPerformMajorCompaction(Collection<HStoreFile> filesToCompact)
     throws IOException {
     boolean result = false;
+    if (filesToCompact == null || filesToCompact.isEmpty()) {
+      return result;
+    }
+
+    result = shouldPerformDeleteRatioCompaction(filesToCompact);
+    if(result) {
+      return result;
+    }
+
     long mcTime = getNextMajorCompactTime(filesToCompact);
-    if (filesToCompact == null || filesToCompact.isEmpty() || mcTime == 0) {
+    if (mcTime == 0) {
       return result;
     }
     // TODO: Use better method for determining stamp of last major (HBASE-2990)
     long lowTimestamp = StoreUtils.getLowestTimestamp(filesToCompact);
     long now = EnvironmentEdgeManager.currentTime();
     if (lowTimestamp > 0L && lowTimestamp < (now - mcTime)) {
-      String regionInfo;
-      if (this.storeConfigInfo != null && this.storeConfigInfo instanceof HStore) {
-        regionInfo = ((HStore)this.storeConfigInfo).getRegionInfo().getRegionNameAsString();
-      } else {
-        regionInfo = this.toString();
-      }
+      String regionInfo = getStoreInfo();
       // Major compaction time has elapsed.
       long cfTTL = HConstants.FOREVER;
       if (this.storeConfigInfo != null) {
@@ -221,5 +226,60 @@ public class RatioBasedCompactionPolicy extends SortedCompactionPolicy {
    */
   public void setMinThreshold(int minThreshold) {
     comConf.setMinFilesToCompact(minThreshold);
+  }
+
+  public boolean shouldPerformDeleteRatioCompaction(final Collection<HStoreFile> filesToCompact)
+      throws IOException {
+    boolean result = false;
+    if (!comConf.isDeleteRatioCompactionEnable()) {
+      return result;
+    }
+
+    long totalKvCnt = 0;
+    long totalRowCnt = 0;
+    long totalDeleteKvCnt = 0;
+    long totalDeleteFamilyCnt = 0;
+
+    for (HStoreFile storeFile : filesToCompact) {
+      StoreFileReader reader = storeFile.getReader();
+      try {
+        if (reader.getKvCnt() == -1 || reader.getRowCnt() == -1 || reader.getDeleteKvCnt() == -1
+            || reader.getDeleteFamilyCnt() == -1) {
+          return result;
+        }
+        totalKvCnt += reader.getKvCnt();
+        totalRowCnt += reader.getRowCnt();
+        totalDeleteKvCnt += reader.getDeleteKvCnt();
+        totalDeleteFamilyCnt += reader.getDeleteFamilyCnt();
+      } finally {
+        reader.close(false);
+      }
+    }
+    if (totalRowCnt == 0 || totalKvCnt == 0) {
+      return result;
+    }
+    double deleteRatio =
+        totalDeleteFamilyCnt / (double) totalRowCnt + totalDeleteKvCnt / (double) totalKvCnt;
+    if (deleteRatio >= comConf.getDeleteRatioCompactionThreshold()) {
+      result = true;
+      LOG.info(
+        "Major compaction triggered on store " + getStoreInfo() + "; because delete ratio is "
+            + deleteRatio + " >= threshold: " + comConf.getDeleteRatioCompactionThreshold());
+    }
+    return result;
+  }
+
+  private String getStoreInfo() {
+    StringBuilder infoBuilder = new StringBuilder();
+    if (this.storeConfigInfo != null && this.storeConfigInfo instanceof HStore) {
+      HStore hStore = ((HStore) this.storeConfigInfo);
+      String region =
+          hStore.getRegionInfo() != null ? hStore.getRegionInfo().getRegionNameAsString() : null;
+      infoBuilder.append("Region: ").append(region).append(", ColumnFamily: ")
+          .append(hStore.getColumnFamilyName());
+    } else {
+      infoBuilder.append(this.toString());
+    }
+    return infoBuilder.toString();
   }
 }

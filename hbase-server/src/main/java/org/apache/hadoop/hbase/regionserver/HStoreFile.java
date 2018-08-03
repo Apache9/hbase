@@ -83,6 +83,15 @@ public class HStoreFile implements StoreFile {
   /** Delete Family Count in FileInfo */
   public static final byte[] DELETE_FAMILY_COUNT = Bytes.toBytes("DELETE_FAMILY_COUNT");
 
+  /** Row Count in FileInfo */
+  public static final byte[] ROW_COUNT = Bytes.toBytes("ROW_COUNT");
+
+  /** KeyValue Count in FileInfo */
+  public static final byte[] KV_COUNT = Bytes.toBytes("KV_COUNT");
+
+  /** Delete KeyValue Count in FileInfo */
+  public static final byte[] DELETE_KV_COUNT = Bytes.toBytes("DELETE_KV_COUNT");
+
   /** Last Bloom filter key in FileInfo */
   public static final byte[] LAST_BLOOM_KEY = Bytes.toBytes("LAST_BLOOM_KEY");
 

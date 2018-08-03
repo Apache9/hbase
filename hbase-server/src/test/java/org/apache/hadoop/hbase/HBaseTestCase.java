@@ -25,6 +25,7 @@ import java.util.NavigableMap;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Durability;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Put;
@@ -285,15 +286,34 @@ public abstract class HBaseTestCase extends TestCase {
    * @return count of what we added.
    * @throws IOException
    */
-  public static long addContent(final Table updater,
-                                   final String columnFamily,
-                                   final String column,
-      final byte [] startKeyBytes, final byte [] endKey, final long ts)
-  throws IOException {
+  public static long addContent(final Table updater, final String columnFamily, final String column,
+      final byte[] startKeyBytes, final byte[] endKey, final long ts) throws IOException {
+    return addPutOrDeleteContent(updater, columnFamily, column, startKeyBytes, endKey, ts, true);
+  }
+
+  public static long addDeleteContent(final Table updater) throws IOException {
+    return addDeleteContent(updater, START_KEY_BYTES, null, -1);
+  }
+
+  private static long addDeleteContent(final Table updater, final byte[] startKeyBytes,
+      final byte[] endKey, final long ts) throws IOException {
+    return addPutOrDeleteContent(updater, null, null, startKeyBytes, endKey, ts, false);
+  }
+
+  /**
+   * Add content to region <code>r</code> on the passed column
+   * <code>column</code>.
+   * Adds data of the from 'aaa', 'aab', etc where key and value are the same.
+   * @return count of what we added.
+   * @throws IOException
+   */
+  private static long addPutOrDeleteContent(final Table updater, final String columnFamily,
+      final String column, final byte[] startKeyBytes, final byte[] endKey, final long ts,
+      boolean isPut) throws IOException {
     long count = 0;
-    // Add rows of three characters.  The first character starts with the
-    // 'a' character and runs up to 'z'.  Per first character, we run the
-    // second character over same range.  And same for the third so rows
+    // Put or delete rows of three characters. The first character starts with the
+    // 'a' character and runs up to 'z'. Per first character, we run the
+    // second character over same range. And same for the third so rows
     // (and values) look like this: 'aaa', 'aab', 'aac', etc.
     char secondCharStart = (char)startKeyBytes[1];
     char thirdCharStart = (char)startKeyBytes[2];
@@ -306,50 +326,23 @@ public abstract class HBaseTestCase extends TestCase {
             break EXIT;
           }
           try {
-            Put put;
-            if(ts != -1) {
-              put = new Put(t, ts);
-            } else {
-              put = new Put(t);
-            }
             try {
-              StringBuilder sb = new StringBuilder();
-              if (column != null && column.contains(":")) {
-                sb.append(column);
+              if (isPut) {
+                Put put = generatePut(t, columnFamily, column, ts);
+                updater.put(put);
               } else {
-                if (columnFamily != null) {
-                  sb.append(columnFamily);
-                  if (!columnFamily.endsWith(":")) {
-                    sb.append(":");
-                  }
-                  if (column != null) {
-                    sb.append(column);
-                  }
-                }
+                Delete delete = generateDelete(t, ts);
+                updater.delete(delete);
               }
-              byte[][] split =
-                CellUtil.parseColumn(Bytes.toBytes(sb.toString()));
-              if(split.length == 1) {
-                byte[] qualifier = new byte[0];
-                put.addColumn(split[0], qualifier, t);
-              } else {
-                put.addColumn(split[0], split[1], t);
-              }
-              put.setDurability(Durability.SKIP_WAL);
-              updater.put(put);
               count++;
             } catch (RuntimeException ex) {
-              ex.printStackTrace();
               throw ex;
             } catch (IOException ex) {
-              ex.printStackTrace();
               throw ex;
             }
           } catch (RuntimeException ex) {
-            ex.printStackTrace();
             throw ex;
           } catch (IOException ex) {
-            ex.printStackTrace();
             throw ex;
           }
         }
@@ -359,6 +352,50 @@ public abstract class HBaseTestCase extends TestCase {
       secondCharStart = FIRST_CHAR;
     }
     return count;
+  }
+
+  private static Put generatePut(byte[] row, final String columnFamily, final String column,
+      final long ts) {
+    Put put;
+    if (ts != -1) {
+      put = new Put(row, ts);
+    } else {
+      put = new Put(row);
+    }
+    StringBuilder sb = new StringBuilder();
+    if (column != null && column.contains(":")) {
+      sb.append(column);
+    } else {
+      if (columnFamily != null) {
+        sb.append(columnFamily);
+        if (!columnFamily.endsWith(":")) {
+          sb.append(":");
+        }
+        if (column != null) {
+          sb.append(column);
+        }
+      }
+    }
+    byte[][] split = CellUtil.parseColumn(Bytes.toBytes(sb.toString()));
+    if (split.length == 1) {
+      byte[] qualifier = new byte[0];
+      put.addColumn(split[0], qualifier, row);
+    } else {
+      put.addColumn(split[0], split[1], row);
+    }
+    put.setDurability(Durability.SKIP_WAL);
+    return put;
+  }
+
+  private static Delete generateDelete(byte[] row, final long ts) {
+    Delete delete;
+    if (ts != -1) {
+      delete = new Delete(row, ts);
+    } else {
+      delete = new Delete(row);
+    }
+    delete.setDurability(Durability.SKIP_WAL);
+    return delete;
   }
 
   protected void assertResultEquals(final HRegion region, final byte [] row,

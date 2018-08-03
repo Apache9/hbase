@@ -110,6 +110,8 @@ public class CompactionConfiguration {
   private final String compactionPolicyForDateTieredWindow;
   private final boolean dateTieredSingleOutputForMinorCompaction;
   private final String dateTieredCompactionWindowFactory;
+  boolean deleteRatioCompactionEnable;
+  double deleteRatioCompactionThreshold;
 
   CompactionConfiguration(Configuration conf, StoreConfigInformation storeConfigInfo) {
     this.conf = conf;
@@ -144,6 +146,8 @@ public class CompactionConfiguration {
     this.dateTieredCompactionWindowFactory = conf.get(
       DATE_TIERED_COMPACTION_WINDOW_FACTORY_CLASS_KEY,
       DEFAULT_DATE_TIERED_COMPACTION_WINDOW_FACTORY_CLASS.getName());
+    deleteRatioCompactionEnable = conf.getBoolean(HConstants.DELETE_RATIO_COMPACTION_ENABLE, false);
+    deleteRatioCompactionThreshold = conf.getDouble(HConstants.DELETE_RATIO_THRESHOLD_KEY, 0.45F);
     LOG.info(toString());
   }
 
@@ -154,7 +158,7 @@ public class CompactionConfiguration {
       + " major period %d, major jitter %f, min locality to compact %f;"
       + " tiered compaction: max_age %d, incoming window min %d,"
       + " compaction policy for tiered window %s, single output for minor %b,"
-      + " compaction window factory %s",
+      + " compaction window factory %s; delete ratio compaction: enable %b, threshold %f",
       StringUtils.byteDesc(minCompactSize),
       StringUtils.byteDesc(maxCompactSize),
       StringUtils.byteDesc(offPeakMaxCompactSize),
@@ -170,7 +174,9 @@ public class CompactionConfiguration {
       dateTieredIncomingWindowMin,
       compactionPolicyForDateTieredWindow,
       dateTieredSingleOutputForMinorCompaction,
-      dateTieredCompactionWindowFactory
+      dateTieredCompactionWindowFactory,
+      deleteRatioCompactionEnable, 
+      deleteRatioCompactionThreshold
       );
   }
 
@@ -286,5 +292,13 @@ public class CompactionConfiguration {
 
   public String getDateTieredCompactionWindowFactory() {
     return dateTieredCompactionWindowFactory;
+  }
+
+  public boolean isDeleteRatioCompactionEnable() {
+    return deleteRatioCompactionEnable;
+  }
+
+  public double getDeleteRatioCompactionThreshold() {
+    return deleteRatioCompactionThreshold;
   }
 }

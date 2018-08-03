@@ -60,6 +60,7 @@ import org.apache.hadoop.hbase.regionserver.compactions.CompactionContext;
 import org.apache.hadoop.hbase.regionserver.compactions.CompactionLifeCycleTracker;
 import org.apache.hadoop.hbase.regionserver.compactions.CompactionRequestImpl;
 import org.apache.hadoop.hbase.regionserver.compactions.DefaultCompactor;
+import org.apache.hadoop.hbase.regionserver.compactions.RatioBasedCompactionPolicy;
 import org.apache.hadoop.hbase.regionserver.throttle.CompactionThroughputControllerFactory;
 import org.apache.hadoop.hbase.regionserver.throttle.NoLimitThroughputController;
 import org.apache.hadoop.hbase.regionserver.throttle.ThroughputController;
@@ -679,6 +680,31 @@ public class TestCompaction {
     r.compact(true);
   }
 
+  @Test
+  public void testDeleteRatioCompaction() throws IOException {
+    HStore store = r.getStore(COLUMN_FAMILY);
+    createStoreFile(r);
+    for (int i = 0; i < 2; i++) {
+      createStoreFile(r);
+      addDeleteContent(r);
+    }
+
+    conf.setBoolean(HConstants.DELETE_RATIO_COMPACTION_ENABLE, true);
+    StoreConfigInformation sci = mock(StoreConfigInformation.class);
+    boolean performDeleteRatioCompaction = new RatioBasedCompactionPolicy(conf, sci)
+        .shouldPerformDeleteRatioCompaction(store.getStorefiles());
+    assertTrue(performDeleteRatioCompaction);
+    r.compact(true);
+    assertEquals(0, count());
+    conf.setBoolean(HConstants.DELETE_RATIO_COMPACTION_ENABLE, false);
+  }
+
+  private void addDeleteContent(final HRegion r) throws IOException {
+    Table loader = new RegionAsTable(r);
+    HBaseTestCase.addDeleteContent(loader);
+    r.flush(true);
+  }
+  
   public static class DummyCompactor extends DefaultCompactor {
     public DummyCompactor(Configuration conf, HStore store) {
       super(conf, store);

@@ -19,7 +19,10 @@ package org.apache.hadoop.hbase.regionserver;
 
 import static org.apache.hadoop.hbase.regionserver.HStoreFile.BLOOM_FILTER_TYPE_KEY;
 import static org.apache.hadoop.hbase.regionserver.HStoreFile.DELETE_FAMILY_COUNT;
+import static org.apache.hadoop.hbase.regionserver.HStoreFile.DELETE_KV_COUNT;
+import static org.apache.hadoop.hbase.regionserver.HStoreFile.KV_COUNT;
 import static org.apache.hadoop.hbase.regionserver.HStoreFile.LAST_BLOOM_KEY;
+import static org.apache.hadoop.hbase.regionserver.HStoreFile.ROW_COUNT;
 
 import java.io.DataInput;
 import java.io.IOException;
@@ -74,6 +77,9 @@ public class StoreFileReader {
   private boolean bulkLoadResult = false;
   private KeyValue.KeyOnlyKeyValue lastBloomKeyOnlyKV = null;
   private boolean skipResetSeqId = true;
+  private long rowCnt = -1;
+  private long kvCnt = -1;
+  private long deleteKvCnt = -1;
 
   // Counter that is incremented every time a scanner is created on the
   // store file. It is decremented when the scan on the store file is
@@ -455,6 +461,21 @@ public class StoreFileReader {
       deleteFamilyCnt = Bytes.toLong(cnt);
     }
 
+    cnt = fi.get(ROW_COUNT);
+    if (cnt != null) {
+      rowCnt = Bytes.toLong(cnt);
+    }
+
+    cnt = fi.get(KV_COUNT);
+    if (cnt != null) {
+      kvCnt = Bytes.toLong(cnt);
+    }
+
+    cnt = fi.get(DELETE_KV_COUNT);
+    if (cnt != null) {
+      deleteKvCnt = Bytes.toLong(cnt);
+    }
+
     return fi;
   }
 
@@ -566,6 +587,18 @@ public class StoreFileReader {
 
   public long getDeleteFamilyCnt() {
     return deleteFamilyCnt;
+  }
+
+  public long getRowCnt() {
+    return rowCnt;
+  }
+
+  public long getKvCnt() {
+    return kvCnt;
+  }
+
+  public long getDeleteKvCnt() {
+    return deleteKvCnt;
   }
 
   public Optional<Cell> getFirstKey() {
