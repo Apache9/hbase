@@ -3737,11 +3737,4 @@
       <url>file:///tmp</url>
     </site>
   </distributionManagement>
-  <repositories>
-    <repository>
-        <id>project.local</id>
-        <name>project</name>
-        <url>file:${project.basedir}/src/site/resources/repo</url>
-    </repository>
-</repositories>
 </project>
