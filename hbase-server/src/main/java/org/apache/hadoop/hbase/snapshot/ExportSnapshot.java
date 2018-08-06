@@ -986,6 +986,10 @@ public class ExportSnapshot extends Configured implements Tool {
           + " to=" + initialOutputSnapshotDir, e);
     } finally {
       // set owner for references
+      if(!skipTmp){
+        travesedPaths.add(SnapshotDescriptionUtils.getWorkingSnapshotDir(outputRoot));
+      }
+      travesedPaths.add(SnapshotDescriptionUtils.getSnapshotRootDir(outputSnapshotDir));
       if (filesUser != null || filesGroup != null) {
         setOwnerParallel(outputFs, filesUser, filesGroup, conf, travesedPaths);
       }
