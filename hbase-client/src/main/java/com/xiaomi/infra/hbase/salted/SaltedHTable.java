@@ -26,6 +26,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.hadoop.conf.Configuration;
@@ -67,7 +68,6 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.Writables;
 import org.apache.hadoop.io.Writable;
 import org.apache.yetus.audience.InterfaceAudience;
-import org.jboss.netty.util.internal.ConcurrentHashMap;
 
 import com.google.protobuf.Descriptors.MethodDescriptor;
 import com.google.protobuf.Message;
@@ -83,7 +83,7 @@ public class SaltedHTable implements Table {
   public static final String SLOTS_IN_SCAN = "__salted_slots_in_scan__";
   // KeySalter of table on cluster
   private static ConcurrentHashMap<String, Map<String, KeySalter>> saltedTables =
-      new ConcurrentHashMap<String, Map<String, KeySalter>>();
+      new ConcurrentHashMap<>();
 
   private KeySalter salter;
   private Table table;
