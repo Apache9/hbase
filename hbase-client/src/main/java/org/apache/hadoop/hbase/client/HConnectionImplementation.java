@@ -2172,7 +2172,9 @@ public class HConnectionImplementation implements HConnection, Closeable {
       }
     }
     this.closed = true;
-    registry.close();
+    if (registry != null) {
+      registry.close();
+    }
     this.stubs.clear();
     if (clusterStatusListener != null) {
       clusterStatusListener.close();
