@@ -68,6 +68,7 @@ public class TestMasterMetrics {
         long reportStartTime, long reportEndTime) {
       // do nothing
     }
+
   }
 
   @BeforeClass
