@@ -1414,6 +1414,9 @@ public final class HConstants {
 
   public static final String SNAPSHOT_BEFORE_DELETE = "hbase.master.snapshot.before.delete";
 
+  public static final String CLIENT_WARN_IPC_RESPONSE_TIME = "hbase.client.ipc.warn.response.time";
+  public static final long DEFAULT_CLIENT_WARN_IPC_RESPONSE_TIME = 100; // milliseconds
+
   private HConstants() {
     // Can't be instantiated with this ctor.
   }

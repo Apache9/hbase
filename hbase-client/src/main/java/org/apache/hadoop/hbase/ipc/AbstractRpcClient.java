@@ -144,6 +144,8 @@ public abstract class AbstractRpcClient<T extends RpcConnection> implements RpcC
 
   private int maxConcurrentCallsPerServer;
 
+  private long clientWarnIpcResponseTime;
+
   private static final LoadingCache<InetSocketAddress, AtomicInteger> concurrentCounterCache =
       CacheBuilder.newBuilder().expireAfterAccess(1, TimeUnit.HOURS).
           build(new CacheLoader<InetSocketAddress, AtomicInteger>() {
@@ -185,6 +187,8 @@ public abstract class AbstractRpcClient<T extends RpcConnection> implements RpcC
     this.maxConcurrentCallsPerServer = conf.getInt(
         HConstants.HBASE_CLIENT_PERSERVER_REQUESTS_THRESHOLD,
         HConstants.DEFAULT_HBASE_CLIENT_PERSERVER_REQUESTS_THRESHOLD);
+    this.clientWarnIpcResponseTime = conf.getLong(HConstants.CLIENT_WARN_IPC_RESPONSE_TIME,
+      HConstants.DEFAULT_CLIENT_WARN_IPC_RESPONSE_TIME);
 
     this.connections = new PoolMap<>(getPoolType(conf), getPoolSize(conf));
 
@@ -377,6 +381,10 @@ public abstract class AbstractRpcClient<T extends RpcConnection> implements RpcC
     call.callStats.setCallTimeMs(EnvironmentEdgeManager.currentTime() - call.getStartTime());
     if (metrics != null) {
       metrics.updateRpc(call.md, call.param, call.callStats);
+    }
+    if (call.callStats.getCallTimeMs() > clientWarnIpcResponseTime) {
+      LOG.warn("Slow ipc call, MethodName=" + call.md.getName() + ", consume time="
+          + call.callStats.getCallTimeMs() + ", remote address:" + addr);
     }
     if (LOG.isTraceEnabled()) {
       LOG.trace(
