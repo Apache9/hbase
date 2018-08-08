@@ -334,6 +334,16 @@ public class MasterRpcServices extends RSRpcServices
   }
 
   @Override
+  protected Class<?> getRpcSchedulerFactoryClass() {
+    Configuration conf = getConfiguration();
+    if (conf != null) {
+      return conf.getClass(MASTER_RPC_SCHEDULER_FACTORY_CLASS, super.getRpcSchedulerFactoryClass());
+    } else {
+      return super.getRpcSchedulerFactoryClass();
+    }
+  }
+
+  @Override
   protected RpcServerInterface createRpcServer(Server server, Configuration conf,
       RpcSchedulerFactory rpcSchedulerFactory, InetSocketAddress bindAddress, String name)
       throws IOException {
