@@ -149,7 +149,7 @@ public class CallRunner {
       } finally {
         RpcServer.CurCall.set(null);
         if (resultPair != null) {
-          resetCallQueueSize();
+          this.rpcServer.addCallSize(call.getSize() * -1);
           sucessful = true;
         }
       }
@@ -183,14 +183,10 @@ public class CallRunner {
           + ": caught: " + StringUtils.stringifyException(e));
     } finally {
       if (!sucessful) {
-        resetCallQueueSize();
+        this.rpcServer.addCallSize(call.getSize() * -1);
       }
       cleanup();
     }
-  }
-
-  protected void resetCallQueueSize() {
-    this.rpcServer.addCallSize(call.getSize() * -1);
   }
 
   /**
@@ -221,7 +217,7 @@ public class CallRunner {
         + ": caught: " + StringUtils.stringifyException(e));
     } finally {
       if (!sucessful) {
-        resetCallQueueSize();
+        this.rpcServer.addCallSize(call.getSize() * -1);
       }
       cleanup();
     }
