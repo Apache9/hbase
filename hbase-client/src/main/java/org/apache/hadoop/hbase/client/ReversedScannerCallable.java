@@ -73,7 +73,7 @@ public class ReversedScannerCallable extends ScannerCallable {
       // 2. the start row is empty which means we need to locate to the last region.
       if (scan.includeStartRow() && !isEmptyStartRow(getRow())) {
         // Just locate the region with the row
-        this.location = getRegionLocation(tableName, row, reload, callTimeout);
+        this.location = getRegionLocation(tableName, row, false, callTimeout);
         if (location == null || location.getServerName() == null) {
           throw new IOException("Failed to find location, tableName="
               + tableName + ", row=" + Bytes.toStringBinary(row) + ", reload="

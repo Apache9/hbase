@@ -109,7 +109,7 @@ public abstract class RegionServerCallable<T> implements RetryingCallable<T> {
         getConnection().isTableDisabled(tableName)) {
       throw new TableNotEnabledException(tableName.getNameAsString() + " is disabled.");
     }
-    this.location = getRegionLocation(tableName, row, reload, callTimeout);
+    this.location = getRegionLocation(tableName, row, false, callTimeout);
     setStub(getConnection().getClient(getLocation().getServerName()));
   }
 
