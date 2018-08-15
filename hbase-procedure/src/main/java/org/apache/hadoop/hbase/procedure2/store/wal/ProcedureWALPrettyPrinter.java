@@ -35,6 +35,8 @@ import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.apache.yetus.audience.InterfaceStability;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.xiaomi.infra.thirdparty.org.apache.commons.cli.CommandLine;
 import com.xiaomi.infra.thirdparty.org.apache.commons.cli.DefaultParser;
@@ -52,6 +54,8 @@ import org.apache.hadoop.hbase.shaded.protobuf.generated.ProcedureProtos.Procedu
 @InterfaceAudience.LimitedPrivate(HBaseInterfaceAudience.TOOLS)
 @InterfaceStability.Evolving
 public class ProcedureWALPrettyPrinter extends Configured implements Tool {
+  private static final Logger LOG = LoggerFactory.getLogger(ProcedureWALPrettyPrinter.class);
+
   private final PrintStream out;
 
   public ProcedureWALPrettyPrinter() {
@@ -172,7 +176,7 @@ public class ProcedureWALPrettyPrinter extends Configured implements Tool {
         return(-1);
       }
     } catch (ParseException e) {
-      e.printStackTrace();
+      LOG.error("Failed to parse commandLine arguments", e);
       HelpFormatter formatter = new HelpFormatter();
       formatter.printHelp("ProcedureWALPrettyPrinter ", options, true);
       return(-1);
