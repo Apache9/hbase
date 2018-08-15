@@ -65,6 +65,7 @@ import org.apache.hadoop.hbase.client.MetaScanner.MetaScannerVisitorBase;
 import org.apache.hadoop.hbase.client.backoff.ClientBackoffPolicy;
 import org.apache.hadoop.hbase.client.backoff.ClientBackoffPolicyFactory;
 import org.apache.hadoop.hbase.client.coprocessor.Batch;
+import org.apache.hadoop.hbase.exceptions.ClientExceptionsUtil;
 import org.apache.hadoop.hbase.exceptions.RegionMovedException;
 import org.apache.hadoop.hbase.exceptions.RegionOpeningException;
 import org.apache.hadoop.hbase.ipc.RpcClient;
@@ -1901,9 +1902,7 @@ public class HConnectionImplementation implements HConnection, Closeable {
     HRegionInfo regionInfo = oldLocation.getRegionInfo();
     Throwable cause = HConnectionManager.findException(exception);
     if (cause != null) {
-      if (cause instanceof RegionTooBusyException || cause instanceof RegionOpeningException
-          || cause instanceof ThrottlingException || cause instanceof MultiActionResultTooLarge
-          || cause instanceof TooManyRegionScannersException) {
+      if (!ClientExceptionsUtil.isMetaClearingException(cause)) {
         // We know that the region is still on this region server
         return;
       }
