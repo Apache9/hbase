@@ -37,7 +37,6 @@ public class TestTooManyRegionScanners {
         LIMITED_OPENED_REGION_SCANNERS);
     TEST_UTIL.getConfiguration().setInt("hbase.client.scanner.caching", 2);
     TEST_UTIL.getConfiguration().setInt("hbase.client.retries.number", 1);
-    TEST_UTIL.getConfiguration().setInt("hbase.rpc.timeout", 1000);
     TEST_UTIL.startMiniCluster();
   }
 
