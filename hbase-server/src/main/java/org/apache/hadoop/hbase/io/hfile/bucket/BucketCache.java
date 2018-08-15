@@ -1043,6 +1043,8 @@ public class BucketCache implements BlockCache, HeapSize {
   /**
    * @see #retrieveFromFile(int[])
    */
+  @edu.umd.cs.findbugs.annotations.SuppressWarnings(value="OBL_UNSATISFIED_OBLIGATION",
+      justification = "false positive, try-with-resources ensures close is called.")
   private void persistToFile() throws IOException {
     assert !cacheEnabled;
     if (!ioEngine.isPersistent()) {
