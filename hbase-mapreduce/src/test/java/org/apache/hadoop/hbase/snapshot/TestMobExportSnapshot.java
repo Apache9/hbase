@@ -41,7 +41,7 @@ public class TestMobExportSnapshot extends TestExportSnapshot {
   public static void setUpBeforeClass() throws Exception {
     setUpBaseConf(TEST_UTIL.getConfiguration());
     TEST_UTIL.getConfiguration().setInt(MobConstants.MOB_FILE_CACHE_SIZE_KEY, 0);
-    TEST_UTIL.startMiniCluster(1, 3);
+    TEST_UTIL.startMiniCluster(3);
   }
 
   @Override

@@ -49,7 +49,7 @@ public class TestSecureExportSnapshotRetry extends TestExportSnapshotRetry {
     // setup configuration
     SecureTestUtil.enableSecurity(TEST_UTIL.getConfiguration());
 
-    TEST_UTIL.startMiniCluster(1, 3);
+    TEST_UTIL.startMiniCluster(3);
     TEST_UTIL.startMiniMapReduceCluster();
 
     // Wait for the ACL table to become available
