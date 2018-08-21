@@ -18,6 +18,7 @@
  */
 package org.apache.hadoop.hbase.replication.regionserver;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
@@ -163,6 +164,12 @@ public class ReplicationSource extends Thread
   private AtomicLong totalBufferUsed;
   private long totalBufferQuota;
   List<HLog.Entry> entries;
+
+  @VisibleForTesting
+  public static boolean throwIOEWhenCloseReaderFirstTime = false;
+  @VisibleForTesting
+  public static boolean throwIOEWhenReadWALEntryFirstTime = false;
+
   /**
    * Instantiation method used by region servers
    *
@@ -391,11 +398,6 @@ public class ReplicationSource extends Thread
         continue;
       }
 
-      boolean gotIOE = false;
-      currentNbOperations = 0;
-      lastPositionsForSerialScope.clear();
-      entries.clear();
-      currentSize = 0;
       try {
         updateCurrentLogMetrics();
         if (readAllEntriesToReplicateOrNextFile(currentWALisBeingWrittenTo, entries,
@@ -406,18 +408,30 @@ public class ReplicationSource extends Thread
           updateReplicationPositions(manager.getConnection(), peerId, lastPositionsForSerialScope);
           continue;
         }
+        if (throwIOEWhenReadWALEntryFirstTime) {
+          throwIOEWhenReadWALEntryFirstTime = false;
+          throw new IOException("Just for test. Throw IOException when read WAL entry!");
+        }
       } catch (IOException ioe) {
-        LOG.warn(this.peerClusterZnode + " Got: ", ioe);
-        gotIOE = true;
+        LOG.warn("Replication peer peerId=" + peerId + " peerClusterZnode=" + peerClusterZnode
+            + " got IOException", ioe);
         if (ioe.getCause() instanceof EOFException && handleEOFException(sleepMultiplier)) {
           continue;
         }
+        // Sleep and retry
+        if (sleepForRetries("Failed to read WAL entries", sleepMultiplier)) {
+          sleepMultiplier++;
+        }
+        continue;
       } finally {
         try {
           this.reader = null;
           this.repLogReader.closeReader();
+          if (throwIOEWhenCloseReaderFirstTime) {
+            throwIOEWhenCloseReaderFirstTime = false;
+            throw new IOException("Just for test. Throw IOException when close log reader!");
+          }
         } catch (IOException e) {
-          gotIOE = true;
           LOG.warn("Unable to finalize the tailing of a file", e);
         }
       }
@@ -426,24 +440,19 @@ public class ReplicationSource extends Thread
         waitingUntilCanPush(entry);
       }
 
-      // If we didn't get anything to replicate, or if we hit a IOE,
-      // wait a bit and retry.
+      // If we didn't get anything to replicate, wait a bit and retry.
       // But if we need to stop, don't bother sleeping
-      if (this.isActive() && (gotIOE || entries.isEmpty())) {
-
+      if (this.isActive() && entries.isEmpty()) {
         // Save positions to meta table before zk.
-        if (!gotIOE) {
-          updateReplicationPositions(manager.getConnection(), peerId, lastPositionsForSerialScope);
-        }
-
+        updateReplicationPositions(manager.getConnection(), peerId, lastPositionsForSerialScope);
         logPosition(currentWALisBeingWrittenTo);
+
         // Reset the sleep multiplier if nothing has actually gone wrong
-        if (!gotIOE) {
-          sleepMultiplier = 1;
-          // if there was nothing to ship and it's not an error
-          // set "ageOfLastShippedOp" to <now> to indicate that we're current
-          this.metrics.setAgeOfLastShippedOp(System.currentTimeMillis());
-        }
+        sleepMultiplier = 1;
+        // if there was nothing to ship and it's not an error
+        // set "ageOfLastShippedOp" to <now> to indicate that we're current
+        this.metrics.setAgeOfLastShippedOp(System.currentTimeMillis());
+
         if (sleepForRetries("Nothing to replicate", sleepMultiplier)) {
           sleepMultiplier++;
         }
@@ -453,8 +462,17 @@ public class ReplicationSource extends Thread
       }
       sleepMultiplier = 1;
       shipEdits(currentWALisBeingWrittenTo, entries, lastPositionsForSerialScope);
+      // Only clear everything after successfully ship edits
       releaseBufferQuota();
+      lastPositionsForSerialScope.clear();
     }
+  }
+
+  private void releaseBufferQuota() {
+    totalBufferUsed.addAndGet(-currentSize);
+    currentSize = 0;
+    currentNbOperations = 0;
+    entries.clear();
   }
 
   private void logPosition(boolean currentWALisBeingWrittenTo){
@@ -563,7 +581,7 @@ public class ReplicationSource extends Thread
    * @throws IOException
    */
   protected boolean readAllEntriesToReplicateOrNextFile(boolean currentWALisBeingWrittenTo,
-      List<HLog.Entry> entries, Map<String, Long> lastPosition) throws IOException{
+      List<HLog.Entry> entries, Map<String, Long> lastPosition) throws IOException {
     long seenEntries = 0;
     LOG.debug("Seeking in " + this.currentPath + " at position " + this.repLogReader.getPosition());
     this.repLogReader.seek();
@@ -635,14 +653,18 @@ public class ReplicationSource extends Thread
         }
       }
       // Stop if too many entries or too big
-      if (totalBufferTooLarge || currentSize >= this.replicationQueueSizeCapacity ||
-          entries.size() >= this.replicationQueueNbCapacity) {
+      if (totalBufferTooLarge || currentSize >= this.replicationQueueSizeCapacity
+          || entries.size() >= this.replicationQueueNbCapacity) {
+        LOG.debug(
+            "Current log: " + this.currentPath + ", read entries break as totalBufferTooLarge="
+                + totalBufferTooLarge + ", currentSize=" + currentSize + ", entries.size()="
+                + entries.size());
         break;
       }
       try {
         entry = this.repLogReader.readNextAndSetPosition();
       } catch (IOException ie) {
-        LOG.info("Current log: " + this.currentPath + ", break on IOE: " + ie.getMessage());
+        LOG.warn("Current log: " + this.currentPath + ", read entries break on IOException", ie);
         break;
       }
     }
@@ -1049,12 +1071,6 @@ public class ReplicationSource extends Thread
    */
   private boolean acquireBufferQuota(long size) {
     return totalBufferUsed.addAndGet(size) >= totalBufferQuota;
-  }
-
-  protected void releaseBufferQuota() {
-    totalBufferUsed.addAndGet(-currentSize);
-    currentSize = 0;
-    entries.clear();
   }
 
   /**
