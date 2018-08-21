@@ -30,7 +30,6 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
-
 import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.ChoreService;
@@ -63,8 +62,6 @@ import org.apache.hadoop.hbase.util.PairOfSameType;
 import org.apache.hadoop.hbase.util.RetryCounter;
 import org.apache.hadoop.hbase.util.StoppableImplementation;
 import org.apache.hadoop.hbase.util.Threads;
-import org.apache.hbase.thirdparty.com.google.common.collect.Iterators;
-import org.apache.hbase.thirdparty.com.google.common.collect.Maps;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -75,6 +72,9 @@ import org.junit.experimental.categories.Category;
 import org.junit.rules.TestName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import org.apache.hbase.thirdparty.com.google.common.collect.Iterators;
+import org.apache.hbase.thirdparty.com.google.common.collect.Maps;
 
 @Category(LargeTests.class)
 public class TestEndToEndSplitTransaction {
@@ -217,14 +217,12 @@ public class TestEndToEndSplitTransaction {
     TableName tableName;
     byte[] family;
     Admin admin;
-    HRegionServer rs;
 
     RegionSplitter(Table table) throws IOException {
       this.table = table;
       this.tableName = table.getName();
-      this.family = table.getTableDescriptor().getFamiliesKeys().iterator().next();
+      this.family = table.getDescriptor().getColumnFamilies()[0].getName();
       admin = TEST_UTIL.getAdmin();
-      rs = TEST_UTIL.getMiniHBaseCluster().getRegionServer(0);
       connection = TEST_UTIL.getConnection();
     }
 
@@ -257,15 +255,14 @@ public class TestEndToEndSplitTransaction {
           addData(start);
           addData(mid);
 
-          flushAndBlockUntilDone(admin, rs, region.getRegionName());
-          compactAndBlockUntilDone(admin, rs, region.getRegionName());
+          flushAndBlockUntilDone(TEST_UTIL, region.getRegionName());
+          compactAndBlockUntilDone(TEST_UTIL, region.getRegionName());
 
           log("Initiating region split for:" + region.getRegionNameAsString());
           try {
-            admin.splitRegion(region.getRegionName(), splitPoint);
+            admin.splitRegionAsync(region.getRegionName(), splitPoint);
             // wait until the split is complete
-            blockUntilRegionSplit(CONF, 50000, region.getRegionName(), true);
-
+            blockUntilRegionSplit(TEST_UTIL, 50000, region.getRegionName(), true);
           } catch (NotServingRegionException ex) {
             // ignore
           }
@@ -326,7 +323,7 @@ public class TestEndToEndSplitTransaction {
 
           Set<RegionInfo> regions = new TreeSet<>(RegionInfo.COMPARATOR);
           for (HRegionLocation loc : rl.getAllRegionLocations()) {
-            regions.add(loc.getRegionInfo());
+            regions.add(loc.getRegion());
           }
           verifyTableRegions(regions);
         }
@@ -396,46 +393,44 @@ public class TestEndToEndSplitTransaction {
   }
 
   /* some utility methods for split tests */
-
-  public static void flushAndBlockUntilDone(Admin admin, HRegionServer rs, byte[] regionName)
-      throws IOException, InterruptedException {
-    log("flushing region: " + Bytes.toStringBinary(regionName));
-    admin.flushRegion(regionName);
-    log("blocking until flush is complete: " + Bytes.toStringBinary(regionName));
-    Threads.sleepWithoutInterrupt(500);
-    while (rs.getOnlineRegion(regionName).getMemStoreDataSize() > 0) {
-      Threads.sleep(50);
-    }
+  private static HRegion getRegion(HBaseTestingUtility util, byte[] regionName) {
+    return util.getMiniHBaseCluster().getRegionServerThreads().stream()
+      .map(t -> t.getRegionServer().getOnlineRegion(regionName)).filter(r -> r != null).findFirst()
+      .orElse(null);
   }
 
-  public static void compactAndBlockUntilDone(Admin admin, HRegionServer rs, byte[] regionName)
+  private static void flushAndBlockUntilDone(HBaseTestingUtility util, byte[] regionName)
+      throws IOException, InterruptedException {
+    log("flushing region: " + Bytes.toStringBinary(regionName));
+    util.getAdmin().flushRegion(regionName);
+    log("blocking until flush is complete: " + Bytes.toStringBinary(regionName));
+    Threads.sleepWithoutInterrupt(500);
+
+    HRegion region = getRegion(util, regionName);
+    util.waitFor(60000, () -> region.getMemStoreDataSize() <= 0);
+  }
+
+  private static void compactAndBlockUntilDone(HBaseTestingUtility util, byte[] regionName)
       throws IOException, InterruptedException {
     log("Compacting region: " + Bytes.toStringBinary(regionName));
-    admin.majorCompactRegion(regionName);
+    util.getAdmin().majorCompactRegion(regionName);
     log("blocking until compaction is complete: " + Bytes.toStringBinary(regionName));
     Threads.sleepWithoutInterrupt(500);
-    outer: for (;;) {
-      for (Store store : rs.getOnlineRegion(regionName).getStores()) {
-        if (store.getStorefilesCount() > 1) {
-          Threads.sleep(50);
-          continue outer;
-        }
-      }
-      break;
-    }
+    HRegion region = getRegion(util, regionName);
+    util.waitFor(60000,
+      () -> region.getStores().stream().allMatch(s -> s.getStorefilesCount() <= 1));
   }
 
   /**
    * Blocks until the region split is complete in hbase:meta and region server opens the daughters
    */
-  public static void blockUntilRegionSplit(Configuration conf, long timeout,
+  public static void blockUntilRegionSplit(HBaseTestingUtility util, long timeout,
       final byte[] regionName, boolean waitForDaughters)
       throws IOException, InterruptedException {
     long start = System.currentTimeMillis();
     log("blocking until region is split:" +  Bytes.toStringBinary(regionName));
     RegionInfo daughterA = null, daughterB = null;
-    try (Connection conn = ConnectionFactory.createConnection(conf);
-        Table metaTable = conn.getTable(TableName.META_TABLE_NAME)) {
+    try (Table metaTable = util.getConnection().getTable(TableName.META_TABLE_NAME)) {
       Result result = null;
       RegionInfo region = null;
       while ((System.currentTimeMillis() - start) < timeout) {
@@ -463,33 +458,31 @@ public class TestEndToEndSplitTransaction {
       //if we are here, this means the region split is complete or timed out
       if (waitForDaughters) {
         long rem = timeout - (System.currentTimeMillis() - start);
-        blockUntilRegionIsInMeta(conn, rem, daughterA);
+        blockUntilRegionIsInMeta(util.getConnection(), rem, daughterA);
 
         rem = timeout - (System.currentTimeMillis() - start);
-        blockUntilRegionIsInMeta(conn, rem, daughterB);
+        blockUntilRegionIsInMeta(util.getConnection(), rem, daughterB);
 
         rem = timeout - (System.currentTimeMillis() - start);
-        blockUntilRegionIsOpened(conf, rem, daughterA);
+        blockUntilRegionIsOpened(util.getConfiguration(), rem, daughterA);
 
         rem = timeout - (System.currentTimeMillis() - start);
-        blockUntilRegionIsOpened(conf, rem, daughterB);
+        blockUntilRegionIsOpened(util.getConfiguration(), rem, daughterB);
 
         // Compacting the new region to make sure references can be cleaned up
-        compactAndBlockUntilDone(TEST_UTIL.getAdmin(),
-          TEST_UTIL.getMiniHBaseCluster().getRegionServer(0), daughterA.getRegionName());
-        compactAndBlockUntilDone(TEST_UTIL.getAdmin(),
-          TEST_UTIL.getMiniHBaseCluster().getRegionServer(0), daughterB.getRegionName());
+        compactAndBlockUntilDone(util, daughterA.getRegionName());
+        compactAndBlockUntilDone(util, daughterB.getRegionName());
 
-        removeCompactedFiles(conn, timeout, daughterA);
-        removeCompactedFiles(conn, timeout, daughterB);
+        removeCompactedFiles(util, timeout, daughterA);
+        removeCompactedFiles(util, timeout, daughterB);
       }
     }
   }
 
-  public static void removeCompactedFiles(Connection conn, long timeout, RegionInfo hri)
+  private static void removeCompactedFiles(HBaseTestingUtility util, long timeout, RegionInfo hri)
       throws IOException, InterruptedException {
     log("remove compacted files for : " + hri.getRegionNameAsString());
-    List<HRegion> regions = TEST_UTIL.getHBaseCluster().getRegions(hri.getTable());
+    List<HRegion> regions = util.getHBaseCluster().getRegions(hri.getTable());
     regions.stream().forEach(r -> {
       try {
         r.getStores().get(0).closeAndArchiveCompactedFiles();
@@ -499,13 +492,13 @@ public class TestEndToEndSplitTransaction {
     });
   }
 
-  public static void blockUntilRegionIsInMeta(Connection conn, long timeout, RegionInfo hri)
+  private static void blockUntilRegionIsInMeta(Connection conn, long timeout, RegionInfo hri)
       throws IOException, InterruptedException {
     log("blocking until region is in META: " + hri.getRegionNameAsString());
     long start = System.currentTimeMillis();
     while (System.currentTimeMillis() - start < timeout) {
       HRegionLocation loc = MetaTableAccessor.getRegionLocation(conn, hri);
-      if (loc != null && !loc.getRegionInfo().isOffline()) {
+      if (loc != null && !loc.getRegion().isOffline()) {
         log("found region in META: " + hri.getRegionNameAsString());
         break;
       }
@@ -513,7 +506,7 @@ public class TestEndToEndSplitTransaction {
     }
   }
 
-  public static void blockUntilRegionIsOpened(Configuration conf, long timeout, RegionInfo hri)
+  private static void blockUntilRegionIsOpened(Configuration conf, long timeout, RegionInfo hri)
       throws IOException, InterruptedException {
     log("blocking until region is opened for reading:" + hri.getRegionNameAsString());
     long start = System.currentTimeMillis();
