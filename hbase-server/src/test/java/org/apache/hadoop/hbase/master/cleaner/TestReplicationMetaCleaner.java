@@ -78,7 +78,8 @@ public class TestReplicationMetaCleaner {
 
   private static final String PEER_ID = "1";
 
-  private static final int PERIOD = 1000;
+  private static final int PERIOD = 5000;
+
   @BeforeClass
   public static void setupCluster() throws Exception {
     // Setup UTIL1
@@ -102,7 +103,7 @@ public class TestReplicationMetaCleaner {
     admin = UTIL1.getHBaseAdmin();
     ReplicationPeerConfig rpc = new ReplicationPeerConfig();
     rpc.setClusterKey(UTIL2.getClusterKey());
-    admin.addReplicationPeer(PEER_ID, rpc);
+    admin.addReplicationPeer(PEER_ID, rpc, false);
 
     // Create table
     HTableDescriptor tableDesc = new HTableDescriptor(serialTableName);
