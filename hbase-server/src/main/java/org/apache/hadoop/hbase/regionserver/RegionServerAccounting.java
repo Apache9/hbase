@@ -23,6 +23,9 @@ import java.util.concurrent.atomic.LongAdder;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.yetus.audience.InterfaceAudience;
+
+import org.apache.hbase.thirdparty.com.google.common.annotations.VisibleForTesting;
+
 import org.apache.hadoop.hbase.io.util.MemorySizeUtil;
 import org.apache.hadoop.hbase.util.Pair;
 
@@ -94,7 +97,8 @@ public class RegionServerAccounting {
     return this.memType == MemoryType.NON_HEAP;
   }
 
-  long getGlobalMemStoreLimitLowMark() {
+  @VisibleForTesting
+  public long getGlobalMemStoreLimitLowMark() {
     return this.globalMemStoreLimitLowMark;
   }
 

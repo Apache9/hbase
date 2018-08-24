@@ -35,12 +35,14 @@ import org.apache.hadoop.hbase.client.ConnectionFactory;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Table;
 import org.apache.hadoop.hbase.client.TableDescriptorBuilder;
+import org.apache.hadoop.hbase.io.util.MemorySizeUtil;
 import org.apache.hadoop.hbase.master.LoadBalancer;
 import org.apache.hadoop.hbase.regionserver.DefaultStoreEngine;
 import org.apache.hadoop.hbase.regionserver.HRegion;
 import org.apache.hadoop.hbase.regionserver.HRegionServer;
 import org.apache.hadoop.hbase.regionserver.HStore;
 import org.apache.hadoop.hbase.regionserver.Region;
+import org.apache.hadoop.hbase.regionserver.RegionServerAccounting;
 import org.apache.hadoop.hbase.regionserver.StoreEngine;
 import org.apache.hadoop.hbase.regionserver.StripeStoreEngine;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
@@ -66,7 +68,7 @@ public class TestFlushWithThroughputController {
 
   private static final Logger LOG =
       LoggerFactory.getLogger(TestFlushWithThroughputController.class);
-  private static final double EPSILON = 1.3E-6;
+  private static final double EPSILON = 1E-6;
 
   private HBaseTestingUtility hbtu;
   @Rule public TestName testName = new TestName();
@@ -78,9 +80,11 @@ public class TestFlushWithThroughputController {
   public void setUp() {
     hbtu = new HBaseTestingUtility();
     tableName = TableName.valueOf("Table-" + testName.getMethodName());
+    // Use on heap memstore here for better asserting the flush pressure
+    hbtu.getConfiguration().setLong(MemorySizeUtil.OFFHEAP_MEMSTORE_SIZE_KEY, 0);
     hbtu.getConfiguration().set(
-        FlushThroughputControllerFactory.HBASE_FLUSH_THROUGHPUT_CONTROLLER_KEY,
-        PressureAwareFlushThroughputController.class.getName());
+      FlushThroughputControllerFactory.HBASE_FLUSH_THROUGHPUT_CONTROLLER_KEY,
+      PressureAwareFlushThroughputController.class.getName());
   }
 
   @After
@@ -182,7 +186,10 @@ public class TestFlushWithThroughputController {
     for (HRegion region : regionServer.getRegions()) {
       region.flush(true);
     }
-    assertEquals(0.0, regionServer.getFlushPressure(), EPSILON);
+    RegionServerAccounting accounting = regionServer.getRegionServerAccounting();
+    assertEquals(
+      accounting.getGlobalMemStoreHeapSize() * 1.0 / accounting.getGlobalMemStoreLimitLowMark(),
+      regionServer.getFlushPressure(), EPSILON);
     Thread.sleep(5000);
     boolean tablesOnMaster = LoadBalancer.isTablesOnMaster(hbtu.getConfiguration());
     if (tablesOnMaster) {
