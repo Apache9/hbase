@@ -18,6 +18,7 @@
 package org.apache.hadoop.hbase.master.cleaner;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -118,6 +119,8 @@ public class TestSnapshotFromMaster {
     conf.setInt("hbase.hstore.compactionThreshold", minCompactionFiles);
     // block writes if we get to 12 store files
     conf.setInt("hbase.hstore.blockingStoreFiles", 12);
+    // Same with blockingStoreFiles, make sure that it have chance to compact all storefiles
+    conf.setInt("hbase.hstore.compaction.max", 12);
     // Ensure no extra cleaners on by default (e.g. TimeToLiveHFileCleaner)
     conf.set(HFileCleaner.MASTER_HFILE_CLEANER_PLUGINS, "");
     conf.set(HConstants.HBASE_MASTER_LOGCLEANER_PLUGINS, "");
@@ -343,12 +346,14 @@ public class TestSnapshotFromMaster {
       LOG.debug(fileName);
     }
     // get the archived files for the table
-    Collection<String> files = getArchivedHFiles(archiveDir, rootDir, fs, TABLE_NAME);
+    Collection<String> archivedHFiles = getArchivedHFiles(archiveDir, fs, TABLE_NAME);
+    Collection<String> dataHFiles = getDataHFiles(rootDir, fs, TABLE_NAME);
 
     // and make sure that there is a proper subset
     for (String fileName : snapshotHFiles) {
-      assertTrue("Archived hfiles " + files + " is missing snapshot file:" + fileName,
-        files.contains(fileName));
+      assertTrue("Archived hfiles " + archivedHFiles + " and data hfiles " + dataHFiles
+              + " is missing snapshot file:" + fileName,
+          archivedHFiles.contains(fileName) || dataHFiles.contains(fileName));
     }
 
     // delete the existing snapshot
@@ -370,27 +375,47 @@ public class TestSnapshotFromMaster {
     LOG.info("After delete snapshot cleaners run File-System state");
     FSUtils.logFileSystemState(fs, rootDir, LOG);
 
-    files = getArchivedHFiles(archiveDir, rootDir, fs, TABLE_NAME);
-    assertEquals("Still have some hfiles in the archive, when their snapshot has been deleted.", 0,
-      files.size());
+    Collection<String> newArchivedHFiles = getArchivedHFiles(archiveDir, fs, TABLE_NAME);
+    for (String fileName : snapshotHFiles) {
+      // Previous archived hfile should be cleaned after snapshot has been deleted
+      if (archivedHFiles.contains(fileName)) {
+        assertFalse("Still has hfile " + fileName
+                + " in the archive, when their snapshot has been deleted.",
+            newArchivedHFiles.contains(fileName));
+      }
+    }
   }
 
   /**
    * @return all the HFiles for a given table that have been archived
    * @throws IOException on expected failure
    */
-  private final Collection<String> getArchivedHFiles(Path archiveDir, Path rootDir,
-      FileSystem fs, TableName tableName) throws IOException {
+  private final Collection<String> getArchivedHFiles(Path archiveDir, FileSystem fs,
+      TableName tableName) throws IOException {
     Path tableArchive = FSUtils.getTableDir(archiveDir, tableName);
     Path[] archivedHFiles = SnapshotTestingUtils.listHFiles(fs, tableArchive);
-    List<String> files = new ArrayList<String>(archivedHFiles.length);
-    LOG.debug("Have archived hfiles: " + tableArchive);
+    List<String> files = new ArrayList<>(archivedHFiles.length);
+    LOG.debug("Table " + tableName + " has archived hfiles: " + tableArchive);
     for (Path file : archivedHFiles) {
       LOG.debug(file);
       files.add(file.getName());
     }
     // sort the archived files
+    Collections.sort(files);
+    return files;
+  }
 
+  private final Collection<String> getDataHFiles(Path dataDir, FileSystem fs, TableName tableName)
+      throws IOException {
+    Path tableDir = FSUtils.getTableDir(dataDir, tableName);
+    Path[] tableHFiles = SnapshotTestingUtils.listHFiles(fs, tableDir);
+    List<String> files = new ArrayList<>(tableHFiles.length);
+    LOG.debug("Table " + tableName + " has hfiles: " + tableDir);
+    for (Path file : tableHFiles) {
+      LOG.debug(file);
+      files.add(file.getName());
+    }
+    // sort the archived files
     Collections.sort(files);
     return files;
   }
