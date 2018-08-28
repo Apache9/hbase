@@ -72,6 +72,8 @@ import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.filter.FirstKeyOnlyFilter;
+import org.apache.hadoop.hbase.replication.ReplicationLoadSource;
+import org.apache.hadoop.hbase.replication.ReplicationPeerDescription;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.FSUtils;
@@ -103,6 +105,8 @@ public final class Canary implements Tool {
 
     public void publishWriteTiming(HRegionInfo region, HColumnDescriptor column, long msTime);
 
+    public void publishReplicationLag(String PeerId, long replicationLagInMilliseconds);
+
     public void reportSummary();
 
     default public double getReadAvailability() {
@@ -121,7 +125,7 @@ public final class Canary implements Tool {
   // Simple implementation of canary sink that allows to plot on
   // file or standard output timings or failures.
   public static class StdOutSink implements Sink {
-    @Override 
+    @Override
     public void publishOldWalsFilesCount(long count) {
       LOG.error("OldWals files count current not support in StdOutSink");
     }
@@ -158,6 +162,13 @@ public final class Canary implements Tool {
     public void publishWriteTiming(HRegionInfo region, HColumnDescriptor column, long msTime) {
       LOG.info(String.format("write to region %s column family %s in %dms",
         region.getRegionNameAsString(), column.getNameAsString(), msTime));
+    }
+
+    @Override
+    public void publishReplicationLag(String clusterKey, long replicationLagInMilliseconds) {
+      LOG.info(
+          "The replication lag of cluster:" + clusterKey + " is " + replicationLagInMilliseconds
+              + "ms");
     }
 
     @Override
@@ -405,6 +416,7 @@ public final class Canary implements Tool {
     });
     checkOldWalsFilesCount();
     unfinishedTasks.await();
+    getReplicationLag();
     sink.reportSummary();
     long finishTime = EnvironmentEdgeManager.currentTimeMillis();
     LOG.info("Finish one turn sniff, consume(ms)=" + (finishTime - startTime) + ", interval(ms)=" +
@@ -712,6 +724,28 @@ public final class Canary implements Tool {
     desc.addFamily(family);
     byte[][] splits = new RegionSplitter.HexStringSplit().split(totalNumberOfRegions);
     admin.createTable(desc, splits);
+  }
+
+  private void getReplicationLag() {
+    List<ReplicationPeerDescription> replicationPeerDescriptionList;
+    try {
+      replicationPeerDescriptionList = this.admin.listReplicationPeers();
+    } catch (IOException e) {
+      LOG.warn("get replication peers list error!!!replication availability will force to 100%", e);
+      return;
+    }
+    for (ReplicationPeerDescription peerDescription : replicationPeerDescriptionList) {
+      ReplicationLoadSource replicationLoadSource;
+      try {
+        replicationLoadSource = this.admin.getPeerMaxReplicationLoad(peerDescription.getPeerId());
+        long replicationLag = replicationLoadSource.getReplicationLag();
+        sink.publishReplicationLag(peerDescription.getPeerId(), replicationLag);
+      } catch (IOException e) {
+        LOG.warn(
+            "get replication load of Peer " + peerDescription.getPeerId()
+                + " error.ignoring availability calculate", e);
+      }
+    }
   }
 
   public static void main(String[] args) {
