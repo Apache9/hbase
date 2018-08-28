@@ -69,6 +69,8 @@ import org.apache.hadoop.hbase.client.TableDescriptor;
 import org.apache.hadoop.hbase.client.TableDescriptorBuilder;
 import org.apache.hadoop.hbase.filter.FirstKeyOnlyFilter;
 import org.apache.hadoop.hbase.http.InfoServer;
+import org.apache.hadoop.hbase.replication.ReplicationLoadSource;
+import org.apache.hadoop.hbase.replication.ReplicationPeerDescription;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.FSUtils;
 import org.apache.hadoop.hbase.util.RegionSplitter;
@@ -102,7 +104,9 @@ public final class Canary implements Tool {
 
     void publishWriteTiming(RegionInfo region, ColumnFamilyDescriptor column, long msTime);
 
-    void reportSummary();
+    public void publishReplicationLag(String PeerId, long replicationLagInMilliseconds);
+
+    public void reportSummary();
 
     default double getReadAvailability() {
       return 100.0;
@@ -157,6 +161,13 @@ public final class Canary implements Tool {
     public void publishWriteTiming(RegionInfo region, ColumnFamilyDescriptor column, long msTime) {
       LOG.info(String.format("write to region %s column family %s in %dms",
         region.getRegionNameAsString(), column.getNameAsString(), msTime));
+    }
+
+    @Override
+    public void publishReplicationLag(String clusterKey, long replicationLagInMilliseconds) {
+      LOG.info(
+          "The replication lag of cluster:" + clusterKey + " is " + replicationLagInMilliseconds
+              + "ms");
     }
 
     @Override
@@ -403,6 +414,7 @@ public final class Canary implements Tool {
     });
     checkOldWalsFilesCount();
     unfinishedTasks.await();
+    getReplicationLag();
     sink.reportSummary();
     long finishTime = System.currentTimeMillis();
     LOG.info("Finish one turn sniff, consume(ms)=" + (finishTime - startTime) + ", interval(ms)="
@@ -672,6 +684,28 @@ public final class Canary implements Tool {
         .build();
     byte[][] splits = new RegionSplitter.HexStringSplit().split(totalNumberOfRegions);
     admin.createTable(desc, splits);
+  }
+
+  private void getReplicationLag() {
+    List<ReplicationPeerDescription> replicationPeerDescriptionList;
+    try {
+      replicationPeerDescriptionList = this.admin.listReplicationPeers();
+    } catch (IOException e) {
+      LOG.warn("get replication peers list error!!!replication availability will force to 100%", e);
+      return;
+    }
+    for (ReplicationPeerDescription peerDescription : replicationPeerDescriptionList) {
+      ReplicationLoadSource replicationLoadSource;
+      try {
+        replicationLoadSource = this.admin.getPeerMaxReplicationLoad(peerDescription.getPeerId());
+        long replicationLag = replicationLoadSource.getReplicationLag();
+        sink.publishReplicationLag(peerDescription.getPeerId(), replicationLag);
+      } catch (IOException e) {
+        LOG.warn(
+            "get replication load of Peer " + peerDescription.getPeerId()
+                + " error.ignoring availability calculate", e);
+      }
+    }
   }
 
   public static void main(String[] args) {
