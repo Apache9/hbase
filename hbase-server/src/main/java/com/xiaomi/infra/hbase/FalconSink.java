@@ -42,6 +42,8 @@ public class FalconSink implements Sink, Configurable {
   private static final Log LOG = LogFactory.getLog(FalconSink.class);
   private static final String DEFAULT_FALCON_URI = "http://127.0.0.1:1988/v1/push";
   private static final String DEFAULT_COLLECTOR_URI = "http://10.105.5.111:8000/canary/push_metric/";
+  private static final int DEFAULT_REPLICATION_LAG_UPPER_IN_SECONDS = 10800;
+  private static final int DEFAULT_REPLICATION_LAG_LOWER_IN_SECONDS = 10;
 
   private Configuration conf;
   private HttpClient client = new HttpClient();
@@ -49,11 +51,15 @@ public class FalconSink implements Sink, Configurable {
   private AtomicLong totalReadCounter = new AtomicLong(0);
   private AtomicLong failedWriteCounter = new AtomicLong(0);
   private AtomicLong totalWriteCounter = new AtomicLong(0);
+  private long replicationSlavesCount = 0;
+  private long replicationAvailSum = 0;
   private long oldWalsFilesCount = 0;
   private boolean ignoreFushToNet;
   private double readAvailability = 100.0;
   private double writeAvailability = 100.0;
   private double availability = 100.0;
+  private int upperRplicationLagInSeconds;
+  private int lowerRplicationLagInSeconds;
 
   private FalconSink() {
   }
@@ -113,6 +119,18 @@ public class FalconSink implements Sink, Configurable {
   }
 
   @Override
+  public void publishReplicationLag(String peerId, long replicationLagInMilliseconds) {
+    replicationSlavesCount++;
+    double avail = this.calcReplicationPeerAvailability(replicationLagInMilliseconds);
+    replicationAvailSum += avail;
+    LOG.info(
+        "Peer id " + peerId + ":replication lag is " + replicationLagInMilliseconds + "ms;replication availability is "
+            + avail + "%");
+
+
+  }
+
+  @Override
   public double getReadAvailability() {
     return this.readAvailability;
   }
@@ -135,6 +153,19 @@ public class FalconSink implements Sink, Configurable {
     return avail * 100;
   }
 
+  private double calcReplicationPeerAvailability(long replicationLagInMillionseconds) {
+    double ret;
+    if (replicationLagInMillionseconds < this.lowerRplicationLagInSeconds * 1000) {
+      ret = 1.0;
+    } else if (replicationLagInMillionseconds > this.upperRplicationLagInSeconds * 1000) {
+      ret = 0.0;
+    } else {
+      ret = (this.upperRplicationLagInSeconds * 1000 - replicationLagInMillionseconds) / (double) (
+          (this.upperRplicationLagInSeconds - this.lowerRplicationLagInSeconds) * 1000);
+    }
+    return ret * 100.0;
+  }
+
   private void pushMetrics() {
     if (totalReadCounter.get() == 0L && totalWriteCounter.get() == 0L) {
       return;
@@ -145,13 +176,23 @@ public class FalconSink implements Sink, Configurable {
             + ", totalWriterCount=" + totalWriteCounter.get();
     readAvailability = calc(failedReadCounter, totalReadCounter);
     writeAvailability = calc(failedWriteCounter, totalWriteCounter);
-    availability = (readAvailability + writeAvailability) /2;
+    availability = (readAvailability + writeAvailability) / 2;
+
+    double replicationAvailability =
+        0 == this.replicationSlavesCount ? 100.0 : this.replicationAvailSum / this.replicationSlavesCount;
+    this.replicationSlavesCount = 0;
+    this.replicationAvailSum = 0;
+
     LOG.info("Try to push metrics to falcon and collector. Cluster: " + clusterName
         + " availability is " + availability + ", read availability is " + readAvailability
-        + ", write availability is " + writeAvailability + ", " + sniffCountStr);
+        + ", write availability is " + writeAvailability
+        + ", average replication availability is " + replicationAvailability + ", " + sniffCountStr);
+
     if (!ignoreFushToNet) {
-      pushToCollector(clusterName, availability, readAvailability, writeAvailability);
-      pushToFalcon(clusterName, availability, readAvailability, writeAvailability);
+      pushToCollector(clusterName, availability, readAvailability, writeAvailability,
+          replicationAvailability);
+      pushToFalcon(clusterName, availability, readAvailability, writeAvailability,
+          replicationAvailability);
     }
   }
 
@@ -166,12 +207,15 @@ public class FalconSink implements Sink, Configurable {
     return metric;
   }
 
-  public void pushToCollector(String clusterName, double avail, double readAvail, double writeAvail) {
+  public void pushToCollector(String clusterName, double avail, double readAvail, double writeAvail,
+      double replicationAvail) {
     String uri = conf.get("hbase.canary.sink.collector.uri", DEFAULT_COLLECTOR_URI);
     PostMethod post = new PostMethod(uri);
     JSONArray data = new JSONArray();
     try {
-      data.put(buildCanaryMetric(clusterName, "cluster-availability", avail));
+      JSONObject metric = buildCanaryMetric(clusterName, "cluster-availability", avail);
+      metric.put("replicationavail", replicationAvail);
+      data.put(metric);
       data.put(buildCanaryMetric(clusterName, "cluster-read-availability", readAvail));
       data.put(buildCanaryMetric(clusterName, "cluster-write-availability", writeAvail));
     } catch (JSONException e) {
@@ -198,11 +242,13 @@ public class FalconSink implements Sink, Configurable {
     return metric;
   }
 
-  private void pushToFalcon(String clusterName, double avail, double readAvail, double writeAvail) {
+  private void pushToFalcon(String clusterName, double avail, double readAvail, double writeAvail,
+      double replicationAvail) {
     String uri = conf.get("hbase.canary.sink.falcon.uri", DEFAULT_FALCON_URI);
     PostMethod post = new PostMethod(uri);
     JSONArray data = new JSONArray();
     try {
+      data.put(buildFalconMetric(clusterName, "cluster-replication-availability", replicationAvail));
       data.put(buildFalconMetric(clusterName, "cluster-availability", avail));
       data.put(buildFalconMetric(clusterName, "cluster-read-availability", readAvail));
       data.put(buildFalconMetric(clusterName, "cluster-write-availability", writeAvail));
@@ -228,6 +274,11 @@ public class FalconSink implements Sink, Configurable {
     this.conf = conf;
     this.ignoreFushToNet = conf.getBoolean("hbase.canary.sink.falcon.ignore.push.to.net", false);
     LOG.info("falcon sink ignore push to net : " + this.ignoreFushToNet);
+    upperRplicationLagInSeconds = conf.getInt("hbase.canary.replication.lag.upper.bound.in.seconds",
+        DEFAULT_REPLICATION_LAG_UPPER_IN_SECONDS);
+    lowerRplicationLagInSeconds = conf.getInt("hbase.canary.replication.lag.lower.bound.in.seconds",
+        DEFAULT_REPLICATION_LAG_LOWER_IN_SECONDS);
+
   }
 
   @Override
