@@ -257,8 +257,21 @@ public interface MetricsRegionServerSource extends BaseSource, JvmPauseMonitorSo
           "action at the RPC Server (Sums 'readRequestsCount' and 'writeRequestsCount'); counts" +
           "once per access whether a Put of 1M rows or a Get that returns 1M Results";
   String READ_REQUEST_COUNT = "readRequestCount";
+  String FILTERED_READ_REQUEST_COUNT = "filteredReadRequestCount";
+  String FILTERED_READ_REQUEST_COUNT_DESC =
+      "Number of read requests this region server has answered.";
   String READ_REQUEST_COUNT_DESC =
       "Number of read requests with non-empty Results that this RegionServer has answered.";
+
+  String WRITE_REQUEST_COUNT = "writeRequestCount";
+  String WRITE_REQUEST_COUNT_DESC =
+      "Number of mutation requests this RegionServer has answered.";
+  String CHECK_MUTATE_FAILED_COUNT = "checkMutateFailedCount";
+  String CHECK_MUTATE_FAILED_COUNT_DESC =
+      "Number of Check and Mutate calls that failed the checks.";
+  String CHECK_MUTATE_PASSED_COUNT = "checkMutatePassedCount";
+  String CHECK_MUTATE_PASSED_COUNT_DESC =
+      "Number of Check and Mutate calls that passed the checks.";
 
   // Xiaomi metrics, keep name compatible with 0.98
   String READ_REQUEST_PER_SECOND = "readRequestsPerSecond";
@@ -280,18 +293,6 @@ public interface MetricsRegionServerSource extends BaseSource, JvmPauseMonitorSo
   String READ_RAW_CELLS_PER_SECOND = "readRawCellCountPerSecond";
   String READ_RAW_CELLS_PER_SECOND_DESC = "Number of raw cell read per second";
 
-  String FILTERED_READ_REQUEST_COUNT = "filteredReadRequestCount";
-  String FILTERED_READ_REQUEST_COUNT_DESC =
-    "Number of filtered read requests this RegionServer has answered.";
-  String WRITE_REQUEST_COUNT = "writeRequestCount";
-  String WRITE_REQUEST_COUNT_DESC =
-      "Number of mutation requests this RegionServer has answered.";
-  String CHECK_MUTATE_FAILED_COUNT = "checkMutateFailedCount";
-  String CHECK_MUTATE_FAILED_COUNT_DESC =
-      "Number of Check and Mutate calls that failed the checks.";
-  String CHECK_MUTATE_PASSED_COUNT = "checkMutatePassedCount";
-  String CHECK_MUTATE_PASSED_COUNT_DESC =
-      "Number of Check and Mutate calls that passed the checks.";
   String STOREFILE_INDEX_SIZE = "storeFileIndexSize";
   String STOREFILE_INDEX_SIZE_DESC = "Size of indexes in storefiles on disk.";
   String STATIC_INDEX_SIZE = "staticIndexSize";

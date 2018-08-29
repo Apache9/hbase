@@ -44,10 +44,13 @@ public class TestMetricsTableSourceImpl {
     MetricsRegionServerSourceFactory metricsFact =
         CompatibilitySingletonFactory.getInstance(MetricsRegionServerSourceFactory.class);
 
-    MetricsTableSource one = metricsFact.createTable("ONETABLE", new TableWrapperStub("ONETABLE"));
-    MetricsTableSource oneClone = metricsFact.createTable("ONETABLE",
-            new TableWrapperStub("ONETABLE"));
-    MetricsTableSource two = metricsFact.createTable("TWOTABLE", new TableWrapperStub("TWOTABLE"));
+    MetricsTableSource one = metricsFact.createTable(
+        "ONETABLE", new MetricsTableWrapperStub("ONETABLE"));
+    MetricsTableSource oneClone = metricsFact.createTable(
+        "ONETABLE",
+            new MetricsTableWrapperStub("ONETABLE"));
+    MetricsTableSource two = metricsFact.createTable(
+        "TWOTABLE", new MetricsTableWrapperStub("TWOTABLE"));
 
     assertEquals(0, one.compareTo(oneClone));
     assertEquals(one.hashCode(), oneClone.hashCode());
@@ -70,7 +73,7 @@ public class TestMetricsTableSourceImpl {
   public void testGetTableMetrics() {
     MetricsTableSource oneTbl =
         CompatibilitySingletonFactory.getInstance(MetricsRegionServerSourceFactory.class)
-        .createTable("ONETABLE", new TableWrapperStub("ONETABLE"));
+        .createTable("ONETABLE", new MetricsTableWrapperStub("ONETABLE"));
     assertEquals("ONETABLE", oneTbl.getTableName());
   }
 
@@ -82,12 +85,17 @@ public class TestMetricsTableSourceImpl {
     }
 
     @Override
-    public long getReadRequestsCount(String table) {
+    public long getReadRequestCount(String table) {
       return 10;
     }
 
     @Override
-    public long getWriteRequestsCount(String table) {
+    public long getFilteredReadRequestCount(String table) {
+      return 0;
+    }
+
+    @Override
+    public long getWriteRequestCount(String table) {
       return 20;
     }
 
@@ -97,12 +105,12 @@ public class TestMetricsTableSourceImpl {
     }
 
     @Override
-    public long getMemStoresSize(String table) {
+    public long getMemStoreSize(String table) {
       return 1000;
     }
 
     @Override
-    public long getStoreFilesSize(String table) {
+    public long getStoreFileSize(String table) {
       return 2000;
     }
 
@@ -153,6 +161,46 @@ public class TestMetricsTableSourceImpl {
 
     @Override
     public long getReadRawCellCountPerSecond(String table) {
+      return 0;
+    }
+
+    @Override
+    public long getAvgRegionSize(String table) {
+      return 0;
+    }
+
+    @Override
+    public long getNumRegions(String table) {
+      return 0;
+    }
+
+    @Override
+    public long getNumStores(String table) {
+      return 0;
+    }
+
+    @Override
+    public long getNumStoreFiles(String table) {
+      return 0;
+    }
+
+    @Override
+    public long getMaxStoreFileAge(String table) {
+      return 0;
+    }
+
+    @Override
+    public long getMinStoreFileAge(String table) {
+      return 0;
+    }
+
+    @Override
+    public long getAvgStoreFileAge(String table) {
+      return 0;
+    }
+
+    @Override
+    public long getNumReferenceFiles(String table) {
       return 0;
     }
 
