@@ -25,12 +25,13 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
+import com.google.common.annotations.VisibleForTesting;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 
-@InterfaceAudience.Public
-public class BufferedMutatorImpl implements BufferedMutator {
+@InterfaceAudience.Private
+class BufferedMutatorImpl implements BufferedMutator {
 
   private final AsyncBufferedMutator asyncImpl;
 
@@ -38,11 +39,14 @@ public class BufferedMutatorImpl implements BufferedMutator {
 
   private final List<Throwable> errors;
 
-  private final static int BUFFERED_FUTURES_NUMBER = 2000;
+  // If every mutation is 1KB and the default write buffer size is 2MB
+  // So use 2048 as the default threshold.
+  // But every HTable instance will have a buffered mutator, so reduce it to 1024.
+  private final static int BUFFERED_FUTURES_THRESHOLD = 1024;
 
-  public BufferedMutatorImpl(AsyncBufferedMutator asyncImpl) {
+  BufferedMutatorImpl(AsyncBufferedMutator asyncImpl) {
     this.asyncImpl = asyncImpl;
-    this.errors = new ArrayList<Throwable>();
+    this.errors = new ArrayList<>();
   }
 
   @Override
@@ -85,7 +89,7 @@ public class BufferedMutatorImpl implements BufferedMutator {
         errors.clear();
         flush();
       }
-      if (futures.size() > BUFFERED_FUTURES_NUMBER) {
+      if (this.futures.size() > BUFFERED_FUTURES_THRESHOLD) {
         tryCompleteFuture();
       }
     }
@@ -97,6 +101,7 @@ public class BufferedMutatorImpl implements BufferedMutator {
 
   @Override
   public void close() throws IOException {
+    flush();
     asyncImpl.close();
   }
 
@@ -105,7 +110,7 @@ public class BufferedMutatorImpl implements BufferedMutator {
     asyncImpl.flush();
     synchronized (this) {
       List<CompletableFuture<Void>> toComplete = this.futures;
-      futures = new ArrayList<>();
+      this.futures = new ArrayList<>();
       CompletableFuture.allOf(toComplete.toArray(new CompletableFuture<?>[toComplete.size()]))
           .join();
     }
@@ -116,4 +121,8 @@ public class BufferedMutatorImpl implements BufferedMutator {
     return asyncImpl.getWriteBufferSize();
   }
 
+  @VisibleForTesting
+  public int getBufferedFutruesNumber() {
+    return futures.size();
+  }
 }
