@@ -239,8 +239,16 @@ public class TableRecordReaderImpl {
         value = scanner.next();
         numRestarts++;
       }
+
       if (value != null && value.size() > 0) {
         key.set(value.getRow());
+        lastSuccessfulRow = key.get();
+        return true;
+      }
+
+      // Need handle cursor result
+      if (value != null && value.isCursor()) {
+        key.set(value.getCursor().getRow());
         lastSuccessfulRow = key.get();
         return true;
       }
