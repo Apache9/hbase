@@ -33,7 +33,7 @@ import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.hbase.thirdparty.io.netty.util.internal.StringUtil;
+import com.xiaomi.infra.thirdparty.io.netty.util.internal.StringUtil;
 
 /**
  * A very simple {@code }RpcScheduler} that serves incoming requests in order.

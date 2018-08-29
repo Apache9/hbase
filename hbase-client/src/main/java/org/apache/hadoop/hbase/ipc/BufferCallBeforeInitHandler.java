@@ -17,9 +17,9 @@
  */
 package org.apache.hadoop.hbase.ipc;
 
-import org.apache.hbase.thirdparty.io.netty.channel.ChannelDuplexHandler;
-import org.apache.hbase.thirdparty.io.netty.channel.ChannelHandlerContext;
-import org.apache.hbase.thirdparty.io.netty.channel.ChannelPromise;
+import com.xiaomi.infra.thirdparty.io.netty.channel.ChannelDuplexHandler;
+import com.xiaomi.infra.thirdparty.io.netty.channel.ChannelHandlerContext;
+import com.xiaomi.infra.thirdparty.io.netty.channel.ChannelPromise;
 
 import java.io.IOException;
 import java.util.HashMap;

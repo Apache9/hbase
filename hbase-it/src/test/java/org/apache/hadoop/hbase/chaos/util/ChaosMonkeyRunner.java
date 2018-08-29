@@ -33,8 +33,8 @@ import org.apache.hadoop.hbase.util.AbstractHBaseTool;
 import org.apache.hadoop.util.ToolRunner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.apache.hbase.thirdparty.com.google.common.collect.Sets;
-import org.apache.hbase.thirdparty.org.apache.commons.cli.CommandLine;
+import com.xiaomi.infra.thirdparty.com.google.common.collect.Sets;
+import com.xiaomi.infra.thirdparty.org.apache.commons.cli.CommandLine;
 
 public class ChaosMonkeyRunner extends AbstractHBaseTool {
   private static final Logger LOG = LoggerFactory.getLogger(ChaosMonkeyRunner.class);

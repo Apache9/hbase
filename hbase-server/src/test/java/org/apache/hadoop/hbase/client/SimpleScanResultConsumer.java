@@ -17,7 +17,7 @@
  */
 package org.apache.hadoop.hbase.client;
 
-import org.apache.hbase.thirdparty.com.google.common.base.Throwables;
+import com.xiaomi.infra.thirdparty.com.google.common.base.Throwables;
 
 import java.util.ArrayList;
 import java.util.List;

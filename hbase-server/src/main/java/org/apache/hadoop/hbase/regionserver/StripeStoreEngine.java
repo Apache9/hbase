@@ -35,7 +35,7 @@ import org.apache.hadoop.hbase.regionserver.compactions.StripeCompactor;
 import org.apache.hadoop.hbase.regionserver.throttle.ThroughputController;
 import org.apache.hadoop.hbase.security.User;
 
-import org.apache.hbase.thirdparty.com.google.common.base.Preconditions;
+import com.xiaomi.infra.thirdparty.com.google.common.base.Preconditions;
 
 /**
  * The storage engine that implements the stripe-based store/compaction scheme.

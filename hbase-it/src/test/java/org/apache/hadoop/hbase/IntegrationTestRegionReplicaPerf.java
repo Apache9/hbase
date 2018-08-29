@@ -18,8 +18,8 @@
  */
 package org.apache.hadoop.hbase;
 
-import org.apache.hbase.thirdparty.com.google.common.base.MoreObjects;
-import org.apache.hbase.thirdparty.com.google.common.collect.Sets;
+import com.xiaomi.infra.thirdparty.com.google.common.base.MoreObjects;
+import com.xiaomi.infra.thirdparty.com.google.common.collect.Sets;
 import com.codahale.metrics.Histogram;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.chaos.actions.MoveRandomRegionOfTableAction;
@@ -40,7 +40,7 @@ import org.junit.experimental.categories.Category;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.hbase.thirdparty.org.apache.commons.cli.CommandLine;
+import com.xiaomi.infra.thirdparty.org.apache.commons.cli.CommandLine;
 
 import java.util.*;
 import java.util.concurrent.Callable;

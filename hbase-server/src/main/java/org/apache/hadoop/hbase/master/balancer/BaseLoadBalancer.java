@@ -55,11 +55,11 @@ import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.hbase.thirdparty.com.google.common.annotations.VisibleForTesting;
-import org.apache.hbase.thirdparty.com.google.common.base.Joiner;
-import org.apache.hbase.thirdparty.com.google.common.collect.ArrayListMultimap;
-import org.apache.hbase.thirdparty.com.google.common.collect.Lists;
-import org.apache.hbase.thirdparty.com.google.common.collect.Sets;
+import com.xiaomi.infra.thirdparty.com.google.common.annotations.VisibleForTesting;
+import com.xiaomi.infra.thirdparty.com.google.common.base.Joiner;
+import com.xiaomi.infra.thirdparty.com.google.common.collect.ArrayListMultimap;
+import com.xiaomi.infra.thirdparty.com.google.common.collect.Lists;
+import com.xiaomi.infra.thirdparty.com.google.common.collect.Sets;
 
 /**
  * The base class for load balancers. It provides the the functions used to by

@@ -35,8 +35,8 @@ import org.apache.hadoop.hbase.procedure2.util.*;
 
 import org.apache.hadoop.hbase.util.AbstractHBaseTool;
 
-import org.apache.hbase.thirdparty.org.apache.commons.cli.CommandLine;
-import org.apache.hbase.thirdparty.org.apache.commons.cli.Option;
+import com.xiaomi.infra.thirdparty.org.apache.commons.cli.CommandLine;
+import com.xiaomi.infra.thirdparty.org.apache.commons.cli.Option;
 
 public class ProcedureWALPerformanceEvaluation extends AbstractHBaseTool {
   protected static final HBaseCommonTestingUtility UTIL = new HBaseCommonTestingUtility();

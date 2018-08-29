@@ -27,7 +27,7 @@ import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.hadoop.hbase.ipc.RpcServer.BlockingServiceAndInterface;
-import org.apache.hbase.thirdparty.com.google.protobuf.Descriptors.ServiceDescriptor;
+import com.xiaomi.infra.thirdparty.com.google.protobuf.Descriptors.ServiceDescriptor;
 import org.apache.hadoop.hbase.util.ReflectionUtils;
 
 @InterfaceAudience.Private

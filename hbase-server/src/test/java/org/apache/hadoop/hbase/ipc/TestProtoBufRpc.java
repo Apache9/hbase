@@ -44,7 +44,7 @@ import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
-import org.apache.hbase.thirdparty.com.google.common.collect.Lists;
+import com.xiaomi.infra.thirdparty.com.google.common.collect.Lists;
 
 import org.apache.hadoop.hbase.shaded.ipc.protobuf.generated.TestProtos;
 import org.apache.hadoop.hbase.shaded.ipc.protobuf.generated.TestProtos.EchoRequestProto;
@@ -106,7 +106,7 @@ public class TestProtoBufRpc {
     server.stop();
   }
 
-  @Test (expected=org.apache.hbase.thirdparty.com.google.protobuf.ServiceException.class
+  @Test (expected=com.xiaomi.infra.thirdparty.com.google.protobuf.ServiceException.class
       /*Thrown when we call stub.error*/)
   public void testProtoBufRpc() throws Exception {
     RpcClient rpcClient = RpcClientFactory.createClient(conf, HConstants.CLUSTER_ID_DEFAULT);

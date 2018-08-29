@@ -24,7 +24,7 @@ import org.apache.hadoop.hbase.wal.WAL.Entry;
 import org.apache.hadoop.hbase.wal.WALProvider;
 import org.apache.hadoop.hbase.wal.WALProvider.AsyncWriter;
 
-import org.apache.hbase.thirdparty.com.google.common.base.Throwables;
+import com.xiaomi.infra.thirdparty.com.google.common.base.Throwables;
 
 class WriterOverAsyncWriter implements WALProvider.Writer {
 

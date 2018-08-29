@@ -17,9 +17,9 @@
  */
 package org.apache.hadoop.hbase.regionserver;
 
-import org.apache.hbase.thirdparty.com.google.common.base.Function;
-import org.apache.hbase.thirdparty.com.google.common.collect.ImmutableList;
-import org.apache.hbase.thirdparty.com.google.common.collect.Ordering;
+import com.xiaomi.infra.thirdparty.com.google.common.base.Function;
+import com.xiaomi.infra.thirdparty.com.google.common.collect.ImmutableList;
+import com.xiaomi.infra.thirdparty.com.google.common.collect.Ordering;
 
 import java.util.Comparator;
 

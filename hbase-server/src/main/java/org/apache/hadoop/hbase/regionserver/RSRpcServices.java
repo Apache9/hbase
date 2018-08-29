@@ -144,17 +144,17 @@ import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.hbase.thirdparty.com.google.common.annotations.VisibleForTesting;
-import org.apache.hbase.thirdparty.com.google.common.cache.Cache;
-import org.apache.hbase.thirdparty.com.google.common.cache.CacheBuilder;
-import org.apache.hbase.thirdparty.com.google.common.collect.Lists;
-import org.apache.hbase.thirdparty.com.google.protobuf.ByteString;
-import org.apache.hbase.thirdparty.com.google.protobuf.Message;
-import org.apache.hbase.thirdparty.com.google.protobuf.RpcController;
-import org.apache.hbase.thirdparty.com.google.protobuf.ServiceException;
-import org.apache.hbase.thirdparty.com.google.protobuf.TextFormat;
-import org.apache.hbase.thirdparty.com.google.protobuf.UnsafeByteOperations;
-import org.apache.hbase.thirdparty.org.apache.commons.collections4.CollectionUtils;
+import com.xiaomi.infra.thirdparty.com.google.common.annotations.VisibleForTesting;
+import com.xiaomi.infra.thirdparty.com.google.common.cache.Cache;
+import com.xiaomi.infra.thirdparty.com.google.common.cache.CacheBuilder;
+import com.xiaomi.infra.thirdparty.com.google.common.collect.Lists;
+import com.xiaomi.infra.thirdparty.com.google.protobuf.ByteString;
+import com.xiaomi.infra.thirdparty.com.google.protobuf.Message;
+import com.xiaomi.infra.thirdparty.com.google.protobuf.RpcController;
+import com.xiaomi.infra.thirdparty.com.google.protobuf.ServiceException;
+import com.xiaomi.infra.thirdparty.com.google.protobuf.TextFormat;
+import com.xiaomi.infra.thirdparty.com.google.protobuf.UnsafeByteOperations;
+import com.xiaomi.infra.thirdparty.org.apache.commons.collections4.CollectionUtils;
 
 import org.apache.hadoop.hbase.shaded.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.shaded.protobuf.RequestConverter;
@@ -1549,7 +1549,7 @@ public class RSRpcServices implements HBaseRPCErrorHandler,
       AdminService.newReflectiveBlockingService(this),
       AdminService.BlockingInterface.class));
     }
-    return new org.apache.hbase.thirdparty.com.google.common.collect.
+    return new com.xiaomi.infra.thirdparty.com.google.common.collect.
         ImmutableList.Builder<BlockingServiceAndInterface>().addAll(bssi).build();
   }
 
@@ -2448,7 +2448,7 @@ public class RSRpcServices implements HBaseRPCErrorHandler,
         RegionSpecifierType.REGION_NAME, region.getRegionInfo().getRegionName()));
       // TODO: COPIES!!!!!!
       builder.setValue(builder.getValueBuilder().setName(result.getClass().getName()).
-        setValue(org.apache.hbase.thirdparty.com.google.protobuf.ByteString.
+        setValue(com.xiaomi.infra.thirdparty.com.google.protobuf.ByteString.
             copyFrom(result.toByteArray())));
       return builder.build();
     } catch (IOException ie) {

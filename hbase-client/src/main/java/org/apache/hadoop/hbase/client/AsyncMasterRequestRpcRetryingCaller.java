@@ -17,7 +17,7 @@
  */
 package org.apache.hadoop.hbase.client;
 
-import org.apache.hbase.thirdparty.io.netty.util.HashedWheelTimer;
+import com.xiaomi.infra.thirdparty.io.netty.util.HashedWheelTimer;
 
 import java.util.concurrent.CompletableFuture;
 

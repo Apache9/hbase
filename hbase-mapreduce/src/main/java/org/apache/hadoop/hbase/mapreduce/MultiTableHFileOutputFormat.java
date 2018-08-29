@@ -29,7 +29,7 @@ import org.apache.hadoop.mapreduce.Job;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.List;
-import org.apache.hbase.thirdparty.com.google.common.annotations.VisibleForTesting;
+import com.xiaomi.infra.thirdparty.com.google.common.annotations.VisibleForTesting;
 
 /**
  * Create 3 level tree directory, first level is using table name as parent

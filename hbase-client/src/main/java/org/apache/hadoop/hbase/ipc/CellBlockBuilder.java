@@ -17,9 +17,9 @@
  */
 package org.apache.hadoop.hbase.ipc;
 
-import org.apache.hbase.thirdparty.io.netty.buffer.ByteBuf;
-import org.apache.hbase.thirdparty.io.netty.buffer.ByteBufAllocator;
-import org.apache.hbase.thirdparty.io.netty.buffer.ByteBufOutputStream;
+import com.xiaomi.infra.thirdparty.io.netty.buffer.ByteBuf;
+import com.xiaomi.infra.thirdparty.io.netty.buffer.ByteBufAllocator;
+import com.xiaomi.infra.thirdparty.io.netty.buffer.ByteBufOutputStream;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;

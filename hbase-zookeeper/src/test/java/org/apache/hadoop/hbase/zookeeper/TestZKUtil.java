@@ -48,8 +48,8 @@ import org.junit.experimental.categories.Category;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.hbase.thirdparty.com.google.common.collect.ImmutableList;
-import org.apache.hbase.thirdparty.com.google.common.io.Closeables;
+import com.xiaomi.infra.thirdparty.com.google.common.collect.ImmutableList;
+import com.xiaomi.infra.thirdparty.com.google.common.io.Closeables;
 
 @Category({ ZKTests.class, MediumTests.class })
 public class TestZKUtil {

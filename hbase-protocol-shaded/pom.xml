@@ -125,7 +125,7 @@
             <replacements>
               <replacement>
                 <token>([^\.])com.google.protobuf</token>
-                <value>$1org.apache.hbase.thirdparty.com.google.protobuf</value>
+                <value>$1com.xiaomi.infra.thirdparty.com.google.protobuf</value>
               </replacement>
             </replacements>
         </configuration>
@@ -155,7 +155,7 @@
                 <excludes>
                   <!--Exclude protobuf itself. We get a patched version from hbase-thirdparty.
                     -->
-                  <exclude>org.apache.hbase.thirdparty:*</exclude>
+                  <exclude>com.xiaomi.infra.thirdparty:*</exclude>
                   <exclude>com.google.protobuf:protobuf-java</exclude>
                   <exclude>com.google.code.findbugs:*</exclude>
                   <exclude>com.google.errorprone:error_prone_annotations</exclude>
@@ -239,8 +239,8 @@
           will get bundled-->
     <!-- Intra-project dependencies -->
     <dependency>
-      <groupId>org.apache.hbase.thirdparty</groupId>
-      <artifactId>hbase-shaded-protobuf</artifactId>
+      <groupId>com.xiaomi.infra.thirdparty</groupId>
+      <artifactId>infra-shaded-protobuf</artifactId>
     </dependency>
     <dependency>
       <groupId>junit</groupId>

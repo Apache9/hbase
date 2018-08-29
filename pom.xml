@@ -1333,7 +1333,7 @@
     <compat.module>hbase-hadoop2-compat</compat.module>
     <assembly.file>src/main/assembly/hadoop-two-compat.xml</assembly.file>
     <!--This property is for hadoops netty. HBase netty
-         comes in via hbase-thirdparty hbase-shaded-netty-->
+         comes in via hbase-thirdparty infra-shaded-netty-->
     <netty.hadoop.version>3.6.2.Final</netty.hadoop.version>
     <!-- end HBASE-15925 default hadoop compatibility values -->
     <audience-annotations.version>0.5.0</audience-annotations.version>
@@ -1419,7 +1419,7 @@
     <spotbugs.version>3.1.0-RC3</spotbugs.version>
     <wagon.ssh.version>2.12</wagon.ssh.version>
     <xml.maven.version>1.0.1</xml.maven.version>
-    <hbase-thirdparty.version>2.1.0</hbase-thirdparty.version>
+    <infra-thirdparty.version>2.0.0</infra-thirdparty.version>
     <!-- General Packaging -->
     <package.prefix>/usr</package.prefix>
     <package.conf.dir>/etc/hbase</package.conf.dir>
@@ -2117,19 +2117,19 @@
         <version>${audience-annotations.version}</version>
       </dependency>
       <dependency>
-        <groupId>org.apache.hbase.thirdparty</groupId>
-        <artifactId>hbase-shaded-miscellaneous</artifactId>
-        <version>${hbase-thirdparty.version}</version>
+        <groupId>com.xiaomi.infra.thirdparty</groupId>
+        <artifactId>infra-shaded-miscellaneous</artifactId>
+        <version>${infra-thirdparty.version}</version>
       </dependency>
       <dependency>
-        <groupId>org.apache.hbase.thirdparty</groupId>
-        <artifactId>hbase-shaded-netty</artifactId>
-        <version>${hbase-thirdparty.version}</version>
+        <groupId>com.xiaomi.infra.thirdparty</groupId>
+        <artifactId>infra-shaded-netty</artifactId>
+        <version>${infra-thirdparty.version}</version>
       </dependency>
       <dependency>
-        <groupId>org.apache.hbase.thirdparty</groupId>
-        <artifactId>hbase-shaded-protobuf</artifactId>
-        <version>${hbase-thirdparty.version}</version>
+        <groupId>com.xiaomi.infra.thirdparty</groupId>
+        <artifactId>infra-shaded-protobuf</artifactId>
+        <version>${infra-thirdparty.version}</version>
       </dependency>
     </dependencies>
   </dependencyManagement>
@@ -2384,7 +2384,7 @@
         <compat.module>hbase-hadoop2-compat</compat.module>
         <assembly.file>src/main/assembly/hadoop-two-compat.xml</assembly.file>
         <!--This property is for hadoops netty. HBase netty
-             comes in via hbase-thirdparty hbase-shaded-netty-->
+             comes in via hbase-thirdparty infra-shaded-netty-->
         <netty.hadoop.version>3.6.2.Final</netty.hadoop.version>
       </properties>
       <dependencyManagement>
@@ -2706,7 +2706,7 @@
         <compat.module>hbase-hadoop2-compat</compat.module>
         <assembly.file>src/main/assembly/hadoop-two-compat.xml</assembly.file>
         <!--This property is for hadoops netty. HBase netty
-             comes in via hbase-thirdparty hbase-shaded-netty-->
+             comes in via hbase-thirdparty infra-shaded-netty-->
         <netty.hadoop.version>3.10.5.Final</netty.hadoop.version>
       </properties>
      <dependencyManagement>

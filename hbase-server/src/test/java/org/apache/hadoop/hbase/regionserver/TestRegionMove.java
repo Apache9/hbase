@@ -98,7 +98,7 @@ public class TestRegionMove {
       byte[] startKey = regionInfo.getStartKey();
       // The startKey of the first region is "empty", which would throw an error if we try to
       // Put that.
-      byte[] rowKey = org.apache.hbase.thirdparty.com.google.common.primitives.Bytes.concat(
+      byte[] rowKey = com.xiaomi.infra.thirdparty.com.google.common.primitives.Bytes.concat(
           startKey, Bytes.toBytes("1"));
       Put p = new Put(rowKey);
       p.addColumn(Bytes.toBytes(F1), Bytes.toBytes("q1"), Bytes.toBytes("value"));

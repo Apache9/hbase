@@ -34,7 +34,7 @@ import org.apache.log4j.Appender;
 import org.apache.log4j.FileAppender;
 import org.apache.log4j.Logger;
 
-import org.apache.hbase.thirdparty.com.google.common.collect.Sets;
+import com.xiaomi.infra.thirdparty.com.google.common.collect.Sets;
 
 /**
  * Utility functions for reading the log4j logs that are

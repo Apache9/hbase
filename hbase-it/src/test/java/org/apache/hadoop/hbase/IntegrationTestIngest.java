@@ -35,7 +35,7 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.apache.hbase.thirdparty.com.google.common.collect.Sets;
+import com.xiaomi.infra.thirdparty.com.google.common.collect.Sets;
 
 /**
  * A base class for tests that do something with the cluster while running

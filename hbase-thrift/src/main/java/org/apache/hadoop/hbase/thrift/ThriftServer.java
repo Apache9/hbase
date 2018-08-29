@@ -28,11 +28,11 @@ import org.apache.hadoop.util.Shell.ExitCodeException;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.apache.hbase.thirdparty.org.apache.commons.cli.CommandLine;
-import org.apache.hbase.thirdparty.org.apache.commons.cli.CommandLineParser;
-import org.apache.hbase.thirdparty.org.apache.commons.cli.DefaultParser;
-import org.apache.hbase.thirdparty.org.apache.commons.cli.HelpFormatter;
-import org.apache.hbase.thirdparty.org.apache.commons.cli.Options;
+import com.xiaomi.infra.thirdparty.org.apache.commons.cli.CommandLine;
+import com.xiaomi.infra.thirdparty.org.apache.commons.cli.CommandLineParser;
+import com.xiaomi.infra.thirdparty.org.apache.commons.cli.DefaultParser;
+import com.xiaomi.infra.thirdparty.org.apache.commons.cli.HelpFormatter;
+import com.xiaomi.infra.thirdparty.org.apache.commons.cli.Options;
 
 /**
  * ThriftServer- this class starts up a Thrift server which implements the

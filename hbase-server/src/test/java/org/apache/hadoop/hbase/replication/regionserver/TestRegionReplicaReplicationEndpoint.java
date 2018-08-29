@@ -65,7 +65,7 @@ import org.junit.rules.TestName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.hbase.thirdparty.com.google.common.collect.Lists;
+import com.xiaomi.infra.thirdparty.com.google.common.collect.Lists;
 
 /**
  * Tests RegionReplicaReplicationEndpoint class by setting up region replicas and verifying

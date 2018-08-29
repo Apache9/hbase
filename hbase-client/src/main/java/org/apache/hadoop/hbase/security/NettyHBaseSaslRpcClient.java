@@ -17,8 +17,8 @@
  */
 package org.apache.hadoop.hbase.security;
 
-import org.apache.hbase.thirdparty.io.netty.channel.ChannelPipeline;
-import org.apache.hbase.thirdparty.io.netty.handler.codec.LengthFieldBasedFrameDecoder;
+import com.xiaomi.infra.thirdparty.io.netty.channel.ChannelPipeline;
+import com.xiaomi.infra.thirdparty.io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 
 import java.io.IOException;
 

@@ -17,16 +17,16 @@
  */
 package org.apache.hadoop.hbase.util;
 
-import org.apache.hbase.thirdparty.io.netty.channel.Channel;
-import org.apache.hbase.thirdparty.io.netty.channel.EventLoopGroup;
-import org.apache.hbase.thirdparty.io.netty.channel.ServerChannel;
-import org.apache.hbase.thirdparty.io.netty.channel.epoll.EpollEventLoopGroup;
-import org.apache.hbase.thirdparty.io.netty.channel.epoll.EpollServerSocketChannel;
-import org.apache.hbase.thirdparty.io.netty.channel.epoll.EpollSocketChannel;
-import org.apache.hbase.thirdparty.io.netty.channel.nio.NioEventLoopGroup;
-import org.apache.hbase.thirdparty.io.netty.channel.socket.nio.NioServerSocketChannel;
-import org.apache.hbase.thirdparty.io.netty.channel.socket.nio.NioSocketChannel;
-import org.apache.hbase.thirdparty.io.netty.util.concurrent.DefaultThreadFactory;
+import com.xiaomi.infra.thirdparty.io.netty.channel.Channel;
+import com.xiaomi.infra.thirdparty.io.netty.channel.EventLoopGroup;
+import com.xiaomi.infra.thirdparty.io.netty.channel.ServerChannel;
+import com.xiaomi.infra.thirdparty.io.netty.channel.epoll.EpollEventLoopGroup;
+import com.xiaomi.infra.thirdparty.io.netty.channel.epoll.EpollServerSocketChannel;
+import com.xiaomi.infra.thirdparty.io.netty.channel.epoll.EpollSocketChannel;
+import com.xiaomi.infra.thirdparty.io.netty.channel.nio.NioEventLoopGroup;
+import com.xiaomi.infra.thirdparty.io.netty.channel.socket.nio.NioServerSocketChannel;
+import com.xiaomi.infra.thirdparty.io.netty.channel.socket.nio.NioSocketChannel;
+import com.xiaomi.infra.thirdparty.io.netty.util.concurrent.DefaultThreadFactory;
 
 import java.util.concurrent.ThreadFactory;
 

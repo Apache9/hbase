@@ -92,10 +92,10 @@ import org.mockito.stubbing.Answer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.hbase.thirdparty.com.google.common.base.Joiner;
-import org.apache.hbase.thirdparty.com.google.common.collect.ImmutableList;
-import org.apache.hbase.thirdparty.com.google.common.collect.ImmutableMap;
-import org.apache.hbase.thirdparty.com.google.protobuf.ByteString;
+import com.xiaomi.infra.thirdparty.com.google.common.base.Joiner;
+import com.xiaomi.infra.thirdparty.com.google.common.collect.ImmutableList;
+import com.xiaomi.infra.thirdparty.com.google.common.collect.ImmutableMap;
+import com.xiaomi.infra.thirdparty.com.google.protobuf.ByteString;
 
 import org.apache.hadoop.hbase.shaded.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.WALProtos;

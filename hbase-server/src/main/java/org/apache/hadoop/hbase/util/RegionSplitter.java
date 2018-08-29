@@ -61,16 +61,16 @@ import org.apache.hadoop.hbase.regionserver.HRegionFileSystem;
 
 import org.apache.hadoop.hbase.client.ColumnFamilyDescriptorBuilder;
 import org.apache.hadoop.hbase.client.TableDescriptorBuilder;
-import org.apache.hbase.thirdparty.com.google.common.base.Preconditions;
-import org.apache.hbase.thirdparty.com.google.common.collect.Lists;
-import org.apache.hbase.thirdparty.com.google.common.collect.Maps;
-import org.apache.hbase.thirdparty.com.google.common.collect.Sets;
-import org.apache.hbase.thirdparty.org.apache.commons.cli.CommandLine;
-import org.apache.hbase.thirdparty.org.apache.commons.cli.GnuParser;
-import org.apache.hbase.thirdparty.org.apache.commons.cli.HelpFormatter;
-import org.apache.hbase.thirdparty.org.apache.commons.cli.OptionBuilder;
-import org.apache.hbase.thirdparty.org.apache.commons.cli.Options;
-import org.apache.hbase.thirdparty.org.apache.commons.cli.ParseException;
+import com.xiaomi.infra.thirdparty.com.google.common.base.Preconditions;
+import com.xiaomi.infra.thirdparty.com.google.common.collect.Lists;
+import com.xiaomi.infra.thirdparty.com.google.common.collect.Maps;
+import com.xiaomi.infra.thirdparty.com.google.common.collect.Sets;
+import com.xiaomi.infra.thirdparty.org.apache.commons.cli.CommandLine;
+import com.xiaomi.infra.thirdparty.org.apache.commons.cli.GnuParser;
+import com.xiaomi.infra.thirdparty.org.apache.commons.cli.HelpFormatter;
+import com.xiaomi.infra.thirdparty.org.apache.commons.cli.OptionBuilder;
+import com.xiaomi.infra.thirdparty.org.apache.commons.cli.Options;
+import com.xiaomi.infra.thirdparty.org.apache.commons.cli.ParseException;
 
 /**
  * The {@link RegionSplitter} class provides several utilities to help in the

@@ -21,20 +21,20 @@ package org.apache.hadoop.hbase.ipc;
 import static org.apache.hadoop.hbase.ipc.IPCUtil.toIOE;
 import static org.apache.hadoop.hbase.ipc.IPCUtil.wrapException;
 
-import org.apache.hbase.thirdparty.com.google.common.annotations.VisibleForTesting;
-import org.apache.hbase.thirdparty.com.google.common.base.Preconditions;
-import org.apache.hbase.thirdparty.com.google.common.cache.CacheBuilder;
-import org.apache.hbase.thirdparty.com.google.common.cache.CacheLoader;
-import org.apache.hbase.thirdparty.com.google.common.cache.LoadingCache;
-import org.apache.hbase.thirdparty.com.google.protobuf.BlockingRpcChannel;
-import org.apache.hbase.thirdparty.com.google.protobuf.Descriptors;
-import org.apache.hbase.thirdparty.com.google.protobuf.Message;
-import org.apache.hbase.thirdparty.com.google.protobuf.RpcChannel;
-import org.apache.hbase.thirdparty.com.google.protobuf.RpcController;
-import org.apache.hbase.thirdparty.com.google.protobuf.ServiceException;
-import org.apache.hbase.thirdparty.com.google.protobuf.RpcCallback;
+import com.xiaomi.infra.thirdparty.com.google.common.annotations.VisibleForTesting;
+import com.xiaomi.infra.thirdparty.com.google.common.base.Preconditions;
+import com.xiaomi.infra.thirdparty.com.google.common.cache.CacheBuilder;
+import com.xiaomi.infra.thirdparty.com.google.common.cache.CacheLoader;
+import com.xiaomi.infra.thirdparty.com.google.common.cache.LoadingCache;
+import com.xiaomi.infra.thirdparty.com.google.protobuf.BlockingRpcChannel;
+import com.xiaomi.infra.thirdparty.com.google.protobuf.Descriptors;
+import com.xiaomi.infra.thirdparty.com.google.protobuf.Message;
+import com.xiaomi.infra.thirdparty.com.google.protobuf.RpcChannel;
+import com.xiaomi.infra.thirdparty.com.google.protobuf.RpcController;
+import com.xiaomi.infra.thirdparty.com.google.protobuf.ServiceException;
+import com.xiaomi.infra.thirdparty.com.google.protobuf.RpcCallback;
 
-import org.apache.hbase.thirdparty.io.netty.util.HashedWheelTimer;
+import com.xiaomi.infra.thirdparty.io.netty.util.HashedWheelTimer;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;

@@ -182,13 +182,13 @@ public class SimpleRegionNormalizer implements RegionNormalizer {
     try {
       splitEnabled = masterRpcServices.isSplitOrMergeEnabled(null,
         RequestConverter.buildIsSplitOrMergeEnabledRequest(MasterSwitchType.SPLIT)).getEnabled();
-    } catch (org.apache.hbase.thirdparty.com.google.protobuf.ServiceException e) {
+    } catch (com.xiaomi.infra.thirdparty.com.google.protobuf.ServiceException e) {
       LOG.debug("Unable to determine whether split is enabled", e);
     }
     try {
       mergeEnabled = masterRpcServices.isSplitOrMergeEnabled(null,
         RequestConverter.buildIsSplitOrMergeEnabledRequest(MasterSwitchType.MERGE)).getEnabled();
-    } catch (org.apache.hbase.thirdparty.com.google.protobuf.ServiceException e) {
+    } catch (com.xiaomi.infra.thirdparty.com.google.protobuf.ServiceException e) {
       LOG.debug("Unable to determine whether split is enabled", e);
     }
     while (candidateIdx < tableRegions.size()) {

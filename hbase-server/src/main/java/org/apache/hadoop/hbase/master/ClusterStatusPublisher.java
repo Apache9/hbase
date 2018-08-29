@@ -50,21 +50,21 @@ import org.apache.hadoop.hbase.util.Threads;
 import org.apache.hadoop.hbase.util.VersionInfo;
 import org.apache.yetus.audience.InterfaceAudience;
 
-import org.apache.hbase.thirdparty.io.netty.bootstrap.Bootstrap;
-import org.apache.hbase.thirdparty.io.netty.bootstrap.ChannelFactory;
-import org.apache.hbase.thirdparty.io.netty.buffer.Unpooled;
-import org.apache.hbase.thirdparty.io.netty.channel.Channel;
-import org.apache.hbase.thirdparty.io.netty.channel.ChannelException;
-import org.apache.hbase.thirdparty.io.netty.channel.ChannelHandlerContext;
-import org.apache.hbase.thirdparty.io.netty.channel.ChannelOption;
-import org.apache.hbase.thirdparty.io.netty.channel.EventLoopGroup;
-import org.apache.hbase.thirdparty.io.netty.channel.nio.NioEventLoopGroup;
-import org.apache.hbase.thirdparty.io.netty.channel.socket.DatagramChannel;
-import org.apache.hbase.thirdparty.io.netty.channel.socket.DatagramPacket;
-import org.apache.hbase.thirdparty.io.netty.channel.socket.InternetProtocolFamily;
-import org.apache.hbase.thirdparty.io.netty.channel.socket.nio.NioDatagramChannel;
-import org.apache.hbase.thirdparty.io.netty.handler.codec.MessageToMessageEncoder;
-import org.apache.hbase.thirdparty.io.netty.util.internal.StringUtil;
+import com.xiaomi.infra.thirdparty.io.netty.bootstrap.Bootstrap;
+import com.xiaomi.infra.thirdparty.io.netty.bootstrap.ChannelFactory;
+import com.xiaomi.infra.thirdparty.io.netty.buffer.Unpooled;
+import com.xiaomi.infra.thirdparty.io.netty.channel.Channel;
+import com.xiaomi.infra.thirdparty.io.netty.channel.ChannelException;
+import com.xiaomi.infra.thirdparty.io.netty.channel.ChannelHandlerContext;
+import com.xiaomi.infra.thirdparty.io.netty.channel.ChannelOption;
+import com.xiaomi.infra.thirdparty.io.netty.channel.EventLoopGroup;
+import com.xiaomi.infra.thirdparty.io.netty.channel.nio.NioEventLoopGroup;
+import com.xiaomi.infra.thirdparty.io.netty.channel.socket.DatagramChannel;
+import com.xiaomi.infra.thirdparty.io.netty.channel.socket.DatagramPacket;
+import com.xiaomi.infra.thirdparty.io.netty.channel.socket.InternetProtocolFamily;
+import com.xiaomi.infra.thirdparty.io.netty.channel.socket.nio.NioDatagramChannel;
+import com.xiaomi.infra.thirdparty.io.netty.handler.codec.MessageToMessageEncoder;
+import com.xiaomi.infra.thirdparty.io.netty.util.internal.StringUtil;
 
 
 /**

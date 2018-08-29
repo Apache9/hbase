@@ -23,7 +23,7 @@ import org.apache.hadoop.hbase.regionserver.HRegionServer;
 import org.apache.log4j.Logger;
 import org.apache.yetus.audience.InterfaceAudience;
 
-import org.apache.hbase.thirdparty.com.google.protobuf.InvalidProtocolBufferException;
+import com.xiaomi.infra.thirdparty.com.google.protobuf.InvalidProtocolBufferException;
 
 import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProcedureProtos.PeerModificationType;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProcedureProtos.RefreshPeerParameter;

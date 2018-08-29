@@ -44,9 +44,9 @@ import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.hbase.thirdparty.com.google.common.io.ByteStreams;
-import org.apache.hbase.thirdparty.com.google.protobuf.CodedInputStream;
-import org.apache.hbase.thirdparty.com.google.protobuf.InvalidProtocolBufferException;
+import com.xiaomi.infra.thirdparty.com.google.common.io.ByteStreams;
+import com.xiaomi.infra.thirdparty.com.google.protobuf.CodedInputStream;
+import com.xiaomi.infra.thirdparty.com.google.protobuf.InvalidProtocolBufferException;
 
 /**
  * A Protobuf based WAL has the following structure:

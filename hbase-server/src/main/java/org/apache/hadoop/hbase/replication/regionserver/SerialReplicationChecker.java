@@ -38,10 +38,10 @@ import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.hbase.thirdparty.com.google.common.cache.Cache;
-import org.apache.hbase.thirdparty.com.google.common.cache.CacheBuilder;
-import org.apache.hbase.thirdparty.com.google.common.cache.CacheLoader;
-import org.apache.hbase.thirdparty.com.google.common.cache.LoadingCache;
+import com.xiaomi.infra.thirdparty.com.google.common.cache.Cache;
+import com.xiaomi.infra.thirdparty.com.google.common.cache.CacheBuilder;
+import com.xiaomi.infra.thirdparty.com.google.common.cache.CacheLoader;
+import com.xiaomi.infra.thirdparty.com.google.common.cache.LoadingCache;
 
 /**
  * <p>

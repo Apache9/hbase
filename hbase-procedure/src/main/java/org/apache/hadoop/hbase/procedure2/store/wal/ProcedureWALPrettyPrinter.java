@@ -39,11 +39,11 @@ import org.apache.hadoop.hbase.shaded.protobuf.generated.ProcedureProtos.Procedu
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 
-import org.apache.hbase.thirdparty.org.apache.commons.cli.CommandLine;
-import org.apache.hbase.thirdparty.org.apache.commons.cli.HelpFormatter;
-import org.apache.hbase.thirdparty.org.apache.commons.cli.Options;
-import org.apache.hbase.thirdparty.org.apache.commons.cli.ParseException;
-import org.apache.hbase.thirdparty.org.apache.commons.cli.PosixParser;
+import com.xiaomi.infra.thirdparty.org.apache.commons.cli.CommandLine;
+import com.xiaomi.infra.thirdparty.org.apache.commons.cli.HelpFormatter;
+import com.xiaomi.infra.thirdparty.org.apache.commons.cli.Options;
+import com.xiaomi.infra.thirdparty.org.apache.commons.cli.ParseException;
+import com.xiaomi.infra.thirdparty.org.apache.commons.cli.PosixParser;
 
 /**
  * ProcedureWALPrettyPrinter prints the contents of a given ProcedureWAL file

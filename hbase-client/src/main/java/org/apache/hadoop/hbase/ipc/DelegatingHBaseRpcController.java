@@ -17,7 +17,7 @@
  */
 package org.apache.hadoop.hbase.ipc;
 
-import org.apache.hbase.thirdparty.com.google.protobuf.RpcCallback;
+import com.xiaomi.infra.thirdparty.com.google.protobuf.RpcCallback;
 
 import java.io.IOException;
 

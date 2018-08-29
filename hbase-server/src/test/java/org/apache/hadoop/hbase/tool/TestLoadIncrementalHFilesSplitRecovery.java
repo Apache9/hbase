@@ -81,9 +81,9 @@ import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.hbase.thirdparty.com.google.common.collect.Multimap;
-import org.apache.hbase.thirdparty.com.google.protobuf.RpcController;
-import org.apache.hbase.thirdparty.com.google.protobuf.ServiceException;
+import com.xiaomi.infra.thirdparty.com.google.common.collect.Multimap;
+import com.xiaomi.infra.thirdparty.com.google.protobuf.RpcController;
+import com.xiaomi.infra.thirdparty.com.google.protobuf.ServiceException;
 
 import org.apache.hadoop.hbase.shaded.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.ClientProtos;
@@ -366,7 +366,7 @@ public class TestLoadIncrementalHFilesSplitRecovery {
   }
 
   private ClusterConnection getMockedConnection(final Configuration conf)
-      throws IOException, org.apache.hbase.thirdparty.com.google.protobuf.ServiceException {
+      throws IOException, com.xiaomi.infra.thirdparty.com.google.protobuf.ServiceException {
     ClusterConnection c = Mockito.mock(ClusterConnection.class);
     Mockito.when(c.getConfiguration()).thenReturn(conf);
     Mockito.doNothing().when(c).close();

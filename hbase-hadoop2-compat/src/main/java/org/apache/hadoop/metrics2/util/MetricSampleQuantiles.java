@@ -27,7 +27,7 @@ import java.util.Map;
 
 import org.apache.yetus.audience.InterfaceAudience;
 
-import org.apache.hbase.thirdparty.com.google.common.annotations.VisibleForTesting;
+import com.xiaomi.infra.thirdparty.com.google.common.annotations.VisibleForTesting;
 
 /**
  * Implementation of the Cormode, Korn, Muthukrishnan, and Srivastava algorithm

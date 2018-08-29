@@ -60,7 +60,7 @@ import org.mockito.stubbing.Answer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.hbase.thirdparty.com.google.protobuf.Int64Value;
+import com.xiaomi.infra.thirdparty.com.google.protobuf.Int64Value;
 
 @Category({MasterTests.class, SmallTests.class})
 public class TestWALProcedureStore {

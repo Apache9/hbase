@@ -77,7 +77,7 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
 
-import org.apache.hbase.thirdparty.com.google.common.base.Preconditions;
+import com.xiaomi.infra.thirdparty.com.google.common.base.Preconditions;
 
 /**
  * HTable interface to remote tables accessed via REST gateway

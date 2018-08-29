@@ -61,7 +61,7 @@ import org.junit.rules.TestName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.hbase.thirdparty.com.google.common.base.Throwables;
+import com.xiaomi.infra.thirdparty.com.google.common.base.Throwables;
 
 /**
  * Test filters at the HRegion doorstep.

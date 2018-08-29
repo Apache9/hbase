@@ -60,7 +60,7 @@ import org.junit.rules.TestName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.hbase.thirdparty.com.google.common.base.Joiner;
+import com.xiaomi.infra.thirdparty.com.google.common.base.Joiner;
 
 @Category({MasterTests.class, MediumTests.class})
 public class TestMaster {

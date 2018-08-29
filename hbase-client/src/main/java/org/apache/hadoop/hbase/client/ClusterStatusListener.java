@@ -41,16 +41,16 @@ import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.hbase.thirdparty.io.netty.bootstrap.Bootstrap;
-import org.apache.hbase.thirdparty.io.netty.buffer.ByteBufInputStream;
-import org.apache.hbase.thirdparty.io.netty.channel.ChannelHandlerContext;
-import org.apache.hbase.thirdparty.io.netty.channel.ChannelOption;
-import org.apache.hbase.thirdparty.io.netty.channel.EventLoopGroup;
-import org.apache.hbase.thirdparty.io.netty.channel.SimpleChannelInboundHandler;
-import org.apache.hbase.thirdparty.io.netty.channel.nio.NioEventLoopGroup;
-import org.apache.hbase.thirdparty.io.netty.channel.socket.DatagramChannel;
-import org.apache.hbase.thirdparty.io.netty.channel.socket.DatagramPacket;
-import org.apache.hbase.thirdparty.io.netty.channel.socket.nio.NioDatagramChannel;
+import com.xiaomi.infra.thirdparty.io.netty.bootstrap.Bootstrap;
+import com.xiaomi.infra.thirdparty.io.netty.buffer.ByteBufInputStream;
+import com.xiaomi.infra.thirdparty.io.netty.channel.ChannelHandlerContext;
+import com.xiaomi.infra.thirdparty.io.netty.channel.ChannelOption;
+import com.xiaomi.infra.thirdparty.io.netty.channel.EventLoopGroup;
+import com.xiaomi.infra.thirdparty.io.netty.channel.SimpleChannelInboundHandler;
+import com.xiaomi.infra.thirdparty.io.netty.channel.nio.NioEventLoopGroup;
+import com.xiaomi.infra.thirdparty.io.netty.channel.socket.DatagramChannel;
+import com.xiaomi.infra.thirdparty.io.netty.channel.socket.DatagramPacket;
+import com.xiaomi.infra.thirdparty.io.netty.channel.socket.nio.NioDatagramChannel;
 
 import org.apache.hadoop.hbase.shaded.protobuf.generated.ClusterStatusProtos;
 

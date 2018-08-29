@@ -24,8 +24,8 @@ import org.apache.hadoop.hbase.HBaseInterfaceAudience;
 import org.apache.hadoop.hbase.io.crypto.Encryptor;
 import org.apache.yetus.audience.InterfaceAudience;
 
-import org.apache.hbase.thirdparty.io.netty.channel.Channel;
-import org.apache.hbase.thirdparty.io.netty.channel.EventLoopGroup;
+import com.xiaomi.infra.thirdparty.io.netty.channel.Channel;
+import com.xiaomi.infra.thirdparty.io.netty.channel.EventLoopGroup;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.WALProtos.WALHeader;
 
 @InterfaceAudience.LimitedPrivate(HBaseInterfaceAudience.CONFIG)

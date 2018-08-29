@@ -36,7 +36,7 @@ import org.junit.experimental.categories.Category;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.hbase.thirdparty.com.google.common.collect.ImmutableMap;
+import com.xiaomi.infra.thirdparty.com.google.common.collect.ImmutableMap;
 
 @Category({MiscTests.class, SmallTests.class})
 public class TestHBaseConfiguration {

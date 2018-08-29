@@ -65,7 +65,7 @@ import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.hbase.thirdparty.com.google.common.collect.Lists;
+import com.xiaomi.infra.thirdparty.com.google.common.collect.Lists;
 
 import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProtos.DeleteSnapshotRequest;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.MasterProtos.GetCompletedSnapshotsRequest;
@@ -263,7 +263,7 @@ public class TestSnapshotFromMaster {
     try {
       master.getMasterRpcServices().deleteSnapshot(null, request);
       fail("Master didn't throw exception when attempting to delete snapshot that doesn't exist");
-    } catch (org.apache.hbase.thirdparty.com.google.protobuf.ServiceException e) {
+    } catch (com.xiaomi.infra.thirdparty.com.google.protobuf.ServiceException e) {
       // Expected
     }
 

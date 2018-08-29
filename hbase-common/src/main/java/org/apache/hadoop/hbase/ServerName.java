@@ -27,9 +27,9 @@ import java.util.regex.Pattern;
 import org.apache.hadoop.hbase.net.Address;
 import org.apache.hadoop.hbase.util.Addressing;
 import org.apache.hadoop.hbase.util.Bytes;
-import org.apache.hbase.thirdparty.com.google.common.collect.Interner;
-import org.apache.hbase.thirdparty.com.google.common.collect.Interners;
-import org.apache.hbase.thirdparty.com.google.common.net.InetAddresses;
+import com.xiaomi.infra.thirdparty.com.google.common.collect.Interner;
+import com.xiaomi.infra.thirdparty.com.google.common.collect.Interners;
+import com.xiaomi.infra.thirdparty.com.google.common.net.InetAddresses;
 import org.apache.yetus.audience.InterfaceAudience;
 
 

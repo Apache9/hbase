@@ -48,9 +48,9 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.rules.TestName;
 
-import org.apache.hbase.thirdparty.com.google.common.collect.ConcurrentHashMultiset;
-import org.apache.hbase.thirdparty.com.google.common.collect.Lists;
-import org.apache.hbase.thirdparty.com.google.common.collect.Multiset;
+import com.xiaomi.infra.thirdparty.com.google.common.collect.ConcurrentHashMultiset;
+import com.xiaomi.infra.thirdparty.com.google.common.collect.Lists;
+import com.xiaomi.infra.thirdparty.com.google.common.collect.Multiset;
 
 @Category({MediumTests.class, ClientTests.class})
 public class TestRpcControllerFactory {

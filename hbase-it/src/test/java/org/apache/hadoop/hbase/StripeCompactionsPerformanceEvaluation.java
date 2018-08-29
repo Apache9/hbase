@@ -41,7 +41,7 @@ import org.junit.Assert;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.hbase.thirdparty.org.apache.commons.cli.CommandLine;
+import com.xiaomi.infra.thirdparty.org.apache.commons.cli.CommandLine;
 
 /**
  * A perf test which does large data ingestion using stripe compactions and regular compactions.

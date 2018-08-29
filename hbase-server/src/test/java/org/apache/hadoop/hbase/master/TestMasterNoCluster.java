@@ -143,7 +143,7 @@ public class TestMasterNoCluster {
    * @throws IOException
    * @throws KeeperException
    * @throws InterruptedException
-   * @throws org.apache.hbase.thirdparty.com.google.protobuf.ServiceException
+   * @throws com.xiaomi.infra.thirdparty.com.google.protobuf.ServiceException
    */
   @Ignore @Test // Disabled since HBASE-18511. Reenable when master can carry regions.
   public void testFailover() throws Exception {

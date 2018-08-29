@@ -46,8 +46,8 @@ import org.apache.hadoop.mapreduce.lib.output.NullOutputFormat;
 import org.apache.hadoop.util.StringUtils;
 import org.apache.hadoop.util.ToolRunner;
 
-import org.apache.hbase.thirdparty.com.google.common.base.Stopwatch;
-import org.apache.hbase.thirdparty.org.apache.commons.cli.CommandLine;
+import com.xiaomi.infra.thirdparty.com.google.common.base.Stopwatch;
+import com.xiaomi.infra.thirdparty.org.apache.commons.cli.CommandLine;
 
 /**
  * A simple performance evaluation tool for single client and MR scans

@@ -17,10 +17,10 @@
  */
 package org.apache.hadoop.hbase.ipc;
 
-import org.apache.hbase.thirdparty.io.netty.buffer.ByteBuf;
-import org.apache.hbase.thirdparty.io.netty.channel.ChannelHandlerContext;
-import org.apache.hbase.thirdparty.io.netty.channel.ChannelInboundHandlerAdapter;
-import org.apache.hbase.thirdparty.io.netty.channel.group.ChannelGroup;
+import com.xiaomi.infra.thirdparty.io.netty.buffer.ByteBuf;
+import com.xiaomi.infra.thirdparty.io.netty.channel.ChannelHandlerContext;
+import com.xiaomi.infra.thirdparty.io.netty.channel.ChannelInboundHandlerAdapter;
+import com.xiaomi.infra.thirdparty.io.netty.channel.group.ChannelGroup;
 
 import org.apache.yetus.audience.InterfaceAudience;
 

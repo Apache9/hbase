@@ -21,9 +21,9 @@ package org.apache.hadoop.hbase.metrics;
 import org.apache.hadoop.metrics2.MetricsInfo;
 import org.apache.yetus.audience.InterfaceAudience;
 
-import org.apache.hbase.thirdparty.com.google.common.base.MoreObjects;
-import org.apache.hbase.thirdparty.com.google.common.base.Objects;
-import org.apache.hbase.thirdparty.com.google.common.base.Preconditions;
+import com.xiaomi.infra.thirdparty.com.google.common.base.MoreObjects;
+import com.xiaomi.infra.thirdparty.com.google.common.base.Objects;
+import com.xiaomi.infra.thirdparty.com.google.common.base.Preconditions;
 
 /**
  * Making implementing metric info a little easier

@@ -47,7 +47,7 @@ import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
-import org.apache.hbase.thirdparty.com.google.common.collect.ImmutableList;
+import com.xiaomi.infra.thirdparty.com.google.common.collect.ImmutableList;
 
 @Category({MapReduceTests.class, SmallTests.class})
 public class TestGroupingTableMap {
@@ -146,7 +146,7 @@ public class TestGroupingTableMap {
           new OutputCollector<ImmutableBytesWritable, Result>() {
         @Override
         public void collect(ImmutableBytesWritable arg, Result result) throws IOException {
-          assertArrayEquals(org.apache.hbase.thirdparty.com.google.common.primitives.
+          assertArrayEquals(com.xiaomi.infra.thirdparty.com.google.common.primitives.
             Bytes.concat(firstPartKeyValue, bSeparator,
               secondPartKeyValue), arg.copyBytes());
           outputCollected.set(true);
@@ -161,7 +161,7 @@ public class TestGroupingTableMap {
       final byte[] secondPartValue = Bytes.toBytes("4678456942345");
       byte[][] data = { firstPartValue, secondPartValue };
       ImmutableBytesWritable byteWritable = gTableMap.createGroupKey(data);
-      assertArrayEquals(org.apache.hbase.thirdparty.com.google.common.primitives.
+      assertArrayEquals(com.xiaomi.infra.thirdparty.com.google.common.primitives.
         Bytes.concat(firstPartValue,
           bSeparator, secondPartValue), byteWritable.get());
     } finally {

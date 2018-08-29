@@ -17,11 +17,11 @@
  */
 package org.apache.hadoop.hbase.ipc;
 
-import org.apache.hbase.thirdparty.io.netty.util.Timeout;
+import com.xiaomi.infra.thirdparty.io.netty.util.Timeout;
 
-import org.apache.hbase.thirdparty.com.google.protobuf.Descriptors;
-import org.apache.hbase.thirdparty.com.google.protobuf.Message;
-import org.apache.hbase.thirdparty.com.google.protobuf.RpcCallback;
+import com.xiaomi.infra.thirdparty.com.google.protobuf.Descriptors;
+import com.xiaomi.infra.thirdparty.com.google.protobuf.Message;
+import com.xiaomi.infra.thirdparty.com.google.protobuf.RpcCallback;
 import org.apache.hadoop.hbase.shaded.protobuf.ProtobufUtil;
 
 import java.io.IOException;

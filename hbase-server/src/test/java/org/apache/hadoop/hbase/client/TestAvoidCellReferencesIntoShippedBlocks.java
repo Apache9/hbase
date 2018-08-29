@@ -63,7 +63,7 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.rules.TestName;
 
-import org.apache.hbase.thirdparty.com.google.common.collect.Iterables;
+import com.xiaomi.infra.thirdparty.com.google.common.collect.Iterables;
 
 @Category({ LargeTests.class, ClientTests.class })
 public class TestAvoidCellReferencesIntoShippedBlocks {

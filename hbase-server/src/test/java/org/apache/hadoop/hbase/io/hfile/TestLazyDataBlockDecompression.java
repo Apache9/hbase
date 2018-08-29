@@ -50,7 +50,7 @@ import org.junit.runners.Parameterized;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.hbase.thirdparty.com.google.common.collect.Iterables;
+import com.xiaomi.infra.thirdparty.com.google.common.collect.Iterables;
 
 /**
  * A kind of integration test at the intersection of {@link HFileBlock}, {@link CacheConfig},

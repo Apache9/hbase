@@ -43,7 +43,7 @@ import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
-import org.apache.hbase.thirdparty.com.google.common.collect.Lists;
+import com.xiaomi.infra.thirdparty.com.google.common.collect.Lists;
 
 import org.apache.hadoop.hbase.shaded.protobuf.RequestConverter;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.AdminProtos.FlushRegionRequest;
@@ -112,7 +112,7 @@ public class TestWALFiltering {
   @Test
   public void testFlushedSequenceIdsSentToHMaster()
   throws IOException, InterruptedException,
-  org.apache.hbase.thirdparty.com.google.protobuf.ServiceException, ServiceException {
+  com.xiaomi.infra.thirdparty.com.google.protobuf.ServiceException, ServiceException {
     SortedMap<byte[], Long> allFlushedSequenceIds = new TreeMap<>(Bytes.BYTES_COMPARATOR);
     for (int i = 0; i < NUM_RS; ++i) {
       flushAllRegions(i);
@@ -148,7 +148,7 @@ public class TestWALFiltering {
 
   private void flushAllRegions(int rsId)
   throws ServiceException,
-  org.apache.hbase.thirdparty.com.google.protobuf.ServiceException, IOException {
+  com.xiaomi.infra.thirdparty.com.google.protobuf.ServiceException, IOException {
     HRegionServer hrs = getRegionServer(rsId);
     for (byte[] regionName : getRegionsByServer(rsId)) {
       FlushRegionRequest request =

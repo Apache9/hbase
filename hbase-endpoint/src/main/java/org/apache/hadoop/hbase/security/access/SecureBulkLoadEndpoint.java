@@ -100,7 +100,7 @@ public class SecureBulkLoadEndpoint extends SecureBulkLoadService implements Reg
    */
   org.apache.hadoop.hbase.shaded.protobuf.generated.ClientProtos.PrepareBulkLoadRequest
     convert(PrepareBulkLoadRequest request)
-    throws org.apache.hbase.thirdparty.com.google.protobuf.InvalidProtocolBufferException {
+    throws com.xiaomi.infra.thirdparty.com.google.protobuf.InvalidProtocolBufferException {
     byte [] bytes = request.toByteArray();
     org.apache.hadoop.hbase.shaded.protobuf.generated.ClientProtos.PrepareBulkLoadRequest.Builder
           builder =
@@ -128,7 +128,7 @@ public class SecureBulkLoadEndpoint extends SecureBulkLoadService implements Reg
    */
   org.apache.hadoop.hbase.shaded.protobuf.generated.ClientProtos.CleanupBulkLoadRequest
     convert(CleanupBulkLoadRequest request)
-      throws org.apache.hbase.thirdparty.com.google.protobuf.InvalidProtocolBufferException {
+      throws com.xiaomi.infra.thirdparty.com.google.protobuf.InvalidProtocolBufferException {
     byte [] bytes = request.toByteArray();
     org.apache.hadoop.hbase.shaded.protobuf.generated.ClientProtos.CleanupBulkLoadRequest.Builder
         builder =
@@ -160,7 +160,7 @@ public class SecureBulkLoadEndpoint extends SecureBulkLoadService implements Reg
    */
   org.apache.hadoop.hbase.shaded.protobuf.generated.ClientProtos.BulkLoadHFileRequest
     convert(BulkLoadHFileRequest request)
-      throws org.apache.hbase.thirdparty.com.google.protobuf.InvalidProtocolBufferException {
+      throws com.xiaomi.infra.thirdparty.com.google.protobuf.InvalidProtocolBufferException {
     byte [] bytes = request.toByteArray();
     org.apache.hadoop.hbase.shaded.protobuf.generated.ClientProtos.BulkLoadHFileRequest.Builder
         builder =

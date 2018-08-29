@@ -254,7 +254,7 @@ public final class ProtobufUtil {
    * @return Exception wrapped in ServiceException.
    */
   public static IOException getServiceException(
-      org.apache.hbase.thirdparty.com.google.protobuf.ServiceException e) {
+      com.xiaomi.infra.thirdparty.com.google.protobuf.ServiceException e) {
     Throwable t = e.getCause();
     if (ExceptionUtil.isInterrupt(t)) {
       return ExceptionUtil.asInterrupt(t);
@@ -276,7 +276,7 @@ public final class ProtobufUtil {
   private static IOException makeIOExceptionOfException(Exception e) {
     Throwable t = e;
     if (e instanceof ServiceException ||
-        e instanceof org.apache.hbase.thirdparty.com.google.protobuf.ServiceException) {
+        e instanceof com.xiaomi.infra.thirdparty.com.google.protobuf.ServiceException) {
       t = e.getCause();
     }
     if (ExceptionUtil.isInterrupt(t)) {

@@ -57,9 +57,9 @@ import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.hbase.thirdparty.com.google.common.base.Charsets;
-import org.apache.hbase.thirdparty.com.google.common.base.Throwables;
-import org.apache.hbase.thirdparty.com.google.common.collect.Ordering;
+import com.xiaomi.infra.thirdparty.com.google.common.base.Charsets;
+import com.xiaomi.infra.thirdparty.com.google.common.base.Throwables;
+import com.xiaomi.infra.thirdparty.com.google.common.collect.Ordering;
 
 @InterfaceAudience.Private
 public class HashTable extends Configured implements Tool {

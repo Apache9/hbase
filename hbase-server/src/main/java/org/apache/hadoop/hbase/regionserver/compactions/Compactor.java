@@ -61,7 +61,7 @@ import org.apache.hadoop.util.StringUtils.TraditionalBinaryPrefix;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.apache.hbase.thirdparty.com.google.common.io.Closeables;
+import com.xiaomi.infra.thirdparty.com.google.common.io.Closeables;
 
 /**
  * A compactor is a compaction algorithm associated a given policy. Base class also contains

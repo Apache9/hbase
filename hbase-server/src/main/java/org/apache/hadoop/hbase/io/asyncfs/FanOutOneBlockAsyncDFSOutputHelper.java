@@ -25,8 +25,8 @@ import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_CLIENT_SOCKET_TIMEOUT_KEY
 import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_CLIENT_USE_DN_HOSTNAME;
 import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_CLIENT_USE_DN_HOSTNAME_DEFAULT;
 import static org.apache.hadoop.hdfs.protocol.datatransfer.BlockConstructionStage.PIPELINE_SETUP_CREATE;
-import static org.apache.hbase.thirdparty.io.netty.channel.ChannelOption.CONNECT_TIMEOUT_MILLIS;
-import static org.apache.hbase.thirdparty.io.netty.handler.timeout.IdleState.READER_IDLE;
+import static com.xiaomi.infra.thirdparty.io.netty.channel.ChannelOption.CONNECT_TIMEOUT_MILLIS;
+import static com.xiaomi.infra.thirdparty.io.netty.handler.timeout.IdleState.READER_IDLE;
 
 import com.google.protobuf.CodedOutputStream;
 import java.io.IOException;
@@ -86,30 +86,30 @@ import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.hbase.thirdparty.com.google.common.base.Throwables;
-import org.apache.hbase.thirdparty.com.google.common.collect.ImmutableMap;
-import org.apache.hbase.thirdparty.io.netty.bootstrap.Bootstrap;
-import org.apache.hbase.thirdparty.io.netty.buffer.ByteBuf;
-import org.apache.hbase.thirdparty.io.netty.buffer.ByteBufAllocator;
-import org.apache.hbase.thirdparty.io.netty.buffer.ByteBufOutputStream;
-import org.apache.hbase.thirdparty.io.netty.buffer.PooledByteBufAllocator;
-import org.apache.hbase.thirdparty.io.netty.channel.Channel;
-import org.apache.hbase.thirdparty.io.netty.channel.ChannelFuture;
-import org.apache.hbase.thirdparty.io.netty.channel.ChannelFutureListener;
-import org.apache.hbase.thirdparty.io.netty.channel.ChannelHandler;
-import org.apache.hbase.thirdparty.io.netty.channel.ChannelHandlerContext;
-import org.apache.hbase.thirdparty.io.netty.channel.ChannelInitializer;
-import org.apache.hbase.thirdparty.io.netty.channel.ChannelPipeline;
-import org.apache.hbase.thirdparty.io.netty.channel.EventLoop;
-import org.apache.hbase.thirdparty.io.netty.channel.EventLoopGroup;
-import org.apache.hbase.thirdparty.io.netty.channel.SimpleChannelInboundHandler;
-import org.apache.hbase.thirdparty.io.netty.handler.codec.protobuf.ProtobufDecoder;
-import org.apache.hbase.thirdparty.io.netty.handler.codec.protobuf.ProtobufVarint32FrameDecoder;
-import org.apache.hbase.thirdparty.io.netty.handler.timeout.IdleStateEvent;
-import org.apache.hbase.thirdparty.io.netty.handler.timeout.IdleStateHandler;
-import org.apache.hbase.thirdparty.io.netty.util.concurrent.Future;
-import org.apache.hbase.thirdparty.io.netty.util.concurrent.FutureListener;
-import org.apache.hbase.thirdparty.io.netty.util.concurrent.Promise;
+import com.xiaomi.infra.thirdparty.com.google.common.base.Throwables;
+import com.xiaomi.infra.thirdparty.com.google.common.collect.ImmutableMap;
+import com.xiaomi.infra.thirdparty.io.netty.bootstrap.Bootstrap;
+import com.xiaomi.infra.thirdparty.io.netty.buffer.ByteBuf;
+import com.xiaomi.infra.thirdparty.io.netty.buffer.ByteBufAllocator;
+import com.xiaomi.infra.thirdparty.io.netty.buffer.ByteBufOutputStream;
+import com.xiaomi.infra.thirdparty.io.netty.buffer.PooledByteBufAllocator;
+import com.xiaomi.infra.thirdparty.io.netty.channel.Channel;
+import com.xiaomi.infra.thirdparty.io.netty.channel.ChannelFuture;
+import com.xiaomi.infra.thirdparty.io.netty.channel.ChannelFutureListener;
+import com.xiaomi.infra.thirdparty.io.netty.channel.ChannelHandler;
+import com.xiaomi.infra.thirdparty.io.netty.channel.ChannelHandlerContext;
+import com.xiaomi.infra.thirdparty.io.netty.channel.ChannelInitializer;
+import com.xiaomi.infra.thirdparty.io.netty.channel.ChannelPipeline;
+import com.xiaomi.infra.thirdparty.io.netty.channel.EventLoop;
+import com.xiaomi.infra.thirdparty.io.netty.channel.EventLoopGroup;
+import com.xiaomi.infra.thirdparty.io.netty.channel.SimpleChannelInboundHandler;
+import com.xiaomi.infra.thirdparty.io.netty.handler.codec.protobuf.ProtobufDecoder;
+import com.xiaomi.infra.thirdparty.io.netty.handler.codec.protobuf.ProtobufVarint32FrameDecoder;
+import com.xiaomi.infra.thirdparty.io.netty.handler.timeout.IdleStateEvent;
+import com.xiaomi.infra.thirdparty.io.netty.handler.timeout.IdleStateHandler;
+import com.xiaomi.infra.thirdparty.io.netty.util.concurrent.Future;
+import com.xiaomi.infra.thirdparty.io.netty.util.concurrent.FutureListener;
+import com.xiaomi.infra.thirdparty.io.netty.util.concurrent.Promise;
 
 /**
  * Helper class for implementing {@link FanOutOneBlockAsyncDFSOutput}.

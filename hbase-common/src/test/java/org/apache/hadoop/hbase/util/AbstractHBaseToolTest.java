@@ -31,8 +31,8 @@ import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.junit.Before;
 import org.junit.Test;
 
-import org.apache.hbase.thirdparty.org.apache.commons.cli.CommandLine;
-import org.apache.hbase.thirdparty.org.apache.commons.cli.Option;
+import com.xiaomi.infra.thirdparty.org.apache.commons.cli.CommandLine;
+import com.xiaomi.infra.thirdparty.org.apache.commons.cli.Option;
 
 public class AbstractHBaseToolTest {
   static final class Options {

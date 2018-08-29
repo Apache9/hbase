@@ -29,7 +29,7 @@ import org.apache.yetus.audience.InterfaceAudience;
 
 import com.xiaomi.infra.base.nameservice.NameService;
 
-import org.apache.hbase.thirdparty.com.google.common.annotations.VisibleForTesting;
+import com.xiaomi.infra.thirdparty.com.google.common.annotations.VisibleForTesting;
 
 /**
  * Utility methods for reading, and building the ZooKeeper configuration.

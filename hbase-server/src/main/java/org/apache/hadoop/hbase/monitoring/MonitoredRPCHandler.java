@@ -20,7 +20,7 @@ package org.apache.hadoop.hbase.monitoring;
 
 import org.apache.yetus.audience.InterfaceAudience;
 
-import org.apache.hbase.thirdparty.com.google.protobuf.Message;
+import com.xiaomi.infra.thirdparty.com.google.protobuf.Message;
 
 /**
  * A MonitoredTask implementation optimized for use with RPC Handlers 

@@ -37,11 +37,11 @@ import org.apache.hadoop.hbase.io.hfile.CacheConfig;
 import org.apache.hadoop.hbase.io.hfile.bucket.BucketCache.BucketEntry;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
-import org.apache.hbase.thirdparty.com.google.common.base.MoreObjects;
-import org.apache.hbase.thirdparty.com.google.common.base.Preconditions;
-import org.apache.hbase.thirdparty.com.google.common.collect.MinMaxPriorityQueue;
-import org.apache.hbase.thirdparty.com.google.common.primitives.Ints;
-import org.apache.hbase.thirdparty.org.apache.commons.collections4.map.LinkedMap;
+import com.xiaomi.infra.thirdparty.com.google.common.base.MoreObjects;
+import com.xiaomi.infra.thirdparty.com.google.common.base.Preconditions;
+import com.xiaomi.infra.thirdparty.com.google.common.collect.MinMaxPriorityQueue;
+import com.xiaomi.infra.thirdparty.com.google.common.primitives.Ints;
+import com.xiaomi.infra.thirdparty.org.apache.commons.collections4.map.LinkedMap;
 
 /**
  * This class is used to allocate a block with specified size and free the block

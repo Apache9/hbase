@@ -77,8 +77,8 @@
 
   <dependencies>
     <dependency>
-      <groupId>org.apache.hbase.thirdparty</groupId>
-      <artifactId>hbase-shaded-miscellaneous</artifactId>
+      <groupId>com.xiaomi.infra.thirdparty</groupId>
+      <artifactId>infra-shaded-miscellaneous</artifactId>
     </dependency>
     <!-- Intra-project dependencies -->
     <dependency>

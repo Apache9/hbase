@@ -67,7 +67,7 @@ public class DelimitedKeyPrefixRegionSplitPolicy extends IncreasingToUpperBoundR
 
       //find the first occurrence of delimiter in split point
       int index =
-        org.apache.hbase.thirdparty.com.google.common.primitives.Bytes.indexOf(splitPoint, delimiter);
+        com.xiaomi.infra.thirdparty.com.google.common.primitives.Bytes.indexOf(splitPoint, delimiter);
       if (index < 0) {
         LOG.warn("Delimiter " + Bytes.toString(delimiter) + "  not found for split key "
             + Bytes.toString(splitPoint));

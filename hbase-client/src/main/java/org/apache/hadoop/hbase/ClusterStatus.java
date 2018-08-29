@@ -29,7 +29,7 @@ import java.util.stream.Collectors;
 import org.apache.hadoop.hbase.master.RegionState;
 import org.apache.yetus.audience.InterfaceAudience;
 
-import org.apache.hbase.thirdparty.com.google.common.base.Objects;
+import com.xiaomi.infra.thirdparty.com.google.common.base.Objects;
 
 /**
  * Status information on the HBase cluster.

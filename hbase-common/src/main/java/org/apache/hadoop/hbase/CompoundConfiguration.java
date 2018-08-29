@@ -32,7 +32,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.yetus.audience.InterfaceAudience;
 
-import org.apache.hbase.thirdparty.org.apache.commons.collections4.iterators.UnmodifiableIterator;
+import com.xiaomi.infra.thirdparty.org.apache.commons.collections4.iterators.UnmodifiableIterator;
 
 /**
  * Do a shallow merge of multiple KV configuration pools. This is a very useful

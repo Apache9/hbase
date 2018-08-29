@@ -30,7 +30,7 @@ import org.apache.hadoop.hbase.client.SnapshotType;
 import org.apache.hadoop.hbase.util.AbstractHBaseTool;
 import org.apache.yetus.audience.InterfaceAudience;
 
-import org.apache.hbase.thirdparty.org.apache.commons.cli.CommandLine;
+import com.xiaomi.infra.thirdparty.org.apache.commons.cli.CommandLine;
 
 /**
  * This is a command line class that will snapshot a given table.

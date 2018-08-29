@@ -18,7 +18,7 @@
  */
 package org.apache.hadoop.hbase.io.hfile;
 
-import org.apache.hbase.thirdparty.com.google.common.collect.MinMaxPriorityQueue;
+import com.xiaomi.infra.thirdparty.com.google.common.collect.MinMaxPriorityQueue;
 
 import org.apache.yetus.audience.InterfaceAudience;
 import org.apache.hadoop.hbase.io.HeapSize;

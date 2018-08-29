@@ -29,10 +29,10 @@ import org.apache.hadoop.hbase.regionserver.RSRpcServices;
 import org.apache.hadoop.hbase.util.Pair;
 import org.apache.hadoop.security.authorize.PolicyProvider;
 
-import org.apache.hbase.thirdparty.com.google.common.annotations.VisibleForTesting;
-import org.apache.hbase.thirdparty.com.google.protobuf.BlockingService;
-import org.apache.hbase.thirdparty.com.google.protobuf.Descriptors.MethodDescriptor;
-import org.apache.hbase.thirdparty.com.google.protobuf.Message;
+import com.xiaomi.infra.thirdparty.com.google.common.annotations.VisibleForTesting;
+import com.xiaomi.infra.thirdparty.com.google.protobuf.BlockingService;
+import com.xiaomi.infra.thirdparty.com.google.protobuf.Descriptors.MethodDescriptor;
+import com.xiaomi.infra.thirdparty.com.google.protobuf.Message;
 
 @InterfaceAudience.Private
 public interface RpcServerInterface {

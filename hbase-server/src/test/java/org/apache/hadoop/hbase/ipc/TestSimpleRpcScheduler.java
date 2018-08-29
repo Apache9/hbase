@@ -61,10 +61,10 @@ import org.mockito.stubbing.Answer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.hbase.thirdparty.com.google.common.collect.ImmutableList;
-import org.apache.hbase.thirdparty.com.google.common.collect.ImmutableMap;
-import org.apache.hbase.thirdparty.com.google.common.collect.ImmutableSet;
-import org.apache.hbase.thirdparty.com.google.common.collect.Maps;
+import com.xiaomi.infra.thirdparty.com.google.common.collect.ImmutableList;
+import com.xiaomi.infra.thirdparty.com.google.common.collect.ImmutableMap;
+import com.xiaomi.infra.thirdparty.com.google.common.collect.ImmutableSet;
+import com.xiaomi.infra.thirdparty.com.google.common.collect.Maps;
 
 import org.apache.hadoop.hbase.shaded.protobuf.RequestConverter;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.ClientProtos.ScanRequest;

@@ -34,7 +34,7 @@ import org.apache.hadoop.hbase.CellComparatorImpl.MetaCellComparator;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.apache.hadoop.hbase.io.compress.Compression;
-import org.apache.hbase.thirdparty.com.google.protobuf.UnsafeByteOperations;
+import com.xiaomi.infra.thirdparty.com.google.protobuf.UnsafeByteOperations;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.HFileProtos;
 import org.apache.hadoop.hbase.util.Bytes;
 
@@ -190,7 +190,7 @@ public class FixedFileTrailer {
     baos.writeTo(outputStream);
   }
 
-  @org.apache.hbase.thirdparty.com.google.common.annotations.VisibleForTesting
+  @com.xiaomi.infra.thirdparty.com.google.common.annotations.VisibleForTesting
   HFileProtos.FileTrailerProto toProtobuf() {
     HFileProtos.FileTrailerProto.Builder builder = HFileProtos.FileTrailerProto.newBuilder()
         .setFileInfoOffset(fileInfoOffset)

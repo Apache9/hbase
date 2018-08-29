@@ -19,14 +19,14 @@
 package org.apache.hadoop.hbase.security;
 
 import org.apache.hadoop.hbase.exceptions.ConnectionClosedException;
-import org.apache.hbase.thirdparty.io.netty.buffer.ByteBuf;
-import org.apache.hbase.thirdparty.io.netty.buffer.Unpooled;
-import org.apache.hbase.thirdparty.io.netty.channel.ChannelHandlerContext;
-import org.apache.hbase.thirdparty.io.netty.channel.ChannelOutboundHandlerAdapter;
-import org.apache.hbase.thirdparty.io.netty.channel.ChannelPromise;
-import org.apache.hbase.thirdparty.io.netty.channel.CoalescingBufferQueue;
-import org.apache.hbase.thirdparty.io.netty.util.ReferenceCountUtil;
-import org.apache.hbase.thirdparty.io.netty.util.concurrent.PromiseCombiner;
+import com.xiaomi.infra.thirdparty.io.netty.buffer.ByteBuf;
+import com.xiaomi.infra.thirdparty.io.netty.buffer.Unpooled;
+import com.xiaomi.infra.thirdparty.io.netty.channel.ChannelHandlerContext;
+import com.xiaomi.infra.thirdparty.io.netty.channel.ChannelOutboundHandlerAdapter;
+import com.xiaomi.infra.thirdparty.io.netty.channel.ChannelPromise;
+import com.xiaomi.infra.thirdparty.io.netty.channel.CoalescingBufferQueue;
+import com.xiaomi.infra.thirdparty.io.netty.util.ReferenceCountUtil;
+import com.xiaomi.infra.thirdparty.io.netty.util.concurrent.PromiseCombiner;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.apache.hadoop.hbase.io.crypto.aes.CryptoAES;
 

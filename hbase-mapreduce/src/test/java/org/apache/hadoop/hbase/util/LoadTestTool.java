@@ -59,13 +59,13 @@ import org.apache.hadoop.hbase.util.test.LoadTestDataGenerator;
 import org.apache.hadoop.hbase.util.test.LoadTestDataGeneratorWithACL;
 import org.apache.hadoop.util.ToolRunner;
 
-import org.apache.hbase.thirdparty.org.apache.commons.cli.AlreadySelectedException;
-import org.apache.hbase.thirdparty.org.apache.commons.cli.CommandLine;
-import org.apache.hbase.thirdparty.org.apache.commons.cli.CommandLineParser;
-import org.apache.hbase.thirdparty.org.apache.commons.cli.DefaultParser;
-import org.apache.hbase.thirdparty.org.apache.commons.cli.MissingOptionException;
-import org.apache.hbase.thirdparty.org.apache.commons.cli.Options;
-import org.apache.hbase.thirdparty.org.apache.commons.cli.ParseException;
+import com.xiaomi.infra.thirdparty.org.apache.commons.cli.AlreadySelectedException;
+import com.xiaomi.infra.thirdparty.org.apache.commons.cli.CommandLine;
+import com.xiaomi.infra.thirdparty.org.apache.commons.cli.CommandLineParser;
+import com.xiaomi.infra.thirdparty.org.apache.commons.cli.DefaultParser;
+import com.xiaomi.infra.thirdparty.org.apache.commons.cli.MissingOptionException;
+import com.xiaomi.infra.thirdparty.org.apache.commons.cli.Options;
+import com.xiaomi.infra.thirdparty.org.apache.commons.cli.ParseException;
 
 /**
  * A command-line utility that reads, writes, and verifies data. Unlike

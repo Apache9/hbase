@@ -67,7 +67,7 @@ import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.hbase.thirdparty.com.google.common.io.Closeables;
+import com.xiaomi.infra.thirdparty.com.google.common.io.Closeables;
 
 /**
  * Testing for lock up of FSHLog.

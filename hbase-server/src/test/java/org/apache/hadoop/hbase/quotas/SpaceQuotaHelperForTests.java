@@ -48,9 +48,9 @@ import org.apache.yetus.audience.InterfaceAudience;
 import org.junit.rules.TestName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.apache.hbase.thirdparty.com.google.common.collect.HashMultimap;
-import org.apache.hbase.thirdparty.com.google.common.collect.Iterables;
-import org.apache.hbase.thirdparty.com.google.common.collect.Multimap;
+import com.xiaomi.infra.thirdparty.com.google.common.collect.HashMultimap;
+import com.xiaomi.infra.thirdparty.com.google.common.collect.Iterables;
+import com.xiaomi.infra.thirdparty.com.google.common.collect.Multimap;
 
 @InterfaceAudience.Private
 public class SpaceQuotaHelperForTests {

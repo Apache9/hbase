@@ -33,8 +33,8 @@ import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
-import org.apache.hbase.thirdparty.com.google.protobuf.ByteString;
-import org.apache.hbase.thirdparty.com.google.protobuf.BytesValue;
+import com.xiaomi.infra.thirdparty.com.google.protobuf.ByteString;
+import com.xiaomi.infra.thirdparty.com.google.protobuf.BytesValue;
 
 @Category({MasterTests.class, SmallTests.class})
 public class TestProcedureDescriber {

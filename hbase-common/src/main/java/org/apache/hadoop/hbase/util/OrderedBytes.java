@@ -28,7 +28,7 @@ import java.nio.charset.Charset;
 
 import org.apache.yetus.audience.InterfaceAudience;
 
-import org.apache.hbase.thirdparty.com.google.common.annotations.VisibleForTesting;
+import com.xiaomi.infra.thirdparty.com.google.common.annotations.VisibleForTesting;
 
 /**
  * Utility class that handles ordered byte arrays. That is, unlike

@@ -34,9 +34,9 @@ import org.apache.hadoop.hbase.regionserver.compactions.CompactionConfiguration;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.apache.hbase.thirdparty.com.google.common.collect.ImmutableCollection;
-import org.apache.hbase.thirdparty.com.google.common.collect.ImmutableList;
-import org.apache.hbase.thirdparty.com.google.common.collect.Iterables;
+import com.xiaomi.infra.thirdparty.com.google.common.collect.ImmutableCollection;
+import com.xiaomi.infra.thirdparty.com.google.common.collect.ImmutableList;
+import com.xiaomi.infra.thirdparty.com.google.common.collect.Iterables;
 
 /**
  * Default implementation of StoreFileManager. Not thread-safe.

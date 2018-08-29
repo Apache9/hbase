@@ -35,8 +35,8 @@ import org.slf4j.LoggerFactory;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.Threads;
 
-import org.apache.hbase.thirdparty.com.google.common.collect.Lists;
-import org.apache.hbase.thirdparty.org.apache.commons.collections4.queue.CircularFifoQueue;
+import com.xiaomi.infra.thirdparty.com.google.common.collect.Lists;
+import com.xiaomi.infra.thirdparty.org.apache.commons.collections4.queue.CircularFifoQueue;
 
 /**
  * Singleton which keeps track of tasks going on in this VM.

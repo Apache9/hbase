@@ -39,7 +39,7 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.hbase.thirdparty.com.google.common.collect.ImmutableMap;
+import com.xiaomi.infra.thirdparty.com.google.common.collect.ImmutableMap;
 
 /**
  * White box testing for replication state interfaces. Implementations should extend this class, and

@@ -18,8 +18,8 @@
 package org.apache.hadoop.hbase.regionserver.wal;
 
 import static org.apache.hadoop.hbase.wal.AbstractFSWALProvider.WAL_FILE_NAME_DELIMITER;
-import static org.apache.hbase.thirdparty.com.google.common.base.Preconditions.checkArgument;
-import static org.apache.hbase.thirdparty.com.google.common.base.Preconditions.checkNotNull;
+import static com.xiaomi.infra.thirdparty.com.google.common.base.Preconditions.checkArgument;
+import static com.xiaomi.infra.thirdparty.com.google.common.base.Preconditions.checkNotNull;
 
 import com.lmax.disruptor.RingBuffer;
 import java.io.FileNotFoundException;
@@ -82,7 +82,7 @@ import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.hbase.thirdparty.com.google.common.annotations.VisibleForTesting;
+import com.xiaomi.infra.thirdparty.com.google.common.annotations.VisibleForTesting;
 
 /**
  * Implementation of {@link WAL} to go against {@link FileSystem}; i.e. keep WALs in HDFS. Only one

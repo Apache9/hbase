@@ -18,7 +18,7 @@
 package org.apache.hadoop.hbase.io.asyncfs;
 
 import static org.apache.hadoop.hdfs.DFSConfigKeys.DFS_ENCRYPT_DATA_TRANSFER_CIPHER_SUITES_KEY;
-import static org.apache.hbase.thirdparty.io.netty.handler.timeout.IdleState.READER_IDLE;
+import static com.xiaomi.infra.thirdparty.io.netty.handler.timeout.IdleState.READER_IDLE;
 
 import com.google.protobuf.ByteString;
 import com.google.protobuf.CodedOutputStream;
@@ -77,28 +77,28 @@ import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.hbase.thirdparty.com.google.common.base.Charsets;
-import org.apache.hbase.thirdparty.com.google.common.base.Throwables;
-import org.apache.hbase.thirdparty.com.google.common.collect.ImmutableSet;
-import org.apache.hbase.thirdparty.com.google.common.collect.Maps;
-import org.apache.hbase.thirdparty.io.netty.buffer.ByteBuf;
-import org.apache.hbase.thirdparty.io.netty.buffer.ByteBufOutputStream;
-import org.apache.hbase.thirdparty.io.netty.buffer.CompositeByteBuf;
-import org.apache.hbase.thirdparty.io.netty.buffer.Unpooled;
-import org.apache.hbase.thirdparty.io.netty.channel.Channel;
-import org.apache.hbase.thirdparty.io.netty.channel.ChannelDuplexHandler;
-import org.apache.hbase.thirdparty.io.netty.channel.ChannelHandlerContext;
-import org.apache.hbase.thirdparty.io.netty.channel.ChannelOutboundHandlerAdapter;
-import org.apache.hbase.thirdparty.io.netty.channel.ChannelPipeline;
-import org.apache.hbase.thirdparty.io.netty.channel.ChannelPromise;
-import org.apache.hbase.thirdparty.io.netty.channel.SimpleChannelInboundHandler;
-import org.apache.hbase.thirdparty.io.netty.handler.codec.LengthFieldBasedFrameDecoder;
-import org.apache.hbase.thirdparty.io.netty.handler.codec.MessageToByteEncoder;
-import org.apache.hbase.thirdparty.io.netty.handler.codec.protobuf.ProtobufDecoder;
-import org.apache.hbase.thirdparty.io.netty.handler.codec.protobuf.ProtobufVarint32FrameDecoder;
-import org.apache.hbase.thirdparty.io.netty.handler.timeout.IdleStateEvent;
-import org.apache.hbase.thirdparty.io.netty.handler.timeout.IdleStateHandler;
-import org.apache.hbase.thirdparty.io.netty.util.concurrent.Promise;
+import com.xiaomi.infra.thirdparty.com.google.common.base.Charsets;
+import com.xiaomi.infra.thirdparty.com.google.common.base.Throwables;
+import com.xiaomi.infra.thirdparty.com.google.common.collect.ImmutableSet;
+import com.xiaomi.infra.thirdparty.com.google.common.collect.Maps;
+import com.xiaomi.infra.thirdparty.io.netty.buffer.ByteBuf;
+import com.xiaomi.infra.thirdparty.io.netty.buffer.ByteBufOutputStream;
+import com.xiaomi.infra.thirdparty.io.netty.buffer.CompositeByteBuf;
+import com.xiaomi.infra.thirdparty.io.netty.buffer.Unpooled;
+import com.xiaomi.infra.thirdparty.io.netty.channel.Channel;
+import com.xiaomi.infra.thirdparty.io.netty.channel.ChannelDuplexHandler;
+import com.xiaomi.infra.thirdparty.io.netty.channel.ChannelHandlerContext;
+import com.xiaomi.infra.thirdparty.io.netty.channel.ChannelOutboundHandlerAdapter;
+import com.xiaomi.infra.thirdparty.io.netty.channel.ChannelPipeline;
+import com.xiaomi.infra.thirdparty.io.netty.channel.ChannelPromise;
+import com.xiaomi.infra.thirdparty.io.netty.channel.SimpleChannelInboundHandler;
+import com.xiaomi.infra.thirdparty.io.netty.handler.codec.LengthFieldBasedFrameDecoder;
+import com.xiaomi.infra.thirdparty.io.netty.handler.codec.MessageToByteEncoder;
+import com.xiaomi.infra.thirdparty.io.netty.handler.codec.protobuf.ProtobufDecoder;
+import com.xiaomi.infra.thirdparty.io.netty.handler.codec.protobuf.ProtobufVarint32FrameDecoder;
+import com.xiaomi.infra.thirdparty.io.netty.handler.timeout.IdleStateEvent;
+import com.xiaomi.infra.thirdparty.io.netty.handler.timeout.IdleStateHandler;
+import com.xiaomi.infra.thirdparty.io.netty.util.concurrent.Promise;
 
 /**
  * Helper class for adding sasl support for {@link FanOutOneBlockAsyncDFSOutput}.

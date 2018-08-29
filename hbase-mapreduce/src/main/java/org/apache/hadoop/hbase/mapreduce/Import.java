@@ -846,7 +846,7 @@ public class Import extends Configured implements Tool {
         job.setPartitionerClass(CellWritableComparablePartitioner.class);
         job.setNumReduceTasks(regionLocator.getStartKeys().length);
         TableMapReduceUtil.addDependencyJarsForClasses(job.getConfiguration(),
-            org.apache.hbase.thirdparty.com.google.common.base.Preconditions.class);
+            com.xiaomi.infra.thirdparty.com.google.common.base.Preconditions.class);
       }
     } else if (hfileOutPath != null) {
       LOG.info("writing to hfiles for bulk load.");
@@ -861,7 +861,7 @@ public class Import extends Configured implements Tool {
         job.setMapOutputValueClass(MapReduceExtendedCell.class);
         HFileOutputFormat2.configureIncrementalLoad(job, table.getDescriptor(), regionLocator);
         TableMapReduceUtil.addDependencyJarsForClasses(job.getConfiguration(),
-            org.apache.hbase.thirdparty.com.google.common.base.Preconditions.class);
+            com.xiaomi.infra.thirdparty.com.google.common.base.Preconditions.class);
       }
     } else {
       LOG.info("writing directly to table from Mapper.");

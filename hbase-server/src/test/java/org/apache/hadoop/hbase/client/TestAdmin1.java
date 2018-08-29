@@ -1245,7 +1245,7 @@ public class TestAdmin1 {
             HConstants.NO_NONCE);
       ((ClusterConnection) TEST_UTIL.getAdmin().getConnection()).getMaster()
         .mergeTableRegions(null, request);
-    } catch (org.apache.hbase.thirdparty.com.google.protobuf.ServiceException m) {
+    } catch (com.xiaomi.infra.thirdparty.com.google.protobuf.ServiceException m) {
       Throwable t = m.getCause();
       do {
         if (t instanceof MergeRegionException) {

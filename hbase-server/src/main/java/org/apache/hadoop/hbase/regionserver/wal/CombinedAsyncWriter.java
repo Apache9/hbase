@@ -26,7 +26,7 @@ import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.hbase.thirdparty.com.google.common.collect.ImmutableList;
+import com.xiaomi.infra.thirdparty.com.google.common.collect.ImmutableList;
 
 /**
  * An {@link AsyncWriter} wrapper which writes data to a set of {@link AsyncWriter} instances.

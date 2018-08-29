@@ -27,7 +27,7 @@ import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
-import org.apache.hbase.thirdparty.com.google.protobuf.ServiceException;
+import com.xiaomi.infra.thirdparty.com.google.protobuf.ServiceException;
 
 @SuppressWarnings("ThrowableInstanceNeverThrown")
 @Category({ SmallTests.class, ClientTests.class })

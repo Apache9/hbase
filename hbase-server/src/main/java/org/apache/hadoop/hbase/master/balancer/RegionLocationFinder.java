@@ -41,15 +41,15 @@ import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.apache.hbase.thirdparty.com.google.common.cache.CacheBuilder;
-import org.apache.hbase.thirdparty.com.google.common.cache.CacheLoader;
-import org.apache.hbase.thirdparty.com.google.common.cache.LoadingCache;
-import org.apache.hbase.thirdparty.com.google.common.collect.Lists;
-import org.apache.hbase.thirdparty.com.google.common.util.concurrent.Futures;
-import org.apache.hbase.thirdparty.com.google.common.util.concurrent.ListenableFuture;
-import org.apache.hbase.thirdparty.com.google.common.util.concurrent.ListeningExecutorService;
-import org.apache.hbase.thirdparty.com.google.common.util.concurrent.MoreExecutors;
-import org.apache.hbase.thirdparty.com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.xiaomi.infra.thirdparty.com.google.common.cache.CacheBuilder;
+import com.xiaomi.infra.thirdparty.com.google.common.cache.CacheLoader;
+import com.xiaomi.infra.thirdparty.com.google.common.cache.LoadingCache;
+import com.xiaomi.infra.thirdparty.com.google.common.collect.Lists;
+import com.xiaomi.infra.thirdparty.com.google.common.util.concurrent.Futures;
+import com.xiaomi.infra.thirdparty.com.google.common.util.concurrent.ListenableFuture;
+import com.xiaomi.infra.thirdparty.com.google.common.util.concurrent.ListeningExecutorService;
+import com.xiaomi.infra.thirdparty.com.google.common.util.concurrent.MoreExecutors;
+import com.xiaomi.infra.thirdparty.com.google.common.util.concurrent.ThreadFactoryBuilder;
 
 /**
  * This will find where data for a region is located in HDFS. It ranks

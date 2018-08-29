@@ -53,7 +53,7 @@ import org.apache.hadoop.hbase.wal.WALKeyImpl;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 
-import org.apache.hbase.thirdparty.com.google.common.collect.ImmutableMap;
+import com.xiaomi.infra.thirdparty.com.google.common.collect.ImmutableMap;
 
 /**
  * Base class for testing sync replication.

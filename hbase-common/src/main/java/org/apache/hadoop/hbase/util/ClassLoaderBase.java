@@ -22,7 +22,7 @@ import java.net.URLClassLoader;
 
 import org.apache.yetus.audience.InterfaceAudience;
 
-import org.apache.hbase.thirdparty.com.google.common.base.Preconditions;
+import com.xiaomi.infra.thirdparty.com.google.common.base.Preconditions;
 
 /**
  * Base class loader that defines couple shared constants used by sub-classes.

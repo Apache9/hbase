@@ -36,7 +36,7 @@ import org.apache.hadoop.hbase.wal.WAL.Entry;
 import org.apache.hadoop.hbase.wal.WALEdit;
 import org.apache.yetus.audience.InterfaceAudience;
 
-import org.apache.hbase.thirdparty.com.google.protobuf.UnsafeByteOperations;
+import com.xiaomi.infra.thirdparty.com.google.protobuf.UnsafeByteOperations;
 
 import org.apache.hadoop.hbase.shaded.protobuf.generated.AdminProtos;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.AdminProtos.AdminService;
@@ -63,7 +63,7 @@ public class ReplicationProtbufUtil {
     HBaseRpcController controller = new HBaseRpcControllerImpl(p.getSecond());
     try {
       admin.replicateWALEntry(controller, p.getFirst());
-    } catch (org.apache.hbase.thirdparty.com.google.protobuf.ServiceException e) {
+    } catch (com.xiaomi.infra.thirdparty.com.google.protobuf.ServiceException e) {
       throw ProtobufUtil.getServiceException(e);
     }
   }

@@ -17,9 +17,9 @@
  */
 package org.apache.hadoop.hbase.util;
 
-import static org.apache.hbase.thirdparty.com.google.common.base.Preconditions.checkArgument;
-import static org.apache.hbase.thirdparty.com.google.common.base.Preconditions.checkNotNull;
-import static org.apache.hbase.thirdparty.com.google.common.base.Preconditions.checkPositionIndex;
+import static com.xiaomi.infra.thirdparty.com.google.common.base.Preconditions.checkArgument;
+import static com.xiaomi.infra.thirdparty.com.google.common.base.Preconditions.checkNotNull;
+import static com.xiaomi.infra.thirdparty.com.google.common.base.Preconditions.checkPositionIndex;
 
 import java.io.DataInput;
 import java.io.DataOutput;
@@ -50,8 +50,8 @@ import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.hbase.thirdparty.com.google.common.annotations.VisibleForTesting;
-import org.apache.hbase.thirdparty.org.apache.commons.collections4.CollectionUtils;
+import com.xiaomi.infra.thirdparty.com.google.common.annotations.VisibleForTesting;
+import com.xiaomi.infra.thirdparty.org.apache.commons.collections4.CollectionUtils;
 
 import com.google.protobuf.ByteString;
 

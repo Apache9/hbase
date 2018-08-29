@@ -25,7 +25,7 @@ import org.apache.hadoop.hbase.wal.WAL.Entry;
 import org.apache.hadoop.hbase.wal.WALEdit;
 import org.apache.yetus.audience.InterfaceAudience;
 
-import org.apache.hbase.thirdparty.com.google.common.base.Predicate;
+import com.xiaomi.infra.thirdparty.com.google.common.base.Predicate;
 
 /**
  * Keeps KVs that are scoped other than local

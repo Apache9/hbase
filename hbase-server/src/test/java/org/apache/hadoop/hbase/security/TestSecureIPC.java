@@ -71,8 +71,8 @@ import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 import org.mockito.Mockito;
 
-import org.apache.hbase.thirdparty.com.google.common.collect.Lists;
-import org.apache.hbase.thirdparty.com.google.protobuf.BlockingService;
+import com.xiaomi.infra.thirdparty.com.google.common.collect.Lists;
+import com.xiaomi.infra.thirdparty.com.google.protobuf.BlockingService;
 
 import org.apache.hadoop.hbase.shaded.ipc.protobuf.generated.TestProtos;
 import org.apache.hadoop.hbase.shaded.ipc.protobuf.generated.TestRpcServiceProtos.TestProtobufRpcProto.BlockingInterface;
@@ -322,7 +322,7 @@ public class TestSecureIPC {
               .getMessage();
           assertEquals(input, result);
         }
-      } catch (org.apache.hbase.thirdparty.com.google.protobuf.ServiceException e) {
+      } catch (com.xiaomi.infra.thirdparty.com.google.protobuf.ServiceException e) {
         throw new RuntimeException(e);
       }
     }

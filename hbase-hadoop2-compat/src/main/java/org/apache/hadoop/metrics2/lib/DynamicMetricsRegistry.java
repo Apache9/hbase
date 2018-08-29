@@ -31,8 +31,8 @@ import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.hbase.thirdparty.com.google.common.base.MoreObjects;
-import org.apache.hbase.thirdparty.com.google.common.collect.Maps;
+import com.xiaomi.infra.thirdparty.com.google.common.base.MoreObjects;
+import com.xiaomi.infra.thirdparty.com.google.common.collect.Maps;
 
 /**
  * An optional metrics registry class for creating and maintaining a

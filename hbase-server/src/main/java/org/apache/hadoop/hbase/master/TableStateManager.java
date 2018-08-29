@@ -44,7 +44,7 @@ import org.apache.zookeeper.KeeperException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.hbase.thirdparty.com.google.common.collect.Sets;
+import com.xiaomi.infra.thirdparty.com.google.common.collect.Sets;
 
 /**
  * This is a helper class used to manage table states. This class uses hbase:meta as its store for

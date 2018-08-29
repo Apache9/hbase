@@ -65,7 +65,7 @@ import org.junit.rules.TestName;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
-import org.apache.hbase.thirdparty.com.google.common.collect.ImmutableMap;
+import com.xiaomi.infra.thirdparty.com.google.common.collect.ImmutableMap;
 
 @Category({ ReplicationTests.class, MediumTests.class })
 public class TestSerialReplicationChecker {

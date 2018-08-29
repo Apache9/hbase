@@ -20,7 +20,7 @@ package org.apache.hadoop.hbase.net;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.yetus.audience.InterfaceAudience;
 
-import org.apache.hbase.thirdparty.com.google.common.net.HostAndPort;
+import com.xiaomi.infra.thirdparty.com.google.common.net.HostAndPort;
 
 /**
  * An immutable type to hold a hostname and port combo, like an Endpoint

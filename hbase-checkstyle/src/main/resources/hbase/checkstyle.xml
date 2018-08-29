@@ -67,7 +67,7 @@
     http://checkstyle.sourceforge.net/config_imports.html -->
     <module name="AvoidStarImport"/>
     <module name="ImportOrder">
-      <property name="groups" value="*,org.apache.hbase.thirdparty,org.apache.hadoop.hbase.shaded"/>
+      <property name="groups" value="*,com.xiaomi.infra.thirdparty,org.apache.hadoop.hbase.shaded"/>
       <property name="option" value="top" />
       <property name="ordered" value="true"/>
       <property name="sortStaticImportsAlphabetically" value="true"/>
@@ -94,7 +94,8 @@
           org.apache.hadoop.classification,
           org.apache.htrace.shaded,
           org.codehaus.jackson,
-          org.htrace"/>
+	  org.htrace,
+	  org.apache.hbase.thirdparty"/>
       <property name="illegalClasses" value="
           org.apache.commons.logging.Log,
           org.apache.commons.logging.LogFactory"/>

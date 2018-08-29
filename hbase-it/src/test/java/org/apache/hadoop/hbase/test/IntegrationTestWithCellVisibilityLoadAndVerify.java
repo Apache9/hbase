@@ -58,7 +58,7 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.util.ToolRunner;
 import org.junit.experimental.categories.Category;
 
-import org.apache.hbase.thirdparty.org.apache.commons.cli.CommandLine;
+import com.xiaomi.infra.thirdparty.org.apache.commons.cli.CommandLine;
 
 /**
  * A large test which loads a lot of data with cell visibility, and verifies the data. Test adds 2

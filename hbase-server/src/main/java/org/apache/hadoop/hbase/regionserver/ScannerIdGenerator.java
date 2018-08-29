@@ -18,7 +18,7 @@
  */
 package org.apache.hadoop.hbase.regionserver;
 
-import org.apache.hbase.thirdparty.com.google.common.hash.Hashing;
+import com.xiaomi.infra.thirdparty.com.google.common.hash.Hashing;
 
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;

@@ -22,7 +22,7 @@ import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.hbase.BaseConfigurable;
 import org.apache.yetus.audience.InterfaceAudience;
 
-import org.apache.hbase.thirdparty.com.google.common.collect.Iterables;
+import com.xiaomi.infra.thirdparty.com.google.common.collect.Iterables;
 
 /**
  * Base class for file cleaners which allows subclasses to implement a simple

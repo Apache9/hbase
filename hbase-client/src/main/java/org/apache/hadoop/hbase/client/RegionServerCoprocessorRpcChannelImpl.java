@@ -54,7 +54,7 @@ public class RegionServerCoprocessorRpcChannelImpl implements RpcChannel {
     stub.execRegionServerService(
       controller,
       csr,
-      new org.apache.hbase.thirdparty.com.google.protobuf.RpcCallback<CoprocessorServiceResponse>() {
+      new com.xiaomi.infra.thirdparty.com.google.protobuf.RpcCallback<CoprocessorServiceResponse>() {
 
         @Override
         public void run(CoprocessorServiceResponse resp) {

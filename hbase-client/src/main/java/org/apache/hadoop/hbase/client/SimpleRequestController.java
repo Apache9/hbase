@@ -18,7 +18,7 @@
  */
 package org.apache.hadoop.hbase.client;
 
-import org.apache.hbase.thirdparty.com.google.common.annotations.VisibleForTesting;
+import com.xiaomi.infra.thirdparty.com.google.common.annotations.VisibleForTesting;
 import java.io.InterruptedIOException;
 import java.util.ArrayList;
 import java.util.Collection;

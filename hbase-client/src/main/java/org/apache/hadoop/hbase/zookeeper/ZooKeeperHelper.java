@@ -22,7 +22,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.hadoop.hbase.ZooKeeperConnectionException;
 import org.apache.hadoop.hbase.util.Threads;
-import org.apache.hbase.thirdparty.com.google.common.base.Stopwatch;
+import com.xiaomi.infra.thirdparty.com.google.common.base.Stopwatch;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.apache.zookeeper.ZooKeeper;
 

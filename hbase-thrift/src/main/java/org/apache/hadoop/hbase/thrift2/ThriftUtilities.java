@@ -72,7 +72,7 @@ import org.apache.hadoop.hbase.thrift2.generated.TTimeRange;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.yetus.audience.InterfaceAudience;
 
-import org.apache.hbase.thirdparty.org.apache.commons.collections4.MapUtils;
+import com.xiaomi.infra.thirdparty.org.apache.commons.collections4.MapUtils;
 
 @InterfaceAudience.Private
 public class ThriftUtilities {

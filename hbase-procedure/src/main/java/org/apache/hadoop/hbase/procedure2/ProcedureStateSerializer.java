@@ -21,7 +21,7 @@ import java.io.IOException;
 
 import org.apache.yetus.audience.InterfaceAudience;
 
-import org.apache.hbase.thirdparty.com.google.protobuf.Message;
+import com.xiaomi.infra.thirdparty.com.google.protobuf.Message;
 
 @InterfaceAudience.Private
 public interface ProcedureStateSerializer {

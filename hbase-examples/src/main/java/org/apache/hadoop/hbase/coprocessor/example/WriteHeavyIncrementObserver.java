@@ -53,7 +53,7 @@ import org.apache.hadoop.hbase.regionserver.compactions.CompactionRequest;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.yetus.audience.InterfaceAudience;
 
-import org.apache.hbase.thirdparty.com.google.common.math.IntMath;
+import com.xiaomi.infra.thirdparty.com.google.common.math.IntMath;
 
 /**
  * An example for implementing a counter that reads is much less than writes, i.e, write heavy.

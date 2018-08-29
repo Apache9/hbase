@@ -20,7 +20,7 @@ package org.apache.hadoop.hbase.metrics;
 
 import org.apache.yetus.audience.InterfaceAudience;
 
-import org.apache.hbase.thirdparty.com.google.common.base.Preconditions;
+import com.xiaomi.infra.thirdparty.com.google.common.base.Preconditions;
 
 /**
  * Container class for commonly collected metrics for most operations. Instantiate this class to

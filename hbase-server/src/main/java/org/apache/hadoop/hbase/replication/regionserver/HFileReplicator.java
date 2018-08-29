@@ -10,7 +10,7 @@
  */
 package org.apache.hadoop.hbase.replication.regionserver;
 
-import org.apache.hbase.thirdparty.com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.xiaomi.infra.thirdparty.com.google.common.util.concurrent.ThreadFactoryBuilder;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;

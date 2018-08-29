@@ -36,7 +36,7 @@ import org.junit.experimental.categories.Category;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.hbase.thirdparty.com.google.common.collect.ImmutableSet;
+import com.xiaomi.infra.thirdparty.com.google.common.collect.ImmutableSet;
 
 @Category({SecurityTests.class, SmallTests.class})
 public class TestUser {

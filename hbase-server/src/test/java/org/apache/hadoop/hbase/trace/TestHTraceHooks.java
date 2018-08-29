@@ -44,7 +44,7 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.rules.TestName;
 
-import org.apache.hbase.thirdparty.com.google.common.collect.Sets;
+import com.xiaomi.infra.thirdparty.com.google.common.collect.Sets;
 
 @Ignore // We don't support htrace in hbase-2.0.0 and this flakey is a little flakey.
 @Category({MiscTests.class, MediumTests.class})

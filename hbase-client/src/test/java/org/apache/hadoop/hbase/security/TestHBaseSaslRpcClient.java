@@ -57,7 +57,7 @@ import org.junit.experimental.categories.Category;
 import org.junit.rules.ExpectedException;
 import org.mockito.Mockito;
 
-import org.apache.hbase.thirdparty.com.google.common.base.Strings;
+import com.xiaomi.infra.thirdparty.com.google.common.base.Strings;
 
 @Category({SecurityTests.class, SmallTests.class})
 public class TestHBaseSaslRpcClient {

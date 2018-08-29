@@ -21,7 +21,7 @@ package org.apache.hadoop.hbase.tool.coprocessor;
 
 import org.apache.yetus.audience.InterfaceAudience;
 
-import org.apache.hbase.thirdparty.com.google.common.base.MoreObjects;
+import com.xiaomi.infra.thirdparty.com.google.common.base.MoreObjects;
 
 @InterfaceAudience.Private
 public class CoprocessorViolation {

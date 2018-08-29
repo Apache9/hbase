@@ -141,7 +141,7 @@ public final class TableName implements Comparable<TableName> {
     }
 
     int namespaceDelimIndex =
-      org.apache.hbase.thirdparty.com.google.common.primitives.Bytes.lastIndexOf(tableName,
+      com.xiaomi.infra.thirdparty.com.google.common.primitives.Bytes.lastIndexOf(tableName,
         (byte) NAMESPACE_DELIM);
     if (namespaceDelimIndex < 0){
       isLegalTableQualifierName(tableName);
@@ -436,7 +436,7 @@ public final class TableName implements Comparable<TableName> {
     }
 
     int namespaceDelimIndex =
-      org.apache.hbase.thirdparty.com.google.common.primitives.Bytes.lastIndexOf(fullName,
+      com.xiaomi.infra.thirdparty.com.google.common.primitives.Bytes.lastIndexOf(fullName,
         (byte) NAMESPACE_DELIM);
 
     if (namespaceDelimIndex < 0) {

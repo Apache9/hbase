@@ -41,10 +41,10 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.mockito.Mockito;
 
-import org.apache.hbase.thirdparty.com.google.common.collect.ImmutableList;
-import org.apache.hbase.thirdparty.com.google.common.collect.ImmutableMap;
-import org.apache.hbase.thirdparty.com.google.common.collect.Lists;
-import org.apache.hbase.thirdparty.com.google.common.collect.Maps;
+import com.xiaomi.infra.thirdparty.com.google.common.collect.ImmutableList;
+import com.xiaomi.infra.thirdparty.com.google.common.collect.ImmutableMap;
+import com.xiaomi.infra.thirdparty.com.google.common.collect.Lists;
+import com.xiaomi.infra.thirdparty.com.google.common.collect.Maps;
 
 @Category({ SmallTests.class })
 public class TestMultiTableSnapshotInputFormatImpl {
@@ -135,7 +135,7 @@ public class TestMultiTableSnapshotInputFormatImpl {
 
     @Override
     public String toString() {
-      return org.apache.hbase.thirdparty.com.google.common.base.MoreObjects.
+      return com.xiaomi.infra.thirdparty.com.google.common.base.MoreObjects.
         toStringHelper(this).add("startRow", startRow)
           .add("stopRow", stopRow).toString();
     }

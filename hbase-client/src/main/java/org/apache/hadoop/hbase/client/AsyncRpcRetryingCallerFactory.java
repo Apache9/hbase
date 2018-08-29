@@ -17,11 +17,11 @@
  */
 package org.apache.hadoop.hbase.client;
 
-import static org.apache.hbase.thirdparty.com.google.common.base.Preconditions.checkArgument;
-import static org.apache.hbase.thirdparty.com.google.common.base.Preconditions.checkNotNull;
+import static com.xiaomi.infra.thirdparty.com.google.common.base.Preconditions.checkArgument;
+import static com.xiaomi.infra.thirdparty.com.google.common.base.Preconditions.checkNotNull;
 import static org.apache.hadoop.hbase.client.ConnectionUtils.retries2Attempts;
 
-import org.apache.hbase.thirdparty.io.netty.util.HashedWheelTimer;
+import com.xiaomi.infra.thirdparty.io.netty.util.HashedWheelTimer;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;

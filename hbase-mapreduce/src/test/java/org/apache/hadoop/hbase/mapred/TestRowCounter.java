@@ -43,7 +43,7 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.mockito.Mockito;
 
-import org.apache.hbase.thirdparty.com.google.common.base.Joiner;
+import com.xiaomi.infra.thirdparty.com.google.common.base.Joiner;
 
 @Category({MapReduceTests.class, SmallTests.class})
 public class TestRowCounter {

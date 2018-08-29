@@ -27,7 +27,7 @@ import org.apache.hadoop.fs.PositionedReadable;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.yetus.audience.InterfaceAudience;
 
-import org.apache.hbase.thirdparty.com.google.common.annotations.VisibleForTesting;
+import com.xiaomi.infra.thirdparty.com.google.common.annotations.VisibleForTesting;
 
 /**
  * The ThrottleInputStream provides bandwidth throttling on a specified

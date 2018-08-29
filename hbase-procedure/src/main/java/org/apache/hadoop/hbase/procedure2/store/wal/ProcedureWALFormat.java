@@ -18,7 +18,7 @@
 
 package org.apache.hadoop.hbase.procedure2.store.wal;
 
-import org.apache.hbase.thirdparty.com.google.protobuf.InvalidProtocolBufferException;
+import com.xiaomi.infra.thirdparty.com.google.protobuf.InvalidProtocolBufferException;
 
 import java.io.IOException;
 import java.io.InputStream;

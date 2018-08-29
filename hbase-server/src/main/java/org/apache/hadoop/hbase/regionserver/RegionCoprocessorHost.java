@@ -86,8 +86,8 @@ import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.hbase.thirdparty.org.apache.commons.collections4.map.AbstractReferenceMap;
-import org.apache.hbase.thirdparty.org.apache.commons.collections4.map.ReferenceMap;
+import com.xiaomi.infra.thirdparty.org.apache.commons.collections4.map.AbstractReferenceMap;
+import com.xiaomi.infra.thirdparty.org.apache.commons.collections4.map.ReferenceMap;
 
 /**
  * Implements the coprocessor environment and runtime support for coprocessors

@@ -58,7 +58,7 @@ import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.hbase.thirdparty.com.google.common.util.concurrent.AtomicLongMap;
+import com.xiaomi.infra.thirdparty.com.google.common.util.concurrent.AtomicLongMap;
 
 /**
  * Provides information about the existing states of replication, replication peers and queues.

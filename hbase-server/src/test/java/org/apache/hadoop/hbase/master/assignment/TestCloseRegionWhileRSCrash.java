@@ -48,10 +48,10 @@ import org.junit.experimental.categories.Category;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.hbase.thirdparty.com.google.gson.JsonArray;
-import org.apache.hbase.thirdparty.com.google.gson.JsonElement;
-import org.apache.hbase.thirdparty.com.google.gson.JsonObject;
-import org.apache.hbase.thirdparty.com.google.gson.JsonParser;
+import com.xiaomi.infra.thirdparty.com.google.gson.JsonArray;
+import com.xiaomi.infra.thirdparty.com.google.gson.JsonElement;
+import com.xiaomi.infra.thirdparty.com.google.gson.JsonObject;
+import com.xiaomi.infra.thirdparty.com.google.gson.JsonParser;
 
 /**
  * Confirm that we will do backoff when retrying on closing a region, to avoid consuming all the

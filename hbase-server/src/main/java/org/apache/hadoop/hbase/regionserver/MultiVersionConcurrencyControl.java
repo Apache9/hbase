@@ -18,8 +18,8 @@
  */
 package org.apache.hadoop.hbase.regionserver;
 
-import org.apache.hbase.thirdparty.com.google.common.annotations.VisibleForTesting;
-import org.apache.hbase.thirdparty.com.google.common.base.MoreObjects;
+import com.xiaomi.infra.thirdparty.com.google.common.annotations.VisibleForTesting;
+import com.xiaomi.infra.thirdparty.com.google.common.base.MoreObjects;
 
 import java.util.LinkedList;
 import java.util.concurrent.atomic.AtomicLong;

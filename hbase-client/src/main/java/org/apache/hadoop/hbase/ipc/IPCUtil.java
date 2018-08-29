@@ -18,9 +18,9 @@
 package org.apache.hadoop.hbase.ipc;
 
 import org.apache.hadoop.hbase.exceptions.ConnectionClosedException;
-import org.apache.hbase.thirdparty.com.google.common.base.Preconditions;
-import org.apache.hbase.thirdparty.com.google.protobuf.CodedOutputStream;
-import org.apache.hbase.thirdparty.com.google.protobuf.Message;
+import com.xiaomi.infra.thirdparty.com.google.common.base.Preconditions;
+import com.xiaomi.infra.thirdparty.com.google.protobuf.CodedOutputStream;
+import com.xiaomi.infra.thirdparty.com.google.protobuf.Message;
 
 import java.io.IOException;
 import java.io.OutputStream;

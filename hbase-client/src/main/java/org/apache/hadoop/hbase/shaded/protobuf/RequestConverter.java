@@ -62,7 +62,7 @@ import org.apache.hadoop.hbase.util.Pair;
 import org.apache.hadoop.security.token.Token;
 import org.apache.yetus.audience.InterfaceAudience;
 
-import org.apache.hbase.thirdparty.com.google.protobuf.UnsafeByteOperations;
+import com.xiaomi.infra.thirdparty.com.google.protobuf.UnsafeByteOperations;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.AdminProtos.ClearCompactionQueuesRequest;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.AdminProtos.ClearRegionBlockCacheRequest;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.AdminProtos.CompactRegionRequest;
@@ -671,8 +671,8 @@ public final class RequestConverter {
       } else if (row instanceof RegionCoprocessorServiceExec) {
         RegionCoprocessorServiceExec exec = (RegionCoprocessorServiceExec) row;
         // DUMB COPY!!! FIX!!! Done to copy from c.g.p.ByteString to shaded ByteString.
-        org.apache.hbase.thirdparty.com.google.protobuf.ByteString value =
-         org.apache.hbase.thirdparty.com.google.protobuf.UnsafeByteOperations.unsafeWrap(
+        com.xiaomi.infra.thirdparty.com.google.protobuf.ByteString value =
+         com.xiaomi.infra.thirdparty.com.google.protobuf.UnsafeByteOperations.unsafeWrap(
              exec.getRequest().toByteArray());
         if (cpBuilder == null) {
           cpBuilder = ClientProtos.CoprocessorServiceCall.newBuilder();
@@ -794,8 +794,8 @@ public final class RequestConverter {
       } else if (row instanceof RegionCoprocessorServiceExec) {
         RegionCoprocessorServiceExec exec = (RegionCoprocessorServiceExec) row;
         // DUMB COPY!!! FIX!!! Done to copy from c.g.p.ByteString to shaded ByteString.
-        org.apache.hbase.thirdparty.com.google.protobuf.ByteString value =
-         org.apache.hbase.thirdparty.com.google.protobuf.UnsafeByteOperations.unsafeWrap(
+        com.xiaomi.infra.thirdparty.com.google.protobuf.ByteString value =
+         com.xiaomi.infra.thirdparty.com.google.protobuf.UnsafeByteOperations.unsafeWrap(
              exec.getRequest().toByteArray());
         if (cpBuilder == null) {
           cpBuilder = ClientProtos.CoprocessorServiceCall.newBuilder();

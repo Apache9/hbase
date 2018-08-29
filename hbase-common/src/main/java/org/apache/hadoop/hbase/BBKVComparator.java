@@ -20,7 +20,7 @@ package org.apache.hadoop.hbase;
 import java.util.Comparator;
 
 import org.apache.hadoop.hbase.util.ByteBufferUtils;
-import org.apache.hbase.thirdparty.com.google.common.primitives.Longs;
+import com.xiaomi.infra.thirdparty.com.google.common.primitives.Longs;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

@@ -27,9 +27,9 @@ import org.apache.hadoop.metrics2.MetricsTag;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.apache.yetus.audience.InterfaceStability;
 
-import org.apache.hbase.thirdparty.com.google.common.cache.CacheBuilder;
-import org.apache.hbase.thirdparty.com.google.common.cache.CacheLoader;
-import org.apache.hbase.thirdparty.com.google.common.cache.LoadingCache;
+import com.xiaomi.infra.thirdparty.com.google.common.cache.CacheBuilder;
+import com.xiaomi.infra.thirdparty.com.google.common.cache.CacheLoader;
+import com.xiaomi.infra.thirdparty.com.google.common.cache.LoadingCache;
 
 /**
  * Helpers to create interned metrics info

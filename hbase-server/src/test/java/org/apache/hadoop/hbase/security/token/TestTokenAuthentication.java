@@ -92,9 +92,9 @@ import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.hbase.thirdparty.com.google.protobuf.Descriptors.MethodDescriptor;
-import org.apache.hbase.thirdparty.com.google.protobuf.Descriptors.ServiceDescriptor;
-import org.apache.hbase.thirdparty.com.google.protobuf.Message;
+import com.xiaomi.infra.thirdparty.com.google.protobuf.Descriptors.MethodDescriptor;
+import com.xiaomi.infra.thirdparty.com.google.protobuf.Descriptors.ServiceDescriptor;
+import com.xiaomi.infra.thirdparty.com.google.protobuf.Message;
 
 /**
  * Tests for authentication token creation and usage
@@ -156,13 +156,13 @@ public class TestTokenAuthentication {
       // worked fine before we shaded PB. Now we need these proxies.
       final BlockingService service =
         AuthenticationProtos.AuthenticationService.newReflectiveBlockingService(this);
-      final org.apache.hbase.thirdparty.com.google.protobuf.BlockingService proxy =
-        new org.apache.hbase.thirdparty.com.google.protobuf.BlockingService() {
+      final com.xiaomi.infra.thirdparty.com.google.protobuf.BlockingService proxy =
+        new com.xiaomi.infra.thirdparty.com.google.protobuf.BlockingService() {
           @Override
           public Message callBlockingMethod(MethodDescriptor md,
-              org.apache.hbase.thirdparty.com.google.protobuf.RpcController controller,
+              com.xiaomi.infra.thirdparty.com.google.protobuf.RpcController controller,
               Message param)
-              throws org.apache.hbase.thirdparty.com.google.protobuf.ServiceException {
+              throws com.xiaomi.infra.thirdparty.com.google.protobuf.ServiceException {
             com.google.protobuf.Descriptors.MethodDescriptor methodDescriptor =
               service.getDescriptorForType().findMethodByName(md.getName());
             com.google.protobuf.Message request = service.getRequestPrototype(methodDescriptor);
@@ -171,7 +171,7 @@ public class TestTokenAuthentication {
             try {
               response = service.callBlockingMethod(methodDescriptor, null, request);
             } catch (ServiceException e) {
-              throw new org.apache.hbase.thirdparty.com.google.protobuf.ServiceException(e);
+              throw new com.xiaomi.infra.thirdparty.com.google.protobuf.ServiceException(e);
             }
             return null;// Convert 'response'.
           }
@@ -470,7 +470,7 @@ public class TestTokenAuthentication {
 //          // non-shaded controller this CPEP is providing. This is because this test does a neat
 //          // little trick of testing the CPEP Service by inserting it as RpcServer Service. This
 //          // worked fine before we shaded PB. Now we need these proxies.
-//          final org.apache.hbase.thirdparty.com.google.protobuf.BlockingRpcChannel channel =
+//          final com.xiaomi.infra.thirdparty.com.google.protobuf.BlockingRpcChannel channel =
 //              rpcClient.createBlockingRpcChannel(sn, User.getCurrent(), HConstants.DEFAULT_HBASE_RPC_TIMEOUT);
 //          AuthenticationProtos.AuthenticationService.BlockingInterface stub =
 //              AuthenticationProtos.AuthenticationService.newBlockingStub(channel);
@@ -518,7 +518,7 @@ public class TestTokenAuthentication {
   /**
    * A copy of the BlockingRpcCallback class for use locally. Only difference is that it makes
    * use of non-shaded protobufs; i.e. refers to com.google.protobuf.* rather than to
-   * org.apache.hbase.thirdparty.com.google.protobuf.*
+   * com.xiaomi.infra.thirdparty.com.google.protobuf.*
    */
   private static class NonShadedBlockingRpcCallback<R> implements
       com.google.protobuf.RpcCallback<R> {

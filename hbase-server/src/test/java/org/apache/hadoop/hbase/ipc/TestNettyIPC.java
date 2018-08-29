@@ -40,11 +40,11 @@ import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
-import org.apache.hbase.thirdparty.io.netty.channel.Channel;
-import org.apache.hbase.thirdparty.io.netty.channel.epoll.EpollEventLoopGroup;
-import org.apache.hbase.thirdparty.io.netty.channel.epoll.EpollSocketChannel;
-import org.apache.hbase.thirdparty.io.netty.channel.nio.NioEventLoopGroup;
-import org.apache.hbase.thirdparty.io.netty.channel.socket.nio.NioSocketChannel;
+import com.xiaomi.infra.thirdparty.io.netty.channel.Channel;
+import com.xiaomi.infra.thirdparty.io.netty.channel.epoll.EpollEventLoopGroup;
+import com.xiaomi.infra.thirdparty.io.netty.channel.epoll.EpollSocketChannel;
+import com.xiaomi.infra.thirdparty.io.netty.channel.nio.NioEventLoopGroup;
+import com.xiaomi.infra.thirdparty.io.netty.channel.socket.nio.NioSocketChannel;
 
 @RunWith(Parameterized.class)
 @Category({ RPCTests.class, SmallTests.class })
