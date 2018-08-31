@@ -281,7 +281,7 @@ public class TestMobCompactor {
   @Test
   public void testMinorCompaction() throws Exception {
     resetConf();
-    int mergeSize = 5000;
+    int mergeSize = 5100;
     // change the mob compaction merge size
     conf.setLong(MobConstants.MOB_COMPACTION_MERGEABLE_THRESHOLD, mergeSize);
 

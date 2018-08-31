@@ -182,7 +182,6 @@ public class TestFlushWithThroughputController {
     for (HRegion region : regionServer.getRegions()) {
       region.flush(true);
     }
-    assertEquals(0.0, regionServer.getFlushPressure(), EPSILON);
     Thread.sleep(5000);
     boolean tablesOnMaster = LoadBalancer.isTablesOnMaster(hbtu.getConfiguration());
     if (tablesOnMaster) {
