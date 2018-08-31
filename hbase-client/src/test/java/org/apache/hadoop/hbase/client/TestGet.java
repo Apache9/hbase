@@ -43,6 +43,7 @@ import org.apache.hadoop.hbase.security.visibility.Authorizations;
 import org.apache.hadoop.hbase.testclassification.ClientTests;
 import org.apache.hadoop.hbase.testclassification.SmallTests;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hbase.util.DynamicClassLoader;
 import org.junit.Assert;
 import org.junit.ClassRule;
 import org.junit.Test;
@@ -206,6 +207,8 @@ public class TestGet {
 
   @Test
   public void testDynamicFilter() throws Exception {
+    ProtobufUtil.conf.setBoolean(DynamicClassLoader.DYNAMIC_JARS_OPTIONAL_CONF_KEY, true);
+
     Configuration conf = HBaseConfiguration.create();
     String localPath = conf.get("hbase.local.dir")
       + File.separator + "jars" + File.separator;
@@ -246,6 +249,9 @@ public class TestGet {
     assertEquals("test.MockFilter", filters.get(0).getClass().getName());
     assertEquals("my.MockFilter", filters.get(1).getClass().getName());
     assertTrue(filters.get(2) instanceof KeyOnlyFilter);
+
+    ProtobufUtil.conf.setBoolean(DynamicClassLoader.DYNAMIC_JARS_OPTIONAL_CONF_KEY,
+        DynamicClassLoader.DYNAMIC_JARS_OPTIONAL_DEFAULT);
   }
 
   @Test

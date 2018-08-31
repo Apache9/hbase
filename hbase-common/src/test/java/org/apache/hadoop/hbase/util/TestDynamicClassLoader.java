@@ -49,8 +49,10 @@ public class TestDynamicClassLoader {
   private Configuration conf;
 
   static {
-    TEST_UTIL.getConfiguration().set(
-        "hbase.dynamic.jars.dir", TEST_UTIL.getDataTestDir().toString());
+    TEST_UTIL.getConfiguration()
+        .set(DynamicClassLoader.DYNAMIC_JARS_DIR_KEY, TEST_UTIL.getDataTestDir().toString());
+    TEST_UTIL.getConfiguration()
+        .setBoolean(DynamicClassLoader.DYNAMIC_JARS_OPTIONAL_CONF_KEY, true);
   }
 
   @Before

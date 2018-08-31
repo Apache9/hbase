@@ -248,6 +248,10 @@ public final class ProtobufUtil {
     EMPTY_RESULT_PB_STALE = builder.build();
   }
 
+
+  @VisibleForTesting
+  public static Configuration conf = HBaseConfiguration.create();
+
   private static volatile boolean classLoaderLoaded = false;
 
   /**
@@ -258,7 +262,6 @@ public final class ProtobufUtil {
 
     static {
       ClassLoader parent = ProtobufUtil.class.getClassLoader();
-      Configuration conf = HBaseConfiguration.create();
       CLASS_LOADER = AccessController.doPrivileged((PrivilegedAction<ClassLoader>)
         () -> new DynamicClassLoader(conf, parent)
       );

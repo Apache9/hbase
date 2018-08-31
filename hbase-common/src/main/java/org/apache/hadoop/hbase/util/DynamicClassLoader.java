@@ -64,10 +64,10 @@ public class DynamicClassLoader extends ClassLoaderBase {
   private static final String DYNAMIC_JARS_DIR = File.separator
     + "jars" + File.separator;
 
-  private static final String DYNAMIC_JARS_DIR_KEY = "hbase.dynamic.jars.dir";
+  public static final String DYNAMIC_JARS_DIR_KEY = "hbase.dynamic.jars.dir";
 
-  private static final String DYNAMIC_JARS_OPTIONAL_CONF_KEY = "hbase.use.dynamic.jars";
-  private static final boolean DYNAMIC_JARS_OPTIONAL_DEFAULT = false;
+  public static final String DYNAMIC_JARS_OPTIONAL_CONF_KEY = "hbase.use.dynamic.jars";
+  public static final boolean DYNAMIC_JARS_OPTIONAL_DEFAULT = false;
 
   private boolean useDynamicJars;
 
