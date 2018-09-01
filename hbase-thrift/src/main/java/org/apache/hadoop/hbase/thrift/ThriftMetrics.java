@@ -25,6 +25,7 @@ import org.apache.hadoop.hbase.CompatibilitySingletonFactory;
 import org.apache.hadoop.hbase.MultiActionResultTooLarge;
 import org.apache.hadoop.hbase.NotServingRegionException;
 import org.apache.hadoop.hbase.RegionTooBusyException;
+import org.apache.hadoop.hbase.TooManyRegionScannersException;
 import org.apache.hadoop.hbase.UnknownScannerException;
 import org.apache.hadoop.hbase.exceptions.ClientExceptionsUtil;
 import org.apache.hadoop.hbase.exceptions.FailedSanityCheckException;
@@ -143,6 +144,8 @@ public class ThriftMetrics  {
         source.multiActionTooLargeException();
       } else if (throwable instanceof CallQueueTooBigException) {
         source.callQueueTooBigException();
+      } else if (throwable instanceof TooManyRegionScannersException) {
+        source.tooManyRegionScannersException();
       }
     }
   }
