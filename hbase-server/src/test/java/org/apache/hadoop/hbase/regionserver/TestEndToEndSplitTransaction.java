@@ -113,7 +113,7 @@ public class TestEndToEndSplitTransaction {
     byte[] fam = Bytes.toBytes("cf_split");
 
     TableName tableName = TableName.valueOf("CanSplitTable");
-    Table source = TEST_UTIL.getConnection().getTable(tableName);
+    Table source = null;
     Admin admin = TEST_UTIL.getAdmin();
     Map<String, StoreFileReader> scanner = Maps.newHashMap();
 
@@ -122,6 +122,7 @@ public class TestEndToEndSplitTransaction {
           .setColumnFamily(ColumnFamilyDescriptorBuilder.of(fam)).build();
 
       admin.createTable(htd);
+      source = TEST_UTIL.getConnection().getTable(tableName);
       TEST_UTIL.loadTable(source, fam);
       List<HRegion> regions = TEST_UTIL.getHBaseCluster().getRegions(tableName);
       regions.get(0).forceSplit(null);
