@@ -45,7 +45,6 @@ import org.apache.hadoop.mapreduce.Counter;
 import org.apache.hadoop.mapreduce.Counters;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
-import org.junit.Assert;
 import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -161,7 +160,6 @@ public class TestTableMapReduce extends TestTableMapReduceBase {
 
   @Test(expected = TableNotEnabledException.class)
   public void testWritingToDisabledTable() throws IOException {
-
     try (Admin admin = UTIL.getConnection().getAdmin();
       Table table = UTIL.getConnection().getTable(TABLE_FOR_NEGATIVE_TESTS)) {
       admin.disableTable(table.getName());
@@ -170,19 +168,12 @@ public class TestTableMapReduce extends TestTableMapReduceBase {
     }
   }
 
-  @Test
+  @Test(expected = TableNotFoundException.class)
   public void testWritingToNonExistentTable() throws IOException {
-    boolean cachedTableNotFoundException = false;
     try (Table table = ConnectionUtils.getRawTable(UTIL.getConnection(),
       TableName.valueOf("table-does-not-exist"))) {
       runTestOnTable(table);
       fail("Should not have reached here, should have thrown an exception");
-    } catch (RuntimeException re) {
-      Throwable t = re.getCause();
-      if (t instanceof TableNotFoundException) {
-        cachedTableNotFoundException = true;
-      }
     }
-    Assert.assertTrue(cachedTableNotFoundException);
   }
 }

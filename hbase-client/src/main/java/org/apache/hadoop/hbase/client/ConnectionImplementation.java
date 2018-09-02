@@ -25,6 +25,7 @@ import static org.apache.hadoop.hbase.client.MetricsConnection.CLIENT_SIDE_METRI
 import static org.apache.hadoop.hbase.util.CollectionUtils.computeIfAbsent;
 import static org.apache.hadoop.hbase.util.CollectionUtils.computeIfAbsentEx;
 
+import com.google.common.util.concurrent.UncheckedExecutionException;
 import com.xiaomi.infra.hbase.salted.KeySalter;
 import com.xiaomi.infra.hbase.salted.SaltedHTable;
 import edu.umd.cs.findbugs.annotations.Nullable;
@@ -380,8 +381,10 @@ class ConnectionImplementation implements ClusterConnection, Closeable {
             if (salter != null) {
               return new SaltedHTable(table, salter);
             }
+          } catch (TableNotFoundException e) {
+            return table;
           } catch (IOException e) {
-            throw new RuntimeException("Get key salter failed", e);
+            throw new UncheckedExecutionException("Get key salter failed", e);
           }
         }
         return table;
