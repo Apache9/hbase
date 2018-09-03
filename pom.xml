@@ -3736,5 +3736,15 @@
                -->
       <url>file:///tmp</url>
     </site>
+    <repository>
+      <id>central</id>
+      <name>artifactory-releases</name>
+      <url>http://artifactory.d.xiaomi.net:80/artifactory/artifactory-releases</url>
+    </repository>
+    <snapshotRepository>
+      <id>snapshots</id>
+      <name>artifactory-snapshots</name>
+      <url>http://artifactory.d.xiaomi.net:80/artifactory/artifactory-snapshots</url>
+    </snapshotRepository>
   </distributionManagement>
 </project>
