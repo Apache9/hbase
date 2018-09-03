@@ -38,7 +38,7 @@ import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.hbase.thirdparty.org.apache.commons.cli.CommandLine;
+import com.xiaomi.infra.thirdparty.org.apache.commons.cli.CommandLine;
 
 @InterfaceAudience.LimitedPrivate(HBaseInterfaceAudience.TOOLS)
 public class HFileContentValidator extends AbstractHBaseTool {
