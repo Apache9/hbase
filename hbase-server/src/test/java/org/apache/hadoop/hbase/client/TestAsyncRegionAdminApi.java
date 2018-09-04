@@ -35,7 +35,6 @@ import org.apache.hadoop.hbase.HBaseClassTestRule;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.master.HMaster;
-import org.apache.hadoop.hbase.master.NoSuchProcedureException;
 import org.apache.hadoop.hbase.master.RegionState;
 import org.apache.hadoop.hbase.master.ServerManager;
 import org.apache.hadoop.hbase.master.assignment.AssignmentManager;
@@ -90,22 +89,12 @@ public class TestAsyncRegionAdminApi extends TestAsyncAdminBase {
       // Expected
       assertThat(e.getCause(), instanceOf(DoNotRetryRegionException.class));
     }
-    try {
-      am.waitForAssignment(hri);
-      fail("Expected NoSuchProcedureException");
-    } catch (NoSuchProcedureException e) {
-      // Expected
-    }
+    assertFalse(am.getRegionStates().getRegionStateNode(hri).isInTransition());
     assertTrue(regionStates.getRegionState(hri).isOpened());
 
     // unassign region
     admin.unassign(hri.getRegionName(), true).get();
-    try {
-      am.waitForAssignment(hri);
-      fail("Expected NoSuchProcedureException");
-    } catch (NoSuchProcedureException e) {
-      // Expected
-    }
+    assertFalse(am.getRegionStates().getRegionStateNode(hri).isInTransition());
     assertTrue(regionStates.getRegionState(hri).isClosed());
   }
 
