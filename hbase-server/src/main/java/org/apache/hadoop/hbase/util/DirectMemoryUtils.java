@@ -26,17 +26,19 @@ import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Locale;
-
 import javax.management.JMException;
 import javax.management.MBeanServer;
 import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
-
 import org.apache.yetus.audience.InterfaceAudience;
 import org.apache.yetus.audience.InterfaceStability;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import com.xiaomi.infra.thirdparty.com.google.common.base.Preconditions;
+import com.xiaomi.infra.thirdparty.io.netty.buffer.ByteBufAllocatorMetric;
+import com.xiaomi.infra.thirdparty.io.netty.buffer.ByteBufAllocatorMetricProvider;
+import com.xiaomi.infra.thirdparty.io.netty.buffer.PooledByteBufAllocator;
 
 /**
  * Utilities for interacting with and monitoring DirectByteBuffer allocations.
@@ -122,6 +124,16 @@ public class DirectMemoryUtils {
       // should print further diagnostic information?
       return 0;
     }
+  }
+
+  /**
+   * @return the current amount of direct memory used by netty module.
+   */
+  public static long getNettyDirectMemoryUsage() {
+
+    ByteBufAllocatorMetric metric = ((ByteBufAllocatorMetricProvider)
+        PooledByteBufAllocator.DEFAULT).metric();
+    return metric.usedDirectMemory();
   }
 
   /**
