@@ -36,29 +36,27 @@ import org.slf4j.LoggerFactory;
 @InterfaceAudience.Private
 public class KeyRegexPrefixRegionSplitPolicy extends ConstantSizeRegionSplitPolicy {
   private static final Logger LOG = LoggerFactory.getLogger(KeyPrefixRegionSplitPolicy.class);
-  public static String PREFIX_REGEX_KEY = "prefix_split_key_policy.prefix_regex";
+  public static final String PREFIX_REGEX_KEY = "prefix_split_key_policy.prefix_regex";
 
   private Pattern prefixPattern = null;
 
   @Override
   protected void configureForRegion(HRegion region) {
     super.configureForRegion(region);
-    if (region != null) {
-      // read the prefix regex from the table descriptor
-      String prefixRegexString = region.getTableDescriptor().getValue(PREFIX_REGEX_KEY);
-      if (prefixRegexString == null) {
-        LOG.error(PREFIX_REGEX_KEY + " not specified for table "
-            + region.getTableDescriptor().getTableName().getNameAsString()
-            + ". Using default RegionSplitPolicy");
-        return;
-      }
-      try {
-        prefixPattern = Pattern.compile(prefixRegexString);
-      } catch (PatternSyntaxException pse) {
-        LOG.error("Invalid value for " + PREFIX_REGEX_KEY + " for table "
-            + region.getTableDescriptor().getTableName().getNameAsString() + ":" + prefixRegexString
-            + ". Using default RegionSplitPolicy");
-      }
+    // read the prefix regex from the table descriptor
+    String prefixRegexString = region.getTableDescriptor().getValue(PREFIX_REGEX_KEY);
+    if (prefixRegexString == null) {
+      LOG.error(PREFIX_REGEX_KEY + " not specified for table "
+          + region.getTableDescriptor().getTableName().getNameAsString()
+          + ". Using default RegionSplitPolicy");
+      return;
+    }
+    try {
+      prefixPattern = Pattern.compile(prefixRegexString);
+    } catch (PatternSyntaxException pse) {
+      LOG.error("Invalid value for " + PREFIX_REGEX_KEY + " for table "
+          + region.getTableDescriptor().getTableName().getNameAsString() + ":" + prefixRegexString
+          + ". Using default RegionSplitPolicy");
     }
   }
 

@@ -18,23 +18,21 @@ import org.slf4j.LoggerFactory;
 public class KeyDelimiterPrefixRegionSplitPolicy extends ConstantSizeRegionSplitPolicy {
   static final Logger LOG = LoggerFactory.getLogger(KeyDelimiterPrefixRegionSplitPolicy.class);
 
-  public static String DELIMITER_KEY = "delimiter_prefix_split_key_policy.delimiter";
+  public static final String DELIMITER_KEY = "delimiter_prefix_split_key_policy.delimiter";
 
   private byte delimiter = '-';
 
   @Override
   protected void configureForRegion(HRegion region) {
     super.configureForRegion(region);
-    if (region != null) {
-      // read the prefix length from the table descriptor
-      String delimiterString = region.getTableDescriptor().getValue(DELIMITER_KEY);
-      if (delimiterString == null || delimiterString.length() != 1) {
-        LOG.error(DELIMITER_KEY + " not specified for table "
-            + region.getTableDescriptor().getTableName() + ". Using default delimiter: '-'");
-        return;
-      }
-      delimiter = Bytes.toBytes(delimiterString)[0];
+    // read the prefix length from the table descriptor
+    String delimiterString = region.getTableDescriptor().getValue(DELIMITER_KEY);
+    if (delimiterString == null || delimiterString.length() != 1) {
+      LOG.error(DELIMITER_KEY + " not specified for table "
+          + region.getTableDescriptor().getTableName() + ". Using default delimiter: '-'");
+      return;
     }
+    delimiter = Bytes.toBytes(delimiterString)[0];
   }
 
   @Override

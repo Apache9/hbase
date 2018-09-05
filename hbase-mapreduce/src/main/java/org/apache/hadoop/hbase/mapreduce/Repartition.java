@@ -327,8 +327,9 @@ public class Repartition {
       if (splitFile != null) {
         String str;
         List<byte[]> keyList = new ArrayList<>();
-        try (FileInputStream inputStream = new FileInputStream(splitFile)) {
-          BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
+        try (FileInputStream inputStream = new FileInputStream(splitFile);
+            BufferedReader bufferedReader =
+                new BufferedReader(new InputStreamReader(inputStream))) {
           while ((str = bufferedReader.readLine()) != null) {
             keyList.add(Bytes.toBytesBinary(str));
           }
