@@ -18,6 +18,8 @@
  */
 package org.apache.hadoop.hbase.mapreduce;
 
+import com.xiaomi.infra.base.nameservice.NameService;
+
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
@@ -195,9 +197,10 @@ implements Configurable {
   protected void initialize(JobContext context) throws IOException {
     // Do we have to worry about mis-matches between the Configuration from setConf and the one
     // in this context?
-    TableName tableName = TableName.valueOf(conf.get(INPUT_TABLE));
+    String tableName = conf.get(INPUT_TABLE);
     try {
-      initializeTable(ConnectionFactory.createConnection(new Configuration(conf)), tableName);
+      initializeTable(
+        ConnectionFactory.createConnection(new Configuration(conf), NameService.resolveClusterUri(tableName)), tableName);
     } catch (Exception e) {
       LOG.error(StringUtils.stringifyException(e));
     }

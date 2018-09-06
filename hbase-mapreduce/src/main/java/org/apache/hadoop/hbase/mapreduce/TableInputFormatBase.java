@@ -53,6 +53,8 @@ import org.apache.hadoop.mapreduce.RecordReader;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.net.DNS;
 import org.apache.hadoop.util.StringUtils;
+
+import com.xiaomi.infra.base.nameservice.NameService;
 import com.xiaomi.infra.thirdparty.com.google.common.annotations.VisibleForTesting;
 
 /**
@@ -578,12 +580,16 @@ public abstract class TableInputFormatBase
    * @throws IOException
    */
   protected void initializeTable(Connection connection, TableName tableName) throws IOException {
+    this.initializeTable(connection, tableName.getNameAsString());
+  }
+
+  protected void initializeTable(Connection connection, String tableNameString) throws IOException{
     if (this.table != null || this.connection != null) {
       LOG.warn("initializeTable called multiple times. Overwriting connection and table " +
           "reference; TableInputFormatBase will not close these old references when done.");
     }
-    this.table = connection.getTable(tableName);
-    this.regionLocator = connection.getRegionLocator(tableName);
+    this.table = connection.getTable(NameService.resolveTableName(tableNameString));
+    this.regionLocator = connection.getRegionLocator(table.getName());
     this.admin = connection.getAdmin();
     this.connection = connection;
   }

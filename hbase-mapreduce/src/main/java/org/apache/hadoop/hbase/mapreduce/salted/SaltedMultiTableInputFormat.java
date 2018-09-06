@@ -31,6 +31,7 @@ import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
 import org.apache.hadoop.hbase.mapreduce.MultiTableInputFormat;
 import org.apache.hadoop.hbase.mapreduce.RegionSizeCalculator;
 import org.apache.hadoop.hbase.mapreduce.TableSplit;
+import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.Pair;
 import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.RecordReader;
@@ -48,13 +49,13 @@ public class SaltedMultiTableInputFormat extends MultiTableInputFormat implement
       throws IOException, InterruptedException {
     TableSplit tSplit = (TableSplit) split;
 
-    if (tSplit.getTableName() == null) {
+    if (tSplit.getFullTableName() == null) {
       throw new IOException("Cannot create a record reader because of a"
           + " previous error. Please look at the previous logs lines from"
           + " the task's full log for more details.");
     }
 
-    if (SaltedTableMapReduceUtil.isSaltedTable(context.getConfiguration(), tSplit.getTableName())) {
+    if (SaltedTableMapReduceUtil.isSaltedTable(context.getConfiguration(), Bytes.toBytes(tSplit.getFullTableName()))) {
       return SaltedTableMapReduceUtil
           .createRecordReaderForSaltedTable(getTableRecordReader(), tSplit.getScan(), tSplit,
               context);
@@ -64,13 +65,13 @@ public class SaltedMultiTableInputFormat extends MultiTableInputFormat implement
   }
 
   @Override
-  public List<InputSplit> getSplits(Table table, Scan scan, Pair<byte[][], byte[][]> keys,
+  public List<InputSplit> getSplits(String fullTableName, Table table, Scan scan, Pair<byte[][], byte[][]> keys,
       RegionSizeCalculator sizeCalculator, RegionLocator regionLocator) throws IOException {
     LOG.info("getSplits for salted table: " + table.getName().getNameAsString());
     if (table.getDescriptor().isSalted()) {
-      return SaltedTableMapReduceUtil.getSplitsForSaltedTable(table, regionLocator, scan);
+      return SaltedTableMapReduceUtil.getSplitsForSaltedTable(fullTableName, table, regionLocator, scan);
     } else {
-      return super.getSplits(table, scan, keys, sizeCalculator, regionLocator);
+      return super.getSplits(fullTableName, table, scan, keys, sizeCalculator, regionLocator);
     }
   }
 }

@@ -27,6 +27,7 @@ import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.client.Table;
 import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
 import org.apache.hadoop.hbase.mapreduce.TableInputFormat;
+import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.JobContext;
 import org.apache.hadoop.mapreduce.RecordReader;
@@ -54,7 +55,8 @@ public class SaltedTableInputFormat extends TableInputFormat {
           + " must be salted table");
     }
     
-    return SaltedTableMapReduceUtil.getSplitsForSaltedTable(table, regionLocator, scan);
+    return SaltedTableMapReduceUtil.getSplitsForSaltedTable(
+      context.getConfiguration().get(INPUT_TABLE), table, regionLocator, scan);
   }
     
   @Override

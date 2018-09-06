@@ -533,6 +533,9 @@ public class TableMapReduceUtil {
     }
 
     String tableName = new String(tableNameBytes);
+    if (tableName!= null && tableName.startsWith(NameService.HBASE_URI_PREFIX)) {
+      ZKUtil.applyClusterKeyToConf(job.getConfiguration(), tableName);
+    }
     UserProvider userProvider = UserProvider.instantiate(job.getConfiguration());
 
     if (userProvider.isHBaseSecurityEnabled()) {
@@ -546,6 +549,11 @@ public class TableMapReduceUtil {
   }
   
   public static void initCredentials(Job job) throws IOException {
+    // for input table name service
+    String inputTable = job.getConfiguration().get(TableInputFormat.INPUT_TABLE);
+    if (inputTable!= null && inputTable.startsWith(NameService.HBASE_URI_PREFIX)) {
+      ZKUtil.applyClusterKeyToConf(job.getConfiguration(), inputTable);
+    }
     Configuration jobConf = job.getConfiguration();
     UserProvider userProvider = UserProvider.instantiate(jobConf);
     if (userProvider.isHadoopSecurityEnabled()) {

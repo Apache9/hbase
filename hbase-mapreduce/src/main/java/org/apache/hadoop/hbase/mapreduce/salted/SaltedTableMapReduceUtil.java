@@ -21,13 +21,14 @@ import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.util.ArrayList;
 import java.util.List;
+
+import com.xiaomi.infra.base.nameservice.NameService;
 import com.xiaomi.infra.hbase.salted.SaltedHTable;
 import com.xiaomi.infra.hbase.salted.SaltedHTable.SlotsWritable;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HConstants;
-import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.Connection;
 import org.apache.hadoop.hbase.client.ConnectionFactory;
 import org.apache.hadoop.hbase.client.RegionLocator;
@@ -38,6 +39,7 @@ import org.apache.hadoop.hbase.client.TableDescriptor;
 import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
 import org.apache.hadoop.hbase.mapreduce.TableRecordReader;
 import org.apache.hadoop.hbase.mapreduce.TableSplit;
+import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.Writables;
 import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.RecordReader;
@@ -48,7 +50,7 @@ import org.apache.yetus.audience.InterfaceAudience;
 public class SaltedTableMapReduceUtil {
   private static final Log LOG = LogFactory.getLog(SaltedTableInputFormat.class);
   
-  public static List<InputSplit> getSplitsForSaltedTable(Table table, RegionLocator regionLocator,
+  public static List<InputSplit> getSplitsForSaltedTable(String fullTableName, Table table, RegionLocator regionLocator,
       Scan scan) throws IOException {
     byte[][] slots = null;
     // user passed slots
@@ -64,8 +66,8 @@ public class SaltedTableMapReduceUtil {
     for (int i = 0; i < slots.length; i++) {
       String regionLocation = regionLocator.getRegionLocation(slots[i]).getHostname();
       // splitStop is meaningless
-      InputSplit split = new TableSplit(table.getName(), scan, slots[i],
-          HConstants.EMPTY_BYTE_ARRAY, regionLocation);
+      InputSplit split = new TableSplit(fullTableName, table.getName(), scan, slots[i],
+          HConstants.EMPTY_BYTE_ARRAY, regionLocation, "", 0L);
       splits.add(split);
       if (LOG.isDebugEnabled()) {
         LOG.warn("getSplits for salted Table: split -> " + i + " -> " + split);
@@ -77,7 +79,8 @@ public class SaltedTableMapReduceUtil {
   public static RecordReader<ImmutableBytesWritable, Result> createRecordReaderForSaltedTable(
       TableRecordReader reader, Scan scan, InputSplit split, TaskAttemptContext context)
       throws IOException {
-    final Connection connection = ConnectionFactory.createConnection(context.getConfiguration());
+    final Connection connection = ConnectionFactory.createConnection(context.getConfiguration(),
+      NameService.resolveClusterUri(((TableSplit) split).getFullTableName()));
     Table table = connection.getTable(((TableSplit)split).getTable());
     return createRecordReaderForSaltedTable(connection, table, reader, scan, split, context);
   }
@@ -127,8 +130,11 @@ public class SaltedTableMapReduceUtil {
   }
   
   public static boolean isSaltedTable(Configuration conf, byte[] tableName) throws IOException {
-    try (Connection conn = ConnectionFactory.createConnection(conf);
-        Table table = conn.getTable(TableName.valueOf(tableName))) {
+    String tableNameString = Bytes.toString(tableName);
+    try (
+        Connection conn = ConnectionFactory.createConnection(conf,
+          NameService.resolveClusterUri(tableNameString));
+        Table table = conn.getTable(NameService.resolveTableName(tableNameString))) {
       TableDescriptor desc = table.getDescriptor();
       return desc.isSalted();
     }

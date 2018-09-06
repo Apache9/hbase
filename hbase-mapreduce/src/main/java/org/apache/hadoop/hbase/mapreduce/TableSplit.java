@@ -80,6 +80,7 @@ implements Writable, Comparable<TableSplit> {
 
   private static final Version VERSION = Version.WITH_ENCODED_REGION_NAME;
   private TableName tableName;
+  private String fullTableName;
   private byte [] startRow;
   private byte [] endRow;
   private String regionLocation;
@@ -134,9 +135,16 @@ implements Writable, Comparable<TableSplit> {
    * @param encodedRegionName The region ID.
    * @param location  The location of the region.
    */
-  public TableSplit(TableName tableName, Scan scan, byte [] startRow, byte [] endRow,
+  public TableSplit(TableName tableName, Scan scan, byte[] startRow, byte[] endRow,
       final String location, final String encodedRegionName, long length) {
+    this(tableName == null ? new String() : tableName.getNameAsString(), tableName, scan, startRow, endRow,
+        location, encodedRegionName, length);
+  }
+
+  public TableSplit(String fullTableName, TableName tableName, Scan scan, byte[] startRow,
+      byte[] endRow, final String location, final String encodedRegionName, long length) {
     this.tableName = tableName;
+    this.fullTableName = fullTableName;
     try {
       this.scan =
         (null == scan) ? "" : TableMapReduceUtil.convertScanToString(scan);
@@ -195,6 +203,10 @@ implements Writable, Comparable<TableSplit> {
    */
   public byte [] getTableName() {
     return tableName.getName();
+  }
+
+  public String getFullTableName(){
+    return this.fullTableName;
   }
 
   /**
@@ -293,6 +305,7 @@ implements Writable, Comparable<TableSplit> {
     byte[] tableNameBytes = new byte[len];
     in.readFully(tableNameBytes);
     tableName = TableName.valueOf(tableNameBytes);
+    fullTableName = Bytes.toString(Bytes.readByteArray(in));
     startRow = Bytes.readByteArray(in);
     endRow = Bytes.readByteArray(in);
     regionLocation = Bytes.toString(Bytes.readByteArray(in));
@@ -315,6 +328,7 @@ implements Writable, Comparable<TableSplit> {
   public void write(DataOutput out) throws IOException {
     WritableUtils.writeVInt(out, VERSION.code);
     Bytes.writeByteArray(out, tableName.getName());
+    Bytes.writeByteArray(out, Bytes.toBytes(fullTableName));
     Bytes.writeByteArray(out, startRow);
     Bytes.writeByteArray(out, endRow);
     Bytes.writeByteArray(out, Bytes.toBytes(regionLocation));

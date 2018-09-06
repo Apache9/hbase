@@ -89,6 +89,16 @@ public class NameServiceEntry {
     conf.setInt(HConstants.ZOOKEEPER_CLIENT_PORT, zkClusterInfo.getPort());
     conf.set(HConstants.ZOOKEEPER_ZNODE_PARENT,
       HConstants.DEFAULT_ZOOKEEPER_ZNODE_PARENT + "/" + clusterInfo.getClusterName());
+
+    String kerberosPrinciple = "hbase_" +
+        zkClusterInfo.getClusterType().toString().toLowerCase() +
+        "/hadoop@XIAOMI.HADOOP";
+    // Setting configuration for authentication, authorization, and encryption.
+    conf.set("hadoop.security.authentication", "kerberos");
+    conf.set("hadoop.security.auth_to_local", "RULE:[1:$1] RULE:[2:$1] DEFAULT");
+    conf.set("hbase.security.authentication", "kerberos");
+    conf.set("hbase.master.kerberos.principal", kerberosPrinciple);
+    conf.set("hbase.regionserver.kerberos.principal", kerberosPrinciple);
     return conf;
   }
 }

@@ -13,6 +13,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.TableName;
 import org.apache.yetus.audience.InterfaceAudience;
 
 @InterfaceAudience.Private
@@ -75,6 +76,29 @@ public class NameService {
             + "-Dhadoop.property.hadoop.security.authentication=kerberos on "
             + "JVM startup options.");
       }
+    }
+  }
+
+  public static TableName resolveTableName(String fullTableName) {
+    NameServiceEntry tableEntry = null;
+    if (fullTableName.startsWith(NameService.HBASE_URI_PREFIX)) {
+      try {
+        tableEntry = NameService.resolve(fullTableName);
+        if (!tableEntry.compatibleWithScheme("hbase")) {
+          throw new IOException("Unrecognized scheme: " + tableEntry.getScheme());
+        }
+      } catch (IOException e) {
+        throw new IllegalArgumentException("Given full table name is illegal", e);
+      }
+    }
+    return TableName.valueOf(tableEntry == null ? fullTableName : tableEntry.getResource());
+  }
+
+  public static String resolveClusterUri(String tableName){
+    if(tableName.startsWith(NameService.HBASE_URI_PREFIX)) {
+      return tableName;
+    } else {
+      return null;
     }
   }
 

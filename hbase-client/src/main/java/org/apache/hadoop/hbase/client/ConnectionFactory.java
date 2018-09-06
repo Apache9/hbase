@@ -124,6 +124,9 @@ public class ConnectionFactory {
 
   public static Connection createConnection(Configuration conf, String clusterUri,
       ExecutorService pool) throws IOException {
+    if(clusterUri == null || clusterUri.isEmpty()){
+      return createConnection(conf, pool);
+    }
     NameServiceEntry entry = NameService.resolve(clusterUri, conf);
     if (entry.getScheme() == null || !entry.getScheme().equals("hbase")) {
       throw new IOException("Unrecognized scheme: " + entry.getScheme() + ", scheme must be hbase");
