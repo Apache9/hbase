@@ -18,45 +18,22 @@
 package org.apache.hadoop.hbase.mapreduce.salted;
 
 import org.apache.hadoop.hbase.HBaseClassTestRule;
-import org.apache.hadoop.hbase.TableName;
-import org.apache.hadoop.hbase.client.Table;
-import org.apache.hadoop.hbase.mapreduce.MultiTableInputFormat;
-import org.apache.hadoop.hbase.mapreduce.MultiTableInputFormatBase;
-import org.apache.hadoop.hbase.mapreduce.TestMultiTableInputFormat;
+import org.apache.hadoop.hbase.mapreduce.TestTableInputFormatScan;
 import org.apache.hadoop.hbase.testclassification.LargeTests;
 import org.apache.hadoop.hbase.testclassification.MapReduceTests;
-import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.experimental.categories.Category;
 
 @Category({ MapReduceTests.class, LargeTests.class })
-public class TestSaltedMultiTableInputFormat extends TestMultiTableInputFormat {
+public class TestSaltedTableInputFormatScan extends TestTableInputFormatScan {
 
   @ClassRule
   public static final HBaseClassTestRule CLASS_RULE =
-    HBaseClassTestRule.forClass(TestSaltedMultiTableInputFormat.class);
+    HBaseClassTestRule.forClass(TestSaltedTableInputFormatScan.class);
 
   @BeforeClass
   public static void setUpBeforeClass() throws Exception {
-    // switch TIF to log at DEBUG level
-    TEST_UTIL.enableDebug(MultiTableInputFormat.class);
-    TEST_UTIL.enableDebug(MultiTableInputFormatBase.class);
-
-    // start mini hbase cluster
-    TEST_UTIL.startMiniCluster(3);
-    // create and fill table
-    for (int i = 0; i < 3; i++) {
-      if (i == 2) {
-        // create and load salted table
-        Table table = TEST_UTIL.createSaltedTable(TableName.valueOf(Bytes.toBytes(TABLE_NAME + i)),
-          INPUT_FAMILY, 4);
-        TEST_UTIL.loadTable(table, INPUT_FAMILY, false);
-      } else {
-        Table table = TEST_UTIL.createMultiRegionTable(
-          TableName.valueOf(TABLE_NAME + String.valueOf(i)), INPUT_FAMILY, 4);
-        TEST_UTIL.loadTable(table, INPUT_FAMILY, false);
-      }
-    }
+    TestSaltedTableInputFormatScanBase.setUpBeforeClass();
   }
 }

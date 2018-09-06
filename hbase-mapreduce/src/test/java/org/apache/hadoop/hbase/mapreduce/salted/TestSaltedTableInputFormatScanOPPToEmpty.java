@@ -17,23 +17,27 @@
  */
 package org.apache.hadoop.hbase.mapreduce.salted;
 
+import java.io.IOException;
 import org.apache.hadoop.hbase.HBaseClassTestRule;
-import org.apache.hadoop.hbase.mapreduce.TestTableInputFormatScan2;
-import org.apache.hadoop.hbase.testclassification.LargeTests;
-import org.apache.hadoop.hbase.testclassification.VerySlowMapReduceTests;
-import org.junit.BeforeClass;
+import org.apache.hadoop.hbase.testclassification.MapReduceTests;
+import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.junit.ClassRule;
+import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
-@Category({VerySlowMapReduceTests.class, LargeTests.class})
-public class TestSaltedTableInputFormatScan2 extends TestTableInputFormatScan2 {
+@Category({ MapReduceTests.class, MediumTests.class })
+public class TestSaltedTableInputFormatScanOPPToEmpty extends TestSaltedTableInputFormatScanBase {
 
   @ClassRule
   public static final HBaseClassTestRule CLASS_RULE =
-      HBaseClassTestRule.forClass(TestSaltedTableInputFormatScan2.class);
+    HBaseClassTestRule.forClass(TestSaltedTableInputFormatScanOPPToEmpty.class);
 
-  @BeforeClass
-  public static void setUpBeforeClass() throws Exception {
-    TestSaltedTableInputFormatScan1.setUpBeforeClass();
+  /**
+   * Tests a MR scan using specific start and stop rows.
+   */
+  @Test
+  public void testScanOPPToEmpty()
+      throws IOException, InterruptedException, ClassNotFoundException {
+    testScan("opp", null, "zzz");
   }
 }
