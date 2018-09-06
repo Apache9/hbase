@@ -358,10 +358,6 @@
           <!--FYI This pulls in hadoop's guava. Its needed for Configuration
                at least-->
         </dependency>
-        <dependency>
-          <groupId>com.xiaomi.infra</groupId>
-          <artifactId>hadoop-security</artifactId>
-        </dependency>
       </dependencies>
       <build>
         <plugins>

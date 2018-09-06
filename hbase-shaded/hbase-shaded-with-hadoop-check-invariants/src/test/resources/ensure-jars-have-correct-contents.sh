@@ -62,13 +62,13 @@ fi
 IFS=: read -r -d '' -a artifact_list < <(printf '%s\0' "$1")
 
 # we have to allow the directories that lead to the hbase dirs
-allowed_expr="(^org/$|^org/apache/$|^org/apache/hadoop/$"
+allowed_expr="(^org/$|^org/apache/$|^org/apache/hadoop/$|^com/$|^com/xiaomi/$"
 # We allow the following things to exist in our client artifacts:
 #   * classes in packages that start with org.apache.hadoop.hbase, which by
 #     convention should be in a path that looks like org/apache/hadoop/hbase
 allowed_expr+="|^org/apache/hadoop/hbase"
 #   * classes in packages that start with org.apache.hbase
-allowed_expr+="|^org/apache/hbase/"
+allowed_expr+="|^com/xiaomi/infra/"
 #   * whatever in the "META-INF" directory
 allowed_expr+="|^META-INF/"
 #   * the folding tables from jcodings

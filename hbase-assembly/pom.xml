@@ -308,6 +308,10 @@
       <groupId>jline</groupId>
       <artifactId>jline</artifactId>
     </dependency>
+    <dependency>
+      <groupId>com.xiaomi.infra</groupId>
+      <artifactId>hadoop-security</artifactId>
+    </dependency>
   </dependencies>
   <profiles>
     <profile>

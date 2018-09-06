@@ -141,10 +141,17 @@
                                         <exclude>org.slf4j:*</exclude>
                                         <exclude>com.google.code.findbugs:*</exclude>
                                         <exclude>com.github.stephenc.findbugs:*</exclude>
-                                        <exclude>org.apache.htrace:*</exclude>
+					<exclude>org.apache.htrace:*</exclude>
                                         <exclude>org.apache.yetus:*</exclude>
                                         <exclude>log4j:*</exclude>
                                         <exclude>commons-logging:*</exclude>
+                                        <exclude>org.htrace:*</exclude>
+                                        <exclude>com.xiaomi.common.perfcounter:*</exclude>
+                                        <exclude>org.json:*</exclude>
+                                        <exclude>com.xiaomi:xiaomi-common-utils:jar:</exclude>
+                                        <exclude>com.yammer.metrics:*</exclude>
+                                        <exclude>org.aspectj:*</exclude>
+                                        <exclude>com.xiaomi.infra:scribe-log4j:jar:</exclude>
                                     </excludes>
                                 </artifactSet>
                                 <relocations>
