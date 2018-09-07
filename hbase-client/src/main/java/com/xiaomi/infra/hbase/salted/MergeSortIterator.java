@@ -73,7 +73,7 @@ public class MergeSortIterator<T> implements Iterator<T> {
     throw new UnsupportedOperationException();
   }
 
-  private static class IterWrapper<T> implements  Comparable<IterWrapper<T>>{
+  private static class IterWrapper<T> implements Comparable<IterWrapper<T>> {
     private T current = null;
     private Iterator<T> iter;
     private Comparator<T> comparator;

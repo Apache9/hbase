@@ -250,7 +250,7 @@ public final class ProtobufUtil {
 
 
   @VisibleForTesting
-  public static Configuration conf = HBaseConfiguration.create();
+  public final static Configuration conf = HBaseConfiguration.create();
 
   private static volatile boolean classLoaderLoaded = false;
 
