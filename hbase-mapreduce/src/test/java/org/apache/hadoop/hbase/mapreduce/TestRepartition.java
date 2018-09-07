@@ -37,6 +37,7 @@ import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.client.Table;
 import org.apache.hadoop.hbase.testclassification.LargeTests;
+import org.apache.hadoop.hbase.testclassification.MapReduceTests;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.MD5Hash;
 import org.apache.hadoop.hbase.util.Pair;
@@ -51,7 +52,7 @@ import org.junit.experimental.categories.Category;
 
 import static org.apache.hadoop.hbase.snapshot.TestExportSnapshot.setUpBaseConf;
 
-@Category(LargeTests.class)
+@Category({ MapReduceTests.class, LargeTests.class })
 public class TestRepartition {
   @ClassRule
   public static final HBaseClassTestRule CLASS_RULE =
@@ -71,16 +72,14 @@ public class TestRepartition {
   public static void beforeClass() throws Exception {
     setUpBaseConf(UTIL.getConfiguration());
     UTIL.startMiniCluster();
-    UTIL.startMiniMapReduceCluster();
     FQ_OUTPUT_DIR =
-        new Path(OUTPUT_DIR).makeQualified(FileSystem.get(UTIL.getConfiguration())).toString();
+      new Path(OUTPUT_DIR).makeQualified(FileSystem.get(UTIL.getConfiguration())).toString();
     FQ_RESTORE_DIR =
-        new Path(RESTORE_DIR).makeQualified(FileSystem.get(UTIL.getConfiguration())).toString();
+      new Path(RESTORE_DIR).makeQualified(FileSystem.get(UTIL.getConfiguration())).toString();
   }
 
   @AfterClass
   public static void afterClass() throws Exception {
-    UTIL.shutdownMiniMapReduceCluster();
     UTIL.shutdownMiniCluster();
   }
 
@@ -127,7 +126,7 @@ public class TestRepartition {
   }
 
   private String[] constructArgs() {
-    List<String> args = new ArrayList();
+    List<String> args = new ArrayList<>();
     args.add("--table");
     args.add(TABLE);
     args.add("--export-to");
