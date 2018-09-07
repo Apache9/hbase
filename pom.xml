@@ -2622,6 +2622,10 @@
                 <groupId>tomcat</groupId>
                 <artifactId>jasper-runtime</artifactId>
               </exclusion>
+              <exclusion>
+                <groupId>com.xiaomi.infra</groupId>
+                <artifactId>scribe-log4j</artifactId>
+              </exclusion>
             </exclusions>
           </dependency>
           <dependency>
