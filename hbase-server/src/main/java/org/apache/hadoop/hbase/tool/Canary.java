@@ -106,6 +106,8 @@ public final class Canary implements Tool {
 
     public void publishReplicationLag(String PeerId, long replicationLagInMilliseconds);
 
+    public void publishMasterAvilability(double availability);
+
     public void reportSummary();
 
     default double getReadAvailability() {
@@ -168,6 +170,9 @@ public final class Canary implements Tool {
       LOG.info(
           "The replication lag of cluster:" + clusterKey + " is " + replicationLagInMilliseconds
               + "ms");
+    }
+    public void publishMasterAvilability(double availability) {
+      LOG.info("The availability of Master is " + availability + "%");
     }
 
     @Override
@@ -415,6 +420,7 @@ public final class Canary implements Tool {
     checkOldWalsFilesCount();
     unfinishedTasks.await();
     getReplicationLag();
+    getMasterAvailability();
     sink.reportSummary();
     long finishTime = System.currentTimeMillis();
     LOG.info("Finish one turn sniff, consume(ms)=" + (finishTime - startTime) + ", interval(ms)="
@@ -706,6 +712,22 @@ public final class Canary implements Tool {
                 + " error.ignoring availability calculate", e);
       }
     }
+  }
+
+  private void getMasterAvailability() {
+    int retrys = 3;
+    while (retrys > 0) {
+      try {
+        this.admin.getTableDescriptor(DEFAULT_WRITE_TABLE_NAME);
+        sink.publishMasterAvilability(100.0);
+        return;
+      } catch (IOException e) {
+        LOG.warn("a remote or network exception occurs when getTableDescriptor from master", e);
+        retrys--;
+      }
+    }
+    LOG.warn("HMaster is unavailable after 3 retrys");
+    sink.publishMasterAvilability(0.0);
   }
 
   public static void main(String[] args) {

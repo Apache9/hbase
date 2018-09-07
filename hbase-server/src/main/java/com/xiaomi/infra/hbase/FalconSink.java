@@ -62,7 +62,7 @@ public class FalconSink implements Sink, Configurable {
   private static final int DEFAULT_REPLICATION_LAG_UPPER_IN_SECONDS = 10800;
   private static final int DEFAULT_REPLICATION_LAG_LOWER_IN_SECONDS = 10;
   private long replicationSlavesCount = 0;
-  private long replicationAvailSum = 0;
+  private double replicationAvailSum = 0;
   private long oldWalsFilesCount = 0;
   private boolean ignoreFushToNet;
   private double readAvailability = 100.0;
@@ -70,6 +70,8 @@ public class FalconSink implements Sink, Configurable {
   private double availability = 100.0;
   private int upperRplicationLagInSeconds;
   private int lowerRplicationLagInSeconds;
+  private double masterAvailability = 100.0;
+
 
   private FalconSink() {
   }
@@ -137,6 +139,14 @@ public class FalconSink implements Sink, Configurable {
 
 
   }
+
+  @Override
+  public void publishMasterAvilability(double availability) {
+    this.masterAvailability = availability;
+    LOG.info("The availability of HMaster was set to " + availability + "%");
+  }
+
+
 
   @Override
   public double getReadAvailability() {
@@ -258,6 +268,7 @@ public class FalconSink implements Sink, Configurable {
   private void pushToFalcon(String clusterName, double avail, double readAvail, double writeAvail,double replicationAvail) {
     JsonArray data = new JsonArray();
     try {
+     data.add(buildFalconMetric(clusterName, "cluster-master-availability", this.masterAvailability));
       data.add(buildFalconMetric(clusterName, "cluster-replication-availability", replicationAvail));
       data.add(buildFalconMetric(clusterName, "cluster-availability", avail));
       data.add(buildFalconMetric(clusterName, "cluster-read-availability", readAvail));
