@@ -17,6 +17,8 @@
  */
 package org.apache.hadoop.hbase.mapreduce;
 
+import static org.apache.hadoop.hbase.snapshot.TestExportSnapshotBase.setUpBaseConf;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -49,8 +51,6 @@ import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
-
-import static org.apache.hadoop.hbase.snapshot.TestExportSnapshot.setUpBaseConf;
 
 @Category({ MapReduceTests.class, LargeTests.class })
 public class TestRepartition {

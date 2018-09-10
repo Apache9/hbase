@@ -17,46 +17,51 @@
  */
 package org.apache.hadoop.hbase.snapshot;
 
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.HBaseClassTestRule;
-import org.apache.hadoop.hbase.mob.MobConstants;
-import org.apache.hadoop.hbase.security.HadoopSecurityEnabledUserProviderForTesting;
-import org.apache.hadoop.hbase.security.UserProvider;
-import org.apache.hadoop.hbase.security.access.AccessControlLists;
-import org.apache.hadoop.hbase.security.access.SecureTestUtil;
 import org.apache.hadoop.hbase.testclassification.LargeTests;
 import org.apache.hadoop.hbase.testclassification.MapReduceTests;
+import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
+import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
-/**
- * Reruns TestMobExportSnapshot using MobExportSnapshot in secure mode.
- */
 @Category({MapReduceTests.class, LargeTests.class})
-public class TestMobSecureExportSnapshot extends TestMobExportSnapshot {
+public class TestExportSnapshotRetry extends TestExportSnapshotBase {
 
   @ClassRule
   public static final HBaseClassTestRule CLASS_RULE =
-      HBaseClassTestRule.forClass(TestMobSecureExportSnapshot.class);
+      HBaseClassTestRule.forClass(TestExportSnapshotRetry.class);
 
   @BeforeClass
   public static void setUpBeforeClass() throws Exception {
     setUpBaseConf(TEST_UTIL.getConfiguration());
-    TEST_UTIL.getConfiguration().setInt(MobConstants.MOB_FILE_CACHE_SIZE_KEY, 0);
-    // Setup separate test-data directory for MR cluster and set corresponding configurations.
-    // Otherwise, different test classes running MR cluster can step on each other.
-    TEST_UTIL.getDataTestDir();
-
-    // set the always on security provider
-    UserProvider.setUserProviderForTesting(TEST_UTIL.getConfiguration(),
-      HadoopSecurityEnabledUserProviderForTesting.class);
-
-    // setup configuration
-    SecureTestUtil.enableSecurity(TEST_UTIL.getConfiguration());
-
     TEST_UTIL.startMiniCluster(1, 3);
+    TEST_UTIL.startMiniMapReduceCluster();
+  }
 
-    // Wait for the ACL table to become available
-    TEST_UTIL.waitTableEnabled(AccessControlLists.ACL_TABLE_NAME);
+  @AfterClass
+  public static void tearDownAfterClass() throws Exception {
+    TEST_UTIL.shutdownMiniMapReduceCluster();
+    TEST_UTIL.shutdownMiniCluster();
+  }
+
+  /**
+   * Check that ExportSnapshot will succeed if something fails but the retry succeed.
+   */
+  @Test
+  public void testExportRetry() throws Exception {
+    Path copyDir = getLocalDestinationDir();
+    FileSystem fs = FileSystem.get(copyDir.toUri(), new Configuration());
+    copyDir = copyDir.makeQualified(fs);
+    Configuration conf = new Configuration(TEST_UTIL.getConfiguration());
+    conf.setBoolean(ExportSnapshot.Testing.CONF_TEST_FAILURE, true);
+    conf.setInt(ExportSnapshot.Testing.CONF_TEST_FAILURE_COUNT, 2);
+    conf.setInt("mapreduce.map.maxattempts", 3);
+    testExportFileSystemState(conf, tableName, snapshotName, snapshotName, tableNumFiles,
+        TEST_UTIL.getDefaultRootDirPath(), copyDir, true, getBypassRegionPredicate(), true);
   }
 }

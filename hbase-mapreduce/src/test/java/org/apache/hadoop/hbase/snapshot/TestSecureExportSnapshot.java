@@ -23,7 +23,7 @@ import org.apache.hadoop.hbase.security.UserProvider;
 import org.apache.hadoop.hbase.security.access.AccessControlLists;
 import org.apache.hadoop.hbase.security.access.SecureTestUtil;
 import org.apache.hadoop.hbase.testclassification.LargeTests;
-import org.apache.hadoop.hbase.testclassification.VerySlowRegionServerTests;
+import org.apache.hadoop.hbase.testclassification.MapReduceTests;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.experimental.categories.Category;
@@ -31,7 +31,7 @@ import org.junit.experimental.categories.Category;
 /**
  * Reruns TestExportSnapshot using ExportSnapshot in secure mode.
  */
-@Category({VerySlowRegionServerTests.class, LargeTests.class})
+@Category({MapReduceTests.class, LargeTests.class})
 public class TestSecureExportSnapshot extends TestExportSnapshot {
 
   @ClassRule
@@ -53,7 +53,6 @@ public class TestSecureExportSnapshot extends TestExportSnapshot {
     SecureTestUtil.enableSecurity(TEST_UTIL.getConfiguration());
 
     TEST_UTIL.startMiniCluster(1, 3);
-    TEST_UTIL.startMiniMapReduceCluster();
 
     // Wait for the ACL table to become available
     TEST_UTIL.waitTableEnabled(AccessControlLists.ACL_TABLE_NAME);

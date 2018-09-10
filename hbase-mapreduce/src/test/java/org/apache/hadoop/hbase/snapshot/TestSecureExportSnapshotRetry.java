@@ -18,7 +18,6 @@
 package org.apache.hadoop.hbase.snapshot;
 
 import org.apache.hadoop.hbase.HBaseClassTestRule;
-import org.apache.hadoop.hbase.mob.MobConstants;
 import org.apache.hadoop.hbase.security.HadoopSecurityEnabledUserProviderForTesting;
 import org.apache.hadoop.hbase.security.UserProvider;
 import org.apache.hadoop.hbase.security.access.AccessControlLists;
@@ -29,32 +28,29 @@ import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.experimental.categories.Category;
 
-/**
- * Reruns TestMobExportSnapshot using MobExportSnapshot in secure mode.
- */
 @Category({MapReduceTests.class, LargeTests.class})
-public class TestMobSecureExportSnapshot extends TestMobExportSnapshot {
+public class TestSecureExportSnapshotRetry extends TestExportSnapshotRetry {
 
   @ClassRule
   public static final HBaseClassTestRule CLASS_RULE =
-      HBaseClassTestRule.forClass(TestMobSecureExportSnapshot.class);
+      HBaseClassTestRule.forClass(TestSecureExportSnapshotRetry.class);
 
   @BeforeClass
   public static void setUpBeforeClass() throws Exception {
-    setUpBaseConf(TEST_UTIL.getConfiguration());
-    TEST_UTIL.getConfiguration().setInt(MobConstants.MOB_FILE_CACHE_SIZE_KEY, 0);
+    TestExportSnapshotBase.setUpBaseConf(TEST_UTIL.getConfiguration());
     // Setup separate test-data directory for MR cluster and set corresponding configurations.
     // Otherwise, different test classes running MR cluster can step on each other.
     TEST_UTIL.getDataTestDir();
 
     // set the always on security provider
     UserProvider.setUserProviderForTesting(TEST_UTIL.getConfiguration(),
-      HadoopSecurityEnabledUserProviderForTesting.class);
+        HadoopSecurityEnabledUserProviderForTesting.class);
 
     // setup configuration
     SecureTestUtil.enableSecurity(TEST_UTIL.getConfiguration());
 
     TEST_UTIL.startMiniCluster(1, 3);
+    TEST_UTIL.startMiniMapReduceCluster();
 
     // Wait for the ACL table to become available
     TEST_UTIL.waitTableEnabled(AccessControlLists.ACL_TABLE_NAME);

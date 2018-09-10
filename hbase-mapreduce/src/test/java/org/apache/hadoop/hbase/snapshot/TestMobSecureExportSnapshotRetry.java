@@ -29,15 +29,12 @@ import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.experimental.categories.Category;
 
-/**
- * Reruns TestMobExportSnapshot using MobExportSnapshot in secure mode.
- */
 @Category({MapReduceTests.class, LargeTests.class})
-public class TestMobSecureExportSnapshot extends TestMobExportSnapshot {
+public class TestMobSecureExportSnapshotRetry extends TestMobExportSnapshotRetry {
 
   @ClassRule
   public static final HBaseClassTestRule CLASS_RULE =
-      HBaseClassTestRule.forClass(TestMobSecureExportSnapshot.class);
+      HBaseClassTestRule.forClass(TestMobSecureExportSnapshotRetry.class);
 
   @BeforeClass
   public static void setUpBeforeClass() throws Exception {
@@ -49,12 +46,13 @@ public class TestMobSecureExportSnapshot extends TestMobExportSnapshot {
 
     // set the always on security provider
     UserProvider.setUserProviderForTesting(TEST_UTIL.getConfiguration(),
-      HadoopSecurityEnabledUserProviderForTesting.class);
+        HadoopSecurityEnabledUserProviderForTesting.class);
 
     // setup configuration
     SecureTestUtil.enableSecurity(TEST_UTIL.getConfiguration());
 
     TEST_UTIL.startMiniCluster(1, 3);
+    TEST_UTIL.startMiniMapReduceCluster();
 
     // Wait for the ACL table to become available
     TEST_UTIL.waitTableEnabled(AccessControlLists.ACL_TABLE_NAME);
