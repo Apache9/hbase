@@ -21,6 +21,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -242,6 +243,9 @@ public class HLogPrettyPrinter {
     }
     Reader log = HLogFactory.createReader(fs, p, conf);
     try {
+      Map<Object, Long> table2Actions = new HashMap<>();
+      Map<Object, Long> region2Actions = new HashMap<>();
+      Map<Object, Long> row2Actions = new HashMap<>();
       FSHLog.Entry entry;
       while ((entry = log.next()) != null) {
         HLogKey key = entry.getKey();
@@ -255,11 +259,10 @@ public class HLogPrettyPrinter {
         if (region != null && !((String) txn.get("region")).equals(region))
           continue;
         // initialize list into which we will store atomic actions
-        List<Map> actions = new ArrayList<Map>();
+        List<Map> actions = new ArrayList<>();
         for (KeyValue kv : edit.getKeyValues()) {
           // add atomic operation to txn
-          Map<String, Object> op = 
-            new HashMap<String, Object>(kv.toStringMap());
+          Map<String, Object> op = new HashMap<>(kv.toStringMap());
           if (outputValues)
             op.put("value", Bytes.toStringBinary(kv.getValue()));
           // check row output filter
@@ -269,6 +272,8 @@ public class HLogPrettyPrinter {
         if (actions.size() == 0)
           continue;
         txn.put("actions", actions);
+        addToMap(table2Actions, txn.get("table"), actions.size());
+        addToMap(region2Actions, txn.get("region"), actions.size());
         if (outputJSON) {
           // JSON output is a straightforward "toString" on the txn object
           if (firstTxn)
@@ -284,6 +289,7 @@ public class HLogPrettyPrinter {
               + txn.get("table") + " at write timestamp: " + new Date(writeTime));
           for (int i = 0; i < actions.size(); i++) {
             Map op = actions.get(i);
+            addToMap(row2Actions, op.get("row"), 1);
             out.println("  Action:");
             out.println("    row: " + op.get("row"));
             out.println("    column: " + op.get("family") + ":"
@@ -298,12 +304,33 @@ public class HLogPrettyPrinter {
           }
         }
       }
+
+      // Output the Statistics of table/region/row
+      out.println();
+      out.println("Table/region/row actions statistics:");
+      outputTop10(table2Actions, "Table");
+      outputTop10(region2Actions, "Region");
+      outputTop10(row2Actions, "Row ");
     } finally {
       log.close();
     }
     if (outputJSON && !persistentOutput) {
       out.print("]");
     }
+  }
+
+  private void addToMap(Map<Object, Long> map, Object key, long n) {
+    if (map.containsKey(key)) {
+      map.put(key, map.get(key) + n);
+    } else {
+      map.put(key, n);
+    }
+  }
+
+  private void outputTop10(Map<Object, Long> map, String message) {
+    out.println();
+    map.entrySet().stream().sorted(Map.Entry.comparingByValue(Comparator.reverseOrder())).limit(10)
+        .forEach(e -> out.println(message + " " + e.getKey() + " actions size: " + e.getValue()));
   }
 
   public static void main(String[] args) throws IOException {
