@@ -35926,6 +35926,20 @@ public final class MasterProtos {
 
   public interface GetClusterStatusRequestOrBuilder
       extends com.google.protobuf.MessageOrBuilder {
+
+    // repeated .Option options = 1;
+    /**
+     * <code>repeated .Option options = 1;</code>
+     */
+    java.util.List<org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.Option> getOptionsList();
+    /**
+     * <code>repeated .Option options = 1;</code>
+     */
+    int getOptionsCount();
+    /**
+     * <code>repeated .Option options = 1;</code>
+     */
+    org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.Option getOptions(int index);
   }
   /**
    * Protobuf type {@code GetClusterStatusRequest}
@@ -35960,6 +35974,7 @@ public final class MasterProtos {
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
       initFields();
+      int mutable_bitField0_ = 0;
       com.google.protobuf.UnknownFieldSet.Builder unknownFields =
           com.google.protobuf.UnknownFieldSet.newBuilder();
       try {
@@ -35977,6 +35992,39 @@ public final class MasterProtos {
               }
               break;
             }
+            case 8: {
+              int rawValue = input.readEnum();
+              org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.Option value = org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.Option.valueOf(rawValue);
+              if (value == null) {
+                unknownFields.mergeVarintField(1, rawValue);
+              } else {
+                if (!((mutable_bitField0_ & 0x00000001) == 0x00000001)) {
+                  options_ = new java.util.ArrayList<org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.Option>();
+                  mutable_bitField0_ |= 0x00000001;
+                }
+                options_.add(value);
+              }
+              break;
+            }
+            case 10: {
+              int length = input.readRawVarint32();
+              int oldLimit = input.pushLimit(length);
+              while(input.getBytesUntilLimit() > 0) {
+                int rawValue = input.readEnum();
+                org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.Option value = org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.Option.valueOf(rawValue);
+                if (value == null) {
+                  unknownFields.mergeVarintField(1, rawValue);
+                } else {
+                  if (!((mutable_bitField0_ & 0x00000001) == 0x00000001)) {
+                    options_ = new java.util.ArrayList<org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.Option>();
+                    mutable_bitField0_ |= 0x00000001;
+                  }
+                  options_.add(value);
+                }
+              }
+              input.popLimit(oldLimit);
+              break;
+            }
           }
         }
       } catch (com.google.protobuf.InvalidProtocolBufferException e) {
@@ -35985,6 +36033,9 @@ public final class MasterProtos {
         throw new com.google.protobuf.InvalidProtocolBufferException(
             e.getMessage()).setUnfinishedMessage(this);
       } finally {
+        if (((mutable_bitField0_ & 0x00000001) == 0x00000001)) {
+          options_ = java.util.Collections.unmodifiableList(options_);
+        }
         this.unknownFields = unknownFields.build();
         makeExtensionsImmutable();
       }
@@ -36016,7 +36067,30 @@ public final class MasterProtos {
       return PARSER;
     }
 
+    // repeated .Option options = 1;
+    public static final int OPTIONS_FIELD_NUMBER = 1;
+    private java.util.List<org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.Option> options_;
+    /**
+     * <code>repeated .Option options = 1;</code>
+     */
+    public java.util.List<org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.Option> getOptionsList() {
+      return options_;
+    }
+    /**
+     * <code>repeated .Option options = 1;</code>
+     */
+    public int getOptionsCount() {
+      return options_.size();
+    }
+    /**
+     * <code>repeated .Option options = 1;</code>
+     */
+    public org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.Option getOptions(int index) {
+      return options_.get(index);
+    }
+
     private void initFields() {
+      options_ = java.util.Collections.emptyList();
     }
     private byte memoizedIsInitialized = -1;
     public final boolean isInitialized() {
@@ -36030,6 +36104,9 @@ public final class MasterProtos {
     public void writeTo(com.google.protobuf.CodedOutputStream output)
                         throws java.io.IOException {
       getSerializedSize();
+      for (int i = 0; i < options_.size(); i++) {
+        output.writeEnum(1, options_.get(i).getNumber());
+      }
       getUnknownFields().writeTo(output);
     }
 
@@ -36039,6 +36116,15 @@ public final class MasterProtos {
       if (size != -1) return size;
 
       size = 0;
+      {
+        int dataSize = 0;
+        for (int i = 0; i < options_.size(); i++) {
+          dataSize += com.google.protobuf.CodedOutputStream
+            .computeEnumSizeNoTag(options_.get(i).getNumber());
+        }
+        size += dataSize;
+        size += 1 * options_.size();
+      }
       size += getUnknownFields().getSerializedSize();
       memoizedSerializedSize = size;
       return size;
@@ -36062,6 +36148,8 @@ public final class MasterProtos {
       org.apache.hadoop.hbase.protobuf.generated.MasterProtos.GetClusterStatusRequest other = (org.apache.hadoop.hbase.protobuf.generated.MasterProtos.GetClusterStatusRequest) obj;
 
       boolean result = true;
+      result = result && getOptionsList()
+          .equals(other.getOptionsList());
       result = result &&
           getUnknownFields().equals(other.getUnknownFields());
       return result;
@@ -36075,6 +36163,10 @@ public final class MasterProtos {
       }
       int hash = 41;
       hash = (19 * hash) + getDescriptorForType().hashCode();
+      if (getOptionsCount() > 0) {
+        hash = (37 * hash) + OPTIONS_FIELD_NUMBER;
+        hash = (53 * hash) + hashEnumList(getOptionsList());
+      }
       hash = (29 * hash) + getUnknownFields().hashCode();
       memoizedHashCode = hash;
       return hash;
@@ -36184,6 +36276,8 @@ public final class MasterProtos {
 
       public Builder clear() {
         super.clear();
+        options_ = java.util.Collections.emptyList();
+        bitField0_ = (bitField0_ & ~0x00000001);
         return this;
       }
 
@@ -36210,6 +36304,12 @@ public final class MasterProtos {
 
       public org.apache.hadoop.hbase.protobuf.generated.MasterProtos.GetClusterStatusRequest buildPartial() {
         org.apache.hadoop.hbase.protobuf.generated.MasterProtos.GetClusterStatusRequest result = new org.apache.hadoop.hbase.protobuf.generated.MasterProtos.GetClusterStatusRequest(this);
+        int from_bitField0_ = bitField0_;
+        if (((bitField0_ & 0x00000001) == 0x00000001)) {
+          options_ = java.util.Collections.unmodifiableList(options_);
+          bitField0_ = (bitField0_ & ~0x00000001);
+        }
+        result.options_ = options_;
         onBuilt();
         return result;
       }
@@ -36225,6 +36325,16 @@ public final class MasterProtos {
 
       public Builder mergeFrom(org.apache.hadoop.hbase.protobuf.generated.MasterProtos.GetClusterStatusRequest other) {
         if (other == org.apache.hadoop.hbase.protobuf.generated.MasterProtos.GetClusterStatusRequest.getDefaultInstance()) return this;
+        if (!other.options_.isEmpty()) {
+          if (options_.isEmpty()) {
+            options_ = other.options_;
+            bitField0_ = (bitField0_ & ~0x00000001);
+          } else {
+            ensureOptionsIsMutable();
+            options_.addAll(other.options_);
+          }
+          onChanged();
+        }
         this.mergeUnknownFields(other.getUnknownFields());
         return this;
       }
@@ -36248,6 +36358,79 @@ public final class MasterProtos {
             mergeFrom(parsedMessage);
           }
         }
+        return this;
+      }
+      private int bitField0_;
+
+      // repeated .Option options = 1;
+      private java.util.List<org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.Option> options_ =
+        java.util.Collections.emptyList();
+      private void ensureOptionsIsMutable() {
+        if (!((bitField0_ & 0x00000001) == 0x00000001)) {
+          options_ = new java.util.ArrayList<org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.Option>(options_);
+          bitField0_ |= 0x00000001;
+        }
+      }
+      /**
+       * <code>repeated .Option options = 1;</code>
+       */
+      public java.util.List<org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.Option> getOptionsList() {
+        return java.util.Collections.unmodifiableList(options_);
+      }
+      /**
+       * <code>repeated .Option options = 1;</code>
+       */
+      public int getOptionsCount() {
+        return options_.size();
+      }
+      /**
+       * <code>repeated .Option options = 1;</code>
+       */
+      public org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.Option getOptions(int index) {
+        return options_.get(index);
+      }
+      /**
+       * <code>repeated .Option options = 1;</code>
+       */
+      public Builder setOptions(
+          int index, org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.Option value) {
+        if (value == null) {
+          throw new NullPointerException();
+        }
+        ensureOptionsIsMutable();
+        options_.set(index, value);
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>repeated .Option options = 1;</code>
+       */
+      public Builder addOptions(org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.Option value) {
+        if (value == null) {
+          throw new NullPointerException();
+        }
+        ensureOptionsIsMutable();
+        options_.add(value);
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>repeated .Option options = 1;</code>
+       */
+      public Builder addAllOptions(
+          java.lang.Iterable<? extends org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.Option> values) {
+        ensureOptionsIsMutable();
+        super.addAll(values, options_);
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>repeated .Option options = 1;</code>
+       */
+      public Builder clearOptions() {
+        options_ = java.util.Collections.emptyList();
+        bitField0_ = (bitField0_ & ~0x00000001);
+        onChanged();
         return this;
       }
 
@@ -48322,127 +48505,128 @@ public final class MasterProtos {
       "TableDescriptorsResponse\022\"\n\014table_schema" +
       "\030\001 \003(\0132\014.TableSchema\"\026\n\024GetTableNamesReq" +
       "uest\"8\n\025GetTableNamesResponse\022\037\n\013table_n" +
-      "ames\030\001 \003(\0132\n.TableName\"\031\n\027GetClusterStat" +
-      "usRequest\"B\n\030GetClusterStatusResponse\022&\n" +
-      "\016cluster_status\030\001 \002(\0132\016.ClusterStatus\"\030\n" +
-      "\026IsMasterRunningRequest\"4\n\027IsMasterRunni",
-      "ngResponse\022\031\n\021is_master_running\030\001 \002(\010\"@\n" +
-      "\024ExecProcedureRequest\022(\n\tprocedure\030\001 \002(\013" +
-      "2\025.ProcedureDescription\"1\n\025ExecProcedure" +
-      "Response\022\030\n\020expected_timeout\030\001 \002(\003\"B\n\026Is" +
-      "ProcedureDoneRequest\022(\n\tprocedure\030\001 \001(\0132" +
-      "\025.ProcedureDescription\"W\n\027IsProcedureDon" +
-      "eResponse\022\023\n\004done\030\001 \001(\010:\005false\022\'\n\010snapsh" +
-      "ot\030\002 \001(\0132\025.ProcedureDescription\"T\n\024Trunc" +
-      "ateTableRequest\022\035\n\ttableName\030\001 \002(\0132\n.Tab" +
-      "leName\022\035\n\016preserveSplits\030\002 \001(\010:\005false\"\027\n",
-      "\025TruncateTableResponse\"\273\001\n\017SetQuotaReque" +
-      "st\022\021\n\tuser_name\030\001 \001(\t\022\022\n\nuser_group\030\002 \001(" +
-      "\t\022\021\n\tnamespace\030\003 \001(\t\022\036\n\ntable_name\030\004 \001(\013" +
-      "2\n.TableName\022\022\n\nremove_all\030\005 \001(\010\022\026\n\016bypa" +
-      "ss_globals\030\006 \001(\010\022\"\n\010throttle\030\007 \001(\0132\020.Thr" +
-      "ottleRequest\"\022\n\020SetQuotaResponse\"?\n\025Swit" +
-      "chThrottleRequest\022&\n\016throttle_state\030\001 \002(" +
-      "\0162\016.ThrottleState\"E\n\026SwitchThrottleRespo" +
-      "nse\022+\n\023prev_throttle_state\030\001 \001(\0162\016.Throt" +
-      "tleState2\200\036\n\rMasterService\022S\n\024GetSchemaA",
-      "lterStatus\022\034.GetSchemaAlterStatusRequest" +
-      "\032\035.GetSchemaAlterStatusResponse\022P\n\023GetTa" +
-      "bleDescriptors\022\033.GetTableDescriptorsRequ" +
-      "est\032\034.GetTableDescriptorsResponse\022>\n\rGet" +
-      "TableNames\022\025.GetTableNamesRequest\032\026.GetT" +
-      "ableNamesResponse\022G\n\020GetClusterStatus\022\030." +
-      "GetClusterStatusRequest\032\031.GetClusterStat" +
-      "usResponse\022D\n\017IsMasterRunning\022\027.IsMaster" +
-      "RunningRequest\032\030.IsMasterRunningResponse" +
-      "\0222\n\tAddColumn\022\021.AddColumnRequest\032\022.AddCo",
-      "lumnResponse\022;\n\014DeleteColumn\022\024.DeleteCol" +
-      "umnRequest\032\025.DeleteColumnResponse\022;\n\014Mod" +
-      "ifyColumn\022\024.ModifyColumnRequest\032\025.Modify" +
-      "ColumnResponse\0225\n\nMoveRegion\022\022.MoveRegio" +
-      "nRequest\032\023.MoveRegionResponse\022Y\n\026Dispatc" +
-      "hMergingRegions\022\036.DispatchMergingRegions" +
-      "Request\032\037.DispatchMergingRegionsResponse" +
-      "\022;\n\014AssignRegion\022\024.AssignRegionRequest\032\025" +
-      ".AssignRegionResponse\022A\n\016UnassignRegion\022" +
-      "\026.UnassignRegionRequest\032\027.UnassignRegion",
-      "Response\022>\n\rOfflineRegion\022\025.OfflineRegio" +
-      "nRequest\032\026.OfflineRegionResponse\0228\n\013Dele" +
-      "teTable\022\023.DeleteTableRequest\032\024.DeleteTab" +
-      "leResponse\0228\n\013EnableTable\022\023.EnableTableR" +
-      "equest\032\024.EnableTableResponse\022;\n\014DisableT" +
-      "able\022\024.DisableTableRequest\032\025.DisableTabl" +
-      "eResponse\0228\n\013ModifyTable\022\023.ModifyTableRe" +
-      "quest\032\024.ModifyTableResponse\0228\n\013CreateTab" +
-      "le\022\023.CreateTableRequest\032\024.CreateTableRes" +
-      "ponse\022/\n\010Shutdown\022\020.ShutdownRequest\032\021.Sh",
-      "utdownResponse\0225\n\nStopMaster\022\022.StopMaste" +
-      "rRequest\032\023.StopMasterResponse\022,\n\007Balance" +
-      "\022\017.BalanceRequest\032\020.BalanceResponse\022M\n\022S" +
-      "etBalancerRunning\022\032.SetBalancerRunningRe" +
-      "quest\032\033.SetBalancerRunningResponse\022A\n\016Ru" +
-      "nCatalogScan\022\026.RunCatalogScanRequest\032\027.R" +
-      "unCatalogScanResponse\022S\n\024EnableCatalogJa" +
-      "nitor\022\034.EnableCatalogJanitorRequest\032\035.En" +
-      "ableCatalogJanitorResponse\022\\\n\027IsCatalogJ" +
-      "anitorEnabled\022\037.IsCatalogJanitorEnabledR",
-      "equest\032 .IsCatalogJanitorEnabledResponse" +
-      "\022L\n\021ExecMasterService\022\032.CoprocessorServi" +
-      "ceRequest\032\033.CoprocessorServiceResponse\022/" +
-      "\n\010Snapshot\022\020.SnapshotRequest\032\021.SnapshotR" +
-      "esponse\022V\n\025GetCompletedSnapshots\022\035.GetCo" +
-      "mpletedSnapshotsRequest\032\036.GetCompletedSn" +
-      "apshotsResponse\022A\n\016DeleteSnapshot\022\026.Dele" +
-      "teSnapshotRequest\032\027.DeleteSnapshotRespon" +
-      "se\022A\n\016IsSnapshotDone\022\026.IsSnapshotDoneReq" +
-      "uest\032\027.IsSnapshotDoneResponse\022D\n\017Restore",
-      "Snapshot\022\027.RestoreSnapshotRequest\032\030.Rest" +
-      "oreSnapshotResponse\022V\n\025IsRestoreSnapshot" +
-      "Done\022\035.IsRestoreSnapshotDoneRequest\032\036.Is" +
-      "RestoreSnapshotDoneResponse\022>\n\rExecProce" +
-      "dure\022\025.ExecProcedureRequest\032\026.ExecProced" +
-      "ureResponse\022D\n\017IsProcedureDone\022\027.IsProce" +
-      "dureDoneRequest\032\030.IsProcedureDoneRespons" +
-      "e\022D\n\017ModifyNamespace\022\027.ModifyNamespaceRe" +
-      "quest\032\030.ModifyNamespaceResponse\022D\n\017Creat" +
-      "eNamespace\022\027.CreateNamespaceRequest\032\030.Cr",
-      "eateNamespaceResponse\022D\n\017DeleteNamespace" +
-      "\022\027.DeleteNamespaceRequest\032\030.DeleteNamesp" +
-      "aceResponse\022Y\n\026GetNamespaceDescriptor\022\036." +
-      "GetNamespaceDescriptorRequest\032\037.GetNames" +
-      "paceDescriptorResponse\022_\n\030ListNamespaceD" +
-      "escriptors\022 .ListNamespaceDescriptorsReq" +
-      "uest\032!.ListNamespaceDescriptorsResponse\022" +
-      "t\n\037ListTableDescriptorsByNamespace\022\'.Lis" +
-      "tTableDescriptorsByNamespaceRequest\032(.Li" +
-      "stTableDescriptorsByNamespaceResponse\022b\n",
-      "\031ListTableNamesByNamespace\022!.ListTableNa" +
-      "mesByNamespaceRequest\032\".ListTableNamesBy" +
-      "NamespaceResponse\022>\n\rtruncateTable\022\025.Tru" +
-      "ncateTableRequest\032\026.TruncateTableRespons" +
-      "e\022/\n\010SetQuota\022\020.SetQuotaRequest\032\021.SetQuo" +
-      "taResponse\022A\n\016SwitchThrottle\022\026.SwitchThr" +
-      "ottleRequest\032\027.SwitchThrottleResponse\022M\n" +
-      "\022AddReplicationPeer\022\032.AddReplicationPeer" +
-      "Request\032\033.AddReplicationPeerResponse\022V\n\025" +
-      "RemoveReplicationPeer\022\035.RemoveReplicatio",
-      "nPeerRequest\032\036.RemoveReplicationPeerResp" +
-      "onse\022V\n\025EnableReplicationPeer\022\035.EnableRe" +
-      "plicationPeerRequest\032\036.EnableReplication" +
-      "PeerResponse\022Y\n\026DisableReplicationPeer\022\036" +
-      ".DisableReplicationPeerRequest\032\037.Disable" +
-      "ReplicationPeerResponse\022_\n\030GetReplicatio" +
-      "nPeerConfig\022 .GetReplicationPeerConfigRe" +
-      "quest\032!.GetReplicationPeerConfigResponse" +
-      "\022h\n\033UpdateReplicationPeerConfig\022#.Update" +
-      "ReplicationPeerConfigRequest\032$.UpdateRep",
-      "licationPeerConfigResponse\022S\n\024ListReplic" +
-      "ationPeers\022\034.ListReplicationPeersRequest" +
-      "\032\035.ListReplicationPeersResponse\022b\n\031GetPe" +
-      "erMaxReplicationLoad\022!.GetPeerMaxReplica" +
-      "tionLoadRequest\032\".GetPeerMaxReplicationL" +
-      "oadResponseBB\n*org.apache.hadoop.hbase.p" +
-      "rotobuf.generatedB\014MasterProtosH\001\210\001\001\240\001\001"
+      "ames\030\001 \003(\0132\n.TableName\"3\n\027GetClusterStat" +
+      "usRequest\022\030\n\007options\030\001 \003(\0162\007.Option\"B\n\030G" +
+      "etClusterStatusResponse\022&\n\016cluster_statu" +
+      "s\030\001 \002(\0132\016.ClusterStatus\"\030\n\026IsMasterRunni",
+      "ngRequest\"4\n\027IsMasterRunningResponse\022\031\n\021" +
+      "is_master_running\030\001 \002(\010\"@\n\024ExecProcedure" +
+      "Request\022(\n\tprocedure\030\001 \002(\0132\025.ProcedureDe" +
+      "scription\"1\n\025ExecProcedureResponse\022\030\n\020ex" +
+      "pected_timeout\030\001 \002(\003\"B\n\026IsProcedureDoneR" +
+      "equest\022(\n\tprocedure\030\001 \001(\0132\025.ProcedureDes" +
+      "cription\"W\n\027IsProcedureDoneResponse\022\023\n\004d" +
+      "one\030\001 \001(\010:\005false\022\'\n\010snapshot\030\002 \001(\0132\025.Pro" +
+      "cedureDescription\"T\n\024TruncateTableReques" +
+      "t\022\035\n\ttableName\030\001 \002(\0132\n.TableName\022\035\n\016pres",
+      "erveSplits\030\002 \001(\010:\005false\"\027\n\025TruncateTable" +
+      "Response\"\273\001\n\017SetQuotaRequest\022\021\n\tuser_nam" +
+      "e\030\001 \001(\t\022\022\n\nuser_group\030\002 \001(\t\022\021\n\tnamespace" +
+      "\030\003 \001(\t\022\036\n\ntable_name\030\004 \001(\0132\n.TableName\022\022" +
+      "\n\nremove_all\030\005 \001(\010\022\026\n\016bypass_globals\030\006 \001" +
+      "(\010\022\"\n\010throttle\030\007 \001(\0132\020.ThrottleRequest\"\022" +
+      "\n\020SetQuotaResponse\"?\n\025SwitchThrottleRequ" +
+      "est\022&\n\016throttle_state\030\001 \002(\0162\016.ThrottleSt" +
+      "ate\"E\n\026SwitchThrottleResponse\022+\n\023prev_th" +
+      "rottle_state\030\001 \001(\0162\016.ThrottleState2\200\036\n\rM",
+      "asterService\022S\n\024GetSchemaAlterStatus\022\034.G" +
+      "etSchemaAlterStatusRequest\032\035.GetSchemaAl" +
+      "terStatusResponse\022P\n\023GetTableDescriptors" +
+      "\022\033.GetTableDescriptorsRequest\032\034.GetTable" +
+      "DescriptorsResponse\022>\n\rGetTableNames\022\025.G" +
+      "etTableNamesRequest\032\026.GetTableNamesRespo" +
+      "nse\022G\n\020GetClusterStatus\022\030.GetClusterStat" +
+      "usRequest\032\031.GetClusterStatusResponse\022D\n\017" +
+      "IsMasterRunning\022\027.IsMasterRunningRequest" +
+      "\032\030.IsMasterRunningResponse\0222\n\tAddColumn\022",
+      "\021.AddColumnRequest\032\022.AddColumnResponse\022;" +
+      "\n\014DeleteColumn\022\024.DeleteColumnRequest\032\025.D" +
+      "eleteColumnResponse\022;\n\014ModifyColumn\022\024.Mo" +
+      "difyColumnRequest\032\025.ModifyColumnResponse" +
+      "\0225\n\nMoveRegion\022\022.MoveRegionRequest\032\023.Mov" +
+      "eRegionResponse\022Y\n\026DispatchMergingRegion" +
+      "s\022\036.DispatchMergingRegionsRequest\032\037.Disp" +
+      "atchMergingRegionsResponse\022;\n\014AssignRegi" +
+      "on\022\024.AssignRegionRequest\032\025.AssignRegionR" +
+      "esponse\022A\n\016UnassignRegion\022\026.UnassignRegi",
+      "onRequest\032\027.UnassignRegionResponse\022>\n\rOf" +
+      "flineRegion\022\025.OfflineRegionRequest\032\026.Off" +
+      "lineRegionResponse\0228\n\013DeleteTable\022\023.Dele" +
+      "teTableRequest\032\024.DeleteTableResponse\0228\n\013" +
+      "EnableTable\022\023.EnableTableRequest\032\024.Enabl" +
+      "eTableResponse\022;\n\014DisableTable\022\024.Disable" +
+      "TableRequest\032\025.DisableTableResponse\0228\n\013M" +
+      "odifyTable\022\023.ModifyTableRequest\032\024.Modify" +
+      "TableResponse\0228\n\013CreateTable\022\023.CreateTab" +
+      "leRequest\032\024.CreateTableResponse\022/\n\010Shutd",
+      "own\022\020.ShutdownRequest\032\021.ShutdownResponse" +
+      "\0225\n\nStopMaster\022\022.StopMasterRequest\032\023.Sto" +
+      "pMasterResponse\022,\n\007Balance\022\017.BalanceRequ" +
+      "est\032\020.BalanceResponse\022M\n\022SetBalancerRunn" +
+      "ing\022\032.SetBalancerRunningRequest\032\033.SetBal" +
+      "ancerRunningResponse\022A\n\016RunCatalogScan\022\026" +
+      ".RunCatalogScanRequest\032\027.RunCatalogScanR" +
+      "esponse\022S\n\024EnableCatalogJanitor\022\034.Enable" +
+      "CatalogJanitorRequest\032\035.EnableCatalogJan" +
+      "itorResponse\022\\\n\027IsCatalogJanitorEnabled\022",
+      "\037.IsCatalogJanitorEnabledRequest\032 .IsCat" +
+      "alogJanitorEnabledResponse\022L\n\021ExecMaster" +
+      "Service\022\032.CoprocessorServiceRequest\032\033.Co" +
+      "processorServiceResponse\022/\n\010Snapshot\022\020.S" +
+      "napshotRequest\032\021.SnapshotResponse\022V\n\025Get" +
+      "CompletedSnapshots\022\035.GetCompletedSnapsho" +
+      "tsRequest\032\036.GetCompletedSnapshotsRespons" +
+      "e\022A\n\016DeleteSnapshot\022\026.DeleteSnapshotRequ" +
+      "est\032\027.DeleteSnapshotResponse\022A\n\016IsSnapsh" +
+      "otDone\022\026.IsSnapshotDoneRequest\032\027.IsSnaps",
+      "hotDoneResponse\022D\n\017RestoreSnapshot\022\027.Res" +
+      "toreSnapshotRequest\032\030.RestoreSnapshotRes" +
+      "ponse\022V\n\025IsRestoreSnapshotDone\022\035.IsResto" +
+      "reSnapshotDoneRequest\032\036.IsRestoreSnapsho" +
+      "tDoneResponse\022>\n\rExecProcedure\022\025.ExecPro" +
+      "cedureRequest\032\026.ExecProcedureResponse\022D\n" +
+      "\017IsProcedureDone\022\027.IsProcedureDoneReques" +
+      "t\032\030.IsProcedureDoneResponse\022D\n\017ModifyNam" +
+      "espace\022\027.ModifyNamespaceRequest\032\030.Modify" +
+      "NamespaceResponse\022D\n\017CreateNamespace\022\027.C",
+      "reateNamespaceRequest\032\030.CreateNamespaceR" +
+      "esponse\022D\n\017DeleteNamespace\022\027.DeleteNames" +
+      "paceRequest\032\030.DeleteNamespaceResponse\022Y\n" +
+      "\026GetNamespaceDescriptor\022\036.GetNamespaceDe" +
+      "scriptorRequest\032\037.GetNamespaceDescriptor" +
+      "Response\022_\n\030ListNamespaceDescriptors\022 .L" +
+      "istNamespaceDescriptorsRequest\032!.ListNam" +
+      "espaceDescriptorsResponse\022t\n\037ListTableDe" +
+      "scriptorsByNamespace\022\'.ListTableDescript" +
+      "orsByNamespaceRequest\032(.ListTableDescrip",
+      "torsByNamespaceResponse\022b\n\031ListTableName" +
+      "sByNamespace\022!.ListTableNamesByNamespace" +
+      "Request\032\".ListTableNamesByNamespaceRespo" +
+      "nse\022>\n\rtruncateTable\022\025.TruncateTableRequ" +
+      "est\032\026.TruncateTableResponse\022/\n\010SetQuota\022" +
+      "\020.SetQuotaRequest\032\021.SetQuotaResponse\022A\n\016" +
+      "SwitchThrottle\022\026.SwitchThrottleRequest\032\027" +
+      ".SwitchThrottleResponse\022M\n\022AddReplicatio" +
+      "nPeer\022\032.AddReplicationPeerRequest\032\033.AddR" +
+      "eplicationPeerResponse\022V\n\025RemoveReplicat",
+      "ionPeer\022\035.RemoveReplicationPeerRequest\032\036" +
+      ".RemoveReplicationPeerResponse\022V\n\025Enable" +
+      "ReplicationPeer\022\035.EnableReplicationPeerR" +
+      "equest\032\036.EnableReplicationPeerResponse\022Y" +
+      "\n\026DisableReplicationPeer\022\036.DisableReplic" +
+      "ationPeerRequest\032\037.DisableReplicationPee" +
+      "rResponse\022_\n\030GetReplicationPeerConfig\022 ." +
+      "GetReplicationPeerConfigRequest\032!.GetRep" +
+      "licationPeerConfigResponse\022h\n\033UpdateRepl" +
+      "icationPeerConfig\022#.UpdateReplicationPee",
+      "rConfigRequest\032$.UpdateReplicationPeerCo" +
+      "nfigResponse\022S\n\024ListReplicationPeers\022\034.L" +
+      "istReplicationPeersRequest\032\035.ListReplica" +
+      "tionPeersResponse\022b\n\031GetPeerMaxReplicati" +
+      "onLoad\022!.GetPeerMaxReplicationLoadReques" +
+      "t\032\".GetPeerMaxReplicationLoadResponseBB\n" +
+      "*org.apache.hadoop.hbase.protobuf.genera" +
+      "tedB\014MasterProtosH\001\210\001\001\240\001\001"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
       new com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner() {
@@ -48886,7 +49070,7 @@ public final class MasterProtos {
           internal_static_GetClusterStatusRequest_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_GetClusterStatusRequest_descriptor,
-              new java.lang.String[] { });
+              new java.lang.String[] { "Options", });
           internal_static_GetClusterStatusResponse_descriptor =
             getDescriptor().getMessageTypes().get(73);
           internal_static_GetClusterStatusResponse_fieldAccessorTable = new

@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -52,6 +53,8 @@ import org.apache.hadoop.hbase.Abortable;
 import org.apache.hadoop.hbase.Chore;
 import org.apache.hadoop.hbase.ClusterId;
 import org.apache.hadoop.hbase.ClusterStatus;
+import org.apache.hadoop.hbase.ClusterStatus.Option;
+import org.apache.hadoop.hbase.ClusterStatusBuilder;
 import org.apache.hadoop.hbase.CompatibilitySingletonFactory;
 import org.apache.hadoop.hbase.DoNotRetryIOException;
 import org.apache.hadoop.hbase.HBaseIOException;
@@ -2783,17 +2786,71 @@ MasterServices, Server {
 
   @Override
   public GetClusterStatusResponse getClusterStatus(RpcController controller,
-      GetClusterStatusRequest req)
-  throws ServiceException {
+      GetClusterStatusRequest req) throws ServiceException {
     GetClusterStatusResponse.Builder response = GetClusterStatusResponse.newBuilder();
-    response.setClusterStatus(getClusterStatus().convert());
+    response.setClusterStatus(
+      getClusterStatus(ClusterStatus.toOptions(req.getOptionsList())).convert());
     return response.build();
   }
 
-  /**
-   * @return cluster status
-   */
-  public ClusterStatus getClusterStatus() {
+  private ClusterStatus getClusterStatus(EnumSet<Option> options) {
+    ClusterStatusBuilder builder = ClusterStatusBuilder.newBuilder();
+    // given that hbase1 can't submit the request with Option,
+    // we return all information to client if the list of Option is empty.
+    if (options.isEmpty()) {
+      options = EnumSet.allOf(Option.class);
+    }
+    for (Option opt : options) {
+      switch (opt) {
+        case HBASE_VERSION:
+          builder.setHBaseVersion(VersionInfo.getVersion());
+          break;
+        case CLUSTER_ID:
+          builder.setClusterId(getClusterId());
+          break;
+        case MASTER:
+          builder.setMaster(getServerName());
+          break;
+        case BACKUP_MASTERS:
+          builder.setBackupMasters(getBackupMasters());
+          break;
+        case LIVE_SERVERS: {
+          if (serverManager != null) {
+            builder.setLiveServers(serverManager.getOnlineServers());
+          }
+          break;
+        }
+        case DEAD_SERVERS: {
+          if (serverManager != null) {
+            builder.setDeadServers(serverManager.getDeadServers().copyServerNames());
+          }
+          break;
+        }
+        case MASTER_COPROCESSORS: {
+          if (cpHost != null) {
+            builder.setMasterCoprocessors(getCoprocessors());
+          }
+          break;
+        }
+        case REGIONS_IN_TRANSITION: {
+          if (assignmentManager != null) {
+            builder
+                .setRegionsInTransition(assignmentManager.getRegionStates().getRegionsInTransition());
+          }
+          break;
+        }
+        case BALANCER_ON: {
+          if (loadBalancerTracker != null) {
+            builder.setBalancerOn(loadBalancerTracker.isBalancerOn());
+          }
+          break;
+        }
+      }
+    }
+    return builder.build();
+  }
+
+  private List<ServerName> getBackupMasters() {
     // Build Set of backup masters from ZK nodes
     List<String> backupMasterStrings;
     try {
@@ -2803,13 +2860,12 @@ MasterServices, Server {
       LOG.warn(this.zooKeeper.prefix("Unable to list backup servers"), e);
       backupMasterStrings = new ArrayList<String>(0);
     }
-    List<ServerName> backupMasters = new ArrayList<ServerName>(
-                                          backupMasterStrings.size());
-    for (String s: backupMasterStrings) {
+
+    List<ServerName> backupMasters = new ArrayList<ServerName>(backupMasterStrings.size());
+    for (String s : backupMasterStrings) {
       try {
-        byte [] bytes =
-            ZKUtil.getData(this.zooKeeper, ZKUtil.joinZNode(
-                this.zooKeeper.znodePaths.backupMasterAddressesZNode, s));
+        byte[] bytes = ZKUtil.getData(this.zooKeeper,
+          ZKUtil.joinZNode(this.zooKeeper.znodePaths.backupMasterAddressesZNode, s));
         if (bytes != null) {
           ServerName sn;
           try {
@@ -2821,24 +2877,25 @@ MasterServices, Server {
           backupMasters.add(sn);
         }
       } catch (KeeperException e) {
-        LOG.warn(this.zooKeeper.prefix("Unable to get information about " +
-                 "backup servers"), e);
+        LOG.warn(this.zooKeeper.prefix("Unable to get information about " + "backup servers"), e);
       }
     }
+
     Collections.sort(backupMasters, new Comparator<ServerName>() {
       @Override
       public int compare(ServerName s1, ServerName s2) {
         return s1.getServerName().compareTo(s2.getServerName());
-      }});
+      }
+    });
 
-    return new ClusterStatus(VersionInfo.getVersion(),
-      this.fileSystemManager.getClusterId().toString(),
-      this.serverManager.getOnlineServers(),
-      this.serverManager.getDeadServers().copyServerNames(),
-      this.serverName,
-      backupMasters,
-      this.assignmentManager.getRegionStates().getRegionsInTransition(),
-      this.getCoprocessors(), this.loadBalancerTracker.isBalancerOn());
+    return backupMasters;
+  }
+
+  /**
+   * @return cluster status
+   */
+  public ClusterStatus getClusterStatus() {
+    return getClusterStatus(EnumSet.allOf(Option.class));
   }
 
   public String getClusterId() {
