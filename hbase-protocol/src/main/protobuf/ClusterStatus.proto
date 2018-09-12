@@ -290,3 +290,16 @@ message ClusterStatus {
   repeated ServerName backup_masters = 8;
   optional bool balancer_on = 9;
 }
+
+enum Option {
+  HBASE_VERSION = 0;
+  CLUSTER_ID = 1;
+  LIVE_SERVERS = 2;
+  DEAD_SERVERS = 3;
+  MASTER = 4;
+  BACKUP_MASTERS = 5;
+  MASTER_COPROCESSORS = 6;
+  REGIONS_IN_TRANSITION = 7;
+  BALANCER_ON = 8;
+  MASTER_INFO_PORT = 9;
+}

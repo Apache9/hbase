@@ -8,6 +8,160 @@ public final class ClusterStatusProtos {
   public static void registerAllExtensions(
       com.google.protobuf.ExtensionRegistry registry) {
   }
+  /**
+   * Protobuf enum {@code Option}
+   */
+  public enum Option
+      implements com.google.protobuf.ProtocolMessageEnum {
+    /**
+     * <code>HBASE_VERSION = 0;</code>
+     */
+    HBASE_VERSION(0, 0),
+    /**
+     * <code>CLUSTER_ID = 1;</code>
+     */
+    CLUSTER_ID(1, 1),
+    /**
+     * <code>LIVE_SERVERS = 2;</code>
+     */
+    LIVE_SERVERS(2, 2),
+    /**
+     * <code>DEAD_SERVERS = 3;</code>
+     */
+    DEAD_SERVERS(3, 3),
+    /**
+     * <code>MASTER = 4;</code>
+     */
+    MASTER(4, 4),
+    /**
+     * <code>BACKUP_MASTERS = 5;</code>
+     */
+    BACKUP_MASTERS(5, 5),
+    /**
+     * <code>MASTER_COPROCESSORS = 6;</code>
+     */
+    MASTER_COPROCESSORS(6, 6),
+    /**
+     * <code>REGIONS_IN_TRANSITION = 7;</code>
+     */
+    REGIONS_IN_TRANSITION(7, 7),
+    /**
+     * <code>BALANCER_ON = 8;</code>
+     */
+    BALANCER_ON(8, 8),
+    /**
+     * <code>MASTER_INFO_PORT = 9;</code>
+     */
+    MASTER_INFO_PORT(9, 9),
+    ;
+
+    /**
+     * <code>HBASE_VERSION = 0;</code>
+     */
+    public static final int HBASE_VERSION_VALUE = 0;
+    /**
+     * <code>CLUSTER_ID = 1;</code>
+     */
+    public static final int CLUSTER_ID_VALUE = 1;
+    /**
+     * <code>LIVE_SERVERS = 2;</code>
+     */
+    public static final int LIVE_SERVERS_VALUE = 2;
+    /**
+     * <code>DEAD_SERVERS = 3;</code>
+     */
+    public static final int DEAD_SERVERS_VALUE = 3;
+    /**
+     * <code>MASTER = 4;</code>
+     */
+    public static final int MASTER_VALUE = 4;
+    /**
+     * <code>BACKUP_MASTERS = 5;</code>
+     */
+    public static final int BACKUP_MASTERS_VALUE = 5;
+    /**
+     * <code>MASTER_COPROCESSORS = 6;</code>
+     */
+    public static final int MASTER_COPROCESSORS_VALUE = 6;
+    /**
+     * <code>REGIONS_IN_TRANSITION = 7;</code>
+     */
+    public static final int REGIONS_IN_TRANSITION_VALUE = 7;
+    /**
+     * <code>BALANCER_ON = 8;</code>
+     */
+    public static final int BALANCER_ON_VALUE = 8;
+    /**
+     * <code>MASTER_INFO_PORT = 9;</code>
+     */
+    public static final int MASTER_INFO_PORT_VALUE = 9;
+
+
+    public final int getNumber() { return value; }
+
+    public static Option valueOf(int value) {
+      switch (value) {
+        case 0: return HBASE_VERSION;
+        case 1: return CLUSTER_ID;
+        case 2: return LIVE_SERVERS;
+        case 3: return DEAD_SERVERS;
+        case 4: return MASTER;
+        case 5: return BACKUP_MASTERS;
+        case 6: return MASTER_COPROCESSORS;
+        case 7: return REGIONS_IN_TRANSITION;
+        case 8: return BALANCER_ON;
+        case 9: return MASTER_INFO_PORT;
+        default: return null;
+      }
+    }
+
+    public static com.google.protobuf.Internal.EnumLiteMap<Option>
+        internalGetValueMap() {
+      return internalValueMap;
+    }
+    private static com.google.protobuf.Internal.EnumLiteMap<Option>
+        internalValueMap =
+          new com.google.protobuf.Internal.EnumLiteMap<Option>() {
+            public Option findValueByNumber(int number) {
+              return Option.valueOf(number);
+            }
+          };
+
+    public final com.google.protobuf.Descriptors.EnumValueDescriptor
+        getValueDescriptor() {
+      return getDescriptor().getValues().get(index);
+    }
+    public final com.google.protobuf.Descriptors.EnumDescriptor
+        getDescriptorForType() {
+      return getDescriptor();
+    }
+    public static final com.google.protobuf.Descriptors.EnumDescriptor
+        getDescriptor() {
+      return org.apache.hadoop.hbase.protobuf.generated.ClusterStatusProtos.getDescriptor().getEnumTypes().get(0);
+    }
+
+    private static final Option[] VALUES = values();
+
+    public static Option valueOf(
+        com.google.protobuf.Descriptors.EnumValueDescriptor desc) {
+      if (desc.getType() != getDescriptor()) {
+        throw new java.lang.IllegalArgumentException(
+          "EnumValueDescriptor is not for this type.");
+      }
+      return VALUES[desc.getIndex()];
+    }
+
+    private final int index;
+    private final int value;
+
+    private Option(int index, int value) {
+      this.index = index;
+      this.value = value;
+    }
+
+    // @@protoc_insertion_point(enum_scope:Option)
+  }
+
   public interface RegionStateOrBuilder
       extends com.google.protobuf.MessageOrBuilder {
 
@@ -18926,9 +19080,14 @@ public final class ClusterStatusProtos {
       "ClusterId\022)\n\023master_coprocessors\030\006 \003(\0132\014" +
       ".Coprocessor\022\033\n\006master\030\007 \001(\0132\013.ServerNam" +
       "e\022#\n\016backup_masters\030\010 \003(\0132\013.ServerName\022\023" +
-      "\n\013balancer_on\030\t \001(\010BF\n*org.apache.hadoop" +
-      ".hbase.protobuf.generatedB\023ClusterStatus" +
-      "ProtosH\001\240\001\001"
+      "\n\013balancer_on\030\t \001(\010*\312\001\n\006Option\022\021\n\rHBASE_" +
+      "VERSION\020\000\022\016\n\nCLUSTER_ID\020\001\022\020\n\014LIVE_SERVER" +
+      "S\020\002\022\020\n\014DEAD_SERVERS\020\003\022\n\n\006MASTER\020\004\022\022\n\016BAC" +
+      "KUP_MASTERS\020\005\022\027\n\023MASTER_COPROCESSORS\020\006\022\031" +
+      "\n\025REGIONS_IN_TRANSITION\020\007\022\017\n\013BALANCER_ON",
+      "\020\010\022\024\n\020MASTER_INFO_PORT\020\tBF\n*org.apache.h" +
+      "adoop.hbase.protobuf.generatedB\023ClusterS" +
+      "tatusProtosH\001\240\001\001"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
       new com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner() {

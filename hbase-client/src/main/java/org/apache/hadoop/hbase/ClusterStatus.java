@@ -23,8 +23,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.apache.hadoop.hbase.util.ByteStringer;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
@@ -312,7 +315,9 @@ public class ClusterStatus extends VersionedWritable {
   public ClusterStatusProtos.ClusterStatus convert() {
     ClusterStatusProtos.ClusterStatus.Builder builder =
         ClusterStatusProtos.ClusterStatus.newBuilder();
-    builder.setHbaseVersion(HBaseVersionFileContent.newBuilder().setVersion(getHBaseVersion()));
+    if (getHBaseVersion() != null) {
+      builder.setHbaseVersion(HBaseVersionFileContent.newBuilder().setVersion(getHBaseVersion()));
+    }
 
     if (liveServers != null){
       for (Map.Entry<ServerName, ServerLoad> entry : liveServers.entrySet()) {
@@ -426,4 +431,93 @@ public class ClusterStatus extends VersionedWritable {
       ProtobufUtil.toServerName(proto.getMaster()),backupMasters,rit,masterCoprocessors,
       proto.getBalancerOn());
   }
+
+  /**
+   * Convert ClusterStatusProtos.Option to ClusterMetrics.Option
+   * @param option a ClusterStatusProtos.Option
+   * @return converted ClusterMetrics.Option
+   */
+  public static ClusterStatus.Option toOption(ClusterStatusProtos.Option option) {
+    switch (option) {
+      case HBASE_VERSION:
+        return ClusterStatus.Option.HBASE_VERSION;
+      case LIVE_SERVERS:
+        return ClusterStatus.Option.LIVE_SERVERS;
+      case DEAD_SERVERS:
+        return ClusterStatus.Option.DEAD_SERVERS;
+      case REGIONS_IN_TRANSITION:
+        return ClusterStatus.Option.REGIONS_IN_TRANSITION;
+      case CLUSTER_ID:
+        return ClusterStatus.Option.CLUSTER_ID;
+      case MASTER_COPROCESSORS:
+        return ClusterStatus.Option.MASTER_COPROCESSORS;
+      case MASTER:
+        return ClusterStatus.Option.MASTER;
+      case BACKUP_MASTERS:
+        return ClusterStatus.Option.BACKUP_MASTERS;
+      case BALANCER_ON:
+        return ClusterStatus.Option.BALANCER_ON;
+      case MASTER_INFO_PORT:
+        return ClusterStatus.Option.MASTER_INFO_PORT;
+      // should not reach here
+      default:
+        throw new IllegalArgumentException("Invalid option: " + option);
+    }
+  }
+
+  /**
+   * Convert a list of ClusterStatusProtos.Option to an enum set of ClusterMetrics.Option
+   * @param options the pb options
+   * @return an enum set of ClusterMetrics.Option
+   */
+  public static EnumSet<ClusterStatus.Option> toOptions(List<ClusterStatusProtos.Option> options) {
+    return options.stream().map(ClusterStatus::toOption)
+        .collect(Collectors.toCollection(() -> EnumSet.noneOf(ClusterStatus.Option.class)));
+  }
+
+  /**
+  * Kinds of ClusterMetrics
+  */
+ public enum Option {
+   /**
+    * metrics about hbase version
+    */
+   HBASE_VERSION,
+   /**
+    * metrics about cluster id
+    */
+   CLUSTER_ID,
+   /**
+    * metrics about balancer is on or not
+    */
+   BALANCER_ON,
+   /**
+    * metrics about live region servers
+    */
+   LIVE_SERVERS,
+   /**
+    * metrics about dead region servers
+    */
+   DEAD_SERVERS,
+   /**
+    * metrics about master name
+    */
+   MASTER,
+   /**
+    * metrics about backup masters name
+    */
+   BACKUP_MASTERS,
+   /**
+    * metrics about master coprocessors
+    */
+   MASTER_COPROCESSORS,
+   /**
+    * metrics about regions in transition
+    */
+   REGIONS_IN_TRANSITION,
+   /**
+    * metrics info port
+    */
+   MASTER_INFO_PORT
+ }
 }

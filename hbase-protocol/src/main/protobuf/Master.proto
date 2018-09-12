@@ -324,6 +324,7 @@ message GetTableNamesResponse {
 }
 
 message GetClusterStatusRequest {
+  repeated Option options = 1;
 }
 
 message GetClusterStatusResponse {
