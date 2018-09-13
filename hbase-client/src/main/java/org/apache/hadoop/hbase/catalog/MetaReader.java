@@ -520,19 +520,4 @@ public class MetaReader {
       return getTableState(result);
     }
   }
-
-  public static Set<TableName> getDisabledTables(HConnection conn) throws IOException {
-    Scan scan = new Scan().addColumn(HConstants.TABLE_FAMILY, HConstants.TABLE_STATE_QUALIFIER);
-    Set<TableName> disabledTables = new HashSet<>();
-    try (HTable metaHTable = getMetaHTable(conn);
-      ResultScanner scanner = metaHTable.getScanner(scan)) {
-      for (Result result; (result = scanner.next()) != null;) {
-        TableState state = getTableState(result);
-        if (state != null && state.inStates(TableState.State.DISABLED)) {
-          disabledTables.add(state.getTableName());
-        }
-      }
-    }
-    return disabledTables;
-  }
 }
