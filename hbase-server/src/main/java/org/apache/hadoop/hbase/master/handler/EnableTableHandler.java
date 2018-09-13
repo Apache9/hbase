@@ -35,6 +35,7 @@ import org.apache.hadoop.hbase.catalog.CatalogTracker;
 import org.apache.hadoop.hbase.catalog.MetaEditor;
 import org.apache.hadoop.hbase.catalog.MetaReader;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
+import org.apache.hadoop.hbase.client.TableState;
 import org.apache.hadoop.hbase.executor.EventHandler;
 import org.apache.hadoop.hbase.executor.EventType;
 import org.apache.hadoop.hbase.master.AssignmentManager;
@@ -210,7 +211,8 @@ public class EnableTableHandler extends EventHandler {
       // Flip the table to enabled.
       this.assignmentManager.getZKTable().setEnabledTable(
         this.tableName);
-      MetaEditor.deleteTableState(catalogTracker, tableName);
+      MetaEditor.updateTableState(catalogTracker,
+        new TableState(tableName, TableState.State.ENABLED));
       LOG.info("Table '" + this.tableName
       + "' was successfully enabled. Status: done=" + done);
     } else {

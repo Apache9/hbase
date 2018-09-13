@@ -855,16 +855,26 @@ MasterServices, Server {
 
   private void fixTableStatesInMeta() throws KeeperException, IOException {
     Set<TableName> disabledOnZk = ZKTable.getDisabledTables(zooKeeper);
-    Set<TableName> disabledInMeta = MetaReader.getDisabledTables(catalogTracker.getConnection());
-    for (TableName tn : disabledOnZk) {
-      if (!disabledInMeta.remove(tn)) {
-        LOG.info("Table " + tn + " is disabled but not recorded in meta, fixing");
-        MetaEditor.updateTableState(catalogTracker, new TableState(tn, TableState.State.DISABLED));
+    Collection<HTableDescriptor> descriptors = this.tableDescriptors.getAll().values();
+    for (HTableDescriptor descriptor : descriptors) {
+      TableName tableName = descriptor.getTableName();
+      if (tableName.isSystemTable()) {
+        continue;
       }
-    }
-    for (TableName tn : disabledInMeta) {
-      LOG.info("Table " + tn + " is not disabled but recorded in meta, fixing");
-      MetaEditor.deleteTableState(catalogTracker, tn);
+      TableState tableState = MetaReader.getTableState(catalogTracker.getConnection(), tableName);
+      if (disabledOnZk.contains(tableName)) {
+        if (tableState == null || !tableState.inStates(TableState.State.DISABLED)) {
+          LOG.info("Fix table " + tableName + " state in meta to DISABLED");
+          MetaEditor.updateTableState(catalogTracker,
+            new TableState(tableName, TableState.State.DISABLED));
+        }
+      } else {
+        if (tableState == null || tableState.inStates(TableState.State.DISABLED)) {
+          LOG.info("Fix table " + tableName + " state in meta to ENABLED");
+          MetaEditor.updateTableState(catalogTracker,
+            new TableState(tableName, TableState.State.ENABLED));
+        }
+      }
     }
   }
 
