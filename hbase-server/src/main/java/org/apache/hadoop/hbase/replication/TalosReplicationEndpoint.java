@@ -19,6 +19,12 @@
  */
 package org.apache.hadoop.hbase.replication;
 
+import static com.xiaomi.infra.thirdparty.galaxy.talos.thrift.ErrorCode.THROTTLE_REJECT_ERROR;
+import static com.xiaomi.infra.thirdparty.galaxy.talos.thrift.ErrorCode.TOPIC_NOT_EXIST;
+import static org.apache.hadoop.hbase.HConstants.TALOS_ACCESS_ENDPOINT;
+import static org.apache.hadoop.hbase.HConstants.TALOS_ACCESS_KEY;
+import static org.apache.hadoop.hbase.HConstants.TALOS_ACCESS_SECRET;
+
 import com.xiaomi.infra.thirdparty.galaxy.rpc.thrift.Credential;
 import com.xiaomi.infra.thirdparty.galaxy.rpc.thrift.UserType;
 import com.xiaomi.infra.thirdparty.galaxy.talos.admin.TalosAdmin;
@@ -40,11 +46,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.regionserver.wal.HLog;
@@ -52,15 +58,12 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.Hash;
 import org.apache.hadoop.hbase.util.MurmurHash;
 import org.apache.hadoop.hbase.util.TalosUtil;
-
-import static com.xiaomi.infra.thirdparty.galaxy.talos.thrift.ErrorCode.TOPIC_NOT_EXIST;
-import static org.apache.hadoop.hbase.HConstants.TALOS_ACCESS_ENDPOINT;
-import static org.apache.hadoop.hbase.HConstants.TALOS_ACCESS_KEY;
-import static org.apache.hadoop.hbase.HConstants.TALOS_ACCESS_SECRET;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @InterfaceAudience.Private
 public class TalosReplicationEndpoint extends BaseReplicationEndpoint {
-  private static final Log LOG = LogFactory.getLog(TalosReplicationEndpoint.class);
+  private static final Logger LOG = LoggerFactory.getLogger(TalosReplicationEndpoint.class);
   private String accessKey;
   private String accessSecret;
   private String endpoint;
@@ -71,6 +74,7 @@ public class TalosReplicationEndpoint extends BaseReplicationEndpoint {
   private Map<TableName, Topic> topics = new HashMap<>();
   private TalosAdmin talosAdmin;
   private final Hash hashTool = MurmurHash.getInstance();
+  private final int maxTries = 10;
 
   @Override
   public void init(Context context) throws IOException {
@@ -124,20 +128,44 @@ public class TalosReplicationEndpoint extends BaseReplicationEndpoint {
 
 
   private synchronized SimpleProducer getSimpleProducer(TableName tableName,
-      String encodedRegionName) throws TException {
+      String encodedRegionName) throws TException, IOException {
     SimpleProducer producer = producers.get(encodedRegionName);
     if (producer != null) {
       return producer;
     }
-    Topic topic = topics.get(tableName);
     String topicName = TalosUtil.encodeTableName(tableName.getNameAsString());
-    if (topic == null) {
-      topic = talosAdmin.describeTopic(new DescribeTopicRequest(topicName));
-      topics.put(tableName, topic);
-    }
+    Topic topic = getOrCreateTopic(tableName, topicName);
     producer = createSimpleProducer(topic, topicName, encodedRegionName);
     producers.put(encodedRegionName, producer);
     return producer;
+  }
+
+  private Topic getOrCreateTopic(TableName tableName, String topicName)
+      throws TException, IOException {
+    if (topics.containsKey(tableName)) {
+      return topics.get(tableName);
+    }
+    int tries = 0;
+    Topic topic = null;
+    while (topic == null && tries <= maxTries) {
+      try {
+        topic = talosAdmin.describeTopic(new DescribeTopicRequest(topicName));
+        topics.put(tableName, topic);
+      } catch (TException e) {
+        if (tries == maxTries) {
+          throw new IOException("Times of describing topic reach to the maximum number");
+        }
+        if (e instanceof GalaxyTalosException
+            && ((GalaxyTalosException) e).getErrorCode() == THROTTLE_REJECT_ERROR) {
+          LOG.warn("Get throttled by talos when we call describe topic {}, tries={}", topicName,
+            tries);
+          sleepBackoff(tries++);
+        } else {
+          throw e;
+        }
+      }
+    }
+    return topic;
   }
 
   private SimpleProducer createSimpleProducer(Topic topic, String topicName,
@@ -203,15 +231,10 @@ public class TalosReplicationEndpoint extends BaseReplicationEndpoint {
   private void sendMessagesToTalos(Map<TableName, Map<String, List<Message>>> messages)
       throws TException, IOException {
     TableName tableName;
-    boolean skip = false;
     for (Map.Entry<TableName, Map<String, List<Message>>> messageEntry : messages.entrySet()) {
       tableName = messageEntry.getKey();
       for (Map.Entry<String, List<Message>> regionMessages : messageEntry.getValue().entrySet()) {
         try {
-          if (skip) {
-            skip = false;
-            break;
-          }
           SimpleProducer simpleProducer =
               this.getSimpleProducer(tableName, regionMessages.getKey());
           simpleProducer.putMessageList(regionMessages.getValue());
@@ -252,5 +275,20 @@ public class TalosReplicationEndpoint extends BaseReplicationEndpoint {
   private void cleanTopicsAndProducers() {
     this.producers = new HashMap<>();
     this.topics = new HashMap<>();
+  }
+
+  private static void sleepBackoff(int tries) {
+    if (tries >= HConstants.RETRY_BACKOFF.length) {
+      tries = HConstants.RETRY_BACKOFF.length - 1;
+    }
+    long sleepTime = 1000 * HConstants.RETRY_BACKOFF[tries];
+    long jitter = (long) (1000 * ThreadLocalRandom.current().nextFloat());
+    long totalTime = sleepTime + jitter;
+    LOG.warn("gonna sleep for {} ms to avoid describe topic throttle", totalTime);
+    try {
+      Thread.currentThread().sleep(totalTime);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+    }
   }
 }
