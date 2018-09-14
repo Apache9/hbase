@@ -199,8 +199,8 @@ implements Configurable {
     // in this context?
     String tableName = conf.get(INPUT_TABLE);
     try {
-      initializeTable(
-        ConnectionFactory.createConnection(new Configuration(conf), NameService.resolveClusterUri(tableName)), tableName);
+      initializeTable(ConnectionFactory.createConnection(new Configuration(conf),
+        NameService.resolveClusterUri(tableName)), NameService.resolveTableName(tableName));
     } catch (Exception e) {
       LOG.error(StringUtils.stringifyException(e));
     }

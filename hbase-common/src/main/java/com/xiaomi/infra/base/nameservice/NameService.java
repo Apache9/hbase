@@ -96,9 +96,10 @@ public class NameService {
 
   public static String resolveClusterUri(String tableName){
     if(tableName.startsWith(NameService.HBASE_URI_PREFIX)) {
-      return tableName;
+      //since fullTableName is hbase://cluster/table, we want hbase://cluster only.
+      return tableName.substring(0, tableName.lastIndexOf("/"));
     } else {
-      return null;
+      return "";
     }
   }
 

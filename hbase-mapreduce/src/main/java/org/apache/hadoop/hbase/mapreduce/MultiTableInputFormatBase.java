@@ -24,12 +24,12 @@ import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.client.RegionInfo;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.hadoop.hbase.HRegionLocation;
-import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.Connection;
 import org.apache.hadoop.hbase.client.ConnectionFactory;
 import org.apache.hadoop.hbase.client.RegionLocator;
@@ -180,26 +180,38 @@ public abstract class MultiTableInputFormatBase extends
     }
 
     List<InputSplit> splits = new ArrayList<>();
+    Map<String, Connection> connectionMap = new HashMap<>();
     Iterator iter = tableMaps.entrySet().iterator();
-    // Make a single Connection to the Cluster and use it across all tables.
-    while (iter.hasNext()) {
-      Map.Entry<String, List<Scan>> entry = (Map.Entry<String, List<Scan>>) iter.next();
-      String tableName = entry.getKey();
-      List<Scan> scanList = entry.getValue();
-      try (
-          Connection conn = ConnectionFactory.createConnection(context.getConfiguration(),
-            NameService.resolveClusterUri(tableName));
-          Table table = conn.getTable(NameService.resolveTableName(tableName));
-          RegionLocator regionLocator = conn.getRegionLocator(table.getName())) {
+    try {
+      while (iter.hasNext()) {
+        Map.Entry<String, List<Scan>> entry = (Map.Entry<String, List<Scan>>) iter.next();
+        String tableName = entry.getKey();
+        List<Scan> scanList = entry.getValue();
+        Connection connection = getOrCreateConnection(context.getConfiguration(),
+          NameService.resolveClusterUri(tableName), connectionMap);
+        Table table = connection.getTable(NameService.resolveTableName(tableName));
+        RegionLocator regionLocator = connection.getRegionLocator(table.getName());
         RegionSizeCalculator sizeCalculator =
-            new RegionSizeCalculator(regionLocator, conn.getAdmin());
+            new RegionSizeCalculator(regionLocator, connection.getAdmin());
         Pair<byte[][], byte[][]> keys = regionLocator.getStartEndKeys();
         for (Scan scan : scanList) {
           splits.addAll(getSplits(tableName, table, scan, keys, sizeCalculator, regionLocator));
         }
       }
+    } finally {
+      for (Connection connection : connectionMap.values()) {
+        connection.close();
+      }
     }
     return splits;
+  }
+
+  private Connection getOrCreateConnection(Configuration conf, String clusterUri,
+      Map<String, Connection> connectionMap) throws IOException {
+    if (!connectionMap.containsKey(clusterUri)) {
+      connectionMap.put(clusterUri, ConnectionFactory.createConnection(conf, clusterUri));
+    }
+    return connectionMap.get(clusterUri);
   }
 
   protected List<InputSplit> getSplits(String fullTableName, Table table, Scan scan, Pair<byte[][], byte[][]> keys,
