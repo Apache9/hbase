@@ -15,37 +15,38 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.apache.hadoop.hbase.test;
 
 import com.xiaomi.infra.thirdparty.com.google.common.base.Joiner;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.conf.Configured;
-import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.hbase.HBaseConfiguration;
-import org.apache.hadoop.hbase.HRegionLocation;
-import org.apache.hadoop.hbase.IntegrationTestingUtility;
-import org.apache.hadoop.hbase.ServerName;
-import org.apache.hadoop.hbase.TableName;
-import org.apache.hadoop.hbase.HConstants;
-import org.apache.hadoop.hbase.client.Connection;
-import org.apache.hadoop.hbase.client.ConnectionFactory;
-import org.apache.hadoop.hbase.client.Admin;
-import org.apache.hadoop.hbase.replication.ReplicationPeerConfig;
-import org.apache.hadoop.hbase.replication.ReplicationPeerDescription;
-import org.apache.hadoop.util.Tool;
-import org.apache.hadoop.util.ToolRunner;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.xiaomi.infra.thirdparty.org.apache.commons.cli.CommandLine;
-
+import edu.umd.cs.findbugs.annotations.Nullable;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.conf.Configured;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.HBaseTestingUtility;
+import org.apache.hadoop.hbase.HConstants;
+import org.apache.hadoop.hbase.HRegionLocation;
+import org.apache.hadoop.hbase.IntegrationTestingUtility;
+import org.apache.hadoop.hbase.ServerName;
+import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.client.Admin;
+import org.apache.hadoop.hbase.client.Connection;
+import org.apache.hadoop.hbase.client.ConnectionFactory;
+import org.apache.hadoop.hbase.replication.ReplicationPeerConfig;
+import org.apache.hadoop.hbase.replication.ReplicationPeerConfigBuilder;
+import org.apache.hadoop.hbase.replication.ReplicationPeerDescription;
+import org.apache.hadoop.hbase.replication.SyncReplicationState;
+import org.apache.hadoop.util.Tool;
+import org.apache.hadoop.util.ToolRunner;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 /**
@@ -55,25 +56,36 @@ import java.util.UUID;
  * handles creating the tables and schema and setting up the replication.
  */
 public class IntegrationTestReplication extends IntegrationTestBigLinkedList {
-  protected String sourceClusterIdString;
-  protected String sinkClusterIdString;
-  protected int numIterations;
-  protected int numMappers;
-  protected long numNodes;
-  protected String outputDir;
-  protected int numReducers;
-  protected int generateVerifyGap;
-  protected Integer width;
-  protected Integer wrapMultiplier;
-  protected boolean noReplicationSetup = false;
 
-  private final String SOURCE_CLUSTER_OPT = "sourceCluster";
-  private final String DEST_CLUSTER_OPT = "destCluster";
-  private final String ITERATIONS_OPT = "iterations";
-  private final String NUM_MAPPERS_OPT = "numMappers";
-  private final String OUTPUT_DIR_OPT = "outputDir";
-  private final String NUM_REDUCERS_OPT = "numReducers";
-  private final String NO_REPLICATION_SETUP_OPT = "noReplicationSetup";
+  private static final String PEER_ID = "TestPeer";
+
+  private String sourceClusterIdString;
+  private String sourceClusterRemoteWALDir;
+  private String sinkClusterIdString;
+  private String sinkClusterRemoteWALDir;
+  private int numIterations;
+  private int numMappers;
+  private long numNodes;
+  private String outputDir;
+  private int numReducers;
+  private int generateVerifyGap;
+  private Integer width;
+  private Integer wrapMultiplier;
+  private boolean noReplicationSetup = false;
+  private boolean serial = false;
+  private boolean syncRep = false;
+
+  private static final String SOURCE_CLUSTER_OPT = "sourceCluster";
+  private static final String SOURCE_CLUSTER_REMOTE_WAL_DIR_OPT = "sourceClusterRemoteWALDir";
+  private static final String DEST_CLUSTER_OPT = "destCluster";
+  private static final String DEST_CLUSTER_REMOTE_WAL_DIR_OPT = "destClusterRemoteWALDir";
+  private static final String ITERATIONS_OPT = "iterations";
+  private static final String NUM_MAPPERS_OPT = "numMappers";
+  private static final String OUTPUT_DIR_OPT = "outputDir";
+  private static final String NUM_REDUCERS_OPT = "numReducers";
+  private static final String NO_REPLICATION_SETUP_OPT = "noReplicationSetup";
+  private static final String SERIAL_REPLICATION_OPT = "serialReplication";
+  private static final String SYNC_REPLICATION_OPT = "syncReplication";
 
   /**
    * The gap (in seconds) from when data is finished being generated at the source
@@ -114,22 +126,22 @@ public class IntegrationTestReplication extends IntegrationTestBigLinkedList {
    */
   protected class ClusterID {
     private final Configuration configuration;
+    private final String remoteWALDir;
     private Connection connection = null;
 
     /**
      * This creates a new ClusterID wrapper that will automatically build connections and
      * configurations to be able to talk to the specified cluster
-     *
      * @param base the base configuration that this class will add to
      * @param key the cluster key in the form of zk_quorum:zk_port:zk_parent_node
      */
-    public ClusterID(Configuration base,
-                     String key) {
+    public ClusterID(Configuration base, String key, @Nullable String remoteWALDir) {
       configuration = new Configuration(base);
       String[] parts = key.split(":");
       configuration.set(HConstants.ZOOKEEPER_QUORUM, parts[0]);
       configuration.set(HConstants.ZOOKEEPER_CLIENT_PORT, parts[1]);
       configuration.set(HConstants.ZOOKEEPER_ZNODE_PARENT, parts[2]);
+      this.remoteWALDir = remoteWALDir;
     }
 
     @Override
@@ -141,6 +153,10 @@ public class IntegrationTestReplication extends IntegrationTestBigLinkedList {
 
     public Configuration getConfiguration() {
       return this.configuration;
+    }
+
+    public String getRemoteWALDir() {
+      return remoteWALDir;
     }
 
     public Connection getConnection() throws Exception {
@@ -160,31 +176,54 @@ public class IntegrationTestReplication extends IntegrationTestBigLinkedList {
     }
   }
 
+  private void addPeer(ClusterID source, ClusterID sink, TableName tableName) throws Exception {
+    try (Admin admin = source.getConnection().getAdmin()) {
+      // remove any old replication peers
+      for (ReplicationPeerDescription peer : admin.listReplicationPeers()) {
+        if (peer.getPeerConfig().isSyncReplication() &&
+            peer.getSyncReplicationState() != SyncReplicationState.DOWNGRADE_ACTIVE) {
+          admin.transitReplicationPeerSyncReplicationState(peer.getPeerId(),
+            SyncReplicationState.DOWNGRADE_ACTIVE);
+        }
+        admin.removeReplicationPeer(peer.getPeerId());
+      }
+
+      // set the test table to be the table to replicate
+      HashMap<TableName, List<String>> toReplicate = new HashMap<>();
+      toReplicate.put(tableName, Collections.emptyList());
+
+      // set the sink to be the target
+      ReplicationPeerConfigBuilder builder =
+        ReplicationPeerConfig.newBuilder().setClusterKey(sink.toString())
+          .setReplicateAllUserTables(false).setTableCFsMap(toReplicate).setSerial(serial);
+      if (syncRep) {
+        builder.setRemoteWALDir(sink.getRemoteWALDir());
+      }
+      admin.addReplicationPeer(PEER_ID, builder.build());
+    }
+  }
+
   /**
    * The main runner loop for the test. It uses
    * {@link org.apache.hadoop.hbase.test.IntegrationTestBigLinkedList}
    * for the generation and verification of the linked list. It is heavily based on
    * {@link org.apache.hadoop.hbase.test.IntegrationTestBigLinkedList.Loop}
    */
-  protected class VerifyReplicationLoop extends Configured implements Tool {
+  private final class VerifyReplicationLoop extends Configured implements Tool {
     private final Logger LOG = LoggerFactory.getLogger(VerifyReplicationLoop.class);
-    protected ClusterID source;
-    protected ClusterID sink;
-
-    IntegrationTestBigLinkedList integrationTestBigLinkedList;
+    private ClusterID source;
+    private ClusterID sink;
 
     /**
      * This tears down any tables that existed from before and rebuilds the tables and schemas on
      * the source cluster. It then sets up replication from the source to the sink cluster by using
      * the {@link org.apache.hadoop.hbase.client.replication.ReplicationAdmin}
      * connection.
-     *
-     * @throws Exception
      */
-    protected void setupTablesAndReplication() throws Exception {
+    private void setupTablesAndReplication() throws Exception {
       TableName tableName = getTableName(source.getConfiguration());
 
-      ClusterID[] clusters = {source, sink};
+      ClusterID[] clusters = { source, sink };
 
       // delete any old tables in the source and sink
       for (ClusterID cluster : clusters) {
@@ -214,35 +253,19 @@ public class IntegrationTestReplication extends IntegrationTestBigLinkedList {
           }
 
           admin.deleteTable(tableName);
+          // create the schema
+          Generator generator = new Generator();
+          generator.setConf(cluster.getConfiguration());
+          generator.createSchema();
         }
       }
 
-      // create the schema
-      Generator generator = new Generator();
-      generator.setConf(source.getConfiguration());
-      generator.createSchema();
+
 
       // setup the replication on the source
       if (!source.equals(sink)) {
-        try (final Admin admin = source.getConnection().getAdmin()) {
-          // remove any old replication peers
-          for (ReplicationPeerDescription peer : admin.listReplicationPeers()) {
-            admin.removeReplicationPeer(peer.getPeerId());
-          }
-
-          // set the test table to be the table to replicate
-          HashMap<TableName, List<String>> toReplicate = new HashMap<>();
-          toReplicate.put(tableName, Collections.emptyList());
-
-          // set the sink to be the target
-          final ReplicationPeerConfig peerConfig = ReplicationPeerConfig.newBuilder()
-              .setClusterKey(sink.toString())
-              .setReplicateAllUserTables(false)
-              .setTableCFsMap(toReplicate).build();
-
-          admin.addReplicationPeer("TestPeer", peerConfig);
-          admin.enableTableReplication(tableName);
-        }
+        addPeer(source, sink, tableName);
+        addPeer(sink, source, tableName);
       }
 
       for (ClusterID cluster : clusters) {
@@ -250,21 +273,40 @@ public class IntegrationTestReplication extends IntegrationTestBigLinkedList {
       }
     }
 
-    protected void waitForReplication() throws Exception {
-      // TODO: we shouldn't be sleeping here. It would be better to query the region servers
-      // and wait for them to report 0 replication lag.
-      Thread.sleep(generateVerifyGap * 1000);
+    private void beforeGenerate() throws Exception {
+      if (syncRep) {
+        try (Admin srcAdmin = source.getConnection().getAdmin();
+          Admin sinkAdmin = sink.getConnection().getAdmin()) {
+          sinkAdmin.transitReplicationPeerSyncReplicationState(PEER_ID,
+            SyncReplicationState.STANDBY);
+          srcAdmin.transitReplicationPeerSyncReplicationState(PEER_ID, SyncReplicationState.ACTIVE);
+        }
+        source.closeConnection();
+        sink.closeConnection();
+      }
+    }
+
+    private void beforeVerify() throws Exception {
+      if (syncRep) {
+        try (Admin admin = sink.getConnection().getAdmin()){
+          sink.getConnection().getAdmin().transitReplicationPeerSyncReplicationState(PEER_ID,
+            SyncReplicationState.DOWNGRADE_ACTIVE);
+        }
+        sink.closeConnection();
+      } else {
+        // TODO: we shouldn't be sleeping here. It would be better to query the region servers
+        // and wait for them to report 0 replication lag.
+        Thread.sleep(generateVerifyGap * 1000);
+      }
     }
 
     /**
      * Run the {@link org.apache.hadoop.hbase.test.IntegrationTestBigLinkedList.Generator} in the
      * source cluster. This assumes that the tables have been setup via setupTablesAndReplication.
-     *
-     * @throws Exception
      */
-    protected void runGenerator() throws Exception {
+    private void runGenerator() throws Exception {
       Path outputPath = new Path(outputDir);
-      UUID uuid = util.getRandomUUID(); //create a random UUID.
+      UUID uuid = HBaseTestingUtility.getRandomUUID(); //create a random UUID.
       Path generatorOutput = new Path(outputPath, uuid.toString());
 
       Generator generator = new Generator();
@@ -284,11 +326,10 @@ public class IntegrationTestReplication extends IntegrationTestBigLinkedList {
      * cluster should be available in the sink cluster after a reasonable gap
      *
      * @param expectedNumNodes the number of nodes we are expecting to see in the sink cluster
-     * @throws Exception
      */
-    protected void runVerify(long expectedNumNodes) throws Exception {
+    private void runVerify(long expectedNumNodes) throws Exception {
       Path outputPath = new Path(outputDir);
-      UUID uuid = util.getRandomUUID(); //create a random UUID.
+      UUID uuid = HBaseTestingUtility.getRandomUUID(); //create a random UUID.
       Path iterationOutput = new Path(outputPath, uuid.toString());
 
       Verify verify = new Verify();
@@ -306,23 +347,31 @@ public class IntegrationTestReplication extends IntegrationTestBigLinkedList {
       LOG.info("Verify finished with success. Total nodes=" + expectedNumNodes);
     }
 
+    private void swapSourceAndSinkCluster() {
+      ClusterID tmp = source;
+      source = sink;
+      sink = tmp;
+    }
+
     /**
      * The main test runner
-     *
-     * This test has 4 steps:
-     *  1: setupTablesAndReplication
-     *  2: generate the data into the source cluster
-     *  3: wait for replication to propagate
-     *  4: verify that the data is available in the sink cluster
-     *
+     * <p/>
+     * This test has 5 steps:
+     * <ol>
+     * <li>setupTablesAndReplication</li>
+     * <li>generate the data into the source cluster</li>
+     * <li>wait for replication to propagate</li>
+     * <li>verify that the data is available in the sink cluster</li>
+     * <li>swap the source and sink cluster</li>
+     * </ol>
      * @param args should be empty
      * @return 0 on success
      * @throws Exception on an error
      */
     @Override
     public int run(String[] args) throws Exception {
-      source = new ClusterID(getConf(), sourceClusterIdString);
-      sink = new ClusterID(getConf(), sinkClusterIdString);
+      source = new ClusterID(getConf(), sourceClusterIdString, sourceClusterRemoteWALDir);
+      sink = new ClusterID(getConf(), sinkClusterIdString, sinkClusterRemoteWALDir);
 
       if (!noReplicationSetup) {
         setupTablesAndReplication();
@@ -333,9 +382,11 @@ public class IntegrationTestReplication extends IntegrationTestBigLinkedList {
 
         expectedNumNodes += numMappers * numNodes;
 
+        beforeGenerate();
         runGenerator();
-        waitForReplication();
+        beforeVerify();
         runVerify(expectedNumNodes);
+        swapSourceAndSinkCluster();
       }
 
       /**
@@ -362,6 +413,12 @@ public class IntegrationTestReplication extends IntegrationTestBigLinkedList {
                   "Number of reducers (default: " + DEFAULT_NUM_MAPPERS + ")");
     addOptNoArg("nrs", NO_REPLICATION_SETUP_OPT,
                   "Don't setup tables or configure replication before starting test");
+    addOptNoArg("serial", SERIAL_REPLICATION_OPT, "Enable serial replication");
+    addOptNoArg("sync", SYNC_REPLICATION_OPT, "Test sync replication");
+    addOptWithArg("sdir", SOURCE_CLUSTER_REMOTE_WAL_DIR_OPT,
+      "The remote WAL directory on the source cluster");
+    addOptWithArg("rdir", DEST_CLUSTER_REMOTE_WAL_DIR_OPT,
+      "The remote WAL directory on the sink cluster");
     addOptWithArg("n", NUM_NODES_OPT,
                   "Number of nodes. This should be a multiple of width * wrapMultiplier."  +
                   " (default: " + DEFAULT_NUM_NODES + ")");
@@ -385,30 +442,42 @@ public class IntegrationTestReplication extends IntegrationTestBigLinkedList {
     outputDir = cmd.getOptionValue(OUTPUT_DIR_OPT);
 
     /** This uses parseInt from {@link org.apache.hadoop.hbase.util.AbstractHBaseTool} */
-    numMappers = parseInt(cmd.getOptionValue(NUM_MAPPERS_OPT,
-                                             Integer.toString(DEFAULT_NUM_MAPPERS)),
-                          1, Integer.MAX_VALUE);
-    numReducers = parseInt(cmd.getOptionValue(NUM_REDUCERS_OPT,
-                                              Integer.toString(DEFAULT_NUM_REDUCERS)),
-                           1, Integer.MAX_VALUE);
-    numNodes = parseInt(cmd.getOptionValue(NUM_NODES_OPT, Integer.toString(DEFAULT_NUM_NODES)),
-                        1, Integer.MAX_VALUE);
-    generateVerifyGap = parseInt(cmd.getOptionValue(GENERATE_VERIFY_GAP_OPT,
-                                                    Integer.toString(DEFAULT_GENERATE_VERIFY_GAP)),
-                                 1, Integer.MAX_VALUE);
-    numIterations = parseInt(cmd.getOptionValue(ITERATIONS_OPT,
-                                                Integer.toString(DEFAULT_NUM_ITERATIONS)),
-                             1, Integer.MAX_VALUE);
-    width = parseInt(cmd.getOptionValue(WIDTH_OPT, Integer.toString(DEFAULT_WIDTH)),
-                                        1, Integer.MAX_VALUE);
-    wrapMultiplier = parseInt(cmd.getOptionValue(WRAP_MULTIPLIER_OPT,
-                                                 Integer.toString(DEFAULT_WRAP_MULTIPLIER)),
-                              1, Integer.MAX_VALUE);
+    numMappers =
+      parseInt(cmd.getOptionValue(NUM_MAPPERS_OPT, Integer.toString(DEFAULT_NUM_MAPPERS)), 1,
+        Integer.MAX_VALUE);
+    numReducers =
+      parseInt(cmd.getOptionValue(NUM_REDUCERS_OPT, Integer.toString(DEFAULT_NUM_REDUCERS)), 1,
+        Integer.MAX_VALUE);
+    numNodes = parseInt(cmd.getOptionValue(NUM_NODES_OPT, Integer.toString(DEFAULT_NUM_NODES)), 1,
+      Integer.MAX_VALUE);
+    generateVerifyGap = parseInt(
+      cmd.getOptionValue(GENERATE_VERIFY_GAP_OPT, Integer.toString(DEFAULT_GENERATE_VERIFY_GAP)), 1,
+      Integer.MAX_VALUE);
+    numIterations =
+      parseInt(cmd.getOptionValue(ITERATIONS_OPT, Integer.toString(DEFAULT_NUM_ITERATIONS)), 1,
+        Integer.MAX_VALUE);
+    width = parseInt(cmd.getOptionValue(WIDTH_OPT, Integer.toString(DEFAULT_WIDTH)), 1,
+      Integer.MAX_VALUE);
+    wrapMultiplier =
+      parseInt(cmd.getOptionValue(WRAP_MULTIPLIER_OPT, Integer.toString(DEFAULT_WRAP_MULTIPLIER)),
+        1, Integer.MAX_VALUE);
 
     if (cmd.hasOption(NO_REPLICATION_SETUP_OPT)) {
       noReplicationSetup = true;
     }
-
+    if (cmd.hasOption(SERIAL_REPLICATION_OPT)) {
+     serial = true; 
+    }
+    if (cmd.hasOption(SYNC_REPLICATION_OPT)) {
+      syncRep = true;
+      if (!cmd.hasOption(SOURCE_CLUSTER_REMOTE_WAL_DIR_OPT) ||
+        !cmd.hasOption(DEST_CLUSTER_REMOTE_WAL_DIR_OPT)) {
+        throw new RuntimeException(
+          "Must specify remote wal directory(by using -sdir and -rdir) if you want to sync replication");
+      }
+      sourceClusterRemoteWALDir = cmd.getOptionValue(SOURCE_CLUSTER_REMOTE_WAL_DIR_OPT);
+      sinkClusterRemoteWALDir = cmd.getOptionValue(DEST_CLUSTER_REMOTE_WAL_DIR_OPT);
+    }
     if (numNodes % (width * wrapMultiplier) != 0) {
       throw new RuntimeException("numNodes must be a multiple of width and wrap multiplier");
     }
@@ -417,7 +486,6 @@ public class IntegrationTestReplication extends IntegrationTestBigLinkedList {
   @Override
   public int runTestFromCommandLine() throws Exception {
     VerifyReplicationLoop tool = new  VerifyReplicationLoop();
-    tool.integrationTestBigLinkedList = this;
     return ToolRunner.run(getConf(), tool, null);
   }
 
