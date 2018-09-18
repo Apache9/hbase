@@ -31,13 +31,17 @@ public final class CellProtos {
      */
     DELETE(2, 8),
     /**
+     * <code>DELETE_FAMILY_VERSION = 10;</code>
+     */
+    DELETE_FAMILY_VERSION(3, 10),
+    /**
      * <code>DELETE_COLUMN = 12;</code>
      */
-    DELETE_COLUMN(3, 12),
+    DELETE_COLUMN(4, 12),
     /**
      * <code>DELETE_FAMILY = 14;</code>
      */
-    DELETE_FAMILY(4, 14),
+    DELETE_FAMILY(5, 14),
     /**
      * <code>MAXIMUM = 255;</code>
      *
@@ -45,7 +49,7 @@ public final class CellProtos {
      * MAXIMUM is used when searching; you look from maximum on down.
      * </pre>
      */
-    MAXIMUM(5, 255),
+    MAXIMUM(6, 255),
     ;
 
     /**
@@ -60,6 +64,10 @@ public final class CellProtos {
      * <code>DELETE = 8;</code>
      */
     public static final int DELETE_VALUE = 8;
+    /**
+     * <code>DELETE_FAMILY_VERSION = 10;</code>
+     */
+    public static final int DELETE_FAMILY_VERSION_VALUE = 10;
     /**
      * <code>DELETE_COLUMN = 12;</code>
      */
@@ -85,6 +93,7 @@ public final class CellProtos {
         case 0: return MINIMUM;
         case 4: return PUT;
         case 8: return DELETE;
+        case 10: return DELETE_FAMILY_VERSION;
         case 12: return DELETE_COLUMN;
         case 14: return DELETE_FAMILY;
         case 255: return MAXIMUM;
@@ -2207,11 +2216,11 @@ public final class CellProtos {
       "\022\013\n\003row\030\001 \002(\014\022\016\n\006family\030\002 \002(\014\022\021\n\tqualifi" +
       "er\030\003 \002(\014\022\021\n\ttimestamp\030\004 \001(\004\022\033\n\010key_type\030" +
       "\005 \001(\0162\t.CellType\022\r\n\005value\030\006 \001(\014\022\014\n\004tags\030" +
-      "\007 \001(\014*`\n\010CellType\022\013\n\007MINIMUM\020\000\022\007\n\003PUT\020\004\022" +
-      "\n\n\006DELETE\020\010\022\021\n\rDELETE_COLUMN\020\014\022\021\n\rDELETE" +
-      "_FAMILY\020\016\022\014\n\007MAXIMUM\020\377\001B=\n*org.apache.ha",
-      "doop.hbase.protobuf.generatedB\nCellProto" +
-      "sH\001\240\001\001"
+      "\007 \001(\014*{\n\010CellType\022\013\n\007MINIMUM\020\000\022\007\n\003PUT\020\004\022" +
+      "\n\n\006DELETE\020\010\022\031\n\025DELETE_FAMILY_VERSION\020\n\022\021" +
+      "\n\rDELETE_COLUMN\020\014\022\021\n\rDELETE_FAMILY\020\016\022\014\n\007",
+      "MAXIMUM\020\377\001B=\n*org.apache.hadoop.hbase.pr" +
+      "otobuf.generatedB\nCellProtosH\001\240\001\001"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
       new com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner() {
