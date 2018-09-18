@@ -34,6 +34,7 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+
 import org.apache.commons.lang3.NotImplementedException;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.ClusterMetrics;
@@ -1454,8 +1455,13 @@ public abstract class BaseLoadBalancer implements LoadBalancer {
     for (Map.Entry<RegionInfo, ServerName> entry : regions.entrySet()) {
       RegionInfo region = entry.getKey();
       ServerName oldServerName = entry.getValue();
-      if (!hasRegionReplica && !RegionReplicaUtil.isDefaultReplica(region)) {
-        hasRegionReplica = true;
+      // In the current set of regions even if one has region replica let us go with
+      // getting the entire snapshot
+      if (this.services != null && this.services.getAssignmentManager() != null) { // for tests
+        if (!hasRegionReplica && this.services.getAssignmentManager().getRegionStates()
+            .isReplicaAvailableForRegion(region)) {
+          hasRegionReplica = true;
+        }
       }
       List<ServerName> localServers = new ArrayList<>();
       if (oldServerName != null) {
