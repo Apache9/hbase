@@ -571,6 +571,9 @@ public class FixedFileTrailer {
         comparatorClassName = KeyValue.META_COMPARATOR.getClass().getName();
       } else if (comparatorClassName.equals(KeyValue.RAW_COMPARATOR.getLegacyKeyComparatorName())) {
         comparatorClassName = KeyValue.RAW_COMPARATOR.getClass().getName();
+      } else if (comparatorClassName.isEmpty()) {
+        // To be compatible with branch2
+        comparatorClassName = KeyValue.RAW_COMPARATOR.getClass().getName();
       }
 
       // if the name wasn't one of the legacy names, maybe its a legit new kind of comparator.
