@@ -3940,6 +3940,18 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
                 break;
               }
             }
+          } else if (!moreRows && results.size() > 0) {
+            // No more cells for the scan here, we need to ensure that the mayHaveMoreCellsInRow of
+            // last result is false. Otherwise it's possible that: the first nextRaw returned
+            // because BATCH_LIMIT_REACHED (BTW it happen to exhaust all cells of the scan),so the
+            // last result's mayHaveMoreCellsInRow will be true. while the following nextRaw will
+            // return with moreRows=false, which means moreResultsInRegion would be false, it will
+            // be a contradictory state (HBASE-21206).
+            int lastIdx = results.size() - 1;
+            Result r = results.get(lastIdx);
+            if (r.mayHaveMoreCellsInRow()) {
+              results.set(lastIdx, Result.create(r.rawCells(), r.getExists(), r.isStale(), false));
+            }
           }
 
           boolean sizeLimitReached = scannerContext.checkSizeLimit(LimitScope.BETWEEN_ROWS);
