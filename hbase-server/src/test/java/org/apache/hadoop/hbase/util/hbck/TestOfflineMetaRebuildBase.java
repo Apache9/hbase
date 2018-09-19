@@ -75,7 +75,7 @@ public class TestOfflineMetaRebuildBase extends OfflineMetaRebuildTestCore {
     LOG.info("No more RIT in ZK, now doing final test verification");
 
     // everything is good again.
-    assertEquals(5, scanMeta());
+    assertEquals(6, scanMeta());
     HTableDescriptor[] htbls = TEST_UTIL.getHBaseAdmin().listTables();
     LOG.info("Tables present after restart: " + Arrays.toString(htbls));
 
