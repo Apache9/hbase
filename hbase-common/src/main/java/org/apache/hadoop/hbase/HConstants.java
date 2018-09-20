@@ -1166,6 +1166,11 @@ public final class HConstants {
   public static final String DEFAULT_STATUS_MULTICAST_BIND_ADDRESS = "0.0.0.0";
 
   /**
+   * The network interface name to use for the multicast messages.
+   */
+  public static final String STATUS_MULTICAST_NI_NAME = "hbase.status.multicast.ni.name";
+
+  /**
    * The port to use for the multicast messages.
    */
   public static final String STATUS_MULTICAST_PORT = "hbase.status.multicast.address.port";
