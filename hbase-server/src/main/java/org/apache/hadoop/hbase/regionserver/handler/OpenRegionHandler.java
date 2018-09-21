@@ -133,20 +133,15 @@ public class OpenRegionHandler extends EventHandler {
       final Boolean current = this.rsServices.getRegionsInTransitionInRS().
           remove(this.regionInfo.getEncodedNameAsBytes());
 
-      // Let's check if we have met a race condition on open cancellation....
-      // A better solution would be to not have any race condition.
-      // this.rsServices.getRegionsInTransitionInRS().remove(
-      //  this.regionInfo.getEncodedNameAsBytes(), Boolean.TRUE);
-      // would help.
+      // Let's check if we have met a race condition, theoretically this should not happen.
       if (openSuccessful) {
         if (current == null) { // Should NEVER happen, but let's be paranoid.
-          LOG.error("Bad state: we've just opened a region that was NOT in transition. Region="
-              + regionName);
-        } else if (Boolean.FALSE.equals(current)) { // Can happen, if we're
-                                                    // really unlucky.
-          LOG.error("Race condition: we've finished to open a region, while a close was requested "
-              + " on region=" + regionName + ". It can be a critical error, as a region that"
-              + " should be closed is now opened. Closing it now");
+          LOG.error("Bad state: we've just opened a region that was NOT in transition. Region=" +
+            regionName);
+        } else if (!current) {
+          // Should NEVER happen too. For now if we are closing a region which is current being
+          // opening, we will throw exception and try again later. But let's be paranoid.
+          LOG.error("Bad state: we've just opened a region that was closing. Region=" + regionName);
           cleanupFailedOpen(region);
         }
       }

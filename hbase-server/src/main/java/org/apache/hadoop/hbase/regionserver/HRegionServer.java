@@ -3154,29 +3154,21 @@ public class HRegionServer extends HasThread implements
 
     final Boolean previous = this.regionsInTransitionInRS.putIfAbsent(Bytes.toBytes(encodedName),
         Boolean.FALSE);
-
-    if (Boolean.TRUE.equals(previous)) {
-      LOG.info("Received CLOSE for the region:" + encodedName + " , which we are already " +
-          "trying to OPEN. Cancelling OPENING.");
-      if (!regionsInTransitionInRS.replace(Bytes.toBytes(encodedName), previous, Boolean.FALSE)) {
-        // The replace failed. That should be an exceptional case, but theoretically it can happen.
-        // We're going to try to do a standard close then.
-        LOG.warn("The opening for region " + encodedName + " was done before we could cancel it." +
-            " Doing a standard close now");
-        return closeRegion(encodedName, abort, sn);
+    if (previous != null) {
+      if (previous) {
+        // This could happen as we will update the region state to OPEN when calling
+        // reportRegionStateTransition, so the HMaster will think the region is online, before we
+        // actually open the region, as the This could happen we will update the region state to
+        // OPEN when calling reportRegionStateTransition is part of the opening process.
+        LOG.warn("Received CLOSE for the region:" + encodedName + " , which we are already " +
+          "trying to OPEN. Please try again later.");
+        throw new RegionOpeningException(
+          "The region " + encodedName + " is opening currently, please try again later.");
+      } else {
+        LOG.info("Received CLOSE for the region: " + encodedName +
+          ", which we are already trying to CLOSE, but not completed yet");
+        return true;
       }
-      // Let's get the region from the online region list again
-      actualRegion = this.getRegion(encodedName);
-      if (actualRegion == null) { // If already online, we still need to close it.
-        LOG.info("The opening previously in progress has been cancelled by a CLOSE request.");
-        // The master deletes the znode when it receives this exception.
-        throw new NotServingRegionException("The region " + encodedName +
-          " was opening but not yet served. Opening is cancelled.");
-      }
-    } else if (Boolean.FALSE.equals(previous)) {
-      LOG.info("Received CLOSE for the region: " + encodedName +
-        ", which we are already trying to CLOSE, but not completed yet");
-      return true;
     }
 
     if (actualRegion == null) {

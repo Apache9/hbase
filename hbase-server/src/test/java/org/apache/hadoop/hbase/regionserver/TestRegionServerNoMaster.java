@@ -21,16 +21,15 @@ import java.io.IOException;
 import org.apache.hadoop.hbase.HBaseClassTestRule;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.HConstants;
-import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.NotServingRegionException;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.Put;
+import org.apache.hadoop.hbase.client.RegionInfo;
+import org.apache.hadoop.hbase.client.RegionInfoBuilder;
 import org.apache.hadoop.hbase.client.RegionLocator;
 import org.apache.hadoop.hbase.client.Table;
-import org.apache.hadoop.hbase.client.TableDescriptor;
 import org.apache.hadoop.hbase.master.HMaster;
-import org.apache.hadoop.hbase.regionserver.handler.OpenRegionHandler;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
 import org.apache.hadoop.hbase.testclassification.RegionServerTests;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -67,7 +66,7 @@ public class TestRegionServerNoMaster {
   private static Table table;
   private static final byte[] row = Bytes.toBytes("ee");
 
-  private static HRegionInfo hri;
+  private static RegionInfo hri;
 
   private static byte[] regionName;
   private static final HBaseTestingUtility HTU = new HBaseTestingUtility();
@@ -85,7 +84,7 @@ public class TestRegionServerNoMaster {
     table.put(p);
 
     try (RegionLocator locator = HTU.getConnection().getRegionLocator(tableName)) {
-      hri = locator.getRegionLocation(row, false).getRegionInfo();
+      hri = locator.getRegionLocation(row, false).getRegion();
     }
     regionName = hri.getRegionName();
 
@@ -117,21 +116,23 @@ public class TestRegionServerNoMaster {
       return;
     }
 
-    ProtobufUtil.openRegion(null, hrs.getRSRpcServices(),
-      hrs.getServerName(), HRegionInfo.FIRST_META_REGIONINFO);
+    ProtobufUtil.openRegion(null, hrs.getRSRpcServices(), hrs.getServerName(),
+      RegionInfoBuilder.FIRST_META_REGIONINFO);
     while (true) {
       sn = mtl.getMetaRegionLocation(zkw);
-      if (sn != null && sn.equals(hrs.getServerName())
-          && hrs.onlineRegions.containsKey(
-              HRegionInfo.FIRST_META_REGIONINFO.getEncodedName())) {
+      if (sn != null && sn.equals(hrs.getServerName()) &&
+        hrs.onlineRegions.containsKey(RegionInfoBuilder.FIRST_META_REGIONINFO.getEncodedName())) {
         break;
       }
       Thread.sleep(100);
     }
   }
 
-  /** Flush the given region in the mini cluster. Since no master, we cannot use HBaseAdmin.flush() */
-  public static void flushRegion(HBaseTestingUtility HTU, HRegionInfo regionInfo) throws IOException {
+  /**
+   * Flush the given region in the mini cluster. Since no master, we cannot use HBaseAdmin.flush()
+   */
+  public static void flushRegion(HBaseTestingUtility HTU, RegionInfo regionInfo)
+      throws IOException {
     for (RegionServerThread rst : HTU.getMiniHBaseCluster().getRegionServerThreads()) {
       HRegion region = rst.getRegionServer().getRegionByEncodedName(regionInfo.getEncodedName());
       if (region != null) {
@@ -154,7 +155,7 @@ public class TestRegionServerNoMaster {
   }
 
 
-  public static void openRegion(HBaseTestingUtility HTU, HRegionServer rs, HRegionInfo hri)
+  public static void openRegion(HBaseTestingUtility HTU, HRegionServer rs, RegionInfo hri)
       throws Exception {
     AdminProtos.OpenRegionRequest orr =
       RequestConverter.buildOpenRegionRequest(rs.getServerName(), hri, null);
@@ -169,7 +170,7 @@ public class TestRegionServerNoMaster {
   }
 
   public static void checkRegionIsOpened(HBaseTestingUtility HTU, HRegionServer rs,
-      HRegionInfo hri) throws Exception {
+      RegionInfo hri) throws Exception {
     while (!rs.getRegionsInTransitionInRS().isEmpty()) {
       Thread.sleep(1);
     }
@@ -177,7 +178,7 @@ public class TestRegionServerNoMaster {
     Assert.assertTrue(rs.getRegion(hri.getRegionName()).isAvailable());
   }
 
-  public static void closeRegion(HBaseTestingUtility HTU, HRegionServer rs, HRegionInfo hri)
+  public static void closeRegion(HBaseTestingUtility HTU, HRegionServer rs, RegionInfo hri)
       throws Exception {
     AdminProtos.CloseRegionRequest crr = ProtobufUtil.buildCloseRegionRequest(
       rs.getServerName(), hri.getRegionName());
@@ -187,7 +188,7 @@ public class TestRegionServerNoMaster {
   }
 
   public static void checkRegionIsClosed(HBaseTestingUtility HTU, HRegionServer rs,
-      HRegionInfo hri) throws Exception {
+      RegionInfo hri) throws Exception {
     while (!rs.getRegionsInTransitionInRS().isEmpty()) {
       Thread.sleep(1);
     }
@@ -234,42 +235,6 @@ public class TestRegionServerNoMaster {
       }
     }
 
-    checkRegionIsClosed(HTU, getRS(), hri);
-
-    openRegion(HTU, getRS(), hri);
-  }
-
-  /**
-   * Test that if we do a close while opening it stops the opening.
-   */
-  @Test
-  public void testCancelOpeningWithoutZK() throws Exception {
-    // We close
-    closeRegionNoZK();
-    checkRegionIsClosed(HTU, getRS(), hri);
-
-    // Let do the initial steps, without having a handler
-    getRS().getRegionsInTransitionInRS().put(hri.getEncodedNameAsBytes(), Boolean.TRUE);
-
-    // That's a close without ZK.
-    AdminProtos.CloseRegionRequest crr =
-        ProtobufUtil.buildCloseRegionRequest(getRS().getServerName(), regionName);
-    try {
-      getRS().rpcServices.closeRegion(null, crr);
-      Assert.assertTrue(false);
-    } catch (org.apache.hbase.thirdparty.com.google.protobuf.ServiceException expected) {
-    }
-
-    // The state in RIT should have changed to close
-    Assert.assertEquals(Boolean.FALSE, getRS().getRegionsInTransitionInRS().get(
-        hri.getEncodedNameAsBytes()));
-
-    // Let's start the open handler
-    TableDescriptor htd = getRS().tableDescriptors.get(hri.getTable());
-
-    getRS().executorService.submit(new OpenRegionHandler(getRS(), getRS(), hri, htd, -1));
-
-    // The open handler should have removed the region from RIT but kept the region closed
     checkRegionIsClosed(HTU, getRS(), hri);
 
     openRegion(HTU, getRS(), hri);
