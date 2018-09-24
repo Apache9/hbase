@@ -78,7 +78,6 @@ import org.apache.hadoop.hbase.NamespaceDescriptor;
 import org.apache.hadoop.hbase.PleaseHoldException;
 import org.apache.hadoop.hbase.ReplicationPeerNotFoundException;
 import org.apache.hadoop.hbase.ServerName;
-import org.apache.hadoop.hbase.TableDescriptors;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.TableNotDisabledException;
 import org.apache.hadoop.hbase.TableNotFoundException;
@@ -852,6 +851,12 @@ public class HMaster extends HRegionServer implements MasterServices {
     }
   }
 
+  // Will be overriden in test to inject customized AssignmentManager
+  @VisibleForTesting
+  protected AssignmentManager createAssignmentManager(MasterServices master) {
+    return new AssignmentManager(master);
+  }
+
   /**
    * Finish initialization of HMaster after becoming the primary master.
    * <p/>
@@ -944,7 +949,7 @@ public class HMaster extends HRegionServer implements MasterServices {
     checkUnsupportedProcedure(procsByType);
 
     // Create Assignment Manager
-    this.assignmentManager = new AssignmentManager(this);
+    this.assignmentManager = createAssignmentManager(this);
     this.assignmentManager.start();
     // TODO: TRSP can perform as the sub procedure for other procedures, so even if it is marked as
     // completed, it could still be in the procedure list. This is a bit strange but is another
@@ -1341,11 +1346,6 @@ public class HMaster extends HRegionServer implements MasterServices {
     }
 
     return (hfileCleanerFlag && logCleanerFlag);
-  }
-
-  @Override
-  public TableDescriptors getTableDescriptors() {
-    return this.tableDescriptors;
   }
 
   @Override
