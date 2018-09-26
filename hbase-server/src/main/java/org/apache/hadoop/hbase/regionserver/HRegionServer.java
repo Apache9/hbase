@@ -276,8 +276,6 @@ import org.apache.hadoop.hbase.zookeeper.ZooKeeperNodeTracker;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
 import org.apache.hadoop.ipc.RemoteException;
 import org.apache.hadoop.metrics.util.MBeanUtil;
-import org.apache.hadoop.metrics2.MetricHistogram;
-import org.apache.hadoop.metrics2.lib.MutableTimeHistogram;
 import org.apache.hadoop.net.DNS;
 import org.apache.hadoop.util.ReflectionUtils;
 import org.apache.hadoop.util.StringUtils;
@@ -4452,7 +4450,9 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
       if (Trace.isTracing() && Trace.currentSpan() != null) {
         Trace.currentSpan().addTimelineAnnotation("do multi to a specific region " + Bytes.toString(region.getRegionName()));
       }
-      LOG.debug("Get region " + region + " for " + regionAction);
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("Get region " + region + " for " + regionAction);
+      }
       if (regionAction.hasAtomic() && regionAction.getAtomic()) {
         // How does this call happen?  It may need some work to play well w/ the surroundings.
         // Need to return an item per Action along w/ Action index.  TODO.
