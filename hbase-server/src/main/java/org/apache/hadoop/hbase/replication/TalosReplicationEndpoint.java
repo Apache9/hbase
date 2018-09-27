@@ -75,6 +75,7 @@ public class TalosReplicationEndpoint extends BaseReplicationEndpoint {
   private TalosAdmin talosAdmin;
   private final Hash hashTool = MurmurHash.getInstance();
   private final int maxTries = 10;
+  private long batchSizeLimit = 20971520L;
 
   @Override
   public void init(Context context) throws IOException {
@@ -89,6 +90,7 @@ public class TalosReplicationEndpoint extends BaseReplicationEndpoint {
     initialTalosConfigs();
     this.maxRetriesMultiplier = conf.getInt("replication.source.maxretriesmultiplier", 10);
     this.sleepForRetriesCount = conf.getLong("replication.source.sleepforretries", 1000);
+    this.batchSizeLimit = conf.getLong("talos.replication.batchsize.limit",20971520L);
   }
 
   private void initialTalosConfigs() {
@@ -237,7 +239,7 @@ public class TalosReplicationEndpoint extends BaseReplicationEndpoint {
         try {
           SimpleProducer simpleProducer =
               this.getSimpleProducer(tableName, regionMessages.getKey());
-          simpleProducer.putMessageList(regionMessages.getValue());
+          batchSendMessages(simpleProducer, regionMessages.getValue());
         } catch (TException | IOException e) {
           if (e instanceof GalaxyTalosException
               && ((GalaxyTalosException) e).getErrorCode() == TOPIC_NOT_EXIST) {
@@ -251,8 +253,22 @@ public class TalosReplicationEndpoint extends BaseReplicationEndpoint {
             throw e;
           }
         }
-
       }
+    }
+  }
+
+  private void batchSendMessages(SimpleProducer simpleProducer, List<Message> messages)
+      throws IOException, TException {
+    int fromIndex = 0;
+    int toIndex = 0;
+    while (toIndex < messages.size()) {
+      long batchSize = 0;
+      for (toIndex = fromIndex; toIndex < messages.size()
+          && batchSize < batchSizeLimit; toIndex++) {
+        batchSize += messages.get(toIndex).getMessage().length;
+      }
+      simpleProducer.putMessageList(messages.subList(fromIndex, toIndex));
+      fromIndex = toIndex;
     }
   }
 
@@ -260,14 +276,14 @@ public class TalosReplicationEndpoint extends BaseReplicationEndpoint {
       constructTalosMessages(List<HLog.Entry> entries) throws IOException {
     Map<TableName, Map<String, List<Message>>> messages = new HashMap<>();
     for (HLog.Entry entry : entries) {
-      Message message = TalosUtil.constructSingleMessage(entry);
+      List<Message> constructedMessages = TalosUtil.constructMessages(entry);
       TableName tableName = entry.getKey().getTablename();
       Map<String, List<Message>> regionMessages =
           messages.computeIfAbsent(tableName, key -> new HashMap<>());
       String encodedRegionName = Bytes.toStringBinary(entry.getKey().getEncodedRegionName());
       List<Message> messageList =
           regionMessages.computeIfAbsent(encodedRegionName, key -> new ArrayList<>());
-      messageList.add(message);
+      messageList.addAll(constructedMessages);
     }
     return messages;
   }

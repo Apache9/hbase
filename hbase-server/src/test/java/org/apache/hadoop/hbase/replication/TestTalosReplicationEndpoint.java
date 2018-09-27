@@ -45,6 +45,8 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.mockito.Mockito;
 
+import static org.apache.hadoop.hbase.util.TalosUtil.HEADER_SIZE;
+
 @Category(SmallTests.class)
 public class TestTalosReplicationEndpoint {
   private static TalosReplicationEndpoint endpoint;
@@ -121,7 +123,8 @@ public class TestTalosReplicationEndpoint {
     List<MessageAndOffset> messageAndOffsets = consumer.fetchMessage(0, 100);
     for(int i = 0; i < 100; i++){
       Message message = messageAndOffsets.get(i).getMessage();
-      AdminProtos.WALEntry walEntry = AdminProtos.WALEntry.parseFrom(message.getMessage());
+      AdminProtos.WALEntry walEntry = AdminProtos.WALEntry.parseFrom(
+        Bytes.copy(message.getMessage(), HEADER_SIZE, message.getMessage().length - HEADER_SIZE));
       Assert.assertEquals(walEntry.getKey().getLogSequenceNumber(), i);
     }
   }

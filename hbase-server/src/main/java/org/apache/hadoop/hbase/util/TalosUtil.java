@@ -19,17 +19,22 @@
  */
 package org.apache.hadoop.hbase.util;
 
+import static org.apache.hadoop.hbase.HConstants.EMPTY_BYTE_ARRAY;
 import static org.apache.hadoop.hbase.HConstants.TALOS_ACCESS_ENDPOINT;
 import static org.apache.hadoop.hbase.HConstants.TALOS_ACCESS_KEY;
 import static org.apache.hadoop.hbase.HConstants.TALOS_ACCESS_SECRET;
 import static org.apache.hadoop.hbase.regionserver.wal.WALEdit.METAFAMILY;
 
+import java.io.DataInputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
+import com.google.common.annotations.VisibleForTesting;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellComparator;
 import org.apache.hadoop.hbase.CellUtil;
@@ -52,15 +57,65 @@ import com.xiaomi.infra.thirdparty.galaxy.talos.admin.TalosAdmin;
 import com.xiaomi.infra.thirdparty.galaxy.talos.client.TalosClientConfig;
 import com.xiaomi.infra.thirdparty.galaxy.talos.thrift.Message;
 import libthrift091.TException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @InterfaceAudience.Private
 public class TalosUtil {
+  private static final Logger LOG = LoggerFactory.getLogger(TalosUtil.class);
+
   private static final String COLON = ":";
   private static final String ESCAPE_COLON = "---";
   private static final String ESCAPE_DASH = "--";
   private static final String DASH = "-";
+  private static final int CHUNK_SIZE = 4194304; // 4MB
+  public static final int HEADER_SIZE = Bytes.SIZEOF_LONG + 2 * Bytes.SIZEOF_INT;
 
   private TalosUtil(){}
+
+  public static Pair<Integer, Message> getNextMessageFromStream(DataInputStream in)
+      throws IOException {
+    boolean done = false;
+    int readBytes = 0;
+    LinkedList<MessageChunk> messageChunkList = new LinkedList<>();
+    while (!done) {
+      MessageChunk messageChunk = readMessageChunk(in);
+      if (messageChunkList.isEmpty()
+          || messageChunk.getSeqNum() != messageChunkList.getLast().getSeqNum()) {
+        messageChunkList.clear();
+      }
+      if (messageChunkList.isEmpty()
+          || messageChunk.getIndex() == messageChunkList.getLast().getIndex() + 1) {
+        messageChunkList.add(messageChunk);
+      }
+      readBytes += (Bytes.SIZEOF_INT + messageChunk.getMessageLength());
+      if (messageChunk.isLastChunk()) {
+        done = messageChunkList.size() == messageChunk.getTotalSlices();
+      }
+    }
+    return new Pair<>(readBytes, mergeChunksToMessage(messageChunkList));
+  }
+
+  private static MessageChunk readMessageChunk(DataInputStream in)
+      throws IOException {
+    int messageLength = in.readInt();
+    long seqNum = in.readLong();
+    int index = in.readInt();
+    int totalSlices = in.readInt();
+    int contentLength = messageLength - HEADER_SIZE;
+    byte[] buffer = new byte[contentLength];
+    in.readFully(buffer, 0, contentLength);
+    return new MessageChunk(messageLength, seqNum, index, totalSlices, buffer);
+  }
+
+  public static Message mergeChunksToMessage(List<MessageChunk> messageChunkList) {
+    byte[] result = EMPTY_BYTE_ARRAY;
+    for (MessageChunk messageChunk : messageChunkList) {
+      result = Bytes.add(result, messageChunk.getMessageBytes());
+    }
+    return new Message(ByteBuffer.wrap(result));
+  }
+
 
   public static List<Result> convertMessageToResult(Message message,
       TimeRange timeRange) throws IOException {
@@ -99,8 +154,29 @@ public class TalosUtil {
     }
   }
 
-  public static Message constructSingleMessage(HLog.Entry entry) throws IOException {
-    Message message = new Message();
+  public static List<Message> constructMessages(HLog.Entry entry) throws IOException {
+    byte[] messageBytes = getMessageByteArray(entry);
+    return constructMessagesFromBytes(entry.getKey().getLogSeqNum(), messageBytes);
+  }
+
+
+  private static List<Message> constructMessagesFromBytes(long seqNum, byte[] messageBytes) {
+    List<Message> messages = new ArrayList<>();
+    byte [] seqNumBytes = Bytes.toBytes(seqNum);
+    int totalSlices = messageBytes.length / CHUNK_SIZE + 1;
+    for(int index = 0; index < totalSlices; index++){
+      int offset = index * CHUNK_SIZE;
+      int length =
+          (offset + CHUNK_SIZE) > messageBytes.length ? (messageBytes.length - offset) : CHUNK_SIZE;
+      byte[] messageSlice = Bytes.copy(messageBytes, offset, length);
+      byte[] header = Bytes.add(seqNumBytes, Bytes.toBytes(index), Bytes.toBytes(totalSlices));
+      Message message = new Message(ByteBuffer.wrap(Bytes.add(header, messageSlice)));
+      messages.add(message);
+    }
+    return messages;
+  }
+
+  public static byte[] getMessageByteArray(HLog.Entry entry) throws IOException {
     WALProtos.WALKey.Builder keyBuilder = entry.getKey().getBuilder(null);
     AdminProtos.WALEntry.Builder entryBuilder = AdminProtos.WALEntry.newBuilder();
     entryBuilder.setKey(keyBuilder.build());
@@ -109,8 +185,7 @@ public class TalosUtil {
       CellProtos.Cell protoCell = ProtobufUtil.toCell(cell);
       entryBuilder.addKeyValueBytes(protoCell.toByteString());
     }
-    message.setMessage(entryBuilder.build().toByteArray());
-    return message;
+    return entryBuilder.build().toByteArray();
   }
 
   public static String encodeTableName(String tableName) {
@@ -145,6 +220,49 @@ public class TalosUtil {
       talosAdmin.listTopic();
     } catch (TException e) {
       throw new DoNotRetryIOException("send request to talos failed, please check your config");
+    }
+  }
+
+  @VisibleForTesting
+  public static class MessageChunk{
+    private long seqNum;
+    private int index;
+    private int totalSlices;
+    private byte[] messageBytes;
+    private boolean isLastChunk;
+    private int messageLength;
+
+    public MessageChunk(int messageLength, long seqNum, int index, int totalSlices, byte[] messageBytes){
+      this.messageLength = messageLength;
+      this.seqNum = seqNum;
+      this.index = index;
+      this.totalSlices = totalSlices;
+      this.messageBytes = messageBytes;
+      this.isLastChunk = (index == totalSlices - 1);
+    }
+
+    public long getSeqNum() {
+      return seqNum;
+    }
+
+    public int getIndex() {
+      return index;
+    }
+
+    public int getTotalSlices() {
+      return totalSlices;
+    }
+
+    public byte[] getMessageBytes() {
+      return messageBytes;
+    }
+
+    public boolean isLastChunk() {
+      return isLastChunk;
+    }
+
+    public int getMessageLength() {
+      return messageLength;
     }
   }
 }
