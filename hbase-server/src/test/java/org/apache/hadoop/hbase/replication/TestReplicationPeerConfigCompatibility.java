@@ -217,7 +217,7 @@ public class TestReplicationPeerConfigCompatibility {
     writeDataAndVerifyReplication(tableName, 0, COUNT / 2);
 
     ReplicationPeerConfigUpgrader upgrader = new ReplicationPeerConfigUpgrader(zkw1, conf1, null);
-    upgrader.upgradeToBranch2();
+    upgrader.upgradeAllPeersToBranch2();
 
     // Sleep to wait for RS update replication source with new protobuf
     Thread.sleep(10000);

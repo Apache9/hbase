@@ -25,9 +25,12 @@ import org.apache.hadoop.hbase.Abortable;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.classification.InterfaceStability;
+import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.exceptions.DeserializationException;
+import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos;
 import org.apache.hadoop.hbase.replication.ReplicationPeerConfig;
+import org.apache.hadoop.hbase.replication.ReplicationPeerDescription;
 import org.apache.hadoop.hbase.replication.ReplicationStateZKBase;
 import org.apache.hadoop.hbase.zookeeper.ZKUtil;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
@@ -38,6 +41,7 @@ import org.apache.zookeeper.data.ACL;
 import org.apache.zookeeper.data.Id;
 
 import java.io.IOException;
+import java.io.FileOutputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -90,19 +94,62 @@ public class ReplicationPeerConfigUpgrader extends ReplicationStateZKBase {
     return acls;
   }
 
-  public void upgradeToBranch2() throws Exception {
-    try (ReplicationAdmin admin = new ReplicationAdmin(conf)) {
-      Map<String, ReplicationPeerConfig> peers = admin.listPeerConfigs();
-      peers.forEach((peerId, peerConfig) -> {
-        try {
-          ZKUtil.setData(this.zookeeper, getPeerNode(peerId),
-              ReplicationSerDeHelper.toNewByteArray(peerConfig));
-          LOG.info(
-              "Successfully upgrade replication peer " + peerId + " config to new branch-2 format");
-        } catch (KeeperException e) {
-          LOG.info("Failed upgrade replication peer " + peerId + " config to new branch-2 format");
-        }
+  public void upgradeAllPeersToBranch2() throws Exception {
+    try (HBaseAdmin admin = new HBaseAdmin(conf)) {
+      List<ReplicationPeerDescription> peers = admin.listReplicationPeers();
+      peers.forEach(peer -> {
+        upgradePeerToBranch2(peer.getPeerId(), peer.getPeerConfig());
       });
+    }
+  }
+
+  public void upgradePeerToBranch2(String peerId) throws Exception {
+    try (HBaseAdmin admin = new HBaseAdmin(conf)) {
+      ReplicationPeerConfig peerConfig = admin.getReplicationPeerConfig(peerId);
+      upgradePeerToBranch2(peerId, peerConfig);
+    }
+  }
+
+  private void upgradePeerToBranch2(String peerId, ReplicationPeerConfig peerConfig) {
+    try {
+      saveToLocalFile(peerId, ZKUtil.getData(this.zookeeper, getPeerNode(peerId)));
+      ZKUtil.setData(this.zookeeper, getPeerNode(peerId),
+          ReplicationSerDeHelper.toNewByteArray(peerConfig));
+      LOG.info("Successfully upgrade replication peer " + peerId + " config " + peerConfig
+          + " to new branch-2 format");
+    } catch (IOException | KeeperException e) {
+      LOG.info("Failed upgrade replication peer " + peerId + " config " + peerConfig
+          + " to new branch-2 format");
+    }
+  }
+
+  public void downgradeAllPeersTo98() throws Exception {
+    try (HBaseAdmin admin = new HBaseAdmin(conf)) {
+      List<ReplicationPeerDescription> peers = admin.listReplicationPeers();
+      peers.forEach(peer -> {
+        downgradePeerTo98(peer.getPeerId());
+      });
+    }
+  }
+
+  public void downgradePeerTo98(String peerId) {
+    try {
+      byte[] peerConfigBytes = ZKUtil.getData(this.zookeeper, getPeerNode(peerId));
+      saveToLocalFile(peerId, peerConfigBytes);
+      ReplicationPeerConfig newPeerConfig = ReplicationSerDeHelper
+          .parsePeerConfigFromNewProtobuf(peerConfigBytes, ProtobufUtil.lengthOfPBMagic());
+      ZKUtil.setData(this.zookeeper, getPeerNode(peerId),
+          ReplicationSerDeHelper.toByteArray(newPeerConfig));
+      LOG.info("Successfully downgrade replication peer " + peerId + " config to " + newPeerConfig);
+    } catch (IOException | KeeperException | DeserializationException e) {
+      LOG.info("Failed downgrade replication peer " + peerId + " config", e);
+    }
+  }
+
+  private void saveToLocalFile(String peerId, byte[] bytes) throws IOException {
+    String fileName = peerId + "." + System.currentTimeMillis() + ".peerconfig";
+    try (FileOutputStream fos = new FileOutputStream(fileName)) {
+      fos.write(bytes);
     }
   }
 
@@ -192,14 +239,17 @@ public class ReplicationPeerConfigUpgrader extends ReplicationStateZKBase {
   }
 
   private static void printUsageAndExit() {
-    System.err
-        .printf("Usage: bin/hbase org.apache.hadoop.hbase.replication.master.ReplicationPeerConfigUpgrader [options]");
+    System.err.printf(
+        "Usage: bin/hbase org.apache.hadoop.hbase.replication.master.ReplicationPeerConfigUpgrader [options]");
     System.err.println(" where [options] are:");
     System.err.println("  -h|-help    Show this help and exit.");
     System.err.println("  copyTableCFs        Copy table-cfs to replication peer config");
     System.err.println("  upgrade             Upgrade replication peer config to new format");
     System.err.println("  setOwner [owner]    Update replication peers znode's owner");
-    System.err.println("  upgradeToBranch2    Upgrade replication peer config to new branch-2 format");
+    System.err.println(
+        "  upgradeToBranch2 [peerId] Upgrade 98 replication peer config to new branch-2 format");
+    System.err.println(
+        "  downgradeTo98 [peerId] Downgrade replication peer config from new branch-2 format to old 98 format");
     System.err.println();
     System.exit(1);
   }
@@ -224,7 +274,21 @@ public class ReplicationPeerConfigUpgrader extends ReplicationStateZKBase {
         }
         upgrader.setOwner(args[1]);
       } else if (args[0].equals("upgradeToBranch2")) {
-        upgrader.upgradeToBranch2();
+        if (args.length == 1) {
+          upgrader.upgradeAllPeersToBranch2();
+        } else if (args.length == 2) {
+          upgrader.upgradePeerToBranch2(args[1]);
+        } else {
+          printUsageAndExit();
+        }
+      } else if (args[0].equals("downgradeTo98")) {
+        if (args.length == 1) {
+          upgrader.downgradeAllPeersTo98();
+        } else if (args.length == 2) {
+          upgrader.downgradePeerTo98(args[1]);
+        } else {
+          printUsageAndExit();
+        }
       } else {
         printUsageAndExit();
       }
