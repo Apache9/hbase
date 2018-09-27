@@ -30,23 +30,23 @@ import com.xiaomi.infra.thirdparty.galaxy.fds.client.model.FDSObjectSummary;
 import com.xiaomi.infra.thirdparty.galaxy.talos.thrift.Message;
 
 import java.io.DataInputStream;
+import java.io.EOFException;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.io.TimeRange;
+import org.apache.hadoop.hbase.util.Pair;
 import org.apache.hadoop.hbase.util.TalosUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @InterfaceAudience.Private
 public class FDSMessageScanner extends AbstractClientScanner {
-  private static final Log LOG = LogFactory.getLog(FDSMessageScanner.class);
+  private static final Logger LOG = LoggerFactory.getLogger(FDSMessageScanner.class);
 
-  private static final int INTEGER_LENGTH = 4;
   private final String endpoint;
   private final GalaxyFDSCredential credential;
   private final String bucket;
@@ -115,21 +115,25 @@ public class FDSMessageScanner extends AbstractClientScanner {
   private void loadData() throws IOException {
     boolean shouldContinue = true;
     while (shouldContinue) {
-      int messageLength = in.readInt();
-      if (messageLength > buffer.length) {
-        buffer = new byte[messageLength];
-      }
-      in.readFully(buffer, 0, messageLength);
-      Message message = new Message(ByteBuffer.wrap(buffer, 0, messageLength));
-      List<Result> results = TalosUtil.convertMessageToResult(message, timeRange);
-      long currentOffset = offset.addAndGet(messageLength + INTEGER_LENGTH);
-      cache.addAll(results);
-      if (results.size() > 0) {
-        shouldContinue = false;
-      }
-      if (currentOffset >= fileSize) {
-        shouldContinue = false;
+      try {
+        Pair<Integer, Message> messageAndReadBytes = TalosUtil.getNextMessageFromStream(in);
+        List<Result> results =
+            TalosUtil.convertMessageToResult(messageAndReadBytes.getSecond(), timeRange);
+        long currentOffset = offset.addAndGet(messageAndReadBytes.getFirst());
+        cache.addAll(results);
+        if (results.size() > 0) {
+          shouldContinue = false;
+        }
+        if (currentOffset >= fileSize) {
+          shouldContinue = false;
+          this.close();
+        }
+      } catch (EOFException eof) {
+        LOG.warn(
+          "file {} reached to end without a complete message, current offset: {}, fileSize:{}",
+          new Object[] { fileName, offset.get(), fileSize }, eof);
         this.close();
+        return;
       }
     }
   }

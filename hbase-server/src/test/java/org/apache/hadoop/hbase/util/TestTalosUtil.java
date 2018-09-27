@@ -21,7 +21,12 @@ package org.apache.hadoop.hbase.util;
 
 import com.xiaomi.infra.thirdparty.galaxy.talos.thrift.Message;
 
+import java.io.ByteArrayInputStream;
+import java.io.DataInputStream;
+import java.io.EOFException;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
@@ -39,6 +44,9 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
+import static org.apache.hadoop.hbase.HConstants.EMPTY_BYTE_ARRAY;
+import static org.apache.hadoop.hbase.util.TalosUtil.HEADER_SIZE;
+
 @Category(SmallTests.class)
 public class TestTalosUtil {
   private static final String REGION_NAME = "testRegion";
@@ -48,18 +56,9 @@ public class TestTalosUtil {
 
   @Test
   public void testEntrytoMessageThenToResult() throws IOException {
-    HLogKey key = new HLogKey(Bytes.toBytes(REGION_NAME), TABLE_NAME, 1, System.currentTimeMillis(),
-        UUID.randomUUID());
-    WALEdit edit = new WALEdit();
-    for (int i = 0; i < 100; i++) {
-      Cell cell = CellUtil.createCell(Bytes.toBytesBinary(String.valueOf(i)), FAMILY, QUALIFIER,
-        System.currentTimeMillis(), KeyValue.Type.Put.getCode(), Bytes.toBytes("test" + i));
-      edit.add(cell);
-    }
-    HLog.Entry entry = new HLog.Entry(key, edit);
-    Message message = TalosUtil.constructSingleMessage(entry);
-    List<Result> results =
-        TalosUtil.convertMessageToResult(message, new TimeRange());
+    HLog.Entry entry = getEntry(1, 100);
+    List<Message> messages = TalosUtil.constructMessages(entry);
+    List<Result> results = parseResultFromMessages(messages, new TimeRange());
     Assert.assertEquals("size of results", 100, results.size());
     int count = 0;
     for (Result result : results) {
@@ -77,9 +76,8 @@ public class TestTalosUtil {
       addOneBigPut(edit, i);
     }
     HLog.Entry entry = new HLog.Entry(key, edit);
-    Message message = TalosUtil.constructSingleMessage(entry);
-    List<Result> results =
-        TalosUtil.convertMessageToResult(message, new TimeRange());
+    List<Message> messages = TalosUtil.constructMessages(entry);
+    List<Result> results = parseResultFromMessages(messages, new TimeRange());
     Assert.assertEquals("size of results", 10, results.size());
     Result exampleResult = results.get(0);
     Assert.assertEquals("size of kv", 100, exampleResult.size());
@@ -95,22 +93,32 @@ public class TestTalosUtil {
 
   @Test
   public void testTimerange() throws IOException {
-    HLogKey key = new HLogKey(Bytes.toBytes(REGION_NAME), TABLE_NAME, 1, 100, UUID.randomUUID());
-    WALEdit edit = new WALEdit();
-    for (int i = 0; i < 100; i++) {
-      Cell cell = CellUtil.createCell(Bytes.toBytesBinary(String.valueOf(i)), FAMILY, QUALIFIER,
-        System.currentTimeMillis(), KeyValue.Type.Put.getCode(), Bytes.toBytes("test" + i));
-      edit.add(cell);
-    }
-    HLog.Entry entry = new HLog.Entry(key, edit);
-    Message message = TalosUtil.constructSingleMessage(entry);
-    List<Result> results =
-        TalosUtil.convertMessageToResult(message, new TimeRange(1, 99));
+    HLog.Entry entry = getEntry(1, 100);
+    List<Message> messages = TalosUtil.constructMessages(entry);
+    List<Result> results = parseResultFromMessages(messages, new TimeRange(1, 99));
     Assert.assertEquals("size of results", 0, results.size());
   }
 
+  private List<Result> parseResultFromMessages(List<Message> messages, TimeRange timeRange)
+      throws IOException {
+    List<Result> results = new ArrayList<>();
+    for (Message message : messages) {
+      long seqNum = Bytes.toLong(message.getMessage(), 0, Bytes.SIZEOF_LONG);
+      int index = Bytes.toInt(message.getMessage(), Bytes.SIZEOF_LONG, Bytes.SIZEOF_INT);
+      int totalSlices =
+          Bytes.toInt(message.getMessage(), Bytes.SIZEOF_LONG + Bytes.SIZEOF_INT, Bytes.SIZEOF_INT);
+      byte[] messageBytes =
+          Bytes.copy(message.getMessage(), HEADER_SIZE, message.getMessage().length - HEADER_SIZE);
+      results.addAll(TalosUtil.convertMessageToResult(
+        TalosUtil.mergeChunksToMessage(
+          Arrays.asList(new TalosUtil.MessageChunk(HEADER_SIZE + messageBytes.length, seqNum, index, totalSlices, messageBytes))),
+        timeRange));
+    }
+    return results;
+  }
+
   @Test
-  public void testEncodeTableName() throws IOException {
+  public void testEncodeTableName() {
     String tableA = "miui:vip-test_a";
     String tableB = "miui-vip:test_a";
     String encodedA = TalosUtil.encodeTableName(tableA);
@@ -118,7 +126,94 @@ public class TestTalosUtil {
     Assert.assertNotEquals(encodedA, encodedB);
     Assert.assertEquals(TalosUtil.parseFromTopicName(encodedA), tableA);
     Assert.assertEquals(TalosUtil.parseFromTopicName(encodedB), tableB);
+  }
 
+  @Test
+  public void testSmallEntry() throws Exception {
+    HLog.Entry entry = getEntry(1, 1000);
+    List<Message> messages = TalosUtil.constructMessages(entry);
+    Assert.assertTrue(messages.size() == 1);
+    DataInputStream inputStream = getDataInputStreamFromMessages(messages);
+    Pair<Integer, Message> messagePair = TalosUtil.getNextMessageFromStream(inputStream);
+    List<Result> results =
+        TalosUtil.convertMessageToResult(messagePair.getSecond(), new TimeRange());
+    Assert.assertEquals("size of result ", 1000, results.size());
+  }
+
+  @Test
+  public void testHugeEntry() throws Exception {
+    HLog.Entry entry = getEntry(1, 800000);
+    List<Message> messages = TalosUtil.constructMessages(entry);
+    Assert.assertTrue(messages.size() > 1);
+    DataInputStream inputStream = getDataInputStreamFromMessages(messages);
+    Pair<Integer, Message> messagePair = TalosUtil.getNextMessageFromStream(inputStream);
+    List<Result> results =
+        TalosUtil.convertMessageToResult(messagePair.getSecond(), new TimeRange());
+    Assert.assertEquals("size of result ", 800000, results.size());
+  }
+
+  @Test
+  public void testUncompleteMessages() throws Exception {
+    HLog.Entry entry = getEntry(1, 800000);
+    List<Message> messages = TalosUtil.constructMessages(entry);
+    Assert.assertTrue(messages.size() > 1);
+    DataInputStream inputStream =
+        getDataInputStreamFromMessages(messages.subList(0, messages.size() - 1));
+    Pair<Integer, Message> messagePair = null;
+    try {
+      messagePair = TalosUtil.getNextMessageFromStream(inputStream);
+    } catch (EOFException eof){
+    }
+    Assert.assertTrue(messagePair == null);
+    HLog.Entry smallEntry = getEntry(2, 1000);
+    List<Message> completeMessages = TalosUtil.constructMessages(smallEntry);
+    List<Message> testMessages = new ArrayList<>();
+    testMessages.addAll(messages.subList(0, messages.size() - 2));
+    testMessages.addAll(completeMessages);
+    DataInputStream inputStream2 =
+            getDataInputStreamFromMessages(testMessages);
+    Pair<Integer, Message> messagePair2 = TalosUtil.getNextMessageFromStream(inputStream2);
+    List<Result> results =
+            TalosUtil.convertMessageToResult(messagePair2.getSecond(), new TimeRange());
+    Assert.assertEquals("size of result ", 1000, results.size());
+  }
+
+  @Test
+  public void testDuplicateMessages() throws Exception {
+    HLog.Entry entry = getEntry(1, 800000);
+    List<Message> messages = TalosUtil.constructMessages(entry);
+    Assert.assertTrue(messages.size() > 1);
+    List<Message> duplicateMessageList = new ArrayList<>();
+    duplicateMessageList.addAll(messages.subList(0, messages.size() / 2));
+    duplicateMessageList.addAll(messages);
+    Assert.assertTrue(duplicateMessageList.size() > messages.size());
+    DataInputStream inputStream = getDataInputStreamFromMessages(duplicateMessageList);
+    Pair<Integer, Message> messagePair = TalosUtil.getNextMessageFromStream(inputStream);
+    List<Result> results =
+        TalosUtil.convertMessageToResult(messagePair.getSecond(), new TimeRange());
+    Assert.assertEquals("size of result ", 800000, results.size());
+  }
+
+  private HLog.Entry getEntry(long seqNum, int count) {
+    HLogKey key =
+        new HLogKey(Bytes.toBytes(REGION_NAME), TABLE_NAME, seqNum, 100, UUID.randomUUID());
+    WALEdit edit = new WALEdit();
+    for (int i = 0; i < count; i++) {
+      Cell cell = CellUtil.createCell(Bytes.toBytesBinary(String.valueOf(i)), FAMILY, QUALIFIER,
+        System.currentTimeMillis(), KeyValue.Type.Put.getCode(), Bytes.toBytes("test" + i));
+      edit.add(cell);
+    }
+    HLog.Entry entry = new HLog.Entry(key, edit);
+    return entry;
+  }
+
+  private DataInputStream getDataInputStreamFromMessages(List<Message> messages) {
+    byte[] result = EMPTY_BYTE_ARRAY;
+    for (Message message : messages) {
+      result = Bytes.add(result, Bytes.toBytes(message.getMessage().length), message.getMessage());
+    }
+    DataInputStream inputStream = new DataInputStream(new ByteArrayInputStream(result));
+    return inputStream;
   }
 
 }
