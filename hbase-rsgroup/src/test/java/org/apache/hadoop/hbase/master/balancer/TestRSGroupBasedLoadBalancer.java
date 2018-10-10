@@ -49,6 +49,7 @@ import org.apache.hadoop.hbase.master.LoadBalancer;
 import org.apache.hadoop.hbase.master.MasterServices;
 import org.apache.hadoop.hbase.master.RegionPlan;
 import org.apache.hadoop.hbase.master.assignment.AssignmentManager;
+import org.apache.hadoop.hbase.master.assignment.RegionStates;
 import org.apache.hadoop.hbase.net.Address;
 import org.apache.hadoop.hbase.rsgroup.RSGroupBasedLoadBalancer;
 import org.apache.hadoop.hbase.rsgroup.RSGroupInfo;
@@ -568,7 +569,9 @@ public class TestRSGroupBasedLoadBalancer {
     MasterServices services = Mockito.mock(HMaster.class);
     Mockito.when(services.getTableDescriptors()).thenReturn(tds);
     AssignmentManager am = Mockito.mock(AssignmentManager.class);
+    RegionStates regionStates = Mockito.mock(RegionStates.class);
     Mockito.when(services.getAssignmentManager()).thenReturn(am);
+    Mockito.when(am.getRegionStates()).thenReturn(regionStates);
     return services;
   }
 
