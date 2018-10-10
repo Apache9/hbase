@@ -21,6 +21,7 @@ package org.apache.hadoop.hbase.mapreduce;
 import java.io.IOException;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.Put;
@@ -35,6 +36,9 @@ import org.apache.hadoop.mapreduce.lib.output.NullOutputFormat;
 
 public class RowCounter {
 
+  private static final String TABLE_ARG = "--table=";
+  private static final String SNAPSHOT_ARG = "--snapshot=";
+
   public static class ScanMapper extends TableMapper<ImmutableBytesWritable, Put> {
     public enum COUNTER {
       ROW_COUNTER
@@ -48,10 +52,16 @@ public class RowCounter {
 
   private Configuration conf;
   private TableName tableName;
+  private String snapshotName;
 
   public RowCounter(Configuration conf, TableName tableName) {
     this.conf = conf;
     this.tableName = tableName;
+  }
+
+  public RowCounter(Configuration conf, String snapshotName) {
+    this.conf = conf;
+    this.snapshotName = snapshotName;
   }
 
   public long runJob() throws Exception {
@@ -63,8 +73,16 @@ public class RowCounter {
 
     Scan scan = new Scan();
 
-    String snapshotName = TableMapReduceUtil.initTableSnapshotMapperJob(tableName, scan,
-      ScanMapper.class, null, null, job, true);
+    boolean needToCleanSnapshot = false;
+    if (this.tableName != null) {
+      this.snapshotName = TableMapReduceUtil.initTableSnapshotMapperJob(tableName, scan,
+        ScanMapper.class, null, null, job, true);
+      needToCleanSnapshot = true;
+    } else {
+      Path tmpRestoreDir = TableMapReduceUtil.getAndCheckTmpRestoreDir(conf);
+      TableMapReduceUtil.initTableSnapshotMapperJob(snapshotName, scan, ScanMapper.class, null,
+        null, job, true, tmpRestoreDir);
+    }
 
     try {
       job.setOutputFormatClass(NullOutputFormat.class);
@@ -74,19 +92,32 @@ public class RowCounter {
       }
       return job.getCounters().findCounter(COUNTER.ROW_COUNTER).getValue();
     } finally {
-      TableMapReduceUtil.cleanupTableSnapshotMapperJob(job, snapshotName);
+      if (needToCleanSnapshot) {
+        TableMapReduceUtil.cleanupTableSnapshotMapperJob(job, snapshotName);
+      }
     }
+  }
+
+  private static void printUsage() {
+    System.err.println("Usage: RowCounter --table=<TABLE_NAME>");
+    System.err.println("       RowCounter --snapshot=<snapshot-name>");
+    System.exit(-1);
   }
 
   public static void main(String[] args) throws Exception {
     Configuration conf = HBaseConfiguration.create();
-    if (args.length < 1) {
-      System.err.println("Only " + args.length + " arguments supplied, required: 1");
-      System.err.println("Usage: RowCounter <TABLE_NAME>");
-      System.exit(-1);
+    if (args.length < 1 || args[0] == null || args[0].length() <= 0) {
+      printUsage();
     }
 
-    RowCounter counter = new RowCounter(conf, TableName.valueOf(args[0]));
+    RowCounter counter = null;
+    if (args[0].startsWith(TABLE_ARG)) {
+      counter = new RowCounter(conf, TableName.valueOf(args[0].substring(TABLE_ARG.length())));
+    } else if (args[0].startsWith(SNAPSHOT_ARG)) {
+      counter = new RowCounter(conf, args[0].substring(SNAPSHOT_ARG.length()));
+    } else {
+      printUsage();
+    }
     long rowCount = counter.runJob();
     System.out.println("Total " + rowCount + "  rows in table " + args[0]);
   }
