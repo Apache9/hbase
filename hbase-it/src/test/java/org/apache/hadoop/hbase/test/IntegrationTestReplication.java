@@ -253,11 +253,11 @@ public class IntegrationTestReplication extends IntegrationTestBigLinkedList {
           }
 
           admin.deleteTable(tableName);
-          // create the schema
-          Generator generator = new Generator();
-          generator.setConf(cluster.getConfiguration());
-          generator.createSchema();
         }
+        // create the schema
+        Generator generator = new Generator();
+        generator.setConf(cluster.getConfiguration());
+        generator.createSchema();
       }
 
 
