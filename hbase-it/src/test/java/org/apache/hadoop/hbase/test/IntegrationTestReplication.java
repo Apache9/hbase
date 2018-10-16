@@ -39,6 +39,8 @@ import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.Admin;
 import org.apache.hadoop.hbase.client.Connection;
 import org.apache.hadoop.hbase.client.ConnectionFactory;
+import org.apache.hadoop.hbase.client.TableDescriptor;
+import org.apache.hadoop.hbase.client.TableDescriptorBuilder;
 import org.apache.hadoop.hbase.replication.ReplicationPeerConfig;
 import org.apache.hadoop.hbase.replication.ReplicationPeerConfigBuilder;
 import org.apache.hadoop.hbase.replication.ReplicationPeerDescription;
@@ -225,6 +227,12 @@ public class IntegrationTestReplication extends IntegrationTestBigLinkedList {
 
       ClusterID[] clusters = { source, sink };
 
+      // setup the replication on the source
+      if (!source.equals(sink)) {
+        addPeer(source, sink, tableName);
+        addPeer(sink, source, tableName);
+      }
+
       // delete any old tables in the source and sink
       for (ClusterID cluster : clusters) {
         Admin admin = cluster.getConnection().getAdmin();
@@ -258,14 +266,10 @@ public class IntegrationTestReplication extends IntegrationTestBigLinkedList {
         Generator generator = new Generator();
         generator.setConf(cluster.getConfiguration());
         generator.createSchema();
-      }
-
-
-
-      // setup the replication on the source
-      if (!source.equals(sink)) {
-        addPeer(source, sink, tableName);
-        addPeer(sink, source, tableName);
+        // set replication scope to 1
+        TableDescriptor td = admin.getDescriptor(tableName);
+        admin.modifyTable(TableDescriptorBuilder.newBuilder(td)
+          .setReplicationScope(HConstants.REPLICATION_SCOPE_GLOBAL).build());
       }
 
       for (ClusterID cluster : clusters) {
