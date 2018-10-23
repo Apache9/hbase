@@ -102,7 +102,7 @@ public class TestProcedureRecovery {
     public TestSingleStepProcedure() { }
 
     @Override
-    protected Procedure[] execute(TestProcEnv env) throws InterruptedException {
+    protected Procedure<TestProcEnv>[] execute(TestProcEnv env) throws InterruptedException {
       env.waitOnLatch();
       LOG.debug("execute procedure " + this + " step=" + step);
       step++;
@@ -122,16 +122,15 @@ public class TestProcedureRecovery {
     private int step = 0;
 
     @Override
-    protected Procedure[] execute(TestProcEnv env) throws InterruptedException {
+    protected Procedure<TestProcEnv>[] execute(TestProcEnv env) throws InterruptedException {
       env.waitOnLatch();
       LOG.debug("execute procedure " + this + " step=" + step);
       ProcedureTestingUtility.toggleKillBeforeStoreUpdate(procExecutor);
       step++;
       Threads.sleepWithoutInterrupt(procSleepInterval);
       if (isAborted()) {
-        setFailure(new RemoteProcedureException(getClass().getName(),
-          new ProcedureAbortedException(
-            "got an abort at " + getClass().getName() + " step=" + step)));
+        setFailure(new RemoteProcedureException(getClass().getName(), new ProcedureAbortedException(
+          "got an abort at " + getClass().getName() + " step=" + step)));
         return null;
       }
       return null;
@@ -162,26 +161,30 @@ public class TestProcedureRecovery {
   }
 
   public static class TestMultiStepProcedure extends BaseTestStepProcedure {
-    public TestMultiStepProcedure() { }
+
+    public TestMultiStepProcedure() {
+    }
 
     @Override
-    public Procedure[] execute(TestProcEnv env) throws InterruptedException {
+    public Procedure<TestProcEnv>[] execute(TestProcEnv env) throws InterruptedException {
       super.execute(env);
       return isFailed() ? null : new Procedure[] { new Step1Procedure() };
     }
 
     public static class Step1Procedure extends BaseTestStepProcedure {
-      public Step1Procedure() { }
+      public Step1Procedure() {
+      }
 
       @Override
-      protected Procedure[] execute(TestProcEnv env) throws InterruptedException {
+      protected Procedure<TestProcEnv>[] execute(TestProcEnv env) throws InterruptedException {
         super.execute(env);
         return isFailed() ? null : new Procedure[] { new Step2Procedure() };
       }
     }
 
     public static class Step2Procedure extends BaseTestStepProcedure {
-      public Step2Procedure() { }
+      public Step2Procedure() {
+      }
     }
   }
 
@@ -192,7 +195,7 @@ public class TestProcedureRecovery {
 
   @Test
   public void testSingleStepProcRecovery() throws Exception {
-    Procedure proc = new TestSingleStepProcedure();
+    Procedure<?> proc = new TestSingleStepProcedure();
     procExecutor.testing.killBeforeStoreUpdate = true;
     long procId = ProcedureTestingUtility.submitAndWait(procExecutor, proc);
     assertFalse(procExecutor.isRunning());
@@ -219,7 +222,7 @@ public class TestProcedureRecovery {
   @Test
   public void testMultiStepProcRecovery() throws Exception {
     // Step 0 - kill
-    Procedure proc = new TestMultiStepProcedure();
+    Procedure<?> proc = new TestMultiStepProcedure();
     long procId = ProcedureTestingUtility.submitAndWait(procExecutor, proc);
     assertFalse(procExecutor.isRunning());
 
@@ -248,7 +251,7 @@ public class TestProcedureRecovery {
   @Test
   public void testMultiStepRollbackRecovery() throws Exception {
     // Step 0 - kill
-    Procedure proc = new TestMultiStepProcedure();
+    Procedure<?> proc = new TestMultiStepProcedure();
     long procId = ProcedureTestingUtility.submitAndWait(procExecutor, proc);
     assertFalse(procExecutor.isRunning());
 
@@ -420,7 +423,7 @@ public class TestProcedureRecovery {
     ProcedureTestingUtility.setKillBeforeStoreUpdate(procExecutor, true);
 
     // Step 1 - kill
-    Procedure proc = new TestStateMachineProcedure();
+    Procedure<?> proc = new TestStateMachineProcedure();
     long procId = ProcedureTestingUtility.submitAndWait(procExecutor, proc);
     assertFalse(procExecutor.isRunning());
 
@@ -458,7 +461,7 @@ public class TestProcedureRecovery {
     ProcedureTestingUtility.setKillBeforeStoreUpdate(procExecutor, true);
 
     // Step 1 - kill
-    Procedure proc = new TestStateMachineProcedure();
+    Procedure<?> proc = new TestStateMachineProcedure();
     long procId = ProcedureTestingUtility.submitAndWait(procExecutor, proc);
     ProcedureTestingUtility.assertProcNotYetCompleted(procExecutor, procId);
     assertFalse(procExecutor.isRunning());
@@ -503,6 +506,90 @@ public class TestProcedureRecovery {
     // The procedure is completed
     Procedure<?> result = procExecutor.getResult(procId);
     ProcedureTestingUtility.assertIsAbortException(result);
+  }
+
+  public static final class RootProcedure extends Procedure<Void> {
+
+    private enum State {
+      INIT, FINISH
+    }
+
+    private State state = State.INIT;
+
+    @Override
+    protected Procedure<Void>[] execute(Void env)
+        throws ProcedureYieldException, ProcedureSuspendedException, InterruptedException {
+      // TODO Implement TestProcedureRecovery.ParentProcedure.execute
+      return null;
+    }
+
+    @Override
+    protected void rollback(Void env) throws IOException, InterruptedException {
+      // TODO Implement TestProcedureRecovery.ParentProcedure.rollback
+
+    }
+
+    @Override
+    protected boolean abort(Void env) {
+      return false;
+    }
+
+    @Override
+    protected void serializeStateData(ProcedureStateSerializer serializer) throws IOException {
+    }
+
+    @Override
+    protected void deserializeStateData(ProcedureStateSerializer serializer) throws IOException {
+    }
+  }
+
+  public static final class SubProcedure extends Procedure<Void> {
+
+    private enum State {
+      INIT, FINISH
+    }
+
+    private State state = State.INIT;
+
+    @Override
+    protected Procedure<Void>[] execute(Void env)
+        throws ProcedureYieldException, ProcedureSuspendedException, InterruptedException {
+      if (state == State.INIT) {
+        state = State.FINISH;
+        throw new ProcedureYieldException();
+      }
+      return null;
+    }
+
+    @Override
+    protected void rollback(Void env) throws IOException, InterruptedException {
+      if (wasExecuted()) {
+        throw new UnsupportedOperationException();
+      }
+    }
+
+    @Override
+    protected boolean abort(Void env) {
+      // TODO Implement Procedure<Void>.abort
+      return false;
+    }
+
+    @Override
+    protected void serializeStateData(ProcedureStateSerializer serializer) throws IOException {
+      // TODO Implement Procedure<Void>.serializeStateData
+      
+    }
+
+    @Override
+    protected void deserializeStateData(ProcedureStateSerializer serializer) throws IOException {
+      // TODO Implement Procedure<Void>.deserializeStateData
+      
+    }
+  }
+
+  @Test
+  public void testDoNotRollbackExecutedSubProcedure() {
+    
   }
 
   private void waitProcedure(final long procId) {

@@ -899,6 +899,10 @@ public abstract class Procedure<TEnvironment> implements Comparable<Procedure<TE
     }
   }
 
+  /**
+   * Return whether we have finished rolling back this procedure, i.e, the stack index is empty
+   * after the removal.
+   */
   protected synchronized boolean removeStackIndex() {
     if (stackIndexes != null && stackIndexes.length > 1) {
       stackIndexes = Arrays.copyOf(stackIndexes, stackIndexes.length - 1);

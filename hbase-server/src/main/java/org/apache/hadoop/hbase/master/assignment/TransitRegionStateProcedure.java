@@ -456,7 +456,17 @@ public class TransitRegionStateProcedure
   @Override
   protected void rollbackState(MasterProcedureEnv env, RegionStateTransitionState state)
       throws IOException, InterruptedException {
-    // no rollback
+    if (!wasExecuted()) {
+      // if we haven't executed yet then it is fine to rollback.
+      RegionStateNode regionNode = getRegionStateNode(env);
+      regionNode.lock();
+      try {
+        regionNode.unsetProcedure(this);
+      } finally {
+        regionNode.unlock();
+      }
+      return;
+    }
     throw new UnsupportedOperationException();
   }
 

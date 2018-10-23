@@ -15,7 +15,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.apache.hadoop.hbase.procedure2;
 
 import java.util.ArrayList;
@@ -23,23 +22,25 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import org.apache.yetus.audience.InterfaceAudience;
-import org.apache.yetus.audience.InterfaceStability;
 
 import org.apache.hadoop.hbase.shaded.protobuf.generated.ProcedureProtos.ProcedureState;
 
 /**
  * Internal state of the ProcedureExecutor that describes the state of a "Root Procedure".
- * A "Root Procedure" is a Procedure without parent, each subprocedure will be
- * added to the "Root Procedure" stack (or rollback-stack).
- *
+ * <p/>
+ * A "Root Procedure" is a Procedure without parent, each subprocedure will be added to the "Root
+ * Procedure" stack (or rollback-stack).
+ * <p/>
  * RootProcedureState is used and managed only by the ProcedureExecutor.
+ *
+ * <pre>
  *    Long rootProcId = getRootProcedureId(proc);
  *    rollbackStack.get(rootProcId).acquire(proc)
  *    rollbackStack.get(rootProcId).release(proc)
  *    ...
+ * </pre>
  */
 @InterfaceAudience.Private
-@InterfaceStability.Evolving
 class RootProcedureState<TEnvironment> {
 
   private enum State {
@@ -68,15 +69,33 @@ class RootProcedureState<TEnvironment> {
     return state == State.ROLLINGBACK;
   }
 
+  // return whether all the procedures are successful or failed.
+  private boolean areAllSubProceduresNotRunning() {
+    if (subprocs == null) {
+      return true;
+    }
+    return subprocs.stream().allMatch(p -> p.isSuccess() || p.isFailed());
+  }
+
+  public enum SetRollbackResult {
+    SUCCESS, CAN_NOT_ROLLBACK_YET, ALREADY_START_ROLLINGBACK
+  }
+
   /**
    * Called by the ProcedureExecutor to mark rollback execution
    */
-  protected synchronized boolean setRollback() {
-    if (running == 0 && state == State.FAILED) {
-      state = State.ROLLINGBACK;
-      return true;
+  protected synchronized SetRollbackResult setRollback() {
+    if (running > 0) {
+      return SetRollbackResult.CAN_NOT_ROLLBACK_YET;
     }
-    return false;
+    if (state != State.FAILED) {
+      return SetRollbackResult.ALREADY_START_ROLLINGBACK;
+    }
+    if (!areAllSubProceduresNotRunning()) {
+      return SetRollbackResult.CAN_NOT_ROLLBACK_YET;
+    }
+    state = State.ROLLINGBACK;
+    return SetRollbackResult.SUCCESS;
   }
 
   /**
@@ -113,12 +132,17 @@ class RootProcedureState<TEnvironment> {
    * Called by the ProcedureExecutor to mark the procedure step as running.
    */
   protected synchronized boolean acquire(Procedure<TEnvironment> proc) {
-    if (state != State.RUNNING) {
-      return false;
+    if (state == State.RUNNING) {
+      running++;
+      return true;
     }
-
-    running++;
-    return true;
+    if (proc.isRunnable() && proc.wasExecuted()) {
+      // always let the runnable procedures to execute and finish, when rolling back we will skip
+      // these procedures and only focus on the failed ones.
+      running++;
+      return true;
+    }
+    return false;
   }
 
   /**
