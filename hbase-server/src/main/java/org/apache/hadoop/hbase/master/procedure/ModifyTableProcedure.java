@@ -30,6 +30,7 @@ import org.apache.hadoop.hbase.HBaseIOException;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.MetaTableAccessor;
 import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.TableNotDisabledException;
 import org.apache.hadoop.hbase.TableNotFoundException;
 import org.apache.hadoop.hbase.client.Admin;
 import org.apache.hadoop.hbase.client.Connection;
@@ -262,7 +263,8 @@ public class ModifyTableProcedure
         .isTableState(getTableName(), TableState.State.ENABLED)) {
       if (modifiedTableDescriptor.getRegionReplication() != unmodifiedTableDescriptor
           .getRegionReplication()) {
-        throw new IOException("REGION_REPLICATION change is not supported for enabled tables");
+        throw new TableNotDisabledException(
+            "REGION_REPLICATION change is not supported for enabled tables");
       }
     }
 
