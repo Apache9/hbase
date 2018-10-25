@@ -526,4 +526,62 @@ public class TestMasterQuotaManager {
     assertEquals(825, quotaManager.getTotalExistedReadLimit());
     assertEquals(950, quotaManager.getTotalExistedWriteLimit());
   }
+
+  @Test
+  public void testRemoveTableQuota() throws IOException {
+    Quotas tableQuotas = QuotaUtil.getTableQuota(TEST_UTIL.getConfiguration(), TABLE_NAMES[0]);
+    assertTrue(tableQuotas == null);
+
+    Quotas userTableQuotas = QuotaUtil.getUserQuota(TEST_UTIL.getConfiguration(), userName);
+    assertTrue(userTableQuotas == null);
+
+    admin.setQuota(QuotaSettingsFactory.throttleTable(TABLE_NAMES[0], ThrottleType.READ_NUMBER, 100,
+      TimeUnit.SECONDS));
+    admin.setQuota(QuotaSettingsFactory.throttleTable(TABLE_NAMES[0], ThrottleType.WRITE_NUMBER,
+      200, TimeUnit.SECONDS));
+    admin.setQuota(QuotaSettingsFactory.throttleUser(userName, TABLE_NAMES[0],
+      ThrottleType.READ_NUMBER, 300, TimeUnit.SECONDS));
+    admin.setQuota(QuotaSettingsFactory.throttleUser(userName, TABLE_NAMES[0],
+      ThrottleType.WRITE_NUMBER, 400, TimeUnit.SECONDS));
+    admin.setQuota(QuotaSettingsFactory.throttleUser(userName, TABLE_NAMES[1],
+      ThrottleType.READ_NUMBER, 500, TimeUnit.SECONDS));
+    admin.setQuota(QuotaSettingsFactory.throttleUser(userName, TABLE_NAMES[1],
+      ThrottleType.WRITE_NUMBER, 600, TimeUnit.SECONDS));
+
+    tableQuotas = QuotaUtil.getTableQuota(TEST_UTIL.getConfiguration(), TABLE_NAMES[0]);
+    assertTrue(tableQuotas != null);
+    assertEquals(100, tableQuotas.getThrottle().getReadNum().getSoftLimit());
+    assertEquals(200, tableQuotas.getThrottle().getWriteNum().getSoftLimit());
+
+    userTableQuotas =
+        QuotaUtil.getUserQuota(TEST_UTIL.getConfiguration(), userName, TABLE_NAMES[0]);
+    assertTrue(userTableQuotas != null);
+    assertEquals(300, userTableQuotas.getThrottle().getReadNum().getSoftLimit());
+    assertEquals(400, userTableQuotas.getThrottle().getWriteNum().getSoftLimit());
+    userTableQuotas =
+        QuotaUtil.getUserQuota(TEST_UTIL.getConfiguration(), userName, TABLE_NAMES[1]);
+    assertTrue(userTableQuotas != null);
+    assertEquals(500, userTableQuotas.getThrottle().getReadNum().getSoftLimit());
+    assertEquals(600, userTableQuotas.getThrottle().getWriteNum().getSoftLimit());
+
+    // remove table quota when table is deleted
+    admin.disableTable(TABLE_NAMES[0]);
+    admin.deleteTable(TABLE_NAMES[0]);
+
+    tableQuotas = QuotaUtil.getTableQuota(TEST_UTIL.getConfiguration(), TABLE_NAMES[0]);
+    assertTrue(tableQuotas == null);
+
+    userTableQuotas =
+        QuotaUtil.getUserQuota(TEST_UTIL.getConfiguration(), userName, TABLE_NAMES[0]);
+    assertTrue(userTableQuotas == null);
+    userTableQuotas =
+        QuotaUtil.getUserQuota(TEST_UTIL.getConfiguration(), userName, TABLE_NAMES[1]);
+    assertTrue(userTableQuotas != null);
+    assertEquals(500, userTableQuotas.getThrottle().getReadNum().getSoftLimit());
+    assertEquals(600, userTableQuotas.getThrottle().getWriteNum().getSoftLimit());
+    
+    admin.setQuota(QuotaSettingsFactory.unthrottleUser(userName, TABLE_NAMES[1]));
+    TEST_UTIL.createTable(TABLE_NAMES[0], new byte[][] { FAMILY }, 3, Bytes.toBytes("aaaaa"),
+      Bytes.toBytes("zzzzz"), tableRegionsNumMap.get(TABLE_NAMES[0]));    
+  }
 }

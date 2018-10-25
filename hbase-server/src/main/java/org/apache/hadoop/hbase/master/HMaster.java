@@ -2537,6 +2537,11 @@ MasterServices, Server {
     if (cpHost != null) {
       cpHost.postDeleteTable(tableName);
     }
+    try {
+      getMasterQuotaManager().removeTableQuota(tableName);
+    } catch (InterruptedException e) {
+      LOG.error("Remove table quota error when delete table: " + tableName.getNameAsString(), e);
+    }
   }
 
   @Override

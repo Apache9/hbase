@@ -32,7 +32,6 @@ import org.apache.hadoop.hbase.NamespaceDescriptor;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.catalog.MetaReader;
 import org.apache.hadoop.hbase.ipc.RequestContext;
-import org.apache.hadoop.hbase.ipc.RpcServer;
 import org.apache.hadoop.hbase.master.MasterServices;
 import org.apache.hadoop.hbase.master.RegionState;
 import org.apache.hadoop.hbase.master.handler.CreateTableHandler;
@@ -333,6 +332,29 @@ public class MasterQuotaManager implements RegionStateListener {
   public void removeNamespaceQuota(String namespace) throws IOException {
     if (enabled) {
       this.namespaceQuotaManager.deleteNamespace(namespace);
+    }
+  }
+
+  public void removeTableQuota(TableName tableName) throws IOException, InterruptedException {
+    if (enabled) {
+      // unthrottle table quotas
+      setTableQuota(tableName,
+        QuotaSettings.buildSetQuotaRequestProto(QuotaSettingsFactory.unthrottleTable(tableName)));
+
+      // unthrottle user table quotas
+      QuotaFilter userTableFilter = new QuotaFilter();
+      userTableFilter.setUserFilter(".*").setTableFilter(tableName.getNameAsString());
+      try (QuotaRetriever scanner = QuotaRetriever.open(this.getConfiguration(), userTableFilter)) {
+        for (QuotaSettings settings : scanner) {
+          if (settings.getQuotaType() == QuotaType.THROTTLE) {
+            String user = settings.getUserName();
+            if (user != null) {
+              setUserQuota(user, tableName, QuotaSettings
+                  .buildSetQuotaRequestProto(QuotaSettingsFactory.unthrottleUser(user, tableName)));
+            }
+          }
+        }
+      }
     }
   }
 
