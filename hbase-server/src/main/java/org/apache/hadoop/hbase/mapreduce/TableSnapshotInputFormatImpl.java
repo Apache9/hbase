@@ -59,6 +59,7 @@ import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.NavigableMap;
 import java.util.UUID;
@@ -129,6 +130,11 @@ public class TableSnapshotInputFormatImpl {
       this.restoreDir = restoreDir.toString();
     }
 
+    public String toString() {
+      return "htd:" + htd + ", regionInfo:" + regionInfo + ", locations: "
+          + Arrays.asList(locations) + ", scan:" + scan + ", restoreDir: " + restoreDir;
+    }
+
     public long getLength() {
       //TODO: We can obtain the file sizes of the snapshot here.
       return 0;
@@ -146,14 +152,19 @@ public class TableSnapshotInputFormatImpl {
       return regionInfo;
     }
 
-    // TODO: We should have ProtobufSerialization in Hadoop, and directly use PB objects instead of
-    // doing this wrapping with Writables.
+    public String getScan() {
+      return scan;
+    }
+
+    public String getRestoreDir() {
+      return restoreDir;
+    }
+
     @Override
     public void write(DataOutput out) throws IOException {
-      MapReduceProtos.TableSnapshotRegionSplit.Builder builder = MapReduceProtos.TableSnapshotRegionSplit.newBuilder()
-	  .setTable(htd.convert())
-	  .setRegion(HRegionInfo.convert(regionInfo))
-    .setScan(scan);
+      MapReduceProtos.TableSnapshotRegionSplit.Builder builder =
+          MapReduceProtos.TableSnapshotRegionSplit.newBuilder().setTable(htd.convert())
+              .setRegion(HRegionInfo.convert(regionInfo)).setScan(scan).setRestoreDir(restoreDir);
 
       for (String location : locations) {
         builder.addLocations(location);
@@ -180,6 +191,7 @@ public class TableSnapshotInputFormatImpl {
       this.scan = split.getScan();
       List<String> locationsList = split.getLocationsList();
       this.locations = locationsList.toArray(new String[locationsList.size()]);
+      this.restoreDir = split.getRestoreDir();
     }
   }
 
@@ -204,13 +216,12 @@ public class TableSnapshotInputFormatImpl {
       HRegionInfo hri = this.split.getRegionInfo();
       FileSystem fs = FSUtils.getCurrentFileSystem(conf);
 
-      Path tmpRootDir = new Path(conf.get(RESTORE_DIR_KEY)); // This is the user specified root
       // directory where snapshot was restored
-      if(scan == null){
+      if (scan == null) {
         LOG.info("input split lost the scan object");
       } else {
-        LOG.info("scan start: " + Bytes.toString(scan.getStartRow()) + "; stop: " +
-            Bytes.toString(scan.getStopRow()));
+        LOG.info("scan start: " + Bytes.toString(scan.getStartRow()) + "; stop: "
+            + Bytes.toString(scan.getStopRow()));
       }
 
       // region is immutable, this should be fine,
@@ -218,8 +229,8 @@ public class TableSnapshotInputFormatImpl {
       scan.setIsolationLevel(IsolationLevel.READ_UNCOMMITTED);
       // disable caching of data blocks
       scan.setCacheBlocks(false);
-
-      scanner = new ClientSideRegionScanner(conf, fs, tmpRootDir, htd, hri, scan, null);
+      scanner =
+          new ClientSideRegionScanner(conf, fs, new Path(split.restoreDir), htd, hri, scan, null);
     }
 
     public boolean nextKeyValue() throws IOException {
@@ -351,7 +362,6 @@ public class TableSnapshotInputFormatImpl {
     List<InputSplit> splits = new ArrayList<InputSplit>();
     for (HRegionInfo hri : regionManifests) {
       // load region descriptor
-
       if (numSplits > 1) {
         byte[][] sp = sa.split(hri.getStartKey(), hri.getEndKey(), numSplits, true);
         for (int i = 0; i < sp.length - 1; i++) {
@@ -384,9 +394,7 @@ public class TableSnapshotInputFormatImpl {
         }
       }
     }
-
     return splits;
-
   }
 
   public static RegionSplitter.SplitAlgorithm getSplitAlgo(Configuration conf) throws IOException{

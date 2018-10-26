@@ -17,18 +17,108 @@
  */
 package org.apache.hadoop.hbase.util;
 
+import java.util.AbstractMap;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+
+import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.classification.InterfaceStability;
+
+import com.google.common.collect.Lists;
 
 /**
  * Some configuration related utilities
  */
 @InterfaceAudience.Private
-public class  ConfigUtil {
+public class ConfigUtil {
 
   public static boolean useZKForAssignment(Configuration conf) {
     // To change the default, please also update ZooKeeperWatcher.java
     return conf.getBoolean("hbase.assignment.usezk", true);
+  }
+
+  // TODO: hopefully this is a good delimiter; it's not in the base64 alphabet,
+  // nor is it valid for paths
+  public static final char KVP_DELIMITER = '^';
+
+  // Disallow instantiation
+  private ConfigUtil() {
+
+  }
+
+  /**
+   * Store a collection of Map.Entry's in conf, with each entry separated by ',' and key values
+   * delimited by {@link #KVP_DELIMITER}
+   * @param conf configuration to store the collection in
+   * @param key overall key to store keyValues under
+   * @param keyValues kvps to be stored under key in conf
+   */
+  public static void setKeyValues(Configuration conf, String key,
+      Collection<Entry<String, String>> keyValues) {
+    setKeyValues(conf, key, keyValues, KVP_DELIMITER);
+  }
+
+  /**
+   * Store a collection of Map.Entry's in conf, with each entry separated by ',' and key values
+   * delimited by delimiter.
+   * @param conf configuration to store the collection in
+   * @param key overall key to store keyValues under
+   * @param keyValues kvps to be stored under key in conf
+   * @param delimiter character used to separate each kvp
+   */
+  public static void setKeyValues(Configuration conf, String key,
+      Collection<Map.Entry<String, String>> keyValues, char delimiter) {
+    List<String> serializedKvps = Lists.newArrayList();
+
+    for (Map.Entry<String, String> kvp : keyValues) {
+      serializedKvps.add(kvp.getKey() + delimiter + kvp.getValue());
+    }
+
+    conf.setStrings(key, serializedKvps.toArray(new String[serializedKvps.size()]));
+  }
+
+  /**
+   * Retrieve a list of key value pairs from configuration, stored under the provided key
+   * @param conf configuration to retrieve kvps from
+   * @param key key under which the key values are stored
+   * @return the list of kvps stored under key in conf, or null if the key isn't present.
+   * @see #setKeyValues(Configuration, String, Collection, char)
+   */
+  public static List<Map.Entry<String, String>> getKeyValues(Configuration conf, String key) {
+    return getKeyValues(conf, key, KVP_DELIMITER);
+  }
+
+  /**
+   * Retrieve a list of key value pairs from configuration, stored under the provided key
+   * @param conf configuration to retrieve kvps from
+   * @param key key under which the key values are stored
+   * @param delimiter character used to separate each kvp
+   * @return the list of kvps stored under key in conf, or null if the key isn't present.
+   * @see #setKeyValues(Configuration, String, Collection, char)
+   */
+  public static List<Map.Entry<String, String>> getKeyValues(Configuration conf, String key,
+      char delimiter) {
+    String[] kvps = conf.getStrings(key);
+
+    if (kvps == null) {
+      return null;
+    }
+
+    List<Map.Entry<String, String>> rtn = Lists.newArrayList();
+
+    for (String kvp : kvps) {
+      String[] splitKvp = StringUtils.split(kvp, delimiter);
+
+      if (splitKvp.length != 2) {
+        throw new IllegalArgumentException("Expected key value pair for configuration key '" + key
+            + "'" + " to be of form '<key>" + delimiter + "<value>; was " + kvp + " instead");
+      }
+      rtn.add(new AbstractMap.SimpleImmutableEntry<>(splitKvp[0], splitKvp[1]));
+    }
+    return rtn;
   }
 }

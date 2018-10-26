@@ -782,6 +782,21 @@ public final class MapReduceProtos {
      */
     com.google.protobuf.ByteString
         getScanBytes();
+
+    // optional string restoreDir = 6;
+    /**
+     * <code>optional string restoreDir = 6;</code>
+     */
+    boolean hasRestoreDir();
+    /**
+     * <code>optional string restoreDir = 6;</code>
+     */
+    java.lang.String getRestoreDir();
+    /**
+     * <code>optional string restoreDir = 6;</code>
+     */
+    com.google.protobuf.ByteString
+        getRestoreDirBytes();
   }
   /**
    * Protobuf type {@code TableSnapshotRegionSplit}
@@ -871,6 +886,11 @@ public final class MapReduceProtos {
             case 42: {
               bitField0_ |= 0x00000004;
               scan_ = input.readBytes();
+              break;
+            }
+            case 50: {
+              bitField0_ |= 0x00000008;
+              restoreDir_ = input.readBytes();
               break;
             }
           }
@@ -1033,11 +1053,55 @@ public final class MapReduceProtos {
       }
     }
 
+    // optional string restoreDir = 6;
+    public static final int RESTOREDIR_FIELD_NUMBER = 6;
+    private java.lang.Object restoreDir_;
+    /**
+     * <code>optional string restoreDir = 6;</code>
+     */
+    public boolean hasRestoreDir() {
+      return ((bitField0_ & 0x00000008) == 0x00000008);
+    }
+    /**
+     * <code>optional string restoreDir = 6;</code>
+     */
+    public java.lang.String getRestoreDir() {
+      java.lang.Object ref = restoreDir_;
+      if (ref instanceof java.lang.String) {
+        return (java.lang.String) ref;
+      } else {
+        com.google.protobuf.ByteString bs = 
+            (com.google.protobuf.ByteString) ref;
+        java.lang.String s = bs.toStringUtf8();
+        if (bs.isValidUtf8()) {
+          restoreDir_ = s;
+        }
+        return s;
+      }
+    }
+    /**
+     * <code>optional string restoreDir = 6;</code>
+     */
+    public com.google.protobuf.ByteString
+        getRestoreDirBytes() {
+      java.lang.Object ref = restoreDir_;
+      if (ref instanceof java.lang.String) {
+        com.google.protobuf.ByteString b = 
+            com.google.protobuf.ByteString.copyFromUtf8(
+                (java.lang.String) ref);
+        restoreDir_ = b;
+        return b;
+      } else {
+        return (com.google.protobuf.ByteString) ref;
+      }
+    }
+
     private void initFields() {
       locations_ = com.google.protobuf.LazyStringArrayList.EMPTY;
       table_ = org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.TableSchema.getDefaultInstance();
       region_ = org.apache.hadoop.hbase.protobuf.generated.HBaseProtos.RegionInfo.getDefaultInstance();
       scan_ = "";
+      restoreDir_ = "";
     }
     private byte memoizedIsInitialized = -1;
     public final boolean isInitialized() {
@@ -1075,6 +1139,9 @@ public final class MapReduceProtos {
       if (((bitField0_ & 0x00000004) == 0x00000004)) {
         output.writeBytes(5, getScanBytes());
       }
+      if (((bitField0_ & 0x00000008) == 0x00000008)) {
+        output.writeBytes(6, getRestoreDirBytes());
+      }
       getUnknownFields().writeTo(output);
     }
 
@@ -1104,6 +1171,10 @@ public final class MapReduceProtos {
       if (((bitField0_ & 0x00000004) == 0x00000004)) {
         size += com.google.protobuf.CodedOutputStream
           .computeBytesSize(5, getScanBytes());
+      }
+      if (((bitField0_ & 0x00000008) == 0x00000008)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeBytesSize(6, getRestoreDirBytes());
       }
       size += getUnknownFields().getSerializedSize();
       memoizedSerializedSize = size;
@@ -1145,6 +1216,11 @@ public final class MapReduceProtos {
         result = result && getScan()
             .equals(other.getScan());
       }
+      result = result && (hasRestoreDir() == other.hasRestoreDir());
+      if (hasRestoreDir()) {
+        result = result && getRestoreDir()
+            .equals(other.getRestoreDir());
+      }
       result = result &&
           getUnknownFields().equals(other.getUnknownFields());
       return result;
@@ -1173,6 +1249,10 @@ public final class MapReduceProtos {
       if (hasScan()) {
         hash = (37 * hash) + SCAN_FIELD_NUMBER;
         hash = (53 * hash) + getScan().hashCode();
+      }
+      if (hasRestoreDir()) {
+        hash = (37 * hash) + RESTOREDIR_FIELD_NUMBER;
+        hash = (53 * hash) + getRestoreDir().hashCode();
       }
       hash = (29 * hash) + getUnknownFields().hashCode();
       memoizedHashCode = hash;
@@ -1301,6 +1381,8 @@ public final class MapReduceProtos {
         bitField0_ = (bitField0_ & ~0x00000004);
         scan_ = "";
         bitField0_ = (bitField0_ & ~0x00000008);
+        restoreDir_ = "";
+        bitField0_ = (bitField0_ & ~0x00000010);
         return this;
       }
 
@@ -1355,6 +1437,10 @@ public final class MapReduceProtos {
           to_bitField0_ |= 0x00000004;
         }
         result.scan_ = scan_;
+        if (((from_bitField0_ & 0x00000010) == 0x00000010)) {
+          to_bitField0_ |= 0x00000008;
+        }
+        result.restoreDir_ = restoreDir_;
         result.bitField0_ = to_bitField0_;
         onBuilt();
         return result;
@@ -1390,6 +1476,11 @@ public final class MapReduceProtos {
         if (other.hasScan()) {
           bitField0_ |= 0x00000008;
           scan_ = other.scan_;
+          onChanged();
+        }
+        if (other.hasRestoreDir()) {
+          bitField0_ |= 0x00000010;
+          restoreDir_ = other.restoreDir_;
           onChanged();
         }
         this.mergeUnknownFields(other.getUnknownFields());
@@ -1832,6 +1923,80 @@ public final class MapReduceProtos {
         return this;
       }
 
+      // optional string restoreDir = 6;
+      private java.lang.Object restoreDir_ = "";
+      /**
+       * <code>optional string restoreDir = 6;</code>
+       */
+      public boolean hasRestoreDir() {
+        return ((bitField0_ & 0x00000010) == 0x00000010);
+      }
+      /**
+       * <code>optional string restoreDir = 6;</code>
+       */
+      public java.lang.String getRestoreDir() {
+        java.lang.Object ref = restoreDir_;
+        if (!(ref instanceof java.lang.String)) {
+          java.lang.String s = ((com.google.protobuf.ByteString) ref)
+              .toStringUtf8();
+          restoreDir_ = s;
+          return s;
+        } else {
+          return (java.lang.String) ref;
+        }
+      }
+      /**
+       * <code>optional string restoreDir = 6;</code>
+       */
+      public com.google.protobuf.ByteString
+          getRestoreDirBytes() {
+        java.lang.Object ref = restoreDir_;
+        if (ref instanceof String) {
+          com.google.protobuf.ByteString b = 
+              com.google.protobuf.ByteString.copyFromUtf8(
+                  (java.lang.String) ref);
+          restoreDir_ = b;
+          return b;
+        } else {
+          return (com.google.protobuf.ByteString) ref;
+        }
+      }
+      /**
+       * <code>optional string restoreDir = 6;</code>
+       */
+      public Builder setRestoreDir(
+          java.lang.String value) {
+        if (value == null) {
+    throw new NullPointerException();
+  }
+  bitField0_ |= 0x00000010;
+        restoreDir_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>optional string restoreDir = 6;</code>
+       */
+      public Builder clearRestoreDir() {
+        bitField0_ = (bitField0_ & ~0x00000010);
+        restoreDir_ = getDefaultInstance().getRestoreDir();
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>optional string restoreDir = 6;</code>
+       */
+      public Builder setRestoreDirBytes(
+          com.google.protobuf.ByteString value) {
+        if (value == null) {
+    throw new NullPointerException();
+  }
+  bitField0_ |= 0x00000010;
+        restoreDir_ = value;
+        onChanged();
+        return this;
+      }
+
       // @@protoc_insertion_point(builder_scope:TableSnapshotRegionSplit)
     }
 
@@ -1863,12 +2028,13 @@ public final class MapReduceProtos {
   static {
     java.lang.String[] descriptorData = {
       "\n\017MapReduce.proto\032\013HBase.proto\".\n\013ScanMe" +
-      "trics\022\037\n\007metrics\030\001 \003(\0132\016.NameInt64Pair\"u" +
-      "\n\030TableSnapshotRegionSplit\022\021\n\tlocations\030" +
-      "\002 \003(\t\022\033\n\005table\030\003 \001(\0132\014.TableSchema\022\033\n\006re" +
-      "gion\030\004 \001(\0132\013.RegionInfo\022\014\n\004scan\030\005 \001(\tBB\n" +
-      "*org.apache.hadoop.hbase.protobuf.genera" +
-      "tedB\017MapReduceProtosH\001\240\001\001"
+      "trics\022\037\n\007metrics\030\001 \003(\0132\016.NameInt64Pair\"\211" +
+      "\001\n\030TableSnapshotRegionSplit\022\021\n\tlocations" +
+      "\030\002 \003(\t\022\033\n\005table\030\003 \001(\0132\014.TableSchema\022\033\n\006r" +
+      "egion\030\004 \001(\0132\013.RegionInfo\022\014\n\004scan\030\005 \001(\t\022\022" +
+      "\n\nrestoreDir\030\006 \001(\tBB\n*org.apache.hadoop." +
+      "hbase.protobuf.generatedB\017MapReduceProto" +
+      "sH\001\240\001\001"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
       new com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner() {
@@ -1886,7 +2052,7 @@ public final class MapReduceProtos {
           internal_static_TableSnapshotRegionSplit_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_TableSnapshotRegionSplit_descriptor,
-              new java.lang.String[] { "Locations", "Table", "Region", "Scan", });
+              new java.lang.String[] { "Locations", "Table", "Region", "Scan", "RestoreDir", });
           return null;
         }
       };
