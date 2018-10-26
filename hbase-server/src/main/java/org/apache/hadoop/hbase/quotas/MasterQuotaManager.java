@@ -401,13 +401,6 @@ public class MasterQuotaManager implements RegionStateListener {
       quotaOps.update(quotas);
     }
     quotaOps.postApply(quotas);
-
-    // Because set quota may be delete quota, so update total existed limit after set quota
-    try {
-      computeTotalExistedLimit();
-    } catch (IOException e) {
-      LOG.info("fail to update total existed limit");
-    }
   }
 
   public void checkNamespaceTableAndRegionQuota(TableName tName, int regions) throws IOException {
@@ -543,6 +536,9 @@ public class MasterQuotaManager implements RegionStateListener {
   
   public void checkRegionServerQuota(String user, TableName tableName, long reqLimit,
       ThrottleType type, double localFactor) throws IOException {
+    // Because previous set quota may be delete quota and disabled tables may be enabled,
+    // so update total existed limit after set quota
+    computeTotalExistedLimit();
     reqLimit = (long)(reqLimit * localFactor);
     long previous = (long)(getSoftLimitForUserAndTable(user, tableName, type) * localFactor);
     long consumed = type == ThrottleType.READ_NUMBER ? totalExistedReadLimit
@@ -668,7 +664,7 @@ public class MasterQuotaManager implements RegionStateListener {
     }
   }
   
-  private void computeTotalExistedLimit() throws IOException {
+  private void computeTotalExistedLimit() {
     LOG.info("Start to compute total existed limit...");
     long totalReadLimit = 0;
     long totalWriteLimit = 0;
@@ -686,6 +682,12 @@ public class MasterQuotaManager implements RegionStateListener {
             TableName tableName = throttle.getTableName();
             int tableRegionsNum = this.masterServices.getAssignmentManager().getRegionStates()
                 .getRegionByStateOfTable(tableName).get(RegionState.State.OPEN).size();
+            if (tableRegionsNum == 0
+                && this.masterServices.getAssignmentManager().getZKTable() != null
+                && this.masterServices.getAssignmentManager().getZKTable()
+                    .isDisabledTable(tableName)) {
+              continue;
+            }
             long maxLocalThrottleLimit = (long) (throttle.getSoftLimit() * QuotaCache
                 .computeLocalFactor(regionServerNum, tableRegionsNum, tableRegionsNum));
             if (throttle.getThrottleType() == ProtobufUtil.toThrottleType(ThrottleType.READ_NUMBER)) {
@@ -782,11 +784,13 @@ public class MasterQuotaManager implements RegionStateListener {
   // This method is for strictly testing purpose only
   @VisibleForTesting
   public long getTotalExistedReadLimit() {
+    computeTotalExistedLimit();
     return totalExistedReadLimit;
   }
 
   @VisibleForTesting
   public long getTotalExistedWriteLimit() {
+    computeTotalExistedLimit();
     return totalExistedWriteLimit;
   }
 
