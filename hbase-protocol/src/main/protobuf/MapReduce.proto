@@ -34,4 +34,5 @@ message TableSnapshotRegionSplit {
   optional TableSchema table = 3;
   optional RegionInfo region = 4;
   optional string scan = 5;
+  optional string restoreDir = 6;
 }

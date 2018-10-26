@@ -19,6 +19,8 @@
 package org.apache.hadoop.hbase.mapred;
 
 import java.io.IOException;
+import java.util.Collection;
+import java.util.Map;
 
 import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.classification.InterfaceStability;
@@ -28,6 +30,7 @@ import org.apache.hadoop.hbase.catalog.MetaReader;
 import org.apache.hadoop.hbase.client.HConnection;
 import org.apache.hadoop.hbase.client.HConnectionManager;
 import org.apache.hadoop.hbase.client.Put;
+import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
 import org.apache.hadoop.hbase.mapreduce.MutationSerialization;
 import org.apache.hadoop.hbase.mapreduce.ResultSerialization;
@@ -148,6 +151,37 @@ public class TableMapReduceUtil {
     TableSnapshotInputFormat.setInput(job, snapshotName, tmpRestoreDir);
     initTableMapJob(snapshotName, columns, mapper, outputKeyClass, outputValueClass, job,
       addDependencyJars, TableSnapshotInputFormat.class);
+    org.apache.hadoop.hbase.mapreduce.TableMapReduceUtil.resetCacheConfig(job);
+  }
+
+  /**
+   * Sets up the job for reading from one or more multiple table snapshots, with one or more scans
+   * per snapshot. It bypasses hbase servers and read directly from snapshot files.
+   * @param snapshotScans map of snapshot name to scans on that snapshot.
+   * @param mapper The mapper class to use.
+   * @param outputKeyClass The class of the output key.
+   * @param outputValueClass The class of the output value.
+   * @param job The current job to adjust. Make sure the passed job is carrying all necessary HBase
+   *          configuration.
+   * @param addDependencyJars upload HBase jars and jars for any of the configured job classes via
+   *          the distributed cache (tmpjars).
+   */
+  public static void initMultiTableSnapshotMapperJob(Map<String, Collection<Scan>> snapshotScans,
+      Class<? extends TableMap> mapper, Class<?> outputKeyClass, Class<?> outputValueClass,
+      JobConf job, boolean addDependencyJars, Path tmpRestoreDir) throws IOException {
+    MultiTableSnapshotInputFormat.setInput(job, snapshotScans, tmpRestoreDir);
+
+    job.setInputFormat(MultiTableSnapshotInputFormat.class);
+    if (outputValueClass != null) {
+      job.setMapOutputValueClass(outputValueClass);
+    }
+    if (outputKeyClass != null) {
+      job.setMapOutputKeyClass(outputKeyClass);
+    }
+    job.setMapperClass(mapper);
+    if (addDependencyJars) {
+      addDependencyJars(job);
+    }
     org.apache.hadoop.hbase.mapreduce.TableMapReduceUtil.resetCacheConfig(job);
   }
 

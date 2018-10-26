@@ -144,12 +144,10 @@ public class TableSnapshotInputFormat extends InputFormat<ImmutableBytesWritable
 
     @Override
     public void initialize(InputSplit split, TaskAttemptContext context) throws IOException,
-      InterruptedException {
+        InterruptedException {
       this.context = context;
       getCounter = TableRecordReaderImpl.retrieveGetCounterWithStringsParams(context);
-      delegate.initialize(
-        ((TableSnapshotRegionSplit) split).delegate,
-        context.getConfiguration());
+      delegate.initialize(((TableSnapshotRegionSplit) split).delegate, context.getConfiguration());
     }
 
     @Override
