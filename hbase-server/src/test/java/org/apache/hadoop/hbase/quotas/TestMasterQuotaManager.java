@@ -579,9 +579,31 @@ public class TestMasterQuotaManager {
     assertTrue(userTableQuotas != null);
     assertEquals(500, userTableQuotas.getThrottle().getReadNum().getSoftLimit());
     assertEquals(600, userTableQuotas.getThrottle().getWriteNum().getSoftLimit());
-    
+
     admin.setQuota(QuotaSettingsFactory.unthrottleUser(userName, TABLE_NAMES[1]));
     TEST_UTIL.createTable(TABLE_NAMES[0], new byte[][] { FAMILY }, 3, Bytes.toBytes("aaaaa"),
-      Bytes.toBytes("zzzzz"), tableRegionsNumMap.get(TABLE_NAMES[0]));    
+      Bytes.toBytes("zzzzz"), tableRegionsNumMap.get(TABLE_NAMES[0]));
+  }
+
+  @Test
+  public void testTotalExistedLimitForDisabledTable() throws Exception {
+
+    admin.setQuota(QuotaSettingsFactory.throttleUser(userName, TABLE_NAMES[0],
+      ThrottleType.READ_NUMBER, 500, TimeUnit.SECONDS));
+    admin.setQuota(QuotaSettingsFactory.throttleUser(userName, TABLE_NAMES[0],
+      ThrottleType.WRITE_NUMBER, 1000, TimeUnit.SECONDS));
+    assertEquals(125, quotaManager.getTotalExistedReadLimit());
+    assertEquals(250, quotaManager.getTotalExistedWriteLimit());
+
+    admin.disableTable(TABLE_NAMES[0]);
+
+    assertEquals(0, quotaManager.getTotalExistedReadLimit());
+    assertEquals(0, quotaManager.getTotalExistedWriteLimit());
+
+    admin.enableTable(TABLE_NAMES[0]);
+    assertEquals(125, quotaManager.getTotalExistedReadLimit());
+    assertEquals(250, quotaManager.getTotalExistedWriteLimit());
+
+    admin.setQuota(QuotaSettingsFactory.unthrottleUser(userName, TABLE_NAMES[0]));
   }
 }
