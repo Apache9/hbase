@@ -57,11 +57,9 @@ public class TwoConcurrentActionPolicy extends PeriodicPolicy {
       fOne.get();
       fTwo.get();
     } catch (InterruptedException e) {
-      LOG.warn("Exception occurred during performing action: "
-          + StringUtils.stringifyException(e));
+      LOG.warn("Exception occurred during performing action: ", e);
     } catch (ExecutionException ex) {
-      LOG.warn("Exception occurred during performing action: "
-          + StringUtils.stringifyException(ex));
+      LOG.warn("Exception occurred during performing action: ", ex);
     }
   }
 
@@ -89,8 +87,7 @@ public class TwoConcurrentActionPolicy extends PeriodicPolicy {
       try {
         action.perform();
       } catch (Exception ex) {
-        LOG.warn("Exception occurred during performing action: "
-            + StringUtils.stringifyException(ex));
+        LOG.warn("Exception occurred during performing action: ", ex);
       }
     }
   }
