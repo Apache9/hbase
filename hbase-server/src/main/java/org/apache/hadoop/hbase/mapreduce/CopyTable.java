@@ -37,6 +37,7 @@ import org.apache.hadoop.hbase.classification.InterfaceStability;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hbase.util.FSUtils;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.util.GenericOptionsParser;
 import org.apache.hadoop.util.Tool;
@@ -308,11 +309,10 @@ public class CopyTable extends Configured implements Tool {
     if (bulkload) {
       TableMapReduceUtil.initTableMapperJob(tableName, scan, Import.KeyValueImporter.class, null,
         null, job);
-      
+
       // We need to split the inputs by destination tables so that output of Map can be bulk-loaded.
       TableInputFormat.configureSplitTable(job, TableName.valueOf(dstTableName));
-      
-      FileSystem fs = FileSystem.get(getConf());
+      FileSystem fs = FSUtils.getCurrentFileSystem(getConf());
       Random rand = new Random();
       Path root = new Path(fs.getWorkingDirectory(), "copytable");
       fs.mkdirs(root);
@@ -322,7 +322,7 @@ public class CopyTable extends Configured implements Tool {
           break;
         }
       }
-      
+
       System.out.println("HFiles will be stored at " + this.bulkloadDir);
       HFileOutputFormat2.setOutputPath(job, bulkloadDir);
       HTable htable = new HTable(getConf(), TableName.valueOf(dstTableName));
