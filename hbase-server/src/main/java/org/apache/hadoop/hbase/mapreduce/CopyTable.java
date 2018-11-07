@@ -529,7 +529,7 @@ public class CopyTable extends Configured implements Tool {
       if (code == 0) {
         // bulkloadDir is deleted only LoadIncrementalHFiles was successful so that one can rerun
         // LoadIncrementalHFiles.
-        FileSystem fs = FileSystem.get(this.getConf());
+        FileSystem fs = FSUtils.getCurrentFileSystem(getConf());
         if (!fs.delete(this.bulkloadDir, true)) {
           LOG.error("Deleting folder " + bulkloadDir + " failed!");
           code = 1;
