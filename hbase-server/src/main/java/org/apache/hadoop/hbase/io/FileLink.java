@@ -398,6 +398,7 @@ public class FileLink {
    * @throws IOException on unexpected error.
    */
   public FileStatus getFileStatus(FileSystem fs) throws IOException {
+    boolean accessDenied = false;
     for (int i = 0; i < locations.length; ++i) {
       try {
         return fs.getFileStatus(locations[i]);
@@ -405,9 +406,14 @@ public class FileLink {
         // Try another file location
       } catch (AccessControlException e) {
         // Try another file location
+        accessDenied = true;
       }
     }
-    throw new FileNotFoundException("Unable to open link: " + this);
+    if (accessDenied) {
+      throw new AccessControlException("Unable to open link: " + this);
+    } else {
+      throw new FileNotFoundException("Unable to open link: " + this);
+    }
   }
 
   /**
