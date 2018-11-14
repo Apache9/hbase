@@ -65,6 +65,13 @@ import org.slf4j.LoggerFactory;
  *
  * See the "Running Canary in a Kerberos-enabled Cluster" section of the HBase Reference Guide for
  * an example of configuring a user of this Auth Chore to run on a secure cluster.
+ * <pre>
+ * </pre>
+ * This class will be internal used only from 2.2.0 version, and will transparently work
+ * for kerberized applications. For more, please refer
+ * <a href="http://hbase.apache.org/book.html#hbase.secure.configuration">Client-side Configuration for Secure Operation</a>
+ *
+ * @deprecated since 2.2.0, to be removed in hbase-3.0.0.
  */
 @InterfaceAudience.Public
 public class AuthUtil {
