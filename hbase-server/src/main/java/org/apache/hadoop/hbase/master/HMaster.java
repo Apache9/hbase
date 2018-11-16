@@ -3884,6 +3884,7 @@ public class HMaster extends HRegionServer implements MasterServices {
   }
 
   public void remoteProcedureCompleted(long procId) {
+    LOG.debug("Remote procedure done, pid={}", procId);
     RemoteProcedure<MasterProcedureEnv, ?> procedure = getRemoteProcedure(procId);
     if (procedure != null) {
       procedure.remoteOperationCompleted(procedureExecutor.getEnvironment());
@@ -3891,6 +3892,7 @@ public class HMaster extends HRegionServer implements MasterServices {
   }
 
   public void remoteProcedureFailed(long procId, RemoteProcedureException error) {
+    LOG.debug("Remote procedure failed, pid={}", procId, error);
     RemoteProcedure<MasterProcedureEnv, ?> procedure = getRemoteProcedure(procId);
     if (procedure != null) {
       procedure.remoteOperationFailed(procedureExecutor.getEnvironment(), error);
