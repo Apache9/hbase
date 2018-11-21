@@ -159,7 +159,7 @@ public class ReplicationSource extends Thread
 
   protected int ioeSleepBeforeRetry = 0;
 
-  Map<String, Long> lastPositionsForSerialScope = new HashMap<String, Long>();
+  Map<String, Long> lastPositionsForSerial = new HashMap<String, Long>();
 
   private AtomicLong totalBufferUsed;
   private long totalBufferQuota;
@@ -401,11 +401,11 @@ public class ReplicationSource extends Thread
       try {
         updateCurrentLogMetrics();
         if (readAllEntriesToReplicateOrNextFile(currentWALisBeingWrittenTo, entries,
-            lastPositionsForSerialScope)) {
-          for (Map.Entry<String, Long> entry : lastPositionsForSerialScope.entrySet()) {
+            lastPositionsForSerial)) {
+          for (Map.Entry<String, Long> entry : lastPositionsForSerial.entrySet()) {
             waitingUntilCanPush(entry);
           }
-          updateReplicationPositions(manager.getConnection(), peerId, lastPositionsForSerialScope);
+          saveLastPositionsForSerial();
           continue;
         }
         if (throwIOEWhenReadWALEntryFirstTime) {
@@ -436,7 +436,7 @@ public class ReplicationSource extends Thread
         }
       }
 
-      for (Map.Entry<String, Long> entry : lastPositionsForSerialScope.entrySet()) {
+      for (Map.Entry<String, Long> entry : lastPositionsForSerial.entrySet()) {
         waitingUntilCanPush(entry);
       }
 
@@ -444,7 +444,7 @@ public class ReplicationSource extends Thread
       // But if we need to stop, don't bother sleeping
       if (this.isActive() && entries.isEmpty()) {
         // Save positions to meta table before zk.
-        updateReplicationPositions(manager.getConnection(), peerId, lastPositionsForSerialScope);
+        saveLastPositionsForSerial();
         logPosition(currentWALisBeingWrittenTo);
 
         // Reset the sleep multiplier if nothing has actually gone wrong
@@ -461,10 +461,9 @@ public class ReplicationSource extends Thread
         continue;
       }
       sleepMultiplier = 1;
-      shipEdits(currentWALisBeingWrittenTo, entries, lastPositionsForSerialScope);
+      shipEdits(currentWALisBeingWrittenTo, entries);
       // Only clear everything after successfully ship edits
       releaseBufferQuota();
-      lastPositionsForSerialScope.clear();
     }
   }
 
@@ -839,8 +838,7 @@ public class ReplicationSource extends Thread
    * @param currentWALisBeingWrittenTo was the current WAL being (seemingly)
    * written to when this method was called
    */
-  protected void shipEdits(boolean currentWALisBeingWrittenTo, List<HLog.Entry> entries,
-      Map<String, Long> lastPositionsForSerialScope) {
+  protected void shipEdits(boolean currentWALisBeingWrittenTo, List<HLog.Entry> entries) {
     int sleepMultiplier = 1;
     if (entries.isEmpty()) {
       LOG.warn("Was given 0 edits to ship");
@@ -878,8 +876,7 @@ public class ReplicationSource extends Thread
         this.unLoggedPositionEdits += entries.size();
 
         // Save positions to meta table before zk.
-        updateReplicationPositions(manager.getConnection(), peerId, lastPositionsForSerialScope);
-
+        saveLastPositionsForSerial();
         logPosition(currentWALisBeingWrittenTo);
         if (this.throttler.isEnabled()) {
           this.throttler.addPushSize(currentSize);
@@ -919,7 +916,7 @@ public class ReplicationSource extends Thread
   protected boolean processEndOfFile() {
     if (this.queue.size() != 0) {
       // at the end of the log
-      updateReplicationPositions(manager.getConnection(), peerId, lastPositionsForSerialScope);
+      saveLastPositionsForSerial();
 
       if (this.lastLoggedPosition != this.repLogReader.getPosition()) {
         this.manager.logPosition(this.currentPath, this.peerClusterZnode,
@@ -1003,17 +1000,18 @@ public class ReplicationSource extends Thread
     }
   }
 
-  protected void updateReplicationPositions(HConnection connection, String peerId,
-      Map<String, Long> positions) {
+  private void saveLastPositionsForSerial() {
     while (true) {
       try {
-        MetaEditor.updateReplicationPositions(connection, peerId, positions);
+        MetaEditor
+            .updateReplicationPositions(manager.getConnection(), peerId, lastPositionsForSerial);
         break;
       } catch (IOException e) {
         LOG.error("updateReplicationPositions fail", e);
       }
       Threads.sleep(sleepForRetries);
     }
+    lastPositionsForSerial.clear();
   }
 
   @Override
