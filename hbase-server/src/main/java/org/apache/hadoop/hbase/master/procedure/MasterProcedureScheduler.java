@@ -809,11 +809,11 @@ public class MasterProcedureScheduler extends AbstractProcedureScheduler {
     schedLock();
     try {
       final LockAndQueue systemNamespaceTableLock =
-        locking.getTableLock(TableName.NAMESPACE_TABLE_NAME);
+        locking.getTableLock(TableProcedureInterface.DUMMY_NAMESPACE_TABLE_NAME);
       if (!systemNamespaceTableLock.trySharedLock(procedure)) {
         waitProcedure(systemNamespaceTableLock, procedure);
         logLockedResource(LockedResourceType.TABLE,
-          TableName.NAMESPACE_TABLE_NAME.getNameAsString());
+          TableProcedureInterface.DUMMY_NAMESPACE_TABLE_NAME.getNameAsString());
         return true;
       }
 
@@ -841,13 +841,14 @@ public class MasterProcedureScheduler extends AbstractProcedureScheduler {
     try {
       final LockAndQueue namespaceLock = locking.getNamespaceLock(namespace);
       final LockAndQueue systemNamespaceTableLock =
-          locking.getTableLock(TableName.NAMESPACE_TABLE_NAME);
+        locking.getTableLock(TableProcedureInterface.DUMMY_NAMESPACE_TABLE_NAME);
       int waitingCount = 0;
       if (namespaceLock.releaseExclusiveLock(procedure)) {
         waitingCount += wakeWaitingProcedures(namespaceLock);
       }
       if (systemNamespaceTableLock.releaseSharedLock()) {
-        addToRunQueue(tableRunQueue, getTableQueue(TableName.NAMESPACE_TABLE_NAME),
+        addToRunQueue(tableRunQueue,
+          getTableQueue(TableProcedureInterface.DUMMY_NAMESPACE_TABLE_NAME),
           () -> procedure + " released namespace exclusive lock");
         waitingCount += wakeWaitingProcedures(systemNamespaceTableLock);
       }
