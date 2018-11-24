@@ -1007,7 +1007,7 @@ public class ReplicationSource extends Thread
             .updateReplicationPositions(manager.getConnection(), peerId, lastPositionsForSerial);
         break;
       } catch (IOException e) {
-        LOG.error("updateReplicationPositions fail", e);
+        LOG.error("updateReplicationPositions fail, retry", e);
       }
       Threads.sleep(sleepForRetries);
     }
