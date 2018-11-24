@@ -64,7 +64,7 @@ public class TestSerialReplicationBase {
   protected final int TIMEOUT = 300000;
   protected final int SLEEP_TIME = 1000;
 
-  private static final String PEER_ID = "1";
+  protected static final String PEER_ID = "1";
   private static final byte[] famName = Bytes.toBytes("f");
   private static final byte[] VALUE = Bytes.toBytes("v");
   private static final byte[] ROW = Bytes.toBytes("r");

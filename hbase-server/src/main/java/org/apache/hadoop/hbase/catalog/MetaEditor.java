@@ -45,8 +45,10 @@ import org.apache.hadoop.hbase.client.Mutation;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
+import org.apache.hadoop.hbase.client.RowMutations;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.client.TableState;
+import org.apache.hadoop.hbase.filter.CompareFilter;
 import org.apache.hadoop.hbase.ipc.CoprocessorRpcChannel;
 import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.protobuf.generated.ClientProtos.MutationProto.MutationType;
@@ -445,23 +447,34 @@ public class MetaEditor {
    */
   public static void updateReplicationPositions(HConnection connection, String peerId,
       Map<String, Long> positions) throws IOException {
-    List<Put> puts = new ArrayList<Put>();
+    HTable metaTable = getMetaHTable(connection);
     for (Map.Entry<String, Long> entry : positions.entrySet()) {
+      byte[] rowkey = Bytes.toBytes(entry.getKey());
       long value = Math.abs(entry.getValue());
-      Put put = new Put(Bytes.toBytes(entry.getKey()));
-      put.addImmutable(HConstants.REPLICATION_POSITION_FAMILY, Bytes.toBytes(peerId),
-          Bytes.toBytes(value));
-      puts.add(put);
-    }
-    metaPuts(connection, puts);
-  }
-
-  private static void metaPuts(HConnection connection, List<Put> puts) throws IOException {
-    HTable meta = getMetaHTable(connection);
-    try {
-      meta.put(puts);
-    } finally {
-      meta.close();
+      RowMutations rowMutations = new RowMutations(rowkey);
+      rowMutations.add(new Put(rowkey)
+          .addImmutable(HConstants.REPLICATION_POSITION_FAMILY, Bytes.toBytes(peerId),
+              Bytes.toBytes(value)));
+      Get get =
+          new Get(rowkey).addColumn(HConstants.REPLICATION_POSITION_FAMILY, Bytes.toBytes(peerId));
+      byte[] previousPos = metaTable.get(get).getValue(HConstants.REPLICATION_POSITION_FAMILY, Bytes.toBytes(peerId));
+      if (previousPos == null) {
+        boolean success = metaTable
+            .checkAndMutate(Bytes.toBytes(entry.getKey()), HConstants.REPLICATION_POSITION_FAMILY,
+                Bytes.toBytes(peerId), CompareFilter.CompareOp.EQUAL, null, rowMutations);
+        if (!success) {
+          // If there is a position before us, throw a exception to upper layer to retry.
+          throw new IOException(
+              "Failed to update replication positions to " + value + " for region " + entry.getKey()
+                  + " and peer " + peerId);
+        }
+      } else if (value > Bytes.toLong(previousPos)) {
+        // Only a bigger replication position can be saved
+        metaTable
+            .checkAndMutate(Bytes.toBytes(entry.getKey()), HConstants.REPLICATION_POSITION_FAMILY,
+                Bytes.toBytes(peerId), CompareFilter.CompareOp.GREATER, Bytes.toBytes(value),
+                rowMutations);
+      }
     }
   }
 

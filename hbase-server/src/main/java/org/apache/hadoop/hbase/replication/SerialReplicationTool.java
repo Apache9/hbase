@@ -99,7 +99,12 @@ public class SerialReplicationTool extends Configured implements Tool {
       throws IOException {
     Map<String, Long> map = new HashMap<>();
     map.put(encodedRegionName, pos);
-    MetaEditor.updateReplicationPositions(connection, peerId, map);
+    try {
+      MetaEditor.updateReplicationPositions(connection, peerId, map);
+    } catch (IOException e) {
+      LOG.warn("Failed to updateReplicationPositions, retry", e);
+      MetaEditor.updateReplicationPositions(connection, peerId, map);
+    }
   }
 
   private void fixStuckPeer(String peerId) throws Exception {

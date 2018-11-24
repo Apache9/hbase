@@ -24,17 +24,23 @@ import static org.junit.Assert.fail;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.catalog.MetaEditor;
+import org.apache.hadoop.hbase.client.HConnection;
+import org.apache.hadoop.hbase.client.HConnectionManager;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.testclassification.LargeTests;
+import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
@@ -84,4 +90,36 @@ public class TestSerialReplicationBasic extends TestSerialReplicationBase {
       fail("Wait too much for all logs been pushed");
     }
   }
+
+  @Test
+  public void testUpdateReplicationPositions() throws Exception {
+    HConnection connection = HConnectionManager.createConnection(utility1.getConfiguration());
+    Map<String, Long> positions = new HashMap<>();
+    positions.put("TestRegion1", 10L);
+    positions.put("TestRegion2", 20L);
+    MetaEditor.updateReplicationPositions(connection, PEER_ID, positions);
+    assertEquals(10, MetaEditor
+        .getReplicationPositionForOnePeer(connection, Bytes.toBytes("TestRegion1"), PEER_ID));
+    assertEquals(20, MetaEditor
+        .getReplicationPositionForOnePeer(connection, Bytes.toBytes("TestRegion2"), PEER_ID));
+
+    positions.clear();
+    positions.put("TestRegion1", 100L);
+    positions.put("TestRegion2", 200L);
+    MetaEditor.updateReplicationPositions(connection, PEER_ID, positions);
+    assertEquals(100, MetaEditor
+        .getReplicationPositionForOnePeer(connection, Bytes.toBytes("TestRegion1"), PEER_ID));
+    assertEquals(200, MetaEditor
+        .getReplicationPositionForOnePeer(connection, Bytes.toBytes("TestRegion2"), PEER_ID));
+
+    positions.clear();
+    positions.put("TestRegion1", 30L);
+    positions.put("TestRegion2", 60L);
+    MetaEditor.updateReplicationPositions(connection, PEER_ID, positions);
+    assertEquals(100, MetaEditor
+        .getReplicationPositionForOnePeer(connection, Bytes.toBytes("TestRegion1"), PEER_ID));
+    assertEquals(200, MetaEditor
+        .getReplicationPositionForOnePeer(connection, Bytes.toBytes("TestRegion2"), PEER_ID));
+  }
+
 }
