@@ -119,8 +119,11 @@ public class TestRegisterPeerWorkerWhenRestarting extends SyncReplicationTestBas
     FAIL = false;
     t.join();
     // make sure the new master can finish the transition
-    UTIL2.waitFor(60000, () -> UTIL2.getAdmin()
-      .getReplicationPeerSyncReplicationState(PEER_ID) == SyncReplicationState.DOWNGRADE_ACTIVE);
+    UTIL2.waitFor(30000, () -> UTIL2.getMiniHBaseCluster().getMaster() != null);
+    UTIL2.waitFor(30000,
+      () -> UTIL2.getMiniHBaseCluster().getMaster().getProcedures().stream()
+        .filter(p -> p instanceof TransitPeerSyncReplicationStateProcedure)
+        .allMatch(p -> p.isFinished()));
     verify(UTIL2, 0, 100);
   }
 }
