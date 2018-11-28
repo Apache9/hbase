@@ -1551,6 +1551,8 @@
     <wagon.ssh.version>2.12</wagon.ssh.version>
     <xml.maven.version>1.0.1</xml.maven.version>
     <hbase-thirdparty.version>2.1.0</hbase-thirdparty.version>
+    <javax.annotation-api.version>1.3.2</javax.annotation-api.version>
+    <jaxws-api.version>2.3.1</jaxws-api.version>
     <!-- General Packaging -->
     <package.prefix>/usr</package.prefix>
     <package.conf.dir>/etc/hbase</package.conf.dir>
@@ -2271,6 +2273,16 @@
         <groupId>org.apache.hbase.thirdparty</groupId>
         <artifactId>hbase-shaded-protobuf</artifactId>
         <version>${hbase-thirdparty.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>javax.annotation</groupId>
+        <artifactId>javax.annotation-api</artifactId>
+        <version>${javax.annotation-api.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>javax.xml.ws</groupId>
+        <artifactId>jaxws-api</artifactId>
+	<version>${jaxws-api.version}</version>
       </dependency>
     </dependencies>
   </dependencyManagement>

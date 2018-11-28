@@ -177,7 +177,7 @@
                   <exclude>org.slf4j:slf4j-api</exclude>
                   <exclude>org.apache.yetus:audience-annotations</exclude>
                   <exclude>com.github.stephenc.fingbugs:*</exclude>
-                  <exclude></exclude>
+		  <exclude>javax.annotation:*</exclude>
                 </excludes>
               </artifactSet>
             </configuration>
@@ -250,6 +250,10 @@
     <dependency>
       <groupId>org.apache.hbase.thirdparty</groupId>
       <artifactId>hbase-shaded-protobuf</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>javax.annotation</groupId>
+      <artifactId>javax.annotation-api</artifactId>
     </dependency>
     <dependency>
       <groupId>junit</groupId>
