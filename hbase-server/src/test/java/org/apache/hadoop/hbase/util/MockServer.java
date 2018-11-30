@@ -18,7 +18,6 @@
 package org.apache.hadoop.hbase.util;
 
 import java.io.IOException;
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.hbase.ChoreService;
@@ -27,6 +26,7 @@ import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.Server;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.ZooKeeperConnectionException;
+import org.apache.hadoop.hbase.client.AsyncClusterConnection;
 import org.apache.hadoop.hbase.client.ClusterConnection;
 import org.apache.hadoop.hbase.client.Connection;
 import org.apache.hadoop.hbase.log.HBaseMarkers;
@@ -148,6 +148,11 @@ public class MockServer implements Server {
 
   @Override
   public Connection createConnection(Configuration conf) throws IOException {
+    return null;
+  }
+
+  @Override
+  public AsyncClusterConnection getAsyncClusterConnection() {
     return null;
   }
 }
