@@ -112,9 +112,11 @@ public class LoadIncrementalHFiles extends Configured implements Tool {
     = "hbase.mapreduce.bulkload.max.hfiles.perRegion.perFamily";
   private static final String ASSIGN_SEQ_IDS = "hbase.mapreduce.bulkload.assign.sequenceNumbers";
   public final static String CREATE_TABLE_CONF_KEY = "create.table";
+  public static final String BULK_LOAD_HFILES_BY_FAMILY = "hbase.mapreduce.bulkload.by.family";
 
   private int maxFilesPerRegionPerFamily;
   private boolean assignSeqIds;
+  private boolean bulkLoadByFamily;
 
   // Source filesystem
   private FileSystem fs;
@@ -142,6 +144,7 @@ public class LoadIncrementalHFiles extends Configured implements Tool {
       this.fsDelegationToken = new FsDelegationToken(userProvider, "renewer");
       assignSeqIds = conf.getBoolean(ASSIGN_SEQ_IDS, true);
       maxFilesPerRegionPerFamily = conf.getInt(MAX_FILES_PER_REGION_PER_FAMILY, 32);
+      bulkLoadByFamily = conf.getBoolean(BULK_LOAD_HFILES_BY_FAMILY, true);
     }
   }
 
@@ -359,6 +362,15 @@ public class LoadIncrementalHFiles extends Configured implements Tool {
     }
   }
 
+  private Map<byte[], Collection<LoadQueueItem>>
+      groupByFamilies(Collection<LoadQueueItem> itemsInRegion) {
+    Map<byte[], Collection<LoadQueueItem>> families2Queue = new TreeMap<>(Bytes.BYTES_COMPARATOR);
+    itemsInRegion.forEach(
+      item -> families2Queue.computeIfAbsent(item.family, queue -> new ArrayList<>()).add(item));
+    return families2Queue;
+  }
+
+
   /**
    * This takes the LQI's grouped by likely regions and attempts to bulk load
    * them.  Any failures are re-queued for another pass with the
@@ -369,18 +381,18 @@ public class LoadIncrementalHFiles extends Configured implements Tool {
       final Multimap<ByteBuffer, LoadQueueItem> regionGroups) throws IOException {
     // atomically bulk load the groups.
     Set<Future<List<LoadQueueItem>>> loadingFutures = new HashSet<Future<List<LoadQueueItem>>>();
-    for (Entry<ByteBuffer, ? extends Collection<LoadQueueItem>> e: regionGroups.asMap().entrySet()) {
+    for (Entry<ByteBuffer, ? extends Collection<LoadQueueItem>> e : regionGroups.asMap()
+        .entrySet()) {
       final byte[] first = e.getKey().array();
-      final Collection<LoadQueueItem> lqis =  e.getValue();
+      final Collection<LoadQueueItem> lqis = e.getValue();
 
-      final Callable<List<LoadQueueItem>> call = new Callable<List<LoadQueueItem>>() {
-        public List<LoadQueueItem> call() throws Exception {
-          List<LoadQueueItem> toRetry =
-              tryAtomicRegionLoad(conn, table.getName(), first, lqis);
-          return toRetry;
-        }
-      };
-      loadingFutures.add(pool.submit(call));
+      if (bulkLoadByFamily) {
+        groupByFamilies(lqis).values().forEach(familyQueue -> loadingFutures.add(
+          pool.submit(() -> tryAtomicRegionLoad(conn, table.getName(), first, familyQueue))));
+      } else {
+        loadingFutures
+            .add(pool.submit(() -> tryAtomicRegionLoad(conn, table.getName(), first, lqis)));
+      }
     }
 
     // get all the results.
@@ -402,7 +414,7 @@ public class LoadIncrementalHFiles extends Configured implements Tool {
         throw new IllegalStateException(t);
       } catch (InterruptedException e1) {
         LOG.error("Unexpected interrupted exception during bulk load", e1);
-        throw (InterruptedIOException)new InterruptedIOException().initCause(e1);
+        throw (InterruptedIOException) new InterruptedIOException().initCause(e1);
       }
     }
   }
