@@ -113,10 +113,16 @@ public class ReplicationManager {
   }
 
   public void enableReplicationPeer(String peerId) throws ReplicationException {
+    if (!peerModificationEnabled) {
+      throw new ReplicationException("Replication peer modification is disabled");
+    }
     replicationPeers.enablePeer(peerId);
   }
 
   public void disableReplicationPeer(String peerId) throws ReplicationException {
+    if (!peerModificationEnabled) {
+      throw new ReplicationException("Replication peer modification is disabled");
+    }
     replicationPeers.disablePeer(peerId);
   }
 
