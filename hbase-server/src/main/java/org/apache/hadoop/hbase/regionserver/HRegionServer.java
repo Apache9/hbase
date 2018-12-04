@@ -259,14 +259,6 @@ public class HRegionServer extends HasThread implements
    */
   protected ClusterConnection clusterConnection;
 
-  /*
-   * Long-living meta table locator, which is created when the server is started and stopped
-   * when server shuts down. References to this locator shall be used to perform according
-   * operations in EventHandlers. Primary reason for this decision is to make it mockable
-   * for tests.
-   */
-  protected MetaTableLocator metaTableLocator;
-
   /**
    * Go here to get table descriptors.
    */
@@ -837,7 +829,6 @@ public class HRegionServer extends HasThread implements
   protected synchronized void setupClusterConnection() throws IOException {
     if (clusterConnection == null) {
       clusterConnection = createClusterConnection();
-      metaTableLocator = new MetaTableLocator();
     }
   }
 
@@ -1113,8 +1104,6 @@ public class HRegionServer extends HasThread implements
       LOG.info("stopping server " + this.serverName);
     }
 
-    // so callers waiting for meta without timeout can stop
-    if (this.metaTableLocator != null) this.metaTableLocator.stop();
     if (this.clusterConnection != null && !clusterConnection.isClosed()) {
       try {
         this.clusterConnection.close();
@@ -2168,11 +2157,6 @@ public class HRegionServer extends HasThread implements
   @Override
   public ClusterConnection getClusterConnection() {
     return this.clusterConnection;
-  }
-
-  @Override
-  public MetaTableLocator getMetaTableLocator() {
-    return this.metaTableLocator;
   }
 
   @Override
