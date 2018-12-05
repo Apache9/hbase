@@ -55,6 +55,7 @@ message ReplicationPeer {
   optional bool all = 9;
   optional TableCFs excludeTableCFs = 10;
   repeated bytes excludeNamespaces = 11;
+  optional bool serial = 12;
 }
 
 /**

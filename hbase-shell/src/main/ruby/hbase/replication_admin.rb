@@ -351,6 +351,14 @@ module Hbase
       end
     end
 
+    def set_peer_serial(id, serial)
+      rpc = @replication_admin.getPeerConfig(id)
+      unless rpc.nil?
+        rpc.setSerial(serial)
+        @replication_admin.updatePeerConfig(id, rpc)
+      end
+    end
+
     #----------------------------------------------------------------------------------------------
     # Enables a table's replication switch
     def enable_tablerep(table_name)
