@@ -582,8 +582,8 @@ AssignmentManager assignmentManager = master.getAssignmentManager();
         <th>Bandwidth</th>
         <th>ReplicateAll</th>
         <th>Namespaces</th>
-        <th>Exclude Namespaces</th>
         <th>Table Cfs</th>
+        <th>Exclude Namespaces</th>
         <th>Exclude Table Cfs</th>
     </tr>
 <%if (peers != null && peers.size() > 0)%>
