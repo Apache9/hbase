@@ -106,7 +106,7 @@ public class TestSerialReplicationBase {
     utility2.startMiniCluster(1, 1);
 
     ReplicationPeerConfig rpc = new ReplicationPeerConfig();
-    rpc.setClusterKey(utility2.getClusterKey());
+    rpc.setClusterKey(utility2.getClusterKey()).setSerial(true);
     utility1.getHBaseAdmin().addReplicationPeer(PEER_ID, rpc);
 
     utility1.getHBaseAdmin().setBalancerRunning(false, true);

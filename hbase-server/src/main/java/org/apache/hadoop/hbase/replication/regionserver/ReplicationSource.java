@@ -516,6 +516,11 @@ public class ReplicationSource extends Thread
   }
 
   protected void waitingUntilCanPush(Map.Entry<String, Long> entry) {
+    // Don't waiting if this peer is not serial
+    if (!this.replicationPeers.getPeer(peerId).getPeerConfig().isSerial()) {
+      return;
+    }
+
     String key = entry.getKey();
     long seq = entry.getValue();
     boolean deleteKey = false;
@@ -1001,15 +1006,18 @@ public class ReplicationSource extends Thread
   }
 
   private void saveLastPositionsForSerial() {
-    while (true) {
-      try {
-        MetaEditor
-            .updateReplicationPositions(manager.getConnection(), peerId, lastPositionsForSerial);
-        break;
-      } catch (IOException e) {
-        LOG.error("updateReplicationPositions fail, retry", e);
+    // Only save last pushed seq id for serial replication peer
+    if (this.replicationPeers.getPeer(peerId).getPeerConfig().isSerial()) {
+      while (true) {
+        try {
+          MetaEditor
+              .updateReplicationPositions(manager.getConnection(), peerId, lastPositionsForSerial);
+          break;
+        } catch (IOException e) {
+          LOG.error("updateReplicationPositions fail, retry", e);
+        }
+        Threads.sleep(sleepForRetries);
       }
-      Threads.sleep(sleepForRetries);
     }
     lastPositionsForSerial.clear();
   }

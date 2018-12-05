@@ -501,6 +501,28 @@ module Hbase
       replication_admin.remove_peer(@peer_id)
     end
 
+    define_test "set_peer_serial" do
+      cluster_key = "zk4,zk5,zk6:11000:/hbase-test"
+
+      args = { CLUSTER_KEY => cluster_key }
+      replication_admin.add_peer(@peer_id, args)
+
+      assert_equal(1, replication_admin.list_peers().length)
+      peer_config = replication_admin.list_peers().fetch(@peer_id)
+      assert_equal(false, peer_config.isSerial)
+
+      replication_admin.set_peer_serial(@peer_id, true)
+      peer_config = replication_admin.list_peers().fetch(@peer_id)
+      assert_equal(true, peer_config.isSerial)
+
+      replication_admin.set_peer_serial(@peer_id, false)
+      peer_config = replication_admin.list_peers().fetch(@peer_id)
+      assert_equal(false, peer_config.isSerial)
+
+      # cleanup for future tests
+      replication_admin.remove_peer(@peer_id)
+    end
+
     define_test "set_peer_bandwidth: works with peer bandwidth upper limit" do
       cluster_key = "localhost:2181:/hbase-test"
       args = { CLUSTER_KEY => cluster_key }

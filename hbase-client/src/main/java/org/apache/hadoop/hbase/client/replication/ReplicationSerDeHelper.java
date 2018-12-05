@@ -351,10 +351,13 @@ public final class ReplicationSerDeHelper {
       peerConfig.setExcludeNamespaces(excludeNamespaces);
     }
 
+    if (peer.hasSerial()) {
+      peerConfig.setSerial(peer.getSerial());
+    }
     return peerConfig;
   }
 
-  public static ReplicationProtos.ReplicationPeer convert(ReplicationPeerConfig  peerConfig) {
+  public static ReplicationProtos.ReplicationPeer convert(ReplicationPeerConfig peerConfig) {
     ReplicationProtos.ReplicationPeer.Builder builder = ReplicationProtos.ReplicationPeer.newBuilder();
     if (peerConfig.getClusterKey() != null) {
       builder.setClusterkey(peerConfig.getClusterKey());
@@ -414,6 +417,8 @@ public final class ReplicationSerDeHelper {
         builder.addExcludeNamespaces(ByteString.copyFromUtf8(namespace));
       }
     }
+
+    builder.setSerial(peerConfig.isSerial());
     return builder.build();
   }
 
@@ -573,6 +578,9 @@ public final class ReplicationSerDeHelper {
       peerConfig.setExcludeNamespaces(excludeNamespaces);
     }
 
+    if (peer.hasSerial()) {
+      peerConfig.setSerial(peer.getSerial());
+    }
     return peerConfig;
   }
 
@@ -658,6 +666,8 @@ public final class ReplicationSerDeHelper {
         builder.addExcludeNamespaces(ByteString.copyFromUtf8(namespace));
       }
     }
+
+    builder.setSerial(peerConfig.isSerial());
     return builder.build();
   }
 

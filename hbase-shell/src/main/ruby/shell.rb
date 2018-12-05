@@ -347,6 +347,7 @@ Shell.load_command_group(
     enable_peer
     disable_peer
     set_peer_replicate_all
+    set_peer_serial
     show_peer_tableCFs
     set_peer_tableCFs
     append_peer_tableCFs

@@ -578,10 +578,13 @@ AssignmentManager assignmentManager = master.getAssignmentManager();
         <th>Peer Id</th>
         <th>Cluster Key</th>
         <th>State</th>
-        <th>Protocol</th>
+        <th>IsSerial</th>
         <th>Bandwidth</th>
+        <th>ReplicateAll</th>
         <th>Namespaces</th>
+        <th>Exclude Namespaces</th>
         <th>Table Cfs</th>
+        <th>Exclude Table Cfs</th>
     </tr>
 <%if (peers != null && peers.size() > 0)%>
     <%for ReplicationPeerDescription peer : peers %>
@@ -593,17 +596,28 @@ AssignmentManager assignmentManager = master.getAssignmentManager();
         <td><% peerId %></td>
         <td><% peerConfig.getClusterKey() %></td>
         <td><% peer.isEnabled() ? "ENABLED" : "DISABLED" %></td>
-        <td><% peerConfig.getProtocol() %></td>
-        <td><% peerConfig.getBandwidth() %></td>
+        <td><% peerConfig.isSerial() %></td>
+        <td><% peerConfig.getBandwidth() == 0? "UNLIMITED" : StringUtils.humanReadableInt(peerConfig.getBandwidth()) %></td>
+        <td><% peerConfig.replicateAllUserTables() %></td>
         <td>
-          <span class="more">
-            <% peerConfig.getNamespaces() == null ? "" : ReplicationSerDeHelper.convertToString(peerConfig.getNamespaces()).replaceAll(";", "; ") %>
-          </span>
+            <span class="more">
+                <% peerConfig.getNamespaces() == null ? "" : ReplicationSerDeHelper.convertToString(peerConfig.getNamespaces()).replaceAll(";", "; ") %>
+            </span>
         </td>
         <td>
-          <span class="more">
-            <% peerConfig.getTableCFsMap() == null ? "" : ReplicationSerDeHelper.convertToString(peerConfig.getTableCFsMap()).replaceAll(";", "; ") %>
-          </span>
+            <span class="more">
+                <% peerConfig.getTableCFsMap() == null ? "" : ReplicationSerDeHelper.convertToString(peerConfig.getTableCFsMap()).replaceAll(";", "; ") %>
+            </span>
+        </td>
+        <td>
+            <span class="more">
+                <% peerConfig.getExcludeNamespaces() == null ? "" : ReplicationSerDeHelper.convertToString(peerConfig.getExcludeNamespaces()).replaceAll(";", "; ") %>
+            </span>
+        </td>
+        <td>
+            <span class="more">
+                <% peerConfig.getExcludeTableCFsMap() == null ? "" : ReplicationSerDeHelper.convertToString(peerConfig.getExcludeTableCFsMap()).replaceAll(";", "; ") %>
+            </span>
         </td>
     </tr>
     </%for>

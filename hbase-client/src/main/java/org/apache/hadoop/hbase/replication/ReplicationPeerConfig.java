@@ -50,6 +50,7 @@ public class ReplicationPeerConfig {
   private boolean replicateAllUserTables = true;
   private Map<TableName, ? extends Collection<String>> excludeTableCFsMap = null;
   private Set<String> excludeNamespaces = null;
+  private boolean serial = false;
 
   public ReplicationPeerConfig() {
     this.peerData = new TreeMap<>(Bytes.BYTES_COMPARATOR);
@@ -160,6 +161,14 @@ public class ReplicationPeerConfig {
     return this;
   }
 
+  public boolean isSerial() {
+    return this.serial;
+  }
+
+  public void setSerial(boolean serial) {
+    this.serial = serial;
+  }
+
   /**
    * Decide whether the table need replicate to the peer cluster
    * @param table name of the table
@@ -212,7 +221,8 @@ public class ReplicationPeerConfig {
       }
     }
     builder.append("rpcProtocol=").append(protocol.name()).append(",");
-    builder.append("bandwidth=").append(bandwidth);
+    builder.append("bandwidth=").append(bandwidth).append(",");
+    builder.append("serial=").append(serial);
     return builder.toString();
   }
 }

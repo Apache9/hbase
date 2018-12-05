@@ -570,6 +570,36 @@ public class TestReplicationAdmin {
   }
 
   @Test
+  public void testSetSerial() throws Exception {
+    ReplicationPeerConfig rpc = new ReplicationPeerConfig();
+    rpc.setClusterKey(KEY_ONE);
+    admin.addPeer(ID_ONE, rpc);
+
+    rpc = admin.getPeerConfig(ID_ONE);
+    assertFalse(rpc.isSerial());
+
+    rpc.setSerial(true);
+    admin.updatePeerConfig(ID_ONE, rpc);
+    rpc = admin.getPeerConfig(ID_ONE);
+    assertTrue(rpc.isSerial());
+
+    rpc = new ReplicationPeerConfig();
+    rpc.setClusterKey(KEY_SECOND).setSerial(true);
+    admin.addPeer(ID_SECOND, rpc);
+
+    rpc = admin.getPeerConfig(ID_SECOND);
+    assertTrue(rpc.isSerial());
+
+    rpc.setSerial(false);
+    admin.updatePeerConfig(ID_SECOND, rpc);
+    rpc = admin.getPeerConfig(ID_SECOND);
+    assertFalse(rpc.isSerial());
+
+    admin.removePeer(ID_ONE);
+    admin.removePeer(ID_SECOND);
+  }
+
+  @Test
   public void testPeerConfigConflict() throws Exception {
     ReplicationPeerConfig rpc = new ReplicationPeerConfig();
     rpc.setClusterKey(KEY_ONE);

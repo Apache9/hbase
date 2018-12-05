@@ -1625,6 +1625,16 @@ public final class ReplicationProtos {
      * <code>repeated bytes excludeNamespaces = 11;</code>
      */
     com.google.protobuf.ByteString getExcludeNamespaces(int index);
+
+    // optional bool serial = 12;
+    /**
+     * <code>optional bool serial = 12;</code>
+     */
+    boolean hasSerial();
+    /**
+     * <code>optional bool serial = 12;</code>
+     */
+    boolean getSerial();
   }
   /**
    * Protobuf type {@code ReplicationPeer}
@@ -1769,6 +1779,11 @@ public final class ReplicationProtos {
                 mutable_bitField0_ |= 0x00000400;
               }
               excludeNamespaces_.add(input.readBytes());
+              break;
+            }
+            case 96: {
+              bitField0_ |= 0x00000080;
+              serial_ = input.readBool();
               break;
             }
           }
@@ -2216,6 +2231,22 @@ public final class ReplicationProtos {
       return excludeNamespaces_.get(index);
     }
 
+    // optional bool serial = 12;
+    public static final int SERIAL_FIELD_NUMBER = 12;
+    private boolean serial_;
+    /**
+     * <code>optional bool serial = 12;</code>
+     */
+    public boolean hasSerial() {
+      return ((bitField0_ & 0x00000080) == 0x00000080);
+    }
+    /**
+     * <code>optional bool serial = 12;</code>
+     */
+    public boolean getSerial() {
+      return serial_;
+    }
+
     private void initFields() {
       clusterkey_ = "";
       replicationEndpointImpl_ = "";
@@ -2228,6 +2259,7 @@ public final class ReplicationProtos {
       all_ = false;
       excludeTableCFs_ = org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.TableCFs.getDefaultInstance();
       excludeNamespaces_ = java.util.Collections.emptyList();
+      serial_ = false;
     }
     private byte memoizedIsInitialized = -1;
     public final boolean isInitialized() {
@@ -2302,6 +2334,9 @@ public final class ReplicationProtos {
       for (int i = 0; i < excludeNamespaces_.size(); i++) {
         output.writeBytes(11, excludeNamespaces_.get(i));
       }
+      if (((bitField0_ & 0x00000080) == 0x00000080)) {
+        output.writeBool(12, serial_);
+      }
       getUnknownFields().writeTo(output);
     }
 
@@ -2364,6 +2399,10 @@ public final class ReplicationProtos {
         }
         size += dataSize;
         size += 1 * getExcludeNamespacesList().size();
+      }
+      if (((bitField0_ & 0x00000080) == 0x00000080)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeBoolSize(12, serial_);
       }
       size += getUnknownFields().getSerializedSize();
       memoizedSerializedSize = size;
@@ -2431,6 +2470,11 @@ public final class ReplicationProtos {
       }
       result = result && getExcludeNamespacesList()
           .equals(other.getExcludeNamespacesList());
+      result = result && (hasSerial() == other.hasSerial());
+      if (hasSerial()) {
+        result = result && (getSerial()
+            == other.getSerial());
+      }
       result = result &&
           getUnknownFields().equals(other.getUnknownFields());
       return result;
@@ -2487,6 +2531,10 @@ public final class ReplicationProtos {
       if (getExcludeNamespacesCount() > 0) {
         hash = (37 * hash) + EXCLUDENAMESPACES_FIELD_NUMBER;
         hash = (53 * hash) + getExcludeNamespacesList().hashCode();
+      }
+      if (hasSerial()) {
+        hash = (37 * hash) + SERIAL_FIELD_NUMBER;
+        hash = (53 * hash) + hashBoolean(getSerial());
       }
       hash = (29 * hash) + getUnknownFields().hashCode();
       memoizedHashCode = hash;
@@ -2644,6 +2692,8 @@ public final class ReplicationProtos {
         bitField0_ = (bitField0_ & ~0x00000200);
         excludeNamespaces_ = java.util.Collections.emptyList();
         bitField0_ = (bitField0_ & ~0x00000400);
+        serial_ = false;
+        bitField0_ = (bitField0_ & ~0x00000800);
         return this;
       }
 
@@ -2736,6 +2786,10 @@ public final class ReplicationProtos {
           bitField0_ = (bitField0_ & ~0x00000400);
         }
         result.excludeNamespaces_ = excludeNamespaces_;
+        if (((from_bitField0_ & 0x00000800) == 0x00000800)) {
+          to_bitField0_ |= 0x00000080;
+        }
+        result.serial_ = serial_;
         result.bitField0_ = to_bitField0_;
         onBuilt();
         return result;
@@ -2848,6 +2902,9 @@ public final class ReplicationProtos {
             excludeNamespaces_.addAll(other.excludeNamespaces_);
           }
           onChanged();
+        }
+        if (other.hasSerial()) {
+          setSerial(other.getSerial());
         }
         this.mergeUnknownFields(other.getUnknownFields());
         return this;
@@ -4038,6 +4095,39 @@ public final class ReplicationProtos {
       public Builder clearExcludeNamespaces() {
         excludeNamespaces_ = java.util.Collections.emptyList();
         bitField0_ = (bitField0_ & ~0x00000400);
+        onChanged();
+        return this;
+      }
+
+      // optional bool serial = 12;
+      private boolean serial_ ;
+      /**
+       * <code>optional bool serial = 12;</code>
+       */
+      public boolean hasSerial() {
+        return ((bitField0_ & 0x00000800) == 0x00000800);
+      }
+      /**
+       * <code>optional bool serial = 12;</code>
+       */
+      public boolean getSerial() {
+        return serial_;
+      }
+      /**
+       * <code>optional bool serial = 12;</code>
+       */
+      public Builder setSerial(boolean value) {
+        bitField0_ |= 0x00000800;
+        serial_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>optional bool serial = 12;</code>
+       */
+      public Builder clearSerial() {
+        bitField0_ = (bitField0_ & ~0x00000800);
+        serial_ = false;
         onChanged();
         return this;
       }
@@ -15136,7 +15226,7 @@ public final class ReplicationProtos {
       "\n\021Replication.proto\032\013HBase.proto\032\023Cluste" +
       "rStatus.proto\";\n\007TableCF\022\036\n\ntable_name\030\001" +
       " \001(\0132\n.TableName\022\020\n\010families\030\002 \003(\014\"\'\n\010Ta" +
-      "bleCFs\022\033\n\ttable_cfs\030\001 \003(\0132\010.TableCF\"\372\002\n\017" +
+      "bleCFs\022\033\n\ttable_cfs\030\001 \003(\0132\010.TableCF\"\212\003\n\017" +
       "ReplicationPeer\022\022\n\nclusterkey\030\001 \002(\t\022\037\n\027r" +
       "eplicationEndpointImpl\030\002 \001(\t\022\035\n\004data\030\003 \003" +
       "(\0132\017.BytesBytesPair\022&\n\rconfiguration\030\004 \003" +
@@ -15145,41 +15235,41 @@ public final class ReplicationProtos {
       "tableCFs\030\006 \001(\0132\t.TableCFs\022\021\n\tbandwidth\030\007",
       " \001(\003\022\022\n\nnamespaces\030\010 \003(\014\022\013\n\003all\030\t \001(\010\022\"\n" +
       "\017excludeTableCFs\030\n \001(\0132\t.TableCFs\022\031\n\021exc" +
-      "ludeNamespaces\030\013 \003(\014\"\"\n\010Protocol\022\n\n\006NATI" +
-      "VE\020\000\022\n\n\006THRIFT\020\001\"^\n\020ReplicationState\022&\n\005" +
-      "state\030\001 \002(\0162\027.ReplicationState.State\"\"\n\005" +
-      "State\022\013\n\007ENABLED\020\000\022\014\n\010DISABLED\020\001\"+\n\027Repl" +
-      "icationHLogPosition\022\020\n\010position\030\001 \002(\003\"%\n" +
-      "\017ReplicationLock\022\022\n\nlock_owner\030\001 \002(\t\"l\n\032" +
-      "ReplicationPeerDescription\022\n\n\002id\030\001 \002(\t\022 " +
-      "\n\005state\030\002 \002(\0132\021.ReplicationState\022 \n\006conf",
-      "ig\030\003 \002(\0132\020.ReplicationPeer\"z\n\031AddReplica" +
-      "tionPeerRequest\022\017\n\007peer_id\030\001 \002(\t\022%\n\013peer" +
-      "_config\030\002 \002(\0132\020.ReplicationPeer\022%\n\npeer_" +
-      "state\030\003 \002(\0132\021.ReplicationState\"\034\n\032AddRep" +
-      "licationPeerResponse\"/\n\034RemoveReplicatio" +
-      "nPeerRequest\022\017\n\007peer_id\030\001 \002(\t\"\037\n\035RemoveR" +
-      "eplicationPeerResponse\"/\n\034EnableReplicat" +
-      "ionPeerRequest\022\017\n\007peer_id\030\001 \002(\t\"\037\n\035Enabl" +
-      "eReplicationPeerResponse\"0\n\035DisableRepli" +
-      "cationPeerRequest\022\017\n\007peer_id\030\001 \002(\t\" \n\036Di",
-      "sableReplicationPeerResponse\"2\n\037GetRepli" +
-      "cationPeerConfigRequest\022\017\n\007peer_id\030\001 \002(\t" +
-      "\"Z\n GetReplicationPeerConfigResponse\022\017\n\007" +
-      "peer_id\030\001 \002(\t\022%\n\013peer_config\030\002 \002(\0132\020.Rep" +
-      "licationPeer\"\\\n\"UpdateReplicationPeerCon" +
-      "figRequest\022\017\n\007peer_id\030\001 \002(\t\022%\n\013peer_conf" +
-      "ig\030\002 \002(\0132\020.ReplicationPeer\"%\n#UpdateRepl" +
-      "icationPeerConfigResponse\",\n\033ListReplica" +
-      "tionPeersRequest\022\r\n\005regex\030\001 \001(\t\"N\n\034ListR" +
-      "eplicationPeersResponse\022.\n\tpeer_desc\030\001 \003",
-      "(\0132\033.ReplicationPeerDescription\"3\n GetPe" +
-      "erMaxReplicationLoadRequest\022\017\n\007peer_id\030\001" +
-      " \001(\t\"Z\n!GetPeerMaxReplicationLoadRespons" +
-      "e\0225\n\025replicationLoadSource\030\001 \001(\0132\026.Repli" +
-      "cationLoadSourceBG\n*org.apache.hadoop.hb" +
-      "ase.protobuf.generatedB\021ReplicationProto" +
-      "sH\001\210\001\001\240\001\001"
+      "ludeNamespaces\030\013 \003(\014\022\016\n\006serial\030\014 \001(\010\"\"\n\010" +
+      "Protocol\022\n\n\006NATIVE\020\000\022\n\n\006THRIFT\020\001\"^\n\020Repl" +
+      "icationState\022&\n\005state\030\001 \002(\0162\027.Replicatio" +
+      "nState.State\"\"\n\005State\022\013\n\007ENABLED\020\000\022\014\n\010DI" +
+      "SABLED\020\001\"+\n\027ReplicationHLogPosition\022\020\n\010p" +
+      "osition\030\001 \002(\003\"%\n\017ReplicationLock\022\022\n\nlock" +
+      "_owner\030\001 \002(\t\"l\n\032ReplicationPeerDescripti" +
+      "on\022\n\n\002id\030\001 \002(\t\022 \n\005state\030\002 \002(\0132\021.Replicat",
+      "ionState\022 \n\006config\030\003 \002(\0132\020.ReplicationPe" +
+      "er\"z\n\031AddReplicationPeerRequest\022\017\n\007peer_" +
+      "id\030\001 \002(\t\022%\n\013peer_config\030\002 \002(\0132\020.Replicat" +
+      "ionPeer\022%\n\npeer_state\030\003 \002(\0132\021.Replicatio" +
+      "nState\"\034\n\032AddReplicationPeerResponse\"/\n\034" +
+      "RemoveReplicationPeerRequest\022\017\n\007peer_id\030" +
+      "\001 \002(\t\"\037\n\035RemoveReplicationPeerResponse\"/" +
+      "\n\034EnableReplicationPeerRequest\022\017\n\007peer_i" +
+      "d\030\001 \002(\t\"\037\n\035EnableReplicationPeerResponse" +
+      "\"0\n\035DisableReplicationPeerRequest\022\017\n\007pee",
+      "r_id\030\001 \002(\t\" \n\036DisableReplicationPeerResp" +
+      "onse\"2\n\037GetReplicationPeerConfigRequest\022" +
+      "\017\n\007peer_id\030\001 \002(\t\"Z\n GetReplicationPeerCo" +
+      "nfigResponse\022\017\n\007peer_id\030\001 \002(\t\022%\n\013peer_co" +
+      "nfig\030\002 \002(\0132\020.ReplicationPeer\"\\\n\"UpdateRe" +
+      "plicationPeerConfigRequest\022\017\n\007peer_id\030\001 " +
+      "\002(\t\022%\n\013peer_config\030\002 \002(\0132\020.ReplicationPe" +
+      "er\"%\n#UpdateReplicationPeerConfigRespons" +
+      "e\",\n\033ListReplicationPeersRequest\022\r\n\005rege" +
+      "x\030\001 \001(\t\"N\n\034ListReplicationPeersResponse\022",
+      ".\n\tpeer_desc\030\001 \003(\0132\033.ReplicationPeerDesc" +
+      "ription\"3\n GetPeerMaxReplicationLoadRequ" +
+      "est\022\017\n\007peer_id\030\001 \001(\t\"Z\n!GetPeerMaxReplic" +
+      "ationLoadResponse\0225\n\025replicationLoadSour" +
+      "ce\030\001 \001(\0132\026.ReplicationLoadSourceBG\n*org." +
+      "apache.hadoop.hbase.protobuf.generatedB\021" +
+      "ReplicationProtosH\001\210\001\001\240\001\001"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
       new com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner() {
@@ -15203,7 +15293,7 @@ public final class ReplicationProtos {
           internal_static_ReplicationPeer_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_ReplicationPeer_descriptor,
-              new java.lang.String[] { "Clusterkey", "ReplicationEndpointImpl", "Data", "Configuration", "PeerProtocol", "TableCFs", "Bandwidth", "Namespaces", "All", "ExcludeTableCFs", "ExcludeNamespaces", });
+              new java.lang.String[] { "Clusterkey", "ReplicationEndpointImpl", "Data", "Configuration", "PeerProtocol", "TableCFs", "Bandwidth", "Namespaces", "All", "ExcludeTableCFs", "ExcludeNamespaces", "Serial", });
           internal_static_ReplicationState_descriptor =
             getDescriptor().getMessageTypes().get(3);
           internal_static_ReplicationState_fieldAccessorTable = new
