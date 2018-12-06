@@ -347,4 +347,9 @@ class AsyncConnectionImpl implements AsyncClusterConnection {
   Optional<MetricsConnection> getConnectionMetrics() {
     return metrics;
   }
+
+  @Override
+  public AsyncRegionServerAdmin getRegionServerAdmin(ServerName serverName) {
+    return new AsyncRegionServerAdmin(serverName, this);
+  }
 }
