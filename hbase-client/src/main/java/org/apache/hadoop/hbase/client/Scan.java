@@ -236,6 +236,45 @@ public class Scan extends Query {
    * @throws IOException When copying the values fails.
    */
   public Scan(Scan scan) throws IOException {
+    copy(scan);
+  }
+
+  /**
+   * Builds a scan object with the same specs as get.
+   * @param get get to model scan after
+   */
+  public Scan(Get get) {
+    this.startRow = get.getRow();
+    this.includeStartRow = true;
+    this.stopRow = get.getRow();
+    this.includeStopRow = true;
+    this.filter = get.getFilter();
+    this.cacheBlocks = get.getCacheBlocks();
+    this.maxVersions = get.getMaxVersions();
+    this.storeLimit = get.getMaxResultsPerColumnFamily();
+    this.storeOffset = get.getRowOffsetPerColumnFamily();
+    this.tr = get.getTimeRange();
+    this.familyMap = get.getFamilyMap();
+    this.asyncPrefetch = false;
+    this.consistency = get.getConsistency();
+    this.setIsolationLevel(get.getIsolationLevel());
+    this.loadColumnFamiliesOnDemand = get.getLoadColumnFamiliesOnDemandValue();
+    for (Map.Entry<String, byte[]> attr : get.getAttributesMap().entrySet()) {
+      setAttribute(attr.getKey(), attr.getValue());
+    }
+    for (Map.Entry<byte[], TimeRange> entry : get.getColumnFamilyTimeRange().entrySet()) {
+      TimeRange tr = entry.getValue();
+      setColumnFamilyTimeRange(entry.getKey(), tr.getMin(), tr.getMax());
+    }
+    this.mvccReadPoint = -1L;
+    setPriority(get.getPriority());
+    super.setReplicaId(get.getReplicaId());
+  }
+
+  /**
+   * Copy all the values from the given {@code scan}.
+   */
+  public void copy(Scan scan) {
     startRow = scan.getStartRow();
     includeStartRow = scan.includeStartRow();
     stopRow  = scan.getStopRow();
@@ -281,38 +320,6 @@ public class Scan extends Query {
     setPriority(scan.getPriority());
     readType = scan.getReadType();
     super.setReplicaId(scan.getReplicaId());
-  }
-
-  /**
-   * Builds a scan object with the same specs as get.
-   * @param get get to model scan after
-   */
-  public Scan(Get get) {
-    this.startRow = get.getRow();
-    this.includeStartRow = true;
-    this.stopRow = get.getRow();
-    this.includeStopRow = true;
-    this.filter = get.getFilter();
-    this.cacheBlocks = get.getCacheBlocks();
-    this.maxVersions = get.getMaxVersions();
-    this.storeLimit = get.getMaxResultsPerColumnFamily();
-    this.storeOffset = get.getRowOffsetPerColumnFamily();
-    this.tr = get.getTimeRange();
-    this.familyMap = get.getFamilyMap();
-    this.asyncPrefetch = false;
-    this.consistency = get.getConsistency();
-    this.setIsolationLevel(get.getIsolationLevel());
-    this.loadColumnFamiliesOnDemand = get.getLoadColumnFamiliesOnDemandValue();
-    for (Map.Entry<String, byte[]> attr : get.getAttributesMap().entrySet()) {
-      setAttribute(attr.getKey(), attr.getValue());
-    }
-    for (Map.Entry<byte[], TimeRange> entry : get.getColumnFamilyTimeRange().entrySet()) {
-      TimeRange tr = entry.getValue();
-      setColumnFamilyTimeRange(entry.getKey(), tr.getMin(), tr.getMax());
-    }
-    this.mvccReadPoint = -1L;
-    setPriority(get.getPriority());
-    super.setReplicaId(get.getReplicaId());
   }
 
   public boolean isGetScan() {
