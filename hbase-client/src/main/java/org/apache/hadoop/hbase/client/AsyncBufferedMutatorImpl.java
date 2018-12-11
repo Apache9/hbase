@@ -22,12 +22,16 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.yetus.audience.InterfaceAudience;
+
+import com.xiaomi.infra.thirdparty.com.google.common.annotations.VisibleForTesting;
+import com.xiaomi.infra.thirdparty.io.netty.util.HashedWheelTimer;
+import com.xiaomi.infra.thirdparty.io.netty.util.Timeout;
 
 /**
  * The implementation of {@link AsyncBufferedMutator}. Simply wrap an {@link AsyncTable}.
@@ -35,9 +39,13 @@ import org.apache.yetus.audience.InterfaceAudience;
 @InterfaceAudience.Private
 class AsyncBufferedMutatorImpl implements AsyncBufferedMutator {
 
+  private final HashedWheelTimer periodicalFlushTimer;
+
   private final AsyncTable<?> table;
 
   private final long writeBufferSize;
+
+  private final long periodicFlushTimeoutNs;
 
   private List<Mutation> mutations = new ArrayList<>();
 
@@ -47,9 +55,15 @@ class AsyncBufferedMutatorImpl implements AsyncBufferedMutator {
 
   private boolean closed;
 
-  AsyncBufferedMutatorImpl(AsyncTable<?> table, long writeBufferSize) {
+  @VisibleForTesting
+  Timeout periodicFlushTask;
+
+  AsyncBufferedMutatorImpl(HashedWheelTimer periodicalFlushTimer, AsyncTable<?> table,
+      long writeBufferSize, long periodicFlushTimeoutNs) {
+    this.periodicalFlushTimer = periodicalFlushTimer;
     this.table = table;
     this.writeBufferSize = writeBufferSize;
+    this.periodicFlushTimeoutNs = periodicFlushTimeoutNs;
   }
 
   @Override
@@ -62,7 +76,13 @@ class AsyncBufferedMutatorImpl implements AsyncBufferedMutator {
     return table.getConfiguration();
   }
 
-  private void internalFlush() {
+  // will be overridden in test
+  @VisibleForTesting
+  protected void internalFlush() {
+    if (periodicFlushTask != null) {
+      periodicFlushTask.cancel();
+      periodicFlushTask = null;
+    }
     List<Mutation> toSend = this.mutations;
     if (toSend.isEmpty()) {
       return;
@@ -86,35 +106,30 @@ class AsyncBufferedMutatorImpl implements AsyncBufferedMutator {
   }
 
   @Override
-  public CompletableFuture<Void> mutate(Mutation mutation) {
-    CompletableFuture<Void> future = new CompletableFuture<Void>();
-    long heapSize = mutation.heapSize();
-    synchronized (this) {
-      if (closed) {
-        future.completeExceptionally(new IOException("Already closed"));
-        return future;
-      }
-      mutations.add(mutation);
-      futures.add(future);
-      bufferedSize += heapSize;
-      if (bufferedSize >= writeBufferSize) {
-        internalFlush();
-      }
-    }
-    return future;
-  }
-
-  @Override
   public List<CompletableFuture<Void>> mutate(List<? extends Mutation> mutations) {
     List<CompletableFuture<Void>> futures =
-        Stream.<CompletableFuture<Void>> generate(CompletableFuture::new).limit(mutations.size())
-            .collect(Collectors.toList());
+      Stream.<CompletableFuture<Void>> generate(CompletableFuture::new).limit(mutations.size())
+        .collect(Collectors.toList());
     long heapSize = mutations.stream().mapToLong(m -> m.heapSize()).sum();
     synchronized (this) {
       if (closed) {
         IOException ioe = new IOException("Already closed");
         futures.forEach(f -> f.completeExceptionally(ioe));
         return futures;
+      }
+      if (this.mutations.isEmpty() && periodicFlushTimeoutNs > 0) {
+        periodicFlushTask = periodicalFlushTimer.newTimeout(timeout -> {
+          synchronized (AsyncBufferedMutatorImpl.this) {
+            // confirm that we are still valid, if there is already an internalFlush call before us,
+            // then we should not execute any more. And in internalFlush we will set periodicFlush
+            // to null, and since we may schedule a new one, so here we check whether the references
+            // are equal.
+            if (timeout == periodicFlushTask) {
+              periodicFlushTask = null;
+              internalFlush();
+            }
+          }
+        }, periodicFlushTimeoutNs, TimeUnit.NANOSECONDS);
       }
       this.mutations.addAll(mutations);
       this.futures.addAll(futures);
@@ -140,5 +155,10 @@ class AsyncBufferedMutatorImpl implements AsyncBufferedMutator {
   @Override
   public long getWriteBufferSize() {
     return writeBufferSize;
+  }
+
+  @Override
+  public long getPeriodicalFlushTimeout(TimeUnit unit) {
+    return unit.convert(periodicFlushTimeoutNs, TimeUnit.NANOSECONDS);
   }
 }

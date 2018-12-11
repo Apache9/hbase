@@ -21,6 +21,8 @@ import java.util.concurrent.TimeUnit;
 import org.apache.yetus.audience.InterfaceAudience;
 
 import com.xiaomi.infra.thirdparty.com.google.common.base.Preconditions;
+import com.xiaomi.infra.thirdparty.io.netty.util.HashedWheelTimer;
+
 
 /**
  * The implementation of {@link AsyncBufferedMutatorBuilder}.
@@ -28,14 +30,20 @@ import com.xiaomi.infra.thirdparty.com.google.common.base.Preconditions;
 @InterfaceAudience.Private
 class AsyncBufferedMutatorBuilderImpl implements AsyncBufferedMutatorBuilder {
 
+  private final HashedWheelTimer periodicalFlushTimer;
+
   private final AsyncTableBuilder<?> tableBuilder;
 
   private long writeBufferSize;
 
+  private long periodicFlushTimeoutNs;
+
   public AsyncBufferedMutatorBuilderImpl(AsyncConnectionConfiguration connConf,
-      AsyncTableBuilder<?> tableBuilder) {
+      AsyncTableBuilder<?> tableBuilder, HashedWheelTimer periodicalFlushTimer) {
     this.tableBuilder = tableBuilder;
     this.writeBufferSize = connConf.getWriteBufferSize();
+    this.periodicFlushTimeoutNs = connConf.getWriteBufferPeriodicFlushTimeoutNs();
+    this.periodicalFlushTimer = periodicalFlushTimer;
   }
 
   @Override
@@ -77,8 +85,14 @@ class AsyncBufferedMutatorBuilderImpl implements AsyncBufferedMutatorBuilder {
   }
 
   @Override
-  public AsyncBufferedMutator build() {
-    return new AsyncBufferedMutatorImpl(tableBuilder.build(), writeBufferSize);
+  public AsyncBufferedMutatorBuilder setWriteBufferPeriodicFlush(long timeout, TimeUnit unit) {
+    this.periodicFlushTimeoutNs = unit.toNanos(timeout);
+    return this;
   }
 
+  @Override
+  public AsyncBufferedMutator build() {
+    return new AsyncBufferedMutatorImpl(periodicalFlushTimer, tableBuilder.build(), writeBufferSize,
+      periodicFlushTimeoutNs);
+  }
 }
