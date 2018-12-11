@@ -28,10 +28,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileStatus;
@@ -86,6 +89,10 @@ import org.apache.yetus.audience.InterfaceStability;
 import org.apache.zookeeper.KeeperException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.xiaomi.infra.thirdparty.com.google.common.annotations.VisibleForTesting;
+import com.xiaomi.infra.thirdparty.com.google.common.util.concurrent.ThreadFactoryBuilder;
+
 import org.apache.hadoop.hbase.shaded.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.HBaseProtos.NameStringPair;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.HBaseProtos.ProcedureDescription;
@@ -120,7 +127,9 @@ public class SnapshotManager extends MasterProcedureManager implements Stoppable
    * At this point, if the user asks for the snapshot/restore status, the result will be
    * snapshot done if exists or failed if it doesn't exists.
    */
-  private static final int SNAPSHOT_SENTINELS_CLEANUP_TIMEOUT = 60 * 1000;
+  public static final String HBASE_SNAPSHOT_SENTINELS_CLEANUP_TIMEOUT_MILLIS =
+      "hbase.snapshot.sentinels.cleanup.timeoutMillis";
+  public static final long SNAPSHOT_SENTINELS_CLEANUP_TIMEOUT_MILLS_DEFAULT = 60 * 1000L;
 
   /** Enable or disable snapshot support */
   public static final String HBASE_SNAPSHOT_ENABLED = "hbase.snapshot.enabled";
@@ -151,7 +160,11 @@ public class SnapshotManager extends MasterProcedureManager implements Stoppable
   // The map is always accessed and modified under the object lock using synchronized.
   // snapshotTable() will insert an Handler in the table.
   // isSnapshotDone() will remove the handler requested if the operation is finished.
-  private Map<TableName, SnapshotSentinel> snapshotHandlers = new ConcurrentHashMap<>();
+  private final Map<TableName, SnapshotSentinel> snapshotHandlers = new ConcurrentHashMap<>();
+  private final ScheduledExecutorService scheduleThreadPool =
+      Executors.newScheduledThreadPool(1, new ThreadFactoryBuilder()
+          .setNameFormat("SnapshotHandlerChoreCleaner").setDaemon(true).build());
+  private ScheduledFuture<?> snapshotHandlerChoreCleanerTask;
 
   // Restore map, with table name as key, procedure ID as value.
   // The map is always accessed and modified under the object lock using synchronized.
@@ -181,17 +194,21 @@ public class SnapshotManager extends MasterProcedureManager implements Stoppable
    * @param coordinator procedure coordinator instance.  exposed for testing.
    * @param pool HBase ExecutorServcie instance, exposed for testing.
    */
-  public SnapshotManager(final MasterServices master, final MetricsMaster metricsMaster,
-      ProcedureCoordinator coordinator, ExecutorService pool)
+  @VisibleForTesting
+  SnapshotManager(final MasterServices master, ProcedureCoordinator coordinator,
+      ExecutorService pool, int sentinelCleanInterval)
       throws IOException, UnsupportedOperationException {
     this.master = master;
 
     this.rootDir = master.getMasterFileSystem().getRootDir();
-    checkSnapshotSupport(master.getConfiguration(), master.getMasterFileSystem());
+    Configuration conf = master.getConfiguration();
+    checkSnapshotSupport(conf, master.getMasterFileSystem());
 
     this.coordinator = coordinator;
     this.executorService = pool;
     resetTempDir();
+    snapshotHandlerChoreCleanerTask = this.scheduleThreadPool.scheduleAtFixedRate(
+      this::cleanupSentinels, sentinelCleanInterval, sentinelCleanInterval, TimeUnit.SECONDS);
   }
 
   /**
@@ -274,7 +291,7 @@ public class SnapshotManager extends MasterProcedureManager implements Stoppable
    *
    * @throws IOException if we can't reach the filesystem
    */
-  void resetTempDir() throws IOException {
+  private void resetTempDir() throws IOException {
     // cleanup any existing snapshots.
     Path tmpdir = SnapshotDescriptionUtils.getWorkingSnapshotDir(rootDir);
     if (master.getMasterFileSystem().getFileSystem().exists(tmpdir)) {
@@ -290,7 +307,7 @@ public class SnapshotManager extends MasterProcedureManager implements Stoppable
    * @throws SnapshotDoesNotExistException If the specified snapshot does not exist.
    * @throws IOException For filesystem IOExceptions
    */
-  public void deleteSnapshot(SnapshotDescription snapshot) throws SnapshotDoesNotExistException, IOException {
+  public void deleteSnapshot(SnapshotDescription snapshot) throws IOException {
     // check to see if it is completed
     if (!isSnapshotCompleted(snapshot)) {
       throw new SnapshotDoesNotExistException(ProtobufUtil.createSnapshotDesc(snapshot));
@@ -930,7 +947,6 @@ public class SnapshotManager extends MasterProcedureManager implements Stoppable
       this.restoreTableToProcIdMap.remove(tableName);
       return false;
     }
-
   }
 
   /**
@@ -985,14 +1001,15 @@ public class SnapshotManager extends MasterProcedureManager implements Stoppable
    */
   private synchronized void cleanupSentinels(final Map<TableName, SnapshotSentinel> sentinels) {
     long currentTime = EnvironmentEdgeManager.currentTime();
-    Iterator<Map.Entry<TableName, SnapshotSentinel>> it =
-        sentinels.entrySet().iterator();
+    long sentinelsCleanupTimeoutMillis =
+        master.getConfiguration().getLong(HBASE_SNAPSHOT_SENTINELS_CLEANUP_TIMEOUT_MILLIS,
+          SNAPSHOT_SENTINELS_CLEANUP_TIMEOUT_MILLS_DEFAULT);
+    Iterator<Map.Entry<TableName, SnapshotSentinel>> it = sentinels.entrySet().iterator();
     while (it.hasNext()) {
       Map.Entry<TableName, SnapshotSentinel> entry = it.next();
       SnapshotSentinel sentinel = entry.getValue();
-      if (sentinel.isFinished() &&
-          (currentTime - sentinel.getCompletionTimestamp()) > SNAPSHOT_SENTINELS_CLEANUP_TIMEOUT)
-      {
+      if (sentinel.isFinished()
+          && (currentTime - sentinel.getCompletionTimestamp()) > sentinelsCleanupTimeoutMillis) {
         it.remove();
       }
     }
@@ -1027,7 +1044,9 @@ public class SnapshotManager extends MasterProcedureManager implements Stoppable
     for (SnapshotSentinel snapshotHandler: this.snapshotHandlers.values()) {
       snapshotHandler.cancel(why);
     }
-
+    if (snapshotHandlerChoreCleanerTask != null) {
+      snapshotHandlerChoreCleanerTask.cancel(true);
+    }
     try {
       if (coordinator != null) {
         coordinator.close();
@@ -1162,6 +1181,8 @@ public class SnapshotManager extends MasterProcedureManager implements Stoppable
     this.coordinator = new ProcedureCoordinator(comms, tpool, timeoutMillis, wakeFrequency);
     this.executorService = master.getExecutorService();
     resetTempDir();
+    snapshotHandlerChoreCleanerTask =
+        scheduleThreadPool.scheduleAtFixedRate(this::cleanupSentinels, 10, 10, TimeUnit.SECONDS);
   }
 
   @Override
