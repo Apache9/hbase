@@ -28,7 +28,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -39,7 +38,6 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 import org.apache.commons.io.IOUtils;
@@ -52,8 +50,8 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HConstants;
+import org.apache.hadoop.hbase.HRegionLocation;
 import org.apache.hadoop.hbase.MetaTableAccessor;
-import org.apache.hadoop.hbase.MetaTableAccessor.Visitor;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.TableNotEnabledException;
@@ -68,7 +66,6 @@ import org.apache.hadoop.hbase.client.ConnectionFactory;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.RegionInfo;
-import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.client.Table;
 import org.apache.hadoop.hbase.client.TableDescriptor;
@@ -650,15 +647,14 @@ public final class Canary implements Tool {
       admin.enableTable(DEFAULT_WRITE_TABLE_NAME);
     }
 
-    Collection<ServerName> regionsevers;
+    Collection<HRegionLocation> regionLocations;
     try (Connection conn = ConnectionFactory.createConnection(conf)) {
       try (Table table = conn.getTable(DEFAULT_WRITE_TABLE_NAME)) {
-        regionsevers = ((HTable) table).getRegionLocator().getAllRegionLocations().stream()
-            .map(r -> r.getServerName()).collect(Collectors.toSet());
+        regionLocations = ((HTable) table).getRegionLocator().getAllRegionLocations();
       }
     }
     int numberOfServers = admin.getClusterStatus().getServers().size();
-    int numberOfRegions = regionsevers.size();
+    int numberOfRegions = regionLocations.size();
     double rate = 1.0 * numberOfRegions / numberOfServers;
     if ((rate < DEFAULT_REGIONS_PER_SERVER * 0.7) || (rate > DEFAULT_REGIONS_PER_SERVER * 1.5)) {
       LOG.info("Current canary region num: " + numberOfRegions + " server num: " + numberOfServers);
