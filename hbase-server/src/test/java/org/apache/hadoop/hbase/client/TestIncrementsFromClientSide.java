@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellUtil;
@@ -41,6 +42,7 @@ import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.coprocessor.CoprocessorHost;
 import org.apache.hadoop.hbase.coprocessor.MultiRowMutationEndpoint;
 import org.apache.hadoop.hbase.testclassification.LargeTests;
+import org.apache.hadoop.hbase.types.NumberCodecType;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -489,6 +491,51 @@ public class TestIncrementsFromClientSide {
     r = table.get(new Get(ROW));
     assertEquals(1, r.size());
     assertNotEquals(timestamp, r.rawCells()[0].getTimestamp());
+  }
+
+  private void testIncrementWithTypes(Table table, NumberCodecType type, Number base, Number amount)
+      throws IOException {
+    // try increment from null
+    byte[] row0 = ArrayUtils.addAll(ROW, Bytes.toBytes(type.name() + "0"));
+    Result result = table.increment(new Increment(row0).addColumn(FAMILY, QUALIFIER, amount, type));
+    Number value = type.decode(result.getValue(FAMILY, QUALIFIER));
+    assertEquals(amount, value);
+    result = table.get(new Get(row0));
+    value = type.decode(result.getValue(FAMILY, QUALIFIER));
+    assertEquals(amount, value);
+
+    byte[] row1 = ArrayUtils.addAll(ROW, Bytes.toBytes(type.name() + "1"));
+    table.put(new Put(row1).addColumn(FAMILY, QUALIFIER, type.encode(base)));
+    result = table.increment(new Increment(row1).addColumn(FAMILY, QUALIFIER, amount, type));
+    byte[] baseBytes = type.encode(base);
+    assertEquals(type.decode(type.add(baseBytes, 0, baseBytes.length, amount)),
+      type.decode(result.getValue(FAMILY, QUALIFIER)));
+    result = table.get(new Get(row1));
+    assertEquals(type.decode(type.add(baseBytes, 0, baseBytes.length, amount)),
+      type.decode(result.getValue(FAMILY, QUALIFIER)));
+  }
+
+  @Test
+  public void testIncrementWithTypes() throws IOException {
+    TableName TABLENAME = TableName.valueOf(name.getMethodName());
+    Table table = TEST_UTIL.createTable(TABLENAME, FAMILY);
+    testIncrementWithTypes(table, NumberCodecType.RAW_BYTE, (byte) 100, (byte) 23);
+    testIncrementWithTypes(table, NumberCodecType.ORDERED_INT8_ASC, (byte) -100, (byte) -23);
+
+    testIncrementWithTypes(table, NumberCodecType.RAW_SHORT, (short) 23000, (short) 456);
+    testIncrementWithTypes(table, NumberCodecType.ORDERED_INT16_ASC, (short) -23000, (short) -456);
+
+    testIncrementWithTypes(table, NumberCodecType.RAW_INTEGER, 2340000, 5678);
+    testIncrementWithTypes(table, NumberCodecType.ORDERED_INT32_ASC, -2340000, -5678);
+
+    testIncrementWithTypes(table, NumberCodecType.RAW_LONG, 1234567890000L, 123L);
+    testIncrementWithTypes(table, NumberCodecType.ORDERED_INT64_ASC, -1234567890000L, -123L);
+
+    testIncrementWithTypes(table, NumberCodecType.RAW_FLOAT, 10.04f, 2.3f);
+    testIncrementWithTypes(table, NumberCodecType.ORDERED_FLOAT32_ASC, -10.04f, -2.3f);
+
+    testIncrementWithTypes(table, NumberCodecType.RAW_DOUBLE, 20.056789, 3.4);
+    testIncrementWithTypes(table, NumberCodecType.ORDERED_FLOAT64_ASC, -20.056789, -3.4);
   }
 
   /**

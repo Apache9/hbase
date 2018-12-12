@@ -30,9 +30,12 @@ import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.io.TimeRange;
 import org.apache.hadoop.hbase.security.access.Permission;
 import org.apache.hadoop.hbase.security.visibility.CellVisibility;
+import org.apache.hadoop.hbase.types.NumberCodecType;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.ClassSize;
 import org.apache.yetus.audience.InterfaceAudience;
+
+import com.xiaomi.infra.thirdparty.com.google.common.annotations.VisibleForTesting;
 
 /**
  * Used to perform Increment operations on a single row.
@@ -112,14 +115,54 @@ public class Increment extends Mutation {
    * @param amount amount to increment by
    * @return the Increment object
    */
-  public Increment addColumn(byte [] family, byte [] qualifier, long amount) {
+  public Increment addColumn(byte[] family, byte[] qualifier, long amount) {
+    return addColumn(family, qualifier, amount, NumberCodecType.RAW_LONG);
+  }
+
+  /**
+   * Increment the column from the specific family with the specified qualifier by the specified
+   * amount.
+   * <p>
+   * Overrides previous calls to addColumn for this family and qualifier.
+   * @param family family name
+   * @param qualifier column qualifier
+   * @param amount amount to increment by
+   * @param type the type of the field.
+   * @return the Increment object
+   */
+  public Increment addColumn(byte[] family, byte[] qualifier, Number amount, NumberCodecType type) {
     if (family == null) {
       throw new IllegalArgumentException("family cannot be null");
     }
     List<Cell> list = getCellList(family);
-    KeyValue kv = createPutKeyValue(family, qualifier, ts, Bytes.toBytes(amount));
+    KeyValue kv = createPutKeyValue(family, qualifier, ts, type.encode(amount));
     list.add(kv);
+    if (!type.equals(NumberCodecType.RAW_LONG)) {
+      setAttribute(getTypeAttributeName(family, qualifier), new byte[] { type.getTypeId() });
+    }
     return this;
+  }
+
+  @VisibleForTesting
+  static String getTypeAttributeName(byte[] family, byte[] qualifier) {
+    String f = Bytes.toString(family);
+    String q = Bytes.toString(qualifier);
+    return f.replaceAll("\\.", "\\\\.") + "." + q.replaceAll("\\.", "\\\\.") + ".type";
+  }
+
+  /**
+   * Get the number codec type for the given column.
+   * @param family family name
+   * @param qualifier column qualifier
+   * @return the NumberCodecType, if not present, return {@link NumberCodecType#RAW_LONG}.
+   */
+  public NumberCodecType getNumberCodecType(byte[] family, byte[] qualifier) {
+    byte[] value = getAttribute(getTypeAttributeName(family, qualifier));
+    if (value == null) {
+      return NumberCodecType.RAW_LONG;
+    }
+    assert value.length == 1;
+    return NumberCodecType.fromTypeId(value[0]);
   }
 
   /**
@@ -252,8 +295,9 @@ public class Increment extends Mutation {
           } else {
             moreThanOneB = true;
           }
-          sb.append(CellUtil.getCellKeyAsString(cell) + "+=" +
-              Bytes.toLong(cell.getValueArray(), cell.getValueOffset(), cell.getValueLength()));
+          sb.append(CellUtil.getCellKeyAsString(cell)).append("+=")
+            .append(getNumberCodecType(CellUtil.cloneFamily(cell), CellUtil.cloneQualifier(cell))
+              .decode(cell.getValueArray(), cell.getValueOffset(), cell.getValueLength()));
         }
         sb.append("}");
       }
