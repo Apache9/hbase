@@ -17,11 +17,17 @@
  */
 package org.apache.hadoop.hbase.util;
 
+import java.io.IOException;
+import java.io.InterruptedIOException;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.function.BiConsumer;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import org.apache.hbase.thirdparty.com.google.common.base.Throwables;
 
 /**
  * Helper class for processing futures.
@@ -56,5 +62,21 @@ public final class FutureUtils {
         LOG.error("Unexpected error caught when processing CompletableFuture", t);
       }
     });
+  }
+
+  /**
+   * A helper class for getting the result of a Future, and convert the error to an
+   * {@link IOException}.
+   */
+  public static <T> T get(Future<T> future) throws IOException {
+    try {
+      return future.get();
+    } catch (InterruptedException e) {
+      throw (IOException) new InterruptedIOException().initCause(e);
+    } catch (ExecutionException e) {
+      Throwable cause = e.getCause();
+      Throwables.propagateIfPossible(cause, IOException.class);
+      throw new IOException(cause);
+    }
   }
 }
