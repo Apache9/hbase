@@ -157,6 +157,7 @@ import org.apache.hadoop.hbase.security.User;
 import org.apache.hadoop.hbase.snapshot.SnapshotDescriptionUtils;
 import org.apache.hadoop.hbase.snapshot.SnapshotManifest;
 import org.apache.hadoop.hbase.trace.TraceUtil;
+import org.apache.hadoop.hbase.types.NumberCodecType;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.CancelableProgressable;
 import org.apache.hadoop.hbase.util.ClassSize;
@@ -8132,7 +8133,7 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
       default:
         break;
     }
-    List<Cell> currentValues = get(mutation, store, deltas,null, tr);
+    List<Cell> currentValues = get(mutation, store, deltas, null, tr);
     // Iterate the input columns and update existing values if they were found, otherwise
     // add new column initialized to the delta amount
     int currentValuesIndex = 0;
@@ -8156,22 +8157,38 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
       switch (op) {
         case INCREMENT:
           mutationType = MutationType.INCREMENT;
+          NumberCodecType type = ((Increment) mutation).getNumberCodecType(
+            store.getColumnFamilyDescriptor().getName(), CellUtil.cloneQualifier(delta));
           // If delta amount to apply is 0, don't write WAL or MemStore.
-          long deltaAmount = getLongValue(delta);
+          Number deltaAmount =
+            type.decode(delta.getValueArray(), delta.getValueOffset(), delta.getValueLength());
           // TODO: Does zero value mean reset Cell? For example, the ttl.
-          apply = deltaAmount != 0;
-          final long newValue = currentValue == null ? deltaAmount : getLongValue(currentValue) + deltaAmount;
-          newCell = reckonDelta(delta, currentValue, columnFamily, now, mutation, (oldCell) -> Bytes.toBytes(newValue));
+          apply = deltaAmount.longValue() != 0;
+          byte[] newValue;
+          if (currentValue != null) {
+            try {
+              newValue = type.add(currentValue.getValueArray(), currentValue.getValueOffset(),
+                currentValue.getValueLength(), deltaAmount);
+            } catch (IllegalArgumentException e) {
+              throw new DoNotRetryIOException(
+                "Error while incrementing with type " + type + ", wrong type specified?", e);
+            }
+          } else {
+            // Here the logic is a bit tricky. In the below reckonDelta method, if the currentValue
+            // is null, then we will use the delta cell directly, so we can just simply set the
+            // newValue to null as we will not use it create a new cell.
+            newValue = null;
+          }
+          newCell =
+            reckonDelta(delta, currentValue, columnFamily, now, mutation, oldCell -> newValue);
           break;
         case APPEND:
           mutationType = MutationType.APPEND;
           // Always apply Append. TODO: Does empty delta value mean reset Cell? It seems to.
-          newCell = reckonDelta(delta, currentValue, columnFamily, now, mutation, (oldCell) ->
-            ByteBuffer.wrap(new byte[delta.getValueLength() + oldCell.getValueLength()])
-                    .put(oldCell.getValueArray(), oldCell.getValueOffset(), oldCell.getValueLength())
-                    .put(delta.getValueArray(), delta.getValueOffset(), delta.getValueLength())
-                    .array()
-          );
+          newCell = reckonDelta(delta, currentValue, columnFamily, now, mutation,
+            oldCell -> ByteBuffer.wrap(new byte[delta.getValueLength() + oldCell.getValueLength()])
+              .put(oldCell.getValueArray(), oldCell.getValueOffset(), oldCell.getValueLength())
+              .put(delta.getValueArray(), delta.getValueOffset(), delta.getValueLength()).array());
           break;
         default: throw new UnsupportedOperationException(op.toString());
       }
