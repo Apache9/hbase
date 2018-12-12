@@ -35,6 +35,7 @@ import org.apache.hadoop.hbase.master.ServerListener;
 import org.apache.hadoop.hbase.procedure2.RemoteProcedureDispatcher;
 import org.apache.hadoop.hbase.regionserver.RegionServerStoppedException;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
+import org.apache.hadoop.hbase.util.FutureUtils;
 import org.apache.hadoop.ipc.RemoteException;
 import org.apache.yetus.audience.InterfaceAudience;
 import org.slf4j.Logger;
@@ -341,15 +342,7 @@ public class RSProcedureDispatcher
 
     protected ExecuteProceduresResponse sendRequest(final ServerName serverName,
         final ExecuteProceduresRequest request) throws IOException {
-      try {
-        return getRsAdmin().executeProcedures(request).get();
-      } catch (InterruptedException e) {
-        throw (IOException) new InterruptedIOException().initCause(e);
-      } catch (ExecutionException e) {
-        Throwable cause = e.getCause();
-        Throwables.propagateIfPossible(cause, IOException.class);
-        throw new IOException(cause);
-      }
+      return FutureUtils.get(getRsAdmin().executeProcedures(request));
     }
 
     protected void remoteCallFailed(final MasterProcedureEnv env, final IOException e) {
@@ -408,15 +401,7 @@ public class RSProcedureDispatcher
 
     private OpenRegionResponse sendRequest(final ServerName serverName,
         final OpenRegionRequest request) throws IOException {
-      try {
-        return getRsAdmin().openRegion(request).get();
-      } catch (InterruptedException e) {
-        throw (IOException) new InterruptedIOException().initCause(e);
-      } catch (ExecutionException e) {
-        Throwable cause = e.getCause();
-        Throwables.propagateIfPossible(cause, IOException.class);
-        throw new IOException(cause);
-      }
+      return FutureUtils.get(getRsAdmin().openRegion(request));
     }
 
     private void remoteCallFailed(final MasterProcedureEnv env, final IOException e) {
@@ -458,15 +443,7 @@ public class RSProcedureDispatcher
 
     private CloseRegionResponse sendRequest(final ServerName serverName,
         final CloseRegionRequest request) throws IOException {
-      try {
-        return getRsAdmin().closeRegion(request).get();
-      } catch (InterruptedException e) {
-        throw (IOException) new InterruptedIOException().initCause(e);
-      } catch (ExecutionException e) {
-        Throwable cause = e.getCause();
-        Throwables.propagateIfPossible(cause, IOException.class);
-        throw new IOException(cause);
-      }
+      return FutureUtils.get(getRsAdmin().closeRegion(request));
     }
 
     private void remoteCallCompleted(final MasterProcedureEnv env,
