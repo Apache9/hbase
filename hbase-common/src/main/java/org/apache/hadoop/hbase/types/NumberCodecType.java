@@ -21,7 +21,9 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.PositionedByteRange;
 import org.apache.hadoop.hbase.util.SimplePositionedByteRange;
 import org.apache.hadoop.hbase.util.SimplePositionedMutableByteRange;
+import org.apache.yetus.audience.InterfaceAudience;
 
+@InterfaceAudience.Public
 public enum NumberCodecType {
   // the id is used for serialization, don't change or remove the existing value
   RAW_BYTE((byte) 0x00),
