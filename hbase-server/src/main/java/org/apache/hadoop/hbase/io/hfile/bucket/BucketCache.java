@@ -108,7 +108,7 @@ public class BucketCache implements BlockCache, HeapSize {
   private static final float DEFAULT_MIN_FACTOR = 0.85f;
 
   /** Statistics thread */
-  private static final int statThreadPeriod = 3 * 60;
+  private static final int statThreadPeriod = 5*60;
 
   final static int DEFAULT_WRITER_THREADS = 3;
   final static int DEFAULT_WRITER_QUEUE_ITEMS = 64;
@@ -518,13 +518,12 @@ public class BucketCache implements BlockCache, HeapSize {
   }
 
   public void logStats() {
-    if (!LOG.isDebugEnabled()) return;
     // Log size
     long totalSize = bucketAllocator.getTotalSize();
     long usedSize = bucketAllocator.getUsedSize();
     long freeSize = totalSize - usedSize;
     long cacheSize = this.realCacheSize.get();
-    LOG.debug("BucketCache Stats: " +
+    LOG.info("BucketCache Stats: " +
         "failedBlockAdditions=" + this.failedBlockAdditions.get() + ", " +
         "total=" + StringUtils.byteDesc(totalSize) + ", " +
         "free=" + StringUtils.byteDesc(freeSize) + ", " +

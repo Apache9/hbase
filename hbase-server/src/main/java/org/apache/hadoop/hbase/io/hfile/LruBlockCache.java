@@ -824,11 +824,9 @@ public class LruBlockCache implements BlockCache, HeapSize {
   }
 
   public void logStats() {
-    if (!LOG.isDebugEnabled()) return;
-    // Log size
     long totalSize = heapSize();
     long freeSize = maxSize - totalSize;
-    LruBlockCache.LOG.debug("Total=" + StringUtils.byteDesc(totalSize) + ", " +
+    LruBlockCache.LOG.info("Total=" + StringUtils.byteDesc(totalSize) + ", " +
         "free=" + StringUtils.byteDesc(freeSize) + ", " +
         "max=" + StringUtils.byteDesc(this.maxSize) + ", " +
         "blockCount=" + getBlockCount() + ", " +
