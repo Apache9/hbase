@@ -159,6 +159,7 @@ import org.apache.hadoop.hbase.util.RetryCounter;
 import org.apache.hadoop.hbase.util.RetryCounterFactory;
 import org.apache.hadoop.hbase.util.ServerRegionReplicaUtil;
 import org.apache.hadoop.hbase.util.Sleeper;
+import org.apache.hadoop.hbase.util.ThreadInfoUtils;
 import org.apache.hadoop.hbase.util.Threads;
 import org.apache.hadoop.hbase.util.VersionInfo;
 import org.apache.hadoop.hbase.wal.AbstractFSWALProvider;
@@ -3807,7 +3808,8 @@ public class HRegionServer extends HasThread implements
 
     @Override
     public void run() {
-      LOG.warn("Aborting region server timed out, terminate forcibly...");
+      LOG.warn("Aborting region server timed out, terminating forcibly. Thread dump to stdout.");
+      ThreadInfoUtils.printThreadInfo(System.out, "Zombie HRegionServer");
       System.exit(1);
     }
   }
