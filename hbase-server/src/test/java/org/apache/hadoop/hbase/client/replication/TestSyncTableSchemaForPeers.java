@@ -19,13 +19,13 @@
 package org.apache.hadoop.hbase.client.replication;
 
 import org.apache.hadoop.hbase.HColumnDescriptor;
+import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.NamespaceDescriptor;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HConnection;
 import org.apache.hadoop.hbase.client.HConnectionManager;
-import org.apache.hadoop.hbase.protobuf.generated.ReplicationProtos.ReplicationState.State;
 import org.apache.hadoop.hbase.replication.ReplicationException;
 import org.apache.hadoop.hbase.replication.ReplicationPeerConfig;
 import org.apache.hadoop.hbase.replication.TestReplicationBase;
@@ -80,6 +80,45 @@ public class TestSyncTableSchemaForPeers extends TestReplicationBase {
   }
 
   @Test
+  public void testClusterReplication() throws Exception {
+    TableName tableName1 = TableName.valueOf("testClusterReplication1");
+    TableName tableName2 = TableName.valueOf("testClusterReplication2");
+    ReplicationPeerConfig rpc = new ReplicationPeerConfig();
+    rpc.setClusterKey(utility2.getClusterKey());
+    rpc.setReplicateAllUserTables(true);
+
+    ReplicationAdmin replAdmin = new ReplicationAdmin(conf1);
+    replAdmin.addPeer(ID_FIRST, rpc);
+
+    HTableDescriptor htd = new HTableDescriptor(tableName1);
+    HColumnDescriptor hcd = new HColumnDescriptor(COLUMN_FAMILY);
+    htd.addFamily(hcd);
+
+    Assert.assertEquals(admin1.tableExists(tableName1), false);
+    Assert.assertEquals(admin2.tableExists(tableName1), false);
+    admin1.createTable(htd);
+    Assert.assertEquals(admin1.tableExists(tableName1), true);
+    Assert.assertEquals(admin2.tableExists(tableName1), false);
+
+    htd = new HTableDescriptor(tableName2);
+    hcd = new HColumnDescriptor(COLUMN_FAMILY);
+    hcd.setScope(HConstants.REPLICATION_SCOPE_GLOBAL);
+    htd.addFamily(hcd);
+
+    Assert.assertEquals(admin1.tableExists(tableName2), false);
+    Assert.assertEquals(admin2.tableExists(tableName2), false);
+    admin1.createTable(htd);
+    Assert.assertEquals(admin1.tableExists(tableName2), true);
+    Assert.assertEquals(admin2.tableExists(tableName2), true);
+
+    replAdmin.removePeer(ID_FIRST);
+    replAdmin.close();
+    utility1.deleteTable(tableName1);
+    utility1.deleteTable(tableName2);
+    utility2.deleteTable(tableName2);
+  }
+
+  @Test
   public void testOneWayReplication() throws IOException, ReplicationException {
     admin1.createNamespace(TEST_NAMESPACE);
     admin2.createNamespace(TEST_NAMESPACE);
@@ -99,6 +138,7 @@ public class TestSyncTableSchemaForPeers extends TestReplicationBase {
 
     HTableDescriptor htd1 = new HTableDescriptor(TEST_TABLE_NAME1);
     HColumnDescriptor hcd1 = new HColumnDescriptor(COLUMN_FAMILY);
+    hcd1.setScope(HConstants.REPLICATION_SCOPE_GLOBAL);
     htd1.addFamily(hcd1);
 
     // create TEST_TABLE_NAME1 in source cluster, then sink cluster will create table too.
@@ -156,6 +196,7 @@ public class TestSyncTableSchemaForPeers extends TestReplicationBase {
 
     HTableDescriptor htd2 = new HTableDescriptor(TEST_TABLE_NAME2);
     HColumnDescriptor hcd2 = new HColumnDescriptor(COLUMN_FAMILY);
+    hcd2.setScope(HConstants.REPLICATION_SCOPE_GLOBAL);
     htd2.addFamily(hcd2);
 
     // create TEST_TABLE_NAME2 in source cluster, then sink cluster will create table too.
@@ -202,10 +243,10 @@ public class TestSyncTableSchemaForPeers extends TestReplicationBase {
     Assert.assertNull(
       admin2.getTableDescriptor(TEST_TABLE_NAME2).getFamily(Bytes.toBytes(NEW_COLUMN_FAMILY)));
 
-
     // create TEST_TABLE_NAME3 in sink cluster, source cluster will not create table.
     HTableDescriptor htd3 = new HTableDescriptor(TEST_TABLE_NAME3);
     HColumnDescriptor hcd3 = new HColumnDescriptor(COLUMN_FAMILY);
+    hcd3.setScope(HConstants.REPLICATION_SCOPE_GLOBAL);
     htd2.addFamily(hcd3);
     admin2.createTable(htd3);
     Assert.assertEquals(admin1.tableExists(TEST_TABLE_NAME3), false);
@@ -247,6 +288,7 @@ public class TestSyncTableSchemaForPeers extends TestReplicationBase {
 
     HTableDescriptor htd1 = new HTableDescriptor(TEST_TABLE_NAME1);
     HColumnDescriptor hcd1 = new HColumnDescriptor(COLUMN_FAMILY);
+    hcd1.setScope(HConstants.REPLICATION_SCOPE_GLOBAL);
     htd1.addFamily(hcd1);
 
     // create TEST_TABLE_NAME1 in source cluster, then sink cluster will create table too.
@@ -306,6 +348,7 @@ public class TestSyncTableSchemaForPeers extends TestReplicationBase {
 
     HTableDescriptor htd2 = new HTableDescriptor(TEST_TABLE_NAME2);
     HColumnDescriptor hcd2 = new HColumnDescriptor(COLUMN_FAMILY);
+    hcd2.setScope(HConstants.REPLICATION_SCOPE_GLOBAL);
     htd2.addFamily(hcd2);
 
     // create TEST_TABLE_NAME2 in source cluster, then sink cluster will create table too.
@@ -355,7 +398,8 @@ public class TestSyncTableSchemaForPeers extends TestReplicationBase {
     // create TEST_TABLE_NAME3 in sink cluster, source cluster will not create table.
     HTableDescriptor htd3 = new HTableDescriptor(TEST_TABLE_NAME3);
     HColumnDescriptor hcd3 = new HColumnDescriptor(COLUMN_FAMILY);
-    htd2.addFamily(hcd3);
+    hcd3.setScope(HConstants.REPLICATION_SCOPE_GLOBAL);
+    htd3.addFamily(hcd3);
     admin2.createTable(htd3);
     Assert.assertEquals(admin1.tableExists(TEST_TABLE_NAME3), true);
     Assert.assertEquals(admin2.tableExists(TEST_TABLE_NAME3), true);

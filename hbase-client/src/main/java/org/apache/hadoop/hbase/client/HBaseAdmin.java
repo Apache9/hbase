@@ -36,7 +36,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
@@ -47,7 +46,6 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Abortable;
 import org.apache.hadoop.hbase.ClusterStatus;
-import org.apache.hadoop.hbase.CompoundConfiguration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HConstants;
@@ -169,7 +167,6 @@ import org.apache.hadoop.hbase.util.Addressing;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.Pair;
-import org.apache.hadoop.hbase.zookeeper.ZKUtil;
 import org.apache.hadoop.ipc.RemoteException;
 import org.apache.hadoop.util.StringUtils;
 
@@ -555,6 +552,13 @@ public class HBaseAdmin implements Abortable, Closeable {
   private void createTableForPeers(Configuration conf, final HTableDescriptor desc,
       byte[][] splitKeys) throws IOException {
     if (!shouldSyncTableSchema(conf)) {
+      return;
+    }
+    boolean noReplicateCol = Arrays.stream(desc.getColumnFamilies())
+        .allMatch(c -> c.getScope() == HConstants.REPLICATION_SCOPE_LOCAL);
+    if (noReplicateCol) {
+      LOG.warn("Table " + desc.getTableName()
+          + "has no column family which need to replicate, so skip create table for peers.");
       return;
     }
     List<ReplicationPeerDescription> peers = listReplicationPeers();
