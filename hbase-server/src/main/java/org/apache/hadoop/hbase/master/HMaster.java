@@ -113,6 +113,7 @@ import org.apache.hadoop.hbase.master.cleaner.ReplicationZKLockCleanerChore;
 import org.apache.hadoop.hbase.master.cleaner.ReplicationZKNodeCleaner;
 import org.apache.hadoop.hbase.master.cleaner.ReplicationZKNodeCleanerChore;
 import org.apache.hadoop.hbase.master.cleaner.SnapshotForDeletedTableCleaner;
+import org.apache.hadoop.hbase.master.cleaner.SnapshotRestoreFileCleaner;
 import org.apache.hadoop.hbase.master.handler.CreateTableHandler;
 import org.apache.hadoop.hbase.master.handler.DeleteTableHandler;
 import org.apache.hadoop.hbase.master.handler.DisableTableHandler;
@@ -502,6 +503,7 @@ MasterServices, Server {
   private ReplicationMetaCleaner replicationMetaCleaner;
   private LogCleaner logCleaner;
   private HFileCleaner hfileCleaner;
+  private SnapshotRestoreFileCleaner snapshotRestoreFileCleaner;
   private SnapshotForDeletedTableCleaner snapshotForDeletedTableCleaner;
 
   private MasterCoprocessorHost cpHost;
@@ -1310,6 +1312,16 @@ MasterServices, Server {
     if (conf.getBoolean(HConstants.HDFS_ACL_ENABLE, false)) {
       hdfsAclManager = new HdfsAclManager(conf);
       hdfsAclManager.start();
+      // start snapshot restore file cleaner
+      int cleanerInterval =
+          conf.getInt(SnapshotRestoreFileCleaner.SNAPSHOT_RESTORE_FILE_CLEANER_INTERVAL,
+            SnapshotRestoreFileCleaner.SNAPSHOT_RESTORE_FILE_CLEANER_INTERVAL_DEFAULT);
+      Path restoreDir = new Path(conf.get(HConstants.SNAPSHOT_RESTORE_TMP_DIR,
+        HConstants.SNAPSHOT_RESTORE_TMP_DIR_DEFAULT));
+      this.snapshotRestoreFileCleaner = new SnapshotRestoreFileCleaner(cleanerInterval, this, conf,
+          getMasterFileSystem().getFileSystem(), restoreDir);
+      Threads.setDaemonThreadRunning(snapshotRestoreFileCleaner.getThread(),
+        Thread.currentThread().getName() + ".restoredHFileCleaner");
     }
   }
 
@@ -1534,6 +1546,7 @@ MasterServices, Server {
     if (this.replicationZKLockCleanerChore != null) this.replicationZKLockCleanerChore.interrupt();
     if (this.replicationZKNodeCleanerChore != null) this.replicationZKNodeCleanerChore.interrupt();
     if (this.hfileCleaner != null) this.hfileCleaner.interrupt();
+    if (this.snapshotRestoreFileCleaner != null) this.snapshotRestoreFileCleaner.interrupt();
     if (this.snapshotForDeletedTableCleaner != null) {
       this.snapshotForDeletedTableCleaner.interrupt();
     }
