@@ -38,6 +38,7 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellComparator;
+import org.apache.hadoop.hbase.CellUtil;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.PrivateCellUtil;
 import org.apache.hadoop.hbase.KeyValue;
@@ -73,7 +74,7 @@ public class StoreFileWriter implements CellSink, ShipperListener {
   private long kvCnt = 0;
   private long deleteKvCnt = 0;
   private long rowCnt = 0;
-  private byte[] lastRow = null;
+  private Cell lastCell = null;
   private BloomContext bloomContext = null;
   private BloomContext deleteFamilyBloomContext = null;
   private final TimeRangeTracker timeRangeTracker;
@@ -249,9 +250,9 @@ public class StoreFileWriter implements CellSink, ShipperListener {
     }
     if (!PrivateCellUtil.isDelete(cell.getTypeByte())) {
       kvCnt++;
-      if (lastRow == null || Bytes.compareTo(cell.getRowArray(), lastRow) != 0) {
+      if (lastCell == null || !CellUtil.matchingRows(lastCell, cell)) {
         rowCnt++;
-        lastRow = cell.getRowArray();
+        lastCell = cell;
       }
     }
   }
