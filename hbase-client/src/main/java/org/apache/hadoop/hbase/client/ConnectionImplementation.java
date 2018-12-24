@@ -25,7 +25,6 @@ import static org.apache.hadoop.hbase.client.MetricsConnection.CLIENT_SIDE_METRI
 import static org.apache.hadoop.hbase.util.CollectionUtils.computeIfAbsent;
 import static org.apache.hadoop.hbase.util.CollectionUtils.computeIfAbsentEx;
 
-import com.google.common.util.concurrent.UncheckedExecutionException;
 import com.xiaomi.infra.hbase.salted.KeySalter;
 import com.xiaomi.infra.hbase.salted.SaltedHTable;
 import edu.umd.cs.findbugs.annotations.Nullable;
@@ -86,9 +85,11 @@ import org.slf4j.LoggerFactory;
 
 import com.xiaomi.infra.thirdparty.com.google.common.annotations.VisibleForTesting;
 import com.xiaomi.infra.thirdparty.com.google.common.base.Throwables;
+import com.xiaomi.infra.thirdparty.com.google.common.util.concurrent.UncheckedExecutionException;
 import com.xiaomi.infra.thirdparty.com.google.protobuf.BlockingRpcChannel;
 import com.xiaomi.infra.thirdparty.com.google.protobuf.RpcController;
 import com.xiaomi.infra.thirdparty.com.google.protobuf.ServiceException;
+
 import org.apache.hadoop.hbase.shaded.protobuf.ProtobufUtil;
 import org.apache.hadoop.hbase.shaded.protobuf.RequestConverter;
 import org.apache.hadoop.hbase.shaded.protobuf.generated.AdminProtos;

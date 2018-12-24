@@ -17,16 +17,13 @@
  */
 package org.apache.hadoop.hbase.mapreduce.salted;
 
+import com.xiaomi.infra.base.nameservice.NameService;
+import com.xiaomi.infra.hbase.salted.SaltedHTable;
+import com.xiaomi.infra.hbase.salted.SaltedHTable.SlotsWritable;
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.util.ArrayList;
 import java.util.List;
-
-import com.xiaomi.infra.base.nameservice.NameService;
-import com.xiaomi.infra.hbase.salted.SaltedHTable;
-import com.xiaomi.infra.hbase.salted.SaltedHTable.SlotsWritable;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.client.Connection;
@@ -45,10 +42,12 @@ import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.RecordReader;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.yetus.audience.InterfaceAudience;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @InterfaceAudience.Public
 public class SaltedTableMapReduceUtil {
-  private static final Log LOG = LogFactory.getLog(SaltedTableInputFormat.class);
+  private static final Logger LOG = LoggerFactory.getLogger(SaltedTableMapReduceUtil.class);
   
   public static List<InputSplit> getSplitsForSaltedTable(String fullTableName, Table table, RegionLocator regionLocator,
       Scan scan) throws IOException {

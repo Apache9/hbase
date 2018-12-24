@@ -16,11 +16,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.apache.hadoop.hbase.tool;
 
 import static org.apache.hadoop.hbase.HConstants.EMPTY_BYTE_ARRAY;
 
+import com.xiaomi.infra.hbase.CanaryStatusServlet;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.BindException;
@@ -41,11 +41,8 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
-
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.time.StopWatch;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.ContentSummary;
 import org.apache.hadoop.fs.FileSystem;
@@ -82,8 +79,8 @@ import org.apache.hadoop.util.ReflectionUtils;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 import org.apache.yetus.audience.InterfaceAudience;
-
-import com.xiaomi.infra.hbase.CanaryStatusServlet;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * HBase Canary Tool, that that can be used to do "canary monitoring" of a running HBase cluster.
@@ -299,7 +296,7 @@ public final class Canary implements Tool {
 
   private static final long DEFAULT_TIMEOUT = 600000; // 10 mins
 
-  private static final Log LOG = LogFactory.getLog(Canary.class);
+  private static final Logger LOG = LoggerFactory.getLogger(Canary.class);
 
   private final Sink sink;
   private Configuration conf;

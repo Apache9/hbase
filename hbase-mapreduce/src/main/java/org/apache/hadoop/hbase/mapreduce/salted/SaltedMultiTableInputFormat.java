@@ -19,8 +19,6 @@ package org.apache.hadoop.hbase.mapreduce.salted;
 
 import java.io.IOException;
 import java.util.List;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configurable;
 import org.apache.hadoop.hbase.client.RegionLocator;
@@ -37,11 +35,13 @@ import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.RecordReader;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.yetus.audience.InterfaceAudience;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @InterfaceAudience.Public
 @InterfaceStability.Evolving
 public class SaltedMultiTableInputFormat extends MultiTableInputFormat implements Configurable {
-  private static final Log LOG = LogFactory.getLog(SaltedMultiTableInputFormat.class);
+  private static final Logger LOG = LoggerFactory.getLogger(SaltedMultiTableInputFormat.class);
   
   @Override
   public RecordReader<ImmutableBytesWritable, Result> createRecordReader(
@@ -55,21 +55,23 @@ public class SaltedMultiTableInputFormat extends MultiTableInputFormat implement
           + " the task's full log for more details.");
     }
 
-    if (SaltedTableMapReduceUtil.isSaltedTable(context.getConfiguration(), Bytes.toBytes(tSplit.getFullTableName()))) {
-      return SaltedTableMapReduceUtil
-          .createRecordReaderForSaltedTable(getTableRecordReader(), tSplit.getScan(), tSplit,
-              context);
+    if (SaltedTableMapReduceUtil.isSaltedTable(context.getConfiguration(),
+      Bytes.toBytes(tSplit.getFullTableName()))) {
+      return SaltedTableMapReduceUtil.createRecordReaderForSaltedTable(getTableRecordReader(),
+        tSplit.getScan(), tSplit, context);
     } else {
       return super.createRecordReader(tSplit, context);
     }
   }
 
   @Override
-  public List<InputSplit> getSplits(String fullTableName, Table table, Scan scan, Pair<byte[][], byte[][]> keys,
-      RegionSizeCalculator sizeCalculator, RegionLocator regionLocator) throws IOException {
+  public List<InputSplit> getSplits(String fullTableName, Table table, Scan scan,
+      Pair<byte[][], byte[][]> keys, RegionSizeCalculator sizeCalculator,
+      RegionLocator regionLocator) throws IOException {
     LOG.info("getSplits for salted table: " + table.getName().getNameAsString());
     if (table.getDescriptor().isSalted()) {
-      return SaltedTableMapReduceUtil.getSplitsForSaltedTable(fullTableName, table, regionLocator, scan);
+      return SaltedTableMapReduceUtil.getSplitsForSaltedTable(fullTableName, table, regionLocator,
+        scan);
     } else {
       return super.getSplits(fullTableName, table, scan, keys, sizeCalculator, regionLocator);
     }
