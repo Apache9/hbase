@@ -27,10 +27,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.yetus.audience.InterfaceAudience;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A thread info dumper similar to hadoop's ReflectionUtils.
@@ -38,7 +37,7 @@ import org.apache.yetus.audience.InterfaceAudience;
 @InterfaceAudience.Private
 public class ThreadInfoUtils {
 
-  private static final Log LOG = LogFactory.getLog(ThreadInfoUtils.class);
+  private static final Logger LOG = LoggerFactory.getLogger(ThreadInfoUtils.class);
 
   private static interface Printer {
 
@@ -55,7 +54,7 @@ public class ThreadInfoUtils {
 
     @Override
     public void println(Object o) {
-      LOG.info(o);
+      LOG.info(o.toString());
     }
 
     @Override

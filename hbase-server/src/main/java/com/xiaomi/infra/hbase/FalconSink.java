@@ -19,13 +19,12 @@
 
 package com.xiaomi.infra.hbase;
 
+import com.xiaomi.infra.base.nameservice.ClusterInfo;
+import com.xiaomi.infra.base.nameservice.ZkClusterInfo.ClusterType;
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicLong;
-
 import org.apache.commons.httpclient.HttpClient;
 import org.apache.commons.httpclient.methods.PostMethod;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configurable;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.client.ColumnFamilyDescriptor;
@@ -35,13 +34,12 @@ import org.apache.yetus.audience.InterfaceAudience;
 import org.codehaus.jettison.json.JSONArray;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
-
-import com.xiaomi.infra.base.nameservice.ClusterInfo;
-import com.xiaomi.infra.base.nameservice.ZkClusterInfo.ClusterType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @InterfaceAudience.Private
 public class FalconSink implements Sink, Configurable {
-  private static final Log LOG = LogFactory.getLog(FalconSink.class);
+  private static final Logger LOG = LoggerFactory.getLogger(FalconSink.class);
   private static final String DEFAULT_FALCON_URI = "http://127.0.0.1:1988/v1/push";
   private static final String DEFAULT_COLLECTOR_URI =
       "http://canary.d.xiaomi.net/canary/push_metric/";

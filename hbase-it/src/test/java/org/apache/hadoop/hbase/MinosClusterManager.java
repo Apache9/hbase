@@ -17,16 +17,15 @@
  */
 package org.apache.hadoop.hbase;
 
-import com.google.common.base.Preconditions;
-
 import java.io.IOException;
-
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.util.Shell.ShellCommandExecutor;
 import org.apache.yetus.audience.InterfaceAudience;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.xiaomi.infra.thirdparty.com.google.common.base.Preconditions;
 
 /**
  * Cluster manager based on minor command line.
@@ -34,7 +33,7 @@ import org.apache.yetus.audience.InterfaceAudience;
 @InterfaceAudience.Private
 public class MinosClusterManager extends Configured implements ClusterManager {
 
-  private static final Log LOG = LogFactory.getLog(MinosClusterManager.class);
+  private static final Logger LOG = LoggerFactory.getLogger(MinosClusterManager.class);
 
   private final static String DEPLOY_CMD_FORMAT_FOR_HOST = "deploy %s hbase %s --job=%s --host=%s";
 
