@@ -8176,30 +8176,23 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
     for (int i = 0; i < deltas.size(); i++) {
       Cell delta = deltas.get(i);
       Cell currentValue = null;
-      boolean firstWrite = false;
       if (currentValuesIndex < currentValues.size() &&
           CellUtil.matchingQualifier(currentValues.get(currentValuesIndex), delta)) {
         currentValue = currentValues.get(currentValuesIndex);
         if (i < (deltas.size() - 1) && !CellUtil.matchingQualifier(delta, deltas.get(i + 1))) {
           currentValuesIndex++;
         }
-      } else {
-        firstWrite = true;
       }
       // Switch on whether this an increment or an append building the new Cell to apply.
       Cell newCell = null;
       MutationType mutationType = null;
-      boolean apply = true;
       switch (op) {
         case INCREMENT:
           mutationType = MutationType.INCREMENT;
           NumberCodecType type = ((Increment) mutation).getNumberCodecType(
             store.getColumnFamilyDescriptor().getName(), CellUtil.cloneQualifier(delta));
-          // If delta amount to apply is 0, don't write WAL or MemStore.
           Number deltaAmount =
             type.decode(delta.getValueArray(), delta.getValueOffset(), delta.getValueLength());
-          // TODO: Does zero value mean reset Cell? For example, the ttl.
-          apply = deltaAmount.longValue() != 0;
           byte[] newValue;
           if (currentValue != null) {
             try {
@@ -8220,7 +8213,6 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
           break;
         case APPEND:
           mutationType = MutationType.APPEND;
-          // Always apply Append. TODO: Does empty delta value mean reset Cell? It seems to.
           newCell = reckonDelta(delta, currentValue, columnFamily, now, mutation,
             oldCell -> ByteBuffer.wrap(new byte[delta.getValueLength() + oldCell.getValueLength()])
               .put(oldCell.getValueArray(), oldCell.getValueOffset(), oldCell.getValueLength())
@@ -8234,10 +8226,7 @@ public class HRegion implements HeapSize, PropagatingConfigurationObserver, Regi
         newCell =
             coprocessorHost.postMutationBeforeWAL(mutationType, mutation, currentValue, newCell);
       }
-      // If apply, we need to update memstore/WAL with new value; add it toApply.
-      if (apply || firstWrite) {
-        toApply.add(newCell);
-      }
+      toApply.add(newCell);
       // Add to results to get returned to the Client. If null, cilent does not want results.
       if (results != null) {
         results.add(newCell);
