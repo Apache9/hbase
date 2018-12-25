@@ -229,6 +229,7 @@ import org.apache.hadoop.hbase.quotas.OperationQuota;
 import org.apache.hadoop.hbase.quotas.OperationQuota.OperationType;
 import org.apache.hadoop.hbase.quotas.RegionServerQuotaManager;
 import org.apache.hadoop.hbase.quotas.ThrottleState;
+import org.apache.hadoop.hbase.quotas.ThrottlingException;
 import org.apache.hadoop.hbase.regionserver.HRegion.Operation;
 import org.apache.hadoop.hbase.regionserver.Leases.LeaseStillHeldException;
 import org.apache.hadoop.hbase.regionserver.ScannerContext.LimitScope;
@@ -5496,7 +5497,7 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
    * @param mutations
    */
   protected void doBatchOp(final RegionActionResult.Builder builder, final HRegion region,
-      final List<ClientProtos.Action> mutations, final CellScanner cells) {
+      final List<ClientProtos.Action> mutations, final CellScanner cells) throws ServiceException {
     Mutation[] mArray = new Mutation[mutations.size()];
     try {
       if (isQuotaEnabled()) {
@@ -5545,6 +5546,10 @@ public class HRegionServer implements ClientProtos.ClientService.BlockingInterfa
         }
       }
     } catch (IOException ie) {
+      if (ie instanceof ThrottlingException) {
+        throw new ServiceException(
+            "Throttle multi operation as mutations size " + mutations.size() + " is too large", ie);
+      }
       for (int i = 0; i < mutations.size(); i++) {
         builder.addResultOrException(getResultOrException(ie, mutations.get(i).getIndex()));
       }
