@@ -36,6 +36,8 @@ import org.apache.hadoop.hbase.classification.InterfaceAudience;
 import org.apache.hadoop.hbase.classification.InterfaceStability;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Scan;
+import org.apache.hadoop.hbase.mapreduce.Import.Importer;
+import org.apache.hadoop.hbase.mapreduce.Import.KeyValueImporter;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.FSUtils;
 import org.apache.hadoop.mapreduce.Job;
@@ -65,184 +67,27 @@ public class CopyTable extends Configured implements Tool {
   String families = null;
   boolean allCells = false;
   static int scanRateLimit = -1;
-  
+
   boolean bulkload = false;
   Path bulkloadDir = null;
 
+  boolean readingSnapshot = false;
+  String snapshot = null;
+
   private final static String JOB_NAME_CONF_KEY = "mapreduce.job.name";
-
-
-  // The following variables are introduced to preserve the binary compatibility in 0.98.
-  // Please see HBASE-12836 for further details.
-  @Deprecated
-  static long startTime_ = 0;
-  @Deprecated
-  static long endTime_ = 0;
-  @Deprecated
-  static int versions_ = -1;
-  @Deprecated
-  static String tableName_ = null;
-  @Deprecated
-  static String startRow_ = null;
-  @Deprecated
-  static String stopRow_ = null;
-  @Deprecated
-  static String newTableName_ = null;
-  @Deprecated
-  static String peerAddress_ = null;
-  @Deprecated
-  static String families_ = null;
-  @Deprecated
-  static boolean allCells_ = false;
 
   public CopyTable(Configuration conf) {
     super(conf);
   }
 
-  /**
-   * Sets up the actual job.
-   *
-   * @param conf The current configuration.
-   * @param args The command line parameters.
-   * @return The newly created job.
-   * @throws IOException When setting up the job fails.
-   * @deprecated Use {@link #createSubmittableJob(String[])} instead
-   */
-  @Deprecated
-  public static Job createSubmittableJob(Configuration conf, String[] args)
-      throws IOException {
-    if (!deprecatedDoCommandLine(args)) {
-      return null;
+  private void initCopyTableTableMapperJob(Scan scan, Job job) throws IOException {
+    Class<? extends TableMapper> mapper = bulkload ? KeyValueImporter.class : Importer.class;
+    if (readingSnapshot) {
+      TableMapReduceUtil.initTableSnapshotMapperJob(snapshot, scan, mapper, null, null, job, true,
+        TableMapReduceUtil.getAndCheckTmpRestoreDir(getConf()));
+    } else {
+      TableMapReduceUtil.initTableMapperJob(tableName, scan, mapper, null, null, job);
     }
-    Job job = new Job(conf, NAME + "_" + tableName_);
-    job.setJarByClass(CopyTable.class);
-    Scan scan = new Scan();
-    scan.setCacheBlocks(false);
-    if (startTime_ != 0) {
-      scan.setTimeRange(startTime_,
-          endTime_ == 0 ? HConstants.LATEST_TIMESTAMP : endTime_);
-    }
-    if (allCells_) {
-      scan.setRaw(true);
-    }
-    if (versions_ >= 0) {
-      scan.setMaxVersions(versions_);
-    }
-    if (startRow_ != null) {
-      scan.setStartRow(Bytes.toBytes(startRow_));
-    }
-    if (stopRow_ != null) {
-      scan.setStopRow(Bytes.toBytes(stopRow_));
-    }
-    if(families_ != null) {
-      String[] fams = families_.split(",");
-      Map<String,String> cfRenameMap = new HashMap<String,String>();
-      for(String fam : fams) {
-        String sourceCf;
-        if(fam.contains(":")) {
-          // fam looks like "sourceCfName:destCfName"
-          String[] srcAndDest = fam.split(":", 2);
-          sourceCf = srcAndDest[0];
-          String destCf = srcAndDest[1];
-          cfRenameMap.put(sourceCf, destCf);
-        } else {
-         // fam is just "sourceCf"
-          sourceCf = fam;
-        }
-        scan.addFamily(Bytes.toBytes(sourceCf));
-      }
-      Import.configureCfRenaming(job.getConfiguration(), cfRenameMap);
-    }
-    TableMapReduceUtil.initTableMapperJob(tableName_, scan,
-        Import.Importer.class, null, null, job);
-    TableMapReduceUtil.initTableReducerJob(
-        newTableName_ == null ? tableName_ : newTableName_, null, job,
-        null, peerAddress_, null, null);
-    job.setNumReduceTasks(0);
-    return job;
-  }
-
-  private static boolean deprecatedDoCommandLine(final String[] args) {
-   // Process command-line args. TODO: Better cmd-line processing
-   // (but hopefully something not as painful as cli options).
-    if (args.length < 1) {
-      printUsage(null);
-      return false;
-    }
-    try {
-      for (int i = 0; i < args.length; i++) {
-        String cmd = args[i];
-        if (cmd.equals("-h") || cmd.startsWith("--h")) {
-          printUsage(null);
-          return false;
-        }
-        final String startRowArgKey = "--startrow=";
-        if (cmd.startsWith(startRowArgKey)) {
-          startRow_ = cmd.substring(startRowArgKey.length());
-          continue;
-        }
-        final String stopRowArgKey = "--stoprow=";
-        if (cmd.startsWith(stopRowArgKey)) {
-          stopRow_ = cmd.substring(stopRowArgKey.length());
-          continue;
-        }
-        final String startTimeArgKey = "--starttime=";
-        if (cmd.startsWith(startTimeArgKey)) {
-          startTime_ = Long.parseLong(cmd.substring(startTimeArgKey.length()));
-          continue;
-        }
-        final String endTimeArgKey = "--endtime=";
-        if (cmd.startsWith(endTimeArgKey)) {
-          endTime_ = Long.parseLong(cmd.substring(endTimeArgKey.length()));
-          continue;
-        }
-        final String versionsArgKey = "--versions=";
-        if (cmd.startsWith(versionsArgKey)) {
-          versions_ = Integer.parseInt(cmd.substring(versionsArgKey.length()));
-          continue;
-        }
-        final String newNameArgKey = "--new.name=";
-        if (cmd.startsWith(newNameArgKey)) {
-          newTableName_ = cmd.substring(newNameArgKey.length());
-          continue;
-        }
-        final String peerAdrArgKey = "--peer.adr=";
-        if (cmd.startsWith(peerAdrArgKey)) {
-          peerAddress_ = cmd.substring(peerAdrArgKey.length());
-          continue;
-        }
-        final String familiesArgKey = "--families=";
-        if (cmd.startsWith(familiesArgKey)) {
-          families_ = cmd.substring(familiesArgKey.length());
-          continue;
-        }
-        if (cmd.startsWith("--all.cells")) {
-          allCells_ = true;
-          continue;
-        }
-        if (i == args.length-1) {
-          tableName_ = cmd;
-        } else {
-          printUsage("Invalid argument '" + cmd + "'" );
-          return false;
-        }
-      }
-      if (newTableName_ == null && peerAddress_ == null) {
-        printUsage("At least a new table name or a " +
-            "peer address must be specified");
-        return false;
-      }
-      if ((endTime_ != 0) && (startTime_ > endTime_)) {
-        printUsage("Invalid time range filter: starttime=" + startTime_ + " > endtime="
-            + endTime_);
-        return false;
-      }
-    } catch (Exception e) {
-      e.printStackTrace();
-      printUsage("Can't start because " + e.getMessage());
-      return false;
-    }
-    return true;
   }
 
   /**
@@ -252,19 +97,17 @@ public class CopyTable extends Configured implements Tool {
    * @return The newly created job.
    * @throws IOException When setting up the job fails.
    */
-  public Job createSubmittableJob(String[] args)
-  throws IOException {
+  public Job createSubmittableJob(String[] args) throws IOException {
     if (!doCommandLine(args)) {
       return null;
     }
-    
+
     Job job = Job.getInstance(getConf(), getConf().get(JOB_NAME_CONF_KEY, NAME + "_" + tableName));
     job.setJarByClass(CopyTable.class);
     Scan scan = new Scan();
     scan.setCacheBlocks(false);
     if (startTime != 0) {
-      scan.setTimeRange(startTime,
-          endTime == 0 ? HConstants.LATEST_TIMESTAMP : endTime);
+      scan.setTimeRange(startTime, endTime == 0 ? HConstants.LATEST_TIMESTAMP : endTime);
     }
     if (allCells) {
       scan.setRaw(true);
@@ -272,43 +115,42 @@ public class CopyTable extends Configured implements Tool {
     if (versions >= 0) {
       scan.setMaxVersions(versions);
     }
-    
+
     if (startRow != null) {
-      scan.setStartRow(Bytes.toBytes(startRow));
+      scan.withStartRow(Bytes.toBytes(startRow));
     }
-    
+
     if (stopRow != null) {
-      scan.setStopRow(Bytes.toBytes(stopRow));
+      scan.withStopRow(Bytes.toBytes(stopRow));
     }
-    
+
     if (scanRateLimit > 0) {
       job.getConfiguration().setInt(TableMapper.SCAN_RATE_LIMIT, scanRateLimit);
     }
-    
-    if(families != null) {
+
+    if (families != null) {
       String[] fams = families.split(",");
-      Map<String,String> cfRenameMap = new HashMap<String,String>();
-      for(String fam : fams) {
+      Map<String, String> cfRenameMap = new HashMap<String, String>();
+      for (String fam : fams) {
         String sourceCf;
-        if(fam.contains(":")) { 
-            // fam looks like "sourceCfName:destCfName"
-            String[] srcAndDest = fam.split(":", 2);
-            sourceCf = srcAndDest[0];
-            String destCf = srcAndDest[1];
-            cfRenameMap.put(sourceCf, destCf);
+        if (fam.contains(":")) {
+          // fam looks like "sourceCfName:destCfName"
+          String[] srcAndDest = fam.split(":", 2);
+          sourceCf = srcAndDest[0];
+          String destCf = srcAndDest[1];
+          cfRenameMap.put(sourceCf, destCf);
         } else {
-            // fam is just "sourceCf"
-            sourceCf = fam; 
+          // fam is just "sourceCf"
+          sourceCf = fam;
         }
         scan.addFamily(Bytes.toBytes(sourceCf));
       }
       Import.configureCfRenaming(job.getConfiguration(), cfRenameMap);
     }
     job.setNumReduceTasks(0);
-    
+
     if (bulkload) {
-      TableMapReduceUtil.initTableMapperJob(tableName, scan, Import.KeyValueImporter.class, null,
-        null, job);
+      initCopyTableTableMapperJob(scan, job);
 
       // We need to split the inputs by destination tables so that output of Map can be bulk-loaded.
       TableInputFormat.configureSplitTable(job, TableName.valueOf(dstTableName));
@@ -332,13 +174,10 @@ public class CopyTable extends Configured implements Tool {
         htable.close();
       }
     } else {
-      TableMapReduceUtil.initTableMapperJob(tableName, scan,
-        Import.Importer.class, null, null, job);
-      
+      initCopyTableTableMapperJob(scan, job);
       TableMapReduceUtil.initTableReducerJob(dstTableName, null, job, null, peerAddress, null,
         null);
     }
-    
     return job;
   }
 
@@ -349,8 +188,8 @@ public class CopyTable extends Configured implements Tool {
     if (errorMsg != null && errorMsg.length() > 0) {
       System.err.println("ERROR: " + errorMsg);
     }
-    System.err.println("Usage: CopyTable [general options] [--starttime=X] [--endtime=Y] " +
-        "[--new.name=NEW] [--peer.adr=ADR] <tablename>");
+    System.err.println("Usage: CopyTable [general options] [--starttime=X] [--endtime=Y] "
+        + "[--new.name=NEW] [--peer.adr=ADR] <tableName | snapshotName>");
     System.err.println();
     System.err.println("Options:");
     System.err.println(" rs.class     hbase.regionserver.class of the peer cluster");
@@ -364,31 +203,35 @@ public class CopyTable extends Configured implements Tool {
     System.err.println(" versions     number of cell versions to copy");
     System.err.println(" new.name     new table's name");
     System.err.println(" peer.adr     Address of the peer cluster given in the format");
-    System.err.println("              hbase.zookeeer.quorum:hbase.zookeeper.client.port:zookeeper.znode.parent");
+    System.err.println("              hbase.zookeeer.quorum:hbase.zookeeper.client.port:"
+        + "zookeeper.znode.parent");
     System.err.println(" families     comma-separated list of families to copy");
     System.err.println("              To copy from cf1 to cf2, give sourceCfName:destCfName. ");
     System.err.println("              To keep the same name, just give \"cfName\"");
     System.err.println(" all.cells    also copy delete markers and deleted cells");
     System.err.println(" scanrate     the scan rate limit: rows per second for each region.");
-    System.err.println(" bulkload     Write input into HFiles and bulk load to the destination "
-        + "table");
+    System.err.println(" bulkload     Write input into HFiles and bulk load to destination table");
+    System.err.println(" snapshot     Copy the data from snapshot to destination table.");
     System.err.println();
     System.err.println("Args:");
     System.err.println(" tablename    Name of the table to copy");
     System.err.println();
     System.err.println("Examples:");
-    System.err.println(" To copy 'TestTable' to a cluster that uses replication for a 1 hour window:");
-    System.err.println(" $ bin/hbase " +
-        "org.apache.hadoop.hbase.mapreduce.CopyTable --starttime=1265875194289 --endtime=1265878794289 " +
-        "--peer.adr=server1,server2,server3:2181:/hbase --families=myOldCf:myNewCf,cf2,cf3 TestTable ");
+    System.err
+        .println(" To copy 'TestTable' to a cluster that uses replication for a 1 hour window:");
+    System.err.println(" $ bin/hbase "
+        + "org.apache.hadoop.hbase.mapreduce.CopyTable --starttime=1265875194289 --endtime=1265878794289 "
+        + "--peer.adr=server1,server2,server3:2181:/hbase --families=myOldCf:myNewCf,cf2,cf3 TestTable ");
+    System.err.println(" $ bin/hbase org.apache.hadoop.hbase.mapreduce.CopyTable "
+        + "--snapshot --new.name=destTable sourceTableSnapshot");
+    System.err.println(" $ bin/hbase org.apache.hadoop.hbase.mapreduce.CopyTable "
+        + "--new.name=destTable --snapshot --bulkload sourceTableSnapshot");
     System.err.println("For performance consider the following general options:\n"
         + "-Dhbase.client.scanner.caching=100\n"
         + "-Dmapred.map.tasks.speculative.execution=false");
   }
 
   private boolean doCommandLine(final String[] args) {
-    // Process command-line args. TODO: Better cmd-line processing
-    // (but hopefully something not as painful as cli options).
     if (args.length < 1) {
       printUsage(null);
       return false;
@@ -400,19 +243,19 @@ public class CopyTable extends Configured implements Tool {
           printUsage(null);
           return false;
         }
-        
+
         final String startRowArgKey = "--startrow=";
         if (cmd.startsWith(startRowArgKey)) {
           startRow = cmd.substring(startRowArgKey.length());
           continue;
         }
-        
+
         final String stopRowArgKey = "--stoprow=";
         if (cmd.startsWith(stopRowArgKey)) {
           stopRow = cmd.substring(stopRowArgKey.length());
           continue;
         }
-        
+
         final String startTimeArgKey = "--starttime=";
         if (cmd.startsWith(startTimeArgKey)) {
           startTime = Long.parseLong(cmd.substring(startTimeArgKey.length()));
@@ -448,7 +291,7 @@ public class CopyTable extends Configured implements Tool {
           families = cmd.substring(familiesArgKey.length());
           continue;
         }
-        
+
         final String scanRateArgKey = "--scanrate=";
         if (cmd.startsWith(scanRateArgKey)) {
           scanRateLimit = Integer.parseInt(cmd.substring(scanRateArgKey.length()));
@@ -459,34 +302,59 @@ public class CopyTable extends Configured implements Tool {
           allCells = true;
           continue;
         }
-        
+
         if (cmd.startsWith("--bulkload")) {
           bulkload = true;
           continue;
         }
 
-        if (i == args.length-1) {
-          tableName = cmd;
+        final String snapshotArgKey = "--snapshot";
+        if (cmd.startsWith(snapshotArgKey)) {
+          readingSnapshot = true;
+          continue;
+        }
+
+        if (i == args.length - 1) {
+          if (readingSnapshot) {
+            snapshot = cmd;
+          } else {
+            tableName = cmd;
+          }
         } else {
-          printUsage("Invalid argument '" + cmd + "'" );
+          printUsage("Invalid argument '" + cmd + "'");
           return false;
         }
       }
       if (dstTableName == null && peerAddress == null) {
-        printUsage("At least a new table name or a " +
-            "peer address must be specified");
+        printUsage("At least a new table name or a peer address must be specified");
         return false;
       }
       if ((endTime != 0) && (startTime > endTime)) {
         printUsage("Invalid time range filter: starttime=" + startTime + " >  endtime=" + endTime);
         return false;
       }
-      
+
       if (bulkload && peerAddress != null) {
         printUsage("Remote bulkload is not supported!");
         return false;
       }
-      
+
+      if (readingSnapshot && peerAddress != null) {
+        printUsage("Loading data from snapshot to remote peer cluster is not supported.");
+        return false;
+      }
+
+      if (readingSnapshot && dstTableName == null) {
+        printUsage("The --new.name=<table> for destination table should be "
+            + "provided when loading data from snapshot .");
+        return false;
+      }
+
+      if (readingSnapshot && snapshot == null) {
+        printUsage("Snapshot shouldn't be null when --snapshot is enabled.");
+        return false;
+      }
+
       // set dstTableName if necessary
       if (dstTableName == null) {
         dstTableName = tableName;
@@ -524,8 +392,8 @@ public class CopyTable extends Configured implements Tool {
     }
     int code = 0;
     if (bulkload) {
-      code = new LoadIncrementalHFiles(this.getConf()).run(new String[]{this.bulkloadDir.toString(),
-          this.dstTableName});
+      code = new LoadIncrementalHFiles(this.getConf())
+          .run(new String[] { this.bulkloadDir.toString(), this.dstTableName });
       if (code == 0) {
         // bulkloadDir is deleted only LoadIncrementalHFiles was successful so that one can rerun
         // LoadIncrementalHFiles.
