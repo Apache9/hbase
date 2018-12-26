@@ -1264,8 +1264,12 @@ public final class HConstants {
   public static final String SNAPSHOT_RESTORE_TMP_DIR = "hbase.snapshot.restore.tmp.dir";
   public static final String SNAPSHOT_RESTORE_TMP_DIR_DEFAULT =
       "/hbase/.tmpdir-to-restore-snapshot";
-  public static final FsPermission ACL_ENABLE_PUBLIC_HFILE_PERMISSION = new FsPermission((short)0701);
-  public static final FsPermission ACL_ENABLE_RESTORE_HFILE_PERMISSION = new FsPermission((short)0703);
+  public static final String HDFS_ACL_ENABLED_PUBLIC_HFILE_PERMISSION =
+      "hbase.hdfs.acl.enabled.public.file.permission";
+  public static final String HDFS_ACL_ENABLED_PUBLIC_HFILE_PERMISSION_DEFAULT = "751";
+  public static final String HDFS_ACL_ENABLED_RESTORE_HFILE_PERMISSION =
+      "hbase.hdfs.acl.enabled.restore.file.permission";
+  public static final String HDFS_ACL_ENABLED_RESTORE_HFILE_PERMISSION_DEFAULT = "773";
 
   public static final String TALOS_ACCESS_KEY = "galaxy.talos.access.key";
   public static final String TALOS_ACCESS_SECRET = "galaxy.talos.access.secret";

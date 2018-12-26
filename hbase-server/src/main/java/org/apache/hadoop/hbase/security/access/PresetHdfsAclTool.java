@@ -91,23 +91,6 @@ public class PresetHdfsAclTool {
     }
   }
 
-  private void checkDirsAndSetPermission() throws IOException {
-    Path rootDir = pathHelper.rootDir;
-
-    checkDirAndSetPermission(rootDir);
-    checkDirAndSetPermission(new Path(rootDir, HConstants.HFILE_ARCHIVE_DIRECTORY));
-    checkDirAndSetPermission(pathHelper.getArchiveDataDir());
-    checkDirAndSetPermission(pathHelper.getDataDir());
-    checkDirAndSetPermission(new Path(rootDir, HConstants.HBASE_TEMP_DIRECTORY));
-    checkDirAndSetPermission(pathHelper.getTmpDataDir());
-    checkDirAndSetPermission(pathHelper.getSnapshotRootDir());
-
-    Path restoreDir = new Path(
-      conf.get(HConstants.SNAPSHOT_RESTORE_TMP_DIR, HConstants.SNAPSHOT_RESTORE_TMP_DIR_DEFAULT));
-    checkDir(restoreDir);
-    fs.setPermission(restoreDir, HConstants.ACL_ENABLE_RESTORE_HFILE_PERMISSION);
-  }
-
   private void presetHdfsAclInternal(String[] args) throws IOException {
     if (args != null && args.length >= 2) {
       String option = args[1];
@@ -189,11 +172,6 @@ public class PresetHdfsAclTool {
         }
       }
     }
-  }
-
-  private void checkDirAndSetPermission(Path path) throws IOException {
-    checkDir(path);
-    fs.setPermission(path, HConstants.ACL_ENABLE_PUBLIC_HFILE_PERMISSION);
   }
 
   private void checkDir(Path path) throws IOException {
@@ -372,7 +350,8 @@ public class PresetHdfsAclTool {
   public void presetHdfsAcl(String[] args) {
     try {
       init();
-      checkDirsAndSetPermission();
+      HdfsAclManager.setPublicDirectoryPermission(conf, fs);
+      HdfsAclManager.setRestoreDirectoryPermission(conf, fs);
       presetHdfsAclInternal(args);
       LOG.info("Finished to pre-set HDFS ACL.");
     } catch (Exception e) {
