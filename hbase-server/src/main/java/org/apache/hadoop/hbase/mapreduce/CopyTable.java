@@ -102,7 +102,8 @@ public class CopyTable extends Configured implements Tool {
       return null;
     }
 
-    Job job = Job.getInstance(getConf(), getConf().get(JOB_NAME_CONF_KEY, NAME + "_" + tableName));
+    String jobSuffix = tableName == null ? snapshot : tableName;
+    Job job = Job.getInstance(getConf(), getConf().get(JOB_NAME_CONF_KEY, NAME + "_" + jobSuffix));
     job.setJarByClass(CopyTable.class);
     Scan scan = new Scan();
     scan.setCacheBlocks(false);
